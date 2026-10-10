@@ -1,0 +1,146 @@
+package allocation
+
+import (
+	"cmp"
+	"slices"
+)
+
+// Baseline is the deterministic baseline allocator.
+type Baseline struct{}
+
+// Plan implements Allocator.
+func (Baseline) Plan(s State) (Result, error) { return Plan(s) }
+
+// breaksRestriction reports which levels of Restriction giving the Task to the
+// Resident would break. Plan and Check both use it so they cannot disagree.
+func breaksRestriction(r Resident, t Task) (demand Demand, demandBroken, choreBroken bool) {
+	for _, d := range t.Demands {
+		if slices.Contains(r.DemandRestrictions, d) {
+			demand, demandBroken = d, true
+			break
+		}
+	}
+	choreBroken = slices.Contains(r.ChoreRestrictions, t.ChoreID)
+	return demand, demandBroken, choreBroken
+}
+
+func restricted(r Resident, t Task) bool {
+	_, d, c := breaksRestriction(r, t)
+	return d || c
+}
+
+func energyOf(r Resident) int { return max(r.Energy, 0) }
+
+// uniqueResidents and uniqueTasks keep the first occurrence of each ID.
+func uniqueResidents(rs []Resident) []Resident {
+	seen := make(map[string]bool, len(rs))
+	var out []Resident
+	for _, r := range rs {
+		if !seen[r.ID] {
+			seen[r.ID] = true
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+func uniqueTasks(ts []Task) []Task {
+	seen := make(map[string]bool, len(ts))
+	var out []Task
+	for _, t := range ts {
+		if !seen[t.ID] {
+			seen[t.ID] = true
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+func deadlineToday(t Task, today Date) bool { return t.WindowEnd <= today }
+
+func lateness(t Task, today Date) int { return max(int(today-t.WindowStart), 0) }
+
+// Plan proposes a Day Plan: open Tasks sorted by hard deadline today, then
+// Importance, then lateness, then TaskID, each given to the fitting Resident
+// with the most Energy left. Tasks that fit nobody stay in the pool. Output is
+// sorted by TaskID and does not depend on the order of the input.
+func Plan(s State) (Result, error) {
+	residents := uniqueResidents(s.Residents)
+	slices.SortFunc(residents, func(a, b Resident) int { return cmp.Compare(a.ID, b.ID) })
+	left := make([]int, len(residents))
+	for i, r := range residents {
+		left[i] = energyOf(r)
+	}
+
+	tasks := uniqueTasks(slices.Clone(s.Tasks))
+	// uniqueTasks keeps the first occurrence in input order; sort after so the
+	// result only depends on the content when IDs are unique.
+	slices.SortFunc(tasks, func(a, b Task) int {
+		return cmp.Or(
+			compareBool(deadlineToday(b, s.Today), deadlineToday(a, s.Today)),
+			cmp.Compare(a.Importance.Rank(), b.Importance.Rank()),
+			cmp.Compare(lateness(b, s.Today), lateness(a, s.Today)),
+			cmp.Compare(a.ID, b.ID),
+		)
+	})
+
+	var res Result
+	for _, t := range tasks {
+		switch {
+		case t.Effort < 1:
+			res.Pool = append(res.Pool, PoolEntry{t.ID, ReasonInvalidEffort})
+			continue
+		case t.People >= 2:
+			res.Pool = append(res.Pool, PoolEntry{t.ID, ReasonTwoPersonDeferred})
+			continue
+		}
+		best, allRestricted := -1, len(residents) > 0
+		for i, r := range residents {
+			if restricted(r, t) {
+				continue
+			}
+			allRestricted = false
+			if left[i] >= t.Effort && (best < 0 || left[i] > left[best]) {
+				best = i
+			}
+		}
+		if best < 0 {
+			why := ReasonNoEnergyLeft
+			if allRestricted {
+				why = ReasonRestrictedForAll
+			}
+			res.Pool = append(res.Pool, PoolEntry{t.ID, why})
+			continue
+		}
+		left[best] -= t.Effort
+		res.DayPlan.Assignments = append(res.DayPlan.Assignments,
+			Assignment{t.ID, residents[best].ID, assignmentReason(t, s.Today)})
+	}
+	slices.SortFunc(res.DayPlan.Assignments, func(a, b Assignment) int { return cmp.Compare(a.TaskID, b.TaskID) })
+	slices.SortFunc(res.Pool, func(a, b PoolEntry) int { return cmp.Compare(a.TaskID, b.TaskID) })
+	return res, nil
+}
+
+// assignmentReason names the sort key that placed the Task, strongest first.
+func assignmentReason(t Task, today Date) Reason {
+	switch {
+	case deadlineToday(t, today):
+		return ReasonDeadlineToday
+	case t.Importance == Essential:
+		return ReasonImportance
+	case lateness(t, today) > 0:
+		return ReasonLateness
+	}
+	return ReasonFitsEnergy
+}
+
+// compareBool orders false before true.
+func compareBool(a, b bool) int {
+	switch {
+	case a == b:
+		return 0
+	case !a:
+		return -1
+	}
+	return 1
+}
