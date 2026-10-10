@@ -1,0 +1,166 @@
+// Package allocation is the baseline Allocation module: it proposes a Day Plan
+// from the open Tasks and each Resident's Energy (Plan), and referees any Day
+// Plan, whoever proposed it (Check). See docs/adr/0004.
+//
+// Purity rule: the package is stdlib only and does no I/O. It has no database,
+// HTTP or clock dependency; the caller supplies "today" in State. This is
+// enforced by purity_test.go.
+//
+// Definitions used by the sort order of Plan:
+//
+//   - Hard deadline today: the Task's WindowEnd is on or before State.Today
+//     (so an overdue Task counts). There is no deadline field, only windows.
+//   - Importance rank: essential, then normal, then nice to have.
+//   - Lateness: the number of days State.Today is past WindowStart, never
+//     negative. Larger is more urgent.
+//
+// Preconditions: Effort is 1 to 5 and Energy is a whole number of points.
+// Negative Energy is treated as 0. A Task with Effort below 1 is invalid and
+// is left in the pool with ReasonInvalidEffort.
+package allocation
+
+import "time"
+
+// Date is a calendar date as a count of days since 1970-01-01, in the Home's
+// zone. Using days keeps the package free of any clock.
+type Date int
+
+// NewDate returns the Date for a year, month and day.
+func NewDate(year int, month time.Month, day int) Date {
+	return Date(time.Date(year, month, day, 0, 0, 0, 0, time.UTC).Unix() / 86400)
+}
+
+// Importance is how much it matters that a Chore gets done.
+type Importance string
+
+const (
+	Essential  Importance = "essential"
+	Normal     Importance = "normal"
+	NiceToHave Importance = "nice_to_have"
+)
+
+// Rank orders Importance, lower first. Unknown values rank last.
+func (i Importance) Rank() int {
+	switch i {
+	case Essential:
+		return 0
+	case Normal:
+		return 1
+	case NiceToHave:
+		return 2
+	}
+	return 3
+}
+
+// Demand is something a Chore asks of the body, such as "heavy_lifting".
+type Demand string
+
+// Resident is someone who can be given Tasks today.
+type Resident struct {
+	ID string
+	// Energy is today's points, already computed from Baseline and Check-in.
+	Energy int
+	// DemandRestrictions are the Demands the Resident cannot do today: the
+	// User's general ones merged with the day-only ones from the Check-in.
+	DemandRestrictions []Demand
+	// ChoreRestrictions are the Chores this Resident cannot do in this Home.
+	ChoreRestrictions []string
+}
+
+// Task is one open Chore to be done.
+type Task struct {
+	ID      string
+	ChoreID string
+	// Effort is the current Effort (1 to 5), not the base.
+	Effort      int
+	Importance  Importance
+	Demands     []Demand
+	People      int
+	WindowStart Date
+	WindowEnd   Date
+}
+
+// State is everything Allocation knows. Tasks are open Tasks only.
+type State struct {
+	Today     Date
+	Residents []Resident
+	Tasks     []Task
+}
+
+// Reason says why a Task was placed or left in the pool. It is data, not
+// prose, because it is stored and later rendered by the explanation feature.
+type Reason string
+
+const (
+	// Assignment reasons: the sort key that placed the Task.
+	ReasonDeadlineToday Reason = "deadline_today"
+	ReasonImportance    Reason = "importance"
+	ReasonLateness      Reason = "lateness"
+	ReasonFitsEnergy    Reason = "fits_energy"
+
+	// Pool reasons.
+	ReasonNoEnergyLeft      Reason = "no_energy_left"
+	ReasonRestrictedForAll  Reason = "restricted_for_all"
+	ReasonTwoPersonDeferred Reason = "two_person_deferred"
+	ReasonInvalidEffort     Reason = "invalid_effort"
+)
+
+// Assignment gives a Task to a Resident.
+type Assignment struct {
+	TaskID     string
+	ResidentID string
+	Reason     Reason
+}
+
+// DayPlan is what an Allocation proposes. The pool is every state Task that
+// is not assigned.
+type DayPlan struct {
+	Assignments []Assignment
+}
+
+// PoolEntry is a Task left unassigned, and why.
+type PoolEntry struct {
+	TaskID string
+	Reason Reason
+}
+
+// Result is a DayPlan plus the pool.
+type Result struct {
+	DayPlan DayPlan
+	Pool    []PoolEntry
+}
+
+// Allocator proposes a Day Plan. Baseline is one; the LLM allocator will be
+// another behind the same interface.
+type Allocator interface {
+	Plan(State) (Result, error)
+}
+
+// ViolationKind names a rule a Day Plan broke.
+type ViolationKind string
+
+const (
+	OverEnergy        ViolationKind = "over_energy"
+	BrokenRestriction ViolationKind = "broken_restriction"
+	UnknownTask       ViolationKind = "unknown_task"
+	DuplicateTask     ViolationKind = "duplicate_task"
+	UnknownResident   ViolationKind = "unknown_resident"
+)
+
+// RestrictionLevel says which kind of Restriction was broken.
+type RestrictionLevel string
+
+const (
+	LevelDemand RestrictionLevel = "demand"
+	LevelChore  RestrictionLevel = "chore"
+)
+
+// Violation is one broken rule found by Check.
+type Violation struct {
+	Kind       ViolationKind
+	TaskID     string
+	ResidentID string
+	// Level is set only for BrokenRestriction.
+	Level  RestrictionLevel
+	Detail string
+}
