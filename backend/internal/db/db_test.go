@@ -2,7 +2,12 @@ package db_test
 
 import (
 	"context"
+	"net/url"
+	"strings"
 	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/apitest"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/db"
@@ -49,6 +54,54 @@ func TestConnectFailsForUnreachableDatabase(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1_000_000_000)
 	defer cancel()
 	if _, err := db.Connect(ctx, "postgres://nobody:x@127.0.0.1:1/none?sslmode=disable"); err == nil {
+		t.Fatal("expected an error")
+	}
+}
+
+// A suspended Neon endpoint can refuse the first connections; Migrate must
+// wait for the database instead of failing the deploy.
+func TestMigrateRetriesUntilTheDatabaseAppears(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	anyURL := apitest.NewEmptyDatabase(t)
+	u, err := url.Parse(anyURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	late := "late_" + strings.TrimPrefix(u.Path, "/")
+	u.Path = "/" + late
+
+	admin, err := pgx.Connect(ctx, anyURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer admin.Close(ctx)
+	t.Cleanup(func() {
+		c, err := pgx.Connect(ctx, anyURL)
+		if err == nil {
+			defer c.Close(ctx)
+			_, _ = c.Exec(ctx, `DROP DATABASE IF EXISTS `+late+` WITH (FORCE)`)
+		}
+	})
+
+	go func() {
+		time.Sleep(1500 * time.Millisecond)
+		_, _ = admin.Exec(ctx, `CREATE DATABASE `+late)
+	}()
+
+	if err := db.Migrate(ctx, u.String()); err != nil {
+		t.Fatalf("migrate should wait for the database: %v", err)
+	}
+	if got := currentVersion(t, u.String()); got != 1 {
+		t.Fatalf("version = %d, want 1", got)
+	}
+}
+
+func TestMigrateGivesUpWhenContextEndsOnUnreachableDatabase(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if err := db.Migrate(ctx, "postgres://nobody:x@127.0.0.1:1/none?sslmode=disable"); err == nil {
 		t.Fatal("expected an error")
 	}
 }
