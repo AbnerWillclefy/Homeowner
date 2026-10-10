@@ -1,7 +1,9 @@
 name: Notify ready to merge
 
+# pull_request_target runs the workflow from main, so it also fires on PRs opened
+# before it existed. Safe here: it never checks out or runs the PR's code.
 on:
-  pull_request:
+  pull_request_target:
     types: [labeled]
 
 jobs:
