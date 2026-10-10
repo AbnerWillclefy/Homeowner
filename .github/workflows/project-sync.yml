@@ -1,0 +1,81 @@
+name: Project board sync
+
+# Moves each issue's card on the Homeowner project board to match the pipeline stage.
+# Deterministic: no Claude involved. Pull requests are not put on the board; they move
+# the cards of the issues they close.
+on:
+  issues:
+    types: [opened, labeled, closed, reopened]
+  pull_request_target:
+    types: [opened, reopened, labeled]
+
+concurrency:
+  group: project-sync-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ secrets.AGENTS_GH_TOKEN }}
+      OWNER: AbnerWillclefy
+      PROJECT_NUMBER: "2"
+      EVENT: ${{ github.event_name }}
+      ACTION: ${{ github.event.action }}
+      LABEL: ${{ github.event.label.name }}
+      ISSUE_URL: ${{ github.event.issue.html_url }}
+      ISSUE_LABELS: ${{ join(github.event.issue.labels.*.name, ',') }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - name: Work out the target column
+        id: target
+        run: |
+          status=""
+          if [ "$EVENT" = issues ]; then
+            case "$ACTION" in
+              closed) status="Done" ;;
+              opened|reopened)
+                if [[ ",$ISSUE_LABELS," == *",bug,"* ]]; then status="Triage"
+                elif [[ ",$ISSUE_LABELS," == *",feature-request,"* ]]; then status="Planning"
+                else status="Refining"; fi ;;
+              labeled)
+                case "$LABEL" in
+                  feature-request) status="Planning" ;;
+                  needs-refinement) status="Refining" ;;
+                  ready-for-agent) status="Ready" ;;
+                  implement) status="In progress" ;;
+                  needs-triage) status="Triage" ;;
+                esac ;;
+            esac
+            urls="$ISSUE_URL"
+          else
+            case "$ACTION" in
+              opened|reopened) status="In review" ;;
+              labeled) [ "$LABEL" = review-addressed ] && status="Ready to merge" ;;
+            esac
+            urls=$(gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){ repository(owner:$o,name:$r){ pullRequest(number:$n){ closingIssuesReferences(first:10){ nodes { url } } } } }' \
+              -f o="${GITHUB_REPOSITORY%/*}" -f r="${GITHUB_REPOSITORY#*/}" -F n="$PR_NUMBER" \
+              --jq '.data.repository.pullRequest.closingIssuesReferences.nodes[].url' | tr '\n' ' ')
+          fi
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "urls=$urls" >> "$GITHUB_OUTPUT"
+          echo "target: '${status:-none}' for: ${urls:-none}"
+
+      - name: Move the cards
+        if: steps.target.outputs.status != '' && steps.target.outputs.urls != ''
+        env:
+          STATUS: ${{ steps.target.outputs.status }}
+          URLS: ${{ steps.target.outputs.urls }}
+        run: |
+          project_id=$(gh project view "$PROJECT_NUMBER" --owner "$OWNER" --format json --jq .id)
+          field=$(gh project field-list "$PROJECT_NUMBER" --owner "$OWNER" --format json --jq '.fields[] | select(.name == "Status")')
+          field_id=$(jq -r .id <<<"$field")
+          option_id=$(jq -r --arg s "$STATUS" '.options[] | select(.name == $s) | .id' <<<"$field")
+          for url in $URLS; do
+            item=$(gh project item-add "$PROJECT_NUMBER" --owner "$OWNER" --url "$url" --format json --jq .id)
+            gh project item-edit --project-id "$project_id" --id "$item" --field-id "$field_id" --single-select-option-id "$option_id" >/dev/null
+            echo "$url -> $STATUS"
+          done
