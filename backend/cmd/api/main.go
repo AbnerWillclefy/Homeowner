@@ -32,13 +32,17 @@ func run(args []string, log *slog.Logger) error {
 	if len(args) > 0 {
 		cmd = args[0]
 	}
-	cfg, err := config.Load(os.Getenv)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	getenv, err := ssmGetenv(ctx, os.Getenv)
 	if err != nil {
 		return err
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
+	cfg, err := config.Load(getenv)
+	if err != nil {
+		return err
+	}
 
 	switch cmd {
 	case "migrate":
