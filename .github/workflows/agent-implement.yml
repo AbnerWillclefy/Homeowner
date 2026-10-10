@@ -46,3 +46,14 @@ jobs:
             --max-turns 150
             --allowedTools "Edit,Write,Bash(git *),Bash(go *),Bash(gofmt *),Bash(docker *),Bash(npm *),Bash(npx *),Bash(make *),Bash(terraform fmt *),Bash(terraform validate *),Bash(gh issue *),Bash(gh pr create *),Bash(gh pr view *),Bash(gh api *)"
             --disallowedTools "Bash(git push --force *),Bash(git push -f *),Bash(gh pr merge *)"
+
+      - name: Fail if the stage did not finish
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.AGENTS_GH_TOKEN }}
+        run: |
+          labels=$(gh issue view ${{ github.event.issue.number }} -R ${{ github.repository }} --json labels --jq '[.labels[].name] | join(",")')
+          if [[ ",$labels," == *",implement,"* ]]; then
+            echo "::error::#${{ github.event.issue.number }} still has the implement label, so this stage did not finish. See the Claude step's log."
+            exit 1
+          fi

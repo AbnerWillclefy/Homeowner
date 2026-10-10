@@ -35,9 +35,20 @@ jobs:
 
             Its tickets are its open sub-issues: `gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/sub_issues --jq '.[] | select(.state == "open") | .number'`. If it has none, #${{ github.event.issue.number }} is itself a single ticket: refine it, and do not refine any other issue.
 
-            For each ticket, use the senior-engineer subagent to write its `## Technical notes`, append them to the ticket body with `gh issue edit <n> --body-file <file>`, and add the label `ready-for-agent`.
+            For each ticket, use the senior-engineer subagent to write its `## Technical notes` to `.agent-scratch/notes-<n>.md` inside the repository (never /tmp: files outside the repository cannot be read in this run), then append them to the ticket body with `gh issue edit <n> --body-file <file>`, one command per ticket, and add the label `ready-for-agent`.
 
             Then remove the label `needs-refinement` from #${{ github.event.issue.number }} and comment there with what was refined and any concerns raised.
           claude_args: |
             --max-turns 80
             --allowedTools "Bash(gh issue *),Bash(gh api *),Write"
+
+      - name: Fail if the stage did not finish
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.AGENTS_GH_TOKEN }}
+        run: |
+          labels=$(gh issue view ${{ github.event.issue.number }} -R ${{ github.repository }} --json labels --jq '[.labels[].name] | join(",")')
+          if [[ ",$labels," == *",needs-refinement,"* ]]; then
+            echo "::error::#${{ github.event.issue.number }} still has the needs-refinement label, so this stage did not finish. See the Claude step's log."
+            exit 1
+          fi

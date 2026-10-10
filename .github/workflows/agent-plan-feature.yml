@@ -41,3 +41,14 @@ jobs:
           claude_args: |
             --max-turns 60
             --allowedTools "Bash(gh issue *),Bash(gh api *)"
+
+      - name: Fail if the stage did not finish
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.AGENTS_GH_TOKEN }}
+        run: |
+          labels=$(gh issue view ${{ github.event.issue.number }} -R ${{ github.repository }} --json labels --jq '[.labels[].name] | join(",")')
+          if [[ ",$labels," == *",feature-request,"* ]]; then
+            echo "::error::#${{ github.event.issue.number }} still has the feature-request label, so this stage did not finish. See the Claude step's log."
+            exit 1
+          fi
