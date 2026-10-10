@@ -32,6 +32,8 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.AGENTS_GH_TOKEN }}
+          # Private repo: keep the transcript in the run log for debugging
+          show_full_output: true
           prompt: |
             Implement issue #${{ github.event.issue.number }} in ${{ github.repository }}, following "Working a ticket" in CLAUDE.md. Read it with `gh issue view ${{ github.event.issue.number }} --comments`.
 

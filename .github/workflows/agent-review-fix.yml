@@ -44,6 +44,8 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.AGENTS_GH_TOKEN }}
+          # Private repo: keep the transcript in the run log for debugging
+          show_full_output: true
           prompt: |
             Claude has reviewed pull request #${{ env.PR }} in ${{ github.repository }}. Read the review comments with `gh pr view ${{ env.PR }} --comments` and `gh api repos/${{ github.repository }}/pulls/${{ env.PR }}/comments`.
 
