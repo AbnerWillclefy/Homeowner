@@ -35,6 +35,7 @@ Each stage is a workflow in `.github/workflows/` started by a label or an event.
 - Small commits, imperative and lowercase after a conventional prefix, for example `feat(allocation): honour restrictions on demands`.
 - The pull request description starts with `Closes #<issue-number>` and lists each acceptance criterion with how it is met.
 - Never merge. A human merges.
+- You may add new workflows under `.github/workflows/`, but never modify `agent-*.yml`, `claude.yml` or `claude-code-review.yml`. Changes to the pipeline itself are made by a human.
 
 ## Agent skills
 
