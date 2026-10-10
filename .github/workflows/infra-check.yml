@@ -1,0 +1,38 @@
+name: infra-check
+
+# The only pre-merge check for the Terraform. No AWS credentials: pull
+# requests never get any.
+
+on:
+  pull_request:
+    paths:
+      - "infra/**"
+      - ".github/workflows/infra-check.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: infra-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.5"
+          terraform_wrapper: false
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+        working-directory: infra
+      - name: terraform validate (every folder)
+        run: |
+          for dir in infra/bootstrap infra/staging infra/modules/*; do
+            echo "::group::$dir"
+            terraform -chdir="$dir" init -backend=false -input=false
+            terraform -chdir="$dir" validate
+            echo "::endgroup::"
+          done
