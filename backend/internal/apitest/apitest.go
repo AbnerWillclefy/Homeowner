@@ -1,0 +1,127 @@
+// Package apitest is the harness for black-box API tests (seam 1). It runs the
+// real HTTP server against a real, isolated Postgres database, with the
+// outside world faked at its boundary.
+//
+// Later tickets extend App with SignInAs(user) and the fake LLM and Web Push
+// clients, and wire them into server.Deps in Start.
+package apitest
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/db"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/server"
+)
+
+// StartTime is the fixed instant the fake clock starts at (not midnight).
+var StartTime = time.Date(2026, 3, 4, 9, 0, 0, 0, time.UTC)
+
+// App is a running API for one test.
+type App struct {
+	URL   string
+	Clock *clock.Fake
+	DB    *pgxpool.Pool
+	Logs  *LogBuffer
+}
+
+// Response is a decoded HTTP response.
+type Response struct {
+	Status int
+	Header http.Header
+	Raw    []byte
+	// Body is the response decoded as a JSON object; nil if it is not one.
+	Body map[string]any
+}
+
+// Start boots the API on a fresh database cloned from the migrated template.
+func Start(t testing.TB) *App {
+	t.Helper()
+	dbURL := NewMigratedDatabase(t)
+
+	pool, err := db.Connect(context.Background(), dbURL)
+	if err != nil {
+		t.Fatalf("apitest: connect: %v", err)
+	}
+	// Registered after the database cleanup, so it runs first (LIFO) and the
+	// DROP DATABASE does not see open connections.
+	t.Cleanup(pool.Close)
+
+	fake := clock.NewFake(StartTime)
+	logs := &LogBuffer{}
+	deps := server.Deps{
+		DB:     pool,
+		Clock:  fake,
+		Logger: slog.New(slog.NewJSONHandler(logs, nil)),
+	}
+	srv := httptest.NewServer(server.New(deps))
+	t.Cleanup(srv.Close)
+
+	return &App{URL: srv.URL, Clock: fake, DB: pool, Logs: logs}
+}
+
+// Get sends GET path to the server.
+func (a *App) Get(path string) Response { return a.do(http.MethodGet, path, nil) }
+
+// Post sends body as JSON to path.
+func (a *App) Post(path string, body any) Response { return a.do(http.MethodPost, path, body) }
+
+func (a *App) do(method, path string, body any) Response {
+	var rd io.Reader
+	if body != nil {
+		b, err := json.Marshal(body)
+		if err != nil {
+			panic(err)
+		}
+		rd = bytes.NewReader(b)
+	}
+	req, err := http.NewRequest(method, a.URL+path, rd)
+	if err != nil {
+		panic(err)
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer res.Body.Close()
+	raw, _ := io.ReadAll(res.Body)
+	out := Response{Status: res.StatusCode, Header: res.Header, Raw: raw}
+	_ = json.Unmarshal(raw, &out.Body)
+	return out
+}
+
+// LogBuffer is a goroutine-safe io.Writer that captures server logs.
+type LogBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (l *LogBuffer) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.buf.Write(p)
+}
+
+func (l *LogBuffer) String() string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.buf.String()
+}
+
+// Contains reports whether the captured logs contain s.
+func (l *LogBuffer) Contains(s string) bool { return strings.Contains(l.String(), s) }
