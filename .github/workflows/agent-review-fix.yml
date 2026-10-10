@@ -1,0 +1,56 @@
+name: Agent - Apply review
+
+on:
+  workflow_run:
+    workflows: ["Claude Code Review"]
+    types: [completed]
+
+jobs:
+  apply-review:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.pull_requests[0]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: agent-pr-${{ github.event.workflow_run.pull_requests[0].number }}
+      cancel-in-progress: false
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PR: ${{ github.event.workflow_run.pull_requests[0].number }}
+      GH_TOKEN: ${{ secrets.AGENTS_GH_TOKEN }}
+    steps:
+      - name: Skip pull requests already addressed
+        id: gate
+        run: |
+          labels=$(gh pr view "$PR" -R "${{ github.repository }}" --json labels --jq '[.labels[].name] | join(",")')
+          if [[ ",$labels," == *",review-addressed,"* ]]; then echo "run=false" >> "$GITHUB_OUTPUT"; else echo "run=true" >> "$GITHUB_OUTPUT"; fi
+
+      - if: steps.gate.outputs.run == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+          fetch-depth: 0
+          token: ${{ secrets.AGENTS_GH_TOKEN }}
+
+      - if: steps.gate.outputs.run == 'true'
+        name: Identify the agents' git author
+        run: |
+          git config user.name "Homeowner Agents"
+          git config user.email "${{ vars.AGENTS_GIT_EMAIL }}"
+
+      - if: steps.gate.outputs.run == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.AGENTS_GH_TOKEN }}
+          prompt: |
+            Claude has reviewed pull request #${{ env.PR }} in ${{ github.repository }}. Read the review comments with `gh pr view ${{ env.PR }} --comments` and `gh api repos/${{ github.repository }}/pulls/${{ env.PR }}/comments`.
+
+            Acting as the engineer who owns the change (backend-engineer or frontend-engineer), apply each finding that is correct, keeping the tests green, and commit and push to the pull request's branch. For each finding you reject, reply to it with the reason.
+
+            Then comment on the pull request with what you changed and what you rejected, and add the label `review-addressed`. If the review left no findings, just add the label.
+          claude_args: |
+            --max-turns 80
+            --allowedTools "Edit,Write,Bash(git *),Bash(go *),Bash(gofmt *),Bash(docker *),Bash(npm *),Bash(npx *),Bash(make *),Bash(gh pr *),Bash(gh api *)"
+            --disallowedTools "Bash(git push --force *),Bash(git push -f *),Bash(gh pr merge *)"

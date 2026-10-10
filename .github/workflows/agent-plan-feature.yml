@@ -1,0 +1,39 @@
+name: Agent - Plan feature
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  plan:
+    if: github.event.label.name == 'feature-request'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: agent-issue-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.AGENTS_GH_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.AGENTS_GH_TOKEN }}
+          prompt: |
+            Issue #${{ github.event.issue.number }} in ${{ github.repository }} is a feature request. Read it with `gh issue view ${{ github.event.issue.number }} --comments`.
+
+            1. Use the software-architect subagent to write a design overview for it, and post that as a comment on the request.
+            2. Use the product-manager subagent to turn the request and the overview into tickets. If the request is too ambiguous to plan, post the questions, swap the label `feature-request` for `needs-info`, and stop.
+            3. Create each ticket in dependency order (blockers first) with `gh issue create`, its body starting with `## Parent` and `#${{ github.event.issue.number }}`. Add no labels to the tickets.
+            4. Record each blocking edge natively: `gh api --method POST repos/${{ github.repository }}/issues/<ticket>/dependencies/blocked_by -F issue_id=<blocker database id>`, where the database id comes from `gh api repos/${{ github.repository }}/issues/<blocker> --jq .id`.
+            5. Comment on the request with the list of tickets and their blockers, then remove the label `feature-request` and add `planned` and `needs-refinement`.
+          claude_args: |
+            --max-turns 60
+            --allowedTools "Bash(gh issue *),Bash(gh api *)"

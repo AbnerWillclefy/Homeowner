@@ -1,0 +1,54 @@
+name: Agent - QA staging
+
+on:
+  workflow_run:
+    workflows: ["Deploy staging"]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  qa:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: agent-qa
+      cancel-in-progress: false
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      STAGING_WEB_URL: ${{ vars.STAGING_WEB_URL }}
+      STAGING_API_URL: ${{ vars.STAGING_API_URL }}
+      STAGING_QA_EMAIL: ${{ secrets.STAGING_QA_EMAIL }}
+      STAGING_QA_PASSWORD: ${{ secrets.STAGING_QA_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install a headless browser for testing
+        run: |
+          mkdir -p "$RUNNER_TEMP/qa" && cd "$RUNNER_TEMP/qa"
+          npm init -y >/dev/null
+          npm install --no-save playwright@1.47.2
+          npx playwright install --with-deps chromium
+
+      - uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.AGENTS_GH_TOKEN }}
+          QA_WORKDIR: ${{ runner.temp }}/qa
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.AGENTS_GH_TOKEN }}
+          prompt: |
+            Staging was just deployed for ${{ github.repository }}. Use the qa-engineer subagent to test what changed since the previous successful run of this workflow (find it with `gh run list --workflow "Agent - QA staging" --status success --limit 2`), and file bugs as it describes.
+
+            Playwright is installed in the directory in `$QA_WORKDIR`; write and run your test scripts there, never in the repository.
+          claude_args: |
+            --max-turns 100
+            --allowedTools "Write,Bash(node *),Bash(npx playwright *),Bash(curl *),Bash(cd *),Bash(git log *),Bash(gh issue *),Bash(gh pr list *),Bash(gh pr view *),Bash(gh run list *),Bash(gh api *)"

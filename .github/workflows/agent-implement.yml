@@ -1,0 +1,44 @@
+name: Agent - Implement ticket
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  implement:
+    if: github.event.label.name == 'implement'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: agent-issue-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.AGENTS_GH_TOKEN }}
+
+      - name: Identify the agents' git author
+        run: |
+          git config user.name "Homeowner Agents"
+          git config user.email "${{ vars.AGENTS_GIT_EMAIL }}"
+
+      - uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.AGENTS_GH_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.AGENTS_GH_TOKEN }}
+          prompt: |
+            Implement issue #${{ github.event.issue.number }} in ${{ github.repository }}, following "Working a ticket" in CLAUDE.md. Read it with `gh issue view ${{ github.event.issue.number }} --comments`.
+
+            Work on a new branch named `${{ github.event.issue.number }}-<short-slug>`, push it, and open the pull request with `gh pr create`. Comment on the issue with the pull request link, then remove the label `implement`.
+
+            If a blocker is still open or the ticket cannot be done as written, comment why on the issue, remove the label `implement`, and stop.
+          claude_args: |
+            --max-turns 150
+            --allowedTools "Edit,Write,Bash(git *),Bash(go *),Bash(gofmt *),Bash(docker *),Bash(npm *),Bash(npx *),Bash(make *),Bash(terraform fmt *),Bash(terraform validate *),Bash(gh issue *),Bash(gh pr create *),Bash(gh pr view *),Bash(gh api *)"
+            --disallowedTools "Bash(git push --force *),Bash(git push -f *),Bash(gh pr merge *)"

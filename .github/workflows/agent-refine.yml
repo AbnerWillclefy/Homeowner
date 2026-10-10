@@ -1,0 +1,39 @@
+name: Agent - Refine tickets
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  refine:
+    if: github.event.label.name == 'needs-refinement'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: agent-issue-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.AGENTS_GH_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.AGENTS_GH_TOKEN }}
+          prompt: |
+            Issue #${{ github.event.issue.number }} in ${{ github.repository }} needs technical refinement.
+
+            Its tickets are the open issues whose body contains `## Parent` followed by `#${{ github.event.issue.number }}`; find them with `gh issue list --state open --search "in:body \"#${{ github.event.issue.number }}\""` and check each body. If none exist, the issue is itself a single ticket: refine it.
+
+            For each ticket, use the senior-engineer subagent to write its `## Technical notes`, append them to the ticket body with `gh issue edit <n> --body-file <file>`, and add the label `ready-for-agent`.
+
+            Then remove the label `needs-refinement` from #${{ github.event.issue.number }} and comment there with what was refined and any concerns raised.
+          claude_args: |
+            --max-turns 80
+            --allowedTools "Bash(gh issue *),Bash(gh api *),Write"
