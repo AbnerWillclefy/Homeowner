@@ -1,0 +1,31 @@
+name: web-typecheck
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-typecheck-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  web-typecheck:
+    name: web-typecheck
+    runs-on: ubuntu-latest
+    env:
+      VITE_API_BASE_URL: http://localhost:8080
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // Config is everything the API needs from its environment.
@@ -16,6 +17,9 @@ type Config struct {
 	Port               string
 	MigrateOnStart     bool
 	DBMaxConns         int32
+	// CORSAllowedOrigins are the browser origins allowed to call the API.
+	// Empty means no CORS headers are sent.
+	CORSAllowedOrigins []string
 }
 
 // Load builds a Config from getenv (os.Getenv in production).
@@ -48,6 +52,11 @@ func Load(getenv func(string) string) (Config, error) {
 			return Config{}, fmt.Errorf("DB_MAX_CONNS must be a positive integer, got %q", v)
 		}
 		c.DBMaxConns = int32(n)
+	}
+	for _, o := range strings.Split(getenv("CORS_ALLOWED_ORIGINS"), ",") {
+		if o = strings.TrimSpace(o); o != "" {
+			c.CORSAllowedOrigins = append(c.CORSAllowedOrigins, o)
+		}
 	}
 	return c, nil
 }

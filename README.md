@@ -47,4 +47,38 @@ locks. Never enable `MIGRATE_ON_START` on Lambda: every cold start would race.
 ### Configuration
 
 `DATABASE_URL` (required), `PORT` (8080), `MIGRATE_ON_START` (false),
-`MIGRATE_DATABASE_URL`, `DB_MAX_CONNS` (5).
+`MIGRATE_DATABASE_URL`, `DB_MAX_CONNS` (5), `CORS_ALLOWED_ORIGINS` (comma-separated browser origins
+allowed to call the API; empty sends no CORS headers).
+
+## Web
+
+The React PWA is in `web/` (Vite, TypeScript, `vite-plugin-pwa`). Node 22 (`web/.nvmrc`).
+
+### Run locally
+
+```sh
+docker compose up -d        # the API, at localhost:8080
+cd web
+npm ci
+npm run dev                 # http://localhost:5173 shows the API status
+```
+
+### Typecheck and build
+
+```sh
+cd web
+npm run typecheck
+npm run build               # typecheck, then a production build with the service worker
+npm run preview             # serve the build to test the manifest and install
+```
+
+CI runs `npm ci`, `npm run typecheck` and `npm run build` on every pull request.
+
+### Configuration
+
+`VITE_API_BASE_URL` (required) is the API's base URL. It is read at build time,
+so each environment is its own build. `npm run dev` uses `web/.env.development`
+(`http://localhost:8080`); override it in an untracked `web/.env.local`. See
+`web/.env.example`. The value is public in the bundle: never put secrets in it.
+The API must list the web origin in `CORS_ALLOWED_ORIGINS` (Compose already
+allows `http://localhost:5173`).

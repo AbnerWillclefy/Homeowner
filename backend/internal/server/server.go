@@ -21,6 +21,9 @@ type Deps struct {
 	Clock clock.Clock
 	// Logger is optional; it defaults to JSON on stdout.
 	Logger *slog.Logger
+	// CORSAllowedOrigins are the browser origins allowed to call the API.
+	// Empty means no CORS headers.
+	CORSAllowedOrigins []string
 }
 
 const healthTimeout = 2 * time.Second
@@ -39,7 +42,7 @@ func New(deps Deps) http.Handler {
 		writeError(w, http.StatusNotFound, "not found")
 	})
 
-	return s.recoverPanics(s.logRequests(mux))
+	return s.cors(s.recoverPanics(s.logRequests(mux)))
 }
 
 type server struct {

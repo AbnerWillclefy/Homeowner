@@ -1,2 +1,6 @@
 .env
 .agent-scratch/
+web/node_modules
+web/dist
+web/dev-dist
+web/.env*.local
