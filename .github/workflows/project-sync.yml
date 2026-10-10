@@ -35,22 +35,35 @@ jobs:
         run: |
           status=""
           if [ "$EVENT" = issues ]; then
-            case "$ACTION" in
-              closed) status="Done" ;;
-              opened|reopened)
-                if [[ ",$ISSUE_LABELS," == *",bug,"* ]]; then status="Triage"
-                elif [[ ",$ISSUE_LABELS," == *",feature-request,"* ]]; then status="Planning"
-                else status="Refining"; fi ;;
-              labeled)
-                case "$LABEL" in
-                  feature-request) status="Planning" ;;
-                  needs-refinement) status="Refining" ;;
-                  ready-for-agent) status="Ready" ;;
-                  implement) status="In progress" ;;
-                  needs-triage) status="Triage" ;;
-                esac ;;
-            esac
             urls="$ISSUE_URL"
+            number="${ISSUE_URL##*/}"
+            # Read labels live: several labels added at once arrive as separate events
+            live_labels=$(gh api "repos/$GITHUB_REPOSITORY/issues/$number" --jq '[.labels[].name] | join(",")')
+            if [[ ",$live_labels," == *",epic,"* ]]; then
+              # Epics stay off the columns; refining an epic moves its open tickets instead
+              if [ "$ACTION" = labeled ] && [ "$LABEL" = needs-refinement ]; then
+                status="Refining"
+                urls=$(gh api "repos/$GITHUB_REPOSITORY/issues/$number/sub_issues" --jq '.[] | select(.state == "open") | .html_url' | tr '\n' ' ')
+              else
+                status="__clear__"
+              fi
+            else
+              case "$ACTION" in
+                closed) status="Done" ;;
+                opened|reopened)
+                  if [[ ",$ISSUE_LABELS," == *",bug,"* ]]; then status="Triage"
+                  elif [[ ",$ISSUE_LABELS," == *",feature-request,"* ]]; then status="Planning"
+                  else status="Backlog"; fi ;;
+                labeled)
+                  case "$LABEL" in
+                    feature-request) status="Planning" ;;
+                    needs-refinement) status="Refining" ;;
+                    ready-for-agent) status="Ready" ;;
+                    implement) status="In progress" ;;
+                    needs-triage) status="Triage" ;;
+                  esac ;;
+              esac
+            fi
           else
             case "$ACTION" in
               opened|reopened) status="In review" ;;
@@ -81,6 +94,12 @@ jobs:
             content_id=$(gh api "repos/$GITHUB_REPOSITORY/issues/${url##*/}" --jq .node_id)
             item=$(gh api graphql -f query='mutation($p:ID!,$c:ID!){ addProjectV2ItemById(input:{projectId:$p, contentId:$c}){ item { id } } }' \
               -f p="$project_id" -f c="$content_id" --jq .data.addProjectV2ItemById.item.id)
+            if [ "$STATUS" = "__clear__" ]; then
+              gh api graphql -f query='mutation($p:ID!,$i:ID!,$f:ID!){ clearProjectV2ItemFieldValue(input:{projectId:$p, itemId:$i, fieldId:$f}){ projectV2Item { id } } }' \
+                -f p="$project_id" -f i="$item" -f f="$field_id" >/dev/null
+              echo "$url -> no column (epic)"
+              continue
+            fi
             gh api graphql -f query='mutation($p:ID!,$i:ID!,$f:ID!,$o:String!){ updateProjectV2ItemFieldValue(input:{projectId:$p, itemId:$i, fieldId:$f, value:{singleSelectOptionId:$o}}){ projectV2Item { id } } }' \
               -f p="$project_id" -f i="$item" -f f="$field_id" -f o="$option_id" >/dev/null
             echo "$url -> $STATUS"

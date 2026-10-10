@@ -19,7 +19,7 @@ Each role is a subagent in `.claude/agents/`. Every comment or issue posted on G
 
 Each stage is a workflow in `.github/workflows/` started by a label or an event. A human acts at three points: requesting a feature, labelling a ticket `implement`, and merging.
 
-1. Issue labelled `feature-request`: the architect posts a design overview, the product manager creates the tickets, and the request is labelled `needs-refinement`.
+1. Issue labelled `feature-request`: the architect posts a design overview, the product manager creates the tickets as its sub-issues, and the request becomes an `epic` labelled `needs-refinement`. Epics are not worked directly and stay off the board's columns.
 2. Request labelled `needs-refinement`: the senior engineer refines each of its open tickets and labels them `ready-for-agent`.
 3. Ticket labelled `implement`: the engineers build it and open a pull request (see Working a ticket).
 4. Pull request opened: Claude reviews it, then the engineer applies the valid findings once and labels the pull request `review-addressed`.
