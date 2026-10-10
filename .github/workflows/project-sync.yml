@@ -69,13 +69,19 @@ jobs:
         env:
           STATUS: ${{ steps.target.outputs.status }}
           URLS: ${{ steps.target.outputs.urls }}
+        # Plain GraphQL: `gh project` cannot resolve a user-owned project with a classic token
         run: |
-          project_id=$(gh project view "$PROJECT_NUMBER" --owner "$OWNER" --format json --jq .id)
-          field=$(gh project field-list "$PROJECT_NUMBER" --owner "$OWNER" --format json --jq '.fields[] | select(.name == "Status")')
-          field_id=$(jq -r .id <<<"$field")
-          option_id=$(jq -r --arg s "$STATUS" '.options[] | select(.name == $s) | .id' <<<"$field")
+          project=$(gh api graphql -f query='query($o:String!,$n:Int!){ user(login:$o){ projectV2(number:$n){ id
+              field(name:"Status"){ ... on ProjectV2SingleSelectField { id options { id name } } } } } }' \
+            -f o="$OWNER" -F n="$PROJECT_NUMBER" --jq '.data.user.projectV2')
+          project_id=$(jq -r .id <<<"$project")
+          field_id=$(jq -r .field.id <<<"$project")
+          option_id=$(jq -r --arg s "$STATUS" '.field.options[] | select(.name == $s) | .id' <<<"$project")
           for url in $URLS; do
-            item=$(gh project item-add "$PROJECT_NUMBER" --owner "$OWNER" --url "$url" --format json --jq .id)
-            gh project item-edit --project-id "$project_id" --id "$item" --field-id "$field_id" --single-select-option-id "$option_id" >/dev/null
+            content_id=$(gh api "repos/$GITHUB_REPOSITORY/issues/${url##*/}" --jq .node_id)
+            item=$(gh api graphql -f query='mutation($p:ID!,$c:ID!){ addProjectV2ItemById(input:{projectId:$p, contentId:$c}){ item { id } } }' \
+              -f p="$project_id" -f c="$content_id" --jq .data.addProjectV2ItemById.item.id)
+            gh api graphql -f query='mutation($p:ID!,$i:ID!,$f:ID!,$o:String!){ updateProjectV2ItemFieldValue(input:{projectId:$p, itemId:$i, fieldId:$f, value:{singleSelectOptionId:$o}}){ projectV2Item { id } } }' \
+              -f p="$project_id" -f i="$item" -f f="$field_id" -f o="$option_id" >/dev/null
             echo "$url -> $STATUS"
           done
