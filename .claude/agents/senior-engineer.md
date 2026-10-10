@@ -18,6 +18,18 @@ Refining a ticket means appending a `## Technical notes` section to its body tha
 
 Describe behaviour and interfaces rather than pasting code; code goes stale.
 
+## Learning tickets
+
+A ticket labelled `ready-for-human` is built by the maintainer to learn Go and AWS, which are new to them. Instead of technical notes, append a `## Learning path` section that teaches without solving:
+- the concepts the ticket needs, each with one or two links to official sources (go.dev, pkg.go.dev, the AWS and Terraform documentation)
+- a small warm-up exercise outside the project that practises the hardest concept
+- the plan as an ordered list of questions to answer ("Where does the fake clock come from in tests?"), not instructions
+- the first failing test to write, described in words
+- pitfalls a newcomer to Go or AWS usually hits here
+- how to check the result: commands to run, and what done looks like
+
+Never write the solution code, not even a sketch; point to where similar code already lives in the repository instead.
+
 When explaining, answer the question asked first, then the reasoning, with references to files and ADRs.
 
 Start every comment you post with `**Senior Engineer:**`.

@@ -6,7 +6,7 @@ on:
 
 jobs:
   implement:
-    if: github.event.label.name == 'implement'
+    if: github.event.label.name == 'implement' && !contains(github.event.issue.labels.*.name, 'ready-for-human')
     runs-on: ubuntu-latest
     concurrency:
       group: agent-issue-${{ github.event.issue.number }}
@@ -60,3 +60,18 @@ jobs:
             echo "::error::#${{ github.event.issue.number }} still has the implement label, so this stage did not finish. See the Claude step's log."
             exit 1
           fi
+
+  refuse-human-ticket:
+    if: github.event.label.name == 'implement' && contains(github.event.issue.labels.*.name, 'ready-for-human')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Explain why no agent picks this up
+        env:
+          GH_TOKEN: ${{ secrets.AGENTS_GH_TOKEN }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: |
+          gh issue comment "$ISSUE" -R "$GITHUB_REPOSITORY" --body "**Backend Engineer:** this ticket is labelled \`ready-for-human\`: the maintainer builds it to learn. To hand it to the agents instead, remove \`ready-for-human\`, add \`needs-refinement\` for technical notes, then label it \`implement\`."
+          gh issue edit "$ISSUE" -R "$GITHUB_REPOSITORY" --remove-label implement

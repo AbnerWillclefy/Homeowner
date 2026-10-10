@@ -20,11 +20,17 @@ jobs:
       PR: ${{ github.event.workflow_run.pull_requests[0].number }}
       GH_TOKEN: ${{ secrets.AGENTS_GH_TOKEN }}
     steps:
-      - name: Skip pull requests already addressed
+      - name: Skip pull requests already addressed, and human pull requests
         id: gate
         run: |
-          labels=$(gh pr view "$PR" -R "${{ github.repository }}" --json labels --jq '[.labels[].name] | join(",")')
-          if [[ ",$labels," == *",review-addressed,"* ]]; then echo "run=false" >> "$GITHUB_OUTPUT"; else echo "run=true" >> "$GITHUB_OUTPUT"; fi
+          pr=$(gh pr view "$PR" -R "${{ github.repository }}" --json labels,author --jq '{labels: ([.labels[].name] | join(",")), author: .author.login}')
+          labels=$(jq -r .labels <<<"$pr"); author=$(jq -r .author <<<"$pr")
+          # A human's pull request is a learning exercise: they apply the review themselves
+          if [[ ",$labels," == *",review-addressed,"* ]] || [ "$author" != "homeowner-agents" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - if: steps.gate.outputs.run == 'true'
         uses: actions/checkout@v4

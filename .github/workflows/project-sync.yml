@@ -5,7 +5,7 @@ name: Project board sync
 # the cards of the issues they close.
 on:
   issues:
-    types: [opened, labeled, closed, reopened]
+    types: [opened, labeled, unlabeled, closed, reopened]
   pull_request_target:
     types: [opened, reopened, labeled]
 
@@ -62,6 +62,9 @@ jobs:
                     implement) status="In progress" ;;
                     needs-triage) status="Triage" ;;
                   esac ;;
+                unlabeled)
+                  # A learning ticket is refined when its study guide is written and needs-refinement comes off
+                  if [ "$LABEL" = needs-refinement ] && [[ ",$live_labels," == *",ready-for-human,"* ]]; then status="Ready"; fi ;;
               esac
             fi
           else

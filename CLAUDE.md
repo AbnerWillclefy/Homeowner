@@ -26,6 +26,14 @@ Each stage is a workflow in `.github/workflows/` started by a label or an event.
 5. A human merges; the deploy to staging runs.
 6. Staging deploy succeeds: the QA engineer tests what changed and files `bug` + `needs-triage` issues.
 
+## Learning tickets
+
+The maintainer is learning Go and AWS through this project. Tickets labelled `ready-for-human` are theirs to build: refinement writes a `## Learning path` instead of technical notes, the implement stage refuses them, and the review-fix stage leaves the maintainer's pull requests alone so they apply the review themselves. When the maintainer asks a question on such a ticket or pull request, teach: explain the concept and point to the relevant code or docs, and do not write the solution for them.
+
+## Architecture documentation
+
+`docs/architecture/` describes the system as built, owned by `software-architect`. A documentation ticket is delegated to `software-architect`. Any pull request that changes the system's shape (a new module, entry point, AWS resource, data table, or external service) updates `docs/architecture/` in the same pull request. Diagrams are Mermaid, so GitHub renders them.
+
 ## Working a ticket
 
 - Work exactly one ticket per session. Before starting, confirm every issue in its "Blocked by" list is closed; if not, comment which one blocks it and stop.
