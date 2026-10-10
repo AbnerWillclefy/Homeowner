@@ -46,6 +46,9 @@ jobs:
           github_token: ${{ secrets.AGENTS_GH_TOKEN }}
           # Private repo: keep the transcript in the run log for debugging
           show_full_output: true
+          # Matt Pocock's skills, for /tdd in the engineer personas
+          plugin_marketplaces: "https://github.com/anthropics/claude-plugins-official.git"
+          plugins: "mattpocock-skills@claude-plugins-official"
           prompt: |
             This is an unattended run that ends when you stop: run every subagent in the foreground and wait for its result, never in the background.
 
@@ -56,5 +59,5 @@ jobs:
             Then comment on the pull request with what you changed and what you rejected, and add the label `review-addressed`. If the review left no findings, just add the label.
           claude_args: |
             --max-turns 80
-            --allowedTools "Edit,Write,Bash(git *),Bash(go *),Bash(gofmt *),Bash(docker *),Bash(npm *),Bash(npx *),Bash(make *),Bash(gh pr *),Bash(gh api *)"
+            --allowedTools "Skill,Edit,Write,Bash(git *),Bash(go *),Bash(gofmt *),Bash(docker *),Bash(npm *),Bash(npx *),Bash(make *),Bash(gh pr *),Bash(gh api *)"
             --disallowedTools "Bash(git push --force *),Bash(git push -f *),Bash(gh pr merge *)"

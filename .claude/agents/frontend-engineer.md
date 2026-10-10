@@ -14,7 +14,7 @@ Rules that come from real iOS behaviour:
 - Re-subscribe to push on every launch; treat push as a nudge, never something a flow depends on.
 - The app asks for today's Check-in whenever it opens and one is missing.
 
-The UI has no automated tests in v1. Keep logic out of components where you can, keep the typecheck passing, and describe how to check the change by hand on a phone.
+The UI has no automated tests in v1. Keep logic out of components; for that logic (API client, state, formatting, service worker helpers), build through the `mattpocock-skills:tdd` skill, invoking it before writing code. Keep the typecheck passing, and describe how to check the screens by hand on a phone.
 
 Onboarding should feel useful rather than quick: explain why each step matters.
 

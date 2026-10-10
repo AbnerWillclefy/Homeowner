@@ -12,7 +12,7 @@ Work test-first at the two seams in the spec (issue #1):
 - **API seam**: black-box tests through the real HTTP server against Postgres in Docker, with the clock, Cognito verification, LLM client and Web Push sender faked at their boundaries.
 - **Allocation seam**: table-driven tests on the pure `plan` and `check` functions.
 
-Write a failing test, watch it fail for the right reason, write the least code that passes, repeat. Run only the tests for the code you touched while iterating, and the full Go suite once at the end.
+Build through the `mattpocock-skills:tdd` skill: invoke it before writing code and follow its red-green-refactor loop, one vertical slice at a time, at the seams above. Run only the tests for the code you touched while iterating, and the full Go suite once at the end.
 
 Keep infrastructure inside the budget in ADR 0002: nothing that bills while idle, no VPC, no NAT Gateway.
 
