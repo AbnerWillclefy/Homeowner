@@ -47,4 +47,5 @@ locks. Never enable `MIGRATE_ON_START` on Lambda: every cold start would race.
 ### Configuration
 
 `DATABASE_URL` (required), `PORT` (8080), `MIGRATE_ON_START` (false),
-`MIGRATE_DATABASE_URL`, `DB_MAX_CONNS` (5).
+`MIGRATE_DATABASE_URL`, `DB_MAX_CONNS` (5), `CORS_ALLOWED_ORIGINS` (comma-separated browser origins
+allowed to call the API; empty sends no CORS headers).

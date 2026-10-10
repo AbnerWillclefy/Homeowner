@@ -46,8 +46,16 @@ type Response struct {
 	Body map[string]any
 }
 
+// Option adjusts the server.Deps a test starts the API with.
+type Option func(*server.Deps)
+
+// WithCORSAllowedOrigins sets the browser origins the API accepts.
+func WithCORSAllowedOrigins(origins ...string) Option {
+	return func(d *server.Deps) { d.CORSAllowedOrigins = origins }
+}
+
 // Start boots the API on a fresh database cloned from the migrated template.
-func Start(t testing.TB) *App {
+func Start(t testing.TB, opts ...Option) *App {
 	t.Helper()
 	dbURL := NewMigratedDatabase(t)
 
@@ -66,6 +74,9 @@ func Start(t testing.TB) *App {
 		Clock:  fake,
 		Logger: slog.New(slog.NewJSONHandler(logs, nil)),
 	}
+	for _, opt := range opts {
+		opt(&deps)
+	}
 	srv := httptest.NewServer(server.New(deps))
 	t.Cleanup(srv.Close)
 
@@ -78,7 +89,16 @@ func (a *App) Get(path string) Response { return a.do(http.MethodGet, path, nil)
 // Post sends body as JSON to path.
 func (a *App) Post(path string, body any) Response { return a.do(http.MethodPost, path, body) }
 
+// Do sends method path with the given request headers and no body.
+func (a *App) Do(method, path string, header http.Header) Response {
+	return a.doWith(method, path, nil, header)
+}
+
 func (a *App) do(method, path string, body any) Response {
+	return a.doWith(method, path, body, nil)
+}
+
+func (a *App) doWith(method, path string, body any, header http.Header) Response {
 	var rd io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)
@@ -93,6 +113,11 @@ func (a *App) do(method, path string, body any) Response {
 	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
+	}
+	for k, vs := range header {
+		for _, v := range vs {
+			req.Header.Add(k, v)
+		}
 	}
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {

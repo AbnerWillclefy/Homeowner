@@ -73,7 +73,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           server.New(server.Deps{DB: pool, Clock: clock.System{}, Logger: log}),
+		Handler:           server.New(server.Deps{DB: pool, Clock: clock.System{}, Logger: log, CORSAllowedOrigins: cfg.CORSAllowedOrigins}),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,
