@@ -47,6 +47,8 @@ jobs:
           # Private repo: keep the transcript in the run log for debugging
           show_full_output: true
           prompt: |
+            This is an unattended run that ends when you stop: run every subagent in the foreground and wait for its result, never in the background.
+
             Claude has reviewed pull request #${{ env.PR }} in ${{ github.repository }}. Read the review comments with `gh pr view ${{ env.PR }} --comments` and `gh api repos/${{ github.repository }}/pulls/${{ env.PR }}/comments`.
 
             Acting as the engineer who owns the change (backend-engineer or frontend-engineer), apply each finding that is correct, keeping the tests green, and commit and push to the pull request's branch. For each finding you reject, reply to it with the reason.

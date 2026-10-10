@@ -29,6 +29,8 @@ jobs:
           # Private repo: keep the transcript in the run log for debugging
           show_full_output: true
           prompt: |
+            This is an unattended run that ends when you stop: run every subagent in the foreground and wait for its result, never in the background.
+
             Issue #${{ github.event.issue.number }} in ${{ github.repository }} needs technical refinement.
 
             Its tickets are its open sub-issues: `gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/sub_issues --jq '.[] | select(.state == "open") | .number'`. If it has none, #${{ github.event.issue.number }} is itself a single ticket: refine it, and do not refine any other issue.

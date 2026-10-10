@@ -35,6 +35,8 @@ jobs:
           # Private repo: keep the transcript in the run log for debugging
           show_full_output: true
           prompt: |
+            This is an unattended run that ends when you stop: run every subagent in the foreground and wait for its result, never in the background.
+
             Implement issue #${{ github.event.issue.number }} in ${{ github.repository }}, following "Working a ticket" in CLAUDE.md. Read it with `gh issue view ${{ github.event.issue.number }} --comments`.
 
             Work on a new branch named `${{ github.event.issue.number }}-<short-slug>`, push it, and open the pull request with `gh pr create`. Comment on the issue with the pull request link, then remove the label `implement`.

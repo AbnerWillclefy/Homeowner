@@ -4,7 +4,7 @@ The v1 spec is issue #1; each ticket is a child issue linking back to it. Domain
 
 ## The team
 
-Each role is a subagent in `.claude/agents/`. Every comment or issue posted on GitHub starts with the role speaking, for example `**Senior Engineer:**`, because all of them post from the same account.
+Each role is a subagent in `.claude/agents/`. Every comment or issue posted on GitHub starts with the role speaking, for example `**Senior Engineer:**`, because all of them post from the same account. In GitHub Actions runs, run subagents in the foreground and wait for them: the run ends when the main session stops.
 
 | Role | Owns |
 |---|---|

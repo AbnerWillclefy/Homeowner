@@ -48,6 +48,8 @@ jobs:
           # Private repo: keep the transcript in the run log for debugging
           show_full_output: true
           prompt: |
+            This is an unattended run that ends when you stop: run every subagent in the foreground and wait for its result, never in the background.
+
             Staging was just deployed for ${{ github.repository }}. Use the qa-engineer subagent to test what changed since the previous successful run of this workflow (find it with `gh run list --workflow "Agent - QA staging" --status success --limit 2`), and file bugs as it describes.
 
             Playwright is installed in the directory in `$QA_WORKDIR`; write and run your test scripts there, never in the repository.
