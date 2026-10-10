@@ -18,6 +18,11 @@ jobs:
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
+    # One agent at a time: protects Actions minutes and the Pro plan's usage limits
+    concurrency:
+      group: claude-agent
+      cancel-in-progress: false
+    timeout-minutes: 60
     permissions:
       contents: read
       pull-requests: read
@@ -46,5 +51,8 @@ jobs:
           # Optional: Add claude_args to customize behavior and configuration
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
-          # claude_args: '--allowed-tools Bash(gh pr *)'
+          # Build and test tools only: no terraform apply, no deploys
+          claude_args: |
+            --max-turns 120
+            --allowedTools "Bash(go *),Bash(gofmt *),Bash(docker *),Bash(npm *),Bash(npx *),Bash(make *),Bash(terraform fmt *),Bash(terraform validate *),Bash(gh issue view *),Bash(gh pr view *),Bash(gh pr diff *)"
 
