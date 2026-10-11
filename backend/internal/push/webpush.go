@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/SherClockHolmes/webpush-go"
@@ -24,8 +25,14 @@ type WebPushSender struct {
 }
 
 // NewWebPushSender returns a Sender signing with the VAPID key pair. subject
-// is a mailto: or https: contact the push service can reach.
+// is a mailto: or https: contact the push service can reach. webpush-go adds
+// "mailto:" to anything not starting with "https:", so a leading mailto: is
+// stripped here to avoid signing "mailto:mailto:...", which Apple rejects.
 func NewWebPushSender(publicKey, privateKey, subject string) *WebPushSender {
+	subject = strings.TrimSpace(subject)
+	if len(subject) >= len("mailto:") && strings.EqualFold(subject[:len("mailto:")], "mailto:") {
+		subject = subject[len("mailto:"):]
+	}
 	return &WebPushSender{
 		publicKey:  publicKey,
 		privateKey: privateKey,
@@ -55,12 +62,17 @@ func (s *WebPushSender) Send(ctx context.Context, sub Subscription, payload Payl
 		return fmt.Errorf("send web push: %w", err)
 	}
 	defer res.Body.Close()
-	_, _ = io.Copy(io.Discard, io.LimitReader(res.Body, 4096))
+	reason, _ := io.ReadAll(io.LimitReader(res.Body, 4096))
 
 	switch {
 	case res.StatusCode == http.StatusNotFound || res.StatusCode == http.StatusGone:
 		return fmt.Errorf("push service answered %d: %w", res.StatusCode, ErrGone)
 	case res.StatusCode < 200 || res.StatusCode > 299:
+		// The body names why (Apple: {"reason":"BadJwtToken"}); it is not
+		// secret. Collapse whitespace so it stays on one log line.
+		if text := strings.Join(strings.Fields(string(reason)), " "); text != "" {
+			return fmt.Errorf("push service answered %d: %s", res.StatusCode, text)
+		}
 		return fmt.Errorf("push service answered %d", res.StatusCode)
 	}
 	return nil
