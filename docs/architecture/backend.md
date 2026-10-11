@@ -24,6 +24,7 @@ flowchart TD
     auth["internal/auth: Verifier, Cognito, Fake"]
     users["internal/users: Store (find or create)"]
     homes["internal/homes: Store (Homes and Residents)"]
+    chores["internal/chores: Validate, Store"]
     profile["internal/profile: Store (baseline, preferences, restrictions)"]
     vocab["internal/vocab: Category and Demand ids"]
     mig["migrations: embedded SQL"]
@@ -42,6 +43,9 @@ flowchart TD
     server --> users
     server --> homes
     server --> profile
+    server --> chores
+    chores --> vocab
+    chores --> alloc
     server --> vocab
     auth --> clock
     apitest --> push
@@ -63,6 +67,7 @@ flowchart TD
 | `users` | `Store.FindOrCreate(sub, email, now)`: the single upsert behind the first-request-creates-the-User rule. |
 | `homes` | `Store.Create(userID, timezone, allocationTime, now)` inserts the Home and the first Resident in one transaction and maps the unique violation on `residents.user_id` to `ErrAlreadyResident`; `ForUser` returns the caller's Home or `ErrNoHome`; `UpdateSettings` replaces the timezone and Allocation time. |
 | `profile` | `Store` for the User's profile: `Load`, `SetBaseline` (set some days, clear others, one transaction), `SetPreference` (neutral deletes the row), `AddRestriction`, `RemoveRestriction`. Writes are idempotent. `MaxBaseline` (20) is the named upper bound of a Baseline. |
+| `chores` | `Validate(Input)` is pure: it trims the name, de-duplicates and sorts Demands and weekdays, and returns a stable code per invalid field, all at once (numbers arrive as `any`, so a string or 2.5 is a field code, not a bad request). `Store` has `List`, `Create`, `Update`, `Delete`; every query that takes an id also filters on `home_id`, and a miss or a malformed uuid is `ErrNotFound`. Imports `allocation` for the `Importance` ids and `vocab` for Categories and Demands. |
 | `vocab` | The fixed, ordered Category and Demand ids (snake_case, stored and sent as-is) with `IsCategory` and `IsDemand`. `allocation` never imports it; its `Demand` values equal these ids. |
 | `db` | Opens a `pgx` connection pool (retrying about 10s at start) and runs `goose` migrations. |
 | `clock` | The only place allowed to read the time. Business code takes a `Clock`; tests use `Fake`. |
@@ -110,6 +115,10 @@ Authentication is not in that chain: `requireUser` wraps individual routes (like
 | `POST /home` | Needs a token. Body `{"timezone","allocationTime"}` (`"HH:MM"`, 24h). `201 {"id","timezone","allocationTime"}`; the caller becomes the first Resident. `409 {"error":"already a resident"}` if they already live in a Home (decided by the unique constraint, so concurrent creates make one Home). `400` for bad JSON or unknown fields, `413` over 4 KB. |
 | `GET /home` | Needs a token and a Home. `200` with `id`, `timezone`, `allocationTime`; `404 {"error":"no home"}` otherwise. |
 | `PUT /home` | Same body as `POST`, a full replace of the settings, by any Resident. `200` with the Home; `404` with no Home. |
+| `GET /home/chores` | Needs a token and a Home. `200 {"chores":[...]}`, oldest first. A Chore is `id`, `name`, `category`, `demands`, `baseEffort` (1 to 5), `importance` (`essential`, `normal`, `nice_to_have`), `people` (1 or 2), `intervalDays` (1 to 365, or `null` for one-off), `allowedWeekdays` (0 = Sunday to 6; empty means any day), `buildsUp`. |
+| `POST /home/chores` | Same body without `id`. `201` with the Chore. `400 {"error":"invalid chore","fields":{"baseEffort":"out_of_range"}}` with a code per field (`required`, `too_long`, `unknown`, `invalid`, `out_of_range`) and nothing stored; unknown JSON fields are `400`, over 8 KB is `413`. `buildsUp` is accepted on a one-off Chore and ignored by Scheduling. |
+| `PUT /home/chores/{id}` | Full replace, same validation. `200`; `404` for an unknown, malformed or other Home's id. |
+| `DELETE /home/chores/{id}` | `204`, hard delete; `404` as above. |
 | `GET /categories`, `GET /demands` | Need a token. `{"categories": [...]}` and `{"demands": [...]}`: the fixed ids in display order. Names are localised in the PWA. |
 | `GET /me/profile` | Needs a token. `{"baseline": {"sunday": null, "monday": 5, ...}, "preferences": {"kitchen": "like"}, "restrictions": ["heavy_lifting"]}`. Always all seven weekday keys (`null` = unset, 0 is a real value); preferences list only set Categories (neutral is absent); restrictions follow the `GET /demands` order. |
 | `PUT /me/baseline` | Needs a token. Body maps weekday names (`sunday` to `saturday`) to an integer 0 to 20, or `null` to clear. Partial: days not named are untouched. `204`; `400` naming the field for an unknown weekday, a non-integer, a value out of range, an empty object or unknown JSON. |
