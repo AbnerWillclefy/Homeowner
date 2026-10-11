@@ -69,6 +69,47 @@ export const ptBR: Messages = {
   "install.step4": "Feche o Safari e abra o Homeowner pelo novo ícone na sua Tela de Início.",
   "install.outro": "Quando você abrir o Homeowner pelo ícone, esta página vai permitir ativar os lembretes.",
 
+  // Profile
+  "profile.heading": "Seu perfil",
+  "profile.intro":
+    "O Homeowner usa isto para dividir os afazeres domésticos de forma justa: dá menos afazeres a você nos dias cansativos e evita o que você não gosta ou não consegue fazer. Seu perfil vai com você se você mudar de lar.",
+  "profile.loading": "Carregando seu perfil...",
+  "profile.offline": "Não foi possível falar com o serviço, então seu perfil não aparece. Verifique sua conexão e tente de novo.",
+  "profile.error": "Algo deu errado ao carregar seu perfil. Tente de novo em instantes.",
+  "profile.notSignedIn": "Você não está mais conectado. Entre de novo para ver seu perfil.",
+  "profile.retry": "Tentar de novo",
+  "profile.saved": "Salvo.",
+  "profile.saveFailed": "Não foi possível salvar sua alteração, então ela foi desfeita. Verifique sua conexão e tente de novo.",
+  "profile.saveFailed.notSignedIn": "Você não está mais conectado, então sua alteração foi desfeita. Entre de novo.",
+  "profile.baseline.heading": "Energia base",
+  "profile.baseline.explain":
+    "Um ponto mede o esforço: o quanto um trabalho cansa, de 1 a 5. Sua energia base é a energia que você costuma ter em cada dia, nesses mesmos pontos; deixe o dia vazio se ainda não souber.",
+  "profile.baseline.hint": "Um número inteiro de 0 a 20. É salvo quando você sai do campo.",
+  "profile.baseline.invalid": "Digite um número inteiro de 0 a 20, ou deixe vazio.",
+  "profile.preferences.heading": "Preferências",
+  "profile.preferences.intro":
+    "Diga de quais tipos de trabalho você gosta ou não gosta. Os afazeres de que você não gosta chegam a você com menos frequência, mas nunca à custa do que é essencial. O que você não mexer fica neutro.",
+  "profile.preference.like": "Gosto",
+  "profile.preference.neutral": "Neutro",
+  "profile.preference.dislike": "Não gosto",
+  "profile.restrictions.heading": "Restrições",
+  "profile.restrictions.intro":
+    "Marque o que o seu corpo não consegue fazer. Os afazeres que pedem isso nunca são dados a você. Desmarque quando isso mudar.",
+  "category.kitchen": "Cozinha",
+  "category.bathroom": "Banheiro",
+  "category.bedroom": "Quarto",
+  "category.living_room": "Sala",
+  "category.laundry": "Roupas",
+  "category.floors": "Pisos",
+  "category.trash": "Lixo",
+  "category.outdoor": "Área externa",
+  "category.pets": "Animais de estimação",
+  "category.other": "Outros",
+  "demand.heavy_lifting": "Carregar peso",
+  "demand.bending": "Abaixar-se",
+  "demand.heights": "Altura",
+  "demand.strong_chemicals": "Produtos químicos fortes",
+
   // Settings
   "settings.heading": "Configurações",
   "settings.appearance.label": "Aparência",
