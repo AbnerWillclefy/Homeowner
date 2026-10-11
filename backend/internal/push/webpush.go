@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/SherClockHolmes/webpush-go"
@@ -24,8 +25,14 @@ type WebPushSender struct {
 }
 
 // NewWebPushSender returns a Sender signing with the VAPID key pair. subject
-// is a mailto: or https: contact the push service can reach.
+// is a mailto: or https: contact the push service can reach. webpush-go adds
+// "mailto:" to anything not starting with "https:", so a leading mailto: is
+// stripped here to avoid signing "mailto:mailto:...", which Apple rejects.
 func NewWebPushSender(publicKey, privateKey, subject string) *WebPushSender {
+	subject = strings.TrimSpace(subject)
+	if len(subject) >= len("mailto:") && strings.EqualFold(subject[:len("mailto:")], "mailto:") {
+		subject = subject[len("mailto:"):]
+	}
 	return &WebPushSender{
 		publicKey:  publicKey,
 		privateKey: privateKey,

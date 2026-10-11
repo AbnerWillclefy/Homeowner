@@ -5,6 +5,7 @@ import (
 	"crypto/ecdh"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -37,11 +38,70 @@ func browserSubscription(t *testing.T, endpoint string) push.Subscription {
 
 func newSender(t *testing.T) *push.WebPushSender {
 	t.Helper()
+	return newSenderWithSubject(t, "mailto:ops@example.com")
+}
+
+func newSenderWithSubject(t *testing.T, subject string) *push.WebPushSender {
+	t.Helper()
 	priv, pub, err := webpush.GenerateVAPIDKeys()
 	if err != nil {
 		t.Fatal(err)
 	}
-	return push.NewWebPushSender(pub, priv, "mailto:ops@example.com")
+	return push.NewWebPushSender(pub, priv, subject)
+}
+
+// vapidSubject sends one message to a stand-in push service and returns the
+// "sub" claim of the VAPID JWT it received.
+func vapidSubject(t *testing.T, subject string) string {
+	t.Helper()
+	var auth string
+	svc := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth = r.Header.Get("Authorization")
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer svc.Close()
+	if err := newSenderWithSubject(t, subject).Send(context.Background(), browserSubscription(t, svc.URL), push.Payload{Title: "t"}); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	// Header shape: vapid t=<jwt>, k=<key>
+	rest, ok := strings.CutPrefix(auth, "vapid t=")
+	if !ok {
+		t.Fatalf("Authorization = %q, want a vapid header", auth)
+	}
+	token, _, _ := strings.Cut(rest, ", k=")
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		t.Fatalf("Authorization = %q, want a JWT", auth)
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var claims struct {
+		Sub string `json:"sub"`
+	}
+	if err := json.Unmarshal(raw, &claims); err != nil {
+		t.Fatal(err)
+	}
+	return claims.Sub
+}
+
+func TestWebPushSenderSignsWithTheSubjectNormalised(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ name, subject, want string }{
+		{"mailto prefix", "mailto:x@y.z", "mailto:x@y.z"},
+		{"bare address", "x@y.z", "mailto:x@y.z"},
+		{"https url", "https://example.com/contact", "https://example.com/contact"},
+		{"padded mailto", " mailto:x@y.z ", "mailto:x@y.z"},
+		{"upper-case mailto", "MAILTO:x@y.z", "mailto:x@y.z"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			if got := vapidSubject(t, tc.subject); got != tc.want {
+				t.Errorf("sub = %q, want %q", got, tc.want)
+			}
+		})
+	}
 }
 
 func TestWebPushSenderPostsAnEncryptedVAPIDSignedMessage(t *testing.T) {
