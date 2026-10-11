@@ -1,52 +1,209 @@
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
+@import "tailwindcss";
+
+/*
+  Semantic colour tokens (ADR 0007). Components use bg-surface, text-text and so on,
+  never raw palette classes. The values here are the LIGHT theme; the dark values are
+  a plain override on [data-theme="dark"] below, so components never need dark: variants.
+  Not "@theme inline": that would bake the light value into every utility.
+
+  Removing the default palette means a raw palette class compiles to nothing.
+  Contrast ratios for every pair are recorded in docs/architecture/web.md.
+*/
+@theme {
+  --color-*: initial;
+
+  --color-surface: #f7f8f5;
+  --color-surface-raised: #ffffff;
+  --color-text: #1c2421;
+  --color-muted: #4d5a54;
+  --color-accent: #2f6f4f;
+  --color-accent-contrast: #ffffff;
+  --color-danger: #b3261e;
+  --color-focus: #1a5fb4;
+  --color-border: #6b7a73;
 }
 
-.home {
-  max-width: 32rem;
-  margin: 0 auto;
-  padding: calc(2rem + env(safe-area-inset-top)) 1.5rem calc(2rem + env(safe-area-inset-bottom));
+:root {
+  color-scheme: light;
 }
 
-.home button {
-  font: inherit;
-  padding: 0.75rem 1.25rem;
-  min-height: 44px;
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-surface: #121816;
+  --color-surface-raised: #1b2320;
+  --color-text: #e8eeea;
+  --color-muted: #a9b5ae;
+  --color-accent: #6fcf9f;
+  --color-accent-contrast: #0b1a12;
+  --color-danger: #ff8a80;
+  --color-focus: #8ab4f8;
+  --color-border: #7f8d86;
 }
 
-.home label {
-  display: block;
-  margin-top: 1rem;
-  font-weight: 600;
+@layer base {
+  /*
+    Dynamic Type: -apple-system-body makes rem follow the iOS text size. Browsers that
+    do not know it drop that declaration, so the standard font-size and font-family come
+    first and the shorthand (which resets family too) is followed by the family again.
+  */
+  html {
+    font-size: 100%;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font: -apple-system-body;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    /* The overscroll area on iOS shows the html background, so it is themed here. */
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-surface);
+    color: var(--color-text);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  h1 {
+    font-size: 1.75rem;
+    line-height: 1.2;
+    font-weight: 600;
+    margin-block: 0 0.5rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    line-height: 1.3;
+    font-weight: 600;
+    margin-block: 0 0.5rem;
+  }
+
+  p {
+    margin-block: 0.5rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+
+  ol {
+    margin-block: 0.5rem;
+    padding-inline-start: 1.5rem;
+    list-style: decimal;
+  }
+
+  li {
+    margin-block: 0.25rem;
+    line-height: 1.5;
+  }
+
+  section {
+    margin-block-start: 2rem;
+  }
+
+  label {
+    display: block;
+    margin-block-start: 1rem;
+    font-weight: 600;
+  }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+  }
+
+  /* 1rem or more stops iOS Safari zooming into the field on focus. */
+  input,
+  select {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    margin-block-start: 0.25rem;
+    min-height: 2.75rem;
+    padding: 0.5rem 0.75rem;
+    font: inherit;
+    font-size: 1rem;
+    color: var(--color-text);
+    background-color: var(--color-surface-raised);
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+  }
+
+  /* Chrome paints autofilled fields light blue, which would break the contrast. */
+  input:autofill {
+    -webkit-text-fill-color: var(--color-text);
+    box-shadow: 0 0 0 100rem var(--color-surface-raised) inset;
+  }
 }
 
-/* 16px or more stops iOS Safari zooming into the field on focus. */
-.home input {
-  display: block;
+/* The page: one centred column, with the safe-area insets kept on all four sides. */
+@utility page {
   box-sizing: border-box;
-  width: 100%;
-  font: inherit;
-  font-size: 1rem;
-  padding: 0.75rem;
-  min-height: 44px;
-  margin-top: 0.25rem;
+  max-width: 32rem;
+  margin-inline: auto;
+  padding-block-start: calc(2rem + env(safe-area-inset-top));
+  padding-block-end: calc(2rem + env(safe-area-inset-bottom));
+  padding-inline-start: calc(1.5rem + env(safe-area-inset-left));
+  padding-inline-end: calc(1.5rem + env(safe-area-inset-right));
 }
 
-.home .hint {
-  margin: 0.25rem 0;
-  font-size: 0.9rem;
-  color: #444;
+/*
+  Buttons keep a real border, so they stay visible when forced-colors mode strips
+  backgrounds. min-height and min-width are in rem so the 44px target grows with text.
+*/
+@utility btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  margin-block-start: 0.5rem;
+  margin-inline-end: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background-color: var(--color-surface-raised);
+  color: var(--color-text);
+  font-weight: 600;
+  text-align: center;
+  @media (prefers-reduced-motion: no-preference) {
+    transition: background-color 150ms;
+  }
+  &:disabled {
+    cursor: not-allowed;
+    border-style: dashed;
+    background-color: var(--color-surface);
+    color: var(--color-muted);
+  }
 }
 
-.home button.link {
-  background: none;
+@utility btn-primary {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
+  color: var(--color-accent-contrast);
+  &:disabled {
+    border-color: var(--color-border);
+  }
+}
+
+/* A text-style button, for example "Sign up" inside a sentence. */
+@utility btn-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0 0.25rem;
   border: none;
-  padding: 0;
-  color: #2f6f4f;
+  background: none;
+  color: var(--color-accent);
   text-decoration: underline;
-}
-
-.home form button[type="submit"] {
-  margin-top: 1rem;
+  text-underline-offset: 0.2em;
+  &:disabled {
+    cursor: not-allowed;
+    color: var(--color-muted);
+    text-decoration-style: dashed;
+  }
 }
