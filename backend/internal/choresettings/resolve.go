@@ -17,6 +17,11 @@ const (
 	SourceDefault  = "default"
 )
 
+// ValidPreference reports whether p is one of like, neutral or dislike.
+func ValidPreference(p string) bool {
+	return p == Like || p == Neutral || p == Dislike
+}
+
 // Chore is the part of a Chore the rules look at.
 type Chore struct {
 	Category string
