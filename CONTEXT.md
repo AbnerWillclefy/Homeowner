@@ -4,6 +4,8 @@ Helps the people who look after their own home share the housework fairly, decid
 
 ## Language
 
+The agreed Brazilian Portuguese wording for these terms is in [docs/glossary-pt-BR.md](docs/glossary-pt-BR.md).
+
 ### People and homes
 
 **User**:
