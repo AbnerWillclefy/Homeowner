@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Home } from "../api/home";
 import { ChoresSection } from "../chores/ChoresSection";
 import { useI18n } from "../i18n";
+import { InviteShare } from "../invite/InviteShare";
 import { CreateHome } from "./CreateHome";
 import { LOAD_FAILURE_KEY } from "./failureMessages";
 import { HomeSettingsForm } from "./HomeSettingsForm";
@@ -58,6 +59,7 @@ export function HomeSection() {
           setHome(home);
         }}
       />
+      <InviteShare />
       <ChoresSection />
     </>
   );

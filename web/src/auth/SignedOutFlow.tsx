@@ -15,11 +15,13 @@ interface Props {
   confirm(email: string, code: string): Promise<CognitoResult>;
   resend(email: string): Promise<CognitoResult>;
   logIn(email: string, password: string): Promise<SignInResult>;
+  /** A person with a good Invite is most likely new, so they start on sign-up. */
+  startOnSignUp?: boolean;
 }
 
 /** Which of the three signed-out screens to show, and where each one leads. */
-export function SignedOutFlow({ register, confirm, resend, logIn }: Props) {
-  const [step, setStep] = useState<Step>({ kind: "sign-in" });
+export function SignedOutFlow({ register, confirm, resend, logIn, startOnSignUp = false }: Props) {
+  const [step, setStep] = useState<Step>(startOnSignUp ? { kind: "sign-up" } : { kind: "sign-in" });
 
   switch (step.kind) {
     case "sign-up":

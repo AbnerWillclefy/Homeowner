@@ -315,6 +315,64 @@ export const enUS = {
   "auth.rules.lengthOnly": "{length}.",
   "auth.rules.listEnd": "{rest} and {last}",
 
+  // Invites: arriving from a link, joining, and sharing one
+  "invite.checking": "Checking your Invite...",
+  "invite.signedOut.heading": "You were invited to a Home",
+  "invite.signedOut.intro":
+    "A Resident invited you to join their Home. Create a login, or sign in if you have one, and you become a Resident with an equal say in the Home. Your Invite is saved on this device, so you can confirm your email and come back to it.",
+  "invite.lookup.problem":
+    "Homeowner could not check your Invite right now. Your link is kept, so you can still sign in and try again.",
+  "invite.dead.not_found":
+    "This Invite link is not valid. It may have been copied wrongly. Ask the Resident for a new Invite.",
+  "invite.dead.used": "This Invite was already used. An Invite works only once, so ask the Resident for a new one.",
+  "invite.dead.expired": "This Invite has expired. An Invite lasts seven days, so ask the Resident for a new one.",
+  "invite.dead.continue": "Continue",
+  "invite.join.heading": "Join a Home",
+  "invite.join.loading": "Getting your Invite ready...",
+  "invite.join.intro":
+    "You were invited to a Home. Joining makes you a Resident, with an equal say in it. Fill in your Baseline, Preferences and Restrictions below first if you like: Homeowner uses them to share the work fairly. You can also do it after joining.",
+  "invite.join.submit": "Join this Home",
+  "invite.join.submitting": "Joining...",
+  "invite.join.dismiss": "Not now",
+  "invite.leave.heading": "Joining means leaving your Home",
+  "invite.leave.warning":
+    "You already live in a Home, and a User can be a Resident of only one. Joining this one means leaving your current Home. Your Preferences and Restrictions for its Chores are deleted. If you are its last Resident, the Home and all its Chores are deleted too.",
+  "invite.leave.confirm": "Leave my Home and join this one",
+  "invite.leave.cancel": "Stay in my Home",
+  "invite.alreadyHere": "You already live in this Home, so there was nothing to join. The Invite was not used up.",
+  "invite.failure.offline":
+    "Homeowner cannot reach the service, so you have not joined. Your Invite is kept; check your connection and try again.",
+  "invite.failure.error": "Something went wrong and you have not joined. Your Invite is kept; try again in a moment.",
+  "invite.failure.notSignedIn": "Your sign-in has ended. Sign in again to continue.",
+  "invite.failure.retry": "Try again",
+  "invite.rating.heading": "Rate the biggest Chores",
+  "invite.rating.intro":
+    "You are now a Resident. These are the Home's most demanding Chores by Effort. Tell Homeowner which you like or dislike, and mark any you cannot do, so your first Tasks suit you. Each choice saves on its own, and you can change them later.",
+  "invite.rating.loading": "Loading the Chores...",
+  "invite.rating.problem":
+    "The Chores could not be loaded, so there is nothing to rate right now. You can skip this step.",
+  "invite.rating.restricted": "I cannot do this Chore",
+  "invite.rating.saved": "Saved.",
+  "invite.rating.saveFailed":
+    "Your change could not be saved, so it was undone. Check your connection and try again.",
+  "invite.rating.done": "Done",
+  "invite.rating.skip": "Skip for now",
+  "invite.share.heading": "Invite a Resident",
+  "invite.share.intro":
+    "An Invite is a link you can send in any app. It works once and lasts seven days. Whoever opens it can join your Home, so send it only to the person you mean.",
+  "invite.share.button": "Invite a Resident",
+  "invite.share.creating": "Making the Invite...",
+  "invite.share.title": "Join my Home on Homeowner",
+  "invite.share.text": "Join my Home on Homeowner. This link works once and lasts seven days.",
+  "invite.share.shared": "Your Invite is ready and was handed to the app you chose.",
+  "invite.share.copied": "Your Invite link is copied. Paste it into a message to send it.",
+  "invite.share.cancelled": "The Invite was not sent. Its link still works if you made it by mistake, so ask again only if you need it.",
+  "invite.share.failed": "The Invite link could not be shared or copied. Try again.",
+  "invite.share.tooMany": "Your Home already has the most open Invites allowed. Wait for some to be used or to expire.",
+  "invite.share.noHome": "You need a Home before you can invite anyone.",
+  "invite.share.offline": "Homeowner cannot reach the service, so no Invite was made. Check your connection and try again.",
+  "invite.share.error": "Something went wrong and no Invite was made. Try again in a moment.",
+
   // Settings
   "settings.heading": "Settings",
   "settings.appearance.label": "Appearance",
