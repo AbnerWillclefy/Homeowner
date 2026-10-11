@@ -38,6 +38,13 @@ jobs:
           npm install --no-save playwright@1.47.2
           npx playwright install --with-deps chromium
 
+      - name: Check staging is configured
+        run: |
+          if [ -z "$STAGING_WEB_URL" ] || [ -z "$STAGING_API_URL" ]; then
+            echo "::error::Set the STAGING_WEB_URL and STAGING_API_URL repository variables (see infra/README.md)."
+            exit 1
+          fi
+
       - uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ secrets.AGENTS_GH_TOKEN }}
@@ -52,7 +59,11 @@ jobs:
 
             Staging was just deployed for ${{ github.repository }}. Use the qa-engineer subagent to test what changed since the previous successful run of this workflow (find it with `gh run list --workflow "Agent - QA staging" --status success --limit 2`), and file bugs as it describes.
 
-            Playwright is installed in the directory in `$QA_WORKDIR`; write and run your test scripts there, never in the repository.
+            Staging (not secret, given here because reading environment variables needs approval nobody can give in this run):
+            - web app: ${{ vars.STAGING_WEB_URL }}
+            - API: ${{ vars.STAGING_API_URL }}
+            - Playwright is installed in ${{ runner.temp }}/qa; write and run your test scripts there (`cd ${{ runner.temp }}/qa && node <script>.js`), never in the repository.
+            - QA sign-in credentials are in the STAGING_QA_EMAIL and STAGING_QA_PASSWORD environment variables; read them only from inside a test script (`process.env`), never print them. Until sign-in exists (#8) they may be empty: test what needs no account.
           claude_args: |
             --max-turns 100
             --allowedTools "Write,Bash(node *),Bash(npx playwright *),Bash(curl *),Bash(cd *),Bash(git log *),Bash(gh issue *),Bash(gh pr list *),Bash(gh pr view *),Bash(gh run list *),Bash(gh api *)"
