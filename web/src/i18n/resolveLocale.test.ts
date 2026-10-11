@@ -41,4 +41,17 @@ describe("resolveLocale with a stored choice", () => {
     expect(resolveLocale({ languages: ["en"], stored: 42 })).toBe("en-US");
     expect(resolveLocale({ languages: ["pt"], stored: null })).toBe("pt-BR");
   });
+
+  it("returns the browser result when nothing is stored", () => {
+    expect(resolveLocale({ languages: ["pt-BR"] })).toBe("pt-BR");
+    expect(resolveLocale({ languages: ["en-US"], stored: undefined })).toBe("en-US");
+  });
+
+  it.each(["fr", "pt", "pt-pt", "", 42, null, {}, "es-ES", "PT-BR"])(
+    "ignores stored %j and follows the browser",
+    (stored) => {
+      expect(resolveLocale({ languages: ["pt-BR"], stored })).toBe("pt-BR");
+      expect(resolveLocale({ languages: ["en-US"], stored })).toBe("en-US");
+    },
+  );
 });
