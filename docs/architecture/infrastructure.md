@@ -4,13 +4,13 @@ Related: [ADR 0002](../adr/0002-mirror-the-work-stack.md), [ADR 0005](../adr/000
 
 ## What is built
 
-Built: the local stack, pull request checks, a staging environment on AWS defined in Terraform under `infra/`, and a deploy pipeline that runs on every merge to `main`. Staging has the API (Lambda behind API Gateway), a Neon database branch, an account-wide budget alert, and the web app (S3 behind CloudFront). Web Push sending is built in the API (needs the VAPID keys above). Sign-in is built: a Cognito user pool per environment, verified by the API. Planned: the Allocator Lambda, EventBridge schedule, and the prod environment.
+Built: the local stack, pull request checks, a staging environment on AWS defined in Terraform under `infra/`, and a deploy pipeline that runs on every merge to `main`. Staging has the API (Lambda behind API Gateway), a Neon database branch, an account-wide budget alert, and the web app (S3 behind CloudFront). Web Push sending is built in the API (needs the VAPID keys above). Sign-in is built: a Cognito user pool per environment, verified by the API. The daily Allocation job is built: an EventBridge rule every 15 minutes invokes a second Lambda from the API image ([ADR 0008](../adr/0008-scheduled-jobs-run-as-a-second-lambda-from-the-api-image.md)). Planned: the prod environment.
 
 ## Local (built)
 
 `docker compose up` starts Postgres 16 and the API (built from `backend/Dockerfile`: a Go build stage, then a minimal distroless image). The API migrates on start (`MIGRATE_ON_START=true`, Compose only). The web app runs with `npm run dev` on port 5173.
 
-## Staging (built, except where dashed)
+## Staging (built)
 
 ```mermaid
 flowchart TB
@@ -23,7 +23,8 @@ flowchart TB
         fn["API Lambda, container image"]
         ecr["ECR repository"]
         ssm["SSM parameters: database URLs, VAPID private key"]
-        alloc["Allocator Lambda + EventBridge"]:::p
+        eb["EventBridge rule, rate 15 minutes"]
+        alloc["Allocation job Lambda, same image, command events"]
         cog["Cognito user pool + app client"]
       end
       bud["AWS Budget, monthly email alert"]
@@ -35,12 +36,15 @@ flowchart TB
     user -- "fetch, CORS" --> apigw
     apigw --> fn
     ecr -.-> fn
+    ecr -.-> alloc
+    eb -- "scheduled event" --> alloc
+    alloc --> ssm
+    alloc --> neon
     fn --> ssm
     fn --> neon
     fn -- "Web Push, VAPID" --> push(["Browser push services"])
     fn -- "fetch signing keys (JWKS)" --> cog
     user -- "sign up, sign in" --> cog
-    classDef p stroke-dasharray: 5 5,color:#666
 ```
 
 - **Lambda** runs code on demand and bills per use; the Go code is packaged as a container image in ECR. **Neon** is hosted Postgres reached over the normal Postgres protocol, so there is no VPC or NAT Gateway.
@@ -58,8 +62,9 @@ flowchart TB
       env -.-> bundle["web bundle<br/>(planned, read by #65)"]
   ```
 
+- **Allocation job** (module `infra/modules/scheduled-job`, wired in `infra/staging`): an EventBridge rule `rate(15 minutes)` (Allocation times are quarter hours, which is why 15 works) targets a second Lambda function, `homeowner-staging-allocate`, built from the API's image and repository with `image_config.command = ["events"]`, so the deploy still builds and pushes one image. In that mode the binary serves only `POST /events` and `GET /healthz`; Lambda Web Adapter forwards the scheduled event to `/events`. The function has no URL and is not behind the HTTP API, and the only `aws_lambda_permission` lets `events.amazonaws.com` invoke it from that rule, so no job route is on the internet. It has its own role (logs, and SSM read under `/homeowner/staging/*`), a 60s timeout, 256 MB, `DB_MAX_CONNS=2` and only `DATABASE_URL_SSM_PARAM` (it does not get Cognito, CORS or VAPID settings). The target does not retry: the job plans a Home at or after its Allocation time, and two overlapping invocations are safe because each Home is claimed under a lock. An EventBridge rule and an idle Lambda function bill nothing, there is no VPC, and the cost is about 2,900 short invocations a month. The deploy role needs `events:*` on `rule/homeowner-staging-*`, added in `infra/bootstrap`, which a human must re-apply before the deploy that creates the rule.
 - `sw.js`, `index.html`, `registerSW.js` and the manifest are uploaded with `Cache-Control: no-cache`, so a new service worker is picked up after a deploy despite CloudFront's caching.
-- **Terraform layout**: `infra/bootstrap` is applied once by a human with local state (state bucket, GitHub OIDC provider, deploy role). Shared modules are in `infra/modules`: `lambda-container`, `http-api`, `neon-branch`, `budget`, `web` and `auth`. `infra/staging` is a thin folder that wires them together, with state in S3 with native locking. Planned modules: `allocator`, `push`. A `production` folder would be another thin folder over the same modules. Details are in `infra/README.md`.
+- **Terraform layout**: `infra/bootstrap` is applied once by a human with local state (state bucket, GitHub OIDC provider, deploy role). Shared modules are in `infra/modules`: `lambda-container`, `scheduled-job`, `http-api`, `neon-branch`, `budget`, `web` and `auth`. `infra/staging` is a thin folder that wires them together, with state in S3 with native locking. Planned module: `push`. A `production` folder would be another thin folder over the same modules. Details are in `infra/README.md`.
 - No custom domain in v1; the PWA uses CloudFront's default HTTPS domain.
 
 ## CI/CD
@@ -90,7 +95,7 @@ Built: `backend-test.yml`, `web-typecheck.yml` and `infra-check.yml` on pull req
 
 | Item | Expected | Why |
 |---|---|---|
-| Lambda, API Gateway, EventBridge (planned) | cents | Pay per request; nothing bills while idle |
+| Lambda, API Gateway, EventBridge | cents | Pay per request; nothing bills while idle |
 | S3 and CloudFront | cents | Small static app |
 | Cognito | free tier | Few users |
 | Neon | free tier | Hosted Postgres with no always-on server for us to pay for |

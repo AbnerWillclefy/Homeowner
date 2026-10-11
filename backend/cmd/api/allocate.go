@@ -10,8 +10,8 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/config"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/db"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/db"
 )
 
 func newPlanner(ctx context.Context, cfg config.Config, log *slog.Logger) (*dayplan.Planner, func(), error) {
