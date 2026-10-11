@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/apitest"
 )
@@ -85,6 +86,7 @@ func TestChoresRoundTripEveryField(t *testing.T) {
 		t.Errorf("one-off intervalDays = %#v present=%v, want explicit null", v, present)
 	}
 
+	app.Clock.Advance(time.Minute) // the frozen clock would tie created_at and leave order to the random id
 	b := me.Post("/home/chores", validChore())
 	if b.Status != http.StatusCreated || b.Body["intervalDays"] != float64(7) || b.Body["buildsUp"] != true ||
 		!reflect.DeepEqual(b.Body["allowedWeekdays"], []any{}) {
