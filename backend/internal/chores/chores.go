@@ -2,19 +2,19 @@
 package chores
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/vocab"
 )
 
@@ -25,42 +25,86 @@ var ErrNotFound = errors.New("chore not found")
 // database holds. IntervalDays nil means one-off. AllowedWeekdays uses
 // 0 = Sunday to 6 = Saturday; empty means any day.
 type Fields struct {
-	Name            string
-	Category        string
-	Demands         []string
-	BaseEffort      int
-	Importance      string
-	People          int
-	IntervalDays    *int
-	AllowedWeekdays []int
-	BuildsUp        bool
+	Name            string   `json:"name"`
+	Category        string   `json:"category"`
+	Demands         []string `json:"demands"`
+	BaseEffort      int      `json:"baseEffort"`
+	Importance      string   `json:"importance"`
+	People          int      `json:"people"`
+	IntervalDays    *int     `json:"intervalDays"`
+	AllowedWeekdays []int    `json:"allowedWeekdays"`
+	BuildsUp        bool     `json:"buildsUp"`
 }
 
 // Chore is a stored Chore.
 type Chore struct {
-	ID string
+	ID string `json:"id"`
 	Fields
 }
 
-// Input is what a caller sends, before validation. The numbers are `any`
-// (a JSON number arrives as float64) so a string or 2.5 is a field error with
-// a code rather than an undifferentiated bad request. nil means missing.
+// Input is what a caller sends, decoded straight from the request body,
+// before validation. The numbers are `any` (a JSON number arrives as float64)
+// so a string or 2.5 is a field error with a code rather than an
+// undifferentiated bad request. nil means missing.
 type Input struct {
-	Name            string
-	Category        string
-	Demands         []string
-	BaseEffort      any
-	Importance      string
-	People          any
-	IntervalDays    any // nil means one-off
-	AllowedWeekdays []any
-	BuildsUp        bool
+	Name            string   `json:"name"`
+	Category        string   `json:"category"`
+	Demands         []string `json:"demands"`
+	BaseEffort      any      `json:"baseEffort"`
+	Importance      string   `json:"importance"`
+	People          any      `json:"people"`
+	IntervalDays    any      `json:"intervalDays"` // nil means one-off
+	AllowedWeekdays []any    `json:"allowedWeekdays"`
+	BuildsUp        bool     `json:"buildsUp"`
 }
 
-// FieldErrors maps a wire field name to a stable machine code.
+// FieldErrors maps a wire field name to a stable machine code. The first
+// error recorded for a field wins.
 type FieldErrors map[string]string
 
+func (e FieldErrors) add(field, code string) {
+	if _, seen := e[field]; !seen {
+		e[field] = code
+	}
+}
+
+// oneOf records "required" for an empty value and "unknown" for one that
+// valid rejects.
+func (e FieldErrors) oneOf(field, value string, valid func(string) bool) {
+	switch {
+	case value == "":
+		e.add(field, "required")
+	case !valid(value):
+		e.add(field, "unknown")
+	}
+}
+
+// intInRange returns v as a whole number in lo..hi, or records why not and
+// returns 0.
+func (e FieldErrors) intInRange(field string, v any, lo, hi int) int {
+	if v == nil {
+		e.add(field, "required")
+		return 0
+	}
+	n, ok := integer(v)
+	switch {
+	case !ok:
+		e.add(field, "invalid")
+	case n < lo || n > hi:
+		e.add(field, "out_of_range")
+	default:
+		return n
+	}
+	return 0
+}
+
 const maxNameRunes = 100
+
+var idPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
+// ValidID reports whether id is a well-formed uuid. A Chore with any other id
+// cannot exist, so callers answer not found without asking the Store.
+func ValidID(id string) bool { return idPattern.MatchString(id) }
 
 // integer reports v as an int when it is a whole number.
 func integer(v any) (int, bool) {
@@ -71,90 +115,60 @@ func integer(v any) (int, bool) {
 	return int(f), true
 }
 
+// uniqueSorted returns the distinct values of in in ascending order, never nil.
+func uniqueSorted[T cmp.Ordered](in []T) []T {
+	out := append([]T{}, in...)
+	slices.Sort(out)
+	return slices.Compact(out)
+}
+
 // Validate checks in and returns it normalised: trimmed name, de-duplicated
 // and sorted Demands and weekdays. All problems are reported at once.
 func Validate(in Input) (Fields, FieldErrors) {
 	errs := FieldErrors{}
-	out := Fields{BuildsUp: in.BuildsUp}
+	out := Fields{Category: in.Category, Importance: in.Importance, BuildsUp: in.BuildsUp}
 
 	out.Name = strings.TrimSpace(in.Name)
 	switch n := utf8.RuneCountInString(out.Name); {
 	case n == 0:
-		errs["name"] = "required"
+		errs.add("name", "required")
 	case n > maxNameRunes:
-		errs["name"] = "too_long"
+		errs.add("name", "too_long")
 	}
+	errs.oneOf("category", in.Category, vocab.IsCategory)
+	errs.oneOf("importance", in.Importance, vocab.IsImportance)
 
-	out.Category = in.Category
-	switch {
-	case in.Category == "":
-		errs["category"] = "required"
-	case !vocab.IsCategory(in.Category):
-		errs["category"] = "unknown"
-	}
-
-	out.Importance = in.Importance
-	switch allocation.Importance(in.Importance) {
-	case allocation.Essential, allocation.Normal, allocation.NiceToHave:
-	default:
-		if in.Importance == "" {
-			errs["importance"] = "required"
-		} else {
-			errs["importance"] = "unknown"
-		}
-	}
-
-	out.Demands = []string{}
 	for _, d := range in.Demands {
 		if !vocab.IsDemand(d) {
-			errs["demands"] = "unknown"
-		} else if !slices.Contains(out.Demands, d) {
-			out.Demands = append(out.Demands, d)
+			errs.add("demands", "unknown")
 		}
 	}
-	slices.Sort(out.Demands)
+	out.Demands = uniqueSorted(in.Demands)
 
-	out.BaseEffort = intInRange(errs, "baseEffort", in.BaseEffort, 1, 5)
-	out.People = intInRange(errs, "people", in.People, 1, 2)
-
+	out.BaseEffort = errs.intInRange("baseEffort", in.BaseEffort, 1, 5)
+	out.People = errs.intInRange("people", in.People, 1, 2)
 	if in.IntervalDays != nil {
-		n := intInRange(errs, "intervalDays", in.IntervalDays, 1, 365)
+		n := errs.intInRange("intervalDays", in.IntervalDays, 1, 365)
 		out.IntervalDays = &n
 	}
 
-	out.AllowedWeekdays = []int{}
+	days := make([]int, 0, len(in.AllowedWeekdays))
 	for _, v := range in.AllowedWeekdays {
-		d, ok := integer(v)
-		switch {
+		switch d, ok := integer(v); {
 		case !ok:
-			errs["allowedWeekdays"] = "invalid"
+			errs.add("allowedWeekdays", "invalid")
 		case d < 0 || d > 6:
-			errs["allowedWeekdays"] = "out_of_range"
-		case !slices.Contains(out.AllowedWeekdays, d):
-			out.AllowedWeekdays = append(out.AllowedWeekdays, d)
+			errs.add("allowedWeekdays", "out_of_range")
+		default:
+			days = append(days, d)
 		}
 	}
-	slices.Sort(out.AllowedWeekdays)
+	out.AllowedWeekdays = uniqueSorted(days)
 
 	if len(errs) > 0 {
 		return Fields{}, errs
 	}
 	return out, nil
-}
-
-func intInRange(errs FieldErrors, field string, v any, lo, hi int) int {
-	if v == nil {
-		errs[field] = "required"
-		return 0
-	}
-	n, ok := integer(v)
-	switch {
-	case !ok:
-		errs[field] = "invalid"
-	case n < lo || n > hi:
-		errs[field] = "out_of_range"
-	}
-	return n
 }
 
 // Store keeps Chores in the chores table. Every query that takes a Chore id
@@ -171,35 +185,15 @@ const columns = `id, name, category, demands, base_effort, importance, people,
 
 func scan(row pgx.Row) (Chore, error) {
 	var c Chore
-	var effort, people int16
-	var interval *int32
-	var weekdays []int16
-	err := row.Scan(&c.ID, &c.Name, &c.Category, &c.Demands, &effort, &c.Importance, &people,
-		&interval, &weekdays, &c.BuildsUp)
-	if err != nil {
-		return Chore{}, err
-	}
-	c.BaseEffort, c.People = int(effort), int(people)
-	if interval != nil {
-		n := int(*interval)
-		c.IntervalDays = &n
-	}
-	c.AllowedWeekdays = make([]int, len(weekdays))
-	for i, d := range weekdays {
-		c.AllowedWeekdays[i] = int(d)
-	}
+	err := row.Scan(&c.ID, &c.Name, &c.Category, &c.Demands, &c.BaseEffort, &c.Importance, &c.People,
+		&c.IntervalDays, &c.AllowedWeekdays, &c.BuildsUp)
 	if c.Demands == nil {
 		c.Demands = []string{}
 	}
-	return c, nil
-}
-
-func weekdays16(ds []int) []int16 {
-	out := make([]int16, len(ds))
-	for i, d := range ds {
-		out[i] = int16(d)
+	if c.AllowedWeekdays == nil {
+		c.AllowedWeekdays = []int{}
 	}
-	return out
+	return c, err
 }
 
 // List returns the Home's Chores, oldest first.
@@ -229,20 +223,15 @@ func (s *Store) Create(ctx context.Context, homeID string, f Fields, now time.Ti
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11)
 		RETURNING `+columns,
 		homeID, f.Name, f.Category, f.Demands, f.BaseEffort, f.Importance, f.People,
-		f.IntervalDays, weekdays16(f.AllowedWeekdays), f.BuildsUp, now))
+		f.IntervalDays, f.AllowedWeekdays, f.BuildsUp, now))
 	if err != nil {
 		return Chore{}, fmt.Errorf("create chore: %w", err)
 	}
 	return c, nil
 }
 
-// isInvalidID reports a malformed uuid, which means the Chore cannot exist.
-func isInvalidID(err error) bool {
-	var pgErr *pgconn.PgError
-	return errors.As(err, &pgErr) && pgErr.Code == "22P02"
-}
-
-// Update replaces every field of the Chore, or returns ErrNotFound.
+// Update replaces every field of the Chore, or returns ErrNotFound. id must
+// satisfy ValidID.
 func (s *Store) Update(ctx context.Context, homeID, id string, f Fields, now time.Time) (Chore, error) {
 	c, err := scan(s.db.QueryRow(ctx, `
 		UPDATE chores SET name = $3, category = $4, demands = $5, base_effort = $6, importance = $7,
@@ -250,8 +239,8 @@ func (s *Store) Update(ctx context.Context, homeID, id string, f Fields, now tim
 		WHERE id = $2 AND home_id = $1
 		RETURNING `+columns,
 		homeID, id, f.Name, f.Category, f.Demands, f.BaseEffort, f.Importance, f.People,
-		f.IntervalDays, weekdays16(f.AllowedWeekdays), f.BuildsUp, now))
-	if errors.Is(err, pgx.ErrNoRows) || isInvalidID(err) {
+		f.IntervalDays, f.AllowedWeekdays, f.BuildsUp, now))
+	if errors.Is(err, pgx.ErrNoRows) {
 		return Chore{}, ErrNotFound
 	}
 	if err != nil {
@@ -260,12 +249,9 @@ func (s *Store) Update(ctx context.Context, homeID, id string, f Fields, now tim
 	return c, nil
 }
 
-// Delete removes the Chore, or returns ErrNotFound.
+// Delete removes the Chore, or returns ErrNotFound. id must satisfy ValidID.
 func (s *Store) Delete(ctx context.Context, homeID, id string) error {
 	tag, err := s.db.Exec(ctx, `DELETE FROM chores WHERE id = $2 AND home_id = $1`, homeID, id)
-	if isInvalidID(err) {
-		return ErrNotFound
-	}
 	if err != nil {
 		return fmt.Errorf("delete chore: %w", err)
 	}
