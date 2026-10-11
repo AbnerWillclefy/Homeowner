@@ -1,13 +1,24 @@
 import { useRef, useState } from "react";
+import type { CatalogEntry } from "../api/catalog";
 import { createChore, updateChore, type Chore } from "../api/chores";
+import { CatalogPicker } from "../catalog/CatalogPicker";
+import { formFromEntry } from "../catalog/review";
 import { useI18n } from "../i18n";
 import { ChoreForm } from "./ChoreForm";
 import { ChoreItem } from "./ChoreItem";
 import { LOAD_FAILURE_KEY } from "./failureMessages";
+import { emptyForm, formFromChore } from "./form";
 import { useChores } from "./useChores";
 
-/** Which form is open: none, a new Chore, or the Chore with this id. */
-type Editing = { kind: "none" } | { kind: "new" } | { kind: "edit"; id: string };
+/** Which form is open: none, a new Chore, the Chore with this id, or one of the two Catalog steps. */
+type Editing =
+  | { kind: "none" }
+  | { kind: "new" }
+  | { kind: "edit"; id: string }
+  /** Choosing a Catalog Chore. */
+  | { kind: "catalog" }
+  /** A new Chore pre-filled from this Catalog entry. */
+  | { kind: "fromCatalog"; entry: CatalogEntry };
 
 /**
  * A Home's Chores: the list, with add, edit and delete. Rendered inside the Home section, so it only
@@ -36,6 +47,11 @@ export function ChoresSection() {
     settle(t("chores.form.saved"));
   };
   const onCancel = () => settle(null);
+
+  function open(next: Editing) {
+    setNotice(null);
+    setEditing(next);
+  }
 
   return (
     <section aria-labelledby="chores-heading">
@@ -70,7 +86,9 @@ export function ChoresSection() {
               editing.kind === "edit" && editing.id === chore.id ? (
                 <li key={chore.id} className="list-none ps-0">
                   <ChoreForm
-                    chore={chore}
+                    initial={formFromChore(chore)}
+                    mode="edit"
+                    idKey={chore.id}
                     categories={state.categories}
                     demands={state.demands}
                     save={(input) => updateChore(chore.id, input)}
@@ -82,10 +100,7 @@ export function ChoresSection() {
                 <ChoreItem
                   key={chore.id}
                   chore={chore}
-                  onEdit={() => {
-                    setNotice(null);
-                    setEditing({ kind: "edit", id: chore.id });
-                  }}
+                  onEdit={() => open({ kind: "edit", id: chore.id })}
                   onDeleted={(id) => {
                     remove(id);
                     setNotice(null);
@@ -97,26 +112,45 @@ export function ChoresSection() {
             )}
           </ul>
 
-          {editing.kind === "new" ? (
+          {editing.kind === "new" && (
             <ChoreForm
-              chore={null}
+              initial={emptyForm()}
+              mode="create"
+              idKey="new"
               categories={state.categories}
               demands={state.demands}
               save={createChore}
               onSaved={onSaved}
               onCancel={onCancel}
             />
-          ) : (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => {
-                setNotice(null);
-                setEditing({ kind: "new" });
-              }}
-            >
-              {t("chores.add")}
-            </button>
+          )}
+
+          {editing.kind === "fromCatalog" && (
+            <ChoreForm
+              initial={formFromEntry(editing.entry, t)}
+              mode="create"
+              idKey={`catalog-${editing.entry.id}`}
+              categories={state.categories}
+              demands={state.demands}
+              save={createChore}
+              onSaved={onSaved}
+              onCancel={() => open({ kind: "catalog" })}
+            />
+          )}
+
+          {editing.kind === "catalog" && (
+            <CatalogPicker onPick={(entry) => open({ kind: "fromCatalog", entry })} onClose={onCancel} />
+          )}
+
+          {(editing.kind === "none" || editing.kind === "edit") && (
+            <>
+              <button type="button" className="btn btn-primary" onClick={() => open({ kind: "new" })}>
+                {t("chores.add")}
+              </button>
+              <button type="button" className="btn" onClick={() => open({ kind: "catalog" })}>
+                {t("chores.addFromCatalog")}
+              </button>
+            </>
           )}
         </>
       )}

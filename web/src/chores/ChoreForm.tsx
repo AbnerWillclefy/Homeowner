@@ -1,12 +1,13 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import type { Chore, ChoreWire, SaveChoreResult } from "../api/chores";
+import type { FieldCodes } from "../api/home";
 import { WEEKDAYS } from "../api/profile";
 import { useI18n, type MessageKey } from "../i18n";
 import { categoryLabel, demandLabel, importanceLabel, type Label } from "../profile/labels";
 import { DISPLAY_WEEKDAYS, weekdayLabel } from "../profile/weekdays";
 import { choreFieldErrorKey } from "./fieldErrors";
 import { SAVE_FAILURE_KEY } from "./failureMessages";
-import { toggled } from "./form";
+import { toggled, type ChoreFormState } from "./form";
 import { suggestTwoPerson } from "./suggestion";
 import { useChoreForm } from "./useChoreForm";
 
@@ -21,23 +22,30 @@ interface RadioOption<V> {
 }
 
 interface Props {
-  /** The Chore being edited, or null for a new one. */
-  chore: Chore | null;
+  /** What the form starts with: an existing Chore, a Catalog entry, a suggestion, or `emptyForm()`. */
+  initial: ChoreFormState;
+  /** Edit words the heading and button as a change to something that exists; create as a new Chore. */
+  mode: "create" | "edit";
+  /** Names the element ids, so two forms on a page never share one. */
+  idKey: string;
   categories: readonly string[];
   demands: readonly string[];
+  /** Errors to show from the start, keyed by field, for a form opened to fix what the API refused. */
+  initialErrors?: FieldCodes;
   save(input: ChoreWire): Promise<SaveChoreResult>;
-  onSaved(chore: Chore): void;
+  /** Gets the saved Chore and the form values it was saved from. */
+  onSaved(chore: Chore, values: ChoreFormState): void;
   onCancel(): void;
 }
 
 /** The create and edit form for a Chore: every field, the API's field errors beside their controls. */
-export function ChoreForm({ chore, categories, demands, save, onSaved, onCancel }: Props) {
+export function ChoreForm({ initial, mode, idKey, categories, demands, initialErrors, save, onSaved, onCancel }: Props) {
   const { t, locale } = useI18n();
-  const form = useChoreForm(chore, save, onSaved);
+  const form = useChoreForm(initial, save, onSaved, initialErrors);
   const { values, status } = form;
   const saving = status.kind === "saving";
   const fieldErrors = status.kind === "invalid" ? status.fields : {};
-  const idPrefix = `chore-form-${chore?.id ?? "new"}`;
+  const idPrefix = `chore-form-${idKey}`;
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   // The form appears in place of a button, so move the reader to it.
@@ -125,7 +133,7 @@ export function ChoreForm({ chore, categories, demands, save, onSaved, onCancel 
   return (
     <section aria-labelledby={`${idPrefix}-heading`}>
       <h3 id={`${idPrefix}-heading`} ref={headingRef} tabIndex={-1}>
-        {t(chore ? "chores.form.edit.heading" : "chores.form.create.heading")}
+        {t(mode === "edit" ? "chores.form.edit.heading" : "chores.form.create.heading")}
       </h3>
       <form onSubmit={form.submit} noValidate>
         <div>
@@ -295,7 +303,7 @@ export function ChoreForm({ chore, categories, demands, save, onSaved, onCancel 
         )}
 
         <button type="submit" className="btn btn-primary" disabled={saving}>
-          {t(saving ? "chores.form.saving" : chore ? "chores.form.submit.save" : "chores.form.submit.create")}
+          {t(saving ? "chores.form.saving" : mode === "edit" ? "chores.form.submit.save" : "chores.form.submit.create")}
         </button>
         <button type="button" className="btn" disabled={saving} onClick={onCancel}>
           {t("chores.form.cancel")}

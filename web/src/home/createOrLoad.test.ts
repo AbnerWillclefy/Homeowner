@@ -13,8 +13,15 @@ describe("createOrLoad", () => {
   it("returns the new Home without loading anything", async () => {
     const d = deps({ kind: "ok", home: HOME });
     expect(await createOrLoad(SETTINGS, d)).toEqual({ kind: "ok", home: HOME });
-    expect(d.createHome).toHaveBeenCalledWith(SETTINGS);
+    expect(d.createHome).toHaveBeenCalledWith(SETTINGS, []);
     expect(d.getHome).not.toHaveBeenCalled();
+  });
+
+  it("sends the reviewed Chores with the settings", async () => {
+    const d = deps({ kind: "ok", home: HOME });
+    const chore = { name: "Wash up", category: "kitchen", demands: [], baseEffort: 1, importance: "normal", people: 1, intervalDays: 1, allowedWeekdays: [], buildsUp: false };
+    await createOrLoad(SETTINGS, d, [chore]);
+    expect(d.createHome).toHaveBeenCalledWith(SETTINGS, [chore]);
   });
 
   it("on a 409 loads the existing Home instead", async () => {

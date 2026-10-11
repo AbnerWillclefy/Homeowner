@@ -1,42 +1,179 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, type FormEvent } from "react";
 import type { Home } from "../api/home";
+import { Questionnaire } from "../catalog/Questionnaire";
+import { ReviewList } from "../catalog/ReviewList";
+import { useI18n, type MessageKey } from "../i18n";
 import { DEFAULT_ALLOCATION_TIME } from "./allocationTimes";
 import { browserTimezone, browserTimezones } from "./browserTimezones";
-import { createOrLoad } from "./createOrLoad";
-import { HomeForm } from "./HomeForm";
+import { SAVE_FAILURE_KEY } from "./failureMessages";
+import { HomeFields } from "./HomeFields";
 import { defaultTimezone, timezoneOptions } from "./timezones";
+import { useCreateHomeFlow, type Step } from "./useCreateHomeFlow";
 
 interface Props {
   onSaved(home: Home): void;
   /** The person already had a Home, and it was loaded instead of a new one made. */
-  onRecovered(home: Home): void;
+  onRecovered(home: Home, choresDropped: boolean): void;
 }
 
-const COPY = {
-  heading: "home.create.heading",
-  intro: "home.create.intro",
-  submit: "home.create.submit",
-  submitting: "home.create.submitting",
-} as const;
+const STEPS: readonly Step[] = ["settings", "questions", "review"];
 
-/** For a signed-in User with no Home: pick a timezone and Allocation time, and become its first Resident. */
+const SUGGEST_FAILURE_KEY = {
+  offline: "catalog.questions.offline",
+  error: "catalog.questions.error",
+  "not-signed-in": "home.notSignedIn",
+} as const satisfies Record<string, MessageKey>;
+
+/**
+ * For a signed-in User with no Home, in three steps that each say why they ask: timezone and Allocation time,
+ * the questions the Catalog turns into suggested Chores, and a review where those can be edited or removed.
+ * Nothing is saved until the last step, which creates the Home and the reviewed Chores together.
+ */
 export function CreateHome({ onSaved, onRecovered }: Props) {
+  const { t } = useI18n();
   const zones = useMemo(() => browserTimezones(), []);
   const options = useMemo(() => timezoneOptions(zones), [zones]);
   const initial = useMemo(
     () => ({ timezone: defaultTimezone(zones, browserTimezone()), allocationTime: DEFAULT_ALLOCATION_TIME }),
     [zones],
   );
+  const flow = useCreateHomeFlow(initial, { onSaved, onRecovered });
+  const { step } = flow;
+  const stepRef = useRef<HTMLParagraphElement>(null);
+  const arrived = useRef(false);
 
+  // Each step replaces the last, so move the reader to the new one (not on the very first render).
+  useEffect(() => {
+    if (arrived.current) stepRef.current?.focus();
+    arrived.current = true;
+  }, [step]);
+
+  const stepLine = (
+    <p ref={stepRef} tabIndex={-1} className="text-muted">
+      {t("home.create.step", { step: STEPS.indexOf(step) + 1, total: STEPS.length })}
+    </p>
+  );
+
+  if (step === "settings") {
+    const onSubmit = (event: FormEvent) => {
+      event.preventDefault();
+      flow.setStep("questions");
+    };
+    return (
+      <section aria-labelledby="create-home-heading">
+        {stepLine}
+        <h2 id="create-home-heading">{t("home.create.heading")}</h2>
+        <p>{t("home.create.intro")}</p>
+        <form onSubmit={onSubmit} noValidate>
+          <HomeFields
+            idPrefix="create-home"
+            values={flow.settings}
+            timezones={options}
+            fieldErrors={flow.settingsErrors}
+            disabled={false}
+            onChange={flow.changeSettings}
+          />
+          {Object.keys(flow.settingsErrors).length > 0 && (
+            <p role="alert" className="text-danger">
+              {t("home.invalid.summary")}
+            </p>
+          )}
+          <button type="submit" className="btn btn-primary">
+            {t("home.create.next")}
+          </button>
+        </form>
+      </section>
+    );
+  }
+
+  if (step === "questions") {
+    const working = flow.suggest.kind === "working";
+    const onSubmit = (event: FormEvent) => {
+      event.preventDefault();
+      flow.continueFromQuestions();
+    };
+    return (
+      <section aria-labelledby="create-questions-heading">
+        {stepLine}
+        <h2 id="create-questions-heading">{t("catalog.questions.heading")}</h2>
+        <p>{t("catalog.questions.intro")}</p>
+        <form onSubmit={onSubmit} noValidate>
+          <Questionnaire
+            idPrefix="create-questions"
+            value={flow.answers}
+            onChange={flow.setAnswers}
+            errors={flow.suggest.kind === "invalid" ? flow.suggest.fields : {}}
+            disabled={working}
+          />
+
+          {flow.suggest.kind === "invalid" && (
+            <p role="alert" className="text-danger">
+              {t("catalog.questions.invalid")}
+            </p>
+          )}
+          {flow.suggest.kind === "failed" && (
+            <p role="alert" className="text-danger">
+              {t(SUGGEST_FAILURE_KEY[flow.suggest.reason])}
+            </p>
+          )}
+
+          {flow.suggest.kind === "confirming" ? (
+            <div role="group" aria-labelledby="create-regenerate-prompt">
+              <p id="create-regenerate-prompt">{t("catalog.regenerate.prompt")}</p>
+              <button type="button" className="btn" onClick={flow.cancelRegenerate}>
+                {t("catalog.regenerate.cancel")}
+              </button>
+              <button type="button" className="btn btn-primary" onClick={flow.confirmRegenerate}>
+                {t("catalog.regenerate.confirm")}
+              </button>
+            </div>
+          ) : (
+            <>
+              <button type="button" className="btn" disabled={working} onClick={() => flow.setStep("settings")}>
+                {t("home.create.back")}
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={working}>
+                {t(working ? "catalog.questions.submitting" : "catalog.questions.submit")}
+              </button>
+              {flow.canSkip && (
+                <button type="button" className="btn" disabled={working} onClick={flow.skip}>
+                  {t("catalog.questions.skip")}
+                </button>
+              )}
+            </>
+          )}
+        </form>
+      </section>
+    );
+  }
+
+  const saving = flow.create.kind === "saving";
   return (
-    <HomeForm
-      idPrefix="create-home"
-      copy={COPY}
-      initial={initial}
-      timezones={options}
-      save={createOrLoad}
-      onSaved={onSaved}
-      onRecovered={onRecovered}
-    />
+    <>
+      {stepLine}
+      <ReviewList
+        items={flow.items}
+        errors={flow.itemErrors}
+        tooMany={flow.tooMany}
+        onChange={flow.changeItems}
+        disabled={saving}
+      />
+      {flow.hasItemErrors && (
+        <p role="alert" className="text-danger">
+          {t("home.invalid.summary")}
+        </p>
+      )}
+      {flow.create.kind === "failed" && (
+        <p role="alert" className="text-danger">
+          {t(SAVE_FAILURE_KEY[flow.create.reason])}
+        </p>
+      )}
+      <button type="button" className="btn" disabled={saving} onClick={() => flow.setStep("questions")}>
+        {t("home.create.back")}
+      </button>
+      <button type="button" className="btn btn-primary" disabled={saving} onClick={() => void flow.submit()}>
+        {t(saving ? "home.create.submitting" : "home.create.submit")}
+      </button>
+    </>
   );
 }

@@ -1,3 +1,4 @@
+import type { ChoreWire } from "./chores";
 import { authedFetch } from "./request";
 
 /** What a Resident can change about their Home. `allocationTime` is "HH:MM", 24 hours, in the Home's zone. */
@@ -82,8 +83,8 @@ async function sendHome<S>(init: RequestInit, okStatus: number, special: Readonl
   }
 }
 
-function withBody(method: string, settings: HomeSettings): RequestInit {
-  return { method, headers: JSON_HEADERS, body: JSON.stringify(settings) };
+function withBody(method: string, body: HomeSettings | (HomeSettings & { chores: ChoreWire[] })): RequestInit {
+  return { method, headers: JSON_HEADERS, body: JSON.stringify(body) };
 }
 
 /** The caller's Home. `none` (a 404) means they have not made one yet. */
@@ -93,8 +94,13 @@ export async function getHome(): Promise<GetHomeResult> {
   return result.kind === "invalid" ? { kind: "error" } : result;
 }
 
-export function createHome(settings: HomeSettings): Promise<CreateHomeResult> {
-  return sendHome<{ kind: "already-resident" }>(withBody("POST", settings), 201, { 409: { kind: "already-resident" } });
+/**
+ * Creates the Home. `chores` are the reviewed Chores to create with it in the same transaction; the API's
+ * field errors for them are keyed `chores.<index>.<field>`.
+ */
+export function createHome(settings: HomeSettings, chores: readonly ChoreWire[] = []): Promise<CreateHomeResult> {
+  const body = chores.length > 0 ? { ...settings, chores: [...chores] } : settings;
+  return sendHome<{ kind: "already-resident" }>(withBody("POST", body), 201, { 409: { kind: "already-resident" } });
 }
 
 /** Replaces the Home's settings. Any Resident can. */

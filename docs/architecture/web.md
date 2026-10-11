@@ -15,6 +15,7 @@ The PWA is one Vite app in `web/`, installed to the Home Screen. It has a precac
 | `src/api/` | Built | The API client: `authedFetch` and the typed calls to `/me`, the profile routes (`/me/profile`, `/categories`, `/demands`), `/push/*`, `/home`, `/home/chores` and `/home/day-plan`. |
 | `src/home/` | Built | The Home section: create form and settings form for the Home's timezone and Allocation time. Detailed below. |
 | `src/chores/` | Built | The Chores section inside the Home section: list, add and edit form with every field, inline two-step delete, and the non-blocking two-person suggestion. Detailed below. |
+| `src/catalog/` | Built | The Catalog on the PWA: the questionnaire about a Home, the review of suggested Chores, the picker for adding a Catalog Chore later, and the pure logic behind them. Detailed under Catalog below. |
 | `src/dayplan/` | Built | The Today section inside the Home section: today's Day Plan (your Tasks, other Residents' Tasks, the pool and its reasons), read-only. Detailed below. |
 | `src/invite/` | Built | Joining a Home from an Invite link (signed out and signed in, with the leave warning), the rating step after joining, and sharing an Invite from the Home section. Detailed below. |
 | `src/profile/` | Built | The Profile section for signed-in Users: Baseline per weekday (saved on blur), Preference per Category and Restrictions on Demands. Each control saves on its own, optimistically, and is undone with a visible message if the API refuses. The Category and Demand lists come from the API; an id with no translation shows as the id. Logic is in pure modules (`baselineInput`, `changes`, `labels`, `weekdays`); `useProfile` holds the state. |
@@ -148,8 +149,9 @@ flowchart TD
     UH -->|none, 404| CREATE[CreateHome]
     UH -->|ok| EDIT[HomeSettingsForm]
     UH -->|offline or error| RETRY[message and Try again]
-    CREATE --> FORM[useSettingsForm]
-    EDIT --> FORM
+    CREATE --> FLOW[useCreateHomeFlow: three steps, see Catalog]
+    FLOW --> FIELDS
+    EDIT --> FORM[useSettingsForm]
     FORM --> FIELDS[HomeFields: timezone and Allocation time selects]
     CREATE -->|createOrLoad| API[api/home.ts]
     EDIT -->|saveSettings| API
@@ -161,6 +163,35 @@ flowchart TD
 - `useSettingsForm` keeps the typed values in state and never resets them on a failure, so retrying sends what was typed. `offline`, `error` and `not-signed-in` show a `role="alert"` message in the `danger` colour; `invalid` shows a summary plus one message per field.
 - `fieldErrors.ts` maps the API's stable field codes (`timezone`: `required`, `unknown`; `allocationTime`: `required`, `invalid`, `not_quarter_hour`) to message keys in both catalogs. A code it does not know gets a generic message.
 - Pure modules with vitest tests: `api/home.ts`, `createOrLoad.ts`, `fieldErrors.ts`, `allocationTimes.ts`, `timezones.ts`. The components and hooks are checked by hand.
+
+## Catalog
+
+The Catalog and its rules are Go code (see [backend.md](backend.md)); the PWA only asks for them. `src/api/catalog.ts` has `getCatalog` (`GET /catalog`) and `proposeChores` (`POST /catalog/proposals`, which writes nothing), with the usual result union (`ok`, `not-signed-in`, `offline`, `error`, and `invalid` with the field codes for the proposals call). `createHome` in `api/home.ts` takes an optional list of Chores, sent as `chores` on `POST /home` only when there are some.
+
+```mermaid
+flowchart TD
+    CH[CreateHome] --> FLOW[useCreateHomeFlow]
+    FLOW -->|step 1| HF[HomeFields: timezone, Allocation time]
+    FLOW -->|step 2| Q[Questionnaire, controlled]
+    FLOW -->|step 3| RL[ReviewList]
+    Q -->|answers.toRequestBody| PROP[proposeChores: POST /catalog/proposals]
+    PROP -->|review.itemsFromProposals, names via catalogName| FLOW
+    RL --> CF[ChoreForm, kept locally by review.keepLocally]
+    FLOW -->|createOrLoad with toWire| HOME[POST /home with chores, one transaction]
+    HOME -->|400 chores.N.field| SPLIT[review.splitSaveErrors back to item N]
+    HOME -->|409| LOAD[load the Home; reviewed Chores were not added]
+    CS[ChoresSection] -->|Add from the Catalog| PICK[CatalogPicker: GET /catalog]
+    PICK -->|review.formFromEntry| CF2[ChoreForm, pre-filled]
+    CF2 -->|createChore: POST /home/chores| API[api/chores.ts]
+```
+
+- Create Home is three steps in one component, driven by `useCreateHomeFlow`: settings, questionnaire, review. `Questionnaire` and `ReviewList` are controlled and own no flow logic, so the onboarding flow can mount them. Each step says why it asks. Going back keeps what was typed.
+- Proposals are advice, not state. The proposals are turned into a local list; edits and removals stay local until the final request. Continuing from the questionnaire with the same answers keeps the reviewed list. Changed answers regenerate it, and ask first if that would discard edits (`afterQuestions`). A failed proposals call keeps the answers and shows a retry message.
+- A Chore's name is stored text and the API does not know the language, so the API sends a stable `catalogId` and the PWA builds the name from `catalog.<id>` in its own catalogs (`catalogName`, with the instance number appended for a second bathroom). An id the PWA does not know yet keeps the API's English name.
+- The review reuses `ChoreForm` (and its `form.ts`, `fieldErrors.ts`, `suggestion.ts`). `ChoreForm` takes the starting values, a mode (create or edit) and an id key, so it serves an existing Chore, a Catalog entry and a suggestion. In review, "saving" an edit is `keepLocally`; every other check is the API's, at creation. The API's keys `chores.N.field` are mapped back to the Nth item sent (`splitSaveErrors`), shown on that item, and the form opens with them.
+- A 409 on create loads the existing Home and says the reviewed Chores were not added.
+- "Add from the Catalog" in `ChoresSection` shows `CatalogPicker`, then the normal create form pre-filled and editable, saved through `createChore`. A per-room entry can be picked again for another room. There is no link back to the Catalog: adding the same entry twice gives two Chores.
+- Pure modules with vitest tests: `api/catalog.ts`, `catalog/answers.ts` (answers to request body, bounds), `catalog/name.ts`, `catalog/review.ts`, `chores/facts.ts`. The components and hooks are checked by hand.
 
 ## Chores
 

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import type { Chore, ChoreWire, Failure, SaveChoreResult } from "../api/chores";
 import type { FieldCodes } from "../api/home";
-import { emptyForm, formFromChore, toChoreInput, type ChoreFormState } from "./form";
+import { toChoreInput, type ChoreFormState } from "./form";
 
 export type ChoreFormStatus =
   | { kind: "idle" }
@@ -14,12 +14,16 @@ export type ChoreFormStatus =
  * sends exactly what was typed. An API field error clears when its field is edited.
  */
 export function useChoreForm(
-  chore: Chore | null,
+  initial: ChoreFormState,
   save: (input: ChoreWire) => Promise<SaveChoreResult>,
-  onSaved: (chore: Chore) => void,
+  onSaved: (chore: Chore, values: ChoreFormState) => void,
+  /** Errors to show from the start, for a form opened to fix what the API refused. */
+  initialErrors: FieldCodes = {},
 ) {
-  const [values, setValues] = useState<ChoreFormState>(() => (chore ? formFromChore(chore) : emptyForm()));
-  const [status, setStatus] = useState<ChoreFormStatus>({ kind: "idle" });
+  const [values, setValues] = useState<ChoreFormState>(initial);
+  const [status, setStatus] = useState<ChoreFormStatus>(() =>
+    Object.keys(initialErrors).length > 0 ? { kind: "invalid", fields: initialErrors } : { kind: "idle" },
+  );
 
   /** Changes some fields; `fields` names the API fields whose errors the change answers. */
   function change(patch: Partial<ChoreFormState>, ...fields: string[]) {
@@ -36,7 +40,7 @@ export function useChoreForm(
     if (status.kind === "saving") return;
     setStatus({ kind: "saving" });
     const result = await save(toChoreInput(values));
-    if (result.kind === "ok") onSaved(result.chore);
+    if (result.kind === "ok") onSaved(result.chore, values);
     else if (result.kind === "invalid") setStatus({ kind: "invalid", fields: result.fields });
     else setStatus({ kind: "failed", reason: result.kind === "none" ? "gone" : result.kind });
   }

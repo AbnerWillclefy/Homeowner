@@ -88,6 +88,8 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("GET /home/day-plan", s.requireResident(s.getDayPlan))
 	mux.HandleFunc("GET /categories", s.requireUser(s.getCategories))
 	mux.HandleFunc("GET /demands", s.requireUser(s.getDemands))
+	mux.HandleFunc("GET /catalog", s.requireUser(s.getCatalog))
+	mux.HandleFunc("POST /catalog/proposals", s.requireUser(s.postProposals))
 	mux.HandleFunc("GET /me/profile", s.requireUser(s.getProfile))
 	mux.HandleFunc("PUT /me/baseline", s.requireUser(s.putBaseline))
 	mux.HandleFunc("PUT /me/preferences/{category}", s.requireUser(s.putPreference))

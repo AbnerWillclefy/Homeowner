@@ -72,6 +72,25 @@ describe("createHome", () => {
     expect(JSON.parse(init?.body as string)).toEqual(SETTINGS);
   });
 
+  it("sends the reviewed Chores only when there are some", async () => {
+    const chore = {
+      name: "Wash the dishes",
+      category: "kitchen",
+      demands: [],
+      baseEffort: 1,
+      importance: "essential",
+      people: 1,
+      intervalDays: 1,
+      allowedWeekdays: [],
+      buildsUp: true,
+    };
+    const fetch = stubFetch(Response.json(HOME, { status: 201 }));
+    await createHome(SETTINGS, [chore]);
+    expect(JSON.parse(fetch.mock.calls[0]![1]?.body as string)).toEqual({ ...SETTINGS, chores: [chore] });
+    await createHome(SETTINGS, []);
+    expect(JSON.parse(fetch.mock.calls[1]![1]?.body as string)).toEqual(SETTINGS);
+  });
+
   it("is already-resident on a 409", async () => {
     stubFetch(Response.json({ error: "already a resident" }, { status: 409 }));
     expect(await createHome(SETTINGS)).toEqual({ kind: "already-resident" });
