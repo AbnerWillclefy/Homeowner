@@ -27,6 +27,7 @@ Agreed Brazilian Portuguese equivalents for the terms in [CONTEXT.md](../CONTEXT
 | Chore | afazer | atividade, trabalho, tarefa (a Task is "tarefa") | Plural "afazeres". Used in `profile.*` and the `chores.*` Chores screen. |
 | Preference | preferência | gosto | Like, neutral, dislike are "Gosto", "Neutro", "Não gosto". |
 | Restriction | restrição | limitação, requisito | Used in `profile.restrictions.*`. |
+| Catalog | catálogo | modelos, biblioteca, padrões, predefinições | The fixed list of common Chores built into the app. Capitalised ("Catálogo") when it names the feature, as in "Adicionar do Catálogo". Used in `chores.catalog.*`, `chores.addFromCatalog` and `catalog.*`. The Catalog's Chore names are `catalog.<id>` and follow the Chore wording ("afazer", "cômodo" for a room). |
 | Category | categoria | tipo, área, etiqueta | The ten names are `category.*`; the Chore form label is `chores.form.category.label`. |
 | Demand | exigência | requisito, etiqueta, dificuldade | The four names are `demand.*`; the section heading is "Restrições" and the items name the Demand. On the Chore form the group is "Exigências" (`chores.form.demands.legend`). |
 | Importance | importância | prioridade, urgência | Essential, normal and nice to have are "Essencial", "Normal" and "Desejável" (`importance.*`). Used in `chores.form.importance.*`. |
@@ -43,6 +44,10 @@ Not domain terms, but kept consistent across the copy. CONTEXT.md has no **Remin
 | Password | senha | Not "palavra-passe" (European). Rules are "regras" and a met rule is "cumprida". Used in `signUp.*`, `auth.rule.*`. |
 | Sign in / Sign up / Sign out | entrar / cadastrar-se / sair | "Signed in" is "conectado". Used in `signIn.*`, `signUp.*`, `signedIn.*`. |
 | Code (from the email) | código | Keep the same word on the confirm screen and in the failure texts. |
+| Room | cômodo | Bedroom "quarto", bathroom "banheiro", kitchen "cozinha", living room "sala", laundry area "área de serviço". Used in `catalog.rooms.*`. |
+| Suggested Chores | afazeres sugeridos | What the questionnaire's answers produce and the Resident reviews. Used in `catalog.review.*`. |
+| Pet | animal de estimação | Not "bicho". Used in `catalog.pets.*`. |
+| Outdoor space | área externa | Balcony "varanda", yard "quintal", garden "jardim". Used in `catalog.outdoor.*`. |
 | Timezone | fuso horário | Used in `home.timezone.label`. |
 | Reminders | lembretes | |
 | test notification | notificação de teste | |
