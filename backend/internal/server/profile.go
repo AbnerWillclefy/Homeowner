@@ -69,7 +69,7 @@ func (s *server) putBaseline(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	set := map[time.Weekday]int{}
-	var clear []time.Weekday
+	var cleared []time.Weekday
 	for key, raw := range body {
 		day := slices.Index(weekdayNames[:], key)
 		if day < 0 {
@@ -77,7 +77,7 @@ func (s *server) putBaseline(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if string(raw) == "null" {
-			clear = append(clear, time.Weekday(day))
+			cleared = append(cleared, time.Weekday(day))
 			continue
 		}
 		points, err := strconv.Atoi(string(raw))
@@ -87,7 +87,7 @@ func (s *server) putBaseline(w http.ResponseWriter, r *http.Request) {
 		}
 		set[time.Weekday(day)] = points
 	}
-	if err := s.profile.SetBaseline(r.Context(), currentUser(r.Context()).ID, set, clear); err != nil {
+	if err := s.profile.SetBaseline(r.Context(), currentUser(r.Context()).ID, set, cleared); err != nil {
 		s.profileError(w, "set baseline", err)
 		return
 	}

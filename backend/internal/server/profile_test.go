@@ -4,7 +4,9 @@ import (
 	"context"
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/apitest"
 )
@@ -196,5 +198,132 @@ func TestRestrictionsAreAddedAndRemovedIdempotently(t *testing.T) {
 	}
 	if res := me.Delete("/me/restrictions/heights"); res.Status != http.StatusNoContent {
 		t.Errorf("DELETE of one never set = %d %s, want 204", res.Status, res.Raw)
+	}
+}
+
+func TestProfileRoutesRejectInvalidInputNamingTheField(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := app.SignInAs("a@example.com")
+
+	cases := []struct {
+		name, method, path, body string
+		status                   int
+		mention                  string // the error must name this
+	}{
+		{"unknown weekday", "PUT", "/me/baseline", `{"funday": 3}`, 400, "funday"},
+		{"weekday in capitals", "PUT", "/me/baseline", `{"Monday": 3}`, 400, "Monday"},
+		{"negative", "PUT", "/me/baseline", `{"monday": -1}`, 400, "monday"},
+		{"above the range", "PUT", "/me/baseline", `{"tuesday": 21}`, 400, "tuesday"},
+		{"fraction", "PUT", "/me/baseline", `{"wednesday": 2.5}`, 400, "wednesday"},
+		{"string", "PUT", "/me/baseline", `{"thursday": "5"}`, 400, "thursday"},
+		{"bad day among good ones", "PUT", "/me/baseline", `{"monday": 1, "friday": 99}`, 400, "friday"},
+		{"empty object", "PUT", "/me/baseline", `{}`, 400, "baseline"},
+		{"null body", "PUT", "/me/baseline", `null`, 400, "baseline"},
+		{"empty body", "PUT", "/me/baseline", ``, 400, "JSON"},
+		{"not JSON", "PUT", "/me/baseline", `nope`, 400, "JSON"},
+		{"oversized", "PUT", "/me/baseline", `{"monday": 1, "x": "` + strings.Repeat("a", 5000) + `"}`, 413, "too large"},
+		{"unknown preference value", "PUT", "/me/preferences/kitchen", `{"preference": "love"}`, 400, "preference"},
+		{"missing preference", "PUT", "/me/preferences/kitchen", `{}`, 400, "preference"},
+		{"unknown field", "PUT", "/me/preferences/kitchen", `{"preference": "like", "extra": 1}`, 400, "JSON"},
+		{"empty preference body", "PUT", "/me/preferences/kitchen", ``, 400, "JSON"},
+		{"unknown category", "PUT", "/me/preferences/garage", `{"preference": "like"}`, 404, "category"},
+		{"a demand as category", "PUT", "/me/preferences/heights", `{"preference": "like"}`, 404, "category"},
+		{"unknown demand on add", "PUT", "/me/restrictions/flying", ``, 404, "demand"},
+		{"unknown demand on remove", "DELETE", "/me/restrictions/flying", ``, 404, "demand"},
+		{"a category as demand", "PUT", "/me/restrictions/kitchen", ``, 404, "demand"},
+	}
+	for _, c := range cases {
+		res := me.SendRaw(c.method, c.path, []byte(c.body))
+		msg, _ := res.Body["error"].(string)
+		if res.Status != c.status || !strings.Contains(msg, c.mention) {
+			t.Errorf("%s: %s %s %q = %d %s, want %d naming %q", c.name, c.method, c.path, c.body, res.Status, res.Raw, c.status, c.mention)
+		}
+	}
+
+	// Nothing above may have changed the profile.
+	got := me.Get("/me/profile")
+	for day, v := range baselineOf(t, got) {
+		if v != nil {
+			t.Errorf("baseline[%s] = %v after only rejected requests, want null", day, v)
+		}
+	}
+	if n := countRows(t, app, "user_category_preferences") + countRows(t, app, "user_demand_restrictions"); n != 0 {
+		t.Errorf("%d rows written by rejected requests", n)
+	}
+}
+
+func TestProfileRoutesRequireSignIn(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	bad := http.Header{"Authorization": {"Bearer not-a-token"}}
+
+	routes := []struct{ method, path string }{
+		{"GET", "/me/profile"},
+		{"PUT", "/me/baseline"},
+		{"PUT", "/me/preferences/kitchen"},
+		{"PUT", "/me/restrictions/heights"},
+		{"DELETE", "/me/restrictions/heights"},
+		{"GET", "/categories"},
+		{"GET", "/demands"},
+	}
+	noAuth := apitest.Start(t, apitest.WithoutAuth())
+	for _, r := range routes {
+		for name, header := range map[string]http.Header{"no token": nil, "bad token": bad} {
+			if res := app.Do(r.method, r.path, header); res.Status != http.StatusUnauthorized {
+				t.Errorf("%s %s with %s = %d, want 401", r.method, r.path, name, res.Status)
+			}
+		}
+		res := noAuth.Do(r.method, r.path, http.Header{"Authorization": {"Bearer anything"}})
+		if res.Status != http.StatusServiceUnavailable {
+			t.Errorf("%s %s without a Verifier = %d, want 503", r.method, r.path, res.Status)
+		}
+	}
+}
+
+func TestOneUsersProfileIsInvisibleToAnother(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	a := app.SignInAs("a@example.com")
+	b := app.SignInAs("b@example.com")
+
+	a.Put("/me/baseline", map[string]any{"monday": 7})
+	a.Put("/me/preferences/kitchen", map[string]any{"preference": "like"})
+	a.Put("/me/restrictions/heights", nil)
+	// Same keys for B must not collide with, or overwrite, A's rows.
+	b.Put("/me/baseline", map[string]any{"tuesday": 3})
+	b.Delete("/me/restrictions/heights")
+
+	gotB := b.Get("/me/profile")
+	if bl := baselineOf(t, gotB); bl["monday"] != nil || bl["tuesday"] != float64(3) {
+		t.Errorf("B baseline = %v, want only tuesday 3", bl)
+	}
+	if len(preferencesOf(t, b)) != 0 || len(restrictionsOf(t, b)) != 0 {
+		t.Errorf("B sees A's data: %s", gotB.Raw)
+	}
+	gotA := a.Get("/me/profile")
+	if bl := baselineOf(t, gotA); bl["monday"] != float64(7) || bl["tuesday"] != nil {
+		t.Errorf("A baseline = %v, want only monday 7", bl)
+	}
+	if !reflect.DeepEqual(preferencesOf(t, a), map[string]any{"kitchen": "like"}) || !reflect.DeepEqual(restrictionsOf(t, a), []any{"heights"}) {
+		t.Errorf("A lost data to B's requests: %s", gotA.Raw)
+	}
+}
+
+func TestTheProfilePersistsAcrossSignIns(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	app.SignInAs("a@example.com").Put("/me/baseline", map[string]any{"saturday": 12})
+	app.SignInAs("a@example.com").Put("/me/preferences/pets", map[string]any{"preference": "dislike"})
+	app.SignInAs("a@example.com").Put("/me/restrictions/bending", nil)
+	app.Clock.Advance(48 * time.Hour)
+
+	again := app.SignInAs("a@example.com")
+	res := again.Get("/me/profile")
+	if bl := baselineOf(t, res); bl["saturday"] != float64(12) {
+		t.Errorf("baseline = %v, want saturday 12", bl)
+	}
+	if !reflect.DeepEqual(preferencesOf(t, again), map[string]any{"pets": "dislike"}) || !reflect.DeepEqual(restrictionsOf(t, again), []any{"bending"}) {
+		t.Errorf("profile after signing in again = %s", res.Raw)
 	}
 }

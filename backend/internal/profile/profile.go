@@ -97,8 +97,8 @@ func (s *Store) Load(ctx context.Context, userID string) (Profile, error) {
 }
 
 // SetBaseline sets the points of each day in set and clears each day in
-// clear, in one transaction. Days in neither are untouched.
-func (s *Store) SetBaseline(ctx context.Context, userID string, set map[time.Weekday]int, clear []time.Weekday) error {
+// cleared, in one transaction. Days in neither are untouched.
+func (s *Store) SetBaseline(ctx context.Context, userID string, set map[time.Weekday]int, cleared []time.Weekday) error {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("set baseline: %w", err)
@@ -113,7 +113,7 @@ func (s *Store) SetBaseline(ctx context.Context, userID string, set map[time.Wee
 			return fmt.Errorf("set baseline: %w", err)
 		}
 	}
-	for _, day := range clear {
+	for _, day := range cleared {
 		if _, err := tx.Exec(ctx, `DELETE FROM user_baselines WHERE user_id = $1 AND weekday = $2`, userID, int(day)); err != nil {
 			return fmt.Errorf("clear baseline: %w", err)
 		}
