@@ -53,6 +53,23 @@ future `production/` folder is another thin folder over the same modules.
    be verified"). That is an AWS support step, not a code problem; ask AWS
    Support to enable CloudFront, then re-run the deploy.
 
+7. **Web Push keys (#7)**, once, before the first deploy that includes push.
+   Without them the deploy still works but push stays off (`/push/*` answers 503).
+   ```sh
+   cd backend
+   go run ./cmd/api vapid        # prints VAPID_PUBLIC_KEY=... and VAPID_PRIVATE_KEY=...
+   aws ssm put-parameter --name /homeowner/staging/vapid-private-key \
+     --type SecureString --value '<the private key>'
+   ```
+   Then set the repository variables `VAPID_PUBLIC_KEY` (the public key) and
+   `VAPID_SUBJECT` (a contact the push services can reach, for example
+   `mailto:you@example.com`). The deploy passes them to Terraform as
+   `TF_VAR_vapid_public_key` and `TF_VAR_vapid_subject`. Create the parameter by
+   hand, not in Terraform, so the private key never lands in state. Rotating the
+   pair means a new `put-parameter --overwrite`, new variables and a redeploy;
+   browsers re-subscribe on their next launch. Keep the private key out of
+   chat, tickets and logs.
+
 ## How a deploy works
 
 `.github/workflows/deploy-staging.yml` (named exactly `Deploy staging`) runs on
@@ -130,7 +147,7 @@ terraform force-unlock <lock id>
 |---|---|
 | Lambda function | pay per use |
 | API Gateway HTTP API (+ `$default` stage) | pay per use |
-| SSM standard parameters (2) | free |
+| SSM standard parameters (3: two database URLs, the VAPID private key) | free |
 | AWS Budget | free (first two budgets) |
 | ECR repository | storage (lifecycle keeps the last 5 images) |
 | S3 web bucket | storage and requests |

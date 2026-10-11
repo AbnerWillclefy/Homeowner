@@ -19,8 +19,8 @@ flowchart LR
     S --> N
     S -.->|sign-in| C
     S -.->|LLM calls| A
-    S -.->|nudges| P
-    P -.->|notification| R
+    S -->|Web Push| P
+    P -->|notification| R
 ```
 
 ## Containers
@@ -36,30 +36,31 @@ flowchart LR
     ALLOC["Allocator job (planned)"]
     COG["Cognito (planned)"]
     LLM["Anthropic API (planned)"]
-    PUSH["Web Push (planned)"]
+    PUSH["Browser push services"]
 
     R --> PWA
     PWA -->|HTTPS JSON + CORS| API
     API -->|pgx| DB
+    API -->|Web Push, VAPID| PUSH
+    PUSH --> PWA
     PWA -.->|sign in| COG
     API -.->|verify token| COG
     ALLOC -.->|pgx| DB
     ALLOC -.->|propose plan| LLM
     ALLOC -.->|VAPID| PUSH
-    PUSH -.-> PWA
 
     classDef planned stroke-dasharray: 5 5,color:#666
-    class ALLOC,COG,LLM,PUSH planned
+    class ALLOC,COG,LLM planned
 ```
 
 | Container | Status | Notes |
 |---|---|---|
 | React PWA | Built (skeleton) | Vite + `vite-plugin-pwa`. It has a manifest (standalone display) and a precaching service worker, and its only screen shows the API's `/healthz` status. It reads the API URL from `VITE_API_BASE_URL` at build time. |
-| Go API | Built (skeleton) | One HTTP server, one route (`GET /healthz`). Runs in Docker today; the Lambda wrapper is planned. |
+| Go API | Built (skeleton) | One HTTP server: `GET /healthz` and the `/push/*` routes. Runs in Docker today; the Lambda wrapper is planned. |
 | Postgres | Built locally | Postgres 16 in Docker Compose. Neon in staging and production is planned. |
 | Allocator job | Planned | Second entry point, run on a schedule. See [Daily Allocation](allocation.md). |
 | Cognito | Planned | Sign-in; the API will verify its tokens. |
 | Anthropic API | Planned | The LLM allocator and Day Plan explanations. |
-| Web Push | Planned | Standard Web Push sent from Go with VAPID keys, best-effort ([ADR 0005](../adr/0005-ship-a-react-pwa-not-a-native-app.md)). |
+| Web Push | Built (test send) | Standard Web Push sent from Go with VAPID keys (private key in SSM), best-effort ([ADR 0005](../adr/0005-ship-a-react-pwa-not-a-native-app.md)). The API stores one subscription per device and can send a test notification; scheduled nudges from the Allocator job are planned. |
 
 CORS (cross-origin resource sharing) is how the API tells the browser that the PWA's origin may call it. The allowed origins come from `CORS_ALLOWED_ORIGINS`.
