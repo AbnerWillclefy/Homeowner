@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -40,60 +41,76 @@ func NewStore(db *pgxpool.Pool) *Store { return &Store{db: db} }
 
 // Load returns the whole profile of userID.
 func (s *Store) Load(ctx context.Context, userID string) (Profile, error) {
-	p := Profile{
-		Baseline:     map[time.Weekday]int{},
-		Preferences:  map[string]string{},
-		Restrictions: []string{},
+	ps, err := LoadMany(ctx, s.db, []string{userID})
+	if err != nil {
+		return Profile{}, err
+	}
+	return ps[userID], nil
+}
+
+// Querier is what a pool or a transaction offers for reading.
+type Querier interface {
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+}
+
+// LoadMany returns the whole profile of each of userIDs in three queries, all
+// on q so a caller can read them in its own snapshot. Every id is in the
+// result, with an empty Profile when the User has set nothing.
+func LoadMany(ctx context.Context, q Querier, userIDs []string) (map[string]Profile, error) {
+	out := make(map[string]Profile, len(userIDs))
+	for _, id := range userIDs {
+		out[id] = Profile{
+			Baseline:     map[time.Weekday]int{},
+			Preferences:  map[string]string{},
+			Restrictions: []string{},
+		}
 	}
 
-	rows, err := s.db.Query(ctx, `SELECT weekday, points FROM user_baselines WHERE user_id = $1`, userID)
+	type baseline struct {
+		user        string
+		day, points int
+	}
+	bs, err := collect(ctx, q, `SELECT user_id, weekday, points FROM user_baselines WHERE user_id = ANY($1)`, userIDs,
+		func(r pgx.CollectableRow) (b baseline, err error) { return b, r.Scan(&b.user, &b.day, &b.points) })
 	if err != nil {
-		return Profile{}, fmt.Errorf("load baseline: %w", err)
+		return nil, fmt.Errorf("load baseline: %w", err)
 	}
-	for rows.Next() {
-		var day, points int
-		if err := rows.Scan(&day, &points); err != nil {
-			rows.Close()
-			return Profile{}, fmt.Errorf("scan baseline: %w", err)
-		}
-		p.Baseline[time.Weekday(day)] = points
-	}
-	if err := rows.Err(); err != nil {
-		return Profile{}, fmt.Errorf("load baseline: %w", err)
+	for _, b := range bs {
+		out[b.user].Baseline[time.Weekday(b.day)] = b.points
 	}
 
-	rows, err = s.db.Query(ctx, `SELECT category, preference FROM user_category_preferences WHERE user_id = $1`, userID)
+	type preference struct{ user, category, preference string }
+	prefs, err := collect(ctx, q, `SELECT user_id, category, preference FROM user_category_preferences WHERE user_id = ANY($1)`, userIDs,
+		func(r pgx.CollectableRow) (p preference, err error) {
+			return p, r.Scan(&p.user, &p.category, &p.preference)
+		})
 	if err != nil {
-		return Profile{}, fmt.Errorf("load preferences: %w", err)
+		return nil, fmt.Errorf("load preferences: %w", err)
 	}
-	for rows.Next() {
-		var category, preference string
-		if err := rows.Scan(&category, &preference); err != nil {
-			rows.Close()
-			return Profile{}, fmt.Errorf("scan preference: %w", err)
-		}
-		p.Preferences[category] = preference
-	}
-	if err := rows.Err(); err != nil {
-		return Profile{}, fmt.Errorf("load preferences: %w", err)
+	for _, p := range prefs {
+		out[p.user].Preferences[p.category] = p.preference
 	}
 
-	rows, err = s.db.Query(ctx, `SELECT demand FROM user_demand_restrictions WHERE user_id = $1`, userID)
+	type restriction struct{ user, demand string }
+	rs, err := collect(ctx, q, `SELECT user_id, demand FROM user_demand_restrictions WHERE user_id = ANY($1)`, userIDs,
+		func(r pgx.CollectableRow) (x restriction, err error) { return x, r.Scan(&x.user, &x.demand) })
 	if err != nil {
-		return Profile{}, fmt.Errorf("load restrictions: %w", err)
+		return nil, fmt.Errorf("load restrictions: %w", err)
 	}
-	for rows.Next() {
-		var demand string
-		if err := rows.Scan(&demand); err != nil {
-			rows.Close()
-			return Profile{}, fmt.Errorf("scan restriction: %w", err)
-		}
-		p.Restrictions = append(p.Restrictions, demand)
+	for _, x := range rs {
+		p := out[x.user]
+		p.Restrictions = append(p.Restrictions, x.demand)
+		out[x.user] = p
 	}
-	if err := rows.Err(); err != nil {
-		return Profile{}, fmt.Errorf("load restrictions: %w", err)
+	return out, nil
+}
+
+func collect[T any](ctx context.Context, q Querier, sql string, userIDs []string, scan pgx.RowToFunc[T]) ([]T, error) {
+	rows, err := q.Query(ctx, sql, userIDs)
+	if err != nil {
+		return nil, err
 	}
-	return p, nil
+	return pgx.CollectRows(rows, scan)
 }
 
 // SetBaseline sets the points of each day in set and clears each day in
