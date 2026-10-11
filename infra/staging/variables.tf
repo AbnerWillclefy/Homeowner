@@ -15,7 +15,7 @@ variable "budget_email" {
 }
 
 variable "cors_allowed_origins" {
-  description = "Comma-separated browser origins allowed to call the API. Empty until the web app has a domain (#6)."
+  description = "Extra comma-separated browser origins allowed to call the API, for example http://localhost:5173. The staging CloudFront origin is always added."
   type        = string
   default     = ""
 }

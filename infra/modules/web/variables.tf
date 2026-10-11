@@ -1,0 +1,9 @@
+variable "bucket_name" {
+  description = "Name of the private S3 bucket holding the built web app. Bucket names are global, so include the account id."
+  type        = string
+}
+
+variable "name" {
+  description = "Name used for the Origin Access Control and the distribution comment."
+  type        = string
+}

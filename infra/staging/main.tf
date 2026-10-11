@@ -41,6 +41,17 @@ module "database" {
   ssm_path_prefix = local.ssm_prefix
 }
 
+data "aws_caller_identity" "current" {}
+
+# The PWA on S3 + CloudFront. The API trusts its origin (CORS_ALLOWED_ORIGINS);
+# CloudFront does not depend on the API, so there is no cycle.
+module "web" {
+  source = "../modules/web"
+
+  name        = "${local.name_prefix}-web"
+  bucket_name = "${local.name_prefix}-web-${data.aws_caller_identity.current.account_id}"
+}
+
 module "api" {
   source = "../modules/lambda-container"
 
@@ -51,7 +62,7 @@ module "api" {
   environment = {
     PORT                           = "8080"
     DB_MAX_CONNS                   = "2"
-    CORS_ALLOWED_ORIGINS           = var.cors_allowed_origins
+    CORS_ALLOWED_ORIGINS           = join(",", compact(["https://${module.web.domain_name}", var.cors_allowed_origins]))
     DATABASE_URL_SSM_PARAM         = module.database.database_url_param
     MIGRATE_DATABASE_URL_SSM_PARAM = module.database.migrate_database_url_param
   }
