@@ -74,6 +74,16 @@ npm run preview             # serve the build to test the manifest and install
 
 CI runs `npm ci`, `npm run typecheck` and `npm run build` on every pull request.
 
+### Look and feel
+
+Styling is Tailwind CSS v4 over semantic colour tokens (`bg-surface`, `text-muted`; raw
+palette classes do not compile and a test fails on them). The appearance is System,
+Light or Dark, chosen in the Settings section at the bottom of the home screen and
+remembered on the device under `homeowner.theme`. A new screen must be checked by hand
+in both themes and at the largest text size; see
+[The React PWA](docs/architecture/web.md#ui-layer) and
+[ADR 0007](docs/adr/0007-tailwind-and-radix-for-an-accessible-calm-ui.md).
+
 ### Configuration
 
 `VITE_API_BASE_URL` (required) is the API's base URL. It is read at build time,
