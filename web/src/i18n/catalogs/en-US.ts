@@ -97,6 +97,47 @@ export const enUS = {
   "install.step4": "Close Safari and open Homeowner from its new icon on your Home Screen.",
   "install.outro": "Once you open Homeowner from the icon, this page will let you turn on reminders.",
 
+  // Profile
+  "profile.heading": "Your profile",
+  "profile.intro":
+    "Homeowner uses this to share the housework fairly: it gives you fewer Chores on tiring days and avoids the work you dislike or cannot do. It stays with you if you move to another Home.",
+  "profile.loading": "Loading your profile...",
+  "profile.offline": "Could not reach the service, so your profile is not shown. Check your connection and try again.",
+  "profile.error": "Something went wrong loading your profile. Try again in a moment.",
+  "profile.notSignedIn": "You are not signed in any more. Sign in again to see your profile.",
+  "profile.retry": "Try again",
+  "profile.saved": "Saved.",
+  "profile.saveFailed": "Could not save your change, so it was undone. Check your connection and try again.",
+  "profile.saveFailed.notSignedIn": "You are not signed in any more, so your change was undone. Sign in again.",
+  "profile.baseline.heading": "Baseline",
+  "profile.baseline.explain":
+    "A point is a unit of Effort, which is how draining a piece of work is, from 1 to 5. Your Baseline is the Energy you can usually give on each day, in those points; leave a day empty if you are not sure yet.",
+  "profile.baseline.hint": "A whole number from 0 to 20. It is saved when you leave the field.",
+  "profile.baseline.invalid": "Enter a whole number from 0 to 20, or leave it empty.",
+  "profile.preferences.heading": "Preferences",
+  "profile.preferences.intro":
+    "Say which kinds of work you like or dislike. Chores you dislike go to you less often, but never at the cost of what is essential. Anything you leave alone is neutral.",
+  "profile.preference.like": "Like",
+  "profile.preference.neutral": "Neutral",
+  "profile.preference.dislike": "Dislike",
+  "profile.restrictions.heading": "Restrictions",
+  "profile.restrictions.intro":
+    "Tick what your body cannot do. Chores that ask for it are never given to you. Untick it when that changes.",
+  "category.kitchen": "Kitchen",
+  "category.bathroom": "Bathroom",
+  "category.bedroom": "Bedroom",
+  "category.living_room": "Living room",
+  "category.laundry": "Laundry",
+  "category.floors": "Floors",
+  "category.trash": "Trash",
+  "category.outdoor": "Outdoor",
+  "category.pets": "Pets",
+  "category.other": "Other",
+  "demand.heavy_lifting": "Heavy lifting",
+  "demand.bending": "Bending",
+  "demand.heights": "Heights",
+  "demand.strong_chemicals": "Strong chemicals",
+
   // Settings
   "settings.heading": "Settings",
   "settings.appearance.label": "Appearance",

@@ -2,6 +2,7 @@ import { SignedIn } from "./auth/SignedIn";
 import { SignedOutFlow } from "./auth/SignedOutFlow";
 import { useAuth } from "./auth/useAuth";
 import { HomeSection } from "./home/HomeSection";
+import { Profile } from "./profile/Profile";
 import { Reminders } from "./push/Reminders";
 import { useI18n, type MessageKey } from "./i18n";
 import { Settings } from "./settings/Settings";
@@ -43,6 +44,7 @@ export default function App() {
           <Reminders />
           {/* The Home calls protected routes too, so it also exists only while signed in. */}
           <HomeSection />
+          <Profile />
         </>
       )}
 

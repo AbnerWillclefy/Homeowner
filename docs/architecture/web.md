@@ -12,8 +12,9 @@ The PWA is one Vite app in `web/`, installed to the Home Screen. It has a precac
 | `src/theme/` | Built | Appearance: System, Light or Dark, and applying it. Detailed under UI layer. |
 | `src/settings/` | Built | The Settings section at the bottom of the home screen. |
 | `src/auth/` | Built | Sign-up, confirmation, sign-in and token handling against Cognito. |
-| `src/api/` | Built | The API client: `authedFetch` and the typed calls to `/me`, `/push/*` and `/home`. |
+| `src/api/` | Built | The API client: `authedFetch` and the typed calls to `/me`, the profile routes (`/me/profile`, `/categories`, `/demands`), `/push/*` and `/home`. |
 | `src/home/` | Built | The Home section: create form and settings form for the Home's timezone and Allocation time. Detailed below. |
+| `src/profile/` | Built | The Profile section for signed-in Users: Baseline per weekday (saved on blur), Preference per Category and Restrictions on Demands. Each control saves on its own, optimistically, and is undone with a visible message if the API refuses. The Category and Demand lists come from the API; an id with no translation shows as the id. Logic is in pure modules (`baselineInput`, `changes`, `labels`, `weekdays`); `useProfile` holds the state. |
 | `src/push/` | Built | The reminders controls and Web Push subscription. |
 | `src/sw.ts`, `src/sw/` | Built | The service worker: precache and push handling. |
 

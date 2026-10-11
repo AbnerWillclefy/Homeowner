@@ -1,3 +1,5 @@
+# agent-review-fix.yml triggers on this exact name. Renaming it silently stops the fix stage,
+# so change the `workflows:` trigger there in the same PR.
 name: Claude Code Review
 
 on:
@@ -41,10 +43,15 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
-          plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
-          claude_args: '--allowedTools "mcp__github_inline_comment__create_inline_comment"'
+          prompt: |
+            /thermo-nuclear-code-quality-review Review pull request #${{ github.event.pull_request.number }} in ${{ github.repository }}. Read it with `gh pr view` and `gh pr diff`. The checkout is shallow, so git cannot produce the diff.
+
+            When the review is done, post each finding as one inline comment with mcp__github_inline_comment__create_inline_comment, anchored to a file and a line inside the diff. If a finding concerns code outside the diff, anchor it to the changed line that causes it. Each comment states the problem and the concrete change wanted, because an unattended engineer applies them without asking questions. Post at most 10, the most valuable ones, and no summary comment.
+
+            If nothing is worth raising, post one short comment with `gh pr comment` saying so.
+          claude_args: |
+            --max-turns 40
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff *),Bash(gh pr view *),Bash(gh pr comment *)"
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
