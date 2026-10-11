@@ -17,7 +17,8 @@ export function HomeSection() {
   const { state, reload, setHome } = useHome();
   const { t } = useI18n();
   // Set when a create found an existing Home; cleared by the next save so it never outlives its moment.
-  const [recovered, setRecovered] = useState(false);
+  // `chores-dropped` is a create whose reviewed Chores were not added, because the Home already existed.
+  const [recovered, setRecovered] = useState<"no" | "plain" | "chores-dropped">("no");
 
   if (state.kind === "loading") return <p role="status">{t("home.loading")}</p>;
 
@@ -41,8 +42,8 @@ export function HomeSection() {
     return (
       <CreateHome
         onSaved={setHome}
-        onRecovered={(home: Home) => {
-          setRecovered(true);
+        onRecovered={(home: Home, choresDropped: boolean) => {
+          setRecovered(choresDropped ? "chores-dropped" : "plain");
           setHome(home);
         }}
       />
@@ -51,12 +52,14 @@ export function HomeSection() {
 
   return (
     <>
-      {recovered && <p role="status">{t("home.create.recovered")}</p>}
+      {recovered !== "no" && (
+        <p role="status">{t(recovered === "chores-dropped" ? "home.create.recovered.chores" : "home.create.recovered")}</p>
+      )}
       <HomeSettingsForm
         key={state.home.id}
         home={state.home}
         onSaved={(home: Home) => {
-          setRecovered(false);
+          setRecovered("no");
           setHome(home);
         }}
       />

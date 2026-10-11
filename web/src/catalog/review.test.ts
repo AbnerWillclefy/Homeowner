@@ -3,7 +3,7 @@ import type { CatalogEntry, Proposal } from "../api/catalog";
 import type { ChoreWire } from "../api/chores";
 import type { Translate } from "../i18n";
 import { enUS } from "../i18n/catalogs/en-US";
-import { formFromEntry, itemsFromProposals, keepLocally, splitSaveErrors, toWire } from "./review";
+import { afterQuestions, errorsStillApply, formFromEntry, itemsFromProposals, keepLocally, previewOf, splitSaveErrors, toWire } from "./review";
 
 const english: Translate = (key) => String(enUS[key]);
 
@@ -38,6 +38,44 @@ describe("itemsFromProposals", () => {
     const items = itemsFromProposals(PROPOSALS, english);
     expect(new Set(items.map((item) => item.key)).size).toBe(3);
     expect(items[2]!.form).toMatchObject({ intervalDays: "7", allowedWeekdays: [2, 5], buildsUp: true, category: "bathroom" });
+  });
+});
+
+describe("errorsStillApply", () => {
+  const items = itemsFromProposals(PROPOSALS, english);
+  const errors: Record<number, Record<string, string>> = { [items[0]!.key]: { name: "required" }, [items[1]!.key]: { category: "unknown" } };
+
+  it("drops the errors of an item that was edited or removed and keeps the others", () => {
+    const edited = [{ ...items[0]!, form: { ...items[0]!.form, name: "Fixed" } }, items[1]!, items[2]!];
+    expect(errorsStillApply(errors, items, edited)).toEqual({ [items[1]!.key]: { category: "unknown" } });
+    expect(errorsStillApply(errors, items, [items[0]!, items[2]!])).toEqual({ [items[0]!.key]: { name: "required" } });
+  });
+});
+
+describe("afterQuestions", () => {
+  it("proposes when there is no list yet, or the list was skipped", () => {
+    expect(afterQuestions("{}", null)).toBe("propose");
+    expect(afterQuestions("{}", { proposedFor: null, edited: false })).toBe("propose");
+  });
+
+  it("keeps the reviewed list, edits and all, when the answers are unchanged", () => {
+    expect(afterQuestions('{"outdoor":"yard"}', { proposedFor: '{"outdoor":"yard"}', edited: true })).toBe("review");
+  });
+
+  it("regenerates silently when changed answers would discard no edits", () => {
+    expect(afterQuestions("{}", { proposedFor: '{"outdoor":"yard"}', edited: false })).toBe("propose");
+  });
+
+  it("asks first when changed answers would discard edits", () => {
+    expect(afterQuestions("{}", { proposedFor: '{"outdoor":"yard"}', edited: true })).toBe("confirm");
+  });
+});
+
+describe("previewOf", () => {
+  it("reads an item as a Chore, with a blank interval as one-off", () => {
+    const [item] = itemsFromProposals(PROPOSALS, english);
+    expect(previewOf(item!)).toEqual({ name: "Clean the bathroom 1", ...FIELDS });
+    expect(previewOf({ ...item!, form: { ...item!.form, intervalDays: "" } }).intervalDays).toBeNull();
   });
 });
 

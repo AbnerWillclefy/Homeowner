@@ -1,5 +1,5 @@
 import type { CatalogEntry, Proposal } from "../api/catalog";
-import type { ChoreWire, SaveChoreResult } from "../api/chores";
+import type { ChoreInput, ChoreWire, SaveChoreResult } from "../api/chores";
 import type { FieldCodes } from "../api/home";
 import type { Translate } from "../i18n";
 import { formFromChore, toChoreInput, type ChoreFormState } from "../chores/form";
@@ -25,6 +25,44 @@ export function itemsFromProposals(proposals: readonly Proposal[], t: Translate)
       name: catalogName(proposal.catalogId, proposal.instance, proposal.name, t),
     },
   }));
+}
+
+/** The API's refusals that still apply after the list changed: an item that was edited or removed has answered its own. */
+export function errorsStillApply(
+  errors: Readonly<Record<number, FieldCodes>>,
+  before: readonly ReviewItem[],
+  after: readonly ReviewItem[],
+): Record<number, FieldCodes> {
+  const kept: Record<number, FieldCodes> = {};
+  for (const item of after) {
+    const old = before.find((b) => b.key === item.key);
+    const itemErrors = errors[item.key];
+    if (old && old.form === item.form && itemErrors) kept[item.key] = itemErrors;
+  }
+  return kept;
+}
+
+export interface Reviewed {
+  /** The request body the list was proposed for, as text; null when the list did not come from answers. */
+  proposedFor: string | null;
+  /** Whether the Resident has edited or removed anything since. */
+  edited: boolean;
+}
+
+/**
+ * What continuing from the questionnaire does. The same answers keep the list as reviewed; changed answers
+ * regenerate it, which throws away edits, so that asks first.
+ */
+export function afterQuestions(answersKey: string, reviewed: Reviewed | null): "propose" | "confirm" | "review" {
+  if (reviewed === null || reviewed.proposedFor === null) return "propose";
+  if (reviewed.proposedFor === answersKey) return "review";
+  return reviewed.edited ? "confirm" : "propose";
+}
+
+/** An item as a Chore, to describe it in the list. A blank or unreadable interval reads as one-off. */
+export function previewOf(item: ReviewItem): ChoreInput {
+  const { intervalDays, ...rest } = toChoreInput(item.form);
+  return { ...rest, intervalDays: typeof intervalDays === "number" ? intervalDays : null };
 }
 
 /** The Chores to send with the new Home, in list order. */

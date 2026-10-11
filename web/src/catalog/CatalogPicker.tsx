@@ -1,0 +1,78 @@
+import { useEffect, useRef } from "react";
+import type { CatalogEntry } from "../api/catalog";
+import type { Failure } from "../api/chores";
+import { choreFacts } from "../chores/facts";
+import { useI18n, type MessageKey } from "../i18n";
+import { catalogName } from "./name";
+import { useCatalog } from "./useCatalog";
+
+const LOAD_FAILURE_KEY: Record<Failure["kind"], MessageKey> = {
+  offline: "chores.catalog.load.offline",
+  error: "chores.catalog.load.error",
+  "not-signed-in": "chores.notSignedIn",
+};
+
+interface Props {
+  onPick(entry: CatalogEntry): void;
+  onClose(): void;
+}
+
+/** The Catalog's Chores to pick from. Picking one hands it on to be pre-filled and saved like any new Chore. */
+export function CatalogPicker({ onPick, onClose }: Props) {
+  const { t, locale } = useI18n();
+  const { state, reload } = useCatalog();
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  // The picker appears in place of a button, so move the reader to it.
+  useEffect(() => headingRef.current?.focus(), []);
+
+  return (
+    <section aria-labelledby="catalog-picker-heading">
+      <h3 id="catalog-picker-heading" ref={headingRef} tabIndex={-1}>
+        {t("chores.catalog.heading")}
+      </h3>
+      <p>{t("chores.catalog.intro")}</p>
+
+      {state.kind === "loading" && <p role="status">{t("chores.catalog.loading")}</p>}
+
+      {state.kind === "failed" && (
+        <>
+          <p role="alert" className="text-danger">
+            {t(LOAD_FAILURE_KEY[state.reason])}
+          </p>
+          {state.reason !== "not-signed-in" && (
+            <button type="button" className="btn" onClick={reload}>
+              {t("chores.retry")}
+            </button>
+          )}
+        </>
+      )}
+
+      {state.kind === "ready" && (
+        <ul className="p-0">
+          {state.entries.map((entry) => {
+            const name = catalogName(entry.id, null, entry.name, t);
+            return (
+              <li key={entry.id} className="list-none ps-0">
+                <h4 className="font-semibold">{name}</h4>
+                <p className="text-muted">{[...choreFacts(entry, t, locale), ...(entry.perRoom ? [t("chores.catalog.perRoom")] : [])].join(" · ")}</p>
+                <button
+                  type="button"
+                  className="btn"
+                  aria-label={t("chores.catalog.add.label", { name })}
+                  onClick={() => onPick(entry)}
+                >
+                  {t("chores.catalog.add")}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <button type="button" className="btn" onClick={onClose}>
+        {t("chores.catalog.close")}
+      </button>
+    </section>
+  );
+}

@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { deleteChore, type Chore, type Failure } from "../api/chores";
-import { WEEKDAYS } from "../api/profile";
 import { useI18n } from "../i18n";
-import { categoryLabel, importanceLabel, type Label } from "../profile/labels";
-import { DISPLAY_WEEKDAYS, weekdayLabel } from "../profile/weekdays";
 import { DELETE_FAILURE_KEY } from "./failureMessages";
+import { choreFacts } from "./facts";
 
 type DeleteState =
   | { kind: "idle" }
@@ -31,25 +29,7 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
     if (confirming) keepRef.current?.focus();
   }, [confirming]);
 
-  const text = (label: Label) => ("key" in label ? t(label.key) : label.text);
-  const weekdays = DISPLAY_WEEKDAYS.filter((day) => chore.allowedWeekdays.includes(WEEKDAYS.indexOf(day)))
-    .map((day) => weekdayLabel(day, locale))
-    .join(", ");
-  const repeat =
-    chore.intervalDays === null
-      ? t("chores.item.once")
-      : chore.intervalDays === 1
-        ? t("chores.item.daily")
-        : t("chores.item.every", { days: chore.intervalDays });
-  const facts = [
-    text(categoryLabel(chore.category)),
-    t("chores.item.effort", { effort: chore.baseEffort }),
-    text(importanceLabel(chore.importance)),
-    t(chore.people === 2 ? "chores.item.people.two" : "chores.item.people.one"),
-    repeat,
-    ...(weekdays ? [t("chores.item.weekdays", { days: weekdays })] : []),
-    ...(chore.buildsUp ? [t("chores.item.buildsUp")] : []),
-  ];
+  const facts = choreFacts(chore, t, locale);
 
   async function confirmDelete() {
     setRemove({ kind: "deleting" });
