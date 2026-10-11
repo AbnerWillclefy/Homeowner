@@ -147,6 +147,8 @@ type Result struct {
 // Allocator proposes a Day Plan. Baseline is one; the LLM allocator will be
 // another behind the same interface.
 type Allocator interface {
+	// Name goes in the run record of every plan this Allocator makes.
+	Name() string
 	Plan(State) (Result, error)
 }
 
