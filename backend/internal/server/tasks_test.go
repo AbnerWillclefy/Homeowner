@@ -328,6 +328,26 @@ func TestFinishedRecurringChoreComesBackAtBaseEffort(t *testing.T) {
 	}
 }
 
+func TestDatabaseRejectsATaskDoneWithoutAClosingDateOrOpenWithOne(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := homeWithResident(t, app, "a@example.com")
+	atDay(app, 4)
+	id := createChore(t, me, recurring("Bathroom", 4, 2, true))
+	if l := pool(t, me); len(l) != 1 {
+		t.Fatalf("pool = %v, want the chore's Task", l)
+	}
+	for name, set := range map[string]string{
+		"done without closed_on": `status = 'done', closed_on = NULL`,
+		"open with closed_on":    `status = 'open', closed_on = '2026-03-04'`,
+	} {
+		if _, err := app.DB.Exec(context.Background(),
+			`UPDATE tasks SET `+set+` WHERE chore_id = $1`, id); err == nil {
+			t.Errorf("%s: update accepted, want the CHECK to reject it", name)
+		}
+	}
+}
+
 func TestParallelRefreshesLeaveOneOpenTaskPerChore(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)

@@ -13,7 +13,8 @@ CREATE TABLE tasks (
     window_end     date        NOT NULL CHECK (window_end >= window_start),
     current_effort smallint    NOT NULL CHECK (current_effort BETWEEN 1 AND 5),
     created_at     timestamptz NOT NULL,
-    closed_on      date
+    closed_on      date,
+    CHECK ((status = 'done') = (closed_on IS NOT NULL))
 );
 
 CREATE UNIQUE INDEX tasks_one_open_per_chore_idx ON tasks (chore_id) WHERE status = 'open';
