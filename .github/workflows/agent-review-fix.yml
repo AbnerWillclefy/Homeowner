@@ -20,15 +20,30 @@ jobs:
       PR: ${{ github.event.workflow_run.pull_requests[0].number }}
       GH_TOKEN: ${{ secrets.AGENTS_GH_TOKEN }}
     steps:
-      - name: Skip pull requests already addressed, and human pull requests
+      - name: Fix only agent pull requests with findings, at most two rounds
         id: gate
+        env:
+          REPO: ${{ github.repository }}
+          REVIEW_STARTED: ${{ github.event.workflow_run.created_at }}
+          MAX_ROUNDS: 2
         run: |
-          pr=$(gh pr view "$PR" -R "${{ github.repository }}" --json labels,author --jq '{labels: ([.labels[].name] | join(",")), author: .author.login}')
-          labels=$(jq -r .labels <<<"$pr"); author=$(jq -r .author <<<"$pr")
+          echo "run=false" >> "$GITHUB_OUTPUT"
           # A human's pull request is a learning exercise: they apply the review themselves
-          if [[ ",$labels," == *",review-addressed,"* ]] || [ "$author" != "homeowner-agents" ]; then
-            echo "run=false" >> "$GITHUB_OUTPUT"
+          author=$(gh pr view "$PR" -R "$REPO" --json author --jq .author.login)
+          [ "$author" = "homeowner-agents" ] || exit 0
+
+          findings=$(gh api "repos/$REPO/pulls/$PR/comments" --paginate \
+            --jq ".[] | select(.user.login == \"claude[bot]\" and .in_reply_to_id == null and .created_at >= \"$REVIEW_STARTED\") | .id" | wc -l)
+          round=$(gh pr view "$PR" -R "$REPO" --json labels --jq '[.labels[].name | select(startswith("review-round-"))] | length')
+
+          if [ "$findings" -eq 0 ]; then
+            gh pr edit "$PR" -R "$REPO" --add-label review-addressed
+          elif [ "$round" -ge "$MAX_ROUNDS" ]; then
+            gh pr edit "$PR" -R "$REPO" --add-label needs-human
           else
+            # Labelled before the fix pushes, so the re-review it triggers sees the round
+            gh pr edit "$PR" -R "$REPO" --remove-label review-addressed || true
+            gh pr edit "$PR" -R "$REPO" --add-label "review-round-$((round + 1))"
             echo "run=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -62,8 +77,9 @@ jobs:
 
             Acting as the engineer who owns the change (backend-engineer or frontend-engineer), apply each finding that is correct, keeping the tests green, and commit and push to the pull request's branch. For each finding you reject, reply to it with the reason.
 
-            Then comment on the pull request with what you changed and what you rejected, and add the label `review-addressed`. If the review left no findings, just add the label.
+            Then comment on the pull request with what you changed and what you rejected. Do not add or remove labels: the workflow does.
           claude_args: |
             --max-turns 80
             --allowedTools "Skill,Edit,Write,Bash(git *),Bash(go *),Bash(gofmt *),Bash(docker *),Bash(npm *),Bash(npx *),Bash(make *),Bash(gh pr *),Bash(gh api *)"
             --disallowedTools "Bash(git push --force *),Bash(git push -f *),Bash(gh pr merge *)"
+
