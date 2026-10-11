@@ -1,0 +1,93 @@
+name: Agent - Resolve conflicts
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  find:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      prs: ${{ steps.list.outputs.prs }}
+    env:
+      GH_TOKEN: ${{ secrets.AGENTS_GH_TOKEN }}
+    steps:
+      - name: List the agents' pull requests that conflict with main
+        id: list
+        run: |
+          # GitHub computes mergeability lazily after a push, so retry while any is UNKNOWN
+          for attempt in 1 2 3 4 5 6; do
+            prs=$(gh pr list -R "$GITHUB_REPOSITORY" --state open --author homeowner-agents --json number,mergeable)
+            jq -e 'any(.[]; .mergeable == "UNKNOWN")' <<<"$prs" >/dev/null || break
+            sleep 20
+          done
+          echo "prs=$(jq -c '[.[] | select(.mergeable == "CONFLICTING") | .number]' <<<"$prs")" >> "$GITHUB_OUTPUT"
+
+  resolve:
+    needs: find
+    if: needs.find.outputs.prs != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        pr: ${{ fromJson(needs.find.outputs.prs) }}
+    # Same group as the review stage, so the two never push to one branch at once
+    concurrency:
+      group: agent-pr-${{ matrix.pr }}
+      cancel-in-progress: false
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GH_TOKEN: ${{ secrets.AGENTS_GH_TOKEN }}
+    steps:
+      - id: head
+        run: echo "ref=$(gh pr view ${{ matrix.pr }} -R "$GITHUB_REPOSITORY" --json headRefName --jq .headRefName)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.head.outputs.ref }}
+          fetch-depth: 0
+          token: ${{ secrets.AGENTS_GH_TOKEN }}
+
+      - name: Identify the agents' git author
+        run: |
+          git config user.name "Homeowner Agents"
+          git config user.email "${{ vars.AGENTS_GIT_EMAIL }}"
+
+      # Merge, never rebase: a rebase needs a force push, which the agents may not do
+      - name: Merge main
+        id: merge
+        run: |
+          if git merge --no-edit origin/main; then
+            git push
+            echo "conflicts=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "conflicts=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.merge.outputs.conflicts == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.AGENTS_GH_TOKEN }}
+          show_full_output: true
+          plugin_marketplaces: "https://github.com/anthropics/claude-plugins-official.git"
+          plugins: "mattpocock-skills@claude-plugins-official"
+          prompt: |
+            This is an unattended run that ends when you stop: run every subagent in the foreground and wait for its result, never in the background.
+
+            Pull request #${{ matrix.pr }} in ${{ github.repository }} conflicts with main. `git merge origin/main` is in progress in this checkout with conflicts. Read the pull request with `gh pr view ${{ matrix.pr }}` to know its intent.
+
+            Acting as the engineer who owns the change (backend-engineer or frontend-engineer), resolve every conflict keeping both main's changes and the pull request's intent. If both sides added a migration with the same number, renumber the pull request's one past main's latest. Run the tests for the touched area, fix what the merge broke, conclude the merge with `git commit --no-edit`, and push.
+
+            Then comment on the pull request with what conflicted and how you resolved it. If a conflict cannot be resolved without a product or design decision, run `git merge --abort`, comment the question on the pull request, and stop.
+          claude_args: |
+            --max-turns 80
+            --allowedTools "Skill,Edit,Write,Bash(git *),Bash(go *),Bash(gofmt *),Bash(docker *),Bash(npm *),Bash(npx *),Bash(make *),Bash(gh pr view *),Bash(gh pr comment *)"
+            --disallowedTools "Bash(git push --force *),Bash(git push -f *),Bash(git rebase *),Bash(gh pr merge *)"
