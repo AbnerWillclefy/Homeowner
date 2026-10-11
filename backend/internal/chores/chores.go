@@ -221,15 +221,20 @@ func ListIn(ctx context.Context, q Querier, homeID string) ([]Chore, error) {
 	return out, rows.Err()
 }
 
+// insertChore adds one Chore to a Home; insertArgs supplies its arguments.
+const insertChore = `
+	INSERT INTO chores (home_id, name, category, demands, base_effort, importance, people,
+		interval_days, allowed_weekdays, builds_up, created_at, updated_at)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11)`
+
+func insertArgs(homeID string, f Fields, now time.Time) []any {
+	return []any{homeID, f.Name, f.Category, f.Demands, f.BaseEffort, f.Importance, f.People,
+		f.IntervalDays, f.AllowedWeekdays, f.BuildsUp, now}
+}
+
 // Create stores a new Chore in the Home.
 func (s *Store) Create(ctx context.Context, homeID string, f Fields, now time.Time) (Chore, error) {
-	c, err := scan(s.db.QueryRow(ctx, `
-		INSERT INTO chores (home_id, name, category, demands, base_effort, importance, people,
-			interval_days, allowed_weekdays, builds_up, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11)
-		RETURNING `+columns,
-		homeID, f.Name, f.Category, f.Demands, f.BaseEffort, f.Importance, f.People,
-		f.IntervalDays, f.AllowedWeekdays, f.BuildsUp, now))
+	c, err := scan(s.db.QueryRow(ctx, insertChore+` RETURNING `+columns, insertArgs(homeID, f, now)...))
 	if err != nil {
 		return Chore{}, fmt.Errorf("create chore: %w", err)
 	}
@@ -245,13 +250,7 @@ type Execer interface {
 // its own transaction. All get the same creation time.
 func InsertAll(ctx context.Context, ex Execer, homeID string, fs []Fields, now time.Time) error {
 	for _, f := range fs {
-		_, err := ex.Exec(ctx, `
-			INSERT INTO chores (home_id, name, category, demands, base_effort, importance, people,
-				interval_days, allowed_weekdays, builds_up, created_at, updated_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11)`,
-			homeID, f.Name, f.Category, f.Demands, f.BaseEffort, f.Importance, f.People,
-			f.IntervalDays, f.AllowedWeekdays, f.BuildsUp, now)
-		if err != nil {
+		if _, err := ex.Exec(ctx, insertChore, insertArgs(homeID, f, now)...); err != nil {
 			return fmt.Errorf("insert chore: %w", err)
 		}
 	}
