@@ -11,6 +11,7 @@ modules/
   http-api/          API Gateway HTTP API in front of a Lambda
   neon-branch/       Neon branch, role, database, endpoint; connection strings into SSM
   web/               private S3 bucket behind CloudFront (default HTTPS domain, SPA fallback)
+  auth/              Cognito user pool and the PWA's app client (sign-in)
   budget/            account-wide monthly AWS Budget with email alerts
 staging/     thin folder wiring the modules together (state in S3)
 ```
@@ -38,6 +39,10 @@ future `production/` folder is another thin folder over the same modules.
    extended the deploy role with permissions for the `homeowner-staging-web-*`
    bucket and CloudFront; until the maintainer re-applies (same command, same
    local state), the first deploy on `main` fails with AccessDenied.
+
+   **Sign-in (#8) needs this re-apply too, before the deploy that follows its
+   merge:** the deploy role gains `cognito-idp:*` on user pools of the account and
+   region, and without it the first deploy fails creating the user pool.
 4. **GitHub settings** (repository, Settings, Secrets and variables, Actions):
    - variables `AWS_REGION`, `AWS_DEPLOY_ROLE_ARN` (output `deploy_role_arn`) and `NEON_ORG_ID`
    - secrets `NEON_API_KEY` and `BUDGET_EMAIL` (kept secret so the address never
@@ -87,7 +92,9 @@ every push to `main`:
    plus Neon resume)
 
 A second job, `web` (`needs: api`), then builds the PWA with `VITE_API_BASE_URL`
-set to the API URL, uploads it to the web bucket in passes (fingerprinted
+set to the API URL and `VITE_COGNITO_CLIENT_ID` / `VITE_COGNITO_REGION` set to
+the `cognito_client_id` and `cognito_region` Terraform outputs (public
+identifiers, not secrets), uploads it to the web bucket in passes (fingerprinted
 `assets/` immutable for a year, `index.html`, `sw.js`, `registerSW.js`,
 `workbox-*.js` and the manifest `no-cache`, `index.html` last, stale objects
 deleted afterwards), invalidates `/*` and smoke tests the site: `/` and a deep
@@ -149,6 +156,7 @@ terraform force-unlock <lock id>
 | API Gateway HTTP API (+ `$default` stage) | pay per use |
 | SSM standard parameters (3: two database URLs, the VAPID private key) | free |
 | AWS Budget | free (first two budgets) |
+| Cognito user pool and app client (default email sender, no domain) | free (first 50,000 monthly active users) |
 | ECR repository | storage (lifecycle keeps the last 5 images) |
 | S3 web bucket | storage and requests |
 | CloudFront distribution (`PriceClass_100`, default certificate) | pay per use (requests and transfer) |
@@ -169,6 +177,13 @@ customer-managed KMS keys, RDS/Aurora, DynamoDB, EC2.
 - CloudFront ids are generated, so the deploy role's CloudFront permissions are
   scoped to distributions and origin access controls of this account, not to
   one distribution; the list and managed-policy lookups need `*`.
+- Cognito user pool ids are generated, so the deploy role's `cognito-idp`
+  permissions are scoped to user pools of this account and region, not to one
+  pool; creating and listing pools needs `*`.
+- The pool sends mail with Cognito's default sender (free, about 50 emails a
+  day, may land in spam). Production should use SES. Changing the sign-in
+  attribute or schema later replaces the pool and deletes its users; the pool has
+  `deletion_protection` on so that is a deliberate act.
 - A missing file such as an old `/assets/<hash>.js` returns `index.html` with
   200 (the SPA fallback maps 403 and 404), so a stale client may get HTML where
   JavaScript was expected. `registerType: "autoUpdate"` recovers on the next load.
