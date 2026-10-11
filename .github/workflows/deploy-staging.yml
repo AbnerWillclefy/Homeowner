@@ -252,6 +252,15 @@ jobs:
           echo "manifest content-type: $ct"
           case "$ct" in *manifest*|*json*) ;; *) echo "::error::Manifest has content type $ct"; exit 1 ;; esac
 
+          # The CloudFront fallback serves index.html with a 200 for missing files,
+          # so a missing icon only shows up as the wrong content type.
+          icons=$(curl_ok "${WEB_URL}/manifest.webmanifest" | jq -r '.icons[].src')
+          for icon in $icons apple-touch-icon.png; do
+            ct=$(curl_ok -o /dev/null -w '%{content_type}' "${WEB_URL}/${icon#/}")
+            echo "icon ${icon} content-type: $ct"
+            case "$ct" in image/png*) ;; *) echo "::error::Icon ${icon} has content type $ct"; exit 1 ;; esac
+          done
+
           # The real link between web and API: the API must trust the web origin.
           acao=$(curl_ok -D - -o /dev/null -H "Origin: ${WEB_URL}" "${API_URL}/healthz" \
             | tr -d '\r' | awk -F': ' 'tolower($1)=="access-control-allow-origin" {print $2}')
