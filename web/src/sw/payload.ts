@@ -1,5 +1,5 @@
-export const FALLBACK_TITLE = "Homeowner";
-export const FALLBACK_BODY = "You have a new update.";
+import { FALLBACK } from "../i18n/fallback";
+import { DEFAULT_LOCALE, type Locale } from "../i18n/locales";
 
 export interface NotificationContent {
   title: string;
@@ -15,10 +15,11 @@ function safePath(value: unknown): string {
 /**
  * Turns a push payload into something to show. It never fails: iOS revokes a
  * subscription whose pushes do not show a notification, so empty or broken
- * payloads still produce one.
+ * payloads still produce one. The fallback text is in `locale`; a valid payload
+ * passes through untouched, whatever the locale.
  */
-export function notificationFromPush(text: string | null): NotificationContent {
-  const fallback: NotificationContent = { title: FALLBACK_TITLE, body: FALLBACK_BODY, url: "/" };
+export function notificationFromPush(text: string | null, locale: Locale = DEFAULT_LOCALE): NotificationContent {
+  const fallback: NotificationContent = { ...FALLBACK[locale], url: "/" };
   if (!text) return fallback;
 
   let data: unknown;

@@ -35,11 +35,14 @@ flowchart TD
     TR -->|t key, params| SCREENS[screens via useI18n]
 
     STORE[(localStorage homeowner.locale)] -.->|stored choice, #50| RES
-    SWFB[worker fallback strings, #49] -.-> LOC[locales.ts]
+    SWNAV[self.navigator.languages, worker] --> SWRES[resolveLocale]
+    SWRES --> SWPAY[sw/payload.ts]
+    SWFB[fallback.ts] --> SWPAY
+    SWFB --> LOC[locales.ts]
     BE[users.locale, backend follow-up] -.-> LOC
 
     classDef planned stroke-dasharray: 5 5,color:#666
-    class STORE,SWFB,BE planned
+    class STORE,BE planned
 ```
 
 - `locales.ts`, `resolveLocale.ts` and `translate.ts` are pure: no React, no DOM, no catalog imports. The service worker build can share them.
@@ -117,3 +120,12 @@ flowchart TD
 - Buttons, links and fields are native elements styled with the `btn`, `btn-primary` and `btn-link` utilities and base rules in `index.css`. Buttons keep a border so they stay visible in forced-colors mode; a disabled button is dashed as well as muted.
 - Radix Primitives (`@radix-ui/react-slot`) and `lucide-react` are installed for later screens but not imported yet: native elements cover everything on screen today.
 - The service worker precaches the built CSS, and the theme is local only, so appearance works offline.
+
+## Service worker
+
+The worker shows a fallback notification when a push has no usable title (no payload, malformed JSON, or an empty title). Its text comes from `fallback.ts`, a record keyed by locale that lives outside the catalogs.
+
+- The worker imports only `locales.ts`, `resolveLocale.ts`, `browserLanguages.ts` and `fallback.ts`, by path and never through the `src/i18n/index.ts` barrel, so neither catalog is bundled into `sw.js`. `tsconfig.sw.json` lists these files and uses the `WebWorker` lib with no DOM, so the type check fails if one of them starts to import React, the DOM or a catalog.
+- The language is the device language: `self.navigator.languages` is read on every push and resolved by `resolveLocale` (a Portuguese tag gives `pt-BR`, anything else gives `en-US`). If reading it throws, the worker uses `en-US`. A notification is always shown.
+- The in-app language choice is not read, because workers have no `localStorage`. A later ticket could mirror the choice into IndexedDB.
+- A push with a valid title passes through exactly as sent, in any language. The server's text is never translated.
