@@ -1,10 +1,36 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { parsePolicy } from "./src/auth/passwordPolicy.ts";
+
+/** Fails `vite build` when the password policy is unset or malformed, instead of shipping an app that throws on load. */
+function requirePasswordPolicy(): Plugin {
+  let raw: string | undefined;
+  return {
+    name: "require-password-policy",
+    apply: "build",
+    configResolved(resolved) {
+      raw = loadEnv(resolved.mode, resolved.envDir || process.cwd(), "VITE_").VITE_PASSWORD_POLICY;
+    },
+    buildStart() {
+      if (!raw?.trim()) {
+        this.error(
+          "VITE_PASSWORD_POLICY is not set. Copy web/.env.example to web/.env.local, or set it in the build environment.",
+        );
+      }
+      try {
+        parsePolicy(raw);
+      } catch (error) {
+        this.error(error instanceof Error ? error.message : String(error));
+      }
+    },
+  };
+}
 
 export default defineConfig({
   plugins: [
+    requirePasswordPolicy(),
     react(),
     tailwindcss(),
     VitePWA({
