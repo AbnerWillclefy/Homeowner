@@ -68,4 +68,11 @@ export const ptBR: Messages = {
   "install.step3": "Role para baixo e toque em Adicionar à Tela de Início, depois toque em Adicionar.",
   "install.step4": "Feche o Safari e abra o Homeowner pelo novo ícone na sua Tela de Início.",
   "install.outro": "Quando você abrir o Homeowner pelo ícone, esta página vai permitir ativar os lembretes.",
+
+  // Settings
+  "settings.heading": "Configurações",
+  "settings.appearance.label": "Aparência",
+  "settings.appearance.system": "Sistema",
+  "settings.appearance.light": "Claro",
+  "settings.appearance.dark": "Escuro",
 };

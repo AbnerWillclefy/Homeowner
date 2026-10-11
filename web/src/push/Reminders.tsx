@@ -47,10 +47,10 @@ export function Reminders() {
       {reminders.kind === "on" ? (
         <>
           <p role="status">{t("reminders.on")}</p>
-          <button type="button" onClick={() => sendTest()} disabled={test.kind === "sending"}>
+          <button type="button" className="btn" onClick={() => sendTest()} disabled={test.kind === "sending"}>
             {test.kind === "sending" && !test.delaySeconds ? t("reminders.sendingTest") : t("reminders.sendTest")}
           </button>
-          <button type="button" onClick={() => sendTest(DELAYED_TEST_SECONDS)} disabled={test.kind === "sending"}>
+          <button type="button" className="btn" onClick={() => sendTest(DELAYED_TEST_SECONDS)} disabled={test.kind === "sending"}>
             {t(delayedLabel.key, delayedLabel.params)}
           </button>
           {pending && <p role="status">{t(pending.key, pending.params)}</p>}
@@ -58,7 +58,7 @@ export function Reminders() {
         </>
       ) : (
         <>
-          <button type="button" onClick={enable} disabled={reminders.kind === "working"}>
+          <button type="button" className="btn btn-primary" onClick={enable} disabled={reminders.kind === "working"}>
             {reminders.kind === "working" ? t("reminders.enabling") : t("reminders.enable")}
           </button>
           {reminders.kind === "problem" && <ProblemMessage problem={reminders.problem} />}

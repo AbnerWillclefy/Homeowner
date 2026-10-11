@@ -61,6 +61,13 @@ export const enUS = {
   "install.step3": "Scroll down and tap Add to Home Screen, then tap Add.",
   "install.step4": "Close Safari and open Homeowner from its new icon on your Home Screen.",
   "install.outro": "Once you open Homeowner from the icon, this page will let you turn on reminders.",
+
+  // Settings
+  "settings.heading": "Settings",
+  "settings.appearance.label": "Appearance",
+  "settings.appearance.system": "System",
+  "settings.appearance.light": "Light",
+  "settings.appearance.dark": "Dark",
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof enUS;
