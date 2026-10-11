@@ -21,6 +21,8 @@ flowchart TD
     db["internal/db: pgx pool, goose migrations"]
     clock["internal/clock: System and Fake"]
     push["internal/push: Sender, Store, WebPushSender, Fake"]
+    auth["internal/auth: Verifier, Cognito, Fake"]
+    users["internal/users: Store (find or create)"]
     mig["migrations: embedded SQL"]
     alloc["internal/allocation: Plan and Check, pure"]
     apitest["internal/apitest: test harness"]
@@ -30,9 +32,14 @@ flowchart TD
     main --> server
     main --> clock
     main --> push
+    main --> auth
     server --> clock
     server --> push
+    server --> auth
+    server --> users
+    auth --> clock
     apitest --> push
+    apitest --> auth
     db --> mig
     apitest --> server
     apitest --> db
@@ -43,9 +50,11 @@ flowchart TD
 
 | Package | Role |
 |---|---|
-| `server` | Builds one `http.Handler` (`server.New(Deps)`). `Deps` holds everything outside the system that tests fake: database pool, clock, logger, CORS origins, the Web Push `Sender` and the public VAPID key. |
-| `config` | Reads `DATABASE_URL`, `MIGRATE_DATABASE_URL`, `PORT`, `MIGRATE_ON_START`, `DB_MAX_CONNS`, `CORS_ALLOWED_ORIGINS`, and the optional set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (one key without the other is an error; neither means push is off). `VAPID_PRIVATE_KEY` is resolved from SSM through `VAPID_PRIVATE_KEY_SSM_PARAM`, like the database URLs. |
+| `server` | Builds one `http.Handler` (`server.New(Deps)`). `Deps` holds everything outside the system that tests fake: database pool, clock, logger, CORS origins, the Web Push `Sender` and the public VAPID key and the token `Verifier` (nil means auth is off). |
+| `config` | Reads `DATABASE_URL`, `MIGRATE_DATABASE_URL`, `PORT`, `MIGRATE_ON_START`, `DB_MAX_CONNS`, `CORS_ALLOWED_ORIGINS`, the optional pair `COGNITO_ISSUER` and `COGNITO_CLIENT_ID` (public identifiers, so plain environment variables; one without the other is an error, the issuer must be https, neither means auth is off), and the optional set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (one key without the other is an error; neither means push is off). `VAPID_PRIVATE_KEY` is resolved from SSM through `VAPID_PRIVATE_KEY_SSM_PARAM`, like the database URLs. |
 | `push` | `Sender` interface (one `Send` per subscription, returning `ErrGone` when the push service answers 404 or 410), `WebPushSender` (real, on `webpush-go`, VAPID, 24h TTL, 10s HTTP timeout; it strips a leading `mailto:` from `VAPID_SUBJECT` because webpush-go adds one, and includes the push service's response body in non-2xx errors), `Store` (the `push_subscriptions` table: upsert, get, delete, and `Deliver`, which drops a subscription the push service rejected), and `Fake` for tests. |
+| `auth` | `Verifier` interface: a raw bearer token in, `Claims{Subject, Email}` out, or an error wrapping `ErrInvalidToken`. `Cognito` is the real one: RS256 only, signature from the pool's JWKS (fetched lazily on the first authenticated request, cached in memory for an hour, one refetch at most a minute for an unknown key id, old keys kept if a refresh fails, fail closed when none are known), `iss` equal to the issuer, `aud` equal to the app client, `token_use` equal to `id`, `exp` required, `email_verified` true, subject and email present. Time comes from the injected `Clock`. `Fake` mints tokens for tests and never touches the network. |
+| `users` | `Store.FindOrCreate(sub, email, now)`: the single upsert behind the first-request-creates-the-User rule. |
 | `db` | Opens a `pgx` connection pool (retrying about 10s at start) and runs `goose` migrations. |
 | `clock` | The only place allowed to read the time. Business code takes a `Clock`; tests use `Fake`. |
 | `allocation` | The Allocation module, see [Daily Allocation](allocation.md). |
@@ -75,18 +84,21 @@ sequenceDiagram
     H-->>B: 200 status ok
 ```
 
-Unknown routes return `404` with `{"error":"not found"}`. Authentication (Cognito tokens) is planned and not in the chain yet.
+Unknown routes return `404` with `{"error":"not found"}`.
+
+Authentication is not in that chain: `requireUser` wraps individual routes (like `requirePush`), so `/healthz`, the VAPID key, CORS preflights and the 404 fallback stay open. It reads `Authorization: Bearer <token>` and asks the `Verifier`. A missing header, wrong scheme, malformed value or any verification failure gives the same `401 {"error":"unauthorized"}` with `WWW-Authenticate: Bearer`. With no Verifier it answers `503 {"error":"auth not configured"}` (fail closed). Otherwise it finds or creates the User, puts it in the request context under a private key type, and calls the handler. The token is never logged.
 
 ## Routes
 
 | Route | Behaviour |
 |---|---|
 | `GET /healthz` | Pings the database; `200 {"status":"ok"}` or `503`. |
+| `GET /me` | Needs a token. `200 {"id","email"}` for the signed-in User, created by the first authenticated request. |
 | `GET /push/vapid-public-key` | `{"key": "..."}`, the key browsers subscribe with. |
-| `PUT /push/subscription` | Body is the browser's `PushSubscription.toJSON()` (`endpoint`, `keys.p256dh`, `keys.auth`, optional `userAgent`). Idempotent upsert on `endpoint`; `204`. `400` for a non-https endpoint, missing or non-base64url keys or bad JSON; `413` over 8 KB. |
-| `POST /push/test` | Body `{"endpoint"}`. Sends a small test notification to that one stored subscription only. `204`; `404` unknown; `410` if the push service rejected it (the row is deleted); `502` on any other push error (the row is kept). |
+| `PUT /push/subscription` | Needs a token. Body is the browser's `PushSubscription.toJSON()` (`endpoint`, `keys.p256dh`, `keys.auth`, optional `userAgent`). Idempotent upsert on `endpoint`, owned by the caller (a device re-registered by another signed-in User moves to them); `204`. `400` for a non-https endpoint, missing or non-base64url keys or bad JSON; `413` over 8 KB. |
+| `POST /push/test` | Needs a token. Body `{"endpoint","delaySeconds"?}`. Sends a small test notification to that one stored subscription only. `204`; `404` unknown, owned by another User or owned by nobody; `410` if the push service rejected it (the row is deleted); `502` on any other push error (the row is kept). |
 
-The three `/push/*` routes answer `503 {"error":"push not configured"}` when no VAPID keys are set, so local development and CI need none. They have no authentication yet: subscriptions are per device, not per user, and the test send is limited to the caller's own endpoint. The auth ticket (#8) must protect both write routes.
+The three `/push/*` routes answer `503 {"error":"push not configured"}` when no VAPID keys are set, so local development and CI need none. The two write routes need a signed-in User; `GET /push/vapid-public-key` stays public. Push configuration is checked first, then the token. Subscriptions carry `user_id`, and a test send reaches only a subscription the caller owns.
 
 ## The two test seams
 
@@ -95,11 +107,11 @@ A seam is the one place tests are allowed to push on the system.
 ```mermaid
 flowchart LR
     T1["API tests (black box)"] -->|HTTP| S["server + real Postgres"]
-    T1 -.-> F["fakes: Clock and Web Push built; Cognito, LLM planned"]
+    T1 -.-> F["fakes: Clock, Web Push and Cognito built; LLM planned"]
     T2["Allocation tests (table-driven)"] -->|Plan, Check| A["allocation package"]
 ```
 
-1. **The API.** `apitest.Start` runs the real server on a database cloned from a migrated template (`TEST_DATABASE_URL`), with a fake clock; `apitest.WithPush(key)` adds the recording fake Web Push sender, exposed as `App.Push`. Tests assert on HTTP responses, never on internals.
+1. **The API.** `apitest.Start` runs the real server on a database cloned from a migrated template (`TEST_DATABASE_URL`), with a fake clock; `apitest.WithPush(key)` adds the recording fake Web Push sender, exposed as `App.Push`. `Start` always wires an `auth.Fake`; `App.SignInAs(email)` returns a client whose requests carry that fake's bearer token (the same email is the same User), and `apitest.WithoutAuth()` leaves the Verifier nil for the 503 case. Tests assert on HTTP responses, never on internals.
 2. **Allocation.** Pure-function tests on `Plan` and `Check`.
 
 There is no automated UI test; the web app is type-checked and built in CI.
