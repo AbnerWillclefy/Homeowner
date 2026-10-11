@@ -1,3 +1,4 @@
+import type { ChoreWire } from "../api/chores";
 import {
   createHome,
   getHome,
@@ -23,8 +24,13 @@ interface Deps {
  * Creates the Home. A 409 means the person already lives in one (another device, or a double tap that
  * got through), so the way out is to load that Home rather than show a failure.
  */
-export async function createOrLoad(settings: HomeSettings, deps: Deps = { createHome, getHome }): Promise<CreateOutcome> {
-  const created = await deps.createHome(settings);
+export async function createOrLoad(
+  settings: HomeSettings,
+  deps: Deps = { createHome, getHome },
+  /** The reviewed Chores to create with the Home. After a 409 they are not added: the Home already exists. */
+  chores: readonly ChoreWire[] = [],
+): Promise<CreateOutcome> {
+  const created = await deps.createHome(settings, chores);
   if (created.kind !== "already-resident") return created;
 
   const loaded = await deps.getHome();
