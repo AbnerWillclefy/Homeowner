@@ -14,11 +14,13 @@ export interface Home extends HomeSettings {
 export type FieldCodes = Record<string, string>;
 
 /** Failures every call can have. */
-type Failure =
+export type Failure =
   | { kind: "not-signed-in" }
   /** The API could not be reached. Whatever was typed is still good. */
   | { kind: "offline" }
   | { kind: "error" };
+
+export type FailureReason = Failure["kind"];
 
 export type GetHomeResult = { kind: "ok"; home: Home } | { kind: "none" } | Failure;
 
@@ -37,67 +39,65 @@ export type UpdateHomeResult =
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 function parseHome(body: unknown): Home | null {
-  const b = body as { id?: unknown; timezone?: unknown; allocationTime?: unknown } | null;
-  if (typeof b?.id !== "string" || typeof b.timezone !== "string" || typeof b.allocationTime !== "string") return null;
-  return { id: b.id, timezone: b.timezone, allocationTime: b.allocationTime };
+  if (!isRecord(body)) return null;
+  const { id, timezone, allocationTime } = body;
+  if (typeof id !== "string" || typeof timezone !== "string" || typeof allocationTime !== "string") return null;
+  return { id, timezone, allocationTime };
 }
 
 async function parseFields(response: Response): Promise<FieldCodes | null> {
-  const body = (await response.json().catch(() => null)) as { fields?: unknown } | null;
-  const fields = body?.fields;
-  if (typeof fields !== "object" || fields === null) return null;
-  const entries = Object.entries(fields).filter((e): e is [string, string] => typeof e[1] === "string");
+  const body: unknown = await response.json().catch(() => null);
+  if (!isRecord(body) || !isRecord(body.fields)) return null;
+  const entries = Object.entries(body.fields).filter((e): e is [string, string] => typeof e[1] === "string");
   return entries.length > 0 ? Object.fromEntries(entries) : null;
+}
+
+type Shared = { kind: "ok"; home: Home } | { kind: "invalid"; fields: FieldCodes } | Failure;
+
+/**
+ * The flow every Home call shares: send, pass a missing session through, read a 400 as field codes, and
+ * read `okStatus` as a Home. `special` maps the one status that is particular to the call.
+ */
+async function sendHome<S>(init: RequestInit, okStatus: number, special: Readonly<Record<number, S>>): Promise<Shared | S> {
+  try {
+    const result = await authedFetch("/home", init);
+    if (result.kind === "not-signed-in") return result;
+    const { response } = result;
+    const mapped = special[response.status];
+    if (mapped !== undefined) return mapped;
+    if (response.status === 400) {
+      const fields = await parseFields(response);
+      return fields ? { kind: "invalid", fields } : { kind: "error" };
+    }
+    if (response.status !== okStatus) return { kind: "error" };
+    const home = parseHome(await response.json());
+    return home ? { kind: "ok", home } : { kind: "error" };
+  } catch {
+    return { kind: "offline" };
+  }
+}
+
+function withBody(method: string, settings: HomeSettings): RequestInit {
+  return { method, headers: JSON_HEADERS, body: JSON.stringify(settings) };
 }
 
 /** The caller's Home. `none` (a 404) means they have not made one yet. */
 export async function getHome(): Promise<GetHomeResult> {
-  try {
-    const result = await authedFetch("/home");
-    if (result.kind === "not-signed-in") return result;
-    if (result.response.status === 404) return { kind: "none" };
-    if (result.response.status !== 200) return { kind: "error" };
-    const home = parseHome(await result.response.json());
-    return home ? { kind: "ok", home } : { kind: "error" };
-  } catch {
-    return { kind: "offline" };
-  }
+  const result = await sendHome<{ kind: "none" }>({}, 200, { 404: { kind: "none" } });
+  // A GET sends nothing, so there is nothing for a 400 to be about.
+  return result.kind === "invalid" ? { kind: "error" } : result;
 }
 
-export async function createHome(settings: HomeSettings): Promise<CreateHomeResult> {
-  try {
-    const result = await authedFetch("/home", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(settings) });
-    if (result.kind === "not-signed-in") return result;
-    const { response } = result;
-    if (response.status === 409) return { kind: "already-resident" };
-    if (response.status === 400) {
-      const fields = await parseFields(response);
-      return fields ? { kind: "invalid", fields } : { kind: "error" };
-    }
-    if (response.status !== 201) return { kind: "error" };
-    const home = parseHome(await response.json());
-    return home ? { kind: "ok", home } : { kind: "error" };
-  } catch {
-    return { kind: "offline" };
-  }
+export function createHome(settings: HomeSettings): Promise<CreateHomeResult> {
+  return sendHome<{ kind: "already-resident" }>(withBody("POST", settings), 201, { 409: { kind: "already-resident" } });
 }
 
 /** Replaces the Home's settings. Any Resident can. */
-export async function updateHome(settings: HomeSettings): Promise<UpdateHomeResult> {
-  try {
-    const result = await authedFetch("/home", { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify(settings) });
-    if (result.kind === "not-signed-in") return result;
-    const { response } = result;
-    if (response.status === 404) return { kind: "none" };
-    if (response.status === 400) {
-      const fields = await parseFields(response);
-      return fields ? { kind: "invalid", fields } : { kind: "error" };
-    }
-    if (response.status !== 200) return { kind: "error" };
-    const home = parseHome(await response.json());
-    return home ? { kind: "ok", home } : { kind: "error" };
-  } catch {
-    return { kind: "offline" };
-  }
+export function updateHome(settings: HomeSettings): Promise<UpdateHomeResult> {
+  return sendHome<{ kind: "none" }>(withBody("PUT", settings), 200, { 404: { kind: "none" } });
 }
