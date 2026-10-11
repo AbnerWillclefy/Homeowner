@@ -1,4 +1,9 @@
-"""Generate the placeholder PWA icons: python3 web/scripts/gen-icons.py web/public"""
+"""Generate the placeholder PWA icons: python3 web/scripts/gen-icons.py web/public
+
+The outputs are committed in web/public; the build and deploy do not run this script.
+Re-run it and commit the PNGs only when the icon design changes.
+"""
+import os
 import struct
 import sys
 import zlib
@@ -30,6 +35,7 @@ def write_png(path, n, scale):
 
 
 out = sys.argv[1]
+os.makedirs(out, exist_ok=True)
 write_png(out + "/icon-192.png", 192, 0.8)
 write_png(out + "/icon-512.png", 512, 0.8)
 write_png(out + "/icon-512-maskable.png", 512, 0.6)
