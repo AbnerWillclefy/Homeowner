@@ -9,9 +9,10 @@ Migrations live in `backend/migrations/` as `NNNN_description.sql` files, applie
 | Migration | Contents |
 |---|---|
 | `0001_init.sql` | No tables. It only proves the migration pipeline works. |
-| `0002_push_subscriptions.sql` | `push_subscriptions`: `id` (uuid), `endpoint` (unique), `p256dh`, `auth`, `user_agent`, `created_at`, `updated_at`. One row per device. There is **no `user_id` yet**: the auth ticket adds it in its own migration. Timestamps come from the injected clock. |
+| `0002_push_subscriptions.sql` | `push_subscriptions`: `id` (uuid), `endpoint` (unique), `p256dh`, `auth`, `user_agent`, `created_at`, `updated_at`. One row per device. Timestamps come from the injected clock. |
+| `0003_users.sql` | `users`: `id` (uuid), `cognito_sub` (unique, the identity), `email` (not unique: it can change in Cognito, and the API refreshes it on every request), `created_at`, `updated_at` (from the injected clock). Adds `push_subscriptions.user_id`, a nullable foreign key to `users` with `ON DELETE CASCADE`. It is nullable so the previous release, which does not set it, keeps working during a deploy (expand, then contract); rows saved before sign-in existed stay `NULL` and nobody can send to them. |
 
-`push_subscriptions` is the only table built. Everything else below is the planned schema from issue #1.
+A User is created by the first authenticated request, with one `INSERT ... ON CONFLICT (cognito_sub) DO UPDATE ... RETURNING` statement, so two simultaneous first requests create one row. `users` and `push_subscriptions` are the only tables built. Everything else below is the planned schema from issue #1.
 
 ## Planned tables
 
@@ -32,11 +33,11 @@ erDiagram
 
 | Table | Holds |
 |---|---|
-| `users`, `homes`, `residents`, `invites` | Accounts, Homes, membership (a User is a Resident of at most one Home), single-use 7-day Invites |
+| `users` (built), `homes`, `residents`, `invites` | Accounts, Homes, membership (a User is a Resident of at most one Home), single-use 7-day Invites |
 | `chores` | Category, Demands, base Effort, Importance, people needed, build-up flag, interval in days, allowed weekdays |
 | `tasks`, `task_residents` | Open window, current Effort, status; who a Task is given to and whether they Committed |
 | `completions` | The Task, the people who did it, the time (the Streak is computed from these, [ADR 0003](../adr/0003-only-broken-commitments-break-a-streak.md)) |
 | `check_ins` | Resident, date, level, day-only Restrictions |
 | Preferences and Restrictions | General on users, specific on residents |
 | `allocation_runs` | Home, date, which allocator, fallback reason, recorded reasons |
-| `push_subscriptions` | One per device. Built without the link to `users` shown above; that link arrives with auth. |
+| `push_subscriptions` | One per device, owned by the User who last registered it. Built. |

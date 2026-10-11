@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 )
@@ -25,7 +26,16 @@ type Config struct {
 	VAPIDPublicKey  string
 	VAPIDPrivateKey string
 	VAPIDSubject    string
+	// CognitoIssuer and CognitoClientID identify the user pool and app client
+	// whose ID tokens the API accepts. Optional as a pair: with neither set,
+	// auth is off and routes that need a signed-in User answer 503. They are
+	// public identifiers, not secrets.
+	CognitoIssuer   string
+	CognitoClientID string
 }
+
+// AuthEnabled reports whether sign-in is configured.
+func (c Config) AuthEnabled() bool { return c.CognitoIssuer != "" && c.CognitoClientID != "" }
 
 // VAPIDEnabled reports whether push is configured.
 func (c Config) VAPIDEnabled() bool { return c.VAPIDPublicKey != "" && c.VAPIDPrivateKey != "" }
@@ -74,6 +84,17 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	if c.VAPIDEnabled() && c.VAPIDSubject == "" {
 		return Config{}, errors.New("VAPID_SUBJECT is required when the VAPID keys are set (for example mailto:you@example.com)")
+	}
+	c.CognitoIssuer = strings.TrimRight(strings.TrimSpace(getenv("COGNITO_ISSUER")), "/")
+	c.CognitoClientID = strings.TrimSpace(getenv("COGNITO_CLIENT_ID"))
+	if (c.CognitoIssuer == "") != (c.CognitoClientID == "") {
+		return Config{}, errors.New("COGNITO_ISSUER and COGNITO_CLIENT_ID must be set together")
+	}
+	if c.CognitoIssuer != "" {
+		u, err := url.Parse(c.CognitoIssuer)
+		if err != nil || u.Scheme != "https" || u.Host == "" {
+			return Config{}, errors.New("COGNITO_ISSUER must be an https URL")
+		}
 	}
 	return c, nil
 }

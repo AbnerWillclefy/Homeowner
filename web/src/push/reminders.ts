@@ -35,6 +35,8 @@ export type RemindersResult =
   /** The permission prompt was closed without an answer. */
   | { kind: "dismissed" }
   | { kind: "not-configured" }
+  /** The session ended or the API turned it down. The browser part worked; sign in and try again. */
+  | { kind: "not-signed-in" }
   /** The API did not answer, or rejected the request. The browser part worked. */
   | { kind: "error" }
   /** A browser call threw. `name` is the error's name (for example AbortError), never its message. */
@@ -86,6 +88,7 @@ async function ensureSubscribed(deps: RemindersDeps): Promise<RemindersResult> {
 
   const sub = subscribed.value;
   const saved = await deps.saveSubscription(sub.toJSON(), deps.userAgent);
+  if (saved.kind === "not-signed-in") return { kind: "not-signed-in" };
   return saved.kind === "ok" ? { kind: "enabled", endpoint: sub.endpoint } : { kind: "error" };
 }
 

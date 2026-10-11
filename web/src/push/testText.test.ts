@@ -10,6 +10,10 @@ describe("testStatusText", () => {
     expect(testStatusText({ kind: "ok" }, DELAYED_TEST_SECONDS)).toBe("Test notification sent.");
   });
 
+  it("asks the person to sign in again when the session is gone", () => {
+    expect(testStatusText({ kind: "not-signed-in" })).toMatch(/sign in/i);
+  });
+
   it("explains failures the same way for a delayed test", () => {
     expect(testStatusText({ kind: "error" }, DELAYED_TEST_SECONDS)).toMatch(/connection/i);
   });

@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/config"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/db"
@@ -85,6 +86,13 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		deps.VAPIDPublicKey = cfg.VAPIDPublicKey
 	} else {
 		log.Warn("push disabled: VAPID keys are not set")
+	}
+
+	if cfg.AuthEnabled() {
+		deps.Verifier = auth.NewCognito(cfg.CognitoIssuer, cfg.CognitoClientID,
+			&http.Client{Timeout: 5 * time.Second}, clock.System{})
+	} else {
+		log.Warn("sign-in disabled: COGNITO_ISSUER and COGNITO_CLIENT_ID are not set")
 	}
 
 	srv := &http.Server{

@@ -15,6 +15,31 @@ function readApiBaseUrl(raw: string | undefined): string {
   return url;
 }
 
+function readRequired(name: string, raw: string | undefined, shape: RegExp, example: string): string {
+  const value = raw?.trim();
+  if (!value) {
+    throw new Error(`${name} is not set. Copy web/.env.example to web/.env.local, or set it in the build environment.`);
+  }
+  if (!shape.test(value)) {
+    throw new Error(`${name} does not look right (expected something like ${example}).`);
+  }
+  return value;
+}
+
 export const config = {
   apiBaseUrl: readApiBaseUrl(import.meta.env.VITE_API_BASE_URL),
+  /** The AWS region of the Cognito user pool. Public. */
+  cognitoRegion: readRequired(
+    "VITE_COGNITO_REGION",
+    import.meta.env.VITE_COGNITO_REGION,
+    /^[a-z]{2}(-[a-z]+)+-\d$/,
+    "eu-west-1",
+  ),
+  /** The Cognito app client id for this PWA. Public: it has no secret. */
+  cognitoClientId: readRequired(
+    "VITE_COGNITO_CLIENT_ID",
+    import.meta.env.VITE_COGNITO_CLIENT_ID,
+    /^[A-Za-z0-9]+$/,
+    "1h57kf5cpq17m0eml12EXAMPLE",
+  ),
 } as const;

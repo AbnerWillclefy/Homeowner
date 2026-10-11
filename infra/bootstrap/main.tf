@@ -270,6 +270,22 @@ data "aws_iam_policy_document" "deploy_staging" {
     resources = ["*"]
   }
 
+  # Cognito user pools (#8). Pool ids are generated, so this cannot be scoped
+  # by name, only to user pools of this account and region.
+  statement {
+    sid       = "CognitoUserPools"
+    actions   = ["cognito-idp:*"]
+    resources = ["arn:aws:cognito-idp:${var.aws_region}:${local.account_id}:userpool/*"]
+  }
+
+  # CreateUserPool has no pool yet to name, so Terraform cannot be limited to
+  # one; the provider also lists pools. Both need "*".
+  statement {
+    sid       = "CognitoUserPoolsList"
+    actions   = ["cognito-idp:CreateUserPool", "cognito-idp:ListUserPools", "cognito-idp:DescribeUserPool"]
+    resources = ["*"]
+  }
+
   # IAM only for roles prefixed homeowner-staging-.
   statement {
     sid = "IamStagingRoles"

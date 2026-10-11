@@ -27,6 +27,8 @@ jobs:
       web_url: ${{ steps.out.outputs.web_url }}
       web_bucket_name: ${{ steps.out.outputs.web_bucket_name }}
       web_distribution_id: ${{ steps.out.outputs.web_distribution_id }}
+      cognito_client_id: ${{ steps.out.outputs.cognito_client_id }}
+      cognito_region: ${{ steps.out.outputs.cognito_region }}
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
@@ -132,6 +134,8 @@ jobs:
             echo "web_url=$(terraform output -raw web_url)"
             echo "web_bucket_name=$(terraform output -raw web_bucket_name)"
             echo "web_distribution_id=$(terraform output -raw web_distribution_id)"
+            echo "cognito_client_id=$(terraform output -raw cognito_client_id)"
+            echo "cognito_region=$(terraform output -raw cognito_region)"
           } >> "$GITHUB_OUTPUT"
 
       # Lambda cold start plus Neon resume can make the first calls fail.
@@ -197,6 +201,9 @@ jobs:
         run: npm run build
         env:
           VITE_API_BASE_URL: ${{ env.API_URL }}
+          # Public identifiers of the Cognito app client, not secrets.
+          VITE_COGNITO_CLIENT_ID: ${{ needs.api.outputs.cognito_client_id }}
+          VITE_COGNITO_REGION: ${{ needs.api.outputs.cognito_region }}
 
       # Cache headers differ per file kind, so upload in passes:
       # fingerprinted assets are immutable, the app shell and service worker

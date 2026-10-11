@@ -56,6 +56,14 @@ module "web" {
   bucket_name = "${local.name_prefix}-web-${data.aws_caller_identity.current.account_id}"
 }
 
+# Sign-in (#8): the Cognito user pool and the PWA's app client. It depends on
+# nothing, so the API can take its issuer and client id without a cycle.
+module "auth" {
+  source = "../modules/auth"
+
+  name = local.name_prefix
+}
+
 module "api" {
   source = "../modules/lambda-container"
 
@@ -70,6 +78,10 @@ module "api" {
       CORS_ALLOWED_ORIGINS           = join(",", compact(["https://${module.web.domain_name}", var.cors_allowed_origins]))
       DATABASE_URL_SSM_PARAM         = module.database.database_url_param
       MIGRATE_DATABASE_URL_SSM_PARAM = module.database.migrate_database_url_param
+
+      # Public identifiers, not secrets, so plain variables (no SSM).
+      COGNITO_ISSUER    = module.auth.issuer
+      COGNITO_CLIENT_ID = module.auth.client_id
     },
     # Web Push (#7). The private key is a SecureString a human puts in SSM
     # (Terraform never sees it); without the public key push stays off and the

@@ -6,6 +6,10 @@ import { notificationFromPush } from "./sw/payload";
 declare const self: ServiceWorkerGlobalScope;
 
 // Precache the app shell only. No runtime caching: API responses must never be served stale.
+// Sign-in relies on this: this worker registers no handler for API calls (which carry an Authorization
+// header) nor for the cross-origin cognito-idp calls. The only routes are the precache, which answers just
+// the build's own files, and the navigation route below. Do not add a catch-all route or a fetch listener
+// without excluding both, or tokens and passwords could be cached or replayed.
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
 

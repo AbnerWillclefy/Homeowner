@@ -4,6 +4,7 @@ import type { TestResult } from "../api/push";
 export const DELAYED_TEST_SECONDS = 10;
 
 const FAILURE_TEXT: Record<Exclude<TestResult["kind"], "ok">, string> = {
+  "not-signed-in": "You are not signed in any more. Sign in again to send a test.",
   unknown: "The service does not know this device yet. Turn on reminders again.",
   gone: "Your phone's notification service rejected this device, so it was removed. Turn on reminders again.",
   "push-service-error": "The notification service could not deliver it right now. Try again in a moment.",
