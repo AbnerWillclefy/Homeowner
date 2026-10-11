@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -40,10 +41,18 @@ func (s *server) getProfile(w http.ResponseWriter, r *http.Request) {
 			baseline[name] = &points
 		}
 	}
+	// Restrictions come back in the order of GET /demands.
+	demands := vocab.Demands()
+	restrictions := make([]string, 0, len(p.Restrictions))
+	for _, d := range demands {
+		if slices.Contains(p.Restrictions, d) {
+			restrictions = append(restrictions, d)
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"baseline":     baseline,
 		"preferences":  p.Preferences,
-		"restrictions": p.Restrictions,
+		"restrictions": restrictions,
 	})
 }
 
@@ -108,6 +117,29 @@ func (s *server) putPreference(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.profile.SetPreference(r.Context(), currentUser(r.Context()).ID, category, body.Preference); err != nil {
 		s.profileError(w, "set preference", err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *server) putRestriction(w http.ResponseWriter, r *http.Request) {
+	s.changeRestriction(w, r, s.profile.AddRestriction, "add restriction")
+}
+
+func (s *server) deleteRestriction(w http.ResponseWriter, r *http.Request) {
+	s.changeRestriction(w, r, s.profile.RemoveRestriction, "remove restriction")
+}
+
+// changeRestriction is the shared shape of adding and removing a Restriction
+// on the Demand in the path; both are idempotent.
+func (s *server) changeRestriction(w http.ResponseWriter, r *http.Request, change func(ctx context.Context, userID, demand string) error, what string) {
+	demand := r.PathValue("demand")
+	if !vocab.IsDemand(demand) {
+		writeError(w, http.StatusNotFound, "unknown demand")
+		return
+	}
+	if err := change(r.Context(), currentUser(r.Context()).ID, demand); err != nil {
+		s.profileError(w, what, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

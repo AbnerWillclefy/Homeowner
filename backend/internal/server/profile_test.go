@@ -157,3 +157,44 @@ func TestPreferenceNeutralRemovesItAndAnUnsetCategoryIsAbsent(t *testing.T) {
 		t.Errorf("neutral on unset = %d %s, want 204", res.Status, res.Raw)
 	}
 }
+
+func restrictionsOf(t *testing.T, me *apitest.Client) []any {
+	t.Helper()
+	res := me.Get("/me/profile")
+	rs, ok := res.Body["restrictions"].([]any)
+	if !ok {
+		t.Fatalf("restrictions in %s, want an array", res.Raw)
+	}
+	return rs
+}
+
+func TestRestrictionsAreAddedAndRemovedIdempotently(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := app.SignInAs("a@example.com")
+
+	for range 2 {
+		if res := me.Put("/me/restrictions/heavy_lifting", nil); res.Status != http.StatusNoContent {
+			t.Fatalf("PUT = %d %s, want 204", res.Status, res.Raw)
+		}
+	}
+	me.Put("/me/restrictions/bending", nil)
+	if got := restrictionsOf(t, me); !reflect.DeepEqual(got, []any{"heavy_lifting", "bending"}) {
+		t.Fatalf("restrictions = %v, want heavy_lifting and bending once each, in GET /demands order", got)
+	}
+	if n := countRows(t, app, "user_demand_restrictions"); n != 2 {
+		t.Errorf("rows = %d, want 2", n)
+	}
+
+	for range 2 {
+		if res := me.Delete("/me/restrictions/heavy_lifting"); res.Status != http.StatusNoContent {
+			t.Fatalf("DELETE = %d %s, want 204 (also the second time)", res.Status, res.Raw)
+		}
+	}
+	if got := restrictionsOf(t, me); !reflect.DeepEqual(got, []any{"bending"}) {
+		t.Errorf("restrictions = %v, want only bending", got)
+	}
+	if res := me.Delete("/me/restrictions/heights"); res.Status != http.StatusNoContent {
+		t.Errorf("DELETE of one never set = %d %s, want 204", res.Status, res.Raw)
+	}
+}

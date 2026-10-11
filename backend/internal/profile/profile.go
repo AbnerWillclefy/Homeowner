@@ -78,7 +78,7 @@ func (s *Store) Load(ctx context.Context, userID string) (Profile, error) {
 		return Profile{}, fmt.Errorf("load preferences: %w", err)
 	}
 
-	rows, err = s.db.Query(ctx, `SELECT demand FROM user_demand_restrictions WHERE user_id = $1 ORDER BY demand`, userID)
+	rows, err = s.db.Query(ctx, `SELECT demand FROM user_demand_restrictions WHERE user_id = $1`, userID)
 	if err != nil {
 		return Profile{}, fmt.Errorf("load restrictions: %w", err)
 	}
