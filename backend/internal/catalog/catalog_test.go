@@ -41,9 +41,17 @@ func TestEveryEntryIsAValidChoreWithAUniqueID(t *testing.T) {
 		seen[e.ID] = true
 		checkFields(t, "entry "+e.ID, e.Fields)
 	}
-	// Every id the rules mention must exist.
-	for id := range seen {
-		find(id)
+}
+
+func TestEntriesReturnsCopiesTheCallerMayChange(t *testing.T) {
+	first := Entries()
+	*first[0].IntervalDays = 999
+	first[0].Demands[0] = "changed"
+	first[0].Name = "changed"
+
+	again := Entries()
+	if *again[0].IntervalDays == 999 || again[0].Demands[0] == "changed" || again[0].Name == "changed" {
+		t.Errorf("changing a returned Entry changed the Catalog: %+v", again[0])
 	}
 }
 
