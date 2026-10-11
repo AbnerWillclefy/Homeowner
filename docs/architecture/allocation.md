@@ -19,6 +19,8 @@ func Check(DayPlan, State) []Violation
 
 Reasons are data, not prose, so a later feature can turn them into an explanation.
 
+The open Tasks come from the `tasks` table, kept current by `tasks.Store.Refresh` (see [Backend](backend.md)); the daily job must call it before it builds `State`. Tasks only open on a Chore's allowed weekdays, but `allocation.Task` carries no allowed weekdays yet, so an overdue Task stays in the pool on a disallowed day until #13 adds them.
+
 Not yet in the module: two-person Task rules, weekday limits, Preference weights and turn-taking.
 
 ## The flow
