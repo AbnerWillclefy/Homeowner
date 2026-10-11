@@ -39,6 +39,9 @@ jobs:
       run:
         working-directory: infra/staging
     steps:
+      # First, so the infra/staging working directory exists for every run step
+      - uses: actions/checkout@v4
+
       - name: Check the one-off setup is done
         run: |
           missing=""
@@ -51,8 +54,6 @@ jobs:
             echo "::error::Missing GitHub settings:$missing. See infra/README.md."
             exit 1
           fi
-
-      - uses: actions/checkout@v4
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
