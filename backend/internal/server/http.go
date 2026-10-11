@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 )
@@ -14,6 +15,27 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})
+}
+
+// decodeBody reads a JSON body of at most maxBytes into v and writes the error
+// response itself when it fails. With strict, a field v does not declare is an
+// error (400) instead of being ignored.
+func decodeBody(w http.ResponseWriter, r *http.Request, v any, maxBytes int64, strict bool) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+	dec := json.NewDecoder(r.Body)
+	if strict {
+		dec.DisallowUnknownFields()
+	}
+	if err := dec.Decode(v); err != nil {
+		var tooBig *http.MaxBytesError
+		if errors.As(err, &tooBig) {
+			writeError(w, http.StatusRequestEntityTooLarge, "request body too large")
+			return false
+		}
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return false
+	}
+	return true
 }
 
 type statusRecorder struct {
