@@ -85,6 +85,11 @@ describe("enableReminders", () => {
     expect(await enableReminders(t.deps)).toEqual({ kind: "not-configured" });
   });
 
+  it("reports not signed in when the API turns the session down", async () => {
+    const t = setup({ save: { kind: "not-signed-in" } });
+    expect(await enableReminders(t.deps)).toEqual({ kind: "not-signed-in" });
+  });
+
   it("reports an API failure when saving fails", async () => {
     const t = setup({ save: { kind: "error" } });
     expect(await enableReminders(t.deps)).toEqual({ kind: "error" });
@@ -198,6 +203,14 @@ describe("syncOnLaunch", () => {
     const t = setup({ permission: "granted", existing, vapid: { kind: "ok", key: OTHER_KEY } });
     await syncOnLaunch(t.deps);
     expect(existing.unsubscribe).not.toHaveBeenCalled();
+  });
+
+  it("reports not signed in on launch without prompting or logging an error", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const t = setup({ permission: "granted", save: { kind: "not-signed-in" } });
+    expect(await syncOnLaunch(t.deps)).toEqual({ kind: "not-signed-in" });
+    expect(t.requestPermission).not.toHaveBeenCalled();
+    expect(spy).not.toHaveBeenCalled();
   });
 
   it("reports an API failure as error without logging a browser error", async () => {

@@ -15,6 +15,8 @@ export function problemText(problem: RemindersProblem): string {
       return "You closed the permission question without answering. Tap the button to try again when you are ready.";
     case "not-configured":
       return "Reminders are not set up on the service yet. Try again later.";
+    case "not-signed-in":
+      return "You are not signed in any more. Sign in again, then turn on reminders.";
     case "error":
       return "Something went wrong turning on reminders. Check your connection and try again.";
     case "browser-error":

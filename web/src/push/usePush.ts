@@ -17,6 +17,7 @@ export type TestState =
   | { kind: "sending"; delaySeconds?: number }
   | { kind: "done"; result: TestResult; delaySeconds?: number };
 
+/** Only mounted while signed in (see App), so nothing here calls a protected route when signed out. */
 export function usePush() {
   const env = useMemo(readPlatformEnv, []);
   const availability: ReminderAvailability = reminderAvailability(env);

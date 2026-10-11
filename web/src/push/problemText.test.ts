@@ -6,6 +6,12 @@ describe("problemText", () => {
     expect(problemText({ kind: "error" })).toMatch(/connection/i);
   });
 
+  it("asks the person to sign in again, without blaming the connection", () => {
+    const text = problemText({ kind: "not-signed-in" });
+    expect(text).toMatch(/sign in/i);
+    expect(text).not.toMatch(/connection/i);
+  });
+
   it.each(["AbortError", "NotSupportedError"])("blames the notification service, not the connection, for %s", (name) => {
     const text = problemText({ kind: "browser-error", name });
     expect(text).toContain("could not register with its notification service");
