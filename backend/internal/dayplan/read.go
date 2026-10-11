@@ -131,8 +131,9 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 		g, ok := by[o.ID]
 		switch {
 		case !ok:
+			// A rejected run stored no pool, so its Tasks have no reason.
 			reason, known := poolReason[o.ID]
-			if !known {
+			if !known && v.Planned {
 				reason = ReasonAddedAfterPlan
 			}
 			v.Pool = append(v.Pool, TaskView{Open: o, Reason: reason})

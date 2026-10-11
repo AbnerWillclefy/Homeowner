@@ -288,6 +288,9 @@ func TestAProposalThatBreaksARuleIsRejectedAndNotRetriedToday(t *testing.T) {
 	if r.Body["planned"] != false || r.Body["rejected"] != true || len(r.Body["mine"].([]any)) != 0 || len(r.Body["pool"].([]any)) != 1 {
 		t.Fatalf("GET /home/day-plan = %s", r.Raw)
 	}
+	if reason, _ := r.Body["pool"].([]any)[0].(map[string]any)["reason"].(string); reason == "added_after_plan" {
+		t.Errorf("a rejected run labelled its pool %q: %s", reason, r.Raw)
+	}
 
 	// Not retried the same day, even with an allocator that would now be fine.
 	app.UseAllocator(allocation.Baseline{})
