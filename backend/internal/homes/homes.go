@@ -27,6 +27,13 @@ type Home struct {
 	AllocationTime string
 }
 
+// Membership is a User's place in a Home: their own residents row and the
+// Home it belongs to.
+type Membership struct {
+	ResidentID string
+	Home       Home
+}
+
 // Store keeps Homes and Residents in the homes and residents tables.
 type Store struct {
 	db *pgxpool.Pool
@@ -72,20 +79,21 @@ func (s *Store) Create(ctx context.Context, userID, timezone, allocationTime str
 	return h, nil
 }
 
-// ForUser returns the Home userID lives in, or ErrNoHome.
-func (s *Store) ForUser(ctx context.Context, userID string) (Home, error) {
-	var h Home
+// ForUser returns the Home userID lives in and their Resident id there, or
+// ErrNoHome.
+func (s *Store) ForUser(ctx context.Context, userID string) (Membership, error) {
+	var m Membership
 	err := s.db.QueryRow(ctx, `
-		SELECT h.id, h.timezone, to_char(h.allocation_time, 'HH24:MI')
+		SELECT h.id, r.id, h.timezone, to_char(h.allocation_time, 'HH24:MI')
 		FROM residents r JOIN homes h ON h.id = r.home_id
-		WHERE r.user_id = $1`, userID).Scan(&h.ID, &h.Timezone, &h.AllocationTime)
+		WHERE r.user_id = $1`, userID).Scan(&m.Home.ID, &m.ResidentID, &m.Home.Timezone, &m.Home.AllocationTime)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Home{}, ErrNoHome
+		return Membership{}, ErrNoHome
 	}
 	if err != nil {
-		return Home{}, fmt.Errorf("home for user: %w", err)
+		return Membership{}, fmt.Errorf("home for user: %w", err)
 	}
-	return h, nil
+	return m, nil
 }
 
 // UpdateSettings replaces the Home's timezone and Allocation time.

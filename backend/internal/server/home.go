@@ -12,13 +12,19 @@ import (
 
 const maxHomeBody = 4 * 1024
 
-// homeKey is the context key for the caller's Home.
-type homeKey struct{}
+// membershipKey is the context key for the caller's Membership.
+type membershipKey struct{}
+
+// currentMembership returns the Membership requireResident put in the request
+// context: the caller's Home and their own Resident id in it.
+func currentMembership(ctx context.Context) homes.Membership {
+	m, _ := ctx.Value(membershipKey{}).(homes.Membership)
+	return m
+}
 
 // currentHome returns the Home requireResident put in the request context.
 func currentHome(ctx context.Context) homes.Home {
-	h, _ := ctx.Value(homeKey{}).(homes.Home)
-	return h
+	return currentMembership(ctx).Home
 }
 
 // requireResident wraps a handler so it only runs for a signed-in User who
@@ -27,7 +33,7 @@ func currentHome(ctx context.Context) homes.Home {
 // access to another Home" are one code path.
 func (s *server) requireResident(next http.HandlerFunc) http.HandlerFunc {
 	return s.requireUser(func(w http.ResponseWriter, r *http.Request) {
-		h, err := s.homes.ForUser(r.Context(), currentUser(r.Context()).ID)
+		m, err := s.homes.ForUser(r.Context(), currentUser(r.Context()).ID)
 		if errors.Is(err, homes.ErrNoHome) {
 			writeError(w, http.StatusNotFound, "no home")
 			return
@@ -37,7 +43,7 @@ func (s *server) requireResident(next http.HandlerFunc) http.HandlerFunc {
 			writeError(w, http.StatusInternalServerError, "internal error")
 			return
 		}
-		next(w, r.WithContext(context.WithValue(r.Context(), homeKey{}, h)))
+		next(w, r.WithContext(context.WithValue(r.Context(), membershipKey{}, m)))
 	})
 }
 

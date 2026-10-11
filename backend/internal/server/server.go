@@ -12,6 +12,7 @@ import (
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/choresettings"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
@@ -57,6 +58,8 @@ func New(deps Deps) http.Handler {
 		chores:  chores.NewStore(deps.DB),
 		tasks:   tasks.NewStore(deps.DB),
 		profile: profile.NewStore(deps.DB),
+
+		choreSettings: choresettings.NewStore(deps.DB),
 	}
 
 	mux := http.NewServeMux()
@@ -69,6 +72,11 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("POST /home/chores", s.requireResident(s.postChore))
 	mux.HandleFunc("PUT /home/chores/{id}", s.requireResident(s.putChore))
 	mux.HandleFunc("DELETE /home/chores/{id}", s.requireResident(s.deleteChore))
+	mux.HandleFunc("GET /home/chores/settings", s.requireResident(s.getChoreSettings))
+	mux.HandleFunc("PUT /home/chores/{id}/preference", s.requireResident(s.putChorePreference))
+	mux.HandleFunc("DELETE /home/chores/{id}/preference", s.requireResident(s.deleteChorePreference))
+	mux.HandleFunc("PUT /home/chores/{id}/restriction", s.requireResident(s.putChoreRestriction))
+	mux.HandleFunc("DELETE /home/chores/{id}/restriction", s.requireResident(s.deleteChoreRestriction))
 	mux.HandleFunc("GET /home/tasks", s.requireResident(s.listTasks))
 	mux.HandleFunc("GET /categories", s.requireUser(s.getCategories))
 	mux.HandleFunc("GET /demands", s.requireUser(s.getDemands))
@@ -98,6 +106,8 @@ type server struct {
 	tasks *tasks.Store
 	// profile is the User's Baseline, Preferences and Restrictions.
 	profile *profile.Store
+	// choreSettings is a Resident's Preference and Restriction on one Chore.
+	choreSettings *choresettings.Store
 }
 
 func (s *server) healthz(w http.ResponseWriter, r *http.Request) {

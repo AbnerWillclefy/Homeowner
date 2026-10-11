@@ -192,7 +192,18 @@ func scan(row pgx.Row) (Chore, error) {
 
 // List returns the Home's Chores, oldest first.
 func (s *Store) List(ctx context.Context, homeID string) ([]Chore, error) {
-	rows, err := s.db.Query(ctx,
+	return ListIn(ctx, s.db, homeID)
+}
+
+// Querier is what a pool or a transaction offers for reading.
+type Querier interface {
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+}
+
+// ListIn is List on q, so a caller can read the Chores in its own
+// transaction and snapshot.
+func ListIn(ctx context.Context, q Querier, homeID string) ([]Chore, error) {
+	rows, err := q.Query(ctx,
 		`SELECT `+columns+` FROM chores WHERE home_id = $1 ORDER BY created_at, id`, homeID)
 	if err != nil {
 		return nil, fmt.Errorf("list chores: %w", err)
