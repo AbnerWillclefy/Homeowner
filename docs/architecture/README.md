@@ -11,6 +11,7 @@ These pages describe the system **as built**. Anything the spec calls for that d
 3. [Daily Allocation](allocation.md): from the scheduled job to a Day Plan, and the referee.
 4. [Data model](data-model.md): what the migrations contain.
 5. [Infrastructure and delivery](infrastructure.md): AWS, Terraform, CI/CD, cost.
+6. [The React PWA](web.md): its modules and localization.
 
 ## Legend
 
@@ -30,6 +31,7 @@ In diagrams, solid boxes and lines are built; dashed boxes and lines are planned
 | [0003](../adr/0003-only-broken-commitments-break-a-streak.md) | Only broken commitments break a Streak |
 | [0004](../adr/0004-ai-allocates-behind-a-deterministic-referee.md) | AI allocates behind a deterministic referee |
 | [0005](../adr/0005-ship-a-react-pwa-not-a-native-app.md) | React PWA, not a native app |
+| [0006](../adr/0006-localize-with-a-small-typed-module.md) | Localize with a small typed module, not a library |
 
 ## Keeping this current
 
