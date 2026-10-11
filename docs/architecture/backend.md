@@ -26,7 +26,7 @@ flowchart TD
     homes["internal/homes: Store (Homes and Residents)"]
     chores["internal/chores: Validate, Store"]
     profile["internal/profile: Store (baseline, preferences, restrictions)"]
-    vocab["internal/vocab: Category and Demand ids"]
+    vocab["internal/vocab: Category, Demand and Importance ids"]
     mig["migrations: embedded SQL"]
     alloc["internal/allocation: Plan and Check, pure"]
     apitest["internal/apitest: test harness"]
@@ -45,7 +45,6 @@ flowchart TD
     server --> profile
     server --> chores
     chores --> vocab
-    chores --> alloc
     server --> vocab
     auth --> clock
     apitest --> push
@@ -68,7 +67,7 @@ flowchart TD
 | `homes` | `Store.Create(userID, timezone, allocationTime, now)` inserts the Home and the first Resident in one transaction and maps the unique violation on `residents.user_id` to `ErrAlreadyResident`; `ForUser` returns the caller's Home or `ErrNoHome`; `UpdateSettings` replaces the timezone and Allocation time. |
 | `profile` | `Store` for the User's profile: `Load`, `SetBaseline` (set some days, clear others, one transaction), `SetPreference` (neutral deletes the row), `AddRestriction`, `RemoveRestriction`. Writes are idempotent. `MaxBaseline` (20) is the named upper bound of a Baseline. |
 | `chores` | `Validate(Input)` is pure: it trims the name, de-duplicates and sorts Demands and weekdays, and returns a stable code per invalid field, all at once (`Input` is decoded straight from the JSON body; numbers arrive as `any`, so a string or 2.5 is a field code, not a bad request; the first code recorded for a field wins). `Store` has `List`, `Create`, `Update`, `Delete`; every query that takes an id also filters on `home_id`, and a miss is `ErrNotFound`, and the handlers answer 404 for an id that fails `ValidID` without asking the Store. Imports `vocab` for Categories, Demands and Importances. `Chore` carries the JSON tags and is written to the response as is. |
-| `vocab` | The fixed, ordered Category and Demand ids (snake_case, stored and sent as-is) with `IsCategory` and `IsDemand`. `allocation` never imports it; its `Demand` values equal these ids. |
+| `vocab` | The fixed, ordered Category, Demand and Importance ids (snake_case, stored and sent as-is) with `IsCategory`, `IsDemand` and `IsImportance`. `allocation` never imports it; its `Demand` and `Importance` values equal these ids. |
 | `db` | Opens a `pgx` connection pool (retrying about 10s at start) and runs `goose` migrations. |
 | `clock` | The only place allowed to read the time. Business code takes a `Clock`; tests use `Fake`. |
 | `allocation` | The Allocation module, see [Daily Allocation](allocation.md). |
