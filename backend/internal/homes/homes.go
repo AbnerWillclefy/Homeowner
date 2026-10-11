@@ -22,7 +22,10 @@ var (
 // Home is the place Residents look after together. AllocationTime is the
 // local wall-clock time "HH:MM" in Timezone.
 type Home struct {
-	ID             string
+	ID string
+	// ResidentID is set by ForUser: the caller's own residents row. It is not
+	// part of any response.
+	ResidentID     string
 	Timezone       string
 	AllocationTime string
 }
@@ -76,9 +79,9 @@ func (s *Store) Create(ctx context.Context, userID, timezone, allocationTime str
 func (s *Store) ForUser(ctx context.Context, userID string) (Home, error) {
 	var h Home
 	err := s.db.QueryRow(ctx, `
-		SELECT h.id, h.timezone, to_char(h.allocation_time, 'HH24:MI')
+		SELECT h.id, r.id, h.timezone, to_char(h.allocation_time, 'HH24:MI')
 		FROM residents r JOIN homes h ON h.id = r.home_id
-		WHERE r.user_id = $1`, userID).Scan(&h.ID, &h.Timezone, &h.AllocationTime)
+		WHERE r.user_id = $1`, userID).Scan(&h.ID, &h.ResidentID, &h.Timezone, &h.AllocationTime)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Home{}, ErrNoHome
 	}
