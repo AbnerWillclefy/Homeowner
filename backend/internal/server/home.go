@@ -8,8 +8,6 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
 )
@@ -156,13 +154,7 @@ func (s *server) postHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := s.deps.Clock.Now()
-	var inHome func(context.Context, pgx.Tx, string) error
-	if len(cs) > 0 {
-		inHome = func(ctx context.Context, tx pgx.Tx, homeID string) error {
-			return chores.InsertAll(ctx, tx, homeID, cs, now)
-		}
-	}
-	h, err := s.homes.Create(r.Context(), currentUser(r.Context()).ID, body.Timezone, body.AllocationTime, now, inHome)
+	h, err := s.homes.Create(r.Context(), currentUser(r.Context()).ID, body.Timezone, body.AllocationTime, now, cs)
 	if errors.Is(err, homes.ErrAlreadyResident) {
 		writeError(w, http.StatusConflict, "already a resident")
 		return
