@@ -23,6 +23,7 @@ flowchart TD
     push["internal/push: Sender, Store, WebPushSender, Fake"]
     auth["internal/auth: Verifier, Cognito, Fake"]
     users["internal/users: Store (find or create)"]
+    homes["internal/homes: Store (Homes and Residents)"]
     mig["migrations: embedded SQL"]
     alloc["internal/allocation: Plan and Check, pure"]
     apitest["internal/apitest: test harness"]
@@ -37,6 +38,7 @@ flowchart TD
     server --> push
     server --> auth
     server --> users
+    server --> homes
     auth --> clock
     apitest --> push
     apitest --> auth
@@ -55,6 +57,7 @@ flowchart TD
 | `push` | `Sender` interface (one `Send` per subscription, returning `ErrGone` when the push service answers 404 or 410), `WebPushSender` (real, on `webpush-go`, VAPID, 24h TTL, 10s HTTP timeout; it strips a leading `mailto:` from `VAPID_SUBJECT` because webpush-go adds one, and includes the push service's response body in non-2xx errors), `Store` (the `push_subscriptions` table: upsert, get, delete, and `Deliver`, which drops a subscription the push service rejected), and `Fake` for tests. |
 | `auth` | `Verifier` interface: a raw bearer token in, `Claims{Subject, Email}` out, or an error wrapping `ErrInvalidToken`. `Cognito` is the real one: RS256 only, signature from the pool's JWKS (fetched lazily on the first authenticated request, cached in memory for an hour, one refetch at most a minute for an unknown key id, old keys kept if a refresh fails, fail closed when none are known), `iss` equal to the issuer, `aud` equal to the app client, `token_use` equal to `id`, `exp` required, `email_verified` true, subject and email present. Time comes from the injected `Clock`. `Fake` mints tokens for tests and never touches the network. |
 | `users` | `Store.FindOrCreate(sub, email, now)`: the single upsert behind the first-request-creates-the-User rule. |
+| `homes` | `Store.Create(userID, timezone, allocationTime, now)` inserts the Home and the first Resident in one transaction and maps the unique violation on `residents.user_id` to `ErrAlreadyResident`; `ForUser` returns the caller's Home or `ErrNoHome`; `UpdateSettings` replaces the timezone and Allocation time. |
 | `db` | Opens a `pgx` connection pool (retrying about 10s at start) and runs `goose` migrations. |
 | `clock` | The only place allowed to read the time. Business code takes a `Clock`; tests use `Fake`. |
 | `allocation` | The Allocation module, see [Daily Allocation](allocation.md). |
@@ -88,15 +91,24 @@ Unknown routes return `404` with `{"error":"not found"}`.
 
 Authentication is not in that chain: `requireUser` wraps individual routes (like `requirePush`), so `/healthz`, the VAPID key, CORS preflights and the 404 fallback stay open. It reads `Authorization: Bearer <token>` and asks the `Verifier`. A missing header, wrong scheme, malformed value or any verification failure gives the same `401 {"error":"unauthorized"}` with `WWW-Authenticate: Bearer`. With no Verifier it answers `503 {"error":"auth not configured"}` (fail closed). Otherwise it finds or creates the User, puts it in the request context under a private key type, and calls the handler. The token is never logged.
 
+`requireResident` wraps `requireUser` for routes on a Home's data. It loads the caller's Home, puts it in the context under a private key, and answers `404 {"error":"no home"}` when the User lives in none, so a new User never gets a 500 and nobody can reach another Home's data. Every Home-scoped route goes behind it.
+
+`decodeBody` (in `http.go`) reads a JSON body with a caller-chosen size cap and an option to reject unknown fields. `cmd/api` imports `time/tzdata`, so `time.LoadLocation` works on Lambda and in distroless images.
+
 ## Routes
 
 | Route | Behaviour |
 |---|---|
 | `GET /healthz` | Pings the database; `200 {"status":"ok"}` or `503`. |
 | `GET /me` | Needs a token. `200 {"id","email"}` for the signed-in User, created by the first authenticated request. |
+| `POST /home` | Needs a token. Body `{"timezone","allocationTime"}` (`"HH:MM"`, 24h). `201 {"id","timezone","allocationTime"}`; the caller becomes the first Resident. `409 {"error":"already a resident"}` if they already live in a Home (decided by the unique constraint, so concurrent creates make one Home). `400` for bad JSON or unknown fields, `413` over 4 KB. |
+| `GET /home` | Needs a token and a Home. `200` with `id`, `timezone`, `allocationTime`; `404 {"error":"no home"}` otherwise. |
+| `PUT /home` | Same body as `POST`, a full replace of the settings, by any Resident. `200` with the Home; `404` with no Home. |
 | `GET /push/vapid-public-key` | `{"key": "..."}`, the key browsers subscribe with. |
 | `PUT /push/subscription` | Needs a token. Body is the browser's `PushSubscription.toJSON()` (`endpoint`, `keys.p256dh`, `keys.auth`, optional `userAgent`). Idempotent upsert on `endpoint`, owned by the caller (a device re-registered by another signed-in User moves to them); `204`. `400` for a non-https endpoint, missing or non-base64url keys or bad JSON; `413` over 8 KB. |
 | `POST /push/test` | Needs a token. Body `{"endpoint","delaySeconds"?}`. Sends a small test notification to that one stored subscription only. `204`; `404` unknown, owned by another User or owned by nobody; `410` if the push service rejected it (the row is deleted); `502` on any other push error (the row is kept). |
+
+Invalid Home settings answer `400 {"error":"invalid home","fields":{...}}` with every bad field and a stable code each: `timezone` is `required` or `unknown` (not an IANA zone; `Local` is refused because it means the server's zone), `allocationTime` is `required`, `invalid` (not strictly `HH:MM`) or `not_quarter_hour` (the Allocator job runs every 15 minutes, so only minutes 00, 15, 30, 45). Nothing is stored.
 
 The three `/push/*` routes answer `503 {"error":"push not configured"}` when no VAPID keys are set, so local development and CI need none. The two write routes need a signed-in User; `GET /push/vapid-public-key` stays public. Push configuration is checked first, then the token. Subscriptions carry `user_id`, and a test send reaches only a subscription the caller owns.
 
@@ -111,7 +123,7 @@ flowchart LR
     T2["Allocation tests (table-driven)"] -->|Plan, Check| A["allocation package"]
 ```
 
-1. **The API.** `apitest.Start` runs the real server on a database cloned from a migrated template (`TEST_DATABASE_URL`), with a fake clock; `apitest.WithPush(key)` adds the recording fake Web Push sender, exposed as `App.Push`. `Start` always wires an `auth.Fake`; `App.SignInAs(email)` returns a client whose requests carry that fake's bearer token (the same email is the same User), and `apitest.WithoutAuth()` leaves the Verifier nil for the 503 case. Tests assert on HTTP responses, never on internals.
+1. **The API.** `apitest.Start` runs the real server on a database cloned from a migrated template (`TEST_DATABASE_URL`), with a fake clock; `apitest.WithPush(key)` adds the recording fake Web Push sender, exposed as `App.Push`. `Start` always wires an `auth.Fake`; `App.SignInAs(email)` returns a client whose requests carry that fake's bearer token (the same email is the same User), and `apitest.WithoutAuth()` leaves the Verifier nil for the 503 case. `Client.JoinHome(t, homeID)` inserts a `residents` row for a signed-in User so tests can have several Residents without the Invite flow. Tests assert on HTTP responses, never on internals.
 2. **Allocation.** Pure-function tests on `Plan` and `Check`.
 
 There is no automated UI test; the web app is type-checked and built in CI.
