@@ -16,7 +16,7 @@ import (
 func currentVersion(t *testing.T, url string) int64 {
 	t.Helper()
 	ctx := context.Background()
-	pool, err := db.Connect(ctx, url)
+	pool, err := db.Connect(ctx, url, 0)
 	if err != nil {
 		t.Fatalf("connect: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestConnectFailsForUnreachableDatabase(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithTimeout(context.Background(), 1_000_000_000)
 	defer cancel()
-	if _, err := db.Connect(ctx, "postgres://nobody:x@127.0.0.1:1/none?sslmode=disable"); err == nil {
+	if _, err := db.Connect(ctx, "postgres://nobody:x@127.0.0.1:1/none?sslmode=disable", 0); err == nil {
 		t.Fatal("expected an error")
 	}
 }

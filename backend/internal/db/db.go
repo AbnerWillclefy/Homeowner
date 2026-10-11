@@ -20,14 +20,10 @@ const connectRetryWindow = 10 * time.Second
 // endpoint can take several seconds to resume before the first query works.
 const migrateRetryWindow = 30 * time.Second
 
-// Connect opens a pool and verifies it with a ping, retrying for about 10s
-// (or until ctx ends) so the API does not crash-loop while Postgres boots.
-func Connect(ctx context.Context, url string) (*pgxpool.Pool, error) {
-	return ConnectWithMaxConns(ctx, url, 0)
-}
-
-// ConnectWithMaxConns is Connect with an explicit pool size (0 keeps the default).
-func ConnectWithMaxConns(ctx context.Context, url string, maxConns int32) (*pgxpool.Pool, error) {
+// Connect opens a pool of at most maxConns (0 keeps the default) and verifies
+// it with a ping, retrying for about 10s (or until ctx ends) so the API does
+// not crash-loop while Postgres boots.
+func Connect(ctx context.Context, url string, maxConns int32) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(url)
 	if err != nil {
 		// pgx errors may echo the URL; do not leak credentials.
