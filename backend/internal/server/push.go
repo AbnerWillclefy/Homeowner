@@ -97,7 +97,7 @@ func (s *server) putPushSubscription(w http.ResponseWriter, r *http.Request) {
 		P256dh:   strings.TrimRight(body.Keys.P256dh, "="),
 		Auth:     strings.TrimRight(body.Keys.Auth, "="),
 	}
-	if err := s.push.Upsert(r.Context(), sub, ua, s.deps.Clock.Now()); err != nil {
+	if err := s.push.Upsert(r.Context(), currentUser(r.Context()).ID, sub, ua, s.deps.Clock.Now()); err != nil {
 		s.deps.Logger.Error("store push subscription", "error", err.Error())
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
@@ -124,7 +124,7 @@ func (s *server) postPushTest(w http.ResponseWriter, r *http.Request) {
 	// The client may close the app and drop the request; the wait and the
 	// send must survive that.
 	ctx := context.WithoutCancel(r.Context())
-	sub, err := s.push.Get(ctx, body.Endpoint)
+	sub, err := s.push.Get(ctx, currentUser(ctx).ID, body.Endpoint)
 	if errors.Is(err, push.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "subscription not found")
 		return

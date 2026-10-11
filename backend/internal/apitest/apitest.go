@@ -153,6 +153,12 @@ func (c *Client) Put(path string, body any) Response {
 	return c.Do(http.MethodPut, path, body, nil)
 }
 
+// SendRaw sends method path with a raw body as this User, for malformed or
+// oversized input.
+func (c *Client) SendRaw(method, path string, body []byte) Response {
+	return c.app.sendRaw(method, path, body, c.header)
+}
+
 // Do sends method path as this User, with an optional JSON body and extra
 // request headers.
 func (c *Client) Do(method, path string, body any, extra http.Header) Response {
@@ -176,11 +182,20 @@ func (a *App) Put(path string, body any) Response { return a.do(http.MethodPut, 
 
 // SendRaw sends method path with a raw body, for malformed or oversized input.
 func (a *App) SendRaw(method, path string, body []byte) Response {
+	return a.sendRaw(method, path, body, nil)
+}
+
+func (a *App) sendRaw(method, path string, body []byte, header http.Header) Response {
 	req, err := http.NewRequest(method, a.URL+path, bytes.NewReader(body))
 	if err != nil {
 		panic(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	for k, vs := range header {
+		for _, v := range vs {
+			req.Header.Add(k, v)
+		}
+	}
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		panic(err)

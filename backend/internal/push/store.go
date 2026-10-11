@@ -21,29 +21,33 @@ type Store struct {
 // NewStore returns a Store over db.
 func NewStore(db *pgxpool.Pool) *Store { return &Store{db: db} }
 
-// Upsert stores sub, replacing the keys of an existing row for the same
-// endpoint. now is the time to record (taken from the injected clock).
-func (s *Store) Upsert(ctx context.Context, sub Subscription, userAgent string, now time.Time) error {
+// Upsert stores sub for the User userID, replacing the keys and owner of an
+// existing row for the same endpoint (a device re-registered by another
+// signed-in User moves to them, as on a shared phone). now is the time to
+// record (taken from the injected clock).
+func (s *Store) Upsert(ctx context.Context, userID string, sub Subscription, userAgent string, now time.Time) error {
 	_, err := s.db.Exec(ctx, `
-		INSERT INTO push_subscriptions (endpoint, p256dh, auth, user_agent, created_at, updated_at)
-		VALUES ($1, $2, $3, NULLIF($4, ''), $5, $5)
+		INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_agent, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, NULLIF($5, ''), $6, $6)
 		ON CONFLICT (endpoint) DO UPDATE
-		SET p256dh = EXCLUDED.p256dh,
+		SET user_id = EXCLUDED.user_id,
+		    p256dh = EXCLUDED.p256dh,
 		    auth = EXCLUDED.auth,
 		    user_agent = EXCLUDED.user_agent,
 		    updated_at = EXCLUDED.updated_at`,
-		sub.Endpoint, sub.P256dh, sub.Auth, userAgent, now)
+		userID, sub.Endpoint, sub.P256dh, sub.Auth, userAgent, now)
 	if err != nil {
 		return fmt.Errorf("upsert push subscription: %w", err)
 	}
 	return nil
 }
 
-// Get returns the subscription for endpoint, or ErrNotFound.
-func (s *Store) Get(ctx context.Context, endpoint string) (Subscription, error) {
+// Get returns the subscription for endpoint if it belongs to userID, or
+// ErrNotFound. A row owned by another User, or by nobody, is not found.
+func (s *Store) Get(ctx context.Context, userID, endpoint string) (Subscription, error) {
 	sub := Subscription{Endpoint: endpoint}
 	err := s.db.QueryRow(ctx,
-		`SELECT p256dh, auth FROM push_subscriptions WHERE endpoint = $1`, endpoint).
+		`SELECT p256dh, auth FROM push_subscriptions WHERE endpoint = $1 AND user_id = $2`, endpoint, userID).
 		Scan(&sub.P256dh, &sub.Auth)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Subscription{}, ErrNotFound

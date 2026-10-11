@@ -51,8 +51,8 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("GET /healthz", s.healthz)
 	mux.HandleFunc("GET /me", s.requireUser(s.getMe))
 	mux.HandleFunc("GET /push/vapid-public-key", s.requirePush(s.vapidPublicKey))
-	mux.HandleFunc("PUT /push/subscription", s.requirePush(s.putPushSubscription))
-	mux.HandleFunc("POST /push/test", s.requirePush(s.postPushTest))
+	mux.HandleFunc("PUT /push/subscription", s.requirePush(s.requireUser(s.putPushSubscription)))
+	mux.HandleFunc("POST /push/test", s.requirePush(s.requireUser(s.postPushTest)))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "not found")
 	})
