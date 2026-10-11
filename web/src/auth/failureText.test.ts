@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { CognitoFailure } from "./cognito";
+import { config } from "../config";
 import { failureText } from "./failureText";
+import { describeRules } from "./passwordPolicy";
 
 const kinds: CognitoFailure["kind"][] = [
   "already-registered",
@@ -25,8 +27,11 @@ describe("failureText", () => {
     expect(text).toMatch(/email or password/i);
   });
 
-  it("states the password rules when a password is refused", () => {
-    expect(failureText({ kind: "invalid-password" })).toMatch(/10 characters.*upper.*lower.*number/i);
+  it("states the policy's password rules when a password is refused", () => {
+    const text = failureText({ kind: "invalid-password" });
+    expect(text).toBe(`That password is not strong enough. ${describeRules(config.passwordPolicy)}`);
+    expect(text).toMatch(/10 characters.*upper.*lower.*number/i);
+    expect(text).not.toMatch(/symbol/i);
   });
 
   it("blames the connection only for a network failure", () => {

@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react";
 import type { CognitoResult } from "./cognito";
-import { PASSWORD_RULES, failureText } from "./failureText";
+import { config } from "../config";
+import { failureText } from "./failureText";
+import { describeRules } from "./passwordPolicy";
 import { PasswordField } from "../components/ui/PasswordField";
 
 interface Props {
@@ -52,13 +54,13 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
 
         <label htmlFor="signup-password">Password</label>
         <p id="signup-password-why" className="my-1 text-sm text-muted">
-          It keeps anyone else from signing in as you. {PASSWORD_RULES}
+          It keeps anyone else from signing in as you. {describeRules(config.passwordPolicy)}
         </p>
         <PasswordField
           id="signup-password"
           name="password"
           autoComplete="new-password"
-          minLength={10}
+          minLength={config.passwordPolicy.minimumLength}
           required
           aria-describedby="signup-password-why"
         />

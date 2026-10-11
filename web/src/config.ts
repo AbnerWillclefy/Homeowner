@@ -1,3 +1,5 @@
+import { parsePolicy } from "./auth/passwordPolicy";
+
 function readApiBaseUrl(raw: string | undefined): string {
   const value = raw?.trim();
   if (!value) {
@@ -15,11 +17,16 @@ function readApiBaseUrl(raw: string | undefined): string {
   return url;
 }
 
-function readRequired(name: string, raw: string | undefined, shape: RegExp, example: string): string {
+function readSet(name: string, raw: string | undefined): string {
   const value = raw?.trim();
   if (!value) {
     throw new Error(`${name} is not set. Copy web/.env.example to web/.env.local, or set it in the build environment.`);
   }
+  return value;
+}
+
+function readRequired(name: string, raw: string | undefined, shape: RegExp, example: string): string {
+  const value = readSet(name, raw);
   if (!shape.test(value)) {
     throw new Error(`${name} does not look right (expected something like ${example}).`);
   }
@@ -42,4 +49,6 @@ export const config = {
     /^[A-Za-z0-9]+$/,
     "1h57kf5cpq17m0eml12EXAMPLE",
   ),
+  /** The user pool's password rules, so the sign-up text follows Terraform. Public. */
+  passwordPolicy: parsePolicy(readSet("VITE_PASSWORD_POLICY", import.meta.env.VITE_PASSWORD_POLICY)),
 } as const;

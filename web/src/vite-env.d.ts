@@ -7,8 +7,10 @@ interface ImportMetaEnv {
   readonly VITE_COGNITO_REGION: string;
   /** Cognito app client id for the PWA, baked in at build time. Public: the client has no secret. */
   readonly VITE_COGNITO_CLIENT_ID: string;
+  /** The pool's password rules as one JSON object (Terraform output password_policy), baked in at build time. Public. */
+  readonly VITE_PASSWORD_POLICY: string;
 }
 
-interface ImportMeta {
+interface ImportMeta{
   readonly env: ImportMetaEnv;
 }
