@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SaveResult, SubscriptionJSON, VapidKeyResult } from "../api/push";
 import { enableReminders, syncOnLaunch, type PushSubscriptionLike, type RemindersDeps } from "./reminders";
 
@@ -41,6 +41,10 @@ function setup(o: Setup = {}) {
   };
   return { deps, subscribe, requestPermission, saveSubscription, created };
 }
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("enableReminders", () => {
   it("asks permission, subscribes with the API's key and saves the subscription", async () => {
@@ -86,10 +90,74 @@ describe("enableReminders", () => {
     expect(await enableReminders(t.deps)).toEqual({ kind: "error" });
   });
 
-  it("reports an error when the browser refuses to subscribe", async () => {
-    const t = setup();
-    t.subscribe.mockRejectedValueOnce(new Error("no"));
+  it("keeps a failed key fetch as error, without saving", async () => {
+    const t = setup({ vapid: { kind: "error" } });
     expect(await enableReminders(t.deps)).toEqual({ kind: "error" });
+    expect(t.saveSubscription).not.toHaveBeenCalled();
+  });
+
+  it("names the browser error when subscribe rejects, and does not call the API", async () => {
+    const t = setup();
+    t.subscribe.mockRejectedValueOnce(new DOMException("Registration failed - push service error", "AbortError"));
+    expect(await enableReminders(t.deps)).toEqual({ kind: "browser-error", name: "AbortError" });
+    expect(t.saveSubscription).not.toHaveBeenCalled();
+  });
+
+  it("names the browser error when getSubscription rejects", async () => {
+    const t = setup();
+    t.deps.getRegistration = async () => ({
+      pushManager: {
+        getSubscription: async () => {
+          throw new DOMException("bad state", "InvalidStateError");
+        },
+        subscribe: t.subscribe,
+      },
+    });
+    expect(await enableReminders(t.deps)).toEqual({ kind: "browser-error", name: "InvalidStateError" });
+    expect(t.saveSubscription).not.toHaveBeenCalled();
+  });
+
+  it("names the browser error when getRegistration rejects", async () => {
+    const t = setup();
+    t.deps.getRegistration = async () => {
+      throw new DOMException("no worker", "NotAllowedError");
+    };
+    expect(await enableReminders(t.deps)).toEqual({ kind: "browser-error", name: "NotAllowedError" });
+    expect(t.saveSubscription).not.toHaveBeenCalled();
+  });
+
+  it("names the browser error when unsubscribing a stale subscription rejects", async () => {
+    const existing = fakeSub("https://push.example/old", [4, 5, 6]);
+    existing.unsubscribe.mockRejectedValueOnce(new DOMException("x", "InvalidStateError"));
+    const t = setup({ existing });
+    expect(await enableReminders(t.deps)).toEqual({ kind: "browser-error", name: "InvalidStateError" });
+  });
+
+  it("maps a rejected non-Error value to name unknown without throwing", async () => {
+    const t = setup();
+    t.subscribe.mockRejectedValueOnce("boom");
+    expect(await enableReminders(t.deps)).toEqual({ kind: "browser-error", name: "unknown" });
+  });
+
+  it("maps an object with a non-string name to unknown", async () => {
+    const t = setup();
+    t.subscribe.mockRejectedValueOnce({ name: 42 });
+    expect(await enableReminders(t.deps)).toEqual({ kind: "browser-error", name: "unknown" });
+  });
+
+  it("never puts the browser's message in the result", async () => {
+    const t = setup();
+    t.subscribe.mockRejectedValueOnce(new DOMException("secret internal detail", "AbortError"));
+    expect(JSON.stringify(await enableReminders(t.deps))).not.toContain("secret internal detail");
+  });
+
+  it("logs the original error", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const t = setup();
+    const err = new DOMException("push service error", "AbortError");
+    t.subscribe.mockRejectedValueOnce(err);
+    await enableReminders(t.deps);
+    expect(spy).toHaveBeenCalledWith(expect.any(String), err);
   });
 });
 
@@ -132,13 +200,30 @@ describe("syncOnLaunch", () => {
     expect(existing.unsubscribe).not.toHaveBeenCalled();
   });
 
-  it("reports failure instead of throwing, so launch is never blocked", async () => {
-    const t = setup({ permission: "granted", vapid: { kind: "error" } });
-    expect(await syncOnLaunch(t.deps)).toEqual({ kind: "error" });
+  it("reports an API failure as error without logging a browser error", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await syncOnLaunch(setup({ permission: "granted", vapid: { kind: "error" } }).deps)).toEqual({ kind: "error" });
+    expect(await syncOnLaunch(setup({ permission: "granted", save: { kind: "error" } }).deps)).toEqual({ kind: "error" });
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("names a browser error and logs the original instead of throwing, and never prompts", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const t = setup({ permission: "granted" });
+    const err = new DOMException("no service worker", "AbortError");
+    t.subscribe.mockRejectedValueOnce(err);
+    expect(await syncOnLaunch(t.deps)).toEqual({ kind: "browser-error", name: "AbortError" });
+    expect(spy).toHaveBeenCalledWith(expect.any(String), err);
+    expect(t.requestPermission).not.toHaveBeenCalled();
+    expect(t.saveSubscription).not.toHaveBeenCalled();
+  });
+
+  it("maps a thrown getRegistration to a browser error", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const broken = setup({ permission: "granted" });
     broken.deps.getRegistration = async () => {
-      throw new Error("no service worker");
+      throw "no service worker";
     };
-    expect(await syncOnLaunch(broken.deps)).toEqual({ kind: "error" });
+    expect(await syncOnLaunch(broken.deps)).toEqual({ kind: "browser-error", name: "unknown" });
   });
 });
