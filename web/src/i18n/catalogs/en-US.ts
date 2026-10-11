@@ -232,6 +232,45 @@ export const enUS = {
   "chores.field.allowedWeekdays.out_of_range": "One of the days is not valid. Untick it and try again.",
   "chores.field.unknown": "This value is not accepted. Check it and try again.",
 
+  // Today (the Day Plan)
+  "dayplan.heading": "Today",
+  "dayplan.intro":
+    "Each day at your Home's Allocation time, Homeowner proposes who does which Tasks, without asking anyone for more Energy than they have. This is today's Day Plan. It is a proposal: nothing here is final.",
+  "dayplan.loading": "Loading today's plan...",
+  "dayplan.load.offline":
+    "Today's plan could not be loaded because Homeowner cannot reach the service. Check your connection and try again.",
+  "dayplan.load.error": "Something went wrong loading today's plan. Try again in a moment.",
+  "dayplan.notSignedIn": "Your sign-in has ended. Sign in again to continue.",
+  "dayplan.retry": "Try again",
+  "dayplan.notPlanned":
+    "Today's plan has not been made yet. Homeowner plans your Home's day at {time}, so check back after that. These are the open Tasks it will choose from.",
+  "dayplan.rejected":
+    "Today's plan could not be used, so no Tasks were given to anyone today. Your open Tasks are still listed below.",
+  "dayplan.energy": "Your Energy today: {energy}",
+  "dayplan.energy.none":
+    "You have no Baseline for today's weekday, so your Energy is 0 and no Tasks were given to you. Set your Baseline in your profile to get Tasks on that day.",
+  "dayplan.mine.heading": "Your Tasks",
+  "dayplan.mine.empty": "Nothing for you today. Enjoy the day.",
+  "dayplan.others.heading": "Other Residents' Tasks",
+  "dayplan.others.resident": "Resident {number}",
+  "dayplan.pool.heading": "Still to do",
+  "dayplan.pool.intro": "Open Tasks that are not given to anyone today, and why.",
+  "dayplan.pool.empty": "No other open Tasks. Everything is planned or done.",
+  "dayplan.task.effort": "Effort {effort}",
+  "dayplan.task.effort.grown": "Effort {effort} (usually {base})",
+  "dayplan.task.due": "Due {date}",
+  "dayplan.task.reason": "Why: {reason}",
+  "dayplan.assigned.reason.deadline_today": "It is due today.",
+  "dayplan.assigned.reason.importance": "It matters most.",
+  "dayplan.assigned.reason.lateness": "It has waited the longest.",
+  "dayplan.assigned.reason.fits_energy": "It fits your Energy.",
+  "dayplan.pool.reason.no_energy_left": "No one has enough Energy left today.",
+  "dayplan.pool.reason.restricted_for_all": "No one can do it: every Resident has a Restriction on it.",
+  "dayplan.pool.reason.weekday_not_allowed": "It is not allowed on this day of the week.",
+  "dayplan.pool.reason.two_person_deferred": "It needs two people, and they were not both free today.",
+  "dayplan.pool.reason.invalid_effort": "Its Effort is not valid, so it was left out. Edit the Chore to fix it.",
+  "dayplan.pool.reason.added_after_plan": "It was added after today's plan was made.",
+
   // Sign up
   "signUp.heading": "Sign up",
   "signUp.intro":

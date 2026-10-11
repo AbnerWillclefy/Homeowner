@@ -97,6 +97,32 @@ module "api" {
   )
 }
 
+# The Allocation job (#13): the same image as the API, started with the command
+# "events", on an EventBridge schedule. It has no URL and is not behind the HTTP
+# API (docs/adr/0008). Every 15 minutes because Allocation times are quarter
+# hours; the job plans each Home at or after its time, once per day.
+module "allocation_job" {
+  source = "../modules/scheduled-job"
+
+  name                = "${local.name_prefix}-allocate"
+  description         = "Plans every Home whose Allocation time has arrived"
+  image_uri           = "${module.api.ecr_repository_url}:${var.image_tag}"
+  command             = ["events"]
+  schedule_expression = "rate(15 minutes)"
+  ssm_path_prefix     = local.ssm_prefix
+
+  environment = {
+    PORT                   = "8080"
+    DB_MAX_CONNS           = "2"
+    DATABASE_URL_SSM_PARAM = module.database.database_url_param
+
+    # Lambda Web Adapter forwards the scheduled event to POST /events (its
+    # default pass-through path); it is told explicitly where to check
+    # readiness, since "/" is not served by the job.
+    AWS_LWA_READINESS_CHECK_PATH = "/healthz"
+  }
+}
+
 module "http_api" {
   source = "../modules/http-api"
 

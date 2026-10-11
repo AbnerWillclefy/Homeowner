@@ -8,6 +8,9 @@ import (
 // Baseline is the deterministic baseline allocator.
 type Baseline struct{}
 
+// Name is how a run record names this allocator.
+func (Baseline) Name() string { return "baseline" }
+
 // Plan implements Allocator.
 func (Baseline) Plan(s State) (Result, error) { return Plan(s) }
 
@@ -22,6 +25,12 @@ func breaksRestriction(r Resident, t Task) (demand Demand, demandBroken, choreBr
 	}
 	choreBroken = slices.Contains(r.ChoreRestrictions, t.ChoreID)
 	return demand, demandBroken, choreBroken
+}
+
+// weekdayAllowed reports whether the Task may be done on the day. Plan and
+// Check both use it so they cannot disagree.
+func weekdayAllowed(t Task, day Date) bool {
+	return len(t.AllowedWeekdays) == 0 || slices.Contains(t.AllowedWeekdays, day.Weekday())
 }
 
 func restricted(r Resident, t Task) bool {
@@ -89,6 +98,9 @@ func Plan(s State) (Result, error) {
 		switch {
 		case t.Effort < 1:
 			res.Pool = append(res.Pool, PoolEntry{t.ID, ReasonInvalidEffort})
+			continue
+		case !weekdayAllowed(t, s.Today):
+			res.Pool = append(res.Pool, PoolEntry{t.ID, ReasonWeekdayNotAllowed})
 			continue
 		case t.People >= 2:
 			res.Pool = append(res.Pool, PoolEntry{t.ID, ReasonTwoPersonDeferred})

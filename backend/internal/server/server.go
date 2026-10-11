@@ -14,6 +14,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/choresettings"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/invites"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
@@ -62,6 +63,7 @@ func New(deps Deps) http.Handler {
 		profile: profile.NewStore(deps.DB),
 
 		choreSettings: choresettings.NewStore(deps.DB),
+		dayPlans:      dayplan.NewStore(deps.DB),
 	}
 
 	mux := http.NewServeMux()
@@ -83,6 +85,7 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("GET /invites/{token}", s.getInvite)
 	mux.HandleFunc("POST /invites/{token}/accept", s.requireUser(s.acceptInvite))
 	mux.HandleFunc("GET /home/tasks", s.requireResident(s.listTasks))
+	mux.HandleFunc("GET /home/day-plan", s.requireResident(s.getDayPlan))
 	mux.HandleFunc("GET /categories", s.requireUser(s.getCategories))
 	mux.HandleFunc("GET /demands", s.requireUser(s.getDemands))
 	mux.HandleFunc("GET /me/profile", s.requireUser(s.getProfile))
@@ -115,6 +118,8 @@ type server struct {
 	profile *profile.Store
 	// choreSettings is a Resident's Preference and Restriction on one Chore.
 	choreSettings *choresettings.Store
+	// dayPlans reads the Day Plan the Allocation job stored.
+	dayPlans *dayplan.Store
 }
 
 func (s *server) healthz(w http.ResponseWriter, r *http.Request) {

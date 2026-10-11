@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Home } from "../api/home";
 import { ChoresSection } from "../chores/ChoresSection";
+import { TodaySection } from "../dayplan/TodaySection";
 import { useI18n } from "../i18n";
 import { InviteShare } from "../invite/InviteShare";
 import { CreateHome } from "./CreateHome";
@@ -60,6 +61,7 @@ export function HomeSection() {
         }}
       />
       <InviteShare />
+      <TodaySection />
       <ChoresSection />
     </>
   );

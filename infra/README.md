@@ -8,6 +8,7 @@ idle, no VPC, no NAT Gateway.
 bootstrap/   applied once by a human with local state: state bucket, GitHub OIDC provider, deploy role
 modules/
   lambda-container/  ECR repository, Lambda (image), execution role, log group
+  scheduled-job/     Lambda from an existing image with another command, started by an EventBridge schedule
   http-api/          API Gateway HTTP API in front of a Lambda
   neon-branch/       Neon branch, role, database, endpoint; connection strings into SSM
   web/               private S3 bucket behind CloudFront (default HTTPS domain, SPA fallback)

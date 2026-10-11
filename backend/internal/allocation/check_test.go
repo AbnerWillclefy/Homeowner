@@ -88,6 +88,14 @@ func TestCheck(t *testing.T) {
 			state(rs(resident("a", 5).cannotDo(lift), resident("b", 5)), task("t1", 1, demands(lift))),
 			plan(give("t1", "b", ReasonFitsEnergy)), nil},
 
+		{"task given on a weekday its chore forbids",
+			state(rs(resident("a", 5)), task("t1", 1, onlyOn((today.Weekday()+1)%7))),
+			plan(give("t1", "a", ReasonFitsEnergy)),
+			[]key{{WeekdayNotAllowed, "t1", "a", ""}}},
+		{"task given on an allowed weekday",
+			state(rs(resident("a", 5)), task("t1", 1, onlyOn(today.Weekday()))),
+			plan(give("t1", "a", ReasonFitsEnergy)), nil},
+
 		{"task not in state",
 			state(rs(resident("a", 5)), task("t1", 1)),
 			plan(give("ghost", "a", ReasonFitsEnergy)),
