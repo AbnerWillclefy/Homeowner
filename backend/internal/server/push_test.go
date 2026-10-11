@@ -217,6 +217,61 @@ func TestInvalidPushRequestsAreRejectedAndStoreNothing(t *testing.T) {
 	}
 }
 
+func TestDelayedTestSendWaitsThroughTheClockThenSendsOnce(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t, apitest.WithPush("k"))
+	app.Put("/push/subscription", subscription(endpointA, p256dhA, authA))
+
+	res := app.Post("/push/test", map[string]any{"endpoint": endpointA, "delaySeconds": 10})
+
+	if res.Status != http.StatusNoContent {
+		t.Fatalf("status = %d (%s), want 204", res.Status, res.Raw)
+	}
+	if got := app.Clock.Slept(); len(got) != 1 || got[0] != 10*time.Second {
+		t.Fatalf("waits = %v, want one wait of 10s", got)
+	}
+	if n := len(app.Push.Sent()); n != 1 {
+		t.Fatalf("sends = %d, want 1", n)
+	}
+}
+
+func TestTestSendWithoutDelayDoesNotWait(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t, apitest.WithPush("k"))
+	app.Put("/push/subscription", subscription(endpointA, p256dhA, authA))
+
+	for _, body := range []map[string]any{
+		{"endpoint": endpointA},
+		{"endpoint": endpointA, "delaySeconds": 0},
+	} {
+		if res := app.Post("/push/test", body); res.Status != http.StatusNoContent {
+			t.Fatalf("%v: status = %d, want 204", body, res.Status)
+		}
+	}
+	if got := app.Clock.Slept(); len(got) != 0 {
+		t.Errorf("waits = %v, want none", got)
+	}
+}
+
+func TestTestSendRejectsADelayOutsideZeroToTen(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t, apitest.WithPush("k"))
+	app.Put("/push/subscription", subscription(endpointA, p256dhA, authA))
+
+	for _, delay := range []string{"-1", "11", "1.5", `"5"`, "true"} {
+		body := []byte(`{"endpoint":"` + endpointA + `","delaySeconds":` + delay + `}`)
+		if res := app.SendRaw(http.MethodPost, "/push/test", body); res.Status != http.StatusBadRequest {
+			t.Errorf("delaySeconds %s: status = %d, want 400", delay, res.Status)
+		}
+	}
+	if n := len(app.Push.Sent()); n != 0 {
+		t.Fatalf("sends = %d, want none", n)
+	}
+	if got := app.Clock.Slept(); len(got) != 0 {
+		t.Fatalf("waits = %v, want none", got)
+	}
+}
+
 func TestPushRoutesAnswer503WhenNotConfigured(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)

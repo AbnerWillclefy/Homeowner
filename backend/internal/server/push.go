@@ -1,20 +1,24 @@
 package server
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 )
 
 const (
-	maxPushBody      = 8 * 1024
-	maxUserAgentLen  = 512
-	testNotification = "Reminders are on"
+	maxPushBody     = 8 * 1024
+	maxUserAgentLen = 512
+	// maxTestDelaySeconds keeps the wait well inside the 15s Lambda timeout.
+	maxTestDelaySeconds = 10
+	testNotification    = "Reminders are on"
 )
 
 // requirePush wraps a push handler so it answers 503 when push is not
@@ -103,7 +107,8 @@ func (s *server) putPushSubscription(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) postPushTest(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Endpoint string `json:"endpoint"`
+		Endpoint     string `json:"endpoint"`
+		DelaySeconds int    `json:"delaySeconds"`
 	}
 	if !decodeBody(w, r, &body) {
 		return
@@ -112,7 +117,14 @@ func (s *server) postPushTest(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "endpoint is required")
 		return
 	}
-	sub, err := s.push.Get(r.Context(), body.Endpoint)
+	if body.DelaySeconds < 0 || body.DelaySeconds > maxTestDelaySeconds {
+		writeError(w, http.StatusBadRequest, "delaySeconds must be an integer from 0 to 10")
+		return
+	}
+	// The client may close the app and drop the request; the wait and the
+	// send must survive that.
+	ctx := context.WithoutCancel(r.Context())
+	sub, err := s.push.Get(ctx, body.Endpoint)
 	if errors.Is(err, push.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "subscription not found")
 		return
@@ -122,7 +134,14 @@ func (s *server) postPushTest(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
-	err = s.push.Deliver(r.Context(), s.deps.Push, sub, push.Payload{
+	if body.DelaySeconds > 0 {
+		if err := s.deps.Clock.Sleep(ctx, time.Duration(body.DelaySeconds)*time.Second); err != nil {
+			s.deps.Logger.Error("wait before test notification", "error", err.Error())
+			writeError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+	}
+	err = s.push.Deliver(ctx, s.deps.Push, sub, push.Payload{
 		Title: testNotification,
 		Body:  "This is a test notification from Homeowner.",
 		URL:   "/",
