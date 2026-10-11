@@ -26,6 +26,11 @@ output "cognito_region" {
   value       = module.auth.region
 }
 
+output "cognito_password_policy" {
+  description = "The pool's password rules as JSON; the deploy passes it to the web build as VITE_PASSWORD_POLICY. Public."
+  value       = module.auth.password_policy
+}
+
 output "ecr_repo_url" {
   value = module.api.ecr_repository_url
 }
