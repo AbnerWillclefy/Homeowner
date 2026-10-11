@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import type { SignInResult } from "./cognito";
 import { failureText } from "./failureText";
+import { PasswordField } from "../components/ui/PasswordField";
 
 interface Props {
   /** Prefilled after confirming an email. */
@@ -52,7 +53,7 @@ export function SignIn({ initialEmail, notice, logIn, onNeedsConfirm, onNeedsSig
           required
         />
         <label htmlFor="signin-password">Password</label>
-        <input id="signin-password" name="password" type="password" autoComplete="current-password" required />
+        <PasswordField id="signin-password" name="password" autoComplete="current-password" required />
         <button type="submit" className="btn btn-primary" disabled={busy}>
           {busy ? "Signing in..." : "Sign in"}
         </button>
