@@ -110,7 +110,6 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
           id="signup-password"
           name="password"
           autoComplete="new-password"
-          minLength={config.passwordPolicy.minimumLength}
           required
           aria-describedby="signup-password-why signup-password-rules"
         />
