@@ -26,6 +26,8 @@ func people(n int) func(*Task)            { return func(t *Task) { t.People = n 
 func deadlineIn(days int) func(*Task)     { return func(t *Task) { t.WindowEnd = today + Date(days) } }
 func lateBy(days int) func(*Task)         { return func(t *Task) { t.WindowStart = today - Date(days) } }
 
+func onlyOn(days ...int) func(*Task) { return func(t *Task) { t.AllowedWeekdays = days } }
+
 func resident(id string, energy int) Resident { return Resident{ID: id, Energy: energy} }
 
 func (r Resident) cannotDo(d ...Demand) Resident {

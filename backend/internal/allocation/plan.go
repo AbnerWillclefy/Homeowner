@@ -24,6 +24,12 @@ func breaksRestriction(r Resident, t Task) (demand Demand, demandBroken, choreBr
 	return demand, demandBroken, choreBroken
 }
 
+// weekdayAllowed reports whether the Task may be done on the day. Plan and
+// Check both use it so they cannot disagree.
+func weekdayAllowed(t Task, day Date) bool {
+	return len(t.AllowedWeekdays) == 0 || slices.Contains(t.AllowedWeekdays, day.Weekday())
+}
+
 func restricted(r Resident, t Task) bool {
 	_, d, c := breaksRestriction(r, t)
 	return d || c
@@ -89,6 +95,9 @@ func Plan(s State) (Result, error) {
 		switch {
 		case t.Effort < 1:
 			res.Pool = append(res.Pool, PoolEntry{t.ID, ReasonInvalidEffort})
+			continue
+		case !weekdayAllowed(t, s.Today):
+			res.Pool = append(res.Pool, PoolEntry{t.ID, ReasonWeekdayNotAllowed})
 			continue
 		case t.People >= 2:
 			res.Pool = append(res.Pool, PoolEntry{t.ID, ReasonTwoPersonDeferred})

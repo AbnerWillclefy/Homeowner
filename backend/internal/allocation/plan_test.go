@@ -156,6 +156,26 @@ func TestPlanDuplicateIDsKeepFirst(t *testing.T) {
 	}
 }
 
+func TestPlanAllowedWeekdays(t *testing.T) {
+	wd := today.Weekday()
+	other := (wd + 1) % 7
+	runPlanCases(t, []planCase{
+		{"allowed today is planned", state(rs(resident("a", 3)), task("t", 1, onlyOn(other, wd))),
+			[]Assignment{give("t", "a", ReasonFitsEnergy)}, nil},
+		{"no weekday limit is allowed every day", state(rs(resident("a", 3)), task("t", 1)),
+			[]Assignment{give("t", "a", ReasonFitsEnergy)}, nil},
+		{"forbidden today stays in the pool", state(rs(resident("a", 3)), task("t", 1, onlyOn(other))),
+			nil, []PoolEntry{pool("t", ReasonWeekdayNotAllowed)}},
+		{"overdue task still waits for an allowed day",
+			state(rs(resident("a", 3)), task("t", 1, onlyOn(other), lateBy(5), deadlineIn(-2))),
+			nil, []PoolEntry{pool("t", ReasonWeekdayNotAllowed)}},
+		{"weekday beats energy in the pool reason", state(rs(resident("a", 0)), task("t", 1, onlyOn(other))),
+			nil, []PoolEntry{pool("t", ReasonWeekdayNotAllowed)}},
+		{"forbidden task does not use energy", state(rs(resident("a", 1)), task("x", 1, onlyOn(other)), task("y", 1)),
+			[]Assignment{give("y", "a", ReasonFitsEnergy)}, []PoolEntry{pool("x", ReasonWeekdayNotAllowed)}},
+	})
+}
+
 func TestBaselineImplementsAllocator(t *testing.T) {
 	var a Allocator = Baseline{}
 	if _, err := a.Plan(state(nil)); err != nil {
