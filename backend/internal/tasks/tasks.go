@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
@@ -40,14 +41,12 @@ type Store struct {
 // NewStore returns a Store over db.
 func NewStore(db *pgxpool.Pool) *Store { return &Store{db: db} }
 
-const dateLayout = "2006-01-02"
-
-func toDate(t time.Time) allocation.Date {
-	return allocation.NewDate(t.Year(), t.Month(), t.Day())
-}
-
-func fromDate(d allocation.Date) time.Time {
-	return time.Unix(int64(d)*86400, 0).UTC()
+// choreRow is a Chore with its latest Task, as the schedule rule needs them.
+type choreRow struct {
+	id     string
+	chore  schedule.Chore
+	latest *schedule.Task
+	taskID string
 }
 
 // Refresh brings the Home's Tasks up to date for the local date at now: it
@@ -66,25 +65,42 @@ func (s *Store) Refresh(ctx context.Context, homeID string, now time.Time) error
 	if _, err := tx.Exec(ctx, "SET LOCAL statement_timeout = '"+statementTimeout+"'"); err != nil {
 		return fmt.Errorf("refresh tasks: %w", err)
 	}
+	today, loc, err := homeToday(ctx, tx, homeID, now)
+	if err != nil {
+		return err
+	}
+	rows, err := loadChores(ctx, tx, homeID, loc)
+	if err != nil {
+		return err
+	}
+	for _, r := range rows {
+		if err := apply(ctx, tx, r, schedule.Decide(r.chore, r.latest, today), now); err != nil {
+			return err
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("refresh tasks: %w", err)
+	}
+	return nil
+}
 
+// homeToday returns the local date at now in the Home's zone, and the zone.
+func homeToday(ctx context.Context, tx pgx.Tx, homeID string, now time.Time) (allocation.Date, *time.Location, error) {
 	var zone string
 	if err := tx.QueryRow(ctx, `SELECT timezone FROM homes WHERE id = $1`, homeID).Scan(&zone); err != nil {
-		return fmt.Errorf("refresh tasks: load home: %w", err)
+		return 0, nil, fmt.Errorf("refresh tasks: load home: %w", err)
 	}
 	// Never fall back to UTC silently: a wrong day would open the wrong Tasks.
 	loc, err := time.LoadLocation(zone)
 	if err != nil {
-		return fmt.Errorf("refresh tasks: home timezone %q: %w", zone, err)
+		return 0, nil, fmt.Errorf("refresh tasks: home timezone %q: %w", zone, err)
 	}
-	today := toDate(now.In(loc))
+	return allocation.DateOf(now.In(loc)), loc, nil
+}
 
-	type row struct {
-		id     string
-		chore  schedule.Chore
-		latest *schedule.Task
-		taskID string
-	}
-	// FOR UPDATE OF c serialises concurrent refreshes per Chore.
+// loadChores reads the Home's Chores, each with its latest Task, locking the
+// Chore rows so concurrent refreshes are serialised per Chore.
+func loadChores(ctx context.Context, tx pgx.Tx, homeID string, loc *time.Location) ([]choreRow, error) {
 	rows, err := tx.Query(ctx, `
 		SELECT c.id, c.base_effort, c.interval_days, c.allowed_weekdays, c.builds_up, c.created_at,
 		       t.id, t.status, t.window_start, t.window_end, t.current_effort, t.closed_on
@@ -96,12 +112,14 @@ func (s *Store) Refresh(ctx context.Context, homeID string, now time.Time) error
 		ORDER BY c.created_at, c.id
 		FOR UPDATE OF c`, homeID)
 	if err != nil {
-		return fmt.Errorf("refresh tasks: load chores: %w", err)
+		return nil, fmt.Errorf("refresh tasks: load chores: %w", err)
 	}
-	var all []row
+	defer rows.Close()
+
+	var all []choreRow
 	for rows.Next() {
 		var (
-			r        row
+			r        choreRow
 			interval *int32
 			weekdays []int16
 			created  time.Time
@@ -114,8 +132,7 @@ func (s *Store) Refresh(ctx context.Context, homeID string, now time.Time) error
 		)
 		if err := rows.Scan(&r.id, &base, &interval, &weekdays, &r.chore.BuildsUp, &created,
 			&tID, &status, &ws, &we, &effort, &closedOn); err != nil {
-			rows.Close()
-			return fmt.Errorf("refresh tasks: scan: %w", err)
+			return nil, fmt.Errorf("refresh tasks: scan: %w", err)
 		}
 		r.chore.BaseEffort = int(base)
 		if interval != nil {
@@ -125,45 +142,43 @@ func (s *Store) Refresh(ctx context.Context, homeID string, now time.Time) error
 		for _, w := range weekdays {
 			r.chore.AllowedWeekdays = append(r.chore.AllowedWeekdays, int(w))
 		}
-		r.chore.Created = toDate(created.In(loc))
+		r.chore.Created = allocation.DateOf(created.In(loc))
 		if tID != nil {
 			r.taskID = *tID
 			r.latest = &schedule.Task{
 				Done:          *status == "done",
-				WindowStart:   toDate(*ws),
-				WindowEnd:     toDate(*we),
+				WindowStart:   allocation.DateOf(*ws),
+				WindowEnd:     allocation.DateOf(*we),
 				CurrentEffort: int(*effort),
 			}
 			if closedOn != nil {
-				r.latest.ClosedOn = toDate(*closedOn)
+				r.latest.ClosedOn = allocation.DateOf(*closedOn)
 			}
 		}
 		all = append(all, r)
 	}
-	rows.Close()
 	if err := rows.Err(); err != nil {
-		return fmt.Errorf("refresh tasks: load chores: %w", err)
+		return nil, fmt.Errorf("refresh tasks: load chores: %w", err)
 	}
+	return all, nil
+}
 
-	for _, r := range all {
-		dec := schedule.Decide(r.chore, r.latest, today)
-		switch dec.Action {
-		case schedule.Open:
-			// A conflict means an open Task already exists; the index decides.
-			_, err = tx.Exec(ctx, `
-				INSERT INTO tasks (chore_id, status, window_start, window_end, current_effort, created_at)
-				VALUES ($1, 'open', $2, $3, $4, $5)
-				ON CONFLICT DO NOTHING`,
-				r.id, fromDate(dec.WindowStart), fromDate(dec.WindowEnd), dec.Effort, now)
-		case schedule.SetEffort:
-			_, err = tx.Exec(ctx, `UPDATE tasks SET current_effort = $2 WHERE id = $1`, r.taskID, dec.Effort)
-		}
-		if err != nil {
-			return fmt.Errorf("refresh tasks: write: %w", err)
-		}
+// apply writes the schedule's decision for one Chore.
+func apply(ctx context.Context, tx pgx.Tx, r choreRow, dec schedule.Decision, now time.Time) error {
+	var err error
+	switch dec.Action {
+	case schedule.Open:
+		// A conflict means an open Task already exists; the index decides.
+		_, err = tx.Exec(ctx, `
+			INSERT INTO tasks (chore_id, status, window_start, window_end, current_effort, created_at)
+			VALUES ($1, 'open', $2, $3, $4, $5)
+			ON CONFLICT DO NOTHING`,
+			r.id, dec.WindowStart.Time(), dec.WindowEnd.Time(), dec.Effort, now)
+	case schedule.SetEffort:
+		_, err = tx.Exec(ctx, `UPDATE tasks SET current_effort = $2 WHERE id = $1`, r.taskID, dec.Effort)
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("refresh tasks: %w", err)
+	if err != nil {
+		return fmt.Errorf("refresh tasks: write: %w", err)
 	}
 	return nil
 }
@@ -189,7 +204,7 @@ func (s *Store) ListOpen(ctx context.Context, homeID string) ([]Open, error) {
 			&o.CurrentEffort, &o.BaseEffort, &o.People, &o.Importance); err != nil {
 			return nil, fmt.Errorf("list open tasks: %w", err)
 		}
-		o.WindowStart, o.WindowEnd = ws.Format(dateLayout), we.Format(dateLayout)
+		o.WindowStart, o.WindowEnd = ws.Format(time.DateOnly), we.Format(time.DateOnly)
 		out = append(out, o)
 	}
 	if err := rows.Err(); err != nil {
