@@ -134,26 +134,10 @@ func loadChores(ctx context.Context, tx pgx.Tx, homeID string, loc *time.Locatio
 			&tID, &status, &ws, &we, &effort, &closedOn); err != nil {
 			return nil, fmt.Errorf("refresh tasks: scan: %w", err)
 		}
-		r.chore.BaseEffort = int(base)
-		if interval != nil {
-			n := int(*interval)
-			r.chore.IntervalDays = &n
-		}
-		for _, w := range weekdays {
-			r.chore.AllowedWeekdays = append(r.chore.AllowedWeekdays, int(w))
-		}
-		r.chore.Created = allocation.DateOf(created.In(loc))
+		r.chore = choreFromRow(base, interval, weekdays, r.chore.BuildsUp, created, loc)
+		r.latest = latestTask(tID, status, ws, we, effort, closedOn)
 		if tID != nil {
 			r.taskID = *tID
-			r.latest = &schedule.Task{
-				Done:          *status == "done",
-				WindowStart:   allocation.DateOf(*ws),
-				WindowEnd:     allocation.DateOf(*we),
-				CurrentEffort: int(*effort),
-			}
-			if closedOn != nil {
-				r.latest.ClosedOn = allocation.DateOf(*closedOn)
-			}
 		}
 		all = append(all, r)
 	}
@@ -161,6 +145,43 @@ func loadChores(ctx context.Context, tx pgx.Tx, homeID string, loc *time.Locatio
 		return nil, fmt.Errorf("refresh tasks: load chores: %w", err)
 	}
 	return all, nil
+}
+
+// choreFromRow maps a chores row to the schedule's Chore, with Created as a
+// date in the Home's zone.
+func choreFromRow(base int16, interval *int32, weekdays []int16, buildsUp bool, created time.Time, loc *time.Location) schedule.Chore {
+	c := schedule.Chore{
+		BaseEffort: int(base),
+		BuildsUp:   buildsUp,
+		Created:    allocation.DateOf(created.In(loc)),
+	}
+	if interval != nil {
+		n := int(*interval)
+		c.IntervalDays = &n
+	}
+	for _, w := range weekdays {
+		c.AllowedWeekdays = append(c.AllowedWeekdays, int(w))
+	}
+	return c
+}
+
+// latestTask maps the joined tasks columns to the Chore's latest Task. It is
+// nil when the Chore has none (tID is nil); ClosedOn is set only when the
+// column is non-NULL.
+func latestTask(tID, status *string, ws, we *time.Time, effort *int16, closedOn *time.Time) *schedule.Task {
+	if tID == nil {
+		return nil
+	}
+	t := &schedule.Task{
+		Done:          *status == "done",
+		WindowStart:   allocation.DateOf(*ws),
+		WindowEnd:     allocation.DateOf(*we),
+		CurrentEffort: int(*effort),
+	}
+	if closedOn != nil {
+		t.ClosedOn = allocation.DateOf(*closedOn)
+	}
+	return t
 }
 
 // apply writes the schedule's decision for one Chore.
