@@ -3,6 +3,49 @@ import { useI18n } from "../i18n";
 import { ALLOCATION_TIMES, formatAllocationTime } from "./allocationTimes";
 import { fieldErrorKey } from "./fieldErrors";
 
+interface SelectFieldProps {
+  id: string;
+  label: string;
+  hint: string;
+  /** The already-translated error, if the field has one. */
+  error: string | undefined;
+  value: string;
+  disabled: boolean;
+  options: readonly { value: string; label: string }[];
+  onChange(value: string): void;
+}
+
+/** A labelled select with a hint and an error, owning the id and aria wiring between them. */
+function SelectField({ id, label, hint, error, value, disabled, options, onChange }: SelectFieldProps) {
+  return (
+    <div>
+      <label htmlFor={id}>{label}</label>
+      <select
+        id={id}
+        value={value}
+        disabled={disabled}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-hint ${id}-error` : `${id}-hint`}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <p id={`${id}-hint`} className="text-muted">
+        {hint}
+      </p>
+      {error && (
+        <p id={`${id}-error`} className="text-danger">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 interface Props {
   /** Prefix for element ids, so two forms on a page never share one. */
   idPrefix: string;
@@ -17,63 +60,33 @@ interface Props {
 export function HomeFields({ idPrefix, values, timezones, fieldErrors, disabled, onChange }: Props) {
   const { t, locale } = useI18n();
 
-  function describedBy(field: keyof HomeSettings): string {
-    return fieldErrors[field] ? `${idPrefix}-${field}-hint ${idPrefix}-${field}-error` : `${idPrefix}-${field}-hint`;
+  function errorFor(field: keyof HomeSettings): string | undefined {
+    const code = fieldErrors[field];
+    return code ? t(fieldErrorKey(field, code)) : undefined;
   }
 
   return (
     <>
-      <div>
-        <label htmlFor={`${idPrefix}-timezone`}>{t("home.timezone.label")}</label>
-        <select
-          id={`${idPrefix}-timezone`}
-          value={values.timezone}
-          disabled={disabled}
-          aria-invalid={fieldErrors.timezone ? true : undefined}
-          aria-describedby={describedBy("timezone")}
-          onChange={(event) => onChange("timezone", event.target.value)}
-        >
-          {timezones.map((zone) => (
-            <option key={zone} value={zone}>
-              {zone.replaceAll("_", " ")}
-            </option>
-          ))}
-        </select>
-        <p id={`${idPrefix}-timezone-hint`} className="text-muted">
-          {t("home.timezone.hint")}
-        </p>
-        {fieldErrors.timezone && (
-          <p id={`${idPrefix}-timezone-error`} className="text-danger">
-            {t(fieldErrorKey("timezone", fieldErrors.timezone))}
-          </p>
-        )}
-      </div>
-
-      <div>
-        <label htmlFor={`${idPrefix}-allocationTime`}>{t("home.allocationTime.label")}</label>
-        <select
-          id={`${idPrefix}-allocationTime`}
-          value={values.allocationTime}
-          disabled={disabled}
-          aria-invalid={fieldErrors.allocationTime ? true : undefined}
-          aria-describedby={describedBy("allocationTime")}
-          onChange={(event) => onChange("allocationTime", event.target.value)}
-        >
-          {ALLOCATION_TIMES.map((time) => (
-            <option key={time} value={time}>
-              {formatAllocationTime(time, locale)}
-            </option>
-          ))}
-        </select>
-        <p id={`${idPrefix}-allocationTime-hint`} className="text-muted">
-          {t("home.allocationTime.hint")}
-        </p>
-        {fieldErrors.allocationTime && (
-          <p id={`${idPrefix}-allocationTime-error`} className="text-danger">
-            {t(fieldErrorKey("allocationTime", fieldErrors.allocationTime))}
-          </p>
-        )}
-      </div>
+      <SelectField
+        id={`${idPrefix}-timezone`}
+        label={t("home.timezone.label")}
+        hint={t("home.timezone.hint")}
+        error={errorFor("timezone")}
+        value={values.timezone}
+        disabled={disabled}
+        options={timezones.map((zone) => ({ value: zone, label: zone.replaceAll("_", " ") }))}
+        onChange={(value) => onChange("timezone", value)}
+      />
+      <SelectField
+        id={`${idPrefix}-allocationTime`}
+        label={t("home.allocationTime.label")}
+        hint={t("home.allocationTime.hint")}
+        error={errorFor("allocationTime")}
+        value={values.allocationTime}
+        disabled={disabled}
+        options={ALLOCATION_TIMES.map((time) => ({ value: time, label: formatAllocationTime(time, locale) }))}
+        onChange={(value) => onChange("allocationTime", value)}
+      />
     </>
   );
 }
