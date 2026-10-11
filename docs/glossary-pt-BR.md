@@ -17,6 +17,14 @@ Agreed Brazilian Portuguese equivalents for the terms in [CONTEXT.md](../CONTEXT
 | Check-in | check-in | verificação de humor, pesquisa, enquete | The English word is common in Brazilian apps. The native speaker may prefer "registro do dia". Used in `reminders.intro`, `install.intro`. |
 | Task | tarefa | atribuição, ocorrência, instância | Plural "tarefas" in running text. Used in `install.intro`. |
 | Day Plan | plano do dia | agenda, cronograma, programação, lista diária | Used in `reminders.intro`. |
+| Baseline | energia base | padrão, energia padrão | A User's usual Energy per weekday. Used in `profile.baseline.*`. |
+| Energy | energia | humor, disposição, fôlego | Used in `profile.baseline.explain`. |
+| Effort | esforço | dificuldade, custo, duração | In points from 1 to 5. Used in `profile.baseline.explain`. |
+| Chore | afazer | atividade, trabalho, tarefa (a Task is "tarefa") | Plural "afazeres". Used in `profile.*`. |
+| Preference | preferência | gosto | Like, neutral, dislike are "Gosto", "Neutro", "Não gosto". |
+| Restriction | restrição | limitação, requisito | Used in `profile.restrictions.*`. |
+| Category | categoria | tipo, área, etiqueta | The ten names are `category.*`. |
+| Demand | exigência | requisito, etiqueta, dificuldade | The four names are `demand.*`; the section heading is "Restrições" and the items name the Demand. |
 
 "Housework" in running copy is "afazeres domésticos". It is not a term in CONTEXT.md; a **Task** (later "tarefa") is a specific thing, so "tarefa" is not used for housework in general.
 
