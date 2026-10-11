@@ -23,6 +23,8 @@ flowchart TD
     push["internal/push: Sender, Store, WebPushSender, Fake"]
     auth["internal/auth: Verifier, Cognito, Fake"]
     users["internal/users: Store (find or create)"]
+    profile["internal/profile: Store (baseline, preferences, restrictions)"]
+    vocab["internal/vocab: Category and Demand ids"]
     mig["migrations: embedded SQL"]
     alloc["internal/allocation: Plan and Check, pure"]
     apitest["internal/apitest: test harness"]
@@ -37,6 +39,8 @@ flowchart TD
     server --> push
     server --> auth
     server --> users
+    server --> profile
+    server --> vocab
     auth --> clock
     apitest --> push
     apitest --> auth
@@ -55,6 +59,8 @@ flowchart TD
 | `push` | `Sender` interface (one `Send` per subscription, returning `ErrGone` when the push service answers 404 or 410), `WebPushSender` (real, on `webpush-go`, VAPID, 24h TTL, 10s HTTP timeout; it strips a leading `mailto:` from `VAPID_SUBJECT` because webpush-go adds one, and includes the push service's response body in non-2xx errors), `Store` (the `push_subscriptions` table: upsert, get, delete, and `Deliver`, which drops a subscription the push service rejected), and `Fake` for tests. |
 | `auth` | `Verifier` interface: a raw bearer token in, `Claims{Subject, Email}` out, or an error wrapping `ErrInvalidToken`. `Cognito` is the real one: RS256 only, signature from the pool's JWKS (fetched lazily on the first authenticated request, cached in memory for an hour, one refetch at most a minute for an unknown key id, old keys kept if a refresh fails, fail closed when none are known), `iss` equal to the issuer, `aud` equal to the app client, `token_use` equal to `id`, `exp` required, `email_verified` true, subject and email present. Time comes from the injected `Clock`. `Fake` mints tokens for tests and never touches the network. |
 | `users` | `Store.FindOrCreate(sub, email, now)`: the single upsert behind the first-request-creates-the-User rule. |
+| `profile` | `Store` for the User's profile: `Load`, `SetBaseline` (set some days, clear others, one transaction), `SetPreference` (neutral deletes the row), `AddRestriction`, `RemoveRestriction`. Writes are idempotent. `MaxBaseline` (20) is the named upper bound of a Baseline. |
+| `vocab` | The fixed, ordered Category and Demand ids (snake_case, stored and sent as-is) with `IsCategory` and `IsDemand`. `allocation` never imports it; its `Demand` values equal these ids. |
 | `db` | Opens a `pgx` connection pool (retrying about 10s at start) and runs `goose` migrations. |
 | `clock` | The only place allowed to read the time. Business code takes a `Clock`; tests use `Fake`. |
 | `allocation` | The Allocation module, see [Daily Allocation](allocation.md). |
@@ -94,9 +100,16 @@ Authentication is not in that chain: `requireUser` wraps individual routes (like
 |---|---|
 | `GET /healthz` | Pings the database; `200 {"status":"ok"}` or `503`. |
 | `GET /me` | Needs a token. `200 {"id","email"}` for the signed-in User, created by the first authenticated request. |
+| `GET /categories`, `GET /demands` | Need a token. `{"categories": [...]}` and `{"demands": [...]}`: the fixed ids in display order. Names are localised in the PWA. |
+| `GET /me/profile` | Needs a token. `{"baseline": {"sunday": null, "monday": 5, ...}, "preferences": {"kitchen": "like"}, "restrictions": ["heavy_lifting"]}`. Always all seven weekday keys (`null` = unset, 0 is a real value); preferences list only set Categories (neutral is absent); restrictions follow the `GET /demands` order. |
+| `PUT /me/baseline` | Needs a token. Body maps weekday names (`sunday` to `saturday`) to an integer 0 to 20, or `null` to clear. Partial: days not named are untouched. `204`; `400` naming the field for an unknown weekday, a non-integer, a value out of range, an empty object or unknown JSON. |
+| `PUT /me/preferences/{category}` | Needs a token. Body `{"preference": "like" or "neutral" or "dislike"}`; neutral deletes the row. `204`; `404` for an unknown Category; `400` for a bad value or unknown field. |
+| `PUT /me/restrictions/{demand}`, `DELETE /me/restrictions/{demand}` | Need a token. Add and remove a Restriction, both idempotent. `204`; `404` for an unknown Demand. |
 | `GET /push/vapid-public-key` | `{"key": "..."}`, the key browsers subscribe with. |
 | `PUT /push/subscription` | Needs a token. Body is the browser's `PushSubscription.toJSON()` (`endpoint`, `keys.p256dh`, `keys.auth`, optional `userAgent`). Idempotent upsert on `endpoint`, owned by the caller (a device re-registered by another signed-in User moves to them); `204`. `400` for a non-https endpoint, missing or non-base64url keys or bad JSON; `413` over 8 KB. |
 | `POST /push/test` | Needs a token. Body `{"endpoint","delaySeconds"?}`. Sends a small test notification to that one stored subscription only. `204`; `404` unknown, owned by another User or owned by nobody; `410` if the push service rejected it (the row is deleted); `502` on any other push error (the row is kept). |
+
+Every profile write answers `204` with no body, and every query uses the signed-in User's id, never one from the URL or body. Request bodies are capped at 4 KB and reject unknown fields (`decodeBody` in `server/http.go` takes the cap and a strict flag; push keeps its 8 KB cap and lenient decoding).
 
 The three `/push/*` routes answer `503 {"error":"push not configured"}` when no VAPID keys are set, so local development and CI need none. The two write routes need a signed-in User; `GET /push/vapid-public-key` stays public. Push configuration is checked first, then the token. Subscriptions carry `user_id`, and a test send reaches only a subscription the caller owns.
 
