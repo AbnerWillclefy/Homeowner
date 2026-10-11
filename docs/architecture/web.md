@@ -15,6 +15,7 @@ The PWA is one Vite app in `web/`, installed to the Home Screen. It has a precac
 | `src/api/` | Built | The API client: `authedFetch` and the typed calls to `/me`, the profile routes (`/me/profile`, `/categories`, `/demands`), `/push/*`, `/home` and `/home/chores`. |
 | `src/home/` | Built | The Home section: create form and settings form for the Home's timezone and Allocation time. Detailed below. |
 | `src/chores/` | Built | The Chores section inside the Home section: list, add and edit form with every field, inline two-step delete, and the non-blocking two-person suggestion. Detailed below. |
+| `src/invite/` | Built | Joining a Home from an Invite link (signed out and signed in, with the leave warning), the rating step after joining, and sharing an Invite from the Home section. Detailed below. |
 | `src/profile/` | Built | The Profile section for signed-in Users: Baseline per weekday (saved on blur), Preference per Category and Restrictions on Demands. Each control saves on its own, optimistically, and is undone with a visible message if the API refuses. The Category and Demand lists come from the API; an id with no translation shows as the id. Logic is in pure modules (`baselineInput`, `changes`, `labels`, `weekdays`); `useProfile` holds the state. |
 | `src/push/` | Built | The reminders controls and Web Push subscription. |
 | `src/sw.ts`, `src/sw/` | Built | The service worker: precache and push handling. |
@@ -184,6 +185,34 @@ flowchart TD
 - Delete is two steps inline in `ChoreItem` (no `window.confirm`): Delete swaps the buttons for a prompt with "Keep it" (focused) and "Yes, delete". A failed delete keeps the prompt and shows a retry message; a 404 counts as deleted.
 - `fieldErrors.ts` maps every code `backend/internal/chores` can return (`name`: `required`, `too_long`; `category` and `importance`: `required`, `unknown`; `demands`: `unknown`; `baseEffort`, `people`, `intervalDays`: `required`, `invalid`, `out_of_range`; `allowedWeekdays`: `invalid`, `out_of_range`) to message keys in both catalogs. Category, Demand and Importance names come from `profile/labels.ts`; an id with no translation shows as the id.
 - Pure modules with vitest tests: `api/chores.ts`, `form.ts`, `suggestion.ts`, `fieldErrors.ts`. The components and hooks are checked by hand.
+
+## Invites
+
+`src/invite/` handles joining a Home from a link and sharing one. The PWA has no router, so the link is `https://<app>/#invite=<token>`: a fragment is never sent to CloudFront, S3 or any log.
+
+```mermaid
+flowchart TD
+    START[App startup] --> CAP[usePendingInvite: captureInvite]
+    CAP -->|store in localStorage homeowner.invite, replaceState strips the fragment| TOK{pending token?}
+    TOK -->|signed out| SOI[SignedOutInvite: GET /invites/token]
+    SOI -->|404, used, expired| DEAD[say so, Continue forgets it]
+    SOI -->|valid| FLOW[SignedOutFlow starting on sign-up]
+    TOK -->|signed in| JOIN[JoinInvite replaces HomeSection]
+    JOIN -->|GET /home: none| BTN[Join this Home]
+    JOIN -->|GET /home: has a Home| WARN[leave warning]
+    BTN -->|POST accept, confirmLeave false| ACC[api/invites.ts]
+    WARN -->|POST accept, confirmLeave true| ACC
+    ACC -->|409 leaves current home| WARN
+    ACC -->|200| RATE[RatingStep, then HomeSection]
+    ACC -->|409 already_here| NOTE[notice, then HomeSection]
+```
+
+- `pendingInvite.ts` is pure and never throws (the `localeStorage.ts` approach). The token goes to `localStorage`, not `sessionStorage`, because the Cognito confirmation email can open a new tab and the token must survive sign-up, the code and sign-in. It is cleared after a join, an `already_here`, or when the person dismisses a dead or declined Invite. Only base64url characters are accepted as a token.
+- `api/invites.ts` has `createInvite` (`POST /home/invites`; `none` for 404, `too-many` for 429), `lookupInvite` (`GET /invites/{token}`, sent without a session; `valid`, `not-found`, `used`, `expired`) and `acceptInvite` (`would-leave`, `already-here`, the dead kinds, or `ok` with a Home). `parseHome` is shared with `api/home.ts`.
+- A signed-in person with a pending Invite sees `JoinInvite` instead of `HomeSection`, so `CreateHome` is never offered while an Invite is pending. The Profile section stays visible and does not block the join. The leave warning is shown before anything is sent when `GET /home` finds a Home; a 409 from the API shows it too.
+- The rating step (`RatingStep`, `useRatingStep`) shows after a successful join. `ratingChores.ts` (`selectChoresToRate`, `RATING_CHORE_COUNT` = 8) sorts by base Effort descending, then Importance (essential first), then name. Each Chore gets like, neutral or dislike and a Restriction checkbox, saved on its own and undone on failure, through `api/choreSettings.ts` (`getOwnChoreSettings` keeps only the `you` entry of `GET /home/chores/settings`). It is skippable and closes itself for a Home with no Chores.
+- `InviteShare` in the Home section creates an Invite and calls `navigator.share`, falling back to `navigator.clipboard.writeText`. `share.ts` (`inviteLink`, `shareInvite`) holds that logic.
+- Pure modules with vitest tests: `pendingInvite.ts`, `share.ts`, `ratingChores.ts`, `api/invites.ts`, `api/choreSettings.ts`. The components and hooks are checked by hand.
 
 ## Service worker
 
