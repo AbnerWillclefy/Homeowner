@@ -33,6 +33,40 @@ func energyOn(p profile.Profile, day allocation.Date) int {
 func loadState(ctx context.Context, q pgx.Tx, homeID string, today allocation.Date) (loaded, error) {
 	out := loaded{state: allocation.State{Today: today}, energy: map[string]int{}}
 
+	var err error
+	if out.state.Tasks, err = loadTasks(ctx, q, homeID); err != nil {
+		return loaded{}, err
+	}
+	residents, err := loadResidents(ctx, q, homeID)
+	if err != nil {
+		return loaded{}, err
+	}
+	userIDs := make([]string, len(residents))
+	for i, r := range residents {
+		userIDs[i] = r.userID
+	}
+	profiles, err := profile.LoadMany(ctx, q, userIDs)
+	if err != nil {
+		return loaded{}, err
+	}
+	choreRestrictions, err := loadChoreRestrictions(ctx, q, homeID)
+	if err != nil {
+		return loaded{}, err
+	}
+
+	for _, r := range residents {
+		p := profiles[r.userID]
+		res := allocation.Resident{ID: r.id, Energy: energyOn(p, today), ChoreRestrictions: choreRestrictions[r.id]}
+		for _, d := range p.Restrictions {
+			res.DemandRestrictions = append(res.DemandRestrictions, allocation.Demand(d))
+		}
+		out.state.Residents = append(out.state.Residents, res)
+		out.energy[r.id] = res.Energy
+	}
+	return out, nil
+}
+
+func loadTasks(ctx context.Context, q pgx.Tx, homeID string) ([]allocation.Task, error) {
 	rows, err := q.Query(ctx, `
 		SELECT t.id, c.id, t.current_effort, c.importance, c.people, c.demands, c.allowed_weekdays,
 		       t.window_start, t.window_end
@@ -40,9 +74,9 @@ func loadState(ctx context.Context, q pgx.Tx, homeID string, today allocation.Da
 		WHERE c.home_id = $1 AND t.status = 'open'
 		ORDER BY t.window_start, c.created_at, t.id`, homeID)
 	if err != nil {
-		return loaded{}, fmt.Errorf("load open tasks: %w", err)
+		return nil, fmt.Errorf("load open tasks: %w", err)
 	}
-	out.state.Tasks, err = pgx.CollectRows(rows, func(r pgx.CollectableRow) (t allocation.Task, err error) {
+	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (t allocation.Task, err error) {
 		var (
 			effort, people int16
 			importance     string
@@ -64,56 +98,47 @@ func loadState(ctx context.Context, q pgx.Tx, homeID string, today allocation.Da
 		return t, nil
 	})
 	if err != nil {
-		return loaded{}, fmt.Errorf("load open tasks: %w", err)
+		return nil, fmt.Errorf("load open tasks: %w", err)
 	}
+	return out, nil
+}
 
-	type resident struct{ id, userID string }
-	rows, err = q.Query(ctx, `SELECT id, user_id FROM residents WHERE home_id = $1 ORDER BY created_at, id`, homeID)
+type residentRow struct{ id, userID string }
+
+func loadResidents(ctx context.Context, q pgx.Tx, homeID string) ([]residentRow, error) {
+	rows, err := q.Query(ctx, `SELECT id, user_id FROM residents WHERE home_id = $1 ORDER BY created_at, id`, homeID)
 	if err != nil {
-		return loaded{}, fmt.Errorf("load residents: %w", err)
+		return nil, fmt.Errorf("load residents: %w", err)
 	}
-	residents, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (x resident, err error) {
+	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (x residentRow, err error) {
 		return x, r.Scan(&x.id, &x.userID)
 	})
 	if err != nil {
-		return loaded{}, fmt.Errorf("load residents: %w", err)
+		return nil, fmt.Errorf("load residents: %w", err)
 	}
-	userIDs := make([]string, len(residents))
-	for i, r := range residents {
-		userIDs[i] = r.userID
-	}
-	profiles, err := profile.LoadMany(ctx, q, userIDs)
-	if err != nil {
-		return loaded{}, err
-	}
+	return out, nil
+}
 
-	rows, err = q.Query(ctx, `
+// loadChoreRestrictions returns the Chore ids each Resident is restricted
+// from, by Resident id.
+func loadChoreRestrictions(ctx context.Context, q pgx.Tx, homeID string) (map[string][]string, error) {
+	rows, err := q.Query(ctx, `
 		SELECT q.resident_id, q.chore_id
 		FROM resident_chore_restrictions q JOIN residents r ON r.id = q.resident_id
 		WHERE r.home_id = $1`, homeID)
 	if err != nil {
-		return loaded{}, fmt.Errorf("load chore restrictions: %w", err)
+		return nil, fmt.Errorf("load chore restrictions: %w", err)
 	}
 	type restriction struct{ resident, chore string }
 	rs, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (x restriction, err error) {
 		return x, r.Scan(&x.resident, &x.chore)
 	})
 	if err != nil {
-		return loaded{}, fmt.Errorf("load chore restrictions: %w", err)
+		return nil, fmt.Errorf("load chore restrictions: %w", err)
 	}
-	choreRestrictions := map[string][]string{}
+	out := map[string][]string{}
 	for _, x := range rs {
-		choreRestrictions[x.resident] = append(choreRestrictions[x.resident], x.chore)
-	}
-
-	for _, r := range residents {
-		p := profiles[r.userID]
-		res := allocation.Resident{ID: r.id, Energy: energyOn(p, today), ChoreRestrictions: choreRestrictions[r.id]}
-		for _, d := range p.Restrictions {
-			res.DemandRestrictions = append(res.DemandRestrictions, allocation.Demand(d))
-		}
-		out.state.Residents = append(out.state.Residents, res)
-		out.energy[r.id] = res.Energy
+		out[x.resident] = append(out[x.resident], x.chore)
 	}
 	return out, nil
 }
@@ -149,13 +174,6 @@ type violation struct {
 
 // store writes the run and its assignments.
 func store(ctx context.Context, tx pgx.Tx, homeID string, date allocation.Date, now time.Time, rec runRecord) error {
-	// Never nil, so the stored arrays are [] and not null.
-	if rec.reasons.Assigned == nil {
-		rec.reasons.Assigned = []assigned{}
-	}
-	if rec.reasons.Pool == nil {
-		rec.reasons.Pool = []pooled{}
-	}
 	body, err := json.Marshal(rec.reasons)
 	if err != nil {
 		return fmt.Errorf("store run: %w", err)

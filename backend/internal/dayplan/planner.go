@@ -40,9 +40,6 @@ const (
 
 const uniqueViolation = "23505"
 
-// Named is implemented by an Allocator that names itself in the run record.
-type Named interface{ Name() string }
-
 // Planner plans Homes.
 type Planner struct {
 	db    *pgxpool.Pool
@@ -54,13 +51,6 @@ type Planner struct {
 // New returns a Planner that asks alloc for every proposal.
 func New(db *pgxpool.Pool, alloc allocation.Allocator, log *slog.Logger) *Planner {
 	return &Planner{db: db, tasks: tasks.NewStore(db), alloc: alloc, log: log}
-}
-
-func (p *Planner) allocatorName() string {
-	if n, ok := p.alloc.(Named); ok {
-		return n.Name()
-	}
-	return "custom"
 }
 
 // Summary is what one run of the job did.
@@ -195,16 +185,13 @@ func (p *Planner) PlanHome(ctx context.Context, homeID string, now time.Time) (O
 	if err := tx.QueryRow(ctx, `SELECT timezone FROM homes WHERE id = $1 FOR NO KEY UPDATE`, homeID).Scan(&zone); err != nil {
 		return "", fmt.Errorf("plan home: lock home: %w", err)
 	}
-	loc, err := time.LoadLocation(zone)
+	date, err := localDate(zone, now)
 	if err != nil {
-		return "", fmt.Errorf("plan home: timezone %q: %w", zone, err)
+		return "", fmt.Errorf("plan home: %w", err)
 	}
-	date := allocation.DateOf(now.In(loc))
-
-	var exists bool
-	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM allocation_runs WHERE home_id = $1 AND plan_date = $2)`,
-		homeID, date.Time()).Scan(&exists); err != nil {
-		return "", fmt.Errorf("plan home: look for run: %w", err)
+	exists, err := runExists(ctx, tx, homeID, date)
+	if err != nil {
+		return "", fmt.Errorf("plan home: %w", err)
 	}
 	if exists {
 		return AlreadyPlanned, nil
@@ -243,15 +230,38 @@ func (p *Planner) planned(ctx context.Context, homeID string, now time.Time) (bo
 	if err := p.db.QueryRow(ctx, `SELECT timezone FROM homes WHERE id = $1`, homeID).Scan(&zone); err != nil {
 		return false, fmt.Errorf("plan home: load home: %w", err)
 	}
+	date, err := localDate(zone, now)
+	if err != nil {
+		return false, fmt.Errorf("plan home: %w", err)
+	}
+	exists, err := runExists(ctx, p.db, homeID, date)
+	if err != nil {
+		return false, fmt.Errorf("plan home: %w", err)
+	}
+	return exists, nil
+}
+
+// querier is the QueryRow half of *pgxpool.Pool and pgx.Tx.
+type querier interface {
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
+// localDate is the date at now in the IANA zone.
+func localDate(zone string, now time.Time) (allocation.Date, error) {
 	loc, err := time.LoadLocation(zone)
 	if err != nil {
-		return false, fmt.Errorf("plan home: timezone %q: %w", zone, err)
+		return 0, fmt.Errorf("timezone %q: %w", zone, err)
 	}
+	return allocation.DateOf(now.In(loc)), nil
+}
+
+// runExists reports whether the Home has a run for the date.
+func runExists(ctx context.Context, q querier, homeID string, date allocation.Date) (bool, error) {
 	var exists bool
-	err = p.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM allocation_runs WHERE home_id = $1 AND plan_date = $2)`,
-		homeID, allocation.DateOf(now.In(loc)).Time()).Scan(&exists)
+	err := q.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM allocation_runs WHERE home_id = $1 AND plan_date = $2)`,
+		homeID, date.Time()).Scan(&exists)
 	if err != nil {
-		return false, fmt.Errorf("plan home: look for run: %w", err)
+		return false, fmt.Errorf("look for run: %w", err)
 	}
 	return exists, nil
 }
@@ -268,7 +278,8 @@ type runRecord struct {
 // breaks a rule is never stored as a plan (ADR 0004): the run is rejected with
 // nothing assigned.
 func (p *Planner) propose(st loaded) runRecord {
-	rec := runRecord{allocator: p.allocatorName(), outcome: Planned, reasons: reasons{Energy: st.energy}}
+	rec := runRecord{allocator: p.alloc.Name(), outcome: Planned,
+		reasons: reasons{Energy: st.energy, Assigned: []assigned{}, Pool: []pooled{}}}
 	res, err := p.alloc.Plan(st.state)
 	if err != nil {
 		rec.outcome, rec.reasons.Error = Rejected, "allocator_failed"
