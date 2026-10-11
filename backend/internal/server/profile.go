@@ -85,6 +85,34 @@ func (s *server) putBaseline(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// putPreference sets the signed-in User's Preference for a Category; neutral
+// removes it. An unknown Category is a 404, not a 400: it is a path that does
+// not exist.
+func (s *server) putPreference(w http.ResponseWriter, r *http.Request) {
+	category := r.PathValue("category")
+	if !vocab.IsCategory(category) {
+		writeError(w, http.StatusNotFound, "unknown category")
+		return
+	}
+	var body struct {
+		Preference string `json:"preference"`
+	}
+	if !decodeBody(w, r, &body, maxProfileBody, true) {
+		return
+	}
+	switch body.Preference {
+	case profile.Like, profile.Neutral, profile.Dislike:
+	default:
+		writeError(w, http.StatusBadRequest, "preference must be one of like, neutral, dislike")
+		return
+	}
+	if err := s.profile.SetPreference(r.Context(), currentUser(r.Context()).ID, category, body.Preference); err != nil {
+		s.profileError(w, "set preference", err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *server) profileError(w http.ResponseWriter, what string, err error) {
 	s.deps.Logger.Error(what, "error", err.Error())
 	writeError(w, http.StatusInternalServerError, "internal error")

@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"context"
 	"net/http"
 	"reflect"
 	"testing"
@@ -105,5 +106,54 @@ func TestBaselineIsSetAndClearedPerDayLeavingOtherDaysAlone(t *testing.T) {
 	// Clearing a day that was never set is not an error.
 	if res := me.Put("/me/baseline", map[string]any{"sunday": nil}); res.Status != http.StatusNoContent {
 		t.Errorf("clearing an unset day = %d %s, want 204", res.Status, res.Raw)
+	}
+}
+
+func preferencesOf(t *testing.T, me *apitest.Client) map[string]any {
+	t.Helper()
+	res := me.Get("/me/profile")
+	prefs, ok := res.Body["preferences"].(map[string]any)
+	if !ok {
+		t.Fatalf("preferences in %s, want an object", res.Raw)
+	}
+	return prefs
+}
+
+func countRows(t *testing.T, app *apitest.App, table string) int {
+	t.Helper()
+	var n int
+	if err := app.DB.QueryRow(context.Background(), "SELECT count(*) FROM "+table).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	return n
+}
+
+func TestPreferenceNeutralRemovesItAndAnUnsetCategoryIsAbsent(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := app.SignInAs("a@example.com")
+
+	if res := me.Put("/me/preferences/kitchen", map[string]any{"preference": "dislike"}); res.Status != http.StatusNoContent {
+		t.Fatalf("PUT dislike = %d %s, want 204", res.Status, res.Raw)
+	}
+	// A later value replaces the earlier one.
+	me.Put("/me/preferences/kitchen", map[string]any{"preference": "like"})
+	me.Put("/me/preferences/trash", map[string]any{"preference": "dislike"})
+	if got := preferencesOf(t, me); !reflect.DeepEqual(got, map[string]any{"kitchen": "like", "trash": "dislike"}) {
+		t.Fatalf("preferences = %v, want kitchen like and trash dislike", got)
+	}
+
+	if res := me.Put("/me/preferences/kitchen", map[string]any{"preference": "neutral"}); res.Status != http.StatusNoContent {
+		t.Fatalf("PUT neutral = %d %s, want 204", res.Status, res.Raw)
+	}
+	if got := preferencesOf(t, me); !reflect.DeepEqual(got, map[string]any{"trash": "dislike"}) {
+		t.Errorf("preferences = %v, want only trash", got)
+	}
+	if n := countRows(t, app, "user_category_preferences"); n != 1 {
+		t.Errorf("rows = %d, want 1: neutral must delete the row", n)
+	}
+	// Neutral on a never-set Category is fine too.
+	if res := me.Put("/me/preferences/pets", map[string]any{"preference": "neutral"}); res.Status != http.StatusNoContent {
+		t.Errorf("neutral on unset = %d %s, want 204", res.Status, res.Raw)
 	}
 }
