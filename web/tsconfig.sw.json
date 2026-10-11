@@ -12,5 +12,12 @@
     "noEmit": true,
     "types": []
   },
-  "include": ["src/sw.ts", "src/sw"]
+  "include": [
+    "src/sw.ts",
+    "src/sw",
+    "src/i18n/locales.ts",
+    "src/i18n/resolveLocale.ts",
+    "src/i18n/fallback.ts",
+    "src/i18n/browserLanguages.ts"
+  ]
 }

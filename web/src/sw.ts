@@ -1,6 +1,9 @@
 /// <reference lib="webworker" />
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from "workbox-precaching";
 import { NavigationRoute, registerRoute } from "workbox-routing";
+import { browserLanguages } from "./i18n/browserLanguages";
+import { DEFAULT_LOCALE, type Locale } from "./i18n/locales";
+import { resolveLocale } from "./i18n/resolveLocale";
 import { notificationFromPush } from "./sw/payload";
 
 declare const self: ServiceWorkerGlobalScope;
@@ -34,7 +37,14 @@ self.addEventListener("push", (event) => {
       } catch {
         text = null;
       }
-      const { title, body, url } = notificationFromPush(text);
+      // Device language, resolved per push. The in-app choice is not readable here (no localStorage in workers).
+      let locale: Locale = DEFAULT_LOCALE;
+      try {
+        locale = resolveLocale({ languages: browserLanguages() });
+      } catch {
+        locale = DEFAULT_LOCALE;
+      }
+      const { title, body, url } = notificationFromPush(text, locale);
       await self.registration.showNotification(title, {
         body,
         icon: "/icon-192.png",
