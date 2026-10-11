@@ -63,13 +63,23 @@ module "api" {
   image_tag       = var.image_tag
   ssm_path_prefix = local.ssm_prefix
 
-  environment = {
-    PORT                           = "8080"
-    DB_MAX_CONNS                   = "2"
-    CORS_ALLOWED_ORIGINS           = join(",", compact(["https://${module.web.domain_name}", var.cors_allowed_origins]))
-    DATABASE_URL_SSM_PARAM         = module.database.database_url_param
-    MIGRATE_DATABASE_URL_SSM_PARAM = module.database.migrate_database_url_param
-  }
+  environment = merge(
+    {
+      PORT                           = "8080"
+      DB_MAX_CONNS                   = "2"
+      CORS_ALLOWED_ORIGINS           = join(",", compact(["https://${module.web.domain_name}", var.cors_allowed_origins]))
+      DATABASE_URL_SSM_PARAM         = module.database.database_url_param
+      MIGRATE_DATABASE_URL_SSM_PARAM = module.database.migrate_database_url_param
+    },
+    # Web Push (#7). The private key is a SecureString a human puts in SSM
+    # (Terraform never sees it); without the public key push stays off and the
+    # API answers 503 on /push/*.
+    var.vapid_public_key == "" ? {} : {
+      VAPID_PUBLIC_KEY            = var.vapid_public_key
+      VAPID_SUBJECT               = var.vapid_subject
+      VAPID_PRIVATE_KEY_SSM_PARAM = "${local.ssm_prefix}/vapid-private-key"
+    },
+  )
 }
 
 module "http_api" {

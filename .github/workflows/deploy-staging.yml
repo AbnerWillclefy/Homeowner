@@ -34,6 +34,8 @@ jobs:
       TF_VAR_aws_region: ${{ vars.AWS_REGION }}
       TF_VAR_budget_email: ${{ secrets.BUDGET_EMAIL }}
       TF_VAR_image_tag: ${{ github.sha }}
+      TF_VAR_vapid_public_key: ${{ vars.VAPID_PUBLIC_KEY }}
+      TF_VAR_vapid_subject: ${{ vars.VAPID_SUBJECT }}
       TF_IN_AUTOMATION: "true"
     defaults:
       run:

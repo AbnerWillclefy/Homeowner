@@ -1,3 +1,4 @@
+import { Reminders } from "./push/Reminders";
 import { useHealth, type HealthState } from "./useHealth";
 
 const STATUS_TEXT: Record<HealthState["kind"], string> = {
@@ -22,6 +23,7 @@ export default function App() {
           Try again
         </button>
       )}
+      <Reminders />
     </main>
   );
 }

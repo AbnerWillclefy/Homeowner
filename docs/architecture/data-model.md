@@ -9,8 +9,9 @@ Migrations live in `backend/migrations/` as `NNNN_description.sql` files, applie
 | Migration | Contents |
 |---|---|
 | `0001_init.sql` | No tables. It only proves the migration pipeline works. |
+| `0002_push_subscriptions.sql` | `push_subscriptions`: `id` (uuid), `endpoint` (unique), `p256dh`, `auth`, `user_agent`, `created_at`, `updated_at`. One row per device. There is **no `user_id` yet**: the auth ticket adds it in its own migration. Timestamps come from the injected clock. |
 
-**No table exists yet.** Everything below is the planned schema from issue #1.
+`push_subscriptions` is the only table built. Everything else below is the planned schema from issue #1.
 
 ## Planned tables
 
@@ -29,7 +30,7 @@ erDiagram
     homes ||--o{ allocation_runs : "planned by"
 ```
 
-| Table (all planned) | Holds |
+| Table | Holds |
 |---|---|
 | `users`, `homes`, `residents`, `invites` | Accounts, Homes, membership (a User is a Resident of at most one Home), single-use 7-day Invites |
 | `chores` | Category, Demands, base Effort, Importance, people needed, build-up flag, interval in days, allowed weekdays |
@@ -38,4 +39,4 @@ erDiagram
 | `check_ins` | Resident, date, level, day-only Restrictions |
 | Preferences and Restrictions | General on users, specific on residents |
 | `allocation_runs` | Home, date, which allocator, fallback reason, recorded reasons |
-| `push_subscriptions` | One per device |
+| `push_subscriptions` | One per device. Built without the link to `users` shown above; that link arrives with auth. |

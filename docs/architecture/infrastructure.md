@@ -4,7 +4,7 @@ Related: [ADR 0002](../adr/0002-mirror-the-work-stack.md), [ADR 0005](../adr/000
 
 ## What is built
 
-Built: the local stack, pull request checks, a staging environment on AWS defined in Terraform under `infra/`, and a deploy pipeline that runs on every merge to `main`. Staging has the API (Lambda behind API Gateway), a Neon database branch, an account-wide budget alert, and the web app (S3 behind CloudFront). Planned: the Allocator Lambda, EventBridge schedule, Cognito, push, and the prod environment.
+Built: the local stack, pull request checks, a staging environment on AWS defined in Terraform under `infra/`, and a deploy pipeline that runs on every merge to `main`. Staging has the API (Lambda behind API Gateway), a Neon database branch, an account-wide budget alert, and the web app (S3 behind CloudFront). Web Push sending is built in the API (needs the VAPID keys above). Planned: the Allocator Lambda, EventBridge schedule, Cognito, and the prod environment.
 
 ## Local (built)
 
@@ -22,7 +22,7 @@ flowchart TB
         apigw["API Gateway HTTP API"]
         fn["API Lambda, container image"]
         ecr["ECR repository"]
-        ssm["SSM parameters: database URLs"]
+        ssm["SSM parameters: database URLs, VAPID private key"]
         alloc["Allocator Lambda + EventBridge"]:::p
         cog["Cognito pool"]:::p
       end
@@ -37,12 +37,15 @@ flowchart TB
     ecr -.-> fn
     fn --> ssm
     fn --> neon
+    fn -- "Web Push, VAPID" --> push(["Browser push services"])
     classDef p stroke-dasharray: 5 5,color:#666
 ```
 
 - **Lambda** runs code on demand and bills per use; the Go code is packaged as a container image in ECR. **Neon** is hosted Postgres reached over the normal Postgres protocol, so there is no VPC or NAT Gateway.
 - **Web hosting** (module `infra/modules/web`): a private S3 bucket holds the built PWA. CloudFront is the only reader, through Origin Access Control (CloudFront signs its requests to S3, so the bucket has no public access). The distribution uses CloudFront's default domain and certificate, and redirects HTTP to HTTPS. Because the PWA does its own routing in the browser, a request for a path such as `/home` finds no file in S3; CloudFront maps those 403 and 404 responses to `/index.html` with status 200 so the app can load and handle the route.
 - The API allows the CloudFront origin through `CORS_ALLOWED_ORIGINS`.
+- **Web Push keys**: the VAPID key pair is generated once by a human (`api vapid`). The private key is a `SecureString` at `/homeowner/staging/vapid-private-key`, created with `aws ssm put-parameter` so it never enters Terraform state; the Lambda reads it at start through `VAPID_PRIVATE_KEY_SSM_PARAM` (its role already reads `/homeowner/staging/*`). The public key and the contact `VAPID_SUBJECT` are the Terraform variables `vapid_public_key` and `vapid_subject`, fed from repository variables in `deploy-staging.yml`. Without the public key the Lambda gets no VAPID settings and push stays off. The Lambda calls browser push services over the internet (no VPC, so no NAT needed).
+- `sw.js`, `index.html`, `registerSW.js` and the manifest are uploaded with `Cache-Control: no-cache`, so a new service worker is picked up after a deploy despite CloudFront's caching.
 - **Terraform layout**: `infra/bootstrap` is applied once by a human with local state (state bucket, GitHub OIDC provider, deploy role). Shared modules are in `infra/modules`: `lambda-container`, `http-api`, `neon-branch`, `budget` and `web`. `infra/staging` is a thin folder that wires them together, with state in S3 with native locking. Planned modules: `allocator`, `auth`, `push`. A `production` folder would be another thin folder over the same modules. Details are in `infra/README.md`.
 - No custom domain in v1; the PWA uses CloudFront's default HTTPS domain.
 
