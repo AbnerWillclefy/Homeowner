@@ -14,3 +14,39 @@ body {
   padding: 0.75rem 1.25rem;
   min-height: 44px;
 }
+
+.home label {
+  display: block;
+  margin-top: 1rem;
+  font-weight: 600;
+}
+
+/* 16px or more stops iOS Safari zooming into the field on focus. */
+.home input {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  font: inherit;
+  font-size: 1rem;
+  padding: 0.75rem;
+  min-height: 44px;
+  margin-top: 0.25rem;
+}
+
+.home .hint {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+  color: #444;
+}
+
+.home button.link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #2f6f4f;
+  text-decoration: underline;
+}
+
+.home form button[type="submit"] {
+  margin-top: 1rem;
+}
