@@ -16,6 +16,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/config"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/db"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/server"
 )
 
@@ -31,6 +32,9 @@ func run(args []string, log *slog.Logger) error {
 	cmd := "serve"
 	if len(args) > 0 {
 		cmd = args[0]
+	}
+	if cmd == "vapid" {
+		return vapid(os.Stdout)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -50,7 +54,7 @@ func run(args []string, log *slog.Logger) error {
 	case "serve":
 		return serve(ctx, cfg, log)
 	default:
-		return fmt.Errorf("unknown command %q (want serve or migrate)", cmd)
+		return fmt.Errorf("unknown command %q (want serve, migrate or vapid)", cmd)
 	}
 }
 
@@ -75,9 +79,17 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	}
 	defer pool.Close()
 
+	deps := server.Deps{DB: pool, Clock: clock.System{}, Logger: log, CORSAllowedOrigins: cfg.CORSAllowedOrigins}
+	if cfg.VAPIDEnabled() {
+		deps.Push = push.NewWebPushSender(cfg.VAPIDPublicKey, cfg.VAPIDPrivateKey, cfg.VAPIDSubject)
+		deps.VAPIDPublicKey = cfg.VAPIDPublicKey
+	} else {
+		log.Warn("push disabled: VAPID keys are not set")
+	}
+
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           server.New(server.Deps{DB: pool, Clock: clock.System{}, Logger: log, CORSAllowedOrigins: cfg.CORSAllowedOrigins}),
+		Handler:           server.New(deps),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,

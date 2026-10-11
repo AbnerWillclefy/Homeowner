@@ -20,7 +20,15 @@ type Config struct {
 	// CORSAllowedOrigins are the browser origins allowed to call the API.
 	// Empty means no CORS headers are sent.
 	CORSAllowedOrigins []string
+	// VAPID keys and subject for Web Push. Optional as a set: with neither key
+	// set, push is disabled and the /push/* routes answer 503.
+	VAPIDPublicKey  string
+	VAPIDPrivateKey string
+	VAPIDSubject    string
 }
+
+// VAPIDEnabled reports whether push is configured.
+func (c Config) VAPIDEnabled() bool { return c.VAPIDPublicKey != "" && c.VAPIDPrivateKey != "" }
 
 // Load builds a Config from getenv (os.Getenv in production).
 func Load(getenv func(string) string) (Config, error) {
@@ -57,6 +65,15 @@ func Load(getenv func(string) string) (Config, error) {
 		if o = strings.TrimSpace(o); o != "" {
 			c.CORSAllowedOrigins = append(c.CORSAllowedOrigins, o)
 		}
+	}
+	c.VAPIDPublicKey = getenv("VAPID_PUBLIC_KEY")
+	c.VAPIDPrivateKey = getenv("VAPID_PRIVATE_KEY")
+	c.VAPIDSubject = getenv("VAPID_SUBJECT")
+	if (c.VAPIDPublicKey == "") != (c.VAPIDPrivateKey == "") {
+		return Config{}, errors.New("VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY must be set together")
+	}
+	if c.VAPIDEnabled() && c.VAPIDSubject == "" {
+		return Config{}, errors.New("VAPID_SUBJECT is required when the VAPID keys are set (for example mailto:you@example.com)")
 	}
 	return c, nil
 }

@@ -29,6 +29,10 @@ func currentVersion(t *testing.T, url string) int64 {
 	return v
 }
 
+// latestMigration is the number of the newest file in backend/migrations;
+// bump it when adding a migration.
+const latestMigration = 2
+
 func TestMigrateRunsOnEmptyDatabaseThenIsANoOp(t *testing.T) {
 	t.Parallel()
 	url := apitest.NewEmptyDatabase(t)
@@ -37,15 +41,15 @@ func TestMigrateRunsOnEmptyDatabaseThenIsANoOp(t *testing.T) {
 	if err := db.Migrate(ctx, url); err != nil {
 		t.Fatalf("first migrate: %v", err)
 	}
-	if got := currentVersion(t, url); got != 1 {
-		t.Fatalf("version after first migrate = %d, want 1", got)
+	if got := currentVersion(t, url); got != latestMigration {
+		t.Fatalf("version after first migrate = %d, want %d", got, latestMigration)
 	}
 
 	if err := db.Migrate(ctx, url); err != nil {
 		t.Fatalf("second migrate: %v", err)
 	}
-	if got := currentVersion(t, url); got != 1 {
-		t.Fatalf("version after second migrate = %d, want 1", got)
+	if got := currentVersion(t, url); got != latestMigration {
+		t.Fatalf("version after second migrate = %d, want %d", got, latestMigration)
 	}
 }
 
@@ -92,8 +96,8 @@ func TestMigrateRetriesUntilTheDatabaseAppears(t *testing.T) {
 	if err := db.Migrate(ctx, u.String()); err != nil {
 		t.Fatalf("migrate should wait for the database: %v", err)
 	}
-	if got := currentVersion(t, u.String()); got != 1 {
-		t.Fatalf("version = %d, want 1", got)
+	if got := currentVersion(t, u.String()); got != latestMigration {
+		t.Fatalf("version = %d, want %d", got, latestMigration)
 	}
 }
 

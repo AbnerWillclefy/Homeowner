@@ -56,6 +56,19 @@ func TestSecretsResolvedFromSSMWhenParameterNamesAreSet(t *testing.T) {
 	}
 }
 
+func TestVAPIDPrivateKeyResolvedFromSSM(t *testing.T) {
+	fake := &fakeSSM{params: map[string]string{"/p/vapid": "private-key-value"}}
+	getenv, err := withSSMSecrets(context.Background(), fake, envOf(map[string]string{
+		"VAPID_PRIVATE_KEY_SSM_PARAM": "/p/vapid",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := getenv("VAPID_PRIVATE_KEY"); got != "private-key-value" {
+		t.Errorf("VAPID_PRIVATE_KEY = %q", got)
+	}
+}
+
 func TestMissingParameterErrorNamesParameterButNotAnyValue(t *testing.T) {
 	fake := &fakeSSM{params: map[string]string{"/p/migrate": "postgres://secret-direct"}}
 	_, err := withSSMSecrets(context.Background(), fake, envOf(map[string]string{
