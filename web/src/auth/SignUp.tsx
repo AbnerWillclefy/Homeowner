@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import type { CognitoResult } from "./cognito";
 import { PASSWORD_RULES, failureText } from "./failureText";
+import { PasswordField } from "../components/ui/PasswordField";
 
 interface Props {
   register(email: string, password: string): Promise<CognitoResult>;
@@ -53,10 +54,9 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
         <p id="signup-password-why" className="my-1 text-sm text-muted">
           It keeps anyone else from signing in as you. {PASSWORD_RULES}
         </p>
-        <input
+        <PasswordField
           id="signup-password"
           name="password"
-          type="password"
           autoComplete="new-password"
           minLength={10}
           required
