@@ -1,5 +1,7 @@
 // Command api runs the Homeowner HTTP API. `api` (or `api serve`) serves;
-// `api migrate` applies database migrations and exits.
+// `api migrate` applies database migrations and exits; `api allocate` runs the
+// Allocation job once and exits; `api events` serves the Allocation job's
+// Lambda (only the scheduled tick, see docs/adr/0008).
 package main
 
 import (
@@ -55,8 +57,12 @@ func run(args []string, log *slog.Logger) error {
 		return migrate(ctx, cfg, log)
 	case "serve":
 		return serve(ctx, cfg, log)
+	case "allocate":
+		return allocate(ctx, cfg, log)
+	case "events":
+		return events(ctx, cfg, log)
 	default:
-		return fmt.Errorf("unknown command %q (want serve, migrate or vapid)", cmd)
+		return fmt.Errorf("unknown command %q (want serve, migrate, allocate, events or vapid)", cmd)
 	}
 }
 
