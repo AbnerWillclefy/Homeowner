@@ -12,6 +12,8 @@ var (
 		"floors", "trash", "outdoor", "pets", "other",
 	}
 	demands = []string{"heavy_lifting", "bending", "heights", "strong_chemicals"}
+	// importances equal the allocation package's Importance values.
+	importances = []string{"essential", "normal", "nice_to_have"}
 )
 
 // Categories returns the Category ids in display order.
@@ -25,3 +27,6 @@ func IsCategory(id string) bool { return slices.Contains(categories, id) }
 
 // IsDemand reports whether id is a Demand.
 func IsDemand(id string) bool { return slices.Contains(demands, id) }
+
+// IsImportance reports whether id is an Importance.
+func IsImportance(id string) bool { return slices.Contains(importances, id) }
