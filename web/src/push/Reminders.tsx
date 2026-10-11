@@ -1,5 +1,6 @@
 import type { TestResult } from "../api/push";
-import { usePush, type RemindersState } from "./usePush";
+import { problemText } from "./problemText";
+import { usePush } from "./usePush";
 
 const TEST_TEXT: Record<TestResult["kind"], string> = {
   ok: "Test notification sent. It should arrive in a few seconds.",
@@ -7,14 +8,6 @@ const TEST_TEXT: Record<TestResult["kind"], string> = {
   gone: "Your phone's notification service rejected this device, so it was removed. Turn on reminders again.",
   "push-service-error": "The notification service could not deliver it right now. Try again in a moment.",
   error: "Could not reach the service. Check your connection and try again.",
-};
-
-const PROBLEM_TEXT: Record<Extract<RemindersState, { kind: "problem" }>["reason"], string> = {
-  denied:
-    "Notifications are blocked for Homeowner. Open your phone's Settings, find Homeowner under Notifications, allow them, then come back. The app cannot ask a second time.",
-  dismissed: "You closed the permission question without answering. Tap the button to try again when you are ready.",
-  "not-configured": "Reminders are not set up on the service yet. Try again later.",
-  error: "Something went wrong turning on reminders. Check your connection and try again.",
 };
 
 function InstallSteps() {
@@ -74,7 +67,7 @@ export function Reminders() {
           <button type="button" onClick={enable} disabled={reminders.kind === "working"}>
             {reminders.kind === "working" ? "Turning on..." : "Enable reminders"}
           </button>
-          {reminders.kind === "problem" && <p role="alert">{PROBLEM_TEXT[reminders.reason]}</p>}
+          {reminders.kind === "problem" && <p role="alert">{problemText(reminders.problem)}</p>}
           {test.kind === "done" && <p role="status">{TEST_TEXT[test.result.kind]}</p>}
         </>
       )}
