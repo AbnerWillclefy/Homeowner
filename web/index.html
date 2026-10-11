@@ -3,7 +3,35 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#2f6f4f" />
+    <meta name="theme-color" content="#f7f8f5" />
+    <!--
+      Sets data-theme on <html> before the first paint, so the wrong theme never flashes.
+      Plain (non-module) script on purpose: module scripts are deferred. It repeats the rule
+      in src/theme/theme.ts (src/theme/inlineScript.test.ts keeps them in step) and must
+      never throw. If a Content-Security-Policy is ever added, this script needs a hash.
+    -->
+    <script id="theme-init">
+      (function () {
+        var dark = false;
+        try {
+          var stored = localStorage.getItem("homeowner.theme");
+          if (stored === "light" || stored === "dark") {
+            dark = stored === "dark";
+          } else {
+            dark = !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          }
+        } catch (e) {
+          try {
+            dark = !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          } catch (e2) {}
+        }
+        try {
+          document.documentElement.dataset.theme = dark ? "dark" : "light";
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute("content", dark ? "#121816" : "#f7f8f5");
+        } catch (e3) {}
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Homeowner" />
