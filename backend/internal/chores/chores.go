@@ -187,12 +187,6 @@ func scan(row pgx.Row) (Chore, error) {
 	var c Chore
 	err := row.Scan(&c.ID, &c.Name, &c.Category, &c.Demands, &c.BaseEffort, &c.Importance, &c.People,
 		&c.IntervalDays, &c.AllowedWeekdays, &c.BuildsUp)
-	if c.Demands == nil {
-		c.Demands = []string{}
-	}
-	if c.AllowedWeekdays == nil {
-		c.AllowedWeekdays = []int{}
-	}
 	return c, err
 }
 
