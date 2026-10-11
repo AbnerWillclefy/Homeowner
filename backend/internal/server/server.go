@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/auth"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
@@ -52,6 +53,7 @@ func New(deps Deps) http.Handler {
 		push:    push.NewStore(deps.DB),
 		users:   users.NewStore(deps.DB),
 		homes:   homes.NewStore(deps.DB),
+		chores:  chores.NewStore(deps.DB),
 		profile: profile.NewStore(deps.DB),
 	}
 
@@ -61,6 +63,10 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("POST /home", s.requireUser(s.postHome))
 	mux.HandleFunc("GET /home", s.requireResident(s.getHome))
 	mux.HandleFunc("PUT /home", s.requireResident(s.putHome))
+	mux.HandleFunc("GET /home/chores", s.requireResident(s.listChores))
+	mux.HandleFunc("POST /home/chores", s.requireResident(s.postChore))
+	mux.HandleFunc("PUT /home/chores/{id}", s.requireResident(s.putChore))
+	mux.HandleFunc("DELETE /home/chores/{id}", s.requireResident(s.deleteChore))
 	mux.HandleFunc("GET /categories", s.requireUser(s.getCategories))
 	mux.HandleFunc("GET /demands", s.requireUser(s.getDemands))
 	mux.HandleFunc("GET /me/profile", s.requireUser(s.getProfile))
@@ -83,6 +89,8 @@ type server struct {
 	push  *push.Store
 	users *users.Store
 	homes *homes.Store
+	// chores is the Home's Chores.
+	chores *chores.Store
 	// profile is the User's Baseline, Preferences and Restrictions.
 	profile *profile.Store
 }
