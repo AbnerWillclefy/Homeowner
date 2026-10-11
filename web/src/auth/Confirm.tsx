@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from "react";
-import type { CognitoResult } from "./cognito";
-import { failureText } from "./failureText";
+import { config } from "../config";
+import { useI18n } from "../i18n";
+import type { CognitoFailure, CognitoResult } from "./cognito";
+import { EMAIL_MARKER, splitAtEmail } from "./emailMarker";
+import { failureMessage } from "./failureText";
 
 interface Props {
   email: string;
@@ -11,42 +14,46 @@ interface Props {
 }
 
 export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  // State holds the failure and a flag, never their words, so a language switch re-words them.
+  const [problem, setProblem] = useState<CognitoFailure | null>(null);
+  const [resent, setResent] = useState(false);
+  const [before, after] = splitAtEmail(t("confirm.intro", { email: EMAIL_MARKER }));
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const code = String(new FormData(event.currentTarget).get("code") ?? "").trim();
     setBusy(true);
     setProblem(null);
-    setNotice(null);
+    setResent(false);
     const result = await confirm(email, code);
     setBusy(false);
     if (result.kind === "ok") onConfirmed(email);
-    else setProblem(failureText(result));
+    else setProblem(result);
   }
 
   async function sendAgain() {
     setBusy(true);
     setProblem(null);
-    setNotice(null);
+    setResent(false);
     const result = await resend(email);
     setBusy(false);
-    if (result.kind === "ok") setNotice("A new code is on its way. Use the latest email.");
-    else setProblem(failureText(result));
+    if (result.kind === "ok") setResent(true);
+    else setProblem(result);
   }
 
   return (
     <section aria-labelledby="confirm-heading">
-      <h2 id="confirm-heading">Confirm your email</h2>
+      <h2 id="confirm-heading">{t("confirm.heading")}</h2>
       <p>
-        We sent a code to <strong>{email}</strong>. Entering it proves the email is yours, so nobody can sign up in your
-        name or take over your Preferences. Until you do, you cannot sign in.
+        {before}
+        <strong>{email}</strong>
+        {after}
       </p>
-      <p className="my-1 text-sm text-muted">The email can take a minute, and it may land in your spam folder.</p>
+      <p className="my-1 text-sm text-muted">{t("confirm.spamHint")}</p>
       <form onSubmit={submit}>
-        <label htmlFor="confirm-code">Code from the email</label>
+        <label htmlFor="confirm-code">{t("confirm.codeLabel")}</label>
         <input
           id="confirm-code"
           name="code"
@@ -57,17 +64,17 @@ export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) 
           required
         />
         <button type="submit" className="btn btn-primary" disabled={busy}>
-          {busy ? "Checking..." : "Confirm"}
+          {busy ? t("confirm.submitting") : t("confirm.submit")}
         </button>
       </form>
-      {problem && <p role="alert">{problem}</p>}
-      {notice && <p role="status">{notice}</p>}
+      {problem && <p role="alert">{failureMessage(t, problem, config.passwordPolicy)}</p>}
+      {resent && <p role="status">{t("confirm.resent")}</p>}
       <p>
         <button type="button" className="btn" onClick={sendAgain} disabled={busy}>
-          Send a new code
+          {t("confirm.resend")}
         </button>{" "}
         <button type="button" className="btn-link" onClick={onBack}>
-          Use a different email
+          {t("confirm.useOtherEmail")}
         </button>
       </p>
     </section>

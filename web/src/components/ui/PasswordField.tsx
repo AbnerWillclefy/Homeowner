@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type InputHTMLAttributes } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { useI18n } from "../../i18n";
 
 type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "defaultValue" | "value" | "onChange" | "ref">;
 
@@ -9,6 +10,7 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "defaultValue"
  * uncontrolled and is never remounted, so toggling cannot lose the typed value.
  */
 export function PasswordField(props: Props) {
+  const { t } = useI18n();
   const [shown, setShown] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -36,7 +38,7 @@ export function PasswordField(props: Props) {
       />
       <button type="button" className="btn" aria-pressed={shown} onClick={() => setShown(!shown)}>
         <Icon aria-hidden="true" size={20} className="mr-2 shrink-0" />
-        Show password
+        {t("auth.showPassword")}
       </button>
     </div>
   );

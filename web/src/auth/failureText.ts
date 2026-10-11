@@ -1,21 +1,33 @@
-import { config } from "../config";
+import type { MessageKey, Translate } from "../i18n";
 import type { CognitoFailure } from "./cognito";
-import { describeRules } from "./passwordPolicy";
+import { describeRules, type PasswordPolicy } from "./passwordPolicy";
+import { ruleSentence } from "./ruleText";
 
-const TEXT: Record<CognitoFailure["kind"], string> = {
-  "already-registered": "That email is already signed up. Sign in instead, or confirm it if you never entered the code.",
-  "invalid-password": `That password is not strong enough. ${describeRules(config.passwordPolicy)}`,
-  "invalid-input": "Check the email and the details you typed, then try again.",
-  "wrong-code": "That code is not right. Check the latest email and try again.",
-  "expired-code": "That code has expired. Ask for a new one and use the latest email.",
-  "not-confirmed": "This email has not been confirmed yet. Enter the code from your email, or ask for a new one.",
-  "not-authorized": "The email or password is not right. Check both and try again.",
-  "rate-limited": "Too many attempts. Wait a few minutes, then try again.",
-  network: "Could not reach the sign-in service. Check your connection and try again.",
-  error: "Something went wrong. Try again in a moment.",
+const KEY: Record<CognitoFailure["kind"], MessageKey> = {
+  "already-registered": "auth.failure.alreadyRegistered",
+  "invalid-password": "auth.failure.invalidPassword",
+  "invalid-input": "auth.failure.invalidInput",
+  "wrong-code": "auth.failure.wrongCode",
+  "expired-code": "auth.failure.expiredCode",
+  "not-confirmed": "auth.failure.notConfirmed",
+  "not-authorized": "auth.failure.notAuthorized",
+  "rate-limited": "auth.failure.rateLimited",
+  network: "auth.failure.network",
+  error: "auth.failure.error",
 };
 
-/** Plain wording for a failed Cognito call. Never Cognito's own message. */
-export function failureText(failure: CognitoFailure): string {
-  return TEXT[failure.kind];
+/** The catalog key for a failed Cognito call. Never Cognito's own message. Pure and language-free. */
+export function failureKey(failure: CognitoFailure): MessageKey {
+  return KEY[failure.kind];
+}
+
+/**
+ * Plain wording for a failed Cognito call in the current language. Call it at render with the
+ * failure kept in state, so a language switch changes the words. A refused password carries the
+ * policy's rules, which depend on the language too.
+ */
+export function failureMessage(t: Translate, failure: CognitoFailure, policy: PasswordPolicy): string {
+  const params =
+    failure.kind === "invalid-password" ? { rules: ruleSentence(t, describeRules(policy)) } : undefined;
+  return t(failureKey(failure), params);
 }

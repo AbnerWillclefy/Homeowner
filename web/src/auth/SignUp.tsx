@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, type FocusEvent, type FormEvent } from "react";
 import { TriangleAlert } from "lucide-react";
-import type { CognitoResult } from "./cognito";
+import type { CognitoFailure, CognitoResult } from "./cognito";
 import { config } from "../config";
-import { failureText } from "./failureText";
+import { useI18n } from "../i18n";
+import { failureMessage } from "./failureText";
 import { evaluate } from "./passwordPolicy";
-import { announceRuleChange } from "./ruleAnnouncement";
+import { ruleChange, type RuleChange } from "./ruleAnnouncement";
+import { announcementText } from "./ruleText";
 import { PasswordField } from "../components/ui/PasswordField";
 import { PasswordRules } from "../components/ui/PasswordRules";
 
@@ -18,12 +20,14 @@ interface Props {
 }
 
 export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
+  // State holds the failure and the rule change, never their words, so a language switch re-words them.
+  const [problem, setProblem] = useState<CognitoFailure | null>(null);
 
   const [mismatch, setMismatch] = useState(false);
   const [password, setPassword] = useState("");
-  const [announcement, setAnnouncement] = useState("");
+  const [change, setChange] = useState<RuleChange | null>(null);
   const rules = evaluate(config.passwordPolicy, password);
 
   // Announce what changed once typing pauses, against the rules as last announced.
@@ -31,9 +35,9 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
   useEffect(() => {
     const timer = setTimeout(() => {
       const now = evaluate(config.passwordPolicy, password);
-      const text = announceRuleChange(announced.current, now, password);
+      const next = ruleChange(announced.current, now, password);
       announced.current = now;
-      if (text) setAnnouncement(text);
+      if (next) setChange(next);
     }, ANNOUNCE_DELAY_MS);
     return () => clearTimeout(timer);
   }, [password]);
@@ -72,20 +76,17 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
     const result = await register(email, password);
     setBusy(false);
     if (result.kind === "ok") onRegistered(email);
-    else setProblem(failureText(result));
+    else setProblem(result);
   }
 
   return (
     <section aria-labelledby="signup-heading">
-      <h2 id="signup-heading">Sign up</h2>
-      <p>
-        Homeowner is for the people who look after a Home together. Signing up gives you a login of your own, so your
-        Baseline, Preferences and Restrictions are yours and follow you, whoever else lives in the Home.
-      </p>
+      <h2 id="signup-heading">{t("signUp.heading")}</h2>
+      <p>{t("signUp.intro")}</p>
       <form onSubmit={submit} onBlur={checkOnBlur} onChange={onFormChange}>
-        <label htmlFor="signup-email">Email</label>
+        <label htmlFor="signup-email">{t("signUp.emailLabel")}</label>
         <p id="signup-email-why" className="my-1 text-sm text-muted">
-          Your email is your login. We also send a code to it in the next step, which proves the email is really yours.
+          {t("signUp.emailHint")}
         </p>
         <input
           id="signup-email"
@@ -98,13 +99,13 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
           aria-describedby="signup-email-why"
         />
 
-        <label htmlFor="signup-password">Password</label>
+        <label htmlFor="signup-password">{t("signUp.passwordLabel")}</label>
         <p id="signup-password-why" className="my-1 text-sm text-muted">
-          It keeps anyone else from signing in as you.
+          {t("signUp.passwordHint")}
         </p>
         <PasswordRules id="signup-password-rules" rules={rules} />
         <div role="status" aria-atomic="true" className="sr-only">
-          {announcement}
+          {announcementText(t, change)}
         </div>
         <PasswordField
           id="signup-password"
@@ -114,7 +115,7 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
           aria-describedby="signup-password-why signup-password-rules"
         />
 
-        <label htmlFor="signup-confirm">Confirm password</label>
+        <label htmlFor="signup-confirm">{t("signUp.confirmLabel")}</label>
         <PasswordField
           id="signup-confirm"
           autoComplete="new-password"
@@ -126,20 +127,20 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
           {mismatch && (
             <p id="signup-confirm-mismatch" className="my-1 text-sm text-danger">
               <TriangleAlert aria-hidden="true" size={16} className="mr-1 inline shrink-0" />
-              The two passwords do not match.
+              {t("signUp.mismatch")}
             </p>
           )}
         </div>
 
         <button type="submit" className="btn btn-primary" disabled={busy}>
-          {busy ? "Signing up..." : "Sign up"}
+          {busy ? t("signUp.submitting") : t("signUp.submit")}
         </button>
       </form>
-      {problem && <p role="alert">{problem}</p>}
+      {problem && <p role="alert">{failureMessage(t, problem, config.passwordPolicy)}</p>}
       <p>
-        Already signed up?{" "}
+        {t("signUp.haveLogin")}{" "}
         <button type="button" className="btn-link" onClick={onHaveLogin}>
-          Sign in
+          {t("signUp.haveLoginAction")}
         </button>
       </p>
     </section>

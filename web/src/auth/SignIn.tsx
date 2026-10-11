@@ -1,22 +1,26 @@
 import { useState, type FormEvent } from "react";
-import type { SignInResult } from "./cognito";
-import { failureText } from "./failureText";
+import { config } from "../config";
+import { useI18n, type MessageKey } from "../i18n";
+import type { CognitoFailure, SignInResult } from "./cognito";
+import { failureMessage } from "./failureText";
 import { PasswordField } from "../components/ui/PasswordField";
 
 interface Props {
   /** Prefilled after confirming an email. */
   initialEmail?: string;
-  /** Shown above the form, for example after confirming. */
-  notice?: string;
+  /** Shown above the form, for example after confirming. A key, so it follows the language. */
+  noticeKey?: MessageKey;
   logIn(email: string, password: string): Promise<SignInResult>;
   /** The email was never confirmed: go to the code screen, where a new code can be sent. */
   onNeedsConfirm(email: string): void;
   onNeedsSignUp(): void;
 }
 
-export function SignIn({ initialEmail, notice, logIn, onNeedsConfirm, onNeedsSignUp }: Props) {
+export function SignIn({ initialEmail, noticeKey, logIn, onNeedsConfirm, onNeedsSignUp }: Props) {
+  const { t } = useI18n();
   const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
+  // The failure, not its words, so a language switch re-words it.
+  const [problem, setProblem] = useState<CognitoFailure | null>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -29,19 +33,16 @@ export function SignIn({ initialEmail, notice, logIn, onNeedsConfirm, onNeedsSig
     setBusy(false);
     // On success the app moves on to the signed-in view, so there is nothing to show here.
     if (result.kind === "not-confirmed") onNeedsConfirm(email);
-    else if (result.kind !== "ok") setProblem(failureText(result));
+    else if (result.kind !== "ok") setProblem(result);
   }
 
   return (
     <section aria-labelledby="signin-heading">
-      <h2 id="signin-heading">Sign in</h2>
-      <p>
-        Signing in tells Homeowner whose Check-in and Tasks to show. You stay signed in on this device until you sign
-        out.
-      </p>
-      {notice && <p role="status">{notice}</p>}
+      <h2 id="signin-heading">{t("signIn.heading")}</h2>
+      <p>{t("signIn.intro")}</p>
+      {noticeKey && <p role="status">{t(noticeKey)}</p>}
       <form onSubmit={submit}>
-        <label htmlFor="signin-email">Email</label>
+        <label htmlFor="signin-email">{t("signIn.emailLabel")}</label>
         <input
           id="signin-email"
           name="email"
@@ -52,17 +53,17 @@ export function SignIn({ initialEmail, notice, logIn, onNeedsConfirm, onNeedsSig
           defaultValue={initialEmail}
           required
         />
-        <label htmlFor="signin-password">Password</label>
+        <label htmlFor="signin-password">{t("signIn.passwordLabel")}</label>
         <PasswordField id="signin-password" name="password" autoComplete="current-password" required />
         <button type="submit" className="btn btn-primary" disabled={busy}>
-          {busy ? "Signing in..." : "Sign in"}
+          {busy ? t("signIn.submitting") : t("signIn.submit")}
         </button>
       </form>
-      {problem && <p role="alert">{problem}</p>}
+      {problem && <p role="alert">{failureMessage(t, problem, config.passwordPolicy)}</p>}
       <p>
-        New here?{" "}
+        {t("signIn.newHere")}{" "}
         <button type="button" className="btn-link" onClick={onNeedsSignUp}>
-          Sign up
+          {t("signIn.newHereAction")}
         </button>
       </p>
     </section>

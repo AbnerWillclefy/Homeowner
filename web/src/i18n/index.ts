@@ -6,3 +6,4 @@ export { LANGUAGE_NAME } from "./languageNames";
 export { LOCALE_STORAGE_KEY } from "./localeStorage";
 export { resolveLocale } from "./resolveLocale";
 export type { MessageKey } from "./catalogs/en-US";
+export type { Translate } from "./context";

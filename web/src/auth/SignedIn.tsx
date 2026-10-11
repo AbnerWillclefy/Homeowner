@@ -1,3 +1,6 @@
+import { useI18n } from "../i18n";
+import { EMAIL_MARKER, splitAtEmail } from "./emailMarker";
+
 interface Props {
   email: string | null;
   offline: boolean;
@@ -5,20 +8,19 @@ interface Props {
 }
 
 export function SignedIn({ email, offline, onSignOut }: Props) {
+  const { t } = useI18n();
+  const [before, after] = splitAtEmail(t("signedIn.as", { email: EMAIL_MARKER }));
   return (
     <section aria-labelledby="signedin-heading">
-      <h2 id="signedin-heading">You are signed in</h2>
+      <h2 id="signedin-heading">{t("signedIn.heading")}</h2>
       <p>
-        Signed in as <strong>{email ?? "your email"}</strong>.
+        {before}
+        <strong>{email ?? t("signedIn.emailFallback")}</strong>
+        {after}
       </p>
-      {offline && (
-        <p role="status">
-          Homeowner cannot reach the service right now, so this is the last sign-in this device remembers. Open
-          the app again when you are back online to check.
-        </p>
-      )}
+      {offline && <p role="status">{t("signedIn.offline")}</p>}
       <button type="button" className="btn" onClick={onSignOut}>
-        Sign out
+        {t("signedIn.signOut")}
       </button>
     </section>
   );

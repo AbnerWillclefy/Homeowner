@@ -1,17 +1,21 @@
 import type { RuleResult } from "./passwordPolicy";
 
+export interface RuleChange {
+  /** The rules whose state differs from before, in checklist order. */
+  changed: RuleResult[];
+  metCount: number;
+  total: number;
+}
+
 /**
- * What a screen reader should hear when the evaluated rules change from `before` to `after`.
- * Only the rules that changed are named, plus the count. Empty when nothing changed or the
- * password is empty, so the live region stays quiet.
+ * What changed between the rules as last announced (`before`) and now (`after`), for the screen
+ * reader live region. Null when nothing changed or the password is empty, so the region stays
+ * quiet. Data only: `ruleText.announcementText` turns it into words in the current language.
  */
-export function announceRuleChange(before: RuleResult[], after: RuleResult[], password: string): string {
-  if (password === "") return "";
+export function ruleChange(before: RuleResult[], after: RuleResult[], password: string): RuleChange | null {
+  if (password === "") return null;
   const wasMet = new Map(before.map((rule) => [rule.id, rule.met]));
   const changed = after.filter((rule) => (wasMet.get(rule.id) ?? false) !== rule.met);
-  if (changed.length === 0) return "";
-
-  const parts = changed.map((rule) => `${rule.label} ${rule.met ? "met" : "not met"}.`);
-  const count = after.filter((rule) => rule.met).length;
-  return `${parts.join(" ")} ${count} of ${after.length} rules met.`;
+  if (changed.length === 0) return null;
+  return { changed, metCount: after.filter((rule) => rule.met).length, total: after.length };
 }

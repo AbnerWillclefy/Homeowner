@@ -241,6 +241,89 @@ export const ptBR: Messages = {
   "chores.field.allowedWeekdays.out_of_range": "Um dos dias não é válido. Desmarque-o e tente de novo.",
   "chores.field.unknown": "Este valor não é aceito. Confira e tente de novo.",
 
+  // Cadastro
+  "signUp.heading": "Cadastrar-se",
+  "signUp.intro":
+    "O Homeowner é para as pessoas que cuidam juntas de um lar. Cadastrar-se dá a você um login só seu, então a sua energia base, as suas preferências e as suas restrições são suas e acompanham você, não importa quem mais more no lar.",
+  "signUp.emailLabel": "E-mail",
+  "signUp.emailHint":
+    "Seu e-mail é o seu login. Também enviamos um código para ele na próxima etapa, que comprova que o e-mail é mesmo seu.",
+  "signUp.passwordLabel": "Senha",
+  "signUp.passwordHint": "Ela impede que outra pessoa entre como você.",
+  "signUp.confirmLabel": "Confirmar senha",
+  "signUp.mismatch": "As duas senhas não são iguais.",
+  "signUp.submit": "Cadastrar",
+  "signUp.submitting": "Cadastrando...",
+  "signUp.haveLogin": "Já se cadastrou?",
+  "signUp.haveLoginAction": "Entrar",
+
+  // Entrar
+  "signIn.heading": "Entrar",
+  "signIn.intro":
+    "Entrar diz ao Homeowner de quem mostrar o check-in e as tarefas. Você continua com o login ativo neste dispositivo até sair.",
+  "signIn.confirmedNotice": "Seu e-mail foi confirmado. Entre para começar.",
+  "signIn.emailLabel": "E-mail",
+  "signIn.passwordLabel": "Senha",
+  "signIn.submit": "Entrar",
+  "signIn.submitting": "Entrando...",
+  "signIn.newHere": "Novo por aqui?",
+  "signIn.newHereAction": "Cadastrar-se",
+
+  // Confirmar e-mail
+  "confirm.heading": "Confirme seu e-mail",
+  "confirm.intro":
+    "Enviamos um código para {email}. Digitá-lo comprova que o e-mail é seu, para que ninguém se cadastre em seu nome nem assuma as suas preferências. Até você fazer isso, não é possível entrar.",
+  "confirm.spamHint": "O e-mail pode levar um minuto e pode cair na pasta de spam.",
+  "confirm.codeLabel": "Código do e-mail",
+  "confirm.submit": "Confirmar",
+  "confirm.submitting": "Verificando...",
+  "confirm.resend": "Enviar um novo código",
+  "confirm.useOtherEmail": "Usar outro e-mail",
+  "confirm.resent": "Um novo código está a caminho. Use o e-mail mais recente.",
+
+  // Conectado
+  "signedIn.heading": "Você está conectado",
+  "signedIn.as": "Conectado como {email}.",
+  "signedIn.emailFallback": "seu e-mail",
+  "signedIn.offline":
+    "O Homeowner não consegue acessar o serviço agora, então este é o último login que este dispositivo lembra. Abra o app de novo quando estiver online para conferir.",
+  "signedIn.signOut": "Sair",
+
+  // Compartilhado pelas telas de login
+  "auth.showPassword": "Mostrar senha",
+
+  "auth.failure.alreadyRegistered":
+    "Esse e-mail já está cadastrado. Entre com ele ou, se você nunca digitou o código, confirme-o.",
+  "auth.failure.invalidPassword": "Essa senha não é forte o bastante. {rules}",
+  "auth.failure.invalidInput": "Confira o e-mail e os dados que você digitou e tente novamente.",
+  "auth.failure.wrongCode": "Esse código não está certo. Confira o e-mail mais recente e tente novamente.",
+  "auth.failure.expiredCode": "Esse código expirou. Peça um novo e use o e-mail mais recente.",
+  "auth.failure.notConfirmed":
+    "Este e-mail ainda não foi confirmado. Digite o código do seu e-mail ou peça um novo.",
+  "auth.failure.notAuthorized": "O e-mail ou a senha não está certo. Confira os dois e tente novamente.",
+  "auth.failure.rateLimited": "Muitas tentativas. Espere alguns minutos e tente novamente.",
+  "auth.failure.network": "Não foi possível acessar o serviço de login. Verifique sua conexão e tente novamente.",
+  "auth.failure.error": "Algo deu errado. Tente novamente em instantes.",
+
+  // Regras da senha
+  "auth.rule.length": { one: "Pelo menos {count} caractere", other: "Pelo menos {count} caracteres" },
+  "auth.rule.lowercase": "Uma letra minúscula",
+  "auth.rule.uppercase": "Uma letra maiúscula",
+  "auth.rule.number": "Um número",
+  "auth.rule.symbol": "Um símbolo",
+  "auth.rule.status.met": "{rule}: cumprida",
+  "auth.rule.status.notMet": "{rule}: ainda não cumprida",
+  "auth.rule.announce.met": "{rule} cumprida.",
+  "auth.rule.announce.notMet": "{rule} não cumprida.",
+  "auth.rule.announce.count": { one: "{met} de {count} regra cumprida.", other: "{met} de {count} regras cumpridas." },
+  "auth.rules.clause.lowercase": "uma letra minúscula",
+  "auth.rules.clause.uppercase": "uma letra maiúscula",
+  "auth.rules.clause.number": "um número",
+  "auth.rules.clause.symbol": "um símbolo",
+  "auth.rules.withClauses": "{length}, com {rules}.",
+  "auth.rules.lengthOnly": "{length}.",
+  "auth.rules.listEnd": "{rest} e {last}",
+
   // Settings
   "settings.heading": "Configurações",
   "settings.appearance.label": "Aparência",
