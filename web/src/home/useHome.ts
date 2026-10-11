@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { getHome, type Home } from "../api/home";
+import { getHome, type FailureReason, type Home } from "../api/home";
 
 export type HomeState =
   | { kind: "loading" }
   /** The signed-in User has no Home yet: show the create form. */
   | { kind: "none" }
   | { kind: "ready"; home: Home }
-  | { kind: "failed"; reason: "offline" | "error" | "not-signed-in" };
+  | { kind: "failed"; reason: FailureReason };
 
 /** Loads the caller's Home when mounted, which is only while signed in (see App). */
 export function useHome() {

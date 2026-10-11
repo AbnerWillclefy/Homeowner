@@ -12,14 +12,14 @@ function deps(create: CreateHomeResult, get: GetHomeResult = { kind: "ok", home:
 describe("createOrLoad", () => {
   it("returns the new Home without loading anything", async () => {
     const d = deps({ kind: "ok", home: HOME });
-    expect(await createOrLoad(SETTINGS, d)).toEqual({ kind: "ok", home: HOME, recovered: false });
+    expect(await createOrLoad(SETTINGS, d)).toEqual({ kind: "ok", home: HOME });
     expect(d.createHome).toHaveBeenCalledWith(SETTINGS);
     expect(d.getHome).not.toHaveBeenCalled();
   });
 
   it("on a 409 loads the existing Home instead", async () => {
     const d = deps({ kind: "already-resident" });
-    expect(await createOrLoad(SETTINGS, d)).toEqual({ kind: "ok", home: HOME, recovered: true });
+    expect(await createOrLoad(SETTINGS, d)).toEqual({ kind: "recovered", home: HOME });
     expect(d.getHome).toHaveBeenCalledOnce();
   });
 
@@ -39,7 +39,7 @@ describe("createOrLoad", () => {
 describe("saveSettings", () => {
   it("returns the saved Home", async () => {
     const update = vi.fn(async () => ({ kind: "ok", home: HOME }) as const);
-    expect(await saveSettings(SETTINGS, update)).toEqual({ kind: "ok", home: HOME, recovered: false });
+    expect(await saveSettings(SETTINGS, update)).toEqual({ kind: "ok", home: HOME });
     expect(update).toHaveBeenCalledWith(SETTINGS);
   });
 

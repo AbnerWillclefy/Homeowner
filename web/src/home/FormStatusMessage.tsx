@@ -1,11 +1,6 @@
-import { useI18n, type MessageKey } from "../i18n";
+import { useI18n } from "../i18n";
+import { SAVE_FAILURE_KEY } from "./failureMessages";
 import type { FormStatus } from "./useSettingsForm";
-
-const FAILURE_KEY = {
-  offline: "home.save.offline",
-  error: "home.save.error",
-  "not-signed-in": "home.notSignedIn",
-} as const satisfies Record<string, MessageKey>;
 
 /** The summary under a Home form: a problem is an alert in the danger colour, a success is a status. */
 export function FormStatusMessage({ status }: { status: FormStatus }) {
@@ -20,7 +15,7 @@ export function FormStatusMessage({ status }: { status: FormStatus }) {
   if (status.kind === "failed") {
     return (
       <p role="alert" className="text-danger">
-        {t(FAILURE_KEY[status.reason])}
+        {t(SAVE_FAILURE_KEY[status.reason])}
       </p>
     );
   }

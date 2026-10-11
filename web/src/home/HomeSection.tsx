@@ -1,6 +1,8 @@
 import { useState } from "react";
+import type { Home } from "../api/home";
 import { useI18n } from "../i18n";
 import { CreateHome } from "./CreateHome";
+import { LOAD_FAILURE_KEY } from "./failureMessages";
 import { HomeSettingsForm } from "./HomeSettingsForm";
 import { useHome } from "./useHome";
 
@@ -11,6 +13,7 @@ import { useHome } from "./useHome";
 export function HomeSection() {
   const { state, reload, setHome } = useHome();
   const { t } = useI18n();
+  // Set when a create found an existing Home; cleared by the next save so it never outlives its moment.
   const [recovered, setRecovered] = useState(false);
 
   if (state.kind === "loading") return <p role="status">{t("home.loading")}</p>;
@@ -20,7 +23,7 @@ export function HomeSection() {
       <section aria-labelledby="home-load-heading">
         <h2 id="home-load-heading">{t("home.settings.heading")}</h2>
         <p role="alert" className="text-danger">
-          {t(state.reason === "offline" ? "home.load.offline" : state.reason === "error" ? "home.load.error" : "home.notSignedIn")}
+          {t(LOAD_FAILURE_KEY[state.reason])}
         </p>
         {state.reason !== "not-signed-in" && (
           <button type="button" className="btn" onClick={reload}>
@@ -34,8 +37,9 @@ export function HomeSection() {
   if (state.kind === "none") {
     return (
       <CreateHome
-        onSaved={(home, wasRecovered) => {
-          setRecovered(wasRecovered);
+        onSaved={setHome}
+        onRecovered={(home: Home) => {
+          setRecovered(true);
           setHome(home);
         }}
       />
@@ -45,7 +49,14 @@ export function HomeSection() {
   return (
     <>
       {recovered && <p role="status">{t("home.create.recovered")}</p>}
-      <HomeSettingsForm key={state.home.id} home={state.home} onSaved={setHome} />
+      <HomeSettingsForm
+        key={state.home.id}
+        home={state.home}
+        onSaved={(home: Home) => {
+          setRecovered(false);
+          setHome(home);
+        }}
+      />
     </>
   );
 }

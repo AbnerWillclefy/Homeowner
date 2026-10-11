@@ -1,13 +1,18 @@
 import { useState, type FormEvent } from "react";
-import type { FieldCodes, Home, HomeSettings } from "../api/home";
-import type { SaveOutcome } from "./createOrLoad";
+import type { FailureReason, FieldCodes, Home, HomeSettings } from "../api/home";
+
+/** What a save can come back with. `recovered` is a create that found the person's existing Home and loaded it. */
+export type SaveOutcome =
+  | { kind: "ok" | "recovered"; home: Home }
+  | { kind: "invalid"; fields: FieldCodes }
+  | { kind: FailureReason };
 
 export type FormStatus =
   | { kind: "idle" }
   | { kind: "saving" }
   | { kind: "saved" }
   | { kind: "invalid"; fields: FieldCodes }
-  | { kind: "failed"; reason: "offline" | "error" | "not-signed-in" };
+  | { kind: "failed"; reason: FailureReason };
 
 /**
  * The state of a Home settings form, shared by create and edit. The typed values live here and are
@@ -16,7 +21,9 @@ export type FormStatus =
 export function useSettingsForm(
   initial: HomeSettings,
   save: (settings: HomeSettings) => Promise<SaveOutcome>,
-  onSaved: (home: Home, recovered: boolean) => void,
+  onSaved: (home: Home) => void,
+  /** Only a create can be recovered; an edit never passes this. */
+  onRecovered: (home: Home) => void = onSaved,
 ) {
   const [values, setValues] = useState<HomeSettings>(initial);
   const [status, setStatus] = useState<FormStatus>({ kind: "idle" });
@@ -37,9 +44,9 @@ export function useSettingsForm(
     if (status.kind === "saving") return;
     setStatus({ kind: "saving" });
     const outcome = await save(values);
-    if (outcome.kind === "ok") {
+    if (outcome.kind === "ok" || outcome.kind === "recovered") {
       setStatus({ kind: "saved" });
-      onSaved(outcome.home, outcome.recovered);
+      (outcome.kind === "ok" ? onSaved : onRecovered)(outcome.home);
     } else if (outcome.kind === "invalid") {
       setStatus({ kind: "invalid", fields: outcome.fields });
     } else {
