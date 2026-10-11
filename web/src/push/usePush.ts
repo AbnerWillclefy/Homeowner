@@ -11,7 +11,11 @@ export type RemindersState =
   | { kind: "on"; endpoint: string }
   | { kind: "problem"; problem: RemindersProblem };
 
-export type TestState = { kind: "idle" } | { kind: "sending" } | { kind: "done"; result: TestResult };
+/** delaySeconds is set when the test was asked to wait before sending. */
+export type TestState =
+  | { kind: "idle" }
+  | { kind: "sending"; delaySeconds?: number }
+  | { kind: "done"; result: TestResult; delaySeconds?: number };
 
 export function usePush() {
   const env = useMemo(readPlatformEnv, []);
@@ -47,14 +51,17 @@ export function usePush() {
     );
   }, []);
 
-  const sendTest = useCallback(async () => {
-    if (reminders.kind !== "on") return;
-    setTest({ kind: "sending" });
-    const result = await sendTestNotification(reminders.endpoint);
-    setTest({ kind: "done", result });
-    // The push service dropped this device; offer to enable again.
-    if (result.kind === "gone" || result.kind === "unknown") setReminders({ kind: "off" });
-  }, [reminders]);
+  const sendTest = useCallback(
+    async (delaySeconds?: number) => {
+      if (reminders.kind !== "on") return;
+      setTest({ kind: "sending", delaySeconds });
+      const result = await sendTestNotification(reminders.endpoint, delaySeconds);
+      setTest({ kind: "done", result, delaySeconds });
+      // The push service dropped this device; offer to enable again.
+      if (result.kind === "gone" || result.kind === "unknown") setReminders({ kind: "off" });
+    },
+    [reminders],
+  );
 
   return { availability, ios, reminders, enable, test, sendTest };
 }

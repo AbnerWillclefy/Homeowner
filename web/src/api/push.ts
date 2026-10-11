@@ -46,12 +46,13 @@ export async function saveSubscription(sub: SubscriptionJSON, userAgent: string)
   }
 }
 
-export async function sendTestNotification(endpoint: string): Promise<TestResult> {
+/** With delaySeconds (0-10) the API waits before sending, so the app can be closed first. Omitted means immediately. */
+export async function sendTestNotification(endpoint: string, delaySeconds?: number): Promise<TestResult> {
   try {
     const res = await fetch(`${config.apiBaseUrl}/push/test`, {
       method: "POST",
       headers: JSON_HEADERS,
-      body: JSON.stringify({ endpoint }),
+      body: JSON.stringify(delaySeconds === undefined ? { endpoint } : { endpoint, delaySeconds }),
     });
     switch (res.status) {
       case 204:

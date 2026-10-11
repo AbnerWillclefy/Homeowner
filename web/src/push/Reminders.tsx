@@ -1,14 +1,6 @@
-import type { TestResult } from "../api/push";
 import { problemText } from "./problemText";
+import { DELAYED_TEST_SECONDS, delayedTestLabel, testPendingText, testStatusText } from "./testText";
 import { usePush } from "./usePush";
-
-const TEST_TEXT: Record<TestResult["kind"], string> = {
-  ok: "Test notification sent. It should arrive in a few seconds.",
-  unknown: "The service does not know this device yet. Turn on reminders again.",
-  gone: "Your phone's notification service rejected this device, so it was removed. Turn on reminders again.",
-  "push-service-error": "The notification service could not deliver it right now. Try again in a moment.",
-  error: "Could not reach the service. Check your connection and try again.",
-};
 
 function InstallSteps() {
   return (
@@ -57,10 +49,16 @@ export function Reminders() {
       {reminders.kind === "on" ? (
         <>
           <p role="status">Reminders are on for this device.</p>
-          <button type="button" onClick={sendTest} disabled={test.kind === "sending"}>
-            {test.kind === "sending" ? "Sending..." : "Send test notification"}
+          <button type="button" onClick={() => sendTest()} disabled={test.kind === "sending"}>
+            {test.kind === "sending" && !test.delaySeconds ? "Sending..." : "Send test notification"}
           </button>
-          {test.kind === "done" && <p role="status">{TEST_TEXT[test.result.kind]}</p>}
+          <button type="button" onClick={() => sendTest(DELAYED_TEST_SECONDS)} disabled={test.kind === "sending"}>
+            {delayedTestLabel(test.kind === "sending" && !!test.delaySeconds)}
+          </button>
+          {test.kind === "sending" && !!test.delaySeconds && (
+            <p role="status">{testPendingText(test.delaySeconds)}</p>
+          )}
+          {test.kind === "done" && <p role="status">{testStatusText(test.result, test.delaySeconds)}</p>}
         </>
       ) : (
         <>
@@ -68,7 +66,7 @@ export function Reminders() {
             {reminders.kind === "working" ? "Turning on..." : "Enable reminders"}
           </button>
           {reminders.kind === "problem" && <p role="alert">{problemText(reminders.problem)}</p>}
-          {test.kind === "done" && <p role="status">{TEST_TEXT[test.result.kind]}</p>}
+          {test.kind === "done" && <p role="status">{testStatusText(test.result, test.delaySeconds)}</p>}
         </>
       )}
     </section>
