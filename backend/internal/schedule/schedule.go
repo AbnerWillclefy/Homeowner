@@ -25,8 +25,6 @@
 package schedule
 
 import (
-	"time"
-
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 )
 
@@ -143,15 +141,10 @@ func firstAllowed(allowed []int, from allocation.Date) allocation.Date {
 	for i := 0; i < 7; i++ {
 		day := from + allocation.Date(i)
 		for _, w := range allowed {
-			if Weekday(day) == w {
+			if day.Weekday() == w {
 				return day
 			}
 		}
 	}
 	return from
-}
-
-// Weekday returns 0 = Sunday to 6 = Saturday for a Date.
-func Weekday(d allocation.Date) int {
-	return int(time.Unix(int64(d)*86400, 0).UTC().Weekday())
 }

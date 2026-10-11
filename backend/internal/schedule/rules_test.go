@@ -91,7 +91,7 @@ func TestWeekdayLimitedChoreOpensOnlyOnAllowedDays(t *testing.T) {
 		t.Fatalf("expected several windows, got %v", opened)
 	}
 	for start := range opened {
-		if w := Weekday(start); w != 1 && w != 4 {
+		if w := start.Weekday(); w != 1 && w != 4 {
 			t.Errorf("window starting on weekday %d (%d March) is not allowed", w, int(start-d(0)))
 		}
 	}
