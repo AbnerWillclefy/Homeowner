@@ -2,33 +2,35 @@ import { SignedIn } from "./auth/SignedIn";
 import { SignedOutFlow } from "./auth/SignedOutFlow";
 import { useAuth } from "./auth/useAuth";
 import { Reminders } from "./push/Reminders";
+import { useI18n, type MessageKey } from "./i18n";
 import { useHealth, type HealthState } from "./useHealth";
 
-const STATUS_TEXT: Record<HealthState["kind"], string> = {
-  loading: "Checking the service...",
-  ok: "Service status: ok",
-  unavailable: "Service status: unavailable. The service is up but cannot reach its database.",
-  unreachable: "Service status: unreachable. Check your connection and try again.",
+const STATUS_KEY: Record<HealthState["kind"], MessageKey> = {
+  loading: "health.loading",
+  ok: "health.ok",
+  unavailable: "health.unavailable",
+  unreachable: "health.unreachable",
 };
 
 export default function App() {
   const { state, retry } = useHealth();
   const auth = useAuth();
+  const { t } = useI18n();
 
   return (
     <main className="home">
-      <h1>Homeowner</h1>
-      <p>Share the housework in your Home fairly.</p>
+      <h1>{t("app.name")}</h1>
+      <p>{t("home.tagline")}</p>
       <p role="status" data-state={state.kind}>
-        {STATUS_TEXT[state.kind]}
+        {t(STATUS_KEY[state.kind])}
       </p>
       {(state.kind === "unavailable" || state.kind === "unreachable") && (
         <button type="button" onClick={retry}>
-          Try again
+          {t("health.retry")}
         </button>
       )}
 
-      {auth.state.kind === "loading" && <p role="status">Checking your sign-in...</p>}
+      {auth.state.kind === "loading" && <p role="status">{t("auth.checking")}</p>}
       {auth.state.kind === "signed-out" && (
         <SignedOutFlow register={auth.register} confirm={auth.confirm} resend={auth.resend} logIn={auth.logIn} />
       )}
