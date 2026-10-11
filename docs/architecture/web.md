@@ -12,7 +12,8 @@ The PWA is one Vite app in `web/`, installed to the Home Screen. It has a precac
 | `src/theme/` | Built | Appearance: System, Light or Dark, and applying it. Detailed under UI layer. |
 | `src/settings/` | Built | The Settings section at the bottom of the home screen. |
 | `src/auth/` | Built | Sign-up, confirmation, sign-in and token handling against Cognito. |
-| `src/api/` | Built | The API client: `authedFetch` and the typed calls to `/me`, the profile routes (`/me/profile`, `/categories`, `/demands`) and `/push/*`. |
+| `src/api/` | Built | The API client: `authedFetch` and the typed calls to `/me`, the profile routes (`/me/profile`, `/categories`, `/demands`), `/push/*` and `/home`. |
+| `src/home/` | Built | The Home section: create form and settings form for the Home's timezone and Allocation time. Detailed below. |
 | `src/profile/` | Built | The Profile section for signed-in Users: Baseline per weekday (saved on blur), Preference per Category and Restrictions on Demands. Each control saves on its own, optimistically, and is undone with a visible message if the API refuses. The Category and Demand lists come from the API; an id with no translation shows as the id. Logic is in pure modules (`baselineInput`, `changes`, `labels`, `weekdays`); `useProfile` holds the state. |
 | `src/push/` | Built | The reminders controls and Web Push subscription. |
 | `src/sw.ts`, `src/sw/` | Built | The service worker: precache and push handling. |
@@ -81,7 +82,7 @@ Colours are semantic tokens declared in `@theme` in `src/index.css`, with the li
 | `surface`, `surface-raised` | Page background, and fields and buttons |
 | `text`, `muted` | Body text, and secondary text such as hints |
 | `accent`, `accent-contrast` | Primary buttons and links, and the label on an accent fill |
-| `danger` | Reserved for problems; not used on screens yet |
+| `danger` | Reserved for problems: error alerts and field errors on the Home forms |
 | `focus` | The 2px focus ring |
 | `border` | Field and button edges (3:1 against the surface) |
 
@@ -132,6 +133,31 @@ flowchart TD
 - Buttons, links and fields are native elements styled with the `btn`, `btn-primary` and `btn-link` utilities and base rules in `index.css`. Buttons keep a border so they stay visible in forced-colors mode; a disabled button is dashed as well as muted.
 - Radix Primitives (`@radix-ui/react-slot`) and `lucide-react` are installed for later screens but not imported yet: native elements cover everything on screen today.
 - The service worker precaches the built CSS, and the theme is local only, so appearance works offline.
+
+## Home
+
+`HomeSection` (`src/home/`) is rendered by `App.tsx` only while signed in, below Reminders and above Settings. The Chores list (#96) goes inside it. It talks to the API through `src/api/home.ts` (`getHome`, `createHome`, `updateHome`), which wraps `authedFetch` like `me.ts` and returns a result union: `ok`, `not-signed-in`, `offline` (a thrown fetch), `error`, plus `none` (404), `already-resident` (409 on create) and `invalid` carrying the API's field codes.
+
+```mermaid
+flowchart TD
+    APP[App.tsx, signed in] --> SEC[HomeSection]
+    SEC --> UH[useHome: GET /home]
+    UH -->|none, 404| CREATE[CreateHome]
+    UH -->|ok| EDIT[HomeSettingsForm]
+    UH -->|offline or error| RETRY[message and Try again]
+    CREATE --> FORM[useSettingsForm]
+    EDIT --> FORM
+    FORM --> FIELDS[HomeFields: timezone and Allocation time selects]
+    CREATE -->|createOrLoad| API[api/home.ts]
+    EDIT -->|saveSettings| API
+    API -->|409 already-resident| LOAD[getHome, then show the existing Home]
+```
+
+- Both forms share `HomeFields`: two native `<select>`s with a visible `<label>`, a hint and a field error linked by `aria-describedby`. The timezone list is `Intl.supportedValuesOf("timeZone")` (`browserTimezones.ts`), defaulting to the browser's zone when listed (`timezones.ts`). The Allocation time list is every 15 minutes (`allocationTimes.ts`), because the Allocator job runs every 15 minutes and the API accepts only :00, :15, :30 and :45. Times are shown in the language's own style but sent as `"HH:MM"`.
+- `createOrLoad` turns a 409 into "load the Home that already exists" and says so (`recovered`). `saveSettings` is the edit equivalent.
+- `useSettingsForm` keeps the typed values in state and never resets them on a failure, so retrying sends what was typed. `offline`, `error` and `not-signed-in` show a `role="alert"` message in the `danger` colour; `invalid` shows a summary plus one message per field.
+- `fieldErrors.ts` maps the API's stable field codes (`timezone`: `required`, `unknown`; `allocationTime`: `required`, `invalid`, `not_quarter_hour`) to message keys in both catalogs. A code it does not know gets a generic message.
+- Pure modules with vitest tests: `api/home.ts`, `createOrLoad.ts`, `fieldErrors.ts`, `allocationTimes.ts`, `timezones.ts`. The components and hooks are checked by hand.
 
 ## Service worker
 

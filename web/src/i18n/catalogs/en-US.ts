@@ -18,6 +18,41 @@ export const enUS = {
   "health.retry": "Try again",
   "auth.checking": "Checking your sign-in...",
 
+  // Home
+  "home.loading": "Loading your Home...",
+  "home.load.offline":
+    "Homeowner cannot reach the service, so your Home could not be loaded. Check your connection and try again.",
+  "home.load.error": "Something went wrong loading your Home. Try again in a moment.",
+  "home.notSignedIn": "Your sign-in has ended. Sign in again to continue.",
+  "home.retry": "Try again",
+  "home.create.heading": "Create your Home",
+  "home.create.intro":
+    "Your Home is the place you and the other Residents look after together. Homeowner needs its timezone and Allocation time to know when each day starts and when to propose the Day Plan. You can change both later, and you can live in only one Home.",
+  "home.create.submit": "Create Home",
+  "home.create.submitting": "Creating...",
+  "home.create.recovered": "You already have a Home, so Homeowner loaded it instead. Check its settings below.",
+  "home.settings.heading": "Your Home",
+  "home.settings.intro":
+    "All Residents of a Home have an equal say, so any Resident can change these settings. The Allocation time is when Homeowner proposes each day's Day Plan.",
+  "home.settings.save": "Save changes",
+  "home.settings.saving": "Saving...",
+  "home.settings.saved": "Your changes are saved.",
+  "home.timezone.label": "Timezone",
+  "home.timezone.hint": "Where your Home is, so Homeowner knows when each day starts.",
+  "home.allocationTime.label": "Allocation time",
+  "home.allocationTime.hint":
+    "The time each day when Homeowner proposes the Day Plan, in your Home's timezone. Times come in 15-minute steps.",
+  "home.save.offline":
+    "Homeowner cannot reach the service. What you typed is still here; check your connection and try again.",
+  "home.save.error": "Something went wrong and nothing was saved. What you typed is still here; try again in a moment.",
+  "home.invalid.summary": "Some details need fixing. Check the fields below.",
+  "home.field.timezone.required": "Choose a timezone.",
+  "home.field.timezone.unknown": "That timezone is not recognised. Choose one from the list.",
+  "home.field.allocationTime.required": "Choose an Allocation time.",
+  "home.field.allocationTime.invalid": "That is not a valid time. Choose one from the list.",
+  "home.field.allocationTime.not_quarter_hour": "The Allocation time must be on a quarter hour: :00, :15, :30 or :45.",
+  "home.field.unknown": "This value is not accepted. Check it and try again.",
+
   // Reminders
   "reminders.heading": "Reminders",
   "reminders.intro":
