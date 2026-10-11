@@ -71,3 +71,39 @@ func TestCategoriesAndDemandsAreTheFixedOrderedLists(t *testing.T) {
 		}
 	}
 }
+
+func TestBaselineIsSetAndClearedPerDayLeavingOtherDaysAlone(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := app.SignInAs("a@example.com")
+
+	if res := me.Put("/me/baseline", map[string]any{"monday": 5, "tuesday": 0}); res.Status != http.StatusNoContent {
+		t.Fatalf("first PUT = %d %s, want 204", res.Status, res.Raw)
+	}
+	got := baselineOf(t, me.Get("/me/profile"))
+	for _, d := range weekdays {
+		var want any
+		switch d {
+		case "monday":
+			want = float64(5)
+		case "tuesday":
+			want = float64(0) // 0 is a real value, not unset
+		}
+		if got[d] != want {
+			t.Errorf("baseline[%s] = %v, want %v", d, got[d], want)
+		}
+	}
+
+	if res := me.Put("/me/baseline", map[string]any{"monday": nil, "friday": 20}); res.Status != http.StatusNoContent {
+		t.Fatalf("second PUT = %d %s, want 204", res.Status, res.Raw)
+	}
+	got = baselineOf(t, me.Get("/me/profile"))
+	if got["monday"] != nil || got["tuesday"] != float64(0) || got["friday"] != float64(20) {
+		t.Errorf("baseline = %v, want monday cleared, tuesday 0, friday 20", got)
+	}
+
+	// Clearing a day that was never set is not an error.
+	if res := me.Put("/me/baseline", map[string]any{"sunday": nil}); res.Status != http.StatusNoContent {
+		t.Errorf("clearing an unset day = %d %s, want 204", res.Status, res.Raw)
+	}
+}

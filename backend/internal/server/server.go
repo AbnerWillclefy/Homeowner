@@ -59,6 +59,7 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("GET /categories", s.requireUser(s.getCategories))
 	mux.HandleFunc("GET /demands", s.requireUser(s.getDemands))
 	mux.HandleFunc("GET /me/profile", s.requireUser(s.getProfile))
+	mux.HandleFunc("PUT /me/baseline", s.requireUser(s.putBaseline))
 	mux.HandleFunc("GET /push/vapid-public-key", s.requirePush(s.vapidPublicKey))
 	mux.HandleFunc("PUT /push/subscription", s.requirePush(s.requireUser(s.putPushSubscription)))
 	mux.HandleFunc("POST /push/test", s.requirePush(s.requireUser(s.postPushTest)))

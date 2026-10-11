@@ -1,9 +1,14 @@
 package server
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"slices"
+	"strconv"
 	"time"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/vocab"
 )
 
@@ -40,6 +45,44 @@ func (s *server) getProfile(w http.ResponseWriter, r *http.Request) {
 		"preferences":  p.Preferences,
 		"restrictions": p.Restrictions,
 	})
+}
+
+// putBaseline sets or clears the Baseline of the weekdays in the body and
+// leaves the others alone, so a stale screen cannot erase a day. A number sets
+// the day, null clears it.
+func (s *server) putBaseline(w http.ResponseWriter, r *http.Request) {
+	var body map[string]json.RawMessage
+	if !decodeBody(w, r, &body, maxProfileBody, true) {
+		return
+	}
+	if len(body) == 0 {
+		writeError(w, http.StatusBadRequest, "baseline must name at least one weekday")
+		return
+	}
+	set := map[time.Weekday]int{}
+	var clear []time.Weekday
+	for key, raw := range body {
+		day := slices.Index(weekdayNames[:], key)
+		if day < 0 {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("%s is not a weekday; use sunday to saturday", key))
+			return
+		}
+		if string(raw) == "null" {
+			clear = append(clear, time.Weekday(day))
+			continue
+		}
+		points, err := strconv.Atoi(string(raw))
+		if err != nil || points < 0 || points > profile.MaxBaseline {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("%s must be an integer from 0 to %d, or null to clear it", key, profile.MaxBaseline))
+			return
+		}
+		set[time.Weekday(day)] = points
+	}
+	if err := s.profile.SetBaseline(r.Context(), currentUser(r.Context()).ID, set, clear); err != nil {
+		s.profileError(w, "set baseline", err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *server) profileError(w http.ResponseWriter, what string, err error) {
