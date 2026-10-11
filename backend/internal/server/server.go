@@ -12,6 +12,7 @@ import (
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
 )
@@ -45,11 +46,14 @@ func New(deps Deps) http.Handler {
 	if deps.Logger == nil {
 		deps.Logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	}
-	s := &server{deps: deps, push: push.NewStore(deps.DB), users: users.NewStore(deps.DB)}
+	s := &server{deps: deps, push: push.NewStore(deps.DB), users: users.NewStore(deps.DB), homes: homes.NewStore(deps.DB)}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.healthz)
 	mux.HandleFunc("GET /me", s.requireUser(s.getMe))
+	mux.HandleFunc("POST /home", s.requireUser(s.postHome))
+	mux.HandleFunc("GET /home", s.requireResident(s.getHome))
+	mux.HandleFunc("PUT /home", s.requireResident(s.putHome))
 	mux.HandleFunc("GET /push/vapid-public-key", s.requirePush(s.vapidPublicKey))
 	mux.HandleFunc("PUT /push/subscription", s.requirePush(s.requireUser(s.putPushSubscription)))
 	mux.HandleFunc("POST /push/test", s.requirePush(s.requireUser(s.postPushTest)))
@@ -64,6 +68,7 @@ type server struct {
 	deps  Deps
 	push  *push.Store
 	users *users.Store
+	homes *homes.Store
 }
 
 func (s *server) healthz(w http.ResponseWriter, r *http.Request) {

@@ -153,6 +153,24 @@ func (c *Client) Put(path string, body any) Response {
 	return c.Do(http.MethodPut, path, body, nil)
 }
 
+// JoinHome makes this User a Resident of the existing Home homeID by inserting
+// the residents row directly, so tests do not depend on the Invite flow. The
+// User is created if this is their first request.
+func (c *Client) JoinHome(t testing.TB, homeID string) {
+	t.Helper()
+	me := c.Get("/me")
+	id, _ := me.Body["id"].(string)
+	if id == "" {
+		t.Fatalf("apitest: JoinHome: GET /me = %d %s", me.Status, me.Raw)
+	}
+	_, err := c.app.DB.Exec(context.Background(),
+		`INSERT INTO residents (user_id, home_id, created_at) VALUES ($1, $2, $3)`,
+		id, homeID, c.app.Clock.Now())
+	if err != nil {
+		t.Fatalf("apitest: JoinHome: %v", err)
+	}
+}
+
 // Delete sends DELETE path as this User.
 func (c *Client) Delete(path string) Response { return c.Do(http.MethodDelete, path, nil, nil) }
 
