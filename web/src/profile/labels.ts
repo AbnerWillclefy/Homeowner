@@ -1,0 +1,32 @@
+import type { MessageKey } from "../i18n";
+
+// The ids the app has a translation for. A key that is not in the catalogs fails the typecheck.
+const CATEGORY_KEYS = {
+  kitchen: "category.kitchen",
+  bathroom: "category.bathroom",
+  bedroom: "category.bedroom",
+  living_room: "category.living_room",
+  laundry: "category.laundry",
+  floors: "category.floors",
+  trash: "category.trash",
+  outdoor: "category.outdoor",
+  pets: "category.pets",
+  other: "category.other",
+} as const satisfies Record<string, MessageKey>;
+
+const DEMAND_KEYS = {
+  heavy_lifting: "demand.heavy_lifting",
+  bending: "demand.bending",
+  heights: "demand.heights",
+  strong_chemicals: "demand.strong_chemicals",
+} as const satisfies Record<string, MessageKey>;
+
+/** A catalog key to translate, or the plain id when the API sent one the app has no text for. */
+export type Label = { key: MessageKey } | { text: string };
+
+function label(keys: Readonly<Record<string, MessageKey>>, id: string): Label {
+  return Object.hasOwn(keys, id) ? { key: keys[id]! } : { text: id };
+}
+
+export const categoryLabel = (id: string): Label => label(CATEGORY_KEYS, id);
+export const demandLabel = (id: string): Label => label(DEMAND_KEYS, id);
