@@ -2,9 +2,11 @@ package server
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
 )
 
@@ -49,7 +51,12 @@ func (s *server) requireUser(next http.HandlerFunc) http.HandlerFunc {
 		}
 		claims, err := s.deps.Verifier.Verify(r.Context(), token)
 		if err != nil {
-			s.deps.Logger.Info("token rejected", "reason", err.Error())
+			// The reason never contains the token.
+			if errors.Is(err, auth.ErrKeysUnavailable) {
+				s.deps.Logger.Error("token not verified: signing keys unavailable", "reason", err.Error())
+			} else {
+				s.deps.Logger.Info("token rejected", "reason", err.Error())
+			}
 			unauthorized(w)
 			return
 		}
