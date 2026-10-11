@@ -70,7 +70,7 @@ func TestAHomeIsPlannedOnceAtItsAllocationTimeInItsZone(t *testing.T) {
 func TestOnlyTheHomeWhoseTimeHasArrivedIsPlanned(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	newHome(t, app, "sp@example.com", "America/Sao_Paulo", "07:00") // 10:00 UTC
+	newHome(t, app, "sp@example.com", "America/Sao_Paulo", "07:00")   // 10:00 UTC
 	newHome(t, app, "la@example.com", "America/Los_Angeles", "07:00") // 15:00 UTC, still 02:00 at 10:00 UTC
 
 	app.Clock.Set(utc(4, 10, 0))

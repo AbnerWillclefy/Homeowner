@@ -25,8 +25,8 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/db"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/db"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/server"
 )

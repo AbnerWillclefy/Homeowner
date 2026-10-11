@@ -55,7 +55,7 @@ func Check(p DayPlan, s State) []Violation {
 			out = append(out, Violation{Kind: WeekdayNotAllowed, TaskID: t.ID, ResidentID: r.ID,
 				Detail: fmt.Sprintf("chore %q may not be done on weekday %d", t.ChoreID, s.Today.Weekday())})
 		}
-		demand, demandBroken, choreBroken :=breaksRestriction(r, t)
+		demand, demandBroken, choreBroken := breaksRestriction(r, t)
 		if demandBroken {
 			out = append(out, Violation{Kind: BrokenRestriction, TaskID: t.ID, ResidentID: r.ID, Level: LevelDemand,
 				Detail: fmt.Sprintf("resident %q cannot do demand %q", r.ID, demand)})
