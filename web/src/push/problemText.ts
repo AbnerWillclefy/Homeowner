@@ -1,33 +1,31 @@
 import type { RemindersResult } from "./reminders";
+import type { Text } from "./testText";
 
 /** Anything that stops reminders from turning on, as shown to the user. */
 export type RemindersProblem = Exclude<RemindersResult, { kind: "enabled" }>;
 
-const BLOCKED =
-  "Notifications are blocked for Homeowner. Open your phone's Settings, find Homeowner under Notifications, allow them, then come back. The app cannot ask a second time.";
-
 /** Plain wording per problem. Never includes the browser's error message, only its name. */
-export function problemText(problem: RemindersProblem): string {
+export function problemText(problem: RemindersProblem): Text {
   switch (problem.kind) {
     case "denied":
-      return BLOCKED;
+      return { key: "reminders.problem.denied" };
     case "dismissed":
-      return "You closed the permission question without answering. Tap the button to try again when you are ready.";
+      return { key: "reminders.problem.dismissed" };
     case "not-configured":
-      return "Reminders are not set up on the service yet. Try again later.";
+      return { key: "reminders.problem.notConfigured" };
     case "not-signed-in":
-      return "You are not signed in any more. Sign in again, then turn on reminders.";
+      return { key: "reminders.problem.notSignedIn" };
     case "error":
-      return "Something went wrong turning on reminders. Check your connection and try again.";
+      return { key: "reminders.problem.error" };
     case "browser-error":
       switch (problem.name) {
         case "AbortError":
         case "NotSupportedError":
-          return "This browser could not register with its notification service. Use Chrome and make sure Google Play services is up to date.";
+          return { key: "reminders.problem.browserRegister" };
         case "NotAllowedError":
-          return "Notifications are not allowed for this app. Check Settings, Apps, Homeowner, Notifications.";
+          return { key: "reminders.problem.browserNotAllowed" };
         default:
-          return `Your browser refused to turn on reminders (${problem.name}).`;
+          return { key: "reminders.problem.browserRefused", params: { name: problem.name } };
       }
   }
 }

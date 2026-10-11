@@ -1,74 +1,76 @@
-import { problemText } from "./problemText";
+import { useI18n } from "../i18n";
+import { INSTALL_STEP_KEYS } from "./installSteps";
+import { problemText, type RemindersProblem } from "./problemText";
 import { DELAYED_TEST_SECONDS, delayedTestLabel, testPendingText, testStatusText } from "./testText";
 import { usePush } from "./usePush";
 
 function InstallSteps() {
+  const { t } = useI18n();
   return (
     <section aria-labelledby="install-heading">
-      <h2 id="install-heading">Add Homeowner to your Home Screen</h2>
-      <p>
-        Reminders tell you when your Check-in is waiting and which Tasks are proposed for you. On iPhone, Apple only
-        allows notifications for apps added to the Home Screen, and it needs iOS 16.4 or newer.
-      </p>
+      <h2 id="install-heading">{t("install.heading")}</h2>
+      <p>{t("install.intro")}</p>
       <ol>
-        <li>Open this page in Safari (not inside another app).</li>
-        <li>Tap the Share button, the square with an arrow, at the bottom of the screen.</li>
-        <li>Scroll down and tap Add to Home Screen, then tap Add.</li>
-        <li>Close Safari and open Homeowner from its new icon on your Home Screen.</li>
+        {INSTALL_STEP_KEYS.map((key) => (
+          <li key={key}>{t(key)}</li>
+        ))}
       </ol>
-      <p>Once you open Homeowner from the icon, this page will let you turn on reminders.</p>
+      <p>{t("install.outro")}</p>
     </section>
   );
 }
 
 export function Reminders() {
   const { availability, reminders, enable, test, sendTest } = usePush();
+  const { t } = useI18n();
 
   if (availability.kind === "needs-install") return <InstallSteps />;
 
   if (availability.kind === "unsupported") {
     return (
       <section aria-labelledby="reminders-heading">
-        <h2 id="reminders-heading">Reminders</h2>
-        <p>
-          This browser cannot show reminders. On iPhone you need iOS 16.4 or newer; on Android, use an up-to-date
-          Chrome and add Homeowner to your Home Screen.
-        </p>
+        <h2 id="reminders-heading">{t("reminders.heading")}</h2>
+        <p>{t("reminders.unsupported")}</p>
       </section>
     );
   }
 
+  const delayedLabel = delayedTestLabel(test.kind === "sending" && !!test.delaySeconds);
+  const pending = test.kind === "sending" ? testPendingText(test.delaySeconds) : null;
+  const testStatus = test.kind === "done" ? testStatusText(test.result, test.delaySeconds) : null;
+
   return (
     <section aria-labelledby="reminders-heading">
-      <h2 id="reminders-heading">Reminders</h2>
-      <p>
-        Reminders are the only way Homeowner can nudge you when the app is closed, for example to do today's Check-in so
-        your Day Plan matches how you feel. They are a nudge: the app works without them.
-      </p>
+      <h2 id="reminders-heading">{t("reminders.heading")}</h2>
+      <p>{t("reminders.intro")}</p>
 
       {reminders.kind === "on" ? (
         <>
-          <p role="status">Reminders are on for this device.</p>
+          <p role="status">{t("reminders.on")}</p>
           <button type="button" onClick={() => sendTest()} disabled={test.kind === "sending"}>
-            {test.kind === "sending" && !test.delaySeconds ? "Sending..." : "Send test notification"}
+            {test.kind === "sending" && !test.delaySeconds ? t("reminders.sendingTest") : t("reminders.sendTest")}
           </button>
           <button type="button" onClick={() => sendTest(DELAYED_TEST_SECONDS)} disabled={test.kind === "sending"}>
-            {delayedTestLabel(test.kind === "sending" && !!test.delaySeconds)}
+            {t(delayedLabel.key, delayedLabel.params)}
           </button>
-          {test.kind === "sending" && !!test.delaySeconds && (
-            <p role="status">{testPendingText(test.delaySeconds)}</p>
-          )}
-          {test.kind === "done" && <p role="status">{testStatusText(test.result, test.delaySeconds)}</p>}
+          {pending && <p role="status">{t(pending.key, pending.params)}</p>}
+          {testStatus && <p role="status">{t(testStatus.key, testStatus.params)}</p>}
         </>
       ) : (
         <>
           <button type="button" onClick={enable} disabled={reminders.kind === "working"}>
-            {reminders.kind === "working" ? "Turning on..." : "Enable reminders"}
+            {reminders.kind === "working" ? t("reminders.enabling") : t("reminders.enable")}
           </button>
-          {reminders.kind === "problem" && <p role="alert">{problemText(reminders.problem)}</p>}
-          {test.kind === "done" && <p role="status">{testStatusText(test.result, test.delaySeconds)}</p>}
+          {reminders.kind === "problem" && <ProblemMessage problem={reminders.problem} />}
+          {testStatus && <p role="status">{t(testStatus.key, testStatus.params)}</p>}
         </>
       )}
     </section>
   );
+}
+
+function ProblemMessage({ problem }: { problem: RemindersProblem }) {
+  const { t } = useI18n();
+  const text = problemText(problem);
+  return <p role="alert">{t(text.key, text.params)}</p>;
 }

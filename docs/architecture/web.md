@@ -46,4 +46,4 @@ flowchart TD
 - The catalogs are typed objects. `en-US` defines the keys; `pt-BR` must match them or the type check fails. A test checks matching placeholders and no empty values.
 - Both catalogs are bundled in the main chunk, which is precached, so both languages work offline.
 - `I18nProvider` keeps the locale in React context and sets `<html lang>` to it.
-- The Reminders section and the sign-in screens are still English until later tickets (#48) move their strings into the catalogs.
+- The Reminders section and the iPhone install steps read from the catalogs. The sign-in screens are still English until #75 moves their strings into the catalogs.
