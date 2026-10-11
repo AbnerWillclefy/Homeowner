@@ -3,6 +3,10 @@
 interface ImportMetaEnv {
   /** Base URL of the API, baked in at build time. Public: never put secrets here. */
   readonly VITE_API_BASE_URL: string;
+  /** AWS region of the Cognito user pool, baked in at build time. Public. */
+  readonly VITE_COGNITO_REGION: string;
+  /** Cognito app client id for the PWA, baked in at build time. Public: the client has no secret. */
+  readonly VITE_COGNITO_CLIENT_ID: string;
 }
 
 interface ImportMeta {
