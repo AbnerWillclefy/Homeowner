@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
-import type { Chore, ChoreInput, Failure, SaveChoreResult } from "../api/chores";
+import type { Chore, ChoreWire, Failure, SaveChoreResult } from "../api/chores";
 import type { FieldCodes } from "../api/home";
-import { toChoreInput, type ChoreFormState } from "./form";
+import { emptyForm, formFromChore, toChoreInput, type ChoreFormState } from "./form";
 
 export type ChoreFormStatus =
   | { kind: "idle" }
@@ -14,11 +14,11 @@ export type ChoreFormStatus =
  * sends exactly what was typed. An API field error clears when its field is edited.
  */
 export function useChoreForm(
-  initial: ChoreFormState,
-  save: (input: ChoreInput) => Promise<SaveChoreResult>,
+  chore: Chore | null,
+  save: (input: ChoreWire) => Promise<SaveChoreResult>,
   onSaved: (chore: Chore) => void,
 ) {
-  const [values, setValues] = useState<ChoreFormState>(initial);
+  const [values, setValues] = useState<ChoreFormState>(() => (chore ? formFromChore(chore) : emptyForm()));
   const [status, setStatus] = useState<ChoreFormStatus>({ kind: "idle" });
 
   /** Changes some fields; `fields` names the API fields whose errors the change answers. */

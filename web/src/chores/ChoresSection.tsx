@@ -1,10 +1,9 @@
 import { useRef, useState } from "react";
-import { createChore, updateChore, type Chore, type ChoreInput } from "../api/chores";
+import { createChore, updateChore, type Chore } from "../api/chores";
 import { useI18n } from "../i18n";
 import { ChoreForm } from "./ChoreForm";
 import { ChoreItem } from "./ChoreItem";
 import { LOAD_FAILURE_KEY } from "./failureMessages";
-import { emptyForm, formFromChore } from "./form";
 import { useChores } from "./useChores";
 
 /** Which form is open: none, a new Chore, or the Chore with this id. */
@@ -22,11 +21,21 @@ export function ChoresSection() {
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   // After a form closes or a Chore goes away, the focused element is gone: land on the heading.
+  function focusHeading() {
+    requestAnimationFrame(() => headingRef.current?.focus());
+  }
+
   function settle(message: string | null) {
     setNotice(message);
     setEditing({ kind: "none" });
-    requestAnimationFrame(() => headingRef.current?.focus());
+    focusHeading();
   }
+
+  const onSaved = (saved: Chore) => {
+    upsert(saved);
+    settle(t("chores.form.saved"));
+  };
+  const onCancel = () => settle(null);
 
   return (
     <section aria-labelledby="chores-heading">
@@ -62,15 +71,11 @@ export function ChoresSection() {
                 <li key={chore.id} className="list-none ps-0">
                   <ChoreForm
                     chore={chore}
-                    initial={formFromChore(chore)}
                     categories={state.categories}
                     demands={state.demands}
-                    save={(input: ChoreInput) => updateChore(chore.id, input)}
-                    onSaved={(saved) => {
-                      upsert(saved);
-                      settle(t("chores.form.saved"));
-                    }}
-                    onCancel={() => settle(null)}
+                    save={(input) => updateChore(chore.id, input)}
+                    onSaved={onSaved}
+                    onCancel={onCancel}
                   />
                 </li>
               ) : (
@@ -84,9 +89,8 @@ export function ChoresSection() {
                   onDeleted={(id) => {
                     remove(id);
                     setNotice(null);
-                    // Another open form keeps what was typed in it; only one on this Chore is closed.
-                    setEditing((current) => (current.kind === "edit" && current.id === id ? { kind: "none" } : current));
-                    requestAnimationFrame(() => headingRef.current?.focus());
+                    // Another Chore's open form keeps what was typed in it, so this does not call settle.
+                    focusHeading();
                   }}
                 />
               ),
@@ -96,15 +100,11 @@ export function ChoresSection() {
           {editing.kind === "new" ? (
             <ChoreForm
               chore={null}
-              initial={emptyForm()}
               categories={state.categories}
               demands={state.demands}
               save={createChore}
-              onSaved={(saved) => {
-                upsert(saved);
-                settle(t("chores.form.saved"));
-              }}
-              onCancel={() => settle(null)}
+              onSaved={onSaved}
+              onCancel={onCancel}
             />
           ) : (
             <button

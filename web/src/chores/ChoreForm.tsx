@@ -1,12 +1,12 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import type { Chore, ChoreInput, SaveChoreResult } from "../api/chores";
+import type { Chore, ChoreWire, SaveChoreResult } from "../api/chores";
 import { WEEKDAYS } from "../api/profile";
 import { useI18n, type MessageKey } from "../i18n";
 import { categoryLabel, demandLabel, importanceLabel, type Label } from "../profile/labels";
 import { DISPLAY_WEEKDAYS, weekdayLabel } from "../profile/weekdays";
 import { choreFieldErrorKey } from "./fieldErrors";
 import { SAVE_FAILURE_KEY } from "./failureMessages";
-import { toggled, type ChoreFormState } from "./form";
+import { toggled } from "./form";
 import { suggestTwoPerson } from "./suggestion";
 import { useChoreForm } from "./useChoreForm";
 
@@ -15,27 +15,30 @@ const IMPORTANCES = ["essential", "normal", "nice_to_have"];
 const CHECK = "size-5 w-5 min-h-0 mt-0 shrink-0 accent-accent";
 const CHOICE = "flex items-center gap-3 min-h-11 mt-0 font-normal";
 
+interface RadioOption<V> {
+  value: V;
+  label: string;
+}
+
 interface Props {
   /** The Chore being edited, or null for a new one. */
   chore: Chore | null;
-  initial: ChoreFormState;
   categories: readonly string[];
   demands: readonly string[];
-  save(input: ChoreInput): Promise<SaveChoreResult>;
+  save(input: ChoreWire): Promise<SaveChoreResult>;
   onSaved(chore: Chore): void;
   onCancel(): void;
 }
 
 /** The create and edit form for a Chore: every field, the API's field errors beside their controls. */
-export function ChoreForm({ chore, initial, categories, demands, save, onSaved, onCancel }: Props) {
+export function ChoreForm({ chore, categories, demands, save, onSaved, onCancel }: Props) {
   const { t, locale } = useI18n();
-  const form = useChoreForm(initial, save, onSaved);
+  const form = useChoreForm(chore, save, onSaved);
   const { values, status } = form;
   const saving = status.kind === "saving";
   const fieldErrors = status.kind === "invalid" ? status.fields : {};
   const idPrefix = `chore-form-${chore?.id ?? "new"}`;
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const twoPeopleRef = useRef<HTMLInputElement>(null);
 
   // The form appears in place of a button, so move the reader to it.
   useEffect(() => headingRef.current?.focus(), []);
@@ -83,6 +86,34 @@ export function ChoreForm({ chore, initial, categories, demands, save, onSaved, 
         {children}
         {notes}
       </fieldset>
+    );
+  }
+
+  const radioId = (groupName: string, value: number | string) => `${idPrefix}-${groupName}-${value}`;
+
+  /** A row of radio buttons sharing one name; each input has an id so other controls can focus it. */
+  function radios<V extends number | string>(
+    groupName: string,
+    options: RadioOption<V>[],
+    selected: V,
+    onSelect: (value: V) => void,
+  ) {
+    return (
+      <div className="flex flex-wrap gap-x-4">
+        {options.map((option) => (
+          <label key={option.value} className={CHOICE}>
+            <input
+              id={radioId(groupName, option.value)}
+              type="radio"
+              name={`${idPrefix}-${groupName}`}
+              className={CHECK}
+              checked={selected === option.value}
+              onChange={() => onSelect(option.value)}
+            />
+            {option.label}
+          </label>
+        ))}
+      </div>
     );
   }
 
@@ -151,69 +182,39 @@ export function ChoreForm({ chore, initial, categories, demands, save, onSaved, 
           "baseEffort",
           "chores.form.baseEffort.legend",
           "chores.form.baseEffort.hint",
-          <div className="flex flex-wrap gap-x-4">
-            {EFFORTS.map((effort) => (
-              <label key={effort} className={CHOICE}>
-                <input
-                  type="radio"
-                  name={`${idPrefix}-baseEffort`}
-                  className={CHECK}
-                  checked={values.baseEffort === effort}
-                  onChange={() => form.change({ baseEffort: effort }, "baseEffort")}
-                />
-                {t("chores.form.baseEffort.option", { effort })}
-              </label>
-            ))}
-          </div>,
+          radios(
+            "baseEffort",
+            EFFORTS.map((effort) => ({ value: effort, label: t("chores.form.baseEffort.option", { effort }) })),
+            values.baseEffort,
+            (baseEffort) => form.change({ baseEffort }, "baseEffort"),
+          ),
         )}
 
         {group(
           "importance",
           "chores.form.importance.legend",
           "chores.form.importance.hint",
-          <div className="flex flex-wrap gap-x-4">
-            {IMPORTANCES.map((id) => (
-              <label key={id} className={CHOICE}>
-                <input
-                  type="radio"
-                  name={`${idPrefix}-importance`}
-                  className={CHECK}
-                  checked={values.importance === id}
-                  onChange={() => form.change({ importance: id }, "importance")}
-                />
-                {text(importanceLabel(id))}
-              </label>
-            ))}
-          </div>,
+          radios(
+            "importance",
+            IMPORTANCES.map((id) => ({ value: id, label: text(importanceLabel(id)) })),
+            values.importance,
+            (importance) => form.change({ importance }, "importance"),
+          ),
         )}
 
         {group(
           "people",
           "chores.form.people.legend",
           "chores.form.people.hint",
-          <div className="flex flex-wrap gap-x-4">
-            <label className={CHOICE}>
-              <input
-                type="radio"
-                name={`${idPrefix}-people`}
-                className={CHECK}
-                checked={values.people === 1}
-                onChange={() => form.change({ people: 1 }, "people")}
-              />
-              {t("chores.form.people.one")}
-            </label>
-            <label className={CHOICE}>
-              <input
-                ref={twoPeopleRef}
-                type="radio"
-                name={`${idPrefix}-people`}
-                className={CHECK}
-                checked={values.people === 2}
-                onChange={() => form.change({ people: 2 }, "people")}
-              />
-              {t("chores.form.people.two")}
-            </label>
-          </div>,
+          radios(
+            "people",
+            [
+              { value: 1, label: t("chores.form.people.one") },
+              { value: 2, label: t("chores.form.people.two") },
+            ],
+            values.people,
+            (people) => form.change({ people }, "people"),
+          ),
         )}
 
         {/* The region is always present so a screen reader announces the suggestion when it appears. */}
@@ -225,7 +226,7 @@ export function ChoreForm({ chore, initial, categories, demands, save, onSaved, 
             disabled={saving}
             onClick={() => {
               form.change({ people: 2 }, "people");
-              twoPeopleRef.current?.focus();
+              document.getElementById(radioId("people", 2))?.focus();
             }}
           >
             {t("chores.form.suggestion.action")}

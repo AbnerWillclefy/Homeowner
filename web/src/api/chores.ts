@@ -12,8 +12,8 @@ export interface ChoreInput {
   /** An Importance id: essential, normal or nice_to_have. */
   importance: string;
   people: number;
-  /** Null means the Chore comes due once. A string is allowed so the API can reject what was typed. */
-  intervalDays: number | string | null;
+  /** Null means the Chore comes due once. */
+  intervalDays: number | null;
   allowedWeekdays: number[];
   buildsUp: boolean;
 }
@@ -21,8 +21,10 @@ export interface ChoreInput {
 /** A stored Chore, as the API returns it. */
 export interface Chore extends ChoreInput {
   id: string;
-  intervalDays: number | null;
 }
+
+/** A ChoreInput as sent. The interval may be the text typed, so the API can reject what was written. */
+export type ChoreWire = Omit<ChoreInput, "intervalDays"> & { intervalDays: number | string | null };
 
 export type Failure = { kind: "not-signed-in" } | { kind: "offline" } | { kind: "error" };
 
@@ -92,7 +94,7 @@ export async function listChores(): Promise<ListChoresResult> {
   }
 }
 
-async function save(path: string, method: "POST" | "PUT", input: ChoreInput, okStatus: number): Promise<SaveChoreResult> {
+async function save(path: string, method: "POST" | "PUT", input: ChoreWire, okStatus: number): Promise<SaveChoreResult> {
   try {
     const result = await authedFetch(path, { method, headers: JSON_HEADERS, body: JSON.stringify(input) });
     if (result.kind === "not-signed-in") return result;
@@ -110,12 +112,12 @@ async function save(path: string, method: "POST" | "PUT", input: ChoreInput, okS
   }
 }
 
-export function createChore(input: ChoreInput): Promise<SaveChoreResult> {
+export function createChore(input: ChoreWire): Promise<SaveChoreResult> {
   return save("/home/chores", "POST", input, 201);
 }
 
 /** Replaces every field of the Chore. */
-export function updateChore(id: string, input: ChoreInput): Promise<SaveChoreResult> {
+export function updateChore(id: string, input: ChoreWire): Promise<SaveChoreResult> {
   return save(`/home/chores/${encodeURIComponent(id)}`, "PUT", input, 200);
 }
 

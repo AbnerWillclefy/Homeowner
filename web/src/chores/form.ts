@@ -1,4 +1,4 @@
-import type { Chore, ChoreInput } from "../api/chores";
+import type { Chore, ChoreWire } from "../api/chores";
 
 /** Everything the Chore form holds, as typed. The interval stays text so a blank can mean one-off. */
 export interface ChoreFormState {
@@ -56,7 +56,7 @@ function intervalFromText(text: string): number | string | null {
  * The request body for a form. The checks that matter (name, ranges, ids) are the API's; this only
  * shapes the values, so the field errors that come back are about exactly what was typed.
  */
-export function toChoreInput(form: ChoreFormState): ChoreInput {
+export function toChoreInput(form: ChoreFormState): ChoreWire {
   return {
     name: form.name,
     category: form.category,
