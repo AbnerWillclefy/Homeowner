@@ -3,14 +3,24 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"regexp"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
 )
 
-const maxHomeBody = 4 * 1024
+const (
+	maxHomeBody = 4 * 1024
+	// maxNewHomeBody and maxNewHomeChores bound POST /home, which also carries
+	// the reviewed Chores. The Catalog proposes at most catalog.MaxProposals.
+	maxNewHomeBody   = 64 * 1024
+	maxNewHomeChores = 100
+)
 
 // membershipKey is the context key for the caller's Membership.
 type membershipKey struct{}
@@ -105,12 +115,54 @@ func readHomeSettings(w http.ResponseWriter, r *http.Request) (homeSettings, boo
 	return body, true
 }
 
+// newHome is the body of POST /home: the settings plus the Chores the User
+// reviewed, if any.
+type newHome struct {
+	homeSettings
+	Chores []chores.Input `json:"chores"`
+}
+
+// readNewHome decodes and validates the body, settings and Chores together
+// with all errors at once, writing the error response itself when it is not
+// acceptable.
+func readNewHome(w http.ResponseWriter, r *http.Request) (homeSettings, []chores.Fields, bool) {
+	var body newHome
+	if !decodeBody(w, r, &body, maxNewHomeBody, true) {
+		return body.homeSettings, nil, false
+	}
+	fields := body.validate()
+	var parsed []chores.Fields
+	if len(body.Chores) > maxNewHomeChores {
+		fields["chores"] = "too_many"
+	} else {
+		for i, in := range body.Chores {
+			f, errs := chores.Validate(in)
+			for name, code := range errs {
+				fields[fmt.Sprintf("chores.%d.%s", i, name)] = code
+			}
+			parsed = append(parsed, f)
+		}
+	}
+	if len(fields) > 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid home", "fields": fields})
+		return body.homeSettings, nil, false
+	}
+	return body.homeSettings, parsed, true
+}
+
 func (s *server) postHome(w http.ResponseWriter, r *http.Request) {
-	body, ok := readHomeSettings(w, r)
+	body, cs, ok := readNewHome(w, r)
 	if !ok {
 		return
 	}
-	h, err := s.homes.Create(r.Context(), currentUser(r.Context()).ID, body.Timezone, body.AllocationTime, s.deps.Clock.Now())
+	now := s.deps.Clock.Now()
+	var inHome func(context.Context, pgx.Tx, string) error
+	if len(cs) > 0 {
+		inHome = func(ctx context.Context, tx pgx.Tx, homeID string) error {
+			return chores.InsertAll(ctx, tx, homeID, cs, now)
+		}
+	}
+	h, err := s.homes.Create(r.Context(), currentUser(r.Context()).ID, body.Timezone, body.AllocationTime, now, inHome)
 	if errors.Is(err, homes.ErrAlreadyResident) {
 		writeError(w, http.StatusConflict, "already a resident")
 		return

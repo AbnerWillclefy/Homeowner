@@ -46,8 +46,11 @@ const uniqueViolation = "23505"
 
 // Create makes a Home and makes userID its first Resident, in one transaction.
 // The UNIQUE constraint on residents.user_id decides a race: the loser gets
-// ErrAlreadyResident and its Home is rolled back.
-func (s *Store) Create(ctx context.Context, userID, timezone, allocationTime string, now time.Time) (Home, error) {
+// ErrAlreadyResident and its Home is rolled back. inHome, if not nil, runs on
+// the open transaction once the Resident exists (the Home's first Chores, for
+// example); if it fails, everything is rolled back.
+func (s *Store) Create(ctx context.Context, userID, timezone, allocationTime string, now time.Time,
+	inHome func(ctx context.Context, tx pgx.Tx, homeID string) error) (Home, error) {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return Home{}, fmt.Errorf("create home: %w", err)
@@ -72,6 +75,11 @@ func (s *Store) Create(ctx context.Context, userID, timezone, allocationTime str
 	}
 	if err != nil {
 		return Home{}, fmt.Errorf("create resident: %w", err)
+	}
+	if inHome != nil {
+		if err := inHome(ctx, tx, h.ID); err != nil {
+			return Home{}, fmt.Errorf("create home: %w", err)
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return Home{}, fmt.Errorf("create home: %w", err)

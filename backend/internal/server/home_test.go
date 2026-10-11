@@ -2,7 +2,9 @@ package server_test
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -21,6 +23,202 @@ func countHomes(t *testing.T, app *apitest.App) int {
 
 func homeBody(tz, at string) map[string]any {
 	return map[string]any{"timezone": tz, "allocationTime": at}
+}
+
+// homeWithChores is a Home body carrying reviewed Chores.
+func homeWithChores(cs ...map[string]any) map[string]any {
+	b := homeBody("UTC", "07:00")
+	b["chores"] = cs
+	return b
+}
+
+func TestCreatingAHomeWithReviewedChoresStoresExactlyThoseChores(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := app.SignInAs("a@example.com")
+
+	// The questionnaire proposes; the User removes one and edits another.
+	ps := proposals(t, me, map[string]any{
+		"rooms": map[string]any{"bathrooms": 2, "kitchens": 1}, "pets": []string{"dog"},
+	})
+	var reviewed []map[string]any
+	removed, edited := "feed_dog", "walk_dog"
+	for _, p := range ps {
+		if p["catalogId"] == removed {
+			continue
+		}
+		c := map[string]any{}
+		for _, k := range []string{"name", "category", "demands", "baseEffort", "importance", "people", "intervalDays", "allowedWeekdays", "buildsUp"} {
+			c[k] = p[k]
+		}
+		if p["catalogId"] == edited {
+			c["name"] = "  Walk Rex  "
+			c["intervalDays"] = 2
+			c["demands"] = []string{"heights", "bending", "bending"}
+		}
+		reviewed = append(reviewed, c)
+	}
+
+	created := me.Post("/home", homeWithChores(reviewed...))
+	if created.Status != http.StatusCreated {
+		t.Fatalf("POST /home = %d %s, want 201", created.Status, created.Raw)
+	}
+	got := listChores(t, me)
+	if len(got) != len(reviewed) || len(reviewed) != len(ps)-1 {
+		t.Fatalf("stored %d Chores, sent %d of %d proposed", len(got), len(reviewed), len(ps))
+	}
+	names := map[string]map[string]any{}
+	for _, c := range got {
+		m := c.(map[string]any)
+		names[m["name"].(string)] = m
+	}
+	if _, ok := names["Feed the dog"]; ok {
+		t.Errorf("the removed proposal was stored")
+	}
+	walk := names["Walk Rex"]
+	if walk == nil || walk["intervalDays"] != float64(2) || !reflect.DeepEqual(walk["demands"], []any{"bending", "heights"}) {
+		t.Errorf("edited Chore = %v, want trimmed name, interval 2 and normalised demands", walk)
+	}
+}
+
+func TestInvalidChoreInANewHomeStoresNothing(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := app.SignInAs("a@example.com")
+
+	body := homeBody("Nope/Nowhere", "07:00")
+	body["chores"] = []map[string]any{
+		validChore(),
+		validChore(),
+		with(with(validChore(), "baseEffort", 9), "category", "garage"),
+	}
+	r := me.Post("/home", body)
+	if r.Status != http.StatusBadRequest || r.Body["error"] != "invalid home" {
+		t.Fatalf("POST /home = %d %s, want 400 invalid home", r.Status, r.Raw)
+	}
+	want := map[string]any{"timezone": "unknown", "chores.2.baseEffort": "out_of_range", "chores.2.category": "unknown"}
+	if !reflect.DeepEqual(r.Body["fields"], want) {
+		t.Fatalf("fields = %v, want %v (home and Chore errors at once)", r.Body["fields"], want)
+	}
+	if h, c := countHomes(t, app), countChores(t, app); h != 0 || c != 0 {
+		t.Fatalf("stored %d Homes and %d Chores, want none", h, c)
+	}
+	if got := me.Get("/home"); got.Status != http.StatusNotFound {
+		t.Fatalf("GET /home = %d, want 404 (no Home was made)", got.Status)
+	}
+}
+
+func TestACreateThatLosesTheRaceAddsNoChores(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := homeWithResident(t, app, "a@example.com")
+	me.Post("/home/chores", validChore())
+
+	second := me.Post("/home", homeWithChores(validChore(), validChore()))
+	if second.Status != http.StatusConflict {
+		t.Fatalf("second POST /home = %d %s, want 409", second.Status, second.Raw)
+	}
+	if n := countChores(t, app); n != 1 {
+		t.Fatalf("Chores = %d, want 1 (the 409 added none)", n)
+	}
+}
+
+func TestConcurrentCreatesWithChoresMakeOneHomeWithOneSetOfChores(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := app.SignInAs("a@example.com")
+	me.Get("/me")
+
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			me.Post("/home", homeWithChores(validChore(), validChore(), validChore()))
+		}()
+	}
+	wg.Wait()
+	if h, c := countHomes(t, app), countChores(t, app); h != 1 || c != 3 {
+		t.Fatalf("Homes = %d, Chores = %d, want 1 and 3", h, c)
+	}
+}
+
+func TestCreatingAHomeWithoutOrWithEmptyChoresAddsNone(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	for i, chores := range []any{nil, []any{}} {
+		me := app.SignInAs(fmt.Sprintf("u%d@example.com", i))
+		body := homeBody("UTC", "07:00")
+		if chores != nil {
+			body["chores"] = chores
+		}
+		if r := me.Post("/home", body); r.Status != http.StatusCreated {
+			t.Fatalf("POST /home = %d %s, want 201", r.Status, r.Raw)
+		}
+	}
+	b := app.SignInAs("null@example.com")
+	if r := b.Post("/home", with(homeBody("UTC", "07:00"), "chores", nil)); r.Status != http.StatusCreated {
+		t.Fatalf("null chores = %d %s, want 201", r.Status, r.Raw)
+	}
+	if n := countChores(t, app); n != 0 {
+		t.Fatalf("Chores = %d, want 0", n)
+	}
+}
+
+func TestTheChoresListOfANewHomeIsBoundedAndPutHomeTakesNoChores(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := app.SignInAs("a@example.com")
+
+	many := make([]map[string]any, 101)
+	for i := range many {
+		many[i] = validChore()
+	}
+	r := me.Post("/home", with(homeBody("UTC", "07:00"), "chores", many))
+	if r.Status != http.StatusBadRequest || !reflect.DeepEqual(r.Body["fields"], map[string]any{"chores": "too_many"}) {
+		t.Fatalf("101 Chores = %d %s, want 400 chores too_many", r.Status, r.Raw)
+	}
+	if n := countHomes(t, app); n != 0 {
+		t.Fatalf("Homes = %d, want 0", n)
+	}
+
+	huge := with(homeBody("UTC", "07:00"), "chores", []map[string]any{with(validChore(), "name", strings.Repeat("x", 70*1024))})
+	if r := me.Post("/home", huge); r.Status != http.StatusRequestEntityTooLarge {
+		t.Fatalf("70 KB body = %d, want 413", r.Status)
+	}
+
+	me.Post("/home", homeBody("UTC", "07:00"))
+	if r := me.Put("/home", homeWithChores(validChore())); r.Status != http.StatusBadRequest {
+		t.Fatalf("PUT /home with chores = %d %s, want 400", r.Status, r.Raw)
+	}
+}
+
+func TestCatalogChoresCanBeAddedToAnExistingHome(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := homeWithResident(t, app, "a@example.com")
+	other := homeWithResident(t, app, "b@example.com")
+
+	var entry map[string]any
+	for _, e := range catalogEntries(t, me) {
+		if e["id"] == "mow_lawn" {
+			entry = e
+		}
+	}
+	body := map[string]any{}
+	for _, k := range []string{"name", "category", "demands", "baseEffort", "importance", "people", "intervalDays", "allowedWeekdays", "buildsUp"} {
+		body[k] = entry[k]
+	}
+	if r := me.Post("/home/chores", body); r.Status != http.StatusCreated {
+		t.Fatalf("POST /home/chores = %d %s, want 201", r.Status, r.Raw)
+	}
+	got := listChores(t, me)
+	if len(got) != 1 || got[0].(map[string]any)["name"] != entry["name"] || got[0].(map[string]any)["category"] != "outdoor" {
+		t.Fatalf("Chores = %v, want the Catalog entry", got)
+	}
+	if l := listChores(t, other); len(l) != 0 {
+		t.Fatalf("another Home sees %v", l)
+	}
 }
 
 func TestAUserCreatesAHomeAndReadsItBack(t *testing.T) {

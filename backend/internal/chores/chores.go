@@ -13,6 +13,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/vocab"
@@ -233,6 +234,28 @@ func (s *Store) Create(ctx context.Context, homeID string, f Fields, now time.Ti
 		return Chore{}, fmt.Errorf("create chore: %w", err)
 	}
 	return c, nil
+}
+
+// Execer is what a pool or a transaction offers for writing.
+type Execer interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+}
+
+// InsertAll stores the Chores in the Home on ex, so a caller can add them in
+// its own transaction. All get the same creation time.
+func InsertAll(ctx context.Context, ex Execer, homeID string, fs []Fields, now time.Time) error {
+	for _, f := range fs {
+		_, err := ex.Exec(ctx, `
+			INSERT INTO chores (home_id, name, category, demands, base_effort, importance, people,
+				interval_days, allowed_weekdays, builds_up, created_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11)`,
+			homeID, f.Name, f.Category, f.Demands, f.BaseEffort, f.Importance, f.People,
+			f.IntervalDays, f.AllowedWeekdays, f.BuildsUp, now)
+		if err != nil {
+			return fmt.Errorf("insert chore: %w", err)
+		}
+	}
+	return nil
 }
 
 // Update replaces every field of the Chore, or returns ErrNotFound. id must
