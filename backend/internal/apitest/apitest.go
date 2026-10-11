@@ -153,6 +153,9 @@ func (c *Client) Put(path string, body any) Response {
 	return c.Do(http.MethodPut, path, body, nil)
 }
 
+// Delete sends DELETE path as this User.
+func (c *Client) Delete(path string) Response { return c.Do(http.MethodDelete, path, nil, nil) }
+
 // SendRaw sends method path with a raw body as this User, for malformed or
 // oversized input.
 func (c *Client) SendRaw(method, path string, body []byte) Response {
