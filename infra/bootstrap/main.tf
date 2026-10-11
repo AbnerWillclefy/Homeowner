@@ -23,9 +23,9 @@ variable "aws_region" {
 }
 
 variable "github_repo" {
-  description = "owner/name of the repository allowed to assume the deploy role."
+  description = "Repository allowed to assume the deploy role, as GitHub writes it in the OIDC subject: owner@owner-id/name@repo-id (from gh api repos/OWNER/NAME, fields owner.id and id). The numeric ids stop a deleted and re-created repository with the same name from inheriting the role."
   type        = string
-  default     = "AbnerWillclefy/Homeowner"
+  default     = "AbnerWillclefy@81093119/Homeowner@1413384133"
 }
 
 data "aws_caller_identity" "current" {}
