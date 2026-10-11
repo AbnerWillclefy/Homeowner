@@ -10,8 +10,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
 )
 
 // Deps is everything outside the system that tests need to fake. Tests build
@@ -30,6 +32,9 @@ type Deps struct {
 	Push push.Sender
 	// VAPIDPublicKey is the application server key browsers subscribe with.
 	VAPIDPublicKey string
+	// Verifier checks the bearer token; nil means auth is not configured and
+	// routes that need a signed-in User answer 503.
+	Verifier auth.Verifier
 }
 
 const healthTimeout = 2 * time.Second
@@ -40,10 +45,11 @@ func New(deps Deps) http.Handler {
 	if deps.Logger == nil {
 		deps.Logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	}
-	s := &server{deps: deps, push: push.NewStore(deps.DB)}
+	s := &server{deps: deps, push: push.NewStore(deps.DB), users: users.NewStore(deps.DB)}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.healthz)
+	mux.HandleFunc("GET /me", s.requireUser(s.getMe))
 	mux.HandleFunc("GET /push/vapid-public-key", s.requirePush(s.vapidPublicKey))
 	mux.HandleFunc("PUT /push/subscription", s.requirePush(s.putPushSubscription))
 	mux.HandleFunc("POST /push/test", s.requirePush(s.postPushTest))
@@ -55,8 +61,9 @@ func New(deps Deps) http.Handler {
 }
 
 type server struct {
-	deps Deps
-	push *push.Store
+	deps  Deps
+	push  *push.Store
+	users *users.Store
 }
 
 func (s *server) healthz(w http.ResponseWriter, r *http.Request) {

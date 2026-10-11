@@ -2,8 +2,9 @@
 // real HTTP server against a real, isolated Postgres database, with the
 // outside world faked at its boundary.
 //
-// Later tickets extend App with SignInAs(user) and the fake LLM and Web Push
-// clients, and wire them into server.Deps in Start.
+// App.SignInAs(email) returns a client signed in through the fake token
+// verifier, never real Cognito. Later tickets add the fake LLM client and wire
+// it into server.Deps in Start.
 package apitest
 
 import (
@@ -21,6 +22,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/db"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
@@ -38,6 +40,8 @@ type App struct {
 	Logs  *LogBuffer
 	// Push is the fake Web Push sender; nil unless started WithPush.
 	Push *push.Fake
+	// Auth is the fake token verifier; nil when started WithoutAuth.
+	Auth *auth.Fake
 }
 
 // Response is a decoded HTTP response.
@@ -66,6 +70,12 @@ func WithPush(publicKey string) Option {
 	}
 }
 
+// WithoutAuth leaves the token verifier unconfigured (nil), so routes that
+// need a signed-in User answer 503.
+func WithoutAuth() Option {
+	return func(d *server.Deps) { d.Verifier = nil }
+}
+
 // Start boots the API on a fresh database cloned from the migrated template.
 func Start(t testing.TB, opts ...Option) *App {
 	t.Helper()
@@ -85,6 +95,8 @@ func Start(t testing.TB, opts ...Option) *App {
 		DB:     pool,
 		Clock:  fake,
 		Logger: slog.New(slog.NewJSONHandler(logs, nil)),
+		// Tests sign in through the fake, never real Cognito.
+		Verifier: auth.NewFake(),
 	}
 	for _, opt := range opts {
 		opt(&deps)
@@ -94,7 +106,63 @@ func Start(t testing.TB, opts ...Option) *App {
 
 	app := &App{URL: srv.URL, Clock: fake, DB: pool, Logs: logs}
 	app.Push, _ = deps.Push.(*push.Fake)
+	app.Auth, _ = deps.Verifier.(*auth.Fake)
 	return app
+}
+
+// Client is a signed-in caller: every request carries its bearer token.
+type Client struct {
+	app    *App
+	Token  string
+	header http.Header
+}
+
+// SignInAs returns a Client signed in as the person with email. The same
+// email is the same User; a different email is a different one. It needs the
+// fake verifier, so it fails the test under WithoutAuth.
+func (a *App) SignInAs(email string) *Client {
+	if a.Auth == nil {
+		panic("apitest: SignInAs needs the fake verifier (do not use WithoutAuth)")
+	}
+	return a.client(a.Auth.SignIn(email))
+}
+
+// SignInAsSubject is SignInAs for a given Cognito subject, to model a person
+// whose email changed in Cognito.
+func (a *App) SignInAsSubject(sub, email string) *Client {
+	if a.Auth == nil {
+		panic("apitest: SignInAsSubject needs the fake verifier (do not use WithoutAuth)")
+	}
+	return a.client(a.Auth.SignInSubject(sub, email))
+}
+
+func (a *App) client(token string) *Client {
+	return &Client{app: a, Token: token, header: http.Header{"Authorization": {"Bearer " + token}}}
+}
+
+// Get sends GET path as this User.
+func (c *Client) Get(path string) Response { return c.Do(http.MethodGet, path, nil, nil) }
+
+// Post sends body as JSON to path as this User.
+func (c *Client) Post(path string, body any) Response {
+	return c.Do(http.MethodPost, path, body, nil)
+}
+
+// Put sends body as JSON to path as this User.
+func (c *Client) Put(path string, body any) Response {
+	return c.Do(http.MethodPut, path, body, nil)
+}
+
+// Do sends method path as this User, with an optional JSON body and extra
+// request headers.
+func (c *Client) Do(method, path string, body any, extra http.Header) Response {
+	h := c.header.Clone()
+	for k, vs := range extra {
+		for _, v := range vs {
+			h.Add(k, v)
+		}
+	}
+	return c.app.doWith(method, path, body, h)
 }
 
 // Get sends GET path to the server.
