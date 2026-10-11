@@ -1,6 +1,7 @@
 import { SignedIn } from "./auth/SignedIn";
 import { SignedOutFlow } from "./auth/SignedOutFlow";
 import { useAuth } from "./auth/useAuth";
+import { HomeSection } from "./home/HomeSection";
 import { Reminders } from "./push/Reminders";
 import { useI18n, type MessageKey } from "./i18n";
 import { Settings } from "./settings/Settings";
@@ -40,6 +41,8 @@ export default function App() {
           <SignedIn email={auth.state.email} offline={auth.state.offline} onSignOut={auth.signOut} />
           {/* Reminders and the launch re-subscribe call protected routes, so they exist only while signed in. */}
           <Reminders />
+          {/* The Home calls protected routes too, so it also exists only while signed in. */}
+          <HomeSection />
         </>
       )}
 

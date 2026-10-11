@@ -13,8 +13,10 @@ Agreed Brazilian Portuguese equivalents for the terms in [CONTEXT.md](../CONTEXT
 
 | CONTEXT.md term | pt-BR | pt-BR words to avoid | Note |
 |---|---|---|---|
-| Home | lar | residência, domicílio (and "casa" unless the native speaker chooses it) | Covers houses and apartments, as CONTEXT.md requires. "Casa" is the colloquial fallback if the native speaker prefers it. Used in: "Divida os afazeres domésticos do seu lar de forma justa." |
+| Home | lar | residência, domicílio (and "casa" unless the native speaker chooses it) | Covers houses and apartments, as CONTEXT.md requires. "Casa" is the colloquial fallback if the native speaker prefers it. Used in: "Divida os afazeres domésticos do seu lar de forma justa." and the `home.*` Home screen strings ("Crie o seu lar", "Seu lar"). |
 | Check-in | check-in | verificação de humor, pesquisa, enquete | The English word is common in Brazilian apps. The native speaker may prefer "registro do dia". Used in `reminders.intro`, `install.intro`. |
+| Resident | morador | membro, proprietário, dono | Plural "moradores". A User who lives in a Home; all Residents have equal say. Used in `home.create.intro`, `home.settings.intro`. |
+| Allocation | alocação | agendamento, distribuição | The daily run that proposes Tasks. "Allocation time" is "horário da alocação" (the time of day it runs). Used in `home.allocationTime.label`. |
 | Task | tarefa | atribuição, ocorrência, instância | Plural "tarefas" in running text. Used in `install.intro`. |
 | Day Plan | plano do dia | agenda, cronograma, programação, lista diária | Used in `reminders.intro`. |
 
@@ -26,6 +28,7 @@ Not domain terms, but kept consistent across the copy. CONTEXT.md has no **Remin
 
 | English | pt-BR | Note |
 |---|---|---|
+| Timezone | fuso horário | Used in `home.timezone.label`. |
 | Reminders | lembretes | |
 | test notification | notificação de teste | |
 | Home Screen (iOS) | Tela de Início | Apple's own label. Not the domain **Home**: never "lar" here. |
