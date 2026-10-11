@@ -43,7 +43,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function parseHome(body: unknown): Home | null {
+export function parseHome(body: unknown): Home | null {
   if (!isRecord(body)) return null;
   const { id, timezone, allocationTime } = body;
   if (typeof id !== "string" || typeof timezone !== "string" || typeof allocationTime !== "string") return null;
