@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { enUS } from "../i18n/catalogs/en-US";
+import { ptBR } from "../i18n/catalogs/pt-BR";
+import { createTranslate } from "../i18n/translate";
 import { problemText } from "./problemText";
+
+const translate = createTranslate({ "en-US": enUS, "pt-BR": ptBR });
 
 function english(problem: Parameters<typeof problemText>[0]): string {
   const { key, params } = problemText(problem);
-  return enUS[key].replace(/\{(\w+)\}/g, (_, name: string) => String(params?.[name]));
+  return translate("en-US", key, params);
 }
 
 describe("problemText", () => {
