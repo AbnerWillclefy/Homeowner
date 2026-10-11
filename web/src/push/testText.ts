@@ -1,27 +1,36 @@
 import type { TestResult } from "../api/push";
+import type { MessageKey } from "../i18n";
 
 /** How long the API waits before sending the delayed test, so the app can be closed first. */
 export const DELAYED_TEST_SECONDS = 10;
 
-const FAILURE_TEXT: Record<Exclude<TestResult["kind"], "ok">, string> = {
-  "not-signed-in": "You are not signed in any more. Sign in again to send a test.",
-  unknown: "The service does not know this device yet. Turn on reminders again.",
-  gone: "Your phone's notification service rejected this device, so it was removed. Turn on reminders again.",
-  "push-service-error": "The notification service could not deliver it right now. Try again in a moment.",
-  error: "Could not reach the service. Check your connection and try again.",
+/** A catalog key and the values for its placeholders. Keys, never text, so the language is chosen at render. */
+export interface Text {
+  key: MessageKey;
+  params?: Record<string, string | number>;
+}
+
+const FAILURE_KEY: Record<Exclude<TestResult["kind"], "ok">, MessageKey> = {
+  "not-signed-in": "reminders.test.notSignedIn",
+  unknown: "reminders.test.unknown",
+  gone: "reminders.test.gone",
+  "push-service-error": "reminders.test.pushServiceError",
+  error: "reminders.test.error",
 };
 
 /** What to show once the API has answered. */
-export function testStatusText(result: TestResult, delaySeconds?: number): string {
-  if (result.kind !== "ok") return FAILURE_TEXT[result.kind];
-  return delaySeconds ? "Test notification sent." : "Test notification sent. It should arrive in a few seconds.";
+export function testStatusText(result: TestResult, delaySeconds?: number): Text {
+  if (result.kind !== "ok") return { key: FAILURE_KEY[result.kind] };
+  return { key: delaySeconds ? "reminders.test.okDelayed" : "reminders.test.ok" };
 }
 
 /** What to show while a delayed test is waiting on the API; null when there is nothing to add. */
-export function testPendingText(delaySeconds: number | undefined): string | null {
-  return delaySeconds ? `Close the app now; the notification arrives in about ${delaySeconds} seconds.` : null;
+export function testPendingText(delaySeconds: number | undefined): Text | null {
+  return delaySeconds ? { key: "reminders.testPending", params: { seconds: delaySeconds } } : null;
 }
 
-export function delayedTestLabel(sending: boolean): string {
-  return sending ? "Sending..." : `Send in ${DELAYED_TEST_SECONDS} seconds`;
+export function delayedTestLabel(sending: boolean): Text {
+  return sending
+    ? { key: "reminders.sendingTest" }
+    : { key: "reminders.sendDelayed", params: { seconds: DELAYED_TEST_SECONDS } };
 }
