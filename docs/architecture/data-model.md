@@ -51,6 +51,7 @@ erDiagram
 |---|---|
 | `users`, `homes`, `residents`, `invites` (built) | Accounts, Homes, membership (a User is a Resident of at most one Home), single-use 7-day Invites (claimed with one conditional `UPDATE`, so two simultaneous accepts have one winner) |
 | `chores` (built) | Category, Demands, base Effort, Importance, people needed, build-up flag, interval in days, allowed weekdays |
+| (no table) | The Catalog of common Chores is Go code in `internal/catalog`. A Chore made from it is an ordinary `chores` row with no `catalog_id`, so adding an entry twice gives two Chores. |
 | `tasks` (built) | Window, current Effort, status and `closed_on`; at most one open per Chore |
 | `task_residents` | Who a Task is given to and whether they Committed |
 | `completions` | The Task, the people who did it, the time (the Streak is computed from these, [ADR 0003](../adr/0003-only-broken-commitments-break-a-streak.md)) |

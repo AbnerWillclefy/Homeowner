@@ -430,7 +430,7 @@ func TestInvalidHomeBodiesAreRejected(t *testing.T) {
 			t.Errorf("%s = %d %s, want 400", name, res.Status, res.Raw)
 		}
 	}
-	big := []byte(`{"timezone":"` + strings.Repeat("a", 20*1024) + `"}`)
+	big := []byte(`{"timezone":"` + strings.Repeat("a", 70*1024) + `"}`) // over POST /home's 64 KB cap
 	if res := me.SendRaw(http.MethodPost, "/home", big); res.Status != http.StatusRequestEntityTooLarge {
 		t.Errorf("oversized body = %d, want 413", res.Status)
 	}
