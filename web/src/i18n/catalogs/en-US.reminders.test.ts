@@ -48,6 +48,6 @@ const today: Record<string, string> = {
 
 describe("en-US reminders wording", () => {
   it.each(Object.entries(today))("keeps today's literal for %s", (key, text) => {
-    expect((enUS as Record<string, string>)[key]).toBe(text);
+    expect((enUS as Record<string, unknown>)[key]).toBe(text);
   });
 });

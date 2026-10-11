@@ -2,10 +2,11 @@ import { useState } from "react";
 import { Confirm } from "./Confirm";
 import { SignIn } from "./SignIn";
 import { SignUp } from "./SignUp";
+import type { MessageKey } from "../i18n";
 import type { CognitoResult, SignInResult } from "./cognito";
 
 type Step =
-  | { kind: "sign-in"; email?: string; notice?: string }
+  | { kind: "sign-in"; email?: string; noticeKey?: MessageKey }
   | { kind: "sign-up" }
   | { kind: "confirm"; email: string };
 
@@ -36,7 +37,7 @@ export function SignedOutFlow({ register, confirm, resend, logIn }: Props) {
           confirm={confirm}
           resend={resend}
           onConfirmed={(email) =>
-            setStep({ kind: "sign-in", email, notice: "Your email is confirmed. Sign in to start." })
+            setStep({ kind: "sign-in", email, noticeKey: "signIn.confirmedNotice" })
           }
           onBack={() => setStep({ kind: "sign-up" })}
         />
@@ -45,7 +46,7 @@ export function SignedOutFlow({ register, confirm, resend, logIn }: Props) {
       return (
         <SignIn
           initialEmail={step.email}
-          notice={step.notice}
+          noticeKey={step.noticeKey}
           logIn={logIn}
           onNeedsConfirm={(email) => setStep({ kind: "confirm", email })}
           onNeedsSignUp={() => setStep({ kind: "sign-up" })}

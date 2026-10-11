@@ -9,11 +9,23 @@ export interface PasswordPolicy {
   requireSymbols: boolean;
 }
 
+export type RuleId = "length" | "lowercase" | "uppercase" | "number" | "symbol";
+
+/** A rule and whether a password meets it. No wording: the screens choose the words by `id`. */
 export interface RuleResult {
-  id: "length" | "lowercase" | "uppercase" | "number" | "symbol";
-  /** Plain text, so it never relies on colour to carry meaning. */
-  label: string;
+  id: RuleId;
   met: boolean;
+  /** The minimum length, on the length rule only. */
+  minimum?: number;
+}
+
+/** The rules a sentence lists after the length. */
+export type ClauseId = Exclude<RuleId, "length">;
+
+export interface RuleDescription {
+  minimumLength: number;
+  /** In the order the sentence gives them. */
+  clauses: ClauseId[];
 }
 
 const SETTING = "VITE_PASSWORD_POLICY";
@@ -60,50 +72,32 @@ export function parsePolicy(raw: string): PasswordPolicy {
 }
 
 interface Rule extends RuleResult {
-  /** The phrase after "with" in the one-sentence text; absent for the length rule. */
-  clause?: string;
-  order: number;
+  /** Where the rule falls in the one-sentence text; absent for the length rule. */
+  order?: number;
 }
 
 function rules(policy: PasswordPolicy, password: string): Rule[] {
-  const list: Rule[] = [
-    {
-      id: "length",
-      label: `At least ${policy.minimumLength} characters`,
-      met: password.length >= policy.minimumLength,
-      order: 0,
-    },
-  ];
-  if (policy.requireLowercase) {
-    list.push({ id: "lowercase", label: "A lower case letter", met: /\p{Ll}/u.test(password), clause: "a lower case letter", order: 2 });
-  }
-  if (policy.requireUppercase) {
-    list.push({ id: "uppercase", label: "An upper case letter", met: /\p{Lu}/u.test(password), clause: "an upper case letter", order: 1 });
-  }
-  if (policy.requireNumbers) {
-    list.push({ id: "number", label: "A number", met: /[0-9]/.test(password), clause: "a number", order: 3 });
-  }
-  if (policy.requireSymbols) {
-    // A symbol is anything that is not a letter, a digit or whitespace.
-    list.push({ id: "symbol", label: "A symbol", met: /[^\p{L}0-9\s]/u.test(password), clause: "a symbol", order: 4 });
-  }
+  const list: Rule[] = [{ id: "length", met: password.length >= policy.minimumLength, minimum: policy.minimumLength }];
+  if (policy.requireLowercase) list.push({ id: "lowercase", met: /\p{Ll}/u.test(password), order: 2 });
+  if (policy.requireUppercase) list.push({ id: "uppercase", met: /\p{Lu}/u.test(password), order: 1 });
+  if (policy.requireNumbers) list.push({ id: "number", met: /[0-9]/.test(password), order: 3 });
+  // A symbol is anything that is not a letter, a digit or whitespace.
+  if (policy.requireSymbols) list.push({ id: "symbol", met: /[^\p{L}0-9\s]/u.test(password), order: 4 });
   return list;
 }
 
 /** One entry per active rule: length, lowercase, uppercase, number, then symbol if required. */
 export function evaluate(policy: PasswordPolicy, password: string): RuleResult[] {
-  return rules(policy, password).map(({ id, label, met }) => ({ id, label, met }));
+  return rules(policy, password).map(({ id, met, minimum }) =>
+    minimum === undefined ? { id, met } : { id, met, minimum },
+  );
 }
 
-/** The rules as one sentence, built from the same list as `evaluate`. */
-export function describeRules(policy: PasswordPolicy): string {
+/** The rules as data for the one-sentence text, built from the same list as `evaluate`. */
+export function describeRules(policy: PasswordPolicy): RuleDescription {
   const clauses = rules(policy, "")
-    .filter((rule) => rule.clause)
-    .sort((a, b) => a.order - b.order)
-    .map((rule) => rule.clause as string);
-  const head = `At least ${policy.minimumLength} characters`;
-  if (clauses.length === 0) return `${head}.`;
-  const joined =
-    clauses.length === 1 ? clauses[0] : `${clauses.slice(0, -1).join(", ")} and ${clauses[clauses.length - 1]}`;
-  return `${head}, with ${joined}.`;
+    .filter((rule) => rule.order !== undefined)
+    .sort((a, b) => a.order! - b.order!)
+    .map((rule) => rule.id as ClauseId);
+  return { minimumLength: policy.minimumLength, clauses };
 }

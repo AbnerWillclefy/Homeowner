@@ -73,12 +73,12 @@ describe("evaluate", () => {
     expect(rules.every((r) => r.met)).toBe(true);
   });
 
-  it("gives every entry a plain text label", () => {
-    expect(evaluate(current, "").map((r) => r.label)).toEqual([
-      "At least 10 characters",
-      "A lower case letter",
-      "An upper case letter",
-      "A number",
+  it("carries the minimum length on the length entry only, and no wording", () => {
+    expect(evaluate(current, "")).toEqual([
+      { id: "length", met: false, minimum: 10 },
+      { id: "lowercase", met: false },
+      { id: "uppercase", met: false },
+      { id: "number", met: false },
     ]);
   });
 
@@ -126,33 +126,32 @@ describe("evaluate", () => {
   });
 
   it("follows a different policy: minimum 12 changes the length entry", () => {
-    expect(evaluate(strict, "")[0]).toEqual({ id: "length", label: "At least 12 characters", met: false });
+    expect(evaluate(strict, "")[0]).toEqual({ id: "length", met: false, minimum: 12 });
     expect(unmetIds(strict, "Abcdefgh1!x")).toEqual(["length"]);
   });
 });
 
 describe("describeRules", () => {
-  it("gives today's sentence for the current policy", () => {
-    expect(describeRules(current)).toBe(
-      "At least 10 characters, with an upper case letter, a lower case letter and a number.",
-    );
+  it("lists the clauses of the current policy in sentence order", () => {
+    expect(describeRules(current)).toEqual({ minimumLength: 10, clauses: ["uppercase", "lowercase", "number"] });
   });
 
   it("adds a symbol clause only when enabled, and follows the minimum", () => {
-    expect(describeRules(strict)).toBe(
-      "At least 12 characters, with an upper case letter, a lower case letter, a number and a symbol.",
-    );
+    expect(describeRules(strict)).toEqual({
+      minimumLength: 12,
+      clauses: ["uppercase", "lowercase", "number", "symbol"],
+    });
   });
 
   it("drops the clauses of rules that are off", () => {
     const lax = parsePolicy(
       JSON.stringify({ ...raw, minimum_length: 8, require_lowercase: false, require_uppercase: false, require_numbers: false }),
     );
-    expect(describeRules(lax)).toBe("At least 8 characters.");
+    expect(describeRules(lax)).toEqual({ minimumLength: 8, clauses: [] });
   });
 
-  it("joins two clauses with and", () => {
-    const two = parsePolicy(JSON.stringify({ ...raw, require_lowercase: false, require_numbers: false }));
-    expect(describeRules(two)).toBe("At least 10 characters, with an upper case letter.");
+  it("keeps only the clauses left on", () => {
+    const one = parsePolicy(JSON.stringify({ ...raw, require_lowercase: false, require_numbers: false }));
+    expect(describeRules(one)).toEqual({ minimumLength: 10, clauses: ["uppercase"] });
   });
 });
