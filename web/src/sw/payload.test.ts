@@ -1,33 +1,48 @@
 import { describe, expect, it } from "vitest";
-import { FALLBACK_BODY, FALLBACK_TITLE, notificationFromPush } from "./payload";
+import { FALLBACK } from "../i18n/fallback";
+import { LOCALES } from "../i18n/locales";
+import { notificationFromPush } from "./payload";
+
+const unusable: [string, string | null][] = [
+  ["no payload", null],
+  ["an empty payload", ""],
+  ["text that is not JSON", "not json"],
+  ["a JSON number", "42"],
+  ["JSON null", "null"],
+  ["an empty title", JSON.stringify({ title: "" })],
+  ["a non-string title", JSON.stringify({ title: 7 })],
+  ["no title", JSON.stringify({ body: "x" })],
+];
 
 describe("notificationFromPush", () => {
-  it("uses the title, body and url the server sent", () => {
-    const text = JSON.stringify({ title: "Reminders are on", body: "Hello", url: "/today" });
-    expect(notificationFromPush(text)).toEqual({ title: "Reminders are on", body: "Hello", url: "/today" });
+  describe.each(LOCALES)("fallback in %s", (locale) => {
+    it.each(unusable)("is shown for %s", (_name, text) => {
+      expect(notificationFromPush(text, locale)).toEqual({ ...FALLBACK[locale], url: "/" });
+    });
   });
 
-  it("falls back to a generic notification when the payload is empty", () => {
-    expect(notificationFromPush(null)).toEqual({ title: FALLBACK_TITLE, body: FALLBACK_BODY, url: "/" });
-    expect(notificationFromPush("")).toEqual({ title: FALLBACK_TITLE, body: FALLBACK_BODY, url: "/" });
+  it("differs between pt-BR and en-US", () => {
+    expect(notificationFromPush(null, "pt-BR").body).not.toBe(notificationFromPush(null, "en-US").body);
   });
 
-  it("falls back when the payload is not JSON", () => {
-    expect(notificationFromPush("not json").title).toBe(FALLBACK_TITLE);
+  it("uses en-US when no locale is given", () => {
+    expect(notificationFromPush(null)).toEqual({ ...FALLBACK["en-US"], url: "/" });
   });
 
-  it("falls back when the JSON is not an object or has no usable title", () => {
-    expect(notificationFromPush("42").title).toBe(FALLBACK_TITLE);
-    expect(notificationFromPush("null").title).toBe(FALLBACK_TITLE);
-    expect(notificationFromPush(JSON.stringify({ title: 7 })).title).toBe(FALLBACK_TITLE);
+  it("drops a valid body when the title is empty", () => {
+    const text = JSON.stringify({ title: "", body: "Server body", url: "/today" });
+    expect(notificationFromPush(text, "pt-BR")).toEqual({ ...FALLBACK["pt-BR"], url: "/" });
+  });
+
+  it.each(LOCALES)("shows a valid payload exactly as sent in %s", (locale) => {
+    const sent = { title: "Reminders are on", body: "Hello", url: "/today" };
+    expect(notificationFromPush(JSON.stringify(sent), locale)).toEqual(sent);
+    const pt = { title: "Lembretes ativados", body: "Olá", url: "/hoje" };
+    expect(notificationFromPush(JSON.stringify(pt), locale)).toEqual(pt);
   });
 
   it("fills in missing fields individually", () => {
-    expect(notificationFromPush(JSON.stringify({ title: "Hi" }))).toEqual({
-      title: "Hi",
-      body: "",
-      url: "/",
-    });
+    expect(notificationFromPush(JSON.stringify({ title: "Hi" }))).toEqual({ title: "Hi", body: "", url: "/" });
   });
 
   it("only accepts same-origin paths as the url", () => {
