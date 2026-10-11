@@ -29,6 +29,7 @@ jobs:
       web_distribution_id: ${{ steps.out.outputs.web_distribution_id }}
       cognito_client_id: ${{ steps.out.outputs.cognito_client_id }}
       cognito_region: ${{ steps.out.outputs.cognito_region }}
+      cognito_password_policy: ${{ steps.out.outputs.cognito_password_policy }}
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
@@ -136,6 +137,7 @@ jobs:
             echo "web_distribution_id=$(terraform output -raw web_distribution_id)"
             echo "cognito_client_id=$(terraform output -raw cognito_client_id)"
             echo "cognito_region=$(terraform output -raw cognito_region)"
+            echo "cognito_password_policy=$(terraform output -raw cognito_password_policy)"
           } >> "$GITHUB_OUTPUT"
 
       # Lambda cold start plus Neon resume can make the first calls fail.
@@ -197,6 +199,22 @@ jobs:
 
       - run: npm ci
 
+      # The build inlines the policy only once the web source reads it, so
+      # check here that the deploy delivered it: public, one JSON object with
+      # the five keys of the web contract.
+      - name: Check the password policy
+        env:
+          VITE_PASSWORD_POLICY: ${{ needs.api.outputs.cognito_password_policy }}
+        run: |
+          echo "VITE_PASSWORD_POLICY=${VITE_PASSWORD_POLICY}"
+          printf '%s' "$VITE_PASSWORD_POLICY" | jq -e '
+            (.minimum_length | type == "number")
+            and (.require_lowercase | type == "boolean")
+            and (.require_uppercase | type == "boolean")
+            and (.require_numbers | type == "boolean")
+            and (.require_symbols | type == "boolean")
+            and (keys | length == 5)'
+
       - name: Build
         run: npm run build
         env:
@@ -204,6 +222,7 @@ jobs:
           # Public identifiers of the Cognito app client, not secrets.
           VITE_COGNITO_CLIENT_ID: ${{ needs.api.outputs.cognito_client_id }}
           VITE_COGNITO_REGION: ${{ needs.api.outputs.cognito_region }}
+          VITE_PASSWORD_POLICY: ${{ needs.api.outputs.cognito_password_policy }}
 
       # Cache headers differ per file kind, so upload in passes:
       # fingerprinted assets are immutable, the app shell and service worker
