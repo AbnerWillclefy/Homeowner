@@ -21,6 +21,12 @@ const DEMAND_KEYS = {
   strong_chemicals: "demand.strong_chemicals",
 } as const satisfies Record<string, MessageKey>;
 
+const IMPORTANCE_KEYS = {
+  essential: "importance.essential",
+  normal: "importance.normal",
+  nice_to_have: "importance.nice_to_have",
+} as const satisfies Record<string, MessageKey>;
+
 /** A catalog key to translate, or the plain id when the API sent one the app has no text for. */
 export type Label = { key: MessageKey } | { text: string };
 
@@ -30,3 +36,4 @@ function label(keys: Readonly<Record<string, MessageKey>>, id: string): Label {
 
 export const categoryLabel = (id: string): Label => label(CATEGORY_KEYS, id);
 export const demandLabel = (id: string): Label => label(DEMAND_KEYS, id);
+export const importanceLabel = (id: string): Label => label(IMPORTANCE_KEYS, id);

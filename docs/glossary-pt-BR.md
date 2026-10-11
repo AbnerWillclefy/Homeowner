@@ -22,12 +22,13 @@ Agreed Brazilian Portuguese equivalents for the terms in [CONTEXT.md](../CONTEXT
 | Day Plan | plano do dia | agenda, cronograma, programação, lista diária | Used in `reminders.intro`. |
 | Baseline | energia base | padrão, energia padrão | A User's usual Energy per weekday. Used in `profile.baseline.*`. |
 | Energy | energia | humor, disposição, fôlego | Used in `profile.baseline.explain`. |
-| Effort | esforço | dificuldade, custo, duração | In points from 1 to 5. Used in `profile.baseline.explain`. |
-| Chore | afazer | atividade, trabalho, tarefa (a Task is "tarefa") | Plural "afazeres". Used in `profile.*`. |
+| Effort | esforço | dificuldade, custo, duração | In points from 1 to 5. Used in `profile.baseline.explain` and `chores.form.baseEffort.*` (a Chore's base Effort). |
+| Chore | afazer | atividade, trabalho, tarefa (a Task is "tarefa") | Plural "afazeres". Used in `profile.*` and the `chores.*` Chores screen. |
 | Preference | preferência | gosto | Like, neutral, dislike are "Gosto", "Neutro", "Não gosto". |
 | Restriction | restrição | limitação, requisito | Used in `profile.restrictions.*`. |
-| Category | categoria | tipo, área, etiqueta | The ten names are `category.*`. |
-| Demand | exigência | requisito, etiqueta, dificuldade | The four names are `demand.*`; the section heading is "Restrições" and the items name the Demand. |
+| Category | categoria | tipo, área, etiqueta | The ten names are `category.*`; the Chore form label is `chores.form.category.label`. |
+| Demand | exigência | requisito, etiqueta, dificuldade | The four names are `demand.*`; the section heading is "Restrições" and the items name the Demand. On the Chore form the group is "Exigências" (`chores.form.demands.legend`). |
+| Importance | importância | prioridade, urgência | Essential, normal and nice to have are "Essencial", "Normal" and "Desejável" (`importance.*`). Used in `chores.form.importance.*`. |
 
 "Housework" in running copy is "afazeres domésticos". It is not a term in CONTEXT.md; a **Task** (later "tarefa") is a specific thing, so "tarefa" is not used for housework in general.
 

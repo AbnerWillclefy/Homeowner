@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { demandLabel, categoryLabel } from "./labels";
+import { categoryLabel, demandLabel, importanceLabel } from "./labels";
+
+describe("importanceLabel", () => {
+  it("points at the catalog key for an Importance and falls back to the id", () => {
+    expect(importanceLabel("nice_to_have")).toEqual({ key: "importance.nice_to_have" });
+    expect(importanceLabel("urgent")).toEqual({ text: "urgent" });
+  });
+});
 
 describe("categoryLabel and demandLabel", () => {
   it("point at the catalog key for an id the app knows", () => {

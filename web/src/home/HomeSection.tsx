@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Home } from "../api/home";
+import { ChoresSection } from "../chores/ChoresSection";
 import { useI18n } from "../i18n";
 import { CreateHome } from "./CreateHome";
 import { LOAD_FAILURE_KEY } from "./failureMessages";
@@ -8,7 +9,7 @@ import { useHome } from "./useHome";
 
 /**
  * The Home section of the home screen, shown only while signed in: the create form for a User with no Home,
- * otherwise the Home's settings. The Chores list (#96) goes inside the ready state.
+ * otherwise the Home's settings followed by its Chores.
  */
 export function HomeSection() {
   const { state, reload, setHome } = useHome();
@@ -57,6 +58,7 @@ export function HomeSection() {
           setHome(home);
         }}
       />
+      <ChoresSection />
     </>
   );
 }
