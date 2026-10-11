@@ -128,7 +128,7 @@ flowchart TD
 
 ### Type, layout and components
 
-- System font stack, no web font. `html` uses `font: -apple-system-body` so `rem` follows iOS Dynamic Type, with a plain `font-size` and `font-family` for other browsers. All sizes are `rem`; tappable elements use a `2.75rem` minimum (44px at the default size) that grows with text.
+- System font stack, no web font. `html` uses `font: -apple-system-body` so `rem` follows iOS Dynamic Type, with a plain `font-size` and `font-family` for other browsers. All sizes are `rem`; tappable elements use a `2.75rem` minimum (44px at the default size) that grows with text. `h1` and `h2` use `overflow-wrap: anywhere`, so a long word breaks instead of forcing horizontal scroll at the largest text size.
 - One column of `32rem`, with the safe-area insets kept on all four sides (the `page` utility).
 - Buttons, links and fields are native elements styled with the `btn`, `btn-primary` and `btn-link` utilities and base rules in `index.css`. Buttons keep a border so they stay visible in forced-colors mode; a disabled button is dashed as well as muted.
 - Radix Primitives (`@radix-ui/react-slot`) and `lucide-react` are installed for later screens but not imported yet: native elements cover everything on screen today.
