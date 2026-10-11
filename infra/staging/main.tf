@@ -30,6 +30,9 @@ resource "neon_project" "this" {
   org_id     = var.neon_org_id
   pg_version = 16
   region_id  = var.neon_region_id
+
+  # The free plan allows at most 6 hours of history; the provider defaults to 24.
+  history_retention_seconds = 21600
 }
 
 module "database" {
