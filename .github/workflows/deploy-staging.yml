@@ -1,9 +1,8 @@
 name: Deploy staging
 
 # agent-qa.yml starts after a successful run of the workflow named exactly
-# "Deploy staging". The web deploy (#6) must be added to this workflow as a
-# second job that `needs: api`, not as another workflow with the same name,
-# or QA would run twice.
+# "Deploy staging". The web deploy is the second job (`web`, `needs: api`) of
+# this workflow, not another workflow with the same name, or QA would run twice.
 
 on:
   push:
@@ -23,6 +22,11 @@ jobs:
   api:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      api_url: ${{ steps.out.outputs.api_url }}
+      web_url: ${{ steps.out.outputs.web_url }}
+      web_bucket_name: ${{ steps.out.outputs.web_bucket_name }}
+      web_distribution_id: ${{ steps.out.outputs.web_distribution_id }}
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
@@ -115,9 +119,15 @@ jobs:
       - name: Terraform apply
         run: terraform apply -input=false -auto-approve
 
-      - name: Read API URL
+      - name: Read Terraform outputs
         id: out
-        run: echo "api_url=$(terraform output -raw api_url)" >> "$GITHUB_OUTPUT"
+        run: |
+          {
+            echo "api_url=$(terraform output -raw api_url)"
+            echo "web_url=$(terraform output -raw web_url)"
+            echo "web_bucket_name=$(terraform output -raw web_bucket_name)"
+            echo "web_distribution_id=$(terraform output -raw web_distribution_id)"
+          } >> "$GITHUB_OUTPUT"
 
       # Lambda cold start plus Neon resume can make the first calls fail.
       - name: Smoke test /healthz
@@ -135,7 +145,110 @@ jobs:
             echo ""
             echo "URL: ${{ steps.out.outputs.api_url }}"
             echo "Image: ${{ github.sha }}"
+            echo ""
+            echo "### Staging web"
+            echo ""
+            echo "URL: ${{ steps.out.outputs.web_url }}"
           } >> "$GITHUB_STEP_SUMMARY"
           if [ "${{ vars.STAGING_API_URL }}" != "${{ steps.out.outputs.api_url }}" ]; then
             echo "::warning::Repository variable STAGING_API_URL is '${{ vars.STAGING_API_URL }}' but the API is at ${{ steps.out.outputs.api_url }}. A human must update it; QA reads it."
           fi
+          if [ "${{ vars.STAGING_WEB_URL }}" != "${{ steps.out.outputs.web_url }}" ]; then
+            echo "::warning::Repository variable STAGING_WEB_URL is '${{ vars.STAGING_WEB_URL }}' but the web app is at ${{ steps.out.outputs.web_url }}. A human must update it; QA reads it."
+          fi
+
+  # Builds the PWA against the API URL the apply just produced (it is baked
+  # into the bundle, hence a second job) and publishes it. Kept in this
+  # workflow so agent-qa.yml runs once, after both jobs.
+  web:
+    needs: api
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WEB_URL: ${{ needs.api.outputs.web_url }}
+      API_URL: ${{ needs.api.outputs.api_url }}
+      BUCKET: ${{ needs.api.outputs.web_bucket_name }}
+      DISTRIBUTION_ID: ${{ needs.api.outputs.web_distribution_id }}
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ env.API_URL }}
+
+      # Cache headers differ per file kind, so upload in passes:
+      # fingerprinted assets are immutable, the app shell and service worker
+      # must always revalidate, and index.html goes last so no visitor gets an
+      # index that refers to assets not uploaded yet.
+      - name: Upload fingerprinted assets
+        run: |
+          aws s3 sync dist/assets "s3://${BUCKET}/assets" \
+            --cache-control "public,max-age=31536000,immutable"
+
+      - name: Upload other static files
+        run: |
+          aws s3 sync dist "s3://${BUCKET}" \
+            --exclude "assets/*" --exclude "index.html" --exclude "sw.js" \
+            --exclude "registerSW.js" --exclude "manifest.webmanifest" \
+            --exclude "workbox-*.js" \
+            --cache-control "public,max-age=3600"
+
+      - name: Upload app shell and service worker
+        run: |
+          for f in sw.js registerSW.js workbox-*.js; do
+            [ -f "dist/$f" ] || continue
+            aws s3 cp "dist/$f" "s3://${BUCKET}/$f" \
+              --cache-control "no-cache" --content-type "text/javascript"
+          done
+          aws s3 cp dist/manifest.webmanifest "s3://${BUCKET}/manifest.webmanifest" \
+            --cache-control "no-cache" --content-type "application/manifest+json"
+          aws s3 cp dist/index.html "s3://${BUCKET}/index.html" \
+            --cache-control "no-cache" --content-type "text/html"
+
+      - name: Delete stale objects
+        # Everything is already uploaded with its headers, so --size-only
+        # makes this sync a pure delete of what the build no longer has.
+        run: aws s3 sync dist "s3://${BUCKET}" --delete --size-only
+
+      - name: Invalidate CloudFront
+        run: |
+          id=$(aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" \
+            --paths "/*" --query Invalidation.Id --output text)
+          aws cloudfront wait invalidation-completed --distribution-id "$DISTRIBUTION_ID" --id "$id"
+
+      - name: Smoke test
+        run: |
+          curl_ok() { curl --silent --show-error --fail --retry 6 --retry-delay 5 --retry-all-errors "$@"; }
+
+          curl_ok "${WEB_URL}/" | grep -q 'id="root"'
+
+          ct=$(curl_ok -o /dev/null -w '%{content_type}' "${WEB_URL}/some/deep/link")
+          echo "deep link content-type: $ct"
+          case "$ct" in text/html*) ;; *) echo "::error::Deep link did not return the app"; exit 1 ;; esac
+
+          ct=$(curl_ok -o /dev/null -w '%{content_type}' "${WEB_URL}/manifest.webmanifest")
+          echo "manifest content-type: $ct"
+          case "$ct" in *manifest*|*json*) ;; *) echo "::error::Manifest has content type $ct"; exit 1 ;; esac
+
+          # The real link between web and API: the API must trust the web origin.
+          acao=$(curl_ok -D - -o /dev/null -H "Origin: ${WEB_URL}" "${API_URL}/healthz" \
+            | tr -d '\r' | awk -F': ' 'tolower($1)=="access-control-allow-origin" {print $2}')
+          echo "access-control-allow-origin: $acao"
+          [ "$acao" = "${WEB_URL}" ]
