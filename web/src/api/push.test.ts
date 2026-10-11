@@ -68,6 +68,12 @@ describe("sendTestNotification", () => {
     expect(JSON.parse(init?.body as string)).toEqual({ endpoint: sub.endpoint });
   });
 
+  it("sends delaySeconds when a delay is given", async () => {
+    const fetch = stubFetch(new Response(null, { status: 204 }));
+    expect(await sendTestNotification(sub.endpoint, 10)).toEqual({ kind: "ok" });
+    expect(JSON.parse(fetch.mock.calls[0]![1]?.body as string)).toEqual({ endpoint: sub.endpoint, delaySeconds: 10 });
+  });
+
   it.each([
     [404, "unknown"],
     [410, "gone"],
