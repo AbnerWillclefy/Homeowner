@@ -33,5 +33,6 @@ Not domain terms, but kept consistent across the copy. CONTEXT.md has no **Remin
 | Share (iOS Safari) | Compartilhar | Apple label. |
 | Add to Home Screen, Add (iOS Safari) | Adicionar à Tela de Início, Adicionar | Apple labels. |
 | Settings | Ajustes (iOS), Configurações (Android) | `reminders.problem.denied` shows on both, so it says "Ajustes (ou Configurações)". |
+| Language (setting) | idioma | Not "língua". Used in `settings.language.label`. The option names "English" and "Português" are not translated: each language is named in itself. |
 
 Apple and Android labels must match what the device shows in pt-BR. They are not yet verified on a pt-BR device.
