@@ -1,10 +1,14 @@
-import { useState, type FocusEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FocusEvent, type FormEvent } from "react";
 import { TriangleAlert } from "lucide-react";
 import type { CognitoResult } from "./cognito";
 import { config } from "../config";
 import { failureText } from "./failureText";
-import { describeRules } from "./passwordPolicy";
+import { evaluate } from "./passwordPolicy";
+import { announceRuleChange } from "./ruleAnnouncement";
 import { PasswordField } from "../components/ui/PasswordField";
+import { PasswordRules } from "../components/ui/PasswordRules";
+
+const ANNOUNCE_DELAY_MS = 600;
 
 interface Props {
   register(email: string, password: string): Promise<CognitoResult>;
@@ -18,6 +22,21 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
   const [problem, setProblem] = useState<string | null>(null);
 
   const [mismatch, setMismatch] = useState(false);
+  const [password, setPassword] = useState("");
+  const [announcement, setAnnouncement] = useState("");
+  const rules = evaluate(config.passwordPolicy, password);
+
+  // Announce what changed once typing pauses, against the rules as last announced.
+  const announced = useRef(evaluate(config.passwordPolicy, ""));
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const now = evaluate(config.passwordPolicy, password);
+      const text = announceRuleChange(announced.current, now, password);
+      announced.current = now;
+      if (text) setAnnouncement(text);
+    }, ANNOUNCE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [password]);
 
   function values(form: HTMLFormElement) {
     const field = (id: string) => (form.elements.namedItem(id) as HTMLInputElement).value;
@@ -31,10 +50,10 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
     if (confirm !== "" && confirm !== password) setMismatch(true);
   }
 
-  function clearOnMatch(event: FormEvent<HTMLFormElement>) {
-    if (!mismatch) return;
-    const { password, confirm } = values(event.currentTarget);
-    if (confirm === password) setMismatch(false);
+  function onFormChange(event: FormEvent<HTMLFormElement>) {
+    const { password: first, confirm } = values(event.currentTarget);
+    setPassword(first);
+    if (mismatch && confirm === first) setMismatch(false);
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -63,7 +82,7 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
         Homeowner is for the people who look after a Home together. Signing up gives you a login of your own, so your
         Baseline, Preferences and Restrictions are yours and follow you, whoever else lives in the Home.
       </p>
-      <form onSubmit={submit} onBlur={checkOnBlur} onChange={clearOnMatch}>
+      <form onSubmit={submit} onBlur={checkOnBlur} onChange={onFormChange}>
         <label htmlFor="signup-email">Email</label>
         <p id="signup-email-why" className="my-1 text-sm text-muted">
           Your email is your login. We also send a code to it in the next step, which proves the email is really yours.
@@ -81,15 +100,19 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
 
         <label htmlFor="signup-password">Password</label>
         <p id="signup-password-why" className="my-1 text-sm text-muted">
-          It keeps anyone else from signing in as you. {describeRules(config.passwordPolicy)}
+          It keeps anyone else from signing in as you.
         </p>
+        <PasswordRules id="signup-password-rules" rules={rules} />
+        <div role="status" aria-atomic="true" className="sr-only">
+          {announcement}
+        </div>
         <PasswordField
           id="signup-password"
           name="password"
           autoComplete="new-password"
           minLength={config.passwordPolicy.minimumLength}
           required
-          aria-describedby="signup-password-why"
+          aria-describedby="signup-password-why signup-password-rules"
         />
 
         <label htmlFor="signup-confirm">Confirm password</label>
