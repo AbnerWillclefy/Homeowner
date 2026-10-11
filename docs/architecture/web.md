@@ -34,7 +34,11 @@ flowchart TD
     PT[catalog pt-BR] --> TR
     TR -->|t key, params| SCREENS[screens via useI18n]
 
-    STORE[(localStorage homeowner.locale)] -.->|stored choice, #50| RES
+    LS[LanguageSelector in Settings] -->|setLocale| PROV
+    PROV -->|setLocale writes| LST[localeStorage]
+    LST --> STORE[(localStorage homeowner.locale)]
+    STORE -->|stored choice at startup| RES
+    STORE -->|storage event, other tab| PROV
     SWNAV[self.navigator.languages, worker] --> SWRES[resolveLocale]
     SWRES --> SWPAY[sw/payload.ts]
     SWFB[fallback.ts] --> SWPAY
@@ -42,7 +46,7 @@ flowchart TD
     BE[users.locale, backend follow-up] -.-> LOC
 
     classDef planned stroke-dasharray: 5 5,color:#666
-    class STORE,BE planned
+    class BE planned
 ```
 
 - `locales.ts`, `resolveLocale.ts` and `translate.ts` are pure: no React, no DOM, no catalog imports. The service worker build can share them.
@@ -50,8 +54,18 @@ flowchart TD
 - `translate` looks a key up in the locale's catalog, falls back per key to `en-US`, fills `{name}` placeholders and picks plural forms with `Intl.PluralRules`.
 - The catalogs are typed objects. `en-US` defines the keys; `pt-BR` must match them or the type check fails. A test checks matching placeholders and no empty values.
 - Both catalogs are bundled in the main chunk, which is precached, so both languages work offline.
-- `I18nProvider` keeps the locale in React context and sets `<html lang>` to it.
+- `I18nProvider` keeps the locale in React context, exposes `setLocale`, and sets `<html lang>` to it.
 - The Reminders section and the iPhone install steps read from the catalogs. The sign-in screens are still English until #75 moves their strings into the catalogs. The Settings section's labels are in both catalogs.
+
+### Language choice
+
+The Language row in Settings is a native `<select>` with one `<option lang="...">` per supported language, named in itself ("English", "Português") from `languageNames.ts`. Those names are not in the catalogs, so they stay readable whichever language is active. Choosing one calls `setLocale`, which updates state first (the whole app and `<html lang>` switch with no reload) and then writes the choice through `localeStorage.ts`.
+
+- The key is `homeowner.locale` and the value is the bare tag, `en-US` or `pt-BR`. It is written only on an explicit choice, so with no choice the browser language decides. The provider reads it once in the first render (no flash of the wrong language) and passes it to `resolveLocale({ stored })`, which ignores anything that is not a supported tag.
+- Reading and writing never throw. If storage is blocked, full or absent, the switch still works for the session and nothing persists.
+- The provider also listens for `storage` events, so a second tab or window follows a change. It only sets state from them and never writes back.
+- The service worker does not read the key. It works offline, since the catalogs are precached and `localStorage` is local.
+- On iOS, Safari and the installed Home Screen app do not share `localStorage`, so a choice made in one does not appear in the other, and Safari may evict script-writable storage for a site unused for about seven days (installed apps are exempt). That is a reason to sync a per-User preference through the backend later (`users.locale`, same two tags).
 
 ## UI layer
 
@@ -96,10 +110,7 @@ flowchart TD
     PROV -->|applyTheme| HTML
     SET[Settings appearance select] -->|setChoice| PROV
     PROV -->|writes| STORE
-    LANG[language select, #50] -.-> SET
-
-    classDef planned stroke-dasharray: 5 5,color:#666
-    class LANG planned
+    LANG[Settings language select] --> SET
 ```
 
 - The stored value is `light` or `dark`; System is the absence of the key. Anything else stored is ignored and treated as System, and is left in place until the person chooses.
@@ -111,7 +122,7 @@ flowchart TD
 
 ### Settings
 
-`src/settings/Settings.tsx` is the Settings section, the last child of the home screen, shown signed in or out. Each setting is one labelled row with a native control. Appearance is the first row, a native `<select>` showing the choice (never the applied value). The language selector (#50) adds a row with the same pattern.
+`src/settings/Settings.tsx` is the Settings section, the last child of the home screen, shown signed in or out. Each setting is one labelled row with a native control. Appearance is the first row, a native `<select>` showing the choice (never the applied value). Language is the second row, the same pattern with its own storage (see Language choice above).
 
 ### Type, layout and components
 
