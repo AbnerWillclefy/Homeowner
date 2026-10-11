@@ -1,0 +1,141 @@
+name: Deploy staging
+
+# agent-qa.yml starts after a successful run of the workflow named exactly
+# "Deploy staging". The web deploy (#6) must be added to this workflow as a
+# second job that `needs: api`, not as another workflow with the same name,
+# or QA would run twice.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+# Merges never interleave migrations and applies.
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+      TF_VAR_budget_email: ${{ secrets.BUDGET_EMAIL }}
+      TF_VAR_image_tag: ${{ github.sha }}
+      TF_IN_AUTOMATION: "true"
+    defaults:
+      run:
+        working-directory: infra/staging
+    steps:
+      - name: Check the one-off setup is done
+        run: |
+          missing=""
+          [ -z "${{ vars.AWS_DEPLOY_ROLE_ARN }}" ] && missing="$missing AWS_DEPLOY_ROLE_ARN"
+          [ -z "${{ vars.AWS_REGION }}" ] && missing="$missing AWS_REGION"
+          [ -z "$NEON_API_KEY" ] && missing="$missing NEON_API_KEY"
+          [ -z "$TF_VAR_budget_email" ] && missing="$missing BUDGET_EMAIL"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing GitHub settings:$missing. See infra/README.md."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.5"
+          terraform_wrapper: false
+
+      - name: Terraform init
+        run: |
+          account_id=$(aws sts get-caller-identity --query Account --output text)
+          terraform init -input=false \
+            -backend-config="bucket=homeowner-tfstate-${account_id}" \
+            -backend-config="region=${AWS_REGION}"
+
+      # The first run needs the repository and the database parameters before
+      # an image or migration can exist; both applies are idempotent.
+      - name: Terraform apply (ECR repository and database)
+        run: |
+          terraform apply -input=false -auto-approve \
+            -target=module.api.aws_ecr_repository.this \
+            -target=module.database
+
+      - name: Log in to ECR
+        id: ecr
+        run: |
+          repo_uri=$(aws ecr describe-repositories --repository-names homeowner-staging-api \
+            --query 'repositories[0].repositoryUri' --output text)
+          registry="${repo_uri%%/*}"
+          aws ecr get-login-password | docker login --username AWS --password-stdin "$registry"
+          echo "repo_uri=$repo_uri" >> "$GITHUB_OUTPUT"
+
+      # Lambda rejects OCI image indexes: single platform, no provenance/SBOM.
+      - name: Build image
+        run: |
+          docker buildx build \
+            --provenance=false --sbom=false \
+            --platform linux/amd64 --load \
+            -t "${{ steps.ecr.outputs.repo_uri }}:${{ github.sha }}" \
+            ../../backend
+
+      # Migrations run before the new code goes live (see infra/README.md:
+      # every migration must work with the previous release). A failure here
+      # stops the job before the function is swapped.
+      - name: Run migrations
+        run: |
+          url=$(aws ssm get-parameter --name /homeowner/staging/migrate-database-url \
+            --with-decryption --query Parameter.Value --output text)
+          echo "::add-mask::${url}"
+          docker run --rm -e DATABASE_URL="${url}" \
+            "${{ steps.ecr.outputs.repo_uri }}:${{ github.sha }}" migrate
+
+      # Tags are immutable, so a re-run of the same commit skips the push.
+      - name: Push image
+        run: |
+          if aws ecr describe-images --repository-name homeowner-staging-api \
+              --image-ids imageTag="${{ github.sha }}" >/dev/null 2>&1; then
+            echo "Image ${{ github.sha }} already in ECR, skipping push"
+          else
+            docker push "${{ steps.ecr.outputs.repo_uri }}:${{ github.sha }}"
+          fi
+
+      - name: Terraform apply
+        run: terraform apply -input=false -auto-approve
+
+      - name: Read API URL
+        id: out
+        run: echo "api_url=$(terraform output -raw api_url)" >> "$GITHUB_OUTPUT"
+
+      # Lambda cold start plus Neon resume can make the first calls fail.
+      - name: Smoke test /healthz
+        run: |
+          body=$(curl --silent --show-error --fail \
+            --retry 12 --retry-delay 5 --retry-all-errors --retry-max-time 90 \
+            "${{ steps.out.outputs.api_url }}/healthz")
+          echo "$body"
+          [ "$body" = '{"status":"ok"}' ]
+
+      - name: Summary
+        run: |
+          {
+            echo "### Staging API"
+            echo ""
+            echo "URL: ${{ steps.out.outputs.api_url }}"
+            echo "Image: ${{ github.sha }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ vars.STAGING_API_URL }}" != "${{ steps.out.outputs.api_url }}" ]; then
+            echo "::warning::Repository variable STAGING_API_URL is '${{ vars.STAGING_API_URL }}' but the API is at ${{ steps.out.outputs.api_url }}. A human must update it; QA reads it."
+          fi
