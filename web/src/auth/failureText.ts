@@ -1,7 +1,7 @@
-import type { MessageKey } from "../i18n";
+import type { MessageKey, Translate } from "../i18n";
 import type { CognitoFailure } from "./cognito";
 import { describeRules, type PasswordPolicy } from "./passwordPolicy";
-import { ruleSentence, type Translate } from "./ruleText";
+import { ruleSentence } from "./ruleText";
 
 const KEY: Record<CognitoFailure["kind"], MessageKey> = {
   "already-registered": "auth.failure.alreadyRegistered",

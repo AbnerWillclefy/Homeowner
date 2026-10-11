@@ -2,7 +2,8 @@
  * Catalog messages hold no markup, but a few sentences set the email in bold. The screen asks the
  * catalog for the whole sentence with this marker in place of `{email}`, splits there, and puts
  * the real email (as text, never as markup) in a <strong> between the two halves. A private-use
- * character, so it cannot be mistaken for anything a person types.
+ * character, so it cannot be mistaken for anything a person types. Written as an escape so an
+ * editor cannot silently drop it.
  */
 export const EMAIL_MARKER = "";
 

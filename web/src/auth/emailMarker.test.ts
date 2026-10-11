@@ -23,6 +23,14 @@ describe("splitAtEmail", () => {
     expect(splitAtEmail("No email here.")).toEqual(["No email here.", ""]);
   });
 
+  it("is exactly one character", () => {
+    expect(EMAIL_MARKER.length).toBe(1);
+  });
+
+  it("splits text around the marker", () => {
+    expect(splitAtEmail(`a${EMAIL_MARKER}b`)).toEqual(["a", "b"]);
+  });
+
   it("never lets the person's own text act as the marker", () => {
     expect(EMAIL_MARKER).not.toMatch(/[\w@.\-+]/);
   });

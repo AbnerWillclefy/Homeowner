@@ -71,33 +71,26 @@ export function parsePolicy(raw: string): PasswordPolicy {
   };
 }
 
-interface Rule extends RuleResult {
-  /** Where the rule falls in the one-sentence text; absent for the length rule. */
-  order?: number;
-}
+/** The order the one-sentence text lists the rules after the length. */
+const CLAUSE_ORDER: ClauseId[] = ["uppercase", "lowercase", "number", "symbol"];
 
-function rules(policy: PasswordPolicy, password: string): Rule[] {
-  const list: Rule[] = [{ id: "length", met: password.length >= policy.minimumLength, minimum: policy.minimumLength }];
-  if (policy.requireLowercase) list.push({ id: "lowercase", met: /\p{Ll}/u.test(password), order: 2 });
-  if (policy.requireUppercase) list.push({ id: "uppercase", met: /\p{Lu}/u.test(password), order: 1 });
-  if (policy.requireNumbers) list.push({ id: "number", met: /[0-9]/.test(password), order: 3 });
+function rules(policy: PasswordPolicy, password: string): RuleResult[] {
+  const list: RuleResult[] = [{ id: "length", met: password.length >= policy.minimumLength, minimum: policy.minimumLength }];
+  if (policy.requireLowercase) list.push({ id: "lowercase", met: /\p{Ll}/u.test(password) });
+  if (policy.requireUppercase) list.push({ id: "uppercase", met: /\p{Lu}/u.test(password) });
+  if (policy.requireNumbers) list.push({ id: "number", met: /[0-9]/.test(password) });
   // A symbol is anything that is not a letter, a digit or whitespace.
-  if (policy.requireSymbols) list.push({ id: "symbol", met: /[^\p{L}0-9\s]/u.test(password), order: 4 });
+  if (policy.requireSymbols) list.push({ id: "symbol", met: /[^\p{L}0-9\s]/u.test(password) });
   return list;
 }
 
 /** One entry per active rule: length, lowercase, uppercase, number, then symbol if required. */
 export function evaluate(policy: PasswordPolicy, password: string): RuleResult[] {
-  return rules(policy, password).map(({ id, met, minimum }) =>
-    minimum === undefined ? { id, met } : { id, met, minimum },
-  );
+  return rules(policy, password);
 }
 
 /** The rules as data for the one-sentence text, built from the same list as `evaluate`. */
 export function describeRules(policy: PasswordPolicy): RuleDescription {
-  const clauses = rules(policy, "")
-    .filter((rule) => rule.order !== undefined)
-    .sort((a, b) => a.order! - b.order!)
-    .map((rule) => rule.id as ClauseId);
-  return { minimumLength: policy.minimumLength, clauses };
+  const active = new Set(rules(policy, "").map((rule) => rule.id));
+  return { minimumLength: policy.minimumLength, clauses: CLAUSE_ORDER.filter((id) => active.has(id)) };
 }
