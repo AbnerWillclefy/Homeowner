@@ -8,6 +8,9 @@ import (
 // Baseline is the deterministic baseline allocator.
 type Baseline struct{}
 
+// Name is how a run record names this allocator.
+func (Baseline) Name() string { return "baseline" }
+
 // Plan implements Allocator.
 func (Baseline) Plan(s State) (Result, error) { return Plan(s) }
 

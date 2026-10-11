@@ -22,9 +22,11 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/db"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/server"
 )
@@ -42,6 +44,9 @@ type App struct {
 	Push *push.Fake
 	// Auth is the fake token verifier; nil when started WithoutAuth.
 	Auth *auth.Fake
+	// Planner is the Allocation job's planner over the same database. It
+	// plans with the baseline allocator unless UseAllocator replaces it.
+	Planner *dayplan.Planner
 }
 
 // Response is a decoded HTTP response.
@@ -105,9 +110,27 @@ func Start(t testing.TB, opts ...Option) *App {
 	t.Cleanup(srv.Close)
 
 	app := &App{URL: srv.URL, Clock: fake, DB: pool, Logs: logs}
+	app.UseAllocator(allocation.Baseline{})
 	app.Push, _ = deps.Push.(*push.Fake)
 	app.Auth, _ = deps.Verifier.(*auth.Fake)
 	return app
+}
+
+// UseAllocator makes the Allocation job plan with al, for example a stub that
+// proposes something the checker must reject.
+func (a *App) UseAllocator(al allocation.Allocator) {
+	a.Planner = dayplan.New(a.DB, al, slog.New(slog.NewJSONHandler(a.Logs, nil)))
+}
+
+// RunAllocation runs the Allocation job once at the fake clock's current time,
+// exactly as the scheduled tick does, and returns what it did.
+func (a *App) RunAllocation(t testing.TB) dayplan.Summary {
+	t.Helper()
+	sum, err := a.Planner.RunDue(context.Background(), a.Clock.Now())
+	if err != nil {
+		t.Fatalf("apitest: RunAllocation: %v", err)
+	}
+	return sum
 }
 
 // Client is a signed-in caller: every request carries its bearer token.
