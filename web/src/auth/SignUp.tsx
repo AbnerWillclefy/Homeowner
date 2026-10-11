@@ -35,7 +35,7 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
       </p>
       <form onSubmit={submit}>
         <label htmlFor="signup-email">Email</label>
-        <p id="signup-email-why" className="hint">
+        <p id="signup-email-why" className="my-1 text-sm text-muted">
           Your email is your login. We also send a code to it in the next step, which proves the email is really yours.
         </p>
         <input
@@ -50,7 +50,7 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
         />
 
         <label htmlFor="signup-password">Password</label>
-        <p id="signup-password-why" className="hint">
+        <p id="signup-password-why" className="my-1 text-sm text-muted">
           It keeps anyone else from signing in as you. {PASSWORD_RULES}
         </p>
         <input
@@ -63,14 +63,14 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
           aria-describedby="signup-password-why"
         />
 
-        <button type="submit" disabled={busy}>
+        <button type="submit" className="btn btn-primary" disabled={busy}>
           {busy ? "Signing up..." : "Sign up"}
         </button>
       </form>
       {problem && <p role="alert">{problem}</p>}
       <p>
         Already signed up?{" "}
-        <button type="button" className="link" onClick={onHaveLogin}>
+        <button type="button" className="btn-link" onClick={onHaveLogin}>
           Sign in
         </button>
       </p>

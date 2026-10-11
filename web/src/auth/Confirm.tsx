@@ -44,7 +44,7 @@ export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) 
         We sent a code to <strong>{email}</strong>. Entering it proves the email is yours, so nobody can sign up in your
         name or take over your Preferences. Until you do, you cannot sign in.
       </p>
-      <p className="hint">The email can take a minute, and it may land in your spam folder.</p>
+      <p className="my-1 text-sm text-muted">The email can take a minute, and it may land in your spam folder.</p>
       <form onSubmit={submit}>
         <label htmlFor="confirm-code">Code from the email</label>
         <input
@@ -56,17 +56,17 @@ export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) 
           pattern="[0-9]*"
           required
         />
-        <button type="submit" disabled={busy}>
+        <button type="submit" className="btn btn-primary" disabled={busy}>
           {busy ? "Checking..." : "Confirm"}
         </button>
       </form>
       {problem && <p role="alert">{problem}</p>}
       {notice && <p role="status">{notice}</p>}
       <p>
-        <button type="button" onClick={sendAgain} disabled={busy}>
+        <button type="button" className="btn" onClick={sendAgain} disabled={busy}>
           Send a new code
         </button>{" "}
-        <button type="button" className="link" onClick={onBack}>
+        <button type="button" className="btn-link" onClick={onBack}>
           Use a different email
         </button>
       </p>

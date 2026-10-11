@@ -17,7 +17,7 @@ export function SignedIn({ email, offline, onSignOut }: Props) {
           the app again when you are back online to check.
         </p>
       )}
-      <button type="button" onClick={onSignOut}>
+      <button type="button" className="btn" onClick={onSignOut}>
         Sign out
       </button>
     </section>

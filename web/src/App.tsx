@@ -3,6 +3,7 @@ import { SignedOutFlow } from "./auth/SignedOutFlow";
 import { useAuth } from "./auth/useAuth";
 import { Reminders } from "./push/Reminders";
 import { useI18n, type MessageKey } from "./i18n";
+import { Settings } from "./settings/Settings";
 import { useHealth, type HealthState } from "./useHealth";
 
 const STATUS_KEY: Record<HealthState["kind"], MessageKey> = {
@@ -18,14 +19,14 @@ export default function App() {
   const { t } = useI18n();
 
   return (
-    <main className="home">
+    <main className="page">
       <h1>{t("app.name")}</h1>
       <p>{t("home.tagline")}</p>
       <p role="status" data-state={state.kind}>
         {t(STATUS_KEY[state.kind])}
       </p>
       {(state.kind === "unavailable" || state.kind === "unreachable") && (
-        <button type="button" onClick={retry}>
+        <button type="button" className="btn" onClick={retry}>
           {t("health.retry")}
         </button>
       )}
@@ -41,6 +42,9 @@ export default function App() {
           <Reminders />
         </>
       )}
+
+      {/* Always shown, signed in or out: appearance needs no account. */}
+      <Settings />
     </main>
   );
 }

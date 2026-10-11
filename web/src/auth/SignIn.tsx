@@ -53,14 +53,14 @@ export function SignIn({ initialEmail, notice, logIn, onNeedsConfirm, onNeedsSig
         />
         <label htmlFor="signin-password">Password</label>
         <input id="signin-password" name="password" type="password" autoComplete="current-password" required />
-        <button type="submit" disabled={busy}>
+        <button type="submit" className="btn btn-primary" disabled={busy}>
           {busy ? "Signing in..." : "Sign in"}
         </button>
       </form>
       {problem && <p role="alert">{problem}</p>}
       <p>
         New here?{" "}
-        <button type="button" className="link" onClick={onNeedsSignUp}>
+        <button type="button" className="btn-link" onClick={onNeedsSignUp}>
           Sign up
         </button>
       </p>
