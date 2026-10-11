@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/vocab"
 )
 
@@ -35,5 +36,13 @@ func TestValidityChecks(t *testing.T) {
 	}
 	if !vocab.IsDemand("heights") || vocab.IsDemand("kitchen") || vocab.IsDemand("") {
 		t.Error("IsDemand wrong")
+	}
+	for _, i := range []allocation.Importance{allocation.Essential, allocation.Normal, allocation.NiceToHave} {
+		if !vocab.IsImportance(string(i)) {
+			t.Errorf("IsImportance(%q) = false", i)
+		}
+	}
+	if vocab.IsImportance("kitchen") || vocab.IsImportance("") {
+		t.Error("IsImportance accepts a non-Importance")
 	}
 }
