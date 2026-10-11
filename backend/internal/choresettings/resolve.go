@@ -55,10 +55,9 @@ type Effective struct {
 // means "never given".
 func Resolve(c Chore, g General, s Specific) Effective {
 	e := Effective{Preference: Neutral, Source: SourceDefault, RestrictedBy: []string{}}
-	switch general, ok := g.Preferences[c.Category]; {
-	case s.Preference != "":
+	if s.Preference != "" {
 		e.Preference, e.Source = s.Preference, SourceSpecific
-	case ok:
+	} else if general, ok := g.Preferences[c.Category]; ok {
 		e.Preference, e.Source = general, SourceGeneral
 	}
 	for _, d := range c.Demands {
