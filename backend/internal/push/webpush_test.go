@@ -158,3 +158,29 @@ func TestWebPushSenderTreatsOtherStatusesAsPlainErrors(t *testing.T) {
 		t.Fatalf("err = %v, want a non-gone error", err)
 	}
 }
+
+func TestWebPushSenderReportsTheRejectionReason(t *testing.T) {
+	t.Parallel()
+	svc := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte("{\"reason\":\"BadJwtToken\"}\n"))
+	}))
+	defer svc.Close()
+
+	err := newSender(t).Send(context.Background(), browserSubscription(t, svc.URL), push.Payload{Title: "t"})
+
+	if err == nil || errors.Is(err, push.ErrGone) {
+		t.Fatalf("err = %v, want a non-gone error", err)
+	}
+	for _, want := range []string{"403", "BadJwtToken"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("err = %q, want it to contain %q", err, want)
+		}
+	}
+	if strings.Contains(err.Error(), svc.URL) {
+		t.Errorf("err = %q, must not contain the endpoint", err)
+	}
+	if strings.Contains(err.Error(), "\n") {
+		t.Errorf("err = %q, must be a single line", err)
+	}
+}

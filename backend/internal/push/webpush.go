@@ -62,12 +62,17 @@ func (s *WebPushSender) Send(ctx context.Context, sub Subscription, payload Payl
 		return fmt.Errorf("send web push: %w", err)
 	}
 	defer res.Body.Close()
-	_, _ = io.Copy(io.Discard, io.LimitReader(res.Body, 4096))
+	reason, _ := io.ReadAll(io.LimitReader(res.Body, 4096))
 
 	switch {
 	case res.StatusCode == http.StatusNotFound || res.StatusCode == http.StatusGone:
 		return fmt.Errorf("push service answered %d: %w", res.StatusCode, ErrGone)
 	case res.StatusCode < 200 || res.StatusCode > 299:
+		// The body names why (Apple: {"reason":"BadJwtToken"}); it is not
+		// secret. Collapse whitespace so it stays on one log line.
+		if text := strings.Join(strings.Fields(string(reason)), " "); text != "" {
+			return fmt.Errorf("push service answered %d: %s", res.StatusCode, text)
+		}
 		return fmt.Errorf("push service answered %d", res.StatusCode)
 	}
 	return nil
