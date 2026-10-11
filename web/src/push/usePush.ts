@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { sendTestNotification, type TestResult } from "../api/push";
 import { browserRemindersDeps } from "./browserDeps";
 import { isIOS, readPlatformEnv, reminderAvailability, type ReminderAvailability } from "./platform";
-import { enableReminders, syncOnLaunch, type RemindersResult } from "./reminders";
+import type { RemindersProblem } from "./problemText";
+import { enableReminders, syncOnLaunch } from "./reminders";
 
 export type RemindersState =
   | { kind: "off" }
   | { kind: "working" }
   | { kind: "on"; endpoint: string }
-  | { kind: "problem"; reason: Exclude<RemindersResult["kind"], "enabled"> };
+  | { kind: "problem"; problem: RemindersProblem };
 
 export type TestState = { kind: "idle" } | { kind: "sending" } | { kind: "done"; result: TestResult };
 
@@ -26,7 +27,11 @@ export function usePush() {
     syncOnLaunch(browserRemindersDeps()).then((result) => {
       if (cancelled) return;
       if (result.kind === "enabled") setReminders({ kind: "on", endpoint: result.endpoint });
-      else if (result.kind !== "skipped") console.warn(`Could not refresh reminders on launch: ${result.kind}`);
+      else if (result.kind !== "skipped") {
+        // Launch never alerts; the original error was already logged by syncOnLaunch.
+        const detail = result.kind === "browser-error" ? `${result.kind} (${result.name})` : result.kind;
+        console.warn(`Could not refresh reminders on launch: ${detail}`);
+      }
     });
     return () => {
       cancelled = true;
@@ -38,7 +43,7 @@ export function usePush() {
     setTest({ kind: "idle" });
     const result = await enableReminders(browserRemindersDeps());
     setReminders(
-      result.kind === "enabled" ? { kind: "on", endpoint: result.endpoint } : { kind: "problem", reason: result.kind },
+      result.kind === "enabled" ? { kind: "on", endpoint: result.endpoint } : { kind: "problem", problem: result },
     );
   }, []);
 
