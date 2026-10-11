@@ -16,7 +16,7 @@ import (
 const (
 	maxPushBody     = 8 * 1024
 	maxUserAgentLen = 512
-	// maxTestDelaySeconds keeps the wait well inside the 15s Lambda timeout.
+	// maxTestDelaySeconds plus the 10s send timeout stays inside the 25s Lambda timeout.
 	maxTestDelaySeconds = 10
 	testNotification    = "Reminders are on"
 )
