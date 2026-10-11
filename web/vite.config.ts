@@ -8,10 +8,13 @@ export default defineConfig({
     VitePWA({
       // A deploy replaces the app shell on next load instead of stranding users on an old one.
       registerType: "autoUpdate",
-      // Precache the app shell only. No runtime caching: API responses must never be served stale.
-      workbox: {
+      // A custom worker (src/sw.ts) holds the push handlers. It precaches the app shell only;
+      // no runtime caching, so API responses are never served stale.
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
+      injectManifest: {
         globPatterns: ["**/*.{js,css,html,png,svg,ico}"],
-        navigateFallback: "index.html",
       },
       includeAssets: ["apple-touch-icon.png"],
       manifest: {
