@@ -17,9 +17,9 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})
 }
 
-// decodeBody reads a JSON body of at most maxBytes into v and writes the error
-// response itself when it fails. With strict, a field v does not declare is an
-// error (400) instead of being ignored.
+// decodeBody reads a JSON body of at most maxBytes into v and writes the
+// error response itself when it fails. With strict set, a field v does not
+// declare is an error, so a typo is not silently ignored.
 func decodeBody(w http.ResponseWriter, r *http.Request, v any, maxBytes int64, strict bool) bool {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
 	dec := json.NewDecoder(r.Body)

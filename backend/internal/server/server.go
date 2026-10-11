@@ -13,6 +13,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
 )
@@ -46,7 +47,13 @@ func New(deps Deps) http.Handler {
 	if deps.Logger == nil {
 		deps.Logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	}
-	s := &server{deps: deps, push: push.NewStore(deps.DB), users: users.NewStore(deps.DB), homes: homes.NewStore(deps.DB)}
+	s := &server{
+		deps:    deps,
+		push:    push.NewStore(deps.DB),
+		users:   users.NewStore(deps.DB),
+		homes:   homes.NewStore(deps.DB),
+		profile: profile.NewStore(deps.DB),
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.healthz)
@@ -54,6 +61,13 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("POST /home", s.requireUser(s.postHome))
 	mux.HandleFunc("GET /home", s.requireResident(s.getHome))
 	mux.HandleFunc("PUT /home", s.requireResident(s.putHome))
+	mux.HandleFunc("GET /categories", s.requireUser(s.getCategories))
+	mux.HandleFunc("GET /demands", s.requireUser(s.getDemands))
+	mux.HandleFunc("GET /me/profile", s.requireUser(s.getProfile))
+	mux.HandleFunc("PUT /me/baseline", s.requireUser(s.putBaseline))
+	mux.HandleFunc("PUT /me/preferences/{category}", s.requireUser(s.putPreference))
+	mux.HandleFunc("PUT /me/restrictions/{demand}", s.requireUser(s.putRestriction))
+	mux.HandleFunc("DELETE /me/restrictions/{demand}", s.requireUser(s.deleteRestriction))
 	mux.HandleFunc("GET /push/vapid-public-key", s.requirePush(s.vapidPublicKey))
 	mux.HandleFunc("PUT /push/subscription", s.requirePush(s.requireUser(s.putPushSubscription)))
 	mux.HandleFunc("POST /push/test", s.requirePush(s.requireUser(s.postPushTest)))
@@ -69,6 +83,8 @@ type server struct {
 	push  *push.Store
 	users *users.Store
 	homes *homes.Store
+	// profile is the User's Baseline, Preferences and Restrictions.
+	profile *profile.Store
 }
 
 func (s *server) healthz(w http.ResponseWriter, r *http.Request) {
