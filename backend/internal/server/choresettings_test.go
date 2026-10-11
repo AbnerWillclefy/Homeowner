@@ -19,6 +19,21 @@ type effective struct {
 	RestrictedByChore bool
 }
 
+// settingWrites is every write route under /home/chores/{id}, with a valid
+// body, shared by the tests that probe how they fail.
+var settingWrites = []struct {
+	method, suffix string
+	body           any
+}{
+	{http.MethodPut, "/preference", map[string]any{"preference": "like"}},
+	{http.MethodDelete, "/preference", nil},
+	{http.MethodPut, "/restriction", nil},
+	{http.MethodDelete, "/restriction", nil},
+}
+
+// missingChoreID is a well-formed id that names no Chore.
+const missingChoreID = "00000000-0000-4000-8000-000000000000"
+
 func toEffective(t *testing.T, v any) effective {
 	t.Helper()
 	m, ok := v.(map[string]any)
@@ -219,21 +234,13 @@ func TestSettingsAreNeverVisibleOrWritableAcrossHomes(t *testing.T) {
 	bChore := createChore(t, b, "kitchen", []string{})
 	setPref(t, a, aChore, "dislike")
 
-	for _, tc := range []struct{ method, path string }{
-		{http.MethodPut, "/home/chores/" + aChore + "/preference"},
-		{http.MethodDelete, "/home/chores/" + aChore + "/preference"},
-		{http.MethodPut, "/home/chores/" + aChore + "/restriction"},
-		{http.MethodDelete, "/home/chores/" + aChore + "/restriction"},
-	} {
-		var body any
-		if tc.method == http.MethodPut && tc.path[len(tc.path)-1] == 'e' {
-			body = map[string]any{"preference": "like"}
-		}
-		foreign := b.Do(tc.method, tc.path, body, nil)
-		missing := b.Do(tc.method, "/home/chores/"+"00000000-0000-4000-8000-000000000000"+tc.path[len("/home/chores/")+36:], body, nil)
+	for _, w := range settingWrites {
+		foreignPath := "/home/chores/" + aChore + w.suffix
+		foreign := b.Do(w.method, foreignPath, w.body, nil)
+		missing := b.Do(w.method, "/home/chores/"+missingChoreID+w.suffix, w.body, nil)
 		if foreign.Status != http.StatusNotFound || missing.Status != http.StatusNotFound || string(foreign.Raw) != string(missing.Raw) {
 			t.Errorf("%s %s: foreign = %d %s, missing = %d %s, want identical 404s",
-				tc.method, tc.path, foreign.Status, foreign.Raw, missing.Status, missing.Raw)
+				w.method, foreignPath, foreign.Status, foreign.Raw, missing.Status, missing.Raw)
 		}
 	}
 
@@ -347,15 +354,10 @@ func TestChoreSettingsErrors(t *testing.T) {
 		t.Errorf("a rejected write stored something: %+v", got)
 	}
 
-	for _, path := range []string{"/home/chores/not-a-uuid/preference", "/home/chores/not-a-uuid/restriction"} {
-		for _, m := range []string{http.MethodPut, http.MethodDelete} {
-			var body any
-			if m == http.MethodPut && path[len(path)-1] == 'e' {
-				body = map[string]any{"preference": "like"}
-			}
-			if r := me.Do(m, path, body, nil); r.Status != http.StatusNotFound {
-				t.Errorf("%s %s = %d, want 404", m, path, r.Status)
-			}
+	for _, w := range settingWrites {
+		path := "/home/chores/not-a-uuid" + w.suffix
+		if r := me.Do(w.method, path, w.body, nil); r.Status != http.StatusNotFound {
+			t.Errorf("%s %s = %d, want 404", w.method, path, r.Status)
 		}
 	}
 
