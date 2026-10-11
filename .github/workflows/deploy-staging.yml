@@ -30,6 +30,7 @@ jobs:
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      TF_VAR_neon_org_id: ${{ vars.NEON_ORG_ID }}
       TF_VAR_aws_region: ${{ vars.AWS_REGION }}
       TF_VAR_budget_email: ${{ secrets.BUDGET_EMAIL }}
       TF_VAR_image_tag: ${{ github.sha }}
@@ -44,6 +45,7 @@ jobs:
           [ -z "${{ vars.AWS_DEPLOY_ROLE_ARN }}" ] && missing="$missing AWS_DEPLOY_ROLE_ARN"
           [ -z "${{ vars.AWS_REGION }}" ] && missing="$missing AWS_REGION"
           [ -z "$NEON_API_KEY" ] && missing="$missing NEON_API_KEY"
+          [ -z "$TF_VAR_neon_org_id" ] && missing="$missing NEON_ORG_ID"
           [ -z "$TF_VAR_budget_email" ] && missing="$missing BUDGET_EMAIL"
           if [ -n "$missing" ]; then
             echo "::error::Missing GitHub settings:$missing. See infra/README.md."

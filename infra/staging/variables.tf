@@ -21,7 +21,12 @@ variable "cors_allowed_origins" {
 }
 
 variable "neon_region_id" {
-  description = "Neon region of the project."
+  description = "Neon region of the project, next to the Lambda in us-east-1."
   type        = string
-  default     = "aws-us-east-2"
+  default     = "aws-us-east-1"
+}
+
+variable "neon_org_id" {
+  description = "Neon organisation that owns the project (TF_VAR_neon_org_id, from the NEON_ORG_ID repository variable). Accounts created since Neon introduced organisations cannot create projects without it."
+  type        = string
 }

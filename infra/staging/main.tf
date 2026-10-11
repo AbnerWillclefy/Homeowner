@@ -27,6 +27,7 @@ provider "neon" {}
 # folder should reference this project's id rather than create a second one.
 resource "neon_project" "this" {
   name       = "homeowner"
+  org_id     = var.neon_org_id
   pg_version = 16
   region_id  = var.neon_region_id
 }

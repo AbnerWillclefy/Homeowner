@@ -22,7 +22,9 @@ future `production/` folder is another thin folder over the same modules.
 
 1. **AWS account** (shared by staging and production) and a region. Credentials
    with enough rights to run the bootstrap.
-2. **Neon account** and an API key. Save it as the GitHub secret `NEON_API_KEY`.
+2. **Neon account** and an API key. Save it as the GitHub secret `NEON_API_KEY`,
+   and the organisation id (Neon console, organisation settings, `org-...`) as the
+   repository variable `NEON_ORG_ID`.
 3. **Bootstrap apply** with local state:
    ```sh
    cd infra/bootstrap
@@ -37,9 +39,9 @@ future `production/` folder is another thin folder over the same modules.
    bucket and CloudFront; until the maintainer re-applies (same command, same
    local state), the first deploy on `main` fails with AccessDenied.
 4. **GitHub settings** (repository, Settings, Secrets and variables, Actions):
-   - variables `AWS_REGION` and `AWS_DEPLOY_ROLE_ARN` (output `deploy_role_arn`)
-   - secrets `NEON_API_KEY` and `BUDGET_EMAIL` (the repository is public, so the
-     address is a secret)
+   - variables `AWS_REGION`, `AWS_DEPLOY_ROLE_ARN` (output `deploy_role_arn`) and `NEON_ORG_ID`
+   - secrets `NEON_API_KEY` and `BUDGET_EMAIL` (kept secret so the address never
+     shows in logs)
 5. **After the first deploy**, set the repository variables `STAGING_API_URL`
    (the `api_url` output) and `STAGING_WEB_URL` (the `web_url` output, an
    `https://dxxxx.cloudfront.net` address); both are printed in the job summary.
