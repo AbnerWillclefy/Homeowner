@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -31,22 +30,6 @@ func (s *server) requirePush(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next(w, r)
 	}
-}
-
-// decodeBody reads a size-capped JSON body into v and writes the error
-// response itself when it fails.
-func decodeBody(w http.ResponseWriter, r *http.Request, v any) bool {
-	r.Body = http.MaxBytesReader(w, r.Body, maxPushBody)
-	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
-		var tooBig *http.MaxBytesError
-		if errors.As(err, &tooBig) {
-			writeError(w, http.StatusRequestEntityTooLarge, "request body too large")
-			return false
-		}
-		writeError(w, http.StatusBadRequest, "invalid JSON body")
-		return false
-	}
-	return true
 }
 
 func (s *server) vapidPublicKey(w http.ResponseWriter, _ *http.Request) {
@@ -77,7 +60,7 @@ func validBase64URL(v string) bool {
 
 func (s *server) putPushSubscription(w http.ResponseWriter, r *http.Request) {
 	var body subscriptionBody
-	if !decodeBody(w, r, &body) {
+	if !decodeBody(w, r, &body, maxPushBody, false) {
 		return
 	}
 	switch {
@@ -110,7 +93,7 @@ func (s *server) postPushTest(w http.ResponseWriter, r *http.Request) {
 		Endpoint     string `json:"endpoint"`
 		DelaySeconds int    `json:"delaySeconds"`
 	}
-	if !decodeBody(w, r, &body) {
+	if !decodeBody(w, r, &body, maxPushBody, false) {
 		return
 	}
 	if body.Endpoint == "" {
