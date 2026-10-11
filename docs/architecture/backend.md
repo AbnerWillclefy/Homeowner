@@ -9,7 +9,8 @@ The backend is one Go module in `backend/`. In Go, code under `internal/` can on
 | Entry point | Status | What it does |
 |---|---|---|
 | `cmd/api` | Built | `api` or `api serve` runs the HTTP server; `api migrate` applies database migrations and exits; `api vapid` prints a new VAPID key pair (a one-off human step, needs no database). |
-| Allocator job | Planned | Scheduled run that plans every Home whose Allocation time has arrived. |
+| `api allocate` | Built | Runs the Allocation job once and exits: plans every Home whose Allocation time has arrived (for local runs and manual catch-up). |
+| `api events` | Built | The Allocation job's Lambda: serves only `POST /events` (the scheduled tick that Lambda Web Adapter forwards) and `GET /healthz`. Same image as the API, a different command; see [ADR 0008](../adr/0008-scheduled-jobs-run-as-a-second-lambda-from-the-api-image.md). |
 
 ## Packages
 
@@ -29,6 +30,7 @@ flowchart TD
     choresettings["internal/choresettings: Resolve, Store"]
     schedule["internal/schedule: Decide, pure"]
     tasks["internal/tasks: Store (refresh, open pool)"]
+    dayplan["internal/dayplan: Planner, Store, EventsHandler"]
     vocab["internal/vocab: Category, Demand and Importance ids"]
     mig["migrations: embedded SQL"]
     alloc["internal/allocation: Plan and Check, pure"]
@@ -51,6 +53,12 @@ flowchart TD
     choresettings --> chores
     choresettings --> profile
     server --> tasks
+    server --> dayplan
+    main --> dayplan
+    dayplan --> tasks
+    dayplan --> profile
+    dayplan --> alloc
+    apitest --> dayplan
     tasks --> schedule
     tasks --> alloc
     schedule --> alloc
@@ -65,7 +73,7 @@ flowchart TD
     apitest --> clock
 ```
 
-`allocation` has no outgoing arrows: it imports nothing from the project and does no I/O (`purity_test.go` enforces that). `schedule` and `tasks` import it only for its `Date` type; the API does not call `Plan` or `Check` yet.
+`allocation` has no outgoing arrows: it imports nothing from the project and does no I/O (`purity_test.go` enforces that). `schedule` and `tasks` import it only for its `Date` type; `dayplan` is the only package that calls `Plan` and `Check`.
 
 | Package | Role |
 |---|---|
@@ -79,7 +87,8 @@ flowchart TD
 | `chores` | `Validate(Input)` is pure: it trims the name, de-duplicates and sorts Demands and weekdays, and returns a stable code per invalid field, all at once (`Input` is decoded straight from the JSON body; numbers arrive as `any`, so a string or 2.5 is a field code, not a bad request; the first code recorded for a field wins). `Store` has `List`, `Create`, `Update`, `Delete`; every query that takes an id also filters on `home_id`, and a miss is `ErrNotFound`, and the handlers answer 404 for an id that fails `ValidID` without asking the Store. Imports `vocab` for Categories, Demands and Importances. `Chore` carries the JSON tags and is written to the response as is. |
 | `choresettings` | A Resident's Preference and Restriction on one specific Chore. `Resolve(Chore, General, Specific)` is pure and holds the rule: a specific Preference (neutral included) beats the general one for the Chore's Category, else neutral (source `specific`, `general` or `default`); Restrictions only add, so the reasons are the Chore's Demands that are in the User's general Restrictions plus the specific Restriction, listed apart. `Store` has `SetPreference`, `ClearPreference`, `AddRestriction`, `RemoveRestriction` (idempotent; the two sets prove in the same statement that the Chore is in the Resident's Home, the two deletes ask only when they removed nothing; `ErrNotFound` otherwise, the same for a missing Chore) and `Effective(homeID)`, which reads the Home's Chores, Residents, all their general profiles (`profile.LoadMany`, one `ANY($1)` query per profile table) and the specific rows in one read-only repeatable-read transaction, a fixed number of queries however many Residents there are. It has no HTTP types, so the Allocation job can reuse it; `allocation` is untouched. |
 | `schedule` | `Decide(Chore, latest *Task, today)` is pure (stdlib and `allocation.Date` only; `purity_test.go` enforces it) and returns one decision: `Open` a Task with a window and Effort, `SetEffort` on the open Task, or `Nothing`. Rules (ADR 0001): a recurring Chore has windows of N consecutive days, the first starting on the day it was created in the Home's zone; `WindowStart` and `WindowEnd` are inclusive dates. With allowed weekdays, the window starts on the first allowed day on or after the scheduled start and N is rounded up to whole weeks, so a Task only opens on an allowed day. A one-off Chore gets one Task, ever (a day, or a week when weekdays are limited). A window is missed when today is past `WindowEnd` and the Task is still open; the same Task stays open and keeps its window. Missed windows are derived (`floor((today - WindowStart) / length)`), never counted, so repeated or skipped runs agree; a recurring build-up Chore's current Effort is `min(5, base + missed)`, other Chores stay at base (`buildsUp` is ignored on a one-off). After a Task is done, the next window of a recurring Chore starts N days after `closed_on` at base Effort (an assumption until a Completion ticket defines it). |
-| `tasks` | `Store.Refresh(homeID, now)` brings a Home's Tasks up to date: in one transaction (`statement_timeout` 5s) it converts `now` to a date in the Home's IANA zone (an unloadable zone is an error, never UTC), locks each Chore row `FOR UPDATE`, loads its latest Task, applies `schedule.Decide` and writes. Idempotent and safe in parallel; the partial unique index on open Tasks is the final guard and the insert is `ON CONFLICT DO NOTHING`. `Store.ListOpen(homeID)` returns the open pool, never nil. The daily Allocation job (#13) must call `Refresh` before it builds `allocation.State`. |
+| `tasks` | `Store.Refresh(homeID, now)` brings a Home's Tasks up to date: in one transaction (`statement_timeout` 5s) it converts `now` to a date in the Home's IANA zone (an unloadable zone is an error, never UTC), locks each Chore row `FOR UPDATE`, loads its latest Task, applies `schedule.Decide` and writes. Idempotent and safe in parallel; the partial unique index on open Tasks is the final guard and the insert is `ON CONFLICT DO NOTHING`. `Store.ListOpen(homeID)` returns the open pool, never nil. The daily Allocation job (`dayplan`) calls `Refresh` before it builds `allocation.State`. |
+| `dayplan` | Runs Allocation and stores and reads the Day Plan. `Planner` (built with `New(db, Allocator, logger)`; the `Allocator` interface is the seam where the LLM allocator plugs in, and an allocator that implements `Name()` names itself in the run record) has `DueHomes(now)`, `PlanHome(homeID, now)` and `RunDue(now)`. `DueHomes` converts `now` to each Home's IANA zone and returns the Homes whose local wall-clock time is at or past their Allocation time and that have no run for the local date ("at or past", so a late tick or a daylight-saving gap still plans once); a Home with an unknown zone is logged and skipped. `PlanHome` first returns if the day has a run, then calls `tasks.Refresh`, then in one transaction locks the Home row (`FOR NO KEY UPDATE`), looks for the run again, loads the `allocation.State` (all open Tasks, overdue ones included, joined with their Chore for Demands, people and allowed weekdays; Residents with Energy and both levels of Restriction), asks the Allocator, has `allocation.Check` referee the proposal, and writes the run and the assignments. A proposal that errors or breaks any rule is never stored as a plan: the run is recorded `rejected` with the violations, nothing is assigned, the rejection is logged, and the day is taken, so it is not retried until tomorrow. Refresh runs outside the lock so a call never holds one connection while waiting for a second from the pool (with `DB_MAX_CONNS=2`); it is idempotent, so overlapping calls only repeat it. Energy is the Resident's Baseline points for the weekday of the Home's local date, in one function (`energyOn`); an unset day is 0 and gives that Resident nothing. The Check-in will scale it there. `RunDue` plans each due Home and logs, but survives, a failure for one; it returns a `Summary`. `Store.Today` reads the stored plan for the API and never plans or refreshes. `EventsHandler` is the job Lambda's HTTP surface. Logs carry the Home id, date, allocator and counts only. |
 | `vocab` | The fixed, ordered Category, Demand and Importance ids (snake_case, stored and sent as-is) with `IsCategory`, `IsDemand` and `IsImportance`. `allocation` never imports it; its `Demand` and `Importance` values equal these ids. |
 | `db` | Opens a `pgx` connection pool (retrying about 10s at start) and runs `goose` migrations. |
 | `clock` | The only place allowed to read the time. Business code takes a `Clock`; tests use `Fake`. |
@@ -136,6 +145,7 @@ Authentication is not in that chain: `requireUser` wraps individual routes (like
 | `DELETE /home/chores/{id}/preference` | Clears it, so the general Preference applies again. `204`, idempotent; same `404`. |
 | `PUT /home/chores/{id}/restriction`, `DELETE /home/chores/{id}/restriction` | No body. Add and remove the caller's specific Restriction on the Chore. `204`, idempotent; same `404`. |
 | `GET /home/tasks` | Needs a token and a Home (`404` otherwise, so other Homes are never leaked). First refreshes the Home's Tasks for today in its zone (a lazy refresh, so no scheduled job is needed yet), then answers `200 {"tasks":[...]}`, an empty pool being `[]`, ordered by window start. A Task is `id`, `choreId`, `choreName`, `windowStart` and `windowEnd` (inclusive `YYYY-MM-DD` dates), `currentEffort`, `baseEffort`, `people`, `importance`. An overdue Task keeps its original window. `500` if the Home's timezone cannot be loaded. |
+| `GET /home/day-plan` | Needs a token and a Home (`401`, `404 {"error":"no home"}`). Today's Day Plan for the caller's Home on the Home's local date. Read-only: it never plans and never refreshes the Tasks, so a plan cannot appear before the Allocation time. `200 {"date","allocationTime","planned","rejected","allocator","energy","mine","others","pool"}`. `planned` is true when today's run produced a plan; `rejected` is true when the run was refused by the checker (nothing assigned today). Before the Allocation time both are false, `allocator` is `""`, `energy` is `null`, and `pool` is the open Tasks without a `reason`. `energy` is the caller's Energy the plan was made with (0 when their Baseline for the weekday is unset). `mine` is the caller's Tasks; `others` is `[{"residentId","tasks":[...]}]` for each other Resident who has Tasks (ids only, as in `GET /home/chores/settings`); `pool` is every open Task not assigned today. A Task is the `GET /home/tasks` shape plus `reason`: an assignment reason (`deadline_today`, `importance`, `lateness`, `fits_energy`) or a pool reason (`no_energy_left`, `restricted_for_all`, `weekday_not_allowed`, `two_person_deferred`, `invalid_effort`, or `added_after_plan` for a Task the run did not see). Arrays are never `null`. Reasons are stable ids localised in the PWA. |
 | `GET /categories`, `GET /demands` | Need a token. `{"categories": [...]}` and `{"demands": [...]}`: the fixed ids in display order. Names are localised in the PWA. |
 | `GET /me/profile` | Needs a token. `{"baseline": {"sunday": null, "monday": 5, ...}, "preferences": {"kitchen": "like"}, "restrictions": ["heavy_lifting"]}`. Always all seven weekday keys (`null` = unset, 0 is a real value); preferences list only set Categories (neutral is absent); restrictions follow the `GET /demands` order. |
 | `PUT /me/baseline` | Needs a token. Body maps weekday names (`sunday` to `saturday`) to an integer 0 to 20, or `null` to clear. Partial: days not named are untouched. `204`; `400` naming the field for an unknown weekday, a non-integer, a value out of range, an empty object or unknown JSON. |
@@ -158,10 +168,11 @@ A seam is the one place tests are allowed to push on the system.
 flowchart LR
     T1["API tests (black box)"] -->|HTTP| S["server + real Postgres"]
     T1 -.-> F["fakes: Clock, Web Push and Cognito built; LLM planned"]
+    T1 -->|"RunAllocation"| P["dayplan.Planner, same database"]
     T2["Allocation tests (table-driven)"] -->|Plan, Check| A["allocation package"]
 ```
 
-1. **The API.** `apitest.Start` runs the real server on a database cloned from a migrated template (`TEST_DATABASE_URL`), with a fake clock; `apitest.WithPush(key)` adds the recording fake Web Push sender, exposed as `App.Push`. `Start` always wires an `auth.Fake`; `App.SignInAs(email)` returns a client whose requests carry that fake's bearer token (the same email is the same User), and `apitest.WithoutAuth()` leaves the Verifier nil for the 503 case. `Client.JoinHome(t, homeID)` inserts a `residents` row for a signed-in User so tests can have several Residents without the Invite flow. Tests assert on HTTP responses, never on internals.
+1. **The API.** `apitest.Start` runs the real server on a database cloned from a migrated template (`TEST_DATABASE_URL`), with a fake clock; `apitest.WithPush(key)` adds the recording fake Web Push sender, exposed as `App.Push`. `Start` always wires an `auth.Fake`; `App.SignInAs(email)` returns a client whose requests carry that fake's bearer token (the same email is the same User), and `apitest.WithoutAuth()` leaves the Verifier nil for the 503 case. `Client.JoinHome(t, homeID)` inserts a `residents` row for a signed-in User so tests can have several Residents without the Invite flow. `App.RunAllocation(t)` runs the Allocation job once at the fake clock's time over the same database, exactly as the scheduled tick does, and `App.UseAllocator(a)` swaps in a stub allocator (for example one the referee must reject). Tests assert on HTTP responses, never on internals, except the run record, which the job writes and only the database shows.
 2. **Allocation.** Pure-function tests on `Plan` and `Check`.
 
 There is no automated UI test; the web app is type-checked and built in CI.

@@ -241,6 +241,45 @@ export const ptBR: Messages = {
   "chores.field.allowedWeekdays.out_of_range": "Um dos dias não é válido. Desmarque-o e tente de novo.",
   "chores.field.unknown": "Este valor não é aceito. Confira e tente de novo.",
 
+  // Hoje (o plano do dia)
+  "dayplan.heading": "Hoje",
+  "dayplan.intro":
+    "Todos os dias, no horário da alocação do seu lar, o Homeowner propõe quem faz quais tarefas, sem pedir a ninguém mais energia do que tem. Este é o plano do dia de hoje. É uma proposta: nada aqui é definitivo.",
+  "dayplan.loading": "Carregando o plano de hoje...",
+  "dayplan.load.offline":
+    "Não foi possível carregar o plano de hoje porque o Homeowner não consegue falar com o serviço. Confira a sua conexão e tente de novo.",
+  "dayplan.load.error": "Algo deu errado ao carregar o plano de hoje. Tente de novo daqui a pouco.",
+  "dayplan.notSignedIn": "Seu login terminou. Entre de novo para continuar.",
+  "dayplan.retry": "Tentar de novo",
+  "dayplan.notPlanned":
+    "O plano de hoje ainda não foi feito. O Homeowner planeja o dia do seu lar às {time}, então volte depois disso. Estas são as tarefas em aberto entre as quais ele vai escolher.",
+  "dayplan.rejected":
+    "Não foi possível usar o plano de hoje, então nenhuma tarefa foi dada a ninguém hoje. As suas tarefas em aberto continuam listadas abaixo.",
+  "dayplan.energy": "Sua energia hoje: {energy}",
+  "dayplan.energy.none":
+    "Você não tem energia base para este dia da semana, então a sua energia é 0 e nenhuma tarefa foi dada a você. Defina a sua energia base no perfil para receber tarefas nesse dia.",
+  "dayplan.mine.heading": "Suas tarefas",
+  "dayplan.mine.empty": "Nada para você hoje. Aproveite o dia.",
+  "dayplan.others.heading": "Tarefas dos outros moradores",
+  "dayplan.others.resident": "Morador {number}",
+  "dayplan.pool.heading": "Ainda por fazer",
+  "dayplan.pool.intro": "Tarefas em aberto que não foram dadas a ninguém hoje, e o motivo.",
+  "dayplan.pool.empty": "Nenhuma outra tarefa em aberto. Tudo está planejado ou feito.",
+  "dayplan.task.effort": "Esforço {effort}",
+  "dayplan.task.effort.grown": "Esforço {effort} (normalmente {base})",
+  "dayplan.task.due": "Para {date}",
+  "dayplan.task.reason": "Por quê: {reason}",
+  "dayplan.assigned.reason.deadline_today": "Vence hoje.",
+  "dayplan.assigned.reason.importance": "É a que mais importa.",
+  "dayplan.assigned.reason.lateness": "É a que espera há mais tempo.",
+  "dayplan.assigned.reason.fits_energy": "Cabe na sua energia.",
+  "dayplan.pool.reason.no_energy_left": "Ninguém tem energia suficiente sobrando hoje.",
+  "dayplan.pool.reason.restricted_for_all": "Ninguém pode fazer: todos os moradores têm uma restrição sobre ela.",
+  "dayplan.pool.reason.weekday_not_allowed": "Não é permitida neste dia da semana.",
+  "dayplan.pool.reason.two_person_deferred": "Precisa de duas pessoas, e as duas não estavam livres hoje.",
+  "dayplan.pool.reason.invalid_effort": "O esforço dela não é válido, então ficou de fora. Edite o afazer para corrigir.",
+  "dayplan.pool.reason.added_after_plan": "Foi adicionada depois que o plano de hoje foi feito.",
+
   // Cadastro
   "signUp.heading": "Cadastrar-se",
   "signUp.intro":

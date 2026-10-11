@@ -87,6 +87,10 @@ type Task struct {
 	People      int
 	WindowStart Date
 	WindowEnd   Date
+	// AllowedWeekdays are the days the Chore may be done (0 = Sunday), copied
+	// from the Chore. Empty means every day. An overdue Task is still bound by
+	// it, so it waits in the pool for an allowed day.
+	AllowedWeekdays []int
 }
 
 // State is everything Allocation knows. Tasks are open Tasks only.
@@ -112,6 +116,7 @@ const (
 	ReasonRestrictedForAll  Reason = "restricted_for_all"
 	ReasonTwoPersonDeferred Reason = "two_person_deferred"
 	ReasonInvalidEffort     Reason = "invalid_effort"
+	ReasonWeekdayNotAllowed Reason = "weekday_not_allowed"
 )
 
 // Assignment gives a Task to a Resident.
@@ -142,6 +147,8 @@ type Result struct {
 // Allocator proposes a Day Plan. Baseline is one; the LLM allocator will be
 // another behind the same interface.
 type Allocator interface {
+	// Name goes in the run record of every plan this Allocator makes.
+	Name() string
 	Plan(State) (Result, error)
 }
 
@@ -154,6 +161,9 @@ const (
 	UnknownTask       ViolationKind = "unknown_task"
 	DuplicateTask     ViolationKind = "duplicate_task"
 	UnknownResident   ViolationKind = "unknown_resident"
+	// WeekdayNotAllowed: the Task's Chore may not be done on State.Today's
+	// weekday.
+	WeekdayNotAllowed ViolationKind = "weekday_not_allowed"
 )
 
 // RestrictionLevel says which kind of Restriction was broken.

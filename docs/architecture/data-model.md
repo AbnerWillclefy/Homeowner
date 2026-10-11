@@ -16,10 +16,11 @@ Migrations live in `backend/migrations/` as `NNNN_description.sql` files, applie
 | `0006_chores.sql` | `chores`: `id` (uuid), `home_id` (references `homes`, `ON DELETE CASCADE`, indexed), `name`, `category`, `demands` (`text[]`), `base_effort` (1 to 5), `importance`, `people` (1 or 2), `interval_days` (NULL means one-off; otherwise at least 1), `allowed_weekdays` (`smallint[]`, 0 = Sunday to 6; empty means any day), `builds_up`, `created_at`, `updated_at`. CHECKs cover only numeric ranges; Category, Demand and Importance ids are validated in Go. `tasks.chore_id` must be `ON DELETE CASCADE`, because any Chore can be deleted. |
 | `0007_tasks.sql` | `tasks`: `id` (uuid), `chore_id` (references `chores`, `ON DELETE CASCADE`), `status` (`open` or `done`), `window_start` and `window_end` (inclusive `date`s in the Home's zone, `window_end >= window_start`), `current_effort` (1 to 5; derived from the Chore and the date and rewritten by each refresh), `created_at` (from the injected clock), `closed_on` (`date`, null while open; a CHECK requires it exactly when `status` is `done`). A partial unique index on `(chore_id) WHERE status = 'open'` is what enforces "a Chore has at most one open Task". A one-off Chore's single Task is enforced in code instead: the refresh locks the Chore row and opens a Task only if none of any status exists. Index on `(chore_id, window_start)` for the latest-Task lookup. `task_residents` and `completions` are not built yet. |
 | `0008_resident_chore_settings.sql` | A Resident's Preference and Restriction on one specific Chore, which beat the User's general ones. `resident_chore_preferences` (`resident_id`, `chore_id`, `preference` `like`, `neutral` or `dislike`; primary key `(resident_id, chore_id)`). `resident_chore_restrictions` (`resident_id`, `chore_id`; same key). Both reference `residents` and `chores` with `ON DELETE CASCADE` and have an index on `chore_id`. Unlike the general Preference, neutral is stored, because a specific neutral must beat a general dislike; clearing deletes the row. They hang on the Resident, so leaving a Home (deleting the `residents` row) clears them. SQL cannot tie the Chore's Home to the Resident's Home, so every insert in `choresettings.Store` proves it in the same statement. |
+| `0009_day_plans.sql` | The Day Plan and the record of each Allocation. `allocation_runs`: `id` (uuid), `home_id` (references `homes`, `ON DELETE CASCADE`), `plan_date` (`date`, the Home's local date at the run), `allocator` (`baseline` for now), `outcome` (`planned` or `rejected`), `fallback_reason` (nullable, reserved for the LLM fallback), `reasons` (`jsonb`: `assigned` (task, resident, reason), `pool` (task, reason), each Resident's `energy`, and for a rejected run the checker's `violations`), `created_at` (from the injected clock). `UNIQUE (home_id, plan_date)` is the last guard for "once per day"; a rejected run takes the day too, so it is not retried until tomorrow. `day_plan_assignments`: `run_id`, `task_id`, `resident_id`, `reason`; primary key `(run_id, task_id)`; all three reference their tables with `ON DELETE CASCADE`. It is not `task_residents`: that table is for Committed, which is a later ticket. The pool reasons are stored because Energy and Restrictions change and they cannot be recomputed. Yesterday's rows stay: a Day Plan is keyed by date, and today's pool is the open Tasks not assigned in today's run. |
 
 A Home is created by one transaction that inserts the `homes` row and the creator's `residents` row; if the `residents` insert hits the unique violation the transaction rolls back and no Home is left behind.
 
-A User is created by the first authenticated request, with one `INSERT ... ON CONFLICT (cognito_sub) DO UPDATE ... RETURNING` statement, so two simultaneous first requests create one row. `users`, `push_subscriptions`, the three profile tables, `homes`, `residents`, `chores`, `tasks` and the two specific-setting tables are the tables built. Everything else below is the planned schema from issue #1.
+A User is created by the first authenticated request, with one `INSERT ... ON CONFLICT (cognito_sub) DO UPDATE ... RETURNING` statement, so two simultaneous first requests create one row. `users`, `push_subscriptions`, the three profile tables, `homes`, `residents`, `chores`, `tasks`, the two specific-setting tables, `allocation_runs` and `day_plan_assignments` are the tables built. Everything else below is the planned schema from issue #1.
 
 ## Planned tables
 
@@ -40,6 +41,9 @@ erDiagram
     residents ||--o{ check_ins : "reports"
     users ||--o{ push_subscriptions : "devices"
     homes ||--o{ allocation_runs : "planned by"
+    allocation_runs ||--o{ day_plan_assignments : "proposes"
+    tasks ||--o{ day_plan_assignments : "proposed in"
+    residents ||--o{ day_plan_assignments : "proposed to"
 ```
 
 | Table | Holds |
@@ -52,5 +56,6 @@ erDiagram
 | `check_ins` | Resident, date, level, day-only Restrictions |
 | `user_baselines`, `user_category_preferences`, `user_demand_restrictions` (built) | General Baseline, Preferences and Restrictions, on the User |
 | `resident_chore_preferences`, `resident_chore_restrictions` (built) | A Resident's specific Preference and Restriction on one Chore; they beat the general ones (a specific Restriction only adds) |
-| `allocation_runs` | Home, date, which allocator, fallback reason, recorded reasons |
+| `allocation_runs` (built) | Home, local date, which allocator, outcome, fallback reason, recorded reasons; unique per Home and date |
+| `day_plan_assignments` (built) | The Tasks a run proposed to each Resident, with the reason. A proposal, not `task_residents` (Committed) |
 | `push_subscriptions` | One per device, owned by the User who last registered it. Built. |

@@ -168,6 +168,14 @@ data "aws_iam_policy_document" "deploy_staging" {
     resources = ["arn:aws:lambda:${var.aws_region}:${local.account_id}:function:homeowner-staging-*"]
   }
 
+  # EventBridge rules of the scheduled jobs (#13), named homeowner-staging-*
+  # on the default event bus.
+  statement {
+    sid       = "EventBridgeRules"
+    actions   = ["events:*"]
+    resources = ["arn:aws:events:${var.aws_region}:${local.account_id}:rule/homeowner-staging-*"]
+  }
+
   # API Gateway HTTP APIs. API ids are generated, so this cannot be narrowed
   # by name; it is limited to API Gateway v2 resources in this region.
   statement {
