@@ -75,4 +75,5 @@ export const ptBR: Messages = {
   "settings.appearance.system": "Sistema",
   "settings.appearance.light": "Claro",
   "settings.appearance.dark": "Escuro",
+  "settings.language.label": "Idioma",
 };

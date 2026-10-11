@@ -68,6 +68,7 @@ export const enUS = {
   "settings.appearance.system": "System",
   "settings.appearance.light": "Light",
   "settings.appearance.dark": "Dark",
+  "settings.language.label": "Language",
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof enUS;
