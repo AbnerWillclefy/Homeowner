@@ -72,7 +72,7 @@ func Plan(s State) (Result, error) {
 		left[i] = energyOf(r)
 	}
 
-	tasks := uniqueTasks(slices.Clone(s.Tasks))
+	tasks := uniqueTasks(s.Tasks)
 	// uniqueTasks keeps the first occurrence in input order; sort after so the
 	// result only depends on the content when IDs are unique.
 	slices.SortFunc(tasks, func(a, b Task) int {

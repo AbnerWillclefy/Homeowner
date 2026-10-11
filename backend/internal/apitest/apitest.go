@@ -81,7 +81,7 @@ func Start(t testing.TB, opts ...Option) *App {
 	t.Helper()
 	dbURL := NewMigratedDatabase(t)
 
-	pool, err := db.Connect(context.Background(), dbURL)
+	pool, err := db.Connect(context.Background(), dbURL, 0)
 	if err != nil {
 		t.Fatalf("apitest: connect: %v", err)
 	}

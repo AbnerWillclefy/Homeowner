@@ -74,7 +74,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 			return err
 		}
 	}
-	pool, err := db.ConnectWithMaxConns(ctx, cfg.DatabaseURL, cfg.DBMaxConns)
+	pool, err := db.Connect(ctx, cfg.DatabaseURL, cfg.DBMaxConns)
 	if err != nil {
 		return err
 	}

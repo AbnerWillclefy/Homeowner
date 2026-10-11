@@ -67,8 +67,11 @@ module "auth" {
 module "api" {
   source = "../modules/lambda-container"
 
-  name            = "${local.name_prefix}-api"
-  image_tag       = var.image_tag
+  name      = "${local.name_prefix}-api"
+  image_tag = var.image_tag
+  # POST /push/test waits up to 10s, then sends with a 10s timeout. The HTTP
+  # API cuts integrations off at 30s.
+  timeout         = 25
   ssm_path_prefix = local.ssm_prefix
 
   environment = merge(
