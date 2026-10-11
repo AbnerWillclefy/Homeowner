@@ -14,12 +14,10 @@ export function useChores() {
   const load = useCallback(async () => {
     setState({ kind: "loading" });
     const [categories, demands, chores] = await Promise.all([getCategories(), getDemands(), listChores()]);
-    for (const result of [categories, demands, chores]) {
-      if (result.kind !== "ok") return setState({ kind: "failed", reason: result.kind });
-    }
-    if (categories.kind === "ok" && demands.kind === "ok" && chores.kind === "ok") {
-      setState({ kind: "ready", chores: chores.chores, categories: categories.ids, demands: demands.ids });
-    }
+    if (categories.kind !== "ok") return setState({ kind: "failed", reason: categories.kind });
+    if (demands.kind !== "ok") return setState({ kind: "failed", reason: demands.kind });
+    if (chores.kind !== "ok") return setState({ kind: "failed", reason: chores.kind });
+    setState({ kind: "ready", chores: chores.chores, categories: categories.ids, demands: demands.ids });
   }, []);
 
   useEffect(() => {
