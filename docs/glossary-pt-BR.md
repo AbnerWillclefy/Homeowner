@@ -17,6 +17,7 @@ Agreed Brazilian Portuguese equivalents for the terms in [CONTEXT.md](../CONTEXT
 | Check-in | check-in | verificação de humor, pesquisa, enquete | The English word is common in Brazilian apps. The native speaker may prefer "registro do dia". Used in `reminders.intro`, `install.intro`. |
 | User | login (in running text); "usuário" only if a noun is unavoidable | conta, perfil, pessoa | CONTEXT.md avoids Account, Profile and Person, so the pt-BR avoids their calques "conta", "perfil" and "pessoa" for a User. The sign-in copy says "login" the way the English says "login" ("um login só seu"). Used in `signUp.*`, `signIn.*`, `signedIn.*`. The older `profile.*` strings still say "perfil"; that is the Profile section's name and is a separate decision for the native speaker. |
 | Resident | morador | membro, proprietário, dono | Plural "moradores". A User who lives in a Home; all Residents have equal say. Used in `home.create.intro`, `home.settings.intro`. |
+| Invite | convite | código de convite, link de entrada | A single-use link a Resident shares; valid for seven days ("sete dias"). Used in `invite.*`. |
 | Allocation | alocação | agendamento, distribuição | The daily run that proposes Tasks. "Allocation time" is "horário da alocação" (the time of day it runs). Used in `home.allocationTime.label`. |
 | Task | tarefa | atribuição, ocorrência, instância | Plural "tarefas" in running text. Used in `install.intro`. |
 | Day Plan | plano do dia | agenda, cronograma, programação, lista diária | Used in `reminders.intro`. |

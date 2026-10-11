@@ -363,6 +363,68 @@ export const ptBR: Messages = {
   "auth.rules.lengthOnly": "{length}.",
   "auth.rules.listEnd": "{rest} e {last}",
 
+  // Invites: arriving from a link, joining, and sharing one
+  "invite.checking": "Verificando seu convite...",
+  "invite.signedOut.heading": "Você foi convidado para um lar",
+  "invite.signedOut.intro":
+    "Um morador convidou você para o lar dele. Crie um login, ou entre se você já tem um, e você passa a ser morador, com o mesmo poder de decisão no lar. Seu convite fica salvo neste aparelho, então você pode confirmar seu e-mail e voltar a ele.",
+  "invite.lookup.problem":
+    "O Homeowner não conseguiu verificar seu convite agora. O link foi guardado, então você ainda pode entrar e tentar de novo.",
+  "invite.dead.not_found":
+    "Este link de convite não é válido. Ele pode ter sido copiado errado. Peça um novo convite ao morador.",
+  "invite.dead.used": "Este convite já foi usado. Um convite funciona só uma vez, então peça um novo ao morador.",
+  "invite.dead.expired": "Este convite expirou. Um convite dura sete dias, então peça um novo ao morador.",
+  "invite.dead.continue": "Continuar",
+  "invite.join.heading": "Entrar em um lar",
+  "invite.join.loading": "Preparando seu convite...",
+  "invite.join.intro":
+    "Você foi convidado para um lar. Entrar faz de você um morador, com o mesmo poder de decisão. Se quiser, preencha antes sua energia base, suas preferências e suas restrições abaixo: o Homeowner usa isso para dividir o trabalho de forma justa. Você também pode fazer isso depois de entrar.",
+  "invite.join.submit": "Entrar neste lar",
+  "invite.join.submitting": "Entrando...",
+  "invite.join.dismiss": "Agora não",
+  "invite.leave.heading": "Entrar significa sair do seu lar",
+  "invite.leave.warning":
+    "Você já mora em um lar, e um login pode ser morador de apenas um. Entrar neste significa sair do seu lar atual. Suas preferências e restrições para os afazeres dele são apagadas. Se você for o último morador, o lar e todos os afazeres dele também são apagados.",
+  "invite.leave.confirm": "Sair do meu lar e entrar neste",
+  "invite.leave.cancel": "Ficar no meu lar",
+  "invite.alreadyHere": "Você já mora neste lar, então não havia o que fazer. O convite não foi gasto.",
+  "invite.failure.offline":
+    "O Homeowner não consegue acessar o serviço, então você ainda não entrou. Seu convite foi guardado; verifique sua conexão e tente de novo.",
+  "invite.failure.error":
+    "Algo deu errado e você ainda não entrou. Seu convite foi guardado; tente de novo em instantes.",
+  "invite.failure.notSignedIn": "Você não está mais conectado. Entre de novo para continuar.",
+  "invite.failure.retry": "Tentar de novo",
+  "invite.rating.heading": "Avalie os afazeres mais pesados",
+  "invite.rating.intro":
+    "Agora você é morador. Estes são os afazeres mais exigentes do lar, pelo esforço. Diga ao Homeowner de quais você gosta ou não gosta e marque os que você não consegue fazer, para que suas primeiras tarefas combinem com você. Cada escolha é salva sozinha e você pode mudar depois.",
+  "invite.rating.loading": "Carregando os afazeres...",
+  "invite.rating.problem":
+    "Não foi possível carregar os afazeres, então não há o que avaliar agora. Você pode pular esta etapa.",
+  "invite.rating.restricted": "Não consigo fazer este afazer",
+  "invite.rating.saved": "Salvo.",
+  "invite.rating.saveFailed":
+    "Não foi possível salvar sua alteração, então ela foi desfeita. Verifique sua conexão e tente de novo.",
+  "invite.rating.done": "Concluir",
+  "invite.rating.skip": "Pular por enquanto",
+  "invite.share.heading": "Convidar um morador",
+  "invite.share.intro":
+    "Um convite é um link que você pode enviar por qualquer app. Ele funciona uma vez e dura sete dias. Quem abrir pode entrar no seu lar, então envie só para a pessoa que você quer.",
+  "invite.share.button": "Convidar um morador",
+  "invite.share.creating": "Criando o convite...",
+  "invite.share.title": "Entre no meu lar no Homeowner",
+  "invite.share.text": "Entre no meu lar no Homeowner. Este link funciona uma vez e dura sete dias.",
+  "invite.share.shared": "Seu convite está pronto e foi passado ao app que você escolheu.",
+  "invite.share.copied": "O link do convite foi copiado. Cole em uma mensagem para enviar.",
+  "invite.share.cancelled":
+    "O convite não foi enviado. O link dele continua valendo, caso você o tenha criado por engano; peça outro só se precisar.",
+  "invite.share.failed": "Não foi possível compartilhar nem copiar o link do convite. Tente de novo.",
+  "invite.share.tooMany":
+    "Seu lar já tem o máximo de convites abertos. Espere alguns serem usados ou expirarem.",
+  "invite.share.noHome": "Você precisa de um lar antes de convidar alguém.",
+  "invite.share.offline":
+    "O Homeowner não consegue acessar o serviço, então nenhum convite foi criado. Verifique sua conexão e tente de novo.",
+  "invite.share.error": "Algo deu errado e nenhum convite foi criado. Tente de novo em instantes.",
+
   // Settings
   "settings.heading": "Configurações",
   "settings.appearance.label": "Aparência",

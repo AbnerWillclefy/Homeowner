@@ -16,6 +16,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/invites"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/tasks"
@@ -56,6 +57,7 @@ func New(deps Deps) http.Handler {
 		push:    push.NewStore(deps.DB),
 		users:   users.NewStore(deps.DB),
 		homes:   homes.NewStore(deps.DB),
+		invites: invites.NewStore(deps.DB),
 		chores:  chores.NewStore(deps.DB),
 		tasks:   tasks.NewStore(deps.DB),
 		profile: profile.NewStore(deps.DB),
@@ -79,6 +81,9 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("DELETE /home/chores/{id}/preference", s.requireResident(s.deleteChorePreference))
 	mux.HandleFunc("PUT /home/chores/{id}/restriction", s.requireResident(s.putChoreRestriction))
 	mux.HandleFunc("DELETE /home/chores/{id}/restriction", s.requireResident(s.deleteChoreRestriction))
+	mux.HandleFunc("POST /home/invites", s.requireResident(s.postInvite))
+	mux.HandleFunc("GET /invites/{token}", s.getInvite)
+	mux.HandleFunc("POST /invites/{token}/accept", s.requireUser(s.acceptInvite))
 	mux.HandleFunc("GET /home/tasks", s.requireResident(s.listTasks))
 	mux.HandleFunc("GET /home/day-plan", s.requireResident(s.getDayPlan))
 	mux.HandleFunc("GET /categories", s.requireUser(s.getCategories))
@@ -103,6 +108,8 @@ type server struct {
 	push  *push.Store
 	users *users.Store
 	homes *homes.Store
+	// invites is the single-use links that bring new Residents into a Home.
+	invites *invites.Store
 	// chores is the Home's Chores.
 	chores *chores.Store
 	// tasks is the Home's Tasks and the open pool.
