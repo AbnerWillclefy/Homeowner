@@ -17,6 +17,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/tasks"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
 )
 
@@ -55,6 +56,7 @@ func New(deps Deps) http.Handler {
 		users:   users.NewStore(deps.DB),
 		homes:   homes.NewStore(deps.DB),
 		chores:  chores.NewStore(deps.DB),
+		tasks:   tasks.NewStore(deps.DB),
 		profile: profile.NewStore(deps.DB),
 
 		choreSettings: choresettings.NewStore(deps.DB),
@@ -75,6 +77,7 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("DELETE /home/chores/{id}/preference", s.requireResident(s.deleteChorePreference))
 	mux.HandleFunc("PUT /home/chores/{id}/restriction", s.requireResident(s.putChoreRestriction))
 	mux.HandleFunc("DELETE /home/chores/{id}/restriction", s.requireResident(s.deleteChoreRestriction))
+	mux.HandleFunc("GET /home/tasks", s.requireResident(s.listTasks))
 	mux.HandleFunc("GET /categories", s.requireUser(s.getCategories))
 	mux.HandleFunc("GET /demands", s.requireUser(s.getDemands))
 	mux.HandleFunc("GET /me/profile", s.requireUser(s.getProfile))
@@ -99,6 +102,8 @@ type server struct {
 	homes *homes.Store
 	// chores is the Home's Chores.
 	chores *chores.Store
+	// tasks is the Home's Tasks and the open pool.
+	tasks *tasks.Store
 	// profile is the User's Baseline, Preferences and Restrictions.
 	profile *profile.Store
 	// choreSettings is a Resident's Preference and Restriction on one Chore.
