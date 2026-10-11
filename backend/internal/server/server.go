@@ -12,6 +12,7 @@ import (
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
@@ -50,12 +51,16 @@ func New(deps Deps) http.Handler {
 		deps:    deps,
 		push:    push.NewStore(deps.DB),
 		users:   users.NewStore(deps.DB),
+		homes:   homes.NewStore(deps.DB),
 		profile: profile.NewStore(deps.DB),
 	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.healthz)
 	mux.HandleFunc("GET /me", s.requireUser(s.getMe))
+	mux.HandleFunc("POST /home", s.requireUser(s.postHome))
+	mux.HandleFunc("GET /home", s.requireResident(s.getHome))
+	mux.HandleFunc("PUT /home", s.requireResident(s.putHome))
 	mux.HandleFunc("GET /categories", s.requireUser(s.getCategories))
 	mux.HandleFunc("GET /demands", s.requireUser(s.getDemands))
 	mux.HandleFunc("GET /me/profile", s.requireUser(s.getProfile))
@@ -77,6 +82,7 @@ type server struct {
 	deps  Deps
 	push  *push.Store
 	users *users.Store
+	homes *homes.Store
 	// profile is the User's Baseline, Preferences and Restrictions.
 	profile *profile.Store
 }

@@ -1,0 +1,142 @@
+package server
+
+import (
+	"context"
+	"errors"
+	"net/http"
+	"regexp"
+	"time"
+
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
+)
+
+const maxHomeBody = 4 * 1024
+
+// homeKey is the context key for the caller's Home.
+type homeKey struct{}
+
+// currentHome returns the Home requireResident put in the request context.
+func currentHome(ctx context.Context) homes.Home {
+	h, _ := ctx.Value(homeKey{}).(homes.Home)
+	return h
+}
+
+// requireResident wraps a handler so it only runs for a signed-in User who
+// lives in a Home, which it puts in the context. A User with no Home gets 404.
+// Every route on a Home's data goes behind it, so "any Resident" and "no
+// access to another Home" are one code path.
+func (s *server) requireResident(next http.HandlerFunc) http.HandlerFunc {
+	return s.requireUser(func(w http.ResponseWriter, r *http.Request) {
+		h, err := s.homes.ForUser(r.Context(), currentUser(r.Context()).ID)
+		if errors.Is(err, homes.ErrNoHome) {
+			writeError(w, http.StatusNotFound, "no home")
+			return
+		}
+		if err != nil {
+			s.deps.Logger.Error("load home", "error", err.Error())
+			writeError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		next(w, r.WithContext(context.WithValue(r.Context(), homeKey{}, h)))
+	})
+}
+
+type homeSettings struct {
+	Timezone       string `json:"timezone"`
+	AllocationTime string `json:"allocationTime"`
+}
+
+type homeResponse struct {
+	ID             string `json:"id"`
+	Timezone       string `json:"timezone"`
+	AllocationTime string `json:"allocationTime"`
+}
+
+func toHomeResponse(h homes.Home) homeResponse {
+	return homeResponse{ID: h.ID, Timezone: h.Timezone, AllocationTime: h.AllocationTime}
+}
+
+var allocationTimePattern = regexp.MustCompile(`^([01][0-9]|2[0-3]):([0-5][0-9])$`)
+
+// validate returns a stable machine code per invalid field, all at once.
+// "not_quarter_hour" exists because the Allocator job runs every 15 minutes.
+func (b homeSettings) validate() map[string]string {
+	fields := map[string]string{}
+	switch {
+	case b.Timezone == "":
+		fields["timezone"] = "required"
+	case b.Timezone == "Local":
+		// LoadLocation accepts it and means the server's zone.
+		fields["timezone"] = "unknown"
+	default:
+		if _, err := time.LoadLocation(b.Timezone); err != nil {
+			fields["timezone"] = "unknown"
+		}
+	}
+	m := allocationTimePattern.FindStringSubmatch(b.AllocationTime)
+	switch {
+	case b.AllocationTime == "":
+		fields["allocationTime"] = "required"
+	case m == nil:
+		fields["allocationTime"] = "invalid"
+	case m[2] != "00" && m[2] != "15" && m[2] != "30" && m[2] != "45":
+		fields["allocationTime"] = "not_quarter_hour"
+	}
+	return fields
+}
+
+// readHomeSettings decodes and validates the body, writing the error response
+// itself when it is not acceptable.
+func readHomeSettings(w http.ResponseWriter, r *http.Request) (homeSettings, bool) {
+	var body homeSettings
+	if !decodeBody(w, r, &body, maxHomeBody, true) {
+		return body, false
+	}
+	if fields := body.validate(); len(fields) > 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid home", "fields": fields})
+		return body, false
+	}
+	return body, true
+}
+
+func (s *server) postHome(w http.ResponseWriter, r *http.Request) {
+	body, ok := readHomeSettings(w, r)
+	if !ok {
+		return
+	}
+	h, err := s.homes.Create(r.Context(), currentUser(r.Context()).ID, body.Timezone, body.AllocationTime, s.deps.Clock.Now())
+	if errors.Is(err, homes.ErrAlreadyResident) {
+		writeError(w, http.StatusConflict, "already a resident")
+		return
+	}
+	if err != nil {
+		s.deps.Logger.Error("create home", "error", err.Error())
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	writeJSON(w, http.StatusCreated, toHomeResponse(h))
+}
+
+func (s *server) getHome(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, toHomeResponse(currentHome(r.Context())))
+}
+
+func (s *server) putHome(w http.ResponseWriter, r *http.Request) {
+	body, ok := readHomeSettings(w, r)
+	if !ok {
+		return
+	}
+	h := currentHome(r.Context())
+	err := s.homes.UpdateSettings(r.Context(), h.ID, body.Timezone, body.AllocationTime, s.deps.Clock.Now())
+	if errors.Is(err, homes.ErrNoHome) {
+		writeError(w, http.StatusNotFound, "no home")
+		return
+	}
+	if err != nil {
+		s.deps.Logger.Error("update home settings", "error", err.Error())
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	h.Timezone, h.AllocationTime = body.Timezone, body.AllocationTime
+	writeJSON(w, http.StatusOK, toHomeResponse(h))
+}

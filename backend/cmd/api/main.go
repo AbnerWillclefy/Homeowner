@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	_ "time/tzdata" // time.LoadLocation must work on Lambda, distroless and CI
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
