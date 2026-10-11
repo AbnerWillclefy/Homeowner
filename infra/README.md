@@ -10,6 +10,7 @@ modules/
   lambda-container/  ECR repository, Lambda (image), execution role, log group
   http-api/          API Gateway HTTP API in front of a Lambda
   neon-branch/       Neon branch, role, database, endpoint; connection strings into SSM
+  web/               private S3 bucket behind CloudFront (default HTTPS domain, SPA fallback)
   budget/            account-wide monthly AWS Budget with email alerts
 staging/     thin folder wiring the modules together (state in S3)
 ```
@@ -30,14 +31,25 @@ future `production/` folder is another thin folder over the same modules.
    ```
    Keep the local `terraform.tfstate` somewhere safe (it is git-ignored); it only
    describes the bucket, the OIDC provider and the role. Note the outputs.
+
+   **Re-run this apply whenever `bootstrap/` changes.** The web hosting (#6)
+   extended the deploy role with permissions for the `homeowner-staging-web-*`
+   bucket and CloudFront; until the maintainer re-applies (same command, same
+   local state), the first deploy on `main` fails with AccessDenied.
 4. **GitHub settings** (repository, Settings, Secrets and variables, Actions):
    - variables `AWS_REGION` and `AWS_DEPLOY_ROLE_ARN` (output `deploy_role_arn`)
    - secrets `NEON_API_KEY` and `BUDGET_EMAIL` (the repository is public, so the
      address is a secret)
-5. **After the first deploy**, set the repository variable `STAGING_API_URL` to
-   the `api_url` output (printed in the job summary). `GITHUB_TOKEN` cannot write
-   repository variables, so the workflow only warns when the variable differs.
-   `STAGING_WEB_URL` is set the same way once #6 exists. QA reads both.
+5. **After the first deploy**, set the repository variables `STAGING_API_URL`
+   (the `api_url` output) and `STAGING_WEB_URL` (the `web_url` output, an
+   `https://dxxxx.cloudfront.net` address); both are printed in the job summary.
+   `GITHUB_TOKEN` cannot write repository variables, so the workflow only warns
+   when a variable differs. QA reads both. If the CloudFront distribution is ever
+   recreated its domain changes: CORS follows automatically, but
+   `STAGING_WEB_URL` must be reset by hand.
+6. **CloudFront on a brand-new AWS account** can be refused ("your account must
+   be verified"). That is an AWS support step, not a code problem; ask AWS
+   Support to enable CloudFront, then re-run the deploy.
 
 ## How a deploy works
 
@@ -54,6 +66,16 @@ every push to `main`:
 4. push the image, then the full `terraform apply -var image_tag=<sha>`
 5. smoke test `GET /healthz`, retrying for about 90 seconds (Lambda cold start
    plus Neon resume)
+
+A second job, `web` (`needs: api`), then builds the PWA with `VITE_API_BASE_URL`
+set to the API URL, uploads it to the web bucket in passes (fingerprinted
+`assets/` immutable for a year, `index.html`, `sw.js`, `registerSW.js`,
+`workbox-*.js` and the manifest `no-cache`, `index.html` last, stale objects
+deleted afterwards), invalidates `/*` and smoke tests the site: `/` and a deep
+link return the app, the manifest is served, and the API answers `/healthz` with
+`access-control-allow-origin` equal to the web URL. It lives in the same
+workflow so QA runs once after both jobs. The first run creates the CloudFront
+distribution, which takes 3 to 10 minutes.
 
 The workflow never runs `terraform destroy`.
 
@@ -109,12 +131,15 @@ terraform force-unlock <lock id>
 | SSM standard parameters (2) | free |
 | AWS Budget | free (first two budgets) |
 | ECR repository | storage (lifecycle keeps the last 5 images) |
+| S3 web bucket | storage and requests |
+| CloudFront distribution (`PriceClass_100`, default certificate) | pay per use (requests and transfer) |
+| CloudFront Origin Access Control | free |
 | S3 state bucket | storage |
 | CloudWatch log group | storage (14-day retention) |
 | IAM roles, policies, OIDC provider | free |
 | Neon project, branch, endpoint | free tier, scales to zero |
 
-Must stay absent: VPC, NAT Gateway, load balancer, provisioned concurrency,
+Must stay absent: WAF, CloudFront Origin Shield and access logs, VPC, NAT Gateway, load balancer, provisioned concurrency,
 customer-managed KMS keys, RDS/Aurora, DynamoDB, EC2.
 
 ## Known follow-ups
@@ -122,5 +147,11 @@ customer-managed KMS keys, RDS/Aurora, DynamoDB, EC2.
 - The deploy role is least privilege by prefix (`homeowner-staging-*`, the SSM
   path `/homeowner/staging/*`), but API Gateway ids are generated, so its API
   Gateway permissions are scoped to HTTP APIs in the region, not to one API.
+- CloudFront ids are generated, so the deploy role's CloudFront permissions are
+  scoped to distributions and origin access controls of this account, not to
+  one distribution; the list and managed-policy lookups need `*`.
+- A missing file such as an old `/assets/<hash>.js` returns `index.html` with
+  200 (the SPA fallback maps 403 and 404), so a stale client may get HTML where
+  JavaScript was expected. `registerType: "autoUpdate"` recovers on the next load.
 - The Neon project is owned by `staging/`. A future `production/` folder should
   take the project id as a variable instead of creating a second project.

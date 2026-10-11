@@ -183,6 +183,67 @@ data "aws_iam_policy_document" "deploy_staging" {
     ]
   }
 
+  # The staging web bucket: Terraform manages it, the web job syncs into it.
+  statement {
+    sid = "WebBucketManage"
+    actions = [
+      "s3:CreateBucket", "s3:DeleteBucket", "s3:ListBucket",
+      "s3:GetBucketLocation", "s3:GetBucketTagging", "s3:PutBucketTagging",
+      "s3:GetBucketPolicy", "s3:PutBucketPolicy", "s3:DeleteBucketPolicy",
+      "s3:GetBucketPublicAccessBlock", "s3:PutBucketPublicAccessBlock",
+      "s3:GetEncryptionConfiguration", "s3:PutEncryptionConfiguration",
+      "s3:GetLifecycleConfiguration", "s3:PutLifecycleConfiguration",
+      "s3:GetBucketVersioning", "s3:GetBucketAcl", "s3:GetBucketCORS",
+      "s3:GetBucketWebsite", "s3:GetBucketLogging", "s3:GetBucketObjectLockConfiguration",
+      "s3:GetAccelerateConfiguration", "s3:GetBucketRequestPayment",
+      "s3:GetReplicationConfiguration", "s3:GetBucketOwnershipControls",
+    ]
+    resources = ["arn:aws:s3:::homeowner-staging-web-*"]
+  }
+
+  statement {
+    sid       = "WebBucketObjects"
+    actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+    resources = ["arn:aws:s3:::homeowner-staging-web-*/*"]
+  }
+
+  # CloudFront ids are generated, so distributions and access controls cannot
+  # be scoped by name, only by type.
+  statement {
+    sid = "CloudFrontDistributions"
+    actions = [
+      "cloudfront:CreateDistribution", "cloudfront:GetDistribution",
+      "cloudfront:GetDistributionConfig", "cloudfront:UpdateDistribution",
+      "cloudfront:DeleteDistribution", "cloudfront:TagResource",
+      "cloudfront:UntagResource", "cloudfront:ListTagsForResource",
+      "cloudfront:CreateInvalidation", "cloudfront:GetInvalidation",
+      "cloudfront:ListInvalidations",
+    ]
+    resources = ["arn:aws:cloudfront::${local.account_id}:distribution/*"]
+  }
+
+  statement {
+    sid = "CloudFrontAccessControls"
+    actions = [
+      "cloudfront:CreateOriginAccessControl", "cloudfront:GetOriginAccessControl",
+      "cloudfront:GetOriginAccessControlConfig", "cloudfront:UpdateOriginAccessControl",
+      "cloudfront:DeleteOriginAccessControl",
+    ]
+    resources = ["arn:aws:cloudfront::${local.account_id}:origin-access-control/*"]
+  }
+
+  # Actions without resource-level permissions, and the managed policies the
+  # web module looks up by name.
+  statement {
+    sid = "CloudFrontListAndPolicies"
+    actions = [
+      "cloudfront:ListDistributions", "cloudfront:ListOriginAccessControls",
+      "cloudfront:GetCachePolicy", "cloudfront:ListCachePolicies",
+      "cloudfront:GetResponseHeadersPolicy", "cloudfront:ListResponseHeadersPolicies",
+    ]
+    resources = ["*"]
+  }
+
   # CloudWatch log groups of the staging functions.
   statement {
     sid       = "LogGroups"
