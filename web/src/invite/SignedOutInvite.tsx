@@ -5,16 +5,16 @@ import { DEAD_INVITE_KEY, isDeadInvite } from "./deadInvite";
 
 interface Props {
   token: string;
-  /** Forget the Invite. */
+  /** Forget the Invite (and show sign-in). */
   onDismiss(): void;
-  /** Receives `startOnSignUp`: true when the Invite is good, so a new person lands on sign-up. */
-  children(startOnSignUp: boolean): ReactNode;
+  /** The sign-up and sign-in screens, shown under the welcome when the link is usable. */
+  children: ReactNode;
 }
 
 /**
  * For a signed-out person who opened an Invite link. Checks the link first (looking never uses it up): a dead
  * link is explained instead of showing the sign-in form; a good one is welcomed above the usual sign-up and
- * sign-in screens.
+ * sign-in screens. With an Invite pending the signed-out landing is sign-up (see resolveRoute).
  */
 export function SignedOutInvite({ token, onDismiss, children }: Props) {
   const { t } = useI18n();
@@ -52,7 +52,7 @@ export function SignedOutInvite({ token, onDismiss, children }: Props) {
         <h2 id="invite-welcome-heading">{t("invite.signedOut.heading")}</h2>
         {valid ? <p>{t("invite.signedOut.intro")}</p> : <p role="status">{t("invite.lookup.problem")}</p>}
       </section>
-      {children(valid)}
+      {children}
     </>
   );
 }
