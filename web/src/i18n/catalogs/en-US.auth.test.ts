@@ -6,13 +6,8 @@ import { enUS } from "./en-US";
 // on main before they moved into the catalog.
 const expected: Record<string, string> = {
   "signUp.heading": "Sign up",
-  "signUp.intro":
-    "Homeowner is for the people who look after a Home together. Signing up gives you a login of your own, so your Baseline, Preferences and Restrictions are yours and follow you, whoever else lives in the Home.",
   "signUp.emailLabel": "Email",
-  "signUp.emailHint":
-    "Your email is your login. We also send a code to it in the next step, which proves the email is really yours.",
   "signUp.passwordLabel": "Password",
-  "signUp.passwordHint": "It keeps anyone else from signing in as you.",
   "signUp.confirmLabel": "Confirm password",
   "signUp.mismatch": "The two passwords do not match.",
   "signUp.submit": "Sign up",
@@ -21,8 +16,6 @@ const expected: Record<string, string> = {
   "signUp.haveLoginAction": "Sign in",
 
   "signIn.heading": "Sign in",
-  "signIn.intro":
-    "Signing in tells Homeowner whose Check-in and Tasks to show. You stay signed in on this device until you sign out.",
   "signIn.confirmedNotice": "Your email is confirmed. Sign in to start.",
   "signIn.emailLabel": "Email",
   "signIn.passwordLabel": "Password",
@@ -32,9 +25,7 @@ const expected: Record<string, string> = {
   "signIn.newHereAction": "Sign up",
 
   "confirm.heading": "Confirm your email",
-  "confirm.intro":
-    "We sent a code to {email}. Entering it proves the email is yours, so nobody can sign up in your name or take over your Preferences. Until you do, you cannot sign in.",
-  "confirm.spamHint": "The email can take a minute, and it may land in your spam folder.",
+  "confirm.intro": "We sent a code to {email}.",
   "confirm.codeLabel": "Code from the email",
   "confirm.submit": "Confirm",
   "confirm.submitting": "Checking...",
@@ -45,8 +36,7 @@ const expected: Record<string, string> = {
   "signedIn.heading": "You are signed in",
   "signedIn.as": "Signed in as {email}.",
   "signedIn.emailFallback": "your email",
-  "signedIn.offline":
-    "Homeowner cannot reach the service right now, so this is the last sign-in this device remembers. Open the app again when you are back online to check.",
+  "signedIn.offline": "Cannot reach the service. This is the last sign-in this device remembers.",
   "signedIn.signOut": "Sign out",
 
   "auth.showPassword": "Show password",

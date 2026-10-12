@@ -79,8 +79,6 @@ export function ChoresSection() {
 
       {state.kind === "ready" && (
         <>
-          <p>{t("chores.intro")}</p>
-
           {state.chores.length === 0 && editing.kind === "none" && (
             <Card className="border-dashed">
               <p>{t("chores.empty")}</p>

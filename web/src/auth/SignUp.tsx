@@ -85,12 +85,8 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
   return (
     <Card as="section" aria-labelledby="signup-heading">
       <h2 id="signup-heading">{t("signUp.heading")}</h2>
-      <p>{t("signUp.intro")}</p>
       <form onSubmit={submit} onBlur={checkOnBlur} onChange={onFormChange}>
         <label htmlFor="signup-email">{t("signUp.emailLabel")}</label>
-        <p id="signup-email-why" className="my-1 text-sm text-muted">
-          {t("signUp.emailHint")}
-        </p>
         <input
           id="signup-email"
           name="email"
@@ -100,13 +96,10 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
           autoCapitalize="none"
           spellCheck={false}
           required
-          {...fieldError(problem, "email", FORM, "signup-email-why")}
+          {...fieldError(problem, "email", FORM)}
         />
 
         <label htmlFor="signup-password">{t("signUp.passwordLabel")}</label>
-        <p id="signup-password-why" className="my-1 text-sm text-muted">
-          {t("signUp.passwordHint")}
-        </p>
         <PasswordRules id="signup-password-rules" rules={rules} />
         <div role="status" aria-atomic="true" className="sr-only">
           {announcementText(t, change)}
@@ -116,7 +109,7 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
           name="password"
           autoComplete="new-password"
           required
-          {...fieldError(problem, "password", FORM, "signup-password-why signup-password-rules")}
+          {...fieldError(problem, "password", FORM, "signup-password-rules")}
         />
 
         <label htmlFor="signup-confirm">{t("signUp.confirmLabel")}</label>

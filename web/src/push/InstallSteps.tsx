@@ -7,13 +7,11 @@ export function InstallSteps({ showHeading = true }: { showHeading?: boolean }) 
   return (
     <section aria-labelledby={showHeading ? "install-heading" : undefined}>
       {showHeading && <h2 id="install-heading">{t("install.heading")}</h2>}
-      <p>{t("install.intro")}</p>
       <ol>
         {INSTALL_STEP_KEYS.map((key) => (
           <li key={key}>{t(key)}</li>
         ))}
       </ol>
-      <p>{t("install.outro")}</p>
     </section>
   );
 }

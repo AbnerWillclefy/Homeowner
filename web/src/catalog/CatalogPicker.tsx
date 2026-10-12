@@ -2,6 +2,8 @@ import { useEffect, useRef } from "react";
 import type { CatalogEntry } from "../api/catalog";
 import type { Failure } from "../api/chores";
 import { choreFacts } from "../chores/facts";
+import { CardRow } from "../components/ui/CardRow";
+import { PillButton } from "../components/ui/PillButton";
 import { useI18n, type MessageKey } from "../i18n";
 import { catalogName } from "./name";
 import { useCatalog } from "./useCatalog";
@@ -31,7 +33,6 @@ export function CatalogPicker({ onPick, onClose }: Props) {
       <h3 id="catalog-picker-heading" ref={headingRef} tabIndex={-1}>
         {t("chores.catalog.heading")}
       </h3>
-      <p>{t("chores.catalog.intro")}</p>
 
       {state.kind === "loading" && <p role="status">{t("chores.catalog.loading")}</p>}
 
@@ -54,16 +55,23 @@ export function CatalogPicker({ onPick, onClose }: Props) {
             const name = catalogName(entry.id, null, entry.name, t);
             return (
               <li key={entry.id} className="list-none ps-0">
-                <h4 className="font-semibold">{name}</h4>
-                <p className="text-muted">{[...choreFacts(entry, t, locale), ...(entry.perRoom ? [t("chores.catalog.perRoom")] : [])].join(" · ")}</p>
-                <button
-                  type="button"
-                  className="btn"
-                  aria-label={t("chores.catalog.add.label", { name })}
-                  onClick={() => onPick(entry)}
+                <CardRow
+                  className="mb-3"
+                  actions={
+                    <PillButton
+                      variant="secondary"
+                      aria-label={t("chores.catalog.add.label", { name })}
+                      onClick={() => onPick(entry)}
+                    >
+                      {t("chores.catalog.add")}
+                    </PillButton>
+                  }
                 >
-                  {t("chores.catalog.add")}
-                </button>
+                  <h4 className="mt-0 font-semibold">{name}</h4>
+                  <p className="text-muted">
+                    {[...choreFacts(entry, t, locale), ...(entry.perRoom ? [t("chores.catalog.perRoom")] : [])].join(" · ")}
+                  </p>
+                </CardRow>
               </li>
             );
           })}

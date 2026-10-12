@@ -16,7 +16,7 @@ describe("splitAtEmail", () => {
     expect(splitAtEmail(en)).toEqual(["Signed in as ", "."]);
     const pt = translate("pt-BR", "confirm.intro", { email: EMAIL_MARKER });
     expect(splitAtEmail(pt)[0]).toBe("Enviamos um código para ");
-    expect(splitAtEmail(pt)[1]).toMatch(/^\. Digitá-lo/);
+    expect(splitAtEmail(pt)[1]).toBe(".");
   });
 
   it("keeps all the text when the marker is missing", () => {

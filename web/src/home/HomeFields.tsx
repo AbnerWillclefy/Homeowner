@@ -6,7 +6,6 @@ import { fieldErrorKey } from "./fieldErrors";
 interface SelectFieldProps {
   id: string;
   label: string;
-  hint: string;
   /** The already-translated error, if the field has one. */
   error: string | undefined;
   value: string;
@@ -15,8 +14,8 @@ interface SelectFieldProps {
   onChange(value: string): void;
 }
 
-/** A labelled select with a hint and an error, owning the id and aria wiring between them. */
-function SelectField({ id, label, hint, error, value, disabled, options, onChange }: SelectFieldProps) {
+/** A labelled select with an error, owning the id and aria wiring between them. */
+function SelectField({ id, label, error, value, disabled, options, onChange }: SelectFieldProps) {
   return (
     <div>
       <label htmlFor={id}>{label}</label>
@@ -25,7 +24,7 @@ function SelectField({ id, label, hint, error, value, disabled, options, onChang
         value={value}
         disabled={disabled}
         aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${id}-hint ${id}-error` : `${id}-hint`}
+        aria-describedby={error ? `${id}-error` : undefined}
         onChange={(event) => onChange(event.target.value)}
       >
         {options.map((option) => (
@@ -34,9 +33,6 @@ function SelectField({ id, label, hint, error, value, disabled, options, onChang
           </option>
         ))}
       </select>
-      <p id={`${id}-hint`} className="text-muted">
-        {hint}
-      </p>
       {error && (
         <p id={`${id}-error`} className="text-danger">
           {error}
@@ -70,7 +66,6 @@ export function HomeFields({ idPrefix, values, timezones, fieldErrors, disabled,
       <SelectField
         id={`${idPrefix}-timezone`}
         label={t("home.timezone.label")}
-        hint={t("home.timezone.hint")}
         error={errorFor("timezone")}
         value={values.timezone}
         disabled={disabled}
@@ -80,7 +75,6 @@ export function HomeFields({ idPrefix, values, timezones, fieldErrors, disabled,
       <SelectField
         id={`${idPrefix}-allocationTime`}
         label={t("home.allocationTime.label")}
-        hint={t("home.allocationTime.hint")}
         error={errorFor("allocationTime")}
         value={values.allocationTime}
         disabled={disabled}

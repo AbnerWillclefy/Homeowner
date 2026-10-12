@@ -1,4 +1,4 @@
-import { Card } from "../components/ui/Card";
+import { CardRow } from "../components/ui/CardRow";
 import { isLocale, LANGUAGE_NAME, LOCALES, useI18n, type MessageKey } from "../i18n";
 import { THEME_CHOICES, isThemeChoice, useTheme, type ThemeChoice } from "../theme";
 
@@ -8,49 +8,68 @@ const CHOICE_KEY: Record<ThemeChoice, MessageKey> = {
   dark: "settings.appearance.dark",
 };
 
-/** The Appearance control: one labelled native select, no heading or card, so any layout can place it. */
-export function AppearanceSetting() {
+// A select inside a card row sizes to its options, not to the whole width.
+const IN_ROW = "mt-0 w-auto max-w-full";
+
+function AppearanceSelect({ className }: { className?: string }) {
   const { t } = useI18n();
   const { choice, setChoice } = useTheme();
   return (
+    <select
+      id="settings-appearance"
+      className={className}
+      value={choice}
+      onChange={(event) => {
+        if (isThemeChoice(event.target.value)) setChoice(event.target.value);
+      }}
+    >
+      {THEME_CHOICES.map((value) => (
+        <option key={value} value={value}>
+          {t(CHOICE_KEY[value])}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function LanguageSelect({ className }: { className?: string }) {
+  const { locale, setLocale } = useI18n();
+  return (
+    <select
+      id="settings-language"
+      className={className}
+      value={locale}
+      onChange={(event) => {
+        if (isLocale(event.target.value)) setLocale(event.target.value);
+      }}
+    >
+      {LOCALES.map((tag) => (
+        <option key={tag} value={tag} lang={tag}>
+          {LANGUAGE_NAME[tag]}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/** The Appearance control: one labelled native select, no heading or card, so any layout can place it. */
+export function AppearanceSetting() {
+  const { t } = useI18n();
+  return (
     <div>
       <label htmlFor="settings-appearance">{t("settings.appearance.label")}</label>
-      <select
-        id="settings-appearance"
-        value={choice}
-        onChange={(event) => {
-          if (isThemeChoice(event.target.value)) setChoice(event.target.value);
-        }}
-      >
-        {THEME_CHOICES.map((value) => (
-          <option key={value} value={value}>
-            {t(CHOICE_KEY[value])}
-          </option>
-        ))}
-      </select>
+      <AppearanceSelect />
     </div>
   );
 }
 
 /** The Language control: one labelled native select, no heading or card. */
 export function LanguageSetting() {
-  const { t, locale, setLocale } = useI18n();
+  const { t } = useI18n();
   return (
     <div>
       <label htmlFor="settings-language">{t("settings.language.label")}</label>
-      <select
-        id="settings-language"
-        value={locale}
-        onChange={(event) => {
-          if (isLocale(event.target.value)) setLocale(event.target.value);
-        }}
-      >
-        {LOCALES.map((tag) => (
-          <option key={tag} value={tag} lang={tag}>
-            {LANGUAGE_NAME[tag]}
-          </option>
-        ))}
-      </select>
+      <LanguageSelect />
     </div>
   );
 }
@@ -70,24 +89,40 @@ export function Settings() {
   );
 }
 
-/** Appearance on the Me tab: a titled card holding the control. The title repeats the visible label on purpose. */
+/** Appearance on the Me tab: the name on the left, the control on the right. The heading is the control's label. */
 export function AppearanceCard() {
   const { t } = useI18n();
   return (
-    <Card as="section" aria-labelledby="me-appearance-heading">
-      <h2 id="me-appearance-heading">{t("settings.appearance.label")}</h2>
-      <AppearanceSetting />
-    </Card>
+    <CardRow
+      as="section"
+      aria-labelledby="me-appearance-heading"
+      className="items-center"
+      actions={<AppearanceSelect className={IN_ROW} />}
+    >
+      <h2 id="me-appearance-heading" className="my-0">
+        <label htmlFor="settings-appearance" className="mt-0">
+          {t("settings.appearance.label")}
+        </label>
+      </h2>
+    </CardRow>
   );
 }
 
-/** Language on the Me tab: a titled card holding the control. */
+/** Language on the Me tab: the name on the left, the control on the right. */
 export function LanguageCard() {
   const { t } = useI18n();
   return (
-    <Card as="section" aria-labelledby="me-language-heading">
-      <h2 id="me-language-heading">{t("settings.language.label")}</h2>
-      <LanguageSetting />
-    </Card>
+    <CardRow
+      as="section"
+      aria-labelledby="me-language-heading"
+      className="items-center"
+      actions={<LanguageSelect className={IN_ROW} />}
+    >
+      <h2 id="me-language-heading" className="my-0">
+        <label htmlFor="settings-language" className="mt-0">
+          {t("settings.language.label")}
+        </label>
+      </h2>
+    </CardRow>
   );
 }

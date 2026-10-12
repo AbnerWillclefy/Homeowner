@@ -40,7 +40,6 @@ export function SignIn({ initialEmail, logIn, onNeedsConfirm, onNeedsSignUp }: P
   return (
     <Card as="section" aria-labelledby="signin-heading">
       <h2 id="signin-heading">{t("signIn.heading")}</h2>
-      <p>{t("signIn.intro")}</p>
       <form onSubmit={submit}>
         <label htmlFor="signin-email">{t("signIn.emailLabel")}</label>
         <input

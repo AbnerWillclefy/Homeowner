@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import type { Chore } from "../api/chores";
 import { PREFERENCES, type Preference } from "../api/profile";
 import { AppDialog } from "../components/ui/AppDialog";
+import { CardRow } from "../components/ui/CardRow";
 import { useI18n, type MessageKey } from "../i18n";
 import { effortName } from "../chores/effortLevels";
 import { categoryLabel, labelText, type Label } from "../profile/labels";
@@ -42,19 +43,18 @@ export function RatingStep({ onClose }: Props) {
       {state.kind === "problem" && <p role="alert">{t("invite.rating.problem")}</p>}
 
       {state.kind === "ready" && state.chores.length > 0 && (
-        <>
-          <p>{t("invite.rating.intro")}</p>
-          <ul className="p-0">
-            {state.chores.map((chore: Chore) => {
-              const setting = settingOf(chore.id);
-              return (
-                <li key={chore.id} className="list-none ps-0">
-                  <fieldset className="mt-4 p-0 border-0">
-                    <legend className="font-semibold">{chore.name}</legend>
-                    <p className="mt-0">
-                      {text(categoryLabel(chore.category))}, {t("chores.item.effort", { level: effortName(t, chore.baseEffort) })}
-                    </p>
-                    <div className="flex flex-wrap gap-x-4">
+        <ul className="p-0">
+          {state.chores.map((chore: Chore) => {
+            const setting = settingOf(chore.id);
+            const nameId = `rating-name-${chore.id}`;
+            return (
+              <li key={chore.id} className="list-none ps-0">
+                <CardRow
+                  role="group"
+                  aria-labelledby={nameId}
+                  className="mt-3"
+                  actions={
+                    <div className="flex flex-col">
                       {PREFERENCES.map((value) => (
                         <label key={value} className="flex items-center gap-2 min-h-11 mt-0 font-normal">
                           <input
@@ -68,21 +68,28 @@ export function RatingStep({ onClose }: Props) {
                         </label>
                       ))}
                     </div>
-                    <label className="flex items-center gap-3 min-h-11 font-normal">
-                      <input
-                        type="checkbox"
-                        className="size-5 w-5 min-h-0 mt-0 shrink-0 accent-accent"
-                        checked={setting.restricted}
-                        onChange={(event) => setRestricted(chore.id, event.target.checked)}
-                      />
-                      {t("invite.rating.restricted")}
-                    </label>
-                  </fieldset>
-                </li>
-              );
-            })}
-          </ul>
-        </>
+                  }
+                >
+                  <p id={nameId} className="mt-0 font-semibold">
+                    {chore.name}
+                  </p>
+                  <p className="mt-0">
+                    {text(categoryLabel(chore.category))}, {t("chores.item.effort", { level: effortName(t, chore.baseEffort) })}
+                  </p>
+                  <label className="flex items-center gap-3 min-h-11 font-normal">
+                    <input
+                      type="checkbox"
+                      className="size-5 w-5 min-h-0 mt-0 shrink-0 accent-accent"
+                      checked={setting.restricted}
+                      onChange={(event) => setRestricted(chore.id, event.target.checked)}
+                    />
+                    {t("invite.rating.restricted")}
+                  </label>
+                </CardRow>
+              </li>
+            );
+          })}
+        </ul>
       )}
 
       <button type="button" className={state.kind === "ready" ? "btn btn-primary" : "btn"} onClick={onClose}>

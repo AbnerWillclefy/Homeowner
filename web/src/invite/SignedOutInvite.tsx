@@ -52,7 +52,7 @@ export function SignedOutInvite({ token, onDismiss, children }: Props) {
     <>
       <Card as="section" aria-labelledby="invite-welcome-heading">
         <h2 id="invite-welcome-heading">{t("invite.signedOut.heading")}</h2>
-        {valid ? <p>{t("invite.signedOut.intro")}</p> : <p role="status">{t("invite.lookup.problem")}</p>}
+        {!valid && <p role="status">{t("invite.lookup.problem")}</p>}
       </Card>
       {children}
     </>

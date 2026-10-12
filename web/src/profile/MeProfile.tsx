@@ -18,8 +18,6 @@ export function MeProfile() {
 
   return (
     <>
-      {state.kind === "ready" && <p>{t("profile.intro")}</p>}
-
       {/* Load problems only; each save or undo is a toast, announced once by the toast region. */}
       <ProfileStatus state={state} retry={retry} />
 

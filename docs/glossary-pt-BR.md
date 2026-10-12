@@ -14,18 +14,18 @@ Agreed Brazilian Portuguese equivalents for the terms in [CONTEXT.md](../CONTEXT
 | CONTEXT.md term | pt-BR | pt-BR words to avoid | Note |
 |---|---|---|---|
 | Home | lar | residência, domicílio (and "casa" unless the native speaker chooses it) | Covers houses and apartments, as CONTEXT.md requires. "Casa" is the colloquial fallback if the native speaker prefers it. Used in: "Divida os afazeres domésticos do seu lar de forma justa." and the `home.*` Home screen strings ("Crie o seu lar", "Seu lar"). |
-| Check-in | check-in | verificação de humor, pesquisa, enquete | The English word is common in Brazilian apps. The native speaker may prefer "registro do dia". Used in `reminders.intro`, `install.intro` and `checkin.*`. |
+| Check-in | check-in | verificação de humor, pesquisa, enquete | The English word is common in Brazilian apps. The native speaker may prefer "registro do dia". Used in `checkin.*` and `dayplan.chip.*`. |
 | User | login (in running text); "usuário" only if a noun is unavoidable | conta, perfil, pessoa | CONTEXT.md avoids Account, Profile and Person, so the pt-BR avoids their calques "conta", "perfil" and "pessoa" for a User. The sign-in copy says "login" the way the English says "login" ("um login só seu"). Used in `signUp.*`, `signIn.*`, `signedIn.*`. No catalog value says "perfil": the page is "Eu" (see Me below) and the loading and error texts say "seus dados". |
 | Me | Eu (the tab and in sentences: "na aba Eu") | perfil, minha conta | The English "Me" tab (`nav.me`). "Eu" is unverified as a title and in "na aba Eu"; the native speaker should confirm. `noProfileWord.test.ts` fails if "perfil" returns to any value. |
-| Resident | morador | membro, proprietário, dono | Plural "moradores". A User who lives in a Home; all Residents have equal say. Used in `home.create.intro`, `home.settings.intro`. |
+| Resident | morador | membro, proprietário, dono | Plural "moradores". A User who lives in a Home; all Residents have equal say. Used in `home.leave.*` and `invite.*`. |
 | Invite | convite | código de convite, link de entrada | A single-use link a Resident shares; valid for seven days ("sete dias"). Used in `invite.*`. |
 | Allocation | alocação | agendamento, distribuição | The daily run that proposes Tasks. "Allocation time" is "horário da alocação" (the time of day it runs). Used in `home.allocationTime.label`. |
-| Task | tarefa | atribuição, ocorrência, instância | Plural "tarefas" in running text. Used in `install.intro`. |
-| Day Plan | plano do dia | agenda, cronograma, programação, lista diária | Used in `reminders.intro`. |
+| Task | tarefa | atribuição, ocorrência, instância | Plural "tarefas" in running text. Used in `dayplan.*`. |
+| Day Plan | plano do dia | agenda, cronograma, programação, lista diária | Used in `home.leave.removes`. |
 | Baseline | energia base | padrão, energia padrão | A User's usual Energy per weekday. Used in `profile.baseline.*`. |
 | Baseline level | baixa, normal, alta | fraca, forte, média | The three choices per weekday (Low, Normal, High); they describe the Energy ("energia"), so they agree with it in the feminine, like the Check-in "baixa". Used in `profile.baseline.level.*`. |
-| Energy | energia | humor, disposição, fôlego | Used in `profile.baseline.explain`. |
-| Effort | esforço | dificuldade, custo, duração | In points from 1 to 5, shown to the person as five named levels (`effort.level.*`: Muito leve, Leve, Médio, Pesado, Muito pesado). Used in `profile.baseline.explain` and `chores.form.baseEffort.*` (a Chore's base Effort). |
+| Energy | energia | humor, disposição, fôlego | Used in `checkin.level.legend`. |
+| Effort | esforço | dificuldade, custo, duração | In points from 1 to 5, shown to the person as five named levels (`effort.level.*`: Muito leve, Leve, Médio, Pesado, Muito pesado). Used in `chores.form.baseEffort.*` (a Chore's base Effort). |
 | Chore | afazer | atividade, trabalho, tarefa (a Task is "tarefa") | Plural "afazeres". Used in `profile.*` and the `chores.*` Chores screen. |
 | Preference | preferência | gosto | Like, neutral, dislike are "Gosto", "Neutro", "Não gosto". |
 | Restriction | restrição | limitação, requisito | Used in `profile.restrictions.*`. |

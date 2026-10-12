@@ -17,11 +17,11 @@ export const KIND_TEXT: Record<NotificationKind, Record<Locale, { title: string;
   checkin_reminder: {
     "en-US": {
       title: "Time to check in",
-      body: "Tell Homeowner how you feel today so your tasks fit your energy.",
+      body: "Tell Homeowner how you feel today.",
     },
     "pt-BR": {
       title: "Hora do check-in",
-      body: "Conte ao Homeowner como você está hoje para que suas tarefas combinem com a sua energia.",
+      body: "Conte ao Homeowner como você está hoje.",
     },
   },
   day_plan_ready: {

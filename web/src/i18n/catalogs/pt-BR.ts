@@ -36,36 +36,24 @@ export const ptBR: Messages = {
   "home.notSignedIn": "Seu login terminou. Entre novamente para continuar.",
   "home.retry": "Tentar novamente",
   "home.create.heading": "Crie o seu lar",
-  "home.create.intro":
-    "O seu lar é o lugar que você e os outros moradores cuidam juntos. O Homeowner precisa do fuso horário e do horário da alocação para saber quando cada dia começa e quando propor o plano do dia. Você pode mudar os dois depois, e só pode morar em um lar.",
   "home.create.submit": "Criar lar",
   "home.create.submitting": "Criando...",
   "home.create.recovered": "Você já tem um lar, então o Homeowner o carregou. Confira os ajustes dele abaixo.",
   "home.settings.heading": "Seu lar",
-  "home.settings.intro":
-    "Todos os moradores de um lar têm o mesmo poder de decisão, então qualquer morador pode mudar estes ajustes. O horário da alocação é quando o Homeowner propõe o plano do dia.",
   "home.settings.save": "Salvar alterações",
   "home.settings.saving": "Salvando...",
   "home.settings.saved": "Suas alterações foram salvas.",
   "home.timezone.label": "Fuso horário",
-  "home.timezone.hint": "Onde fica o seu lar, para o Homeowner saber quando cada dia começa.",
   "home.allocationTime.label": "Horário da alocação",
-  "home.allocationTime.hint":
-    "O horário de cada dia em que o Homeowner propõe o plano do dia, no fuso horário do seu lar. Os horários variam de 15 em 15 minutos.",
   "home.save.offline":
     "O Homeowner não consegue acessar o serviço. O que você digitou continua aqui; verifique sua conexão e tente novamente.",
   "home.save.error": "Algo deu errado e nada foi salvo. O que você digitou continua aqui; tente novamente em instantes.",
   "home.leave.heading": "Sair deste lar",
-  "home.leave.intro":
-    "Se você se mudar ou não dividir mais este lar, pode sair dele. Depois, você pode entrar em outro lar ou criar um novo.",
   "home.leave.open": "Sair deste lar",
   "home.leave.title": "Sair deste lar?",
-  "home.leave.removes":
-    "Suas preferências e restrições para os afazeres deste lar são apagadas, e o mesmo vale para os seus lugares no plano do dia.",
-  "home.leave.stays":
-    "Sua energia base e suas preferências e restrições gerais continuam com você e vão para o próximo lar.",
-  "home.leave.last":
-    "Se você for o último morador, o lar e todos os afazeres dele são apagados, e isso não pode ser desfeito.",
+  "home.leave.removes": "Suas preferências e restrições para os afazeres dele, e seus lugares no plano do dia, são apagados.",
+  "home.leave.stays": "Sua energia base e suas preferências e restrições gerais vão com você.",
+  "home.leave.last": "Se você for o último morador, o lar e seus afazeres são apagados de vez.",
   "home.leave.cancel": "Cancelar",
   "home.leave.confirm": "Sair do lar",
   "home.leave.leaving": "Saindo...",
@@ -85,9 +73,8 @@ export const ptBR: Messages = {
   "reminders.enable": "Ativar lembretes",
   "reminders.enabling": "Ativando...",
   "reminders.problem.denied":
-    "As notificações estão bloqueadas para o Homeowner. Abra os Ajustes (ou Configurações) do seu celular, encontre o Homeowner em Notificações, permita-as e volte aqui. O app não pode perguntar uma segunda vez.",
-  "reminders.problem.dismissed":
-    "Você fechou a pergunta de permissão sem responder. Toque no botão para tentar de novo quando quiser.",
+    "As notificações estão bloqueadas para o Homeowner. Permita-as nos Ajustes (ou Configurações) do celular, em Notificações.",
+  "reminders.problem.dismissed": "Você fechou a pergunta de permissão. Toque no botão para tentar de novo.",
   "reminders.problem.notConfigured":
     "Os lembretes ainda não estão configurados no serviço. Tente novamente mais tarde.",
   "reminders.problem.notSignedIn": "Você não está mais conectado. Entre de novo e depois ative os lembretes.",
@@ -100,17 +87,12 @@ export const ptBR: Messages = {
 
   // iPhone install steps
   "install.heading": "Adicione o Homeowner à sua Tela de Início",
-  "install.intro":
-    "Os lembretes avisam você quando o seu check-in está esperando e quais tarefas foram propostas para você. No iPhone, a Apple só permite notificações para apps adicionados à Tela de Início, e é preciso ter o iOS 16.4 ou mais recente.",
   "install.step1": "Abra esta página no Safari (não dentro de outro app).",
   "install.step2": "Toque no botão Compartilhar, o quadrado com uma seta, na parte inferior da tela.",
   "install.step3": "Role para baixo e toque em Adicionar à Tela de Início, depois toque em Adicionar.",
   "install.step4": "Feche o Safari e abra o Homeowner pelo novo ícone na sua Tela de Início.",
-  "install.outro": "Quando você abrir o Homeowner pelo ícone, esta página vai permitir ativar os lembretes.",
 
   // Profile
-  "profile.intro":
-    "O Homeowner usa isto para dividir os afazeres domésticos de forma justa: dá menos afazeres a você nos dias cansativos e evita o que você não gosta ou não consegue fazer. Seus dados vão com você se você mudar de lar.",
   "profile.loading": "Carregando seus dados...",
   "profile.offline": "Não foi possível falar com o serviço, então seus dados não aparecem. Verifique sua conexão e tente de novo.",
   "profile.error": "Algo deu errado ao carregar seus dados. Tente de novo em instantes.",
@@ -120,20 +102,14 @@ export const ptBR: Messages = {
   "profile.saveFailed": "Não foi possível salvar sua alteração, então ela foi desfeita. Verifique sua conexão e tente de novo.",
   "profile.saveFailed.notSignedIn": "Você não está mais conectado, então sua alteração foi desfeita. Entre de novo.",
   "profile.baseline.heading": "Energia base",
-  "profile.baseline.explain":
-    "Um ponto mede o esforço: o quanto um trabalho cansa, de 1 a 5. Sua energia base é a energia que você costuma ter em cada dia, nesses mesmos pontos; escolha Baixa, Normal ou Alta para cada dia. É salvo assim que você escolhe.",
   "profile.baseline.level.low": "Baixa",
   "profile.baseline.level.normal": "Normal",
   "profile.baseline.level.high": "Alta",
   "profile.preferences.heading": "Preferências",
-  "profile.preferences.intro":
-    "Diga de quais tipos de trabalho você gosta ou não gosta. Os afazeres de que você não gosta chegam a você com menos frequência, mas nunca à custa do que é essencial. O que você não mexer fica neutro.",
   "profile.preference.like": "Gosto",
   "profile.preference.neutral": "Neutro",
   "profile.preference.dislike": "Não gosto",
   "profile.restrictions.heading": "Restrições",
-  "profile.restrictions.intro":
-    "Marque o que o seu corpo não consegue fazer. Os afazeres que pedem isso nunca são dados a você. Desmarque quando isso mudar.",
   "category.kitchen": "Cozinha",
   "category.bathroom": "Banheiro",
   "category.bedroom": "Quarto",
@@ -155,15 +131,13 @@ export const ptBR: Messages = {
 
   // Chores
   "chores.heading": "Afazeres",
-  "chores.intro":
-    "Afazeres são o trabalho que o seu lar precisa que seja feito. O Homeowner divide os afazeres todos os dias, então quanto mais certinha for a descrição de cada um, mais justa é a divisão.",
   "chores.loading": "Carregando os seus afazeres...",
   "chores.load.offline":
     "Não foi possível carregar os seus afazeres porque o Homeowner não consegue falar com o serviço. Confira a sua conexão e tente de novo.",
   "chores.load.error": "Algo deu errado ao carregar os seus afazeres. Tente de novo daqui a pouco.",
   "chores.notSignedIn": "Seu login terminou. Entre de novo para continuar.",
   "chores.retry": "Tentar de novo",
-  "chores.empty": "O seu lar ainda não tem afazeres. Toque em \"Adicionar afazer\" para criar o seu, ou em \"Adicionar do Catálogo\" para partir de um pronto.",
+  "chores.empty": "Nenhum afazer ainda.",
   "chores.add": "Adicionar afazer",
   "effort.level.very_light": "Muito leve",
   "effort.level.light": "Leve",
@@ -196,32 +170,21 @@ export const ptBR: Messages = {
   "chores.form.create.heading": "Adicionar afazer",
   "chores.form.edit.heading": "Editar afazer",
   "chores.form.name.label": "Nome",
-  "chores.form.name.hint": "Como o afazer se chama, por exemplo \"Lavar a louça\".",
   "chores.form.category.label": "Categoria",
-  "chores.form.category.hint": "Que tipo de trabalho é. Ela define quem gosta ou não gosta dele.",
   "chores.form.category.placeholder": "Escolha uma categoria",
   "chores.form.demands.legend": "Exigências",
-  "chores.form.demands.hint":
-    "O que o afazer pede do corpo. Moradores com uma restrição correspondente nunca recebem esse afazer.",
   "chores.form.baseEffort.legend": "Esforço",
-  "chores.form.baseEffort.hint": "O quanto cansa cada pessoa que o faz, de muito leve a muito pesado.",
   "chores.form.importance.legend": "Importância",
-  "chores.form.importance.hint": "O quanto importa que isso seja feito. Os afazeres essenciais são divididos primeiro.",
   "chores.form.people.legend": "Pessoas necessárias",
-  "chores.form.people.hint": "Se um morador faz sozinho ou se dois fazem juntos.",
   "chores.form.people.one": "Uma pessoa",
   "chores.form.people.two": "Duas pessoas",
-  "chores.form.suggestion": "Um afazer tão cansativo fica mais leve em dupla. Você pode torná-lo um afazer para duas pessoas.",
+  "chores.form.suggestion": "Um afazer tão cansativo fica mais leve em dupla.",
   "chores.form.suggestion.action": "Tornar para duas pessoas",
   "chores.form.interval.legend": "Com que frequência",
   "chores.form.intervalDays.label": "Repetir a cada (dias)",
-  "chores.form.intervalDays.hint":
-    "Escolha Personalizado e deixe os dias em branco para um afazer que vence uma vez só. Mensal quer dizer a cada 30 dias.",
+  "chores.form.intervalDays.hint": "Deixe em branco para um afazer de uma vez só.",
   "chores.form.allowedWeekdays.legend": "Só nestes dias",
-  "chores.form.allowedWeekdays.hint": "Marque os dias em que ele pode ser dado a alguém. Não marque nenhum para permitir qualquer dia.",
   "chores.form.buildsUp.label": "Acumula enquanto não é feito",
-  "chores.form.buildsUp.hint":
-    "Marque se deixar de fazer o torna mais difícil, como a roupa se acumulando. O esforço dele então cresce a cada dia que passa sem ser feito.",
   "chores.form.submit.create": "Adicionar afazer",
   "chores.form.submit.save": "Salvar afazer",
   "chores.form.saving": "Salvando...",
@@ -256,18 +219,14 @@ export const ptBR: Messages = {
 
   // Hoje (o plano do dia)
   "dayplan.heading": "Hoje",
-  "dayplan.intro":
-    "Todos os dias, no horário da alocação do seu lar, o Homeowner propõe quem faz quais tarefas, sem pedir a ninguém mais energia do que tem. Este é o plano do dia de hoje. É uma proposta: nada aqui é definitivo.",
   "dayplan.loading": "Carregando o plano de hoje...",
   "dayplan.load.offline":
     "Não foi possível carregar o plano de hoje porque o Homeowner não consegue falar com o serviço. Confira a sua conexão e tente de novo.",
   "dayplan.load.error": "Algo deu errado ao carregar o plano de hoje. Tente de novo daqui a pouco.",
   "dayplan.notSignedIn": "Seu login terminou. Entre de novo para continuar.",
   "dayplan.retry": "Tentar de novo",
-  "dayplan.notPlanned":
-    "O plano de hoje ainda não foi feito. O Homeowner planeja o dia do seu lar às {time}, então volte depois disso. Estas são as tarefas em aberto entre as quais ele vai escolher.",
-  "dayplan.rejected":
-    "Não foi possível usar o plano de hoje, então nenhuma tarefa foi dada a ninguém hoje. As suas tarefas em aberto continuam listadas abaixo.",
+  "dayplan.notPlanned": "O plano de hoje é feito às {time}.",
+  "dayplan.rejected": "Não foi possível usar o plano de hoje, então nenhuma tarefa foi dada hoje.",
   "dayplan.greeting.morning": "Bom dia",
   "dayplan.greeting.afternoon": "Boa tarde",
   "dayplan.greeting.evening": "Boa noite",
@@ -277,15 +236,13 @@ export const ptBR: Messages = {
   "dayplan.chip.drained": "Esgotado hoje, sem tarefas",
   "dayplan.chip.energy": "Energia {energy}",
   "dayplan.chip.pending": "Check-in feito",
-  "dayplan.mine.empty.noBaseline":
-    "Você não tem energia base para este dia da semana, então a sua energia é 0 e nenhuma tarefa foi dada a você. Quando quiser, defina a sua energia base para receber tarefas nesse dia.",
+  "dayplan.mine.empty.noBaseline": "Sem energia base para hoje, então nenhuma tarefa para você.",
   "dayplan.mine.empty.noBaseline.link": "Definir a energia base",
   "dayplan.mine.heading": "Suas tarefas",
   "dayplan.mine.empty": "Nada para você hoje. Aproveite o dia.",
   "dayplan.others.heading": "Tarefas dos outros moradores",
   "dayplan.others.resident": "Morador {number}",
   "dayplan.pool.heading": "Ainda por fazer",
-  "dayplan.pool.intro": "Tarefas em aberto que não foram dadas a ninguém hoje, e o motivo.",
   "dayplan.pool.empty": "Nenhuma outra tarefa em aberto. Tudo está planejado ou feito.",
   "dayplan.task.effort": "Esforço: {level}",
   "dayplan.task.effort.grown": "Esforço: {level}, normalmente {base}",
@@ -301,25 +258,19 @@ export const ptBR: Messages = {
   "dayplan.pool.reason.two_person_deferred": "Precisa de duas pessoas, e as duas não estavam livres hoje.",
   "dayplan.pool.reason.invalid_effort": "O esforço dela não é válido, então ficou de fora. Edite o afazer para corrigir.",
   "dayplan.pool.reason.added_after_plan": "Foi adicionada depois que o plano de hoje foi feito.",
-  "dayplan.mine.empty.drained": "Você fez check-in como esgotado, então nenhuma tarefa foi dada a você hoje. Descanse.",
+  "dayplan.mine.empty.drained": "Você fez check-in como esgotado, então nenhuma tarefa hoje. Descanse.",
 
   // The start choice, at the end of both onboarding flows
   "startChoice.heading": "Quando você quer as suas tarefas?",
-  "startChoice.intro":
-    "O seu lar divide as tarefas todos os dias no horário da alocação. Você pode começar agora ou esperar a próxima.",
   "startChoice.now.button": "Receber minhas tarefas agora",
-  "startChoice.now.hint":
-    "O Homeowner planeja só você, agora, entre as tarefas em aberto que ninguém recebeu hoje. As tarefas dos outros moradores não mudam.",
   "startChoice.tomorrow.button": "Começar amanhã",
-  "startChoice.tomorrow.hint": "Esperar a próxima alocação diária. Nada é planejado para você até lá.",
   "startChoice.planning": "Planejando as suas tarefas...",
   "startChoice.retry": "Tentar de novo",
   "startChoice.failed.offline":
     "Parece que você está sem internet, então as suas tarefas não foram planejadas. Verifique a conexão e tente de novo.",
   "startChoice.failed.error": "Algo deu errado ao planejar as suas tarefas. Tente de novo daqui a pouco.",
-  "startChoice.done.tasks": "As suas tarefas de hoje estão prontas. Você pode vê-las em Hoje, logo abaixo.",
-  "startChoice.done.noEnergy":
-    "A sua energia de hoje é 0, então nenhuma tarefa foi dada a você. Se você não tem energia base para este dia da semana, defina-a na aba Eu para receber tarefas nesse dia.",
+  "startChoice.done.tasks": "As suas tarefas de hoje estão prontas.",
+  "startChoice.done.noEnergy": "A sua energia de hoje é 0, então você não tem tarefas. Defina a energia base na aba Eu.",
   "startChoice.done.nothing": "Não sobrou nenhuma tarefa em aberto para você hoje. Aproveite o dia.",
   "startChoice.done.close": "Entendi",
 
@@ -355,13 +306,8 @@ export const ptBR: Messages = {
 
   // Cadastro
   "signUp.heading": "Cadastrar-se",
-  "signUp.intro":
-    "O Homeowner é para as pessoas que cuidam juntas de um lar. Cadastrar-se dá a você um login só seu, então a sua energia base, as suas preferências e as suas restrições são suas e acompanham você, não importa quem mais more no lar.",
   "signUp.emailLabel": "E-mail",
-  "signUp.emailHint":
-    "Seu e-mail é o seu login. Também enviamos um código para ele na próxima etapa, que comprova que o e-mail é mesmo seu.",
   "signUp.passwordLabel": "Senha",
-  "signUp.passwordHint": "Ela impede que outra pessoa entre como você.",
   "signUp.confirmLabel": "Confirmar senha",
   "signUp.mismatch": "As duas senhas não são iguais.",
   "signUp.submit": "Cadastrar",
@@ -371,8 +317,6 @@ export const ptBR: Messages = {
 
   // Entrar
   "signIn.heading": "Entrar",
-  "signIn.intro":
-    "Entrar diz ao Homeowner de quem mostrar o check-in e as tarefas. Você continua com o login ativo neste dispositivo até sair.",
   "signIn.confirmedNotice": "Seu e-mail foi confirmado. Entre para começar.",
   "signIn.emailLabel": "E-mail",
   "signIn.passwordLabel": "Senha",
@@ -383,9 +327,7 @@ export const ptBR: Messages = {
 
   // Confirmar e-mail
   "confirm.heading": "Confirme seu e-mail",
-  "confirm.intro":
-    "Enviamos um código para {email}. Digitá-lo comprova que o e-mail é seu, para que ninguém se cadastre em seu nome nem assuma as suas preferências. Até você fazer isso, não é possível entrar.",
-  "confirm.spamHint": "O e-mail pode levar um minuto e pode cair na pasta de spam.",
+  "confirm.intro": "Enviamos um código para {email}.",
   "confirm.codeLabel": "Código do e-mail",
   "confirm.submit": "Confirmar",
   "confirm.submitting": "Verificando...",
@@ -397,8 +339,7 @@ export const ptBR: Messages = {
   "signedIn.heading": "Você está conectado",
   "signedIn.as": "Conectado como {email}.",
   "signedIn.emailFallback": "seu e-mail",
-  "signedIn.offline":
-    "O Homeowner não consegue acessar o serviço agora, então este é o último login que este dispositivo lembra. Abra o app de novo quando estiver online para conferir.",
+  "signedIn.offline": "Não foi possível acessar o serviço. Este é o último login que este dispositivo lembra.",
   "signedIn.signOut": "Sair",
 
   // Compartilhado pelas telas de login
@@ -439,8 +380,6 @@ export const ptBR: Messages = {
   // Invites: arriving from a link, joining, and sharing one
   "invite.checking": "Verificando seu convite...",
   "invite.signedOut.heading": "Você foi convidado para um lar",
-  "invite.signedOut.intro":
-    "Um morador convidou você para o lar dele. Crie um login, ou entre se você já tem um, e você passa a ser morador, com o mesmo poder de decisão no lar. Seu convite fica salvo neste aparelho, então você pode confirmar seu e-mail e voltar a ele.",
   "invite.lookup.problem":
     "O Homeowner não conseguiu verificar seu convite agora. O link foi guardado, então você ainda pode entrar e tentar de novo.",
   "invite.dead.not_found":
@@ -450,14 +389,12 @@ export const ptBR: Messages = {
   "invite.dead.continue": "Continuar",
   "invite.join.heading": "Entrar em um lar",
   "invite.join.loading": "Preparando seu convite...",
-  "invite.join.intro":
-    "Você foi convidado para um lar. Entrar faz de você um morador, com o mesmo poder de decisão. Se quiser, preencha antes sua energia base, suas preferências e suas restrições abaixo: o Homeowner usa isso para dividir o trabalho de forma justa. Você também pode fazer isso depois de entrar.",
   "invite.join.submit": "Entrar neste lar",
   "invite.join.submitting": "Entrando...",
   "invite.join.dismiss": "Agora não",
   "invite.leave.heading": "Entrar significa sair do seu lar",
   "invite.leave.warning":
-    "Você já mora em um lar, e um login pode ser morador de apenas um. Entrar neste significa sair do seu lar atual. Suas preferências e restrições para os afazeres dele são apagadas. Se você for o último morador, o lar e todos os afazeres dele também são apagados.",
+    "Entrar neste lar significa sair do atual. Suas preferências e restrições para os afazeres dele são apagadas. Se você for o último morador, o lar e seus afazeres também são apagados.",
   "invite.leave.confirm": "Sair do meu lar e entrar neste",
   "invite.leave.cancel": "Ficar no meu lar",
   "invite.alreadyHere": "Você já mora neste lar, então não havia o que fazer. O convite não foi gasto.",
@@ -468,8 +405,6 @@ export const ptBR: Messages = {
   "invite.failure.notSignedIn": "Você não está mais conectado. Entre de novo para continuar.",
   "invite.failure.retry": "Tentar de novo",
   "invite.rating.heading": "Avalie os afazeres mais pesados",
-  "invite.rating.intro":
-    "Agora você é morador. Estes são os afazeres mais exigentes do lar, pelo esforço. Diga ao Homeowner de quais você gosta ou não gosta e marque os que você não consegue fazer, para que suas primeiras tarefas combinem com você. Cada escolha é salva sozinha e você pode mudar depois.",
   "invite.rating.loading": "Carregando os afazeres...",
   "invite.rating.problem":
     "Não foi possível carregar os afazeres, então não há o que avaliar agora. Você pode pular esta etapa.",
@@ -480,8 +415,6 @@ export const ptBR: Messages = {
   "invite.rating.done": "Concluir",
   "invite.rating.skip": "Pular por enquanto",
   "invite.share.heading": "Convidar um morador",
-  "invite.share.intro":
-    "Um convite é um link que você pode enviar por qualquer app. Ele funciona uma vez e dura sete dias. Quem abrir pode entrar no seu lar, então envie só para a pessoa que você quer.",
   "invite.share.button": "Convidar um morador",
   "invite.share.creating": "Criando o convite...",
   "invite.share.title": "Entre no meu lar no Homeowner",
@@ -509,10 +442,8 @@ export const ptBR: Messages = {
   "home.create.next": "Próximo: sobre o seu lar",
   "home.create.back": "Voltar",
   "home.create.recovered.chores":
-    "Você já tem um lar, então o Homeowner carregou esse lar. Os afazeres que você revisou não foram adicionados; adicione-os pelo Catálogo na seção de afazeres.",
+    "Você já tem um lar, então ele foi carregado. Os afazeres que você revisou não foram adicionados; adicione-os pelo Catálogo.",
   "catalog.questions.heading": "Sobre o seu lar",
-  "catalog.questions.intro":
-    "Algumas respostas permitem que o Homeowner sugira os afazeres de que o seu lar precisa, para você não começar com a lista vazia. Nada é salvo ainda, e você pode mudar cada sugestão na próxima etapa. Deixe como está o que não se aplicar.",
   "catalog.questions.submit": "Sugerir afazeres",
   "catalog.questions.submitting": "Preparando os seus afazeres...",
   "catalog.questions.skip": "Pular e adicionar afazeres depois",
@@ -525,7 +456,6 @@ export const ptBR: Messages = {
   "catalog.answers.error.out_of_range": "Esta resposta está fora do intervalo permitido.",
   "catalog.answers.error.unknown": "Esta resposta não é reconhecida.",
   "catalog.rooms.legend": "Cômodos",
-  "catalog.rooms.hint": "Cada cômodo recebe os próprios afazeres; dois banheiros significam dois afazeres de banheiro.",
   "catalog.rooms.range": "De 0 a {max}",
   "catalog.rooms.bedrooms": "Quartos",
   "catalog.rooms.bathrooms": "Banheiros",
@@ -533,42 +463,32 @@ export const ptBR: Messages = {
   "catalog.rooms.livingRooms": "Salas",
   "catalog.rooms.laundryAreas": "Áreas de serviço",
   "catalog.outdoor.legend": "Área externa",
-  "catalog.outdoor.hint": "Define se afazeres da área externa, como varrer ou cortar a grama, são sugeridos.",
   "catalog.outdoor.none": "Nenhuma",
   "catalog.outdoor.balcony": "Varanda",
   "catalog.outdoor.yard": "Quintal",
   "catalog.outdoor.garden": "Jardim",
   "catalog.pets.legend": "Animais de estimação",
-  "catalog.pets.hint": "Cada animal adiciona afazeres de alimentação e cuidado. Não marque nada se você não tem animais.",
   "catalog.pets.dog": "Cachorro",
   "catalog.pets.cat": "Gato",
   "catalog.pets.fish": "Peixe",
   "catalog.pets.bird": "Pássaro",
   "catalog.pets.other": "Outro tipo de animal",
   "catalog.collection.legend": "Coleta de lixo e de reciclagem",
-  "catalog.collection.hint":
-    "Marque os dias em que a coleta passa. O afazer de colocar o lixo para fora fica limitado a esses dias. Deixe o grupo vazio se não há coleta.",
   "catalog.collection.trash": "Dias da coleta de lixo",
   "catalog.collection.recycling": "Dias da coleta de reciclagem",
   "catalog.habits.legend": "Cozinha e eletrodomésticos",
-  "catalog.habits.hint":
-    "Cozinhar em casa com mais frequência pede mais cuidado com a cozinha. Os eletrodomésticos que você tem mudam os afazeres sugeridos.",
   "catalog.habits.cooking.legend": "Com que frequência você cozinha em casa?",
   "catalog.habits.cooking.rarely": "Raramente",
   "catalog.habits.cooking.sometimes": "Às vezes",
   "catalog.habits.cooking.daily": "Todos os dias",
   "catalog.habits.dishwasher": "Temos lava-louças",
   "catalog.habits.washingMachine": "Temos máquina de lavar roupa",
-  "catalog.regenerate.prompt":
-    "Você mudou suas respostas, então os afazeres sugeridos serão calculados de novo e as suas alterações neles serão perdidas. Continuar?",
+  "catalog.regenerate.prompt": "Mudar suas respostas sugere os afazeres de novo e perde as suas alterações. Continuar?",
   "catalog.regenerate.confirm": "Sim, sugerir de novo",
   "catalog.regenerate.cancel": "Manter minhas alterações",
   "catalog.review.heading": "Revise os seus afazeres",
-  "catalog.review.intro":
-    "Estes são os afazeres que o Homeowner sugere a partir das suas respostas. Edite os que não servirem e remova os que você não quer; depois, crie o seu lar. Você pode adicionar ou mudar afazeres a qualquer momento.",
   "catalog.review.count": { one: "{count} afazer sugerido", other: "{count} afazeres sugeridos" },
-  "catalog.review.empty":
-    "Nenhum afazer foi sugerido. Você pode criar o seu lar agora e adicionar afazeres do Catálogo depois.",
+  "catalog.review.empty": "Nenhum afazer foi sugerido.",
   "catalog.review.edit": "Editar",
   "catalog.review.remove": "Remover",
   "catalog.review.remove.label": "Remover {name}",
@@ -584,8 +504,6 @@ export const ptBR: Messages = {
     "Algo deu errado ao carregar as listas necessárias para editar afazeres. Tente de novo em instantes.",
   "chores.addFromCatalog": "Adicionar do Catálogo",
   "chores.catalog.heading": "Adicionar do Catálogo",
-  "chores.catalog.intro":
-    "O Catálogo é a lista de afazeres comuns do Homeowner. Escolha um para adicioná-lo ao seu lar; você pode mudar qualquer coisa antes de salvar. Escolha de novo um afazer de cômodo para adicioná-lo a outro cômodo.",
   "chores.catalog.loading": "Carregando o Catálogo...",
   "chores.catalog.load.offline":
     "O Homeowner não consegue acessar o serviço, então o Catálogo não pôde ser carregado. Confira sua conexão e tente de novo.",
@@ -641,32 +559,17 @@ export const ptBR: Messages = {
   "onboarding.advance.error": "Algo deu errado ao salvar o seu progresso, então você continua nesta etapa. Tente de novo.",
   "onboarding.advance.notSignedIn": "O seu login foi encerrado. Entre de novo para continuar.",
   "onboarding.install.heading": "Adicione o Homeowner à sua Tela de Início",
-  "onboarding.install.why":
-    "No iPhone, a Apple só deixa um app enviar notificações depois que ele está na sua Tela de Início. Adicioná-lo agora permite que a próxima etapa ative os lembretes, e o Homeowner abre como qualquer outro app. O seu progresso fica salvo: quando você abrir o Homeowner pelo ícone e entrar de novo, continua daqui.",
   "onboarding.install.done": "Já adicionei",
   "onboarding.reminders.heading": "Ative os lembretes",
-  "onboarding.reminders.why":
-    "O Homeowner decide todo dia quem faz qual tarefa, e só consegue avisar você com o app fechado por meio de uma notificação. Sem lembretes, você teria que se lembrar de abrir o app. São só um aviso: nada deixa de funcionar se você pular esta etapa, e dá para ativá-los depois.",
-  "onboarding.reminders.needsInstall":
-    "Os lembretes só podem ser ativados depois que você abrir o Homeowner pelo ícone na Tela de Início. Continue por lá para retomar esta etapa, ou pule por enquanto.",
-  "onboarding.reminders.unsupported":
-    "Este navegador não consegue mostrar lembretes, então não há nada para ativar aqui. Você pode continuar sem eles.",
+  "onboarding.reminders.needsInstall": "Abra o Homeowner pelo ícone na Tela de Início para ativar os lembretes, ou pule esta etapa.",
+  "onboarding.reminders.unsupported": "Este navegador não consegue mostrar lembretes.",
   "onboarding.reminders.continue": "Continuar",
   "onboarding.reminders.notNow": "Agora não",
   "onboarding.baseline.heading": "Sua energia base",
-  "onboarding.baseline.why":
-    "Sua energia base é a energia que você costuma ter em cada dia da semana. O Homeowner a usa como ponto de partida para decidir quanto esforço dar a você, e o seu check-in diário diz como hoje se compara. Pedimos os sete dias para que ela se encaixe na sua semana; digite 0 num dia em que você não consegue fazer nenhum afazer.",
-  "onboarding.baseline.incomplete":
-    "Digite um número para cada dia da semana antes de continuar. Use 0 se você não consegue fazer nenhum afazer naquele dia.",
+  "onboarding.baseline.incomplete": "Digite um número para cada dia, ou 0 para um dia sem afazeres.",
   "onboarding.restrictions.heading": "Suas restrições",
-  "onboarding.restrictions.why":
-    "Alguns trabalhos exigem demais do corpo, como carregar peso ou usar produtos químicos fortes. Contar isso ao Homeowner agora faz com que um afazer com essa exigência nunca seja dado a você. Se nada disso se aplica a você, deixe tudo desmarcado: essa também é uma resposta completa.",
   "onboarding.preferences.heading": "Suas preferências",
-  "onboarding.preferences.why":
-    "Todo mundo gosta mais de alguns afazeres domésticos do que de outros. Suas preferências ajudam o Homeowner a dar a você mais do trabalho de que você gosta e menos do que não gosta, e a dividir em rodízio o trabalho de que ninguém gosta. Deixar um tipo de trabalho como neutro é uma boa resposta.",
   "onboarding.home.heading": "Crie o seu lar",
-  "onboarding.home.why":
-    "A última etapa. O seu lar é onde acontece a divisão diária. As próximas perguntas dizem ao Homeowner quando os seus dias começam e o que o seu lar precisa que seja feito, para que ele sugira os primeiros afazeres para você revisar. Você pode mudar tudo depois.",
 
   // Avisos
   "toast.dismiss": "Dispensar mensagem",

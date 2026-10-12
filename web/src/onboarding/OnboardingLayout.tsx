@@ -11,8 +11,6 @@ interface Props {
   /** The step's question: the page heading, focused on step change. */
   heading: string;
   headingRef: RefObject<HTMLHeadingElement | null>;
-  /** Why the step matters. */
-  why: string;
   /** Back in the top bar; absent where the step does not allow going back. */
   onBack?: () => void;
   /** The step's fields or action. */
@@ -33,7 +31,6 @@ export function OnboardingLayout({
   progress,
   heading,
   headingRef,
-  why,
   onBack,
   children,
   failure,
@@ -66,7 +63,6 @@ export function OnboardingLayout({
           <h1 id="onboarding-heading" ref={headingRef} tabIndex={-1} className="text-center focus:outline-none">
             {heading}
           </h1>
-          <p className="text-center text-muted">{why}</p>
           <div className="mt-4">{children}</div>
           {failure && (
             <div role="alert" className="mt-4 flex flex-col items-center gap-2 text-center">
