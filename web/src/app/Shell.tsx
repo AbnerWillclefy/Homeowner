@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router";
 import { useHome } from "../home/useHome";
+import { useI18n } from "../i18n";
 import { useInvite } from "../invite/PendingInviteProvider";
 import { JoinInvite } from "../invite/JoinInvite";
 import { RatingStep } from "../invite/RatingStep";
@@ -12,12 +13,14 @@ import { PageFrame } from "./PageFrame";
 import { useSession } from "./SessionProvider";
 import { ShellContext } from "./ShellContext";
 import { TODAY_PATH } from "./routes";
+import { useFocusOnNavigate } from "./useFocusOnNavigate";
 
 /**
  * The app once onboarding is done: the current tab, the bottom nav, and the dialogs over Today. The Home loads
  * here, not above the welcome routes, so it is fresh when the walk ends and never a stale "no Home".
  */
 export function Shell() {
+  const { t } = useI18n();
   const home = useHome();
   const [planVersion, setPlanVersion] = useState(0);
   const planChanged = useCallback(() => setPlanVersion((v) => v + 1), []);
@@ -26,9 +29,10 @@ export function Shell() {
   const session = useSession();
   const { reload } = home;
 
+  // The one owner of "a join ended": the session records it, then the Shell refreshes what it shows.
   const finishJoin = useCallback(
     (outcome: JoinOutcome) => {
-      session.finishJoin(outcome);
+      session.recordJoin(outcome);
       // The Shell fetched the Home behind the dialog; after a join it is out of date.
       void reload();
       planChanged();
@@ -37,17 +41,7 @@ export function Shell() {
   );
 
   const content = useRef<HTMLDivElement>(null);
-  const lastPath = useRef(pathname);
-  // Declarative routing does not move focus, so a screen reader would not hear the new tab. Land on its heading.
-  useEffect(() => {
-    if (lastPath.current === pathname) return;
-    lastPath.current = pathname;
-    const heading = content.current?.querySelector<HTMLElement>("h2");
-    const target = heading ?? content.current;
-    if (!target) return;
-    target.setAttribute("tabindex", "-1");
-    target.focus({ preventScroll: false });
-  }, [pathname]);
+  useFocusOnNavigate(content, pathname, t("app.name"));
 
   // Dialogs wait on the other tabs; a pending Invite sends every path to Today anyway (see resolveRoute).
   const dialog = pathname === TODAY_PATH ? dialogToShow({ inviteToken: invite.token, after: session.after, choosing: session.choosing }) : null;

@@ -22,7 +22,8 @@ interface Session {
   choosing: boolean;
   recovered: RecoveredNotice | "no";
   setRecovered(recovered: RecoveredNotice | "no"): void;
-  finishJoin(outcome: JoinOutcome): void;
+  /** State only: drops the pending Invite and notes what to show next. The Shell finishes the join. */
+  recordJoin(outcome: JoinOutcome): void;
   closeRating(): void;
   decide(): void;
   /** The Home step of onboarding ended, by creating the Home or finding one already made. */
@@ -49,7 +50,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [recovered, setRecovered] = useState<RecoveredNotice | "no">("no");
   const { clear: clearInvite } = invite;
 
-  const finishJoin = useCallback(
+  const recordJoin = useCallback(
     (outcome: JoinOutcome) => {
       clearInvite();
       setAfter(outcome === "joined" ? "rating" : "already-here");
@@ -67,8 +68,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<Session>(
-    () => ({ onboarding, push, steps, after, choosing, recovered, setRecovered, finishJoin, closeRating, decide, onHomeFinished }),
-    [onboarding, push, steps, after, choosing, recovered, finishJoin, closeRating, decide, onHomeFinished],
+    () => ({ onboarding, push, steps, after, choosing, recovered, setRecovered, recordJoin, closeRating, decide, onHomeFinished }),
+    [onboarding, push, steps, after, choosing, recovered, recordJoin, closeRating, decide, onHomeFinished],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
