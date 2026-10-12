@@ -3,9 +3,11 @@ package users
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -43,4 +45,37 @@ func (s *Store) FindOrCreate(ctx context.Context, sub, email string, now time.Ti
 		return User{}, fmt.Errorf("find or create user: %w", err)
 	}
 	return u, nil
+}
+
+// OnboardingStep returns the last onboarding step the User completed or
+// skipped, "done", or "" when they have not started.
+func (s *Store) OnboardingStep(ctx context.Context, userID string) (string, error) {
+	var step *string
+	if err := s.db.QueryRow(ctx, `SELECT onboarding_step FROM users WHERE id = $1`, userID).Scan(&step); err != nil {
+		return "", fmt.Errorf("read onboarding step: %w", err)
+	}
+	if step == nil {
+		return "", nil
+	}
+	return *step, nil
+}
+
+// AdvanceOnboarding stores step as the User's progress only if that moves it
+// forward: it is one conditional UPDATE, not a read and a write, so two tabs
+// racing cannot move progress backwards. from lists the stored values step may
+// replace (onboarding.Before); not started always may. It returns the stored
+// step afterwards, which is the old one when nothing moved.
+func (s *Store) AdvanceOnboarding(ctx context.Context, userID, step string, from []string, now time.Time) (string, error) {
+	var stored string
+	err := s.db.QueryRow(ctx, `
+		UPDATE users SET onboarding_step = $2, updated_at = $4
+		WHERE id = $1 AND (onboarding_step IS NULL OR onboarding_step = ANY($3))
+		RETURNING onboarding_step`, userID, step, from, now).Scan(&stored)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return s.OnboardingStep(ctx, userID)
+	}
+	if err != nil {
+		return "", fmt.Errorf("advance onboarding: %w", err)
+	}
+	return stored, nil
 }
