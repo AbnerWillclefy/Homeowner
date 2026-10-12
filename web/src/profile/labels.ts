@@ -1,7 +1,7 @@
 import type { MessageKey } from "../i18n";
 
 // The ids the app has a translation for. A key that is not in the catalogs fails the typecheck.
-const CATEGORY_KEYS = {
+export const CATEGORY_KEYS = {
   kitchen: "category.kitchen",
   bathroom: "category.bathroom",
   bedroom: "category.bedroom",
