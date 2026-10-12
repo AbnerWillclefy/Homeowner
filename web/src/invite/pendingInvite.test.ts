@@ -76,6 +76,15 @@ describe("captureInvite", () => {
     expect(captureInvite({ ...none, storage: memoryStorage("a b") })).toBeNull();
   });
 
+  it("leaves a malformed fragment alone", () => {
+    const replaceState = vi.fn();
+    const storage = memoryStorage();
+    const token = captureInvite({ hash: "#invite=a b!", pathname: "/", search: "?x=1", storage, replaceState });
+    expect(token).toBeNull();
+    expect(storage.data.size).toBe(0);
+    expect(replaceState).not.toHaveBeenCalled();
+  });
+
   it("never throws when storage or history are blocked, and still uses the link for this session", () => {
     const token = captureInvite({
       hash: `#invite=${TOKEN}`,

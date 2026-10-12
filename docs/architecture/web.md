@@ -10,7 +10,8 @@ The PWA is one Vite app in `web/`, installed to the Home Screen. It has a precac
 |---|---|---|
 | `src/i18n/` | Built | Language: which locale to show and every user-facing string for it. Detailed below. |
 | `src/theme/` | Built | Appearance: System, Light or Dark, and applying it. Detailed under UI layer. |
-| `src/settings/` | Built | The Settings section at the bottom of the home screen. |
+| `src/app/` | Built | Navigation: the routes, the route guard (`resolveRoute`), the shell with the bottom nav and the dialogs over Today, and the signed-in session state. Detailed under Navigation below. |
+| `src/settings/` | Built | The Settings section: Appearance and Language. On the Me tab, and on the sign-in, sign-up, confirm and onboarding screens. |
 | `src/auth/` | Built | Sign-up, confirmation, sign-in and token handling against Cognito. |
 | `src/api/` | Built | The API client: `authedFetch` and the typed calls to `/me`, the profile routes (`/me/profile`, `/categories`, `/demands`), `/me/onboarding`, `/push/*`, `/home`, `/home/chores`, `/home/day-plan` and `/home/check-in`. |
 | `src/home/` | Built | The Home section: create form and settings form for the Home's timezone and Allocation time. Detailed below. |
@@ -130,52 +131,87 @@ flowchart TD
 
 ### Settings
 
-`src/settings/Settings.tsx` is the Settings section, the last child of the home screen, shown signed in or out. Each setting is one labelled row with a native control. Appearance is the first row, a native `<select>` showing the choice (never the applied value). Language is the second row, the same pattern with its own storage (see Language choice above).
+`src/settings/Settings.tsx` is the Settings section, the last part of the Me tab, and it is also shown on the auth and onboarding screens, so signed-out people can still change appearance and language. Each setting is one labelled row with a native control. Appearance is the first row, a native `<select>` showing the choice (never the applied value). Language is the second row, the same pattern with its own storage (see Language choice above).
 
 ### Type, layout and components
 
 - System font stack, no web font. `html` uses `font: -apple-system-body` so `rem` follows iOS Dynamic Type, with a plain `font-size` and `font-family` for other browsers. All sizes are `rem`; tappable elements use a `2.75rem` minimum (44px at the default size) that grows with text. `h1` and `h2` use `overflow-wrap: anywhere`, so a long word breaks instead of forcing horizontal scroll at the largest text size.
 - One column of `32rem`, with the safe-area insets kept on all four sides (the `page` utility).
 - Buttons, links and fields are native elements styled with the `btn`, `btn-primary` and `btn-link` utilities and base rules in `index.css`. Buttons keep a border so they stay visible in forced-colors mode; a disabled button is dashed as well as muted.
-- Radix Primitives (`@radix-ui/react-slot`) and `lucide-react` are installed for later screens but not imported yet: native elements cover everything on screen today.
+- Radix Dialog backs `components/ui/AppDialog` (and `LeaveHome`), and `lucide-react` supplies the bottom nav icons, each imported by name. Everything else is native elements.
 - The service worker precaches the built CSS, and the theme is local only, so appearance works offline.
+
+## Navigation
+
+`react-router` (v7, declarative: `BrowserRouter`, `Routes`, `Route`, `Outlet`, `NavLink`, `Navigate`; no data routers or loaders) gives the app real routes. Every route sits under one `Guard`.
+
+| Route | Screen | Nav |
+|---|---|---|
+| `/` | Today: Check-in and Day Plan, with the dialogs | tab |
+| `/chores` | Chores: list, add, edit | tab |
+| `/home` | Home: settings, Invite share, Leave | tab |
+| `/me` | Me: account and sign out, Reminders, Baseline, Preferences, Restrictions, Appearance, Language | tab |
+| `/signin`, `/signup`, `/confirm` | Full-screen auth screens | none |
+| `/welcome/<step>` | Onboarding steps | none |
+
+```mermaid
+flowchart TD
+    MAIN[main.tsx: Theme, I18n, PendingInviteProvider] --> BR[BrowserRouter]
+    BR --> AUTH[AuthProvider: useAuth]
+    AUTH --> GUARD[Guard: resolveRoute]
+    GUARD -->|signed in| SES[SessionProvider: onboarding, usePush, flow flags]
+    GUARD -->|render| AL[AuthLayout: signin, signup, confirm]
+    GUARD -->|render| WL[WelcomeLayout: /welcome/step]
+    GUARD -->|render| SH[Shell: useHome, BottomNav, dialogs]
+    SH --> T[Today]
+    SH --> C[Chores]
+    SH --> H[Home]
+    SH --> M[Me]
+```
+
+- **The guard** is the pure `app/resolveRoute.ts`: `{ auth, onboarding, pathname, wanted, hasPendingInvite, steps }` in, `wait`, `retry`, `render` or `redirect` out. In order: auth loading waits. Signed out reaches only the auth routes, everything else goes to `/signin` (`/signup` with a pending Invite), and `Guard` keeps the wanted path in router state as `from`. Signed in on an auth route is decided for the wanted place (or Today) in one hop. A pending Invite sends every path except Today to Today, before onboarding is read. Onboarding loading waits and a failed read shows "Try again", never a guess. Unfinished goes to the saved step (an unknown step, one that does not apply on this device, or one ahead of the saved step all go there; earlier steps may be revisited, and the saved step is never lowered). Done sends auth, `/welcome/*` and unknown paths to Today. `resolveRoute.test.ts` is a table of cases and also proves that no redirect target redirects again, over every path, state and device.
+- **Routes, pure** (`app/routes.ts`): the path constants, `stepPath` and `stepFromPath`, `normalizePath`, `safeWantedPath` (a same-origin path that is not an auth or welcome path, so router state is never an open redirect), `authState` (forwards `from` through the several sign-up hops) and `confirmNeedsEmail`. `from` lives in router state only, not `localStorage`; signing out on purpose does not record it, session expiry does.
+- **State placement.** `AuthProvider` shares one `useAuth`. `SessionProvider` is mounted by the guard only while signed in (so nothing calls a protected route signed out, and signing out unmounts it): `useOnboarding`, the one `usePush` (shared by onboarding, the Me tab and the launch re-subscribe), the `steps` for this device, and the flow flags `after`, `choosing` and `recovered`, which must survive the move from `/welcome/home` to Today. `useHome` and the plan version live in `Shell` only: hoisting them above the welcome routes would fetch the Home during onboarding and keep a stale "none" after the Home is created.
+- **The shell** (`Shell`, `BottomNav`): the tab in a single centred column, and a `<nav aria-label>` of four `NavLink`s, each an icon plus a label (`nav.*` keys), with `aria-current="page"` on the current tab (Today uses `end`). The nav is sticky at the bottom of the viewport after the content, so it never covers it, keeps the bottom safe-area inset, has targets of at least 2.75rem and lets labels wrap. On a tab change focus moves to the new page's first heading, because declarative routing does not announce it. `navItems.ts` holds the tabs as data.
+- **Dialogs over Today.** `JoinInvite`, `RatingStep` and `StartChoice` are Radix dialogs (`components/ui/AppDialog`: focus trap, Escape, focus returns to where it was or to the page). Each state has a title. Escape and a tap outside do what the screen's own dismiss button does, except while a request is in flight. `app/dialogToShow.ts` (pure, tested) picks the one dialog: Invite, then rating, then start choice. They show only on Today.
+- **Health.** `HealthBanner` (with `bannerFor`) shows a slim banner with Retry only when the API is unavailable or unreachable; nothing is shown when it is healthy. It is part of the page frame, so it shows on every screen.
+- **Offline.** The service worker serves the precached shell for any deep link. Whether the person is done with onboarding is read from the API (never guessed), so an offline start shows the shell and "Try again".
+- The decision of why the router and the tabs were chosen, and the visual foundation they sit on, belongs to the UI ADRs ([ADR 0007](../adr/0007-tailwind-and-radix-for-an-accessible-calm-ui.md) and the visual foundation ADR from #123).
 
 ## Onboarding
 
-A new User is walked through install, reminders, Baseline, Restrictions, Preferences and the Home before they see the dashboard. There is no router: `App.tsx` swaps the stacked sections for the walk until it is done.
+A new User is walked through install, reminders, Baseline, Restrictions, Preferences and the Home before they see the dashboard. The walk is a set of full-screen routes, `/welcome/<step>`, with no bottom nav (see Navigation); the guard keeps the address on a step the User may be on.
 
 Progress lives on the server (`users.onboarding_step`, see the backend docs), because on iOS the install step ends with the User leaving Safari for the Home Screen app, which has its own `localStorage`. `src/api/onboarding.ts` has `getOnboarding` (`GET /me/onboarding`: the step to show, or `done`) and `putOnboardingStep` (`PUT /me/onboarding`: records a step as completed or skipped and returns the next step). It returns the usual result union (`ok`, `not-signed-in`, `offline`, `error`). `home` is never sent: `POST /home` completes it on the server.
 
 ```mermaid
 flowchart TD
-    APP[App.tsx, signed in] -->|pending Invite| JOIN[JoinInvite, Reminders, Profile]
-    APP -->|no Invite| GATE[OnboardingGate: useOnboarding GET /me/onboarding]
-    GATE -->|loading or failed| MSG[message and Try again, never a guess]
-    GATE -->|done| DASH[Reminders, HomeSection, Profile]
-    GATE -->|any other step| ONB[Onboarding]
-    ONB --> PUSH[usePush, once]
+    SES[SessionProvider: useOnboarding GET /me/onboarding] --> GUARD[Guard: resolveRoute]
+    GUARD -->|loading or failed| MSG[message and Try again, never a guess]
+    GUARD -->|done| SHELL[Shell: Today, Chores, Home, Me]
+    GUARD -->|any other step| ONB[/welcome/step: Onboarding]
+    ONB --> PUSH[session usePush, shared]
     ONB --> PROF[useProfile, once]
-    ONB --> WALK[useWalk: Next calls PUT, Back is local]
+    ONB --> WALK[useWalk: Next calls PUT then navigates, Back navigates]
     ONB -->|home step| CH[CreateHome]
-    CH -->|onSaved or onRecovered 409| GATE
+    CH -->|onSaved or onRecovered 409: position done| GUARD
 ```
 
 - `steps.ts` (pure): the ordered ids, which apply on this device (`install` only for iOS in a browser tab, from `reminderAvailability`), next and previous, and "step n of m". Tested.
 - `baselineComplete.ts` (pure): all seven Baseline days must have a value (0 counts) before Next on the Baseline step. Restrictions and Preferences are always passable, since none and neutral are real answers. Tested.
-- `useOnboarding` holds the server's step. `useWalk` holds which step is on screen: Next moves on only after the server answers 200 and otherwise stays with an alert, Back is local and never lowers the stored step, and nothing is queued offline.
-- `Onboarding` owns the single `usePush` and `useProfile` of the flow, so the launch re-subscribe runs once and the lists are fetched once. `Reminders` is mounted only when onboarding is not showing, so it is never mounted twice. Notification permission is requested only from the Enable button.
+- `useOnboarding` holds the server's step, in the session provider. `useWalk` reads which step is on screen from the address: Next moves on only after the server answers 200 (it raises the stored step first, then navigates, in the same tick, so the guard never sees an address ahead of the stored step) and otherwise stays with an alert; Back navigates to the previous step's path (never `navigate(-1)`, which a deep link cannot use) and never lowers the stored step; nothing is queued offline. `pathAfterAdvance` in `steps.ts` is the pure "where next". Tested.
+- `Onboarding` owns the single `useProfile` of the flow and shares the session's `usePush`, so the launch re-subscribe runs once (the Me tab's `Reminders` uses the same hook) and the lists are fetched once. Notification permission is requested only from the Enable button.
 - Each step has a progress line, a heading that takes focus when the step changes, and a why paragraph (`onboarding.*` in both catalogs). Reminders is skippable ("Not now"); the profile steps and the Home are not.
-- A pending Invite wins: `JoinInvite` is shown instead and `OnboardingGate` is not mounted. The Settings section is outside the gate, so language, appearance and sign-out work in every state.
-- When creating the Home finds one already made (409), onboarding finishes and `HomeSection` shows the same "already existed" notice, including the "chores dropped" variant.
+- A pending Invite wins: the guard decides it before it reads onboarding, so every path redirects to Today, where `JoinInvite` is a dialog. A failed onboarding read cannot block joining. The Settings section is on the welcome screens, so language and appearance work in every state.
+- When creating the Home finds one already made (409), onboarding finishes and the Home tab shows the same "already existed" notice, including the "chores dropped" variant. The notice and the start choice flag live in the session provider because they must survive the move from `/welcome/home` to Today.
 
 ## Home
 
-`HomeSection` (`src/home/`) is rendered by `App.tsx` only while signed in and once onboarding is done, below Reminders and above Settings. The Chores section (see Chores below) is rendered inside it once the Home exists. It talks to the API through `src/api/home.ts` (`getHome`, `createHome`, `updateHome`, `leaveHome`), which wraps `authedFetch` like `me.ts` and returns a result union: `ok`, `not-signed-in`, `offline` (a thrown fetch), `error`, plus `none` (404; for `leaveHome` it means there is no Home to leave), `already-resident` (409 on create) and `invalid` carrying the API's field codes.
+The Home is loaded by `useHome` inside the Shell (so only once onboarding is done, and fresh when it ends). `HomeGate` (`src/home/`) is the one wrapper used by the Today, Chores and Home tabs: loading, a failure with Retry, the create form when there is no Home, otherwise the tab's content (the pure `homeView` chooses; while an Invite is pending a missing Home reads as loading). The Home tab holds the settings form, Invite share and Leave; the Chores section (see Chores below) is the Chores tab. It talks to the API through `src/api/home.ts` (`getHome`, `createHome`, `updateHome`, `leaveHome`), which wraps `authedFetch` like `me.ts` and returns a result union: `ok`, `not-signed-in`, `offline` (a thrown fetch), `error`, plus `none` (404; for `leaveHome` it means there is no Home to leave), `already-resident` (409 on create) and `invalid` carrying the API's field codes.
 
 ```mermaid
 flowchart TD
-    APP[App.tsx, signed in] --> SEC[HomeSection]
-    SEC --> UH[useHome: GET /home]
+    SEC[Shell, HomeGate on Today, Chores and Home] --> UH[useHome: GET /home]
     UH -->|none, 404| CREATE[CreateHome]
     UH -->|ok| EDIT[HomeSettingsForm]
     UH -->|offline or error| RETRY[message and Try again]
@@ -195,7 +231,7 @@ flowchart TD
 - `createOrLoad` turns a 409 into "load the Home that already exists" and says so (`recovered`). `saveSettings` is the edit equivalent.
 - `useSettingsForm` keeps the typed values in state and never resets them on a failure, so retrying sends what was typed. `offline`, `error` and `not-signed-in` show a `role="alert"` message in the `danger` colour; `invalid` shows a summary plus one message per field.
 - `fieldErrors.ts` maps the API's stable field codes (`timezone`: `required`, `unknown`; `allocationTime`: `required`, `invalid`, `not_quarter_hour`) to message keys in both catalogs. A code it does not know gets a generic message.
-- `LeaveHome` is the last child of `HomeSection` once the Home exists: a "Leave this Home" button that opens a Radix `Dialog` (ADR 0007; native HTML cannot make a modal accessible). The dialog says that the Resident's Home-specific Preferences and Restrictions and Day Plan places are removed, that their profile (Baseline, general Preferences and Restrictions) stays, and that if they are the last Resident the Home and its Chores are deleted. The API does not say how many Residents there are, so one text covers both cases. Focus starts on Cancel. The steps live in `leaveFlow.ts` (`createLeaveFlow`: closed, confirming, leaving; nothing is sent before confirm, one request at a time) and `useLeaveHome` binds it to React with `useSyncExternalStore`. On `ok` or `none` the flow calls `onLeft`, which sets the Home state to `none` through `useHome`'s `clearHome`: `HomeSection` then renders `CreateHome`, so the Home's settings, Today, Chores and Invite sections unmount and no stale data shows. On `offline`, `error` or `not-signed-in` the dialog stays open with a `role="alert"` message (`LEAVE_FAILURE_KEY`) and the same button retries.
+- `LeaveHome` is the last part of the Home tab once the Home exists: a "Leave this Home" button that opens a Radix `Dialog` (ADR 0007; native HTML cannot make a modal accessible). The dialog says that the Resident's Home-specific Preferences and Restrictions and Day Plan places are removed, that their profile (Baseline, general Preferences and Restrictions) stays, and that if they are the last Resident the Home and its Chores are deleted. The API does not say how many Residents there are, so one text covers both cases. Focus starts on Cancel. The steps live in `leaveFlow.ts` (`createLeaveFlow`: closed, confirming, leaving; nothing is sent before confirm, one request at a time) and `useLeaveHome` binds it to React with `useSyncExternalStore`. On `ok` or `none` the flow calls `onLeft`, which sets the Home state to `none` through `useHome`'s `clearHome`: `HomeGate` then renders `CreateHome` on the Today, Chores and Home tabs, so the Home's settings, Today, Chores and Invite sections unmount and no stale data shows. On `offline`, `error` or `not-signed-in` the dialog stays open with a `role="alert"` message (`LEAVE_FAILURE_KEY`) and the same button retries.
 - Pure modules with vitest tests: `api/home.ts`, `leaveFlow.ts`, `createOrLoad.ts`, `fieldErrors.ts`, `allocationTimes.ts`, `timezones.ts`. The components and hooks are checked by hand.
 
 ## Catalog
@@ -229,11 +265,11 @@ flowchart TD
 
 ## Chores
 
-`ChoresSection` (`src/chores/`) is rendered by `HomeSection` below the Home settings form, so it exists only while the signed-in User has a Home. It talks to the API through `src/api/chores.ts` (`listChores`, `createChore`, `updateChore`, `deleteChore` over `/home/chores`), which wraps `authedFetch` and returns the same kind of result union as `home.ts`: `ok`, `not-signed-in`, `offline`, `error`, plus `invalid` carrying the API's field codes (400) and `none` (404, the Chore is already gone). The Category and Demand lists reuse `getCategories` and `getDemands` from `api/profile.ts`.
+`ChoresSection` (`src/chores/`) is the Chores tab, inside `HomeGate`, so it exists only while the signed-in User has a Home. It talks to the API through `src/api/chores.ts` (`listChores`, `createChore`, `updateChore`, `deleteChore` over `/home/chores`), which wraps `authedFetch` and returns the same kind of result union as `home.ts`: `ok`, `not-signed-in`, `offline`, `error`, plus `invalid` carrying the API's field codes (400) and `none` (404, the Chore is already gone). The Category and Demand lists reuse `getCategories` and `getDemands` from `api/profile.ts`.
 
 ```mermaid
 flowchart TD
-    HS[HomeSection, Home ready] --> CS[ChoresSection]
+    HS[Chores tab, HomeGate, Home ready] --> CS[ChoresSection]
     CS --> UC[useChores: categories, demands, GET /home/chores]
     CS --> ITEM[ChoreItem: summary, Edit, two-step Delete]
     CS --> FORM[ChoreForm: add or edit in place]
@@ -254,11 +290,11 @@ flowchart TD
 
 ## Today (the Day Plan)
 
-`TodaySection` (`src/dayplan/`) is rendered by `HomeSection` between the Home settings form and the Chores, so it exists only while the signed-in User has a Home. It is read-only: a Day Plan is a proposal, and accepting or refusing it is a later ticket. It talks to the API through `src/api/dayPlan.ts` (`getDayPlan` over `GET /home/day-plan`), which wraps `authedFetch` and returns `ok`, `not-signed-in`, `offline`, `error` and `none` (404, no Home). A list the API sends as `null` is read as empty; any malformed Task or an `energy` that is neither a number nor `null` is an `error`.
+`TodaySection` (`src/dayplan/`) is on the Today tab, below the Check-in, inside `HomeGate`, so it exists only while the signed-in User has a Home. It is read-only: a Day Plan is a proposal, and accepting or refusing it is a later ticket. It talks to the API through `src/api/dayPlan.ts` (`getDayPlan` over `GET /home/day-plan`), which wraps `authedFetch` and returns `ok`, `not-signed-in`, `offline`, `error` and `none` (404, no Home). A list the API sends as `null` is read as empty; any malformed Task or an `energy` that is neither a number nor `null` is an `error`.
 
 ```mermaid
 flowchart TD
-    HS[HomeSection, Home ready] --> TS[TodaySection]
+    HS[Today tab, HomeGate, Home ready] --> TS[TodaySection]
     TS --> UD[useDayPlan: GET /home/day-plan]
     TS --> PV[PlanView]
     PV --> TI[TaskItem: Effort, Importance, people, due day, reason]
@@ -273,11 +309,11 @@ flowchart TD
 
 ## Check-in
 
-`HomeDay` (`src/home/HomeDay.tsx`) is the last part of `HomeSection`, above the Chores: it owns `useCheckIn` and renders `CheckInSection` above `TodaySection`. It talks to the API through `src/api/checkIn.ts` (`getCheckIn` over `GET /home/check-in`, `putCheckIn` over `PUT /home/check-in`), which returns `ok`, `not-signed-in`, `offline`, `error`, `none` (404) and, for a save, `invalid` (400). A day with no Check-in is `ok` with `checkedIn: false`; a body with an unknown level, or a level that disagrees with `checkedIn`, is an `error`.
+`HomeDay` (`src/home/HomeDay.tsx`) is the content of the Today tab: it owns `useCheckIn` and renders `CheckInSection` above `TodaySection`. It talks to the API through `src/api/checkIn.ts` (`getCheckIn` over `GET /home/check-in`, `putCheckIn` over `PUT /home/check-in`), which returns `ok`, `not-signed-in`, `offline`, `error`, `none` (404) and, for a save, `invalid` (400). A day with no Check-in is `ok` with `checkedIn: false`; a body with an unknown level, or a level that disagrees with `checkedIn`, is an `error`.
 
 ```mermaid
 flowchart TD
-    HS[HomeSection, Home ready] --> HD[HomeDay]
+    HS[Today tab, HomeGate, Home ready] --> HD[HomeDay]
     HD --> UC[useCheckIn: GET /home/check-in, GET /demands]
     HD --> CS[CheckInSection]
     HD -->|key bumps after a save| TS[TodaySection]
@@ -299,30 +335,30 @@ flowchart TD
 
 ## Invites
 
-`src/invite/` handles joining a Home from a link and sharing one. The PWA has no router, so the link is `https://<app>/#invite=<token>`: a fragment is never sent to CloudFront, S3 or any log.
+`src/invite/` handles joining a Home from a link and sharing one. The link keeps a fragment, `https://<app>/#invite=<token>`, even though there is now a router: a fragment is never sent to CloudFront, S3 or any log, and it never enters router state, a query string or the "wanted" path. `PendingInviteProvider` captures it before `BrowserRouter` first renders (see Navigation).
 
 ```mermaid
 flowchart TD
-    START[App startup] --> CAP[usePendingInvite: captureInvite]
+    START[main.tsx, before BrowserRouter] --> CAP[PendingInviteProvider: captureInvite]
     CAP -->|store in localStorage homeowner.invite, replaceState strips the fragment| TOK{pending token?}
     TOK -->|signed out| SOI[SignedOutInvite: GET /invites/token]
     SOI -->|404, used, expired| DEAD[say so, Continue forgets it]
-    SOI -->|valid| FLOW[SignedOutFlow starting on sign-up]
-    TOK -->|signed in| JOIN[JoinInvite replaces HomeSection]
+    SOI -->|valid| FLOW[auth routes, landing on /signup]
+    TOK -->|signed in| JOIN[JoinInvite dialog over Today]
     JOIN -->|GET /home: none| BTN[Join this Home]
     JOIN -->|GET /home: has a Home| WARN[leave warning]
     BTN -->|POST accept, confirmLeave false| ACC[api/invites.ts]
     WARN -->|POST accept, confirmLeave true| ACC
     ACC -->|409 leaves current home| WARN
-    ACC -->|200| RATE[RatingStep, then HomeSection]
-    ACC -->|409 already_here| NOTE[notice, then HomeSection]
+    ACC -->|200| RATE[RatingStep dialog, then StartChoice dialog]
+    ACC -->|409 already_here| NOTE[notice on Today, then StartChoice dialog]
 ```
 
 - `pendingInvite.ts` is pure and never throws (the `localeStorage.ts` approach). The token goes to `localStorage`, not `sessionStorage`, because the Cognito confirmation email can open a new tab and the token must survive sign-up, the code and sign-in. It is cleared after a join, an `already_here`, or when the person dismisses a dead or declined Invite. Only base64url characters are accepted as a token.
 - `api/invites.ts` has `createInvite` (`POST /home/invites`; `none` for 404, `too-many` for 429), `lookupInvite` (`GET /invites/{token}`, sent without a session; `valid`, `not-found`, `used`, `expired`) and `acceptInvite` (`would-leave`, `already-here`, the dead kinds, or `ok` with a Home). `parseHome` is shared with `api/home.ts`.
-- A signed-in person with a pending Invite sees `JoinInvite` instead of `HomeSection`, so `CreateHome` is never offered while an Invite is pending. The Profile section stays visible and does not block the join. The leave warning is shown before anything is sent when `GET /home` finds a Home; a 409 from the API shows it too.
-- The rating step (`RatingStep`, `useRatingStep`) shows after a successful join. `ratingChores.ts` (`selectChoresToRate`, `RATING_CHORE_COUNT` = 8) sorts by base Effort descending, then Importance (essential first), then name. Each Chore gets like, neutral or dislike and a Restriction checkbox, saved on its own and undone on failure, through `api/choreSettings.ts` (`getOwnChoreSettings` keeps only the `you` entry of `GET /home/chores/settings`). It is skippable and closes itself for a Home with no Chores.
-- `InviteShare` in the Home section creates an Invite and calls `navigator.share`, falling back to `navigator.clipboard.writeText`. `share.ts` (`inviteLink`, `shareInvite`) holds that logic.
+- A signed-in person with a pending Invite sees `JoinInvite` as a dialog over Today (every other path redirects to Today until it is dismissed), and `HomeGate` never offers `CreateHome` while an Invite is pending. After a join the Shell reloads the Home and the plan, because it had fetched them behind the dialog. With a pending Invite the signed-out landing is `/signup`; a dead link shows its explanation and Continue forgets it and goes to `/signin`. The leave warning is shown before anything is sent when `GET /home` finds a Home; a 409 from the API shows it too.
+- The rating step (`RatingStep`, `useRatingStep`) shows as a dialog after a successful join. `ratingChores.ts` (`selectChoresToRate`, `RATING_CHORE_COUNT` = 8) sorts by base Effort descending, then Importance (essential first), then name. Each Chore gets like, neutral or dislike and a Restriction checkbox, saved on its own and undone on failure, through `api/choreSettings.ts` (`getOwnChoreSettings` keeps only the `you` entry of `GET /home/chores/settings`). It is skippable and closes itself for a Home with no Chores.
+- `InviteShare` on the Home tab creates an Invite and calls `navigator.share`, falling back to `navigator.clipboard.writeText`. `share.ts` (`inviteLink`, `shareInvite`) holds that logic.
 - Pure modules with vitest tests: `pendingInvite.ts`, `share.ts`, `ratingChores.ts`, `api/invites.ts`, `api/choreSettings.ts`. The components and hooks are checked by hand.
 
 ## Service worker
@@ -334,3 +370,4 @@ The worker shows a fallback notification when a push has no usable title (no pay
 - The in-app language choice is not read, because workers have no `localStorage`. A later ticket could mirror the choice into IndexedDB.
 - A push whose optional `kind` is `checkin_reminder` or `day_plan_ready` (sent by the allocation job's nudges) is worded by the worker for the device language, from `KIND_TEXT` in `fallback.ts` (en-US and pt-BR, generic text with no names or Task titles). The server's `title` and `body` are English and are ignored for these kinds, so they only matter to an older worker. The `url` still goes through the same-origin check. `isNotificationKind` guards the lookup, so a non-string or unknown kind is not a key.
 - A push with a valid title and no known `kind` passes through exactly as sent, in any language. The server's text is never translated.
+- Tapping a notification focuses an open window, and then navigates it to the payload's `url` (Today, `/`, for every server sender) when `shouldNavigate` in `sw/payload.ts` says it is on a different path of the same origin. `WindowClient.navigate` is guarded: if it is missing or rejects, the worker stays focus-only. With no open window it opens the `url`. The `NavigationRoute` serves the precached shell for deep links, and CloudFront maps 403 and 404 to `index.html`.
