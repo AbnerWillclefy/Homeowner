@@ -1,3 +1,5 @@
+import type { Translate } from "../i18n";
+
 /** The interval choices in the Chore form. Custom is every other interval, including none (a one-off Chore). */
 export const INTERVAL_PRESETS = ["daily", "weekly", "every_2_weeks", "monthly"] as const;
 
@@ -15,6 +17,14 @@ export function presetFor(intervalDays: number | null): IntervalPreset {
 /** The days a named preset stands for; null for custom, which is whatever is typed (blank is a one-off). */
 export function intervalForPreset(preset: IntervalPreset): number | null {
   return preset === "custom" ? null : DAYS[preset];
+}
+
+/** The words for a Chore's repeat: one-off, every N days for custom, otherwise the preset's name. */
+export function intervalText(t: Translate, intervalDays: number | null): string {
+  if (intervalDays === null) return t("chores.item.once");
+  const preset = presetFor(intervalDays);
+  if (preset === "custom") return t("chores.item.every", { days: intervalDays });
+  return preset === "daily" ? t("chores.item.daily") : t(`chores.interval.${preset}`);
 }
 
 /** The preset for the form's interval text. */

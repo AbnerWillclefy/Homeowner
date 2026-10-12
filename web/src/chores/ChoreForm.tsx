@@ -52,8 +52,10 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
   const idPrefix = `chore-form-${idKey}`;
   const headingRef = useRef<HTMLHeadingElement>(null);
   // An existing interval opens on its matching preset, or on Custom with its days typed in.
-  const [preset, setPreset] = useState<IntervalPreset>(() => presetForText(initial.intervalDays));
-  const [customText, setCustomText] = useState(() => (presetForText(initial.intervalDays) === "custom" ? initial.intervalDays : ""));
+  const initialPreset = presetForText(initial.intervalDays);
+  const [preset, setPreset] = useState<IntervalPreset>(initialPreset);
+  // The days typed under Custom, kept while a named preset is chosen.
+  const customText = useRef(initialPreset === "custom" ? initial.intervalDays : "");
 
   // The form appears in place of a button, so move the reader to it.
   useEffect(() => headingRef.current?.focus(), []);
@@ -138,9 +140,10 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
 
   /** Picking a preset fills the days; the number typed under Custom is kept for when Custom is picked again. */
   function choosePreset(next: IntervalPreset) {
+    if (preset === "custom") customText.current = values.intervalDays;
     setPreset(next);
     const days = intervalForPreset(next);
-    form.change({ intervalDays: days === null ? customText : String(days) }, "intervalDays");
+    form.change({ intervalDays: days === null ? customText.current : String(days) }, "intervalDays");
   }
   const buildsUp = field("buildsUp", "chores.form.buildsUp.hint");
 
@@ -275,10 +278,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
                   autoComplete="off"
                   value={values.intervalDays}
                   {...interval.aria}
-                  onChange={(event) => {
-                    setCustomText(event.target.value);
-                    form.change({ intervalDays: event.target.value }, "intervalDays");
-                  }}
+                  onChange={(event) => form.change({ intervalDays: event.target.value }, "intervalDays")}
                 />
               </div>
             )}
