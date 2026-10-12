@@ -285,6 +285,26 @@ export const enUS = {
   "dayplan.pool.reason.added_after_plan": "It was added after today's plan was made.",
   "dayplan.energy.drained": "You checked in as Drained, so no Tasks were given to you today. Rest up.",
 
+  // The start choice, at the end of both onboarding flows
+  "startChoice.heading": "When do you want your Tasks?",
+  "startChoice.intro":
+    "Your Home shares out Tasks every day at its Allocation time. You can start now, or wait for the next one.",
+  "startChoice.now.button": "Get my tasks right away",
+  "startChoice.now.hint":
+    "Homeowner plans only you, now, from the open Tasks nobody has been given today. Other Residents' Tasks do not change.",
+  "startChoice.tomorrow.button": "Start tomorrow",
+  "startChoice.tomorrow.hint": "Wait for the next daily Allocation. Nothing is planned for you until then.",
+  "startChoice.planning": "Planning your Tasks...",
+  "startChoice.retry": "Try again",
+  "startChoice.failed.offline":
+    "You seem to be offline, so your Tasks were not planned. Check your connection and try again.",
+  "startChoice.failed.error": "Something went wrong planning your Tasks. Try again in a moment.",
+  "startChoice.done.tasks": "Your Tasks for today are ready. You can see them in Today, below.",
+  "startChoice.done.noEnergy":
+    "Your Energy for today is 0, so no Tasks were given to you. If you have no Baseline for this weekday, set it in your profile to get Tasks on that day.",
+  "startChoice.done.nothing": "No open Tasks were left for you today. Enjoy the day.",
+  "startChoice.done.close": "Got it",
+
   // Check-in
   "checkin.heading": "Check-in",
   "checkin.intro":

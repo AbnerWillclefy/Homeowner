@@ -13,6 +13,8 @@ import { Profile } from "./profile/Profile";
 import { Reminders } from "./push/Reminders";
 import { useI18n, type MessageKey } from "./i18n";
 import { Settings } from "./settings/Settings";
+import { StartChoice } from "./startchoice/StartChoice";
+import { showStartChoice, type Flow } from "./startchoice/startChoice";
 import { useHealth, type HealthState } from "./useHealth";
 
 const STATUS_KEY: Record<HealthState["kind"], MessageKey> = {
@@ -37,11 +39,28 @@ export default function App() {
     },
     [clearInvite],
   );
-  const closeRating = useCallback(() => setAfter(null), []);
+  // The start choice follows either flow. Held in App because both flows hand over to the dashboard.
+  const [finished, setFinished] = useState<Flow | null>(null);
+  const [decided, setDecided] = useState(false);
+  const [planVersion, setPlanVersion] = useState(0);
+  const finishFlow = useCallback((flow: Flow) => {
+    setFinished(flow);
+    setDecided(false);
+  }, []);
+  const closeRating = useCallback(() => {
+    setAfter(null);
+    finishFlow("invite");
+  }, [finishFlow]);
+  const finishOnboarding = useCallback(() => finishFlow("onboarding"), [finishFlow]);
+  const planned = useCallback(() => setPlanVersion((v) => v + 1), []);
+  const decide = useCallback(() => setDecided(true), []);
   const notices = (
     <>
       {after === "already-here" && <p role="status">{t("invite.alreadyHere")}</p>}
       {after === "rating" && <RatingStep onClose={closeRating} />}
+      {showStartChoice({ finished, decided }) && after !== "rating" && (
+        <StartChoice onDecided={decide} onPlanned={planned} />
+      )}
     </>
   );
 
@@ -90,13 +109,13 @@ export default function App() {
           ) : (
             /* A new User walks through onboarding instead of the dashboard. Onboarding owns the push hook while
                it runs, so Reminders is mounted only once it is done and never twice. */
-            <OnboardingGate>
+            <OnboardingGate onFinished={finishOnboarding}>
               {(recovered) => (
                 <>
                   <Reminders />
                   {notices}
                   {/* The Home calls protected routes too, so it also exists only while signed in. */}
-                  <HomeSection recovered={recovered} />
+                  <HomeSection recovered={recovered} planVersion={planVersion} />
                   <Profile />
                 </>
               )}

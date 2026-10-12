@@ -7,7 +7,7 @@ import { TodaySection } from "../dayplan/TodaySection";
  * Today's Check-in above today's Day Plan. A saved Check-in can change the plan (the API plans the Resident
  * again), so the Today section is remounted, which reloads it, instead of polling.
  */
-export function HomeDay() {
+export function HomeDay({ outsideVersion = 0 }: { outsideVersion?: number }) {
   const [planVersion, setPlanVersion] = useState(0);
   const checkIn = useCheckIn(() => setPlanVersion((v) => v + 1));
   const level = checkIn.state.kind === "ready" ? checkIn.state.checkIn.level : null;
@@ -15,7 +15,8 @@ export function HomeDay() {
   return (
     <>
       <CheckInSection checkIn={checkIn} />
-      <TodaySection key={planVersion} level={level} />
+      {/* outsideVersion: the plan changed elsewhere (the start choice planned this Resident right away). */}
+      <TodaySection key={`${planVersion}-${outsideVersion}`} level={level} />
     </>
   );
 }

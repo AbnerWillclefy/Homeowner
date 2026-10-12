@@ -15,11 +15,24 @@ const PROBLEM_KEY: Record<OnboardingProblem, MessageKey> = {
  * the dashboard exactly as before. While progress is unknown (loading or failed) it shows that, never a
  * guess. Only mounted while signed in and with no pending Invite (see App).
  */
-export function OnboardingGate({ children }: { children(recovered: RecoveredNotice | "no"): ReactNode }) {
+export function OnboardingGate({
+  onFinished,
+  children,
+}: {
+  /** The Home step ended, by creating the Home or by finding one already made: the start choice follows. */
+  onFinished(): void;
+  children(recovered: RecoveredNotice | "no"): ReactNode;
+}) {
   const { t } = useI18n();
   const { state, retry, setPosition } = useOnboarding();
   const [recovered, setRecovered] = useState<RecoveredNotice | "no">("no");
-  const onHomeFinished = useCallback((notice: RecoveredNotice | null) => setRecovered(notice ?? "no"), []);
+  const onHomeFinished = useCallback(
+    (notice: RecoveredNotice | null) => {
+      setRecovered(notice ?? "no");
+      onFinished();
+    },
+    [onFinished],
+  );
 
   if (state.kind === "loading") return <p role="status">{t("onboarding.loading")}</p>;
 
