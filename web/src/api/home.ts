@@ -103,6 +103,24 @@ export function createHome(settings: HomeSettings, chores: readonly ChoreWire[] 
   return sendHome<{ kind: "already-resident" }>(withBody("POST", body), 201, { 409: { kind: "already-resident" } });
 }
 
+/** `none` (404) means the caller has no Home, so there is nothing left to leave. */
+export type LeaveHomeResult = { kind: "ok" } | { kind: "none" } | Failure;
+
+/**
+ * The caller leaves their Home. The API removes their Home-specific settings and keeps their profile, and
+ * deletes the Home when they were its last Resident. It takes no id: it always means the caller.
+ */
+export async function leaveHome(): Promise<LeaveHomeResult> {
+  try {
+    const result = await authedFetch("/home/residents/me", { method: "DELETE" });
+    if (result.kind === "not-signed-in") return result;
+    if (result.response.status === 404) return { kind: "none" };
+    return result.response.status === 204 ? { kind: "ok" } : { kind: "error" };
+  } catch {
+    return { kind: "offline" };
+  }
+}
+
 /** Replaces the Home's settings. Any Resident can. */
 export function updateHome(settings: HomeSettings): Promise<UpdateHomeResult> {
   return sendHome<{ kind: "none" }>(withBody("PUT", settings), 200, { 404: { kind: "none" } });

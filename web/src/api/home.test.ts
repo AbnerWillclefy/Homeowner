@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SESSION_KEY } from "../auth/session";
-import { createHome, getHome, updateHome } from "./home";
+import { createHome, getHome, leaveHome, updateHome } from "./home";
 
 function stubStorage(signedIn: boolean) {
   const data = new Map<string, string>();
@@ -144,5 +144,38 @@ describe("updateHome", () => {
   it("is offline when the API cannot be reached", async () => {
     stubFetch(new TypeError("Failed to fetch"));
     expect(await updateHome(SETTINGS)).toEqual({ kind: "offline" });
+  });
+});
+
+describe("leaveHome", () => {
+  it("sends DELETE /home/residents/me with the session and is ok on 204", async () => {
+    const fetch = stubFetch(new Response(null, { status: 204 }));
+    expect(await leaveHome()).toEqual({ kind: "ok" });
+    const [url, init] = fetch.mock.calls[0]!;
+    expect(url).toBe("http://api.test/home/residents/me");
+    expect(init?.method).toBe("DELETE");
+    expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer id-1");
+  });
+
+  it("is none on a 404: there is no Home to leave, which is the outcome asked for", async () => {
+    stubFetch(Response.json({ error: "no home" }, { status: 404 }));
+    expect(await leaveHome()).toEqual({ kind: "none" });
+  });
+
+  it("is an error for any other status", async () => {
+    stubFetch(Response.json({ error: "internal error" }, { status: 500 }));
+    expect(await leaveHome()).toEqual({ kind: "error" });
+  });
+
+  it("is offline when the API cannot be reached", async () => {
+    stubFetch(new TypeError("Failed to fetch"));
+    expect(await leaveHome()).toEqual({ kind: "offline" });
+  });
+
+  it("is not signed in without a session, and sends nothing", async () => {
+    stubStorage(false);
+    const fetch = stubFetch(new Response(null, { status: 204 }));
+    expect(await leaveHome()).toEqual({ kind: "not-signed-in" });
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
