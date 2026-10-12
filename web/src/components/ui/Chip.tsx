@@ -1,4 +1,5 @@
 import { Slot, Slottable } from "@radix-ui/react-slot";
+import type { LucideIcon } from "lucide-react";
 import type { HTMLAttributes } from "react";
 import { useI18n } from "../../i18n";
 import { categoryLabel, labelText } from "../../profile/labels";
@@ -9,12 +10,16 @@ interface Props extends HTMLAttributes<HTMLElement> {
   category?: string;
   /** Make the child (a Link or button) the chip; the icon is added before its content. Only then is it interactive and given a touch target. */
   asChild?: boolean;
+  /** Replaces the Category's icon, for a chip that is not about a Category. */
+  icon?: LucideIcon;
 }
 
 /** A Category chip: icon and name on the Category's pastel. */
-export function Chip({ category, asChild = false, className = "", children, ...rest }: Props) {
+export function Chip({ category, asChild = false, icon, className = "", children, ...rest }: Props) {
   const { t } = useI18n();
-  const { fill, ink, icon: Icon } = categoryStyle(category);
+  const style = categoryStyle(category);
+  const { fill, ink } = style;
+  const Icon = icon ?? style.icon;
   const label = category ? categoryLabel(category) : undefined;
   const name = label ? labelText(t, label) : undefined;
   const Comp = asChild ? Slot : "span";

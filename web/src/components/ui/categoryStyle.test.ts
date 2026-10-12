@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { CATEGORY_KEYS } from "../../profile/labels";
-import { categoryStyle } from "./categoryStyle";
+import { categoryStyle, knownCategory } from "./categoryStyle";
 
 const css = readFileSync(resolve(import.meta.dirname, "../../index.css"), "utf8");
 
@@ -41,6 +41,16 @@ describe("categoryStyle", () => {
   it("gives every Category its own icon", () => {
     const ids = Object.keys(TONES);
     expect(new Set(ids.map((id) => categoryStyle(id).icon)).size).toBe(ids.length);
+  });
+
+  describe("knownCategory", () => {
+    it.each(Object.keys(TONES))("keeps the known id %s", (id) => {
+      expect(knownCategory(id)).toBe(id);
+    });
+
+    it.each([undefined, null, "", "garage", "toString", "__proto__"])("turns %j into other, never the raw id", (id) => {
+      expect(knownCategory(id)).toBe("other");
+    });
   });
 
   it("uses only classes whose tokens exist in index.css", () => {

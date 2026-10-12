@@ -11,6 +11,7 @@ import {
   Trees,
   type LucideIcon,
 } from "lucide-react";
+import { CATEGORY_KEYS } from "../../profile/labels";
 
 export type CategoryTone = "peach" | "mint" | "lavender" | "blue" | "yellow" | "salmon" | "neutral";
 
@@ -44,6 +45,14 @@ const BY_CATEGORY: Record<string, { tone: CategoryTone; icon: LucideIcon }> = {
   pets: { tone: "salmon", icon: PawPrint },
   other: { tone: "neutral", icon: Shapes },
 };
+
+/**
+ * The id to name and style a card by: a Category the app has a name for, otherwise "other". The API can send an
+ * id the app does not know (or none, from an older version), and the raw id must never reach the screen.
+ */
+export function knownCategory(id: string | null | undefined): string {
+  return id && Object.hasOwn(CATEGORY_KEYS, id) ? id : "other";
+}
 
 /** The pastel and icon for a Category id; an unknown, empty or missing id is neutral, like "other". */
 export function categoryStyle(id: string | null | undefined): CategoryStyle {
