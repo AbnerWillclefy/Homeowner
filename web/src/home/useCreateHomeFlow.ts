@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { proposeChores } from "../api/catalog";
-import type { FailureReason, FieldCodes, Home, HomeSettings } from "../api/home";
+import { proposeChores } from "../catalog/api";
+import type { FailureReason, FieldCodes, Home, HomeSettings } from "./api";
 import { initialAnswers, toRequestBody, type AnswersState } from "../catalog/answers";
 import {
   afterQuestions,

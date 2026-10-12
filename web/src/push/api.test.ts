@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SESSION_KEY } from "../auth/session";
-import { getVapidPublicKey, saveSubscription } from "./push";
+import { getVapidPublicKey, saveSubscription } from "./api";
 
 const sub = { endpoint: "https://push.example/abc", keys: { p256dh: "pk", auth: "au" } };
 

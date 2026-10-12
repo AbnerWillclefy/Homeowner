@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import type { Chore } from "../api/chores";
-import { PREFERENCES, type Preference } from "../api/profile";
+import type { Chore } from "../chores/api";
+import { PREFERENCES, type Preference } from "../profile/api";
 import { AppDialog } from "../shared/ui/AppDialog";
 import { CardRow } from "../shared/ui/CardRow";
 import { useI18n, type MessageKey } from "../i18n";

@@ -1,5 +1,5 @@
-import type { ChoreWire } from "./chores";
-import { authedFetch } from "./request";
+import type { ChoreWire } from "../chores/api";
+import { authedFetch } from "../shared/api/request";
 
 /** What a Resident can change about their Home. `allocationTime` is "HH:MM", 24 hours, in the Home's zone. */
 export interface HomeSettings {

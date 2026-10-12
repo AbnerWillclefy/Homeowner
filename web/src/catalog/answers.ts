@@ -1,4 +1,4 @@
-import type { AnswersBody } from "../api/catalog";
+import type { AnswersBody } from "./api";
 import type { MessageKey } from "../i18n";
 
 /** The room types and their limits, as the API takes them (backend/internal/catalog/answers.go). */

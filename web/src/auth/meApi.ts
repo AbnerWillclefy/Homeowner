@@ -1,4 +1,4 @@
-import { authedFetch } from "./request";
+import { authedFetch } from "../shared/api/request";
 
 export type MeResult =
   | { kind: "ok"; id: string; email: string }

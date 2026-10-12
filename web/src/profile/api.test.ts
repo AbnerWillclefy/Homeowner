@@ -7,7 +7,7 @@ import {
   putBaseline,
   putPreference,
   setRestriction,
-} from "./profile";
+} from "./api";
 
 function stubStorage(signedIn: boolean) {
   const data = new Map<string, string>();

@@ -1,5 +1,5 @@
-import type { FieldCodes } from "./home";
-import { authedFetch } from "./request";
+import type { FieldCodes } from "../home/api";
+import { authedFetch } from "../shared/api/request";
 
 /** What a Resident edits about a Chore, as the API takes it. Weekdays are 0 to 6 with 0 = Sunday. */
 export interface ChoreInput {

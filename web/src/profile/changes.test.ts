@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Profile } from "../api/profile";
+import type { Profile } from "./api";
 import { withBaseline, withPreference, withRestriction } from "./changes";
 
 const base: Profile = {

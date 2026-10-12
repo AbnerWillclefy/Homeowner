@@ -1,4 +1,4 @@
-import type { Home } from "../api/home";
+import type { Home } from "../home/api";
 import { SignedIn } from "../auth/SignedIn";
 import { ChoresSection } from "../chores/ChoresSection";
 import { HomeDay } from "../home/HomeDay";

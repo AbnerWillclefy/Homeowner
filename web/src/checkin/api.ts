@@ -1,4 +1,4 @@
-import { authedFetch } from "./request";
+import { authedFetch } from "../shared/api/request";
 
 export const LEVELS = ["drained", "low", "normal", "energized"] as const;
 /** How much Energy a Resident says they have today. */

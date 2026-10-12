@@ -1,4 +1,4 @@
-import type { Failure } from "../api/chores";
+import type { Failure } from "./api";
 import type { MessageKey } from "../i18n";
 
 type Reason = Failure["kind"];

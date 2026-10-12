@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import type { DayPlan } from "../api/dayPlan";
+import type { DayPlan } from "./api";
 import { ME_PATH } from "../app/routes";
 import { noTasksReason, type EnergyNote, type NoTasksReason } from "../checkin/state";
 import { formatAllocationTime } from "../home/allocationTimes";

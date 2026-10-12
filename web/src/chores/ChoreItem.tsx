@@ -1,6 +1,6 @@
 import { Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { deleteChore, type Chore, type Failure } from "../api/chores";
+import { deleteChore, type Chore, type Failure } from "./api";
 import { ButtonRow } from "../shared/ui/ButtonRow";
 import { CardRow } from "../shared/ui/CardRow";
 import { CategoryGlyph } from "./CategoryGlyph";

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStableHandlers } from "../shared/ui/useStableHandlers";
-import { acceptInvite, type DeadInvite } from "../api/invites";
-import { getHome, type FailureReason } from "../api/home";
+import { acceptInvite, type DeadInvite } from "./api";
+import { getHome, type FailureReason } from "../home/api";
 import { createJoiner } from "./joinSubmit";
 
 export type JoinState =

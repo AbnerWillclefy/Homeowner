@@ -1,4 +1,4 @@
-import { authedFetch } from "./request";
+import { authedFetch } from "../shared/api/request";
 
 /** An open Task as the Day Plan shows it. Dates are "YYYY-MM-DD". */
 export interface PlanTask {

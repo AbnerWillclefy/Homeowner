@@ -10,7 +10,7 @@ import {
   type Profile,
   type Weekday,
   type WriteResult,
-} from "../api/profile";
+} from "./api";
 import { useToast } from "../shared/ui/useToast";
 import type { MessageKey } from "../i18n";
 import { withBaseline, withPreference, withRestriction } from "./changes";

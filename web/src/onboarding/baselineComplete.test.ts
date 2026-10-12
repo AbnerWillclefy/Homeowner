@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Baseline } from "../api/profile";
+import type { Baseline } from "../profile/api";
 import { allBaselineDaysSet } from "./baselineComplete";
 
 const FULL: Baseline = {

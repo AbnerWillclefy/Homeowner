@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SESSION_KEY } from "../auth/session";
-import { getOnboarding, putOnboardingStep } from "./onboarding";
+import { getOnboarding, putOnboardingStep } from "./api";
 
 function stubStorage(signedIn: boolean) {
   const data = new Map<string, string>();

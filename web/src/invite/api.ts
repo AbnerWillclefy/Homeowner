@@ -1,6 +1,6 @@
 import { config } from "../config";
-import { parseHome, type Failure, type Home } from "./home";
-import { authedFetch } from "./request";
+import { parseHome, type Failure, type Home } from "../home/api";
+import { authedFetch } from "../shared/api/request";
 
 /** Why an Invite cannot be used. The person needs a new link for any of them. */
 export type DeadInvite = "not-found" | "used" | "expired";

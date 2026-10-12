@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { OnboardingPosition, OnboardingStep } from "../api/onboarding";
+import type { OnboardingPosition, OnboardingStep } from "./api";
 import { useSession } from "../app/SessionProvider";
 import { CreateHome } from "../home/CreateHome";
 import { useI18n, type MessageKey } from "../i18n";

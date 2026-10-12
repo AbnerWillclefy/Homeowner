@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { getCatalog, type CatalogEntry } from "../api/catalog";
-import type { Failure } from "../api/chores";
+import { getCatalog, type CatalogEntry } from "./api";
+import type { Failure } from "../chores/api";
 
 export type CatalogState =
   | { kind: "loading" }

@@ -1,4 +1,4 @@
-import type { Weekday } from "../api/profile";
+import type { Weekday } from "./api";
 import type { Locale } from "../i18n";
 
 /** The ISO week the screen shows, Monday first. The API's own order starts on Sunday. */

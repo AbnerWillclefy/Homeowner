@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CheckIn, Level } from "../api/checkIn";
+import type { CheckIn, Level } from "./api";
 import { checkInReducer, checkInView, energyNote, noTasksReason, type CheckInState } from "./state";
 
 const MISSING: CheckIn = { date: "2026-10-12", checkedIn: false, level: null, restrictions: [] };

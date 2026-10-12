@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { Chore, ChoreWire, SaveChoreResult } from "../api/chores";
-import type { FieldCodes } from "../api/home";
-import { WEEKDAYS } from "../api/profile";
+import type { Chore, ChoreWire, SaveChoreResult } from "./api";
+import type { FieldCodes } from "../home/api";
+import { WEEKDAYS } from "../profile/api";
 import { ButtonRow } from "../shared/ui/ButtonRow";
 import { Card } from "../shared/ui/Card";
 import { useI18n, type MessageKey } from "../i18n";

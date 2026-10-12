@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import type { FieldCodes } from "../api/home";
+import type { FieldCodes } from "../home/api";
 import { CardRow } from "../shared/ui/CardRow";
 import { ChoreForm } from "../chores/ChoreForm";
 import { choreFieldErrorKey } from "../chores/fieldErrors";

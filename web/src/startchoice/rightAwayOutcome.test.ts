@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { DayPlan } from "../api/dayPlan";
+import type { DayPlan } from "../dayplan/api";
 import { rightAwayOutcome } from "./rightAwayOutcome";
 
 const TASK = {

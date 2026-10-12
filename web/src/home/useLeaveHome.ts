@@ -1,5 +1,5 @@
 import { useReducer } from "react";
-import { leaveHome } from "../api/home";
+import { leaveHome } from "./api";
 import { useSubmitOnce } from "../shared/ui/useSubmitOnce";
 import { leaveReducer } from "./leaveFlow";
 

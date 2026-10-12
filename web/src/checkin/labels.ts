@@ -1,4 +1,4 @@
-import type { Level } from "../api/checkIn";
+import type { Level } from "./api";
 import type { MessageKey } from "../i18n";
 
 // A level added to the API without a text here fails the typecheck. Only Drained has a hint: it is the one

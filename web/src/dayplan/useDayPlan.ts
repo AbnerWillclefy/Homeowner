@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getDayPlan, type DayPlan, type Failure } from "../api/dayPlan";
+import { getDayPlan, type DayPlan, type Failure } from "./api";
 import { latestOnly } from "./latestOnly";
 
 export type DayPlanState =

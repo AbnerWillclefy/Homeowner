@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
-import type { Home, HomeSettings } from "../api/home";
+import type { Home, HomeSettings } from "./api";
 import { useStableHandlers } from "../shared/ui/useStableHandlers";
 import { createSettingsSubmitter, type FormStatus, type SaveOutcome } from "./settingsSubmit";
 

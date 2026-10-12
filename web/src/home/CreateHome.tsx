@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, type FormEvent } from "react";
-import type { Home } from "../api/home";
+import type { Home } from "./api";
 import { Questionnaire } from "../catalog/Questionnaire";
 import { ReviewList } from "../catalog/ReviewList";
 import { ButtonRow } from "../shared/ui/ButtonRow";

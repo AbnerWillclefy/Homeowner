@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Chore, SaveChoreResult } from "../api/chores";
+import type { Chore, SaveChoreResult } from "./api";
 import { emptyForm } from "./form";
 import { createChoreSubmitter, type ChoreFormStatus } from "./choreSubmit";
 

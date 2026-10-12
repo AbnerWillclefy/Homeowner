@@ -1,4 +1,4 @@
-import type { DeadInvite } from "../api/invites";
+import type { DeadInvite } from "./api";
 import type { MessageKey } from "../i18n";
 
 /** What to tell a person whose Invite cannot be used. A new DeadInvite fails the typecheck until it has text. */

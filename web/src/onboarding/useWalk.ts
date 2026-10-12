@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { putOnboardingStep, type OnboardingPosition, type OnboardingStep } from "../api/onboarding";
+import { putOnboardingStep, type OnboardingPosition, type OnboardingStep } from "./api";
 import { useSubmitOnce } from "../shared/ui/useSubmitOnce";
 import { stepFromPath, stepPath } from "../app/routes";
 import type { OnboardingProblem } from "./useOnboarding";

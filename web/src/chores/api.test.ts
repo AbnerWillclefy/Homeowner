@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SESSION_KEY } from "../auth/session";
-import { createChore, deleteChore, listChores, updateChore, type ChoreInput } from "./chores";
+import { createChore, deleteChore, listChores, updateChore, type ChoreInput } from "./api";
 
 function stubStorage(signedIn: boolean) {
   const data = new Map<string, string>();

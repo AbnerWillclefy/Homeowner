@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import type { CatalogEntry } from "../api/catalog";
-import type { Failure } from "../api/chores";
+import type { CatalogEntry } from "./api";
+import type { Failure } from "../chores/api";
 import { choreFacts } from "../chores/facts";
 import { CardRow } from "../shared/ui/CardRow";
 import { useI18n, type MessageKey } from "../i18n";

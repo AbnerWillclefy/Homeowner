@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { SaveResult, SubscriptionJSON, VapidKeyResult } from "../api/push";
+import type { SaveResult, SubscriptionJSON, VapidKeyResult } from "./api";
 import { enableReminders, syncOnLaunch, type PushSubscriptionLike, type RemindersDeps } from "./reminders";
 
 // "AQID" is bytes 1,2,3 and "BAUG" is bytes 4,5,6.

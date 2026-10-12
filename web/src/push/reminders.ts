@@ -1,4 +1,4 @@
-import type { SaveResult, SubscriptionJSON, VapidKeyResult } from "../api/push";
+import type { SaveResult, SubscriptionJSON, VapidKeyResult } from "./api";
 import { base64UrlToBytes, bytesEqual } from "./vapidKey";
 
 export interface PushSubscriptionLike {

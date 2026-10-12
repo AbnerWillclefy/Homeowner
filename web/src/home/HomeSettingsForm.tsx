@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { Home } from "../api/home";
+import type { Home } from "./api";
 import { browserTimezones } from "./browserTimezones";
 import { saveSettings } from "./createOrLoad";
 import { HomeForm } from "./HomeForm";

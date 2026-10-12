@@ -1,5 +1,5 @@
-import type { ChoreInput } from "../api/chores";
-import { WEEKDAYS } from "../api/profile";
+import type { ChoreInput } from "./api";
+import { WEEKDAYS } from "../profile/api";
 import type { Locale, Translate } from "../i18n";
 import { categoryLabel, importanceLabel, labelText, type Label } from "../profile/labels";
 import { DISPLAY_WEEKDAYS, weekdayLabel } from "../profile/weekdays";

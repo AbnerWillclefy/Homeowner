@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ONBOARDING_STEPS, type OnboardingPosition } from "../api/onboarding";
+import { ONBOARDING_STEPS, type OnboardingPosition } from "../onboarding/api";
 import { stepsFor } from "../onboarding/steps";
 import { onboardingInput, resolveRoute, type OnboardingInput, type RouteDecision, type RouteInput } from "./resolveRoute";
 import { AUTH_PATHS, SHELL_PATHS, stepPath } from "./routes";

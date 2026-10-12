@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useShell } from "../app/ShellContext";
 import { useSession } from "../app/SessionProvider";
-import type { Home } from "../api/home";
+import type { Home } from "./api";
 import { useI18n } from "../i18n";
 import { useInvite } from "../invite/PendingInviteProvider";
 import { Button } from "../shared/ui/Button";

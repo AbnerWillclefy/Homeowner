@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Chore } from "../api/chores";
+import type { Chore } from "./api";
 import { effortToLevel, levelToEffort } from "./effortLevels";
 import { intervalForPreset, presetForText } from "./intervalPresets";
 import { emptyForm, formFromChore, toChoreInput, toggled, type ChoreFormState } from "./form";

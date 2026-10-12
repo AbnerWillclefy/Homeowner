@@ -1,6 +1,6 @@
 import { useI18n } from "../i18n";
 import { Button } from "../shared/ui/Button";
-import { useHealth } from "../useHealth";
+import { useHealth } from "./useHealth";
 import { bannerFor } from "./bannerFor";
 
 /** A slim banner with Retry, shown only when the API is unavailable or unreachable. */

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { getHealth, type HealthResult } from "./api/health";
+import { getHealth, type HealthResult } from "./healthApi";
 
 export type HealthState = { kind: "loading" } | HealthResult;
 

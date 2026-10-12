@@ -1,4 +1,4 @@
-import type { FailureReason } from "../api/home";
+import type { FailureReason } from "./api";
 import type { MessageKey } from "../i18n";
 
 /** Shown when loading the Home fails. A new FailureReason fails the typecheck here until it has a message. */

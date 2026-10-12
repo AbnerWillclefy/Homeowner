@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { RefreshResult } from "../auth/cognito";
-import { createSessionStore, type Session, type StorageLike } from "../auth/session";
+import type { RefreshResult } from "../../auth/cognito";
+import { createSessionStore, type Session, type StorageLike } from "../../auth/session";
 import { createAuthedFetch } from "./request";
 
 function memoryStorage(): StorageLike {

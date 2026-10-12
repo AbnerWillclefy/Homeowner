@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SESSION_KEY } from "../auth/session";
-import { getOwnChoreSettings, putChorePreference, setChoreRestriction } from "./choreSettings";
+import { getOwnChoreSettings, putChorePreference, setChoreRestriction } from "./choreSettingsApi";
 
 function stubFetch(response: Response | Error) {
   const fn = vi.fn(async (_url: string, _init?: RequestInit) => {

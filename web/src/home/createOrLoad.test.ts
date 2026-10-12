@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { CreateHomeResult, GetHomeResult, Home } from "../api/home";
+import type { CreateHomeResult, GetHomeResult, Home } from "./api";
 import { createOrLoad, saveSettings } from "./createOrLoad";
 
 const HOME: Home = { id: "h1", timezone: "Europe/Lisbon", allocationTime: "08:00" };

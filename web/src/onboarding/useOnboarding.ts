@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { getOnboarding, type OnboardingPosition } from "../api/onboarding";
+import { getOnboarding, type OnboardingPosition } from "./api";
 
 export type OnboardingProblem = "offline" | "error" | "not-signed-in";
 

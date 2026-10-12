@@ -1,4 +1,4 @@
-import type { AcceptInviteResult } from "../api/invites";
+import type { AcceptInviteResult } from "./api";
 import { guardOnce } from "../shared/ui/guardOnce";
 import type { JoinOutcome, JoinState } from "./useJoinInvite";
 

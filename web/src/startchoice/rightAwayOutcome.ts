@@ -1,4 +1,4 @@
-import type { DayPlan } from "../api/dayPlan";
+import type { DayPlan } from "../dayplan/api";
 
 export type RightAwayOutcome = "tasks" | "no-energy" | "nothing" | "rejected";
 

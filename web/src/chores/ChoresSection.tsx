@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import type { CatalogEntry } from "../api/catalog";
-import { createChore, updateChore, type Chore } from "../api/chores";
+import type { CatalogEntry } from "../catalog/api";
+import { createChore, updateChore, type Chore } from "./api";
 import { CatalogPicker } from "../catalog/CatalogPicker";
 import { ButtonRow } from "../shared/ui/ButtonRow";
 import { Card } from "../shared/ui/Card";

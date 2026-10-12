@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { lookupInvite, type LookupInviteResult } from "../api/invites";
+import { lookupInvite, type LookupInviteResult } from "./api";
 import { Card } from "../shared/ui/Card";
 import { useI18n } from "../i18n";
 import { Button } from "../shared/ui/Button";

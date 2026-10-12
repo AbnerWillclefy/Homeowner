@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ONBOARDING_STEPS } from "../api/onboarding";
+import { ONBOARDING_STEPS } from "../onboarding/api";
 import {
   authState,
   confirmNeedsEmail,

@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent } from "react";
-import { LEVELS, type CheckIn, type Level } from "../api/checkIn";
+import { LEVELS, type CheckIn, type Level } from "./api";
 import { AppDialog } from "../shared/ui/AppDialog";
 import { useSubmitOnce } from "../shared/ui/useSubmitOnce";
 import { useToast } from "../shared/ui/useToast";

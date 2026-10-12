@@ -1,5 +1,5 @@
 import type { MessageKey } from "../i18n";
-import type { HealthState } from "../useHealth";
+import type { HealthState } from "./useHealth";
 
 /** The banner's message, or null when nothing about health should show (still checking, or healthy). */
 export function bannerFor(health: HealthState): MessageKey | null {

@@ -1,4 +1,4 @@
-import type { PlanTask } from "../api/dayPlan";
+import type { PlanTask } from "./api";
 import { CardRow } from "../shared/ui/CardRow";
 import { CategoryGlyph } from "../chores/CategoryGlyph";
 import { categoryStyle } from "../chores/categoryStyle";

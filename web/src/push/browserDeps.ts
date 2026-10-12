@@ -1,4 +1,4 @@
-import { getVapidPublicKey, saveSubscription } from "../api/push";
+import { getVapidPublicKey, saveSubscription } from "./api";
 import type { PushRegistrationLike, RemindersDeps } from "./reminders";
 
 /** The real browser and API behind RemindersDeps. Call only when push is supported. */

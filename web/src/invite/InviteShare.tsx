@@ -1,7 +1,7 @@
 import { CardRow } from "../shared/ui/CardRow";
 import { useSubmitOnce } from "../shared/ui/useSubmitOnce";
 import { useToast } from "../shared/ui/useToast";
-import { createInvite } from "../api/invites";
+import { createInvite } from "./api";
 import { useI18n, type MessageKey } from "../i18n";
 import { Button } from "../shared/ui/Button";
 import { inviteLink, shareInvite } from "./share";
