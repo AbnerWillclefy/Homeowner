@@ -21,10 +21,13 @@ export type RecoveredNotice = "plain" | "chores-dropped";
 export function HomeSection({
   recovered: initialRecovered = "no",
   planVersion = 0,
+  onPlanChanged = () => {},
 }: {
   recovered?: RecoveredNotice | "no";
-  /** Bumped when the Resident was planned from outside this section, so Today reloads. */
+  /** Bumped whenever the plan changed, so Today reloads. */
   planVersion?: number;
+  /** Called when something in this section changed the plan (a saved Check-in). */
+  onPlanChanged?(): void;
 }) {
   const { state, reload, setHome, clearHome } = useHome();
   const { t } = useI18n();
@@ -76,7 +79,7 @@ export function HomeSection({
         }}
       />
       <InviteShare />
-      <HomeDay outsideVersion={planVersion} />
+      <HomeDay version={planVersion} onPlanChanged={onPlanChanged} />
       <ChoresSection />
       <LeaveHome
         onLeft={() => {

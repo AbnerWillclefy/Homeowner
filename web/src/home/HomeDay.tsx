@@ -1,22 +1,20 @@
-import { useState } from "react";
 import { CheckInSection } from "../checkin/CheckInSection";
 import { useCheckIn } from "../checkin/useCheckIn";
 import { TodaySection } from "../dayplan/TodaySection";
 
 /**
  * Today's Check-in above today's Day Plan. A saved Check-in can change the plan (the API plans the Resident
- * again), so the Today section is remounted, which reloads it, instead of polling.
+ * again), and so can the start choice, so the owner keeps one `version` and Today is remounted, which reloads
+ * it, whenever it changes, instead of polling.
  */
-export function HomeDay({ outsideVersion = 0 }: { outsideVersion?: number }) {
-  const [planVersion, setPlanVersion] = useState(0);
-  const checkIn = useCheckIn(() => setPlanVersion((v) => v + 1));
+export function HomeDay({ version, onPlanChanged }: { version: number; onPlanChanged(): void }) {
+  const checkIn = useCheckIn(onPlanChanged);
   const level = checkIn.state.kind === "ready" ? checkIn.state.checkIn.level : null;
 
   return (
     <>
       <CheckInSection checkIn={checkIn} />
-      {/* outsideVersion: the plan changed elsewhere (the start choice planned this Resident right away). */}
-      <TodaySection key={`${planVersion}-${outsideVersion}`} level={level} />
+      <TodaySection key={version} level={level} />
     </>
   );
 }
