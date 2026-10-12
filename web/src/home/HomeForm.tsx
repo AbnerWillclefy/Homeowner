@@ -1,6 +1,7 @@
 import type { Home, HomeSettings } from "../api/home";
 import { Card } from "../components/ui/Card";
 import { PillButton } from "../components/ui/PillButton";
+import { useToast } from "../components/ui/useToast";
 import { useI18n, type MessageKey } from "../i18n";
 import { FormStatusMessage } from "./FormStatusMessage";
 import { HomeFields } from "./HomeFields";
@@ -11,7 +12,7 @@ interface Copy {
   intro: MessageKey;
   submit: MessageKey;
   submitting: MessageKey;
-  /** The status line after a save. Left out where the form goes away on success. */
+  /** The toast after a save. Left out where the form goes away on success. */
   saved?: MessageKey;
 }
 
@@ -29,7 +30,16 @@ interface Props {
 /** The form for a Home's settings, shared by creating one and editing it. */
 export function HomeForm({ idPrefix, copy, initial, timezones, save, onSaved, onRecovered }: Props) {
   const { t } = useI18n();
-  const form = useSettingsForm(initial, save, onSaved, onRecovered);
+  const toast = useToast();
+  const form = useSettingsForm(
+    initial,
+    save,
+    (home) => {
+      if (copy.saved) toast.show({ messageKey: copy.saved, tone: "success" });
+      onSaved(home);
+    },
+    onRecovered,
+  );
   const saving = form.status.kind === "saving";
 
   return (
@@ -46,9 +56,8 @@ export function HomeForm({ idPrefix, copy, initial, timezones, save, onSaved, on
           onChange={form.change}
         />
         <FormStatusMessage status={form.status} />
-        {copy.saved && form.status.kind === "saved" && <p role="status">{t(copy.saved)}</p>}
         <div className="mt-4 flex flex-wrap gap-3">
-          <PillButton type="submit" variant="primary" disabled={saving}>
+          <PillButton type="submit" variant="primary" disabled={saving} aria-busy={saving}>
             {t(saving ? copy.submitting : copy.submit)}
           </PillButton>
         </div>
