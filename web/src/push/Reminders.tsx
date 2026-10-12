@@ -1,24 +1,8 @@
 import { useI18n } from "../i18n";
-import { INSTALL_STEP_KEYS } from "./installSteps";
-import { problemText, type RemindersProblem } from "./problemText";
+import { EnableReminders } from "./EnableReminders";
+import { InstallSteps } from "./InstallSteps";
 import { DELAYED_TEST_SECONDS, delayedTestLabel, testPendingText, testStatusText } from "./testText";
 import { usePush } from "./usePush";
-
-function InstallSteps() {
-  const { t } = useI18n();
-  return (
-    <section aria-labelledby="install-heading">
-      <h2 id="install-heading">{t("install.heading")}</h2>
-      <p>{t("install.intro")}</p>
-      <ol>
-        {INSTALL_STEP_KEYS.map((key) => (
-          <li key={key}>{t(key)}</li>
-        ))}
-      </ol>
-      <p>{t("install.outro")}</p>
-    </section>
-  );
-}
 
 export function Reminders() {
   const { availability, reminders, enable, test, sendTest } = usePush();
@@ -58,19 +42,10 @@ export function Reminders() {
         </>
       ) : (
         <>
-          <button type="button" className="btn btn-primary" onClick={enable} disabled={reminders.kind === "working"}>
-            {reminders.kind === "working" ? t("reminders.enabling") : t("reminders.enable")}
-          </button>
-          {reminders.kind === "problem" && <ProblemMessage problem={reminders.problem} />}
+          <EnableReminders reminders={reminders} onEnable={enable} />
           {testStatus && <p role="status">{t(testStatus.key, testStatus.params)}</p>}
         </>
       )}
     </section>
   );
-}
-
-function ProblemMessage({ problem }: { problem: RemindersProblem }) {
-  const { t } = useI18n();
-  const text = problemText(problem);
-  return <p role="alert">{t(text.key, text.params)}</p>;
 }

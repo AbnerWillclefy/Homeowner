@@ -80,6 +80,8 @@ func New(deps Deps) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.healthz)
 	mux.HandleFunc("GET /me", s.requireUser(s.getMe))
+	mux.HandleFunc("GET /me/onboarding", s.requireUser(s.getOnboarding))
+	mux.HandleFunc("PUT /me/onboarding", s.requireUser(s.putOnboarding))
 	mux.HandleFunc("POST /home", s.requireUser(s.postHome))
 	mux.HandleFunc("GET /home", s.requireResident(s.getHome))
 	mux.HandleFunc("PUT /home", s.requireResident(s.putHome))
