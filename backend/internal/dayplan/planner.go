@@ -46,11 +46,50 @@ type Planner struct {
 	tasks *tasks.Store
 	alloc allocation.Allocator
 	log   *slog.Logger
+	nudge Nudger
+	// nudgeTimeout is the one deadline for all the nudging of a tick.
+	nudgeTimeout time.Duration
+}
+
+// defaultNudgeTimeout bounds both nudge calls of a tick together, well inside
+// the Allocation Lambda's 60 second timeout. Whatever is not sent when it runs
+// out is lost, by design.
+const defaultNudgeTimeout = 30 * time.Second
+
+// Nudger sends the pushes that hang off the Allocation tick. It is an
+// interface so this package knows nothing of push or subscriptions. Both
+// methods log their own failures and never return one: push is best effort and
+// must not touch Allocation.
+type Nudger interface {
+	// DayPlanReady tells the Residents of the Homes their Day Plan is ready.
+	DayPlanReady(ctx context.Context, homeIDs []string, now time.Time)
+	// CheckinReminders reminds Residents who have not checked in, for Homes an
+	// hour from their Allocation time.
+	CheckinReminders(ctx context.Context, now time.Time)
+}
+
+// Option adjusts a Planner built by New.
+type Option func(*Planner)
+
+// WithNudger makes RunDue send push nudges through n after it has planned.
+// Without it (nil, or the option left out) push is off and a tick only plans.
+func WithNudger(n Nudger) Option {
+	return func(p *Planner) { p.nudge = n }
+}
+
+// WithNudgeTimeout sets the one deadline for all the nudging of a tick
+// (default 30 seconds). It exists for tests.
+func WithNudgeTimeout(d time.Duration) Option {
+	return func(p *Planner) { p.nudgeTimeout = d }
 }
 
 // New returns a Planner that asks alloc for every proposal.
-func New(db *pgxpool.Pool, alloc allocation.Allocator, log *slog.Logger) *Planner {
-	return &Planner{db: db, tasks: tasks.NewStore(db), alloc: alloc, log: log}
+func New(db *pgxpool.Pool, alloc allocation.Allocator, log *slog.Logger, opts ...Option) *Planner {
+	p := &Planner{db: db, tasks: tasks.NewStore(db), alloc: alloc, log: log, nudgeTimeout: defaultNudgeTimeout}
+	for _, opt := range opts {
+		opt(p)
+	}
+	return p
 }
 
 // Summary is what one run of the job did.
@@ -68,6 +107,7 @@ func (p *Planner) RunDue(ctx context.Context, now time.Time) (Summary, error) {
 		return Summary{}, err
 	}
 	sum := Summary{Due: len(due)}
+	var planned []string
 	for _, id := range due {
 		outcome, err := p.PlanHome(ctx, id, now)
 		switch {
@@ -76,15 +116,38 @@ func (p *Planner) RunDue(ctx context.Context, now time.Time) (Summary, error) {
 			p.log.Error("allocate home failed", "home", id, "error", err.Error())
 		case outcome == Planned:
 			sum.Planned++
+			planned = append(planned, id)
 		case outcome == Rejected:
 			sum.Rejected++
 		default:
 			sum.AlreadyPlanned++
 		}
 	}
+	// Every Home is planned before any push is attempted, so a slow or failing
+	// push service can never delay or fail an Allocation.
+	p.sendNudges(ctx, planned, now)
 	p.log.Info("allocation tick done", "due", sum.Due, "planned", sum.Planned,
 		"already_planned", sum.AlreadyPlanned, "rejected", sum.Rejected, "failed", sum.Failed)
 	return sum, nil
+}
+
+// sendNudges sends "Day Plan ready" for the Homes this tick planned (not for
+// ones already planned or rejected), then the Check-in reminders. A panic is
+// logged and swallowed: nothing here may change the tick's answer. Both calls
+// share one deadline.
+func (p *Planner) sendNudges(ctx context.Context, planned []string, now time.Time) {
+	if p.nudge == nil {
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			p.log.Error("nudges panicked", "panic", fmt.Sprint(r))
+		}
+	}()
+	ctx, cancel := context.WithTimeout(ctx, p.nudgeTimeout)
+	defer cancel()
+	p.nudge.DayPlanReady(ctx, planned, now)
+	p.nudge.CheckinReminders(ctx, now)
 }
 
 // DueHomes returns the ids of the Homes whose local time at now is at or past
@@ -93,11 +156,37 @@ func (p *Planner) RunDue(ctx context.Context, now time.Time) (Summary, error) {
 // skips the exact time, still plans the Home once. A Home with an unknown
 // timezone is logged and skipped.
 func (p *Planner) DueHomes(ctx context.Context, now time.Time) ([]string, error) {
+	homes, err := UnplannedHomes(ctx, p.db, p.log, now, func(local, alloc time.Duration) bool {
+		return local >= alloc
+	})
+	if err != nil {
+		return nil, err
+	}
+	due := make([]string, 0, len(homes))
+	for _, h := range homes {
+		due = append(due, h.ID)
+	}
+	return due, nil
+}
+
+// HomeDay is a Home with its local date at some instant.
+type HomeDay struct {
+	ID   string
+	Date allocation.Date
+}
+
+// UnplannedHomes returns, ordered by id, the Homes that have no run for their
+// local date at now and for which inWindow(local, alloc) holds, where local is
+// the Home's time of day at now and alloc its Allocation time, both as offsets
+// since local midnight. It is the one scan behind DueHomes and the Check-in
+// reminder window: the zone conversion, the skip of an unknown zone (logged)
+// and the check for a run live here only.
+func UnplannedHomes(ctx context.Context, db *pgxpool.Pool, log *slog.Logger, now time.Time, inWindow func(local, alloc time.Duration) bool) ([]HomeDay, error) {
 	type home struct {
 		id, zone string
 		minutes  int
 	}
-	rows, err := p.db.Query(ctx, `
+	rows, err := db.Query(ctx, `
 		SELECT id, timezone, extract(hour FROM allocation_time)::int * 60 + extract(minute FROM allocation_time)::int
 		FROM homes ORDER BY id`)
 	if err != nil {
@@ -116,7 +205,7 @@ func (p *Planner) DueHomes(ctx context.Context, now time.Time) ([]string, error)
 		home string
 		date allocation.Date
 	}
-	rows, err = p.db.Query(ctx, `SELECT home_id, plan_date FROM allocation_runs WHERE plan_date >= $1`,
+	rows, err = db.Query(ctx, `SELECT home_id, plan_date FROM allocation_runs WHERE plan_date >= $1`,
 		now.UTC().AddDate(0, 0, -2))
 	if err != nil {
 		return nil, fmt.Errorf("list runs: %w", err)
@@ -133,23 +222,25 @@ func (p *Planner) DueHomes(ctx context.Context, now time.Time) ([]string, error)
 		return nil, fmt.Errorf("list runs: %w", err)
 	}
 
-	var due []string
+	var out []HomeDay
 	for _, h := range homes {
 		loc, err := time.LoadLocation(h.zone)
 		if err != nil {
-			p.log.Warn("home skipped: unknown timezone", "home", h.id, "timezone", h.zone)
+			log.Warn("home skipped: unknown timezone", "home", h.id, "timezone", h.zone)
 			continue
 		}
 		local := now.In(loc)
-		if local.Hour()*60+local.Minute() < h.minutes {
+		sinceMidnight := time.Duration(local.Hour()*60+local.Minute()) * time.Minute
+		if !inWindow(sinceMidnight, time.Duration(h.minutes)*time.Minute) {
 			continue
 		}
-		if slices.Contains(planned, key{h.id, allocation.DateOf(local)}) {
+		date := allocation.DateOf(local)
+		if slices.Contains(planned, key{h.id, date}) {
 			continue
 		}
-		due = append(due, h.id)
+		out = append(out, HomeDay{ID: h.id, Date: date})
 	}
-	return due, nil
+	return out, nil
 }
 
 // PlanHome makes the Day Plan of the Home for its local date at now, unless the

@@ -295,7 +295,7 @@ flowchart TD
 - The form is a `fieldset` of four native radios (Drained, Low, Normal, Energized, each with a one-line explanation and none selected at first) and a `fieldset` of checkboxes for today's Restrictions, labelled with the Demand names. Submitting without a level shows an alert instead of calling the API. Results use `role="status"` and failures `role="alert"`; meaning never depends on colour.
 - A save can change the Day Plan, because the API plans that Resident again. `HomeDay` remounts `TodaySection` with a new `key`, so it reloads without polling. When the Energy is 0 and the level is not Drained, the Today section keeps the "set a Baseline" hint; for Drained it says the Resident checked in as Drained.
 - `state.ts` is a reducer (`checkInReducer`) plus `checkInView` and `energyNote`; `form.ts` holds the form values and what is sent (Restrictions in the order of `GET /demands`). Both are pure. Pure modules with vitest tests: `api/checkIn.ts`, `state.ts`, `form.ts`. The components and hook are checked by hand.
-- No push reminder for the Check-in yet; it belongs with the push nudge work.
+- The Check-in reminder arrives as a push with `kind: "checkin_reminder"`; see Service worker below. Opening the app from it shows the prompt, as on any open.
 
 ## Invites
 
@@ -332,4 +332,5 @@ The worker shows a fallback notification when a push has no usable title (no pay
 - The worker imports only `locales.ts`, `resolveLocale.ts`, `browserLanguages.ts` and `fallback.ts`, by path and never through the `src/i18n/index.ts` barrel, so neither catalog is bundled into `sw.js`. `tsconfig.sw.json` lists these files and uses the `WebWorker` lib with no DOM, so the type check fails if one of them starts to import React, the DOM or a catalog.
 - The language is the device language: `self.navigator.languages` is read on every push and resolved by `resolveLocale` (a Portuguese tag gives `pt-BR`, anything else gives `en-US`). If reading it throws, the worker uses `en-US`. A notification is always shown.
 - The in-app language choice is not read, because workers have no `localStorage`. A later ticket could mirror the choice into IndexedDB.
-- A push with a valid title passes through exactly as sent, in any language. The server's text is never translated.
+- A push whose optional `kind` is `checkin_reminder` or `day_plan_ready` (sent by the allocation job's nudges) is worded by the worker for the device language, from `KIND_TEXT` in `fallback.ts` (en-US and pt-BR, generic text with no names or Task titles). The server's `title` and `body` are English and are ignored for these kinds, so they only matter to an older worker. The `url` still goes through the same-origin check. `isNotificationKind` guards the lookup, so a non-string or unknown kind is not a key.
+- A push with a valid title and no known `kind` passes through exactly as sent, in any language. The server's text is never translated.

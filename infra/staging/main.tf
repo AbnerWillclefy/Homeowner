@@ -111,16 +111,26 @@ module "allocation_job" {
   schedule_expression = "rate(15 minutes)"
   ssm_path_prefix     = local.ssm_prefix
 
-  environment = {
-    PORT                   = "8080"
-    DB_MAX_CONNS           = "2"
-    DATABASE_URL_SSM_PARAM = module.database.database_url_param
+  environment = merge(
+    {
+      PORT                   = "8080"
+      DB_MAX_CONNS           = "2"
+      DATABASE_URL_SSM_PARAM = module.database.database_url_param
 
-    # Lambda Web Adapter forwards the scheduled event to POST /events (its
-    # default pass-through path); it is told explicitly where to check
-    # readiness, since "/" is not served by the job.
-    AWS_LWA_READINESS_CHECK_PATH = "/healthz"
-  }
+      # Lambda Web Adapter forwards the scheduled event to POST /events (its
+      # default pass-through path); it is told explicitly where to check
+      # readiness, since "/" is not served by the job.
+      AWS_LWA_READINESS_CHECK_PATH = "/healthz"
+    },
+    # The same VAPID settings as the API (#25): the tick sends the Check-in
+    # reminder and "Day Plan ready" pushes. Without the public key the job only
+    # plans. The module's SSM read policy already covers the private key.
+    var.vapid_public_key == "" ? {} : {
+      VAPID_PUBLIC_KEY            = var.vapid_public_key
+      VAPID_SUBJECT               = var.vapid_subject
+      VAPID_PRIVATE_KEY_SSM_PARAM = "${local.ssm_prefix}/vapid-private-key"
+    },
+  )
 }
 
 module "http_api" {

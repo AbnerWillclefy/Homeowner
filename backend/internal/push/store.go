@@ -58,6 +58,36 @@ func (s *Store) Get(ctx context.Context, userID, endpoint string) (Subscription,
 	return sub, nil
 }
 
+// ListByUsers returns every stored subscription of each of userIDs, by User id,
+// in one query. A User with no device is absent from the map. Selecting by
+// user_id (never by endpoint) keeps a shared phone's subscription with the
+// User who registered it last.
+func (s *Store) ListByUsers(ctx context.Context, userIDs []string) (map[string][]Subscription, error) {
+	out := map[string][]Subscription{}
+	if len(userIDs) == 0 {
+		return out, nil
+	}
+	rows, err := s.db.Query(ctx, `
+		SELECT user_id, endpoint, p256dh, auth FROM push_subscriptions
+		WHERE user_id = ANY($1::uuid[]) ORDER BY user_id, created_at, endpoint`, userIDs)
+	if err != nil {
+		return nil, fmt.Errorf("list push subscriptions: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var user string
+		var sub Subscription
+		if err := rows.Scan(&user, &sub.Endpoint, &sub.P256dh, &sub.Auth); err != nil {
+			return nil, fmt.Errorf("list push subscriptions: %w", err)
+		}
+		out[user] = append(out[user], sub)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list push subscriptions: %w", err)
+	}
+	return out, nil
+}
+
 // Delete removes the subscription for endpoint; a missing row is not an error.
 func (s *Store) Delete(ctx context.Context, endpoint string) error {
 	if _, err := s.db.Exec(ctx, `DELETE FROM push_subscriptions WHERE endpoint = $1`, endpoint); err != nil {

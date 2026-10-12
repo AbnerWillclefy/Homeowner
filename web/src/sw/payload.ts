@@ -1,4 +1,4 @@
-import { FALLBACK } from "../i18n/fallback";
+import { FALLBACK, KIND_TEXT, isNotificationKind } from "../i18n/fallback";
 import { DEFAULT_LOCALE, type Locale } from "../i18n/locales";
 
 export interface NotificationContent {
@@ -16,7 +16,8 @@ function safePath(value: unknown): string {
  * Turns a push payload into something to show. It never fails: iOS revokes a
  * subscription whose pushes do not show a notification, so empty or broken
  * payloads still produce one. The fallback text is in `locale`; a valid payload
- * passes through untouched, whatever the locale.
+ * passes through untouched, whatever the locale, except that a known `kind` is
+ * worded from `KIND_TEXT` for `locale`.
  */
 export function notificationFromPush(text: string | null, locale: Locale = DEFAULT_LOCALE): NotificationContent {
   const fallback: NotificationContent = { ...FALLBACK[locale], url: "/" };
@@ -30,7 +31,9 @@ export function notificationFromPush(text: string | null, locale: Locale = DEFAU
   }
   if (typeof data !== "object" || data === null) return fallback;
 
-  const { title, body, url } = data as Record<string, unknown>;
+  const { title, body, url, kind } = data as Record<string, unknown>;
+  // A kind the worker knows is worded for the device language, whatever title the server sent.
+  if (isNotificationKind(kind)) return { ...KIND_TEXT[kind][locale], url: safePath(url) };
   if (typeof title !== "string" || title === "") return fallback;
   return { title, body: typeof body === "string" ? body : "", url: safePath(url) };
 }
