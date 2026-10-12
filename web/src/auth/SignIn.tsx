@@ -2,8 +2,11 @@ import { useState, type FormEvent } from "react";
 import { config } from "../config";
 import { useI18n, type MessageKey } from "../i18n";
 import type { CognitoFailure, SignInResult } from "./cognito";
-import { failureMessage } from "./failureText";
+import { failureField, failureMessage } from "./failureText";
+import { Card } from "../components/ui/Card";
+import { FormError } from "../components/ui/FormError";
 import { PasswordField } from "../components/ui/PasswordField";
+import { PillButton } from "../components/ui/PillButton";
 
 interface Props {
   /** Prefilled after confirming an email. */
@@ -16,11 +19,14 @@ interface Props {
   onNeedsSignUp(): void;
 }
 
+const ERROR_ID = "signin-error";
+
 export function SignIn({ initialEmail, noticeKey, logIn, onNeedsConfirm, onNeedsSignUp }: Props) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   // The failure, not its words, so a language switch re-words it.
   const [problem, setProblem] = useState<CognitoFailure | null>(null);
+  const aboutField = problem ? failureField(problem) : null;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -37,7 +43,7 @@ export function SignIn({ initialEmail, noticeKey, logIn, onNeedsConfirm, onNeeds
   }
 
   return (
-    <section aria-labelledby="signin-heading">
+    <Card as="section" aria-labelledby="signin-heading">
       <h2 id="signin-heading">{t("signIn.heading")}</h2>
       <p>{t("signIn.intro")}</p>
       {noticeKey && <p role="status">{t(noticeKey)}</p>}
@@ -50,22 +56,32 @@ export function SignIn({ initialEmail, noticeKey, logIn, onNeedsConfirm, onNeeds
           autoComplete="email"
           inputMode="email"
           autoCapitalize="none"
+          spellCheck={false}
           defaultValue={initialEmail}
           required
+          aria-invalid={aboutField === "email" || undefined}
+          aria-describedby={aboutField === "email" ? ERROR_ID : undefined}
         />
         <label htmlFor="signin-password">{t("signIn.passwordLabel")}</label>
-        <PasswordField id="signin-password" name="password" autoComplete="current-password" required />
-        <button type="submit" className="btn btn-primary" disabled={busy}>
+        <PasswordField
+          id="signin-password"
+          name="password"
+          autoComplete="current-password"
+          required
+          aria-invalid={aboutField === "password" || undefined}
+          aria-describedby={aboutField === "password" ? ERROR_ID : undefined}
+        />
+        <FormError id={ERROR_ID}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
+        <PillButton type="submit" className="mt-4 w-full" disabled={busy}>
           {busy ? t("signIn.submitting") : t("signIn.submit")}
-        </button>
+        </PillButton>
       </form>
-      {problem && <p role="alert">{failureMessage(t, problem, config.passwordPolicy)}</p>}
-      <p>
+      <p className="mt-4 text-center">
         {t("signIn.newHere")}{" "}
         <button type="button" className="btn-link" onClick={onNeedsSignUp}>
           {t("signIn.newHereAction")}
         </button>
       </p>
-    </section>
+    </Card>
   );
 }

@@ -1,5 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { lookupInvite, type LookupInviteResult } from "../api/invites";
+import { Card } from "../components/ui/Card";
+import { PillButton } from "../components/ui/PillButton";
 import { useI18n } from "../i18n";
 import { DEAD_INVITE_KEY, isDeadInvite } from "./deadInvite";
 
@@ -35,23 +37,23 @@ export function SignedOutInvite({ token, onDismiss, children }: Props) {
 
   if (isDeadInvite(result)) {
     return (
-      <section aria-labelledby="invite-dead-heading">
+      <Card as="section" aria-labelledby="invite-dead-heading">
         <h2 id="invite-dead-heading">{t("invite.signedOut.heading")}</h2>
         <p role="alert">{t(DEAD_INVITE_KEY[result.kind])}</p>
-        <button type="button" className="btn" onClick={onDismiss}>
+        <PillButton variant="secondary" className="mt-2 w-full" onClick={onDismiss}>
           {t("invite.dead.continue")}
-        </button>
-      </section>
+        </PillButton>
+      </Card>
     );
   }
 
   const valid = result.kind === "valid";
   return (
     <>
-      <section aria-labelledby="invite-welcome-heading">
+      <Card as="section" aria-labelledby="invite-welcome-heading">
         <h2 id="invite-welcome-heading">{t("invite.signedOut.heading")}</h2>
         {valid ? <p>{t("invite.signedOut.intro")}</p> : <p role="status">{t("invite.lookup.problem")}</p>}
-      </section>
+      </Card>
       {children}
     </>
   );

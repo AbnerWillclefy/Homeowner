@@ -3,14 +3,18 @@ import { TriangleAlert } from "lucide-react";
 import type { CognitoFailure, CognitoResult } from "./cognito";
 import { config } from "../config";
 import { useI18n } from "../i18n";
-import { failureMessage } from "./failureText";
+import { failureField, failureMessage } from "./failureText";
 import { evaluate } from "./passwordPolicy";
 import { ruleChange, type RuleChange } from "./ruleAnnouncement";
 import { announcementText } from "./ruleText";
+import { Card } from "../components/ui/Card";
+import { FormError } from "../components/ui/FormError";
 import { PasswordField } from "../components/ui/PasswordField";
 import { PasswordRules } from "../components/ui/PasswordRules";
+import { PillButton } from "../components/ui/PillButton";
 
 const ANNOUNCE_DELAY_MS = 600;
+const ERROR_ID = "signup-error";
 
 interface Props {
   register(email: string, password: string): Promise<CognitoResult>;
@@ -24,6 +28,8 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
   const [busy, setBusy] = useState(false);
   // State holds the failure and the rule change, never their words, so a language switch re-words them.
   const [problem, setProblem] = useState<CognitoFailure | null>(null);
+
+  const aboutField = problem ? failureField(problem) : null;
 
   const [mismatch, setMismatch] = useState(false);
   const [password, setPassword] = useState("");
@@ -80,7 +86,7 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
   }
 
   return (
-    <section aria-labelledby="signup-heading">
+    <Card as="section" aria-labelledby="signup-heading">
       <h2 id="signup-heading">{t("signUp.heading")}</h2>
       <p>{t("signUp.intro")}</p>
       <form onSubmit={submit} onBlur={checkOnBlur} onChange={onFormChange}>
@@ -95,8 +101,10 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
           autoComplete="email"
           inputMode="email"
           autoCapitalize="none"
+          spellCheck={false}
           required
-          aria-describedby="signup-email-why"
+          aria-invalid={aboutField === "email" || undefined}
+          aria-describedby={aboutField === "email" ? `signup-email-why ${ERROR_ID}` : "signup-email-why"}
         />
 
         <label htmlFor="signup-password">{t("signUp.passwordLabel")}</label>
@@ -112,12 +120,18 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
           name="password"
           autoComplete="new-password"
           required
-          aria-describedby="signup-password-why signup-password-rules"
+          aria-invalid={aboutField === "password" || undefined}
+          aria-describedby={
+            aboutField === "password"
+              ? `signup-password-why signup-password-rules ${ERROR_ID}`
+              : "signup-password-why signup-password-rules"
+          }
         />
 
         <label htmlFor="signup-confirm">{t("signUp.confirmLabel")}</label>
         <PasswordField
           id="signup-confirm"
+          name="confirm-password"
           autoComplete="new-password"
           required
           aria-describedby={mismatch ? "signup-confirm-mismatch" : undefined}
@@ -132,17 +146,17 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
           )}
         </div>
 
-        <button type="submit" className="btn btn-primary" disabled={busy}>
+        <FormError id={ERROR_ID}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
+        <PillButton type="submit" className="mt-4 w-full" disabled={busy}>
           {busy ? t("signUp.submitting") : t("signUp.submit")}
-        </button>
+        </PillButton>
       </form>
-      {problem && <p role="alert">{failureMessage(t, problem, config.passwordPolicy)}</p>}
-      <p>
+      <p className="mt-4 text-center">
         {t("signUp.haveLogin")}{" "}
         <button type="button" className="btn-link" onClick={onHaveLogin}>
           {t("signUp.haveLoginAction")}
         </button>
       </p>
-    </section>
+    </Card>
   );
 }
