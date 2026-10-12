@@ -1,6 +1,10 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useRef, type ReactNode, type RefObject } from "react";
 
+/** The look of a modal dialog's panel, shared with dialogs that own their trigger. */
+export const DIALOG_CONTENT_CLASS =
+  "fixed inset-x-4 top-1/2 mx-auto max-h-[90dvh] max-w-[32rem] -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-surface-raised p-6 text-text";
+
 interface Props {
   /** Escape and a tap outside call this, like the screen's own dismiss button. */
   onDismiss(): void;
@@ -29,7 +33,7 @@ export function AppDialog({ onDismiss, dismissible = true, title, titleRef, desc
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-text/50" />
         <Dialog.Content
-          className="fixed inset-x-4 top-1/2 mx-auto max-h-[90dvh] max-w-[32rem] -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-surface-raised p-6 text-text"
+          className={DIALOG_CONTENT_CLASS}
           {...(description === undefined ? { "aria-describedby": undefined } : {})}
           onOpenAutoFocus={(event) => {
             event.preventDefault();

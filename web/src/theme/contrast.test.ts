@@ -46,6 +46,8 @@ pairs.push(
   { label: "text on surface-raised", fg: "text", bg: "surface-raised", min: 4.5 },
   { label: "muted on surface-raised", fg: "muted", bg: "surface-raised", min: 4.5 },
   { label: "border on surface-raised", fg: "border", bg: "surface-raised", min: 3 },
+  { label: "danger on surface-raised", fg: "danger", bg: "surface-raised", min: 4.5 },
+  { label: "danger on surface", fg: "danger", bg: "surface", min: 4.5 },
   { label: "accent-contrast on accent", fg: "accent-contrast", bg: "accent", min: 4.5 },
 );
 

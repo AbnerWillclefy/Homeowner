@@ -1,9 +1,9 @@
 import { Slot } from "@radix-ui/react-slot";
-import type { ButtonHTMLAttributes } from "react";
+import type { ComponentProps } from "react";
 
 export type PillVariant = "primary" | "secondary" | "danger";
 
-interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface Props extends ComponentProps<"button"> {
   variant?: PillVariant;
   /** Render the child (for example a router Link) with the button's look instead of a <button>. */
   asChild?: boolean;
