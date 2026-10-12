@@ -46,11 +46,37 @@ type Planner struct {
 	tasks *tasks.Store
 	alloc allocation.Allocator
 	log   *slog.Logger
+	nudge Nudger
+}
+
+// Nudger sends the pushes that hang off the Allocation tick. It is an
+// interface so this package knows nothing of push or subscriptions. Both
+// methods log their own failures and never return one: push is best effort and
+// must not touch Allocation.
+type Nudger interface {
+	// DayPlanReady tells the Residents of the Homes their Day Plan is ready.
+	DayPlanReady(ctx context.Context, homeIDs []string, now time.Time)
+	// CheckinReminders reminds Residents who have not checked in, for Homes an
+	// hour from their Allocation time.
+	CheckinReminders(ctx context.Context, now time.Time)
+}
+
+// Option adjusts a Planner built by New.
+type Option func(*Planner)
+
+// WithNudger makes RunDue send push nudges through n after it has planned.
+// Without it (nil, or the option left out) push is off and a tick only plans.
+func WithNudger(n Nudger) Option {
+	return func(p *Planner) { p.nudge = n }
 }
 
 // New returns a Planner that asks alloc for every proposal.
-func New(db *pgxpool.Pool, alloc allocation.Allocator, log *slog.Logger) *Planner {
-	return &Planner{db: db, tasks: tasks.NewStore(db), alloc: alloc, log: log}
+func New(db *pgxpool.Pool, alloc allocation.Allocator, log *slog.Logger, opts ...Option) *Planner {
+	p := &Planner{db: db, tasks: tasks.NewStore(db), alloc: alloc, log: log}
+	for _, opt := range opts {
+		opt(p)
+	}
+	return p
 }
 
 // Summary is what one run of the job did.
@@ -68,6 +94,7 @@ func (p *Planner) RunDue(ctx context.Context, now time.Time) (Summary, error) {
 		return Summary{}, err
 	}
 	sum := Summary{Due: len(due)}
+	var planned []string
 	for _, id := range due {
 		outcome, err := p.PlanHome(ctx, id, now)
 		switch {
@@ -76,15 +103,35 @@ func (p *Planner) RunDue(ctx context.Context, now time.Time) (Summary, error) {
 			p.log.Error("allocate home failed", "home", id, "error", err.Error())
 		case outcome == Planned:
 			sum.Planned++
+			planned = append(planned, id)
 		case outcome == Rejected:
 			sum.Rejected++
 		default:
 			sum.AlreadyPlanned++
 		}
 	}
+	// Every Home is planned before any push is attempted, so a slow or failing
+	// push service can never delay or fail an Allocation.
+	p.sendNudges(ctx, planned, now)
 	p.log.Info("allocation tick done", "due", sum.Due, "planned", sum.Planned,
 		"already_planned", sum.AlreadyPlanned, "rejected", sum.Rejected, "failed", sum.Failed)
 	return sum, nil
+}
+
+// sendNudges sends "Day Plan ready" for the Homes this tick planned (not for
+// ones already planned or rejected), then the Check-in reminders. A panic is
+// logged and swallowed: nothing here may change the tick's answer.
+func (p *Planner) sendNudges(ctx context.Context, planned []string, now time.Time) {
+	if p.nudge == nil {
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			p.log.Error("nudges panicked", "panic", fmt.Sprint(r))
+		}
+	}()
+	p.nudge.DayPlanReady(ctx, planned, now)
+	p.nudge.CheckinReminders(ctx, now)
 }
 
 // DueHomes returns the ids of the Homes whose local time at now is at or past

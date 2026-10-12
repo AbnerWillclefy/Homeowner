@@ -27,6 +27,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/db"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/nudge"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/server"
 )
@@ -48,7 +49,8 @@ type App struct {
 	// plans with the baseline allocator unless UseAllocator replaces it.
 	Planner *dayplan.Planner
 
-	alloc *swapAllocator
+	alloc  *swapAllocator
+	nudger dayplan.Nudger
 }
 
 // swapAllocator is the Allocator the server and the job share, so a test can
@@ -135,8 +137,12 @@ func Start(t testing.TB, opts ...Option) *App {
 	t.Cleanup(srv.Close)
 
 	app := &App{URL: srv.URL, Clock: fake, DB: pool, Logs: logs, alloc: swappable}
-	app.UseAllocator(allocation.Baseline{})
 	app.Push, _ = deps.Push.(*push.Fake)
+	if app.Push != nil {
+		// The job nudges through the same fake the server sends with.
+		app.nudger = nudge.New(pool, app.Push, slog.New(slog.NewJSONHandler(logs, nil)))
+	}
+	app.UseAllocator(allocation.Baseline{})
 	app.Auth, _ = deps.Verifier.(*auth.Fake)
 	return app
 }
@@ -149,7 +155,11 @@ func (a *App) UseAllocator(al allocation.Allocator) {
 		a.alloc.inner = al
 		a.alloc.mu.Unlock()
 	}
-	a.Planner = dayplan.New(a.DB, al, slog.New(slog.NewJSONHandler(a.Logs, nil)))
+	var opts []dayplan.Option
+	if a.nudger != nil {
+		opts = append(opts, dayplan.WithNudger(a.nudger))
+	}
+	a.Planner = dayplan.New(a.DB, al, slog.New(slog.NewJSONHandler(a.Logs, nil)), opts...)
 }
 
 // RunAllocation runs the Allocation job once at the fake clock's current time,
