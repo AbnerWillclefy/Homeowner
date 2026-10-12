@@ -3,7 +3,8 @@ import { enUS } from "../i18n/catalogs/en-US";
 import { ptBR } from "../i18n/catalogs/pt-BR";
 import { createTranslate } from "../i18n/translate";
 import type { CognitoFailure } from "./cognito";
-import { failureKey, failureMessage } from "./failureText";
+import { formErrorId } from "../components/ui/formErrorId";
+import { failureField, failureKey, failureMessage, fieldError } from "./failureText";
 import { parsePolicy } from "./passwordPolicy";
 
 const kinds: CognitoFailure["kind"][] = [
@@ -72,17 +73,37 @@ describe("failureMessage", () => {
 
   it("states the policy's password rules when a password is refused", () => {
     expect(english("invalid-password")).toBe(
-      "That password is not strong enough. At least 10 characters, with an upper case letter, a lower case letter and a number.",
+      "That password is not strong enough. Choose a different password. At least 10 characters, with an upper case letter, a lower case letter and a number.",
     );
     expect(english("invalid-password")).not.toMatch(/symbol/i);
     expect(portuguese("invalid-password")).toBe(
-      "Essa senha não é forte o bastante. Pelo menos 10 caracteres, com uma letra maiúscula, uma letra minúscula e um número.",
+      "Essa senha não é forte o bastante. Escolha outra senha. Pelo menos 10 caracteres, com uma letra maiúscula, uma letra minúscula e um número.",
     );
   });
 
   it("follows a stricter policy", () => {
     expect(english("invalid-password", strict)).toMatch(/12 characters.*a number and a symbol\.$/);
     expect(portuguese("invalid-password", strict)).toMatch(/12 caracteres.*um número e um símbolo\.$/);
+  });
+
+  // Every message says what the User can do next, in their own words.
+  const nextStep: Record<CognitoFailure["kind"], [RegExp, RegExp]> = {
+    "already-registered": [/sign in instead/i, /entre com ele/i],
+    "invalid-password": [/choose a different password/i, /escolha outra senha/i],
+    "invalid-input": [/try again/i, /tente novamente/i],
+    "wrong-code": [/try again/i, /tente novamente/i],
+    "expired-code": [/request a new code/i, /solicite um novo código/i],
+    "not-confirmed": [/confirm your email/i, /confirme seu e-mail/i],
+    "not-authorized": [/try again/i, /tente novamente/i],
+    "rate-limited": [/wait.*try again/i, /espere.*tente novamente/i],
+    network: [/try again/i, /tente novamente/i],
+    error: [/try again/i, /tente novamente/i],
+  };
+
+  it.each(kinds)("says what to do next for %s", (kind) => {
+    const [en, pt] = nextStep[kind];
+    expect(english(kind)).toMatch(en);
+    expect(portuguese(kind)).toMatch(pt);
   });
 
   it("blames the connection only for a network failure", () => {
@@ -103,5 +124,60 @@ describe("failureMessage", () => {
     expect(portuguese("already-registered")).toMatch(/código/);
     expect(portuguese("wrong-code")).toMatch(/código/);
     expect(portuguese("expired-code")).toMatch(/código/);
+  });
+});
+
+describe("failureField", () => {
+  it("points a refused password at the password field", () => {
+    expect(failureField({ kind: "invalid-password" })).toBe("password");
+  });
+
+  it("points a wrong or expired code at the code field", () => {
+    expect(failureField({ kind: "wrong-code" })).toBe("code");
+    expect(failureField({ kind: "expired-code" })).toBe("code");
+  });
+
+  it("points an unusable email at the email field", () => {
+    expect(failureField({ kind: "already-registered" })).toBe("email");
+    expect(failureField({ kind: "invalid-input" })).toBe("email");
+  });
+
+  it("leaves the rest to the form", () => {
+    for (const kind of ["not-confirmed", "not-authorized", "rate-limited", "network", "error"] as const) {
+      expect(failureField({ kind })).toBeNull();
+    }
+  });
+});
+
+describe("fieldError", () => {
+  const none = { "aria-invalid": undefined, "aria-describedby": undefined };
+
+  it("marks the field a failure is about and points it at the form's error", () => {
+    expect(fieldError({ kind: "wrong-code" }, "code", "confirm")).toEqual({
+      "aria-invalid": true,
+      "aria-describedby": formErrorId("confirm"),
+    });
+  });
+
+  it("keeps the field's own hints ahead of the error", () => {
+    expect(fieldError({ kind: "invalid-password" }, "password", "signup", "why rules")).toEqual({
+      "aria-invalid": true,
+      "aria-describedby": "why rules signup-error",
+    });
+  });
+
+  it("leaves a field alone when the failure is about another field or the whole form", () => {
+    expect(fieldError({ kind: "wrong-code" }, "email", "signin", "hint")).toEqual({
+      "aria-invalid": undefined,
+      "aria-describedby": "hint",
+    });
+    expect(fieldError({ kind: "network" }, "email", "signin")).toEqual(none);
+    expect(fieldError(null, "email", "signin")).toEqual(none);
+  });
+});
+
+describe("formErrorId", () => {
+  it("derives the error's id from the form's name", () => {
+    expect(formErrorId("signin")).toBe("signin-error");
   });
 });

@@ -3,7 +3,12 @@ import { config } from "../config";
 import { useI18n } from "../i18n";
 import type { CognitoFailure, CognitoResult } from "./cognito";
 import { EMAIL_MARKER, splitAtEmail } from "./emailMarker";
-import { failureMessage } from "./failureText";
+import { failureMessage, fieldError } from "./failureText";
+import { Card } from "../components/ui/Card";
+import { FormError, FormNotice } from "../components/ui/FormError";
+import { PillButton } from "../components/ui/PillButton";
+
+const FORM = "confirm";
 
 interface Props {
   email: string;
@@ -44,14 +49,16 @@ export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) 
   }
 
   return (
-    <section aria-labelledby="confirm-heading">
+    <Card as="section" aria-labelledby="confirm-heading">
       <h2 id="confirm-heading">{t("confirm.heading")}</h2>
       <p>
         {before}
         <strong>{email}</strong>
         {after}
       </p>
-      <p className="my-1 text-sm text-muted">{t("confirm.spamHint")}</p>
+      <p id="confirm-spam-hint" className="my-1 text-sm text-muted">
+        {t("confirm.spamHint")}
+      </p>
       <form onSubmit={submit}>
         <label htmlFor="confirm-code">{t("confirm.codeLabel")}</label>
         <input
@@ -61,22 +68,25 @@ export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) 
           inputMode="numeric"
           autoComplete="one-time-code"
           pattern="[0-9]*"
+          autoCapitalize="none"
+          spellCheck={false}
           required
+          {...fieldError(problem, "code", FORM, "confirm-spam-hint")}
         />
-        <button type="submit" className="btn btn-primary" disabled={busy}>
+        <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
+        <FormNotice>{resent && t("confirm.resent")}</FormNotice>
+        <PillButton type="submit" className="mt-4 w-full" disabled={busy}>
           {busy ? t("confirm.submitting") : t("confirm.submit")}
-        </button>
+        </PillButton>
       </form>
-      {problem && <p role="alert">{failureMessage(t, problem, config.passwordPolicy)}</p>}
-      {resent && <p role="status">{t("confirm.resent")}</p>}
-      <p>
-        <button type="button" className="btn" onClick={sendAgain} disabled={busy}>
-          {t("confirm.resend")}
-        </button>{" "}
+      <PillButton variant="secondary" className="mt-3 w-full" onClick={sendAgain} disabled={busy}>
+        {t("confirm.resend")}
+      </PillButton>
+      <p className="mt-2 text-center">
         <button type="button" className="btn-link" onClick={onBack}>
           {t("confirm.useOtherEmail")}
         </button>
       </p>
-    </section>
+    </Card>
   );
 }

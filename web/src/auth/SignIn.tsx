@@ -2,8 +2,11 @@ import { useState, type FormEvent } from "react";
 import { config } from "../config";
 import { useI18n, type MessageKey } from "../i18n";
 import type { CognitoFailure, SignInResult } from "./cognito";
-import { failureMessage } from "./failureText";
+import { failureMessage, fieldError } from "./failureText";
+import { Card } from "../components/ui/Card";
+import { FormError } from "../components/ui/FormError";
 import { PasswordField } from "../components/ui/PasswordField";
+import { PillButton } from "../components/ui/PillButton";
 
 interface Props {
   /** Prefilled after confirming an email. */
@@ -15,6 +18,8 @@ interface Props {
   onNeedsConfirm(email: string): void;
   onNeedsSignUp(): void;
 }
+
+const FORM = "signin";
 
 export function SignIn({ initialEmail, noticeKey, logIn, onNeedsConfirm, onNeedsSignUp }: Props) {
   const { t } = useI18n();
@@ -37,7 +42,7 @@ export function SignIn({ initialEmail, noticeKey, logIn, onNeedsConfirm, onNeeds
   }
 
   return (
-    <section aria-labelledby="signin-heading">
+    <Card as="section" aria-labelledby="signin-heading">
       <h2 id="signin-heading">{t("signIn.heading")}</h2>
       <p>{t("signIn.intro")}</p>
       {noticeKey && <p role="status">{t(noticeKey)}</p>}
@@ -50,22 +55,30 @@ export function SignIn({ initialEmail, noticeKey, logIn, onNeedsConfirm, onNeeds
           autoComplete="email"
           inputMode="email"
           autoCapitalize="none"
+          spellCheck={false}
           defaultValue={initialEmail}
           required
+          {...fieldError(problem, "email", FORM)}
         />
         <label htmlFor="signin-password">{t("signIn.passwordLabel")}</label>
-        <PasswordField id="signin-password" name="password" autoComplete="current-password" required />
-        <button type="submit" className="btn btn-primary" disabled={busy}>
+        <PasswordField
+          id="signin-password"
+          name="password"
+          autoComplete="current-password"
+          required
+          {...fieldError(problem, "password", FORM)}
+        />
+        <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
+        <PillButton type="submit" className="mt-4 w-full" disabled={busy}>
           {busy ? t("signIn.submitting") : t("signIn.submit")}
-        </button>
+        </PillButton>
       </form>
-      {problem && <p role="alert">{failureMessage(t, problem, config.passwordPolicy)}</p>}
-      <p>
+      <p className="mt-4 text-center">
         {t("signIn.newHere")}{" "}
         <button type="button" className="btn-link" onClick={onNeedsSignUp}>
           {t("signIn.newHereAction")}
         </button>
       </p>
-    </section>
+    </Card>
   );
 }

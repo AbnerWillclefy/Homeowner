@@ -419,12 +419,12 @@ export const ptBR: Messages = {
 
   "auth.failure.alreadyRegistered":
     "Esse e-mail já está cadastrado. Entre com ele ou, se você nunca digitou o código, confirme-o.",
-  "auth.failure.invalidPassword": "Essa senha não é forte o bastante. {rules}",
+  "auth.failure.invalidPassword": "Essa senha não é forte o bastante. Escolha outra senha. {rules}",
   "auth.failure.invalidInput": "Confira o e-mail e os dados que você digitou e tente novamente.",
   "auth.failure.wrongCode": "Esse código não está certo. Confira o e-mail mais recente e tente novamente.",
-  "auth.failure.expiredCode": "Esse código expirou. Peça um novo e use o e-mail mais recente.",
+  "auth.failure.expiredCode": "Esse código expirou. Solicite um novo código e use o e-mail mais recente.",
   "auth.failure.notConfirmed":
-    "Este e-mail ainda não foi confirmado. Digite o código do seu e-mail ou peça um novo.",
+    "Confirme seu e-mail primeiro: digite o código que enviamos ou solicite um novo código.",
   "auth.failure.notAuthorized": "O e-mail ou a senha não está certo. Confira os dois e tente novamente.",
   "auth.failure.rateLimited": "Muitas tentativas. Espere alguns minutos e tente novamente.",
   "auth.failure.network": "Não foi possível acessar o serviço de login. Verifique sua conexão e tente novamente.",
