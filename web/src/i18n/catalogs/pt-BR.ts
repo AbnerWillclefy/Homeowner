@@ -15,13 +15,18 @@ type Messages = {
 export const ptBR: Messages = {
   "app.name": "Homeowner",
   "home.tagline": "Divida os afazeres domésticos do seu lar de forma justa.",
-  "health.loading": "Verificando o serviço...",
-  "health.ok": "Status do serviço: ok",
   "health.unavailable":
     "Status do serviço: indisponível. O serviço está no ar, mas não consegue acessar o banco de dados.",
   "health.unreachable": "Status do serviço: inacessível. Verifique sua conexão e tente novamente.",
   "health.retry": "Tentar novamente",
   "auth.checking": "Verificando seu login...",
+
+  // Navegação
+  "nav.label": "Principal",
+  "nav.today": "Hoje",
+  "nav.chores": "Afazeres",
+  "nav.home": "Lar",
+  "nav.me": "Eu",
 
   // Lar
   "home.loading": "Carregando o seu lar...",

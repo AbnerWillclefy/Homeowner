@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FALLBACK, KIND_TEXT } from "../i18n/fallback";
 import { LOCALES } from "../i18n/locales";
-import { notificationFromPush } from "./payload";
+import { notificationFromPush, shouldNavigate } from "./payload";
 
 const unusable: [string, string | null][] = [
   ["no payload", null],
@@ -13,6 +13,26 @@ const unusable: [string, string | null][] = [
   ["a non-string title", JSON.stringify({ title: 7 })],
   ["no title", JSON.stringify({ body: "x" })],
 ];
+
+describe("shouldNavigate", () => {
+  const origin = "https://app.test";
+
+  it("navigates a window left on another tab to Today", () => {
+    expect(shouldNavigate("https://app.test/me", "/", origin)).toBe(true);
+    expect(shouldNavigate("https://app.test/chores?x=1", "/", origin)).toBe(true);
+  });
+
+  it("leaves a window already on the target alone", () => {
+    expect(shouldNavigate("https://app.test/", "/", origin)).toBe(false);
+    expect(shouldNavigate("https://app.test/#top", "/", origin)).toBe(false);
+  });
+
+  it("never navigates to another origin or on unreadable URLs", () => {
+    expect(shouldNavigate("https://other.test/me", "/", origin)).toBe(false);
+    expect(shouldNavigate("not a url", "/", origin)).toBe(false);
+    expect(shouldNavigate("https://app.test/me", "/", "not an origin")).toBe(false);
+  });
+});
 
 describe("notificationFromPush", () => {
   describe.each(LOCALES)("fallback in %s", (locale) => {
