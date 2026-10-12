@@ -1,4 +1,4 @@
-import type { MessageKey } from "../i18n";
+import type { MessageKey } from "../shared/i18n";
 
 type GreetingPeriod = "morning" | "afternoon" | "evening";
 

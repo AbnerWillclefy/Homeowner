@@ -1,4 +1,4 @@
-import { useI18n } from "../i18n";
+import { useI18n } from "../shared/i18n";
 import { Button } from "../shared/ui/Button";
 import { problemText } from "./problemText";
 import type { RemindersState } from "./usePush";

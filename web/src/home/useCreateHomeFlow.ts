@@ -9,7 +9,7 @@ import {
   type ReviewItem,
   type Reviewed,
 } from "../catalog/review";
-import { useI18n } from "../i18n";
+import { useI18n } from "../shared/i18n";
 import { useStableHandlers } from "../shared/ui/useStableHandlers";
 import { useSubmitOnce } from "../shared/ui/useSubmitOnce";
 import { createHomeSubmitter } from "./createHomeSubmit";

@@ -1,4 +1,4 @@
-import type { MessageKey } from "../i18n";
+import type { MessageKey } from "../shared/i18n";
 import type { CheckInState, SaveFailure } from "./state";
 
 type LoadReason = Extract<CheckInState, { kind: "failed" }>["reason"];

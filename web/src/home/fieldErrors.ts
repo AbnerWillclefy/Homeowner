@@ -1,4 +1,4 @@
-import type { MessageKey } from "../i18n";
+import type { MessageKey } from "../shared/i18n";
 
 /** Every field code the API can return (backend/internal/server/home.go), keyed "field.code". */
 const FIELD_ERROR_KEY: Record<string, MessageKey> = {

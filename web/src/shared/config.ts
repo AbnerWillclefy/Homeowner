@@ -1,4 +1,4 @@
-import { parsePolicy } from "./auth/passwordPolicy";
+import { parsePolicy } from "../auth/passwordPolicy";
 
 function readApiBaseUrl(raw: string | undefined): string {
   const value = raw?.trim();

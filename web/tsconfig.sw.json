@@ -15,9 +15,9 @@
   "include": [
     "src/sw.ts",
     "src/sw",
-    "src/i18n/locales.ts",
-    "src/i18n/resolveLocale.ts",
-    "src/i18n/fallback.ts",
-    "src/i18n/browserLanguages.ts"
+    "src/shared/i18n/locales.ts",
+    "src/shared/i18n/resolveLocale.ts",
+    "src/shared/i18n/fallback.ts",
+    "src/shared/i18n/browserLanguages.ts"
   ]
 }

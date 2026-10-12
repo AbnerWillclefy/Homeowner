@@ -1,4 +1,4 @@
-import type { MessageKey } from "../i18n";
+import type { MessageKey } from "../shared/i18n";
 import type { HealthState } from "./useHealth";
 
 /** The banner's message, or null when nothing about health should show (still checking, or healthy). */

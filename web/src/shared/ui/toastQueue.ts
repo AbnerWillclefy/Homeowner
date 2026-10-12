@@ -1,5 +1,5 @@
-import type { MessageKey } from "../../i18n/catalogs/en-US";
-import type { Params } from "../../i18n/translate";
+import type { MessageKey } from "../i18n/catalogs/en-US";
+import type { Params } from "../i18n/translate";
 
 export type ToastTone = "success" | "error";
 

@@ -5,7 +5,7 @@ import { HomeDay } from "../home/HomeDay";
 import { HomeGate } from "../home/HomeGate";
 import { HomeSettingsForm } from "../home/HomeSettingsForm";
 import { LeaveHome } from "../home/LeaveHome";
-import { useI18n } from "../i18n";
+import { useI18n } from "../shared/i18n";
 import { InviteShare } from "../invite/InviteShare";
 import { MeProfile } from "../profile/MeProfile";
 import { AppearanceCard, LanguageCard } from "../settings/Settings";

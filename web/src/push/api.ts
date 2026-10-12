@@ -1,4 +1,4 @@
-import { config } from "../config";
+import { config } from "../shared/config";
 import { authedFetch } from "../shared/api/request";
 
 /** The browser's PushSubscription.toJSON() shape, as the API expects it. */

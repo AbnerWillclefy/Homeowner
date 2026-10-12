@@ -1,7 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
 import { HealthBanner } from "../app/HealthBanner";
-import { useI18n } from "../i18n";
+import { useI18n } from "../shared/i18n";
 import { Settings } from "../settings/Settings";
 import { Button } from "../shared/ui/Button";
 

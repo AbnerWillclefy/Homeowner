@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { config } from "../config";
-import { useI18n } from "../i18n";
+import { config } from "../shared/config";
+import { useI18n } from "../shared/i18n";
 import { Button } from "../shared/ui/Button";
 import { createConfirmSubmitter } from "./authSubmit";
 import type { CognitoFailure, CognitoResult } from "./cognito";

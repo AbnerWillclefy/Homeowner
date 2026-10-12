@@ -1,6 +1,6 @@
 import { AppDialog } from "../shared/ui/AppDialog";
 import { ButtonRow } from "../shared/ui/ButtonRow";
-import { useI18n, type MessageKey } from "../i18n";
+import { useI18n, type MessageKey } from "../shared/i18n";
 import { Button } from "../shared/ui/Button";
 import { rightAwayOutcome, type RightAwayOutcome } from "./rightAwayOutcome";
 import { useRightAway } from "./useRightAway";

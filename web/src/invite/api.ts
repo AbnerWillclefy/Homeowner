@@ -1,4 +1,4 @@
-import { config } from "../config";
+import { config } from "../shared/config";
 import { parseHome, type Failure, type Home } from "../home/api";
 import { authedFetch } from "../shared/api/request";
 

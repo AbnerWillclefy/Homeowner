@@ -1,5 +1,5 @@
-import { FALLBACK, KIND_TEXT, isNotificationKind } from "../i18n/fallback";
-import { DEFAULT_LOCALE, type Locale } from "../i18n/locales";
+import { FALLBACK, KIND_TEXT, isNotificationKind } from "../shared/i18n/fallback";
+import { DEFAULT_LOCALE, type Locale } from "../shared/i18n/locales";
 
 export interface NotificationContent {
   title: string;

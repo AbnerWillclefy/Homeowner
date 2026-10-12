@@ -3,7 +3,7 @@ import type { Chore } from "../chores/api";
 import { PREFERENCES, type Preference } from "../profile/api";
 import { AppDialog } from "../shared/ui/AppDialog";
 import { CardRow } from "../shared/ui/CardRow";
-import { useI18n, type MessageKey } from "../i18n";
+import { useI18n, type MessageKey } from "../shared/i18n";
 import { effortName } from "../chores/effortLevels";
 import { categoryLabel, labelText, type Label } from "../profile/labels";
 import { Button } from "../shared/ui/Button";

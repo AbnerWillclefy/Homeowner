@@ -12,7 +12,7 @@ import {
   type WriteResult,
 } from "./api";
 import { useToast } from "../shared/ui/useToast";
-import type { MessageKey } from "../i18n";
+import type { MessageKey } from "../shared/i18n";
 import { withBaseline, withPreference, withRestriction } from "./changes";
 import { performChange } from "./performChange";
 

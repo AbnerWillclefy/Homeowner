@@ -1,4 +1,4 @@
-import type { MessageKey, Translate } from "../i18n";
+import type { MessageKey, Translate } from "../shared/i18n";
 
 // The Catalog ids the app has a name for. The API sends an id with every entry and proposal; a Chore's
 // stored name is text, so the app builds it in the Resident's language (ADR 0006). An id missing from the

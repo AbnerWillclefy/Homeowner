@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { enUS } from "../i18n/catalogs/en-US";
-import { ptBR } from "../i18n/catalogs/pt-BR";
-import { createTranslate } from "../i18n/translate";
+import { enUS } from "../shared/i18n/catalogs/en-US";
+import { ptBR } from "../shared/i18n/catalogs/pt-BR";
+import { createTranslate } from "../shared/i18n/translate";
 import type { CognitoFailure } from "./cognito";
 import { formErrorId } from "../shared/ui/formErrorId";
 import { failureField, failureKey, failureMessage, fieldError } from "./failureText";

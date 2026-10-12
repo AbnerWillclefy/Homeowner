@@ -7,7 +7,7 @@
     <!--
       Sets data-theme on <html> before the first paint, so the wrong theme never flashes.
       Plain (non-module) script on purpose: module scripts are deferred. It repeats the rule
-      in src/theme/theme.ts (src/theme/inlineScript.test.ts keeps them in step) and must
+      in src/shared/theme/theme.ts (src/shared/theme/inlineScript.test.ts keeps them in step) and must
       never throw. If a Content-Security-Policy is ever added, this script needs a hash.
     -->
     <script id="theme-init">

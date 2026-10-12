@@ -6,7 +6,7 @@ import { CardRow } from "../shared/ui/CardRow";
 import { CategoryGlyph } from "./CategoryGlyph";
 import { categoryStyle } from "./categoryStyle";
 import { useSubmitOnce } from "../shared/ui/useSubmitOnce";
-import { useI18n } from "../i18n";
+import { useI18n } from "../shared/i18n";
 import { categoryLabel, labelText } from "../profile/labels";
 import { Button } from "../shared/ui/Button";
 import { DELETE_FAILURE_KEY } from "./failureMessages";

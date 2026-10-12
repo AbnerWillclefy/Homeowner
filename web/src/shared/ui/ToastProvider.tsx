@@ -1,7 +1,7 @@
 import * as Toast from "@radix-ui/react-toast";
 import { CircleAlert, CircleCheck, X } from "lucide-react";
 import { useMemo, useReducer, type ReactNode } from "react";
-import { useI18n } from "../../i18n";
+import { useI18n } from "../i18n";
 import { initialToastQueue, toastDurationMs, toastQueue, type ToastRequest, type ToastTone } from "./toastQueue";
 import { ToastContext, type Toasts } from "./useToast";
 

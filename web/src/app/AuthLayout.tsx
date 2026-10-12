@@ -1,6 +1,6 @@
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { Card } from "../shared/ui/Card";
-import { useI18n } from "../i18n";
+import { useI18n } from "../shared/i18n";
 import { useInvite } from "../invite/PendingInviteProvider";
 import { SignedOutInvite } from "../invite/SignedOutInvite";
 import { AppearanceSetting, LanguageSetting } from "../settings/Settings";

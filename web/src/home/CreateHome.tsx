@@ -3,7 +3,7 @@ import type { Home } from "./api";
 import { Questionnaire } from "../catalog/Questionnaire";
 import { ReviewList } from "../catalog/ReviewList";
 import { ButtonRow } from "../shared/ui/ButtonRow";
-import { useI18n, type MessageKey } from "../i18n";
+import { useI18n, type MessageKey } from "../shared/i18n";
 import { Button } from "../shared/ui/Button";
 import { DEFAULT_ALLOCATION_TIME } from "./allocationTimes";
 import { browserTimezone, browserTimezones } from "./browserTimezones";

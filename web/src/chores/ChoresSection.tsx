@@ -6,7 +6,7 @@ import { ButtonRow } from "../shared/ui/ButtonRow";
 import { Card } from "../shared/ui/Card";
 import { formFromEntry } from "../catalog/review";
 import { useToast } from "../shared/ui/useToast";
-import { useI18n } from "../i18n";
+import { useI18n } from "../shared/i18n";
 import { Button } from "../shared/ui/Button";
 import { ChoreForm } from "./ChoreForm";
 import { ChoreItem } from "./ChoreItem";

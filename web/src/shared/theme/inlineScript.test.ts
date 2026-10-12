@@ -5,7 +5,7 @@ import { resolveTheme } from "./theme";
 
 // The pre-render script in index.html cannot import theme.ts, so this test runs
 // the real script text against fakes and checks it agrees with resolveTheme.
-const html = readFileSync(new URL("../../index.html", import.meta.url), "utf8");
+const html = readFileSync(new URL("../../../index.html", import.meta.url), "utf8");
 const match = /<script id="theme-init">([\s\S]*?)<\/script>/.exec(html);
 
 interface Fakes {

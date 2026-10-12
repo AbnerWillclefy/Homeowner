@@ -1,4 +1,4 @@
-import type { MessageKey } from "../i18n";
+import type { MessageKey } from "../shared/i18n";
 import type { DayPlanState } from "./useDayPlan";
 
 type Reason = Extract<DayPlanState, { kind: "failed" }>["reason"];

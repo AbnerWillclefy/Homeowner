@@ -1,4 +1,4 @@
-import { useI18n } from "../i18n";
+import { useI18n } from "../shared/i18n";
 import { Button } from "../shared/ui/Button";
 import { useHealth } from "./useHealth";
 import { bannerFor } from "./bannerFor";

@@ -1,4 +1,4 @@
-import { config } from "../config";
+import { config } from "../shared/config";
 
 /** Why a Cognito call failed, in words the screens can choose their own text for. Never Cognito's raw message. */
 export type CognitoFailure =

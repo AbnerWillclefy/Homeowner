@@ -1,5 +1,5 @@
 import { Card } from "../shared/ui/Card";
-import { useI18n } from "../i18n";
+import { useI18n } from "../shared/i18n";
 import { BaselineFields, PreferenceFields, ProfileStatus, RestrictionFields } from "./ProfileSections";
 import { useProfile } from "./useProfile";
 

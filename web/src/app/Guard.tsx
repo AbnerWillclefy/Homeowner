@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useLocation } from "react-router";
-import { useI18n, type MessageKey } from "../i18n";
+import { useI18n, type MessageKey } from "../shared/i18n";
 import { useInvite } from "../invite/PendingInviteProvider";
 import type { OnboardingProblem } from "../onboarding/useOnboarding";
 import { Button } from "../shared/ui/Button";

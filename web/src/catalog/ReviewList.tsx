@@ -6,7 +6,7 @@ import { choreFieldErrorKey } from "../chores/fieldErrors";
 import { choreFacts } from "../chores/facts";
 import { useChoreLists } from "../chores/useChoreLists";
 import { useToast } from "../shared/ui/useToast";
-import { useI18n } from "../i18n";
+import { useI18n } from "../shared/i18n";
 import { Button } from "../shared/ui/Button";
 import { keepLocally, previewOf, type ReviewItem } from "./review";
 

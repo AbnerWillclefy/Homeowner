@@ -1,5 +1,5 @@
 import type { Weekday } from "./api";
-import type { Locale } from "../i18n";
+import type { Locale } from "../shared/i18n";
 
 /** The ISO week the screen shows, Monday first. The API's own order starts on Sunday. */
 export const DISPLAY_WEEKDAYS: readonly Weekday[] = [

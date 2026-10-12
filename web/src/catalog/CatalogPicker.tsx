@@ -3,7 +3,7 @@ import type { CatalogEntry } from "./api";
 import type { Failure } from "../chores/api";
 import { choreFacts } from "../chores/facts";
 import { CardRow } from "../shared/ui/CardRow";
-import { useI18n, type MessageKey } from "../i18n";
+import { useI18n, type MessageKey } from "../shared/i18n";
 import { Button } from "../shared/ui/Button";
 import { catalogName } from "./name";
 import { useCatalog } from "./useCatalog";

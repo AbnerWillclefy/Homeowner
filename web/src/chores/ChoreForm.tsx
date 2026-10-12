@@ -4,7 +4,7 @@ import type { FieldCodes } from "../home/api";
 import { WEEKDAYS } from "../profile/api";
 import { ButtonRow } from "../shared/ui/ButtonRow";
 import { Card } from "../shared/ui/Card";
-import { useI18n, type MessageKey } from "../i18n";
+import { useI18n, type MessageKey } from "../shared/i18n";
 import { categoryLabel, demandLabel, importanceLabel, labelText, type Label } from "../profile/labels";
 import { DISPLAY_WEEKDAYS, weekdayLabel } from "../profile/weekdays";
 import { Button } from "../shared/ui/Button";

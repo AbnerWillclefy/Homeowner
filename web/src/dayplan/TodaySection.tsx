@@ -3,7 +3,7 @@ import type { DayPlan } from "./api";
 import { ME_PATH } from "../app/routes";
 import { noTasksReason, type EnergyNote, type NoTasksReason } from "../checkin/state";
 import { formatAllocationTime } from "../home/allocationTimes";
-import { useI18n, type MessageKey } from "../i18n";
+import { useI18n, type MessageKey } from "../shared/i18n";
 import { Button } from "../shared/ui/Button";
 import { LOAD_FAILURE_KEY } from "./failureMessages";
 import { TaskCard } from "./TaskCard";

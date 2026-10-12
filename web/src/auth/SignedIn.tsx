@@ -1,5 +1,5 @@
 import { CardRow } from "../shared/ui/CardRow";
-import { useI18n } from "../i18n";
+import { useI18n } from "../shared/i18n";
 import { Button } from "../shared/ui/Button";
 import { EMAIL_MARKER, splitAtEmail } from "./emailMarker";
 

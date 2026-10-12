@@ -1,5 +1,5 @@
 import type { RemindersResult } from "./reminders";
-import type { MessageKey } from "../i18n";
+import type { MessageKey } from "../shared/i18n";
 
 /** A catalog key and the values for its placeholders. Keys, never text, so the language is chosen at render. */
 export interface Text {

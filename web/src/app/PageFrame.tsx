@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useI18n } from "../i18n";
+import { useI18n } from "../shared/i18n";
 import { HealthBanner } from "./HealthBanner";
 
 /** The one centred column every screen sits in: the app name, the tagline, the health banner, then the screen. */

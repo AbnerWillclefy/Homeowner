@@ -37,7 +37,7 @@ describe("forbiddenClass", () => {
 describe("components", () => {
   it("use only semantic classes", () => {
     const offences: string[] = [];
-    for (const file of tsxFiles(new URL("..", import.meta.url).pathname)) {
+    for (const file of tsxFiles(new URL("../..", import.meta.url).pathname)) {
       const source = readFileSync(file, "utf8");
       for (const attr of source.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\})/g)) {
         for (const token of (attr[1] ?? attr[2] ?? "").split(/\s+/).filter(Boolean)) {

@@ -3,7 +3,7 @@ import { LEVELS, type CheckIn, type Level } from "./api";
 import { AppDialog } from "../shared/ui/AppDialog";
 import { useSubmitOnce } from "../shared/ui/useSubmitOnce";
 import { useToast } from "../shared/ui/useToast";
-import { useI18n } from "../i18n";
+import { useI18n } from "../shared/i18n";
 import { demandLabel, labelText } from "../profile/labels";
 import { Button } from "../shared/ui/Button";
 import { SAVE_FAILURE_KEY } from "./failureMessages";

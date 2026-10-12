@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { CatalogEntry, Proposal } from "./api";
 import type { ChoreWire } from "../chores/api";
-import type { Translate } from "../i18n";
-import { enUS } from "../i18n/catalogs/en-US";
+import type { Translate } from "../shared/i18n";
+import { enUS } from "../shared/i18n/catalogs/en-US";
 import { afterQuestions, errorsStillApply, formFromEntry, itemsFromProposals, keepLocally, previewOf, splitSaveErrors, toWire } from "./review";
 
 const english: Translate = (key) => String(enUS[key]);

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { enUS } from "../i18n/catalogs/en-US";
-import { ptBR } from "../i18n/catalogs/pt-BR";
-import type { Locale } from "../i18n/locales";
-import { createTranslate } from "../i18n/translate";
+import { enUS } from "../shared/i18n/catalogs/en-US";
+import { ptBR } from "../shared/i18n/catalogs/pt-BR";
+import type { Locale } from "../shared/i18n/locales";
+import { createTranslate } from "../shared/i18n/translate";
 import { describeRules, evaluate, parsePolicy, type PasswordPolicy } from "./passwordPolicy";
 import { announcementText, ruleLabel, ruleSentence, ruleStatus } from "./ruleText";
 import { ruleChange } from "./ruleAnnouncement";

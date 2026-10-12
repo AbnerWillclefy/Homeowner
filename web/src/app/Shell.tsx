@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router";
 import { useHome } from "../home/useHome";
-import { useI18n } from "../i18n";
+import { useI18n } from "../shared/i18n";
 import { useInvite } from "../invite/PendingInviteProvider";
 import { JoinInvite } from "../invite/JoinInvite";
 import { RatingStep } from "../invite/RatingStep";

@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { ME_PATH } from "../app/routes";
 import type { EnergyNote } from "../checkin/state";
 import { Chip } from "../chores/Chip";
-import { useI18n, type MessageKey } from "../i18n";
+import { useI18n, type MessageKey } from "../shared/i18n";
 import { greetingKey } from "./greeting";
 
 // A note added without a text here fails the typecheck.

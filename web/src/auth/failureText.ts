@@ -1,5 +1,5 @@
 import { formErrorId } from "../shared/ui/formErrorId";
-import type { MessageKey, Translate } from "../i18n";
+import type { MessageKey, Translate } from "../shared/i18n";
 import type { CognitoFailure } from "./cognito";
 import { describeRules, type PasswordPolicy } from "./passwordPolicy";
 import { ruleSentence } from "./ruleText";

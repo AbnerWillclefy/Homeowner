@@ -2,7 +2,7 @@ import type { PlanTask } from "./api";
 import { CardRow } from "../shared/ui/CardRow";
 import { CategoryGlyph } from "../chores/CategoryGlyph";
 import { categoryStyle } from "../chores/categoryStyle";
-import { useI18n } from "../i18n";
+import { useI18n } from "../shared/i18n";
 import { categoryLabel, importanceLabel, labelText, type Label } from "../profile/labels";
 import { formatDay } from "./format";
 import { assignmentReasonLabel, poolReasonLabel } from "./reasons";

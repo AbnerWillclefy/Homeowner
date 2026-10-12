@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { FALLBACK, KIND_TEXT } from "../i18n/fallback";
-import { LOCALES } from "../i18n/locales";
+import { FALLBACK, KIND_TEXT } from "../shared/i18n/fallback";
+import { LOCALES } from "../shared/i18n/locales";
 import { notificationFromPush, shouldNavigate } from "./payload";
 
 const unusable: [string, string | null][] = [
