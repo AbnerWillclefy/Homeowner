@@ -8,7 +8,9 @@ package checkinstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -16,13 +18,41 @@ import (
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkin"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/vocab"
 )
 
 // CheckIn is a Resident's answer for one day.
 type CheckIn struct {
 	Level checkin.Level
-	// Demands are today's extra Restrictions, without duplicates.
+	// Demands are today's extra Restrictions, known and without duplicates:
+	// make a CheckIn with New.
 	Demands []string
+}
+
+// ErrInvalidLevel and ErrUnknownDemand say why New refused its input.
+var (
+	ErrInvalidLevel  = errors.New("check-in level is not one of the four")
+	ErrUnknownDemand = errors.New("check-in restriction is not a known demand")
+)
+
+// New is the one way to make a CheckIn from untrusted input: it checks the
+// level and every Demand id and drops repeats, keeping the first-seen order.
+// Save and the callers of CheckIn trust the result.
+func New(level string, demands []string) (CheckIn, error) {
+	l := checkin.Level(level)
+	if !l.Valid() {
+		return CheckIn{}, ErrInvalidLevel
+	}
+	out := CheckIn{Level: l, Demands: []string{}}
+	for _, d := range demands {
+		if !vocab.IsDemand(d) {
+			return CheckIn{}, ErrUnknownDemand
+		}
+		if !slices.Contains(out.Demands, d) {
+			out.Demands = append(out.Demands, d)
+		}
+	}
+	return out, nil
 }
 
 // Querier is what a pool or a transaction offers for reading.
@@ -32,7 +62,8 @@ type Querier interface {
 
 // Save stores the Check-in of the Resident for the date, replacing the level
 // and the day Restrictions of an earlier one. now stamps it (the injected
-// clock, never time.Now). Demand ids must already be validated.
+// clock, never time.Now). The CheckIn must come from New; the SQL conflict
+// clause is only a safety net for repeats.
 func Save(ctx context.Context, tx pgx.Tx, residentID string, date allocation.Date, in CheckIn, now time.Time) error {
 	var id string
 	err := tx.QueryRow(ctx, `

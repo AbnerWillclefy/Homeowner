@@ -1,12 +1,12 @@
 package server
 
 import (
+	"errors"
 	"net/http"
 	"slices"
 	"time"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkin"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkinstore"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/vocab"
@@ -68,19 +68,18 @@ func (s *server) putCheckIn(w http.ResponseWriter, r *http.Request) {
 	if !decodeBody(w, r, &body, maxCheckInBody, true) {
 		return
 	}
-	if body.Level == nil || !checkin.Level(*body.Level).Valid() {
+	var level string
+	if body.Level != nil {
+		level = *body.Level
+	}
+	in, err := checkinstore.New(level, body.Restrictions)
+	switch {
+	case errors.Is(err, checkinstore.ErrInvalidLevel):
 		writeError(w, http.StatusBadRequest, "level must be one of drained, low, normal, energized")
 		return
-	}
-	in := checkinstore.CheckIn{Level: checkin.Level(*body.Level), Demands: []string{}}
-	for _, d := range body.Restrictions {
-		if !vocab.IsDemand(d) {
-			writeError(w, http.StatusBadRequest, "restrictions must be known demands")
-			return
-		}
-		if !slices.Contains(in.Demands, d) {
-			in.Demands = append(in.Demands, d)
-		}
+	case err != nil:
+		writeError(w, http.StatusBadRequest, "restrictions must be known demands")
+		return
 	}
 	m := currentMembership(r.Context())
 	date, err := s.planner.CheckIn(r.Context(), m.Home.ID, m.ResidentID, in, s.deps.Clock.Now())
