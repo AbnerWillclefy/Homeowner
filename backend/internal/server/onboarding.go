@@ -31,7 +31,7 @@ func (s *server) getOnboarding(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case err == nil:
 			stored, err = s.users.AdvanceOnboarding(r.Context(), u.ID, onboarding.Done,
-				onboarding.Before(onboarding.Done), s.deps.Clock.Now())
+				s.deps.Clock.Now())
 			if err != nil {
 				s.onboardingError(w, "finish onboarding for a resident", err)
 				return
@@ -58,7 +58,7 @@ func (s *server) putOnboarding(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	stored, err := s.users.AdvanceOnboarding(r.Context(), currentUser(r.Context()).ID,
-		body.Step, onboarding.Before(body.Step), s.deps.Clock.Now())
+		body.Step, s.deps.Clock.Now())
 	if err != nil {
 		s.onboardingError(w, "advance onboarding", err)
 		return

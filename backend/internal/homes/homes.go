@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/onboarding"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
 )
 
 var (
@@ -81,9 +81,8 @@ func (s *Store) Create(ctx context.Context, userID, timezone, allocationTime str
 	}
 	// Creating the Home is the last onboarding step; doing it here means a
 	// crash before the client's next call cannot leave a Resident in the flow.
-	if _, err := tx.Exec(ctx, `UPDATE users SET onboarding_step = $2, updated_at = $3 WHERE id = $1`,
-		userID, onboarding.Done, now); err != nil {
-		return Home{}, fmt.Errorf("finish onboarding: %w", err)
+	if err := users.MarkOnboardingDone(ctx, tx, userID, now); err != nil {
+		return Home{}, err
 	}
 	if err := chores.InsertAll(ctx, tx, h.ID, initial, now); err != nil {
 		return Home{}, fmt.Errorf("create home: %w", err)

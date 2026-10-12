@@ -8,7 +8,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/onboarding"
 )
 
 // User is a person with an account.
@@ -62,15 +65,15 @@ func (s *Store) OnboardingStep(ctx context.Context, userID string) (string, erro
 
 // AdvanceOnboarding stores step as the User's progress only if that moves it
 // forward: it is one conditional UPDATE, not a read and a write, so two tabs
-// racing cannot move progress backwards. from lists the stored values step may
-// replace (onboarding.Before); not started always may. It returns the stored
-// step afterwards, which is the old one when nothing moved.
-func (s *Store) AdvanceOnboarding(ctx context.Context, userID, step string, from []string, now time.Time) (string, error) {
+// racing cannot move progress backwards. Only not started and the steps
+// before step (onboarding.Before) may be replaced. It returns the stored step
+// afterwards, which is the old one when nothing moved.
+func (s *Store) AdvanceOnboarding(ctx context.Context, userID, step string, now time.Time) (string, error) {
 	var stored string
 	err := s.db.QueryRow(ctx, `
 		UPDATE users SET onboarding_step = $2, updated_at = $4
 		WHERE id = $1 AND (onboarding_step IS NULL OR onboarding_step = ANY($3))
-		RETURNING onboarding_step`, userID, step, from, now).Scan(&stored)
+		RETURNING onboarding_step`, userID, step, onboarding.Before(step), now).Scan(&stored)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return s.OnboardingStep(ctx, userID)
 	}
@@ -78,4 +81,19 @@ func (s *Store) AdvanceOnboarding(ctx context.Context, userID, step string, from
 		return "", fmt.Errorf("advance onboarding: %w", err)
 	}
 	return stored, nil
+}
+
+// Execer is what a pool or a transaction offers for writing.
+type Execer interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+}
+
+// MarkOnboardingDone stores that the User finished onboarding, on ex so a
+// caller can do it in its own transaction.
+func MarkOnboardingDone(ctx context.Context, ex Execer, userID string, now time.Time) error {
+	if _, err := ex.Exec(ctx, `UPDATE users SET onboarding_step = $2, updated_at = $3 WHERE id = $1`,
+		userID, onboarding.Done, now); err != nil {
+		return fmt.Errorf("finish onboarding: %w", err)
+	}
+	return nil
 }
