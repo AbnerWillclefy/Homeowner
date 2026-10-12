@@ -3,6 +3,7 @@ import type { Chore } from "../api/chores";
 import { PREFERENCES, type Preference } from "../api/profile";
 import { AppDialog } from "../components/ui/AppDialog";
 import { useI18n, type MessageKey } from "../i18n";
+import { effortName } from "../chores/effortLevels";
 import { categoryLabel, labelText, type Label } from "../profile/labels";
 import { useRatingStep } from "./useRatingStep";
 
@@ -55,7 +56,7 @@ export function RatingStep({ onClose }: Props) {
                   <fieldset className="mt-4 p-0 border-0">
                     <legend className="font-semibold">{chore.name}</legend>
                     <p className="mt-0">
-                      {text(categoryLabel(chore.category))}, {t("chores.item.effort", { effort: chore.baseEffort })}
+                      {text(categoryLabel(chore.category))}, {t("chores.item.effort", { level: effortName(t, chore.baseEffort) })}
                     </p>
                     <div className="flex flex-wrap gap-x-4">
                       {PREFERENCES.map((value) => (

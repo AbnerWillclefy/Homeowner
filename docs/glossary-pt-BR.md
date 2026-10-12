@@ -25,7 +25,7 @@ Agreed Brazilian Portuguese equivalents for the terms in [CONTEXT.md](../CONTEXT
 | Baseline | energia base | padrão, energia padrão | A User's usual Energy per weekday. Used in `profile.baseline.*`. |
 | Baseline level | baixa, normal, alta | fraca, forte, média | The three choices per weekday (Low, Normal, High); they describe the Energy ("energia"), so they agree with it in the feminine, like the Check-in "baixa". Used in `profile.baseline.level.*`. |
 | Energy | energia | humor, disposição, fôlego | Used in `profile.baseline.explain`. |
-| Effort | esforço | dificuldade, custo, duração | In points from 1 to 5. Used in `profile.baseline.explain` and `chores.form.baseEffort.*` (a Chore's base Effort). |
+| Effort | esforço | dificuldade, custo, duração | In points from 1 to 5, shown to the person as five named levels (`effort.level.*`: Muito leve, Leve, Médio, Pesado, Muito pesado). Used in `profile.baseline.explain` and `chores.form.baseEffort.*` (a Chore's base Effort). |
 | Chore | afazer | atividade, trabalho, tarefa (a Task is "tarefa") | Plural "afazeres". Used in `profile.*` and the `chores.*` Chores screen. |
 | Preference | preferência | gosto | Like, neutral, dislike are "Gosto", "Neutro", "Não gosto". |
 | Restriction | restrição | limitação, requisito | Used in `profile.restrictions.*`. |

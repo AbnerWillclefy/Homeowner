@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Chore, ChoreWire, SaveChoreResult } from "../api/chores";
 import type { FieldCodes } from "../api/home";
 import { WEEKDAYS } from "../api/profile";
@@ -10,11 +10,12 @@ import { categoryLabel, demandLabel, importanceLabel, labelText, type Label } fr
 import { DISPLAY_WEEKDAYS, weekdayLabel } from "../profile/weekdays";
 import { choreFieldErrorKey } from "./fieldErrors";
 import { SAVE_FAILURE_KEY } from "./failureMessages";
+import { EFFORT_LEVELS, effortLevelKey, levelToEffort } from "./effortLevels";
 import { toggled, type ChoreFormState } from "./form";
+import { INTERVAL_PRESETS, intervalForPreset, presetForText, type IntervalPreset } from "./intervalPresets";
 import { suggestTwoPerson } from "./suggestion";
 import { useChoreForm } from "./useChoreForm";
 
-const EFFORTS = [1, 2, 3, 4, 5];
 const IMPORTANCES = ["essential", "normal", "nice_to_have"];
 const CHECK = "size-5 w-5 min-h-0 mt-0 shrink-0 accent-accent";
 const CHOICE = "flex items-center gap-3 min-h-11 mt-0 font-normal";
@@ -50,6 +51,11 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
   const fieldErrors = status.kind === "invalid" ? status.fields : {};
   const idPrefix = `chore-form-${idKey}`;
   const headingRef = useRef<HTMLHeadingElement>(null);
+  // An existing interval opens on its matching preset, or on Custom with its days typed in.
+  const initialPreset = presetForText(initial.intervalDays);
+  const [preset, setPreset] = useState<IntervalPreset>(initialPreset);
+  // The days typed under Custom, kept while a named preset is chosen.
+  const customText = useRef(initialPreset === "custom" ? initial.intervalDays : "");
 
   // The form appears in place of a button, so move the reader to it.
   useEffect(() => headingRef.current?.focus(), []);
@@ -131,6 +137,14 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
   const name = field("name", "chores.form.name.hint");
   const category = field("category", "chores.form.category.hint");
   const interval = field("intervalDays", "chores.form.intervalDays.hint");
+
+  /** Picking a preset fills the days; the number typed under Custom is kept for when Custom is picked again. */
+  function choosePreset(next: IntervalPreset) {
+    if (preset === "custom") customText.current = values.intervalDays;
+    setPreset(next);
+    const days = intervalForPreset(next);
+    form.change({ intervalDays: days === null ? customText.current : String(days) }, "intervalDays");
+  }
   const buildsUp = field("buildsUp", "chores.form.buildsUp.hint");
 
   return (
@@ -195,7 +209,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
           "chores.form.baseEffort.hint",
           radios(
             "baseEffort",
-            EFFORTS.map((effort) => ({ value: effort, label: t("chores.form.baseEffort.option", { effort }) })),
+            EFFORT_LEVELS.map((level) => ({ value: levelToEffort(level), label: t(effortLevelKey(level)) })),
             values.baseEffort,
             (baseEffort) => form.change({ baseEffort }, "baseEffort"),
           ),
@@ -243,20 +257,33 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
           </PillButton>
         )}
 
-        <div>
-          <label htmlFor={`${idPrefix}-intervalDays`}>{t("chores.form.intervalDays.label")}</label>
-          <input
-            id={`${idPrefix}-intervalDays`}
-            type="text"
-            inputMode="numeric"
-            autoComplete="off"
-            value={values.intervalDays}
-            disabled={saving}
-            {...interval.aria}
-            onChange={(event) => form.change({ intervalDays: event.target.value }, "intervalDays")}
-          />
-          {interval.notes}
-        </div>
+        {group(
+          "intervalDays",
+          "chores.form.interval.legend",
+          "chores.form.intervalDays.hint",
+          <>
+            {radios(
+              "interval",
+              [...INTERVAL_PRESETS, "custom" as const].map((id) => ({ value: id, label: t(`chores.interval.${id}`) })),
+              preset,
+              choosePreset,
+            )}
+            {preset === "custom" && (
+              <div>
+                <label htmlFor={`${idPrefix}-intervalDays`}>{t("chores.form.intervalDays.label")}</label>
+                <input
+                  id={`${idPrefix}-intervalDays`}
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={values.intervalDays}
+                  {...interval.aria}
+                  onChange={(event) => form.change({ intervalDays: event.target.value }, "intervalDays")}
+                />
+              </div>
+            )}
+          </>,
+        )}
 
         {group(
           "allowedWeekdays",
