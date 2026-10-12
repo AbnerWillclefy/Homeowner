@@ -69,18 +69,29 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
   const categoryIds = values.category && !categories.includes(values.category) ? [values.category, ...categories] : categories;
   const showSuggestion = suggestTwoPerson(values.baseEffort, values.people);
 
-  /** The aria attributes and the error line for one field, wired by id. */
-  function field(name: string) {
+  /**
+   * The aria attributes and the notes for one field, wired by id. A field with a hint gets the hint line as its
+   * notes; its error line is shown by the group around it.
+   */
+  function field(name: string, hintKey?: MessageKey) {
     const error = errorFor(name);
+    const hintId = hintKey && `${idPrefix}-${name}-hint`;
+    const errorId = error && `${idPrefix}-${name}-error`;
     return {
       aria: {
         "aria-invalid": error ? (true as const) : undefined,
-        "aria-describedby": error ? `${idPrefix}-${name}-error` : undefined,
+        "aria-describedby": [hintId, errorId].filter(Boolean).join(" ") || undefined,
       },
-      notes: error && (
-        <p id={`${idPrefix}-${name}-error`} role="alert" className="text-danger">
-          {error}
+      notes: hintKey ? (
+        <p id={hintId} className="text-muted">
+          {t(hintKey)}
         </p>
+      ) : (
+        error && (
+          <p id={errorId} role="alert" className="text-danger">
+            {error}
+          </p>
+        )
       ),
     };
   }
@@ -126,7 +137,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
 
   const name = field("name");
   const category = field("category");
-  const interval = field("intervalDays");
+  const interval = field("intervalDays", "chores.form.intervalDays.hint");
 
   /** Picking a preset fills the days; the number typed under Custom is kept for when Custom is picked again. */
   function choosePreset(next: IntervalPreset) {
@@ -262,13 +273,10 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
                   inputMode="numeric"
                   autoComplete="off"
                   value={values.intervalDays}
-                  aria-invalid={interval.aria["aria-invalid"]}
-                  aria-describedby={[`${idPrefix}-intervalDays-hint`, interval.aria["aria-describedby"]].filter(Boolean).join(" ")}
+                  {...interval.aria}
                   onChange={(event) => form.change({ intervalDays: event.target.value }, "intervalDays")}
                 />
-                <p id={`${idPrefix}-intervalDays-hint`} className="text-muted">
-                  {t("chores.form.intervalDays.hint")}
-                </p>
+                {interval.notes}
               </div>
             )}
           </>,
