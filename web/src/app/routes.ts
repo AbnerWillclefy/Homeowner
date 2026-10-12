@@ -1,5 +1,4 @@
 import { ONBOARDING_STEPS, type OnboardingStep } from "../api/onboarding";
-import type { MessageKey } from "../i18n";
 
 export const TODAY_PATH = "/";
 export const CHORES_PATH = "/chores";
@@ -58,7 +57,6 @@ export interface AuthRouteState {
   /** Where the person was headed before they were sent to sign in. */
   from?: string;
   email?: string;
-  noticeKey?: MessageKey;
 }
 
 /** The state for the next auth screen: `patch`, with `from` always forwarded from `prev`. */

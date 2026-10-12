@@ -2,6 +2,7 @@ import { Navigate, useLocation, useNavigate } from "react-router";
 import { Confirm } from "../auth/Confirm";
 import { SignIn } from "../auth/SignIn";
 import { SignUp } from "../auth/SignUp";
+import { useToast } from "../components/ui/useToast";
 import { useAppAuth } from "./AuthProvider";
 import { CONFIRM_PATH, SIGN_IN_PATH, SIGN_UP_PATH, authState, confirmNeedsEmail, type AuthRouteState } from "./routes";
 
@@ -19,7 +20,6 @@ export function SignInPage() {
   return (
     <SignIn
       initialEmail={current.email}
-      noticeKey={current.noticeKey}
       logIn={auth.logIn}
       onNeedsConfirm={(email) => go(CONFIRM_PATH, { email })}
       onNeedsSignUp={() => go(SIGN_UP_PATH)}
@@ -37,6 +37,7 @@ export function SignUpPage() {
 
 export function ConfirmPage() {
   const auth = useAppAuth();
+  const toast = useToast();
   const { state } = useLocation();
   const { current, go } = useAuthNav();
   // A direct hit has no email to confirm.
@@ -46,7 +47,11 @@ export function ConfirmPage() {
       email={current.email ?? ""}
       confirm={auth.confirm}
       resend={auth.resend}
-      onConfirmed={(email) => go(SIGN_IN_PATH, { email, noticeKey: "signIn.confirmedNotice" })}
+      onConfirmed={(email) => {
+        // A toast outlives this screen, so it is still there on the sign-in screen.
+        toast.show({ messageKey: "signIn.confirmedNotice", tone: "success" });
+        go(SIGN_IN_PATH, { email });
+      }}
       onBack={() => go(SIGN_UP_PATH)}
     />
   );

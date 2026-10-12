@@ -1,11 +1,13 @@
-import { useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import { config } from "../config";
 import { useI18n } from "../i18n";
+import { createConfirmSubmitter } from "./authSubmit";
 import type { CognitoFailure, CognitoResult } from "./cognito";
 import { EMAIL_MARKER, splitAtEmail } from "./emailMarker";
 import { failureMessage, fieldError } from "./failureText";
 import { Card } from "../components/ui/Card";
-import { FormError, FormNotice } from "../components/ui/FormError";
+import { FormError } from "../components/ui/FormError";
+import { useToast } from "../components/ui/useToast";
 import { PillButton } from "../components/ui/PillButton";
 
 const FORM = "confirm";
@@ -23,29 +25,33 @@ export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) 
   const [busy, setBusy] = useState(false);
   // State holds the failure and a flag, never their words, so a language switch re-words them.
   const [problem, setProblem] = useState<CognitoFailure | null>(null);
-  const [resent, setResent] = useState(false);
+  const toast = useToast();
   const [before, after] = splitAtEmail(t("confirm.intro", { email: EMAIL_MARKER }));
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  // One guard for confirming and resending: either one in flight holds the other, and a repeat is ignored.
+  const latest = useRef({ confirm, resend, onConfirmed });
+  latest.current = { confirm, resend, onConfirmed };
+  const form = useMemo(
+    () =>
+      createConfirmSubmitter({
+        confirm: (address, code) => latest.current.confirm(address, code),
+        resend: (address) => latest.current.resend(address),
+        onBusy: setBusy,
+        onProblem: setProblem,
+        // A new code was sent and nothing is left to decide: a toast, not a message the form has to clear.
+        onResent: () => toast.show({ messageKey: "confirm.resent", tone: "success" }),
+        onConfirmed: (address) => latest.current.onConfirmed(address),
+      }),
+    [toast],
+  );
+
+  function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const code = String(new FormData(event.currentTarget).get("code") ?? "").trim();
-    setBusy(true);
-    setProblem(null);
-    setResent(false);
-    const result = await confirm(email, code);
-    setBusy(false);
-    if (result.kind === "ok") onConfirmed(email);
-    else setProblem(result);
+    void form.submit(email, String(new FormData(event.currentTarget).get("code") ?? "").trim());
   }
 
-  async function sendAgain() {
-    setBusy(true);
-    setProblem(null);
-    setResent(false);
-    const result = await resend(email);
-    setBusy(false);
-    if (result.kind === "ok") setResent(true);
-    else setProblem(result);
+  function sendAgain() {
+    void form.resend(email);
   }
 
   return (
@@ -74,12 +80,11 @@ export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) 
           {...fieldError(problem, "code", FORM, "confirm-spam-hint")}
         />
         <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
-        <FormNotice>{resent && t("confirm.resent")}</FormNotice>
-        <PillButton type="submit" className="mt-4 w-full" disabled={busy}>
+        <PillButton type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>
           {busy ? t("confirm.submitting") : t("confirm.submit")}
         </PillButton>
       </form>
-      <PillButton variant="secondary" className="mt-3 w-full" onClick={sendAgain} disabled={busy}>
+      <PillButton variant="secondary" className="mt-3 w-full" onClick={sendAgain} disabled={busy} aria-busy={busy}>
         {t("confirm.resend")}
       </PillButton>
       <p className="mt-2 text-center">
