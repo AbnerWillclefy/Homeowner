@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Chore } from "../api/chores";
+import { effortToLevel, levelToEffort } from "./effortLevels";
+import { intervalForPreset, presetForText } from "./intervalPresets";
 import { emptyForm, formFromChore, toChoreInput, toggled, type ChoreFormState } from "./form";
 
 const FORM: ChoreFormState = {
@@ -84,6 +86,27 @@ describe("emptyForm", () => {
       allowedWeekdays: [],
       buildsUp: false,
     });
+  });
+});
+
+describe("named levels and presets on the wire", () => {
+  it("sends the same numbers a named level and a preset stand for", () => {
+    const sent = toChoreInput({
+      ...FORM,
+      baseEffort: levelToEffort("very_heavy"),
+      intervalDays: String(intervalForPreset("monthly")),
+    });
+    expect(sent.baseEffort).toBe(5);
+    expect(sent.intervalDays).toBe(30);
+  });
+
+  it("opens an existing Chore on its level and preset", () => {
+    const chore = { id: "c1", ...toChoreInput(FORM), baseEffort: 4, intervalDays: 10 } as unknown as Chore;
+    const form = formFromChore(chore);
+    expect(effortToLevel(form.baseEffort)).toBe("heavy");
+    expect(presetForText(form.intervalDays)).toBe("custom");
+    expect(form.intervalDays).toBe("10");
+    expect(presetForText(formFromChore({ ...chore, intervalDays: 14 }).intervalDays)).toBe("every_2_weeks");
   });
 });
 
