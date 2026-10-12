@@ -17,11 +17,23 @@ type Subscription struct {
 
 // Payload is the notification the service worker shows. Keep it tiny: push
 // services reject bodies over about 4 KB.
+//
+// Kind is optional and names a notification the worker can word for the device
+// language. Title and Body are still sent, in English, so a worker that ignores
+// Kind shows something sensible. Never put names or Task titles in a Payload:
+// it crosses the push provider.
 type Payload struct {
 	Title string `json:"title"`
 	Body  string `json:"body"`
 	URL   string `json:"url"`
+	Kind  string `json:"kind,omitempty"`
 }
+
+// The notification kinds the service worker can localise.
+const (
+	KindCheckinReminder = "checkin_reminder"
+	KindDayPlanReady    = "day_plan_ready"
+)
 
 // ErrGone means the push service answered 404 or 410: the subscription no
 // longer exists and must be dropped.
