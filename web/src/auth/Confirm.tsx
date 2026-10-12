@@ -7,6 +7,7 @@ import type { CognitoFailure, CognitoResult } from "./cognito";
 import { EMAIL_MARKER, splitAtEmail } from "./emailMarker";
 import { failureMessage, fieldError } from "./failureText";
 import { Card } from "../shared/ui/Card";
+import { PageHeader } from "../shared/ui/PageHeader";
 import { FormError } from "../shared/ui/FormError";
 import { useStableHandlers } from "../shared/ui/useStableHandlers";
 import { useToast } from "../shared/ui/useToast";
@@ -53,40 +54,43 @@ export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) 
   }
 
   return (
-    <Card as="section" aria-labelledby="confirm-heading">
-      <h2 id="confirm-heading">{t("confirm.heading")}</h2>
-      <p>
+    <section aria-labelledby="confirm-heading">
+      <PageHeader id="confirm-heading" title={t("confirm.heading")}>
         {before}
-        <strong>{email}</strong>
+        <strong className="text-text [overflow-wrap:anywhere]">{email}</strong>
         {after}
-      </p>
-      <form onSubmit={submit}>
-        <label htmlFor="confirm-code">{t("confirm.codeLabel")}</label>
-        <input
-          id="confirm-code"
-          name="code"
-          type="text"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          pattern="[0-9]*"
-          autoCapitalize="none"
-          spellCheck={false}
-          required
-          {...fieldError(problem, "code", FORM)}
-        />
-        <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
-        <Button type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>
-          {busy ? t("confirm.submitting") : t("confirm.submit")}
+      </PageHeader>
+      <Card>
+        <form onSubmit={submit}>
+          <label htmlFor="confirm-code" className="mt-0">
+            {t("confirm.codeLabel")}
+          </label>
+          <input
+            id="confirm-code"
+            name="code"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            pattern="[0-9]*"
+            autoCapitalize="none"
+            spellCheck={false}
+            required
+            {...fieldError(problem, "code", FORM)}
+          />
+          <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
+          <Button type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>
+            {busy ? t("confirm.submitting") : t("confirm.submit")}
+          </Button>
+        </form>
+        <Button variant="secondary" className="mt-3 w-full" onClick={sendAgain} disabled={busy} aria-busy={busy}>
+          {t("confirm.resend")}
         </Button>
-      </form>
-      <Button variant="secondary" className="mt-3 w-full" onClick={sendAgain} disabled={busy} aria-busy={busy}>
-        {t("confirm.resend")}
-      </Button>
+      </Card>
       <p className="mt-2 text-center">
         <Button variant="link" onClick={onBack}>
           {t("confirm.useOtherEmail")}
         </Button>
       </p>
-    </Card>
+    </section>
   );
 }

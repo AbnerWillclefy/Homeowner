@@ -10,6 +10,7 @@ import { evaluate } from "./passwordPolicy";
 import { ruleChange, type RuleChange } from "./ruleAnnouncement";
 import { announcementText } from "./ruleText";
 import { Card } from "../shared/ui/Card";
+import { PageHeader } from "../shared/ui/PageHeader";
 import { FormError } from "../shared/ui/FormError";
 import { PasswordField } from "./PasswordField";
 import { PasswordRules } from "./PasswordRules";
@@ -83,64 +84,68 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
   }
 
   return (
-    <Card as="section" aria-labelledby="signup-heading">
-      <h2 id="signup-heading">{t("signUp.heading")}</h2>
-      <form onSubmit={submit} onBlur={checkOnBlur} onChange={onFormChange}>
-        <label htmlFor="signup-email">{t("signUp.emailLabel")}</label>
-        <input
-          id="signup-email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          inputMode="email"
-          autoCapitalize="none"
-          spellCheck={false}
-          required
-          {...fieldError(problem, "email", FORM)}
-        />
+    <section aria-labelledby="signup-heading">
+      <PageHeader id="signup-heading" title={t("signUp.heading")}>
+        {t("signUp.hint")}
+      </PageHeader>
+      <Card>
+        <form onSubmit={submit} onBlur={checkOnBlur} onChange={onFormChange}>
+          <label htmlFor="signup-email" className="mt-0">{t("signUp.emailLabel")}</label>
+          <input
+            id="signup-email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            inputMode="email"
+            autoCapitalize="none"
+            spellCheck={false}
+            required
+            {...fieldError(problem, "email", FORM)}
+          />
 
-        <label htmlFor="signup-password">{t("signUp.passwordLabel")}</label>
-        <PasswordRules id="signup-password-rules" rules={rules} />
-        <div role="status" aria-atomic="true" className="sr-only">
-          {announcementText(t, change)}
-        </div>
-        <PasswordField
-          id="signup-password"
-          name="password"
-          autoComplete="new-password"
-          required
-          {...fieldError(problem, "password", FORM, "signup-password-rules")}
-        />
+          <label htmlFor="signup-password">{t("signUp.passwordLabel")}</label>
+          <PasswordField
+            id="signup-password"
+            name="password"
+            autoComplete="new-password"
+            required
+            {...fieldError(problem, "password", FORM, "signup-password-rules")}
+          />
+          <PasswordRules id="signup-password-rules" rules={rules} />
+          <div role="status" aria-atomic="true" className="sr-only">
+            {announcementText(t, change)}
+          </div>
 
-        <label htmlFor="signup-confirm">{t("signUp.confirmLabel")}</label>
-        <PasswordField
-          id="signup-confirm"
-          name="confirm-password"
-          autoComplete="new-password"
-          required
-          aria-describedby={mismatch ? "signup-confirm-mismatch" : undefined}
-          aria-invalid={mismatch || undefined}
-        />
-        <div role="status">
-          {mismatch && (
-            <p id="signup-confirm-mismatch" className="my-1 text-sm text-danger">
-              <TriangleAlert aria-hidden="true" size={16} className="mr-1 inline shrink-0" />
-              {t("signUp.mismatch")}
-            </p>
-          )}
-        </div>
+          <label htmlFor="signup-confirm">{t("signUp.confirmLabel")}</label>
+          <PasswordField
+            id="signup-confirm"
+            name="confirm-password"
+            autoComplete="new-password"
+            required
+            aria-describedby={mismatch ? "signup-confirm-mismatch" : undefined}
+            aria-invalid={mismatch || undefined}
+          />
+          <div role="status">
+            {mismatch && (
+              <p id="signup-confirm-mismatch" className="my-1 text-sm text-danger">
+                <TriangleAlert aria-hidden="true" size={16} className="mr-1 inline shrink-0" />
+                {t("signUp.mismatch")}
+              </p>
+            )}
+          </div>
 
-        <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
-        <Button type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>
-          {busy ? t("signUp.submitting") : t("signUp.submit")}
-        </Button>
-      </form>
+          <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
+          <Button type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>
+            {busy ? t("signUp.submitting") : t("signUp.submit")}
+          </Button>
+        </form>
+      </Card>
       <p className="mt-4 text-center">
         {t("signUp.haveLogin")}{" "}
         <Button variant="link" onClick={onHaveLogin}>
           {t("signUp.haveLoginAction")}
         </Button>
       </p>
-    </Card>
+    </section>
   );
 }

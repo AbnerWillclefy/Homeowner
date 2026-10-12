@@ -365,6 +365,7 @@ export const enUS = {
 
   // Sign up
   "signUp.heading": "Sign up",
+  "signUp.hint": "Make an account, then create your Home or join one.",
   "signUp.emailLabel": "Email",
   "signUp.passwordLabel": "Password",
   "signUp.confirmLabel": "Confirm password",
@@ -376,6 +377,7 @@ export const enUS = {
 
   // Sign in
   "signIn.heading": "Sign in",
+  "signIn.hint": "See what is yours to do today.",
   "signIn.confirmedNotice": "Your email is confirmed. Sign in to start.",
   "signIn.emailLabel": "Email",
   "signIn.passwordLabel": "Password",

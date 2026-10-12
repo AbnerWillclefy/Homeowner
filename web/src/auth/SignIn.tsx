@@ -6,6 +6,7 @@ import { createSignInSubmitter } from "./authSubmit";
 import type { CognitoFailure, SignInResult } from "./cognito";
 import { failureMessage, fieldError } from "./failureText";
 import { Card } from "../shared/ui/Card";
+import { PageHeader } from "../shared/ui/PageHeader";
 import { FormError } from "../shared/ui/FormError";
 import { PasswordField } from "./PasswordField";
 import { useStableHandlers } from "../shared/ui/useStableHandlers";
@@ -38,41 +39,45 @@ export function SignIn({ initialEmail, logIn, onNeedsConfirm, onNeedsSignUp }: P
   }
 
   return (
-    <Card as="section" aria-labelledby="signin-heading">
-      <h2 id="signin-heading">{t("signIn.heading")}</h2>
-      <form onSubmit={submit}>
-        <label htmlFor="signin-email">{t("signIn.emailLabel")}</label>
-        <input
-          id="signin-email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          inputMode="email"
-          autoCapitalize="none"
-          spellCheck={false}
-          defaultValue={initialEmail}
-          required
-          {...fieldError(problem, "email", FORM)}
-        />
-        <label htmlFor="signin-password">{t("signIn.passwordLabel")}</label>
-        <PasswordField
-          id="signin-password"
-          name="password"
-          autoComplete="current-password"
-          required
-          {...fieldError(problem, "password", FORM)}
-        />
-        <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
-        <Button type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>
-          {busy ? t("signIn.submitting") : t("signIn.submit")}
-        </Button>
-      </form>
+    <section aria-labelledby="signin-heading">
+      <PageHeader id="signin-heading" title={t("signIn.heading")}>
+        {t("signIn.hint")}
+      </PageHeader>
+      <Card>
+        <form onSubmit={submit}>
+          <label htmlFor="signin-email" className="mt-0">{t("signIn.emailLabel")}</label>
+          <input
+            id="signin-email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            inputMode="email"
+            autoCapitalize="none"
+            spellCheck={false}
+            defaultValue={initialEmail}
+            required
+            {...fieldError(problem, "email", FORM)}
+          />
+          <label htmlFor="signin-password">{t("signIn.passwordLabel")}</label>
+          <PasswordField
+            id="signin-password"
+            name="password"
+            autoComplete="current-password"
+            required
+            {...fieldError(problem, "password", FORM)}
+          />
+          <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
+          <Button type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>
+            {busy ? t("signIn.submitting") : t("signIn.submit")}
+          </Button>
+        </form>
+      </Card>
       <p className="mt-4 text-center">
         {t("signIn.newHere")}{" "}
         <Button variant="link" onClick={onNeedsSignUp}>
           {t("signIn.newHereAction")}
         </Button>
       </p>
-    </Card>
+    </section>
   );
 }
