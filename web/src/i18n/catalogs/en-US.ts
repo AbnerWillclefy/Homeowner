@@ -174,7 +174,7 @@ export const enUS = {
   "chores.load.error": "Something went wrong loading your Chores. Try again in a moment.",
   "chores.notSignedIn": "Your sign-in has ended. Sign in again to continue.",
   "chores.retry": "Try again",
-  "chores.empty": "Your Home has no Chores yet. Add the first one to get started.",
+  "chores.empty": "Your Home has no Chores yet. Tap \"Add a Chore\" to write your own, or \"Add from the Catalog\" to start from a ready-made one.",
   "chores.add": "Add a Chore",
   "chores.item.effort": "Effort {effort} of 5",
   "chores.item.people.one": "1 person",

@@ -287,7 +287,7 @@ flowchart TD
 flowchart TD
     HS[Chores tab, HomeGate, Home ready] --> CS[ChoresSection]
     CS --> UC[useChores: categories, demands, GET /home/chores]
-    CS --> ITEM[ChoreItem: summary, Edit, two-step Delete]
+    CS --> ITEM[ChoreItem: Category card, Edit, two-step Delete]
     CS --> FORM[ChoreForm: add or edit in place]
     ITEM -->|deleteChore| API[api/chores.ts]
     FORM --> UF[useChoreForm]
@@ -302,7 +302,8 @@ flowchart TD
 - `suggestion.ts` holds `TWO_PERSON_EFFORT_THRESHOLD` (4) and `suggestTwoPerson(effort, people)`. The form shows a hint and a "make it two-person" button while it is true. It never blocks saving and the API does not know about it.
 - Delete is two steps inline in `ChoreItem` (no `window.confirm`): Delete swaps the buttons for a prompt with "Keep it" (focused) and "Yes, delete". A failed delete keeps the prompt and shows a retry message; a 404 counts as deleted.
 - `fieldErrors.ts` maps every code `backend/internal/chores` can return (`name`: `required`, `too_long`; `category` and `importance`: `required`, `unknown`; `demands`: `unknown`; `baseEffort`, `people`, `intervalDays`: `required`, `invalid`, `out_of_range`; `allowedWeekdays`: `invalid`, `out_of_range`) to message keys in both catalogs. Category, Demand and Importance names come from `profile/labels.ts`; an id with no translation shows as the id.
-- Pure modules with vitest tests: `api/chores.ts`, `form.ts`, `suggestion.ts`, `fieldErrors.ts`. The components and hooks are checked by hand.
+- Each Chore is a `Card` tinted by its Category, with the Category's icon (decorative), the Category name as text, the Chore name as a heading and the schedule facts (`choreScheduleFacts`: Effort, Importance, people, repeat, weekdays, builds-up). The colour and icon come only from `categoryStyle`; an unknown Category gets the neutral card and the name "Other". Edit and Delete are `PillButton`s (the confirming Delete is the `danger` variant). The add and edit form stays inline, in a neutral `Card`, and its field errors are `role="alert"` so they are announced.
+- Pure modules with vitest tests: `api/chores.ts`, `form.ts`, `suggestion.ts`, `fieldErrors.ts`, `facts.ts`. The components and hooks are checked by hand.
 
 ## Today (the Day Plan)
 

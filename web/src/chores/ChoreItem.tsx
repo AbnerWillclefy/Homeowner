@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { deleteChore, type Chore, type Failure } from "../api/chores";
+import { Card } from "../components/ui/Card";
+import { categoryStyle } from "../components/ui/categoryStyle";
+import { PillButton } from "../components/ui/PillButton";
 import { useI18n } from "../i18n";
+import { categoryLabel, labelText } from "../profile/labels";
 import { DELETE_FAILURE_KEY } from "./failureMessages";
-import { choreFacts } from "./facts";
+import { choreScheduleFacts } from "./facts";
 
 type DeleteState =
   | { kind: "idle" }
@@ -16,7 +20,7 @@ interface Props {
   onDeleted(id: string): void;
 }
 
-/** One Chore in the list, with Edit and a two-step inline Delete (ask, then confirm). */
+/** One Chore in the list as a Category-tinted card, with Edit and a two-step inline Delete (ask, then confirm). */
 export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
   const { t, locale } = useI18n();
   const [remove, setRemove] = useState<DeleteState>({ kind: "idle" });
@@ -29,7 +33,9 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
     if (confirming) keepRef.current?.focus();
   }, [confirming]);
 
-  const facts = choreFacts(chore, t, locale);
+  // An unknown Category gets the neutral style and the name "Other", never its raw id.
+  const { id: categoryId, icon: CategoryIcon } = categoryStyle(chore.category);
+  const schedule = choreScheduleFacts(chore, t, locale).join(" · ");
 
   async function confirmDelete() {
     setRemove({ kind: "deleting" });
@@ -47,47 +53,56 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
 
   return (
     <li className="list-none ps-0">
-      <h3 className="font-semibold">{chore.name}</h3>
-      <p className="text-muted">{facts.join(" · ")}</p>
-
-      {!confirming && (
-        <>
-          <button type="button" className="btn" aria-label={t("chores.item.edit.label", { name: chore.name })} onClick={onEdit}>
-            {t("chores.item.edit")}
-          </button>
-          <button
-            ref={deleteRef}
-            type="button"
-            className="btn"
-            aria-label={t("chores.item.delete.label", { name: chore.name })}
-            onClick={() => setRemove({ kind: "confirming" })}
+      <Card category={chore.category} className="flex flex-col gap-3">
+        <div className="flex items-start gap-3">
+          <span
+            className="flex size-12 shrink-0 items-center justify-center rounded-full border border-border bg-surface-raised"
+            aria-hidden="true"
           >
-            {t("chores.item.delete")}
-          </button>
-        </>
-      )}
-
-      {confirming && (
-        <div role="group" aria-label={t("chores.item.delete.label", { name: chore.name })}>
-          <p>{t("chores.delete.prompt", { name: chore.name })}</p>
-          {remove.kind === "confirming" && remove.failed && (
-            <p role="alert" className="text-danger">
-              {t(DELETE_FAILURE_KEY[remove.failed])}
-            </p>
-          )}
-          <button ref={keepRef} type="button" className="btn" disabled={remove.kind === "deleting"} onClick={cancel}>
-            {t("chores.delete.cancel")}
-          </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={remove.kind === "deleting"}
-            onClick={() => void confirmDelete()}
-          >
-            {t(remove.kind === "deleting" ? "chores.delete.deleting" : "chores.delete.confirm")}
-          </button>
+            <CategoryIcon className="size-6" />
+          </span>
+          <div className="min-w-0 [overflow-wrap:anywhere]">
+            <p className="text-sm font-semibold">{labelText(t, categoryLabel(categoryId))}</p>
+            <h3 className="font-semibold">{chore.name}</h3>
+            <p>{schedule}</p>
+          </div>
         </div>
-      )}
+
+        {!confirming && (
+          <div className="flex flex-wrap gap-2">
+            <PillButton variant="secondary" aria-label={t("chores.item.edit.label", { name: chore.name })} onClick={onEdit}>
+              {t("chores.item.edit")}
+            </PillButton>
+            <PillButton
+              ref={deleteRef}
+              variant="secondary"
+              aria-label={t("chores.item.delete.label", { name: chore.name })}
+              onClick={() => setRemove({ kind: "confirming" })}
+            >
+              {t("chores.item.delete")}
+            </PillButton>
+          </div>
+        )}
+
+        {confirming && (
+          <div role="group" aria-label={t("chores.item.delete.label", { name: chore.name })} className="flex flex-col gap-2">
+            <p>{t("chores.delete.prompt", { name: chore.name })}</p>
+            {remove.kind === "confirming" && remove.failed && (
+              <p role="alert" className="font-semibold text-danger">
+                {t(DELETE_FAILURE_KEY[remove.failed])}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <PillButton ref={keepRef} variant="secondary" disabled={remove.kind === "deleting"} onClick={cancel}>
+                {t("chores.delete.cancel")}
+              </PillButton>
+              <PillButton variant="danger" disabled={remove.kind === "deleting"} onClick={() => void confirmDelete()}>
+                {t(remove.kind === "deleting" ? "chores.delete.deleting" : "chores.delete.confirm")}
+              </PillButton>
+            </div>
+          </div>
+        )}
+      </Card>
     </li>
   );
 }

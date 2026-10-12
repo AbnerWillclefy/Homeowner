@@ -2,6 +2,8 @@ import { useRef, useState } from "react";
 import type { CatalogEntry } from "../api/catalog";
 import { createChore, updateChore, type Chore } from "../api/chores";
 import { CatalogPicker } from "../catalog/CatalogPicker";
+import { Card } from "../components/ui/Card";
+import { PillButton } from "../components/ui/PillButton";
 import { formFromEntry } from "../catalog/review";
 import { useI18n } from "../i18n";
 import { ChoreForm } from "./ChoreForm";
@@ -67,9 +69,9 @@ export function ChoresSection() {
             {t(LOAD_FAILURE_KEY[state.reason])}
           </p>
           {state.reason !== "not-signed-in" && (
-            <button type="button" className="btn" onClick={reload}>
+            <PillButton variant="secondary" onClick={reload}>
               {t("chores.retry")}
-            </button>
+            </PillButton>
           )}
         </>
       )}
@@ -79,9 +81,13 @@ export function ChoresSection() {
           <p>{t("chores.intro")}</p>
           <p role="status">{notice}</p>
 
-          {state.chores.length === 0 && editing.kind !== "new" && <p>{t("chores.empty")}</p>}
+          {state.chores.length === 0 && editing.kind === "none" && (
+            <Card className="border-dashed">
+              <p>{t("chores.empty")}</p>
+            </Card>
+          )}
 
-          <ul className="p-0">
+          <ul className="flex list-none flex-col gap-3 p-0">
             {state.chores.map((chore: Chore) =>
               editing.kind === "edit" && editing.id === chore.id ? (
                 <li key={chore.id} className="list-none ps-0">
@@ -143,14 +149,12 @@ export function ChoresSection() {
           )}
 
           {(editing.kind === "none" || editing.kind === "edit") && (
-            <>
-              <button type="button" className="btn btn-primary" onClick={() => open({ kind: "new" })}>
-                {t("chores.add")}
-              </button>
-              <button type="button" className="btn" onClick={() => open({ kind: "catalog" })}>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <PillButton onClick={() => open({ kind: "new" })}>{t("chores.add")}</PillButton>
+              <PillButton variant="secondary" onClick={() => open({ kind: "catalog" })}>
                 {t("chores.addFromCatalog")}
-              </button>
-            </>
+              </PillButton>
+            </div>
           )}
         </>
       )}

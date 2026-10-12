@@ -2,6 +2,8 @@ import { useEffect, useRef, type ReactNode } from "react";
 import type { Chore, ChoreWire, SaveChoreResult } from "../api/chores";
 import type { FieldCodes } from "../api/home";
 import { WEEKDAYS } from "../api/profile";
+import { Card } from "../components/ui/Card";
+import { PillButton } from "../components/ui/PillButton";
 import { useI18n, type MessageKey } from "../i18n";
 import { categoryLabel, demandLabel, importanceLabel, labelText, type Label } from "../profile/labels";
 import { DISPLAY_WEEKDAYS, weekdayLabel } from "../profile/weekdays";
@@ -77,7 +79,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
             </p>
           )}
           {error && (
-            <p id={`${idPrefix}-${name}-error`} className="text-danger">
+            <p id={`${idPrefix}-${name}-error`} role="alert" className="text-danger">
               {error}
             </p>
           )}
@@ -131,7 +133,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
   const buildsUp = field("buildsUp", "chores.form.buildsUp.hint");
 
   return (
-    <section aria-labelledby={`${idPrefix}-heading`}>
+    <Card as="section" aria-labelledby={`${idPrefix}-heading`} className="mt-4">
       <h3 id={`${idPrefix}-heading`} ref={headingRef} tabIndex={-1}>
         {t(mode === "edit" ? "chores.form.edit.heading" : "chores.form.create.heading")}
       </h3>
@@ -228,9 +230,8 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
         {/* The region is always present so a screen reader announces the suggestion when it appears. */}
         <div role="status">{showSuggestion && <p>{t("chores.form.suggestion")}</p>}</div>
         {showSuggestion && (
-          <button
-            type="button"
-            className="btn"
+          <PillButton
+            variant="secondary"
             disabled={saving}
             onClick={() => {
               form.change({ people: 2 }, "people");
@@ -238,7 +239,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
             }}
           >
             {t("chores.form.suggestion.action")}
-          </button>
+          </PillButton>
         )}
 
         <div>
@@ -302,13 +303,15 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
           </p>
         )}
 
-        <button type="submit" className="btn btn-primary" disabled={saving}>
-          {t(saving ? "chores.form.saving" : mode === "edit" ? "chores.form.submit.save" : "chores.form.submit.create")}
-        </button>
-        <button type="button" className="btn" disabled={saving} onClick={onCancel}>
-          {t("chores.form.cancel")}
-        </button>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <PillButton type="submit" disabled={saving}>
+            {t(saving ? "chores.form.saving" : mode === "edit" ? "chores.form.submit.save" : "chores.form.submit.create")}
+          </PillButton>
+          <PillButton variant="secondary" disabled={saving} onClick={onCancel}>
+            {t("chores.form.cancel")}
+          </PillButton>
+        </div>
       </form>
-    </section>
+    </Card>
   );
 }
