@@ -1,9 +1,12 @@
+import { Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { deleteChore, type Chore, type Failure } from "../api/chores";
 import { ButtonRow } from "../components/ui/ButtonRow";
-import { Card } from "../components/ui/Card";
+import { CardRow } from "../components/ui/CardRow";
+import { CategoryGlyph } from "../components/ui/CategoryGlyph";
 import { categoryStyle } from "../components/ui/categoryStyle";
 import { PillButton } from "../components/ui/PillButton";
+import { useSubmitOnce } from "../components/ui/useSubmitOnce";
 import { useI18n } from "../i18n";
 import { categoryLabel, labelText } from "../profile/labels";
 import { DELETE_FAILURE_KEY } from "./failureMessages";
@@ -21,6 +24,9 @@ interface Props {
   onDeleted(id: string): void;
 }
 
+// Square icon-only buttons: real buttons with an edge, in contrast to the decorative Category glyph.
+const ICON_BUTTON = "size-11 px-0!";
+
 /** One Chore in the list as a Category-tinted card, with Edit and a two-step inline Delete (ask, then confirm). */
 export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
   const { t, locale } = useI18n();
@@ -35,7 +41,7 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
   }, [confirming]);
 
   // An unknown Category gets the neutral style and the name "Other", never its raw id.
-  const { id: categoryId, icon: CategoryIcon } = categoryStyle(chore.category);
+  const { id: categoryId } = categoryStyle(chore.category);
   const schedule = choreScheduleFacts(chore, t, locale).join(" · ");
 
   async function confirmDelete() {
@@ -46,64 +52,63 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
     setRemove({ kind: "confirming", failed: result.kind });
   }
 
+  // A double click on Delete sends one request.
+  const { run: runDelete } = useSubmitOnce(confirmDelete);
+
   function cancel() {
     setRemove({ kind: "idle" });
     // The button is mounted again by the time the browser handles this.
     requestAnimationFrame(() => deleteRef.current?.focus());
   }
 
+  const actions = !confirming && (
+    <>
+      <PillButton
+        variant="secondary"
+        className={ICON_BUTTON}
+        aria-label={t("chores.item.edit.label", { name: chore.name })}
+        onClick={onEdit}
+      >
+        <Pencil size={20} aria-hidden="true" />
+      </PillButton>
+      <PillButton
+        ref={deleteRef}
+        variant="secondary"
+        className={ICON_BUTTON}
+        aria-label={t("chores.item.delete.label", { name: chore.name })}
+        onClick={() => setRemove({ kind: "confirming" })}
+      >
+        <Trash2 size={20} aria-hidden="true" />
+      </PillButton>
+    </>
+  );
+
   return (
     <li>
-      <Card category={chore.category} className="flex flex-col gap-3">
-        <div className="flex items-start gap-3">
-          <span
-            className="flex size-12 shrink-0 items-center justify-center rounded-full border border-border bg-surface-raised"
-            aria-hidden="true"
-          >
-            <CategoryIcon className="size-6" />
-          </span>
-          <div className="min-w-0 [overflow-wrap:anywhere]">
-            <p className="text-sm font-semibold">{labelText(t, categoryLabel(categoryId))}</p>
-            <h3 className="font-semibold">{chore.name}</h3>
-            <p>{schedule}</p>
-          </div>
-        </div>
-
-        {!confirming && (
-          <ButtonRow>
-            <PillButton variant="secondary" aria-label={t("chores.item.edit.label", { name: chore.name })} onClick={onEdit}>
-              {t("chores.item.edit")}
-            </PillButton>
-            <PillButton
-              ref={deleteRef}
-              variant="secondary"
-              aria-label={t("chores.item.delete.label", { name: chore.name })}
-              onClick={() => setRemove({ kind: "confirming" })}
-            >
-              {t("chores.item.delete")}
-            </PillButton>
-          </ButtonRow>
-        )}
+      <CardRow category={chore.category} glyph={<CategoryGlyph category={chore.category} />} actions={actions}>
+        <p className="text-sm font-semibold">{labelText(t, categoryLabel(categoryId))}</p>
+        <h3 className="font-semibold">{chore.name}</h3>
+        <p>{schedule}</p>
 
         {confirming && (
-          <div role="group" aria-label={t("chores.item.delete.label", { name: chore.name })} className="flex flex-col gap-2">
+          <div role="group" aria-label={t("chores.item.delete.label", { name: chore.name })} className="mt-3 flex flex-col gap-2">
             <p>{t("chores.delete.prompt", { name: chore.name })}</p>
             {remove.kind === "confirming" && remove.failed && (
               <p role="alert" className="font-semibold text-danger">
                 {t(DELETE_FAILURE_KEY[remove.failed])}
               </p>
             )}
-            <ButtonRow>
+            <ButtonRow className="justify-end">
               <PillButton ref={keepRef} variant="secondary" disabled={remove.kind === "deleting"} onClick={cancel}>
                 {t("chores.delete.cancel")}
               </PillButton>
-              <PillButton variant="danger" disabled={remove.kind === "deleting"} onClick={() => void confirmDelete()}>
+              <PillButton variant="danger" disabled={remove.kind === "deleting"} onClick={() => void runDelete()}>
                 {t(remove.kind === "deleting" ? "chores.delete.deleting" : "chores.delete.confirm")}
               </PillButton>
             </ButtonRow>
           </div>
         )}
-      </Card>
+      </CardRow>
     </li>
   );
 }
