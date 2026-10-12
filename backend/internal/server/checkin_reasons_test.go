@@ -2,12 +2,14 @@ package server_test
 
 import (
 	"context"
+	"encoding/json"
+	"reflect"
 	"testing"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/apitest"
 )
 
-func TestTheRunRecordsTheCheckInLevelAndKeepsItsReasonsConsistent(t *testing.T) {
+func TestAReplanLeavesTheSameReasonsAFullPlanWouldStore(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	me := homeWithResident(t, app, "a@example.com")
@@ -19,18 +21,34 @@ func TestTheRunRecordsTheCheckInLevelAndKeepsItsReasonsConsistent(t *testing.T) 
 	app.RunAllocation(t)
 	checkIn(t, me, "low")
 
-	var level string
-	var energy, assigned, pooled, rows int
-	err := app.DB.QueryRow(context.Background(), `
-		SELECT reasons -> 'levels' ->> (SELECT id::text FROM residents),
-		       (reasons -> 'energy' ->> (SELECT id::text FROM residents))::int,
-		       jsonb_array_length(reasons -> 'assigned'), jsonb_array_length(reasons -> 'pool'),
-		       (SELECT count(*) FROM day_plan_assignments)
-		FROM allocation_runs`).Scan(&level, &energy, &assigned, &pooled, &rows)
-	if err != nil {
+	replanned := storedReasons(t, app)
+	if n := len(replanned["assigned"].([]any)); n != 1 {
+		t.Fatalf("assigned = %d, want 1: %v", n, replanned)
+	}
+	if n := len(replanned["pool"].([]any)); n != 1 {
+		t.Fatalf("pool = %d, want 1: %v", n, replanned)
+	}
+
+	// Drop the run and plan the same state in full: the Check-in is already
+	// stored, so the job reads it.
+	if _, err := app.DB.Exec(context.Background(), `DELETE FROM allocation_runs`); err != nil {
 		t.Fatal(err)
 	}
-	if level != "low" || energy != 2 || assigned != 1 || pooled != 1 || rows != 1 {
-		t.Fatalf("level=%s energy=%d assigned=%d pooled=%d rows=%d", level, energy, assigned, pooled, rows)
+	app.RunAllocation(t)
+	if full := storedReasons(t, app); !reflect.DeepEqual(replanned, full) {
+		t.Fatalf("re-plan stored %v, a full plan stores %v", replanned, full)
 	}
+}
+
+func storedReasons(t *testing.T, app *apitest.App) map[string]any {
+	t.Helper()
+	var raw []byte
+	if err := app.DB.QueryRow(context.Background(), `SELECT reasons FROM allocation_runs`).Scan(&raw); err != nil {
+		t.Fatal(err)
+	}
+	var out map[string]any
+	if err := json.Unmarshal(raw, &out); err != nil {
+		t.Fatal(err)
+	}
+	return out
 }

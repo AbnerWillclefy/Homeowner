@@ -1,12 +1,10 @@
 package dayplan
 
 import (
-	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -68,7 +66,9 @@ func (p *Planner) CheckIn(ctx context.Context, homeID, residentID string, in che
 type replanned struct{ assigned, pooled int }
 
 // replan plans one Resident again inside the day's planned run, or does
-// nothing (nil) when there is no run or it was rejected.
+// nothing (nil) when there is no run or it was rejected. It loads the whole
+// Home's State, not only the Resident, so Energy and Restrictions come from the
+// one code path PlanHome uses.
 func (p *Planner) replan(ctx context.Context, tx pgx.Tx, homeID, residentID string, date allocation.Date) (*replanned, error) {
 	var (
 		runID, outcome string
@@ -95,19 +95,9 @@ func (p *Planner) replan(ctx context.Context, tx pgx.Tx, homeID, residentID stri
 	if err != nil {
 		return nil, err
 	}
-	sub := allocation.State{Today: date}
-	for _, r := range st.state.Residents {
-		if r.ID == residentID {
-			sub.Residents = []allocation.Resident{r}
-		}
-	}
-	if len(sub.Residents) == 0 {
+	sub, ok := subState(st.state, residentID, given)
+	if !ok {
 		return nil, fmt.Errorf("check in: resident %s is not in the home", residentID)
-	}
-	for _, t := range st.state.Tasks {
-		if !given[t.ID] {
-			sub.Tasks = append(sub.Tasks, t)
-		}
 	}
 
 	res, err := p.alloc.Plan(sub)
@@ -119,25 +109,50 @@ func (p *Planner) replan(ctx context.Context, tx pgx.Tx, homeID, residentID stri
 			p.alloc.Name(), len(vs), vs[0].Detail)
 	}
 
+	rs.replan(residentID, st.energy[residentID], res)
+	if err := persist(ctx, tx, runID, residentID, res, rs); err != nil {
+		return nil, err
+	}
+	return &replanned{assigned: len(res.DayPlan.Assignments), pooled: len(res.Pool)}, nil
+}
+
+// subState narrows st to one Resident and to the Tasks not given to someone
+// else today. ok is false when the Resident is not in st.
+func subState(st allocation.State, residentID string, given map[string]bool) (sub allocation.State, ok bool) {
+	sub = allocation.State{Today: st.Today}
+	for _, r := range st.Residents {
+		if r.ID == residentID {
+			sub.Residents, ok = []allocation.Resident{r}, true
+		}
+	}
+	for _, t := range st.Tasks {
+		if !given[t.ID] {
+			sub.Tasks = append(sub.Tasks, t)
+		}
+	}
+	return sub, ok
+}
+
+// persist replaces the Resident's assignments in the run and writes its reasons.
+func persist(ctx context.Context, tx pgx.Tx, runID, residentID string, res allocation.Result, rs reasons) error {
 	if _, err := tx.Exec(ctx, `DELETE FROM day_plan_assignments WHERE run_id = $1 AND resident_id = $2`, runID, residentID); err != nil {
-		return nil, fmt.Errorf("check in: clear assignments: %w", err)
+		return fmt.Errorf("check in: clear assignments: %w", err)
 	}
 	for _, a := range res.DayPlan.Assignments {
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO day_plan_assignments (run_id, task_id, resident_id, reason) VALUES ($1, $2, $3, $4)`,
 			runID, a.TaskID, a.ResidentID, string(a.Reason)); err != nil {
-			return nil, fmt.Errorf("check in: store assignment: %w", err)
+			return fmt.Errorf("check in: store assignment: %w", err)
 		}
 	}
-	rs = rewriteReasons(rs, st, sub, res, residentID)
 	body, err := json.Marshal(rs)
 	if err != nil {
-		return nil, fmt.Errorf("check in: write reasons: %w", err)
+		return fmt.Errorf("check in: write reasons: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `UPDATE allocation_runs SET reasons = $2 WHERE id = $1`, runID, body); err != nil {
-		return nil, fmt.Errorf("check in: write reasons: %w", err)
+		return fmt.Errorf("check in: write reasons: %w", err)
 	}
-	return &replanned{assigned: len(res.DayPlan.Assignments), pooled: len(res.Pool)}, nil
+	return nil
 }
 
 // givenToOthers is the set of Task ids the run gave to Residents other than
@@ -156,59 +171,4 @@ func givenToOthers(ctx context.Context, tx pgx.Tx, runID, residentID string) (ma
 		out[id] = true
 	}
 	return out, nil
-}
-
-// rewriteReasons brings the run's reasons up to date with the new plan of one
-// Resident: their Energy and level, their assigned entries and the pool. A Task
-// that was already in the pool and still is keeps its reason, since it is about
-// everyone; a Task newly released into the pool gets the reason the new plan
-// gave it. Entries for Tasks the re-plan did not consider are kept.
-func rewriteReasons(rs reasons, st loaded, sub allocation.State, res allocation.Result, residentID string) reasons {
-	if rs.Energy == nil {
-		rs.Energy = map[string]int{}
-	}
-	rs.Energy[residentID] = st.energy[residentID]
-	if level, ok := st.levels[residentID]; ok {
-		if rs.Levels == nil {
-			rs.Levels = map[string]string{}
-		}
-		rs.Levels[residentID] = level
-	}
-
-	candidate := map[string]bool{}
-	for _, t := range sub.Tasks {
-		candidate[t.ID] = true
-	}
-	oldPool := map[string]string{}
-	for _, e := range rs.Pool {
-		oldPool[e.TaskID] = e.Reason
-	}
-
-	assignedNow := make([]assigned, 0, len(rs.Assigned))
-	for _, a := range rs.Assigned {
-		if a.ResidentID != residentID {
-			assignedNow = append(assignedNow, a)
-		}
-	}
-	for _, a := range res.DayPlan.Assignments {
-		assignedNow = append(assignedNow, assigned{TaskID: a.TaskID, ResidentID: a.ResidentID, Reason: string(a.Reason)})
-	}
-	rs.Assigned = assignedNow
-
-	pool := make([]pooled, 0, len(rs.Pool))
-	for _, e := range rs.Pool {
-		if !candidate[e.TaskID] {
-			pool = append(pool, e)
-		}
-	}
-	for _, e := range res.Pool {
-		reason := string(e.Reason)
-		if old, was := oldPool[e.TaskID]; was {
-			reason = old
-		}
-		pool = append(pool, pooled{TaskID: e.TaskID, Reason: reason})
-	}
-	slices.SortFunc(pool, func(a, b pooled) int { return cmp.Compare(a.TaskID, b.TaskID) })
-	rs.Pool = pool
-	return rs
 }

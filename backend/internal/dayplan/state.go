@@ -20,8 +20,6 @@ type loaded struct {
 	state allocation.State
 	// energy is each Resident's Energy for the day, by Resident id.
 	energy map[string]int
-	// levels is the Check-in level of each Resident who checked in for the day.
-	levels map[string]string
 }
 
 // energyOn is a Resident's Energy on the day: the points of their Baseline for
@@ -58,7 +56,7 @@ func demandRestrictions(p profile.Profile, ci *checkinstore.CheckIn) []allocatio
 // day until it is assigned), its Residents with their Energy for the day, and
 // both levels of Restriction.
 func loadState(ctx context.Context, q pgx.Tx, homeID string, today allocation.Date) (loaded, error) {
-	out := loaded{state: allocation.State{Today: today}, energy: map[string]int{}, levels: map[string]string{}}
+	out := loaded{state: allocation.State{Today: today}, energy: map[string]int{}}
 
 	var err error
 	if out.state.Tasks, err = loadTasks(ctx, q, homeID); err != nil {
@@ -94,7 +92,6 @@ func loadState(ctx context.Context, q pgx.Tx, homeID string, today allocation.Da
 		var ci *checkinstore.CheckIn
 		if c, ok := checkIns[r.id]; ok {
 			ci = &c
-			out.levels[r.id] = string(c.Level)
 		}
 		res := allocation.Resident{ID: r.id, Energy: energyOn(p, today, ci), ChoreRestrictions: choreRestrictions[r.id],
 			DemandRestrictions: demandRestrictions(p, ci)}
@@ -184,14 +181,50 @@ func loadChoreRestrictions(ctx context.Context, q pgx.Tx, homeID string) (map[st
 // reasons is the jsonb stored on the run: what cannot be recomputed later
 // because Energy and Restrictions change. All values are stable ids.
 type reasons struct {
-	Assigned []assigned     `json:"assigned"`
-	Pool     []pooled       `json:"pool"`
-	Energy   map[string]int `json:"energy"`
-	// Levels are the Check-in levels behind Energy, by Resident id; a Resident
-	// with no Check-in is absent. Kept so the plan can later say why.
-	Levels     map[string]string `json:"levels,omitempty"`
-	Violations []violation       `json:"violations,omitempty"`
-	Error      string            `json:"error,omitempty"`
+	Assigned   []assigned     `json:"assigned"`
+	Pool       []pooled       `json:"pool"`
+	Energy     map[string]int `json:"energy"`
+	Violations []violation    `json:"violations,omitempty"`
+	Error      string         `json:"error,omitempty"`
+}
+
+// add appends the assignments and the pool of a proposal. It is the one place
+// that turns an allocation.Result into the stored shape.
+func (rs *reasons) add(res allocation.Result) {
+	for _, a := range res.DayPlan.Assignments {
+		rs.Assigned = append(rs.Assigned, assigned{TaskID: a.TaskID, ResidentID: a.ResidentID, Reason: string(a.Reason)})
+	}
+	for _, e := range res.Pool {
+		rs.Pool = append(rs.Pool, pooled{TaskID: e.TaskID, Reason: string(e.Reason)})
+	}
+}
+
+// replan swaps one Resident's part of a planned run for the result of planning
+// them again: their Energy and assignments, and the pool. A Task that was
+// already in the pool and still is keeps its reason, since it is about
+// everyone; a Task newly released into the pool gets the new plan's reason.
+func (rs *reasons) replan(residentID string, energy int, res allocation.Result) {
+	oldPool := make(map[string]string, len(rs.Pool))
+	for _, e := range rs.Pool {
+		oldPool[e.TaskID] = e.Reason
+	}
+	if rs.Energy == nil {
+		rs.Energy = map[string]int{}
+	}
+	rs.Energy[residentID] = energy
+	others := make([]assigned, 0, len(rs.Assigned))
+	for _, a := range rs.Assigned {
+		if a.ResidentID != residentID {
+			others = append(others, a)
+		}
+	}
+	rs.Assigned, rs.Pool = others, []pooled{}
+	rs.add(res)
+	for i, e := range rs.Pool {
+		if old, was := oldPool[e.TaskID]; was {
+			rs.Pool[i].Reason = old
+		}
+	}
 }
 
 type assigned struct {
