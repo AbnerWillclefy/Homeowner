@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { Home } from "../api/home";
+import { Card } from "../components/ui/Card";
 import { browserTimezones } from "./browserTimezones";
 import { saveSettings } from "./createOrLoad";
 import { HomeForm } from "./HomeForm";
@@ -27,13 +28,15 @@ export function HomeSettingsForm({ home, onSaved }: Props) {
   );
 
   return (
-    <HomeForm
-      idPrefix="home-settings"
-      copy={COPY}
-      initial={initial}
-      timezones={options}
-      save={saveSettings}
-      onSaved={onSaved}
-    />
+    <Card>
+      <HomeForm
+        idPrefix="home-settings"
+        copy={COPY}
+        initial={initial}
+        timezones={options}
+        save={saveSettings}
+        onSaved={onSaved}
+      />
+    </Card>
   );
 }

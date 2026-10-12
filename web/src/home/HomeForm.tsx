@@ -1,4 +1,5 @@
 import type { Home, HomeSettings } from "../api/home";
+import { PillButton } from "../components/ui/PillButton";
 import { useI18n, type MessageKey } from "../i18n";
 import { FormStatusMessage } from "./FormStatusMessage";
 import { HomeFields } from "./HomeFields";
@@ -45,9 +46,9 @@ export function HomeForm({ idPrefix, copy, initial, timezones, save, onSaved, on
         />
         <FormStatusMessage status={form.status} />
         {copy.saved && form.status.kind === "saved" && <p role="status">{t(copy.saved)}</p>}
-        <button type="submit" className="btn btn-primary" disabled={saving}>
+        <PillButton type="submit" variant="primary" className="mt-4" disabled={saving}>
           {t(saving ? copy.submitting : copy.submit)}
-        </button>
+        </PillButton>
       </form>
     </section>
   );
