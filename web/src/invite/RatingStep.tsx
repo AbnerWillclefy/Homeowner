@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import type { Chore } from "../api/chores";
 import { PREFERENCES, type Preference } from "../api/profile";
+import { AppDialog } from "../components/ui/AppDialog";
 import { useI18n, type MessageKey } from "../i18n";
 import { categoryLabel, type Label } from "../profile/labels";
 import { useRatingStep } from "./useRatingStep";
@@ -12,37 +13,30 @@ const PREFERENCE_KEY: Record<Preference, MessageKey> = {
 };
 
 interface Props {
-  /** The step is over: skipped, done, or there was nothing to rate. */
+  /** The step is over: skipped, done, or there was nothing to rate. Escape and a tap outside do the same. */
   onClose(): void;
 }
 
 /**
- * Shown once, right after joining a Home: rate the Home's most demanding Chores and mark any that cannot be
- * done. It is skippable, and closes by itself when the Home has no Chores.
+ * A dialog over Today, shown once right after joining a Home: rate the Home's most demanding Chores and mark any
+ * that cannot be done. It is skippable, and closes by itself when the Home has no Chores.
  */
 export function RatingStep({ onClose }: Props) {
   const { t } = useI18n();
   const { state, save, settingOf, setPreference, setRestricted } = useRatingStep();
-  const headingRef = useRef<HTMLHeadingElement>(null);
   const empty = state.kind === "ready" && state.chores.length === 0;
 
   useEffect(() => {
     if (empty) onClose();
   }, [empty, onClose]);
 
-  // Joining replaces the screen, so land on the new step's heading.
-  useEffect(() => {
-    headingRef.current?.focus();
-  }, []);
-
   const text = (label: Label) => ("key" in label ? t(label.key) : label.text);
 
-  return (
-    <section aria-labelledby="rating-heading">
-      <h2 id="rating-heading" ref={headingRef} tabIndex={-1}>
-        {t("invite.rating.heading")}
-      </h2>
+  // Nothing to rate: closing, so do not flash the dialog.
+  if (empty) return null;
 
+  return (
+    <AppDialog title={t("invite.rating.heading")} onDismiss={onClose}>
       {state.kind === "loading" && <p role="status">{t("invite.rating.loading")}</p>}
       {state.kind === "problem" && <p role="alert">{t("invite.rating.problem")}</p>}
 
@@ -97,6 +91,6 @@ export function RatingStep({ onClose }: Props) {
       <button type="button" className={state.kind === "ready" ? "btn btn-primary" : "btn"} onClick={onClose}>
         {state.kind === "ready" ? t("invite.rating.done") : t("invite.rating.skip")}
       </button>
-    </section>
+    </AppDialog>
   );
 }
