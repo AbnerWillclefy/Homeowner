@@ -67,19 +67,20 @@ export function HomePage() {
 
 /**
  * Me: one titled card each for the Baseline, Preferences, Restrictions, Reminders, Appearance and Language,
- * then the account card with sign out last. Everything after the Restrictions is passed to MeProfile as
- * children so it still shows when the details fail to load.
+ * then the account card with sign out last. MePage owns the column, so the cards after
+ * the Restrictions still show when the details fail to load.
  */
 export function MePage() {
   const auth = useAppAuth();
   if (auth.state.kind !== "signed-in") return null;
   return (
-    <MeProfile>
+    <div className="flex flex-col gap-4">
+      <MeProfile />
       <Reminders />
       <AppearanceCard />
       <LanguageCard />
       {/* Signing out is on purpose: the guard then sends the person to sign-in without remembering this tab. */}
       <SignedIn email={auth.state.email} offline={auth.state.offline} onSignOut={auth.signOut} />
-    </MeProfile>
+    </div>
   );
 }

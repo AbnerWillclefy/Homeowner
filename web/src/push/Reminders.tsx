@@ -10,7 +10,13 @@ export function Reminders() {
   const { availability, reminders, enable, test, sendTest } = useSession().push;
   const { t } = useI18n();
 
-  if (availability.kind === "needs-install") return <InstallSteps />;
+  if (availability.kind === "needs-install") {
+    return (
+      <Card>
+        <InstallSteps />
+      </Card>
+    );
+  }
 
   if (availability.kind === "unsupported") {
     return (

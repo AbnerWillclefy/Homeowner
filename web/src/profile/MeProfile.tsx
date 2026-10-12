@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { Card } from "../components/ui/Card";
 import { useI18n } from "../i18n";
 import { BaselineFields, PreferenceFields, ProfileStatus, RestrictionFields } from "./ProfileSections";
@@ -10,16 +9,15 @@ import { useProfile } from "./useProfile";
  * with a visible message if the API refuses it. Baseline saves on blur. Onboarding shows the same three
  * parts one step at a time.
  *
- * While the details load or fail, only the status shows (with Retry), never empty cards. `children` is the
- * rest of the Me tab, which comes after these cards and must stay reachable when the load fails, so the User
- * can still change Appearance or sign out.
+ * While the details load or fail, only the status shows (with Retry), never empty cards. It renders a
+ * fragment: MePage owns the column and the cards that follow.
  */
-export function MeProfile({ children }: { children?: ReactNode }) {
+export function MeProfile() {
   const { t } = useI18n();
   const { state, save, retry, setBaseline, setPreference, setRestricted } = useProfile();
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
       {state.kind === "ready" && <p>{t("profile.intro")}</p>}
 
       {/* One live region for every control, so each save or undo is announced once. It sits outside the cards. */}
@@ -47,8 +45,6 @@ export function MeProfile({ children }: { children?: ReactNode }) {
           </Card>
         </>
       )}
-
-      {children}
-    </div>
+    </>
   );
 }
