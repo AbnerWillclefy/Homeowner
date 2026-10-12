@@ -17,8 +17,24 @@ interface Props {
   open?: boolean;
   /** Where focus lands on opening instead of the title, for example Cancel on a destructive action. */
   initialFocusRef?: RefObject<HTMLElement | null>;
+  /**
+   * "centered" (default) is a short dialog in the middle. "sheet" is near full height for forms. Either way the
+   * body scrolls and `footer` stays pinned below it.
+   */
+  size?: "centered" | "sheet";
+  /** Actions pinned below the scrolling body, so they stay reachable with the keyboard open. */
+  footer?: ReactNode;
   children: ReactNode;
 }
+
+// Whole class strings, so Tailwind finds them. `dvh` follows the mobile browser chrome and on-screen keyboard.
+const CONTENT_BASE =
+  "fixed mx-auto flex max-w-[32rem] flex-col rounded-lg border border-border bg-surface-raised text-text";
+const CONTENT_SIZE = {
+  centered: "inset-x-4 top-1/2 max-h-[90dvh] -translate-y-1/2",
+  sheet: "inset-x-2 top-[4dvh] h-[92dvh]",
+} as const;
+const BODY_SIZE = { centered: "p-6", sheet: "p-4" } as const;
 
 /**
  * A modal dialog over the screen behind it (Radix supplies the focus trap, Escape and the inert background).
@@ -34,6 +50,8 @@ export function AppDialog({
   trigger,
   open = true,
   initialFocusRef,
+  size = "centered",
+  footer,
   children,
 }: Props) {
   const ownTitleRef = useRef<HTMLHeadingElement>(null);
@@ -46,7 +64,7 @@ export function AppDialog({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-text/50" />
         <Dialog.Content
-          className="fixed inset-x-4 top-1/2 mx-auto max-h-[90dvh] max-w-[32rem] -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-surface-raised p-6 text-text"
+          className={`${CONTENT_BASE} ${CONTENT_SIZE[size]}`}
           {...(description === undefined ? { "aria-describedby": undefined } : {})}
           onOpenAutoFocus={(event) => {
             event.preventDefault();
@@ -63,15 +81,22 @@ export function AppDialog({
           onEscapeKeyDown={(event) => !dismissible && event.preventDefault()}
           onInteractOutside={(event) => !dismissible && event.preventDefault()}
         >
-          <Dialog.Title ref={heading} tabIndex={-1}>
-            {title}
-          </Dialog.Title>
-          {description !== undefined && (
-            <Dialog.Description asChild>
-              <div>{description}</div>
-            </Dialog.Description>
+          <div className={`min-h-0 flex-1 overflow-y-auto overscroll-contain ${BODY_SIZE[size]}`}>
+            <Dialog.Title ref={heading} tabIndex={-1}>
+              {title}
+            </Dialog.Title>
+            {description !== undefined && (
+              <Dialog.Description asChild>
+                <div>{description}</div>
+              </Dialog.Description>
+            )}
+            {children}
+          </div>
+          {footer && (
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-border p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              {footer}
+            </div>
           )}
-          {children}
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
