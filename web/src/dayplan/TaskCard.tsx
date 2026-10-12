@@ -1,6 +1,6 @@
 import type { PlanTask } from "../api/dayPlan";
 import { Card } from "../components/ui/Card";
-import { categoryStyle, knownCategory } from "../components/ui/categoryStyle";
+import { categoryStyle } from "../components/ui/categoryStyle";
 import { useI18n } from "../i18n";
 import { categoryLabel, importanceLabel, labelText, type Label } from "../profile/labels";
 import { formatDay } from "./format";
@@ -21,8 +21,7 @@ export function TaskCard({ task, reasonFor }: Props) {
   const { t, locale } = useI18n();
   const text = (label: Label) => labelText(t, label);
 
-  const category = knownCategory(task.category);
-  const { icon: Icon } = categoryStyle(category);
+  const { id: category, icon: Icon } = categoryStyle(task.category);
   const reason = (reasonFor === "assigned" ? assignmentReasonLabel : poolReasonLabel)(task.reason);
   const effort =
     task.currentEffort === task.baseEffort

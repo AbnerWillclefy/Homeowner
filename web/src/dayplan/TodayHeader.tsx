@@ -1,8 +1,7 @@
 import { Zap } from "lucide-react";
 import { Link } from "react-router";
-import type { Level } from "../api/checkIn";
 import { ME_PATH } from "../app/routes";
-import { energyNote, type EnergyNote } from "../checkin/state";
+import type { EnergyNote } from "../checkin/state";
 import { Chip } from "../components/ui/Chip";
 import { useI18n, type MessageKey } from "../i18n";
 import { focusCheckIn } from "./focusCheckIn";
@@ -20,8 +19,8 @@ const CHIP_KEYS = {
 interface Props {
   /** The plan's Energy for the Resident; null until a plan is loaded. */
   energy: number | null;
-  /** Today's Check-in, or null while it is not known (loading or failed): then there is no chip. */
-  checkIn: { checkedIn: boolean; level: Level | null } | null;
+  /** The chip's note, or null while today's Check-in is not known (loading or failed): then there is no chip. */
+  note: EnergyNote | null;
 }
 
 /**
@@ -30,9 +29,8 @@ interface Props {
  * there is none, and plain text otherwise. The greeting is an h2 because the app name above is the page's h1,
  * and it is the first heading, which is where focus lands when the tab opens.
  */
-export function TodayHeader({ energy, checkIn }: Props) {
+export function TodayHeader({ energy, note }: Props) {
   const { t } = useI18n();
-  const note = checkIn ? energyNote(energy, checkIn) : null;
 
   return (
     <header className="flex flex-col items-start gap-3">

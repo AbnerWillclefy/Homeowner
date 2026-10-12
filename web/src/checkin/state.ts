@@ -73,7 +73,10 @@ export function checkInView(state: CheckInState): CheckInView {
  */
 export type EnergyNote = "unset" | "drained" | "energy" | "no-baseline" | "pending";
 
-export function energyNote(energy: number | null, checkIn: { checkedIn: boolean; level: Level | null }): EnergyNote {
+/** What the chip and the empty state need to know of today's Check-in. */
+export type CheckInSummary = { checkedIn: boolean; level: Level | null };
+
+export function energyNote(energy: number | null, checkIn: CheckInSummary): EnergyNote {
   if (!checkIn.checkedIn) return "unset";
   if (checkIn.level === "drained") return "drained";
   if (energy === null) return "pending";

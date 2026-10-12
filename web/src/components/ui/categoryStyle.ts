@@ -11,11 +11,12 @@ import {
   Trees,
   type LucideIcon,
 } from "lucide-react";
-import { CATEGORY_KEYS } from "../../profile/labels";
 
 export type CategoryTone = "peach" | "mint" | "lavender" | "blue" | "yellow" | "salmon" | "neutral";
 
 export interface CategoryStyle {
+  /** The id resolved to one the app knows: an unknown, empty or missing id is "other". */
+  id: string;
   tone: CategoryTone;
   /** Whole class strings: Tailwind scans for literal names, so they are never built from parts. */
   fill: string;
@@ -47,15 +48,11 @@ const BY_CATEGORY: Record<string, { tone: CategoryTone; icon: LucideIcon }> = {
 };
 
 /**
- * The id to name and style a card by: a Category the app has a name for, otherwise "other". The API can send an
- * id the app does not know (or none, from an older version), and the raw id must never reach the screen.
+ * The id, pastel and icon for a Category id. The API can send an id the app does not know (or none, from an
+ * older version), and the raw id must never reach the screen, so it resolves to "other", the neutral style.
  */
-export function knownCategory(id: string | null | undefined): string {
-  return id && Object.hasOwn(CATEGORY_KEYS, id) ? id : "other";
-}
-
-/** The pastel and icon for a Category id; an unknown, empty or missing id is neutral, like "other". */
 export function categoryStyle(id: string | null | undefined): CategoryStyle {
-  const entry = id && Object.hasOwn(BY_CATEGORY, id) ? BY_CATEGORY[id]! : BY_CATEGORY["other"]!;
-  return { tone: entry.tone, icon: entry.icon, ...TONES[entry.tone] };
+  const known = id && Object.hasOwn(BY_CATEGORY, id) ? id : "other";
+  const entry = BY_CATEGORY[known]!;
+  return { id: known, tone: entry.tone, icon: entry.icon, ...TONES[entry.tone] };
 }

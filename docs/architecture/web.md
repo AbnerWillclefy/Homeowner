@@ -316,19 +316,18 @@ flowchart TD
     TS --> UD[useDayPlan: GET /home/day-plan]
     TS --> PV[PlanView]
     PV --> TC[TaskCard: Category, Chore, Effort, Importance, people, due day, reason]
-    TC --> CS[categoryStyle.ts: knownCategory, pastel and icon]
+    TC --> CS[categoryStyle.ts: resolved id, pastel and icon]
     TC --> R[reasons.ts: reason id to message key]
     UD --> API[api/dayPlan.ts]
-    TS -->|plan Energy| HD
 ```
 
 - Header: `TodayHeader` shows a greeting from the device's local hour (`greeting.ts`: before 12 morning, 12 to 17 afternoon, 18 on evening, no name) as the first `h2` (the app name above is the page's `h1`, and focus lands on the first `h2` when the tab opens), and an Energy `Chip`. The chip's text comes from `energyNote(energy, checkIn)` in `src/checkin/state.ts`, which returns `unset` (no Check-in: a button that scrolls to the Check-in and focuses its heading), `drained` (gentle, no Tasks), `energy` (points), `no-baseline` (a link to the Me tab, never "0") or `pending` (checked in, plan not ready: "Checked in", never "not set"). Its accessible name is one string, "Energy today: ...". No chip is shown while the Check-in itself is loading or failed.
-- Where the data lives: `HomeDay` owns `useCheckIn`, so the Check-in stays mounted (its "saved" announcement is kept), and holds the plan's Energy. `TodaySection` owns `useDayPlan`, is remounted with a new `key` to reload, and reports `plan.energy` up (null while loading or failed).
-- Cards: `TaskCard` replaces the old `TaskItem`. Each is a `Card` in the pastel of the Task's Category, with a large decorative icon, the Category name as text, the Chore name as the heading, the current Effort, and the facts and reason as before. `knownCategory` turns a missing or unknown Category id into `other`, so the card is neutral and says "Other", never the raw id. The pool uses the same card.
+- Where the data lives: `HomeDay` owns both `useCheckIn`, so the Check-in stays mounted (its "saved" announcement is kept), and `useDayPlan(version)`, which reloads when the version changes. It computes the Energy note once and passes it, with the plan, to `TodayHeader` and `TodaySection`.
+- Cards: `TaskCard` replaces the old `TaskItem`. Each is a `Card` in the pastel of the Task's Category, with a large decorative icon, the Category name as text, the Chore name as the heading, the current Effort, and the facts and reason as before. `categoryStyle` returns the resolved id and turns a missing or unknown Category id into `other`, so the card is neutral and says "Other", never the raw id. The pool uses the same card.
 - States: not planned yet (`planned` and `rejected` both false) shows the Home's Allocation time and the open pool; `rejected` says no Tasks were given today and still lists the pool; planned shows "Your Tasks", other Residents' Tasks (only Residents who have some, labelled "Resident 1", "Resident 2" because the API sends ids, not names) and the pool (or "no other open Tasks"). An empty "Your Tasks" always says why, from `noTasksReason(energyNote(...))`, the same note as the chip: Drained (rest), no Baseline (with a link to the Me tab) or nothing due.
 - Reasons are stable ids localised in both catalogs: pool `no_energy_left`, `restricted_for_all`, `weekday_not_allowed`, `two_person_deferred`, `invalid_effort`, `added_after_plan`; assignment `deadline_today`, `importance`, `lateness`, `fits_energy`. An id with no translation shows as the id; no reason (before the day is planned) shows nothing.
 - Nothing relies on colour: Effort, Importance, people and reason are all text. A grown Effort reads "Effort 3 (usually 2)". Failures use `role="alert"` with a retry button; loading and the not-planned and rejected notes use `role="status"`.
-- Pure modules with vitest tests: `api/dayPlan.ts`, `greeting.ts`, `reasons.ts`, `format.ts` (`formatDay`), and `categoryStyle.ts` (`knownCategory`). The components and hook are checked by hand.
+- Pure modules with vitest tests: `api/dayPlan.ts`, `greeting.ts`, `reasons.ts`, `format.ts` (`formatDay`), and `categoryStyle.ts`. The components and hook are checked by hand.
 
 ## Check-in
 
@@ -340,7 +339,7 @@ flowchart TD
     HD --> UC[useCheckIn: GET /home/check-in, GET /demands]
     HD --> CS[CheckInSection]
     HD --> TH[TodayHeader: Energy chip]
-    HD -->|key bumps after a save| TS[TodaySection]
+    HD -->|version bumps after a save| TS[TodaySection]
     CS --> V[state.ts: checkInView]
     V -->|checkedIn false| P[prompt: intro and form]
     V -->|checkedIn true| SUM[summary and Change]
@@ -353,7 +352,7 @@ flowchart TD
 
 - The prompt shows exactly when `checkedIn` is false, inline and not a modal, on every open: nothing about it being skipped is stored. Once answered it is one line, "Today's Check-in: Low", with a Change button that reopens the form.
 - The form is a `fieldset` of four native radios (Drained, Low, Normal, Energized, each with a one-line explanation and none selected at first) and a `fieldset` of checkboxes for today's Restrictions, labelled with the Demand names. Submitting without a level shows an alert instead of calling the API. Results use `role="status"` and failures `role="alert"`; meaning never depends on colour.
-- A save can change the Day Plan, because the API plans that Resident again. `HomeDay` remounts `TodaySection` with a new `key`, so it reloads without polling; the Energy chip reads "Checked in" while it reloads. The Today section no longer prints an energy line: the chip in `TodayHeader` replaces it, and the Check-in heading takes focus when the chip is tapped.
+- A save can change the Day Plan, because the API plans that Resident again. `useDayPlan` reloads when the version `HomeDay` receives changes, so it reloads without polling; the Energy chip reads "Checked in" while it reloads. The Today section no longer prints an energy line: the chip in `TodayHeader` replaces it, and the Check-in heading takes focus when the chip is tapped.
 - `state.ts` is a reducer (`checkInReducer`) plus `checkInView`, `energyNote` (the chip's five outcomes, from the plan's Energy and the Check-in) and `noTasksReason` (why an empty list is empty, from the same note); `form.ts` holds the form values and what is sent (Restrictions in the order of `GET /demands`). Both are pure. Pure modules with vitest tests: `api/checkIn.ts`, `state.ts`, `form.ts`. The components and hook are checked by hand.
 - The Check-in reminder arrives as a push with `kind: "checkin_reminder"`; see Service worker below. Opening the app from it shows the prompt, as on any open.
 

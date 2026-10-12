@@ -6,8 +6,8 @@ export type DayPlanState =
   | { kind: "failed"; reason: Failure["kind"] | "none" }
   | { kind: "ready"; plan: DayPlan };
 
-/** Loads today's Day Plan. Only mounted with a Home. */
-export function useDayPlan() {
+/** Loads today's Day Plan, and again whenever `version` changes. Only mounted with a Home. */
+export function useDayPlan(version: number) {
   const [state, setState] = useState<DayPlanState>({ kind: "loading" });
 
   const load = useCallback(async () => {
@@ -18,7 +18,7 @@ export function useDayPlan() {
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, version]);
 
   return { state, reload: load };
 }
