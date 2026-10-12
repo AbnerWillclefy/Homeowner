@@ -5,3 +5,9 @@ export function formatDay(day: string, locale: string): string {
   const at = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
   return new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", timeZone: "UTC" }).format(at);
 }
+
+/** Where a Task's last day falls against the plan's day. Both are "YYYY-MM-DD", so they compare as text. */
+export function dueWhen(windowEnd: string, today: string): "past" | "today" | "later" {
+  if (windowEnd === today) return "today";
+  return windowEnd < today ? "past" : "later";
+}

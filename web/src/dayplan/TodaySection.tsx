@@ -1,3 +1,4 @@
+import { Clock, UserRound } from "lucide-react";
 import { Link } from "react-router";
 import type { DayPlan } from "./api";
 import { ME_PATH } from "../app/routes";
@@ -5,11 +6,12 @@ import { noTasksReason, type EnergyNote, type NoTasksReason } from "../checkin/s
 import { formatAllocationTime } from "../home/allocationTimes";
 import { useI18n, type MessageKey } from "../shared/i18n";
 import { Button } from "../shared/ui/Button";
+import { GroupHeading } from "../shared/ui/GroupHeading";
 import { LOAD_FAILURE_KEY } from "./failureMessages";
 import { TaskCard } from "./TaskCard";
 import type { DayPlanState } from "./useDayPlan";
 
-const LIST = "flex list-none flex-col gap-3 p-0";
+const LIST = "m-0 flex list-none flex-col gap-3 p-0";
 
 /**
  * Today's Day Plan: your Tasks, other Residents' Tasks and the pool that remains. Read-only: a Day Plan is a
@@ -30,7 +32,10 @@ export function TodaySection({
 
   return (
     <section aria-labelledby="today-heading">
-      <h2 id="today-heading">{t("dayplan.heading")}</h2>
+      {/* The greeting is the visible title; this one names the landmark for screen readers. */}
+      <h2 id="today-heading" className="sr-only">
+        {t("dayplan.heading")}
+      </h2>
 
       {state.kind === "loading" && <p role="status">{t("dayplan.loading")}</p>}
 
@@ -65,9 +70,9 @@ function EmptyMine({ reason }: { reason: NoTasksReason | null }) {
   if (!reason) return null;
   return (
     <>
-      <p>{t(EMPTY_MINE[reason])}</p>
+      <p className="my-0 text-muted">{t(EMPTY_MINE[reason])}</p>
       {reason === "no-baseline" && (
-        <p>
+        <p className="mt-1 mb-0">
           <Link to={ME_PATH} className="font-semibold text-accent underline">
             {t("dayplan.mine.empty.noBaseline.link")}
           </Link>
@@ -83,55 +88,68 @@ function PlanView({ plan, note }: { plan: DayPlan; note: EnergyNote | null }) {
   const reason = note && noTasksReason(note);
 
   return (
-    <>
+    <div className="flex flex-col gap-8">
       {!plan.planned && !plan.rejected && (
-        <p role="status">{t("dayplan.notPlanned", { time: formatAllocationTime(plan.allocationTime, locale) })}</p>
+        <p role="status" className="my-0 flex items-center gap-2 font-semibold text-muted">
+          <Clock aria-hidden="true" size={18} className="shrink-0" />
+          {t("dayplan.notPlanned", { time: formatAllocationTime(plan.allocationTime, locale) })}
+        </p>
       )}
-      {plan.rejected && <p role="status">{t("dayplan.rejected")}</p>}
+      {plan.rejected && (
+        <p role="status" className="my-0 text-muted">
+          {t("dayplan.rejected")}
+        </p>
+      )}
 
       {plan.planned && (
-        <>
-          <h3>{t("dayplan.mine.heading")}</h3>
+        <div>
+          <GroupHeading count={plan.mine.length}>{t("dayplan.mine.heading")}</GroupHeading>
           {plan.mine.length > 0 ? (
             <ul className={LIST}>
               {plan.mine.map((task) => (
-                <TaskCard key={task.id} task={task} reasonFor="assigned" />
+                <TaskCard key={task.id} task={task} reasonFor="assigned" today={plan.date} own />
               ))}
             </ul>
           ) : (
             <EmptyMine reason={reason} />
           )}
-
-          {plan.others.length > 0 && (
-            <>
-              <h3>{t("dayplan.others.heading")}</h3>
-              {plan.others.map((other, index) => (
-                <section key={other.residentId} aria-labelledby={`resident-${index}`}>
-                  <h4 id={`resident-${index}`} className="font-semibold">
-                    {t("dayplan.others.resident", { number: index + 1 })}
-                  </h4>
-                  <ul className={LIST}>
-                    {other.tasks.map((task) => (
-                      <TaskCard key={task.id} task={task} reasonFor="assigned" />
-                    ))}
-                  </ul>
-                </section>
-              ))}
-            </>
-          )}
-        </>
+        </div>
       )}
 
-      <h3>{t("dayplan.pool.heading")}</h3>
-      {plan.pool.length === 0 ? (
-        <p>{t("dayplan.pool.empty")}</p>
-      ) : (
-        <ul className={LIST}>
-          {plan.pool.map((task) => (
-            <TaskCard key={task.id} task={task} reasonFor="pool" />
-          ))}
-        </ul>
+      {plan.planned && plan.others.length > 0 && (
+        <div>
+          <GroupHeading>{t("dayplan.others.heading")}</GroupHeading>
+          <div className="flex flex-col gap-5">
+            {plan.others.map((other, index) => (
+              <section key={other.residentId} aria-labelledby={`resident-${index}`} className="mt-0">
+                <h4 id={`resident-${index}`} className="mt-0 mb-2 flex items-center gap-1.5 text-sm font-bold text-muted">
+                  <UserRound aria-hidden="true" size={16} className="shrink-0" />
+                  {t("dayplan.others.resident", { number: index + 1 })}
+                </h4>
+                <ul className={LIST}>
+                  {other.tasks.map((task) => (
+                    <TaskCard key={task.id} task={task} reasonFor="assigned" today={plan.date} own={false} />
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        </div>
       )}
-    </>
+
+      <div>
+        <GroupHeading count={plan.pool.length}>{t("dayplan.pool.heading")}</GroupHeading>
+        {plan.pool.length === 0 ? (
+          <p className="my-0 text-muted">{t("dayplan.pool.empty")}</p>
+        ) : (
+          <ul className={LIST}>
+            {plan.pool.map((task) => (
+              <TaskCard key={task.id} task={task} reasonFor="pool" today={plan.date} own={false} />
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 }
+

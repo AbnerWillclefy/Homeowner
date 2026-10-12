@@ -16,8 +16,8 @@ export function PageFrame({
       tabIndex={-1}
       className={`page w-full focus:outline-none ${className}`}
     >
-      <h1 className="text-center">{t("app.name")}</h1>
-      <p className="text-center">{t("home.tagline")}</p>
+      <h1 className="mb-0 text-lg font-bold text-accent">{t("app.name")}</h1>
+      <p className="mt-0 mb-6 text-sm text-muted">{t("home.tagline")}</p>
       <HealthBanner />
       {children}
     </main>
