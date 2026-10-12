@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { WEEKDAYS } from "../api/profile";
 import type { FieldCodes } from "../api/home";
-import { useI18n, type MessageKey } from "../i18n";
+import { useI18n } from "../i18n";
 import { DISPLAY_WEEKDAYS, weekdayLabel } from "../profile/weekdays";
 import {
   answerErrorKey,
@@ -41,22 +41,16 @@ export function Questionnaire({ idPrefix, value, onChange, errors, disabled }: P
 
   const errorText = (field: string) => (errors[field] ? t(answerErrorKey(errors[field])) : undefined);
 
-  /** A fieldset whose hint and errors are read with its legend. */
-  function group(name: string, legend: string, hint: MessageKey | null, errorFields: string[], children: ReactNode) {
-    const hintId = `${idPrefix}-${name}-hint`;
+  /** A fieldset whose errors are read with its legend. */
+  function group(legend: string, errorFields: string[], children: ReactNode) {
     const messages = errorFields.flatMap((field) => {
       const text = errorText(field);
       return text ? [{ field, text }] : [];
     });
-    const describedBy = [hint ? hintId : null, ...messages.map((m) => `${idPrefix}-${m.field}-error`)].filter(Boolean).join(" ");
+    const describedBy = messages.map((m) => `${idPrefix}-${m.field}-error`).join(" ");
     return (
       <fieldset className="mt-4 p-0 border-0" disabled={disabled} aria-describedby={describedBy || undefined}>
         <legend className="font-semibold">{legend}</legend>
-        {hint && (
-          <p id={hintId} className="text-muted">
-            {t(hint)}
-          </p>
-        )}
         {children}
         {messages.map((m) => (
           <p key={m.field} id={`${idPrefix}-${m.field}-error`} className="text-danger">
@@ -70,9 +64,7 @@ export function Questionnaire({ idPrefix, value, onChange, errors, disabled }: P
   function days(stream: "trash" | "recycling") {
     const field = `collection.${stream}`;
     return group(
-      stream,
       t(`catalog.collection.${stream}`),
-      null,
       [field],
       <div className="flex flex-wrap gap-x-4">
         {DISPLAY_WEEKDAYS.map((day) => {
@@ -98,9 +90,7 @@ export function Questionnaire({ idPrefix, value, onChange, errors, disabled }: P
   return (
     <>
       {group(
-        "rooms",
         t("catalog.rooms.legend"),
-        "catalog.rooms.hint",
         [],
         ROOM_TYPES.map((type) => {
           const id = `${idPrefix}-rooms-${type}`;
@@ -135,9 +125,7 @@ export function Questionnaire({ idPrefix, value, onChange, errors, disabled }: P
       )}
 
       {group(
-        "outdoor",
         t("catalog.outdoor.legend"),
-        "catalog.outdoor.hint",
         ["outdoor"],
         <div className="flex flex-wrap gap-x-4">
           {OUTDOORS.map((id) => (
@@ -156,9 +144,7 @@ export function Questionnaire({ idPrefix, value, onChange, errors, disabled }: P
       )}
 
       {group(
-        "pets",
         t("catalog.pets.legend"),
-        "catalog.pets.hint",
         ["pets"],
         <div className="flex flex-wrap gap-x-4">
           {PETS.map((id) => (
@@ -177,7 +163,7 @@ export function Questionnaire({ idPrefix, value, onChange, errors, disabled }: P
         </div>,
       )}
 
-      {group("collection", t("catalog.collection.legend"), "catalog.collection.hint", [], (
+      {group(t("catalog.collection.legend"), [], (
         <>
           {days("trash")}
           {days("recycling")}
@@ -185,15 +171,11 @@ export function Questionnaire({ idPrefix, value, onChange, errors, disabled }: P
       ))}
 
       {group(
-        "habits",
         t("catalog.habits.legend"),
-        "catalog.habits.hint",
         [],
         <>
           {group(
-            "cooking",
             t("catalog.habits.cooking.legend"),
-            null,
             ["habits.cooking"],
             <div className="flex flex-wrap gap-x-4">
               {COOKINGS.map((id) => (

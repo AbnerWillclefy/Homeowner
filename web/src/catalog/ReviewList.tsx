@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { FieldCodes } from "../api/home";
+import { CardRow } from "../components/ui/CardRow";
 import { PillButton } from "../components/ui/PillButton";
 import { ChoreForm } from "../chores/ChoreForm";
 import { choreFieldErrorKey } from "../chores/fieldErrors";
@@ -50,7 +51,6 @@ export function ReviewList({ items, errors, tooMany, onChange, disabled }: Props
       <h2 id="review-heading" ref={headingRef} tabIndex={-1}>
         {t("catalog.review.heading")}
       </h2>
-      <p>{t("catalog.review.intro")}</p>
       <p>{t("catalog.review.count", { count: items.length })}</p>
 
       {tooMany && (
@@ -105,76 +105,78 @@ export function ReviewList({ items, errors, tooMany, onChange, disabled }: Props
             );
           }
 
+          const actions = removing !== item.key && (
+            <>
+              <PillButton
+                variant="secondary"
+                disabled={disabled || lists.state.kind !== "ready"}
+                aria-label={t("chores.item.edit.label", { name })}
+                onClick={() => setEditing(item.key)}
+              >
+                {t("catalog.review.edit")}
+              </PillButton>
+              <PillButton
+                variant="secondary"
+                disabled={disabled}
+                aria-label={t("catalog.review.remove.label", { name })}
+                ref={(node) => {
+                  if (node) removeButtons.current.set(item.key, node);
+                  else removeButtons.current.delete(item.key);
+                }}
+                onClick={() => setRemoving(item.key)}
+              >
+                {t("catalog.review.remove")}
+              </PillButton>
+            </>
+          );
+
           return (
             <li key={item.key} className="list-none ps-0">
-              <h3 className="font-semibold">{name}</h3>
-              <p className="text-muted">{choreFacts(previewOf(item), t, locale).join(" · ")}</p>
-              {hasErrors && (
-                <div role="alert" className="text-danger">
-                  <p>{t("catalog.review.item.invalid")}</p>
-                  <ul>
-                    {Object.entries(itemErrors).map(([field, code]) => (
-                      <li key={field}>{t(choreFieldErrorKey(field, code))}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {removing !== item.key && (
-                <div className="flex flex-wrap gap-3">
-                  <PillButton
-                    variant="secondary"
-                    disabled={disabled || lists.state.kind !== "ready"}
-                    aria-label={t("chores.item.edit.label", { name })}
-                    onClick={() => setEditing(item.key)}
-                  >
-                    {t("catalog.review.edit")}
-                  </PillButton>
-                  <PillButton
-                    variant="secondary"
-                    disabled={disabled}
-                    aria-label={t("catalog.review.remove.label", { name })}
-                    ref={(node) => {
-                      if (node) removeButtons.current.set(item.key, node);
-                      else removeButtons.current.delete(item.key);
-                    }}
-                    onClick={() => setRemoving(item.key)}
-                  >
-                    {t("catalog.review.remove")}
-                  </PillButton>
-                </div>
-              )}
-
-              {removing === item.key && (
-                <div role="group" aria-label={t("catalog.review.remove.label", { name })}>
-                  <p>{t("catalog.review.remove.prompt", { name })}</p>
-                  <div className="flex flex-wrap gap-3">
-                    <PillButton
-                      ref={keepRef}
-                      variant="secondary"
-                      onClick={() => {
-                        setRemoving(null);
-                        // The button is mounted again by the time the browser handles this.
-                        requestAnimationFrame(() => removeButtons.current.get(item.key)?.focus());
-                      }}
-                    >
-                      {t("catalog.review.remove.cancel")}
-                    </PillButton>
-                    <PillButton
-                      variant="danger"
-                      onClick={() => {
-                        onChange(items.filter((other) => other.key !== item.key));
-                        setRemoving(null);
-                        setEditing((current) => (current === item.key ? null : current));
-                        toast.show({ messageKey: "catalog.review.removed", params: { name }, tone: "success" });
-                        focusHeading();
-                      }}
-                    >
-                      {t("catalog.review.remove.confirm")}
-                    </PillButton>
+              <CardRow actions={actions} className="mb-3">
+                <h3 className="mt-0 font-semibold">{name}</h3>
+                <p className="text-muted">{choreFacts(previewOf(item), t, locale).join(" · ")}</p>
+                {hasErrors && (
+                  <div role="alert" className="text-danger">
+                    <p>{t("catalog.review.item.invalid")}</p>
+                    <ul>
+                      {Object.entries(itemErrors).map(([field, code]) => (
+                        <li key={field}>{t(choreFieldErrorKey(field, code))}</li>
+                      ))}
+                    </ul>
                   </div>
-                </div>
-              )}
+                )}
+
+                {removing === item.key && (
+                  <div role="group" aria-label={t("catalog.review.remove.label", { name })}>
+                    <p>{t("catalog.review.remove.prompt", { name })}</p>
+                    <div className="flex flex-wrap gap-3">
+                      <PillButton
+                        ref={keepRef}
+                        variant="secondary"
+                        onClick={() => {
+                          setRemoving(null);
+                          // The button is mounted again by the time the browser handles this.
+                          requestAnimationFrame(() => removeButtons.current.get(item.key)?.focus());
+                        }}
+                      >
+                        {t("catalog.review.remove.cancel")}
+                      </PillButton>
+                      <PillButton
+                        variant="danger"
+                        onClick={() => {
+                          onChange(items.filter((other) => other.key !== item.key));
+                          setRemoving(null);
+                          setEditing((current) => (current === item.key ? null : current));
+                          toast.show({ messageKey: "catalog.review.removed", params: { name }, tone: "success" });
+                          focusHeading();
+                        }}
+                      >
+                        {t("catalog.review.remove.confirm")}
+                      </PillButton>
+                    </div>
+                  </div>
+                )}
+              </CardRow>
             </li>
           );
         })}

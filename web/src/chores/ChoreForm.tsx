@@ -70,33 +70,23 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
   const showSuggestion = suggestTwoPerson(values.baseEffort, values.people);
 
   /** The aria attributes and the error line for one field, wired by id. */
-  function field(name: string, hintKey?: MessageKey) {
+  function field(name: string) {
     const error = errorFor(name);
-    const ids = [hintKey ? `${idPrefix}-${name}-hint` : null, error ? `${idPrefix}-${name}-error` : null].filter(Boolean);
     return {
       aria: {
         "aria-invalid": error ? (true as const) : undefined,
-        "aria-describedby": ids.length > 0 ? ids.join(" ") : undefined,
+        "aria-describedby": error ? `${idPrefix}-${name}-error` : undefined,
       },
-      notes: (
-        <>
-          {hintKey && (
-            <p id={`${idPrefix}-${name}-hint`} className="text-muted">
-              {t(hintKey)}
-            </p>
-          )}
-          {error && (
-            <p id={`${idPrefix}-${name}-error`} role="alert" className="text-danger">
-              {error}
-            </p>
-          )}
-        </>
+      notes: error && (
+        <p id={`${idPrefix}-${name}-error`} role="alert" className="text-danger">
+          {error}
+        </p>
       ),
     };
   }
 
-  function group(name: string, legendKey: MessageKey, hintKey: MessageKey, children: ReactNode) {
-    const { aria, notes } = field(name, hintKey);
+  function group(name: string, legendKey: MessageKey, children: ReactNode) {
+    const { aria, notes } = field(name);
     return (
       <fieldset className="mt-4 p-0 border-0" disabled={saving} aria-describedby={aria["aria-describedby"]}>
         <legend className="font-semibold">{t(legendKey)}</legend>
@@ -134,9 +124,9 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
     );
   }
 
-  const name = field("name", "chores.form.name.hint");
-  const category = field("category", "chores.form.category.hint");
-  const interval = field("intervalDays", "chores.form.intervalDays.hint");
+  const name = field("name");
+  const category = field("category");
+  const interval = field("intervalDays");
 
   /** Picking a preset fills the days; the number typed under Custom is kept for when Custom is picked again. */
   function choosePreset(next: IntervalPreset) {
@@ -145,7 +135,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
     const days = intervalForPreset(next);
     form.change({ intervalDays: days === null ? customText.current : String(days) }, "intervalDays");
   }
-  const buildsUp = field("buildsUp", "chores.form.buildsUp.hint");
+  const buildsUp = field("buildsUp");
 
   return (
     <Card as="section" aria-labelledby={`${idPrefix}-heading`} className="mt-4">
@@ -189,7 +179,6 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
         {group(
           "demands",
           "chores.form.demands.legend",
-          "chores.form.demands.hint",
           demands.map((id) => (
             <label key={id} className={CHOICE}>
               <input
@@ -206,7 +195,6 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
         {group(
           "baseEffort",
           "chores.form.baseEffort.legend",
-          "chores.form.baseEffort.hint",
           radios(
             "baseEffort",
             EFFORT_LEVELS.map((level) => ({ value: levelToEffort(level), label: t(effortLevelKey(level)) })),
@@ -218,7 +206,6 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
         {group(
           "importance",
           "chores.form.importance.legend",
-          "chores.form.importance.hint",
           radios(
             "importance",
             IMPORTANCES.map((id) => ({ value: id, label: text(importanceLabel(id)) })),
@@ -230,7 +217,6 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
         {group(
           "people",
           "chores.form.people.legend",
-          "chores.form.people.hint",
           radios(
             "people",
             [
@@ -260,7 +246,6 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
         {group(
           "intervalDays",
           "chores.form.interval.legend",
-          "chores.form.intervalDays.hint",
           <>
             {radios(
               "interval",
@@ -277,9 +262,13 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
                   inputMode="numeric"
                   autoComplete="off"
                   value={values.intervalDays}
-                  {...interval.aria}
+                  aria-invalid={interval.aria["aria-invalid"]}
+                  aria-describedby={[`${idPrefix}-intervalDays-hint`, interval.aria["aria-describedby"]].filter(Boolean).join(" ")}
                   onChange={(event) => form.change({ intervalDays: event.target.value }, "intervalDays")}
                 />
+                <p id={`${idPrefix}-intervalDays-hint`} className="text-muted">
+                  {t("chores.form.intervalDays.hint")}
+                </p>
               </div>
             )}
           </>,
@@ -288,7 +277,6 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
         {group(
           "allowedWeekdays",
           "chores.form.allowedWeekdays.legend",
-          "chores.form.allowedWeekdays.hint",
           DISPLAY_WEEKDAYS.map((day) => {
             const wire = WEEKDAYS.indexOf(day);
             return (
