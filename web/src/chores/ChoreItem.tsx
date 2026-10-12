@@ -6,7 +6,6 @@ import { CardRow } from "../components/ui/CardRow";
 import { CategoryGlyph } from "../components/ui/CategoryGlyph";
 import { categoryStyle } from "../components/ui/categoryStyle";
 import { PillButton } from "../components/ui/PillButton";
-import { useSubmitOnce } from "../components/ui/useSubmitOnce";
 import { useI18n } from "../i18n";
 import { categoryLabel, labelText } from "../profile/labels";
 import { DELETE_FAILURE_KEY } from "./failureMessages";
@@ -23,9 +22,6 @@ interface Props {
   onEdit(): void;
   onDeleted(id: string): void;
 }
-
-// Square icon-only buttons: real buttons with an edge, in contrast to the decorative Category glyph.
-const ICON_BUTTON = "size-11 px-0!";
 
 /** One Chore in the list as a Category-tinted card, with Edit and a two-step inline Delete (ask, then confirm). */
 export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
@@ -52,9 +48,6 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
     setRemove({ kind: "confirming", failed: result.kind });
   }
 
-  // A double click on Delete sends one request.
-  const { run: runDelete } = useSubmitOnce(confirmDelete);
-
   function cancel() {
     setRemove({ kind: "idle" });
     // The button is mounted again by the time the browser handles this.
@@ -65,7 +58,7 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
     <>
       <PillButton
         variant="secondary"
-        className={ICON_BUTTON}
+        icon
         aria-label={t("chores.item.edit.label", { name: chore.name })}
         onClick={onEdit}
       >
@@ -74,7 +67,7 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
       <PillButton
         ref={deleteRef}
         variant="secondary"
-        className={ICON_BUTTON}
+        icon
         aria-label={t("chores.item.delete.label", { name: chore.name })}
         onClick={() => setRemove({ kind: "confirming" })}
       >
@@ -102,7 +95,7 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
               <PillButton ref={keepRef} variant="secondary" disabled={remove.kind === "deleting"} onClick={cancel}>
                 {t("chores.delete.cancel")}
               </PillButton>
-              <PillButton variant="danger" disabled={remove.kind === "deleting"} onClick={() => void runDelete()}>
+              <PillButton variant="danger" disabled={remove.kind === "deleting"} onClick={() => void confirmDelete()}>
                 {t(remove.kind === "deleting" ? "chores.delete.deleting" : "chores.delete.confirm")}
               </PillButton>
             </ButtonRow>
