@@ -1,8 +1,7 @@
-import { useState } from "react";
 import { PREFERENCES, type Baseline, type Preference, type Profile as ProfileData, type Weekday } from "../api/profile";
 import { categoryStyle } from "../components/ui/categoryStyle";
 import { useI18n, type MessageKey } from "../i18n";
-import { MAX_BASELINE, parseBaselineInput } from "./baselineInput";
+import { BASELINE_LEVELS, levelToPoints, pointsToLevel, type BaselineLevel } from "./baselineLevels";
 import { categoryLabel, demandLabel, labelText } from "./labels";
 import { preferenceCategories } from "./preferenceCategories";
 import type { ProfileProblem, ProfileState, SaveState } from "./useProfile";
@@ -64,7 +63,6 @@ export function BaselineFields({
   return (
     <>
       <p>{t("profile.baseline.explain")}</p>
-      <p id="profile-baseline-hint">{t("profile.baseline.hint")}</p>
       {DISPLAY_WEEKDAYS.map((day) => (
         <BaselineRow key={day} day={day} saved={baseline[day]} onSave={onSave} />
       ))}
@@ -131,46 +129,39 @@ function BaselineRow({
   onSave(day: Weekday, points: number | null): void;
 }) {
   const { t, locale } = useI18n();
-  // null while the field is not being edited, so it always shows the saved value, rollbacks included.
-  const [draft, setDraft] = useState<string | null>(null);
-  const [invalid, setInvalid] = useState(false);
-  const id = `profile-baseline-${day}`;
-
-  function commit(raw: string) {
-    const parsed = parseBaselineInput(raw);
-    if (parsed.kind === "invalid") return setInvalid(true);
-    setInvalid(false);
-    setDraft(null);
-    onSave(day, parsed.kind === "set" ? parsed.points : null);
-  }
+  // Derived from the saved points, so an old number shows as its nearest level without being rewritten, and a
+  // rollback shows the previous level again. Nothing is selected for an unset day.
+  const current = pointsToLevel(saved);
 
   return (
-    <div>
-      <label htmlFor={id}>{weekdayLabel(day, locale)}</label>
-      <input
-        id={id}
-        type="number"
-        inputMode="numeric"
-        min={0}
-        max={MAX_BASELINE}
-        step={1}
-        value={draft ?? (saved === null ? "" : String(saved))}
-        aria-invalid={invalid}
-        aria-describedby={invalid ? `${id}-error profile-baseline-hint` : "profile-baseline-hint"}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={(event) => commit(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") event.currentTarget.blur();
-        }}
-      />
-      {invalid && (
-        <p id={`${id}-error`} role="alert">
-          {t("profile.baseline.invalid")}
-        </p>
-      )}
-    </div>
+    <fieldset className="mt-4 mx-0 mb-0 box-border rounded-card border border-border p-3">
+      <legend className="px-1 font-semibold [overflow-wrap:anywhere]">{weekdayLabel(day, locale)}</legend>
+      <div className="flex flex-wrap gap-2">
+        {BASELINE_LEVELS.map((level) => (
+          <label
+            key={level}
+            className="relative mt-0 flex min-h-11 min-w-20 flex-1 cursor-pointer items-center justify-center rounded-card border border-border px-3 text-center font-normal has-[:checked]:bg-accent has-[:checked]:font-semibold has-[:checked]:text-accent-contrast has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus"
+          >
+            <input
+              type="radio"
+              name={`profile-baseline-${day}`}
+              className="sr-only"
+              checked={current === level}
+              onChange={() => onSave(day, levelToPoints(level))}
+            />
+            {t(LEVEL_KEY[level])}
+          </label>
+        ))}
+      </div>
+    </fieldset>
   );
 }
+
+const LEVEL_KEY: Record<BaselineLevel, MessageKey> = {
+  low: "profile.baseline.level.low",
+  normal: "profile.baseline.level.normal",
+  high: "profile.baseline.level.high",
+};
 
 function PreferenceChoice({
   id,

@@ -115,9 +115,10 @@ export const enUS = {
   "profile.saveFailed.notSignedIn": "You are not signed in any more, so your change was undone. Sign in again.",
   "profile.baseline.heading": "Baseline",
   "profile.baseline.explain":
-    "A point is a unit of Effort, which is how draining a piece of work is, from 1 to 5. Your Baseline is the Energy you can usually give on each day, in those points; leave a day empty if you are not sure yet.",
-  "profile.baseline.hint": "A whole number from 0 to 20. It is saved when you leave the field.",
-  "profile.baseline.invalid": "Enter a whole number from 0 to 20, or leave it empty.",
+    "A point is a unit of Effort, which is how draining a piece of work is, from 1 to 5. Your Baseline is the Energy you can usually give on each day, in those points; pick Low, Normal or High for each day. It is saved as soon as you choose.",
+  "profile.baseline.level.low": "Low",
+  "profile.baseline.level.normal": "Normal",
+  "profile.baseline.level.high": "High",
   "profile.preferences.heading": "Preferences",
   "profile.preferences.intro":
     "Say which kinds of work you like or dislike. Chores you dislike go to you less often, but never at the cost of what is essential. Anything you leave alone is neutral.",
