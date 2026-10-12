@@ -279,7 +279,7 @@ type runRecord struct {
 // nothing assigned.
 func (p *Planner) propose(st loaded) runRecord {
 	rec := runRecord{allocator: p.alloc.Name(), outcome: Planned,
-		reasons: reasons{Energy: st.energy, Assigned: []assigned{}, Pool: []pooled{}}}
+		reasons: reasons{Energy: st.energy, Levels: st.levels, Assigned: []assigned{}, Pool: []pooled{}}}
 	res, err := p.alloc.Plan(st.state)
 	if err != nil {
 		rec.outcome, rec.reasons.Error = Rejected, "allocator_failed"

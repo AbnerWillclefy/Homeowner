@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkin"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkinstore"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
 )
 
@@ -17,21 +20,45 @@ type loaded struct {
 	state allocation.State
 	// energy is each Resident's Energy for the day, by Resident id.
 	energy map[string]int
+	// levels is the Check-in level of each Resident who checked in for the day.
+	levels map[string]string
 }
 
 // energyOn is a Resident's Energy on the day: the points of their Baseline for
-// that weekday. A weekday they have not set is 0, not an error: that Resident
-// is given nothing. This is the one place the Check-in will scale or replace
-// the Baseline.
-func energyOn(p profile.Profile, day allocation.Date) int {
-	return p.Baseline[time.Weekday(day.Weekday())]
+// that weekday, scaled by their Check-in when they made one. A weekday they
+// have not set is 0, not an error, and no Check-in can raise it: that Resident
+// is given nothing. This is the one place the Check-in scales the Baseline.
+func energyOn(p profile.Profile, day allocation.Date, ci *checkinstore.CheckIn) int {
+	base := p.Baseline[time.Weekday(day.Weekday())]
+	if ci == nil {
+		return base
+	}
+	return checkin.Scale(base, ci.Level)
+}
+
+// demandRestrictions are the Demands the Resident cannot do on the day: their
+// lasting Restrictions, then the day-only ones from the Check-in that do not
+// repeat one.
+func demandRestrictions(p profile.Profile, ci *checkinstore.CheckIn) []allocation.Demand {
+	var out []allocation.Demand
+	for _, d := range p.Restrictions {
+		out = append(out, allocation.Demand(d))
+	}
+	if ci != nil {
+		for _, d := range ci.Demands {
+			if !slices.Contains(out, allocation.Demand(d)) {
+				out = append(out, allocation.Demand(d))
+			}
+		}
+	}
+	return out
 }
 
 // loadState reads the Home's open Tasks (overdue ones too: nothing is tied to a
 // day until it is assigned), its Residents with their Energy for the day, and
 // both levels of Restriction.
 func loadState(ctx context.Context, q pgx.Tx, homeID string, today allocation.Date) (loaded, error) {
-	out := loaded{state: allocation.State{Today: today}, energy: map[string]int{}}
+	out := loaded{state: allocation.State{Today: today}, energy: map[string]int{}, levels: map[string]string{}}
 
 	var err error
 	if out.state.Tasks, err = loadTasks(ctx, q, homeID); err != nil {
@@ -53,13 +80,24 @@ func loadState(ctx context.Context, q pgx.Tx, homeID string, today allocation.Da
 	if err != nil {
 		return loaded{}, err
 	}
+	residentIDs := make([]string, len(residents))
+	for i, r := range residents {
+		residentIDs[i] = r.id
+	}
+	checkIns, err := checkinstore.LoadMany(ctx, q, residentIDs, today)
+	if err != nil {
+		return loaded{}, err
+	}
 
 	for _, r := range residents {
 		p := profiles[r.userID]
-		res := allocation.Resident{ID: r.id, Energy: energyOn(p, today), ChoreRestrictions: choreRestrictions[r.id]}
-		for _, d := range p.Restrictions {
-			res.DemandRestrictions = append(res.DemandRestrictions, allocation.Demand(d))
+		var ci *checkinstore.CheckIn
+		if c, ok := checkIns[r.id]; ok {
+			ci = &c
+			out.levels[r.id] = string(c.Level)
 		}
+		res := allocation.Resident{ID: r.id, Energy: energyOn(p, today, ci), ChoreRestrictions: choreRestrictions[r.id],
+			DemandRestrictions: demandRestrictions(p, ci)}
 		out.state.Residents = append(out.state.Residents, res)
 		out.energy[r.id] = res.Energy
 	}
@@ -146,11 +184,14 @@ func loadChoreRestrictions(ctx context.Context, q pgx.Tx, homeID string) (map[st
 // reasons is the jsonb stored on the run: what cannot be recomputed later
 // because Energy and Restrictions change. All values are stable ids.
 type reasons struct {
-	Assigned   []assigned     `json:"assigned"`
-	Pool       []pooled       `json:"pool"`
-	Energy     map[string]int `json:"energy"`
-	Violations []violation    `json:"violations,omitempty"`
-	Error      string         `json:"error,omitempty"`
+	Assigned []assigned     `json:"assigned"`
+	Pool     []pooled       `json:"pool"`
+	Energy   map[string]int `json:"energy"`
+	// Levels are the Check-in levels behind Energy, by Resident id; a Resident
+	// with no Check-in is absent. Kept so the plan can later say why.
+	Levels     map[string]string `json:"levels,omitempty"`
+	Violations []violation       `json:"violations,omitempty"`
+	Error      string            `json:"error,omitempty"`
 }
 
 type assigned struct {
