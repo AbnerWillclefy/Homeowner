@@ -410,12 +410,12 @@ export const enUS = {
 
   "auth.failure.alreadyRegistered":
     "That email is already signed up. Sign in instead, or confirm it if you never entered the code.",
-  "auth.failure.invalidPassword": "That password is not strong enough. {rules}",
+  "auth.failure.invalidPassword": "That password is not strong enough. Choose a different password. {rules}",
   "auth.failure.invalidInput": "Check the email and the details you typed, then try again.",
   "auth.failure.wrongCode": "That code is not right. Check the latest email and try again.",
-  "auth.failure.expiredCode": "That code has expired. Ask for a new one and use the latest email.",
+  "auth.failure.expiredCode": "That code has expired. Request a new code and use the latest email.",
   "auth.failure.notConfirmed":
-    "This email has not been confirmed yet. Enter the code from your email, or ask for a new one.",
+    "Confirm your email first: enter the code we sent, or request a new code.",
   "auth.failure.notAuthorized": "The email or password is not right. Check both and try again.",
   "auth.failure.rateLimited": "Too many attempts. Wait a few minutes, then try again.",
   "auth.failure.network": "Could not reach the sign-in service. Check your connection and try again.",

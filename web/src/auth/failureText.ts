@@ -21,6 +21,21 @@ export function failureKey(failure: CognitoFailure): MessageKey {
   return KEY[failure.kind];
 }
 
+export type FailureField = "email" | "password" | "code";
+
+const FIELD: Partial<Record<CognitoFailure["kind"], FailureField>> = {
+  "already-registered": "email",
+  "invalid-input": "email",
+  "invalid-password": "password",
+  "wrong-code": "code",
+  "expired-code": "code",
+};
+
+/** The field a failure is about, or null when it belongs to the whole form. Lets a screen link the field to the message. */
+export function failureField(failure: CognitoFailure): FailureField | null {
+  return FIELD[failure.kind] ?? null;
+}
+
 /**
  * Plain wording for a failed Cognito call in the current language. Call it at render with the
  * failure kept in state, so a language switch changes the words. A refused password carries the
