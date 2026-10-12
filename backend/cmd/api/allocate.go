@@ -12,6 +12,8 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/config"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/db"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/nudge"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 )
 
 func newPlanner(ctx context.Context, cfg config.Config, log *slog.Logger) (*dayplan.Planner, func(), error) {
@@ -19,7 +21,15 @@ func newPlanner(ctx context.Context, cfg config.Config, log *slog.Logger) (*dayp
 	if err != nil {
 		return nil, nil, err
 	}
-	return dayplan.New(pool, allocation.Baseline{}, log), pool.Close, nil
+	// Push is off without VAPID keys: the tick then only plans, as before.
+	var opts []dayplan.Option
+	if cfg.VAPIDEnabled() {
+		sender := push.NewWebPushSender(cfg.VAPIDPublicKey, cfg.VAPIDPrivateKey, cfg.VAPIDSubject)
+		opts = append(opts, dayplan.WithNudger(nudge.New(pool, sender, log)))
+	} else {
+		log.Warn("push disabled: VAPID keys are not set, the Allocation job sends no nudges")
+	}
+	return dayplan.New(pool, allocation.Baseline{}, log, opts...), pool.Close, nil
 }
 
 // allocate runs the Allocation job once and exits: it plans every Home whose
