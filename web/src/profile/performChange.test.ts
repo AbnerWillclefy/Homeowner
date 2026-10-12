@@ -53,4 +53,17 @@ describe("profile change", () => {
     await retry.done;
     expect(retry.send).toHaveBeenCalledTimes(1);
   });
+
+  it("treats a rejected send as an error: undoes the change, reports it, and allows a retry", async () => {
+    const { change, inFlight } = setup();
+    const handlers = { apply: vi.fn(), revert: vi.fn(), onSaved: vi.fn(), onFailed: vi.fn() };
+    await performChange(inFlight, { key: "baseline:monday", send: () => Promise.reject(new Error("network")), ...handlers });
+    expect(handlers.revert).toHaveBeenCalledTimes(1);
+    expect(handlers.onFailed).toHaveBeenCalledWith("error");
+    expect(handlers.onSaved).not.toHaveBeenCalled();
+    expect(inFlight.size).toBe(0);
+    const retry = change("baseline:monday");
+    await retry.done;
+    expect(retry.send).toHaveBeenCalledTimes(1);
+  });
 });

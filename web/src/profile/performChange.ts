@@ -22,7 +22,12 @@ export async function performChange(inFlight: Set<string>, change: Change): Prom
   inFlight.add(change.key);
   try {
     change.apply();
-    const result = await change.send();
+    let result: WriteResult;
+    try {
+      result = await change.send();
+    } catch {
+      result = { kind: "error" };
+    }
     if (result.kind === "ok") return change.onSaved();
     change.revert();
     change.onFailed(result.kind);
