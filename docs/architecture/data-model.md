@@ -20,10 +20,11 @@ Migrations live in `backend/migrations/` as `NNNN_description.sql` files, applie
 | `0010_invites.sql` | `invites`: `id` (uuid), `home_id` (references `homes`, `ON DELETE CASCADE`, indexed, so deleting a Home removes its Invites), `token_hash` (`bytea`, unique: the SHA-256 of the 32-byte token; the token itself is never stored), `created_by` (nullable, references `residents`, `ON DELETE SET NULL`: the creator may leave and the Invite stays valid), `created_at`, `expires_at` (`created_at` plus seven days, computed in Go), `used_at` and `used_by` (nullable, `used_by` references `users`, `ON DELETE SET NULL`). All timestamps come from the injected clock. An Invite is valid while `used_at IS NULL AND now < expires_at`. |
 | `0011_onboarding.sql` | `users.onboarding_step` (nullable `text`): the last onboarding step the User completed or skipped, or `done`; `NULL` means not started. Expand only. There is no `CHECK`: the ordered step list lives in `internal/onboarding` and is validated there, as with `vocab`. The migration backfills every existing User to `done`, so nobody already using the app is pushed into onboarding. Down drops the column. |
 | `0012_checkins.sql` | The Check-in. `checkins`: `id` (uuid), `resident_id` (references `residents`, `ON DELETE CASCADE`, so leaving a Home removes it), `checkin_date` (`date`, the Home's local date, never UTC), `level` (`drained`, `low`, `normal` or `energized`, enforced by a `CHECK`), `created_at` and `updated_at` (from the injected clock); `UNIQUE (resident_id, checkin_date)`, so a second Check-in the same day replaces the first. `checkin_demand_restrictions`: `checkin_id` (references `checkins`, `ON DELETE CASCADE`), `demand`; primary key `(checkin_id, demand)`. Demand ids are validated in Go, as for `user_demand_restrictions`. Expand only: two new tables. Nothing is cleaned up the next day: rows are keyed by date, so yesterday's Check-in and day Restrictions are simply not read; old rows are history and pruning is out of scope. |
+| `0013_nudges.sql` | The ledger of push nudges sent. `nudges`: `resident_id` (references `residents`, `ON DELETE CASCADE`, so leaving a Home clears it), `kind` (`checkin_reminder` or `day_plan_ready`, enforced by a `CHECK`), `local_date` (`date`, the Home's local date), `sent_at` (from the injected clock); primary key `(resident_id, kind, local_date)`. A row is claimed before the send (`ON CONFLICT DO NOTHING`), so a nudge goes out at most once and a failed send is not retried (best effort, ADR 0005). Expand only: one new table. |
 
 A Home is created by one transaction that inserts the `homes` row and the creator's `residents` row; if the `residents` insert hits the unique violation the transaction rolls back and no Home is left behind.
 
-A User is created by the first authenticated request, with one `INSERT ... ON CONFLICT (cognito_sub) DO UPDATE ... RETURNING` statement, so two simultaneous first requests create one row. `users`, `push_subscriptions`, the three profile tables, `homes`, `residents`, `chores`, `tasks`, the two specific-setting tables, `allocation_runs`, `day_plan_assignments` and `invites` are the tables built. Everything else below is the planned schema from issue #1.
+A User is created by the first authenticated request, with one `INSERT ... ON CONFLICT (cognito_sub) DO UPDATE ... RETURNING` statement, so two simultaneous first requests create one row. `users`, `push_subscriptions`, the three profile tables, `homes`, `residents`, `chores`, `tasks`, the two specific-setting tables, `allocation_runs`, `day_plan_assignments`, `invites`, `checkins`, `checkin_demand_restrictions` and `nudges` are the tables built. Everything else below is the planned schema from issue #1.
 
 ## Planned tables
 
@@ -44,6 +45,7 @@ erDiagram
     residents ||--o{ checkins : "reports"
     checkins ||--o{ checkin_demand_restrictions : "limits for the day"
     users ||--o{ push_subscriptions : "devices"
+    residents ||--o{ nudges : "already nudged"
     homes ||--o{ allocation_runs : "planned by"
     allocation_runs ||--o{ day_plan_assignments : "proposes"
     tasks ||--o{ day_plan_assignments : "proposed in"
@@ -63,4 +65,5 @@ erDiagram
 | `resident_chore_preferences`, `resident_chore_restrictions` (built) | A Resident's specific Preference and Restriction on one Chore; they beat the general ones (a specific Restriction only adds) |
 | `allocation_runs` (built) | Home, local date, which allocator, outcome, fallback reason, recorded reasons; unique per Home and date |
 | `day_plan_assignments` (built) | The Tasks a run proposed to each Resident, with the reason. A proposal, not `task_residents` (Committed) |
+| `nudges` (built) | Which push nudge (Check-in reminder, Day Plan ready) a Resident already got on a local date; the claim that keeps the 15-minute tick from repeating it |
 | `push_subscriptions` | One per device, owned by the User who last registered it. Built. |
