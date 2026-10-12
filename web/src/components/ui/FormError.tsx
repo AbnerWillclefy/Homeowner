@@ -26,8 +26,3 @@ export function FormError({ form, children }: Props) {
     </div>
   );
 }
-
-/** A calm confirmation after a form action, in an always-present polite live region like FormError's. */
-export function FormNotice({ children }: { children?: ReactNode }) {
-  return <div role="status">{children && <p className="mt-4 font-semibold">{children}</p>}</div>;
-}

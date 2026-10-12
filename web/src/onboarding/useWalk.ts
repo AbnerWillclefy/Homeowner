@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { putOnboardingStep, type OnboardingPosition, type OnboardingStep } from "../api/onboarding";
+import { useSubmitOnce } from "../components/ui/useSubmitOnce";
 import { stepFromPath, stepPath } from "../app/routes";
 import type { OnboardingProblem } from "./useOnboarding";
 import { effectiveStep, pathAfterAdvance, previousStep } from "./steps";
@@ -26,7 +27,8 @@ export function useWalk(
   const viewing = stepFromPath(pathname);
   const current: OnboardingPosition = viewing !== null && steps.includes(viewing) ? viewing : frontier;
 
-  const next = useCallback(async () => {
+  // Guarded in the handler: a double tap on Next sends one request, and a failure re-arms it for Retry.
+  const { run: next } = useSubmitOnce(async () => {
     if (current === "done" || current === "home") return;
     setAdvance({ kind: "saving" });
     const result = await putOnboardingStep(current);
@@ -38,7 +40,7 @@ export function useWalk(
     // guard sends the person to Today.
     onPosition(result.step);
     if (path !== null) navigate(path);
-  }, [current, steps, onPosition, navigate]);
+  });
 
   const back = useCallback(() => {
     if (current === "done") return;

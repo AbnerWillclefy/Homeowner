@@ -106,7 +106,7 @@ export function Onboarding({ position, onPosition }: Props) {
     return {
       body: (
         <>
-          <ProfileStatus state={profile.state} save={profile.save} retry={profile.retry} />
+          <ProfileStatus state={profile.state} retry={profile.retry} />
           {profile.state.kind === "ready" && fields(profile.state)}
           {extra}
         </>
@@ -219,7 +219,13 @@ function NextButton({
 }: NextSpec & { saving: boolean }) {
   const { t } = useI18n();
   return (
-    <PillButton variant={primary ? "primary" : "secondary"} className="w-full" disabled={saving || disabled} onClick={onClick}>
+    <PillButton
+      variant={primary ? "primary" : "secondary"}
+      className="w-full"
+      disabled={saving || disabled}
+      aria-busy={saving}
+      onClick={onClick}
+    >
       {saving ? t("onboarding.saving") : t(label)}
     </PillButton>
   );

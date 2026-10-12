@@ -132,7 +132,7 @@ export function CreateHome({ onSaved, onRecovered }: Props) {
               <button type="button" className="btn" disabled={working} onClick={() => flow.setStep("settings")}>
                 {t("home.create.back")}
               </button>
-              <button type="submit" className="btn btn-primary" disabled={working}>
+              <button type="submit" className="btn btn-primary" disabled={working} aria-busy={working}>
                 {t(working ? "catalog.questions.submitting" : "catalog.questions.submit")}
               </button>
               {flow.canSkip && (
@@ -171,7 +171,7 @@ export function CreateHome({ onSaved, onRecovered }: Props) {
       <button type="button" className="btn" disabled={saving} onClick={() => flow.setStep("questions")}>
         {t("home.create.back")}
       </button>
-      <button type="button" className="btn btn-primary" disabled={saving} onClick={() => void flow.submit()}>
+      <button type="button" className="btn btn-primary" disabled={saving} aria-busy={saving} onClick={() => void flow.submit()}>
         {t(saving ? "home.create.submitting" : "home.create.submit")}
       </button>
     </>

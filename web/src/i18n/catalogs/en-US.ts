@@ -479,7 +479,6 @@ export const enUS = {
   "invite.share.text": "Join my Home on Homeowner. This link works once and lasts seven days.",
   "invite.share.shared": "Your Invite is ready and was handed to the app you chose.",
   "invite.share.copied": "Your Invite link is copied. Paste it into a message to send it.",
-  "invite.share.cancelled": "The Invite was not sent. Its link still works if you made it by mistake, so ask again only if you need it.",
   "invite.share.failed": "The Invite link could not be shared or copied. Try again.",
   "invite.share.tooMany": "Your Home already has the most open Invites allowed. Wait for some to be used or to expire.",
   "invite.share.noHome": "You need a Home before you can invite anyone.",

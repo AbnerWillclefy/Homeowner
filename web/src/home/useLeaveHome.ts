@@ -1,13 +1,15 @@
 import { useReducer } from "react";
 import { leaveHome } from "../api/home";
+import { useSubmitOnce } from "../components/ui/useSubmitOnce";
 import { leaveReducer } from "./leaveFlow";
 
 /** Wires the leave flow to React. `onLeft` is called once the Resident is out of the Home. */
 export function useLeaveHome(onLeft: () => void) {
   const [state, dispatch] = useReducer(leaveReducer, { kind: "closed" });
 
-  async function confirm() {
-    if (state.kind !== "confirming") return; // one request in flight at a time
+  // Destructive, so the guard ignores a second tap in the same tick, before the dialog has rendered "leaving".
+  const { run: confirm } = useSubmitOnce(async () => {
+    if (state.kind !== "confirming") return;
     dispatch({ type: "confirm" });
     const result = await leaveHome();
     // A Home that is already gone (none) is the outcome the Resident asked for.
@@ -17,7 +19,7 @@ export function useLeaveHome(onLeft: () => void) {
     } else {
       dispatch({ type: "failed", reason: result.kind });
     }
-  }
+  });
 
   return {
     state,

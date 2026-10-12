@@ -5,6 +5,7 @@ import { ChoreForm } from "../chores/ChoreForm";
 import { choreFieldErrorKey } from "../chores/fieldErrors";
 import { choreFacts } from "../chores/facts";
 import { useChoreLists } from "../chores/useChoreLists";
+import { useToast } from "../components/ui/useToast";
 import { useI18n } from "../i18n";
 import { keepLocally, previewOf, type ReviewItem } from "./review";
 
@@ -25,10 +26,10 @@ interface Props {
  */
 export function ReviewList({ items, errors, tooMany, onChange, disabled }: Props) {
   const { t, locale } = useI18n();
+  const toast = useToast();
   const lists = useChoreLists();
   const [editing, setEditing] = useState<number | null>(null);
   const [removing, setRemoving] = useState<number | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const keepRef = useRef<HTMLButtonElement>(null);
   const removeButtons = useRef(new Map<number, HTMLButtonElement>());
@@ -51,7 +52,6 @@ export function ReviewList({ items, errors, tooMany, onChange, disabled }: Props
       </h2>
       <p>{t("catalog.review.intro")}</p>
       <p>{t("catalog.review.count", { count: items.length })}</p>
-      <p role="status">{notice}</p>
 
       {tooMany && (
         <p role="alert" className="text-danger">
@@ -93,7 +93,7 @@ export function ReviewList({ items, errors, tooMany, onChange, disabled }: Props
                   onSaved={(_chore, values) => {
                     onChange(items.map((other) => (other.key === item.key ? { ...other, form: values } : other)));
                     setEditing(null);
-                    setNotice(t("catalog.review.edited", { name: values.name }));
+                    toast.show({ messageKey: "catalog.review.edited", params: { name: values.name }, tone: "success" });
                     focusHeading();
                   }}
                   onCancel={() => {
@@ -126,10 +126,7 @@ export function ReviewList({ items, errors, tooMany, onChange, disabled }: Props
                     variant="secondary"
                     disabled={disabled || lists.state.kind !== "ready"}
                     aria-label={t("chores.item.edit.label", { name })}
-                    onClick={() => {
-                      setNotice(null);
-                      setEditing(item.key);
-                    }}
+                    onClick={() => setEditing(item.key)}
                   >
                     {t("catalog.review.edit")}
                   </PillButton>
@@ -169,7 +166,7 @@ export function ReviewList({ items, errors, tooMany, onChange, disabled }: Props
                         onChange(items.filter((other) => other.key !== item.key));
                         setRemoving(null);
                         setEditing((current) => (current === item.key ? null : current));
-                        setNotice(t("catalog.review.removed", { name }));
+                        toast.show({ messageKey: "catalog.review.removed", params: { name }, tone: "success" });
                         focusHeading();
                       }}
                     >

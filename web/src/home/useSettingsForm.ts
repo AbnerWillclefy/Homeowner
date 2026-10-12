@@ -1,18 +1,9 @@
-import { useState, type FormEvent } from "react";
-import type { FailureReason, FieldCodes, Home, HomeSettings } from "../api/home";
+import { useMemo, useState, type FormEvent } from "react";
+import type { Home, HomeSettings } from "../api/home";
+import { useStableHandlers } from "../components/ui/useStableHandlers";
+import { createSettingsSubmitter, type FormStatus, type SaveOutcome } from "./settingsSubmit";
 
-/** What a save can come back with. `recovered` is a create that found the person's existing Home and loaded it. */
-export type SaveOutcome =
-  | { kind: "ok" | "recovered"; home: Home }
-  | { kind: "invalid"; fields: FieldCodes }
-  | { kind: FailureReason };
-
-export type FormStatus =
-  | { kind: "idle" }
-  | { kind: "saving" }
-  | { kind: "saved" }
-  | { kind: "invalid"; fields: FieldCodes }
-  | { kind: "failed"; reason: FailureReason };
+export type { FormStatus, SaveOutcome } from "./settingsSubmit";
 
 /**
  * The state of a Home settings form, shared by create and edit. The typed values live here and are
@@ -31,7 +22,6 @@ export function useSettingsForm(
   function change(field: keyof HomeSettings, value: string) {
     setValues((current) => ({ ...current, [field]: value }));
     setStatus((current) => {
-      if (current.kind === "saved") return { kind: "idle" };
       if (current.kind !== "invalid") return current;
       // Editing a field clears its own error; the others stay until the next try.
       const { [field]: _fixed, ...rest } = current.fields;
@@ -39,19 +29,13 @@ export function useSettingsForm(
     });
   }
 
-  async function submit(event: FormEvent) {
+  // The guard lives in the submitter, so a second Enter in the same tick is ignored, not only a disabled button.
+  const stable = useStableHandlers({ save, onSaved, onRecovered, getValues: () => values });
+  const submitter = useMemo(() => createSettingsSubmitter({ ...stable, onStatus: setStatus }), [stable]);
+
+  function submit(event: FormEvent) {
     event.preventDefault();
-    if (status.kind === "saving") return;
-    setStatus({ kind: "saving" });
-    const outcome = await save(values);
-    if (outcome.kind === "ok" || outcome.kind === "recovered") {
-      setStatus({ kind: "saved" });
-      (outcome.kind === "ok" ? onSaved : onRecovered)(outcome.home);
-    } else if (outcome.kind === "invalid") {
-      setStatus({ kind: "invalid", fields: outcome.fields });
-    } else {
-      setStatus({ kind: "failed", reason: outcome.kind });
-    }
+    void submitter();
   }
 
   return { values, status, change, submit };

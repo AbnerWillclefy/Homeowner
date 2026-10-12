@@ -6,6 +6,7 @@ import { ButtonRow } from "../components/ui/ButtonRow";
 import { Card } from "../components/ui/Card";
 import { PillButton } from "../components/ui/PillButton";
 import { formFromEntry } from "../catalog/review";
+import { useToast } from "../components/ui/useToast";
 import { useI18n } from "../i18n";
 import { ChoreForm } from "./ChoreForm";
 import { ChoreItem } from "./ChoreItem";
@@ -29,9 +30,9 @@ type Editing =
  */
 export function ChoresSection() {
   const { t } = useI18n();
+  const toast = useToast();
   const { state, reload, upsert, remove } = useChores();
   const [editing, setEditing] = useState<Editing>({ kind: "none" });
-  const [notice, setNotice] = useState<string | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   // After a form closes or a Chore goes away, the focused element is gone: land on the heading.
@@ -39,20 +40,19 @@ export function ChoresSection() {
     requestAnimationFrame(() => headingRef.current?.focus());
   }
 
-  function settle(message: string | null) {
-    setNotice(message);
+  function settle() {
     setEditing({ kind: "none" });
     focusHeading();
   }
 
   const onSaved = (saved: Chore) => {
     upsert(saved);
-    settle(t("chores.form.saved"));
+    toast.show({ messageKey: "chores.form.saved", tone: "success" });
+    settle();
   };
-  const onCancel = () => settle(null);
+  const onCancel = () => settle();
 
   function open(next: Editing) {
-    setNotice(null);
     setEditing(next);
   }
 
@@ -80,7 +80,6 @@ export function ChoresSection() {
       {state.kind === "ready" && (
         <>
           <p>{t("chores.intro")}</p>
-          <p role="status">{notice}</p>
 
           {state.chores.length === 0 && editing.kind === "none" && (
             <Card className="border-dashed">
@@ -110,7 +109,6 @@ export function ChoresSection() {
                   onEdit={() => open({ kind: "edit", id: chore.id })}
                   onDeleted={(id) => {
                     remove(id);
-                    setNotice(null);
                     // Another Chore's open form keeps what was typed in it, so this does not call settle.
                     focusHeading();
                   }}

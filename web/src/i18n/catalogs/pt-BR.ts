@@ -488,8 +488,6 @@ export const ptBR: Messages = {
   "invite.share.text": "Entre no meu lar no Homeowner. Este link funciona uma vez e dura sete dias.",
   "invite.share.shared": "Seu convite está pronto e foi passado ao app que você escolheu.",
   "invite.share.copied": "O link do convite foi copiado. Cole em uma mensagem para enviar.",
-  "invite.share.cancelled":
-    "O convite não foi enviado. O link dele continua valendo, caso você o tenha criado por engano; peça outro só se precisar.",
   "invite.share.failed": "Não foi possível compartilhar nem copiar o link do convite. Tente de novo.",
   "invite.share.tooMany":
     "Seu lar já tem o máximo de convites abertos. Espere alguns serem usados ou expirarem.",

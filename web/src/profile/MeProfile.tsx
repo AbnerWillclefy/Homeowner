@@ -6,7 +6,7 @@ import { useProfile } from "./useProfile";
 /**
  * The first part of the Me tab: the signed-in User's Baseline, Preferences and Restrictions, each in its own
  * titled card (an h2 and a region). Each control saves on its own: the change shows at once and is undone
- * with a visible message if the API refuses it. Baseline saves on blur. Onboarding shows the same three
+ * with an error toast if the API refuses it, and a toast says it was saved. Baseline saves on blur. Onboarding shows the same three
  * parts one step at a time.
  *
  * While the details load or fail, only the status shows (with Retry), never empty cards. It renders a
@@ -14,14 +14,14 @@ import { useProfile } from "./useProfile";
  */
 export function MeProfile() {
   const { t } = useI18n();
-  const { state, save, retry, setBaseline, setPreference, setRestricted } = useProfile();
+  const { state, retry, setBaseline, setPreference, setRestricted } = useProfile();
 
   return (
     <>
       {state.kind === "ready" && <p>{t("profile.intro")}</p>}
 
-      {/* One live region for every control, so each save or undo is announced once. It sits outside the cards. */}
-      <ProfileStatus state={state} save={save} retry={retry} />
+      {/* Load problems only; each save or undo is a toast, announced once by the toast region. */}
+      <ProfileStatus state={state} retry={retry} />
 
       {state.kind === "ready" && (
         <>

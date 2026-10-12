@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type FocusEvent, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FocusEvent, type FormEvent } from "react";
 import { TriangleAlert } from "lucide-react";
+import { createSignUpSubmitter } from "./authSubmit";
 import type { CognitoFailure, CognitoResult } from "./cognito";
 import { config } from "../config";
 import { useI18n } from "../i18n";
@@ -12,6 +13,7 @@ import { FormError } from "../components/ui/FormError";
 import { PasswordField } from "../components/ui/PasswordField";
 import { PasswordRules } from "../components/ui/PasswordRules";
 import { PillButton } from "../components/ui/PillButton";
+import { useStableHandlers } from "../components/ui/useStableHandlers";
 
 const ANNOUNCE_DELAY_MS = 600;
 const FORM = "signup";
@@ -64,7 +66,11 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
     if (mismatch && confirm === first) setMismatch(false);
   }
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  // The guard lives in the submitter, so a second Enter in the same tick is ignored, not only a disabled button.
+  const stable = useStableHandlers({ register, onRegistered });
+  const submitter = useMemo(() => createSignUpSubmitter({ ...stable, onBusy: setBusy, onProblem: setProblem }), [stable]);
+
+  function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const { password: first, confirm } = values(event.currentTarget);
     if (first !== confirm) {
@@ -73,14 +79,7 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
       return;
     }
     const form = new FormData(event.currentTarget);
-    const email = String(form.get("email") ?? "").trim();
-    const password = String(form.get("password") ?? "");
-    setBusy(true);
-    setProblem(null);
-    const result = await register(email, password);
-    setBusy(false);
-    if (result.kind === "ok") onRegistered(email);
-    else setProblem(result);
+    void submitter(String(form.get("email") ?? "").trim(), String(form.get("password") ?? ""));
   }
 
   return (
@@ -139,7 +138,7 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
         </div>
 
         <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
-        <PillButton type="submit" className="mt-4 w-full" disabled={busy}>
+        <PillButton type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>
           {busy ? t("signUp.submitting") : t("signUp.submit")}
         </PillButton>
       </form>
