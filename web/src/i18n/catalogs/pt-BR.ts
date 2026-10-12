@@ -81,27 +81,9 @@ export const ptBR: Messages = {
   "home.field.unknown": "Este valor não é aceito. Confira e tente novamente.",
 
   // Reminders
-  "reminders.heading": "Lembretes",
-  "reminders.intro":
-    "Os lembretes são a única forma de o Homeowner avisar você quando o app está fechado, por exemplo para fazer o check-in de hoje e deixar o seu plano do dia de acordo com como você se sente. São só um aviso: o app funciona sem eles.",
-  "reminders.unsupported":
-    "Este navegador não consegue mostrar lembretes. No iPhone, você precisa do iOS 16.4 ou mais recente; no Android, use um Chrome atualizado e adicione o Homeowner à tela inicial.",
   "reminders.on": "Os lembretes estão ativados neste dispositivo.",
   "reminders.enable": "Ativar lembretes",
   "reminders.enabling": "Ativando...",
-  "reminders.sendTest": "Enviar notificação de teste",
-  "reminders.sendingTest": "Enviando...",
-  "reminders.sendDelayed": "Enviar em {seconds} segundos",
-  "reminders.testPending": "Feche o app agora; a notificação chega em cerca de {seconds} segundos.",
-  "reminders.test.ok": "Notificação de teste enviada. Ela deve chegar em alguns segundos.",
-  "reminders.test.okDelayed": "Notificação de teste enviada.",
-  "reminders.test.notSignedIn": "Você não está mais conectado. Entre de novo para enviar um teste.",
-  "reminders.test.unknown": "O serviço ainda não conhece este dispositivo. Ative os lembretes novamente.",
-  "reminders.test.gone":
-    "O serviço de notificações do seu celular rejeitou este dispositivo, então ele foi removido. Ative os lembretes novamente.",
-  "reminders.test.pushServiceError":
-    "O serviço de notificações não conseguiu entregar agora. Tente novamente em instantes.",
-  "reminders.test.error": "Não foi possível acessar o serviço. Verifique sua conexão e tente novamente.",
   "reminders.problem.denied":
     "As notificações estão bloqueadas para o Homeowner. Abra os Ajustes (ou Configurações) do seu celular, encontre o Homeowner em Notificações, permita-as e volte aqui. O app não pode perguntar uma segunda vez.",
   "reminders.problem.dismissed":
@@ -682,4 +664,8 @@ export const ptBR: Messages = {
   "onboarding.home.heading": "Crie o seu lar",
   "onboarding.home.why":
     "A última etapa. O seu lar é onde acontece a divisão diária. As próximas perguntas dizem ao Homeowner quando os seus dias começam e o que o seu lar precisa que seja feito, para que ele sugira os primeiros afazeres para você revisar. Você pode mudar tudo depois.",
+
+  // Avisos
+  "toast.dismiss": "Dispensar mensagem",
+  "toast.region": "Mensagens",
 };

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SESSION_KEY } from "../auth/session";
-import { getVapidPublicKey, saveSubscription, sendTestNotification } from "./push";
+import { getVapidPublicKey, saveSubscription } from "./push";
 
 const sub = { endpoint: "https://push.example/abc", keys: { p256dh: "pk", auth: "au" } };
 
@@ -92,50 +92,5 @@ describe("saveSubscription", () => {
   it("reports a network failure", async () => {
     stubFetch(new TypeError("offline"));
     expect(await saveSubscription(sub, "x")).toEqual({ kind: "error" });
-  });
-});
-
-describe("sendTestNotification", () => {
-  it("POSTs the endpoint and succeeds on 204", async () => {
-    const fetch = stubFetch(new Response(null, { status: 204 }));
-    expect(await sendTestNotification(sub.endpoint)).toEqual({ kind: "ok" });
-    const [url, init] = fetch.mock.calls[0]!;
-    expect(url).toBe("http://api.test/push/test");
-    expect(init?.method).toBe("POST");
-    expect(JSON.parse(init?.body as string)).toEqual({ endpoint: sub.endpoint });
-  });
-
-  it("sends delaySeconds when a delay is given", async () => {
-    const fetch = stubFetch(new Response(null, { status: 204 }));
-    expect(await sendTestNotification(sub.endpoint, 10)).toEqual({ kind: "ok" });
-    expect(JSON.parse(fetch.mock.calls[0]![1]?.body as string)).toEqual({ endpoint: sub.endpoint, delaySeconds: 10 });
-  });
-
-  it.each([
-    [404, "unknown"],
-    [410, "gone"],
-    [502, "push-service-error"],
-    [500, "error"],
-  ] as const)("maps %i to %s", async (status, kind) => {
-    stubFetch(Response.json({ error: "x" }, { status }));
-    expect(await sendTestNotification(sub.endpoint)).toEqual({ kind });
-  });
-
-  it("maps a network failure to error", async () => {
-    stubFetch(new TypeError("offline"));
-    expect(await sendTestNotification(sub.endpoint)).toEqual({ kind: "error" });
-  });
-
-  it("sends the bearer ID token", async () => {
-    const fetch = stubFetch(new Response(null, { status: 204 }));
-    await sendTestNotification(sub.endpoint);
-    expect(bearer(fetch)).toBe("Bearer id-1");
-  });
-
-  it("reports not signed in, without calling the API, when there is no session", async () => {
-    stubStorage(null);
-    const fetch = stubFetch(new Response(null, { status: 204 }));
-    expect(await sendTestNotification(sub.endpoint)).toEqual({ kind: "not-signed-in" });
-    expect(fetch).not.toHaveBeenCalled();
   });
 });
