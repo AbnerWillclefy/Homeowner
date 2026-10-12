@@ -10,7 +10,7 @@ import type { Message } from "../translate";
 
 export const enUS = {
   "app.name": "Homeowner",
-  "home.tagline": "Share the housework in your Home fairly.",
+  "home.tagline": "Manage the housework in your Home.",
   "health.unavailable": "Service status: unavailable. The service is up but cannot reach its database.",
   "health.unreachable": "Service status: unreachable. Check your connection and try again.",
   "health.retry": "Try again",

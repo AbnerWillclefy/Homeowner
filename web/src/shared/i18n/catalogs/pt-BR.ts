@@ -14,7 +14,7 @@ type Messages = {
 
 export const ptBR: Messages = {
   "app.name": "Homeowner",
-  "home.tagline": "Divida os afazeres domésticos do seu lar de forma justa.",
+  "home.tagline": "Gerencie os afazeres domésticos do seu lar.",
   "health.unavailable":
     "Status do serviço: indisponível. O serviço está no ar, mas não consegue acessar o banco de dados.",
   "health.unreachable": "Status do serviço: inacessível. Verifique sua conexão e tente novamente.",

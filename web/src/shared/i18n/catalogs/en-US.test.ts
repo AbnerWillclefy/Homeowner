@@ -6,7 +6,7 @@ import { enUS } from "./en-US";
 describe("en-US home screen wording", () => {
   it("keeps today's literals", () => {
     expect(enUS["app.name"]).toBe("Homeowner");
-    expect(enUS["home.tagline"]).toBe("Share the housework in your Home fairly.");
+    expect(enUS["home.tagline"]).toBe("Manage the housework in your Home.");
     expect(enUS["health.unavailable"]).toBe(
       "Service status: unavailable. The service is up but cannot reach its database.",
     );
