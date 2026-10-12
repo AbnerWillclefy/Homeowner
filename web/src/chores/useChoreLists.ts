@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Failure } from "../api/chores";
 import { getCategories, getDemands } from "../api/profile";
-import { choreCategories } from "./choreCategories";
 
 export type ChoreListsState =
   | { kind: "loading" }
@@ -17,7 +16,7 @@ export function useChoreLists() {
     const [categories, demands] = await Promise.all([getCategories(), getDemands()]);
     if (categories.kind !== "ok") return setState({ kind: "failed", reason: categories.kind });
     if (demands.kind !== "ok") return setState({ kind: "failed", reason: demands.kind });
-    setState({ kind: "ready", categories: choreCategories(categories.ids), demands: demands.ids });
+    setState({ kind: "ready", categories: categories.ids, demands: demands.ids });
   }, []);
 
   useEffect(() => {

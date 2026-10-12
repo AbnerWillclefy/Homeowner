@@ -83,7 +83,6 @@ export function PreferenceFields({
 }) {
   const { t } = useI18n();
   const shown = preferenceCategories(categories);
-  if (shown.length === 0) return null;
   return (
     <>
       <p>{t("profile.preferences.intro")}</p>
