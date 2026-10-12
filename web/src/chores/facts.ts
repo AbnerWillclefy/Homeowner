@@ -1,12 +1,12 @@
 import type { ChoreInput } from "../api/chores";
 import { WEEKDAYS } from "../api/profile";
 import type { Locale, Translate } from "../i18n";
-import { categoryLabel, importanceLabel, type Label } from "../profile/labels";
+import { categoryLabel, importanceLabel, labelText, type Label } from "../profile/labels";
 import { DISPLAY_WEEKDAYS, weekdayLabel } from "../profile/weekdays";
 
 /** The short facts about a Chore, in the order they are listed: Category, Effort, Importance, people, repeat, days. */
 export function choreFacts(chore: ChoreInput, t: Translate, locale: Locale): string[] {
-  const text = (label: Label) => ("key" in label ? t(label.key) : label.text);
+  const text = (label: Label) => labelText(t, label);
   const weekdays = DISPLAY_WEEKDAYS.filter((day) => chore.allowedWeekdays.includes(WEEKDAYS.indexOf(day)))
     .map((day) => weekdayLabel(day, locale))
     .join(", ");

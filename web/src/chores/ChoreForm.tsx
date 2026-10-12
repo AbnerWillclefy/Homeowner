@@ -3,7 +3,7 @@ import type { Chore, ChoreWire, SaveChoreResult } from "../api/chores";
 import type { FieldCodes } from "../api/home";
 import { WEEKDAYS } from "../api/profile";
 import { useI18n, type MessageKey } from "../i18n";
-import { categoryLabel, demandLabel, importanceLabel, type Label } from "../profile/labels";
+import { categoryLabel, demandLabel, importanceLabel, labelText, type Label } from "../profile/labels";
 import { DISPLAY_WEEKDAYS, weekdayLabel } from "../profile/weekdays";
 import { choreFieldErrorKey } from "./fieldErrors";
 import { SAVE_FAILURE_KEY } from "./failureMessages";
@@ -51,7 +51,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
   // The form appears in place of a button, so move the reader to it.
   useEffect(() => headingRef.current?.focus(), []);
 
-  const text = (label: Label) => ("key" in label ? t(label.key) : label.text);
+  const text = (label: Label) => labelText(t, label);
   const errorFor = (field: string): string | undefined => {
     const code = fieldErrors[field];
     return code ? t(choreFieldErrorKey(field, code)) : undefined;

@@ -30,6 +30,10 @@ const IMPORTANCE_KEYS = {
 /** A catalog key to translate, or the plain id when the API sent one the app has no text for. */
 export type Label = { key: MessageKey } | { text: string };
 
+/** Resolve a Label to text with the translate function from `useI18n`. */
+export const labelText = (t: (key: MessageKey) => string, label: Label): string =>
+  "key" in label ? t(label.key) : label.text;
+
 function label(keys: Readonly<Record<string, MessageKey>>, id: string): Label {
   return Object.hasOwn(keys, id) ? { key: keys[id]! } : { text: id };
 }

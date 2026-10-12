@@ -37,8 +37,6 @@ for (const tone of TONES) {
   const fill = `cat-${tone}`;
   pairs.push(
     { label: `${fill}-ink text on ${fill}`, fg: `${fill}-ink`, bg: fill, min: 4.5 },
-    // Icons are drawn in the ink colour, so the 3:1 bar is implied by the text bar; kept explicit.
-    { label: `${fill}-ink icon on ${fill}`, fg: `${fill}-ink`, bg: fill, min: 3 },
     { label: `border on ${fill}`, fg: "border", bg: fill, min: 3 },
     { label: `focus on ${fill}`, fg: "focus", bg: fill, min: 3 },
   );
