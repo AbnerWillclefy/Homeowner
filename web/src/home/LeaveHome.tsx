@@ -55,7 +55,7 @@ export function LeaveHome({ onLeft }: Props) {
           <PillButton ref={cancelRef} variant="secondary" disabled={leaving} onClick={cancel}>
             {t("home.leave.cancel")}
           </PillButton>
-          <PillButton variant="danger" disabled={leaving} onClick={() => void confirm()}>
+          <PillButton variant="danger" disabled={leaving} aria-busy={leaving} onClick={() => void confirm()}>
             <LogOut aria-hidden="true" className="size-5 shrink-0" />
             {t(leaving ? "home.leave.leaving" : "home.leave.confirm")}
           </PillButton>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { proposeChores } from "../api/catalog";
 import type { FailureReason, FieldCodes, Home, HomeSettings } from "../api/home";
 import { initialAnswers, toRequestBody, type AnswersState } from "../catalog/answers";
@@ -6,12 +6,12 @@ import {
   afterQuestions,
   errorsStillApply,
   itemsFromProposals,
-  splitSaveErrors,
-  toWire,
   type ReviewItem,
   type Reviewed,
 } from "../catalog/review";
 import { useI18n } from "../i18n";
+import { useSubmitOnce } from "../components/ui/useSubmitOnce";
+import { createHomeSubmitter } from "./createHomeSubmit";
 import { createOrLoad } from "./createOrLoad";
 
 export type Step = "settings" | "questions" | "review";
@@ -25,10 +25,9 @@ export type SuggestStatus =
   | { kind: "invalid"; fields: FieldCodes }
   | { kind: "failed"; reason: FailureReason };
 
-export type CreateStatus =
-  | { kind: "idle" }
-  | { kind: "saving" }
-  | { kind: "failed"; reason: FailureReason };
+import type { CreateStatus } from "./createHomeSubmit";
+
+export type { CreateStatus };
 
 interface Handlers {
   onSaved(home: Home): void;
@@ -64,7 +63,8 @@ export function useCreateHomeFlow(initial: HomeSettings, { onSaved, onRecovered 
     setSuggest((current) => (current.kind === "working" ? current : { kind: "idle" }));
   }
 
-  async function propose(key: string) {
+  // Guarded, so a double Enter on the questionnaire asks the Catalog once.
+  const { run: propose } = useSubmitOnce(async (key: string) => {
     setSuggest({ kind: "working" });
     const result = await proposeChores(toRequestBody(answers));
     if (result.kind === "ok") {
@@ -79,7 +79,7 @@ export function useCreateHomeFlow(initial: HomeSettings, { onSaved, onRecovered 
     } else {
       setSuggest({ kind: "failed", reason: result.kind });
     }
-  }
+  });
 
   /** Continue from the questionnaire: keep the reviewed list, ask before discarding edits, or propose. */
   function continueFromQuestions() {
@@ -117,24 +117,29 @@ export function useCreateHomeFlow(initial: HomeSettings, { onSaved, onRecovered 
     setReviewed((current) => (current ? { ...current, edited: true } : current));
   }
 
-  async function submit() {
-    if (create.kind === "saving") return;
-    setCreate({ kind: "saving" });
-    const outcome = await createOrLoad(settings, undefined, toWire(items));
-    if (outcome.kind === "ok") return onSaved(outcome.home);
-    if (outcome.kind === "recovered") return onRecovered(outcome.home, items.length > 0);
-    if (outcome.kind === "invalid") {
-      const split = splitSaveErrors(outcome.fields, items);
-      setSettingsErrors(split.settings);
-      setItemErrors(split.byItem);
-      setTooMany(split.tooMany);
-      setCreate({ kind: "idle" });
-      // The Home's own fields are on the first step; everything else is on this one.
-      if (Object.keys(split.settings).length > 0) setStep("settings");
-      return;
-    }
-    setCreate({ kind: "failed", reason: outcome.kind });
-  }
+  // The guard lives in the submitter, so a second tap in the same tick is ignored, not only a disabled button.
+  const latest = useRef({ settings, items, onSaved, onRecovered });
+  latest.current = { settings, items, onSaved, onRecovered };
+  const submitter = useMemo(
+    () =>
+      createHomeSubmitter({
+        create: (home, chores) => createOrLoad(home, undefined, chores),
+        getSettings: () => latest.current.settings,
+        getItems: () => latest.current.items,
+        onStatus: setCreate,
+        onInvalid: (split) => {
+          setSettingsErrors(split.settings);
+          setItemErrors(split.byItem);
+          setTooMany(split.tooMany);
+          // The Home's own fields are on the first step; everything else is on this one.
+          if (Object.keys(split.settings).length > 0) setStep("settings");
+        },
+        onSaved: (home) => latest.current.onSaved(home),
+        onRecovered: (home, dropped) => latest.current.onRecovered(home, dropped),
+      }),
+    [],
+  );
+  const submit = () => submitter();
 
   const hasItemErrors = tooMany || Object.keys(itemErrors).length > 0;
 
