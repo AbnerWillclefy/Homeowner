@@ -1,11 +1,9 @@
 output "api_url" {
-  description = "Set as the repository variable STAGING_API_URL."
-  value       = module.http_api.api_url
+  value = module.http_api.api_url
 }
 
 output "web_url" {
-  description = "Set as the repository variable STAGING_WEB_URL."
-  value       = module.web.url
+  value = module.web.url
 }
 
 output "web_bucket_name" {

@@ -48,18 +48,11 @@ future `production/` folder is another thin folder over the same modules.
    - variables `AWS_REGION`, `AWS_DEPLOY_ROLE_ARN` (output `deploy_role_arn`) and `NEON_ORG_ID`
    - secrets `NEON_API_KEY` and `BUDGET_EMAIL` (kept secret so the address never
      shows in logs)
-5. **After the first deploy**, set the repository variables `STAGING_API_URL`
-   (the `api_url` output) and `STAGING_WEB_URL` (the `web_url` output, an
-   `https://dxxxx.cloudfront.net` address); both are printed in the job summary.
-   `GITHUB_TOKEN` cannot write repository variables, so the workflow only warns
-   when a variable differs. QA reads both. If the CloudFront distribution is ever
-   recreated its domain changes: CORS follows automatically, but
-   `STAGING_WEB_URL` must be reset by hand.
-6. **CloudFront on a brand-new AWS account** can be refused ("your account must
+5. **CloudFront on a brand-new AWS account** can be refused ("your account must
    be verified"). That is an AWS support step, not a code problem; ask AWS
    Support to enable CloudFront, then re-run the deploy.
 
-7. **Web Push keys (#7)**, once, before the first deploy that includes push.
+6. **Web Push keys (#7)**, once, before the first deploy that includes push.
    Without them the deploy still works but push stays off (`/push/*` answers 503).
    ```sh
    cd backend
@@ -100,8 +93,7 @@ identifiers, not secrets), uploads it to the web bucket in passes (fingerprinted
 `workbox-*.js` and the manifest `no-cache`, `index.html` last, stale objects
 deleted afterwards), invalidates `/*` and smoke tests the site: `/` and a deep
 link return the app, the manifest is served, and the API answers `/healthz` with
-`access-control-allow-origin` equal to the web URL. It lives in the same
-workflow so QA runs once after both jobs. The first run creates the CloudFront
+`access-control-allow-origin` equal to the web URL. The first run creates the CloudFront
 distribution, which takes 3 to 10 minutes.
 
 The workflow never runs `terraform destroy`.

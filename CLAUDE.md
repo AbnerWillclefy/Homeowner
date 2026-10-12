@@ -13,7 +13,6 @@ Each role is a subagent in `.claude/agents/`. Every comment or issue posted on G
 | `senior-engineer` | Technical refinement of tickets and technical explanations |
 | `backend-engineer` | Go, migrations, Terraform |
 | `frontend-engineer` | The React PWA |
-| `qa-engineer` | Testing staging after each deploy, filing bugs |
 
 ## The pipeline
 
@@ -24,7 +23,6 @@ Each stage is a workflow in `.github/workflows/` started by a label or an event.
 3. Ticket labelled `implement`: the engineers build it and open a pull request (see Working a ticket).
 4. Pull request opened: Claude reviews it, then the engineer applies the valid findings once and labels the pull request `review-addressed`.
 5. A human merges; the deploy to staging runs.
-6. Staging deploy succeeds: the QA engineer tests what changed and files `bug` + `needs-triage` issues.
 
 ## Learning tickets
 

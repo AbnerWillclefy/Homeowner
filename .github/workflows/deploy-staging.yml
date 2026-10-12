@@ -1,9 +1,5 @@
 name: Deploy staging
 
-# agent-qa.yml starts after a successful run of the workflow named exactly
-# "Deploy staging". The web deploy is the second job (`web`, `needs: api`) of
-# this workflow, not another workflow with the same name, or QA would run twice.
-
 on:
   push:
     branches: [main]
@@ -161,16 +157,9 @@ jobs:
             echo ""
             echo "URL: ${{ steps.out.outputs.web_url }}"
           } >> "$GITHUB_STEP_SUMMARY"
-          if [ "${{ vars.STAGING_API_URL }}" != "${{ steps.out.outputs.api_url }}" ]; then
-            echo "::warning::Repository variable STAGING_API_URL is '${{ vars.STAGING_API_URL }}' but the API is at ${{ steps.out.outputs.api_url }}. A human must update it; QA reads it."
-          fi
-          if [ "${{ vars.STAGING_WEB_URL }}" != "${{ steps.out.outputs.web_url }}" ]; then
-            echo "::warning::Repository variable STAGING_WEB_URL is '${{ vars.STAGING_WEB_URL }}' but the web app is at ${{ steps.out.outputs.web_url }}. A human must update it; QA reads it."
-          fi
 
   # Builds the PWA against the API URL the apply just produced (it is baked
-  # into the bundle, hence a second job) and publishes it. Kept in this
-  # workflow so agent-qa.yml runs once, after both jobs.
+  # into the bundle, hence a second job) and publishes it.
   web:
     needs: api
     runs-on: ubuntu-latest

@@ -85,11 +85,10 @@ flowchart LR
       web["web job: build the PWA, sync to S3, invalidate CloudFront, smoke test"]
       api --> web
     end
-    DS --> QA["QA tests staging"]
     DS -.-> DP["Deploy prod (planned)"]
 ```
 
-Built: `backend-test.yml`, `web-typecheck.yml` and `infra-check.yml` on pull requests. `deploy-staging.yml`, named exactly `Deploy staging`, runs on every push to `main`. Its `api` job applies Terraform, builds the image, runs migrations before the new code goes live, and smoke tests `/healthz`. The `web` job runs after `api` (`needs: api`), so it can read the API URL and the bucket and distribution from Terraform. It is a second job in the same workflow, not a second workflow, so the QA stage (`agent-qa.yml`), which starts after a successful run of `Deploy staging`, runs once per deploy. QA reads the repository variables `STAGING_API_URL` and `STAGING_WEB_URL`, which a human sets after the first deploy because `GITHUB_TOKEN` cannot write variables. The `agent-*.yml`, `claude*.yml`, `project-sync.yml` and `notify-ready-to-merge.yml` workflows run the team pipeline described in `CLAUDE.md`. The prod deploy is planned.
+Built: `backend-test.yml`, `web-typecheck.yml` and `infra-check.yml` on pull requests. `deploy-staging.yml`, named exactly `Deploy staging`, runs on every push to `main`. Its `api` job applies Terraform, builds the image, runs migrations before the new code goes live, and smoke tests `/healthz`. The `web` job runs after `api` (`needs: api`), so it can read the API URL and the bucket and distribution from Terraform. The `agent-*.yml`, `claude*.yml`, `project-sync.yml` and `notify-ready-to-merge.yml` workflows run the team pipeline described in `CLAUDE.md`. The prod deploy is planned.
 
 ## Cost against $20 a month (estimate)
 
