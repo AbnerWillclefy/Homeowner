@@ -131,6 +131,10 @@ export const ptBR: Messages = {
 
   // Chores
   "chores.heading": "Afazeres",
+  "chores.count": {
+    one: "{count} afazer no seu lar",
+    other: "{count} afazeres no seu lar",
+  },
   "chores.loading": "Carregando os seus afazeres...",
   "chores.load.offline":
     "Não foi possível carregar os seus afazeres porque o Homeowner não consegue falar com o serviço. Confira a sua conexão e tente de novo.",

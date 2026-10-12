@@ -125,6 +125,10 @@ export const enUS = {
 
   // Chores
   "chores.heading": "Chores",
+  "chores.count": {
+    one: "{count} Chore in your Home",
+    other: "{count} Chores in your Home",
+  },
   "chores.loading": "Loading your Chores...",
   "chores.load.offline":
     "Your Chores could not be loaded because Homeowner cannot reach the service. Check your connection and try again.",

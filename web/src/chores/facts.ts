@@ -14,9 +14,7 @@ export function choreFacts(chore: ChoreInput, t: Translate, locale: Locale): str
 /** Everything after the Category: Effort, Importance, people, repeat, days, builds-up. */
 export function choreScheduleFacts(chore: ChoreInput, t: Translate, locale: Locale): string[] {
   const text = (label: Label) => labelText(t, label);
-  const weekdays = DISPLAY_WEEKDAYS.filter((day) => chore.allowedWeekdays.includes(WEEKDAYS.indexOf(day)))
-    .map((day) => weekdayLabel(day, locale))
-    .join(", ");
+  const weekdays = choreWeekdays(chore, locale);
   return [
     t("chores.item.effort", { level: effortName(t, chore.baseEffort) }),
     text(importanceLabel(chore.importance)),
@@ -25,4 +23,11 @@ export function choreScheduleFacts(chore: ChoreInput, t: Translate, locale: Loca
     ...(weekdays ? [t("chores.item.weekdays", { days: weekdays })] : []),
     ...(chore.buildsUp ? [t("chores.item.buildsUp")] : []),
   ];
+}
+
+/** The weekdays a Chore is limited to, Monday first, as the locale names them; empty when it has no limit. */
+export function choreWeekdays(chore: Pick<ChoreInput, "allowedWeekdays">, locale: Locale): string {
+  return DISPLAY_WEEKDAYS.filter((day) => chore.allowedWeekdays.includes(WEEKDAYS.indexOf(day)))
+    .map((day) => weekdayLabel(day, locale))
+    .join(", ");
 }
