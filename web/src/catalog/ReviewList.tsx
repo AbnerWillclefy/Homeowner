@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { FieldCodes } from "../api/home";
+import { PillButton } from "../components/ui/PillButton";
 import { ChoreForm } from "../chores/ChoreForm";
 import { choreFieldErrorKey } from "../chores/fieldErrors";
 import { choreFacts } from "../chores/facts";
@@ -66,9 +67,9 @@ export function ReviewList({ items, errors, tooMany, onChange, disabled }: Props
           <p role="alert" className="text-danger">
             {t("catalog.review.lists.error")}
           </p>
-          <button type="button" className="btn" onClick={lists.reload}>
+          <PillButton variant="secondary" onClick={lists.reload}>
             {t("chores.retry")}
-          </button>
+          </PillButton>
         </>
       )}
 
@@ -120,10 +121,9 @@ export function ReviewList({ items, errors, tooMany, onChange, disabled }: Props
               )}
 
               {removing !== item.key && (
-                <>
-                  <button
-                    type="button"
-                    className="btn"
+                <div className="flex flex-wrap gap-3">
+                  <PillButton
+                    variant="secondary"
                     disabled={disabled || lists.state.kind !== "ready"}
                     aria-label={t("chores.item.edit.label", { name })}
                     onClick={() => {
@@ -132,10 +132,9 @@ export function ReviewList({ items, errors, tooMany, onChange, disabled }: Props
                     }}
                   >
                     {t("catalog.review.edit")}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn"
+                  </PillButton>
+                  <PillButton
+                    variant="secondary"
                     disabled={disabled}
                     aria-label={t("catalog.review.remove.label", { name })}
                     ref={(node) => {
@@ -145,38 +144,38 @@ export function ReviewList({ items, errors, tooMany, onChange, disabled }: Props
                     onClick={() => setRemoving(item.key)}
                   >
                     {t("catalog.review.remove")}
-                  </button>
-                </>
+                  </PillButton>
+                </div>
               )}
 
               {removing === item.key && (
                 <div role="group" aria-label={t("catalog.review.remove.label", { name })}>
                   <p>{t("catalog.review.remove.prompt", { name })}</p>
-                  <button
-                    ref={keepRef}
-                    type="button"
-                    className="btn"
-                    onClick={() => {
-                      setRemoving(null);
-                      // The button is mounted again by the time the browser handles this.
-                      requestAnimationFrame(() => removeButtons.current.get(item.key)?.focus());
-                    }}
-                  >
-                    {t("catalog.review.remove.cancel")}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={() => {
-                      onChange(items.filter((other) => other.key !== item.key));
-                      setRemoving(null);
-                      setEditing((current) => (current === item.key ? null : current));
-                      setNotice(t("catalog.review.removed", { name }));
-                      focusHeading();
-                    }}
-                  >
-                    {t("catalog.review.remove.confirm")}
-                  </button>
+                  <div className="flex flex-wrap gap-3">
+                    <PillButton
+                      ref={keepRef}
+                      variant="secondary"
+                      onClick={() => {
+                        setRemoving(null);
+                        // The button is mounted again by the time the browser handles this.
+                        requestAnimationFrame(() => removeButtons.current.get(item.key)?.focus());
+                      }}
+                    >
+                      {t("catalog.review.remove.cancel")}
+                    </PillButton>
+                    <PillButton
+                      variant="danger"
+                      onClick={() => {
+                        onChange(items.filter((other) => other.key !== item.key));
+                        setRemoving(null);
+                        setEditing((current) => (current === item.key ? null : current));
+                        setNotice(t("catalog.review.removed", { name }));
+                        focusHeading();
+                      }}
+                    >
+                      {t("catalog.review.remove.confirm")}
+                    </PillButton>
+                  </div>
                 </div>
               )}
             </li>

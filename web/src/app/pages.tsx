@@ -40,7 +40,7 @@ export function HomePage() {
   return (
     <HomeGate>
       {(current: Home) => (
-        <>
+        <div className="flex flex-col gap-4">
           {recovered !== "no" && (
             <p role="status">{t(recovered === "chores-dropped" ? "home.create.recovered.chores" : "home.create.recovered")}</p>
           )}
@@ -59,7 +59,7 @@ export function HomePage() {
               home.clearHome();
             }}
           />
-        </>
+        </div>
       )}
     </HomeGate>
   );

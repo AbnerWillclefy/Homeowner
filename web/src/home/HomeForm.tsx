@@ -1,4 +1,6 @@
 import type { Home, HomeSettings } from "../api/home";
+import { Card } from "../components/ui/Card";
+import { PillButton } from "../components/ui/PillButton";
 import { useI18n, type MessageKey } from "../i18n";
 import { FormStatusMessage } from "./FormStatusMessage";
 import { HomeFields } from "./HomeFields";
@@ -31,7 +33,7 @@ export function HomeForm({ idPrefix, copy, initial, timezones, save, onSaved, on
   const saving = form.status.kind === "saving";
 
   return (
-    <section aria-labelledby={`${idPrefix}-heading`}>
+    <Card as="section" aria-labelledby={`${idPrefix}-heading`}>
       <h2 id={`${idPrefix}-heading`}>{t(copy.heading)}</h2>
       <p>{t(copy.intro)}</p>
       <form onSubmit={form.submit} noValidate>
@@ -45,10 +47,12 @@ export function HomeForm({ idPrefix, copy, initial, timezones, save, onSaved, on
         />
         <FormStatusMessage status={form.status} />
         {copy.saved && form.status.kind === "saved" && <p role="status">{t(copy.saved)}</p>}
-        <button type="submit" className="btn btn-primary" disabled={saving}>
-          {t(saving ? copy.submitting : copy.submit)}
-        </button>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <PillButton type="submit" variant="primary" disabled={saving}>
+            {t(saving ? copy.submitting : copy.submit)}
+          </PillButton>
+        </div>
       </form>
-    </section>
+    </Card>
   );
 }

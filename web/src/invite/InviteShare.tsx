@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Card } from "../components/ui/Card";
+import { PillButton } from "../components/ui/PillButton";
 import { createInvite } from "../api/invites";
 import { useI18n, type MessageKey } from "../i18n";
 import { inviteLink, shareInvite } from "./share";
@@ -45,15 +47,15 @@ export function InviteShare() {
 
   const working = status.kind === "working";
   return (
-    <section aria-labelledby="invite-share-heading">
+    <Card as="section" aria-labelledby="invite-share-heading">
       <h2 id="invite-share-heading">{t("invite.share.heading")}</h2>
       <p>{t("invite.share.intro")}</p>
-      <button type="button" className="btn" disabled={working} onClick={() => void onClick()}>
+      <PillButton variant="primary" disabled={working} onClick={() => void onClick()}>
         {working ? t("invite.share.creating") : t("invite.share.button")}
-      </button>
+      </PillButton>
       <p role={status.kind === "done" && status.problem ? "alert" : "status"}>
         {status.kind === "done" && t(status.key)}
       </p>
-    </section>
+    </Card>
   );
 }

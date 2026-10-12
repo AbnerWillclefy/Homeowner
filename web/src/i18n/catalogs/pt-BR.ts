@@ -60,8 +60,12 @@ export const ptBR: Messages = {
     "Se você se mudar ou não dividir mais este lar, pode sair dele. Depois, você pode entrar em outro lar ou criar um novo.",
   "home.leave.open": "Sair deste lar",
   "home.leave.title": "Sair deste lar?",
-  "home.leave.warning":
-    "Suas preferências e restrições para os afazeres deste lar são apagadas, e o mesmo vale para os seus lugares no plano do dia. O seu perfil continua: sua energia base e suas preferências e restrições gerais vão com você para o próximo lar. Se você for o último morador, o lar e todos os afazeres dele são apagados, e isso não pode ser desfeito.",
+  "home.leave.removes":
+    "Suas preferências e restrições para os afazeres deste lar são apagadas, e o mesmo vale para os seus lugares no plano do dia.",
+  "home.leave.stays":
+    "O seu perfil continua: sua energia base e suas preferências e restrições gerais vão com você para o próximo lar.",
+  "home.leave.last":
+    "Se você for o último morador, o lar e todos os afazeres dele são apagados, e isso não pode ser desfeito.",
   "home.leave.cancel": "Cancelar",
   "home.leave.confirm": "Sair do lar",
   "home.leave.leaving": "Saindo...",

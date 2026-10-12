@@ -55,8 +55,12 @@ export const enUS = {
     "If you move out or no longer share this Home, you can leave it. You can join or create another Home afterwards.",
   "home.leave.open": "Leave this Home",
   "home.leave.title": "Leave this Home?",
-  "home.leave.warning":
-    "Your Preferences and Restrictions for this Home's Chores are removed, and so are your places in its Day Plan. Your own profile stays: your Baseline and your general Preferences and Restrictions come with you to your next Home. If you are the last Resident, the Home and all its Chores are deleted, and that cannot be undone.",
+  "home.leave.removes":
+    "Your Preferences and Restrictions for this Home's Chores are removed, and so are your places in its Day Plan.",
+  "home.leave.stays":
+    "Your own profile stays: your Baseline and your general Preferences and Restrictions come with you to your next Home.",
+  "home.leave.last":
+    "If you are the last Resident, the Home and all its Chores are deleted, and that cannot be undone.",
   "home.leave.cancel": "Cancel",
   "home.leave.confirm": "Leave Home",
   "home.leave.leaving": "Leaving...",

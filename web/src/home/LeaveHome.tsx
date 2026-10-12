@@ -1,5 +1,8 @@
-import * as Dialog from "@radix-ui/react-dialog";
+import { LogOut } from "lucide-react";
 import { useRef } from "react";
+import { AppDialog } from "../components/ui/AppDialog";
+import { Card } from "../components/ui/Card";
+import { PillButton } from "../components/ui/PillButton";
 import { useI18n } from "../i18n";
 import { LEAVE_FAILURE_KEY } from "./failureMessages";
 import { useLeaveHome } from "./useLeaveHome";
@@ -11,7 +14,8 @@ interface Props {
 
 /**
  * A "Leave this Home" control that asks first. The dialog says what is removed and what stays, because leaving
- * cannot be undone for the last Resident. Focus starts on Cancel, the safe choice.
+ * cannot be undone for the last Resident. Focus starts on Cancel, the safe choice; Radix returns it to the
+ * trigger on close.
  */
 export function LeaveHome({ onLeft }: Props) {
   const { t } = useI18n();
@@ -20,37 +24,43 @@ export function LeaveHome({ onLeft }: Props) {
   const leaving = state.kind === "leaving";
 
   return (
-    <section aria-labelledby="home-leave-heading">
+    <Card as="section" aria-labelledby="home-leave-heading">
       <h2 id="home-leave-heading">{t("home.leave.heading")}</h2>
       <p>{t("home.leave.intro")}</p>
-      <Dialog.Root open={state.kind !== "closed"} onOpenChange={(next) => (next ? open() : cancel())}>
-        <Dialog.Trigger className="btn">{t("home.leave.open")}</Dialog.Trigger>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-text/50" />
-          <Dialog.Content
-            className="fixed inset-x-4 top-1/2 mx-auto max-h-[90dvh] max-w-[32rem] -translate-y-1/2 overflow-y-auto rounded-lg border border-border bg-surface-raised p-6 text-text"
-            onOpenAutoFocus={(event) => {
-              // Destructive action: land on Cancel, not on the first button in the DOM.
-              event.preventDefault();
-              cancelRef.current?.focus();
-            }}
-          >
-            <Dialog.Title>{t("home.leave.title")}</Dialog.Title>
-            <Dialog.Description>{t("home.leave.warning")}</Dialog.Description>
-            {state.kind === "confirming" && state.failed && (
-              <p role="alert" className="text-danger">
-                {t(LEAVE_FAILURE_KEY[state.failed])}
-              </p>
-            )}
-            <button ref={cancelRef} type="button" className="btn" disabled={leaving} onClick={cancel}>
-              {t("home.leave.cancel")}
-            </button>
-            <button type="button" className="btn btn-primary" disabled={leaving} onClick={() => void confirm()}>
-              {t(leaving ? "home.leave.leaving" : "home.leave.confirm")}
-            </button>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
-    </section>
+      <AppDialog
+        open={state.kind !== "closed"}
+        onDismiss={cancel}
+        trigger={
+          <PillButton variant="danger" onClick={open}>
+            {t("home.leave.open")}
+          </PillButton>
+        }
+        // Destructive action: land on Cancel, not on the title.
+        initialFocusRef={cancelRef}
+        title={t("home.leave.title")}
+        description={
+          <>
+            <p>{t("home.leave.removes")}</p>
+            <p>{t("home.leave.stays")}</p>
+            <p className="font-semibold">{t("home.leave.last")}</p>
+          </>
+        }
+      >
+        {state.kind === "confirming" && state.failed && (
+          <p role="alert" className="text-danger">
+            {t(LEAVE_FAILURE_KEY[state.failed])}
+          </p>
+        )}
+        <div className="mt-4 flex flex-wrap gap-3">
+          <PillButton ref={cancelRef} variant="secondary" disabled={leaving} onClick={cancel}>
+            {t("home.leave.cancel")}
+          </PillButton>
+          <PillButton variant="danger" disabled={leaving} onClick={() => void confirm()}>
+            <LogOut aria-hidden="true" className="size-5 shrink-0" />
+            {t(leaving ? "home.leave.leaving" : "home.leave.confirm")}
+          </PillButton>
+        </div>
+      </AppDialog>
+    </Card>
   );
 }
