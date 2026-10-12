@@ -25,11 +25,12 @@ Not yet in the module: two-person Task rules, Preference weights and turn-taking
 
 ## The job (built)
 
-`dayplan.Planner` is the one orchestrator; the job, and later a Check-in or a new Home's first plan, call it.
+`dayplan.Planner` is the one orchestrator; the job and a Check-in call it, and later a new Home's first plan will.
 
 - **Which Homes**: every 15 minutes, the Homes whose local wall-clock time is at or past their Allocation time and that have no run for their local date. A Home is planned once per local day; a rejected run takes the day too. Editing the Allocation time after the day's run changes nothing until tomorrow; a timezone change mid-day can change the local date, so a Home could be planned twice in 24 hours (accepted). A Home created after today's Allocation time is planned at the next tick.
-- **Energy**: the Resident's Baseline points for the weekday of the Home's local date; an unset day is 0, so that Resident gets nothing (the PWA hints to set a Baseline). Check-in scaling is not built; it goes in `dayplan.energyOn`.
-- **Restrictions** reach `State` at both levels: the User's general Demand Restrictions and the Resident's specific Chore Restrictions, so `Check` reports the right level.
+- **Energy**: the Resident's Baseline points for the weekday of the Home's local date, scaled by their Check-in for that date when they made one (`dayplan.energyOn`, using the pure `checkin.Scale`): Drained 0, Low 50%, Normal 100%, Energized 130% of the Baseline. Energy is whole points and the result **rounds down** (integer `base*50/100`, `base*130/100`), so base 5 gives Low 2 and Energized 6, base 3 gives 1 and 3, base 1 gives 0 and 1: a Check-in never promises more than the percentage. An unset day is a Baseline of 0, so every level gives 0: a Check-in cannot invent Energy (the PWA hints to set a Baseline). With no Check-in the Baseline is used, and a Check-in only counts on its own local date. The run's `reasons` store each Resident's Energy.
+- **Restrictions** reach `State` at both levels: the User's general Demand Restrictions and the Resident's specific Chore Restrictions, so `Check` reports the right level. A Check-in's day-only Restrictions are appended to the general Demand Restrictions, without repeating one, so `Check` reports them at the Demand level; they are never stored as lasting Restrictions and are gone the next day.
+- **A Check-in after the plan** (the common case, since the plan is made once at the Allocation time): `Planner.CheckIn` re-plans that one Resident inside today's run. In one transaction, holding the same Home lock as `PlanHome`, it saves the Check-in and, if the run is `planned`, builds a `State` with only that Resident and, as Tasks, every open Task not given to someone else today (their own previous Tasks, the pool, Tasks added after the plan). The allocator proposes, `Check` referees, then their `day_plan_assignments` rows are replaced and the run's `reasons` rewritten by `reasons.replan`, which shares `reasons.add` with the full plan so the stored shape has one writer (their Energy, their assigned entries, the pool; a Task already in the pool keeps its reason, a newly released one gets the new plan's). The run row, its allocator and everyone else's assignments are untouched, so one person's mood does not reshuffle the others. A proposal that errors or breaks a rule rolls everything back, the Check-in included, and the request fails: an unchecked plan is never stored. Drained gives Energy 0, so their Tasks return to the pool as `no_energy_left`. A Check-in can be changed (the `PUT` is idempotent and re-plans again). Exceptions: with no run yet the Check-in is only saved and the job reads it; after a `rejected` run it is saved and nothing else changes, since the day is taken and nothing is assigned. A Resident who joined after the plan has no Energy entry; their first Check-in plans them from the pool, and one who never checks in stays unplanned today. When Commit (#15) lands, a re-plan must never drop a Committed Task.
 - **Yesterday's unfinished Tasks**: a Task stays open until a Completion exists, so nothing is moved or reset. Planning uses every open Task, overdue ones included, and a Day Plan is keyed by date, so yesterday's assignments are never read as today's. Today's pool is the open Tasks not assigned in today's run. How a Committed but undone Task is treated is for the Commit ticket.
 - **Never an unchecked plan**: a proposal that errors or fails `Check` is recorded as a `rejected` run with its violations, nothing is assigned, and it is logged. Until the LLM allocator exists there is no fallback to fall back to.
 - **The record**: `allocation_runs` stores the allocator name, the outcome and the reasons (per-Task assignment reasons, the pool with reasons, each Resident's Energy), because Energy and Restrictions change and the reasons cannot be recomputed. Residents read the plan with `GET /home/day-plan`.
@@ -42,7 +43,7 @@ flowchart TD
     J --> H{"Home's Allocation time reached in its timezone, and no run for its local date?"}
     H -->|no| X["skip"]
     H -->|yes| R["Refresh Tasks, then lock the Home"]
-    R --> L["Load State from Postgres: open Tasks, Energy from Baseline (Check-in planned), Restrictions"]
+    R --> L["Load State from Postgres: open Tasks, Energy from Baseline scaled by the Check-in, Restrictions incl. day-only"]
     L --> Q{"LLM enabled and Home under daily cap?"}:::planned
     Q -->|yes| LLM["LLM allocator proposes a Day Plan"]:::planned
     LLM --> CK["Check: the referee"]
@@ -53,6 +54,10 @@ flowchart TD
     CK2 -->|no violations| S["Store Day Plan and allocation run"]
     CK2 -->|violations| RJ["Store a rejected run, nothing assigned"]
     S --> N["Send Day Plan ready push, best-effort"]:::planned
+    CI["PUT /home/check-in: Planner.CheckIn"] --> CR{"Run for today?"}
+    CR -->|none| CS["Save only; the job reads it"]
+    CR -->|rejected| CS2["Save only; nothing changes"]
+    CR -->|planned| RP["Plan that one Resident again, Check, replace their assignments"]
 
     classDef planned stroke-dasharray: 5 5,color:#666
 ```

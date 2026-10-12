@@ -1,25 +1,29 @@
 import { useState } from "react";
 import type { Home } from "../api/home";
 import { ChoresSection } from "../chores/ChoresSection";
-import { TodaySection } from "../dayplan/TodaySection";
 import { useI18n } from "../i18n";
 import { InviteShare } from "../invite/InviteShare";
 import { CreateHome } from "./CreateHome";
 import { LOAD_FAILURE_KEY } from "./failureMessages";
+import { HomeDay } from "./HomeDay";
 import { HomeSettingsForm } from "./HomeSettingsForm";
 import { LeaveHome } from "./LeaveHome";
 import { useHome } from "./useHome";
 
+/** What a create that found an existing Home leaves to say. `chores-dropped`: the reviewed Chores were not added. */
+export type RecoveredNotice = "plain" | "chores-dropped";
+
 /**
  * The Home section of the home screen, shown only while signed in: the create form for a User with no Home,
- * otherwise the Home's settings followed by its Chores.
+ * otherwise the Home's settings followed by its Chores. `recovered` is set when onboarding has just created
+ * the Home and found one already made, so the notice survives the switch to this section.
  */
-export function HomeSection() {
+export function HomeSection({ recovered: initialRecovered = "no" }: { recovered?: RecoveredNotice | "no" }) {
   const { state, reload, setHome, clearHome } = useHome();
   const { t } = useI18n();
   // Set when a create found an existing Home; cleared by the next save so it never outlives its moment.
   // `chores-dropped` is a create whose reviewed Chores were not added, because the Home already existed.
-  const [recovered, setRecovered] = useState<"no" | "plain" | "chores-dropped">("no");
+  const [recovered, setRecovered] = useState<RecoveredNotice | "no">(initialRecovered);
 
   if (state.kind === "loading") return <p role="status">{t("home.loading")}</p>;
 
@@ -65,7 +69,7 @@ export function HomeSection() {
         }}
       />
       <InviteShare />
-      <TodaySection />
+      <HomeDay />
       <ChoresSection />
       <LeaveHome
         onLeft={() => {

@@ -12,14 +12,16 @@ The PWA is one Vite app in `web/`, installed to the Home Screen. It has a precac
 | `src/theme/` | Built | Appearance: System, Light or Dark, and applying it. Detailed under UI layer. |
 | `src/settings/` | Built | The Settings section at the bottom of the home screen. |
 | `src/auth/` | Built | Sign-up, confirmation, sign-in and token handling against Cognito. |
-| `src/api/` | Built | The API client: `authedFetch` and the typed calls to `/me`, the profile routes (`/me/profile`, `/categories`, `/demands`), `/push/*`, `/home`, `/home/chores` and `/home/day-plan`. |
+| `src/api/` | Built | The API client: `authedFetch` and the typed calls to `/me`, the profile routes (`/me/profile`, `/categories`, `/demands`), `/me/onboarding`, `/push/*`, `/home`, `/home/chores`, `/home/day-plan` and `/home/check-in`. |
 | `src/home/` | Built | The Home section: create form and settings form for the Home's timezone and Allocation time. Detailed below. |
 | `src/chores/` | Built | The Chores section inside the Home section: list, add and edit form with every field, inline two-step delete, and the non-blocking two-person suggestion. Detailed below. |
 | `src/catalog/` | Built | The Catalog on the PWA: the questionnaire about a Home, the review of suggested Chores, the picker for adding a Catalog Chore later, and the pure logic behind them. Detailed under Catalog below. |
 | `src/dayplan/` | Built | The Today section inside the Home section: today's Day Plan (your Tasks, other Residents' Tasks, the pool and its reasons), read-only. Detailed below. |
+| `src/checkin/` | Built | Today's Check-in inside the Home section: the inline prompt, the summary with Change, and the pure state and form logic. Detailed under Check-in below. |
 | `src/invite/` | Built | Joining a Home from an Invite link (signed out and signed in, with the leave warning), the rating step after joining, and sharing an Invite from the Home section. Detailed below. |
-| `src/profile/` | Built | The Profile section for signed-in Users: Baseline per weekday (saved on blur), Preference per Category and Restrictions on Demands. Each control saves on its own, optimistically, and is undone with a visible message if the API refuses. The Category and Demand lists come from the API; an id with no translation shows as the id. Logic is in pure modules (`baselineInput`, `changes`, `labels`, `weekdays`); `useProfile` holds the state. |
-| `src/push/` | Built | The reminders controls and Web Push subscription. |
+| `src/onboarding/` | Built | The walk a new User takes before the dashboard: install, reminders, Baseline, Restrictions, Preferences, then the Home, each step saying why it matters. Detailed under Onboarding below. |
+| `src/profile/` | Built | The Profile section for signed-in Users: Baseline per weekday (saved on blur), Preference per Category and Restrictions on Demands. Each control saves on its own, optimistically, and is undone with a visible message if the API refuses. The Category and Demand lists come from the API; an id with no translation shows as the id. Logic is in pure modules (`baselineInput`, `changes`, `labels`, `weekdays`); `useProfile` holds the state. `ProfileSections` holds the three parts (Baseline, Preferences, Restrictions) and the save status as heading-less components, so the standalone `Profile` and each onboarding step compose the same code from one `useProfile()` call. |
+| `src/push/` | Built | The reminders controls and Web Push subscription. `InstallSteps` and `EnableReminders` are exported so onboarding reuses them. |
 | `src/sw.ts`, `src/sw/` | Built | The service worker: precache and push handling. |
 
 Tests are vitest in a Node environment, on pure modules only (API client, token logic, formatting, `i18n`). There are no component tests, so screens are checked by hand ([ADR 0007](../adr/0007-tailwind-and-radix-for-an-accessible-calm-ui.md)).
@@ -138,9 +140,37 @@ flowchart TD
 - Radix Primitives (`@radix-ui/react-slot`) and `lucide-react` are installed for later screens but not imported yet: native elements cover everything on screen today.
 - The service worker precaches the built CSS, and the theme is local only, so appearance works offline.
 
+## Onboarding
+
+A new User is walked through install, reminders, Baseline, Restrictions, Preferences and the Home before they see the dashboard. There is no router: `App.tsx` swaps the stacked sections for the walk until it is done.
+
+Progress lives on the server (`users.onboarding_step`, see the backend docs), because on iOS the install step ends with the User leaving Safari for the Home Screen app, which has its own `localStorage`. `src/api/onboarding.ts` has `getOnboarding` (`GET /me/onboarding`: the step to show, or `done`) and `putOnboardingStep` (`PUT /me/onboarding`: records a step as completed or skipped and returns the next step). It returns the usual result union (`ok`, `not-signed-in`, `offline`, `error`). `home` is never sent: `POST /home` completes it on the server.
+
+```mermaid
+flowchart TD
+    APP[App.tsx, signed in] -->|pending Invite| JOIN[JoinInvite, Reminders, Profile]
+    APP -->|no Invite| GATE[OnboardingGate: useOnboarding GET /me/onboarding]
+    GATE -->|loading or failed| MSG[message and Try again, never a guess]
+    GATE -->|done| DASH[Reminders, HomeSection, Profile]
+    GATE -->|any other step| ONB[Onboarding]
+    ONB --> PUSH[usePush, once]
+    ONB --> PROF[useProfile, once]
+    ONB --> WALK[useWalk: Next calls PUT, Back is local]
+    ONB -->|home step| CH[CreateHome]
+    CH -->|onSaved or onRecovered 409| GATE
+```
+
+- `steps.ts` (pure): the ordered ids, which apply on this device (`install` only for iOS in a browser tab, from `reminderAvailability`), next and previous, and "step n of m". Tested.
+- `baselineComplete.ts` (pure): all seven Baseline days must have a value (0 counts) before Next on the Baseline step. Restrictions and Preferences are always passable, since none and neutral are real answers. Tested.
+- `useOnboarding` holds the server's step. `useWalk` holds which step is on screen: Next moves on only after the server answers 200 and otherwise stays with an alert, Back is local and never lowers the stored step, and nothing is queued offline.
+- `Onboarding` owns the single `usePush` and `useProfile` of the flow, so the launch re-subscribe runs once and the lists are fetched once. `Reminders` is mounted only when onboarding is not showing, so it is never mounted twice. Notification permission is requested only from the Enable button.
+- Each step has a progress line, a heading that takes focus when the step changes, and a why paragraph (`onboarding.*` in both catalogs). Reminders is skippable ("Not now"); the profile steps and the Home are not.
+- A pending Invite wins: `JoinInvite` is shown instead and `OnboardingGate` is not mounted. The Settings section is outside the gate, so language, appearance and sign-out work in every state.
+- When creating the Home finds one already made (409), onboarding finishes and `HomeSection` shows the same "already existed" notice, including the "chores dropped" variant.
+
 ## Home
 
-`HomeSection` (`src/home/`) is rendered by `App.tsx` only while signed in, below Reminders and above Settings. The Chores section (see Chores below) is rendered inside it once the Home exists. It talks to the API through `src/api/home.ts` (`getHome`, `createHome`, `updateHome`, `leaveHome`), which wraps `authedFetch` like `me.ts` and returns a result union: `ok`, `not-signed-in`, `offline` (a thrown fetch), `error`, plus `none` (404; for `leaveHome` it means there is no Home to leave), `already-resident` (409 on create) and `invalid` carrying the API's field codes.
+`HomeSection` (`src/home/`) is rendered by `App.tsx` only while signed in and once onboarding is done, below Reminders and above Settings. The Chores section (see Chores below) is rendered inside it once the Home exists. It talks to the API through `src/api/home.ts` (`getHome`, `createHome`, `updateHome`, `leaveHome`), which wraps `authedFetch` like `me.ts` and returns a result union: `ok`, `not-signed-in`, `offline` (a thrown fetch), `error`, plus `none` (404; for `leaveHome` it means there is no Home to leave), `already-resident` (409 on create) and `invalid` carrying the API's field codes.
 
 ```mermaid
 flowchart TD
@@ -240,6 +270,32 @@ flowchart TD
 - Reasons are stable ids localised in both catalogs: pool `no_energy_left`, `restricted_for_all`, `weekday_not_allowed`, `two_person_deferred`, `invalid_effort`, `added_after_plan`; assignment `deadline_today`, `importance`, `lateness`, `fits_energy`. An id with no translation shows as the id; no reason (before the day is planned) shows nothing.
 - Nothing relies on colour: Effort, Importance, people and reason are all text. A grown Effort reads "Effort 3 (usually 2)". Failures use `role="alert"` with a retry button; loading and the not-planned and rejected notes use `role="status"`.
 - Pure modules with vitest tests: `api/dayPlan.ts`, `reasons.ts`, `format.ts` (`formatDay`). The components and hook are checked by hand.
+
+## Check-in
+
+`HomeDay` (`src/home/HomeDay.tsx`) is the last part of `HomeSection`, above the Chores: it owns `useCheckIn` and renders `CheckInSection` above `TodaySection`. It talks to the API through `src/api/checkIn.ts` (`getCheckIn` over `GET /home/check-in`, `putCheckIn` over `PUT /home/check-in`), which returns `ok`, `not-signed-in`, `offline`, `error`, `none` (404) and, for a save, `invalid` (400). A day with no Check-in is `ok` with `checkedIn: false`; a body with an unknown level, or a level that disagrees with `checkedIn`, is an `error`.
+
+```mermaid
+flowchart TD
+    HS[HomeSection, Home ready] --> HD[HomeDay]
+    HD --> UC[useCheckIn: GET /home/check-in, GET /demands]
+    HD --> CS[CheckInSection]
+    HD -->|key bumps after a save| TS[TodaySection]
+    CS --> V[state.ts: checkInView]
+    V -->|checkedIn false| P[prompt: intro and form]
+    V -->|checkedIn true| SUM[summary and Change]
+    SUM -->|Change| F[form, starts from the saved Check-in]
+    P --> F
+    F -->|form.ts submission| PUT[PUT /home/check-in]
+    PUT -->|ok| UC
+    UC -->|onSaved| HD
+```
+
+- The prompt shows exactly when `checkedIn` is false, inline and not a modal, on every open: nothing about it being skipped is stored. Once answered it is one line, "Today's Check-in: Low", with a Change button that reopens the form.
+- The form is a `fieldset` of four native radios (Drained, Low, Normal, Energized, each with a one-line explanation and none selected at first) and a `fieldset` of checkboxes for today's Restrictions, labelled with the Demand names. Submitting without a level shows an alert instead of calling the API. Results use `role="status"` and failures `role="alert"`; meaning never depends on colour.
+- A save can change the Day Plan, because the API plans that Resident again. `HomeDay` remounts `TodaySection` with a new `key`, so it reloads without polling. When the Energy is 0 and the level is not Drained, the Today section keeps the "set a Baseline" hint; for Drained it says the Resident checked in as Drained.
+- `state.ts` is a reducer (`checkInReducer`) plus `checkInView` and `energyNote`; `form.ts` holds the form values and what is sent (Restrictions in the order of `GET /demands`). Both are pure. Pure modules with vitest tests: `api/checkIn.ts`, `state.ts`, `form.ts`. The components and hook are checked by hand.
+- No push reminder for the Check-in yet; it belongs with the push nudge work.
 
 ## Invites
 
