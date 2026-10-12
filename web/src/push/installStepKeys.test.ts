@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { enUS } from "../i18n/catalogs/en-US";
 import { ptBR } from "../i18n/catalogs/pt-BR";
-import { INSTALL_STEP_KEYS } from "./installSteps";
+import { INSTALL_STEP_KEYS } from "./installStepKeys";
 
 describe("INSTALL_STEP_KEYS", () => {
   it("lists the four steps in order", () => {

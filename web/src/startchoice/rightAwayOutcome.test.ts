@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DayPlan } from "../api/dayPlan";
-import { rightAwayOutcome } from "./startChoice";
+import { rightAwayOutcome } from "./rightAwayOutcome";
 
 const TASK = {
   id: "t1",

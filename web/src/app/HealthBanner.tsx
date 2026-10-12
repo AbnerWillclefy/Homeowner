@@ -1,6 +1,6 @@
 import { useI18n } from "../i18n";
 import { useHealth } from "../useHealth";
-import { bannerFor } from "./healthBanner";
+import { bannerFor } from "./bannerFor";
 
 /** A slim banner with Retry, shown only when the API is unavailable or unreachable. */
 export function HealthBanner() {

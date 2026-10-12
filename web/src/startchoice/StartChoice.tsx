@@ -1,6 +1,6 @@
 import { AppDialog } from "../components/ui/AppDialog";
 import { useI18n, type MessageKey } from "../i18n";
-import { rightAwayOutcome, type RightAwayOutcome } from "./startChoice";
+import { rightAwayOutcome, type RightAwayOutcome } from "./rightAwayOutcome";
 import { useRightAway } from "./useRightAway";
 
 const FAILURE_KEY = {

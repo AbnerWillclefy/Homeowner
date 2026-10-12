@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bannerFor } from "./healthBanner";
+import { bannerFor } from "./bannerFor";
 
 describe("bannerFor", () => {
   it("shows nothing while checking or when healthy", () => {
