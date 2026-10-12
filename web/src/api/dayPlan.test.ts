@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SESSION_KEY } from "../auth/session";
-import { getDayPlan } from "./dayPlan";
+import { getDayPlan, planMyDay } from "./dayPlan";
 
 function stubStorage(signedIn: boolean) {
   const data = new Map<string, string>();
@@ -115,5 +115,46 @@ describe("getDayPlan", () => {
   it("is offline when the request cannot be made", async () => {
     stubFetch(new TypeError("Failed to fetch"));
     expect(await getDayPlan()).toEqual({ kind: "offline" });
+  });
+});
+
+describe("planMyDay", () => {
+  it("posts to /home/day-plan/me with no body and returns the Day Plan", async () => {
+    const fetch = stubFetch(Response.json(PLAN));
+    expect(await planMyDay()).toEqual({ kind: "ok", plan: PLAN });
+    expect(fetch.mock.calls[0]![0]).toBe("http://api.test/home/day-plan/me");
+    expect(fetch.mock.calls[0]![1]?.method).toBe("POST");
+    expect(fetch.mock.calls[0]![1]?.body).toBeUndefined();
+    expect(new Headers(fetch.mock.calls[0]![1]?.headers).get("Authorization")).toBe("Bearer id-1");
+  });
+
+  it("keeps an energy of 0 so the app can say why nothing was given", async () => {
+    stubFetch(Response.json({ ...PLAN, energy: 0, mine: [] }));
+    const result = await planMyDay();
+    expect(result.kind === "ok" && result.plan.energy).toBe(0);
+  });
+
+  it("is none when the User has no Home (404)", async () => {
+    stubFetch(new Response("", { status: 404 }));
+    expect(await planMyDay()).toEqual({ kind: "none" });
+  });
+
+  it("is an error for a server failure or a body it cannot read", async () => {
+    stubFetch(new Response("", { status: 500 }));
+    expect(await planMyDay()).toEqual({ kind: "error" });
+    stubFetch(Response.json({ ...PLAN, planned: "yes" }));
+    expect(await planMyDay()).toEqual({ kind: "error" });
+  });
+
+  it("is not signed in without a session", async () => {
+    stubStorage(false);
+    const fetch = stubFetch(Response.json(PLAN));
+    expect(await planMyDay()).toEqual({ kind: "not-signed-in" });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("is offline when the request cannot be made", async () => {
+    stubFetch(new TypeError("Failed to fetch"));
+    expect(await planMyDay()).toEqual({ kind: "offline" });
   });
 });
