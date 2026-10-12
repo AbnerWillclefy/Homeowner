@@ -121,10 +121,9 @@ export function ReviewList({ items, errors, tooMany, onChange, disabled }: Props
               )}
 
               {removing !== item.key && (
-                <>
+                <div className="flex flex-wrap gap-3">
                   <PillButton
                     variant="secondary"
-                    className="me-3"
                     disabled={disabled || lists.state.kind !== "ready"}
                     aria-label={t("chores.item.edit.label", { name })}
                     onClick={() => {
@@ -146,36 +145,37 @@ export function ReviewList({ items, errors, tooMany, onChange, disabled }: Props
                   >
                     {t("catalog.review.remove")}
                   </PillButton>
-                </>
+                </div>
               )}
 
               {removing === item.key && (
                 <div role="group" aria-label={t("catalog.review.remove.label", { name })}>
                   <p>{t("catalog.review.remove.prompt", { name })}</p>
-                  <PillButton
-                    ref={keepRef}
-                    variant="secondary"
-                    className="me-3"
-                    onClick={() => {
-                      setRemoving(null);
-                      // The button is mounted again by the time the browser handles this.
-                      requestAnimationFrame(() => removeButtons.current.get(item.key)?.focus());
-                    }}
-                  >
-                    {t("catalog.review.remove.cancel")}
-                  </PillButton>
-                  <PillButton
-                    variant="danger"
-                    onClick={() => {
-                      onChange(items.filter((other) => other.key !== item.key));
-                      setRemoving(null);
-                      setEditing((current) => (current === item.key ? null : current));
-                      setNotice(t("catalog.review.removed", { name }));
-                      focusHeading();
-                    }}
-                  >
-                    {t("catalog.review.remove.confirm")}
-                  </PillButton>
+                  <div className="flex flex-wrap gap-3">
+                    <PillButton
+                      ref={keepRef}
+                      variant="secondary"
+                      onClick={() => {
+                        setRemoving(null);
+                        // The button is mounted again by the time the browser handles this.
+                        requestAnimationFrame(() => removeButtons.current.get(item.key)?.focus());
+                      }}
+                    >
+                      {t("catalog.review.remove.cancel")}
+                    </PillButton>
+                    <PillButton
+                      variant="danger"
+                      onClick={() => {
+                        onChange(items.filter((other) => other.key !== item.key));
+                        setRemoving(null);
+                        setEditing((current) => (current === item.key ? null : current));
+                        setNotice(t("catalog.review.removed", { name }));
+                        focusHeading();
+                      }}
+                    >
+                      {t("catalog.review.remove.confirm")}
+                    </PillButton>
+                  </div>
                 </div>
               )}
             </li>

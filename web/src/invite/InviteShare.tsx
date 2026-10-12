@@ -47,17 +47,15 @@ export function InviteShare() {
 
   const working = status.kind === "working";
   return (
-    <Card>
-      <section aria-labelledby="invite-share-heading">
-        <h2 id="invite-share-heading">{t("invite.share.heading")}</h2>
-        <p>{t("invite.share.intro")}</p>
-        <PillButton variant="primary" disabled={working} onClick={() => void onClick()}>
-          {working ? t("invite.share.creating") : t("invite.share.button")}
-        </PillButton>
-        <p role={status.kind === "done" && status.problem ? "alert" : "status"}>
-          {status.kind === "done" && t(status.key)}
-        </p>
-      </section>
+    <Card as="section" aria-labelledby="invite-share-heading">
+      <h2 id="invite-share-heading">{t("invite.share.heading")}</h2>
+      <p>{t("invite.share.intro")}</p>
+      <PillButton variant="primary" disabled={working} onClick={() => void onClick()}>
+        {working ? t("invite.share.creating") : t("invite.share.button")}
+      </PillButton>
+      <p role={status.kind === "done" && status.problem ? "alert" : "status"}>
+        {status.kind === "done" && t(status.key)}
+      </p>
     </Card>
   );
 }
