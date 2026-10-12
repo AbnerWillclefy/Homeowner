@@ -140,11 +140,37 @@ func (p *Planner) sendNudges(ctx context.Context, planned []string, now time.Tim
 // skips the exact time, still plans the Home once. A Home with an unknown
 // timezone is logged and skipped.
 func (p *Planner) DueHomes(ctx context.Context, now time.Time) ([]string, error) {
+	homes, err := UnplannedHomes(ctx, p.db, p.log, now, func(local, alloc time.Duration) bool {
+		return local >= alloc
+	})
+	if err != nil {
+		return nil, err
+	}
+	due := make([]string, 0, len(homes))
+	for _, h := range homes {
+		due = append(due, h.ID)
+	}
+	return due, nil
+}
+
+// HomeDay is a Home with its local date at some instant.
+type HomeDay struct {
+	ID   string
+	Date allocation.Date
+}
+
+// UnplannedHomes returns, ordered by id, the Homes that have no run for their
+// local date at now and for which inWindow(local, alloc) holds, where local is
+// the Home's time of day at now and alloc its Allocation time, both as offsets
+// since local midnight. It is the one scan behind DueHomes and the Check-in
+// reminder window: the zone conversion, the skip of an unknown zone (logged)
+// and the check for a run live here only.
+func UnplannedHomes(ctx context.Context, db *pgxpool.Pool, log *slog.Logger, now time.Time, inWindow func(local, alloc time.Duration) bool) ([]HomeDay, error) {
 	type home struct {
 		id, zone string
 		minutes  int
 	}
-	rows, err := p.db.Query(ctx, `
+	rows, err := db.Query(ctx, `
 		SELECT id, timezone, extract(hour FROM allocation_time)::int * 60 + extract(minute FROM allocation_time)::int
 		FROM homes ORDER BY id`)
 	if err != nil {
@@ -163,7 +189,7 @@ func (p *Planner) DueHomes(ctx context.Context, now time.Time) ([]string, error)
 		home string
 		date allocation.Date
 	}
-	rows, err = p.db.Query(ctx, `SELECT home_id, plan_date FROM allocation_runs WHERE plan_date >= $1`,
+	rows, err = db.Query(ctx, `SELECT home_id, plan_date FROM allocation_runs WHERE plan_date >= $1`,
 		now.UTC().AddDate(0, 0, -2))
 	if err != nil {
 		return nil, fmt.Errorf("list runs: %w", err)
@@ -180,23 +206,25 @@ func (p *Planner) DueHomes(ctx context.Context, now time.Time) ([]string, error)
 		return nil, fmt.Errorf("list runs: %w", err)
 	}
 
-	var due []string
+	var out []HomeDay
 	for _, h := range homes {
 		loc, err := time.LoadLocation(h.zone)
 		if err != nil {
-			p.log.Warn("home skipped: unknown timezone", "home", h.id, "timezone", h.zone)
+			log.Warn("home skipped: unknown timezone", "home", h.id, "timezone", h.zone)
 			continue
 		}
 		local := now.In(loc)
-		if local.Hour()*60+local.Minute() < h.minutes {
+		sinceMidnight := time.Duration(local.Hour()*60+local.Minute()) * time.Minute
+		if !inWindow(sinceMidnight, time.Duration(h.minutes)*time.Minute) {
 			continue
 		}
-		if slices.Contains(planned, key{h.id, allocation.DateOf(local)}) {
+		date := allocation.DateOf(local)
+		if slices.Contains(planned, key{h.id, date}) {
 			continue
 		}
-		due = append(due, h.id)
+		out = append(out, HomeDay{ID: h.id, Date: date})
 	}
-	return due, nil
+	return out, nil
 }
 
 // PlanHome makes the Day Plan of the Home for its local date at now, unless the

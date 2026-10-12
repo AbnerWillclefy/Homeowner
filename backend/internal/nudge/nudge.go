@@ -31,7 +31,7 @@ const (
 	phaseTimeout = 30 * time.Second
 
 	// reminderLead is how long before the Allocation time the reminder goes.
-	reminderLead = 60
+	reminderLead = time.Hour
 )
 
 // Nudger sends the nudges. Build it with New; the zero value does nothing useful.
@@ -56,8 +56,8 @@ type target struct {
 	date                       allocation.Date
 }
 
-// inReminderWindow reports whether a Home whose local time is localMin
-// (minutes since local midnight) and whose Allocation time is allocMin is
+// inReminderWindow reports whether a Home whose local time of day is local and
+// whose Allocation time is alloc (both offsets since local midnight) is
 // between its reminder moment and its Allocation time. The reminder moment is
 // an hour before, clamped to local midnight: an Allocation time before 01:00
 // would otherwise fall on the previous date, where "checked in today" means
@@ -65,8 +65,8 @@ type target struct {
 // skipped tick still works. Wall-clock arithmetic in the Home's zone, like
 // dayplan.DueHomes: a daylight-saving change can shift the reminder by an hour
 // on two days a year.
-func inReminderWindow(localMin, allocMin int) bool {
-	return localMin >= max(allocMin-reminderLead, 0) && localMin < allocMin
+func inReminderWindow(local, alloc time.Duration) bool {
+	return local >= max(alloc-reminderLead, 0) && local < alloc
 }
 
 // CheckinReminders sends a Check-in reminder to every Resident of a Home that
@@ -76,17 +76,19 @@ func (n *Nudger) CheckinReminders(ctx context.Context, now time.Time) {
 	ctx, cancel := context.WithTimeout(ctx, phaseTimeout)
 	defer cancel()
 
-	homes, err := n.windowHomes(ctx, now)
+	window, err := dayplan.UnplannedHomes(ctx, n.db, n.log, now, inReminderWindow)
 	if err != nil {
 		n.log.Error("check-in reminders: find homes failed", "error", err.Error())
 		return
 	}
-	if len(homes) == 0 {
+	if len(window) == 0 {
 		return
 	}
-	ids := make([]string, 0, len(homes))
-	for id := range homes {
-		ids = append(ids, id)
+	homes := make(map[string]allocation.Date, len(window))
+	ids := make([]string, 0, len(window))
+	for _, h := range window {
+		homes[h.ID] = h.Date
+		ids = append(ids, h.ID)
 	}
 	all, err := n.residents(ctx, ids, now)
 	if err != nil {
@@ -99,11 +101,15 @@ func (n *Nudger) CheckinReminders(ctx context.Context, now time.Time) {
 		byHome[t.homeID] = append(byHome[t.homeID], t.residentID)
 	}
 	checked := map[string]bool{}
+	unknown := map[string]bool{}
 	for id, residents := range byHome {
 		got, err := checkinstore.LoadMany(ctx, n.db, residents, homes[id])
 		if err != nil {
+			// One Home's failure must not cost the others their reminder. This
+			// Home is left out: without its Check-ins nobody can be told apart.
 			n.log.Error("check-in reminders: load check-ins failed", "home", id, "error", err.Error())
-			return
+			unknown[id] = true
+			continue
 		}
 		for r := range got {
 			checked[r] = true
@@ -111,7 +117,7 @@ func (n *Nudger) CheckinReminders(ctx context.Context, now time.Time) {
 	}
 	var todo []target
 	for _, t := range all {
-		if !checked[t.residentID] {
+		if !checked[t.residentID] && !unknown[t.homeID] {
 			todo = append(todo, t)
 		}
 	}
@@ -143,63 +149,6 @@ func (n *Nudger) DayPlanReady(ctx context.Context, homeIDs []string, now time.Ti
 		URL:   "/",
 		Kind:  push.KindDayPlanReady,
 	}, now)
-}
-
-// windowHomes returns the Homes in their reminder window at now that have no
-// run for their local date, with that date.
-func (n *Nudger) windowHomes(ctx context.Context, now time.Time) (map[string]allocation.Date, error) {
-	type home struct {
-		id, zone string
-		minutes  int
-	}
-	rows, err := n.db.Query(ctx, `
-		SELECT id, timezone, extract(hour FROM allocation_time)::int * 60 + extract(minute FROM allocation_time)::int
-		FROM homes ORDER BY id`)
-	if err != nil {
-		return nil, err
-	}
-	homes, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (h home, err error) {
-		return h, r.Scan(&h.id, &h.zone, &h.minutes)
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	out := map[string]allocation.Date{}
-	var ids []string
-	var dates []time.Time
-	for _, h := range homes {
-		loc, err := time.LoadLocation(h.zone)
-		if err != nil {
-			n.log.Warn("home skipped: unknown timezone", "home", h.id, "timezone", h.zone)
-			continue
-		}
-		local := now.In(loc)
-		if !inReminderWindow(local.Hour()*60+local.Minute(), h.minutes) {
-			continue
-		}
-		date := allocation.DateOf(local)
-		out[h.id] = date
-		ids = append(ids, h.id)
-		dates = append(dates, date.Time())
-	}
-	if len(ids) == 0 {
-		return out, nil
-	}
-	planned, err := n.db.Query(ctx, `
-		SELECT r.home_id FROM allocation_runs r
-		JOIN unnest($1::uuid[], $2::date[]) AS w(home_id, plan_date) USING (home_id, plan_date)`, ids, dates)
-	if err != nil {
-		return nil, err
-	}
-	done, err := pgx.CollectRows(planned, pgx.RowTo[string])
-	if err != nil {
-		return nil, err
-	}
-	for _, id := range done {
-		delete(out, id)
-	}
-	return out, nil
 }
 
 // residents lists the Residents of the Homes, each with the Home's local date
