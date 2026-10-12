@@ -100,6 +100,7 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("POST /invites/{token}/accept", s.requireUser(s.acceptInvite))
 	mux.HandleFunc("GET /home/tasks", s.requireResident(s.listTasks))
 	mux.HandleFunc("GET /home/day-plan", s.requireResident(s.getDayPlan))
+	mux.HandleFunc("POST /home/day-plan/me", s.requireResident(s.postDayPlanMe))
 	mux.HandleFunc("GET /home/check-in", s.requireResident(s.getCheckIn))
 	mux.HandleFunc("PUT /home/check-in", s.requireResident(s.putCheckIn))
 	mux.HandleFunc("GET /categories", s.requireUser(s.getCategories))
