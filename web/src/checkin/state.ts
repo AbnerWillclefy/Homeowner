@@ -63,10 +63,26 @@ export function checkInView(state: CheckInState): CheckInView {
   return state.editing ? "change" : "summary";
 }
 
-/** Which line the Today section shows about the Resident's Energy. */
-export type EnergyNote = "energy" | "no-baseline" | "drained";
+/**
+ * What the Energy chip on Today says, from the plan's Energy (null until there is a plan) and the Check-in:
+ * - unset: no Check-in yet, so the chip invites one.
+ * - drained: the Resident checked in as Drained, which gives Energy 0, so this is checked before the value.
+ * - energy: points to show.
+ * - no-baseline: Energy 0 without Drained, so the Resident has no Baseline for the day.
+ * - pending: checked in but the plan has no Energy yet (not made, still loading or failed). Never "unset", never 0.
+ */
+export type EnergyNote = "unset" | "drained" | "energy" | "no-baseline" | "pending";
 
-export function energyNote(energy: number | null, level: Level | null): EnergyNote {
-  if (energy !== null && energy > 0) return "energy";
-  return level === "drained" ? "drained" : "no-baseline";
+export function energyNote(energy: number | null, checkIn: { checkedIn: boolean; level: Level | null }): EnergyNote {
+  if (!checkIn.checkedIn) return "unset";
+  if (checkIn.level === "drained") return "drained";
+  if (energy === null) return "pending";
+  return energy > 0 ? "energy" : "no-baseline";
+}
+
+/** Why a planned day has no Tasks for the Resident. Shares the chip's note so the two never disagree. */
+export type NoTasksReason = "drained" | "no-baseline" | "nothing-due";
+
+export function noTasksReason(note: EnergyNote): NoTasksReason {
+  return note === "drained" || note === "no-baseline" ? note : "nothing-due";
 }

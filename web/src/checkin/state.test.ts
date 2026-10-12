@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { CheckIn } from "../api/checkIn";
-import { checkInReducer, checkInView, energyNote, type CheckInState } from "./state";
+import type { CheckIn, Level } from "../api/checkIn";
+import { checkInReducer, checkInView, energyNote, noTasksReason, type CheckInState } from "./state";
 
 const MISSING: CheckIn = { date: "2026-10-12", checkedIn: false, level: null, restrictions: [] };
 const LOW: CheckIn = { date: "2026-10-12", checkedIn: true, level: "low", restrictions: ["bending"] };
@@ -72,17 +72,30 @@ describe("checkInReducer", () => {
 });
 
 describe("energyNote", () => {
-  it("explains a Drained day instead of blaming the Baseline", () => {
-    expect(energyNote(0, "drained")).toBe("drained");
-  });
+  const checked = (level: Level) => ({ checkedIn: true, level });
+  const NONE = { checkedIn: false, level: null };
 
-  it("hints at setting a Baseline when Energy is 0 and the level is not Drained", () => {
-    expect(energyNote(0, "normal")).toBe("no-baseline");
-    expect(energyNote(null, null)).toBe("no-baseline");
+  it.each([
+    ["no Check-in yet invites one, whatever the plan says", null, NONE, "unset"],
+    ["no Check-in with a stale Energy is still unset", 4, NONE, "unset"],
+    ["Drained is said gently, before the Energy value", 0, checked("drained"), "drained"],
+    ["Drained wins even if the plan still shows points", 3, checked("drained"), "drained"],
+    ["points show when there is Energy", 5, checked("low"), "energy"],
+    ["Energy 0 after a Check-in means no Baseline", 0, checked("normal"), "no-baseline"],
+    ["checked in with the plan not ready is pending, never unset or 0", null, checked("normal"), "pending"],
+  ] as const)("%s", (_name, energy, checkIn, note) => {
+    expect(energyNote(energy, checkIn)).toBe(note);
   });
+});
 
-  it("shows the Energy otherwise", () => {
-    expect(energyNote(5, "low")).toBe("energy");
-    expect(energyNote(3, null)).toBe("energy");
+describe("noTasksReason", () => {
+  it.each([
+    ["drained", "drained"],
+    ["no-baseline", "no-baseline"],
+    ["energy", "nothing-due"],
+    ["pending", "nothing-due"],
+    ["unset", "nothing-due"],
+  ] as const)("an empty list after %s is explained as %s", (note, reason) => {
+    expect(noTasksReason(note)).toBe(reason);
   });
 });

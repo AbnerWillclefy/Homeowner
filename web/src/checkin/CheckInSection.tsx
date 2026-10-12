@@ -1,5 +1,7 @@
 import { useId, useState, type FormEvent } from "react";
 import { LEVELS, type Level } from "../api/checkIn";
+import { Card } from "../components/ui/Card";
+import { PillButton } from "../components/ui/PillButton";
 import { useI18n } from "../i18n";
 import { demandLabel, labelText } from "../profile/labels";
 import { SAVE_FAILURE_KEY, LOAD_FAILURE_KEY } from "./failureMessages";
@@ -24,40 +26,45 @@ export function CheckInSection({ checkIn }: { checkIn: Controller }) {
 
   return (
     <section aria-labelledby="checkin-heading">
-      <h2 id="checkin-heading">{t("checkin.heading")}</h2>
+      {/* tabIndex -1: the Energy chip on Today moves focus here (dayplan/focusCheckIn.ts names this id). */}
+      <h2 id="checkin-heading" tabIndex={-1}>
+        {t("checkin.heading")}
+      </h2>
 
-      {view === "loading" && <p role="status">{t("checkin.loading")}</p>}
+      <Card>
+        {view === "loading" && <p role="status">{t("checkin.loading")}</p>}
 
-      {state.kind === "failed" && (
-        <>
-          <p role="alert" className="text-danger">
-            {t(LOAD_FAILURE_KEY[state.reason])}
-          </p>
-          {state.reason !== "not-signed-in" && (
-            <button type="button" className="btn" onClick={checkIn.reload}>
-              {t("checkin.retry")}
-            </button>
-          )}
-        </>
-      )}
+        {state.kind === "failed" && (
+          <>
+            <p role="alert" className="text-danger">
+              {t(LOAD_FAILURE_KEY[state.reason])}
+            </p>
+            {state.reason !== "not-signed-in" && (
+              <PillButton variant="secondary" onClick={checkIn.reload}>
+                {t("checkin.retry")}
+              </PillButton>
+            )}
+          </>
+        )}
 
-      {state.kind === "ready" && (
-        <>
-          {/* Always present, so the result is announced when it appears. */}
-          <div role="status">{state.saved && <p>{t("checkin.saved")}</p>}</div>
+        {state.kind === "ready" && (
+          <>
+            {/* Always present, so the result is announced when it appears. */}
+            <div role="status">{state.saved && <p>{t("checkin.saved")}</p>}</div>
 
-          {view === "summary" ? (
-            <Summary checkIn={checkIn} />
-          ) : (
-            <CheckInForm
-              // A fresh form each time one opens, starting from what is saved (nothing when it is missing).
-              key={view}
-              checkIn={checkIn}
-              prompt={view === "prompt"}
-            />
-          )}
-        </>
-      )}
+            {view === "summary" ? (
+              <Summary checkIn={checkIn} />
+            ) : (
+              <CheckInForm
+                // A fresh form each time one opens, starting from what is saved (nothing when it is missing).
+                key={view}
+                checkIn={checkIn}
+                prompt={view === "prompt"}
+              />
+            )}
+          </>
+        )}
+      </Card>
     </section>
   );
 }
@@ -78,9 +85,9 @@ function Summary({ checkIn }: { checkIn: Controller }) {
           })}
         </p>
       )}
-      <button type="button" className="btn" onClick={checkIn.edit}>
+      <PillButton variant="secondary" className="mt-3" onClick={checkIn.edit}>
         {t("checkin.change")}
-      </button>
+      </PillButton>
     </>
   );
 }
@@ -167,13 +174,13 @@ function CheckInForm({ checkIn, prompt }: { checkIn: Controller; prompt: boolean
       )}
 
       <div className="flex flex-wrap gap-3 mt-4">
-        <button type="submit" className="btn btn-primary" disabled={saving}>
+        <PillButton type="submit" disabled={saving}>
           {saving ? t("checkin.saving") : t("checkin.submit")}
-        </button>
+        </PillButton>
         {!prompt && (
-          <button type="button" className="btn" disabled={saving} onClick={checkIn.cancel}>
+          <PillButton variant="secondary" disabled={saving} onClick={checkIn.cancel}>
             {t("checkin.cancel")}
-          </button>
+          </PillButton>
         )}
       </div>
     </form>

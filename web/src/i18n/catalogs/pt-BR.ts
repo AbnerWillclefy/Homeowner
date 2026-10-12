@@ -276,9 +276,15 @@ export const ptBR: Messages = {
   "dayplan.greeting.morning": "Bom dia",
   "dayplan.greeting.afternoon": "Boa tarde",
   "dayplan.greeting.evening": "Boa noite",
-  "dayplan.energy": "Sua energia hoje: {energy}",
-  "dayplan.energy.none":
-    "Você não tem energia base para este dia da semana, então a sua energia é 0 e nenhuma tarefa foi dada a você. Defina a sua energia base no perfil para receber tarefas nesse dia.",
+  "dayplan.chip.label": "Energia de hoje: {text}",
+  "dayplan.chip.unset": "Faça o check-in para definir a energia de hoje",
+  "dayplan.chip.noBaseline": "Defina a sua energia base para ter energia",
+  "dayplan.chip.drained": "Esgotado hoje, sem tarefas",
+  "dayplan.chip.energy": "Energia {energy}",
+  "dayplan.chip.pending": "Check-in feito",
+  "dayplan.mine.empty.noBaseline":
+    "Você não tem energia base para este dia da semana, então a sua energia é 0 e nenhuma tarefa foi dada a você. Quando quiser, defina a sua energia base para receber tarefas nesse dia.",
+  "dayplan.mine.empty.noBaseline.link": "Definir a energia base",
   "dayplan.mine.heading": "Suas tarefas",
   "dayplan.mine.empty": "Nada para você hoje. Aproveite o dia.",
   "dayplan.others.heading": "Tarefas dos outros moradores",
@@ -300,7 +306,7 @@ export const ptBR: Messages = {
   "dayplan.pool.reason.two_person_deferred": "Precisa de duas pessoas, e as duas não estavam livres hoje.",
   "dayplan.pool.reason.invalid_effort": "O esforço dela não é válido, então ficou de fora. Edite o afazer para corrigir.",
   "dayplan.pool.reason.added_after_plan": "Foi adicionada depois que o plano de hoje foi feito.",
-  "dayplan.energy.drained": "Você fez check-in como esgotado, então nenhuma tarefa foi dada a você hoje. Descanse.",
+  "dayplan.mine.empty.drained": "Você fez check-in como esgotado, então nenhuma tarefa foi dada a você hoje. Descanse.",
 
   // The start choice, at the end of both onboarding flows
   "startChoice.heading": "Quando você quer as suas tarefas?",
