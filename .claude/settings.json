@@ -1,4 +1,7 @@
 {
+  "env": {
+    "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1"
+  },
   "enabledPlugins": {
     "mattpocock-skills@claude-plugins-official": true
   }
