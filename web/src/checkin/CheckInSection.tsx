@@ -1,3 +1,4 @@
+import type { CheckIn } from "../api/checkIn";
 import { CardRow } from "../components/ui/CardRow";
 import { PillButton } from "../components/ui/PillButton";
 import { useI18n } from "../i18n";
@@ -63,21 +64,26 @@ export function CheckInSection({ checkIn, open, onOpen, onClose }: Props) {
               </PillButton>
             }
           >
-            <Line checkIn={checkIn} />
+            {view === "prompt" ? (
+              <p className="my-0 font-semibold">{t("checkin.prompt")}</p>
+            ) : (
+              <Summary checkIn={state.checkIn} />
+            )}
           </CardRow>
           {/* Mounted only while open, so the form starts again from the saved Check-in each time. */}
-          {open && <CheckInDialog checkIn={checkIn} onClose={onClose} />}
+          {open && (
+            <CheckInDialog checkIn={state.checkIn} demands={checkIn.demands} save={checkIn.save} onClose={onClose} />
+          )}
         </>
       )}
     </section>
   );
 }
 
-function Line({ checkIn }: { checkIn: Controller }) {
+function Summary({ checkIn }: { checkIn: CheckIn }) {
   const { t } = useI18n();
-  if (checkIn.state.kind !== "ready") return null;
-  const { level, restrictions } = checkIn.state.checkIn;
-  if (level === null) return <p className="my-0 font-semibold">{t("checkin.prompt")}</p>;
+  const { level, restrictions } = checkIn;
+  if (level === null) return null; // Narrows the type: a Check-in that is checked in always has a level.
   return (
     <>
       <p className="my-0 font-semibold">{t("checkin.summary", { level: t(LEVEL_KEYS[level].label) })}</p>

@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent } from "react";
-import { LEVELS, type Level } from "../api/checkIn";
+import { LEVELS, type CheckIn, type Level } from "../api/checkIn";
 import { AppDialog } from "../components/ui/AppDialog";
 import { PillButton } from "../components/ui/PillButton";
 import { useSubmitOnce } from "../components/ui/useSubmitOnce";
@@ -7,46 +7,52 @@ import { useToast } from "../components/ui/useToast";
 import { useI18n } from "../i18n";
 import { demandLabel, labelText } from "../profile/labels";
 import { SAVE_FAILURE_KEY } from "./failureMessages";
-import { emptyForm, formFrom, submission, toggledRestriction, type CheckInFormState } from "./form";
+import { formFrom, submission, toggledRestriction, type CheckInFormState } from "./form";
 import { LEVEL_KEYS } from "./labels";
-import type { useCheckIn } from "./useCheckIn";
+import type { SaveFailure } from "./state";
 
 const CHECK = "size-5 w-5 min-h-0 mt-0 shrink-0 accent-accent";
 const CHOICE = "flex items-start gap-3 min-h-11 mt-0 font-normal";
-
-type Controller = ReturnType<typeof useCheckIn>;
 
 /**
  * The Check-in form in a near-full-height dialog. Submit and Cancel are pinned in the footer so they stay
  * reachable with the on-screen keyboard open. Escape and a tap outside close it, except while saving. A saved
  * Check-in closes the dialog and shows a toast; a failed save keeps it open with the reason, to retry.
  */
-export function CheckInDialog({ checkIn, onClose }: { checkIn: Controller; onClose(): void }) {
+export function CheckInDialog({
+  checkIn,
+  demands,
+  save: saveCheckIn,
+  onClose,
+}: {
+  checkIn: CheckIn;
+  demands: readonly string[];
+  /** Resolves to null once saved, else why it was not. */
+  save(level: Level, restrictions: readonly string[]): Promise<SaveFailure | null>;
+  onClose(): void;
+}) {
   const { t } = useI18n();
   const toast = useToast();
   const formId = useId();
   const idPrefix = useId();
-  const { state, demands } = checkIn;
-  const [form, setForm] = useState<CheckInFormState>(() =>
-    state.kind === "ready" ? formFrom(state.checkIn) : emptyForm(),
-  );
+  const [form, setForm] = useState<CheckInFormState>(() => formFrom(checkIn));
   const [levelMissing, setLevelMissing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveFailure, setSaveFailure] = useState<SaveFailure | null>(null);
 
   // The guard covers a second Enter in the same tick, which the async `saving` state does not.
   const { run: save } = useSubmitOnce(async (level: Level, restrictions: readonly string[]) => {
-    if (await checkIn.save(level, restrictions)) {
+    setSaving(true);
+    setSaveFailure(null);
+    const failure = await saveCheckIn(level, restrictions);
+    if (failure === null) {
       toast.show({ messageKey: "checkin.saved", tone: "success" });
       onClose();
+      return;
     }
+    setSaving(false);
+    setSaveFailure(failure);
   });
-
-  if (state.kind !== "ready") return null;
-  const { saving, saveFailure } = state;
-
-  function close() {
-    checkIn.dismissFailure();
-    onClose();
-  }
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -65,11 +71,11 @@ export function CheckInDialog({ checkIn, onClose }: { checkIn: Controller; onClo
     <AppDialog
       size="sheet"
       title={t("checkin.heading")}
-      onDismiss={close}
+      onDismiss={onClose}
       dismissible={!saving}
       footer={
         <>
-          <PillButton variant="secondary" disabled={saving} onClick={close}>
+          <PillButton variant="secondary" disabled={saving} onClick={onClose}>
             {t("checkin.cancel")}
           </PillButton>
           <PillButton type="submit" form={formId} disabled={saving} aria-busy={saving}>

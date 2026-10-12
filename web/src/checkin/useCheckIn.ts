@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
 import { getCheckIn, putCheckIn, type Level } from "../api/checkIn";
 import { getDemands } from "../api/profile";
-import { checkInReducer, type CheckInState } from "./state";
+import { checkInReducer, type CheckInState, type SaveFailure } from "./state";
 
 /**
  * Loads today's Check-in and the Demand list the form offers, and saves a new Check-in. `onSaved` runs after a
@@ -26,26 +26,16 @@ export function useCheckIn(onSaved: () => void) {
   }, [load]);
 
   const save = useCallback(
-    /** Resolves true when the Check-in was saved, so the dialog knows to close. */
-    async (level: Level, restrictions: readonly string[]): Promise<boolean> => {
-      dispatch({ type: "save-started" });
+    /** Resolves to null when the Check-in was saved, so the dialog knows to close; else why it was not. */
+    async (level: Level, restrictions: readonly string[]): Promise<SaveFailure | null> => {
       const result = await putCheckIn(level, restrictions);
-      if (result.kind !== "ok") {
-        dispatch({ type: "save-failed", reason: result.kind });
-        return false;
-      }
+      if (result.kind !== "ok") return result.kind;
       dispatch({ type: "saved", checkIn: result.checkIn });
       onSaved();
-      return true;
+      return null;
     },
     [onSaved],
   );
 
-  return {
-    state,
-    demands,
-    reload: load,
-    save,
-    dismissFailure: () => dispatch({ type: "dismiss-failure" }),
-  };
+  return { state, demands, reload: load, save };
 }

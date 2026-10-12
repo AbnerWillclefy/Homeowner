@@ -5,13 +5,7 @@ import { checkInReducer, checkInView, energyNote, noTasksReason, type CheckInSta
 const MISSING: CheckIn = { date: "2026-10-12", checkedIn: false, level: null, restrictions: [] };
 const LOW: CheckIn = { date: "2026-10-12", checkedIn: true, level: "low", restrictions: ["bending"] };
 
-const ready = (checkIn: CheckIn, extra: Partial<Extract<CheckInState, { kind: "ready" }>> = {}): CheckInState => ({
-  kind: "ready",
-  checkIn,
-  saving: false,
-  saveFailure: null,
-  ...extra,
-});
+const ready = (checkIn: CheckIn): CheckInState => ({ kind: "ready", checkIn });
 
 describe("checkInView", () => {
   it("shows the prompt only when today's Check-in is missing", () => {
@@ -45,27 +39,12 @@ describe("checkInReducer", () => {
     expect(checkInReducer({ kind: "failed", reason: "error" }, { type: "load" })).toEqual({ kind: "loading" });
   });
 
-  it("marks saving, then holds the saved Check-in", () => {
-    const saving = checkInReducer(ready(MISSING), { type: "save-started" });
-    expect(saving).toEqual(ready(MISSING, { saving: true }));
-    expect(checkInReducer(saving, { type: "saved", checkIn: LOW })).toEqual(ready(LOW));
+  it("holds the saved Check-in", () => {
+    expect(checkInReducer(ready(MISSING), { type: "saved", checkIn: LOW })).toEqual(ready(LOW));
   });
 
-  it("keeps the failure after a failed save, and clears it on the next try", () => {
-    const failed = checkInReducer(checkInReducer(ready(LOW), { type: "save-started" }), {
-      type: "save-failed",
-      reason: "offline",
-    });
-    expect(failed).toEqual(ready(LOW, { saveFailure: "offline" }));
-    expect(checkInReducer(failed, { type: "save-started" })).toEqual(ready(LOW, { saving: true }));
-  });
-
-  it("forgets an old failure when the dialog is dismissed", () => {
-    expect(checkInReducer(ready(LOW, { saveFailure: "error" }), { type: "dismiss-failure" })).toEqual(ready(LOW));
-  });
-
-  it("ignores save events before the Check-in is loaded", () => {
-    expect(checkInReducer({ kind: "loading" }, { type: "save-started" })).toEqual({ kind: "loading" });
+  it("ignores a save before the Check-in is loaded", () => {
+    expect(checkInReducer({ kind: "loading" }, { type: "saved", checkIn: LOW })).toEqual({ kind: "loading" });
   });
 });
 

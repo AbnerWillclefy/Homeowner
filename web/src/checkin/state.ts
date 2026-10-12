@@ -6,42 +6,25 @@ export type SaveFailure = Failure["kind"] | "invalid" | "none";
 export type CheckInState =
   | { kind: "loading" }
   | { kind: "failed"; reason: Failure["kind"] | "none" }
-  | {
-      kind: "ready";
-      checkIn: CheckIn;
-      saving: boolean;
-      saveFailure: SaveFailure | null;
-    };
+  | { kind: "ready"; checkIn: CheckIn };
 
 export type CheckInAction =
   | { type: "load" }
   | { type: "loaded"; checkIn: CheckIn }
   | { type: "load-failed"; reason: Failure["kind"] | "none" }
-  | { type: "dismiss-failure" }
-  | { type: "save-started" }
-  | { type: "saved"; checkIn: CheckIn }
-  | { type: "save-failed"; reason: SaveFailure };
+  | { type: "saved"; checkIn: CheckIn };
 
 export function checkInReducer(state: CheckInState, action: CheckInAction): CheckInState {
   switch (action.type) {
     case "load":
       return { kind: "loading" };
     case "loaded":
-      return { kind: "ready", checkIn: action.checkIn, saving: false, saveFailure: null };
+      return { kind: "ready", checkIn: action.checkIn };
     case "load-failed":
       return { kind: "failed", reason: action.reason };
   }
   if (state.kind !== "ready") return state;
-  switch (action.type) {
-    case "dismiss-failure":
-      return { ...state, saveFailure: null };
-    case "save-started":
-      return { ...state, saving: true, saveFailure: null };
-    case "saved":
-      return { kind: "ready", checkIn: action.checkIn, saving: false, saveFailure: null };
-    case "save-failed":
-      return { ...state, saving: false, saveFailure: action.reason };
-  }
+  return { kind: "ready", checkIn: action.checkIn };
 }
 
 export type CheckInView = "loading" | "failed" | "prompt" | "summary";
