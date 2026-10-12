@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
-import type { CatalogEntry } from "../api/catalog";
-import type { Failure } from "../api/chores";
+import type { CatalogEntry } from "./api";
+import type { Failure } from "../chores/api";
 import { choreFacts } from "../chores/facts";
-import { CardRow } from "../components/ui/CardRow";
-import { PillButton } from "../components/ui/PillButton";
-import { useI18n, type MessageKey } from "../i18n";
+import { CardRow } from "../shared/ui/CardRow";
+import { useI18n, type MessageKey } from "../shared/i18n";
+import { Button } from "../shared/ui/Button";
 import { catalogName } from "./name";
 import { useCatalog } from "./useCatalog";
 
@@ -42,9 +42,9 @@ export function CatalogPicker({ onPick, onClose }: Props) {
             {t(LOAD_FAILURE_KEY[state.reason])}
           </p>
           {state.reason !== "not-signed-in" && (
-            <button type="button" className="btn" onClick={reload}>
+            <Button variant="secondary" onClick={reload}>
               {t("chores.retry")}
-            </button>
+            </Button>
           )}
         </>
       )}
@@ -58,13 +58,13 @@ export function CatalogPicker({ onPick, onClose }: Props) {
                 <CardRow
                   className="mb-3"
                   actions={
-                    <PillButton
+                    <Button
                       variant="secondary"
                       aria-label={t("chores.catalog.add.label", { name })}
                       onClick={() => onPick(entry)}
                     >
                       {t("chores.catalog.add")}
-                    </PillButton>
+                    </Button>
                   }
                 >
                   <h4 className="mt-0 font-semibold">{name}</h4>
@@ -78,9 +78,9 @@ export function CatalogPicker({ onPick, onClose }: Props) {
         </ul>
       )}
 
-      <button type="button" className="btn" onClick={onClose}>
+      <Button variant="secondary" onClick={onClose}>
         {t("chores.catalog.close")}
-      </button>
+      </Button>
     </section>
   );
 }

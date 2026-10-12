@@ -1,4 +1,4 @@
-import type { MessageKey } from "../i18n";
+import type { MessageKey } from "../shared/i18n";
 import type { Label } from "../profile/labels";
 
 // The reason ids the Allocation sends. A key that is not in the catalogs fails the typecheck.

@@ -1,4 +1,4 @@
-import type { MessageKey } from "../i18n";
+import type { MessageKey } from "../shared/i18n";
 import { CHORES_PATH, HOME_PATH, ME_PATH, TODAY_PATH } from "./routes";
 
 export type NavIcon = "today" | "chores" | "home" | "me";

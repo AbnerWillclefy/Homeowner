@@ -1,4 +1,4 @@
-import { ONBOARDING_STEPS, type OnboardingStep } from "../api/onboarding";
+import { ONBOARDING_STEPS, type OnboardingStep } from "../onboarding/api";
 
 export const TODAY_PATH = "/";
 export const CHORES_PATH = "/chores";

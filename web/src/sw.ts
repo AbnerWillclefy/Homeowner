@@ -1,9 +1,9 @@
 /// <reference lib="webworker" />
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from "workbox-precaching";
 import { NavigationRoute, registerRoute } from "workbox-routing";
-import { browserLanguages } from "./i18n/browserLanguages";
-import { DEFAULT_LOCALE, type Locale } from "./i18n/locales";
-import { resolveLocale } from "./i18n/resolveLocale";
+import { browserLanguages } from "./shared/i18n/browserLanguages";
+import { DEFAULT_LOCALE, type Locale } from "./shared/i18n/locales";
+import { resolveLocale } from "./shared/i18n/resolveLocale";
 import { notificationFromPush, shouldNavigate } from "./sw/payload";
 
 declare const self: ServiceWorkerGlobalScope;

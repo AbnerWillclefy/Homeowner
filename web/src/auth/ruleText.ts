@@ -1,4 +1,4 @@
-import type { MessageKey, Translate } from "../i18n";
+import type { MessageKey, Translate } from "../shared/i18n";
 import type { ClauseId, RuleDescription, RuleResult } from "./passwordPolicy";
 import type { RuleChange } from "./ruleAnnouncement";
 

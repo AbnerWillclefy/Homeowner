@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { planMyDay, type DayPlan } from "../api/dayPlan";
-import { useSubmitOnce } from "../components/ui/useSubmitOnce";
+import { planMyDay, type DayPlan } from "../dayplan/api";
+import { useSubmitOnce } from "../shared/ui/useSubmitOnce";
 
 export type RightAwayState =
   | { kind: "idle" }

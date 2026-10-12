@@ -1,11 +1,18 @@
-import { PREFERENCES, type Baseline, type Preference, type Profile as ProfileData, type Weekday } from "../api/profile";
-import { categoryStyle } from "../components/ui/categoryStyle";
-import { useI18n, type MessageKey } from "../i18n";
+import { PREFERENCES, type Baseline, type Preference, type Profile as ProfileData, type Weekday } from "./api";
+import { CategoryTile } from "../chores/FactList";
+import { useI18n, type MessageKey } from "../shared/i18n";
+import { Button } from "../shared/ui/Button";
 import { BASELINE_LEVELS, levelLabelKey, levelToPoints, pointsToLevel } from "./baselineLevels";
 import { categoryLabel, demandLabel, labelText } from "./labels";
 import { preferenceCategories } from "./preferenceCategories";
 import type { ProfileProblem, ProfileState } from "./useProfile";
 import { DISPLAY_WEEKDAYS, weekdayLabel } from "./weekdays";
+
+// Rows split by a hairline, the same in every part.
+const ROWS = "flex flex-col divide-y divide-border/30";
+
+// A row of radio pills that reads as one segmented control.
+const SEGMENTS = "flex gap-1 rounded-pill border border-border p-1";
 
 // The three parts of Me (Baseline, Preferences, Restrictions), as bodies without a heading. The Me tab and each onboarding
 // step wrap them in their own heading, and both feed them from one useProfile() call.
@@ -34,9 +41,9 @@ export function ProfileStatus({ state, retry }: { state: ProfileState; retry(): 
       <>
         <p role="alert">{t(PROBLEM_KEY[state.problem])}</p>
         {state.problem !== "not-signed-in" && (
-          <button type="button" className="btn" onClick={retry}>
+          <Button variant="secondary" onClick={retry}>
             {t("profile.retry")}
-          </button>
+          </Button>
         )}
       </>
     );
@@ -52,11 +59,11 @@ export function BaselineFields({
   onSave(day: Weekday, points: number | null): void;
 }) {
   return (
-    <>
+    <div className={ROWS}>
       {DISPLAY_WEEKDAYS.map((day) => (
         <BaselineRow key={day} day={day} saved={baseline[day]} onSave={onSave} />
       ))}
-    </>
+    </div>
   );
 }
 
@@ -72,11 +79,11 @@ export function PreferenceFields({
   const { t } = useI18n();
   const shown = preferenceCategories(categories);
   return (
-    <>
+    <div className={ROWS}>
       {shown.map((id) => (
         <PreferenceChoice key={id} id={id} name={labelText(t, categoryLabel(id))} profile={profile} onChange={onChange} />
       ))}
-    </>
+    </div>
   );
 }
 
@@ -91,9 +98,9 @@ export function RestrictionFields({
 }) {
   const { t } = useI18n();
   return (
-    <>
+    <div className={ROWS}>
       {demands.map((id) => (
-        <label key={id} className="flex items-center gap-3 min-h-11 font-normal">
+        <label key={id} className="my-0 flex min-h-11 items-center gap-3 py-1 font-semibold">
           <input
             type="checkbox"
             className="size-5 w-5 min-h-0 mt-0 shrink-0 accent-accent"
@@ -103,7 +110,7 @@ export function RestrictionFields({
           {labelText(t, demandLabel(id))}
         </label>
       ))}
-    </>
+    </div>
   );
 }
 
@@ -121,10 +128,17 @@ function BaselineRow({
   // rollback shows the previous level again. Nothing is selected for an unset day.
   const current = pointsToLevel(saved);
 
+  const name = weekdayLabel(day, locale);
+
+  // The legend names the group for screen readers; the visible name is a plain span, so the row can lay out
+  // as a flex row (a rendered legend sits in the fieldset's border and cannot).
   return (
-    <fieldset className="mt-4 mx-0 mb-0 box-border rounded-card border border-border p-3">
-      <legend className="px-1 font-semibold [overflow-wrap:anywhere]">{weekdayLabel(day, locale)}</legend>
-      <div className="flex flex-wrap gap-2">
+    <fieldset className="m-0 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 border-0 p-0 py-3">
+      <legend className="sr-only">{name}</legend>
+      <span aria-hidden="true" className="w-12 shrink-0 font-semibold first-letter:uppercase">
+        {weekdayLabel(day, locale, "short")}
+      </span>
+      <div className={`${SEGMENTS} flex-1 basis-44`}>
         {BASELINE_LEVELS.map((level) => (
           <LevelPill
             key={level}
@@ -151,7 +165,7 @@ function LevelPill({
   onPick(): void;
 }) {
   return (
-    <label className="relative mt-0 flex min-h-11 min-w-20 flex-1 cursor-pointer items-center justify-center rounded-card border border-border px-3 text-center font-normal has-[:checked]:bg-accent has-[:checked]:font-semibold has-[:checked]:text-accent-contrast has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus">
+    <label className="relative mt-0 flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-pill px-2 text-center font-semibold has-[:checked]:bg-accent has-[:checked]:font-semibold has-[:checked]:text-accent-contrast has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus">
       <input type="radio" name={name} className="sr-only" checked={checked} onChange={onPick} />
       {label}
     </label>
@@ -171,29 +185,24 @@ function PreferenceChoice({
 }) {
   const { t } = useI18n();
   const current = profile.preferences[id] ?? "neutral";
-  const { fill, ink, icon: Icon } = categoryStyle(id);
 
-  // The Category's pastel and icon sit around the fieldset; the name stays as text in the legend.
+  // As in the Baseline rows, the legend is for screen readers and the visible name is a span.
   return (
-    <fieldset className={`mt-4 mx-0 mb-0 box-border rounded-card border border-border p-3 ${fill} ${ink}`}>
-      <legend className="px-1 font-semibold [overflow-wrap:anywhere]">
-        <span className="inline-flex items-center gap-2">
-          <Icon aria-hidden="true" size={16} className="shrink-0" />
-          {name}
-        </span>
-      </legend>
-      <div className="flex flex-wrap gap-x-4">
+    <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0 py-3">
+      <legend className="sr-only">{name}</legend>
+      <span aria-hidden="true" className="flex items-center gap-3 font-semibold [overflow-wrap:anywhere]">
+        <CategoryTile category={id} />
+        {name}
+      </span>
+      <div className={SEGMENTS}>
         {PREFERENCES.map((value) => (
-          <label key={value} className="flex items-center gap-2 min-h-11 mt-0 font-normal">
-            <input
-              type="radio"
-              name={`profile-preference-${id}`}
-              className="size-5 w-5 min-h-0 mt-0 shrink-0 accent-accent"
-              checked={current === value}
-              onChange={() => onChange(id, value)}
-            />
-            {t(PREFERENCE_KEY[value])}
-          </label>
+          <LevelPill
+            key={value}
+            name={`profile-preference-${id}`}
+            label={t(PREFERENCE_KEY[value])}
+            checked={current === value}
+            onPick={() => onChange(id, value)}
+          />
         ))}
       </div>
     </fieldset>

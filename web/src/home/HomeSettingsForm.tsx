@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { Home } from "../api/home";
+import type { Home } from "./api";
 import { browserTimezones } from "./browserTimezones";
 import { saveSettings } from "./createOrLoad";
 import { HomeForm } from "./HomeForm";
@@ -11,7 +11,8 @@ interface Props {
 }
 
 const COPY = {
-  heading: "home.settings.heading",
+  heading: "home.settings.plan.heading",
+  hint: "home.settings.plan.hint",
   submit: "home.settings.save",
   submitting: "home.settings.saving",
   saved: "home.settings.saved",

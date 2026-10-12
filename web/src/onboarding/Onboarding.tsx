@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { OnboardingPosition, OnboardingStep } from "../api/onboarding";
+import type { OnboardingPosition, OnboardingStep } from "./api";
 import { useSession } from "../app/SessionProvider";
 import { CreateHome } from "../home/CreateHome";
-import { useI18n, type MessageKey } from "../i18n";
+import { useI18n, type MessageKey } from "../shared/i18n";
 import { BaselineFields, PreferenceFields, ProfileStatus, RestrictionFields } from "../profile/ProfileSections";
 import { useProfile, type ProfileState } from "../profile/useProfile";
 import { EnableReminders } from "../push/EnableReminders";
 import { InstallSteps } from "../push/InstallSteps";
-import { PillButton } from "../components/ui/PillButton";
+import { Button } from "../shared/ui/Button";
 import { allBaselineDaysSet } from "./baselineComplete";
 import { OnboardingLayout } from "./OnboardingLayout";
 import { progress } from "./steps";
@@ -209,7 +209,7 @@ function NextButton({
 }: NextSpec & { saving: boolean }) {
   const { t } = useI18n();
   return (
-    <PillButton
+    <Button
       variant={primary ? "primary" : "secondary"}
       className="w-full"
       disabled={saving || disabled}
@@ -217,6 +217,6 @@ function NextButton({
       onClick={onClick}
     >
       {saving ? t("onboarding.saving") : t(label)}
-    </PillButton>
+    </Button>
   );
 }

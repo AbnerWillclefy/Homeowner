@@ -1,15 +1,15 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { config } from "../config";
-import { useI18n } from "../i18n";
+import { config } from "../shared/config";
+import { useI18n } from "../shared/i18n";
+import { Button } from "../shared/ui/Button";
 import { createConfirmSubmitter } from "./authSubmit";
 import type { CognitoFailure, CognitoResult } from "./cognito";
 import { EMAIL_MARKER, splitAtEmail } from "./emailMarker";
 import { failureMessage, fieldError } from "./failureText";
-import { Card } from "../components/ui/Card";
-import { FormError } from "../components/ui/FormError";
-import { useStableHandlers } from "../components/ui/useStableHandlers";
-import { useToast } from "../components/ui/useToast";
-import { PillButton } from "../components/ui/PillButton";
+import { Card } from "../shared/ui/Card";
+import { FormError } from "../shared/ui/FormError";
+import { useStableHandlers } from "../shared/ui/useStableHandlers";
+import { useToast } from "../shared/ui/useToast";
 
 const FORM = "confirm";
 
@@ -75,17 +75,17 @@ export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) 
           {...fieldError(problem, "code", FORM)}
         />
         <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
-        <PillButton type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>
+        <Button type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>
           {busy ? t("confirm.submitting") : t("confirm.submit")}
-        </PillButton>
+        </Button>
       </form>
-      <PillButton variant="secondary" className="mt-3 w-full" onClick={sendAgain} disabled={busy} aria-busy={busy}>
+      <Button variant="secondary" className="mt-3 w-full" onClick={sendAgain} disabled={busy} aria-busy={busy}>
         {t("confirm.resend")}
-      </PillButton>
+      </Button>
       <p className="mt-2 text-center">
-        <button type="button" className="btn-link" onClick={onBack}>
+        <Button variant="link" onClick={onBack}>
           {t("confirm.useOtherEmail")}
-        </button>
+        </Button>
       </p>
     </Card>
   );

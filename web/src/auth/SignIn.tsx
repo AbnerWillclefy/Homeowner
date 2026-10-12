@@ -1,14 +1,14 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { config } from "../config";
-import { useI18n } from "../i18n";
+import { config } from "../shared/config";
+import { useI18n } from "../shared/i18n";
+import { Button } from "../shared/ui/Button";
 import { createSignInSubmitter } from "./authSubmit";
 import type { CognitoFailure, SignInResult } from "./cognito";
 import { failureMessage, fieldError } from "./failureText";
-import { Card } from "../components/ui/Card";
-import { FormError } from "../components/ui/FormError";
-import { PasswordField } from "../components/ui/PasswordField";
-import { PillButton } from "../components/ui/PillButton";
-import { useStableHandlers } from "../components/ui/useStableHandlers";
+import { Card } from "../shared/ui/Card";
+import { FormError } from "../shared/ui/FormError";
+import { PasswordField } from "./PasswordField";
+import { useStableHandlers } from "../shared/ui/useStableHandlers";
 
 interface Props {
   /** Prefilled after confirming an email. */
@@ -63,15 +63,15 @@ export function SignIn({ initialEmail, logIn, onNeedsConfirm, onNeedsSignUp }: P
           {...fieldError(problem, "password", FORM)}
         />
         <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
-        <PillButton type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>
+        <Button type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>
           {busy ? t("signIn.submitting") : t("signIn.submit")}
-        </PillButton>
+        </Button>
       </form>
       <p className="mt-4 text-center">
         {t("signIn.newHere")}{" "}
-        <button type="button" className="btn-link" onClick={onNeedsSignUp}>
+        <Button variant="link" onClick={onNeedsSignUp}>
           {t("signIn.newHereAction")}
-        </button>
+        </Button>
       </p>
     </Card>
   );

@@ -1,4 +1,4 @@
-import type { Preference, Profile, Weekday } from "../api/profile";
+import type { Preference, Profile, Weekday } from "./api";
 
 // Pure copies of the profile for the optimistic update. The screen keeps the old one to roll back to.
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { getHome, type FailureReason, type Home } from "../api/home";
+import { getHome, type FailureReason, type Home } from "./api";
 
 export type HomeState =
   | { kind: "loading" }

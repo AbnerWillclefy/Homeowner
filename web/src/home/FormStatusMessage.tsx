@@ -1,4 +1,4 @@
-import { useI18n } from "../i18n";
+import { useI18n } from "../shared/i18n";
 import { SAVE_FAILURE_KEY } from "./failureMessages";
 import type { FormStatus } from "./useSettingsForm";
 

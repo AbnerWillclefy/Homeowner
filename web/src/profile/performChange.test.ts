@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { WriteResult } from "../api/profile";
+import type { WriteResult } from "./api";
 import { performChange } from "./performChange";
 
 function setup(result: WriteResult = { kind: "ok" }) {

@@ -1,6 +1,7 @@
-import { CardRow } from "../components/ui/CardRow";
-import { isLocale, LANGUAGE_NAME, LOCALES, useI18n, type MessageKey } from "../i18n";
-import { THEME_CHOICES, isThemeChoice, useTheme, type ThemeChoice } from "../theme";
+import { Settings2 } from "lucide-react";
+import { SectionCard } from "../shared/ui/SectionCard";
+import { isLocale, LANGUAGE_NAME, LOCALES, useI18n, type MessageKey } from "../shared/i18n";
+import { THEME_CHOICES, isThemeChoice, useTheme, type ThemeChoice } from "../shared/theme";
 
 const CHOICE_KEY: Record<ThemeChoice, MessageKey> = {
   system: "settings.appearance.system",
@@ -8,8 +9,11 @@ const CHOICE_KEY: Record<ThemeChoice, MessageKey> = {
   dark: "settings.appearance.dark",
 };
 
-// A select inside a card row sizes to its options, not to the whole width.
+// A select inside a row sizes to its options, not to the whole width.
 const IN_ROW = "mt-0 w-auto max-w-full";
+
+// A setting's name on the left and its select on the right, wrapping under it when the text is large.
+const ROW = "flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3";
 
 function AppearanceSelect({ className }: { className?: string }) {
   const { t } = useI18n();
@@ -75,8 +79,8 @@ export function LanguageSetting() {
 }
 
 /**
- * Both settings under one Settings heading, for the sign-in and welcome screens. The Me tab does not use
- * this: it puts each setting in its own titled card.
+ * Both settings under one Settings heading, for the sign-in and welcome screens. The Me tab uses
+ * `SettingsCard` instead.
  */
 export function Settings() {
   const { t } = useI18n();
@@ -89,40 +93,25 @@ export function Settings() {
   );
 }
 
-/** Appearance on the Me tab: the name on the left, the control on the right. The heading is the control's label. */
-export function AppearanceCard() {
+/** Appearance and Language on the Me tab: one titled card, a row each, the name on the left as its label. */
+export function SettingsCard() {
   const { t } = useI18n();
   return (
-    <CardRow
-      as="section"
-      aria-labelledby="me-appearance-heading"
-      className="items-center"
-      actions={<AppearanceSelect className={IN_ROW} />}
-    >
-      <h2 id="me-appearance-heading" className="my-0">
-        <label htmlFor="settings-appearance" className="mt-0">
-          {t("settings.appearance.label")}
-        </label>
-      </h2>
-    </CardRow>
-  );
-}
-
-/** Language on the Me tab: the name on the left, the control on the right. */
-export function LanguageCard() {
-  const { t } = useI18n();
-  return (
-    <CardRow
-      as="section"
-      aria-labelledby="me-language-heading"
-      className="items-center"
-      actions={<LanguageSelect className={IN_ROW} />}
-    >
-      <h2 id="me-language-heading" className="my-0">
-        <label htmlFor="settings-language" className="mt-0">
-          {t("settings.language.label")}
-        </label>
-      </h2>
-    </CardRow>
+    <SectionCard id="me-settings-heading" icon={Settings2} title={t("settings.heading")}>
+      <div className="flex flex-col divide-y divide-border/30">
+        <div className={ROW}>
+          <label htmlFor="settings-appearance" className="mt-0">
+            {t("settings.appearance.label")}
+          </label>
+          <AppearanceSelect className={IN_ROW} />
+        </div>
+        <div className={ROW}>
+          <label htmlFor="settings-language" className="mt-0">
+            {t("settings.language.label")}
+          </label>
+          <LanguageSelect className={IN_ROW} />
+        </div>
+      </div>
+    </SectionCard>
   );
 }

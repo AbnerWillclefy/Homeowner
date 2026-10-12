@@ -1,4 +1,4 @@
-import type { CheckIn, Failure, Level } from "../api/checkIn";
+import type { CheckIn, Failure, Level } from "./api";
 
 /** Why a save did not go through. `invalid` is the API refusing values the form should never send. */
 export type SaveFailure = Failure["kind"] | "invalid" | "none";

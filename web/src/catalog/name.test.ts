@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { Translate } from "../i18n";
-import { enUS } from "../i18n/catalogs/en-US";
-import { ptBR } from "../i18n/catalogs/pt-BR";
+import type { Translate } from "../shared/i18n";
+import { enUS } from "../shared/i18n/catalogs/en-US";
+import { ptBR } from "../shared/i18n/catalogs/pt-BR";
 import { CATALOG_IDS, catalogName } from "./name";
 
 const english: Translate = (key) => String(enUS[key]);

@@ -1,4 +1,4 @@
-import type { Translate } from "../i18n";
+import type { Translate } from "../shared/i18n";
 
 /** The interval choices in the Chore form. Custom is every other interval, including none (a one-off Chore). */
 export const INTERVAL_PRESETS = ["daily", "weekly", "every_2_weeks", "monthly"] as const;

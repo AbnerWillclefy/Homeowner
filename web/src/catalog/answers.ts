@@ -1,5 +1,5 @@
-import type { AnswersBody } from "../api/catalog";
-import type { MessageKey } from "../i18n";
+import type { AnswersBody } from "./api";
+import type { MessageKey } from "../shared/i18n";
 
 /** The room types and their limits, as the API takes them (backend/internal/catalog/answers.go). */
 export const ROOM_LIMITS = {

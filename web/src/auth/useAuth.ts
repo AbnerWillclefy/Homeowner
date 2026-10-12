@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { getMe } from "../api/me";
+import { getMe } from "./meApi";
 import { browserSession } from "./browserSession";
 import { confirmSignUp, resendCode, signIn, signUp, type CognitoResult, type SignInResult } from "./cognito";
 import { emailFromIdToken } from "./session";

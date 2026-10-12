@@ -1,7 +1,7 @@
-import type { CatalogEntry, Proposal } from "../api/catalog";
-import type { ChoreInput, ChoreWire, SaveChoreResult } from "../api/chores";
-import type { FieldCodes } from "../api/home";
-import type { Translate } from "../i18n";
+import type { CatalogEntry, Proposal } from "./api";
+import type { ChoreInput, ChoreWire, SaveChoreResult } from "../chores/api";
+import type { FieldCodes } from "../home/api";
+import type { Translate } from "../shared/i18n";
 import { formFromChore, toChoreInput, type ChoreFormState } from "../chores/form";
 import { catalogName } from "./name";
 

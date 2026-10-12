@@ -1,9 +1,9 @@
 import { LogOut } from "lucide-react";
 import { useRef } from "react";
-import { AppDialog } from "../components/ui/AppDialog";
-import { CardRow } from "../components/ui/CardRow";
-import { PillButton } from "../components/ui/PillButton";
-import { useI18n } from "../i18n";
+import { AppDialog } from "../shared/ui/AppDialog";
+import { SectionCard } from "../shared/ui/SectionCard";
+import { useI18n } from "../shared/i18n";
+import { Button } from "../shared/ui/Button";
 import { LEAVE_FAILURE_KEY } from "./failureMessages";
 import { useLeaveHome } from "./useLeaveHome";
 
@@ -24,18 +24,15 @@ export function LeaveHome({ onLeft }: Props) {
   const leaving = state.kind === "leaving";
 
   return (
-    <CardRow
-      as="section"
-      aria-labelledby="home-leave-heading"
-      className="items-center"
-      actions={
+    <SectionCard id="home-leave-heading" icon={LogOut} tone="danger" title={t("home.leave.heading")} hint={t("home.leave.stays")}>
+      <div>
         <AppDialog
           open={state.kind !== "closed"}
           onDismiss={cancel}
           trigger={
-            <PillButton variant="danger" onClick={open}>
+            <Button variant="danger" onClick={open}>
               {t("home.leave.open")}
-            </PillButton>
+            </Button>
           }
           // Destructive action: land on Cancel, not on the title.
           initialFocusRef={cancelRef}
@@ -54,20 +51,16 @@ export function LeaveHome({ onLeft }: Props) {
             </p>
           )}
           <div className="mt-4 flex flex-wrap gap-3">
-            <PillButton ref={cancelRef} variant="secondary" disabled={leaving} onClick={cancel}>
+            <Button ref={cancelRef} variant="secondary" disabled={leaving} onClick={cancel}>
               {t("home.leave.cancel")}
-            </PillButton>
-            <PillButton variant="danger" disabled={leaving} aria-busy={leaving} onClick={() => void confirm()}>
+            </Button>
+            <Button variant="danger" disabled={leaving} aria-busy={leaving} onClick={() => void confirm()}>
               <LogOut aria-hidden="true" className="size-5 shrink-0" />
               {t(leaving ? "home.leave.leaving" : "home.leave.confirm")}
-            </PillButton>
+            </Button>
           </div>
         </AppDialog>
-      }
-    >
-      <h2 id="home-leave-heading" className="my-0">
-        {t("home.leave.heading")}
-      </h2>
-    </CardRow>
+      </div>
+    </SectionCard>
   );
 }

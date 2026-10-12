@@ -1,5 +1,5 @@
-import type { Level } from "../api/checkIn";
-import type { MessageKey } from "../i18n";
+import type { Level } from "./api";
+import type { MessageKey } from "../shared/i18n";
 
 // A level added to the API without a text here fails the typecheck. Only Drained has a hint: it is the one
 // answer whose effect (no Tasks today) is not obvious from its name.

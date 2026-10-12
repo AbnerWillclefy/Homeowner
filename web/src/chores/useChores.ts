@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { listChores, type Chore, type Failure } from "../api/chores";
-import { getCategories, getDemands } from "../api/profile";
+import { listChores, type Chore, type Failure } from "./api";
+import { getCategories, getDemands } from "../profile/api";
 
 export type ChoresState =
   | { kind: "loading" }

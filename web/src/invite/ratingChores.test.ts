@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Chore } from "../api/chores";
+import type { Chore } from "../chores/api";
 import { RATING_CHORE_COUNT, selectChoresToRate } from "./ratingChores";
 
 function chore(id: string, name: string, baseEffort: number, importance = "normal"): Chore {

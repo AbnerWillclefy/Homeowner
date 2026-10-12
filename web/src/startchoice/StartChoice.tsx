@@ -1,6 +1,8 @@
-import { AppDialog } from "../components/ui/AppDialog";
-import { useI18n, type MessageKey } from "../i18n";
-import { rightAwayOutcome, type RightAwayOutcome } from "./startChoice";
+import { AppDialog } from "../shared/ui/AppDialog";
+import { ButtonRow } from "../shared/ui/ButtonRow";
+import { useI18n, type MessageKey } from "../shared/i18n";
+import { Button } from "../shared/ui/Button";
+import { rightAwayOutcome, type RightAwayOutcome } from "./rightAwayOutcome";
 import { useRightAway } from "./useRightAway";
 
 const FAILURE_KEY = {
@@ -38,9 +40,9 @@ export function StartChoice({ onDecided, onPlanned }: Props) {
       {state.kind === "done" ? (
         <>
           <p role="status">{t(OUTCOME_KEY[rightAwayOutcome(state.plan)])}</p>
-          <button type="button" className="btn btn-primary" onClick={onDecided}>
+          <Button onClick={onDecided}>
             {t("startChoice.done.close")}
-          </button>
+          </Button>
         </>
       ) : (
         <>
@@ -52,13 +54,14 @@ export function StartChoice({ onDecided, onPlanned }: Props) {
           )}
 
           {/* A real disabled button while planning, so a second tap cannot send a second request. */}
-          <button type="button" className="btn btn-primary" disabled={planning} aria-busy={planning} onClick={() => void start()}>
-            {state.kind === "failed" && state.reason !== "not-signed-in" ? t("startChoice.retry") : t("startChoice.now.button")}
-          </button>
-
-          <button type="button" className="btn" disabled={planning} onClick={onDecided}>
-            {t("startChoice.tomorrow.button")}
-          </button>
+          <ButtonRow className="mt-2">
+            <Button disabled={planning} aria-busy={planning} onClick={() => void start()}>
+              {state.kind === "failed" && state.reason !== "not-signed-in" ? t("startChoice.retry") : t("startChoice.now.button")}
+            </Button>
+            <Button variant="secondary" disabled={planning} onClick={onDecided}>
+              {t("startChoice.tomorrow.button")}
+            </Button>
+          </ButtonRow>
         </>
       )}
     </AppDialog>

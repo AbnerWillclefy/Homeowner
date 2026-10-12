@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { Chore, ChoreWire, SaveChoreResult } from "../api/chores";
-import type { FieldCodes } from "../api/home";
-import { WEEKDAYS } from "../api/profile";
-import { ButtonRow } from "../components/ui/ButtonRow";
-import { Card } from "../components/ui/Card";
-import { PillButton } from "../components/ui/PillButton";
-import { useI18n, type MessageKey } from "../i18n";
+import type { Chore, ChoreWire, SaveChoreResult } from "./api";
+import type { FieldCodes } from "../home/api";
+import { WEEKDAYS } from "../profile/api";
+import { ButtonRow } from "../shared/ui/ButtonRow";
+import { Card } from "../shared/ui/Card";
+import { useI18n, type MessageKey } from "../shared/i18n";
 import { categoryLabel, demandLabel, importanceLabel, labelText, type Label } from "../profile/labels";
 import { DISPLAY_WEEKDAYS, weekdayLabel } from "../profile/weekdays";
+import { Button } from "../shared/ui/Button";
 import { choreFieldErrorKey } from "./fieldErrors";
 import { SAVE_FAILURE_KEY } from "./failureMessages";
 import { EFFORT_LEVELS, effortLevelKey, levelToEffort } from "./effortLevels";
@@ -242,7 +242,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
         {/* The region is always present so a screen reader announces the suggestion when it appears. */}
         <div role="status">{showSuggestion && <p>{t("chores.form.suggestion")}</p>}</div>
         {showSuggestion && (
-          <PillButton
+          <Button
             variant="secondary"
             disabled={saving}
             onClick={() => {
@@ -251,7 +251,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
             }}
           >
             {t("chores.form.suggestion.action")}
-          </PillButton>
+          </Button>
         )}
 
         {group(
@@ -328,12 +328,12 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
         )}
 
         <ButtonRow className="mt-4">
-          <PillButton type="submit" disabled={saving} aria-busy={saving}>
+          <Button type="submit" disabled={saving} aria-busy={saving}>
             {t(saving ? "chores.form.saving" : mode === "edit" ? "chores.form.submit.save" : "chores.form.submit.create")}
-          </PillButton>
-          <PillButton variant="secondary" disabled={saving} onClick={onCancel}>
+          </Button>
+          <Button variant="secondary" disabled={saving} onClick={onCancel}>
             {t("chores.form.cancel")}
-          </PillButton>
+          </Button>
         </ButtonRow>
       </form>
     </Card>

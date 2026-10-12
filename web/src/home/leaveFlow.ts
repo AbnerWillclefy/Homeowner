@@ -1,4 +1,4 @@
-import type { FailureReason } from "../api/home";
+import type { FailureReason } from "./api";
 
 export type LeaveState =
   | { kind: "closed" }

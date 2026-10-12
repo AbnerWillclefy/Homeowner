@@ -1,4 +1,4 @@
-import type { ChoreWire } from "../api/chores";
+import type { ChoreWire } from "../chores/api";
 import {
   createHome,
   getHome,
@@ -7,7 +7,7 @@ import {
   type Home,
   type HomeSettings,
   type UpdateHomeResult,
-} from "../api/home";
+} from "./api";
 
 /** A create's result: `recovered` stands in for `already-resident` once that Home has been loaded. */
 export type CreateOutcome = Exclude<CreateHomeResult, { kind: "already-resident" }> | { kind: "recovered"; home: Home };

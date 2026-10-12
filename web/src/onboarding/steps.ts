@@ -1,4 +1,4 @@
-import { ONBOARDING_STEPS, type OnboardingPosition, type OnboardingStep } from "../api/onboarding";
+import { ONBOARDING_STEPS, type OnboardingPosition, type OnboardingStep } from "./api";
 import { stepPath } from "../app/routes";
 import type { ReminderAvailability } from "../push/platform";
 

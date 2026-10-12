@@ -1,4 +1,4 @@
-import type { Chore } from "../api/chores";
+import type { Chore } from "../chores/api";
 
 /** "About eight": how many of the most demanding Chores a new Resident is asked to rate. */
 export const RATING_CHORE_COUNT = 8;

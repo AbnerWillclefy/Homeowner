@@ -206,64 +206,6 @@
   padding-inline-end: calc(0.75rem + env(safe-area-inset-right));
 }
 
-/*
-  Buttons keep a real border, so they stay visible when forced-colors mode strips
-  backgrounds. min-height and min-width are in rem so the 44px target grows with text.
-*/
-@utility btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 2.75rem;
-  min-width: 2.75rem;
-  margin-block-start: 0.5rem;
-  margin-inline-end: 0.5rem;
-  padding: 0.5rem 1.25rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
-  background-color: var(--color-surface-raised);
-  color: var(--color-text);
-  font-weight: 600;
-  text-align: center;
-  @media (prefers-reduced-motion: no-preference) {
-    transition: background-color 150ms;
-  }
-  &:disabled {
-    cursor: not-allowed;
-    border-style: dashed;
-    background-color: var(--color-surface);
-    color: var(--color-muted);
-  }
-}
-
-@utility btn-primary {
-  border-color: var(--color-accent);
-  background-color: var(--color-accent);
-  color: var(--color-accent-contrast);
-  &:disabled {
-    border-color: var(--color-border);
-  }
-}
-
-/* A text-style button, for example "Sign up" inside a sentence. */
-@utility btn-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 2.75rem;
-  min-width: 2.75rem;
-  padding: 0 0.25rem;
-  border: none;
-  background: none;
-  color: var(--color-accent);
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
-  &:disabled {
-    cursor: not-allowed;
-    color: var(--color-muted);
-    text-decoration-style: dashed;
-  }
-}
-
 @keyframes toast-in {
   from {
     opacity: 0;

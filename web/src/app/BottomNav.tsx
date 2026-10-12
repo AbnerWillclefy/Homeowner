@@ -1,6 +1,6 @@
 import { CalendarCheck, House, ListChecks, User, type LucideIcon } from "lucide-react";
 import { NavLink } from "react-router";
-import { useI18n } from "../i18n";
+import { useI18n } from "../shared/i18n";
 import { NAV_ITEMS, type NavIcon } from "./navItems";
 import { TODAY_PATH } from "./routes";
 

@@ -1,4 +1,4 @@
-import type { MessageKey, Translate } from "../i18n";
+import type { MessageKey, Translate } from "../shared/i18n";
 
 /** The five named Effort levels, lightest first. Underneath they are the points 1 to 5, which is all the API knows. */
 export const EFFORT_LEVELS = ["very_light", "light", "medium", "heavy", "very_heavy"] as const;

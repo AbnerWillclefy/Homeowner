@@ -1,9 +1,9 @@
 import { ArrowLeft } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
 import { HealthBanner } from "../app/HealthBanner";
-import { PillButton } from "../components/ui/PillButton";
-import { useI18n } from "../i18n";
+import { useI18n } from "../shared/i18n";
 import { Settings } from "../settings/Settings";
+import { Button } from "../shared/ui/Button";
 
 interface Props {
   /** Quiet "Step n of m" label. */
@@ -50,7 +50,11 @@ export function OnboardingLayout({
       >
         <div className="onboarding-x-bar flex min-h-14 items-center justify-between gap-2">
           {onBack ? (
-            <BarButton label={t("onboarding.back")} disabled={disabled} onClick={onBack}>
+            <BarButton
+              label={t("onboarding.back")}
+              disabled={disabled}
+              onClick={onBack}
+            >
               <ArrowLeft aria-hidden="true" />
             </BarButton>
           ) : (
@@ -60,20 +64,34 @@ export function OnboardingLayout({
 
         <div className="onboarding-x flex flex-1 flex-col justify-center gap-2 py-4">
           <p className="text-center text-sm text-muted">{progress}</p>
-          <h1 id="onboarding-heading" ref={headingRef} tabIndex={-1} className="text-center focus:outline-none">
+          <h1
+            id="onboarding-heading"
+            ref={headingRef}
+            tabIndex={-1}
+            className="text-center focus:outline-none"
+          >
             {heading}
           </h1>
           <div className="mt-4">{children}</div>
           {failure && (
-            <div role="alert" className="mt-4 flex flex-col items-center gap-2 text-center">
+            <div
+              role="alert"
+              className="mt-4 flex flex-col items-center gap-2 text-center"
+            >
               <p className="text-danger">{failure.message}</p>
-              <PillButton variant="secondary" disabled={disabled} onClick={failure.onRetry}>
+              <Button
+                variant="secondary"
+                disabled={disabled}
+                onClick={failure.onRetry}
+              >
                 {t("onboarding.retry")}
-              </PillButton>
+              </Button>
             </div>
           )}
           <details className="mt-6 text-sm">
-            <summary className="min-h-11 cursor-pointer py-2 text-center">{t("settings.heading")}</summary>
+            <summary className="min-h-11 cursor-pointer py-2 text-center">
+              {t("settings.heading")}
+            </summary>
             <Settings />
           </details>
         </div>
@@ -100,15 +118,15 @@ function BarButton({
   children: ReactNode;
 }) {
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      icon
       aria-label={label}
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-pill border border-transparent text-text motion-safe:transition-colors motion-safe:duration-150 disabled:text-muted"
     >
       {children}
-    </button>
+    </Button>
   );
 }

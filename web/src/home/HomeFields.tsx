@@ -1,5 +1,5 @@
-import type { FieldCodes, HomeSettings } from "../api/home";
-import { useI18n } from "../i18n";
+import type { FieldCodes, HomeSettings } from "./api";
+import { useI18n } from "../shared/i18n";
 import { ALLOCATION_TIMES, formatAllocationTime } from "./allocationTimes";
 import { fieldErrorKey } from "./fieldErrors";
 

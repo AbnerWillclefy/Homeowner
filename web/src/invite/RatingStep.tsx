@@ -1,11 +1,12 @@
 import { useEffect } from "react";
-import type { Chore } from "../api/chores";
-import { PREFERENCES, type Preference } from "../api/profile";
-import { AppDialog } from "../components/ui/AppDialog";
-import { CardRow } from "../components/ui/CardRow";
-import { useI18n, type MessageKey } from "../i18n";
+import type { Chore } from "../chores/api";
+import { PREFERENCES, type Preference } from "../profile/api";
+import { AppDialog } from "../shared/ui/AppDialog";
+import { CardRow } from "../shared/ui/CardRow";
+import { useI18n, type MessageKey } from "../shared/i18n";
 import { effortName } from "../chores/effortLevels";
 import { categoryLabel, labelText, type Label } from "../profile/labels";
+import { Button } from "../shared/ui/Button";
 import { useRatingStep } from "./useRatingStep";
 
 const PREFERENCE_KEY: Record<Preference, MessageKey> = {
@@ -92,9 +93,9 @@ export function RatingStep({ onClose }: Props) {
         </ul>
       )}
 
-      <button type="button" className={state.kind === "ready" ? "btn btn-primary" : "btn"} onClick={onClose}>
+      <Button variant={state.kind === "ready" ? "primary" : "secondary"} onClick={onClose}>
         {state.kind === "ready" ? t("invite.rating.done") : t("invite.rating.skip")}
-      </button>
+      </Button>
     </AppDialog>
   );
 }

@@ -1,5 +1,5 @@
-import type { FailureReason, FieldCodes, Home, HomeSettings } from "../api/home";
-import { guardOnce } from "../components/ui/guardOnce";
+import type { FailureReason, FieldCodes, Home, HomeSettings } from "./api";
+import { guardOnce } from "../shared/ui/guardOnce";
 
 /** What a save can come back with. `recovered` is a create that found the person's existing Home and loaded it. */
 export type SaveOutcome =

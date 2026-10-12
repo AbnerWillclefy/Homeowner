@@ -1,4 +1,4 @@
-import type { CheckIn, Level } from "../api/checkIn";
+import type { CheckIn, Level } from "./api";
 
 /** What the Check-in form holds. `level` is null until the person picks one: no default is assumed. */
 export interface CheckInFormState {

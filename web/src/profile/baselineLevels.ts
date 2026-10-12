@@ -1,4 +1,4 @@
-import type { MessageKey } from "../i18n";
+import type { MessageKey } from "../shared/i18n";
 
 /**
  * A Baseline is picked as a level and saved as points; the API only ever sees points (0 to 20, MaxBaseline in

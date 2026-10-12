@@ -1,5 +1,5 @@
-import type { Failure } from "../api/chores";
-import type { MessageKey } from "../i18n";
+import type { Failure } from "./api";
+import type { MessageKey } from "../shared/i18n";
 
 type Reason = Failure["kind"];
 

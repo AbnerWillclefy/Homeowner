@@ -1,5 +1,5 @@
-import type { DeadInvite } from "../api/invites";
-import type { MessageKey } from "../i18n";
+import type { DeadInvite } from "./api";
+import type { MessageKey } from "../shared/i18n";
 
 /** What to tell a person whose Invite cannot be used. A new DeadInvite fails the typecheck until it has text. */
 export const DEAD_INVITE_KEY: Record<DeadInvite, MessageKey> = {

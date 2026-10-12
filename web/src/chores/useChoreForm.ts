@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
-import type { Chore, ChoreWire, SaveChoreResult } from "../api/chores";
-import type { FieldCodes } from "../api/home";
-import { useStableHandlers } from "../components/ui/useStableHandlers";
+import type { Chore, ChoreWire, SaveChoreResult } from "./api";
+import type { FieldCodes } from "../home/api";
+import { useStableHandlers } from "../shared/ui/useStableHandlers";
 import { createChoreSubmitter, type ChoreFormStatus } from "./choreSubmit";
 import type { ChoreFormState } from "./form";
 

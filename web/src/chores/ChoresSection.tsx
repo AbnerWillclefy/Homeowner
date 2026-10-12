@@ -1,13 +1,18 @@
 import { useRef, useState } from "react";
-import type { CatalogEntry } from "../api/catalog";
-import { createChore, updateChore, type Chore } from "../api/chores";
+import type { CatalogEntry } from "../catalog/api";
+import { createChore, updateChore, type Chore } from "./api";
 import { CatalogPicker } from "../catalog/CatalogPicker";
-import { ButtonRow } from "../components/ui/ButtonRow";
-import { Card } from "../components/ui/Card";
-import { PillButton } from "../components/ui/PillButton";
+import { ButtonRow } from "../shared/ui/ButtonRow";
+import { Card } from "../shared/ui/Card";
 import { formFromEntry } from "../catalog/review";
-import { useToast } from "../components/ui/useToast";
-import { useI18n } from "../i18n";
+import { useToast } from "../shared/ui/useToast";
+import { useI18n } from "../shared/i18n";
+import { Button } from "../shared/ui/Button";
+import { GroupHeading } from "../shared/ui/GroupHeading";
+import { PageHeader } from "../shared/ui/PageHeader";
+import { categoryLabel, labelText } from "../profile/labels";
+import { CategoryTile } from "./FactList";
+import { groupByCategory } from "./groups";
 import { ChoreForm } from "./ChoreForm";
 import { ChoreItem } from "./ChoreItem";
 import { LOAD_FAILURE_KEY } from "./failureMessages";
@@ -25,7 +30,8 @@ type Editing =
   | { kind: "fromCatalog"; entry: CatalogEntry };
 
 /**
- * A Home's Chores: the list, with add, edit and delete. Rendered inside the Home section, so it only
+ * A Home's Chores grouped by Category, with add (by hand or from the Catalog) at the top, and edit and delete
+ * on each. Rendered inside the Home section, so it only
  * exists while the signed-in User has a Home.
  */
 export function ChoresSection() {
@@ -57,10 +63,10 @@ export function ChoresSection() {
   }
 
   return (
-    <section aria-labelledby="chores-heading">
-      <h2 id="chores-heading" ref={headingRef} tabIndex={-1}>
-        {t("chores.heading")}
-      </h2>
+    <section aria-labelledby="chores-heading" className="mt-0">
+      <PageHeader id="chores-heading" headingRef={headingRef} title={t("chores.heading")}>
+        {state.kind === "ready" && state.chores.length > 0 && t("chores.count", { count: state.chores.length })}
+      </PageHeader>
 
       {state.kind === "loading" && <p role="status">{t("chores.loading")}</p>}
 
@@ -70,50 +76,23 @@ export function ChoresSection() {
             {t(LOAD_FAILURE_KEY[state.reason])}
           </p>
           {state.reason !== "not-signed-in" && (
-            <PillButton variant="secondary" onClick={reload}>
+            <Button variant="secondary" onClick={reload}>
               {t("chores.retry")}
-            </PillButton>
+            </Button>
           )}
         </>
       )}
 
       {state.kind === "ready" && (
-        <>
-          {state.chores.length === 0 && editing.kind === "none" && (
-            <Card className="border-dashed">
-              <p>{t("chores.empty")}</p>
-            </Card>
+        <div className="flex flex-col gap-8">
+          {(editing.kind === "none" || editing.kind === "edit") && (
+            <ButtonRow>
+              <Button onClick={() => open({ kind: "new" })}>{t("chores.add")}</Button>
+              <Button variant="secondary" onClick={() => open({ kind: "catalog" })}>
+                {t("chores.addFromCatalog")}
+              </Button>
+            </ButtonRow>
           )}
-
-          <ul className="flex list-none flex-col gap-3 p-0">
-            {state.chores.map((chore: Chore) =>
-              editing.kind === "edit" && editing.id === chore.id ? (
-                <li key={chore.id}>
-                  <ChoreForm
-                    initial={formFromChore(chore)}
-                    mode="edit"
-                    idKey={chore.id}
-                    categories={state.categories}
-                    demands={state.demands}
-                    save={(input) => updateChore(chore.id, input)}
-                    onSaved={onSaved}
-                    onCancel={onCancel}
-                  />
-                </li>
-              ) : (
-                <ChoreItem
-                  key={chore.id}
-                  chore={chore}
-                  onEdit={() => open({ kind: "edit", id: chore.id })}
-                  onDeleted={(id) => {
-                    remove(id);
-                    // Another Chore's open form keeps what was typed in it, so this does not call settle.
-                    focusHeading();
-                  }}
-                />
-              ),
-            )}
-          </ul>
 
           {editing.kind === "new" && (
             <ChoreForm
@@ -145,15 +124,49 @@ export function ChoresSection() {
             <CatalogPicker onPick={(entry) => open({ kind: "fromCatalog", entry })} onClose={onCancel} />
           )}
 
-          {(editing.kind === "none" || editing.kind === "edit") && (
-            <ButtonRow className="mt-4">
-              <PillButton onClick={() => open({ kind: "new" })}>{t("chores.add")}</PillButton>
-              <PillButton variant="secondary" onClick={() => open({ kind: "catalog" })}>
-                {t("chores.addFromCatalog")}
-              </PillButton>
-            </ButtonRow>
+          {state.chores.length === 0 && editing.kind === "none" && (
+            <Card className="border-dashed">
+              <p className="my-0 text-muted">{t("chores.empty")}</p>
+            </Card>
           )}
-        </>
+
+          {groupByCategory(state.chores, state.categories).map((group) => (
+            <section key={group.category} aria-labelledby={`chores-${group.category}`} className="mt-0">
+              <GroupHeading count={group.chores.length} icon={<CategoryTile category={group.category} />}>
+                <span id={`chores-${group.category}`}>{labelText(t, categoryLabel(group.category))}</span>
+              </GroupHeading>
+              <ul className="m-0 flex list-none flex-col gap-3 p-0">
+                {group.chores.map((chore: Chore) =>
+                  editing.kind === "edit" && editing.id === chore.id ? (
+                    <li key={chore.id} className="my-0">
+                      <ChoreForm
+                        initial={formFromChore(chore)}
+                        mode="edit"
+                        idKey={chore.id}
+                        categories={state.categories}
+                        demands={state.demands}
+                        save={(input) => updateChore(chore.id, input)}
+                        onSaved={onSaved}
+                        onCancel={onCancel}
+                      />
+                    </li>
+                  ) : (
+                    <ChoreItem
+                      key={chore.id}
+                      chore={chore}
+                      onEdit={() => open({ kind: "edit", id: chore.id })}
+                      onDeleted={(id) => {
+                        remove(id);
+                        // Another Chore's open form keeps what was typed in it, so this does not call settle.
+                        focusHeading();
+                      }}
+                    />
+                  ),
+                )}
+              </ul>
+            </section>
+          ))}
+        </div>
       )}
     </section>
   );

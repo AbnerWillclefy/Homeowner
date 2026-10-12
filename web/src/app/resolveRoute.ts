@@ -1,4 +1,4 @@
-import type { OnboardingPosition, OnboardingStep } from "../api/onboarding";
+import type { OnboardingPosition, OnboardingStep } from "../onboarding/api";
 import { effectiveStep } from "../onboarding/steps";
 import type { OnboardingState } from "../onboarding/useOnboarding";
 import {

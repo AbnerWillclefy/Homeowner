@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { enUS } from "../i18n/catalogs/en-US";
-import { ptBR } from "../i18n/catalogs/pt-BR";
+import { enUS } from "../shared/i18n/catalogs/en-US";
+import { ptBR } from "../shared/i18n/catalogs/pt-BR";
 import { choreFieldErrorKey } from "./fieldErrors";
 
 // Every code backend/internal/chores/chores.go Validate can return, per field.

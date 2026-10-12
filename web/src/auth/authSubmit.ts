@@ -1,4 +1,4 @@
-import { guardOnce } from "../components/ui/guardOnce";
+import { guardOnce } from "../shared/ui/guardOnce";
 import type { CognitoFailure, CognitoResult, SignInResult } from "./cognito";
 
 /*

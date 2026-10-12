@@ -1,6 +1,7 @@
-import { useI18n } from "../i18n";
-import { useHealth } from "../useHealth";
-import { bannerFor } from "./healthBanner";
+import { useI18n } from "../shared/i18n";
+import { Button } from "../shared/ui/Button";
+import { useHealth } from "./useHealth";
+import { bannerFor } from "./bannerFor";
 
 /** A slim banner with Retry, shown only when the API is unavailable or unreachable. */
 export function HealthBanner() {
@@ -15,9 +16,9 @@ export function HealthBanner() {
       className="my-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-surface-raised px-3 py-1 text-sm"
     >
       <p className="my-1 min-w-0 flex-1">{t(key)}</p>
-      <button type="button" className="btn my-1 me-0" onClick={retry}>
+      <Button variant="secondary" className="my-1" onClick={retry}>
         {t("health.retry")}
-      </button>
+      </Button>
     </div>
   );
 }

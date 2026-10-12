@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Home } from "../api/home";
+import type { Home } from "./api";
 import type { ReviewItem } from "../catalog/review";
 import { emptyForm } from "../chores/form";
 import { createHomeSubmitter, type CreateStatus } from "./createHomeSubmit";

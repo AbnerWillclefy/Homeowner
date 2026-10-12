@@ -1,4 +1,4 @@
-import type { Translate } from "../i18n";
+import type { Translate } from "../shared/i18n";
 import { effortName } from "../chores/effortLevels";
 
 /** The Effort line of a Task: its current level, and the base level too once it has grown above it. */

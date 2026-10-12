@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Translate } from "../i18n";
-import { enUS } from "../i18n/catalogs/en-US";
+import type { Translate } from "../shared/i18n";
+import { enUS } from "../shared/i18n/catalogs/en-US";
 import { taskEffortText } from "./taskEffort";
 
 const t: Translate = (key, params) => {

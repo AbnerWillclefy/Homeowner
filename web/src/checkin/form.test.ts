@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CheckIn } from "../api/checkIn";
+import type { CheckIn } from "./api";
 import { emptyForm, formFrom, submission, toggledRestriction } from "./form";
 
 const DEMANDS = ["heavy_lifting", "bending", "heights", "strong_chemicals"];

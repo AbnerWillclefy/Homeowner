@@ -1,7 +1,8 @@
 import { Navigate, Outlet, useLocation } from "react-router";
-import { useI18n, type MessageKey } from "../i18n";
+import { useI18n, type MessageKey } from "../shared/i18n";
 import { useInvite } from "../invite/PendingInviteProvider";
 import type { OnboardingProblem } from "../onboarding/useOnboarding";
+import { Button } from "../shared/ui/Button";
 import { useAppAuth } from "./AuthProvider";
 import { PageFrame } from "./PageFrame";
 import { onboardingInput, resolveRoute } from "./resolveRoute";
@@ -79,9 +80,9 @@ function Retry() {
       <section>
         <p role="alert">{t(PROBLEM_KEY[problem])}</p>
         {problem !== "not-signed-in" && (
-          <button type="button" className="btn" onClick={onboarding.retry}>
+          <Button variant="secondary" onClick={onboarding.retry}>
             {t("onboarding.retry")}
-          </button>
+          </Button>
         )}
       </section>
     </PageFrame>

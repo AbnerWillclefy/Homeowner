@@ -1,4 +1,4 @@
-import type { WriteResult } from "../api/profile";
+import type { WriteResult } from "./api";
 
 export interface Change {
   /** Names the control (for example `baseline:monday`), so only a repeat on the same control is ignored. */

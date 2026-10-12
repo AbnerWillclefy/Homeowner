@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { WEEKDAYS } from "../api/profile";
-import type { FieldCodes } from "../api/home";
-import { useI18n } from "../i18n";
+import { WEEKDAYS } from "../profile/api";
+import type { FieldCodes } from "../home/api";
+import { useI18n } from "../shared/i18n";
 import { DISPLAY_WEEKDAYS, weekdayLabel } from "../profile/weekdays";
 import {
   answerErrorKey,

@@ -1,4 +1,4 @@
-import type { Chore, ChoreWire } from "../api/chores";
+import type { Chore, ChoreWire } from "./api";
 
 /** Everything the Chore form holds, as typed. The interval stays text so a blank can mean one-off. */
 export interface ChoreFormState {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Home } from "../api/home";
-import type { AcceptInviteResult } from "../api/invites";
+import type { Home } from "../home/api";
+import type { AcceptInviteResult } from "./api";
 import { createJoiner } from "./joinSubmit";
 import type { JoinState } from "./useJoinInvite";
 

@@ -1,9 +1,10 @@
-import { CardRow } from "../components/ui/CardRow";
-import { PillButton } from "../components/ui/PillButton";
-import { useSubmitOnce } from "../components/ui/useSubmitOnce";
-import { useToast } from "../components/ui/useToast";
-import { createInvite } from "../api/invites";
-import { useI18n, type MessageKey } from "../i18n";
+import { Share2, UserPlus } from "lucide-react";
+import { SectionCard } from "../shared/ui/SectionCard";
+import { useSubmitOnce } from "../shared/ui/useSubmitOnce";
+import { useToast } from "../shared/ui/useToast";
+import { createInvite } from "./api";
+import { useI18n, type MessageKey } from "../shared/i18n";
+import { Button } from "../shared/ui/Button";
 import { inviteLink, shareInvite } from "./share";
 
 const CREATE_FAILURE_KEY = {
@@ -40,19 +41,13 @@ export function InviteShare() {
   });
 
   return (
-    <CardRow
-      as="section"
-      aria-labelledby="invite-share-heading"
-      className="items-center"
-      actions={
-        <PillButton variant="primary" disabled={working} aria-busy={working} onClick={() => void onClick()}>
+    <SectionCard id="invite-share-heading" icon={UserPlus} title={t("invite.share.heading")} hint={t("invite.share.hint")}>
+      <div>
+        <Button variant="primary" disabled={working} aria-busy={working} onClick={() => void onClick()}>
+          <Share2 aria-hidden="true" className="size-5 shrink-0" />
           {working ? t("invite.share.creating") : t("invite.share.button")}
-        </PillButton>
-      }
-    >
-      <h2 id="invite-share-heading" className="my-0">
-        {t("invite.share.heading")}
-      </h2>
-    </CardRow>
+        </Button>
+      </div>
+    </SectionCard>
   );
 }

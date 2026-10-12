@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import { useShell } from "../app/ShellContext";
 import { useSession } from "../app/SessionProvider";
-import type { Home } from "../api/home";
-import { useI18n } from "../i18n";
+import type { Home } from "./api";
+import { useI18n } from "../shared/i18n";
 import { useInvite } from "../invite/PendingInviteProvider";
+import { Button } from "../shared/ui/Button";
 import { CreateHome } from "./CreateHome";
 import { LOAD_FAILURE_KEY } from "./failureMessages";
 import { homeView } from "./homeView";
@@ -33,9 +34,9 @@ export function HomeGate({ children }: { children(home: Home): ReactNode }) {
             {t(LOAD_FAILURE_KEY[state.reason])}
           </p>
           {state.reason !== "not-signed-in" && (
-            <button type="button" className="btn" onClick={reload}>
+            <Button variant="secondary" onClick={reload}>
               {t("home.retry")}
-            </button>
+            </Button>
           )}
         </section>
       );

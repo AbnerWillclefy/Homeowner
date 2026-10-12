@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useToast } from "../components/ui/useToast";
+import { useToast } from "../shared/ui/useToast";
 import { performChange } from "../profile/performChange";
-import { listChores, type Chore } from "../api/chores";
+import { listChores, type Chore } from "../chores/api";
 import {
   getOwnChoreSettings,
   putChorePreference,
   setChoreRestriction,
   type OwnChoreSetting,
   type OwnChoreSettings,
-} from "../api/choreSettings";
-import type { Preference, WriteResult } from "../api/profile";
+} from "../profile/choreSettingsApi";
+import type { Preference, WriteResult } from "../profile/api";
 import { selectChoresToRate } from "./ratingChores";
 
 export type RatingState =

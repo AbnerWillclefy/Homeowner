@@ -1,5 +1,5 @@
-import { useI18n } from "../i18n";
-import { INSTALL_STEP_KEYS } from "./installSteps";
+import { useI18n } from "../shared/i18n";
+import { INSTALL_STEP_KEYS } from "./installStepKeys";
 
 /** The iPhone Add to Home Screen steps. Onboarding supplies its own heading, so it turns this one off. */
 export function InstallSteps({ showHeading = true }: { showHeading?: boolean }) {

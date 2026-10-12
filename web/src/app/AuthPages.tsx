@@ -2,7 +2,7 @@ import { Navigate, useLocation, useNavigate } from "react-router";
 import { Confirm } from "../auth/Confirm";
 import { SignIn } from "../auth/SignIn";
 import { SignUp } from "../auth/SignUp";
-import { useToast } from "../components/ui/useToast";
+import { useToast } from "../shared/ui/useToast";
 import { useAppAuth } from "./AuthProvider";
 import { CONFIRM_PATH, SIGN_IN_PATH, SIGN_UP_PATH, authState, confirmNeedsEmail, type AuthRouteState } from "./routes";
 

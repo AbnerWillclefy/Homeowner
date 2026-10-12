@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
-import { getCheckIn, putCheckIn, type Level } from "../api/checkIn";
-import { getDemands } from "../api/profile";
+import { getCheckIn, putCheckIn, type Level } from "./api";
+import { getDemands } from "../profile/api";
 import { checkInReducer, type CheckInState, type SaveFailure } from "./state";
 
 /**

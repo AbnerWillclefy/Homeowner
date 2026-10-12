@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Home } from "../api/home";
+import type { Home } from "./api";
 import { createSettingsSubmitter, type FormStatus, type SaveOutcome } from "./settingsSubmit";
 
 const home = { timezone: "Europe/Lisbon", allocationTime: "07:00" } as Home;
