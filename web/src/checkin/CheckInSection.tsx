@@ -1,6 +1,6 @@
 import type { CheckIn } from "../api/checkIn";
 import { CardRow } from "../components/ui/CardRow";
-import { PillButton } from "../components/ui/PillButton";
+import { Button } from "../shared/ui/Button";
 import { useI18n } from "../i18n";
 import { demandLabel, labelText } from "../profile/labels";
 import { CheckInDialog } from "./CheckInDialog";
@@ -43,9 +43,9 @@ export function CheckInSection({ checkIn, open, onOpen, onClose }: Props) {
         <CardRow
           actions={
             state.reason !== "not-signed-in" && (
-              <PillButton variant="secondary" onClick={checkIn.reload}>
+              <Button variant="secondary" onClick={checkIn.reload}>
                 {t("checkin.retry")}
-              </PillButton>
+              </Button>
             )
           }
         >
@@ -59,9 +59,9 @@ export function CheckInSection({ checkIn, open, onOpen, onClose }: Props) {
         <>
           <CardRow
             actions={
-              <PillButton variant={view === "prompt" ? "primary" : "secondary"} onClick={onOpen}>
+              <Button variant={view === "prompt" ? "primary" : "secondary"} onClick={onOpen}>
                 {t(view === "prompt" ? "checkin.open" : "checkin.change")}
-              </PillButton>
+              </Button>
             }
           >
             {view === "prompt" ? (

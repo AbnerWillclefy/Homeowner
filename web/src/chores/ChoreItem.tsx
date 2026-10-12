@@ -5,7 +5,7 @@ import { ButtonRow } from "../components/ui/ButtonRow";
 import { CardRow } from "../components/ui/CardRow";
 import { CategoryGlyph } from "../components/ui/CategoryGlyph";
 import { categoryStyle } from "../components/ui/categoryStyle";
-import { PillButton } from "../components/ui/PillButton";
+import { Button } from "../shared/ui/Button";
 import { useSubmitOnce } from "../components/ui/useSubmitOnce";
 import { useI18n } from "../i18n";
 import { categoryLabel, labelText } from "../profile/labels";
@@ -58,15 +58,15 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
 
   const actions = !confirming && (
     <>
-      <PillButton
+      <Button
         variant="secondary"
         icon
         aria-label={t("chores.item.edit.label", { name: chore.name })}
         onClick={onEdit}
       >
         <Pencil size={20} aria-hidden="true" />
-      </PillButton>
-      <PillButton
+      </Button>
+      <Button
         ref={deleteRef}
         variant="secondary"
         icon
@@ -74,7 +74,7 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
         onClick={() => setRemove({ kind: "confirming" })}
       >
         <Trash2 size={20} aria-hidden="true" />
-      </PillButton>
+      </Button>
     </>
   );
 
@@ -94,17 +94,17 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
               </p>
             )}
             <ButtonRow className="justify-end">
-              <PillButton ref={keepRef} variant="secondary" disabled={remove.kind === "deleting"} onClick={cancel}>
+              <Button ref={keepRef} variant="secondary" disabled={remove.kind === "deleting"} onClick={cancel}>
                 {t("chores.delete.cancel")}
-              </PillButton>
-              <PillButton
+              </Button>
+              <Button
                 variant="danger"
                 disabled={remove.kind === "deleting"}
                 aria-busy={remove.kind === "deleting"}
                 onClick={() => void confirmDelete()}
               >
                 {t(remove.kind === "deleting" ? "chores.delete.deleting" : "chores.delete.confirm")}
-              </PillButton>
+              </Button>
             </ButtonRow>
           </div>
         )}

@@ -7,7 +7,7 @@ import { failureMessage, fieldError } from "./failureText";
 import { Card } from "../components/ui/Card";
 import { FormError } from "../components/ui/FormError";
 import { PasswordField } from "../components/ui/PasswordField";
-import { PillButton } from "../components/ui/PillButton";
+import { Button } from "../shared/ui/Button";
 import { useStableHandlers } from "../components/ui/useStableHandlers";
 
 interface Props {
@@ -63,9 +63,9 @@ export function SignIn({ initialEmail, logIn, onNeedsConfirm, onNeedsSignUp }: P
           {...fieldError(problem, "password", FORM)}
         />
         <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
-        <PillButton type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>
+        <Button type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>
           {busy ? t("signIn.submitting") : t("signIn.submit")}
-        </PillButton>
+        </Button>
       </form>
       <p className="mt-4 text-center">
         {t("signIn.newHere")}{" "}

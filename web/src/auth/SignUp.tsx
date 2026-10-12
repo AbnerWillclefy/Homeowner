@@ -12,7 +12,7 @@ import { Card } from "../components/ui/Card";
 import { FormError } from "../components/ui/FormError";
 import { PasswordField } from "../components/ui/PasswordField";
 import { PasswordRules } from "../components/ui/PasswordRules";
-import { PillButton } from "../components/ui/PillButton";
+import { Button } from "../shared/ui/Button";
 import { useStableHandlers } from "../components/ui/useStableHandlers";
 
 const ANNOUNCE_DELAY_MS = 600;
@@ -131,9 +131,9 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
         </div>
 
         <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
-        <PillButton type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>
+        <Button type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>
           {busy ? t("signUp.submitting") : t("signUp.submit")}
-        </PillButton>
+        </Button>
       </form>
       <p className="mt-4 text-center">
         {t("signUp.haveLogin")}{" "}

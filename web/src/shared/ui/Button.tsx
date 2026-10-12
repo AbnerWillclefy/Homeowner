@@ -1,10 +1,10 @@
 import { Slot } from "@radix-ui/react-slot";
 import type { ComponentProps } from "react";
 
-export type PillVariant = "primary" | "secondary" | "danger";
+export type ButtonVariant = "primary" | "secondary" | "danger";
 
 interface Props extends ComponentProps<"button"> {
-  variant?: PillVariant;
+  variant?: ButtonVariant;
   /** Render the child (for example a router Link) with the button's look instead of a <button>. */
   asChild?: boolean;
   /** A square, icon-only button: a real button with an edge, in contrast to a decorative glyph. */
@@ -13,13 +13,13 @@ interface Props extends ComponentProps<"button"> {
 
 // Whole class strings, so Tailwind finds them. Every variant keeps a border (forced-colors mode);
 // danger also carries a thick edge so it is not told apart by colour alone.
-const VARIANTS: Record<PillVariant, string> = {
+const VARIANTS: Record<ButtonVariant, string> = {
   primary: "border-accent bg-accent text-accent-contrast",
   secondary: "border-border bg-surface-raised text-text",
   danger: "border-2 border-danger bg-surface-raised text-danger font-bold",
 };
 
-export function PillButton({ variant = "primary", asChild = false, icon = false, className = "", type, ...rest }: Props) {
+export function Button({ variant = "primary", asChild = false, icon = false, className = "", type, ...rest }: Props) {
   const Comp = asChild ? Slot : "button";
   return (
     <Comp

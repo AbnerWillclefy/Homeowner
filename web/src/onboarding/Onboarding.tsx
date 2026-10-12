@@ -7,7 +7,7 @@ import { BaselineFields, PreferenceFields, ProfileStatus, RestrictionFields } fr
 import { useProfile, type ProfileState } from "../profile/useProfile";
 import { EnableReminders } from "../push/EnableReminders";
 import { InstallSteps } from "../push/InstallSteps";
-import { PillButton } from "../components/ui/PillButton";
+import { Button } from "../shared/ui/Button";
 import { allBaselineDaysSet } from "./baselineComplete";
 import { OnboardingLayout } from "./OnboardingLayout";
 import { progress } from "./steps";
@@ -209,7 +209,7 @@ function NextButton({
 }: NextSpec & { saving: boolean }) {
   const { t } = useI18n();
   return (
-    <PillButton
+    <Button
       variant={primary ? "primary" : "secondary"}
       className="w-full"
       disabled={saving || disabled}
@@ -217,6 +217,6 @@ function NextButton({
       onClick={onClick}
     >
       {saving ? t("onboarding.saving") : t(label)}
-    </PillButton>
+    </Button>
   );
 }

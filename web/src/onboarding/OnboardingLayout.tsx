@@ -1,7 +1,7 @@
 import { ArrowLeft } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
 import { HealthBanner } from "../app/HealthBanner";
-import { PillButton } from "../components/ui/PillButton";
+import { Button } from "../shared/ui/Button";
 import { useI18n } from "../i18n";
 import { Settings } from "../settings/Settings";
 
@@ -79,13 +79,13 @@ export function OnboardingLayout({
               className="mt-4 flex flex-col items-center gap-2 text-center"
             >
               <p className="text-danger">{failure.message}</p>
-              <PillButton
+              <Button
                 variant="secondary"
                 disabled={disabled}
                 onClick={failure.onRetry}
               >
                 {t("onboarding.retry")}
-              </PillButton>
+              </Button>
             </div>
           )}
           <details className="mt-6 text-sm">

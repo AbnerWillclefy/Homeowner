@@ -4,7 +4,7 @@ import { createChore, updateChore, type Chore } from "../api/chores";
 import { CatalogPicker } from "../catalog/CatalogPicker";
 import { ButtonRow } from "../components/ui/ButtonRow";
 import { Card } from "../components/ui/Card";
-import { PillButton } from "../components/ui/PillButton";
+import { Button } from "../shared/ui/Button";
 import { formFromEntry } from "../catalog/review";
 import { useToast } from "../components/ui/useToast";
 import { useI18n } from "../i18n";
@@ -70,9 +70,9 @@ export function ChoresSection() {
             {t(LOAD_FAILURE_KEY[state.reason])}
           </p>
           {state.reason !== "not-signed-in" && (
-            <PillButton variant="secondary" onClick={reload}>
+            <Button variant="secondary" onClick={reload}>
               {t("chores.retry")}
-            </PillButton>
+            </Button>
           )}
         </>
       )}
@@ -147,10 +147,10 @@ export function ChoresSection() {
 
           {(editing.kind === "none" || editing.kind === "edit") && (
             <ButtonRow className="mt-4">
-              <PillButton onClick={() => open({ kind: "new" })}>{t("chores.add")}</PillButton>
-              <PillButton variant="secondary" onClick={() => open({ kind: "catalog" })}>
+              <Button onClick={() => open({ kind: "new" })}>{t("chores.add")}</Button>
+              <Button variant="secondary" onClick={() => open({ kind: "catalog" })}>
                 {t("chores.addFromCatalog")}
-              </PillButton>
+              </Button>
             </ButtonRow>
           )}
         </>

@@ -1,5 +1,5 @@
 import { CardRow } from "../components/ui/CardRow";
-import { PillButton } from "../components/ui/PillButton";
+import { Button } from "../shared/ui/Button";
 import { useSubmitOnce } from "../components/ui/useSubmitOnce";
 import { useToast } from "../components/ui/useToast";
 import { createInvite } from "../api/invites";
@@ -45,9 +45,9 @@ export function InviteShare() {
       aria-labelledby="invite-share-heading"
       className="items-center"
       actions={
-        <PillButton variant="primary" disabled={working} aria-busy={working} onClick={() => void onClick()}>
+        <Button variant="primary" disabled={working} aria-busy={working} onClick={() => void onClick()}>
           {working ? t("invite.share.creating") : t("invite.share.button")}
-        </PillButton>
+        </Button>
       }
     >
       <h2 id="invite-share-heading" className="my-0">

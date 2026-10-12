@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { lookupInvite, type LookupInviteResult } from "../api/invites";
 import { Card } from "../components/ui/Card";
-import { PillButton } from "../components/ui/PillButton";
+import { Button } from "../shared/ui/Button";
 import { useI18n } from "../i18n";
 import { DEAD_INVITE_KEY, isDeadInvite } from "./deadInvite";
 
@@ -40,9 +40,9 @@ export function SignedOutInvite({ token, onDismiss, children }: Props) {
       <Card as="section" aria-labelledby="invite-dead-heading">
         <h2 id="invite-dead-heading">{t("invite.signedOut.heading")}</h2>
         <p role="alert">{t(DEAD_INVITE_KEY[result.kind])}</p>
-        <PillButton variant="secondary" className="mt-2 w-full" onClick={onDismiss}>
+        <Button variant="secondary" className="mt-2 w-full" onClick={onDismiss}>
           {t("invite.dead.continue")}
-        </PillButton>
+        </Button>
       </Card>
     );
   }

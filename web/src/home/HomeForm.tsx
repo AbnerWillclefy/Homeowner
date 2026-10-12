@@ -1,6 +1,6 @@
 import type { Home, HomeSettings } from "../api/home";
 import { Card } from "../components/ui/Card";
-import { PillButton } from "../components/ui/PillButton";
+import { Button } from "../shared/ui/Button";
 import { useToast } from "../components/ui/useToast";
 import { useI18n, type MessageKey } from "../i18n";
 import { FormStatusMessage } from "./FormStatusMessage";
@@ -55,9 +55,9 @@ export function HomeForm({ idPrefix, copy, initial, timezones, save, onSaved, on
         />
         <FormStatusMessage status={form.status} />
         <div className="mt-4 flex flex-wrap gap-3">
-          <PillButton type="submit" variant="primary" disabled={saving} aria-busy={saving}>
+          <Button type="submit" variant="primary" disabled={saving} aria-busy={saving}>
             {t(saving ? copy.submitting : copy.submit)}
-          </PillButton>
+          </Button>
         </div>
       </form>
     </Card>

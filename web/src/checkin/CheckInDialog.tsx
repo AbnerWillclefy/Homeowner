@@ -1,7 +1,7 @@
 import { useId, useState, type FormEvent } from "react";
 import { LEVELS, type CheckIn, type Level } from "../api/checkIn";
 import { AppDialog } from "../components/ui/AppDialog";
-import { PillButton } from "../components/ui/PillButton";
+import { Button } from "../shared/ui/Button";
 import { useSubmitOnce } from "../components/ui/useSubmitOnce";
 import { useToast } from "../components/ui/useToast";
 import { useI18n } from "../i18n";
@@ -75,12 +75,12 @@ export function CheckInDialog({
       dismissible={!saving}
       footer={
         <>
-          <PillButton variant="secondary" disabled={saving} onClick={onClose}>
+          <Button variant="secondary" disabled={saving} onClick={onClose}>
             {t("checkin.cancel")}
-          </PillButton>
-          <PillButton type="submit" form={formId} disabled={saving} aria-busy={saving}>
+          </Button>
+          <Button type="submit" form={formId} disabled={saving} aria-busy={saving}>
             {saving ? t("checkin.saving") : t("checkin.submit")}
-          </PillButton>
+          </Button>
         </>
       }
     >

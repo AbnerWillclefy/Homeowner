@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import type { FieldCodes } from "../api/home";
 import { CardRow } from "../components/ui/CardRow";
-import { PillButton } from "../components/ui/PillButton";
+import { Button } from "../shared/ui/Button";
 import { ChoreForm } from "../chores/ChoreForm";
 import { choreFieldErrorKey } from "../chores/fieldErrors";
 import { choreFacts } from "../chores/facts";
@@ -67,9 +67,9 @@ export function ReviewList({ items, errors, tooMany, onChange, disabled }: Props
           <p role="alert" className="text-danger">
             {t("catalog.review.lists.error")}
           </p>
-          <PillButton variant="secondary" onClick={lists.reload}>
+          <Button variant="secondary" onClick={lists.reload}>
             {t("chores.retry")}
-          </PillButton>
+          </Button>
         </>
       )}
 
@@ -174,15 +174,15 @@ function ReviewRow({
 
   const actions = !removing && (
     <>
-      <PillButton
+      <Button
         variant="secondary"
         disabled={disabled || !canEdit}
         aria-label={t("chores.item.edit.label", { name })}
         onClick={onEdit}
       >
         {t("catalog.review.edit")}
-      </PillButton>
-      <PillButton
+      </Button>
+      <Button
         variant="secondary"
         disabled={disabled}
         aria-label={t("catalog.review.remove.label", { name })}
@@ -193,7 +193,7 @@ function ReviewRow({
         onClick={onRemove}
       >
         {t("catalog.review.remove")}
-      </PillButton>
+      </Button>
     </>
   );
 
@@ -217,12 +217,12 @@ function ReviewRow({
           <div role="group" aria-label={t("catalog.review.remove.label", { name })}>
             <p>{t("catalog.review.remove.prompt", { name })}</p>
             <div className="flex flex-wrap gap-3">
-              <PillButton ref={keepRef} variant="secondary" onClick={onKeep}>
+              <Button ref={keepRef} variant="secondary" onClick={onKeep}>
                 {t("catalog.review.remove.cancel")}
-              </PillButton>
-              <PillButton variant="danger" onClick={onConfirmRemove}>
+              </Button>
+              <Button variant="danger" onClick={onConfirmRemove}>
                 {t("catalog.review.remove.confirm")}
-              </PillButton>
+              </Button>
             </div>
           </div>
         )}

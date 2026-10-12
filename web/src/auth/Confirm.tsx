@@ -9,7 +9,7 @@ import { Card } from "../components/ui/Card";
 import { FormError } from "../components/ui/FormError";
 import { useStableHandlers } from "../components/ui/useStableHandlers";
 import { useToast } from "../components/ui/useToast";
-import { PillButton } from "../components/ui/PillButton";
+import { Button } from "../shared/ui/Button";
 
 const FORM = "confirm";
 
@@ -75,13 +75,13 @@ export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) 
           {...fieldError(problem, "code", FORM)}
         />
         <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
-        <PillButton type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>
+        <Button type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>
           {busy ? t("confirm.submitting") : t("confirm.submit")}
-        </PillButton>
+        </Button>
       </form>
-      <PillButton variant="secondary" className="mt-3 w-full" onClick={sendAgain} disabled={busy} aria-busy={busy}>
+      <Button variant="secondary" className="mt-3 w-full" onClick={sendAgain} disabled={busy} aria-busy={busy}>
         {t("confirm.resend")}
-      </PillButton>
+      </Button>
       <p className="mt-2 text-center">
         <button type="button" className="btn-link" onClick={onBack}>
           {t("confirm.useOtherEmail")}

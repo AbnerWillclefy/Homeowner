@@ -3,7 +3,7 @@ import type { CatalogEntry } from "../api/catalog";
 import type { Failure } from "../api/chores";
 import { choreFacts } from "../chores/facts";
 import { CardRow } from "../components/ui/CardRow";
-import { PillButton } from "../components/ui/PillButton";
+import { Button } from "../shared/ui/Button";
 import { useI18n, type MessageKey } from "../i18n";
 import { catalogName } from "./name";
 import { useCatalog } from "./useCatalog";
@@ -58,13 +58,13 @@ export function CatalogPicker({ onPick, onClose }: Props) {
                 <CardRow
                   className="mb-3"
                   actions={
-                    <PillButton
+                    <Button
                       variant="secondary"
                       aria-label={t("chores.catalog.add.label", { name })}
                       onClick={() => onPick(entry)}
                     >
                       {t("chores.catalog.add")}
-                    </PillButton>
+                    </Button>
                   }
                 >
                   <h4 className="mt-0 font-semibold">{name}</h4>
