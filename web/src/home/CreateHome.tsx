@@ -34,7 +34,10 @@ export function CreateHome({ onSaved, onRecovered }: Props) {
   const zones = useMemo(() => browserTimezones(), []);
   const options = useMemo(() => timezoneOptions(zones), [zones]);
   const initial = useMemo(
-    () => ({ timezone: defaultTimezone(zones, browserTimezone()), allocationTime: DEFAULT_ALLOCATION_TIME }),
+    () => ({
+      timezone: defaultTimezone(zones, browserTimezone()),
+      allocationTime: DEFAULT_ALLOCATION_TIME,
+    }),
     [zones],
   );
   const flow = useCreateHomeFlow(initial, { onSaved, onRecovered });
@@ -50,7 +53,10 @@ export function CreateHome({ onSaved, onRecovered }: Props) {
 
   const stepLine = (
     <p ref={stepRef} tabIndex={-1} className="text-muted">
-      {t("home.create.step", { step: STEPS.indexOf(step) + 1, total: STEPS.length })}
+      {t("home.create.step", {
+        step: STEPS.indexOf(step) + 1,
+        total: STEPS.length,
+      })}
     </p>
   );
 
@@ -63,7 +69,7 @@ export function CreateHome({ onSaved, onRecovered }: Props) {
       <section aria-labelledby="create-home-heading">
         {stepLine}
         <h2 id="create-home-heading">{t("home.create.heading")}</h2>
-        <form onSubmit={onSubmit} noValidate>
+        <form onSubmit={onSubmit} noValidate className="flex flex-col">
           <HomeFields
             idPrefix="create-home"
             values={flow.settings}
@@ -77,7 +83,7 @@ export function CreateHome({ onSaved, onRecovered }: Props) {
               {t("home.invalid.summary")}
             </p>
           )}
-          <button type="submit" className="btn btn-primary">
+          <button type="submit" className="btn btn-primary mt-6 mr-0">
             {t("home.create.next")}
           </button>
         </form>
@@ -117,24 +123,53 @@ export function CreateHome({ onSaved, onRecovered }: Props) {
 
           {flow.suggest.kind === "confirming" ? (
             <div role="group" aria-labelledby="create-regenerate-prompt">
-              <p id="create-regenerate-prompt">{t("catalog.regenerate.prompt")}</p>
-              <button type="button" className="btn" onClick={flow.cancelRegenerate}>
+              <p id="create-regenerate-prompt">
+                {t("catalog.regenerate.prompt")}
+              </p>
+              <button
+                type="button"
+                className="btn"
+                onClick={flow.cancelRegenerate}
+              >
                 {t("catalog.regenerate.cancel")}
               </button>
-              <button type="button" className="btn btn-primary" onClick={flow.confirmRegenerate}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={flow.confirmRegenerate}
+              >
                 {t("catalog.regenerate.confirm")}
               </button>
             </div>
           ) : (
             <>
-              <button type="button" className="btn" disabled={working} onClick={() => flow.setStep("settings")}>
+              <button
+                type="button"
+                className="btn"
+                disabled={working}
+                onClick={() => flow.setStep("settings")}
+              >
                 {t("home.create.back")}
               </button>
-              <button type="submit" className="btn btn-primary" disabled={working} aria-busy={working}>
-                {t(working ? "catalog.questions.submitting" : "catalog.questions.submit")}
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={working}
+                aria-busy={working}
+              >
+                {t(
+                  working
+                    ? "catalog.questions.submitting"
+                    : "catalog.questions.submit",
+                )}
               </button>
               {flow.canSkip && (
-                <button type="button" className="btn" disabled={working} onClick={flow.skip}>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={working}
+                  onClick={flow.skip}
+                >
                   {t("catalog.questions.skip")}
                 </button>
               )}
@@ -166,10 +201,21 @@ export function CreateHome({ onSaved, onRecovered }: Props) {
           {t(SAVE_FAILURE_KEY[flow.create.reason])}
         </p>
       )}
-      <button type="button" className="btn" disabled={saving} onClick={() => flow.setStep("questions")}>
+      <button
+        type="button"
+        className="btn"
+        disabled={saving}
+        onClick={() => flow.setStep("questions")}
+      >
         {t("home.create.back")}
       </button>
-      <button type="button" className="btn btn-primary" disabled={saving} aria-busy={saving} onClick={() => void flow.submit()}>
+      <button
+        type="button"
+        className="btn btn-primary"
+        disabled={saving}
+        aria-busy={saving}
+        onClick={() => void flow.submit()}
+      >
         {t(saving ? "home.create.submitting" : "home.create.submit")}
       </button>
     </>

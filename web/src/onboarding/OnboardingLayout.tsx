@@ -50,7 +50,11 @@ export function OnboardingLayout({
       >
         <div className="onboarding-x-bar flex min-h-14 items-center justify-between gap-2">
           {onBack ? (
-            <BarButton label={t("onboarding.back")} disabled={disabled} onClick={onBack}>
+            <BarButton
+              label={t("onboarding.back")}
+              disabled={disabled}
+              onClick={onBack}
+            >
               <ArrowLeft aria-hidden="true" />
             </BarButton>
           ) : (
@@ -60,20 +64,34 @@ export function OnboardingLayout({
 
         <div className="onboarding-x flex flex-1 flex-col justify-center gap-2 py-4">
           <p className="text-center text-sm text-muted">{progress}</p>
-          <h1 id="onboarding-heading" ref={headingRef} tabIndex={-1} className="text-center focus:outline-none">
+          <h1
+            id="onboarding-heading"
+            ref={headingRef}
+            tabIndex={-1}
+            className="text-center focus:outline-none"
+          >
             {heading}
           </h1>
           <div className="mt-4">{children}</div>
           {failure && (
-            <div role="alert" className="mt-4 flex flex-col items-center gap-2 text-center">
+            <div
+              role="alert"
+              className="mt-4 flex flex-col items-center gap-2 text-center"
+            >
               <p className="text-danger">{failure.message}</p>
-              <PillButton variant="secondary" disabled={disabled} onClick={failure.onRetry}>
+              <PillButton
+                variant="secondary"
+                disabled={disabled}
+                onClick={failure.onRetry}
+              >
                 {t("onboarding.retry")}
               </PillButton>
             </div>
           )}
           <details className="mt-6 text-sm">
-            <summary className="min-h-11 cursor-pointer py-2 text-center">{t("settings.heading")}</summary>
+            <summary className="min-h-11 cursor-pointer py-2 text-center">
+              {t("settings.heading")}
+            </summary>
             <Settings />
           </details>
         </div>
