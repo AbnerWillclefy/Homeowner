@@ -1,5 +1,6 @@
 import type { PlanTask } from "../api/dayPlan";
 import { Card } from "../components/ui/Card";
+import { CategoryGlyph } from "../components/ui/CategoryGlyph";
 import { categoryStyle } from "../components/ui/categoryStyle";
 import { useI18n } from "../i18n";
 import { categoryLabel, importanceLabel, labelText, type Label } from "../profile/labels";
@@ -21,7 +22,7 @@ export function TaskCard({ task, reasonFor }: Props) {
   const { t, locale } = useI18n();
   const text = (label: Label) => labelText(t, label);
 
-  const { id: category, icon: Icon } = categoryStyle(task.category);
+  const { id: category } = categoryStyle(task.category);
   const reason = (reasonFor === "assigned" ? assignmentReasonLabel : poolReasonLabel)(task.reason);
   const effort =
     task.currentEffort === task.baseEffort
@@ -36,12 +37,7 @@ export function TaskCard({ task, reasonFor }: Props) {
   return (
     <li className="list-none ps-0">
       <Card category={category} className="flex items-start gap-4">
-        <span
-          aria-hidden="true"
-          className="flex size-14 shrink-0 items-center justify-center rounded-pill border-2 border-current"
-        >
-          <Icon size={28} />
-        </span>
+        <CategoryGlyph category={category} />
         <div className="min-w-0 flex-1">
           <p className="my-0 text-sm font-semibold">{text(categoryLabel(category))}</p>
           <h4 className="my-1 text-lg font-bold leading-snug">{task.choreName}</h4>
