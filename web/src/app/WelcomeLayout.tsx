@@ -1,17 +1,13 @@
-import { useSession } from "./SessionProvider";
 import { Onboarding } from "../onboarding/Onboarding";
-import { Settings } from "../settings/Settings";
-import { PageFrame } from "./PageFrame";
+import { useSession } from "./SessionProvider";
 
-/** Onboarding at /welcome/<step>: full screen, no nav. The guard has already put the person on a valid step. */
+/**
+ * Onboarding at /welcome/<step>: full screen, no nav and no page chrome. The guard has already put the person on
+ * a valid step. The layout inside Onboarding carries the health banner and the Settings (appearance and language).
+ */
 export function WelcomeLayout() {
   const { onboarding } = useSession();
   const state = onboarding.state;
-  return (
-    <PageFrame>
-      {state.kind === "ready" && <Onboarding position={state.position} onPosition={onboarding.setPosition} />}
-      {/* Appearance and language stay reachable while setting up. */}
-      <Settings />
-    </PageFrame>
-  );
+  if (state.kind !== "ready") return null;
+  return <Onboarding position={state.position} onPosition={onboarding.setPosition} />;
 }
