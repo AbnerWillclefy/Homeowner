@@ -37,11 +37,7 @@ func (p *Planner) CheckIn(ctx context.Context, homeID, residentID string, in che
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	var zone string
-	if err := tx.QueryRow(ctx, `SELECT timezone FROM homes WHERE id = $1 FOR NO KEY UPDATE`, homeID).Scan(&zone); err != nil {
-		return 0, fmt.Errorf("check in: lock home: %w", err)
-	}
-	date, err := LocalDate(zone, now)
+	date, err := lockHome(ctx, tx, homeID, now)
 	if err != nil {
 		return 0, fmt.Errorf("check in: %w", err)
 	}

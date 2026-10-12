@@ -25,7 +25,7 @@ func (s *server) postDayPlanMe(w http.ResponseWriter, r *http.Request) {
 		s.internalError(w, err)
 		return
 	}
-	s.writeDayPlan(w, r)
+	s.getDayPlan(w, r)
 }
 
 // getDayPlan answers the caller's Home's Day Plan for today in the Home's zone:
@@ -33,11 +33,6 @@ func (s *server) postDayPlanMe(w http.ResponseWriter, r *http.Request) {
 // reads the plan the Allocation job stored. Before the Allocation time there is
 // no run, and the answer is `planned: false` with the open pool, not a 404.
 func (s *server) getDayPlan(w http.ResponseWriter, r *http.Request) {
-	s.writeDayPlan(w, r)
-}
-
-// writeDayPlan answers the caller's Day Plan for today.
-func (s *server) writeDayPlan(w http.ResponseWriter, r *http.Request) {
 	m := currentMembership(r.Context())
 	view, err := s.dayPlans.Today(r.Context(), m.Home.ID, m.Home.Timezone, m.ResidentID, s.deps.Clock.Now())
 	if err != nil {

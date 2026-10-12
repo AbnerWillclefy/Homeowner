@@ -179,13 +179,7 @@ func (p *Planner) PlanHome(ctx context.Context, homeID string, now time.Time) (O
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	var zone string
-	// FOR NO KEY UPDATE serialises planners but does not block the foreign key
-	// checks of rows that point at the Home.
-	if err := tx.QueryRow(ctx, `SELECT timezone FROM homes WHERE id = $1 FOR NO KEY UPDATE`, homeID).Scan(&zone); err != nil {
-		return "", fmt.Errorf("plan home: lock home: %w", err)
-	}
-	date, err := LocalDate(zone, now)
+	date, err := lockHome(ctx, tx, homeID, now)
 	if err != nil {
 		return "", fmt.Errorf("plan home: %w", err)
 	}

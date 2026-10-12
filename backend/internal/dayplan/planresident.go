@@ -2,7 +2,6 @@ package dayplan
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -36,11 +35,7 @@ func (p *Planner) PlanResident(ctx context.Context, homeID, residentID string, n
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	var zone string
-	if err := tx.QueryRow(ctx, `SELECT timezone FROM homes WHERE id = $1 FOR NO KEY UPDATE`, homeID).Scan(&zone); err != nil {
-		return "", fmt.Errorf("plan resident: lock home: %w", err)
-	}
-	date, err := LocalDate(zone, now)
+	date, err := lockHome(ctx, tx, homeID, now)
 	if err != nil {
 		return "", fmt.Errorf("plan resident: %w", err)
 	}
@@ -55,16 +50,9 @@ func (p *Planner) PlanResident(ctx context.Context, homeID, residentID string, n
 	if !found {
 		// The Home lock is held, so nobody else can create the run meanwhile.
 		run = storedRun{outcome: Planned, reasons: reasons{Energy: map[string]int{}, Assigned: []assigned{}, Pool: []pooled{}}}
-		body, err := json.Marshal(run.reasons)
+		run.id, err = insertRun(ctx, tx, homeID, date, now, p.alloc.Name(), Planned, run.reasons)
 		if err != nil {
 			return "", fmt.Errorf("plan resident: %w", err)
-		}
-		err = tx.QueryRow(ctx, `
-			INSERT INTO allocation_runs (home_id, plan_date, allocator, outcome, reasons, created_at)
-			VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-			homeID, date.Time(), p.alloc.Name(), string(Planned), body, now).Scan(&run.id)
-		if err != nil {
-			return "", fmt.Errorf("plan resident: create run: %w", err)
 		}
 	}
 
