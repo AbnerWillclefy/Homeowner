@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkin"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkinstore"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
 )
 
@@ -20,11 +23,33 @@ type loaded struct {
 }
 
 // energyOn is a Resident's Energy on the day: the points of their Baseline for
-// that weekday. A weekday they have not set is 0, not an error: that Resident
-// is given nothing. This is the one place the Check-in will scale or replace
-// the Baseline.
-func energyOn(p profile.Profile, day allocation.Date) int {
-	return p.Baseline[time.Weekday(day.Weekday())]
+// that weekday, scaled by their Check-in when they made one. A weekday they
+// have not set is 0, not an error, and no Check-in can raise it: that Resident
+// is given nothing. This is the one place the Check-in scales the Baseline.
+func energyOn(p profile.Profile, day allocation.Date, ci *checkinstore.CheckIn) int {
+	base := p.Baseline[time.Weekday(day.Weekday())]
+	if ci == nil {
+		return base
+	}
+	return checkin.Scale(base, ci.Level)
+}
+
+// demandRestrictions are the Demands the Resident cannot do on the day: their
+// lasting Restrictions, then the day-only ones from the Check-in that do not
+// repeat one.
+func demandRestrictions(p profile.Profile, ci *checkinstore.CheckIn) []allocation.Demand {
+	var out []allocation.Demand
+	for _, d := range p.Restrictions {
+		out = append(out, allocation.Demand(d))
+	}
+	if ci != nil {
+		for _, d := range ci.Demands {
+			if !slices.Contains(out, allocation.Demand(d)) {
+				out = append(out, allocation.Demand(d))
+			}
+		}
+	}
+	return out
 }
 
 // loadState reads the Home's open Tasks (overdue ones too: nothing is tied to a
@@ -53,13 +78,23 @@ func loadState(ctx context.Context, q pgx.Tx, homeID string, today allocation.Da
 	if err != nil {
 		return loaded{}, err
 	}
+	residentIDs := make([]string, len(residents))
+	for i, r := range residents {
+		residentIDs[i] = r.id
+	}
+	checkIns, err := checkinstore.LoadMany(ctx, q, residentIDs, today)
+	if err != nil {
+		return loaded{}, err
+	}
 
 	for _, r := range residents {
 		p := profiles[r.userID]
-		res := allocation.Resident{ID: r.id, Energy: energyOn(p, today), ChoreRestrictions: choreRestrictions[r.id]}
-		for _, d := range p.Restrictions {
-			res.DemandRestrictions = append(res.DemandRestrictions, allocation.Demand(d))
+		var ci *checkinstore.CheckIn
+		if c, ok := checkIns[r.id]; ok {
+			ci = &c
 		}
+		res := allocation.Resident{ID: r.id, Energy: energyOn(p, today, ci), ChoreRestrictions: choreRestrictions[r.id],
+			DemandRestrictions: demandRestrictions(p, ci)}
 		out.state.Residents = append(out.state.Residents, res)
 		out.energy[r.id] = res.Energy
 	}
@@ -151,6 +186,45 @@ type reasons struct {
 	Energy     map[string]int `json:"energy"`
 	Violations []violation    `json:"violations,omitempty"`
 	Error      string         `json:"error,omitempty"`
+}
+
+// add appends the assignments and the pool of a proposal. It is the one place
+// that turns an allocation.Result into the stored shape.
+func (rs *reasons) add(res allocation.Result) {
+	for _, a := range res.DayPlan.Assignments {
+		rs.Assigned = append(rs.Assigned, assigned{TaskID: a.TaskID, ResidentID: a.ResidentID, Reason: string(a.Reason)})
+	}
+	for _, e := range res.Pool {
+		rs.Pool = append(rs.Pool, pooled{TaskID: e.TaskID, Reason: string(e.Reason)})
+	}
+}
+
+// replan swaps one Resident's part of a planned run for the result of planning
+// them again: their Energy and assignments, and the pool. A Task that was
+// already in the pool and still is keeps its reason, since it is about
+// everyone; a Task newly released into the pool gets the new plan's reason.
+func (rs *reasons) replan(residentID string, energy int, res allocation.Result) {
+	oldPool := make(map[string]string, len(rs.Pool))
+	for _, e := range rs.Pool {
+		oldPool[e.TaskID] = e.Reason
+	}
+	if rs.Energy == nil {
+		rs.Energy = map[string]int{}
+	}
+	rs.Energy[residentID] = energy
+	others := make([]assigned, 0, len(rs.Assigned))
+	for _, a := range rs.Assigned {
+		if a.ResidentID != residentID {
+			others = append(others, a)
+		}
+	}
+	rs.Assigned, rs.Pool = others, []pooled{}
+	rs.add(res)
+	for i, e := range rs.Pool {
+		if old, was := oldPool[e.TaskID]; was {
+			rs.Pool[i].Reason = old
+		}
+	}
 }
 
 type assigned struct {

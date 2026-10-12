@@ -270,6 +270,42 @@ export const enUS = {
   "dayplan.pool.reason.two_person_deferred": "It needs two people, and they were not both free today.",
   "dayplan.pool.reason.invalid_effort": "Its Effort is not valid, so it was left out. Edit the Chore to fix it.",
   "dayplan.pool.reason.added_after_plan": "It was added after today's plan was made.",
+  "dayplan.energy.drained": "You checked in as Drained, so no Tasks were given to you today. Rest up.",
+
+  // Check-in
+  "checkin.heading": "Check-in",
+  "checkin.intro":
+    "Tell Homeowner how much Energy you have today. It scales your Baseline for today only, so your Tasks fit how you really feel. You can change it later today, and your Tasks will be planned again.",
+  "checkin.loading": "Loading your Check-in...",
+  "checkin.load.offline":
+    "Your Check-in could not be loaded because Homeowner cannot reach the service. Check your connection and try again.",
+  "checkin.load.error": "Something went wrong loading your Check-in. Try again in a moment.",
+  "checkin.notSignedIn": "Your sign-in has ended. Sign in again to continue.",
+  "checkin.retry": "Try again",
+  "checkin.level.legend": "How is your Energy today?",
+  "checkin.level.drained": "Drained",
+  "checkin.level.drained.hint": "No Energy at all. You get no Tasks today.",
+  "checkin.level.low": "Low",
+  "checkin.level.low.hint": "Half of your usual Energy, so fewer and lighter Tasks.",
+  "checkin.level.normal": "Normal",
+  "checkin.level.normal.hint": "Your usual Energy, as set in your Baseline.",
+  "checkin.level.energized": "Energized",
+  "checkin.level.energized.hint": "A bit more than usual, so you can take on more.",
+  "checkin.level.required": "Choose how your Energy is today, then save.",
+  "checkin.restrictions.legend": "Anything your body cannot do today?",
+  "checkin.restrictions.hint":
+    "Tick what you cannot take on today, such as heavy lifting with a sore back. This counts for today only and does not change the Restrictions in your profile.",
+  "checkin.submit": "Save Check-in",
+  "checkin.saving": "Saving...",
+  "checkin.cancel": "Cancel",
+  "checkin.change": "Change",
+  "checkin.saved": "Check-in saved. Today's plan has been updated.",
+  "checkin.save.offline":
+    "Your Check-in was not saved because Homeowner cannot reach the service. Check your connection and try again.",
+  "checkin.save.error": "Something went wrong saving your Check-in. Try again in a moment.",
+  "checkin.save.invalid": "Homeowner did not accept that Check-in. Choose again and try once more.",
+  "checkin.summary": "Today's Check-in: {level}",
+  "checkin.summary.restrictions": "Not today: {demands}",
 
   // Sign up
   "signUp.heading": "Sign up",

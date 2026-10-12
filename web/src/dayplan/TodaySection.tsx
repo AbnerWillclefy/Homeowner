@@ -1,4 +1,6 @@
 import type { DayPlan } from "../api/dayPlan";
+import type { Level } from "../api/checkIn";
+import { energyNote } from "../checkin/state";
 import { formatAllocationTime } from "../home/allocationTimes";
 import { useI18n } from "../i18n";
 import { LOAD_FAILURE_KEY } from "./failureMessages";
@@ -10,7 +12,7 @@ import { useDayPlan } from "./useDayPlan";
  * proposal, and accepting or refusing it comes later. Rendered inside the Home section, so it only exists
  * while the signed-in User has a Home.
  */
-export function TodaySection() {
+export function TodaySection({ level }: { level: Level | null }) {
   const { t } = useI18n();
   const { state, reload } = useDayPlan();
 
@@ -36,15 +38,16 @@ export function TodaySection() {
       {state.kind === "ready" && (
         <>
           <p>{t("dayplan.intro")}</p>
-          <PlanView plan={state.plan} />
+          <PlanView plan={state.plan} level={level} />
         </>
       )}
     </section>
   );
 }
 
-function PlanView({ plan }: { plan: DayPlan }) {
+function PlanView({ plan, level }: { plan: DayPlan; level: Level | null }) {
   const { t, locale } = useI18n();
+  const note = energyNote(plan.energy, level);
 
   return (
     <>
@@ -56,9 +59,9 @@ function PlanView({ plan }: { plan: DayPlan }) {
       {plan.planned && (
         <>
           <p>
-            {plan.energy === null || plan.energy === 0
-              ? t("dayplan.energy.none")
-              : t("dayplan.energy", { energy: plan.energy })}
+            {note === "energy" && t("dayplan.energy", { energy: plan.energy ?? 0 })}
+            {note === "no-baseline" && t("dayplan.energy.none")}
+            {note === "drained" && t("dayplan.energy.drained")}
           </p>
 
           <h3>{t("dayplan.mine.heading")}</h3>

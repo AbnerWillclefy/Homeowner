@@ -1,11 +1,11 @@
 import { useState } from "react";
 import type { Home } from "../api/home";
 import { ChoresSection } from "../chores/ChoresSection";
-import { TodaySection } from "../dayplan/TodaySection";
 import { useI18n } from "../i18n";
 import { InviteShare } from "../invite/InviteShare";
 import { CreateHome } from "./CreateHome";
 import { LOAD_FAILURE_KEY } from "./failureMessages";
+import { HomeDay } from "./HomeDay";
 import { HomeSettingsForm } from "./HomeSettingsForm";
 import { useHome } from "./useHome";
 
@@ -68,7 +68,7 @@ export function HomeSection({ recovered: initialRecovered = "no" }: { recovered?
         }}
       />
       <InviteShare />
-      <TodaySection />
+      <HomeDay />
       <ChoresSection />
     </>
   );

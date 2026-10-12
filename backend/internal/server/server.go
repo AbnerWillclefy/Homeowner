@@ -10,7 +10,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/auth"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkinstore"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/choresettings"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
@@ -42,6 +44,10 @@ type Deps struct {
 	// Verifier checks the bearer token; nil means auth is not configured and
 	// routes that need a signed-in User answer 503.
 	Verifier auth.Verifier
+	// Allocator plans a Resident again when they check in after the Day Plan
+	// was made; nil means allocation.Baseline. It must be the Allocator the
+	// scheduled job uses.
+	Allocator allocation.Allocator
 }
 
 const healthTimeout = 2 * time.Second
@@ -51,6 +57,9 @@ const healthTimeout = 2 * time.Second
 func New(deps Deps) http.Handler {
 	if deps.Logger == nil {
 		deps.Logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	}
+	if deps.Allocator == nil {
+		deps.Allocator = allocation.Baseline{}
 	}
 	s := &server{
 		deps:    deps,
@@ -64,6 +73,8 @@ func New(deps Deps) http.Handler {
 
 		choreSettings: choresettings.NewStore(deps.DB),
 		dayPlans:      dayplan.NewStore(deps.DB),
+		planner:       dayplan.New(deps.DB, deps.Allocator, deps.Logger),
+		checkIns:      checkinstore.NewStore(deps.DB),
 	}
 
 	mux := http.NewServeMux()
@@ -88,6 +99,8 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("POST /invites/{token}/accept", s.requireUser(s.acceptInvite))
 	mux.HandleFunc("GET /home/tasks", s.requireResident(s.listTasks))
 	mux.HandleFunc("GET /home/day-plan", s.requireResident(s.getDayPlan))
+	mux.HandleFunc("GET /home/check-in", s.requireResident(s.getCheckIn))
+	mux.HandleFunc("PUT /home/check-in", s.requireResident(s.putCheckIn))
 	mux.HandleFunc("GET /categories", s.requireUser(s.getCategories))
 	mux.HandleFunc("GET /demands", s.requireUser(s.getDemands))
 	mux.HandleFunc("GET /catalog", s.requireUser(s.getCatalog))
@@ -124,6 +137,10 @@ type server struct {
 	choreSettings *choresettings.Store
 	// dayPlans reads the Day Plan the Allocation job stored.
 	dayPlans *dayplan.Store
+	// planner stores a Check-in and plans its Resident again.
+	planner *dayplan.Planner
+	// checkIns reads the caller's Check-in.
+	checkIns *checkinstore.Store
 }
 
 func (s *server) healthz(w http.ResponseWriter, r *http.Request) {
