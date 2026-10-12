@@ -62,11 +62,17 @@ type Shared = { kind: "ok"; home: Home } | { kind: "invalid"; fields: FieldCodes
 
 /**
  * The flow every Home call shares: send, pass a missing session through, read a 400 as field codes, and
- * read `okStatus` as a Home. `special` maps the one status that is particular to the call.
+ * read `okStatus` as a Home. `special` maps the statuses that are particular to the call; it is checked first,
+ * so a call whose success has no body can map its status there.
  */
-async function sendHome<S>(init: RequestInit, okStatus: number, special: Readonly<Record<number, S>>): Promise<Shared | S> {
+async function sendHome<S>(
+  init: RequestInit,
+  okStatus: number,
+  special: Readonly<Record<number, S>>,
+  path = "/home",
+): Promise<Shared | S> {
   try {
-    const result = await authedFetch("/home", init);
+    const result = await authedFetch(path, init);
     if (result.kind === "not-signed-in") return result;
     const { response } = result;
     const mapped = special[response.status];
@@ -111,14 +117,15 @@ export type LeaveHomeResult = { kind: "ok" } | { kind: "none" } | Failure;
  * deletes the Home when they were its last Resident. It takes no id: it always means the caller.
  */
 export async function leaveHome(): Promise<LeaveHomeResult> {
-  try {
-    const result = await authedFetch("/home/residents/me", { method: "DELETE" });
-    if (result.kind === "not-signed-in") return result;
-    if (result.response.status === 404) return { kind: "none" };
-    return result.response.status === 204 ? { kind: "ok" } : { kind: "error" };
-  } catch {
-    return { kind: "offline" };
-  }
+  // The 204 has no body, so it is mapped as a special status rather than read as a Home.
+  const result = await sendHome<{ kind: "ok" } | { kind: "none" }>(
+    { method: "DELETE" },
+    204,
+    { 204: { kind: "ok" }, 404: { kind: "none" } },
+    "/home/residents/me",
+  );
+  // A DELETE sends nothing, so there is nothing for a 400 to be about, and it never returns a Home.
+  return result.kind === "invalid" || (result.kind === "ok" && "home" in result) ? { kind: "error" } : result;
 }
 
 /** Replaces the Home's settings. Any Resident can. */
