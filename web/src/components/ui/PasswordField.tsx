@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState, type InputHTMLAttributes } from "react";
+import { useEffect, useRef, useState, type InputHTMLAttributes } from "react";
+import { flushSync } from "react-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useI18n } from "../../i18n";
 
@@ -13,7 +14,6 @@ export function PasswordField(props: Props) {
   const { t } = useI18n();
   const [shown, setShown] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const caretRef = useRef<{ start: number; end: number } | null>(null);
 
   // The screens own onSubmit, so listen on the form: a submit puts the field back to hidden.
   useEffect(() => {
@@ -24,20 +24,15 @@ export function PasswordField(props: Props) {
     return () => form.removeEventListener("submit", hide);
   }, []);
 
-  // Some browsers reset the caret when the type changes, so put it back after the switch.
-  useLayoutEffect(() => {
-    const input = inputRef.current;
-    const caret = caretRef.current;
-    if (!input || !caret || document.activeElement !== input) return;
-    input.setSelectionRange(caret.start, caret.end);
-  }, [shown]);
-
   function toggle() {
     const input = inputRef.current;
-    if (input && input.selectionStart !== null && input.selectionEnd !== null) {
-      caretRef.current = { start: input.selectionStart, end: input.selectionEnd };
+    const start = input?.selectionStart ?? null;
+    const end = input?.selectionEnd ?? null;
+    // Commit the type change now: some browsers reset the caret when it changes, so put it back after.
+    flushSync(() => setShown(!shown));
+    if (input && start !== null && end !== null && document.activeElement === input) {
+      input.setSelectionRange(start, end);
     }
-    setShown(!shown);
   }
 
   const Icon = shown ? EyeOff : Eye;
