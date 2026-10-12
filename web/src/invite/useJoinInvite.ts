@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useStableHandlers } from "../components/ui/useStableHandlers";
 import { acceptInvite, type DeadInvite } from "../api/invites";
 import { getHome, type FailureReason } from "../api/home";
 import { createJoiner } from "./joinSubmit";
@@ -40,17 +41,11 @@ export function useJoinInvite(token: string, onFinished: (outcome: JoinOutcome) 
   }, [attempt]);
 
   // The guard lives in the joiner, so a second tap in the same tick is ignored, not only a disabled button.
-  const latest = useRef({ token, onFinished });
-  latest.current = { token, onFinished };
-  const join = useMemo(
-    () =>
-      createJoiner({
-        accept: (confirmLeave) => acceptInvite(latest.current.token, confirmLeave),
-        onState: setState,
-        onFinished: (outcome) => latest.current.onFinished(outcome),
-      }),
-    [],
-  );
+  const stable = useStableHandlers({
+    accept: (confirmLeave: boolean) => acceptInvite(token, confirmLeave),
+    onFinished,
+  });
+  const join = useMemo(() => createJoiner({ ...stable, onState: setState }), [stable]);
 
   const reload = useCallback(() => setAttempt((n) => n + 1), []);
 

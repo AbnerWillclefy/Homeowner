@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { config } from "../config";
 import { useI18n } from "../i18n";
 import { createConfirmSubmitter } from "./authSubmit";
@@ -7,6 +7,7 @@ import { EMAIL_MARKER, splitAtEmail } from "./emailMarker";
 import { failureMessage, fieldError } from "./failureText";
 import { Card } from "../components/ui/Card";
 import { FormError } from "../components/ui/FormError";
+import { useStableHandlers } from "../components/ui/useStableHandlers";
 import { useToast } from "../components/ui/useToast";
 import { PillButton } from "../components/ui/PillButton";
 
@@ -29,20 +30,17 @@ export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) 
   const [before, after] = splitAtEmail(t("confirm.intro", { email: EMAIL_MARKER }));
 
   // One guard for confirming and resending: either one in flight holds the other, and a repeat is ignored.
-  const latest = useRef({ confirm, resend, onConfirmed });
-  latest.current = { confirm, resend, onConfirmed };
+  const stable = useStableHandlers({ confirm, resend, onConfirmed });
   const form = useMemo(
     () =>
       createConfirmSubmitter({
-        confirm: (address, code) => latest.current.confirm(address, code),
-        resend: (address) => latest.current.resend(address),
+        ...stable,
         onBusy: setBusy,
         onProblem: setProblem,
         // A new code was sent and nothing is left to decide: a toast, not a message the form has to clear.
         onResent: () => toast.show({ messageKey: "confirm.resent", tone: "success" }),
-        onConfirmed: (address) => latest.current.onConfirmed(address),
       }),
-    [toast],
+    [stable, toast],
   );
 
   function submit(event: FormEvent<HTMLFormElement>) {

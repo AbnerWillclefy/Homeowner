@@ -13,6 +13,7 @@ import { FormError } from "../components/ui/FormError";
 import { PasswordField } from "../components/ui/PasswordField";
 import { PasswordRules } from "../components/ui/PasswordRules";
 import { PillButton } from "../components/ui/PillButton";
+import { useStableHandlers } from "../components/ui/useStableHandlers";
 
 const ANNOUNCE_DELAY_MS = 600;
 const FORM = "signup";
@@ -66,18 +67,8 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
   }
 
   // The guard lives in the submitter, so a second Enter in the same tick is ignored, not only a disabled button.
-  const latest = useRef({ register, onRegistered });
-  latest.current = { register, onRegistered };
-  const submitter = useMemo(
-    () =>
-      createSignUpSubmitter({
-        register: (email, password) => latest.current.register(email, password),
-        onBusy: setBusy,
-        onProblem: setProblem,
-        onRegistered: (email) => latest.current.onRegistered(email),
-      }),
-    [],
-  );
+  const stable = useStableHandlers({ register, onRegistered });
+  const submitter = useMemo(() => createSignUpSubmitter({ ...stable, onBusy: setBusy, onProblem: setProblem }), [stable]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

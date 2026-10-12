@@ -1,5 +1,6 @@
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import type { Home, HomeSettings } from "../api/home";
+import { useStableHandlers } from "../components/ui/useStableHandlers";
 import { createSettingsSubmitter, type FormStatus, type SaveOutcome } from "./settingsSubmit";
 
 export type { FormStatus, SaveOutcome } from "./settingsSubmit";
@@ -29,19 +30,8 @@ export function useSettingsForm(
   }
 
   // The guard lives in the submitter, so a second Enter in the same tick is ignored, not only a disabled button.
-  const latest = useRef({ save, onSaved, onRecovered, values });
-  latest.current = { save, onSaved, onRecovered, values };
-  const submitter = useMemo(
-    () =>
-      createSettingsSubmitter({
-        save: (settings) => latest.current.save(settings),
-        getValues: () => latest.current.values,
-        onStatus: setStatus,
-        onSaved: (home) => latest.current.onSaved(home),
-        onRecovered: (home) => latest.current.onRecovered(home),
-      }),
-    [],
-  );
+  const stable = useStableHandlers({ save, onSaved, onRecovered, getValues: () => values });
+  const submitter = useMemo(() => createSettingsSubmitter({ ...stable, onStatus: setStatus }), [stable]);
 
   function submit(event: FormEvent) {
     event.preventDefault();

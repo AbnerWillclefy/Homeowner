@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import type { Chore, ChoreWire, SaveChoreResult } from "../api/chores";
 import type { FieldCodes } from "../api/home";
+import { useStableHandlers } from "../components/ui/useStableHandlers";
 import { createChoreSubmitter, type ChoreFormStatus } from "./choreSubmit";
 import type { ChoreFormState } from "./form";
 
@@ -33,18 +34,8 @@ export function useChoreForm(
   }
 
   // The guard lives in the submitter, so a second Enter in the same tick is ignored, not only a disabled button.
-  const latest = useRef({ save, onSaved, values });
-  latest.current = { save, onSaved, values };
-  const submitter = useMemo(
-    () =>
-      createChoreSubmitter({
-        save: (input) => latest.current.save(input),
-        getValues: () => latest.current.values,
-        onStatus: setStatus,
-        onSaved: (chore, saved) => latest.current.onSaved(chore, saved),
-      }),
-    [],
-  );
+  const stable = useStableHandlers({ save, onSaved, getValues: () => values });
+  const submitter = useMemo(() => createChoreSubmitter({ ...stable, onStatus: setStatus }), [stable]);
 
   function submit(event: FormEvent) {
     event.preventDefault();

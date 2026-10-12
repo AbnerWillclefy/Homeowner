@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { config } from "../config";
 import { useI18n } from "../i18n";
 import { createSignInSubmitter } from "./authSubmit";
@@ -8,6 +8,7 @@ import { Card } from "../components/ui/Card";
 import { FormError } from "../components/ui/FormError";
 import { PasswordField } from "../components/ui/PasswordField";
 import { PillButton } from "../components/ui/PillButton";
+import { useStableHandlers } from "../components/ui/useStableHandlers";
 
 interface Props {
   /** Prefilled after confirming an email. */
@@ -27,18 +28,8 @@ export function SignIn({ initialEmail, logIn, onNeedsConfirm, onNeedsSignUp }: P
   const [problem, setProblem] = useState<CognitoFailure | null>(null);
 
   // The guard lives in the submitter, so a second Enter in the same tick is ignored, not only a disabled button.
-  const latest = useRef({ logIn, onNeedsConfirm });
-  latest.current = { logIn, onNeedsConfirm };
-  const submitter = useMemo(
-    () =>
-      createSignInSubmitter({
-        logIn: (email, password) => latest.current.logIn(email, password),
-        onBusy: setBusy,
-        onProblem: setProblem,
-        onNeedsConfirm: (email) => latest.current.onNeedsConfirm(email),
-      }),
-    [],
-  );
+  const stable = useStableHandlers({ logIn, onNeedsConfirm });
+  const submitter = useMemo(() => createSignInSubmitter({ ...stable, onBusy: setBusy, onProblem: setProblem }), [stable]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

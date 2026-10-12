@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { proposeChores } from "../api/catalog";
 import type { FailureReason, FieldCodes, Home, HomeSettings } from "../api/home";
 import { initialAnswers, toRequestBody, type AnswersState } from "../catalog/answers";
@@ -10,6 +10,7 @@ import {
   type Reviewed,
 } from "../catalog/review";
 import { useI18n } from "../i18n";
+import { useStableHandlers } from "../components/ui/useStableHandlers";
 import { useSubmitOnce } from "../components/ui/useSubmitOnce";
 import { createHomeSubmitter } from "./createHomeSubmit";
 import { createOrLoad } from "./createOrLoad";
@@ -118,14 +119,13 @@ export function useCreateHomeFlow(initial: HomeSettings, { onSaved, onRecovered 
   }
 
   // The guard lives in the submitter, so a second tap in the same tick is ignored, not only a disabled button.
-  const latest = useRef({ settings, items, onSaved, onRecovered });
-  latest.current = { settings, items, onSaved, onRecovered };
+  const stable = useStableHandlers({ getSettings: () => settings, getItems: () => items, onSaved, onRecovered });
   const submitter = useMemo(
     () =>
       createHomeSubmitter({
         create: (home, chores) => createOrLoad(home, undefined, chores),
-        getSettings: () => latest.current.settings,
-        getItems: () => latest.current.items,
+        getSettings: stable.getSettings,
+        getItems: stable.getItems,
         onStatus: setCreate,
         onInvalid: (split) => {
           setSettingsErrors(split.settings);
@@ -134,10 +134,10 @@ export function useCreateHomeFlow(initial: HomeSettings, { onSaved, onRecovered 
           // The Home's own fields are on the first step; everything else is on this one.
           if (Object.keys(split.settings).length > 0) setStep("settings");
         },
-        onSaved: (home) => latest.current.onSaved(home),
-        onRecovered: (home, dropped) => latest.current.onRecovered(home, dropped),
+        onSaved: stable.onSaved,
+        onRecovered: stable.onRecovered,
       }),
-    [],
+    [stable],
   );
   const submit = () => submitter();
 
