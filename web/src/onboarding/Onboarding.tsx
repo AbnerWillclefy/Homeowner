@@ -29,15 +29,6 @@ const HEADING_KEY: Record<OnboardingStep, MessageKey> = {
   home: "onboarding.home.heading",
 };
 
-const WHY_KEY: Record<OnboardingStep, MessageKey> = {
-  install: "onboarding.install.why",
-  reminders: "onboarding.reminders.why",
-  baseline: "onboarding.baseline.why",
-  restrictions: "onboarding.restrictions.why",
-  preferences: "onboarding.preferences.why",
-  home: "onboarding.home.why",
-};
-
 const ADVANCE_FAILED_KEY: Record<OnboardingProblem, MessageKey> = {
   offline: "onboarding.advance.offline",
   error: "onboarding.advance.error",
@@ -61,7 +52,7 @@ interface StepView {
 
 /**
  * The walk a new User takes instead of the dashboard: install, reminders, Baseline, Restrictions,
- * Preferences, then the Home. Each step says why it matters. It shares the session's one push hook (so the launch
+ * Preferences, then the Home. Each step is a short heading and its fields. It shares the session's one push hook (so the launch
  * re-subscribe runs once) and owns the one profile hook of the flow, so the profile lists are fetched once.
  */
 export function Onboarding({ position, onPosition }: Props) {
@@ -192,7 +183,6 @@ export function Onboarding({ position, onPosition }: Props) {
       progress={t("onboarding.progress", { step, total })}
       heading={t(HEADING_KEY[current])}
       headingRef={headingRef}
-      why={t(WHY_KEY[current])}
       onBack={walk.canGoBack ? walk.back : undefined}
       disabled={saving}
       failure={

@@ -85,9 +85,8 @@ export const ptBR: Messages = {
   "reminders.enable": "Ativar lembretes",
   "reminders.enabling": "Ativando...",
   "reminders.problem.denied":
-    "As notificações estão bloqueadas para o Homeowner. Abra os Ajustes (ou Configurações) do seu celular, encontre o Homeowner em Notificações, permita-as e volte aqui. O app não pode perguntar uma segunda vez.",
-  "reminders.problem.dismissed":
-    "Você fechou a pergunta de permissão sem responder. Toque no botão para tentar de novo quando quiser.",
+    "As notificações estão bloqueadas para o Homeowner. Permita-as nos Ajustes (ou Configurações) do celular, em Notificações.",
+  "reminders.problem.dismissed": "Você fechou a pergunta de permissão. Toque no botão para tentar de novo.",
   "reminders.problem.notConfigured":
     "Os lembretes ainda não estão configurados no serviço. Tente novamente mais tarde.",
   "reminders.problem.notSignedIn": "Você não está mais conectado. Entre de novo e depois ative os lembretes.",
@@ -100,13 +99,10 @@ export const ptBR: Messages = {
 
   // iPhone install steps
   "install.heading": "Adicione o Homeowner à sua Tela de Início",
-  "install.intro":
-    "Os lembretes avisam você quando o seu check-in está esperando e quais tarefas foram propostas para você. No iPhone, a Apple só permite notificações para apps adicionados à Tela de Início, e é preciso ter o iOS 16.4 ou mais recente.",
   "install.step1": "Abra esta página no Safari (não dentro de outro app).",
   "install.step2": "Toque no botão Compartilhar, o quadrado com uma seta, na parte inferior da tela.",
   "install.step3": "Role para baixo e toque em Adicionar à Tela de Início, depois toque em Adicionar.",
   "install.step4": "Feche o Safari e abra o Homeowner pelo novo ícone na sua Tela de Início.",
-  "install.outro": "Quando você abrir o Homeowner pelo ícone, esta página vai permitir ativar os lembretes.",
 
   // Profile
   "profile.intro":
@@ -631,32 +627,17 @@ export const ptBR: Messages = {
   "onboarding.advance.error": "Algo deu errado ao salvar o seu progresso, então você continua nesta etapa. Tente de novo.",
   "onboarding.advance.notSignedIn": "O seu login foi encerrado. Entre de novo para continuar.",
   "onboarding.install.heading": "Adicione o Homeowner à sua Tela de Início",
-  "onboarding.install.why":
-    "No iPhone, a Apple só deixa um app enviar notificações depois que ele está na sua Tela de Início. Adicioná-lo agora permite que a próxima etapa ative os lembretes, e o Homeowner abre como qualquer outro app. O seu progresso fica salvo: quando você abrir o Homeowner pelo ícone e entrar de novo, continua daqui.",
   "onboarding.install.done": "Já adicionei",
   "onboarding.reminders.heading": "Ative os lembretes",
-  "onboarding.reminders.why":
-    "O Homeowner decide todo dia quem faz qual tarefa, e só consegue avisar você com o app fechado por meio de uma notificação. Sem lembretes, você teria que se lembrar de abrir o app. São só um aviso: nada deixa de funcionar se você pular esta etapa, e dá para ativá-los depois.",
-  "onboarding.reminders.needsInstall":
-    "Os lembretes só podem ser ativados depois que você abrir o Homeowner pelo ícone na Tela de Início. Continue por lá para retomar esta etapa, ou pule por enquanto.",
-  "onboarding.reminders.unsupported":
-    "Este navegador não consegue mostrar lembretes, então não há nada para ativar aqui. Você pode continuar sem eles.",
+  "onboarding.reminders.needsInstall": "Abra o Homeowner pelo ícone na Tela de Início para ativar os lembretes, ou pule esta etapa.",
+  "onboarding.reminders.unsupported": "Este navegador não consegue mostrar lembretes.",
   "onboarding.reminders.continue": "Continuar",
   "onboarding.reminders.notNow": "Agora não",
   "onboarding.baseline.heading": "Sua energia base",
-  "onboarding.baseline.why":
-    "Sua energia base é a energia que você costuma ter em cada dia da semana. O Homeowner a usa como ponto de partida para decidir quanto esforço dar a você, e o seu check-in diário diz como hoje se compara. Pedimos os sete dias para que ela se encaixe na sua semana; digite 0 num dia em que você não consegue fazer nenhum afazer.",
-  "onboarding.baseline.incomplete":
-    "Digite um número para cada dia da semana antes de continuar. Use 0 se você não consegue fazer nenhum afazer naquele dia.",
+  "onboarding.baseline.incomplete": "Digite um número para cada dia, ou 0 para um dia sem afazeres.",
   "onboarding.restrictions.heading": "Suas restrições",
-  "onboarding.restrictions.why":
-    "Alguns trabalhos exigem demais do corpo, como carregar peso ou usar produtos químicos fortes. Contar isso ao Homeowner agora faz com que um afazer com essa exigência nunca seja dado a você. Se nada disso se aplica a você, deixe tudo desmarcado: essa também é uma resposta completa.",
   "onboarding.preferences.heading": "Suas preferências",
-  "onboarding.preferences.why":
-    "Todo mundo gosta mais de alguns afazeres domésticos do que de outros. Suas preferências ajudam o Homeowner a dar a você mais do trabalho de que você gosta e menos do que não gosta, e a dividir em rodízio o trabalho de que ninguém gosta. Deixar um tipo de trabalho como neutro é uma boa resposta.",
   "onboarding.home.heading": "Crie o seu lar",
-  "onboarding.home.why":
-    "A última etapa. O seu lar é onde acontece a divisão diária. As próximas perguntas dizem ao Homeowner quando os seus dias começam e o que o seu lar precisa que seja feito, para que ele sugira os primeiros afazeres para você revisar. Você pode mudar tudo depois.",
 
   // Avisos
   "toast.dismiss": "Dispensar mensagem",
