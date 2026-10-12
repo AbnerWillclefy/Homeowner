@@ -1,5 +1,5 @@
 import type { Preference, WriteResult } from "./api";
-import { authedFetch } from "../shared/api/request";
+import { authedFetch } from "../auth/request";
 
 /** The caller's effective Preference for a Chore, and whether they restricted that Chore itself. */
 export interface OwnChoreSetting {

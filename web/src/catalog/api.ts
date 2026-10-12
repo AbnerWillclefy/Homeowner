@@ -1,6 +1,6 @@
 import type { Chore, ChoreInput, Failure } from "../chores/api";
 import type { FieldCodes } from "../home/api";
-import { authedFetch } from "../shared/api/request";
+import { authedFetch } from "../auth/request";
 
 /** One Catalog Chore. `id` is the Catalog id (for example `clean_bathroom`), not a stored Chore's id. */
 export interface CatalogEntry extends Chore {

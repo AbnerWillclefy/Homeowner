@@ -1,7 +1,7 @@
-import { refreshSession, type RefreshResult } from "../../auth/cognito";
-import { browserSession } from "../../auth/browserSession";
-import type { Session, SessionStore } from "../../auth/session";
-import { config } from "../config";
+import { refreshSession, type RefreshResult } from "./cognito";
+import { browserSession } from "./browserSession";
+import type { Session, SessionStore } from "./session";
+import { config } from "../shared/config";
 
 export type AuthedResult =
   | { kind: "response"; response: Response }

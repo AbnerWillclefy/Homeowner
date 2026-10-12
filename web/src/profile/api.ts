@@ -1,4 +1,4 @@
-import { authedFetch } from "../shared/api/request";
+import { authedFetch } from "../auth/request";
 
 /** The wire keys of the Baseline, in the API's order (0 = Sunday). The screen reorders them to start on Monday. */
 export const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;

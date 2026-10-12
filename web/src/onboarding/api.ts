@@ -1,4 +1,4 @@
-import { authedFetch } from "../shared/api/request";
+import { authedFetch } from "../auth/request";
 
 /** The ids are stored on the server, so they are permanent. Order matters: this is the walk. */
 export const ONBOARDING_STEPS = ["install", "reminders", "baseline", "restrictions", "preferences", "home"] as const;
