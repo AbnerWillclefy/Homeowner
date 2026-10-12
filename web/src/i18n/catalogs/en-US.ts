@@ -244,18 +244,14 @@ export const enUS = {
 
   // Today (the Day Plan)
   "dayplan.heading": "Today",
-  "dayplan.intro":
-    "Each day at your Home's Allocation time, Homeowner proposes who does which Tasks, without asking anyone for more Energy than they have. This is today's Day Plan. It is a proposal: nothing here is final.",
   "dayplan.loading": "Loading today's plan...",
   "dayplan.load.offline":
     "Today's plan could not be loaded because Homeowner cannot reach the service. Check your connection and try again.",
   "dayplan.load.error": "Something went wrong loading today's plan. Try again in a moment.",
   "dayplan.notSignedIn": "Your sign-in has ended. Sign in again to continue.",
   "dayplan.retry": "Try again",
-  "dayplan.notPlanned":
-    "Today's plan has not been made yet. Homeowner plans your Home's day at {time}, so check back after that. These are the open Tasks it will choose from.",
-  "dayplan.rejected":
-    "Today's plan could not be used, so no Tasks were given to anyone today. Your open Tasks are still listed below.",
+  "dayplan.notPlanned": "Today's plan is made at {time}.",
+  "dayplan.rejected": "Today's plan could not be used, so no Tasks were given today.",
   "dayplan.greeting.morning": "Good morning",
   "dayplan.greeting.afternoon": "Good afternoon",
   "dayplan.greeting.evening": "Good evening",
@@ -267,13 +263,11 @@ export const enUS = {
   "dayplan.chip.pending": "Checked in",
   "dayplan.mine.heading": "Your Tasks",
   "dayplan.mine.empty": "Nothing for you today. Enjoy the day.",
-  "dayplan.mine.empty.noBaseline":
-    "You have no Baseline for today's weekday, so your Energy is 0 and no Tasks were given to you. When you are ready, you can set your Baseline to get Tasks on that day.",
+  "dayplan.mine.empty.noBaseline": "No Baseline for today, so no Tasks for you.",
   "dayplan.mine.empty.noBaseline.link": "Set your Baseline",
   "dayplan.others.heading": "Other Residents' Tasks",
   "dayplan.others.resident": "Resident {number}",
   "dayplan.pool.heading": "Still to do",
-  "dayplan.pool.intro": "Open Tasks that are not given to anyone today, and why.",
   "dayplan.pool.empty": "No other open Tasks. Everything is planned or done.",
   "dayplan.task.effort": "Effort: {level}",
   "dayplan.task.effort.grown": "Effort: {level}, usually {base}",
@@ -289,26 +283,20 @@ export const enUS = {
   "dayplan.pool.reason.two_person_deferred": "It needs two people, and they were not both free today.",
   "dayplan.pool.reason.invalid_effort": "Its Effort is not valid, so it was left out. Edit the Chore to fix it.",
   "dayplan.pool.reason.added_after_plan": "It was added after today's plan was made.",
-  "dayplan.mine.empty.drained": "You checked in as Drained, so no Tasks were given to you today. Rest up.",
+  "dayplan.mine.empty.drained": "You checked in as Drained, so no Tasks today. Rest up.",
 
   // The start choice, at the end of both onboarding flows
   "startChoice.heading": "When do you want your Tasks?",
-  "startChoice.intro":
-    "Your Home shares out Tasks every day at its Allocation time. You can start now, or wait for the next one.",
   "startChoice.now.button": "Get my tasks right away",
-  "startChoice.now.hint":
-    "Homeowner plans only you, now, from the open Tasks nobody has been given today. Other Residents' Tasks do not change.",
   "startChoice.tomorrow.button": "Start tomorrow",
-  "startChoice.tomorrow.hint": "Wait for the next daily Allocation. Nothing is planned for you until then.",
   "startChoice.planning": "Planning your Tasks...",
   "startChoice.retry": "Try again",
   "startChoice.failed.offline":
     "You seem to be offline, so your Tasks were not planned. Check your connection and try again.",
   "startChoice.failed.error": "Something went wrong planning your Tasks. Try again in a moment.",
-  "startChoice.done.tasks": "Your Tasks for today are ready. You can see them in Today, below.",
-  "startChoice.done.noEnergy":
-    "Your Energy for today is 0, so no Tasks were given to you. If you have no Baseline for this weekday, set it on the Me tab to get Tasks on that day.",
-  "startChoice.done.nothing": "No open Tasks were left for you today. Enjoy the day.",
+  "startChoice.done.tasks": "Your Tasks for today are ready.",
+  "startChoice.done.noEnergy": "Your Energy today is 0, so you have no Tasks. Set your Baseline on the Me tab.",
+  "startChoice.done.nothing": "No open Tasks are left for you today. Enjoy the day.",
   "startChoice.done.close": "Got it",
 
   // Check-in

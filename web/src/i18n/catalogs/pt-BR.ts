@@ -252,18 +252,14 @@ export const ptBR: Messages = {
 
   // Hoje (o plano do dia)
   "dayplan.heading": "Hoje",
-  "dayplan.intro":
-    "Todos os dias, no horário da alocação do seu lar, o Homeowner propõe quem faz quais tarefas, sem pedir a ninguém mais energia do que tem. Este é o plano do dia de hoje. É uma proposta: nada aqui é definitivo.",
   "dayplan.loading": "Carregando o plano de hoje...",
   "dayplan.load.offline":
     "Não foi possível carregar o plano de hoje porque o Homeowner não consegue falar com o serviço. Confira a sua conexão e tente de novo.",
   "dayplan.load.error": "Algo deu errado ao carregar o plano de hoje. Tente de novo daqui a pouco.",
   "dayplan.notSignedIn": "Seu login terminou. Entre de novo para continuar.",
   "dayplan.retry": "Tentar de novo",
-  "dayplan.notPlanned":
-    "O plano de hoje ainda não foi feito. O Homeowner planeja o dia do seu lar às {time}, então volte depois disso. Estas são as tarefas em aberto entre as quais ele vai escolher.",
-  "dayplan.rejected":
-    "Não foi possível usar o plano de hoje, então nenhuma tarefa foi dada a ninguém hoje. As suas tarefas em aberto continuam listadas abaixo.",
+  "dayplan.notPlanned": "O plano de hoje é feito às {time}.",
+  "dayplan.rejected": "Não foi possível usar o plano de hoje, então nenhuma tarefa foi dada hoje.",
   "dayplan.greeting.morning": "Bom dia",
   "dayplan.greeting.afternoon": "Boa tarde",
   "dayplan.greeting.evening": "Boa noite",
@@ -273,15 +269,13 @@ export const ptBR: Messages = {
   "dayplan.chip.drained": "Esgotado hoje, sem tarefas",
   "dayplan.chip.energy": "Energia {energy}",
   "dayplan.chip.pending": "Check-in feito",
-  "dayplan.mine.empty.noBaseline":
-    "Você não tem energia base para este dia da semana, então a sua energia é 0 e nenhuma tarefa foi dada a você. Quando quiser, defina a sua energia base para receber tarefas nesse dia.",
+  "dayplan.mine.empty.noBaseline": "Sem energia base para hoje, então nenhuma tarefa para você.",
   "dayplan.mine.empty.noBaseline.link": "Definir a energia base",
   "dayplan.mine.heading": "Suas tarefas",
   "dayplan.mine.empty": "Nada para você hoje. Aproveite o dia.",
   "dayplan.others.heading": "Tarefas dos outros moradores",
   "dayplan.others.resident": "Morador {number}",
   "dayplan.pool.heading": "Ainda por fazer",
-  "dayplan.pool.intro": "Tarefas em aberto que não foram dadas a ninguém hoje, e o motivo.",
   "dayplan.pool.empty": "Nenhuma outra tarefa em aberto. Tudo está planejado ou feito.",
   "dayplan.task.effort": "Esforço: {level}",
   "dayplan.task.effort.grown": "Esforço: {level}, normalmente {base}",
@@ -297,25 +291,19 @@ export const ptBR: Messages = {
   "dayplan.pool.reason.two_person_deferred": "Precisa de duas pessoas, e as duas não estavam livres hoje.",
   "dayplan.pool.reason.invalid_effort": "O esforço dela não é válido, então ficou de fora. Edite o afazer para corrigir.",
   "dayplan.pool.reason.added_after_plan": "Foi adicionada depois que o plano de hoje foi feito.",
-  "dayplan.mine.empty.drained": "Você fez check-in como esgotado, então nenhuma tarefa foi dada a você hoje. Descanse.",
+  "dayplan.mine.empty.drained": "Você fez check-in como esgotado, então nenhuma tarefa hoje. Descanse.",
 
   // The start choice, at the end of both onboarding flows
   "startChoice.heading": "Quando você quer as suas tarefas?",
-  "startChoice.intro":
-    "O seu lar divide as tarefas todos os dias no horário da alocação. Você pode começar agora ou esperar a próxima.",
   "startChoice.now.button": "Receber minhas tarefas agora",
-  "startChoice.now.hint":
-    "O Homeowner planeja só você, agora, entre as tarefas em aberto que ninguém recebeu hoje. As tarefas dos outros moradores não mudam.",
   "startChoice.tomorrow.button": "Começar amanhã",
-  "startChoice.tomorrow.hint": "Esperar a próxima alocação diária. Nada é planejado para você até lá.",
   "startChoice.planning": "Planejando as suas tarefas...",
   "startChoice.retry": "Tentar de novo",
   "startChoice.failed.offline":
     "Parece que você está sem internet, então as suas tarefas não foram planejadas. Verifique a conexão e tente de novo.",
   "startChoice.failed.error": "Algo deu errado ao planejar as suas tarefas. Tente de novo daqui a pouco.",
-  "startChoice.done.tasks": "As suas tarefas de hoje estão prontas. Você pode vê-las em Hoje, logo abaixo.",
-  "startChoice.done.noEnergy":
-    "A sua energia de hoje é 0, então nenhuma tarefa foi dada a você. Se você não tem energia base para este dia da semana, defina-a na aba Eu para receber tarefas nesse dia.",
+  "startChoice.done.tasks": "As suas tarefas de hoje estão prontas.",
+  "startChoice.done.noEnergy": "A sua energia de hoje é 0, então você não tem tarefas. Defina a energia base na aba Eu.",
   "startChoice.done.nothing": "Não sobrou nenhuma tarefa em aberto para você hoje. Aproveite o dia.",
   "startChoice.done.close": "Entendi",
 

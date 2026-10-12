@@ -46,12 +46,7 @@ export function TodaySection({
         </>
       )}
 
-      {state.kind === "ready" && (
-        <>
-          <p>{t("dayplan.intro")}</p>
-          <PlanView plan={state.plan} note={note} />
-        </>
-      )}
+      {state.kind === "ready" && <PlanView plan={state.plan} note={note} />}
     </section>
   );
 }
@@ -130,14 +125,11 @@ function PlanView({ plan, note }: { plan: DayPlan; note: EnergyNote | null }) {
       {plan.pool.length === 0 ? (
         <p>{t("dayplan.pool.empty")}</p>
       ) : (
-        <>
-          <p>{t("dayplan.pool.intro")}</p>
-          <ul className={LIST}>
-            {plan.pool.map((task) => (
-              <TaskCard key={task.id} task={task} reasonFor="pool" />
-            ))}
-          </ul>
-        </>
+        <ul className={LIST}>
+          {plan.pool.map((task) => (
+            <TaskCard key={task.id} task={task} reasonFor="pool" />
+          ))}
+        </ul>
       )}
     </>
   );

@@ -44,7 +44,6 @@ export function StartChoice({ onDecided, onPlanned }: Props) {
         </>
       ) : (
         <>
-          <p>{t("startChoice.intro")}</p>
           {planning && <p role="status">{t("startChoice.planning")}</p>}
           {state.kind === "failed" && (
             <p role="alert" className="text-danger">
@@ -52,13 +51,11 @@ export function StartChoice({ onDecided, onPlanned }: Props) {
             </p>
           )}
 
-          <p className="mb-0">{t("startChoice.now.hint")}</p>
           {/* A real disabled button while planning, so a second tap cannot send a second request. */}
           <button type="button" className="btn btn-primary" disabled={planning} aria-busy={planning} onClick={() => void start()}>
             {state.kind === "failed" && state.reason !== "not-signed-in" ? t("startChoice.retry") : t("startChoice.now.button")}
           </button>
 
-          <p className="mb-0">{t("startChoice.tomorrow.hint")}</p>
           <button type="button" className="btn" disabled={planning} onClick={onDecided}>
             {t("startChoice.tomorrow.button")}
           </button>
