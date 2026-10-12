@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/apitest"
@@ -171,11 +172,41 @@ func TestALateFirstTickStillRemindsBeforeAllocationButNotAfter(t *testing.T) {
 			t.Fatalf("summary = %+v", sum)
 		}
 		for _, p := range pushes(app) {
-			if p[:len(reminder)] == reminder {
+			if strings.HasPrefix(p, reminder) {
 				t.Fatalf("reminded after the Allocation time: %v", pushes(app))
 			}
 		}
 	})
+}
+
+func TestAHomeWhoseCheckInsCannotBeReadDoesNotCostAnotherItsReminder(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t, apitest.WithPush("k"))
+	bad := newHome(t, app, "bad@example.com", "America/Sao_Paulo", "07:00")
+	good := newHome(t, app, "good@example.com", "America/Sao_Paulo", "07:00")
+	subscribe(t, bad, "bad")
+	subscribe(t, good, "good")
+
+	// A Check-in row the store cannot read (a NULL level) for the bad Home only.
+	ctx := context.Background()
+	for _, q := range []string{
+		`ALTER TABLE checkins DROP CONSTRAINT checkins_level_check`,
+		`ALTER TABLE checkins ALTER COLUMN level DROP NOT NULL`,
+	} {
+		if _, err := app.DB.Exec(ctx, q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := app.DB.Exec(ctx, `
+		INSERT INTO checkins (resident_id, checkin_date, level, created_at, updated_at)
+		SELECT id, DATE '2026-03-04', NULL, now(), now() FROM residents WHERE home_id = $1`,
+		bad.Get("/home").Body["id"].(string)); err != nil {
+		t.Fatal(err)
+	}
+
+	app.Clock.Set(utc(4, 9, 0))
+	app.RunAllocation(t)
+	wantPushes(t, app, reminder+":good")
 }
 
 func TestEachHomeIsRemindedAtItsOwnLocalHour(t *testing.T) {
@@ -276,7 +307,7 @@ func TestARejectedRunSendsNoDayPlanReady(t *testing.T) {
 		t.Fatalf("summary = %+v", sum)
 	}
 	for _, p := range pushes(app) {
-		if p[:len(ready)] == ready {
+		if strings.HasPrefix(p, ready) {
 			t.Fatalf("a rejected day sent %v", pushes(app))
 		}
 	}
@@ -284,7 +315,9 @@ func TestARejectedRunSendsNoDayPlanReady(t *testing.T) {
 
 func TestAFailingPushNeverChangesAllocation(t *testing.T) {
 	t.Parallel()
-	run := func(t *testing.T, mutate func(*apitest.App)) (planned int, others []string) {
+	// tick plans the pair's Home at 07:00 local after mutate, and checks the
+	// plan is stored whatever the push did.
+	tick := func(t *testing.T, mutate func(*apitest.App)) *apitest.App {
 		app := apitest.Start(t, apitest.WithPush("k"))
 		pair(t, app)
 		mutate(app)
@@ -293,18 +326,15 @@ func TestAFailingPushNeverChangesAllocation(t *testing.T) {
 		if sum.Planned != 1 || sum.Failed != 0 || runs(t, app) != 1 {
 			t.Fatalf("summary = %+v, runs = %d", sum, runs(t, app))
 		}
-		return sum.Planned, pushes(app)
+		return app
+	}
+	run := func(t *testing.T, mutate func(*apitest.App)) []string {
+		return pushes(tick(t, mutate))
 	}
 
 	t.Run("error is not retried next tick", func(t *testing.T) {
 		t.Parallel()
-		app := apitest.Start(t, apitest.WithPush("k"))
-		pair(t, app)
-		app.Push.AnswerError(endpoint("a"))
-		app.Clock.Set(utc(4, 10, 0))
-		if sum := app.RunAllocation(t); sum.Planned != 1 || sum.Failed != 0 {
-			t.Fatalf("summary = %+v", sum)
-		}
+		app := tick(t, func(app *apitest.App) { app.Push.AnswerError(endpoint("a")) })
 		wantPushes(t, app, ready+":a", ready+":b")
 		app.Clock.Set(utc(4, 10, 15))
 		app.RunAllocation(t)
@@ -314,7 +344,7 @@ func TestAFailingPushNeverChangesAllocation(t *testing.T) {
 	})
 	t.Run("gone subscription is deleted", func(t *testing.T) {
 		t.Parallel()
-		_, got := run(t, func(app *apitest.App) { app.Push.AnswerGone(endpoint("a")) })
+		got := run(t, func(app *apitest.App) { app.Push.AnswerGone(endpoint("a")) })
 		if !slices.Contains(got, ready+":b") {
 			t.Fatalf("the other Resident was not told: %v", got)
 		}
