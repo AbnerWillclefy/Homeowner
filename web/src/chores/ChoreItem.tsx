@@ -1,11 +1,11 @@
 import { Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { deleteChore, type Chore, type Failure } from "../api/chores";
-import { ButtonRow } from "../components/ui/ButtonRow";
-import { CardRow } from "../components/ui/CardRow";
-import { CategoryGlyph } from "../components/ui/CategoryGlyph";
-import { categoryStyle } from "../components/ui/categoryStyle";
-import { useSubmitOnce } from "../components/ui/useSubmitOnce";
+import { ButtonRow } from "../shared/ui/ButtonRow";
+import { CardRow } from "../shared/ui/CardRow";
+import { CategoryGlyph } from "./CategoryGlyph";
+import { categoryStyle } from "./categoryStyle";
+import { useSubmitOnce } from "../shared/ui/useSubmitOnce";
 import { useI18n } from "../i18n";
 import { categoryLabel, labelText } from "../profile/labels";
 import { Button } from "../shared/ui/Button";

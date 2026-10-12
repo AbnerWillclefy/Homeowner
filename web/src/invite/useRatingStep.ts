@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useToast } from "../components/ui/useToast";
+import { useToast } from "../shared/ui/useToast";
 import { performChange } from "../profile/performChange";
 import { listChores, type Chore } from "../api/chores";
 import {

@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import type { Chore } from "../api/chores";
 import { PREFERENCES, type Preference } from "../api/profile";
-import { AppDialog } from "../components/ui/AppDialog";
-import { CardRow } from "../components/ui/CardRow";
+import { AppDialog } from "../shared/ui/AppDialog";
+import { CardRow } from "../shared/ui/CardRow";
 import { useI18n, type MessageKey } from "../i18n";
 import { effortName } from "../chores/effortLevels";
 import { categoryLabel, labelText, type Label } from "../profile/labels";

@@ -1,7 +1,7 @@
 import type { PlanTask } from "../api/dayPlan";
-import { CardRow } from "../components/ui/CardRow";
-import { CategoryGlyph } from "../components/ui/CategoryGlyph";
-import { categoryStyle } from "../components/ui/categoryStyle";
+import { CardRow } from "../shared/ui/CardRow";
+import { CategoryGlyph } from "../chores/CategoryGlyph";
+import { categoryStyle } from "../chores/categoryStyle";
 import { useI18n } from "../i18n";
 import { categoryLabel, importanceLabel, labelText, type Label } from "../profile/labels";
 import { formatDay } from "./format";

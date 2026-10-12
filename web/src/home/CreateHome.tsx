@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, type FormEvent } from "react";
 import type { Home } from "../api/home";
 import { Questionnaire } from "../catalog/Questionnaire";
 import { ReviewList } from "../catalog/ReviewList";
-import { ButtonRow } from "../components/ui/ButtonRow";
+import { ButtonRow } from "../shared/ui/ButtonRow";
 import { useI18n, type MessageKey } from "../i18n";
 import { Button } from "../shared/ui/Button";
 import { DEFAULT_ALLOCATION_TIME } from "./allocationTimes";

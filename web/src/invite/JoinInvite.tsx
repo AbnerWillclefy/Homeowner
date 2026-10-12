@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import type { FailureReason } from "../api/home";
-import { AppDialog } from "../components/ui/AppDialog";
-import { ButtonRow } from "../components/ui/ButtonRow";
+import { AppDialog } from "../shared/ui/AppDialog";
+import { ButtonRow } from "../shared/ui/ButtonRow";
 import { useI18n, type MessageKey } from "../i18n";
 import { Button } from "../shared/ui/Button";
 import { DEAD_INVITE_KEY } from "./deadInvite";

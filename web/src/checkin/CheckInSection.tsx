@@ -1,5 +1,5 @@
 import type { CheckIn } from "../api/checkIn";
-import { CardRow } from "../components/ui/CardRow";
+import { CardRow } from "../shared/ui/CardRow";
 import { useI18n } from "../i18n";
 import { demandLabel, labelText } from "../profile/labels";
 import { Button } from "../shared/ui/Button";

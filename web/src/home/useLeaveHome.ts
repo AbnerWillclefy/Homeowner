@@ -1,6 +1,6 @@
 import { useReducer } from "react";
 import { leaveHome } from "../api/home";
-import { useSubmitOnce } from "../components/ui/useSubmitOnce";
+import { useSubmitOnce } from "../shared/ui/useSubmitOnce";
 import { leaveReducer } from "./leaveFlow";
 
 /** Wires the leave flow to React. `onLeft` is called once the Resident is out of the Home. */

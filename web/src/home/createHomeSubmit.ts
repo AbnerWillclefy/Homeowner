@@ -1,7 +1,7 @@
 import type { FailureReason, Home, HomeSettings } from "../api/home";
 import type { ChoreWire } from "../api/chores";
 import { splitSaveErrors, toWire, type ReviewItem, type SplitErrors } from "../catalog/review";
-import { guardOnce } from "../components/ui/guardOnce";
+import { guardOnce } from "../shared/ui/guardOnce";
 import type { CreateOutcome } from "./createOrLoad";
 
 export type CreateStatus =

@@ -1,6 +1,6 @@
 import type { Home, HomeSettings } from "../api/home";
-import { Card } from "../components/ui/Card";
-import { useToast } from "../components/ui/useToast";
+import { Card } from "../shared/ui/Card";
+import { useToast } from "../shared/ui/useToast";
 import { useI18n, type MessageKey } from "../i18n";
 import { Button } from "../shared/ui/Button";
 import { FormStatusMessage } from "./FormStatusMessage";

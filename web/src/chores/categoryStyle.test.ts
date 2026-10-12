@@ -2,10 +2,10 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { CATEGORY_KEYS } from "../../profile/labels";
+import { CATEGORY_KEYS } from "../profile/labels";
 import { categoryStyle } from "./categoryStyle";
 
-const css = readFileSync(resolve(import.meta.dirname, "../../index.css"), "utf8");
+const css = readFileSync(resolve(import.meta.dirname, "../index.css"), "utf8");
 
 // The request's table, written out independently of the implementation.
 const TONES: Record<string, string> = {

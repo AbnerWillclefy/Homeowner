@@ -5,10 +5,10 @@ import { Button } from "../shared/ui/Button";
 import { createSignInSubmitter } from "./authSubmit";
 import type { CognitoFailure, SignInResult } from "./cognito";
 import { failureMessage, fieldError } from "./failureText";
-import { Card } from "../components/ui/Card";
-import { FormError } from "../components/ui/FormError";
-import { PasswordField } from "../components/ui/PasswordField";
-import { useStableHandlers } from "../components/ui/useStableHandlers";
+import { Card } from "../shared/ui/Card";
+import { FormError } from "../shared/ui/FormError";
+import { PasswordField } from "./PasswordField";
+import { useStableHandlers } from "../shared/ui/useStableHandlers";
 
 interface Props {
   /** Prefilled after confirming an email. */

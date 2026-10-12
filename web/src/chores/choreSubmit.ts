@@ -1,6 +1,6 @@
 import type { Chore, ChoreWire, Failure, SaveChoreResult } from "../api/chores";
 import type { FieldCodes } from "../api/home";
-import { guardOnce } from "../components/ui/guardOnce";
+import { guardOnce } from "../shared/ui/guardOnce";
 import { toChoreInput, type ChoreFormState } from "./form";
 
 export type ChoreFormStatus =

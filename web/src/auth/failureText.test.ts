@@ -3,7 +3,7 @@ import { enUS } from "../i18n/catalogs/en-US";
 import { ptBR } from "../i18n/catalogs/pt-BR";
 import { createTranslate } from "../i18n/translate";
 import type { CognitoFailure } from "./cognito";
-import { formErrorId } from "../components/ui/formErrorId";
+import { formErrorId } from "../shared/ui/formErrorId";
 import { failureField, failureKey, failureMessage, fieldError } from "./failureText";
 import { parsePolicy } from "./passwordPolicy";
 

@@ -1,6 +1,6 @@
-import { CardRow } from "../components/ui/CardRow";
-import { useSubmitOnce } from "../components/ui/useSubmitOnce";
-import { useToast } from "../components/ui/useToast";
+import { CardRow } from "../shared/ui/CardRow";
+import { useSubmitOnce } from "../shared/ui/useSubmitOnce";
+import { useToast } from "../shared/ui/useToast";
 import { createInvite } from "../api/invites";
 import { useI18n, type MessageKey } from "../i18n";
 import { Button } from "../shared/ui/Button";

@@ -1,4 +1,4 @@
-import { CardRow } from "../components/ui/CardRow";
+import { CardRow } from "../shared/ui/CardRow";
 import { isLocale, LANGUAGE_NAME, LOCALES, useI18n, type MessageKey } from "../i18n";
 import { THEME_CHOICES, isThemeChoice, useTheme, type ThemeChoice } from "../theme";
 

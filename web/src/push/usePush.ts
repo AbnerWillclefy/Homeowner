@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSubmitOnce } from "../components/ui/useSubmitOnce";
+import { useSubmitOnce } from "../shared/ui/useSubmitOnce";
 import { browserRemindersDeps } from "./browserDeps";
 import { isIOS, readPlatformEnv, reminderAvailability, type ReminderAvailability } from "./platform";
 import type { RemindersProblem } from "./problemText";

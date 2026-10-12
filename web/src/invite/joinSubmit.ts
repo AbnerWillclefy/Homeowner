@@ -1,5 +1,5 @@
 import type { AcceptInviteResult } from "../api/invites";
-import { guardOnce } from "../components/ui/guardOnce";
+import { guardOnce } from "../shared/ui/guardOnce";
 import type { JoinOutcome, JoinState } from "./useJoinInvite";
 
 interface Deps {

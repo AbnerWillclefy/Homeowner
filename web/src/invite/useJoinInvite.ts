@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useStableHandlers } from "../components/ui/useStableHandlers";
+import { useStableHandlers } from "../shared/ui/useStableHandlers";
 import { acceptInvite, type DeadInvite } from "../api/invites";
 import { getHome, type FailureReason } from "../api/home";
 import { createJoiner } from "./joinSubmit";

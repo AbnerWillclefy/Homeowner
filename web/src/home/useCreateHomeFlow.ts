@@ -10,8 +10,8 @@ import {
   type Reviewed,
 } from "../catalog/review";
 import { useI18n } from "../i18n";
-import { useStableHandlers } from "../components/ui/useStableHandlers";
-import { useSubmitOnce } from "../components/ui/useSubmitOnce";
+import { useStableHandlers } from "../shared/ui/useStableHandlers";
+import { useSubmitOnce } from "../shared/ui/useSubmitOnce";
 import { createHomeSubmitter } from "./createHomeSubmit";
 import { createOrLoad } from "./createOrLoad";
 

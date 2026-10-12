@@ -1,7 +1,7 @@
 import { Check, Circle } from "lucide-react";
-import type { RuleResult } from "../../auth/passwordPolicy";
-import { ruleStatus } from "../../auth/ruleText";
-import { useI18n } from "../../i18n";
+import type { RuleResult } from "./passwordPolicy";
+import { ruleStatus } from "./ruleText";
+import { useI18n } from "../i18n";
 
 interface Props {
   id: string;

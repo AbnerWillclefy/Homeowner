@@ -2,7 +2,7 @@ import { Zap } from "lucide-react";
 import { Link } from "react-router";
 import { ME_PATH } from "../app/routes";
 import type { EnergyNote } from "../checkin/state";
-import { Chip } from "../components/ui/Chip";
+import { Chip } from "../chores/Chip";
 import { useI18n, type MessageKey } from "../i18n";
 import { greetingKey } from "./greeting";
 

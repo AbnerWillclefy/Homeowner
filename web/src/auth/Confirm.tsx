@@ -6,10 +6,10 @@ import { createConfirmSubmitter } from "./authSubmit";
 import type { CognitoFailure, CognitoResult } from "./cognito";
 import { EMAIL_MARKER, splitAtEmail } from "./emailMarker";
 import { failureMessage, fieldError } from "./failureText";
-import { Card } from "../components/ui/Card";
-import { FormError } from "../components/ui/FormError";
-import { useStableHandlers } from "../components/ui/useStableHandlers";
-import { useToast } from "../components/ui/useToast";
+import { Card } from "../shared/ui/Card";
+import { FormError } from "../shared/ui/FormError";
+import { useStableHandlers } from "../shared/ui/useStableHandlers";
+import { useToast } from "../shared/ui/useToast";
 
 const FORM = "confirm";
 

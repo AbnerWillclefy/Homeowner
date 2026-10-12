@@ -1,4 +1,4 @@
-import { formErrorId } from "../components/ui/formErrorId";
+import { formErrorId } from "../shared/ui/formErrorId";
 import type { MessageKey, Translate } from "../i18n";
 import type { CognitoFailure } from "./cognito";
 import { describeRules, type PasswordPolicy } from "./passwordPolicy";

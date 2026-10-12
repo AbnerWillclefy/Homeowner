@@ -1,5 +1,5 @@
 import type { HTMLAttributes } from "react";
-import { categoryStyle } from "./categoryStyle";
+import { categoryStyle } from "../../chores/categoryStyle";
 
 interface Props extends HTMLAttributes<HTMLElement> {
   /** Render a <section> (give it aria-labelledby) when the card is a landmark of its own. */

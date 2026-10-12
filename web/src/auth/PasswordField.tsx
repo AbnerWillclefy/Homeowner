@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type InputHTMLAttributes } from "react";
 import { flushSync } from "react-dom";
 import { Eye, EyeOff } from "lucide-react";
-import { useI18n } from "../../i18n";
-import { Button } from "../../shared/ui/Button";
+import { useI18n } from "../i18n";
+import { Button } from "../shared/ui/Button";
 
 type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "defaultValue" | "value" | "onChange" | "ref">;
 

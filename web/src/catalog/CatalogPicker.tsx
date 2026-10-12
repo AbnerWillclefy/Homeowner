@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import type { CatalogEntry } from "../api/catalog";
 import type { Failure } from "../api/chores";
 import { choreFacts } from "../chores/facts";
-import { CardRow } from "../components/ui/CardRow";
+import { CardRow } from "../shared/ui/CardRow";
 import { useI18n, type MessageKey } from "../i18n";
 import { Button } from "../shared/ui/Button";
 import { catalogName } from "./name";

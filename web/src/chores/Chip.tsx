@@ -1,8 +1,8 @@
 import { Slot, Slottable } from "@radix-ui/react-slot";
 import type { LucideIcon } from "lucide-react";
 import type { HTMLAttributes } from "react";
-import { useI18n } from "../../i18n";
-import { categoryLabel, labelText } from "../../profile/labels";
+import { useI18n } from "../i18n";
+import { categoryLabel, labelText } from "../profile/labels";
 import { categoryStyle } from "./categoryStyle";
 
 interface Props extends HTMLAttributes<HTMLElement> {

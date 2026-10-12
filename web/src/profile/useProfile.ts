@@ -11,7 +11,7 @@ import {
   type Weekday,
   type WriteResult,
 } from "../api/profile";
-import { useToast } from "../components/ui/useToast";
+import { useToast } from "../shared/ui/useToast";
 import type { MessageKey } from "../i18n";
 import { withBaseline, withPreference, withRestriction } from "./changes";
 import { performChange } from "./performChange";

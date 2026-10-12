@@ -1,5 +1,5 @@
 import { PREFERENCES, type Baseline, type Preference, type Profile as ProfileData, type Weekday } from "../api/profile";
-import { categoryStyle } from "../components/ui/categoryStyle";
+import { categoryStyle } from "../chores/categoryStyle";
 import { useI18n, type MessageKey } from "../i18n";
 import { Button } from "../shared/ui/Button";
 import { BASELINE_LEVELS, levelLabelKey, levelToPoints, pointsToLevel } from "./baselineLevels";
