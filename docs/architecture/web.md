@@ -95,6 +95,7 @@ Colours are semantic tokens declared in `@theme` in `src/index.css`, with the li
 | `border` | Field and button edges (3:1 against the surface) |
 | `cat-peach`, `cat-mint`, `cat-lavender`, `cat-blue`, `cat-yellow`, `cat-salmon` | The six Category pastel fills ([ADR 0009](../adr/0009-navigate-with-a-bottom-tab-router-and-amend-the-look.md)); muted and desaturated in dark |
 | `cat-*-ink` | Text and icons drawn on the matching pastel fill |
+| `welcome-from`, `welcome-to` | The two stops of onboarding's soft top-to-bottom gradient (`bg-linear-to-b from-welcome-from to-welcome-to`); static, never animated |
 
 "Other" has no pastel: it is `surface-raised` with `text`. The `cat-` prefix is deliberate: a token named `blue` would make `bg-blue` trip the raw-palette check in `semanticClasses.test.ts`. Radii are tokens too: `rounded-control` (0.75rem, fields), `rounded-card` (1.25rem) and `rounded-pill`.
 
@@ -118,6 +119,8 @@ Category pairs (each of the six pastels; the lowest and highest shown). `src/the
 | `border` on each fill | 3 | 3.34 to 3.94 | 3.12 to 3.41 |
 | `focus` on each fill | 3 | 4.66 to 5.50 | 5.13 to 5.61 |
 | `text` / `muted` on `surface-raised` (the neutral card) | 4.5 | 15.86 / 7.23 | 13.65 / 7.58 |
+
+Onboarding text sits straight on the gradient, so `contrast.test.ts` also checks `text`, `muted` and `danger` (4.5) and `border` and `focus` (3) against both `welcome-from` and `welcome-to`, in both themes.
 
 Text needs 4.5, the focus ring and control edges need 3.
 
@@ -217,8 +220,9 @@ flowchart TD
 - `baselineComplete.ts` (pure): all seven Baseline days must have a value (0 counts) before Next on the Baseline step. Restrictions and Preferences are always passable, since none and neutral are real answers. Tested.
 - `useOnboarding` holds the server's step, in the session provider. `useWalk` reads which step is on screen from the address: Next moves on only after the server answers 200 (it raises the stored step first, then navigates, in the same tick, so the guard never sees an address ahead of the stored step) and otherwise stays with an alert; Back navigates to the previous step's path (never `navigate(-1)`, which a deep link cannot use) and never lowers the stored step; nothing is queued offline. `pathAfterAdvance` in `steps.ts` is the pure "where next". Tested.
 - `Onboarding` owns the single `useProfile` of the flow and shares the session's `usePush`, so the launch re-subscribe runs once (the Me tab's `Reminders` uses the same hook) and the lists are fetched once. Notification permission is requested only from the Enable button.
-- Each step has a progress line, a heading that takes focus when the step changes, and a why paragraph (`onboarding.*` in both catalogs). Reminders is skippable ("Not now"); the profile steps and the Home are not.
-- A pending Invite wins: the guard decides it before it reads onboarding, so every path redirects to Today, where `JoinInvite` is a dialog. A failed onboarding read cannot block joining. The Settings section is on the welcome screens, so language and appearance work in every state.
+- **The look.** `WelcomeLayout` renders `Onboarding` with no page chrome (no app name, tagline or nav). `onboarding/OnboardingLayout.tsx` is the one presentational layout for every step: a full-bleed, static gradient (`min-h-dvh`, safe-area padding), the health banner on top, a top bar, a centred scrolling body, and an action area stuck to the bottom (`sticky bottom-0`) so the buttons stay reachable at the largest text size. The top bar has Back (hidden where `canGoBack` is false, which includes the Home step) and, only on a step that already has a skip, a close button that runs that skip; no step gained a skip. The body shows a quiet "Step n of m", the question as the page `h1` (focused on every step change, including arriving by browser back), the why paragraph, the step's fields, and a collapsed Settings disclosure so appearance and language stay reachable. Continue and skip are `PillButton`s of equal size (skip is the secondary variant), so skipping is as prominent as continuing. A failed save shows its message in a `role="alert"` block with a Try again button that repeats the step's own Next. `CreateHome` stays mounted for as long as the Home step is on screen. Nothing animates except colour changes behind `motion-safe:`.
+- Reminders is skippable ("Not now") and the install step has its own "done" button; the profile steps and the Home are not skippable.
+- A pending Invite wins: the guard decides it before it reads onboarding, so every path redirects to Today, where `JoinInvite` is a dialog. A failed onboarding read cannot block joining. Settings is on the welcome screens (in the disclosure), so language and appearance work in every state.
 - When creating the Home finds one already made (409), onboarding finishes and the Home tab shows the same "already existed" notice, including the "chores dropped" variant. The notice and the start choice flag live in the session provider because they must survive the move from `/welcome/home` to Today.
 
 ## Home

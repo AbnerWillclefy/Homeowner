@@ -7,7 +7,9 @@ import { BaselineFields, PreferenceFields, ProfileStatus, RestrictionFields } fr
 import { useProfile, type ProfileState } from "../profile/useProfile";
 import { EnableReminders } from "../push/EnableReminders";
 import { InstallSteps } from "../push/InstallSteps";
+import { PillButton } from "../components/ui/PillButton";
 import { allBaselineDaysSet } from "./baselineComplete";
+import { OnboardingLayout } from "./OnboardingLayout";
 import { progress } from "./steps";
 import type { OnboardingProblem } from "./useOnboarding";
 import { useWalk } from "./useWalk";
@@ -183,25 +185,28 @@ export function Onboarding({ position, onPosition }: Props) {
 
   const { body, next } = views[current]();
 
+  const failed = walk.advance.kind === "failed" ? walk.advance : null;
+
   return (
-    <section aria-labelledby="onboarding-heading">
-      <p className="text-muted">{t("onboarding.progress", { step, total })}</p>
-      <h2 id="onboarding-heading" ref={headingRef} tabIndex={-1}>
-        {t(HEADING_KEY[current])}
-      </h2>
-      <p>{t(WHY_KEY[current])}</p>
-
+    <OnboardingLayout
+      progress={t("onboarding.progress", { step, total })}
+      heading={t(HEADING_KEY[current])}
+      headingRef={headingRef}
+      why={t(WHY_KEY[current])}
+      onBack={walk.canGoBack ? walk.back : undefined}
+      disabled={saving}
+      failure={
+        failed
+          ? {
+              message: t(ADVANCE_FAILED_KEY[failed.problem]),
+              onRetry: next?.onClick ?? goNext,
+            }
+          : undefined
+      }
+      actions={next && <NextButton {...next} saving={saving} />}
+    >
       {body}
-
-      {walk.advance.kind === "failed" && <p role="alert">{t(ADVANCE_FAILED_KEY[walk.advance.problem])}</p>}
-
-      {walk.canGoBack && (
-        <button type="button" className="btn" disabled={saving} onClick={walk.back}>
-          {t("onboarding.back")}
-        </button>
-      )}
-      {next && <NextButton {...next} saving={saving} />}
-    </section>
+    </OnboardingLayout>
   );
 }
 
@@ -214,8 +219,8 @@ function NextButton({
 }: NextSpec & { saving: boolean }) {
   const { t } = useI18n();
   return (
-    <button type="button" className={primary ? "btn btn-primary" : "btn"} disabled={saving || disabled} onClick={onClick}>
+    <PillButton variant={primary ? "primary" : "secondary"} className="w-full" disabled={saving || disabled} onClick={onClick}>
       {saving ? t("onboarding.saving") : t(label)}
-    </button>
+    </PillButton>
   );
 }

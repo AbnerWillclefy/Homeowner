@@ -48,6 +48,14 @@ pairs.push(
   { label: "border on surface-raised", fg: "border", bg: "surface-raised", min: 3 },
   { label: "danger on surface-raised", fg: "danger", bg: "surface-raised", min: 4.5 },
   { label: "danger on surface", fg: "danger", bg: "surface", min: 4.5 },
+  // Onboarding text sits straight on the gradient, so both stops are checked.
+  ...["welcome-from", "welcome-to"].flatMap((stop) => [
+    { label: `text on ${stop}`, fg: "text", bg: stop, min: 4.5 },
+    { label: `muted on ${stop}`, fg: "muted", bg: stop, min: 4.5 },
+    { label: `danger on ${stop}`, fg: "danger", bg: stop, min: 4.5 },
+    { label: `border on ${stop}`, fg: "border", bg: stop, min: 3 },
+    { label: `focus on ${stop}`, fg: "focus", bg: stop, min: 3 },
+  ]),
   { label: "accent-contrast on accent", fg: "accent-contrast", bg: "accent", min: 4.5 },
 );
 
