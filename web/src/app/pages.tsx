@@ -8,7 +8,6 @@ import { LeaveHome } from "../home/LeaveHome";
 import { useI18n } from "../i18n";
 import { InviteShare } from "../invite/InviteShare";
 import { MeProfile } from "../profile/MeProfile";
-import { Reminders } from "../push/Reminders";
 import { AppearanceCard, LanguageCard } from "../settings/Settings";
 import { useAppAuth } from "./AuthProvider";
 import { useSession } from "./SessionProvider";
@@ -66,7 +65,7 @@ export function HomePage() {
 }
 
 /**
- * Me: one titled card each for the Baseline, Preferences, Restrictions, Reminders, Appearance and Language,
+ * Me: one titled card each for the Baseline, Preferences, Restrictions, Appearance and Language,
  * then the account card with sign out last. MePage owns the column, so the cards after
  * the Restrictions still show when the details fail to load.
  */
@@ -76,7 +75,6 @@ export function MePage() {
   return (
     <div className="flex flex-col gap-4">
       <MeProfile />
-      <Reminders />
       <AppearanceCard />
       <LanguageCard />
       {/* Signing out is on purpose: the guard then sends the person to sign-in without remembering this tab. */}
