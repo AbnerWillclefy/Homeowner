@@ -9,20 +9,15 @@ export type CheckInState =
   | {
       kind: "ready";
       checkIn: CheckIn;
-      /** The person pressed Change on a Check-in that exists. */
-      editing: boolean;
       saving: boolean;
       saveFailure: SaveFailure | null;
-      /** The last save went through; shown until the next change. */
-      saved: boolean;
     };
 
 export type CheckInAction =
   | { type: "load" }
   | { type: "loaded"; checkIn: CheckIn }
   | { type: "load-failed"; reason: Failure["kind"] | "none" }
-  | { type: "edit" }
-  | { type: "cancel" }
+  | { type: "dismiss-failure" }
   | { type: "save-started" }
   | { type: "saved"; checkIn: CheckIn }
   | { type: "save-failed"; reason: SaveFailure };
@@ -32,35 +27,33 @@ export function checkInReducer(state: CheckInState, action: CheckInAction): Chec
     case "load":
       return { kind: "loading" };
     case "loaded":
-      return { kind: "ready", checkIn: action.checkIn, editing: false, saving: false, saveFailure: null, saved: false };
+      return { kind: "ready", checkIn: action.checkIn, saving: false, saveFailure: null };
     case "load-failed":
       return { kind: "failed", reason: action.reason };
   }
   if (state.kind !== "ready") return state;
   switch (action.type) {
-    case "edit":
-      return { ...state, editing: true, saved: false, saveFailure: null };
-    case "cancel":
-      return { ...state, editing: false, saveFailure: null };
+    case "dismiss-failure":
+      return { ...state, saveFailure: null };
     case "save-started":
-      return { ...state, saving: true, saveFailure: null, saved: false };
+      return { ...state, saving: true, saveFailure: null };
     case "saved":
-      return { kind: "ready", checkIn: action.checkIn, editing: false, saving: false, saveFailure: null, saved: true };
+      return { kind: "ready", checkIn: action.checkIn, saving: false, saveFailure: null };
     case "save-failed":
       return { ...state, saving: false, saveFailure: action.reason };
   }
 }
 
-export type CheckInView = "loading" | "failed" | "prompt" | "change" | "summary";
+export type CheckInView = "loading" | "failed" | "prompt" | "summary";
 
 /**
- * What the section shows. The prompt appears exactly when today's Check-in is missing, and nothing is kept
+ * What the Today row shows (the form itself is in the dialog). The prompt appears exactly when today's Check-in is missing, and nothing is kept
  * about it being skipped, so it comes back on every open.
  */
 export function checkInView(state: CheckInState): CheckInView {
   if (state.kind !== "ready") return state.kind;
   if (!state.checkIn.checkedIn) return "prompt";
-  return state.editing ? "change" : "summary";
+  return "summary";
 }
 
 /**

@@ -8,10 +8,8 @@ const LOW: CheckIn = { date: "2026-10-12", checkedIn: true, level: "low", restri
 const ready = (checkIn: CheckIn, extra: Partial<Extract<CheckInState, { kind: "ready" }>> = {}): CheckInState => ({
   kind: "ready",
   checkIn,
-  editing: false,
   saving: false,
   saveFailure: null,
-  saved: false,
   ...extra,
 });
 
@@ -26,16 +24,13 @@ describe("checkInView", () => {
     expect(checkInView({ kind: "failed", reason: "offline" })).toBe("failed");
   });
 
-  it("reopens the form with Change, and goes back with Cancel", () => {
-    const editing = checkInReducer(ready(LOW), { type: "edit" });
-    expect(checkInView(editing)).toBe("change");
-    expect(checkInView(checkInReducer(editing, { type: "cancel" }))).toBe("summary");
+  it("shows a saved Check-in as a summary: the form lives in the dialog, so there is no change view", () => {
+    const saved = checkInReducer(ready(MISSING), { type: "saved", checkIn: LOW });
+    expect(checkInView(saved)).toBe("summary");
   });
 
   it("asks again on every open: a new load of a missing Check-in is a prompt, nothing is remembered", () => {
-    const dismissedLike = checkInReducer(ready(MISSING), { type: "cancel" });
-    expect(checkInView(dismissedLike)).toBe("prompt");
-    const reloaded = checkInReducer(dismissedLike, { type: "loaded", checkIn: MISSING });
+    const reloaded = checkInReducer(ready(MISSING), { type: "loaded", checkIn: MISSING });
     expect(checkInView(reloaded)).toBe("prompt");
   });
 });
@@ -50,20 +45,23 @@ describe("checkInReducer", () => {
     expect(checkInReducer({ kind: "failed", reason: "error" }, { type: "load" })).toEqual({ kind: "loading" });
   });
 
-  it("marks saving, then shows the saved Check-in as a summary with a saved notice", () => {
+  it("marks saving, then holds the saved Check-in", () => {
     const saving = checkInReducer(ready(MISSING), { type: "save-started" });
     expect(saving).toEqual(ready(MISSING, { saving: true }));
-    expect(checkInReducer(saving, { type: "saved", checkIn: LOW })).toEqual(ready(LOW, { saved: true }));
+    expect(checkInReducer(saving, { type: "saved", checkIn: LOW })).toEqual(ready(LOW));
   });
 
-  it("keeps the form open with the failure after a failed save, and clears it on the next try", () => {
-    const editing = checkInReducer(ready(LOW), { type: "edit" });
-    const failed = checkInReducer(checkInReducer(editing, { type: "save-started" }), {
+  it("keeps the failure after a failed save, and clears it on the next try", () => {
+    const failed = checkInReducer(checkInReducer(ready(LOW), { type: "save-started" }), {
       type: "save-failed",
       reason: "offline",
     });
-    expect(failed).toEqual(ready(LOW, { editing: true, saveFailure: "offline" }));
-    expect(checkInReducer(failed, { type: "save-started" })).toEqual(ready(LOW, { editing: true, saving: true }));
+    expect(failed).toEqual(ready(LOW, { saveFailure: "offline" }));
+    expect(checkInReducer(failed, { type: "save-started" })).toEqual(ready(LOW, { saving: true }));
+  });
+
+  it("forgets an old failure when the dialog is dismissed", () => {
+    expect(checkInReducer(ready(LOW, { saveFailure: "error" }), { type: "dismiss-failure" })).toEqual(ready(LOW));
   });
 
   it("ignores save events before the Check-in is loaded", () => {

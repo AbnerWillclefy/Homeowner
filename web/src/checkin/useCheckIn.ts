@@ -26,12 +26,17 @@ export function useCheckIn(onSaved: () => void) {
   }, [load]);
 
   const save = useCallback(
-    async (level: Level, restrictions: readonly string[]) => {
+    /** Resolves true when the Check-in was saved, so the dialog knows to close. */
+    async (level: Level, restrictions: readonly string[]): Promise<boolean> => {
       dispatch({ type: "save-started" });
       const result = await putCheckIn(level, restrictions);
-      if (result.kind !== "ok") return dispatch({ type: "save-failed", reason: result.kind });
+      if (result.kind !== "ok") {
+        dispatch({ type: "save-failed", reason: result.kind });
+        return false;
+      }
       dispatch({ type: "saved", checkIn: result.checkIn });
       onSaved();
+      return true;
     },
     [onSaved],
   );
@@ -41,7 +46,6 @@ export function useCheckIn(onSaved: () => void) {
     demands,
     reload: load,
     save,
-    edit: () => dispatch({ type: "edit" }),
-    cancel: () => dispatch({ type: "cancel" }),
+    dismissFailure: () => dispatch({ type: "dismiss-failure" }),
   };
 }
