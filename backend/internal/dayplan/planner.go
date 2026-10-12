@@ -47,7 +47,14 @@ type Planner struct {
 	alloc allocation.Allocator
 	log   *slog.Logger
 	nudge Nudger
+	// nudgeTimeout is the one deadline for all the nudging of a tick.
+	nudgeTimeout time.Duration
 }
+
+// defaultNudgeTimeout bounds both nudge calls of a tick together, well inside
+// the Allocation Lambda's 60 second timeout. Whatever is not sent when it runs
+// out is lost, by design.
+const defaultNudgeTimeout = 30 * time.Second
 
 // Nudger sends the pushes that hang off the Allocation tick. It is an
 // interface so this package knows nothing of push or subscriptions. Both
@@ -70,9 +77,15 @@ func WithNudger(n Nudger) Option {
 	return func(p *Planner) { p.nudge = n }
 }
 
+// WithNudgeTimeout sets the one deadline for all the nudging of a tick
+// (default 30 seconds). It exists for tests.
+func WithNudgeTimeout(d time.Duration) Option {
+	return func(p *Planner) { p.nudgeTimeout = d }
+}
+
 // New returns a Planner that asks alloc for every proposal.
 func New(db *pgxpool.Pool, alloc allocation.Allocator, log *slog.Logger, opts ...Option) *Planner {
-	p := &Planner{db: db, tasks: tasks.NewStore(db), alloc: alloc, log: log}
+	p := &Planner{db: db, tasks: tasks.NewStore(db), alloc: alloc, log: log, nudgeTimeout: defaultNudgeTimeout}
 	for _, opt := range opts {
 		opt(p)
 	}
@@ -120,7 +133,8 @@ func (p *Planner) RunDue(ctx context.Context, now time.Time) (Summary, error) {
 
 // sendNudges sends "Day Plan ready" for the Homes this tick planned (not for
 // ones already planned or rejected), then the Check-in reminders. A panic is
-// logged and swallowed: nothing here may change the tick's answer.
+// logged and swallowed: nothing here may change the tick's answer. Both calls
+// share one deadline.
 func (p *Planner) sendNudges(ctx context.Context, planned []string, now time.Time) {
 	if p.nudge == nil {
 		return
@@ -130,6 +144,8 @@ func (p *Planner) sendNudges(ctx context.Context, planned []string, now time.Tim
 			p.log.Error("nudges panicked", "panic", fmt.Sprint(r))
 		}
 	}()
+	ctx, cancel := context.WithTimeout(ctx, p.nudgeTimeout)
+	defer cancel()
 	p.nudge.DayPlanReady(ctx, planned, now)
 	p.nudge.CheckinReminders(ctx, now)
 }

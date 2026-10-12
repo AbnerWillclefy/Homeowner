@@ -24,11 +24,10 @@ import (
 )
 
 const (
-	// sendTimeout bounds one push; phaseTimeout bounds all the nudging of one
-	// call, well inside the Allocation Lambda's 60 second timeout. Whatever is
-	// claimed and not yet sent when it runs out is lost, by design.
-	sendTimeout  = 5 * time.Second
-	phaseTimeout = 30 * time.Second
+	// sendTimeout bounds one push. The deadline for all the nudging of a tick
+	// belongs to the caller (dayplan); whatever is claimed and not yet sent when
+	// it runs out is lost, by design.
+	sendTimeout = 5 * time.Second
 
 	// reminderLead is how long before the Allocation time the reminder goes.
 	reminderLead = time.Hour
@@ -73,9 +72,6 @@ func inReminderWindow(local, alloc time.Duration) bool {
 // is in its reminder window at now, has no run for its local date, and has not
 // checked in for that date.
 func (n *Nudger) CheckinReminders(ctx context.Context, now time.Time) {
-	ctx, cancel := context.WithTimeout(ctx, phaseTimeout)
-	defer cancel()
-
 	window, err := dayplan.UnplannedHomes(ctx, n.db, n.log, now, inReminderWindow)
 	if err != nil {
 		n.log.Error("check-in reminders: find homes failed", "error", err.Error())
@@ -135,9 +131,6 @@ func (n *Nudger) DayPlanReady(ctx context.Context, homeIDs []string, now time.Ti
 	if len(homeIDs) == 0 {
 		return
 	}
-	ctx, cancel := context.WithTimeout(ctx, phaseTimeout)
-	defer cancel()
-
 	all, err := n.residents(ctx, homeIDs, now)
 	if err != nil {
 		n.log.Error("day plan ready: find residents failed", "error", err.Error())

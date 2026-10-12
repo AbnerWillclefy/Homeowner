@@ -2,12 +2,18 @@ package dayplan_test
 
 import (
 	"context"
+	"io"
+	"log/slog"
 	"net/http"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/apitest"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 )
 
 // Valid base64url key material, as PushSubscription.toJSON() emits.
@@ -365,6 +371,76 @@ func TestAFailingPushNeverChangesAllocation(t *testing.T) {
 			}
 		})
 	})
+}
+
+// stubNudger is a Nudger whose calls run the given funcs.
+type stubNudger struct {
+	ready, reminders    func(ctx context.Context)
+	readyRan, remindRan atomic.Bool
+}
+
+func (s *stubNudger) DayPlanReady(ctx context.Context, _ []string, _ time.Time) {
+	s.readyRan.Store(true)
+	if s.ready != nil {
+		s.ready(ctx)
+	}
+}
+
+func (s *stubNudger) CheckinReminders(ctx context.Context, _ time.Time) {
+	s.remindRan.Store(true)
+	if s.reminders != nil {
+		s.reminders(ctx)
+	}
+}
+
+// tickWith plans the pair's Home at 07:00 local with a Planner that nudges
+// through n under timeout, and returns the Summary and how long RunDue took.
+func tickWith(t *testing.T, n dayplan.Nudger, timeout time.Duration) (dayplan.Summary, time.Duration, *apitest.App) {
+	t.Helper()
+	app := apitest.Start(t, apitest.WithPush("k"))
+	pair(t, app)
+	planner := dayplan.New(app.DB, allocation.Baseline{}, slog.New(slog.NewJSONHandler(io.Discard, nil)),
+		dayplan.WithNudger(n), dayplan.WithNudgeTimeout(timeout))
+	start := time.Now()
+	sum, err := planner.RunDue(context.Background(), utc(4, 10, 0))
+	if err != nil {
+		t.Fatalf("RunDue: %v", err)
+	}
+	return sum, time.Since(start), app
+}
+
+func TestAPanickingNudgerNeverChangesAllocation(t *testing.T) {
+	t.Parallel()
+	n := &stubNudger{ready: func(context.Context) { panic("push exploded") }}
+	sum, _, app := tickWith(t, n, time.Minute)
+	if sum.Planned != 1 || sum.Failed != 0 || runs(t, app) != 1 {
+		t.Fatalf("summary = %+v, runs = %d", sum, runs(t, app))
+	}
+	if !n.readyRan.Load() {
+		t.Fatal("DayPlanReady was not called")
+	}
+	// One recover covers both calls, so a panic in the first skips the second.
+	if n.remindRan.Load() {
+		t.Fatal("CheckinReminders ran after DayPlanReady panicked")
+	}
+}
+
+func TestOneDeadlineBoundsAllTheNudging(t *testing.T) {
+	t.Parallel()
+	block := func(ctx context.Context) { <-ctx.Done() }
+	n := &stubNudger{ready: block, reminders: block}
+	const deadline = 300 * time.Millisecond
+	sum, took, app := tickWith(t, n, deadline)
+	if sum.Planned != 1 || sum.Failed != 0 || runs(t, app) != 1 {
+		t.Fatalf("summary = %+v, runs = %d", sum, runs(t, app))
+	}
+	// The planning itself is quick; two per-call deadlines would take 2x.
+	if took >= 2*deadline {
+		t.Fatalf("RunDue took %v, want under %v: the deadline is not shared", took, 2*deadline)
+	}
+	if !n.remindRan.Load() {
+		t.Fatal("CheckinReminders was not called")
+	}
 }
 
 func TestAGoneSubscriptionIsRemovedFromTheStore(t *testing.T) {
