@@ -63,7 +63,7 @@ export const ptBR: Messages = {
   "home.leave.removes":
     "Suas preferências e restrições para os afazeres deste lar são apagadas, e o mesmo vale para os seus lugares no plano do dia.",
   "home.leave.stays":
-    "O seu perfil continua: sua energia base e suas preferências e restrições gerais vão com você para o próximo lar.",
+    "Sua energia base e suas preferências e restrições gerais continuam com você e vão para o próximo lar.",
   "home.leave.last":
     "Se você for o último morador, o lar e todos os afazeres dele são apagados, e isso não pode ser desfeito.",
   "home.leave.cancel": "Cancelar",
@@ -127,13 +127,12 @@ export const ptBR: Messages = {
   "install.outro": "Quando você abrir o Homeowner pelo ícone, esta página vai permitir ativar os lembretes.",
 
   // Profile
-  "profile.heading": "Seu perfil",
   "profile.intro":
-    "O Homeowner usa isto para dividir os afazeres domésticos de forma justa: dá menos afazeres a você nos dias cansativos e evita o que você não gosta ou não consegue fazer. Seu perfil vai com você se você mudar de lar.",
-  "profile.loading": "Carregando seu perfil...",
-  "profile.offline": "Não foi possível falar com o serviço, então seu perfil não aparece. Verifique sua conexão e tente de novo.",
-  "profile.error": "Algo deu errado ao carregar seu perfil. Tente de novo em instantes.",
-  "profile.notSignedIn": "Você não está mais conectado. Entre de novo para ver seu perfil.",
+    "O Homeowner usa isto para dividir os afazeres domésticos de forma justa: dá menos afazeres a você nos dias cansativos e evita o que você não gosta ou não consegue fazer. Seus dados vão com você se você mudar de lar.",
+  "profile.loading": "Carregando seus dados...",
+  "profile.offline": "Não foi possível falar com o serviço, então seus dados não aparecem. Verifique sua conexão e tente de novo.",
+  "profile.error": "Algo deu errado ao carregar seus dados. Tente de novo em instantes.",
+  "profile.notSignedIn": "Você não está mais conectado. Entre de novo para ver seus dados.",
   "profile.retry": "Tentar de novo",
   "profile.saved": "Salvo.",
   "profile.saveFailed": "Não foi possível salvar sua alteração, então ela foi desfeita. Verifique sua conexão e tente de novo.",
@@ -328,7 +327,7 @@ export const ptBR: Messages = {
   "startChoice.failed.error": "Algo deu errado ao planejar as suas tarefas. Tente de novo daqui a pouco.",
   "startChoice.done.tasks": "As suas tarefas de hoje estão prontas. Você pode vê-las em Hoje, logo abaixo.",
   "startChoice.done.noEnergy":
-    "A sua energia de hoje é 0, então nenhuma tarefa foi dada a você. Se você não tem energia base para este dia da semana, defina-a no perfil para receber tarefas nesse dia.",
+    "A sua energia de hoje é 0, então nenhuma tarefa foi dada a você. Se você não tem energia base para este dia da semana, defina-a na aba Eu para receber tarefas nesse dia.",
   "startChoice.done.nothing": "Não sobrou nenhuma tarefa em aberto para você hoje. Aproveite o dia.",
   "startChoice.done.close": "Entendi",
 
@@ -354,7 +353,7 @@ export const ptBR: Messages = {
   "checkin.level.required": "Escolha como está a sua energia hoje e salve.",
   "checkin.restrictions.legend": "Há algo que o seu corpo não aguenta hoje?",
   "checkin.restrictions.hint":
-    "Marque o que você não consegue fazer hoje, como carregar peso com dor nas costas. Vale só para hoje e não muda as restrições do seu perfil.",
+    "Marque o que você não consegue fazer hoje, como carregar peso com dor nas costas. Vale só para hoje e não muda as restrições da aba Eu.",
   "checkin.submit": "Salvar check-in",
   "checkin.saving": "Salvando...",
   "checkin.cancel": "Cancelar",

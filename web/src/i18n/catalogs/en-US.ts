@@ -58,7 +58,7 @@ export const enUS = {
   "home.leave.removes":
     "Your Preferences and Restrictions for this Home's Chores are removed, and so are your places in its Day Plan.",
   "home.leave.stays":
-    "Your own profile stays: your Baseline and your general Preferences and Restrictions come with you to your next Home.",
+    "Your Baseline and your general Preferences and Restrictions stay with you and come to your next Home.",
   "home.leave.last":
     "If you are the last Resident, the Home and all its Chores are deleted, and that cannot be undone.",
   "home.leave.cancel": "Cancel",
@@ -120,13 +120,12 @@ export const enUS = {
   "install.outro": "Once you open Homeowner from the icon, this page will let you turn on reminders.",
 
   // Profile
-  "profile.heading": "Your profile",
   "profile.intro":
     "Homeowner uses this to share the housework fairly: it gives you fewer Chores on tiring days and avoids the work you dislike or cannot do. It stays with you if you move to another Home.",
-  "profile.loading": "Loading your profile...",
-  "profile.offline": "Could not reach the service, so your profile is not shown. Check your connection and try again.",
-  "profile.error": "Something went wrong loading your profile. Try again in a moment.",
-  "profile.notSignedIn": "You are not signed in any more. Sign in again to see your profile.",
+  "profile.loading": "Loading your details...",
+  "profile.offline": "Could not reach the service, so your details are not shown. Check your connection and try again.",
+  "profile.error": "Something went wrong loading your details. Try again in a moment.",
+  "profile.notSignedIn": "You are not signed in any more. Sign in again to see your details.",
   "profile.retry": "Try again",
   "profile.saved": "Saved.",
   "profile.saveFailed": "Could not save your change, so it was undone. Check your connection and try again.",
@@ -319,7 +318,7 @@ export const enUS = {
   "startChoice.failed.error": "Something went wrong planning your Tasks. Try again in a moment.",
   "startChoice.done.tasks": "Your Tasks for today are ready. You can see them in Today, below.",
   "startChoice.done.noEnergy":
-    "Your Energy for today is 0, so no Tasks were given to you. If you have no Baseline for this weekday, set it in your profile to get Tasks on that day.",
+    "Your Energy for today is 0, so no Tasks were given to you. If you have no Baseline for this weekday, set it on the Me tab to get Tasks on that day.",
   "startChoice.done.nothing": "No open Tasks were left for you today. Enjoy the day.",
   "startChoice.done.close": "Got it",
 
@@ -345,7 +344,7 @@ export const enUS = {
   "checkin.level.required": "Choose how your Energy is today, then save.",
   "checkin.restrictions.legend": "Anything your body cannot do today?",
   "checkin.restrictions.hint":
-    "Tick what you cannot take on today, such as heavy lifting with a sore back. This counts for today only and does not change the Restrictions in your profile.",
+    "Tick what you cannot take on today, such as heavy lifting with a sore back. This counts for today only and does not change the Restrictions on the Me tab.",
   "checkin.submit": "Save Check-in",
   "checkin.saving": "Saving...",
   "checkin.cancel": "Cancel",

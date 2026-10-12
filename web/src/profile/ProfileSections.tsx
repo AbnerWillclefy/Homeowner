@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { PREFERENCES, type Baseline, type Preference, type Profile as ProfileData, type Weekday } from "../api/profile";
+import { categoryStyle } from "../components/ui/categoryStyle";
 import { useI18n, type MessageKey } from "../i18n";
 import { MAX_BASELINE, parseBaselineInput } from "./baselineInput";
 import { categoryLabel, demandLabel, labelText } from "./labels";
 import type { ProfileProblem, ProfileState, SaveState } from "./useProfile";
 import { DISPLAY_WEEKDAYS, weekdayLabel } from "./weekdays";
 
-// The three parts of the Profile, as bodies without a heading. The standalone Profile and each onboarding
+// The three parts of Me (Baseline, Preferences, Restrictions), as bodies without a heading. The Me tab and each onboarding
 // step wrap them in their own heading, and both feed them from one useProfile() call.
 
 const PROBLEM_KEY: Record<ProfileProblem, MessageKey> = {
@@ -182,10 +183,17 @@ function PreferenceChoice({
 }) {
   const { t } = useI18n();
   const current = profile.preferences[id] ?? "neutral";
+  const { fill, ink, icon: Icon } = categoryStyle(id);
 
+  // The Category's pastel and icon sit around the fieldset; the name stays as text in the legend.
   return (
-    <fieldset className="mt-4 p-0 border-0">
-      <legend className="font-semibold">{name}</legend>
+    <fieldset className={`mt-4 mx-0 mb-0 box-border rounded-card border border-border p-3 ${fill} ${ink}`}>
+      <legend className="px-1 font-semibold [overflow-wrap:anywhere]">
+        <span className="inline-flex items-center gap-2">
+          <Icon aria-hidden="true" size={16} className="shrink-0" />
+          {name}
+        </span>
+      </legend>
       <div className="flex flex-wrap gap-x-4">
         {PREFERENCES.map((value) => (
           <label key={value} className="flex items-center gap-2 min-h-11 mt-0 font-normal">

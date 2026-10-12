@@ -7,9 +7,9 @@ import { HomeSettingsForm } from "../home/HomeSettingsForm";
 import { LeaveHome } from "../home/LeaveHome";
 import { useI18n } from "../i18n";
 import { InviteShare } from "../invite/InviteShare";
-import { Profile } from "../profile/Profile";
+import { MeProfile } from "../profile/MeProfile";
 import { Reminders } from "../push/Reminders";
-import { Settings } from "../settings/Settings";
+import { AppearanceCard, LanguageCard } from "../settings/Settings";
 import { useAppAuth } from "./AuthProvider";
 import { useSession } from "./SessionProvider";
 import { useShell } from "./ShellContext";
@@ -65,17 +65,22 @@ export function HomePage() {
   );
 }
 
-/** Me: the account, Reminders, the Baseline, Preferences and Restrictions, then Appearance and Language. */
+/**
+ * Me: one titled card each for the Baseline, Preferences, Restrictions, Reminders, Appearance and Language,
+ * then the account card with sign out last. MePage owns the column, so the cards after
+ * the Restrictions still show when the details fail to load.
+ */
 export function MePage() {
   const auth = useAppAuth();
   if (auth.state.kind !== "signed-in") return null;
   return (
-    <>
+    <div className="flex flex-col gap-4">
+      <MeProfile />
+      <Reminders />
+      <AppearanceCard />
+      <LanguageCard />
       {/* Signing out is on purpose: the guard then sends the person to sign-in without remembering this tab. */}
       <SignedIn email={auth.state.email} offline={auth.state.offline} onSignOut={auth.signOut} />
-      <Reminders />
-      <Profile />
-      <Settings />
-    </>
+    </div>
   );
 }

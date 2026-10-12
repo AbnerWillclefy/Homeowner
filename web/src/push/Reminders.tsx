@@ -1,3 +1,4 @@
+import { Card } from "../components/ui/Card";
 import { useI18n } from "../i18n";
 import { EnableReminders } from "./EnableReminders";
 import { InstallSteps } from "./InstallSteps";
@@ -9,14 +10,20 @@ export function Reminders() {
   const { availability, reminders, enable, test, sendTest } = useSession().push;
   const { t } = useI18n();
 
-  if (availability.kind === "needs-install") return <InstallSteps />;
+  if (availability.kind === "needs-install") {
+    return (
+      <Card>
+        <InstallSteps />
+      </Card>
+    );
+  }
 
   if (availability.kind === "unsupported") {
     return (
-      <section aria-labelledby="reminders-heading">
+      <Card as="section" aria-labelledby="reminders-heading">
         <h2 id="reminders-heading">{t("reminders.heading")}</h2>
         <p>{t("reminders.unsupported")}</p>
-      </section>
+      </Card>
     );
   }
 
@@ -25,7 +32,7 @@ export function Reminders() {
   const testStatus = test.kind === "done" ? testStatusText(test.result, test.delaySeconds) : null;
 
   return (
-    <section aria-labelledby="reminders-heading">
+    <Card as="section" aria-labelledby="reminders-heading">
       <h2 id="reminders-heading">{t("reminders.heading")}</h2>
       <p>{t("reminders.intro")}</p>
 
@@ -47,6 +54,6 @@ export function Reminders() {
           {testStatus && <p role="status">{t(testStatus.key, testStatus.params)}</p>}
         </>
       )}
-    </section>
+    </Card>
   );
 }
