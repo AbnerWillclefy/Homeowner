@@ -307,8 +307,8 @@ export const enUS = {
 
   // Check-in
   "checkin.heading": "Check-in",
-  "checkin.intro":
-    "Tell Homeowner how much Energy you have today. It scales your Baseline for today only, so your Tasks fit how you really feel. You can change it later today, and your Tasks will be planned again.",
+  "checkin.prompt": "How are you today?",
+  "checkin.open": "Check in",
   "checkin.loading": "Loading your Check-in...",
   "checkin.load.offline":
     "Your Check-in could not be loaded because Homeowner cannot reach the service. Check your connection and try again.",
@@ -317,22 +317,17 @@ export const enUS = {
   "checkin.retry": "Try again",
   "checkin.level.legend": "How is your Energy today?",
   "checkin.level.drained": "Drained",
-  "checkin.level.drained.hint": "No Energy at all. You get no Tasks today.",
+  "checkin.level.drained.hint": "No Tasks today",
   "checkin.level.low": "Low",
-  "checkin.level.low.hint": "Half of your usual Energy, so fewer and lighter Tasks.",
   "checkin.level.normal": "Normal",
-  "checkin.level.normal.hint": "Your usual Energy, as set in your Baseline.",
   "checkin.level.energized": "Energized",
-  "checkin.level.energized.hint": "A bit more than usual, so you can take on more.",
   "checkin.level.required": "Choose how your Energy is today, then save.",
-  "checkin.restrictions.legend": "Anything your body cannot do today?",
-  "checkin.restrictions.hint":
-    "Tick what you cannot take on today, such as heavy lifting with a sore back. This counts for today only and does not change the Restrictions on the Me tab.",
-  "checkin.submit": "Save Check-in",
+  "checkin.restrictions.legend": "Anything you cannot do today?",
+  "checkin.submit": "Save",
   "checkin.saving": "Saving...",
   "checkin.cancel": "Cancel",
   "checkin.change": "Change",
-  "checkin.saved": "Check-in saved. Today's plan has been updated.",
+  "checkin.saved": "Check-in saved",
   "checkin.save.offline":
     "Your Check-in was not saved because Homeowner cannot reach the service. Check your connection and try again.",
   "checkin.save.error": "Something went wrong saving your Check-in. Try again in a moment.",

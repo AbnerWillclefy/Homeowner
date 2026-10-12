@@ -4,7 +4,6 @@ import { ME_PATH } from "../app/routes";
 import type { EnergyNote } from "../checkin/state";
 import { Chip } from "../components/ui/Chip";
 import { useI18n, type MessageKey } from "../i18n";
-import { focusCheckIn } from "./focusCheckIn";
 import { greetingKey } from "./greeting";
 
 // A note added without a text here fails the typecheck.
@@ -21,6 +20,8 @@ interface Props {
   energy: number | null;
   /** The chip's note, or null while today's Check-in is not known (loading or failed): then there is no chip. */
   note: EnergyNote | null;
+  /** Opens the Check-in dialog; the chip is a button for it when there is no Check-in. */
+  onOpenCheckIn(): void;
 }
 
 /**
@@ -29,18 +30,18 @@ interface Props {
  * there is none, and plain text otherwise. The greeting is an h2 because the app name above is the page's h1,
  * and it is the first heading, which is where focus lands when the tab opens.
  */
-export function TodayHeader({ energy, note }: Props) {
+export function TodayHeader({ energy, note, onOpenCheckIn }: Props) {
   const { t } = useI18n();
 
   return (
     <header className="flex flex-col items-start gap-3">
       <h2 className="my-0 text-2xl font-bold">{t(greetingKey(new Date().getHours()))}</h2>
-      {note && <EnergyChip note={note} energy={energy} />}
+      {note && <EnergyChip note={note} energy={energy} onOpenCheckIn={onOpenCheckIn} />}
     </header>
   );
 }
 
-function EnergyChip({ note, energy }: { note: EnergyNote; energy: number | null }) {
+function EnergyChip({ note, energy, onOpenCheckIn }: { note: EnergyNote; energy: number | null; onOpenCheckIn(): void }) {
   const { t } = useI18n();
   const visible = t(CHIP_KEYS[note], { energy: energy ?? 0 });
   // One name for the whole chip, so a screen reader says what it is and its state; it contains the visible text.
@@ -54,7 +55,7 @@ function EnergyChip({ note, energy }: { note: EnergyNote; energy: number | null 
   if (note === "unset") {
     return (
       <Chip asChild icon={Zap}>
-        <button type="button" onClick={focusCheckIn}>
+        <button type="button" onClick={onOpenCheckIn}>
           {content}
         </button>
       </Chip>

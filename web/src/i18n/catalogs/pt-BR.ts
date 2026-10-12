@@ -315,8 +315,8 @@ export const ptBR: Messages = {
 
   // Check-in
   "checkin.heading": "Check-in",
-  "checkin.intro":
-    "Conte ao Homeowner quanta energia você tem hoje. Ela ajusta a sua energia base só para hoje, para que as suas tarefas combinem com o seu dia. Você pode mudar mais tarde hoje, e as suas tarefas serão planejadas de novo.",
+  "checkin.prompt": "Como você está hoje?",
+  "checkin.open": "Fazer check-in",
   "checkin.loading": "Carregando o seu check-in...",
   "checkin.load.offline":
     "Não foi possível carregar o seu check-in porque o Homeowner não consegue acessar o serviço. Verifique a sua conexão e tente de novo.",
@@ -325,22 +325,17 @@ export const ptBR: Messages = {
   "checkin.retry": "Tentar de novo",
   "checkin.level.legend": "Como está a sua energia hoje?",
   "checkin.level.drained": "Esgotado",
-  "checkin.level.drained.hint": "Nenhuma energia. Você não recebe tarefas hoje.",
+  "checkin.level.drained.hint": "Sem tarefas hoje",
   "checkin.level.low": "Baixa",
-  "checkin.level.low.hint": "Metade da sua energia de sempre, então menos tarefas e mais leves.",
   "checkin.level.normal": "Normal",
-  "checkin.level.normal.hint": "A sua energia de sempre, a da sua energia base.",
   "checkin.level.energized": "Energizado",
-  "checkin.level.energized.hint": "Um pouco mais do que de costume, então dá para assumir mais.",
   "checkin.level.required": "Escolha como está a sua energia hoje e salve.",
-  "checkin.restrictions.legend": "Há algo que o seu corpo não aguenta hoje?",
-  "checkin.restrictions.hint":
-    "Marque o que você não consegue fazer hoje, como carregar peso com dor nas costas. Vale só para hoje e não muda as restrições da aba Eu.",
-  "checkin.submit": "Salvar check-in",
+  "checkin.restrictions.legend": "Algo que você não pode fazer hoje?",
+  "checkin.submit": "Salvar",
   "checkin.saving": "Salvando...",
   "checkin.cancel": "Cancelar",
   "checkin.change": "Mudar",
-  "checkin.saved": "Check-in salvo. O plano de hoje foi atualizado.",
+  "checkin.saved": "Check-in salvo",
   "checkin.save.offline":
     "O seu check-in não foi salvo porque o Homeowner não consegue acessar o serviço. Verifique a sua conexão e tente de novo.",
   "checkin.save.error": "Algo deu errado ao salvar o seu check-in. Tente de novo em instantes.",
