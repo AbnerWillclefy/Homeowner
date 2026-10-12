@@ -264,6 +264,9 @@ export const enUS = {
     "Today's plan has not been made yet. Homeowner plans your Home's day at {time}, so check back after that. These are the open Tasks it will choose from.",
   "dayplan.rejected":
     "Today's plan could not be used, so no Tasks were given to anyone today. Your open Tasks are still listed below.",
+  "dayplan.greeting.morning": "Good morning",
+  "dayplan.greeting.afternoon": "Good afternoon",
+  "dayplan.greeting.evening": "Good evening",
   "dayplan.energy": "Your Energy today: {energy}",
   "dayplan.energy.none":
     "You have no Baseline for today's weekday, so your Energy is 0 and no Tasks were given to you. Set your Baseline in your profile to get Tasks on that day.",

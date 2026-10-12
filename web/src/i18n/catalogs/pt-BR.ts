@@ -273,6 +273,9 @@ export const ptBR: Messages = {
     "O plano de hoje ainda não foi feito. O Homeowner planeja o dia do seu lar às {time}, então volte depois disso. Estas são as tarefas em aberto entre as quais ele vai escolher.",
   "dayplan.rejected":
     "Não foi possível usar o plano de hoje, então nenhuma tarefa foi dada a ninguém hoje. As suas tarefas em aberto continuam listadas abaixo.",
+  "dayplan.greeting.morning": "Bom dia",
+  "dayplan.greeting.afternoon": "Boa tarde",
+  "dayplan.greeting.evening": "Boa noite",
   "dayplan.energy": "Sua energia hoje: {energy}",
   "dayplan.energy.none":
     "Você não tem energia base para este dia da semana, então a sua energia é 0 e nenhuma tarefa foi dada a você. Defina a sua energia base no perfil para receber tarefas nesse dia.",
