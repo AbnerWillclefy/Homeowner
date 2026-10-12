@@ -23,8 +23,6 @@ export const ptBR: Messages = {
 
   // Navegação
   "nav.label": "Principal",
-  "toast.dismiss": "Dispensar mensagem",
-  "toast.region": "Mensagens",
   "nav.today": "Hoje",
   "nav.chores": "Afazeres",
   "nav.home": "Lar",
@@ -684,4 +682,8 @@ export const ptBR: Messages = {
   "onboarding.home.heading": "Crie o seu lar",
   "onboarding.home.why":
     "A última etapa. O seu lar é onde acontece a divisão diária. As próximas perguntas dizem ao Homeowner quando os seus dias começam e o que o seu lar precisa que seja feito, para que ele sugira os primeiros afazeres para você revisar. Você pode mudar tudo depois.",
+
+  // Avisos
+  "toast.dismiss": "Dispensar mensagem",
+  "toast.region": "Mensagens",
 };

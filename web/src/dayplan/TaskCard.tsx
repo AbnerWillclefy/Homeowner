@@ -1,5 +1,5 @@
 import type { PlanTask } from "../api/dayPlan";
-import { Card } from "../components/ui/Card";
+import { CardRow } from "../components/ui/CardRow";
 import { CategoryGlyph } from "../components/ui/CategoryGlyph";
 import { categoryStyle } from "../components/ui/categoryStyle";
 import { useI18n } from "../i18n";
@@ -36,16 +36,15 @@ export function TaskCard({ task, reasonFor }: Props) {
 
   return (
     <li className="list-none ps-0">
-      <Card category={category} className="flex items-start gap-4">
-        <CategoryGlyph category={category} />
-        <div className="min-w-0 flex-1">
+      <CardRow category={category} glyph={<CategoryGlyph category={category} />}>
+        <div>
           <p className="my-0 text-sm font-semibold">{text(categoryLabel(category))}</p>
           <h4 className="my-1 text-lg font-bold leading-snug">{task.choreName}</h4>
           <p className="my-1 font-semibold">{effort}</p>
           <p className="my-1">{facts.join(" · ")}</p>
           {reason && <p className="my-1">{t("dayplan.task.reason", { reason: text(reason) })}</p>}
         </div>
-      </Card>
+      </CardRow>
     </li>
   );
 }
