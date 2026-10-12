@@ -5,6 +5,10 @@ import App from "./App";
 import { I18nProvider } from "./i18n";
 import { PendingInviteProvider } from "./invite/PendingInviteProvider";
 import { ThemeProvider } from "./theme";
+// Only the latin subset and the weights in use; the bare package would pull every subset.
+import "@fontsource/nunito/latin-400.css";
+import "@fontsource/nunito/latin-600.css";
+import "@fontsource/nunito/latin-700.css";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(

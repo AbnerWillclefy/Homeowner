@@ -21,6 +21,26 @@
   --color-danger: #b3261e;
   --color-focus: #1a5fb4;
   --color-border: #6b7a73;
+
+  /* Category pastels (ADR 0009): a fill and the ink for text and icons drawn on it. "Other" has no
+     pastel; it uses surface-raised with text. The cat- prefix keeps bg-cat-blue clear of the
+     raw-palette check in semanticClasses.test.ts. */
+  --color-cat-peach: #fde3d0;
+  --color-cat-peach-ink: #5c2e12;
+  --color-cat-mint: #d3f0e0;
+  --color-cat-mint-ink: #11452d;
+  --color-cat-lavender: #e5defa;
+  --color-cat-lavender-ink: #35286b;
+  --color-cat-blue: #d6e8fa;
+  --color-cat-blue-ink: #12426e;
+  --color-cat-yellow: #fbf0c4;
+  --color-cat-yellow-ink: #5a4300;
+  --color-cat-salmon: #fbd5d2;
+  --color-cat-salmon-ink: #6e1f1a;
+
+  --radius-control: 0.75rem;
+  --radius-card: 1.25rem;
+  --radius-pill: 62.5rem;
 }
 
 :root {
@@ -39,6 +59,20 @@
   --color-danger: #ff8a80;
   --color-focus: #8ab4f8;
   --color-border: #7f8d86;
+
+  /* Muted, desaturated pastels on the dark surface, with light inks. */
+  --color-cat-peach: #4a3226;
+  --color-cat-peach-ink: #f5cdb4;
+  --color-cat-mint: #25402f;
+  --color-cat-mint-ink: #bfe8d0;
+  --color-cat-lavender: #38335a;
+  --color-cat-lavender-ink: #d6cff7;
+  --color-cat-blue: #2a3f56;
+  --color-cat-blue-ink: #bcd8f2;
+  --color-cat-yellow: #413b1f;
+  --color-cat-yellow-ink: #efe2a0;
+  --color-cat-salmon: #4f2f2e;
+  --color-cat-salmon-ink: #f4c4c0;
 }
 
 @layer base {
@@ -49,9 +83,10 @@
   */
   html {
     font-size: 100%;
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-family: "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     font: -apple-system-body;
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    /* Nunito is self-hosted (imported in main.tsx); the shorthand above reset the family, so it is repeated. */
+    font-family: "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     /* The overscroll area on iOS shows the html background, so it is themed here. */
     background-color: var(--color-surface);
     color: var(--color-text);
@@ -131,7 +166,7 @@
     color: var(--color-text);
     background-color: var(--color-surface-raised);
     border: 1px solid var(--color-border);
-    border-radius: 0.5rem;
+    border-radius: var(--radius-control);
   }
 
   /* Chrome paints autofilled fields light blue, which would break the contrast. */
@@ -166,7 +201,7 @@
   margin-inline-end: 0.5rem;
   padding: 0.5rem 1.25rem;
   border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-pill);
   background-color: var(--color-surface-raised);
   color: var(--color-text);
   font-weight: 600;
