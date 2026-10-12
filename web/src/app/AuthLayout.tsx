@@ -1,9 +1,7 @@
 import { Outlet, useLocation, useNavigate } from "react-router";
-import { Card } from "../shared/ui/Card";
-import { useI18n } from "../shared/i18n";
 import { useInvite } from "../invite/PendingInviteProvider";
 import { SignedOutInvite } from "../invite/SignedOutInvite";
-import { AppearanceSetting, LanguageSetting } from "../settings/Settings";
+import { SettingsCard } from "../settings/Settings";
 import { PageFrame } from "./PageFrame";
 import { SIGN_IN_PATH } from "./routes";
 
@@ -13,7 +11,6 @@ import { SIGN_IN_PATH } from "./routes";
  * size and with the soft keyboard open. Appearance and language need no account, so they sit below.
  */
 export function AuthLayout() {
-  const { t } = useI18n();
   const invite = useInvite();
   const navigate = useNavigate();
   const location = useLocation();
@@ -33,12 +30,9 @@ export function AuthLayout() {
           <Outlet />
         </SignedOutInvite>
       )}
-      <Card as="section" aria-label={t("settings.heading")}>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-x-4">
-          <AppearanceSetting />
-          <LanguageSetting />
-        </div>
-      </Card>
+      <div className="mt-8">
+        <SettingsCard />
+      </div>
     </PageFrame>
   );
 }

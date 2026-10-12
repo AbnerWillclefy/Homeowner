@@ -79,8 +79,8 @@ export function LanguageSetting() {
 }
 
 /**
- * Both settings under one Settings heading, for the sign-in and welcome screens. The Me tab uses
- * `SettingsCard` instead.
+ * Both settings under one Settings heading, for the onboarding screens. The Me tab and the signed-out
+ * screens use `SettingsCard` instead.
  */
 export function Settings() {
   const { t } = useI18n();
@@ -93,11 +93,11 @@ export function Settings() {
   );
 }
 
-/** Appearance and Language on the Me tab: one titled card, a row each, the name on the left as its label. */
+/** Appearance and Language on the Me tab and the signed-out screens: one titled card, a row each, the name on the left as its label. */
 export function SettingsCard() {
   const { t } = useI18n();
   return (
-    <SectionCard id="me-settings-heading" icon={Settings2} title={t("settings.heading")}>
+    <SectionCard id="settings-card-heading" icon={Settings2} title={t("settings.heading")}>
       <div className="flex flex-col divide-y divide-border/30">
         <div className={ROW}>
           <label htmlFor="settings-appearance" className="mt-0">
