@@ -23,3 +23,10 @@ describe("weekdayLabel", () => {
     expect(weekdayLabel("saturday", "pt-BR")).toBe("sábado");
   });
 });
+
+describe("weekdayLabel, short", () => {
+  it("abbreviates the weekday the way the locale does", () => {
+    expect(weekdayLabel("monday", "en-US", "short")).toBe("Mon");
+    expect(weekdayLabel("wednesday", "pt-BR", "short")).toBe("qua.");
+  });
+});

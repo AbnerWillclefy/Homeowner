@@ -10,7 +10,7 @@ import { PageHeader } from "../shared/ui/PageHeader";
 import { formatAllocationTime } from "../home/allocationTimes";
 import { InviteShare } from "../invite/InviteShare";
 import { MeProfile } from "../profile/MeProfile";
-import { AppearanceCard, LanguageCard } from "../settings/Settings";
+import { SettingsCard } from "../settings/Settings";
 import { useAppAuth } from "./AuthProvider";
 import { useSession } from "./SessionProvider";
 import { useShell } from "./ShellContext";
@@ -73,18 +73,19 @@ export function HomePage() {
 }
 
 /**
- * Me: one titled card each for the Baseline, Preferences, Restrictions, Appearance and Language,
- * then the account card with sign out last. MePage owns the column, so the cards after
+ * Me: one titled card each for the Baseline, Preferences, Restrictions and the settings (Appearance and
+ * Language), then the account card with sign out last. MePage owns the column, so the cards after
  * the Restrictions still show when the details fail to load.
  */
 export function MePage() {
+  const { t } = useI18n();
   const auth = useAppAuth();
   if (auth.state.kind !== "signed-in") return null;
   return (
     <div className="flex flex-col gap-4">
+      <PageHeader title={t("me.heading")} />
       <MeProfile />
-      <AppearanceCard />
-      <LanguageCard />
+      <SettingsCard />
       {/* Signing out is on purpose: the guard then sends the person to sign-in without remembering this tab. */}
       <SignedIn email={auth.state.email} offline={auth.state.offline} onSignOut={auth.signOut} />
     </div>

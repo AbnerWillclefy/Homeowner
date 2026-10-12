@@ -1,11 +1,12 @@
-import { Card } from "../shared/ui/Card";
+import { Ban, Heart, Zap } from "lucide-react";
+import { SectionCard } from "../shared/ui/SectionCard";
 import { useI18n } from "../shared/i18n";
 import { BaselineFields, PreferenceFields, ProfileStatus, RestrictionFields } from "./ProfileSections";
 import { useProfile } from "./useProfile";
 
 /**
  * The first part of the Me tab: the signed-in User's Baseline, Preferences and Restrictions, each in its own
- * titled card (an h2 and a region). Each control saves on its own: the change shows at once and is undone
+ * titled card (an h3 and a region, under the tab's h2). Each control saves on its own: the change shows at once and is undone
  * with an error toast if the API refuses it, and a toast says it was saved. Baseline saves on blur. Onboarding shows the same three
  * parts one step at a time.
  *
@@ -23,24 +24,31 @@ export function MeProfile() {
 
       {state.kind === "ready" && (
         <>
-          <Card as="section" aria-labelledby="me-baseline-heading">
-            <h2 id="me-baseline-heading">{t("profile.baseline.heading")}</h2>
+          <SectionCard id="me-baseline-heading" icon={Zap} title={t("profile.baseline.heading")} hint={t("profile.baseline.hint")}>
             <BaselineFields baseline={state.profile.baseline} onSave={setBaseline} />
-          </Card>
+          </SectionCard>
 
-          <Card as="section" aria-labelledby="me-preferences-heading">
-            <h2 id="me-preferences-heading">{t("profile.preferences.heading")}</h2>
+          <SectionCard
+            id="me-preferences-heading"
+            icon={Heart}
+            title={t("profile.preferences.heading")}
+            hint={t("profile.preferences.hint")}
+          >
             <PreferenceFields profile={state.profile} categories={state.categories} onChange={setPreference} />
-          </Card>
+          </SectionCard>
 
-          <Card as="section" aria-labelledby="me-restrictions-heading">
-            <h2 id="me-restrictions-heading">{t("profile.restrictions.heading")}</h2>
+          <SectionCard
+            id="me-restrictions-heading"
+            icon={Ban}
+            title={t("profile.restrictions.heading")}
+            hint={t("profile.restrictions.hint")}
+          >
             <RestrictionFields
               restrictions={state.profile.restrictions}
               demands={state.demands}
               onChange={setRestricted}
             />
-          </Card>
+          </SectionCard>
         </>
       )}
     </>

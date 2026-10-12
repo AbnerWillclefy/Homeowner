@@ -23,11 +23,12 @@ const DAYS_AFTER_MONDAY: Record<Weekday, number> = {
   sunday: 6,
 };
 
-const formats = new Map<Locale, Intl.DateTimeFormat>();
+const formats = new Map<string, Intl.DateTimeFormat>();
 
-/** The weekday's full name in the locale, for example "segunda-feira". */
-export function weekdayLabel(day: Weekday, locale: Locale): string {
-  let format = formats.get(locale);
-  if (!format) formats.set(locale, (format = new Intl.DateTimeFormat(locale, { weekday: "long", timeZone: "UTC" })));
+/** The weekday's name in the locale, full ("segunda-feira") or short ("seg."). */
+export function weekdayLabel(day: Weekday, locale: Locale, width: "long" | "short" = "long"): string {
+  const key = `${locale}/${width}`;
+  let format = formats.get(key);
+  if (!format) formats.set(key, (format = new Intl.DateTimeFormat(locale, { weekday: width, timeZone: "UTC" })));
   return format.format(new Date(Date.UTC(2024, 0, 1 + DAYS_AFTER_MONDAY[day])));
 }
