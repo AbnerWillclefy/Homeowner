@@ -22,6 +22,9 @@
   --color-focus: #1a5fb4;
   --color-border: #6b7a73;
 
+  /* A toast fades in; used behind motion-safe: only. Its keyframes are at the end of this file. */
+  --animate-toast-in: toast-in 150ms ease-out;
+
   /* Onboarding's soft full-bleed gradient (top to bottom). Static, never animated. */
   --color-welcome-from: #e3f3ea;
   --color-welcome-to: #f1ecfb;
@@ -258,5 +261,12 @@
     cursor: not-allowed;
     color: var(--color-muted);
     text-decoration-style: dashed;
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
   }
 }

@@ -668,6 +668,10 @@ export const enUS = {
   "onboarding.home.heading": "Create your Home",
   "onboarding.home.why":
     "The last step. Your Home is where the daily sharing happens. The next questions tell Homeowner when your days start and what your Home needs done, so it can suggest the first Chores for you to review. You can change all of it later.",
+
+  // Toasts
+  "toast.dismiss": "Dismiss message",
+  "toast.region": "Messages",
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof enUS;
