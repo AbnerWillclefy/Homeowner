@@ -60,9 +60,6 @@ export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) 
         <strong>{email}</strong>
         {after}
       </p>
-      <p id="confirm-spam-hint" className="my-1 text-sm text-muted">
-        {t("confirm.spamHint")}
-      </p>
       <form onSubmit={submit}>
         <label htmlFor="confirm-code">{t("confirm.codeLabel")}</label>
         <input
@@ -75,7 +72,7 @@ export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) 
           autoCapitalize="none"
           spellCheck={false}
           required
-          {...fieldError(problem, "code", FORM, "confirm-spam-hint")}
+          {...fieldError(problem, "code", FORM)}
         />
         <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
         <PillButton type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>

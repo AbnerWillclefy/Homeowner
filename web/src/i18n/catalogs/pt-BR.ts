@@ -355,13 +355,8 @@ export const ptBR: Messages = {
 
   // Cadastro
   "signUp.heading": "Cadastrar-se",
-  "signUp.intro":
-    "O Homeowner é para as pessoas que cuidam juntas de um lar. Cadastrar-se dá a você um login só seu, então a sua energia base, as suas preferências e as suas restrições são suas e acompanham você, não importa quem mais more no lar.",
   "signUp.emailLabel": "E-mail",
-  "signUp.emailHint":
-    "Seu e-mail é o seu login. Também enviamos um código para ele na próxima etapa, que comprova que o e-mail é mesmo seu.",
   "signUp.passwordLabel": "Senha",
-  "signUp.passwordHint": "Ela impede que outra pessoa entre como você.",
   "signUp.confirmLabel": "Confirmar senha",
   "signUp.mismatch": "As duas senhas não são iguais.",
   "signUp.submit": "Cadastrar",
@@ -371,8 +366,6 @@ export const ptBR: Messages = {
 
   // Entrar
   "signIn.heading": "Entrar",
-  "signIn.intro":
-    "Entrar diz ao Homeowner de quem mostrar o check-in e as tarefas. Você continua com o login ativo neste dispositivo até sair.",
   "signIn.confirmedNotice": "Seu e-mail foi confirmado. Entre para começar.",
   "signIn.emailLabel": "E-mail",
   "signIn.passwordLabel": "Senha",
@@ -383,9 +376,7 @@ export const ptBR: Messages = {
 
   // Confirmar e-mail
   "confirm.heading": "Confirme seu e-mail",
-  "confirm.intro":
-    "Enviamos um código para {email}. Digitá-lo comprova que o e-mail é seu, para que ninguém se cadastre em seu nome nem assuma as suas preferências. Até você fazer isso, não é possível entrar.",
-  "confirm.spamHint": "O e-mail pode levar um minuto e pode cair na pasta de spam.",
+  "confirm.intro": "Enviamos um código para {email}.",
   "confirm.codeLabel": "Código do e-mail",
   "confirm.submit": "Confirmar",
   "confirm.submitting": "Verificando...",
@@ -397,8 +388,7 @@ export const ptBR: Messages = {
   "signedIn.heading": "Você está conectado",
   "signedIn.as": "Conectado como {email}.",
   "signedIn.emailFallback": "seu e-mail",
-  "signedIn.offline":
-    "O Homeowner não consegue acessar o serviço agora, então este é o último login que este dispositivo lembra. Abra o app de novo quando estiver online para conferir.",
+  "signedIn.offline": "Não foi possível acessar o serviço. Este é o último login que este dispositivo lembra.",
   "signedIn.signOut": "Sair",
 
   // Compartilhado pelas telas de login
