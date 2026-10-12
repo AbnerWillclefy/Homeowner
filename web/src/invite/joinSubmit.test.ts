@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { Home } from "../api/home";
 import type { AcceptInviteResult } from "../api/invites";
 import { createJoiner } from "./joinSubmit";
 import type { JoinState } from "./useJoinInvite";
@@ -13,7 +14,7 @@ function setup(result: AcceptInviteResult) {
 
 describe("join an Invite", () => {
   it("sends one request for a double tap in the same tick", async () => {
-    const { accept, onFinished, join } = setup({ kind: "ok" });
+    const { accept, onFinished, join } = setup({ kind: "ok", home: {} as Home });
     await Promise.all([join(false), join(false)]);
     expect(accept).toHaveBeenCalledTimes(1);
     expect(onFinished).toHaveBeenCalledTimes(1);
