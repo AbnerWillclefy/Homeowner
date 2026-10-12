@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ONBOARDING_STEPS, type OnboardingPosition } from "../api/onboarding";
 import { stepsFor } from "../onboarding/steps";
-import { resolveRoute, type OnboardingInput, type RouteDecision, type RouteInput } from "./resolveRoute";
+import { onboardingInput, resolveRoute, type OnboardingInput, type RouteDecision, type RouteInput } from "./resolveRoute";
 import { AUTH_PATHS, SHELL_PATHS, stepPath } from "./routes";
 
 const ANDROID = stepsFor({ kind: "available" });
@@ -172,5 +172,18 @@ describe("resolveRoute table", () => {
     const first = resolveRoute(row);
     expect(first).toEqual(to("/chores"));
     expect(resolveRoute({ ...row, pathname: "/chores", wanted: null })).toEqual(render);
+  });
+});
+
+describe("onboardingInput", () => {
+  it("waits when there is no session or the progress is loading", () => {
+    expect(onboardingInput(null)).toEqual({ kind: "loading" });
+    expect(onboardingInput({ kind: "loading" })).toEqual({ kind: "loading" });
+  });
+  it("reports a problem without its detail", () => {
+    expect(onboardingInput({ kind: "problem", problem: "offline" })).toEqual({ kind: "problem" });
+  });
+  it("carries the saved position when ready", () => {
+    expect(onboardingInput({ kind: "ready", position: "preferences" })).toEqual({ kind: "ready", position: "preferences" });
   });
 });

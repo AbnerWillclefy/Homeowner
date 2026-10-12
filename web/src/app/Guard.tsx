@@ -4,7 +4,7 @@ import { useInvite } from "../invite/PendingInviteProvider";
 import type { OnboardingProblem } from "../onboarding/useOnboarding";
 import { useAppAuth } from "./AuthProvider";
 import { PageFrame } from "./PageFrame";
-import { resolveRoute, type OnboardingInput } from "./resolveRoute";
+import { onboardingInput, resolveRoute } from "./resolveRoute";
 import { safeWantedPath, type AuthRouteState } from "./routes";
 import { SessionProvider, useOptionalSession, useSession } from "./SessionProvider";
 
@@ -37,20 +37,11 @@ function Decide() {
   const location = useLocation();
   const session = useOptionalSession();
 
-  const onboarding: OnboardingInput =
-    session === null
-      ? { kind: "loading" }
-      : session.onboarding.state.kind === "problem"
-        ? { kind: "problem" }
-        : session.onboarding.state.kind === "ready"
-          ? { kind: "ready", position: session.onboarding.state.position }
-          : { kind: "loading" };
-
   const decision = resolveRoute({
     auth: auth.state.kind,
-    onboarding,
+    onboarding: onboardingInput(session?.onboarding.state ?? null),
     pathname: location.pathname,
-    wanted: safeWantedPath((location.state as AuthRouteState | null)?.from),
+    wanted: (location.state as AuthRouteState | null)?.from ?? null,
     hasPendingInvite: invite.token !== null,
     steps: session?.steps ?? [],
   });

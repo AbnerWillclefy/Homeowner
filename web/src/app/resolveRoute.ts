@@ -1,5 +1,6 @@
 import type { OnboardingPosition, OnboardingStep } from "../api/onboarding";
 import { effectiveStep } from "../onboarding/steps";
+import type { OnboardingState } from "../onboarding/useOnboarding";
 import {
   SIGN_IN_PATH,
   SIGN_UP_PATH,
@@ -17,6 +18,14 @@ export type OnboardingInput =
   | { kind: "loading" }
   | { kind: "problem" }
   | { kind: "ready"; position: OnboardingPosition };
+
+/** What the route decision needs of the saved progress; `null` when no session is mounted (signed out). */
+export function onboardingInput(state: OnboardingState | null): OnboardingInput {
+  if (state === null) return { kind: "loading" };
+  if (state.kind === "problem") return { kind: "problem" };
+  if (state.kind === "ready") return { kind: "ready", position: state.position };
+  return { kind: "loading" };
+}
 
 export interface RouteInput {
   auth: "loading" | "signed-out" | "signed-in";
@@ -52,8 +61,10 @@ export function resolveRoute(input: RouteInput): RouteDecision {
 
   // Signed in on an auth screen: decide for the place they were headed, in one hop.
   if (isAuthPath(path)) {
-    const decision = resolveSignedIn(input, safeWantedPath(input.wanted) ?? TODAY_PATH);
-    return decision.kind === "render" ? redirect(safeWantedPath(input.wanted) ?? TODAY_PATH) : decision;
+    // `wanted` is raw router state: it is sanitised here, once, so the table test covers it.
+    const target = safeWantedPath(input.wanted) ?? TODAY_PATH;
+    const decision = resolveSignedIn(input, target);
+    return decision.kind === "render" ? redirect(target) : decision;
   }
   return resolveSignedIn(input, path);
 }
