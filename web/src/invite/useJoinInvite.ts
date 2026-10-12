@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { acceptInvite, type DeadInvite } from "../api/invites";
 import { getHome, type FailureReason } from "../api/home";
+import { createJoiner } from "./joinSubmit";
 
 export type JoinState =
   | { kind: "loading" }
@@ -38,26 +39,17 @@ export function useJoinInvite(token: string, onFinished: (outcome: JoinOutcome) 
     };
   }, [attempt]);
 
-  const join = useCallback(
-    async (confirmLeave: boolean) => {
-      setState({ kind: "joining" });
-      const result = await acceptInvite(token, confirmLeave);
-      switch (result.kind) {
-        case "ok":
-          return onFinished("joined");
-        case "already-here":
-          return onFinished("already-here");
-        case "would-leave":
-          return setState({ kind: "warn" });
-        case "not-found":
-        case "used":
-        case "expired":
-          return setState({ kind: "dead", why: result.kind });
-        default:
-          return setState(confirmLeave ? { kind: "warn", error: result.kind } : { kind: "ready", error: result.kind });
-      }
-    },
-    [token, onFinished],
+  // The guard lives in the joiner, so a second tap in the same tick is ignored, not only a disabled button.
+  const latest = useRef({ token, onFinished });
+  latest.current = { token, onFinished };
+  const join = useMemo(
+    () =>
+      createJoiner({
+        accept: (confirmLeave) => acceptInvite(latest.current.token, confirmLeave),
+        onState: setState,
+        onFinished: (outcome) => latest.current.onFinished(outcome),
+      }),
+    [],
   );
 
   const reload = useCallback(() => setAttempt((n) => n + 1), []);

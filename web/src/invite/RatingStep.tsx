@@ -24,7 +24,7 @@ interface Props {
  */
 export function RatingStep({ onClose }: Props) {
   const { t } = useI18n();
-  const { state, save, settingOf, setPreference, setRestricted } = useRatingStep();
+  const { state, settingOf, setPreference, setRestricted } = useRatingStep();
   const empty = state.kind === "ready" && state.chores.length === 0;
 
   useEffect(() => {
@@ -44,10 +44,6 @@ export function RatingStep({ onClose }: Props) {
       {state.kind === "ready" && state.chores.length > 0 && (
         <>
           <p>{t("invite.rating.intro")}</p>
-          <p role={save.kind === "failed" ? "alert" : "status"}>
-            {save.kind === "saved" && t("invite.rating.saved")}
-            {save.kind === "failed" && t("invite.rating.saveFailed")}
-          </p>
           <ul className="p-0">
             {state.chores.map((chore: Chore) => {
               const setting = settingOf(chore.id);

@@ -102,7 +102,7 @@ export function JoinInvite({ token, onDismiss, onFinished }: Props) {
         <>
           <p>{t("invite.join.intro")}</p>
           {state.kind === "ready" && failure(state.error)}
-          <button type="button" className="btn btn-primary" disabled={joining} onClick={() => void join(false)}>
+          <button type="button" className="btn btn-primary" disabled={joining} aria-busy={joining} onClick={() => void join(false)}>
             {joining ? t("invite.join.submitting") : t("invite.join.submit")}
           </button>
           <button type="button" className="btn" disabled={joining} onClick={onDismiss}>
