@@ -4,7 +4,7 @@ import { NavigationRoute, registerRoute } from "workbox-routing";
 import { browserLanguages } from "./i18n/browserLanguages";
 import { DEFAULT_LOCALE, type Locale } from "./i18n/locales";
 import { resolveLocale } from "./i18n/resolveLocale";
-import { notificationFromPush } from "./sw/payload";
+import { notificationFromPush, shouldNavigate } from "./sw/payload";
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -62,11 +62,21 @@ self.addEventListener("notificationclick", (event) => {
     (async () => {
       const open = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       const existing = open[0];
+      const target = new URL(path, self.location.origin).href;
       if (existing) {
         await existing.focus();
+        // A window left on another tab should land on the target. Not every browser has navigate(), and it can
+        // reject; the notification still did its job by focusing the window, so fall back to that.
+        if (shouldNavigate(existing.url, path, self.location.origin) && typeof existing.navigate === "function") {
+          try {
+            await existing.navigate(target);
+          } catch {
+            // Focus-only.
+          }
+        }
         return;
       }
-      await self.clients.openWindow(new URL(path, self.location.origin).href);
+      await self.clients.openWindow(target);
     })(),
   );
 });
