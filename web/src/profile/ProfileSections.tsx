@@ -4,7 +4,7 @@ import { useI18n, type MessageKey } from "../i18n";
 import { BASELINE_LEVELS, levelLabelKey, levelToPoints, pointsToLevel } from "./baselineLevels";
 import { categoryLabel, demandLabel, labelText } from "./labels";
 import { preferenceCategories } from "./preferenceCategories";
-import type { ProfileProblem, ProfileState, SaveState } from "./useProfile";
+import type { ProfileProblem, ProfileState } from "./useProfile";
 import { DISPLAY_WEEKDAYS, weekdayLabel } from "./weekdays";
 
 // The three parts of Me (Baseline, Preferences, Restrictions), as bodies without a heading. The Me tab and each onboarding
@@ -16,20 +16,17 @@ const PROBLEM_KEY: Record<ProfileProblem, MessageKey> = {
   "not-signed-in": "profile.notSignedIn",
 };
 
-const SAVE_FAILED_KEY: Record<ProfileProblem, MessageKey> = {
-  offline: "profile.saveFailed",
-  error: "profile.saveFailed",
-  "not-signed-in": "profile.saveFailed.notSignedIn",
-};
-
 const PREFERENCE_KEY: Record<Preference, MessageKey> = {
   like: "profile.preference.like",
   neutral: "profile.preference.neutral",
   dislike: "profile.preference.dislike",
 };
 
-/** Loading and failure while the Profile is not ready, and one live region for every save or undo once it is. */
-export function ProfileStatus({ state, save, retry }: { state: ProfileState; save: SaveState; retry(): void }) {
+/**
+ * Loading and failure while the Profile is not ready. Once it is, a save or an undo is a toast, so this shows
+ * nothing. A load problem stays inline because it needs Retry.
+ */
+export function ProfileStatus({ state, retry }: { state: ProfileState; retry(): void }) {
   const { t } = useI18n();
   if (state.kind === "loading") return <p role="status">{t("profile.loading")}</p>;
   if (state.kind === "problem") {
@@ -44,12 +41,7 @@ export function ProfileStatus({ state, save, retry }: { state: ProfileState; sav
       </>
     );
   }
-  return (
-    <p role={save.kind === "failed" ? "alert" : "status"}>
-      {save.kind === "saved" && t("profile.saved")}
-      {save.kind === "failed" && t(SAVE_FAILED_KEY[save.problem])}
-    </p>
-  );
+  return null;
 }
 
 export function BaselineFields({
