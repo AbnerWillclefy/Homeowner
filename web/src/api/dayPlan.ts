@@ -14,6 +14,11 @@ export interface PlanTask {
   importance: string;
   /** A stable reason id, localised by the app. Empty before the day is planned. */
   reason?: string;
+  /**
+   * The Chore's Category id. Absent from an older API and possibly an id the app has no style for, so it is
+   * optional and a card without a known one renders neutral.
+   */
+  category?: string;
 }
 
 export interface ResidentTasks {
@@ -67,6 +72,8 @@ function parseTask(body: unknown): PlanTask | null {
     return null;
   }
   const task: PlanTask = { id, choreId, choreName, windowStart, windowEnd, currentEffort, baseEffort, people, importance };
+  // Lenient on purpose: a missing or odd category must never turn the whole plan into an error.
+  if (typeof body.category === "string") task.category = body.category;
   return reason === undefined ? task : { ...task, reason };
 }
 

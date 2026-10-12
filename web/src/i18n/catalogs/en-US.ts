@@ -264,11 +264,20 @@ export const enUS = {
     "Today's plan has not been made yet. Homeowner plans your Home's day at {time}, so check back after that. These are the open Tasks it will choose from.",
   "dayplan.rejected":
     "Today's plan could not be used, so no Tasks were given to anyone today. Your open Tasks are still listed below.",
-  "dayplan.energy": "Your Energy today: {energy}",
-  "dayplan.energy.none":
-    "You have no Baseline for today's weekday, so your Energy is 0 and no Tasks were given to you. Set your Baseline in your profile to get Tasks on that day.",
+  "dayplan.greeting.morning": "Good morning",
+  "dayplan.greeting.afternoon": "Good afternoon",
+  "dayplan.greeting.evening": "Good evening",
+  "dayplan.chip.label": "Energy today: {text}",
+  "dayplan.chip.unset": "Check in to set today's Energy",
+  "dayplan.chip.noBaseline": "Set your Baseline to get Energy",
+  "dayplan.chip.drained": "Drained today, no Tasks",
+  "dayplan.chip.energy": "Energy {energy}",
+  "dayplan.chip.pending": "Checked in",
   "dayplan.mine.heading": "Your Tasks",
   "dayplan.mine.empty": "Nothing for you today. Enjoy the day.",
+  "dayplan.mine.empty.noBaseline":
+    "You have no Baseline for today's weekday, so your Energy is 0 and no Tasks were given to you. When you are ready, you can set your Baseline to get Tasks on that day.",
+  "dayplan.mine.empty.noBaseline.link": "Set your Baseline",
   "dayplan.others.heading": "Other Residents' Tasks",
   "dayplan.others.resident": "Resident {number}",
   "dayplan.pool.heading": "Still to do",
@@ -288,7 +297,7 @@ export const enUS = {
   "dayplan.pool.reason.two_person_deferred": "It needs two people, and they were not both free today.",
   "dayplan.pool.reason.invalid_effort": "Its Effort is not valid, so it was left out. Edit the Chore to fix it.",
   "dayplan.pool.reason.added_after_plan": "It was added after today's plan was made.",
-  "dayplan.energy.drained": "You checked in as Drained, so no Tasks were given to you today. Rest up.",
+  "dayplan.mine.empty.drained": "You checked in as Drained, so no Tasks were given to you today. Rest up.",
 
   // The start choice, at the end of both onboarding flows
   "startChoice.heading": "When do you want your Tasks?",

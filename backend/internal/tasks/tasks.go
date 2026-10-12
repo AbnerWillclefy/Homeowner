@@ -25,6 +25,7 @@ type Open struct {
 	ID            string `json:"id"`
 	ChoreID       string `json:"choreId"`
 	ChoreName     string `json:"choreName"`
+	Category      string `json:"category"`
 	WindowStart   string `json:"windowStart"`
 	WindowEnd     string `json:"windowEnd"`
 	CurrentEffort int    `json:"currentEffort"`
@@ -207,7 +208,7 @@ func apply(ctx context.Context, tx pgx.Tx, r choreRow, dec schedule.Decision, no
 // ListOpen returns the Home's open Tasks, oldest window first. Never nil.
 func (s *Store) ListOpen(ctx context.Context, homeID string) ([]Open, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT t.id, c.id, c.name, t.window_start, t.window_end, t.current_effort, c.base_effort, c.people, c.importance
+		SELECT t.id, c.id, c.name, c.category, t.window_start, t.window_end, t.current_effort, c.base_effort, c.people, c.importance
 		FROM tasks t JOIN chores c ON c.id = t.chore_id
 		WHERE c.home_id = $1 AND t.status = 'open'
 		ORDER BY t.window_start, c.created_at, t.id`, homeID)
@@ -221,7 +222,7 @@ func (s *Store) ListOpen(ctx context.Context, homeID string) ([]Open, error) {
 			o      Open
 			ws, we time.Time
 		)
-		if err := rows.Scan(&o.ID, &o.ChoreID, &o.ChoreName, &ws, &we,
+		if err := rows.Scan(&o.ID, &o.ChoreID, &o.ChoreName, &o.Category, &ws, &we,
 			&o.CurrentEffort, &o.BaseEffort, &o.People, &o.Importance); err != nil {
 			return nil, fmt.Errorf("list open tasks: %w", err)
 		}

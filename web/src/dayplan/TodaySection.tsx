@@ -1,20 +1,31 @@
+import { Link } from "react-router";
 import type { DayPlan } from "../api/dayPlan";
-import type { Level } from "../api/checkIn";
-import { energyNote } from "../checkin/state";
+import { ME_PATH } from "../app/routes";
+import { noTasksReason, type EnergyNote, type NoTasksReason } from "../checkin/state";
 import { formatAllocationTime } from "../home/allocationTimes";
-import { useI18n } from "../i18n";
+import { useI18n, type MessageKey } from "../i18n";
 import { LOAD_FAILURE_KEY } from "./failureMessages";
-import { TaskItem } from "./TaskItem";
-import { useDayPlan } from "./useDayPlan";
+import { TaskCard } from "./TaskCard";
+import type { DayPlanState } from "./useDayPlan";
+
+const LIST = "flex list-none flex-col gap-3 p-0";
 
 /**
  * Today's Day Plan: your Tasks, other Residents' Tasks and the pool that remains. Read-only: a Day Plan is a
  * proposal, and accepting or refusing it comes later. Rendered inside the Home section, so it only exists
- * while the signed-in User has a Home.
+ * while the signed-in User has a Home. The owner loads the plan and shows its Energy in the header's chip;
+ * `note` is that chip's note, null while the Check-in is not known.
  */
-export function TodaySection({ level }: { level: Level | null }) {
+export function TodaySection({
+  state,
+  reload,
+  note,
+}: {
+  state: DayPlanState;
+  reload(): void;
+  note: EnergyNote | null;
+}) {
   const { t } = useI18n();
-  const { state, reload } = useDayPlan();
 
   return (
     <section aria-labelledby="today-heading">
@@ -38,16 +49,42 @@ export function TodaySection({ level }: { level: Level | null }) {
       {state.kind === "ready" && (
         <>
           <p>{t("dayplan.intro")}</p>
-          <PlanView plan={state.plan} level={level} />
+          <PlanView plan={state.plan} note={note} />
         </>
       )}
     </section>
   );
 }
 
-function PlanView({ plan, level }: { plan: DayPlan; level: Level | null }) {
+const EMPTY_MINE = {
+  drained: "dayplan.mine.empty.drained",
+  "no-baseline": "dayplan.mine.empty.noBaseline",
+  "nothing-due": "dayplan.mine.empty",
+} as const satisfies Record<NoTasksReason, MessageKey>;
+
+/** Why the Resident has no Tasks today; without a Baseline it also points to where to set one. */
+function EmptyMine({ reason }: { reason: NoTasksReason | null }) {
+  const { t } = useI18n();
+  // Without a known Check-in the reason is unknown, so say nothing rather than guess.
+  if (!reason) return null;
+  return (
+    <>
+      <p>{t(EMPTY_MINE[reason])}</p>
+      {reason === "no-baseline" && (
+        <p>
+          <Link to={ME_PATH} className="font-semibold text-accent underline">
+            {t("dayplan.mine.empty.noBaseline.link")}
+          </Link>
+        </p>
+      )}
+    </>
+  );
+}
+
+function PlanView({ plan, note }: { plan: DayPlan; note: EnergyNote | null }) {
   const { t, locale } = useI18n();
-  const note = energyNote(plan.energy, level);
+  // The chip's note picks the reason for an empty list, so the two can never disagree.
+  const reason = note && noTasksReason(note);
 
   return (
     <>
@@ -58,21 +95,15 @@ function PlanView({ plan, level }: { plan: DayPlan; level: Level | null }) {
 
       {plan.planned && (
         <>
-          <p>
-            {note === "energy" && t("dayplan.energy", { energy: plan.energy ?? 0 })}
-            {note === "no-baseline" && t("dayplan.energy.none")}
-            {note === "drained" && t("dayplan.energy.drained")}
-          </p>
-
           <h3>{t("dayplan.mine.heading")}</h3>
-          {plan.mine.length === 0 ? (
-            <p>{t("dayplan.mine.empty")}</p>
-          ) : (
-            <ul className="p-0">
+          {plan.mine.length > 0 ? (
+            <ul className={LIST}>
               {plan.mine.map((task) => (
-                <TaskItem key={task.id} task={task} reasonFor="assigned" />
+                <TaskCard key={task.id} task={task} reasonFor="assigned" />
               ))}
             </ul>
+          ) : (
+            <EmptyMine reason={reason} />
           )}
 
           {plan.others.length > 0 && (
@@ -83,9 +114,9 @@ function PlanView({ plan, level }: { plan: DayPlan; level: Level | null }) {
                   <h4 id={`resident-${index}`} className="font-semibold">
                     {t("dayplan.others.resident", { number: index + 1 })}
                   </h4>
-                  <ul className="p-0">
+                  <ul className={LIST}>
                     {other.tasks.map((task) => (
-                      <TaskItem key={task.id} task={task} reasonFor="assigned" />
+                      <TaskCard key={task.id} task={task} reasonFor="assigned" />
                     ))}
                   </ul>
                 </section>
@@ -101,9 +132,9 @@ function PlanView({ plan, level }: { plan: DayPlan; level: Level | null }) {
       ) : (
         <>
           <p>{t("dayplan.pool.intro")}</p>
-          <ul className="p-0">
+          <ul className={LIST}>
             {plan.pool.map((task) => (
-              <TaskItem key={task.id} task={task} reasonFor="pool" />
+              <TaskCard key={task.id} task={task} reasonFor="pool" />
             ))}
           </ul>
         </>

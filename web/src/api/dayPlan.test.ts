@@ -80,6 +80,36 @@ describe("getDayPlan", () => {
     expect(result.kind === "ok" && [result.plan.mine, result.plan.others, result.plan.pool]).toEqual([[], [], []]);
   });
 
+  it("keeps a Task's Category when the API sends one", async () => {
+    stubFetch(Response.json({ ...PLAN, mine: [{ ...TASK, category: "kitchen" }] }));
+    const result = await getDayPlan();
+    expect(result.kind === "ok" && result.plan.mine[0]?.category).toBe("kitchen");
+  });
+
+  it("keeps a Category id the app does not know, for the card to render neutral", async () => {
+    stubFetch(Response.json({ ...PLAN, pool: [{ ...TASK, category: "garage" }] }));
+    const result = await getDayPlan();
+    expect(result.kind === "ok" && result.plan.pool[0]?.category).toBe("garage");
+  });
+
+  it("reads a Task without a Category (an older API during a deploy) instead of failing the plan", async () => {
+    stubFetch(Response.json(PLAN));
+    const result = await getDayPlan();
+    expect(result.kind).toBe("ok");
+    expect(result.kind === "ok" && "category" in result.plan.mine[0]!).toBe(false);
+  });
+
+  it.each([42, null, true, ["kitchen"]])("drops a non-string Category (%j) and still reads the plan", async (category) => {
+    stubFetch(
+      Response.json({ ...PLAN, mine: [{ ...TASK, category }], others: [{ residentId: "r2", tasks: [{ ...TASK, category }] }] }),
+    );
+    const result = await getDayPlan();
+    expect(result.kind).toBe("ok");
+    expect(result.kind === "ok" && "category" in result.plan.mine[0]!).toBe(false);
+    expect(result.kind === "ok" && result.plan.mine[0]?.choreName).toBe("Wash dishes");
+    expect(result.kind === "ok" && "category" in result.plan.others[0]!.tasks[0]!).toBe(false);
+  });
+
   it("keeps an energy of 0 (no Baseline) and a rejected plan", async () => {
     stubFetch(Response.json({ ...PLAN, energy: 0, rejected: true, planned: false }));
     const result = await getDayPlan();

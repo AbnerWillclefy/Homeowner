@@ -43,6 +43,20 @@ describe("categoryStyle", () => {
     expect(new Set(ids.map((id) => categoryStyle(id).icon)).size).toBe(ids.length);
   });
 
+  describe("id", () => {
+    it.each(Object.keys(TONES))("keeps the known id %s", (id) => {
+      expect(categoryStyle(id).id).toBe(id);
+    });
+
+    it.each([undefined, null, "", "garage", "toString", "__proto__"])("turns %j into other, never the raw id", (id) => {
+      expect(categoryStyle(id).id).toBe("other");
+    });
+
+    it("names every Category it styles", () => {
+      expect(Object.keys(CATEGORY_KEYS).sort()).toEqual(Object.keys(TONES).sort());
+    });
+  });
+
   it("uses only classes whose tokens exist in index.css", () => {
     for (const id of [...Object.keys(TONES), "unknown"]) {
       const { fill, ink } = categoryStyle(id);
