@@ -58,3 +58,47 @@ jobs:
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
 
+  # The thermo-nuclear review above covers maintainability only; this one covers bugs and security.
+  # Both jobs finish before agent-review-fix.yml fires, and it fires only if both succeed.
+  claude-security-review:
+    runs-on: ubuntu-latest
+    # Its own group: sharing claude-review's would make the two jobs cancel each other
+    concurrency:
+      group: claude-security-review-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run Claude correctness and security review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
+          plugins: "code-review@claude-code-plugins"
+          prompt: |
+            /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}
+
+            Read the pull request with `gh pr view` and `gh pr diff`. The checkout is shallow, so git cannot produce the diff.
+
+            Raise only correctness and security defects: logic errors, off-by-one, wrong conditions, unhandled errors, nil dereferences, races, data loss, broken invariants of the allocator's referee (docs/adr/0004), and anything that weakens authentication, password or session handling, authorisation, input validation, injection safety or secret handling. Ignore naming, style, formatting, structure, duplication, test design and anything else about maintainability: a separate reviewer covers those.
+
+            Post each finding as one inline comment with mcp__github_inline_comment__create_inline_comment, anchored to a file and a line inside the diff. If a finding concerns code outside the diff, anchor it to the changed line that causes it. Each comment states the problem and the concrete change wanted, because an unattended engineer applies them without asking questions. Post at most 5, the most severe ones, and no summary comment.
+
+            If the pull request has a `review-round-*` label, this is a re-review. Read the existing threads first with `gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments`. Never re-raise a finding already raised on the same line, and never re-raise a rejected one.
+
+            If nothing is worth raising, post one short comment with `gh pr comment` saying so.
+          claude_args: |
+            --max-turns 40
+            --model sonnet
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff *),Bash(gh pr view *),Bash(gh pr comment *),Bash(gh api *)"
+
