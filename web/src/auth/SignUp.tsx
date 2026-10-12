@@ -3,7 +3,7 @@ import { TriangleAlert } from "lucide-react";
 import type { CognitoFailure, CognitoResult } from "./cognito";
 import { config } from "../config";
 import { useI18n } from "../i18n";
-import { failureField, failureMessage } from "./failureText";
+import { failureMessage, fieldError } from "./failureText";
 import { evaluate } from "./passwordPolicy";
 import { ruleChange, type RuleChange } from "./ruleAnnouncement";
 import { announcementText } from "./ruleText";
@@ -14,7 +14,7 @@ import { PasswordRules } from "../components/ui/PasswordRules";
 import { PillButton } from "../components/ui/PillButton";
 
 const ANNOUNCE_DELAY_MS = 600;
-const ERROR_ID = "signup-error";
+const FORM = "signup";
 
 interface Props {
   register(email: string, password: string): Promise<CognitoResult>;
@@ -28,8 +28,6 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
   const [busy, setBusy] = useState(false);
   // State holds the failure and the rule change, never their words, so a language switch re-words them.
   const [problem, setProblem] = useState<CognitoFailure | null>(null);
-
-  const aboutField = problem ? failureField(problem) : null;
 
   const [mismatch, setMismatch] = useState(false);
   const [password, setPassword] = useState("");
@@ -103,8 +101,7 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
           autoCapitalize="none"
           spellCheck={false}
           required
-          aria-invalid={aboutField === "email" || undefined}
-          aria-describedby={aboutField === "email" ? `signup-email-why ${ERROR_ID}` : "signup-email-why"}
+          {...fieldError(problem, "email", FORM, "signup-email-why")}
         />
 
         <label htmlFor="signup-password">{t("signUp.passwordLabel")}</label>
@@ -120,12 +117,7 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
           name="password"
           autoComplete="new-password"
           required
-          aria-invalid={aboutField === "password" || undefined}
-          aria-describedby={
-            aboutField === "password"
-              ? `signup-password-why signup-password-rules ${ERROR_ID}`
-              : "signup-password-why signup-password-rules"
-          }
+          {...fieldError(problem, "password", FORM, "signup-password-why signup-password-rules")}
         />
 
         <label htmlFor="signup-confirm">{t("signUp.confirmLabel")}</label>
@@ -146,7 +138,7 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
           )}
         </div>
 
-        <FormError id={ERROR_ID}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
+        <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
         <PillButton type="submit" className="mt-4 w-full" disabled={busy}>
           {busy ? t("signUp.submitting") : t("signUp.submit")}
         </PillButton>

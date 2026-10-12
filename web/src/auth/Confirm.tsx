@@ -3,12 +3,12 @@ import { config } from "../config";
 import { useI18n } from "../i18n";
 import type { CognitoFailure, CognitoResult } from "./cognito";
 import { EMAIL_MARKER, splitAtEmail } from "./emailMarker";
-import { failureField, failureMessage } from "./failureText";
+import { failureMessage, fieldError } from "./failureText";
 import { Card } from "../components/ui/Card";
-import { FormError } from "../components/ui/FormError";
+import { FormError, FormNotice } from "../components/ui/FormError";
 import { PillButton } from "../components/ui/PillButton";
 
-const ERROR_ID = "confirm-error";
+const FORM = "confirm";
 
 interface Props {
   email: string;
@@ -24,7 +24,6 @@ export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) 
   // State holds the failure and a flag, never their words, so a language switch re-words them.
   const [problem, setProblem] = useState<CognitoFailure | null>(null);
   const [resent, setResent] = useState(false);
-  const aboutCode = problem !== null && failureField(problem) === "code";
   const [before, after] = splitAtEmail(t("confirm.intro", { email: EMAIL_MARKER }));
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -72,11 +71,10 @@ export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) 
           autoCapitalize="none"
           spellCheck={false}
           required
-          aria-invalid={aboutCode || undefined}
-          aria-describedby={aboutCode ? `confirm-spam-hint ${ERROR_ID}` : "confirm-spam-hint"}
+          {...fieldError(problem, "code", FORM, "confirm-spam-hint")}
         />
-        <FormError id={ERROR_ID}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
-        <div role="status">{resent && <p className="mt-4 font-semibold">{t("confirm.resent")}</p>}</div>
+        <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
+        <FormNotice>{resent && t("confirm.resent")}</FormNotice>
         <PillButton type="submit" className="mt-4 w-full" disabled={busy}>
           {busy ? t("confirm.submitting") : t("confirm.submit")}
         </PillButton>

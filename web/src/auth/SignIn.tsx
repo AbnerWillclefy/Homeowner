@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { config } from "../config";
 import { useI18n, type MessageKey } from "../i18n";
 import type { CognitoFailure, SignInResult } from "./cognito";
-import { failureField, failureMessage } from "./failureText";
+import { failureMessage, fieldError } from "./failureText";
 import { Card } from "../components/ui/Card";
 import { FormError } from "../components/ui/FormError";
 import { PasswordField } from "../components/ui/PasswordField";
@@ -19,14 +19,13 @@ interface Props {
   onNeedsSignUp(): void;
 }
 
-const ERROR_ID = "signin-error";
+const FORM = "signin";
 
 export function SignIn({ initialEmail, noticeKey, logIn, onNeedsConfirm, onNeedsSignUp }: Props) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   // The failure, not its words, so a language switch re-words it.
   const [problem, setProblem] = useState<CognitoFailure | null>(null);
-  const aboutField = problem ? failureField(problem) : null;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -59,8 +58,7 @@ export function SignIn({ initialEmail, noticeKey, logIn, onNeedsConfirm, onNeeds
           spellCheck={false}
           defaultValue={initialEmail}
           required
-          aria-invalid={aboutField === "email" || undefined}
-          aria-describedby={aboutField === "email" ? ERROR_ID : undefined}
+          {...fieldError(problem, "email", FORM)}
         />
         <label htmlFor="signin-password">{t("signIn.passwordLabel")}</label>
         <PasswordField
@@ -68,10 +66,9 @@ export function SignIn({ initialEmail, noticeKey, logIn, onNeedsConfirm, onNeeds
           name="password"
           autoComplete="current-password"
           required
-          aria-invalid={aboutField === "password" || undefined}
-          aria-describedby={aboutField === "password" ? ERROR_ID : undefined}
+          {...fieldError(problem, "password", FORM)}
         />
-        <FormError id={ERROR_ID}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
+        <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
         <PillButton type="submit" className="mt-4 w-full" disabled={busy}>
           {busy ? t("signIn.submitting") : t("signIn.submit")}
         </PillButton>

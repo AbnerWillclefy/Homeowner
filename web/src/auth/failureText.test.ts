@@ -3,7 +3,8 @@ import { enUS } from "../i18n/catalogs/en-US";
 import { ptBR } from "../i18n/catalogs/pt-BR";
 import { createTranslate } from "../i18n/translate";
 import type { CognitoFailure } from "./cognito";
-import { failureField, failureKey, failureMessage } from "./failureText";
+import { formErrorId } from "../components/ui/formErrorId";
+import { failureField, failureKey, failureMessage, fieldError } from "./failureText";
 import { parsePolicy } from "./passwordPolicy";
 
 const kinds: CognitoFailure["kind"][] = [
@@ -145,5 +146,38 @@ describe("failureField", () => {
     for (const kind of ["not-confirmed", "not-authorized", "rate-limited", "network", "error"] as const) {
       expect(failureField({ kind })).toBeNull();
     }
+  });
+});
+
+describe("fieldError", () => {
+  const none = { "aria-invalid": undefined, "aria-describedby": undefined };
+
+  it("marks the field a failure is about and points it at the form's error", () => {
+    expect(fieldError({ kind: "wrong-code" }, "code", "confirm")).toEqual({
+      "aria-invalid": true,
+      "aria-describedby": formErrorId("confirm"),
+    });
+  });
+
+  it("keeps the field's own hints ahead of the error", () => {
+    expect(fieldError({ kind: "invalid-password" }, "password", "signup", "why rules")).toEqual({
+      "aria-invalid": true,
+      "aria-describedby": "why rules signup-error",
+    });
+  });
+
+  it("leaves a field alone when the failure is about another field or the whole form", () => {
+    expect(fieldError({ kind: "wrong-code" }, "email", "signin", "hint")).toEqual({
+      "aria-invalid": undefined,
+      "aria-describedby": "hint",
+    });
+    expect(fieldError({ kind: "network" }, "email", "signin")).toEqual(none);
+    expect(fieldError(null, "email", "signin")).toEqual(none);
+  });
+});
+
+describe("formErrorId", () => {
+  it("derives the error's id from the form's name", () => {
+    expect(formErrorId("signin")).toBe("signin-error");
   });
 });

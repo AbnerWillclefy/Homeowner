@@ -1,3 +1,4 @@
+import { formErrorId } from "../components/ui/formErrorId";
 import type { MessageKey, Translate } from "../i18n";
 import type { CognitoFailure } from "./cognito";
 import { describeRules, type PasswordPolicy } from "./passwordPolicy";
@@ -34,6 +35,21 @@ const FIELD: Partial<Record<CognitoFailure["kind"], FailureField>> = {
 /** The field a failure is about, or null when it belongs to the whole form. Lets a screen link the field to the message. */
 export function failureField(failure: CognitoFailure): FailureField | null {
   return FIELD[failure.kind] ?? null;
+}
+
+/**
+ * The accessibility attributes for one input: invalid and pointing at the form's error when the failure is
+ * about this field. `baseIds` are the field's own hints, kept ahead of the error in `aria-describedby`.
+ */
+export function fieldError(
+  problem: CognitoFailure | null,
+  field: FailureField,
+  form: string,
+  baseIds?: string,
+): { "aria-invalid": true | undefined; "aria-describedby": string | undefined } {
+  const about = problem !== null && failureField(problem) === field;
+  const ids = [baseIds, about ? formErrorId(form) : undefined].filter(Boolean).join(" ");
+  return { "aria-invalid": about || undefined, "aria-describedby": ids || undefined };
 }
 
 /**
