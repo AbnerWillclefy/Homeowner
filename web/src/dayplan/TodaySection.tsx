@@ -63,8 +63,10 @@ const EMPTY_MINE = {
 } as const satisfies Record<NoTasksReason, MessageKey>;
 
 /** Why the Resident has no Tasks today; without a Baseline it also points to where to set one. */
-function EmptyMine({ reason }: { reason: NoTasksReason }) {
+function EmptyMine({ reason }: { reason: NoTasksReason | null }) {
   const { t } = useI18n();
+  // Without a known Check-in the reason is unknown, so say nothing rather than guess.
+  if (!reason) return null;
   return (
     <>
       <p>{t(EMPTY_MINE[reason])}</p>
@@ -82,7 +84,7 @@ function EmptyMine({ reason }: { reason: NoTasksReason }) {
 function PlanView({ plan, note }: { plan: DayPlan; note: EnergyNote | null }) {
   const { t, locale } = useI18n();
   // The chip's note picks the reason for an empty list, so the two can never disagree.
-  const reason = noTasksReason(note ?? "pending");
+  const reason = note && noTasksReason(note);
 
   return (
     <>
