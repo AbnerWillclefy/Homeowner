@@ -540,6 +540,48 @@ export const enUS = {
   "catalog.feed_bird": "Feed the bird",
   "catalog.clean_bird_cage": "Clean the bird cage",
   "catalog.care_for_pet": "Care for the pet",
+
+  // Onboarding: the walk through install, reminders, profile and the Home for a new User
+  "onboarding.progress": "Setting up: step {step} of {total}",
+  "onboarding.loading": "Loading your setup...",
+  "onboarding.load.offline":
+    "Homeowner cannot reach the service, so we cannot tell where you left off. Check your connection and try again.",
+  "onboarding.load.error": "Something went wrong loading your setup. Try again in a moment.",
+  "onboarding.load.notSignedIn": "Your sign-in has ended. Sign in again to continue.",
+  "onboarding.retry": "Try again",
+  "onboarding.next": "Next",
+  "onboarding.back": "Back",
+  "onboarding.saving": "Saving...",
+  "onboarding.advance.offline":
+    "Could not reach the service, so you are still on this step. Check your connection and try again.",
+  "onboarding.advance.error": "Something went wrong saving your progress, so you are still on this step. Try again.",
+  "onboarding.advance.notSignedIn": "Your sign-in has ended. Sign in again to carry on.",
+  "onboarding.install.heading": "Add Homeowner to your Home Screen",
+  "onboarding.install.why":
+    "On iPhone, Apple only lets an app send notifications once it is on your Home Screen. Adding it now means the next step can turn reminders on, and Homeowner opens like any other app. Your progress is saved, so when you open Homeowner from its icon and sign in again, you will pick up right here.",
+  "onboarding.install.done": "I have added it",
+  "onboarding.reminders.heading": "Turn on reminders",
+  "onboarding.reminders.why":
+    "Homeowner decides each day who does which Task, and it can only tell you when the app is closed through a notification. Without reminders you would have to remember to open the app. They are a nudge: nothing breaks if you skip this, and you can turn them on later.",
+  "onboarding.reminders.needsInstall":
+    "Reminders can only be turned on once you open Homeowner from its Home Screen icon. Carry on from there to pick up this step, or skip it for now.",
+  "onboarding.reminders.unsupported":
+    "This browser cannot show reminders, so there is nothing to turn on here. You can carry on without them.",
+  "onboarding.reminders.continue": "Continue",
+  "onboarding.reminders.notNow": "Not now",
+  "onboarding.baseline.heading": "Your Baseline",
+  "onboarding.baseline.why":
+    "Your Baseline is the Energy you can usually give on each day of the week. Homeowner uses it as the starting point for how much Effort to hand you, and your daily Check-in then says how today compares. We ask for all seven days so that it fits your week; enter 0 for a day when you cannot take on any Chores.",
+  "onboarding.baseline.incomplete": "Enter a number for every day of the week before you continue. Use 0 if you cannot do any Chores that day.",
+  "onboarding.restrictions.heading": "Your Restrictions",
+  "onboarding.restrictions.why":
+    "Some work asks too much of the body, such as heavy lifting or strong chemicals. Telling Homeowner now means a Chore with that Demand is never given to you. If nothing applies to you, leave everything unticked: that is a complete answer.",
+  "onboarding.preferences.heading": "Your Preferences",
+  "onboarding.preferences.why":
+    "Everyone likes some housework more than other housework. Your Preferences help Homeowner give you more of the work you like and less of the work you dislike, and share out the work nobody likes in turns. Leaving a kind of work on Neutral is a fine answer.",
+  "onboarding.home.heading": "Create your Home",
+  "onboarding.home.why":
+    "The last step. Your Home is where the daily sharing happens. The next questions tell Homeowner when your days start and what your Home needs done, so it can suggest the first Chores for you to review. You can change all of it later.",
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof enUS;
