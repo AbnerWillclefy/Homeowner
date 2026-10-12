@@ -73,7 +73,7 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("GET /home", s.requireResident(s.getHome))
 	mux.HandleFunc("PUT /home", s.requireResident(s.putHome))
 	mux.HandleFunc("DELETE /home/residents/me", s.requireResident(s.leaveHome))
-	mux.HandleFunc("GET /home/chores",s.requireResident(s.listChores))
+	mux.HandleFunc("GET /home/chores", s.requireResident(s.listChores))
 	mux.HandleFunc("POST /home/chores", s.requireResident(s.postChore))
 	mux.HandleFunc("PUT /home/chores/{id}", s.requireResident(s.putChore))
 	mux.HandleFunc("DELETE /home/chores/{id}", s.requireResident(s.deleteChore))
