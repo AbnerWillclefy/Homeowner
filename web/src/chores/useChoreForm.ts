@@ -1,13 +1,10 @@
-import { useState, type FormEvent } from "react";
-import type { Chore, ChoreWire, Failure, SaveChoreResult } from "../api/chores";
+import { useMemo, useRef, useState, type FormEvent } from "react";
+import type { Chore, ChoreWire, SaveChoreResult } from "../api/chores";
 import type { FieldCodes } from "../api/home";
-import { toChoreInput, type ChoreFormState } from "./form";
+import { createChoreSubmitter, type ChoreFormStatus } from "./choreSubmit";
+import type { ChoreFormState } from "./form";
 
-export type ChoreFormStatus =
-  | { kind: "idle" }
-  | { kind: "saving" }
-  | { kind: "invalid"; fields: FieldCodes }
-  | { kind: "failed"; reason: Failure["kind"] | "gone" };
+export type { ChoreFormStatus } from "./choreSubmit";
 
 /**
  * The state of the Chore form. The typed values live here and a failure never resets them, so a retry
@@ -35,14 +32,23 @@ export function useChoreForm(
     });
   }
 
-  async function submit(event: FormEvent) {
+  // The guard lives in the submitter, so a second Enter in the same tick is ignored, not only a disabled button.
+  const latest = useRef({ save, onSaved, values });
+  latest.current = { save, onSaved, values };
+  const submitter = useMemo(
+    () =>
+      createChoreSubmitter({
+        save: (input) => latest.current.save(input),
+        getValues: () => latest.current.values,
+        onStatus: setStatus,
+        onSaved: (chore, saved) => latest.current.onSaved(chore, saved),
+      }),
+    [],
+  );
+
+  function submit(event: FormEvent) {
     event.preventDefault();
-    if (status.kind === "saving") return;
-    setStatus({ kind: "saving" });
-    const result = await save(toChoreInput(values));
-    if (result.kind === "ok") onSaved(result.chore, values);
-    else if (result.kind === "invalid") setStatus({ kind: "invalid", fields: result.fields });
-    else setStatus({ kind: "failed", reason: result.kind === "none" ? "gone" : result.kind });
+    void submitter();
   }
 
   return { values, status, change, submit };

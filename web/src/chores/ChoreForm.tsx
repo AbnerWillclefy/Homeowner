@@ -152,7 +152,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
       <h3 id={`${idPrefix}-heading`} ref={headingRef} tabIndex={-1}>
         {t(mode === "edit" ? "chores.form.edit.heading" : "chores.form.create.heading")}
       </h3>
-      <form onSubmit={form.submit} noValidate>
+      <form onSubmit={form.submit} noValidate aria-busy={saving}>
         <div>
           <label htmlFor={`${idPrefix}-name`}>{t("chores.form.name.label")}</label>
           <input
@@ -332,7 +332,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
         )}
 
         <ButtonRow className="mt-4">
-          <PillButton type="submit" disabled={saving}>
+          <PillButton type="submit" disabled={saving} aria-busy={saving}>
             {t(saving ? "chores.form.saving" : mode === "edit" ? "chores.form.submit.save" : "chores.form.submit.create")}
           </PillButton>
           <PillButton variant="secondary" disabled={saving} onClick={onCancel}>

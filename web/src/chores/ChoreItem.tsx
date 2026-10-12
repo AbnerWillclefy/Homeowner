@@ -6,6 +6,7 @@ import { CardRow } from "../components/ui/CardRow";
 import { CategoryGlyph } from "../components/ui/CategoryGlyph";
 import { categoryStyle } from "../components/ui/categoryStyle";
 import { PillButton } from "../components/ui/PillButton";
+import { useSubmitOnce } from "../components/ui/useSubmitOnce";
 import { useI18n } from "../i18n";
 import { categoryLabel, labelText } from "../profile/labels";
 import { DELETE_FAILURE_KEY } from "./failureMessages";
@@ -40,13 +41,14 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
   const { id: categoryId } = categoryStyle(chore.category);
   const schedule = choreScheduleFacts(chore, t, locale).join(" · ");
 
-  async function confirmDelete() {
+  // The guard ignores a second tap in the same tick, before `deleting` has rendered.
+  const { run: confirmDelete } = useSubmitOnce(async () => {
     setRemove({ kind: "deleting" });
     const result = await deleteChore(chore.id);
     // A Chore that is already gone is the outcome the Resident asked for.
     if (result.kind === "ok" || result.kind === "none") return onDeleted(chore.id);
     setRemove({ kind: "confirming", failed: result.kind });
-  }
+  });
 
   function cancel() {
     setRemove({ kind: "idle" });
@@ -95,7 +97,12 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
               <PillButton ref={keepRef} variant="secondary" disabled={remove.kind === "deleting"} onClick={cancel}>
                 {t("chores.delete.cancel")}
               </PillButton>
-              <PillButton variant="danger" disabled={remove.kind === "deleting"} onClick={() => void confirmDelete()}>
+              <PillButton
+                variant="danger"
+                disabled={remove.kind === "deleting"}
+                aria-busy={remove.kind === "deleting"}
+                onClick={() => void confirmDelete()}
+              >
                 {t(remove.kind === "deleting" ? "chores.delete.deleting" : "chores.delete.confirm")}
               </PillButton>
             </ButtonRow>
