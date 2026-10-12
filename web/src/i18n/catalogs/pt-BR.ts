@@ -279,6 +279,42 @@ export const ptBR: Messages = {
   "dayplan.pool.reason.two_person_deferred": "Precisa de duas pessoas, e as duas não estavam livres hoje.",
   "dayplan.pool.reason.invalid_effort": "O esforço dela não é válido, então ficou de fora. Edite o afazer para corrigir.",
   "dayplan.pool.reason.added_after_plan": "Foi adicionada depois que o plano de hoje foi feito.",
+  "dayplan.energy.drained": "Você fez check-in como esgotado, então nenhuma tarefa foi dada a você hoje. Descanse.",
+
+  // Check-in
+  "checkin.heading": "Check-in",
+  "checkin.intro":
+    "Conte ao Homeowner quanta energia você tem hoje. Ela ajusta a sua energia base só para hoje, para que as suas tarefas combinem com o seu dia. Você pode mudar mais tarde hoje, e as suas tarefas serão planejadas de novo.",
+  "checkin.loading": "Carregando o seu check-in...",
+  "checkin.load.offline":
+    "Não foi possível carregar o seu check-in porque o Homeowner não consegue acessar o serviço. Verifique a sua conexão e tente de novo.",
+  "checkin.load.error": "Algo deu errado ao carregar o seu check-in. Tente de novo em instantes.",
+  "checkin.notSignedIn": "O seu login terminou. Entre de novo para continuar.",
+  "checkin.retry": "Tentar de novo",
+  "checkin.level.legend": "Como está a sua energia hoje?",
+  "checkin.level.drained": "Esgotado",
+  "checkin.level.drained.hint": "Nenhuma energia. Você não recebe tarefas hoje.",
+  "checkin.level.low": "Baixa",
+  "checkin.level.low.hint": "Metade da sua energia de sempre, então menos tarefas e mais leves.",
+  "checkin.level.normal": "Normal",
+  "checkin.level.normal.hint": "A sua energia de sempre, a da sua energia base.",
+  "checkin.level.energized": "Energizado",
+  "checkin.level.energized.hint": "Um pouco mais do que de costume, então dá para assumir mais.",
+  "checkin.level.required": "Escolha como está a sua energia hoje e salve.",
+  "checkin.restrictions.legend": "Há algo que o seu corpo não aguenta hoje?",
+  "checkin.restrictions.hint":
+    "Marque o que você não consegue fazer hoje, como carregar peso com dor nas costas. Vale só para hoje e não muda as restrições do seu perfil.",
+  "checkin.submit": "Salvar check-in",
+  "checkin.saving": "Salvando...",
+  "checkin.cancel": "Cancelar",
+  "checkin.change": "Mudar",
+  "checkin.saved": "Check-in salvo. O plano de hoje foi atualizado.",
+  "checkin.save.offline":
+    "O seu check-in não foi salvo porque o Homeowner não consegue acessar o serviço. Verifique a sua conexão e tente de novo.",
+  "checkin.save.error": "Algo deu errado ao salvar o seu check-in. Tente de novo em instantes.",
+  "checkin.save.invalid": "O Homeowner não aceitou esse check-in. Escolha de novo e tente mais uma vez.",
+  "checkin.summary": "Check-in de hoje: {level}",
+  "checkin.summary.restrictions": "Não hoje: {demands}",
 
   // Cadastro
   "signUp.heading": "Cadastrar-se",
