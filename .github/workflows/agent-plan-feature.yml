@@ -40,6 +40,7 @@ jobs:
             5. Comment on the request with the list of tickets and their blockers, then remove the label `feature-request` and add `epic` and `needs-refinement`.
           claude_args: |
             --max-turns 60
+            --model haiku
             --allowedTools "Bash(gh issue *),Bash(gh api *)"
 
       - name: Fail if the stage did not finish

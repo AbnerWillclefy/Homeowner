@@ -35,13 +35,14 @@ jobs:
 
             Its tickets are its open sub-issues: `gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/sub_issues --jq '.[] | select(.state == "open") | .number'`. If it has none, #${{ github.event.issue.number }} is itself a single ticket: refine it, and do not refine any other issue.
 
-            For each ticket labelled `ready-for-human`, use the senior-engineer subagent to write its `## Learning path` (see "Learning tickets" in its instructions) to `.agent-scratch/notes-<n>.md`, append it to the ticket body the same way, and add no label.
+            Use the senior-engineer subagent once, for all the tickets together, so the shared context is read once. It writes each ticket's notes to `.agent-scratch/notes-<n>.md` inside the repository (never /tmp: files outside the repository cannot be read in this run): a `## Learning path` (see "Learning tickets" in its instructions) for tickets labelled `ready-for-human`, `## Technical notes` for the others.
 
-            For each other ticket, use the senior-engineer subagent to write its `## Technical notes` to `.agent-scratch/notes-<n>.md` inside the repository (never /tmp: files outside the repository cannot be read in this run), then append them to the ticket body with `gh issue edit <n> --body-file <file>`, one command per ticket, and add the label `ready-for-agent`.
+            Then append each file to its ticket body with `gh issue edit <n> --body-file <file>`, one command per ticket. Add the label `ready-for-agent` to every ticket not labelled `ready-for-human`.
 
             Then remove the label `needs-refinement` from #${{ github.event.issue.number }} and comment there with what was refined and any concerns raised.
           claude_args: |
-            --max-turns 80
+            --max-turns 60
+            --model haiku
             --allowedTools "Bash(gh issue *),Bash(gh api *),Write"
 
       - name: Fail if the stage did not finish

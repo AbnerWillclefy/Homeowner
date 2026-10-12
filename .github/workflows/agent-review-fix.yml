@@ -79,7 +79,8 @@ jobs:
 
             Then comment on the pull request with what you changed and what you rejected. Do not add or remove labels: the workflow does.
           claude_args: |
-            --max-turns 80
+            --max-turns 60
+            --model sonnet
             --allowedTools "Skill,Edit,Write,Bash(git *),Bash(go *),Bash(gofmt *),Bash(docker *),Bash(npm *),Bash(npx *),Bash(make *),Bash(gh pr *),Bash(gh api *)"
             --disallowedTools "Bash(git push --force *),Bash(git push -f *),Bash(gh pr merge *)"
 

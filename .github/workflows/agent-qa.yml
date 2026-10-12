@@ -65,5 +65,6 @@ jobs:
             - Playwright is installed in ${{ runner.temp }}/qa; write and run your test scripts there (`cd ${{ runner.temp }}/qa && node <script>.js`), never in the repository.
             - QA sign-in credentials are in the STAGING_QA_EMAIL and STAGING_QA_PASSWORD environment variables; read them only from inside a test script (`process.env`), never print them. Until sign-in exists (#8) they may be empty: test what needs no account.
           claude_args: |
-            --max-turns 100
+            --max-turns 60
+            --model haiku
             --allowedTools "Write,Bash(node *),Bash(npx playwright *),Bash(curl *),Bash(cd *),Bash(git log *),Bash(gh issue *),Bash(gh pr list *),Bash(gh pr view *),Bash(gh run list *),Bash(gh api *)"

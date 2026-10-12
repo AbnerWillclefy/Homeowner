@@ -53,6 +53,7 @@ jobs:
             If nothing is worth raising, post one short comment with `gh pr comment` saying so.
           claude_args: |
             --max-turns 40
+            --model sonnet
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff *),Bash(gh pr view *),Bash(gh pr comment *),Bash(gh api *)"
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options

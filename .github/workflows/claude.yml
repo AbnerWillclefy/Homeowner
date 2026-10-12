@@ -53,6 +53,7 @@ jobs:
           # or https://code.claude.com/docs/en/cli-reference for available options
           # Build and test tools only: no terraform apply, no deploys
           claude_args: |
-            --max-turns 120
+            --max-turns 60
+            --model sonnet
             --allowedTools "Bash(go *),Bash(gofmt *),Bash(docker *),Bash(npm *),Bash(npx *),Bash(make *),Bash(terraform fmt *),Bash(terraform validate *),Bash(gh issue view *),Bash(gh pr view *),Bash(gh pr diff *)"
 

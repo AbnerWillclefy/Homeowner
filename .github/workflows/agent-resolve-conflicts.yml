@@ -88,6 +88,7 @@ jobs:
 
             Then comment on the pull request with what conflicted and how you resolved it. If a conflict cannot be resolved without a product or design decision, run `git merge --abort`, comment the question on the pull request, and stop.
           claude_args: |
-            --max-turns 80
+            --max-turns 60
+            --model sonnet
             --allowedTools "Skill,Edit,Write,Bash(git *),Bash(go *),Bash(gofmt *),Bash(docker *),Bash(npm *),Bash(npx *),Bash(make *),Bash(gh pr view *),Bash(gh pr comment *)"
             --disallowedTools "Bash(git push --force *),Bash(git push -f *),Bash(git rebase *),Bash(gh pr merge *)"

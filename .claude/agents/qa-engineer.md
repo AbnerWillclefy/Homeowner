@@ -11,7 +11,7 @@ Staging's web and API URLs, and where Playwright is installed, are given in your
 
 For each test run:
 1. Find what changed: the pull requests merged since the previous QA run and the tickets they closed. Read each ticket's acceptance criteria and user stories.
-2. Test each change in a headless browser (Playwright) and through the API, including the edge cases the ticket implies, at phone width. Check the flows next to the change for regressions.
+2. Test each change against its acceptance criteria in a headless browser (Playwright) and through the API, at phone width. Stay within those criteria; do not explore other flows.
 3. Keep your scripts in a scratch directory; never commit them.
 
 For each problem, first search open issues labelled `bug` to avoid duplicates, then open an issue labelled `bug` and `needs-triage` with: what you did, what you expected (quoting the acceptance criterion or user story), what happened, steps to reproduce, and the ticket it relates to.
