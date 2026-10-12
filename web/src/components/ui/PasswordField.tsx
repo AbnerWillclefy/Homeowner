@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type InputHTMLAttributes } from "react";
 import { flushSync } from "react-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useI18n } from "../../i18n";
+import { Button } from "../../shared/ui/Button";
 
 type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "defaultValue" | "value" | "onChange" | "ref">;
 
@@ -49,16 +50,17 @@ export function PasswordField(props: Props) {
         className="min-w-0 flex-1"
       />
       {/* A mousedown would move focus off the input; keyboard users still reach the button by Tab. */}
-      <button
-        type="button"
-        className="btn size-11 shrink-0 p-0"
+      <Button
+        variant="secondary"
+        icon
+        className="shrink-0"
         aria-label={t("auth.showPassword")}
         aria-pressed={shown}
         onMouseDown={(e) => e.preventDefault()}
         onClick={toggle}
       >
         <Icon aria-hidden="true" size={20} className="shrink-0" />
-      </button>
+      </Button>
     </div>
   );
 }

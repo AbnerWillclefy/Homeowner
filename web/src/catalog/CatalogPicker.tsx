@@ -3,8 +3,8 @@ import type { CatalogEntry } from "../api/catalog";
 import type { Failure } from "../api/chores";
 import { choreFacts } from "../chores/facts";
 import { CardRow } from "../components/ui/CardRow";
-import { Button } from "../shared/ui/Button";
 import { useI18n, type MessageKey } from "../i18n";
+import { Button } from "../shared/ui/Button";
 import { catalogName } from "./name";
 import { useCatalog } from "./useCatalog";
 
@@ -42,9 +42,9 @@ export function CatalogPicker({ onPick, onClose }: Props) {
             {t(LOAD_FAILURE_KEY[state.reason])}
           </p>
           {state.reason !== "not-signed-in" && (
-            <button type="button" className="btn" onClick={reload}>
+            <Button variant="secondary" onClick={reload}>
               {t("chores.retry")}
-            </button>
+            </Button>
           )}
         </>
       )}
@@ -78,9 +78,9 @@ export function CatalogPicker({ onPick, onClose }: Props) {
         </ul>
       )}
 
-      <button type="button" className="btn" onClick={onClose}>
+      <Button variant="secondary" onClick={onClose}>
         {t("chores.catalog.close")}
-      </button>
+      </Button>
     </section>
   );
 }

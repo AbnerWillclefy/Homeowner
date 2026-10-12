@@ -1,9 +1,9 @@
 import { ArrowLeft } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
 import { HealthBanner } from "../app/HealthBanner";
-import { Button } from "../shared/ui/Button";
 import { useI18n } from "../i18n";
 import { Settings } from "../settings/Settings";
+import { Button } from "../shared/ui/Button";
 
 interface Props {
   /** Quiet "Step n of m" label. */
@@ -118,15 +118,15 @@ function BarButton({
   children: ReactNode;
 }) {
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      icon
       aria-label={label}
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-pill border border-transparent text-text motion-safe:transition-colors motion-safe:duration-150 disabled:text-muted"
     >
       {children}
-    </button>
+    </Button>
   );
 }

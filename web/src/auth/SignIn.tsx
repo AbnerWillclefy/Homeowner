@@ -1,13 +1,13 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { config } from "../config";
 import { useI18n } from "../i18n";
+import { Button } from "../shared/ui/Button";
 import { createSignInSubmitter } from "./authSubmit";
 import type { CognitoFailure, SignInResult } from "./cognito";
 import { failureMessage, fieldError } from "./failureText";
 import { Card } from "../components/ui/Card";
 import { FormError } from "../components/ui/FormError";
 import { PasswordField } from "../components/ui/PasswordField";
-import { Button } from "../shared/ui/Button";
 import { useStableHandlers } from "../components/ui/useStableHandlers";
 
 interface Props {
@@ -69,9 +69,9 @@ export function SignIn({ initialEmail, logIn, onNeedsConfirm, onNeedsSignUp }: P
       </form>
       <p className="mt-4 text-center">
         {t("signIn.newHere")}{" "}
-        <button type="button" className="btn-link" onClick={onNeedsSignUp}>
+        <Button variant="link" onClick={onNeedsSignUp}>
           {t("signIn.newHereAction")}
-        </button>
+        </Button>
       </p>
     </Card>
   );

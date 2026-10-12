@@ -1,8 +1,8 @@
 import type { CheckIn } from "../api/checkIn";
 import { CardRow } from "../components/ui/CardRow";
-import { Button } from "../shared/ui/Button";
 import { useI18n } from "../i18n";
 import { demandLabel, labelText } from "../profile/labels";
+import { Button } from "../shared/ui/Button";
 import { CheckInDialog } from "./CheckInDialog";
 import { LOAD_FAILURE_KEY } from "./failureMessages";
 import { LEVEL_KEYS } from "./labels";

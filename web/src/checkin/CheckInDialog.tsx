@@ -1,11 +1,11 @@
 import { useId, useState, type FormEvent } from "react";
 import { LEVELS, type CheckIn, type Level } from "../api/checkIn";
 import { AppDialog } from "../components/ui/AppDialog";
-import { Button } from "../shared/ui/Button";
 import { useSubmitOnce } from "../components/ui/useSubmitOnce";
 import { useToast } from "../components/ui/useToast";
 import { useI18n } from "../i18n";
 import { demandLabel, labelText } from "../profile/labels";
+import { Button } from "../shared/ui/Button";
 import { SAVE_FAILURE_KEY } from "./failureMessages";
 import { formFrom, submission, toggledRestriction, type CheckInFormState } from "./form";
 import { LEVEL_KEYS } from "./labels";

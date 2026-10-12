@@ -2,8 +2,8 @@ import { LogOut } from "lucide-react";
 import { useRef } from "react";
 import { AppDialog } from "../components/ui/AppDialog";
 import { CardRow } from "../components/ui/CardRow";
-import { Button } from "../shared/ui/Button";
 import { useI18n } from "../i18n";
+import { Button } from "../shared/ui/Button";
 import { LEAVE_FAILURE_KEY } from "./failureMessages";
 import { useLeaveHome } from "./useLeaveHome";
 

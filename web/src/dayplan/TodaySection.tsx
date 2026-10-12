@@ -4,6 +4,7 @@ import { ME_PATH } from "../app/routes";
 import { noTasksReason, type EnergyNote, type NoTasksReason } from "../checkin/state";
 import { formatAllocationTime } from "../home/allocationTimes";
 import { useI18n, type MessageKey } from "../i18n";
+import { Button } from "../shared/ui/Button";
 import { LOAD_FAILURE_KEY } from "./failureMessages";
 import { TaskCard } from "./TaskCard";
 import type { DayPlanState } from "./useDayPlan";
@@ -39,9 +40,9 @@ export function TodaySection({
             {t(LOAD_FAILURE_KEY[state.reason])}
           </p>
           {state.reason !== "not-signed-in" && (
-            <button type="button" className="btn" onClick={reload}>
+            <Button variant="secondary" onClick={reload}>
               {t("dayplan.retry")}
-            </button>
+            </Button>
           )}
         </>
       )}

@@ -1,5 +1,6 @@
 import { CardRow } from "../components/ui/CardRow";
 import { useI18n } from "../i18n";
+import { Button } from "../shared/ui/Button";
 import { EMAIL_MARKER, splitAtEmail } from "./emailMarker";
 
 interface Props {
@@ -16,9 +17,9 @@ export function SignedIn({ email, offline, onSignOut }: Props) {
       as="section"
       aria-labelledby="signedin-heading"
       actions={
-        <button type="button" className="btn" onClick={onSignOut}>
+        <Button variant="secondary" onClick={onSignOut}>
           {t("signedIn.signOut")}
-        </button>
+        </Button>
       }
     >
       <h2 id="signedin-heading" className="mt-0">

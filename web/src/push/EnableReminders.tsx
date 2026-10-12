@@ -1,4 +1,5 @@
 import { useI18n } from "../i18n";
+import { Button } from "../shared/ui/Button";
 import { problemText } from "./problemText";
 import type { RemindersState } from "./usePush";
 
@@ -18,9 +19,7 @@ export function EnableReminders({
     reminders.kind === "problem" ? problemText(reminders.problem) : null;
   return (
     <div className="flex flex-col">
-      <button
-        type="button"
-        className="btn btn-primary"
+      <Button
         onClick={onEnable}
         disabled={reminders.kind === "working"}
         aria-busy={reminders.kind === "working"}
@@ -28,7 +27,7 @@ export function EnableReminders({
         {reminders.kind === "working"
           ? t("reminders.enabling")
           : t("reminders.enable")}
-      </button>
+      </Button>
       {problem && <p role="alert">{t(problem.key, problem.params)}</p>}
     </div>
   );

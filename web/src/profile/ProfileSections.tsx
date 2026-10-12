@@ -1,6 +1,7 @@
 import { PREFERENCES, type Baseline, type Preference, type Profile as ProfileData, type Weekday } from "../api/profile";
 import { categoryStyle } from "../components/ui/categoryStyle";
 import { useI18n, type MessageKey } from "../i18n";
+import { Button } from "../shared/ui/Button";
 import { BASELINE_LEVELS, levelLabelKey, levelToPoints, pointsToLevel } from "./baselineLevels";
 import { categoryLabel, demandLabel, labelText } from "./labels";
 import { preferenceCategories } from "./preferenceCategories";
@@ -34,9 +35,9 @@ export function ProfileStatus({ state, retry }: { state: ProfileState; retry(): 
       <>
         <p role="alert">{t(PROBLEM_KEY[state.problem])}</p>
         {state.problem !== "not-signed-in" && (
-          <button type="button" className="btn" onClick={retry}>
+          <Button variant="secondary" onClick={retry}>
             {t("profile.retry")}
-          </button>
+          </Button>
         )}
       </>
     );

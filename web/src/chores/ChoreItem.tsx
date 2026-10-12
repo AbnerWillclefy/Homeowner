@@ -5,10 +5,10 @@ import { ButtonRow } from "../components/ui/ButtonRow";
 import { CardRow } from "../components/ui/CardRow";
 import { CategoryGlyph } from "../components/ui/CategoryGlyph";
 import { categoryStyle } from "../components/ui/categoryStyle";
-import { Button } from "../shared/ui/Button";
 import { useSubmitOnce } from "../components/ui/useSubmitOnce";
 import { useI18n } from "../i18n";
 import { categoryLabel, labelText } from "../profile/labels";
+import { Button } from "../shared/ui/Button";
 import { DELETE_FAILURE_KEY } from "./failureMessages";
 import { choreScheduleFacts } from "./facts";
 

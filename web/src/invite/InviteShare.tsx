@@ -1,9 +1,9 @@
 import { CardRow } from "../components/ui/CardRow";
-import { Button } from "../shared/ui/Button";
 import { useSubmitOnce } from "../components/ui/useSubmitOnce";
 import { useToast } from "../components/ui/useToast";
 import { createInvite } from "../api/invites";
 import { useI18n, type MessageKey } from "../i18n";
+import { Button } from "../shared/ui/Button";
 import { inviteLink, shareInvite } from "./share";
 
 const CREATE_FAILURE_KEY = {

@@ -1,8 +1,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { lookupInvite, type LookupInviteResult } from "../api/invites";
 import { Card } from "../components/ui/Card";
-import { Button } from "../shared/ui/Button";
 import { useI18n } from "../i18n";
+import { Button } from "../shared/ui/Button";
 import { DEAD_INVITE_KEY, isDeadInvite } from "./deadInvite";
 
 interface Props {

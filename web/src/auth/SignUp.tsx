@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FocusEvent, type FormEvent } from "react";
 import { TriangleAlert } from "lucide-react";
+import { Button } from "../shared/ui/Button";
 import { createSignUpSubmitter } from "./authSubmit";
 import type { CognitoFailure, CognitoResult } from "./cognito";
 import { config } from "../config";
@@ -12,7 +13,6 @@ import { Card } from "../components/ui/Card";
 import { FormError } from "../components/ui/FormError";
 import { PasswordField } from "../components/ui/PasswordField";
 import { PasswordRules } from "../components/ui/PasswordRules";
-import { Button } from "../shared/ui/Button";
 import { useStableHandlers } from "../components/ui/useStableHandlers";
 
 const ANNOUNCE_DELAY_MS = 600;
@@ -137,9 +137,9 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
       </form>
       <p className="mt-4 text-center">
         {t("signUp.haveLogin")}{" "}
-        <button type="button" className="btn-link" onClick={onHaveLogin}>
+        <Button variant="link" onClick={onHaveLogin}>
           {t("signUp.haveLoginAction")}
-        </button>
+        </Button>
       </p>
     </Card>
   );

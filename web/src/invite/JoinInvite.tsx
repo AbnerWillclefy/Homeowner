@@ -1,7 +1,9 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import type { FailureReason } from "../api/home";
 import { AppDialog } from "../components/ui/AppDialog";
+import { ButtonRow } from "../components/ui/ButtonRow";
 import { useI18n, type MessageKey } from "../i18n";
+import { Button } from "../shared/ui/Button";
 import { DEAD_INVITE_KEY } from "./deadInvite";
 import { useJoinInvite, type JoinOutcome } from "./useJoinInvite";
 
@@ -58,9 +60,9 @@ export function JoinInvite({ token, onDismiss, onFinished }: Props) {
         <>
           {failure(state.reason)}
           {state.reason !== "not-signed-in" && (
-            <button type="button" className="btn btn-primary" onClick={reload}>
+            <Button onClick={reload}>
               {t("invite.failure.retry")}
-            </button>
+            </Button>
           )}
         </>,
       );
@@ -71,9 +73,9 @@ export function JoinInvite({ token, onDismiss, onFinished }: Props) {
         true,
         <>
           <p role="alert">{t(DEAD_INVITE_KEY[state.why])}</p>
-          <button type="button" className="btn" onClick={onDismiss}>
+          <Button variant="secondary" onClick={onDismiss}>
             {t("invite.dead.continue")}
-          </button>
+          </Button>
         </>,
       );
 
@@ -84,12 +86,12 @@ export function JoinInvite({ token, onDismiss, onFinished }: Props) {
         <>
           <p>{t("invite.leave.warning")}</p>
           {failure(state.error)}
-          <button type="button" className="btn btn-primary" onClick={() => void join(true)}>
-            {t("invite.leave.confirm")}
-          </button>
-          <button type="button" className="btn" onClick={onDismiss}>
-            {t("invite.leave.cancel")}
-          </button>
+          <ButtonRow className="mt-2">
+            <Button onClick={() => void join(true)}>{t("invite.leave.confirm")}</Button>
+            <Button variant="secondary" onClick={onDismiss}>
+              {t("invite.leave.cancel")}
+            </Button>
+          </ButtonRow>
         </>,
       );
 
@@ -101,12 +103,14 @@ export function JoinInvite({ token, onDismiss, onFinished }: Props) {
         !joining,
         <>
           {state.kind === "ready" && failure(state.error)}
-          <button type="button" className="btn btn-primary" disabled={joining} aria-busy={joining} onClick={() => void join(false)}>
-            {joining ? t("invite.join.submitting") : t("invite.join.submit")}
-          </button>
-          <button type="button" className="btn" disabled={joining} onClick={onDismiss}>
-            {t("invite.join.dismiss")}
-          </button>
+          <ButtonRow className="mt-2">
+            <Button disabled={joining} aria-busy={joining} onClick={() => void join(false)}>
+              {joining ? t("invite.join.submitting") : t("invite.join.submit")}
+            </Button>
+            <Button variant="secondary" disabled={joining} onClick={onDismiss}>
+              {t("invite.join.dismiss")}
+            </Button>
+          </ButtonRow>
         </>,
       );
     }

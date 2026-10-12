@@ -6,6 +6,7 @@ import { CardRow } from "../components/ui/CardRow";
 import { useI18n, type MessageKey } from "../i18n";
 import { effortName } from "../chores/effortLevels";
 import { categoryLabel, labelText, type Label } from "../profile/labels";
+import { Button } from "../shared/ui/Button";
 import { useRatingStep } from "./useRatingStep";
 
 const PREFERENCE_KEY: Record<Preference, MessageKey> = {
@@ -92,9 +93,9 @@ export function RatingStep({ onClose }: Props) {
         </ul>
       )}
 
-      <button type="button" className={state.kind === "ready" ? "btn btn-primary" : "btn"} onClick={onClose}>
+      <Button variant={state.kind === "ready" ? "primary" : "secondary"} onClick={onClose}>
         {state.kind === "ready" ? t("invite.rating.done") : t("invite.rating.skip")}
-      </button>
+      </Button>
     </AppDialog>
   );
 }
