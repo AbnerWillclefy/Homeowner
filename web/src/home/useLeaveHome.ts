@@ -1,14 +1,28 @@
-import { useRef, useSyncExternalStore } from "react";
+import { useReducer } from "react";
 import { leaveHome } from "../api/home";
-import { createLeaveFlow, type LeaveFlow } from "./leaveFlow";
+import { leaveReducer } from "./leaveFlow";
 
 /** Wires the leave flow to React. `onLeft` is called once the Resident is out of the Home. */
 export function useLeaveHome(onLeft: () => void) {
-  const latest = useRef(onLeft);
-  latest.current = onLeft;
-  const flowRef = useRef<LeaveFlow | null>(null);
-  flowRef.current ??= createLeaveFlow({ leave: leaveHome, onLeft: () => latest.current() });
-  const flow = flowRef.current;
-  const state = useSyncExternalStore(flow.subscribe, flow.state);
-  return { state, open: flow.open, cancel: flow.cancel, confirm: flow.confirm };
+  const [state, dispatch] = useReducer(leaveReducer, { kind: "closed" });
+
+  async function confirm() {
+    if (state.kind !== "confirming") return; // one request in flight at a time
+    dispatch({ type: "confirm" });
+    const result = await leaveHome();
+    // A Home that is already gone (none) is the outcome the Resident asked for.
+    if (result.kind === "ok" || result.kind === "none") {
+      dispatch({ type: "done" });
+      onLeft();
+    } else {
+      dispatch({ type: "failed", reason: result.kind });
+    }
+  }
+
+  return {
+    state,
+    open: () => dispatch({ type: "open" }),
+    cancel: () => dispatch({ type: "cancel" }),
+    confirm,
+  };
 }

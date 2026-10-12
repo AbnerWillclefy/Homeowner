@@ -1,106 +1,56 @@
-import { describe, expect, it, vi } from "vitest";
-import type { LeaveHomeResult } from "../api/home";
-import { createLeaveFlow } from "./leaveFlow";
+import { describe, expect, it } from "vitest";
+import { leaveReducer, type LeaveState } from "./leaveFlow";
 
-function setup(result: LeaveHomeResult | Promise<LeaveHomeResult> = { kind: "ok" }) {
-  const leave = vi.fn(async () => result);
-  const onLeft = vi.fn();
-  const flow = createLeaveFlow({ leave, onLeft });
-  return { flow, leave, onLeft };
-}
+const closed: LeaveState = { kind: "closed" };
+const confirming: LeaveState = { kind: "confirming" };
+const leaving: LeaveState = { kind: "leaving" };
 
-describe("createLeaveFlow", () => {
-  it("starts closed and sends nothing when the confirmation is only opened", () => {
-    const { flow, leave } = setup();
-    expect(flow.state()).toEqual({ kind: "closed" });
-    flow.open();
-    expect(flow.state()).toEqual({ kind: "confirming" });
-    expect(leave).not.toHaveBeenCalled();
+describe("leaveReducer", () => {
+  it("opens the confirmation from closed", () => {
+    expect(leaveReducer(closed, { type: "open" })).toEqual({ kind: "confirming" });
   });
 
-  it("sends nothing when cancelled, and closes", () => {
-    const { flow, leave, onLeft } = setup();
-    flow.open();
-    flow.cancel();
-    expect(flow.state()).toEqual({ kind: "closed" });
-    expect(leave).not.toHaveBeenCalled();
-    expect(onLeft).not.toHaveBeenCalled();
+  it("ignores open unless closed", () => {
+    expect(leaveReducer(leaving, { type: "open" })).toBe(leaving);
+    const failed: LeaveState = { kind: "confirming", failed: "error" };
+    expect(leaveReducer(failed, { type: "open" })).toBe(failed);
   });
 
-  it("sends one request on confirm and then reports the Resident has left", async () => {
-    const { flow, leave, onLeft } = setup();
-    flow.open();
-    await flow.confirm();
-    expect(leave).toHaveBeenCalledTimes(1);
-    expect(onLeft).toHaveBeenCalledTimes(1);
-    expect(flow.state()).toEqual({ kind: "closed" });
+  it("closes on cancel", () => {
+    expect(leaveReducer(confirming, { type: "cancel" })).toEqual({ kind: "closed" });
   });
 
-  it("reports left on none too: a Home that is already gone is the outcome asked for", async () => {
-    const { flow, onLeft } = setup({ kind: "none" });
-    flow.open();
-    await flow.confirm();
-    expect(onLeft).toHaveBeenCalledTimes(1);
+  it("cannot be cancelled while the request is in flight", () => {
+    expect(leaveReducer(leaving, { type: "cancel" })).toBe(leaving);
   });
 
-  it("sends only one request when confirmed twice while the first is in flight", async () => {
-    let finish: (r: LeaveHomeResult) => void = () => {};
-    const { flow, leave, onLeft } = setup(new Promise<LeaveHomeResult>((resolve) => (finish = resolve)));
-    flow.open();
-    const first = flow.confirm();
-    expect(flow.state()).toEqual({ kind: "leaving" });
-    void flow.confirm();
-    finish({ kind: "ok" });
-    await first;
-    expect(leave).toHaveBeenCalledTimes(1);
-    expect(onLeft).toHaveBeenCalledTimes(1);
-  });
-
-  it("cannot be cancelled while the request is in flight", async () => {
-    let finish: (r: LeaveHomeResult) => void = () => {};
-    const { flow } = setup(new Promise<LeaveHomeResult>((resolve) => (finish = resolve)));
-    flow.open();
-    const pending = flow.confirm();
-    flow.cancel();
-    expect(flow.state()).toEqual({ kind: "leaving" });
-    finish({ kind: "ok" });
-    await pending;
+  it("moves to leaving on confirm, only from confirming", () => {
+    expect(leaveReducer(confirming, { type: "confirm" })).toEqual({ kind: "leaving" });
+    expect(leaveReducer(closed, { type: "confirm" })).toBe(closed);
+    expect(leaveReducer(leaving, { type: "confirm" })).toBe(leaving);
   });
 
   it.each(["offline", "error", "not-signed-in"] as const)(
-    "keeps the Resident in the Home on %s, with the reason, and allows a retry",
-    async (kind) => {
-      const { flow, leave, onLeft } = setup({ kind });
-      flow.open();
-      await flow.confirm();
-      expect(onLeft).not.toHaveBeenCalled();
-      expect(flow.state()).toEqual({ kind: "confirming", failed: kind });
-      await flow.confirm();
-      expect(leave).toHaveBeenCalledTimes(2);
+    "returns to confirming with the reason on %s, and allows a retry",
+    (reason) => {
+      const failed = leaveReducer(leaving, { type: "failed", reason });
+      expect(failed).toEqual({ kind: "confirming", failed: reason });
+      expect(leaveReducer(failed, { type: "confirm" })).toEqual({ kind: "leaving" });
     },
   );
 
-  it("clears an earlier failure when closed and opened again", async () => {
-    const { flow } = setup({ kind: "error" });
-    flow.open();
-    await flow.confirm();
-    flow.cancel();
-    flow.open();
-    expect(flow.state()).toEqual({ kind: "confirming" });
+  it("closes when done", () => {
+    expect(leaveReducer(leaving, { type: "done" })).toEqual({ kind: "closed" });
   });
 
-  it("does nothing on confirm when the confirmation is not open", async () => {
-    const { flow, leave } = setup();
-    await flow.confirm();
-    expect(leave).not.toHaveBeenCalled();
+  it("clears an earlier failure when closed and opened again", () => {
+    let state = leaveReducer(leaving, { type: "failed", reason: "error" });
+    state = leaveReducer(state, { type: "cancel" });
+    expect(leaveReducer(state, { type: "open" })).toEqual({ kind: "confirming" });
   });
 
-  it("tells a listener about every state change", async () => {
-    const { flow } = setup();
-    const seen: string[] = [];
-    flow.subscribe(() => seen.push(flow.state().kind));
-    flow.open();
-    await flow.confirm();
-    expect(seen).toEqual(["confirming", "leaving", "closed"]);
+  it("ignores failed and done when no request is in flight", () => {
+    expect(leaveReducer(closed, { type: "done" })).toBe(closed);
+    expect(leaveReducer(confirming, { type: "failed", reason: "error" })).toBe(confirming);
   });
 });

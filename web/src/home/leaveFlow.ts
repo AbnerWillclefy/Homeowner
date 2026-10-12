@@ -1,4 +1,4 @@
-import type { FailureReason, LeaveHomeResult } from "../api/home";
+import type { FailureReason } from "../api/home";
 
 export type LeaveState =
   | { kind: "closed" }
@@ -6,50 +6,28 @@ export type LeaveState =
   | { kind: "confirming"; failed?: FailureReason }
   | { kind: "leaving" };
 
-interface Options {
-  leave(): Promise<LeaveHomeResult>;
-  /** The Resident is out of the Home (or it was already gone). */
-  onLeft(): void;
-}
+export type LeaveAction =
+  | { type: "open" }
+  | { type: "cancel" }
+  | { type: "confirm" }
+  | { type: "failed"; reason: FailureReason }
+  | { type: "done" };
 
 /**
- * The steps of leaving a Home: ask, confirm, send. Nothing is sent until `confirm`, and only one request is
- * in flight at a time. Plain TypeScript so it is tested without a browser; `useLeaveHome` wires it to React.
+ * The steps of leaving a Home: ask, confirm, send. A Resident cannot cancel while the request is in flight,
+ * and only an open confirmation can be confirmed. Plain TypeScript so it is tested without a browser.
  */
-export function createLeaveFlow({ leave, onLeft }: Options) {
-  let state: LeaveState = { kind: "closed" };
-  const listeners = new Set<() => void>();
-
-  function set(next: LeaveState) {
-    state = next;
-    listeners.forEach((listener) => listener());
+export function leaveReducer(state: LeaveState, action: LeaveAction): LeaveState {
+  switch (action.type) {
+    case "open":
+      return state.kind === "closed" ? { kind: "confirming" } : state;
+    case "cancel":
+      return state.kind === "confirming" ? { kind: "closed" } : state;
+    case "confirm":
+      return state.kind === "confirming" ? { kind: "leaving" } : state;
+    case "failed":
+      return state.kind === "leaving" ? { kind: "confirming", failed: action.reason } : state;
+    case "done":
+      return state.kind === "leaving" ? { kind: "closed" } : state;
   }
-
-  return {
-    state: () => state,
-    subscribe(listener: () => void) {
-      listeners.add(listener);
-      return () => void listeners.delete(listener);
-    },
-    open() {
-      if (state.kind === "closed") set({ kind: "confirming" });
-    },
-    cancel() {
-      if (state.kind === "confirming") set({ kind: "closed" });
-    },
-    async confirm() {
-      if (state.kind !== "confirming") return;
-      set({ kind: "leaving" });
-      const result = await leave();
-      // A Home that is already gone (none) is the outcome the Resident asked for.
-      if (result.kind === "ok" || result.kind === "none") {
-        set({ kind: "closed" });
-        onLeft();
-      } else {
-        set({ kind: "confirming", failed: result.kind });
-      }
-    },
-  };
 }
-
-export type LeaveFlow = ReturnType<typeof createLeaveFlow>;
