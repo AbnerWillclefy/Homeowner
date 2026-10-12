@@ -4,7 +4,7 @@ import { useI18n } from "../i18n";
 import { useInvite } from "../invite/PendingInviteProvider";
 import { SignedOutInvite } from "../invite/SignedOutInvite";
 import { AppearanceSetting, LanguageSetting } from "../settings/Settings";
-import { HealthBanner } from "./HealthBanner";
+import { PageFrame } from "./PageFrame";
 import { SIGN_IN_PATH } from "./routes";
 
 /**
@@ -18,12 +18,7 @@ export function AuthLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   return (
-    <main tabIndex={-1} className="page flex min-h-dvh w-full flex-col justify-center focus:outline-none">
-      <header className="text-center">
-        <h1>{t("app.name")}</h1>
-        <p>{t("home.tagline")}</p>
-      </header>
-      <HealthBanner />
+    <PageFrame className="flex min-h-dvh flex-col justify-center">
       {invite.token === null ? (
         <Outlet />
       ) : (
@@ -44,6 +39,6 @@ export function AuthLayout() {
           <LanguageSetting />
         </div>
       </Card>
-    </main>
+    </PageFrame>
   );
 }
