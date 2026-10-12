@@ -1,6 +1,5 @@
 import { useMemo, useRef } from "react";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Handlers = Record<string, (...args: any[]) => unknown>;
 
 /**
@@ -17,7 +16,6 @@ export function useStableHandlers<T extends Handlers>(handlers: T): T {
       Object.fromEntries(
         Object.keys(handlers).map((key) => [key, (...args: unknown[]) => latest.current[key](...args)]),
       ) as T,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 }
