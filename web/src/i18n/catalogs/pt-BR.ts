@@ -121,9 +121,10 @@ export const ptBR: Messages = {
   "profile.saveFailed.notSignedIn": "Você não está mais conectado, então sua alteração foi desfeita. Entre de novo.",
   "profile.baseline.heading": "Energia base",
   "profile.baseline.explain":
-    "Um ponto mede o esforço: o quanto um trabalho cansa, de 1 a 5. Sua energia base é a energia que você costuma ter em cada dia, nesses mesmos pontos; deixe o dia vazio se ainda não souber.",
-  "profile.baseline.hint": "Um número inteiro de 0 a 20. É salvo quando você sai do campo.",
-  "profile.baseline.invalid": "Digite um número inteiro de 0 a 20, ou deixe vazio.",
+    "Um ponto mede o esforço: o quanto um trabalho cansa, de 1 a 5. Sua energia base é a energia que você costuma ter em cada dia, nesses mesmos pontos; escolha Baixa, Normal ou Alta para cada dia. É salvo assim que você escolhe.",
+  "profile.baseline.level.low": "Baixa",
+  "profile.baseline.level.normal": "Normal",
+  "profile.baseline.level.high": "Alta",
   "profile.preferences.heading": "Preferências",
   "profile.preferences.intro":
     "Diga de quais tipos de trabalho você gosta ou não gosta. Os afazeres de que você não gosta chegam a você com menos frequência, mas nunca à custa do que é essencial. O que você não mexer fica neutro.",
