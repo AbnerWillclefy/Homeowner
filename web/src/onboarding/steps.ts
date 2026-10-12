@@ -1,4 +1,5 @@
 import { ONBOARDING_STEPS, type OnboardingPosition, type OnboardingStep } from "../api/onboarding";
+import { stepPath } from "../app/routes";
 import type { ReminderAvailability } from "../push/platform";
 
 /** The steps that apply on this device, in order. Installing only applies to iOS in a browser tab. */
@@ -32,6 +33,19 @@ export function stepAfter(
   stored: OnboardingPosition,
 ): OnboardingPosition {
   return stored === "done" ? "done" : nextStep(steps, current);
+}
+
+/**
+ * The path to go to once the server accepted `current`: the next step's, or null when the walk is over (the
+ * guard then sends the User to Today).
+ */
+export function pathAfterAdvance(
+  steps: readonly OnboardingStep[],
+  current: OnboardingStep,
+  stored: OnboardingPosition,
+): string | null {
+  const after = stepAfter(steps, current, stored);
+  return after === "done" ? null : stepPath(after);
 }
 
 /** "Step n of m" over the steps that apply on this device. */

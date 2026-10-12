@@ -13,6 +13,22 @@ function safePath(value: unknown): string {
 }
 
 /**
+ * Whether a window already open at `clientUrl` should be navigated to `target` (a same-origin path) when a
+ * notification is tapped. False when it is already there, when it is on another origin (navigate would be
+ * rejected), or when either URL cannot be read. The hash is ignored.
+ */
+export function shouldNavigate(clientUrl: string, target: string, origin: string): boolean {
+  try {
+    const current = new URL(clientUrl);
+    const wanted = new URL(target, origin);
+    if (current.origin !== wanted.origin) return false;
+    return current.pathname !== wanted.pathname || current.search !== wanted.search;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Turns a push payload into something to show. It never fails: iOS revokes a
  * subscription whose pushes do not show a notification, so empty or broken
  * payloads still produce one. The fallback text is in `locale`; a valid payload

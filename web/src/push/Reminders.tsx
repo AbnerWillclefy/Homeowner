@@ -2,10 +2,11 @@ import { useI18n } from "../i18n";
 import { EnableReminders } from "./EnableReminders";
 import { InstallSteps } from "./InstallSteps";
 import { DELAYED_TEST_SECONDS, delayedTestLabel, testPendingText, testStatusText } from "./testText";
-import { usePush } from "./usePush";
+import { useSession } from "../app/SessionProvider";
 
+/** The Reminders section of the Me tab. It uses the session's one push hook, so nothing re-subscribes twice. */
 export function Reminders() {
-  const { availability, reminders, enable, test, sendTest } = usePush();
+  const { availability, reminders, enable, test, sendTest } = useSession().push;
   const { t } = useI18n();
 
   if (availability.kind === "needs-install") return <InstallSteps />;

@@ -1,15 +1,14 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { OnboardingPosition, OnboardingStep } from "../api/onboarding";
+import { useSession } from "../app/SessionProvider";
 import { CreateHome } from "../home/CreateHome";
-import type { RecoveredNotice } from "../home/HomeSection";
 import { useI18n, type MessageKey } from "../i18n";
 import { BaselineFields, PreferenceFields, ProfileStatus, RestrictionFields } from "../profile/ProfileSections";
 import { useProfile, type ProfileState } from "../profile/useProfile";
 import { EnableReminders } from "../push/EnableReminders";
 import { InstallSteps } from "../push/InstallSteps";
-import { usePush } from "../push/usePush";
 import { allBaselineDaysSet } from "./baselineComplete";
-import { progress, stepsFor } from "./steps";
+import { progress } from "./steps";
 import type { OnboardingProblem } from "./useOnboarding";
 import { useWalk } from "./useWalk";
 
@@ -17,8 +16,6 @@ interface Props {
   /** The step the server says to show. */
   position: OnboardingPosition;
   onPosition(position: OnboardingPosition): void;
-  /** The Home exists now, made here or found already made in another tab. */
-  onHomeFinished(recovered: RecoveredNotice | null): void;
 }
 
 const HEADING_KEY: Record<OnboardingStep, MessageKey> = {
@@ -62,14 +59,13 @@ interface StepView {
 
 /**
  * The walk a new User takes instead of the dashboard: install, reminders, Baseline, Restrictions,
- * Preferences, then the Home. Each step says why it matters. It owns the one push hook and the one profile
- * hook of the flow, so the launch re-subscribe runs once and the profile lists are fetched once.
+ * Preferences, then the Home. Each step says why it matters. It shares the session's one push hook (so the launch
+ * re-subscribe runs once) and owns the one profile hook of the flow, so the profile lists are fetched once.
  */
-export function Onboarding({ position, onPosition, onHomeFinished }: Props) {
+export function Onboarding({ position, onPosition }: Props) {
   const { t } = useI18n();
-  const push = usePush();
+  const { push, steps, onHomeFinished } = useSession();
   const profile = useProfile();
-  const steps = useMemo(() => stepsFor(push.availability), [push.availability]);
   const walk = useWalk(position, steps, onPosition);
   const [baselineIncomplete, setBaselineIncomplete] = useState(false);
 

@@ -11,12 +11,17 @@ import type { Message } from "../translate";
 export const enUS = {
   "app.name": "Homeowner",
   "home.tagline": "Share the housework in your Home fairly.",
-  "health.loading": "Checking the service...",
-  "health.ok": "Service status: ok",
   "health.unavailable": "Service status: unavailable. The service is up but cannot reach its database.",
   "health.unreachable": "Service status: unreachable. Check your connection and try again.",
   "health.retry": "Try again",
   "auth.checking": "Checking your sign-in...",
+
+  // Navigation
+  "nav.label": "Main",
+  "nav.today": "Today",
+  "nav.chores": "Chores",
+  "nav.home": "Home",
+  "nav.me": "Me",
 
   // Home
   "home.loading": "Loading your Home...",

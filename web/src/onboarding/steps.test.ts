@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { effectiveStep, nextStep, previousStep, progress, stepAfter, stepsFor } from "./steps";
+import { effectiveStep, nextStep, pathAfterAdvance, previousStep, progress, stepAfter, stepsFor } from "./steps";
 
 const IOS_TAB = { kind: "needs-install" } as const;
 const ANDROID = { kind: "available" } as const;
@@ -64,6 +64,29 @@ describe("stepAfter", () => {
 
   it("follows the server to done", () => {
     expect(stepAfter(steps, "preferences", "done")).toBe("done");
+  });
+});
+
+describe("pathAfterAdvance", () => {
+  it("goes to the next step's path after a normal advance", () => {
+    expect(pathAfterAdvance(stepsFor(ANDROID), "reminders", "baseline")).toBe("/welcome/baseline");
+  });
+
+  it("skips install when it does not apply", () => {
+    expect(pathAfterAdvance(stepsFor(ANDROID), "reminders", "baseline")).toBe("/welcome/baseline");
+    expect(pathAfterAdvance(stepsFor(IOS_TAB), "install", "reminders")).toBe("/welcome/reminders");
+  });
+
+  it("goes from preferences to home", () => {
+    expect(pathAfterAdvance(stepsFor(ANDROID), "preferences", "home")).toBe("/welcome/home");
+  });
+
+  it("goes one step on, not to the stored step, after going back", () => {
+    expect(pathAfterAdvance(stepsFor(ANDROID), "baseline", "preferences")).toBe("/welcome/restrictions");
+  });
+
+  it("is null when the server says done", () => {
+    expect(pathAfterAdvance(stepsFor(ANDROID), "preferences", "done")).toBeNull();
   });
 });
 

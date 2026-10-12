@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { AppDialog } from "../components/ui/AppDialog";
 import { useI18n, type MessageKey } from "../i18n";
 import { rightAwayOutcome, type RightAwayOutcome } from "./startChoice";
 import { useRightAway } from "./useRightAway";
@@ -24,27 +24,17 @@ interface Props {
 }
 
 /**
- * Shown once at the end of either onboarding: get Tasks now, or wait for the next daily Allocation.
- * "Start tomorrow" only dismisses; "right away" plans this Resident alone and the result appears in Today.
+ * A dialog over Today, shown once at the end of either onboarding: get Tasks now, or wait for the next daily
+ * Allocation. "Start tomorrow" only dismisses (so do Escape and a tap outside, except while planning);
+ * "right away" plans this Resident alone and the result appears in Today.
  */
 export function StartChoice({ onDecided, onPlanned }: Props) {
   const { t } = useI18n();
   const { state, start } = useRightAway(onPlanned);
-  const headingRef = useRef<HTMLHeadingElement>(null);
-
-  // The onboarding step before it just went away, so land on this heading.
-  useEffect(() => {
-    headingRef.current?.focus();
-  }, []);
-
   const planning = state.kind === "planning";
 
   return (
-    <section aria-labelledby="start-choice-heading">
-      <h2 id="start-choice-heading" ref={headingRef} tabIndex={-1}>
-        {t("startChoice.heading")}
-      </h2>
-
+    <AppDialog title={t("startChoice.heading")} dismissible={!planning} onDismiss={onDecided}>
       {state.kind === "done" ? (
         <>
           <p role="status">{t(OUTCOME_KEY[rightAwayOutcome(state.plan)])}</p>
@@ -74,6 +64,6 @@ export function StartChoice({ onDecided, onPlanned }: Props) {
           </button>
         </>
       )}
-    </section>
+    </AppDialog>
   );
 }
