@@ -185,7 +185,7 @@ func (p *Planner) PlanHome(ctx context.Context, homeID string, now time.Time) (O
 	if err := tx.QueryRow(ctx, `SELECT timezone FROM homes WHERE id = $1 FOR NO KEY UPDATE`, homeID).Scan(&zone); err != nil {
 		return "", fmt.Errorf("plan home: lock home: %w", err)
 	}
-	date, err := localDate(zone, now)
+	date, err := LocalDate(zone, now)
 	if err != nil {
 		return "", fmt.Errorf("plan home: %w", err)
 	}
@@ -230,7 +230,7 @@ func (p *Planner) planned(ctx context.Context, homeID string, now time.Time) (bo
 	if err := p.db.QueryRow(ctx, `SELECT timezone FROM homes WHERE id = $1`, homeID).Scan(&zone); err != nil {
 		return false, fmt.Errorf("plan home: load home: %w", err)
 	}
-	date, err := localDate(zone, now)
+	date, err := LocalDate(zone, now)
 	if err != nil {
 		return false, fmt.Errorf("plan home: %w", err)
 	}
@@ -246,8 +246,8 @@ type querier interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
 
-// localDate is the date at now in the IANA zone.
-func localDate(zone string, now time.Time) (allocation.Date, error) {
+// LocalDate is the date at now in the IANA zone.
+func LocalDate(zone string, now time.Time) (allocation.Date, error) {
 	loc, err := time.LoadLocation(zone)
 	if err != nil {
 		return 0, fmt.Errorf("timezone %q: %w", zone, err)
