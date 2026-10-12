@@ -1,6 +1,6 @@
 import type { PlanTask } from "../api/dayPlan";
 import { useI18n } from "../i18n";
-import { importanceLabel, type Label } from "../profile/labels";
+import { importanceLabel, labelText, type Label } from "../profile/labels";
 import { formatDay } from "./format";
 import { assignmentReasonLabel, poolReasonLabel } from "./reasons";
 
@@ -13,7 +13,7 @@ interface Props {
 /** One Task in the Day Plan. Everything is text, so nothing depends on colour. */
 export function TaskItem({ task, reasonFor }: Props) {
   const { t, locale } = useI18n();
-  const text = (label: Label) => ("key" in label ? t(label.key) : label.text);
+  const text = (label: Label) => labelText(t, label);
 
   const reason = (reasonFor === "assigned" ? assignmentReasonLabel : poolReasonLabel)(task.reason);
   const facts = [

@@ -42,7 +42,7 @@ export default defineConfig({
       srcDir: "src",
       filename: "sw.ts",
       injectManifest: {
-        globPatterns: ["**/*.{js,css,html,png,svg,ico}"],
+        globPatterns: ["**/*.{js,css,html,png,svg,ico,woff2}"],
       },
       includeAssets: ["apple-touch-icon.png"],
       manifest: {

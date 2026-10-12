@@ -3,7 +3,7 @@ import type { Chore } from "../api/chores";
 import { PREFERENCES, type Preference } from "../api/profile";
 import { AppDialog } from "../components/ui/AppDialog";
 import { useI18n, type MessageKey } from "../i18n";
-import { categoryLabel, type Label } from "../profile/labels";
+import { categoryLabel, labelText, type Label } from "../profile/labels";
 import { useRatingStep } from "./useRatingStep";
 
 const PREFERENCE_KEY: Record<Preference, MessageKey> = {
@@ -30,7 +30,7 @@ export function RatingStep({ onClose }: Props) {
     if (empty) onClose();
   }, [empty, onClose]);
 
-  const text = (label: Label) => ("key" in label ? t(label.key) : label.text);
+  const text = (label: Label) => labelText(t, label);
 
   // Nothing to rate: closing, so do not flash the dialog.
   if (empty) return null;

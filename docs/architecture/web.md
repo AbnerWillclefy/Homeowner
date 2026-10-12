@@ -11,6 +11,7 @@ The PWA is one Vite app in `web/`, installed to the Home Screen. It has a precac
 | `src/i18n/` | Built | Language: which locale to show and every user-facing string for it. Detailed below. |
 | `src/theme/` | Built | Appearance: System, Light or Dark, and applying it. Detailed under UI layer. |
 | `src/app/` | Built | Navigation: the routes, the route guard (`resolveRoute`), the shell with the bottom nav and the dialogs over Today, and the signed-in session state. Detailed under Navigation below. |
+| `src/components/ui/` | Built | Shared pieces on semantic tokens: `Card`, `PillButton`, `Chip`, `StatTile`, the pure `categoryStyle` map (Category id to pastel and icon), plus `AppDialog`, `PasswordField` and `PasswordRules`. Detailed under Type, layout and components. |
 | `src/settings/` | Built | The Settings section: Appearance and Language. On the Me tab, and on the sign-in, sign-up, confirm and onboarding screens. |
 | `src/auth/` | Built | Sign-up, confirmation, sign-in and token handling against Cognito. |
 | `src/api/` | Built | The API client: `authedFetch` and the typed calls to `/me`, the profile routes (`/me/profile`, `/categories`, `/demands`), `/me/onboarding`, `/push/*`, `/home`, `/home/chores`, `/home/day-plan` and `/home/check-in`. |
@@ -92,6 +93,10 @@ Colours are semantic tokens declared in `@theme` in `src/index.css`, with the li
 | `danger` | Reserved for problems: error alerts and field errors on the Home forms |
 | `focus` | The 2px focus ring |
 | `border` | Field and button edges (3:1 against the surface) |
+| `cat-peach`, `cat-mint`, `cat-lavender`, `cat-blue`, `cat-yellow`, `cat-salmon` | The six Category pastel fills ([ADR 0009](../adr/0009-navigate-with-a-bottom-tab-router-and-amend-the-look.md)); muted and desaturated in dark |
+| `cat-*-ink` | Text and icons drawn on the matching pastel fill |
+
+"Other" has no pastel: it is `surface-raised` with `text`. The `cat-` prefix is deliberate: a token named `blue` would make `bg-blue` trip the raw-palette check in `semanticClasses.test.ts`. Radii are tokens too: `rounded-control` (0.75rem, fields), `rounded-card` (1.25rem) and `rounded-pill`.
 
 Measured contrast (WCAG ratios, computed from the hex values):
 
@@ -104,6 +109,15 @@ Measured contrast (WCAG ratios, computed from the hex values):
 | `danger` on `surface` / `surface-raised` | 6.13 / 6.54 | 7.88 / 7.03 |
 | `focus` on `surface` / `surface-raised` | 5.90 / 6.29 | 8.53 / 7.62 |
 | `border` on `surface` / `surface-raised` | 4.23 / 4.51 | 5.19 / 4.63 |
+
+Category pairs (each of the six pastels; the lowest and highest shown). `src/theme/contrast.test.ts` reads the hex values from `index.css` and fails the build if any pair drops below its bar, naming the pair:
+
+| Pair | Bar | Light | Dark |
+|---|---|---|---|
+| `cat-*-ink` on its fill (text, and icons drawn in ink) | 4.5 | 8.21 to 9.69 | 7.33 to 8.59 |
+| `border` on each fill | 3 | 3.34 to 3.94 | 3.12 to 3.41 |
+| `focus` on each fill | 3 | 4.66 to 5.50 | 5.13 to 5.61 |
+| `text` / `muted` on `surface-raised` (the neutral card) | 4.5 | 15.86 / 7.23 | 13.65 / 7.58 |
 
 Text needs 4.5, the focus ring and control edges need 3.
 
@@ -135,9 +149,11 @@ flowchart TD
 
 ### Type, layout and components
 
-- System font stack, no web font. `html` uses `font: -apple-system-body` so `rem` follows iOS Dynamic Type, with a plain `font-size` and `font-family` for other browsers. All sizes are `rem`; tappable elements use a `2.75rem` minimum (44px at the default size) that grows with text. `h1` and `h2` use `overflow-wrap: anywhere`, so a long word breaks instead of forcing horizontal scroll at the largest text size.
+- Nunito is the app font, self-hosted through `@fontsource/nunito` (static package): `main.tsx` imports only the latin 400, 600 and 700 files, never the bare package, which pulls every subset. The system stack stays as the fallback. The built `.woff2` files are in the precache (`woff2` is in `injectManifest.globPatterns`), so text still renders in Nunito offline.
+- `html` uses `font: -apple-system-body` so `rem` follows iOS Dynamic Type, with a plain `font-size` and `font-family` for other browsers. All sizes are `rem`; tappable elements use a `2.75rem` minimum (44px at the default size) that grows with text. `h1` and `h2` use `overflow-wrap: anywhere`, so a long word breaks instead of forcing horizontal scroll at the largest text size.
 - One column of `32rem`, with the safe-area insets kept on all four sides (the `page` utility).
 - Buttons, links and fields are native elements styled with the `btn`, `btn-primary` and `btn-link` utilities and base rules in `index.css`. Buttons keep a border so they stay visible in forced-colors mode; a disabled button is dashed as well as muted.
+- Shared pieces in `components/ui/`, built on semantic tokens only: `Card` (a rounded surface, neutral or a Category pastel), `PillButton` (primary, secondary, danger; `asChild` through Radix Slot so a router `Link` can wear it; `2.75rem` minimum target; danger also has a thick border so it is not colour alone), `Chip` (icon plus the Category name as text; interactive only with `asChild`) and `StatTile` (a static value over its label). Labels wrap and never truncate; transitions are behind `motion-safe:`. `categoryStyle.ts` is the single Category-to-pastel-and-icon map; an unknown or missing id is neutral, and a test fails if a Category in `profile/labels.ts` has no style.
 - Radix Dialog backs `components/ui/AppDialog` (and `LeaveHome`), and `lucide-react` supplies the bottom nav icons, each imported by name. Everything else is native elements.
 - The service worker precaches the built CSS, and the theme is local only, so appearance works offline.
 

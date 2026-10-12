@@ -1,7 +1,7 @@
 import { useId, useState, type FormEvent } from "react";
 import { LEVELS, type Level } from "../api/checkIn";
 import { useI18n } from "../i18n";
-import { demandLabel } from "../profile/labels";
+import { demandLabel, labelText } from "../profile/labels";
 import { SAVE_FAILURE_KEY, LOAD_FAILURE_KEY } from "./failureMessages";
 import { emptyForm, formFrom, submission, toggledRestriction, type CheckInFormState } from "./form";
 import { LEVEL_KEYS } from "./labels";
@@ -73,10 +73,7 @@ function Summary({ checkIn }: { checkIn: Controller }) {
         <p>
           {t("checkin.summary.restrictions", {
             demands: restrictions
-              .map((id) => {
-                const label = demandLabel(id);
-                return "key" in label ? t(label.key) : label.text;
-              })
+              .map((id) => labelText(t, demandLabel(id)))
               .join(", "),
           })}
         </p>
@@ -156,7 +153,7 @@ function CheckInForm({ checkIn, prompt }: { checkIn: Controller; prompt: boolean
                   checked={form.restrictions.includes(id)}
                   onChange={() => setForm((current) => ({ ...current, restrictions: toggledRestriction(current.restrictions, id) }))}
                 />
-                {"key" in label ? t(label.key) : label.text}
+                {labelText(t, label)}
               </label>
             );
           })}

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { PREFERENCES, type Baseline, type Preference, type Profile as ProfileData, type Weekday } from "../api/profile";
 import { useI18n, type MessageKey } from "../i18n";
 import { MAX_BASELINE, parseBaselineInput } from "./baselineInput";
-import { categoryLabel, demandLabel, type Label } from "./labels";
+import { categoryLabel, demandLabel, labelText } from "./labels";
 import type { ProfileProblem, ProfileState, SaveState } from "./useProfile";
 import { DISPLAY_WEEKDAYS, weekdayLabel } from "./weekdays";
 
@@ -116,10 +116,6 @@ export function RestrictionFields({
       ))}
     </>
   );
-}
-
-function labelText(t: (key: MessageKey) => string, label: Label): string {
-  return "key" in label ? t(label.key) : label.text;
 }
 
 function BaselineRow({

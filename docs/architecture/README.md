@@ -33,6 +33,7 @@ In diagrams, solid boxes and lines are built; dashed boxes and lines are planned
 | [0005](../adr/0005-ship-a-react-pwa-not-a-native-app.md) | React PWA, not a native app |
 | [0006](../adr/0006-localize-with-a-small-typed-module.md) | Localize with a small typed module, not a library |
 | [0007](../adr/0007-tailwind-and-radix-for-an-accessible-calm-ui.md) | Tailwind and Radix for an accessible, calm UI |
+| [0009](../adr/0009-navigate-with-a-bottom-tab-router-and-amend-the-look.md) | Navigate with a bottom-tab router and amend the look of ADR 0007 |
 
 ## Keeping this current
 
