@@ -181,7 +181,7 @@ export const ptBR: Messages = {
   "chores.load.error": "Algo deu errado ao carregar os seus afazeres. Tente de novo daqui a pouco.",
   "chores.notSignedIn": "Seu login terminou. Entre de novo para continuar.",
   "chores.retry": "Tentar de novo",
-  "chores.empty": "O seu lar ainda não tem afazeres. Adicione o primeiro para começar.",
+  "chores.empty": "O seu lar ainda não tem afazeres. Toque em \"Adicionar afazer\" para criar o seu, ou em \"Adicionar do Catálogo\" para partir de um pronto.",
   "chores.add": "Adicionar afazer",
   "chores.item.effort": "Esforço {effort} de 5",
   "chores.item.people.one": "1 pessoa",
