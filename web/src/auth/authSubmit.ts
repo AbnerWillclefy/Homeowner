@@ -36,12 +36,23 @@ interface SignUpDeps extends Common {
 }
 
 export function createSignUpSubmitter({ register, onBusy, onProblem, onRegistered }: SignUpDeps) {
-  return guardOnce(async (email: string, password: string) => {
-    onProblem(null);
-    const result = await register(email, password);
-    if (result.kind === "ok") onRegistered(email);
-    else onProblem(result);
-  }, onBusy);
+  return guardOnce(
+    (email: string, password: string) =>
+      attempt(onProblem, () => register(email, password), () => onRegistered(email)),
+    onBusy,
+  );
+}
+
+/** Clears the previous failure, runs `task`, then calls `onOk` on success or hands the failure to `onProblem`. */
+async function attempt(
+  onProblem: Common["onProblem"],
+  task: () => Promise<CognitoResult>,
+  onOk: () => void,
+): Promise<void> {
+  onProblem(null);
+  const result = await task();
+  if (result.kind === "ok") onOk();
+  else onProblem(result);
 }
 
 interface ConfirmDeps extends Common {
@@ -54,20 +65,10 @@ interface ConfirmDeps extends Common {
 
 /** Confirming and resending share one guard: either one in flight holds the other. */
 export function createConfirmSubmitter({ confirm, resend, onBusy, onProblem, onResent, onConfirmed }: ConfirmDeps) {
-  const run = guardOnce(async (action: { type: "confirm"; email: string; code: string } | { type: "resend"; email: string }) => {
-    onProblem(null);
-    if (action.type === "confirm") {
-      const result = await confirm(action.email, action.code);
-      if (result.kind === "ok") onConfirmed(action.email);
-      else onProblem(result);
-    } else {
-      const result = await resend(action.email);
-      if (result.kind === "ok") onResent();
-      else onProblem(result);
-    }
-  }, onBusy);
+  const run = guardOnce((go: () => Promise<void>) => go(), onBusy);
   return {
-    submit: (email: string, code: string) => run({ type: "confirm", email, code }),
-    resend: (email: string) => run({ type: "resend", email }),
+    submit: (email: string, code: string) =>
+      run(() => attempt(onProblem, () => confirm(email, code), () => onConfirmed(email))),
+    resend: (email: string) => run(() => attempt(onProblem, () => resend(email), onResent)),
   };
 }
