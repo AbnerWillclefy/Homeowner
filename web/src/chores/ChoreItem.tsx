@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { deleteChore, type Chore, type Failure } from "../api/chores";
+import { ButtonRow } from "../components/ui/ButtonRow";
 import { Card } from "../components/ui/Card";
 import { categoryStyle } from "../components/ui/categoryStyle";
 import { PillButton } from "../components/ui/PillButton";
@@ -52,7 +53,7 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
   }
 
   return (
-    <li className="list-none ps-0">
+    <li>
       <Card category={chore.category} className="flex flex-col gap-3">
         <div className="flex items-start gap-3">
           <span
@@ -69,7 +70,7 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
         </div>
 
         {!confirming && (
-          <div className="flex flex-wrap gap-2">
+          <ButtonRow>
             <PillButton variant="secondary" aria-label={t("chores.item.edit.label", { name: chore.name })} onClick={onEdit}>
               {t("chores.item.edit")}
             </PillButton>
@@ -81,7 +82,7 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
             >
               {t("chores.item.delete")}
             </PillButton>
-          </div>
+          </ButtonRow>
         )}
 
         {confirming && (
@@ -92,14 +93,14 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
                 {t(DELETE_FAILURE_KEY[remove.failed])}
               </p>
             )}
-            <div className="flex flex-wrap gap-2">
+            <ButtonRow>
               <PillButton ref={keepRef} variant="secondary" disabled={remove.kind === "deleting"} onClick={cancel}>
                 {t("chores.delete.cancel")}
               </PillButton>
               <PillButton variant="danger" disabled={remove.kind === "deleting"} onClick={() => void confirmDelete()}>
                 {t(remove.kind === "deleting" ? "chores.delete.deleting" : "chores.delete.confirm")}
               </PillButton>
-            </div>
+            </ButtonRow>
           </div>
         )}
       </Card>

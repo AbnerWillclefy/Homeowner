@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import type { CatalogEntry } from "../api/catalog";
 import { createChore, updateChore, type Chore } from "../api/chores";
 import { CatalogPicker } from "../catalog/CatalogPicker";
+import { ButtonRow } from "../components/ui/ButtonRow";
 import { Card } from "../components/ui/Card";
 import { PillButton } from "../components/ui/PillButton";
 import { formFromEntry } from "../catalog/review";
@@ -90,7 +91,7 @@ export function ChoresSection() {
           <ul className="flex list-none flex-col gap-3 p-0">
             {state.chores.map((chore: Chore) =>
               editing.kind === "edit" && editing.id === chore.id ? (
-                <li key={chore.id} className="list-none ps-0">
+                <li key={chore.id}>
                   <ChoreForm
                     initial={formFromChore(chore)}
                     mode="edit"
@@ -149,12 +150,12 @@ export function ChoresSection() {
           )}
 
           {(editing.kind === "none" || editing.kind === "edit") && (
-            <div className="mt-4 flex flex-wrap gap-2">
+            <ButtonRow className="mt-4">
               <PillButton onClick={() => open({ kind: "new" })}>{t("chores.add")}</PillButton>
               <PillButton variant="secondary" onClick={() => open({ kind: "catalog" })}>
                 {t("chores.addFromCatalog")}
               </PillButton>
-            </div>
+            </ButtonRow>
           )}
         </>
       )}

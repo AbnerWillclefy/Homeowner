@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import type { Chore, ChoreWire, SaveChoreResult } from "../api/chores";
 import type { FieldCodes } from "../api/home";
 import { WEEKDAYS } from "../api/profile";
+import { ButtonRow } from "../components/ui/ButtonRow";
 import { Card } from "../components/ui/Card";
 import { PillButton } from "../components/ui/PillButton";
 import { useI18n, type MessageKey } from "../i18n";
@@ -303,14 +304,14 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
           </p>
         )}
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <ButtonRow className="mt-4">
           <PillButton type="submit" disabled={saving}>
             {t(saving ? "chores.form.saving" : mode === "edit" ? "chores.form.submit.save" : "chores.form.submit.create")}
           </PillButton>
           <PillButton variant="secondary" disabled={saving} onClick={onCancel}>
             {t("chores.form.cancel")}
           </PillButton>
-        </div>
+        </ButtonRow>
       </form>
     </Card>
   );
