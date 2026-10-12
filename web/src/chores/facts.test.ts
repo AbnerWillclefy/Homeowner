@@ -24,28 +24,40 @@ const CHORE = {
 describe("choreScheduleFacts", () => {
   it("lists everything after the Category, with limited weekdays in display order", () => {
     expect(choreScheduleFacts(CHORE, t, "en-US")).toEqual([
-      "Effort 1 of 5",
+      "Effort: Very light",
       "Essential",
       "1 person",
-      "Every 7 days",
+      "Weekly",
       "Only on Tuesday, Friday",
     ]);
   });
 
   it("words one-off, daily and building-up Chores", () => {
     expect(choreScheduleFacts({ ...CHORE, intervalDays: null, allowedWeekdays: [] }, t, "en-US")).toEqual([
-      "Effort 1 of 5",
+      "Effort: Very light",
       "Essential",
       "1 person",
       "One-off",
     ]);
     expect(choreScheduleFacts({ ...CHORE, intervalDays: 1, allowedWeekdays: [], buildsUp: true }, t, "en-US")).toEqual([
-      "Effort 1 of 5",
+      "Effort: Very light",
       "Essential",
       "1 person",
       "Every day",
       "Builds up while undone",
     ]);
+  });
+
+  it("names the Effort level and the interval presets, and counts days for any other interval", () => {
+    const facts = (patch: object) => choreScheduleFacts({ ...CHORE, allowedWeekdays: [], ...patch }, t, "en-US");
+    expect(facts({ baseEffort: 4 })[0]).toBe("Effort: Heavy");
+    expect(facts({ intervalDays: 14 })[3]).toBe("Every 2 weeks");
+    expect(facts({ intervalDays: 30 })[3]).toBe("Monthly");
+    expect(facts({ intervalDays: 10 })[3]).toBe("Every 10 days");
+  });
+
+  it("never shows a bare number for an Effort", () => {
+    for (const baseEffort of [1, 2, 3, 4, 5]) expect(choreScheduleFacts({ ...CHORE, baseEffort }, t, "en-US")[0]).not.toMatch(/\d/);
   });
 
   it("is what choreFacts lists after the Category", () => {
@@ -57,10 +69,10 @@ describe("choreFacts", () => {
   it("lists the facts, with limited weekdays in display order", () => {
     expect(choreFacts(CHORE, t, "en-US")).toEqual([
       "Trash",
-      "Effort 1 of 5",
+      "Effort: Very light",
       "Essential",
       "1 person",
-      "Every 7 days",
+      "Weekly",
       "Only on Tuesday, Friday",
     ]);
   });
@@ -68,7 +80,7 @@ describe("choreFacts", () => {
   it("words a daily, a one-off and a building-up Chore", () => {
     expect(choreFacts({ ...CHORE, intervalDays: 1, allowedWeekdays: [], buildsUp: true }, t, "en-US")).toEqual([
       "Trash",
-      "Effort 1 of 5",
+      "Effort: Very light",
       "Essential",
       "1 person",
       "Every day",

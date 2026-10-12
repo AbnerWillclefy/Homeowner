@@ -6,6 +6,7 @@ import { useI18n } from "../i18n";
 import { categoryLabel, importanceLabel, labelText, type Label } from "../profile/labels";
 import { formatDay } from "./format";
 import { assignmentReasonLabel, poolReasonLabel } from "./reasons";
+import { taskEffortText } from "./taskEffort";
 
 interface Props {
   task: PlanTask;
@@ -24,10 +25,7 @@ export function TaskCard({ task, reasonFor }: Props) {
 
   const { id: category } = categoryStyle(task.category);
   const reason = (reasonFor === "assigned" ? assignmentReasonLabel : poolReasonLabel)(task.reason);
-  const effort =
-    task.currentEffort === task.baseEffort
-      ? t("dayplan.task.effort", { effort: task.currentEffort })
-      : t("dayplan.task.effort.grown", { effort: task.currentEffort, base: task.baseEffort });
+  const effort = taskEffortText(t, task.currentEffort, task.baseEffort);
   const facts = [
     text(importanceLabel(task.importance)),
     t(task.people === 2 ? "chores.item.people.two" : "chores.item.people.one"),
