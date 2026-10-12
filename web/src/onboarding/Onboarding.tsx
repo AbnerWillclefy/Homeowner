@@ -4,7 +4,7 @@ import { CreateHome } from "../home/CreateHome";
 import type { RecoveredNotice } from "../home/HomeSection";
 import { useI18n, type MessageKey } from "../i18n";
 import { BaselineFields, PreferenceFields, ProfileStatus, RestrictionFields } from "../profile/ProfileSections";
-import { useProfile } from "../profile/useProfile";
+import { useProfile, type ProfileState } from "../profile/useProfile";
 import { EnableReminders } from "../push/EnableReminders";
 import { InstallSteps } from "../push/InstallSteps";
 import { usePush } from "../push/usePush";
@@ -45,6 +45,21 @@ const ADVANCE_FAILED_KEY: Record<OnboardingProblem, MessageKey> = {
   "not-signed-in": "onboarding.advance.notSignedIn",
 };
 
+type ProfileReady = Extract<ProfileState, { kind: "ready" }>;
+
+interface NextSpec {
+  label: MessageKey;
+  onClick(): void;
+  primary?: boolean;
+  disabled?: boolean;
+}
+
+/** What a step shows: its body, and the Next button when it has one. */
+interface StepView {
+  body: ReactNode;
+  next?: NextSpec;
+}
+
 /**
  * The walk a new User takes instead of the dashboard: install, reminders, Baseline, Restrictions,
  * Preferences, then the Home. Each step says why it matters. It owns the one push hook and the one profile
@@ -74,6 +89,8 @@ export function Onboarding({ position, onPosition, onHomeFinished }: Props) {
   const saving = walk.advance.kind === "saving";
   const ready = profile.state.kind === "ready";
 
+  const goNext = () => void walk.next();
+
   function nextFromBaseline() {
     if (profile.state.kind !== "ready" || !allBaselineDaysSet(profile.state.profile.baseline)) {
       return setBaselineIncomplete(true);
@@ -82,80 +99,78 @@ export function Onboarding({ position, onPosition, onHomeFinished }: Props) {
     void walk.next();
   }
 
-  let body: ReactNode;
-  let nextButton: ReactNode = null;
-
-  switch (current) {
-    case "install":
-      body = <InstallSteps showHeading={false} />;
-      nextButton = <NextButton label="onboarding.install.done" saving={saving} onClick={() => void walk.next()} />;
-      break;
-
-    case "reminders":
-      if (push.availability.kind === "unsupported") {
-        body = <p>{t("onboarding.reminders.unsupported")}</p>;
-        nextButton = <NextButton label="onboarding.reminders.continue" saving={saving} onClick={() => void walk.next()} primary />;
-      } else if (push.availability.kind === "needs-install") {
-        body = <p>{t("onboarding.reminders.needsInstall")}</p>;
-        nextButton = <NextButton label="onboarding.reminders.notNow" saving={saving} onClick={() => void walk.next()} />;
-      } else if (push.reminders.kind === "on") {
-        body = <p role="status">{t("reminders.on")}</p>;
-        nextButton = <NextButton label="onboarding.reminders.continue" saving={saving} onClick={() => void walk.next()} primary />;
-      } else {
-        // Permission is asked only from this tap, never on mount.
-        body = <EnableReminders reminders={push.reminders} onEnable={push.enable} />;
-        nextButton = <NextButton label="onboarding.reminders.notNow" saving={saving} onClick={() => void walk.next()} />;
-      }
-      break;
-
-    case "baseline":
-      body = (
+  // A step that edits the Profile: its status line, its fields once loaded, and Next held back until ready.
+  function profileStep(
+    fields: (loaded: ProfileReady) => ReactNode,
+    onNext: () => void = goNext,
+    extra: ReactNode = null,
+  ): StepView {
+    return {
+      body: (
         <>
           <ProfileStatus state={profile.state} save={profile.save} retry={profile.retry} />
-          {profile.state.kind === "ready" && (
-            <BaselineFields baseline={profile.state.profile.baseline} onSave={profile.setBaseline} />
-          )}
-          {baselineIncomplete && <p role="alert">{t("onboarding.baseline.incomplete")}</p>}
+          {profile.state.kind === "ready" && fields(profile.state)}
+          {extra}
         </>
-      );
-      nextButton = <NextButton label="onboarding.next" saving={saving} disabled={!ready} onClick={nextFromBaseline} primary />;
-      break;
+      ),
+      next: { label: "onboarding.next", primary: true, disabled: !ready, onClick: onNext },
+    };
+  }
 
-    case "restrictions":
-      body = (
-        <>
-          <ProfileStatus state={profile.state} save={profile.save} retry={profile.retry} />
-          {profile.state.kind === "ready" && (
-            <RestrictionFields
-              restrictions={profile.state.profile.restrictions}
-              demands={profile.state.demands}
-              onChange={profile.setRestricted}
-            />
-          )}
-        </>
-      );
-      nextButton = <NextButton label="onboarding.next" saving={saving} disabled={!ready} onClick={() => void walk.next()} primary />;
-      break;
+  function remindersStep(): StepView {
+    const { availability, reminders } = push;
+    if (availability.kind === "unsupported") {
+      return {
+        body: <p>{t("onboarding.reminders.unsupported")}</p>,
+        next: { label: "onboarding.reminders.continue", primary: true, onClick: goNext },
+      };
+    }
+    if (availability.kind === "needs-install") {
+      return {
+        body: <p>{t("onboarding.reminders.needsInstall")}</p>,
+        next: { label: "onboarding.reminders.notNow", onClick: goNext },
+      };
+    }
+    const on = reminders.kind === "on";
+    return {
+      // Permission is asked only from the enable tap, never on mount.
+      body: on ? <p role="status">{t("reminders.on")}</p> : <EnableReminders reminders={reminders} onEnable={push.enable} />,
+      next: { label: on ? "onboarding.reminders.continue" : "onboarding.reminders.notNow", primary: on, onClick: goNext },
+    };
+  }
 
-    case "preferences":
-      body = (
-        <>
-          <ProfileStatus state={profile.state} save={profile.save} retry={profile.retry} />
-          {profile.state.kind === "ready" && (
-            <PreferenceFields
-              profile={profile.state.profile}
-              categories={profile.state.categories}
-              onChange={profile.setPreference}
-            />
-          )}
-        </>
-      );
-      nextButton = <NextButton label="onboarding.next" saving={saving} disabled={!ready} onClick={() => void walk.next()} primary />;
-      break;
+  const views: Record<OnboardingStep, () => StepView> = {
+    install: () => ({
+      body: <InstallSteps showHeading={false} />,
+      next: { label: "onboarding.install.done", onClick: goNext },
+    }),
 
-    case "home":
-      // POST /home completes this step on the server, so there is no Next here.
-      body = (
+    reminders: remindersStep,
+
+    baseline: () =>
+      profileStep(
+        (loaded) => <BaselineFields baseline={loaded.profile.baseline} onSave={profile.setBaseline} />,
+        nextFromBaseline,
+        baselineIncomplete && <p role="alert">{t("onboarding.baseline.incomplete")}</p>,
+      ),
+
+    restrictions: () =>
+      profileStep((loaded) => (
+        <RestrictionFields
+          restrictions={loaded.profile.restrictions}
+          demands={loaded.demands}
+          onChange={profile.setRestricted}
+        />
+      )),
+
+    preferences: () =>
+      profileStep((loaded) => (
+        <PreferenceFields profile={loaded.profile} categories={loaded.categories} onChange={profile.setPreference} />
+      )),
+
+    // POST /home completes this step on the server, so there is no Next here.
+    home: () => ({
+      body: (
         <CreateHome
           onSaved={() => {
             onPosition("done");
@@ -166,9 +181,11 @@ export function Onboarding({ position, onPosition, onHomeFinished }: Props) {
             onHomeFinished(choresDropped ? "chores-dropped" : "plain");
           }}
         />
-      );
-      break;
-  }
+      ),
+    }),
+  };
+
+  const { body, next } = views[current]();
 
   return (
     <section aria-labelledby="onboarding-heading">
@@ -187,7 +204,7 @@ export function Onboarding({ position, onPosition, onHomeFinished }: Props) {
           {t("onboarding.back")}
         </button>
       )}
-      {nextButton}
+      {next && <NextButton {...next} saving={saving} />}
     </section>
   );
 }
@@ -198,13 +215,7 @@ function NextButton({
   onClick,
   primary = false,
   disabled = false,
-}: {
-  label: MessageKey;
-  saving: boolean;
-  onClick(): void;
-  primary?: boolean;
-  disabled?: boolean;
-}) {
+}: NextSpec & { saving: boolean }) {
   const { t } = useI18n();
   return (
     <button type="button" className={primary ? "btn btn-primary" : "btn"} disabled={saving || disabled} onClick={onClick}>
