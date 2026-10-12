@@ -193,6 +193,16 @@
   padding-inline-end: calc(1.5rem + env(safe-area-inset-right));
 }
 
+/* Horizontal safe-area padding of the full-bleed onboarding screen: 1.5rem for content, 0.75rem for the top bar. */
+@utility onboarding-x {
+  padding-inline-start: calc(1.5rem + env(safe-area-inset-left));
+  padding-inline-end: calc(1.5rem + env(safe-area-inset-right));
+}
+@utility onboarding-x-bar {
+  padding-inline-start: calc(0.75rem + env(safe-area-inset-left));
+  padding-inline-end: calc(0.75rem + env(safe-area-inset-right));
+}
+
 /*
   Buttons keep a real border, so they stay visible when forced-colors mode strips
   backgrounds. min-height and min-width are in rem so the 44px target grows with text.

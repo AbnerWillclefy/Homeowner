@@ -185,8 +185,6 @@ export function Onboarding({ position, onPosition }: Props) {
 
   const { body, next } = views[current]();
 
-  // Where the existing flow lets the User skip (a Next that is not the primary one), the close button runs it.
-  const skip = next && !next.primary ? next : null;
   const failed = walk.advance.kind === "failed" ? walk.advance : null;
 
   return (
@@ -195,15 +193,12 @@ export function Onboarding({ position, onPosition }: Props) {
       heading={t(HEADING_KEY[current])}
       headingRef={headingRef}
       why={t(WHY_KEY[current])}
-      backLabel={t("onboarding.back")}
       onBack={walk.canGoBack ? walk.back : undefined}
-      close={skip ? { label: t(skip.label), onClick: skip.onClick } : undefined}
       disabled={saving}
       failure={
         failed
           ? {
               message: t(ADVANCE_FAILED_KEY[failed.problem]),
-              retryLabel: t("onboarding.retry"),
               onRetry: next?.onClick ?? goNext,
             }
           : undefined
