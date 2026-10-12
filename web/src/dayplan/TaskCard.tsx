@@ -23,7 +23,8 @@ export function TaskCard({ task, reasonFor }: Props) {
   const { t, locale } = useI18n();
   const text = (label: Label) => labelText(t, label);
 
-  const { id: category } = categoryStyle(task.category);
+  const style = categoryStyle(task.category);
+  const category = style.id;
   const reason = (reasonFor === "assigned" ? assignmentReasonLabel : poolReasonLabel)(task.reason);
   const effort = taskEffortText(t, task.currentEffort, task.baseEffort);
   const facts = [
@@ -34,7 +35,7 @@ export function TaskCard({ task, reasonFor }: Props) {
 
   return (
     <li className="list-none ps-0">
-      <CardRow category={category} glyph={<CategoryGlyph category={category} />}>
+      <CardRow tint={style} glyph={<CategoryGlyph category={category} />}>
         <div>
           <p className="my-0 text-sm font-semibold">{text(categoryLabel(category))}</p>
           <h4 className="my-1 text-lg font-bold leading-snug">{task.choreName}</h4>

@@ -38,7 +38,8 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
   }, [confirming]);
 
   // An unknown Category gets the neutral style and the name "Other", never its raw id.
-  const { id: categoryId } = categoryStyle(chore.category);
+  const style = categoryStyle(chore.category);
+  const categoryId = style.id;
   const schedule = choreScheduleFacts(chore, t, locale).join(" · ");
 
   // The guard ignores a second tap in the same tick, before `deleting` has rendered.
@@ -80,7 +81,7 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
 
   return (
     <li>
-      <CardRow category={chore.category} glyph={<CategoryGlyph category={chore.category} />} actions={actions}>
+      <CardRow tint={style} glyph={<CategoryGlyph category={chore.category} />} actions={actions}>
         <p className="text-sm font-semibold">{labelText(t, categoryLabel(categoryId))}</p>
         <h3 className="font-semibold">{chore.name}</h3>
         <p>{schedule}</p>
