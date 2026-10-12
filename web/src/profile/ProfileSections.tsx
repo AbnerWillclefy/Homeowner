@@ -4,6 +4,7 @@ import { categoryStyle } from "../components/ui/categoryStyle";
 import { useI18n, type MessageKey } from "../i18n";
 import { MAX_BASELINE, parseBaselineInput } from "./baselineInput";
 import { categoryLabel, demandLabel, labelText } from "./labels";
+import { preferenceCategories } from "./preferenceCategories";
 import type { ProfileProblem, ProfileState, SaveState } from "./useProfile";
 import { DISPLAY_WEEKDAYS, weekdayLabel } from "./weekdays";
 
@@ -81,10 +82,12 @@ export function PreferenceFields({
   onChange(category: string, preference: Preference): void;
 }) {
   const { t } = useI18n();
+  const shown = preferenceCategories(categories);
+  if (shown.length === 0) return null;
   return (
     <>
       <p>{t("profile.preferences.intro")}</p>
-      {categories.map((id) => (
+      {shown.map((id) => (
         <PreferenceChoice key={id} id={id} name={labelText(t, categoryLabel(id))} profile={profile} onChange={onChange} />
       ))}
     </>
