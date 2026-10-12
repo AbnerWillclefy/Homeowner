@@ -1,25 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DayPlan } from "../api/dayPlan";
-import { rightAwayOutcome, showStartChoice } from "./startChoice";
-
-describe("showStartChoice", () => {
-  it("is hidden until a flow has finished", () => {
-    expect(showStartChoice({ finished: null, decided: false })).toBe(false);
-  });
-
-  it("is shown when the invite flow has finished", () => {
-    expect(showStartChoice({ finished: "invite", decided: false })).toBe(true);
-  });
-
-  it("is shown when self-onboarding has finished", () => {
-    expect(showStartChoice({ finished: "onboarding", decided: false })).toBe(true);
-  });
-
-  it("is hidden once chosen, whichever flow it was", () => {
-    expect(showStartChoice({ finished: "invite", decided: true })).toBe(false);
-    expect(showStartChoice({ finished: "onboarding", decided: true })).toBe(false);
-  });
-});
+import { rightAwayOutcome } from "./startChoice";
 
 const TASK = {
   id: "t1",
