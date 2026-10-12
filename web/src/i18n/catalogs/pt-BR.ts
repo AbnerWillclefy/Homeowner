@@ -23,6 +23,8 @@ export const ptBR: Messages = {
 
   // Navegação
   "nav.label": "Principal",
+  "toast.dismiss": "Dispensar mensagem",
+  "toast.region": "Mensagens",
   "nav.today": "Hoje",
   "nav.chores": "Afazeres",
   "nav.home": "Lar",

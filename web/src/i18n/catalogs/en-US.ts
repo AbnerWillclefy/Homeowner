@@ -18,6 +18,8 @@ export const enUS = {
 
   // Navigation
   "nav.label": "Main",
+  "toast.dismiss": "Dismiss message",
+  "toast.region": "Messages",
   "nav.today": "Today",
   "nav.chores": "Chores",
   "nav.home": "Home",
