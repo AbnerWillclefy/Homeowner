@@ -1,4 +1,4 @@
-import { Card } from "../components/ui/Card";
+import { CardRow } from "../components/ui/CardRow";
 import { PillButton } from "../components/ui/PillButton";
 import { useSubmitOnce } from "../components/ui/useSubmitOnce";
 import { useToast } from "../components/ui/useToast";
@@ -40,12 +40,19 @@ export function InviteShare() {
   });
 
   return (
-    <Card as="section" aria-labelledby="invite-share-heading">
-      <h2 id="invite-share-heading">{t("invite.share.heading")}</h2>
-      <p>{t("invite.share.intro")}</p>
-      <PillButton variant="primary" disabled={working} aria-busy={working} onClick={() => void onClick()}>
-        {working ? t("invite.share.creating") : t("invite.share.button")}
-      </PillButton>
-    </Card>
+    <CardRow
+      as="section"
+      aria-labelledby="invite-share-heading"
+      className="items-center"
+      actions={
+        <PillButton variant="primary" disabled={working} aria-busy={working} onClick={() => void onClick()}>
+          {working ? t("invite.share.creating") : t("invite.share.button")}
+        </PillButton>
+      }
+    >
+      <h2 id="invite-share-heading" className="my-0">
+        {t("invite.share.heading")}
+      </h2>
+    </CardRow>
   );
 }

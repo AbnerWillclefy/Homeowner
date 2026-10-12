@@ -12,7 +12,6 @@ interface Props {
 
 const COPY = {
   heading: "home.settings.heading",
-  intro: "home.settings.intro",
   submit: "home.settings.save",
   submitting: "home.settings.saving",
   saved: "home.settings.saved",

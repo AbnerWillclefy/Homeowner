@@ -31,36 +31,24 @@ export const enUS = {
   "home.notSignedIn": "Your sign-in has ended. Sign in again to continue.",
   "home.retry": "Try again",
   "home.create.heading": "Create your Home",
-  "home.create.intro":
-    "Your Home is the place you and the other Residents look after together. Homeowner needs its timezone and Allocation time to know when each day starts and when to propose the Day Plan. You can change both later, and you can live in only one Home.",
   "home.create.submit": "Create Home",
   "home.create.submitting": "Creating...",
   "home.create.recovered": "You already have a Home, so Homeowner loaded it instead. Check its settings below.",
   "home.settings.heading": "Your Home",
-  "home.settings.intro":
-    "All Residents of a Home have an equal say, so any Resident can change these settings. The Allocation time is when Homeowner proposes each day's Day Plan.",
   "home.settings.save": "Save changes",
   "home.settings.saving": "Saving...",
   "home.settings.saved": "Your changes are saved.",
   "home.timezone.label": "Timezone",
-  "home.timezone.hint": "Where your Home is, so Homeowner knows when each day starts.",
   "home.allocationTime.label": "Allocation time",
-  "home.allocationTime.hint":
-    "The time each day when Homeowner proposes the Day Plan, in your Home's timezone. Times come in 15-minute steps.",
   "home.save.offline":
     "Homeowner cannot reach the service. What you typed is still here; check your connection and try again.",
   "home.save.error": "Something went wrong and nothing was saved. What you typed is still here; try again in a moment.",
   "home.leave.heading": "Leave this Home",
-  "home.leave.intro":
-    "If you move out or no longer share this Home, you can leave it. You can join or create another Home afterwards.",
   "home.leave.open": "Leave this Home",
   "home.leave.title": "Leave this Home?",
-  "home.leave.removes":
-    "Your Preferences and Restrictions for this Home's Chores are removed, and so are your places in its Day Plan.",
-  "home.leave.stays":
-    "Your Baseline and your general Preferences and Restrictions stay with you and come to your next Home.",
-  "home.leave.last":
-    "If you are the last Resident, the Home and all its Chores are deleted, and that cannot be undone.",
+  "home.leave.removes": "Your Preferences and Restrictions for its Chores, and your places in its Day Plan, are removed.",
+  "home.leave.stays": "Your Baseline and general Preferences and Restrictions come with you.",
+  "home.leave.last": "If you are the last Resident, the Home and its Chores are deleted for good.",
   "home.leave.cancel": "Cancel",
   "home.leave.confirm": "Leave Home",
   "home.leave.leaving": "Leaving...",
@@ -145,15 +133,13 @@ export const enUS = {
 
   // Chores
   "chores.heading": "Chores",
-  "chores.intro":
-    "Chores are the work your Home needs done. Homeowner shares them out each day, so the more accurately you describe each one, the fairer the sharing is.",
   "chores.loading": "Loading your Chores...",
   "chores.load.offline":
     "Your Chores could not be loaded because Homeowner cannot reach the service. Check your connection and try again.",
   "chores.load.error": "Something went wrong loading your Chores. Try again in a moment.",
   "chores.notSignedIn": "Your sign-in has ended. Sign in again to continue.",
   "chores.retry": "Try again",
-  "chores.empty": "Your Home has no Chores yet. Tap \"Add a Chore\" to write your own, or \"Add from the Catalog\" to start from a ready-made one.",
+  "chores.empty": "No Chores yet.",
   "chores.add": "Add a Chore",
   "effort.level.very_light": "Very light",
   "effort.level.light": "Light",
@@ -186,30 +172,21 @@ export const enUS = {
   "chores.form.create.heading": "Add a Chore",
   "chores.form.edit.heading": "Edit Chore",
   "chores.form.name.label": "Name",
-  "chores.form.name.hint": "What the Chore is called, for example \"Wash the dishes\".",
   "chores.form.category.label": "Category",
-  "chores.form.category.hint": "What kind of work it is. It decides who likes or dislikes it.",
   "chores.form.category.placeholder": "Choose a Category",
   "chores.form.demands.legend": "Demands",
-  "chores.form.demands.hint": "What the Chore asks of the body. Residents with a matching Restriction are never given it.",
   "chores.form.baseEffort.legend": "Effort",
-  "chores.form.baseEffort.hint": "How draining it is for each person doing it, from very light to very heavy.",
   "chores.form.importance.legend": "Importance",
-  "chores.form.importance.hint": "How much it matters that this gets done. Essential Chores are shared out first.",
   "chores.form.people.legend": "People it takes",
-  "chores.form.people.hint": "Whether one Resident does it alone or two do it together.",
   "chores.form.people.one": "One person",
   "chores.form.people.two": "Two people",
-  "chores.form.suggestion": "A Chore this draining is easier shared. You could make it a two-person Chore.",
+  "chores.form.suggestion": "A Chore this draining is easier shared.",
   "chores.form.suggestion.action": "Make it two-person",
   "chores.form.interval.legend": "How often",
   "chores.form.intervalDays.label": "Repeat every (days)",
-  "chores.form.intervalDays.hint":
-    "Choose Custom and leave the days blank for a one-off Chore that comes due once. Monthly means every 30 days.",
+  "chores.form.intervalDays.hint": "Leave blank for a one-off Chore.",
   "chores.form.allowedWeekdays.legend": "Only on these days",
-  "chores.form.allowedWeekdays.hint": "Tick the days it may be given out. Tick none to allow any day.",
   "chores.form.buildsUp.label": "Builds up while undone",
-  "chores.form.buildsUp.hint": "Tick this if leaving it makes it harder, like laundry piling up. Its Effort then grows each day it stays undone.",
   "chores.form.submit.create": "Add Chore",
   "chores.form.submit.save": "Save Chore",
   "chores.form.saving": "Saving...",
@@ -405,8 +382,6 @@ export const enUS = {
   // Invites: arriving from a link, joining, and sharing one
   "invite.checking": "Checking your Invite...",
   "invite.signedOut.heading": "You were invited to a Home",
-  "invite.signedOut.intro":
-    "A Resident invited you to join their Home. Create a login, or sign in if you have one, and you become a Resident with an equal say in the Home. Your Invite is saved on this device, so you can confirm your email and come back to it.",
   "invite.lookup.problem":
     "Homeowner could not check your Invite right now. Your link is kept, so you can still sign in and try again.",
   "invite.dead.not_found":
@@ -416,14 +391,12 @@ export const enUS = {
   "invite.dead.continue": "Continue",
   "invite.join.heading": "Join a Home",
   "invite.join.loading": "Getting your Invite ready...",
-  "invite.join.intro":
-    "You were invited to a Home. Joining makes you a Resident, with an equal say in it. Fill in your Baseline, Preferences and Restrictions below first if you like: Homeowner uses them to share the work fairly. You can also do it after joining.",
   "invite.join.submit": "Join this Home",
   "invite.join.submitting": "Joining...",
   "invite.join.dismiss": "Not now",
   "invite.leave.heading": "Joining means leaving your Home",
   "invite.leave.warning":
-    "You already live in a Home, and a User can be a Resident of only one. Joining this one means leaving your current Home. Your Preferences and Restrictions for its Chores are deleted. If you are its last Resident, the Home and all its Chores are deleted too.",
+    "Joining this Home means leaving your current one. Your Preferences and Restrictions for its Chores are deleted. If you are its last Resident, the Home and its Chores are deleted too.",
   "invite.leave.confirm": "Leave my Home and join this one",
   "invite.leave.cancel": "Stay in my Home",
   "invite.alreadyHere": "You already live in this Home, so there was nothing to join. The Invite was not used up.",
@@ -433,8 +406,6 @@ export const enUS = {
   "invite.failure.notSignedIn": "Your sign-in has ended. Sign in again to continue.",
   "invite.failure.retry": "Try again",
   "invite.rating.heading": "Rate the biggest Chores",
-  "invite.rating.intro":
-    "You are now a Resident. These are the Home's most demanding Chores by Effort. Tell Homeowner which you like or dislike, and mark any you cannot do, so your first Tasks suit you. Each choice saves on its own, and you can change them later.",
   "invite.rating.loading": "Loading the Chores...",
   "invite.rating.problem":
     "The Chores could not be loaded, so there is nothing to rate right now. You can skip this step.",
@@ -445,8 +416,6 @@ export const enUS = {
   "invite.rating.done": "Done",
   "invite.rating.skip": "Skip for now",
   "invite.share.heading": "Invite a Resident",
-  "invite.share.intro":
-    "An Invite is a link you can send in any app. It works once and lasts seven days. Whoever opens it can join your Home, so send it only to the person you mean.",
   "invite.share.button": "Invite a Resident",
   "invite.share.creating": "Making the Invite...",
   "invite.share.title": "Join my Home on Homeowner",
@@ -472,10 +441,8 @@ export const enUS = {
   "home.create.next": "Next: about your Home",
   "home.create.back": "Back",
   "home.create.recovered.chores":
-    "You already have a Home, so Homeowner loaded it instead. The Chores you reviewed were not added; add them from the Catalog in the Chores section.",
+    "You already have a Home, so it was loaded. The Chores you reviewed were not added; add them from the Catalog.",
   "catalog.questions.heading": "About your Home",
-  "catalog.questions.intro":
-    "A few answers let Homeowner suggest the Chores your Home needs, so you do not start from an empty list. Nothing is saved yet, and you can change every suggestion on the next step. Leave alone any question that does not apply.",
   "catalog.questions.submit": "Suggest Chores",
   "catalog.questions.submitting": "Working out your Chores...",
   "catalog.questions.skip": "Skip and add Chores later",
@@ -488,7 +455,6 @@ export const enUS = {
   "catalog.answers.error.out_of_range": "This answer is outside the allowed range.",
   "catalog.answers.error.unknown": "This answer is not recognised.",
   "catalog.rooms.legend": "Rooms",
-  "catalog.rooms.hint": "Each room gets its own Chores, so two bathrooms mean two bathroom Chores.",
   "catalog.rooms.range": "From 0 to {max}",
   "catalog.rooms.bedrooms": "Bedrooms",
   "catalog.rooms.bathrooms": "Bathrooms",
@@ -496,42 +462,32 @@ export const enUS = {
   "catalog.rooms.livingRooms": "Living rooms",
   "catalog.rooms.laundryAreas": "Laundry areas",
   "catalog.outdoor.legend": "Outdoor space",
-  "catalog.outdoor.hint": "Decides whether outdoor Chores such as sweeping or mowing are suggested.",
   "catalog.outdoor.none": "None",
   "catalog.outdoor.balcony": "Balcony",
   "catalog.outdoor.yard": "Yard",
   "catalog.outdoor.garden": "Garden",
   "catalog.pets.legend": "Pets",
-  "catalog.pets.hint": "Each pet adds feeding and care Chores. Tick none if you have no pets.",
   "catalog.pets.dog": "Dog",
   "catalog.pets.cat": "Cat",
   "catalog.pets.fish": "Fish",
   "catalog.pets.bird": "Bird",
   "catalog.pets.other": "Another kind of pet",
   "catalog.collection.legend": "Trash and recycling collection",
-  "catalog.collection.hint":
-    "Tick the days the collection comes. The Chore of putting it out is then limited to those days. Leave a group empty if it is not collected.",
   "catalog.collection.trash": "Trash collection days",
   "catalog.collection.recycling": "Recycling collection days",
   "catalog.habits.legend": "Cooking and appliances",
-  "catalog.habits.hint":
-    "Cooking at home more often makes the kitchen need more care. The appliances you have change which Chores are suggested.",
   "catalog.habits.cooking.legend": "How often do you cook at home?",
   "catalog.habits.cooking.rarely": "Rarely",
   "catalog.habits.cooking.sometimes": "Sometimes",
   "catalog.habits.cooking.daily": "Every day",
   "catalog.habits.dishwasher": "We have a dishwasher",
   "catalog.habits.washingMachine": "We have a washing machine",
-  "catalog.regenerate.prompt":
-    "You changed your answers, so the suggested Chores will be worked out again and your edits to them will be lost. Continue?",
+  "catalog.regenerate.prompt": "Changing your answers suggests the Chores again and loses your edits. Continue?",
   "catalog.regenerate.confirm": "Yes, suggest again",
   "catalog.regenerate.cancel": "Keep my edits",
   "catalog.review.heading": "Review your Chores",
-  "catalog.review.intro":
-    "These are the Chores Homeowner suggests from your answers. Edit any that do not fit and remove any you do not want, then create your Home. You can add or change Chores at any time afterwards.",
   "catalog.review.count": { one: "{count} Chore suggested", other: "{count} Chores suggested" },
-  "catalog.review.empty":
-    "No Chores are suggested. You can create your Home now and add Chores from the Catalog afterwards.",
+  "catalog.review.empty": "No Chores are suggested.",
   "catalog.review.edit": "Edit",
   "catalog.review.remove": "Remove",
   "catalog.review.remove.label": "Remove {name}",
@@ -547,8 +503,6 @@ export const enUS = {
     "Something went wrong loading the lists needed to edit Chores. Try again in a moment.",
   "chores.addFromCatalog": "Add from the Catalog",
   "chores.catalog.heading": "Add from the Catalog",
-  "chores.catalog.intro":
-    "The Catalog is Homeowner's list of common Chores. Pick one to add it to your Home; you can change anything before it is saved. Pick a room Chore again to add it for another room.",
   "chores.catalog.loading": "Loading the Catalog...",
   "chores.catalog.load.offline":
     "Homeowner cannot reach the service, so the Catalog could not be loaded. Check your connection and try again.",

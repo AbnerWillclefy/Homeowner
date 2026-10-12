@@ -9,7 +9,6 @@ import { useSettingsForm, type SaveOutcome } from "./useSettingsForm";
 
 interface Copy {
   heading: MessageKey;
-  intro: MessageKey;
   submit: MessageKey;
   submitting: MessageKey;
   /** The toast after a save. Left out where the form goes away on success. */
@@ -45,7 +44,6 @@ export function HomeForm({ idPrefix, copy, initial, timezones, save, onSaved, on
   return (
     <Card as="section" aria-labelledby={`${idPrefix}-heading`}>
       <h2 id={`${idPrefix}-heading`}>{t(copy.heading)}</h2>
-      <p>{t(copy.intro)}</p>
       <form onSubmit={form.submit} noValidate>
         <HomeFields
           idPrefix={idPrefix}

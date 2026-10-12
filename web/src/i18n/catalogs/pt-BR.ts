@@ -36,36 +36,24 @@ export const ptBR: Messages = {
   "home.notSignedIn": "Seu login terminou. Entre novamente para continuar.",
   "home.retry": "Tentar novamente",
   "home.create.heading": "Crie o seu lar",
-  "home.create.intro":
-    "O seu lar é o lugar que você e os outros moradores cuidam juntos. O Homeowner precisa do fuso horário e do horário da alocação para saber quando cada dia começa e quando propor o plano do dia. Você pode mudar os dois depois, e só pode morar em um lar.",
   "home.create.submit": "Criar lar",
   "home.create.submitting": "Criando...",
   "home.create.recovered": "Você já tem um lar, então o Homeowner o carregou. Confira os ajustes dele abaixo.",
   "home.settings.heading": "Seu lar",
-  "home.settings.intro":
-    "Todos os moradores de um lar têm o mesmo poder de decisão, então qualquer morador pode mudar estes ajustes. O horário da alocação é quando o Homeowner propõe o plano do dia.",
   "home.settings.save": "Salvar alterações",
   "home.settings.saving": "Salvando...",
   "home.settings.saved": "Suas alterações foram salvas.",
   "home.timezone.label": "Fuso horário",
-  "home.timezone.hint": "Onde fica o seu lar, para o Homeowner saber quando cada dia começa.",
   "home.allocationTime.label": "Horário da alocação",
-  "home.allocationTime.hint":
-    "O horário de cada dia em que o Homeowner propõe o plano do dia, no fuso horário do seu lar. Os horários variam de 15 em 15 minutos.",
   "home.save.offline":
     "O Homeowner não consegue acessar o serviço. O que você digitou continua aqui; verifique sua conexão e tente novamente.",
   "home.save.error": "Algo deu errado e nada foi salvo. O que você digitou continua aqui; tente novamente em instantes.",
   "home.leave.heading": "Sair deste lar",
-  "home.leave.intro":
-    "Se você se mudar ou não dividir mais este lar, pode sair dele. Depois, você pode entrar em outro lar ou criar um novo.",
   "home.leave.open": "Sair deste lar",
   "home.leave.title": "Sair deste lar?",
-  "home.leave.removes":
-    "Suas preferências e restrições para os afazeres deste lar são apagadas, e o mesmo vale para os seus lugares no plano do dia.",
-  "home.leave.stays":
-    "Sua energia base e suas preferências e restrições gerais continuam com você e vão para o próximo lar.",
-  "home.leave.last":
-    "Se você for o último morador, o lar e todos os afazeres dele são apagados, e isso não pode ser desfeito.",
+  "home.leave.removes": "Suas preferências e restrições para os afazeres dele, e seus lugares no plano do dia, são apagados.",
+  "home.leave.stays": "Sua energia base e suas preferências e restrições gerais vão com você.",
+  "home.leave.last": "Se você for o último morador, o lar e seus afazeres são apagados de vez.",
   "home.leave.cancel": "Cancelar",
   "home.leave.confirm": "Sair do lar",
   "home.leave.leaving": "Saindo...",
@@ -151,15 +139,13 @@ export const ptBR: Messages = {
 
   // Chores
   "chores.heading": "Afazeres",
-  "chores.intro":
-    "Afazeres são o trabalho que o seu lar precisa que seja feito. O Homeowner divide os afazeres todos os dias, então quanto mais certinha for a descrição de cada um, mais justa é a divisão.",
   "chores.loading": "Carregando os seus afazeres...",
   "chores.load.offline":
     "Não foi possível carregar os seus afazeres porque o Homeowner não consegue falar com o serviço. Confira a sua conexão e tente de novo.",
   "chores.load.error": "Algo deu errado ao carregar os seus afazeres. Tente de novo daqui a pouco.",
   "chores.notSignedIn": "Seu login terminou. Entre de novo para continuar.",
   "chores.retry": "Tentar de novo",
-  "chores.empty": "O seu lar ainda não tem afazeres. Toque em \"Adicionar afazer\" para criar o seu, ou em \"Adicionar do Catálogo\" para partir de um pronto.",
+  "chores.empty": "Nenhum afazer ainda.",
   "chores.add": "Adicionar afazer",
   "effort.level.very_light": "Muito leve",
   "effort.level.light": "Leve",
@@ -192,32 +178,21 @@ export const ptBR: Messages = {
   "chores.form.create.heading": "Adicionar afazer",
   "chores.form.edit.heading": "Editar afazer",
   "chores.form.name.label": "Nome",
-  "chores.form.name.hint": "Como o afazer se chama, por exemplo \"Lavar a louça\".",
   "chores.form.category.label": "Categoria",
-  "chores.form.category.hint": "Que tipo de trabalho é. Ela define quem gosta ou não gosta dele.",
   "chores.form.category.placeholder": "Escolha uma categoria",
   "chores.form.demands.legend": "Exigências",
-  "chores.form.demands.hint":
-    "O que o afazer pede do corpo. Moradores com uma restrição correspondente nunca recebem esse afazer.",
   "chores.form.baseEffort.legend": "Esforço",
-  "chores.form.baseEffort.hint": "O quanto cansa cada pessoa que o faz, de muito leve a muito pesado.",
   "chores.form.importance.legend": "Importância",
-  "chores.form.importance.hint": "O quanto importa que isso seja feito. Os afazeres essenciais são divididos primeiro.",
   "chores.form.people.legend": "Pessoas necessárias",
-  "chores.form.people.hint": "Se um morador faz sozinho ou se dois fazem juntos.",
   "chores.form.people.one": "Uma pessoa",
   "chores.form.people.two": "Duas pessoas",
-  "chores.form.suggestion": "Um afazer tão cansativo fica mais leve em dupla. Você pode torná-lo um afazer para duas pessoas.",
+  "chores.form.suggestion": "Um afazer tão cansativo fica mais leve em dupla.",
   "chores.form.suggestion.action": "Tornar para duas pessoas",
   "chores.form.interval.legend": "Com que frequência",
   "chores.form.intervalDays.label": "Repetir a cada (dias)",
-  "chores.form.intervalDays.hint":
-    "Escolha Personalizado e deixe os dias em branco para um afazer que vence uma vez só. Mensal quer dizer a cada 30 dias.",
+  "chores.form.intervalDays.hint": "Deixe em branco para um afazer de uma vez só.",
   "chores.form.allowedWeekdays.legend": "Só nestes dias",
-  "chores.form.allowedWeekdays.hint": "Marque os dias em que ele pode ser dado a alguém. Não marque nenhum para permitir qualquer dia.",
   "chores.form.buildsUp.label": "Acumula enquanto não é feito",
-  "chores.form.buildsUp.hint":
-    "Marque se deixar de fazer o torna mais difícil, como a roupa se acumulando. O esforço dele então cresce a cada dia que passa sem ser feito.",
   "chores.form.submit.create": "Adicionar afazer",
   "chores.form.submit.save": "Salvar afazer",
   "chores.form.saving": "Salvando...",
@@ -413,8 +388,6 @@ export const ptBR: Messages = {
   // Invites: arriving from a link, joining, and sharing one
   "invite.checking": "Verificando seu convite...",
   "invite.signedOut.heading": "Você foi convidado para um lar",
-  "invite.signedOut.intro":
-    "Um morador convidou você para o lar dele. Crie um login, ou entre se você já tem um, e você passa a ser morador, com o mesmo poder de decisão no lar. Seu convite fica salvo neste aparelho, então você pode confirmar seu e-mail e voltar a ele.",
   "invite.lookup.problem":
     "O Homeowner não conseguiu verificar seu convite agora. O link foi guardado, então você ainda pode entrar e tentar de novo.",
   "invite.dead.not_found":
@@ -424,14 +397,12 @@ export const ptBR: Messages = {
   "invite.dead.continue": "Continuar",
   "invite.join.heading": "Entrar em um lar",
   "invite.join.loading": "Preparando seu convite...",
-  "invite.join.intro":
-    "Você foi convidado para um lar. Entrar faz de você um morador, com o mesmo poder de decisão. Se quiser, preencha antes sua energia base, suas preferências e suas restrições abaixo: o Homeowner usa isso para dividir o trabalho de forma justa. Você também pode fazer isso depois de entrar.",
   "invite.join.submit": "Entrar neste lar",
   "invite.join.submitting": "Entrando...",
   "invite.join.dismiss": "Agora não",
   "invite.leave.heading": "Entrar significa sair do seu lar",
   "invite.leave.warning":
-    "Você já mora em um lar, e um login pode ser morador de apenas um. Entrar neste significa sair do seu lar atual. Suas preferências e restrições para os afazeres dele são apagadas. Se você for o último morador, o lar e todos os afazeres dele também são apagados.",
+    "Entrar neste lar significa sair do atual. Suas preferências e restrições para os afazeres dele são apagadas. Se você for o último morador, o lar e seus afazeres também são apagados.",
   "invite.leave.confirm": "Sair do meu lar e entrar neste",
   "invite.leave.cancel": "Ficar no meu lar",
   "invite.alreadyHere": "Você já mora neste lar, então não havia o que fazer. O convite não foi gasto.",
@@ -442,8 +413,6 @@ export const ptBR: Messages = {
   "invite.failure.notSignedIn": "Você não está mais conectado. Entre de novo para continuar.",
   "invite.failure.retry": "Tentar de novo",
   "invite.rating.heading": "Avalie os afazeres mais pesados",
-  "invite.rating.intro":
-    "Agora você é morador. Estes são os afazeres mais exigentes do lar, pelo esforço. Diga ao Homeowner de quais você gosta ou não gosta e marque os que você não consegue fazer, para que suas primeiras tarefas combinem com você. Cada escolha é salva sozinha e você pode mudar depois.",
   "invite.rating.loading": "Carregando os afazeres...",
   "invite.rating.problem":
     "Não foi possível carregar os afazeres, então não há o que avaliar agora. Você pode pular esta etapa.",
@@ -454,8 +423,6 @@ export const ptBR: Messages = {
   "invite.rating.done": "Concluir",
   "invite.rating.skip": "Pular por enquanto",
   "invite.share.heading": "Convidar um morador",
-  "invite.share.intro":
-    "Um convite é um link que você pode enviar por qualquer app. Ele funciona uma vez e dura sete dias. Quem abrir pode entrar no seu lar, então envie só para a pessoa que você quer.",
   "invite.share.button": "Convidar um morador",
   "invite.share.creating": "Criando o convite...",
   "invite.share.title": "Entre no meu lar no Homeowner",
@@ -483,10 +450,8 @@ export const ptBR: Messages = {
   "home.create.next": "Próximo: sobre o seu lar",
   "home.create.back": "Voltar",
   "home.create.recovered.chores":
-    "Você já tem um lar, então o Homeowner carregou esse lar. Os afazeres que você revisou não foram adicionados; adicione-os pelo Catálogo na seção de afazeres.",
+    "Você já tem um lar, então ele foi carregado. Os afazeres que você revisou não foram adicionados; adicione-os pelo Catálogo.",
   "catalog.questions.heading": "Sobre o seu lar",
-  "catalog.questions.intro":
-    "Algumas respostas permitem que o Homeowner sugira os afazeres de que o seu lar precisa, para você não começar com a lista vazia. Nada é salvo ainda, e você pode mudar cada sugestão na próxima etapa. Deixe como está o que não se aplicar.",
   "catalog.questions.submit": "Sugerir afazeres",
   "catalog.questions.submitting": "Preparando os seus afazeres...",
   "catalog.questions.skip": "Pular e adicionar afazeres depois",
@@ -499,7 +464,6 @@ export const ptBR: Messages = {
   "catalog.answers.error.out_of_range": "Esta resposta está fora do intervalo permitido.",
   "catalog.answers.error.unknown": "Esta resposta não é reconhecida.",
   "catalog.rooms.legend": "Cômodos",
-  "catalog.rooms.hint": "Cada cômodo recebe os próprios afazeres; dois banheiros significam dois afazeres de banheiro.",
   "catalog.rooms.range": "De 0 a {max}",
   "catalog.rooms.bedrooms": "Quartos",
   "catalog.rooms.bathrooms": "Banheiros",
@@ -507,42 +471,32 @@ export const ptBR: Messages = {
   "catalog.rooms.livingRooms": "Salas",
   "catalog.rooms.laundryAreas": "Áreas de serviço",
   "catalog.outdoor.legend": "Área externa",
-  "catalog.outdoor.hint": "Define se afazeres da área externa, como varrer ou cortar a grama, são sugeridos.",
   "catalog.outdoor.none": "Nenhuma",
   "catalog.outdoor.balcony": "Varanda",
   "catalog.outdoor.yard": "Quintal",
   "catalog.outdoor.garden": "Jardim",
   "catalog.pets.legend": "Animais de estimação",
-  "catalog.pets.hint": "Cada animal adiciona afazeres de alimentação e cuidado. Não marque nada se você não tem animais.",
   "catalog.pets.dog": "Cachorro",
   "catalog.pets.cat": "Gato",
   "catalog.pets.fish": "Peixe",
   "catalog.pets.bird": "Pássaro",
   "catalog.pets.other": "Outro tipo de animal",
   "catalog.collection.legend": "Coleta de lixo e de reciclagem",
-  "catalog.collection.hint":
-    "Marque os dias em que a coleta passa. O afazer de colocar o lixo para fora fica limitado a esses dias. Deixe o grupo vazio se não há coleta.",
   "catalog.collection.trash": "Dias da coleta de lixo",
   "catalog.collection.recycling": "Dias da coleta de reciclagem",
   "catalog.habits.legend": "Cozinha e eletrodomésticos",
-  "catalog.habits.hint":
-    "Cozinhar em casa com mais frequência pede mais cuidado com a cozinha. Os eletrodomésticos que você tem mudam os afazeres sugeridos.",
   "catalog.habits.cooking.legend": "Com que frequência você cozinha em casa?",
   "catalog.habits.cooking.rarely": "Raramente",
   "catalog.habits.cooking.sometimes": "Às vezes",
   "catalog.habits.cooking.daily": "Todos os dias",
   "catalog.habits.dishwasher": "Temos lava-louças",
   "catalog.habits.washingMachine": "Temos máquina de lavar roupa",
-  "catalog.regenerate.prompt":
-    "Você mudou suas respostas, então os afazeres sugeridos serão calculados de novo e as suas alterações neles serão perdidas. Continuar?",
+  "catalog.regenerate.prompt": "Mudar suas respostas sugere os afazeres de novo e perde as suas alterações. Continuar?",
   "catalog.regenerate.confirm": "Sim, sugerir de novo",
   "catalog.regenerate.cancel": "Manter minhas alterações",
   "catalog.review.heading": "Revise os seus afazeres",
-  "catalog.review.intro":
-    "Estes são os afazeres que o Homeowner sugere a partir das suas respostas. Edite os que não servirem e remova os que você não quer; depois, crie o seu lar. Você pode adicionar ou mudar afazeres a qualquer momento.",
   "catalog.review.count": { one: "{count} afazer sugerido", other: "{count} afazeres sugeridos" },
-  "catalog.review.empty":
-    "Nenhum afazer foi sugerido. Você pode criar o seu lar agora e adicionar afazeres do Catálogo depois.",
+  "catalog.review.empty": "Nenhum afazer foi sugerido.",
   "catalog.review.edit": "Editar",
   "catalog.review.remove": "Remover",
   "catalog.review.remove.label": "Remover {name}",
@@ -558,8 +512,6 @@ export const ptBR: Messages = {
     "Algo deu errado ao carregar as listas necessárias para editar afazeres. Tente de novo em instantes.",
   "chores.addFromCatalog": "Adicionar do Catálogo",
   "chores.catalog.heading": "Adicionar do Catálogo",
-  "chores.catalog.intro":
-    "O Catálogo é a lista de afazeres comuns do Homeowner. Escolha um para adicioná-lo ao seu lar; você pode mudar qualquer coisa antes de salvar. Escolha de novo um afazer de cômodo para adicioná-lo a outro cômodo.",
   "chores.catalog.loading": "Carregando o Catálogo...",
   "chores.catalog.load.offline":
     "O Homeowner não consegue acessar o serviço, então o Catálogo não pôde ser carregado. Confira sua conexão e tente de novo.",

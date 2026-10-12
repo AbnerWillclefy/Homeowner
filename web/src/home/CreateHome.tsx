@@ -25,7 +25,7 @@ const SUGGEST_FAILURE_KEY = {
 } as const satisfies Record<string, MessageKey>;
 
 /**
- * For a signed-in User with no Home, in three steps that each say why they ask: timezone and Allocation time,
+ * For a signed-in User with no Home, in three steps: timezone and Allocation time,
  * the questions the Catalog turns into suggested Chores, and a review where those can be edited or removed.
  * Nothing is saved until the last step, which creates the Home and the reviewed Chores together.
  */
@@ -63,7 +63,6 @@ export function CreateHome({ onSaved, onRecovered }: Props) {
       <section aria-labelledby="create-home-heading">
         {stepLine}
         <h2 id="create-home-heading">{t("home.create.heading")}</h2>
-        <p>{t("home.create.intro")}</p>
         <form onSubmit={onSubmit} noValidate>
           <HomeFields
             idPrefix="create-home"
@@ -96,7 +95,6 @@ export function CreateHome({ onSaved, onRecovered }: Props) {
       <section aria-labelledby="create-questions-heading">
         {stepLine}
         <h2 id="create-questions-heading">{t("catalog.questions.heading")}</h2>
-        <p>{t("catalog.questions.intro")}</p>
         <form onSubmit={onSubmit} noValidate>
           <Questionnaire
             idPrefix="create-questions"
