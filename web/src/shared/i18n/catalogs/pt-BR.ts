@@ -375,6 +375,7 @@ export const ptBR: Messages = {
 
   // Cadastro
   "signUp.heading": "Cadastrar-se",
+  "signUp.hint": "Crie uma conta e depois crie o seu lar ou entre em um.",
   "signUp.emailLabel": "E-mail",
   "signUp.passwordLabel": "Senha",
   "signUp.confirmLabel": "Confirmar senha",
@@ -386,6 +387,7 @@ export const ptBR: Messages = {
 
   // Entrar
   "signIn.heading": "Entrar",
+  "signIn.hint": "Veja o que é seu para fazer hoje.",
   "signIn.confirmedNotice": "Seu e-mail foi confirmado. Entre para começar.",
   "signIn.emailLabel": "E-mail",
   "signIn.passwordLabel": "Senha",
