@@ -1,5 +1,6 @@
 import type { Home, HomeSettings } from "./api";
-import { Card } from "../shared/ui/Card";
+import { Clock } from "lucide-react";
+import { SectionCard } from "../shared/ui/SectionCard";
 import { useToast } from "../shared/ui/useToast";
 import { useI18n, type MessageKey } from "../shared/i18n";
 import { Button } from "../shared/ui/Button";
@@ -9,6 +10,7 @@ import { useSettingsForm, type SaveOutcome } from "./useSettingsForm";
 
 interface Copy {
   heading: MessageKey;
+  hint: MessageKey;
   submit: MessageKey;
   submitting: MessageKey;
   /** The toast after a save. Left out where the form goes away on success. */
@@ -42,8 +44,7 @@ export function HomeForm({ idPrefix, copy, initial, timezones, save, onSaved, on
   const saving = form.status.kind === "saving";
 
   return (
-    <Card as="section" aria-labelledby={`${idPrefix}-heading`}>
-      <h2 id={`${idPrefix}-heading`}>{t(copy.heading)}</h2>
+    <SectionCard id={`${idPrefix}-heading`} icon={Clock} title={t(copy.heading)} hint={t(copy.hint)}>
       <form onSubmit={form.submit} noValidate>
         <HomeFields
           idPrefix={idPrefix}
@@ -60,6 +61,6 @@ export function HomeForm({ idPrefix, copy, initial, timezones, save, onSaved, on
           </Button>
         </div>
       </form>
-    </Card>
+    </SectionCard>
   );
 }

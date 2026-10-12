@@ -1,4 +1,5 @@
-import { CardRow } from "../shared/ui/CardRow";
+import { Share2, UserPlus } from "lucide-react";
+import { SectionCard } from "../shared/ui/SectionCard";
 import { useSubmitOnce } from "../shared/ui/useSubmitOnce";
 import { useToast } from "../shared/ui/useToast";
 import { createInvite } from "./api";
@@ -40,19 +41,13 @@ export function InviteShare() {
   });
 
   return (
-    <CardRow
-      as="section"
-      aria-labelledby="invite-share-heading"
-      className="items-center"
-      actions={
+    <SectionCard id="invite-share-heading" icon={UserPlus} title={t("invite.share.heading")} hint={t("invite.share.hint")}>
+      <div>
         <Button variant="primary" disabled={working} aria-busy={working} onClick={() => void onClick()}>
+          <Share2 aria-hidden="true" className="size-5 shrink-0" />
           {working ? t("invite.share.creating") : t("invite.share.button")}
         </Button>
-      }
-    >
-      <h2 id="invite-share-heading" className="my-0">
-        {t("invite.share.heading")}
-      </h2>
-    </CardRow>
+      </div>
+    </SectionCard>
   );
 }

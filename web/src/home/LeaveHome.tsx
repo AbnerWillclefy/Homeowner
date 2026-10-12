@@ -1,7 +1,7 @@
 import { LogOut } from "lucide-react";
 import { useRef } from "react";
 import { AppDialog } from "../shared/ui/AppDialog";
-import { CardRow } from "../shared/ui/CardRow";
+import { SectionCard } from "../shared/ui/SectionCard";
 import { useI18n } from "../shared/i18n";
 import { Button } from "../shared/ui/Button";
 import { LEAVE_FAILURE_KEY } from "./failureMessages";
@@ -24,11 +24,8 @@ export function LeaveHome({ onLeft }: Props) {
   const leaving = state.kind === "leaving";
 
   return (
-    <CardRow
-      as="section"
-      aria-labelledby="home-leave-heading"
-      className="items-center"
-      actions={
+    <SectionCard id="home-leave-heading" icon={LogOut} tone="danger" title={t("home.leave.heading")} hint={t("home.leave.stays")}>
+      <div>
         <AppDialog
           open={state.kind !== "closed"}
           onDismiss={cancel}
@@ -63,11 +60,7 @@ export function LeaveHome({ onLeft }: Props) {
             </Button>
           </div>
         </AppDialog>
-      }
-    >
-      <h2 id="home-leave-heading" className="my-0">
-        {t("home.leave.heading")}
-      </h2>
-    </CardRow>
+      </div>
+    </SectionCard>
   );
 }

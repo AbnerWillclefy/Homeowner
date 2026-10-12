@@ -6,6 +6,8 @@ import { HomeGate } from "../home/HomeGate";
 import { HomeSettingsForm } from "../home/HomeSettingsForm";
 import { LeaveHome } from "../home/LeaveHome";
 import { useI18n } from "../shared/i18n";
+import { PageHeader } from "../shared/ui/PageHeader";
+import { formatAllocationTime } from "../home/allocationTimes";
 import { InviteShare } from "../invite/InviteShare";
 import { MeProfile } from "../profile/MeProfile";
 import { AppearanceCard, LanguageCard } from "../settings/Settings";
@@ -35,11 +37,17 @@ export function ChoresPage() {
 export function HomePage() {
   const { recovered, setRecovered } = useSession();
   const { home } = useShell();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   return (
     <HomeGate>
       {(current: Home) => (
         <div className="flex flex-col gap-4">
+          <PageHeader title={t("home.settings.heading")}>
+            {t("home.summary", {
+              time: formatAllocationTime(current.allocationTime, locale),
+              zone: current.timezone.replaceAll("_", " "),
+            })}
+          </PageHeader>
           {recovered !== "no" && (
             <p role="status">{t(recovered === "chores-dropped" ? "home.create.recovered.chores" : "home.create.recovered")}</p>
           )}
