@@ -1,7 +1,7 @@
 import { PREFERENCES, type Baseline, type Preference, type Profile as ProfileData, type Weekday } from "../api/profile";
 import { categoryStyle } from "../components/ui/categoryStyle";
 import { useI18n, type MessageKey } from "../i18n";
-import { BASELINE_LEVELS, levelToPoints, pointsToLevel, type BaselineLevel } from "./baselineLevels";
+import { BASELINE_LEVELS, levelLabelKey, levelToPoints, pointsToLevel } from "./baselineLevels";
 import { categoryLabel, demandLabel, labelText } from "./labels";
 import { preferenceCategories } from "./preferenceCategories";
 import type { ProfileProblem, ProfileState, SaveState } from "./useProfile";
@@ -138,30 +138,37 @@ function BaselineRow({
       <legend className="px-1 font-semibold [overflow-wrap:anywhere]">{weekdayLabel(day, locale)}</legend>
       <div className="flex flex-wrap gap-2">
         {BASELINE_LEVELS.map((level) => (
-          <label
+          <LevelPill
             key={level}
-            className="relative mt-0 flex min-h-11 min-w-20 flex-1 cursor-pointer items-center justify-center rounded-card border border-border px-3 text-center font-normal has-[:checked]:bg-accent has-[:checked]:font-semibold has-[:checked]:text-accent-contrast has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus"
-          >
-            <input
-              type="radio"
-              name={`profile-baseline-${day}`}
-              className="sr-only"
-              checked={current === level}
-              onChange={() => onSave(day, levelToPoints(level))}
-            />
-            {t(LEVEL_KEY[level])}
-          </label>
+            name={`profile-baseline-${day}`}
+            label={t(levelLabelKey(level))}
+            checked={current === level}
+            onPick={() => onSave(day, levelToPoints(level))}
+          />
         ))}
       </div>
     </fieldset>
   );
 }
 
-const LEVEL_KEY: Record<BaselineLevel, MessageKey> = {
-  low: "profile.baseline.level.low",
-  normal: "profile.baseline.level.normal",
-  high: "profile.baseline.level.high",
-};
+function LevelPill({
+  name,
+  label,
+  checked,
+  onPick,
+}: {
+  name: string;
+  label: string;
+  checked: boolean;
+  onPick(): void;
+}) {
+  return (
+    <label className="relative mt-0 flex min-h-11 min-w-20 flex-1 cursor-pointer items-center justify-center rounded-card border border-border px-3 text-center font-normal has-[:checked]:bg-accent has-[:checked]:font-semibold has-[:checked]:text-accent-contrast has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus">
+      <input type="radio" name={name} className="sr-only" checked={checked} onChange={onPick} />
+      {label}
+    </label>
+  );
+}
 
 function PreferenceChoice({
   id,

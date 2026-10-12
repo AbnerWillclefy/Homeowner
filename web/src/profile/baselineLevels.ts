@@ -1,3 +1,5 @@
+import type { MessageKey } from "../i18n";
+
 /**
  * A Baseline is picked as a level and saved as points; the API only ever sees points (0 to 20, MaxBaseline in
  * backend/internal/profile). The numbers and why:
@@ -12,23 +14,29 @@
  * replaced when the person picks a level. Ties (6 and 11) go to the lower level, so an old value never promises more
  * Energy than it had. A legacy 0 ("nothing that day") therefore shows as Low.
  */
-export const BASELINE_LEVELS = ["low", "normal", "high"] as const;
+const LEVELS = [
+  { level: "low", points: 4, labelKey: "profile.baseline.level.low" },
+  { level: "normal", points: 8, labelKey: "profile.baseline.level.normal" },
+  { level: "high", points: 14, labelKey: "profile.baseline.level.high" },
+] as const satisfies readonly { level: string; points: number; labelKey: MessageKey }[];
 
-export type BaselineLevel = (typeof BASELINE_LEVELS)[number];
+export type BaselineLevel = (typeof LEVELS)[number]["level"];
 
-const POINTS: Record<BaselineLevel, number> = { low: 4, normal: 8, high: 14 };
+export const BASELINE_LEVELS: readonly BaselineLevel[] = LEVELS.map((entry) => entry.level);
 
 export function levelToPoints(level: BaselineLevel): number {
-  return POINTS[level];
+  return LEVELS.find((entry) => entry.level === level)!.points;
+}
+
+export function levelLabelKey(level: BaselineLevel): MessageKey {
+  return LEVELS.find((entry) => entry.level === level)!.labelKey;
 }
 
 /** The level nearest to the saved points; null for an unset day. Never "invalid". */
 export function pointsToLevel(points: number | null): BaselineLevel | null {
   if (points === null) return null;
-  let nearest: BaselineLevel = BASELINE_LEVELS[0];
-  for (const level of BASELINE_LEVELS) {
-    // Strictly closer wins, so a tie keeps the lower level (the list is in ascending order).
-    if (Math.abs(POINTS[level] - points) < Math.abs(POINTS[nearest] - points)) nearest = level;
-  }
-  return nearest;
+  // The table is in ascending order and strictly closer wins, so a tie keeps the earlier (lower) entry.
+  return LEVELS.reduce((nearest, entry) =>
+    Math.abs(entry.points - points) < Math.abs(nearest.points - points) ? entry : nearest,
+  ).level;
 }
