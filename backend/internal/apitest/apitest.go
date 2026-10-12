@@ -47,6 +47,27 @@ type App struct {
 	// Planner is the Allocation job's planner over the same database. It
 	// plans with the baseline allocator unless UseAllocator replaces it.
 	Planner *dayplan.Planner
+
+	alloc *swapAllocator
+}
+
+// swapAllocator is the Allocator the server and the job share, so a test can
+// change it after the server started.
+type swapAllocator struct {
+	mu    sync.Mutex
+	inner allocation.Allocator
+}
+
+func (s *swapAllocator) get() allocation.Allocator {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.inner
+}
+
+func (s *swapAllocator) Name() string { return s.get().Name() }
+
+func (s *swapAllocator) Plan(st allocation.State) (allocation.Result, error) {
+	return s.get().Plan(st)
 }
 
 // Response is a decoded HTTP response.
@@ -94,6 +115,7 @@ func Start(t testing.TB, opts ...Option) *App {
 	// DROP DATABASE does not see open connections.
 	t.Cleanup(pool.Close)
 
+	swappable := &swapAllocator{inner: allocation.Baseline{}}
 	fake := clock.NewFake(StartTime)
 	logs := &LogBuffer{}
 	deps := server.Deps{
@@ -102,6 +124,9 @@ func Start(t testing.TB, opts ...Option) *App {
 		Logger: slog.New(slog.NewJSONHandler(logs, nil)),
 		// Tests sign in through the fake, never real Cognito.
 		Verifier: auth.NewFake(),
+		// The API re-plans a Resident who checks in through the same Allocator
+		// as the job, so UseAllocator reaches both.
+		Allocator: swappable,
 	}
 	for _, opt := range opts {
 		opt(&deps)
@@ -109,7 +134,7 @@ func Start(t testing.TB, opts ...Option) *App {
 	srv := httptest.NewServer(server.New(deps))
 	t.Cleanup(srv.Close)
 
-	app := &App{URL: srv.URL, Clock: fake, DB: pool, Logs: logs}
+	app := &App{URL: srv.URL, Clock: fake, DB: pool, Logs: logs, alloc: swappable}
 	app.UseAllocator(allocation.Baseline{})
 	app.Push, _ = deps.Push.(*push.Fake)
 	app.Auth, _ = deps.Verifier.(*auth.Fake)
@@ -119,6 +144,11 @@ func Start(t testing.TB, opts ...Option) *App {
 // UseAllocator makes the Allocation job plan with al, for example a stub that
 // proposes something the checker must reject.
 func (a *App) UseAllocator(al allocation.Allocator) {
+	if a.alloc != nil {
+		a.alloc.mu.Lock()
+		a.alloc.inner = al
+		a.alloc.mu.Unlock()
+	}
 	a.Planner = dayplan.New(a.DB, al, slog.New(slog.NewJSONHandler(a.Logs, nil)))
 }
 
