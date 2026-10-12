@@ -62,11 +62,17 @@ type Shared = { kind: "ok"; home: Home } | { kind: "invalid"; fields: FieldCodes
 
 /**
  * The flow every Home call shares: send, pass a missing session through, read a 400 as field codes, and
- * read `okStatus` as a Home. `special` maps the one status that is particular to the call.
+ * read `okStatus` as a Home. `special` maps the statuses that are particular to the call; it is checked first,
+ * so a call whose success has no body can map its status there.
  */
-async function sendHome<S>(init: RequestInit, okStatus: number, special: Readonly<Record<number, S>>): Promise<Shared | S> {
+async function sendHome<S>(
+  init: RequestInit,
+  okStatus: number,
+  special: Readonly<Record<number, S>>,
+  path = "/home",
+): Promise<Shared | S> {
   try {
-    const result = await authedFetch("/home", init);
+    const result = await authedFetch(path, init);
     if (result.kind === "not-signed-in") return result;
     const { response } = result;
     const mapped = special[response.status];
@@ -101,6 +107,25 @@ export async function getHome(): Promise<GetHomeResult> {
 export function createHome(settings: HomeSettings, chores: readonly ChoreWire[] = []): Promise<CreateHomeResult> {
   const body = chores.length > 0 ? { ...settings, chores: [...chores] } : settings;
   return sendHome<{ kind: "already-resident" }>(withBody("POST", body), 201, { 409: { kind: "already-resident" } });
+}
+
+/** `none` (404) means the caller has no Home, so there is nothing left to leave. */
+export type LeaveHomeResult = { kind: "ok" } | { kind: "none" } | Failure;
+
+/**
+ * The caller leaves their Home. The API removes their Home-specific settings and keeps their profile, and
+ * deletes the Home when they were its last Resident. It takes no id: it always means the caller.
+ */
+export async function leaveHome(): Promise<LeaveHomeResult> {
+  // The 204 has no body, so it is mapped as a special status rather than read as a Home.
+  const result = await sendHome<{ kind: "ok" } | { kind: "none" }>(
+    { method: "DELETE" },
+    204,
+    { 204: { kind: "ok" }, 404: { kind: "none" } },
+    "/home/residents/me",
+  );
+  // A DELETE sends nothing, so there is nothing for a 400 to be about, and it never returns a Home.
+  return result.kind === "invalid" || (result.kind === "ok" && "home" in result) ? { kind: "error" } : result;
 }
 
 /** Replaces the Home's settings. Any Resident can. */

@@ -50,6 +50,19 @@ export const ptBR: Messages = {
   "home.save.offline":
     "O Homeowner não consegue acessar o serviço. O que você digitou continua aqui; verifique sua conexão e tente novamente.",
   "home.save.error": "Algo deu errado e nada foi salvo. O que você digitou continua aqui; tente novamente em instantes.",
+  "home.leave.heading": "Sair deste lar",
+  "home.leave.intro":
+    "Se você se mudar ou não dividir mais este lar, pode sair dele. Depois, você pode entrar em outro lar ou criar um novo.",
+  "home.leave.open": "Sair deste lar",
+  "home.leave.title": "Sair deste lar?",
+  "home.leave.warning":
+    "Suas preferências e restrições para os afazeres deste lar são apagadas, e o mesmo vale para os seus lugares no plano do dia. O seu perfil continua: sua energia base e suas preferências e restrições gerais vão com você para o próximo lar. Se você for o último morador, o lar e todos os afazeres dele são apagados, e isso não pode ser desfeito.",
+  "home.leave.cancel": "Cancelar",
+  "home.leave.confirm": "Sair do lar",
+  "home.leave.leaving": "Saindo...",
+  "home.leave.offline":
+    "O Homeowner não consegue acessar o serviço, então você ainda não saiu. Verifique sua conexão e tente novamente.",
+  "home.leave.error": "Algo deu errado e você ainda não saiu. Tente novamente em instantes.",
   "home.invalid.summary": "Alguns dados precisam ser corrigidos. Confira os campos abaixo.",
   "home.field.timezone.required": "Escolha um fuso horário.",
   "home.field.timezone.unknown": "Esse fuso horário não foi reconhecido. Escolha um da lista.",

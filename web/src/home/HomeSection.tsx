@@ -7,6 +7,7 @@ import { CreateHome } from "./CreateHome";
 import { LOAD_FAILURE_KEY } from "./failureMessages";
 import { HomeDay } from "./HomeDay";
 import { HomeSettingsForm } from "./HomeSettingsForm";
+import { LeaveHome } from "./LeaveHome";
 import { useHome } from "./useHome";
 
 /** What a create that found an existing Home leaves to say. `chores-dropped`: the reviewed Chores were not added. */
@@ -18,7 +19,7 @@ export type RecoveredNotice = "plain" | "chores-dropped";
  * the Home and found one already made, so the notice survives the switch to this section.
  */
 export function HomeSection({ recovered: initialRecovered = "no" }: { recovered?: RecoveredNotice | "no" }) {
-  const { state, reload, setHome } = useHome();
+  const { state, reload, setHome, clearHome } = useHome();
   const { t } = useI18n();
   // Set when a create found an existing Home; cleared by the next save so it never outlives its moment.
   // `chores-dropped` is a create whose reviewed Chores were not added, because the Home already existed.
@@ -70,6 +71,12 @@ export function HomeSection({ recovered: initialRecovered = "no" }: { recovered?
       <InviteShare />
       <HomeDay />
       <ChoresSection />
+      <LeaveHome
+        onLeft={() => {
+          setRecovered("no");
+          clearHome();
+        }}
+      />
     </>
   );
 }

@@ -170,7 +170,7 @@ flowchart TD
 
 ## Home
 
-`HomeSection` (`src/home/`) is rendered by `App.tsx` only while signed in and once onboarding is done, below Reminders and above Settings. The Chores section (see Chores below) is rendered inside it once the Home exists. It talks to the API through `src/api/home.ts` (`getHome`, `createHome`, `updateHome`), which wraps `authedFetch` like `me.ts` and returns a result union: `ok`, `not-signed-in`, `offline` (a thrown fetch), `error`, plus `none` (404), `already-resident` (409 on create) and `invalid` carrying the API's field codes.
+`HomeSection` (`src/home/`) is rendered by `App.tsx` only while signed in and once onboarding is done, below Reminders and above Settings. The Chores section (see Chores below) is rendered inside it once the Home exists. It talks to the API through `src/api/home.ts` (`getHome`, `createHome`, `updateHome`, `leaveHome`), which wraps `authedFetch` like `me.ts` and returns a result union: `ok`, `not-signed-in`, `offline` (a thrown fetch), `error`, plus `none` (404; for `leaveHome` it means there is no Home to leave), `already-resident` (409 on create) and `invalid` carrying the API's field codes.
 
 ```mermaid
 flowchart TD
@@ -182,6 +182,9 @@ flowchart TD
     CREATE --> FLOW[useCreateHomeFlow: three steps, see Catalog]
     FLOW --> FIELDS
     EDIT --> FORM[useSettingsForm]
+    SEC -->|ready| LEAVE[LeaveHome: Radix dialog, useLeaveHome]
+    LEAVE -->|leaveHome: DELETE /home/residents/me| API
+    LEAVE -->|ok or none| UH
     FORM --> FIELDS[HomeFields: timezone and Allocation time selects]
     CREATE -->|createOrLoad| API[api/home.ts]
     EDIT -->|saveSettings| API
@@ -192,7 +195,8 @@ flowchart TD
 - `createOrLoad` turns a 409 into "load the Home that already exists" and says so (`recovered`). `saveSettings` is the edit equivalent.
 - `useSettingsForm` keeps the typed values in state and never resets them on a failure, so retrying sends what was typed. `offline`, `error` and `not-signed-in` show a `role="alert"` message in the `danger` colour; `invalid` shows a summary plus one message per field.
 - `fieldErrors.ts` maps the API's stable field codes (`timezone`: `required`, `unknown`; `allocationTime`: `required`, `invalid`, `not_quarter_hour`) to message keys in both catalogs. A code it does not know gets a generic message.
-- Pure modules with vitest tests: `api/home.ts`, `createOrLoad.ts`, `fieldErrors.ts`, `allocationTimes.ts`, `timezones.ts`. The components and hooks are checked by hand.
+- `LeaveHome` is the last child of `HomeSection` once the Home exists: a "Leave this Home" button that opens a Radix `Dialog` (ADR 0007; native HTML cannot make a modal accessible). The dialog says that the Resident's Home-specific Preferences and Restrictions and Day Plan places are removed, that their profile (Baseline, general Preferences and Restrictions) stays, and that if they are the last Resident the Home and its Chores are deleted. The API does not say how many Residents there are, so one text covers both cases. Focus starts on Cancel. The steps live in `leaveFlow.ts` (`createLeaveFlow`: closed, confirming, leaving; nothing is sent before confirm, one request at a time) and `useLeaveHome` binds it to React with `useSyncExternalStore`. On `ok` or `none` the flow calls `onLeft`, which sets the Home state to `none` through `useHome`'s `clearHome`: `HomeSection` then renders `CreateHome`, so the Home's settings, Today, Chores and Invite sections unmount and no stale data shows. On `offline`, `error` or `not-signed-in` the dialog stays open with a `role="alert"` message (`LEAVE_FAILURE_KEY`) and the same button retries.
+- Pure modules with vitest tests: `api/home.ts`, `leaveFlow.ts`, `createOrLoad.ts`, `fieldErrors.ts`, `allocationTimes.ts`, `timezones.ts`. The components and hooks are checked by hand.
 
 ## Catalog
 

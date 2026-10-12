@@ -45,6 +45,19 @@ export const enUS = {
   "home.save.offline":
     "Homeowner cannot reach the service. What you typed is still here; check your connection and try again.",
   "home.save.error": "Something went wrong and nothing was saved. What you typed is still here; try again in a moment.",
+  "home.leave.heading": "Leave this Home",
+  "home.leave.intro":
+    "If you move out or no longer share this Home, you can leave it. You can join or create another Home afterwards.",
+  "home.leave.open": "Leave this Home",
+  "home.leave.title": "Leave this Home?",
+  "home.leave.warning":
+    "Your Preferences and Restrictions for this Home's Chores are removed, and so are your places in its Day Plan. Your own profile stays: your Baseline and your general Preferences and Restrictions come with you to your next Home. If you are the last Resident, the Home and all its Chores are deleted, and that cannot be undone.",
+  "home.leave.cancel": "Cancel",
+  "home.leave.confirm": "Leave Home",
+  "home.leave.leaving": "Leaving...",
+  "home.leave.offline":
+    "Homeowner cannot reach the service, so you have not left. Check your connection and try again.",
+  "home.leave.error": "Something went wrong and you have not left. Try again in a moment.",
   "home.invalid.summary": "Some details need fixing. Check the fields below.",
   "home.field.timezone.required": "Choose a timezone.",
   "home.field.timezone.unknown": "That timezone is not recognised. Choose one from the list.",

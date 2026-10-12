@@ -460,3 +460,160 @@ func TestAnyResidentCanEditTheHome(t *testing.T) {
 		t.Fatalf("a Resident creating another Home = %d, want 409", n)
 	}
 }
+
+func leaveHome(c *apitest.Client) apitest.Response {
+	return c.Delete("/home/residents/me")
+}
+
+func TestAResidentOfATwoResidentHomeLeavesAndTheHomeRemains(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	a := homeWithResident(t, app, "a@example.com")
+	homeID := a.Get("/home").Body["id"]
+	choreIn(t, a, "kitchen", []string{})
+	b := extraResident(t, app, a, "b@example.com")
+
+	r := leaveHome(b)
+	expectStatus(t, r, http.StatusNoContent)
+	if len(r.Raw) != 0 {
+		t.Errorf("body = %q, want none", r.Raw)
+	}
+	expectStatus(t, b.Get("/home"), http.StatusNotFound)
+	if got := a.Get("/home"); got.Status != http.StatusOK || got.Body["id"] != homeID {
+		t.Errorf("remaining Resident's GET /home = %d %s, want the Home", got.Status, got.Raw)
+	}
+	if n := countHomes(t, app); n != 1 {
+		t.Errorf("homes = %d, want 1", n)
+	}
+	if n := len(listChores(t, a)); n != 1 {
+		t.Errorf("chores = %d, want 1 kept", n)
+	}
+}
+
+func TestLeavingRemovesOnlyTheLeaversSpecificSettings(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	a := homeWithResident(t, app, "a@example.com")
+	chore := choreIn(t, a, "kitchen", []string{})
+	b := extraResident(t, app, a, "b@example.com")
+	for _, c := range []*apitest.Client{a, b} {
+		setPref(t, c, chore, "dislike")
+		expectStatus(t, c.Put("/home/chores/"+chore+"/restriction", nil), http.StatusNoContent)
+	}
+	const prefs = `SELECT count(*) FROM resident_chore_preferences`
+	const restr = `SELECT count(*) FROM resident_chore_restrictions`
+	if p, r := count(t, app, prefs), count(t, app, restr); p != 2 || r != 2 {
+		t.Fatalf("before leaving: preferences = %d, restrictions = %d, want 2 and 2", p, r)
+	}
+
+	expectStatus(t, leaveHome(b), http.StatusNoContent)
+	if p, r := count(t, app, prefs), count(t, app, restr); p != 1 || r != 1 {
+		t.Errorf("after leaving: preferences = %d, restrictions = %d, want only the other Resident's 1 and 1", p, r)
+	}
+	mine := a.Get("/home/chores/settings").Body["residents"].([]any)
+	if len(mine) != 1 || mine[0].(map[string]any)["chores"].(map[string]any)[chore].(map[string]any)["preference"] != "dislike" {
+		t.Errorf("remaining Resident's settings = %v, want unchanged", mine)
+	}
+}
+
+func TestLeavingKeepsTheUsersGeneralProfile(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	a := homeWithResident(t, app, "a@example.com")
+	b := extraResident(t, app, a, "b@example.com")
+	setBaseline(t, b, map[string]any{"monday": 7})
+	expectStatus(t, b.Put("/me/preferences/kitchen", map[string]any{"preference": "like"}), http.StatusNoContent)
+	expectStatus(t, b.Put("/me/restrictions/heights", nil), http.StatusNoContent)
+
+	expectStatus(t, leaveHome(b), http.StatusNoContent)
+	res := b.Get("/me/profile")
+	expectStatus(t, res, http.StatusOK)
+	if bl := baselineOf(t, res); bl["monday"] != float64(7) {
+		t.Errorf("baseline = %v, want monday 7", bl)
+	}
+	if res.Body["preferences"].(map[string]any)["kitchen"] != "like" {
+		t.Errorf("preferences = %v, want kitchen like", res.Body["preferences"])
+	}
+	if got := fmt.Sprint(res.Body["restrictions"]); !strings.Contains(got, "heights") {
+		t.Errorf("restrictions = %v, want heights", res.Body["restrictions"])
+	}
+}
+
+func TestTheLastResidentLeavingDeletesTheHomeAndEverythingInIt(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	a := homeWithResident(t, app, "a@example.com")
+	setBaseline(t, a, map[string]any{"monday": 5})
+	atDay(app, 2)
+	createChore(t, a, chore("Dishes", 7, 3, "essential", []string{}))
+	createInvite(t, a) // left unused
+	app.RunAllocation(t)
+	if n := count(t, app, `SELECT count(*) FROM day_plan_assignments`); n != 1 {
+		t.Fatalf("assignments before leaving = %d, want 1", n)
+	}
+
+	expectStatus(t, leaveHome(a), http.StatusNoContent)
+	for _, table := range []string{"homes", "residents", "chores", "tasks", "invites", "allocation_runs", "day_plan_assignments"} {
+		if n := count(t, app, `SELECT count(*) FROM `+table); n != 0 {
+			t.Errorf("%s rows = %d, want 0", table, n)
+		}
+	}
+	expectStatus(t, a.Get("/home"), http.StatusNotFound)
+}
+
+func TestLeavingNeedsAHomeAndAToken(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	res := leaveHome(app.SignInAs("a@example.com"))
+	if res.Status != http.StatusNotFound || res.Body["error"] != "no home" {
+		t.Errorf("leaving without a Home = %d %s, want 404 no home", res.Status, res.Raw)
+	}
+	b := homeWithResident(t, app, "b@example.com")
+	expectStatus(t, app.Do(http.MethodDelete, "/home/residents/me", nil), http.StatusUnauthorized)
+	expectStatus(t, b.Get("/home"), http.StatusOK)
+}
+
+func TestAfterLeavingTheSameUserCanCreateAHomeOrAcceptAnInvite(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	a := homeWithResident(t, app, "a@example.com")
+	b := extraResident(t, app, a, "b@example.com")
+
+	expectStatus(t, leaveHome(b), http.StatusNoContent)
+	expectStatus(t, b.Post("/home", homeBody("UTC", "07:00")), http.StatusCreated)
+	if b.Get("/home").Body["id"] == a.Get("/home").Body["id"] {
+		t.Errorf("b got the old Home back, want a new one")
+	}
+
+	expectStatus(t, leaveHome(b), http.StatusNoContent)
+	expectStatus(t, acceptInvite(b, createInvite(t, a), nil), http.StatusOK)
+	if b.Get("/home").Body["id"] != a.Get("/home").Body["id"] {
+		t.Errorf("b did not rejoin a's Home")
+	}
+}
+
+func TestTwoResidentsLeavingAtOnceDeleteTheHomeOnce(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	a := homeWithResident(t, app, "a@example.com")
+	choreIn(t, a, "kitchen", []string{})
+	b := extraResident(t, app, a, "b@example.com")
+
+	statuses := make([]int, 2)
+	var wg sync.WaitGroup
+	for i, c := range []*apitest.Client{a, b} {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			statuses[i] = leaveHome(c).Status
+		}()
+	}
+	wg.Wait()
+
+	if statuses[0] != http.StatusNoContent || statuses[1] != http.StatusNoContent {
+		t.Fatalf("statuses = %v, want 204 and 204", statuses)
+	}
+	if n := count(t, app, `SELECT (SELECT count(*) FROM homes) + (SELECT count(*) FROM residents) + (SELECT count(*) FROM chores)`); n != 0 {
+		t.Errorf("rows left = %d, want the Home, its Residents and Chores gone", n)
+	}
+}

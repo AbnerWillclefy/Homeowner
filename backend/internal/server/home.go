@@ -171,6 +171,19 @@ func (s *server) getHome(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, toHomeResponse(currentHome(r.Context())))
 }
 
+// leaveHome removes the caller from their Home. The Resident and Home come
+// from the Membership, so the request names no one and cannot remove another
+// Resident. A repeated leave that races past requireResident is a no-op.
+func (s *server) leaveHome(w http.ResponseWriter, r *http.Request) {
+	m := currentMembership(r.Context())
+	if err := s.homes.Leave(r.Context(), m.ResidentID, m.Home.ID); err != nil {
+		s.deps.Logger.Error("leave home", "error", err.Error())
+		writeError(w, http.StatusInternalServerError, "internal error")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *server) putHome(w http.ResponseWriter, r *http.Request) {
 	body, ok := readHomeSettings(w, r)
 	if !ok {

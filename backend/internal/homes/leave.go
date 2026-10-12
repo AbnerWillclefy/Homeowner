@@ -7,6 +7,23 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// Leave removes a Resident from their Home in one transaction (see LeaveTx).
+func (s *Store) Leave(ctx context.Context, residentID, homeID string) error {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("leave home: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	if err := LeaveTx(ctx, tx, residentID, homeID); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("leave home: %w", err)
+	}
+	return nil
+}
+
 // LeaveTx removes a Resident from their Home inside tx, and deletes the Home
 // if nobody lives there any more. Deleting the residents row clears the
 // Resident's specific Preferences and Restrictions (cascade); deleting the Home

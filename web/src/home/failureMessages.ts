@@ -8,6 +8,13 @@ export const LOAD_FAILURE_KEY: Record<FailureReason, MessageKey> = {
   "not-signed-in": "home.notSignedIn",
 };
 
+/** Shown when leaving the Home fails. */
+export const LEAVE_FAILURE_KEY: Record<FailureReason, MessageKey> = {
+  offline: "home.leave.offline",
+  error: "home.leave.error",
+  "not-signed-in": "home.notSignedIn",
+};
+
 /** Shown when saving the Home fails. */
 export const SAVE_FAILURE_KEY: Record<FailureReason, MessageKey> = {
   offline: "home.save.offline",
