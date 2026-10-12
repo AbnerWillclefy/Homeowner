@@ -12,11 +12,12 @@ The PWA is one Vite app in `web/`, installed to the Home Screen. It has a precac
 | `src/theme/` | Built | Appearance: System, Light or Dark, and applying it. Detailed under UI layer. |
 | `src/settings/` | Built | The Settings section at the bottom of the home screen. |
 | `src/auth/` | Built | Sign-up, confirmation, sign-in and token handling against Cognito. |
-| `src/api/` | Built | The API client: `authedFetch` and the typed calls to `/me`, the profile routes (`/me/profile`, `/categories`, `/demands`), `/push/*`, `/home`, `/home/chores` and `/home/day-plan`. |
+| `src/api/` | Built | The API client: `authedFetch` and the typed calls to `/me`, the profile routes (`/me/profile`, `/categories`, `/demands`), `/push/*`, `/home`, `/home/chores`, `/home/day-plan` and `/home/check-in`. |
 | `src/home/` | Built | The Home section: create form and settings form for the Home's timezone and Allocation time. Detailed below. |
 | `src/chores/` | Built | The Chores section inside the Home section: list, add and edit form with every field, inline two-step delete, and the non-blocking two-person suggestion. Detailed below. |
 | `src/catalog/` | Built | The Catalog on the PWA: the questionnaire about a Home, the review of suggested Chores, the picker for adding a Catalog Chore later, and the pure logic behind them. Detailed under Catalog below. |
 | `src/dayplan/` | Built | The Today section inside the Home section: today's Day Plan (your Tasks, other Residents' Tasks, the pool and its reasons), read-only. Detailed below. |
+| `src/checkin/` | Built | Today's Check-in inside the Home section: the inline prompt, the summary with Change, and the pure state and form logic. Detailed under Check-in below. |
 | `src/invite/` | Built | Joining a Home from an Invite link (signed out and signed in, with the leave warning), the rating step after joining, and sharing an Invite from the Home section. Detailed below. |
 | `src/profile/` | Built | The Profile section for signed-in Users: Baseline per weekday (saved on blur), Preference per Category and Restrictions on Demands. Each control saves on its own, optimistically, and is undone with a visible message if the API refuses. The Category and Demand lists come from the API; an id with no translation shows as the id. Logic is in pure modules (`baselineInput`, `changes`, `labels`, `weekdays`); `useProfile` holds the state. |
 | `src/push/` | Built | The reminders controls and Web Push subscription. |
@@ -236,6 +237,32 @@ flowchart TD
 - Reasons are stable ids localised in both catalogs: pool `no_energy_left`, `restricted_for_all`, `weekday_not_allowed`, `two_person_deferred`, `invalid_effort`, `added_after_plan`; assignment `deadline_today`, `importance`, `lateness`, `fits_energy`. An id with no translation shows as the id; no reason (before the day is planned) shows nothing.
 - Nothing relies on colour: Effort, Importance, people and reason are all text. A grown Effort reads "Effort 3 (usually 2)". Failures use `role="alert"` with a retry button; loading and the not-planned and rejected notes use `role="status"`.
 - Pure modules with vitest tests: `api/dayPlan.ts`, `reasons.ts`, `format.ts` (`formatDay`). The components and hook are checked by hand.
+
+## Check-in
+
+`HomeDay` (`src/home/HomeDay.tsx`) is the last part of `HomeSection`, above the Chores: it owns `useCheckIn` and renders `CheckInSection` above `TodaySection`. It talks to the API through `src/api/checkIn.ts` (`getCheckIn` over `GET /home/check-in`, `putCheckIn` over `PUT /home/check-in`), which returns `ok`, `not-signed-in`, `offline`, `error`, `none` (404) and, for a save, `invalid` (400). A day with no Check-in is `ok` with `checkedIn: false`; a body with an unknown level, or a level that disagrees with `checkedIn`, is an `error`.
+
+```mermaid
+flowchart TD
+    HS[HomeSection, Home ready] --> HD[HomeDay]
+    HD --> UC[useCheckIn: GET /home/check-in, GET /demands]
+    HD --> CS[CheckInSection]
+    HD -->|key bumps after a save| TS[TodaySection]
+    CS --> V[state.ts: checkInView]
+    V -->|checkedIn false| P[prompt: intro and form]
+    V -->|checkedIn true| SUM[summary and Change]
+    SUM -->|Change| F[form, starts from the saved Check-in]
+    P --> F
+    F -->|form.ts submission| PUT[PUT /home/check-in]
+    PUT -->|ok| UC
+    UC -->|onSaved| HD
+```
+
+- The prompt shows exactly when `checkedIn` is false, inline and not a modal, on every open: nothing about it being skipped is stored. Once answered it is one line, "Today's Check-in: Low", with a Change button that reopens the form.
+- The form is a `fieldset` of four native radios (Drained, Low, Normal, Energized, each with a one-line explanation and none selected at first) and a `fieldset` of checkboxes for today's Restrictions, labelled with the Demand names. Submitting without a level shows an alert instead of calling the API. Results use `role="status"` and failures `role="alert"`; meaning never depends on colour.
+- A save can change the Day Plan, because the API plans that Resident again. `HomeDay` remounts `TodaySection` with a new `key`, so it reloads without polling. When the Energy is 0 and the level is not Drained, the Today section keeps the "set a Baseline" hint; for Drained it says the Resident checked in as Drained.
+- `state.ts` is a reducer (`checkInReducer`) plus `checkInView` and `energyNote`; `form.ts` holds the form values and what is sent (Restrictions in the order of `GET /demands`). Both are pure. Pure modules with vitest tests: `api/checkIn.ts`, `state.ts`, `form.ts`. The components and hook are checked by hand.
+- No push reminder for the Check-in yet; it belongs with the push nudge work.
 
 ## Invites
 
