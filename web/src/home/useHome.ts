@@ -26,5 +26,8 @@ export function useHome() {
 
   const setHome = useCallback((home: Home) => setState({ kind: "ready", home }), []);
 
-  return { state, reload: load, setHome };
+  /** The caller has left their Home: show the create form. The Home's own sections unmount with it. */
+  const clearHome = useCallback(() => setState({ kind: "none" }), []);
+
+  return { state, reload: load, setHome, clearHome };
 }

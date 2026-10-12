@@ -7,6 +7,7 @@ import { InviteShare } from "../invite/InviteShare";
 import { CreateHome } from "./CreateHome";
 import { LOAD_FAILURE_KEY } from "./failureMessages";
 import { HomeSettingsForm } from "./HomeSettingsForm";
+import { LeaveHome } from "./LeaveHome";
 import { useHome } from "./useHome";
 
 /**
@@ -14,7 +15,7 @@ import { useHome } from "./useHome";
  * otherwise the Home's settings followed by its Chores.
  */
 export function HomeSection() {
-  const { state, reload, setHome } = useHome();
+  const { state, reload, setHome, clearHome } = useHome();
   const { t } = useI18n();
   // Set when a create found an existing Home; cleared by the next save so it never outlives its moment.
   // `chores-dropped` is a create whose reviewed Chores were not added, because the Home already existed.
@@ -66,6 +67,12 @@ export function HomeSection() {
       <InviteShare />
       <TodaySection />
       <ChoresSection />
+      <LeaveHome
+        onLeft={() => {
+          setRecovered("no");
+          clearHome();
+        }}
+      />
     </>
   );
 }
