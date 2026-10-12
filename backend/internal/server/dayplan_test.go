@@ -297,6 +297,65 @@ func TestADayPlanNeverShowsAnotherHomesTasks(t *testing.T) {
 	}
 }
 
+func categoriesOf(tasks []map[string]any) map[any]any {
+	out := map[any]any{}
+	for _, tk := range tasks {
+		out[tk["choreName"]] = tk["category"]
+	}
+	return out
+}
+
+func TestDayPlanTasksCarryTheirChoresCategory(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := homeWithResident(t, app, "a@example.com")
+	other := extraResident(t, app, me, "b@example.com")
+	setBaseline(t, me, map[string]any{"monday": 3})
+	setBaseline(t, other, map[string]any{"monday": 2})
+	atDay(app, 2)
+	createChore(t, me, chore("Dishes", 7, 3, "essential", []string{})) // kitchen
+	pets := chore("Feed the cat", 7, 2, "normal", []string{})
+	pets["category"] = "pets"
+	createChore(t, me, pets)
+
+	pool(t, me) // open the Tasks without planning
+	before := categoriesOf(taskList(t, dayPlan(t, me).Body["pool"]))
+	if len(before) != 2 || before["Dishes"] != "kitchen" || before["Feed the cat"] != "pets" {
+		t.Fatalf("pool before the run = %v", before)
+	}
+
+	app.RunAllocation(t)
+	r := dayPlan(t, me)
+	if got := categoriesOf(taskList(t, r.Body["mine"])); len(got) != 1 || got["Dishes"] != "kitchen" {
+		t.Fatalf("mine = %v, want Dishes in kitchen: %s", got, r.Raw)
+	}
+	others := taskList(t, r.Body["others"])
+	if len(others) != 1 {
+		t.Fatalf("others = %v, want one Resident: %s", others, r.Raw)
+	}
+	if got := categoriesOf(taskList(t, others[0]["tasks"])); len(got) != 1 || got["Feed the cat"] != "pets" {
+		t.Fatalf("others tasks = %v, want Feed the cat in pets: %s", got, r.Raw)
+	}
+}
+
+func TestDayPlanPoolTasksCarryTheirChoresCategoryAfterTheRun(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := homeWithResident(t, app, "a@example.com")
+	setBaseline(t, me, map[string]any{"monday": 3})
+	atDay(app, 2)
+	createChore(t, me, chore("Dishes", 7, 3, "essential", []string{}))
+	pets := chore("Feed the cat", 7, 2, "normal", []string{})
+	pets["category"] = "pets"
+	createChore(t, me, pets)
+
+	app.RunAllocation(t)
+	r := dayPlan(t, me)
+	if got := categoriesOf(taskList(t, r.Body["pool"])); len(got) != 1 || got["Feed the cat"] != "pets" {
+		t.Fatalf("pool = %v, want Feed the cat in pets: %s", got, r.Raw)
+	}
+}
+
 func TestTheDayPlanNeedsAHomeAndAToken(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)

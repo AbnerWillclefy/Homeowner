@@ -84,6 +84,25 @@ func TestPoolShowsTheFirstWindowOfANewChore(t *testing.T) {
 	}
 }
 
+func TestPoolTasksCarryTheirChoresCategory(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := homeWithResident(t, app, "a@example.com")
+	atDay(app, 10)
+	createChore(t, me, recurring("Wipe counters", 3, 2, false))
+	pets := recurring("Feed the cat", 3, 1, false)
+	pets["category"] = "pets"
+	createChore(t, me, pets)
+
+	got := map[any]any{}
+	for _, task := range pool(t, me) {
+		got[task["choreName"]] = task["category"]
+	}
+	if len(got) != 2 || got["Wipe counters"] != "kitchen" || got["Feed the cat"] != "pets" {
+		t.Fatalf("categories = %v", got)
+	}
+}
+
 func TestAnEmptyPoolIsAnEmptyArray(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
