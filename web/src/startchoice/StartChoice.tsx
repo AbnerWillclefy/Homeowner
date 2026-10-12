@@ -1,0 +1,79 @@
+import { useEffect, useRef } from "react";
+import { useI18n, type MessageKey } from "../i18n";
+import { rightAwayOutcome, type RightAwayOutcome } from "./startChoice";
+import { useRightAway } from "./useRightAway";
+
+const FAILURE_KEY = {
+  offline: "startChoice.failed.offline",
+  error: "startChoice.failed.error",
+  "not-signed-in": "dayplan.notSignedIn",
+} as const satisfies Record<string, MessageKey>;
+
+const OUTCOME_KEY: Record<RightAwayOutcome, MessageKey> = {
+  tasks: "startChoice.done.tasks",
+  "no-energy": "startChoice.done.noEnergy",
+  nothing: "startChoice.done.nothing",
+  rejected: "dayplan.rejected",
+};
+
+interface Props {
+  /** The Resident chose to wait, or has read the result: the choice is over. Nothing is stored. */
+  onDecided(): void;
+  /** Their Tasks were planned, so the Today section must show the new plan. */
+  onPlanned(): void;
+}
+
+/**
+ * Shown once at the end of either onboarding: get Tasks now, or wait for the next daily Allocation.
+ * "Start tomorrow" only dismisses; "right away" plans this Resident alone and the result appears in Today.
+ */
+export function StartChoice({ onDecided, onPlanned }: Props) {
+  const { t } = useI18n();
+  const { state, start } = useRightAway(onPlanned);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  // The onboarding step before it just went away, so land on this heading.
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
+  const planning = state.kind === "planning";
+
+  return (
+    <section aria-labelledby="start-choice-heading">
+      <h2 id="start-choice-heading" ref={headingRef} tabIndex={-1}>
+        {t("startChoice.heading")}
+      </h2>
+
+      {state.kind === "done" ? (
+        <>
+          <p role="status">{t(OUTCOME_KEY[rightAwayOutcome(state.plan)])}</p>
+          <button type="button" className="btn btn-primary" onClick={onDecided}>
+            {t("startChoice.done.close")}
+          </button>
+        </>
+      ) : (
+        <>
+          <p>{t("startChoice.intro")}</p>
+          {planning && <p role="status">{t("startChoice.planning")}</p>}
+          {state.kind === "failed" && (
+            <p role="alert" className="text-danger">
+              {t(FAILURE_KEY[state.reason])}
+            </p>
+          )}
+
+          <p className="mb-0">{t("startChoice.now.hint")}</p>
+          {/* A real disabled button while planning, so a second tap cannot send a second request. */}
+          <button type="button" className="btn btn-primary" disabled={planning} onClick={() => void start()}>
+            {state.kind === "failed" && state.reason !== "not-signed-in" ? t("startChoice.retry") : t("startChoice.now.button")}
+          </button>
+
+          <p className="mb-0">{t("startChoice.tomorrow.hint")}</p>
+          <button type="button" className="btn" disabled={planning} onClick={onDecided}>
+            {t("startChoice.tomorrow.button")}
+          </button>
+        </>
+      )}
+    </section>
+  );
+}

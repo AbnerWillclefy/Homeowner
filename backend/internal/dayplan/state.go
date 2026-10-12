@@ -246,19 +246,39 @@ type violation struct {
 	Detail     string `json:"detail"`
 }
 
-// store writes the run and its assignments.
-func store(ctx context.Context, tx pgx.Tx, homeID string, date allocation.Date, now time.Time, rec runRecord) error {
-	body, err := json.Marshal(rec.reasons)
+// lockHome locks the Home row, which serialises planners without blocking the
+// foreign key checks of rows that point at the Home (FOR NO KEY UPDATE), and
+// returns the Home's local date at now.
+func lockHome(ctx context.Context, tx pgx.Tx, homeID string, now time.Time) (allocation.Date, error) {
+	var zone string
+	if err := tx.QueryRow(ctx, `SELECT timezone FROM homes WHERE id = $1 FOR NO KEY UPDATE`, homeID).Scan(&zone); err != nil {
+		return 0, fmt.Errorf("lock home: %w", err)
+	}
+	return LocalDate(zone, now)
+}
+
+// insertRun writes one allocation_runs row and returns its id.
+func insertRun(ctx context.Context, tx pgx.Tx, homeID string, date allocation.Date, now time.Time, allocator string, outcome Outcome, rs reasons) (string, error) {
+	body, err := json.Marshal(rs)
 	if err != nil {
-		return fmt.Errorf("store run: %w", err)
+		return "", fmt.Errorf("store run: %w", err)
 	}
 	var runID string
 	err = tx.QueryRow(ctx, `
 		INSERT INTO allocation_runs (home_id, plan_date, allocator, outcome, reasons, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-		homeID, date.Time(), rec.allocator, string(rec.outcome), body, now).Scan(&runID)
+		homeID, date.Time(), allocator, string(outcome), body, now).Scan(&runID)
 	if err != nil {
-		return fmt.Errorf("store run: %w", err)
+		return "", fmt.Errorf("store run: %w", err)
+	}
+	return runID, nil
+}
+
+// store writes the run and its assignments.
+func store(ctx context.Context, tx pgx.Tx, homeID string, date allocation.Date, now time.Time, rec runRecord) error {
+	runID, err := insertRun(ctx, tx, homeID, date, now, rec.allocator, rec.outcome, rec.reasons)
+	if err != nil {
+		return err
 	}
 	for _, a := range rec.result.DayPlan.Assignments {
 		if _, err := tx.Exec(ctx, `

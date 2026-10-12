@@ -114,9 +114,21 @@ function parseDayPlan(body: unknown): DayPlan | null {
 }
 
 /** Today's Day Plan for the signed-in Resident's Home. Before the Allocation time it is an unplanned plan, not a failure. */
-export async function getDayPlan(): Promise<DayPlanResult> {
+export function getDayPlan(): Promise<DayPlanResult> {
+  return dayPlanCall("/home/day-plan");
+}
+
+/**
+ * Plans the signed-in Resident alone, right now, from what is still in today's pool ("Get my tasks right
+ * away"). It takes no Resident id and no body, and answers with the same Day Plan as getDayPlan. Safe to repeat.
+ */
+export function planMyDay(): Promise<DayPlanResult> {
+  return dayPlanCall("/home/day-plan/me", { method: "POST" });
+}
+
+async function dayPlanCall(path: string, init?: RequestInit): Promise<DayPlanResult> {
   try {
-    const result = await authedFetch("/home/day-plan");
+    const result = await authedFetch(path, init);
     if (result.kind === "not-signed-in") return result;
     if (result.response.status === 404) return { kind: "none" };
     if (result.response.status !== 200) return { kind: "error" };

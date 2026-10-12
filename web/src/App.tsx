@@ -13,6 +13,7 @@ import { Profile } from "./profile/Profile";
 import { Reminders } from "./push/Reminders";
 import { useI18n, type MessageKey } from "./i18n";
 import { Settings } from "./settings/Settings";
+import { StartChoice } from "./startchoice/StartChoice";
 import { useHealth, type HealthState } from "./useHealth";
 
 const STATUS_KEY: Record<HealthState["kind"], MessageKey> = {
@@ -37,11 +38,23 @@ export default function App() {
     },
     [clearInvite],
   );
-  const closeRating = useCallback(() => setAfter(null), []);
+  // The start choice follows either flow. Held in App because both flows hand over to the dashboard.
+  const [choosing, setChoosing] = useState(false);
+  // One counter for "the plan changed": Today reloads whenever it is bumped (by the start choice planning the
+  // Resident right away, or by a saved Check-in).
+  const [planVersion, setPlanVersion] = useState(0);
+  const closeRating = useCallback(() => {
+    setAfter(null);
+    setChoosing(true);
+  }, []);
+  const finishOnboarding = useCallback(() => setChoosing(true), []);
+  const planChanged = useCallback(() => setPlanVersion((v) => v + 1), []);
+  const decide = useCallback(() => setChoosing(false), []);
   const notices = (
     <>
       {after === "already-here" && <p role="status">{t("invite.alreadyHere")}</p>}
       {after === "rating" && <RatingStep onClose={closeRating} />}
+      {choosing && after !== "rating" && <StartChoice onDecided={decide} onPlanned={planChanged} />}
     </>
   );
 
@@ -90,13 +103,13 @@ export default function App() {
           ) : (
             /* A new User walks through onboarding instead of the dashboard. Onboarding owns the push hook while
                it runs, so Reminders is mounted only once it is done and never twice. */
-            <OnboardingGate>
+            <OnboardingGate onFinished={finishOnboarding}>
               {(recovered) => (
                 <>
                   <Reminders />
                   {notices}
                   {/* The Home calls protected routes too, so it also exists only while signed in. */}
-                  <HomeSection recovered={recovered} />
+                  <HomeSection recovered={recovered} planVersion={planVersion} onPlanChanged={planChanged} />
                   <Profile />
                 </>
               )}

@@ -18,7 +18,17 @@ export type RecoveredNotice = "plain" | "chores-dropped";
  * otherwise the Home's settings followed by its Chores. `recovered` is set when onboarding has just created
  * the Home and found one already made, so the notice survives the switch to this section.
  */
-export function HomeSection({ recovered: initialRecovered = "no" }: { recovered?: RecoveredNotice | "no" }) {
+export function HomeSection({
+  recovered: initialRecovered = "no",
+  planVersion = 0,
+  onPlanChanged = () => {},
+}: {
+  recovered?: RecoveredNotice | "no";
+  /** Bumped whenever the plan changed, so Today reloads. */
+  planVersion?: number;
+  /** Called when something in this section changed the plan (a saved Check-in). */
+  onPlanChanged?(): void;
+}) {
   const { state, reload, setHome, clearHome } = useHome();
   const { t } = useI18n();
   // Set when a create found an existing Home; cleared by the next save so it never outlives its moment.
@@ -69,7 +79,7 @@ export function HomeSection({ recovered: initialRecovered = "no" }: { recovered?
         }}
       />
       <InviteShare />
-      <HomeDay />
+      <HomeDay version={planVersion} onPlanChanged={onPlanChanged} />
       <ChoresSection />
       <LeaveHome
         onLeft={() => {

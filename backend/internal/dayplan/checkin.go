@@ -37,11 +37,7 @@ func (p *Planner) CheckIn(ctx context.Context, homeID, residentID string, in che
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	var zone string
-	if err := tx.QueryRow(ctx, `SELECT timezone FROM homes WHERE id = $1 FOR NO KEY UPDATE`, homeID).Scan(&zone); err != nil {
-		return 0, fmt.Errorf("check in: lock home: %w", err)
-	}
-	date, err := LocalDate(zone, now)
+	date, err := lockHome(ctx, tx, homeID, now)
 	if err != nil {
 		return 0, fmt.Errorf("check in: %w", err)
 	}
@@ -66,27 +62,51 @@ func (p *Planner) CheckIn(ctx context.Context, homeID, residentID string, in che
 type replanned struct{ assigned, pooled int }
 
 // replan plans one Resident again inside the day's planned run, or does
-// nothing (nil) when there is no run or it was rejected. It loads the whole
-// Home's State, not only the Resident, so Energy and Restrictions come from the
-// one code path PlanHome uses.
+// nothing (nil) when there is no run or it was rejected.
 func (p *Planner) replan(ctx context.Context, tx pgx.Tx, homeID, residentID string, date allocation.Date) (*replanned, error) {
+	run, found, err := loadRun(ctx, tx, homeID, date)
+	if err != nil || !found || run.outcome != Planned {
+		return nil, err
+	}
+	return p.replanRun(ctx, tx, homeID, residentID, date, run)
+}
+
+// storedRun is a run row as the re-plan needs it.
+type storedRun struct {
+	id      string
+	outcome Outcome
+	reasons reasons
+}
+
+// loadRun reads the Home's run for the date; found is false when there is none.
+func loadRun(ctx context.Context, tx pgx.Tx, homeID string, date allocation.Date) (run storedRun, found bool, err error) {
 	var (
-		runID, outcome string
-		raw            []byte
+		outcome string
+		raw     []byte
 	)
-	err := tx.QueryRow(ctx, `SELECT id, outcome, reasons FROM allocation_runs WHERE home_id = $1 AND plan_date = $2`,
-		homeID, date.Time()).Scan(&runID, &outcome, &raw)
-	if errors.Is(err, pgx.ErrNoRows) || (err == nil && outcome != string(Planned)) {
-		return nil, nil
+	err = tx.QueryRow(ctx, `SELECT id, outcome, reasons FROM allocation_runs WHERE home_id = $1 AND plan_date = $2`,
+		homeID, date.Time()).Scan(&run.id, &outcome, &raw)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return storedRun{}, false, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("check in: load run: %w", err)
+		return storedRun{}, false, fmt.Errorf("replan: load run: %w", err)
 	}
-	var rs reasons
-	if err := json.Unmarshal(raw, &rs); err != nil {
-		return nil, fmt.Errorf("check in: read reasons: %w", err)
+	run.outcome = Outcome(outcome)
+	if err := json.Unmarshal(raw, &run.reasons); err != nil {
+		return storedRun{}, false, fmt.Errorf("replan: read reasons: %w", err)
 	}
+	return run, true, nil
+}
 
+// replanRun plans one Resident again inside a planned run: it proposes from
+// every open Task not given to someone else, has Check referee it, and replaces
+// only that Resident's assignments. It loads the whole Home's State, not only
+// the Resident, so Energy and Restrictions come from the one code path PlanHome
+// uses. A Check-in and "get my tasks right away" share it.
+func (p *Planner) replanRun(ctx context.Context, tx pgx.Tx, homeID, residentID string, date allocation.Date, run storedRun) (*replanned, error) {
+	rs := run.reasons
+	runID := run.id
 	st, err := loadState(ctx, tx, homeID, date)
 	if err != nil {
 		return nil, err
@@ -135,6 +155,9 @@ func subState(st allocation.State, residentID string, given map[string]bool) (su
 
 // persist replaces the Resident's assignments in the run and writes its reasons.
 func persist(ctx context.Context, tx pgx.Tx, runID, residentID string, res allocation.Result, rs reasons) error {
+	// Only the Resident's own rows go. When Committed Tasks exist (#15) they must
+	// survive here and be added to what givenToOthers excludes: a re-plan never
+	// drops a Committed Task.
 	if _, err := tx.Exec(ctx, `DELETE FROM day_plan_assignments WHERE run_id = $1 AND resident_id = $2`, runID, residentID); err != nil {
 		return fmt.Errorf("check in: clear assignments: %w", err)
 	}

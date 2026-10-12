@@ -13,6 +13,21 @@ type dayPlanResponse struct {
 	dayplan.View
 }
 
+// postDayPlanMe is "get my tasks right away": it plans the caller alone from
+// today's pool and answers with the same body as GET /home/day-plan. It takes
+// no body and no Resident id, so it can only act on the caller. A rejected day
+// is a 200 with `rejected: true`; a failed or refused proposal is a 500 with
+// nothing stored.
+func (s *server) postDayPlanMe(w http.ResponseWriter, r *http.Request) {
+	m := currentMembership(r.Context())
+	now := s.deps.Clock.Now()
+	if _, err := s.planner.PlanResident(r.Context(), m.Home.ID, m.ResidentID, now); err != nil {
+		s.internalError(w, err)
+		return
+	}
+	s.getDayPlan(w, r)
+}
+
 // getDayPlan answers the caller's Home's Day Plan for today in the Home's zone:
 // the caller's Tasks, other Residents' Tasks and the pool that remains. It only
 // reads the plan the Allocation job stored. Before the Allocation time there is

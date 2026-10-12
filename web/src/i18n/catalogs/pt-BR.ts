@@ -294,6 +294,26 @@ export const ptBR: Messages = {
   "dayplan.pool.reason.added_after_plan": "Foi adicionada depois que o plano de hoje foi feito.",
   "dayplan.energy.drained": "Você fez check-in como esgotado, então nenhuma tarefa foi dada a você hoje. Descanse.",
 
+  // The start choice, at the end of both onboarding flows
+  "startChoice.heading": "Quando você quer as suas tarefas?",
+  "startChoice.intro":
+    "O seu lar divide as tarefas todos os dias no horário da alocação. Você pode começar agora ou esperar a próxima.",
+  "startChoice.now.button": "Receber minhas tarefas agora",
+  "startChoice.now.hint":
+    "O Homeowner planeja só você, agora, entre as tarefas em aberto que ninguém recebeu hoje. As tarefas dos outros moradores não mudam.",
+  "startChoice.tomorrow.button": "Começar amanhã",
+  "startChoice.tomorrow.hint": "Esperar a próxima alocação diária. Nada é planejado para você até lá.",
+  "startChoice.planning": "Planejando as suas tarefas...",
+  "startChoice.retry": "Tentar de novo",
+  "startChoice.failed.offline":
+    "Parece que você está sem internet, então as suas tarefas não foram planejadas. Verifique a conexão e tente de novo.",
+  "startChoice.failed.error": "Algo deu errado ao planejar as suas tarefas. Tente de novo daqui a pouco.",
+  "startChoice.done.tasks": "As suas tarefas de hoje estão prontas. Você pode vê-las em Hoje, logo abaixo.",
+  "startChoice.done.noEnergy":
+    "A sua energia de hoje é 0, então nenhuma tarefa foi dada a você. Se você não tem energia base para este dia da semana, defina-a no perfil para receber tarefas nesse dia.",
+  "startChoice.done.nothing": "Não sobrou nenhuma tarefa em aberto para você hoje. Aproveite o dia.",
+  "startChoice.done.close": "Entendi",
+
   // Check-in
   "checkin.heading": "Check-in",
   "checkin.intro":
