@@ -11,7 +11,13 @@ export function EnableReminders({ reminders, onEnable }: { reminders: RemindersS
   const problem = reminders.kind === "problem" ? problemText(reminders.problem) : null;
   return (
     <>
-      <button type="button" className="btn btn-primary" onClick={onEnable} disabled={reminders.kind === "working"}>
+      <button
+        type="button"
+        className="btn btn-primary"
+        onClick={onEnable}
+        disabled={reminders.kind === "working"}
+        aria-busy={reminders.kind === "working"}
+      >
         {reminders.kind === "working" ? t("reminders.enabling") : t("reminders.enable")}
       </button>
       {problem && <p role="alert">{t(problem.key, problem.params)}</p>}

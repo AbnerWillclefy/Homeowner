@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSubmitOnce } from "../components/ui/useSubmitOnce";
 import { browserRemindersDeps } from "./browserDeps";
 import { isIOS, readPlatformEnv, reminderAvailability, type ReminderAvailability } from "./platform";
 import type { RemindersProblem } from "./problemText";
@@ -35,13 +36,14 @@ export function usePush() {
     };
   }, [availability.kind]);
 
-  const enable = useCallback(async () => {
+  // Guarded in the handler: a double tap must not ask for permission or subscribe twice.
+  const { run: enable } = useSubmitOnce(async () => {
     setReminders({ kind: "working" });
     const result = await enableReminders(browserRemindersDeps());
     setReminders(
       result.kind === "enabled" ? { kind: "on", endpoint: result.endpoint } : { kind: "problem", problem: result },
     );
-  }, []);
+  });
 
   return { availability, ios, reminders, enable };
 }
