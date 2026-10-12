@@ -51,10 +51,8 @@ export function BaselineFields({
   baseline: Baseline;
   onSave(day: Weekday, points: number | null): void;
 }) {
-  const { t } = useI18n();
   return (
     <>
-      <p>{t("profile.baseline.explain")}</p>
       {DISPLAY_WEEKDAYS.map((day) => (
         <BaselineRow key={day} day={day} saved={baseline[day]} onSave={onSave} />
       ))}
@@ -75,7 +73,6 @@ export function PreferenceFields({
   const shown = preferenceCategories(categories);
   return (
     <>
-      <p>{t("profile.preferences.intro")}</p>
       {shown.map((id) => (
         <PreferenceChoice key={id} id={id} name={labelText(t, categoryLabel(id))} profile={profile} onChange={onChange} />
       ))}
@@ -95,7 +92,6 @@ export function RestrictionFields({
   const { t } = useI18n();
   return (
     <>
-      <p>{t("profile.restrictions.intro")}</p>
       {demands.map((id) => (
         <label key={id} className="flex items-center gap-3 min-h-11 font-normal">
           <input

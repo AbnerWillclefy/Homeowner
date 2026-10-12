@@ -93,8 +93,6 @@ export const ptBR: Messages = {
   "install.step4": "Feche o Safari e abra o Homeowner pelo novo ícone na sua Tela de Início.",
 
   // Profile
-  "profile.intro":
-    "O Homeowner usa isto para dividir os afazeres domésticos de forma justa: dá menos afazeres a você nos dias cansativos e evita o que você não gosta ou não consegue fazer. Seus dados vão com você se você mudar de lar.",
   "profile.loading": "Carregando seus dados...",
   "profile.offline": "Não foi possível falar com o serviço, então seus dados não aparecem. Verifique sua conexão e tente de novo.",
   "profile.error": "Algo deu errado ao carregar seus dados. Tente de novo em instantes.",
@@ -104,20 +102,14 @@ export const ptBR: Messages = {
   "profile.saveFailed": "Não foi possível salvar sua alteração, então ela foi desfeita. Verifique sua conexão e tente de novo.",
   "profile.saveFailed.notSignedIn": "Você não está mais conectado, então sua alteração foi desfeita. Entre de novo.",
   "profile.baseline.heading": "Energia base",
-  "profile.baseline.explain":
-    "Um ponto mede o esforço: o quanto um trabalho cansa, de 1 a 5. Sua energia base é a energia que você costuma ter em cada dia, nesses mesmos pontos; escolha Baixa, Normal ou Alta para cada dia. É salvo assim que você escolhe.",
   "profile.baseline.level.low": "Baixa",
   "profile.baseline.level.normal": "Normal",
   "profile.baseline.level.high": "Alta",
   "profile.preferences.heading": "Preferências",
-  "profile.preferences.intro":
-    "Diga de quais tipos de trabalho você gosta ou não gosta. Os afazeres de que você não gosta chegam a você com menos frequência, mas nunca à custa do que é essencial. O que você não mexer fica neutro.",
   "profile.preference.like": "Gosto",
   "profile.preference.neutral": "Neutro",
   "profile.preference.dislike": "Não gosto",
   "profile.restrictions.heading": "Restrições",
-  "profile.restrictions.intro":
-    "Marque o que o seu corpo não consegue fazer. Os afazeres que pedem isso nunca são dados a você. Desmarque quando isso mudar.",
   "category.kitchen": "Cozinha",
   "category.bathroom": "Banheiro",
   "category.bedroom": "Quarto",

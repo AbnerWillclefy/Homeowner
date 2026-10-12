@@ -87,8 +87,6 @@ export const enUS = {
   "install.step4": "Close Safari and open Homeowner from its new icon on your Home Screen.",
 
   // Profile
-  "profile.intro":
-    "Homeowner uses this to share the housework fairly: it gives you fewer Chores on tiring days and avoids the work you dislike or cannot do. It stays with you if you move to another Home.",
   "profile.loading": "Loading your details...",
   "profile.offline": "Could not reach the service, so your details are not shown. Check your connection and try again.",
   "profile.error": "Something went wrong loading your details. Try again in a moment.",
@@ -98,20 +96,14 @@ export const enUS = {
   "profile.saveFailed": "Could not save your change, so it was undone. Check your connection and try again.",
   "profile.saveFailed.notSignedIn": "You are not signed in any more, so your change was undone. Sign in again.",
   "profile.baseline.heading": "Baseline",
-  "profile.baseline.explain":
-    "A point is a unit of Effort, which is how draining a piece of work is, from 1 to 5. Your Baseline is the Energy you can usually give on each day, in those points; pick Low, Normal or High for each day. It is saved as soon as you choose.",
   "profile.baseline.level.low": "Low",
   "profile.baseline.level.normal": "Normal",
   "profile.baseline.level.high": "High",
   "profile.preferences.heading": "Preferences",
-  "profile.preferences.intro":
-    "Say which kinds of work you like or dislike. Chores you dislike go to you less often, but never at the cost of what is essential. Anything you leave alone is neutral.",
   "profile.preference.like": "Like",
   "profile.preference.neutral": "Neutral",
   "profile.preference.dislike": "Dislike",
   "profile.restrictions.heading": "Restrictions",
-  "profile.restrictions.intro":
-    "Tick what your body cannot do. Chores that ask for it are never given to you. Untick it when that changes.",
   "category.kitchen": "Kitchen",
   "category.bathroom": "Bathroom",
   "category.bedroom": "Bedroom",
