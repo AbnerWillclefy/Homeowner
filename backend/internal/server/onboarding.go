@@ -59,12 +59,11 @@ func (s *server) writeNextStep(w http.ResponseWriter, r *http.Request, userID, s
 		_, err := s.homes.ForUser(r.Context(), userID)
 		switch {
 		case err == nil:
-			stored, err = s.users.AdvanceOnboarding(r.Context(), userID, onboarding.Done, s.deps.Clock.Now())
-			if err != nil {
+			if _, err := s.users.AdvanceOnboarding(r.Context(), userID, onboarding.Done, s.deps.Clock.Now()); err != nil {
 				s.onboardingError(w, "finish onboarding for a resident", err)
 				return
 			}
-			next = onboarding.Next(stored)
+			next = onboarding.Done
 		case !errors.Is(err, homes.ErrNoHome):
 			s.onboardingError(w, "look up home for onboarding", err)
 			return
