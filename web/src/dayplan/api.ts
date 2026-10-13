@@ -1,4 +1,4 @@
-import { authedFetch } from "../auth/request";
+import { authedFetch, errorCode } from "../auth/request";
 
 /** An open Task as the Day Plan shows it. Dates are "YYYY-MM-DD". */
 export interface PlanTask {
@@ -18,6 +18,19 @@ export interface PlanTask {
    * The Chore's Category id. Absent from an older API and possibly an id the app has no style for, so it is
    * optional and a card without a known one renders neutral.
    */
+  category?: string;
+  /** The Resident it is assigned to accepted it today. Absent from an older API. */
+  committed?: boolean;
+}
+
+/** A Task the signed-in Resident completed today. */
+export interface CompletedTask {
+  id: string;
+  choreId: string;
+  choreName: string;
+  currentEffort: number;
+  /** An instant, RFC 3339. */
+  completedAt: string;
   category?: string;
 }
 
@@ -40,14 +53,18 @@ export interface DayPlan {
   mine: PlanTask[];
   others: ResidentTasks[];
   pool: PlanTask[];
+  /** The caller's Tasks completed today, oldest first. */
+  doneToday: CompletedTask[];
 }
 
 export type Failure = { kind: "not-signed-in" } | { kind: "offline" } | { kind: "error" };
 
 export type DayPlanResult =
   | { kind: "ok"; plan: DayPlan }
-  /** 404: the User has no Home. */
+  /** 404: the User has no Home, or the Task is unknown. */
   | { kind: "none" }
+  /** 409: the screen was stale. `code` is the API's `error` ("unknown" when unreadable). Only actions return it. */
+  | { kind: "conflict"; code: string }
   | Failure;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -67,14 +84,40 @@ function parseTask(body: unknown): PlanTask | null {
     typeof baseEffort !== "number" ||
     typeof people !== "number" ||
     typeof importance !== "string" ||
-    !(reason === undefined || typeof reason === "string")
+    !(reason === undefined || typeof reason === "string") ||
+    !(body.committed === undefined || typeof body.committed === "boolean")
   ) {
     return null;
   }
   const task: PlanTask = { id, choreId, choreName, windowStart, windowEnd, currentEffort, baseEffort, people, importance };
   // Lenient on purpose: a missing or odd category must never turn the whole plan into an error.
   if (typeof body.category === "string") task.category = body.category;
+  if (typeof body.committed === "boolean") task.committed = body.committed;
   return reason === undefined ? task : { ...task, reason };
+}
+
+function parseCompleted(body: unknown): CompletedTask | null {
+  if (!isRecord(body)) return null;
+  const { id, choreId, choreName, currentEffort, completedAt } = body;
+  if (
+    typeof id !== "string" ||
+    typeof choreId !== "string" ||
+    typeof choreName !== "string" ||
+    typeof currentEffort !== "number" ||
+    typeof completedAt !== "string"
+  ) {
+    return null;
+  }
+  const done: CompletedTask = { id, choreId, choreName, currentEffort, completedAt };
+  if (typeof body.category === "string") done.category = body.category;
+  return done;
+}
+
+function parseDone(value: unknown): CompletedTask[] | null {
+  if (value === null || value === undefined) return [];
+  if (!Array.isArray(value)) return null;
+  const done = value.map(parseCompleted);
+  return done.every((d) => d !== null) ? done : null;
 }
 
 /** A list of Tasks, where null (a Go nil slice) means none. Null result: something in it is unreadable. */
@@ -104,6 +147,7 @@ function parseDayPlan(body: unknown): DayPlan | null {
   const mine = parseTasks(body.mine);
   const others = parseOthers(body.others);
   const pool = parseTasks(body.pool);
+  const doneToday = parseDone(body.doneToday);
   if (
     typeof date !== "string" ||
     typeof allocationTime !== "string" ||
@@ -113,11 +157,12 @@ function parseDayPlan(body: unknown): DayPlan | null {
     !(energy === null || typeof energy === "number") ||
     !mine ||
     !others ||
-    !pool
+    !pool ||
+    !doneToday
   ) {
     return null;
   }
-  return { date, allocationTime, planned, rejected, allocator, energy, mine, others, pool };
+  return { date, allocationTime, planned, rejected, allocator, energy, mine, others, pool, doneToday };
 }
 
 /** Today's Day Plan for the signed-in Resident's Home. Before the Allocation time it is an unplanned plan, not a failure. */
@@ -133,11 +178,26 @@ export function planMyDay(): Promise<DayPlanResult> {
   return dayPlanCall("/home/day-plan/me", { method: "POST" });
 }
 
+const post = (path: string) => dayPlanCall(path, { method: "POST" });
+const taskPath = (id: string, action: string) => `/home/tasks/${encodeURIComponent(id)}/${action}`;
+
+/** Accepts one of the caller's Proposed Tasks: it becomes Committed. */
+export const acceptTask = (id: string) => post(taskPath(id, "accept"));
+/** Accepts every Proposed Task of the caller at once. */
+export const acceptAll = () => post("/home/day-plan/accept-all");
+/** Refuses one of the caller's Proposed Tasks: it goes back to the pool. */
+export const refuseTask = (id: string) => post(taskPath(id, "refuse"));
+/** Takes a Task from the pool. */
+export const takeTask = (id: string) => post(taskPath(id, "take"));
+/** Records the Completion of one of the caller's Tasks. */
+export const completeTask = (id: string) => post(taskPath(id, "complete"));
+
 async function dayPlanCall(path: string, init?: RequestInit): Promise<DayPlanResult> {
   try {
     const result = await authedFetch(path, init);
     if (result.kind === "not-signed-in") return result;
     if (result.response.status === 404) return { kind: "none" };
+    if (result.response.status === 409) return { kind: "conflict", code: (await errorCode(result.response)) ?? "unknown" };
     if (result.response.status !== 200) return { kind: "error" };
     const plan = parseDayPlan(await result.response.json());
     return plan ? { kind: "ok", plan } : { kind: "error" };

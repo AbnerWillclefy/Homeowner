@@ -1,6 +1,9 @@
 import { Clock, UserRound } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { Link } from "react-router";
-import type { DayPlan } from "./api";
+import { acceptAll, acceptTask, completeTask, refuseTask, takeTask, type DayPlan, type PlanTask } from "./api";
+import type { TaskAction, TaskRole } from "./actions";
+import { formatTime } from "./format";
 import { ME_PATH } from "../app/routes";
 import { noTasksReason, type EnergyNote, type NoTasksReason } from "../checkin/state";
 import { formatAllocationTime } from "../home/allocationTimes";
@@ -9,33 +12,49 @@ import { Button } from "../shared/ui/Button";
 import { GroupHeading } from "../shared/ui/GroupHeading";
 import { LOAD_FAILURE_KEY } from "./failureMessages";
 import { TaskCard } from "./TaskCard";
-import type { DayPlanState } from "./useDayPlan";
+import type { ActionNotice, useDayPlan } from "./useDayPlan";
 
 const LIST = "m-0 flex list-none flex-col gap-3 p-0";
 
+/** Calls the API for an action on a Task. */
+const CALLS: Record<TaskAction, (id: string) => ReturnType<typeof acceptTask>> = {
+  accept: acceptTask,
+  refuse: refuseTask,
+  take: takeTask,
+  done: completeTask,
+};
+
+type Day = ReturnType<typeof useDayPlan>;
+
 /**
- * Today's Day Plan: your Tasks, other Residents' Tasks and the pool that remains. Read-only: a Day Plan is a
- * proposal, and accepting or refusing it comes later. Rendered inside the Home section, so it only exists
- * while the signed-in User has a Home. The owner loads the plan and shows its Energy in the header's chip;
- * `note` is that chip's note, null while the Check-in is not known.
+ * Today's Day Plan: your Tasks, other Residents' Tasks and the pool that remains, and what you did today. A Day
+ * Plan is a proposal: you accept, refuse, take or complete Tasks, and the plan only changes from the server's
+ * answer. Rendered inside the Home section, so it only exists while the signed-in User has a Home. The owner
+ * loads the plan and shows its Energy in the header's chip; `note` is that chip's note, null while the
+ * Check-in is not known.
  */
-export function TodaySection({
-  state,
-  reload,
-  note,
-}: {
-  state: DayPlanState;
-  reload(): void;
-  note: EnergyNote | null;
-}) {
+export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null }) {
   const { t } = useI18n();
+  const { state, reload, act, acting, notice, settled } = day;
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  // A Task that leaves its list takes its button with it, so focus would fall to <body>. Bring it back to the
+  // section's heading, unless it is still on something inside the section.
+  useEffect(() => {
+    if (settled === 0) return;
+    const section = heading.current?.parentElement;
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement) || active === section || !section?.contains(active)) heading.current?.focus();
+  }, [settled]);
 
   return (
     <section aria-labelledby="today-heading">
       {/* The greeting is the visible title; this one names the landmark for screen readers. */}
-      <h2 id="today-heading" className="sr-only">
+      <h2 id="today-heading" ref={heading} tabIndex={-1} className="sr-only">
         {t("dayplan.heading")}
       </h2>
+
+      <Notice notice={notice} />
 
       {state.kind === "loading" && <p role="status">{t("dayplan.loading")}</p>}
 
@@ -52,8 +71,37 @@ export function TodaySection({
         </>
       )}
 
-      {state.kind === "ready" && <PlanView plan={state.plan} note={note} />}
+      {state.kind === "ready" && (
+        <PlanView
+          plan={state.plan}
+          note={note}
+          busy={acting}
+          onAccept={() => void act(acceptAll)}
+          onAction={(action, task) => void act(() => CALLS[action](task.id))}
+        />
+      )}
     </section>
+  );
+}
+
+/**
+ * What the last action said. The two live regions are always in the page, so text arriving in them is
+ * announced: a status for a stale screen that was refreshed, an alert when something failed.
+ */
+function Notice({ notice }: { notice: ActionNotice | null }) {
+  const { t } = useI18n();
+  const lines = (tone: ActionNotice["tone"], className: string) =>
+    notice?.tone === tone &&
+    notice.keys.map((key) => (
+      <p key={key} className={`mt-0 mb-3 font-semibold ${className}`}>
+        {t(key)}
+      </p>
+    ));
+  return (
+    <>
+      <div role="status">{lines("status", "")}</div>
+      <div role="alert">{lines("alert", "text-danger")}</div>
+    </>
   );
 }
 
@@ -82,10 +130,26 @@ function EmptyMine({ reason }: { reason: NoTasksReason | null }) {
   );
 }
 
-function PlanView({ plan, note }: { plan: DayPlan; note: EnergyNote | null }) {
+function PlanView({
+  plan,
+  note,
+  busy,
+  onAccept,
+  onAction,
+}: {
+  plan: DayPlan;
+  note: EnergyNote | null;
+  busy: boolean;
+  onAccept(): void;
+  onAction(action: TaskAction, task: PlanTask): void;
+}) {
   const { t, locale } = useI18n();
   // The chip's note picks the reason for an empty list, so the two can never disagree.
   const reason = note && noTasksReason(note);
+  const proposed = plan.mine.filter((task) => !task.committed).length;
+  const card = (task: PlanTask, role: TaskRole) => (
+    <TaskCard key={task.id} task={task} role={role} today={plan.date} busy={busy} onAction={onAction} />
+  );
 
   return (
     <div className="flex flex-col gap-8">
@@ -104,12 +168,13 @@ function PlanView({ plan, note }: { plan: DayPlan; note: EnergyNote | null }) {
       {plan.planned && (
         <div>
           <GroupHeading count={plan.mine.length}>{t("dayplan.mine.heading")}</GroupHeading>
+          {proposed > 0 && (
+            <Button className="mb-3" disabled={busy} onClick={onAccept}>
+              {t("dayplan.action.acceptAll", { count: proposed })}
+            </Button>
+          )}
           {plan.mine.length > 0 ? (
-            <ul className={LIST}>
-              {plan.mine.map((task) => (
-                <TaskCard key={task.id} task={task} reasonFor="assigned" today={plan.date} own />
-              ))}
-            </ul>
+            <ul className={LIST}>{plan.mine.map((task) => card(task, "mine"))}</ul>
           ) : (
             <EmptyMine reason={reason} />
           )}
@@ -127,9 +192,7 @@ function PlanView({ plan, note }: { plan: DayPlan; note: EnergyNote | null }) {
                   {t("dayplan.others.resident", { number: index + 1 })}
                 </h4>
                 <ul className={LIST}>
-                  {other.tasks.map((task) => (
-                    <TaskCard key={task.id} task={task} reasonFor="assigned" today={plan.date} own={false} />
-                  ))}
+                  {other.tasks.map((task) => card(task, "other"))}
                 </ul>
               </section>
             ))}
@@ -143,12 +206,23 @@ function PlanView({ plan, note }: { plan: DayPlan; note: EnergyNote | null }) {
           <p className="my-0 text-muted">{t("dayplan.pool.empty")}</p>
         ) : (
           <ul className={LIST}>
-            {plan.pool.map((task) => (
-              <TaskCard key={task.id} task={task} reasonFor="pool" today={plan.date} own={false} />
-            ))}
+            {plan.pool.map((task) => card(task, "pool"))}
           </ul>
         )}
       </div>
+
+      {plan.doneToday.length > 0 && (
+        <div>
+          <GroupHeading count={plan.doneToday.length}>{t("dayplan.done.heading")}</GroupHeading>
+          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+            {plan.doneToday.map((done) => (
+              <li key={done.id} className="my-0 [overflow-wrap:anywhere]">
+                {t("dayplan.done.item", { task: done.choreName, time: formatTime(done.completedAt, locale) })}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

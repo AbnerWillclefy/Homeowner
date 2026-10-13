@@ -19,8 +19,9 @@ export function useRightAway(onPlanned: () => void) {
       setState({ kind: "done", plan: result.plan });
       onPlanned();
     } else {
-      // A 404 means the Home went away under us: nothing to plan, so it reads as a failure.
-      setState({ kind: "failed", reason: result.kind === "none" ? "error" : result.kind });
+      // A 404 means the Home went away under us: nothing to plan, so it reads as a failure. Planning
+      // never answers 409, so a conflict reads the same way.
+      setState({ kind: "failed", reason: result.kind === "none" || result.kind === "conflict" ? "error" : result.kind });
     }
   });
 

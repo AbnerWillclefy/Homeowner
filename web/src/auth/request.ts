@@ -94,6 +94,14 @@ export function createAuthedFetch(deps: AuthedFetchDeps) {
   };
 }
 
+/** The `error` code of an API error body, or null when the body is not JSON of that shape. */
+export async function errorCode(response: Response): Promise<string | null> {
+  const body: unknown = await response.json().catch(() => null);
+  if (typeof body !== "object" || body === null) return null;
+  const code = (body as Record<string, unknown>).error;
+  return typeof code === "string" ? code : null;
+}
+
 /** The app's own: the stored session, Cognito and the real API. */
 export const authedFetch = createAuthedFetch({
   session: browserSession,
