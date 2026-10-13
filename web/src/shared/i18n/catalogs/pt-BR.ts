@@ -337,6 +337,9 @@ export const ptBR: Messages = {
   "dayplan.action.done": "Concluir",
   "dayplan.action.done.named": "Concluir {task}",
   "dayplan.task.committed": "Assumida",
+  "dayplan.task.suggestTwoPerson": "Esse afazer só cresce. Que tal fazê-lo em dupla?",
+  "dayplan.task.suggestTwoPerson.action": "Tornar para duas pessoas",
+  "dayplan.task.suggestTwoPerson.action.named": "Tornar {task} para duas pessoas",
   "dayplan.done.heading": "Concluídas hoje",
   "dayplan.done.item": "{task} às {time}",
   "dayplan.action.failed.offline":
