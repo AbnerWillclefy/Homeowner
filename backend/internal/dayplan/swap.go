@@ -38,6 +38,14 @@ var (
 // Swap.
 const ReasonSwapped = "swapped"
 
+// The statuses of a swap offer, as the swap_offers table allows them.
+const (
+	swapPending   = "pending"
+	swapAccepted  = "accepted"
+	swapDeclined  = "declined"
+	swapCancelled = "cancelled"
+)
+
 // swapOffer is a row of swap_offers, locked for the rest of the transaction.
 type swapOffer struct {
 	id            string
@@ -70,29 +78,17 @@ func (a *acting) loadOffer(ctx context.Context, residentID, offerID string, byRe
 	if answerer != residentID || !o.planDate.Equal(a.date.Time()) {
 		return swapOffer{}, ErrSwapNotFound
 	}
-	if o.status != "pending" {
+	if o.status != swapPending {
 		return swapOffer{}, ErrSwapClosed
 	}
 	return o, nil
 }
 
-// close records the answer to a pending offer.
+// closeOffer records the answer to a pending offer.
 func (a *acting) closeOffer(ctx context.Context, offerID, status string) error {
 	if _, err := a.tx.Exec(ctx, `UPDATE swap_offers SET status = $2, answered_at = $3 WHERE id = $1`,
 		offerID, status, a.now); err != nil {
 		return fmt.Errorf("close swap: %w", err)
-	}
-	return nil
-}
-
-// notDrained is ErrRecipientDrained when the Resident checked in Drained today.
-func (a *acting) notDrained(ctx context.Context, residentID string) error {
-	cis, err := checkinstore.LoadMany(ctx, a.tx, []string{residentID}, a.date)
-	if err != nil {
-		return err
-	}
-	if ci, ok := cis[residentID]; ok && ci.Level == checkin.Drained {
-		return ErrRecipientDrained
 	}
 	return nil
 }
@@ -171,8 +167,8 @@ func (p *Planner) OfferSwap(ctx context.Context, homeID, residentID, offeredTask
 		var pending bool
 		if err := a.tx.QueryRow(ctx, `
 			SELECT EXISTS (SELECT 1 FROM swap_offers
-			               WHERE offered_task_id = $1 AND requested_task_id = $2 AND status = 'pending')`,
-			offeredTaskID, requestedTaskID).Scan(&pending); err != nil {
+			               WHERE plan_date = $3 AND offered_task_id = $1 AND requested_task_id = $2 AND status = $4)`,
+			offeredTaskID, requestedTaskID, a.date.Time(), swapPending).Scan(&pending); err != nil {
 			return fmt.Errorf("offer swap: %w", err)
 		}
 		if pending {
@@ -191,15 +187,23 @@ func (p *Planner) OfferSwap(ctx context.Context, homeID, residentID, offeredTask
 // swapAllowed is nil when `from` may hold the `want` Task and `to` the `give`
 // Task, and neither is Drained today.
 func (a *acting) swapAllowed(ctx context.Context, from, give, to, want string) error {
-	for _, r := range []string{from, to} {
-		if err := a.notDrained(ctx, r); err != nil {
-			return err
-		}
-	}
-	if err := a.mayDo(ctx, from, want, ReasonSwapped); err != nil {
+	cis, err := checkinstore.LoadMany(ctx, a.tx, []string{from, to}, a.date)
+	if err != nil {
 		return err
 	}
-	return a.mayDo(ctx, to, give, ReasonSwapped)
+	for _, r := range []string{from, to} {
+		if ci, ok := cis[r]; ok && ci.Level == checkin.Drained {
+			return ErrRecipientDrained
+		}
+	}
+	st, err := loadState(ctx, a.tx, a.home, a.date)
+	if err != nil {
+		return err
+	}
+	if err := mayDoIn(st, from, want, ReasonSwapped); err != nil {
+		return err
+	}
+	return mayDoIn(st, to, give, ReasonSwapped)
 }
 
 // AcceptSwap makes the offer happen, for the Resident it was offered to: the
@@ -233,38 +237,46 @@ func (p *Planner) AcceptSwap(ctx context.Context, homeID, residentID, offerID st
 		if err := a.swapAllowed(ctx, o.from, o.offeredTask, o.to, o.requestedTask); err != nil {
 			return err
 		}
-		for _, m := range []struct{ task, resident string }{{o.offeredTask, o.to}, {o.requestedTask, o.from}} {
-			if _, err := a.tx.Exec(ctx, `
-				UPDATE day_plan_assignments SET resident_id = $3, reason = $4 WHERE run_id = $1 AND task_id = $2`,
-				a.run.id, m.task, m.resident, ReasonSwapped); err != nil {
-				return fmt.Errorf("accept swap: %w", err)
-			}
-			// The Commitment moves with the Task's holder: the old holder's is
-			// deleted (the one exception to "never deleted") and the new
-			// holder says yes by accepting.
-			if _, err := a.tx.Exec(ctx, `DELETE FROM task_residents WHERE task_id = $1 AND committed_on = $2`,
-				m.task, a.date.Time()); err != nil {
-				return fmt.Errorf("accept swap: %w", err)
-			}
-			if _, err := a.tx.Exec(ctx, `
-				INSERT INTO task_residents (task_id, resident_id, committed_on, committed_at) VALUES ($1, $2, $3, $4)
-				ON CONFLICT DO NOTHING`, m.task, m.resident, a.date.Time(), a.now); err != nil {
-				return fmt.Errorf("accept swap: %w", err)
-			}
+		if err := a.moveCommitment(ctx, o.offeredTask, o.to); err != nil {
+			return err
 		}
-		if err := a.closeOffer(ctx, o.id, "accepted"); err != nil {
+		if err := a.moveCommitment(ctx, o.requestedTask, o.from); err != nil {
+			return err
+		}
+		if err := a.closeOffer(ctx, o.id, swapAccepted); err != nil {
 			return err
 		}
 		if _, err := a.tx.Exec(ctx, `
-			UPDATE swap_offers SET status = 'cancelled', answered_at = $4
-			WHERE home_id = $1 AND status = 'pending'
+			UPDATE swap_offers SET status = $6, answered_at = $4
+			WHERE home_id = $1 AND plan_date = $5 AND status = $7
 			  AND (offered_task_id = ANY($2) OR requested_task_id = ANY($2)) AND id <> $3`,
-			a.home, []string{o.offeredTask, o.requestedTask}, o.id, a.now); err != nil {
+			a.home, []string{o.offeredTask, o.requestedTask}, o.id, a.now, a.date.Time(), swapCancelled, swapPending); err != nil {
 			return fmt.Errorf("accept swap: %w", err)
 		}
 		a.run.reasons.swap(o.offeredTask, o.to, o.requestedTask, o.from)
 		return writeReasons(ctx, a.tx, a.run.id, a.run.reasons)
 	})
+}
+
+// moveCommitment gives the Task to its new holder: the assignment moves, the
+// old holder's Commitment for today is deleted (the one exception to "never
+// deleted") and the new holder says yes by accepting the Swap.
+func (a *acting) moveCommitment(ctx context.Context, taskID, newHolder string) error {
+	if _, err := a.tx.Exec(ctx, `
+		UPDATE day_plan_assignments SET resident_id = $3, reason = $4 WHERE run_id = $1 AND task_id = $2`,
+		a.run.id, taskID, newHolder, ReasonSwapped); err != nil {
+		return fmt.Errorf("accept swap: %w", err)
+	}
+	if _, err := a.tx.Exec(ctx, `DELETE FROM task_residents WHERE task_id = $1 AND committed_on = $2`,
+		taskID, a.date.Time()); err != nil {
+		return fmt.Errorf("accept swap: %w", err)
+	}
+	if _, err := a.tx.Exec(ctx, `
+		INSERT INTO task_residents (task_id, resident_id, committed_on, committed_at) VALUES ($1, $2, $3, $4)
+		ON CONFLICT DO NOTHING`, taskID, newHolder, a.date.Time(), a.now); err != nil {
+		return fmt.Errorf("accept swap: %w", err)
+	}
+	return nil
 }
 
 // liveOffer is ErrSwapStale unless the offered Task is still the offerer's and
@@ -287,12 +299,12 @@ func (a *acting) liveOffer(ctx context.Context, o swapOffer) error {
 // DeclineSwap closes the offer for the Resident it was offered to. Nothing
 // else changes, and there is no penalty.
 func (p *Planner) DeclineSwap(ctx context.Context, homeID, residentID, offerID string, now time.Time) error {
-	return p.answerSwap(ctx, homeID, residentID, offerID, now, "decline swap", true, "declined")
+	return p.answerSwap(ctx, homeID, residentID, offerID, now, "decline swap", true, swapDeclined)
 }
 
 // CancelSwap withdraws the offer, for the Resident who made it.
 func (p *Planner) CancelSwap(ctx context.Context, homeID, residentID, offerID string, now time.Time) error {
-	return p.answerSwap(ctx, homeID, residentID, offerID, now, "cancel swap", false, "cancelled")
+	return p.answerSwap(ctx, homeID, residentID, offerID, now, "cancel swap", false, swapCancelled)
 }
 
 func (p *Planner) answerSwap(ctx context.Context, homeID, residentID, offerID string, now time.Time, name string, byRecipient bool, status string) error {

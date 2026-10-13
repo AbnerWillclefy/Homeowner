@@ -11,7 +11,7 @@
 -- Task is still assigned to from_resident_id, the requested Task to
 -- to_resident_id, and neither is done; that is decided when reading, not
 -- stored. The partial unique index stops a double tap from making two live
--- offers for the same pair of Tasks.
+-- offers for the same pair of Tasks on one day (Task ids come back every day).
 --
 -- An accepted swap moves both day_plan_assignments rows, deletes the two old
 -- holders' task_residents rows for the day and inserts the new holders' (the
@@ -39,7 +39,7 @@ CREATE TABLE swap_offers (
 CREATE INDEX swap_offers_home_id_plan_date_idx ON swap_offers (home_id, plan_date);
 
 CREATE UNIQUE INDEX swap_offers_pending_pair_idx
-    ON swap_offers (offered_task_id, requested_task_id) WHERE status = 'pending';
+    ON swap_offers (plan_date, offered_task_id, requested_task_id) WHERE status = 'pending';
 
 -- +goose Down
 DROP INDEX swap_offers_pending_pair_idx;

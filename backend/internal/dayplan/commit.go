@@ -269,6 +269,12 @@ func (a *acting) mayDo(ctx context.Context, residentID, taskID, reason string) e
 	if err != nil {
 		return err
 	}
+	return mayDoIn(st, residentID, taskID, reason)
+}
+
+// mayDoIn is mayDo against a state already loaded, so several checks in one
+// action share a single load.
+func mayDoIn(st loaded, residentID, taskID, reason string) error {
 	sub, ok := subState(st.state, residentID, nil)
 	if !ok {
 		return fmt.Errorf("check %s: resident %s is not in the home", reason, residentID)
