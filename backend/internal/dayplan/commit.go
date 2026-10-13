@@ -242,7 +242,7 @@ func (p *Planner) Take(ctx context.Context, homeID, residentID, taskID string, n
 		if ts.people > 1 {
 			return ErrTwoPersonTask
 		}
-		if err := a.checkTake(ctx, residentID, taskID); err != nil {
+		if err := a.mayDo(ctx, residentID, taskID, ReasonTaken); err != nil {
 			return err
 		}
 		if _, err := a.tx.Exec(ctx, `
@@ -260,27 +260,28 @@ func (p *Planner) Take(ctx context.Context, homeID, residentID, taskID string, n
 	})
 }
 
-// checkTake has the referee look at a plan of only this Task for only this
+// mayDo has the referee look at a plan of only this Task for only this
 // Resident, and turns what it finds into ErrRestricted. Going over Energy is
-// the one thing a Resident may choose, so it is not held against them.
-func (a *acting) checkTake(ctx context.Context, residentID, taskID string) error {
+// the one thing a Resident may choose, so it is not held against them. reason
+// is the assignment reason of the action asking (taken, swapped).
+func (a *acting) mayDo(ctx context.Context, residentID, taskID, reason string) error {
 	st, err := loadState(ctx, a.tx, a.home, a.date)
 	if err != nil {
 		return err
 	}
 	sub, ok := subState(st.state, residentID, nil)
 	if !ok {
-		return fmt.Errorf("take: resident %s is not in the home", residentID)
+		return fmt.Errorf("check %s: resident %s is not in the home", reason, residentID)
 	}
 	sub.Tasks = slices.DeleteFunc(sub.Tasks, func(t allocation.Task) bool { return t.ID != taskID })
-	plan := allocation.DayPlan{Assignments: []allocation.Assignment{{TaskID: taskID, ResidentID: residentID, Reason: ReasonTaken}}}
+	plan := allocation.DayPlan{Assignments: []allocation.Assignment{{TaskID: taskID, ResidentID: residentID, Reason: allocation.Reason(reason)}}}
 	for _, v := range allocation.Check(plan, sub) {
 		switch v.Kind {
 		case allocation.OverEnergy:
 		case allocation.BrokenRestriction, allocation.WeekdayNotAllowed:
 			return ErrRestricted
 		default:
-			return fmt.Errorf("take: referee: %s", v.Detail)
+			return fmt.Errorf("check %s: referee: %s", reason, v.Detail)
 		}
 	}
 	return nil
