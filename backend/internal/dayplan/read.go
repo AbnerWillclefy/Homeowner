@@ -23,6 +23,9 @@ const ReasonAddedAfterPlan = "added_after_plan"
 type TaskView struct {
 	tasks.Open
 	Reason string `json:"reason,omitempty"`
+	// Committed: the Resident it is assigned to accepted it today. Always
+	// false in the pool.
+	Committed bool `json:"committed"`
 }
 
 // ResidentTasks are the Tasks one Resident was given.
@@ -125,6 +128,10 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 	for _, a := range assigned {
 		by[a.task] = a.given
 	}
+	committed, err := s.committedToday(ctx, homeID, date)
+	if err != nil {
+		return View{}, err
+	}
 
 	at := map[string]int{} // index in v.Others by Resident id, in first-seen order
 	for _, o := range open {
@@ -138,7 +145,7 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 			}
 			v.Pool = append(v.Pool, TaskView{Open: o, Reason: reason})
 		case g.resident == residentID:
-			v.Mine = append(v.Mine, TaskView{Open: o, Reason: g.reason})
+			v.Mine = append(v.Mine, TaskView{Open: o, Reason: g.reason, Committed: committed[commitment{o.ID, g.resident}]})
 		default:
 			i, seen := at[g.resident]
 			if !seen {
@@ -146,8 +153,33 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 				at[g.resident] = i
 				v.Others = append(v.Others, ResidentTasks{ResidentID: g.resident, Tasks: []TaskView{}})
 			}
-			v.Others[i].Tasks = append(v.Others[i].Tasks, TaskView{Open: o, Reason: g.reason})
+			v.Others[i].Tasks = append(v.Others[i].Tasks, TaskView{Open: o, Reason: g.reason, Committed: committed[commitment{o.ID, g.resident}]})
 		}
 	}
 	return v, nil
+}
+
+// commitment is a Resident's promise of a Task.
+type commitment struct{ task, resident string }
+
+// committedToday is every Commitment of the Home dated the given day.
+func (s *Store) committedToday(ctx context.Context, homeID string, date time.Time) (map[commitment]bool, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT tr.task_id, tr.resident_id
+		FROM task_residents tr JOIN residents r ON r.id = tr.resident_id
+		WHERE r.home_id = $1 AND tr.committed_on = $2`, homeID, date)
+	if err != nil {
+		return nil, fmt.Errorf("day plan: load commitments: %w", err)
+	}
+	list, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (c commitment, err error) {
+		return c, r.Scan(&c.task, &c.resident)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("day plan: load commitments: %w", err)
+	}
+	out := make(map[commitment]bool, len(list))
+	for _, c := range list {
+		out[c] = true
+	}
+	return out, nil
 }
