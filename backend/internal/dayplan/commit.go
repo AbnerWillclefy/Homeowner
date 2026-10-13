@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -195,6 +196,75 @@ func (p *Planner) Refuse(ctx context.Context, homeID, residentID, taskID string,
 		a.run.reasons.refuse(taskID)
 		return writeReasons(ctx, a.tx, a.run.id, a.run.reasons)
 	})
+}
+
+// Take gives the Resident a Task from today's pool and Commits them to it. It
+// may go over the Resident's Energy (they chose it), but never over a
+// Restriction or the Chore's allowed weekdays: the same referee that checks
+// every plan decides that. A Task for two people cannot be taken yet.
+func (p *Planner) Take(ctx context.Context, homeID, residentID, taskID string, now time.Time) error {
+	return p.act(ctx, homeID, now, "take", func(a *acting) error {
+		ts, err := lockTask(ctx, a.tx, homeID, taskID)
+		if err != nil {
+			return err
+		}
+		if ts.done {
+			return ErrAlreadyDone
+		}
+		var assignedToday bool
+		err = a.tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM day_plan_assignments WHERE run_id = $1 AND task_id = $2)`,
+			a.run.id, taskID).Scan(&assignedToday)
+		if err != nil {
+			return fmt.Errorf("take: %w", err)
+		}
+		if assignedToday {
+			return ErrNotInPool
+		}
+		if ts.people > 1 {
+			return ErrTwoPersonTask
+		}
+		if err := a.checkTake(ctx, residentID, taskID); err != nil {
+			return err
+		}
+		if _, err := a.tx.Exec(ctx, `
+			INSERT INTO day_plan_assignments (run_id, task_id, resident_id, reason) VALUES ($1, $2, $3, $4)`,
+			a.run.id, taskID, residentID, ReasonTaken); err != nil {
+			return fmt.Errorf("take: %w", err)
+		}
+		if _, err := a.tx.Exec(ctx, `
+			INSERT INTO task_residents (task_id, resident_id, committed_on, committed_at) VALUES ($1, $2, $3, $4)`,
+			taskID, residentID, a.date.Time(), a.now); err != nil {
+			return fmt.Errorf("take: %w", err)
+		}
+		a.run.reasons.take(taskID, residentID)
+		return writeReasons(ctx, a.tx, a.run.id, a.run.reasons)
+	})
+}
+
+// checkTake has the referee look at a plan of only this Task for only this
+// Resident, and turns what it finds into ErrRestricted. Going over Energy is
+// the one thing a Resident may choose, so it is not held against them.
+func (a *acting) checkTake(ctx context.Context, residentID, taskID string) error {
+	st, err := loadState(ctx, a.tx, a.home, a.date)
+	if err != nil {
+		return err
+	}
+	sub, ok := subState(st.state, residentID, nil)
+	if !ok {
+		return fmt.Errorf("take: resident %s is not in the home", residentID)
+	}
+	sub.Tasks = slices.DeleteFunc(sub.Tasks, func(t allocation.Task) bool { return t.ID != taskID })
+	plan := allocation.DayPlan{Assignments: []allocation.Assignment{{TaskID: taskID, ResidentID: residentID, Reason: ReasonTaken}}}
+	for _, v := range allocation.Check(plan, sub) {
+		switch v.Kind {
+		case allocation.OverEnergy:
+		case allocation.BrokenRestriction, allocation.WeekdayNotAllowed:
+			return ErrRestricted
+		default:
+			return fmt.Errorf("take: referee: %s", v.Detail)
+		}
+	}
+	return nil
 }
 
 // committedOn reports whether the Resident committed to the Task on the date.
