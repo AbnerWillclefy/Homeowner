@@ -73,10 +73,12 @@ flowchart TB
 flowchart LR
     PR["Pull request"] --> BT["backend-test: go vet, go test -race, Postgres 16 service"]
     PR --> WT["web-typecheck: npm ci, typecheck, build"]
+    PR --> E2E["web-e2e: build with dummy config, Playwright on Chromium"]
     PR --> IC["infra-check"]
     PR --> CR["Claude review"]
     BT --> M["Human merges to main"]
     WT --> M
+    E2E --> M
     IC --> M
     M --> DS
     subgraph DS["Deploy staging (one workflow, AWS access through OIDC)"]
@@ -88,7 +90,7 @@ flowchart LR
     DS -.-> DP["Deploy prod (planned)"]
 ```
 
-Built: `backend-test.yml`, `web-typecheck.yml` and `infra-check.yml` on pull requests. `deploy-staging.yml`, named exactly `Deploy staging`, runs on every push to `main`. Its `api` job applies Terraform, builds the image, runs migrations before the new code goes live, and smoke tests `/healthz`. The `web` job runs after `api` (`needs: api`), so it can read the API URL and the bucket and distribution from Terraform. The `agent-*.yml`, `claude*.yml`, `project-sync.yml` and `notify-ready-to-merge.yml` workflows run the team pipeline described in `CLAUDE.md`. The prod deploy is planned.
+Built: `backend-test.yml`, `web-typecheck.yml`, `web-e2e.yml` and `infra-check.yml` on pull requests. `web-e2e` has no path filter, needs no secrets (it builds with the public dummy values in `web/.env.e2e`), caches the Chromium download, and uploads the Playwright report only when it fails. `deploy-staging.yml`, named exactly `Deploy staging`, runs on every push to `main`. Its `api` job applies Terraform, builds the image, runs migrations before the new code goes live, and smoke tests `/healthz`. The `web` job runs after `api` (`needs: api`), so it can read the API URL and the bucket and distribution from Terraform. The `agent-*.yml`, `claude*.yml`, `project-sync.yml` and `notify-ready-to-merge.yml` workflows run the team pipeline described in `CLAUDE.md`. The prod deploy is planned.
 
 ## Cost against $20 a month (estimate)
 
