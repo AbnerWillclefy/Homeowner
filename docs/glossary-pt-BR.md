@@ -22,6 +22,12 @@ Agreed Brazilian Portuguese equivalents for the terms in [CONTEXT.md](../CONTEXT
 | Allocation | alocação | agendamento, distribuição | The daily run that proposes Tasks. "Allocation time" is "horário da alocação" (the time of day it runs). Used in `home.allocationTime.label`. |
 | Task | tarefa | atribuição, ocorrência, instância | Plural "tarefas" in running text. Used in `dayplan.*`. |
 | Day Plan | plano do dia | agenda, cronograma, programação, lista diária | Used in `home.leave.removes`. |
+| Committed | assumida | confirmada, comprometida | A Task the Resident accepted. Feminine, agreeing with "tarefa". Shown as text on the card. Draft for the native speaker to confirm. Used in `dayplan.task.committed`. |
+| Accept / Accept all | aceitar / aceitar todas | confirmar | Button on a Proposed Task, and the one above "Suas tarefas" ("Aceitar todas as {count} tarefas"). Used in `dayplan.action.accept*`, `dayplan.action.acceptAll`. |
+| Refuse | recusar | rejeitar, negar | Sends a Proposed Task back to the open Tasks. Used in `dayplan.action.refuse*` and `dayplan.pool.reason.refused`. |
+| Take | pegar | assumir, tomar | Takes an open Task for yourself. Used in `dayplan.action.take*` and `dayplan.assigned.reason.taken`. |
+| Completion | conclusão; the button is "Concluir {task}" | marcação, check, marcar como feito | Recording that a Task was done. CONTEXT.md avoids "Done flag" and "Checkmark", so the pt-BR avoids "marcação" and "check". Used in `dayplan.action.done*`. |
+| Done today | Concluídas hoje | Feitas hoje, Marcadas | Heading of the list of Tasks the Resident completed today. Used in `dayplan.done.heading`. |
 | Baseline | energia base | padrão, energia padrão | A User's usual Energy per weekday. Used in `profile.baseline.*`. |
 | Baseline level | baixa, normal, alta | fraca, forte, média | The three choices per weekday (Low, Normal, High); they describe the Energy ("energia"), so they agree with it in the feminine, like the Check-in "baixa". Used in `profile.baseline.level.*`. |
 | Energy | energia | humor, disposição, fôlego | Used in `checkin.level.legend`. |
