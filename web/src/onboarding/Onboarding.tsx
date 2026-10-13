@@ -123,7 +123,12 @@ export function Onboarding({ position, onPosition }: Props) {
     const on = reminders.kind === "on";
     return {
       // Permission is asked only from the enable tap, never on mount.
-      body: on ? <p role="status">{t("reminders.on")}</p> : <EnableReminders reminders={reminders} onEnable={push.enable} />,
+      body: (
+        <>
+          <Intro text={t("onboarding.reminders.intro")} />
+          {on ? <p role="status">{t("reminders.on")}</p> : <EnableReminders reminders={reminders} onEnable={push.enable} />}
+        </>
+      ),
       next: { label: on ? "onboarding.reminders.continue" : "onboarding.reminders.notNow", primary: on, onClick: goNext },
     };
   }
@@ -138,7 +143,12 @@ export function Onboarding({ position, onPosition }: Props) {
 
     baseline: () =>
       profileStep(
-        (loaded) => <BaselineFields baseline={loaded.profile.baseline} onSave={profile.setBaseline} />,
+        (loaded) => (
+          <>
+            <Intro text={t("onboarding.baseline.intro")} />
+            <BaselineFields baseline={loaded.profile.baseline} onSave={profile.setBaseline} />
+          </>
+        ),
         nextFromBaseline,
         baselineIncomplete && <p role="alert">{t("onboarding.baseline.incomplete")}</p>,
       ),
@@ -161,6 +171,7 @@ export function Onboarding({ position, onPosition }: Props) {
     home: () => ({
       body: (
         <CreateHome
+          showHeading={false}
           onSaved={() => {
             onPosition("done");
             onHomeFinished(null);
@@ -180,7 +191,8 @@ export function Onboarding({ position, onPosition }: Props) {
 
   return (
     <OnboardingLayout
-      progress={t("onboarding.progress", { step, total })}
+      step={step}
+      total={total}
       heading={t(HEADING_KEY[current])}
       headingRef={headingRef}
       onBack={walk.canGoBack ? walk.back : undefined}
@@ -198,6 +210,11 @@ export function Onboarding({ position, onPosition }: Props) {
       {body}
     </OnboardingLayout>
   );
+}
+
+/** A line under the heading saying what the step is for. */
+function Intro({ text }: { text: string }) {
+  return <p className="mt-0 mb-4 text-muted">{text}</p>;
 }
 
 function NextButton({

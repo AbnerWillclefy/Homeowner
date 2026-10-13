@@ -16,6 +16,8 @@ interface Props {
   onSaved(home: Home): void;
   /** The person already had a Home, and it was loaded instead of a new one made. */
   onRecovered(home: Home, choresDropped: boolean): void;
+  /** False where the page heading already reads "Create your Home", as in onboarding. */
+  showHeading?: boolean;
 }
 
 const STEPS: readonly Step[] = ["settings", "questions", "review"];
@@ -31,7 +33,7 @@ const SUGGEST_FAILURE_KEY = {
  * the questions the Catalog turns into suggested Chores, and a review where those can be edited or removed.
  * Nothing is saved until the last step, which creates the Home and the reviewed Chores together.
  */
-export function CreateHome({ onSaved, onRecovered }: Props) {
+export function CreateHome({ onSaved, onRecovered, showHeading = true }: Props) {
   const { t } = useI18n();
   const zones = useMemo(() => browserTimezones(), []);
   const options = useMemo(() => timezoneOptions(zones), [zones]);
@@ -70,7 +72,9 @@ export function CreateHome({ onSaved, onRecovered }: Props) {
     return (
       <section aria-labelledby="create-home-heading">
         {stepLine}
-        <h2 id="create-home-heading">{t("home.create.heading")}</h2>
+        <h2 id="create-home-heading" className={showHeading ? undefined : "sr-only"}>
+          {t("home.create.heading")}
+        </h2>
         <form onSubmit={onSubmit} noValidate className="flex flex-col">
           <HomeFields
             idPrefix="create-home"
@@ -85,7 +89,7 @@ export function CreateHome({ onSaved, onRecovered }: Props) {
               {t("home.invalid.summary")}
             </p>
           )}
-          <Button type="submit" className="mt-6">
+          <Button type="submit" className="mt-8 w-full">
             {t("home.create.next")}
           </Button>
         </form>
@@ -138,31 +142,35 @@ export function CreateHome({ onSaved, onRecovered }: Props) {
               </ButtonRow>
             </div>
           ) : (
-            <ButtonRow className="mt-2">
-              <Button
-                variant="secondary"
-                disabled={working}
-                onClick={() => flow.setStep("settings")}
-              >
-                {t("home.create.back")}
-              </Button>
-              <Button type="submit" disabled={working} aria-busy={working}>
+            <div className="mt-8 flex flex-col gap-3">
+              <Button type="submit" className="w-full" disabled={working} aria-busy={working}>
                 {t(
                   working
                     ? "catalog.questions.submitting"
                     : "catalog.questions.submit",
                 )}
               </Button>
-              {flow.canSkip && (
+              <ButtonRow className="justify-between">
                 <Button
-                  variant="secondary"
+                  variant="ghost"
+                  className="px-4"
                   disabled={working}
-                  onClick={flow.skip}
+                  onClick={() => flow.setStep("settings")}
                 >
-                  {t("catalog.questions.skip")}
+                  {t("home.create.back")}
                 </Button>
-              )}
-            </ButtonRow>
+                {flow.canSkip && (
+                  <Button
+                    variant="ghost"
+                    className="px-4 underline underline-offset-[0.2em]"
+                    disabled={working}
+                    onClick={flow.skip}
+                  >
+                    {t("catalog.questions.skip")}
+                  </Button>
+                )}
+              </ButtonRow>
+            </div>
           )}
         </form>
       </section>
@@ -190,22 +198,24 @@ export function CreateHome({ onSaved, onRecovered }: Props) {
           {t(SAVE_FAILURE_KEY[flow.create.reason])}
         </p>
       )}
-      <ButtonRow className="mt-2">
+      <div className="mt-6 flex flex-col gap-3">
         <Button
-          variant="secondary"
-          disabled={saving}
-          onClick={() => flow.setStep("questions")}
-        >
-          {t("home.create.back")}
-        </Button>
-        <Button
+          className="w-full"
           disabled={saving}
           aria-busy={saving}
           onClick={() => void flow.submit()}
         >
           {t(saving ? "home.create.submitting" : "home.create.submit")}
         </Button>
-      </ButtonRow>
+        <Button
+          variant="ghost"
+          className="self-start px-4"
+          disabled={saving}
+          onClick={() => flow.setStep("questions")}
+        >
+          {t("home.create.back")}
+        </Button>
+      </div>
     </>
   );
 }

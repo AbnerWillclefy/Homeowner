@@ -580,8 +580,6 @@ export const enUS = {
     other: "{count} Chores suggested",
   },
   "catalog.review.empty": "No Chores are suggested.",
-  "catalog.review.edit": "Edit",
-  "catalog.review.remove": "Remove",
   "catalog.review.remove.label": "Remove {name}",
   "catalog.review.remove.prompt": "Remove {name} from the suggestions?",
   "catalog.review.remove.confirm": "Yes, remove",
@@ -658,12 +656,16 @@ export const enUS = {
   "onboarding.install.heading": "Add Homeowner to your Home Screen",
   "onboarding.install.done": "I have added it",
   "onboarding.reminders.heading": "Turn on reminders",
+  "onboarding.reminders.intro":
+    "A nudge on this device when your Check-in is due. The app also asks for it whenever you open it, so reminders are optional.",
   "onboarding.reminders.needsInstall":
     "Open Homeowner from its Home Screen icon to turn on reminders, or skip this step.",
   "onboarding.reminders.unsupported": "This browser cannot show reminders.",
   "onboarding.reminders.continue": "Continue",
   "onboarding.reminders.notNow": "Not now",
   "onboarding.baseline.heading": "Your Baseline",
+  "onboarding.baseline.intro":
+    "How much Energy you usually have on each day of the week. Your daily Check-in adjusts it, so a rough guess is enough.",
   "onboarding.baseline.incomplete":
     "Enter a number for every day, or 0 for a day with no Chores.",
   "onboarding.restrictions.heading": "Your Restrictions",
