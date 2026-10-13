@@ -134,44 +134,18 @@ func (p *Planner) replanRun(ctx context.Context, tx pgx.Tx, homeID, residentID s
 	for id := range committed {
 		given[id] = true
 	}
-	// A two-person Task is only ever placed by the daily Allocation, never by
-	// a one-Resident re-plan, and its rows stand or fall together. Those the
-	// Resident holds stay (keep) when either partner promised them, or when the
-	// Resident can still afford them; otherwise both partners lose them.
-	held, err := heldTwoPerson(ctx, tx, runID, residentID, date)
+	two, err := settleTwoPerson(ctx, tx, st, runID, residentID, date, committed)
 	if err != nil {
 		return nil, err
 	}
-	keep := maps.Clone(committed)
-	for _, h := range held {
-		given[h.id] = true
-		if h.committed {
-			keep[h.id] = true
-		}
+	for _, id := range two.held {
+		given[id] = true
 	}
 	sub, ok := subState(st.state, residentID, given)
 	if !ok {
 		return nil, fmt.Errorf("check in: resident %s is not in the home", residentID)
 	}
-	left := energyLeft(sub.Residents[0].Energy, st.state.Tasks, keep)
-	var released []string
-	for _, h := range held {
-		if keep[h.id] {
-			continue
-		}
-		effort := effortOf(st.state.Tasks, h.id)
-		err := mayDoIn(st, residentID, h.id, "replan")
-		if err != nil && !errors.Is(err, ErrRestricted) {
-			return nil, err
-		}
-		if err == nil && left >= effort {
-			left -= effort
-			keep[h.id] = true
-		} else {
-			released = append(released, h.id)
-		}
-	}
-	sub.Residents[0].Energy = left
+	sub.Residents[0].Energy = two.left
 
 	res, err := p.alloc.Plan(sub)
 	if err != nil {
@@ -182,20 +156,90 @@ func (p *Planner) replanRun(ctx context.Context, tx pgx.Tx, homeID, residentID s
 			p.alloc.Name(), len(vs), vs[0].Detail)
 	}
 
-	for _, id := range released {
-		if _, err := tx.Exec(ctx, `DELETE FROM day_plan_assignments WHERE run_id = $1 AND task_id = $2`, runID, id); err != nil {
-			return nil, fmt.Errorf("check in: release two-person task: %w", err)
-		}
-		rs.release(id)
+	rs.replan(residentID, st.energy[residentID], res, two.keep)
+	if err := releaseTwoPerson(ctx, tx, runID, &rs, two.released); err != nil {
+		return nil, err
 	}
-	rs.replan(residentID, st.energy[residentID], res, keep)
-	for _, id := range released {
-		rs.Pool = append(rs.Pool, pooled{TaskID: id, Reason: string(allocation.ReasonNoEnergyLeft)})
-	}
-	if err := persist(ctx, tx, runID, residentID, res, rs, keep); err != nil {
+	if err := persist(ctx, tx, runID, residentID, res, rs, two.keep); err != nil {
 		return nil, err
 	}
 	return &replanned{assigned: len(res.DayPlan.Assignments), pooled: len(res.Pool)}, nil
+}
+
+// twoPerson is how a re-plan treats the two-person Tasks the Resident holds.
+type twoPerson struct {
+	held     []string        // every open two-person Task the run gave the Resident
+	keep     map[string]bool // Tasks a re-plan must not drop: Commitments and the held Tasks that stand
+	released []string        // held Tasks that fall, for both partners
+	left     int             // Energy the re-plan may still hand out
+}
+
+// settleTwoPerson decides the two-person Tasks the Resident holds. A two-person
+// Task is only ever placed by the daily Allocation, never by a one-Resident
+// re-plan, and its rows stand or fall together. Those held stay (keep) when
+// either partner promised them, or when the Resident can still afford them and
+// may do them; otherwise both partners lose them (released).
+func settleTwoPerson(ctx context.Context, tx pgx.Tx, st loaded, runID, residentID string, date allocation.Date, committed map[string]bool) (twoPerson, error) {
+	var energy int
+	found := false
+	for _, r := range st.state.Residents {
+		if r.ID == residentID {
+			energy, found = r.Energy, true
+		}
+	}
+	if !found {
+		return twoPerson{}, fmt.Errorf("check in: resident %s is not in the home", residentID)
+	}
+	held, err := heldTwoPerson(ctx, tx, runID, residentID)
+	if err != nil {
+		return twoPerson{}, err
+	}
+	two := twoPerson{held: held, keep: maps.Clone(committed)}
+	promised := map[string]bool{}
+	for _, id := range held {
+		yes, err := committedBy(ctx, tx, id, residentID, date, true)
+		if err != nil {
+			return twoPerson{}, err
+		}
+		if yes {
+			two.keep[id], promised[id] = true, true
+		}
+	}
+	left := energyLeft(energy, st.state.Tasks, two.keep)
+	for _, id := range held {
+		if promised[id] {
+			continue
+		}
+		effort, ok := effortOf(st.state.Tasks, id)
+		if !ok {
+			return twoPerson{}, fmt.Errorf("check in: two-person task %s is not an open task", id)
+		}
+		err := mayDoIn(st, residentID, id, "replan")
+		if err != nil && !errors.Is(err, ErrRestricted) {
+			return twoPerson{}, err
+		}
+		if err == nil && left >= effort {
+			left -= effort
+			two.keep[id] = true
+		} else {
+			two.released = append(two.released, id)
+		}
+	}
+	two.left = left
+	return two, nil
+}
+
+// releaseTwoPerson takes the Tasks back from both partners and sends them to
+// the pool with no energy left.
+func releaseTwoPerson(ctx context.Context, tx pgx.Tx, runID string, rs *reasons, released []string) error {
+	for _, id := range released {
+		if _, err := tx.Exec(ctx, `DELETE FROM day_plan_assignments WHERE run_id = $1 AND task_id = $2`, runID, id); err != nil {
+			return fmt.Errorf("check in: release two-person task: %w", err)
+		}
+		rs.release(id)
+		rs.Pool = append(rs.Pool, pooled{TaskID: id, Reason: string(allocation.ReasonNoEnergyLeft)})
+	}
+	return nil
 }
 
 // subState narrows st to one Resident and to the Tasks not given to someone
@@ -245,53 +289,62 @@ func committedTasks(ctx context.Context, tx pgx.Tx, residentID string, date allo
 	return out, nil
 }
 
-// heldTask is a two-person Task the run gave the Resident; committed says
-// whether either partner promised it today.
-type heldTask struct {
-	id        string
-	committed bool
+// committedBy says whether the Task is Committed on the date: by the Resident,
+// or by anyone when anyPartner is set (a two-person Task is promised once either
+// partner accepts it).
+func committedBy(ctx context.Context, tx pgx.Tx, taskID, residentID string, date allocation.Date, anyPartner bool) (bool, error) {
+	var yes bool
+	err := tx.QueryRow(ctx, `
+		SELECT EXISTS (SELECT 1 FROM task_residents
+		               WHERE task_id = $1 AND committed_on = $2 AND ($3 OR resident_id = $4))`,
+		taskID, date.Time(), anyPartner, residentID).Scan(&yes)
+	if err != nil {
+		return false, fmt.Errorf("check commitment: %w", err)
+	}
+	return yes, nil
 }
 
-// heldTwoPerson lists the open two-person Tasks the run gave the Resident,
-// ordered by id.
-func heldTwoPerson(ctx context.Context, tx pgx.Tx, runID, residentID string, date allocation.Date) ([]heldTask, error) {
+// heldTwoPerson lists the ids of the open two-person Tasks the run gave the
+// Resident, ordered by id.
+func heldTwoPerson(ctx context.Context, tx pgx.Tx, runID, residentID string) ([]string, error) {
 	rows, err := tx.Query(ctx, `
-		SELECT d.task_id,
-		       EXISTS (SELECT 1 FROM task_residents c WHERE c.task_id = d.task_id AND c.committed_on = $3)
+		SELECT d.task_id
 		FROM day_plan_assignments d
 		JOIN tasks t ON t.id = d.task_id AND t.status = 'open'
 		JOIN chores ch ON ch.id = t.chore_id AND ch.people > 1
 		WHERE d.run_id = $1 AND d.resident_id = $2
-		ORDER BY d.task_id`, runID, residentID, date.Time())
+		ORDER BY d.task_id`, runID, residentID)
 	if err != nil {
 		return nil, fmt.Errorf("check in: load two-person tasks: %w", err)
 	}
-	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (h heldTask, err error) {
-		return h, r.Scan(&h.id, &h.committed)
-	})
+	out, err := pgx.CollectRows(rows, pgx.RowTo[string])
 	if err != nil {
 		return nil, fmt.Errorf("check in: load two-person tasks: %w", err)
 	}
 	return out, nil
 }
 
-func effortOf(tasks []allocation.Task, id string) int {
+// effortOf is the Effort of the Task in tasks; ok is false when it is not there.
+func effortOf(tasks []allocation.Task, id string) (effort int, ok bool) {
 	for _, t := range tasks {
 		if t.ID == id {
-			return t.Effort
+			return t.Effort, true
 		}
 	}
-	return 0
+	return 0, false
 }
 
 // persist replaces the Resident's Proposed assignments in the run and writes
 // its reasons. The Tasks in keep stay: a re-plan never drops a promise, nor
 // half of a two-person Task.
 func persist(ctx context.Context, tx pgx.Tx, runID, residentID string, res allocation.Result, rs reasons, keep map[string]bool) error {
+	// Never nil: pgx sends a nil slice as NULL, and NOT (x = ANY(NULL)) is NULL,
+	// so nothing would be cleared when keep is empty.
+	kept := append([]string{}, slices.Sorted(maps.Keys(keep))...)
 	if _, err := tx.Exec(ctx, `
 		DELETE FROM day_plan_assignments
-		WHERE run_id = $1 AND resident_id = $2 AND NOT (task_id::text = ANY($3))`,
-		runID, residentID, append([]string{}, slices.Collect(maps.Keys(keep))...)); err != nil {
+		WHERE run_id = $1 AND resident_id = $2 AND NOT (task_id = ANY($3::uuid[]))`,
+		runID, residentID, kept); err != nil {
 		return fmt.Errorf("check in: clear assignments: %w", err)
 	}
 	for _, a := range res.DayPlan.Assignments {

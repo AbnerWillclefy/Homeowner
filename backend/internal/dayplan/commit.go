@@ -205,14 +205,7 @@ func (p *Planner) Refuse(ctx context.Context, homeID, residentID, taskID string,
 		}
 		// A two-person Task is refused only while neither partner has promised
 		// it, and then it frees both. A Commitment is never deleted.
-		var committed bool
-		if ts.people > 1 {
-			err = a.tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM task_residents WHERE task_id = $1 AND committed_on = $2)`,
-				taskID, a.date.Time()).Scan(&committed)
-		} else {
-			err = a.tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM task_residents WHERE task_id = $1 AND resident_id = $2 AND committed_on = $3)`,
-				taskID, residentID, a.date.Time()).Scan(&committed)
-		}
+		committed, err := committedBy(ctx, a.tx, taskID, residentID, a.date, ts.people > 1)
 		if err != nil {
 			return fmt.Errorf("refuse: %w", err)
 		}
