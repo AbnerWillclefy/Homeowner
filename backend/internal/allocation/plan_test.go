@@ -39,8 +39,6 @@ func TestPlanEnergyBudgets(t *testing.T) {
 			nil, []PoolEntry{pool("t", ReasonNoEnergyLeft)}},
 		{"invalid effort stays in the pool", state(rs(resident("a", 5)), task("t", 0)),
 			nil, []PoolEntry{pool("t", ReasonInvalidEffort)}},
-		{"two-person task is deferred", state(rs(resident("a", 5), resident("b", 5)), task("t", 1, people(2))),
-			nil, []PoolEntry{pool("t", ReasonTwoPersonDeferred)}},
 		{"empty state", state(nil), nil, nil},
 		{"residents without tasks", state(rs(resident("a", 5))), nil, nil},
 	})
@@ -173,6 +171,54 @@ func TestPlanAllowedWeekdays(t *testing.T) {
 			nil, []PoolEntry{pool("t", ReasonWeekdayNotAllowed)}},
 		{"forbidden task does not use energy", state(rs(resident("a", 1)), task("x", 1, onlyOn(other)), task("y", 1)),
 			[]Assignment{give("y", "a", ReasonFitsEnergy)}, []PoolEntry{pool("x", ReasonWeekdayNotAllowed)}},
+	})
+}
+
+func TestPlanTwoPersonTasks(t *testing.T) {
+	lift := Demand("heavy_lifting")
+	two := people(2)
+	other := (today.Weekday() + 1) % 7
+	runPlanCases(t, []planCase{
+		{"fits two residents, each pays the full effort",
+			state(rs(resident("a", 3), resident("b", 3)), task("t", 3, two, importance(Essential)), task("later", 1)),
+			[]Assignment{give("t", "a", ReasonImportance), give("t", "b", ReasonImportance)},
+			[]PoolEntry{pool("later", ReasonNoEnergyLeft)}},
+		{"later tasks see the energy already spent",
+			state(rs(resident("a", 4), resident("b", 3)), task("t1", 3, two, importance(Essential)), task("t2", 1)),
+			[]Assignment{give("t1", "a", ReasonImportance), give("t1", "b", ReasonImportance), give("t2", "a", ReasonFitsEnergy)}, nil},
+		{"one resident short of energy pools it and charges nobody",
+			state(rs(resident("a", 5), resident("b", 2)), task("t", 3, two), task("u", 5)),
+			[]Assignment{give("u", "a", ReasonFitsEnergy)}, []PoolEntry{pool("t", ReasonTwoPersonDeferred)}},
+		{"a home of one resident pools it",
+			state(rs(resident("a", 5)), task("t", 1, two)),
+			nil, []PoolEntry{pool("t", ReasonTwoPersonDeferred)}},
+		{"a home of nobody pools it",
+			state(nil, task("t", 1, two)),
+			nil, []PoolEntry{pool("t", ReasonTwoPersonDeferred)}},
+		{"exactly equal energy fits",
+			state(rs(resident("a", 2), resident("b", 2)), task("t", 2, two)),
+			[]Assignment{give("t", "a", ReasonFitsEnergy), give("t", "b", ReasonFitsEnergy)}, nil},
+		{"one restricted by demand pools it",
+			state(rs(resident("a", 5).cannotDo(lift), resident("b", 5)), task("t", 1, two, demands(lift))),
+			nil, []PoolEntry{pool("t", ReasonTwoPersonDeferred)}},
+		{"one restricted by chore pools it",
+			state(rs(resident("a", 5).cannotDoChore("chore-t"), resident("b", 5)), task("t", 1, two)),
+			nil, []PoolEntry{pool("t", ReasonTwoPersonDeferred)}},
+		{"both restricted is restricted for all",
+			state(rs(resident("a", 5).cannotDo(lift), resident("b", 5).cannotDo(lift)), task("t", 1, two, demands(lift))),
+			nil, []PoolEntry{pool("t", ReasonRestrictedForAll)}},
+		{"weekday not allowed comes first",
+			state(rs(resident("a", 5), resident("b", 5)), task("t", 1, two, onlyOn(other))),
+			nil, []PoolEntry{pool("t", ReasonWeekdayNotAllowed)}},
+		{"three residents: the two with most energy, a restricted one skipped",
+			state(rs(resident("a", 2), resident("b", 5).cannotDo(lift), resident("c", 4), resident("d", 3)), task("t", 2, two, demands(lift))),
+			[]Assignment{give("t", "c", ReasonFitsEnergy), give("t", "d", ReasonFitsEnergy)}, nil},
+		{"ties go to the lowest resident ids",
+			state(rs(resident("c", 4), resident("a", 4), resident("b", 4)), task("t", 2, two)),
+			[]Assignment{give("t", "a", ReasonFitsEnergy), give("t", "b", ReasonFitsEnergy)}, nil},
+		{"mixed with a one-person task in urgency order",
+			state(rs(resident("a", 3), resident("b", 3)), task("solo", 3, importance(Essential)), task("duo", 3, two)),
+			[]Assignment{give("solo", "a", ReasonImportance)}, []PoolEntry{pool("duo", ReasonTwoPersonDeferred)}},
 	})
 }
 

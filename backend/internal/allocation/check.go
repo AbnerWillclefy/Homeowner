@@ -13,9 +13,11 @@ import (
 // Over-energy is reported once per Resident (TaskID empty), because the rule
 // is that the sum of a Resident's Efforts stays within their Energy.
 //
-// A Task appearing in more than one assignment is a DuplicateTask. The
-// two-person Tasks ticket must revise this rule, since such a Task legitimately
-// appears once per Resident.
+// A one-person Task appearing in more than one assignment is a DuplicateTask.
+// A two-person Task legitimately appears once per Resident: it is a
+// WrongResidentCount unless exactly two distinct Residents are named (known or
+// not), and a DuplicateTask if one of those pairs repeats. A Task absent from
+// the plan is in the pool, never a violation.
 func Check(p DayPlan, s State) []Violation {
 	residents := make(map[string]Resident)
 	for _, r := range uniqueResidents(s.Residents) {
@@ -32,8 +34,13 @@ func Check(p DayPlan, s State) []Violation {
 	counted := make(map[pair]bool)
 	used := make(map[string]int)
 
+	named := make(map[string]map[string]bool)
 	for _, a := range p.Assignments {
 		appearances[a.TaskID]++
+		if named[a.TaskID] == nil {
+			named[a.TaskID] = make(map[string]bool)
+		}
+		named[a.TaskID][a.ResidentID] = true
 		t, taskKnown := tasks[a.TaskID]
 		r, residentKnown := residents[a.ResidentID]
 		if !taskKnown {
@@ -67,6 +74,18 @@ func Check(p DayPlan, s State) []Violation {
 	}
 
 	for id, n := range appearances {
+		t, known := tasks[id]
+		distinct := len(named[id])
+		if known && peopleNeeded(t) > 1 {
+			if distinct != peopleNeeded(t) {
+				out = append(out, Violation{Kind: WrongResidentCount, TaskID: id,
+					Detail: fmt.Sprintf("task %q needs %d residents and is given to %d", id, peopleNeeded(t), distinct)})
+			} else if n > distinct {
+				out = append(out, Violation{Kind: DuplicateTask, TaskID: id,
+					Detail: fmt.Sprintf("task %q is given %d times to %d residents", id, n, distinct)})
+			}
+			continue
+		}
 		if n > 1 {
 			out = append(out, Violation{Kind: DuplicateTask, TaskID: id,
 				Detail: fmt.Sprintf("task %q is given %d times", id, n)})

@@ -33,6 +33,15 @@ func weekdayAllowed(t Task, day Date) bool {
 	return len(t.AllowedWeekdays) == 0 || slices.Contains(t.AllowedWeekdays, day.Weekday())
 }
 
+// peopleNeeded is how many Residents the Task is given to: one, or two for a
+// two-person Task. Plan and Check both use it so they cannot disagree.
+func peopleNeeded(t Task) int {
+	if t.People >= 2 {
+		return 2
+	}
+	return 1
+}
+
 func restricted(r Resident, t Task) bool {
 	_, d, c := breaksRestriction(r, t)
 	return d || c
@@ -71,8 +80,10 @@ func lateness(t Task, today Date) int { return max(int(today-t.WindowStart), 0) 
 
 // Plan proposes a Day Plan: open Tasks sorted by hard deadline today, then
 // Importance, then lateness, then TaskID, each given to the fitting Resident
-// with the most Energy left. Tasks that fit nobody stay in the pool. Output is
-// sorted by TaskID and does not depend on the order of the input.
+// with the most Energy left; a two-person Task goes to the two fitting
+// Residents with the most Energy left, each paying the full Effort. Tasks that
+// fit too few Residents stay in the pool. Output is sorted by TaskID then
+// ResidentID and does not depend on the order of the input.
 func Plan(s State) (Result, error) {
 	residents := uniqueResidents(s.Residents)
 	slices.SortFunc(residents, func(a, b Resident) int { return cmp.Compare(a.ID, b.ID) })
@@ -102,33 +113,42 @@ func Plan(s State) (Result, error) {
 		case !weekdayAllowed(t, s.Today):
 			res.Pool = append(res.Pool, PoolEntry{t.ID, ReasonWeekdayNotAllowed})
 			continue
-		case t.People >= 2:
-			res.Pool = append(res.Pool, PoolEntry{t.ID, ReasonTwoPersonDeferred})
-			continue
 		}
-		best, allRestricted := -1, len(residents) > 0
+		// The fitting Residents, most Energy left first, ties by Resident ID
+		// (residents is sorted by ID and the sort is stable).
+		var fits []int
+		allRestricted := len(residents) > 0
 		for i, r := range residents {
 			if restricted(r, t) {
 				continue
 			}
 			allRestricted = false
-			if left[i] >= t.Effort && (best < 0 || left[i] > left[best]) {
-				best = i
+			if left[i] >= t.Effort {
+				fits = append(fits, i)
 			}
 		}
-		if best < 0 {
+		slices.SortStableFunc(fits, func(a, b int) int { return cmp.Compare(left[b], left[a]) })
+		need := peopleNeeded(t)
+		if len(fits) < need {
 			why := ReasonNoEnergyLeft
-			if allRestricted {
+			switch {
+			case allRestricted:
 				why = ReasonRestrictedForAll
+			case need > 1:
+				why = ReasonTwoPersonDeferred
 			}
 			res.Pool = append(res.Pool, PoolEntry{t.ID, why})
 			continue
 		}
-		left[best] -= t.Effort
-		res.DayPlan.Assignments = append(res.DayPlan.Assignments,
-			Assignment{t.ID, residents[best].ID, assignmentReason(t, s.Today)})
+		for _, i := range fits[:need] {
+			left[i] -= t.Effort
+			res.DayPlan.Assignments = append(res.DayPlan.Assignments,
+				Assignment{t.ID, residents[i].ID, assignmentReason(t, s.Today)})
+		}
 	}
-	slices.SortFunc(res.DayPlan.Assignments, func(a, b Assignment) int { return cmp.Compare(a.TaskID, b.TaskID) })
+	slices.SortFunc(res.DayPlan.Assignments, func(a, b Assignment) int {
+		return cmp.Or(cmp.Compare(a.TaskID, b.TaskID), cmp.Compare(a.ResidentID, b.ResidentID))
+	})
 	slices.SortFunc(res.Pool, func(a, b PoolEntry) int { return cmp.Compare(a.TaskID, b.TaskID) })
 	return res, nil
 }

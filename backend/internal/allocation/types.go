@@ -14,6 +14,10 @@
 //   - Lateness: the number of days State.Today is past WindowStart, never
 //     negative. Larger is more urgent.
 //
+// A two-person Task (People of two or more) goes to exactly two distinct
+// Residents, each spending the full Effort, so it appears once per Resident in
+// a Day Plan. Plan and Check share peopleNeeded so they cannot disagree.
+//
 // Preconditions: Effort is 1 to 5 and Energy is a whole number of points.
 // Negative Energy is treated as 0. A Task with Effort below 1 is invalid and
 // is left in the pool with ReasonInvalidEffort.
@@ -160,7 +164,10 @@ const (
 	BrokenRestriction ViolationKind = "broken_restriction"
 	UnknownTask       ViolationKind = "unknown_task"
 	DuplicateTask     ViolationKind = "duplicate_task"
-	UnknownResident   ViolationKind = "unknown_resident"
+	// WrongResidentCount: a Task in the plan is given to a number of distinct
+	// Residents other than the number it needs (two for a two-person Task).
+	WrongResidentCount ViolationKind = "wrong_resident_count"
+	UnknownResident    ViolationKind = "unknown_resident"
 	// WeekdayNotAllowed: the Task's Chore may not be done on State.Today's
 	// weekday.
 	WeekdayNotAllowed ViolationKind = "weekday_not_allowed"

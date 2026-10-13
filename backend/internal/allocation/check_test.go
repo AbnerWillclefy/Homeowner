@@ -39,12 +39,7 @@ func TestCheck(t *testing.T) {
 	lift := Demand("heavy_lifting")
 	bend := Demand("bending")
 
-	cases := []struct {
-		name  string
-		state State
-		plan  DayPlan
-		want  []key
-	}{
+	cases := []checkCase{
 		{"valid plan",
 			state(rs(resident("a", 3), resident("b", 2)), task("t1", 3), task("t2", 2)),
 			plan(give("t1", "a", ReasonFitsEnergy), give("t2", "b", ReasonFitsEnergy)), nil},
@@ -145,6 +140,68 @@ func TestCheck(t *testing.T) {
 				{UnknownTask, "ghost", "b", ""},
 			}},
 	}
+	runCheckCases(t, cases)
+}
+
+type checkCase = struct {
+	name  string
+	state State
+	plan  DayPlan
+	want  []key
+}
+
+func TestCheckTwoPersonTasks(t *testing.T) {
+	lift := Demand("heavy_lifting")
+	two := people(2)
+	pair := func(id string) []Assignment {
+		return []Assignment{give(id, "a", ReasonFitsEnergy), give(id, "b", ReasonFitsEnergy)}
+	}
+	ab := func(ea, eb int) []Resident { return rs(resident("a", ea), resident("b", eb)) }
+	runCheckCases(t, []checkCase{
+		{"valid two-person plan", state(ab(2, 2), task("t", 2, two)), plan(pair("t")...), nil},
+		{"two-person task absent from the plan is just pooled", state(ab(2, 2), task("t", 2, two)), plan(), nil},
+		{"one resident only",
+			state(ab(2, 2), task("t", 1, two)), plan(give("t", "a", ReasonFitsEnergy)),
+			[]key{{WrongResidentCount, "t", "", ""}}},
+		{"the same resident twice",
+			state(ab(2, 2), task("t", 1, two)),
+			plan(give("t", "a", ReasonFitsEnergy), give("t", "a", ReasonFitsEnergy)),
+			[]key{{WrongResidentCount, "t", "", ""}}},
+		{"three residents",
+			state(rs(resident("a", 2), resident("b", 2), resident("c", 2)), task("t", 1, two)),
+			plan(give("t", "a", ReasonFitsEnergy), give("t", "b", ReasonFitsEnergy), give("t", "c", ReasonFitsEnergy)),
+			[]key{{WrongResidentCount, "t", "", ""}}},
+		{"a repeated pair beside a second resident is a duplicate",
+			state(ab(5, 5), task("t", 1, two)),
+			plan(give("t", "a", ReasonFitsEnergy), give("t", "b", ReasonFitsEnergy), give("t", "a", ReasonFitsEnergy)),
+			[]key{{DuplicateTask, "t", "", ""}}},
+		{"one-person task given to two residents is still a duplicate",
+			state(ab(5, 5), task("t", 1)), plan(pair("t")...),
+			[]key{{DuplicateTask, "t", "", ""}}},
+		{"either resident over energy is reported for that resident",
+			state(ab(2, 1), task("t", 2, two)), plan(pair("t")...),
+			[]key{{OverEnergy, "", "b", ""}}},
+		{"both over energy",
+			state(ab(1, 1), task("t", 2, two)), plan(pair("t")...),
+			[]key{{OverEnergy, "", "a", ""}, {OverEnergy, "", "b", ""}}},
+		{"restricted by demand for one",
+			state(rs(resident("a", 2), resident("b", 2).cannotDo(lift)), task("t", 1, two, demands(lift))), plan(pair("t")...),
+			[]key{{BrokenRestriction, "t", "b", LevelDemand}}},
+		{"restricted by chore for both",
+			state(rs(resident("a", 2).cannotDoChore("chore-t"), resident("b", 2).cannotDoChore("chore-t")), task("t", 1, two)), plan(pair("t")...),
+			[]key{{BrokenRestriction, "t", "a", LevelChore}, {BrokenRestriction, "t", "b", LevelChore}}},
+		{"an unknown resident as one of the two is only unknown_resident",
+			state(rs(resident("a", 2)), task("t", 1, two)),
+			plan(give("t", "a", ReasonFitsEnergy), give("t", "zed", ReasonFitsEnergy)),
+			[]key{{UnknownResident, "t", "zed", ""}}},
+		{"weekday not allowed is reported for each resident",
+			state(ab(2, 2), task("t", 1, two, onlyOn((today.Weekday()+1)%7))), plan(pair("t")...),
+			[]key{{WeekdayNotAllowed, "t", "a", ""}, {WeekdayNotAllowed, "t", "b", ""}}},
+	})
+}
+
+func runCheckCases(t *testing.T, cases []checkCase) {
+	t.Helper()
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			got := keys(Check(c.plan, c.state))
