@@ -24,15 +24,23 @@ export function LeaveHome({ onLeft }: Props) {
   const leaving = state.kind === "leaving";
 
   return (
-    <SectionCard id="home-leave-heading" icon={LogOut} tone="danger" title={t("home.leave.heading")} hint={t("home.leave.stays")}>
+    <SectionCard
+      id="home-leave-heading"
+      icon={LogOut}
+      tone="danger"
+      title={t("home.leave.heading")}
+      hint={t("home.leave.stays")}
+    >
       <div>
         <AppDialog
           open={state.kind !== "closed"}
           onDismiss={cancel}
           trigger={
-            <Button variant="danger" onClick={open}>
-              {t("home.leave.open")}
-            </Button>
+            <div className="flex flex-col">
+              <Button variant="danger" onClick={open}>
+                {t("home.leave.open")}
+              </Button>
+            </div>
           }
           // Destructive action: land on Cancel, not on the title.
           initialFocusRef={cancelRef}
@@ -51,10 +59,20 @@ export function LeaveHome({ onLeft }: Props) {
             </p>
           )}
           <div className="mt-4 flex flex-wrap gap-3">
-            <Button ref={cancelRef} variant="secondary" disabled={leaving} onClick={cancel}>
+            <Button
+              ref={cancelRef}
+              variant="secondary"
+              disabled={leaving}
+              onClick={cancel}
+            >
               {t("home.leave.cancel")}
             </Button>
-            <Button variant="danger" disabled={leaving} aria-busy={leaving} onClick={() => void confirm()}>
+            <Button
+              variant="danger"
+              disabled={leaving}
+              aria-busy={leaving}
+              onClick={() => void confirm()}
+            >
               <LogOut aria-hidden="true" className="size-5 shrink-0" />
               {t(leaving ? "home.leave.leaving" : "home.leave.confirm")}
             </Button>

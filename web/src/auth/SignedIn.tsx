@@ -12,9 +12,15 @@ interface Props {
 
 export function SignedIn({ email, offline, onSignOut }: Props) {
   const { t } = useI18n();
-  const [before, after] = splitAtEmail(t("signedIn.as", { email: EMAIL_MARKER }));
+  const [before, after] = splitAtEmail(
+    t("signedIn.as", { email: EMAIL_MARKER }),
+  );
   return (
-    <SectionCard id="signedin-heading" icon={UserRound} title={t("signedIn.heading")}>
+    <SectionCard
+      id="signedin-heading"
+      icon={UserRound}
+      title={t("signedIn.heading")}
+    >
       <p className="my-0">
         {before}
         <strong>{email ?? t("signedIn.emailFallback")}</strong>
@@ -25,7 +31,7 @@ export function SignedIn({ email, offline, onSignOut }: Props) {
           {t("signedIn.offline")}
         </p>
       )}
-      <div>
+      <div className="flex flex-col">
         <Button variant="secondary" onClick={onSignOut}>
           {t("signedIn.signOut")}
         </Button>

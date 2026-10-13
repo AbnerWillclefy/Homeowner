@@ -29,7 +29,15 @@ interface Props {
 }
 
 /** The form for a Home's settings, shared by creating one and editing it. */
-export function HomeForm({ idPrefix, copy, initial, timezones, save, onSaved, onRecovered }: Props) {
+export function HomeForm({
+  idPrefix,
+  copy,
+  initial,
+  timezones,
+  save,
+  onSaved,
+  onRecovered,
+}: Props) {
   const { t } = useI18n();
   const toast = useToast();
   const form = useSettingsForm(
@@ -44,7 +52,12 @@ export function HomeForm({ idPrefix, copy, initial, timezones, save, onSaved, on
   const saving = form.status.kind === "saving";
 
   return (
-    <SectionCard id={`${idPrefix}-heading`} icon={Clock} title={t(copy.heading)} hint={t(copy.hint)}>
+    <SectionCard
+      id={`${idPrefix}-heading`}
+      icon={Clock}
+      title={t(copy.heading)}
+      hint={t(copy.hint)}
+    >
       <form onSubmit={form.submit} noValidate>
         <HomeFields
           idPrefix={idPrefix}
@@ -56,7 +69,13 @@ export function HomeForm({ idPrefix, copy, initial, timezones, save, onSaved, on
         />
         <FormStatusMessage status={form.status} />
         <div className="mt-4 flex flex-wrap gap-3">
-          <Button type="submit" variant="primary" disabled={saving} aria-busy={saving}>
+          <Button
+            className="w-100"
+            type="submit"
+            variant="primary"
+            disabled={saving}
+            aria-busy={saving}
+          >
             {t(saving ? copy.submitting : copy.submit)}
           </Button>
         </div>
