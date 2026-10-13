@@ -98,6 +98,22 @@ type Store struct {
 // NewStore returns a Store over db.
 func NewStore(db *pgxpool.Pool) *Store { return &Store{db: db, tasks: tasks.NewStore(db)} }
 
+// given is one assignment of a Task: the Resident it went to and why.
+type given struct{ resident, reason string }
+
+// partnersOf are the other Residents holding the Task, sorted, so a two-person
+// Task shows under each holder and names its partner.
+func partnersOf(holders []given, self string) []string {
+	var with []string
+	for _, h := range holders {
+		if h.resident != self {
+			with = append(with, h.resident)
+		}
+	}
+	slices.Sort(with)
+	return with
+}
+
 // Today returns the Home's Day Plan for its local date at now, seen by the
 // Resident. It only reads: it never plans and never refreshes the Tasks, so a
 // plan cannot appear before the Allocation time. Yesterday's assignments are
@@ -149,7 +165,6 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 		poolReason[p.TaskID] = p.Reason
 	}
 
-	type given struct{ resident, reason string }
 	rows, err := s.db.Query(ctx, `SELECT task_id, resident_id, reason FROM day_plan_assignments WHERE run_id = $1`, runID)
 	if err != nil {
 		return View{}, fmt.Errorf("day plan: load assignments: %w", err)
@@ -187,16 +202,7 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 			continue
 		}
 		for _, g := range holders {
-			// With are the other Residents holding the Task, so the Task shows
-			// under each of them and names its partner.
-			var with []string
-			for _, h := range holders {
-				if h.resident != g.resident {
-					with = append(with, h.resident)
-				}
-			}
-			slices.Sort(with)
-			tv := TaskView{Open: o, Reason: g.reason, Committed: committed[commitment{o.ID, g.resident}], With: with}
+			tv := TaskView{Open: o, Reason: g.reason, Committed: committed[commitment{o.ID, g.resident}], With: partnersOf(holders, g.resident)}
 			if g.resident == residentID {
 				v.Mine = append(v.Mine, tv)
 				continue
