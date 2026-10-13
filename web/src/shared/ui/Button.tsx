@@ -9,6 +9,8 @@ interface Props extends ComponentProps<"button"> {
   asChild?: boolean;
   /** A square, icon-only button. Give it an aria-label. */
   icon?: boolean;
+  /** Span the container's width, for a form's or a screen's main action. */
+  fullWidth?: boolean;
 }
 
 // Whole class strings, so Tailwind finds them. min-h/min-w keep the 44px target on every variant.
@@ -35,12 +37,20 @@ function padding(variant: ButtonVariant, icon: boolean): string {
   return variant === "link" ? "px-1" : "px-5";
 }
 
-export function Button({ variant = "primary", asChild = false, icon = false, className = "", type, ...rest }: Props) {
+export function Button({
+  variant = "primary",
+  asChild = false,
+  icon = false,
+  fullWidth = false,
+  className = "",
+  type,
+  ...rest
+}: Props) {
   const Comp = asChild ? Slot : "button";
   return (
     <Comp
       {...(asChild ? {} : { type: type ?? "button" })}
-      className={`${BASE} ${VARIANTS[variant]} ${padding(variant, icon)} ${className}`}
+      className={`${BASE} ${VARIANTS[variant]} ${padding(variant, icon)} ${fullWidth ? "w-full" : ""} ${className}`}
       {...rest}
     />
   );

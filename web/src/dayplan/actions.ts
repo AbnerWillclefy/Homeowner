@@ -17,7 +17,7 @@ export function actionsFor(task: { people: number; committed?: boolean }, role: 
     case "mine":
       return task.committed
         ? { actions: ["done"], committed: true }
-        : { actions: ["accept", "refuse", "done"], committed: false };
+        : { actions: ["done", "refuse", "accept"], committed: false };
     case "pool":
       return { actions: task.people === 2 ? [] : ["take"], committed: false };
     case "other":

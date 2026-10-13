@@ -65,8 +65,16 @@ describe("Button", () => {
     expect(classesOf(render({ icon: true }))).toEqual(expect.arrayContaining(["size-11", "px-0"]));
   });
 
+  it("spans its container with fullWidth", () => {
+    expect(classesOf(render({ fullWidth: true }))).toContain("w-full");
+  });
+
+  it("keeps its natural width by default", () => {
+    expect(classesOf(render())).not.toContain("w-full");
+  });
+
   it("appends the caller's classes", () => {
-    expect(classesOf(render({ className: "mt-4 w-full" }))).toEqual(expect.arrayContaining(["mt-4", "w-full"]));
+    expect(classesOf(render({ className: "mt-4" }))).toContain("mt-4");
   });
 
   it("forwards native attributes", () => {

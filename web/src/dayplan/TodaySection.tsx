@@ -163,7 +163,7 @@ function PlanView({
         <div>
           <GroupHeading count={plan.mine.length}>{t("dayplan.mine.heading")}</GroupHeading>
           {proposed > 0 && (
-            <Button className="mb-3" disabled={busy} onClick={onAccept}>
+            <Button fullWidth className="mb-3" disabled={busy} onClick={onAccept}>
               {t("dayplan.action.acceptAll", { count: proposed })}
             </Button>
           )}
