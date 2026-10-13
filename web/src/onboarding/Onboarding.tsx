@@ -228,7 +228,7 @@ function NextButton({
   return (
     <Button
       variant={primary ? "primary" : "secondary"}
-      className="w-full"
+      fullWidth
       disabled={saving || disabled}
       aria-busy={saving}
       onClick={onClick}

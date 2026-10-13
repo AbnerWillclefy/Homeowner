@@ -89,7 +89,7 @@ export function CreateHome({ onSaved, onRecovered, showHeading = true }: Props) 
               {t("home.invalid.summary")}
             </p>
           )}
-          <Button type="submit" className="mt-8 w-full">
+          <Button type="submit" fullWidth className="mt-8">
             {t("home.create.next")}
           </Button>
         </form>
@@ -143,7 +143,7 @@ export function CreateHome({ onSaved, onRecovered, showHeading = true }: Props) 
             </div>
           ) : (
             <div className="mt-8 flex flex-col gap-3">
-              <Button type="submit" className="w-full" disabled={working} aria-busy={working}>
+              <Button type="submit" fullWidth disabled={working} aria-busy={working}>
                 {t(
                   working
                     ? "catalog.questions.submitting"
@@ -200,7 +200,7 @@ export function CreateHome({ onSaved, onRecovered, showHeading = true }: Props) 
       )}
       <div className="mt-6 flex flex-col gap-3">
         <Button
-          className="w-full"
+          fullWidth
           disabled={saving}
           aria-busy={saving}
           onClick={() => void flow.submit()}

@@ -78,11 +78,11 @@ export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) 
             {...fieldError(problem, "code", FORM)}
           />
           <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
-          <Button type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>
+          <Button type="submit" fullWidth className="mt-4" disabled={busy} aria-busy={busy}>
             {busy ? t("confirm.submitting") : t("confirm.submit")}
           </Button>
         </form>
-        <Button variant="secondary" className="mt-3 w-full" onClick={sendAgain} disabled={busy} aria-busy={busy}>
+        <Button variant="secondary" fullWidth className="mt-3" onClick={sendAgain} disabled={busy} aria-busy={busy}>
           {t("confirm.resend")}
         </Button>
       </Card>

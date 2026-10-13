@@ -15,7 +15,7 @@ const TONES: Record<ToastTone, string> = {
 /**
  * Mount once, inside I18nProvider and above the router, so a toast survives navigation. Radix's viewport is
  * the single polite live region (toasts are `type="background"`, never assertive); a toast never takes focus.
- * It sits above the bottom nav and the device's bottom inset. Hovering pauses the timer.
+ * It sits at the top, below the device's top inset. Hovering pauses the timer; a tap or an upward swipe dismisses it.
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const { t } = useI18n();
@@ -24,7 +24,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   return (
     <ToastContext.Provider value={api}>
-      <Toast.Provider swipeDirection="down">
+      <Toast.Provider swipeDirection="up">
         {children}
         {queue.toasts.map((toast) => {
           const Icon = toast.tone === "error" ? CircleAlert : CircleCheck;
@@ -36,7 +36,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               onOpenChange={(open) => {
                 if (!open) dispatch({ type: "dismiss", id: toast.id });
               }}
-              className={`box-border flex items-start gap-3 rounded-card border bg-surface-raised p-4 text-text shadow-lg motion-safe:animate-toast-in ${TONES[toast.tone]}`}
+              onClick={() => dispatch({ type: "dismiss", id: toast.id })}
+              className={`box-border flex cursor-pointer items-start gap-3 rounded-card border bg-surface-raised p-4 text-text shadow-lg motion-safe:animate-toast-in ${TONES[toast.tone]}`}
             >
               <Icon aria-hidden="true" size={24} className="mt-0.5 shrink-0" />
               <Toast.Description className="min-w-0 flex-1 font-semibold [overflow-wrap:anywhere]">
@@ -53,7 +54,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         })}
         <Toast.Viewport
           label={t("toast.region")}
-          className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-50 m-0 mx-auto flex max-w-[32rem] list-none flex-col gap-2 p-4 outline-none"
+          className="fixed inset-x-0 top-[env(safe-area-inset-top)] z-50 m-0 mx-auto flex max-w-[32rem] list-none flex-col gap-2 p-4 outline-none"
         />
       </Toast.Provider>
     </ToastContext.Provider>

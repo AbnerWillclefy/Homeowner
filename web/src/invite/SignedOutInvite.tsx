@@ -40,7 +40,7 @@ export function SignedOutInvite({ token, onDismiss, children }: Props) {
       <Card as="section" aria-labelledby="invite-dead-heading">
         <h2 id="invite-dead-heading">{t("invite.signedOut.heading")}</h2>
         <p role="alert">{t(DEAD_INVITE_KEY[result.kind])}</p>
-        <Button variant="secondary" className="mt-2 w-full" onClick={onDismiss}>
+        <Button variant="secondary" fullWidth className="mt-2" onClick={onDismiss}>
           {t("invite.dead.continue")}
         </Button>
       </Card>

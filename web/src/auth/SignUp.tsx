@@ -135,7 +135,7 @@ export function SignUp({ register, onRegistered, onHaveLogin }: Props) {
           </div>
 
           <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
-          <Button type="submit" className="mt-4 w-full" disabled={busy} aria-busy={busy}>
+          <Button type="submit" fullWidth className="mt-4" disabled={busy} aria-busy={busy}>
             {busy ? t("signUp.submitting") : t("signUp.submit")}
           </Button>
         </form>
