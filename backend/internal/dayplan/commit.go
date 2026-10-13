@@ -162,3 +162,20 @@ func (p *Planner) Accept(ctx context.Context, homeID, residentID, taskID string,
 		return nil
 	})
 }
+
+// AcceptAll makes every Task Proposed to the Resident Committed, in one
+// statement. With nothing Proposed it changes nothing and is not an error.
+func (p *Planner) AcceptAll(ctx context.Context, homeID, residentID string, now time.Time) error {
+	return p.act(ctx, homeID, now, "accept all", func(a *acting) error {
+		_, err := a.tx.Exec(ctx, `
+			INSERT INTO task_residents (task_id, resident_id, committed_on, committed_at)
+			SELECT d.task_id, d.resident_id, $3, $4
+			FROM day_plan_assignments d JOIN tasks t ON t.id = d.task_id
+			WHERE d.run_id = $1 AND d.resident_id = $2 AND t.status = 'open'
+			ON CONFLICT DO NOTHING`, a.run.id, residentID, a.date.Time(), a.now)
+		if err != nil {
+			return fmt.Errorf("accept all: %w", err)
+		}
+		return nil
+	})
+}

@@ -62,3 +62,12 @@ func (s *server) postAccept(w http.ResponseWriter, r *http.Request) {
 		return s.planner.Accept(ctx, homeID, residentID, taskID, s.deps.Clock.Now())
 	})
 }
+
+func (s *server) postAcceptAll(w http.ResponseWriter, r *http.Request) {
+	m := currentMembership(r.Context())
+	if err := s.planner.AcceptAll(r.Context(), m.Home.ID, m.ResidentID, s.deps.Clock.Now()); err != nil {
+		s.taskActionFailed(w, err)
+		return
+	}
+	s.getDayPlan(w, r)
+}

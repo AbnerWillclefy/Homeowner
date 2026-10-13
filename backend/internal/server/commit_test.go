@@ -140,6 +140,39 @@ func TestAcceptNeedsATodayPlan(t *testing.T) {
 	})
 }
 
+func TestAcceptAllCommitsOnlyTheCallersProposedTasks(t *testing.T) {
+	t.Parallel()
+	app, a, b := twoResidents(t)
+	r := a.Post("/home/day-plan/accept-all", nil)
+	if r.Status != http.StatusOK {
+		t.Fatalf("accept-all = %d %s", r.Status, r.Raw)
+	}
+	for _, tk := range taskList(t, r.Body["mine"]) {
+		if tk["committed"] != true {
+			t.Fatalf("not all committed: %s", r.Raw)
+		}
+	}
+	for _, tk := range mineOf(t, b) {
+		if tk["committed"] != false {
+			t.Fatalf("B's Task was committed by A: %s", dayPlan(t, b).Raw)
+		}
+	}
+	if got := count(t, app, `SELECT count(*) FROM task_residents`); got != 2 {
+		t.Fatalf("%d commitments, want A's 2", got)
+	}
+	// With nothing left to accept it is still a 200.
+	if again := a.Post("/home/day-plan/accept-all", nil); again.Status != http.StatusOK || string(again.Raw) != string(r.Raw) {
+		t.Fatalf("second accept-all = %d %s", again.Status, again.Raw)
+	}
+}
+
+func TestAcceptAllNeedsATodayPlan(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := homeWithResident(t, app, "a@example.com")
+	wantConflict(t, me.Post("/home/day-plan/accept-all", nil), "no_plan_today")
+}
+
 func TestTaskActionsAnswer404ForAnIdThatIsNotTheCallersHomes(t *testing.T) {
 	t.Parallel()
 	app, a, _ := twoResidents(t)
