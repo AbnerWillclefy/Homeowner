@@ -3,6 +3,7 @@ import { Clock } from "lucide-react";
 import { SectionCard } from "../shared/ui/SectionCard";
 import { useToast } from "../shared/ui/useToast";
 import { useI18n, type MessageKey } from "../shared/i18n";
+import { ButtonRow } from "../shared/ui/ButtonRow";
 import { Button } from "../shared/ui/Button";
 import { FormStatusMessage } from "./FormStatusMessage";
 import { HomeFields } from "./HomeFields";
@@ -55,11 +56,11 @@ export function HomeForm({ idPrefix, copy, initial, timezones, save, onSaved, on
           onChange={form.change}
         />
         <FormStatusMessage status={form.status} />
-        <div className="mt-4 flex flex-wrap gap-3">
+        <ButtonRow stretch className="mt-4">
           <Button type="submit" variant="primary" disabled={saving} aria-busy={saving}>
             {t(saving ? copy.submitting : copy.submit)}
           </Button>
-        </div>
+        </ButtonRow>
       </form>
     </SectionCard>
   );

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import type { Chore, ChoreWire, SaveChoreResult } from "./api";
 import type { FieldCodes } from "../home/api";
 import { WEEKDAYS } from "../profile/api";
+import { AppDialog } from "../shared/ui/AppDialog";
 import { ButtonRow } from "../shared/ui/ButtonRow";
 import { Card } from "../shared/ui/Card";
 import { useI18n, type MessageKey } from "../shared/i18n";
@@ -39,11 +40,25 @@ interface Props {
   save(input: ChoreWire): Promise<SaveChoreResult>;
   /** Gets the saved Chore and the form values it was saved from. */
   onSaved(chore: Chore, values: ChoreFormState): void;
+  /** Also called by Escape and a tap outside when the form is in a dialog. */
   onCancel(): void;
+  /** Show the form in a near-full-height dialog with Cancel and Save pinned below it, instead of in a card. */
+  inDialog?: boolean;
 }
 
 /** The create and edit form for a Chore: every field, the API's field errors beside their controls. */
-export function ChoreForm({ initial, mode, idKey, categories, demands, initialErrors, save, onSaved, onCancel }: Props) {
+export function ChoreForm({
+  initial,
+  mode,
+  idKey,
+  categories,
+  demands,
+  initialErrors,
+  save,
+  onSaved,
+  onCancel,
+  inDialog = false,
+}: Props) {
   const { t, locale } = useI18n();
   const form = useChoreForm(initial, save, onSaved, initialErrors);
   const { values, status } = form;
@@ -57,8 +72,10 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
   // The days typed under Custom, kept while a named preset is chosen.
   const customText = useRef(initialPreset === "custom" ? initial.intervalDays : "");
 
-  // The form appears in place of a button, so move the reader to it.
-  useEffect(() => headingRef.current?.focus(), []);
+  // Inline, the form appears in place of a button, so move the reader to it. A dialog focuses its own title.
+  useEffect(() => {
+    if (!inDialog) headingRef.current?.focus();
+  }, [inDialog]);
 
   const text = (label: Label) => labelText(t, label);
   const errorFor = (field: string): string | undefined => {
@@ -148,12 +165,35 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
   }
   const buildsUp = field("buildsUp");
 
+  const heading = t(mode === "edit" ? "chores.form.edit.heading" : "chores.form.create.heading");
+  const formId = `${idPrefix}-form`;
+  const submit = (
+    <Button type="submit" form={formId} disabled={saving} aria-busy={saving}>
+      {t(saving ? "chores.form.saving" : mode === "edit" ? "chores.form.submit.save" : "chores.form.submit.create")}
+    </Button>
+  );
+  const cancel = (
+    <Button variant="secondary" disabled={saving} onClick={onCancel}>
+      {t("chores.form.cancel")}
+    </Button>
+  );
+
   return (
-    <Card as="section" aria-labelledby={`${idPrefix}-heading`} className="mt-4">
-      <h3 id={`${idPrefix}-heading`} ref={headingRef} tabIndex={-1}>
-        {t(mode === "edit" ? "chores.form.edit.heading" : "chores.form.create.heading")}
-      </h3>
-      <form onSubmit={form.submit} noValidate aria-busy={saving}>
+    <ChoreFormFrame
+      inDialog={inDialog}
+      heading={heading}
+      headingId={`${idPrefix}-heading`}
+      headingRef={headingRef}
+      saving={saving}
+      onCancel={onCancel}
+      footer={
+        <>
+          {cancel}
+          {submit}
+        </>
+      }
+    >
+      <form id={formId} onSubmit={form.submit} noValidate aria-busy={saving}>
         <div>
           <label htmlFor={`${idPrefix}-name`}>{t("chores.form.name.label")}</label>
           <input
@@ -167,7 +207,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
           />
           {name.notes}
         </div>
-
+  
         <div>
           <label htmlFor={`${idPrefix}-category`}>{t("chores.form.category.label")}</label>
           <select
@@ -186,7 +226,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
           </select>
           {category.notes}
         </div>
-
+  
         {group(
           "demands",
           "chores.form.demands.legend",
@@ -202,7 +242,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
             </label>
           )),
         )}
-
+  
         {group(
           "baseEffort",
           "chores.form.baseEffort.legend",
@@ -213,7 +253,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
             (baseEffort) => form.change({ baseEffort }, "baseEffort"),
           ),
         )}
-
+  
         {group(
           "importance",
           "chores.form.importance.legend",
@@ -224,7 +264,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
             (importance) => form.change({ importance }, "importance"),
           ),
         )}
-
+  
         {group(
           "people",
           "chores.form.people.legend",
@@ -238,7 +278,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
             (people) => form.change({ people }, "people"),
           ),
         )}
-
+  
         {/* The region is always present so a screen reader announces the suggestion when it appears. */}
         <div role="status">{showSuggestion && <p>{t("chores.form.suggestion")}</p>}</div>
         {showSuggestion && (
@@ -253,7 +293,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
             {t("chores.form.suggestion.action")}
           </Button>
         )}
-
+  
         {group(
           "intervalDays",
           "chores.form.interval.legend",
@@ -281,7 +321,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
             )}
           </>,
         )}
-
+  
         {group(
           "allowedWeekdays",
           "chores.form.allowedWeekdays.legend",
@@ -300,7 +340,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
             );
           }),
         )}
-
+  
         <div>
           <label className={CHOICE}>
             <input
@@ -315,7 +355,7 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
           </label>
           {buildsUp.notes}
         </div>
-
+  
         {status.kind === "invalid" && (
           <p role="alert" className="text-danger">
             {t("chores.form.invalid.summary")}
@@ -326,16 +366,45 @@ export function ChoreForm({ initial, mode, idKey, categories, demands, initialEr
             {t(SAVE_FAILURE_KEY[status.reason])}
           </p>
         )}
-
-        <ButtonRow className="mt-4">
-          <Button type="submit" disabled={saving} aria-busy={saving}>
-            {t(saving ? "chores.form.saving" : mode === "edit" ? "chores.form.submit.save" : "chores.form.submit.create")}
-          </Button>
-          <Button variant="secondary" disabled={saving} onClick={onCancel}>
-            {t("chores.form.cancel")}
-          </Button>
-        </ButtonRow>
+  
+        {!inDialog && (
+          <ButtonRow className="mt-4">
+            {submit}
+            {cancel}
+          </ButtonRow>
+        )}
       </form>
+    </ChoreFormFrame>
+  );
+}
+
+interface FrameProps {
+  inDialog: boolean;
+  heading: string;
+  headingId: string;
+  headingRef: RefObject<HTMLHeadingElement | null>;
+  saving: boolean;
+  onCancel(): void;
+  /** Pinned below the dialog's body. Inline, the form shows its own buttons instead. */
+  footer: ReactNode;
+  children: ReactNode;
+}
+
+/** A near-full-height dialog that only closes when not saving, or a card with the heading. */
+function ChoreFormFrame({ inDialog, heading, headingId, headingRef, saving, onCancel, footer, children }: FrameProps) {
+  if (inDialog) {
+    return (
+      <AppDialog size="sheet" title={heading} onDismiss={onCancel} dismissible={!saving} footer={footer}>
+        {children}
+      </AppDialog>
+    );
+  }
+  return (
+    <Card as="section" aria-labelledby={headingId} className="mt-4">
+      <h3 id={headingId} ref={headingRef} tabIndex={-1}>
+        {heading}
+      </h3>
+      {children}
     </Card>
   );
 }

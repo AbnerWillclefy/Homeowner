@@ -19,20 +19,20 @@ import { LOAD_FAILURE_KEY } from "./failureMessages";
 import { emptyForm, formFromChore } from "./form";
 import { useChores } from "./useChores";
 
-/** Which form is open: none, a new Chore, the Chore with this id, or one of the two Catalog steps. */
+/** Which dialog is open: none, a new Chore, the Chore with this id, or one of the two Catalog steps. */
 type Editing =
   | { kind: "none" }
   | { kind: "new" }
   | { kind: "edit"; id: string }
   /** Choosing a Catalog Chore. */
   | { kind: "catalog" }
-  /** A new Chore pre-filled from this Catalog entry. */
+  /** A new Chore pre-filled from this Catalog entry, over the Catalog. */
   | { kind: "fromCatalog"; entry: CatalogEntry };
 
 /**
  * A Home's Chores grouped by Category, with add (by hand or from the Catalog) at the top, and edit and delete
- * on each. Rendered inside the Home section, so it only
- * exists while the signed-in User has a Home.
+ * on each. Adding and editing happen in dialogs. Rendered inside the Home section, so it only exists while the
+ * signed-in User has a Home.
  */
 export function ChoresSection() {
   const { t } = useI18n();
@@ -41,26 +41,28 @@ export function ChoresSection() {
   const [editing, setEditing] = useState<Editing>({ kind: "none" });
   const headingRef = useRef<HTMLHeadingElement>(null);
 
-  // After a form closes or a Chore goes away, the focused element is gone: land on the heading.
+  // After a Chore goes away, the focused element is gone: land on the heading. A closing dialog returns focus
+  // to the button that opened it by itself.
   function focusHeading() {
     requestAnimationFrame(() => headingRef.current?.focus());
   }
 
-  function settle() {
-    setEditing({ kind: "none" });
-    focusHeading();
-  }
+  const close = () => setEditing({ kind: "none" });
 
   const onSaved = (saved: Chore) => {
     upsert(saved);
     toast.show({ messageKey: "chores.form.saved", tone: "success" });
-    settle();
+    close();
   };
-  const onCancel = () => settle();
 
   function open(next: Editing) {
     setEditing(next);
   }
+
+  const editedChore =
+    state.kind === "ready" && editing.kind === "edit"
+      ? state.chores.find((chore) => chore.id === editing.id)
+      : undefined;
 
   return (
     <section aria-labelledby="chores-heading" className="mt-0">
@@ -85,17 +87,16 @@ export function ChoresSection() {
 
       {state.kind === "ready" && (
         <div className="flex flex-col gap-8">
-          {(editing.kind === "none" || editing.kind === "edit") && (
-            <ButtonRow>
-              <Button onClick={() => open({ kind: "new" })}>{t("chores.add")}</Button>
-              <Button variant="secondary" onClick={() => open({ kind: "catalog" })}>
-                {t("chores.addFromCatalog")}
-              </Button>
-            </ButtonRow>
-          )}
+          <ButtonRow stretch>
+            <Button onClick={() => open({ kind: "new" })}>{t("chores.add")}</Button>
+            <Button variant="secondary" onClick={() => open({ kind: "catalog" })}>
+              {t("chores.addFromCatalog")}
+            </Button>
+          </ButtonRow>
 
           {editing.kind === "new" && (
             <ChoreForm
+              inDialog
               initial={emptyForm()}
               mode="create"
               idKey="new"
@@ -103,12 +104,17 @@ export function ChoresSection() {
               demands={state.demands}
               save={createChore}
               onSaved={onSaved}
-              onCancel={onCancel}
+              onCancel={close}
             />
+          )}
+
+          {(editing.kind === "catalog" || editing.kind === "fromCatalog") && (
+            <CatalogPicker onPick={(entry) => open({ kind: "fromCatalog", entry })} onClose={close} />
           )}
 
           {editing.kind === "fromCatalog" && (
             <ChoreForm
+              inDialog
               initial={formFromEntry(editing.entry, t)}
               mode="create"
               idKey={`catalog-${editing.entry.id}`}
@@ -120,11 +126,21 @@ export function ChoresSection() {
             />
           )}
 
-          {editing.kind === "catalog" && (
-            <CatalogPicker onPick={(entry) => open({ kind: "fromCatalog", entry })} onClose={onCancel} />
+          {editedChore && (
+            <ChoreForm
+              inDialog
+              initial={formFromChore(editedChore)}
+              mode="edit"
+              idKey={editedChore.id}
+              categories={state.categories}
+              demands={state.demands}
+              save={(input) => updateChore(editedChore.id, input)}
+              onSaved={onSaved}
+              onCancel={close}
+            />
           )}
 
-          {state.chores.length === 0 && editing.kind === "none" && (
+          {state.chores.length === 0 && (
             <Card className="border-dashed">
               <p className="my-0 text-muted">{t("chores.empty")}</p>
             </Card>
@@ -136,33 +152,17 @@ export function ChoresSection() {
                 <span id={`chores-${group.category}`}>{labelText(t, categoryLabel(group.category))}</span>
               </GroupHeading>
               <ul className="m-0 flex list-none flex-col gap-3 p-0">
-                {group.chores.map((chore: Chore) =>
-                  editing.kind === "edit" && editing.id === chore.id ? (
-                    <li key={chore.id} className="my-0">
-                      <ChoreForm
-                        initial={formFromChore(chore)}
-                        mode="edit"
-                        idKey={chore.id}
-                        categories={state.categories}
-                        demands={state.demands}
-                        save={(input) => updateChore(chore.id, input)}
-                        onSaved={onSaved}
-                        onCancel={onCancel}
-                      />
-                    </li>
-                  ) : (
-                    <ChoreItem
-                      key={chore.id}
-                      chore={chore}
-                      onEdit={() => open({ kind: "edit", id: chore.id })}
-                      onDeleted={(id) => {
-                        remove(id);
-                        // Another Chore's open form keeps what was typed in it, so this does not call settle.
-                        focusHeading();
-                      }}
-                    />
-                  ),
-                )}
+                {group.chores.map((chore: Chore) => (
+                  <ChoreItem
+                    key={chore.id}
+                    chore={chore}
+                    onEdit={() => open({ kind: "edit", id: chore.id })}
+                    onDeleted={(id) => {
+                      remove(id);
+                      focusHeading();
+                    }}
+                  />
+                ))}
               </ul>
             </section>
           ))}

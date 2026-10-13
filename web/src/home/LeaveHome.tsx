@@ -3,6 +3,7 @@ import { useRef } from "react";
 import { AppDialog } from "../shared/ui/AppDialog";
 import { SectionCard } from "../shared/ui/SectionCard";
 import { useI18n } from "../shared/i18n";
+import { ButtonRow } from "../shared/ui/ButtonRow";
 import { Button } from "../shared/ui/Button";
 import { LEAVE_FAILURE_KEY } from "./failureMessages";
 import { useLeaveHome } from "./useLeaveHome";
@@ -25,7 +26,7 @@ export function LeaveHome({ onLeft }: Props) {
 
   return (
     <SectionCard id="home-leave-heading" icon={LogOut} tone="danger" title={t("home.leave.heading")} hint={t("home.leave.stays")}>
-      <div>
+      <ButtonRow stretch>
         <AppDialog
           open={state.kind !== "closed"}
           onDismiss={cancel}
@@ -60,7 +61,7 @@ export function LeaveHome({ onLeft }: Props) {
             </Button>
           </div>
         </AppDialog>
-      </div>
+      </ButtonRow>
     </SectionCard>
   );
 }

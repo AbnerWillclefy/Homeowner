@@ -4,6 +4,7 @@ import { useSubmitOnce } from "../shared/ui/useSubmitOnce";
 import { useToast } from "../shared/ui/useToast";
 import { createInvite } from "./api";
 import { useI18n, type MessageKey } from "../shared/i18n";
+import { ButtonRow } from "../shared/ui/ButtonRow";
 import { Button } from "../shared/ui/Button";
 import { inviteLink, shareInvite } from "./share";
 
@@ -42,12 +43,12 @@ export function InviteShare() {
 
   return (
     <SectionCard id="invite-share-heading" icon={UserPlus} title={t("invite.share.heading")} hint={t("invite.share.hint")}>
-      <div>
+      <ButtonRow stretch>
         <Button variant="primary" disabled={working} aria-busy={working} onClick={() => void onClick()}>
           <Share2 aria-hidden="true" className="size-5 shrink-0" />
           {working ? t("invite.share.creating") : t("invite.share.button")}
         </Button>
-      </div>
+      </ButtonRow>
     </SectionCard>
   );
 }

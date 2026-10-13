@@ -1,6 +1,7 @@
 import { UserRound } from "lucide-react";
 import { SectionCard } from "../shared/ui/SectionCard";
 import { useI18n } from "../shared/i18n";
+import { ButtonRow } from "../shared/ui/ButtonRow";
 import { Button } from "../shared/ui/Button";
 import { EMAIL_MARKER, splitAtEmail } from "./emailMarker";
 
@@ -25,11 +26,11 @@ export function SignedIn({ email, offline, onSignOut }: Props) {
           {t("signedIn.offline")}
         </p>
       )}
-      <div>
+      <ButtonRow stretch>
         <Button variant="secondary" onClick={onSignOut}>
           {t("signedIn.signOut")}
         </Button>
-      </div>
+      </ButtonRow>
     </SectionCard>
   );
 }
