@@ -159,7 +159,7 @@ func TestAFailedHomeCreationLeavesProgressAlone(t *testing.T) {
 	}
 }
 
-func TestAResidentWhoJoinedByInviteIsDoneAndItIsStored(t *testing.T) {
+func TestAResidentWhoJoinedByInviteStillWalksTheirOwnSteps(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	a := homeWithResident(t, app, "a@example.com")
@@ -167,28 +167,41 @@ func TestAResidentWhoJoinedByInviteIsDoneAndItIsStored(t *testing.T) {
 	b := app.SignInAs("b@example.com")
 	expectStatus(t, acceptInvite(b, token, nil), http.StatusOK)
 
-	if got := stepOf(t, b); got != "done" {
-		t.Errorf("step = %q, want done", got)
+	if got := stepOf(t, b); got != "install" {
+		t.Errorf("step = %q, want install", got)
+	}
+}
+
+func TestAResidentWhoJoinedByInviteSkipsCreatingAHome(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	a := homeWithResident(t, app, "a@example.com")
+	token := createInvite(t, a)
+	b := app.SignInAs("b@example.com")
+	expectStatus(t, acceptInvite(b, token, nil), http.StatusOK)
+
+	if res := putStep(b, "preferences"); res.Body["step"] != "done" {
+		t.Errorf("PUT preferences = %s, want done", res.Raw)
 	}
 	if got := storedStepOf(t, app, "b@example.com"); got == nil || *got != "done" {
 		t.Errorf("stored step = %v, want done", got)
 	}
 }
 
-func TestAResidentCannotBeWalkedThroughCreatingAHome(t *testing.T) {
+func TestAResidentWhoReachedTheHomeStepBeforeJoiningIsDone(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	a := homeWithResident(t, app, "a@example.com")
-	// Forget what POST /home stored, as for a Home made before onboarding.
-	if _, err := app.DB.Exec(context.Background(), `UPDATE users SET onboarding_step = NULL`); err != nil {
-		t.Fatal(err)
-	}
+	token := createInvite(t, a)
+	b := app.SignInAs("b@example.com")
+	expectStatus(t, putStep(b, "preferences"), http.StatusOK)
+	expectStatus(t, acceptInvite(b, token, nil), http.StatusOK)
 
-	if got := stepOf(t, a); got != "done" {
+	if got := stepOf(t, b); got != "done" {
 		t.Errorf("step = %q, want done", got)
 	}
 	// Done is sticky: an old tab's PUT cannot reopen it.
-	if res := putStep(a, "install"); res.Body["step"] != "done" {
+	if res := putStep(b, "install"); res.Body["step"] != "done" {
 		t.Errorf("PUT install = %s, want done", res.Raw)
 	}
 }

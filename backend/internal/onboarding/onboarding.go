@@ -12,8 +12,11 @@ import "slices"
 // client can write.
 const Done = "done"
 
+// HomeStep is the last step, completed by creating the Home.
+const HomeStep = "home"
+
 // steps are the ids in the order the User walks them.
-var steps = []string{"install", "reminders", "baseline", "restrictions", "preferences", "home"}
+var steps = []string{"install", "reminders", "baseline", "restrictions", "preferences", HomeStep}
 
 // Steps returns the step ids in order. The caller owns the copy.
 func Steps() []string { return slices.Clone(steps) }
