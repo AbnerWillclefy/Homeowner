@@ -29,7 +29,9 @@ import (
 //     open Task not given to someone else today (their own Proposed Tasks, the
 //     pool, Tasks added after the plan), except the ones they Committed to
 //     (those stay, and their Effort comes off the Energy) and the ones
-//     refused (those wait for tomorrow). Only their Proposed assignments and the run's
+//     refused (those wait for tomorrow). A two-person Task they hold stays for
+//     both partners when either Committed or they can still afford it, and
+//     otherwise both partners lose it (see replanRun). Only their Proposed assignments and the run's
 //     reasons change; other Residents' assignments, the run row and its
 //     allocator stay. A proposal that errors or breaks a rule rolls back
 //     everything, the Check-in included, and returns an error: an unchecked
