@@ -9,6 +9,7 @@ const POOL_REASON_KEYS = {
   two_person_deferred: "dayplan.pool.reason.two_person_deferred",
   invalid_effort: "dayplan.pool.reason.invalid_effort",
   added_after_plan: "dayplan.pool.reason.added_after_plan",
+  refused: "dayplan.pool.reason.refused",
 } as const satisfies Record<string, MessageKey>;
 
 const ASSIGNMENT_REASON_KEYS = {
@@ -16,6 +17,7 @@ const ASSIGNMENT_REASON_KEYS = {
   importance: "dayplan.assigned.reason.importance",
   lateness: "dayplan.assigned.reason.lateness",
   fits_energy: "dayplan.assigned.reason.fits_energy",
+  taken: "dayplan.assigned.reason.taken",
 } as const satisfies Record<string, MessageKey>;
 
 function reasonLabel(keys: Readonly<Record<string, MessageKey>>, id: string | undefined): Label | null {

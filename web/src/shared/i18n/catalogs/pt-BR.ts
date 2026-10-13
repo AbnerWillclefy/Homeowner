@@ -322,6 +322,44 @@ export const ptBR: Messages = {
     "Foi adicionada depois que o plano de hoje foi feito.",
   "dayplan.mine.empty.drained":
     "Você fez check-in como esgotado, então nenhuma tarefa hoje. Descanse.",
+  "dayplan.pool.reason.refused": "Foi recusada, então voltou para as tarefas em aberto.",
+  "dayplan.assigned.reason.taken": "Você pegou esta tarefa das em aberto.",
+  "dayplan.action.accept": "Aceitar",
+  "dayplan.action.accept.named": "Aceitar {task}",
+  "dayplan.action.acceptAll": {
+    one: "Aceitar {count} tarefa",
+    other: "Aceitar todas as {count} tarefas",
+  },
+  "dayplan.action.refuse": "Recusar",
+  "dayplan.action.refuse.named": "Recusar {task}",
+  "dayplan.action.take": "Pegar",
+  "dayplan.action.take.named": "Pegar {task}",
+  "dayplan.action.done": "Concluir",
+  "dayplan.action.done.named": "Concluir {task}",
+  "dayplan.task.committed": "Assumida",
+  "dayplan.done.heading": "Concluídas hoje",
+  "dayplan.done.item": "{task} às {time}",
+  "dayplan.action.failed.offline":
+    "Parece que você está sem internet, então isso não foi enviado. Confira sua conexão e tente de novo.",
+  "dayplan.action.failed.error":
+    "Algo deu errado e isso não foi enviado. Tente de novo daqui a pouco.",
+  "dayplan.conflict.already_done":
+    "Essa tarefa já foi concluída. Ela está em Concluídas hoje.",
+  "dayplan.conflict.not_proposed":
+    "Essa tarefa mudou desde que você olhou. Sua lista está atualizada.",
+  "dayplan.conflict.already_committed":
+    "Essa tarefa mudou desde que você olhou. Sua lista está atualizada.",
+  "dayplan.conflict.not_in_pool":
+    "Outro morador já pegou essa tarefa. Sua lista está atualizada.",
+  "dayplan.conflict.not_yours":
+    "Essa tarefa não é sua para concluir. Pegue-a primeiro.",
+  "dayplan.conflict.no_plan_today": "Ainda não há plano para hoje.",
+  "dayplan.conflict.two_person_task":
+    "Essa tarefa precisa de duas pessoas, o que ainda não está disponível.",
+  "dayplan.conflict.restricted":
+    "Você tem uma restrição para essa tarefa, então não pode pegá-la.",
+  "dayplan.conflict.unknown":
+    "O plano mudou desde que você olhou. Sua lista está atualizada.",
 
   // The start choice, at the end of both onboarding flows
   "startChoice.heading": "Quando você quer as suas tarefas?",

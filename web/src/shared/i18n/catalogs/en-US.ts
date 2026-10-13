@@ -312,6 +312,44 @@ export const enUS = {
     "It was added after today's plan was made.",
   "dayplan.mine.empty.drained":
     "You checked in as Drained, so no Tasks today. Rest up.",
+  "dayplan.pool.reason.refused": "It was refused, so it is back in the pool.",
+  "dayplan.assigned.reason.taken": "You took it from the pool.",
+  "dayplan.action.accept": "Accept",
+  "dayplan.action.accept.named": "Accept {task}",
+  "dayplan.action.acceptAll": {
+    one: "Accept {count} Task",
+    other: "Accept all {count} Tasks",
+  },
+  "dayplan.action.refuse": "Refuse",
+  "dayplan.action.refuse.named": "Refuse {task}",
+  "dayplan.action.take": "Take",
+  "dayplan.action.take.named": "Take {task}",
+  "dayplan.action.done": "Done",
+  "dayplan.action.done.named": "Done with {task}",
+  "dayplan.task.committed": "Committed",
+  "dayplan.done.heading": "Done today",
+  "dayplan.done.item": "{task} at {time}",
+  "dayplan.action.failed.offline":
+    "You seem to be offline, so that did not go through. Check your connection and try again.",
+  "dayplan.action.failed.error":
+    "Something went wrong and that did not go through. Try again in a moment.",
+  "dayplan.conflict.already_done":
+    "That Task was already done. It is in Done today now.",
+  "dayplan.conflict.not_proposed":
+    "That Task changed since you looked. Your list is up to date.",
+  "dayplan.conflict.already_committed":
+    "That Task changed since you looked. Your list is up to date.",
+  "dayplan.conflict.not_in_pool":
+    "Someone else already has that Task. Your list is up to date.",
+  "dayplan.conflict.not_yours":
+    "That Task is not yours to finish. Take it first.",
+  "dayplan.conflict.no_plan_today": "There is no plan for today yet.",
+  "dayplan.conflict.two_person_task":
+    "That Task needs two people, which is not available yet.",
+  "dayplan.conflict.restricted":
+    "You have a Restriction on that Task, so you cannot take it.",
+  "dayplan.conflict.unknown":
+    "The plan changed since you looked. Your list is up to date.",
 
   // The start choice, at the end of both onboarding flows
   "startChoice.heading": "When do you want your Tasks?",

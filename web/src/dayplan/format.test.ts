@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dueWhen, formatDay } from "./format";
+import { dueWhen, formatDay, formatTime } from "./format";
 
 describe("formatDay", () => {
   it("writes a calendar date the way the locale does, whatever the device's time zone", () => {
@@ -9,6 +9,18 @@ describe("formatDay", () => {
 
   it("returns text it cannot read as it came", () => {
     expect(formatDay("soon", "en-US")).toBe("soon");
+  });
+});
+
+describe("formatTime", () => {
+  it("writes the clock time of an instant the way the locale does, in the given zone", () => {
+    expect(formatTime("2026-10-11T14:30:00Z", "en-US", "UTC")).toBe("2:30 PM");
+    expect(formatTime("2026-10-11T14:30:00Z", "pt-BR", "UTC")).toBe("14:30");
+    expect(formatTime("2026-10-11T14:30:00Z", "pt-BR", "America/Sao_Paulo")).toBe("11:30");
+  });
+
+  it("returns text it cannot read as it came", () => {
+    expect(formatTime("later", "en-US")).toBe("later");
   });
 });
 
