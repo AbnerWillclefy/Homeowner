@@ -180,7 +180,7 @@ func TestTaskActionsAnswer404ForAnIdThatIsNotTheCallersHomes(t *testing.T) {
 	setBaseline(t, other, map[string]any{"monday": 4})
 	createChore(t, other, chore("Foreign", 7, 2, "normal", []string{}))
 	foreign := pool(t, other)[0]["id"].(string)
-	for _, action := range []string{"accept"} {
+	for _, action := range []string{"accept", "refuse"} {
 		for _, id := range []string{"abc", "00000000-0000-0000-0000-000000000000", foreign} {
 			if r := act(a, action, id); r.Status != http.StatusNotFound || r.Body["error"] != "task not found" {
 				t.Fatalf("%s %s = %d %s, want 404 task not found", action, id, r.Status, r.Raw)

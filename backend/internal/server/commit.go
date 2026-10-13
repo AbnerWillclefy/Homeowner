@@ -63,6 +63,12 @@ func (s *server) postAccept(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *server) postRefuse(w http.ResponseWriter, r *http.Request) {
+	s.changeTask(w, r, func(ctx context.Context, homeID, residentID, taskID string) error {
+		return s.planner.Refuse(ctx, homeID, residentID, taskID, s.deps.Clock.Now())
+	})
+}
+
 func (s *server) postAcceptAll(w http.ResponseWriter, r *http.Request) {
 	m := currentMembership(r.Context())
 	if err := s.planner.AcceptAll(r.Context(), m.Home.ID, m.ResidentID, s.deps.Clock.Now()); err != nil {

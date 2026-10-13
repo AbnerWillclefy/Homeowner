@@ -163,6 +163,52 @@ func (p *Planner) Accept(ctx context.Context, homeID, residentID, taskID string,
 	})
 }
 
+// Refuse sends the Resident's Proposed Task back to the pool, with no penalty.
+// No re-plan hands it out again until the next Allocation. A Task the Resident
+// already accepted cannot be refused (ErrAlreadyCommitted).
+func (p *Planner) Refuse(ctx context.Context, homeID, residentID, taskID string, now time.Time) error {
+	return p.act(ctx, homeID, now, "refuse", func(a *acting) error {
+		ts, err := lockTask(ctx, a.tx, homeID, taskID)
+		if err != nil {
+			return err
+		}
+		mine, err := holds(ctx, a.tx, a.run.id, taskID, residentID)
+		if err != nil {
+			return err
+		}
+		if ts.done {
+			return ErrAlreadyDone
+		}
+		if !mine {
+			return ErrNotProposed
+		}
+		committed, err := committedOn(ctx, a.tx, taskID, residentID, a.date)
+		if err != nil {
+			return err
+		}
+		if committed {
+			return ErrAlreadyCommitted
+		}
+		if _, err := a.tx.Exec(ctx, `DELETE FROM day_plan_assignments WHERE run_id = $1 AND task_id = $2`, a.run.id, taskID); err != nil {
+			return fmt.Errorf("refuse: %w", err)
+		}
+		a.run.reasons.refuse(taskID)
+		return writeReasons(ctx, a.tx, a.run.id, a.run.reasons)
+	})
+}
+
+// committedOn reports whether the Resident committed to the Task on the date.
+func committedOn(ctx context.Context, tx pgx.Tx, taskID, residentID string, date allocation.Date) (bool, error) {
+	var ok bool
+	err := tx.QueryRow(ctx, `
+		SELECT EXISTS (SELECT 1 FROM task_residents WHERE task_id = $1 AND resident_id = $2 AND committed_on = $3)`,
+		taskID, residentID, date.Time()).Scan(&ok)
+	if err != nil {
+		return false, fmt.Errorf("look for commitment: %w", err)
+	}
+	return ok, nil
+}
+
 // AcceptAll makes every Task Proposed to the Resident Committed, in one
 // statement. With nothing Proposed it changes nothing and is not an error.
 func (p *Planner) AcceptAll(ctx context.Context, homeID, residentID string, now time.Time) error {

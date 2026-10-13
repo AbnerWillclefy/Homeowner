@@ -115,6 +115,10 @@ func (p *Planner) replanRun(ctx context.Context, tx pgx.Tx, homeID, residentID s
 	if err != nil {
 		return nil, err
 	}
+	// A refused Task waits for the next Allocation, whoever plans.
+	for _, e := range rs.refusedTasks() {
+		given[e.TaskID] = true
+	}
 	sub, ok := subState(st.state, residentID, given)
 	if !ok {
 		return nil, fmt.Errorf("check in: resident %s is not in the home", residentID)

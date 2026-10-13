@@ -204,6 +204,7 @@ func (rs *reasons) add(res allocation.Result) {
 // already in the pool and still is keeps its reason, since it is about
 // everyone; a Task newly released into the pool gets the new plan's reason.
 func (rs *reasons) replan(residentID string, energy int, res allocation.Result) {
+	refused := rs.refusedTasks()
 	oldPool := make(map[string]string, len(rs.Pool))
 	for _, e := range rs.Pool {
 		oldPool[e.TaskID] = e.Reason
@@ -225,6 +226,56 @@ func (rs *reasons) replan(residentID string, energy int, res allocation.Result) 
 			rs.Pool[i].Reason = old
 		}
 	}
+	// A refused Task is not a candidate of the new plan, so it is absent from
+	// the new pool; without this it would drop out of the reasons and the view
+	// would call it added_after_plan.
+	for _, e := range refused {
+		if !slices.ContainsFunc(rs.Pool, func(p pooled) bool { return p.TaskID == e.TaskID }) {
+			rs.Pool = append(rs.Pool, e)
+		}
+	}
+}
+
+// refusedTasks are the pool entries of Tasks a Resident refused.
+func (rs *reasons) refusedTasks() []pooled {
+	var out []pooled
+	for _, e := range rs.Pool {
+		if e.Reason == ReasonRefused {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// refuse takes the Task out of the assignments and puts it in the pool with
+// the refused reason. It is the one place a refusal is written.
+func (rs *reasons) refuse(taskID string) {
+	rs.release(taskID)
+	rs.Pool = append(rs.Pool, pooled{TaskID: taskID, Reason: ReasonRefused})
+}
+
+// take moves a Task from the pool to the Resident's assignments.
+func (rs *reasons) take(taskID, residentID string) {
+	rs.release(taskID)
+	rs.Assigned = append(rs.Assigned, assigned{TaskID: taskID, ResidentID: residentID, Reason: ReasonTaken})
+}
+
+// release drops every entry for the Task, assigned or pooled.
+func (rs *reasons) release(taskID string) {
+	rs.Assigned = slices.DeleteFunc(rs.Assigned, func(a assigned) bool { return a.TaskID == taskID })
+	rs.Pool = slices.DeleteFunc(rs.Pool, func(p pooled) bool { return p.TaskID == taskID })
+}
+
+// writeReasons stores the run's reasons.
+func writeReasons(ctx context.Context, tx pgx.Tx, runID string, rs reasons) error {
+	body, err := json.Marshal(rs)
+	if err != nil {
+		return fmt.Errorf("write reasons: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE allocation_runs SET reasons = $2 WHERE id = $1`, runID, body); err != nil {
+		return fmt.Errorf("write reasons: %w", err)
+	}
+	return nil
 }
 
 type assigned struct {
