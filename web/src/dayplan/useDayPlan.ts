@@ -66,6 +66,7 @@ export function useDayPlan(version: number) {
   const [notice, setNotice] = useState<ActionNotice | null>(null);
   const [settled, setSettled] = useState(0);
   const inFlight = useRef(false);
+  const loads = useRef(0);
   const mounted = useRef(true);
 
   useEffect(() => {
@@ -84,6 +85,7 @@ export function useDayPlan(version: number) {
   );
 
   const load = useCallback(() => {
+    loads.current++;
     setState({ kind: "loading" });
     return fetchPlan();
   }, [fetchPlan]);
@@ -92,7 +94,7 @@ export function useDayPlan(version: number) {
     void load();
   }, [load, version]);
 
-  /** Retry: ignored while an action runs, so a late load can never overwrite the action's plan. */
+  /** Retry: ignored while an action runs. A load that starts anyway (`version` changed) is handled by `act`. */
   const reload = useCallback(() => {
     if (inFlight.current) return Promise.resolve();
     return load();
@@ -101,6 +103,7 @@ export function useDayPlan(version: number) {
   const act = useCallback(async (call: () => Promise<ActionResult>) => {
     if (inFlight.current) return;
     inFlight.current = true;
+    const startedAt = loads.current;
     setActing(true);
     setNotice(null);
     try {
@@ -108,6 +111,12 @@ export function useDayPlan(version: number) {
       // The screen was stale: take the server's current plan, in place so the lists and focus stay.
       const fresh = result.kind === "conflict" ? await getDayPlan() : undefined;
       if (!mounted.current) return;
+      // A load started meanwhile (`version` changed) and may have read the plan before this action: drop the
+      // answer and read again in place, so the last word is a read made after the action.
+      if (loads.current !== startedAt) {
+        void fetchPlan();
+        return;
+      }
       const { plan, notice } = outcome(result, fresh);
       setNotice(notice);
       if (plan) {
@@ -118,7 +127,7 @@ export function useDayPlan(version: number) {
       inFlight.current = false;
       if (mounted.current) setActing(false);
     }
-  }, []);
+  }, [fetchPlan]);
 
   const run = useCallback((action: TaskAction, task: PlanTask) => void act(() => CALLS[action](task.id)), [act]);
   const acceptAll = useCallback(() => void act(acceptAllCall), [act]);
