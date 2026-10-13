@@ -267,6 +267,51 @@ func (a *acting) checkTake(ctx context.Context, residentID, taskID string) error
 	return nil
 }
 
+// Complete records the Completion of a Task the Resident holds today, Proposed
+// or Committed: who did it and when, on the Home's local date. The Task is
+// done, so the Chore's next Task opens by the schedule (a build-up Chore starts
+// again at its base Effort). Nobody else can complete it afterwards
+// (ErrAlreadyDone). A Task that is in the pool, or someone else's, is
+// ErrNotYours: take it first.
+func (p *Planner) Complete(ctx context.Context, homeID, residentID, taskID string, now time.Time) error {
+	return p.actOn(ctx, homeID, now, "complete", false, func(a *acting) error {
+		ts, err := lockTask(ctx, a.tx, homeID, taskID)
+		if err != nil {
+			return err
+		}
+		if ts.done {
+			return ErrAlreadyDone
+		}
+		if a.run.id == "" {
+			return ErrNotYours
+		}
+		mine, err := holds(ctx, a.tx, a.run.id, taskID, residentID)
+		if err != nil {
+			return err
+		}
+		if !mine {
+			return ErrNotYours
+		}
+		var completionID string
+		err = a.tx.QueryRow(ctx, `
+			INSERT INTO completions (task_id, completed_at, completed_on) VALUES ($1, $2, $3) RETURNING id`,
+			taskID, a.now, a.date.Time()).Scan(&completionID)
+		if err != nil {
+			return fmt.Errorf("complete: %w", err)
+		}
+		if _, err := a.tx.Exec(ctx, `INSERT INTO completion_residents (completion_id, resident_id) VALUES ($1, $2)`,
+			completionID, residentID); err != nil {
+			return fmt.Errorf("complete: %w", err)
+		}
+		// The check constraint pairs the status with the closing date.
+		if _, err := a.tx.Exec(ctx, `UPDATE tasks SET status = 'done', closed_on = $2 WHERE id = $1`,
+			taskID, a.date.Time()); err != nil {
+			return fmt.Errorf("complete: %w", err)
+		}
+		return nil
+	})
+}
+
 // committedOn reports whether the Resident committed to the Task on the date.
 func committedOn(ctx context.Context, tx pgx.Tx, taskID, residentID string, date allocation.Date) (bool, error) {
 	var ok bool

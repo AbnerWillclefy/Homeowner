@@ -51,6 +51,19 @@ type View struct {
 	Others []ResidentTasks `json:"others"`
 	// Pool is every open Task that is not assigned today.
 	Pool []TaskView `json:"pool"`
+	// DoneToday are the Tasks the caller completed on the Home's date, oldest
+	// first. Never null.
+	DoneToday []DoneView `json:"doneToday"`
+}
+
+// DoneView is a Task the caller completed today.
+type DoneView struct {
+	ID          string    `json:"id"`
+	ChoreID     string    `json:"choreId"`
+	ChoreName   string    `json:"choreName"`
+	Category    string    `json:"category"`
+	Effort      int       `json:"currentEffort"`
+	CompletedAt time.Time `json:"completedAt"`
 }
 
 // Store reads the stored Day Plan.
@@ -77,6 +90,9 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 
 	open, err := s.tasks.ListOpen(ctx, homeID)
 	if err != nil {
+		return View{}, err
+	}
+	if v.DoneToday, err = s.doneToday(ctx, residentID, date); err != nil {
 		return View{}, err
 	}
 
@@ -157,6 +173,36 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 		}
 	}
 	return v, nil
+}
+
+// doneToday is the Tasks the Resident completed on the date, oldest first.
+func (s *Store) doneToday(ctx context.Context, residentID string, date time.Time) ([]DoneView, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT t.id, c.id, c.name, c.category, t.current_effort, k.completed_at
+		FROM completions k
+		JOIN completion_residents cr ON cr.completion_id = k.id
+		JOIN tasks t ON t.id = k.task_id
+		JOIN chores c ON c.id = t.chore_id
+		WHERE cr.resident_id = $1 AND k.completed_on = $2
+		ORDER BY k.completed_at, t.id`, residentID, date)
+	if err != nil {
+		return nil, fmt.Errorf("day plan: load completions: %w", err)
+	}
+	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (d DoneView, err error) {
+		var effort int16
+		if err := r.Scan(&d.ID, &d.ChoreID, &d.ChoreName, &d.Category, &effort, &d.CompletedAt); err != nil {
+			return d, err
+		}
+		d.Effort = int(effort)
+		return d, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("day plan: load completions: %w", err)
+	}
+	if out == nil {
+		out = []DoneView{}
+	}
+	return out, nil
 }
 
 // commitment is a Resident's promise of a Task.
