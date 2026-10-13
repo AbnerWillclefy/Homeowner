@@ -196,6 +196,33 @@ describe("committed and doneToday", () => {
   });
 });
 
+describe("two-person fields", () => {
+  it("reads suggestTwoPerson and with on a Task", async () => {
+    const plan = { ...PLAN, mine: [{ ...TASK, people: 2, suggestTwoPerson: true, with: ["r2"] }] };
+    stubFetch(Response.json(plan));
+    expect(await getDayPlan()).toEqual({ kind: "ok", plan });
+  });
+
+  it("leaves them out when the API does not send them, which reads as false and no partner", async () => {
+    stubFetch(Response.json(PLAN));
+    const result = await getDayPlan();
+    const task = result.kind === "ok" ? result.plan.mine[0]! : undefined;
+    expect(task).toBeDefined();
+    expect(task && "suggestTwoPerson" in task).toBe(false);
+    expect(task && "with" in task).toBe(false);
+  });
+
+  it("is lenient with odd values and never errors the plan", async () => {
+    stubFetch(Response.json({ ...PLAN, mine: [{ ...TASK, suggestTwoPerson: "yes", with: [1, "r2", null] }] }));
+    const result = await getDayPlan();
+    const task = result.kind === "ok" ? result.plan.mine[0]! : undefined;
+    expect(task && "suggestTwoPerson" in task).toBe(false);
+    expect(task?.with).toEqual(["r2"]);
+    stubFetch(Response.json({ ...PLAN, mine: [{ ...TASK, with: "r2" }] }));
+    expect((await getDayPlan()).kind).toBe("ok");
+  });
+});
+
 describe.each([
   ["acceptTask", () => acceptTask("t 1/x"), "/home/tasks/t%201%2Fx/accept"],
   ["refuseTask", () => refuseTask("t 1/x"), "/home/tasks/t%201%2Fx/refuse"],

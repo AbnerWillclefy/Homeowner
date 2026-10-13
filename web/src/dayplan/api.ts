@@ -21,6 +21,13 @@ export interface PlanTask {
   category?: string;
   /** The Resident it is assigned to accepted it today. Absent from an older API. */
   committed?: boolean;
+  /**
+   * The Chore has reached its Effort cap, so a two-person Task would be kinder. Absent from an older API,
+   * which reads as false.
+   */
+  suggestTwoPerson?: boolean;
+  /** The other Residents' ids the Task is also given to (a two-person Task). Absent means none. */
+  with?: string[];
 }
 
 /** A Task the signed-in Resident completed today. */
@@ -94,6 +101,11 @@ function parseTask(body: unknown): PlanTask | null {
   // Lenient on purpose: a missing or odd category must never turn the whole plan into an error.
   if (typeof body.category === "string") task.category = body.category;
   if (typeof body.committed === "boolean") task.committed = body.committed;
+  if (body.suggestTwoPerson === true) task.suggestTwoPerson = true;
+  if (Array.isArray(body.with)) {
+    const partners = body.with.filter((id): id is string => typeof id === "string");
+    if (partners.length > 0) task.with = partners;
+  }
   return reason === undefined ? task : { ...task, reason };
 }
 
