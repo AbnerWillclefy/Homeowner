@@ -203,7 +203,7 @@ func (rs *reasons) add(res allocation.Result) {
 // them again: their Energy and assignments, and the pool. A Task that was
 // already in the pool and still is keeps its reason, since it is about
 // everyone; a Task newly released into the pool gets the new plan's reason.
-func (rs *reasons) replan(residentID string, energy int, res allocation.Result) {
+func (rs *reasons) replan(residentID string, energy int, res allocation.Result, committed map[string]bool) {
 	refused := rs.refusedTasks()
 	oldPool := make(map[string]string, len(rs.Pool))
 	for _, e := range rs.Pool {
@@ -215,7 +215,7 @@ func (rs *reasons) replan(residentID string, energy int, res allocation.Result) 
 	rs.Energy[residentID] = energy
 	others := make([]assigned, 0, len(rs.Assigned))
 	for _, a := range rs.Assigned {
-		if a.ResidentID != residentID {
+		if a.ResidentID != residentID || committed[a.TaskID] {
 			others = append(others, a)
 		}
 	}
