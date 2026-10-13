@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -130,11 +132,44 @@ func (p *Planner) replanRun(ctx context.Context, tx pgx.Tx, homeID, residentID s
 	for id := range committed {
 		given[id] = true
 	}
+	// A two-person Task is only ever placed by the daily Allocation, never by
+	// a one-Resident re-plan, and its rows stand or fall together. Those the
+	// Resident holds stay (keep) when either partner promised them, or when the
+	// Resident can still afford them; otherwise both partners lose them.
+	held, err := heldTwoPerson(ctx, tx, runID, residentID, date)
+	if err != nil {
+		return nil, err
+	}
+	keep := maps.Clone(committed)
+	for _, h := range held {
+		given[h.id] = true
+		if h.committed {
+			keep[h.id] = true
+		}
+	}
 	sub, ok := subState(st.state, residentID, given)
 	if !ok {
 		return nil, fmt.Errorf("check in: resident %s is not in the home", residentID)
 	}
-	sub.Residents[0].Energy = energyLeft(sub.Residents[0].Energy, st.state.Tasks, committed)
+	left := energyLeft(sub.Residents[0].Energy, st.state.Tasks, keep)
+	var released []string
+	for _, h := range held {
+		if keep[h.id] {
+			continue
+		}
+		effort := effortOf(st.state.Tasks, h.id)
+		err := mayDoIn(st, residentID, h.id, "replan")
+		if err != nil && !errors.Is(err, ErrRestricted) {
+			return nil, err
+		}
+		if err == nil && left >= effort {
+			left -= effort
+			keep[h.id] = true
+		} else {
+			released = append(released, h.id)
+		}
+	}
+	sub.Residents[0].Energy = left
 
 	res, err := p.alloc.Plan(sub)
 	if err != nil {
@@ -145,8 +180,17 @@ func (p *Planner) replanRun(ctx context.Context, tx pgx.Tx, homeID, residentID s
 			p.alloc.Name(), len(vs), vs[0].Detail)
 	}
 
-	rs.replan(residentID, st.energy[residentID], res, committed)
-	if err := persist(ctx, tx, runID, residentID, date, res, rs); err != nil {
+	for _, id := range released {
+		if _, err := tx.Exec(ctx, `DELETE FROM day_plan_assignments WHERE run_id = $1 AND task_id = $2`, runID, id); err != nil {
+			return nil, fmt.Errorf("check in: release two-person task: %w", err)
+		}
+		rs.release(id)
+	}
+	rs.replan(residentID, st.energy[residentID], res, keep)
+	for _, id := range released {
+		rs.Pool = append(rs.Pool, pooled{TaskID: id, Reason: string(allocation.ReasonNoEnergyLeft)})
+	}
+	if err := persist(ctx, tx, runID, residentID, res, rs, keep); err != nil {
 		return nil, err
 	}
 	return &replanned{assigned: len(res.DayPlan.Assignments), pooled: len(res.Pool)}, nil
@@ -199,15 +243,53 @@ func committedTasks(ctx context.Context, tx pgx.Tx, residentID string, date allo
 	return out, nil
 }
 
-// persist replaces the Resident's Proposed assignments in the run and writes
-// its reasons. Their Committed ones stay: a re-plan never drops a promise.
-func persist(ctx context.Context, tx pgx.Tx, runID, residentID string, date allocation.Date, res allocation.Result, rs reasons) error {
-	if _, err := tx.Exec(ctx, `
-		DELETE FROM day_plan_assignments d
+// heldTask is a two-person Task the run gave the Resident; committed says
+// whether either partner promised it today.
+type heldTask struct {
+	id        string
+	committed bool
+}
+
+// heldTwoPerson lists the open two-person Tasks the run gave the Resident,
+// ordered by id.
+func heldTwoPerson(ctx context.Context, tx pgx.Tx, runID, residentID string, date allocation.Date) ([]heldTask, error) {
+	rows, err := tx.Query(ctx, `
+		SELECT d.task_id,
+		       EXISTS (SELECT 1 FROM task_residents c WHERE c.task_id = d.task_id AND c.committed_on = $3)
+		FROM day_plan_assignments d
+		JOIN tasks t ON t.id = d.task_id AND t.status = 'open'
+		JOIN chores ch ON ch.id = t.chore_id AND ch.people > 1
 		WHERE d.run_id = $1 AND d.resident_id = $2
-		  AND NOT EXISTS (SELECT 1 FROM task_residents c
-		                  WHERE c.task_id = d.task_id AND c.resident_id = d.resident_id AND c.committed_on = $3)`,
-		runID, residentID, date.Time()); err != nil {
+		ORDER BY d.task_id`, runID, residentID, date.Time())
+	if err != nil {
+		return nil, fmt.Errorf("check in: load two-person tasks: %w", err)
+	}
+	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (h heldTask, err error) {
+		return h, r.Scan(&h.id, &h.committed)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("check in: load two-person tasks: %w", err)
+	}
+	return out, nil
+}
+
+func effortOf(tasks []allocation.Task, id string) int {
+	for _, t := range tasks {
+		if t.ID == id {
+			return t.Effort
+		}
+	}
+	return 0
+}
+
+// persist replaces the Resident's Proposed assignments in the run and writes
+// its reasons. The Tasks in keep stay: a re-plan never drops a promise, nor
+// half of a two-person Task.
+func persist(ctx context.Context, tx pgx.Tx, runID, residentID string, res allocation.Result, rs reasons, keep map[string]bool) error {
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM day_plan_assignments
+		WHERE run_id = $1 AND resident_id = $2 AND NOT (task_id::text = ANY($3))`,
+		runID, residentID, append([]string{}, slices.Collect(maps.Keys(keep))...)); err != nil {
 		return fmt.Errorf("check in: clear assignments: %w", err)
 	}
 	for _, a := range res.DayPlan.Assignments {

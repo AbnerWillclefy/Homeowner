@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -26,6 +27,10 @@ type TaskView struct {
 	// Committed: the Resident it is assigned to accepted it today. Always
 	// false in the pool.
 	Committed bool `json:"committed"`
+	// With are the ids of the other Residents the Task is also given to: the
+	// partner of a two-person Task. Absent for a one-person Task and in the
+	// pool. A two-person Task is listed under each of its Residents.
+	With []string `json:"with,omitempty"`
 }
 
 // ResidentTasks are the Tasks one Resident was given.
@@ -159,9 +164,10 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 	if err != nil {
 		return View{}, fmt.Errorf("day plan: load assignments: %w", err)
 	}
-	by := map[string]given{}
+	// A two-person Task has one assignment per Resident.
+	by := map[string][]given{}
 	for _, a := range assigned {
-		by[a.task] = a.given
+		by[a.task] = append(by[a.task], a.given)
 	}
 	committed, err := s.committedToday(ctx, homeID, date)
 	if err != nil {
@@ -170,25 +176,38 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 
 	at := map[string]int{} // index in v.Others by Resident id, in first-seen order
 	for _, o := range open {
-		g, ok := by[o.ID]
-		switch {
-		case !ok:
+		holders := by[o.ID]
+		if len(holders) == 0 {
 			// A rejected run stored no pool, so its Tasks have no reason.
 			reason, known := poolReason[o.ID]
 			if !known && v.Planned {
 				reason = ReasonAddedAfterPlan
 			}
 			v.Pool = append(v.Pool, TaskView{Open: o, Reason: reason})
-		case g.resident == residentID:
-			v.Mine = append(v.Mine, TaskView{Open: o, Reason: g.reason, Committed: committed[commitment{o.ID, g.resident}]})
-		default:
+			continue
+		}
+		for _, g := range holders {
+			// With are the other Residents holding the Task, so the Task shows
+			// under each of them and names its partner.
+			var with []string
+			for _, h := range holders {
+				if h.resident != g.resident {
+					with = append(with, h.resident)
+				}
+			}
+			slices.Sort(with)
+			tv := TaskView{Open: o, Reason: g.reason, Committed: committed[commitment{o.ID, g.resident}], With: with}
+			if g.resident == residentID {
+				v.Mine = append(v.Mine, tv)
+				continue
+			}
 			i, seen := at[g.resident]
 			if !seen {
 				i = len(v.Others)
 				at[g.resident] = i
 				v.Others = append(v.Others, ResidentTasks{ResidentID: g.resident, Tasks: []TaskView{}})
 			}
-			v.Others[i].Tasks = append(v.Others[i].Tasks, TaskView{Open: o, Reason: g.reason, Committed: committed[commitment{o.ID, g.resident}]})
+			v.Others[i].Tasks = append(v.Others[i].Tasks, tv)
 		}
 	}
 	if v.Swaps, err = s.liveSwaps(ctx, homeID, residentID, runID, date, open); err != nil {

@@ -143,7 +143,8 @@ func (p *Planner) OfferSwap(ctx context.Context, homeID, residentID, offeredTask
 		if offered.done || requested.done {
 			return ErrAlreadyDone
 		}
-		// Until two-person Tasks are defined (#16) a Swap of one is refused.
+		// A Swap of a two-person Task is refused: its partner would end up
+		// holding it twice.
 		if offered.people > 1 || requested.people > 1 {
 			return ErrTwoPersonTask
 		}

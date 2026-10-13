@@ -30,7 +30,8 @@ var (
 	ErrNotYours = errors.New("task is not yours")
 	// ErrAlreadyDone: the Task was completed.
 	ErrAlreadyDone = errors.New("task is already done")
-	// ErrTwoPersonTask: a Task for two people cannot be taken yet.
+	// ErrTwoPersonTask: a Task for two people is never taken from the pool or
+	// swapped: only the Allocation hands it out, to both partners at once.
 	ErrTwoPersonTask = errors.New("task needs two people")
 	// ErrRestricted: the Resident may not do the Task today, because of a
 	// Restriction or because its Chore is not allowed on this weekday.
@@ -66,22 +67,22 @@ func (a *acting) requirePlan() error {
 
 // lockProposed locks the Task and checks it is still open and Proposed (or
 // Committed) to the Resident today: the preamble of Accept and Refuse.
-func (a *acting) lockProposed(ctx context.Context, residentID, taskID string) error {
+func (a *acting) lockProposed(ctx context.Context, residentID, taskID string) (taskState, error) {
 	ts, err := lockTask(ctx, a.tx, a.home, taskID)
 	if err != nil {
-		return err
+		return ts, err
 	}
 	if ts.done {
-		return ErrAlreadyDone
+		return ts, ErrAlreadyDone
 	}
 	mine, err := holds(ctx, a.tx, a.run.id, taskID, residentID)
 	if err != nil {
-		return err
+		return ts, err
 	}
 	if !mine {
-		return ErrNotProposed
+		return ts, ErrNotProposed
 	}
-	return nil
+	return ts, nil
 }
 
 // act runs do in one transaction that locks the Home as the job, a Check-in
@@ -177,7 +178,7 @@ func (p *Planner) Accept(ctx context.Context, homeID, residentID, taskID string,
 		if err := a.requirePlan(); err != nil {
 			return err
 		}
-		if err := a.lockProposed(ctx, residentID, taskID); err != nil {
+		if _, err := a.lockProposed(ctx, residentID, taskID); err != nil {
 			return err
 		}
 		_, err := a.tx.Exec(ctx, `
@@ -198,14 +199,24 @@ func (p *Planner) Refuse(ctx context.Context, homeID, residentID, taskID string,
 		if err := a.requirePlan(); err != nil {
 			return err
 		}
-		if err := a.lockProposed(ctx, residentID, taskID); err != nil {
-			return err
-		}
-		committed, err := committedTasks(ctx, a.tx, residentID, a.date)
+		ts, err := a.lockProposed(ctx, residentID, taskID)
 		if err != nil {
 			return err
 		}
-		if committed[taskID] {
+		// A two-person Task is refused only while neither partner has promised
+		// it, and then it frees both. A Commitment is never deleted.
+		var committed bool
+		if ts.people > 1 {
+			err = a.tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM task_residents WHERE task_id = $1 AND committed_on = $2)`,
+				taskID, a.date.Time()).Scan(&committed)
+		} else {
+			err = a.tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM task_residents WHERE task_id = $1 AND resident_id = $2 AND committed_on = $3)`,
+				taskID, residentID, a.date.Time()).Scan(&committed)
+		}
+		if err != nil {
+			return fmt.Errorf("refuse: %w", err)
+		}
+		if committed {
 			return ErrAlreadyCommitted
 		}
 		if _, err := a.tx.Exec(ctx, `DELETE FROM day_plan_assignments WHERE run_id = $1 AND task_id = $2`, a.run.id, taskID); err != nil {
@@ -219,7 +230,7 @@ func (p *Planner) Refuse(ctx context.Context, homeID, residentID, taskID string,
 // Take gives the Resident a Task from today's pool and Commits them to it. It
 // may go over the Resident's Energy (they chose it), but never over a
 // Restriction or the Chore's allowed weekdays: the same referee that checks
-// every plan decides that. A Task for two people cannot be taken yet.
+// every plan decides that. A Task for two people cannot be taken (ErrTwoPersonTask).
 func (p *Planner) Take(ctx context.Context, homeID, residentID, taskID string, now time.Time) error {
 	return p.act(ctx, homeID, now, "take", func(a *acting) error {
 		if err := a.requirePlan(); err != nil {
@@ -284,6 +295,8 @@ func mayDoIn(st loaded, residentID, taskID, reason string) error {
 	for _, v := range allocation.Check(plan, sub) {
 		switch v.Kind {
 		case allocation.OverEnergy:
+		case allocation.WrongResidentCount:
+			// Only a re-plan asks about a two-person Task, one half at a time.
 		case allocation.BrokenRestriction, allocation.WeekdayNotAllowed:
 			return ErrRestricted
 		default:
@@ -296,8 +309,9 @@ func mayDoIn(st loaded, residentID, taskID, reason string) error {
 // Complete records the Completion of a Task the Resident holds today, Proposed
 // or Committed: who did it and when, on the Home's local date. The Task is
 // done, so the Chore's next Task opens by the schedule (a build-up Chore starts
-// again at its base Effort). Nobody else can complete it afterwards
-// (ErrAlreadyDone). A Task that is in the pool, or someone else's, is
+// again at its base Effort). The Completion lists every Resident the Task was
+// given to, so either partner of a two-person Task completes it for both.
+// Nobody else can complete it afterwards (ErrAlreadyDone). A Task that is in the pool, or someone else's, is
 // ErrNotYours: take it first.
 func (p *Planner) Complete(ctx context.Context, homeID, residentID, taskID string, now time.Time) error {
 	return p.act(ctx, homeID, now, "complete", func(a *acting) error {
@@ -325,8 +339,12 @@ func (p *Planner) Complete(ctx context.Context, homeID, residentID, taskID strin
 		if err != nil {
 			return fmt.Errorf("complete: %w", err)
 		}
-		if _, err := a.tx.Exec(ctx, `INSERT INTO completion_residents (completion_id, resident_id) VALUES ($1, $2)`,
-			completionID, residentID); err != nil {
+		// The Completion lists every Resident the run gave the Task to: either
+		// partner of a two-person Task records it for both.
+		if _, err := a.tx.Exec(ctx, `
+			INSERT INTO completion_residents (completion_id, resident_id)
+			SELECT $1, resident_id FROM day_plan_assignments WHERE run_id = $2 AND task_id = $3`,
+			completionID, a.run.id, taskID); err != nil {
 			return fmt.Errorf("complete: %w", err)
 		}
 		// The check constraint pairs the status with the closing date.
