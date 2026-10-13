@@ -25,6 +25,7 @@ function plan(over: Partial<DayPlan>): DayPlan {
     mine: [TASK],
     others: [],
     pool: [],
+    doneToday: [],
     ...over,
   };
 }

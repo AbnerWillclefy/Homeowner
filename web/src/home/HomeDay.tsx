@@ -17,7 +17,8 @@ import { useDayPlan } from "../dayplan/useDayPlan";
  */
 export function HomeDay({ version, onPlanChanged }: { version: number; onPlanChanged(): void }) {
   const checkIn = useCheckIn(onPlanChanged);
-  const { state, reload } = useDayPlan(version);
+  const day = useDayPlan(version);
+  const { state } = day;
   const [checkInOpen, setCheckInOpen] = useState(false);
   const today = checkIn.state.kind === "ready" ? checkIn.state.checkIn : null;
   const energy = state.kind === "ready" ? state.plan.energy : null;
@@ -34,7 +35,7 @@ export function HomeDay({ version, onPlanChanged }: { version: number; onPlanCha
         onClose={() => setCheckInOpen(false)}
         energy={showsEnergy(note) ? <EnergySummary note={note} energy={energy ?? 0} planned={planned} /> : null}
       />
-      <TodaySection state={state} reload={reload} note={note} />
+      <TodaySection day={day} note={note} />
     </>
   );
 }

@@ -10,6 +10,7 @@ describe("poolReasonLabel", () => {
       "two_person_deferred",
       "invalid_effort",
       "added_after_plan",
+      "refused",
     ]) {
       expect(poolReasonLabel(id)).toEqual({ key: `dayplan.pool.reason.${id}` });
     }
@@ -24,7 +25,7 @@ describe("poolReasonLabel", () => {
 
 describe("assignmentReasonLabel", () => {
   it("points at a catalog key for each reason id the API sends", () => {
-    for (const id of ["deadline_today", "importance", "lateness", "fits_energy"]) {
+    for (const id of ["deadline_today", "importance", "lateness", "fits_energy", "taken"]) {
       expect(assignmentReasonLabel(id)).toEqual({ key: `dayplan.assigned.reason.${id}` });
     }
   });

@@ -1,6 +1,6 @@
 import { config } from "../shared/config";
 import { parseHome, type Failure, type Home } from "../home/api";
-import { authedFetch } from "../auth/request";
+import { authedFetch, errorCode } from "../auth/request";
 
 /** Why an Invite cannot be used. The person needs a new link for any of them. */
 export type DeadInvite = "not-found" | "used" | "expired";
@@ -26,11 +26,6 @@ export type AcceptInviteResult =
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
-}
-
-async function errorCode(response: Response): Promise<string | null> {
-  const body: unknown = await response.json().catch(() => null);
-  return isRecord(body) && typeof body.error === "string" ? body.error : null;
 }
 
 /** 404 and 410 mean the same for lookup and accept; null when the response is neither. */
