@@ -1,7 +1,7 @@
 import { Clock, UserRound } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Link } from "react-router";
-import { acceptAll, acceptTask, completeTask, refuseTask, takeTask, type DayPlan, type PlanTask } from "./api";
+import type { DayPlan, PlanTask } from "./api";
 import type { TaskAction, TaskRole } from "./actions";
 import { formatTime } from "./format";
 import { ME_PATH } from "../app/routes";
@@ -16,14 +16,6 @@ import type { ActionNotice, useDayPlan } from "./useDayPlan";
 
 const LIST = "m-0 flex list-none flex-col gap-3 p-0";
 
-/** Calls the API for an action on a Task. */
-const CALLS: Record<TaskAction, (id: string) => ReturnType<typeof acceptTask>> = {
-  accept: acceptTask,
-  refuse: refuseTask,
-  take: takeTask,
-  done: completeTask,
-};
-
 type Day = ReturnType<typeof useDayPlan>;
 
 /**
@@ -35,20 +27,22 @@ type Day = ReturnType<typeof useDayPlan>;
  */
 export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null }) {
   const { t } = useI18n();
-  const { state, reload, act, acting, notice, settled } = day;
+  const { state, reload, run, acceptAll, acting, notice, settled } = day;
+  const section = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
 
   // A Task that leaves its list takes its button with it, so focus would fall to <body>. Bring it back to the
-  // section's heading, unless it is still on something inside the section.
+  // section's heading when the plan changed, unless focus is still on something inside the section.
   useEffect(() => {
     if (settled === 0) return;
-    const section = heading.current?.parentElement;
     const active = document.activeElement;
-    if (!(active instanceof HTMLElement) || active === section || !section?.contains(active)) heading.current?.focus();
+    if (!(active instanceof HTMLElement) || active === section.current || !section.current?.contains(active)) {
+      heading.current?.focus();
+    }
   }, [settled]);
 
   return (
-    <section aria-labelledby="today-heading">
+    <section ref={section} aria-labelledby="today-heading">
       {/* The greeting is the visible title; this one names the landmark for screen readers. */}
       <h2 id="today-heading" ref={heading} tabIndex={-1} className="sr-only">
         {t("dayplan.heading")}
@@ -76,8 +70,8 @@ export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null 
           plan={state.plan}
           note={note}
           busy={acting}
-          onAccept={() => void act(acceptAll)}
-          onAction={(action, task) => void act(() => CALLS[action](task.id))}
+          onAccept={acceptAll}
+          onAction={run}
         />
       )}
     </section>

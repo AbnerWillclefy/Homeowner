@@ -1,5 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getDayPlan, type DayPlan, type DayPlanResult, type Failure } from "./api";
+import type { TaskAction } from "./actions";
+import {
+  acceptAll as acceptAllCall,
+  acceptTask,
+  completeTask,
+  getDayPlan,
+  refuseTask,
+  takeTask,
+  type ActionResult,
+  type DayPlan,
+  type DayPlanResult,
+  type Failure,
+  type PlanTask,
+} from "./api";
 import { ACTION_FAILURE_KEY, conflictMessageKey, LOAD_FAILURE_KEY } from "./failureMessages";
 import { latestOnly } from "./latestOnly";
 import type { MessageKey } from "../shared/i18n";
@@ -17,18 +30,35 @@ export interface ActionNotice {
   keys: MessageKey[];
 }
 
-/** Why a plan could not be read. Only actions answer 409, so a conflict on a load reads as an error. */
-function failedReason(result: Exclude<DayPlanResult, { kind: "ok" }>): FailedReason {
-  return result.kind === "conflict" ? "error" : result.kind;
+/** Calls the API for an action on a Task. */
+const CALLS: Record<TaskAction, (id: string) => Promise<ActionResult>> = {
+  accept: acceptTask,
+  refuse: refuseTask,
+  take: takeTask,
+  done: completeTask,
+};
+
+/**
+ * What an action's answer does to the screen: the plan to show (absent when the one on screen is still valid)
+ * and what to say. After a 409 the screen was stale, so `fresh` is the plan fetched again; without a readable
+ * one the Resident is told both things.
+ */
+export function outcome(result: ActionResult, fresh?: DayPlanResult): { plan?: DayPlan; notice: ActionNotice | null } {
+  if (result.kind === "ok") return { plan: result.plan, notice: null };
+  if (result.kind !== "conflict") return { notice: { tone: "alert", keys: [ACTION_FAILURE_KEY[result.kind]] } };
+  const message = conflictMessageKey(result.code);
+  if (fresh?.kind === "ok") return { plan: fresh.plan, notice: { tone: "status", keys: [message] } };
+  return { notice: { tone: "alert", keys: [message, LOAD_FAILURE_KEY[fresh?.kind ?? "error"]] } };
 }
 
 /**
  * Loads today's Day Plan, and again whenever `version` changes. Only mounted with a Home.
  *
- * `act` runs one action (accept, refuse, take, complete) and shows the plan the server answers with. Nothing is
- * optimistic: the plan on screen only changes from a server answer. One action runs at a time for the whole
- * section; `acting` says so, so the buttons can be disabled. After a 409 the screen was stale, so the plan is
- * reloaded in place and a message says what happened. `settled` counts finished actions, for moving focus.
+ * `run` and `acceptAll` perform an action (accept, refuse, take, complete; accept everything) and show the
+ * plan the server answers with. Nothing is optimistic: the plan on screen only changes from a server answer.
+ * One action runs at a time for the whole section; `acting` says so, so the buttons can be disabled. After a
+ * 409 the screen was stale, so the plan is reloaded in place and a message says what happened. `settled`
+ * counts the actions that changed the plan, for moving focus.
  */
 export function useDayPlan(version: number) {
   const [state, setState] = useState<DayPlanState>({ kind: "loading" });
@@ -48,7 +78,7 @@ export function useDayPlan(version: number) {
   const fetchPlan = useMemo(
     () =>
       latestOnly(getDayPlan, (result) =>
-        setState(result.kind === "ok" ? { kind: "ready", plan: result.plan } : { kind: "failed", reason: failedReason(result) }),
+        setState(result.kind === "ok" ? { kind: "ready", plan: result.plan } : { kind: "failed", reason: result.kind }),
       ),
     [],
   );
@@ -68,39 +98,30 @@ export function useDayPlan(version: number) {
     return load();
   }, [load]);
 
-  const act = useCallback(async (call: () => Promise<DayPlanResult>) => {
+  const act = useCallback(async (call: () => Promise<ActionResult>) => {
     if (inFlight.current) return;
     inFlight.current = true;
     setActing(true);
     setNotice(null);
     try {
       const result = await call();
+      // The screen was stale: take the server's current plan, in place so the lists and focus stay.
+      const fresh = result.kind === "conflict" ? await getDayPlan() : undefined;
       if (!mounted.current) return;
-      if (result.kind === "ok") {
-        setState({ kind: "ready", plan: result.plan });
-      } else if (result.kind === "conflict") {
-        const message = conflictMessageKey(result.code);
-        // The screen was stale: take the server's current plan, in place so the lists and focus stay.
-        const fresh = await getDayPlan();
-        if (!mounted.current) return;
-        if (fresh.kind === "ok") {
-          setState({ kind: "ready", plan: fresh.plan });
-          setNotice({ tone: "status", keys: [message] });
-        } else {
-          setNotice({ tone: "alert", keys: [message, LOAD_FAILURE_KEY[failedReason(fresh)]] });
-        }
-      } else {
-        // The plan on screen is still valid, so it stays.
-        setNotice({ tone: "alert", keys: [ACTION_FAILURE_KEY[result.kind]] });
+      const { plan, notice } = outcome(result, fresh);
+      setNotice(notice);
+      if (plan) {
+        setState({ kind: "ready", plan });
+        setSettled((n) => n + 1);
       }
     } finally {
       inFlight.current = false;
-      if (mounted.current) {
-        setActing(false);
-        setSettled((n) => n + 1);
-      }
+      if (mounted.current) setActing(false);
     }
   }, []);
 
-  return { state, reload, act, acting, notice, settled };
+  const run = useCallback((action: TaskAction, task: PlanTask) => void act(() => CALLS[action](task.id)), [act]);
+  const acceptAll = useCallback(() => void act(acceptAllCall), [act]);
+
+  return { state, reload, run, acceptAll, acting, notice, settled };
 }
