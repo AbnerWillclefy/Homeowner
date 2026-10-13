@@ -74,21 +74,12 @@ func Check(p DayPlan, s State) []Violation {
 	}
 
 	for id, n := range appearances {
-		t, known := tasks[id]
-		distinct := len(named[id])
-		if known && peopleNeeded(t) > 1 {
-			if distinct != peopleNeeded(t) {
-				out = append(out, Violation{Kind: WrongResidentCount, TaskID: id,
-					Detail: fmt.Sprintf("task %q needs %d residents and is given to %d", id, peopleNeeded(t), distinct)})
-			} else if n > distinct {
-				out = append(out, Violation{Kind: DuplicateTask, TaskID: id,
-					Detail: fmt.Sprintf("task %q is given %d times to %d residents", id, n, distinct)})
-			}
-			continue
+		need := 1
+		if t, known := tasks[id]; known {
+			need = peopleNeeded(t)
 		}
-		if n > 1 {
-			out = append(out, Violation{Kind: DuplicateTask, TaskID: id,
-				Detail: fmt.Sprintf("task %q is given %d times", id, n)})
+		if v, broken := countViolation(id, need, len(named[id]), n); broken {
+			out = append(out, v)
 		}
 	}
 	for id, total := range used {
@@ -103,4 +94,23 @@ func Check(p DayPlan, s State) []Violation {
 			cmp.Compare(a.ResidentID, b.ResidentID), cmp.Compare(a.Level, b.Level))
 	})
 	return out
+}
+
+// countViolation is the rule on how often a Task appears: need Residents (1 or
+// 2), distinct of them named, n assignments in all. A one-person Task (and an
+// unknown one) may appear once; a two-person Task needs exactly two distinct
+// Residents, once each.
+func countViolation(id string, need, distinct, n int) (Violation, bool) {
+	switch {
+	case need > 1 && distinct != need:
+		return Violation{Kind: WrongResidentCount, TaskID: id,
+			Detail: fmt.Sprintf("task %q needs %d residents and is given to %d", id, need, distinct)}, true
+	case need > 1 && n > distinct:
+		return Violation{Kind: DuplicateTask, TaskID: id,
+			Detail: fmt.Sprintf("task %q is given %d times to %d residents", id, n, distinct)}, true
+	case need == 1 && n > 1:
+		return Violation{Kind: DuplicateTask, TaskID: id,
+			Detail: fmt.Sprintf("task %q is given %d times", id, n)}, true
+	}
+	return Violation{}, false
 }
