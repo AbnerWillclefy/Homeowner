@@ -23,6 +23,9 @@ const ReasonAddedAfterPlan = "added_after_plan"
 type TaskView struct {
 	tasks.Open
 	Reason string `json:"reason,omitempty"`
+	// Committed: the Resident it is assigned to accepted it today. Always
+	// false in the pool.
+	Committed bool `json:"committed"`
 }
 
 // ResidentTasks are the Tasks one Resident was given.
@@ -48,6 +51,19 @@ type View struct {
 	Others []ResidentTasks `json:"others"`
 	// Pool is every open Task that is not assigned today.
 	Pool []TaskView `json:"pool"`
+	// DoneToday are the Tasks the caller completed on the Home's date, oldest
+	// first. Never null.
+	DoneToday []DoneView `json:"doneToday"`
+}
+
+// DoneView is a Task the caller completed today.
+type DoneView struct {
+	ID          string    `json:"id"`
+	ChoreID     string    `json:"choreId"`
+	ChoreName   string    `json:"choreName"`
+	Category    string    `json:"category"`
+	Effort      int       `json:"currentEffort"`
+	CompletedAt time.Time `json:"completedAt"`
 }
 
 // Store reads the stored Day Plan.
@@ -74,6 +90,9 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 
 	open, err := s.tasks.ListOpen(ctx, homeID)
 	if err != nil {
+		return View{}, err
+	}
+	if v.DoneToday, err = s.doneToday(ctx, residentID, date); err != nil {
 		return View{}, err
 	}
 
@@ -125,6 +144,10 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 	for _, a := range assigned {
 		by[a.task] = a.given
 	}
+	committed, err := s.committedToday(ctx, homeID, date)
+	if err != nil {
+		return View{}, err
+	}
 
 	at := map[string]int{} // index in v.Others by Resident id, in first-seen order
 	for _, o := range open {
@@ -138,7 +161,7 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 			}
 			v.Pool = append(v.Pool, TaskView{Open: o, Reason: reason})
 		case g.resident == residentID:
-			v.Mine = append(v.Mine, TaskView{Open: o, Reason: g.reason})
+			v.Mine = append(v.Mine, TaskView{Open: o, Reason: g.reason, Committed: committed[commitment{o.ID, g.resident}]})
 		default:
 			i, seen := at[g.resident]
 			if !seen {
@@ -146,8 +169,63 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 				at[g.resident] = i
 				v.Others = append(v.Others, ResidentTasks{ResidentID: g.resident, Tasks: []TaskView{}})
 			}
-			v.Others[i].Tasks = append(v.Others[i].Tasks, TaskView{Open: o, Reason: g.reason})
+			v.Others[i].Tasks = append(v.Others[i].Tasks, TaskView{Open: o, Reason: g.reason, Committed: committed[commitment{o.ID, g.resident}]})
 		}
 	}
 	return v, nil
+}
+
+// doneToday is the Tasks the Resident completed on the date, oldest first.
+func (s *Store) doneToday(ctx context.Context, residentID string, date time.Time) ([]DoneView, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT t.id, c.id, c.name, c.category, t.current_effort, k.completed_at
+		FROM completions k
+		JOIN completion_residents cr ON cr.completion_id = k.id
+		JOIN tasks t ON t.id = k.task_id
+		JOIN chores c ON c.id = t.chore_id
+		WHERE cr.resident_id = $1 AND k.completed_on = $2
+		ORDER BY k.completed_at, t.id`, residentID, date)
+	if err != nil {
+		return nil, fmt.Errorf("day plan: load completions: %w", err)
+	}
+	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (d DoneView, err error) {
+		var effort int16
+		if err := r.Scan(&d.ID, &d.ChoreID, &d.ChoreName, &d.Category, &effort, &d.CompletedAt); err != nil {
+			return d, err
+		}
+		d.Effort = int(effort)
+		return d, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("day plan: load completions: %w", err)
+	}
+	if out == nil {
+		out = []DoneView{}
+	}
+	return out, nil
+}
+
+// commitment is a Resident's promise of a Task.
+type commitment struct{ task, resident string }
+
+// committedToday is every Commitment of the Home dated the given day.
+func (s *Store) committedToday(ctx context.Context, homeID string, date time.Time) (map[commitment]bool, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT tr.task_id, tr.resident_id
+		FROM task_residents tr JOIN residents r ON r.id = tr.resident_id
+		WHERE r.home_id = $1 AND tr.committed_on = $2`, homeID, date)
+	if err != nil {
+		return nil, fmt.Errorf("day plan: load commitments: %w", err)
+	}
+	list, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (c commitment, err error) {
+		return c, r.Scan(&c.task, &c.resident)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("day plan: load commitments: %w", err)
+	}
+	out := make(map[commitment]bool, len(list))
+	for _, c := range list {
+		out[c] = true
+	}
+	return out, nil
 }

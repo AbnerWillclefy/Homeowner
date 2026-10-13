@@ -24,8 +24,10 @@ import (
 //   - The run was rejected: the Check-in is saved and nothing else changes. The
 //     day is taken and nothing is assigned (see Rejected).
 //   - The run was planned: the Resident's Tasks are planned again, from every
-//     open Task not given to someone else today (their own previous Tasks, the
-//     pool, Tasks added after the plan). Only their assignments and the run's
+//     open Task not given to someone else today (their own Proposed Tasks, the
+//     pool, Tasks added after the plan), except the ones they Committed to
+//     (those stay, and their Effort comes off the Energy) and the ones
+//     refused (those wait for tomorrow). Only their Proposed assignments and the run's
 //     reasons change; other Residents' assignments, the run row and its
 //     allocator stay. A proposal that errors or breaks a rule rolls back
 //     everything, the Check-in included, and returns an error: an unchecked
@@ -115,10 +117,24 @@ func (p *Planner) replanRun(ctx context.Context, tx pgx.Tx, homeID, residentID s
 	if err != nil {
 		return nil, err
 	}
+	// A refused Task waits for the next Allocation, whoever plans.
+	for _, e := range rs.refusedTasks() {
+		given[e.TaskID] = true
+	}
+	// A Committed Task is a promise: it stays as it is, is not planned again,
+	// and what it costs is already spent.
+	committed, err := committedTasks(ctx, tx, residentID, date)
+	if err != nil {
+		return nil, err
+	}
+	for id := range committed {
+		given[id] = true
+	}
 	sub, ok := subState(st.state, residentID, given)
 	if !ok {
 		return nil, fmt.Errorf("check in: resident %s is not in the home", residentID)
 	}
+	sub.Residents[0].Energy = energyLeft(sub.Residents[0].Energy, st.state.Tasks, committed)
 
 	res, err := p.alloc.Plan(sub)
 	if err != nil {
@@ -129,8 +145,8 @@ func (p *Planner) replanRun(ctx context.Context, tx pgx.Tx, homeID, residentID s
 			p.alloc.Name(), len(vs), vs[0].Detail)
 	}
 
-	rs.replan(residentID, st.energy[residentID], res)
-	if err := persist(ctx, tx, runID, residentID, res, rs); err != nil {
+	rs.replan(residentID, st.energy[residentID], res, committed)
+	if err := persist(ctx, tx, runID, residentID, date, res, rs); err != nil {
 		return nil, err
 	}
 	return &replanned{assigned: len(res.DayPlan.Assignments), pooled: len(res.Pool)}, nil
@@ -153,12 +169,45 @@ func subState(st allocation.State, residentID string, given map[string]bool) (su
 	return sub, ok
 }
 
-// persist replaces the Resident's assignments in the run and writes its reasons.
-func persist(ctx context.Context, tx pgx.Tx, runID, residentID string, res allocation.Result, rs reasons) error {
-	// Only the Resident's own rows go. When Committed Tasks exist (#15) they must
-	// survive here and be added to what givenToOthers excludes: a re-plan never
-	// drops a Committed Task.
-	if _, err := tx.Exec(ctx, `DELETE FROM day_plan_assignments WHERE run_id = $1 AND resident_id = $2`, runID, residentID); err != nil {
+// energyLeft is the Energy less the Effort of the open Tasks the Resident is
+// Committed to, never below 0. It is what a re-plan may still hand out.
+func energyLeft(energy int, tasks []allocation.Task, committed map[string]bool) int {
+	for _, t := range tasks {
+		if committed[t.ID] {
+			energy -= t.Effort
+		}
+	}
+	return max(energy, 0)
+}
+
+// committedTasks is the set of Task ids the Resident is Committed to on the
+// date.
+func committedTasks(ctx context.Context, tx pgx.Tx, residentID string, date allocation.Date) (map[string]bool, error) {
+	rows, err := tx.Query(ctx, `SELECT task_id FROM task_residents WHERE resident_id = $1 AND committed_on = $2`,
+		residentID, date.Time())
+	if err != nil {
+		return nil, fmt.Errorf("check in: load commitments: %w", err)
+	}
+	ids, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return nil, fmt.Errorf("check in: load commitments: %w", err)
+	}
+	out := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		out[id] = true
+	}
+	return out, nil
+}
+
+// persist replaces the Resident's Proposed assignments in the run and writes
+// its reasons. Their Committed ones stay: a re-plan never drops a promise.
+func persist(ctx context.Context, tx pgx.Tx, runID, residentID string, date allocation.Date, res allocation.Result, rs reasons) error {
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM day_plan_assignments d
+		WHERE d.run_id = $1 AND d.resident_id = $2
+		  AND NOT EXISTS (SELECT 1 FROM task_residents c
+		                  WHERE c.task_id = d.task_id AND c.resident_id = d.resident_id AND c.committed_on = $3)`,
+		runID, residentID, date.Time()); err != nil {
 		return fmt.Errorf("check in: clear assignments: %w", err)
 	}
 	for _, a := range res.DayPlan.Assignments {
@@ -168,14 +217,7 @@ func persist(ctx context.Context, tx pgx.Tx, runID, residentID string, res alloc
 			return fmt.Errorf("check in: store assignment: %w", err)
 		}
 	}
-	body, err := json.Marshal(rs)
-	if err != nil {
-		return fmt.Errorf("check in: write reasons: %w", err)
-	}
-	if _, err := tx.Exec(ctx, `UPDATE allocation_runs SET reasons = $2 WHERE id = $1`, runID, body); err != nil {
-		return fmt.Errorf("check in: write reasons: %w", err)
-	}
-	return nil
+	return writeReasons(ctx, tx, runID, rs)
 }
 
 // givenToOthers is the set of Task ids the run gave to Residents other than
