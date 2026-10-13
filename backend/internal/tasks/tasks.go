@@ -161,14 +161,20 @@ func choreFromRow(base int16, interval *int32, weekdays []int16, buildsUp bool, 
 		BuildsUp:   buildsUp,
 		Created:    allocation.DateOf(created.In(loc)),
 	}
-	if interval != nil {
-		n := int(*interval)
-		c.IntervalDays = &n
-	}
+	c.IntervalDays = intervalDays(interval)
 	for _, w := range weekdays {
 		c.AllowedWeekdays = append(c.AllowedWeekdays, int(w))
 	}
 	return c
+}
+
+// intervalDays maps the nullable interval_days column; nil is a one-off Chore.
+func intervalDays(interval *int32) *int {
+	if interval == nil {
+		return nil
+	}
+	n := int(*interval)
+	return &n
 }
 
 // latestTask maps the joined tasks columns to the Chore's latest Task. It is
@@ -214,10 +220,10 @@ func apply(ctx context.Context, tx pgx.Tx, r choreRow, dec schedule.Decision, no
 func (s *Store) ListOpen(ctx context.Context, homeID string) ([]Open, error) {
 	rows, err := s.db.Query(ctx, `
 		SELECT t.id, c.id, c.name, c.category, t.window_start, t.window_end, t.current_effort, c.base_effort, c.people, c.importance,
-		       c.builds_up AND c.interval_days IS NOT NULL AND c.people = 1 AND t.current_effort >= $2
+		       c.builds_up, c.interval_days
 		FROM tasks t JOIN chores c ON c.id = t.chore_id
 		WHERE c.home_id = $1 AND t.status = 'open'
-		ORDER BY t.window_start, c.created_at, t.id`, homeID, schedule.MaxEffort)
+		ORDER BY t.window_start, c.created_at, t.id`, homeID)
 	if err != nil {
 		return nil, fmt.Errorf("list open tasks: %w", err)
 	}
@@ -225,13 +231,17 @@ func (s *Store) ListOpen(ctx context.Context, homeID string) ([]Open, error) {
 	out := []Open{}
 	for rows.Next() {
 		var (
-			o      Open
-			ws, we time.Time
+			o        Open
+			ws, we   time.Time
+			buildsUp bool
+			interval *int32
 		)
 		if err := rows.Scan(&o.ID, &o.ChoreID, &o.ChoreName, &o.Category, &ws, &we,
-			&o.CurrentEffort, &o.BaseEffort, &o.People, &o.Importance, &o.SuggestTwoPerson); err != nil {
+			&o.CurrentEffort, &o.BaseEffort, &o.People, &o.Importance, &buildsUp, &interval); err != nil {
 			return nil, fmt.Errorf("list open tasks: %w", err)
 		}
+		o.SuggestTwoPerson = schedule.SuggestsTwoPerson(
+			schedule.Chore{BuildsUp: buildsUp, IntervalDays: intervalDays(interval)}, o.People, o.CurrentEffort)
 		o.WindowStart, o.WindowEnd = ws.Format(time.DateOnly), we.Format(time.DateOnly)
 		out = append(out, o)
 	}
