@@ -161,6 +161,7 @@ export function Onboarding({ position, onPosition }: Props) {
     home: () => ({
       body: (
         <CreateHome
+          showHeading={false}
           onSaved={() => {
             onPosition("done");
             onHomeFinished(null);
