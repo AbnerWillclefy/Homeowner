@@ -52,19 +52,43 @@ type acting struct {
 	// date is the Home's local date; now the instant of the request.
 	date allocation.Date
 	now  time.Time
-	run  storedRun
+	// run is today's run; nil when the Home has none or it produced no plan.
+	run *storedRun
+}
+
+// requirePlan is ErrNoPlanToday when there is no Day Plan to act on.
+func (a *acting) requirePlan() error {
+	if a.run == nil {
+		return ErrNoPlanToday
+	}
+	return nil
+}
+
+// lockProposed locks the Task and checks it is still open and Proposed (or
+// Committed) to the Resident today: the preamble of Accept and Refuse.
+func (a *acting) lockProposed(ctx context.Context, residentID, taskID string) error {
+	ts, err := lockTask(ctx, a.tx, a.home, taskID)
+	if err != nil {
+		return err
+	}
+	if ts.done {
+		return ErrAlreadyDone
+	}
+	mine, err := holds(ctx, a.tx, a.run.id, taskID, residentID)
+	if err != nil {
+		return err
+	}
+	if !mine {
+		return ErrNotProposed
+	}
+	return nil
 }
 
 // act runs do in one transaction that locks the Home as the job, a Check-in
-// and "right away" do, so actions and plans serialise. It needs today's run to
-// exist and to have produced a plan; any error rolls everything back.
+// and "right away" do, so actions and plans serialise. a.run is nil when there
+// is no plan today, and do says what that means (most call requirePlan); any
+// error rolls everything back.
 func (p *Planner) act(ctx context.Context, homeID string, now time.Time, name string, do func(a *acting) error) error {
-	return p.actOn(ctx, homeID, now, name, true, do)
-}
-
-// actOn is act, and with needPlan unset it also runs when there is no plan,
-// leaving do to say what that means.
-func (p *Planner) actOn(ctx context.Context, homeID string, now time.Time, name string, needPlan bool, do func(a *acting) error) error {
 	tx, err := p.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("%s: %w", name, err)
@@ -79,13 +103,11 @@ func (p *Planner) actOn(ctx context.Context, homeID string, now time.Time, name 
 	if err != nil {
 		return err
 	}
-	if needPlan && (!found || run.outcome != Planned) {
-		return ErrNoPlanToday
+	a := &acting{tx: tx, home: homeID, date: date, now: now}
+	if found && run.outcome == Planned {
+		a.run = &run
 	}
-	if !found || run.outcome != Planned {
-		run = storedRun{}
-	}
-	if err := do(&acting{tx: tx, home: homeID, date: date, now: now, run: run}); err != nil {
+	if err := do(a); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -135,26 +157,30 @@ func holds(ctx context.Context, tx pgx.Tx, runID, taskID, residentID string) (bo
 	return ok, nil
 }
 
+// assignedToday reports whether the run gave the Task to anyone.
+func assignedToday(ctx context.Context, tx pgx.Tx, runID, taskID string) (bool, error) {
+	var ok bool
+	err := tx.QueryRow(ctx, `
+		SELECT EXISTS (SELECT 1 FROM day_plan_assignments WHERE run_id = $1 AND task_id = $2)`,
+		runID, taskID).Scan(&ok)
+	if err != nil {
+		return false, fmt.Errorf("look for assignment: %w", err)
+	}
+	return ok, nil
+}
+
 // Accept makes the Resident's Proposed Task Committed for the Home's local
 // date at now. Accepting again changes nothing. A Task that is not Proposed to
 // the Resident today (someone else's, or in the pool) is ErrNotProposed.
 func (p *Planner) Accept(ctx context.Context, homeID, residentID, taskID string, now time.Time) error {
 	return p.act(ctx, homeID, now, "accept", func(a *acting) error {
-		ts, err := lockTask(ctx, a.tx, homeID, taskID)
-		if err != nil {
+		if err := a.requirePlan(); err != nil {
 			return err
 		}
-		mine, err := holds(ctx, a.tx, a.run.id, taskID, residentID)
-		if err != nil {
+		if err := a.lockProposed(ctx, residentID, taskID); err != nil {
 			return err
 		}
-		if ts.done {
-			return ErrAlreadyDone
-		}
-		if !mine {
-			return ErrNotProposed
-		}
-		_, err = a.tx.Exec(ctx, `
+		_, err := a.tx.Exec(ctx, `
 			INSERT INTO task_residents (task_id, resident_id, committed_on, committed_at) VALUES ($1, $2, $3, $4)
 			ON CONFLICT DO NOTHING`, taskID, residentID, a.date.Time(), a.now)
 		if err != nil {
@@ -169,25 +195,17 @@ func (p *Planner) Accept(ctx context.Context, homeID, residentID, taskID string,
 // already accepted cannot be refused (ErrAlreadyCommitted).
 func (p *Planner) Refuse(ctx context.Context, homeID, residentID, taskID string, now time.Time) error {
 	return p.act(ctx, homeID, now, "refuse", func(a *acting) error {
-		ts, err := lockTask(ctx, a.tx, homeID, taskID)
+		if err := a.requirePlan(); err != nil {
+			return err
+		}
+		if err := a.lockProposed(ctx, residentID, taskID); err != nil {
+			return err
+		}
+		committed, err := committedTasks(ctx, a.tx, residentID, a.date)
 		if err != nil {
 			return err
 		}
-		mine, err := holds(ctx, a.tx, a.run.id, taskID, residentID)
-		if err != nil {
-			return err
-		}
-		if ts.done {
-			return ErrAlreadyDone
-		}
-		if !mine {
-			return ErrNotProposed
-		}
-		committed, err := committedOn(ctx, a.tx, taskID, residentID, a.date)
-		if err != nil {
-			return err
-		}
-		if committed {
+		if committed[taskID] {
 			return ErrAlreadyCommitted
 		}
 		if _, err := a.tx.Exec(ctx, `DELETE FROM day_plan_assignments WHERE run_id = $1 AND task_id = $2`, a.run.id, taskID); err != nil {
@@ -204,6 +222,9 @@ func (p *Planner) Refuse(ctx context.Context, homeID, residentID, taskID string,
 // every plan decides that. A Task for two people cannot be taken yet.
 func (p *Planner) Take(ctx context.Context, homeID, residentID, taskID string, now time.Time) error {
 	return p.act(ctx, homeID, now, "take", func(a *acting) error {
+		if err := a.requirePlan(); err != nil {
+			return err
+		}
 		ts, err := lockTask(ctx, a.tx, homeID, taskID)
 		if err != nil {
 			return err
@@ -211,13 +232,11 @@ func (p *Planner) Take(ctx context.Context, homeID, residentID, taskID string, n
 		if ts.done {
 			return ErrAlreadyDone
 		}
-		var assignedToday bool
-		err = a.tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM day_plan_assignments WHERE run_id = $1 AND task_id = $2)`,
-			a.run.id, taskID).Scan(&assignedToday)
+		assigned, err := assignedToday(ctx, a.tx, a.run.id, taskID)
 		if err != nil {
-			return fmt.Errorf("take: %w", err)
+			return err
 		}
-		if assignedToday {
+		if assigned {
 			return ErrNotInPool
 		}
 		if ts.people > 1 {
@@ -274,7 +293,7 @@ func (a *acting) checkTake(ctx context.Context, residentID, taskID string) error
 // (ErrAlreadyDone). A Task that is in the pool, or someone else's, is
 // ErrNotYours: take it first.
 func (p *Planner) Complete(ctx context.Context, homeID, residentID, taskID string, now time.Time) error {
-	return p.actOn(ctx, homeID, now, "complete", false, func(a *acting) error {
+	return p.act(ctx, homeID, now, "complete", func(a *acting) error {
 		ts, err := lockTask(ctx, a.tx, homeID, taskID)
 		if err != nil {
 			return err
@@ -282,7 +301,7 @@ func (p *Planner) Complete(ctx context.Context, homeID, residentID, taskID strin
 		if ts.done {
 			return ErrAlreadyDone
 		}
-		if a.run.id == "" {
+		if a.run == nil {
 			return ErrNotYours
 		}
 		mine, err := holds(ctx, a.tx, a.run.id, taskID, residentID)
@@ -312,22 +331,13 @@ func (p *Planner) Complete(ctx context.Context, homeID, residentID, taskID strin
 	})
 }
 
-// committedOn reports whether the Resident committed to the Task on the date.
-func committedOn(ctx context.Context, tx pgx.Tx, taskID, residentID string, date allocation.Date) (bool, error) {
-	var ok bool
-	err := tx.QueryRow(ctx, `
-		SELECT EXISTS (SELECT 1 FROM task_residents WHERE task_id = $1 AND resident_id = $2 AND committed_on = $3)`,
-		taskID, residentID, date.Time()).Scan(&ok)
-	if err != nil {
-		return false, fmt.Errorf("look for commitment: %w", err)
-	}
-	return ok, nil
-}
-
 // AcceptAll makes every Task Proposed to the Resident Committed, in one
 // statement. With nothing Proposed it changes nothing and is not an error.
 func (p *Planner) AcceptAll(ctx context.Context, homeID, residentID string, now time.Time) error {
 	return p.act(ctx, homeID, now, "accept all", func(a *acting) error {
+		if err := a.requirePlan(); err != nil {
+			return err
+		}
 		_, err := a.tx.Exec(ctx, `
 			INSERT INTO task_residents (task_id, resident_id, committed_on, committed_at)
 			SELECT d.task_id, d.resident_id, $3, $4
