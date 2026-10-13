@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronDown } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
 import { HealthBanner } from "../app/HealthBanner";
 import { useI18n } from "../shared/i18n";
@@ -6,8 +6,9 @@ import { Settings } from "../settings/Settings";
 import { Button } from "../shared/ui/Button";
 
 interface Props {
-  /** Quiet "Step n of m" label. */
-  progress: string;
+  /** This step's place in the walk, shown as a quiet "Step n of m" and a row of segments. */
+  step: number;
+  total: number;
   /** The step's question: the page heading, focused on step change. */
   heading: string;
   headingRef: RefObject<HTMLHeadingElement | null>;
@@ -23,12 +24,13 @@ interface Props {
 }
 
 /**
- * Full-bleed onboarding screen: a soft static gradient, no nav. A top bar with Back, a centred scrolling body with
- * the question and its body, and an action area stuck to the bottom so the buttons stay reachable at the largest
- * text size.
+ * Full-bleed onboarding screen: a soft static gradient, no nav. A top bar with Back and the progress segments, a
+ * scrolling body anchored to the top so the question sits in the same place on every step, Settings tucked at the
+ * end of the body, and an action area stuck to the bottom so the buttons stay reachable at the largest text size.
  */
 export function OnboardingLayout({
-  progress,
+  step,
+  total,
   heading,
   headingRef,
   onBack,
@@ -48,7 +50,7 @@ export function OnboardingLayout({
         className="mx-auto flex w-full max-w-lg flex-1 flex-col focus:outline-none"
         aria-labelledby="onboarding-heading"
       >
-        <div className="onboarding-x-bar flex min-h-14 items-center justify-between gap-2">
+        <div className="onboarding-x-bar flex min-h-14 items-center gap-2">
           {onBack ? (
             <BarButton
               label={t("onboarding.back")}
@@ -58,21 +60,30 @@ export function OnboardingLayout({
               <ArrowLeft aria-hidden="true" />
             </BarButton>
           ) : (
-            <span aria-hidden="true" />
+            <span aria-hidden="true" className="size-11 shrink-0" />
           )}
+          <ol aria-hidden="true" className="m-0 flex flex-1 gap-1.5 p-0">
+            {Array.from({ length: total }, (_, index) => (
+              <li
+                key={index}
+                className={`m-0 h-1.5 flex-1 list-none rounded-pill ${index < step ? "bg-accent" : "bg-border/30"}`}
+              />
+            ))}
+          </ol>
+          <span aria-hidden="true" className="size-11 shrink-0" />
         </div>
 
-        <div className="onboarding-x flex flex-1 flex-col justify-center gap-2 py-4">
-          <p className="text-center text-sm text-muted">{progress}</p>
+        <div className="onboarding-x flex flex-1 flex-col pt-6 pb-4">
+          <p className="m-0 text-sm text-muted">{t("onboarding.progress", { step, total })}</p>
           <h1
             id="onboarding-heading"
             ref={headingRef}
             tabIndex={-1}
-            className="text-center focus:outline-none"
+            className="mt-1 text-balance focus:outline-none"
           >
             {heading}
           </h1>
-          <div className="mt-4">{children}</div>
+          <div className="mt-4 [&>section]:mt-0">{children}</div>
           {failure && (
             <div
               role="alert"
@@ -88,16 +99,17 @@ export function OnboardingLayout({
               </Button>
             </div>
           )}
-          <details className="mt-6 text-sm">
-            <summary className="min-h-11 cursor-pointer py-2 text-center">
+          <details className="group mt-auto pt-10 text-sm">
+            <summary className="mx-auto flex min-h-11 w-fit cursor-pointer list-none items-center gap-1 px-3 text-muted [&::-webkit-details-marker]:hidden">
               {t("settings.heading")}
+              <ChevronDown aria-hidden="true" className="size-4 group-open:rotate-180" />
             </summary>
             <Settings />
           </details>
         </div>
 
         {actions && (
-          <div className="onboarding-x sticky bottom-0 flex flex-col gap-3 bg-welcome-to pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <div className="onboarding-x sticky bottom-0 flex flex-col gap-3 bg-welcome-to pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] before:pointer-events-none before:absolute before:inset-x-0 before:-top-6 before:h-6 before:bg-linear-to-b before:from-transparent before:to-welcome-to before:content-['']">
             {actions}
           </div>
         )}

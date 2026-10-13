@@ -180,7 +180,8 @@ export function Onboarding({ position, onPosition }: Props) {
 
   return (
     <OnboardingLayout
-      progress={t("onboarding.progress", { step, total })}
+      step={step}
+      total={total}
       heading={t(HEADING_KEY[current])}
       headingRef={headingRef}
       onBack={walk.canGoBack ? walk.back : undefined}
