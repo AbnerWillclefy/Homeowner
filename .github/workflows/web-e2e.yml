@@ -27,21 +27,15 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
-      - run: npm run typecheck
       # The public dummy values come from web/.env.e2e; nothing here is a secret.
       - run: npm run build:e2e
       # The lock file pins Playwright, which pins the Chromium build, so it is the cache key.
       - uses: actions/cache@v4
-        id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('web/package-lock.json') }}
-      - name: Install Chromium and its system libraries
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
-      - name: Install Chromium's system libraries (browser restored from cache)
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
+      # Skips a browser already restored from the cache; the system libraries are installed either way.
+      - run: npx playwright install --with-deps chromium
       - run: npx playwright test
       - name: Upload the Playwright report
         if: failure()

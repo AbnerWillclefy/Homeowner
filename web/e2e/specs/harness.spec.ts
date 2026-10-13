@@ -20,15 +20,13 @@ test.describe("seeded session", () => {
 });
 
 // The fixture's end-of-test check is what turns a missed route into a failure; test.fail passes only if it fires.
-test("a test that leaves an unmocked request behind fails", async ({ page, baseURL, fakeApi }) => {
+test("a test that leaves an unmocked request behind fails", async ({ page, baseURL }) => {
   test.fail();
-  void fakeApi;
   await launchApp(page, baseURL!);
   await page.evaluate(() => fetch("https://unmocked.e2e.test/left-behind").catch(() => null));
 });
 
-test("a request nothing covers is reported as unmocked", async ({ page, baseURL, fakeApi, router }) => {
-  void fakeApi;
+test("a request nothing covers is reported as unmocked", async ({ page, baseURL, router }) => {
   await launchApp(page, baseURL!);
 
   const results = await page.evaluate(async (apiBase) => {

@@ -48,19 +48,15 @@ export interface FakeApi extends Fake {
   state: FakeState;
   /** Every request the fake received, in order, /healthz included. */
   requests: RecordedRequest[];
-  /** Registers a group of handlers, for example `api.use(onboardingHandlers)`. */
-  use(register: (api: FakeApi) => void): void;
-  /** Registers or replaces the handler for a "METHOD /path" key. */
+  /** Registers the handler for a "METHOD /path" key, replacing any earlier one. */
   on(key: string, handler: Handler): void;
-  /** Replaces one handler for the rest of the test, or for one call with `{ once: true }`. */
-  override(key: string, reply: FakeReply | Handler, options?: { once?: boolean }): void;
 }
 
 interface Route {
   method: string;
   pattern: RegExp;
   names: string[];
-  handlers: Handler[];
+  handler: Handler;
 }
 
 function compile(key: string): Pick<Route, "method" | "pattern" | "names"> {
@@ -85,15 +81,6 @@ export function createFakeApi(options: { baseUrl: string; state?: FakeState }): 
   const routes = new Map<string, Route>();
   const requests: RecordedRequest[] = [];
 
-  function find(key: string): Route {
-    let route = routes.get(key);
-    if (!route) {
-      route = { ...compile(key), handlers: [] };
-      routes.set(key, route);
-    }
-    return route;
-  }
-
   const api: FakeApi = {
     name: "api",
     state,
@@ -102,36 +89,21 @@ export function createFakeApi(options: { baseUrl: string; state?: FakeState }): 
     handle(request) {
       requests.push({ method: request.method, path: request.path, body: request.body, authorization: request.authorization });
       for (const route of routes.values()) {
-        if (route.method !== request.method || route.handlers.length === 0) continue;
+        if (route.method !== request.method) continue;
         const match = route.pattern.exec(request.path);
         if (!match) continue;
         const params = Object.fromEntries(route.names.map((name, i) => [name, decodeURIComponent(match[i + 1]!)]));
         const token = /^Bearer (.+)$/.exec(request.authorization ?? "")?.[1] ?? null;
-        const handler = route.handlers[route.handlers.length - 1]!;
-        return handler({ ...request, params, token }, state);
+        return route.handler({ ...request, params, token }, state);
       }
       return null;
     },
-    use: (register) => register(api),
     on(key, handler) {
-      find(key).handlers = [handler];
-    },
-    override(key, reply, { once = false } = {}) {
-      const route = find(key);
-      const handler: Handler = typeof reply === "function" ? reply : () => reply;
-      if (!once) {
-        route.handlers.push(handler);
-        return;
-      }
-      const wrapped: Handler = (request, current) => {
-        route.handlers.splice(route.handlers.indexOf(wrapped), 1);
-        return handler(request, current);
-      };
-      route.handlers.push(wrapped);
+      routes.set(key, { ...compile(key), handler });
     },
   };
 
-  api.use(coreHandlers);
+  coreHandlers(api);
   return api;
 }
 
