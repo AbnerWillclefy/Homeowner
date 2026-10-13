@@ -76,7 +76,9 @@ export function AppDialog({
             event.preventDefault();
             const previous = before.current;
             if (previous instanceof HTMLElement && previous !== document.body && previous.isConnected) previous.focus();
-            else document.querySelector<HTMLElement>("main")?.focus();
+            // A dialog stacked on another may close after it, so only catch focus that has nowhere to be.
+            else if (document.activeElement === null || document.activeElement === document.body)
+              document.querySelector<HTMLElement>("main")?.focus();
           }}
           onEscapeKeyDown={(event) => !dismissible && event.preventDefault()}
           onInteractOutside={(event) => !dismissible && event.preventDefault()}
