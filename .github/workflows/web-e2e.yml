@@ -1,0 +1,48 @@
+name: web-e2e
+
+# No paths or branches filter on purpose: a required check that never runs would stay pending.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-e2e-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  web-e2e:
+    name: web-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      # The public dummy values come from web/.env.e2e; nothing here is a secret.
+      - run: npm run build:e2e
+      # The lock file pins Playwright, which pins the Chromium build, so it is the cache key.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('web/package-lock.json') }}
+      # Skips a browser already restored from the cache; the system libraries are installed either way.
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+      - name: Upload the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            web/playwright-report
+            web/test-results
+          retention-days: 7

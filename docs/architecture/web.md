@@ -26,7 +26,18 @@ The PWA is one Vite app in `web/`, installed to the Home Screen. It has a precac
 | `src/push/` | Built | Web Push subscription, used by onboarding only: `usePush`, `InstallSteps` and `EnableReminders`. The Me tab has no reminders control, so reminders cannot be turned on or off after onboarding; the launch re-subscribe still runs. |
 | `src/sw.ts`, `src/sw/` | Built | The service worker: precache and push handling. |
 
-Each domain module keeps its API client in `api.ts`, next to the code that uses it. Tests are vitest in a Node environment, on pure modules (API clients, token logic, formatting, `i18n`) plus `shared/ui/Button`, rendered to static markup with `react-dom/server`. Screens have no component tests, so they are checked by hand ([ADR 0007](../adr/0007-tailwind-and-radix-for-an-accessible-calm-ui.md)).
+Each domain module keeps its API client in `api.ts`, next to the code that uses it. Tests are vitest in a Node environment, on pure modules (API clients, token logic, formatting, `i18n`) plus `shared/ui/Button`, rendered to static markup with `react-dom/server`. There are no component tests. Playwright (Chromium only) covers the main flows against the built PWA, with the server mocked in the browser (`page.route`), the service worker blocked, and no backend, AWS account or secrets; accessibility is still checked by hand ([ADR 0007](../adr/0007-tailwind-and-radix-for-an-accessible-calm-ui.md)). See End-to-end tests below.
+
+## End-to-end tests
+
+The `web-e2e` workflow builds the app with `npm run build:e2e` (a production build in `dist-e2e` using the public dummy values in `web/.env.e2e`), serves it with `vite preview`, and runs `npm run e2e`. Playwright does not build, so rebuild after changing `src/`; a stale `dist-e2e` is the one local pitfall. Config is `web/playwright.config.ts` (no retries, a trace kept on failure, `en-US`, service worker blocked, fixed timezone); `web/tsconfig.e2e.json` puts `e2e/` under `npm run typecheck`.
+
+| Folder | What it holds |
+|---|---|
+| `e2e/mocks/` | Everything that fakes the server: the router (answers every non-app request from the registered fakes, adds CORS headers, and records any request nothing covers), the stateful fake API, ID token and session seeding. |
+| `e2e/pages/` | Page actions and locators only (`launchApp(page, baseURL)`, `visit`, one file per screen). They import only `@playwright/test` and other `pages/` files, so a later run against a real deployment can reuse them unchanged. |
+| `e2e/fixtures.ts` | The `test` every spec imports. Its `router` fixture fails a test that leaves an unmocked request behind; `fakeApi` gives each test a fresh state. |
+| `e2e/specs/` | The specs. |
 
 ## Localization
 
