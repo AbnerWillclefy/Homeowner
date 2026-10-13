@@ -8,3 +8,4 @@ web/dist-e2e
 web/playwright-report
 web/test-results
 web/blob-report
+*.tsbuildinfo
