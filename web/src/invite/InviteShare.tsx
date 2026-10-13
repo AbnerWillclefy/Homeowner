@@ -4,6 +4,7 @@ import { useSubmitOnce } from "../shared/ui/useSubmitOnce";
 import { useToast } from "../shared/ui/useToast";
 import { createInvite } from "./api";
 import { useI18n, type MessageKey } from "../shared/i18n";
+import { ButtonRow } from "../shared/ui/ButtonRow";
 import { Button } from "../shared/ui/Button";
 import { inviteLink, shareInvite } from "./share";
 
@@ -27,10 +28,7 @@ export function InviteShare() {
   const { run: onClick, pending: working } = useSubmitOnce(async () => {
     const made = await createInvite();
     if (made.kind !== "ok") {
-      return toast.show({
-        messageKey: CREATE_FAILURE_KEY[made.kind],
-        tone: "error",
-      });
+      return toast.show({ messageKey: CREATE_FAILURE_KEY[made.kind], tone: "error" });
     }
     const outcome = await shareInvite({
       title: t("invite.share.title"),
@@ -38,32 +36,19 @@ export function InviteShare() {
       url: inviteLink(globalThis.location.origin, made.token),
     });
     // Closing the share sheet is the person's choice: nothing to confirm.
-    if (outcome === "shared")
-      toast.show({ messageKey: "invite.share.shared", tone: "success" });
-    else if (outcome === "copied")
-      toast.show({ messageKey: "invite.share.copied", tone: "success" });
-    else if (outcome === "failed")
-      toast.show({ messageKey: "invite.share.failed", tone: "error" });
+    if (outcome === "shared") toast.show({ messageKey: "invite.share.shared", tone: "success" });
+    else if (outcome === "copied") toast.show({ messageKey: "invite.share.copied", tone: "success" });
+    else if (outcome === "failed") toast.show({ messageKey: "invite.share.failed", tone: "error" });
   });
 
   return (
-    <SectionCard
-      id="invite-share-heading"
-      icon={UserPlus}
-      title={t("invite.share.heading")}
-      hint={t("invite.share.hint")}
-    >
-      <div className="flex flex-col">
-        <Button
-          variant="primary"
-          disabled={working}
-          aria-busy={working}
-          onClick={() => void onClick()}
-        >
+    <SectionCard id="invite-share-heading" icon={UserPlus} title={t("invite.share.heading")} hint={t("invite.share.hint")}>
+      <ButtonRow stretch>
+        <Button variant="primary" disabled={working} aria-busy={working} onClick={() => void onClick()}>
           <Share2 aria-hidden="true" className="size-5 shrink-0" />
           {working ? t("invite.share.creating") : t("invite.share.button")}
         </Button>
-      </div>
+      </ButtonRow>
     </SectionCard>
   );
 }

@@ -66,14 +66,8 @@ export function ChoresSection() {
 
   return (
     <section aria-labelledby="chores-heading" className="mt-0">
-      <PageHeader
-        id="chores-heading"
-        headingRef={headingRef}
-        title={t("chores.heading")}
-      >
-        {state.kind === "ready" &&
-          state.chores.length > 0 &&
-          t("chores.count", { count: state.chores.length })}
+      <PageHeader id="chores-heading" headingRef={headingRef} title={t("chores.heading")}>
+        {state.kind === "ready" && state.chores.length > 0 && t("chores.count", { count: state.chores.length })}
       </PageHeader>
 
       {state.kind === "loading" && <p role="status">{t("chores.loading")}</p>}
@@ -93,15 +87,9 @@ export function ChoresSection() {
 
       {state.kind === "ready" && (
         <div className="flex flex-col gap-8">
-          <ButtonRow>
-            <Button className="w-100" onClick={() => open({ kind: "new" })}>
-              {t("chores.add")}
-            </Button>
-            <Button
-              className="w-100"
-              variant="secondary"
-              onClick={() => open({ kind: "catalog" })}
-            >
+          <ButtonRow stretch>
+            <Button onClick={() => open({ kind: "new" })}>{t("chores.add")}</Button>
+            <Button variant="secondary" onClick={() => open({ kind: "catalog" })}>
               {t("chores.addFromCatalog")}
             </Button>
           </ButtonRow>
@@ -121,10 +109,7 @@ export function ChoresSection() {
           )}
 
           {(editing.kind === "catalog" || editing.kind === "fromCatalog") && (
-            <CatalogPicker
-              onPick={(entry) => open({ kind: "fromCatalog", entry })}
-              onClose={close}
-            />
+            <CatalogPicker onPick={(entry) => open({ kind: "fromCatalog", entry })} onClose={close} />
           )}
 
           {editing.kind === "fromCatalog" && (
@@ -162,18 +147,9 @@ export function ChoresSection() {
           )}
 
           {groupByCategory(state.chores, state.categories).map((group) => (
-            <section
-              key={group.category}
-              aria-labelledby={`chores-${group.category}`}
-              className="mt-0"
-            >
-              <GroupHeading
-                count={group.chores.length}
-                icon={<CategoryTile category={group.category} />}
-              >
-                <span id={`chores-${group.category}`}>
-                  {labelText(t, categoryLabel(group.category))}
-                </span>
+            <section key={group.category} aria-labelledby={`chores-${group.category}`} className="mt-0">
+              <GroupHeading count={group.chores.length} icon={<CategoryTile category={group.category} />}>
+                <span id={`chores-${group.category}`}>{labelText(t, categoryLabel(group.category))}</span>
               </GroupHeading>
               <ul className="m-0 flex list-none flex-col gap-3 p-0">
                 {group.chores.map((chore: Chore) => (

@@ -3,6 +3,7 @@ import { Clock } from "lucide-react";
 import { SectionCard } from "../shared/ui/SectionCard";
 import { useToast } from "../shared/ui/useToast";
 import { useI18n, type MessageKey } from "../shared/i18n";
+import { ButtonRow } from "../shared/ui/ButtonRow";
 import { Button } from "../shared/ui/Button";
 import { FormStatusMessage } from "./FormStatusMessage";
 import { HomeFields } from "./HomeFields";
@@ -29,15 +30,7 @@ interface Props {
 }
 
 /** The form for a Home's settings, shared by creating one and editing it. */
-export function HomeForm({
-  idPrefix,
-  copy,
-  initial,
-  timezones,
-  save,
-  onSaved,
-  onRecovered,
-}: Props) {
+export function HomeForm({ idPrefix, copy, initial, timezones, save, onSaved, onRecovered }: Props) {
   const { t } = useI18n();
   const toast = useToast();
   const form = useSettingsForm(
@@ -52,12 +45,7 @@ export function HomeForm({
   const saving = form.status.kind === "saving";
 
   return (
-    <SectionCard
-      id={`${idPrefix}-heading`}
-      icon={Clock}
-      title={t(copy.heading)}
-      hint={t(copy.hint)}
-    >
+    <SectionCard id={`${idPrefix}-heading`} icon={Clock} title={t(copy.heading)} hint={t(copy.hint)}>
       <form onSubmit={form.submit} noValidate>
         <HomeFields
           idPrefix={idPrefix}
@@ -68,17 +56,11 @@ export function HomeForm({
           onChange={form.change}
         />
         <FormStatusMessage status={form.status} />
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Button
-            className="w-100"
-            type="submit"
-            variant="primary"
-            disabled={saving}
-            aria-busy={saving}
-          >
+        <ButtonRow stretch className="mt-4">
+          <Button type="submit" variant="primary" disabled={saving} aria-busy={saving}>
             {t(saving ? copy.submitting : copy.submit)}
           </Button>
-        </div>
+        </ButtonRow>
       </form>
     </SectionCard>
   );
