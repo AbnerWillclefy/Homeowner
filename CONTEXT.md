@@ -98,6 +98,10 @@ _Avoid_: Schedule, Agenda, Daily list
 A Task a Resident has explicitly accepted from their Day Plan, or taken for themselves. Only the Resident can commit; the system only proposes.
 _Avoid_: Assigned, Claimed
 
+**Swap**:
+One Resident's offer to exchange one of their Tasks for another Resident's in today's Day Plan. It happens only when the other Resident accepts; declining changes nothing and costs nothing. When it happens, both Residents are Committed to the Task they receive.
+_Avoid_: Trade, Exchange
+
 ### Rewards
 
 **Streak**:

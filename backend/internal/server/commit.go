@@ -25,6 +25,12 @@ var taskActionErrors = []struct {
 	{dayplan.ErrAlreadyDone, http.StatusConflict, "already_done"},
 	{dayplan.ErrTwoPersonTask, http.StatusConflict, "two_person_task"},
 	{dayplan.ErrRestricted, http.StatusConflict, "restricted"},
+	{dayplan.ErrNotHeldByOther, http.StatusConflict, "not_held_by_other"},
+	{dayplan.ErrSwapPending, http.StatusConflict, "swap_pending"},
+	{dayplan.ErrSwapNotFound, http.StatusNotFound, "swap_not_found"},
+	{dayplan.ErrSwapClosed, http.StatusConflict, "swap_closed"},
+	{dayplan.ErrSwapStale, http.StatusConflict, "swap_stale"},
+	{dayplan.ErrRecipientDrained, http.StatusConflict, "recipient_drained"},
 }
 
 func (s *server) taskActionFailed(w http.ResponseWriter, err error) {

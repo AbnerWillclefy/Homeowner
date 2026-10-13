@@ -260,6 +260,18 @@ func (rs *reasons) take(taskID, residentID string) {
 	rs.Assigned = append(rs.Assigned, assigned{TaskID: taskID, ResidentID: residentID, Reason: ReasonTaken})
 }
 
+// swap hands each Task to its new holder, with the swapped reason.
+func (rs *reasons) swap(taskA, toA, taskB, toB string) {
+	for i, a := range rs.Assigned {
+		switch a.TaskID {
+		case taskA:
+			rs.Assigned[i] = assigned{TaskID: taskA, ResidentID: toA, Reason: ReasonSwapped}
+		case taskB:
+			rs.Assigned[i] = assigned{TaskID: taskB, ResidentID: toB, Reason: ReasonSwapped}
+		}
+	}
+}
+
 // release drops every entry for the Task, assigned or pooled.
 func (rs *reasons) release(taskID string) {
 	rs.Assigned = slices.DeleteFunc(rs.Assigned, func(a assigned) bool { return a.TaskID == taskID })

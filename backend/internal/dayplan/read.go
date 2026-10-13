@@ -54,6 +54,24 @@ type View struct {
 	// DoneToday are the Tasks the caller completed on the Home's date, oldest
 	// first. Never null.
 	DoneToday []DoneView `json:"doneToday"`
+	// Swaps are the live Swap offers the caller is part of. Never null.
+	Swaps Swaps `json:"swaps"`
+}
+
+// Swaps are the caller's live Swap offers: those made to them and by them.
+type Swaps struct {
+	Incoming []SwapView `json:"incoming"`
+	Outgoing []SwapView `json:"outgoing"`
+}
+
+// SwapView is one live offer. Offered is the Task the offerer gives and
+// Requested the one they want; ResidentID is the other Resident, the offerer
+// of an incoming offer and the recipient of an outgoing one.
+type SwapView struct {
+	ID         string     `json:"id"`
+	ResidentID string     `json:"residentId"`
+	Offered    tasks.Open `json:"offered"`
+	Requested  tasks.Open `json:"requested"`
 }
 
 // DoneView is a Task the caller completed today.
@@ -86,7 +104,8 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 		return View{}, fmt.Errorf("day plan: timezone %q: %w", timezone, err)
 	}
 	date := allocation.DateOf(now.In(loc)).Time()
-	v := View{Date: date.Format(time.DateOnly), Mine: []TaskView{}, Others: []ResidentTasks{}, Pool: []TaskView{}}
+	v := View{Date: date.Format(time.DateOnly), Mine: []TaskView{}, Others: []ResidentTasks{}, Pool: []TaskView{},
+		Swaps: Swaps{Incoming: []SwapView{}, Outgoing: []SwapView{}}}
 
 	open, err := s.tasks.ListOpen(ctx, homeID)
 	if err != nil {
@@ -172,7 +191,52 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 			v.Others[i].Tasks = append(v.Others[i].Tasks, TaskView{Open: o, Reason: g.reason, Committed: committed[commitment{o.ID, g.resident}]})
 		}
 	}
+	if v.Swaps, err = s.liveSwaps(ctx, homeID, residentID, runID, date, open); err != nil {
+		return View{}, err
+	}
 	return v, nil
+}
+
+// liveSwaps are the pending offers of the date the caller made or received and
+// whose Tasks still sit where the offer assumed. Liveness is read from the
+// assignments and the Tasks, not stored.
+func (s *Store) liveSwaps(ctx context.Context, homeID, residentID, runID string, date time.Time, open []tasks.Open) (Swaps, error) {
+	out := Swaps{Incoming: []SwapView{}, Outgoing: []SwapView{}}
+	rows, err := s.db.Query(ctx, `
+		SELECT o.id, o.from_resident_id, o.to_resident_id, o.offered_task_id, o.requested_task_id
+		FROM swap_offers o
+		JOIN day_plan_assignments x ON x.run_id = $3 AND x.task_id = o.offered_task_id AND x.resident_id = o.from_resident_id
+		JOIN day_plan_assignments y ON y.run_id = $3 AND y.task_id = o.requested_task_id AND y.resident_id = o.to_resident_id
+		JOIN tasks tx ON tx.id = o.offered_task_id AND tx.status = 'open'
+		JOIN tasks ty ON ty.id = o.requested_task_id AND ty.status = 'open'
+		WHERE o.home_id = $1 AND o.plan_date = $2 AND o.status = 'pending'
+		  AND (o.from_resident_id = $4 OR o.to_resident_id = $4)
+		ORDER BY o.created_at, o.id`, homeID, date, runID, residentID)
+	if err != nil {
+		return Swaps{}, fmt.Errorf("day plan: load swaps: %w", err)
+	}
+	type offer struct{ id, from, to, offered, requested string }
+	list, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (o offer, err error) {
+		return o, r.Scan(&o.id, &o.from, &o.to, &o.offered, &o.requested)
+	})
+	if err != nil {
+		return Swaps{}, fmt.Errorf("day plan: load swaps: %w", err)
+	}
+	byID := make(map[string]tasks.Open, len(open))
+	for _, t := range open {
+		byID[t.ID] = t
+	}
+	for _, o := range list {
+		sv := SwapView{ID: o.id, Offered: byID[o.offered], Requested: byID[o.requested]}
+		if o.to == residentID {
+			sv.ResidentID = o.from
+			out.Incoming = append(out.Incoming, sv)
+		} else {
+			sv.ResidentID = o.to
+			out.Outgoing = append(out.Outgoing, sv)
+		}
+	}
+	return out, nil
 }
 
 // doneToday is the Tasks the Resident completed on the date, oldest first.
