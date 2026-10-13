@@ -152,10 +152,7 @@ describe("getDayPlan", () => {
 
 const DONE = {
   id: "t9",
-  choreId: "c9",
   choreName: "Take out trash",
-  category: "trash",
-  currentEffort: 2,
   completedAt: "2026-10-11T14:30:00Z",
 };
 

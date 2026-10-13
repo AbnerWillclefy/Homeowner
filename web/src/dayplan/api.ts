@@ -26,12 +26,9 @@ export interface PlanTask {
 /** A Task the signed-in Resident completed today. */
 export interface CompletedTask {
   id: string;
-  choreId: string;
   choreName: string;
-  currentEffort: number;
   /** An instant, RFC 3339. */
   completedAt: string;
-  category?: string;
 }
 
 export interface ResidentTasks {
@@ -63,9 +60,13 @@ export type DayPlanResult =
   | { kind: "ok"; plan: DayPlan }
   /** 404: the User has no Home, or the Task is unknown. */
   | { kind: "none" }
-  /** 409: the screen was stale. `code` is the API's `error` ("unknown" when unreadable). Only actions return it. */
-  | { kind: "conflict"; code: string }
   | Failure;
+
+/** What an action answers: a Day Plan result, or 409 when the screen was stale. */
+export type ActionResult =
+  | DayPlanResult
+  /** 409: `code` is the API's `error` ("unknown" when unreadable). Only actions return it. */
+  | { kind: "conflict"; code: string };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -98,19 +99,9 @@ function parseTask(body: unknown): PlanTask | null {
 
 function parseCompleted(body: unknown): CompletedTask | null {
   if (!isRecord(body)) return null;
-  const { id, choreId, choreName, currentEffort, completedAt } = body;
-  if (
-    typeof id !== "string" ||
-    typeof choreId !== "string" ||
-    typeof choreName !== "string" ||
-    typeof currentEffort !== "number" ||
-    typeof completedAt !== "string"
-  ) {
-    return null;
-  }
-  const done: CompletedTask = { id, choreId, choreName, currentEffort, completedAt };
-  if (typeof body.category === "string") done.category = body.category;
-  return done;
+  const { id, choreName, completedAt } = body;
+  if (typeof id !== "string" || typeof choreName !== "string" || typeof completedAt !== "string") return null;
+  return { id, choreName, completedAt };
 }
 
 function parseDone(value: unknown): CompletedTask[] | null {
@@ -178,7 +169,7 @@ export function planMyDay(): Promise<DayPlanResult> {
   return dayPlanCall("/home/day-plan/me", { method: "POST" });
 }
 
-const post = (path: string) => dayPlanCall(path, { method: "POST" });
+const post = (path: string) => send(path, { method: "POST" });
 const taskPath = (id: string, action: string) => `/home/tasks/${encodeURIComponent(id)}/${action}`;
 
 /** Accepts one of the caller's Proposed Tasks: it becomes Committed. */
@@ -192,7 +183,13 @@ export const takeTask = (id: string) => post(taskPath(id, "take"));
 /** Records the Completion of one of the caller's Tasks. */
 export const completeTask = (id: string) => post(taskPath(id, "complete"));
 
+/** A read: a 409 is not something a read can get, so it counts as an error. */
 async function dayPlanCall(path: string, init?: RequestInit): Promise<DayPlanResult> {
+  const result = await send(path, init);
+  return result.kind === "conflict" ? { kind: "error" } : result;
+}
+
+async function send(path: string, init?: RequestInit): Promise<ActionResult> {
   try {
     const result = await authedFetch(path, init);
     if (result.kind === "not-signed-in") return result;
