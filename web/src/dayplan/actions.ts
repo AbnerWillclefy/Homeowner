@@ -12,10 +12,7 @@ export interface TaskActions {
  * Committed (it can no longer be refused). Pool Tasks can be taken, except those that need two people, which
  * the API refuses for now. Other Residents' Tasks are theirs: nothing to do and nothing to say.
  */
-export function actionsFor(
-  task: { people: number; committed?: boolean },
-  role: TaskRole,
-): TaskActions {
+export function actionsFor(task: { people: number; committed?: boolean }, role: TaskRole): TaskActions {
   switch (role) {
     case "mine":
       return task.committed

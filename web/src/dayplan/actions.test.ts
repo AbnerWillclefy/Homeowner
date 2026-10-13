@@ -4,12 +4,12 @@ import { actionsFor } from "./actions";
 const TASK = { people: 1, committed: false };
 
 describe("actionsFor", () => {
-  it("offers Accept, Refuse and Done on a Proposed Task of your own", () => {
-    expect(actionsFor(TASK, "mine")).toEqual({ actions: ["accept", "refuse", "done"], committed: false });
+  it("offers Done, Refuse and Accept on a Proposed Task of your own", () => {
+    expect(actionsFor(TASK, "mine")).toEqual({ actions: ["done", "refuse", "accept"], committed: false });
   });
 
   it("treats a Task without a committed flag (an older API) as Proposed", () => {
-    expect(actionsFor({ people: 1 }, "mine")).toEqual({ actions: ["accept", "refuse", "done"], committed: false });
+    expect(actionsFor({ people: 1 }, "mine")).toEqual({ actions: ["done", "refuse", "accept"], committed: false });
   });
 
   it("offers only Done, and the Committed label, on a Committed Task of your own", () => {
@@ -29,7 +29,7 @@ describe("actionsFor", () => {
     expect(actionsFor({ people: 1, committed: true }, "other")).toEqual({ actions: [], committed: false });
   });
 
-  it("still offers Accept, Refuse and Done on a two-person Task of your own", () => {
-    expect(actionsFor({ people: 2, committed: false }, "mine").actions).toEqual(["accept", "refuse", "done"]);
+  it("still offers Done, Refuse and Accept on a two-person Task of your own", () => {
+    expect(actionsFor({ people: 2, committed: false }, "mine").actions).toEqual(["done", "refuse", "accept"]);
   });
 });
