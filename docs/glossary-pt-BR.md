@@ -27,6 +27,7 @@ Agreed Brazilian Portuguese equivalents for the terms in [CONTEXT.md](../CONTEXT
 | Refuse | recusar | rejeitar, negar | Sends a Proposed Task back to the open Tasks. Used in `dayplan.action.refuse*` and `dayplan.pool.reason.refused`. |
 | Take | pegar | assumir, tomar | Takes an open Task for yourself. Used in `dayplan.action.take*` and `dayplan.assigned.reason.taken`. |
 | Completion | conclusão; the button is "Concluir {task}" | marcação, check, marcar como feito | Recording that a Task was done. CONTEXT.md avoids "Done flag" and "Checkmark", so the pt-BR avoids "marcação" and "check". Used in `dayplan.action.done*`. |
+| Swap | troca (the verb: "trocar") | permuta, intercâmbio, escambo | An offer to exchange one of your Tasks for another Resident's; it happens only when they accept. "Oferecer uma troca", "aceitar a troca", "recusar a troca". Draft for the native speaker to confirm. |
 | Done today | Concluídas hoje | Feitas hoje, Marcadas | Heading of the list of Tasks the Resident completed today. Used in `dayplan.done.heading`. |
 | Baseline | energia base | padrão, energia padrão | A User's usual Energy per weekday. Used in `profile.baseline.*`. |
 | Baseline level | baixa, normal, alta | fraca, forte, média | The three choices per weekday (Low, Normal, High); they describe the Energy ("energia"), so they agree with it in the feminine, like the Check-in "baixa". Used in `profile.baseline.level.*`. |
