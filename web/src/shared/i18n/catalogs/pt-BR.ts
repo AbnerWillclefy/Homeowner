@@ -669,6 +669,8 @@ export const ptBR: Messages = {
   "onboarding.install.heading": "Adicione o Homeowner à sua Tela de Início",
   "onboarding.install.done": "Já adicionei",
   "onboarding.reminders.heading": "Ative os lembretes",
+  "onboarding.reminders.intro":
+    "Um aviso neste aparelho quando for hora do seu check-in. O app também pede o check-in sempre que você o abre, então os lembretes são opcionais.",
   "onboarding.reminders.needsInstall":
     "Abra o Homeowner pelo ícone na Tela de Início para ativar os lembretes, ou pule esta etapa.",
   "onboarding.reminders.unsupported":
@@ -676,6 +678,8 @@ export const ptBR: Messages = {
   "onboarding.reminders.continue": "Continuar",
   "onboarding.reminders.notNow": "Agora não",
   "onboarding.baseline.heading": "Sua energia base",
+  "onboarding.baseline.intro":
+    "Quanta energia você costuma ter em cada dia da semana. O check-in de cada dia ajusta isso, então uma estimativa aproximada basta.",
   "onboarding.baseline.incomplete":
     "Digite um número para cada dia, ou 0 para um dia sem afazeres.",
   "onboarding.restrictions.heading": "Suas restrições",
