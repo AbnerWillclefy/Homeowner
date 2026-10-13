@@ -26,7 +26,7 @@ Each stage is a workflow in `.github/workflows/` started by a label or an event.
 
 ## Learning tickets
 
-The maintainer is learning Go and AWS through this project. Tickets labelled `ready-for-human` are theirs to build: refinement writes a `## Learning path` instead of technical notes, the implement stage refuses them, and the review-fix stage leaves the maintainer's pull requests alone so they apply the review themselves. When the maintainer asks a question on such a ticket or pull request, teach: explain the concept and point to the relevant code or docs, and do not write the solution for them.
+The maintainer is learning Go and AWS through this project, starting with very little knowledge of either. Tickets labelled `ready-for-human` are theirs to build: refinement writes a `## Learning path` instead of technical notes, the implement stage refuses them, and the review-fix stage leaves the maintainer's pull requests alone so they apply the review themselves. The learning path must guide them step by step, each step with a checkpoint, from the first command to a merged pull request (see "Learning tickets" in `.claude/agents/senior-engineer.md`). Every `ready-for-human` ticket carries one; a ticket without it is not ready. When the maintainer asks a question on such a ticket or pull request, teach: explain the concept and point to the relevant code or docs, and do not write the solution for them.
 
 ## Architecture documentation
 
