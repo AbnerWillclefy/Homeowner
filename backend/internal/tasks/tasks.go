@@ -32,6 +32,11 @@ type Open struct {
 	BaseEffort    int    `json:"baseEffort"`
 	People        int    `json:"people"`
 	Importance    string `json:"importance"`
+	// SuggestTwoPerson: the Chore builds up, repeats and takes one person,
+	// and this Task has reached the Effort cap (schedule.MaxEffort), so the
+	// app suggests making the Chore two-person. Derived on every read and never
+	// stored: it goes once the Chore is two-person or the Task is done.
+	SuggestTwoPerson bool `json:"suggestTwoPerson"`
 }
 
 // Store reads and writes the tasks table.
@@ -156,14 +161,20 @@ func choreFromRow(base int16, interval *int32, weekdays []int16, buildsUp bool, 
 		BuildsUp:   buildsUp,
 		Created:    allocation.DateOf(created.In(loc)),
 	}
-	if interval != nil {
-		n := int(*interval)
-		c.IntervalDays = &n
-	}
+	c.IntervalDays = intervalDays(interval)
 	for _, w := range weekdays {
 		c.AllowedWeekdays = append(c.AllowedWeekdays, int(w))
 	}
 	return c
+}
+
+// intervalDays maps the nullable interval_days column; nil is a one-off Chore.
+func intervalDays(interval *int32) *int {
+	if interval == nil {
+		return nil
+	}
+	n := int(*interval)
+	return &n
 }
 
 // latestTask maps the joined tasks columns to the Chore's latest Task. It is
@@ -208,7 +219,8 @@ func apply(ctx context.Context, tx pgx.Tx, r choreRow, dec schedule.Decision, no
 // ListOpen returns the Home's open Tasks, oldest window first. Never nil.
 func (s *Store) ListOpen(ctx context.Context, homeID string) ([]Open, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT t.id, c.id, c.name, c.category, t.window_start, t.window_end, t.current_effort, c.base_effort, c.people, c.importance
+		SELECT t.id, c.id, c.name, c.category, t.window_start, t.window_end, t.current_effort, c.base_effort, c.people, c.importance,
+		       c.builds_up, c.interval_days
 		FROM tasks t JOIN chores c ON c.id = t.chore_id
 		WHERE c.home_id = $1 AND t.status = 'open'
 		ORDER BY t.window_start, c.created_at, t.id`, homeID)
@@ -219,13 +231,17 @@ func (s *Store) ListOpen(ctx context.Context, homeID string) ([]Open, error) {
 	out := []Open{}
 	for rows.Next() {
 		var (
-			o      Open
-			ws, we time.Time
+			o        Open
+			ws, we   time.Time
+			buildsUp bool
+			interval *int32
 		)
 		if err := rows.Scan(&o.ID, &o.ChoreID, &o.ChoreName, &o.Category, &ws, &we,
-			&o.CurrentEffort, &o.BaseEffort, &o.People, &o.Importance); err != nil {
+			&o.CurrentEffort, &o.BaseEffort, &o.People, &o.Importance, &buildsUp, &interval); err != nil {
 			return nil, fmt.Errorf("list open tasks: %w", err)
 		}
+		o.SuggestTwoPerson = schedule.SuggestsTwoPerson(
+			schedule.Chore{BuildsUp: buildsUp, IntervalDays: intervalDays(interval)}, o.People, o.CurrentEffort)
 		o.WindowStart, o.WindowEnd = ws.Format(time.DateOnly), we.Format(time.DateOnly)
 		out = append(out, o)
 	}

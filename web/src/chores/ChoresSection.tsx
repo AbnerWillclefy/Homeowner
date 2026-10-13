@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useSearchParams } from "react-router";
 import type { CatalogEntry } from "../catalog/api";
 import { createChore, updateChore, type Chore } from "./api";
 import { CatalogPicker } from "../catalog/CatalogPicker";
@@ -19,6 +20,9 @@ import { LOAD_FAILURE_KEY } from "./failureMessages";
 import { emptyForm, formFromChore } from "./form";
 import { useChores } from "./useChores";
 
+/** The query parameter that opens a Chore's edit form on arrival. */
+export const EDIT_PARAM = "edit";
+
 /** Which dialog is open: none, a new Chore, the Chore with this id, or one of the two Catalog steps. */
 type Editing =
   | { kind: "none" }
@@ -38,7 +42,12 @@ export function ChoresSection() {
   const { t } = useI18n();
   const toast = useToast();
   const { state, reload, upsert, remove } = useChores();
-  const [editing, setEditing] = useState<Editing>({ kind: "none" });
+  // A Task card's two-person hint links here with ?edit=<choreId>, which opens that Chore's edit form.
+  const [params, setParams] = useSearchParams();
+  const [editing, setEditing] = useState<Editing>(() => {
+    const id = params.get(EDIT_PARAM);
+    return id ? { kind: "edit", id } : { kind: "none" };
+  });
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   // After a Chore goes away, the focused element is gone: land on the heading. A closing dialog returns focus
@@ -47,7 +56,10 @@ export function ChoresSection() {
     requestAnimationFrame(() => headingRef.current?.focus());
   }
 
-  const close = () => setEditing({ kind: "none" });
+  const close = () => {
+    setEditing({ kind: "none" });
+    if (params.has(EDIT_PARAM)) setParams({}, { replace: true });
+  };
 
   const onSaved = (saved: Chore) => {
     upsert(saved);

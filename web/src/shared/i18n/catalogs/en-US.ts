@@ -327,6 +327,9 @@ export const enUS = {
   "dayplan.action.done": "Done",
   "dayplan.action.done.named": "Done with {task}",
   "dayplan.task.committed": "Committed",
+  "dayplan.task.suggestTwoPerson": "This keeps growing. Make it two-person?",
+  "dayplan.task.suggestTwoPerson.action": "Make it two-person",
+  "dayplan.task.suggestTwoPerson.action.named": "Make {task} two-person",
   "dayplan.done.heading": "Done today",
   "dayplan.done.item": "{task} at {time}",
   "dayplan.action.failed.offline":

@@ -13,9 +13,11 @@ import (
 // Over-energy is reported once per Resident (TaskID empty), because the rule
 // is that the sum of a Resident's Efforts stays within their Energy.
 //
-// A Task appearing in more than one assignment is a DuplicateTask. The
-// two-person Tasks ticket must revise this rule, since such a Task legitimately
-// appears once per Resident.
+// A one-person Task appearing in more than one assignment is a DuplicateTask.
+// A two-person Task legitimately appears once per Resident: it is a
+// WrongResidentCount unless exactly two distinct Residents are named (known or
+// not), and a DuplicateTask if one of those pairs repeats. A Task absent from
+// the plan is in the pool, never a violation.
 func Check(p DayPlan, s State) []Violation {
 	residents := make(map[string]Resident)
 	for _, r := range uniqueResidents(s.Residents) {
@@ -32,8 +34,13 @@ func Check(p DayPlan, s State) []Violation {
 	counted := make(map[pair]bool)
 	used := make(map[string]int)
 
+	named := make(map[string]map[string]bool)
 	for _, a := range p.Assignments {
 		appearances[a.TaskID]++
+		if named[a.TaskID] == nil {
+			named[a.TaskID] = make(map[string]bool)
+		}
+		named[a.TaskID][a.ResidentID] = true
 		t, taskKnown := tasks[a.TaskID]
 		r, residentKnown := residents[a.ResidentID]
 		if !taskKnown {
@@ -67,9 +74,12 @@ func Check(p DayPlan, s State) []Violation {
 	}
 
 	for id, n := range appearances {
-		if n > 1 {
-			out = append(out, Violation{Kind: DuplicateTask, TaskID: id,
-				Detail: fmt.Sprintf("task %q is given %d times", id, n)})
+		need := 1
+		if t, known := tasks[id]; known {
+			need = peopleNeeded(t)
+		}
+		if v, broken := countViolation(id, need, len(named[id]), n); broken {
+			out = append(out, v)
 		}
 	}
 	for id, total := range used {
@@ -84,4 +94,23 @@ func Check(p DayPlan, s State) []Violation {
 			cmp.Compare(a.ResidentID, b.ResidentID), cmp.Compare(a.Level, b.Level))
 	})
 	return out
+}
+
+// countViolation is the rule on how often a Task appears: need Residents (1 or
+// 2), distinct of them named, n assignments in all. A one-person Task (and an
+// unknown one) may appear once; a two-person Task needs exactly two distinct
+// Residents, once each.
+func countViolation(id string, need, distinct, n int) (Violation, bool) {
+	switch {
+	case need > 1 && distinct != need:
+		return Violation{Kind: WrongResidentCount, TaskID: id,
+			Detail: fmt.Sprintf("task %q needs %d residents and is given to %d", id, need, distinct)}, true
+	case need > 1 && n > distinct:
+		return Violation{Kind: DuplicateTask, TaskID: id,
+			Detail: fmt.Sprintf("task %q is given %d times to %d residents", id, n, distinct)}, true
+	case need == 1 && n > 1:
+		return Violation{Kind: DuplicateTask, TaskID: id,
+			Detail: fmt.Sprintf("task %q is given %d times", id, n)}, true
+	}
+	return Violation{}, false
 }

@@ -31,6 +31,13 @@ import (
 // MaxEffort caps a build-up Chore's current Effort.
 const MaxEffort = 5
 
+// SuggestsTwoPerson says whether the app should suggest making the Chore
+// two-person: it builds up, repeats and takes one person, and its Task has
+// reached the Effort cap.
+func SuggestsTwoPerson(c Chore, people, currentEffort int) bool {
+	return c.BuildsUp && c.IntervalDays != nil && people == 1 && currentEffort >= MaxEffort
+}
+
 // Chore is the part of a Chore that decides its schedule. IntervalDays nil
 // means one-off. AllowedWeekdays uses 0 = Sunday to 6; empty means any day.
 // Created is the Home-local date the Chore was created on.

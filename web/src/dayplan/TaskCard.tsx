@@ -1,4 +1,7 @@
 import { CalendarDays, CircleCheck, Flag, Lightbulb, Users } from "lucide-react";
+import { Link } from "react-router";
+import { CHORES_PATH } from "../app/routes";
+import { EDIT_PARAM } from "../chores/ChoresSection";
 import type { PlanTask } from "./api";
 import { categoryStyle } from "../chores/categoryStyle";
 import { CategoryTile, EffortDots, Fact, FactIcon, FactList } from "../chores/FactList";
@@ -82,6 +85,19 @@ export function TaskCard({ task, role, today, busy, onAction }: Props) {
           <p className="my-0 flex gap-2 border-t border-current/20 pt-3 text-sm">
             <Lightbulb aria-hidden="true" size={16} className="mt-0.5 shrink-0" />
             <span>{t("dayplan.task.reason", { reason: text(reason) })}</span>
+          </p>
+        )}
+
+        {task.suggestTwoPerson && task.people !== 2 && role !== "other" && (
+          <p className="my-0 flex flex-wrap items-center gap-x-2 text-sm">
+            <span>{t("dayplan.task.suggestTwoPerson")}</span>
+            <Link
+              to={`${CHORES_PATH}?${EDIT_PARAM}=${encodeURIComponent(task.choreId)}`}
+              aria-label={t("dayplan.task.suggestTwoPerson.action.named", { task: task.choreName })}
+              className="inline-flex min-h-11 items-center font-semibold underline underline-offset-[0.2em]"
+            >
+              {t("dayplan.task.suggestTwoPerson.action")}
+            </Link>
           </p>
         )}
 
