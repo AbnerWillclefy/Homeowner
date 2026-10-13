@@ -1,17 +1,13 @@
-import { CalendarDays, Flag, Pencil, Repeat, Trash2, TrendingUp, Users } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { deleteChore, type Chore, type Failure } from "./api";
 import { ButtonRow } from "../shared/ui/ButtonRow";
 import { Card } from "../shared/ui/Card";
 import { useSubmitOnce } from "../shared/ui/useSubmitOnce";
 import { useI18n } from "../shared/i18n";
-import { importanceLabel, labelText } from "../profile/labels";
 import { Button } from "../shared/ui/Button";
-import { effortName } from "./effortLevels";
 import { DELETE_FAILURE_KEY } from "./failureMessages";
-import { EffortDots, Fact, FactIcon, FactList } from "./FactList";
-import { choreWeekdays } from "./facts";
-import { intervalText } from "./intervalPresets";
+import { ChoreFacts } from "./ChoreFacts";
 
 type DeleteState =
   | { kind: "idle" }
@@ -27,15 +23,14 @@ interface Props {
 
 /**
  * One Chore in its Category's group: the name with Edit and a two-step inline Delete (ask, then confirm), then
- * its facts. Importance and people show only when they differ from the usual (Normal, one person), as on Today.
+ * its facts.
  */
 export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const [remove, setRemove] = useState<DeleteState>({ kind: "idle" });
   const deleteRef = useRef<HTMLButtonElement>(null);
   const keepRef = useRef<HTMLButtonElement>(null);
   const confirming = remove.kind !== "idle";
-  const weekdays = choreWeekdays(chore, locale);
 
   // Step two lands on the safe choice, and cancelling returns to the button that opened it.
   useEffect(() => {
@@ -80,18 +75,7 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
           )}
         </div>
 
-        <FactList>
-          <Fact icon={<EffortDots effort={chore.baseEffort} />}>
-            {t("chores.item.effort", { level: effortName(t, chore.baseEffort) })}
-          </Fact>
-          <Fact icon={<FactIcon icon={Repeat} />}>{intervalText(t, chore.intervalDays)}</Fact>
-          {weekdays && <Fact icon={<FactIcon icon={CalendarDays} />}>{t("chores.item.weekdays", { days: weekdays })}</Fact>}
-          {chore.importance !== "normal" && (
-            <Fact icon={<FactIcon icon={Flag} />}>{labelText(t, importanceLabel(chore.importance))}</Fact>
-          )}
-          {chore.people === 2 && <Fact icon={<FactIcon icon={Users} />}>{t("chores.item.people.two")}</Fact>}
-          {chore.buildsUp && <Fact icon={<FactIcon icon={TrendingUp} />}>{t("chores.item.buildsUp")}</Fact>}
-        </FactList>
+<ChoreFacts chore={chore} />
 
         {confirming && (
           <div

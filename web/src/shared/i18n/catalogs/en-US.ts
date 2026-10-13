@@ -580,8 +580,6 @@ export const enUS = {
     other: "{count} Chores suggested",
   },
   "catalog.review.empty": "No Chores are suggested.",
-  "catalog.review.edit": "Edit",
-  "catalog.review.remove": "Remove",
   "catalog.review.remove.label": "Remove {name}",
   "catalog.review.remove.prompt": "Remove {name} from the suggestions?",
   "catalog.review.remove.confirm": "Yes, remove",

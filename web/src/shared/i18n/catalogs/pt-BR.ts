@@ -590,8 +590,6 @@ export const ptBR: Messages = {
     other: "{count} afazeres sugeridos",
   },
   "catalog.review.empty": "Nenhum afazer foi sugerido.",
-  "catalog.review.edit": "Editar",
-  "catalog.review.remove": "Remover",
   "catalog.review.remove.label": "Remover {name}",
   "catalog.review.remove.prompt": "Remover {name} das sugestões?",
   "catalog.review.remove.confirm": "Sim, remover",
