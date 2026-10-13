@@ -147,6 +147,10 @@ func (p *Planner) OfferSwap(ctx context.Context, homeID, residentID, offeredTask
 		if offered.done || requested.done {
 			return ErrAlreadyDone
 		}
+		// Until two-person Tasks are defined (#16) a Swap of one is refused.
+		if offered.people > 1 || requested.people > 1 {
+			return ErrTwoPersonTask
+		}
 		mine, err := holds(ctx, a.tx, a.run.id, offeredTaskID, residentID)
 		if err != nil {
 			return err
@@ -160,9 +164,6 @@ func (p *Planner) OfferSwap(ctx context.Context, homeID, residentID, offeredTask
 		}
 		if !assigned || other == residentID {
 			return ErrNotHeldByOther
-		}
-		if offered.people > 1 || requested.people > 1 {
-			return ErrTwoPersonTask
 		}
 		if err := a.swapAllowed(ctx, residentID, offeredTaskID, other, requestedTaskID); err != nil {
 			return err
