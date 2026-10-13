@@ -1,32 +1,15 @@
-import {
-  CalendarDays,
-  CircleCheck,
-  Flag,
-  Lightbulb,
-  Users,
-} from "lucide-react";
+import { CalendarDays, CircleCheck, Flag, Lightbulb, Users } from "lucide-react";
 import { Link } from "react-router";
 import { CHORES_PATH } from "../app/routes";
 import { EDIT_PARAM } from "../chores/ChoresSection";
 import type { PlanTask } from "./api";
 import { categoryStyle } from "../chores/categoryStyle";
-import {
-  CategoryTile,
-  EffortDots,
-  Fact,
-  FactIcon,
-  FactList,
-} from "../chores/FactList";
+import { CategoryTile, EffortDots, Fact, FactIcon, FactList } from "../chores/FactList";
 import { Card } from "../shared/ui/Card";
 import { useI18n, type MessageKey } from "../shared/i18n";
 import { Button } from "../shared/ui/Button";
 import { actionsFor, type TaskAction, type TaskRole } from "./actions";
-import {
-  categoryLabel,
-  importanceLabel,
-  labelText,
-  type Label,
-} from "../profile/labels";
+import { categoryLabel, importanceLabel, labelText, type Label } from "../profile/labels";
 import { dueWhen, formatDay } from "./format";
 import { assignmentReasonLabel, poolReasonLabel } from "./reasons";
 import { taskEffortText } from "./taskEffort";
@@ -48,18 +31,9 @@ interface Props {
 
 // Each action's visible label and its accessible name, which says which Task and starts with the visible
 // label so voice control ("tap Accept") finds it.
-const ACTION_LABELS: Record<
-  TaskAction,
-  { label: MessageKey; named: MessageKey }
-> = {
-  accept: {
-    label: "dayplan.action.accept",
-    named: "dayplan.action.accept.named",
-  },
-  refuse: {
-    label: "dayplan.action.refuse",
-    named: "dayplan.action.refuse.named",
-  },
+const ACTION_LABELS: Record<TaskAction, { label: MessageKey; named: MessageKey }> = {
+  accept: { label: "dayplan.action.accept", named: "dayplan.action.accept.named" },
+  refuse: { label: "dayplan.action.refuse", named: "dayplan.action.refuse.named" },
   take: { label: "dayplan.action.take", named: "dayplan.action.take.named" },
   done: { label: "dayplan.action.done", named: "dayplan.action.done.named" },
 };
@@ -77,9 +51,7 @@ export function TaskCard({ task, role, today, busy, onAction }: Props) {
   const { actions, committed } = actionsFor(task, role);
 
   const style = categoryStyle(task.category);
-  const reason = (role === "pool" ? poolReasonLabel : assignmentReasonLabel)(
-    task.reason,
-  );
+  const reason = (role === "pool" ? poolReasonLabel : assignmentReasonLabel)(task.reason);
   const date = formatDay(task.windowEnd, locale);
   const due = {
     past: t("dayplan.task.duePast", { date }),
@@ -93,12 +65,8 @@ export function TaskCard({ task, role, today, busy, onAction }: Props) {
         <div className="flex items-center gap-3">
           <CategoryTile category={task.category} onTint={own} />
           <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
-            <p className="my-0 text-sm font-semibold">
-              {text(categoryLabel(style.id))}
-            </p>
-            <h4 className="my-0 text-lg font-bold leading-snug">
-              {task.choreName}
-            </h4>
+            <p className="my-0 text-sm font-semibold">{text(categoryLabel(style.id))}</p>
+            <h4 className="my-0 text-lg font-bold leading-snug">{task.choreName}</h4>
           </div>
         </div>
 
@@ -108,24 +76,14 @@ export function TaskCard({ task, role, today, busy, onAction }: Props) {
           </Fact>
           <Fact icon={<FactIcon icon={CalendarDays} />}>{due}</Fact>
           {task.importance !== "normal" && (
-            <Fact icon={<FactIcon icon={Flag} />}>
-              {text(importanceLabel(task.importance))}
-            </Fact>
+            <Fact icon={<FactIcon icon={Flag} />}>{text(importanceLabel(task.importance))}</Fact>
           )}
-          {task.people === 2 && (
-            <Fact icon={<FactIcon icon={Users} />}>
-              {t("chores.item.people.two")}
-            </Fact>
-          )}
+          {task.people === 2 && <Fact icon={<FactIcon icon={Users} />}>{t("chores.item.people.two")}</Fact>}
         </FactList>
 
         {reason && (
           <p className="my-0 flex gap-2 border-t border-current/20 pt-3 text-sm">
-            <Lightbulb
-              aria-hidden="true"
-              size={16}
-              className="mt-0.5 shrink-0"
-            />
+            <Lightbulb aria-hidden="true" size={16} className="mt-0.5 shrink-0" />
             <span>{t("dayplan.task.reason", { reason: text(reason) })}</span>
           </p>
         )}
@@ -135,9 +93,7 @@ export function TaskCard({ task, role, today, busy, onAction }: Props) {
             <span>{t("dayplan.task.suggestTwoPerson")}</span>
             <Link
               to={`${CHORES_PATH}?${EDIT_PARAM}=${encodeURIComponent(task.choreId)}`}
-              aria-label={t("dayplan.task.suggestTwoPerson.action.named", {
-                task: task.choreName,
-              })}
+              aria-label={t("dayplan.task.suggestTwoPerson.action.named", { task: task.choreName })}
               className="inline-flex min-h-11 items-center font-semibold underline underline-offset-[0.2em]"
             >
               {t("dayplan.task.suggestTwoPerson.action")}
@@ -149,26 +105,16 @@ export function TaskCard({ task, role, today, busy, onAction }: Props) {
           <div className="flex flex-wrap items-center gap-2">
             {committed && (
               <p className="my-0 flex items-center gap-1.5 font-semibold">
-                <CircleCheck
-                  aria-hidden="true"
-                  size={18}
-                  className="shrink-0"
-                />
+                <CircleCheck aria-hidden="true" size={18} className="shrink-0" />
                 {t("dayplan.task.committed")}
               </p>
             )}
             {actions.map((action) => (
               <Button
                 key={action}
-                variant={
-                  action === "accept" || action === "take"
-                    ? "primary"
-                    : "secondary"
-                }
+                variant={action === "accept" || action === "take" ? "primary" : "secondary"}
                 disabled={busy}
-                aria-label={t(ACTION_LABELS[action].named, {
-                  task: task.choreName,
-                })}
+                aria-label={t(ACTION_LABELS[action].named, { task: task.choreName })}
                 onClick={() => onAction(action, task)}
               >
                 {t(ACTION_LABELS[action].label)}
@@ -180,3 +126,4 @@ export function TaskCard({ task, role, today, busy, onAction }: Props) {
     </li>
   );
 }
+

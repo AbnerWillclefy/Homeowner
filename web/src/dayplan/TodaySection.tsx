@@ -5,11 +5,7 @@ import type { DayPlan, PlanTask } from "./api";
 import type { TaskAction, TaskRole } from "./actions";
 import { formatTime } from "./format";
 import { ME_PATH } from "../app/routes";
-import {
-  noTasksReason,
-  type EnergyNote,
-  type NoTasksReason,
-} from "../checkin/state";
+import { noTasksReason, type EnergyNote, type NoTasksReason } from "../checkin/state";
 import { formatAllocationTime } from "../home/allocationTimes";
 import { useI18n, type MessageKey } from "../shared/i18n";
 import { Button } from "../shared/ui/Button";
@@ -29,13 +25,7 @@ type Day = ReturnType<typeof useDayPlan>;
  * loads the plan and shows its Energy in the header's chip; `note` is that chip's note, null while the
  * Check-in is not known.
  */
-export function TodaySection({
-  day,
-  note,
-}: {
-  day: Day;
-  note: EnergyNote | null;
-}) {
+export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null }) {
   const { t } = useI18n();
   const { state, reload, run, acceptAll, acting, notice, settled } = day;
   const section = useRef<HTMLElement>(null);
@@ -46,11 +36,7 @@ export function TodaySection({
   useEffect(() => {
     if (settled === 0) return;
     const active = document.activeElement;
-    if (
-      !(active instanceof HTMLElement) ||
-      active === section.current ||
-      !section.current?.contains(active)
-    ) {
+    if (!(active instanceof HTMLElement) || active === section.current || !section.current?.contains(active)) {
       heading.current?.focus();
     }
   }, [settled]);
@@ -156,27 +142,15 @@ function PlanView({
   const reason = note && noTasksReason(note);
   const proposed = plan.mine.filter((task) => !task.committed).length;
   const card = (task: PlanTask, role: TaskRole) => (
-    <TaskCard
-      key={task.id}
-      task={task}
-      role={role}
-      today={plan.date}
-      busy={busy}
-      onAction={onAction}
-    />
+    <TaskCard key={task.id} task={task} role={role} today={plan.date} busy={busy} onAction={onAction} />
   );
 
   return (
     <div className="flex flex-col gap-8">
       {!plan.planned && !plan.rejected && (
-        <p
-          role="status"
-          className="my-0 flex items-center gap-2 font-semibold text-muted"
-        >
+        <p role="status" className="my-0 flex items-center gap-2 font-semibold text-muted">
           <Clock aria-hidden="true" size={18} className="shrink-0" />
-          {t("dayplan.notPlanned", {
-            time: formatAllocationTime(plan.allocationTime, locale),
-          })}
+          {t("dayplan.notPlanned", { time: formatAllocationTime(plan.allocationTime, locale) })}
         </p>
       )}
       {plan.rejected && (
@@ -187,23 +161,14 @@ function PlanView({
 
       {plan.planned && (
         <div>
-          <GroupHeading count={plan.mine.length}>
-            {t("dayplan.mine.heading")}
-          </GroupHeading>
+          <GroupHeading count={plan.mine.length}>{t("dayplan.mine.heading")}</GroupHeading>
           {proposed > 0 && (
-            <Button
-              fullWidth
-              className="mb-3"
-              disabled={busy}
-              onClick={onAccept}
-            >
+            <Button fullWidth className="mb-3" disabled={busy} onClick={onAccept}>
               {t("dayplan.action.acceptAll", { count: proposed })}
             </Button>
           )}
           {plan.mine.length > 0 ? (
-            <ul className={LIST}>
-              {plan.mine.map((task) => card(task, "mine"))}
-            </ul>
+            <ul className={LIST}>{plan.mine.map((task) => card(task, "mine"))}</ul>
           ) : (
             <EmptyMine reason={reason} />
           )}
@@ -215,20 +180,9 @@ function PlanView({
           <GroupHeading>{t("dayplan.others.heading")}</GroupHeading>
           <div className="flex flex-col gap-5">
             {plan.others.map((other, index) => (
-              <section
-                key={other.residentId}
-                aria-labelledby={`resident-${index}`}
-                className="mt-0"
-              >
-                <h4
-                  id={`resident-${index}`}
-                  className="mt-0 mb-2 flex items-center gap-1.5 text-sm font-bold text-muted"
-                >
-                  <UserRound
-                    aria-hidden="true"
-                    size={16}
-                    className="shrink-0"
-                  />
+              <section key={other.residentId} aria-labelledby={`resident-${index}`} className="mt-0">
+                <h4 id={`resident-${index}`} className="mt-0 mb-2 flex items-center gap-1.5 text-sm font-bold text-muted">
+                  <UserRound aria-hidden="true" size={16} className="shrink-0" />
                   {t("dayplan.others.resident", { number: index + 1 })}
                 </h4>
                 <ul className={LIST}>
@@ -241,9 +195,7 @@ function PlanView({
       )}
 
       <div>
-        <GroupHeading count={plan.pool.length}>
-          {t("dayplan.pool.heading")}
-        </GroupHeading>
+        <GroupHeading count={plan.pool.length}>{t("dayplan.pool.heading")}</GroupHeading>
         {plan.pool.length === 0 ? (
           <p className="my-0 text-muted">{t("dayplan.pool.empty")}</p>
         ) : (
@@ -255,16 +207,11 @@ function PlanView({
 
       {plan.doneToday.length > 0 && (
         <div>
-          <GroupHeading count={plan.doneToday.length}>
-            {t("dayplan.done.heading")}
-          </GroupHeading>
+          <GroupHeading count={plan.doneToday.length}>{t("dayplan.done.heading")}</GroupHeading>
           <ul className="m-0 flex list-none flex-col gap-2 p-0">
             {plan.doneToday.map((done) => (
               <li key={done.id} className="my-0 [overflow-wrap:anywhere]">
-                {t("dayplan.done.item", {
-                  task: done.choreName,
-                  time: formatTime(done.completedAt, locale),
-                })}
+                {t("dayplan.done.item", { task: done.choreName, time: formatTime(done.completedAt, locale) })}
               </li>
             ))}
           </ul>
@@ -273,3 +220,4 @@ function PlanView({
     </div>
   );
 }
+
