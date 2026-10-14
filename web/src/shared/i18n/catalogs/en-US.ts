@@ -374,6 +374,15 @@ export const enUS = {
     "No open Tasks are left for you today. Enjoy the day.",
   "startChoice.done.close": "Got it",
 
+  // Streak
+  "streak.heading": "Streak",
+  "streak.days": {
+    one: "{count}-day Streak",
+    other: "{count}-day Streak",
+  },
+  "streak.empty": "Finish a Task to start one",
+  "streak.todayCounts": "Today counts",
+
   // Check-in
   "checkin.heading": "Check-in",
   "checkin.prompt": "How are you today?",

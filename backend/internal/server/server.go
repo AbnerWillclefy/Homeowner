@@ -21,6 +21,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/invites"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/streakstore"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/tasks"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
 )
@@ -75,6 +76,7 @@ func New(deps Deps) http.Handler {
 		dayPlans:      dayplan.NewStore(deps.DB),
 		planner:       dayplan.New(deps.DB, deps.Allocator, deps.Logger),
 		checkIns:      checkinstore.NewStore(deps.DB),
+		streaks:       streakstore.NewStore(deps.DB),
 	}
 
 	mux := http.NewServeMux()
@@ -112,6 +114,7 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("POST /home/swaps/{id}/cancel", s.requireResident(s.postSwapCancel))
 	mux.HandleFunc("GET /home/check-in", s.requireResident(s.getCheckIn))
 	mux.HandleFunc("PUT /home/check-in", s.requireResident(s.putCheckIn))
+	mux.HandleFunc("GET /home/streak", s.requireResident(s.getStreak))
 	mux.HandleFunc("GET /categories", s.requireUser(s.getCategories))
 	mux.HandleFunc("GET /demands", s.requireUser(s.getDemands))
 	mux.HandleFunc("GET /catalog", s.requireUser(s.getCatalog))
@@ -152,6 +155,8 @@ type server struct {
 	planner *dayplan.Planner
 	// checkIns reads the caller's Check-in.
 	checkIns *checkinstore.Store
+	// streaks reads the caller's Streak from their history.
+	streaks *streakstore.Store
 }
 
 func (s *server) healthz(w http.ResponseWriter, r *http.Request) {
