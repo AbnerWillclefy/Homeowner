@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { SESSION_KEY, type Session } from "../../src/auth/session";
+import { SESSION_KEY, type Session } from "../../src/domains/auth/logic/session";
 import { makeIdToken } from "./tokens";
 
 // Year 2100. A token with under a minute left makes authedFetch call Cognito, which would be an unmocked request.
