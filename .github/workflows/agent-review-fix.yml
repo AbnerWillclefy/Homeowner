@@ -28,7 +28,7 @@ jobs:
           MAX_ROUNDS: 2
         run: |
           echo "run=false" >> "$GITHUB_OUTPUT"
-          # A human's pull request is a learning exercise: they apply the review themselves
+          # A human's pull request comes from /ticket, which applies the review locally with them
           author=$(gh pr view "$PR" -R "$REPO" --json author --jq .author.login)
           [ "$author" = "homeowner-agents" ] || exit 0
 
