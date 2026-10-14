@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/apitest"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
 
 func TestRefuseReturnsTheTaskToThePoolAndChangesNothingElse(t *testing.T) {

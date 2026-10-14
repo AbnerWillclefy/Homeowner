@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/apitest"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/catalog"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
 
 // proposals posts answers and returns the proposals array, failing on a non-200.

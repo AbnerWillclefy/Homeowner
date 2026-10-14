@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/apitest"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 	"github.com/AbnerWillclefy/Homeowner/backend/migrations"
 )
 

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/config"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/config"
 )
 
 func TestVAPIDIsOptionalAsASet(t *testing.T) {

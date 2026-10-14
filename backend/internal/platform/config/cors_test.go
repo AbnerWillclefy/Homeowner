@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/config"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/config"
 )
 
 func TestLoadCORSAllowedOriginsDefaultsToNone(t *testing.T) {

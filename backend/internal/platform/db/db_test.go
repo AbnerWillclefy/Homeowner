@@ -9,8 +9,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/apitest"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/db"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/db"
 )
 
 func currentVersion(t *testing.T, url string) int64 {

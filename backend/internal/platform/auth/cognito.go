@@ -16,7 +16,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 )
 
 const (

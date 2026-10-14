@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/apitest"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
 
 // atDay moves the fake clock to 09:00 UTC on a March 2026 day (1 March is a

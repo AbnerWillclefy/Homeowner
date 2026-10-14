@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/apitest"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
 
 func countUsers(t *testing.T, app *apitest.App) int {

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/apitest"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
 
 func startApp(t *testing.T) *apitest.App { t.Helper(); return apitest.Start(t) }

@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/apitest"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
 
 // A Committed Task is a promise: no re-plan takes it away, and what it costs

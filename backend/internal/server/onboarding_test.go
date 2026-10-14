@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/apitest"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
 
 // onboardingSteps are the stored step ids, in order. They are permanent.

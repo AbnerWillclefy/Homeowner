@@ -3,7 +3,7 @@ package config_test
 import (
 	"testing"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/config"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/config"
 )
 
 func env(m map[string]string) func(string) string {

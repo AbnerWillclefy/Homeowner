@@ -14,7 +14,7 @@ import (
 func TestPackageIsPure(t *testing.T) {
 	forbidden := []string{
 		"pgx", "net/http", "database/sql",
-		"internal/clock", "internal/db", "internal/server", "internal/apitest",
+		"internal/platform/", "internal/server",
 	}
 	fset := token.NewFileSet()
 	pkgs, err := parser.ParseDir(fset, ".", nil, 0)

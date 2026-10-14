@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 )
 
 func TestFakeNowReturnsStartTime(t *testing.T) {

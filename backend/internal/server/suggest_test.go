@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/apitest"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
 
 func suggested(t *testing.T, c *apitest.Client) bool {

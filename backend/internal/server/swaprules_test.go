@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/apitest"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
 
 // swapHome is twoResidents with every Chore carrying the given Demands.
