@@ -93,28 +93,17 @@ type Resident struct {
 	LastDone map[string]Date
 }
 
-// Preference is how much a Resident likes a Chore. Neutral is the zero value,
+// Preference is how much a Resident likes a Chore. Its numeric order is the
+// ranking when choosing a Resident: lower is better. Neutral is the zero value,
 // so a missing entry means neutral. It is a soft rule: it never makes a
 // Resident ineligible (see docs/adr/0004).
 type Preference int
 
 const (
-	Neutral Preference = iota
-	Like
-	Dislike
+	Like    Preference = -1
+	Neutral Preference = 0
+	Dislike Preference = 1
 )
-
-// rank orders Preferences for choosing a Resident, lower first: like, neutral,
-// dislike.
-func (p Preference) rank() int {
-	switch p {
-	case Like:
-		return 0
-	case Dislike:
-		return 2
-	}
-	return 1
-}
 
 // Task is one open Chore to be done.
 type Task struct {

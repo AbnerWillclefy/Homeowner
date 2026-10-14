@@ -1,6 +1,7 @@
 package allocation
 
 import (
+	"maps"
 	"slices"
 	"testing"
 )
@@ -11,7 +12,7 @@ var today = NewDate(2026, 10, 10)
 // window that opens today and closes in a week (no deadline, no lateness).
 func task(id string, e int, opts ...func(*Task)) Task {
 	t := Task{
-		ID: id, ChoreID: "chore-" + id, Effort: e, Importance: Normal, People: 1,
+		ID: id, ChoreID: choreOf(id), Effort: e, Importance: Normal, People: 1,
 		WindowStart: today, WindowEnd: today + 7,
 	}
 	for _, o := range opts {
@@ -40,15 +41,18 @@ func (r Resident) cannotDoChore(c ...string) Resident {
 	return r
 }
 
-// likes, dislikes and lastDid set a Resident's taste and history for the Chore
-// of the Task with the given id (see task).
+// choreOf is the Chore ID of the Task with the given id (see task).
+func choreOf(taskID string) string { return "chore-" + taskID }
+
+// prefers sets the Resident's Preference for the Chore of the Task with the
+// given id; lastDid sets the Date they last did it. Both leave the original
+// maps untouched.
 func (r Resident) prefers(p Preference, taskID string) Resident {
-	m := map[string]Preference{}
-	for k, v := range r.Preferences {
-		m[k] = v
+	r.Preferences = maps.Clone(r.Preferences)
+	if r.Preferences == nil {
+		r.Preferences = map[string]Preference{}
 	}
-	m["chore-"+taskID] = p
-	r.Preferences = m
+	r.Preferences[choreOf(taskID)] = p
 	return r
 }
 
@@ -56,12 +60,11 @@ func (r Resident) likes(taskID string) Resident    { return r.prefers(Like, task
 func (r Resident) dislikes(taskID string) Resident { return r.prefers(Dislike, taskID) }
 
 func (r Resident) lastDid(taskID string, d Date) Resident {
-	m := map[string]Date{}
-	for k, v := range r.LastDone {
-		m[k] = v
+	r.LastDone = maps.Clone(r.LastDone)
+	if r.LastDone == nil {
+		r.LastDone = map[string]Date{}
 	}
-	m["chore-"+taskID] = d
-	r.LastDone = m
+	r.LastDone[choreOf(taskID)] = d
 	return r
 }
 
