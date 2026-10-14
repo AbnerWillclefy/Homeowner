@@ -40,6 +40,31 @@ func (r Resident) cannotDoChore(c ...string) Resident {
 	return r
 }
 
+// likes, dislikes and lastDid set a Resident's taste and history for the Chore
+// of the Task with the given id (see task).
+func (r Resident) prefers(p Preference, taskID string) Resident {
+	m := map[string]Preference{}
+	for k, v := range r.Preferences {
+		m[k] = v
+	}
+	m["chore-"+taskID] = p
+	r.Preferences = m
+	return r
+}
+
+func (r Resident) likes(taskID string) Resident    { return r.prefers(Like, taskID) }
+func (r Resident) dislikes(taskID string) Resident { return r.prefers(Dislike, taskID) }
+
+func (r Resident) lastDid(taskID string, d Date) Resident {
+	m := map[string]Date{}
+	for k, v := range r.LastDone {
+		m[k] = v
+	}
+	m["chore-"+taskID] = d
+	r.LastDone = m
+	return r
+}
+
 func state(rs []Resident, ts ...Task) State {
 	return State{Today: today, Residents: rs, Tasks: ts}
 }

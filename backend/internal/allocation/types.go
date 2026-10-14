@@ -6,6 +6,10 @@
 // HTTP or clock dependency; the caller supplies "today" in State. This is
 // enforced by purity_test.go.
 //
+// Preferences and Completion history enter as plain data on each Resident.
+// They are soft rules: Plan uses them only to choose among Residents who pass
+// the hard rules, and Check ignores them.
+//
 // Definitions used by the sort order of Plan:
 //
 //   - Hard deadline today: the Task's WindowEnd is on or before State.Today
@@ -78,6 +82,38 @@ type Resident struct {
 	DemandRestrictions []Demand
 	// ChoreRestrictions are the Chores this Resident cannot do in this Home.
 	ChoreRestrictions []string
+	// Preferences is the effective Preference of the Resident for each Chore,
+	// by Chore ID, already resolved by the caller (a specific Preference over a
+	// general one). A Chore that is absent is neutral. Read by key only.
+	Preferences map[string]Preference
+	// LastDone is the Date of the Resident's most recent Completion of each
+	// Chore, by Chore ID. A Chore that is absent was never done by the
+	// Resident; this is deliberate, because a zero Date is 1970-01-01. Read by
+	// key only.
+	LastDone map[string]Date
+}
+
+// Preference is how much a Resident likes a Chore. Neutral is the zero value,
+// so a missing entry means neutral. It is a soft rule: it never makes a
+// Resident ineligible (see docs/adr/0004).
+type Preference int
+
+const (
+	Neutral Preference = iota
+	Like
+	Dislike
+)
+
+// rank orders Preferences for choosing a Resident, lower first: like, neutral,
+// dislike.
+func (p Preference) rank() int {
+	switch p {
+	case Like:
+		return 0
+	case Dislike:
+		return 2
+	}
+	return 1
 }
 
 // Task is one open Chore to be done.
@@ -114,6 +150,11 @@ const (
 	ReasonImportance    Reason = "importance"
 	ReasonLateness      Reason = "lateness"
 	ReasonFitsEnergy    Reason = "fits_energy"
+	// Preference reasons: a Preference or turn-taking, not urgency, decided
+	// which Resident took the Task. They replace the urgency reason.
+	ReasonLiked         Reason = "liked"
+	ReasonSparedDislike Reason = "spared_dislike"
+	ReasonTurnTaking    Reason = "turn_taking"
 
 	// Pool reasons.
 	ReasonNoEnergyLeft      Reason = "no_energy_left"

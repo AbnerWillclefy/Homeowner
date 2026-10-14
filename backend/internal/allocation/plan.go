@@ -79,11 +79,20 @@ func deadlineToday(t Task, today Date) bool { return t.WindowEnd <= today }
 func lateness(t Task, today Date) int { return max(int(today-t.WindowStart), 0) }
 
 // Plan proposes a Day Plan: open Tasks sorted by hard deadline today, then
-// Importance, then lateness, then TaskID, each given to the fitting Resident
-// with the most Energy left; a two-person Task goes to the two fitting
-// Residents with the most Energy left, each paying the full Effort. Tasks that
-// fit too few Residents stay in the pool. Output is sorted by TaskID then
+// Importance, then lateness, then TaskID, each given to the best fitting
+// Resident; a two-person Task goes to the two best fitting Residents, each
+// paying the full Effort. Fitting means not restricted and enough Energy left.
+// Best is decided by compareCandidates: Preference (like, neutral, dislike),
+// then among Residents who dislike the Chore the one who did it longest ago,
+// then the most Energy left, then the lowest Resident ID. Preference only
+// chooses among fitting Residents and never changes the Task order, so it
+// cannot outrank Importance and never leaves a Task unassigned. Tasks that fit
+// too few Residents stay in the pool. Output is sorted by TaskID then
 // ResidentID and does not depend on the order of the input.
+//
+// A plan for a single Resident (a re-plan after a Check-in, or "get my tasks
+// right away") has one candidate per Task, so Preference does not reorder their
+// Tasks and no Preference reason appears.
 func Plan(s State) (Result, error) {
 	residents := uniqueResidents(s.Residents)
 	slices.SortFunc(residents, func(a, b Resident) int { return cmp.Compare(a.ID, b.ID) })
@@ -127,7 +136,11 @@ func Plan(s State) (Result, error) {
 				fits = append(fits, i)
 			}
 		}
-		slices.SortStableFunc(fits, func(a, b int) int { return cmp.Compare(left[b], left[a]) })
+		// The pick the order by Energy alone would have made, to tell whether a
+		// Preference changed it.
+		byEnergy := slices.Clone(fits)
+		slices.SortStableFunc(byEnergy, func(a, b int) int { return cmp.Compare(left[b], left[a]) })
+		slices.SortStableFunc(fits, func(a, b int) int { return compareCandidates(residents[a], residents[b], left[a], left[b], t) })
 		need := peopleNeeded(t)
 		if len(fits) < need {
 			why := ReasonNoEnergyLeft
@@ -140,10 +153,11 @@ func Plan(s State) (Result, error) {
 			res.Pool = append(res.Pool, PoolEntry{t.ID, why})
 			continue
 		}
+		why := pickReason(residents, fits, byEnergy, need, t, s.Today)
 		for _, i := range fits[:need] {
 			left[i] -= t.Effort
 			res.DayPlan.Assignments = append(res.DayPlan.Assignments,
-				Assignment{t.ID, residents[i].ID, assignmentReason(t, s.Today)})
+				Assignment{t.ID, residents[i].ID, why})
 		}
 	}
 	slices.SortFunc(res.DayPlan.Assignments, func(a, b Assignment) int {
@@ -151,6 +165,68 @@ func Plan(s State) (Result, error) {
 	})
 	slices.SortFunc(res.Pool, func(a, b PoolEntry) int { return cmp.Compare(a.TaskID, b.TaskID) })
 	return res, nil
+}
+
+// compareCandidates orders two Residents who fit the Task, best first:
+// the one who likes the Chore, then neutral, then the one who dislikes it;
+// between two who dislike it, the one who did it longest ago (never done
+// first); then the one with more Energy left. A full tie is left to the stable
+// sort over Residents sorted by ID.
+func compareCandidates(a, b Resident, leftA, leftB int, t Task) int {
+	pa, pb := a.Preferences[t.ChoreID], b.Preferences[t.ChoreID]
+	order := cmp.Compare(pa.rank(), pb.rank())
+	if order == 0 && pa == Dislike {
+		order = compareLastDone(a, b, t.ChoreID)
+	}
+	return cmp.Or(order, cmp.Compare(leftB, leftA))
+}
+
+// compareLastDone orders by the Date of the last Completion of the Chore,
+// oldest first, with never done before any Date.
+func compareLastDone(a, b Resident, choreID string) int {
+	da, doneA := a.LastDone[choreID]
+	db, doneB := b.LastDone[choreID]
+	switch {
+	case doneA && doneB:
+		return cmp.Compare(da, db)
+	case doneA:
+		return 1
+	case doneB:
+		return -1
+	}
+	return 0
+}
+
+// pickReason says why the first need of fits took the Task. When they are the
+// Residents the order by Energy alone would have chosen, it is the urgency
+// reason. Otherwise a Preference or turn-taking decided it: liked when a chosen
+// Resident likes the Chore and a passed-over one does not; else spared_dislike
+// when a chosen Resident does not dislike it and a passed-over one does; else
+// turn_taking.
+func pickReason(residents []Resident, fits, byEnergy []int, need int, t Task, today Date) Reason {
+	chosen, passed := fits[:need], fits[need:]
+	if sameSet(chosen, byEnergy[:need]) {
+		return assignmentReason(t, today)
+	}
+	pref := func(i int) Preference { return residents[i].Preferences[t.ChoreID] }
+	if slices.ContainsFunc(chosen, func(i int) bool { return pref(i) == Like }) &&
+		slices.ContainsFunc(passed, func(i int) bool { return pref(i) != Like }) {
+		return ReasonLiked
+	}
+	if slices.ContainsFunc(chosen, func(i int) bool { return pref(i) != Dislike }) &&
+		slices.ContainsFunc(passed, func(i int) bool { return pref(i) == Dislike }) {
+		return ReasonSparedDislike
+	}
+	return ReasonTurnTaking
+}
+
+func sameSet(a, b []int) bool {
+	for _, x := range a {
+		if !slices.Contains(b, x) {
+			return false
+		}
+	}
+	return len(a) == len(b)
 }
 
 // assignmentReason names the sort key that placed the Task, strongest first.
