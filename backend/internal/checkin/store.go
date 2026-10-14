@@ -1,10 +1,9 @@
-// Package checkinstore keeps Check-ins in the checkins tables. The rule that
-// turns a Check-in into Energy is the pure internal/checkin package.
+// The Check-in store keeps Check-ins in the checkins tables.
 //
 // A Check-in belongs to a Resident (not a User) and to one local date of their
 // Home, and disappears when they leave. Its Restrictions hold for that date
 // only and are never written to the User's lasting ones.
-package checkinstore
+package checkin
 
 import (
 	"context"
@@ -17,13 +16,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkin"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/vocab"
 )
 
 // CheckIn is a Resident's answer for one day.
 type CheckIn struct {
-	Level checkin.Level
+	Level Level
 	// Demands are today's extra Restrictions, known and without duplicates:
 	// make a CheckIn with New.
 	Demands []string
@@ -39,7 +37,7 @@ var (
 // level and every Demand id and drops repeats, keeping the first-seen order.
 // Save and the callers of CheckIn trust the result.
 func New(level string, demands []string) (CheckIn, error) {
-	l := checkin.Level(level)
+	l := Level(level)
 	if !l.Valid() {
 		return CheckIn{}, ErrInvalidLevel
 	}
@@ -110,7 +108,7 @@ func LoadMany(ctx context.Context, q Querier, residentIDs []string, date allocat
 		if err := r.Scan(&x.resident, &level, &x.in.Demands); err != nil {
 			return x, err
 		}
-		x.in.Level = checkin.Level(level)
+		x.in.Level = Level(level)
 		return x, nil
 	})
 	if err != nil {

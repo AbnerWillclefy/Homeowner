@@ -11,7 +11,7 @@ import (
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkin"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkinstore"
+
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
 )
 
@@ -26,7 +26,7 @@ type loaded struct {
 // that weekday, scaled by their Check-in when they made one. A weekday they
 // have not set is 0, not an error, and no Check-in can raise it: that Resident
 // is given nothing. This is the one place the Check-in scales the Baseline.
-func energyOn(p profile.Profile, day allocation.Date, ci *checkinstore.CheckIn) int {
+func energyOn(p profile.Profile, day allocation.Date, ci *checkin.CheckIn) int {
 	base := p.Baseline[time.Weekday(day.Weekday())]
 	if ci == nil {
 		return base
@@ -37,7 +37,7 @@ func energyOn(p profile.Profile, day allocation.Date, ci *checkinstore.CheckIn) 
 // demandRestrictions are the Demands the Resident cannot do on the day: their
 // lasting Restrictions, then the day-only ones from the Check-in that do not
 // repeat one.
-func demandRestrictions(p profile.Profile, ci *checkinstore.CheckIn) []allocation.Demand {
+func demandRestrictions(p profile.Profile, ci *checkin.CheckIn) []allocation.Demand {
 	var out []allocation.Demand
 	for _, d := range p.Restrictions {
 		out = append(out, allocation.Demand(d))
@@ -82,14 +82,14 @@ func loadState(ctx context.Context, q pgx.Tx, homeID string, today allocation.Da
 	for i, r := range residents {
 		residentIDs[i] = r.id
 	}
-	checkIns, err := checkinstore.LoadMany(ctx, q, residentIDs, today)
+	checkIns, err := checkin.LoadMany(ctx, q, residentIDs, today)
 	if err != nil {
 		return loaded{}, err
 	}
 
 	for _, r := range residents {
 		p := profiles[r.userID]
-		var ci *checkinstore.CheckIn
+		var ci *checkin.CheckIn
 		if c, ok := checkIns[r.id]; ok {
 			ci = &c
 		}

@@ -7,7 +7,8 @@ import (
 	"time"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkinstore"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkin"
+
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/vocab"
 )
@@ -24,7 +25,7 @@ type checkInResponse struct {
 	Restrictions []string `json:"restrictions"`
 }
 
-func newCheckInResponse(date allocation.Date, in checkinstore.CheckIn, found bool) checkInResponse {
+func newCheckInResponse(date allocation.Date, in checkin.CheckIn, found bool) checkInResponse {
 	out := checkInResponse{Date: date.Time().Format(time.DateOnly), Restrictions: []string{}}
 	if !found {
 		return out
@@ -72,9 +73,9 @@ func (s *server) putCheckIn(w http.ResponseWriter, r *http.Request) {
 	if body.Level != nil {
 		level = *body.Level
 	}
-	in, err := checkinstore.New(level, body.Restrictions)
+	in, err := checkin.New(level, body.Restrictions)
 	switch {
-	case errors.Is(err, checkinstore.ErrInvalidLevel):
+	case errors.Is(err, checkin.ErrInvalidLevel):
 		writeError(w, http.StatusBadRequest, "level must be one of drained, low, normal, energized")
 		return
 	case err != nil:

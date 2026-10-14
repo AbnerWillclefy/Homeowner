@@ -11,7 +11,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkinstore"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkin"
+
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/choresettings"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
@@ -74,7 +75,7 @@ func New(deps Deps) http.Handler {
 		choreSettings: choresettings.NewStore(deps.DB),
 		dayPlans:      dayplan.NewStore(deps.DB),
 		planner:       dayplan.New(deps.DB, deps.Allocator, deps.Logger),
-		checkIns:      checkinstore.NewStore(deps.DB),
+		checkIns:      checkin.NewStore(deps.DB),
 	}
 
 	mux := http.NewServeMux()
@@ -151,7 +152,7 @@ type server struct {
 	// planner stores a Check-in and plans its Resident again.
 	planner *dayplan.Planner
 	// checkIns reads the caller's Check-in.
-	checkIns *checkinstore.Store
+	checkIns *checkin.Store
 }
 
 func (s *server) healthz(w http.ResponseWriter, r *http.Request) {
