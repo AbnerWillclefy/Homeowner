@@ -1,24 +1,15 @@
 package server
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"strings"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/identity"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
 )
-
-// userKey is the context key for the signed-in User. A private type, so no
-// other package can collide with it.
-type userKey struct{}
-
-// currentUser returns the User requireUser put in the request context.
-func currentUser(ctx context.Context) users.User {
-	u, _ := ctx.Value(userKey{}).(users.User)
-	return u
-}
 
 // bearerToken extracts the token from "Authorization: Bearer <token>". The
 // scheme is case-insensitive and exactly one token must follow.
@@ -32,7 +23,7 @@ func bearerToken(h string) (string, bool) {
 
 func unauthorized(w http.ResponseWriter) {
 	w.Header().Set("WWW-Authenticate", "Bearer")
-	writeError(w, http.StatusUnauthorized, "unauthorized")
+	httpx.WriteError(w, http.StatusUnauthorized, "unauthorized")
 }
 
 // requireUser wraps a handler so it only runs for a signed-in User, whom it
@@ -41,7 +32,7 @@ func unauthorized(w http.ResponseWriter) {
 func (s *server) requireUser(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.deps.Verifier == nil {
-			writeError(w, http.StatusServiceUnavailable, "auth not configured")
+			httpx.WriteError(w, http.StatusServiceUnavailable, "auth not configured")
 			return
 		}
 		token, ok := bearerToken(r.Header.Get("Authorization"))
@@ -63,14 +54,29 @@ func (s *server) requireUser(next http.HandlerFunc) http.HandlerFunc {
 		u, err := s.users.FindOrCreate(r.Context(), claims.Subject, claims.Email, s.deps.Clock.Now())
 		if err != nil {
 			s.deps.Logger.Error("find or create user", "error", err.Error())
-			writeError(w, http.StatusInternalServerError, "internal error")
+			httpx.WriteError(w, http.StatusInternalServerError, "internal error")
 			return
 		}
-		next(w, r.WithContext(context.WithValue(r.Context(), userKey{}, u)))
+		next(w, r.WithContext(identity.WithUser(r.Context(), u)))
 	}
 }
 
-func (s *server) getMe(w http.ResponseWriter, r *http.Request) {
-	u := currentUser(r.Context())
-	writeJSON(w, http.StatusOK, map[string]string{"id": u.ID, "email": u.Email})
+// requireResident wraps a handler so it only runs for a signed-in User who
+// lives in a Home, which it puts in the context. A User with no Home gets 404.
+// Every route on a Home's data goes behind it, so "any Resident" and "no
+// access to another Home" are one code path.
+func (s *server) requireResident(next http.HandlerFunc) http.HandlerFunc {
+	return s.requireUser(func(w http.ResponseWriter, r *http.Request) {
+		m, err := s.homes.ForUser(r.Context(), identity.CurrentUser(r.Context()).ID)
+		if errors.Is(err, homes.ErrNoHome) {
+			httpx.WriteError(w, http.StatusNotFound, "no home")
+			return
+		}
+		if err != nil {
+			s.deps.Logger.Error("load home", "error", err.Error())
+			httpx.WriteError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		next(w, r.WithContext(identity.WithMembership(r.Context(), m)))
+	})
 }

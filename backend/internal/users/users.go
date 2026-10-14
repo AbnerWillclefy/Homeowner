@@ -11,16 +11,12 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/identity"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/onboarding"
 )
 
 // User is a person with an account.
-type User struct {
-	ID         string
-	CognitoSub string
-	Email      string
-	CreatedAt  time.Time
-}
+type User = identity.User
 
 // Store keeps Users in the users table.
 type Store struct {

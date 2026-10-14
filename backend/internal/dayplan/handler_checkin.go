@@ -1,4 +1,4 @@
-package server
+package dayplan
 
 import (
 	"errors"
@@ -9,8 +9,10 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkin"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/vocab"
+
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/identity"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
 )
 
 // maxCheckInBody is far above any valid Check-in; it only bounds abuse.
@@ -41,32 +43,32 @@ func newCheckInResponse(date allocation.Date, in checkin.CheckIn, found bool) ch
 	return out
 }
 
-// getCheckIn answers the caller's Check-in for today in the Home's zone. The
+// GetCheckIn answers the caller's Check-in for today in the Home's zone. The
 // PWA asks it whenever it opens. It only reads: it never plans.
-func (s *server) getCheckIn(w http.ResponseWriter, r *http.Request) {
-	m := currentMembership(r.Context())
-	date, err := dayplan.LocalDate(m.Home.Timezone, s.deps.Clock.Now())
+func (h *Handler) GetCheckIn(w http.ResponseWriter, r *http.Request) {
+	m := identity.CurrentMembership(r.Context())
+	date, err := LocalDate(m.Home.Timezone, h.clock.Now())
 	if err != nil {
-		s.internalError(w, err)
+		httpx.InternalError(w, h.log, "chores", err)
 		return
 	}
-	in, found, err := s.checkIns.Get(r.Context(), m.ResidentID, date)
+	in, found, err := h.checkIns.Get(r.Context(), m.ResidentID, date)
 	if err != nil {
-		s.internalError(w, err)
+		httpx.InternalError(w, h.log, "chores", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, newCheckInResponse(date, in, found))
+	httpx.WriteJSON(w, http.StatusOK, newCheckInResponse(date, in, found))
 }
 
-// putCheckIn sets the caller's Check-in for today, replacing the level and the
+// PutCheckIn sets the caller's Check-in for today, replacing the level and the
 // day Restrictions of an earlier one, and plans the caller again when today's
 // plan exists. It is idempotent.
-func (s *server) putCheckIn(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) PutCheckIn(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Level        *string  `json:"level"`
 		Restrictions []string `json:"restrictions"`
 	}
-	if !decodeBody(w, r, &body, maxCheckInBody, true) {
+	if !httpx.DecodeBody(w, r, &body, maxCheckInBody, true) {
 		return
 	}
 	var level string
@@ -76,17 +78,17 @@ func (s *server) putCheckIn(w http.ResponseWriter, r *http.Request) {
 	in, err := checkin.New(level, body.Restrictions)
 	switch {
 	case errors.Is(err, checkin.ErrInvalidLevel):
-		writeError(w, http.StatusBadRequest, "level must be one of drained, low, normal, energized")
+		httpx.WriteError(w, http.StatusBadRequest, "level must be one of drained, low, normal, energized")
 		return
 	case err != nil:
-		writeError(w, http.StatusBadRequest, "restrictions must be known demands")
+		httpx.WriteError(w, http.StatusBadRequest, "restrictions must be known demands")
 		return
 	}
-	m := currentMembership(r.Context())
-	date, err := s.planner.CheckIn(r.Context(), m.Home.ID, m.ResidentID, in, s.deps.Clock.Now())
+	m := identity.CurrentMembership(r.Context())
+	date, err := h.planner.CheckIn(r.Context(), m.Home.ID, m.ResidentID, in, h.clock.Now())
 	if err != nil {
-		s.internalError(w, err)
+		httpx.InternalError(w, h.log, "chores", err)
 		return
 	}
-	writeJSON(w, http.StatusOK, newCheckInResponse(date, in, true))
+	httpx.WriteJSON(w, http.StatusOK, newCheckInResponse(date, in, true))
 }

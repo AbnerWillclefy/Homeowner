@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/identity"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
 )
 
@@ -22,20 +23,11 @@ var (
 	ErrNoHome = errors.New("no home")
 )
 
-// Home is the place Residents look after together. AllocationTime is the
-// local wall-clock time "HH:MM" in Timezone.
-type Home struct {
-	ID             string
-	Timezone       string
-	AllocationTime string
-}
+// Home is the place Residents look after together.
+type Home = identity.Home
 
-// Membership is a User's place in a Home: their own residents row and the
-// Home it belongs to.
-type Membership struct {
-	ResidentID string
-	Home       Home
-}
+// Membership is a User's place in a Home.
+type Membership = identity.Membership
 
 // Store keeps Homes and Residents in the homes and residents tables.
 type Store struct {
@@ -122,4 +114,13 @@ func (s *Store) UpdateSettings(ctx context.Context, homeID, timezone, allocation
 		return ErrNoHome
 	}
 	return nil
+}
+
+// HasHome reports whether userID lives in a Home.
+func (s *Store) HasHome(ctx context.Context, userID string) (bool, error) {
+	_, err := s.ForUser(ctx, userID)
+	if errors.Is(err, ErrNoHome) {
+		return false, nil
+	}
+	return err == nil, err
 }
