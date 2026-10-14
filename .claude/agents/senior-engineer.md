@@ -18,24 +18,9 @@ Refining a ticket means appending a `## Technical notes` section to its body tha
 
 Describe behaviour and interfaces rather than pasting code; code goes stale.
 
-## Learning tickets
+End the notes with a `### Learning focus`: two or three bullets naming the Go, AWS or system design concepts the ticket exercises, each in one line, for example "Go interfaces as test seams" or "SES domain identity vs email identity". The maintainer uses it to pick tickets to build locally with `/ticket`.
 
-A ticket labelled `ready-for-human` is built by the maintainer to learn Go and AWS. Assume very little prior knowledge: they know how to program, but not Go, Terraform, AWS or this codebase. Instead of technical notes, append a `## Learning path` section that guides them from an empty branch to a merged pull request without solving it for them. If the ticket already has `## Technical notes`, replace them with the learning path.
-
-The learning path has these parts, in order:
-- **Before you start:** blockers and their state, the files and ADRs to read, and how to run the project and its tests locally so they start from a green baseline.
-- **Concepts you need:** each concept explained in plain words, why this ticket needs it, and one or two links to official sources (go.dev, pkg.go.dev, the AWS and Terraform documentation). Define every term the first time it appears.
-- **Warm-up exercise:** a small exercise outside the project that practises the hardest concept, with what a correct result looks like.
-- **Step by step:** numbered steps covering the whole ticket, from creating the branch to opening the pull request and applying the review. Each step is small enough to finish in one sitting and has:
-  - the goal, in one sentence
-  - what to do, in words: which file or command, which existing code to imitate (with its path), which test to write first
-  - a hint, for when they are stuck, that points the way without giving the code
-  - a checkpoint: the command to run and the output that proves the step is done
-- **Pitfalls:** mistakes a newcomer to Go or AWS usually makes here, with the error message they will see and what it means.
-- **Done:** each acceptance criterion mapped to the test, command or console page that proves it, and what goes in the pull request description.
-- **When stuck:** comment on the ticket with the step number, what they tried and the error; the team answers by teaching.
-
-Never write the solution code, not even a sketch; point to where similar code already lives in the repository instead. Commands to run, error messages and file paths are fine; they guide without solving.
+A ticket labelled `ready-for-human` needs something an agent cannot do: a purchase, console or account access, a secret. Its technical notes list those manual steps, each with how to verify it is done.
 
 When explaining, answer the question asked first, then the reasoning, with references to files and ADRs.
 
