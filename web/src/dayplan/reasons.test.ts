@@ -25,7 +25,7 @@ describe("poolReasonLabel", () => {
 
 describe("assignmentReasonLabel", () => {
   it("points at a catalog key for each reason id the API sends", () => {
-    for (const id of ["deadline_today", "importance", "lateness", "fits_energy", "taken"]) {
+    for (const id of ["deadline_today", "importance", "lateness", "fits_energy", "taken", "liked", "spared_dislike", "turn_taking"]) {
       expect(assignmentReasonLabel(id)).toEqual({ key: `dayplan.assigned.reason.${id}` });
     }
   });

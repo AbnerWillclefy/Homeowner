@@ -324,6 +324,9 @@ export const ptBR: Messages = {
     "Você fez check-in como esgotado, então nenhuma tarefa hoje. Descanse.",
   "dayplan.pool.reason.refused": "Foi recusada, então voltou para as tarefas em aberto.",
   "dayplan.assigned.reason.taken": "Você pegou esta tarefa das em aberto.",
+  "dayplan.assigned.reason.liked": "Você gosta desta.",
+  "dayplan.assigned.reason.spared_dislike": "Poupado de uma tarefa de que você não gosta.",
+  "dayplan.assigned.reason.turn_taking": "É a sua vez.",
   "dayplan.action.accept": "Aceitar",
   "dayplan.action.accept.named": "Aceitar {task}",
   "dayplan.action.acceptAll": {

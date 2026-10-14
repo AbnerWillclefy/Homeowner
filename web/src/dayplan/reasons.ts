@@ -18,6 +18,9 @@ const ASSIGNMENT_REASON_KEYS = {
   lateness: "dayplan.assigned.reason.lateness",
   fits_energy: "dayplan.assigned.reason.fits_energy",
   taken: "dayplan.assigned.reason.taken",
+  liked: "dayplan.assigned.reason.liked",
+  spared_dislike: "dayplan.assigned.reason.spared_dislike",
+  turn_taking: "dayplan.assigned.reason.turn_taking",
 } as const satisfies Record<string, MessageKey>;
 
 function reasonLabel(keys: Readonly<Record<string, MessageKey>>, id: string | undefined): Label | null {
