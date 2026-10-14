@@ -16,14 +16,14 @@ func swapHome(t *testing.T, demands ...string) (app *apitest.App, a, b *apitest.
 	b = apitest.ExtraResident(t, app, a, "b@example.com")
 	apitest.SetBaseline(t, a, map[string]any{"monday": 4, "tuesday": 4})
 	apitest.SetBaseline(t, b, map[string]any{"monday": 4, "tuesday": 4})
-	app.Clock.Set(mondayAt(6))
+	app.Clock.Set(apitest.MondayAt(6))
 	for _, n := range []string{"One", "Two", "Three", "Four", "Five"} {
 		apitest.CreateChore(t, a, apitest.Chore(n, 7, 2, "normal", append([]string{}, demands...)))
 	}
-	app.Clock.Set(mondayAt(7))
+	app.Clock.Set(apitest.MondayAt(7))
 	app.RunAllocation(t)
-	if len(mineOf(t, a)) != 2 || len(mineOf(t, b)) != 2 {
-		t.Fatalf("setup: %s", dayPlan(t, a).Raw)
+	if len(apitest.MineOf(t, a)) != 2 || len(apitest.MineOf(t, b)) != 2 {
+		t.Fatalf("setup: %s", apitest.DayPlan(t, a).Raw)
 	}
 	return app, a, b
 }
@@ -31,7 +31,7 @@ func swapHome(t *testing.T, demands ...string) (app *apitest.App, a, b *apitest.
 func noOffers(t *testing.T, c *apitest.Client) {
 	t.Helper()
 	if len(swapsOf(t, c, "incoming")) != 0 || len(swapsOf(t, c, "outgoing")) != 0 {
-		t.Fatalf("unexpected offers: %s", dayPlan(t, c).Raw)
+		t.Fatalf("unexpected offers: %s", apitest.DayPlan(t, c).Raw)
 	}
 }
 
@@ -66,7 +66,7 @@ func TestASwapThatBreaksARestrictionIsRejectedAtTheOffer(t *testing.T) {
 		t.Parallel()
 		app, a, b := swapHome(t)
 		p := pairOf(t, a, b)
-		choreID := mineOf(t, b)[0]["choreId"].(string)
+		choreID := apitest.MineOf(t, b)[0]["choreId"].(string)
 		apitest.ExpectStatus(t, a.Put("/home/chores/"+choreID+"/restriction", nil), http.StatusNoContent)
 		wantConflict(t, offer(a, p.a, p.b), "restricted")
 		if got := offerCount(t, app); got != 0 {
@@ -77,7 +77,7 @@ func TestASwapThatBreaksARestrictionIsRejectedAtTheOffer(t *testing.T) {
 		t.Parallel()
 		app, a, b := swapHome(t)
 		p := pairOf(t, a, b)
-		choreID := mineOf(t, a)[0]["choreId"].(string)
+		choreID := apitest.MineOf(t, a)[0]["choreId"].(string)
 		apitest.ExpectStatus(t, b.Put("/home/chores/"+choreID+"/restriction", nil), http.StatusNoContent)
 		wantConflict(t, offer(a, p.a, p.b), "restricted")
 		if got := offerCount(t, app); got != 0 {
@@ -90,14 +90,14 @@ func TestARestrictionAfterTheOfferStopsTheAcceptAndLeavesTheOfferPending(t *test
 	t.Parallel()
 	app, a, b := swapHome(t, "heavy_lifting")
 	p := pairOf(t, a, b)
-	mustAct(t, b, "accept", p.b) // committed, so B's Check-in keeps it
+	apitest.MustAct(t, b, "accept", p.b) // committed, so B's Check-in keeps it
 	mustOffer(t, a, p.a, p.b)
 	id := swapsOf(t, b, "incoming")[0]["id"].(string)
 
-	checkIn(t, b, "normal", "heavy_lifting")
+	apitest.CheckIn(t, b, "normal", "heavy_lifting")
 	wantConflict(t, swapAct(b, id, "accept"), "restricted")
-	if mineOf(t, b)[0]["id"] != p.b || commitments(t, app, p.a) != 0 {
-		t.Fatalf("the Tasks moved: %s", dayPlan(t, b).Raw)
+	if apitest.MineOf(t, b)[0]["id"] != p.b || commitments(t, app, p.a) != 0 {
+		t.Fatalf("the Tasks moved: %s", apitest.DayPlan(t, b).Raw)
 	}
 	if len(swapsOf(t, b, "incoming")) != 1 {
 		t.Fatal("the offer is no longer pending")
@@ -135,7 +135,7 @@ func TestOnlyTheRecipientAnswersAndOnlyTheOffererCancels(t *testing.T) {
 		t.Fatal("a refused answer changed the offer")
 	}
 	r := mustSwapAct(t, a, id, "cancel")
-	if len(taskList(t, r.Body["mine"])) != 2 {
+	if len(apitest.TaskList(t, r.Body["mine"])) != 2 {
 		t.Fatalf("a cancel moved something: %s", r.Raw)
 	}
 	noOffers(t, a)
@@ -149,7 +149,7 @@ func TestAnOfferNeedsTasksThatCanBeSwapped(t *testing.T) {
 		t.Parallel()
 		app := apitest.Start(t)
 		a := apitest.HomeWithResident(t, app, "a@example.com")
-		app.Clock.Set(mondayAt(6))
+		app.Clock.Set(apitest.MondayAt(6))
 		apitest.CreateChore(t, a, apitest.Chore("One", 7, 2, "normal", []string{}))
 		apitest.CreateChore(t, a, apitest.Chore("Two", 7, 2, "normal", []string{}))
 		ids := apitest.Pool(t, a)
@@ -160,16 +160,16 @@ func TestAnOfferNeedsTasksThatCanBeSwapped(t *testing.T) {
 		_, a, b := swapHome(t)
 		p := pairOf(t, a, b)
 		wantConflict(t, offer(a, p.b, p.a), "not_yours")
-		poolID := taskList(t, dayPlan(t, a).Body["pool"])[0]["id"].(string)
+		poolID := apitest.TaskList(t, apitest.DayPlan(t, a).Body["pool"])[0]["id"].(string)
 		wantConflict(t, offer(a, poolID, p.b), "not_yours")
 	})
 	t.Run("the requested Task is the caller's or in the pool", func(t *testing.T) {
 		t.Parallel()
 		app, a, b := swapHome(t)
 		p := pairOf(t, a, b)
-		own := mineOf(t, a)[1]["id"].(string)
+		own := apitest.MineOf(t, a)[1]["id"].(string)
 		wantConflict(t, offer(a, p.a, own), "not_held_by_other")
-		poolID := taskList(t, dayPlan(t, a).Body["pool"])[0]["id"].(string)
+		poolID := apitest.TaskList(t, apitest.DayPlan(t, a).Body["pool"])[0]["id"].(string)
 		wantConflict(t, offer(a, p.a, poolID), "not_held_by_other")
 		if got := offerCount(t, app); got != 0 {
 			t.Fatalf("%d offers stored", got)
@@ -179,10 +179,10 @@ func TestAnOfferNeedsTasksThatCanBeSwapped(t *testing.T) {
 		t.Parallel()
 		_, a, b := swapHome(t)
 		p := pairOf(t, a, b)
-		mustAct(t, b, "complete", p.b)
+		apitest.MustAct(t, b, "complete", p.b)
 		wantConflict(t, offer(a, p.a, p.b), "already_done")
-		other := mineOf(t, b)[0]["id"].(string)
-		mustAct(t, a, "complete", p.a)
+		other := apitest.MineOf(t, b)[0]["id"].(string)
+		apitest.MustAct(t, a, "complete", p.a)
 		wantConflict(t, offer(a, p.a, other), "already_done")
 	})
 	t.Run("a two-person Task", func(t *testing.T) {
@@ -190,15 +190,15 @@ func TestAnOfferNeedsTasksThatCanBeSwapped(t *testing.T) {
 		app := apitest.Start(t)
 		a := apitest.HomeWithResident(t, app, "a@example.com")
 		apitest.SetBaseline(t, a, map[string]any{"monday": 4})
-		app.Clock.Set(mondayAt(6))
+		app.Clock.Set(apitest.MondayAt(6))
 		apitest.CreateChore(t, a, apitest.Chore("One", 7, 2, "normal", []string{}))
 		two := apitest.Chore("Move bed", 7, 2, "normal", []string{})
 		two["people"] = 2
 		apitest.CreateChore(t, a, two)
-		app.Clock.Set(mondayAt(7))
+		app.Clock.Set(apitest.MondayAt(7))
 		app.RunAllocation(t)
-		bed := taskList(t, dayPlan(t, a).Body["pool"])[0]["id"].(string)
-		one := mineOf(t, a)[0]["id"].(string)
+		bed := apitest.TaskList(t, apitest.DayPlan(t, a).Body["pool"])[0]["id"].(string)
+		one := apitest.MineOf(t, a)[0]["id"].(string)
 		wantConflict(t, offer(a, one, bed), "two_person_task")
 		wantConflict(t, offer(a, bed, one), "two_person_task")
 	})
@@ -233,8 +233,8 @@ func TestADrainedResidentIsNotOfferedASwap(t *testing.T) {
 		t.Parallel()
 		app, a, b := swapHome(t)
 		p := pairOf(t, a, b)
-		mustAct(t, b, "accept", p.b) // committed, so the Check-in keeps it
-		checkIn(t, b, "drained")
+		apitest.MustAct(t, b, "accept", p.b) // committed, so the Check-in keeps it
+		apitest.CheckIn(t, b, "drained")
 		wantConflict(t, offer(a, p.a, p.b), "recipient_drained")
 		if got := offerCount(t, app); got != 0 {
 			t.Fatalf("%d offers stored", got)
@@ -244,18 +244,18 @@ func TestADrainedResidentIsNotOfferedASwap(t *testing.T) {
 		t.Parallel()
 		_, a, b := swapHome(t)
 		p := pairOf(t, a, b)
-		mustAct(t, a, "accept", p.a)
-		checkIn(t, a, "drained")
+		apitest.MustAct(t, a, "accept", p.a)
+		apitest.CheckIn(t, a, "drained")
 		wantConflict(t, offer(a, p.a, p.b), "recipient_drained")
 	})
 	t.Run("the recipient checks in drained before answering", func(t *testing.T) {
 		t.Parallel()
 		_, a, b := swapHome(t)
 		p := pairOf(t, a, b)
-		mustAct(t, b, "accept", p.b)
+		apitest.MustAct(t, b, "accept", p.b)
 		mustOffer(t, a, p.a, p.b)
 		id := swapsOf(t, b, "incoming")[0]["id"].(string)
-		checkIn(t, b, "drained")
+		apitest.CheckIn(t, b, "drained")
 		wantConflict(t, swapAct(b, id, "accept"), "recipient_drained")
 	})
 }
@@ -266,10 +266,10 @@ func TestAStaleOfferIsHiddenAndCannotBeAccepted(t *testing.T) {
 		name string
 		do   func(t *testing.T, a, b *apitest.Client, p swapPair)
 	}{
-		{"the offerer refuses the offered Task", func(t *testing.T, a, b *apitest.Client, p swapPair) { mustAct(t, a, "refuse", p.a) }},
-		{"the offerer completes the offered Task", func(t *testing.T, a, b *apitest.Client, p swapPair) { mustAct(t, a, "complete", p.a) }},
-		{"the recipient completes the requested Task", func(t *testing.T, a, b *apitest.Client, p swapPair) { mustAct(t, b, "complete", p.b) }},
-		{"the recipient refuses the requested Task", func(t *testing.T, a, b *apitest.Client, p swapPair) { mustAct(t, b, "refuse", p.b) }},
+		{"the offerer refuses the offered Task", func(t *testing.T, a, b *apitest.Client, p swapPair) { apitest.MustAct(t, a, "refuse", p.a) }},
+		{"the offerer completes the offered Task", func(t *testing.T, a, b *apitest.Client, p swapPair) { apitest.MustAct(t, a, "complete", p.a) }},
+		{"the recipient completes the requested Task", func(t *testing.T, a, b *apitest.Client, p swapPair) { apitest.MustAct(t, b, "complete", p.b) }},
+		{"the recipient refuses the requested Task", func(t *testing.T, a, b *apitest.Client, p swapPair) { apitest.MustAct(t, b, "refuse", p.b) }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -280,9 +280,9 @@ func TestAStaleOfferIsHiddenAndCannotBeAccepted(t *testing.T) {
 			tc.do(t, a, b, p)
 			noOffers(t, a)
 			noOffers(t, b)
-			before := string(dayPlan(t, b).Raw)
+			before := string(apitest.DayPlan(t, b).Raw)
 			wantConflict(t, swapAct(b, id, "accept"), "swap_stale")
-			if string(dayPlan(t, b).Raw) != before || commitments(t, app, p.a)+commitments(t, app, p.b) != 0 {
+			if string(apitest.DayPlan(t, b).Raw) != before || commitments(t, app, p.a)+commitments(t, app, p.b) != 0 {
 				t.Fatal("a stale accept changed something")
 			}
 		})
@@ -293,7 +293,7 @@ func TestAcceptingASwapCancelsTheOtherOffersOnItsTasks(t *testing.T) {
 	t.Parallel()
 	app, a, b := swapHome(t)
 	p := pairOf(t, a, b)
-	y2 := mineOf(t, b)[1]["id"].(string)
+	y2 := apitest.MineOf(t, b)[1]["id"].(string)
 	mustOffer(t, a, p.a, p.b)
 	mustOffer(t, a, p.a, y2)
 	mustOffer(t, b, p.b, p.a) // the reverse offer also mentions both Tasks
@@ -304,7 +304,7 @@ func TestAcceptingASwapCancelsTheOtherOffersOnItsTasks(t *testing.T) {
 		}
 	}
 	if first == "" {
-		t.Fatalf("setup: %s", dayPlan(t, b).Raw)
+		t.Fatalf("setup: %s", apitest.DayPlan(t, b).Raw)
 	}
 	mustSwapAct(t, b, first, "accept")
 	if got := apitest.Count(t, app, `SELECT count(*) FROM swap_offers WHERE status = 'pending'`); got != 0 {
@@ -335,22 +335,22 @@ func TestASwapSurvivesReplans(t *testing.T) {
 	t.Parallel()
 	_, a, b := swapHome(t)
 	p := pairOf(t, a, b)
-	mustAct(t, b, "accept", p.b)
+	apitest.MustAct(t, b, "accept", p.b)
 	mustOffer(t, a, p.a, p.b)
 	id := swapsOf(t, b, "incoming")[0]["id"].(string)
 
 	// B's Check-in re-plans B, whose Task is Committed: the offer stands.
-	checkIn(t, b, "normal")
+	apitest.CheckIn(t, b, "normal")
 	if len(swapsOf(t, b, "incoming")) != 1 {
-		t.Fatalf("a re-plan broke the offer: %s", dayPlan(t, b).Raw)
+		t.Fatalf("a re-plan broke the offer: %s", apitest.DayPlan(t, b).Raw)
 	}
 	mustSwapAct(t, b, id, "accept")
 
 	// Both Tasks are Committed now, so a re-plan of either keeps them.
-	checkIn(t, a, "normal")
-	checkIn(t, b, "normal")
-	if committedOf(mineOf(t, a), p.bName) != true || committedOf(mineOf(t, b), p.aName) != true {
-		t.Fatalf("a re-plan lost the swapped Tasks: %s / %s", dayPlan(t, a).Raw, dayPlan(t, b).Raw)
+	apitest.CheckIn(t, a, "normal")
+	apitest.CheckIn(t, b, "normal")
+	if committedOf(apitest.MineOf(t, a), p.bName) != true || committedOf(apitest.MineOf(t, b), p.aName) != true {
+		t.Fatalf("a re-plan lost the swapped Tasks: %s / %s", apitest.DayPlan(t, a).Raw, apitest.DayPlan(t, b).Raw)
 	}
 }
 

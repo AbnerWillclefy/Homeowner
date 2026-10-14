@@ -58,30 +58,30 @@ func TestGetMyTasksRightAwayPlansTheCallerFromThePool(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	me := apitest.HomeWithResident(t, app, "a@example.com") // no Baseline yet: 0 Energy
-	app.Clock.Set(mondayAt(6))
+	app.Clock.Set(apitest.MondayAt(6))
 	for _, n := range []string{"One", "Two", "Three"} {
 		apitest.CreateChore(t, me, apitest.Chore(n, 7, 2, "normal", []string{}))
 	}
-	app.Clock.Set(mondayAt(7))
+	app.Clock.Set(apitest.MondayAt(7))
 	app.RunAllocation(t) // the day is planned while they had no Energy
-	if got := len(taskList(t, dayPlan(t, me).Body["mine"])); got != 0 {
+	if got := len(apitest.TaskList(t, apitest.DayPlan(t, me).Body["mine"])); got != 0 {
 		t.Fatalf("setup: mine = %d", got)
 	}
 
 	apitest.SetBaseline(t, me, map[string]any{"monday": 5})
-	app.Clock.Set(mondayAt(9))
+	app.Clock.Set(apitest.MondayAt(9))
 	r := planMe(t, me)
 	if r.Status != http.StatusOK || r.Body["planned"] != true || r.Body["energy"] != float64(5) {
 		t.Fatalf("POST = %d %s", r.Status, r.Raw)
 	}
-	mine := taskList(t, r.Body["mine"])
+	mine := apitest.TaskList(t, r.Body["mine"])
 	if len(mine) != 2 || effortSum(mine) > 5 {
 		t.Fatalf("mine = %s", r.Raw)
 	}
 	if r.Body["allocationTime"] != "07:00" {
 		t.Fatalf("not the Day Plan body: %s", r.Raw)
 	}
-	if got := string(dayPlan(t, me).Raw); got != string(r.Raw) {
+	if got := string(apitest.DayPlan(t, me).Raw); got != string(r.Raw) {
 		t.Fatalf("GET differs from the answer:\n%s\n%s", got, r.Raw)
 	}
 }
@@ -93,21 +93,21 @@ func TestRightAwayTakesFromThePoolOnlyAndLeavesOthersAsTheyWere(t *testing.T) {
 	b := apitest.ExtraResident(t, app, a, "b@example.com")
 	apitest.SetBaseline(t, a, map[string]any{"monday": 5})
 	apitest.SetBaseline(t, b, map[string]any{"monday": 5})
-	app.Clock.Set(mondayAt(6))
+	app.Clock.Set(apitest.MondayAt(6))
 	for _, n := range []string{"One", "Two", "Three", "Four", "Five"} {
 		apitest.CreateChore(t, a, apitest.Chore(n, 7, 2, "normal", []string{}))
 	}
-	app.Clock.Set(mondayAt(7))
+	app.Clock.Set(apitest.MondayAt(7))
 	app.RunAllocation(t) // 2 + 2 Tasks planned, 1 left in the pool
-	aID := dayPlan(t, b).Body["others"].([]any)[0].(map[string]any)["residentId"].(string)
-	bBefore := names(taskList(t, dayPlan(t, b).Body["mine"]))
+	aID := apitest.DayPlan(t, b).Body["others"].([]any)[0].(map[string]any)["residentId"].(string)
+	bBefore := names(apitest.TaskList(t, apitest.DayPlan(t, b).Body["mine"]))
 	bRows := snapshot(t, app, aID)
 	run := runRow(t, app)
 
 	apitest.SetBaseline(t, a, map[string]any{"monday": 10})
-	app.Clock.Set(mondayAt(9))
+	app.Clock.Set(apitest.MondayAt(9))
 	r := planMe(t, a)
-	mine := names(taskList(t, r.Body["mine"]))
+	mine := names(apitest.TaskList(t, r.Body["mine"]))
 	if r.Status != http.StatusOK || len(mine) != 3 {
 		t.Fatalf("POST = %d %s, want their 2 plus the pooled one", r.Status, r.Raw)
 	}
@@ -116,10 +116,10 @@ func TestRightAwayTakesFromThePoolOnlyAndLeavesOthersAsTheyWere(t *testing.T) {
 			t.Fatalf("took %s from the other Resident: %s", n, r.Raw)
 		}
 	}
-	if len(taskList(t, r.Body["pool"])) != 0 {
+	if len(apitest.TaskList(t, r.Body["pool"])) != 0 {
 		t.Fatalf("pool not drained: %s", r.Raw)
 	}
-	if got := names(taskList(t, dayPlan(t, b).Body["mine"])); !slices.Equal(got, bBefore) {
+	if got := names(apitest.TaskList(t, apitest.DayPlan(t, b).Body["mine"])); !slices.Equal(got, bBefore) {
 		t.Fatalf("B's view changed from %v to %v", bBefore, got)
 	}
 	if got := snapshot(t, app, aID); !slices.Equal(got, bRows) {
@@ -135,7 +135,7 @@ func TestRightAwayInANewHomeRefreshesTheTasksAndMakesTodaysRun(t *testing.T) {
 	app := apitest.Start(t)
 	me := apitest.HomeWithResident(t, app, "a@example.com")
 	apitest.SetBaseline(t, me, map[string]any{"monday": 5})
-	app.Clock.Set(mondayAt(5)) // before the Allocation time, no tick yet
+	app.Clock.Set(apitest.MondayAt(5)) // before the Allocation time, no tick yet
 	apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 2, "essential", []string{}))
 	apitest.CreateChore(t, me, apitest.Chore("Mop", 7, 2, "normal", []string{}))
 	if runCount(t, app) != 0 {
@@ -143,13 +143,13 @@ func TestRightAwayInANewHomeRefreshesTheTasksAndMakesTodaysRun(t *testing.T) {
 	}
 
 	r := planMe(t, me)
-	if r.Status != http.StatusOK || r.Body["planned"] != true || len(taskList(t, r.Body["mine"])) != 2 {
+	if r.Status != http.StatusOK || r.Body["planned"] != true || len(apitest.TaskList(t, r.Body["mine"])) != 2 {
 		t.Fatalf("POST = %d %s", r.Status, r.Raw)
 	}
 	if runCount(t, app) != 1 {
 		t.Fatalf("%d runs, want today's", runCount(t, app))
 	}
-	app.Clock.Set(mondayAt(7))
+	app.Clock.Set(apitest.MondayAt(7))
 	if sum := app.RunAllocation(t); sum.Planned != 0 || sum.Due != 0 {
 		t.Fatalf("the job planned the Home again: %+v", sum)
 	}
@@ -163,7 +163,7 @@ func TestRightAwayTwiceGivesTheSameAnswer(t *testing.T) {
 	app := apitest.Start(t)
 	me := apitest.HomeWithResident(t, app, "a@example.com")
 	apitest.SetBaseline(t, me, map[string]any{"monday": 5})
-	app.Clock.Set(mondayAt(5))
+	app.Clock.Set(apitest.MondayAt(5))
 	for _, n := range []string{"One", "Two", "Three"} {
 		apitest.CreateChore(t, me, apitest.Chore(n, 7, 2, "normal", []string{}))
 	}
@@ -178,17 +178,17 @@ func TestRightAwayOnARejectedDayChangesNothing(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	me := apitest.HomeWithResident(t, app, "a@example.com") // no Baseline: overEnergy breaks a rule
-	app.Clock.Set(mondayAt(6))
+	app.Clock.Set(apitest.MondayAt(6))
 	apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 2, "normal", []string{}))
 	app.UseAllocator(overEnergy{})
-	app.Clock.Set(mondayAt(7))
+	app.Clock.Set(apitest.MondayAt(7))
 	if sum := app.RunAllocation(t); sum.Rejected != 1 {
 		t.Fatalf("setup: %+v", sum)
 	}
 	run := runRow(t, app)
 
 	r := planMe(t, me)
-	if r.Status != http.StatusOK || r.Body["rejected"] != true || len(taskList(t, r.Body["mine"])) != 0 {
+	if r.Status != http.StatusOK || r.Body["rejected"] != true || len(apitest.TaskList(t, r.Body["mine"])) != 0 {
 		t.Fatalf("POST = %d %s", r.Status, r.Raw)
 	}
 	if n := len(snapshot(t, app, "")); n != 0 || runRow(t, app) != run {
@@ -203,7 +203,7 @@ func TestRightAwayWithABadProposalIs500AndStoresNothing(t *testing.T) {
 			t.Parallel()
 			app := apitest.Start(t)
 			me := apitest.HomeWithResident(t, app, "a@example.com") // no Baseline, so overEnergy is refused
-			app.Clock.Set(mondayAt(6))
+			app.Clock.Set(apitest.MondayAt(6))
 			apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 2, "normal", []string{}))
 
 			// No run yet: the run that would be made is rolled back too.
@@ -218,7 +218,7 @@ func TestRightAwayWithABadProposalIs500AndStoresNothing(t *testing.T) {
 			// A planned run keeps its rows.
 			app.UseAllocator(allocation.Baseline{})
 			apitest.SetBaseline(t, me, map[string]any{"monday": 5})
-			app.Clock.Set(mondayAt(7))
+			app.Clock.Set(apitest.MondayAt(7))
 			app.RunAllocation(t)
 			before, run := snapshot(t, app, ""), runRow(t, app)
 			apitest.SetBaseline(t, me, map[string]any{"monday": 0})
@@ -237,13 +237,13 @@ func TestRightAwayWithNoEnergyIsAnEmptyPlanAndTheReasonStays(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	me := apitest.HomeWithResident(t, app, "a@example.com") // no Baseline for Monday
-	app.Clock.Set(mondayAt(8))
+	app.Clock.Set(apitest.MondayAt(8))
 	apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 2, "essential", []string{}))
 	r := planMe(t, me)
-	if r.Status != http.StatusOK || r.Body["planned"] != true || r.Body["energy"] != float64(0) || len(taskList(t, r.Body["mine"])) != 0 {
+	if r.Status != http.StatusOK || r.Body["planned"] != true || r.Body["energy"] != float64(0) || len(apitest.TaskList(t, r.Body["mine"])) != 0 {
 		t.Fatalf("POST = %d %s", r.Status, r.Raw)
 	}
-	if reasonOf(taskList(t, r.Body["pool"]), "Dishes") != "no_energy_left" {
+	if reasonOf(apitest.TaskList(t, r.Body["pool"]), "Dishes") != "no_energy_left" {
 		t.Fatalf("pool = %s", r.Raw)
 	}
 }
@@ -265,11 +265,11 @@ func TestRightAwayRacingTheJobLeavesOneRunAndNoDuplicates(t *testing.T) {
 	app := apitest.Start(t)
 	me := apitest.HomeWithResident(t, app, "a@example.com")
 	apitest.SetBaseline(t, me, map[string]any{"monday": 10})
-	app.Clock.Set(mondayAt(6))
+	app.Clock.Set(apitest.MondayAt(6))
 	for _, n := range []string{"One", "Two", "Three"} {
 		apitest.CreateChore(t, me, apitest.Chore(n, 7, 3, "normal", []string{}))
 	}
-	app.Clock.Set(mondayAt(7))
+	app.Clock.Set(apitest.MondayAt(7))
 
 	var wg sync.WaitGroup
 	for range 4 {
@@ -300,7 +300,7 @@ func TestRightAwayLogsCarryOnlyIdsAndCounts(t *testing.T) {
 	app := apitest.Start(t)
 	me := apitest.HomeWithResident(t, app, "secret.person@example.com")
 	apitest.SetBaseline(t, me, map[string]any{"monday": 5})
-	app.Clock.Set(mondayAt(8))
+	app.Clock.Set(apitest.MondayAt(8))
 	apitest.CreateChore(t, me, apitest.Chore("Scrub the secret sink", 7, 2, "normal", []string{}))
 	planMe(t, me)
 	logs := app.Logs.String()

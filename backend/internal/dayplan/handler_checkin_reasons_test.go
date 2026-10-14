@@ -14,12 +14,12 @@ func TestAReplanLeavesTheSameReasonsAFullPlanWouldStore(t *testing.T) {
 	app := apitest.Start(t)
 	me := apitest.HomeWithResident(t, app, "a@example.com")
 	apitest.SetBaseline(t, me, map[string]any{"monday": 5})
-	app.Clock.Set(mondayAt(6))
+	app.Clock.Set(apitest.MondayAt(6))
 	apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 2, "normal", []string{}))
 	apitest.CreateChore(t, me, apitest.Chore("Mop", 7, 2, "normal", []string{}))
-	app.Clock.Set(mondayAt(7))
+	app.Clock.Set(apitest.MondayAt(7))
 	app.RunAllocation(t)
-	checkIn(t, me, "low")
+	apitest.CheckIn(t, me, "low")
 
 	replanned := storedReasons(t, app)
 	if n := len(replanned["assigned"].([]any)); n != 1 {

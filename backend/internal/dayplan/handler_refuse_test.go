@@ -10,20 +10,20 @@ import (
 
 func TestRefuseReturnsTheTaskToThePoolAndChangesNothingElse(t *testing.T) {
 	t.Parallel()
-	app, a, b := twoResidents(t)
-	mine := mineOf(t, a)
+	app, a, b := apitest.TwoResidents(t)
+	mine := apitest.MineOf(t, a)
 	refused := mine[0]["choreName"].(string)
 	kept := mine[1]["choreName"].(string)
-	bMine := names(mineOf(t, b))
+	bMine := names(apitest.MineOf(t, b))
 
-	r := mustAct(t, a, "refuse", mine[0]["id"].(string))
-	if got := names(taskList(t, r.Body["mine"])); !slices.Equal(got, []string{kept}) {
+	r := apitest.MustAct(t, a, "refuse", mine[0]["id"].(string))
+	if got := names(apitest.TaskList(t, r.Body["mine"])); !slices.Equal(got, []string{kept}) {
 		t.Fatalf("mine = %v, want only %s", got, kept)
 	}
-	if reasonOf(taskList(t, r.Body["pool"]), refused) != "refused" {
+	if reasonOf(apitest.TaskList(t, r.Body["pool"]), refused) != "refused" {
 		t.Fatalf("pool = %s", r.Raw)
 	}
-	if got := names(mineOf(t, b)); !slices.Equal(got, bMine) {
+	if got := names(apitest.MineOf(t, b)); !slices.Equal(got, bMine) {
 		t.Fatalf("B's Tasks changed from %v to %v", bMine, got)
 	}
 	if got := apitest.Count(t, app, `SELECT count(*) FROM day_plan_assignments`); got != 3 {
@@ -37,24 +37,24 @@ func TestRefuseReturnsTheTaskToThePoolAndChangesNothingElse(t *testing.T) {
 
 func TestRefuseIsRefusedAfterAcceptOrForSomeoneElsesTask(t *testing.T) {
 	t.Parallel()
-	_, a, b := twoResidents(t)
-	mine := mineOf(t, a)
-	mustAct(t, a, "accept", mine[0]["id"].(string))
-	wantConflict(t, act(a, "refuse", mine[0]["id"].(string)), "already_committed")
-	if got := len(mineOf(t, a)); got != 2 {
+	_, a, b := apitest.TwoResidents(t)
+	mine := apitest.MineOf(t, a)
+	apitest.MustAct(t, a, "accept", mine[0]["id"].(string))
+	wantConflict(t, apitest.Act(a, "refuse", mine[0]["id"].(string)), "already_committed")
+	if got := len(apitest.MineOf(t, a)); got != 2 {
 		t.Fatalf("mine = %d, the committed Task must stay", got)
 	}
-	wantConflict(t, act(a, "refuse", mineOf(t, b)[0]["id"].(string)), "not_proposed")
-	wantConflict(t, act(a, "refuse", taskList(t, dayPlan(t, a).Body["pool"])[0]["id"].(string)), "not_proposed")
+	wantConflict(t, apitest.Act(a, "refuse", apitest.MineOf(t, b)[0]["id"].(string)), "not_proposed")
+	wantConflict(t, apitest.Act(a, "refuse", apitest.TaskList(t, apitest.DayPlan(t, a).Body["pool"])[0]["id"].(string)), "not_proposed")
 }
 
 func TestRefuseNeedsATodayPlan(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	me := apitest.HomeWithResident(t, app, "a@example.com")
-	app.Clock.Set(mondayAt(6))
+	app.Clock.Set(apitest.MondayAt(6))
 	apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 2, "normal", []string{}))
-	wantConflict(t, act(me, "refuse", apitest.Pool(t, me)[0]["id"].(string)), "no_plan_today")
+	wantConflict(t, apitest.Act(me, "refuse", apitest.Pool(t, me)[0]["id"].(string)), "no_plan_today")
 }
 
 func TestARefusedTaskStaysRefusedThroughEveryReplan(t *testing.T) {
@@ -63,35 +63,35 @@ func TestARefusedTaskStaysRefusedThroughEveryReplan(t *testing.T) {
 		name string
 		do   func(t *testing.T, a, b *apitest.Client)
 	}{
-		{"the refuser's Check-in", func(t *testing.T, a, b *apitest.Client) { checkIn(t, a, "energized") }},
+		{"the refuser's Check-in", func(t *testing.T, a, b *apitest.Client) { apitest.CheckIn(t, a, "energized") }},
 		{"right away", func(t *testing.T, a, b *apitest.Client) {
 			if r := planMe(t, a); r.Status != http.StatusOK {
 				t.Fatalf("POST /me = %d %s", r.Status, r.Raw)
 			}
 		}},
-		{"another Resident's Check-in", func(t *testing.T, a, b *apitest.Client) { checkIn(t, b, "energized") }},
+		{"another Resident's Check-in", func(t *testing.T, a, b *apitest.Client) { apitest.CheckIn(t, b, "energized") }},
 	}
 	for _, tc := range replans {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			_, a, b := twoResidents(t)
+			_, a, b := apitest.TwoResidents(t)
 			apitest.SetBaseline(t, a, map[string]any{"monday": 8})
 			apitest.SetBaseline(t, b, map[string]any{"monday": 8})
-			refused := mineOf(t, a)[0]
-			mustAct(t, a, "refuse", refused["id"].(string))
+			refused := apitest.MineOf(t, a)[0]
+			apitest.MustAct(t, a, "refuse", refused["id"].(string))
 
 			tc.do(t, a, b)
 			for _, c := range []*apitest.Client{a, b} {
-				r := dayPlan(t, c)
-				for _, tk := range append(taskList(t, r.Body["mine"]), others(t, r)...) {
+				r := apitest.DayPlan(t, c)
+				for _, tk := range append(apitest.TaskList(t, r.Body["mine"]), others(t, r)...) {
 					if tk["id"] == refused["id"] {
 						t.Fatalf("the refused Task was handed out again: %s", r.Raw)
 					}
 				}
 			}
 			name := refused["choreName"].(string)
-			if got := reasonOf(taskList(t, dayPlan(t, a).Body["pool"]), name); got != "refused" {
-				t.Fatalf("reason = %v, want refused: %s", got, dayPlan(t, a).Raw)
+			if got := reasonOf(apitest.TaskList(t, apitest.DayPlan(t, a).Body["pool"]), name); got != "refused" {
+				t.Fatalf("reason = %v, want refused: %s", got, apitest.DayPlan(t, a).Raw)
 			}
 		})
 	}
@@ -102,7 +102,7 @@ func others(t *testing.T, r apitest.Response) []map[string]any {
 	t.Helper()
 	var out []map[string]any
 	for _, o := range r.Body["others"].([]any) {
-		out = append(out, taskList(t, o.(map[string]any)["tasks"])...)
+		out = append(out, apitest.TaskList(t, o.(map[string]any)["tasks"])...)
 	}
 	return out
 }
@@ -112,20 +112,20 @@ func TestARefusedTaskMayBeAssignedAtTheNextAllocation(t *testing.T) {
 	app := apitest.Start(t)
 	me := apitest.HomeWithResident(t, app, "a@example.com")
 	apitest.SetBaseline(t, me, map[string]any{"monday": 2, "tuesday": 2})
-	app.Clock.Set(mondayAt(6))
+	app.Clock.Set(apitest.MondayAt(6))
 	apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 2, "normal", []string{}))
-	app.Clock.Set(mondayAt(7))
+	app.Clock.Set(apitest.MondayAt(7))
 	app.RunAllocation(t)
-	mustAct(t, me, "refuse", mineOf(t, me)[0]["id"].(string))
-	checkIn(t, me, "normal")
-	if len(mineOf(t, me)) != 0 {
-		t.Fatalf("refused Task came back today: %s", dayPlan(t, me).Raw)
+	apitest.MustAct(t, me, "refuse", apitest.MineOf(t, me)[0]["id"].(string))
+	apitest.CheckIn(t, me, "normal")
+	if len(apitest.MineOf(t, me)) != 0 {
+		t.Fatalf("refused Task came back today: %s", apitest.DayPlan(t, me).Raw)
 	}
 
-	app.Clock.Set(mondayAt(7).AddDate(0, 0, 1))
+	app.Clock.Set(apitest.MondayAt(7).AddDate(0, 0, 1))
 	app.RunAllocation(t)
-	mine := mineOf(t, me)
+	mine := apitest.MineOf(t, me)
 	if len(mine) != 1 || mine[0]["committed"] != false {
-		t.Fatalf("tomorrow: %s", dayPlan(t, me).Raw)
+		t.Fatalf("tomorrow: %s", apitest.DayPlan(t, me).Raw)
 	}
 }

@@ -34,32 +34,32 @@ func TestACheckInAfterThePlanPlansThatResidentAgain(t *testing.T) {
 	b := apitest.ExtraResident(t, app, a, "b@example.com")
 	apitest.SetBaseline(t, a, map[string]any{"monday": 5})
 	apitest.SetBaseline(t, b, map[string]any{"monday": 5})
-	app.Clock.Set(mondayAt(6))
+	app.Clock.Set(apitest.MondayAt(6))
 	for _, n := range []string{"One", "Two", "Three", "Four"} {
 		apitest.CreateChore(t, a, apitest.Chore(n, 7, 2, "normal", []string{}))
 	}
-	app.Clock.Set(mondayAt(7))
+	app.Clock.Set(apitest.MondayAt(7))
 	app.RunAllocation(t) // each Resident gets two Efforts-2 Tasks of 5 points
-	bBefore := names(taskList(t, dayPlan(t, b).Body["mine"]))
-	if len(taskList(t, dayPlan(t, a).Body["mine"])) != 2 || len(bBefore) != 2 {
-		t.Fatalf("setup: %s", dayPlan(t, a).Raw)
+	bBefore := names(apitest.TaskList(t, apitest.DayPlan(t, b).Body["mine"]))
+	if len(apitest.TaskList(t, apitest.DayPlan(t, a).Body["mine"])) != 2 || len(bBefore) != 2 {
+		t.Fatalf("setup: %s", apitest.DayPlan(t, a).Raw)
 	}
 
 	// Low: 5 -> 2, so A keeps one Task and the other goes back to the pool.
-	app.Clock.Set(mondayAt(9))
-	checkIn(t, a, "low")
-	r := dayPlan(t, a)
-	mine := taskList(t, r.Body["mine"])
+	app.Clock.Set(apitest.MondayAt(9))
+	apitest.CheckIn(t, a, "low")
+	r := apitest.DayPlan(t, a)
+	mine := apitest.TaskList(t, r.Body["mine"])
 	if r.Body["energy"] != float64(2) || effortSum(mine) > 2 || len(mine) != 1 {
 		t.Fatalf("after Low: %s", r.Raw)
 	}
-	if got := len(taskList(t, r.Body["pool"])); got != 1 {
+	if got := len(apitest.TaskList(t, r.Body["pool"])); got != 1 {
 		t.Fatalf("pool = %d Tasks, want the released one: %s", got, r.Raw)
 	}
-	if reasonOf(taskList(t, r.Body["pool"]), taskList(t, r.Body["pool"])[0]["choreName"].(string)) != "no_energy_left" {
+	if reasonOf(apitest.TaskList(t, r.Body["pool"]), apitest.TaskList(t, r.Body["pool"])[0]["choreName"].(string)) != "no_energy_left" {
 		t.Fatalf("released Task reason: %s", r.Raw)
 	}
-	if got := names(taskList(t, dayPlan(t, b).Body["mine"])); !slices.Equal(got, bBefore) {
+	if got := names(apitest.TaskList(t, apitest.DayPlan(t, b).Body["mine"])); !slices.Equal(got, bBefore) {
 		t.Fatalf("B's Tasks changed from %v to %v", bBefore, got)
 	}
 	if got := runCount(t, app); got != 1 {
@@ -67,12 +67,12 @@ func TestACheckInAfterThePlanPlansThatResidentAgain(t *testing.T) {
 	}
 
 	// Energized: 5 -> 6, so A is planned again and can take more.
-	checkIn(t, a, "energized")
-	r = dayPlan(t, a)
-	if r.Body["energy"] != float64(6) || len(taskList(t, r.Body["mine"])) != 2 {
+	apitest.CheckIn(t, a, "energized")
+	r = apitest.DayPlan(t, a)
+	if r.Body["energy"] != float64(6) || len(apitest.TaskList(t, r.Body["mine"])) != 2 {
 		t.Fatalf("after Energized: %s", r.Raw)
 	}
-	if got := names(taskList(t, dayPlan(t, b).Body["mine"])); !slices.Equal(got, bBefore) {
+	if got := names(apitest.TaskList(t, apitest.DayPlan(t, b).Body["mine"])); !slices.Equal(got, bBefore) {
 		t.Fatalf("B's Tasks changed from %v to %v", bBefore, got)
 	}
 }
@@ -89,25 +89,25 @@ func TestDrainedYieldsAnEmptyDayPlanBeforeAndAfterThePlan(t *testing.T) {
 			app := apitest.Start(t)
 			me := apitest.HomeWithResident(t, app, "a@example.com")
 			apitest.SetBaseline(t, me, map[string]any{"monday": 5})
-			app.Clock.Set(mondayAt(6))
+			app.Clock.Set(apitest.MondayAt(6))
 			apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 2, "essential", []string{}))
 			apitest.CreateChore(t, me, apitest.Chore("Mop", 7, 2, "normal", []string{}))
 			if !after {
-				checkIn(t, me, "drained")
+				apitest.CheckIn(t, me, "drained")
 			}
-			app.Clock.Set(mondayAt(7))
+			app.Clock.Set(apitest.MondayAt(7))
 			app.RunAllocation(t)
 			if after {
-				if got := len(taskList(t, dayPlan(t, me).Body["mine"])); got != 2 {
+				if got := len(apitest.TaskList(t, apitest.DayPlan(t, me).Body["mine"])); got != 2 {
 					t.Fatalf("setup: mine = %d", got)
 				}
-				checkIn(t, me, "drained")
+				apitest.CheckIn(t, me, "drained")
 			}
-			r := dayPlan(t, me)
-			if r.Body["planned"] != true || r.Body["energy"] != float64(0) || len(taskList(t, r.Body["mine"])) != 0 {
+			r := apitest.DayPlan(t, me)
+			if r.Body["planned"] != true || r.Body["energy"] != float64(0) || len(apitest.TaskList(t, r.Body["mine"])) != 0 {
 				t.Fatalf("body = %s", r.Raw)
 			}
-			pooled := taskList(t, r.Body["pool"])
+			pooled := apitest.TaskList(t, r.Body["pool"])
 			if len(pooled) != 2 || reasonOf(pooled, "Dishes") != "no_energy_left" {
 				t.Fatalf("pool = %s", r.Raw)
 			}
@@ -120,21 +120,21 @@ func TestADayRestrictionAfterThePlanReleasesTheTask(t *testing.T) {
 	app := apitest.Start(t)
 	me := apitest.HomeWithResident(t, app, "a@example.com")
 	apitest.SetBaseline(t, me, map[string]any{"monday": 10, "tuesday": 10})
-	app.Clock.Set(mondayAt(6))
+	app.Clock.Set(apitest.MondayAt(6))
 	apitest.CreateChore(t, me, apitest.Chore("Move sofa", 1, 3, "normal", []string{"heavy_lifting"}))
 	apitest.CreateChore(t, me, apitest.Chore("Cook", 1, 3, "normal", []string{}))
-	app.Clock.Set(mondayAt(7))
+	app.Clock.Set(apitest.MondayAt(7))
 	app.RunAllocation(t)
-	if got := names(taskList(t, dayPlan(t, me).Body["mine"])); len(got) != 2 {
+	if got := names(apitest.TaskList(t, apitest.DayPlan(t, me).Body["mine"])); len(got) != 2 {
 		t.Fatalf("setup: %v", got)
 	}
 
-	checkIn(t, me, "normal", "heavy_lifting")
-	r := dayPlan(t, me)
-	if got := names(taskList(t, r.Body["mine"])); len(got) != 1 || got[0] != "Cook" {
+	apitest.CheckIn(t, me, "normal", "heavy_lifting")
+	r := apitest.DayPlan(t, me)
+	if got := names(apitest.TaskList(t, r.Body["mine"])); len(got) != 1 || got[0] != "Cook" {
 		t.Fatalf("mine = %v, want only Cook: %s", got, r.Raw)
 	}
-	if reasonOf(taskList(t, r.Body["pool"]), "Move sofa") != "restricted_for_all" {
+	if reasonOf(apitest.TaskList(t, r.Body["pool"]), "Move sofa") != "restricted_for_all" {
 		t.Fatalf("pool = %s", r.Raw)
 	}
 	if p := string(me.Get("/me/profile").Raw); !strings.Contains(p, `"restrictions":[]`) {
@@ -142,8 +142,8 @@ func TestADayRestrictionAfterThePlanReleasesTheTask(t *testing.T) {
 	}
 
 	// Changing the Check-in back lets the Task return to the Resident.
-	checkIn(t, me, "normal")
-	if got := names(taskList(t, dayPlan(t, me).Body["mine"])); len(got) != 2 {
+	apitest.CheckIn(t, me, "normal")
+	if got := names(apitest.TaskList(t, apitest.DayPlan(t, me).Body["mine"])); len(got) != 2 {
 		t.Fatalf("after clearing the Restriction: %v", got)
 	}
 }
@@ -153,24 +153,24 @@ func TestAResidentWhoJoinedAfterThePlanIsPlannedByTheirFirstCheckIn(t *testing.T
 	app := apitest.Start(t)
 	a := apitest.HomeWithResident(t, app, "a@example.com")
 	apitest.SetBaseline(t, a, map[string]any{"monday": 2})
-	app.Clock.Set(mondayAt(6))
+	app.Clock.Set(apitest.MondayAt(6))
 	apitest.CreateChore(t, a, apitest.Chore("One", 7, 2, "normal", []string{}))
 	apitest.CreateChore(t, a, apitest.Chore("Two", 7, 2, "normal", []string{}))
-	app.Clock.Set(mondayAt(7))
+	app.Clock.Set(apitest.MondayAt(7))
 	app.RunAllocation(t) // A takes one; one stays in the pool
 
 	b := apitest.ExtraResident(t, app, a, "b@example.com")
 	apitest.SetBaseline(t, b, map[string]any{"monday": 4})
-	r := dayPlan(t, b)
-	if r.Body["energy"] != float64(0) || len(taskList(t, r.Body["mine"])) != 0 {
+	r := apitest.DayPlan(t, b)
+	if r.Body["energy"] != float64(0) || len(apitest.TaskList(t, r.Body["mine"])) != 0 {
 		t.Fatalf("a joiner is unplanned until they check in: %s", r.Raw)
 	}
-	checkIn(t, b, "normal")
-	r = dayPlan(t, b)
-	if r.Body["energy"] != float64(4) || len(taskList(t, r.Body["mine"])) != 1 {
+	apitest.CheckIn(t, b, "normal")
+	r = apitest.DayPlan(t, b)
+	if r.Body["energy"] != float64(4) || len(apitest.TaskList(t, r.Body["mine"])) != 1 {
 		t.Fatalf("after the first Check-in: %s", r.Raw)
 	}
-	if got := len(taskList(t, dayPlan(t, a).Body["mine"])); got != 1 {
+	if got := len(apitest.TaskList(t, apitest.DayPlan(t, a).Body["mine"])); got != 1 {
 		t.Fatalf("A's Tasks changed: %d", got)
 	}
 }
@@ -180,13 +180,13 @@ func TestATaskAddedAfterThePlanIsACandidateInTheReplan(t *testing.T) {
 	app := apitest.Start(t)
 	me := apitest.HomeWithResident(t, app, "a@example.com")
 	apitest.SetBaseline(t, me, map[string]any{"monday": 10})
-	app.Clock.Set(mondayAt(7))
+	app.Clock.Set(apitest.MondayAt(7))
 	app.RunAllocation(t) // nothing to do yet
 	apitest.CreateChore(t, me, apitest.Chore("Late", 7, 2, "normal", []string{}))
 	apitest.Pool(t, me) // opens the Task
 
-	checkIn(t, me, "normal")
-	if got := names(taskList(t, dayPlan(t, me).Body["mine"])); len(got) != 1 || got[0] != "Late" {
+	apitest.CheckIn(t, me, "normal")
+	if got := names(apitest.TaskList(t, apitest.DayPlan(t, me).Body["mine"])); len(got) != 1 || got[0] != "Late" {
 		t.Fatalf("mine = %v, want Late", got)
 	}
 }
@@ -195,20 +195,20 @@ func TestACheckInAfterARejectedRunIsStoredAndChangesNothing(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	me := apitest.HomeWithResident(t, app, "a@example.com") // no Baseline: 0 Energy
-	app.Clock.Set(mondayAt(6))
+	app.Clock.Set(apitest.MondayAt(6))
 	apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 2, "normal", []string{}))
 	app.UseAllocator(overEnergy{})
-	app.Clock.Set(mondayAt(7))
+	app.Clock.Set(apitest.MondayAt(7))
 	if sum := app.RunAllocation(t); sum.Rejected != 1 {
 		t.Fatalf("setup: %+v", sum)
 	}
 
-	checkIn(t, me, "energized")
+	apitest.CheckIn(t, me, "energized")
 	if got := me.Get("/home/check-in").Body["level"]; got != "energized" {
 		t.Fatalf("level = %v, want it saved", got)
 	}
-	r := dayPlan(t, me)
-	if r.Body["rejected"] != true || len(taskList(t, r.Body["mine"])) != 0 {
+	r := apitest.DayPlan(t, me)
+	if r.Body["rejected"] != true || len(apitest.TaskList(t, r.Body["mine"])) != 0 {
 		t.Fatalf("a rejected day changed: %s", r.Raw)
 	}
 	var assignments int
@@ -224,13 +224,13 @@ func TestAReplanThatBreaksARuleFailsAndLeavesTheCheckInAndPlanAsTheyWere(t *test
 	app := apitest.Start(t)
 	me := apitest.HomeWithResident(t, app, "a@example.com")
 	apitest.SetBaseline(t, me, map[string]any{"monday": 5})
-	app.Clock.Set(mondayAt(6))
+	app.Clock.Set(apitest.MondayAt(6))
 	apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 2, "normal", []string{}))
 	apitest.CreateChore(t, me, apitest.Chore("Mop", 7, 2, "normal", []string{}))
-	app.Clock.Set(mondayAt(7))
+	app.Clock.Set(apitest.MondayAt(7))
 	app.RunAllocation(t)
-	checkIn(t, me, "normal")
-	planBefore := string(dayPlan(t, me).Raw)
+	apitest.CheckIn(t, me, "normal")
+	planBefore := string(apitest.DayPlan(t, me).Raw)
 
 	app.UseAllocator(overEnergy{})
 	r := me.Put("/home/check-in", map[string]any{"level": "drained", "restrictions": []string{"bending"}})
@@ -241,7 +241,7 @@ func TestAReplanThatBreaksARuleFailsAndLeavesTheCheckInAndPlanAsTheyWere(t *test
 	if got.Body["level"] != "normal" || len(got.Body["restrictions"].([]any)) != 0 {
 		t.Fatalf("the failed PUT changed the Check-in: %s", got.Raw)
 	}
-	if after := string(dayPlan(t, me).Raw); after != planBefore {
+	if after := string(apitest.DayPlan(t, me).Raw); after != planBefore {
 		t.Fatalf("the plan changed:\nbefore %s\nafter  %s", planBefore, after)
 	}
 }
@@ -251,11 +251,11 @@ func TestACheckInRacingTheJobLeavesOneRunAndAConsistentPlan(t *testing.T) {
 	app := apitest.Start(t)
 	me := apitest.HomeWithResident(t, app, "a@example.com")
 	apitest.SetBaseline(t, me, map[string]any{"monday": 10})
-	app.Clock.Set(mondayAt(6))
+	app.Clock.Set(apitest.MondayAt(6))
 	for _, n := range []string{"One", "Two", "Three"} {
 		apitest.CreateChore(t, me, apitest.Chore(n, 7, 3, "normal", []string{}))
 	}
-	app.Clock.Set(mondayAt(7))
+	app.Clock.Set(apitest.MondayAt(7))
 
 	var wg sync.WaitGroup
 	for range 4 {
@@ -276,8 +276,8 @@ func TestACheckInRacingTheJobLeavesOneRunAndAConsistentPlan(t *testing.T) {
 	if got := runCount(t, app); got != 1 {
 		t.Fatalf("%d runs, want 1", got)
 	}
-	r := dayPlan(t, me)
-	if r.Body["energy"] != float64(5) || effortSum(taskList(t, r.Body["mine"])) > 5 {
+	r := apitest.DayPlan(t, me)
+	if r.Body["energy"] != float64(5) || effortSum(apitest.TaskList(t, r.Body["mine"])) > 5 {
 		t.Fatalf("inconsistent plan: %s", r.Raw)
 	}
 }

@@ -229,3 +229,124 @@ func BaselineOf(t *testing.T, res Response) map[string]any {
 
 // weekdays are the Baseline's wire keys, Sunday first.
 var weekdays = []string{"sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"}
+
+// Act posts one of the Day Plan actions on a Task: accept, refuse, take or
+// complete.
+func Act(c *Client, action, taskID string) Response {
+	return c.Post("/home/tasks/"+taskID+"/"+action, nil)
+}
+
+func MustAct(t *testing.T, c *Client, action, taskID string) Response {
+	t.Helper()
+	r := Act(c, action, taskID)
+	if r.Status != http.StatusOK {
+		t.Fatalf("POST %s %s = %d %s", action, taskID, r.Status, r.Raw)
+	}
+	return r
+}
+
+func MineOf(t *testing.T, c *Client) []map[string]any {
+	t.Helper()
+	return TaskList(t, DayPlan(t, c).Body["mine"])
+}
+
+func IDOf(t *testing.T, tasks []map[string]any, name string) string {
+	t.Helper()
+	for _, tk := range tasks {
+		if tk["choreName"] == name {
+			return tk["id"].(string)
+		}
+	}
+	t.Fatalf("no Task %q in %v", name, tasks)
+	return ""
+}
+
+func DayPlan(t *testing.T, c *Client) Response {
+	t.Helper()
+	r := c.Get("/home/day-plan")
+	if r.Status != http.StatusOK {
+		t.Fatalf("GET /home/day-plan = %d %s", r.Status, r.Raw)
+	}
+	return r
+}
+
+// TaskList reads an array of Tasks (objects) out of a decoded body.
+func TaskList(t *testing.T, v any) []map[string]any {
+	t.Helper()
+	l, ok := v.([]any)
+	if !ok {
+		t.Fatalf("not an array: %v", v)
+	}
+	out := make([]map[string]any, len(l))
+	for i, x := range l {
+		out[i] = x.(map[string]any)
+	}
+	return out
+}
+
+// MondayAt is 2 March 2026, a Monday, at hour o'clock UTC (the harness Home's
+// zone); its Allocation time is 07:00.
+func MondayAt(hour int) time.Time {
+	return time.Date(2026, time.March, 2, hour, 0, 0, 0, time.UTC)
+}
+
+// TwoResidents is a Home planned at 07:00 on Monday for A and B, each with
+// Energy 4 (two Effort-2 Tasks): One and Two go to A, Three and Four to B, and
+// Five is left in the pool.
+func TwoResidents(t *testing.T) (app *App, a, b *Client) {
+	t.Helper()
+	app = Start(t)
+	a = HomeWithResident(t, app, "a@example.com")
+	b = ExtraResident(t, app, a, "b@example.com")
+	SetBaseline(t, a, map[string]any{"monday": 4, "tuesday": 4})
+	SetBaseline(t, b, map[string]any{"monday": 4, "tuesday": 4})
+	app.Clock.Set(MondayAt(6))
+	for _, n := range []string{"One", "Two", "Three", "Four", "Five"} {
+		CreateChore(t, a, Chore(n, 7, 2, "normal", []string{}))
+	}
+	app.Clock.Set(MondayAt(7))
+	app.RunAllocation(t)
+	if len(MineOf(t, a)) != 2 || len(MineOf(t, b)) != 2 || len(TaskList(t, DayPlan(t, a).Body["pool"])) != 1 {
+		t.Fatalf("setup: %s", DayPlan(t, a).Raw)
+	}
+	return app, a, b
+}
+
+// DuoHome is A and B planned at 07:00 on Monday with the given Energy, and one
+// two-person Chore "Carry" of Effort 2.
+func DuoHome(t *testing.T, energyA, energyB int) (app *App, a, b *Client) {
+	t.Helper()
+	app = Start(t)
+	a = HomeWithResident(t, app, "a@example.com")
+	b = ExtraResident(t, app, a, "b@example.com")
+	SetBaseline(t, a, map[string]any{"monday": energyA})
+	SetBaseline(t, b, map[string]any{"monday": energyB})
+	app.Clock.Set(MondayAt(6))
+	CreateChore(t, a, TwoPersonChore("Carry", 2))
+	app.Clock.Set(MondayAt(7))
+	app.RunAllocation(t)
+	return app, a, b
+}
+
+// TwoPersonChore is a Chore that takes two people, due every week.
+func TwoPersonChore(name string, effort int) map[string]any {
+	c := Chore(name, 7, effort, "essential", []string{})
+	c["people"] = 2
+	return c
+}
+
+func LeaveHome(c *Client) Response {
+	return c.Delete("/home/residents/me")
+}
+
+func CheckIn(t *testing.T, c *Client, level string, restrictions ...string) Response {
+	t.Helper()
+	if restrictions == nil {
+		restrictions = []string{}
+	}
+	r := c.Put("/home/check-in", map[string]any{"level": level, "restrictions": restrictions})
+	if r.Status != http.StatusOK {
+		t.Fatalf("PUT /home/check-in = %d %s", r.Status, r.Raw)
+	}
+	return r
+}

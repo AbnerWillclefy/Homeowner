@@ -11,18 +11,6 @@ import (
 // The harness Home is in UTC with the Allocation time at 07:00; atDay puts the
 // fake clock at 09:00 UTC. 2 March 2026 is a Monday.
 
-func checkIn(t *testing.T, c *apitest.Client, level string, restrictions ...string) apitest.Response {
-	t.Helper()
-	if restrictions == nil {
-		restrictions = []string{}
-	}
-	r := c.Put("/home/check-in", map[string]any{"level": level, "restrictions": restrictions})
-	if r.Status != http.StatusOK {
-		t.Fatalf("PUT /home/check-in = %d %s", r.Status, r.Raw)
-	}
-	return r
-}
-
 func TestACheckInIsSavedAndReadBack(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
@@ -37,7 +25,7 @@ func TestACheckInIsSavedAndReadBack(t *testing.T) {
 		t.Fatalf("restrictions must be an empty array before a Check-in: %s", r.Raw)
 	}
 
-	put := checkIn(t, me, "low", "bending", "bending")
+	put := apitest.CheckIn(t, me, "low", "bending", "bending")
 	get := me.Get("/home/check-in")
 	for _, r := range []apitest.Response{put, get} {
 		rs, _ := r.Body["restrictions"].([]any)
@@ -53,8 +41,8 @@ func TestACheckInCanBeChangedAndReplacesItsRestrictions(t *testing.T) {
 	me := apitest.HomeWithResident(t, app, "a@example.com")
 	apitest.AtDay(app, 2)
 
-	checkIn(t, me, "low", "bending", "heights")
-	r := checkIn(t, me, "energized")
+	apitest.CheckIn(t, me, "low", "bending", "heights")
+	r := apitest.CheckIn(t, me, "energized")
 	if rs, _ := r.Body["restrictions"].([]any); r.Body["level"] != "energized" || rs == nil || len(rs) != 0 {
 		t.Fatalf("after change = %s", r.Raw)
 	}
@@ -68,7 +56,7 @@ func TestACheckInIsOnlyForTheDayItWasMadeOn(t *testing.T) {
 	app := apitest.Start(t)
 	me := apitest.HomeWithResident(t, app, "a@example.com")
 	apitest.AtDay(app, 2)
-	checkIn(t, me, "low", "bending")
+	apitest.CheckIn(t, me, "low", "bending")
 
 	apitest.AtDay(app, 3)
 	r := me.Get("/home/check-in")
@@ -89,7 +77,7 @@ func TestACheckInBelongsToTheHomesLocalDateNotUTCs(t *testing.T) {
 	}
 	// 2 March 22:00 UTC is 3 March 11:00 in Auckland (UTC+13 in summer).
 	app.Clock.Set(time.Date(2026, time.March, 2, 22, 0, 0, 0, time.UTC))
-	r := checkIn(t, me, "low")
+	r := apitest.CheckIn(t, me, "low")
 	if r.Body["date"] != "2026-03-03" {
 		t.Fatalf("date = %v, want the Auckland date 2026-03-03", r.Body["date"])
 	}
@@ -147,7 +135,7 @@ func TestACheckInIsPrivateToTheResidentAndTheirHome(t *testing.T) {
 	other := apitest.HomeWithResident(t, app, "c@example.com")
 	apitest.AtDay(app, 2)
 
-	checkIn(t, a, "drained")
+	apitest.CheckIn(t, a, "drained")
 	for name, c := range map[string]*apitest.Client{"housemate": b, "other home": other} {
 		if r := c.Get("/home/check-in"); r.Body["checkedIn"] != false {
 			t.Errorf("%s sees A's Check-in: %s", name, r.Raw)
@@ -163,7 +151,7 @@ func TestDayRestrictionsNeverBecomeLastingOnes(t *testing.T) {
 	apitest.ExpectStatus(t, me.Put("/me/restrictions/heights", nil), http.StatusNoContent)
 	before := string(me.Get("/me/profile").Raw)
 
-	checkIn(t, me, "low", "bending", "heights") // heights duplicates a lasting one: no error
+	apitest.CheckIn(t, me, "low", "bending", "heights") // heights duplicates a lasting one: no error
 	if after := string(me.Get("/me/profile").Raw); after != before {
 		t.Fatalf("profile changed by a Check-in:\nbefore %s\nafter  %s", before, after)
 	}

@@ -83,8 +83,8 @@ func TestTheSuggestionAppearsOnTheDayPlanTasksToo(t *testing.T) {
 	t.Parallel()
 	app, me := planned(t, 5, apitest.Recurring("Bathroom", 3, 5, true), apitest.Recurring("Dust", 3, 5, true))
 	allocate(app, t)
-	r := dayPlan(t, me)
-	mine, pooled := taskList(t, r.Body["mine"]), taskList(t, r.Body["pool"])
+	r := apitest.DayPlan(t, me)
+	mine, pooled := apitest.TaskList(t, r.Body["mine"]), apitest.TaskList(t, r.Body["pool"])
 	if len(mine) != 1 || len(pooled) != 1 || mine[0]["suggestTwoPerson"] != true || pooled[0]["suggestTwoPerson"] != true {
 		t.Fatalf("day plan = %s", r.Raw)
 	}

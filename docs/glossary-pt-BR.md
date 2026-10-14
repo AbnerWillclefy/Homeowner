@@ -20,6 +20,7 @@ Agreed Brazilian Portuguese equivalents for the terms in [CONTEXT.md](../CONTEXT
 | Resident | morador | membro, proprietário, dono | Plural "moradores". A User who lives in a Home; all Residents have equal say. Used in `home.leave.*` and `invite.*`. |
 | Invite | convite | código de convite, link de entrada | A single-use link a Resident shares; valid for seven days ("sete dias"). Used in `invite.*`. |
 | Allocation | alocação | agendamento, distribuição | The daily run that proposes Tasks. "Allocation time" is "horário da alocação" (the time of day it runs). Used in `home.allocationTime.label`. |
+| Streak | sequência | combo, corrente | Used in `streak.*`. CONTEXT.md avoids Combo and Chain, so their calques are avoided too. Awaiting native-speaker review. |
 | Task | tarefa | atribuição, ocorrência, instância | Plural "tarefas" in running text. Used in `dayplan.*`. |
 | Day Plan | plano do dia | agenda, cronograma, programação, lista diária | Used in `home.leave.removes`. |
 | Committed | assumida | confirmada, comprometida | A Task the Resident accepted. Feminine, agreeing with "tarefa". Shown as text on the card. Draft for the native speaker to confirm. Used in `dayplan.task.committed`. |

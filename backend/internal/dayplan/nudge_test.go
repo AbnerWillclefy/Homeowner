@@ -82,7 +82,7 @@ func TestTheReminderGoesOnlyToResidentsWithoutACheckInAnHourBefore(t *testing.T)
 	app := apitest.Start(t, apitest.WithPush("k"))
 	a, _ := pair(t, app)
 	app.Clock.Set(utc(4, 8, 30)) // 05:30 local, so the Check-in is for the 4th
-	checkIn(t, a, "normal")
+	apitest.CheckIn(t, a, "normal")
 
 	app.Clock.Set(utc(4, 8, 59)) // 05:59 local
 	app.RunAllocation(t)
@@ -109,7 +109,7 @@ func TestFurtherTicksInTheWindowSendNothingMore(t *testing.T) {
 
 	// Checking in after the reminder stops anything further, and a late
 	// checker gets no second reminder.
-	checkIn(t, b, "normal")
+	apitest.CheckIn(t, b, "normal")
 	app.Clock.Set(utc(4, 9, 50))
 	app.RunAllocation(t)
 	wantPushes(t, app, reminder+":a", reminder+":b")
@@ -234,7 +234,7 @@ func TestYesterdaysCheckInDoesNotCountAsToday(t *testing.T) {
 	a := newHome(t, app, "a@example.com", "America/Sao_Paulo", "07:00")
 	subscribe(t, a, "a")
 	app.Clock.Set(utc(3, 15, 0)) // the 3rd, local
-	checkIn(t, a, "normal")
+	apitest.CheckIn(t, a, "normal")
 
 	app.Clock.Set(utc(4, 9, 0))
 	app.RunAllocation(t)
@@ -257,7 +257,7 @@ func TestEveryResidentGetsDayPlanReadyOncePerDevice(t *testing.T) {
 	app := apitest.Start(t, apitest.WithPush("k"))
 	a, b := pair(t, app)
 	subscribe(t, a, "a-tablet")
-	checkIn(t, b, "normal") // checked in or not, both are told
+	apitest.CheckIn(t, b, "normal") // checked in or not, both are told
 
 	app.Clock.Set(utc(4, 10, 0))
 	app.RunAllocation(t)

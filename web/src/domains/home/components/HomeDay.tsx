@@ -6,6 +6,8 @@ import { EnergySummary, showsEnergy } from "../../dayplan/components/EnergySumma
 import { TodayHeader } from "../../dayplan/components/TodayHeader";
 import { TodaySection } from "../../dayplan/components/TodaySection";
 import { useDayPlan } from "../../dayplan/hooks/useDayPlan";
+import { StreakCard } from "../../streak/components/StreakCard";
+import { useStreak } from "../../streak/hooks/useStreak";
 
 /**
  * Today: the greeting, then the Check-in card with today's Energy, then the Day Plan. A saved Check-in can change
@@ -19,6 +21,7 @@ export function HomeDay({ version, onPlanChanged }: { version: number; onPlanCha
   const checkIn = useCheckIn(onPlanChanged);
   const day = useDayPlan(version);
   const { state } = day;
+  const streak = useStreak(`${version}:${day.settled}`);
   const [checkInOpen, setCheckInOpen] = useState(false);
   const today = checkIn.state.kind === "ready" ? checkIn.state.checkIn : null;
   const energy = state.kind === "ready" ? state.plan.energy : null;
@@ -35,6 +38,7 @@ export function HomeDay({ version, onPlanChanged }: { version: number; onPlanCha
         onClose={() => setCheckInOpen(false)}
         energy={showsEnergy(note) ? <EnergySummary note={note} energy={energy ?? 0} planned={planned} /> : null}
       />
+      <StreakCard streak={streak} />
       <TodaySection day={day} note={note} />
     </>
   );

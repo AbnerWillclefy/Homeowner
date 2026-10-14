@@ -23,6 +23,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/streak"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/tasks"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/vocab"
@@ -77,6 +78,7 @@ func New(deps Deps) http.Handler {
 	task := tasks.NewHandler(tasks.NewStore(db), clk, log)
 	dayPlan := dayplan.NewHandler(dayplan.New(db, deps.Allocator, log), dayplan.NewStore(db), checkin.NewStore(db), clk, log)
 	prof := profile.NewHandler(profile.NewStore(db), log)
+	streaks := streak.NewHandler(streak.NewStore(db), clk, log)
 	pushes := push.NewHandler(push.NewStore(db), deps.Push, deps.VAPIDPublicKey, clk, log)
 
 	user, resident := s.requireUser, s.requireResident
@@ -115,6 +117,7 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("POST /home/swaps/{id}/cancel", resident(dayPlan.CancelSwap))
 	mux.HandleFunc("GET /home/check-in", resident(dayPlan.GetCheckIn))
 	mux.HandleFunc("PUT /home/check-in", resident(dayPlan.PutCheckIn))
+	mux.HandleFunc("GET /home/streak", resident(streaks.Get))
 	mux.HandleFunc("GET /categories", user(vocab.ServeCategories))
 	mux.HandleFunc("GET /demands", user(vocab.ServeDemands))
 	mux.HandleFunc("GET /catalog", user(catalog.ServeEntries))

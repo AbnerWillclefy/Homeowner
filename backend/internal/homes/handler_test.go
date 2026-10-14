@@ -457,10 +457,6 @@ func TestAnyResidentCanEditTheHome(t *testing.T) {
 	}
 }
 
-func leaveHome(c *apitest.Client) apitest.Response {
-	return c.Delete("/home/residents/me")
-}
-
 func TestAResidentOfATwoResidentHomeLeavesAndTheHomeRemains(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
@@ -469,7 +465,7 @@ func TestAResidentOfATwoResidentHomeLeavesAndTheHomeRemains(t *testing.T) {
 	apitest.ChoreIn(t, a, "kitchen", []string{})
 	b := apitest.ExtraResident(t, app, a, "b@example.com")
 
-	r := leaveHome(b)
+	r := apitest.LeaveHome(b)
 	apitest.ExpectStatus(t, r, http.StatusNoContent)
 	if len(r.Raw) != 0 {
 		t.Errorf("body = %q, want none", r.Raw)
@@ -502,7 +498,7 @@ func TestLeavingRemovesOnlyTheLeaversSpecificSettings(t *testing.T) {
 		t.Fatalf("before leaving: preferences = %d, restrictions = %d, want 2 and 2", p, r)
 	}
 
-	apitest.ExpectStatus(t, leaveHome(b), http.StatusNoContent)
+	apitest.ExpectStatus(t, apitest.LeaveHome(b), http.StatusNoContent)
 	if p, r := apitest.Count(t, app, prefs), apitest.Count(t, app, restr); p != 1 || r != 1 {
 		t.Errorf("after leaving: preferences = %d, restrictions = %d, want only the other Resident's 1 and 1", p, r)
 	}
@@ -521,7 +517,7 @@ func TestLeavingKeepsTheUsersGeneralProfile(t *testing.T) {
 	apitest.ExpectStatus(t, b.Put("/me/preferences/kitchen", map[string]any{"preference": "like"}), http.StatusNoContent)
 	apitest.ExpectStatus(t, b.Put("/me/restrictions/heights", nil), http.StatusNoContent)
 
-	apitest.ExpectStatus(t, leaveHome(b), http.StatusNoContent)
+	apitest.ExpectStatus(t, apitest.LeaveHome(b), http.StatusNoContent)
 	res := b.Get("/me/profile")
 	apitest.ExpectStatus(t, res, http.StatusOK)
 	if bl := apitest.BaselineOf(t, res); bl["monday"] != float64(7) {
@@ -548,7 +544,7 @@ func TestTheLastResidentLeavingDeletesTheHomeAndEverythingInIt(t *testing.T) {
 		t.Fatalf("assignments before leaving = %d, want 1", n)
 	}
 
-	apitest.ExpectStatus(t, leaveHome(a), http.StatusNoContent)
+	apitest.ExpectStatus(t, apitest.LeaveHome(a), http.StatusNoContent)
 	for _, table := range []string{"homes", "residents", "chores", "tasks", "invites", "allocation_runs", "day_plan_assignments"} {
 		if n := apitest.Count(t, app, `SELECT count(*) FROM `+table); n != 0 {
 			t.Errorf("%s rows = %d, want 0", table, n)
@@ -560,7 +556,7 @@ func TestTheLastResidentLeavingDeletesTheHomeAndEverythingInIt(t *testing.T) {
 func TestLeavingNeedsAHomeAndAToken(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	res := leaveHome(app.SignInAs("a@example.com"))
+	res := apitest.LeaveHome(app.SignInAs("a@example.com"))
 	if res.Status != http.StatusNotFound || res.Body["error"] != "no home" {
 		t.Errorf("leaving without a Home = %d %s, want 404 no home", res.Status, res.Raw)
 	}
@@ -575,13 +571,13 @@ func TestAfterLeavingTheSameUserCanCreateAHomeOrAcceptAnInvite(t *testing.T) {
 	a := apitest.HomeWithResident(t, app, "a@example.com")
 	b := apitest.ExtraResident(t, app, a, "b@example.com")
 
-	apitest.ExpectStatus(t, leaveHome(b), http.StatusNoContent)
+	apitest.ExpectStatus(t, apitest.LeaveHome(b), http.StatusNoContent)
 	apitest.ExpectStatus(t, b.Post("/home", apitest.HomeBody("UTC", "07:00")), http.StatusCreated)
 	if b.Get("/home").Body["id"] == a.Get("/home").Body["id"] {
 		t.Errorf("b got the old Home back, want a new one")
 	}
 
-	apitest.ExpectStatus(t, leaveHome(b), http.StatusNoContent)
+	apitest.ExpectStatus(t, apitest.LeaveHome(b), http.StatusNoContent)
 	apitest.ExpectStatus(t, apitest.AcceptInvite(b, apitest.CreateInvite(t, a), nil), http.StatusOK)
 	if b.Get("/home").Body["id"] != a.Get("/home").Body["id"] {
 		t.Errorf("b did not rejoin a's Home")
@@ -601,7 +597,7 @@ func TestTwoResidentsLeavingAtOnceDeleteTheHomeOnce(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			statuses[i] = leaveHome(c).Status
+			statuses[i] = apitest.LeaveHome(c).Status
 		}()
 	}
 	wg.Wait()

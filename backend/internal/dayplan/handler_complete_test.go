@@ -12,20 +12,20 @@ import (
 
 func TestCompleteRecordsTheCompletionWithTheResidentAndTheTime(t *testing.T) {
 	t.Parallel()
-	app, a, b := twoResidents(t)
-	app.Clock.Set(mondayAt(11))
-	task := mineOf(t, a)[0]
+	app, a, b := apitest.TwoResidents(t)
+	app.Clock.Set(apitest.MondayAt(11))
+	task := apitest.MineOf(t, a)[0]
 	name := task["choreName"].(string)
 
-	r := mustAct(t, a, "complete", task["id"].(string))
-	if reasonOf(taskList(t, r.Body["mine"]), name) != "missing" {
+	r := apitest.MustAct(t, a, "complete", task["id"].(string))
+	if reasonOf(apitest.TaskList(t, r.Body["mine"]), name) != "missing" {
 		t.Fatalf("a done Task is still in mine: %s", r.Raw)
 	}
-	done := taskList(t, r.Body["doneToday"])
+	done := apitest.TaskList(t, r.Body["doneToday"])
 	if len(done) != 1 || done[0]["id"] != task["id"] || done[0]["choreName"] != name || done[0]["completedAt"] != "2026-03-02T11:00:00Z" {
 		t.Fatalf("doneToday = %s", r.Raw)
 	}
-	if got := taskList(t, dayPlan(t, b).Body["doneToday"]); len(got) != 0 {
+	if got := apitest.TaskList(t, apitest.DayPlan(t, b).Body["doneToday"]); len(got) != 0 {
 		t.Fatalf("B sees A's Completion: %v", got)
 	}
 
@@ -42,7 +42,7 @@ func TestCompleteRecordsTheCompletionWithTheResidentAndTheTime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !at.Equal(mondayAt(11)) || on != "2026-03-02" || status != "done" {
+	if !at.Equal(apitest.MondayAt(11)) || on != "2026-03-02" || status != "done" {
 		t.Fatalf("completion at %v on %s, task %s", at, on, status)
 	}
 	rows, err := app.DB.Query(ctx, `
@@ -58,13 +58,13 @@ func TestCompleteRecordsTheCompletionWithTheResidentAndTheTime(t *testing.T) {
 
 func TestCompleteWorksOnAnAcceptedTaskAndTwiceIsAlreadyDone(t *testing.T) {
 	t.Parallel()
-	app, a, _ := twoResidents(t)
-	id := mineOf(t, a)[0]["id"].(string)
-	mustAct(t, a, "accept", id)
-	mustAct(t, a, "complete", id)
-	wantConflict(t, act(a, "complete", id), "already_done")
-	wantConflict(t, act(a, "accept", id), "already_done")
-	wantConflict(t, act(a, "refuse", id), "already_done")
+	app, a, _ := apitest.TwoResidents(t)
+	id := apitest.MineOf(t, a)[0]["id"].(string)
+	apitest.MustAct(t, a, "accept", id)
+	apitest.MustAct(t, a, "complete", id)
+	wantConflict(t, apitest.Act(a, "complete", id), "already_done")
+	wantConflict(t, apitest.Act(a, "accept", id), "already_done")
+	wantConflict(t, apitest.Act(a, "refuse", id), "already_done")
 	if got := apitest.Count(t, app, `SELECT count(*) FROM completions`); got != 1 {
 		t.Fatalf("%d completions, want 1", got)
 	}
@@ -72,9 +72,9 @@ func TestCompleteWorksOnAnAcceptedTaskAndTwiceIsAlreadyDone(t *testing.T) {
 
 func TestCompleteNeedsTheCallerToHoldTheTask(t *testing.T) {
 	t.Parallel()
-	app, a, b := twoResidents(t)
-	wantConflict(t, act(a, "complete", mineOf(t, b)[0]["id"].(string)), "not_yours")
-	wantConflict(t, act(a, "complete", taskList(t, dayPlan(t, a).Body["pool"])[0]["id"].(string)), "not_yours")
+	app, a, b := apitest.TwoResidents(t)
+	wantConflict(t, apitest.Act(a, "complete", apitest.MineOf(t, b)[0]["id"].(string)), "not_yours")
+	wantConflict(t, apitest.Act(a, "complete", apitest.TaskList(t, apitest.DayPlan(t, a).Body["pool"])[0]["id"].(string)), "not_yours")
 	if got := apitest.Count(t, app, `SELECT count(*) FROM completions`); got != 0 {
 		t.Fatalf("%d completions", got)
 	}
@@ -83,7 +83,7 @@ func TestCompleteNeedsTheCallerToHoldTheTask(t *testing.T) {
 func TestCompleteWithoutATodayPlanIsNotYours(t *testing.T) {
 	t.Parallel()
 	_, me := planned(t, 5, apitest.Chore("Dishes", 7, 2, "normal", []string{}))
-	wantConflict(t, act(me, "complete", apitest.Pool(t, me)[0]["id"].(string)), "not_yours")
+	wantConflict(t, apitest.Act(me, "complete", apitest.Pool(t, me)[0]["id"].(string)), "not_yours")
 }
 
 func TestCompletedOnIsTheHomesLocalDateNotUTCs(t *testing.T) {
@@ -101,8 +101,8 @@ func TestCompletedOnIsTheHomesLocalDateNotUTCs(t *testing.T) {
 
 	// 19:00 Monday in Los Angeles is already Tuesday in UTC.
 	app.Clock.Set(time.Date(2026, time.March, 3, 3, 0, 0, 0, time.UTC))
-	r := mustAct(t, me, "complete", mineOf(t, me)[0]["id"].(string))
-	if r.Body["date"] != "2026-03-02" || len(taskList(t, r.Body["doneToday"])) != 1 {
+	r := apitest.MustAct(t, me, "complete", apitest.MineOf(t, me)[0]["id"].(string))
+	if r.Body["date"] != "2026-03-02" || len(apitest.TaskList(t, r.Body["doneToday"])) != 1 {
 		t.Fatalf("body = %s", r.Raw)
 	}
 	var on, closed string
@@ -124,11 +124,11 @@ func TestACompletedBuildUpChoreReturnsAtBaseEffort(t *testing.T) {
 	apitest.CreateChore(t, me, apitest.Recurring("Bathroom", 4, 2, true))
 	apitest.AtDay(app, 9) // Monday: it has built up to 4
 	app.RunAllocation(t)
-	mine := mineOf(t, me)
+	mine := apitest.MineOf(t, me)
 	if len(mine) != 1 || mine[0]["currentEffort"] != float64(4) {
-		t.Fatalf("setup: %s", dayPlan(t, me).Raw)
+		t.Fatalf("setup: %s", apitest.DayPlan(t, me).Raw)
 	}
-	mustAct(t, me, "complete", mine[0]["id"].(string))
+	apitest.MustAct(t, me, "complete", mine[0]["id"].(string))
 
 	apitest.AtDay(app, 13)
 	l := apitest.Pool(t, me)

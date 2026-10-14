@@ -10,8 +10,8 @@ import (
 
 func TestTwoSimultaneousCompletesGiveOneCompletion(t *testing.T) {
 	t.Parallel()
-	app, a, _ := twoResidents(t)
-	id := mineOf(t, a)[0]["id"].(string)
+	app, a, _ := apitest.TwoResidents(t)
+	id := apitest.MineOf(t, a)[0]["id"].(string)
 
 	const n = 6
 	statuses := make([]int, n)
@@ -21,7 +21,7 @@ func TestTwoSimultaneousCompletesGiveOneCompletion(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			r := act(a, "complete", id)
+			r := apitest.Act(a, "complete", id)
 			statuses[i], codes[i] = r.Status, r.Body["error"]
 		}()
 	}
@@ -48,8 +48,8 @@ func TestTwoSimultaneousCompletesGiveOneCompletion(t *testing.T) {
 
 func TestAnAcceptRacingACheckInLeavesTheTaskCommittedAndMine(t *testing.T) {
 	t.Parallel()
-	_, a, _ := twoResidents(t)
-	task := mineOf(t, a)[0]
+	_, a, _ := apitest.TwoResidents(t)
+	task := apitest.MineOf(t, a)[0]
 	id := task["id"].(string)
 
 	var wg sync.WaitGroup
@@ -57,7 +57,7 @@ func TestAnAcceptRacingACheckInLeavesTheTaskCommittedAndMine(t *testing.T) {
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
-			if r := act(a, "accept", id); r.Status != http.StatusOK {
+			if r := apitest.Act(a, "accept", id); r.Status != http.StatusOK {
 				t.Errorf("accept = %d %s", r.Status, r.Raw)
 			}
 		}()
@@ -70,7 +70,7 @@ func TestAnAcceptRacingACheckInLeavesTheTaskCommittedAndMine(t *testing.T) {
 	}
 	wg.Wait()
 
-	if committedOf(mineOf(t, a), task["choreName"].(string)) != true {
-		t.Fatalf("the accepted Task is not committed in mine: %s", dayPlan(t, a).Raw)
+	if committedOf(apitest.MineOf(t, a), task["choreName"].(string)) != true {
+		t.Fatalf("the accepted Task is not committed in mine: %s", apitest.DayPlan(t, a).Raw)
 	}
 }

@@ -44,11 +44,11 @@ func wantSwapError(t *testing.T, r apitest.Response, status int, code string) {
 // swapsOf are the live offers the caller sees: "incoming" or "outgoing".
 func swapsOf(t *testing.T, c *apitest.Client, side string) []map[string]any {
 	t.Helper()
-	sw, ok := dayPlan(t, c).Body["swaps"].(map[string]any)
+	sw, ok := apitest.DayPlan(t, c).Body["swaps"].(map[string]any)
 	if !ok {
-		t.Fatalf("no swaps in the Day Plan: %s", dayPlan(t, c).Raw)
+		t.Fatalf("no swaps in the Day Plan: %s", apitest.DayPlan(t, c).Raw)
 	}
-	return taskList(t, sw[side])
+	return apitest.TaskList(t, sw[side])
 }
 
 // swapPair is A's first Task and B's first Task, and the ids of both.
@@ -56,7 +56,7 @@ type swapPair struct{ a, b, aName, bName string }
 
 func pairOf(t *testing.T, a, b *apitest.Client) swapPair {
 	t.Helper()
-	ta, tb := mineOf(t, a)[0], mineOf(t, b)[0]
+	ta, tb := apitest.MineOf(t, a)[0], apitest.MineOf(t, b)[0]
 	return swapPair{a: ta["id"].(string), b: tb["id"].(string), aName: ta["choreName"].(string), bName: tb["choreName"].(string)}
 }
 
@@ -67,11 +67,11 @@ func commitments(t *testing.T, app *apitest.App, task string) int {
 
 func TestAnAcceptedSwapExchangesTheTasksAndCommitsBoth(t *testing.T) {
 	t.Parallel()
-	app, a, b := twoResidents(t)
+	app, a, b := apitest.TwoResidents(t)
 	p := pairOf(t, a, b)
 
 	r := mustOffer(t, a, p.a, p.b)
-	if len(taskList(t, r.Body["mine"])) != 2 || mineOf(t, a)[0]["id"] != p.a {
+	if len(apitest.TaskList(t, r.Body["mine"])) != 2 || apitest.MineOf(t, a)[0]["id"] != p.a {
 		t.Fatalf("an offer moves nothing: %s", r.Raw)
 	}
 	out := swapsOf(t, a, "outgoing")
@@ -84,13 +84,13 @@ func TestAnAcceptedSwapExchangesTheTasksAndCommitsBoth(t *testing.T) {
 	}
 
 	r = mustSwapAct(t, b, in[0]["id"].(string), "accept")
-	mineB := taskList(t, r.Body["mine"])
+	mineB := apitest.TaskList(t, r.Body["mine"])
 	if committedOf(mineB, p.aName) != true || reasonOf(mineB, p.aName) != "swapped" || committedOf(mineB, p.bName) != "missing" {
 		t.Fatalf("B after the swap: %s", r.Raw)
 	}
-	mineA := mineOf(t, a)
+	mineA := apitest.MineOf(t, a)
 	if committedOf(mineA, p.bName) != true || reasonOf(mineA, p.bName) != "swapped" || committedOf(mineA, p.aName) != "missing" {
-		t.Fatalf("A after the swap: %s", dayPlan(t, a).Raw)
+		t.Fatalf("A after the swap: %s", apitest.DayPlan(t, a).Raw)
 	}
 	for _, task := range []string{p.a, p.b} {
 		if got := commitments(t, app, task); got != 1 {
@@ -111,10 +111,10 @@ func TestAnAcceptedSwapExchangesTheTasksAndCommitsBoth(t *testing.T) {
 
 func TestADeclinedSwapChangesNothing(t *testing.T) {
 	t.Parallel()
-	app, a, b := twoResidents(t)
+	app, a, b := apitest.TwoResidents(t)
 	p := pairOf(t, a, b)
-	mustAct(t, a, "accept", p.a)
-	before := string(dayPlan(t, b).Raw)
+	apitest.MustAct(t, a, "accept", p.a)
+	before := string(apitest.DayPlan(t, b).Raw)
 
 	mustOffer(t, a, p.a, p.b)
 	id := swapsOf(t, b, "incoming")[0]["id"].(string)
@@ -123,8 +123,8 @@ func TestADeclinedSwapChangesNothing(t *testing.T) {
 	if len(swapsOf(t, a, "outgoing")) != 0 || len(swapsOf(t, b, "incoming")) != 0 {
 		t.Fatal("a declined offer is still listed")
 	}
-	if string(dayPlan(t, b).Raw) != before {
-		t.Fatalf("a decline moved something:\n%s\n%s", before, dayPlan(t, b).Raw)
+	if string(apitest.DayPlan(t, b).Raw) != before {
+		t.Fatalf("a decline moved something:\n%s\n%s", before, apitest.DayPlan(t, b).Raw)
 	}
 	if commitments(t, app, p.a) != 1 || commitments(t, app, p.b) != 0 {
 		t.Fatal("a decline changed the Commitments")
@@ -134,9 +134,9 @@ func TestADeclinedSwapChangesNothing(t *testing.T) {
 
 func TestAcceptingASwapEndsTheOffererCommitmentOnTheTaskGivenAway(t *testing.T) {
 	t.Parallel()
-	app, a, b := twoResidents(t)
+	app, a, b := apitest.TwoResidents(t)
 	p := pairOf(t, a, b)
-	mustAct(t, a, "accept", p.a)
+	apitest.MustAct(t, a, "accept", p.a)
 
 	mustOffer(t, a, p.a, p.b)
 	mustSwapAct(t, b, swapsOf(t, b, "incoming")[0]["id"].(string), "accept")
