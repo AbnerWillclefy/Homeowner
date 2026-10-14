@@ -1,5 +1,7 @@
 # Organise the PWA by domain module, with a shared folder for the rest
 
+Amended by [ADR 0011](0011-split-each-domain-into-layer-folders.md): domain folders now live under `src/domains/` and split into `components/`, `hooks/`, `api/` and `logic/`.
+
 `web/src/` grew a mix of domain folders (`chores/`, `home/`, `invite/`) and technical ones (`api/`, `components/ui/`), so a change to one domain touched several folders, and generic pieces such as `Card` sat next to domain pieces such as the Category `Chip`. This ADR fixes where code goes. It amends [ADR 0007](0007-tailwind-and-radix-for-an-accessible-calm-ui.md), whose `components/ui/` folder is now `shared/ui/`.
 
 ## Decision

@@ -33,7 +33,10 @@ In diagrams, solid boxes and lines are built; dashed boxes and lines are planned
 | [0005](../adr/0005-ship-a-react-pwa-not-a-native-app.md) | React PWA, not a native app |
 | [0006](../adr/0006-localize-with-a-small-typed-module.md) | Localize with a small typed module, not a library |
 | [0007](../adr/0007-tailwind-and-radix-for-an-accessible-calm-ui.md) | Tailwind and Radix for an accessible, calm UI |
+| [0008](../adr/0008-scheduled-jobs-run-as-a-second-lambda-from-the-api-image.md) | Scheduled jobs run as a second Lambda from the API image |
 | [0009](../adr/0009-navigate-with-a-bottom-tab-router-and-amend-the-look.md) | Navigate with a bottom-tab router and amend the look of ADR 0007 |
+| [0010](../adr/0010-organise-the-pwa-by-domain-module.md) | Organise the PWA by domain module |
+| [0011](../adr/0011-split-each-domain-into-layer-folders.md) | Split each domain into the same layers, in the PWA and the backend |
 
 ## Keeping this current
 
