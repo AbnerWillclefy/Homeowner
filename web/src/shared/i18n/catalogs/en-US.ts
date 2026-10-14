@@ -314,6 +314,9 @@ export const enUS = {
     "You checked in as Drained, so no Tasks today. Rest up.",
   "dayplan.pool.reason.refused": "It was refused, so it is back in the pool.",
   "dayplan.assigned.reason.taken": "You took it from the pool.",
+  "dayplan.assigned.reason.liked": "You like this one.",
+  "dayplan.assigned.reason.spared_dislike": "Spared a Chore you dislike.",
+  "dayplan.assigned.reason.turn_taking": "It is your turn.",
   "dayplan.action.accept": "Accept",
   "dayplan.action.accept.named": "Accept {task}",
   "dayplan.action.acceptAll": {

@@ -79,11 +79,20 @@ func deadlineToday(t Task, today Date) bool { return t.WindowEnd <= today }
 func lateness(t Task, today Date) int { return max(int(today-t.WindowStart), 0) }
 
 // Plan proposes a Day Plan: open Tasks sorted by hard deadline today, then
-// Importance, then lateness, then TaskID, each given to the fitting Resident
-// with the most Energy left; a two-person Task goes to the two fitting
-// Residents with the most Energy left, each paying the full Effort. Tasks that
-// fit too few Residents stay in the pool. Output is sorted by TaskID then
+// Importance, then lateness, then TaskID, each given to the best fitting
+// Resident; a two-person Task goes to the two best fitting Residents, each
+// paying the full Effort. Fitting means not restricted and enough Energy left.
+// Best is decided by compareCandidates: Preference (like, neutral, dislike),
+// then among Residents who dislike the Chore the one who did it longest ago,
+// then the most Energy left, then the lowest Resident ID. Preference only
+// chooses among fitting Residents and never changes the Task order, so it
+// cannot outrank Importance and never leaves a Task unassigned. Tasks that fit
+// too few Residents stay in the pool. Output is sorted by TaskID then
 // ResidentID and does not depend on the order of the input.
+//
+// A plan for a single Resident (a re-plan after a Check-in, or "get my tasks
+// right away") has one candidate per Task, so Preference does not reorder their
+// Tasks and no Preference reason appears.
 func Plan(s State) (Result, error) {
 	residents := uniqueResidents(s.Residents)
 	slices.SortFunc(residents, func(a, b Resident) int { return cmp.Compare(a.ID, b.ID) })
@@ -127,7 +136,7 @@ func Plan(s State) (Result, error) {
 				fits = append(fits, i)
 			}
 		}
-		slices.SortStableFunc(fits, func(a, b int) int { return cmp.Compare(left[b], left[a]) })
+		slices.SortStableFunc(fits, func(a, b int) int { return compareCandidates(residents[a], residents[b], left[a], left[b], t) })
 		need := peopleNeeded(t)
 		if len(fits) < need {
 			why := ReasonNoEnergyLeft
@@ -140,10 +149,14 @@ func Plan(s State) (Result, error) {
 			res.Pool = append(res.Pool, PoolEntry{t.ID, why})
 			continue
 		}
+		why := assignmentReason(t, s.Today)
+		if r, ok := decidingReason(residents, left, fits[:need], fits[need:], t); ok {
+			why = r
+		}
 		for _, i := range fits[:need] {
 			left[i] -= t.Effort
 			res.DayPlan.Assignments = append(res.DayPlan.Assignments,
-				Assignment{t.ID, residents[i].ID, assignmentReason(t, s.Today)})
+				Assignment{t.ID, residents[i].ID, why})
 		}
 	}
 	slices.SortFunc(res.DayPlan.Assignments, func(a, b Assignment) int {

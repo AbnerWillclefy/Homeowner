@@ -13,15 +13,26 @@ type Allocator interface { Plan(State) (Result, error) }
 func Check(DayPlan, State) []Violation
 ```
 
-- `State`: today's date, the Residents (with today's Energy and Restrictions) and the open Tasks. The caller supplies "today", so the package never reads a clock.
-- `Plan` (the **baseline allocator**, type `Baseline`): deterministic. It sorts open Tasks by hard deadline today, then Importance, then lateness, then Task ID, and gives each to a fitting Resident. Unplaced Tasks stay in the pool with a reason such as `no_energy_left` or `restricted_for_all`. A **two-person Task** (`People` of two or more) goes to the **two distinct** fitting Residents with the most Energy left (ties by Resident ID); each is not restricted for it, has at least its Effort left, and **pays the full Effort**. It appears as two `Assignment`s with the same TaskID and reason. If fewer than two Residents fit it stays in the pool as `two_person_deferred` (also when the Home has one Resident); if every Resident is restricted for it, as `restricted_for_all`; `weekday_not_allowed` still comes first. `peopleNeeded` (1, or 2) is the one helper both `Plan` and `Check` use.
+- `State`: today's date, the Residents (with today's Energy, Restrictions, Preferences and last Completion of each Chore) and the open Tasks. The caller supplies "today", so the package never reads a clock.
+- `Plan` (the **baseline allocator**, type `Baseline`): deterministic. It sorts open Tasks by hard deadline today, then Importance, then lateness, then Task ID, and gives each to the best fitting Resident (see "Preferences and turn-taking" below). Unplaced Tasks stay in the pool with a reason such as `no_energy_left` or `restricted_for_all`. A **two-person Task** (`People` of two or more) goes to the **two distinct** best fitting Residents (same ranking); each is not restricted for it, has at least its Effort left, and **pays the full Effort**. It appears as two `Assignment`s with the same TaskID and reason. If fewer than two Residents fit it stays in the pool as `two_person_deferred` (also when the Home has one Resident); if every Resident is restricted for it, as `restricted_for_all`; `weekday_not_allowed` still comes first. `peopleNeeded` (1, or 2) is the one helper both `Plan` and `Check` use.
 - `Check` (the **referee**): returns every violation, not just the first: over Energy, broken Restriction (Demand or Chore level), unknown or duplicate Task, unknown Resident, a Task given on a weekday its Chore forbids, and a wrong number of Residents. `duplicate_task` means a one-person Task given more than once (to one Resident twice or to two Residents), or a two-person Task that has its two Residents plus a repeated assignment. `wrong_resident_count` is a two-person Task in the plan whose number of distinct named Residents (known or not) is not two: one Resident, the same Resident twice, or three. A Task absent from the plan is pool, never a violation. Energy, Restrictions and weekday are checked once per (Task, Resident) pair, so either partner's Energy or Restriction can be the violation.
 
 Reasons are data, not prose, so a later feature can turn them into an explanation.
 
 The open Tasks come from the `tasks` table, kept current by `tasks.Store.Refresh` (see [Backend](backend.md)); the daily job calls it before it builds `State`. Tasks only open on a Chore's allowed weekdays, but a Task can stay open past its window, so `allocation.Task` carries `AllowedWeekdays` (empty means any day): `Plan` leaves an overdue Task in the pool with the reason `weekday_not_allowed` on a day its Chore forbids, and `Check` reports `weekday_not_allowed` for a plan that gives it. Both use one helper, `weekdayAllowed`, like `breaksRestriction`, so the allocator and the referee cannot disagree.
 
-Not yet in the module: Preference weights and turn-taking.
+**Preferences and turn-taking (built)**: each `Resident` carries two plain maps, both keyed by Chore ID and only ever read by key (never ranged over, so output stays deterministic). `Preferences` is the effective Preference (`Like`, `Dislike`; absent is neutral, the zero value) and `LastDone` is the `Date` of the Resident's most recent Completion of the Chore (absent means never done, deliberately not a zero `Date`, which is 1970-01-01). They are soft rules (ADR 0004): `Check` ignores them, and `Plan` uses them only to choose among Residents who already pass the hard rules, so an Essential Chore disliked by everyone is still assigned and Preference can never outrank Importance, because the Task order does not change. Among the Residents who fit a Task, `compareCandidates` ranks them:
+
+1. Preference of the Chore: like, then neutral, then dislike.
+2. Only when both dislike it: the Resident who did the Chore longest ago first, never done before any date. Non-dislikers skip this key, so Energy spreading is unchanged for them.
+3. More Energy left.
+4. Lower Resident ID.
+
+A two-person Task takes the first two of the same ranking. With no Preferences and no history this is exactly the old order (Energy left, then ID). Turn-taking counts Completions only, so a Resident who is given a disliked Chore and never does it stays first in line.
+
+**Reasons for the choice**: one reason per Task (a two-person Task repeats it for both partners). `decidingReason` (in `allocation/preference.go`) compares each chosen Resident with each passed-over candidate, using the same comparison as the sort, and looks for the first pair where a Preference or turn-taking put the chosen one ahead and the order by Energy alone would have put the other first. Its reason is `liked` (the chosen Resident likes the Chore, the other does not), `spared_dislike` (the other dislikes it, the chosen one does not) or `turn_taking` (both dislike it and the chosen one did it longer ago). If no pair qualifies, Energy or the Resident ID decided and the reason is the urgency one (`deadline_today`, `importance`, `lateness`, `fits_energy`). `Preference` is ordered numerically (`Like` -1, `Neutral` 0, `Dislike` 1; lower is better), so the sort and the reason read the same values. A plan for one Resident (a Check-in re-plan, "get my tasks right away") has one candidate per Task, so it shows the urgency reason.
+
+At the edge, `dayplan.loadState` fills the two maps: `Preferences` through `choresettings.Resolve` for every Chore of the Home (a specific Preference, neutral included, beats the general one for the Category), keeping only non-neutral results; `LastDone` from `completion_residents` joined to `completions`, `tasks` and `chores`, `max(completed_on)` per Resident and Chore for the Home with `completed_on <= today`. It is the last Completion of the Chore, not of the Task, and a two-person Completion counts for both partners. No new table or column.
 
 ## The job (built)
 
@@ -54,7 +65,7 @@ flowchart TD
     J --> H{"Home's Allocation time reached in its timezone, and no run for its local date?"}
     H -->|no| X["skip"]
     H -->|yes| R["Refresh Tasks, then lock the Home"]
-    R --> L["Load State from Postgres: open Tasks, Energy from Baseline scaled by the Check-in, Restrictions incl. day-only"]
+    R --> L["Load State from Postgres: open Tasks, Energy from Baseline scaled by the Check-in, Restrictions incl. day-only, effective Preferences, last Completion per Chore"]
     L --> Q{"LLM enabled and Home under daily cap?"}:::planned
     Q -->|yes| LLM["LLM allocator proposes a Day Plan"]:::planned
     LLM --> CK["Check: the referee"]

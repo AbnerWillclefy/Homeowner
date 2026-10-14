@@ -12,6 +12,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkin"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkinstore"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
 )
 
@@ -54,7 +55,8 @@ func demandRestrictions(p profile.Profile, ci *checkinstore.CheckIn) []allocatio
 
 // loadState reads the Home's open Tasks (overdue ones too: nothing is tied to a
 // day until it is assigned), its Residents with their Energy for the day, and
-// both levels of Restriction.
+// both levels of Restriction, their effective Preferences (non-neutral only)
+// and the Date of their last Completion of each Chore.
 func loadState(ctx context.Context, q pgx.Tx, homeID string, today allocation.Date) (loaded, error) {
 	out := loaded{state: allocation.State{Today: today}, energy: map[string]int{}}
 
@@ -87,6 +89,19 @@ func loadState(ctx context.Context, q pgx.Tx, homeID string, today allocation.Da
 		return loaded{}, err
 	}
 
+	homeChores, err := chores.ListIn(ctx, q, homeID)
+	if err != nil {
+		return loaded{}, err
+	}
+	specific, err := loadSpecificPreferences(ctx, q, homeID)
+	if err != nil {
+		return loaded{}, err
+	}
+	lastDone, err := loadLastDone(ctx, q, homeID, today)
+	if err != nil {
+		return loaded{}, err
+	}
+
 	for _, r := range residents {
 		p := profiles[r.userID]
 		var ci *checkinstore.CheckIn
@@ -94,7 +109,8 @@ func loadState(ctx context.Context, q pgx.Tx, homeID string, today allocation.Da
 			ci = &c
 		}
 		res := allocation.Resident{ID: r.id, Energy: energyOn(p, today, ci), ChoreRestrictions: choreRestrictions[r.id],
-			DemandRestrictions: demandRestrictions(p, ci)}
+			DemandRestrictions: demandRestrictions(p, ci),
+			Preferences:        preferencesOf(p, homeChores, specific[r.id]), LastDone: lastDone[r.id]}
 		out.state.Residents = append(out.state.Residents, res)
 		out.energy[r.id] = res.Energy
 	}
