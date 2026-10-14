@@ -63,7 +63,7 @@ jobs:
                     needs-triage) status="Triage" ;;
                   esac ;;
                 unlabeled)
-                  # A learning ticket is refined when its study guide is written and needs-refinement comes off
+                  # A ready-for-human ticket never gets ready-for-agent: it is refined when needs-refinement comes off
                   if [ "$LABEL" = needs-refinement ] && [[ ",$live_labels," == *",ready-for-human,"* ]]; then status="Ready"; fi ;;
               esac
             fi

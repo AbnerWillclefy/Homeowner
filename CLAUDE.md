@@ -24,9 +24,9 @@ Each stage is a workflow in `.github/workflows/` started by a label or an event.
 4. Pull request opened: Claude reviews it, then the engineer applies the valid findings once and labels the pull request `review-addressed`.
 5. A human merges; the deploy to staging runs.
 
-## Learning tickets
+## Building a ticket
 
-The maintainer is learning Go and AWS through this project, starting with very little knowledge of either. Tickets labelled `ready-for-human` are theirs to build: refinement writes a `## Learning path` instead of technical notes, the implement stage refuses them, and the review-fix stage leaves the maintainer's pull requests alone so they apply the review themselves. The learning path must guide them step by step, each step with a checkpoint, from the first command to a merged pull request (see "Learning tickets" in `.claude/agents/senior-engineer.md`). Every `ready-for-human` ticket carries one; a ticket without it is not ready. When the maintainer asks a question on such a ticket or pull request, teach: explain the concept and point to the relevant code or docs, and do not write the solution for them.
+Every ticket is refined for the agents. The maintainer is learning Go, AWS and system design, and builds a ticket one of two ways: labelling it `implement` for the pipeline, or locally with `/ticket <n>`, where Claude writes the code and teaches as it goes (see `.claude/skills/ticket/SKILL.md`). Each ticket's `### Learning focus` names the concepts it exercises. `ready-for-human` is reserved for tickets that need a step no agent can take, such as a purchase, console access or a secret; the implement stage refuses them. When the maintainer asks a question on a ticket or pull request, teach: answer it, explain the concept, and point to the relevant code or docs.
 
 ## Architecture documentation
 

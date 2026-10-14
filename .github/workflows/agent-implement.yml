@@ -74,5 +74,5 @@ jobs:
           GH_TOKEN: ${{ secrets.AGENTS_GH_TOKEN }}
           ISSUE: ${{ github.event.issue.number }}
         run: |
-          gh issue comment "$ISSUE" -R "$GITHUB_REPOSITORY" --body "**Backend Engineer:** this ticket is labelled \`ready-for-human\`: the maintainer builds it to learn. To hand it to the agents instead, remove \`ready-for-human\`, add \`needs-refinement\` for technical notes, then label it \`implement\`."
+          gh issue comment "$ISSUE" -R "$GITHUB_REPOSITORY" --body "**Backend Engineer:** this ticket is labelled \`ready-for-human\`: it needs a step no agent can take, such as a purchase or console access. The maintainer follows its technical notes."
           gh issue edit "$ISSUE" -R "$GITHUB_REPOSITORY" --remove-label implement
