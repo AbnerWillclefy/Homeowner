@@ -13,7 +13,6 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkin"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkinstore"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/choresettings"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
 )
 
@@ -191,95 +190,6 @@ func loadChoreRestrictions(ctx context.Context, q pgx.Tx, homeID string) (map[st
 	out := map[string][]string{}
 	for _, x := range rs {
 		out[x.resident] = append(out[x.resident], x.chore)
-	}
-	return out, nil
-}
-
-// loadSpecificPreferences returns the Preference each Resident set on a Chore,
-// by Resident id then Chore id.
-func loadSpecificPreferences(ctx context.Context, q pgx.Tx, homeID string) (map[string]map[string]string, error) {
-	rows, err := q.Query(ctx, `
-		SELECT p.resident_id, p.chore_id, p.preference
-		FROM resident_chore_preferences p JOIN residents r ON r.id = p.resident_id
-		WHERE r.home_id = $1`, homeID)
-	if err != nil {
-		return nil, fmt.Errorf("load preferences: %w", err)
-	}
-	type row struct{ resident, chore, preference string }
-	rs, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (x row, err error) {
-		return x, r.Scan(&x.resident, &x.chore, &x.preference)
-	})
-	if err != nil {
-		return nil, fmt.Errorf("load preferences: %w", err)
-	}
-	out := map[string]map[string]string{}
-	for _, x := range rs {
-		if out[x.resident] == nil {
-			out[x.resident] = map[string]string{}
-		}
-		out[x.resident][x.chore] = x.preference
-	}
-	return out, nil
-}
-
-// preferencesOf resolves the Resident's effective Preference for each Chore of
-// the Home (a specific one beats the general one for the Category) and keeps
-// the non-neutral ones. choresettings.Resolve holds the rule.
-func preferencesOf(p profile.Profile, homeChores []chores.Chore, specific map[string]string) map[string]allocation.Preference {
-	general := choresettings.General{Preferences: p.Preferences, Restrictions: p.Restrictions}
-	var out map[string]allocation.Preference
-	for _, c := range homeChores {
-		e := choresettings.Resolve(choresettings.Chore{Category: c.Category, Demands: c.Demands}, general,
-			choresettings.Specific{Preference: specific[c.ID]})
-		var pref allocation.Preference
-		switch e.Preference {
-		case choresettings.Like:
-			pref = allocation.Like
-		case choresettings.Dislike:
-			pref = allocation.Dislike
-		default:
-			continue
-		}
-		if out == nil {
-			out = map[string]allocation.Preference{}
-		}
-		out[c.ID] = pref
-	}
-	return out
-}
-
-// loadLastDone returns, by Resident id then Chore id, the Date of the
-// Resident's latest Completion of the Chore on or before today. It is the
-// Chore's last Completion, not the Task's, because the Task changes every
-// round. A two-person Completion counts for both partners.
-func loadLastDone(ctx context.Context, q pgx.Tx, homeID string, today allocation.Date) (map[string]map[string]allocation.Date, error) {
-	rows, err := q.Query(ctx, `
-		SELECT cr.resident_id, t.chore_id, max(c.completed_on)
-		FROM completion_residents cr
-		JOIN completions c ON c.id = cr.completion_id
-		JOIN tasks t ON t.id = c.task_id
-		JOIN chores ch ON ch.id = t.chore_id
-		WHERE ch.home_id = $1 AND c.completed_on <= $2
-		GROUP BY cr.resident_id, t.chore_id`, homeID, today.Time())
-	if err != nil {
-		return nil, fmt.Errorf("load last done: %w", err)
-	}
-	type row struct {
-		resident, chore string
-		on              time.Time
-	}
-	rs, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (x row, err error) {
-		return x, r.Scan(&x.resident, &x.chore, &x.on)
-	})
-	if err != nil {
-		return nil, fmt.Errorf("load last done: %w", err)
-	}
-	out := map[string]map[string]allocation.Date{}
-	for _, x := range rs {
-		if out[x.resident] == nil {
-			out[x.resident] = map[string]allocation.Date{}
-		}
-		out[x.resident][x.chore] = allocation.DateOf(x.on)
 	}
 	return out, nil
 }
