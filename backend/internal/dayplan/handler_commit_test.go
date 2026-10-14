@@ -1,4 +1,4 @@
-package server_test
+package dayplan_test
 
 import (
 	"net/http"
@@ -60,13 +60,13 @@ func committedOf(tasks []map[string]any, name string) any {
 func twoResidents(t *testing.T) (app *apitest.App, a, b *apitest.Client) {
 	t.Helper()
 	app = apitest.Start(t)
-	a = homeWithResident(t, app, "a@example.com")
-	b = extraResident(t, app, a, "b@example.com")
-	setBaseline(t, a, map[string]any{"monday": 4, "tuesday": 4})
-	setBaseline(t, b, map[string]any{"monday": 4, "tuesday": 4})
+	a = apitest.HomeWithResident(t, app, "a@example.com")
+	b = apitest.ExtraResident(t, app, a, "b@example.com")
+	apitest.SetBaseline(t, a, map[string]any{"monday": 4, "tuesday": 4})
+	apitest.SetBaseline(t, b, map[string]any{"monday": 4, "tuesday": 4})
 	app.Clock.Set(mondayAt(6))
 	for _, n := range []string{"One", "Two", "Three", "Four", "Five"} {
-		createChore(t, a, chore(n, 7, 2, "normal", []string{}))
+		apitest.CreateChore(t, a, apitest.Chore(n, 7, 2, "normal", []string{}))
 	}
 	app.Clock.Set(mondayAt(7))
 	app.RunAllocation(t)
@@ -93,7 +93,7 @@ func TestAcceptCommitsTheTaskAndTwiceChangesNothing(t *testing.T) {
 	if string(again.Raw) != string(r.Raw) {
 		t.Fatalf("a second accept changed the plan:\n%s\n%s", r.Raw, again.Raw)
 	}
-	if got := count(t, app, `SELECT count(*) FROM task_residents WHERE task_id = $1 AND committed_on = '2026-03-02'`, id); got != 1 {
+	if got := apitest.Count(t, app, `SELECT count(*) FROM task_residents WHERE task_id = $1 AND committed_on = '2026-03-02'`, id); got != 1 {
 		t.Fatalf("%d commitments, want 1", got)
 	}
 	if string(dayPlan(t, a).Raw) != string(r.Raw) {
@@ -120,22 +120,22 @@ func TestAcceptNeedsATodayPlan(t *testing.T) {
 	t.Run("no run", func(t *testing.T) {
 		t.Parallel()
 		app := apitest.Start(t)
-		me := homeWithResident(t, app, "a@example.com")
+		me := apitest.HomeWithResident(t, app, "a@example.com")
 		app.Clock.Set(mondayAt(6))
-		createChore(t, me, chore("Dishes", 7, 2, "normal", []string{}))
-		id := pool(t, me)[0]["id"].(string)
+		apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 2, "normal", []string{}))
+		id := apitest.Pool(t, me)[0]["id"].(string)
 		wantConflict(t, act(me, "accept", id), "no_plan_today")
 	})
 	t.Run("rejected run", func(t *testing.T) {
 		t.Parallel()
 		app := apitest.Start(t)
-		me := homeWithResident(t, app, "a@example.com") // no Baseline: the stub overspends
+		me := apitest.HomeWithResident(t, app, "a@example.com") // no Baseline: the stub overspends
 		app.Clock.Set(mondayAt(6))
-		createChore(t, me, chore("Dishes", 7, 2, "normal", []string{}))
+		apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 2, "normal", []string{}))
 		app.UseAllocator(overEnergy{})
 		app.Clock.Set(mondayAt(7))
 		app.RunAllocation(t)
-		id := pool(t, me)[0]["id"].(string)
+		id := apitest.Pool(t, me)[0]["id"].(string)
 		wantConflict(t, act(me, "accept", id), "no_plan_today")
 	})
 }
@@ -157,7 +157,7 @@ func TestAcceptAllCommitsOnlyTheCallersProposedTasks(t *testing.T) {
 			t.Fatalf("B's Task was committed by A: %s", dayPlan(t, b).Raw)
 		}
 	}
-	if got := count(t, app, `SELECT count(*) FROM task_residents`); got != 2 {
+	if got := apitest.Count(t, app, `SELECT count(*) FROM task_residents`); got != 2 {
 		t.Fatalf("%d commitments, want A's 2", got)
 	}
 	// With nothing left to accept it is still a 200.
@@ -169,17 +169,17 @@ func TestAcceptAllCommitsOnlyTheCallersProposedTasks(t *testing.T) {
 func TestAcceptAllNeedsATodayPlan(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
+	me := apitest.HomeWithResident(t, app, "a@example.com")
 	wantConflict(t, me.Post("/home/day-plan/accept-all", nil), "no_plan_today")
 }
 
 func TestTaskActionsAnswer404ForAnIdThatIsNotTheCallersHomes(t *testing.T) {
 	t.Parallel()
 	app, a, _ := twoResidents(t)
-	other := homeWithResident(t, app, "other@example.com")
-	setBaseline(t, other, map[string]any{"monday": 4})
-	createChore(t, other, chore("Foreign", 7, 2, "normal", []string{}))
-	foreign := pool(t, other)[0]["id"].(string)
+	other := apitest.HomeWithResident(t, app, "other@example.com")
+	apitest.SetBaseline(t, other, map[string]any{"monday": 4})
+	apitest.CreateChore(t, other, apitest.Chore("Foreign", 7, 2, "normal", []string{}))
+	foreign := apitest.Pool(t, other)[0]["id"].(string)
 	for _, action := range []string{"accept", "refuse", "take", "complete"} {
 		for _, id := range []string{"abc", "00000000-0000-0000-0000-000000000000", foreign} {
 			if r := act(a, action, id); r.Status != http.StatusNotFound || r.Body["error"] != "task not found" {

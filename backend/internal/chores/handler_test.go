@@ -1,7 +1,6 @@
-package server_test
+package chores_test
 
 import (
-	"context"
 	"net/http"
 	"reflect"
 	"strings"
@@ -11,60 +10,10 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
 
-func countChores(t *testing.T, app *apitest.App) int {
-	t.Helper()
-	var n int
-	if err := app.DB.QueryRow(context.Background(), "SELECT count(*) FROM chores").Scan(&n); err != nil {
-		t.Fatal(err)
-	}
-	return n
-}
-
-// validChore is a recurring Chore every field of which is acceptable.
-func validChore() map[string]any {
-	return map[string]any{
-		"name": "Mop floors", "category": "floors", "demands": []string{"bending"},
-		"baseEffort": 3, "importance": "normal", "people": 1,
-		"intervalDays": 7, "allowedWeekdays": []int{}, "buildsUp": true,
-	}
-}
-
-// with returns a copy of base with key k set to v (nil means JSON null).
-func with(base map[string]any, k string, v any) map[string]any {
-	out := map[string]any{}
-	for kk, vv := range base {
-		out[kk] = vv
-	}
-	out[k] = v
-	return out
-}
-
-func homeWithResident(t *testing.T, app *apitest.App, email string) *apitest.Client {
-	t.Helper()
-	c := app.SignInAs(email)
-	if r := c.Post("/home", homeBody("UTC", "07:00")); r.Status != http.StatusCreated {
-		t.Fatalf("POST /home = %d %s", r.Status, r.Raw)
-	}
-	return c
-}
-
-func listChores(t *testing.T, c *apitest.Client) []any {
-	t.Helper()
-	r := c.Get("/home/chores")
-	if r.Status != http.StatusOK {
-		t.Fatalf("GET /home/chores = %d %s", r.Status, r.Raw)
-	}
-	l, ok := r.Body["chores"].([]any)
-	if !ok {
-		t.Fatalf("no chores array: %s", r.Raw)
-	}
-	return l
-}
-
 func TestChoresRoundTripEveryField(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
+	me := apitest.HomeWithResident(t, app, "a@example.com")
 
 	oneOff := map[string]any{
 		"name": "Clean gutters", "category": "outdoor", "demands": []string{"heights", "heavy_lifting"},
@@ -87,13 +36,13 @@ func TestChoresRoundTripEveryField(t *testing.T) {
 	}
 
 	app.Clock.Advance(time.Minute) // the frozen clock would tie created_at and leave order to the random id
-	b := me.Post("/home/chores", validChore())
+	b := me.Post("/home/chores", apitest.ValidChore())
 	if b.Status != http.StatusCreated || b.Body["intervalDays"] != float64(7) || b.Body["buildsUp"] != true ||
 		!reflect.DeepEqual(b.Body["allowedWeekdays"], []any{}) {
 		t.Fatalf("recurring create = %d %s", b.Status, b.Raw)
 	}
 
-	l := listChores(t, me)
+	l := apitest.ListChores(t, me)
 	if len(l) != 2 || l[0].(map[string]any)["id"] != a.Body["id"] || l[1].(map[string]any)["id"] != b.Body["id"] {
 		t.Fatalf("list = %v, want both in creation order", l)
 	}
@@ -115,7 +64,7 @@ func TestChoresRoundTripEveryField(t *testing.T) {
 		!reflect.DeepEqual(u.Body["demands"], []any{}) {
 		t.Fatalf("PUT did not replace every field: %s", u.Raw)
 	}
-	got := listChores(t, me)[0].(map[string]any)
+	got := apitest.ListChores(t, me)[0].(map[string]any)
 	if got["name"] != "Wipe counters" || got["intervalDays"] != float64(2) {
 		t.Fatalf("list after PUT = %v", got)
 	}
@@ -123,7 +72,7 @@ func TestChoresRoundTripEveryField(t *testing.T) {
 	if d := me.Delete("/home/chores/" + id); d.Status != http.StatusNoContent {
 		t.Fatalf("DELETE = %d %s, want 204", d.Status, d.Raw)
 	}
-	if l := listChores(t, me); len(l) != 1 {
+	if l := apitest.ListChores(t, me); len(l) != 1 {
 		t.Fatalf("list after delete = %v, want 1", l)
 	}
 	if r := me.Put("/home/chores/"+id, upd); r.Status != http.StatusNotFound {
@@ -137,30 +86,30 @@ func TestChoresRoundTripEveryField(t *testing.T) {
 func TestInvalidChoresAreRejectedWithAFieldCodeAndNothingIsStored(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
+	me := apitest.HomeWithResident(t, app, "a@example.com")
 
 	cases := []struct {
 		name, field, code string
 		body              map[string]any
 	}{
-		{"empty name", "name", "required", with(validChore(), "name", "")},
-		{"whitespace name", "name", "required", with(validChore(), "name", "   \t")},
-		{"101-char name", "name", "too_long", with(validChore(), "name", strings.Repeat("é", 101))},
-		{"effort 0", "baseEffort", "out_of_range", with(validChore(), "baseEffort", 0)},
-		{"effort 6", "baseEffort", "out_of_range", with(validChore(), "baseEffort", 6)},
-		{"effort 2.5", "baseEffort", "invalid", with(validChore(), "baseEffort", 2.5)},
-		{"effort string", "baseEffort", "invalid", with(validChore(), "baseEffort", "3")},
-		{"effort missing", "baseEffort", "required", with(validChore(), "baseEffort", nil)},
-		{"people 0", "people", "out_of_range", with(validChore(), "people", 0)},
-		{"people 3", "people", "out_of_range", with(validChore(), "people", 3)},
-		{"interval 0", "intervalDays", "out_of_range", with(validChore(), "intervalDays", 0)},
-		{"interval -1", "intervalDays", "out_of_range", with(validChore(), "intervalDays", -1)},
-		{"interval 366", "intervalDays", "out_of_range", with(validChore(), "intervalDays", 366)},
-		{"weekday 7", "allowedWeekdays", "out_of_range", with(validChore(), "allowedWeekdays", []int{1, 7})},
-		{"weekday -1", "allowedWeekdays", "out_of_range", with(validChore(), "allowedWeekdays", []int{-1})},
-		{"unknown category", "category", "unknown", with(validChore(), "category", "garage")},
-		{"unknown importance", "importance", "unknown", with(validChore(), "importance", "urgent")},
-		{"unknown demand", "demands", "unknown", with(validChore(), "demands", []string{"bending", "flying"})},
+		{"empty name", "name", "required", apitest.WithField(apitest.ValidChore(), "name", "")},
+		{"whitespace name", "name", "required", apitest.WithField(apitest.ValidChore(), "name", "   \t")},
+		{"101-char name", "name", "too_long", apitest.WithField(apitest.ValidChore(), "name", strings.Repeat("é", 101))},
+		{"effort 0", "baseEffort", "out_of_range", apitest.WithField(apitest.ValidChore(), "baseEffort", 0)},
+		{"effort 6", "baseEffort", "out_of_range", apitest.WithField(apitest.ValidChore(), "baseEffort", 6)},
+		{"effort 2.5", "baseEffort", "invalid", apitest.WithField(apitest.ValidChore(), "baseEffort", 2.5)},
+		{"effort string", "baseEffort", "invalid", apitest.WithField(apitest.ValidChore(), "baseEffort", "3")},
+		{"effort missing", "baseEffort", "required", apitest.WithField(apitest.ValidChore(), "baseEffort", nil)},
+		{"people 0", "people", "out_of_range", apitest.WithField(apitest.ValidChore(), "people", 0)},
+		{"people 3", "people", "out_of_range", apitest.WithField(apitest.ValidChore(), "people", 3)},
+		{"interval 0", "intervalDays", "out_of_range", apitest.WithField(apitest.ValidChore(), "intervalDays", 0)},
+		{"interval -1", "intervalDays", "out_of_range", apitest.WithField(apitest.ValidChore(), "intervalDays", -1)},
+		{"interval 366", "intervalDays", "out_of_range", apitest.WithField(apitest.ValidChore(), "intervalDays", 366)},
+		{"weekday 7", "allowedWeekdays", "out_of_range", apitest.WithField(apitest.ValidChore(), "allowedWeekdays", []int{1, 7})},
+		{"weekday -1", "allowedWeekdays", "out_of_range", apitest.WithField(apitest.ValidChore(), "allowedWeekdays", []int{-1})},
+		{"unknown category", "category", "unknown", apitest.WithField(apitest.ValidChore(), "category", "garage")},
+		{"unknown importance", "importance", "unknown", apitest.WithField(apitest.ValidChore(), "importance", "urgent")},
+		{"unknown demand", "demands", "unknown", apitest.WithField(apitest.ValidChore(), "demands", []string{"bending", "flying"})},
 	}
 	for _, tc := range cases {
 		r := me.Post("/home/chores", tc.body)
@@ -171,7 +120,7 @@ func TestInvalidChoresAreRejectedWithAFieldCodeAndNothingIsStored(t *testing.T) 
 	}
 
 	// All field errors come at once.
-	r := me.Post("/home/chores", with(with(validChore(), "name", ""), "baseEffort", 9))
+	r := me.Post("/home/chores", apitest.WithField(apitest.WithField(apitest.ValidChore(), "name", ""), "baseEffort", 9))
 	if f, _ := r.Body["fields"].(map[string]any); len(f) != 2 {
 		t.Errorf("fields = %s, want two codes at once", r.Raw)
 	}
@@ -190,15 +139,15 @@ func TestInvalidChoresAreRejectedWithAFieldCodeAndNothingIsStored(t *testing.T) 
 	}
 
 	// A rejected update changes nothing.
-	ok := me.Post("/home/chores", validChore())
+	ok := me.Post("/home/chores", apitest.ValidChore())
 	id := ok.Body["id"].(string)
-	if r := me.Put("/home/chores/"+id, with(validChore(), "baseEffort", 0)); r.Status != http.StatusBadRequest {
+	if r := me.Put("/home/chores/"+id, apitest.WithField(apitest.ValidChore(), "baseEffort", 0)); r.Status != http.StatusBadRequest {
 		t.Errorf("PUT invalid = %d, want 400", r.Status)
 	}
-	if n := countChores(t, app); n != 1 {
+	if n := apitest.CountChores(t, app); n != 1 {
 		t.Fatalf("chores stored = %d, want only the one valid Chore", n)
 	}
-	if l := listChores(t, me)[0].(map[string]any); l["baseEffort"] != float64(3) {
+	if l := apitest.ListChores(t, me)[0].(map[string]any); l["baseEffort"] != float64(3) {
 		t.Fatalf("rejected PUT changed the Chore: %v", l)
 	}
 }
@@ -206,8 +155,8 @@ func TestInvalidChoresAreRejectedWithAFieldCodeAndNothingIsStored(t *testing.T) 
 func TestChoresAreNormalised(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	body := with(with(with(validChore(), "name", "  Mop  "), "demands", []string{"heights", "bending", "heights"}),
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	body := apitest.WithField(apitest.WithField(apitest.WithField(apitest.ValidChore(), "name", "  Mop  "), "demands", []string{"heights", "bending", "heights"}),
 		"allowedWeekdays", []int{5, 0, 5, 3})
 	r := me.Post("/home/chores", body)
 	if r.Status != http.StatusCreated || r.Body["name"] != "Mop" ||
@@ -220,24 +169,24 @@ func TestChoresAreNormalised(t *testing.T) {
 func TestChoresAreIsolatedBetweenHomes(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	a := homeWithResident(t, app, "a@example.com")
-	b := homeWithResident(t, app, "b@example.com")
-	c := a.Post("/home/chores", validChore())
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	b := apitest.HomeWithResident(t, app, "b@example.com")
+	c := a.Post("/home/chores", apitest.ValidChore())
 	id := c.Body["id"].(string)
 
-	if r := b.Put("/home/chores/"+id, with(validChore(), "name", "Hijacked")); r.Status != http.StatusNotFound {
+	if r := b.Put("/home/chores/"+id, apitest.WithField(apitest.ValidChore(), "name", "Hijacked")); r.Status != http.StatusNotFound {
 		t.Errorf("other Home PUT = %d, want 404", r.Status)
 	}
 	if r := b.Delete("/home/chores/" + id); r.Status != http.StatusNotFound {
 		t.Errorf("other Home DELETE = %d, want 404", r.Status)
 	}
-	if l := listChores(t, b); len(l) != 0 {
+	if l := apitest.ListChores(t, b); len(l) != 0 {
 		t.Errorf("other Home list = %v, want empty", l)
 	}
-	if l := listChores(t, a); len(l) != 1 || l[0].(map[string]any)["name"] != "Mop floors" {
+	if l := apitest.ListChores(t, a); len(l) != 1 || l[0].(map[string]any)["name"] != "Mop floors" {
 		t.Errorf("owner list = %v, want unchanged", l)
 	}
-	if r := a.Put("/home/chores/not-a-uuid", validChore()); r.Status != http.StatusNotFound {
+	if r := a.Put("/home/chores/not-a-uuid", apitest.ValidChore()); r.Status != http.StatusNotFound {
 		t.Errorf("malformed id = %d, want 404", r.Status)
 	}
 	if r := a.Delete("/home/chores/not-a-uuid"); r.Status != http.StatusNotFound {
@@ -248,20 +197,20 @@ func TestChoresAreIsolatedBetweenHomes(t *testing.T) {
 func TestAnyResidentManagesTheHomesChores(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	a := homeWithResident(t, app, "a@example.com")
+	a := apitest.HomeWithResident(t, app, "a@example.com")
 	home := a.Get("/home").Body["id"].(string)
 	b := app.SignInAs("b@example.com")
 	b.JoinHome(t, home)
 
-	made := b.Post("/home/chores", validChore())
+	made := b.Post("/home/chores", apitest.ValidChore())
 	if made.Status != http.StatusCreated {
 		t.Fatalf("second Resident POST = %d %s", made.Status, made.Raw)
 	}
 	id := made.Body["id"].(string)
-	if l := listChores(t, a); len(l) != 1 {
+	if l := apitest.ListChores(t, a); len(l) != 1 {
 		t.Fatalf("first Resident sees %v, want the Chore", l)
 	}
-	if r := a.Put("/home/chores/"+id, with(validChore(), "name", "Renamed")); r.Status != http.StatusOK {
+	if r := a.Put("/home/chores/"+id, apitest.WithField(apitest.ValidChore(), "name", "Renamed")); r.Status != http.StatusOK {
 		t.Fatalf("first Resident PUT = %d %s", r.Status, r.Raw)
 	}
 	if r := b.Delete("/home/chores/" + id); r.Status != http.StatusNoContent {
@@ -276,7 +225,7 @@ func TestChoreRoutesNeedAHome(t *testing.T) {
 	if r := me.Get("/home/chores"); r.Status != http.StatusNotFound {
 		t.Errorf("GET = %d, want 404", r.Status)
 	}
-	if r := me.Post("/home/chores", validChore()); r.Status != http.StatusNotFound {
+	if r := me.Post("/home/chores", apitest.ValidChore()); r.Status != http.StatusNotFound {
 		t.Errorf("POST = %d, want 404", r.Status)
 	}
 	if r := app.Get("/home/chores"); r.Status != http.StatusUnauthorized {

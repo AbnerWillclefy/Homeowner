@@ -1,9 +1,11 @@
-package server_test
+package dayplan_test
 
 import (
 	"net/http"
 	"sync"
 	"testing"
+
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
 
 func TestTwoSimultaneousCompletesGiveOneCompletion(t *testing.T) {
@@ -39,7 +41,7 @@ func TestTwoSimultaneousCompletesGiveOneCompletion(t *testing.T) {
 	if ok != 1 || conflicts != n-1 {
 		t.Fatalf("%d OK and %d already_done, want 1 and %d", ok, conflicts, n-1)
 	}
-	if got := count(t, app, `SELECT count(*) FROM completions WHERE task_id = $1`, id); got != 1 {
+	if got := apitest.Count(t, app, `SELECT count(*) FROM completions WHERE task_id = $1`, id); got != 1 {
 		t.Fatalf("%d completions, want 1", got)
 	}
 }

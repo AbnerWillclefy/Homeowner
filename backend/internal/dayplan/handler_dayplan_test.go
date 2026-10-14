@@ -1,4 +1,4 @@
-package server_test
+package dayplan_test
 
 import (
 	"context"
@@ -53,34 +53,12 @@ func reasonOf(tasks []map[string]any, name string) any {
 	return "missing"
 }
 
-func setBaseline(t *testing.T, c *apitest.Client, days map[string]any) {
-	t.Helper()
-	if r := c.Put("/me/baseline", days); r.Status != http.StatusNoContent {
-		t.Fatalf("PUT /me/baseline = %d %s", r.Status, r.Raw)
-	}
-}
-
-// chore is a one-person Chore due every `every` days.
-func chore(name string, every, effort int, importance string, demands []string, weekdays ...int) map[string]any {
-	c := recurring(name, every, effort, false, weekdays...)
-	c["importance"] = importance
-	c["demands"] = demands
-	return c
-}
-
-func extraResident(t *testing.T, app *apitest.App, first *apitest.Client, email string) *apitest.Client {
-	t.Helper()
-	b := app.SignInAs(email)
-	b.JoinHome(t, first.Get("/home").Body["id"].(string))
-	return b
-}
-
 func TestTheDayPlanBeforeTheAllocationTimeIsTheOpenPoolAndPlansNothing(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")                     // UTC, 07:00
+	me := apitest.HomeWithResident(t, app, "a@example.com")             // UTC, 07:00
 	app.Clock.Set(time.Date(2026, time.March, 2, 5, 0, 0, 0, time.UTC)) // before 07:00
-	createChore(t, me, recurring("Dust", 7, 2, false))
+	apitest.CreateChore(t, me, apitest.Recurring("Dust", 7, 2, false))
 
 	// Reading the plan never refreshes the Tasks: nothing is open yet.
 	r := dayPlan(t, me)
@@ -91,7 +69,7 @@ func TestTheDayPlanBeforeTheAllocationTimeIsTheOpenPoolAndPlansNothing(t *testin
 		t.Fatalf("a GET refreshed the pool: %s", r.Raw)
 	}
 
-	pool(t, me) // the lazy refresh opens the Task
+	apitest.Pool(t, me) // the lazy refresh opens the Task
 	r = dayPlan(t, me)
 	if r.Body["planned"] != false || r.Body["rejected"] != false {
 		t.Fatalf("body = %s", r.Raw)
@@ -111,11 +89,11 @@ func TestTheDayPlanBeforeTheAllocationTimeIsTheOpenPoolAndPlansNothing(t *testin
 func TestTheDayPlanAfterAllocationHasMyTasksAndTheirReasons(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	setBaseline(t, me, map[string]any{"monday": 5})
-	atDay(app, 2)
-	createChore(t, me, chore("Dishes", 7, 3, "essential", []string{}))
-	createChore(t, me, chore("Mop", 7, 4, "normal", []string{}))
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.SetBaseline(t, me, map[string]any{"monday": 5})
+	apitest.AtDay(app, 2)
+	apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 3, "essential", []string{}))
+	apitest.CreateChore(t, me, apitest.Chore("Mop", 7, 4, "normal", []string{}))
 	app.RunAllocation(t) // refreshes the Tasks itself, then plans
 
 	r := dayPlan(t, me)
@@ -137,11 +115,11 @@ func TestTheDayPlanAfterAllocationHasMyTasksAndTheirReasons(t *testing.T) {
 func TestEnergyComesFromTheBaselineOfTheWeekday(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	setBaseline(t, me, map[string]any{"monday": 5, "tuesday": 2})
-	atDay(app, 2)
-	createChore(t, me, chore("Big", 7, 3, "normal", []string{}))
-	createChore(t, me, chore("Small", 7, 2, "normal", []string{}))
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.SetBaseline(t, me, map[string]any{"monday": 5, "tuesday": 2})
+	apitest.AtDay(app, 2)
+	apitest.CreateChore(t, me, apitest.Chore("Big", 7, 3, "normal", []string{}))
+	apitest.CreateChore(t, me, apitest.Chore("Small", 7, 2, "normal", []string{}))
 
 	// Monday: 5 points, both fit
 	app.RunAllocation(t)
@@ -150,7 +128,7 @@ func TestEnergyComesFromTheBaselineOfTheWeekday(t *testing.T) {
 		t.Fatalf("Monday: mine = %v energy = %v, want both Tasks on 5", got, r.Body["energy"])
 	}
 
-	atDay(app, 3) // Tuesday: 2 points. Only the open Tasks matter; yesterday's plan is not today's.
+	apitest.AtDay(app, 3) // Tuesday: 2 points. Only the open Tasks matter; yesterday's plan is not today's.
 	app.RunAllocation(t)
 	r = dayPlan(t, me)
 	if got := names(taskList(t, r.Body["mine"])); len(got) != 1 || got[0] != "Small" || r.Body["energy"] != float64(2) {
@@ -164,10 +142,10 @@ func TestEnergyComesFromTheBaselineOfTheWeekday(t *testing.T) {
 func TestAnUnsetBaselineGivesNothingAndIsNotAnError(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	setBaseline(t, me, map[string]any{"tuesday": 5}) // Monday is unset
-	atDay(app, 2)
-	createChore(t, me, chore("Dishes", 7, 1, "essential", []string{}))
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.SetBaseline(t, me, map[string]any{"tuesday": 5}) // Monday is unset
+	apitest.AtDay(app, 2)
+	apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 1, "essential", []string{}))
 	app.RunAllocation(t)
 
 	r := dayPlan(t, me)
@@ -182,19 +160,19 @@ func TestAnUnsetBaselineGivesNothingAndIsNotAnError(t *testing.T) {
 func TestTheDayPlanHonoursRestrictionsAtBothLevels(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	a := homeWithResident(t, app, "a@example.com")
-	b := extraResident(t, app, a, "b@example.com")
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	b := apitest.ExtraResident(t, app, a, "b@example.com")
 	for _, c := range []*apitest.Client{a, b} {
-		setBaseline(t, c, map[string]any{"monday": 10})
+		apitest.SetBaseline(t, c, map[string]any{"monday": 10})
 	}
-	atDay(app, 2)
-	createChore(t, a, chore("Move sofa", 7, 3, "normal", []string{"heavy_lifting"}))
-	plain := createChore(t, a, chore("Cook", 7, 3, "normal", []string{}))
+	apitest.AtDay(app, 2)
+	apitest.CreateChore(t, a, apitest.Chore("Move sofa", 7, 3, "normal", []string{"heavy_lifting"}))
+	plain := apitest.CreateChore(t, a, apitest.Chore("Cook", 7, 3, "normal", []string{}))
 
 	// General level: A cannot do heavy lifting, so B gets the sofa.
-	expectStatus(t, a.Put("/me/restrictions/heavy_lifting", nil), http.StatusNoContent)
+	apitest.ExpectStatus(t, a.Put("/me/restrictions/heavy_lifting", nil), http.StatusNoContent)
 	// Specific level: B cannot do Cook in this Home, so A gets Cook.
-	expectStatus(t, b.Put("/home/chores/"+plain+"/restriction", nil), http.StatusNoContent)
+	apitest.ExpectStatus(t, b.Put("/home/chores/"+plain+"/restriction", nil), http.StatusNoContent)
 	app.RunAllocation(t)
 
 	if got := reasonOf(taskList(t, dayPlan(t, a).Body["mine"]), "Cook"); got == "missing" {
@@ -214,15 +192,15 @@ func TestTheDayPlanHonoursRestrictionsAtBothLevels(t *testing.T) {
 func TestATaskNobodyMayDoStaysInThePool(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	a := homeWithResident(t, app, "a@example.com")
-	b := extraResident(t, app, a, "b@example.com")
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	b := apitest.ExtraResident(t, app, a, "b@example.com")
 	for _, c := range []*apitest.Client{a, b} {
-		setBaseline(t, c, map[string]any{"monday": 10})
+		apitest.SetBaseline(t, c, map[string]any{"monday": 10})
 	}
-	atDay(app, 2)
-	lift := createChore(t, a, chore("Move sofa", 7, 3, "normal", []string{"heavy_lifting"}))
-	expectStatus(t, a.Put("/me/restrictions/heavy_lifting", nil), http.StatusNoContent) // general, A
-	expectStatus(t, b.Put("/home/chores/"+lift+"/restriction", nil), http.StatusNoContent)
+	apitest.AtDay(app, 2)
+	lift := apitest.CreateChore(t, a, apitest.Chore("Move sofa", 7, 3, "normal", []string{"heavy_lifting"}))
+	apitest.ExpectStatus(t, a.Put("/me/restrictions/heavy_lifting", nil), http.StatusNoContent) // general, A
+	apitest.ExpectStatus(t, b.Put("/home/chores/"+lift+"/restriction", nil), http.StatusNoContent)
 	app.RunAllocation(t)
 
 	for _, c := range []*apitest.Client{a, b} {
@@ -236,14 +214,14 @@ func TestATaskNobodyMayDoStaysInThePool(t *testing.T) {
 func TestAnOverdueTaskWaitsForADayItsChoreAllows(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
+	me := apitest.HomeWithResident(t, app, "a@example.com")
 	// No Energy on Tuesday, when the Task opens; plenty afterwards.
-	setBaseline(t, me, map[string]any{"tuesday": 0, "wednesday": 5})
-	atDay(app, 3)
-	createChore(t, me, chore("Garden", 1, 2, "normal", []string{}, 2)) // Tuesdays only
+	apitest.SetBaseline(t, me, map[string]any{"tuesday": 0, "wednesday": 5})
+	apitest.AtDay(app, 3)
+	apitest.CreateChore(t, me, apitest.Chore("Garden", 1, 2, "normal", []string{}, 2)) // Tuesdays only
 	app.RunAllocation(t)
 
-	atDay(app, 4) // Wednesday: the Task is overdue and there is Energy, but the day is forbidden.
+	apitest.AtDay(app, 4) // Wednesday: the Task is overdue and there is Energy, but the day is forbidden.
 	app.RunAllocation(t)
 	if r := dayPlan(t, me); len(taskList(t, r.Body["mine"])) != 0 || reasonOf(taskList(t, r.Body["pool"]), "Garden") != "weekday_not_allowed" {
 		t.Fatalf("Wednesday: %s", r.Raw)
@@ -253,10 +231,10 @@ func TestAnOverdueTaskWaitsForADayItsChoreAllows(t *testing.T) {
 func TestYesterdaysUnfinishedTasksAreCandidatesAgain(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	setBaseline(t, me, map[string]any{"monday": 3, "tuesday": 0, "wednesday": 3})
-	atDay(app, 2)
-	createChore(t, me, chore("Laundry", 1, 3, "normal", []string{}))
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.SetBaseline(t, me, map[string]any{"monday": 3, "tuesday": 0, "wednesday": 3})
+	apitest.AtDay(app, 2)
+	apitest.CreateChore(t, me, apitest.Chore("Laundry", 1, 3, "normal", []string{}))
 
 	// Monday: assigned, then left undone
 	app.RunAllocation(t)
@@ -264,14 +242,14 @@ func TestYesterdaysUnfinishedTasksAreCandidatesAgain(t *testing.T) {
 		t.Fatalf("Monday: mine = %v", got)
 	}
 
-	atDay(app, 3) // Tuesday: Energy 0. Yesterday's assignment is not today's plan,
+	apitest.AtDay(app, 3) // Tuesday: Energy 0. Yesterday's assignment is not today's plan,
 	app.RunAllocation(t)
 	r := dayPlan(t, me) // and the overdue Task is in the pool.
 	if len(taskList(t, r.Body["mine"])) != 0 || reasonOf(taskList(t, r.Body["pool"]), "Laundry") != "no_energy_left" {
 		t.Fatalf("Tuesday: %s", r.Raw)
 	}
 
-	atDay(app, 4) // Wednesday: the same Task is a candidate again and fits.
+	apitest.AtDay(app, 4) // Wednesday: the same Task is a candidate again and fits.
 	app.RunAllocation(t)
 	if got := names(taskList(t, dayPlan(t, me).Body["mine"])); len(got) != 1 || got[0] != "Laundry" {
 		t.Fatalf("Wednesday: mine = %v", got)
@@ -281,11 +259,11 @@ func TestYesterdaysUnfinishedTasksAreCandidatesAgain(t *testing.T) {
 func TestADayPlanNeverShowsAnotherHomesTasks(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	a := homeWithResident(t, app, "a@example.com")
-	b := homeWithResident(t, app, "b@example.com")
-	setBaseline(t, a, map[string]any{"monday": 5})
-	atDay(app, 2)
-	createChore(t, a, chore("A's chore", 7, 1, "normal", []string{}))
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	b := apitest.HomeWithResident(t, app, "b@example.com")
+	apitest.SetBaseline(t, a, map[string]any{"monday": 5})
+	apitest.AtDay(app, 2)
+	apitest.CreateChore(t, a, apitest.Chore("A's chore", 7, 1, "normal", []string{}))
 	app.RunAllocation(t)
 
 	r := dayPlan(t, b)
@@ -308,17 +286,17 @@ func categoriesOf(tasks []map[string]any) map[any]any {
 func TestDayPlanTasksCarryTheirChoresCategory(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	other := extraResident(t, app, me, "b@example.com")
-	setBaseline(t, me, map[string]any{"monday": 3})
-	setBaseline(t, other, map[string]any{"monday": 2})
-	atDay(app, 2)
-	createChore(t, me, chore("Dishes", 7, 3, "essential", []string{})) // kitchen
-	pets := chore("Feed the cat", 7, 2, "normal", []string{})
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	other := apitest.ExtraResident(t, app, me, "b@example.com")
+	apitest.SetBaseline(t, me, map[string]any{"monday": 3})
+	apitest.SetBaseline(t, other, map[string]any{"monday": 2})
+	apitest.AtDay(app, 2)
+	apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 3, "essential", []string{})) // kitchen
+	pets := apitest.Chore("Feed the cat", 7, 2, "normal", []string{})
 	pets["category"] = "pets"
-	createChore(t, me, pets)
+	apitest.CreateChore(t, me, pets)
 
-	pool(t, me) // open the Tasks without planning
+	apitest.Pool(t, me) // open the Tasks without planning
 	before := categoriesOf(taskList(t, dayPlan(t, me).Body["pool"]))
 	if len(before) != 2 || before["Dishes"] != "kitchen" || before["Feed the cat"] != "pets" {
 		t.Fatalf("pool before the run = %v", before)
@@ -341,13 +319,13 @@ func TestDayPlanTasksCarryTheirChoresCategory(t *testing.T) {
 func TestDayPlanPoolTasksCarryTheirChoresCategoryAfterTheRun(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	setBaseline(t, me, map[string]any{"monday": 3})
-	atDay(app, 2)
-	createChore(t, me, chore("Dishes", 7, 3, "essential", []string{}))
-	pets := chore("Feed the cat", 7, 2, "normal", []string{})
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.SetBaseline(t, me, map[string]any{"monday": 3})
+	apitest.AtDay(app, 2)
+	apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 3, "essential", []string{}))
+	pets := apitest.Chore("Feed the cat", 7, 2, "normal", []string{})
 	pets["category"] = "pets"
-	createChore(t, me, pets)
+	apitest.CreateChore(t, me, pets)
 
 	app.RunAllocation(t)
 	r := dayPlan(t, me)
@@ -371,11 +349,11 @@ func TestTheDayPlanNeedsAHomeAndAToken(t *testing.T) {
 func TestEveryRunIsRecordedWithItsAllocatorAndReasons(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	setBaseline(t, me, map[string]any{"monday": 3})
-	atDay(app, 2)
-	createChore(t, me, chore("Dishes", 7, 3, "essential", []string{}))
-	createChore(t, me, chore("Mop", 7, 3, "normal", []string{}))
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.SetBaseline(t, me, map[string]any{"monday": 3})
+	apitest.AtDay(app, 2)
+	apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 3, "essential", []string{}))
+	apitest.CreateChore(t, me, apitest.Chore("Mop", 7, 3, "normal", []string{}))
 	app.RunAllocation(t)
 
 	var allocator, outcome string

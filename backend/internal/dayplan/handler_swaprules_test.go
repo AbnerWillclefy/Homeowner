@@ -1,4 +1,4 @@
-package server_test
+package dayplan_test
 
 import (
 	"net/http"
@@ -12,13 +12,13 @@ import (
 func swapHome(t *testing.T, demands ...string) (app *apitest.App, a, b *apitest.Client) {
 	t.Helper()
 	app = apitest.Start(t)
-	a = homeWithResident(t, app, "a@example.com")
-	b = extraResident(t, app, a, "b@example.com")
-	setBaseline(t, a, map[string]any{"monday": 4, "tuesday": 4})
-	setBaseline(t, b, map[string]any{"monday": 4, "tuesday": 4})
+	a = apitest.HomeWithResident(t, app, "a@example.com")
+	b = apitest.ExtraResident(t, app, a, "b@example.com")
+	apitest.SetBaseline(t, a, map[string]any{"monday": 4, "tuesday": 4})
+	apitest.SetBaseline(t, b, map[string]any{"monday": 4, "tuesday": 4})
 	app.Clock.Set(mondayAt(6))
 	for _, n := range []string{"One", "Two", "Three", "Four", "Five"} {
-		createChore(t, a, chore(n, 7, 2, "normal", append([]string{}, demands...)))
+		apitest.CreateChore(t, a, apitest.Chore(n, 7, 2, "normal", append([]string{}, demands...)))
 	}
 	app.Clock.Set(mondayAt(7))
 	app.RunAllocation(t)
@@ -37,7 +37,7 @@ func noOffers(t *testing.T, c *apitest.Client) {
 
 func offerCount(t *testing.T, app *apitest.App) int {
 	t.Helper()
-	return count(t, app, `SELECT count(*) FROM swap_offers`)
+	return apitest.Count(t, app, `SELECT count(*) FROM swap_offers`)
 }
 
 func TestASwapThatBreaksARestrictionIsRejectedAtTheOffer(t *testing.T) {
@@ -46,7 +46,7 @@ func TestASwapThatBreaksARestrictionIsRejectedAtTheOffer(t *testing.T) {
 		t.Parallel()
 		app, a, b := swapHome(t, "heavy_lifting")
 		p := pairOf(t, a, b)
-		expectStatus(t, a.Put("/me/restrictions/heavy_lifting", nil), http.StatusNoContent)
+		apitest.ExpectStatus(t, a.Put("/me/restrictions/heavy_lifting", nil), http.StatusNoContent)
 		wantConflict(t, offer(a, p.a, p.b), "restricted")
 		if got := offerCount(t, app); got != 0 {
 			t.Fatalf("%d offers stored", got)
@@ -56,7 +56,7 @@ func TestASwapThatBreaksARestrictionIsRejectedAtTheOffer(t *testing.T) {
 		t.Parallel()
 		app, a, b := swapHome(t, "heavy_lifting")
 		p := pairOf(t, a, b)
-		expectStatus(t, b.Put("/me/restrictions/heavy_lifting", nil), http.StatusNoContent)
+		apitest.ExpectStatus(t, b.Put("/me/restrictions/heavy_lifting", nil), http.StatusNoContent)
 		wantConflict(t, offer(a, p.a, p.b), "restricted")
 		if got := offerCount(t, app); got != 0 {
 			t.Fatalf("%d offers stored", got)
@@ -67,7 +67,7 @@ func TestASwapThatBreaksARestrictionIsRejectedAtTheOffer(t *testing.T) {
 		app, a, b := swapHome(t)
 		p := pairOf(t, a, b)
 		choreID := mineOf(t, b)[0]["choreId"].(string)
-		expectStatus(t, a.Put("/home/chores/"+choreID+"/restriction", nil), http.StatusNoContent)
+		apitest.ExpectStatus(t, a.Put("/home/chores/"+choreID+"/restriction", nil), http.StatusNoContent)
 		wantConflict(t, offer(a, p.a, p.b), "restricted")
 		if got := offerCount(t, app); got != 0 {
 			t.Fatalf("%d offers stored", got)
@@ -78,7 +78,7 @@ func TestASwapThatBreaksARestrictionIsRejectedAtTheOffer(t *testing.T) {
 		app, a, b := swapHome(t)
 		p := pairOf(t, a, b)
 		choreID := mineOf(t, a)[0]["choreId"].(string)
-		expectStatus(t, b.Put("/home/chores/"+choreID+"/restriction", nil), http.StatusNoContent)
+		apitest.ExpectStatus(t, b.Put("/home/chores/"+choreID+"/restriction", nil), http.StatusNoContent)
 		wantConflict(t, offer(a, p.a, p.b), "restricted")
 		if got := offerCount(t, app); got != 0 {
 			t.Fatalf("%d offers stored", got)
@@ -109,7 +109,7 @@ func TestOnlyTheRecipientAnswersAndOnlyTheOffererCancels(t *testing.T) {
 	t.Parallel()
 	app, a, b := swapHome(t)
 	p := pairOf(t, a, b)
-	c := homeWithResident(t, app, "c@example.com") // another Home
+	c := apitest.HomeWithResident(t, app, "c@example.com") // another Home
 	mustOffer(t, a, p.a, p.b)
 	id := swapsOf(t, a, "outgoing")[0]["id"].(string)
 
@@ -148,11 +148,11 @@ func TestAnOfferNeedsTasksThatCanBeSwapped(t *testing.T) {
 	t.Run("before the Allocation", func(t *testing.T) {
 		t.Parallel()
 		app := apitest.Start(t)
-		a := homeWithResident(t, app, "a@example.com")
+		a := apitest.HomeWithResident(t, app, "a@example.com")
 		app.Clock.Set(mondayAt(6))
-		createChore(t, a, chore("One", 7, 2, "normal", []string{}))
-		createChore(t, a, chore("Two", 7, 2, "normal", []string{}))
-		ids := pool(t, a)
+		apitest.CreateChore(t, a, apitest.Chore("One", 7, 2, "normal", []string{}))
+		apitest.CreateChore(t, a, apitest.Chore("Two", 7, 2, "normal", []string{}))
+		ids := apitest.Pool(t, a)
 		wantConflict(t, offer(a, ids[0]["id"].(string), ids[1]["id"].(string)), "no_plan_today")
 	})
 	t.Run("the offered Task is not the caller's", func(t *testing.T) {
@@ -188,13 +188,13 @@ func TestAnOfferNeedsTasksThatCanBeSwapped(t *testing.T) {
 	t.Run("a two-person Task", func(t *testing.T) {
 		t.Parallel()
 		app := apitest.Start(t)
-		a := homeWithResident(t, app, "a@example.com")
-		setBaseline(t, a, map[string]any{"monday": 4})
+		a := apitest.HomeWithResident(t, app, "a@example.com")
+		apitest.SetBaseline(t, a, map[string]any{"monday": 4})
 		app.Clock.Set(mondayAt(6))
-		createChore(t, a, chore("One", 7, 2, "normal", []string{}))
-		two := chore("Move bed", 7, 2, "normal", []string{})
+		apitest.CreateChore(t, a, apitest.Chore("One", 7, 2, "normal", []string{}))
+		two := apitest.Chore("Move bed", 7, 2, "normal", []string{})
 		two["people"] = 2
-		createChore(t, a, two)
+		apitest.CreateChore(t, a, two)
 		app.Clock.Set(mondayAt(7))
 		app.RunAllocation(t)
 		bed := taskList(t, dayPlan(t, a).Body["pool"])[0]["id"].(string)
@@ -223,7 +223,7 @@ func TestAnOfferNeedsTasksThatCanBeSwapped(t *testing.T) {
 			t.Fatalf("unknown id: %d %s", r.Status, r.Raw)
 		}
 		r := a.Post("/home/swaps", map[string]any{"offeredTaskId": p.a, "requestedTaskId": p.b, "residentId": "x"})
-		expectStatus(t, r, http.StatusBadRequest)
+		apitest.ExpectStatus(t, r, http.StatusBadRequest)
 	})
 }
 
@@ -307,7 +307,7 @@ func TestAcceptingASwapCancelsTheOtherOffersOnItsTasks(t *testing.T) {
 		t.Fatalf("setup: %s", dayPlan(t, b).Raw)
 	}
 	mustSwapAct(t, b, first, "accept")
-	if got := count(t, app, `SELECT count(*) FROM swap_offers WHERE status = 'pending'`); got != 0 {
+	if got := apitest.Count(t, app, `SELECT count(*) FROM swap_offers WHERE status = 'pending'`); got != 0 {
 		t.Fatalf("%d offers still pending", got)
 	}
 	noOffers(t, a)
@@ -322,7 +322,7 @@ func TestAnOfferIsGoneTheNextDay(t *testing.T) {
 	mustOffer(t, a, p.a, p.b)
 	id := swapsOf(t, b, "incoming")[0]["id"].(string)
 
-	atDay(app, 3) // Tuesday
+	apitest.AtDay(app, 3) // Tuesday
 	noOffers(t, b)
 	app.RunAllocation(t)
 	noOffers(t, b)

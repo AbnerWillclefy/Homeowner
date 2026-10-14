@@ -1,4 +1,4 @@
-package server_test
+package dayplan_test
 
 import (
 	"testing"
@@ -18,12 +18,12 @@ func mondayAt(hour int) time.Time {
 func TestACheckInBeforeThePlanSetsTodaysEnergy(t *testing.T) {
 	t.Parallel()
 	app := startApp(t)
-	me := homeWithResident(t, app, "a@example.com")
-	setBaseline(t, me, map[string]any{"monday": 5, "tuesday": 5})
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.SetBaseline(t, me, map[string]any{"monday": 5, "tuesday": 5})
 	app.Clock.Set(mondayAt(6))
-	createChore(t, me, chore("Dishes", 1, 2, "essential", []string{}))
-	createChore(t, me, chore("Mop", 1, 2, "normal", []string{}))
-	createChore(t, me, chore("Dust", 1, 2, "nice_to_have", []string{}))
+	apitest.CreateChore(t, me, apitest.Chore("Dishes", 1, 2, "essential", []string{}))
+	apitest.CreateChore(t, me, apitest.Chore("Mop", 1, 2, "normal", []string{}))
+	apitest.CreateChore(t, me, apitest.Chore("Dust", 1, 2, "nice_to_have", []string{}))
 	checkIn(t, me, "low") // 5 * 50% = 2 (rounded down)
 
 	app.Clock.Set(mondayAt(7))
@@ -48,8 +48,8 @@ func TestEveryLevelScalesTheBaseline(t *testing.T) {
 		t.Run(level, func(t *testing.T) {
 			t.Parallel()
 			app := startApp(t)
-			me := homeWithResident(t, app, "a@example.com")
-			setBaseline(t, me, map[string]any{"monday": 10})
+			me := apitest.HomeWithResident(t, app, "a@example.com")
+			apitest.SetBaseline(t, me, map[string]any{"monday": 10})
 			app.Clock.Set(mondayAt(6))
 			checkIn(t, me, level)
 			app.Clock.Set(mondayAt(7))
@@ -64,10 +64,10 @@ func TestEveryLevelScalesTheBaseline(t *testing.T) {
 func TestNoCheckInMeansTheBaselineEvenWhenAHousemateChecksIn(t *testing.T) {
 	t.Parallel()
 	app := startApp(t)
-	a := homeWithResident(t, app, "a@example.com")
-	b := extraResident(t, app, a, "b@example.com")
-	setBaseline(t, a, map[string]any{"monday": 8})
-	setBaseline(t, b, map[string]any{"monday": 8})
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	b := apitest.ExtraResident(t, app, a, "b@example.com")
+	apitest.SetBaseline(t, a, map[string]any{"monday": 8})
+	apitest.SetBaseline(t, b, map[string]any{"monday": 8})
 	app.Clock.Set(mondayAt(6))
 	checkIn(t, a, "drained")
 	app.Clock.Set(mondayAt(7))
@@ -84,10 +84,10 @@ func TestNoCheckInMeansTheBaselineEvenWhenAHousemateChecksIn(t *testing.T) {
 func TestACheckInWithNoBaselineForTheDayGivesNothingAndNoError(t *testing.T) {
 	t.Parallel()
 	app := startApp(t)
-	me := homeWithResident(t, app, "a@example.com")
-	setBaseline(t, me, map[string]any{"tuesday": 5}) // Monday unset
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.SetBaseline(t, me, map[string]any{"tuesday": 5}) // Monday unset
 	app.Clock.Set(mondayAt(6))
-	createChore(t, me, chore("Dishes", 7, 1, "essential", []string{}))
+	apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 1, "essential", []string{}))
 	checkIn(t, me, "energized")
 	app.Clock.Set(mondayAt(7))
 	app.RunAllocation(t)
@@ -101,10 +101,10 @@ func TestACheckInWithNoBaselineForTheDayGivesNothingAndNoError(t *testing.T) {
 func TestADayRestrictionKeepsATaskAwayFromThatResidentOnlyToday(t *testing.T) {
 	t.Parallel()
 	app := startApp(t)
-	me := homeWithResident(t, app, "a@example.com")
-	setBaseline(t, me, map[string]any{"monday": 10, "tuesday": 10})
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.SetBaseline(t, me, map[string]any{"monday": 10, "tuesday": 10})
 	app.Clock.Set(mondayAt(6))
-	createChore(t, me, chore("Move sofa", 1, 3, "normal", []string{"heavy_lifting"}))
+	apitest.CreateChore(t, me, apitest.Chore("Move sofa", 1, 3, "normal", []string{"heavy_lifting"}))
 	checkIn(t, me, "normal", "heavy_lifting")
 	app.Clock.Set(mondayAt(7))
 	app.RunAllocation(t)

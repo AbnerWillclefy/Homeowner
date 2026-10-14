@@ -1,4 +1,4 @@
-package server_test
+package dayplan_test
 
 import (
 	"context"
@@ -65,7 +65,7 @@ func TestCompleteWorksOnAnAcceptedTaskAndTwiceIsAlreadyDone(t *testing.T) {
 	wantConflict(t, act(a, "complete", id), "already_done")
 	wantConflict(t, act(a, "accept", id), "already_done")
 	wantConflict(t, act(a, "refuse", id), "already_done")
-	if got := count(t, app, `SELECT count(*) FROM completions`); got != 1 {
+	if got := apitest.Count(t, app, `SELECT count(*) FROM completions`); got != 1 {
 		t.Fatalf("%d completions, want 1", got)
 	}
 }
@@ -75,27 +75,27 @@ func TestCompleteNeedsTheCallerToHoldTheTask(t *testing.T) {
 	app, a, b := twoResidents(t)
 	wantConflict(t, act(a, "complete", mineOf(t, b)[0]["id"].(string)), "not_yours")
 	wantConflict(t, act(a, "complete", taskList(t, dayPlan(t, a).Body["pool"])[0]["id"].(string)), "not_yours")
-	if got := count(t, app, `SELECT count(*) FROM completions`); got != 0 {
+	if got := apitest.Count(t, app, `SELECT count(*) FROM completions`); got != 0 {
 		t.Fatalf("%d completions", got)
 	}
 }
 
 func TestCompleteWithoutATodayPlanIsNotYours(t *testing.T) {
 	t.Parallel()
-	_, me := planned(t, 5, chore("Dishes", 7, 2, "normal", []string{}))
-	wantConflict(t, act(me, "complete", pool(t, me)[0]["id"].(string)), "not_yours")
+	_, me := planned(t, 5, apitest.Chore("Dishes", 7, 2, "normal", []string{}))
+	wantConflict(t, act(me, "complete", apitest.Pool(t, me)[0]["id"].(string)), "not_yours")
 }
 
 func TestCompletedOnIsTheHomesLocalDateNotUTCs(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
-	if r := me.Post("/home", homeBody("America/Los_Angeles", "07:00")); r.Status != 201 {
+	if r := me.Post("/home", apitest.HomeBody("America/Los_Angeles", "07:00")); r.Status != 201 {
 		t.Fatalf("POST /home = %d %s", r.Status, r.Raw)
 	}
-	setBaseline(t, me, map[string]any{"monday": 5})
+	apitest.SetBaseline(t, me, map[string]any{"monday": 5})
 	app.Clock.Set(time.Date(2026, time.March, 2, 14, 0, 0, 0, time.UTC)) // 06:00 Monday in Los Angeles
-	createChore(t, me, chore("Dishes", 7, 2, "normal", []string{}))
+	apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 2, "normal", []string{}))
 	app.Clock.Set(time.Date(2026, time.March, 2, 15, 0, 0, 0, time.UTC)) // 07:00
 	app.RunAllocation(t)
 
@@ -118,11 +118,11 @@ func TestCompletedOnIsTheHomesLocalDateNotUTCs(t *testing.T) {
 func TestACompletedBuildUpChoreReturnsAtBaseEffort(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	setBaseline(t, me, map[string]any{"monday": 5})
-	atDay(app, 1)
-	createChore(t, me, recurring("Bathroom", 4, 2, true))
-	atDay(app, 9) // Monday: it has built up to 4
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.SetBaseline(t, me, map[string]any{"monday": 5})
+	apitest.AtDay(app, 1)
+	apitest.CreateChore(t, me, apitest.Recurring("Bathroom", 4, 2, true))
+	apitest.AtDay(app, 9) // Monday: it has built up to 4
 	app.RunAllocation(t)
 	mine := mineOf(t, me)
 	if len(mine) != 1 || mine[0]["currentEffort"] != float64(4) {
@@ -130,8 +130,8 @@ func TestACompletedBuildUpChoreReturnsAtBaseEffort(t *testing.T) {
 	}
 	mustAct(t, me, "complete", mine[0]["id"].(string))
 
-	atDay(app, 13)
-	l := pool(t, me)
+	apitest.AtDay(app, 13)
+	l := apitest.Pool(t, me)
 	if len(l) != 1 || l[0]["currentEffort"] != float64(2) || l[0]["windowStart"] != "2026-03-13" {
 		t.Fatalf("pool = %v, want a new Task at base Effort from 13 March", l)
 	}

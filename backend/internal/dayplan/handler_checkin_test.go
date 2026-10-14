@@ -1,4 +1,4 @@
-package server_test
+package dayplan_test
 
 import (
 	"net/http"
@@ -26,8 +26,8 @@ func checkIn(t *testing.T, c *apitest.Client, level string, restrictions ...stri
 func TestACheckInIsSavedAndReadBack(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	atDay(app, 2)
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.AtDay(app, 2)
 
 	r := me.Get("/home/check-in")
 	if r.Status != http.StatusOK || r.Body["checkedIn"] != false || r.Body["level"] != nil || r.Body["date"] != "2026-03-02" {
@@ -50,8 +50,8 @@ func TestACheckInIsSavedAndReadBack(t *testing.T) {
 func TestACheckInCanBeChangedAndReplacesItsRestrictions(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	atDay(app, 2)
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.AtDay(app, 2)
 
 	checkIn(t, me, "low", "bending", "heights")
 	r := checkIn(t, me, "energized")
@@ -66,11 +66,11 @@ func TestACheckInCanBeChangedAndReplacesItsRestrictions(t *testing.T) {
 func TestACheckInIsOnlyForTheDayItWasMadeOn(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	atDay(app, 2)
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.AtDay(app, 2)
 	checkIn(t, me, "low", "bending")
 
-	atDay(app, 3)
+	apitest.AtDay(app, 3)
 	r := me.Get("/home/check-in")
 	if r.Body["checkedIn"] != false || r.Body["level"] != nil || r.Body["date"] != "2026-03-03" {
 		t.Fatalf("next day = %s", r.Raw)
@@ -84,7 +84,7 @@ func TestACheckInBelongsToTheHomesLocalDateNotUTCs(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
-	if r := me.Post("/home", homeBody("Pacific/Auckland", "07:00")); r.Status != http.StatusCreated {
+	if r := me.Post("/home", apitest.HomeBody("Pacific/Auckland", "07:00")); r.Status != http.StatusCreated {
 		t.Fatalf("POST /home = %d %s", r.Status, r.Raw)
 	}
 	// 2 March 22:00 UTC is 3 March 11:00 in Auckland (UTC+13 in summer).
@@ -98,8 +98,8 @@ func TestACheckInBelongsToTheHomesLocalDateNotUTCs(t *testing.T) {
 func TestACheckInNeedsAKnownLevelAndKnownDemands(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	atDay(app, 2)
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.AtDay(app, 2)
 
 	for name, body := range map[string]any{
 		"unknown level":   map[string]any{"level": "tired"},
@@ -142,10 +142,10 @@ func TestACheckInNeedsAHomeAndAToken(t *testing.T) {
 func TestACheckInIsPrivateToTheResidentAndTheirHome(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	a := homeWithResident(t, app, "a@example.com")
-	b := extraResident(t, app, a, "b@example.com")
-	other := homeWithResident(t, app, "c@example.com")
-	atDay(app, 2)
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	b := apitest.ExtraResident(t, app, a, "b@example.com")
+	other := apitest.HomeWithResident(t, app, "c@example.com")
+	apitest.AtDay(app, 2)
 
 	checkIn(t, a, "drained")
 	for name, c := range map[string]*apitest.Client{"housemate": b, "other home": other} {
@@ -158,9 +158,9 @@ func TestACheckInIsPrivateToTheResidentAndTheirHome(t *testing.T) {
 func TestDayRestrictionsNeverBecomeLastingOnes(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	atDay(app, 2)
-	expectStatus(t, me.Put("/me/restrictions/heights", nil), http.StatusNoContent)
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.AtDay(app, 2)
+	apitest.ExpectStatus(t, me.Put("/me/restrictions/heights", nil), http.StatusNoContent)
 	before := string(me.Get("/me/profile").Raw)
 
 	checkIn(t, me, "low", "bending", "heights") // heights duplicates a lasting one: no error

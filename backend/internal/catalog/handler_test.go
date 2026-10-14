@@ -1,4 +1,4 @@
-package server_test
+package catalog_test
 
 import (
 	"net/http"
@@ -10,24 +10,6 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/catalog"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
-
-// proposals posts answers and returns the proposals array, failing on a non-200.
-func proposals(t *testing.T, c *apitest.Client, answers any) []map[string]any {
-	t.Helper()
-	r := c.Post("/catalog/proposals", answers)
-	if r.Status != http.StatusOK {
-		t.Fatalf("POST /catalog/proposals = %d %s, want 200", r.Status, r.Raw)
-	}
-	raw, ok := r.Body["proposals"].([]any)
-	if !ok {
-		t.Fatalf("no proposals array: %s", r.Raw)
-	}
-	out := make([]map[string]any, len(raw))
-	for i, p := range raw {
-		out[i] = p.(map[string]any)
-	}
-	return out
-}
 
 // inCategory keeps the proposals in one Category.
 func inCategory(ps []map[string]any, category string) []map[string]any {
@@ -71,7 +53,7 @@ func TestOneBathroomProposesOneBathroomChore(t *testing.T) {
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
 
-	got := inCategory(proposals(t, me, rooms(map[string]any{"bathrooms": 1})), "bathroom")
+	got := inCategory(apitest.Proposals(t, me, rooms(map[string]any{"bathrooms": 1})), "bathroom")
 	if len(got) != 1 {
 		t.Fatalf("bathroom proposals = %v, want exactly one", got)
 	}
@@ -85,7 +67,7 @@ func TestTwoBathroomsProposeTwoBathroomChores(t *testing.T) {
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
 
-	got := inCategory(proposals(t, me, rooms(map[string]any{"bathrooms": 2})), "bathroom")
+	got := inCategory(apitest.Proposals(t, me, rooms(map[string]any{"bathrooms": 2})), "bathroom")
 	if len(got) != 2 {
 		t.Fatalf("bathroom proposals = %v, want two", got)
 	}
@@ -104,7 +86,7 @@ func TestEveryRoomTypeProposesItsChoresPerRoom(t *testing.T) {
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
 
-	got := proposals(t, me, rooms(map[string]any{
+	got := apitest.Proposals(t, me, rooms(map[string]any{
 		"bedrooms": 3, "bathrooms": 1, "kitchens": 1, "livingRooms": 2, "laundryAreas": 1,
 	}))
 	count := map[string]int{}
@@ -118,7 +100,7 @@ func TestEveryRoomTypeProposesItsChoresPerRoom(t *testing.T) {
 			t.Errorf("%s proposals = %d, want %d (all: %v)", id, count[id], want, catalogIDs(got))
 		}
 	}
-	if len(proposals(t, me, map[string]any{})) != 0 {
+	if len(apitest.Proposals(t, me, map[string]any{})) != 0 {
 		t.Errorf("empty answers should propose nothing")
 	}
 }
@@ -128,18 +110,18 @@ func TestPetsProposePetChores(t *testing.T) {
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
 
-	if got := inCategory(proposals(t, me, map[string]any{}), "pets"); len(got) != 0 {
+	if got := inCategory(apitest.Proposals(t, me, map[string]any{}), "pets"); len(got) != 0 {
 		t.Fatalf("no pets proposed %v", got)
 	}
-	dog := inCategory(proposals(t, me, map[string]any{"pets": []string{"dog"}}), "pets")
+	dog := inCategory(apitest.Proposals(t, me, map[string]any{"pets": []string{"dog"}}), "pets")
 	if ids := catalogIDs(dog); !slices.Contains(ids, "walk_dog") || !slices.Contains(ids, "feed_dog") {
 		t.Fatalf("dog proposals = %v, want walk and feed", ids)
 	}
-	cat := inCategory(proposals(t, me, map[string]any{"pets": []string{"cat"}}), "pets")
+	cat := inCategory(apitest.Proposals(t, me, map[string]any{"pets": []string{"cat"}}), "pets")
 	if ids := catalogIDs(cat); !slices.Contains(ids, "clean_litter_box") || slices.Contains(ids, "walk_dog") {
 		t.Fatalf("cat proposals = %v, want a litter box and no walk", ids)
 	}
-	both := inCategory(proposals(t, me, map[string]any{"pets": []string{"dog", "cat", "dog"}}), "pets")
+	both := inCategory(apitest.Proposals(t, me, map[string]any{"pets": []string{"dog", "cat", "dog"}}), "pets")
 	if len(both) != len(dog)+len(cat) {
 		t.Fatalf("dog and cat proposals = %d, want %d (a repeated pet adds nothing)", len(both), len(dog)+len(cat))
 	}
@@ -150,7 +132,7 @@ func TestCollectionDaysSetWeekdayLimits(t *testing.T) {
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
 
-	got := proposals(t, me, map[string]any{"collection": map[string]any{
+	got := apitest.Proposals(t, me, map[string]any{"collection": map[string]any{
 		"trash": []int{5, 2, 2}, "recycling": []int{},
 	}})
 	trash := one(t, got, "put_out_trash")
@@ -161,7 +143,7 @@ func TestCollectionDaysSetWeekdayLimits(t *testing.T) {
 	if slices.Contains(catalogIDs(got), "put_out_recycling") {
 		t.Fatalf("recycling without days proposed a Chore: %v", catalogIDs(got))
 	}
-	both := proposals(t, me, map[string]any{"collection": map[string]any{"trash": []int{1}, "recycling": []int{4}}})
+	both := apitest.Proposals(t, me, map[string]any{"collection": map[string]any{"trash": []int{1}, "recycling": []int{4}}})
 	if r := one(t, both, "put_out_recycling"); !reflect.DeepEqual(r["allowedWeekdays"], []any{float64(4)}) {
 		t.Fatalf("recycling proposal = %v, want weekday 4", r)
 	}
@@ -173,7 +155,7 @@ func TestOutdoorSpaceProposesOutdoorChores(t *testing.T) {
 	me := app.SignInAs("a@example.com")
 
 	outdoor := func(space string) []map[string]any {
-		return inCategory(proposals(t, me, map[string]any{"outdoor": space}), "outdoor")
+		return inCategory(apitest.Proposals(t, me, map[string]any{"outdoor": space}), "outdoor")
 	}
 	if got := outdoor("none"); len(got) != 0 {
 		t.Fatalf("none proposed %v", got)
@@ -198,7 +180,7 @@ func TestHabitsChangeTheChoresNotOnlyTheirNumber(t *testing.T) {
 	me := app.SignInAs("a@example.com")
 	kitchen := map[string]any{"kitchens": 1}
 	habits := func(h map[string]any) []map[string]any {
-		return proposals(t, me, map[string]any{"rooms": kitchen, "habits": h})
+		return apitest.Proposals(t, me, map[string]any{"rooms": kitchen, "habits": h})
 	}
 
 	if ids := catalogIDs(habits(map[string]any{})); !slices.Contains(ids, "wash_dishes") || slices.Contains(ids, "load_dishwasher") {
@@ -218,7 +200,7 @@ func TestHabitsChangeTheChoresNotOnlyTheirNumber(t *testing.T) {
 	}
 
 	laundry := func(machine bool) []map[string]any {
-		return inCategory(proposals(t, me, map[string]any{"habits": map[string]any{"washingMachine": machine}}), "laundry")
+		return inCategory(apitest.Proposals(t, me, map[string]any{"habits": map[string]any{"washingMachine": machine}}), "laundry")
 	}
 	if len(laundry(false)) != 0 || len(laundry(true)) == 0 {
 		t.Fatalf("laundry without machine %v, with %v: want none and some", laundry(false), laundry(true))
@@ -248,7 +230,7 @@ func TestTheLargestAnswersStayWithinTheProposalBound(t *testing.T) {
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
 
-	got := proposals(t, me, map[string]any{
+	got := apitest.Proposals(t, me, map[string]any{
 		"rooms":      map[string]any{"bedrooms": 10, "bathrooms": 10, "kitchens": 3, "livingRooms": 10, "laundryAreas": 10},
 		"outdoor":    "garden",
 		"pets":       []string{"dog", "cat", "fish", "bird", "other"},
@@ -348,29 +330,12 @@ func TestCatalogRoutesNeedASignedInUserButNoHome(t *testing.T) {
 	}
 }
 
-func catalogEntries(t *testing.T, c *apitest.Client) []map[string]any {
-	t.Helper()
-	r := c.Get("/catalog")
-	if r.Status != http.StatusOK {
-		t.Fatalf("GET /catalog = %d %s", r.Status, r.Raw)
-	}
-	raw, ok := r.Body["entries"].([]any)
-	if !ok || len(raw) == 0 {
-		t.Fatalf("no entries: %s", r.Raw)
-	}
-	out := make([]map[string]any, len(raw))
-	for i, e := range raw {
-		out[i] = e.(map[string]any)
-	}
-	return out
-}
-
 func TestTheCatalogListsEveryEntryInAStableOrderWithUniqueIDs(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
 
-	first := catalogEntries(t, me)
+	first := apitest.CatalogEntries(t, me)
 	seen := map[string]bool{}
 	for _, e := range first {
 		id, _ := e["id"].(string)
@@ -385,7 +350,7 @@ func TestTheCatalogListsEveryEntryInAStableOrderWithUniqueIDs(t *testing.T) {
 			}
 		}
 	}
-	if !reflect.DeepEqual(first, catalogEntries(t, me)) {
+	if !reflect.DeepEqual(first, apitest.CatalogEntries(t, me)) {
 		t.Errorf("two calls list the Catalog differently")
 	}
 	for _, e := range first {

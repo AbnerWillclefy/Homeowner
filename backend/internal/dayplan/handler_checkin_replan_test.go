@@ -1,4 +1,4 @@
-package server_test
+package dayplan_test
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
 
@@ -31,13 +30,13 @@ func effortSum(tasks []map[string]any) (sum float64) {
 func TestACheckInAfterThePlanPlansThatResidentAgain(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	a := homeWithResident(t, app, "a@example.com")
-	b := extraResident(t, app, a, "b@example.com")
-	setBaseline(t, a, map[string]any{"monday": 5})
-	setBaseline(t, b, map[string]any{"monday": 5})
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	b := apitest.ExtraResident(t, app, a, "b@example.com")
+	apitest.SetBaseline(t, a, map[string]any{"monday": 5})
+	apitest.SetBaseline(t, b, map[string]any{"monday": 5})
 	app.Clock.Set(mondayAt(6))
 	for _, n := range []string{"One", "Two", "Three", "Four"} {
-		createChore(t, a, chore(n, 7, 2, "normal", []string{}))
+		apitest.CreateChore(t, a, apitest.Chore(n, 7, 2, "normal", []string{}))
 	}
 	app.Clock.Set(mondayAt(7))
 	app.RunAllocation(t) // each Resident gets two Efforts-2 Tasks of 5 points
@@ -88,11 +87,11 @@ func TestDrainedYieldsAnEmptyDayPlanBeforeAndAfterThePlan(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			app := apitest.Start(t)
-			me := homeWithResident(t, app, "a@example.com")
-			setBaseline(t, me, map[string]any{"monday": 5})
+			me := apitest.HomeWithResident(t, app, "a@example.com")
+			apitest.SetBaseline(t, me, map[string]any{"monday": 5})
 			app.Clock.Set(mondayAt(6))
-			createChore(t, me, chore("Dishes", 7, 2, "essential", []string{}))
-			createChore(t, me, chore("Mop", 7, 2, "normal", []string{}))
+			apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 2, "essential", []string{}))
+			apitest.CreateChore(t, me, apitest.Chore("Mop", 7, 2, "normal", []string{}))
 			if !after {
 				checkIn(t, me, "drained")
 			}
@@ -119,11 +118,11 @@ func TestDrainedYieldsAnEmptyDayPlanBeforeAndAfterThePlan(t *testing.T) {
 func TestADayRestrictionAfterThePlanReleasesTheTask(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	setBaseline(t, me, map[string]any{"monday": 10, "tuesday": 10})
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.SetBaseline(t, me, map[string]any{"monday": 10, "tuesday": 10})
 	app.Clock.Set(mondayAt(6))
-	createChore(t, me, chore("Move sofa", 1, 3, "normal", []string{"heavy_lifting"}))
-	createChore(t, me, chore("Cook", 1, 3, "normal", []string{}))
+	apitest.CreateChore(t, me, apitest.Chore("Move sofa", 1, 3, "normal", []string{"heavy_lifting"}))
+	apitest.CreateChore(t, me, apitest.Chore("Cook", 1, 3, "normal", []string{}))
 	app.Clock.Set(mondayAt(7))
 	app.RunAllocation(t)
 	if got := names(taskList(t, dayPlan(t, me).Body["mine"])); len(got) != 2 {
@@ -152,16 +151,16 @@ func TestADayRestrictionAfterThePlanReleasesTheTask(t *testing.T) {
 func TestAResidentWhoJoinedAfterThePlanIsPlannedByTheirFirstCheckIn(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	a := homeWithResident(t, app, "a@example.com")
-	setBaseline(t, a, map[string]any{"monday": 2})
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.SetBaseline(t, a, map[string]any{"monday": 2})
 	app.Clock.Set(mondayAt(6))
-	createChore(t, a, chore("One", 7, 2, "normal", []string{}))
-	createChore(t, a, chore("Two", 7, 2, "normal", []string{}))
+	apitest.CreateChore(t, a, apitest.Chore("One", 7, 2, "normal", []string{}))
+	apitest.CreateChore(t, a, apitest.Chore("Two", 7, 2, "normal", []string{}))
 	app.Clock.Set(mondayAt(7))
 	app.RunAllocation(t) // A takes one; one stays in the pool
 
-	b := extraResident(t, app, a, "b@example.com")
-	setBaseline(t, b, map[string]any{"monday": 4})
+	b := apitest.ExtraResident(t, app, a, "b@example.com")
+	apitest.SetBaseline(t, b, map[string]any{"monday": 4})
 	r := dayPlan(t, b)
 	if r.Body["energy"] != float64(0) || len(taskList(t, r.Body["mine"])) != 0 {
 		t.Fatalf("a joiner is unplanned until they check in: %s", r.Raw)
@@ -179,12 +178,12 @@ func TestAResidentWhoJoinedAfterThePlanIsPlannedByTheirFirstCheckIn(t *testing.T
 func TestATaskAddedAfterThePlanIsACandidateInTheReplan(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	setBaseline(t, me, map[string]any{"monday": 10})
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.SetBaseline(t, me, map[string]any{"monday": 10})
 	app.Clock.Set(mondayAt(7))
 	app.RunAllocation(t) // nothing to do yet
-	createChore(t, me, chore("Late", 7, 2, "normal", []string{}))
-	pool(t, me) // opens the Task
+	apitest.CreateChore(t, me, apitest.Chore("Late", 7, 2, "normal", []string{}))
+	apitest.Pool(t, me) // opens the Task
 
 	checkIn(t, me, "normal")
 	if got := names(taskList(t, dayPlan(t, me).Body["mine"])); len(got) != 1 || got[0] != "Late" {
@@ -195,9 +194,9 @@ func TestATaskAddedAfterThePlanIsACandidateInTheReplan(t *testing.T) {
 func TestACheckInAfterARejectedRunIsStoredAndChangesNothing(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com") // no Baseline: 0 Energy
+	me := apitest.HomeWithResident(t, app, "a@example.com") // no Baseline: 0 Energy
 	app.Clock.Set(mondayAt(6))
-	createChore(t, me, chore("Dishes", 7, 2, "normal", []string{}))
+	apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 2, "normal", []string{}))
 	app.UseAllocator(overEnergy{})
 	app.Clock.Set(mondayAt(7))
 	if sum := app.RunAllocation(t); sum.Rejected != 1 {
@@ -220,27 +219,14 @@ func TestACheckInAfterARejectedRunIsStoredAndChangesNothing(t *testing.T) {
 
 // overEnergy gives every Task to the first Resident, ignoring Energy, which the
 // checker must refuse.
-type overEnergy struct{}
-
-func (overEnergy) Name() string { return "stub" }
-
-func (overEnergy) Plan(s allocation.State) (allocation.Result, error) {
-	var res allocation.Result
-	for _, t := range s.Tasks {
-		res.DayPlan.Assignments = append(res.DayPlan.Assignments,
-			allocation.Assignment{TaskID: t.ID, ResidentID: s.Residents[0].ID, Reason: allocation.ReasonFitsEnergy})
-	}
-	return res, nil
-}
-
 func TestAReplanThatBreaksARuleFailsAndLeavesTheCheckInAndPlanAsTheyWere(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	setBaseline(t, me, map[string]any{"monday": 5})
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.SetBaseline(t, me, map[string]any{"monday": 5})
 	app.Clock.Set(mondayAt(6))
-	createChore(t, me, chore("Dishes", 7, 2, "normal", []string{}))
-	createChore(t, me, chore("Mop", 7, 2, "normal", []string{}))
+	apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 2, "normal", []string{}))
+	apitest.CreateChore(t, me, apitest.Chore("Mop", 7, 2, "normal", []string{}))
 	app.Clock.Set(mondayAt(7))
 	app.RunAllocation(t)
 	checkIn(t, me, "normal")
@@ -263,11 +249,11 @@ func TestAReplanThatBreaksARuleFailsAndLeavesTheCheckInAndPlanAsTheyWere(t *test
 func TestACheckInRacingTheJobLeavesOneRunAndAConsistentPlan(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	setBaseline(t, me, map[string]any{"monday": 10})
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.SetBaseline(t, me, map[string]any{"monday": 10})
 	app.Clock.Set(mondayAt(6))
 	for _, n := range []string{"One", "Two", "Three"} {
-		createChore(t, me, chore(n, 7, 3, "normal", []string{}))
+		apitest.CreateChore(t, me, apitest.Chore(n, 7, 3, "normal", []string{}))
 	}
 	app.Clock.Set(mondayAt(7))
 

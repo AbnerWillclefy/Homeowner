@@ -1,4 +1,4 @@
-package server_test
+package dayplan_test
 
 import (
 	"net/http"
@@ -62,7 +62,7 @@ func pairOf(t *testing.T, a, b *apitest.Client) swapPair {
 
 func commitments(t *testing.T, app *apitest.App, task string) int {
 	t.Helper()
-	return count(t, app, `SELECT count(*) FROM task_residents WHERE task_id = $1 AND committed_on = '2026-03-02'`, task)
+	return apitest.Count(t, app, `SELECT count(*) FROM task_residents WHERE task_id = $1 AND committed_on = '2026-03-02'`, task)
 }
 
 func TestAnAcceptedSwapExchangesTheTasksAndCommitsBoth(t *testing.T) {
@@ -97,14 +97,14 @@ func TestAnAcceptedSwapExchangesTheTasksAndCommitsBoth(t *testing.T) {
 			t.Fatalf("%d commitments on %s, want 1", got, task)
 		}
 	}
-	if got := count(t, app, `SELECT count(*) FROM task_residents tr JOIN residents r ON r.id = tr.resident_id
+	if got := apitest.Count(t, app, `SELECT count(*) FROM task_residents tr JOIN residents r ON r.id = tr.resident_id
 		JOIN users u ON u.id = r.user_id WHERE tr.task_id = $1 AND u.email = 'b@example.com'`, p.a); got != 1 {
 		t.Fatalf("X is not committed by B: %d", got)
 	}
 	if len(swapsOf(t, a, "outgoing")) != 0 || len(swapsOf(t, b, "incoming")) != 0 {
 		t.Fatal("an answered offer is still listed")
 	}
-	if got := count(t, app, `SELECT count(*) FROM swap_offers WHERE status = 'accepted'`); got != 1 {
+	if got := apitest.Count(t, app, `SELECT count(*) FROM swap_offers WHERE status = 'accepted'`); got != 1 {
 		t.Fatalf("%d accepted offers, want 1", got)
 	}
 }
@@ -141,7 +141,7 @@ func TestAcceptingASwapEndsTheOffererCommitmentOnTheTaskGivenAway(t *testing.T) 
 	mustOffer(t, a, p.a, p.b)
 	mustSwapAct(t, b, swapsOf(t, b, "incoming")[0]["id"].(string), "accept")
 
-	if got := count(t, app, `SELECT count(*) FROM task_residents tr JOIN residents r ON r.id = tr.resident_id
+	if got := apitest.Count(t, app, `SELECT count(*) FROM task_residents tr JOIN residents r ON r.id = tr.resident_id
 		JOIN users u ON u.id = r.user_id WHERE tr.task_id = $1 AND u.email = 'a@example.com'`, p.a); got != 0 {
 		t.Fatalf("A still has a Commitment on the Task they gave away")
 	}

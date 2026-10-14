@@ -1,4 +1,4 @@
-package server_test
+package homes_test
 
 import (
 	"context"
@@ -21,13 +21,9 @@ func countHomes(t *testing.T, app *apitest.App) int {
 	return n
 }
 
-func homeBody(tz, at string) map[string]any {
-	return map[string]any{"timezone": tz, "allocationTime": at}
-}
-
 // homeWithChores is a Home body carrying reviewed Chores.
 func homeWithChores(cs ...map[string]any) map[string]any {
-	b := homeBody("UTC", "07:00")
+	b := apitest.HomeBody("UTC", "07:00")
 	b["chores"] = cs
 	return b
 }
@@ -38,7 +34,7 @@ func TestCreatingAHomeWithReviewedChoresStoresExactlyThoseChores(t *testing.T) {
 	me := app.SignInAs("a@example.com")
 
 	// The questionnaire proposes; the User removes one and edits another.
-	ps := proposals(t, me, map[string]any{
+	ps := apitest.Proposals(t, me, map[string]any{
 		"rooms": map[string]any{"bathrooms": 2, "kitchens": 1}, "pets": []string{"dog"},
 	})
 	var reviewed []map[string]any
@@ -63,7 +59,7 @@ func TestCreatingAHomeWithReviewedChoresStoresExactlyThoseChores(t *testing.T) {
 	if created.Status != http.StatusCreated {
 		t.Fatalf("POST /home = %d %s, want 201", created.Status, created.Raw)
 	}
-	got := listChores(t, me)
+	got := apitest.ListChores(t, me)
 	if len(got) != len(reviewed) || len(reviewed) != len(ps)-1 {
 		t.Fatalf("stored %d Chores, sent %d of %d proposed", len(got), len(reviewed), len(ps))
 	}
@@ -86,11 +82,11 @@ func TestInvalidChoreInANewHomeStoresNothing(t *testing.T) {
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
 
-	body := homeBody("Nope/Nowhere", "07:00")
+	body := apitest.HomeBody("Nope/Nowhere", "07:00")
 	body["chores"] = []map[string]any{
-		validChore(),
-		validChore(),
-		with(with(validChore(), "baseEffort", 9), "category", "garage"),
+		apitest.ValidChore(),
+		apitest.ValidChore(),
+		apitest.WithField(apitest.WithField(apitest.ValidChore(), "baseEffort", 9), "category", "garage"),
 	}
 	r := me.Post("/home", body)
 	if r.Status != http.StatusBadRequest || r.Body["error"] != "invalid home" {
@@ -100,7 +96,7 @@ func TestInvalidChoreInANewHomeStoresNothing(t *testing.T) {
 	if !reflect.DeepEqual(r.Body["fields"], want) {
 		t.Fatalf("fields = %v, want %v (home and Chore errors at once)", r.Body["fields"], want)
 	}
-	if h, c := countHomes(t, app), countChores(t, app); h != 0 || c != 0 {
+	if h, c := countHomes(t, app), apitest.CountChores(t, app); h != 0 || c != 0 {
 		t.Fatalf("stored %d Homes and %d Chores, want none", h, c)
 	}
 	if got := me.Get("/home"); got.Status != http.StatusNotFound {
@@ -111,14 +107,14 @@ func TestInvalidChoreInANewHomeStoresNothing(t *testing.T) {
 func TestACreateThatLosesTheRaceAddsNoChores(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	me.Post("/home/chores", validChore())
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	me.Post("/home/chores", apitest.ValidChore())
 
-	second := me.Post("/home", homeWithChores(validChore(), validChore()))
+	second := me.Post("/home", homeWithChores(apitest.ValidChore(), apitest.ValidChore()))
 	if second.Status != http.StatusConflict {
 		t.Fatalf("second POST /home = %d %s, want 409", second.Status, second.Raw)
 	}
-	if n := countChores(t, app); n != 1 {
+	if n := apitest.CountChores(t, app); n != 1 {
 		t.Fatalf("Chores = %d, want 1 (the 409 added none)", n)
 	}
 }
@@ -134,11 +130,11 @@ func TestConcurrentCreatesWithChoresMakeOneHomeWithOneSetOfChores(t *testing.T) 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			me.Post("/home", homeWithChores(validChore(), validChore(), validChore()))
+			me.Post("/home", homeWithChores(apitest.ValidChore(), apitest.ValidChore(), apitest.ValidChore()))
 		}()
 	}
 	wg.Wait()
-	if h, c := countHomes(t, app), countChores(t, app); h != 1 || c != 3 {
+	if h, c := countHomes(t, app), apitest.CountChores(t, app); h != 1 || c != 3 {
 		t.Fatalf("Homes = %d, Chores = %d, want 1 and 3", h, c)
 	}
 }
@@ -148,7 +144,7 @@ func TestCreatingAHomeWithoutOrWithEmptyChoresAddsNone(t *testing.T) {
 	app := apitest.Start(t)
 	for i, chores := range []any{nil, []any{}} {
 		me := app.SignInAs(fmt.Sprintf("u%d@example.com", i))
-		body := homeBody("UTC", "07:00")
+		body := apitest.HomeBody("UTC", "07:00")
 		if chores != nil {
 			body["chores"] = chores
 		}
@@ -157,10 +153,10 @@ func TestCreatingAHomeWithoutOrWithEmptyChoresAddsNone(t *testing.T) {
 		}
 	}
 	b := app.SignInAs("null@example.com")
-	if r := b.Post("/home", with(homeBody("UTC", "07:00"), "chores", nil)); r.Status != http.StatusCreated {
+	if r := b.Post("/home", apitest.WithField(apitest.HomeBody("UTC", "07:00"), "chores", nil)); r.Status != http.StatusCreated {
 		t.Fatalf("null chores = %d %s, want 201", r.Status, r.Raw)
 	}
-	if n := countChores(t, app); n != 0 {
+	if n := apitest.CountChores(t, app); n != 0 {
 		t.Fatalf("Chores = %d, want 0", n)
 	}
 }
@@ -172,9 +168,9 @@ func TestTheChoresListOfANewHomeIsBoundedAndPutHomeTakesNoChores(t *testing.T) {
 
 	many := make([]map[string]any, 101)
 	for i := range many {
-		many[i] = validChore()
+		many[i] = apitest.ValidChore()
 	}
-	r := me.Post("/home", with(homeBody("UTC", "07:00"), "chores", many))
+	r := me.Post("/home", apitest.WithField(apitest.HomeBody("UTC", "07:00"), "chores", many))
 	if r.Status != http.StatusBadRequest || !reflect.DeepEqual(r.Body["fields"], map[string]any{"chores": "too_many"}) {
 		t.Fatalf("101 Chores = %d %s, want 400 chores too_many", r.Status, r.Raw)
 	}
@@ -182,13 +178,13 @@ func TestTheChoresListOfANewHomeIsBoundedAndPutHomeTakesNoChores(t *testing.T) {
 		t.Fatalf("Homes = %d, want 0", n)
 	}
 
-	huge := with(homeBody("UTC", "07:00"), "chores", []map[string]any{with(validChore(), "name", strings.Repeat("x", 70*1024))})
+	huge := apitest.WithField(apitest.HomeBody("UTC", "07:00"), "chores", []map[string]any{apitest.WithField(apitest.ValidChore(), "name", strings.Repeat("x", 70*1024))})
 	if r := me.Post("/home", huge); r.Status != http.StatusRequestEntityTooLarge {
 		t.Fatalf("70 KB body = %d, want 413", r.Status)
 	}
 
-	me.Post("/home", homeBody("UTC", "07:00"))
-	if r := me.Put("/home", homeWithChores(validChore())); r.Status != http.StatusBadRequest {
+	me.Post("/home", apitest.HomeBody("UTC", "07:00"))
+	if r := me.Put("/home", homeWithChores(apitest.ValidChore())); r.Status != http.StatusBadRequest {
 		t.Fatalf("PUT /home with chores = %d %s, want 400", r.Status, r.Raw)
 	}
 }
@@ -196,11 +192,11 @@ func TestTheChoresListOfANewHomeIsBoundedAndPutHomeTakesNoChores(t *testing.T) {
 func TestCatalogChoresCanBeAddedToAnExistingHome(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	other := homeWithResident(t, app, "b@example.com")
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	other := apitest.HomeWithResident(t, app, "b@example.com")
 
 	var entry map[string]any
-	for _, e := range catalogEntries(t, me) {
+	for _, e := range apitest.CatalogEntries(t, me) {
 		if e["id"] == "mow_lawn" {
 			entry = e
 		}
@@ -212,11 +208,11 @@ func TestCatalogChoresCanBeAddedToAnExistingHome(t *testing.T) {
 	if r := me.Post("/home/chores", body); r.Status != http.StatusCreated {
 		t.Fatalf("POST /home/chores = %d %s, want 201", r.Status, r.Raw)
 	}
-	got := listChores(t, me)
+	got := apitest.ListChores(t, me)
 	if len(got) != 1 || got[0].(map[string]any)["name"] != entry["name"] || got[0].(map[string]any)["category"] != "outdoor" {
 		t.Fatalf("Chores = %v, want the Catalog entry", got)
 	}
-	if l := listChores(t, other); len(l) != 0 {
+	if l := apitest.ListChores(t, other); len(l) != 0 {
 		t.Fatalf("another Home sees %v", l)
 	}
 }
@@ -226,7 +222,7 @@ func TestAUserCreatesAHomeAndReadsItBack(t *testing.T) {
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
 
-	created := me.Post("/home", homeBody("America/Sao_Paulo", "07:30"))
+	created := me.Post("/home", apitest.HomeBody("America/Sao_Paulo", "07:30"))
 	if created.Status != http.StatusCreated {
 		t.Fatalf("POST /home = %d %s, want 201", created.Status, created.Raw)
 	}
@@ -247,9 +243,9 @@ func TestASecondHomeForTheSameUserIsRejected(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
-	me.Post("/home", homeBody("UTC", "07:00"))
+	me.Post("/home", apitest.HomeBody("UTC", "07:00"))
 
-	second := me.Post("/home", homeBody("Europe/Lisbon", "08:00"))
+	second := me.Post("/home", apitest.HomeBody("Europe/Lisbon", "08:00"))
 	if second.Status != http.StatusConflict || second.Body["error"] != "already a resident" {
 		t.Fatalf("second POST = %d %s, want 409 already a resident", second.Status, second.Raw)
 	}
@@ -275,7 +271,7 @@ func TestConcurrentCreatesMakeOneHome(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			statuses[i] = me.Post("/home", homeBody("UTC", "07:00")).Status
+			statuses[i] = me.Post("/home", apitest.HomeBody("UTC", "07:00")).Status
 		}()
 	}
 	wg.Wait()
@@ -304,8 +300,8 @@ func TestDifferentUsersGetTheirOwnHomes(t *testing.T) {
 	a := app.SignInAs("a@example.com")
 	b := app.SignInAs("b@example.com")
 
-	ra := a.Post("/home", homeBody("UTC", "07:00"))
-	rb := b.Post("/home", homeBody("Asia/Tokyo", "09:15"))
+	ra := a.Post("/home", apitest.HomeBody("UTC", "07:00"))
+	rb := b.Post("/home", apitest.HomeBody("Asia/Tokyo", "09:15"))
 	if ra.Status != http.StatusCreated || rb.Status != http.StatusCreated {
 		t.Fatalf("creates = %d, %d, want 201 both", ra.Status, rb.Status)
 	}
@@ -328,7 +324,7 @@ func TestHomeRoutesWithoutAHomeOrAToken(t *testing.T) {
 	for _, tc := range []struct {
 		method string
 		body   any
-	}{{http.MethodGet, nil}, {http.MethodPut, homeBody("UTC", "07:00")}} {
+	}{{http.MethodGet, nil}, {http.MethodPut, apitest.HomeBody("UTC", "07:00")}} {
 		res := me.Do(tc.method, "/home", tc.body, nil)
 		if res.Status != http.StatusNotFound || res.Body["error"] != "no home" {
 			t.Errorf("%s /home without a Home = %d %s, want 404 no home", tc.method, res.Status, res.Raw)
@@ -358,9 +354,9 @@ func TestEditingTheHomeSettings(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
-	me.Post("/home", homeBody("UTC", "07:00"))
+	me.Post("/home", apitest.HomeBody("UTC", "07:00"))
 
-	put := me.Put("/home", homeBody("America/Sao_Paulo", "18:45"))
+	put := me.Put("/home", apitest.HomeBody("America/Sao_Paulo", "18:45"))
 	if put.Status != http.StatusOK || put.Body["timezone"] != "America/Sao_Paulo" || put.Body["allocationTime"] != "18:45" {
 		t.Fatalf("PUT /home = %d %s, want 200 with the new settings", put.Status, put.Raw)
 	}
@@ -374,22 +370,22 @@ func TestInvalidHomeSettingsAreRejectedWithFieldCodes(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
-	me.Post("/home", homeBody("UTC", "07:00"))
+	me.Post("/home", apitest.HomeBody("UTC", "07:00"))
 
 	cases := []struct {
 		name   string
 		body   map[string]any
 		fields map[string]string
 	}{
-		{"empty timezone", homeBody("", "07:00"), map[string]string{"timezone": "required"}},
-		{"unknown timezone", homeBody("Mars/Olympus", "07:00"), map[string]string{"timezone": "unknown"}},
-		{"Local timezone", homeBody("Local", "07:00"), map[string]string{"timezone": "unknown"}},
+		{"empty timezone", apitest.HomeBody("", "07:00"), map[string]string{"timezone": "required"}},
+		{"unknown timezone", apitest.HomeBody("Mars/Olympus", "07:00"), map[string]string{"timezone": "unknown"}},
+		{"Local timezone", apitest.HomeBody("Local", "07:00"), map[string]string{"timezone": "unknown"}},
 		{"missing time", map[string]any{"timezone": "UTC"}, map[string]string{"allocationTime": "required"}},
-		{"unpadded time", homeBody("UTC", "7:5"), map[string]string{"allocationTime": "invalid"}},
-		{"hour out of range", homeBody("UTC", "25:00"), map[string]string{"allocationTime": "invalid"}},
-		{"seconds", homeBody("UTC", "07:00:00"), map[string]string{"allocationTime": "invalid"}},
-		{"not a quarter hour", homeBody("UTC", "07:10"), map[string]string{"allocationTime": "not_quarter_hour"}},
-		{"both wrong", homeBody("Nope", "07:10"), map[string]string{"timezone": "unknown", "allocationTime": "not_quarter_hour"}},
+		{"unpadded time", apitest.HomeBody("UTC", "7:5"), map[string]string{"allocationTime": "invalid"}},
+		{"hour out of range", apitest.HomeBody("UTC", "25:00"), map[string]string{"allocationTime": "invalid"}},
+		{"seconds", apitest.HomeBody("UTC", "07:00:00"), map[string]string{"allocationTime": "invalid"}},
+		{"not a quarter hour", apitest.HomeBody("UTC", "07:10"), map[string]string{"allocationTime": "not_quarter_hour"}},
+		{"both wrong", apitest.HomeBody("Nope", "07:10"), map[string]string{"timezone": "unknown", "allocationTime": "not_quarter_hour"}},
 	}
 	for _, tc := range cases {
 		for _, method := range []string{http.MethodPost, http.MethodPut} {
@@ -443,12 +439,12 @@ func TestAnyResidentCanEditTheHome(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	owner := app.SignInAs("a@example.com")
-	home := owner.Post("/home", homeBody("UTC", "07:00"))
+	home := owner.Post("/home", apitest.HomeBody("UTC", "07:00"))
 
 	other := app.SignInAs("b@example.com")
 	other.JoinHome(t, home.Body["id"].(string))
 
-	put := other.Put("/home", homeBody("Europe/Lisbon", "21:00"))
+	put := other.Put("/home", apitest.HomeBody("Europe/Lisbon", "21:00"))
 	if put.Status != http.StatusOK {
 		t.Fatalf("second Resident PUT /home = %d %s, want 200", put.Status, put.Raw)
 	}
@@ -456,7 +452,7 @@ func TestAnyResidentCanEditTheHome(t *testing.T) {
 	if got.Body["timezone"] != "Europe/Lisbon" || got.Body["allocationTime"] != "21:00" {
 		t.Fatalf("first Resident GET /home = %s, want the second Resident's edit", got.Raw)
 	}
-	if n := other.Post("/home", homeBody("UTC", "07:00")).Status; n != http.StatusConflict {
+	if n := other.Post("/home", apitest.HomeBody("UTC", "07:00")).Status; n != http.StatusConflict {
 		t.Fatalf("a Resident creating another Home = %d, want 409", n)
 	}
 }
@@ -468,24 +464,24 @@ func leaveHome(c *apitest.Client) apitest.Response {
 func TestAResidentOfATwoResidentHomeLeavesAndTheHomeRemains(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	a := homeWithResident(t, app, "a@example.com")
+	a := apitest.HomeWithResident(t, app, "a@example.com")
 	homeID := a.Get("/home").Body["id"]
-	choreIn(t, a, "kitchen", []string{})
-	b := extraResident(t, app, a, "b@example.com")
+	apitest.ChoreIn(t, a, "kitchen", []string{})
+	b := apitest.ExtraResident(t, app, a, "b@example.com")
 
 	r := leaveHome(b)
-	expectStatus(t, r, http.StatusNoContent)
+	apitest.ExpectStatus(t, r, http.StatusNoContent)
 	if len(r.Raw) != 0 {
 		t.Errorf("body = %q, want none", r.Raw)
 	}
-	expectStatus(t, b.Get("/home"), http.StatusNotFound)
+	apitest.ExpectStatus(t, b.Get("/home"), http.StatusNotFound)
 	if got := a.Get("/home"); got.Status != http.StatusOK || got.Body["id"] != homeID {
 		t.Errorf("remaining Resident's GET /home = %d %s, want the Home", got.Status, got.Raw)
 	}
 	if n := countHomes(t, app); n != 1 {
 		t.Errorf("homes = %d, want 1", n)
 	}
-	if n := len(listChores(t, a)); n != 1 {
+	if n := len(apitest.ListChores(t, a)); n != 1 {
 		t.Errorf("chores = %d, want 1 kept", n)
 	}
 }
@@ -493,21 +489,21 @@ func TestAResidentOfATwoResidentHomeLeavesAndTheHomeRemains(t *testing.T) {
 func TestLeavingRemovesOnlyTheLeaversSpecificSettings(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	a := homeWithResident(t, app, "a@example.com")
-	chore := choreIn(t, a, "kitchen", []string{})
-	b := extraResident(t, app, a, "b@example.com")
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	chore := apitest.ChoreIn(t, a, "kitchen", []string{})
+	b := apitest.ExtraResident(t, app, a, "b@example.com")
 	for _, c := range []*apitest.Client{a, b} {
-		setPref(t, c, chore, "dislike")
-		expectStatus(t, c.Put("/home/chores/"+chore+"/restriction", nil), http.StatusNoContent)
+		apitest.SetPreference(t, c, chore, "dislike")
+		apitest.ExpectStatus(t, c.Put("/home/chores/"+chore+"/restriction", nil), http.StatusNoContent)
 	}
 	const prefs = `SELECT count(*) FROM resident_chore_preferences`
 	const restr = `SELECT count(*) FROM resident_chore_restrictions`
-	if p, r := count(t, app, prefs), count(t, app, restr); p != 2 || r != 2 {
+	if p, r := apitest.Count(t, app, prefs), apitest.Count(t, app, restr); p != 2 || r != 2 {
 		t.Fatalf("before leaving: preferences = %d, restrictions = %d, want 2 and 2", p, r)
 	}
 
-	expectStatus(t, leaveHome(b), http.StatusNoContent)
-	if p, r := count(t, app, prefs), count(t, app, restr); p != 1 || r != 1 {
+	apitest.ExpectStatus(t, leaveHome(b), http.StatusNoContent)
+	if p, r := apitest.Count(t, app, prefs), apitest.Count(t, app, restr); p != 1 || r != 1 {
 		t.Errorf("after leaving: preferences = %d, restrictions = %d, want only the other Resident's 1 and 1", p, r)
 	}
 	mine := a.Get("/home/chores/settings").Body["residents"].([]any)
@@ -519,16 +515,16 @@ func TestLeavingRemovesOnlyTheLeaversSpecificSettings(t *testing.T) {
 func TestLeavingKeepsTheUsersGeneralProfile(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	a := homeWithResident(t, app, "a@example.com")
-	b := extraResident(t, app, a, "b@example.com")
-	setBaseline(t, b, map[string]any{"monday": 7})
-	expectStatus(t, b.Put("/me/preferences/kitchen", map[string]any{"preference": "like"}), http.StatusNoContent)
-	expectStatus(t, b.Put("/me/restrictions/heights", nil), http.StatusNoContent)
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	b := apitest.ExtraResident(t, app, a, "b@example.com")
+	apitest.SetBaseline(t, b, map[string]any{"monday": 7})
+	apitest.ExpectStatus(t, b.Put("/me/preferences/kitchen", map[string]any{"preference": "like"}), http.StatusNoContent)
+	apitest.ExpectStatus(t, b.Put("/me/restrictions/heights", nil), http.StatusNoContent)
 
-	expectStatus(t, leaveHome(b), http.StatusNoContent)
+	apitest.ExpectStatus(t, leaveHome(b), http.StatusNoContent)
 	res := b.Get("/me/profile")
-	expectStatus(t, res, http.StatusOK)
-	if bl := baselineOf(t, res); bl["monday"] != float64(7) {
+	apitest.ExpectStatus(t, res, http.StatusOK)
+	if bl := apitest.BaselineOf(t, res); bl["monday"] != float64(7) {
 		t.Errorf("baseline = %v, want monday 7", bl)
 	}
 	if res.Body["preferences"].(map[string]any)["kitchen"] != "like" {
@@ -542,23 +538,23 @@ func TestLeavingKeepsTheUsersGeneralProfile(t *testing.T) {
 func TestTheLastResidentLeavingDeletesTheHomeAndEverythingInIt(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	a := homeWithResident(t, app, "a@example.com")
-	setBaseline(t, a, map[string]any{"monday": 5})
-	atDay(app, 2)
-	createChore(t, a, chore("Dishes", 7, 3, "essential", []string{}))
-	createInvite(t, a) // left unused
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.SetBaseline(t, a, map[string]any{"monday": 5})
+	apitest.AtDay(app, 2)
+	apitest.CreateChore(t, a, apitest.Chore("Dishes", 7, 3, "essential", []string{}))
+	apitest.CreateInvite(t, a) // left unused
 	app.RunAllocation(t)
-	if n := count(t, app, `SELECT count(*) FROM day_plan_assignments`); n != 1 {
+	if n := apitest.Count(t, app, `SELECT count(*) FROM day_plan_assignments`); n != 1 {
 		t.Fatalf("assignments before leaving = %d, want 1", n)
 	}
 
-	expectStatus(t, leaveHome(a), http.StatusNoContent)
+	apitest.ExpectStatus(t, leaveHome(a), http.StatusNoContent)
 	for _, table := range []string{"homes", "residents", "chores", "tasks", "invites", "allocation_runs", "day_plan_assignments"} {
-		if n := count(t, app, `SELECT count(*) FROM `+table); n != 0 {
+		if n := apitest.Count(t, app, `SELECT count(*) FROM `+table); n != 0 {
 			t.Errorf("%s rows = %d, want 0", table, n)
 		}
 	}
-	expectStatus(t, a.Get("/home"), http.StatusNotFound)
+	apitest.ExpectStatus(t, a.Get("/home"), http.StatusNotFound)
 }
 
 func TestLeavingNeedsAHomeAndAToken(t *testing.T) {
@@ -568,25 +564,25 @@ func TestLeavingNeedsAHomeAndAToken(t *testing.T) {
 	if res.Status != http.StatusNotFound || res.Body["error"] != "no home" {
 		t.Errorf("leaving without a Home = %d %s, want 404 no home", res.Status, res.Raw)
 	}
-	b := homeWithResident(t, app, "b@example.com")
-	expectStatus(t, app.Do(http.MethodDelete, "/home/residents/me", nil), http.StatusUnauthorized)
-	expectStatus(t, b.Get("/home"), http.StatusOK)
+	b := apitest.HomeWithResident(t, app, "b@example.com")
+	apitest.ExpectStatus(t, app.Do(http.MethodDelete, "/home/residents/me", nil), http.StatusUnauthorized)
+	apitest.ExpectStatus(t, b.Get("/home"), http.StatusOK)
 }
 
 func TestAfterLeavingTheSameUserCanCreateAHomeOrAcceptAnInvite(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	a := homeWithResident(t, app, "a@example.com")
-	b := extraResident(t, app, a, "b@example.com")
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	b := apitest.ExtraResident(t, app, a, "b@example.com")
 
-	expectStatus(t, leaveHome(b), http.StatusNoContent)
-	expectStatus(t, b.Post("/home", homeBody("UTC", "07:00")), http.StatusCreated)
+	apitest.ExpectStatus(t, leaveHome(b), http.StatusNoContent)
+	apitest.ExpectStatus(t, b.Post("/home", apitest.HomeBody("UTC", "07:00")), http.StatusCreated)
 	if b.Get("/home").Body["id"] == a.Get("/home").Body["id"] {
 		t.Errorf("b got the old Home back, want a new one")
 	}
 
-	expectStatus(t, leaveHome(b), http.StatusNoContent)
-	expectStatus(t, acceptInvite(b, createInvite(t, a), nil), http.StatusOK)
+	apitest.ExpectStatus(t, leaveHome(b), http.StatusNoContent)
+	apitest.ExpectStatus(t, apitest.AcceptInvite(b, apitest.CreateInvite(t, a), nil), http.StatusOK)
 	if b.Get("/home").Body["id"] != a.Get("/home").Body["id"] {
 		t.Errorf("b did not rejoin a's Home")
 	}
@@ -595,9 +591,9 @@ func TestAfterLeavingTheSameUserCanCreateAHomeOrAcceptAnInvite(t *testing.T) {
 func TestTwoResidentsLeavingAtOnceDeleteTheHomeOnce(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	a := homeWithResident(t, app, "a@example.com")
-	choreIn(t, a, "kitchen", []string{})
-	b := extraResident(t, app, a, "b@example.com")
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.ChoreIn(t, a, "kitchen", []string{})
+	b := apitest.ExtraResident(t, app, a, "b@example.com")
 
 	statuses := make([]int, 2)
 	var wg sync.WaitGroup
@@ -613,7 +609,7 @@ func TestTwoResidentsLeavingAtOnceDeleteTheHomeOnce(t *testing.T) {
 	if statuses[0] != http.StatusNoContent || statuses[1] != http.StatusNoContent {
 		t.Fatalf("statuses = %v, want 204 and 204", statuses)
 	}
-	if n := count(t, app, `SELECT (SELECT count(*) FROM homes) + (SELECT count(*) FROM residents) + (SELECT count(*) FROM chores)`); n != 0 {
+	if n := apitest.Count(t, app, `SELECT (SELECT count(*) FROM homes) + (SELECT count(*) FROM residents) + (SELECT count(*) FROM chores)`); n != 0 {
 		t.Errorf("rows left = %d, want the Home, its Residents and Chores gone", n)
 	}
 }

@@ -1,4 +1,4 @@
-package server_test
+package dayplan_test
 
 import (
 	"slices"
@@ -79,10 +79,10 @@ func TestANewProposedPlanPlusCommittedTasksFitTheEnergy(t *testing.T) {
 func TestYesterdaysCommitmentIsNotCommittedToday(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	setBaseline(t, me, map[string]any{"monday": 2, "tuesday": 2})
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.SetBaseline(t, me, map[string]any{"monday": 2, "tuesday": 2})
 	app.Clock.Set(mondayAt(6))
-	createChore(t, me, chore("Dishes", 7, 2, "normal", []string{}))
+	apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 2, "normal", []string{}))
 	app.Clock.Set(mondayAt(7))
 	app.RunAllocation(t)
 	id := mineOf(t, me)[0]["id"].(string)
@@ -97,7 +97,7 @@ func TestYesterdaysCommitmentIsNotCommittedToday(t *testing.T) {
 	if len(mine) != 1 || mine[0]["committed"] != false {
 		t.Fatalf("today: %s", dayPlan(t, me).Raw)
 	}
-	if got := count(t, app, `SELECT count(*) FROM task_residents WHERE task_id = $1 AND committed_on = '2026-03-02'`, id); got != 1 {
+	if got := apitest.Count(t, app, `SELECT count(*) FROM task_residents WHERE task_id = $1 AND committed_on = '2026-03-02'`, id); got != 1 {
 		t.Fatalf("yesterday's Commitment rows = %d, want it kept as history", got)
 	}
 }

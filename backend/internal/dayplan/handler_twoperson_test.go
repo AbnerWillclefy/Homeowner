@@ -1,4 +1,4 @@
-package server_test
+package dayplan_test
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 
 // twoPersonChore is a Chore that takes two people, due every week.
 func twoPersonChore(name string, effort int) map[string]any {
-	c := chore(name, 7, effort, "essential", []string{})
+	c := apitest.Chore(name, 7, effort, "essential", []string{})
 	c["people"] = 2
 	return c
 }
@@ -24,12 +24,12 @@ func twoPersonChore(name string, effort int) map[string]any {
 func duoHome(t *testing.T, energyA, energyB int) (app *apitest.App, a, b *apitest.Client) {
 	t.Helper()
 	app = apitest.Start(t)
-	a = homeWithResident(t, app, "a@example.com")
-	b = extraResident(t, app, a, "b@example.com")
-	setBaseline(t, a, map[string]any{"monday": energyA})
-	setBaseline(t, b, map[string]any{"monday": energyB})
+	a = apitest.HomeWithResident(t, app, "a@example.com")
+	b = apitest.ExtraResident(t, app, a, "b@example.com")
+	apitest.SetBaseline(t, a, map[string]any{"monday": energyA})
+	apitest.SetBaseline(t, b, map[string]any{"monday": energyB})
 	app.Clock.Set(mondayAt(6))
-	createChore(t, a, twoPersonChore("Carry", 2))
+	apitest.CreateChore(t, a, twoPersonChore("Carry", 2))
 	app.Clock.Set(mondayAt(7))
 	app.RunAllocation(t)
 	return app, a, b
@@ -48,7 +48,7 @@ func residentIDOf(t *testing.T, app *apitest.App, email string) string {
 
 func rowsFor(t *testing.T, app *apitest.App) int {
 	t.Helper()
-	return count(t, app, `SELECT count(*) FROM day_plan_assignments`)
+	return apitest.Count(t, app, `SELECT count(*) FROM day_plan_assignments`)
 }
 
 func completionResidents(t *testing.T, app *apitest.App) []string {
@@ -125,7 +125,7 @@ func TestEitherResidentCompletesAndTheCompletionListsBoth(t *testing.T) {
 			if got := completionResidents(t, app); !slices.Equal(got, []string{"a@example.com", "b@example.com"}) {
 				t.Fatalf("completion residents = %v, want A and B", got)
 			}
-			if got := count(t, app, `SELECT count(*) FROM completions`); got != 1 {
+			if got := apitest.Count(t, app, `SELECT count(*) FROM completions`); got != 1 {
 				t.Fatalf("%d completions, want 1", got)
 			}
 			for _, c := range []*apitest.Client{a, b} {
@@ -188,7 +188,7 @@ func TestATwoPersonTaskEitherPartnerCommittedCannotBeRefused(t *testing.T) {
 	}
 	// Accepting is per Resident: B's accept does not need A's.
 	mustAct(t, b, "accept", id)
-	if got := count(t, app, `SELECT count(*) FROM task_residents`); got != 2 {
+	if got := apitest.Count(t, app, `SELECT count(*) FROM task_residents`); got != 2 {
 		t.Fatalf("%d commitments, want one per Resident", got)
 	}
 }
@@ -202,7 +202,7 @@ func TestAcceptAllCommitsOnlyTheCallersOwnHalf(t *testing.T) {
 	if committedOf(mineOf(t, a), "Carry") != true || committedOf(mineOf(t, b), "Carry") != false {
 		t.Fatalf("A: %s B: %s", dayPlan(t, a).Raw, dayPlan(t, b).Raw)
 	}
-	if got := count(t, app, `SELECT count(*) FROM task_residents`); got != 1 {
+	if got := apitest.Count(t, app, `SELECT count(*) FROM task_residents`); got != 1 {
 		t.Fatalf("%d commitments, want 1", got)
 	}
 }
@@ -251,9 +251,9 @@ func TestAPinnedTwoPersonTaskUsesUpTheCallersEnergyInAReplan(t *testing.T) {
 	t.Parallel()
 	app, a, b := duoHome(t, 3, 3)
 	mustAct(t, b, "accept", mineOf(t, a)[0]["id"].(string)) // the partner promised it
-	createChore(t, a, chore("Dust", 7, 2, "normal", []string{}))
-	createChore(t, a, chore("Wipe", 7, 1, "normal", []string{}))
-	pool(t, a) // opens the Tasks
+	apitest.CreateChore(t, a, apitest.Chore("Dust", 7, 2, "normal", []string{}))
+	apitest.CreateChore(t, a, apitest.Chore("Wipe", 7, 1, "normal", []string{}))
+	apitest.Pool(t, a) // opens the Tasks
 
 	checkIn(t, a, "normal") // 3 Energy, 2 of it already spent on Carry
 	names := map[string]bool{}
@@ -271,8 +271,8 @@ func TestAPinnedTwoPersonTaskUsesUpTheCallersEnergyInAReplan(t *testing.T) {
 func TestAReplanNeverLeavesExactlyOneRowOfATwoPersonTask(t *testing.T) {
 	t.Parallel()
 	app, a, b := duoHome(t, 2, 3)
-	createChore(t, a, chore("Dust", 7, 1, "normal", []string{}))
-	pool(t, a) // opens the Task
+	apitest.CreateChore(t, a, apitest.Chore("Dust", 7, 1, "normal", []string{}))
+	apitest.Pool(t, a) // opens the Task
 
 	for _, step := range []func(){
 		func() { checkIn(t, a, "normal") },
@@ -281,7 +281,7 @@ func TestAReplanNeverLeavesExactlyOneRowOfATwoPersonTask(t *testing.T) {
 		func() { checkIn(t, a, "low") },
 	} {
 		step()
-		n := count(t, app, `SELECT count(*) FROM day_plan_assignments d JOIN tasks t ON t.id = d.task_id JOIN chores c ON c.id = t.chore_id WHERE c.people = 2`)
+		n := apitest.Count(t, app, `SELECT count(*) FROM day_plan_assignments d JOIN tasks t ON t.id = d.task_id JOIN chores c ON c.id = t.chore_id WHERE c.people = 2`)
 		if n != 0 && n != 2 {
 			t.Fatalf("%d rows of the two-person Task", n)
 		}
@@ -304,11 +304,11 @@ func (halfTask) Plan(s allocation.State) (allocation.Result, error) {
 func TestAPlanGivingATwoPersonTaskToOneResidentIsRejected(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	a := homeWithResident(t, app, "a@example.com")
-	extraResident(t, app, a, "b@example.com")
-	setBaseline(t, a, map[string]any{"monday": 5})
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.ExtraResident(t, app, a, "b@example.com")
+	apitest.SetBaseline(t, a, map[string]any{"monday": 5})
 	app.Clock.Set(mondayAt(6))
-	createChore(t, a, twoPersonChore("Carry", 2))
+	apitest.CreateChore(t, a, twoPersonChore("Carry", 2))
 	app.UseAllocator(halfTask{})
 	app.Clock.Set(mondayAt(7))
 	app.RunAllocation(t)
@@ -347,13 +347,13 @@ func TestACompletionStillWorksForAPartnerLeftHoldingHalf(t *testing.T) {
 func TestSwappingATwoPersonTaskStaysRefused(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	a := homeWithResident(t, app, "a@example.com")
-	b := extraResident(t, app, a, "b@example.com")
-	setBaseline(t, a, map[string]any{"monday": 5})
-	setBaseline(t, b, map[string]any{"monday": 5})
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	b := apitest.ExtraResident(t, app, a, "b@example.com")
+	apitest.SetBaseline(t, a, map[string]any{"monday": 5})
+	apitest.SetBaseline(t, b, map[string]any{"monday": 5})
 	app.Clock.Set(mondayAt(6))
-	createChore(t, a, twoPersonChore("Carry", 1))
-	createChore(t, a, chore("Dust", 7, 1, "normal", []string{}))
+	apitest.CreateChore(t, a, twoPersonChore("Carry", 1))
+	apitest.CreateChore(t, a, apitest.Chore("Dust", 7, 1, "normal", []string{}))
 	app.Clock.Set(mondayAt(7))
 	app.RunAllocation(t)
 	carry := idOf(t, mineOf(t, a), "Carry")

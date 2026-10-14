@@ -1,4 +1,4 @@
-package server_test
+package profile_test
 
 import (
 	"context"
@@ -13,32 +13,13 @@ import (
 
 var weekdays = []string{"sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"}
 
-// baselineOf returns the profile's baseline as weekday name to value (nil for
-// null), failing if any of the seven keys is missing.
-func baselineOf(t *testing.T, res apitest.Response) map[string]any {
-	t.Helper()
-	if res.Status != http.StatusOK {
-		t.Fatalf("got %d %s, want 200", res.Status, res.Raw)
-	}
-	b, ok := res.Body["baseline"].(map[string]any)
-	if !ok || len(b) != 7 {
-		t.Fatalf("baseline = %v, want an object with all seven weekdays", res.Body["baseline"])
-	}
-	for _, d := range weekdays {
-		if _, ok := b[d]; !ok {
-			t.Fatalf("baseline has no %q key: %v", d, b)
-		}
-	}
-	return b
-}
-
 func TestAFreshUsersProfileIsEmpty(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 
 	res := app.SignInAs("a@example.com").Get("/me/profile")
 
-	for day, v := range baselineOf(t, res) {
+	for day, v := range apitest.BaselineOf(t, res) {
 		if v != nil {
 			t.Errorf("baseline[%s] = %v, want null", day, v)
 		}
@@ -83,7 +64,7 @@ func TestBaselineIsSetAndClearedPerDayLeavingOtherDaysAlone(t *testing.T) {
 	if res := me.Put("/me/baseline", map[string]any{"monday": 5, "tuesday": 0}); res.Status != http.StatusNoContent {
 		t.Fatalf("first PUT = %d %s, want 204", res.Status, res.Raw)
 	}
-	got := baselineOf(t, me.Get("/me/profile"))
+	got := apitest.BaselineOf(t, me.Get("/me/profile"))
 	for _, d := range weekdays {
 		var want any
 		switch d {
@@ -100,7 +81,7 @@ func TestBaselineIsSetAndClearedPerDayLeavingOtherDaysAlone(t *testing.T) {
 	if res := me.Put("/me/baseline", map[string]any{"monday": nil, "friday": 20}); res.Status != http.StatusNoContent {
 		t.Fatalf("second PUT = %d %s, want 204", res.Status, res.Raw)
 	}
-	got = baselineOf(t, me.Get("/me/profile"))
+	got = apitest.BaselineOf(t, me.Get("/me/profile"))
 	if got["monday"] != nil || got["tuesday"] != float64(0) || got["friday"] != float64(20) {
 		t.Errorf("baseline = %v, want monday cleared, tuesday 0, friday 20", got)
 	}
@@ -243,7 +224,7 @@ func TestProfileRoutesRejectInvalidInputNamingTheField(t *testing.T) {
 
 	// Nothing above may have changed the profile.
 	got := me.Get("/me/profile")
-	for day, v := range baselineOf(t, got) {
+	for day, v := range apitest.BaselineOf(t, got) {
 		if v != nil {
 			t.Errorf("baseline[%s] = %v after only rejected requests, want null", day, v)
 		}
@@ -295,14 +276,14 @@ func TestOneUsersProfileIsInvisibleToAnother(t *testing.T) {
 	b.Delete("/me/restrictions/heights")
 
 	gotB := b.Get("/me/profile")
-	if bl := baselineOf(t, gotB); bl["monday"] != nil || bl["tuesday"] != float64(3) {
+	if bl := apitest.BaselineOf(t, gotB); bl["monday"] != nil || bl["tuesday"] != float64(3) {
 		t.Errorf("B baseline = %v, want only tuesday 3", bl)
 	}
 	if len(preferencesOf(t, b)) != 0 || len(restrictionsOf(t, b)) != 0 {
 		t.Errorf("B sees A's data: %s", gotB.Raw)
 	}
 	gotA := a.Get("/me/profile")
-	if bl := baselineOf(t, gotA); bl["monday"] != float64(7) || bl["tuesday"] != nil {
+	if bl := apitest.BaselineOf(t, gotA); bl["monday"] != float64(7) || bl["tuesday"] != nil {
 		t.Errorf("A baseline = %v, want only monday 7", bl)
 	}
 	if !reflect.DeepEqual(preferencesOf(t, a), map[string]any{"kitchen": "like"}) || !reflect.DeepEqual(restrictionsOf(t, a), []any{"heights"}) {
@@ -320,7 +301,7 @@ func TestTheProfilePersistsAcrossSignIns(t *testing.T) {
 
 	again := app.SignInAs("a@example.com")
 	res := again.Get("/me/profile")
-	if bl := baselineOf(t, res); bl["saturday"] != float64(12) {
+	if bl := apitest.BaselineOf(t, res); bl["saturday"] != float64(12) {
 		t.Errorf("baseline = %v, want saturday 12", bl)
 	}
 	if !reflect.DeepEqual(preferencesOf(t, again), map[string]any{"pets": "dislike"}) || !reflect.DeepEqual(restrictionsOf(t, again), []any{"bending"}) {

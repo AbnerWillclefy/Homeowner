@@ -1,4 +1,4 @@
-package server_test
+package dayplan_test
 
 import (
 	"net/http"
@@ -26,11 +26,11 @@ func TestRefuseReturnsTheTaskToThePoolAndChangesNothingElse(t *testing.T) {
 	if got := names(mineOf(t, b)); !slices.Equal(got, bMine) {
 		t.Fatalf("B's Tasks changed from %v to %v", bMine, got)
 	}
-	if got := count(t, app, `SELECT count(*) FROM day_plan_assignments`); got != 3 {
+	if got := apitest.Count(t, app, `SELECT count(*) FROM day_plan_assignments`); got != 3 {
 		t.Fatalf("%d assignments, want 3", got)
 	}
 	// No penalty: nothing is recorded against the Resident.
-	if got := count(t, app, `SELECT count(*) FROM task_residents`); got != 0 {
+	if got := apitest.Count(t, app, `SELECT count(*) FROM task_residents`); got != 0 {
 		t.Fatalf("%d commitments", got)
 	}
 }
@@ -51,10 +51,10 @@ func TestRefuseIsRefusedAfterAcceptOrForSomeoneElsesTask(t *testing.T) {
 func TestRefuseNeedsATodayPlan(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
+	me := apitest.HomeWithResident(t, app, "a@example.com")
 	app.Clock.Set(mondayAt(6))
-	createChore(t, me, chore("Dishes", 7, 2, "normal", []string{}))
-	wantConflict(t, act(me, "refuse", pool(t, me)[0]["id"].(string)), "no_plan_today")
+	apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 2, "normal", []string{}))
+	wantConflict(t, act(me, "refuse", apitest.Pool(t, me)[0]["id"].(string)), "no_plan_today")
 }
 
 func TestARefusedTaskStaysRefusedThroughEveryReplan(t *testing.T) {
@@ -75,8 +75,8 @@ func TestARefusedTaskStaysRefusedThroughEveryReplan(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			_, a, b := twoResidents(t)
-			setBaseline(t, a, map[string]any{"monday": 8})
-			setBaseline(t, b, map[string]any{"monday": 8})
+			apitest.SetBaseline(t, a, map[string]any{"monday": 8})
+			apitest.SetBaseline(t, b, map[string]any{"monday": 8})
 			refused := mineOf(t, a)[0]
 			mustAct(t, a, "refuse", refused["id"].(string))
 
@@ -110,10 +110,10 @@ func others(t *testing.T, r apitest.Response) []map[string]any {
 func TestARefusedTaskMayBeAssignedAtTheNextAllocation(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	setBaseline(t, me, map[string]any{"monday": 2, "tuesday": 2})
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.SetBaseline(t, me, map[string]any{"monday": 2, "tuesday": 2})
 	app.Clock.Set(mondayAt(6))
-	createChore(t, me, chore("Dishes", 7, 2, "normal", []string{}))
+	apitest.CreateChore(t, me, apitest.Chore("Dishes", 7, 2, "normal", []string{}))
 	app.Clock.Set(mondayAt(7))
 	app.RunAllocation(t)
 	mustAct(t, me, "refuse", mineOf(t, me)[0]["id"].(string))

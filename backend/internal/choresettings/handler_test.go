@@ -1,4 +1,4 @@
-package server_test
+package choresettings_test
 
 import (
 	"context"
@@ -87,35 +87,16 @@ func mine(t *testing.T, c *apitest.Client, choreID string) effective {
 	return toEffective(t, chores[choreID])
 }
 
-func choreIn(t *testing.T, c *apitest.Client, category string, demands []string) string {
-	t.Helper()
-	return createChore(t, c, with(with(validChore(), "category", category), "demands", demands))
-}
-
-func setPref(t *testing.T, c *apitest.Client, choreID, pref string) {
-	t.Helper()
-	if r := c.Put("/home/chores/"+choreID+"/preference", map[string]any{"preference": pref}); r.Status != http.StatusNoContent {
-		t.Fatalf("PUT preference %s = %d %s", pref, r.Status, r.Raw)
-	}
-}
-
-func expectStatus(t *testing.T, r apitest.Response, want int) {
-	t.Helper()
-	if r.Status != want {
-		t.Fatalf("status = %d %s, want %d", r.Status, r.Raw, want)
-	}
-}
-
 func TestASpecificDislikeShowsAsTheEffectivePreference(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	dishes := choreIn(t, me, "kitchen", []string{})
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	dishes := apitest.ChoreIn(t, me, "kitchen", []string{})
 
 	if got := mine(t, me, dishes); got.Preference != "neutral" || got.Source != "default" {
 		t.Fatalf("before = %+v, want neutral/default", got)
 	}
-	setPref(t, me, dishes, "dislike")
+	apitest.SetPreference(t, me, dishes, "dislike")
 	if got := mine(t, me, dishes); got.Preference != "dislike" || got.Source != "specific" {
 		t.Fatalf("after = %+v, want dislike/specific", got)
 	}
@@ -124,12 +105,12 @@ func TestASpecificDislikeShowsAsTheEffectivePreference(t *testing.T) {
 func TestSpecificBeatsGeneralAndClearingFallsBack(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	dishes := choreIn(t, me, "kitchen", []string{})
-	oven := choreIn(t, me, "kitchen", []string{})
-	expectStatus(t, me.Put("/me/preferences/kitchen", map[string]any{"preference": "dislike"}), http.StatusNoContent)
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	dishes := apitest.ChoreIn(t, me, "kitchen", []string{})
+	oven := apitest.ChoreIn(t, me, "kitchen", []string{})
+	apitest.ExpectStatus(t, me.Put("/me/preferences/kitchen", map[string]any{"preference": "dislike"}), http.StatusNoContent)
 
-	setPref(t, me, dishes, "neutral")
+	apitest.SetPreference(t, me, dishes, "neutral")
 	if got := mine(t, me, dishes); got.Preference != "neutral" || got.Source != "specific" {
 		t.Errorf("specific neutral = %+v, want neutral/specific", got)
 	}
@@ -137,12 +118,12 @@ func TestSpecificBeatsGeneralAndClearingFallsBack(t *testing.T) {
 		t.Errorf("other chore of the category = %+v, want dislike/general", got)
 	}
 
-	expectStatus(t, me.Delete("/home/chores/"+dishes+"/preference"), http.StatusNoContent)
+	apitest.ExpectStatus(t, me.Delete("/home/chores/"+dishes+"/preference"), http.StatusNoContent)
 	if got := mine(t, me, dishes); got.Preference != "dislike" || got.Source != "general" {
 		t.Errorf("after clear = %+v, want dislike/general", got)
 	}
 
-	setPref(t, me, dishes, "like")
+	apitest.SetPreference(t, me, dishes, "like")
 	if got := mine(t, me, dishes); got.Preference != "like" || got.Source != "specific" {
 		t.Errorf("specific like over general dislike = %+v", got)
 	}
@@ -151,11 +132,11 @@ func TestSpecificBeatsGeneralAndClearingFallsBack(t *testing.T) {
 func TestRestrictionsGeneralSpecificAndNeither(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	heavy := choreIn(t, me, "outdoor", []string{"heavy_lifting"})
-	bare := choreIn(t, me, "kitchen", []string{})
-	other := choreIn(t, me, "floors", []string{"bending"})
-	expectStatus(t, me.Put("/me/restrictions/heavy_lifting", nil), http.StatusNoContent)
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	heavy := apitest.ChoreIn(t, me, "outdoor", []string{"heavy_lifting"})
+	bare := apitest.ChoreIn(t, me, "kitchen", []string{})
+	other := apitest.ChoreIn(t, me, "floors", []string{"bending"})
+	apitest.ExpectStatus(t, me.Put("/me/restrictions/heavy_lifting", nil), http.StatusNoContent)
 
 	if got := mine(t, me, heavy); !got.Restricted || !reflect.DeepEqual(got.RestrictedBy, []any{"heavy_lifting"}) || got.RestrictedByChore {
 		t.Errorf("general demand restriction = %+v", got)
@@ -164,18 +145,18 @@ func TestRestrictionsGeneralSpecificAndNeither(t *testing.T) {
 		t.Errorf("chore matching neither = %+v, want not restricted", got)
 	}
 
-	expectStatus(t, me.Put("/home/chores/"+bare+"/restriction", nil), http.StatusNoContent)
+	apitest.ExpectStatus(t, me.Put("/home/chores/"+bare+"/restriction", nil), http.StatusNoContent)
 	if got := mine(t, me, bare); !got.Restricted || len(got.RestrictedBy) != 0 || !got.RestrictedByChore {
 		t.Errorf("specific restriction = %+v", got)
 	}
 
 	// A specific Restriction on the heavy Chore adds a reason; removing it
 	// leaves the general one in force.
-	expectStatus(t, me.Put("/home/chores/"+heavy+"/restriction", nil), http.StatusNoContent)
+	apitest.ExpectStatus(t, me.Put("/home/chores/"+heavy+"/restriction", nil), http.StatusNoContent)
 	if got := mine(t, me, heavy); !got.Restricted || !got.RestrictedByChore || len(got.RestrictedBy) != 1 {
 		t.Errorf("both reasons = %+v", got)
 	}
-	expectStatus(t, me.Delete("/home/chores/"+heavy+"/restriction"), http.StatusNoContent)
+	apitest.ExpectStatus(t, me.Delete("/home/chores/"+heavy+"/restriction"), http.StatusNoContent)
 	if got := mine(t, me, heavy); !got.Restricted || got.RestrictedByChore || len(got.RestrictedBy) != 1 {
 		t.Errorf("after removing the specific one = %+v, want the general one still in force", got)
 	}
@@ -184,14 +165,14 @@ func TestRestrictionsGeneralSpecificAndNeither(t *testing.T) {
 func TestResidentsOfAHomeHaveTheirOwnSettings(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	a := homeWithResident(t, app, "a@example.com")
+	a := apitest.HomeWithResident(t, app, "a@example.com")
 	homeID := a.Get("/home").Body["id"].(string)
 	b := app.SignInAs("b@example.com")
 	b.JoinHome(t, homeID)
-	dishes := choreIn(t, a, "kitchen", []string{})
+	dishes := apitest.ChoreIn(t, a, "kitchen", []string{})
 
-	setPref(t, a, dishes, "dislike")
-	expectStatus(t, a.Put("/home/chores/"+dishes+"/restriction", nil), http.StatusNoContent)
+	apitest.SetPreference(t, a, dishes, "dislike")
+	apitest.ExpectStatus(t, a.Put("/home/chores/"+dishes+"/restriction", nil), http.StatusNoContent)
 
 	if got := mine(t, b, dishes); got.Preference != "neutral" || got.Source != "default" || got.Restricted {
 		t.Errorf("b's own view = %+v, want untouched", got)
@@ -223,11 +204,11 @@ func TestResidentsOfAHomeHaveTheirOwnSettings(t *testing.T) {
 func TestSettingsAreNeverVisibleOrWritableAcrossHomes(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	a := homeWithResident(t, app, "a@example.com")
-	b := homeWithResident(t, app, "b@example.com")
-	aChore := choreIn(t, a, "kitchen", []string{})
-	bChore := choreIn(t, b, "kitchen", []string{})
-	setPref(t, a, aChore, "dislike")
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	b := apitest.HomeWithResident(t, app, "b@example.com")
+	aChore := apitest.ChoreIn(t, a, "kitchen", []string{})
+	bChore := apitest.ChoreIn(t, b, "kitchen", []string{})
+	apitest.SetPreference(t, a, aChore, "dislike")
 
 	for _, w := range settingWrites {
 		foreignPath := "/home/chores/" + aChore + w.suffix
@@ -269,10 +250,10 @@ func TestSettingsAreNeverVisibleOrWritableAcrossHomes(t *testing.T) {
 func TestLeavingAHomeDropsTheResidentsSpecificSettings(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	a := homeWithResident(t, app, "a@example.com")
-	chore := choreIn(t, a, "kitchen", []string{})
-	setPref(t, a, chore, "dislike")
-	expectStatus(t, a.Put("/home/chores/"+chore+"/restriction", nil), http.StatusNoContent)
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	chore := apitest.ChoreIn(t, a, "kitchen", []string{})
+	apitest.SetPreference(t, a, chore, "dislike")
+	apitest.ExpectStatus(t, a.Put("/home/chores/"+chore+"/restriction", nil), http.StatusNoContent)
 
 	// The leave flow does not exist yet; deleting the residents row is what it
 	// must do, and the cascade then clears the settings.
@@ -289,10 +270,10 @@ func TestLeavingAHomeDropsTheResidentsSpecificSettings(t *testing.T) {
 	}
 
 	// Joining another Home starts clean.
-	other := homeWithResident(t, app, "b@example.com")
+	other := apitest.HomeWithResident(t, app, "b@example.com")
 	otherHome := other.Get("/home").Body["id"].(string)
 	a.JoinHome(t, otherHome)
-	otherChore := choreIn(t, other, "kitchen", []string{})
+	otherChore := apitest.ChoreIn(t, other, "kitchen", []string{})
 	if got := mine(t, a, otherChore); got.Preference != "neutral" || got.Restricted {
 		t.Errorf("after joining another Home = %+v, want clean", got)
 	}
@@ -301,25 +282,25 @@ func TestLeavingAHomeDropsTheResidentsSpecificSettings(t *testing.T) {
 func TestChoreSettingsWritesAreIdempotent(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	chore := choreIn(t, me, "kitchen", []string{})
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	chore := apitest.ChoreIn(t, me, "kitchen", []string{})
 	p := "/home/chores/" + chore + "/preference"
 	r := "/home/chores/" + chore + "/restriction"
 
 	for range 2 {
-		expectStatus(t, me.Delete(p), http.StatusNoContent) // never set
-		expectStatus(t, me.Delete(r), http.StatusNoContent)
+		apitest.ExpectStatus(t, me.Delete(p), http.StatusNoContent) // never set
+		apitest.ExpectStatus(t, me.Delete(r), http.StatusNoContent)
 	}
 	for range 2 {
-		expectStatus(t, me.Put(p, map[string]any{"preference": "like"}), http.StatusNoContent)
-		expectStatus(t, me.Put(r, nil), http.StatusNoContent)
+		apitest.ExpectStatus(t, me.Put(p, map[string]any{"preference": "like"}), http.StatusNoContent)
+		apitest.ExpectStatus(t, me.Put(r, nil), http.StatusNoContent)
 	}
 	if got := mine(t, me, chore); got.Preference != "like" || !got.RestrictedByChore {
 		t.Errorf("after setting twice = %+v", got)
 	}
 	for range 2 {
-		expectStatus(t, me.Delete(p), http.StatusNoContent)
-		expectStatus(t, me.Delete(r), http.StatusNoContent)
+		apitest.ExpectStatus(t, me.Delete(p), http.StatusNoContent)
+		apitest.ExpectStatus(t, me.Delete(r), http.StatusNoContent)
 	}
 	if got := mine(t, me, chore); got.Preference != "neutral" || got.Restricted {
 		t.Errorf("after clearing twice = %+v", got)
@@ -329,8 +310,8 @@ func TestChoreSettingsWritesAreIdempotent(t *testing.T) {
 func TestChoreSettingsErrors(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	chore := choreIn(t, me, "kitchen", []string{})
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	chore := apitest.ChoreIn(t, me, "kitchen", []string{})
 	p := "/home/chores/" + chore + "/preference"
 
 	for name, body := range map[string]any{
@@ -376,9 +357,9 @@ func TestChoreSettingsErrors(t *testing.T) {
 func TestEmptyHomeViewHasEmptyMapsNotNull(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
+	me := apitest.HomeWithResident(t, app, "a@example.com")
 	r := me.Get("/home/chores/settings")
-	expectStatus(t, r, http.StatusOK)
+	apitest.ExpectStatus(t, r, http.StatusOK)
 	residents := r.Body["residents"].([]any)
 	if len(residents) != 1 {
 		t.Fatalf("residents = %s", r.Raw)
@@ -395,12 +376,12 @@ func TestEmptyHomeViewHasEmptyMapsNotNull(t *testing.T) {
 func TestDeletingAChoreRemovesItsSpecificSettings(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	chore := choreIn(t, me, "kitchen", []string{})
-	setPref(t, me, chore, "dislike")
-	expectStatus(t, me.Put("/home/chores/"+chore+"/restriction", nil), http.StatusNoContent)
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	chore := apitest.ChoreIn(t, me, "kitchen", []string{})
+	apitest.SetPreference(t, me, chore, "dislike")
+	apitest.ExpectStatus(t, me.Put("/home/chores/"+chore+"/restriction", nil), http.StatusNoContent)
 
-	expectStatus(t, me.Delete("/home/chores/"+chore), http.StatusNoContent)
+	apitest.ExpectStatus(t, me.Delete("/home/chores/"+chore), http.StatusNoContent)
 	if _, present := myView(t, me)["chores"].(map[string]any)[chore]; present {
 		t.Error("deleted Chore is still in the view")
 	}
@@ -417,15 +398,15 @@ func TestDeletingAChoreRemovesItsSpecificSettings(t *testing.T) {
 func TestUpdatingAChoreChangesTheEffectiveResultAndKeepsSpecificSettings(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
-	me := homeWithResident(t, app, "a@example.com")
-	chore := choreIn(t, me, "kitchen", []string{})
-	expectStatus(t, me.Put("/me/preferences/outdoor", map[string]any{"preference": "like"}), http.StatusNoContent)
-	expectStatus(t, me.Put("/me/restrictions/heights", nil), http.StatusNoContent)
-	setPref(t, me, chore, "dislike")
-	expectStatus(t, me.Put("/home/chores/"+chore+"/restriction", nil), http.StatusNoContent)
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	chore := apitest.ChoreIn(t, me, "kitchen", []string{})
+	apitest.ExpectStatus(t, me.Put("/me/preferences/outdoor", map[string]any{"preference": "like"}), http.StatusNoContent)
+	apitest.ExpectStatus(t, me.Put("/me/restrictions/heights", nil), http.StatusNoContent)
+	apitest.SetPreference(t, me, chore, "dislike")
+	apitest.ExpectStatus(t, me.Put("/home/chores/"+chore+"/restriction", nil), http.StatusNoContent)
 
-	upd := with(with(validChore(), "category", "outdoor"), "demands", []string{"heights"})
-	expectStatus(t, me.Put("/home/chores/"+chore, upd), http.StatusOK)
+	upd := apitest.WithField(apitest.WithField(apitest.ValidChore(), "category", "outdoor"), "demands", []string{"heights"})
+	apitest.ExpectStatus(t, me.Put("/home/chores/"+chore, upd), http.StatusOK)
 
 	got := mine(t, me, chore)
 	if got.Preference != "dislike" || got.Source != "specific" || !got.RestrictedByChore {
@@ -436,7 +417,7 @@ func TestUpdatingAChoreChangesTheEffectiveResultAndKeepsSpecificSettings(t *test
 	}
 
 	// With the specific Preference cleared, the new Category's general one applies.
-	expectStatus(t, me.Delete("/home/chores/"+chore+"/preference"), http.StatusNoContent)
+	apitest.ExpectStatus(t, me.Delete("/home/chores/"+chore+"/preference"), http.StatusNoContent)
 	if got := mine(t, me, chore); got.Preference != "like" || got.Source != "general" {
 		t.Errorf("after clear = %+v, want like/general from the new Category", got)
 	}
