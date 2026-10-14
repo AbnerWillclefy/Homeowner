@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/apitest"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
 
 const webOrigin = "http://localhost:5173"

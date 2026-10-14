@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkin"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkinstore"
 )
 
 // The errors of Swaps, beside those of the other Day Plan actions.
@@ -188,7 +187,7 @@ func (p *Planner) OfferSwap(ctx context.Context, homeID, residentID, offeredTask
 // swapAllowed is nil when `from` may hold the `want` Task and `to` the `give`
 // Task, and neither is Drained today.
 func (a *acting) swapAllowed(ctx context.Context, from, give, to, want string) error {
-	cis, err := checkinstore.LoadMany(ctx, a.tx, []string{from, to}, a.date)
+	cis, err := checkin.LoadMany(ctx, a.tx, []string{from, to}, a.date)
 	if err != nil {
 		return err
 	}

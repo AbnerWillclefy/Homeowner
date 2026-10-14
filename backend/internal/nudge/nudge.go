@@ -18,7 +18,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkinstore"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkin"
+
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 )
@@ -99,7 +100,7 @@ func (n *Nudger) CheckinReminders(ctx context.Context, now time.Time) {
 	checked := map[string]bool{}
 	unknown := map[string]bool{}
 	for id, residents := range byHome {
-		got, err := checkinstore.LoadMany(ctx, n.db, residents, homes[id])
+		got, err := checkin.LoadMany(ctx, n.db, residents, homes[id])
 		if err != nil {
 			// One Home's failure must not cost the others their reminder. This
 			// Home is left out: without its Check-ins nobody can be told apart.

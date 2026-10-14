@@ -16,10 +16,10 @@ import (
 	"time"
 	_ "time/tzdata" // time.LoadLocation must work on Lambda, distroless and CI
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/auth"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/clock"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/config"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/db"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/config"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/db"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/server"
 )

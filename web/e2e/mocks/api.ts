@@ -1,5 +1,5 @@
-import type { Home } from "../../src/home/api";
-import type { ONBOARDING_STEPS } from "../../src/onboarding/api";
+import type { Home } from "../../src/domains/home/api/api";
+import type { ONBOARDING_STEPS } from "../../src/domains/onboarding/api/api";
 import type { Fake, FakeReply, FakeRequest } from "./router";
 
 /** The onboarding steps, in order, as the server stores them. Duplicated on purpose: a runtime import would pull in config.ts. */

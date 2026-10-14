@@ -4,7 +4,7 @@ import { BrowserRouter } from "react-router";
 import App from "./App";
 import { ToastProvider } from "./shared/ui/ToastProvider";
 import { I18nProvider } from "./shared/i18n";
-import { PendingInviteProvider } from "./invite/PendingInviteProvider";
+import { PendingInviteProvider } from "./domains/invite/components/PendingInviteProvider";
 import { ThemeProvider } from "./shared/theme";
 // Only the latin subset and the weights in use; the bare package would pull every subset.
 import "@fontsource/nunito/latin-400.css";

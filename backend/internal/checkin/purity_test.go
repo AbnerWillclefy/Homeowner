@@ -3,8 +3,9 @@ package checkin
 import (
 	"testing"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/puritytest"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/puritytest"
 )
 
-// The package must have no database, HTTP or clock dependency.
-func TestPackageIsPure(t *testing.T) { puritytest.Check(t) }
+// The rule files must have no database, HTTP or clock dependency. store.go is
+// the one file that does I/O.
+func TestPackageIsPure(t *testing.T) { puritytest.Check(t, "store.go") }

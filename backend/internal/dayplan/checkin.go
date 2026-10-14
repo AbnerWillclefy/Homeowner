@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkinstore"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkin"
 )
 
 // CheckIn stores a Resident's Check-in for the Home's local date at now and,
@@ -36,7 +36,7 @@ import (
 //     allocator stay. A proposal that errors or breaks a rule rolls back
 //     everything, the Check-in included, and returns an error: an unchecked
 //     plan is never stored (ADR 0004).
-func (p *Planner) CheckIn(ctx context.Context, homeID, residentID string, in checkinstore.CheckIn, now time.Time) (allocation.Date, error) {
+func (p *Planner) CheckIn(ctx context.Context, homeID, residentID string, in checkin.CheckIn, now time.Time) (allocation.Date, error) {
 	tx, err := p.db.Begin(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("check in: %w", err)
@@ -47,7 +47,7 @@ func (p *Planner) CheckIn(ctx context.Context, homeID, residentID string, in che
 	if err != nil {
 		return 0, fmt.Errorf("check in: %w", err)
 	}
-	if err := checkinstore.Save(ctx, tx, residentID, date, in, now); err != nil {
+	if err := checkin.Save(ctx, tx, residentID, date, in, now); err != nil {
 		return 0, err
 	}
 

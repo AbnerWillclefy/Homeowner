@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/apitest"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
 
 func put(t *testing.T, c *apitest.Client, path string, body map[string]any) {

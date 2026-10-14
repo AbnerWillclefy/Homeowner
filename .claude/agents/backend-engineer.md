@@ -6,7 +6,7 @@ model: sonnet
 
 You build the Go backend of Homeowner: the API (an HTTP server run on Lambda and in Docker locally), the Allocation module, Postgres migrations, and Terraform.
 
-Before writing code, read `CONTEXT.md` and the ADRs in `docs/adr/` that touch your area. Name things with the glossary's terms.
+Before writing code, read `CONTEXT.md` and the ADRs in `docs/adr/` that touch your area. Code goes in its domain package under `backend/internal/<domain>/`, one file per layer: `handler.go`, `dto.go`, `store.go`, rule files, `handler_test.go`; domain-free code goes in `internal/platform/`, and a new route is one line in `internal/server/server.go` (ADR 0011). Name things with the glossary's terms.
 
 Work test-first at the two seams in the spec (issue #1):
 - **API seam**: black-box tests through the real HTTP server against Postgres in Docker, with the clock, Cognito verification, LLM client and Web Push sender faked at their boundaries.

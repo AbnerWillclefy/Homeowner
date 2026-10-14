@@ -14,94 +14,107 @@ The backend is one Go module in `backend/`. In Go, code under `internal/` can on
 
 ## Packages
 
+The code is organised by domain ([ADR 0011](../adr/0011-split-each-domain-into-layer-folders.md)). Each domain package owns its data, its rules and its HTTP routes, and names its files by layer, so the same file name means the same job everywhere:
+
+| File | Layer |
+|---|---|
+| `<package>.go` | The package doc, the domain model types and the sentinel errors (when the package has more than one file). |
+| `handler.go` (`handler_<topic>.go` when one is not enough) | The HTTP controller: a `Handler` built with `NewHandler`, one method per route, which decodes the request, calls the domain and maps its errors to status codes. |
+| `dto.go` | The named request and response shapes on the wire. Small inline body structs stay in the handler. |
+| `store.go` | The repository: the only file that talks to Postgres. |
+| any other file | The service: the domain's rules, for example `validate.go`, `resolve.go`, `schedule.go`, `commit.go`. |
+| `handler_test.go` | The black-box API tests of that domain's routes, through the real server (`apitest`). |
+
+Folders:
+
+- `internal/<domain>/`: `users`, `homes`, `invites`, `chores`, `choresettings`, `catalog`, `profile`, `tasks`, `dayplan`, `checkin`, `streak`, `push`, plus the pure rule packages `allocation`, `schedule`, `onboarding` and the shared ids in `vocab`.
+- `internal/identity/`: who is calling. The server's middleware puts the signed-in User and their Membership in the request context; handlers read them with `identity.CurrentUser` and `identity.CurrentMembership`, so no domain imports another just to know its caller. `users.User`, `homes.Home` and `homes.Membership` are aliases of its types.
+- `internal/platform/`: code that knows no domain. `auth` (token verification), `clock`, `config`, `db`, `httpx` (`WriteJSON`, `WriteError`, `InternalError`, `DecodeBody`), the test harness `apitest` and `puritytest`, the shared check behind every `purity_test.go`.
+- `internal/server/`: the composition root. `server.go` builds every domain `Handler` and lists every route in one table; `auth.go` holds `requireUser` and `requireResident`; `cors.go` and `http.go` the outer middleware.
+
 ```mermaid
 flowchart TD
-    main["cmd/api main"]
-    server["internal/server: routes, middleware"]
-    config["internal/config: env variables"]
-    db["internal/db: pgx pool, goose migrations"]
-    clock["internal/clock: System and Fake"]
-    push["internal/push: Sender, Store, WebPushSender, Fake"]
-    auth["internal/auth: Verifier, Cognito, Fake"]
-    users["internal/users: Store (find or create)"]
-    homes["internal/homes: Store (Homes and Residents)"]
-    invites["internal/invites: Store (create, lookup, accept)"]
-    chores["internal/chores: Validate, Store"]
-    catalog["internal/catalog: Entries, Propose, pure"]
-    profile["internal/profile: Store (baseline, preferences, restrictions)"]
-    choresettings["internal/choresettings: Resolve, Store"]
-    schedule["internal/schedule: Decide, pure"]
-    tasks["internal/tasks: Store (refresh, open pool)"]
-    dayplan["internal/dayplan: Planner, Store, EventsHandler"]
-    nudge["internal/nudge: check-in reminders, Day Plan ready"]
-    checkin["internal/checkin: Level, Scale, pure"]
-    checkinstore["internal/checkinstore: New, Save, LoadMany, Store"]
-    streak["internal/streak: Judge, Current, pure"]
-    streakstore["internal/streakstore: Store.Current"]
-    vocab["internal/vocab: Category, Demand and Importance ids"]
-    onboarding["internal/onboarding: Steps, Next, pure"]
-    mig["migrations: embedded SQL"]
-    alloc["internal/allocation: Plan and Check, pure"]
-    apitest["internal/apitest: test harness"]
+    main["cmd/api"]
+    server["server: route table, access middleware"]
 
+    subgraph domains["internal/&lt;domain&gt;: handler, store, rules"]
+        users
+        homes
+        invites
+        chores
+        choresettings
+        catalog
+        profile
+        tasks
+        dayplan
+        checkin
+        streak
+        push
+        nudge["nudge (job only)"]
+    end
+
+    subgraph pure["pure rules, no I/O"]
+        alloc["allocation"]
+        schedule
+        onboarding
+        vocab
+    end
+
+    subgraph platform["internal/platform"]
+        auth
+        clock
+        config
+        db
+        httpx
+        apitest
+    end
+
+    identity["identity: the caller"]
+    mig["migrations: embedded SQL"]
+
+    main --> server
+    main --> dayplan
+    main --> nudge
     main --> config
     main --> db
-    main --> server
-    main --> clock
-    main --> push
-    main --> auth
-    server --> clock
-    server --> push
+    server --> domains
+    server --> identity
     server --> auth
-    server --> users
-    server --> homes
-    server --> profile
-    server --> invites
+    homes --> users
+    homes --> chores
     invites --> homes
-    server --> chores
-    server --> catalog
+    users --> onboarding
     catalog --> chores
-    server --> choresettings
     choresettings --> chores
     choresettings --> profile
-    server --> tasks
-    server --> dayplan
-    main --> dayplan
     dayplan --> tasks
+    dayplan --> checkin
     dayplan --> profile
+    dayplan --> chores
     dayplan --> alloc
-    apitest --> dayplan
-    apitest --> nudge
-    main --> nudge
-    nudge --> dayplan
-    nudge --> push
-    nudge --> checkinstore
-    server --> streakstore
-    streakstore --> streak
-    streakstore --> alloc
     streak --> alloc
+    streak --> dayplan
     tasks --> schedule
     tasks --> alloc
     schedule --> alloc
+    checkin --> alloc
+    nudge --> dayplan
+    nudge --> push
+    nudge --> checkin
     chores --> vocab
-    server --> vocab
-    auth --> clock
-    apitest --> push
-    apitest --> auth
     db --> mig
     apitest --> server
     apitest --> db
-    apitest --> clock
 ```
 
-`allocation` has no outgoing arrows: it imports nothing from the project and does no I/O (`purity_test.go` enforces that). `schedule` and `tasks` import it only for its `Date` type; `dayplan` is the only package that calls `Plan` and `Check`.
+Every domain handler also imports `identity`, `platform/httpx` and, where it needs the time, `platform/clock`; those arrows are left out. `allocation` imports nothing from the project and does no I/O (`purity_test.go` enforces that). `schedule` and `tasks` import it only for its `Date` type; `dayplan` is the only package that calls `Plan` and `Check`. The purity tests of `allocation`, `schedule` and `onboarding` cover the whole package; `catalog` exempts its `handler.go` and `checkin` its `store.go`, so the rule files stay pure next to their edge.
 
 | Package | Role |
 |---|---|
-| `server` | Builds one `http.Handler` (`server.New(Deps)`). `Deps` holds everything outside the system that tests fake: database pool, clock, logger, CORS origins, the Web Push `Sender` and the public VAPID key and the token `Verifier` (nil means auth is off). |
-| `config` | Reads `DATABASE_URL`, `MIGRATE_DATABASE_URL`, `PORT`, `MIGRATE_ON_START`, `DB_MAX_CONNS`, `CORS_ALLOWED_ORIGINS`, the optional pair `COGNITO_ISSUER` and `COGNITO_CLIENT_ID` (public identifiers, so plain environment variables; one without the other is an error, the issuer must be https, neither means auth is off), and the optional set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (one key without the other is an error; neither means push is off). `VAPID_PRIVATE_KEY` is resolved from SSM through `VAPID_PRIVATE_KEY_SSM_PARAM`, like the database URLs. |
+| `server` | Builds one `http.Handler` (`server.New(Deps)`): it constructs each domain's `Handler` and maps every route to one of their methods behind `requireUser` or `requireResident`. `Deps` holds everything outside the system that tests fake: database pool, clock, logger, CORS origins, the Web Push `Sender` and the public VAPID key and the token `Verifier` (nil means auth is off). |
+| `platform/config` | Reads `DATABASE_URL`, `MIGRATE_DATABASE_URL`, `PORT`, `MIGRATE_ON_START`, `DB_MAX_CONNS`, `CORS_ALLOWED_ORIGINS`, the optional pair `COGNITO_ISSUER` and `COGNITO_CLIENT_ID` (public identifiers, so plain environment variables; one without the other is an error, the issuer must be https, neither means auth is off), and the optional set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (one key without the other is an error; neither means push is off). `VAPID_PRIVATE_KEY` is resolved from SSM through `VAPID_PRIVATE_KEY_SSM_PARAM`, like the database URLs. |
 | `push` | `Sender` interface (one `Send` per subscription, returning `ErrGone` when the push service answers 404 or 410), `WebPushSender` (real, on `webpush-go`, VAPID, 24h TTL, 10s HTTP timeout; it strips a leading `mailto:` from `VAPID_SUBJECT` because webpush-go adds one, and includes the push service's response body in non-2xx errors), `Payload` (`title`, `body`, `url` and an optional `kind`, `checkin_reminder` or `day_plan_ready`, that the service worker words for the device language; the English text is always sent too), `Store` (the `push_subscriptions` table: upsert, get, `ListByUsers` (all devices of a set of Users in one query), delete, and `Deliver`, which drops a subscription the push service rejected), and `Fake` for tests. |
-| `auth` | `Verifier` interface: a raw bearer token in, `Claims{Subject, Email}` out, or an error wrapping `ErrInvalidToken`. `Cognito` is the real one: RS256 only, signature from the pool's JWKS (fetched lazily on the first authenticated request, cached in memory for an hour, one refetch at most a minute for an unknown key id, old keys kept if a refresh fails, fail closed when none are known), `iss` equal to the issuer, `aud` equal to the app client, `token_use` equal to `id`, `exp` required, `email_verified` true, subject and email present. Time comes from the injected `Clock`. `Fake` mints tokens for tests and never touches the network. |
+| `platform/auth` | `Verifier` interface: a raw bearer token in, `Claims{Subject, Email}` out, or an error wrapping `ErrInvalidToken`. `Cognito` is the real one: RS256 only, signature from the pool's JWKS (fetched lazily on the first authenticated request, cached in memory for an hour, one refetch at most a minute for an unknown key id, old keys kept if a refresh fails, fail closed when none are known), `iss` equal to the issuer, `aud` equal to the app client, `token_use` equal to `id`, `exp` required, `email_verified` true, subject and email present. Time comes from the injected `Clock`. `Fake` mints tokens for tests and never touches the network. |
 | `users` | `Store.FindOrCreate(sub, email, now)`: the single upsert behind the first-request-creates-the-User rule. |
 | `onboarding` | The ordered step ids (`install`, `reminders`, `baseline`, `restrictions`, `preferences`, `home`, then `done`), `Valid` (what a client may `PUT`), `Next` (the step after the stored one) and `Before` (the stored values a step may move forward from). Stdlib only; `purity_test.go` enforces it. `users.Store.AdvanceOnboarding` applies the monotonic rule as one conditional `UPDATE`, and `homes.Store.Create` stores `done` in its transaction. |
 | `homes` | `Membership{ResidentID, Home}` is a User's place in a Home: their own `residents` row and the plain `Home`. `Store.Create(userID, timezone, allocationTime, now, inHome)` inserts the Home and the first Resident in one transaction (and runs the optional `inHome` callback on it, which `POST /home` uses to add the reviewed Chores without `homes` importing `chores`) and maps the unique violation on `residents.user_id` to `ErrAlreadyResident`; `ForUser` returns the caller's `Membership` or `ErrNoHome`; `UpdateSettings` replaces the timezone and Allocation time. `LeaveTx(tx, residentID, homeID)` is the one place a Resident leaves a Home: inside the caller's transaction it locks the Home row (`FOR UPDATE`, so two last Residents leaving at once are serialised), deletes the `residents` row (the cascade clears their specific Preferences and Restrictions) and deletes the Home if nobody is left (the cascade clears its Chores, Tasks and Invites). Accepting an Invite uses it, and `Store.Leave(residentID, homeID)` wraps it in its own transaction for `DELETE /home/residents/me`. |
@@ -112,17 +125,17 @@ flowchart TD
 | `choresettings` | A Resident's Preference and Restriction on one specific Chore. `Resolve(Chore, General, Specific)` is pure and holds the rule: a specific Preference (neutral included) beats the general one for the Chore's Category, else neutral (source `specific`, `general` or `default`); Restrictions only add, so the reasons are the Chore's Demands that are in the User's general Restrictions plus the specific Restriction, listed apart. `Store` has `SetPreference`, `ClearPreference`, `AddRestriction`, `RemoveRestriction` (idempotent; the two sets prove in the same statement that the Chore is in the Resident's Home, the two deletes ask only when they removed nothing; `ErrNotFound` otherwise, the same for a missing Chore) and `Effective(homeID)`, which reads the Home's Chores, Residents, all their general profiles (`profile.LoadMany`, one `ANY($1)` query per profile table) and the specific rows in one read-only repeatable-read transaction, a fixed number of queries however many Residents there are. It has no HTTP types, so the Allocation job can reuse it; `allocation` is untouched. |
 | `schedule` | `Decide(Chore, latest *Task, today)` is pure (stdlib and `allocation.Date` only; `purity_test.go` enforces it) and returns one decision: `Open` a Task with a window and Effort, `SetEffort` on the open Task, or `Nothing`. Rules (ADR 0001): a recurring Chore has windows of N consecutive days, the first starting on the day it was created in the Home's zone; `WindowStart` and `WindowEnd` are inclusive dates. With allowed weekdays, the window starts on the first allowed day on or after the scheduled start and N is rounded up to whole weeks, so a Task only opens on an allowed day. A one-off Chore gets one Task, ever (a day, or a week when weekdays are limited). A window is missed when today is past `WindowEnd` and the Task is still open; the same Task stays open and keeps its window. Missed windows are derived (`floor((today - WindowStart) / length)`), never counted, so repeated or skipped runs agree; a recurring build-up Chore's current Effort is `min(5, base + missed)`, other Chores stay at base (`buildsUp` is ignored on a one-off). After a Task is done, the next window of a recurring Chore starts N days after `closed_on` at base Effort (an assumption until a Completion ticket defines it). |
 | `tasks` | `Store.Refresh(homeID, now)` brings a Home's Tasks up to date: in one transaction (`statement_timeout` 5s) it converts `now` to a date in the Home's IANA zone (an unloadable zone is an error, never UTC), locks each Chore row `FOR UPDATE`, loads its latest Task, applies `schedule.Decide` and writes. Idempotent and safe in parallel; the partial unique index on open Tasks is the final guard and the insert is `ON CONFLICT DO NOTHING`. `Store.ListOpen(homeID)` returns the open pool, never nil. The daily Allocation job (`dayplan`) calls `Refresh` before it builds `allocation.State`. |
-| `checkin` | The Check-in rule, pure (stdlib only; `purity_test.go` enforces it). `Level` (`drained`, `low`, `normal`, `energized`) with `Valid`, and `Scale(base, Level)`: 0, 50%, 100%, 130% of the Baseline in whole points, rounded down (integer arithmetic), 0 for a base of 0 or an unknown level. Table-tested for every level and every base 0 to `profile.MaxBaseline`. Demand validation stays in `vocab.IsDemand`. |
-| `checkinstore` | Stores Check-ins (`checkins`, `checkin_demand_restrictions`). `New(level, demands)` is the one validating, de-duplicating constructor of a `CheckIn` (`ErrInvalidLevel`, `ErrUnknownDemand`); the handler and `Save` trust it, and the SQL `ON CONFLICT DO NOTHING` stays as a safety net. `Save(tx, residentID, date, CheckIn, now)` upserts on `(resident_id, checkin_date)` and replaces the day Restrictions; `LoadMany(q, residentIDs, date)` reads each Resident's Check-in in the caller's snapshot (a Resident with none is absent); `Store.Get` is the single read for the route. Day Restrictions are never written to the lasting `user_demand_restrictions`. |
-| `streak` | The Streak rule, pure (stdlib and `allocation.Date` only; `purity_test.go` enforces it). `Day` holds a Resident's facts for one Home-local date (`Completions`, `Undone`, `Drained`); `Judge(Day)` returns `Grow`, `Pause` or `Break`; `Current(days, today)` walks the final days back from yesterday (grow adds one, pause carries on, break stops) and adds today only when it already grows, returning the number and `todayGrew`. Today is passed in, never read. Table-tested with explicit dates; the fake-clock tests are at the API seam. The rules are in [Daily Allocation](allocation.md). |
-| `streakstore` | `Store.Current(ctx, residentID, today)` reads the facts for one Resident in a single aggregated query over `task_residents` (left-joined to `completions` on the same date for `undone`), `completion_residents` and Drained `checkins`, up to today, and hands them to `streak.Current`. Nothing is stored and there is no new table or migration. |
+| `checkin` | The Check-in rule, pure (`checkin.go`, stdlib only; `purity_test.go` enforces it for every file but `store.go`). `Level` (`drained`, `low`, `normal`, `energized`) with `Valid`, and `Scale(base, Level)`: 0, 50%, 100%, 130% of the Baseline in whole points, rounded down (integer arithmetic), 0 for a base of 0 or an unknown level. Table-tested for every level and every base 0 to `profile.MaxBaseline`. Demand validation stays in `vocab.IsDemand`. |
+| `checkin` (store) | `store.go` stores Check-ins (`checkins`, `checkin_demand_restrictions`). `New(level, demands)` is the one validating, de-duplicating constructor of a `CheckIn` (`ErrInvalidLevel`, `ErrUnknownDemand`); the handler and `Save` trust it, and the SQL `ON CONFLICT DO NOTHING` stays as a safety net. `Save(tx, residentID, date, CheckIn, now)` upserts on `(resident_id, checkin_date)` and replaces the day Restrictions; `LoadMany(q, residentIDs, date)` reads each Resident's Check-in in the caller's snapshot (a Resident with none is absent); `Store.Get` is the single read for the route. Day Restrictions are never written to the lasting `user_demand_restrictions`. |
+| `streak` | The Streak rule, pure (`streak.go`, stdlib and `allocation.Date` only; `purity_test.go` enforces it for every file but `handler.go` and `store.go`). `Day` holds a Resident's facts for one Home-local date (`Completions`, `Undone`, `Drained`); `Judge(Day)` returns `Grow`, `Pause` or `Break`; `Current(days, today)` walks the final days back from yesterday (grow adds one, pause carries on, break stops) and adds today only when it already grows, returning the number and `todayGrew`. Today is passed in, never read. Table-tested with explicit dates; the fake-clock tests are at the API seam. The rules are in [Daily Allocation](allocation.md). |
+| `streak` (store) | `store.go`: `Store.Current(ctx, residentID, today)` reads the facts for one Resident in a single aggregated query over `task_residents` (left-joined to `completions` on the same date for `undone`), `completion_residents` and Drained `checkins`, up to today, and hands them to `Current`. Nothing is stored and there is no new table or migration. |
 | `dayplan` | Runs Allocation and stores and reads the Day Plan. `Planner` (built with `New(db, Allocator, logger, ...Option)`; `WithNudger(n)` sets the optional `Nudger` interface (`DayPlanReady`, `CheckinReminders`) that `RunDue` calls after planning every due Home, first for the Homes planned in this tick, then the reminders, inside a recover and under one shared 30s context deadline (`WithNudgeTimeout` changes it, for tests); no option means no push, and `dayplan` never imports `push`; the `Allocator` interface is the seam where the LLM allocator plugs in, and an allocator that implements `Name()` names itself in the run record) has `DueHomes(now)`, `PlanHome(homeID, now)` and `RunDue(now)`. `DueHomes` converts `now` to each Home's IANA zone and returns the Homes whose local wall-clock time is at or past their Allocation time and that have no run for the local date ("at or past", so a late tick or a daylight-saving gap still plans once); a Home with an unknown zone is logged and skipped. `PlanHome` first returns if the day has a run, then calls `tasks.Refresh`, then in one transaction locks the Home row (`FOR NO KEY UPDATE`), looks for the run again, loads the `allocation.State` (all open Tasks, overdue ones included, joined with their Chore for Demands, people and allowed weekdays; Residents with Energy and both levels of Restriction), asks the Allocator, has `allocation.Check` referee the proposal, and writes the run and the assignments. A proposal that errors or breaks any rule is never stored as a plan: the run is recorded `rejected` with the violations, nothing is assigned, the rejection is logged, and the day is taken, so it is not retried until tomorrow. Refresh runs outside the lock so a call never holds one connection while waiting for a second from the pool (with `DB_MAX_CONNS=2`); it is idempotent, so overlapping calls only repeat it. Energy is the Resident's Baseline points for the weekday of the Home's local date, scaled by their Check-in when they made one, in one function (`energyOn`); an unset day is 0 and gives that Resident nothing, even with a Check-in. The Check-in's day-only Restrictions are added to the general Demand Restrictions. A two-person Task is stored as one `day_plan_assignments` row per Resident; `Store.Today` lists it under each holder with `with`, `Complete` records every holder, `Refuse` frees both while nobody accepted, and re-plans keep or release both rows together (see [allocation](allocation.md)). The `Check` violation kinds are `over_energy`, `broken_restriction`, `unknown_task`, `duplicate_task`, `unknown_resident`, `weekday_not_allowed` and `wrong_resident_count`. `CheckIn(homeID, residentID, CheckIn, now)` stores a Check-in and, when today's run is `planned`, plans that one Resident again in the same transaction (same Home lock as `PlanHome`; see [allocation](allocation.md)); with no run it only saves, after a `rejected` run it only saves, and a failed or refused re-plan rolls everything back and returns an error. `PlanResident(homeID, residentID, now)` is "get my tasks right away": it refreshes the Tasks, locks the Home, and plans that one Resident from the pool through the same re-plan path as a Check-in (`replanRun`); with no run for the date it creates today's run first, which makes the job skip the Home today (see [allocation](allocation.md)); after a `rejected` run it changes nothing and returns `Rejected`; a failed or refused proposal rolls back and returns an error. Swaps (`swap.go`) are `OfferSwap`, `AcceptSwap`, `DeclineSwap` and `CancelSwap`, run through the same `act` wrapper (Home lock, today's run), with `acting.mayDo` (the referee call Take also uses) deciding both sides, `reasons.swap` rewriting the stored reasons and the sentinels `ErrNotHeldByOther`, `ErrSwapPending`, `ErrSwapNotFound`, `ErrSwapClosed`, `ErrSwapStale` and `ErrRecipientDrained` (see [allocation](allocation.md)); `Store.Today` adds the caller's live offers as `swaps`. The Day Plan actions are `Accept`, `AcceptAll`, `Refuse`, `Take` and `Complete` (`commit.go`): each begins a transaction, locks the Home with `lockHome` (the same lock as the job, a Check-in and "right away"), loads today's run with `loadRun`, acts, and commits; every early return rolls back. Accept, AcceptAll, Refuse and Take need a `planned` run (`ErrNoPlanToday`); Complete without one is `ErrNotYours`. The Task row is locked `FOR UPDATE`, joined to its Chore on `home_id`, so a Task of another Home is `ErrTaskNotFound`. Errors are sentinels (`ErrTaskNotFound`, `ErrNoPlanToday`, `ErrNotProposed`, `ErrAlreadyCommitted`, `ErrNotInPool`, `ErrNotYours`, `ErrAlreadyDone`, `ErrTwoPersonTask`, `ErrRestricted`); `dayplan` knows no status codes. `Take` runs `allocation.Check` on a plan of only that Task and ignores the over-Energy violation. `LocalDate(zone, now)` is the one place the Home's local date is computed. The server builds its own `Planner` from `Deps.Allocator` (default `allocation.Baseline`), which must be the one the job uses. `RunDue` plans each due Home and logs, but survives, a failure for one; it returns a `Summary`. `Store.Today` reads the stored plan for the API and never plans or refreshes. `EventsHandler` is the job Lambda's HTTP surface. Logs carry the Home id, date, allocator and counts only. |
 | `vocab` | The fixed, ordered Category, Demand and Importance ids (snake_case, stored and sent as-is) with `IsCategory`, `IsDemand` and `IsImportance`. `allocation` never imports it; its `Demand` and `Importance` values equal these ids. |
-| `db` | Opens a `pgx` connection pool (retrying about 10s at start) and runs `goose` migrations. |
-| `clock` | The only place allowed to read the time. Business code takes a `Clock`; tests use `Fake`. |
+| `platform/db` | Opens a `pgx` connection pool (retrying about 10s at start) and runs `goose` migrations. |
+| `platform/clock` | The only place allowed to read the time. Business code takes a `Clock`; tests use `Fake`. |
 | `allocation` | The Allocation module, see [Daily Allocation](allocation.md). |
-| `nudge` | The two pushes the Allocation tick owns. `nudge.New(db, push.Sender, logger)` returns a `Nudger` with `CheckinReminders(ctx, now)` and `DayPlanReady(ctx, homeIDs, now)`; neither returns an error, they log and swallow every failure. It imports `dayplan` (for `LocalDate`, to satisfy `dayplan.Nudger`, and for `dayplan.UnplannedHomes`, the one scan of zones and runs that `DueHomes` also uses, here called with the reminder window), `push` and `checkinstore`; `dayplan` does not import it. The window rule is the pure `inReminderWindow(local, alloc time.Duration)` (table-tested; the lead is `time.Hour`). A Home whose Check-ins fail to load is logged and skipped; the other Homes still get their reminders. Claims the `nudges` ledger before each send, sends through `push.Store.Deliver` (gone subscriptions are deleted), with a 5s timeout per send; the 30s deadline for both calls together is set by `dayplan`, not here. Rules and ordering: [Daily Allocation](allocation.md). |
-| `apitest` | Starts the real server against a real Postgres for tests. When started `WithPush`, the Planner it builds (`App.Planner`, `App.RunAllocation`) carries a `nudge.Nudger` over the same fake sender, so a test sees the job's pushes in `App.Push.Sent()`; without `WithPush` the Planner has no Nudger and only plans. |
+| `nudge` | The two pushes the Allocation tick owns. `nudge.New(db, push.Sender, logger)` returns a `Nudger` with `CheckinReminders(ctx, now)` and `DayPlanReady(ctx, homeIDs, now)`; neither returns an error, they log and swallow every failure. It imports `dayplan` (for `LocalDate`, to satisfy `dayplan.Nudger`, and for `dayplan.UnplannedHomes`, the one scan of zones and runs that `DueHomes` also uses, here called with the reminder window), `push` and `checkin`; `dayplan` does not import it. The window rule is the pure `inReminderWindow(local, alloc time.Duration)` (table-tested; the lead is `time.Hour`). A Home whose Check-ins fail to load is logged and skipped; the other Homes still get their reminders. Claims the `nudges` ledger before each send, sends through `push.Store.Deliver` (gone subscriptions are deleted), with a 5s timeout per send; the 30s deadline for both calls together is set by `dayplan`, not here. Rules and ordering: [Daily Allocation](allocation.md). |
+| `apitest` | `platform/apitest`. Starts the real server against a real Postgres for tests. `fixtures.go` holds the helpers several domains' API tests share (`HomeWithResident`, `CreateChore`, `ExpectStatus`, `CreateInvite`, ...). When started `WithPush`, the Planner it builds (`App.Planner`, `App.RunAllocation`) carries a `nudge.Nudger` over the same fake sender, so a test sees the job's pushes in `App.Push.Sent()`; without `WithPush` the Planner has no Nudger and only plans. |
 
 ## Request flow
 
@@ -150,13 +163,13 @@ sequenceDiagram
 
 Unknown routes return `404` with `{"error":"not found"}`.
 
-Authentication is not in that chain: `requireUser` wraps individual routes (like `requirePush`), so `/healthz`, the VAPID key, CORS preflights and the 404 fallback stay open. It reads `Authorization: Bearer <token>` and asks the `Verifier`. A missing header, wrong scheme, malformed value or any verification failure gives the same `401 {"error":"unauthorized"}` with `WWW-Authenticate: Bearer`. With no Verifier it answers `503 {"error":"auth not configured"}` (fail closed). Otherwise it finds or creates the User, puts it in the request context under a private key type, and calls the handler. The token is never logged.
+Authentication is not in that chain: `requireUser` wraps individual routes (like `push.Handler.RequireConfigured`), so `/healthz`, the VAPID key, CORS preflights and the 404 fallback stay open. It reads `Authorization: Bearer <token>` and asks the `Verifier`. A missing header, wrong scheme, malformed value or any verification failure gives the same `401 {"error":"unauthorized"}` with `WWW-Authenticate: Bearer`. With no Verifier it answers `503 {"error":"auth not configured"}` (fail closed). Otherwise it finds or creates the User, puts it in the request context (`identity.WithUser`), and calls the handler. The token is never logged.
 
 An Invite token is also a credential, and it travels in the URL path of `/invites/{token}`. `logRequests` and the panic recovery log `loggedPath(r.URL.Path)`, which replaces that segment with `{token}`, so the raw path never reaches the logs. Any new route that carries a secret in its path must be added to `loggedPath`.
 
-`requireResident` wraps `requireUser` for routes on a Home's data. It loads the caller's Home, puts it in the context under a private key, and answers `404 {"error":"no home"}` when the User lives in none, so a new User never gets a 500 and nobody can reach another Home's data. Every Home-scoped route goes behind it.
+`requireResident` wraps `requireUser` for routes on a Home's data. It loads the caller's Home, puts the Membership in the context (`identity.WithMembership`), and answers `404 {"error":"no home"}` when the User lives in none, so a new User never gets a 500 and nobody can reach another Home's data. Every Home-scoped route goes behind it.
 
-`decodeBody` (in `http.go`) reads a JSON body with a caller-chosen size cap and an option to reject unknown fields. `cmd/api` imports `time/tzdata`, so `time.LoadLocation` works on Lambda and in distroless images.
+`httpx.DecodeBody` reads a JSON body with a caller-chosen size cap and an option to reject unknown fields. `cmd/api` imports `time/tzdata`, so `time.LoadLocation` works on Lambda and in distroless images.
 
 ## Routes
 
@@ -201,7 +214,7 @@ An Invite token is also a credential, and it travels in the URL path of `/invite
 | `POST /push/test` | Needs a token. Body `{"endpoint","delaySeconds"?}`. Sends a small test notification to that one stored subscription only. `204`; `404` unknown, owned by another User or owned by nobody; `410` if the push service rejected it (the row is deleted); `502` on any other push error (the row is kept). |
 
 Invalid Home settings answer `400 {"error":"invalid home","fields":{...}}` with every bad field and a stable code each: `timezone` is `required` or `unknown` (not an IANA zone; `Local` is refused because it means the server's zone), `allocationTime` is `required`, `invalid` (not strictly `HH:MM`) or `not_quarter_hour` (the Allocator job runs every 15 minutes, so only minutes 00, 15, 30, 45). Nothing is stored.
-Every profile write answers `204` with no body, and every query uses the signed-in User's id, never one from the URL or body. Request bodies are capped at 4 KB and reject unknown fields (`decodeBody` in `server/http.go` takes the cap and a strict flag; push keeps its 8 KB cap and lenient decoding).
+Every profile write answers `204` with no body, and every query uses the signed-in User's id, never one from the URL or body. Request bodies are capped at 4 KB and reject unknown fields (`httpx.DecodeBody` takes the cap and a strict flag; push keeps its 8 KB cap and lenient decoding).
 
 The three `/push/*` routes answer `503 {"error":"push not configured"}` when no VAPID keys are set, so local development and CI need none. The two write routes need a signed-in User; `GET /push/vapid-public-key` stays public. Push configuration is checked first, then the token. Subscriptions carry `user_id`, and a test send reaches only a subscription the caller owns.
 

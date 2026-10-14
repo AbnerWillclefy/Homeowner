@@ -3,8 +3,9 @@ package streak
 import (
 	"testing"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/puritytest"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/puritytest"
 )
 
-// The package must have no database, HTTP or clock dependency.
-func TestPackageIsPure(t *testing.T) { puritytest.Check(t) }
+// The rule files must have no database, HTTP or clock dependency. handler.go
+// and store.go are the edges.
+func TestPackageIsPure(t *testing.T) { puritytest.Check(t, "handler.go", "store.go") }

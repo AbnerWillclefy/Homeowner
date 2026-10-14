@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/apitest"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
 
 // utc is a fake-clock instant on a March 2026 day (1 March is a Sunday, so the

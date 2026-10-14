@@ -1,6 +1,7 @@
 // Package checkin holds the Check-in rule: how a Resident's answer to "how are
 // you today?" scales their Baseline into today's Energy. It is pure: no
-// database, HTTP or clock. Storing Check-ins is internal/checkinstore.
+// database, HTTP or clock. Storing Check-ins is store.go, the one file
+// allowed I/O (purity_test.go enforces it).
 package checkin
 
 // Level is how a Resident says they feel today.
