@@ -384,6 +384,15 @@ export const ptBR: Messages = {
     "Não sobrou nenhuma tarefa em aberto para você hoje. Aproveite o dia.",
   "startChoice.done.close": "Entendi",
 
+  // Streak
+  "streak.heading": "Sequência",
+  "streak.days": {
+    one: "Sequência de {count} dia",
+    other: "Sequência de {count} dias",
+  },
+  "streak.empty": "Conclua uma tarefa para começar uma",
+  "streak.todayCounts": "Hoje conta",
+
   // Check-in
   "checkin.heading": "Check-in",
   "checkin.prompt": "Como você está hoje?",
