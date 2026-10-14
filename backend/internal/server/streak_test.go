@@ -230,3 +230,43 @@ func TestLeavingTheHomeAndJoiningAnotherStartsAtZero(t *testing.T) {
 	}
 	wantStreak(t, b, 0, false)
 }
+
+// The Streak counts days in the Home's own zone (ADR 0003). Auckland is UTC+13
+// in March, so 20:00 UTC on the 2nd is already 09:00 on the 3rd at home.
+func TestTheStreakCountsTheHomeLocalDayNotTheUTCDay(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := app.SignInAs("a@example.com")
+	if r := me.Post("/home", homeBody("Pacific/Auckland", "07:00")); r.Status != http.StatusCreated {
+		t.Fatalf("POST /home = %d %s", r.Status, r.Raw)
+	}
+	all := map[string]any{}
+	for _, d := range []string{"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"} {
+		all[d] = 4
+	}
+	setBaseline(t, me, all)
+	app.Clock.Set(at(2, 6))
+	createChore(t, me, chore("Dishes", 1, 2, "normal", []string{}))
+
+	// 18:00 UTC on the 2nd is 07:00 on the 3rd in Auckland: the Allocation time.
+	app.Clock.Set(at(2, 18))
+	app.RunAllocation(t)
+	app.Clock.Set(at(2, 20))
+
+	if got := streakOf(t, me); got.date != "2026-03-03" {
+		t.Fatalf("date = %q, want the Home-local 2026-03-03", got.date)
+	}
+	mustAct(t, me, "complete", mineOf(t, me)[0]["id"].(string))
+	wantStreak(t, me, 1, true)
+
+	// 10:59 UTC on the 3rd is 23:59 at home: the Completion still counts today.
+	app.Clock.Set(time.Date(2026, time.March, 3, 10, 59, 0, 0, time.UTC))
+	if got := streakOf(t, me); got.date != "2026-03-03" || got.current != 1 || !got.todayGrew {
+		t.Fatalf("before local midnight = %+v", got)
+	}
+	// Local midnight: the 4th begins at home, the 3rd is final and grew.
+	app.Clock.Set(time.Date(2026, time.March, 3, 11, 0, 0, 0, time.UTC))
+	if got := streakOf(t, me); got.date != "2026-03-04" || got.current != 1 || got.todayGrew {
+		t.Fatalf("after local midnight = %+v", got)
+	}
+}
