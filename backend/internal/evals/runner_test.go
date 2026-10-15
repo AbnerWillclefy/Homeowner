@@ -3,6 +3,7 @@ package evals
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -145,6 +146,45 @@ func TestSummarize(t *testing.T) {
 	}
 	if s.Assignments != 4 || s.Liked != 1 || s.Neutral != 2 || s.Disliked != 1 {
 		t.Errorf("preference counts = %+v", s)
+	}
+}
+
+// gate is a Proposer that records the most calls in flight at once.
+type gate struct {
+	mu        sync.Mutex
+	inFlight  int
+	maxFlight int
+}
+
+func (g *gate) Propose(ctx context.Context, st allocation.State) (allocation.Result, error) {
+	g.mu.Lock()
+	g.inFlight++
+	g.maxFlight = max(g.maxFlight, g.inFlight)
+	g.mu.Unlock()
+	time.Sleep(10 * time.Millisecond)
+	g.mu.Lock()
+	g.inFlight--
+	g.mu.Unlock()
+	return allocation.Result{}, errors.New("no plan")
+}
+
+func TestRunBoundsConcurrentCallsAndKeepsEverySlot(t *testing.T) {
+	days := append(oneDay(), oneDay()...)
+	g := &gate{}
+	rep := Run(context.Background(), days, Config{Proposer: g, Runs: 4, Concurrency: 2})
+
+	if g.maxFlight > 2 || g.maxFlight < 2 {
+		t.Errorf("max calls in flight = %d, want 2", g.maxFlight)
+	}
+	for _, d := range rep.Days {
+		if len(d.LLM) != 4 {
+			t.Fatalf("llm outcomes = %d, want 4", len(d.LLM))
+		}
+		for _, o := range d.LLM {
+			if !o.NoPlan {
+				t.Errorf("slot not filled: %+v", o)
+			}
+		}
 	}
 }
 

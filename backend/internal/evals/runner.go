@@ -2,6 +2,7 @@ package evals
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
@@ -24,7 +25,14 @@ type Config struct {
 	Timeout time.Duration
 	// Model is only printed in the header.
 	Model string
+	// Concurrency is how many model calls run at once, to stay under the API
+	// rate limit. Below 1 it is DefaultConcurrency.
+	Concurrency int
 }
+
+// DefaultConcurrency is the number of model calls in flight when
+// Config.Concurrency is not set.
+const DefaultConcurrency = 4
 
 // Outcome is one allocator run on one day. NoPlan means the allocator returned
 // an error (a timeout, an invalid answer): no Day Plan at all, which is not the
@@ -56,18 +64,37 @@ type Report struct {
 // raw LLM proposal is never replaced by the baseline.
 func Run(ctx context.Context, days []Day, cfg Config) Report {
 	runs := max(cfg.Runs, 1)
-	rep := Report{Model: cfg.Model, Runs: runs, LLMSkipped: cfg.Proposer == nil}
-	for _, d := range days {
-		dr := DayReport{Name: d.Name}
+	rep := Report{Model: cfg.Model, Runs: runs, LLMSkipped: cfg.Proposer == nil, Days: make([]DayReport, len(days))}
+	for i, d := range days {
 		res, err := allocation.Baseline{}.Plan(d.State)
-		dr.Baseline = outcome(d.State, res, err)
+		rep.Days[i] = DayReport{Name: d.Name, Baseline: outcome(d.State, res, err)}
 		if cfg.Proposer != nil {
-			for range runs {
-				dr.LLM = append(dr.LLM, proposeOnce(ctx, cfg, d.State))
-			}
+			rep.Days[i].LLM = make([]Outcome, runs)
 		}
-		rep.Days = append(rep.Days, dr)
 	}
+	if cfg.Proposer == nil {
+		return rep
+	}
+
+	// The model calls are independent. A bounded pool runs them, and each writes
+	// its own pre-sized slot, so the order is fixed and no lock is needed.
+	limit := cfg.Concurrency
+	if limit < 1 {
+		limit = DefaultConcurrency
+	}
+	sem := make(chan struct{}, limit)
+	var wg sync.WaitGroup
+	for i, d := range days {
+		for j := range runs {
+			sem <- struct{}{}
+			wg.Add(1)
+			go func() {
+				defer func() { <-sem; wg.Done() }()
+				rep.Days[i].LLM[j] = proposeOnce(ctx, cfg, d.State)
+			}()
+		}
+	}
+	wg.Wait()
 	return rep
 }
 

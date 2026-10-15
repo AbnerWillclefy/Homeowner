@@ -6,7 +6,7 @@
 //	cd backend && ANTHROPIC_API_KEY=... go run ./cmd/evals [flags]
 //
 // Flags: -dir (days folder), -runs (model calls per day), -model, -timeout (per
-// call), -baseline-only, -v (per-day rows), -yes (allow more than 100 calls).
+// call), -concurrency (calls at once, default 4), -baseline-only, -v (per-day rows), -yes (allow more than 100 calls).
 // The model defaults to LLM_MODEL, then to the production default. The key is
 // read from the environment only. The exit status is 0 whatever the numbers
 // say: it is a report, not a gate. See docs/architecture/allocation.md.
@@ -47,6 +47,7 @@ func run(ctx context.Context, args []string, getenv func(string) string, stdout,
 	dir := fs.String("dir", "internal/evals/testdata/days", "folder of day JSON files")
 	runs := fs.Int("runs", 3, "model calls per day")
 	fs.StringVar(&model, "model", model, "model name (default LLM_MODEL, then the production default)")
+	concurrency := fs.Int("concurrency", evals.DefaultConcurrency, "model calls at once")
 	timeout := fs.Duration("timeout", config.DefaultLLMTimeout, "time limit of one model call")
 	baselineOnly := fs.Bool("baseline-only", false, "skip the model")
 	verbose := fs.Bool("v", false, "print a row per day and run")
@@ -63,7 +64,7 @@ func run(ctx context.Context, args []string, getenv func(string) string, stdout,
 		return err
 	}
 
-	cfg := evals.Config{Runs: *runs, Timeout: *timeout, Model: model}
+	cfg := evals.Config{Runs: *runs, Timeout: *timeout, Model: model, Concurrency: *concurrency}
 	key := getenv("ANTHROPIC_API_KEY")
 	if key != "" && !*baselineOnly {
 		calls := len(days) * *runs

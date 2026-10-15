@@ -8,7 +8,7 @@
 // The evals are a report, not a gate, and they cost money, so they run only
 // through cmd/evals, never inside go test:
 //
-//	cd backend && ANTHROPIC_API_KEY=... go run ./cmd/evals [-dir path] [-runs 3] [-model name] [-timeout 15s] [-baseline-only] [-v] [-yes]
+//	cd backend && ANTHROPIC_API_KEY=... go run ./cmd/evals [-dir path] [-runs 3] [-model name] [-timeout 15s] [-concurrency 4] [-baseline-only] [-v] [-yes]
 //
 // With no ANTHROPIC_API_KEY the command prints the baseline column only.
 package evals
