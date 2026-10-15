@@ -130,6 +130,13 @@ module "allocation_job" {
       VAPID_SUBJECT               = var.vapid_subject
       VAPID_PRIVATE_KEY_SSM_PARAM = "${local.ssm_prefix}/vapid-private-key"
     },
+    # The LLM allocator (#26), off unless switched on. The key is a SecureString
+    # a human creates (infra/README.md), covered by the module's SSM read policy.
+    # Model, daily cap and timeouts keep their defaults in code.
+    var.llm_allocator_enabled ? {
+      LLM_ALLOCATOR_ENABLED       = "true"
+      ANTHROPIC_API_KEY_SSM_PARAM = "${local.ssm_prefix}/anthropic-api-key"
+    } : {},
   )
 }
 

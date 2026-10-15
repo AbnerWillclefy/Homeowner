@@ -37,6 +37,12 @@ variable "vapid_public_key" {
   default     = ""
 }
 
+variable "llm_allocator_enabled" {
+  description = "Let the daily Allocation ask the LLM allocator first (TF_VAR_llm_allocator_enabled, from the LLM_ALLOCATOR_ENABLED repository variable). Needs the anthropic-api-key SSM parameter; see infra/README.md."
+  type        = bool
+  default     = false
+}
+
 variable "vapid_subject" {
   description = "Contact the push services can reach, mailto: or https: (TF_VAR_vapid_subject, from the VAPID_SUBJECT repository variable). Required when vapid_public_key is set."
   type        = string

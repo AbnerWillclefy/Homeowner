@@ -35,6 +35,7 @@ jobs:
       TF_VAR_image_tag: ${{ github.sha }}
       TF_VAR_vapid_public_key: ${{ vars.VAPID_PUBLIC_KEY }}
       TF_VAR_vapid_subject: ${{ vars.VAPID_SUBJECT }}
+      TF_VAR_llm_allocator_enabled: ${{ vars.LLM_ALLOCATOR_ENABLED || 'false' }}
       TF_IN_AUTOMATION: "true"
     defaults:
       run:
