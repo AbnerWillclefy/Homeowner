@@ -1,0 +1,22 @@
+{
+  "name": "busy-home",
+  "today": "2026-03-13",
+  "residents": [
+    {"id": "r1", "energy": 7, "preferences": {"cooking": "like", "bathroom": "dislike"}, "last_done": {"bathroom": "2026-03-01"}},
+    {"id": "r2", "energy": 5, "demand_restrictions": ["heavy_lifting"], "preferences": {"bathroom": "dislike", "laundry": "like"}, "last_done": {"bathroom": "2026-03-10"}},
+    {"id": "r3", "energy": 3, "chore_restrictions": ["gutters"], "preferences": {"dishes": "dislike"}},
+    {"id": "r4", "energy": 6, "preferences": {"dishes": "dislike", "bathroom": "like"}, "last_done": {"dishes": "2026-03-12"}}
+  ],
+  "tasks": [
+    {"id": "t01", "chore_id": "dishes", "effort": 2, "importance": "essential", "people": 1, "window_start": "2026-03-13", "window_end": "2026-03-13"},
+    {"id": "t02", "chore_id": "cooking", "effort": 3, "importance": "essential", "people": 1, "window_start": "2026-03-13", "window_end": "2026-03-13"},
+    {"id": "t03", "chore_id": "bathroom", "effort": 4, "importance": "normal", "people": 1, "window_start": "2026-03-09", "window_end": "2026-03-15"},
+    {"id": "t04", "chore_id": "laundry", "effort": 3, "importance": "normal", "people": 1, "window_start": "2026-03-10", "window_end": "2026-03-16"},
+    {"id": "t05", "chore_id": "furniture", "effort": 4, "importance": "normal", "demands": ["heavy_lifting"], "people": 2, "window_start": "2026-03-08", "window_end": "2026-03-18"},
+    {"id": "t06", "chore_id": "gutters", "effort": 3, "importance": "normal", "demands": ["heights"], "people": 1, "window_start": "2026-03-01", "window_end": "2026-03-12"},
+    {"id": "t07", "chore_id": "market", "effort": 2, "importance": "normal", "people": 1, "window_start": "2026-03-13", "window_end": "2026-03-14", "allowed_weekdays": [5, 6]},
+    {"id": "t08", "chore_id": "floors", "effort": 3, "importance": "normal", "demands": ["bending"], "people": 1, "window_start": "2026-03-07", "window_end": "2026-03-17"},
+    {"id": "t09", "chore_id": "windows", "effort": 4, "importance": "nice_to_have", "people": 1, "window_start": "2026-03-01", "window_end": "2026-03-31"},
+    {"id": "t10", "chore_id": "plants", "effort": 1, "importance": "nice_to_have", "people": 1, "window_start": "2026-03-01", "window_end": "2026-03-31"}
+  ]
+}

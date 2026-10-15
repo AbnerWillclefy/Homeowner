@@ -10,6 +10,12 @@ import (
 	"time"
 )
 
+// The LLM allocator's defaults, exported so cmd/evals tests what production runs.
+const (
+	DefaultLLMModel   = "claude-haiku-5-5"
+	DefaultLLMTimeout = 15 * time.Second
+)
+
 // Config is everything the API needs from its environment.
 type Config struct {
 	DatabaseURL string
@@ -57,9 +63,9 @@ func Load(getenv func(string) string) (Config, error) {
 		MigrateDatabaseURL: getenv("MIGRATE_DATABASE_URL"),
 		Port:               getenv("PORT"),
 		DBMaxConns:         5,
-		LLMModel:           "claude-haiku-5-5",
+		LLMModel:           DefaultLLMModel,
 		LLMDailyCapPerHome: 3,
-		LLMTimeout:         15 * time.Second,
+		LLMTimeout:         DefaultLLMTimeout,
 	}
 	if c.DatabaseURL == "" {
 		return Config{}, errors.New("DATABASE_URL is required")
