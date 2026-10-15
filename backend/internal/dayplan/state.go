@@ -340,7 +340,7 @@ func lockHome(ctx context.Context, tx pgx.Tx, homeID string, now time.Time) (all
 
 // insertRun writes one allocation_runs row and returns its id.
 // fallback is empty when the LLM was not asked or its plan was used.
-func insertRun(ctx context.Context, tx pgx.Tx, homeID string, date allocation.Date, now time.Time, allocator, fallback string, outcome Outcome, rs reasons) (string, error) {
+func insertRun(ctx context.Context, tx pgx.Tx, homeID string, date allocation.Date, now time.Time, allocator string, fallback fallbackReason, outcome Outcome, rs reasons) (string, error) {
 	body, err := json.Marshal(rs)
 	if err != nil {
 		return "", fmt.Errorf("store run: %w", err)
@@ -358,7 +358,7 @@ func insertRun(ctx context.Context, tx pgx.Tx, homeID string, date allocation.Da
 
 // store writes the run and its assignments.
 func store(ctx context.Context, tx pgx.Tx, homeID string, date allocation.Date, now time.Time, rec runRecord) error {
-	runID, err := insertRun(ctx, tx, homeID, date, now, rec.allocator, rec.fallbackReason, rec.outcome, rec.reasons)
+	runID, err := insertRun(ctx, tx, homeID, date, now, rec.allocator, rec.fallback, rec.outcome, rec.reasons)
 	if err != nil {
 		return err
 	}

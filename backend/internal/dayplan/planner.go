@@ -346,10 +346,10 @@ func (p *Planner) planHome(ctx, llmCtx context.Context, homeID string, now time.
 
 	if run.outcome == Rejected {
 		p.log.Error("allocator proposal rejected by the checker", "home", homeID, "date", date.Time().Format(time.DateOnly),
-			"allocator", run.allocator, "fallback_reason", run.fallbackReason, "violations", len(run.reasons.Violations), "reason", run.reasons.Error)
+			"allocator", run.allocator, "fallback_reason", run.fallback, "violations", len(run.reasons.Violations), "reason", run.reasons.Error)
 		return Rejected, nil
 	}
-	p.log.Info("day planned", "home", homeID, "date", date.Time().Format(time.DateOnly), "allocator", run.allocator, "fallback_reason", run.fallbackReason,
+	p.log.Info("day planned", "home", homeID, "date", date.Time().Format(time.DateOnly), "allocator", run.allocator, "fallback_reason", run.fallback,
 		"assigned", len(run.result.DayPlan.Assignments), "pooled", len(run.result.Pool))
 	return Planned, nil
 }
@@ -403,19 +403,30 @@ type runRecord struct {
 	outcome   Outcome
 	result    allocation.Result
 	reasons   reasons
-	// fallbackReason says why the LLM's plan was not used, when it was asked.
-	fallbackReason string
+	// fallback says why the LLM's plan was not used, when it was asked.
+	fallback fallbackReason
 }
 
-// Fallback reasons, stored in allocation_runs.fallback_reason. Empty when the
-// LLM was not asked or its plan was used.
+// fallbackReason is why the LLM's plan was not used, stored in
+// allocation_runs.fallback_reason. The zero value means there was no
+// fallback: the LLM was not asked or its plan was used.
+type fallbackReason string
+
 const (
-	fallbackError      = "llm_error"
-	fallbackTimeout    = "llm_timeout"
-	fallbackInvalid    = "llm_invalid_response"
-	fallbackRejected   = "llm_rejected_by_checker"
-	fallbackCapReached = "llm_daily_cap_reached"
+	fallbackError      fallbackReason = "llm_error"
+	fallbackTimeout    fallbackReason = "llm_timeout"
+	fallbackInvalid    fallbackReason = "llm_invalid_response"
+	fallbackRejected   fallbackReason = "llm_rejected_by_checker"
+	fallbackCapReached fallbackReason = "llm_daily_cap_reached"
 )
+
+// llmAnswer is what asking the LLM gave: its checked plan, or why there is
+// none (and, when the checker refused it, the violations).
+type llmAnswer struct {
+	result     allocation.Result
+	fallback   fallbackReason
+	violations []violation
+}
 
 // propose asks the LLM first when it is on and there is something to plan,
 // then, if its plan is not used, the Allocator. Every proposal is refereed: a
@@ -425,14 +436,14 @@ func (p *Planner) propose(ctx, llmCtx context.Context, homeID string, date alloc
 	rec := runRecord{allocator: p.alloc.Name(), outcome: Planned,
 		reasons: reasons{Energy: st.energy, Assigned: []assigned{}, Pool: []pooled{}}}
 	if p.llm.Proposer != nil && worthAsking(st.state) {
-		res, why, vs := p.askLLM(ctx, llmCtx, homeID, date, st.state)
-		if why == "" {
-			rec.allocator, rec.result = p.llm.Proposer.Name(), res
-			rec.reasons.add(res)
+		ans := p.askLLM(ctx, llmCtx, homeID, date, st.state)
+		if ans.fallback == "" {
+			rec.allocator, rec.result = p.llm.Proposer.Name(), ans.result
+			rec.reasons.add(ans.result)
 			return rec
 		}
-		rec.fallbackReason, rec.reasons.LLMViolations = why, vs
-		p.log.Warn("llm proposal not used", "home", homeID, "fallback_reason", why, "violations", len(vs))
+		rec.fallback, rec.reasons.LLMViolations = ans.fallback, ans.violations
+		p.log.Warn("llm proposal not used", "home", homeID, "fallback_reason", ans.fallback, "violations", len(ans.violations))
 	}
 	res, err := p.alloc.Plan(st.state)
 	if err != nil {
@@ -453,33 +464,33 @@ func (p *Planner) propose(ctx, llmCtx context.Context, homeID string, date alloc
 // without reserving. It returns the plan, or why it cannot be used and, when the checker
 // refused it, the violations. The call is reserved on the pool, outside the
 // planning transaction, so a rollback cannot give back a call that was paid.
-func (p *Planner) askLLM(ctx, llmCtx context.Context, homeID string, date allocation.Date, st allocation.State) (allocation.Result, string, []violation) {
+func (p *Planner) askLLM(ctx, llmCtx context.Context, homeID string, date allocation.Date, st allocation.State) llmAnswer {
 	if llmCtx.Err() != nil {
-		return allocation.Result{}, fallbackTimeout, nil
+		return llmAnswer{fallback: fallbackTimeout}
 	}
 	ok, err := reserveLLMCall(ctx, p.db, homeID, date, p.llm.DailyCap)
 	if err != nil {
 		p.log.Error("llm cap failed", "home", homeID, "error", err.Error())
-		return allocation.Result{}, fallbackError, nil
+		return llmAnswer{fallback: fallbackError}
 	}
 	if !ok {
-		return allocation.Result{}, fallbackCapReached, nil
+		return llmAnswer{fallback: fallbackCapReached}
 	}
 	callCtx, cancel := context.WithTimeout(llmCtx, p.llm.CallTimeout)
 	defer cancel()
 	res, err := p.llm.Proposer.Propose(callCtx, st)
 	switch {
 	case errors.Is(err, context.DeadlineExceeded):
-		return allocation.Result{}, fallbackTimeout, nil
+		return llmAnswer{fallback: fallbackTimeout}
 	case errors.Is(err, llmalloc.ErrInvalidResponse):
-		return allocation.Result{}, fallbackInvalid, nil
+		return llmAnswer{fallback: fallbackInvalid}
 	case err != nil:
-		return allocation.Result{}, fallbackError, nil
+		return llmAnswer{fallback: fallbackError}
 	}
 	if vs := allocation.Check(res.DayPlan, st); len(vs) > 0 {
-		return allocation.Result{}, fallbackRejected, violationsOf(vs)
+		return llmAnswer{fallback: fallbackRejected, violations: violationsOf(vs)}
 	}
-	return res, "", nil
+	return llmAnswer{result: res}
 }
 
 // worthAsking reports whether there is anything for the LLM to plan: an open
