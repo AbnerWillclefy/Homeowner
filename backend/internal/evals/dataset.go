@@ -108,35 +108,9 @@ func Parse(raw []byte) (Day, error) {
 			return Day{}, fmt.Errorf("resident id %q is empty or repeated", r.ID)
 		}
 		seen[r.ID] = true
-		if r.Energy < 0 {
-			return Day{}, fmt.Errorf("resident %s: negative energy", r.ID)
-		}
-		res := allocation.Resident{ID: r.ID, Energy: r.Energy, ChoreRestrictions: r.ChoreRestrictions}
-		for _, d := range r.DemandRestrictions {
-			if !vocab.IsDemand(d) {
-				return Day{}, fmt.Errorf("resident %s: unknown demand %q", r.ID, d)
-			}
-			res.DemandRestrictions = append(res.DemandRestrictions, allocation.Demand(d))
-		}
-		for chore, p := range r.Preferences {
-			pref, ok := map[string]allocation.Preference{"like": allocation.Like, "neutral": allocation.Neutral, "dislike": allocation.Dislike}[p]
-			if !ok {
-				return Day{}, fmt.Errorf("resident %s: unknown preference %q", r.ID, p)
-			}
-			if res.Preferences == nil {
-				res.Preferences = map[string]allocation.Preference{}
-			}
-			res.Preferences[chore] = pref
-		}
-		for chore, s := range r.LastDone {
-			d, err := parseDate(s)
-			if err != nil {
-				return Day{}, fmt.Errorf("resident %s: last_done %s: %w", r.ID, chore, err)
-			}
-			if res.LastDone == nil {
-				res.LastDone = map[string]allocation.Date{}
-			}
-			res.LastDone[chore] = d
+		res, err := parseResident(r)
+		if err != nil {
+			return Day{}, err
 		}
 		st.Residents = append(st.Residents, res)
 	}
@@ -147,45 +121,90 @@ func Parse(raw []byte) (Day, error) {
 			return Day{}, fmt.Errorf("task id %q is empty or repeated", t.ID)
 		}
 		seen[t.ID] = true
-		if t.ChoreID == "" {
-			return Day{}, fmt.Errorf("task %s: chore_id is required", t.ID)
-		}
-		if t.Effort < 1 || t.Effort > 5 {
-			return Day{}, fmt.Errorf("task %s: effort %d not in 1 to 5", t.ID, t.Effort)
-		}
-		if !vocab.IsImportance(t.Importance) {
-			return Day{}, fmt.Errorf("task %s: unknown importance %q", t.ID, t.Importance)
-		}
-		if t.People != 1 && t.People != 2 {
-			return Day{}, fmt.Errorf("task %s: people %d is not 1 or 2", t.ID, t.People)
-		}
-		start, err := parseDate(t.WindowStart)
+		task, err := parseTask(t)
 		if err != nil {
-			return Day{}, fmt.Errorf("task %s: window_start: %w", t.ID, err)
-		}
-		end, err := parseDate(t.WindowEnd)
-		if err != nil {
-			return Day{}, fmt.Errorf("task %s: window_end: %w", t.ID, err)
-		}
-		if end < start {
-			return Day{}, fmt.Errorf("task %s: window_end is before window_start", t.ID)
-		}
-		for _, w := range t.AllowedWeekdays {
-			if w < 0 || w > 6 {
-				return Day{}, fmt.Errorf("task %s: weekday %d not in 0 to 6", t.ID, w)
-			}
-		}
-		task := allocation.Task{ID: t.ID, ChoreID: t.ChoreID, Effort: t.Effort, Importance: allocation.Importance(t.Importance),
-			People: t.People, WindowStart: start, WindowEnd: end, AllowedWeekdays: t.AllowedWeekdays}
-		for _, d := range t.Demands {
-			if !vocab.IsDemand(d) {
-				return Day{}, fmt.Errorf("task %s: unknown demand %q", t.ID, d)
-			}
-			task.Demands = append(task.Demands, allocation.Demand(d))
+			return Day{}, err
 		}
 		st.Tasks = append(st.Tasks, task)
 	}
 	return Day{Name: f.Name, State: st}, nil
+}
+
+// preferenceByName is the file's spelling of each Preference.
+var preferenceByName = map[string]allocation.Preference{
+	"like": allocation.Like, "neutral": allocation.Neutral, "dislike": allocation.Dislike,
+}
+
+func parseResident(r residentFile) (allocation.Resident, error) {
+	if r.Energy < 0 {
+		return allocation.Resident{}, fmt.Errorf("resident %s: negative energy", r.ID)
+	}
+	res := allocation.Resident{
+		ID: r.ID, Energy: r.Energy, ChoreRestrictions: r.ChoreRestrictions,
+		Preferences: map[string]allocation.Preference{},
+		LastDone:    map[string]allocation.Date{},
+	}
+	for _, d := range r.DemandRestrictions {
+		if !vocab.IsDemand(d) {
+			return allocation.Resident{}, fmt.Errorf("resident %s: unknown demand %q", r.ID, d)
+		}
+		res.DemandRestrictions = append(res.DemandRestrictions, allocation.Demand(d))
+	}
+	for chore, p := range r.Preferences {
+		pref, ok := preferenceByName[p]
+		if !ok {
+			return allocation.Resident{}, fmt.Errorf("resident %s: unknown preference %q", r.ID, p)
+		}
+		res.Preferences[chore] = pref
+	}
+	for chore, s := range r.LastDone {
+		d, err := parseDate(s)
+		if err != nil {
+			return allocation.Resident{}, fmt.Errorf("resident %s: last_done %s: %w", r.ID, chore, err)
+		}
+		res.LastDone[chore] = d
+	}
+	return res, nil
+}
+
+func parseTask(t taskFile) (allocation.Task, error) {
+	if t.ChoreID == "" {
+		return allocation.Task{}, fmt.Errorf("task %s: chore_id is required", t.ID)
+	}
+	if t.Effort < 1 || t.Effort > 5 {
+		return allocation.Task{}, fmt.Errorf("task %s: effort %d not in 1 to 5", t.ID, t.Effort)
+	}
+	if !vocab.IsImportance(t.Importance) {
+		return allocation.Task{}, fmt.Errorf("task %s: unknown importance %q", t.ID, t.Importance)
+	}
+	if t.People != 1 && t.People != 2 {
+		return allocation.Task{}, fmt.Errorf("task %s: people %d is not 1 or 2", t.ID, t.People)
+	}
+	start, err := parseDate(t.WindowStart)
+	if err != nil {
+		return allocation.Task{}, fmt.Errorf("task %s: window_start: %w", t.ID, err)
+	}
+	end, err := parseDate(t.WindowEnd)
+	if err != nil {
+		return allocation.Task{}, fmt.Errorf("task %s: window_end: %w", t.ID, err)
+	}
+	if end < start {
+		return allocation.Task{}, fmt.Errorf("task %s: window_end is before window_start", t.ID)
+	}
+	for _, w := range t.AllowedWeekdays {
+		if w < 0 || w > 6 {
+			return allocation.Task{}, fmt.Errorf("task %s: weekday %d not in 0 to 6", t.ID, w)
+		}
+	}
+	task := allocation.Task{ID: t.ID, ChoreID: t.ChoreID, Effort: t.Effort, Importance: allocation.Importance(t.Importance),
+		People: t.People, WindowStart: start, WindowEnd: end, AllowedWeekdays: t.AllowedWeekdays}
+	for _, d := range t.Demands {
+		if !vocab.IsDemand(d) {
+			return allocation.Task{}, fmt.Errorf("task %s: unknown demand %q", t.ID, d)
+		}
+		task.Demands = append(task.Demands, allocation.Demand(d))
+	}
+	return task, nil
 }
 
 func parseDate(s string) (allocation.Date, error) {
