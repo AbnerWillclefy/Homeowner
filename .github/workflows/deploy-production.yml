@@ -1,0 +1,284 @@
+name: Deploy production
+
+on:
+  push:
+    branches: [production]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+# Promotions never interleave migrations and applies.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      api_url: ${{ steps.out.outputs.api_url }}
+      web_url: ${{ steps.out.outputs.web_url }}
+      web_bucket_name: ${{ steps.out.outputs.web_bucket_name }}
+      web_distribution_id: ${{ steps.out.outputs.web_distribution_id }}
+      cognito_client_id: ${{ steps.out.outputs.cognito_client_id }}
+      cognito_region: ${{ steps.out.outputs.cognito_region }}
+      cognito_password_policy: ${{ steps.out.outputs.cognito_password_policy }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      TF_VAR_neon_org_id: ${{ vars.NEON_ORG_ID }}
+      TF_VAR_aws_region: ${{ vars.AWS_REGION }}
+      TF_VAR_budget_email: ${{ secrets.BUDGET_EMAIL }}
+      TF_VAR_image_tag: ${{ github.sha }}
+      TF_VAR_vapid_public_key: ${{ vars.PRODUCTION_VAPID_PUBLIC_KEY }}
+      TF_VAR_vapid_subject: ${{ vars.VAPID_SUBJECT }}
+      TF_VAR_llm_allocator_enabled: ${{ vars.PRODUCTION_LLM_ALLOCATOR_ENABLED || 'false' }}
+      TF_IN_AUTOMATION: "true"
+    defaults:
+      run:
+        working-directory: infra/production
+    steps:
+      # First, so the infra/production working directory exists for every run step
+      - uses: actions/checkout@v4
+
+      - name: Check the one-off setup is done
+        run: |
+          missing=""
+          [ -z "${{ vars.PRODUCTION_AWS_DEPLOY_ROLE_ARN }}" ] && missing="$missing PRODUCTION_AWS_DEPLOY_ROLE_ARN"
+          [ -z "${{ vars.AWS_REGION }}" ] && missing="$missing AWS_REGION"
+          [ -z "$NEON_API_KEY" ] && missing="$missing NEON_API_KEY"
+          [ -z "$TF_VAR_neon_org_id" ] && missing="$missing NEON_ORG_ID"
+          [ -z "$TF_VAR_budget_email" ] && missing="$missing BUDGET_EMAIL"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing GitHub settings:$missing. See infra/README.md."
+            exit 1
+          fi
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.PRODUCTION_AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.5"
+          terraform_wrapper: false
+
+      - name: Terraform init
+        run: |
+          account_id=$(aws sts get-caller-identity --query Account --output text)
+          terraform init -input=false \
+            -backend-config="bucket=homeowner-tfstate-${account_id}" \
+            -backend-config="region=${AWS_REGION}"
+
+      # The first run needs the repository and the database parameters before
+      # an image or migration can exist; both applies are idempotent.
+      - name: Terraform apply (ECR repository and database)
+        run: |
+          terraform apply -input=false -auto-approve \
+            -target=module.api.aws_ecr_repository.this \
+            -target=module.database
+
+      - name: Log in to ECR
+        id: ecr
+        run: |
+          repo_uri=$(aws ecr describe-repositories --repository-names homeowner-production-api \
+            --query 'repositories[0].repositoryUri' --output text)
+          registry="${repo_uri%%/*}"
+          aws ecr get-login-password | docker login --username AWS --password-stdin "$registry"
+          echo "repo_uri=$repo_uri" >> "$GITHUB_OUTPUT"
+
+      # Lambda rejects OCI image indexes: single platform, no provenance/SBOM.
+      - name: Build image
+        run: |
+          docker buildx build \
+            --provenance=false --sbom=false \
+            --platform linux/amd64 --load \
+            -t "${{ steps.ecr.outputs.repo_uri }}:${{ github.sha }}" \
+            ../../backend
+
+      # Migrations run before the new code goes live (see infra/README.md:
+      # every migration must work with the previous release). A failure here
+      # stops the job before the function is swapped.
+      - name: Run migrations
+        run: |
+          url=$(aws ssm get-parameter --name /homeowner/production/migrate-database-url \
+            --with-decryption --query Parameter.Value --output text)
+          echo "::add-mask::${url}"
+          docker run --rm -e DATABASE_URL="${url}" \
+            "${{ steps.ecr.outputs.repo_uri }}:${{ github.sha }}" migrate
+
+      # Tags are immutable, so a re-run of the same commit skips the push.
+      - name: Push image
+        run: |
+          if aws ecr describe-images --repository-name homeowner-production-api \
+              --image-ids imageTag="${{ github.sha }}" >/dev/null 2>&1; then
+            echo "Image ${{ github.sha }} already in ECR, skipping push"
+          else
+            docker push "${{ steps.ecr.outputs.repo_uri }}:${{ github.sha }}"
+          fi
+
+      - name: Terraform apply
+        run: terraform apply -input=false -auto-approve
+
+      - name: Read Terraform outputs
+        id: out
+        run: |
+          {
+            echo "api_url=$(terraform output -raw api_url)"
+            echo "web_url=$(terraform output -raw web_url)"
+            echo "web_bucket_name=$(terraform output -raw web_bucket_name)"
+            echo "web_distribution_id=$(terraform output -raw web_distribution_id)"
+            echo "cognito_client_id=$(terraform output -raw cognito_client_id)"
+            echo "cognito_region=$(terraform output -raw cognito_region)"
+            echo "cognito_password_policy=$(terraform output -raw cognito_password_policy)"
+          } >> "$GITHUB_OUTPUT"
+
+      # Lambda cold start plus Neon resume can make the first calls fail.
+      - name: Smoke test /healthz
+        run: |
+          body=$(curl --silent --show-error --fail \
+            --retry 12 --retry-delay 5 --retry-all-errors --retry-max-time 90 \
+            "${{ steps.out.outputs.api_url }}/healthz")
+          echo "$body"
+          [ "$body" = '{"status":"ok"}' ]
+
+      - name: Summary
+        run: |
+          {
+            echo "### Production API"
+            echo ""
+            echo "URL: ${{ steps.out.outputs.api_url }}"
+            echo "Image: ${{ github.sha }}"
+            echo ""
+            echo "### Production web"
+            echo ""
+            echo "URL: ${{ steps.out.outputs.web_url }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Builds the PWA against the API URL the apply just produced (it is baked
+  # into the bundle, hence a second job) and publishes it.
+  web:
+    needs: api
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WEB_URL: ${{ needs.api.outputs.web_url }}
+      API_URL: ${{ needs.api.outputs.api_url }}
+      BUCKET: ${{ needs.api.outputs.web_bucket_name }}
+      DISTRIBUTION_ID: ${{ needs.api.outputs.web_distribution_id }}
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.PRODUCTION_AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - run: npm ci
+
+      # The build inlines the policy only once the web source reads it, so
+      # check here that the deploy delivered it: public, one JSON object with
+      # the five keys of the web contract.
+      - name: Check the password policy
+        env:
+          VITE_PASSWORD_POLICY: ${{ needs.api.outputs.cognito_password_policy }}
+        run: |
+          echo "VITE_PASSWORD_POLICY=${VITE_PASSWORD_POLICY}"
+          printf '%s' "$VITE_PASSWORD_POLICY" | jq -e '
+            (.minimum_length | type == "number")
+            and (.require_lowercase | type == "boolean")
+            and (.require_uppercase | type == "boolean")
+            and (.require_numbers | type == "boolean")
+            and (.require_symbols | type == "boolean")
+            and (keys | length == 5)'
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ env.API_URL }}
+          # Public identifiers of the Cognito app client, not secrets.
+          VITE_COGNITO_CLIENT_ID: ${{ needs.api.outputs.cognito_client_id }}
+          VITE_COGNITO_REGION: ${{ needs.api.outputs.cognito_region }}
+          VITE_PASSWORD_POLICY: ${{ needs.api.outputs.cognito_password_policy }}
+
+      # Cache headers differ per file kind, so upload in passes:
+      # fingerprinted assets are immutable, the app shell and service worker
+      # must always revalidate, and index.html goes last so no visitor gets an
+      # index that refers to assets not uploaded yet.
+      - name: Upload fingerprinted assets
+        run: |
+          aws s3 sync dist/assets "s3://${BUCKET}/assets" \
+            --cache-control "public,max-age=31536000,immutable"
+
+      - name: Upload other static files
+        run: |
+          aws s3 sync dist "s3://${BUCKET}" \
+            --exclude "assets/*" --exclude "index.html" --exclude "sw.js" \
+            --exclude "registerSW.js" --exclude "manifest.webmanifest" \
+            --exclude "workbox-*.js" \
+            --cache-control "public,max-age=3600"
+
+      - name: Upload app shell and service worker
+        run: |
+          for f in sw.js registerSW.js workbox-*.js; do
+            [ -f "dist/$f" ] || continue
+            aws s3 cp "dist/$f" "s3://${BUCKET}/$f" \
+              --cache-control "no-cache" --content-type "text/javascript"
+          done
+          aws s3 cp dist/manifest.webmanifest "s3://${BUCKET}/manifest.webmanifest" \
+            --cache-control "no-cache" --content-type "application/manifest+json"
+          aws s3 cp dist/index.html "s3://${BUCKET}/index.html" \
+            --cache-control "no-cache" --content-type "text/html"
+
+      - name: Delete stale objects
+        # Everything is already uploaded with its headers, so --size-only
+        # makes this sync a pure delete of what the build no longer has.
+        run: aws s3 sync dist "s3://${BUCKET}" --delete --size-only
+
+      - name: Invalidate CloudFront
+        run: |
+          id=$(aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" \
+            --paths "/*" --query Invalidation.Id --output text)
+          aws cloudfront wait invalidation-completed --distribution-id "$DISTRIBUTION_ID" --id "$id"
+
+      - name: Smoke test
+        run: |
+          curl_ok() { curl --silent --show-error --fail --retry 6 --retry-delay 5 --retry-all-errors "$@"; }
+
+          curl_ok "${WEB_URL}/" | grep -q 'id="root"'
+
+          ct=$(curl_ok -o /dev/null -w '%{content_type}' "${WEB_URL}/some/deep/link")
+          echo "deep link content-type: $ct"
+          case "$ct" in text/html*) ;; *) echo "::error::Deep link did not return the app"; exit 1 ;; esac
+
+          ct=$(curl_ok -o /dev/null -w '%{content_type}' "${WEB_URL}/manifest.webmanifest")
+          echo "manifest content-type: $ct"
+          case "$ct" in *manifest*|*json*) ;; *) echo "::error::Manifest has content type $ct"; exit 1 ;; esac
+
+          # The CloudFront fallback serves index.html with a 200 for missing files,
+          # so a missing icon only shows up as the wrong content type.
+          icons=$(curl_ok "${WEB_URL}/manifest.webmanifest" | jq -r '.icons[].src')
+          for icon in $icons apple-touch-icon.png; do
+            ct=$(curl_ok -o /dev/null -w '%{content_type}' "${WEB_URL}/${icon#/}")
+            echo "icon ${icon} content-type: $ct"
+            case "$ct" in image/png*) ;; *) echo "::error::Icon ${icon} has content type $ct"; exit 1 ;; esac
+          done
+
+          # The real link between web and API: the API must trust the web origin.
+          acao=$(curl_ok -D - -o /dev/null -H "Origin: ${WEB_URL}" "${API_URL}/healthz" \
+            | tr -d '\r' | awk -F': ' 'tolower($1)=="access-control-allow-origin" {print $2}')
+          echo "access-control-allow-origin: $acao"
+          [ "$acao" = "${WEB_URL}" ]
