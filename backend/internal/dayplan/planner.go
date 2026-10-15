@@ -48,7 +48,7 @@ type Planner struct {
 	alloc allocation.Allocator
 	log   *slog.Logger
 	nudge Nudger
-	llm   llmSetup
+	llm   LLMConfig
 	// nudgeTimeout is the one deadline for all the nudging of a tick.
 	nudgeTimeout time.Duration
 }
@@ -93,28 +93,25 @@ type Proposer interface {
 	Propose(ctx context.Context, st allocation.State) (allocation.Result, error)
 }
 
-// llmSetup is the optional LLM allocator of the daily Allocation.
-type llmSetup struct {
-	proposer Proposer
-	dailyCap int
-	timeout  time.Duration
-	budget   time.Duration
+// LLMConfig is the optional LLM allocator of the daily Allocation.
+type LLMConfig struct {
+	Proposer Proposer
+	// DailyCap is how many calls one Home may make per local day.
+	DailyCap int
+	// CallTimeout bounds one call.
+	CallTimeout time.Duration
+	// TickBudget bounds all the calls of one RunDue; zero means the default.
+	TickBudget time.Duration
 }
 
-// WithLLM makes PlanHome ask proposer first, at most dailyCap times per Home
-// and local day and for at most timeout per call. Its plan is used only when
-// it passes Check; otherwise the Planner's Allocator plans and the run records
-// why (ADR 0004). Check-in and "right away" re-plans never use it.
-func WithLLM(proposer Proposer, dailyCap int, timeout time.Duration) Option {
-	return func(p *Planner) {
-		p.llm.proposer, p.llm.dailyCap, p.llm.timeout = proposer, dailyCap, timeout
+// WithLLM makes PlanHome ask c.Proposer first. Its plan is used only when it
+// passes Check; otherwise the Planner's Allocator plans and the run records why
+// (ADR 0004). Check-in and "right away" re-plans never use it.
+func WithLLM(c LLMConfig) Option {
+	if c.TickBudget == 0 {
+		c.TickBudget = defaultLLMBudget
 	}
-}
-
-// WithLLMBudget sets how long one tick may spend asking the LLM, across all its
-// Homes (default 20 seconds). It exists for tests.
-func WithLLMBudget(d time.Duration) Option {
-	return func(p *Planner) { p.llm.budget = d }
+	return func(p *Planner) { p.llm = c }
 }
 
 // defaultLLMBudget bounds the LLM calls of a whole tick. With the 30 second
@@ -124,8 +121,7 @@ const defaultLLMBudget = 20 * time.Second
 
 // New returns a Planner that asks alloc for every proposal.
 func New(db *pgxpool.Pool, alloc allocation.Allocator, log *slog.Logger, opts ...Option) *Planner {
-	p := &Planner{db: db, tasks: tasks.NewStore(db), alloc: alloc, log: log, nudgeTimeout: defaultNudgeTimeout,
-		llm: llmSetup{budget: defaultLLMBudget}}
+	p := &Planner{db: db, tasks: tasks.NewStore(db), alloc: alloc, log: log, nudgeTimeout: defaultNudgeTimeout}
 	for _, opt := range opts {
 		opt(p)
 	}
@@ -150,7 +146,7 @@ func (p *Planner) RunDue(ctx context.Context, now time.Time) (Summary, error) {
 	var planned []string
 	// One LLM budget for the whole tick: once it is spent, the remaining Homes
 	// fall back to the baseline without asking.
-	llmCtx, cancel := context.WithTimeout(ctx, p.llm.budget)
+	llmCtx, cancel := context.WithTimeout(ctx, p.llm.TickBudget)
 	defer cancel()
 	for _, id := range due {
 		outcome, err := p.planHome(ctx, llmCtx, id, now)
@@ -428,10 +424,10 @@ const (
 func (p *Planner) propose(ctx, llmCtx context.Context, homeID string, date allocation.Date, st loaded) runRecord {
 	rec := runRecord{allocator: p.alloc.Name(), outcome: Planned,
 		reasons: reasons{Energy: st.energy, Assigned: []assigned{}, Pool: []pooled{}}}
-	if p.llm.proposer != nil && worthAsking(st.state) {
+	if p.llm.Proposer != nil && worthAsking(st.state) {
 		res, why, vs := p.askLLM(ctx, llmCtx, homeID, date, st.state)
 		if why == "" {
-			rec.allocator, rec.result = p.llm.proposer.Name(), res
+			rec.allocator, rec.result = p.llm.Proposer.Name(), res
 			rec.reasons.add(res)
 			return rec
 		}
@@ -461,7 +457,7 @@ func (p *Planner) askLLM(ctx, llmCtx context.Context, homeID string, date alloca
 	if llmCtx.Err() != nil {
 		return allocation.Result{}, fallbackTimeout, nil
 	}
-	ok, err := reserveLLMCall(ctx, p.db, homeID, date, p.llm.dailyCap)
+	ok, err := reserveLLMCall(ctx, p.db, homeID, date, p.llm.DailyCap)
 	if err != nil {
 		p.log.Error("llm cap failed", "home", homeID, "error", err.Error())
 		return allocation.Result{}, fallbackError, nil
@@ -469,9 +465,9 @@ func (p *Planner) askLLM(ctx, llmCtx context.Context, homeID string, date alloca
 	if !ok {
 		return allocation.Result{}, fallbackCapReached, nil
 	}
-	callCtx, cancel := context.WithTimeout(llmCtx, p.llm.timeout)
+	callCtx, cancel := context.WithTimeout(llmCtx, p.llm.CallTimeout)
 	defer cancel()
-	res, err := p.llm.proposer.Propose(callCtx, st)
+	res, err := p.llm.Proposer.Propose(callCtx, st)
 	switch {
 	case errors.Is(err, context.DeadlineExceeded):
 		return allocation.Result{}, fallbackTimeout, nil

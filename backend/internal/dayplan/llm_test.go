@@ -311,7 +311,7 @@ func TestATickStopsAskingTheLLMWhenItsBudgetIsSpent(t *testing.T) {
 	fake := llmalloc.NewFakeClient()
 	fake.Block()
 	p := dayplan.New(app.DB, allocation.Baseline{}, slog.New(slog.NewJSONHandler(app.Logs, nil)),
-		dayplan.WithLLM(llmalloc.New(fake), 3, 5*time.Second), dayplan.WithLLMBudget(100*time.Millisecond))
+		dayplan.WithLLM(dayplan.LLMConfig{Proposer: llmalloc.New(fake), DailyCap: 3, CallTimeout: 5 * time.Second, TickBudget: 100 * time.Millisecond}))
 
 	start := time.Now()
 	sum, err := p.RunDue(context.Background(), app.Clock.Now())

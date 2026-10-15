@@ -169,7 +169,7 @@ func (a *App) UseAllocator(al allocation.Allocator) {
 // UseLLM makes the Allocation job ask p first, with a daily cap of dailyCap
 // calls per Home and timeout per call, falling back to the current allocator.
 func (a *App) UseLLM(p dayplan.Proposer, dailyCap int, timeout time.Duration) {
-	a.llm = dayplan.WithLLM(p, dailyCap, timeout)
+	a.llm = dayplan.WithLLM(dayplan.LLMConfig{Proposer: p, DailyCap: dailyCap, CallTimeout: timeout})
 	a.UseAllocator(a.alloc.get())
 }
 
