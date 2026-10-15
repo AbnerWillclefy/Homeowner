@@ -161,6 +161,9 @@ module "budget" {
     aws = aws.us_east_1
   }
 
-  name  = "homeowner-account-monthly"
-  email = var.budget_email
+  # The AWS half of the $20 ceiling (docs/adr/0002); the Anthropic spend limit
+  # is the other half, which this budget cannot see.
+  name      = "homeowner-account-monthly"
+  limit_usd = "10"
+  email     = var.budget_email
 }
