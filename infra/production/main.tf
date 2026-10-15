@@ -112,6 +112,12 @@ module "allocation_job" {
   schedule_expression = "rate(15 minutes)"
   ssm_path_prefix     = local.ssm_prefix
 
+  # A tick is up to 20s of allocator calls, 15s of explanation calls (#28) and
+  # 30s of nudges: 65s in the worst case, so the module's 60s default is too
+  # short. A timed-out invocation is billed for its whole duration, and the
+  # job does not retry.
+  timeout = 90
+
   environment = merge(
     {
       PORT                   = "8080"
