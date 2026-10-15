@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Config is everything the API needs from its environment.
@@ -32,6 +33,15 @@ type Config struct {
 	// public identifiers, not secrets.
 	CognitoIssuer   string
 	CognitoClientID string
+	// LLMAllocatorEnabled lets the daily Allocation ask the LLM allocator first
+	// (ADR 0004). Off by default; on, it needs AnthropicAPIKey.
+	LLMAllocatorEnabled bool
+	AnthropicAPIKey     string
+	LLMModel            string
+	// LLMDailyCapPerHome is how many LLM calls one Home may make per local day.
+	LLMDailyCapPerHome int
+	// LLMTimeout bounds one LLM call.
+	LLMTimeout time.Duration
 }
 
 // AuthEnabled reports whether sign-in is configured.
@@ -47,6 +57,9 @@ func Load(getenv func(string) string) (Config, error) {
 		MigrateDatabaseURL: getenv("MIGRATE_DATABASE_URL"),
 		Port:               getenv("PORT"),
 		DBMaxConns:         5,
+		LLMModel:           "claude-haiku-5-5",
+		LLMDailyCapPerHome: 3,
+		LLMTimeout:         15 * time.Second,
 	}
 	if c.DatabaseURL == "" {
 		return Config{}, errors.New("DATABASE_URL is required")
@@ -96,5 +109,42 @@ func Load(getenv func(string) string) (Config, error) {
 			return Config{}, errors.New("COGNITO_ISSUER must be an https URL")
 		}
 	}
+	if err := loadLLM(getenv, &c); err != nil {
+		return Config{}, err
+	}
 	return c, nil
+}
+
+// loadLLM reads the LLM allocator settings into c. Errors name the variable,
+// never the key.
+func loadLLM(getenv func(string) string, c *Config) error {
+	if v := getenv("LLM_ALLOCATOR_ENABLED"); v != "" {
+		b, err := strconv.ParseBool(v)
+		if err != nil {
+			return fmt.Errorf("LLM_ALLOCATOR_ENABLED: %w", err)
+		}
+		c.LLMAllocatorEnabled = b
+	}
+	c.AnthropicAPIKey = getenv("ANTHROPIC_API_KEY")
+	if c.LLMAllocatorEnabled && c.AnthropicAPIKey == "" {
+		return errors.New("ANTHROPIC_API_KEY is required when LLM_ALLOCATOR_ENABLED is true")
+	}
+	if v := getenv("LLM_MODEL"); v != "" {
+		c.LLMModel = v
+	}
+	if v := getenv("LLM_DAILY_CAP_PER_HOME"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 {
+			return fmt.Errorf("LLM_DAILY_CAP_PER_HOME must be a positive integer, got %q", v)
+		}
+		c.LLMDailyCapPerHome = n
+	}
+	if v := getenv("LLM_TIMEOUT_SECONDS"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 {
+			return fmt.Errorf("LLM_TIMEOUT_SECONDS must be a positive integer, got %q", v)
+		}
+		c.LLMTimeout = time.Duration(n) * time.Second
+	}
+	return nil
 }

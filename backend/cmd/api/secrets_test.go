@@ -69,6 +69,19 @@ func TestVAPIDPrivateKeyResolvedFromSSM(t *testing.T) {
 	}
 }
 
+func TestAnthropicAPIKeyResolvedFromSSM(t *testing.T) {
+	fake := &fakeSSM{params: map[string]string{"/p/anthropic": "anthropic-key-value"}}
+	getenv, err := withSSMSecrets(context.Background(), fake, envOf(map[string]string{
+		"ANTHROPIC_API_KEY_SSM_PARAM": "/p/anthropic",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := getenv("ANTHROPIC_API_KEY"); got != "anthropic-key-value" {
+		t.Errorf("ANTHROPIC_API_KEY = %q", got)
+	}
+}
+
 func TestMissingParameterErrorNamesParameterButNotAnyValue(t *testing.T) {
 	fake := &fakeSSM{params: map[string]string{"/p/migrate": "postgres://secret-direct"}}
 	_, err := withSSMSecrets(context.Background(), fake, envOf(map[string]string{
