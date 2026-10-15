@@ -14,6 +14,12 @@ provider "aws" {
   }
 }
 
+# Budgets is a global service served from us-east-1.
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+}
+
 # Authenticates with the NEON_API_KEY environment variable.
 provider "neon" {}
 
@@ -141,4 +147,20 @@ module "http_api" {
   name                 = "${local.name_prefix}-api"
   lambda_function_name = module.api.function_name
   lambda_invoke_arn    = module.api.invoke_arn
+}
+
+# Production's own spend, by the environment tag every resource here carries
+# (default_tags). The tag must be activated as a cost allocation tag in Billing
+# before the filter sees anything; see infra/README.md.
+module "budget" {
+  source = "../modules/budget"
+
+  providers = {
+    aws = aws.us_east_1
+  }
+
+  name        = "${local.name_prefix}-monthly"
+  limit_usd   = "5"
+  environment = "production"
+  email       = var.budget_email
 }

@@ -18,6 +18,15 @@ resource "aws_budgets_budget" "monthly" {
   limit_unit   = "USD"
   time_unit    = "MONTHLY"
 
+  # Without an environment the budget covers the whole account.
+  dynamic "cost_filter" {
+    for_each = var.environment == null ? [] : [var.environment]
+    content {
+      name   = "TagKeyValue"
+      values = [format("user:environment$%s", cost_filter.value)]
+    }
+  }
+
   notification {
     comparison_operator        = "GREATER_THAN"
     threshold                  = 100
