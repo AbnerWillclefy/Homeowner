@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"testing"
 	"time"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/tasks"
@@ -290,5 +292,39 @@ func TestNothingToPlanSpendsNoCall(t *testing.T) {
 	}
 	if fake.Calls() != 0 || apitest.Count(t, app, `SELECT count(*) FROM llm_calls`) != 0 {
 		t.Fatalf("calls = %d, want none", fake.Calls())
+	}
+}
+
+// The LLM has one time budget per tick, so slow calls cannot push the tick past
+// the Lambda's timeout: once it is spent, the remaining Homes are not asked and
+// fall back as a timeout, without spending their cap.
+func TestATickStopsAskingTheLLMWhenItsBudgetIsSpent(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	for _, email := range []string{"a@example.com", "b@example.com"} {
+		c := apitest.HomeWithResident(t, app, email)
+		apitest.SetBaseline(t, c, map[string]any{"monday": 4})
+		app.Clock.Set(apitest.MondayAt(6))
+		apitest.CreateChore(t, c, apitest.Chore("One", 7, 2, "normal", []string{}))
+	}
+	app.Clock.Set(apitest.MondayAt(7))
+	fake := llmalloc.NewFakeClient()
+	fake.Block()
+	p := dayplan.New(app.DB, allocation.Baseline{}, slog.New(slog.NewJSONHandler(app.Logs, nil)),
+		dayplan.WithLLM(llmalloc.New(fake), 3, 5*time.Second), dayplan.WithLLMBudget(100*time.Millisecond))
+
+	start := time.Now()
+	sum, err := p.RunDue(context.Background(), app.Clock.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if elapsed := time.Since(start); sum.Planned != 2 || elapsed > 2*time.Second {
+		t.Fatalf("summary = %+v after %s, want both Homes planned well before the 5s call timeout", sum, elapsed)
+	}
+	if fake.Calls() != 1 || apitest.Count(t, app, `SELECT count(*) FROM llm_calls`) != 1 {
+		t.Fatalf("calls = %d, want only the first Home to call", fake.Calls())
+	}
+	if n := apitest.Count(t, app, `SELECT count(*) FROM allocation_runs WHERE allocator = 'baseline' AND fallback_reason = 'llm_timeout'`); n != 2 {
+		t.Fatalf("%d runs fell back as llm_timeout, want 2", n)
 	}
 }
