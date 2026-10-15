@@ -19,7 +19,7 @@ func fixedReport() Report {
 			Name: "d1",
 			Baseline: Outcome{Metrics: Metrics{
 				ByKind: map[allocation.ViolationKind]int{}, TasksPlaced: 3, TasksTotal: 4, EffortPlaced: 6, EffortTotal: 8,
-				FairnessOK: true, Spread: 0.25, Gini: 0.2, Assignments: 3, Liked: 1, Neutral: 2,
+				FairnessOK: true, Spread: 0.25, Gini: 0.2, PrefFit: PrefFit{Assignments: 3, Liked: 1, Neutral: 2},
 			}},
 			LLM: []Outcome{
 				{Metrics: Metrics{

@@ -61,8 +61,8 @@ func Render(w io.Writer, r Report, verbose bool) error {
 	row("effort placed", pct(b.EffortPlacedRatio, b.Plans > 0), pct(l.EffortPlacedRatio, l.Plans > 0))
 	row("fairness spread", num(b.SpreadMean, b.FairnessRuns > 0), num(l.SpreadMean, l.FairnessRuns > 0))
 	row("fairness gini", num(b.GiniMean, b.FairnessRuns > 0), num(l.GiniMean, l.FairnessRuns > 0))
-	bs, bok := b.PreferenceScore()
-	ls, lok := l.PreferenceScore()
+	bs, bok := b.Score()
+	ls, lok := l.Score()
 	row("preference score", num(bs, bok), num(ls, lok))
 	row("  liked/neutral/disliked", split(b, bok), split(l, lok))
 	if err := tw.Flush(); err != nil {
@@ -87,7 +87,7 @@ func renderDays(w io.Writer, r Report) error {
 			return
 		}
 		m := o.Metrics
-		score, ok := m.PreferenceScore()
+		score, ok := m.Score()
 		fmt.Fprintf(tw, "%s\t%s\t%d\t%d/%d\t%d/%d\t%s\t%s\n", day, who, m.Violations,
 			m.TasksPlaced, m.TasksTotal, m.EffortPlaced, m.EffortTotal, num(m.Spread, m.FairnessOK), num(score, ok))
 	}

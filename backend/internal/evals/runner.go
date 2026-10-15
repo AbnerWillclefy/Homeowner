@@ -106,18 +106,8 @@ type Summary struct {
 	FairnessRuns         int
 	SpreadMean, GiniMean float64
 
-	// Preference counts are pooled over every assignment of every plan.
-	Assignments              int
-	Liked, Neutral, Disliked int
-}
-
-// PreferenceScore is like +1, neutral 0, dislike -1, averaged per assignment;
-// ok is false when there were no assignments.
-func (s Summary) PreferenceScore() (score float64, ok bool) {
-	if s.Assignments == 0 {
-		return 0, false
-	}
-	return float64(s.Liked-s.Disliked) / float64(s.Assignments), true
+	// PrefFit is pooled over every assignment of every plan.
+	PrefFit
 }
 
 // Summarize aggregates outcomes.
@@ -146,10 +136,7 @@ func Summarize(outcomes []Outcome) Summary {
 			spread += m.Spread
 			gini += m.Gini
 		}
-		s.Assignments += m.Assignments
-		s.Liked += m.Liked
-		s.Neutral += m.Neutral
-		s.Disliked += m.Disliked
+		s.PrefFit.add(m.PrefFit)
 	}
 	if s.Plans > 0 {
 		n := float64(s.Plans)

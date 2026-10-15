@@ -104,8 +104,8 @@ func TestMeasurePreferenceFit(t *testing.T) {
 	if m.Assignments != 4 {
 		t.Errorf("Assignments = %d, want 4", m.Assignments)
 	}
-	if score := float64(m.Liked-m.Disliked) / float64(m.Assignments); !approx(score, 0.25) {
-		t.Errorf("score = %v, want 0.25", score)
+	if score, ok := m.Score(); !ok || !approx(score, 0.25) {
+		t.Errorf("score = %v, %v; want 0.25", score, ok)
 	}
 }
 

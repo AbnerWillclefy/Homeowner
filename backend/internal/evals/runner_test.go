@@ -121,10 +121,10 @@ func TestSummarize(t *testing.T) {
 	outcomes := []Outcome{
 		{Metrics: Metrics{Violations: 2, ByKind: map[allocation.ViolationKind]int{allocation.OverEnergy: 2},
 			TasksPlaced: 1, TasksTotal: 2, EffortPlaced: 2, EffortTotal: 4,
-			FairnessOK: true, Spread: 0.5, Gini: 0.2, Assignments: 2, Liked: 1, Disliked: 0, Neutral: 1}},
+			FairnessOK: true, Spread: 0.5, Gini: 0.2, PrefFit: PrefFit{Assignments: 2, Liked: 1, Disliked: 0, Neutral: 1}}},
 		{Metrics: Metrics{Violations: 0, ByKind: map[allocation.ViolationKind]int{},
 			TasksPlaced: 2, TasksTotal: 2, EffortPlaced: 4, EffortTotal: 4,
-			FairnessOK: true, Spread: 0.1, Gini: 0.4, Assignments: 2, Liked: 0, Disliked: 1, Neutral: 1}},
+			FairnessOK: true, Spread: 0.1, Gini: 0.4, PrefFit: PrefFit{Assignments: 2, Liked: 0, Disliked: 1, Neutral: 1}}},
 		{NoPlan: true, Err: errors.New("x")},
 	}
 	s := Summarize(outcomes)

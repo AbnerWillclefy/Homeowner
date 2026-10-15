@@ -40,18 +40,31 @@ type Metrics struct {
 	Spread, Gini float64
 	FairnessOK   bool
 
-	// Preference fit, over assignments to a known Task and Resident.
+	// PrefFit is the Preference fit, over assignments to a known Task and
+	// Resident.
+	PrefFit
+}
+
+// PrefFit counts assignments by how the Resident feels about the Chore.
+type PrefFit struct {
 	Assignments              int
 	Liked, Neutral, Disliked int
 }
 
-// PreferenceScore is the mean of like +1, neutral 0, dislike -1 per
-// assignment; ok is false when there are no assignments.
-func (m Metrics) PreferenceScore() (score float64, ok bool) {
-	if m.Assignments == 0 {
+// Score is the mean of like +1, neutral 0, dislike -1 per assignment; ok is
+// false when there are no assignments.
+func (p PrefFit) Score() (score float64, ok bool) {
+	if p.Assignments == 0 {
 		return 0, false
 	}
-	return float64(m.Liked-m.Disliked) / float64(m.Assignments), true
+	return float64(p.Liked-p.Disliked) / float64(p.Assignments), true
+}
+
+func (p *PrefFit) add(o PrefFit) {
+	p.Assignments += o.Assignments
+	p.Liked += o.Liked
+	p.Neutral += o.Neutral
+	p.Disliked += o.Disliked
 }
 
 // Measure computes the Metrics of res on st. violations come from
