@@ -1,0 +1,17 @@
+{
+  "name": "restrictions",
+  "today": "2026-03-04",
+  "residents": [
+    {"id": "r1", "energy": 5, "demand_restrictions": ["heavy_lifting"]},
+    {"id": "r2", "energy": 5, "chore_restrictions": ["bathroom"]},
+    {"id": "r3", "energy": 4, "demand_restrictions": ["strong_chemicals", "bending"]}
+  ],
+  "tasks": [
+    {"id": "t1", "chore_id": "furniture", "effort": 4, "importance": "normal", "demands": ["heavy_lifting"], "people": 1, "window_start": "2026-03-02", "window_end": "2026-03-08"},
+    {"id": "t2", "chore_id": "bathroom", "effort": 3, "importance": "essential", "demands": ["strong_chemicals", "bending"], "people": 1, "window_start": "2026-03-03", "window_end": "2026-03-04"},
+    {"id": "t3", "chore_id": "gutters", "effort": 2, "importance": "normal", "demands": ["heights"], "people": 1, "window_start": "2026-03-01", "window_end": "2026-03-10"},
+    {"id": "t4", "chore_id": "dishes", "effort": 2, "importance": "normal", "people": 1, "window_start": "2026-03-04", "window_end": "2026-03-04"},
+    {"id": "t5", "chore_id": "mopping", "effort": 3, "importance": "normal", "demands": ["bending"], "people": 1, "window_start": "2026-03-02", "window_end": "2026-03-09"},
+    {"id": "t6", "chore_id": "fridge", "effort": 2, "importance": "nice_to_have", "demands": ["strong_chemicals"], "people": 1, "window_start": "2026-03-01", "window_end": "2026-03-14"}
+  ]
+}

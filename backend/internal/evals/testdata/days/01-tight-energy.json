@@ -1,0 +1,16 @@
+{
+  "name": "tight-energy",
+  "today": "2026-03-02",
+  "residents": [
+    {"id": "r1", "energy": 4},
+    {"id": "r2", "energy": 3},
+    {"id": "r3", "energy": 3}
+  ],
+  "tasks": [
+    {"id": "t1", "chore_id": "dishes", "effort": 2, "importance": "essential", "people": 1, "window_start": "2026-03-02", "window_end": "2026-03-02"},
+    {"id": "t2", "chore_id": "bathroom", "effort": 4, "importance": "normal", "people": 1, "window_start": "2026-02-28", "window_end": "2026-03-06"},
+    {"id": "t3", "chore_id": "vacuum", "effort": 3, "importance": "normal", "people": 1, "window_start": "2026-03-01", "window_end": "2026-03-07"},
+    {"id": "t4", "chore_id": "laundry", "effort": 3, "importance": "normal", "people": 1, "window_start": "2026-03-02", "window_end": "2026-03-08"},
+    {"id": "t5", "chore_id": "windows", "effort": 4, "importance": "nice_to_have", "people": 1, "window_start": "2026-03-01", "window_end": "2026-03-14"}
+  ]
+}

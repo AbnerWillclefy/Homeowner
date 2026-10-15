@@ -1,0 +1,16 @@
+{
+  "name": "importance-beats-preference",
+  "today": "2026-03-09",
+  "residents": [
+    {"id": "r1", "energy": 4, "preferences": {"gardening": "like", "bathroom": "dislike", "taxes": "dislike"}},
+    {"id": "r2", "energy": 4, "preferences": {"gardening": "like", "bathroom": "dislike", "taxes": "dislike"}},
+    {"id": "r3", "energy": 3, "preferences": {"gardening": "like", "bathroom": "dislike"}}
+  ],
+  "tasks": [
+    {"id": "t1", "chore_id": "bathroom", "effort": 4, "importance": "essential", "people": 1, "window_start": "2026-03-08", "window_end": "2026-03-09"},
+    {"id": "t2", "chore_id": "taxes", "effort": 3, "importance": "essential", "people": 1, "window_start": "2026-03-09", "window_end": "2026-03-09"},
+    {"id": "t3", "chore_id": "gardening", "effort": 4, "importance": "nice_to_have", "people": 1, "window_start": "2026-03-01", "window_end": "2026-03-20"},
+    {"id": "t4", "chore_id": "gardening", "effort": 3, "importance": "nice_to_have", "people": 1, "window_start": "2026-03-01", "window_end": "2026-03-20"},
+    {"id": "t5", "chore_id": "dishes", "effort": 1, "importance": "normal", "people": 1, "window_start": "2026-03-09", "window_end": "2026-03-10"}
+  ]
+}

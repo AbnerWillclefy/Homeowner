@@ -1,0 +1,15 @@
+{
+  "name": "weekday-restricted",
+  "today": "2026-03-10",
+  "residents": [
+    {"id": "r1", "energy": 5},
+    {"id": "r2", "energy": 5}
+  ],
+  "tasks": [
+    {"id": "t1", "chore_id": "market", "effort": 2, "importance": "essential", "people": 1, "window_start": "2026-03-05", "window_end": "2026-03-09", "allowed_weekdays": [0, 6]},
+    {"id": "t2", "chore_id": "recycling", "effort": 1, "importance": "normal", "people": 1, "window_start": "2026-03-10", "window_end": "2026-03-10", "allowed_weekdays": [2]},
+    {"id": "t3", "chore_id": "lawn", "effort": 3, "importance": "normal", "people": 1, "window_start": "2026-03-08", "window_end": "2026-03-15", "allowed_weekdays": [6]},
+    {"id": "t4", "chore_id": "dishes", "effort": 2, "importance": "normal", "people": 1, "window_start": "2026-03-10", "window_end": "2026-03-10"},
+    {"id": "t5", "chore_id": "bedrooms", "effort": 3, "importance": "nice_to_have", "people": 1, "window_start": "2026-03-04", "window_end": "2026-03-16"}
+  ]
+}
