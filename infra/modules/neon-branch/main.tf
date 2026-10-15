@@ -29,6 +29,11 @@ resource "neon_role" "this" {
   project_id = var.project_id
   branch_id  = neon_branch.this.id
   name       = var.role_name
+
+  # Neon creates roles through the branch's read-write endpoint and answers 404
+  # ("no read-write endpoint for branch") without one. Nothing here references
+  # the endpoint, so without this both are created in parallel.
+  depends_on = [neon_endpoint.this]
 }
 
 resource "neon_database" "this" {
