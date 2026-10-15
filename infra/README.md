@@ -160,7 +160,7 @@ into `main`.
 |---|---|---|---|
 | AWS Budget `homeowner-account-monthly` | $10 a month, whole account | `staging/` | Billing, Budgets |
 | AWS Budget `homeowner-production-monthly` | $5 a month, tag `environment=production` | `production/` | Billing, Budgets |
-| Anthropic spend limit | ANTHROPIC_LIMIT | ANTHROPIC_WHERE | ANTHROPIC_CHECK |
+| Anthropic spend limit | $10 a month, whole organisation (all workspaces; workspaces only separate API keys), resets on the 1st | Anthropic Console, `/settings/billing`, set 2026-10-15 | the same page shows the limit and the reset date |
 
 The $10 AWS budget and the Anthropic limit together are the $20 ceiling of ADR
 0002. Both budgets email `BUDGET_EMAIL` at 100% of actual and forecast spend. The
