@@ -1,3 +1,4 @@
+import type { Locale } from "../../../shared/i18n/locales";
 import { authedFetch, errorCode } from "../../auth/api/request";
 
 /** An open Task as the Day Plan shows it. Dates are "YYYY-MM-DD". */
@@ -59,6 +60,18 @@ export interface DayPlan {
   pool: PlanTask[];
   /** The caller's Tasks completed today, oldest first. */
   doneToday: CompletedTask[];
+  /** Absent when there is none: before the plan, after a rejected run, or from an older API. */
+  explanation?: Explanation;
+}
+
+/**
+ * Why the Resident's day looks the way it does, in plain words. Server data in both languages at once: the
+ * app picks one by Locale and never translates it. `source` says who wrote it: the model ("llm") or a
+ * template filled from the recorded reasons ("template").
+ */
+export interface Explanation {
+  source: "llm" | "template";
+  text: Record<Locale, string>;
 }
 
 export type Failure = { kind: "not-signed-in" } | { kind: "offline" } | { kind: "error" };
@@ -144,6 +157,16 @@ function parseOthers(value: unknown): ResidentTasks[] | null {
   return others;
 }
 
+/** Lenient: anything that is not a full explanation in both languages is none, never a failed plan. */
+function parseExplanation(value: unknown): Explanation | null {
+  if (!isRecord(value) || !isRecord(value.text)) return null;
+  const { source, text } = value;
+  const en = text["en-US"];
+  const pt = text["pt-BR"];
+  if ((source !== "llm" && source !== "template") || typeof en !== "string" || typeof pt !== "string") return null;
+  return { source, text: { "en-US": en, "pt-BR": pt } };
+}
+
 function parseDayPlan(body: unknown): DayPlan | null {
   if (!isRecord(body)) return null;
   const { date, allocationTime, planned, rejected, allocator, energy } = body;
@@ -165,7 +188,9 @@ function parseDayPlan(body: unknown): DayPlan | null {
   ) {
     return null;
   }
-  return { date, allocationTime, planned, rejected, allocator, energy, mine, others, pool, doneToday };
+  const plan: DayPlan = { date, allocationTime, planned, rejected, allocator, energy, mine, others, pool, doneToday };
+  const explanation = parseExplanation(body.explanation);
+  return explanation ? { ...plan, explanation } : plan;
 }
 
 /** Today's Day Plan for the signed-in Resident's Home. Before the Allocation time it is an unplanned plan, not a failure. */
