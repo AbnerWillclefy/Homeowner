@@ -30,7 +30,7 @@ jobs:
         working-directory: infra
       - name: terraform validate (every folder)
         run: |
-          for dir in infra/bootstrap infra/staging infra/modules/*; do
+          for dir in infra/bootstrap infra/staging infra/production infra/modules/*; do
             echo "::group::$dir"
             terraform -chdir="$dir" init -backend=false -input=false
             terraform -chdir="$dir" validate
