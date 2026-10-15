@@ -154,6 +154,39 @@ terraform init -backend-config="bucket=homeowner-tfstate-<account id>" -backend-
 terraform force-unlock <lock id>
 ```
 
+## Measuring the LLM allocator
+
+The referee (`allocation.Check`) refuses any LLM plan that breaks a hard rule,
+and the run records why in `allocation_runs.fallback_reason` (see
+`docs/architecture/allocation.md`). Measure how often that happens before
+tuning the model:
+
+```sh
+U=$(aws ssm get-parameter --region us-east-1 --name /homeowner/staging/migrate-database-url \
+  --with-decryption --query Parameter.Value --output text)
+psql "$U" -X -c "
+SELECT allocator, coalesce(fallback_reason, '-') AS fallback, count(*) AS runs
+FROM allocation_runs GROUP BY 1, 2 ORDER BY 3 DESC;" -c "
+SELECT v->>'kind' AS violation, count(*) FROM allocation_runs, jsonb_array_elements(reasons->'llmViolations') v
+GROUP BY 1 ORDER BY 2 DESC;"
+unset U
+```
+
+The first table shows how many runs used the LLM's plan (`llm`) against those
+that fell back, and why. The second shows which rules the model broke. Only the
+daily Allocation asks the LLM, once per Home and day, and only when there is an
+open Task and a Resident with Energy. Check-ins and "get my tasks right away"
+use the baseline, so test with several Homes, not several presses.
+
+The first staging call (2026-10-15) was refused for `over_energy`: the model
+gave a Resident 19 Effort against 14 Energy. The client
+(`backend/internal/llmalloc/anthropic.go`) sends thinking off and effort
+`low`, which is cheap but weak at summing Effort. If `llm_rejected_by_checker`
+with `over_energy` dominates, the next step is a ticket to turn on adaptive
+thinking (keep effort `low`) and raise `max_tokens` in `Allocator.Propose`
+(`backend/internal/llmalloc/llmalloc.go`), since thinking tokens count against
+it. Then compare the fallback rate and the cost per call.
+
 ## Idle-cost audit
 
 | Resource | Billing |
@@ -193,5 +226,7 @@ customer-managed KMS keys, RDS/Aurora, DynamoDB, EC2.
 - A missing file such as an old `/assets/<hash>.js` returns `index.html` with
   200 (the SPA fallback maps 403 and 404), so a stale client may get HTML where
   JavaScript was expected. `registerType: "autoUpdate"` recovers on the next load.
+- The LLM allocator runs with thinking off. Decide whether to turn it on once
+  the fallback rate is measured (see "Measuring the LLM allocator").
 - The Neon project is owned by `staging/`. A future `production/` folder should
   take the project id as a variable instead of creating a second project.
