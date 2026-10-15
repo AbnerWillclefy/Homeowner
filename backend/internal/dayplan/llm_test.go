@@ -253,6 +253,30 @@ func TestTheCallIsCountedBeforeItIsMade(t *testing.T) {
 	}
 }
 
+// The LLM call is slow, so it is made before the planning transaction: it
+// holds neither the Home lock (a Check-in for the Home is not kept waiting) nor
+// a pooled connection.
+func TestTheLLMCallHoldsNoHomeLock(t *testing.T) {
+	t.Parallel()
+	app, a, fake, _ := llmHome(t)
+	var lockErr error
+	app.UseLLM(peek{llmalloc.New(fake), func() {
+		ctx := context.Background()
+		tx, err := app.DB.Begin(ctx)
+		if err != nil {
+			lockErr = err
+			return
+		}
+		defer func() { _ = tx.Rollback(ctx) }()
+		_, lockErr = tx.Exec(ctx, `SELECT 1 FROM homes WHERE id = $1 FOR NO KEY UPDATE NOWAIT`, homeIDOf(t, a))
+	}}, 3, time.Second)
+
+	app.RunAllocation(t)
+	if lockErr != nil {
+		t.Fatalf("the Home was locked during the LLM call: %v", lockErr)
+	}
+}
+
 type peek struct {
 	*llmalloc.Allocator
 	during func()
