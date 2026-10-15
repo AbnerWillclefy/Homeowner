@@ -32,8 +32,13 @@ func newPlanner(ctx context.Context, cfg config.Config, log *slog.Logger) (*dayp
 	}
 	// The LLM allocator is off unless switched on; the baseline then plans alone.
 	if cfg.LLMAllocatorEnabled {
-		llm := llmalloc.New(llmalloc.NewAnthropic(cfg.AnthropicAPIKey, cfg.LLMModel))
-		opts = append(opts, dayplan.WithLLM(dayplan.LLMConfig{Proposer: llm, DailyCap: cfg.LLMDailyCapPerHome, CallTimeout: cfg.LLMTimeout}))
+		// One client serves the allocator and the explanation writer: same
+		// key, model, cap and timeout.
+		client := llmalloc.NewAnthropic(cfg.AnthropicAPIKey, cfg.LLMModel)
+		opts = append(opts, dayplan.WithLLM(dayplan.LLMConfig{
+			Proposer: llmalloc.New(client), Explainer: llmalloc.NewExplainer(client),
+			DailyCap: cfg.LLMDailyCapPerHome, CallTimeout: cfg.LLMTimeout,
+		}))
 		log.Info("llm allocator on", "model", cfg.LLMModel, "daily_cap_per_home", cfg.LLMDailyCapPerHome)
 	} else {
 		log.Info("llm allocator off: the baseline plans every Home")
