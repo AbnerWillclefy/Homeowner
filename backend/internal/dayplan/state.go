@@ -201,6 +201,9 @@ type reasons struct {
 	Energy     map[string]int `json:"energy"`
 	Violations []violation    `json:"violations,omitempty"`
 	Error      string         `json:"error,omitempty"`
+	// LLMViolations are the checker's complaints about an LLM proposal that
+	// was not used, kept for the evals (ADR 0004).
+	LLMViolations []violation `json:"llmViolations,omitempty"`
 }
 
 // add appends the assignments and the pool of a proposal. It is the one place
@@ -336,16 +339,17 @@ func lockHome(ctx context.Context, tx pgx.Tx, homeID string, now time.Time) (all
 }
 
 // insertRun writes one allocation_runs row and returns its id.
-func insertRun(ctx context.Context, tx pgx.Tx, homeID string, date allocation.Date, now time.Time, allocator string, outcome Outcome, rs reasons) (string, error) {
+// fallback is empty when the LLM was not asked or its plan was used.
+func insertRun(ctx context.Context, tx pgx.Tx, homeID string, date allocation.Date, now time.Time, allocator string, fallback fallbackReason, outcome Outcome, rs reasons) (string, error) {
 	body, err := json.Marshal(rs)
 	if err != nil {
 		return "", fmt.Errorf("store run: %w", err)
 	}
 	var runID string
 	err = tx.QueryRow(ctx, `
-		INSERT INTO allocation_runs (home_id, plan_date, allocator, outcome, reasons, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-		homeID, date.Time(), allocator, string(outcome), body, now).Scan(&runID)
+		INSERT INTO allocation_runs (home_id, plan_date, allocator, outcome, reasons, created_at, fallback_reason)
+		VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, '')) RETURNING id`,
+		homeID, date.Time(), allocator, string(outcome), body, now, fallback).Scan(&runID)
 	if err != nil {
 		return "", fmt.Errorf("store run: %w", err)
 	}
@@ -354,7 +358,7 @@ func insertRun(ctx context.Context, tx pgx.Tx, homeID string, date allocation.Da
 
 // store writes the run and its assignments.
 func store(ctx context.Context, tx pgx.Tx, homeID string, date allocation.Date, now time.Time, rec runRecord) error {
-	runID, err := insertRun(ctx, tx, homeID, date, now, rec.allocator, rec.outcome, rec.reasons)
+	runID, err := insertRun(ctx, tx, homeID, date, now, rec.allocator, rec.fallback, rec.outcome, rec.reasons)
 	if err != nil {
 		return err
 	}

@@ -51,6 +51,7 @@ type App struct {
 
 	alloc  *swapAllocator
 	nudger dayplan.Nudger
+	llm    dayplan.Option
 }
 
 // swapAllocator is the Allocator the server and the job share, so a test can
@@ -159,7 +160,17 @@ func (a *App) UseAllocator(al allocation.Allocator) {
 	if a.nudger != nil {
 		opts = append(opts, dayplan.WithNudger(a.nudger))
 	}
+	if a.llm != nil {
+		opts = append(opts, a.llm)
+	}
 	a.Planner = dayplan.New(a.DB, al, slog.New(slog.NewJSONHandler(a.Logs, nil)), opts...)
+}
+
+// UseLLM makes the Allocation job ask p first, with a daily cap of dailyCap
+// calls per Home and timeout per call, falling back to the current allocator.
+func (a *App) UseLLM(p dayplan.Proposer, dailyCap int, timeout time.Duration) {
+	a.llm = dayplan.WithLLM(dayplan.LLMConfig{Proposer: p, DailyCap: dailyCap, CallTimeout: timeout})
+	a.UseAllocator(a.alloc.get())
 }
 
 // RunAllocation runs the Allocation job once at the fake clock's current time,

@@ -69,6 +69,19 @@ future `production/` folder is another thin folder over the same modules.
    browsers re-subscribe on their next launch. Keep the private key out of
    chat, tickets and logs.
 
+7. **LLM allocator (#26)**, optional and off by default. Without it the daily
+   Allocation uses the baseline allocator only.
+   ```sh
+   aws ssm put-parameter --name /homeowner/staging/anthropic-api-key \
+     --type SecureString --value '<an Anthropic API key>'
+   ```
+   Then set the repository variable `LLM_ALLOCATOR_ENABLED` to `true`; the
+   deploy passes it as `TF_VAR_llm_allocator_enabled` and only the Allocation
+   job gets the key. Set it back to `false` (or delete it) to switch the LLM
+   off. Create the parameter by hand so the key never lands in Terraform state.
+   The AWS Budget does not see Anthropic spend: set a monthly spend limit in
+   the Anthropic Console. The per-Home daily cap (3 calls) bounds it in code.
+
 ## How a deploy works
 
 `.github/workflows/deploy-staging.yml` (named exactly `Deploy staging`) runs on
@@ -147,7 +160,7 @@ terraform force-unlock <lock id>
 |---|---|
 | Lambda function | pay per use |
 | API Gateway HTTP API (+ `$default` stage) | pay per use |
-| SSM standard parameters (3: two database URLs, the VAPID private key) | free |
+| SSM standard parameters (4: two database URLs, the VAPID private key, the Anthropic API key) | free |
 | AWS Budget | free (first two budgets) |
 | Cognito user pool and app client (default email sender, no domain) | free (first 50,000 monthly active users) |
 | ECR repository | storage (lifecycle keeps the last 5 images) |

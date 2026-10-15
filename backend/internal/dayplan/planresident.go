@@ -50,7 +50,7 @@ func (p *Planner) PlanResident(ctx context.Context, homeID, residentID string, n
 	if !found {
 		// The Home lock is held, so nobody else can create the run meanwhile.
 		run = storedRun{outcome: Planned, reasons: reasons{Energy: map[string]int{}, Assigned: []assigned{}, Pool: []pooled{}}}
-		run.id, err = insertRun(ctx, tx, homeID, date, now, p.alloc.Name(), Planned, run.reasons)
+		run.id, err = insertRun(ctx, tx, homeID, date, now, p.alloc.Name(), "", Planned, run.reasons)
 		if err != nil {
 			return "", fmt.Errorf("plan resident: %w", err)
 		}

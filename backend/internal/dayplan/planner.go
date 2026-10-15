@@ -22,6 +22,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/tasks"
 )
 
@@ -47,6 +48,7 @@ type Planner struct {
 	alloc allocation.Allocator
 	log   *slog.Logger
 	nudge Nudger
+	llm   LLMConfig
 	// nudgeTimeout is the one deadline for all the nudging of a tick.
 	nudgeTimeout time.Duration
 }
@@ -83,6 +85,40 @@ func WithNudgeTimeout(d time.Duration) Option {
 	return func(p *Planner) { p.nudgeTimeout = d }
 }
 
+// Proposer is the LLM allocator as the Planner sees it: like an Allocator, but
+// it takes a context, because it calls out and must stop at a deadline.
+type Proposer interface {
+	// Name goes in the run record when its plan is used.
+	Name() string
+	Propose(ctx context.Context, st allocation.State) (allocation.Result, error)
+}
+
+// LLMConfig is the optional LLM allocator of the daily Allocation.
+type LLMConfig struct {
+	Proposer Proposer
+	// DailyCap is how many calls one Home may make per local day.
+	DailyCap int
+	// CallTimeout bounds one call.
+	CallTimeout time.Duration
+	// TickBudget bounds all the calls of one RunDue; zero means the default.
+	TickBudget time.Duration
+}
+
+// WithLLM makes PlanHome ask c.Proposer first. Its plan is used only when it
+// passes Check; otherwise the Planner's Allocator plans and the run records why
+// (ADR 0004). Check-in and "right away" re-plans never use it.
+func WithLLM(c LLMConfig) Option {
+	if c.TickBudget == 0 {
+		c.TickBudget = defaultLLMBudget
+	}
+	return func(p *Planner) { p.llm = c }
+}
+
+// defaultLLMBudget bounds the LLM calls of a whole tick. With the 30 second
+// nudge deadline after planning, it keeps the tick inside the Allocation
+// Lambda's 60 second timeout.
+const defaultLLMBudget = 20 * time.Second
+
 // New returns a Planner that asks alloc for every proposal.
 func New(db *pgxpool.Pool, alloc allocation.Allocator, log *slog.Logger, opts ...Option) *Planner {
 	p := &Planner{db: db, tasks: tasks.NewStore(db), alloc: alloc, log: log, nudgeTimeout: defaultNudgeTimeout}
@@ -108,8 +144,12 @@ func (p *Planner) RunDue(ctx context.Context, now time.Time) (Summary, error) {
 	}
 	sum := Summary{Due: len(due)}
 	var planned []string
+	// One LLM budget for the whole tick: once it is spent, the remaining Homes
+	// fall back to the baseline without asking.
+	llmCtx, cancel := context.WithTimeout(ctx, p.llm.TickBudget)
+	defer cancel()
 	for _, id := range due {
-		outcome, err := p.PlanHome(ctx, id, now)
+		outcome, err := p.planHome(ctx, llmCtx, id, now)
 		switch {
 		case err != nil:
 			sum.Failed++
@@ -247,9 +287,10 @@ func UnplannedHomes(ctx context.Context, db *pgxpool.Pool, log *slog.Logger, now
 // Home already has a run for that date. It does not look at the Allocation
 // time: choosing when to plan is the caller's business (see DueHomes).
 //
-// Steps: bring the Tasks up to date, then in one transaction lock the Home,
-// look for the day's run, build the State, ask the Allocator, have Check
-// referee the proposal and store the run with its assignments. The lock makes
+// Steps: bring the Tasks up to date, ask the LLM when it is on, then in one
+// transaction lock the Home, look for the day's run, build the State, have
+// Check referee the LLM's proposal, ask the Allocator when it is not used, and
+// store the run with its assignments. The lock makes
 // overlapping invocations plan once, and the unique key on the run is the last
 // guard. A crash leaves nothing half-written.
 //
@@ -257,12 +298,22 @@ func UnplannedHomes(ctx context.Context, db *pgxpool.Pool, log *slog.Logger, now
 // a connection while waiting for a second one from the pool. Refresh is
 // idempotent, so overlapping calls only repeat it.
 func (p *Planner) PlanHome(ctx context.Context, homeID string, now time.Time) (Outcome, error) {
-	if done, err := p.planned(ctx, homeID, now); err != nil || done {
+	return p.planHome(ctx, ctx, homeID, now)
+}
+
+// planHome is PlanHome with llmCtx bounding the LLM call, so RunDue can share
+// one LLM budget across its Homes.
+func (p *Planner) planHome(ctx, llmCtx context.Context, homeID string, now time.Time) (Outcome, error) {
+	day, done, err := p.planned(ctx, homeID, now)
+	if err != nil || done {
 		return AlreadyPlanned, err
 	}
 	if err := p.tasks.Refresh(ctx, homeID, now); err != nil {
 		return "", err
 	}
+	// The LLM is asked before the transaction: the call is slow, and it must
+	// not hold the Home lock (a Check-in would wait) or a connection.
+	ans := p.askLLM(llmCtx, homeID, day)
 
 	tx, err := p.db.Begin(ctx)
 	if err != nil {
@@ -281,12 +332,15 @@ func (p *Planner) PlanHome(ctx context.Context, homeID string, now time.Time) (O
 	if exists {
 		return AlreadyPlanned, nil
 	}
+	if date != day {
+		ans = llmAnswer{} // the Home's zone changed during the call: that plan was for another day
+	}
 
 	st, err := loadState(ctx, tx, homeID, date)
 	if err != nil {
 		return "", err
 	}
-	run := p.propose(st)
+	run := p.propose(st, ans)
 	if err := store(ctx, tx, homeID, date, now, run); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == uniqueViolation {
@@ -298,32 +352,35 @@ func (p *Planner) PlanHome(ctx context.Context, homeID string, now time.Time) (O
 		return "", fmt.Errorf("plan home: commit: %w", err)
 	}
 
+	if run.fallback != "" {
+		p.log.Warn("llm proposal not used", "home", homeID, "fallback_reason", run.fallback, "violations", len(run.reasons.LLMViolations))
+	}
 	if run.outcome == Rejected {
 		p.log.Error("allocator proposal rejected by the checker", "home", homeID, "date", date.Time().Format(time.DateOnly),
-			"allocator", run.allocator, "violations", len(run.reasons.Violations), "reason", run.reasons.Error)
+			"allocator", run.allocator, "fallback_reason", run.fallback, "violations", len(run.reasons.Violations), "reason", run.reasons.Error)
 		return Rejected, nil
 	}
-	p.log.Info("day planned", "home", homeID, "date", date.Time().Format(time.DateOnly), "allocator", run.allocator,
+	p.log.Info("day planned", "home", homeID, "date", date.Time().Format(time.DateOnly), "allocator", run.allocator, "fallback_reason", run.fallback,
 		"assigned", len(run.result.DayPlan.Assignments), "pooled", len(run.result.Pool))
 	return Planned, nil
 }
 
-// planned reports whether the Home already has a run for its local date at
-// now, without taking any lock.
-func (p *Planner) planned(ctx context.Context, homeID string, now time.Time) (bool, error) {
+// planned returns the Home's local date at now and whether the Home already
+// has a run for it, without taking any lock.
+func (p *Planner) planned(ctx context.Context, homeID string, now time.Time) (allocation.Date, bool, error) {
 	var zone string
 	if err := p.db.QueryRow(ctx, `SELECT timezone FROM homes WHERE id = $1`, homeID).Scan(&zone); err != nil {
-		return false, fmt.Errorf("plan home: load home: %w", err)
+		return 0, false, fmt.Errorf("plan home: load home: %w", err)
 	}
 	date, err := LocalDate(zone, now)
 	if err != nil {
-		return false, fmt.Errorf("plan home: %w", err)
+		return 0, false, fmt.Errorf("plan home: %w", err)
 	}
 	exists, err := runExists(ctx, p.db, homeID, date)
 	if err != nil {
-		return false, fmt.Errorf("plan home: %w", err)
+		return 0, false, fmt.Errorf("plan home: %w", err)
 	}
-	return exists, nil
+	return date, exists, nil
 }
 
 // querier is the QueryRow half of *pgxpool.Pool and pgx.Tx.
@@ -357,28 +414,133 @@ type runRecord struct {
 	outcome   Outcome
 	result    allocation.Result
 	reasons   reasons
+	// fallback says why the LLM's plan was not used, when it was asked.
+	fallback fallbackReason
 }
 
-// propose asks the Allocator and referees the answer. A proposal that errors or
-// breaks a rule is never stored as a plan (ADR 0004): the run is rejected with
-// nothing assigned.
-func (p *Planner) propose(st loaded) runRecord {
+// fallbackReason is why the LLM's plan was not used, stored in
+// allocation_runs.fallback_reason. The zero value means there was no
+// fallback: the LLM was not asked or its plan was used.
+type fallbackReason string
+
+const (
+	fallbackError      fallbackReason = "llm_error"
+	fallbackTimeout    fallbackReason = "llm_timeout"
+	fallbackInvalid    fallbackReason = "llm_invalid_response"
+	fallbackRejected   fallbackReason = "llm_rejected_by_checker"
+	fallbackCapReached fallbackReason = "llm_daily_cap_reached"
+)
+
+// llmAnswer is what asking the LLM gave: a proposal, not yet refereed, or why
+// there is none. Both zero means the LLM was not asked.
+type llmAnswer struct {
+	proposal *allocation.Result
+	fallback fallbackReason
+}
+
+// propose referees the LLM's proposal against st, the State under the Home
+// lock, and uses it when it passes Check. Otherwise the Allocator proposes and
+// the run records why the LLM's plan was not used. Every proposal is refereed:
+// a plan is stored only when it passes Check (ADR 0004). A baseline proposal
+// that errors or breaks a rule is a rejected run with nothing assigned.
+func (p *Planner) propose(st loaded, ans llmAnswer) runRecord {
 	rec := runRecord{allocator: p.alloc.Name(), outcome: Planned,
 		reasons: reasons{Energy: st.energy, Assigned: []assigned{}, Pool: []pooled{}}}
+	if worthAsking(st.state) {
+		if ans.proposal != nil {
+			vs := allocation.Check(ans.proposal.DayPlan, st.state)
+			if len(vs) == 0 {
+				rec.allocator, rec.result = p.llm.Proposer.Name(), *ans.proposal
+				rec.reasons.add(*ans.proposal)
+				return rec
+			}
+			rec.reasons.LLMViolations = violationsOf(vs)
+			ans.fallback = fallbackRejected
+		}
+		rec.fallback = ans.fallback
+	}
 	res, err := p.alloc.Plan(st.state)
 	if err != nil {
 		rec.outcome, rec.reasons.Error = Rejected, "allocator_failed"
 		return rec
 	}
 	if vs := allocation.Check(res.DayPlan, st.state); len(vs) > 0 {
-		rec.outcome, rec.reasons.Error = Rejected, "referee_rejected"
-		for _, v := range vs {
-			rec.reasons.Violations = append(rec.reasons.Violations,
-				violation{Kind: string(v.Kind), TaskID: v.TaskID, ResidentID: v.ResidentID, Level: string(v.Level), Detail: v.Detail})
-		}
+		rec.outcome, rec.reasons.Error, rec.reasons.Violations = Rejected, "referee_rejected", violationsOf(vs)
 		return rec
 	}
 	rec.result = res
 	rec.reasons.add(res)
 	return rec
+}
+
+// askLLM asks the LLM for a proposal for the Home's date, when it is on and
+// there is something to plan. ctx is the LLM's budget (the tick's, in RunDue):
+// once spent, the call is skipped without reserving. Otherwise it reads the
+// State, reserves one of the Home's daily calls (on the pool, so a later
+// rollback cannot give back a call that was paid) and asks under the call
+// timeout. It takes no lock and holds no connection while the model answers.
+func (p *Planner) askLLM(ctx context.Context, homeID string, date allocation.Date) llmAnswer {
+	if p.llm.Proposer == nil {
+		return llmAnswer{}
+	}
+	failed := func(err error) llmAnswer {
+		switch {
+		case ctx.Err() != nil, errors.Is(err, context.DeadlineExceeded):
+			return llmAnswer{fallback: fallbackTimeout}
+		case errors.Is(err, llmalloc.ErrInvalidResponse):
+			return llmAnswer{fallback: fallbackInvalid}
+		}
+		p.log.Error("llm allocator failed", "home", homeID, "error", err.Error())
+		return llmAnswer{fallback: fallbackError}
+	}
+	if err := ctx.Err(); err != nil {
+		return failed(err)
+	}
+	st, err := p.readState(ctx, homeID, date)
+	if err != nil {
+		return failed(err)
+	}
+	if !worthAsking(st) {
+		return llmAnswer{}
+	}
+	ok, err := reserveLLMCall(ctx, p.db, homeID, date, p.llm.DailyCap)
+	if err != nil {
+		return failed(err)
+	}
+	if !ok {
+		return llmAnswer{fallback: fallbackCapReached}
+	}
+	callCtx, cancel := context.WithTimeout(ctx, p.llm.CallTimeout)
+	defer cancel()
+	res, err := p.llm.Proposer.Propose(callCtx, st)
+	if err != nil {
+		return failed(err)
+	}
+	return llmAnswer{proposal: &res}
+}
+
+// readState loads the Home's State for date in a short transaction of its own,
+// without the Home lock.
+func (p *Planner) readState(ctx context.Context, homeID string, date allocation.Date) (allocation.State, error) {
+	tx, err := p.db.Begin(ctx)
+	if err != nil {
+		return allocation.State{}, fmt.Errorf("read state: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	st, err := loadState(ctx, tx, homeID, date)
+	return st.state, err
+}
+
+// worthAsking reports whether there is anything for the LLM to plan: an open
+// Task and a Resident with Energy. Otherwise the baseline plans for free.
+func worthAsking(st allocation.State) bool {
+	return len(st.Tasks) > 0 && slices.ContainsFunc(st.Residents, func(r allocation.Resident) bool { return r.Energy > 0 })
+}
+
+func violationsOf(vs []allocation.Violation) []violation {
+	out := make([]violation, 0, len(vs))
+	for _, v := range vs {
+		out = append(out, violation{Kind: string(v.Kind), TaskID: v.TaskID, ResidentID: v.ResidentID, Level: string(v.Level), Detail: v.Detail})
+	}
+	return out
 }

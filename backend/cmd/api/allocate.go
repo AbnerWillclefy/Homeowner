@@ -9,6 +9,7 @@ import (
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/nudge"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/config"
@@ -28,6 +29,14 @@ func newPlanner(ctx context.Context, cfg config.Config, log *slog.Logger) (*dayp
 		opts = append(opts, dayplan.WithNudger(nudge.New(pool, sender, log)))
 	} else {
 		log.Warn("push disabled: VAPID keys are not set, the Allocation job sends no nudges")
+	}
+	// The LLM allocator is off unless switched on; the baseline then plans alone.
+	if cfg.LLMAllocatorEnabled {
+		llm := llmalloc.New(llmalloc.NewAnthropic(cfg.AnthropicAPIKey, cfg.LLMModel))
+		opts = append(opts, dayplan.WithLLM(dayplan.LLMConfig{Proposer: llm, DailyCap: cfg.LLMDailyCapPerHome, CallTimeout: cfg.LLMTimeout}))
+		log.Info("llm allocator on", "model", cfg.LLMModel, "daily_cap_per_home", cfg.LLMDailyCapPerHome)
+	} else {
+		log.Info("llm allocator off: the baseline plans every Home")
 	}
 	return dayplan.New(pool, allocation.Baseline{}, log, opts...), pool.Close, nil
 }
