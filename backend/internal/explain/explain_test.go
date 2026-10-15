@@ -67,6 +67,19 @@ func TestValid(t *testing.T) {
 			t.Errorf("%s must be invalid", name)
 		}
 	}
+	// Valid blocks links by a denylist, so a bare domain passes. That gap is
+	// accepted (the text renders as plain text, so it is not clickable): this
+	// pins it, so closing it is a deliberate change. Rejecting "." plus a
+	// letter would also refuse "e.g." and "Rest.Then".
+	for name, text := range map[string]string{
+		"bare domain":  "see example.com for more",
+		"shortener":    "try bit.ly/x today",
+		"abbreviation": "do it, e.g. today",
+	} {
+		if !explain.Valid(explain.Texts{EnUS: text, PtBR: ok.PtBR}) {
+			t.Errorf("%s is accepted today", name)
+		}
+	}
 	if !explain.Valid(explain.Texts{EnUS: strings.Repeat("ã", 400), PtBR: ok.PtBR}) {
 		t.Error("400 characters (not bytes) is the limit")
 	}

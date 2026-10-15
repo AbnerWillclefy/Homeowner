@@ -40,10 +40,12 @@ type Facts struct {
 	Pool   []string `json:"pool"`
 }
 
-// ResidentFacts is the Facts of the Resident with the id.
+// ResidentFacts is the Facts of the Resident with the id. It is also the shape
+// sent to the model, so the tags are the prompt's keys. Whoever builds Facts
+// sets Tasks and Pool non-nil, so they marshal as [] rather than null.
 type ResidentFacts struct {
-	ResidentID string
-	Facts      Facts
+	ResidentID string `json:"resident_id"`
+	Facts      Facts  `json:"facts"`
 }
 
 // Texts is one explanation in both languages the PWA ships. The backend does
@@ -64,6 +66,12 @@ func Valid(t Texts) bool {
 	return validText(t.EnUS) && validText(t.PtBR)
 }
 
+// linkMarkers are what makes a text a link: "//" is a scheme separator
+// ("https://x") or a scheme-relative URL, "www." a host. It is a denylist, so a
+// bare domain ("example.com") passes; the PWA renders the text as plain text,
+// where it is not clickable.
+var linkMarkers = []string{"//", "www."}
+
 func validText(s string) bool {
 	if strings.TrimSpace(s) == "" || utf8.RuneCountInString(s) > MaxLength {
 		return false
@@ -72,7 +80,7 @@ func validText(s string) bool {
 		return false
 	}
 	lower := strings.ToLower(s)
-	for _, bad := range []string{"://", "www.", "//"} {
+	for _, bad := range linkMarkers {
 		if strings.Contains(lower, bad) {
 			return false
 		}
