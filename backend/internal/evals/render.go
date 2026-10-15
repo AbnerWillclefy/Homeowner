@@ -1,36 +1,42 @@
 package evals
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"maps"
+	"slices"
 	"text/tabwriter"
-
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 )
 
-// kindOrder fixes the order of the violation rows.
-var kindOrder = []allocation.ViolationKind{
-	allocation.OverEnergy, allocation.BrokenRestriction, allocation.UnknownTask, allocation.DuplicateTask,
-	allocation.WrongResidentCount, allocation.UnknownResident, allocation.WeekdayNotAllowed,
+const na = "n/a"
+
+// stat is a number that may be undefined (nothing to divide), decided once
+// where it is built so a row never repeats the check.
+type stat struct {
+	v  float64
+	ok bool
 }
 
-const na = "n/a"
+// format prints the value with a Printf verb, or n/a when it is undefined.
+func (s stat) format(verb string) string {
+	if !s.ok {
+		return na
+	}
+	return fmt.Sprintf(verb, s.v)
+}
 
 // Render writes the comparison as plain text: one row per metric with a
 // baseline and an llm column, and with verbose a per-day section. It is a pure
 // function of the Report. Whatever the numbers say, it is a report, not a gate.
 func Render(w io.Writer, r Report, verbose bool) error {
-	if _, err := fmt.Fprintf(w, "Allocator evals  model: %s  days: %d  llm runs per day: %d\n", r.Model, len(r.Days), r.Runs); err != nil {
-		return err
-	}
+	// Everything is written to a buffer, which cannot fail, and copied out once.
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "Allocator evals  model: %s  days: %d  llm runs per day: %d\n", r.Model, len(r.Days), r.Runs)
 	if r.LLMSkipped {
-		if _, err := fmt.Fprintln(w, "llm column skipped: ANTHROPIC_API_KEY is not set (or -baseline-only was given)"); err != nil {
-			return err
-		}
+		fmt.Fprintln(&buf, "llm column skipped: ANTHROPIC_API_KEY is not set (or -baseline-only was given)")
 	}
-	if _, err := fmt.Fprintln(w); err != nil {
-		return err
-	}
+	fmt.Fprintln(&buf)
 
 	var base, llm []Outcome
 	for _, d := range r.Days {
@@ -39,46 +45,53 @@ func Render(w io.Writer, r Report, verbose bool) error {
 	}
 	b, l := Summarize(base), Summarize(llm)
 
-	tw := tabwriter.NewWriter(w, 0, 8, 2, ' ', 0)
-	row := func(label, bv, lv string) {
+	tw := tabwriter.NewWriter(&buf, 0, 8, 2, ' ', 0)
+	text := func(label, bv, lv string) {
 		if r.LLMSkipped {
 			lv = "skipped"
 		}
 		fmt.Fprintf(tw, "%s\t%s\t%s\n", label, bv, lv)
 	}
-	row("metric", "baseline", "llm")
-	row("runs", fmt.Sprint(b.Runs), fmt.Sprint(l.Runs))
-	row("no plan", fmt.Sprint(b.NoPlan), fmt.Sprint(l.NoPlan))
-	row("violations (mean per plan)", num(b.ViolationsMean, b.Plans > 0), num(l.ViolationsMean, l.Plans > 0))
-	row("violations (worst plan)", count(b.ViolationsWorst, b.Plans > 0), count(l.ViolationsWorst, l.Plans > 0))
-	for _, k := range kindOrder {
-		if b.ByKind[k] == 0 && l.ByKind[k] == 0 {
-			continue
-		}
-		row("  "+string(k), num(b.ByKind[k], b.Plans > 0), num(l.ByKind[k], l.Plans > 0))
+	row := func(label string, bv, lv stat, verb string) { text(label, bv.format(verb), lv.format(verb)) }
+	// perPlan and perFairPlan are defined only when the Summary has plans, or
+	// plans with a defined fairness.
+	perPlan := func(s Summary, v float64) stat { return stat{v, s.Plans > 0} }
+	perFairPlan := func(s Summary, v float64) stat { return stat{v, s.FairnessRuns > 0} }
+	score := func(s Summary) stat { v, ok := s.Score(); return stat{v, ok} }
+
+	text("metric", "baseline", "llm")
+	text("runs", fmt.Sprint(b.Runs), fmt.Sprint(l.Runs))
+	text("no plan", fmt.Sprint(b.NoPlan), fmt.Sprint(l.NoPlan))
+	row("violations (mean per plan)", perPlan(b, b.ViolationsMean), perPlan(l, l.ViolationsMean), "%.2f")
+	row("violations (worst plan)", perPlan(b, float64(b.ViolationsWorst)), perPlan(l, float64(l.ViolationsWorst)), "%.0f")
+	// Only the kinds that occurred get a row, so a new kind is never dropped.
+	kinds := slices.Collect(maps.Keys(b.ByKind))
+	kinds = append(kinds, slices.Collect(maps.Keys(l.ByKind))...)
+	slices.Sort(kinds)
+	kinds = slices.Compact(kinds)
+	for _, k := range kinds {
+		row("  "+string(k), perPlan(b, b.ByKind[k]), perPlan(l, l.ByKind[k]), "%.2f")
 	}
-	row("tasks placed", pct(b.TasksPlacedRatio, b.Plans > 0), pct(l.TasksPlacedRatio, l.Plans > 0))
-	row("effort placed", pct(b.EffortPlacedRatio, b.Plans > 0), pct(l.EffortPlacedRatio, l.Plans > 0))
-	row("fairness spread", num(b.SpreadMean, b.FairnessRuns > 0), num(l.SpreadMean, l.FairnessRuns > 0))
-	row("fairness gini", num(b.GiniMean, b.FairnessRuns > 0), num(l.GiniMean, l.FairnessRuns > 0))
-	bs, bok := b.Score()
-	ls, lok := l.Score()
-	row("preference score", num(bs, bok), num(ls, lok))
-	row("  liked/neutral/disliked", split(b, bok), split(l, lok))
+	pct := func(s stat) stat { return stat{s.v * 100, s.ok} }
+	row("tasks placed", pct(perPlan(b, b.TasksPlacedRatio)), pct(perPlan(l, l.TasksPlacedRatio)), "%.1f%%")
+	row("effort placed", pct(perPlan(b, b.EffortPlacedRatio)), pct(perPlan(l, l.EffortPlacedRatio)), "%.1f%%")
+	row("fairness spread", perFairPlan(b, b.SpreadMean), perFairPlan(l, l.SpreadMean), "%.2f")
+	row("fairness gini", perFairPlan(b, b.GiniMean), perFairPlan(l, l.GiniMean), "%.2f")
+	row("preference score", score(b), score(l), "%.2f")
+	text("  liked/neutral/disliked", split(b.PrefFit), split(l.PrefFit))
 	if err := tw.Flush(); err != nil {
 		return err
 	}
 
 	if verbose {
-		return renderDays(w, r)
+		renderDays(&buf, r)
 	}
-	return nil
+	_, err := w.Write(buf.Bytes())
+	return err
 }
 
-func renderDays(w io.Writer, r Report) error {
-	if _, err := fmt.Fprintf(w, "\nper day\n\n"); err != nil {
-		return err
-	}
+func renderDays(w io.Writer, r Report) {
+	fmt.Fprintf(w, "\nper day\n\n")
 	tw := tabwriter.NewWriter(w, 0, 8, 2, ' ', 0)
 	fmt.Fprintln(tw, "day\tallocator\tviolations\ttasks\teffort\tspread\tpreference")
 	line := func(day, who string, o Outcome) {
@@ -87,9 +100,10 @@ func renderDays(w io.Writer, r Report) error {
 			return
 		}
 		m := o.Metrics
-		score, ok := m.Score()
+		v, ok := m.Score()
 		fmt.Fprintf(tw, "%s\t%s\t%d\t%d/%d\t%d/%d\t%s\t%s\n", day, who, m.Violations,
-			m.TasksPlaced, m.TasksTotal, m.EffortPlaced, m.EffortTotal, num(m.Spread, m.FairnessOK), num(score, ok))
+			m.TasksPlaced, m.TasksTotal, m.EffortPlaced, m.EffortTotal,
+			stat{m.Spread, m.FairnessOK}.format("%.2f"), stat{v, ok}.format("%.2f"))
 	}
 	for _, d := range r.Days {
 		line(d.Name, "baseline", d.Baseline)
@@ -97,33 +111,13 @@ func renderDays(w io.Writer, r Report) error {
 			line(d.Name, fmt.Sprintf("llm #%d", i+1), o)
 		}
 	}
-	return tw.Flush()
+	tw.Flush()
 }
 
-func num(v float64, ok bool) string {
-	if !ok {
+// split prints the liked/neutral/disliked counts, or n/a with no assignments.
+func split(p PrefFit) string {
+	if p.Assignments == 0 {
 		return na
 	}
-	return fmt.Sprintf("%.2f", v)
-}
-
-func pct(v float64, ok bool) string {
-	if !ok {
-		return na
-	}
-	return fmt.Sprintf("%.1f%%", v*100)
-}
-
-func count(n int, ok bool) string {
-	if !ok {
-		return na
-	}
-	return fmt.Sprint(n)
-}
-
-func split(s Summary, ok bool) string {
-	if !ok {
-		return na
-	}
-	return fmt.Sprintf("%d/%d/%d", s.Liked, s.Neutral, s.Disliked)
+	return fmt.Sprintf("%d/%d/%d", p.Liked, p.Neutral, p.Disliked)
 }

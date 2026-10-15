@@ -74,6 +74,20 @@ func TestRenderVerboseAddsPerDayRows(t *testing.T) {
 	}
 }
 
+func TestRenderShowsEveryKindPresentInSortedOrder(t *testing.T) {
+	rep := fixedReport()
+	rep.Days[0].LLM[0].Metrics.ByKind["a_future_kind"] = 1
+	var buf bytes.Buffer
+	if err := Render(&buf, rep, false); err != nil {
+		t.Fatal(err)
+	}
+	got := buf.String()
+	i, j := strings.Index(got, "  a_future_kind"), strings.Index(got, "  over_energy")
+	if i < 0 || j < 0 || i > j {
+		t.Errorf("want a_future_kind then over_energy rows:\n%s", got)
+	}
+}
+
 func TestRenderSkippedLLM(t *testing.T) {
 	rep := fixedReport()
 	rep.LLMSkipped = true
