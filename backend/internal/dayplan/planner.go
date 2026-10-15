@@ -153,25 +153,25 @@ type Summary struct {
 // the others; the next tick tries it again. The error is only for not being
 // able to find the Homes at all.
 func (p *Planner) RunDue(ctx context.Context, now time.Time) (Summary, error) {
-	due, err := p.DueHomes(ctx, now)
+	due, err := p.dueHomes(ctx, now)
 	if err != nil {
 		return Summary{}, err
 	}
 	sum := Summary{Due: len(due)}
-	var planned []string
+	var planned []HomeDay
 	// One LLM budget for the whole tick: once it is spent, the remaining Homes
 	// fall back to the baseline without asking.
 	llmCtx, cancel := context.WithTimeout(ctx, p.llm.TickBudget)
 	defer cancel()
-	for _, id := range due {
-		outcome, err := p.planHome(ctx, llmCtx, id, now)
+	for _, h := range due {
+		outcome, err := p.planHome(ctx, llmCtx, h.ID, now)
 		switch {
 		case err != nil:
 			sum.Failed++
-			p.log.Error("allocate home failed", "home", id, "error", err.Error())
+			p.log.Error("allocate home failed", "home", h.ID, "error", err.Error())
 		case outcome == Planned:
 			sum.Planned++
-			planned = append(planned, id)
+			planned = append(planned, h)
 		case outcome == Rejected:
 			sum.Rejected++
 		default:
@@ -184,7 +184,11 @@ func (p *Planner) RunDue(ctx context.Context, now time.Time) (Summary, error) {
 	p.explainHomes(ctx, planned, now)
 	// Every Home is planned before any push is attempted, so a slow or failing
 	// push service can never delay or fail an Allocation.
-	p.sendNudges(ctx, planned, now)
+	ids := make([]string, len(planned))
+	for i, h := range planned {
+		ids[i] = h.ID
+	}
+	p.sendNudges(ctx, ids, now)
 	p.log.Info("allocation tick done", "due", sum.Due, "planned", sum.Planned,
 		"already_planned", sum.AlreadyPlanned, "rejected", sum.Rejected, "failed", sum.Failed)
 	return sum, nil
@@ -215,9 +219,7 @@ func (p *Planner) sendNudges(ctx context.Context, planned []string, now time.Tim
 // skips the exact time, still plans the Home once. A Home with an unknown
 // timezone is logged and skipped.
 func (p *Planner) DueHomes(ctx context.Context, now time.Time) ([]string, error) {
-	homes, err := UnplannedHomes(ctx, p.db, p.log, now, func(local, alloc time.Duration) bool {
-		return local >= alloc
-	})
+	homes, err := p.dueHomes(ctx, now)
 	if err != nil {
 		return nil, err
 	}
@@ -226,6 +228,14 @@ func (p *Planner) DueHomes(ctx context.Context, now time.Time) ([]string, error)
 		due = append(due, h.ID)
 	}
 	return due, nil
+}
+
+// dueHomes is DueHomes with each Home's local date, which RunDue hands on so
+// later steps need not work it out again.
+func (p *Planner) dueHomes(ctx context.Context, now time.Time) ([]HomeDay, error) {
+	return UnplannedHomes(ctx, p.db, p.log, now, func(local, alloc time.Duration) bool {
+		return local >= alloc
+	})
 }
 
 // HomeDay is a Home with its local date at some instant.
