@@ -32,17 +32,7 @@ func NewExplainer(client Client) *Explainer { return &Explainer{client: client} 
 // repeated Resident id, or whose text fails explain.Valid, is dropped, so a
 // Resident can be missing from the result.
 func (e *Explainer) Explain(ctx context.Context, residents []explain.ResidentFacts) (map[string]explain.Texts, error) {
-	in := explainInput{Residents: make([]explainResident, len(residents))}
-	for i, r := range residents {
-		in.Residents[i] = explainResident{ResidentID: r.ResidentID, Facts: r.Facts}
-		if in.Residents[i].Facts.Tasks == nil {
-			in.Residents[i].Facts.Tasks = []explain.Task{}
-		}
-		if in.Residents[i].Facts.Pool == nil {
-			in.Residents[i].Facts.Pool = []string{}
-		}
-	}
-	user, err := json.Marshal(in)
+	user, err := json.Marshal(explainInput{Residents: residents})
 	if err != nil {
 		return nil, fmt.Errorf("llm: build explanation prompt: %w", err)
 	}
@@ -90,12 +80,7 @@ var explainSchema = map[string]any{
 }
 
 type explainInput struct {
-	Residents []explainResident `json:"residents"`
-}
-
-type explainResident struct {
-	ResidentID string        `json:"resident_id"`
-	Facts      explain.Facts `json:"facts"`
+	Residents []explain.ResidentFacts `json:"residents"`
 }
 
 type explainAnswer struct {
@@ -128,14 +113,20 @@ func decodeExplanations(raw json.RawMessage, residents []explain.ResidentFacts) 
 	for _, r := range residents {
 		known[r.ResidentID] = true
 	}
-	seen := map[string]int{}
-	for _, x := range *a.Explanations {
-		seen[x.ResidentID]++
-	}
+	// One pass. A repeated id is a confused answer: neither copy is kept,
+	// whichever is valid or comes first.
 	out := map[string]explain.Texts{}
+	seen := map[string]bool{}
 	for _, x := range *a.Explanations {
-		t := explain.Texts{EnUS: x.EnUS, PtBR: x.PtBR}
-		if known[x.ResidentID] && seen[x.ResidentID] == 1 && explain.Valid(t) {
+		if !known[x.ResidentID] {
+			continue
+		}
+		if seen[x.ResidentID] {
+			delete(out, x.ResidentID)
+			continue
+		}
+		seen[x.ResidentID] = true
+		if t := (explain.Texts{EnUS: x.EnUS, PtBR: x.PtBR}); explain.Valid(t) {
 			out[x.ResidentID] = t
 		}
 	}

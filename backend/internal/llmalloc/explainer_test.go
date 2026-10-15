@@ -96,6 +96,25 @@ func TestADuplicateResidentIsDroppedEntirely(t *testing.T) {
 	}
 }
 
+// A repeated id is a confused answer: neither copy is trusted, whichever
+// order the valid one comes in.
+func TestARepeatedResidentIsDroppedEvenWhenOneCopyIsValid(t *testing.T) {
+	t.Parallel()
+	good, bad := entry("r1", "Fine.", "Bom."), entry("r1", "<b>x</b>", "y")
+	for name, pair := range map[string]string{
+		"valid first":   good + `,` + bad,
+		"invalid first": bad + `,` + good,
+	} {
+		got, err := explainWith(t, `{"explanations": [`+pair+`,`+entry("r2", "Rest.", "Descanse.")+`]}`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, has := got["r1"]; has || len(got) != 1 {
+			t.Errorf("%s: got %+v", name, got)
+		}
+	}
+}
+
 func TestAMissingResidentGetsNoEntry(t *testing.T) {
 	t.Parallel()
 	got, err := explainWith(t, `{"explanations": []}`)
