@@ -61,6 +61,10 @@ type View struct {
 	DoneToday []DoneView `json:"doneToday"`
 	// Swaps are the live Swap offers the caller is part of. Never null.
 	Swaps Swaps `json:"swaps"`
+	// Explanation is the caller's own, set whenever the day is planned: the
+	// stored LLM text while it still matches their plan, otherwise the
+	// template. Null before the plan and for a rejected run.
+	Explanation *Explanation `json:"explanation"`
 }
 
 // Swaps are the caller's live Swap offers: those made to them and by them.
@@ -136,28 +140,20 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 		return View{}, err
 	}
 
-	var (
-		runID, outcome string
-		raw            []byte
-	)
-	err = s.db.QueryRow(ctx, `
-		SELECT id, allocator, outcome, reasons FROM allocation_runs WHERE home_id = $1 AND plan_date = $2`,
-		homeID, date).Scan(&runID, &v.Allocator, &outcome, &raw)
-	if errors.Is(err, pgx.ErrNoRows) {
+	run, found, err := readRun(ctx, s.db, homeID, date)
+	if err != nil {
+		return View{}, err
+	}
+	if !found {
 		for _, o := range open {
 			v.Pool = append(v.Pool, TaskView{Open: o})
 		}
 		return v, nil
 	}
-	if err != nil {
-		return View{}, fmt.Errorf("day plan: load run: %w", err)
-	}
-	v.Planned, v.Rejected = outcome == string(Planned), outcome == string(Rejected)
+	v.Allocator = run.allocator
+	v.Planned, v.Rejected = run.outcome == string(Planned), run.outcome == string(Rejected)
 
-	var rs reasons
-	if err := json.Unmarshal(raw, &rs); err != nil {
-		return View{}, fmt.Errorf("day plan: read reasons: %w", err)
-	}
+	rs := run.reasons
 	energy := rs.Energy[residentID]
 	v.Energy = &energy
 	poolReason := map[string]string{}
@@ -165,23 +161,9 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 		poolReason[p.TaskID] = p.Reason
 	}
 
-	rows, err := s.db.Query(ctx, `SELECT task_id, resident_id, reason FROM day_plan_assignments WHERE run_id = $1`, runID)
-	if err != nil {
-		return View{}, fmt.Errorf("day plan: load assignments: %w", err)
-	}
-	type row struct {
-		task string
-		given
-	}
-	assigned, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (x row, err error) {
-		return x, r.Scan(&x.task, &x.resident, &x.reason)
-	})
-	if err != nil {
-		return View{}, fmt.Errorf("day plan: load assignments: %w", err)
-	}
 	// A two-person Task has one assignment per Resident.
 	by := map[string][]given{}
-	for _, a := range assigned {
+	for _, a := range run.assigned {
 		by[a.task] = append(by[a.task], a.given)
 	}
 	committed, err := s.committedToday(ctx, homeID, date)
@@ -216,10 +198,79 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 			v.Others[i].Tasks = append(v.Others[i].Tasks, tv)
 		}
 	}
-	if v.Swaps, err = s.liveSwaps(ctx, homeID, residentID, runID, date, open); err != nil {
+	if v.Swaps, err = s.liveSwaps(ctx, homeID, residentID, run.id, date, open); err != nil {
 		return View{}, err
 	}
+	if v.Planned {
+		if v.Explanation, err = s.explanationFor(ctx, run, residentID, open); err != nil {
+			return View{}, err
+		}
+	}
 	return v, nil
+}
+
+// reader is the query half of *pgxpool.Pool.
+type reader interface {
+	querier
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+}
+
+// assignment is one stored assignment with the facts about its Task.
+type assignment struct {
+	task string
+	given
+	category, importance string
+	effort, people       int
+}
+
+// dayRun is a Home's stored run for a date: who made it, what came of it, the
+// reasons it recorded and the assignments.
+type dayRun struct {
+	id, allocator, outcome string
+	reasons                reasons
+	assigned               []assignment
+}
+
+// readRun reads the Home's run for the date, or reports that there is none.
+func readRun(ctx context.Context, q reader, homeID string, date time.Time) (dayRun, bool, error) {
+	var (
+		run dayRun
+		raw []byte
+	)
+	err := q.QueryRow(ctx, `
+		SELECT id, allocator, outcome, reasons FROM allocation_runs WHERE home_id = $1 AND plan_date = $2`,
+		homeID, date).Scan(&run.id, &run.allocator, &run.outcome, &raw)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return dayRun{}, false, nil
+	}
+	if err != nil {
+		return dayRun{}, false, fmt.Errorf("day plan: load run: %w", err)
+	}
+	if err := json.Unmarshal(raw, &run.reasons); err != nil {
+		return dayRun{}, false, fmt.Errorf("day plan: read reasons: %w", err)
+	}
+	rows, err := q.Query(ctx, `
+		SELECT x.task_id, x.resident_id, x.reason, c.category, c.importance, t.current_effort, c.people
+		FROM day_plan_assignments x
+		JOIN tasks t ON t.id = x.task_id
+		JOIN chores c ON c.id = t.chore_id
+		WHERE x.run_id = $1
+		ORDER BY x.task_id, x.resident_id`, run.id)
+	if err != nil {
+		return dayRun{}, false, fmt.Errorf("day plan: load assignments: %w", err)
+	}
+	run.assigned, err = pgx.CollectRows(rows, func(r pgx.CollectableRow) (x assignment, err error) {
+		var effort, people int16
+		if err := r.Scan(&x.task, &x.resident, &x.reason, &x.category, &x.importance, &effort, &people); err != nil {
+			return x, err
+		}
+		x.effort, x.people = int(effort), int(people)
+		return x, nil
+	})
+	if err != nil {
+		return dayRun{}, false, fmt.Errorf("day plan: load assignments: %w", err)
+	}
+	return run, true, nil
 }
 
 // liveSwaps are the pending offers of the date the caller made or received and

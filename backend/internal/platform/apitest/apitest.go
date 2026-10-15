@@ -52,6 +52,7 @@ type App struct {
 	alloc  *swapAllocator
 	nudger dayplan.Nudger
 	llm    dayplan.Option
+	llmCfg dayplan.LLMConfig
 }
 
 // swapAllocator is the Allocator the server and the job share, so a test can
@@ -169,7 +170,19 @@ func (a *App) UseAllocator(al allocation.Allocator) {
 // UseLLM makes the Allocation job ask p first, with a daily cap of dailyCap
 // calls per Home and timeout per call, falling back to the current allocator.
 func (a *App) UseLLM(p dayplan.Proposer, dailyCap int, timeout time.Duration) {
-	a.llm = dayplan.WithLLM(dayplan.LLMConfig{Proposer: p, DailyCap: dailyCap, CallTimeout: timeout})
+	a.llmCfg.Proposer, a.llmCfg.DailyCap, a.llmCfg.CallTimeout = p, dailyCap, timeout
+	a.llm = dayplan.WithLLM(a.llmCfg)
+	a.UseAllocator(a.alloc.get())
+}
+
+// UseExplainer makes the Allocation job explain each planned Home's Day Plan
+// through e, with budget as the time for all the explanation calls of a tick
+// (zero means the default). It shares the cap and the call timeout set by
+// UseLLM, so call UseLLM first. Give it its own fake client, so the allocator
+// and the explainer script and count their calls independently.
+func (a *App) UseExplainer(e dayplan.Explainer, budget time.Duration) {
+	a.llmCfg.Explainer, a.llmCfg.ExplainBudget = e, budget
+	a.llm = dayplan.WithLLM(a.llmCfg)
 	a.UseAllocator(a.alloc.get())
 }
 

@@ -22,7 +22,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/tasks"
 )
 
@@ -54,7 +53,7 @@ type Planner struct {
 }
 
 // defaultNudgeTimeout bounds both nudge calls of a tick together, well inside
-// the Allocation Lambda's 60 second timeout. Whatever is not sent when it runs
+// the Allocation Lambda's 90 second timeout. Whatever is not sent when it runs
 // out is lost, by design.
 const defaultNudgeTimeout = 30 * time.Second
 
@@ -102,22 +101,38 @@ type LLMConfig struct {
 	CallTimeout time.Duration
 	// TickBudget bounds all the calls of one RunDue; zero means the default.
 	TickBudget time.Duration
+	// Explainer writes the plain-language explanations of the Day Plans a
+	// tick made, one call per Home. It shares DailyCap and CallTimeout with
+	// the Proposer; nil means the template is the only explanation.
+	Explainer Explainer
+	// ExplainBudget bounds all the explanation calls of one RunDue; zero
+	// means the default.
+	ExplainBudget time.Duration
 }
 
 // WithLLM makes PlanHome ask c.Proposer first. Its plan is used only when it
 // passes Check; otherwise the Planner's Allocator plans and the run records why
-// (ADR 0004). Check-in and "right away" re-plans never use it.
+// (ADR 0004). Check-in and "right away" re-plans never use it. After
+// planning, RunDue has c.Explainer explain each planned Home's Day Plan.
 func WithLLM(c LLMConfig) Option {
 	if c.TickBudget == 0 {
 		c.TickBudget = defaultLLMBudget
 	}
+	if c.ExplainBudget == 0 {
+		c.ExplainBudget = defaultExplainBudget
+	}
 	return func(p *Planner) { p.llm = c }
 }
 
-// defaultLLMBudget bounds the LLM calls of a whole tick. With the 30 second
-// nudge deadline after planning, it keeps the tick inside the Allocation
-// Lambda's 60 second timeout.
+// defaultLLMBudget bounds the LLM calls of a whole tick. With the 15 second
+// explanation budget and the 30 second nudge deadline after planning, it keeps
+// the tick inside the Allocation Lambda's 90 second timeout.
 const defaultLLMBudget = 20 * time.Second
+
+// defaultExplainBudget bounds the explanation calls of a whole tick. With the
+// allocator's 20 seconds and the 30 second nudge deadline the worst tick is 65
+// seconds, inside the Allocation Lambda's 90 second timeout.
+const defaultExplainBudget = 15 * time.Second
 
 // New returns a Planner that asks alloc for every proposal.
 func New(db *pgxpool.Pool, alloc allocation.Allocator, log *slog.Logger, opts ...Option) *Planner {
@@ -138,34 +153,42 @@ type Summary struct {
 // the others; the next tick tries it again. The error is only for not being
 // able to find the Homes at all.
 func (p *Planner) RunDue(ctx context.Context, now time.Time) (Summary, error) {
-	due, err := p.DueHomes(ctx, now)
+	due, err := p.dueHomes(ctx, now)
 	if err != nil {
 		return Summary{}, err
 	}
 	sum := Summary{Due: len(due)}
-	var planned []string
+	var planned []HomeDay
 	// One LLM budget for the whole tick: once it is spent, the remaining Homes
 	// fall back to the baseline without asking.
 	llmCtx, cancel := context.WithTimeout(ctx, p.llm.TickBudget)
 	defer cancel()
-	for _, id := range due {
-		outcome, err := p.planHome(ctx, llmCtx, id, now)
+	for _, h := range due {
+		outcome, err := p.planHome(ctx, llmCtx, h.ID, now)
 		switch {
 		case err != nil:
 			sum.Failed++
-			p.log.Error("allocate home failed", "home", id, "error", err.Error())
+			p.log.Error("allocate home failed", "home", h.ID, "error", err.Error())
 		case outcome == Planned:
 			sum.Planned++
-			planned = append(planned, id)
+			planned = append(planned, h)
 		case outcome == Rejected:
 			sum.Rejected++
 		default:
 			sum.AlreadyPlanned++
 		}
 	}
+	// Explanations come after every Home is planned, and before the pushes, on
+	// a budget of their own: the plan never waits for them and a slow model
+	// cannot eat the nudge deadline.
+	p.explainHomes(ctx, planned, now)
 	// Every Home is planned before any push is attempted, so a slow or failing
 	// push service can never delay or fail an Allocation.
-	p.sendNudges(ctx, planned, now)
+	ids := make([]string, len(planned))
+	for i, h := range planned {
+		ids[i] = h.ID
+	}
+	p.sendNudges(ctx, ids, now)
 	p.log.Info("allocation tick done", "due", sum.Due, "planned", sum.Planned,
 		"already_planned", sum.AlreadyPlanned, "rejected", sum.Rejected, "failed", sum.Failed)
 	return sum, nil
@@ -196,9 +219,7 @@ func (p *Planner) sendNudges(ctx context.Context, planned []string, now time.Tim
 // skips the exact time, still plans the Home once. A Home with an unknown
 // timezone is logged and skipped.
 func (p *Planner) DueHomes(ctx context.Context, now time.Time) ([]string, error) {
-	homes, err := UnplannedHomes(ctx, p.db, p.log, now, func(local, alloc time.Duration) bool {
-		return local >= alloc
-	})
+	homes, err := p.dueHomes(ctx, now)
 	if err != nil {
 		return nil, err
 	}
@@ -207,6 +228,14 @@ func (p *Planner) DueHomes(ctx context.Context, now time.Time) ([]string, error)
 		due = append(due, h.ID)
 	}
 	return due, nil
+}
+
+// dueHomes is DueHomes with each Home's local date, which RunDue hands on so
+// later steps need not work it out again.
+func (p *Planner) dueHomes(ctx context.Context, now time.Time) ([]HomeDay, error) {
+	return UnplannedHomes(ctx, p.db, p.log, now, func(local, alloc time.Duration) bool {
+		return local >= alloc
+	})
 }
 
 // HomeDay is a Home with its local date at some instant.
@@ -484,14 +513,11 @@ func (p *Planner) askLLM(ctx context.Context, homeID string, date allocation.Dat
 		return llmAnswer{}
 	}
 	failed := func(err error) llmAnswer {
-		switch {
-		case ctx.Err() != nil, errors.Is(err, context.DeadlineExceeded):
-			return llmAnswer{fallback: fallbackTimeout}
-		case errors.Is(err, llmalloc.ErrInvalidResponse):
-			return llmAnswer{fallback: fallbackInvalid}
+		reason := llmFailure(ctx, err)
+		if reason == fallbackError {
+			p.log.Error("llm allocator failed", "home", homeID, "error", err.Error())
 		}
-		p.log.Error("llm allocator failed", "home", homeID, "error", err.Error())
-		return llmAnswer{fallback: fallbackError}
+		return llmAnswer{fallback: reason}
 	}
 	if err := ctx.Err(); err != nil {
 		return failed(err)

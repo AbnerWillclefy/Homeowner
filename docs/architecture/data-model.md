@@ -25,6 +25,7 @@ Migrations live in `backend/migrations/` as `NNNN_description.sql` files, applie
 | `0015_swap_offers.sql` | Swap offers. `swap_offers`: `id`, `home_id`, `offered_task_id`, `requested_task_id` and the two Resident ids (all `ON DELETE CASCADE`), `plan_date` (`date`, the Home's local date), `status` (`pending`, `accepted`, `declined` or `cancelled`), `created_at` (from the injected clock) and `answered_at` (null exactly when pending, by CHECK). CHECKs: the two Tasks differ and the two Residents differ. Index on `(home_id, plan_date)`; a partial unique index on `(offered_task_id, requested_task_id) WHERE status = 'pending'`. Expand only: one new table. |
 | `0016_two_person_assignments.sql` | Two-person Tasks. The primary key of `day_plan_assignments` changes from `(run_id, task_id)` to `(run_id, task_id, resident_id)`, so a two-person Task has **one row per Resident** in a run (a one-person Task still has one; the Allocation checker, not the key, guarantees the count). Nothing else changes: `task_residents` and `completion_residents` already hold one row per Resident. Expand-compatible, since a key is loosened; the Down fails if a two-person Task is already planned, so delete those rows first. |
 | `0017_llm_calls.sql` | `llm_calls`: `home_id` (references `homes`, `ON DELETE CASCADE`), `call_date` (`date`, the Home's local date), `calls` (`integer`); primary key `(home_id, call_date)`. The per-Home daily cap on LLM allocator calls. A call is reserved before it is made, outside the planning transaction, with one `INSERT ... ON CONFLICT DO UPDATE SET calls = calls + 1 WHERE calls < cap`, so failed, timed-out and rolled-back calls still count and concurrent ticks never pass the cap. Expand only; Down drops it. Old rows are not cleaned up. |
+| `0018_day_plan_explanations.sql` | `day_plan_explanations`: `run_id` (references `allocation_runs`, `ON DELETE CASCADE`), `resident_id` (references `residents`, `ON DELETE CASCADE`), `text_en`, `text_pt` (`text`), `fingerprint` (`text`), `created_at` (`timestamptz`); primary key `(run_id, resident_id)`. The LLM-written explanation of a Resident's Day Plan in both locales, written after planning with `ON CONFLICT DO NOTHING`. The fingerprint is a hash of the Resident's `(task_id, reason)` assignments and Energy when the text was written; the Day Plan view shows the text only while it still matches, otherwise the template computed from the reasons. Only accepted LLM text is stored, never a template. The cascades remove a Resident's row when they leave. Expand only; Down drops it. |
 
 A Home is created by one transaction that inserts the `homes` row and the creator's `residents` row; if the `residents` insert hits the unique violation the transaction rolls back and no Home is left behind.
 
@@ -60,6 +61,8 @@ erDiagram
     allocation_runs ||--o{ day_plan_assignments : "proposes"
     tasks ||--o{ day_plan_assignments : "proposed in"
     residents ||--o{ day_plan_assignments : "proposed to"
+    allocation_runs ||--o{ day_plan_explanations : "explained by"
+    residents ||--o{ day_plan_explanations : "explained to"
 ```
 
 | Table | Holds |
@@ -76,6 +79,7 @@ erDiagram
 | `resident_chore_preferences`, `resident_chore_restrictions` (built) | A Resident's specific Preference and Restriction on one Chore; they beat the general ones (a specific Restriction only adds) |
 | `allocation_runs` (built) | Home, local date, which allocator, outcome, fallback reason, recorded reasons; unique per Home and date |
 | `day_plan_assignments` (built) | The Tasks a run proposed to each Resident, with the reason; a two-person Task has one row per Resident. A proposal, not `task_residents` (Committed) |
-| `llm_calls` (built) | How many LLM allocator calls a Home made on a local date; the daily cap |
+| `llm_calls` (built) | How many LLM calls (allocator and explanation) a Home made on a local date; the daily cap |
+| `day_plan_explanations` (built) | A Resident's LLM-written Day Plan explanation in `en-US` and `pt-BR` with the fingerprint of the plan it describes; absent means the view computes the template |
 | `nudges` (built) | Which push nudge (Check-in reminder, Day Plan ready) a Resident already got on a local date; the claim that keeps the 15-minute tick from repeating it |
 | `push_subscriptions` | One per device, owned by the User who last registered it. Built. |

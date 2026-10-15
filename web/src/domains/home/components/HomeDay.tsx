@@ -2,6 +2,7 @@ import { useState } from "react";
 import { CheckInSection } from "../../checkin/components/CheckInSection";
 import { energyNote } from "../../checkin/logic/state";
 import { useCheckIn } from "../../checkin/hooks/useCheckIn";
+import { DayExplanation } from "../../dayplan/components/DayExplanation";
 import { EnergySummary, showsEnergy } from "../../dayplan/components/EnergySummary";
 import { TodayHeader } from "../../dayplan/components/TodayHeader";
 import { TodaySection } from "../../dayplan/components/TodaySection";
@@ -31,6 +32,7 @@ export function HomeDay({ version, onPlanChanged }: { version: number; onPlanCha
   return (
     <>
       <TodayHeader />
+      <DayExplanation explanation={state.kind === "ready" ? state.plan.explanation : null} />
       <CheckInSection
         checkIn={checkIn}
         open={checkInOpen}

@@ -76,6 +76,26 @@ describe("getDayPlan", () => {
     expect(await getDayPlan()).toEqual({ kind: "ok", plan: body });
   });
 
+  it("keeps the explanation the API sends, with both languages", async () => {
+    const explanation = { source: "llm", text: { "en-US": "A light day.", "pt-BR": "Um dia leve." } };
+    stubFetch(Response.json({ ...PLAN, explanation }));
+    const result = await getDayPlan();
+    expect(result.kind === "ok" && result.plan.explanation).toEqual(explanation);
+  });
+
+  it.each([
+    ["null", null],
+    ["an unknown source", { source: "robot", text: { "en-US": "a", "pt-BR": "b" } }],
+    ["a missing language", { source: "template", text: { "en-US": "a" } }],
+    ["a text that is not a string", { source: "template", text: { "en-US": "a", "pt-BR": 3 } }],
+    ["a string", "A light day."],
+  ])("reads %s as no explanation and still reads the plan", async (_name, explanation) => {
+    stubFetch(Response.json({ ...PLAN, explanation }));
+    const result = await getDayPlan();
+    expect(result.kind).toBe("ok");
+    expect(result.kind === "ok" && "explanation" in result.plan).toBe(false);
+  });
+
   it("treats lists the API sends as null as empty", async () => {
     stubFetch(Response.json({ ...PLAN, mine: null, others: null, pool: null }));
     const result = await getDayPlan();
