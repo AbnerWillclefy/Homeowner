@@ -18,7 +18,7 @@ provider "aws" {
 }
 
 variable "aws_region" {
-  description = "Region for the state bucket and the staging resources."
+  description = "Region for the state bucket and both environments."
   type        = string
 }
 
@@ -101,9 +101,19 @@ resource "aws_iam_openid_connect_provider" "github" {
   client_id_list = ["sts.amazonaws.com"]
 }
 
-# Only workflow runs on main may assume the role. Pull requests never get AWS
-# credentials.
+# One deploy role per environment, each assumable only from its own branch:
+# staging from main, production from the production branch. Pull requests never
+# get AWS credentials.
+locals {
+  deploy_environments = {
+    staging    = "refs/heads/main"
+    production = "refs/heads/production"
+  }
+}
+
 data "aws_iam_policy_document" "deploy_trust" {
+  for_each = local.deploy_environments
+
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
 
@@ -121,20 +131,24 @@ data "aws_iam_policy_document" "deploy_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:ref:refs/heads/main"]
+      values   = ["repo:${var.github_repo}:ref:${each.value}"]
     }
   }
 }
 
-# The role name deliberately does not start with "homeowner-staging-", so the
-# IAM permissions below (limited to that prefix) never let it edit itself.
-resource "aws_iam_role" "deploy_staging" {
-  name                 = "homeowner-github-deploy-staging"
-  assume_role_policy   = data.aws_iam_policy_document.deploy_trust.json
+# The role name deliberately does not start with "homeowner-<environment>-", so
+# the IAM permissions below (limited to that prefix) never let it edit itself.
+resource "aws_iam_role" "deploy" {
+  for_each = local.deploy_environments
+
+  name                 = "homeowner-github-deploy-${each.key}"
+  assume_role_policy   = data.aws_iam_policy_document.deploy_trust[each.key].json
   max_session_duration = 3600
 }
 
-data "aws_iam_policy_document" "deploy_staging" {
+data "aws_iam_policy_document" "deploy" {
+  for_each = local.deploy_environments
+
   # Terraform state.
   statement {
     sid       = "StateBucketList"
@@ -145,7 +159,7 @@ data "aws_iam_policy_document" "deploy_staging" {
   statement {
     sid       = "StateObjects"
     actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
-    resources = ["${aws_s3_bucket.state.arn}/staging/*"]
+    resources = ["${aws_s3_bucket.state.arn}/${each.key}/*"]
   }
 
   # ECR: the repositories Terraform manages, plus the login token.
@@ -158,22 +172,22 @@ data "aws_iam_policy_document" "deploy_staging" {
   statement {
     sid       = "EcrRepositories"
     actions   = ["ecr:*"]
-    resources = ["arn:aws:ecr:${var.aws_region}:${local.account_id}:repository/homeowner-staging-*"]
+    resources = ["arn:aws:ecr:${var.aws_region}:${local.account_id}:repository/homeowner-${each.key}-*"]
   }
 
   # Lambda functions.
   statement {
     sid       = "LambdaFunctions"
     actions   = ["lambda:*"]
-    resources = ["arn:aws:lambda:${var.aws_region}:${local.account_id}:function:homeowner-staging-*"]
+    resources = ["arn:aws:lambda:${var.aws_region}:${local.account_id}:function:homeowner-${each.key}-*"]
   }
 
-  # EventBridge rules of the scheduled jobs (#13), named homeowner-staging-*
+  # EventBridge rules of the scheduled jobs (#13), named homeowner-<environment>-*
   # on the default event bus.
   statement {
     sid       = "EventBridgeRules"
     actions   = ["events:*"]
-    resources = ["arn:aws:events:${var.aws_region}:${local.account_id}:rule/homeowner-staging-*"]
+    resources = ["arn:aws:events:${var.aws_region}:${local.account_id}:rule/homeowner-${each.key}-*"]
   }
 
   # API Gateway HTTP APIs. API ids are generated, so this cannot be narrowed
@@ -191,7 +205,7 @@ data "aws_iam_policy_document" "deploy_staging" {
     ]
   }
 
-  # The staging web bucket: Terraform manages it, the web job syncs into it.
+  # The environment's web bucket: Terraform manages it, the web job syncs into it.
   statement {
     sid = "WebBucketManage"
     actions = [
@@ -206,13 +220,13 @@ data "aws_iam_policy_document" "deploy_staging" {
       "s3:GetAccelerateConfiguration", "s3:GetBucketRequestPayment",
       "s3:GetReplicationConfiguration", "s3:GetBucketOwnershipControls",
     ]
-    resources = ["arn:aws:s3:::homeowner-staging-web-*"]
+    resources = ["arn:aws:s3:::homeowner-${each.key}-web-*"]
   }
 
   statement {
     sid       = "WebBucketObjects"
     actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
-    resources = ["arn:aws:s3:::homeowner-staging-web-*/*"]
+    resources = ["arn:aws:s3:::homeowner-${each.key}-web-*/*"]
   }
 
   # CloudFront ids are generated, so distributions and access controls cannot
@@ -252,11 +266,11 @@ data "aws_iam_policy_document" "deploy_staging" {
     resources = ["*"]
   }
 
-  # CloudWatch log groups of the staging functions.
+  # CloudWatch log groups of the environment's functions.
   statement {
     sid       = "LogGroups"
     actions   = ["logs:*"]
-    resources = ["arn:aws:logs:${var.aws_region}:${local.account_id}:log-group:/aws/lambda/homeowner-staging-*:*"]
+    resources = ["arn:aws:logs:${var.aws_region}:${local.account_id}:log-group:/aws/lambda/homeowner-${each.key}-*:*"]
   }
 
   statement {
@@ -265,11 +279,11 @@ data "aws_iam_policy_document" "deploy_staging" {
     resources = ["*"]
   }
 
-  # SSM parameters under the staging path only.
+  # SSM parameters under the environment's path only.
   statement {
-    sid       = "SsmStagingParameters"
+    sid       = "Ssm${title(each.key)}Parameters"
     actions   = ["ssm:*"]
-    resources = ["arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter/homeowner/staging/*"]
+    resources = ["arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter/homeowner/${each.key}/*"]
   }
 
   statement {
@@ -294,9 +308,9 @@ data "aws_iam_policy_document" "deploy_staging" {
     resources = ["*"]
   }
 
-  # IAM only for roles prefixed homeowner-staging-.
+  # IAM only for roles prefixed homeowner-<environment>-.
   statement {
-    sid = "IamStagingRoles"
+    sid = "Iam${title(each.key)}Roles"
     actions = [
       "iam:CreateRole", "iam:DeleteRole", "iam:GetRole", "iam:UpdateRole",
       "iam:UpdateAssumeRolePolicy", "iam:TagRole", "iam:UntagRole",
@@ -304,7 +318,7 @@ data "aws_iam_policy_document" "deploy_staging" {
       "iam:ListRolePolicies", "iam:ListAttachedRolePolicies",
       "iam:ListInstanceProfilesForRole", "iam:PassRole",
     ]
-    resources = ["arn:aws:iam::${local.account_id}:role/homeowner-staging-*"]
+    resources = ["arn:aws:iam::${local.account_id}:role/homeowner-${each.key}-*"]
   }
 
   # The account-wide budget. Budgets is a global service (us-east-1 endpoint).
@@ -328,10 +342,24 @@ data "aws_iam_policy_document" "deploy_staging" {
   }
 }
 
-resource "aws_iam_role_policy" "deploy_staging" {
-  name   = "deploy-staging"
-  role   = aws_iam_role.deploy_staging.id
-  policy = data.aws_iam_policy_document.deploy_staging.json
+resource "aws_iam_role_policy" "deploy" {
+  for_each = local.deploy_environments
+
+  name   = "deploy-${each.key}"
+  role   = aws_iam_role.deploy[each.key].id
+  policy = data.aws_iam_policy_document.deploy[each.key].json
+}
+
+# The staging role existed before the loop; these keep it in place instead of
+# destroying and recreating it under its new address.
+moved {
+  from = aws_iam_role.deploy_staging
+  to   = aws_iam_role.deploy["staging"]
+}
+
+moved {
+  from = aws_iam_role_policy.deploy_staging
+  to   = aws_iam_role_policy.deploy["staging"]
 }
 
 # --------------------------------------------------------------------- outputs
@@ -340,7 +368,7 @@ output "state_bucket" {
   value = aws_s3_bucket.state.bucket
 }
 
-output "deploy_role_arn" {
-  description = "Set as the GitHub variable AWS_DEPLOY_ROLE_ARN."
-  value       = aws_iam_role.deploy_staging.arn
+output "deploy_role_arns" {
+  description = "Set staging's as the GitHub variable AWS_DEPLOY_ROLE_ARN and production's as PRODUCTION_AWS_DEPLOY_ROLE_ARN."
+  value       = { for environment, role in aws_iam_role.deploy : environment => role.arn }
 }
