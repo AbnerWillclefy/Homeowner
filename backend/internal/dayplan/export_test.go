@@ -13,3 +13,8 @@ func LoadState(ctx context.Context, q pgx.Tx, homeID string, today allocation.Da
 	l, err := loadState(ctx, q, homeID, today)
 	return l.state, err
 }
+
+// ReserveLLMCall exposes reserveLLMCall to the cap tests.
+func ReserveLLMCall(ctx context.Context, q querier, homeID string, date allocation.Date, limit int) (bool, error) {
+	return reserveLLMCall(ctx, q, homeID, date, limit)
+}
