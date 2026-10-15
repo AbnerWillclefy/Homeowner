@@ -6,7 +6,8 @@
 //	cd backend && ANTHROPIC_API_KEY=... go run ./cmd/evals [flags]
 //
 // Flags: -dir (days folder), -runs (model calls per day), -model, -timeout (per
-// call), -concurrency (calls at once, default 4), -baseline-only, -v (per-day rows), -yes (allow more than 100 calls).
+// call), -concurrency (calls at once, default 4), -baseline-only, -v (per-day
+// rows), -yes (allow more than 100 calls).
 // The model defaults to LLM_MODEL, then to the production default. The key is
 // read from the environment only. The exit status is 0 whatever the numbers
 // say: it is a report, not a gate. See docs/architecture/allocation.md.

@@ -54,11 +54,11 @@ type taskFile struct {
 
 // LoadDir reads every *.json file of dir, in file name order, as a Day.
 func LoadDir(dir string) ([]Day, error) {
-	paths, err := filepath.Glob(filepath.Join(dir, "*.json"))
-	if err != nil {
+	if _, err := os.Stat(dir); err != nil {
 		return nil, err
 	}
-	if _, err := os.Stat(dir); err != nil {
+	paths, err := filepath.Glob(filepath.Join(dir, "*.json"))
+	if err != nil {
 		return nil, err
 	}
 	if len(paths) == 0 {
@@ -102,12 +102,11 @@ func Parse(raw []byte) (Day, error) {
 	}
 	st := allocation.State{Today: today}
 
-	seen := map[string]bool{}
+	residents := idSet{}
 	for _, r := range f.Residents {
-		if r.ID == "" || seen[r.ID] {
-			return Day{}, fmt.Errorf("resident id %q is empty or repeated", r.ID)
+		if err := residents.add("resident", r.ID); err != nil {
+			return Day{}, err
 		}
-		seen[r.ID] = true
 		res, err := parseResident(r)
 		if err != nil {
 			return Day{}, err
@@ -115,12 +114,11 @@ func Parse(raw []byte) (Day, error) {
 		st.Residents = append(st.Residents, res)
 	}
 
-	seen = map[string]bool{}
+	tasks := idSet{}
 	for _, t := range f.Tasks {
-		if t.ID == "" || seen[t.ID] {
-			return Day{}, fmt.Errorf("task id %q is empty or repeated", t.ID)
+		if err := tasks.add("task", t.ID); err != nil {
+			return Day{}, err
 		}
-		seen[t.ID] = true
 		task, err := parseTask(t)
 		if err != nil {
 			return Day{}, err
@@ -128,6 +126,17 @@ func Parse(raw []byte) (Day, error) {
 		st.Tasks = append(st.Tasks, task)
 	}
 	return Day{Name: f.Name, State: st}, nil
+}
+
+// idSet remembers the ids seen so far, to reject an empty or repeated one.
+type idSet map[string]struct{}
+
+func (s idSet) add(kind, id string) error {
+	if _, dup := s[id]; id == "" || dup {
+		return fmt.Errorf("%s id %q is empty or repeated", kind, id)
+	}
+	s[id] = struct{}{}
+	return nil
 }
 
 // preferenceByName is the file's spelling of each Preference.

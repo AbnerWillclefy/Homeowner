@@ -63,7 +63,12 @@ type Report struct {
 // the LLM allocator. Every Result is judged by allocation.Check as it is: a
 // raw LLM proposal is never replaced by the baseline.
 func Run(ctx context.Context, days []Day, cfg Config) Report {
+	// The defaults are applied here, once, for every caller.
 	runs := max(cfg.Runs, 1)
+	limit := cfg.Concurrency
+	if limit < 1 {
+		limit = DefaultConcurrency
+	}
 	rep := Report{Model: cfg.Model, Runs: runs, LLMSkipped: cfg.Proposer == nil, Days: make([]DayReport, len(days))}
 	for i, d := range days {
 		res, err := allocation.Baseline{}.Plan(d.State)
@@ -78,10 +83,6 @@ func Run(ctx context.Context, days []Day, cfg Config) Report {
 
 	// The model calls are independent. A bounded pool runs them, and each writes
 	// its own pre-sized slot, so the order is fixed and no lock is needed.
-	limit := cfg.Concurrency
-	if limit < 1 {
-		limit = DefaultConcurrency
-	}
 	sem := make(chan struct{}, limit)
 	var wg sync.WaitGroup
 	for i, d := range days {
