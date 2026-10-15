@@ -169,6 +169,15 @@ data "aws_iam_policy_document" "deploy" {
     resources = ["*"]
   }
 
+  # The image build pulls the Lambda Web Adapter from ECR Public. Anonymous
+  # pulls are capped per source IP, which shared GitHub runners often exhaust
+  # (429 "Data limit exceeded"), so the deploy logs in first.
+  statement {
+    sid       = "EcrPublicToken"
+    actions   = ["ecr-public:GetAuthorizationToken", "sts:GetServiceBearerToken"]
+    resources = ["*"]
+  }
+
   statement {
     sid       = "EcrRepositories"
     actions   = ["ecr:*"]

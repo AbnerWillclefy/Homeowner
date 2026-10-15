@@ -91,6 +91,14 @@ jobs:
           aws ecr get-login-password | docker login --username AWS --password-stdin "$registry"
           echo "repo_uri=$repo_uri" >> "$GITHUB_OUTPUT"
 
+      # Anonymous ECR Public pulls (the Lambda Web Adapter) are capped per IP,
+      # and shared runners hit the cap (429). ECR Public tokens come only from
+      # us-east-1.
+      - name: Log in to ECR Public
+        run: |
+          aws ecr-public get-login-password --region us-east-1 \
+            | docker login --username AWS --password-stdin public.ecr.aws
+
       # Lambda rejects OCI image indexes: single platform, no provenance/SBOM.
       - name: Build image
         run: |
