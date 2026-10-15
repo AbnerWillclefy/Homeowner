@@ -63,6 +63,17 @@ func TestTemplateGroupsTasksByReasonAndCounts(t *testing.T) {
 	}
 }
 
+// The same facts in another order read the same, so the template does not
+// depend on how the Tasks happened to be listed.
+func TestTemplateDoesNotDependOnTheOrderOfTasks(t *testing.T) {
+	t.Parallel()
+	a := explain.Facts{Energy: 6, Tasks: []explain.Task{{Reason: "liked", People: 1}, {Reason: "importance", People: 1}, {Reason: "brand_new", People: 1}}, Pool: []string{"refused", "no_energy_left"}}
+	b := explain.Facts{Energy: 6, Tasks: []explain.Task{{Reason: "brand_new", People: 1}, {Reason: "importance", People: 1}, {Reason: "liked", People: 1}}, Pool: []string{"no_energy_left", "refused"}}
+	if explain.Template(a) != explain.Template(b) {
+		t.Fatalf("%+v differs from %+v", explain.Template(a), explain.Template(b))
+	}
+}
+
 func TestTemplateSaysWhenATaskIsShared(t *testing.T) {
 	t.Parallel()
 	f := one("fits_energy")

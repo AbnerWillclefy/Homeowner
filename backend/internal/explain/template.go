@@ -1,7 +1,10 @@
 package explain
 
 import (
+	"cmp"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 )
 
@@ -46,7 +49,7 @@ func Known(reason string) bool { _, ok := phrases[reason]; return ok }
 
 // Template writes the explanation from the facts alone, in both languages: it
 // is what every Resident gets when no model text is used, so it is complete by
-// itself. It groups Tasks by reason (in the order of first appearance), says
+// itself. It groups Tasks by reason (sorted by reason id), says
 // which are shared with a partner, and mentions the pool only through its
 // reasons.
 func Template(f Facts) Texts {
@@ -80,21 +83,24 @@ func poolTasks(reasons []string) []Task {
 	return out
 }
 
-// groupSentences makes one sentence per reason, in order of first appearance.
-// An unknown reason is counted under the generic phrase.
+// groupSentences makes one sentence per reason, sorted by reason id so the
+// order of the Tasks does not matter, with the generic phrase for unknown
+// reasons last.
 func groupSentences(tasks []Task, generic phrase) (en, pt []string) {
-	var order []string
 	n := map[string]int{}
 	for _, t := range tasks {
 		key := t.Reason
 		if !Known(key) {
 			key = ""
 		}
-		if n[key] == 0 {
-			order = append(order, key)
-		}
 		n[key]++
 	}
+	order := slices.SortedFunc(maps.Keys(n), func(a, b string) int {
+		if (a == "") != (b == "") {
+			return cmp.Compare(btoi(a == ""), btoi(b == ""))
+		}
+		return cmp.Compare(a, b)
+	})
 	for _, key := range order {
 		p, ok := phrases[key]
 		if !ok {
@@ -104,6 +110,13 @@ func groupSentences(tasks []Task, generic phrase) (en, pt []string) {
 		pt = append(pt, plural(n[key], p.ptOne, p.ptMany)+".")
 	}
 	return en, pt
+}
+
+func btoi(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 func plural(n int, one, many string) string {
