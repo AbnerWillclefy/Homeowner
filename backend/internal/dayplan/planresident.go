@@ -4,6 +4,10 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 )
 
 // PlanResident is "get my tasks right away": it plans one Resident for the
@@ -12,9 +16,9 @@ import (
 // Check-in (see CheckIn), and the Resident's Energy comes from the same
 // energyOn.
 //
-// Steps, in the order PlanHome uses: refresh the Tasks before the transaction
-// (a Home made minutes ago has Chores but no Tasks yet), then lock the Home and
-// look for the day's run.
+// Steps, in the order PlanHome uses (refreshedHomeTx): lock the Home, refresh the
+// Tasks (a Home made minutes ago has Chores but no Tasks yet), then look for
+// the day's run.
 //   - Planned: the Resident's own assignments are replaced from the pool.
 //   - Rejected: nothing changes and Rejected is returned; the day is taken.
 //   - No run yet: today's run is created in the same transaction, with only
@@ -26,42 +30,39 @@ import (
 // A proposal that errors or breaks a rule rolls everything back, the new run
 // included, and returns an error: an unchecked plan is never stored (ADR 0004).
 func (p *Planner) PlanResident(ctx context.Context, homeID, residentID string, now time.Time) (Outcome, error) {
-	if err := p.tasks.Refresh(ctx, homeID, now); err != nil {
-		return "", err
-	}
-	tx, err := p.db.Begin(ctx)
-	if err != nil {
-		return "", fmt.Errorf("plan resident: %w", err)
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-
-	date, err := lockHome(ctx, tx, homeID, now)
-	if err != nil {
-		return "", fmt.Errorf("plan resident: %w", err)
-	}
-
-	run, found, err := loadRun(ctx, tx, homeID, date)
-	if err != nil {
-		return "", err
-	}
-	if found && run.outcome != Planned {
-		return Rejected, nil
-	}
-	if !found {
-		// The Home lock is held, so nobody else can create the run meanwhile.
-		run = storedRun{outcome: Planned, reasons: reasons{Energy: map[string]int{}, Assigned: []assigned{}, Pool: []pooled{}}}
-		run.id, err = insertRun(ctx, tx, homeID, date, now, p.alloc.Name(), "", Planned, run.reasons)
+	var (
+		date  allocation.Date
+		found bool
+		done  *replanned
+	)
+	outcome := Planned
+	err := p.refreshedHomeTx(ctx, homeID, now, "plan resident", func(tx pgx.Tx, d allocation.Date) error {
+		date = d
+		run, ok, err := loadRun(ctx, tx, homeID, date)
 		if err != nil {
-			return "", fmt.Errorf("plan resident: %w", err)
+			return err
 		}
-	}
-
-	done, err := p.replanRun(ctx, tx, homeID, residentID, date, run)
+		found = ok
+		if found && run.outcome != Planned {
+			outcome = Rejected
+			return nil
+		}
+		if !found {
+			// The Home lock is held, so nobody else can create the run meanwhile.
+			run = storedRun{outcome: Planned, reasons: reasons{Energy: map[string]int{}, Pool: []pooled{}}}
+			run.id, err = insertRun(ctx, tx, homeID, date, now, p.alloc.Name(), "", Planned, run.reasons)
+			if err != nil {
+				return fmt.Errorf("plan resident: %w", err)
+			}
+		}
+		done, err = p.replanRun(ctx, tx, homeID, residentID, date, run)
+		return err
+	})
 	if err != nil {
 		return "", err
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return "", fmt.Errorf("plan resident: commit: %w", err)
+	if outcome == Rejected {
+		return Rejected, nil
 	}
 	p.log.Info("resident planned right away", "home", homeID, "date", date.Time().Format(time.DateOnly),
 		"new_run", !found, "assigned", done.assigned, "pooled", done.pooled)

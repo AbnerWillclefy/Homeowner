@@ -59,8 +59,9 @@ type choreRow struct {
 // opens Tasks that are due and updates the current Effort of open ones. It is
 // idempotent, since the result is derived from dates, and safe to run
 // concurrently: each Chore row is locked while it is decided, and the partial
-// unique index on open Tasks is the final guard. The daily Allocation job
-// must call it before building its State.
+// unique index on open Tasks is the final guard. It runs in a transaction of
+// its own, for callers outside a Day Plan run (GET /home/tasks); the Day Plan
+// calls RefreshIn inside its own transaction instead.
 func (s *Store) Refresh(ctx context.Context, homeID string, now time.Time) error {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
@@ -68,12 +69,33 @@ func (s *Store) Refresh(ctx context.Context, homeID string, now time.Time) error
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	if _, err := tx.Exec(ctx, "SET LOCAL statement_timeout = '"+statementTimeout+"'"); err != nil {
-		return fmt.Errorf("refresh tasks: %w", err)
-	}
 	today, loc, err := homeToday(ctx, tx, homeID, now)
 	if err != nil {
 		return err
+	}
+	if err := RefreshIn(ctx, tx, homeID, today, loc, now); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("refresh tasks: %w", err)
+	}
+	return nil
+}
+
+// RefreshIn is Refresh inside the caller's transaction, for the date and zone
+// the caller already worked out, so a Day Plan run uses one date throughout.
+// The Chore rows stay locked until the caller's transaction ends.
+//
+// The statement timeout covers only the Chore work. SET LOCAL lasts until the
+// transaction ends, so the caller's value is put back afterwards, whether it
+// came from the session or from the caller's own SET LOCAL.
+func RefreshIn(ctx context.Context, tx pgx.Tx, homeID string, today allocation.Date, loc *time.Location, now time.Time) error {
+	var previous string
+	if err := tx.QueryRow(ctx, `SELECT current_setting('statement_timeout')`).Scan(&previous); err != nil {
+		return fmt.Errorf("refresh tasks: %w", err)
+	}
+	if _, err := tx.Exec(ctx, "SET LOCAL statement_timeout = '"+statementTimeout+"'"); err != nil {
+		return fmt.Errorf("refresh tasks: %w", err)
 	}
 	rows, err := loadChores(ctx, tx, homeID, loc)
 	if err != nil {
@@ -84,7 +106,7 @@ func (s *Store) Refresh(ctx context.Context, homeID string, now time.Time) error
 			return err
 		}
 	}
-	if err := tx.Commit(ctx); err != nil {
+	if _, err := tx.Exec(ctx, `SELECT set_config('statement_timeout', $1, true)`, previous); err != nil {
 		return fmt.Errorf("refresh tasks: %w", err)
 	}
 	return nil

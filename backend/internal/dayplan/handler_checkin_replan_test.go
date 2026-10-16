@@ -191,6 +191,22 @@ func TestATaskAddedAfterThePlanIsACandidateInTheReplan(t *testing.T) {
 	}
 }
 
+func TestACheckInReplanIncludesATaskThatCameDueAfterThePlan(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.SetBaseline(t, me, map[string]any{"monday": 10})
+	app.Clock.Set(apitest.MondayAt(7))
+	app.RunAllocation(t) // nothing to do yet
+	apitest.CreateChore(t, me, apitest.Chore("Late", 7, 2, "normal", []string{}))
+	// No pool read and no GET /home/tasks: the Check-in itself must open it.
+
+	apitest.CheckIn(t, me, "normal")
+	if got := names(apitest.TaskList(t, apitest.DayPlan(t, me).Body["mine"])); len(got) != 1 || got[0] != "Late" {
+		t.Fatalf("mine = %v, want Late", got)
+	}
+}
+
 func TestACheckInAfterARejectedRunIsStoredAndChangesNothing(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)

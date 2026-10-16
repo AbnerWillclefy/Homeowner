@@ -196,7 +196,6 @@ func loadChoreRestrictions(ctx context.Context, q pgx.Tx, homeID string) (map[st
 // reasons is the jsonb stored on the run: what cannot be recomputed later
 // because Energy and Restrictions change. All values are stable ids.
 type reasons struct {
-	Assigned   []assigned     `json:"assigned"`
 	Pool       []pooled       `json:"pool"`
 	Energy     map[string]int `json:"energy"`
 	Violations []violation    `json:"violations,omitempty"`
@@ -206,22 +205,20 @@ type reasons struct {
 	LLMViolations []violation `json:"llmViolations,omitempty"`
 }
 
-// add appends the assignments and the pool of a proposal. It is the one place
-// that turns an allocation.Result into the stored shape.
+// add appends the pool of a proposal. It is the one place that turns an
+// allocation.Result into the stored shape. The assignments are not kept here:
+// day_plan_assignments is their only record.
 func (rs *reasons) add(res allocation.Result) {
-	for _, a := range res.DayPlan.Assignments {
-		rs.Assigned = append(rs.Assigned, assigned{TaskID: a.TaskID, ResidentID: a.ResidentID, Reason: string(a.Reason)})
-	}
 	for _, e := range res.Pool {
 		rs.Pool = append(rs.Pool, pooled{TaskID: e.TaskID, Reason: string(e.Reason)})
 	}
 }
 
 // replan swaps one Resident's part of a planned run for the result of planning
-// them again: their Energy and assignments, and the pool. A Task that was
-// already in the pool and still is keeps its reason, since it is about
+// them again: their Energy and the pool (the assignments are rows). A Task that
+// was already in the pool and still is keeps its reason, since it is about
 // everyone; a Task newly released into the pool gets the new plan's reason.
-func (rs *reasons) replan(residentID string, energy int, res allocation.Result, committed map[string]bool) {
+func (rs *reasons) replan(residentID string, energy int, res allocation.Result) {
 	refused := rs.refusedTasks()
 	oldPool := make(map[string]string, len(rs.Pool))
 	for _, e := range rs.Pool {
@@ -231,13 +228,7 @@ func (rs *reasons) replan(residentID string, energy int, res allocation.Result, 
 		rs.Energy = map[string]int{}
 	}
 	rs.Energy[residentID] = energy
-	others := make([]assigned, 0, len(rs.Assigned))
-	for _, a := range rs.Assigned {
-		if a.ResidentID != residentID || committed[a.TaskID] {
-			others = append(others, a)
-		}
-	}
-	rs.Assigned, rs.Pool = others, []pooled{}
+	rs.Pool = []pooled{}
 	rs.add(res)
 	for i, e := range rs.Pool {
 		if old, was := oldPool[e.TaskID]; was {
@@ -272,27 +263,14 @@ func (rs *reasons) refuse(taskID string) {
 	rs.Pool = append(rs.Pool, pooled{TaskID: taskID, Reason: ReasonRefused})
 }
 
-// take moves a Task from the pool to the Resident's assignments.
-func (rs *reasons) take(taskID, residentID string) {
+// take takes the Task out of the pool; the assignment itself is a row in
+// day_plan_assignments.
+func (rs *reasons) take(taskID string) {
 	rs.release(taskID)
-	rs.Assigned = append(rs.Assigned, assigned{TaskID: taskID, ResidentID: residentID, Reason: ReasonTaken})
 }
 
-// swap hands each Task to its new holder, with the swapped reason.
-func (rs *reasons) swap(taskA, toA, taskB, toB string) {
-	for i, a := range rs.Assigned {
-		switch a.TaskID {
-		case taskA:
-			rs.Assigned[i] = assigned{TaskID: taskA, ResidentID: toA, Reason: ReasonSwapped}
-		case taskB:
-			rs.Assigned[i] = assigned{TaskID: taskB, ResidentID: toB, Reason: ReasonSwapped}
-		}
-	}
-}
-
-// release drops every entry for the Task, assigned or pooled.
+// release drops the Task's entry in the pool.
 func (rs *reasons) release(taskID string) {
-	rs.Assigned = slices.DeleteFunc(rs.Assigned, func(a assigned) bool { return a.TaskID == taskID })
 	rs.Pool = slices.DeleteFunc(rs.Pool, func(p pooled) bool { return p.TaskID == taskID })
 }
 
@@ -306,12 +284,6 @@ func writeReasons(ctx context.Context, tx pgx.Tx, runID string, rs reasons) erro
 		return fmt.Errorf("write reasons: %w", err)
 	}
 	return nil
-}
-
-type assigned struct {
-	TaskID     string `json:"taskId"`
-	ResidentID string `json:"residentId"`
-	Reason     string `json:"reason"`
 }
 
 type pooled struct {
@@ -329,13 +301,13 @@ type violation struct {
 
 // lockHome locks the Home row, which serialises planners without blocking the
 // foreign key checks of rows that point at the Home (FOR NO KEY UPDATE), and
-// returns the Home's local date at now.
-func lockHome(ctx context.Context, tx pgx.Tx, homeID string, now time.Time) (allocation.Date, error) {
+// returns the Home's local clock at now. Only inHomeTx calls it.
+func lockHome(ctx context.Context, tx pgx.Tx, homeID string, now time.Time) (homeClock, error) {
 	var zone string
 	if err := tx.QueryRow(ctx, `SELECT timezone FROM homes WHERE id = $1 FOR NO KEY UPDATE`, homeID).Scan(&zone); err != nil {
-		return 0, fmt.Errorf("lock home: %w", err)
+		return homeClock{}, fmt.Errorf("lock home: %w", err)
 	}
-	return LocalDate(zone, now)
+	return clockIn(zone, now)
 }
 
 // insertRun writes one allocation_runs row and returns its id.
@@ -362,11 +334,21 @@ func store(ctx context.Context, tx pgx.Tx, homeID string, date allocation.Date, 
 	if err != nil {
 		return err
 	}
-	for _, a := range rec.result.DayPlan.Assignments {
+	if err := insertAssignments(ctx, tx, runID, rec.result.DayPlan.Assignments); err != nil {
+		return fmt.Errorf("store assignment: %w", err)
+	}
+	return nil
+}
+
+// insertAssignments is the one writer of day_plan_assignments rows: the plan,
+// a re-plan and Take all go through it. Callers wrap the error with their own
+// context.
+func insertAssignments(ctx context.Context, tx pgx.Tx, runID string, as []allocation.Assignment) error {
+	for _, a := range as {
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO day_plan_assignments (run_id, task_id, resident_id, reason) VALUES ($1, $2, $3, $4)`,
 			runID, a.TaskID, a.ResidentID, string(a.Reason)); err != nil {
-			return fmt.Errorf("store assignment: %w", err)
+			return err
 		}
 	}
 	return nil

@@ -90,31 +90,19 @@ func (a *acting) lockProposed(ctx context.Context, residentID, taskID string) (t
 // is no plan today, and do says what that means (most call requirePlan); any
 // error rolls everything back.
 func (p *Planner) act(ctx context.Context, homeID string, now time.Time, name string, do func(a *acting) error) error {
-	tx, err := p.db.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("%s: %w", name, err)
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-
-	date, err := lockHome(ctx, tx, homeID, now)
-	if err != nil {
-		return fmt.Errorf("%s: %w", name, err)
-	}
-	run, found, err := loadRun(ctx, tx, homeID, date)
-	if err != nil {
-		return err
-	}
-	a := &acting{tx: tx, home: homeID, date: date, now: now}
-	if found && run.outcome == Planned {
-		a.run = &run
-	}
-	if err := do(a); err != nil {
-		return err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("%s: commit: %w", name, err)
-	}
-	return nil
+	// No Refresh: Accept, Refuse, Take and the swaps never open Tasks.
+	return p.inHomeTx(ctx, homeID, now, name, func(tx pgx.Tx, clock homeClock) error {
+		date := clock.date
+		run, found, err := loadRun(ctx, tx, homeID, date)
+		if err != nil {
+			return err
+		}
+		a := &acting{tx: tx, home: homeID, date: date, now: now}
+		if found && run.outcome == Planned {
+			a.run = &run
+		}
+		return do(a)
+	})
 }
 
 // taskState is a Task of the Home, locked for the rest of the transaction.
@@ -249,9 +237,8 @@ func (p *Planner) Take(ctx context.Context, homeID, residentID, taskID string, n
 		if err := a.mayDo(ctx, residentID, taskID, ReasonTaken); err != nil {
 			return err
 		}
-		if _, err := a.tx.Exec(ctx, `
-			INSERT INTO day_plan_assignments (run_id, task_id, resident_id, reason) VALUES ($1, $2, $3, $4)`,
-			a.run.id, taskID, residentID, ReasonTaken); err != nil {
+		taken := allocation.Assignment{TaskID: taskID, ResidentID: residentID, Reason: ReasonTaken}
+		if err := insertAssignments(ctx, a.tx, a.run.id, []allocation.Assignment{taken}); err != nil {
 			return fmt.Errorf("take: %w", err)
 		}
 		if _, err := a.tx.Exec(ctx, `
@@ -259,7 +246,7 @@ func (p *Planner) Take(ctx context.Context, homeID, residentID, taskID string, n
 			taskID, residentID, a.date.Time(), a.now); err != nil {
 			return fmt.Errorf("take: %w", err)
 		}
-		a.run.reasons.take(taskID, residentID)
+		a.run.reasons.take(taskID)
 		return writeReasons(ctx, a.tx, a.run.id, a.run.reasons)
 	})
 }
