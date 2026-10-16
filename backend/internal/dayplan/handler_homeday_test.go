@@ -45,12 +45,15 @@ func TestRefreshInsideAPlanTransactionLeavesTheStatementTimeoutAsItWas(t *testin
 	if err := app.DB.QueryRow(context.Background(), `SELECT id FROM homes`).Scan(&homeID); err != nil {
 		t.Fatal(err)
 	}
-	before, after, err := dayplan.RefreshStatementTimeout(context.Background(), app.DB, homeID, apitest.MondayAt(8))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if before != after {
-		t.Fatalf("statement_timeout was %s and is %s after the Refresh", before, after)
+	// "" is the session's setting; "7s" is a caller's own SET LOCAL.
+	for _, local := range []string{"", "7s"} {
+		before, after, err := dayplan.RefreshStatementTimeout(context.Background(), app.DB, homeID, apitest.MondayAt(8), local)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if before != after {
+			t.Fatalf("statement_timeout was %s and is %s after the Refresh (caller set %q)", before, after, local)
+		}
 	}
 }
 

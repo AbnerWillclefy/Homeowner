@@ -16,7 +16,7 @@ import (
 // Check-in (see CheckIn), and the Resident's Energy comes from the same
 // energyOn.
 //
-// Steps, in the order PlanHome uses (inHomeTx): lock the Home, refresh the
+// Steps, in the order PlanHome uses (refreshedHomeTx): lock the Home, refresh the
 // Tasks (a Home made minutes ago has Chores but no Tasks yet), then look for
 // the day's run.
 //   - Planned: the Resident's own assignments are replaced from the pool.
@@ -36,7 +36,7 @@ func (p *Planner) PlanResident(ctx context.Context, homeID, residentID string, n
 		done  *replanned
 	)
 	outcome := Planned
-	err := p.inHomeTx(ctx, homeID, now, "plan resident", func(tx pgx.Tx, d allocation.Date) error {
+	err := p.refreshedHomeTx(ctx, homeID, now, "plan resident", func(tx pgx.Tx, d allocation.Date) error {
 		date = d
 		run, ok, err := loadRun(ctx, tx, homeID, date)
 		if err != nil {

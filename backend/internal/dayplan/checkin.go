@@ -41,7 +41,7 @@ func (p *Planner) CheckIn(ctx context.Context, homeID, residentID string, in che
 		date      allocation.Date
 		replanned *replanned
 	)
-	err := p.inHomeTx(ctx, homeID, now, "check in", func(tx pgx.Tx, d allocation.Date) error {
+	err := p.refreshedHomeTx(ctx, homeID, now, "check in", func(tx pgx.Tx, d allocation.Date) error {
 		date = d
 		if err := checkin.Save(ctx, tx, residentID, date, in, now); err != nil {
 			return err

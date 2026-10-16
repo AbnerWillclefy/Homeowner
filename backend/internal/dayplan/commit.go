@@ -91,7 +91,8 @@ func (a *acting) lockProposed(ctx context.Context, residentID, taskID string) (t
 // error rolls everything back.
 func (p *Planner) act(ctx context.Context, homeID string, now time.Time, name string, do func(a *acting) error) error {
 	// No Refresh: Accept, Refuse, Take and the swaps never open Tasks.
-	return p.runInHomeTx(ctx, homeID, now, name, false, func(tx pgx.Tx, date allocation.Date) error {
+	return p.inHomeTx(ctx, homeID, now, name, func(tx pgx.Tx, clock homeClock) error {
+		date := clock.date
 		run, found, err := loadRun(ctx, tx, homeID, date)
 		if err != nil {
 			return err

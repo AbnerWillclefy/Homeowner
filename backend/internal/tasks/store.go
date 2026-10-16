@@ -87,9 +87,13 @@ func (s *Store) Refresh(ctx context.Context, homeID string, now time.Time) error
 // The Chore rows stay locked until the caller's transaction ends.
 //
 // The statement timeout covers only the Chore work. SET LOCAL lasts until the
-// transaction ends, so it is reset afterwards and the rest of the caller's
-// transaction keeps the session's setting.
+// transaction ends, so the caller's value is put back afterwards, whether it
+// came from the session or from the caller's own SET LOCAL.
 func RefreshIn(ctx context.Context, tx pgx.Tx, homeID string, today allocation.Date, loc *time.Location, now time.Time) error {
+	var previous string
+	if err := tx.QueryRow(ctx, `SELECT current_setting('statement_timeout')`).Scan(&previous); err != nil {
+		return fmt.Errorf("refresh tasks: %w", err)
+	}
 	if _, err := tx.Exec(ctx, "SET LOCAL statement_timeout = '"+statementTimeout+"'"); err != nil {
 		return fmt.Errorf("refresh tasks: %w", err)
 	}
@@ -102,7 +106,7 @@ func RefreshIn(ctx context.Context, tx pgx.Tx, homeID string, today allocation.D
 			return err
 		}
 	}
-	if _, err := tx.Exec(ctx, "RESET statement_timeout"); err != nil {
+	if _, err := tx.Exec(ctx, `SELECT set_config('statement_timeout', $1, true)`, previous); err != nil {
 		return fmt.Errorf("refresh tasks: %w", err)
 	}
 	return nil

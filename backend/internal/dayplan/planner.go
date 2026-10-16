@@ -354,7 +354,7 @@ func (p *Planner) planHome(ctx, llmCtx context.Context, homeID string, now time.
 		date    allocation.Date
 		outcome = Planned
 	)
-	err := p.inHomeTx(ctx, homeID, now, "plan home", func(tx pgx.Tx, d allocation.Date) error {
+	err := p.refreshedHomeTx(ctx, homeID, now, "plan home", func(tx pgx.Tx, d allocation.Date) error {
 		date = d
 		exists, err := runExists(ctx, tx, homeID, date)
 		if err != nil {
@@ -362,7 +362,7 @@ func (p *Planner) planHome(ctx, llmCtx context.Context, homeID string, now time.
 		}
 		if exists {
 			outcome = AlreadyPlanned
-			return errStop
+			return nil
 		}
 		if p.llm.Proposer != nil && date != day {
 			ans = llmAnswer{} // the Home's zone changed during the call: that plan was for another day
@@ -373,13 +373,22 @@ func (p *Planner) planHome(ctx, llmCtx context.Context, homeID string, now time.
 			return err
 		}
 		run = p.propose(st, ans)
-		if err := store(ctx, tx, homeID, date, now, run); err != nil {
+		// A savepoint, so a unique violation does not abort the transaction.
+		sp, err := tx.Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("plan home: %w", err)
+		}
+		defer sp.Rollback(ctx) //nolint:errcheck
+		if err := store(ctx, sp, homeID, date, now, run); err != nil {
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) && pgErr.Code == uniqueViolation {
 				outcome = AlreadyPlanned
-				return errStop // the failed insert aborted the transaction: roll back
+				return nil
 			}
 			return err
+		}
+		if err := sp.Commit(ctx); err != nil {
+			return fmt.Errorf("plan home: %w", err)
 		}
 		return nil
 	})
@@ -410,11 +419,24 @@ type querier interface {
 
 // LocalDate is the date at now in the IANA zone.
 func LocalDate(zone string, now time.Time) (allocation.Date, error) {
+	c, err := clockIn(zone, now)
+	return c.date, err
+}
+
+// homeClock is a Home's local date at a moment, with the zone it was worked
+// out in.
+type homeClock struct {
+	date allocation.Date
+	loc  *time.Location
+}
+
+// clockIn is the one place a zone name becomes a local date.
+func clockIn(zone string, now time.Time) (homeClock, error) {
 	loc, err := time.LoadLocation(zone)
 	if err != nil {
-		return 0, fmt.Errorf("timezone %q: %w", zone, err)
+		return homeClock{}, fmt.Errorf("timezone %q: %w", zone, err)
 	}
-	return allocation.DateOf(now.In(loc)), nil
+	return homeClock{date: allocation.DateOf(now.In(loc)), loc: loc}, nil
 }
 
 // runExists reports whether the Home has a run for the date.
@@ -503,7 +525,7 @@ func (p *Planner) propose(st loaded, ans llmAnswer) runRecord {
 // call timeout. It holds no lock and no connection while the model answers.
 func (p *Planner) askLLM(ctx, llmCtx context.Context, homeID string, now time.Time) (date allocation.Date, planned bool, ans llmAnswer, err error) {
 	var st allocation.State
-	err = p.inHomeTx(ctx, homeID, now, "plan home", func(tx pgx.Tx, d allocation.Date) error {
+	err = p.refreshedHomeTx(ctx, homeID, now, "plan home", func(tx pgx.Tx, d allocation.Date) error {
 		date = d
 		exists, err := runExists(ctx, tx, homeID, date)
 		if err != nil {

@@ -18,21 +18,27 @@ func LoadState(ctx context.Context, q pgx.Tx, homeID string, today allocation.Da
 }
 
 // RefreshStatementTimeout runs the Home lock and the Refresh of a plan
-// transaction on db and returns statement_timeout before and after them.
-func RefreshStatementTimeout(ctx context.Context, db *pgxpool.Pool, homeID string, now time.Time) (before, after string, err error) {
+// transaction on db and returns statement_timeout before and after them. A
+// non-empty local is set with SET LOCAL first, as a caller's own timeout.
+func RefreshStatementTimeout(ctx context.Context, db *pgxpool.Pool, homeID string, now time.Time, local string) (before, after string, err error) {
 	tx, err := db.Begin(ctx)
 	if err != nil {
 		return "", "", err
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
+	if local != "" {
+		if _, err := tx.Exec(ctx, "SET LOCAL statement_timeout = '"+local+"'"); err != nil {
+			return "", "", err
+		}
+	}
 	if err := tx.QueryRow(ctx, `SHOW statement_timeout`).Scan(&before); err != nil {
 		return "", "", err
 	}
-	date, loc, err := lockHome(ctx, tx, homeID, now)
+	clock, err := lockHome(ctx, tx, homeID, now)
 	if err != nil {
 		return "", "", err
 	}
-	if err := tasks.RefreshIn(ctx, tx, homeID, date, loc, now); err != nil {
+	if err := tasks.RefreshIn(ctx, tx, homeID, clock.date, clock.loc, now); err != nil {
 		return "", "", err
 	}
 	err = tx.QueryRow(ctx, `SHOW statement_timeout`).Scan(&after)
