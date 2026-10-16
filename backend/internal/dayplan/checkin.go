@@ -37,26 +37,21 @@ import (
 //     everything, the Check-in included, and returns an error: an unchecked
 //     plan is never stored (ADR 0004).
 func (p *Planner) CheckIn(ctx context.Context, homeID, residentID string, in checkin.CheckIn, now time.Time) (allocation.Date, error) {
-	tx, err := p.db.Begin(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("check in: %w", err)
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-
-	date, err := lockHome(ctx, tx, homeID, now)
-	if err != nil {
-		return 0, fmt.Errorf("check in: %w", err)
-	}
-	if err := checkin.Save(ctx, tx, residentID, date, in, now); err != nil {
-		return 0, err
-	}
-
-	replanned, err := p.replan(ctx, tx, homeID, residentID, date)
+	var (
+		date      allocation.Date
+		replanned *replanned
+	)
+	err := p.inHomeTx(ctx, homeID, now, "check in", func(tx pgx.Tx, d allocation.Date) error {
+		date = d
+		if err := checkin.Save(ctx, tx, residentID, date, in, now); err != nil {
+			return err
+		}
+		var err error
+		replanned, err = p.replan(ctx, tx, homeID, residentID, date)
+		return err
+	})
 	if err != nil {
 		return 0, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return 0, fmt.Errorf("check in: commit: %w", err)
 	}
 	if replanned != nil {
 		p.log.Info("resident planned again after a check-in", "home", homeID, "date", date.Time().Format(time.DateOnly),

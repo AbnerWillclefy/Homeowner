@@ -329,13 +329,17 @@ type violation struct {
 
 // lockHome locks the Home row, which serialises planners without blocking the
 // foreign key checks of rows that point at the Home (FOR NO KEY UPDATE), and
-// returns the Home's local date at now.
-func lockHome(ctx context.Context, tx pgx.Tx, homeID string, now time.Time) (allocation.Date, error) {
+// returns the Home's local date at now with its zone. Only inHomeTx calls it.
+func lockHome(ctx context.Context, tx pgx.Tx, homeID string, now time.Time) (allocation.Date, *time.Location, error) {
 	var zone string
 	if err := tx.QueryRow(ctx, `SELECT timezone FROM homes WHERE id = $1 FOR NO KEY UPDATE`, homeID).Scan(&zone); err != nil {
-		return 0, fmt.Errorf("lock home: %w", err)
+		return 0, nil, fmt.Errorf("lock home: %w", err)
 	}
-	return LocalDate(zone, now)
+	loc, err := time.LoadLocation(zone)
+	if err != nil {
+		return 0, nil, fmt.Errorf("timezone %q: %w", zone, err)
+	}
+	return allocation.DateOf(now.In(loc)), loc, nil
 }
 
 // insertRun writes one allocation_runs row and returns its id.
