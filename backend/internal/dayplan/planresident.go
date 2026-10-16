@@ -16,9 +16,9 @@ import (
 // Check-in (see CheckIn), and the Resident's Energy comes from the same
 // energyOn.
 //
-// Steps, in the order PlanHome uses: refresh the Tasks before the transaction
-// (a Home made minutes ago has Chores but no Tasks yet), then lock the Home and
-// look for the day's run.
+// Steps, in the order PlanHome uses (inHomeTx): lock the Home, refresh the
+// Tasks (a Home made minutes ago has Chores but no Tasks yet), then look for
+// the day's run.
 //   - Planned: the Resident's own assignments are replaced from the pool.
 //   - Rejected: nothing changes and Rejected is returned; the day is taken.
 //   - No run yet: today's run is created in the same transaction, with only
