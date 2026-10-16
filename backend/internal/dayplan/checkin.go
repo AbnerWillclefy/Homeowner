@@ -151,7 +151,7 @@ func (p *Planner) replanRun(ctx context.Context, tx pgx.Tx, homeID, residentID s
 			p.alloc.Name(), len(vs), vs[0].Detail)
 	}
 
-	rs.replan(residentID, st.energy[residentID], res, two.keep)
+	rs.replan(residentID, st.energy[residentID], res)
 	if err := releaseTwoPerson(ctx, tx, runID, &rs, two.released); err != nil {
 		return nil, err
 	}

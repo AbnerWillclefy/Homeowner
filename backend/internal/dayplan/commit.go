@@ -245,7 +245,7 @@ func (p *Planner) Take(ctx context.Context, homeID, residentID, taskID string, n
 			taskID, residentID, a.date.Time(), a.now); err != nil {
 			return fmt.Errorf("take: %w", err)
 		}
-		a.run.reasons.take(taskID, residentID)
+		a.run.reasons.take(taskID)
 		return writeReasons(ctx, a.tx, a.run.id, a.run.reasons)
 	})
 }

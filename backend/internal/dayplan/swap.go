@@ -253,8 +253,8 @@ func (p *Planner) AcceptSwap(ctx context.Context, homeID, residentID, offerID st
 			a.home, []string{o.offeredTask, o.requestedTask}, o.id, a.now, a.date.Time(), swapCancelled, swapPending); err != nil {
 			return fmt.Errorf("accept swap: %w", err)
 		}
-		a.run.reasons.swap(o.offeredTask, o.to, o.requestedTask, o.from)
-		return writeReasons(ctx, a.tx, a.run.id, a.run.reasons)
+		// The assignment rows moved in moveCommitment; the reasons hold none.
+		return nil
 	})
 }
 

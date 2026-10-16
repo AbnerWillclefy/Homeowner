@@ -22,9 +22,6 @@ func TestAReplanLeavesTheSameReasonsAFullPlanWouldStore(t *testing.T) {
 	apitest.CheckIn(t, me, "low")
 
 	replanned := storedReasons(t, app)
-	if n := len(replanned["assigned"].([]any)); n != 1 {
-		t.Fatalf("assigned = %d, want 1: %v", n, replanned)
-	}
 	if n := len(replanned["pool"].([]any)); n != 1 {
 		t.Fatalf("pool = %d, want 1: %v", n, replanned)
 	}

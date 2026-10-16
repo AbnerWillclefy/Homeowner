@@ -465,7 +465,7 @@ type llmAnswer struct {
 // that errors or breaks a rule is a rejected run with nothing assigned.
 func (p *Planner) propose(st loaded, ans llmAnswer) runRecord {
 	rec := runRecord{allocator: p.alloc.Name(), outcome: Planned,
-		reasons: reasons{Energy: st.energy, Assigned: []assigned{}, Pool: []pooled{}}}
+		reasons: reasons{Energy: st.energy, Pool: []pooled{}}}
 	if worthAsking(st.state) {
 		if ans.proposal != nil {
 			vs := allocation.Check(ans.proposal.DayPlan, st.state)
