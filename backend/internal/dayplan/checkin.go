@@ -342,12 +342,8 @@ func persist(ctx context.Context, tx pgx.Tx, runID, residentID string, res alloc
 		runID, residentID, kept); err != nil {
 		return fmt.Errorf("check in: clear assignments: %w", err)
 	}
-	for _, a := range res.DayPlan.Assignments {
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO day_plan_assignments (run_id, task_id, resident_id, reason) VALUES ($1, $2, $3, $4)`,
-			runID, a.TaskID, a.ResidentID, string(a.Reason)); err != nil {
-			return fmt.Errorf("check in: store assignment: %w", err)
-		}
+	if err := insertAssignments(ctx, tx, runID, res.DayPlan.Assignments); err != nil {
+		return fmt.Errorf("check in: store assignment: %w", err)
 	}
 	return writeReasons(ctx, tx, runID, rs)
 }

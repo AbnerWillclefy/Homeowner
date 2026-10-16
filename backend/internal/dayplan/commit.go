@@ -236,9 +236,8 @@ func (p *Planner) Take(ctx context.Context, homeID, residentID, taskID string, n
 		if err := a.mayDo(ctx, residentID, taskID, ReasonTaken); err != nil {
 			return err
 		}
-		if _, err := a.tx.Exec(ctx, `
-			INSERT INTO day_plan_assignments (run_id, task_id, resident_id, reason) VALUES ($1, $2, $3, $4)`,
-			a.run.id, taskID, residentID, ReasonTaken); err != nil {
+		taken := allocation.Assignment{TaskID: taskID, ResidentID: residentID, Reason: ReasonTaken}
+		if err := insertAssignments(ctx, a.tx, a.run.id, []allocation.Assignment{taken}); err != nil {
 			return fmt.Errorf("take: %w", err)
 		}
 		if _, err := a.tx.Exec(ctx, `

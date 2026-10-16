@@ -366,11 +366,21 @@ func store(ctx context.Context, tx pgx.Tx, homeID string, date allocation.Date, 
 	if err != nil {
 		return err
 	}
-	for _, a := range rec.result.DayPlan.Assignments {
+	if err := insertAssignments(ctx, tx, runID, rec.result.DayPlan.Assignments); err != nil {
+		return fmt.Errorf("store assignment: %w", err)
+	}
+	return nil
+}
+
+// insertAssignments is the one writer of day_plan_assignments rows: the plan,
+// a re-plan and Take all go through it. Callers wrap the error with their own
+// context.
+func insertAssignments(ctx context.Context, tx pgx.Tx, runID string, as []allocation.Assignment) error {
+	for _, a := range as {
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO day_plan_assignments (run_id, task_id, resident_id, reason) VALUES ($1, $2, $3, $4)`,
 			runID, a.TaskID, a.ResidentID, string(a.Reason)); err != nil {
-			return fmt.Errorf("store assignment: %w", err)
+			return err
 		}
 	}
 	return nil
