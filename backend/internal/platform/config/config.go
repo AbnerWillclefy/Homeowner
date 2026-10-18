@@ -51,6 +51,10 @@ type Config struct {
 	// ReplanEnabled lets the Allocation function replan one Home on request
 	// (REPLAN_ENABLED). Off by default; only staging switches it on.
 	ReplanEnabled bool
+	// ReplanAllocateFunction is the name of the Allocation Lambda function the
+	// API's POST /dev/replan route invokes (REPLAN_ALLOCATE_FUNCTION_NAME).
+	// Empty means the route does not exist; only the staging API sets it.
+	ReplanAllocateFunction string
 }
 
 // AuthEnabled reports whether sign-in is configured.
@@ -128,6 +132,7 @@ func Load(getenv func(string) string) (Config, error) {
 		}
 		c.ReplanEnabled = b
 	}
+	c.ReplanAllocateFunction = strings.TrimSpace(getenv("REPLAN_ALLOCATE_FUNCTION_NAME"))
 	return c, nil
 }
 
