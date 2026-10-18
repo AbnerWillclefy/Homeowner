@@ -1,6 +1,7 @@
 import { test, expect } from "../fixtures";
 import { CONFIRMATION_CODE } from "../mocks/cognito";
 import { GOOD_PASSWORD, WEAK_PASSWORD, uniqueEmail } from "../mocks/users";
+import { storedSession } from "../mocks/session";
 import { confirm } from "../pages/confirm";
 import { launchApp } from "../pages/launch";
 import { signIn } from "../pages/signIn";
@@ -33,7 +34,7 @@ test("a new User signs up, confirms the email and is sent to sign in", async ({ 
     { action: "SignUp", username: email },
     { action: "ConfirmSignUp", username: email },
   ]);
-  expect(await page.evaluate(() => localStorage.getItem("homeowner.session"))).toBeNull();
+  expect(await storedSession(page)).toBeNull();
 });
 
 // The app only shows the policy; Cognito enforces it. This proves the app words a refused password, not that it

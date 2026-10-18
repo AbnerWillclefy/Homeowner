@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { expectFormError } from "./form";
 
 export const signUp = {
   heading: (page: Page) => page.getByRole("heading", { name: "Sign up", level: 2 }),
@@ -23,8 +24,5 @@ export const signUp = {
     await signUp.submit(page).click();
   },
 
-  /** The form's alert region shows this text. */
-  async expectError(page: Page, text: string): Promise<void> {
-    await expect(page.getByRole("alert")).toContainText(text);
-  },
+  expectError: expectFormError,
 };

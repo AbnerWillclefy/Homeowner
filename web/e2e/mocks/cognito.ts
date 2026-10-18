@@ -5,6 +5,7 @@ import { makeIdToken } from "./tokens";
 export const CONFIRMATION_CODE = "123456";
 
 const TARGET_PREFIX = "AWSCognitoIdentityProviderService.";
+const ACTIONS = new Set(["SignUp", "ConfirmSignUp", "ResendConfirmationCode", "InitiateAuth"]);
 const CONTENT_TYPE = "application/x-amz-json-1.1";
 
 interface Policy {
@@ -94,6 +95,13 @@ export function createFakeCognito(options: { region: string; clientId: string; p
     return success({});
   }
 
+  function resend(username: string): FakeReply {
+    const user = users.get(username);
+    return user && !user.confirmed
+      ? success({ CodeDeliveryDetails: { DeliveryMedium: "EMAIL" } })
+      : failure("UserNotFoundException");
+  }
+
   function signIn(username: string, password: unknown): FakeReply {
     const user = users.get(username);
     // Cognito does not tell an unknown user from a wrong password, and neither does the fake.
@@ -131,27 +139,24 @@ export function createFakeCognito(options: { region: string; clientId: string; p
       const rawUsername = target === "InitiateAuth" ? params["USERNAME"] : body["Username"];
       const username = typeof rawUsername === "string" ? rawUsername : "";
 
+      // REFRESH_TOKEN_AUTH is deliberately unmocked: a premature refresh should fail loudly.
+      if (target === "InitiateAuth" && body["AuthFlow"] !== "USER_PASSWORD_AUTH") return null;
+      if (!ACTIONS.has(target)) return null;
+
+      requests.push(
+        target === "InitiateAuth"
+          ? { action: target, username, authFlow: "USER_PASSWORD_AUTH" }
+          : { action: target, username },
+      );
       switch (target) {
         case "SignUp":
-          requests.push({ action: target, username });
           return signUp(username, body);
         case "ConfirmSignUp":
-          requests.push({ action: target, username });
           return confirmSignUp(username, body);
-        case "ResendConfirmationCode": {
-          requests.push({ action: target, username });
-          const user = users.get(username);
-          return user && !user.confirmed
-            ? success({ CodeDeliveryDetails: { DeliveryMedium: "EMAIL" } })
-            : failure("UserNotFoundException");
-        }
-        case "InitiateAuth":
-          // REFRESH_TOKEN_AUTH is deliberately unmocked: a premature refresh should fail loudly.
-          if (body["AuthFlow"] !== "USER_PASSWORD_AUTH") return null;
-          requests.push({ action: target, username, authFlow: "USER_PASSWORD_AUTH" });
-          return signIn(username, params["PASSWORD"]);
+        case "ResendConfirmationCode":
+          return resend(username);
         default:
-          return null;
+          return signIn(username, params["PASSWORD"]);
       }
     },
   };

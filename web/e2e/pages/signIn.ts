@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { expectFormError } from "./form";
 
 export const signIn = {
   heading: (page: Page) => page.getByRole("heading", { name: "Sign in", level: 2 }),
@@ -31,10 +32,7 @@ export const signIn = {
     await page.getByRole("button", { name: "Sign up", exact: true }).click();
   },
 
-  /** The form's alert region shows this text. The region is always present, so the text is what counts. */
-  async expectError(page: Page, text: string): Promise<void> {
-    await expect(page.getByRole("alert")).toContainText(text);
-  },
+  expectError: expectFormError,
 
   /** The success notice shown after email confirmation (a toast, so assert it right after the redirect). */
   async expectConfirmedNotice(page: Page): Promise<void> {

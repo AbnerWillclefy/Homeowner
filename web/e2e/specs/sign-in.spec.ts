@@ -1,10 +1,8 @@
 import { test, expect } from "../fixtures";
 import { GOOD_PASSWORD, uniqueEmail } from "../mocks/users";
+import { storedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
 import { signIn } from "../pages/signIn";
-import type { Session } from "../../src/domains/auth/logic/session";
-
-const SESSION_KEY = "homeowner.session";
 
 // Where sign-in lands: with onboarding stored as done and no Home, the shell shows "Create your Home". Today and
 // onboarding need handlers that belong to other tickets, and this one needs only the core handlers.
@@ -23,9 +21,8 @@ test.describe("with onboarding done and no Home", () => {
     await expect(page.getByRole("heading", { name: "Create your Home", level: 2 })).toBeVisible();
     await expect(page).not.toHaveURL(/\/signin/);
 
-    const raw = await page.evaluate((key) => localStorage.getItem(key), SESSION_KEY);
-    expect(raw).not.toBeNull();
-    const session = JSON.parse(raw!) as Session;
+    const session = await storedSession(page);
+    if (!session) throw new Error("no session was stored");
     expect(session.idToken).toBe(fakeCognito.issuedIdTokens.get(email));
     expect(session.refreshToken).not.toBe("");
     expect(session.expiresAt).toBeGreaterThan(Date.now());
@@ -44,7 +41,7 @@ test.describe("with onboarding done and no Home", () => {
     await signIn.expectError(page, "The email or password is not right. Check both and try again.");
     await expect(page).toHaveURL(/\/signin$/);
     await signIn.expectVisible(page);
-    expect(await page.evaluate((key) => localStorage.getItem(key), SESSION_KEY)).toBeNull();
+    expect(await storedSession(page)).toBeNull();
     expect(fakeApi.requests.filter((r) => r.path !== "/healthz")).toEqual([]);
   });
 });
