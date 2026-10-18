@@ -23,6 +23,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/replan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/streak"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/tasks"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
@@ -52,6 +53,10 @@ type Deps struct {
 	// was made; nil means allocation.Baseline. It must be the Allocator the
 	// scheduled job uses.
 	Allocator allocation.Allocator
+	// Replanner asks the Allocation function to plan one Home again; nil means
+	// the staging-only POST /dev/replan route does not exist (404), as in
+	// production.
+	Replanner replan.Replanner
 }
 
 const healthTimeout = 2 * time.Second
@@ -130,6 +135,9 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("GET /push/vapid-public-key", pushes.RequireConfigured(pushes.PublicKey))
 	mux.HandleFunc("PUT /push/subscription", pushes.RequireConfigured(user(pushes.PutSubscription)))
 	mux.HandleFunc("POST /push/test", pushes.RequireConfigured(user(pushes.SendTest)))
+	if deps.Replanner != nil {
+		mux.HandleFunc("POST /dev/replan", resident(replan.NewHandler(deps.Replanner, log).Replan))
+	}
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not found")
 	})
