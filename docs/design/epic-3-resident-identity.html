@@ -21,6 +21,13 @@
   .preview { display: flex; align-items: flex-end; justify-content: center; gap: 2rem; padding: 1.25rem 1rem; border-radius: var(--r-card); background: var(--surface); border: 1px solid color-mix(in srgb, var(--border) 40%, transparent); }
   .preview figure { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
   .preview figcaption { margin: 0; font-size: 0.75rem; font-weight: 700; color: var(--muted); }
+  .rows { gap: 0; }
+  .bl-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0; }
+  .bl-row + .bl-row { border-top: 1px solid color-mix(in srgb, var(--border) 30%, transparent); }
+  .bl-row > span { width: 3rem; font-weight: 600; }
+  .seg { flex: 1; display: flex; gap: 0.25rem; padding: 0.25rem; border: 1px solid var(--border); border-radius: var(--r-pill); }
+  .seg span { flex: 1; min-height: 2.75rem; display: flex; align-items: center; justify-content: center; border-radius: var(--r-pill); font-weight: 600; }
+  .seg span.on { background: var(--accent); color: var(--accent-contrast); }
   .day-row { display: flex; align-items: center; gap: 0.75rem; min-height: 2.75rem; }
   .day-row span:first-child { width: 6rem; font-weight: 600; }
   .others-head { margin: 0 0 0.5rem; display: flex; align-items: center; gap: 0.5rem; font-size: 1rem; font-weight: 700; }
@@ -80,12 +87,7 @@
         </div>
         <section class="card fold">
           <div class="fold-head"><span class="tile accent"><i data-lucide="zap"></i></span><div class="grow"><h3>Baseline</h3><p>Your usual Energy on each day of the week. Your Check-in adjusts it for the day.</p></div><i class="chev" data-lucide="chevron-up"></i></div>
-          <div class="fold-body">
-            <div class="day-row"><span>Monday</span><input class="input" value="4" style="width:5rem"></div>
-            <div class="day-row"><span>Tuesday</span><input class="input" value="4" style="width:5rem"></div>
-            <div class="day-row"><span>Wednesday</span><input class="input" value="3" style="width:5rem"></div>
-            <p class="sm muted">…and the rest of the week.</p>
-          </div>
+          <div class="fold-body rows"><div class="bl-row"><span>Mon</span><div class="seg"><span class="">Low</span><span class="on">Normal</span><span class="">High</span></div></div><div class="bl-row"><span>Tue</span><div class="seg"><span class="">Low</span><span class="on">Normal</span><span class="">High</span></div></div><div class="bl-row"><span>Wed</span><div class="seg"><span class="on">Low</span><span class="">Normal</span><span class="">High</span></div></div><div class="bl-row"><span>Thu</span><div class="seg"><span class="">Low</span><span class="on">Normal</span><span class="">High</span></div></div><div class="bl-row"><span>Fri</span><div class="seg"><span class="on">Low</span><span class="">Normal</span><span class="">High</span></div></div><div class="bl-row"><span>Sat</span><div class="seg"><span class="">Low</span><span class="">Normal</span><span class="on">High</span></div></div><div class="bl-row"><span>Sun</span><div class="seg"><span class="">Low</span><span class="">Normal</span><span class="on">High</span></div></div></div>
         </section>
         <section class="card fold">
           <div class="fold-head"><span class="tile accent"><i data-lucide="heart"></i></span><div class="grow"><h3>Preferences</h3><p>Work you like is planned for you more often. Essential work still comes first.</p></div><i class="chev" data-lucide="chevron-down"></i></div>
@@ -93,7 +95,7 @@
       </div>
       <nav class="tabs"><span class="tab"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab on"><i data-lucide="user"></i>Me</span></nav>
     </div>
-    <figcaption><strong>Me, nothing set, Baseline open</strong>Fallbacks: the email's local part as the name, initials on a pastel from the user id. The only nudge is the "Add your name and photo" link. Streak is hidden here because it is 0. An open card flips its chevron and shows the existing fields.</figcaption>
+    <figcaption><strong>Me, nothing set, Baseline open</strong>Fallbacks: the email's local part as the name, initials on a pastel from the user id. The only nudge is the "Add your name and photo" link. Streak is hidden here because it is 0. An open card flips its chevron and shows the existing Baseline, Preferences or Restrictions UI exactly as it ships today. Only the collapse is new.</figcaption>
   </figure>
 
   <figure>
