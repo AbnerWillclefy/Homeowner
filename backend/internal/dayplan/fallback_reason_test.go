@@ -7,6 +7,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
 
@@ -33,14 +34,23 @@ func TestTheReadNamesTheLLMAllocatorAndNoFallbackReason(t *testing.T) {
 	}
 }
 
-func TestTheReadNamesTheBaselineAndTheDailyCapReason(t *testing.T) {
-	t.Parallel()
-	app, a, _, st := llmHome(t)
-	if _, err := app.DB.Exec(context.Background(), `INSERT INTO llm_calls (home_id, call_date, calls) VALUES ($1, $2, 3)`,
-		homeIDOf(t, a), st.Today.Time()); err != nil {
+// llmDailyCap is the daily cap llmHome configures for a Home.
+const llmDailyCap = 3
+
+// capReached spends the Home's whole daily LLM cap, then runs the Allocation job.
+func capReached(t *testing.T, app *apitest.App, a *apitest.Client, st allocation.State) {
+	t.Helper()
+	if _, err := app.DB.Exec(context.Background(), `INSERT INTO llm_calls (home_id, call_date, calls) VALUES ($1, $2, $3)`,
+		homeIDOf(t, a), st.Today.Time(), llmDailyCap); err != nil {
 		t.Fatal(err)
 	}
 	app.RunAllocation(t)
+}
+
+func TestTheReadNamesTheBaselineAndTheDailyCapReason(t *testing.T) {
+	t.Parallel()
+	app, a, _, st := llmHome(t)
+	capReached(t, app, a, st)
 
 	body := apitest.DayPlan(t, a).Body
 	if body["allocator"] != "baseline" || body["fallbackReason"] != "llm_daily_cap_reached" {
@@ -90,11 +100,7 @@ func TestTheReadWithoutARunHasNeitherAllocatorNorFallbackReason(t *testing.T) {
 func TestAnOlderClientStillReadsTheDayPlan(t *testing.T) {
 	t.Parallel()
 	app, a, _, st := llmHome(t)
-	if _, err := app.DB.Exec(context.Background(), `INSERT INTO llm_calls (home_id, call_date, calls) VALUES ($1, $2, 3)`,
-		homeIDOf(t, a), st.Today.Time()); err != nil {
-		t.Fatal(err)
-	}
-	app.RunAllocation(t)
+	capReached(t, app, a, st)
 
 	var old struct {
 		Date      string            `json:"date"`
