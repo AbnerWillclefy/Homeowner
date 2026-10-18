@@ -4,28 +4,118 @@
   "title": "Design System: Homeowner",
   "extensions": {
     "colorMeta": {
-      "accent": { "role": "primary", "displayName": "Advisor Teal", "canonical": "#2f6f4f", "dark": "#6fcf9f", "tonalRamp": ["#0f2a1d", "#1a4330", "#25593f", "#2f6f4f", "#4f8f6e", "#79b294", "#a9d2bb", "#d9eee2"] },
-      "surface": { "role": "neutral", "displayName": "Morning Paper", "canonical": "#f7f8f5", "dark": "#121816", "tonalRamp": ["#121816", "#2a312e", "#47504c", "#6b7a73", "#98a49e", "#c4ccc8", "#e6eae7", "#f7f8f5"] },
-      "surface-raised": { "role": "neutral", "displayName": "Clean Card", "canonical": "#ffffff", "dark": "#1b2320" },
-      "text": { "role": "neutral", "displayName": "Garden Ink", "canonical": "#1c2421", "dark": "#e8eeea" },
-      "muted": { "role": "neutral", "displayName": "Lichen", "canonical": "#4d5a54", "dark": "#a9b5ae" },
-      "border": { "role": "neutral", "displayName": "Hedge Line", "canonical": "#6b7a73", "dark": "#7f8d86" },
-      "focus": { "role": "neutral", "displayName": "Focus Blue", "canonical": "#1a5fb4", "dark": "#8ab4f8" },
-      "danger": { "role": "neutral", "displayName": "Brick", "canonical": "#b3261e", "dark": "#ff8a80" }
+      "accent": {
+        "role": "primary",
+        "displayName": "Advisor Teal",
+        "canonical": "#2f6f4f",
+        "dark": "#6fcf9f",
+        "tonalRamp": [
+          "#0f2a1d",
+          "#1a4330",
+          "#25593f",
+          "#2f6f4f",
+          "#4f8f6e",
+          "#79b294",
+          "#a9d2bb",
+          "#d9eee2"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Morning Paper",
+        "canonical": "#f7f8f5",
+        "dark": "#121816",
+        "tonalRamp": [
+          "#121816",
+          "#2a312e",
+          "#47504c",
+          "#6b7a73",
+          "#98a49e",
+          "#c4ccc8",
+          "#e6eae7",
+          "#f7f8f5"
+        ]
+      },
+      "surface-raised": {
+        "role": "neutral",
+        "displayName": "Clean Card",
+        "canonical": "#ffffff",
+        "dark": "#1b2320"
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Garden Ink",
+        "canonical": "#1c2421",
+        "dark": "#e8eeea"
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Lichen",
+        "canonical": "#4d5a54",
+        "dark": "#a9b5ae"
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Hedge Line",
+        "canonical": "#6b7a73",
+        "dark": "#7f8d86"
+      },
+      "focus": {
+        "role": "neutral",
+        "displayName": "Focus Blue",
+        "canonical": "#1a5fb4",
+        "dark": "#8ab4f8"
+      },
+      "danger": {
+        "role": "neutral",
+        "displayName": "Brick",
+        "canonical": "#b3261e",
+        "dark": "#ff8a80"
+      }
     },
     "typographyMeta": {
-      "page-title": { "displayName": "Page title", "purpose": "The tab's h2; focus lands here." },
-      "group-heading": { "displayName": "Group heading", "purpose": "Names a list of cards, with a muted count." },
-      "card-title": { "displayName": "Card title", "purpose": "The Chore name or a section card's h3." },
-      "body": { "displayName": "Body", "purpose": "Sentences and inputs, never below 1rem." },
-      "label": { "displayName": "Label", "purpose": "Category name, facts, hints, chips." },
-      "stat": { "displayName": "Stat", "purpose": "A number over its label in a stat tile." }
+      "page-title": {
+        "displayName": "Page title",
+        "purpose": "The tab's h2; focus lands here."
+      },
+      "group-heading": {
+        "displayName": "Group heading",
+        "purpose": "Names a list of cards, with a muted count."
+      },
+      "card-title": {
+        "displayName": "Card title",
+        "purpose": "The Chore name or a section card's h3."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Sentences and inputs, never below 1rem."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Category name, facts, hints, chips."
+      },
+      "stat": {
+        "displayName": "Stat",
+        "purpose": "A number over its label in a stat tile."
+      }
     },
     "shadows": [],
     "motion": [
-      { "name": "colors-fast", "value": "150ms ease", "purpose": "Button and chip colour changes, behind motion-safe only." },
-      { "name": "toast-in", "value": "150ms ease-out", "purpose": "A toast fades and slides down 0.5rem." },
-      { "name": "skeleton-delay", "value": "300ms", "purpose": "A skeleton appears only after this, so fast loads never flash." }
+      {
+        "name": "colors-fast",
+        "value": "150ms ease",
+        "purpose": "Button and chip colour changes, behind motion-safe only."
+      },
+      {
+        "name": "toast-in",
+        "value": "150ms ease-out",
+        "purpose": "A toast fades and slides down 0.5rem."
+      },
+      {
+        "name": "skeleton-delay",
+        "value": "300ms",
+        "purpose": "A skeleton appears only after this, so fast loads never flash."
+      }
     ],
     "breakpoints": []
   },
@@ -99,19 +189,49 @@
       "Thumb-reach: no primary action is stranded on the left."
     ],
     "rules": [
-      { "name": "The One Voice Rule", "body": "Teal means \"this is the action\". It never decorates, never labels a Category, and never appears on more than one button per card.", "section": "colors" },
-      { "name": "The Pastels Name, Never Rank Rule", "body": "A pastel says what kind of work it is, or, on an initials avatar, tells Residents apart. It is never used for status, urgency, success or Importance.", "section": "colors" },
-      { "name": "The Calm at Every Number Rule", "body": "A Streak of 0, an empty plan or a Drained day uses the same neutral colours as a good day. There is no alarm colour for rest.", "section": "colors" },
-      { "name": "The Wrap, Never Truncate Rule", "body": "Every text box wraps (overflow-wrap: anywhere). No ellipsis anywhere; the largest text size must still show the whole name.", "section": "typography" },
-      { "name": "The Right Thumb Rule", "body": "If the action you most want pressed is not at the bottom-right or full width, the layout is wrong.", "section": "layout" },
-      { "name": "The Paper, Not Plastic Rule", "body": "Nothing casts a shadow. If something needs to stand out, give it the accent tint or a pastel, not elevation.", "section": "elevation" }
+      {
+        "name": "The One Voice Rule",
+        "body": "Teal means \"this is the action\". It never decorates, never labels a Category, and never appears on more than one button per card.",
+        "section": "colors"
+      },
+      {
+        "name": "The Pastels Name, Never Rank Rule",
+        "body": "A pastel says what kind of work it is, or, on an initials avatar, tells Residents apart. It is never used for status, urgency, success or Importance.",
+        "section": "colors"
+      },
+      {
+        "name": "The Calm at Every Number Rule",
+        "body": "A Streak of 0, an empty plan or a Drained day uses the same neutral colours as a good day. There is no alarm colour for rest.",
+        "section": "colors"
+      },
+      {
+        "name": "The Portuguese First Rule",
+        "body": "Most Residents read the app in Brazilian Portuguese, which runs about a third longer than English. Every screen is designed and checked in pt-BR as well as en-US, at the largest text size. Where two pt-BR wordings are equally clear, pick the shorter one (\"5 de 5 planejados\", not \"5 de 5 planejados para você\"). A row that holds text and an action lets the action drop to its own end-aligned line rather than squeeze the text.",
+        "section": "typography"
+      },
+      {
+        "name": "The Wrap, Never Truncate Rule",
+        "body": "Every text box wraps (overflow-wrap: anywhere). No ellipsis anywhere; the largest text size must still show the whole name.",
+        "section": "typography"
+      },
+      {
+        "name": "The Right Thumb Rule",
+        "body": "If the action you most want pressed is not at the bottom-right or full width, the layout is wrong.",
+        "section": "layout"
+      },
+      {
+        "name": "The Paper, Not Plastic Rule",
+        "body": "Nothing casts a shadow. If something needs to stand out, give it the accent tint or a pastel, not elevation.",
+        "section": "elevation"
+      }
     ],
     "dos": [
       "Do use semantic tokens only (bg-surface-raised, text-muted); a raw palette class compiles to nothing.",
       "Do keep every touch target at least 2.75rem and every size in rem.",
       "Do write the Category name, the Effort level and every status as text next to its icon or colour.",
       "Do put the expected action bottom-right or full width (The Right Thumb Rule).",
-      "Do keep motion behind motion-safe: and under 200ms."
+      "Do keep motion behind motion-safe: and under 200ms.",
+      "Do check every screen in pt-BR and en-US before it ships, and prefer the shorter pt-BR wording (The Portuguese First Rule)."
     ],
     "donts": [
       "Don't add shadows, gradients on cards, or glass effects. The only gradient is onboarding's full-bleed welcome background.",
@@ -119,7 +239,8 @@
       "Don't use a pastel to mean status, urgency or success.",
       "Don't truncate text with an ellipsis.",
       "Don't use alarm colours, exclamation marks or countdowns for rest, empty days or a Streak of 0.",
-      "Don't put the action you expect people to take on the left edge of a card or dialog."
+      "Don't put the action you expect people to take on the left edge of a card or dialog.",
+      "Don't size a button, chip or row around the English label; the pt-BR label is usually longer."
     ]
   }
 }

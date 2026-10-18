@@ -167,6 +167,8 @@ Each is a fill with a paired ink. Kitchen peach, bathroom mint, bedroom and livi
 - **Stat** (700, 1.875rem, 1.25): a number in a stat tile, over its label.
 
 ### Named Rules
+**The Portuguese First Rule.** Most Residents read the app in Brazilian Portuguese, which runs about a third longer than English. Every screen is designed and checked in pt-BR as well as en-US, at the largest text size. Where two pt-BR wordings are equally clear, pick the shorter one ("5 de 5 planejados", not "5 de 5 planejados para você"). A row that holds text and an action lets the action drop to its own end-aligned line rather than squeeze the text.
+
 **The Wrap, Never Truncate Rule.** Every text box wraps (`overflow-wrap: anywhere`). No ellipsis anywhere; the largest text size must still show the whole name.
 
 ## Layout
@@ -241,6 +243,7 @@ First loads of page data show skeletons in the shape of what is coming (card out
 - **Do** write the Category name, the Effort level and every status as text next to its icon or colour.
 - **Do** put the expected action bottom-right or full width (The Right Thumb Rule).
 - **Do** keep motion behind `motion-safe:` and under 200ms.
+- **Do** check every screen in pt-BR and en-US before it ships, and prefer the shorter pt-BR wording (The Portuguese First Rule).
 
 ### Don't:
 - **Don't** add shadows, gradients on cards, or glass effects. The only gradient is onboarding's full-bleed welcome background.
@@ -249,3 +252,4 @@ First loads of page data show skeletons in the shape of what is coming (card out
 - **Don't** truncate text with an ellipsis.
 - **Don't** use alarm colours, exclamation marks or countdowns for rest, empty days or a Streak of 0.
 - **Don't** put the action you expect people to take on the left edge of a card or dialog.
+- **Don't** size a button, chip or row around the English label; the pt-BR label is usually longer.

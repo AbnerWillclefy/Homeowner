@@ -28,7 +28,7 @@ Chore apps track what needs doing. Homeowner decides who does what today, from e
 - Daily ritual: a morning Check-in (Drained, Low, Normal, Energized, plus optional one-day Restrictions), then the Day Plan at the Home's Allocation time, then accepting, refusing, swapping or taking Tasks and marking them done.
 - Residents often open it on low-Energy days. Push reminders are a best-effort nudge only; the app asks for the Check-in whenever it opens.
 - Four bottom tabs: Today, Chores, Home, Me. Auth and onboarding are full-screen outside the tabs.
-- Shown in US English or Brazilian Portuguese, chosen from the device language or in Settings.
+- Shown in US English or Brazilian Portuguese, chosen from the device language or in Settings. Most Residents use Brazilian Portuguese, so it is the primary locale for design and review.
 
 ## Capabilities and Constraints
 
