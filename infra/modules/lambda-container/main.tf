@@ -90,6 +90,18 @@ data "aws_iam_policy_document" "runtime" {
     actions   = ["ssm:GetParameter"]
     resources = ["${local.ssm_arn_prefix}/*"]
   }
+
+  # Absent unless the caller lists functions, so an environment that does not
+  # use it keeps an unchanged policy.
+  dynamic "statement" {
+    for_each = length(var.invoke_function_arns) == 0 ? [] : [1]
+
+    content {
+      sid       = "InvokeFunctions"
+      actions   = ["lambda:InvokeFunction"]
+      resources = var.invoke_function_arns
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "runtime" {
