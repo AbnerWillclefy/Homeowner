@@ -447,6 +447,24 @@ func TestADrainedCheckInAfterTheLLMTextShowsTheRestSummary(t *testing.T) {
 	}
 }
 
+// A Normal or Energized Check-in does not change the wording, so the stored
+// text stays.
+func TestANormalOrEnergizedCheckInKeepsTheLLMText(t *testing.T) {
+	t.Parallel()
+	for _, level := range []string{"normal", "energized"} {
+		t.Run(level, func(t *testing.T) {
+			t.Parallel()
+			h := newExHome(t)
+			h.expl.Answer(say(item(h.ra, "Alpha text."), item(h.rb, "Bravo text.")))
+			h.app.RunAllocation(t)
+			apitest.CheckIn(t, h.a, level)
+			if source, _, _ := summaryOf(t, h.a); source != "llm" {
+				t.Errorf("after a %s check-in a has %q, want llm", level, source)
+			}
+		})
+	}
+}
+
 func TestABadEntryGivesTheTemplateForThatResidentOnly(t *testing.T) {
 	t.Parallel()
 	for name, bad := range map[string]func(h exHome) []string{

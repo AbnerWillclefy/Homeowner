@@ -136,7 +136,7 @@ type Pair struct{ TaskID, Reason string }
 
 // Fingerprint identifies the Energy, Check-in level and assignments an
 // explanation was written for. It does not depend on the order of pairs, and it
-// changes when any pair, the level or the Energy does. The caller's slice is
+// changes when any pair, the Energy or a Low or Drained Check-in does. The caller's slice is
 // left as it is.
 func Fingerprint(energy int, checkin string, pairs []Pair) string {
 	sorted := slices.Clone(pairs)
@@ -147,7 +147,12 @@ func Fingerprint(energy int, checkin string, pairs []Pair) string {
 		return strings.Compare(a.Reason, b.Reason)
 	})
 	h := sha256.New()
-	h.Write([]byte(strconv.Itoa(energy) + "#" + checkin))
+	h.Write([]byte(strconv.Itoa(energy)))
+	// Only the levels that change the wording count: no Check-in, Normal and
+	// Energized read the same, so they must not stale a stored summary.
+	if checkin == CheckinLow || checkin == CheckinDrained {
+		h.Write([]byte("#" + checkin))
+	}
 	for _, p := range sorted {
 		// Length-prefixed, so no two different lists make the same bytes.
 		h.Write([]byte("|" + strconv.Itoa(len(p.TaskID)) + ":" + p.TaskID + strconv.Itoa(len(p.Reason)) + ":" + p.Reason))

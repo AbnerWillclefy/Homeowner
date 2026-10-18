@@ -37,6 +37,17 @@ func TestFingerprintChangesWithAnyPairOrEnergy(t *testing.T) {
 	}
 }
 
+func TestFingerprintIgnoresCheckInsThatDoNotChangeTheWording(t *testing.T) {
+	t.Parallel()
+	base := []explain.Pair{{TaskID: "t1", Reason: "importance"}}
+	want := explain.Fingerprint(4, "", base)
+	for _, level := range []string{explain.CheckinNormal, explain.CheckinEnergized} {
+		if got := explain.Fingerprint(4, level, base); got != want {
+			t.Errorf("%s: fingerprint changed", level)
+		}
+	}
+}
+
 func TestFingerprintDoesNotReorderTheCallersSlice(t *testing.T) {
 	t.Parallel()
 	ps := []explain.Pair{{TaskID: "b"}, {TaskID: "a"}}
