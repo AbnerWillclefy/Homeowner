@@ -2,17 +2,16 @@ import type { Preference, Weekday } from "../../../src/domains/profile/api/api";
 import { empty, json, signedIn, type FakeApi } from "../api";
 
 // Copies of WEEKDAYS and PREFERENCES in src/domains/profile/api/api.ts: a runtime import would pull in config.ts.
-// The Exclude checks break `typecheck` when the app gains a value this list does not have (and the reverse).
-const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const satisfies readonly Weekday[];
-const PREFERENCES = ["like", "neutral", "dislike"] as const satisfies readonly Preference[];
-export const listsMatchApp: [Exclude<Weekday, (typeof WEEKDAYS)[number]>, Exclude<Preference, (typeof PREFERENCES)[number]>] extends [never, never] ? true : never = true;
+// A Record over the app's type must name every value, so `typecheck` breaks when the app gains one this lacks.
+const WEEKDAYS: Record<Weekday, true> = { sunday: true, monday: true, tuesday: true, wednesday: true, thursday: true, friday: true, saturday: true };
+const PREFERENCES: Record<Preference, true> = { like: true, neutral: true, dislike: true };
 
 // The Baseline limit, as MaxBaseline in backend/internal/profile.
 const MAX_BASELINE_POINTS = 20;
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
-const isWeekday = (key: string): key is Weekday => (WEEKDAYS as readonly string[]).includes(key);
-const isPreference = (value: unknown): value is Preference => typeof value === "string" && (PREFERENCES as readonly string[]).includes(value);
+const isWeekday = (key: string): key is Weekday => Object.keys(WEEKDAYS).includes(key);
+const isPreference = (value: unknown): value is Preference => typeof value === "string" && Object.keys(PREFERENCES).includes(value);
 
 /**
  * What onboarding reads and writes about the User: the Profile (Baseline, Preferences, Restrictions) and the two
