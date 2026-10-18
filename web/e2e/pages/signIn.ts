@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { expectFormError } from "./form";
 
 export const signIn = {
   heading: (page: Page) => page.getByRole("heading", { name: "Sign in", level: 2 }),
@@ -13,5 +14,28 @@ export const signIn = {
     await expect(signIn.email(page)).toBeVisible();
     await expect(signIn.password(page)).toBeVisible();
     await expect(signIn.submit(page)).toBeVisible();
+  },
+
+  /** The email field holds this address (sign-up and confirmation hand it over). */
+  async expectEmail(page: Page, email: string): Promise<void> {
+    await expect(signIn.email(page)).toHaveValue(email);
+  },
+
+  async signIn(page: Page, email: string, password: string): Promise<void> {
+    await signIn.email(page).fill(email);
+    await signIn.password(page).fill(password);
+    await signIn.submit(page).click();
+  },
+
+  /** The link-styled button under the form that opens the sign-up screen. */
+  async openSignUp(page: Page): Promise<void> {
+    await page.getByRole("button", { name: "Sign up", exact: true }).click();
+  },
+
+  expectError: expectFormError,
+
+  /** The success notice shown after email confirmation (a toast, so assert it right after the redirect). */
+  async expectConfirmedNotice(page: Page): Promise<void> {
+    await expect(page.getByText("Your email is confirmed. Sign in to start.", { exact: true })).toBeVisible();
   },
 };

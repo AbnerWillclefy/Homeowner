@@ -37,7 +37,7 @@ The `web-e2e` workflow builds the app with `npm run build:e2e` (a production bui
 |---|---|
 | `e2e/mocks/` | Everything that fakes the server: the router (answers every non-app request from the registered fakes, adds CORS headers, and records any request nothing covers), the stateful fake API, ID token and session seeding. |
 | `e2e/pages/` | Page actions and locators only (`launchApp(page, baseURL)`, `visit`, one file per screen). They import only `@playwright/test` and other `pages/` files, so a later run against a real deployment can reuse them unchanged. |
-| `e2e/fixtures.ts` | The `test` every spec imports. Its `router` fixture fails a test that leaves an unmocked request behind; `fakeApi` gives each test a fresh state. |
+| `e2e/fixtures.ts` | The `test` every spec imports. Its `router` fixture fails a test that leaves an unmocked request behind; `fakeApi` gives each test a fresh state, and `fakeCognito` (`mocks/cognito.ts`) answers the Cognito sign-up, confirmation and password sign-in calls with no AWS access. |
 | `e2e/specs/` | The specs. |
 
 ## Localization

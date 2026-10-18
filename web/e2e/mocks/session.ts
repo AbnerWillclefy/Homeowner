@@ -28,3 +28,9 @@ export async function seedSession(page: Page, options: { email?: string; expires
     { key: SESSION_KEY, value: JSON.stringify(session) },
   );
 }
+
+/** The session the app has stored in the browser, or null when there is none. */
+export async function storedSession(page: Page): Promise<Session | null> {
+  const raw = await page.evaluate((key) => localStorage.getItem(key), SESSION_KEY);
+  return raw === null ? null : (JSON.parse(raw) as Session);
+}
