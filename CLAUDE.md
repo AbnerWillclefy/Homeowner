@@ -24,6 +24,8 @@ Each stage is a workflow in `.github/workflows/` started by a label or an event.
 4. Pull request opened: Claude reviews it, then the engineer applies the valid findings once and labels the pull request `review-addressed`.
 5. A human merges; the deploy to staging runs.
 
+A change that fits one pull request skips stage 1: file it as a single ticket with acceptance criteria and label it `needs-refinement`. The maintainer brings in both kinds with `/idea` (`.claude/skills/idea/SKILL.md`).
+
 ## Building a ticket
 
 Every ticket is refined for the agents. The maintainer is learning Go, AWS and system design, and builds a ticket one of two ways: labelling it `implement` for the pipeline, or locally with `/ticket <n>`, where Claude writes the code and teaches as it goes (see `.claude/skills/ticket/SKILL.md`). The review-fix stage skips pull requests not authored by `homeowner-agents`, so a `/ticket` pull request gets its review applied locally with the maintainer. Each ticket's `### Learning focus` names the concepts it exercises. `ready-for-human` is reserved for tickets that need a step no agent can take, such as a purchase, console access or a secret; the implement stage refuses them. When the maintainer asks a question on a ticket or pull request, teach: answer it, explain the concept, and point to the relevant code or docs.
