@@ -2,47 +2,128 @@ package dayplan
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
 
+	"github.com/jackc/pgx/v5"
+
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 )
 
 const maxEventBody = 64 * 1024
 
+// The replan event, an EventBridge-shaped object so the handler decodes it like
+// the scheduled one. Whatever sends it (the staging replan route) builds its
+// payload with NewReplanEvent, so the two sides cannot drift.
+const (
+	ReplanSource     = "homeowner.dev"
+	ReplanDetailType = "Replan Home"
+)
+
+// ReplanEvent is the event that asks the Allocation function to replan one Home.
+type ReplanEvent struct {
+	Source     string       `json:"source"`
+	DetailType string       `json:"detail-type"`
+	Detail     ReplanDetail `json:"detail"`
+}
+
+// ReplanDetail names the Home to replan.
+type ReplanDetail struct {
+	HomeID string `json:"homeId"`
+}
+
+// NewReplanEvent is the event that replans the Home.
+func NewReplanEvent(homeID string) ReplanEvent {
+	return ReplanEvent{Source: ReplanSource, DetailType: ReplanDetailType, Detail: ReplanDetail{HomeID: homeID}}
+}
+
+// EventsOption adjusts the handler built by EventsHandler.
+type EventsOption func(*eventsConfig)
+
+type eventsConfig struct{ replan bool }
+
+// WithReplan makes the handler accept the replan event. Without it the event
+// is refused like any unknown one; only staging switches it on
+// (REPLAN_ENABLED).
+func WithReplan() EventsOption {
+	return func(c *eventsConfig) { c.replan = true }
+}
+
 // EventsHandler is the whole HTTP surface of the Allocation job's Lambda.
 // Lambda Web Adapter forwards any event that is not an HTTP request to
 // POST /events on the server, so this is how the EventBridge schedule reaches
 // Go (docs/adr/0008). The function has no URL and no gateway: only EventBridge
-// may invoke it (lambda permission), so nothing on the internet can reach this
-// handler, and it serves nothing but the tick and a readiness check.
+// and the identities allowed to invoke it may reach this handler, and it serves
+// nothing but the tick, the staging-only replan (WithReplan) and a readiness
+// check.
 //
-// The body must be an EventBridge scheduled event. That is a sanity check, not
-// authentication: it stops a stray test invocation from running the job by
-// accident.
-func EventsHandler(p *Planner, clk clock.Clock, log *slog.Logger) http.Handler {
+// The body must be an EventBridge scheduled event, or the replan event when
+// replan is on. That is a sanity check, not authentication: it stops a stray
+// test invocation from running the job by accident.
+func EventsHandler(p *Planner, clk clock.Clock, log *slog.Logger, opts ...EventsOption) http.Handler {
+	var cfg eventsConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 	mux.HandleFunc("POST /events", func(w http.ResponseWriter, r *http.Request) {
 		var ev struct {
 			Source     string `json:"source"`
 			DetailType string `json:"detail-type"`
+			Detail     struct {
+				HomeID string `json:"homeId"`
+			} `json:"detail"`
 		}
 		body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxEventBody))
-		if err != nil || json.Unmarshal(body, &ev) != nil || ev.Source != "aws.events" || ev.DetailType != "Scheduled Event" {
+		if err != nil || json.Unmarshal(body, &ev) != nil {
+			ev.Source, ev.DetailType = "", ""
+		}
+		switch {
+		case ev.Source == "aws.events" && ev.DetailType == "Scheduled Event":
+			tick(w, r, p, clk, log)
+		case cfg.replan && ev.Source == ReplanSource && ev.DetailType == ReplanDetailType:
+			replan(w, r, p, clk, log, ev.Detail.HomeID)
+		default:
 			log.Warn("ignored an event that is not a scheduled event")
 			http.Error(w, "not a scheduled event", http.StatusBadRequest)
-			return
 		}
-		sum, err := p.RunDue(r.Context(), clk.Now())
-		if err != nil {
-			log.Error("allocation tick failed", "error", err.Error())
-			http.Error(w, "allocation tick failed", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(sum)
 	})
 	return mux
+}
+
+func tick(w http.ResponseWriter, r *http.Request, p *Planner, clk clock.Clock, log *slog.Logger) {
+	sum, err := p.RunDue(r.Context(), clk.Now())
+	if err != nil {
+		log.Error("allocation tick failed", "error", err.Error())
+		http.Error(w, "allocation tick failed", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(sum)
+}
+
+// replan answers the replan event. Async invocations ignore the status, so the
+// log line is the only record of a failure there.
+func replan(w http.ResponseWriter, r *http.Request, p *Planner, clk clock.Clock, log *slog.Logger, homeID string) {
+	if !chores.ValidID(homeID) {
+		log.Warn("ignored a replan event with a bad home id")
+		http.Error(w, "bad home id", http.StatusBadRequest)
+		return
+	}
+	outcome, err := p.ReplanHome(r.Context(), homeID, clk.Now())
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		log.Warn("replan failed: no such home", "home", homeID)
+		http.Error(w, "no such home", http.StatusNotFound)
+	case err != nil:
+		log.Error("replan failed", "home", homeID, "error", err.Error())
+		http.Error(w, "replan failed", http.StatusInternalServerError)
+	default:
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"outcome": string(outcome)})
+	}
 }
