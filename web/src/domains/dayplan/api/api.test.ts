@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SESSION_KEY } from "../../auth/logic/session";
-import { acceptAll, acceptTask, completeTask, getDayPlan, planMyDay, refuseTask, takeTask } from "./api";
+import { acceptAll, acceptTask, completeTask, getDayPlan, planMyDay, refuseTask, replanHome, takeTask } from "./api";
 
 function stubStorage(signedIn: boolean) {
   const data = new Map<string, string>();
@@ -325,5 +325,48 @@ describe("planMyDay", () => {
   it("is offline when the request cannot be made", async () => {
     stubFetch(new TypeError("Failed to fetch"));
     expect(await planMyDay()).toEqual({ kind: "offline" });
+  });
+});
+
+describe("replanHome", () => {
+  it("posts to /dev/replan with no body and reads 202 as ok", async () => {
+    const fetch = stubFetch(new Response(null, { status: 202 }));
+    expect(await replanHome()).toEqual({ kind: "ok" });
+    expect(fetch.mock.calls[0]![0]).toBe("http://api.test/dev/replan");
+    expect(fetch.mock.calls[0]![1]?.method).toBe("POST");
+    expect(fetch.mock.calls[0]![1]?.body).toBeUndefined();
+  });
+
+  it("reads 404 as none: the route does not exist outside staging", async () => {
+    stubFetch(new Response(null, { status: 404 }));
+    expect(await replanHome()).toEqual({ kind: "none" });
+  });
+
+  it("reads another status as an error", async () => {
+    stubFetch(new Response(null, { status: 500 }));
+    expect(await replanHome()).toEqual({ kind: "error" });
+  });
+
+  it("reads a network failure as offline", async () => {
+    stubFetch(new TypeError("Failed to fetch"));
+    expect(await replanHome()).toEqual({ kind: "offline" });
+  });
+
+  it("reads no session as not-signed-in", async () => {
+    stubStorage(false);
+    stubFetch(new Response(null, { status: 202 }));
+    expect(await replanHome()).toEqual({ kind: "not-signed-in" });
+  });
+});
+
+describe("getDayPlan run identity", () => {
+  it("keeps runId and fallbackReason when they are strings", async () => {
+    stubFetch(Response.json({ ...PLAN, runId: "run-1", fallbackReason: "llm_error" }));
+    expect(await getDayPlan()).toEqual({ kind: "ok", plan: { ...PLAN, runId: "run-1", fallbackReason: "llm_error" } });
+  });
+
+  it("leaves them out when absent or odd, never failing the plan", async () => {
+    stubFetch(Response.json({ ...PLAN, runId: 7, fallbackReason: null }));
+    expect(await getDayPlan()).toEqual({ kind: "ok", plan: PLAN });
   });
 });

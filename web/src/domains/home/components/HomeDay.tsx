@@ -4,6 +4,7 @@ import { energyNote } from "../../checkin/logic/state";
 import { useCheckIn } from "../../checkin/hooks/useCheckIn";
 import { DayExplanation } from "../../dayplan/components/DayExplanation";
 import { EnergySummary, showsEnergy } from "../../dayplan/components/EnergySummary";
+import { ReplanControl } from "../../dayplan/components/ReplanControl";
 import { TodayHeader } from "../../dayplan/components/TodayHeader";
 import { TodaySection } from "../../dayplan/components/TodaySection";
 import { useDayPlan } from "../../dayplan/hooks/useDayPlan";
@@ -41,6 +42,7 @@ export function HomeDay({ version, onPlanChanged }: { version: number; onPlanCha
         energy={showsEnergy(note) ? <EnergySummary note={note} energy={energy ?? 0} planned={planned} /> : null}
       />
       <StreakCard streak={streak} />
+      <ReplanControl plan={state.kind === "ready" ? state.plan : undefined} show={day.show} />
       <TodaySection day={day} note={note} />
     </>
   );

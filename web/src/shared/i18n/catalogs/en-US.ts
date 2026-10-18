@@ -339,6 +339,20 @@ export const enUS = {
     "You seem to be offline, so that did not go through. Check your connection and try again.",
   "dayplan.action.failed.error":
     "Something went wrong and that did not go through. Try again in a moment.",
+  "dayplan.replan.action": "Replan now",
+  "dayplan.replan.waiting": "Replanning. This can take a minute.",
+  "dayplan.replan.timedOut": "The new plan is taking a while. It may still arrive, so check back in a moment.",
+  "dayplan.replan.done.llm": "The AI made this plan.",
+  "dayplan.replan.done.baseline": "The baseline planner made this plan, without the AI.",
+  "dayplan.replan.fallback.llm_daily_cap_reached":
+    "This is the baseline plan, not the AI's: the daily AI limit was reached.",
+  "dayplan.replan.fallback.llm_error": "This is the baseline plan, not the AI's: the AI had a problem.",
+  "dayplan.replan.fallback.llm_timeout": "This is the baseline plan, not the AI's: the AI took too long.",
+  "dayplan.replan.fallback.llm_invalid_response":
+    "This is the baseline plan, not the AI's: the AI's answer could not be used.",
+  "dayplan.replan.fallback.llm_rejected_by_checker":
+    "This is the baseline plan, not the AI's: the AI's plan did not pass the check.",
+  "dayplan.replan.fallback.unknown": "This is the baseline plan, not the AI's: the AI's plan was not used.",
   "dayplan.conflict.already_done":
     "That Task was already done. It is in Done today now.",
   "dayplan.conflict.not_proposed":

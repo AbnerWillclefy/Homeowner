@@ -68,5 +68,8 @@ Not domain terms, but kept consistent across the copy. CONTEXT.md has no **Remin
 | Add to Home Screen, Add (iOS Safari) | Adicionar à Tela de Início, Adicionar | Apple labels. |
 | Settings | Ajustes (iOS), Configurações (Android) | `reminders.problem.denied` shows on both, so it says "Ajustes (ou Configurações)". |
 | Language (setting) | idioma | Not "língua". Used in `settings.language.label`. The option names "English" and "Português" are not translated: each language is named in itself. |
+| Replan (staging test button) | replanejar / "Replanejar agora" | refazer, recalcular | Asks for a new Day Plan on demand. Staging only. Used in `dayplan.replan.*`. |
+| AI (the model that plans) | IA | inteligência artificial (too long), robô | Used in `dayplan.replan.*`. |
+| Baseline allocator (the plan made without the AI) | alocador padrão; its plan is "plano padrão" | alocador básico, alocador base | Not "base": "energia base" is the User's Baseline, a different thing. Used in `dayplan.replan.*`. |
 
 Apple and Android labels must match what the device shows in pt-BR. They are not yet verified on a pt-BR device.
