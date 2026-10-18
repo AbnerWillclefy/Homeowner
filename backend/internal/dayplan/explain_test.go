@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -76,12 +77,16 @@ func explanationOf(t *testing.T, c *apitest.Client) (source, en, pt string, ok b
 
 // factsOf rebuilds the caller's Facts from their Day Plan view, to compute
 // the template the same facts must give.
-func factsOf(t *testing.T, c *apitest.Client) explain.Facts {
+// checkin is the level the caller checked in with, if they did.
+func factsOf(t *testing.T, c *apitest.Client, checkin ...string) explain.Facts {
 	t.Helper()
 	body := apitest.DayPlan(t, c).Body
 	f := explain.Facts{Energy: int(body["energy"].(float64)), Tasks: []explain.Task{}, Pool: []string{}}
+	if len(checkin) > 0 {
+		f.Checkin = checkin[0]
+	}
 	for _, tk := range apitest.TaskList(t, body["mine"]) {
-		f.Tasks = append(f.Tasks, explain.Task{Reason: tk["reason"].(string), People: int(tk["people"].(float64))})
+		f.Tasks = append(f.Tasks, explain.Task{Reason: tk["reason"].(string), Effort: int(tk["currentEffort"].(float64)), People: int(tk["people"].(float64))})
 	}
 	for _, tk := range apitest.TaskList(t, body["pool"]) {
 		f.Pool = append(f.Pool, tk["reason"].(string))
@@ -94,10 +99,10 @@ func llmCalls(t *testing.T, app *apitest.App) int {
 	return apitest.Count(t, app, `SELECT coalesce(sum(calls), 0) FROM llm_calls`)
 }
 
-func wantTemplate(t *testing.T, c *apitest.Client, who string) {
+func wantTemplate(t *testing.T, c *apitest.Client, who string, checkin ...string) {
 	t.Helper()
 	source, en, pt, ok := explanationOf(t, c)
-	want := explain.Template(factsOf(t, c))
+	want := explain.Template(factsOf(t, c, checkin...)).Joined()
 	if !ok || source != "template" || en != want.EnUS || pt != want.PtBR {
 		t.Fatalf("%s: explanation = %q %q %q, want the template %+v", who, source, en, pt, want)
 	}
@@ -126,7 +131,7 @@ func TestADrainedResidentAndAHomeWithNothingAssignableStillGetOne(t *testing.T) 
 	_, a, b := apitest.DuoHome(t, 0, 0) // no Energy anywhere: Carry stays in the pool
 	for who, c := range map[string]*apitest.Client{"a": a, "b": b} {
 		source, en, pt, ok := explanationOf(t, c)
-		if !ok || source != "template" || !strings.Contains(en, "no energy") || pt == "" {
+		if !ok || source != "template" || !strings.Contains(en, "Rest is the plan") || !strings.Contains(pt, "descansar") {
 			t.Errorf("%s: explanation = %q %q %q %v", who, source, en, pt, ok)
 		}
 	}
@@ -136,8 +141,30 @@ func TestADrainedResidentAndAHomeWithNothingAssignableStillGetOne(t *testing.T) 
 	apitest.SetBaseline(t, empty, map[string]any{"monday": 4})
 	app.Clock.Set(apitest.MondayAt(7))
 	app.RunAllocation(t)
-	if source, en, _, ok := explanationOf(t, empty); !ok || source != "template" || !strings.Contains(en, "no tasks") {
+	if source, en, _, ok := explanationOf(t, empty); !ok || source != "template" || !strings.Contains(en, "Nothing needs you today") {
 		t.Errorf("empty Home: explanation = %q %q %v", source, en, ok)
+	}
+}
+
+func TestADrainedCheckInGivesTheRestSummary(t *testing.T) {
+	t.Parallel()
+	_, a, _ := apitest.TwoResidents(t)
+	apitest.CheckIn(t, a, "drained")
+	wantTemplate(t, a, "a", "drained")
+	_, en, pt, _ := explanationOf(t, a)
+	if !strings.HasPrefix(en, "Rest is the plan today.") || !strings.HasPrefix(pt, "Hoje o plano é descansar.") {
+		t.Fatalf("got %q / %q", en, pt)
+	}
+}
+
+func TestALowCheckInGivesTheLighterDayHeadline(t *testing.T) {
+	t.Parallel()
+	_, a, _ := apitest.TwoResidents(t)
+	apitest.CheckIn(t, a, "low")
+	wantTemplate(t, a, "a", "low")
+	_, en, pt, _ := explanationOf(t, a)
+	if !strings.HasPrefix(en, "A lighter day, with Low Energy.") || !strings.HasPrefix(pt, "Dia mais leve, com energia baixa.") {
+		t.Fatalf("got %q / %q", en, pt)
 	}
 }
 
@@ -167,7 +194,7 @@ func TestAResidentWhoJoinedAfterThePlanGetsATemplate(t *testing.T) {
 	h.app.RunAllocation(t)
 	c := apitest.ExtraResident(t, h.app, h.a, "c@example.com")
 	source, en, _, ok := explanationOf(t, c)
-	if !ok || source != "template" || !strings.Contains(en, "no") {
+	if !ok || source != "template" || !strings.Contains(en, "Rest is the plan") {
 		t.Fatalf("explanation = %q %q %v", source, en, ok)
 	}
 }
@@ -366,8 +393,13 @@ func TestTextGoesStaleWhenTheCallersPlanChanges(t *testing.T) {
 			change(t, h)
 			wantTemplate(t, h.a, "a")
 			if name == "refuse" {
-				if _, en, _, _ := explanationOf(t, h.a); !strings.Contains(en, "refused") {
-					t.Errorf("the template ignores the live pool reasons: %q", en)
+				// The summary tells the pool by its count, so the refused Task
+				// shows as a pool reason in the facts and as an open task in the text.
+				if !slices.Contains(factsOf(t, h.a).Pool, "refused") {
+					t.Error("the refused Task is not in the pool")
+				}
+				if _, en, _, _ := explanationOf(t, h.a); !strings.Contains(en, "open task") {
+					t.Errorf("the template ignores the live pool: %q", en)
 				}
 			}
 			if name == "swap" {

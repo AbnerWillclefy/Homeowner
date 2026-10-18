@@ -34,11 +34,25 @@ type Task struct {
 // Facts are what one Resident's explanation is built from: their Energy, their
 // Tasks, and the reason of each Task left in the pool (about everyone, not
 // about them).
+//
+// Checkin is the level of the Resident's Check-in today (CheckinDrained and
+// the like), or "" when they made none. It is one word of a closed set and
+// carries no name or free text.
 type Facts struct {
-	Energy int      `json:"energy"`
-	Tasks  []Task   `json:"tasks"`
-	Pool   []string `json:"pool"`
+	Energy  int      `json:"energy"`
+	Tasks   []Task   `json:"tasks"`
+	Pool    []string `json:"pool"`
+	Checkin string   `json:"checkin,omitempty"`
 }
+
+// The Check-in levels Facts.Checkin may hold. They repeat the checkin
+// package's values because this package imports nothing of the app.
+const (
+	CheckinDrained   = "drained"
+	CheckinLow       = "low"
+	CheckinNormal    = "normal"
+	CheckinEnergized = "energized"
+)
 
 // ResidentFacts is the Facts of the Resident with the id. It is also the shape
 // sent to the model, so the tags are the prompt's keys. Whoever builds Facts
@@ -53,6 +67,17 @@ type ResidentFacts struct {
 type Texts struct {
 	EnUS string `json:"en-US"`
 	PtBR string `json:"pt-BR"`
+}
+
+// Summary is the explanation of a day as a headline and a short detail.
+type Summary struct {
+	Headline Texts
+	Detail   Texts
+}
+
+// Joined is the headline followed by the detail, in each language.
+func (s Summary) Joined() Texts {
+	return Texts{EnUS: s.Headline.EnUS + " " + s.Detail.EnUS, PtBR: s.Headline.PtBR + " " + s.Detail.PtBR}
 }
 
 // MaxLength is the most characters an explanation may have in one language.
