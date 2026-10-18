@@ -101,23 +101,23 @@ func (s *Store) explanationFor(ctx context.Context, run dayRun, residentID strin
 		return template, nil
 	}
 	var (
-		sum          explain.Summary
-		headEn, head *string
-		stored       string
+		sum    explain.Summary
+		stored string
 	)
+	// A row from before the headline columns has a NULL headline and reads as absent.
 	err = s.db.QueryRow(ctx, `
 		SELECT headline_en, headline_pt, text_en, text_pt, fingerprint
-		FROM day_plan_explanations WHERE run_id = $1 AND resident_id = $2`,
-		run.id, residentID).Scan(&headEn, &head, &sum.Detail.EnUS, &sum.Detail.PtBR, &stored)
+		FROM day_plan_explanations
+		WHERE run_id = $1 AND resident_id = $2 AND headline_en IS NOT NULL AND headline_pt IS NOT NULL`,
+		run.id, residentID).Scan(&sum.Headline.EnUS, &sum.Headline.PtBR, &sum.Detail.EnUS, &sum.Detail.PtBR, &stored)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return template, nil
 	case err != nil:
 		return nil, fmt.Errorf("day plan: load explanation: %w", err)
-	case stored != fingerprint || headEn == nil || head == nil:
+	case stored != fingerprint:
 		return template, nil
 	}
-	sum.Headline = explain.Texts{EnUS: *headEn, PtBR: *head}
 	return explanationOf(sourceLLM, sum), nil
 }
 
