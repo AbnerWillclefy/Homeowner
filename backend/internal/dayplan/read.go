@@ -46,6 +46,9 @@ type View struct {
 	// the checker refused the proposal, so nothing is assigned today.
 	Planned  bool `json:"planned"`
 	Rejected bool `json:"rejected"`
+	// RunID is today's run; a replan replaces it, even with the same plan.
+	// Absent before the day is planned.
+	RunID string `json:"runId,omitempty"`
 	// Allocator names who made the plan; empty before the day is planned.
 	Allocator string `json:"allocator"`
 	// FallbackReason is why the baseline planned instead of the LLM allocator,
@@ -154,7 +157,7 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 		}
 		return v, nil
 	}
-	v.Allocator, v.FallbackReason = run.allocator, run.fallbackReason
+	v.RunID, v.Allocator, v.FallbackReason = run.id, run.allocator, run.fallbackReason
 	v.Planned, v.Rejected = run.outcome == string(Planned), run.outcome == string(Rejected)
 
 	rs := run.reasons
