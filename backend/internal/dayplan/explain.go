@@ -21,7 +21,7 @@ import (
 // package knows nothing of how the model is asked. One call covers every
 // Resident given; a Resident missing from the answer gets no text.
 type Explainer interface {
-	Explain(ctx context.Context, residents []explain.ResidentFacts) (map[string]explain.Texts, error)
+	Explain(ctx context.Context, residents []explain.ResidentFacts) (map[string]explain.Summary, error)
 }
 
 // Explanation sources.
@@ -33,9 +33,19 @@ const (
 // Explanation is the plain-language account of a Resident's Day Plan, in both
 // languages because the backend does not know their locale yet (ADR 0006).
 // Source says where it came from: "llm" or "template".
+//
+// Text is always the Headline followed by the Detail. It stays for a copy of
+// the app cached on a phone that only reads text; a later change removes it.
 type Explanation struct {
-	Source string        `json:"source"`
-	Text   explain.Texts `json:"text"`
+	Source   string        `json:"source"`
+	Headline explain.Texts `json:"headline"`
+	Detail   explain.Texts `json:"detail"`
+	Text     explain.Texts `json:"text"`
+}
+
+// explanationOf is the Explanation of the summary, from the source.
+func explanationOf(source string, s explain.Summary) *Explanation {
+	return &Explanation{Source: source, Headline: s.Headline, Detail: s.Detail, Text: s.Joined()}
 }
 
 // factsFor are the facts an explanation of the Resident's plan is built from,
@@ -67,37 +77,48 @@ func (r dayRun) factsFor(residentID, level string, open []tasks.Open) (explain.F
 		}
 		f.Pool = append(f.Pool, reason)
 	}
-	return f, explain.Fingerprint(f.Energy, pairs)
+	return f, explain.Fingerprint(f.Energy, level, pairs)
 }
 
 // explanationFor is the Resident's explanation of a planned run: the stored
-// LLM text when it still matches their plan, otherwise the template. The
+// LLM summary when it still matches their plan, otherwise the template. The
 // template is computed here, from the live reasons, so a plan always has one.
+//
+// The stored summary is used only when the row exists, its fingerprint (which
+// holds the Check-in level) matches, it has a headline (a row from before the
+// headline columns has none and reads as absent), and the day is not a day of
+// rest: a Drained Resident always reads the rest summary.
 func (s *Store) explanationFor(ctx context.Context, run dayRun, residentID string, date allocation.Date, open []tasks.Open) (*Explanation, error) {
-	// The fingerprint does not depend on the Check-in, so it is loaded only when
-	// the template is needed.
-	facts, fingerprint := run.factsFor(residentID, "", open)
-	var (
-		texts  explain.Texts
-		stored string
-	)
-	err := s.db.QueryRow(ctx, `
-		SELECT text_en, text_pt, fingerprint FROM day_plan_explanations WHERE run_id = $1 AND resident_id = $2`,
-		run.id, residentID).Scan(&texts.EnUS, &texts.PtBR, &stored)
-	switch {
-	case err == nil && stored == fingerprint:
-		return &Explanation{Source: sourceLLM, Text: texts}, nil
-	case err != nil && !errors.Is(err, pgx.ErrNoRows):
-		return nil, fmt.Errorf("day plan: load explanation: %w", err)
-	}
 	cis, err := checkin.LoadMany(ctx, s.db, []string{residentID}, date)
 	if err != nil {
 		return nil, err
 	}
 	// A Resident without a Check-in is absent from the map; its zero Level is "",
-	// which the template reads as no Check-in.
-	facts.Checkin = string(cis[residentID].Level)
-	return &Explanation{Source: sourceTemplate, Text: explain.Template(facts).Joined()}, nil
+	// which the facts read as no Check-in.
+	facts, fingerprint := run.factsFor(residentID, string(cis[residentID].Level), open)
+	template := explanationOf(sourceTemplate, explain.Template(facts))
+	if explain.SituationOf(facts) == explain.SituationRest {
+		return template, nil
+	}
+	var (
+		sum          explain.Summary
+		headEn, head *string
+		stored       string
+	)
+	err = s.db.QueryRow(ctx, `
+		SELECT headline_en, headline_pt, text_en, text_pt, fingerprint
+		FROM day_plan_explanations WHERE run_id = $1 AND resident_id = $2`,
+		run.id, residentID).Scan(&headEn, &head, &sum.Detail.EnUS, &sum.Detail.PtBR, &stored)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return template, nil
+	case err != nil:
+		return nil, fmt.Errorf("day plan: load explanation: %w", err)
+	case stored != fingerprint || headEn == nil || head == nil:
+		return template, nil
+	}
+	sum.Headline = explain.Texts{EnUS: *headEn, PtBR: *head}
+	return explanationOf(sourceLLM, sum), nil
 }
 
 // explainHomes asks the LLM to explain the Day Plan of each Home this tick
@@ -169,7 +190,8 @@ func (p *Planner) explainHome(ctx context.Context, h HomeDay, now time.Time) *ex
 }
 
 // loadExplainInput reads the Home's planned run and open Tasks and picks the
-// Residents who have Tasks (the template already says it all for the others).
+// Residents who have Tasks and are not resting (the template already says it
+// all for the others, and always wins on a day of rest).
 // Without a planned run, or with nobody to ask about, the input has no ask.
 func (p *Planner) loadExplainInput(ctx context.Context, h HomeDay) (explainInput, error) {
 	run, found, err := readRun(ctx, p.db, h.ID, h.Date.Time())
@@ -188,7 +210,7 @@ func (p *Planner) loadExplainInput(ctx context.Context, h HomeDay) (explainInput
 	in := explainInput{run: run, fingerprints: map[string]string{}}
 	for _, id := range ids {
 		facts, fp := run.factsFor(id, string(levels[id].Level), open)
-		if len(facts.Tasks) == 0 {
+		if len(facts.Tasks) == 0 || explain.SituationOf(facts) == explain.SituationRest {
 			continue
 		}
 		in.fingerprints[id] = fp
@@ -239,7 +261,7 @@ func llmFailure(ctx context.Context, err error) fallbackReason {
 
 // storeExplanations inserts the texts in one transaction. A row already there
 // (the key is the run and the Resident) is left alone.
-func (p *Planner) storeExplanations(ctx context.Context, runID string, texts map[string]explain.Texts, fingerprints map[string]string, now time.Time) error {
+func (p *Planner) storeExplanations(ctx context.Context, runID string, texts map[string]explain.Summary, fingerprints map[string]string, now time.Time) error {
 	if len(texts) == 0 {
 		return nil
 	}
@@ -255,9 +277,9 @@ func (p *Planner) storeExplanations(ctx context.Context, runID string, texts map
 	for _, id := range slices.Sorted(maps.Keys(texts)) {
 		t := texts[id]
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO day_plan_explanations (run_id, resident_id, text_en, text_pt, fingerprint, created_at)
-			VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING`,
-			runID, id, t.EnUS, t.PtBR, fingerprints[id], now); err != nil {
+			INSERT INTO day_plan_explanations (run_id, resident_id, headline_en, headline_pt, text_en, text_pt, fingerprint, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING`,
+			runID, id, t.Headline.EnUS, t.Headline.PtBR, t.Detail.EnUS, t.Detail.PtBR, fingerprints[id], now); err != nil {
 			return fmt.Errorf("store explanation: %w", err)
 		}
 	}
