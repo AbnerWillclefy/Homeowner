@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
@@ -35,16 +38,11 @@ func eventsServer(t *testing.T, app *apitest.App, replan bool) func(body string)
 			t.Fatal(err)
 		}
 		defer res.Body.Close()
-		var sb strings.Builder
-		buf := make([]byte, 512)
-		for {
-			n, err := res.Body.Read(buf)
-			sb.Write(buf[:n])
-			if err != nil {
-				break
-			}
+		b, err := io.ReadAll(res.Body)
+		if err != nil {
+			t.Fatal(err)
 		}
-		return res.StatusCode, sb.String()
+		return res.StatusCode, string(b)
 	}
 }
 
@@ -59,44 +57,33 @@ func replanBody(t *testing.T, homeID string) string {
 
 const scheduledBody = `{"version":"0","source":"aws.events","detail-type":"Scheduled Event","detail":{}}`
 
-// runIDs lists the ids of the Home's runs.
-func runIDs(t *testing.T, app *apitest.App, homeID string) []string {
+// queryStrings runs a query that returns one text column and collects it.
+func queryStrings(t *testing.T, app *apitest.App, sql string, args ...any) []string {
 	t.Helper()
-	rows, err := app.DB.Query(context.Background(), `SELECT id FROM allocation_runs WHERE home_id = $1 ORDER BY id`, homeID)
+	rows, err := app.DB.Query(context.Background(), sql, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer rows.Close()
-	var ids []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			t.Fatal(err)
-		}
-		ids = append(ids, id)
+	out, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		t.Fatal(err)
 	}
-	return ids
+	return out
+}
+
+// runIDs lists the ids of the Home's runs.
+func runIDs(t *testing.T, app *apitest.App, homeID string) []string {
+	t.Helper()
+	return queryStrings(t, app, `SELECT id FROM allocation_runs WHERE home_id = $1 ORDER BY id`, homeID)
 }
 
 // homePairs lists "task:resident" for every assignment of the Home's runs.
 func homePairs(t *testing.T, app *apitest.App, homeID string) []string {
 	t.Helper()
-	rows, err := app.DB.Query(context.Background(), `
+	out := queryStrings(t, app, `
 		SELECT a.task_id || ':' || a.resident_id
 		FROM day_plan_assignments a JOIN allocation_runs r ON r.id = a.run_id
 		WHERE r.home_id = $1`, homeID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer rows.Close()
-	var out []string
-	for rows.Next() {
-		var s string
-		if err := rows.Scan(&s); err != nil {
-			t.Fatal(err)
-		}
-		out = append(out, s)
-	}
 	slices.Sort(out)
 	return out
 }
@@ -104,21 +91,8 @@ func homePairs(t *testing.T, app *apitest.App, homeID string) []string {
 // explanationRunIDs lists the runs the Home's explanations belong to.
 func explanationRunIDs(t *testing.T, app *apitest.App, homeID string) []string {
 	t.Helper()
-	rows, err := app.DB.Query(context.Background(), `
+	return queryStrings(t, app, `
 		SELECT DISTINCT e.run_id FROM day_plan_explanations e JOIN allocation_runs r ON r.id = e.run_id WHERE r.home_id = $1`, homeID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer rows.Close()
-	var out []string
-	for rows.Next() {
-		var s string
-		if err := rows.Scan(&s); err != nil {
-			t.Fatal(err)
-		}
-		out = append(out, s)
-	}
-	return out
 }
 
 // monday is A and B at 07:00 on Monday with five Effort-2 Chores and Energy 4

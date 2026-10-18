@@ -71,16 +71,11 @@ func EventsHandler(p *Planner, clk clock.Clock, log *slog.Logger, opts ...Events
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 	mux.HandleFunc("POST /events", func(w http.ResponseWriter, r *http.Request) {
-		var ev struct {
-			Source     string `json:"source"`
-			DetailType string `json:"detail-type"`
-			Detail     struct {
-				HomeID string `json:"homeId"`
-			} `json:"detail"`
-		}
+		var ev ReplanEvent
 		body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxEventBody))
 		if err != nil || json.Unmarshal(body, &ev) != nil {
-			ev.Source, ev.DetailType = "", ""
+			unrecognised(w, log)
+			return
 		}
 		switch {
 		case ev.Source == "aws.events" && ev.DetailType == "Scheduled Event":
@@ -88,11 +83,15 @@ func EventsHandler(p *Planner, clk clock.Clock, log *slog.Logger, opts ...Events
 		case cfg.replan && ev.Source == ReplanSource && ev.DetailType == ReplanDetailType:
 			replan(w, r, p, clk, log, ev.Detail.HomeID)
 		default:
-			log.Warn("ignored an event that is not a scheduled event")
-			http.Error(w, "not a scheduled event", http.StatusBadRequest)
+			unrecognised(w, log)
 		}
 	})
 	return mux
+}
+
+func unrecognised(w http.ResponseWriter, log *slog.Logger) {
+	log.Warn("ignored an unrecognised event")
+	http.Error(w, "unrecognised event", http.StatusBadRequest)
 }
 
 func tick(w http.ResponseWriter, r *http.Request, p *Planner, clk clock.Clock, log *slog.Logger) {
