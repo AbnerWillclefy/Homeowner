@@ -49,24 +49,20 @@ func TestLambdaInvokesTheAllocateFunctionAsynchronouslyWithTheReplanEvent(t *tes
 	if want := dayplan.NewReplanEvent("11111111-1111-1111-1111-111111111111"); got != want {
 		t.Fatalf("payload = %+v, want %+v", got, want)
 	}
-	if _, ok := c.ctx.Deadline(); !ok {
+	d, ok := c.ctx.Deadline()
+	if !ok {
 		t.Fatal("the invoke should run under its own timeout")
+	}
+	if left := time.Until(d); left <= 0 || left > replan.InvokeTimeout {
+		t.Fatalf("time left on the invoke = %s, want within (0, %s]", left, replan.InvokeTimeout)
 	}
 }
 
 func TestLambdaReturnsTheClientError(t *testing.T) {
-	c := &fakeClient{err: errors.New("throttled")}
+	clientErr := errors.New("throttled")
+	c := &fakeClient{err: clientErr}
 	err := replan.NewLambda(c, "f").Replan(context.Background(), "h")
-	if err == nil {
-		t.Fatal("want an error")
-	}
-}
-
-func TestLambdaTimeoutIsShort(t *testing.T) {
-	c := &fakeClient{}
-	_ = replan.NewLambda(c, "f").Replan(context.Background(), "h")
-	d, _ := c.ctx.Deadline()
-	if time.Until(d) > 10*time.Second {
-		t.Fatalf("timeout too long: %s", time.Until(d))
+	if !errors.Is(err, clientErr) {
+		t.Fatalf("err = %v, want it to wrap %v", err, clientErr)
 	}
 }

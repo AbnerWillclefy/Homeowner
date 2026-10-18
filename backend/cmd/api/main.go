@@ -109,7 +109,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	if cfg.ReplanAllocateFunction != "" {
 		awsCfg, err := awsconfig.LoadDefaultConfig(ctx)
 		if err != nil {
-			return errors.New("load AWS config for the dev replan route")
+			return fmt.Errorf("load AWS config for the dev replan route: %w", err)
 		}
 		deps.Replanner = replan.NewLambda(lambda.NewFromConfig(awsCfg), cfg.ReplanAllocateFunction)
 		log.Warn("dev replan route is on: POST /dev/replan invokes the allocate function", "function", cfg.ReplanAllocateFunction)
