@@ -1,4 +1,8 @@
+import type { CheckIn } from "../../src/domains/checkin/api/api";
+import type { Chore } from "../../src/domains/chores/api/api";
+import type { DayPlan } from "../../src/domains/dayplan/api/api";
 import type { Home } from "../../src/domains/home/api/api";
+import type { Preference, Weekday } from "../../src/domains/profile/api/api";
 import type { ONBOARDING_STEPS } from "../../src/domains/onboarding/api/api";
 import type { Fake, FakeReply, FakeRequest } from "./router";
 
@@ -14,10 +18,37 @@ export interface FakeState {
   /** The last step completed, not the step to show. Null when onboarding has not started. */
   onboardingStored: string | null;
   home: Home | null;
+  /** What the signed-in User set about themself. A new User has every weekday unset. */
+  profile: {
+    baseline: Record<Weekday, number | null>;
+    /** Only the non-neutral Preferences, like the API. */
+    preferences: Record<string, Preference>;
+    restrictions: string[];
+  };
+  /** The Category and Demand ids the API lists (see the note in handlers/onboarding.ts). */
+  categories: string[];
+  demands: string[];
+  /** The Home's stored Chores, in creation order. */
+  chores: Chore[];
+  /** Today's Check-in and Day Plan. Absent means nothing yet: the handlers answer an unplanned day. */
+  checkIn?: CheckIn;
+  dayPlan?: DayPlan;
 }
 
 export function initialState(): FakeState {
-  return { user: { id: "user-1", email: "e2e@example.test" }, onboardingStored: null, home: null };
+  return {
+    user: { id: "user-1", email: "e2e@example.test" },
+    onboardingStored: null,
+    home: null,
+    profile: {
+      baseline: { sunday: null, monday: null, tuesday: null, wednesday: null, thursday: null, friday: null, saturday: null },
+      preferences: {},
+      restrictions: [],
+    },
+    categories: ["kitchen", "bathroom", "bedroom", "living_room", "laundry", "floors", "trash", "outdoor", "pets", "other"],
+    demands: ["heavy_lifting", "bending", "heights", "strong_chemicals"],
+    chores: [],
+  };
 }
 
 export interface ApiRequest extends FakeRequest {
@@ -50,6 +81,13 @@ export interface FakeApi extends Fake {
   requests: RecordedRequest[];
   /** Registers the handler for a "METHOD /path" key, replacing any earlier one. */
   on(key: string, handler: Handler): void;
+  /** Registers a group of handlers, for example `fakeApi.use(onboardingHandlers)`. */
+  use(register: (api: FakeApi) => void): void;
+  /**
+   * Replaces the handler for a key for this test. With `once` the replacement answers a single request and the
+   * earlier handler answers the next one (a failure followed by a retry that works).
+   */
+  override(key: string, reply: FakeReply | Handler, options?: { once?: boolean }): void;
 }
 
 interface Route {
@@ -101,6 +139,20 @@ export function createFakeApi(options: { baseUrl: string; state?: FakeState }): 
     on(key, handler) {
       routes.set(key, { ...compile(key), handler });
     },
+    use(register) {
+      register(api);
+    },
+    override(key, reply, options = {}) {
+      const previous = routes.get(key);
+      if (options.once && !previous) throw new Error(`Cannot override "${key}" once: no handler is registered for it.`);
+      const replacement: Handler = typeof reply === "function" ? reply : () => reply;
+      let used = false;
+      api.on(key, (request, state) => {
+        if (options.once && used) return previous!.handler(request, state);
+        used = true;
+        return replacement(request, state);
+      });
+    },
   };
 
   coreHandlers(api);
@@ -108,6 +160,12 @@ export function createFakeApi(options: { baseUrl: string; state?: FakeState }): 
 }
 
 const unauthorized = () => json(401, { error: "unauthorized" });
+
+/** Wraps a handler so a request without a bearer token is answered 401, like the API's auth middleware. */
+export const signedIn =
+  (handler: Handler): Handler =>
+  (request, state) =>
+    request.token === null ? unauthorized() : handler(request, state);
 
 /** Mirrors `Next` in backend/internal/onboarding/onboarding.go: the step to show after the stored one. */
 function nextStep(stored: string | null): string {
@@ -121,8 +179,6 @@ const rank = (step: string | null): number => (step === null ? -1 : step === "do
 
 /** The handlers the app needs on every load: health, who am I, onboarding progress and the Home. */
 export function coreHandlers(api: FakeApi): void {
-  const signedIn = (handler: Handler): Handler => (request, state) => (request.token === null ? unauthorized() : handler(request, state));
-
   api.on("GET /healthz", () => json(200, { status: "ok" }));
   api.on("GET /me", signedIn((_, state) => json(200, state.user)));
   api.on("GET /me/onboarding", signedIn((_, state) => json(200, { step: nextStep(state.onboardingStored) })));
