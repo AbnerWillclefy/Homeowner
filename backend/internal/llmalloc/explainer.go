@@ -13,7 +13,7 @@ import (
 // Explainer writes the plain-language explanation of a Home's Day Plan through
 // the same Client the Allocator uses: one call covers every Resident of the
 // Home. Like the Allocator it is never trusted: the caller keeps the template
-// for any Resident whose text is missing or fails explain.Valid.
+// for any Resident whose summary is missing or fails explain.ValidSummary.
 //
 // The model sees opaque ids, numbers, reason ids and the Category vocabulary
 // only: no names, no Chore titles, no free text. The text is advisory prose;
@@ -26,12 +26,13 @@ type Explainer struct {
 // NewExplainer returns an Explainer that asks client.
 func NewExplainer(client Client) *Explainer { return &Explainer{client: client} }
 
-// Explain asks the model for one text per Resident and returns the valid ones
-// by Resident id. Client errors are returned as they are; an answer that is
-// not a well-formed list is ErrInvalidResponse. An entry with an unknown or
-// repeated Resident id, or whose text fails explain.Valid, is dropped, so a
+// Explain asks the model for one summary (headline and detail) per Resident and
+// returns the valid ones by Resident id. Client errors are returned as they are;
+// an answer that is not a well-formed list, or is in the old shape, is
+// ErrInvalidResponse. An entry with an unknown or repeated Resident id, a
+// missing part, or a part that fails explain.ValidSummary, is dropped, so a
 // Resident can be missing from the result.
-func (e *Explainer) Explain(ctx context.Context, residents []explain.ResidentFacts) (map[string]explain.Texts, error) {
+func (e *Explainer) Explain(ctx context.Context, residents []explain.ResidentFacts) (map[string]explain.Summary, error) {
 	user, err := json.Marshal(explainInput{Residents: residents})
 	if err != nil {
 		return nil, fmt.Errorf("llm: build explanation prompt: %w", err)
@@ -53,9 +54,14 @@ const explainSystemPrompt = `You explain today's household Day Plan to each Resi
 The user message is JSON: for each Resident, their energy, the Tasks they were given and the reasons of the Tasks left in the pool.
 Each Task has the reason it was given (deadline_today, importance, lateness, fits_energy, liked, spared_dislike, turn_taking, taken, swapped), its category, effort, importance and people (2 means shared with a partner). Pool reasons say why Tasks nobody holds were left out.
 
-Write for each Resident, in the second person ("you"), two or three plain, warm sentences saying why their day looks the way it does.
+checkin is the level of the Resident's Check-in today (drained, low, normal or energized); it is absent when they have not checked in.
+
+Write for each Resident, in the second person ("you"), a summary of the whole day made of a headline and a detail.
+The headline is one plain sentence about the whole day, at most 120 characters.
+The detail is one or two plain, warm sentences, at most 280 characters, saying why the day looks the way it does. Do not restate each Task's reason: mention at most the main reason or two, and the pool.
+A drained day reads as rest being the plan, with no blame or urgency.
 Use only the facts given. Do not invent reasons, names, times or promises, and do not mention other Residents.
-Write each text twice: once in English (en_US) and once in Brazilian Portuguese (pt_BR), at most 400 characters each, plain text only with no links, markup or line breaks.
+Write the headline and the detail twice: once in English (en_US) and once in Brazilian Portuguese (pt_BR), plain text only with no links, markup or line breaks.
 Answer for every Resident, using their resident_id exactly as given.`
 
 var explainSchema = map[string]any{
@@ -68,11 +74,13 @@ var explainSchema = map[string]any{
 			"items": map[string]any{
 				"type":                 "object",
 				"additionalProperties": false,
-				"required":             []string{"resident_id", "en_US", "pt_BR"},
+				"required":             []string{"resident_id", "headline_en_US", "headline_pt_BR", "detail_en_US", "detail_pt_BR"},
 				"properties": map[string]any{
-					"resident_id": map[string]any{"type": "string"},
-					"en_US":       map[string]any{"type": "string"},
-					"pt_BR":       map[string]any{"type": "string"},
+					"resident_id":    map[string]any{"type": "string"},
+					"headline_en_US": map[string]any{"type": "string"},
+					"headline_pt_BR": map[string]any{"type": "string"},
+					"detail_en_US":   map[string]any{"type": "string"},
+					"detail_pt_BR":   map[string]any{"type": "string"},
 				},
 			},
 		},
@@ -85,14 +93,16 @@ type explainInput struct {
 
 type explainAnswer struct {
 	Explanations *[]struct {
-		ResidentID string `json:"resident_id"`
-		EnUS       string `json:"en_US"`
-		PtBR       string `json:"pt_BR"`
+		ResidentID   string `json:"resident_id"`
+		HeadlineEnUS string `json:"headline_en_US"`
+		HeadlinePtBR string `json:"headline_pt_BR"`
+		DetailEnUS   string `json:"detail_en_US"`
+		DetailPtBR   string `json:"detail_pt_BR"`
 	} `json:"explanations"`
 }
 
 // decodeExplanations reads the answer strictly, like decode.
-func decodeExplanations(raw json.RawMessage, residents []explain.ResidentFacts) (map[string]explain.Texts, error) {
+func decodeExplanations(raw json.RawMessage, residents []explain.ResidentFacts) (map[string]explain.Summary, error) {
 	if len(raw) > maxAnswerBytes {
 		return nil, fmt.Errorf("%w: %d bytes", ErrInvalidResponse, len(raw))
 	}
@@ -115,7 +125,7 @@ func decodeExplanations(raw json.RawMessage, residents []explain.ResidentFacts) 
 	}
 	// One pass. A repeated id is a confused answer: neither copy is kept,
 	// whichever is valid or comes first.
-	out := map[string]explain.Texts{}
+	out := map[string]explain.Summary{}
 	seen := map[string]bool{}
 	for _, x := range *a.Explanations {
 		if !known[x.ResidentID] {
@@ -126,8 +136,12 @@ func decodeExplanations(raw json.RawMessage, residents []explain.ResidentFacts) 
 			continue
 		}
 		seen[x.ResidentID] = true
-		if t := (explain.Texts{EnUS: x.EnUS, PtBR: x.PtBR}); explain.Valid(t) {
-			out[x.ResidentID] = t
+		s := explain.Summary{
+			Headline: explain.Texts{EnUS: x.HeadlineEnUS, PtBR: x.HeadlinePtBR},
+			Detail:   explain.Texts{EnUS: x.DetailEnUS, PtBR: x.DetailPtBR},
+		}
+		if explain.ValidSummary(s) {
+			out[x.ResidentID] = s
 		}
 	}
 	return out, nil

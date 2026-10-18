@@ -7,25 +7,10 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"unicode/utf8"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/explain"
 )
-
-// The most characters a headline and a detail may have in one language.
-const (
-	maxHeadline = 120
-	maxDetail   = 280
-)
-
-// withinLimits reports whether the headline and the detail each pass the text
-// rules of explain.Valid and stay within their own limit.
-func withinLimits(s explain.Summary) bool {
-	return explain.Valid(s.Headline) && explain.Valid(s.Detail) &&
-		utf8.RuneCountInString(s.Headline.EnUS) <= maxHeadline && utf8.RuneCountInString(s.Headline.PtBR) <= maxHeadline &&
-		utf8.RuneCountInString(s.Detail.EnUS) <= maxDetail && utf8.RuneCountInString(s.Detail.PtBR) <= maxDetail
-}
 
 func tasks(n int, reason string, effort, people int) []explain.Task {
 	out := make([]explain.Task, n)
@@ -81,7 +66,7 @@ func TestTemplateSituations(t *testing.T) {
 					t.Errorf("%s = %q, want it to contain %q", c.field, c.text, c.want)
 				}
 			}
-			if !withinLimits(got) {
+			if !explain.ValidSummary(got) {
 				t.Errorf("not valid: %+v", got)
 			}
 		})
@@ -175,7 +160,7 @@ func TestTemplateDoesNotDependOnTheOrderOfTasks(t *testing.T) {
 func TestTemplateOfAnUnknownReasonIsGenericNeverEmpty(t *testing.T) {
 	t.Parallel()
 	got := explain.Template(explain.Facts{Energy: 30, Tasks: []explain.Task{{Reason: "brand_new", People: 1}}, Pool: []string{"also_new"}})
-	if !withinLimits(got) {
+	if !explain.ValidSummary(got) {
 		t.Fatalf("not valid: %+v", got)
 	}
 	for _, s := range []string{got.Headline.EnUS, got.Detail.EnUS, got.Headline.PtBR, got.Detail.PtBR} {
@@ -219,7 +204,7 @@ func TestEverySituationStaysWithinTheLimits(t *testing.T) {
 		for _, poolReason := range allReasons {
 			for _, n := range []int{1, 2, 99} {
 				for name, f := range situationFacts(reason, poolReason, n) {
-					if got := explain.Template(f); !withinLimits(got) {
+					if got := explain.Template(f); !explain.ValidSummary(got) {
 						t.Errorf("%s %s/%s x%d: not valid: %+v", name, reason, poolReason, n, got)
 					}
 				}
@@ -231,14 +216,14 @@ func TestEverySituationStaysWithinTheLimits(t *testing.T) {
 	for _, r := range allReasons {
 		f.Tasks = append(f.Tasks, explain.Task{Reason: r, People: 1})
 	}
-	if got := explain.Template(f); !withinLimits(got) {
+	if got := explain.Template(f); !explain.ValidSummary(got) {
 		t.Errorf("mixed: %+v", got)
 	}
 }
 
 func TestTemplateOfNothingIsValid(t *testing.T) {
 	t.Parallel()
-	if got := explain.Template(explain.Facts{}); !withinLimits(got) {
+	if got := explain.Template(explain.Facts{}); !explain.ValidSummary(got) {
 		t.Fatalf("%+v", got)
 	}
 }

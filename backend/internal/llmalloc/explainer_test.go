@@ -15,33 +15,44 @@ import (
 
 func facts() []explain.ResidentFacts {
 	return []explain.ResidentFacts{
-		{ResidentID: "r1", Facts: explain.Facts{Energy: 5, Pool: []string{"no_energy_left", "no_energy_left"},
+		{ResidentID: "r1", Facts: explain.Facts{Energy: 5, Checkin: explain.CheckinNormal, Pool: []string{"no_energy_left", "no_energy_left"},
 			Tasks: []explain.Task{{Reason: "liked", Category: "kitchen", Effort: 2, Importance: "essential", People: 1}}}},
 		{ResidentID: "r2", Facts: explain.Facts{Energy: 0, Tasks: []explain.Task{}, Pool: []string{}}},
 	}
 }
 
-func explainWith(t *testing.T, answer string) (map[string]explain.Texts, error) {
+func explainWith(t *testing.T, answer string) (map[string]explain.Summary, error) {
 	t.Helper()
 	fake := llmalloc.NewFakeClient()
 	fake.Answer(answer)
 	return llmalloc.NewExplainer(fake).Explain(context.Background(), facts())
 }
 
-func entry(id, en, pt string) string {
-	b, _ := json.Marshal(map[string]string{"resident_id": id, "en_US": en, "pt_BR": pt})
+// parts is the four texts of an entry: headline and detail, English first.
+type parts struct{ headEn, headPt, detEn, detPt string }
+
+func fine() parts {
+	return parts{"A light day.", "Dia leve.", "You have one task.", "Você tem uma tarefa."}
+}
+
+func entry(id string, p parts) string {
+	b, _ := json.Marshal(map[string]string{
+		"resident_id": id, "headline_en_US": p.headEn, "headline_pt_BR": p.headPt,
+		"detail_en_US": p.detEn, "detail_pt_BR": p.detPt,
+	})
 	return string(b)
 }
 
 func TestAGoodExplanationAnswerIsMappedByResident(t *testing.T) {
 	t.Parallel()
-	got, err := explainWith(t, `{"explanations": [`+entry("r1", "One task.", "Uma tarefa.")+`,`+entry("r2", "Rest.", "Descanse.")+`]}`)
+	rest := parts{"Rest.", "Descanse.", "Nothing today.", "Nada hoje."}
+	got, err := explainWith(t, `{"explanations": [`+entry("r1", fine())+`,`+entry("r2", rest)+`]}`)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]explain.Texts{
-		"r1": {EnUS: "One task.", PtBR: "Uma tarefa."},
-		"r2": {EnUS: "Rest.", PtBR: "Descanse."},
+	want := map[string]explain.Summary{
+		"r1": {Headline: explain.Texts{EnUS: "A light day.", PtBR: "Dia leve."}, Detail: explain.Texts{EnUS: "You have one task.", PtBR: "Você tem uma tarefa."}},
+		"r2": {Headline: explain.Texts{EnUS: "Rest.", PtBR: "Descanse."}, Detail: explain.Texts{EnUS: "Nothing today.", PtBR: "Nada hoje."}},
 	}
 	if !maps.Equal(got, want) {
 		t.Fatalf("got %+v", got)
@@ -50,14 +61,17 @@ func TestAGoodExplanationAnswerIsMappedByResident(t *testing.T) {
 
 func TestWholeAnswerErrorsAreInvalidResponses(t *testing.T) {
 	t.Parallel()
+	huge := fine()
+	huge.detEn = strings.Repeat("a", 70<<10)
 	for name, answer := range map[string]string{
 		"not json":            `nope`,
 		"unknown field":       `{"explanations": [], "extra": 1}`,
-		"unknown entry field": `{"explanations": [{"resident_id": "r1", "en_US": "a", "pt_BR": "b", "mood": "x"}]}`,
+		"unknown entry field": `{"explanations": [{"resident_id": "r1", "headline_en_US": "a", "headline_pt_BR": "b", "detail_en_US": "a", "detail_pt_BR": "b", "mood": "x"}]}`,
+		"old shape":           `{"explanations": [{"resident_id": "r1", "en_US": "a", "pt_BR": "b"}]}`,
 		"missing list":        `{}`,
 		"null list":           `{"explanations": null}`,
 		"trailing data":       `{"explanations": []} {}`,
-		"too large":           `{"explanations": [` + entry("r1", strings.Repeat("a", 70<<10), "b") + `]}`,
+		"too large":           `{"explanations": [` + entry("r1", huge) + `]}`,
 	} {
 		if _, err := explainWith(t, answer); !errors.Is(err, llmalloc.ErrInvalidResponse) {
 			t.Errorf("%s: want ErrInvalidResponse, got %v", name, err)
@@ -67,19 +81,28 @@ func TestWholeAnswerErrorsAreInvalidResponses(t *testing.T) {
 
 func TestBadEntriesAreDroppedAndTheRestKept(t *testing.T) {
 	t.Parallel()
-	good := entry("r2", "Rest.", "Descanse.")
+	good := entry("r2", fine())
+	with := func(edit func(*parts)) string {
+		p := fine()
+		edit(&p)
+		return entry("r1", p)
+	}
 	for name, bad := range map[string]string{
-		"unknown resident": entry("zz", "a", "b"),
-		"empty text":       entry("r1", "", "b"),
-		"too long":         entry("r1", strings.Repeat("a", 401), "b"),
-		"markup":           entry("r1", "<b>x</b>", "b"),
-		"url":              entry("r1", "a", "see https://x.example"),
+		"unknown resident":  entry("zz", fine()),
+		"missing headline":  `{"resident_id": "r1", "headline_pt_BR": "b", "detail_en_US": "a", "detail_pt_BR": "b"}`,
+		"blank headline":    with(func(p *parts) { p.headEn = "  " }),
+		"empty detail":      with(func(p *parts) { p.detPt = "" }),
+		"headline too long": with(func(p *parts) { p.headPt = strings.Repeat("a", 121) }),
+		"detail too long":   with(func(p *parts) { p.detEn = strings.Repeat("a", 281) }),
+		"markup":            with(func(p *parts) { p.detEn = "<b>x</b>" }),
+		"url":               with(func(p *parts) { p.headEn = "see https://x.example" }),
+		"newline":           with(func(p *parts) { p.detPt = "a\nb" }),
 	} {
 		got, err := explainWith(t, `{"explanations": [`+bad+`,`+good+`]}`)
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
-		if _, has := got["r1"]; has || len(got) != 1 || got["r2"].EnUS != "Rest." {
+		if _, has := got["r1"]; has || len(got) != 1 || got["r2"].Headline.EnUS != "A light day." {
 			t.Errorf("%s: got %+v", name, got)
 		}
 	}
@@ -87,7 +110,7 @@ func TestBadEntriesAreDroppedAndTheRestKept(t *testing.T) {
 
 func TestADuplicateResidentIsDroppedEntirely(t *testing.T) {
 	t.Parallel()
-	got, err := explainWith(t, `{"explanations": [`+entry("r1", "a", "b")+`,`+entry("r1", "c", "d")+`,`+entry("r2", "Rest.", "Descanse.")+`]}`)
+	got, err := explainWith(t, `{"explanations": [`+entry("r1", fine())+`,`+entry("r1", fine())+`,`+entry("r2", fine())+`]}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,12 +123,14 @@ func TestADuplicateResidentIsDroppedEntirely(t *testing.T) {
 // order the valid one comes in.
 func TestARepeatedResidentIsDroppedEvenWhenOneCopyIsValid(t *testing.T) {
 	t.Parallel()
-	good, bad := entry("r1", "Fine.", "Bom."), entry("r1", "<b>x</b>", "y")
+	badParts := fine()
+	badParts.detEn = "<b>x</b>"
+	good, bad := entry("r1", fine()), entry("r1", badParts)
 	for name, pair := range map[string]string{
 		"valid first":   good + `,` + bad,
 		"invalid first": bad + `,` + good,
 	} {
-		got, err := explainWith(t, `{"explanations": [`+pair+`,`+entry("r2", "Rest.", "Descanse.")+`]}`)
+		got, err := explainWith(t, `{"explanations": [`+pair+`,`+entry("r2", fine())+`]}`)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -165,7 +190,7 @@ func TestTheExplanationPromptHoldsOnlyIDsNumbersAndVocabulary(t *testing.T) {
 	}
 	keys := map[string]bool{}
 	collectKeys(input, keys)
-	want := []string{"category", "effort", "energy", "facts", "importance", "people", "pool", "reason", "resident_id", "residents", "tasks"}
+	want := []string{"category", "checkin", "effort", "energy", "facts", "importance", "people", "pool", "reason", "resident_id", "residents", "tasks"}
 	if got := slices.Sorted(maps.Keys(keys)); !slices.Equal(got, want) {
 		t.Fatalf("prompt keys = %v\nwant          %v", got, want)
 	}
@@ -192,8 +217,12 @@ func TestTheExplanationSchemaIsClosedAndRequiresEveryField(t *testing.T) {
 	if item["additionalProperties"] != false {
 		t.Fatalf("item schema is open: %v", item)
 	}
-	if got := item["required"].([]string); !slices.Equal(got, []string{"resident_id", "en_US", "pt_BR"}) {
+	wantKeys := []string{"resident_id", "headline_en_US", "headline_pt_BR", "detail_en_US", "detail_pt_BR"}
+	if got := item["required"].([]string); !slices.Equal(got, wantKeys) {
 		t.Fatalf("required = %v", got)
+	}
+	if got := slices.Sorted(maps.Keys(item["properties"].(map[string]any))); !slices.Equal(got, slices.Sorted(slices.Values(wantKeys))) {
+		t.Fatalf("properties = %v", got)
 	}
 }
 
@@ -205,7 +234,10 @@ func TestTheExplanationSystemPromptIsFactsOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 	sys := fake.LastRequest().System
-	for _, want := range []string{"second person", "only", "Brazilian Portuguese"} {
+	for _, want := range []string{
+		"second person", "only", "Brazilian Portuguese", "headline", "checkin", "drained",
+		"do not mention other Residents", "120", "280", "whole day",
+	} {
 		if !strings.Contains(sys, want) {
 			t.Errorf("system prompt lacks %q", want)
 		}
