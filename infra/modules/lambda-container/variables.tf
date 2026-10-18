@@ -19,6 +19,12 @@ variable "environment" {
   default     = {}
 }
 
+variable "invoke_function_arns" {
+  description = "ARNs of Lambda functions this function may invoke (lambda:InvokeFunction on exactly these, nothing broader). Empty adds no statement."
+  type        = list(string)
+  default     = []
+}
+
 variable "memory_size" {
   type    = number
   default = 512
