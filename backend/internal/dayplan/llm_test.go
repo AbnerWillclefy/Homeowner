@@ -41,7 +41,7 @@ func llmHome(t *testing.T) (app *apitest.App, a *apitest.Client, fake *llmalloc.
 		t.Fatalf("setup: %d tasks, %d residents", len(st.Tasks), len(st.Residents))
 	}
 	fake = llmalloc.NewFakeClient()
-	app.UseLLM(llmalloc.New(fake), 3, time.Second)
+	app.UseLLM(llmalloc.New(fake), llmDailyCap, time.Second)
 	return app, a, fake, st
 }
 
@@ -215,7 +215,7 @@ func TestAnAnswerBreakingAWeekdayRuleFallsBackToTheBaseline(t *testing.T) {
 	}
 	fake := llmalloc.NewFakeClient()
 	fake.Answer(answer(give(garden, st.Residents[0])))
-	app.UseLLM(llmalloc.New(fake), 3, time.Second)
+	app.UseLLM(llmalloc.New(fake), llmDailyCap, time.Second)
 
 	if sum := app.RunAllocation(t); sum.Planned != 1 {
 		t.Fatalf("summary = %+v", sum)
@@ -352,7 +352,7 @@ func TestNothingToPlanSpendsNoCall(t *testing.T) {
 	app := apitest.Start(t)
 	apitest.HomeWithResident(t, app, "a@example.com") // no Chores, no Energy
 	fake := llmalloc.NewFakeClient()
-	app.UseLLM(llmalloc.New(fake), 3, time.Second)
+	app.UseLLM(llmalloc.New(fake), llmDailyCap, time.Second)
 	app.Clock.Set(apitest.MondayAt(7))
 
 	app.RunAllocation(t)
