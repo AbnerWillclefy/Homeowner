@@ -7,10 +7,25 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/explain"
 )
+
+// The most characters a headline and a detail may have in one language.
+const (
+	maxHeadline = 120
+	maxDetail   = 280
+)
+
+// withinLimits reports whether the headline and the detail each pass the text
+// rules of explain.Valid and stay within their own limit.
+func withinLimits(s explain.Summary) bool {
+	return explain.Valid(s.Headline) && explain.Valid(s.Detail) &&
+		utf8.RuneCountInString(s.Headline.EnUS) <= maxHeadline && utf8.RuneCountInString(s.Headline.PtBR) <= maxHeadline &&
+		utf8.RuneCountInString(s.Detail.EnUS) <= maxDetail && utf8.RuneCountInString(s.Detail.PtBR) <= maxDetail
+}
 
 func tasks(n int, reason string, effort, people int) []explain.Task {
 	out := make([]explain.Task, n)
@@ -66,7 +81,7 @@ func TestTemplateSituations(t *testing.T) {
 					t.Errorf("%s = %q, want it to contain %q", c.field, c.text, c.want)
 				}
 			}
-			if !explain.ValidSummary(got) {
+			if !withinLimits(got) {
 				t.Errorf("not valid: %+v", got)
 			}
 		})
@@ -160,7 +175,7 @@ func TestTemplateDoesNotDependOnTheOrderOfTasks(t *testing.T) {
 func TestTemplateOfAnUnknownReasonIsGenericNeverEmpty(t *testing.T) {
 	t.Parallel()
 	got := explain.Template(explain.Facts{Energy: 30, Tasks: []explain.Task{{Reason: "brand_new", People: 1}}, Pool: []string{"also_new"}})
-	if !explain.ValidSummary(got) {
+	if !withinLimits(got) {
 		t.Fatalf("not valid: %+v", got)
 	}
 	for _, s := range []string{got.Headline.EnUS, got.Detail.EnUS, got.Headline.PtBR, got.Detail.PtBR} {
@@ -204,7 +219,7 @@ func TestEverySituationStaysWithinTheLimits(t *testing.T) {
 		for _, poolReason := range allReasons {
 			for _, n := range []int{1, 2, 99} {
 				for name, f := range situationFacts(reason, poolReason, n) {
-					if got := explain.Template(f); !explain.ValidSummary(got) {
+					if got := explain.Template(f); !withinLimits(got) {
 						t.Errorf("%s %s/%s x%d: not valid: %+v", name, reason, poolReason, n, got)
 					}
 				}
@@ -216,14 +231,14 @@ func TestEverySituationStaysWithinTheLimits(t *testing.T) {
 	for _, r := range allReasons {
 		f.Tasks = append(f.Tasks, explain.Task{Reason: r, People: 1})
 	}
-	if got := explain.Template(f); !explain.ValidSummary(got) {
+	if got := explain.Template(f); !withinLimits(got) {
 		t.Errorf("mixed: %+v", got)
 	}
 }
 
 func TestTemplateOfNothingIsValid(t *testing.T) {
 	t.Parallel()
-	if got := explain.Template(explain.Facts{}); !explain.ValidSummary(got) {
+	if got := explain.Template(explain.Facts{}); !withinLimits(got) {
 		t.Fatalf("%+v", got)
 	}
 }
@@ -275,41 +290,6 @@ func TestTemplateNamesNoChoreAndNoStreak(t *testing.T) {
 	}
 }
 
-func TestValidSummary(t *testing.T) {
-	t.Parallel()
-	ok := explain.Summary{
-		Headline: explain.Texts{EnUS: "A light day.", PtBR: "Um dia leve."},
-		Detail:   explain.Texts{EnUS: "Two tasks.", PtBR: "Duas tarefas."},
-	}
-	if !explain.ValidSummary(ok) {
-		t.Fatal("a plain summary must be valid")
-	}
-	edit := func(f func(*explain.Summary)) explain.Summary { s := ok; f(&s); return s }
-	for name, bad := range map[string]explain.Summary{
-		"headline 121 en":  edit(func(s *explain.Summary) { s.Headline.EnUS = strings.Repeat("a", 121) }),
-		"headline 121 pt":  edit(func(s *explain.Summary) { s.Headline.PtBR = strings.Repeat("ã", 121) }),
-		"detail 281 en":    edit(func(s *explain.Summary) { s.Detail.EnUS = strings.Repeat("a", 281) }),
-		"detail 281 pt":    edit(func(s *explain.Summary) { s.Detail.PtBR = strings.Repeat("ã", 281) }),
-		"blank headline":   edit(func(s *explain.Summary) { s.Headline.EnUS = " " }),
-		"blank detail":     edit(func(s *explain.Summary) { s.Detail.PtBR = "" }),
-		"control headline": edit(func(s *explain.Summary) { s.Headline.PtBR = "a\nb" }),
-		"markup detail":    edit(func(s *explain.Summary) { s.Detail.EnUS = "<b>x</b>" }),
-		"link headline":    edit(func(s *explain.Summary) { s.Headline.EnUS = "see www.x.com" }),
-		"link detail":      edit(func(s *explain.Summary) { s.Detail.PtBR = "https://x" }),
-	} {
-		if explain.ValidSummary(bad) {
-			t.Errorf("%s: want invalid", name)
-		}
-	}
-	atLimit := edit(func(s *explain.Summary) {
-		s.Headline.PtBR = strings.Repeat("ã", 120)
-		s.Detail.PtBR = strings.Repeat("ã", 280)
-	})
-	if !explain.ValidSummary(atLimit) {
-		t.Error("texts at the limits (in runes) must be valid")
-	}
-}
-
 func TestJoinedIsTheHeadlineThenTheDetail(t *testing.T) {
 	t.Parallel()
 	s := explain.Summary{Headline: explain.Texts{EnUS: "A.", PtBR: "B."}, Detail: explain.Texts{EnUS: "C.", PtBR: "D."}}
@@ -345,9 +325,19 @@ func TestEveryRecordedReasonIsHandled(t *testing.T) {
 	if len(reasons) < 16 {
 		t.Fatalf("found only %d reasons: %v", len(reasons), reasons)
 	}
+	// Pool reasons are told by their count, so only a reason of an assigned
+	// Task can fall back to the generic clause.
+	pool := map[string]bool{
+		"no_energy_left": true, "restricted_for_all": true, "two_person_deferred": true, "weekday_not_allowed": true,
+		"invalid_effort": true, "refused": true, "added_after_plan": true,
+	}
 	for _, r := range reasons {
-		if !explain.Known(r) {
-			t.Errorf("reason %q has no explanation sentence", r)
+		if pool[r] {
+			continue
+		}
+		got := explain.Template(explain.Facts{Energy: 300, Tasks: tasks(1, r, 1, 1)})
+		if strings.Contains(got.Detail.EnUS, "other work") {
+			t.Errorf("reason %q has no clause", r)
 		}
 	}
 }

@@ -62,43 +62,28 @@ func SituationOf(f Facts) Situation {
 // clause is a noun phrase about the day's Tasks in each language, for "Your
 // day is mostly ...". It is about the day, never about one Task, so it does
 // not repeat the "Why:" line of a card.
-type clause struct{ en, pt string }
+type clause struct{ id, en, pt string }
 
-// clauses is the one table of reasons, keyed by the recorded reason ids
-// (allocation.Reason and the reasons dayplan adds). Only reasons of assigned
-// Tasks have a clause; the pool is told by its count.
-// TestEveryRecordedReasonIsHandled keeps the table and poolReasons complete.
-var clauses = map[string]clause{
-	"deadline_today": {"work due today", "tarefas com prazo hoje"},
-	"importance":     {"important work", "tarefas importantes"},
-	"lateness":       {"work that waited longest", "tarefas que esperam há mais tempo"},
-	"turn_taking":    {"taking turns", "revezamento"},
-	"liked":          {"work you like", "tarefas de que você gosta"},
-	"spared_dislike": {"less of what you dislike", "menos do que você não gosta"},
-	"fits_energy":    {"work sized for your energy", "tarefas do tamanho da sua energia"},
-	"taken":          {"work you took on", "tarefas que você pegou"},
-	"swapped":        {"swapped work", "tarefas trocadas"},
+// clauses is the one table of reasons of assigned Tasks (allocation.Reason and
+// the reasons dayplan adds), in priority order: the earlier breaks a tie
+// between reasons of the same count. The pool is told by its count, so its
+// reasons need no clause. TestEveryRecordedReasonIsHandled keeps the table
+// complete.
+var clauses = []clause{
+	{"deadline_today", "work due today", "tarefas com prazo hoje"},
+	{"importance", "important work", "tarefas importantes"},
+	{"lateness", "work that waited longest", "tarefas que esperam há mais tempo"},
+	{"turn_taking", "taking turns", "revezamento"},
+	{"liked", "work you like", "tarefas de que você gosta"},
+	{"spared_dislike", "less of what you dislike", "menos do que você não gosta"},
+	{"fits_energy", "work sized for your energy", "tarefas do tamanho da sua energia"},
+	{"taken", "work you took on", "tarefas que você pegou"},
+	{"swapped", "swapped work", "tarefas trocadas"},
 }
 
 // otherClause stands in for a reason the table does not know, so a new reason
 // never yields blank text or a raw id.
-var otherClause = clause{"other work", "outras tarefas"}
-
-// priority breaks ties between reasons of the same count: the earlier wins.
-var priority = []string{"deadline_today", "importance", "lateness", "turn_taking", "liked", "spared_dislike", "fits_energy", "taken", "swapped"}
-
-// poolReasons are the reasons of Tasks nobody holds. The summary tells the pool
-// by its count and by no_energy_left, so they need no clause.
-var poolReasons = []string{
-	reasonNoEnergyLeft, "restricted_for_all", "two_person_deferred", "weekday_not_allowed",
-	"invalid_effort", "refused", "added_after_plan",
-}
-
-// Known reports whether the reason is one the template was written for.
-func Known(reason string) bool {
-	_, ok := clauses[reason]
-	return ok || slices.Contains(poolReasons, reason)
-}
+var otherClause = clause{"", "other work", "outras tarefas"}
 
 // Template writes the explanation of the day from the facts alone, in both
 // languages: a headline from the situation, and a detail of at most two
@@ -138,13 +123,12 @@ func detail(s Situation, f Facts) Texts {
 	case SituationRest:
 		add(restLead(f))
 		if n := len(f.Tasks); n > 0 {
-			add(Texts{plural(n, "You still hold %d task.", "You still hold %d tasks."), plural(n, "Você ainda tem %d tarefa.", "Você ainda tem %d tarefas.")}.fill(n))
+			add(counted(n, "You still hold %d task.", "You still hold %d tasks.", "Você ainda tem %d tarefa.", "Você ainda tem %d tarefas."))
 		}
 	case SituationNothingFits:
-		add(Texts{
-			plural(pool, "%d open task needs more Energy than you have left.", "%d open tasks need more Energy than you have left."),
-			plural(pool, "%d tarefa em aberto pede mais energia do que você tem.", "%d tarefas em aberto pedem mais energia do que você tem."),
-		}.fill(pool))
+		add(counted(pool,
+			"%d open task needs more Energy than you have left.", "%d open tasks need more Energy than you have left.",
+			"%d tarefa em aberto pede mais energia do que você tem.", "%d tarefas em aberto pedem mais energia do que você tem."))
 		if len(f.Tasks) > 0 {
 			add(reasonsSentence(f.Tasks))
 		}
@@ -167,59 +151,54 @@ func detail(s Situation, f Facts) Texts {
 	return Texts{strings.Join(en, " "), strings.Join(pt, " ")}
 }
 
+// restLead is the lead of a day of rest. Without a Drained Check-in to rest on,
+// it first says that no energy is set; then it says what happens to the open work.
 func restLead(f Facts) Texts {
-	noBaseline := f.Checkin != CheckinDrained
-	n := len(f.Pool)
-	switch {
-	case noBaseline && n > 0:
-		return Texts{
-			plural(n, "No energy is set for today, so %d open task waits for tomorrow.", "No energy is set for today, so %d open tasks wait for tomorrow."),
-			plural(n, "Não há energia definida para hoje, então %d tarefa em aberto fica para amanhã.", "Não há energia definida para hoje, então %d tarefas em aberto ficam para amanhã."),
-		}.fill(n)
-	case noBaseline:
-		return Texts{"No energy is set for today, so the open work waits for tomorrow.", "Não há energia definida para hoje, então o trabalho em aberto fica para amanhã."}
-	case n > 0:
-		return Texts{
-			plural(n, "%d open task waits for tomorrow.", "%d open tasks wait for tomorrow."),
-			plural(n, "%d tarefa em aberto fica para amanhã.", "%d tarefas em aberto ficam para amanhã."),
-		}.fill(n)
+	var en, pt []string
+	if f.Checkin != CheckinDrained {
+		en, pt = append(en, "No energy is set for today."), append(pt, "Não há energia definida para hoje.")
 	}
-	return Texts{"The open work waits for tomorrow.", "O trabalho em aberto fica para amanhã."}
+	wait := Texts{"The open work waits for tomorrow.", "O trabalho em aberto fica para amanhã."}
+	if n := len(f.Pool); n > 0 {
+		wait = counted(n,
+			"%d open task waits for tomorrow.", "%d open tasks wait for tomorrow.",
+			"%d tarefa em aberto fica para amanhã.", "%d tarefas em aberto ficam para amanhã.")
+	}
+	en, pt = append(en, wait.EnUS), append(pt, wait.PtBR)
+	return Texts{strings.Join(en, " "), strings.Join(pt, " ")}
 }
 
 func poolSentence(n int) Texts {
-	return Texts{
-		plural(n, "%d open task still waits.", "%d open tasks still wait."),
-		plural(n, "%d tarefa em aberto ainda espera.", "%d tarefas em aberto ainda esperam."),
-	}.fill(n)
+	return counted(n,
+		"%d open task still waits.", "%d open tasks still wait.",
+		"%d tarefa em aberto ainda espera.", "%d tarefas em aberto ainda esperam.")
 }
 
 // reasonsSentence names the day's main reason or two: the most frequent among
 // the Tasks, ties by priority, unknown reasons counted together and last.
 func reasonsSentence(ts []Task) Texts {
-	n := map[string]int{}
+	// rank is the index in clauses; reasons the table does not know share
+	// otherClause, after the known ones.
+	rank := func(reason string) int {
+		return slices.IndexFunc(clauses, func(c clause) bool { return c.id == reason })
+	}
+	n := map[int]int{}
 	for _, t := range ts {
-		key := t.Reason
-		if _, ok := clauses[key]; !ok {
-			key = ""
+		r := rank(t.Reason)
+		if r < 0 {
+			r = len(clauses)
 		}
-		n[key]++
+		n[r]++
 	}
-	rank := func(r string) int {
-		if i := slices.Index(priority, r); i >= 0 {
-			return i
-		}
-		return len(priority)
-	}
-	order := slices.SortedFunc(maps.Keys(n), func(a, b string) int {
-		return cmp.Or(cmp.Compare(n[b], n[a]), cmp.Compare(rank(a), rank(b)))
+	order := slices.SortedFunc(maps.Keys(n), func(a, b int) int {
+		return cmp.Or(cmp.Compare(n[b], n[a]), cmp.Compare(a, b))
 	})
 	order = order[:min(2, len(order))]
 	var en, pt []string
-	for _, key := range order {
-		c, ok := clauses[key]
-		if !ok {
-			c = otherClause
+	for _, r := range order {
+		c := otherClause
+		if r < len(clauses) {
+			c = clauses[r]
 		}
 		en, pt = append(en, c.en), append(pt, c.pt)
 	}
@@ -229,16 +208,11 @@ func reasonsSentence(ts []Task) Texts {
 	}
 }
 
-// fill puts n in the one %d of each language.
-func (t Texts) fill(n int) Texts {
-	return Texts{fmt.Sprintf(t.EnUS, n), fmt.Sprintf(t.PtBR, n)}
-}
-
-// plural picks the singular form for 1 and the plural otherwise. The forms are
-// still templates (their %d is filled by Texts.fill).
-func plural(n int, one, many string) string {
+// counted is the sentence in each language with its one %d filled by n, in the
+// singular form for 1 and the plural otherwise.
+func counted(n int, enOne, enMany, ptOne, ptMany string) Texts {
 	if n == 1 {
-		return one
+		return Texts{fmt.Sprintf(enOne, n), fmt.Sprintf(ptOne, n)}
 	}
-	return many
+	return Texts{fmt.Sprintf(enMany, n), fmt.Sprintf(ptMany, n)}
 }

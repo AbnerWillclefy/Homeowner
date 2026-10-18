@@ -74,16 +74,14 @@ func (r dayRun) factsFor(residentID, level string, open []tasks.Open) (explain.F
 // LLM text when it still matches their plan, otherwise the template. The
 // template is computed here, from the live reasons, so a plan always has one.
 func (s *Store) explanationFor(ctx context.Context, run dayRun, residentID string, date allocation.Date, open []tasks.Open) (*Explanation, error) {
-	cis, err := checkin.LoadMany(ctx, s.db, []string{residentID}, date)
-	if err != nil {
-		return nil, err
-	}
-	facts, fingerprint := run.factsFor(residentID, string(cis[residentID].Level), open)
+	// The fingerprint does not depend on the Check-in, so it is loaded only when
+	// the template is needed.
+	facts, fingerprint := run.factsFor(residentID, "", open)
 	var (
 		texts  explain.Texts
 		stored string
 	)
-	err = s.db.QueryRow(ctx, `
+	err := s.db.QueryRow(ctx, `
 		SELECT text_en, text_pt, fingerprint FROM day_plan_explanations WHERE run_id = $1 AND resident_id = $2`,
 		run.id, residentID).Scan(&texts.EnUS, &texts.PtBR, &stored)
 	switch {
@@ -92,6 +90,13 @@ func (s *Store) explanationFor(ctx context.Context, run dayRun, residentID strin
 	case err != nil && !errors.Is(err, pgx.ErrNoRows):
 		return nil, fmt.Errorf("day plan: load explanation: %w", err)
 	}
+	cis, err := checkin.LoadMany(ctx, s.db, []string{residentID}, date)
+	if err != nil {
+		return nil, err
+	}
+	// A Resident without a Check-in is absent from the map; its zero Level is "",
+	// which the template reads as no Check-in.
+	facts.Checkin = string(cis[residentID].Level)
 	return &Explanation{Source: sourceTemplate, Text: explain.Template(facts).Joined()}, nil
 }
 

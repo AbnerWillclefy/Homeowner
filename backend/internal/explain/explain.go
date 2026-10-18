@@ -80,19 +80,6 @@ func (s Summary) Joined() Texts {
 	return Texts{EnUS: s.Headline.EnUS + " " + s.Detail.EnUS, PtBR: s.Headline.PtBR + " " + s.Detail.PtBR}
 }
 
-// The most characters a headline and a detail may have in one language.
-const (
-	MaxHeadline = 120
-	MaxDetail   = 280
-)
-
-// ValidSummary reports whether the headline and the detail each pass the text
-// rules of Valid with their own limit.
-func ValidSummary(s Summary) bool {
-	return validText(s.Headline.EnUS, MaxHeadline) && validText(s.Headline.PtBR, MaxHeadline) &&
-		validText(s.Detail.EnUS, MaxDetail) && validText(s.Detail.PtBR, MaxDetail)
-}
-
 // MaxLength is the most characters an explanation may have in one language.
 const MaxLength = 400
 
@@ -101,7 +88,7 @@ const MaxLength = 400
 // and no link. It is the only check on model prose; the plan itself is
 // refereed elsewhere.
 func Valid(t Texts) bool {
-	return validText(t.EnUS, MaxLength) && validText(t.PtBR, MaxLength)
+	return validText(t.EnUS) && validText(t.PtBR)
 }
 
 // linkMarkers are what makes a text a link: "//" is a scheme separator
@@ -110,8 +97,8 @@ func Valid(t Texts) bool {
 // where it is not clickable.
 var linkMarkers = []string{"//", "www."}
 
-func validText(s string, limit int) bool {
-	if strings.TrimSpace(s) == "" || utf8.RuneCountInString(s) > limit {
+func validText(s string) bool {
+	if strings.TrimSpace(s) == "" || utf8.RuneCountInString(s) > MaxLength {
 		return false
 	}
 	if strings.IndexFunc(s, func(r rune) bool { return unicode.IsControl(r) || r == '<' || r == '>' }) >= 0 {
