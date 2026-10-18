@@ -28,6 +28,7 @@ const task = (id: string, chore: Chore, reason: string): PlanTask => ({
 
 /** A planned day: two Tasks for the Resident, one for another Resident and one nobody could take. */
 function plannedDay(): DayPlan {
+  const [dishes, mop, trash] = CHORES as [Chore, Chore, Chore];
   return {
     date: FAKE_TODAY,
     allocationTime: "07:00",
@@ -35,9 +36,9 @@ function plannedDay(): DayPlan {
     rejected: false,
     allocator: "template",
     energy: 8,
-    mine: [task("task-1", CHORES[0]!, "due"), task("task-2", CHORES[1]!, "due")],
-    others: [{ residentId: "resident-2", tasks: [task("task-3", CHORES[2]!, "due")] }],
-    pool: [{ ...task("task-4", CHORES[2]!, "no_energy_left"), id: "task-4" }],
+    mine: [task("task-1", dishes, "due"), task("task-2", mop, "due")],
+    others: [{ residentId: "resident-2", tasks: [task("task-3", trash, "due")] }],
+    pool: [task("task-4", trash, "no_energy_left")],
     doneToday: [],
   };
 }

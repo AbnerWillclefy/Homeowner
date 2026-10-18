@@ -1,9 +1,6 @@
 import { test, expect } from "../fixtures";
 import { json } from "../mocks/api";
-import { choresHandlers } from "../mocks/handlers/chores";
-import { homeHandlers } from "../mocks/handlers/home";
-import { onboardingHandlers } from "../mocks/handlers/onboarding";
-import { todayHandlers } from "../mocks/handlers/today";
+import { signedInHandlers } from "../mocks/handlers/signedIn";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { launchApp, visit } from "../pages/launch";
@@ -16,17 +13,14 @@ import { tabs } from "../pages/tabs";
 test.use({ fakeState: signedInResident() });
 
 test.beforeEach(async ({ page, fakeApi }) => {
-  fakeApi.use(onboardingHandlers); // the profile, categories and demands the Me tab reads
-  fakeApi.use(homeHandlers);
-  fakeApi.use(choresHandlers);
-  fakeApi.use(todayHandlers);
+  fakeApi.use(signedInHandlers);
   await seedSession(page, { email: RESIDENT_EMAIL });
 });
 
 const TASKS = ["Wash the dishes", "Mop the floors"];
 const CHORES = ["Wash the dishes", "Mop the floors", "Take out the trash"];
 
-test("every tab opens and shows the Home's data", async ({ page, baseURL }) => {
+test("Today shows the planned day", async ({ page, baseURL }) => {
   await launchApp(page, baseURL!);
 
   await expect(tabs.today.heading(page)).toBeVisible();
@@ -36,20 +30,32 @@ test("every tab opens and shows the Home's data", async ({ page, baseURL }) => {
   await expect(tabs.today.others(page)).toBeVisible();
   await expect(page.getByText("Resident 1")).toBeVisible();
   await expect(tabs.today.pool(page)).toBeVisible();
+});
 
+test("Chores lists the Home's Chores", async ({ page, baseURL }) => {
+  await launchApp(page, baseURL!);
   await shell.openTab(page, "Chores");
+
   await shell.expectOnTab(page, "Chores");
   await expect(tabs.chores.heading(page)).toBeVisible();
   for (const name of CHORES) await expect(tabs.chores.chore(page, name)).toBeVisible();
+});
 
+test("Home shows the Home's settings and invite", async ({ page, baseURL }) => {
+  await launchApp(page, baseURL!);
   await shell.openTab(page, "Home");
+
   await shell.expectOnTab(page, "Home");
   await expect(tabs.home.heading(page)).toBeVisible();
   await expect(tabs.home.timezone(page)).toHaveValue("America/Sao_Paulo");
   await expect(tabs.home.allocationTime(page)).toHaveValue("07:00");
   await expect(tabs.home.invite(page)).toBeVisible();
+});
 
+test("Me shows the Resident's Profile", async ({ page, baseURL }) => {
+  await launchApp(page, baseURL!);
   await shell.openTab(page, "Me");
+
   await shell.expectOnTab(page, "Me");
   await expect(tabs.me.heading(page)).toBeVisible();
   await expect(tabs.me.baseline(page)).toBeVisible();
@@ -59,8 +65,13 @@ test("every tab opens and shows the Home's data", async ({ page, baseURL }) => {
   await expect(tabs.me.restrictions(page)).toBeVisible();
   await expect(tabs.me.bending(page)).toBeChecked();
   await expect(tabs.me.signedInAs(page, RESIDENT_EMAIL)).toBeVisible();
+});
 
+test("going back to Today from another tab shows the Tasks again", async ({ page, baseURL }) => {
+  await launchApp(page, baseURL!);
+  await shell.openTab(page, "Me");
   await shell.openTab(page, "Today");
+
   await shell.expectOnTab(page, "Today");
   for (const name of TASKS) await expect(tabs.today.task(page, name)).toBeVisible();
 });
