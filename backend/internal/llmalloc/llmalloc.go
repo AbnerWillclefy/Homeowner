@@ -39,6 +39,9 @@ type Request struct {
 	Schema map[string]any
 	// MaxTokens bounds the answer.
 	MaxTokens int
+	// Thinking turns on adaptive thinking, whose tokens count against
+	// MaxTokens. Off, the model answers straight away.
+	Thinking bool
 }
 
 // Client sends a Request to a model and returns its structured answer, the
@@ -95,6 +98,7 @@ func (a *Allocator) Propose(ctx context.Context, st allocation.State) (allocatio
 		User:      string(user),
 		Schema:    schema,
 		MaxTokens: maxTokens(len(in.Tasks)),
+		Thinking:  true,
 	})
 	if err != nil {
 		return allocation.Result{}, err

@@ -247,6 +247,16 @@ func TestNoFreeTextReachesTheModel(t *testing.T) {
 	}
 }
 
+func TestTheAllocatorAsksForThinking(t *testing.T) {
+	fake := emptyAnswer()
+	if _, err := llmalloc.New(fake).Propose(context.Background(), state()); err != nil {
+		t.Fatal(err)
+	}
+	if !fake.LastRequest().Thinking {
+		t.Fatal("the allocator's request must turn adaptive thinking on")
+	}
+}
+
 func TestMaxTokensLeavesRoomToThinkAndIsCapped(t *testing.T) {
 	tasks := func(n int) allocation.State {
 		st := state()
