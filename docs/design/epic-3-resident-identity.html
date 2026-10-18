@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resident Identity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mocks.css">
+<style>
+  .me-head { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; padding: 0.5rem 0 1rem; }
+  .me-head h2 { margin: 0.25rem 0 0; font-size: 1.875rem; font-weight: 700; line-height: 1.25; }
+  .me-head .email { color: var(--muted); font-weight: 600; font-size: 0.875rem; }
+  .me-head .streak { display: inline-flex; align-items: center; gap: 0.375rem; font-weight: 700; }
+  .me-head .streak svg { width: 18px; height: 18px; color: var(--accent); }
+  .avatar-wrap { position: relative; }
+  .avatar-edit { position: absolute; right: -0.25rem; bottom: -0.25rem; width: 2.75rem; height: 2.75rem; border-radius: 99px; background: var(--raised); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--text); }
+  .avatar-edit svg { width: 18px; height: 18px; }
+  .add-link { display: inline-flex; align-items: center; gap: 0.375rem; min-height: 2.75rem; color: var(--accent); font-weight: 700; text-decoration: underline; text-underline-offset: 0.2em; }
+  .add-link svg { width: 18px; height: 18px; }
+  .preview { display: flex; align-items: flex-end; justify-content: center; gap: 2rem; padding: 1.25rem 1rem; border-radius: var(--r-card); background: var(--surface); border: 1px solid color-mix(in srgb, var(--border) 40%, transparent); }
+  .preview figure { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+  .preview figcaption { margin: 0; font-size: 0.75rem; font-weight: 700; color: var(--muted); }
+  .day-row { display: flex; align-items: center; gap: 0.75rem; min-height: 2.75rem; }
+  .day-row span:first-child { width: 6rem; font-weight: 600; }
+  .others-head { margin: 0 0 0.5rem; display: flex; align-items: center; gap: 0.5rem; font-size: 1rem; font-weight: 700; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="photo-abner" viewBox="0 0 96 96">
+    <rect width="96" height="96" fill="#b9d8c6"/>
+    <circle cx="48" cy="38" r="17" fill="#8a5a3c"/>
+    <path d="M14 96c4-20 18-30 34-30s30 10 34 30z" fill="#2f4a5c"/>
+    <path d="M31 33c2-12 32-14 34 0-6-5-28-5-34 0z" fill="#2b1d14"/>
+  </symbol>
+</svg>
+<main class="board">
+  <header>
+    <h1>Epic 3: Resident identity</h1>
+    <p>An optional display name and photo on the User. The Me tab leads with the person; Baseline, Preferences and Restrictions fold away. Without a name, the part of the email before the @ stands in; without a photo, initials on a pastel derived from the user id.</p>
+  </header>
+
+  <figure>
+    <div class="phone">
+      <div class="screen">
+        <div class="me-head">
+          <div class="avatar-wrap">
+            <span class="avatar lg"><svg class="photo"><use href="#photo-abner"/></svg></span>
+            <span class="avatar-edit" aria-label="Edit name and photo"><i data-lucide="pencil"></i></span>
+          </div>
+          <h2>Abner</h2>
+          <p class="email">abnerwill.monteiro@gmail.com</p>
+          <p class="streak"><i data-lucide="flame"></i>6-day Streak</p>
+        </div>
+
+        <section class="card fold">
+          <div class="fold-head"><span class="tile accent"><i data-lucide="zap"></i></span><div class="grow"><h3>Baseline</h3><p>Your usual Energy on each day of the week. Your Check-in adjusts it for the day.</p></div><i class="chev" data-lucide="chevron-down"></i></div>
+        </section>
+        <section class="card fold">
+          <div class="fold-head"><span class="tile accent"><i data-lucide="heart"></i></span><div class="grow"><h3>Preferences</h3><p>Work you like is planned for you more often. Essential work still comes first.</p></div><i class="chev" data-lucide="chevron-down"></i></div>
+        </section>
+        <section class="card fold">
+          <div class="fold-head"><span class="tile accent"><i data-lucide="ban"></i></span><div class="grow"><h3>Restrictions</h3><p>Work you cannot do. You are never given it.</p></div><i class="chev" data-lucide="chevron-down"></i></div>
+        </section>
+      </div>
+      <nav class="tabs"><span class="tab"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab on"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <figcaption><strong>Me, filled in</strong>The person first: photo, name, email, current Streak. The three cards are collapsed by default (icon, title, description, chevron); the whole head row is the toggle. Settings and Sign out follow below, unchanged.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone">
+      <div class="screen">
+        <div class="me-head">
+          <span class="avatar lg lavender">AM</span>
+          <h2>abnerwill.monteiro</h2>
+          <p class="email">abnerwill.monteiro@gmail.com</p>
+          <a class="add-link"><i data-lucide="user-pen"></i>Add your name and photo</a>
+        </div>
+        <section class="card fold">
+          <div class="fold-head"><span class="tile accent"><i data-lucide="zap"></i></span><div class="grow"><h3>Baseline</h3><p>Your usual Energy on each day of the week. Your Check-in adjusts it for the day.</p></div><i class="chev" data-lucide="chevron-up"></i></div>
+          <div class="fold-body">
+            <div class="day-row"><span>Monday</span><input class="input" value="4" style="width:5rem"></div>
+            <div class="day-row"><span>Tuesday</span><input class="input" value="4" style="width:5rem"></div>
+            <div class="day-row"><span>Wednesday</span><input class="input" value="3" style="width:5rem"></div>
+            <p class="sm muted">…and the rest of the week.</p>
+          </div>
+        </section>
+        <section class="card fold">
+          <div class="fold-head"><span class="tile accent"><i data-lucide="heart"></i></span><div class="grow"><h3>Preferences</h3><p>Work you like is planned for you more often. Essential work still comes first.</p></div><i class="chev" data-lucide="chevron-down"></i></div>
+        </section>
+      </div>
+      <nav class="tabs"><span class="tab"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab on"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <figcaption><strong>Me, nothing set, Baseline open</strong>Fallbacks: the email's local part as the name, initials on a pastel from the user id. The only nudge is the "Add your name and photo" link. Streak is hidden here because it is 0. An open card flips its chevron and shows the existing fields.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone">
+      <div class="screen" style="opacity:.35"><div class="me-head"><span class="avatar lg lavender">AM</span><h2>abnerwill.monteiro</h2></div></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="body">
+          <h2>Your name and photo</h2>
+          <p class="muted sm">Residents of your Home see these. Both are optional.</p>
+          <label class="field">Name<input class="input focus" value="Abner"><span class="sm muted" style="font-weight:400">Up to 40 characters.</span></label>
+          <div class="field" style="display:flex;flex-direction:column;gap:.5rem">
+            <span class="semi">Photo</span>
+            <div class="preview">
+              <figure><span class="avatar lg"><svg class="photo"><use href="#photo-abner"/></svg></span><figcaption>On your page</figcaption></figure>
+              <figure><span class="avatar sm"><svg class="photo"><use href="#photo-abner"/></svg></span><figcaption>In lists</figcaption></figure>
+            </div>
+            <div class="actions"><button class="btn danger">Remove</button><span class="spacer"></span><button class="btn"><i data-lucide="image"></i>Choose another</button></div>
+          </div>
+        </div>
+        <div class="foot actions"><button class="btn">Cancel</button><span class="spacer"></span><button class="btn primary">Save</button></div>
+      </div>
+    </div>
+    <figcaption><strong>Edit sheet with photo preview</strong>Picking a file center-crops it to a square and shows it at both real sizes before anything uploads. No crop editor. Remove is the deliberate action, so it sits left; Save is bottom-right in the pinned footer.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone">
+      <div class="screen">
+        <div class="page-head">
+          <h2 class="page-title">Good morning, Abner</h2>
+          <p class="page-sub">Sunday, October 18</p>
+        </div>
+        <div>
+          <h3 class="group">Other Residents' Tasks</h3>
+          <h4 class="others-head"><span class="avatar sm yellow">AS</span>Ana</h4>
+          <div class="card">
+            <div class="row"><span class="tile mint"><i data-lucide="bath"></i></span>
+              <div class="grow"><p class="cat-name">Bathroom</p><h4 class="card-title">Deep clean the shower</h4></div></div>
+            <div class="facts"><span class="fact"><span class="dots"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i></i></span>Effort: Heavy</span><span class="fact"><i data-lucide="calendar-days"></i>Due today</span></div>
+          </div>
+        </div>
+        <div style="margin-top:1rem">
+          <h3 class="group">Swap offer</h3>
+          <div class="card">
+            <div class="row"><span class="avatar sm yellow">AS</span><p class="grow"><strong>Ana</strong> offers <strong>Take out the trash</strong> for your <strong>Fold the laundry</strong>.</p></div>
+            <div class="actions"><button class="btn">Decline</button><span class="spacer"></span><button class="btn primary">Accept swap</button></div>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <figcaption><strong>Names everywhere</strong>The greeting uses the display name when set. "Resident 1" becomes the avatar and name, in the others' Tasks and in swap offers.</figcaption>
+  </figure>
+</main>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

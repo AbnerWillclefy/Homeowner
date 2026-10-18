@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Today Polish</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mocks.css">
+<style>
+  .done-card { gap: 0.5rem; }
+  .done-card .when { display: flex; align-items: center; gap: 0.375rem; font-size: 0.875rem; font-weight: 600; color: var(--muted); }
+  .done-card .when svg { width: 16px; height: 16px; color: var(--accent); }
+  .list { display: flex; flex-direction: column; gap: 0.75rem; }
+</style>
+</head>
+<body>
+<main class="board">
+  <header>
+    <h1>Epic 2: Today polish</h1>
+    <p>The Right Thumb Rule on every action, done-today as Task cards without actions, and skeletons for first loads. Actions sit on their own bottom row: the expected action is bottom-right or full width; the left is kept for the action that needs a moment of thought.</p>
+  </header>
+
+  <figure>
+    <div class="phone">
+      <div class="screen">
+        <div>
+          <h3 class="group">Your Tasks <span class="count">2</span></h3>
+          <div class="list">
+            <div class="card peach">
+              <div class="row"><span class="tile on-tint"><i data-lucide="cooking-pot"></i></span>
+                <div class="grow"><p class="cat-name">Kitchen</p><h4 class="card-title">Wash the dishes</h4></div></div>
+              <div class="facts"><span class="fact"><span class="dots"><i class="f"></i><i class="f"></i><i></i><i></i><i></i></span>Effort: Light</span><span class="fact"><i data-lucide="calendar-days"></i>Due today</span></div>
+              <p class="reason"><i data-lucide="lightbulb"></i>Why: You like this one.</p>
+              <div class="actions"><button class="btn">Refuse</button><span class="spacer"></span><button class="btn primary">Accept</button></div>
+            </div>
+            <div class="card blue">
+              <div class="row"><span class="tile on-tint"><i data-lucide="shirt"></i></span>
+                <div class="grow"><p class="cat-name">Laundry</p><h4 class="card-title">Fold the laundry</h4></div></div>
+              <div class="facts"><span class="fact"><span class="dots"><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i></span>Effort: Moderate</span><span class="fact"><i data-lucide="calendar-days"></i>Due today</span></div>
+              <p class="reason"><i data-lucide="lightbulb"></i>Why: It is due today.</p>
+              <div class="actions"><span class="committed"><i data-lucide="circle-check"></i>Committed</span><button class="btn primary"><i data-lucide="check"></i>Done</button></div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:1rem">
+          <h3 class="group">Still to do <span class="count">1</span></h3>
+          <div class="card">
+            <div class="row"><span class="tile yellow"><i data-lucide="trash-2"></i></span>
+              <div class="grow"><p class="cat-name">Trash</p><h4 class="card-title">Take out the recycling</h4></div></div>
+            <div class="facts"><span class="fact"><span class="dots"><i class="f"></i><i></i><i></i><i></i><i></i></span>Effort: Very light</span><span class="fact"><i data-lucide="calendar-days"></i>Due Oct 20</span></div>
+            <p class="reason"><i data-lucide="lightbulb"></i>Why: No one has enough Energy left today.</p>
+            <div class="actions"><button class="btn">Done</button><span class="spacer"></span><button class="btn primary">Take</button></div>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <figcaption><strong>Right-side actions</strong>Proposed: Refuse left, Accept right. Committed: the "Committed" mark left, Done right. Pool: Done without taking it is the deliberate one, so it sits left; Take sits right.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone">
+      <div class="screen">
+        <div>
+          <h3 class="group">Done today <span class="count">2</span></h3>
+          <div class="list">
+            <div class="card done-card">
+              <div class="row"><span class="tile mint"><i data-lucide="bath"></i></span>
+                <div class="grow"><p class="cat-name">Bathroom</p><h4 class="card-title">Clean the sink</h4></div></div>
+              <p class="when"><i data-lucide="circle-check"></i>Done at 8:42 AM</p>
+            </div>
+            <div class="card done-card">
+              <div class="row"><span class="tile blue"><i data-lucide="brush"></i></span>
+                <div class="grow"><p class="cat-name">Floors</p><h4 class="card-title">Vacuum the living room</h4></div></div>
+              <p class="when"><i data-lucide="circle-check"></i>Done at 9:15 AM with <span class="avatar xs lavender" style="display:inline-flex">AS</span> Ana</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <figcaption><strong>Done today</strong>The same card anatomy as a Task, neutral (no pastel fill, no facts, no actions), so done work reads as settled. One line says when, and with whom for a two-person Task (the avatar lands with Epic 3).</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone">
+      <div class="screen">
+        <div class="page-head">
+          <div class="sk" style="width:70%;height:2rem"></div>
+          <div class="sk" style="width:45%;height:1rem;margin-top:.6rem"></div>
+        </div>
+        <div class="sk-card"><div class="row"><div class="sk block" style="width:2.75rem;height:2.75rem"></div><div class="grow stack-sm"><div class="sk" style="width:50%;height:.8rem"></div><div class="sk" style="width:75%;height:1rem"></div></div><div class="sk" style="width:5.5rem;height:2.75rem"></div></div></div>
+        <div class="sk-card"><div class="sk" style="width:85%;height:1.1rem"></div><div class="sk" style="width:100%;height:.85rem"></div><div class="sk" style="width:65%;height:.85rem"></div></div>
+        <div style="margin-top:1rem" class="stack">
+          <div class="sk" style="width:40%;height:1.3rem"></div>
+          <div class="sk-card"><div class="row"><div class="sk block" style="width:2.75rem;height:2.75rem"></div><div class="grow stack-sm"><div class="sk" style="width:30%;height:.8rem"></div><div class="sk" style="width:60%;height:1.1rem"></div></div></div><div class="sk" style="width:70%;height:.8rem"></div><div class="actions"><div class="sk" style="width:6rem;height:2.75rem"></div></div></div>
+          <div class="sk-card"><div class="row"><div class="sk block" style="width:2.75rem;height:2.75rem"></div><div class="grow stack-sm"><div class="sk" style="width:30%;height:.8rem"></div><div class="sk" style="width:55%;height:1.1rem"></div></div></div><div class="sk" style="width:60%;height:.8rem"></div><div class="actions"><div class="sk" style="width:6rem;height:2.75rem"></div></div></div>
+        </div>
+      </div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <figcaption><strong>Skeleton first load</strong>Shown only after 300ms. Shapes match what is coming (Check-in, summary, Task cards with a right-aligned action), so nothing jumps when data lands. A gentle pulse behind motion-safe only; screen readers get one polite "Loading today's plan" status.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone">
+      <div class="screen">
+        <div class="card peach">
+          <div class="row"><span class="tile on-tint"><i data-lucide="cooking-pot"></i></span>
+            <div class="grow"><p class="cat-name">Kitchen</p><h4 class="card-title">Wash the dishes</h4></div></div>
+          <p class="reason"><i data-lucide="lightbulb"></i>Why: You like this one.</p>
+          <div class="actions"><button class="btn" disabled style="border-style:dashed;color:var(--muted);background:var(--surface)">Refuse</button><span class="spacer"></span><button class="btn primary"><span class="spin"></span>Accept</button></div>
+        </div>
+        <div style="margin-top:1rem">
+          <h3 class="group">Review this Home's Chores</h3>
+          <div class="card">
+            <p>We picked 12 Chores from your answers. Untick any you do not need.</p>
+            <div class="actions"><button class="btn">Back</button><span class="spacer"></span><button class="btn primary">Add 12 Chores</button></div>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <figcaption><strong>Pending and dialogs</strong>A pending action shows an inline spinner in its own button, label kept so the width holds; the rest of the plan's buttons are disabled. The Chores review follows the same rule: Back left, the confirming action right.</figcaption>
+  </figure>
+</main>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>
