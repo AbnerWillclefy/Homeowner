@@ -10,6 +10,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkin"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/explain"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/tasks"
@@ -40,8 +42,8 @@ type Explanation struct {
 // and the fingerprint of the Energy and assignments they come from. Tasks are
 // the Resident's assignments as stored (completed ones too); the pool is every
 // open Task nobody holds, with its recorded reason.
-func (r dayRun) factsFor(residentID string, open []tasks.Open) (explain.Facts, string) {
-	f := explain.Facts{Energy: r.reasons.Energy[residentID], Tasks: []explain.Task{}, Pool: []string{}}
+func (r dayRun) factsFor(residentID, level string, open []tasks.Open) (explain.Facts, string) {
+	f := explain.Facts{Energy: r.reasons.Energy[residentID], Tasks: []explain.Task{}, Pool: []string{}, Checkin: level}
 	var pairs []explain.Pair
 	held := map[string]bool{}
 	for _, a := range r.assigned {
@@ -71,13 +73,17 @@ func (r dayRun) factsFor(residentID string, open []tasks.Open) (explain.Facts, s
 // explanationFor is the Resident's explanation of a planned run: the stored
 // LLM text when it still matches their plan, otherwise the template. The
 // template is computed here, from the live reasons, so a plan always has one.
-func (s *Store) explanationFor(ctx context.Context, run dayRun, residentID string, open []tasks.Open) (*Explanation, error) {
-	facts, fingerprint := run.factsFor(residentID, open)
+func (s *Store) explanationFor(ctx context.Context, run dayRun, residentID string, date allocation.Date, open []tasks.Open) (*Explanation, error) {
+	cis, err := checkin.LoadMany(ctx, s.db, []string{residentID}, date)
+	if err != nil {
+		return nil, err
+	}
+	facts, fingerprint := run.factsFor(residentID, string(cis[residentID].Level), open)
 	var (
 		texts  explain.Texts
 		stored string
 	)
-	err := s.db.QueryRow(ctx, `
+	err = s.db.QueryRow(ctx, `
 		SELECT text_en, text_pt, fingerprint FROM day_plan_explanations WHERE run_id = $1 AND resident_id = $2`,
 		run.id, residentID).Scan(&texts.EnUS, &texts.PtBR, &stored)
 	switch {
@@ -86,7 +92,7 @@ func (s *Store) explanationFor(ctx context.Context, run dayRun, residentID strin
 	case err != nil && !errors.Is(err, pgx.ErrNoRows):
 		return nil, fmt.Errorf("day plan: load explanation: %w", err)
 	}
-	return &Explanation{Source: sourceTemplate, Text: explain.Template(facts)}, nil
+	return &Explanation{Source: sourceTemplate, Text: explain.Template(facts).Joined()}, nil
 }
 
 // explainHomes asks the LLM to explain the Day Plan of each Home this tick
@@ -169,9 +175,14 @@ func (p *Planner) loadExplainInput(ctx context.Context, h HomeDay) (explainInput
 	if err != nil {
 		return explainInput{}, err
 	}
+	ids := slices.Sorted(maps.Keys(run.reasons.Energy))
+	levels, err := checkin.LoadMany(ctx, p.db, ids, allocation.DateOf(h.Date.Time()))
+	if err != nil {
+		return explainInput{}, err
+	}
 	in := explainInput{run: run, fingerprints: map[string]string{}}
-	for _, id := range slices.Sorted(maps.Keys(run.reasons.Energy)) {
-		facts, fp := run.factsFor(id, open)
+	for _, id := range ids {
+		facts, fp := run.factsFor(id, string(levels[id].Level), open)
 		if len(facts.Tasks) == 0 {
 			continue
 		}

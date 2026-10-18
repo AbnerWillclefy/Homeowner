@@ -34,11 +34,25 @@ type Task struct {
 // Facts are what one Resident's explanation is built from: their Energy, their
 // Tasks, and the reason of each Task left in the pool (about everyone, not
 // about them).
+//
+// Checkin is the level of the Resident's Check-in today (CheckinDrained and
+// the like), or "" when they made none. It is one word of a closed set and
+// carries no name or free text.
 type Facts struct {
-	Energy int      `json:"energy"`
-	Tasks  []Task   `json:"tasks"`
-	Pool   []string `json:"pool"`
+	Energy  int      `json:"energy"`
+	Tasks   []Task   `json:"tasks"`
+	Pool    []string `json:"pool"`
+	Checkin string   `json:"checkin,omitempty"`
 }
+
+// The Check-in levels Facts.Checkin may hold. They repeat the checkin
+// package's values because this package imports nothing of the app.
+const (
+	CheckinDrained   = "drained"
+	CheckinLow       = "low"
+	CheckinNormal    = "normal"
+	CheckinEnergized = "energized"
+)
 
 // ResidentFacts is the Facts of the Resident with the id. It is also the shape
 // sent to the model, so the tags are the prompt's keys. Whoever builds Facts
@@ -55,6 +69,30 @@ type Texts struct {
 	PtBR string `json:"pt-BR"`
 }
 
+// Summary is the explanation of a day as a headline and a short detail.
+type Summary struct {
+	Headline Texts
+	Detail   Texts
+}
+
+// Joined is the headline followed by the detail, in each language.
+func (s Summary) Joined() Texts {
+	return Texts{EnUS: s.Headline.EnUS + " " + s.Detail.EnUS, PtBR: s.Headline.PtBR + " " + s.Detail.PtBR}
+}
+
+// The most characters a headline and a detail may have in one language.
+const (
+	MaxHeadline = 120
+	MaxDetail   = 280
+)
+
+// ValidSummary reports whether the headline and the detail each pass the text
+// rules of Valid with their own limit.
+func ValidSummary(s Summary) bool {
+	return validText(s.Headline.EnUS, MaxHeadline) && validText(s.Headline.PtBR, MaxHeadline) &&
+		validText(s.Detail.EnUS, MaxDetail) && validText(s.Detail.PtBR, MaxDetail)
+}
+
 // MaxLength is the most characters an explanation may have in one language.
 const MaxLength = 400
 
@@ -63,7 +101,7 @@ const MaxLength = 400
 // and no link. It is the only check on model prose; the plan itself is
 // refereed elsewhere.
 func Valid(t Texts) bool {
-	return validText(t.EnUS) && validText(t.PtBR)
+	return validText(t.EnUS, MaxLength) && validText(t.PtBR, MaxLength)
 }
 
 // linkMarkers are what makes a text a link: "//" is a scheme separator
@@ -72,8 +110,8 @@ func Valid(t Texts) bool {
 // where it is not clickable.
 var linkMarkers = []string{"//", "www."}
 
-func validText(s string) bool {
-	if strings.TrimSpace(s) == "" || utf8.RuneCountInString(s) > MaxLength {
+func validText(s string, limit int) bool {
+	if strings.TrimSpace(s) == "" || utf8.RuneCountInString(s) > limit {
 		return false
 	}
 	if strings.IndexFunc(s, func(r rune) bool { return unicode.IsControl(r) || r == '<' || r == '>' }) >= 0 {

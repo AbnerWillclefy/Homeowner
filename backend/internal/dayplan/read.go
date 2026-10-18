@@ -209,7 +209,7 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 		return View{}, err
 	}
 	if v.Planned {
-		if v.Explanation, err = s.explanationFor(ctx, run, residentID, open); err != nil {
+		if v.Explanation, err = s.explanationFor(ctx, run, residentID, allocation.DateOf(date), open); err != nil {
 			return View{}, err
 		}
 	}

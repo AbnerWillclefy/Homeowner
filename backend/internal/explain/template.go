@@ -8,130 +8,237 @@ import (
 	"strings"
 )
 
-// phrase is a clause about a number of Tasks in each language. Each form
-// takes the count as its one %d.
-type phrase struct{ enOne, enMany, ptOne, ptMany string }
+// Situation is the kind of day the facts describe. A day has exactly one.
+type Situation string
 
-// phrases is the one table of sentences, keyed by the recorded reason ids
-// (allocation.Reason and the reasons dayplan adds). A reason missing here
-// reads as the generic sentence; TestEveryRecordedReasonIsHandled keeps the
-// table complete. Pool reasons describe Tasks nobody holds.
-var phrases = map[string]phrase{
-	// Assigned.
-	"deadline_today": {"%d task is due today", "%d tasks are due today", "%d tarefa vence hoje", "%d tarefas vencem hoje"},
-	"importance":     {"%d task is important", "%d tasks are important", "%d tarefa é importante", "%d tarefas são importantes"},
-	"lateness":       {"%d task has been waiting the longest", "%d tasks have been waiting the longest", "%d tarefa está esperando há mais tempo", "%d tarefas estão esperando há mais tempo"},
-	"fits_energy":    {"%d task fits your energy", "%d tasks fit your energy", "%d tarefa cabe na sua energia", "%d tarefas cabem na sua energia"},
-	"liked":          {"%d task is one you like", "%d tasks are ones you like", "%d tarefa é uma de que você gosta", "%d tarefas são de que você gosta"},
-	"spared_dislike": {"%d task is one that someone else would dislike more", "%d tasks are ones that someone else would dislike more", "%d tarefa é uma de que outra pessoa gosta ainda menos", "%d tarefas são de que outra pessoa gosta ainda menos"},
-	"turn_taking":    {"%d task is your turn", "%d tasks are your turn", "%d tarefa é a sua vez", "%d tarefas são a sua vez"},
-	"taken":          {"%d task is one you took from the pool", "%d tasks are ones you took from the pool", "%d tarefa é uma que você pegou das tarefas em aberto", "%d tarefas são que você pegou das tarefas em aberto"},
-	"swapped":        {"%d task came to you in a swap", "%d tasks came to you in a swap", "%d tarefa veio para você em uma troca", "%d tarefas vieram para você em uma troca"},
-	// Pool.
-	"no_energy_left":      {"%d task did not fit anyone's energy today", "%d tasks did not fit anyone's energy today", "%d tarefa não coube na energia de ninguém hoje", "%d tarefas não couberam na energia de ninguém hoje"},
-	"restricted_for_all":  {"%d task stays out because everyone has a restriction on it", "%d tasks stay out because everyone has a restriction on them", "%d tarefa ficou de fora porque todos têm uma restrição sobre ela", "%d tarefas ficaram de fora porque todos têm uma restrição sobre elas"},
-	"two_person_deferred": {"%d task needs two people and waits for another day", "%d tasks need two people and wait for another day", "%d tarefa precisa de duas pessoas e fica para outro dia", "%d tarefas precisam de duas pessoas e ficam para outro dia"},
-	"weekday_not_allowed": {"%d task is not allowed on this weekday", "%d tasks are not allowed on this weekday", "%d tarefa não é permitida neste dia da semana", "%d tarefas não são permitidas neste dia da semana"},
-	"invalid_effort":      {"%d task was left out because its effort is not valid", "%d tasks were left out because their effort is not valid", "%d tarefa ficou de fora porque o esforço dela não é válido", "%d tarefas ficaram de fora porque o esforço delas não é válido"},
-	"refused":             {"%d task was refused and is back in the pool", "%d tasks were refused and are back in the pool", "%d tarefa foi recusada e voltou para as tarefas em aberto", "%d tarefas foram recusadas e voltaram para as tarefas em aberto"},
-	"added_after_plan":    {"%d task was added after the plan was made", "%d tasks were added after the plan was made", "%d tarefa foi adicionada depois do plano", "%d tarefas foram adicionadas depois do plano"},
-}
-
-// generic stands in for a reason the table does not know, so a new reason
-// never yields blank text.
-var (
-	genericTask = phrase{"%d task was planned for you", "%d tasks were planned for you", "%d tarefa foi planejada para você", "%d tarefas foram planejadas para você"}
-	genericPool = phrase{"%d task stays in the pool", "%d tasks stay in the pool", "%d tarefa ficou nas tarefas em aberto", "%d tarefas ficaram nas tarefas em aberto"}
+// The situations, in the order SituationOf checks them.
+const (
+	SituationRest        Situation = "rest"
+	SituationLow         Situation = "low"
+	SituationNothingFits Situation = "nothing_fits"
+	SituationFree        Situation = "free"
+	SituationFull        Situation = "full"
+	SituationShared      Situation = "shared"
+	SituationLight       Situation = "light"
 )
 
-// Known reports whether the reason has its own sentence.
-func Known(reason string) bool { _, ok := phrases[reason]; return ok }
+// fullShare is the part of the Energy, as numerator over denominator, from
+// which a day counts as full: the Effort of the Tasks is at least 3/4 of it.
+const (
+	fullNum = 3
+	fullDen = 4
+)
 
-// Template writes the explanation from the facts alone, in both languages: it
-// is what every Resident gets when no model text is used, so it is complete by
-// itself. It groups Tasks by reason (sorted by reason id), says
-// which are shared with a partner, and mentions the pool only through its
-// reasons.
-func Template(f Facts) Texts {
-	var en, pt []string
+// reasonNoEnergyLeft is the pool reason that says the open work did not fit.
+const reasonNoEnergyLeft = "no_energy_left"
+
+// SituationOf is the one situation the facts are in. The first that matches
+// wins: rest, low, nothing_fits, free, full, shared, light. Normal and
+// Energized Check-ins have no situation of their own.
+func SituationOf(f Facts) Situation {
 	switch {
-	case len(f.Tasks) == 0 && f.Energy <= 0:
-		en = append(en, "You have no energy set for today, so you have no tasks.")
-		pt = append(pt, "Você está sem energia hoje, então não tem tarefas.")
+	case f.Checkin == CheckinDrained || f.Energy <= 0:
+		return SituationRest
+	case f.Checkin == CheckinLow:
+		return SituationLow
+	case slices.Contains(f.Pool, reasonNoEnergyLeft):
+		return SituationNothingFits
 	case len(f.Tasks) == 0:
-		en = append(en, "You have no tasks today: nothing fit your energy.")
-		pt = append(pt, "Você não tem nenhuma tarefa hoje: nada coube na sua energia.")
+		return SituationFree
+	}
+	used := 0
+	for _, t := range f.Tasks {
+		used += t.Effort
+	}
+	switch {
+	case used*fullDen >= f.Energy*fullNum:
+		return SituationFull
+	case slices.ContainsFunc(f.Tasks, func(t Task) bool { return t.People > 1 }):
+		return SituationShared
+	}
+	return SituationLight
+}
+
+// clause is a noun phrase about the day's Tasks in each language, for "Your
+// day is mostly ...". It is about the day, never about one Task, so it does
+// not repeat the "Why:" line of a card.
+type clause struct{ en, pt string }
+
+// clauses is the one table of reasons, keyed by the recorded reason ids
+// (allocation.Reason and the reasons dayplan adds). Only reasons of assigned
+// Tasks have a clause; the pool is told by its count.
+// TestEveryRecordedReasonIsHandled keeps the table and poolReasons complete.
+var clauses = map[string]clause{
+	"deadline_today": {"work due today", "tarefas com prazo hoje"},
+	"importance":     {"important work", "tarefas importantes"},
+	"lateness":       {"work that waited longest", "tarefas que esperam há mais tempo"},
+	"turn_taking":    {"taking turns", "revezamento"},
+	"liked":          {"work you like", "tarefas de que você gosta"},
+	"spared_dislike": {"less of what you dislike", "menos do que você não gosta"},
+	"fits_energy":    {"work sized for your energy", "tarefas do tamanho da sua energia"},
+	"taken":          {"work you took on", "tarefas que você pegou"},
+	"swapped":        {"swapped work", "tarefas trocadas"},
+}
+
+// otherClause stands in for a reason the table does not know, so a new reason
+// never yields blank text or a raw id.
+var otherClause = clause{"other work", "outras tarefas"}
+
+// priority breaks ties between reasons of the same count: the earlier wins.
+var priority = []string{"deadline_today", "importance", "lateness", "turn_taking", "liked", "spared_dislike", "fits_energy", "taken", "swapped"}
+
+// poolReasons are the reasons of Tasks nobody holds. The summary tells the pool
+// by its count and by no_energy_left, so they need no clause.
+var poolReasons = []string{
+	reasonNoEnergyLeft, "restricted_for_all", "two_person_deferred", "weekday_not_allowed",
+	"invalid_effort", "refused", "added_after_plan",
+}
+
+// Known reports whether the reason is one the template was written for.
+func Known(reason string) bool {
+	_, ok := clauses[reason]
+	return ok || slices.Contains(poolReasons, reason)
+}
+
+// Template writes the explanation of the day from the facts alone, in both
+// languages: a headline from the situation, and a detail of at most two
+// sentences. It is what every Resident gets when no model text is used, so it
+// is complete by itself. It names no Resident, Chore or Streak.
+func Template(f Facts) Summary {
+	sit := SituationOf(f)
+	return Summary{Headline: headline(sit, len(f.Tasks) > 0), Detail: detail(sit, f)}
+}
+
+func headline(s Situation, hasTasks bool) Texts {
+	switch s {
+	case SituationRest:
+		return Texts{"Rest is the plan today.", "Hoje o plano é descansar."}
+	case SituationLow:
+		return Texts{"A lighter day, with Low Energy.", "Dia mais leve, com energia baixa."}
+	case SituationNothingFits:
+		if hasTasks {
+			return Texts{"Nothing more fits today.", "Nada mais cabe hoje."}
+		}
+		return Texts{"Nothing fits your Energy today.", "Nada cabe na energia que você tem hoje."}
+	case SituationFree:
+		return Texts{"Nothing needs you today.", "Nada precisa de você hoje."}
+	case SituationFull:
+		return Texts{"A full day, close to all your Energy.", "Dia cheio, perto de toda a sua energia."}
+	case SituationShared:
+		return Texts{"Some of today's work is shared.", "Parte do trabalho de hoje é compartilhada."}
+	}
+	return Texts{"A light day with room to spare.", "Dia leve, com folga."}
+}
+
+func detail(s Situation, f Facts) Texts {
+	var en, pt []string
+	add := func(t Texts) { en, pt = append(en, t.EnUS), append(pt, t.PtBR) }
+	pool := len(f.Pool)
+	switch s {
+	case SituationRest:
+		add(restLead(f))
+		if n := len(f.Tasks); n > 0 {
+			add(Texts{plural(n, "You still hold %d task.", "You still hold %d tasks."), plural(n, "Você ainda tem %d tarefa.", "Você ainda tem %d tarefas.")}.fill(n))
+		}
+	case SituationNothingFits:
+		add(Texts{
+			plural(pool, "%d open task needs more Energy than you have left.", "%d open tasks need more Energy than you have left."),
+			plural(pool, "%d tarefa em aberto pede mais energia do que você tem.", "%d tarefas em aberto pedem mais energia do que você tem."),
+		}.fill(pool))
+		if len(f.Tasks) > 0 {
+			add(reasonsSentence(f.Tasks))
+		}
+	case SituationFree:
+		add(Texts{"There is no work for you today.", "Não há nenhum trabalho para você hoje."})
+		if pool > 0 {
+			add(poolSentence(pool))
+		}
 	default:
-		en, pt = groupSentences(f.Tasks, genericTask)
-		if shared := count(f.Tasks, func(t Task) bool { return t.People > 1 }); shared > 0 {
-			en = append(en, fmt.Sprintf("Tasks shared with someone else: %d.", shared))
-			pt = append(pt, fmt.Sprintf("Tarefas compartilhadas com outra pessoa: %d.", shared))
+		if len(f.Tasks) > 0 {
+			add(reasonsSentence(f.Tasks))
+		}
+		if pool > 0 {
+			add(poolSentence(pool))
 		}
 	}
-	if len(f.Pool) > 0 {
-		pen, ppt := groupSentences(poolTasks(f.Pool), genericPool)
-		en, pt = append(en, pen...), append(pt, ppt...)
+	if len(en) == 0 {
+		add(Texts{"Nothing else is open.", "Não há mais nada em aberto."})
 	}
-	return Texts{EnUS: strings.Join(en, " "), PtBR: strings.Join(pt, " ")}
+	return Texts{strings.Join(en, " "), strings.Join(pt, " ")}
 }
 
-func poolTasks(reasons []string) []Task {
-	out := make([]Task, len(reasons))
-	for i, r := range reasons {
-		out[i] = Task{Reason: r}
+func restLead(f Facts) Texts {
+	noBaseline := f.Checkin != CheckinDrained
+	n := len(f.Pool)
+	switch {
+	case noBaseline && n > 0:
+		return Texts{
+			plural(n, "No energy is set for today, so %d open task waits for tomorrow.", "No energy is set for today, so %d open tasks wait for tomorrow."),
+			plural(n, "Não há energia definida para hoje, então %d tarefa em aberto fica para amanhã.", "Não há energia definida para hoje, então %d tarefas em aberto ficam para amanhã."),
+		}.fill(n)
+	case noBaseline:
+		return Texts{"No energy is set for today, so the open work waits for tomorrow.", "Não há energia definida para hoje, então o trabalho em aberto fica para amanhã."}
+	case n > 0:
+		return Texts{
+			plural(n, "%d open task waits for tomorrow.", "%d open tasks wait for tomorrow."),
+			plural(n, "%d tarefa em aberto fica para amanhã.", "%d tarefas em aberto ficam para amanhã."),
+		}.fill(n)
 	}
-	return out
+	return Texts{"The open work waits for tomorrow.", "O trabalho em aberto fica para amanhã."}
 }
 
-// groupSentences makes one sentence per reason, sorted by reason id so the
-// order of the Tasks does not matter, with the generic phrase for unknown
-// reasons last.
-func groupSentences(tasks []Task, generic phrase) (en, pt []string) {
+func poolSentence(n int) Texts {
+	return Texts{
+		plural(n, "%d open task still waits.", "%d open tasks still wait."),
+		plural(n, "%d tarefa em aberto ainda espera.", "%d tarefas em aberto ainda esperam."),
+	}.fill(n)
+}
+
+// reasonsSentence names the day's main reason or two: the most frequent among
+// the Tasks, ties by priority, unknown reasons counted together and last.
+func reasonsSentence(ts []Task) Texts {
 	n := map[string]int{}
-	for _, t := range tasks {
+	for _, t := range ts {
 		key := t.Reason
-		if !Known(key) {
+		if _, ok := clauses[key]; !ok {
 			key = ""
 		}
 		n[key]++
 	}
+	rank := func(r string) int {
+		if i := slices.Index(priority, r); i >= 0 {
+			return i
+		}
+		return len(priority)
+	}
 	order := slices.SortedFunc(maps.Keys(n), func(a, b string) int {
-		if (a == "") != (b == "") {
-			return cmp.Compare(btoi(a == ""), btoi(b == ""))
-		}
-		return cmp.Compare(a, b)
+		return cmp.Or(cmp.Compare(n[b], n[a]), cmp.Compare(rank(a), rank(b)))
 	})
+	order = order[:min(2, len(order))]
+	var en, pt []string
 	for _, key := range order {
-		p, ok := phrases[key]
+		c, ok := clauses[key]
 		if !ok {
-			p = generic
+			c = otherClause
 		}
-		en = append(en, plural(n[key], p.enOne, p.enMany)+".")
-		pt = append(pt, plural(n[key], p.ptOne, p.ptMany)+".")
+		en, pt = append(en, c.en), append(pt, c.pt)
 	}
-	return en, pt
+	return Texts{
+		"Your day is mostly " + strings.Join(en, " and ") + ".",
+		"Seu dia é feito de " + strings.Join(pt, " e ") + ".",
+	}
 }
 
-func btoi(b bool) int {
-	if b {
-		return 1
-	}
-	return 0
+// fill puts n in the one %d of each language.
+func (t Texts) fill(n int) Texts {
+	return Texts{fmt.Sprintf(t.EnUS, n), fmt.Sprintf(t.PtBR, n)}
 }
 
+// plural picks the singular form for 1 and the plural otherwise. The forms are
+// still templates (their %d is filled by Texts.fill).
 func plural(n int, one, many string) string {
 	if n == 1 {
-		return fmt.Sprintf(one, n)
+		return one
 	}
-	return fmt.Sprintf(many, n)
-}
-
-func count(ts []Task, f func(Task) bool) int {
-	n := 0
-	for _, t := range ts {
-		if f(t) {
-			n++
-		}
-	}
-	return n
+	return many
 }
