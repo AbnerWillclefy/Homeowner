@@ -25,8 +25,7 @@ export type ReplanEvent =
   | { type: "press"; before: string; now: number }
   | { type: "answered"; result: ReplanResult }
   | { type: "polled"; result: DayPlanResult; now: number }
-  | { type: "tick"; now: number }
-  | { type: "unmount" };
+  | { type: "tick"; now: number };
 
 /** The identity of the run behind a plan; "" when there is none. */
 export function runIdOf(plan: DayPlan | undefined): string {
@@ -65,18 +64,19 @@ export function replanReducer(state: ReplanState, event: ReplanEvent, timeoutMs 
     }
     case "tick":
       return state.kind === "waiting" && event.now - state.startedAt >= timeoutMs ? { kind: "timedOut" } : state;
-    case "unmount":
-      return { kind: "idle" };
   }
 }
 
-const FALLBACK_KEYS = {
-  llm_daily_cap_reached: "dayplan.replan.fallback.llm_daily_cap_reached",
-  llm_error: "dayplan.replan.fallback.llm_error",
-  llm_timeout: "dayplan.replan.fallback.llm_timeout",
-  llm_invalid_response: "dayplan.replan.fallback.llm_invalid_response",
-  llm_rejected_by_checker: "dayplan.replan.fallback.llm_rejected_by_checker",
-} as const satisfies Record<string, MessageKey>;
+const FALLBACK_REASONS = [
+  "llm_daily_cap_reached",
+  "llm_error",
+  "llm_timeout",
+  "llm_invalid_response",
+  "llm_rejected_by_checker",
+] as const;
+
+const isKnownReason = (reason: string): reason is (typeof FALLBACK_REASONS)[number] =>
+  (FALLBACK_REASONS as readonly string[]).includes(reason);
 
 /**
  * The calm status line for a state, or null when there is none. A failure is not here: it is an alert, with the
@@ -91,8 +91,8 @@ export function replanStatusKey(state: ReplanState): MessageKey | null {
       return "dayplan.replan.timedOut";
     case "done":
       if (state.fallbackReason) {
-        return Object.hasOwn(FALLBACK_KEYS, state.fallbackReason)
-          ? FALLBACK_KEYS[state.fallbackReason as keyof typeof FALLBACK_KEYS]
+        return isKnownReason(state.fallbackReason)
+          ? `dayplan.replan.fallback.${state.fallbackReason}`
           : "dayplan.replan.fallback.unknown";
       }
       return state.allocator === "llm" ? "dayplan.replan.done.llm" : "dayplan.replan.done.baseline";

@@ -11,13 +11,13 @@ import { ReplanButton } from "./ReplanButton";
 
 const translate = createTranslate({ "en-US": enUS, "pt-BR": ptBR });
 
-function render(state: ReplanState, locale: Locale = "en-US", enabled = true): string {
+function render(state: ReplanState, locale: Locale = "en-US"): string {
   const i18n = { locale, setLocale: () => {}, t: (key: string, params?: never) => translate(locale, key, params) };
   return renderToStaticMarkup(
     createElement(
       I18nContext.Provider,
       { value: i18n as never },
-      createElement(ReplanButton, { enabled, state, onPress: () => {} }),
+      createElement(ReplanButton, { state, onPress: () => {} }),
     ),
   );
 }
@@ -28,10 +28,6 @@ const IDLE: ReplanState = { kind: "idle" };
 const WAITING: ReplanState = { kind: "waiting", before: "run-1", startedAt: 0 };
 
 describe("ReplanButton", () => {
-  it("renders nothing when the flag is off", () => {
-    for (const state of [IDLE, WAITING]) expect(render(state, "en-US", false)).toBe("");
-  });
-
   it.each([
     ["en-US", "Replan now"],
     ["pt-BR", "Replanejar agora"],

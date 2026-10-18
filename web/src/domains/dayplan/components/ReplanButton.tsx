@@ -6,8 +6,6 @@ import { ACTION_FAILURE_KEY } from "../logic/failureMessages";
 import { isReplanBusy, replanStatusKey, type ReplanState } from "../logic/replan";
 
 interface Props {
-  /** The build flag `VITE_REPLAN_ENABLED`. Off means nothing is rendered, not even an empty box. */
-  enabled: boolean;
   state: ReplanState;
   onPress(): void;
 }
@@ -18,9 +16,8 @@ interface Props {
  * result. A failed request is an alert and the button is usable again. Nothing here asks the Resident to accept
  * anything. The status region is always in the page so a screen reader speaks what is put into it.
  */
-export function ReplanButton({ enabled, state, onPress }: Props) {
+export function ReplanButton({ state, onPress }: Props) {
   const { t } = useI18n();
-  if (!enabled) return null;
   const statusKey = replanStatusKey(state);
   return (
     <div className="mb-6">

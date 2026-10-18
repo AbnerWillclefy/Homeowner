@@ -139,10 +139,6 @@ describe("replanReducer", () => {
     expect(run([{ type: "polled", result: ok({ runId: "x" }), now: 1 }])).toEqual(IDLE);
     expect(run([{ type: "tick", now: 1e9 }])).toEqual(IDLE);
   });
-
-  it("unmount stops everything", () => {
-    expect(run([PRESS, SENT, { type: "unmount" }])).toEqual(IDLE);
-  });
 });
 
 describe("isReplanBusy", () => {

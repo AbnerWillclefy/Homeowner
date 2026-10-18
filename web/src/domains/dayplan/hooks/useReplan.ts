@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getDayPlan, replanHome, type DayPlan } from "../api/api";
-import { isReplanBusy, type ReplanState } from "../logic/replan";
+import type { ReplanState } from "../logic/replan";
 import { createReplanner } from "../logic/replanner";
 
 /**
@@ -30,5 +30,5 @@ export function useReplan(runId: string, show: (plan: DayPlan) => void) {
 
   const press = useCallback(() => replanner.current?.press(latest.current.runId), []);
 
-  return { state, busy: isReplanBusy(state), press };
+  return { state, press };
 }

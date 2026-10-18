@@ -15,5 +15,5 @@ export function ReplanControl({ plan, show }: { plan: DayPlan | undefined; show(
 
 function ActiveReplan({ plan, show }: { plan: DayPlan | undefined; show(plan: DayPlan): void }) {
   const { state, press } = useReplan(runIdOf(plan), show);
-  return <ReplanButton enabled state={state} onPress={press} />;
+  return <ReplanButton state={state} onPress={press} />;
 }
