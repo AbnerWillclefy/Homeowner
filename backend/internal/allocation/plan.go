@@ -42,6 +42,14 @@ func peopleNeeded(t Task) int {
 	return 1
 }
 
+// Eligible reports whether the Resident may be given the Task on the day by
+// the hard rules that do not depend on Energy: the Task's weekday and the
+// Resident's Restrictions. It reuses the helpers Plan and Check use, so the
+// three cannot disagree.
+func Eligible(r Resident, t Task, day Date) bool {
+	return weekdayAllowed(t, day) && !restricted(r, t)
+}
+
 func restricted(r Resident, t Task) bool {
 	_, d, c := breaksRestriction(r, t)
 	return d || c
