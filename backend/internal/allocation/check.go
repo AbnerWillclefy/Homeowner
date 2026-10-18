@@ -58,7 +58,7 @@ func Check(p DayPlan, s State) []Violation {
 			counted[k] = true
 			used[r.ID] += t.Effort
 		}
-		if !weekdayAllowed(t, s.Today) {
+		if !WeekdayAllowed(t, s.Today) {
 			out = append(out, Violation{Kind: WeekdayNotAllowed, TaskID: t.ID, ResidentID: r.ID,
 				Detail: fmt.Sprintf("chore %q may not be done on weekday %d", t.ChoreID, s.Today.Weekday())})
 		}
@@ -76,7 +76,7 @@ func Check(p DayPlan, s State) []Violation {
 	for id, n := range appearances {
 		need := 1
 		if t, known := tasks[id]; known {
-			need = peopleNeeded(t)
+			need = PeopleNeeded(t)
 		}
 		if v, broken := countViolation(id, need, len(named[id]), n); broken {
 			out = append(out, v)
