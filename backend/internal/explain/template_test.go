@@ -7,25 +7,14 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"unicode/utf8"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/explain"
 )
 
-// The most characters a headline and a detail may have in one language.
-const (
-	maxHeadline = 120
-	maxDetail   = 280
-)
-
 // withinLimits reports whether the headline and the detail each pass the text
-// rules of explain.Valid and stay within their own limit.
-func withinLimits(s explain.Summary) bool {
-	return explain.Valid(s.Headline) && explain.Valid(s.Detail) &&
-		utf8.RuneCountInString(s.Headline.EnUS) <= maxHeadline && utf8.RuneCountInString(s.Headline.PtBR) <= maxHeadline &&
-		utf8.RuneCountInString(s.Detail.EnUS) <= maxDetail && utf8.RuneCountInString(s.Detail.PtBR) <= maxDetail
-}
+// rules and stay within their own limit.
+func withinLimits(s explain.Summary) bool { return explain.ValidSummary(s) }
 
 func tasks(n int, reason string, effort, people int) []explain.Task {
 	out := make([]explain.Task, n)

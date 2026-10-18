@@ -9,8 +9,8 @@ import (
 
 func TestFingerprintIsOrderIndependent(t *testing.T) {
 	t.Parallel()
-	a := explain.Fingerprint(4, []explain.Pair{{TaskID: "t1", Reason: "importance"}, {TaskID: "t2", Reason: "liked"}})
-	b := explain.Fingerprint(4, []explain.Pair{{TaskID: "t2", Reason: "liked"}, {TaskID: "t1", Reason: "importance"}})
+	a := explain.Fingerprint(4, "", []explain.Pair{{TaskID: "t1", Reason: "importance"}, {TaskID: "t2", Reason: "liked"}})
+	b := explain.Fingerprint(4, "", []explain.Pair{{TaskID: "t2", Reason: "liked"}, {TaskID: "t1", Reason: "importance"}})
 	if a != b || a == "" {
 		t.Fatalf("a = %q, b = %q", a, b)
 	}
@@ -19,15 +19,17 @@ func TestFingerprintIsOrderIndependent(t *testing.T) {
 func TestFingerprintChangesWithAnyPairOrEnergy(t *testing.T) {
 	t.Parallel()
 	base := []explain.Pair{{TaskID: "t1", Reason: "importance"}}
-	want := explain.Fingerprint(4, base)
+	want := explain.Fingerprint(4, "", base)
 	for name, got := range map[string]string{
-		"energy": explain.Fingerprint(3, base),
-		"reason": explain.Fingerprint(4, []explain.Pair{{TaskID: "t1", Reason: "taken"}}),
-		"task":   explain.Fingerprint(4, []explain.Pair{{TaskID: "t2", Reason: "importance"}}),
-		"extra":  explain.Fingerprint(4, append(append([]explain.Pair{}, base...), explain.Pair{TaskID: "t2", Reason: "x"})),
-		"none":   explain.Fingerprint(4, nil),
+		"energy": explain.Fingerprint(3, "", base),
+		"reason": explain.Fingerprint(4, "", []explain.Pair{{TaskID: "t1", Reason: "taken"}}),
+		"task":   explain.Fingerprint(4, "", []explain.Pair{{TaskID: "t2", Reason: "importance"}}),
+		"extra":  explain.Fingerprint(4, "", append(append([]explain.Pair{}, base...), explain.Pair{TaskID: "t2", Reason: "x"})),
+		"none":   explain.Fingerprint(4, "", nil),
+		// the Check-in level changes what the text must say, so it changes the print
+		"checkin": explain.Fingerprint(4, explain.CheckinLow, base),
 		// a shifted boundary between task and reason must not collide
-		"shift": explain.Fingerprint(4, []explain.Pair{{TaskID: "t", Reason: "1importance"}}),
+		"shift": explain.Fingerprint(4, "", []explain.Pair{{TaskID: "t", Reason: "1importance"}}),
 	} {
 		if got == want {
 			t.Errorf("%s: fingerprint did not change", name)
@@ -38,9 +40,37 @@ func TestFingerprintChangesWithAnyPairOrEnergy(t *testing.T) {
 func TestFingerprintDoesNotReorderTheCallersSlice(t *testing.T) {
 	t.Parallel()
 	ps := []explain.Pair{{TaskID: "b"}, {TaskID: "a"}}
-	explain.Fingerprint(1, ps)
+	explain.Fingerprint(1, "", ps)
 	if ps[0].TaskID != "b" {
 		t.Fatal("the caller's slice was sorted")
+	}
+}
+
+func TestValidSummaryChecksEachPartAgainstItsOwnLimit(t *testing.T) {
+	t.Parallel()
+	head := explain.Texts{EnUS: "A light day.", PtBR: "Dia leve."}
+	detail := explain.Texts{EnUS: "You have two tasks.", PtBR: "Você tem duas tarefas."}
+	long := func(n int) explain.Texts {
+		return explain.Texts{EnUS: strings.Repeat("a", n), PtBR: strings.Repeat("ã", n)}
+	}
+	for name, tc := range map[string]struct {
+		s  explain.Summary
+		ok bool
+	}{
+		"plain":             {explain.Summary{Headline: head, Detail: detail}, true},
+		"headline at limit": {explain.Summary{Headline: long(120), Detail: detail}, true},
+		"headline over":     {explain.Summary{Headline: long(121), Detail: detail}, false},
+		"detail at limit":   {explain.Summary{Headline: head, Detail: long(280)}, true},
+		"detail over":       {explain.Summary{Headline: head, Detail: long(281)}, false},
+		"blank headline":    {explain.Summary{Headline: explain.Texts{EnUS: " ", PtBR: head.PtBR}, Detail: detail}, false},
+		"missing detail":    {explain.Summary{Headline: head}, false},
+		"markup in detail":  {explain.Summary{Headline: head, Detail: explain.Texts{EnUS: "<b>x</b>", PtBR: detail.PtBR}}, false},
+		"link in headline":  {explain.Summary{Headline: explain.Texts{EnUS: head.EnUS, PtBR: "veja https://x.y"}, Detail: detail}, false},
+		"newline in detail": {explain.Summary{Headline: head, Detail: explain.Texts{EnUS: "a\nb", PtBR: detail.PtBR}}, false},
+	} {
+		if got := explain.ValidSummary(tc.s); got != tc.ok {
+			t.Errorf("%s: got %v, want %v", name, got, tc.ok)
+		}
 	}
 }
 

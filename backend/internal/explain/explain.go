@@ -91,6 +91,24 @@ func Valid(t Texts) bool {
 	return validText(t.EnUS) && validText(t.PtBR)
 }
 
+// The most characters a headline and a detail may have in one language.
+const (
+	MaxHeadline = 120
+	MaxDetail   = 280
+)
+
+// ValidSummary reports whether both parts of the summary are fit to show: each
+// passes Valid and stays within its own limit (MaxHeadline, MaxDetail). It is
+// the check on model prose; the template is held to the same limits by its tests.
+func ValidSummary(s Summary) bool {
+	return Valid(s.Headline) && Valid(s.Detail) &&
+		within(s.Headline, MaxHeadline) && within(s.Detail, MaxDetail)
+}
+
+func within(t Texts, limit int) bool {
+	return utf8.RuneCountInString(t.EnUS) <= limit && utf8.RuneCountInString(t.PtBR) <= limit
+}
+
 // linkMarkers are what makes a text a link: "//" is a scheme separator
 // ("https://x") or a scheme-relative URL, "www." a host. It is a denylist, so a
 // bare domain ("example.com") passes; the PWA renders the text as plain text,
@@ -116,10 +134,11 @@ func validText(s string) bool {
 // Pair is one assignment as the fingerprint sees it.
 type Pair struct{ TaskID, Reason string }
 
-// Fingerprint identifies the Energy and assignments an explanation was written
-// for. It does not depend on the order of pairs, and it changes when any pair
-// or the Energy does. The caller's slice is left as it is.
-func Fingerprint(energy int, pairs []Pair) string {
+// Fingerprint identifies the Energy, Check-in level and assignments an
+// explanation was written for. It does not depend on the order of pairs, and it
+// changes when any pair, the level or the Energy does. The caller's slice is
+// left as it is.
+func Fingerprint(energy int, checkin string, pairs []Pair) string {
 	sorted := slices.Clone(pairs)
 	slices.SortFunc(sorted, func(a, b Pair) int {
 		if c := strings.Compare(a.TaskID, b.TaskID); c != 0 {
@@ -128,7 +147,7 @@ func Fingerprint(energy int, pairs []Pair) string {
 		return strings.Compare(a.Reason, b.Reason)
 	})
 	h := sha256.New()
-	h.Write([]byte(strconv.Itoa(energy)))
+	h.Write([]byte(strconv.Itoa(energy) + "#" + checkin))
 	for _, p := range sorted {
 		// Length-prefixed, so no two different lists make the same bytes.
 		h.Write([]byte("|" + strconv.Itoa(len(p.TaskID)) + ":" + p.TaskID + strconv.Itoa(len(p.Reason)) + ":" + p.Reason))
