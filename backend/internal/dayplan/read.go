@@ -48,6 +48,10 @@ type View struct {
 	Rejected bool `json:"rejected"`
 	// Allocator names who made the plan; empty before the day is planned.
 	Allocator string `json:"allocator"`
+	// FallbackReason is why the baseline planned instead of the LLM allocator,
+	// one of the fallbackReason ids; absent when there was no fallback and
+	// before the day is planned.
+	FallbackReason string `json:"fallbackReason,omitempty"`
 	// Energy is the caller's Energy the plan was made with; null before the
 	// plan, and 0 when they have no Baseline for the weekday.
 	Energy *int `json:"energy"`
@@ -150,7 +154,7 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 		}
 		return v, nil
 	}
-	v.Allocator = run.allocator
+	v.Allocator, v.FallbackReason = run.allocator, run.fallbackReason
 	v.Planned, v.Rejected = run.outcome == string(Planned), run.outcome == string(Rejected)
 
 	rs := run.reasons
@@ -226,9 +230,9 @@ type assignment struct {
 // dayRun is a Home's stored run for a date: who made it, what came of it, the
 // reasons it recorded and the assignments.
 type dayRun struct {
-	id, allocator, outcome string
-	reasons                reasons
-	assigned               []assignment
+	id, allocator, outcome, fallbackReason string
+	reasons                                reasons
+	assigned                               []assignment
 }
 
 // readRun reads the Home's run for the date, or reports that there is none.
@@ -238,8 +242,8 @@ func readRun(ctx context.Context, q reader, homeID string, date time.Time) (dayR
 		raw []byte
 	)
 	err := q.QueryRow(ctx, `
-		SELECT id, allocator, outcome, reasons FROM allocation_runs WHERE home_id = $1 AND plan_date = $2`,
-		homeID, date).Scan(&run.id, &run.allocator, &run.outcome, &raw)
+		SELECT id, allocator, outcome, COALESCE(fallback_reason, ''), reasons FROM allocation_runs WHERE home_id = $1 AND plan_date = $2`,
+		homeID, date).Scan(&run.id, &run.allocator, &run.outcome, &run.fallbackReason, &raw)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return dayRun{}, false, nil
 	}
