@@ -42,12 +42,14 @@ export function createReplanner(deps: ReplannerDeps) {
     pollTimer = limitTimer = undefined;
   }
 
-  function dispatch(event: ReplanEvent) {
+  /** Applies the event and returns the state after it. */
+  function dispatch(event: ReplanEvent): ReplanState {
     const next = replanReducer(state, event, timeoutMs);
-    if (next === state) return;
+    if (next === state) return state;
     state = next;
-    if (state.kind !== "sending" && state.kind !== "waiting") clearTimers();
-    deps.onChange(state);
+    if (next.kind !== "sending" && next.kind !== "waiting") clearTimers();
+    deps.onChange(next);
+    return next;
   }
 
   /** True while the answer for `mine` is still wanted: not disposed and no newer attempt. */
@@ -57,9 +59,9 @@ export function createReplanner(deps: ReplannerDeps) {
     pollTimer = setTimeout(async () => {
       const result = await deps.readPlan();
       if (!current(mine) || state.kind !== "waiting") return;
-      dispatch({ type: "polled", result, now: now() });
-      if (state.kind === "done" && result.kind === "ok") deps.onPlan(result.plan);
-      else if (state.kind === "waiting") schedulePoll(mine);
+      const next = dispatch({ type: "polled", result, now: now() });
+      if (next.kind === "done" && result.kind === "ok") deps.onPlan(result.plan);
+      else if (next.kind === "waiting") schedulePoll(mine);
     }, pollMs);
   }
 
@@ -73,9 +75,7 @@ export function createReplanner(deps: ReplannerDeps) {
       limitTimer = setTimeout(() => current(mine) && dispatch({ type: "tick", now: now() }), timeoutMs);
       void deps.replan().then((result) => {
         if (!current(mine)) return;
-        dispatch({ type: "answered", result });
-        if (state.kind !== "waiting") return;
-        schedulePoll(mine);
+        if (dispatch({ type: "answered", result }).kind === "waiting") schedulePoll(mine);
       });
     },
     dispose() {

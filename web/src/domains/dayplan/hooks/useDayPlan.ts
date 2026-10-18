@@ -132,5 +132,10 @@ export function useDayPlan(version: number) {
   const run = useCallback((action: TaskAction, task: PlanTask) => void act(() => CALLS[action](task.id)), [act]);
   const acceptAll = useCallback(() => void act(acceptAllCall), [act]);
 
-  return { state, reload, run, acceptAll, acting, notice, settled };
+  /** Shows a plan that was read elsewhere, without the loading state: the lists update in place. */
+  const show = useCallback((plan: DayPlan) => {
+    if (mounted.current) setState({ kind: "ready", plan });
+  }, []);
+
+  return { state, reload, run, acceptAll, acting, notice, settled, show };
 }
