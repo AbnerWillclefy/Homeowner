@@ -48,6 +48,9 @@ type Config struct {
 	LLMDailyCapPerHome int
 	// LLMTimeout bounds one LLM call.
 	LLMTimeout time.Duration
+	// ReplanEnabled lets the Allocation function replan one Home on request
+	// (REPLAN_ENABLED). Off by default; only staging switches it on.
+	ReplanEnabled bool
 }
 
 // AuthEnabled reports whether sign-in is configured.
@@ -117,6 +120,13 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	if err := loadLLM(getenv, &c); err != nil {
 		return Config{}, err
+	}
+	if v := getenv("REPLAN_ENABLED"); v != "" {
+		b, err := strconv.ParseBool(v)
+		if err != nil {
+			return Config{}, fmt.Errorf("REPLAN_ENABLED: %w", err)
+		}
+		c.ReplanEnabled = b
 	}
 	return c, nil
 }
