@@ -55,9 +55,9 @@ function perRoom(count: number, make: (instance: number | null) => Proposal): Pr
 /**
  * The proposals for the answers: small, deterministic and driven by the answers, so what a spec types changes what
  * comes back. Not the real Catalog; the ids are real ones the app has names for. The names are English fallback
- * text, because the app builds the shown name from `catalogId`.
+ * text (`name`), because the app builds the shown name from `catalogId` and `instance`.
  */
-function propose(body: AnswersBody): Proposal[] {
+export function propose(body: AnswersBody): Proposal[] {
   const rooms = body.rooms;
   const proposals: Proposal[] = [];
   proposals.push(
@@ -97,5 +97,3 @@ export function catalogHandlers(api: FakeApi): void {
     }),
   );
 }
-
-export { propose as proposalsFor };
