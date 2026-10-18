@@ -1,5 +1,6 @@
 import { test as base, expect } from "@playwright/test";
-import { apiBaseUrl } from "./env";
+import { apiBaseUrl, cognitoClientId, cognitoRegion, passwordPolicy } from "./env";
+import { createFakeCognito, type FakeCognito } from "./mocks/cognito";
 import { createFakeApi, initialState, type FakeApi, type FakeState } from "./mocks/api";
 import { createRouter, type Router } from "./mocks/router";
 
@@ -8,6 +9,8 @@ interface Fixtures {
   router: Router;
   /** The stateful fake API, started for every test (every screen calls /healthz). Destructure it to read the state or request log. */
   fakeApi: FakeApi;
+  /** The fake Cognito. Not automatic: only specs that sign up or sign in ask for it, so any other Cognito call stays unmocked. */
+  fakeCognito: FakeCognito;
 }
 
 interface Options {
@@ -42,6 +45,12 @@ export const test = base.extend<Fixtures & Options>({
     },
     { auto: true },
   ],
+
+  fakeCognito: async ({ router }, use) => {
+    const cognito = createFakeCognito({ region: cognitoRegion, clientId: cognitoClientId, policy: passwordPolicy });
+    router.add(cognito);
+    await use(cognito);
+  },
 });
 
 export { expect };
