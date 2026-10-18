@@ -447,21 +447,16 @@ func TestADrainedCheckInAfterTheLLMTextShowsTheRestSummary(t *testing.T) {
 	}
 }
 
-// A Normal or Energized Check-in does not change the wording, so the stored
-// text stays.
-func TestANormalOrEnergizedCheckInKeepsTheLLMText(t *testing.T) {
+// A Normal Check-in keeps the Energy and the wording, so the stored text
+// stays. Energized raises the Energy, which can change the wording.
+func TestANormalCheckInKeepsTheLLMText(t *testing.T) {
 	t.Parallel()
-	for _, level := range []string{"normal", "energized"} {
-		t.Run(level, func(t *testing.T) {
-			t.Parallel()
-			h := newExHome(t)
-			h.expl.Answer(say(item(h.ra, "Alpha text."), item(h.rb, "Bravo text.")))
-			h.app.RunAllocation(t)
-			apitest.CheckIn(t, h.a, level)
-			if source, _, _ := summaryOf(t, h.a); source != "llm" {
-				t.Errorf("after a %s check-in a has %q, want llm", level, source)
-			}
-		})
+	h := newExHome(t)
+	h.expl.Answer(say(item(h.ra, "Alpha text."), item(h.rb, "Bravo text.")))
+	h.app.RunAllocation(t)
+	apitest.CheckIn(t, h.a, "normal")
+	if source, _, _ := summaryOf(t, h.a); source != "llm" {
+		t.Errorf("after a normal check-in a has %q, want llm", source)
 	}
 }
 
