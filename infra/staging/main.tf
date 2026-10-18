@@ -74,9 +74,14 @@ module "api" {
   timeout         = 25
   ssm_path_prefix = local.ssm_prefix
 
+  # Staging only (#199): the dev replan route invokes the allocation function.
+  # Exactly its ARN, nothing broader; production passes nothing.
+  invoke_function_arns = [module.allocation_job.function_arn]
+
   environment = merge(
     {
       PORT                           = "8080"
+      REPLAN_ALLOCATE_FUNCTION_NAME  = module.allocation_job.function_name
       DB_MAX_CONNS                   = "2"
       CORS_ALLOWED_ORIGINS           = join(",", compact(["https://${module.web.domain_name}", var.cors_allowed_origins]))
       DATABASE_URL_SSM_PARAM         = module.database.database_url_param
@@ -127,6 +132,11 @@ module "allocation_job" {
       # default pass-through path); it is told explicitly where to check
       # readiness, since "/" is not served by the job.
       AWS_LWA_READINESS_CHECK_PATH = "/healthz"
+
+      # Lets the job accept a replan event from the API (#197). Hard-coded:
+      # staging is the only environment where it is ever on, so there is no
+      # variable and no repository variable to set.
+      REPLAN_ENABLED = "true"
     },
     # The same VAPID settings as the API (#25): the tick sends the Check-in
     # reminder and "Day Plan ready" pushes. Without the public key the job only
@@ -144,6 +154,14 @@ module "allocation_job" {
       ANTHROPIC_API_KEY_SSM_PARAM = "${local.ssm_prefix}/anthropic-api-key"
     } : {},
   )
+}
+
+# A replan is an asynchronous invoke from the API (#198). Lambda would retry a
+# failed one twice by default, replanning a Home again, so turn retries off.
+# Here rather than in the shared module so production is untouched.
+resource "aws_lambda_function_event_invoke_config" "allocate_replan" {
+  function_name          = module.allocation_job.function_name
+  maximum_retry_attempts = 0
 }
 
 module "http_api" {
