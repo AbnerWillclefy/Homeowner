@@ -152,13 +152,10 @@ func TestWhenEveryTaskIsPooledInGoTheModelIsNotCalled(t *testing.T) {
 func TestAnAnswerForAnIneligibleResidentIsStillRefused(t *testing.T) {
 	st := state()
 	st.Tasks[0].AllowedWeekdays = []int{(st.Today.Weekday() + 1) % 7} // t1 blocked today
-	fake := llmalloc.NewFakeClient()
-	fake.Answer(`{"assignments": [
+	res, err := proposeWithAnswer(t, st, `{"assignments": [
 		{"task_id": "t1", "resident_id": "r1", "reason": "importance"},
 		{"task_id": "t3", "resident_id": "r1", "reason": "importance"}
 	], "pool": [{"task_id": "t1", "reason": "weekday_not_allowed"}]}`)
-
-	res, err := llmalloc.New(fake).Propose(context.Background(), st)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,17 +193,18 @@ func TestEveryTaskAppearsOnce(t *testing.T) {
 			"pool": [{"task_id": "t1", "reason": "no_energy_left"}]}`,
 		"model says nothing": `{"assignments": [], "pool": []}`,
 	} {
-		res, err := propose2(t, st, answer)
+		res, err := proposeWithAnswer(t, st, answer)
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
-		seen := map[string]int{}
+		// A two-person Task has two assignments but counts once.
 		assigned := map[string]bool{}
+		seen := map[string]int{}
 		for _, a := range res.DayPlan.Assignments {
-			assigned[a.TaskID] = true
-		}
-		for id := range assigned {
-			seen[id]++
+			if !assigned[a.TaskID] {
+				assigned[a.TaskID] = true
+				seen[a.TaskID]++
+			}
 		}
 		for _, p := range res.Pool {
 			seen[p.TaskID]++
@@ -224,7 +222,7 @@ func TestEveryTaskAppearsOnce(t *testing.T) {
 	}
 }
 
-func propose2(t *testing.T, st allocation.State, answer string) (allocation.Result, error) {
+func proposeWithAnswer(t *testing.T, st allocation.State, answer string) (allocation.Result, error) {
 	t.Helper()
 	fake := llmalloc.NewFakeClient()
 	fake.Answer(answer)

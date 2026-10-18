@@ -85,10 +85,11 @@ func maxTokens(n int) int { return min(thinkingAllowance+answerTokensPerTask*n, 
 // ErrInvalidResponse. A well-formed plan may still break every rule: only
 // allocation.Check decides.
 func (a *Allocator) Propose(ctx context.Context, st allocation.State) (allocation.Result, error) {
-	in, pooled := inputOf(st)
-	if len(in.Tasks) == 0 {
+	open, pooled := screen(st)
+	if len(open) == 0 {
 		return build(nil, nil, st, pooled), nil
 	}
+	in := inputOf(st, open)
 	user, err := json.Marshal(in)
 	if err != nil {
 		return allocation.Result{}, fmt.Errorf("llm: build prompt: %w", err)
@@ -193,14 +194,41 @@ type taskInput struct {
 	Eligible    []string              `json:"eligible"`
 }
 
-// inputOf builds what the model sees, and the entries Go pooled itself, in
-// the baseline's order of checks: weekday not allowed, then too few eligible
-// Residents (counted over all Residents, not only those with Energy). A Task
-// with Effort below 1 still goes to the model, as before. Energy is not
-// filtered here: over_energy is the model's job and the referee's.
-func inputOf(st allocation.State) (input, []allocation.PoolEntry) {
+// screen decides in Go what the model must not. It returns the Tasks the model
+// may place, each with its eligible Residents, and the entries it pooled
+// itself, in the baseline's order of checks: weekday not allowed, then too few
+// eligible Residents (counted over all Residents, not only those with
+// Energy). A Task with Effort below 1 still goes to the model, as before.
+// Energy is not filtered here: over_energy is the model's job and the
+// referee's.
+func screen(st allocation.State) (open []taskInput, pooled []allocation.PoolEntry) {
+	for _, t := range st.Tasks {
+		if !allocation.WeekdayAllowed(t, st.Today) {
+			pooled = append(pooled, allocation.PoolEntry{TaskID: t.ID, Reason: allocation.ReasonWeekdayNotAllowed})
+			continue
+		}
+		var eligible []string
+		for _, r := range st.Residents {
+			if allocation.Eligible(r, t, st.Today) {
+				eligible = append(eligible, r.ID)
+			}
+		}
+		if len(eligible) < allocation.PeopleNeeded(t) {
+			pooled = append(pooled, allocation.PoolEntry{TaskID: t.ID, Reason: allocation.ReasonRestrictedForAll})
+			continue
+		}
+		slices.Sort(eligible)
+		open = append(open, taskInput{ID: t.ID, ChoreID: t.ChoreID, Effort: t.Effort, Importance: t.Importance,
+			People: t.People, WindowStart: day(t.WindowStart), WindowEnd: day(t.WindowEnd), Eligible: eligible})
+	}
+	return open, pooled
+}
+
+// inputOf formats what the model sees: the Residents of st and the open Tasks
+// that screen let through.
+func inputOf(st allocation.State, open []taskInput) input {
 	in := input{Today: day(st.Today), Weekday: st.Today.Weekday(),
-		Residents: []residentInput{}, Tasks: []taskInput{}}
+		Residents: []residentInput{}, Tasks: open}
 	for _, r := range st.Residents {
 		ri := residentInput{ID: r.ID, Energy: r.Energy}
 		for chore, p := range r.Preferences {
@@ -220,27 +248,7 @@ func inputOf(st allocation.State) (input, []allocation.PoolEntry) {
 		}
 		in.Residents = append(in.Residents, ri)
 	}
-	var pooled []allocation.PoolEntry
-	for _, t := range st.Tasks {
-		if !allocation.WeekdayAllowed(t, st.Today) {
-			pooled = append(pooled, allocation.PoolEntry{TaskID: t.ID, Reason: allocation.ReasonWeekdayNotAllowed})
-			continue
-		}
-		var eligible []string
-		for _, r := range st.Residents {
-			if allocation.Eligible(r, t, st.Today) {
-				eligible = append(eligible, r.ID)
-			}
-		}
-		if len(eligible) < allocation.PeopleNeeded(t) {
-			pooled = append(pooled, allocation.PoolEntry{TaskID: t.ID, Reason: allocation.ReasonRestrictedForAll})
-			continue
-		}
-		slices.Sort(eligible)
-		in.Tasks = append(in.Tasks, taskInput{ID: t.ID, ChoreID: t.ChoreID, Effort: t.Effort, Importance: t.Importance,
-			People: t.People, WindowStart: day(t.WindowStart), WindowEnd: day(t.WindowEnd), Eligible: eligible})
-	}
-	return in, pooled
+	return in
 }
 
 func day(d allocation.Date) string { return d.Time().Format(time.DateOnly) }
@@ -290,28 +298,32 @@ func decode(raw json.RawMessage, st allocation.State, goPooled []allocation.Pool
 		assignments = append(assignments,
 			allocation.Assignment{TaskID: as.TaskID, ResidentID: as.ResidentID, Reason: as.Reason})
 	}
-	modelPool := map[string]allocation.Reason{}
+	reasons := map[string]allocation.Reason{}
 	for _, p := range *a.Pool {
 		if p.TaskID == "" || !slices.Contains(PoolReasons, p.Reason) {
 			return allocation.Result{}, fmt.Errorf("%w: bad pool entry %+v", ErrInvalidResponse, p)
 		}
-		modelPool[p.TaskID] = p.Reason
+		reasons[p.TaskID] = p.Reason
 	}
-	return build(assignments, modelPool, st, goPooled), nil
+	return build(assignments, reasons, st, goPooled), nil
 }
 
 // build makes the complete Result: the assignments as given, and every Task of
 // st that is not assigned in the pool, in st's order. A pooled Task takes the
 // reason Go gave it, else the model's, else no_energy_left.
-func build(assignments []allocation.Assignment, modelPool map[string]allocation.Reason, st allocation.State, goPooled []allocation.PoolEntry) allocation.Result {
-	res := allocation.Result{DayPlan: allocation.DayPlan{Assignments: []allocation.Assignment{}}}
-	res.DayPlan.Assignments = append(res.DayPlan.Assignments, assignments...)
+func build(assignments []allocation.Assignment, reasons map[string]allocation.Reason, st allocation.State, goPooled []allocation.PoolEntry) allocation.Result {
+	if assignments == nil {
+		assignments = []allocation.Assignment{} // the JSON stays []
+	}
+	res := allocation.Result{DayPlan: allocation.DayPlan{Assignments: assignments}}
 	assigned := map[string]bool{}
 	for _, as := range assignments {
 		assigned[as.TaskID] = true
 	}
-	reasons := map[string]allocation.Reason{}
-	for _, p := range goPooled {
+	if reasons == nil {
+		reasons = map[string]allocation.Reason{}
+	}
+	for _, p := range goPooled { // Go's reason wins over the model's
 		reasons[p.TaskID] = p.Reason
 	}
 	for _, t := range st.Tasks {
@@ -319,9 +331,6 @@ func build(assignments []allocation.Assignment, modelPool map[string]allocation.
 			continue
 		}
 		reason, ok := reasons[t.ID]
-		if !ok {
-			reason, ok = modelPool[t.ID]
-		}
 		if !ok {
 			reason = allocation.ReasonNoEnergyLeft
 		}
