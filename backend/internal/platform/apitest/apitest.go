@@ -29,6 +29,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/db"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/replan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/server"
 )
 
@@ -98,6 +99,12 @@ func WithPush(publicKey string) Option {
 		d.Push = push.NewFake()
 		d.VAPIDPublicKey = publicKey
 	}
+}
+
+// WithReplanner switches the staging-only POST /dev/replan route on, backed by r
+// (usually a *replan.Fake).
+func WithReplanner(r replan.Replanner) Option {
+	return func(d *server.Deps) { d.Replanner = r }
 }
 
 // WithoutAuth leaves the token verifier unconfigured (nil), so routes that
