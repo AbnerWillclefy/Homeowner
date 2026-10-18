@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -184,6 +185,50 @@ func TestAProposalTheCheckerRefusesFallsBackToTheBaseline(t *testing.T) {
 				t.Fatalf("assignments = %v, want the baseline's %v", r.assignments, want)
 			}
 		})
+	}
+}
+
+// The model is not trusted to honour the weekday or a Restriction: the Go
+// filter keeps such a Task out of its input, but an answer that gives it to a
+// Resident anyway is refused by Check and the Home gets the baseline's plan.
+func TestAnAnswerBreakingAWeekdayRuleFallsBackToTheBaseline(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	apitest.SetBaseline(t, a, map[string]any{"tuesday": 4, "wednesday": 4})
+	apitest.AtDay(app, 3) // Tuesday: both Tasks open
+	apitest.CreateChore(t, a, apitest.Chore("Dishes", 7, 2, "normal", []string{}))
+	apitest.CreateChore(t, a, apitest.Chore("Garden", 1, 2, "normal", []string{}, 2)) // Tuesdays only
+	if err := tasks.NewStore(app.DB).Refresh(context.Background(), homeIDOf(t, a), app.Clock.Now()); err != nil {
+		t.Fatal(err)
+	}
+	apitest.AtDay(app, 4) // Wednesday: the Garden Task is overdue and forbidden
+	st := loadStateAt(t, app, homeIDOf(t, a), allocation.DateOf(app.Clock.Now()))
+	var garden allocation.Task
+	for _, tk := range st.Tasks {
+		if len(tk.AllowedWeekdays) > 0 {
+			garden = tk
+		}
+	}
+	if garden.ID == "" || len(st.Tasks) < 2 {
+		t.Fatalf("setup: tasks = %+v", st.Tasks)
+	}
+	fake := llmalloc.NewFakeClient()
+	fake.Answer(answer(give(garden, st.Residents[0])))
+	app.UseLLM(llmalloc.New(fake), 3, time.Second)
+
+	if sum := app.RunAllocation(t); sum.Planned != 1 {
+		t.Fatalf("summary = %+v", sum)
+	}
+	r := theRun(t, app)
+	if r.allocator != "baseline" || r.fallback == nil || *r.fallback != "llm_rejected_by_checker" || r.llmViolations == 0 {
+		t.Fatalf("run = %+v", r)
+	}
+	if want := baselinePairs(t, st); !slices.Equal(r.assignments, want) {
+		t.Fatalf("assignments = %v, want the baseline's %v", r.assignments, want)
+	}
+	if strings.Contains(fake.LastRequest().User, garden.ID) {
+		t.Error("the weekday-blocked Task must not be sent to the model")
 	}
 }
 

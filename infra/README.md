@@ -238,14 +238,57 @@ daily Allocation asks the LLM, once per Home and day, and only when there is an
 open Task and a Resident with Energy. Check-ins and "get my tasks right away"
 use the baseline, so test with several Homes, not several presses.
 
-The first staging call (2026-10-15) was refused for `over_energy`: the model
-gave a Resident 19 Effort against 14 Energy. The client
-(`backend/internal/llmalloc/anthropic.go`) sends thinking off and effort
-`low`, which is cheap but weak at summing Effort. If `llm_rejected_by_checker`
-with `over_energy` dominates, the next step is a ticket to turn on adaptive
-thinking (keep effort `low`) and raise `max_tokens` in `Allocator.Propose`
-(`backend/internal/llmalloc/llmalloc.go`), since thinking tokens count against
-it. Then compare the fallback rate and the cost per call.
+**Baseline 2026-10-18** (before the fix of issue #195: thinking off, the model
+given the Restrictions and weekdays to honour itself):
+
+| | Runs | LLM plan refused |
+|---|---|---|
+| Staging | 10 | 7 |
+| Production | 5 | 1 |
+
+Violations across all runs: `broken_restriction` 16, `over_energy` 10,
+`weekday_not_allowed` 2. `over_energy` appeared in 6 of the 8 refused runs.
+
+The fix has two parts. Go now decides what the model must not: a Task not
+allowed today is pooled as `weekday_not_allowed`, a Task with too few eligible
+Residents as `restricted_for_all`, and each Task sent carries an `eligible`
+list (`allocation.Eligible`), so the model no longer sees Restrictions. And the
+client (`backend/internal/llmalloc/anthropic.go`) turns on adaptive thinking
+(effort stays `low`, thinking text omitted) with `max_tokens` = 4096 thinking
+allowance + 128 per Task sent, capped at 8192 (`maxTokens` in
+`backend/internal/llmalloc/llmalloc.go`). The 15 second call deadline
+(`LLM_TIMEOUT_SECONDS`) still bounds the time; a slower call falls back as
+`llm_timeout`.
+
+**Compare after the deploy.** Note the deploy date (staging first, measure,
+then production) and re-run both queries restricted to runs after it, by adding
+`WHERE created_at >= '<deploy date>'` (and `AND` before it for the baseline
+window); `allocation_runs.created_at` is the run's time. The expected movement:
+
+- `llm` rises and `llm_rejected_by_checker` falls. `broken_restriction` and
+  `weekday_not_allowed` should vanish from the second table, since the model
+  can no longer get them wrong from its input; `over_energy` should drop.
+- Watch `llm_timeout` and `llm_invalid_response`: they are the regression
+  signals. Thinking that is too slow moves refusals into `llm_timeout`; a
+  truncated answer (stop reason `max_tokens`) is `llm_invalid_response`. If
+  `llm_timeout` appears, raise the tick budget first (`defaultLLMBudget` in
+  `backend/internal/dayplan/planner.go`; the Lambda has 25 seconds of slack),
+  keeping the comments and `infra/*/main.tf` in step.
+- Runs with no Task left for the model make no call at all, so they do not
+  show up as LLM runs of either kind.
+
+**Cost per call.** Every call logs one `llm_usage` line (`model`, `thinking`,
+`input_tokens`, `output_tokens`, `stop_reason`; never the prompt) in the
+Allocation Lambda's log group. Average the tokens per call with CloudWatch Logs
+Insights, for example
+`filter msg = "llm_usage" | stats avg(input_tokens), avg(output_tokens), count() by thinking`,
+over the days before and after the deploy (the `thinking` field tells the
+allocator's calls from the explainer's, which also log a line and stay
+thinking-off; before the deploy the line does not exist, so for the "before"
+cost use the Anthropic console usage page). Cost per call = input tokens x $0.10 / 1M + output tokens x
+$0.50 / 1M for `claude-haiku-5-5` (prompts up to 100K tokens; prices from the
+`claude-api` skill, 2026-10-18; check them again before relying on them). The
+ceiling of one call is 8192 output tokens, about $0.004.
 
 ## Idle-cost audit
 
@@ -288,5 +331,6 @@ customer-managed KMS keys, RDS/Aurora, DynamoDB, EC2.
 - A missing file such as an old `/assets/<hash>.js` returns `index.html` with
   200 (the SPA fallback maps 403 and 404), so a stale client may get HTML where
   JavaScript was expected. `registerType: "autoUpdate"` recovers on the next load.
-- The LLM allocator runs with thinking off. Decide whether to turn it on once
-  the fallback rate is measured (see "Measuring the LLM allocator").
+- The LLM allocator runs with adaptive thinking at effort `low` (issue #195).
+  Its cost and refusal rate are compared before and after in "Measuring the
+  LLM allocator".

@@ -141,8 +141,8 @@ func TestThePromptHoldsOnlyIDsAndNumbers(t *testing.T) {
 	collectKeys(input, keys)
 	want := []string{
 		"today", "weekday", "residents", "tasks",
-		"id", "energy", "restricted_demands", "restricted_chores", "preferences", "last_done",
-		"chore_id", "effort", "importance", "demands", "people", "window_start", "window_end", "allowed_weekdays",
+		"id", "energy", "preferences", "last_done",
+		"chore_id", "effort", "importance", "people", "window_start", "window_end", "eligible",
 		"c1", "c2", // map keys: Chore ids
 	}
 	got := slices.Sorted(maps.Keys(keys))
