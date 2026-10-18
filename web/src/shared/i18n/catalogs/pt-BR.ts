@@ -349,6 +349,20 @@ export const ptBR: Messages = {
     "Parece que você está sem internet, então isso não foi enviado. Confira sua conexão e tente de novo.",
   "dayplan.action.failed.error":
     "Algo deu errado e isso não foi enviado. Tente de novo daqui a pouco.",
+  "dayplan.replan.action": "Replanejar agora",
+  "dayplan.replan.waiting": "Replanejando. Pode levar um minuto.",
+  "dayplan.replan.timedOut": "O novo plano está demorando. Ele ainda pode chegar, volte daqui a pouco.",
+  "dayplan.replan.done.llm": "A IA fez este plano.",
+  "dayplan.replan.done.baseline": "O alocador padrão fez este plano, sem a IA.",
+  "dayplan.replan.fallback.llm_daily_cap_reached":
+    "Este é o plano padrão, não o da IA: o limite diário da IA foi atingido.",
+  "dayplan.replan.fallback.llm_error": "Este é o plano padrão, não o da IA: a IA teve um problema.",
+  "dayplan.replan.fallback.llm_timeout": "Este é o plano padrão, não o da IA: a IA demorou demais.",
+  "dayplan.replan.fallback.llm_invalid_response":
+    "Este é o plano padrão, não o da IA: a resposta da IA não pôde ser usada.",
+  "dayplan.replan.fallback.llm_rejected_by_checker":
+    "Este é o plano padrão, não o da IA: o plano da IA não passou na verificação.",
+  "dayplan.replan.fallback.unknown": "Este é o plano padrão, não o da IA: o plano da IA não foi usado.",
   "dayplan.conflict.already_done":
     "Essa tarefa já foi concluída. Ela está em Concluídas hoje.",
   "dayplan.conflict.not_proposed":
