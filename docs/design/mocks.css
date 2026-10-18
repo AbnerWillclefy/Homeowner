@@ -176,3 +176,8 @@ label.field { display: flex; flex-direction: column; gap: 0.25rem; font-weight: 
 .note { position: absolute; z-index: 2; background: #1c2421; color: #fff; font-size: 0.75rem; font-weight: 700; padding: 0.125rem 0.5rem; border-radius: 99px; }
 
 svg { stroke-width: 2; }
+
+/* A row whose action drops to its own end-aligned line when the text needs the width (pt-BR runs longer). */
+.row.wrap { flex-wrap: wrap; }
+.row.wrap > .grow { flex-basis: 10rem; }
+.row.wrap > .btn { margin-left: auto; }
