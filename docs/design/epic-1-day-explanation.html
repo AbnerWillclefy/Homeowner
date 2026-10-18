@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day Plan Explanation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mocks.css">
+<style>
+  .summary h3 { margin: 0; font-size: 1.125rem; font-weight: 700; line-height: 1.375; }
+  .summary .facts { color: var(--muted); }
+</style>
+</head>
+<body>
+<main class="board">
+  <header>
+    <h1>Epic 1: Day Plan explanation</h1>
+    <p>The paragraph above the Check-in becomes a summary card under it: one headline sentence about the whole day, one or two sentences of detail, then a line of facts. It explains the day, not each Task: every Task card already carries its own reason line.</p>
+  </header>
+
+  <figure>
+    <div class="phone">
+      <div class="screen">
+        <div class="page-head">
+          <h2 class="page-title">Good morning, Abner</h2>
+          <p class="page-sub">Sunday, October 18</p>
+        </div>
+
+        <section class="card">
+          <div class="row wrap">
+            <span class="tile accent"><i data-lucide="zap"></i></span>
+            <div class="grow">
+              <p class="sm muted">Today's Check-in: Low</p>
+              <p class="bold">5 of 5 Energy planned for you</p>
+            </div>
+            <button class="btn">Change</button>
+          </div>
+        </section>
+
+        <section class="card summary" aria-labelledby="sum">
+          <h3 id="sum">A lighter day, shaped around your Low Energy.</h3>
+          <p>The bathroom deep clean went to Ana, who checked in Energized. You kept the dishes, which you like, and the laundry, which is due today.</p>
+          <ul class="facts" style="margin:0;padding:0;list-style:none">
+            <li class="fact"><i data-lucide="list-checks"></i>2 Tasks for you</li>
+            <li class="fact"><i data-lucide="users"></i>3 for Ana</li>
+            <li class="fact"><i data-lucide="inbox"></i>2 still to do</li>
+          </ul>
+        </section>
+
+        <section class="card" style="flex-direction:row;align-items:center">
+          <span class="tile accent"><i data-lucide="flame"></i></span>
+          <div class="grow" style="flex:1"><p class="sm muted">Streak</p><p class="bold">6 days</p></div>
+        </section>
+
+        <div style="margin-top:1rem">
+          <h3 class="group">Your Tasks <span class="count">2</span></h3>
+          <div class="card peach">
+            <div class="row"><span class="tile on-tint"><i data-lucide="cooking-pot"></i></span>
+              <div class="grow"><p class="cat-name">Kitchen</p><h4 class="card-title">Wash the dishes</h4></div></div>
+            <div class="facts"><span class="fact"><span class="dots"><i class="f"></i><i class="f"></i><i></i><i></i><i></i></span>Effort: Light</span><span class="fact"><i data-lucide="calendar-days"></i>Due today</span></div>
+            <p class="reason"><i data-lucide="lightbulb"></i>Why: You like this one.</p>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <figcaption><strong>Planned day</strong>The summary sits after the Check-in, because the Check-in is what shaped it. The headline sentence is the card's h3; the facts line uses the existing fact style. The per-Task "Why" line on each card is unchanged.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone">
+      <div class="screen">
+        <div class="page-head">
+          <h2 class="page-title">Good morning, Abner</h2>
+          <p class="page-sub">Sunday, October 18</p>
+        </div>
+        <section class="card">
+          <div class="row wrap">
+            <span class="tile accent"><i data-lucide="zap"></i></span>
+            <div class="grow"><p class="sm muted">Today's Check-in: Drained</p><p class="bold">Drained today, no Tasks</p></div>
+            <button class="btn">Change</button>
+          </div>
+        </section>
+        <section class="card summary">
+          <h3>A rest day. Nothing is planned for you.</h3>
+          <p>Your Streak is paused, not broken. Ana has the essential work, and the rest waits for tomorrow.</p>
+          <ul class="facts" style="margin:0;padding:0;list-style:none">
+            <li class="fact"><i data-lucide="users"></i>3 for Ana</li>
+            <li class="fact"><i data-lucide="inbox"></i>4 still to do</li>
+          </ul>
+        </section>
+        <section class="card" style="flex-direction:row;align-items:center">
+          <span class="tile accent"><i data-lucide="flame"></i></span>
+          <div style="flex:1"><p class="sm muted">Streak</p><p class="bold">6 days</p><p class="sm muted">Paused today</p></div>
+        </section>
+      </div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <figcaption><strong>Drained day</strong>The same card, the same neutral colours (The Calm at Every Number Rule). The headline says rest is the plan, never that something is missing.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone">
+      <div class="screen">
+        <div class="page-head">
+          <h2 class="page-title">Good morning, Abner</h2>
+          <p class="page-sub">Sunday, October 18</p>
+        </div>
+        <section class="card">
+          <div class="row wrap">
+            <span class="tile accent"><i data-lucide="zap"></i></span>
+            <div class="grow"><p class="sm muted">Today's Check-in: Normal</p><p class="bold">Energy 6</p></div>
+            <button class="btn">Change</button>
+          </div>
+        </section>
+        <p class="semi muted" style="display:flex;gap:.5rem;align-items:center"><i data-lucide="clock" style="width:18px;height:18px"></i>Today's plan is made at 7:00 AM.</p>
+      </div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <figcaption><strong>Before the plan</strong>No summary card renders before the Allocation runs or after a rejected run, exactly as the paragraph behaves today.</figcaption>
+  </figure>
+</main>
+<script src="mocks-i18n.js"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

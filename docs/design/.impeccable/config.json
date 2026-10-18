@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          "docs/design/epic-3-resident-identity.html"
+        ],
+        "createdAt": "2026-10-18T17:43:50.001Z",
+        "reason": "Claude: the only dimmed text is the screen behind the dialog scrim, intentionally faded"
+      }
+    ]
+  }
+}
