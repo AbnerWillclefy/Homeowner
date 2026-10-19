@@ -98,6 +98,15 @@ describe("confirmUpload", () => {
     expect(JSON.parse(init?.body as string)).toEqual({ key: UPLOAD.key });
   });
 
+  it("is an error when a 200 carries no usable photoUrl", async () => {
+    stubFetch(new Response(JSON.stringify({}), { status: 200 }));
+    expect(await confirmUpload("k")).toEqual({ kind: "error" });
+    stubFetch(new Response(JSON.stringify({ photoUrl: "" }), { status: 200 }));
+    expect(await confirmUpload("k")).toEqual({ kind: "error" });
+    stubFetch(new Response("null", { status: 200 }));
+    expect(await confirmUpload("k")).toEqual({ kind: "error" });
+  });
+
   it("maps 503 to photos-off and 400 to error", async () => {
     stubFetch(new Response(null, { status: 503 }));
     expect(await confirmUpload("k")).toEqual({ kind: "photos-off" });

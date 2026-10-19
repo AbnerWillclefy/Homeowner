@@ -19,8 +19,8 @@ type Failure =
 
 export type RequestUploadResult = { kind: "ok"; upload: Upload } | Failure;
 export type PutResult = { kind: "ok" } | { kind: "offline" } | { kind: "error" };
-/** `photoUrl` is the public URL of the new photo, or null when the API answered none. */
-export type ConfirmResult = { kind: "ok"; photoUrl: string | null } | Failure;
+/** `photoUrl` is the public URL of the new photo. A 200 without one is an `error`, never a saved photo. */
+export type ConfirmResult = { kind: "ok"; photoUrl: string } | Failure;
 export type RemoveResult = { kind: "ok" } | Failure;
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
@@ -83,8 +83,8 @@ export async function confirmUpload(key: string): Promise<ConfirmResult> {
     if (result.kind === "not-signed-in") return result;
     if (result.response.status !== 200) return failure(result.response.status);
     const body = (await result.response.json()) as { photoUrl?: unknown } | null;
-    const photoUrl = typeof body?.photoUrl === "string" && body.photoUrl !== "" ? body.photoUrl : null;
-    return { kind: "ok", photoUrl };
+    const photoUrl = body?.photoUrl;
+    return typeof photoUrl === "string" && photoUrl !== "" ? { kind: "ok", photoUrl } : { kind: "error" };
   } catch {
     return { kind: "offline" };
   }
