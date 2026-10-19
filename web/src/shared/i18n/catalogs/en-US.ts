@@ -337,7 +337,8 @@ export const enUS = {
   "dayplan.task.suggestTwoPerson.action": "Make it two-person",
   "dayplan.task.suggestTwoPerson.action.named": "Make {task} two-person",
   "dayplan.done.heading": "Done today",
-  "dayplan.done.item": "{task} at {time}",
+  "dayplan.done.at": "Done at {time}",
+  "dayplan.done.atTogether": "Done at {time}, together",
   "dayplan.action.failed.offline":
     "You seem to be offline, so that did not go through. Check your connection and try again.",
   "dayplan.action.failed.error":

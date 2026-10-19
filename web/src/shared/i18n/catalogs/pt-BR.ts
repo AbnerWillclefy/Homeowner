@@ -347,7 +347,8 @@ export const ptBR: Messages = {
   "dayplan.task.suggestTwoPerson.action": "Tornar para duas pessoas",
   "dayplan.task.suggestTwoPerson.action.named": "Tornar {task} para duas pessoas",
   "dayplan.done.heading": "Concluídas hoje",
-  "dayplan.done.item": "{task} às {time}",
+  "dayplan.done.at": "Concluída às {time}",
+  "dayplan.done.atTogether": "Concluída às {time}, em dupla",
   "dayplan.action.failed.offline":
     "Parece que você está sem internet, então isso não foi enviado. Confira sua conexão e tente de novo.",
   "dayplan.action.failed.error":
