@@ -80,6 +80,7 @@ func (s *Store) CompletionsBetween(ctx context.Context, homeID, residentID strin
 }
 
 // completions is the first query of CompletionsBetween: the Completions alone.
+// The handler's groupByDay relies on the ORDER BY: rows of one date are adjacent.
 func (s *Store) completions(ctx context.Context, homeID, residentID string, from, to time.Time) ([]Completion, error) {
 	rows, err := s.db.Query(ctx, `
 		SELECT k.id, c.id, c.name, c.category, k.completed_on, k.completed_at
