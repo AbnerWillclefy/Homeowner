@@ -30,12 +30,12 @@ const PREFERENCE_KEY: Record<Preference, MessageKey> = {
 };
 
 /**
- * Loading and failure while the Profile is not ready. Once it is, a save or an undo is a toast, so this shows
- * nothing. A load problem stays inline because it needs Retry.
+ * A load problem with Retry, and nothing in any other state: the wait is announced by the caller (the page's
+ * status, or the onboarding step), and once the Profile is ready a save or an undo is a toast. A load problem
+ * stays inline because it needs Retry.
  */
 export function ProfileStatus({ state, retry }: { state: ProfileState; retry(): void }) {
   const { t } = useI18n();
-  if (state.kind === "loading") return <p role="status">{t("profile.loading")}</p>;
   if (state.kind === "problem") {
     return (
       <>

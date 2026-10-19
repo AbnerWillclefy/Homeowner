@@ -10,6 +10,7 @@ import { Card } from "../../../shared/ui/Card";
 import { GroupHeading } from "../../../shared/ui/GroupHeading";
 import { useI18n, type MessageKey } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
+import { ButtonRow } from "../../../shared/ui/ButtonRow";
 import { catalogName } from "../logic/name";
 import { useCatalog } from "../hooks/useCatalog";
 
@@ -39,9 +40,13 @@ export function CatalogPicker({ onPick, onClose }: Props) {
       title={t("chores.catalog.heading")}
       onDismiss={onClose}
       footer={
-        <Button variant="secondary" onClick={onClose}>
-          {t("chores.catalog.close")}
-        </Button>
+        <ButtonRow
+          start={
+            <Button variant="secondary" onClick={onClose}>
+              {t("chores.catalog.close")}
+            </Button>
+          }
+        />
       }
     >
       <div className="mt-6 flex flex-col gap-8">

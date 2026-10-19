@@ -3,7 +3,6 @@ import { useEffect, useRef } from "react";
 import { Link } from "react-router";
 import type { DayPlan, PlanTask } from "../api/api";
 import { pendingAction, type Acting, type TaskAction, type TaskRole } from "../logic/actions";
-import { formatTime } from "../logic/format";
 import { ME_PATH } from "../../../app/logic/routes";
 import { noTasksReason, type EnergyNote, type NoTasksReason } from "../../checkin/logic/state";
 import { formatAllocationTime } from "../../home/logic/allocationTimes";
@@ -11,6 +10,9 @@ import { useI18n, type MessageKey } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { GroupHeading } from "../../../shared/ui/GroupHeading";
 import { LOAD_FAILURE_KEY } from "../logic/failureMessages";
+import { DoneCard } from "./DoneCard";
+import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
+import { DayPlanSkeleton } from "./DayPlanSkeleton";
 import { TaskCard } from "./TaskCard";
 import type { ActionNotice, useDayPlan } from "../hooks/useDayPlan";
 
@@ -28,6 +30,8 @@ type Day = ReturnType<typeof useDayPlan>;
 export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null }) {
   const { t } = useI18n();
   const { state, reload, run, acceptAll, acting, notice, settled } = day;
+  // The page's one status announces the wait; the skeleton shows after 300ms and only for a first load.
+  const showSkeleton = useReportFirstLoad(state.kind === "loading");
   const section = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
 
@@ -50,7 +54,7 @@ export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null 
 
       <Notice notice={notice} />
 
-      {state.kind === "loading" && <p role="status">{t("dayplan.loading")}</p>}
+      {showSkeleton && <DayPlanSkeleton />}
 
       {state.kind === "failed" && (
         <>
@@ -224,11 +228,9 @@ function PlanView({
       {plan.doneToday.length > 0 && (
         <div>
           <GroupHeading count={plan.doneToday.length}>{t("dayplan.done.heading")}</GroupHeading>
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          <ul className={LIST}>
             {plan.doneToday.map((done) => (
-              <li key={done.id} className="my-0 [overflow-wrap:anywhere]">
-                {t("dayplan.done.item", { task: done.choreName, time: formatTime(done.completedAt, locale) })}
-              </li>
+              <DoneCard key={done.id} done={done} />
             ))}
           </ul>
         </div>

@@ -43,12 +43,18 @@ export function InviteShare() {
 
   return (
     <SectionCard id="invite-share-heading" icon={UserPlus} title={t("invite.share.heading")} hint={t("invite.share.hint")}>
-      <ButtonRow stretch>
-        <Button variant="primary" disabled={working} aria-busy={working} onClick={() => void onClick()}>
-          <Share2 aria-hidden="true" className="size-5 shrink-0" />
-          {working ? t("invite.share.creating") : t("invite.share.button")}
-        </Button>
-      </ButtonRow>
+      <ButtonRow
+        end={
+          <Button
+            variant="primary"
+            pending={working}
+            leadingIcon={<Share2 aria-hidden="true" className="size-4" />}
+            onClick={() => void onClick()}
+          >
+            {t("invite.share.button")}
+          </Button>
+        }
+      />
     </SectionCard>
   );
 }

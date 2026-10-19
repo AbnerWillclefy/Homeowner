@@ -27,7 +27,7 @@ export const enUS = {
   "me.heading": "About you",
 
   // Home
-  "home.loading": "Loading your Home...",
+  "home.loading": "Loading your Home",
   "home.load.offline":
     "Homeowner cannot reach the service, so your Home could not be loaded. Check your connection and try again.",
   "home.load.error":
@@ -36,7 +36,6 @@ export const enUS = {
   "home.retry": "Try again",
   "home.create.heading": "Create your Home",
   "home.create.submit": "Create Home",
-  "home.create.submitting": "Creating...",
   "home.create.recovered":
     "You already have a Home, so Homeowner loaded it instead. Check its settings below.",
   "home.settings.heading": "Your Home",
@@ -44,7 +43,6 @@ export const enUS = {
   "home.settings.plan.hint": "When each day's plan is made, in your Home's timezone.",
   "home.summary": "Plans are made at {time}, {zone} time.",
   "home.settings.save": "Save changes",
-  "home.settings.saving": "Saving...",
   "home.settings.saved": "Your changes are saved.",
   "home.timezone.label": "Timezone",
   "home.allocationTime.label": "Allocation time",
@@ -63,7 +61,6 @@ export const enUS = {
     "If you are the last Resident, the Home and its Chores are deleted for good.",
   "home.leave.cancel": "Cancel",
   "home.leave.confirm": "Leave Home",
-  "home.leave.leaving": "Leaving...",
   "home.leave.offline":
     "Homeowner cannot reach the service, so you have not left. Check your connection and try again.",
   "home.leave.error":
@@ -109,7 +106,7 @@ export const enUS = {
     "Close Safari and open Homeowner from its new icon on your Home Screen.",
 
   // Profile
-  "profile.loading": "Loading your details...",
+  "profile.loading": "Loading your details",
   "profile.offline":
     "Could not reach the service, so your details are not shown. Check your connection and try again.",
   "profile.error":
@@ -159,7 +156,7 @@ export const enUS = {
     one: "{count} Chore in your Home",
     other: "{count} Chores in your Home",
   },
-  "chores.loading": "Loading your Chores...",
+  "chores.loading": "Loading your Chores",
   "chores.load.offline":
     "Your Chores could not be loaded because Homeowner cannot reach the service. Check your connection and try again.",
   "chores.load.error":
@@ -191,7 +188,6 @@ export const enUS = {
   "chores.delete.prompt": "Delete {name}? This cannot be undone.",
   "chores.delete.confirm": "Yes, delete",
   "chores.delete.cancel": "Keep it",
-  "chores.delete.deleting": "Deleting...",
   "chores.delete.offline":
     "The Chore was not deleted because Homeowner cannot reach the service. Check your connection and try again.",
   "chores.delete.error":
@@ -218,7 +214,6 @@ export const enUS = {
   "chores.form.buildsUp.label": "Builds up while undone",
   "chores.form.submit.create": "Add Chore",
   "chores.form.submit.save": "Save Chore",
-  "chores.form.saving": "Saving...",
   "chores.form.cancel": "Cancel",
   "chores.form.saved": "The Chore is saved.",
   "chores.form.invalid.summary":
@@ -262,7 +257,7 @@ export const enUS = {
 
   // Today (the Day Plan)
   "dayplan.heading": "Today",
-  "dayplan.loading": "Loading today's plan...",
+  "dayplan.loading": "Loading today's plan",
   "dayplan.load.offline":
     "Today's plan could not be loaded because Homeowner cannot reach the service. Check your connection and try again.",
   "dayplan.load.error":
@@ -336,7 +331,8 @@ export const enUS = {
   "dayplan.task.suggestTwoPerson.action": "Make it two-person",
   "dayplan.task.suggestTwoPerson.action.named": "Make {task} two-person",
   "dayplan.done.heading": "Done today",
-  "dayplan.done.item": "{task} at {time}",
+  "dayplan.done.at": "Done at {time}",
+  "dayplan.done.atTogether": "Done at {time}, together",
   "dayplan.action.failed.offline":
     "You seem to be offline, so that did not go through. Check your connection and try again.",
   "dayplan.action.failed.error":
@@ -405,7 +401,6 @@ export const enUS = {
   "checkin.heading": "Check-in",
   "checkin.prompt": "How are you today?",
   "checkin.open": "Check in",
-  "checkin.loading": "Loading your Check-in...",
   "checkin.load.offline":
     "Your Check-in could not be loaded because Homeowner cannot reach the service. Check your connection and try again.",
   "checkin.load.error":
@@ -562,7 +557,6 @@ export const enUS = {
   "invite.share.heading": "Invite a Resident",
   "invite.share.hint": "A single-use link for someone you live with. It works for seven days.",
   "invite.share.button": "Share an Invite link",
-  "invite.share.creating": "Making the Invite...",
   "invite.share.title": "Join my Home on Homeowner",
   "invite.share.text":
     "Join my Home on Homeowner. This link works once and lasts seven days.",
