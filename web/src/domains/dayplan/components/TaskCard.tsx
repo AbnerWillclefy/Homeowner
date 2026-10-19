@@ -4,7 +4,6 @@ import { CHORES_PATH } from "../../../app/logic/routes";
 import { EDIT_PARAM } from "../../chores/components/ChoresSection";
 import type { PlanTask } from "../api/api";
 import { ResidentLabel } from "../../residents/components/ResidentLabel";
-import { withLine } from "../../residents/logic/withLine";
 import { categoryStyle } from "../../chores/logic/categoryStyle";
 import { CategoryTile, EffortDots, Fact, FactIcon, FactList } from "../../chores/components/FactList";
 import { Card } from "../../../shared/ui/Card";
@@ -104,7 +103,7 @@ export function TaskCard({ task, role, today, busy, pending, onAction }: Props) 
           <ul className="m-0 flex list-none flex-col gap-1 p-0 text-sm font-semibold">
             {task.with.map((residentId) => (
               <li key={residentId}>
-                <ResidentLabel residentId={residentId} label={(resident) => withLine(t, resident)} />
+                <ResidentLabel residentId={residentId} withLine />
               </li>
             ))}
           </ul>
