@@ -71,5 +71,7 @@ Not domain terms, but kept consistent across the copy. CONTEXT.md has no **Remin
 | Replan (staging test button) | replanejar / "Replanejar agora" | refazer, recalcular | Asks for a new Day Plan on demand. Staging only. Used in `dayplan.replan.*`. |
 | AI (the model that plans) | IA | inteligência artificial (too long), robô | Used in `dayplan.replan.*`. |
 | Baseline allocator (the plan made without the AI) | alocador padrão; its plan is "plano padrão" | alocador básico, alocador base | Not "base": "energia base" is the User's Baseline, a different thing. Used in `dayplan.replan.*`. |
+| for others (the combined count of other Residents' Tasks on the Today summary card) | dos outros | para outros moradores (longer) | Matches "Tarefas dos outros moradores". Used in `dayplan.summary.others`. Pending native-speaker review. |
+| still to do (the pool) | por fazer | pendente, em aberto | Matches the pool heading "Ainda por fazer". Used in `dayplan.summary.pool`. Pending native-speaker review. |
 
 Apple and Android labels must match what the device shows in pt-BR. They are not yet verified on a pt-BR device.

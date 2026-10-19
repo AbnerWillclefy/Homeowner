@@ -2,12 +2,13 @@ import { useState } from "react";
 import { CheckInSection } from "../../checkin/components/CheckInSection";
 import { energyNote } from "../../checkin/logic/state";
 import { useCheckIn } from "../../checkin/hooks/useCheckIn";
-import { DayExplanation } from "../../dayplan/components/DayExplanation";
+import { DaySummary } from "../../dayplan/components/DaySummary";
 import { EnergySummary, showsEnergy } from "../../dayplan/components/EnergySummary";
 import { ReplanControl } from "../../dayplan/components/ReplanControl";
 import { TodayHeader } from "../../dayplan/components/TodayHeader";
 import { TodaySection } from "../../dayplan/components/TodaySection";
 import { useDayPlan } from "../../dayplan/hooks/useDayPlan";
+import { summaryCounts } from "../../dayplan/logic/summaryCounts";
 import { StreakCard } from "../../streak/components/StreakCard";
 import { useStreak } from "../../streak/hooks/useStreak";
 
@@ -33,7 +34,6 @@ export function HomeDay({ version, onPlanChanged }: { version: number; onPlanCha
   return (
     <>
       <TodayHeader />
-      <DayExplanation explanation={state.kind === "ready" ? state.plan.explanation : null} />
       <CheckInSection
         checkIn={checkIn}
         open={checkInOpen}
@@ -41,6 +41,9 @@ export function HomeDay({ version, onPlanChanged }: { version: number; onPlanCha
         onClose={() => setCheckInOpen(false)}
         energy={showsEnergy(note) ? <EnergySummary note={note} energy={energy ?? 0} planned={planned} /> : null}
       />
+      {state.kind === "ready" ? (
+        <DaySummary explanation={state.plan.explanation} counts={summaryCounts(state.plan)} />
+      ) : null}
       <StreakCard streak={streak} />
       <ReplanControl plan={state.kind === "ready" ? state.plan : undefined} show={day.show} />
       <TodaySection day={day} note={note} />

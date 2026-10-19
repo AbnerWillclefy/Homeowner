@@ -295,6 +295,9 @@ export const ptBR: Messages = {
   "dayplan.mine.empty": "Nada para você hoje. Aproveite o dia.",
   "dayplan.others.heading": "Tarefas dos outros moradores",
   "dayplan.others.resident": "Morador {number}",
+  "dayplan.summary.mine": { one: "{count} tarefa sua", other: "{count} tarefas suas" },
+  "dayplan.summary.others": { one: "{count} dos outros", other: "{count} dos outros" },
+  "dayplan.summary.pool": { one: "{count} por fazer", other: "{count} por fazer" },
   "dayplan.pool.heading": "Ainda por fazer",
   "dayplan.pool.empty":
     "Nenhuma outra tarefa em aberto. Tudo está planejado ou feito.",
