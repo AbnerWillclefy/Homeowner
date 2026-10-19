@@ -246,14 +246,18 @@ function ReviewRow({
             className="flex flex-col gap-2 border-t border-border/40 pt-3"
           >
             <p className="my-0">{t("catalog.review.remove.prompt", { name })}</p>
-            <ButtonRow className="justify-end">
-              <Button ref={keepRef} variant="secondary" onClick={onKeep}>
-                {t("catalog.review.remove.cancel")}
-              </Button>
-              <Button variant="danger" onClick={onConfirmRemove}>
-                {t("catalog.review.remove.confirm")}
-              </Button>
-            </ButtonRow>
+            <ButtonRow
+              start={
+                <Button ref={keepRef} variant="secondary" onClick={onKeep}>
+                  {t("catalog.review.remove.cancel")}
+                </Button>
+              }
+              end={
+                <Button variant="danger" onClick={onConfirmRemove}>
+                  {t("catalog.review.remove.confirm")}
+                </Button>
+              }
+            />
           </div>
         )}
       </Card>

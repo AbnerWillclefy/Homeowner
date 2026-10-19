@@ -40,7 +40,6 @@ export const ptBR: Messages = {
   "home.retry": "Tentar novamente",
   "home.create.heading": "Crie o seu lar",
   "home.create.submit": "Criar lar",
-  "home.create.submitting": "Criando...",
   "home.create.recovered":
     "Você já tem um lar, então o Homeowner o carregou. Confira os ajustes dele abaixo.",
   "home.settings.heading": "Seu lar",
@@ -48,7 +47,6 @@ export const ptBR: Messages = {
   "home.settings.plan.hint": "Quando o plano de cada dia é feito, no fuso horário do seu lar.",
   "home.summary": "Os planos são feitos às {time}, horário de {zone}.",
   "home.settings.save": "Salvar alterações",
-  "home.settings.saving": "Salvando...",
   "home.settings.saved": "Suas alterações foram salvas.",
   "home.timezone.label": "Fuso horário",
   "home.allocationTime.label": "Horário da alocação",
@@ -67,7 +65,6 @@ export const ptBR: Messages = {
     "Se você for o último morador, o lar e seus afazeres são apagados de vez.",
   "home.leave.cancel": "Cancelar",
   "home.leave.confirm": "Sair do lar",
-  "home.leave.leaving": "Saindo...",
   "home.leave.offline":
     "O Homeowner não consegue acessar o serviço, então você ainda não saiu. Verifique sua conexão e tente novamente.",
   "home.leave.error":
@@ -198,7 +195,6 @@ export const ptBR: Messages = {
   "chores.delete.prompt": "Excluir {name}? Isso não pode ser desfeito.",
   "chores.delete.confirm": "Sim, excluir",
   "chores.delete.cancel": "Manter",
-  "chores.delete.deleting": "Excluindo...",
   "chores.delete.offline":
     "O afazer não foi excluído porque o Homeowner não consegue falar com o serviço. Confira a sua conexão e tente de novo.",
   "chores.delete.error":
@@ -226,7 +222,6 @@ export const ptBR: Messages = {
   "chores.form.buildsUp.label": "Acumula enquanto não é feito",
   "chores.form.submit.create": "Adicionar afazer",
   "chores.form.submit.save": "Salvar afazer",
-  "chores.form.saving": "Salvando...",
   "chores.form.cancel": "Cancelar",
   "chores.form.saved": "O afazer foi salvo.",
   "chores.form.invalid.summary":
@@ -347,7 +342,8 @@ export const ptBR: Messages = {
   "dayplan.task.suggestTwoPerson.action": "Tornar para duas pessoas",
   "dayplan.task.suggestTwoPerson.action.named": "Tornar {task} para duas pessoas",
   "dayplan.done.heading": "Concluídas hoje",
-  "dayplan.done.item": "{task} às {time}",
+  "dayplan.done.at": "Concluída às {time}",
+  "dayplan.done.atTogether": "Concluída às {time}, em dupla",
   "dayplan.action.failed.offline":
     "Parece que você está sem internet, então isso não foi enviado. Confira sua conexão e tente de novo.",
   "dayplan.action.failed.error":
@@ -576,7 +572,6 @@ export const ptBR: Messages = {
   "invite.share.heading": "Convidar um morador",
   "invite.share.hint": "Um link de uso único para quem mora com você. Vale por sete dias.",
   "invite.share.button": "Compartilhar link do convite",
-  "invite.share.creating": "Criando o convite...",
   "invite.share.title": "Entre no meu lar no Homeowner",
   "invite.share.text":
     "Entre no meu lar no Homeowner. Este link funciona uma vez e dura sete dias.",

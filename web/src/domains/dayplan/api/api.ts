@@ -37,6 +37,13 @@ export interface CompletedTask {
   choreName: string;
   /** An instant, RFC 3339. */
   completedAt: string;
+  /** The Chore's Category id. Optional and read leniently, as on `PlanTask`. */
+  category?: string;
+  /**
+   * The other Residents' ids on the Completion: empty for a one-person Task. An older API omits it, which
+   * reads as empty.
+   */
+  with: string[];
 }
 
 export interface ResidentTasks {
@@ -137,7 +144,11 @@ function parseCompleted(body: unknown): CompletedTask | null {
   if (!isRecord(body)) return null;
   const { id, choreName, completedAt } = body;
   if (typeof id !== "string" || typeof choreName !== "string" || typeof completedAt !== "string") return null;
-  return { id, choreName, completedAt };
+  // Lenient on purpose: a missing or odd `with` or category must never turn the whole plan into an error.
+  const partners = Array.isArray(body.with) && body.with.every((p) => typeof p === "string") ? (body.with as string[]) : [];
+  const done: CompletedTask = { id, choreName, completedAt, with: partners };
+  if (typeof body.category === "string") done.category = body.category;
+  return done;
 }
 
 function parseDone(value: unknown): CompletedTask[] | null {
