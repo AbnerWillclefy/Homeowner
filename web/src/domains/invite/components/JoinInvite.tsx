@@ -90,6 +90,7 @@ export function JoinInvite({ token, onDismiss, onFinished }: Props) {
           {failure(state.error)}
           <ButtonRow
             className="mt-2"
+            stretch
             start={
               <Button variant="secondary" onClick={onDismiss}>
                 {t("invite.leave.cancel")}
@@ -110,6 +111,7 @@ export function JoinInvite({ token, onDismiss, onFinished }: Props) {
           {state.kind === "ready" && failure(state.error)}
           <ButtonRow
             className="mt-2"
+            stretch
             start={
               <Button variant="secondary" disabled={joining} onClick={onDismiss}>
                 {t("invite.join.dismiss")}

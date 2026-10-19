@@ -54,6 +54,7 @@ export function StartChoice({ onDecided, onPlanned }: Props) {
           {/* A real disabled button while planning, so a second tap cannot send a second request. */}
           <ButtonRow
             className="mt-2"
+            stretch
             start={
               <Button variant="secondary" disabled={planning} onClick={onDecided}>
                 {t("startChoice.tomorrow.button")}

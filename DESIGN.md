@@ -183,6 +183,7 @@ Actions live where a right thumb lands. A card's actions are on their own row at
 - **Fill or end.** The primary action either spans the full width or is end-aligned (`justify-content: flex-end`). When several actions wrap, they wrap toward the right edge.
 - **Left is for deliberate.** The left side is reserved for an action that should take a moment of thought before pressing, such as Done on a Task you have not taken, Refuse, or Leave Home. Never put the action you expect people to take on the left.
 - **Dialogs follow the same rule.** The confirming action is bottom-right or full width; Cancel sits to its left or above it.
+- **Short dialogs stack.** A dialog that is a heading, a sentence or two and two actions stacks them, each full width, the confirming one at the bottom. Side by side the pair leaves a gap or wraps onto two ragged lines, and it reads as broken.
 
 ### Named Rules
 **The Right Thumb Rule.** If the action you most want pressed is not at the bottom-right or full width, the layout is wrong.

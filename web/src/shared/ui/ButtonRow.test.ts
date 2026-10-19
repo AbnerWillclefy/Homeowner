@@ -53,6 +53,14 @@ describe("ButtonRow start and end", () => {
     }
   });
 
+  it("stacks both groups full width with stretch, the primary last, for a short dialog", () => {
+    const markup = render({ start: cancel, end: save, stretch: true });
+    expect(markup.indexOf("Cancelar")).toBeLessThan(markup.indexOf("Salvar"));
+    for (const label of ["Cancelar", "Salvar"]) {
+      expect(groupClasses(markup, label)).toEqual(expect.arrayContaining(["flex-col", "w-full", "*:w-full"]));
+    }
+  });
+
   it("fills its container and measures it for the container query", () => {
     const row = /^<div class="([^"]*)"/.exec(render({ start: cancel, end: save }))?.[1].split(/\s+/);
     expect(row).toEqual(expect.arrayContaining(["w-full", "@container", "flex-wrap"]));
