@@ -2,14 +2,19 @@ import { Flame } from "lucide-react";
 import { useI18n } from "../../../shared/i18n";
 import { CardRow } from "../../../shared/ui/CardRow";
 import { IconTile } from "../../../shared/ui/IconTile";
+import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import type { Streak } from "../api/api";
+import { StreakSkeleton } from "./StreakSkeleton";
 
 /**
  * The Resident's current Streak. Calm at every number: a Streak of 0 is a quiet invitation, never a failure
- * (ADR 0003), so there is no alarm colour. Shows nothing while loading or when the Streak could not be read.
+ * (ADR 0003), so there is no alarm colour. Shows a skeleton during a slow first load, and nothing when the Streak could not be read.
  */
-export function StreakCard({ streak }: { streak: Streak | null }) {
+export function StreakCard({ streak, loading }: { streak: Streak | null; loading: boolean }) {
   const { t } = useI18n();
+  // The page's one status announces the wait; the skeleton shows after 300ms and goes away for good on any answer.
+  const showSkeleton = useReportFirstLoad(loading);
+  if (showSkeleton) return <StreakSkeleton />;
   if (!streak) return null;
 
   return (

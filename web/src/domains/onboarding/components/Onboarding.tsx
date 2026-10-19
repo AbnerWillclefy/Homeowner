@@ -97,6 +97,7 @@ export function Onboarding({ position, onPosition }: Props) {
     return {
       body: (
         <>
+          {profile.state.kind === "loading" && <p role="status">{t("profile.loading")}</p>}
           <ProfileStatus state={profile.state} retry={profile.retry} />
           {profile.state.kind === "ready" && fields(profile.state)}
           {extra}

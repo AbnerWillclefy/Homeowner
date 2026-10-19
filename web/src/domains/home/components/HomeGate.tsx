@@ -5,25 +5,30 @@ import type { Home } from "../api/api";
 import { useI18n } from "../../../shared/i18n";
 import { useInvite } from "../../invite/components/PendingInviteProvider";
 import { Button } from "../../../shared/ui/Button";
+import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { CreateHome } from "./CreateHome";
 import { LOAD_FAILURE_KEY } from "../logic/failureMessages";
 import { homeView } from "../logic/homeView";
 
 /**
- * What every Home-dependent tab (Today, Chores, Home) shows until the person has a Home: loading, the failure
+ * What every Home-dependent tab (Today, Chores, Home) shows until the person has a Home: the tab's `skeleton`
+ * (after 300ms; the page's status announces the wait), the failure
  * with Retry, or the create form. With a Home it renders the tab's content. While an Invite is pending a missing
  * Home reads as loading, because joining is how this person gets one.
  */
-export function HomeGate({ children }: { children(home: Home): ReactNode }) {
+export function HomeGate({ skeleton, children }: { skeleton: ReactNode; children(home: Home): ReactNode }) {
   const { t } = useI18n();
   const { home } = useShell();
   const { setRecovered } = useSession();
   const invite = useInvite();
   const { state, reload, setHome } = home;
+  const view = homeView(state, invite.token !== null);
+  // The page's one status speaks for the Home loading; this shows the page's skeleton once the wait passes 300ms.
+  const showSkeleton = useReportFirstLoad(view === "loading");
 
-  switch (homeView(state, invite.token !== null)) {
+  switch (view) {
     case "loading":
-      return <p role="status">{t("home.loading")}</p>;
+      return showSkeleton ? <>{skeleton}</> : null;
 
     case "failed":
       if (state.kind !== "failed") return null;

@@ -31,7 +31,7 @@ export const ptBR: Messages = {
   "me.heading": "Sobre você",
 
   // Lar
-  "home.loading": "Carregando o seu lar...",
+  "home.loading": "Carregando o lar",
   "home.load.offline":
     "O Homeowner não consegue acessar o serviço, então não foi possível carregar o seu lar. Verifique sua conexão e tente novamente.",
   "home.load.error":
@@ -113,7 +113,7 @@ export const ptBR: Messages = {
     "Feche o Safari e abra o Homeowner pelo novo ícone na sua Tela de Início.",
 
   // Profile
-  "profile.loading": "Carregando seus dados...",
+  "profile.loading": "Carregando seus dados",
   "profile.offline":
     "Não foi possível falar com o serviço, então seus dados não aparecem. Verifique sua conexão e tente de novo.",
   "profile.error":
@@ -163,7 +163,7 @@ export const ptBR: Messages = {
     one: "{count} afazer no seu lar",
     other: "{count} afazeres no seu lar",
   },
-  "chores.loading": "Carregando os seus afazeres...",
+  "chores.loading": "Carregando os afazeres",
   "chores.load.offline":
     "Não foi possível carregar os seus afazeres porque o Homeowner não consegue falar com o serviço. Confira a sua conexão e tente de novo.",
   "chores.load.error":
@@ -266,7 +266,7 @@ export const ptBR: Messages = {
 
   // Hoje (o plano do dia)
   "dayplan.heading": "Hoje",
-  "dayplan.loading": "Carregando o plano de hoje...",
+  "dayplan.loading": "Carregando o plano de hoje",
   "dayplan.load.offline":
     "Não foi possível carregar o plano de hoje porque o Homeowner não consegue falar com o serviço. Confira a sua conexão e tente de novo.",
   "dayplan.load.error":
@@ -412,7 +412,6 @@ export const ptBR: Messages = {
   "checkin.heading": "Check-in",
   "checkin.prompt": "Como você está hoje?",
   "checkin.open": "Fazer check-in",
-  "checkin.loading": "Carregando o seu check-in...",
   "checkin.load.offline":
     "Não foi possível carregar o seu check-in porque o Homeowner não consegue acessar o serviço. Verifique a sua conexão e tente de novo.",
   "checkin.load.error":

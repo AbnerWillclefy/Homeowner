@@ -11,6 +11,8 @@ import { Button } from "../../../shared/ui/Button";
 import { GroupHeading } from "../../../shared/ui/GroupHeading";
 import { LOAD_FAILURE_KEY } from "../logic/failureMessages";
 import { DoneCard } from "./DoneCard";
+import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
+import { DayPlanSkeleton } from "./DayPlanSkeleton";
 import { TaskCard } from "./TaskCard";
 import type { ActionNotice, useDayPlan } from "../hooks/useDayPlan";
 
@@ -28,6 +30,8 @@ type Day = ReturnType<typeof useDayPlan>;
 export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null }) {
   const { t } = useI18n();
   const { state, reload, run, acceptAll, acting, notice, settled } = day;
+  // The page's one status announces the wait; the skeleton shows after 300ms and only for a first load.
+  const showSkeleton = useReportFirstLoad(state.kind === "loading");
   const section = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
 
@@ -50,7 +54,7 @@ export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null 
 
       <Notice notice={notice} />
 
-      {state.kind === "loading" && <p role="status">{t("dayplan.loading")}</p>}
+      {showSkeleton && <DayPlanSkeleton />}
 
       {state.kind === "failed" && (
         <>

@@ -7,6 +7,8 @@ import { HomeSettingsForm } from "../../domains/home/components/HomeSettingsForm
 import { LeaveHome } from "../../domains/home/components/LeaveHome";
 import { useI18n } from "../../shared/i18n";
 import { PageHeader } from "../../shared/ui/PageHeader";
+import { PageLoading } from "../../shared/ui/PageLoading";
+import { ChoresPageSkeleton, HomeSkeleton, TodaySkeleton } from "../../domains/home/components/HomeSkeleton";
 import { formatAllocationTime } from "../../domains/home/logic/allocationTimes";
 import { InviteShare } from "../../domains/invite/components/InviteShare";
 import { MeProfile } from "../../domains/profile/components/MeProfile";
@@ -21,16 +23,21 @@ export function TodayPage() {
   const { planVersion, planChanged } = useShell();
   const { after } = useSession();
   return (
-    <>
+    <PageLoading message={t("dayplan.loading")}>
       {after === "already-here" && <p role="status">{t("invite.alreadyHere")}</p>}
-      <HomeGate>{() => <HomeDay version={planVersion} onPlanChanged={planChanged} />}</HomeGate>
-    </>
+      <HomeGate skeleton={<TodaySkeleton />}>{() => <HomeDay version={planVersion} onPlanChanged={planChanged} />}</HomeGate>
+    </PageLoading>
   );
 }
 
 /** Chores: the list, add and edit. */
 export function ChoresPage() {
-  return <HomeGate>{() => <ChoresSection />}</HomeGate>;
+  const { t } = useI18n();
+  return (
+    <PageLoading message={t("chores.loading")}>
+      <HomeGate skeleton={<ChoresPageSkeleton />}>{() => <ChoresSection />}</HomeGate>
+    </PageLoading>
+  );
 }
 
 /** Home: its settings, the Invite to share, and Leave. */
@@ -39,36 +46,38 @@ export function HomePage() {
   const { home } = useShell();
   const { t, locale } = useI18n();
   return (
-    <HomeGate>
-      {(current: Home) => (
-        <div className="flex flex-col gap-4">
-          <PageHeader title={t("home.settings.heading")}>
-            {t("home.summary", {
-              time: formatAllocationTime(current.allocationTime, locale),
-              zone: current.timezone.replaceAll("_", " "),
-            })}
-          </PageHeader>
-          {recovered !== "no" && (
-            <p role="status">{t(recovered === "chores-dropped" ? "home.create.recovered.chores" : "home.create.recovered")}</p>
-          )}
-          <HomeSettingsForm
-            key={current.id}
-            home={current}
-            onSaved={(saved: Home) => {
-              setRecovered("no");
-              home.setHome(saved);
-            }}
-          />
-          <InviteShare />
-          <LeaveHome
-            onLeft={() => {
-              setRecovered("no");
-              home.clearHome();
-            }}
-          />
-        </div>
-      )}
-    </HomeGate>
+    <PageLoading message={t("home.loading")}>
+      <HomeGate skeleton={<HomeSkeleton />}>
+        {(current: Home) => (
+          <div className="flex flex-col gap-4">
+            <PageHeader title={t("home.settings.heading")}>
+              {t("home.summary", {
+                time: formatAllocationTime(current.allocationTime, locale),
+                zone: current.timezone.replaceAll("_", " "),
+              })}
+            </PageHeader>
+            {recovered !== "no" && (
+              <p role="status">{t(recovered === "chores-dropped" ? "home.create.recovered.chores" : "home.create.recovered")}</p>
+            )}
+            <HomeSettingsForm
+              key={current.id}
+              home={current}
+              onSaved={(saved: Home) => {
+                setRecovered("no");
+                home.setHome(saved);
+              }}
+            />
+            <InviteShare />
+            <LeaveHome
+              onLeft={() => {
+                setRecovered("no");
+                home.clearHome();
+              }}
+            />
+          </div>
+        )}
+      </HomeGate>
+    </PageLoading>
   );
 }
 
@@ -82,12 +91,14 @@ export function MePage() {
   const auth = useAppAuth();
   if (auth.state.kind !== "signed-in") return null;
   return (
-    <div className="flex flex-col gap-4">
-      <PageHeader title={t("me.heading")} />
-      <MeProfile />
-      <SettingsCard />
-      {/* Signing out is on purpose: the guard then sends the person to sign-in without remembering this tab. */}
-      <SignedIn email={auth.state.email} offline={auth.state.offline} onSignOut={auth.signOut} />
-    </div>
+    <PageLoading message={t("profile.loading")}>
+      <div className="flex flex-col gap-4">
+        <PageHeader title={t("me.heading")} />
+        <MeProfile />
+        <SettingsCard />
+        {/* Signing out is on purpose: the guard then sends the person to sign-in without remembering this tab. */}
+        <SignedIn email={auth.state.email} offline={auth.state.offline} onSignOut={auth.signOut} />
+      </div>
+    </PageLoading>
   );
 }

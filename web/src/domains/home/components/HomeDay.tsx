@@ -41,7 +41,7 @@ export function HomeDay({ version, onPlanChanged }: { version: number; onPlanCha
         energy={showsEnergy(note) ? <EnergySummary note={note} energy={energy ?? 0} planned={planned} /> : null}
       />
       {state.kind === "ready" ? <DaySummary plan={state.plan} /> : null}
-      <StreakCard streak={streak} />
+      <StreakCard streak={streak.streak} loading={streak.loading} />
       <ReplanControl plan={state.kind === "ready" ? state.plan : undefined} show={day.show} />
       <TodaySection day={day} note={note} />
     </>
