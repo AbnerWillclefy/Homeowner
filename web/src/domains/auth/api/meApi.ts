@@ -22,18 +22,24 @@ function nonBlank(value: unknown): string | null {
   return typeof value === "string" && value.trim() !== "" ? value : null;
 }
 
+/** A User from the API's `GET /me` shape (also what `PUT /me/name` answers), or null when it is not one. */
+export function parseMe(raw: unknown): Me | null {
+  const body = typeof raw === "object" ? (raw as Record<string, unknown> | null) : null;
+  const id = nonBlank(body?.["id"]);
+  const email = nonBlank(body?.["email"]);
+  const name = nonBlank(body?.["name"]);
+  if (id === null || email === null || name === null) return null;
+  return { id, email, displayName: nonBlank(body?.["displayName"]), name, photoUrl: nonBlank(body?.["photoUrl"]) };
+}
+
 /** Who the API says is signed in. The first call after sign-in is what creates the User. */
 export async function getMe(): Promise<MeResult> {
   try {
     const result = await authedFetch("/me");
     if (result.kind === "not-signed-in") return result;
     if (result.response.status !== 200) return { kind: "error" };
-    const body = (await result.response.json()) as Record<string, unknown> | null;
-    const id = nonBlank(body?.["id"]);
-    const email = nonBlank(body?.["email"]);
-    const name = nonBlank(body?.["name"]);
-    if (id === null || email === null || name === null) return { kind: "error" };
-    return { kind: "ok", id, email, displayName: nonBlank(body?.["displayName"]), name, photoUrl: nonBlank(body?.["photoUrl"]) };
+    const me = parseMe(await result.response.json());
+    return me === null ? { kind: "error" } : { kind: "ok", ...me };
   } catch {
     return { kind: "offline" };
   }
