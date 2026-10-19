@@ -5,6 +5,7 @@ import { Button } from "../../../shared/ui/Button";
 import { FormError } from "../../../shared/ui/FormError";
 import type { Me } from "../../auth/api/meApi";
 import { Avatar } from "../../residents/components/Avatar";
+import type { AvatarSource } from "../../residents/logic/avatarView";
 import { usePhotoUpload } from "../hooks/usePhotoUpload";
 
 const FORM = "me-photo";
@@ -47,13 +48,7 @@ function ChooseButton({ label, disabled, onFile }: ChooseProps) {
   );
 }
 
-interface Shown {
-  name: string;
-  userId: string;
-  photoUrl: string | null;
-}
-
-function Preview({ resident, caption }: { resident: Shown; caption: string }) {
+function Preview({ resident, caption }: { resident: AvatarSource; caption: string }) {
   return (
     <figure className="m-0 flex flex-col items-center gap-2">
       <div className="flex items-end gap-4">
@@ -74,7 +69,7 @@ export function PhotoPicker({ me }: { me: Me }) {
   const { t } = useI18n();
   const photo = usePhotoUpload();
   const { preview, message } = photo;
-  const shown = (photoUrl: string | null): Shown => ({ name: me.name, userId: me.id, photoUrl });
+  const shown = (photoUrl: string | null): AvatarSource => ({ initials: me.initials, avatarTone: me.avatarTone, photoUrl });
 
   return (
     <section aria-labelledby={LABEL_ID} className="flex flex-col items-center gap-3 text-center">

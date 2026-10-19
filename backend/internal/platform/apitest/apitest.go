@@ -53,10 +53,11 @@ type App struct {
 	// plans with the baseline allocator unless UseAllocator replaces it.
 	Planner *dayplan.Planner
 
-	alloc  *swapAllocator
-	nudger dayplan.Nudger
-	llm    dayplan.Option
-	llmCfg dayplan.LLMConfig
+	queries *queryCounter
+	alloc   *swapAllocator
+	nudger  dayplan.Nudger
+	llm     dayplan.Option
+	llmCfg  dayplan.LLMConfig
 }
 
 // swapAllocator is the Allocator the server and the job share, so a test can
@@ -133,7 +134,8 @@ func Start(t testing.TB, opts ...Option) *App {
 	t.Helper()
 	dbURL := NewMigratedDatabase(t)
 
-	pool, err := db.Connect(context.Background(), dbURL, 0)
+	counter := &queryCounter{}
+	pool, err := db.Connect(context.Background(), dbURL, 0, counter.trace)
 	if err != nil {
 		t.Fatalf("apitest: connect: %v", err)
 	}
@@ -160,7 +162,7 @@ func Start(t testing.TB, opts ...Option) *App {
 	srv := httptest.NewServer(server.New(deps))
 	t.Cleanup(srv.Close)
 
-	app := &App{URL: srv.URL, Clock: fake, DB: pool, Logs: logs, alloc: swappable}
+	app := &App{URL: srv.URL, Clock: fake, DB: pool, Logs: logs, alloc: swappable, queries: counter}
 	app.Push, _ = deps.Push.(*push.Fake)
 	app.Photos, _ = deps.Photos.(*photos.Fake)
 	if app.Push != nil {

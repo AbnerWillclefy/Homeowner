@@ -22,32 +22,14 @@ const (
 
 // Handler serves the /home routes.
 type Handler struct {
-	store    *Store
-	photoURL func(*string) *string
-	clock    clock.Clock
-	log      *slog.Logger
+	store *Store
+	clock clock.Clock
+	log   *slog.Logger
 }
 
-// NewHandler returns a Handler over store. photoURL turns a stored photo key
-// into its public URL (nil when photos are off).
-func NewHandler(store *Store, photoURL func(*string) *string, clk clock.Clock, log *slog.Logger) *Handler {
-	return &Handler{store: store, photoURL: photoURL, clock: clk, log: log}
-}
-
-// Residents answers GET /home/residents: the Residents of the caller's Home,
-// in join order, each with the name to show. No email is ever serialised.
-func (h *Handler) Residents(w http.ResponseWriter, r *http.Request) {
-	m := identity.CurrentMembership(r.Context())
-	rows, err := h.store.Residents(r.Context(), m.Home.ID)
-	if err != nil {
-		httpx.InternalError(w, h.log, "list residents", err)
-		return
-	}
-	out := make([]ResidentResponse, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, NewResidentResponse(row, m.ResidentID, h.photoURL))
-	}
-	httpx.WriteJSON(w, http.StatusOK, out)
+// NewHandler returns a Handler over store.
+func NewHandler(store *Store, clk clock.Clock, log *slog.Logger) *Handler {
+	return &Handler{store: store, clock: clk, log: log}
 }
 
 // readSettings decodes and validates the body, writing the error response

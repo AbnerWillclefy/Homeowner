@@ -159,7 +159,7 @@ describe("the writes", () => {
 });
 
 describe("setName", () => {
-  const saved = { id: "u1", email: "a@example.com", displayName: "Abner", name: "Abner", photoUrl: null };
+  const saved = { id: "u1", email: "a@example.com", displayName: "Abner", name: "Abner", photoUrl: null, initials: "A", avatarTone: "kitchen" };
 
   it("PUTs the name and returns the updated User", async () => {
     const fetch = stubFetch(Response.json(saved));

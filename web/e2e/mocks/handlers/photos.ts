@@ -41,7 +41,7 @@ export function photosHandlers(api: FakeApi): void {
       const key = (request.body as { key?: unknown } | null)?.key;
       if (typeof key !== "string" || !keys.has(key)) return json(400, { error: "invalid_key" });
       state.user.photoUrl = NEW_PHOTO_URL;
-      const mine = state.residents?.find((resident) => resident.userId === state.user.id);
+      const mine = state.residents?.find((resident) => resident.you);
       if (mine) mine.photoUrl = NEW_PHOTO_URL;
       return json(200, { photoUrl: NEW_PHOTO_URL });
     }),
@@ -51,7 +51,7 @@ export function photosHandlers(api: FakeApi): void {
     "DELETE /me/photo",
     signedIn((_, state) => {
       delete state.user.photoUrl;
-      const mine = state.residents?.find((resident) => resident.userId === state.user.id);
+      const mine = state.residents?.find((resident) => resident.you);
       if (mine) mine.photoUrl = null;
       return empty();
     }),

@@ -32,36 +32,6 @@ func NewResponse(h Home) Response {
 	return Response{ID: h.ID, Timezone: h.Timezone, AllocationTime: h.AllocationTime}
 }
 
-// ResidentRow is a Resident as the store reads it. Name is the shown name, so
-// the email never leaves the store.
-type ResidentRow struct {
-	ResidentID string
-	UserID     string
-	Name       string
-	// PhotoKey is the stored key; it never goes on the wire, only its URL.
-	PhotoKey *string
-}
-
-// ResidentResponse is a Resident of the Home on the wire. It has no email.
-// PhotoURL is the public photo URL, or null.
-type ResidentResponse struct {
-	ResidentID string  `json:"residentId"`
-	UserID     string  `json:"userId"`
-	Name       string  `json:"name"`
-	PhotoURL   *string `json:"photoUrl"`
-	Me         bool    `json:"me"`
-}
-
-// NewResidentResponse returns row as it goes on the wire to the Resident
-// myResidentID. photoURL turns the stored photo key into its public URL.
-func NewResidentResponse(row ResidentRow, myResidentID string, photoURL func(*string) *string) ResidentResponse {
-	return ResidentResponse{
-		ResidentID: row.ResidentID, UserID: row.UserID, Name: row.Name,
-		PhotoURL: photoURL(row.PhotoKey),
-		Me:       row.ResidentID == myResidentID,
-	}
-}
-
 var allocationTimePattern = regexp.MustCompile(`^([01][0-9]|2[0-3]):([0-5][0-9])$`)
 
 // validate returns a stable machine code per invalid field, all at once.

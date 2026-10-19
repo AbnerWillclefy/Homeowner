@@ -22,8 +22,9 @@ const migrateRetryWindow = 30 * time.Second
 
 // Connect opens a pool of at most maxConns (0 keeps the default) and verifies
 // it with a ping, retrying for about 10s (or until ctx ends) so the API does
-// not crash-loop while Postgres boots.
-func Connect(ctx context.Context, url string, maxConns int32) (*pgxpool.Pool, error) {
+// not crash-loop while Postgres boots. opts adjust the pool config before it
+// opens, for example to set a query tracer in tests.
+func Connect(ctx context.Context, url string, maxConns int32, opts ...func(*pgxpool.Config)) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(url)
 	if err != nil {
 		// pgx errors may echo the URL; do not leak credentials.
@@ -31,6 +32,9 @@ func Connect(ctx context.Context, url string, maxConns int32) (*pgxpool.Pool, er
 	}
 	if maxConns > 0 {
 		cfg.MaxConns = maxConns
+	}
+	for _, opt := range opts {
+		opt(cfg)
 	}
 	deadline := time.Now().Add(connectRetryWindow)
 	for {

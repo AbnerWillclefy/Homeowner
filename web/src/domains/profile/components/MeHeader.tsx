@@ -40,7 +40,7 @@ function Loaded({ me, hasHome }: { me: Me; hasHome: boolean }) {
   return (
     <div className={COLUMN}>
       <div className="relative">
-        <Avatar size="lg" resident={{ name: me.name, userId: me.id, photoUrl: me.photoUrl }} />
+        <Avatar size="lg" resident={me} />
         {!nothingSet && (
           <Button asChild variant="secondary" icon className="absolute -right-3 -bottom-2">
             <Link to={ME_EDIT_PATH} aria-label={t("me.header.edit")}>

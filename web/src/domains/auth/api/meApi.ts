@@ -8,6 +8,10 @@ export interface Me {
   /** The shown name, as the API decides it. */
   name: string;
   photoUrl: string | null;
+  /** The letters of the initials Avatar, decided by the API ("" when the name has none). */
+  initials: string;
+  /** The pastel of the initials Avatar, as a Category id (kitchen, bathroom, ...). */
+  avatarTone: string;
 }
 
 export type MeResult =
@@ -29,7 +33,15 @@ export function parseMe(raw: unknown): Me | null {
   const email = nonBlank(body?.["email"]);
   const name = nonBlank(body?.["name"]);
   if (id === null || email === null || name === null) return null;
-  return { id, email, displayName: nonBlank(body?.["displayName"]), name, photoUrl: nonBlank(body?.["photoUrl"]) };
+  return {
+    id,
+    email,
+    displayName: nonBlank(body?.["displayName"]),
+    name,
+    photoUrl: nonBlank(body?.["photoUrl"]),
+    initials: typeof body?.["initials"] === "string" ? body["initials"] : "",
+    avatarTone: typeof body?.["avatarTone"] === "string" ? body["avatarTone"] : "",
+  };
 }
 
 /** Who the API says is signed in. The first call after sign-in is what creates the User. */
