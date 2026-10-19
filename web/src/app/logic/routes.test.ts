@@ -6,6 +6,7 @@ import {
   isShellPath,
   isWelcomePath,
   normalizePath,
+  residentIdFromPath,
   residentPath,
   safeWantedPath,
   stepFromPath,
@@ -127,5 +128,36 @@ describe("residentPath", () => {
 
   it("encodes an id so it can never change the path", () => {
     expect(residentPath("a/b?c")).toBe("/home/residents/a%2Fb%3Fc");
+  });
+});
+
+describe("residentIdFromPath", () => {
+  it("gives the id of exactly one segment under /home/residents", () => {
+    expect(residentIdFromPath("/home/residents/abc")).toBe("abc");
+    expect(residentIdFromPath("/home/residents/abc/?x=1#y")).toBe("abc");
+  });
+
+  it("decodes what residentPath encoded", () => {
+    expect(residentIdFromPath(residentPath("a/b?c"))).toBe("a/b?c");
+  });
+
+  it.each(["/home/residents", "/home/residents/", "/home/residents/a/b", "/home", "/me/residents/a", "/home/resident/a", "/home/residents/%E0%A4%A"])(
+    "gives null for %s",
+    (path) => {
+      expect(residentIdFromPath(path)).toBeNull();
+    },
+  );
+});
+
+describe("the Resident page path", () => {
+  it("is a shell path, but only with exactly one id segment", () => {
+    expect(isShellPath("/home/residents/abc")).toBe(true);
+    expect(isShellPath("/home/residents/abc/")).toBe(true);
+    expect(isShellPath("/home/residents")).toBe(false);
+    expect(isShellPath("/home/residents/a/b")).toBe(false);
+  });
+
+  it("is kept as the wanted path, so a deep link survives sign-in", () => {
+    expect(safeWantedPath("/home/residents/abc")).toBe("/home/residents/abc");
   });
 });

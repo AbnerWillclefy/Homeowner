@@ -1,5 +1,9 @@
 import { Settings } from "lucide-react";
 import type { Home } from "../../domains/home/api/api";
+import { useParams } from "react-router";
+import { BackToHome } from "../../domains/residents/components/BackToHome";
+import { ResidentPage } from "../../domains/residents/components/ResidentPage";
+import { ResidentPageSkeleton } from "../../domains/residents/components/ResidentPageSkeleton";
 import { ResidentsCard } from "../../domains/residents/components/ResidentsCard";
 import { CollapsibleCard } from "../../shared/ui/CollapsibleCard";
 import { SignedIn } from "../../domains/auth/components/SignedIn";
@@ -89,6 +93,22 @@ export function HomePage() {
           </div>
         )}
       </HomeGate>
+    </PageLoading>
+  );
+}
+
+/**
+ * A housemate's page, nested under the Home tab. The back link is outside the Home gate so it is there while the
+ * Home loads and when it fails. The id comes from the address; the route always has one.
+ */
+export function ResidentRoute() {
+  const { t } = useI18n();
+  const { id } = useParams();
+  if (id === undefined) return null;
+  return (
+    <PageLoading message={t("resident.loading")}>
+      <BackToHome />
+      <HomeGate skeleton={<ResidentPageSkeleton />}>{(current: Home) => <ResidentPage id={id} timeZone={current.timezone} />}</HomeGate>
     </PageLoading>
   );
 }

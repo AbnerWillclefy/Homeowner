@@ -19,6 +19,11 @@ describe("formatTime", () => {
     expect(formatTime("2026-10-11T14:30:00Z", "pt-BR", "America/Sao_Paulo")).toBe("11:30");
   });
 
+  it("reads the previous evening in the Home's zone when the instant is early UTC", () => {
+    expect(formatTime("2026-10-12T02:30:00Z", "pt-BR", "America/Sao_Paulo")).toBe("23:30");
+    expect(formatTime("2026-10-12T02:30:00Z", "en-US", "America/Sao_Paulo")).toBe("11:30 PM");
+  });
+
   it("returns text it cannot read as it came", () => {
     expect(formatTime("later", "en-US")).toBe("later");
   });
