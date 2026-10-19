@@ -5,7 +5,9 @@ export const CHORES_PATH = "/chores";
 export const HOME_PATH = "/home";
 export const ME_PATH = "/me";
 export const ME_EDIT_PATH = "/me/edit";
-/** A Resident's page under the Home tab. The screen arrives later; until then the guard sends the link to Today. */
+/** The route pattern of a Resident's page, nested under the Home tab. */
+export const RESIDENT_PATH = `${HOME_PATH}/residents/:id`;
+/** A Resident's page under the Home tab. */
 export const residentPath = (id: string): string => `${HOME_PATH}/residents/${encodeURIComponent(id)}`;
 export const SIGN_IN_PATH = "/signin";
 export const SIGN_UP_PATH = "/signup";
@@ -17,8 +19,8 @@ export const SHELL_PATHS = [TODAY_PATH, CHORES_PATH, HOME_PATH, ME_PATH] as cons
 
 /**
  * Screens that live inside the shell under a tab, so the guard lets them through. A list of exact paths, not a
- * prefix: an unknown path under a tab must still go to Today, never render a blank outlet. A later screen (a
- * Resident under Home) adds its path here, or a matcher for its id.
+ * prefix: an unknown path under a tab must still go to Today, never render a blank outlet. A screen with an id in
+ * its path (a Resident under Home) is matched by `residentIdFromPath` in `isShellPath` instead.
  */
 export const SHELL_SUBPATHS = [ME_EDIT_PATH] as const;
 
@@ -33,9 +35,28 @@ export function normalizePath(path: string): string {
 }
 
 export const isAuthPath = (path: string): boolean => (AUTH_PATHS as readonly string[]).includes(normalizePath(path));
+
+/**
+ * The id in `/home/residents/<id>`, or null for any other path, including `/home/residents`, an empty id and a
+ * path with more than one segment after it. Pure, so the guard can accept the page without a router.
+ */
+export function residentIdFromPath(path: string): string | null {
+  const match = /^\/home\/residents\/([^/]+)$/.exec(normalizePath(path));
+  if (match === null) return null;
+  try {
+    return decodeURIComponent(match[1]!);
+  } catch {
+    return null;
+  }
+}
+
 export const isShellPath = (path: string): boolean => {
   const p = normalizePath(path);
-  return (SHELL_PATHS as readonly string[]).includes(p) || (SHELL_SUBPATHS as readonly string[]).includes(p);
+  return (
+    (SHELL_PATHS as readonly string[]).includes(p) ||
+    (SHELL_SUBPATHS as readonly string[]).includes(p) ||
+    residentIdFromPath(p) !== null
+  );
 };
 
 export function isWelcomePath(path: string): boolean {
