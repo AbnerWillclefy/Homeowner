@@ -39,11 +39,17 @@ export const enUS = {
   "home.create.recovered":
     "You already have a Home, so Homeowner loaded it instead. Check its settings below.",
   "home.settings.heading": "Your Home",
-  "home.settings.plan.heading": "Day Plan",
   "home.settings.plan.hint": "When each day's plan is made, in your Home's timezone.",
   "home.summary": "Plans are made at {time}, {zone} time.",
   "home.settings.save": "Save changes",
   "home.settings.saved": "Your changes are saved.",
+  "home.settings.card.title": "Home settings",
+  "home.settings.card.hint": "Planning time and time zone",
+  "home.residents.heading": "Residents",
+  "home.residents.you": "You",
+  "home.residents.streak": { one: "{count} day", other: "{count} days" },
+  "home.residents.doneToday": { one: "{count} done today", other: "{count} done today" },
+  "home.residents.error": "Something went wrong loading the Residents. Try again in a moment.",
   "home.timezone.label": "Timezone",
   "home.allocationTime.label": "Allocation time",
   "home.save.offline":

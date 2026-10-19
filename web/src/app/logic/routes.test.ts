@@ -6,6 +6,7 @@ import {
   isShellPath,
   isWelcomePath,
   normalizePath,
+  residentPath,
   safeWantedPath,
   stepFromPath,
   stepPath,
@@ -116,5 +117,15 @@ describe("isShellPath", () => {
 
   it.each(["/me/other", "/me/edit/more", "/chores/edit", "/signin", "/welcome/home", "/nope", "/mex"])("rejects %s", (path) => {
     expect(isShellPath(path)).toBe(false);
+  });
+});
+
+describe("residentPath", () => {
+  it("is the Resident page under the Home tab", () => {
+    expect(residentPath("r-42")).toBe("/home/residents/r-42");
+  });
+
+  it("encodes an id so it can never change the path", () => {
+    expect(residentPath("a/b?c")).toBe("/home/residents/a%2Fb%3Fc");
   });
 });

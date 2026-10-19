@@ -3,6 +3,7 @@ import { SkeletonHeader } from "../../../shared/ui/SkeletonHeader";
 import { CheckInSkeleton } from "../../checkin/components/CheckInSkeleton";
 import { ChoresSkeleton } from "../../chores/components/ChoresSkeleton";
 import { DayPlanSkeleton } from "../../dayplan/components/DayPlanSkeleton";
+import { ResidentRowsSkeleton } from "../../residents/components/ResidentRowSkeleton";
 import { StreakSkeleton } from "../../streak/components/StreakSkeleton";
 
 function TitledCardSkeleton({ lines }: { lines: number }) {
@@ -19,13 +20,16 @@ function TitledCardSkeleton({ lines }: { lines: number }) {
   );
 }
 
-/** The Home tab while its Home loads: the header, the settings card, the Invite card and the Leave card. */
+/** The Home tab while its Home loads: the header, the Residents card, the Invite card, the folded settings card and the Leave card. */
 export function HomeSkeleton() {
   return (
     <div aria-hidden="true" className="flex flex-col gap-4">
       <SkeletonHeader />
-      <TitledCardSkeleton lines={5} />
+      <SkeletonCard className="py-1">
+        <ResidentRowsSkeleton />
+      </SkeletonCard>
       <TitledCardSkeleton lines={2} />
+      <TitledCardSkeleton lines={1} />
       <SkeletonCard>
         <SkeletonBar className="h-4 w-2/3" />
         <SkeletonPill className="w-32" />

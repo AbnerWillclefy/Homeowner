@@ -1,4 +1,7 @@
+import { Settings } from "lucide-react";
 import type { Home } from "../../domains/home/api/api";
+import { ResidentsCard } from "../../domains/residents/components/ResidentsCard";
+import { CollapsibleCard } from "../../shared/ui/CollapsibleCard";
 import { SignedIn } from "../../domains/auth/components/SignedIn";
 import { ChoresSection } from "../../domains/chores/components/ChoresSection";
 import { HomeDay } from "../../domains/home/components/HomeDay";
@@ -41,7 +44,7 @@ export function ChoresPage() {
   );
 }
 
-/** Home: its settings, the Invite to share, and Leave. */
+/** Home: its Residents, the Invite to share, its settings (folded) and Leave last. */
 export function HomePage() {
   const { recovered, setRecovered } = useSession();
   const { home } = useShell();
@@ -60,15 +63,23 @@ export function HomePage() {
             {recovered !== "no" && (
               <p role="status">{t(recovered === "chores-dropped" ? "home.create.recovered.chores" : "home.create.recovered")}</p>
             )}
-            <HomeSettingsForm
-              key={current.id}
-              home={current}
-              onSaved={(saved: Home) => {
-                setRecovered("no");
-                home.setHome(saved);
-              }}
-            />
+            <ResidentsCard />
             <InviteShare />
+            <CollapsibleCard
+              id="home-settings-card-heading"
+              icon={Settings}
+              title={t("home.settings.card.title")}
+              hint={t("home.settings.card.hint")}
+            >
+              <HomeSettingsForm
+                key={current.id}
+                home={current}
+                onSaved={(saved: Home) => {
+                  setRecovered("no");
+                  home.setHome(saved);
+                }}
+              />
+            </CollapsibleCard>
             <LeaveHome
               onLeft={() => {
                 setRecovered("no");

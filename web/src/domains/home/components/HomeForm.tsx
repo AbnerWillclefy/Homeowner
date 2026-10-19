@@ -1,6 +1,4 @@
 import type { Home, HomeSettings } from "../api/api";
-import { Clock } from "lucide-react";
-import { SectionCard } from "../../../shared/ui/SectionCard";
 import { useToast } from "../../../shared/ui/useToast";
 import { useI18n, type MessageKey } from "../../../shared/i18n";
 import { ButtonRow } from "../../../shared/ui/ButtonRow";
@@ -10,7 +8,6 @@ import { HomeFields } from "./HomeFields";
 import { useSettingsForm, type SaveOutcome } from "../hooks/useSettingsForm";
 
 interface Copy {
-  heading: MessageKey;
   hint: MessageKey;
   submit: MessageKey;
   /** The toast after a save. Left out where the form goes away on success. */
@@ -18,7 +15,7 @@ interface Copy {
 }
 
 interface Props {
-  /** Also names the heading id and the field ids, so two forms on a page never share one. */
+  /** Names the field ids, so two forms on a page never share one. */
   idPrefix: string;
   copy: Copy;
   initial: HomeSettings;
@@ -28,7 +25,7 @@ interface Props {
   onRecovered?(home: Home): void;
 }
 
-/** The form for a Home's settings, shared by creating one and editing it. */
+/** The form for a Home's settings: a hint, then the fields. The caller's card names it. */
 export function HomeForm({ idPrefix, copy, initial, timezones, save, onSaved, onRecovered }: Props) {
   const { t } = useI18n();
   const toast = useToast();
@@ -44,7 +41,8 @@ export function HomeForm({ idPrefix, copy, initial, timezones, save, onSaved, on
   const saving = form.status.kind === "saving";
 
   return (
-    <SectionCard id={`${idPrefix}-heading`} icon={Clock} title={t(copy.heading)} hint={t(copy.hint)}>
+    <>
+      <p className="my-0 text-sm text-muted">{t(copy.hint)}</p>
       <form onSubmit={form.submit} noValidate>
         <HomeFields
           idPrefix={idPrefix}
@@ -64,6 +62,6 @@ export function HomeForm({ idPrefix, copy, initial, timezones, save, onSaved, on
           }
         />
       </form>
-    </SectionCard>
+    </>
   );
 }
