@@ -36,7 +36,7 @@ export const tabs = {
     trigger: (page: Page, name: string) => page.getByRole("button", { name, exact: true }),
     /** Opens a card if it is closed. */
     async open(page: Page, name: string): Promise<void> {
-      const trigger = page.getByRole("button", { name, exact: true });
+      const trigger = tabs.me.trigger(page, name);
       if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
       await expect(trigger).toHaveAttribute("aria-expanded", "true");
     },

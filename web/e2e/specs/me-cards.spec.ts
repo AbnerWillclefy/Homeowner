@@ -3,6 +3,7 @@ import { signedInHandlers } from "../mocks/handlers/signedIn";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
+import { tabs } from "../pages/tabs";
 
 // What this covers: the Me tab's Baseline, Preferences and Restrictions as collapsible cards, in both locales.
 // Closed on first view, the whole head row toggles, an edit inside an open card still saves, and the open state is
@@ -40,12 +41,9 @@ for (const l of LOCALES) {
       await page.getByRole("navigation").getByRole("link", { name: l.me, exact: true }).click();
     });
 
-    const trigger = (page: import("@playwright/test").Page, name: string) =>
-      page.getByRole("button", { name, exact: true });
-
     test("all three cards start closed", async ({ page }) => {
       for (const name of l.cards) {
-        const button = trigger(page, name);
+        const button = tabs.me.trigger(page,name);
         await expect(button).toHaveAttribute("aria-expanded", "false");
         const body = page.locator(`#${await button.getAttribute("aria-controls")}`);
         await expect(body).toBeHidden();
@@ -54,7 +52,7 @@ for (const l of LOCALES) {
     });
 
     test("the head row opens a card and Space closes it", async ({ page }) => {
-      const button = trigger(page, l.cards[0]);
+      const button = tabs.me.trigger(page,l.cards[0]);
       // Click the row's left edge, on the icon tile: not the chevron, not the title text.
       const box = (await button.boundingBox())!;
       await page.mouse.click(box.x + 8, box.y + box.height / 2);
@@ -69,7 +67,7 @@ for (const l of LOCALES) {
     });
 
     test("an edit inside an open Restrictions card still saves", async ({ page, fakeApi }) => {
-      await trigger(page, l.restrictions).click();
+      await tabs.me.trigger(page,l.restrictions).click();
       await page.getByRole("checkbox", { name: l.heights }).check();
 
       await expect(page.getByText(l.saved)).toBeVisible();
@@ -77,13 +75,13 @@ for (const l of LOCALES) {
     });
 
     test("leaving the tab and coming back shows the cards closed again", async ({ page }) => {
-      await trigger(page, l.cards[2]).click();
-      await expect(trigger(page, l.cards[2])).toHaveAttribute("aria-expanded", "true");
+      await tabs.me.trigger(page,l.cards[2]).click();
+      await expect(tabs.me.trigger(page,l.cards[2])).toHaveAttribute("aria-expanded", "true");
 
       await page.getByRole("navigation").getByRole("link", { name: l.today, exact: true }).click();
       await page.getByRole("navigation").getByRole("link", { name: l.me, exact: true }).click();
 
-      for (const name of l.cards) await expect(trigger(page, name)).toHaveAttribute("aria-expanded", "false");
+      for (const name of l.cards) await expect(tabs.me.trigger(page,name)).toHaveAttribute("aria-expanded", "false");
     });
   });
 }

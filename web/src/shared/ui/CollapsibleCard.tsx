@@ -1,13 +1,7 @@
 import { ChevronDown, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Card } from "./Card";
-import { IconTile } from "./IconTile";
-
-// Whole class strings, so Tailwind finds them. Same tones as SectionCard.
-const TONES = {
-  accent: "bg-accent/10 text-accent",
-  danger: "bg-danger/10 text-danger",
-} as const;
+import { IconTile, TONES } from "./IconTile";
 
 interface Props {
   /** Names the heading, which labels the section; the body is `${id}-body`. */
