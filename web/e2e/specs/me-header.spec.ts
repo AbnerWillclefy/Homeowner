@@ -97,7 +97,7 @@ for (const l of LOCALES) {
         await page.getByRole("link", { name: l.edit }).click();
         await expect(page).toHaveURL(/\/me\/edit$/);
         await expect(nav(page, l.me)).toHaveAttribute("aria-current", "page");
-        await page.getByLabel(l.nameLabel).fill("Someone else");
+        await page.getByLabel(l.nameLabel, { exact: true }).fill("Someone else");
         await page.getByRole("link", { name: l.back }).click();
         await expect(page).toHaveURL(/\/me$/);
         await expect(page.getByText("Abner Lima", { exact: true })).toBeVisible();
@@ -108,7 +108,7 @@ for (const l of LOCALES) {
         await openMe(page, baseURL);
         await page.evaluate(() => ((window as unknown as { __kept: boolean }).__kept = true));
         await page.getByRole("link", { name: l.edit }).click();
-        await page.getByLabel(l.nameLabel).fill("  Bia Costa  ");
+        await page.getByLabel(l.nameLabel, { exact: true }).fill("  Bia Costa  ");
         await expect(page.getByText("9/40", { exact: true })).toBeVisible();
         await page.getByRole("button", { name: l.save }).click();
 
@@ -123,7 +123,7 @@ for (const l of LOCALES) {
       test("clearing the name falls back to the email's local part and brings the add link back", async ({ page, baseURL, fakeApi }) => {
         await openMe(page, baseURL);
         await page.getByRole("link", { name: l.edit }).click();
-        await page.getByLabel(l.nameLabel).fill("   ");
+        await page.getByLabel(l.nameLabel, { exact: true }).fill("   ");
         await page.getByRole("button", { name: l.save }).click();
 
         await expect(page).toHaveURL(/\/me$/);
@@ -136,12 +136,12 @@ for (const l of LOCALES) {
       test("a name over 40 characters is stopped before any request", async ({ page, baseURL, fakeApi }) => {
         await openMe(page, baseURL);
         await page.getByRole("link", { name: l.edit }).click();
-        await page.getByLabel(l.nameLabel).fill(TOO_LONG);
+        await page.getByLabel(l.nameLabel, { exact: true }).fill(TOO_LONG);
         await expect(page.getByRole("alert").filter({ hasText: l.tooLong })).toBeVisible();
         await expect(page.getByRole("button", { name: l.save })).toBeDisabled();
         expect(fakeApi.requests.some((r) => r.method === "PUT" && r.path === "/me/name")).toBe(false);
 
-        await page.getByLabel(l.nameLabel).fill(LONG_NAME);
+        await page.getByLabel(l.nameLabel, { exact: true }).fill(LONG_NAME);
         await expect(page.getByRole("button", { name: l.save })).toBeEnabled();
         expect(await noOverflow(page)).toBe(true);
       });
@@ -150,11 +150,11 @@ for (const l of LOCALES) {
         fakeApi.override("PUT /me/name", json(400, { error: "too_long" }));
         await openMe(page, baseURL);
         await page.getByRole("link", { name: l.edit }).click();
-        await page.getByLabel(l.nameLabel).fill(LONG_NAME);
+        await page.getByLabel(l.nameLabel, { exact: true }).fill(LONG_NAME);
         await page.getByRole("button", { name: l.save }).click();
         await expect(page.getByRole("alert").filter({ hasText: l.tooLong })).toBeVisible();
         await expect(page).toHaveURL(/\/me\/edit$/);
-        await expect(page.getByLabel(l.nameLabel)).toHaveValue(LONG_NAME);
+        await expect(page.getByLabel(l.nameLabel, { exact: true })).toHaveValue(LONG_NAME);
       });
 
       test("a 40-character name wraps instead of overflowing on Me", async ({ page, baseURL, fakeApi }) => {
@@ -177,7 +177,7 @@ for (const l of LOCALES) {
         expect(((await add.boundingBox())!).height).toBeGreaterThanOrEqual(44);
         await add.click();
         await expect(page).toHaveURL(/\/me\/edit$/);
-        await expect(page.getByLabel(l.nameLabel)).toHaveValue("");
+        await expect(page.getByLabel(l.nameLabel, { exact: true })).toHaveValue("");
       });
     });
 
@@ -222,7 +222,7 @@ for (const l of LOCALES) {
         });
         await openMe(page, baseURL);
         await page.getByRole("link", { name: l.edit }).click();
-        await expect(page.getByLabel(l.nameLabel)).toBeVisible();
+        await expect(page.getByLabel(l.nameLabel, { exact: true })).toBeVisible();
 
         // Reloading on the edit route makes the app ask for /me again, now failing.
         broken = true;
@@ -230,7 +230,7 @@ for (const l of LOCALES) {
         await expect(page.getByRole("alert").filter({ hasText: l.loadFailed })).toBeVisible();
         broken = false;
         await page.getByRole("button", { name: l.retry }).click();
-        await expect(page.getByLabel(l.nameLabel)).toHaveValue("Abner Lima");
+        await expect(page.getByLabel(l.nameLabel, { exact: true })).toHaveValue("Abner Lima");
       });
     });
   });

@@ -70,7 +70,7 @@ for (const l of LOCALES) {
       await tabs.me.trigger(page,l.restrictions).click();
       await page.getByRole("checkbox", { name: l.heights }).check();
 
-      await expect(page.getByText(l.saved)).toBeVisible();
+      await expect(page.getByText(l.saved, { exact: true })).toBeVisible();
       expect(fakeApi.requests.some((r) => r.method === "PUT" && r.path === "/me/restrictions/heights")).toBe(true);
     });
 
