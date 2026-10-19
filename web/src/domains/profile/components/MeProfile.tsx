@@ -12,7 +12,7 @@ import { ProfileSkeleton } from "./ProfileSkeleton";
  * with an error toast if the API refuses it, and a toast says it was saved. Baseline saves on blur. Onboarding shows the same three
  * parts one step at a time.
  *
- * While the details load or fail, only the status shows (with Retry), never empty cards. It renders a
+ * While the details load, only the skeleton shows; when they fail, only the alert and Retry. Never empty cards. It renders a
  * fragment: MePage owns the column and the cards that follow.
  */
 export function MeProfile() {
@@ -26,7 +26,7 @@ export function MeProfile() {
     <>
       {showSkeleton && <ProfileSkeleton />}
       {/* Load problems only; each save or undo is a toast, announced once by the toast region. */}
-      {state.kind !== "loading" && <ProfileStatus state={state} retry={retry} />}
+      <ProfileStatus state={state} retry={retry} />
 
       {state.kind === "ready" && (
         <>
