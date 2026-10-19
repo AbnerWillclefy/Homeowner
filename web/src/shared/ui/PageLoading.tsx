@@ -35,18 +35,18 @@ export function PageLoading({ message, children }: { message: string; children: 
 /**
  * A section calls this with whether its first data is still loading, and shows its skeleton when the result is
  * true. Reports only the first load: pass false once content is on screen, so a reload after an action keeps
- * showing the content. Without a `PageLoading` around it, the section times its own skeleton.
+ * showing the content. Must be used inside a `PageLoading`.
  */
 export function useReportFirstLoad(loading: boolean): boolean {
   const page = useContext(PageLoadingContext);
-  const own = useDelayedFlag(loading);
+  if (!page) throw new Error("useReportFirstLoad must be used inside <PageLoading>");
   const id = useId();
-  const report = page?.report;
+  const { report } = page;
 
   useEffect(() => {
-    report?.(id, loading);
+    report(id, loading);
+    return () => report(id, false);
   }, [report, id, loading]);
-  useEffect(() => () => report?.(id, false), [report, id]);
 
-  return page ? page.show && loading : own;
+  return page.show && loading;
 }
