@@ -36,6 +36,8 @@ export interface FakeState {
   dayPlan?: DayPlan;
   /** The Home's Residents as `GET /home/residents` lists them. Absent means only the caller. */
   residents?: Resident[];
+  /** The current Streak `GET /home/streak` answers. Absent means 0. */
+  streak?: number;
 }
 
 export function initialState(): FakeState {
@@ -192,6 +194,23 @@ export function coreHandlers(api: FakeApi): void {
     signedIn((_, state) => {
       const { id, email, displayName, photoUrl } = state.user;
       return json(200, { id, email, displayName: displayName ?? null, name: shownName({ email, displayName }), photoUrl: photoUrl ?? null });
+    }),
+  );
+  // Mirrors NormalizeName in backend/internal/users/name.go for the cases a spec needs: trim, a blank name clears,
+  // and more than 40 code points is `too_long`. The Residents list shows the new name, like the API.
+  api.on(
+    "PUT /me/name",
+    signedIn((request, state) => {
+      const raw = (request.body as { name?: unknown } | null)?.name;
+      const trimmed = typeof raw === "string" ? raw.trim() : "";
+      if (Array.from(trimmed).length > 40) return json(400, { error: "too_long" });
+      if (trimmed === "") delete state.user.displayName;
+      else state.user.displayName = trimmed;
+      const { id, email, displayName, photoUrl } = state.user;
+      const shown = shownName({ email, displayName });
+      const mine = state.residents?.find((resident) => resident.userId === id);
+      if (mine) mine.name = shown;
+      return json(200, { id, email, displayName: displayName ?? null, name: shown, photoUrl: photoUrl ?? null });
     }),
   );
   api.on("GET /me/onboarding", signedIn((_, state) => json(200, { step: nextStep(state.onboardingStored) })));

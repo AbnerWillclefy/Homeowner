@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getResidents, type Resident } from "../api/api";
 
 export type ResidentsState =
@@ -18,6 +18,9 @@ export type ResidentsState =
  */
 export function useResidents(hasHome: boolean) {
   const [state, setState] = useState<ResidentsState>({ kind: "loading" });
+  const [version, setVersion] = useState(0);
+  // Bumping the version loads again but keeps the list on screen: a reload after a name change must not flash.
+  const reload = useCallback(() => setVersion((v) => v + 1), []);
 
   useEffect(() => {
     if (!hasHome) {
@@ -32,10 +35,10 @@ export function useResidents(hasHome: boolean) {
     return () => {
       current = false;
     };
-  }, [hasHome]);
+  }, [hasHome, version]);
 
   const byResidentId = (residentId: string): Resident | undefined =>
     state.kind === "ready" ? state.residents.find((resident) => resident.residentId === residentId) : undefined;
 
-  return { state, byResidentId };
+  return { state, byResidentId, reload };
 }

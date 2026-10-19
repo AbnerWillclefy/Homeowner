@@ -3,6 +3,7 @@ import { ONBOARDING_STEPS } from "../../domains/onboarding/api/api";
 import {
   authState,
   confirmNeedsEmail,
+  isShellPath,
   isWelcomePath,
   normalizePath,
   safeWantedPath,
@@ -100,5 +101,20 @@ describe("confirmNeedsEmail", () => {
 
   it("is false with an email", () => {
     expect(confirmNeedsEmail({ email: "a@b.c" })).toBe(false);
+  });
+});
+
+describe("isShellPath", () => {
+  it.each(["/", "/chores", "/home", "/me", "/me/", "/me?x=1"])("accepts the tab %s", (path) => {
+    expect(isShellPath(path)).toBe(true);
+  });
+
+  it("accepts the edit screen under Me, with a trailing slash, search or hash", () => {
+    expect(isShellPath("/me/edit")).toBe(true);
+    expect(isShellPath("/me/edit/?a=1#b")).toBe(true);
+  });
+
+  it.each(["/me/other", "/me/edit/more", "/chores/edit", "/signin", "/welcome/home", "/nope", "/mex"])("rejects %s", (path) => {
+    expect(isShellPath(path)).toBe(false);
   });
 });

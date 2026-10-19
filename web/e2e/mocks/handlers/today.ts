@@ -40,5 +40,5 @@ export function todayHandlers(api: FakeApi): void {
     }),
   );
 
-  api.on("GET /home/streak", signedIn((_, state) => (state.home === null ? json(404, { error: "no home" }) : json(200, { current: 0, todayGrew: false }))));
+  api.on("GET /home/streak", signedIn((_, state) => (state.home === null ? json(404, { error: "no home" }) : json(200, { current: state.streak ?? 0, todayGrew: false }))));
 }
