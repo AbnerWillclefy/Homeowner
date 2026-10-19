@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SESSION_KEY } from "../../auth/logic/session";
-import { getResidents } from "./api";
+import { getResident, getResidents } from "./api";
 
 function stubStorage(signedIn: boolean) {
   const data = new Map<string, string>();
@@ -111,5 +111,128 @@ describe("getResidents", () => {
   it("is offline when the API cannot be reached", async () => {
     stubFetch(new TypeError("Failed to fetch"));
     expect(await getResidents()).toEqual({ kind: "offline" });
+  });
+});
+
+const COMPLETION = {
+  id: "c1",
+  choreId: "ch1",
+  choreName: "Clean the stove",
+  category: "kitchen",
+  completedAt: "2026-10-19T12:30:00Z",
+  with: [{ id: "r2", name: "Bruna" }],
+};
+const DETAIL = {
+  date: "2026-10-19",
+  id: "r1",
+  you: false,
+  name: "Ana",
+  photoUrl: null,
+  initials: "A",
+  avatarTone: "mint",
+  streak: 11,
+  doneLast7Days: 2,
+  days: [{ date: "2026-10-19", completions: [COMPLETION, { ...COMPLETION, id: "c2", with: [] }] }],
+};
+
+describe("getResident", () => {
+  it("reads the header, the counts and the days as the API sends them", async () => {
+    const fetch = stubFetch(Response.json(DETAIL));
+    const result = await getResident("r1");
+    expect(fetch.mock.calls[0]![0]).toMatch(/\/home\/residents\/r1$/);
+    expect(result).toEqual({
+      kind: "ok",
+      resident: {
+        date: "2026-10-19",
+        id: "r1",
+        you: false,
+        name: "Ana",
+        photoUrl: null,
+        initials: "A",
+        avatarTone: "mint",
+        streak: 11,
+        doneLast7Days: 2,
+        days: [
+          {
+            date: "2026-10-19",
+            completions: [
+              { id: "c1", choreName: "Clean the stove", category: "kitchen", completedAt: "2026-10-19T12:30:00Z", with: [{ id: "r2", name: "Bruna" }] },
+              { id: "c2", choreName: "Clean the stove", category: "kitchen", completedAt: "2026-10-19T12:30:00Z", with: [] },
+            ],
+          },
+        ],
+      },
+    });
+  });
+
+  it("encodes the id into the path", async () => {
+    const fetch = stubFetch(Response.json(DETAIL));
+    await getResident("a/b");
+    expect(fetch.mock.calls[0]![0]).toMatch(/\/home\/residents\/a%2Fb$/);
+  });
+
+  it("reads no days as an empty list", async () => {
+    stubFetch(Response.json({ ...DETAIL, doneLast7Days: 0, days: [] }));
+    const result = await getResident("r1");
+    expect(result.kind === "ok" && result.resident.days).toEqual([]);
+  });
+
+  it("keeps a photo URL and reads a blank one as null", async () => {
+    stubFetch(Response.json({ ...DETAIL, photoUrl: "https://cdn.test/a.jpg" }));
+    const withPhoto = await getResident("r1");
+    expect(withPhoto.kind === "ok" && withPhoto.resident.photoUrl).toBe("https://cdn.test/a.jpg");
+    stubFetch(Response.json({ ...DETAIL, photoUrl: "" }));
+    const blank = await getResident("r1");
+    expect(blank.kind === "ok" && blank.resident.photoUrl).toBeNull();
+  });
+
+  it.each([
+    ["days is not an array", { ...DETAIL, days: {} }],
+    ["a day without a date", { ...DETAIL, days: [{ completions: [] }] }],
+    ["a day without completions", { ...DETAIL, days: [{ date: "2026-10-19" }] }],
+    ["with is not an array", { ...DETAIL, days: [{ date: "2026-10-19", completions: [{ ...COMPLETION, with: null }] }] }],
+    ["a partner without a name", { ...DETAIL, days: [{ date: "2026-10-19", completions: [{ ...COMPLETION, with: [{ id: "r2" }] }] }] }],
+    ["completedAt is not a date", { ...DETAIL, days: [{ date: "2026-10-19", completions: [{ ...COMPLETION, completedAt: "later" }] }] }],
+    ["a Completion without a Chore name", { ...DETAIL, days: [{ date: "2026-10-19", completions: [{ ...COMPLETION, choreName: 3 }] }] }],
+    ["a negative Streak", { ...DETAIL, streak: -1 }],
+    ["a fractional count", { ...DETAIL, doneLast7Days: 1.5 }],
+    ["a missing date", { ...DETAIL, date: undefined }],
+    ["a missing name", { ...DETAIL, name: undefined }],
+    ["you is not a boolean", { ...DETAIL, you: "no" }],
+    ["a body that is not an object", [DETAIL]],
+  ])("is an error when %s", async (_name, body) => {
+    stubFetch(Response.json(body));
+    expect(await getResident("r1")).toEqual({ kind: "error" });
+  });
+
+  it("is not-found for 404 resident not found", async () => {
+    stubFetch(Response.json({ error: "resident not found" }, { status: 404 }));
+    expect(await getResident("r1")).toEqual({ kind: "not-found" });
+  });
+
+  it("is none for 404 no home, told apart by the error code", async () => {
+    stubFetch(Response.json({ error: "no home" }, { status: 404 }));
+    expect(await getResident("r1")).toEqual({ kind: "none" });
+  });
+
+  it("is not-found for a 404 whose body is unreadable", async () => {
+    stubFetch(new Response("<html>", { status: 404 }));
+    expect(await getResident("r1")).toEqual({ kind: "not-found" });
+  });
+
+  it("is an error for a server failure", async () => {
+    stubFetch(Response.json({ error: "internal error" }, { status: 500 }));
+    expect(await getResident("r1")).toEqual({ kind: "error" });
+  });
+
+  it("is not signed in without a session", async () => {
+    stubStorage(false);
+    stubFetch(Response.json(DETAIL));
+    expect(await getResident("r1")).toEqual({ kind: "not-signed-in" });
+  });
+
+  it("is offline when the API cannot be reached", async () => {
+    stubFetch(new TypeError("Failed to fetch"));
+    expect(await getResident("r1")).toEqual({ kind: "offline" });
   });
 });
