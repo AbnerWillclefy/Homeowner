@@ -1,11 +1,6 @@
 import { useEffect, useState } from "react";
-import { getStreak, type Streak } from "../api/api";
-
-export interface StreakState {
-  streak: Streak | null;
-  /** True until the first answer, of any kind, arrives. A reload later never sets it again. */
-  loading: boolean;
-}
+import { getStreak } from "../api/api";
+import { afterStreakAnswer, INITIAL_STREAK_STATE, type StreakState } from "../logic/streakState";
 
 /**
  * Loads the current Streak on mount and again whenever `reloadKey` changes (the Day Plan's `settled` count and the
@@ -14,13 +9,13 @@ export interface StreakState {
  * load only). A failed reload keeps the last number. Only mounted with a Home.
  */
 export function useStreak(reloadKey: string): StreakState {
-  const [state, setState] = useState<StreakState>({ streak: null, loading: true });
+  const [state, setState] = useState<StreakState>(INITIAL_STREAK_STATE);
 
   useEffect(() => {
     let current = true;
     void getStreak().then((result) => {
       if (!current) return;
-      setState((previous) => ({ streak: result.kind === "ok" ? result.streak : previous.streak, loading: false }));
+      setState((previous) => afterStreakAnswer(previous, result));
     });
     return () => {
       current = false;
