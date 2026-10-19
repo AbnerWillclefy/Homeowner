@@ -230,11 +230,11 @@ function NextButton({
     <Button
       variant={primary ? "primary" : "secondary"}
       fullWidth
-      disabled={saving || disabled}
-      aria-busy={saving}
+      disabled={disabled}
+      pending={saving}
       onClick={onClick}
     >
-      {saving ? t("onboarding.saving") : t(label)}
+      {t(label)}
     </Button>
   );
 }

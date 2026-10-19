@@ -40,9 +40,7 @@ export function StartChoice({ onDecided, onPlanned }: Props) {
       {state.kind === "done" ? (
         <div className="flex flex-col gap-4">
           <p role="status">{t(OUTCOME_KEY[rightAwayOutcome(state.plan)])}</p>
-          <Button onClick={onDecided}>
-            {t("startChoice.done.close")}
-          </Button>
+          <ButtonRow end={<Button onClick={onDecided}>{t("startChoice.done.close")}</Button>} />
         </div>
       ) : (
         <>
@@ -54,14 +52,20 @@ export function StartChoice({ onDecided, onPlanned }: Props) {
           )}
 
           {/* A real disabled button while planning, so a second tap cannot send a second request. */}
-          <ButtonRow className="mt-2">
-            <Button fullWidth disabled={planning} aria-busy={planning} onClick={() => void start()}>
-              {state.kind === "failed" && state.reason !== "not-signed-in" ? t("startChoice.retry") : t("startChoice.now.button")}
-            </Button>
-            <Button fullWidth variant="secondary" disabled={planning} onClick={onDecided}>
-              {t("startChoice.tomorrow.button")}
-            </Button>
-          </ButtonRow>
+          <ButtonRow
+            className="mt-2"
+            stretch
+            start={
+              <Button variant="secondary" disabled={planning} onClick={onDecided}>
+                {t("startChoice.tomorrow.button")}
+              </Button>
+            }
+            end={
+              <Button pending={planning} onClick={() => void start()}>
+                {state.kind === "failed" && state.reason !== "not-signed-in" ? t("startChoice.retry") : t("startChoice.now.button")}
+              </Button>
+            }
+          />
         </>
       )}
     </AppDialog>

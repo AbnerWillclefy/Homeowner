@@ -60,9 +60,7 @@ export function JoinInvite({ token, onDismiss, onFinished }: Props) {
         <>
           {failure(state.reason)}
           {state.reason !== "not-signed-in" && (
-            <Button onClick={reload}>
-              {t("invite.failure.retry")}
-            </Button>
+            <ButtonRow end={<Button onClick={reload}>{t("invite.failure.retry")}</Button>} />
           )}
         </>,
       );
@@ -73,9 +71,13 @@ export function JoinInvite({ token, onDismiss, onFinished }: Props) {
         true,
         <>
           <p role="alert">{t(DEAD_INVITE_KEY[state.why])}</p>
-          <Button variant="secondary" onClick={onDismiss}>
-            {t("invite.dead.continue")}
-          </Button>
+          <ButtonRow
+            end={
+              <Button variant="secondary" onClick={onDismiss}>
+                {t("invite.dead.continue")}
+              </Button>
+            }
+          />
         </>,
       );
 
@@ -86,12 +88,16 @@ export function JoinInvite({ token, onDismiss, onFinished }: Props) {
         <>
           <p>{t("invite.leave.warning")}</p>
           {failure(state.error)}
-          <ButtonRow className="mt-2">
-            <Button onClick={() => void join(true)}>{t("invite.leave.confirm")}</Button>
-            <Button variant="secondary" onClick={onDismiss}>
-              {t("invite.leave.cancel")}
-            </Button>
-          </ButtonRow>
+          <ButtonRow
+            className="mt-2"
+            stretch
+            start={
+              <Button variant="secondary" onClick={onDismiss}>
+                {t("invite.leave.cancel")}
+              </Button>
+            }
+            end={<Button onClick={() => void join(true)}>{t("invite.leave.confirm")}</Button>}
+          />
         </>,
       );
 
@@ -103,14 +109,20 @@ export function JoinInvite({ token, onDismiss, onFinished }: Props) {
         !joining,
         <>
           {state.kind === "ready" && failure(state.error)}
-          <ButtonRow className="mt-2">
-            <Button disabled={joining} aria-busy={joining} onClick={() => void join(false)}>
-              {joining ? t("invite.join.submitting") : t("invite.join.submit")}
-            </Button>
-            <Button variant="secondary" disabled={joining} onClick={onDismiss}>
-              {t("invite.join.dismiss")}
-            </Button>
-          </ButtonRow>
+          <ButtonRow
+            className="mt-2"
+            stretch
+            start={
+              <Button variant="secondary" disabled={joining} onClick={onDismiss}>
+                {t("invite.join.dismiss")}
+              </Button>
+            }
+            end={
+              <Button pending={joining} onClick={() => void join(false)}>
+                {t("invite.join.submit")}
+              </Button>
+            }
+          />
         </>,
       );
     }

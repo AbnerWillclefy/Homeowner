@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CognitoFailure, CognitoResult, SignInResult } from "../api/cognito";
-import { createConfirmSubmitter, createSignInSubmitter, createSignUpSubmitter } from "./authSubmit";
+import { createConfirmSubmitter, type ConfirmAction, createSignInSubmitter, createSignUpSubmitter } from "./authSubmit";
 
 const tokens = { idToken: "i", refreshToken: "r", expiresInSeconds: 3600 };
 
@@ -72,8 +72,23 @@ describe("confirm submit", () => {
     const onConfirmed = vi.fn();
     const onResent = vi.fn();
     const w = watch();
-    return { confirm, resend, onConfirmed, onResent, w, form: createConfirmSubmitter({ confirm, resend, onConfirmed, onResent, ...w }) };
+    const running: (ConfirmAction | null)[] = [];
+    const onRunning = (a: ConfirmAction | null) => running.push(a);
+    return { confirm, resend, onConfirmed, onResent, running, w, form: createConfirmSubmitter({ confirm, resend, onConfirmed, onResent, onRunning, ...w }) };
   }
+
+  it("reports which action is running, so only that button spins", async () => {
+    const { running, form } = setup({ kind: "ok" });
+    await form.submit("a@b.c", "123456");
+    await form.resend("a@b.c");
+    expect(running).toEqual(["submit", null, "resend", null]);
+  });
+
+  it("does not report a call the guard ignored", async () => {
+    const { running, form } = setup({ kind: "ok" });
+    await Promise.all([form.resend("a@b.c"), form.submit("a@b.c", "123456")]);
+    expect(running).toEqual(["resend", null]);
+  });
 
   it("confirms once for a double Enter in the same tick", async () => {
     const { confirm, onConfirmed, form } = setup({ kind: "ok" });

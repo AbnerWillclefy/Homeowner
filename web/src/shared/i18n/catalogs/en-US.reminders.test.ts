@@ -6,7 +6,6 @@ import { enUS } from "./en-US";
 const today: Record<string, string> = {
   "reminders.on": "Reminders are on for this device.",
   "reminders.enable": "Enable reminders",
-  "reminders.enabling": "Turning on...",
   "reminders.problem.denied":
     "Notifications are blocked for Homeowner. Allow them in your phone's Settings, under Notifications.",
   "reminders.problem.dismissed": "You closed the permission question. Tap the button to try again.",

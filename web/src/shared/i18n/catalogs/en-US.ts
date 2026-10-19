@@ -79,7 +79,6 @@ export const enUS = {
   // Reminders
   "reminders.on": "Reminders are on for this device.",
   "reminders.enable": "Enable reminders",
-  "reminders.enabling": "Turning on...",
   "reminders.problem.denied":
     "Notifications are blocked for Homeowner. Allow them in your phone's Settings, under Notifications.",
   "reminders.problem.dismissed":
@@ -437,7 +436,6 @@ export const enUS = {
   "signUp.confirmLabel": "Confirm password",
   "signUp.mismatch": "The two passwords do not match.",
   "signUp.submit": "Sign up",
-  "signUp.submitting": "Signing up...",
   "signUp.haveLogin": "Already signed up?",
   "signUp.haveLoginAction": "Sign in",
 
@@ -448,7 +446,6 @@ export const enUS = {
   "signIn.emailLabel": "Email",
   "signIn.passwordLabel": "Password",
   "signIn.submit": "Sign in",
-  "signIn.submitting": "Signing in...",
   "signIn.newHere": "New here?",
   "signIn.newHereAction": "Sign up",
 
@@ -457,7 +454,6 @@ export const enUS = {
   "confirm.intro": "We sent a code to {email}.",
   "confirm.codeLabel": "Code from the email",
   "confirm.submit": "Confirm",
-  "confirm.submitting": "Checking...",
   "confirm.resend": "Send a new code",
   "confirm.useOtherEmail": "Use a different email",
   "confirm.resent": "A new code is on its way. Use the latest email.",
@@ -533,7 +529,6 @@ export const enUS = {
   "invite.join.heading": "Join a Home",
   "invite.join.loading": "Getting your Invite ready...",
   "invite.join.submit": "Join this Home",
-  "invite.join.submitting": "Joining...",
   "invite.join.dismiss": "Not now",
   "invite.leave.heading": "Joining means leaving your Home",
   "invite.leave.warning":
@@ -595,7 +590,6 @@ export const enUS = {
     "You already have a Home, so it was loaded. The Chores you reviewed were not added; add them from the Catalog.",
   "catalog.questions.heading": "About your Home",
   "catalog.questions.submit": "Suggest Chores",
-  "catalog.questions.submitting": "Working out your Chores...",
   "catalog.questions.skip": "Skip and add Chores later",
   "catalog.questions.invalid":
     "Some answers need fixing. Check the fields below.",
@@ -711,7 +705,6 @@ export const enUS = {
   "onboarding.retry": "Try again",
   "onboarding.next": "Next",
   "onboarding.back": "Back",
-  "onboarding.saving": "Saving...",
   "onboarding.advance.offline":
     "Could not reach the service, so you are still on this step. Check your connection and try again.",
   "onboarding.advance.error":
