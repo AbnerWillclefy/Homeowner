@@ -8,6 +8,7 @@ import type { Locale } from "../../../shared/i18n/locales";
 import { createTranslate, type Catalogs } from "../../../shared/i18n/translate";
 import type { DayPlan, Explanation, PlanTask } from "../api/api";
 import type { SummaryCounts } from "../logic/summaryCounts";
+import { dayPlan, task } from "../testing/fixtures";
 import { DaySummary } from "./DaySummary";
 
 const translate = createTranslate({ "en-US": enUS, "pt-BR": ptBR } as Catalogs);
@@ -25,37 +26,16 @@ const DRAINED: Explanation = {
 const ALL: SummaryCounts = { mine: 2, others: 3, pool: 4 };
 const NONE: SummaryCounts = { mine: 0, others: 0, pool: 0 };
 
-function task(id: string): PlanTask {
-  return {
-    id,
-    choreId: `c-${id}`,
-    choreName: `Chore ${id}`,
-    windowStart: "2026-10-11",
-    windowEnd: "2026-10-12",
-    currentEffort: 2,
-    baseEffort: 2,
-    people: 1,
-    importance: "normal",
-  };
-}
-
 const tasks = (prefix: string, n: number): PlanTask[] => Array.from({ length: n }, (_, i) => task(`${prefix}${i}`));
 
 /** A plan whose summary counts are `counts`: the others' Tasks all sit with one Resident. */
 function planWith(explanation: Explanation | null | undefined, counts: SummaryCounts): DayPlan {
-  return {
-    date: "2026-10-11",
-    allocationTime: "07:00",
-    planned: true,
-    rejected: false,
-    allocator: "baseline",
-    energy: 5,
+  return dayPlan({
     mine: tasks("m", counts.mine),
     others: counts.others > 0 ? [{ residentId: "r2", tasks: tasks("o", counts.others) }] : [],
     pool: tasks("p", counts.pool),
-    doneToday: [],
     explanation: explanation ?? undefined,
-  };
+  });
 }
 
 function render(explanation: Explanation | null | undefined, counts: SummaryCounts, locale: Locale): string {
