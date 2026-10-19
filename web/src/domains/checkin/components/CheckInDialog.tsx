@@ -7,6 +7,7 @@ import { useToast } from "../../../shared/ui/useToast";
 import { useI18n } from "../../../shared/i18n";
 import { demandLabel, labelText } from "../../profile/logic/labels";
 import { Button } from "../../../shared/ui/Button";
+import { ButtonRow } from "../../../shared/ui/ButtonRow";
 import { SAVE_FAILURE_KEY } from "../logic/failureMessages";
 import { formFrom, submission, toggledRestriction, type CheckInFormState } from "../logic/form";
 import { LEVEL_KEYS } from "../logic/labels";
@@ -90,14 +91,18 @@ export function CheckInDialog({
       onDismiss={onClose}
       dismissible={!saving}
       footer={
-        <>
-          <Button variant="secondary" disabled={saving} onClick={onClose}>
-            {t("checkin.cancel")}
-          </Button>
-          <Button type="submit" form={formId} disabled={saving} aria-busy={saving}>
-            {saving ? t("checkin.saving") : t("checkin.submit")}
-          </Button>
-        </>
+        <ButtonRow
+          start={
+            <Button variant="secondary" disabled={saving} onClick={onClose}>
+              {t("checkin.cancel")}
+            </Button>
+          }
+          end={
+            <Button type="submit" form={formId} pending={saving}>
+              {t("checkin.submit")}
+            </Button>
+          }
+        />
       }
     >
       <form id={formId} onSubmit={onSubmit} noValidate className="flex flex-col gap-8">
