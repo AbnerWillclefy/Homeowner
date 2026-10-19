@@ -46,6 +46,11 @@ their `locals`, backend key, `environment` tag, Neon project and budget.
    **Sign-in (#8) needs this re-apply too, before the deploy that follows its
    merge:** the deploy role gains `cognito-idp:*` on user pools of the account and
    region, and without it the first deploy fails creating the user pool.
+
+   **Resident photos (#230) need this re-apply before the deploy that follows
+   its merge:** the deploy role gains the bucket actions, including CORS, on
+   `homeowner-<environment>-photos-*`, and without it the first deploy fails
+   creating the photo bucket.
 4. **GitHub settings** (repository, Settings, Secrets and variables, Actions):
    - variables `AWS_REGION`, `AWS_DEPLOY_ROLE_ARN` (the `staging` entry of the output `deploy_role_arns`) and `NEON_ORG_ID`
    - secrets `NEON_API_KEY` and `BUDGET_EMAIL` (kept secret so the address never

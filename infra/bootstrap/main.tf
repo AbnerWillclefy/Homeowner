@@ -109,6 +109,20 @@ locals {
     staging    = "refs/heads/main"
     production = "refs/heads/production"
   }
+
+  # What the AWS provider needs to create, refresh and delete an aws_s3_bucket.
+  bucket_manage_actions = [
+    "s3:CreateBucket", "s3:DeleteBucket", "s3:ListBucket",
+    "s3:GetBucketLocation", "s3:GetBucketTagging", "s3:PutBucketTagging",
+    "s3:GetBucketPolicy", "s3:PutBucketPolicy", "s3:DeleteBucketPolicy",
+    "s3:GetBucketPublicAccessBlock", "s3:PutBucketPublicAccessBlock",
+    "s3:GetEncryptionConfiguration", "s3:PutEncryptionConfiguration",
+    "s3:GetLifecycleConfiguration", "s3:PutLifecycleConfiguration",
+    "s3:GetBucketVersioning", "s3:GetBucketAcl", "s3:GetBucketCORS",
+    "s3:GetBucketWebsite", "s3:GetBucketLogging", "s3:GetBucketObjectLockConfiguration",
+    "s3:GetAccelerateConfiguration", "s3:GetBucketRequestPayment",
+    "s3:GetReplicationConfiguration", "s3:GetBucketOwnershipControls",
+  ]
 }
 
 data "aws_iam_policy_document" "deploy_trust" {
@@ -216,19 +230,8 @@ data "aws_iam_policy_document" "deploy" {
 
   # The environment's web bucket: Terraform manages it, the web job syncs into it.
   statement {
-    sid = "WebBucketManage"
-    actions = [
-      "s3:CreateBucket", "s3:DeleteBucket", "s3:ListBucket",
-      "s3:GetBucketLocation", "s3:GetBucketTagging", "s3:PutBucketTagging",
-      "s3:GetBucketPolicy", "s3:PutBucketPolicy", "s3:DeleteBucketPolicy",
-      "s3:GetBucketPublicAccessBlock", "s3:PutBucketPublicAccessBlock",
-      "s3:GetEncryptionConfiguration", "s3:PutEncryptionConfiguration",
-      "s3:GetLifecycleConfiguration", "s3:PutLifecycleConfiguration",
-      "s3:GetBucketVersioning", "s3:GetBucketAcl", "s3:GetBucketCORS",
-      "s3:GetBucketWebsite", "s3:GetBucketLogging", "s3:GetBucketObjectLockConfiguration",
-      "s3:GetAccelerateConfiguration", "s3:GetBucketRequestPayment",
-      "s3:GetReplicationConfiguration", "s3:GetBucketOwnershipControls",
-    ]
+    sid       = "WebBucketManage"
+    actions   = local.bucket_manage_actions
     resources = ["arn:aws:s3:::homeowner-${each.key}-web-*"]
   }
 
@@ -236,6 +239,15 @@ data "aws_iam_policy_document" "deploy" {
     sid       = "WebBucketObjects"
     actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
     resources = ["arn:aws:s3:::homeowner-${each.key}-web-*/*"]
+  }
+
+  # The environment's photo bucket (#230): the web bucket's actions plus CORS
+  # (which also authorises deleting it). No object actions: only the API's
+  # Lambda role reads and writes photos.
+  statement {
+    sid       = "PhotoBucketManage"
+    actions   = concat(local.bucket_manage_actions, ["s3:PutBucketCORS"])
+    resources = ["arn:aws:s3:::homeowner-${each.key}-photos-*"]
   }
 
   # CloudFront ids are generated, so distributions and access controls cannot
