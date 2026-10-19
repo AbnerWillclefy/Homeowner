@@ -55,7 +55,16 @@ type Config struct {
 	// API's POST /dev/replan route invokes (REPLAN_ALLOCATE_FUNCTION_NAME).
 	// Empty means the route does not exist; only the staging API sets it.
 	ReplanAllocateFunction string
+	// PhotosBucket (PHOTOS_BUCKET) is the private bucket resident photos are
+	// uploaded to; PhotosBaseURL (PHOTOS_BASE_URL) is the public https URL they
+	// are served from, without a trailing slash. Optional as a pair: with
+	// neither set, the photo routes answer 503.
+	PhotosBucket  string
+	PhotosBaseURL string
 }
+
+// PhotosEnabled reports whether resident photos are configured.
+func (c Config) PhotosEnabled() bool { return c.PhotosBucket != "" && c.PhotosBaseURL != "" }
 
 // AuthEnabled reports whether sign-in is configured.
 func (c Config) AuthEnabled() bool { return c.CognitoIssuer != "" && c.CognitoClientID != "" }
@@ -120,6 +129,17 @@ func Load(getenv func(string) string) (Config, error) {
 		u, err := url.Parse(c.CognitoIssuer)
 		if err != nil || u.Scheme != "https" || u.Host == "" {
 			return Config{}, errors.New("COGNITO_ISSUER must be an https URL")
+		}
+	}
+	c.PhotosBucket = strings.TrimSpace(getenv("PHOTOS_BUCKET"))
+	c.PhotosBaseURL = strings.TrimRight(strings.TrimSpace(getenv("PHOTOS_BASE_URL")), "/")
+	if (c.PhotosBucket == "") != (c.PhotosBaseURL == "") {
+		return Config{}, errors.New("PHOTOS_BUCKET and PHOTOS_BASE_URL must be set together")
+	}
+	if c.PhotosBaseURL != "" {
+		u, err := url.Parse(c.PhotosBaseURL)
+		if err != nil || u.Scheme != "https" || u.Host == "" {
+			return Config{}, errors.New("PHOTOS_BASE_URL must be an https URL")
 		}
 	}
 	if err := loadLLM(getenv, &c); err != nil {
