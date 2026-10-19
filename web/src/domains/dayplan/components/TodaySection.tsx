@@ -2,7 +2,7 @@ import { Clock, UserRound } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Link } from "react-router";
 import type { DayPlan, PlanTask } from "../api/api";
-import type { TaskAction, TaskRole } from "../logic/actions";
+import { pendingAction, type Acting, type TaskAction, type TaskRole } from "../logic/actions";
 import { formatTime } from "../logic/format";
 import { ME_PATH } from "../../../app/logic/routes";
 import { noTasksReason, type EnergyNote, type NoTasksReason } from "../../checkin/logic/state";
@@ -69,7 +69,7 @@ export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null 
         <PlanView
           plan={state.plan}
           note={note}
-          busy={acting}
+          acting={acting}
           onAccept={acceptAll}
           onAction={run}
         />
@@ -127,22 +127,32 @@ function EmptyMine({ reason }: { reason: NoTasksReason | null }) {
 function PlanView({
   plan,
   note,
-  busy,
+  acting,
   onAccept,
   onAction,
 }: {
   plan: DayPlan;
   note: EnergyNote | null;
-  busy: boolean;
+  acting: Acting;
   onAccept(): void;
   onAction(action: TaskAction, task: PlanTask): void;
 }) {
   const { t, locale } = useI18n();
   // The chip's note picks the reason for an empty list, so the two can never disagree.
   const reason = note && noTasksReason(note);
+  // Every button waits while anything runs; only the pressed one shows its spinner.
+  const busy = acting !== null;
   const proposed = plan.mine.filter((task) => !task.committed).length;
   const card = (task: PlanTask, role: TaskRole) => (
-    <TaskCard key={task.id} task={task} role={role} today={plan.date} busy={busy} onAction={onAction} />
+    <TaskCard
+      key={task.id}
+      task={task}
+      role={role}
+      today={plan.date}
+      busy={busy}
+      pending={pendingAction(acting, task.id)}
+      onAction={onAction}
+    />
   );
 
   return (
@@ -163,7 +173,13 @@ function PlanView({
         <div>
           <GroupHeading count={plan.mine.length}>{t("dayplan.mine.heading")}</GroupHeading>
           {proposed > 0 && (
-            <Button fullWidth className="mb-3" disabled={busy} onClick={onAccept}>
+            <Button
+              fullWidth
+              className="mb-3"
+              disabled={busy}
+              pending={acting?.action === "acceptAll"}
+              onClick={onAccept}
+            >
               {t("dayplan.action.acceptAll", { count: proposed })}
             </Button>
           )}

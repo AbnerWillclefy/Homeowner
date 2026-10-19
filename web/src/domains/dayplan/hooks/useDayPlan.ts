@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { TaskAction } from "../logic/actions";
+import type { Acting, TaskAction } from "../logic/actions";
 import {
   acceptAll as acceptAllCall,
   acceptTask,
@@ -38,6 +38,10 @@ const CALLS: Record<TaskAction, (id: string) => Promise<ActionResult>> = {
   done: completeTask,
 };
 
+/** The API call for the action in flight: the one source of what runs, so it cannot drift from what is shown. */
+const callFor = (running: NonNullable<Acting>) =>
+  running.action === "acceptAll" ? acceptAllCall() : CALLS[running.action](running.taskId);
+
 /**
  * What an action's answer does to the screen: the plan to show (absent when the one on screen is still valid)
  * and what to say. After a 409 the screen was stale, so `fresh` is the plan fetched again; without a readable
@@ -56,13 +60,14 @@ export function outcome(result: ActionResult, fresh?: DayPlanResult): { plan?: D
  *
  * `run` and `acceptAll` perform an action (accept, refuse, take, complete; accept everything) and show the
  * plan the server answers with. Nothing is optimistic: the plan on screen only changes from a server answer.
- * One action runs at a time for the whole section; `acting` says so, so the buttons can be disabled. After a
+ * One action runs at a time for the whole section; `acting` says which (the Task and the action, or Accept
+ * all), so every button is disabled and only the pressed one shows its spinner. After a
  * 409 the screen was stale, so the plan is reloaded in place and a message says what happened. `settled`
  * counts the actions that changed the plan, for moving focus.
  */
 export function useDayPlan(version: number) {
   const [state, setState] = useState<DayPlanState>({ kind: "loading" });
-  const [acting, setActing] = useState(false);
+  const [acting, setActing] = useState<Acting>(null);
   const [notice, setNotice] = useState<ActionNotice | null>(null);
   const [settled, setSettled] = useState(0);
   const inFlight = useRef(false);
@@ -100,14 +105,14 @@ export function useDayPlan(version: number) {
     return load();
   }, [load]);
 
-  const act = useCallback(async (call: () => Promise<ActionResult>) => {
+  const act = useCallback(async (running: NonNullable<Acting>) => {
     if (inFlight.current) return;
     inFlight.current = true;
     const startedAt = loads.current;
-    setActing(true);
+    setActing(running);
     setNotice(null);
     try {
-      const result = await call();
+      const result = await callFor(running);
       // The screen was stale: take the server's current plan, in place so the lists and focus stay.
       const fresh = result.kind === "conflict" ? await getDayPlan() : undefined;
       if (!mounted.current) return;
@@ -125,12 +130,15 @@ export function useDayPlan(version: number) {
       }
     } finally {
       inFlight.current = false;
-      if (mounted.current) setActing(false);
+      if (mounted.current) setActing(null);
     }
   }, [fetchPlan]);
 
-  const run = useCallback((action: TaskAction, task: PlanTask) => void act(() => CALLS[action](task.id)), [act]);
-  const acceptAll = useCallback(() => void act(acceptAllCall), [act]);
+  const run = useCallback(
+    (action: TaskAction, task: PlanTask) => void act({ taskId: task.id, action }),
+    [act],
+  );
+  const acceptAll = useCallback(() => void act({ taskId: null, action: "acceptAll" }), [act]);
 
   /** Shows a plan that was read elsewhere, without the loading state: the lists update in place. */
   const show = useCallback((plan: DayPlan) => {

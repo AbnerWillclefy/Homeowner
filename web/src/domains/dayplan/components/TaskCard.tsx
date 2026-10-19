@@ -8,7 +8,8 @@ import { CategoryTile, EffortDots, Fact, FactIcon, FactList } from "../../chores
 import { Card } from "../../../shared/ui/Card";
 import { useI18n, type MessageKey } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
-import { actionsFor, type TaskAction, type TaskRole } from "../logic/actions";
+import { ButtonRow } from "../../../shared/ui/ButtonRow";
+import { actionsFor, variantFor, type ActionSlot, type TaskAction, type TaskRole } from "../logic/actions";
 import { categoryLabel, importanceLabel, labelText, type Label } from "../../profile/logic/labels";
 import { dueWhen, formatDay } from "../logic/format";
 import { assignmentReasonLabel, poolReasonLabel } from "../logic/reasons";
@@ -26,6 +27,8 @@ interface Props {
   today: string;
   /** An action is running somewhere in the plan, so every button is disabled. */
   busy: boolean;
+  /** This card's own action in flight, which shows the spinner; null when it is another card's or none. */
+  pending: TaskAction | null;
   onAction(action: TaskAction, task: PlanTask): void;
 }
 
@@ -44,11 +47,25 @@ const ACTION_LABELS: Record<TaskAction, { label: MessageKey; named: MessageKey }
  * everything else is text, so nothing depends on colour, the icons or the Effort dots. A missing or unknown
  * Category is the neutral "Other" card, never the raw id.
  */
-export function TaskCard({ task, role, today, busy, onAction }: Props) {
+export function TaskCard({ task, role, today, busy, pending, onAction }: Props) {
   const { t, locale } = useI18n();
   const text = (label: Label) => labelText(t, label);
   const own = role === "mine";
-  const { actions, committed } = actionsFor(task, role);
+  const { start, end, committed } = actionsFor(task, role);
+
+  // The slot picks the variant, and every action button reserves room for the spinner so the width holds.
+  const actionButton = (action: TaskAction, slot: ActionSlot) => (
+    <Button
+      key={action}
+      variant={variantFor(slot)}
+      disabled={busy}
+      pending={pending === action}
+      aria-label={t(ACTION_LABELS[action].named, { task: task.choreName })}
+      onClick={() => onAction(action, task)}
+    >
+      {t(ACTION_LABELS[action].label)}
+    </Button>
+  );
 
   const style = categoryStyle(task.category);
   const reason = (role === "pool" ? poolReasonLabel : assignmentReasonLabel)(task.reason);
@@ -101,26 +118,24 @@ export function TaskCard({ task, role, today, busy, onAction }: Props) {
           </p>
         )}
 
-        {(committed || actions.length > 0) && (
-          <div className="flex flex-wrap items-center gap-2">
-            {committed && (
-              <p className="my-0 flex items-center gap-1.5 font-semibold">
-                <CircleCheck aria-hidden="true" size={18} className="shrink-0" />
-                {t("dayplan.task.committed")}
-              </p>
-            )}
-            {actions.map((action) => (
-              <Button
-                key={action}
-                variant={action === "accept" || action === "take" ? "primary" : "secondary"}
-                disabled={busy}
-                aria-label={t(ACTION_LABELS[action].named, { task: task.choreName })}
-                onClick={() => onAction(action, task)}
-              >
-                {t(ACTION_LABELS[action].label)}
-              </Button>
-            ))}
-          </div>
+        {(committed || start.length > 0 || end.length > 0) && (
+          <ButtonRow
+            // An empty slot is undefined, not false, so ButtonRow renders no empty group for it.
+            start={
+              committed || start.length > 0 ? (
+                <>
+                  {committed && (
+                    <p className="my-0 flex items-center gap-1.5 font-semibold">
+                      <CircleCheck aria-hidden="true" size={18} className="shrink-0" />
+                      {t("dayplan.task.committed")}
+                    </p>
+                  )}
+                  {start.map((action) => actionButton(action, "start"))}
+                </>
+              ) : undefined
+            }
+            end={end.length > 0 ? end.map((action) => actionButton(action, "end")) : undefined}
+          />
         )}
       </Card>
     </li>
