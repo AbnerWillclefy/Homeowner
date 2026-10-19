@@ -51,7 +51,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	m := identity.CurrentMembership(r.Context())
-	member, err := h.store.Find(r.Context(), m.Home.ID, id)
+	out, err := h.detail(r.Context(), m, id)
 	if errors.Is(err, ErrNotFound) {
 		httpx.WriteError(w, http.StatusNotFound, "resident not found")
 		return
@@ -60,48 +60,58 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		httpx.InternalError(w, h.log, "get resident", err)
 		return
 	}
+	httpx.WriteJSON(w, http.StatusOK, out)
+}
+
+// detail gathers everything the detail shows for Resident id of the caller's Home.
+func (h *Handler) detail(ctx context.Context, m identity.Membership, id string) (detailResponse, error) {
+	member, err := h.store.Find(ctx, m.Home.ID, id)
+	if err != nil {
+		return detailResponse{}, err
+	}
 	today, err := dayplan.LocalDate(m.Home.Timezone, h.clock.Now())
 	if err != nil {
-		httpx.InternalError(w, h.log, "get resident", err)
-		return
+		return detailResponse{}, err
 	}
-	readings, err := h.streaks.CurrentFor(r.Context(), []string{id}, today)
+	readings, err := h.streaks.CurrentFor(ctx, []string{id}, today)
 	if err != nil {
-		httpx.InternalError(w, h.log, "get resident", err)
-		return
+		return detailResponse{}, err
 	}
-	done, err := h.store.CompletionsBetween(r.Context(), m.Home.ID, id, (today - (windowDays - 1)).Time(), today.Time())
+	done, err := h.store.CompletionsBetween(ctx, m.Home.ID, id, (today - (windowDays - 1)).Time(), today.Time())
 	if err != nil {
-		httpx.InternalError(w, h.log, "get resident", err)
-		return
+		return detailResponse{}, err
 	}
-	out := detailResponse{
+	return detailResponse{
 		Date: today.Time().Format(time.DateOnly), ID: member.ID, You: member.ID == m.ResidentID,
 		Name: member.Name, PhotoURL: h.photoURL(member.PhotoKey),
 		Initials:      users.Initials(member.Name),
 		AvatarTone:    users.AvatarTone(member.UserID),
 		Streak:        readings[id].Current,
 		DoneLast7Days: len(done),
-		Days:          []dayView{},
-	}
-	// The rows arrive newest date first, so a new group starts whenever the
-	// date changes.
+		Days:          groupByDay(done),
+	}, nil
+}
+
+// groupByDay groups Completions by local date. The rows arrive newest date
+// first, so a new group starts whenever the date changes.
+func groupByDay(done []Completion) []dayView {
+	days := []dayView{}
 	for _, k := range done {
 		date := k.CompletedOn.Format(time.DateOnly)
-		if n := len(out.Days); n == 0 || out.Days[n-1].Date != date {
-			out.Days = append(out.Days, dayView{Date: date, Completions: []completionView{}})
+		if n := len(days); n == 0 || days[n-1].Date != date {
+			days = append(days, dayView{Date: date, Completions: []completionView{}})
 		}
 		with := make([]partnerView, 0, len(k.With))
 		for _, p := range k.With {
 			with = append(with, partnerView{ID: p.ID, Name: p.Name})
 		}
-		day := &out.Days[len(out.Days)-1]
+		day := &days[len(days)-1]
 		day.Completions = append(day.Completions, completionView{
 			ID: k.ID, ChoreID: k.ChoreID, ChoreName: k.ChoreName, Category: k.Category,
 			CompletedAt: k.CompletedAt.UTC().Format(time.RFC3339), With: with,
 		})
 	}
-	httpx.WriteJSON(w, http.StatusOK, out)
+	return days
 }
 
 // List answers GET /home/residents: every Resident of the caller's Home, the

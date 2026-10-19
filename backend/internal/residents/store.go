@@ -61,6 +61,26 @@ type Partner struct {
 // costs two queries: the Completions, then their partners (skipped when there
 // are none).
 func (s *Store) CompletionsBetween(ctx context.Context, homeID, residentID string, from, to time.Time) ([]Completion, error) {
+	out, err := s.completions(ctx, homeID, residentID, from, to)
+	if err != nil || len(out) == 0 {
+		return nil, err
+	}
+	ids := make([]string, len(out))
+	for i, k := range out {
+		ids[i] = k.ID
+	}
+	partners, err := s.partnersOf(ctx, ids, residentID)
+	if err != nil {
+		return nil, err
+	}
+	for i := range out {
+		out[i].With = partners[out[i].ID]
+	}
+	return out, nil
+}
+
+// completions is the first query of CompletionsBetween: the Completions alone.
+func (s *Store) completions(ctx context.Context, homeID, residentID string, from, to time.Time) ([]Completion, error) {
 	rows, err := s.db.Query(ctx, `
 		SELECT k.id, c.id, c.name, c.category, k.completed_on, k.completed_at
 		FROM completions k
@@ -74,29 +94,29 @@ func (s *Store) CompletionsBetween(ctx context.Context, homeID, residentID strin
 	}
 	defer rows.Close()
 	var out []Completion
-	var ids []string
 	for rows.Next() {
 		var k Completion
 		if err := rows.Scan(&k.ID, &k.ChoreID, &k.ChoreName, &k.Category, &k.CompletedOn, &k.CompletedAt); err != nil {
 			return nil, fmt.Errorf("list completions: %w", err)
 		}
 		out = append(out, k)
-		ids = append(ids, k.ID)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("list completions: %w", err)
 	}
-	if len(out) == 0 {
-		return nil, nil
-	}
+	return out, nil
+}
 
+// partnersOf is the second query: the other Residents on each Completion,
+// keyed by Completion id, in joining order.
+func (s *Store) partnersOf(ctx context.Context, completionIDs []string, residentID string) (map[string][]Partner, error) {
 	partners, err := s.db.Query(ctx, `
 		SELECT cr.completion_id, r.id, u.display_name, u.email
 		FROM completion_residents cr
 		JOIN residents r ON r.id = cr.resident_id
 		JOIN users u ON u.id = r.user_id
 		WHERE cr.completion_id = ANY($1::uuid[]) AND cr.resident_id <> $2
-		ORDER BY r.created_at, r.id`, ids, residentID)
+		ORDER BY r.created_at, r.id`, completionIDs, residentID)
 	if err != nil {
 		return nil, fmt.Errorf("list completion partners: %w", err)
 	}
@@ -116,10 +136,7 @@ func (s *Store) CompletionsBetween(ctx context.Context, homeID, residentID strin
 	if err := partners.Err(); err != nil {
 		return nil, fmt.Errorf("list completion partners: %w", err)
 	}
-	for i := range out {
-		out[i].With = byCompletion[out[i].ID]
-	}
-	return out, nil
+	return byCompletion, nil
 }
 
 // Store reads the roster of a Home.
