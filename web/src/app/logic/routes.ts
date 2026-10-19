@@ -5,6 +5,8 @@ export const CHORES_PATH = "/chores";
 export const HOME_PATH = "/home";
 export const ME_PATH = "/me";
 export const ME_EDIT_PATH = "/me/edit";
+/** A Resident's page under the Home tab. The screen arrives later; until then the guard sends the link to Today. */
+export const residentPath = (id: string): string => `${HOME_PATH}/residents/${encodeURIComponent(id)}`;
 export const SIGN_IN_PATH = "/signin";
 export const SIGN_UP_PATH = "/signup";
 export const CONFIRM_PATH = "/confirm";
