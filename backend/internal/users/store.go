@@ -93,6 +93,32 @@ type Execer interface {
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 }
 
+// SetPhotoKey stores key as the User's photo and returns the previous key
+// (nil when there was none). It is one statement that locks the row while it
+// reads the old key, so two simultaneous confirms each get the right key to
+// delete.
+func (s *Store) SetPhotoKey(ctx context.Context, userID, key string, now time.Time) (*string, error) {
+	return s.swapPhotoKey(ctx, userID, &key, now)
+}
+
+// ClearPhotoKey removes the User's photo and returns the previous key.
+func (s *Store) ClearPhotoKey(ctx context.Context, userID string, now time.Time) (*string, error) {
+	return s.swapPhotoKey(ctx, userID, nil, now)
+}
+
+func (s *Store) swapPhotoKey(ctx context.Context, userID string, key *string, now time.Time) (*string, error) {
+	var old *string
+	err := s.db.QueryRow(ctx, `
+		UPDATE users u SET photo_key = $2, updated_at = $3
+		FROM (SELECT photo_key FROM users WHERE id = $1 FOR UPDATE) old
+		WHERE u.id = $1
+		RETURNING old.photo_key`, userID, key, now).Scan(&old)
+	if err != nil {
+		return nil, fmt.Errorf("swap photo key: %w", err)
+	}
+	return old, nil
+}
+
 // MarkOnboardingDone stores that the User finished onboarding, on ex so a
 // caller can do it in its own transaction.
 func MarkOnboardingDone(ctx context.Context, ex Execer, userID string, now time.Time) error {

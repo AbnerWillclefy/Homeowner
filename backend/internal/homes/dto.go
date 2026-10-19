@@ -38,10 +38,12 @@ type ResidentRow struct {
 	ResidentID string
 	UserID     string
 	Name       string
+	// PhotoKey is the stored key; it never goes on the wire, only its URL.
+	PhotoKey *string
 }
 
 // ResidentResponse is a Resident of the Home on the wire. It has no email.
-// PhotoURL is always null until resident photos land.
+// PhotoURL is the public photo URL, or null.
 type ResidentResponse struct {
 	ResidentID string  `json:"residentId"`
 	UserID     string  `json:"userId"`
@@ -51,11 +53,12 @@ type ResidentResponse struct {
 }
 
 // NewResidentResponse returns row as it goes on the wire to the Resident
-// myResidentID.
-func NewResidentResponse(row ResidentRow, myResidentID string) ResidentResponse {
+// myResidentID. photoURL turns the stored photo key into its public URL.
+func NewResidentResponse(row ResidentRow, myResidentID string, photoURL func(*string) *string) ResidentResponse {
 	return ResidentResponse{
 		ResidentID: row.ResidentID, UserID: row.UserID, Name: row.Name,
-		Me: row.ResidentID == myResidentID,
+		PhotoURL: photoURL(row.PhotoKey),
+		Me:       row.ResidentID == myResidentID,
 	}
 }
 

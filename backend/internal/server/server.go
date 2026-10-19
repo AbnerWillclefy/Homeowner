@@ -18,6 +18,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/invites"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/photos"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
@@ -57,6 +58,12 @@ type Deps struct {
 	// the staging-only POST /dev/replan route does not exist (404), as in
 	// production.
 	Replanner replan.Replanner
+	// Photos is the private photo bucket; nil means photos are not configured
+	// and the /me/photo routes answer 503.
+	Photos photos.ObjectStore
+	// PhotosBaseURL is the public URL photos are served from, without a
+	// trailing slash.
+	PhotosBaseURL string
 }
 
 const healthTimeout = 2 * time.Second
@@ -75,8 +82,15 @@ func New(deps Deps) http.Handler {
 	homeStore := homes.NewStore(db)
 	s := &server{deps: deps, users: users.NewStore(db), homes: homeStore}
 
-	me := users.NewHandler(s.users, homeStore, clk, log)
-	home := homes.NewHandler(homeStore, clk, log)
+	// Photos are off when there is no store, and then no URL is built either.
+	photosBase := deps.PhotosBaseURL
+	if deps.Photos == nil {
+		photosBase = ""
+	}
+	photoURL := photos.URLBuilder(photosBase)
+	me := users.NewHandler(s.users, homeStore, photoURL, clk, log)
+	home := homes.NewHandler(homeStore, photoURL, clk, log)
+	photosH := photos.NewHandler(deps.Photos, s.users, photoURL, clk, log)
 	invite := invites.NewHandler(invites.NewStore(db), clk, log)
 	chore := chores.NewHandler(chores.NewStore(db), clk, log)
 	choreSettings := choresettings.NewHandler(choresettings.NewStore(db), log)
@@ -91,6 +105,9 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("GET /healthz", s.healthz)
 	mux.HandleFunc("GET /me", user(me.Me))
 	mux.HandleFunc("PUT /me/name", user(me.SetName))
+	mux.HandleFunc("POST /me/photo/uploads", photosH.RequireConfigured(user(photosH.Presign)))
+	mux.HandleFunc("PUT /me/photo", photosH.RequireConfigured(user(photosH.Confirm)))
+	mux.HandleFunc("DELETE /me/photo", photosH.RequireConfigured(user(photosH.Remove)))
 	mux.HandleFunc("GET /me/onboarding", user(me.Onboarding))
 	mux.HandleFunc("PUT /me/onboarding", user(me.AdvanceOnboarding))
 	mux.HandleFunc("POST /home", user(home.Create))

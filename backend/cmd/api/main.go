@@ -18,7 +18,9 @@ import (
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/photos"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/config"
@@ -113,6 +115,17 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		}
 		deps.Replanner = replan.NewLambda(lambda.NewFromConfig(awsCfg), cfg.ReplanAllocateFunction)
 		log.Warn("dev replan route is on: POST /dev/replan invokes the allocate function", "function", cfg.ReplanAllocateFunction)
+	}
+
+	if cfg.PhotosEnabled() {
+		awsCfg, err := awsconfig.LoadDefaultConfig(ctx)
+		if err != nil {
+			return fmt.Errorf("load AWS config for photos: %w", err)
+		}
+		deps.Photos = photos.NewS3(s3.NewFromConfig(awsCfg), cfg.PhotosBucket)
+		deps.PhotosBaseURL = cfg.PhotosBaseURL
+	} else {
+		log.Warn("photos disabled: PHOTOS_BUCKET and PHOTOS_BASE_URL are not set")
 	}
 
 	srv := &http.Server{

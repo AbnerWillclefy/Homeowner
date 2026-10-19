@@ -104,7 +104,18 @@ data "aws_iam_policy_document" "runtime" {
   }
 
   # Resident photos (docs/adr/0012). Absent unless the caller passes the bucket.
-  # No s3:ListBucket, so a HEAD on a missing key answers 403, not 404.
+  # s3:ListBucket on the bucket itself, so a HEAD on a missing key answers 404,
+  # not 403, and the API can tell "missing" from "forbidden".
+  dynamic "statement" {
+    for_each = var.photos_bucket_arn == "" ? [] : [1]
+
+    content {
+      sid       = "PhotosList"
+      actions   = ["s3:ListBucket"]
+      resources = [var.photos_bucket_arn]
+    }
+  }
+
   dynamic "statement" {
     for_each = var.photos_bucket_arn == "" ? [] : [1]
 

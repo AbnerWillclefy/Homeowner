@@ -23,18 +23,20 @@ type Homes interface {
 
 // Handler serves the /me and /me/onboarding routes.
 type Handler struct {
-	store *Store
-	homes Homes
-	clock clock.Clock
-	log   *slog.Logger
+	store    *Store
+	homes    Homes
+	photoURL func(*string) *string
+	clock    clock.Clock
+	log      *slog.Logger
 }
 
 // maxNameBody bounds PUT /me/name; a 40-code-point name fits many times over.
 const maxNameBody = 1024
 
-// NewHandler returns a Handler over store.
-func NewHandler(store *Store, homes Homes, clk clock.Clock, log *slog.Logger) *Handler {
-	return &Handler{store: store, homes: homes, clock: clk, log: log}
+// NewHandler returns a Handler over store. photoURL turns a stored photo key
+// into its public URL (nil when photos are off).
+func NewHandler(store *Store, homes Homes, photoURL func(*string) *string, clk clock.Clock, log *slog.Logger) *Handler {
+	return &Handler{store: store, homes: homes, photoURL: photoURL, clock: clk, log: log}
 }
 
 type onboardingState struct {
@@ -44,7 +46,7 @@ type onboardingState struct {
 // Me answers GET /me.
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	u := identity.CurrentUser(r.Context())
-	httpx.WriteJSON(w, http.StatusOK, NewMeResponse(u))
+	httpx.WriteJSON(w, http.StatusOK, NewMeResponse(u, h.photoURL))
 }
 
 // SetName answers PUT /me/name: it stores the trimmed name, or clears it when
@@ -74,7 +76,7 @@ func (h *Handler) SetName(w http.ResponseWriter, r *http.Request) {
 	if name != "" {
 		u.DisplayName = &name
 	}
-	httpx.WriteJSON(w, http.StatusOK, NewMeResponse(u))
+	httpx.WriteJSON(w, http.StatusOK, NewMeResponse(u, h.photoURL))
 }
 
 // Onboarding answers the step to show: the one after the stored step, or
