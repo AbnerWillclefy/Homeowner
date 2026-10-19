@@ -29,9 +29,35 @@ afterEach(() => vi.unstubAllGlobals());
 describe("getMe", () => {
   it("returns the signed-in User from GET /me", async () => {
     const fetch = stubFetch(Response.json({ id: "u1", email: "a@example.com" }));
-    expect(await getMe()).toEqual({ kind: "ok", id: "u1", email: "a@example.com" });
+    expect(await getMe()).toEqual({
+      kind: "ok",
+      id: "u1",
+      email: "a@example.com",
+      displayName: null,
+      name: "a",
+      photoUrl: null,
+    });
     expect(fetch.mock.calls[0]![0]).toBe("http://api.test/me");
     expect(new Headers(fetch.mock.calls[0]![1]?.headers).get("Authorization")).toBe("Bearer id-1");
+  });
+
+  it("reads the display name, the shown name and the photo", async () => {
+    stubFetch(
+      Response.json({ id: "u1", email: "a@example.com", displayName: "Abner", name: "Abner", photoUrl: "https://cdn.test/u1.jpg" }),
+    );
+    expect(await getMe()).toEqual({
+      kind: "ok",
+      id: "u1",
+      email: "a@example.com",
+      displayName: "Abner",
+      name: "Abner",
+      photoUrl: "https://cdn.test/u1.jpg",
+    });
+  });
+
+  it("falls back to the email's local part when an older API sends no name, and to no photo", async () => {
+    stubFetch(Response.json({ id: "u1", email: "abner.w@example.com", displayName: null, name: "  ", photoUrl: 3 }));
+    expect(await getMe()).toMatchObject({ name: "abner.w", displayName: null, photoUrl: null });
   });
 
   it("is not signed in without a session", async () => {
