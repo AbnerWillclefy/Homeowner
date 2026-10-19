@@ -6,7 +6,31 @@ import (
 	"testing"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/vocab"
 )
+
+func TestMeCarriesTheAvatarFallbackFromTheShownName(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := app.SignInAs("maria.silva@example.com")
+
+	res := me.Get("/me")
+	if res.Body["initials"] != "MS" {
+		t.Errorf("initials = %v, want MS (from the email's local part)", res.Body["initials"])
+	}
+	tone, _ := res.Body["avatarTone"].(string)
+	if !vocab.IsCategory(tone) || tone == "other" {
+		t.Errorf("avatarTone = %q, want a pastel Category id", tone)
+	}
+	id, _ := res.Body["id"].(string)
+	if tone != users.AvatarTone(id) {
+		t.Errorf("avatarTone = %q, want the one derived from the user id", tone)
+	}
+	if got := putName(me, "Zé").Body["initials"]; got != "Z" {
+		t.Errorf("initials after naming = %v, want Z", got)
+	}
+}
 
 func putName(c *apitest.Client, name any) apitest.Response {
 	return c.Put("/me/name", map[string]any{"name": name})
