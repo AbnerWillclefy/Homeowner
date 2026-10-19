@@ -35,7 +35,7 @@ export interface FakeState {
   checkIn?: CheckIn;
   dayPlan?: DayPlan;
   /** The Home's Residents as `GET /home/residents` lists them. Absent means only the caller. */
-  residents?: Resident[];
+  residents?: FakeResident[];
   /** The current Streak `GET /home/streak` answers. Absent means 0. */
   streak?: number;
 }
@@ -79,6 +79,20 @@ export const json = (status: number, body: unknown): FakeReply => ({ status, bod
 /** What the API shows for a User: the display name, else the local part of the email. */
 export const shownName = ({ email, displayName }: { email: string; displayName?: string }): string =>
   displayName ?? email.split("@")[0]!;
+
+/** A Resident the fake stores. The fake adds `initials` and `avatarTone` from the name, as the API does. */
+export type FakeResident = Pick<Resident, "id" | "you" | "name" | "photoUrl"> & Partial<Pick<Resident, "streak" | "doneToday">>;
+
+/**
+ * The avatar fallback the API decides: the first letter of the first and last word of the shown name (words split
+ * on spaces, dots, underscores, hyphens and plus signs). The tone is always kitchen (peach); no spec checks colours.
+ */
+export function avatarFor(name: string): { initials: string; avatarTone: string } {
+  const words = name.split(/[\s._+-]+/).filter((word) => word !== "");
+  const letter = (word: string) => Array.from(word)[0]!.toUpperCase();
+  const initials = words.length === 0 ? "" : words.length === 1 ? letter(words[0]!) : letter(words[0]!) + letter(words[words.length - 1]!);
+  return { initials, avatarTone: "kitchen" };
+}
 export const empty = (status = 204): FakeReply => ({ status });
 /** The `400 { error, fields }` shape the API answers for an invalid form. */
 export const fieldErrors = (fields: Record<string, string>): FakeReply => ({
@@ -195,7 +209,8 @@ export function coreHandlers(api: FakeApi): void {
     "GET /me",
     signedIn((_, state) => {
       const { id, email, displayName, photoUrl } = state.user;
-      return json(200, { id, email, displayName: displayName ?? null, name: shownName({ email, displayName }), photoUrl: photoUrl ?? null });
+      const name = shownName({ email, displayName });
+      return json(200, { id, email, displayName: displayName ?? null, name, photoUrl: photoUrl ?? null, ...avatarFor(name) });
     }),
   );
   // Mirrors NormalizeName in backend/internal/users/name.go for the cases a spec needs: trim, a blank name clears,
@@ -210,9 +225,9 @@ export function coreHandlers(api: FakeApi): void {
       else state.user.displayName = trimmed;
       const { id, email, displayName, photoUrl } = state.user;
       const shown = shownName({ email, displayName });
-      const mine = state.residents?.find((resident) => resident.userId === id);
+      const mine = state.residents?.find((resident) => resident.you);
       if (mine) mine.name = shown;
-      return json(200, { id, email, displayName: displayName ?? null, name: shown, photoUrl: photoUrl ?? null });
+      return json(200, { id, email, displayName: displayName ?? null, name: shown, photoUrl: photoUrl ?? null, ...avatarFor(shown) });
     }),
   );
   api.on("GET /me/onboarding", signedIn((_, state) => json(200, { step: nextStep(state.onboardingStored) })));

@@ -57,8 +57,8 @@ export function signedInResident(): FakeState {
     },
     chores: structuredClone(CHORES),
     residents: [
-      { residentId: "resident-1", userId: "user-1", name: "resident", photoUrl: null, me: true },
-      { residentId: "resident-2", userId: "user-2", name: "Bruna Souza", photoUrl: null, me: false },
+      { id: "resident-1", you: true, name: "resident", photoUrl: null },
+      { id: "resident-2", you: false, name: "Bruna Souza", photoUrl: null },
     ],
     checkIn: { date: FAKE_TODAY, checkedIn: false, level: null, restrictions: [] },
     dayPlan: plannedDay(),

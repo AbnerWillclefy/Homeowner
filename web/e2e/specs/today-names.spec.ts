@@ -18,9 +18,9 @@ function housemates(): FakeState {
   const state = signedInResident();
   state.user.displayName = "Abner";
   state.residents = [
-    { residentId: "resident-1", userId: "user-1", name: "Abner", photoUrl: null, me: true },
-    { residentId: "resident-2", userId: "user-2", name: "Ana Souza", photoUrl: null, me: false },
-    { residentId: "resident-3", userId: "user-3", name: "Carlos Lima", photoUrl: PHOTO_URL, me: false },
+    { id: "resident-1", you: true, name: "Abner", photoUrl: null },
+    { id: "resident-2", you: false, name: "Ana Souza", photoUrl: null },
+    { id: "resident-3", you: false, name: "Carlos Lima", photoUrl: PHOTO_URL },
   ];
   const plan = state.dayPlan!;
   const [dishes, mop] = plan.mine as [(typeof plan.mine)[number], (typeof plan.mine)[number]];
