@@ -55,20 +55,32 @@ async function attempt(
   else onProblem(result);
 }
 
+/** Which of the code screen's two buttons is running. */
+export type ConfirmAction = "submit" | "resend";
+
 interface ConfirmDeps extends Common {
   confirm(email: string, code: string): Promise<CognitoResult>;
   resend(email: string): Promise<CognitoResult>;
   /** A new code was sent. */
   onResent(): void;
   onConfirmed(email: string): void;
+  /** The action in flight, or `null` when none: only that button shows the spinner. A call the guard ignores is not reported. */
+  onRunning(action: ConfirmAction | null): void;
 }
 
 /** Confirming and resending share one guard: either one in flight holds the other. */
-export function createConfirmSubmitter({ confirm, resend, onBusy, onProblem, onResent, onConfirmed }: ConfirmDeps) {
-  const run = guardOnce((go: () => Promise<void>) => go(), onBusy);
+export function createConfirmSubmitter({ confirm, resend, onBusy, onProblem, onResent, onConfirmed, onRunning }: ConfirmDeps) {
+  const run = guardOnce(async (action: ConfirmAction, go: () => Promise<void>) => {
+    onRunning(action);
+    try {
+      await go();
+    } finally {
+      onRunning(null);
+    }
+  }, onBusy);
   return {
     submit: (email: string, code: string) =>
-      run(() => attempt(onProblem, () => confirm(email, code), () => onConfirmed(email))),
-    resend: (email: string) => run(() => attempt(onProblem, () => resend(email), onResent)),
+      run("submit", () => attempt(onProblem, () => confirm(email, code), () => onConfirmed(email))),
+    resend: (email: string) => run("resend", () => attempt(onProblem, () => resend(email), onResent)),
   };
 }

@@ -67,8 +67,8 @@ export function SignIn({ initialEmail, logIn, onNeedsConfirm, onNeedsSignUp }: P
             {...fieldError(problem, "password", FORM)}
           />
           <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
-          <Button type="submit" fullWidth className="mt-4" disabled={busy} aria-busy={busy}>
-            {busy ? t("signIn.submitting") : t("signIn.submit")}
+          <Button type="submit" fullWidth className="mt-4" pending={busy}>
+            {t("signIn.submit")}
           </Button>
         </form>
       </Card>
