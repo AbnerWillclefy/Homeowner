@@ -10,7 +10,17 @@ const t: Translate = (key, params) => {
   return text;
 };
 
-const resident = (over: Partial<Resident>): Resident => ({ residentId: "r1", userId: "u1", name: "Ana", photoUrl: null, me: false, ...over });
+const resident = (over: Partial<Resident>): Resident => ({
+  id: "r1",
+  you: false,
+  name: "Ana",
+  photoUrl: null,
+  initials: "A",
+  avatarTone: "kitchen",
+  streak: 0,
+  doneToday: 0,
+  ...over,
+});
 
 describe("withLine", () => {
   it("says who a housemate is", () => {
@@ -19,7 +29,7 @@ describe("withLine", () => {
   });
 
   it("says you for the caller", () => {
-    expect(withLine(t, resident({ me: true }))).toBe(enUS["dayplan.task.withYou"]);
+    expect(withLine(t, resident({ you: true }))).toBe(enUS["dayplan.task.withYou"]);
   });
 
   it("uses a placeholder while the Resident is unknown", () => {

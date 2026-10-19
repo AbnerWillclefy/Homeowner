@@ -13,7 +13,7 @@ export type ResidentsState =
  * appears, disappears or changes hands (a join or a leave). Mounted in the Shell and shared through ShellContext,
  * so every screen reads one copy.
  *
- * `byResidentId` is the join with the Day Plan, which names Residents by their `residentId`. It answers
+ * `byResidentId` is the join with the Day Plan, which names Residents by their `id`. It answers
  * `undefined` while loading, after a failure and for an id the list does not hold; callers show a placeholder.
  */
 export function useResidents(hasHome: boolean) {
@@ -38,7 +38,7 @@ export function useResidents(hasHome: boolean) {
   }, [hasHome, version]);
 
   const byResidentId = (residentId: string): Resident | undefined =>
-    state.kind === "ready" ? state.residents.find((resident) => resident.residentId === residentId) : undefined;
+    state.kind === "ready" ? state.residents.find((resident) => resident.id === residentId) : undefined;
 
   return { state, byResidentId, reload };
 }

@@ -1,13 +1,13 @@
 import { UserRound } from "lucide-react";
 import { useState } from "react";
 import { TONES } from "../../chores/logic/categoryStyle";
-import { avatarView, type AvatarView } from "../logic/avatarView";
+import { avatarView, type AvatarSource, type AvatarView } from "../logic/avatarView";
 
 type Size = "md" | "lg";
 
 interface Props {
   /** Who to draw, or null for the neutral placeholder (the list is loading, or the Resident is unknown). */
-  resident: { name: string; userId: string; photoUrl: string | null } | null;
+  resident: AvatarSource | null;
   /** `md` (2.75rem) sits in a list row; `lg` (5rem) leads a screen about one person. */
   size?: Size;
 }
@@ -45,10 +45,10 @@ function Face({ view, size, onError }: { view: AvatarView; size: Size; onError: 
 }
 
 /**
- * A Resident's face: their photo, or else initials on a pastel picked from a hash of the user id, so the same
- * person always gets the same colours. It is decorative (`alt=""`): the name is always written next to it. If
+ * A Resident's face: their photo, or else the initials and pastel the server chose, so the same
+ * person always gets the same colours on every screen. It is decorative (`alt=""`): the name is always written next to it. If
  * the photo fails to load it falls back to the initials; a missing photo can arrive as a 200 `text/html`, so
- * the image's `onError` is the only signal. With no Resident, or a name with no letters, it shows a neutral
+ * the image's `onError` is the only signal. With no Resident, or no initials, it shows a neutral
  * person icon on the plain card, in the same box so nothing jumps while the Residents list loads.
  */
 export function Avatar({ resident, size = "md" }: Props) {

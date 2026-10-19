@@ -36,14 +36,24 @@ describe("getMe", () => {
       displayName: null,
       name: "a",
       photoUrl: null,
+      initials: "",
+      avatarTone: "",
     });
     expect(fetch.mock.calls[0]![0]).toBe("http://api.test/me");
     expect(new Headers(fetch.mock.calls[0]![1]?.headers).get("Authorization")).toBe("Bearer id-1");
   });
 
-  it("reads the display name, the shown name and the photo", async () => {
+  it("reads the display name, the shown name, the photo and the avatar fallback", async () => {
     stubFetch(
-      Response.json({ id: "u1", email: "a@example.com", displayName: "Abner", name: "Abner", photoUrl: "https://cdn.test/u1.jpg" }),
+      Response.json({
+        id: "u1",
+        email: "a@example.com",
+        displayName: "Abner",
+        name: "Abner",
+        photoUrl: "https://cdn.test/u1.jpg",
+        initials: "A",
+        avatarTone: "pets",
+      }),
     );
     expect(await getMe()).toEqual({
       kind: "ok",
@@ -52,6 +62,8 @@ describe("getMe", () => {
       displayName: "Abner",
       name: "Abner",
       photoUrl: "https://cdn.test/u1.jpg",
+      initials: "A",
+      avatarTone: "pets",
     });
   });
 

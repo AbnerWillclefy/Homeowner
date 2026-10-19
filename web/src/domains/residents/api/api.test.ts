@@ -23,45 +23,71 @@ function stubFetch(response: Response | Error) {
   return fn;
 }
 
-const ROW = { residentId: "r1", userId: "u1", name: "Abner", photoUrl: "https://cdn.test/u1.jpg", me: true };
+const ROW = {
+  id: "r1",
+  you: true,
+  name: "Abner",
+  photoUrl: "https://cdn.test/u1.jpg",
+  initials: "A",
+  avatarTone: "kitchen",
+  streak: 3,
+  doneToday: 2,
+};
+const body = (residents: unknown[]) => ({ date: "2026-10-19", residents });
 
 beforeEach(() => stubStorage(true));
 afterEach(() => vi.unstubAllGlobals());
 
 describe("getResidents", () => {
-  it("reads the Residents from GET /home/residents", async () => {
-    const fetch = stubFetch(Response.json([ROW]));
-    expect(await getResidents()).toEqual({ kind: "ok", residents: [ROW] });
+  it("reads the date and the Residents from GET /home/residents", async () => {
+    const fetch = stubFetch(Response.json(body([ROW])));
+    expect(await getResidents()).toEqual({ kind: "ok", date: "2026-10-19", residents: [ROW] });
     expect(fetch.mock.calls[0]![0]).toBe("http://api.test/home/residents");
     expect(new Headers(fetch.mock.calls[0]![1]?.headers).get("Authorization")).toBe("Bearer id-1");
   });
 
   it("treats a missing or odd photoUrl as null", async () => {
     const { photoUrl: _drop, ...noPhoto } = ROW;
-    stubFetch(Response.json([noPhoto, { ...ROW, residentId: "r2", photoUrl: 7 }, { ...ROW, residentId: "r3", photoUrl: "" }]));
+    stubFetch(
+      Response.json(body([noPhoto, { ...ROW, id: "r2", photoUrl: 7 }, { ...ROW, id: "r3", photoUrl: "" }, { ...ROW, id: "r4", photoUrl: null }])),
+    );
     const result = await getResidents();
-    expect(result.kind === "ok" && result.residents.map((r) => r.photoUrl)).toEqual([null, null, null]);
+    expect(result.kind === "ok" && result.residents.map((r) => r.photoUrl)).toEqual([null, null, null, null]);
+  });
+
+  it("reads a missing or odd Streak and count as 0, and a missing avatar as empty", async () => {
+    const { streak: _s, doneToday: _d, initials: _i, avatarTone: _t, ...bare } = ROW;
+    stubFetch(Response.json(body([bare, { ...ROW, id: "r2", streak: -1, doneToday: "2" }])));
+    const result = await getResidents();
+    expect(result.kind === "ok" && result.residents.map((r) => [r.streak, r.doneToday, r.initials, r.avatarTone])).toEqual([
+      [0, 0, "", ""],
+      [0, 0, "A", "kitchen"],
+    ]);
   });
 
   it("drops malformed rows and keeps the good ones", async () => {
     stubFetch(
-      Response.json([
-        null,
-        "x",
-        { ...ROW, residentId: 1 },
-        { ...ROW, residentId: "r2", userId: undefined },
-        { ...ROW, residentId: "r3", name: 5 },
-        { ...ROW, residentId: "r4", me: "yes" },
-        { ...ROW, residentId: "r5", me: false },
-      ]),
+      Response.json(
+        body([
+          null,
+          "x",
+          { ...ROW, id: 1 },
+          { ...ROW, id: "r2", you: undefined },
+          { ...ROW, id: "r3", name: 5 },
+          { ...ROW, id: "r4", you: "yes" },
+          { ...ROW, id: "r5", you: false },
+        ]),
+      ),
     );
     const result = await getResidents();
-    expect(result.kind === "ok" && result.residents.map((r) => r.residentId)).toEqual(["r5"]);
+    expect(result.kind === "ok" && result.residents.map((r) => r.id)).toEqual(["r5"]);
   });
 
-  it("is an empty list for an empty array and an error when the body is not an array", async () => {
-    stubFetch(Response.json([]));
-    expect(await getResidents()).toEqual({ kind: "ok", residents: [] });
+  it("is an empty list for no Residents and an error when the body is not the envelope", async () => {
+    stubFetch(Response.json(body([])));
+    expect(await getResidents()).toEqual({ kind: "ok", date: "2026-10-19", residents: [] });
+    stubFetch(Response.json([ROW]));
+    expect(await getResidents()).toEqual({ kind: "error" });
     stubFetch(Response.json({ residents: [] }));
     expect(await getResidents()).toEqual({ kind: "error" });
   });
@@ -78,7 +104,7 @@ describe("getResidents", () => {
 
   it("is not signed in without a session", async () => {
     stubStorage(false);
-    stubFetch(Response.json([]));
+    stubFetch(Response.json(body([])));
     expect(await getResidents()).toEqual({ kind: "not-signed-in" });
   });
 
