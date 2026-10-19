@@ -63,10 +63,8 @@ resource "aws_cloudfront_origin_access_control" "this" {
   signing_protocol                  = "sigv4"
 }
 
-# A separate control for the optional photo origin, so the web one is untouched.
+# A separate control for the photo origin, so the web one is untouched.
 resource "aws_cloudfront_origin_access_control" "photos" {
-  count = var.photos_origin_domain == "" ? 0 : 1
-
   name                              = "${var.name}-photos"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
@@ -94,31 +92,23 @@ resource "aws_cloudfront_distribution" "this" {
     origin_access_control_id = aws_cloudfront_origin_access_control.this.id
   }
 
-  # Resident photos (docs/adr/0012), when the photo bucket is passed. The path
-  # is forwarded whole, so /avatars/x.webp reads the key avatars/x.webp.
-  dynamic "origin" {
-    for_each = aws_cloudfront_origin_access_control.photos
-
-    content {
-      domain_name              = var.photos_origin_domain
-      origin_id                = "photos"
-      origin_access_control_id = origin.value.id
-    }
+  # Resident photos (docs/adr/0012). The path is forwarded whole, so
+  # /avatars/x.webp reads the key avatars/x.webp.
+  origin {
+    domain_name              = var.photos_origin_domain
+    origin_id                = "photos"
+    origin_access_control_id = aws_cloudfront_origin_access_control.photos.id
   }
 
-  dynamic "ordered_cache_behavior" {
-    for_each = aws_cloudfront_origin_access_control.photos
-
-    content {
-      path_pattern               = "/avatars/*"
-      target_origin_id           = "photos"
-      viewer_protocol_policy     = "redirect-to-https"
-      allowed_methods            = ["GET", "HEAD"]
-      cached_methods             = ["GET", "HEAD"]
-      compress                   = true
-      cache_policy_id            = data.aws_cloudfront_cache_policy.caching_optimized.id
-      response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
-    }
+  ordered_cache_behavior {
+    path_pattern               = "/avatars/*"
+    target_origin_id           = "photos"
+    viewer_protocol_policy     = "redirect-to-https"
+    allowed_methods            = ["GET", "HEAD"]
+    cached_methods             = ["GET", "HEAD"]
+    compress                   = true
+    cache_policy_id            = data.aws_cloudfront_cache_policy.caching_optimized.id
+    response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
   }
 
   default_cache_behavior {
