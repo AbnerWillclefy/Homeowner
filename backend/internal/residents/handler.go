@@ -2,11 +2,13 @@ package residents
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/identity"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
@@ -33,6 +35,73 @@ type Handler struct {
 // public URL (nil when photos are off).
 func NewHandler(store *Store, streaks Streaks, photoURL func(*string) *string, clk clock.Clock, log *slog.Logger) *Handler {
 	return &Handler{store: store, streaks: streaks, photoURL: photoURL, clock: clk, log: log}
+}
+
+// windowDays is how many local dates the detail covers: today and six before.
+const windowDays = 7
+
+// Get answers GET /home/residents/{id}: one Resident of the caller's Home with
+// their Streak and the Completions of the last 7 local days, grouped by date.
+// A malformed id is answered before any query, and every way of not finding
+// the Resident (malformed, unknown, another Home, left) gives the same 404.
+func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if !chores.ValidID(id) {
+		httpx.WriteError(w, http.StatusNotFound, "resident not found")
+		return
+	}
+	m := identity.CurrentMembership(r.Context())
+	member, err := h.store.Find(r.Context(), m.Home.ID, id)
+	if errors.Is(err, ErrNotFound) {
+		httpx.WriteError(w, http.StatusNotFound, "resident not found")
+		return
+	}
+	if err != nil {
+		httpx.InternalError(w, h.log, "get resident", err)
+		return
+	}
+	today, err := dayplan.LocalDate(m.Home.Timezone, h.clock.Now())
+	if err != nil {
+		httpx.InternalError(w, h.log, "get resident", err)
+		return
+	}
+	readings, err := h.streaks.CurrentFor(r.Context(), []string{id}, today)
+	if err != nil {
+		httpx.InternalError(w, h.log, "get resident", err)
+		return
+	}
+	done, err := h.store.CompletionsBetween(r.Context(), m.Home.ID, id, (today - (windowDays - 1)).Time(), today.Time())
+	if err != nil {
+		httpx.InternalError(w, h.log, "get resident", err)
+		return
+	}
+	out := detailResponse{
+		Date: today.Time().Format(time.DateOnly), ID: member.ID, You: member.ID == m.ResidentID,
+		Name: member.Name, PhotoURL: h.photoURL(member.PhotoKey),
+		Initials:      users.Initials(member.Name),
+		AvatarTone:    users.AvatarTone(member.UserID),
+		Streak:        readings[id].Current,
+		DoneLast7Days: len(done),
+		Days:          []dayView{},
+	}
+	// The rows arrive newest date first, so a new group starts whenever the
+	// date changes.
+	for _, k := range done {
+		date := k.CompletedOn.Format(time.DateOnly)
+		if n := len(out.Days); n == 0 || out.Days[n-1].Date != date {
+			out.Days = append(out.Days, dayView{Date: date, Completions: []completionView{}})
+		}
+		with := make([]partnerView, 0, len(k.With))
+		for _, p := range k.With {
+			with = append(with, partnerView{ID: p.ID, Name: p.Name})
+		}
+		day := &out.Days[len(out.Days)-1]
+		day.Completions = append(day.Completions, completionView{
+			ID: k.ID, ChoreID: k.ChoreID, ChoreName: k.ChoreName, Category: k.Category,
+			CompletedAt: k.CompletedAt.UTC().Format(time.RFC3339), With: with,
+		})
+	}
+	httpx.WriteJSON(w, http.StatusOK, out)
 }
 
 // List answers GET /home/residents: every Resident of the caller's Home, the
