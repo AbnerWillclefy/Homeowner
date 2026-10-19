@@ -420,7 +420,6 @@ export const enUS = {
   "checkin.level.required": "Choose how your Energy is today, then save.",
   "checkin.restrictions.legend": "Anything you cannot do today?",
   "checkin.submit": "Save",
-  "checkin.saving": "Saving...",
   "checkin.cancel": "Cancel",
   "checkin.change": "Change",
   "checkin.saved": "Check-in saved",

@@ -90,3 +90,66 @@ describe("Button", () => {
     expect(classesOf(markup)).toContain("bg-surface-raised");
   });
 });
+
+describe("Button pending", () => {
+  const slotOf = (markup: string) => /<span[^>]*data-slot="leading"[^>]*>/.exec(markup)?.[0];
+  const icon = createElement("svg", { "data-testid": "icon" });
+
+  it("disables the button and marks it busy", () => {
+    const markup = render({ pending: true });
+    expect(markup).toContain('disabled=""');
+    expect(markup).toContain('aria-busy="true"');
+  });
+
+  it("keeps the label", () => {
+    expect(render({ pending: true }, "Salvar")).toContain("Salvar</button>");
+  });
+
+  it("shows a decorative spinner that turns only when motion is allowed", () => {
+    const svg = /<svg[^>]*>/.exec(render({ pending: true }))?.[0] ?? "";
+    expect(svg).toContain('aria-hidden="true"');
+    expect(svg).toContain("motion-safe:animate-spin");
+    expect(svg.replace("motion-safe:animate-spin", "")).not.toContain("animate-spin");
+  });
+
+  it("is neither disabled nor busy while idle", () => {
+    const markup = render({ pending: false });
+    expect(markup).not.toContain('disabled=""');
+    expect(markup).not.toContain("aria-busy");
+    expect(markup).not.toContain("<svg");
+  });
+
+  it("lays out the same leading slot idle and pending, so the width does not change", () => {
+    const idle = render({ pending: false });
+    const busy = render({ pending: true });
+    expect(slotOf(idle)).toBeDefined();
+    expect(slotOf(idle)).toBe(slotOf(busy));
+    expect(classesOf(idle)).toEqual(classesOf(busy));
+  });
+
+  it("swaps the leading icon for the spinner in the same slot", () => {
+    const idle = render({ pending: false, leadingIcon: icon });
+    const busy = render({ pending: true, leadingIcon: icon });
+    expect(idle).toContain("data-testid");
+    expect(busy).not.toContain("data-testid");
+    expect(slotOf(idle)).toBe(slotOf(busy));
+  });
+
+  it("renders a button that never passes pending exactly as before", () => {
+    const markup = render();
+    expect(markup).not.toContain("data-slot");
+    expect(markup).not.toContain("<span");
+    expect(markup).not.toContain("aria-busy");
+  });
+
+  it("shows a leading icon without pending", () => {
+    expect(render({ leadingIcon: icon })).toContain("data-testid");
+  });
+
+  it("ignores pending with asChild, since a link cannot be busy", () => {
+    const markup = render({ asChild: true, pending: true }, createElement("a", { href: "/home" }, "Home"));
+    expect(markup).not.toContain("aria-busy");
+    expect(markup).not.toContain('disabled=""');
+    expect(markup).not.toContain("<svg");
+  });
+});

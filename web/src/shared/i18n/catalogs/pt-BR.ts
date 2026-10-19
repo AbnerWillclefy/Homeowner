@@ -430,7 +430,6 @@ export const ptBR: Messages = {
   "checkin.level.required": "Escolha como está a sua energia hoje e salve.",
   "checkin.restrictions.legend": "Algo que você não pode fazer hoje?",
   "checkin.submit": "Salvar",
-  "checkin.saving": "Salvando...",
   "checkin.cancel": "Cancelar",
   "checkin.change": "Mudar",
   "checkin.saved": "Check-in salvo",
