@@ -11,7 +11,8 @@ modules/
   scheduled-job/     Lambda from an existing image with another command, started by an EventBridge schedule
   http-api/          API Gateway HTTP API in front of a Lambda
   neon-branch/       Neon branch, role, database, endpoint; connection strings into SSM
-  web/               private S3 bucket behind CloudFront (default HTTPS domain, SPA fallback)
+  web/               private S3 bucket behind CloudFront (default HTTPS domain, SPA fallback; optional /avatars/* origin)
+  photos/            private S3 bucket for Resident photos, read only under avatars/ by the web distribution (ADR 0012)
   auth/              Cognito user pool and the PWA's app client (sign-in)
   budget/            monthly AWS Budget with email alerts, account-wide or for one environment tag
 staging/     thin folder wiring the modules together (state in S3)
@@ -306,6 +307,7 @@ ceiling of one call is 8192 output tokens, about $0.004.
 | Cognito user pool and app client (default email sender, no domain) | free (first 50,000 monthly active users) |
 | ECR repository | storage (lifecycle keeps the last 5 images) |
 | S3 web bucket | storage and requests |
+| S3 photo bucket (#230), its Origin Access Control | storage and requests; the control is free |
 | CloudFront distribution (`PriceClass_100`, default certificate) | pay per use (requests and transfer) |
 | CloudFront Origin Access Control | free |
 | S3 state bucket | storage |

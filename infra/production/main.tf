@@ -55,6 +55,20 @@ module "web" {
 
   name        = "${local.name_prefix}-web"
   bucket_name = "${local.name_prefix}-web-${data.aws_caller_identity.current.account_id}"
+
+  # Resident photos (#230): /avatars/* is served from the photo bucket.
+  photos_origin_domain = module.photos.bucket_regional_domain_name
+}
+
+# Resident photos (docs/adr/0012). Not a cycle: the bucket needs only the
+# distribution's ARN (policy, CORS origin) and the distribution only the
+# bucket's domain; Terraform orders individual values, not whole modules.
+module "photos" {
+  source = "../modules/photos"
+
+  bucket_name      = "${local.name_prefix}-photos-${data.aws_caller_identity.current.account_id}"
+  allowed_origin   = "https://${module.web.domain_name}"
+  distribution_arn = module.web.distribution_arn
 }
 
 # Sign-in (#8): the Cognito user pool and the PWA's app client. It depends on
@@ -75,6 +89,9 @@ module "api" {
   timeout         = 25
   ssm_path_prefix = local.ssm_prefix
 
+  # Resident photos (#230): sign uploads, promote and delete. The job gets none.
+  photos_bucket_arn = module.photos.bucket_arn
+
   environment = merge(
     {
       PORT                           = "8080"
@@ -86,6 +103,10 @@ module "api" {
       # Public identifiers, not secrets, so plain variables (no SSM).
       COGNITO_ISSUER    = module.auth.issuer
       COGNITO_CLIENT_ID = module.auth.client_id
+
+      # Resident photos (#230); the API reads both or neither.
+      PHOTOS_BUCKET   = module.photos.bucket_name
+      PHOTOS_BASE_URL = "https://${module.web.domain_name}/avatars"
     },
     # Web Push (#7). The private key is a SecureString a human puts in SSM
     # (Terraform never sees it); without the public key push stays off and the

@@ -102,6 +102,28 @@ data "aws_iam_policy_document" "runtime" {
       resources = var.invoke_function_arns
     }
   }
+
+  # Resident photos (docs/adr/0012). Absent unless the caller passes the bucket.
+  # No s3:ListBucket, so a HEAD on a missing key answers 403, not 404.
+  dynamic "statement" {
+    for_each = var.photos_bucket_arn == "" ? [] : [1]
+
+    content {
+      sid       = "PhotosPending"
+      actions   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
+      resources = ["${var.photos_bucket_arn}/pending/*"]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = var.photos_bucket_arn == "" ? [] : [1]
+
+    content {
+      sid       = "PhotosAvatars"
+      actions   = ["s3:PutObject", "s3:DeleteObject"]
+      resources = ["${var.photos_bucket_arn}/avatars/*"]
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "runtime" {
