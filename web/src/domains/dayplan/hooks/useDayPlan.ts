@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { TaskAction } from "../logic/actions";
+import type { Acting, TaskAction } from "../logic/actions";
 import {
   acceptAll as acceptAllCall,
   acceptTask,
@@ -56,13 +56,14 @@ export function outcome(result: ActionResult, fresh?: DayPlanResult): { plan?: D
  *
  * `run` and `acceptAll` perform an action (accept, refuse, take, complete; accept everything) and show the
  * plan the server answers with. Nothing is optimistic: the plan on screen only changes from a server answer.
- * One action runs at a time for the whole section; `acting` says so, so the buttons can be disabled. After a
+ * One action runs at a time for the whole section; `acting` says which (the Task and the action, or Accept
+ * all), so every button is disabled and only the pressed one shows its spinner. After a
  * 409 the screen was stale, so the plan is reloaded in place and a message says what happened. `settled`
  * counts the actions that changed the plan, for moving focus.
  */
 export function useDayPlan(version: number) {
   const [state, setState] = useState<DayPlanState>({ kind: "loading" });
-  const [acting, setActing] = useState(false);
+  const [acting, setActing] = useState<Acting>(null);
   const [notice, setNotice] = useState<ActionNotice | null>(null);
   const [settled, setSettled] = useState(0);
   const inFlight = useRef(false);
@@ -100,11 +101,11 @@ export function useDayPlan(version: number) {
     return load();
   }, [load]);
 
-  const act = useCallback(async (call: () => Promise<ActionResult>) => {
+  const act = useCallback(async (call: () => Promise<ActionResult>, running: NonNullable<Acting>) => {
     if (inFlight.current) return;
     inFlight.current = true;
     const startedAt = loads.current;
-    setActing(true);
+    setActing(running);
     setNotice(null);
     try {
       const result = await call();
@@ -125,12 +126,12 @@ export function useDayPlan(version: number) {
       }
     } finally {
       inFlight.current = false;
-      if (mounted.current) setActing(false);
+      if (mounted.current) setActing(null);
     }
   }, [fetchPlan]);
 
-  const run = useCallback((action: TaskAction, task: PlanTask) => void act(() => CALLS[action](task.id)), [act]);
-  const acceptAll = useCallback(() => void act(acceptAllCall), [act]);
+  const run = useCallback((action: TaskAction, task: PlanTask) => void act(() => CALLS[action](task.id), { taskId: task.id, action }), [act]);
+  const acceptAll = useCallback(() => void act(acceptAllCall, { taskId: null, action: "acceptAll" }), [act]);
 
   /** Shows a plan that was read elsewhere, without the loading state: the lists update in place. */
   const show = useCallback((plan: DayPlan) => {
