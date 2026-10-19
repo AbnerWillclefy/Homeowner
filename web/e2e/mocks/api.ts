@@ -71,6 +71,10 @@ export interface RecordedRequest {
 }
 
 export const json = (status: number, body: unknown): FakeReply => ({ status, body });
+
+/** What the API shows for a User: the display name, else the local part of the email. */
+export const shownName = ({ email, displayName }: { email: string; displayName?: string }): string =>
+  displayName ?? email.split("@")[0]!;
 export const empty = (status = 204): FakeReply => ({ status });
 /** The `400 { error, fields }` shape the API answers for an invalid form. */
 export const fieldErrors = (fields: Record<string, string>): FakeReply => ({
@@ -187,8 +191,7 @@ export function coreHandlers(api: FakeApi): void {
     "GET /me",
     signedIn((_, state) => {
       const { id, email, displayName, photoUrl } = state.user;
-      // Like the API: the shown name is the display name, else the email's local part.
-      return json(200, { id, email, displayName: displayName ?? null, name: displayName ?? email.split("@")[0], photoUrl: photoUrl ?? null });
+      return json(200, { id, email, displayName: displayName ?? null, name: shownName({ email, displayName }), photoUrl: photoUrl ?? null });
     }),
   );
   api.on("GET /me/onboarding", signedIn((_, state) => json(200, { step: nextStep(state.onboardingStored) })));

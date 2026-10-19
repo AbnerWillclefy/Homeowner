@@ -5,7 +5,7 @@ export interface Me {
   email: string;
   /** What the User typed as their name, or null when they set none. */
   displayName: string | null;
-  /** The shown name: the display name, else the email's local part (the client's own fallback for an older API). */
+  /** The shown name, as the API decides it. */
   name: string;
   photoUrl: string | null;
 }
@@ -17,7 +17,7 @@ export type MeResult =
   | { kind: "offline" }
   | { kind: "error" };
 
-/** A non-empty string, or null: the fields an older API does not send read as absent. */
+/** A non-empty string, or null. */
 function nonBlank(value: unknown): string | null {
   return typeof value === "string" && value.trim() !== "" ? value : null;
 }
@@ -29,11 +29,11 @@ export async function getMe(): Promise<MeResult> {
     if (result.kind === "not-signed-in") return result;
     if (result.response.status !== 200) return { kind: "error" };
     const body = (await result.response.json()) as Record<string, unknown> | null;
-    if (typeof body?.["id"] !== "string" || typeof body["email"] !== "string") return { kind: "error" };
-    const { id, email } = body as { id: string; email: string };
-    const displayName = nonBlank(body["displayName"]);
-    const name = nonBlank(body["name"]) ?? displayName ?? email.split("@")[0]!;
-    return { kind: "ok", id, email, displayName, name, photoUrl: nonBlank(body["photoUrl"]) };
+    const id = nonBlank(body?.["id"]);
+    const email = nonBlank(body?.["email"]);
+    const name = nonBlank(body?.["name"]);
+    if (id === null || email === null || name === null) return { kind: "error" };
+    return { kind: "ok", id, email, displayName: nonBlank(body?.["displayName"]), name, photoUrl: nonBlank(body?.["photoUrl"]) };
   } catch {
     return { kind: "offline" };
   }

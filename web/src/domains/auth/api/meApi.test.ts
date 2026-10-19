@@ -28,7 +28,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("getMe", () => {
   it("returns the signed-in User from GET /me", async () => {
-    const fetch = stubFetch(Response.json({ id: "u1", email: "a@example.com" }));
+    const fetch = stubFetch(Response.json({ id: "u1", email: "a@example.com", name: "a" }));
     expect(await getMe()).toEqual({
       kind: "ok",
       id: "u1",
@@ -55,9 +55,14 @@ describe("getMe", () => {
     });
   });
 
-  it("falls back to the email's local part when an older API sends no name, and to no photo", async () => {
-    stubFetch(Response.json({ id: "u1", email: "abner.w@example.com", displayName: null, name: "  ", photoUrl: 3 }));
+  it("reads absent optional fields as null", async () => {
+    stubFetch(Response.json({ id: "u1", email: "abner.w@example.com", displayName: "  ", name: "abner.w", photoUrl: 3 }));
     expect(await getMe()).toMatchObject({ name: "abner.w", displayName: null, photoUrl: null });
+  });
+
+  it("is an error when the API sends no shown name", async () => {
+    stubFetch(Response.json({ id: "u1", email: "a@example.com", name: " " }));
+    expect(await getMe()).toEqual({ kind: "error" });
   });
 
   it("is not signed in without a session", async () => {
