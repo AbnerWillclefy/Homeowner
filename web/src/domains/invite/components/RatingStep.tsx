@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import type { Chore } from "../../chores/api/api";
 import { PREFERENCES, type Preference } from "../../profile/api/api";
 import { AppDialog } from "../../../shared/ui/AppDialog";
+import { ButtonRow } from "../../../shared/ui/ButtonRow";
 import { CardRow } from "../../../shared/ui/CardRow";
 import { useI18n, type MessageKey } from "../../../shared/i18n";
 import { effortName } from "../../chores/logic/effortLevels";
@@ -93,9 +94,14 @@ export function RatingStep({ onClose }: Props) {
         </ul>
       )}
 
-      <Button variant={state.kind === "ready" ? "primary" : "secondary"} onClick={onClose}>
-        {state.kind === "ready" ? t("invite.rating.done") : t("invite.rating.skip")}
-      </Button>
+      <ButtonRow
+        className="mt-4"
+        end={
+          <Button variant={state.kind === "ready" ? "primary" : "secondary"} onClick={onClose}>
+            {state.kind === "ready" ? t("invite.rating.done") : t("invite.rating.skip")}
+          </Button>
+        }
+      />
     </AppDialog>
   );
 }
