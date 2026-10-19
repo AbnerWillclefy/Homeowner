@@ -116,6 +116,16 @@ export type ResidentResult =
 const isCount = (value: unknown): value is number => typeof value === "number" && Number.isInteger(value) && value >= 0;
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 
+function parseAll<T>(values: unknown[], parse: (value: unknown) => T | null): T[] | null {
+  const parsed: T[] = [];
+  for (const value of values) {
+    const item = parse(value);
+    if (item === null) return null;
+    parsed.push(item);
+  }
+  return parsed;
+}
+
 function parsePartner(value: unknown): Partner | null {
   if (!isRecord(value) || typeof value.id !== "string" || typeof value.name !== "string") return null;
   return { id: value.id, name: value.name };
@@ -127,16 +137,16 @@ function parseCompletion(value: unknown): ResidentCompletion | null {
   if (typeof id !== "string" || typeof choreName !== "string") return null;
   if (typeof completedAt !== "string" || Number.isNaN(Date.parse(completedAt))) return null;
   if (!Array.isArray(partners)) return null;
-  const parsed = partners.map(parsePartner);
-  if (parsed.some((partner) => partner === null)) return null;
-  return { id, choreName, category: typeof category === "string" ? category : "", completedAt, with: parsed as Partner[] };
+  const parsed = parseAll(partners, parsePartner);
+  if (parsed === null) return null;
+  return { id, choreName, category: typeof category === "string" ? category : "", completedAt, with: parsed };
 }
 
 function parseDay(value: unknown): ResidentDay | null {
   if (!isRecord(value) || typeof value.date !== "string" || !Array.isArray(value.completions)) return null;
-  const completions = value.completions.map(parseCompletion);
-  if (completions.some((completion) => completion === null)) return null;
-  return { date: value.date, completions: completions as ResidentCompletion[] };
+  const completions = parseAll(value.completions, parseCompletion);
+  if (completions === null) return null;
+  return { date: value.date, completions };
 }
 
 /** Strict: a page built on a half-understood answer would mislead, so anything off is an error with Retry. */
@@ -145,8 +155,8 @@ function parseDetail(body: unknown): ResidentDetail | null {
   const { date, id, you, name, photoUrl, initials, avatarTone, streak, doneLast7Days, days } = body;
   if (typeof date !== "string" || typeof id !== "string" || typeof name !== "string" || typeof you !== "boolean") return null;
   if (!isCount(streak) || !isCount(doneLast7Days) || !Array.isArray(days)) return null;
-  const parsedDays = days.map(parseDay);
-  if (parsedDays.some((day) => day === null)) return null;
+  const parsedDays = parseAll(days, parseDay);
+  if (parsedDays === null) return null;
   return {
     date,
     id,
@@ -157,7 +167,7 @@ function parseDetail(body: unknown): ResidentDetail | null {
     avatarTone: typeof avatarTone === "string" ? avatarTone : "",
     streak,
     doneLast7Days,
-    days: parsedDays as ResidentDay[],
+    days: parsedDays,
   };
 }
 

@@ -1,4 +1,4 @@
-import { avatarFor, json, shownName, signedIn, type FakeApi, type FakeCompletion, type FakeResident } from "../api";
+import { avatarFor, json, shownName, signedIn, type FakeApi, type FakeState, type FakeCompletion, type FakeResident } from "../api";
 import { FAKE_TODAY } from "./today";
 
 const DAY_MS = 86_400_000;
@@ -41,7 +41,7 @@ function groupByDay(completions: FakeCompletion[], timeZone: string) {
  * id that is not in the list is `404 resident not found`, like the API; 404 `no home` without a Home.
  */
 export function residentsHandlers(api: FakeApi): void {
-  const list = (state: Parameters<Parameters<typeof signedIn>[0]>[1]): FakeResident[] => {
+  const list = (state: FakeState): FakeResident[] => {
     const { email, displayName, photoUrl } = state.user;
     const caller: FakeResident = { id: "resident-1", you: true, name: shownName({ email, displayName }), photoUrl: photoUrl ?? null };
     return state.residents ?? [caller];
@@ -51,11 +51,14 @@ export function residentsHandlers(api: FakeApi): void {
     "GET /home/residents",
     signedIn((_, state) => {
       if (state.home === null) return json(404, { error: "no home" });
-      const residents = list(state).map(({ streak, doneToday, completions: _completions, ...resident }) => ({
-        ...resident,
+      const residents = list(state).map((resident) => ({
+        id: resident.id,
+        you: resident.you,
+        name: resident.name,
+        photoUrl: resident.photoUrl,
         ...avatarFor(resident.name),
-        streak: streak ?? 0,
-        doneToday: doneToday ?? 0,
+        streak: resident.streak ?? 0,
+        doneToday: resident.doneToday ?? 0,
       }));
       return json(200, { date: FAKE_TODAY, residents });
     }),

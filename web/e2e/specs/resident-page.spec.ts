@@ -119,9 +119,9 @@ for (const l of LOCALES) {
     test("has no actions on a Completion and nothing private", async ({ page }) => {
       await visit(page, "/home/residents/resident-2");
       await expect(page.getByRole("heading", { name: "Ana Souza", level: 2 })).toBeVisible();
-      // Only the back link and the tab bar are links; the only button-like thing is none.
+      // A Completion is a record: no button on the page and no link inside a card.
       await expect(page.getByRole("button")).toHaveCount(0);
-      await expect(page.getByRole("link")).toHaveCount(5);
+      await expect(page.getByRole("listitem").filter({ hasText: " · " }).getByRole("link")).toHaveCount(0);
       await expect(page.locator("body")).not.toContainText(/Energy|Energia|Baseline|Check-in|Preference|Preferência|Restriction|Restrição/);
     });
 
@@ -163,7 +163,7 @@ for (const l of LOCALES) {
       });
       await visit(page, "/home/residents/resident-2");
       await expect(page.getByRole("link", { name: l.back })).toBeVisible();
-      const skeleton = page.locator('div[aria-hidden="true"]').filter({ has: page.locator(".size-20") }).first();
+      const skeleton = page.getByTestId("resident-skeleton");
       await expect(skeleton).toBeVisible();
       const before = (await skeleton.boundingBox())!;
       const backBefore = (await page.getByRole("link", { name: l.back }).boundingBox())!;
