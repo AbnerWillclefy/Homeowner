@@ -375,12 +375,14 @@ export const ptBR: Messages = {
   "dayplan.conflict.not_in_pool":
     "Outro morador já pegou essa tarefa. Sua lista está atualizada.",
   "dayplan.conflict.not_yours":
-    "Essa tarefa não é sua para concluir. Pegue-a primeiro.",
+    "Outro morador está com essa tarefa. Sua lista está atualizada.",
   "dayplan.conflict.no_plan_today": "Ainda não há plano para hoje.",
   "dayplan.conflict.two_person_task":
     "Essa tarefa precisa de duas pessoas, o que ainda não está disponível.",
   "dayplan.conflict.restricted":
-    "Você tem uma restrição para essa tarefa, então não pode pegá-la.",
+    "Você tem uma restrição para essa tarefa, então ela não é para você hoje.",
+  "dayplan.conflict.drained":
+    "Você está sem energia hoje, então descanse: isso pode esperar.",
   "dayplan.conflict.unknown":
     "O plano mudou desde que você olhou. Sua lista está atualizada.",
 

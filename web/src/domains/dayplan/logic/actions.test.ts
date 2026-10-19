@@ -18,11 +18,11 @@ describe("actionsFor", () => {
     expect(actionsFor({ people: 1, committed: true }, "mine")).toEqual({ start: [], end: ["done"], committed: true });
   });
 
-  it("offers Take at the end of a pool Task", () => {
-    expect(actionsFor(TASK, "pool")).toEqual({ start: [], end: ["take"], committed: false });
+  it("offers Done at the start and Take at the end of a pool Task", () => {
+    expect(actionsFor(TASK, "pool")).toEqual({ start: ["done"], end: ["take"], committed: false });
   });
 
-  it("hides Take on a two-person pool Task, which the API refuses until it is supported", () => {
+  it("hides Done and Take on a two-person pool Task, which the API refuses until it is supported", () => {
     expect(actionsFor({ people: 2, committed: false }, "pool")).toEqual({ start: [], end: [], committed: false });
   });
 
