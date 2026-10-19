@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkin"
 )
 
 // The errors of the Day Plan actions. The server maps each to a status and a
@@ -36,6 +37,9 @@ var (
 	// ErrRestricted: the Resident may not do the Task today, because of a
 	// Restriction or because its Chore is not allowed on this weekday.
 	ErrRestricted = errors.New("task is restricted for you")
+	// ErrDrained: the Resident checked in Drained today, so they cannot
+	// complete a pool Task (taking it first, in one step).
+	ErrDrained = errors.New("resident is drained today")
 )
 
 // ReasonRefused is the pool reason of a Task a Resident refused. A refused Task
@@ -231,24 +235,31 @@ func (p *Planner) Take(ctx context.Context, homeID, residentID, taskID string, n
 		if assigned {
 			return ErrNotInPool
 		}
-		if ts.people > 1 {
-			return ErrTwoPersonTask
-		}
-		if err := a.mayDo(ctx, residentID, taskID, ReasonTaken); err != nil {
-			return err
-		}
-		taken := allocation.Assignment{TaskID: taskID, ResidentID: residentID, Reason: ReasonTaken}
-		if err := insertAssignments(ctx, a.tx, a.run.id, []allocation.Assignment{taken}); err != nil {
-			return fmt.Errorf("take: %w", err)
-		}
-		if _, err := a.tx.Exec(ctx, `
-			INSERT INTO task_residents (task_id, resident_id, committed_on, committed_at) VALUES ($1, $2, $3, $4)`,
-			taskID, residentID, a.date.Time(), a.now); err != nil {
-			return fmt.Errorf("take: %w", err)
-		}
-		a.run.reasons.take(taskID)
-		return writeReasons(ctx, a.tx, a.run.id, a.run.reasons)
+		return a.takeFromPool(ctx, residentID, taskID, ts)
 	})
+}
+
+// takeFromPool is the checks and writes of taking an open pool Task: the shared
+// path of Take and of Complete on a pool Task, so the two cannot drift. The
+// caller has locked the Task and found it open and unassigned today.
+func (a *acting) takeFromPool(ctx context.Context, residentID, taskID string, ts taskState) error {
+	if ts.people > 1 {
+		return ErrTwoPersonTask
+	}
+	if err := a.mayDo(ctx, residentID, taskID, ReasonTaken); err != nil {
+		return err
+	}
+	taken := allocation.Assignment{TaskID: taskID, ResidentID: residentID, Reason: ReasonTaken}
+	if err := insertAssignments(ctx, a.tx, a.run.id, []allocation.Assignment{taken}); err != nil {
+		return fmt.Errorf("take: %w", err)
+	}
+	if _, err := a.tx.Exec(ctx, `
+		INSERT INTO task_residents (task_id, resident_id, committed_on, committed_at) VALUES ($1, $2, $3, $4)`,
+		taskID, residentID, a.date.Time(), a.now); err != nil {
+		return fmt.Errorf("take: %w", err)
+	}
+	a.run.reasons.take(taskID)
+	return writeReasons(ctx, a.tx, a.run.id, a.run.reasons)
 }
 
 // mayDo has the referee look at a plan of only this Task for only this
@@ -291,8 +302,13 @@ func mayDoIn(st loaded, residentID, taskID, reason string) error {
 // done, so the Chore's next Task opens by the schedule (a build-up Chore starts
 // again at its base Effort). The Completion lists every Resident the Task was
 // given to, so either partner of a two-person Task completes it for both.
-// Nobody else can complete it afterwards (ErrAlreadyDone). A Task that is in the pool, or someone else's, is
-// ErrNotYours: take it first.
+// Nobody else can complete it afterwards (ErrAlreadyDone).
+//
+// A Task in the pool is taken and completed in the same transaction, through
+// the path Take uses (ErrTwoPersonTask, ErrRestricted), so it adds a Commitment
+// and counts toward the Streak, and a refusal leaves nothing behind. A Resident
+// who checked in Drained today cannot (ErrDrained; Take still allows it). A
+// Task someone else holds is ErrNotYours; with no plan today it is ErrNoPlanToday.
 func (p *Planner) Complete(ctx context.Context, homeID, residentID, taskID string, now time.Time) error {
 	return p.act(ctx, homeID, now, "complete", func(a *acting) error {
 		ts, err := lockTask(ctx, a.tx, homeID, taskID)
@@ -302,15 +318,33 @@ func (p *Planner) Complete(ctx context.Context, homeID, residentID, taskID strin
 		if ts.done {
 			return ErrAlreadyDone
 		}
-		if a.run == nil {
-			return ErrNotYours
+		if err := a.requirePlan(); err != nil {
+			return err
 		}
 		mine, err := holds(ctx, a.tx, a.run.id, taskID, residentID)
 		if err != nil {
 			return err
 		}
 		if !mine {
-			return ErrNotYours
+			assigned, err := assignedToday(ctx, a.tx, a.run.id, taskID)
+			if err != nil {
+				return err
+			}
+			if assigned {
+				return ErrNotYours
+			}
+			// In the pool: take it and complete it in this one transaction.
+			// A Drained Resident rests, so they do not do it either.
+			cis, err := checkin.LoadMany(ctx, a.tx, []string{residentID}, a.date)
+			if err != nil {
+				return err
+			}
+			if ci, ok := cis[residentID]; ok && ci.Level == checkin.Drained {
+				return ErrDrained
+			}
+			if err := a.takeFromPool(ctx, residentID, taskID, ts); err != nil {
+				return err
+			}
 		}
 		var completionID string
 		err = a.tx.QueryRow(ctx, `
