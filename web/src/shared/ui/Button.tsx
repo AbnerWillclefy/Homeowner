@@ -1,5 +1,6 @@
 import { Slot } from "@radix-ui/react-slot";
-import type { ComponentProps } from "react";
+import { LoaderCircle } from "lucide-react";
+import type { ComponentProps, ReactNode } from "react";
 
 export type ButtonVariant = "primary" | "secondary" | "danger" | "ghost" | "link";
 
@@ -11,6 +12,14 @@ interface Props extends ComponentProps<"button"> {
   icon?: boolean;
   /** Span the container's width, for a form's or a screen's main action. */
   fullWidth?: boolean;
+  /**
+   * The action is running: the button is disabled and busy, and a spinner takes the leading icon's place. Pass it
+   * (true or false) on a button whose width must not change, because it then always reserves the leading slot.
+   * `disabled` still means "not available". Ignored with `asChild`, since a link cannot be busy.
+   */
+  pending?: boolean;
+  /** An icon before the label (for example a lucide icon). The spinner replaces it while pending. Ignored with `asChild`. */
+  leadingIcon?: ReactNode;
 }
 
 // Whole class strings, so Tailwind finds them. min-h/min-w keep the 44px target on every variant.
@@ -37,6 +46,9 @@ function padding(variant: ButtonVariant, icon: boolean): string {
   return variant === "link" ? "px-1" : "px-5";
 }
 
+// The one slot for a leading icon or the spinner, 1rem square, so swapping them never moves the label.
+const SLOT = "inline-flex size-4 shrink-0 items-center justify-center";
+
 export function Button({
   variant = "primary",
   asChild = false,
@@ -44,14 +56,41 @@ export function Button({
   fullWidth = false,
   className = "",
   type,
+  pending,
+  leadingIcon,
+  children,
+  disabled,
   ...rest
 }: Props) {
-  const Comp = asChild ? Slot : "button";
+  const classes = `${BASE} ${VARIANTS[variant]} ${padding(variant, icon)} ${fullWidth ? "w-full" : ""} ${className}`;
+  if (asChild) {
+    return (
+      <Slot className={classes} {...(disabled === undefined ? {} : { disabled })} {...rest}>
+        {children}
+      </Slot>
+    );
+  }
+  const hasSlot = pending !== undefined || leadingIcon !== undefined;
   return (
-    <Comp
-      {...(asChild ? {} : { type: type ?? "button" })}
-      className={`${BASE} ${VARIANTS[variant]} ${padding(variant, icon)} ${fullWidth ? "w-full" : ""} ${className}`}
+    <button
+      type={type ?? "button"}
+      className={classes}
+      disabled={disabled || pending === true}
+      aria-busy={pending ? true : undefined}
       {...rest}
-    />
+    >
+      {hasSlot && (
+        <span data-slot="leading" className={SLOT}>
+          {pending ? (
+            // The one continuous animation the "under 200ms" motion rule allows, because it carries state.
+            // With reduced motion the same icon is simply static. currentColor keeps it visible in forced colours.
+            <LoaderCircle aria-hidden="true" size={16} className="motion-safe:animate-spin" />
+          ) : (
+            leadingIcon
+          )}
+        </span>
+      )}
+      {children}
+    </button>
   );
 }
