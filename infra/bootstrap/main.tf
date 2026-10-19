@@ -238,6 +238,26 @@ data "aws_iam_policy_document" "deploy" {
     resources = ["arn:aws:s3:::homeowner-${each.key}-web-*/*"]
   }
 
+  # The environment's photo bucket (#230): the web bucket's actions plus CORS
+  # (which also authorises deleting it). No object actions: only the API's
+  # Lambda role reads and writes photos.
+  statement {
+    sid = "PhotoBucketManage"
+    actions = [
+      "s3:CreateBucket", "s3:DeleteBucket", "s3:ListBucket",
+      "s3:GetBucketLocation", "s3:GetBucketTagging", "s3:PutBucketTagging",
+      "s3:GetBucketPolicy", "s3:PutBucketPolicy", "s3:DeleteBucketPolicy",
+      "s3:GetBucketPublicAccessBlock", "s3:PutBucketPublicAccessBlock",
+      "s3:GetEncryptionConfiguration", "s3:PutEncryptionConfiguration",
+      "s3:GetLifecycleConfiguration", "s3:PutLifecycleConfiguration",
+      "s3:GetBucketVersioning", "s3:GetBucketAcl", "s3:GetBucketCORS", "s3:PutBucketCORS",
+      "s3:GetBucketWebsite", "s3:GetBucketLogging", "s3:GetBucketObjectLockConfiguration",
+      "s3:GetAccelerateConfiguration", "s3:GetBucketRequestPayment",
+      "s3:GetReplicationConfiguration", "s3:GetBucketOwnershipControls",
+    ]
+    resources = ["arn:aws:s3:::homeowner-${each.key}-photos-*"]
+  }
+
   # CloudFront ids are generated, so distributions and access controls cannot
   # be scoped by name, only by type.
   statement {
