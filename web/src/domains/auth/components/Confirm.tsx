@@ -13,6 +13,7 @@ import { useStableHandlers } from "../../../shared/ui/useStableHandlers";
 import { useToast } from "../../../shared/ui/useToast";
 
 const FORM = "confirm";
+const noop = () => {};
 
 interface Props {
   email: string;
@@ -24,9 +25,9 @@ interface Props {
 
 export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) {
   const { t } = useI18n();
-  const [busy, setBusy] = useState(false);
-  // Which button runs, so only that one spins; the other is just disabled.
+  // Which button runs, so only that one spins; the other is just disabled while any runs.
   const [running, setRunning] = useState<ConfirmAction | null>(null);
+  const busy = running !== null;
   // State holds the failure and a flag, never their words, so a language switch re-words them.
   const [problem, setProblem] = useState<CognitoFailure | null>(null);
   const toast = useToast();
@@ -38,7 +39,7 @@ export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) 
     () =>
       createConfirmSubmitter({
         ...stable,
-        onBusy: setBusy,
+        onBusy: noop, // `running` already says whether anything is in flight
         onRunning: setRunning,
         onProblem: setProblem,
         // A new code was sent and nothing is left to decide: a toast, not a message the form has to clear.
