@@ -12,6 +12,7 @@ type StoredObject struct {
 	Bytes        []byte
 	ContentType  string
 	CacheControl string
+	ETag         string
 }
 
 // Presigned is one presign the Fake recorded: what the upload binds.
@@ -28,6 +29,24 @@ type Fake struct {
 	presign  []Presigned
 	failDel  map[string]bool
 	failSign bool
+	version  int
+	before   func()
+}
+
+// put stores o under key with a fresh ETag. The caller holds the lock.
+func (f *Fake) put(key string, o StoredObject) {
+	f.version++
+	o.ETag = fmt.Sprintf("\"v%d\"", f.version)
+	f.objects[key] = o
+}
+
+// BeforeCopy registers fn to run at the start of every Copy, before the ETag
+// check, to simulate the object being replaced after it was checked. It runs
+// without the lock held, so fn may call Upload.
+func (f *Fake) BeforeCopy(fn func()) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.before = fn
 }
 
 // NewFake returns an empty Fake.
@@ -39,7 +58,7 @@ func NewFake() *Fake {
 func (f *Fake) Upload(key string, bytes []byte, contentType string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.objects[key] = StoredObject{Bytes: append([]byte(nil), bytes...), ContentType: contentType}
+	f.put(key, StoredObject{Bytes: append([]byte(nil), bytes...), ContentType: contentType})
 }
 
 // Objects returns a copy of every stored object by key.
@@ -87,7 +106,7 @@ func (f *Fake) Head(_ context.Context, key string) (Object, error) {
 	if !ok {
 		return Object{}, ErrNotFound
 	}
-	return Object{Size: int64(len(o.Bytes)), ContentType: o.ContentType}, nil
+	return Object{Size: int64(len(o.Bytes)), ContentType: o.ContentType, ETag: o.ETag}, nil
 }
 
 // ReadPrefix answers the first n bytes.
@@ -104,15 +123,25 @@ func (f *Fake) ReadPrefix(_ context.Context, key string, n int) ([]byte, error) 
 	return append([]byte(nil), o.Bytes[:n]...), nil
 }
 
-// Copy stores src's bytes under dst with the type and CacheControl.
-func (f *Fake) Copy(_ context.Context, src, dst, contentType string) error {
+// Copy stores src's bytes under dst with the type and CacheControl, or
+// returns ErrChanged when src no longer has etag.
+func (f *Fake) Copy(_ context.Context, src, dst, contentType, etag string) error {
+	f.mu.Lock()
+	before := f.before
+	f.mu.Unlock()
+	if before != nil {
+		before()
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	o, ok := f.objects[src]
 	if !ok {
 		return ErrNotFound
 	}
-	f.objects[dst] = StoredObject{Bytes: o.Bytes, ContentType: contentType, CacheControl: CacheControl}
+	if o.ETag != etag {
+		return ErrChanged
+	}
+	f.put(dst, StoredObject{Bytes: o.Bytes, ContentType: contentType, CacheControl: CacheControl})
 	return nil
 }
 

@@ -41,12 +41,12 @@ func OwnsPendingKey(userID, key string) bool {
 }
 
 // URLBuilder returns the function that turns a stored photo key into its
-// public URL: base + "/" + the key without its avatars/ prefix. With photos
-// off (a nil store) it returns nil for every key, so a misconfigured
+// public URL: base + "/" + the key without its avatars/ prefix. With an
+// empty base (photos off) or a nil key it returns nil, so a misconfigured
 // environment shows initials rather than broken images.
-func URLBuilder(store ObjectStore, base string) func(*string) *string {
+func URLBuilder(base string) func(*string) *string {
 	return func(key *string) *string {
-		if store == nil || key == nil {
+		if base == "" || key == nil {
 			return nil
 		}
 		u := base + "/" + strings.TrimPrefix(*key, "avatars/")

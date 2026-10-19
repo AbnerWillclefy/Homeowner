@@ -121,7 +121,12 @@ func (h *Handler) Confirm(w http.ResponseWriter, r *http.Request) {
 	}
 
 	avatar := NewAvatarKey(ExtensionFor(obj.ContentType))
-	if err := h.store.Copy(ctx, body.Key, avatar, obj.ContentType); err != nil {
+	err = h.store.Copy(ctx, body.Key, avatar, obj.ContentType, obj.ETag)
+	if errors.Is(err, ErrChanged) {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_object")
+		return
+	}
+	if err != nil {
 		httpx.InternalError(w, h.log, "promote photo", err)
 		return
 	}

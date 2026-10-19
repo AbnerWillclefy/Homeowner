@@ -300,3 +300,23 @@ func TestPhotoRoutesNeedSignIn(t *testing.T) {
 	app := apitest.Start(t, apitest.WithPhotos())
 	apitest.ExpectStatus(t, app.Post("/me/photo/uploads", map[string]any{"contentType": "image/webp", "size": 10}), http.StatusUnauthorized)
 }
+
+func TestAnObjectReplacedBetweenCheckAndCopyIsRejected(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t, apitest.WithPhotos())
+	c := app.SignInAs("a@example.com")
+	key := uploaded(t, app, c, "image/webp", webpBytes)
+	// The browser replays its presigned PUT after the checks passed.
+	app.Photos.BeforeCopy(func() { app.Photos.Upload(key, pngBytes, "image/webp") })
+
+	res := confirm(c, key)
+	if res.Status != http.StatusBadRequest || res.Body["error"] != "invalid_object" {
+		t.Errorf("confirm = %d %s, want 400 invalid_object", res.Status, res.Raw)
+	}
+	if n := len(avatarKeys(app)); n != 0 {
+		t.Errorf("%d avatars promoted", n)
+	}
+	if v := photoURLOf(t, c); v != nil {
+		t.Errorf("photoUrl = %v, want null", v)
+	}
+}

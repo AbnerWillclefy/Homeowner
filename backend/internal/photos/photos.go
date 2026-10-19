@@ -44,6 +44,9 @@ func Accepted(contentType string) bool {
 // ErrNotFound means the object does not exist.
 var ErrNotFound = errors.New("photos: object not found")
 
+// ErrChanged means the object was replaced after it was checked.
+var ErrChanged = errors.New("photos: object changed")
+
 // Upload is a presigned upload: the browser sends Method to URL with Headers
 // and the bytes as the body.
 type Upload struct {
@@ -56,6 +59,9 @@ type Upload struct {
 type Object struct {
 	Size        int64
 	ContentType string
+	// ETag identifies this version of the object; Copy takes it back so a
+	// replaced object is not promoted.
+	ETag string
 }
 
 // ObjectStore is the private bucket the photos live in.
@@ -67,8 +73,9 @@ type ObjectStore interface {
 	Head(ctx context.Context, key string) (Object, error)
 	// ReadPrefix returns the first n bytes (fewer for a smaller object).
 	ReadPrefix(ctx context.Context, key string, n int) ([]byte, error)
-	// Copy copies src to dst with the given type and CacheControl.
-	Copy(ctx context.Context, src, dst, contentType string) error
+	// Copy copies src to dst with the given type and CacheControl, only if
+	// src still has etag; otherwise it returns ErrChanged.
+	Copy(ctx context.Context, src, dst, contentType, etag string) error
 	// Delete removes key; deleting a missing key is not an error.
 	Delete(ctx context.Context, key string) error
 }

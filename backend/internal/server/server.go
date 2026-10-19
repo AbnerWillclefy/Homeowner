@@ -82,7 +82,12 @@ func New(deps Deps) http.Handler {
 	homeStore := homes.NewStore(db)
 	s := &server{deps: deps, users: users.NewStore(db), homes: homeStore}
 
-	photoURL := photos.URLBuilder(deps.Photos, deps.PhotosBaseURL)
+	// Photos are off when there is no store, and then no URL is built either.
+	photosBase := deps.PhotosBaseURL
+	if deps.Photos == nil {
+		photosBase = ""
+	}
+	photoURL := photos.URLBuilder(photosBase)
 	me := users.NewHandler(s.users, homeStore, photoURL, clk, log)
 	home := homes.NewHandler(homeStore, photoURL, clk, log)
 	photosH := photos.NewHandler(deps.Photos, s.users, photoURL, clk, log)

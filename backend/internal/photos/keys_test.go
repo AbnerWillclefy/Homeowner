@@ -54,6 +54,19 @@ func TestAvatarKeysAreFreshAndShaped(t *testing.T) {
 	}
 }
 
+func TestURLBuilder(t *testing.T) {
+	key := "avatars/abc.webp"
+	if got := photos.URLBuilder("https://x.test/avatars")(&key); got == nil || *got != "https://x.test/avatars/abc.webp" {
+		t.Errorf("got %v", got)
+	}
+	if got := photos.URLBuilder("https://x.test/avatars")(nil); got != nil {
+		t.Errorf("nil key gave %v", *got)
+	}
+	if got := photos.URLBuilder("")(&key); got != nil {
+		t.Errorf("empty base gave %v", *got)
+	}
+}
+
 func TestSniff(t *testing.T) {
 	webp := append(append([]byte("RIFF"), 1, 2, 3, 4), []byte("WEBPVP8 ")...)
 	wav := append(append([]byte("RIFF"), 1, 2, 3, 4), []byte("WAVEfmt ")...)
