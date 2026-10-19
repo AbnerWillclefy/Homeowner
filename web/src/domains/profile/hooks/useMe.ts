@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { getMe, type Me } from "../../auth/api/meApi";
 
 export type MeState =
@@ -9,28 +9,26 @@ export type MeState =
 
 /**
  * The signed-in User as `GET /me` last said, with the shown name and photo. Mounted in the Shell and shared
- * through ShellContext: Today's greeting reads the name, and the Me screen calls `set` with the answer of a save
- * so every screen updates without another call. It does not depend on a Home, so Me works without one.
+ * through ShellContext: Today's greeting reads the name. It does not depend on a Home, so Me works without one.
  */
-export function useMe() {
+export function useMe(): MeState {
   const [state, setState] = useState<MeState>({ kind: "loading" });
 
-  const reload = useCallback(async () => {
-    const result = await getMe();
-    if (result.kind === "ok") {
-      const { kind: _kind, ...me } = result;
-      setState({ kind: "ready", me });
-    } else {
-      // Keep a name we already have when only a refresh failed.
-      setState((previous) => (previous.kind === "ready" ? previous : { kind: "failed" }));
-    }
+  useEffect(() => {
+    let current = true;
+    void getMe().then((result) => {
+      if (!current) return;
+      if (result.kind === "ok") {
+        const { kind: _kind, ...me } = result;
+        setState({ kind: "ready", me });
+      } else {
+        setState({ kind: "failed" });
+      }
+    });
+    return () => {
+      current = false;
+    };
   }, []);
 
-  useEffect(() => {
-    void reload();
-  }, [reload]);
-
-  const set = useCallback((me: Me) => setState({ kind: "ready", me }), []);
-
-  return useMemo(() => ({ state, reload, set }), [state, reload, set]);
+  return state;
 }

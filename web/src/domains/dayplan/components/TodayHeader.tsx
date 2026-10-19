@@ -14,7 +14,7 @@ export function TodayHeader() {
   const { me } = useShell();
   const now = new Date();
   const date = new Intl.DateTimeFormat(locale, { weekday: "long", month: "long", day: "numeric" }).format(now);
-  const name = me.state.kind === "ready" ? me.state.me.name : null;
+  const name = me.kind === "ready" ? me.me.name : null;
   const title = name === null ? t(greetingKey(now.getHours())) : t(greetingKey(now.getHours(), true), { name });
   return <PageHeader title={<span className="[overflow-wrap:anywhere]">{title}</span>}>{date}</PageHeader>;
 }

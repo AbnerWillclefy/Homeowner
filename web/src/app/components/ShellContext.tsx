@@ -5,7 +5,7 @@ import type { useResidents } from "../../domains/residents/hooks/useResidents";
 
 interface ShellValue {
   home: ReturnType<typeof useHome>;
-  /** The Home's Residents, shared so Today, Me and the photo flow read one copy. Empty until there is a Home. */
+  /** The Home's Residents, shared so every screen reads one copy. Not ready until there is a Home. */
   residents: ReturnType<typeof useResidents>;
   /** The signed-in User's own name and photo from `GET /me`. */
   me: ReturnType<typeof useMe>;
