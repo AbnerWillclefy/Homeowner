@@ -35,7 +35,7 @@ The UI has no automated tests in v1. Keep logic out of components; for that logi
 
 A pull request that changes the UI shows each changed screen in both locales; the `ui-screenshots` check fails without them. Take them with Playwright against the e2e fakes, without committing anything to the ticket branch:
 1. `git worktree add --orphan -b screenshots/<ticket branch> ../screenshots`
-2. Write a throwaway spec in `web/e2e/specs/` that opens each changed screen with `test.use({ locale: "pt-BR" })`, then `"en-US"`, and saves `page.screenshot({ path: "../../screenshots/<screen>-pt-BR.png" })` and `-en.png`. Run it with `npm run build:e2e` and `npx playwright test <spec>`, then delete the spec.
+2. Write a throwaway spec in `web/e2e/specs/` that opens each changed screen with `test.use({ locale: "pt-BR", viewport: { width: 390, height: 844 } })`, then `"en-US"`, and saves `page.screenshot({ path: "../../screenshots/<screen>-pt-BR.png" })` and `-en.png`. Show the screen as a Resident sees it by default: no injected CSS, no text scaling, light theme. Run it with `npm run build:e2e` and `npx playwright test <spec>`, open each image to check it, then delete the spec.
 3. `git -C ../screenshots add .`, `git -C ../screenshots commit -m "chore: screenshots"`, `git -C ../screenshots push origin screenshots/<ticket branch>`.
 4. In the description, under `### pt-BR` and `### English`, link each image as `![<screen>](https://raw.githubusercontent.com/AbnerWillclefy/Homeowner/screenshots/<ticket branch>/<file>)`.
 
