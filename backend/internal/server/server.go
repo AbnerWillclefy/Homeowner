@@ -116,6 +116,7 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("POST /home", user(home.Create))
 	mux.HandleFunc("GET /home", resident(home.Get))
 	mux.HandleFunc("GET /home/residents", resident(residentsH.List))
+	mux.HandleFunc("GET /home/residents/{id}", resident(residentsH.Get))
 	mux.HandleFunc("PUT /home", resident(home.Update))
 	mux.HandleFunc("DELETE /home/residents/me", resident(home.Leave))
 	mux.HandleFunc("GET /home/chores", resident(chore.List))
