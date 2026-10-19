@@ -2,6 +2,7 @@ import type { FakeApi } from "../api";
 import { choresHandlers } from "./chores";
 import { homeHandlers } from "./home";
 import { onboardingHandlers } from "./onboarding";
+import { photosHandlers } from "./photos";
 import { residentsHandlers } from "./residents";
 import { todayHandlers } from "./today";
 
@@ -12,4 +13,5 @@ export function signedInHandlers(api: FakeApi): void {
   choresHandlers(api);
   todayHandlers(api);
   residentsHandlers(api);
+  photosHandlers(api);
 }
