@@ -76,19 +76,30 @@ describe("getDayPlan", () => {
     expect(await getDayPlan()).toEqual({ kind: "ok", plan: body });
   });
 
-  it("keeps the explanation the API sends, with both languages", async () => {
-    const explanation = { source: "llm", text: { "en-US": "A light day.", "pt-BR": "Um dia leve." } };
-    stubFetch(Response.json({ ...PLAN, explanation }));
+  const EXPLANATION = {
+    source: "llm",
+    headline: { "en-US": "A light day", "pt-BR": "Um dia leve" },
+    detail: { "en-US": "Rest is the plan.", "pt-BR": "Descansar é o plano." },
+  };
+
+  it("keeps the explanation the API sends, with headline and detail in both languages", async () => {
+    stubFetch(Response.json({ ...PLAN, explanation: { ...EXPLANATION, text: { "en-US": "old", "pt-BR": "velho" } } }));
     const result = await getDayPlan();
-    expect(result.kind === "ok" && result.plan.explanation).toEqual(explanation);
+    expect(result.kind === "ok" && result.plan.explanation).toEqual(EXPLANATION);
   });
 
   it.each([
     ["null", null],
-    ["an unknown source", { source: "robot", text: { "en-US": "a", "pt-BR": "b" } }],
-    ["a missing language", { source: "template", text: { "en-US": "a" } }],
-    ["a text that is not a string", { source: "template", text: { "en-US": "a", "pt-BR": 3 } }],
     ["a string", "A light day."],
+    ["only the old text field", { source: "llm", text: { "en-US": "a", "pt-BR": "b" } }],
+    ["an unknown source", { ...EXPLANATION, source: "robot" }],
+    ["a missing headline", { source: "template", detail: EXPLANATION.detail }],
+    ["a missing detail", { source: "template", headline: EXPLANATION.headline }],
+    ["a missing headline language", { ...EXPLANATION, headline: { "en-US": "a" } }],
+    ["a missing detail language", { ...EXPLANATION, detail: { "pt-BR": "a" } }],
+    ["a blank headline", { ...EXPLANATION, headline: { "en-US": "a", "pt-BR": "  " } }],
+    ["a blank detail", { ...EXPLANATION, detail: { "en-US": "", "pt-BR": "b" } }],
+    ["a headline that is not a string", { ...EXPLANATION, headline: { "en-US": "a", "pt-BR": 3 } }],
   ])("reads %s as no explanation and still reads the plan", async (_name, explanation) => {
     stubFetch(Response.json({ ...PLAN, explanation }));
     const result = await getDayPlan();

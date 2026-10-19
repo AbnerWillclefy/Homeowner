@@ -81,7 +81,8 @@ export interface DayPlan {
  */
 export interface Explanation {
   source: "llm" | "template";
-  text: Record<Locale, string>;
+  headline: Record<Locale, string>;
+  detail: Record<Locale, string>;
 }
 
 export type Failure = { kind: "not-signed-in" } | { kind: "offline" } | { kind: "error" };
@@ -167,14 +168,26 @@ function parseOthers(value: unknown): ResidentTasks[] | null {
   return others;
 }
 
-/** Lenient: anything that is not a full explanation in both languages is none, never a failed plan. */
+/** A non-blank string in both languages, or null. */
+function parseBilingual(value: unknown): Record<Locale, string> | null {
+  if (!isRecord(value)) return null;
+  const en = value["en-US"];
+  const pt = value["pt-BR"];
+  if (typeof en !== "string" || typeof pt !== "string" || en.trim() === "" || pt.trim() === "") return null;
+  return { "en-US": en, "pt-BR": pt };
+}
+
+/**
+ * Lenient: anything that is not a full explanation (a known source, a headline and a detail in both languages,
+ * none blank) is none, never a failed plan. An older server that sends only `text` therefore shows no card.
+ */
 function parseExplanation(value: unknown): Explanation | null {
-  if (!isRecord(value) || !isRecord(value.text)) return null;
-  const { source, text } = value;
-  const en = text["en-US"];
-  const pt = text["pt-BR"];
-  if ((source !== "llm" && source !== "template") || typeof en !== "string" || typeof pt !== "string") return null;
-  return { source, text: { "en-US": en, "pt-BR": pt } };
+  if (!isRecord(value)) return null;
+  const { source } = value;
+  const headline = parseBilingual(value.headline);
+  const detail = parseBilingual(value.detail);
+  if ((source !== "llm" && source !== "template") || !headline || !detail) return null;
+  return { source, headline, detail };
 }
 
 function parseDayPlan(body: unknown): DayPlan | null {
