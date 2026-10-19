@@ -1,0 +1,24 @@
+name: ui-screenshots-cleanup
+
+# Screenshots for a pull request's description live on the orphan branch
+# screenshots/<head branch>; they are temporary, so it goes when the pull request closes.
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+
+jobs:
+  ui-screenshots-cleanup:
+    name: ui-screenshots-cleanup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete the screenshots branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/screenshots/$HEAD_REF" \
+            && echo "Deleted screenshots/$HEAD_REF." \
+            || echo "No screenshots/$HEAD_REF branch."
