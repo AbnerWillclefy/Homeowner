@@ -44,6 +44,13 @@ export const enUS = {
   "home.summary": "Plans are made at {time}, {zone} time.",
   "home.settings.save": "Save changes",
   "home.settings.saved": "Your changes are saved.",
+  "home.settings.card.title": "Home settings",
+  "home.settings.card.hint": "Planning time and time zone",
+  "home.residents.heading": "Residents",
+  "home.residents.you": "You",
+  "home.residents.streak": { one: "{count} day", other: "{count} days" },
+  "home.residents.doneToday": { one: "{count} done today", other: "{count} done today" },
+  "home.residents.error": "Something went wrong loading the Residents. Try again in a moment.",
   "home.timezone.label": "Timezone",
   "home.allocationTime.label": "Allocation time",
   "home.save.offline":

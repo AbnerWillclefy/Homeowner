@@ -33,6 +33,7 @@ export function HomeSettingsForm({ home, onSaved }: Props) {
       timezones={options}
       save={saveSettings}
       onSaved={onSaved}
+      framed={false}
     />
   );
 }

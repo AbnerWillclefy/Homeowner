@@ -48,6 +48,13 @@ export const ptBR: Messages = {
   "home.summary": "Os planos são feitos às {time}, horário de {zone}.",
   "home.settings.save": "Salvar alterações",
   "home.settings.saved": "Suas alterações foram salvas.",
+  "home.settings.card.title": "Ajustes do lar",
+  "home.settings.card.hint": "Horário do planejamento e fuso horário",
+  "home.residents.heading": "Moradores",
+  "home.residents.you": "Você",
+  "home.residents.streak": { one: "{count} dia", other: "{count} dias" },
+  "home.residents.doneToday": { one: "{count} concluída hoje", other: "{count} concluídas hoje" },
+  "home.residents.error": "Algo deu errado ao carregar os moradores. Tente novamente em instantes.",
   "home.timezone.label": "Fuso horário",
   "home.allocationTime.label": "Horário da alocação",
   "home.save.offline":
