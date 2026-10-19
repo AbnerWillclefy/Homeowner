@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 const h2 = (page: Page, name: string) => page.getByRole("heading", { name, level: 2, exact: true });
 // Group headings carry a count ("Your Tasks 2"), so the name is matched as a substring.
@@ -32,6 +32,14 @@ export const tabs = {
     baseline: (page: Page) => h3(page, "Baseline"),
     preferences: (page: Page) => h3(page, "Preferences"),
     restrictions: (page: Page) => h3(page, "Restrictions"),
+    /** The head row of a card: one native button (the heading wraps it) that opens and closes the card. */
+    trigger: (page: Page, name: string) => page.getByRole("button", { name, exact: true }),
+    /** Opens a card if it is closed. */
+    async open(page: Page, name: string): Promise<void> {
+      const trigger = page.getByRole("button", { name, exact: true });
+      if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
+      await expect(trigger).toHaveAttribute("aria-expanded", "true");
+    },
     kitchenLike: (page: Page) => page.getByRole("group", { name: "Kitchen", exact: true }).getByRole("radio", { name: "Like", exact: true }),
     bending: (page: Page) => page.getByRole("checkbox", { name: "Bending" }),
     day: (page: Page, name: string) => page.getByRole("group", { name, exact: true }),
