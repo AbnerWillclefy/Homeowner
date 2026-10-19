@@ -1,5 +1,5 @@
 import { Ban, Heart, Zap } from "lucide-react";
-import { SectionCard } from "../../../shared/ui/SectionCard";
+import { CollapsibleCard } from "../../../shared/ui/CollapsibleCard";
 import { useI18n } from "../../../shared/i18n";
 import { BaselineFields, PreferenceFields, ProfileStatus, RestrictionFields } from "./ProfileSections";
 import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
@@ -8,7 +8,7 @@ import { ProfileSkeleton } from "./ProfileSkeleton";
 
 /**
  * The first part of the Me tab: the signed-in User's Baseline, Preferences and Restrictions, each in its own
- * titled card (an h3 and a region, under the tab's h2). Each control saves on its own: the change shows at once and is undone
+ * collapsible card, closed on first view (an h3 holding the toggle button, and a region, under the tab's h2). Each control saves on its own: the change shows at once and is undone
  * with an error toast if the API refuses it, and a toast says it was saved. Baseline saves on blur. Onboarding shows the same three
  * parts one step at a time.
  *
@@ -30,20 +30,20 @@ export function MeProfile() {
 
       {state.kind === "ready" && (
         <>
-          <SectionCard id="me-baseline-heading" icon={Zap} title={t("profile.baseline.heading")} hint={t("profile.baseline.hint")}>
+          <CollapsibleCard id="me-baseline-heading" icon={Zap} title={t("profile.baseline.heading")} hint={t("profile.baseline.hint")}>
             <BaselineFields baseline={state.profile.baseline} onSave={setBaseline} />
-          </SectionCard>
+          </CollapsibleCard>
 
-          <SectionCard
+          <CollapsibleCard
             id="me-preferences-heading"
             icon={Heart}
             title={t("profile.preferences.heading")}
             hint={t("profile.preferences.hint")}
           >
             <PreferenceFields profile={state.profile} categories={state.categories} onChange={setPreference} />
-          </SectionCard>
+          </CollapsibleCard>
 
-          <SectionCard
+          <CollapsibleCard
             id="me-restrictions-heading"
             icon={Ban}
             title={t("profile.restrictions.heading")}
@@ -54,7 +54,7 @@ export function MeProfile() {
               demands={state.demands}
               onChange={setRestricted}
             />
-          </SectionCard>
+          </CollapsibleCard>
         </>
       )}
     </>

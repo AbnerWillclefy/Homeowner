@@ -1,5 +1,11 @@
 import type { LucideIcon } from "lucide-react";
 
+// Whole class strings, so Tailwind finds them.
+export const TONES = {
+  accent: "bg-accent/10 text-accent",
+  danger: "bg-danger/10 text-danger",
+} as const;
+
 /** An icon on a rounded square, coloured by `className`. Decoration only: the text next to it says what it means. */
 export function IconTile({ icon: Icon, className }: { icon: LucideIcon; className: string }) {
   return (
