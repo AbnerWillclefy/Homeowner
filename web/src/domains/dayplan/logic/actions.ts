@@ -18,7 +18,7 @@ export interface TaskActions {
 
 /**
  * The buttons a Task gets. `mine` is a Task assigned to the caller: Proposed until they accept it (Refuse,
- * Accept; Done only once it is Committed), then Committed. Pool Tasks can be taken, except those that need two
+ * Accept; Done only once it is Committed), then Committed. Pool Tasks can be taken, or done in one step (Done, secondary, at the start), except those that need two
  * people, which the API refuses for now. Other Residents' Tasks are theirs: nothing to do and nothing to say.
  */
 export function actionsFor(task: { people: number; committed?: boolean }, role: TaskRole): TaskActions {
@@ -28,7 +28,9 @@ export function actionsFor(task: { people: number; committed?: boolean }, role: 
         ? { start: [], end: ["done"], committed: true }
         : { start: ["refuse"], end: ["accept"], committed: false };
     case "pool":
-      return { start: [], end: task.people === 2 ? [] : ["take"], committed: false };
+      return task.people === 2
+        ? { start: [], end: [], committed: false }
+        : { start: ["done"], end: ["take"], committed: false };
     case "other":
       return { start: [], end: [], committed: false };
   }

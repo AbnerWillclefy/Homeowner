@@ -365,12 +365,14 @@ export const enUS = {
   "dayplan.conflict.not_in_pool":
     "Someone else already has that Task. Your list is up to date.",
   "dayplan.conflict.not_yours":
-    "That Task is not yours to finish. Take it first.",
+    "Someone else has that Task. Your list is up to date.",
   "dayplan.conflict.no_plan_today": "There is no plan for today yet.",
   "dayplan.conflict.two_person_task":
     "That Task needs two people, which is not available yet.",
   "dayplan.conflict.restricted":
-    "You have a Restriction on that Task, so you cannot take it.",
+    "You have a Restriction on that Task, so it is not for you today.",
+  "dayplan.conflict.drained":
+    "You checked in Drained today, so rest: this can wait.",
   "dayplan.conflict.unknown":
     "The plan changed since you looked. Your list is up to date.",
 

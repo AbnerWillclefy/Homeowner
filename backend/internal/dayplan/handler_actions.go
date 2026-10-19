@@ -27,6 +27,7 @@ var taskActionErrors = []struct {
 	{ErrAlreadyDone, http.StatusConflict, "already_done"},
 	{ErrTwoPersonTask, http.StatusConflict, "two_person_task"},
 	{ErrRestricted, http.StatusConflict, "restricted"},
+	{ErrDrained, http.StatusConflict, "drained"},
 	{ErrNotHeldByOther, http.StatusConflict, "not_held_by_other"},
 	{ErrSwapPending, http.StatusConflict, "swap_pending"},
 	{ErrSwapNotFound, http.StatusNotFound, "swap_not_found"},

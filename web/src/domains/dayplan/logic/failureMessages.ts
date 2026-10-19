@@ -31,6 +31,7 @@ const CONFLICT_KEYS = {
   already_done: "dayplan.conflict.already_done",
   two_person_task: "dayplan.conflict.two_person_task",
   restricted: "dayplan.conflict.restricted",
+  drained: "dayplan.conflict.drained",
 } as const satisfies Record<string, MessageKey>;
 
 /** What to tell the Resident after a 409. A code the app does not know gets a generic "the plan changed". */
