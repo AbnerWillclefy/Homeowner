@@ -4,12 +4,7 @@ import { useI18n } from "../../../shared/i18n";
 import type { Resident } from "../api/api";
 import { rowTarget } from "../logic/rowTarget";
 import { Avatar } from "./Avatar";
-
-// The row and its skeleton share these, so the skeleton holds the real row's height: 0.75rem above and below
-// the 2.75rem Avatar, and a name line (1.5rem) over a meta line (1.25rem).
-export const ROW_PADDING = "py-3";
-export const NAME_LINE = "h-6";
-export const META_LINE = "h-5";
+import { ROW_PADDING } from "./rowLayout";
 
 /**
  * One Resident in the Residents card: Avatar, name (with a "You" tag on the caller's own row), the current

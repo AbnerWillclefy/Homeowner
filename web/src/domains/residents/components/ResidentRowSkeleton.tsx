@@ -1,5 +1,5 @@
 import { SkeletonBar } from "../../../shared/ui/Skeleton";
-import { META_LINE, NAME_LINE, ROW_PADDING } from "./ResidentRow";
+import { META_LINE, NAME_LINE, ROW_PADDING } from "./rowLayout";
 
 /** The two placeholder rows that keep the Residents card the height of the common two-person Home. */
 export function ResidentRowsSkeleton({ className = "" }: { className?: string }) {

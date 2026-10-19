@@ -1,10 +1,10 @@
 import { useShell } from "../../../app/components/ShellContext";
 import { useI18n } from "../../../shared/i18n";
-import { Button } from "../../../shared/ui/Button";
 import { Card } from "../../../shared/ui/Card";
 import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { ResidentRow } from "./ResidentRow";
 import { ResidentRowsSkeleton } from "./ResidentRowSkeleton";
+import { ResidentsError } from "./ResidentsError";
 
 /**
  * The first card of the Home tab: the Home's Residents, in the order the API sends them. It reads the Shell's
@@ -30,16 +30,7 @@ export function ResidentsCard() {
         </ul>
       )}
       {state.kind === "loading" && <ResidentRowsSkeleton className={showSkeleton ? "" : "invisible"} />}
-      {state.kind === "failed" && (
-        <div className="flex flex-col items-start gap-3 py-3">
-          <p role="alert" className="my-0 text-danger">
-            {t("home.residents.error")}
-          </p>
-          <Button variant="secondary" onClick={reload}>
-            {t("home.retry")}
-          </Button>
-        </div>
-      )}
+      {state.kind === "failed" && <ResidentsError onRetry={reload} />}
     </Card>
   );
 }
