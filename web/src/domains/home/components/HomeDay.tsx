@@ -8,7 +8,6 @@ import { ReplanControl } from "../../dayplan/components/ReplanControl";
 import { TodayHeader } from "../../dayplan/components/TodayHeader";
 import { TodaySection } from "../../dayplan/components/TodaySection";
 import { useDayPlan } from "../../dayplan/hooks/useDayPlan";
-import { summaryCounts } from "../../dayplan/logic/summaryCounts";
 import { StreakCard } from "../../streak/components/StreakCard";
 import { useStreak } from "../../streak/hooks/useStreak";
 
@@ -41,9 +40,7 @@ export function HomeDay({ version, onPlanChanged }: { version: number; onPlanCha
         onClose={() => setCheckInOpen(false)}
         energy={showsEnergy(note) ? <EnergySummary note={note} energy={energy ?? 0} planned={planned} /> : null}
       />
-      {state.kind === "ready" ? (
-        <DaySummary explanation={state.plan.explanation} counts={summaryCounts(state.plan)} />
-      ) : null}
+      {state.kind === "ready" ? <DaySummary plan={state.plan} /> : null}
       <StreakCard streak={streak} />
       <ReplanControl plan={state.kind === "ready" ? state.plan : undefined} show={day.show} />
       <TodaySection day={day} note={note} />
