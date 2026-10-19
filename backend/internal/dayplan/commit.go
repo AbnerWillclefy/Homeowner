@@ -239,6 +239,28 @@ func (p *Planner) Take(ctx context.Context, homeID, residentID, taskID string, n
 	})
 }
 
+// claimPoolTask takes a Task the Resident does not hold, so Complete can finish
+// it in the same transaction. A Task assigned to someone today is ErrNotYours.
+// Unlike Take, a Resident who checked in Drained today cannot (ErrDrained): a
+// Drained Resident rests.
+func (a *acting) claimPoolTask(ctx context.Context, residentID, taskID string, ts taskState) error {
+	assigned, err := assignedToday(ctx, a.tx, a.run.id, taskID)
+	if err != nil {
+		return err
+	}
+	if assigned {
+		return ErrNotYours
+	}
+	cis, err := checkin.LoadMany(ctx, a.tx, []string{residentID}, a.date)
+	if err != nil {
+		return err
+	}
+	if ci, ok := cis[residentID]; ok && ci.Level == checkin.Drained {
+		return ErrDrained
+	}
+	return a.takeFromPool(ctx, residentID, taskID, ts)
+}
+
 // takeFromPool is the checks and writes of taking an open pool Task: the shared
 // path of Take and of Complete on a pool Task, so the two cannot drift. The
 // caller has locked the Task and found it open and unassigned today.
@@ -326,23 +348,7 @@ func (p *Planner) Complete(ctx context.Context, homeID, residentID, taskID strin
 			return err
 		}
 		if !mine {
-			assigned, err := assignedToday(ctx, a.tx, a.run.id, taskID)
-			if err != nil {
-				return err
-			}
-			if assigned {
-				return ErrNotYours
-			}
-			// In the pool: take it and complete it in this one transaction.
-			// A Drained Resident rests, so they do not do it either.
-			cis, err := checkin.LoadMany(ctx, a.tx, []string{residentID}, a.date)
-			if err != nil {
-				return err
-			}
-			if ci, ok := cis[residentID]; ok && ci.Level == checkin.Drained {
-				return ErrDrained
-			}
-			if err := a.takeFromPool(ctx, residentID, taskID, ts); err != nil {
+			if err := a.claimPoolTask(ctx, residentID, taskID, ts); err != nil {
 				return err
 			}
 		}
