@@ -9,6 +9,7 @@ import { FormError } from "../../../shared/ui/FormError";
 import { formErrorId } from "../../../shared/ui/formErrorId";
 import { PageHeader } from "../../../shared/ui/PageHeader";
 import { useNameForm } from "../hooks/useNameForm";
+import { MeLoadFailed } from "./MeLoadFailed";
 
 const FORM = "me-name";
 const INPUT_ID = "me-name-input";
@@ -72,16 +73,7 @@ export function MeEdit() {
       <PageHeader title={t("me.edit.heading")} />
       {me.state.kind === "ready" && <NameForm initial={me.state.me.displayName ?? ""} />}
       {me.state.kind === "loading" && <p role="status">{t("profile.loading")}</p>}
-      {me.state.kind === "failed" && (
-        <div className="flex flex-col items-start gap-3">
-          <p role="alert" className="my-0 font-semibold">
-            {t("me.header.loadFailed")}
-          </p>
-          <Button variant="secondary" onClick={me.reload}>
-            {t("me.header.retry")}
-          </Button>
-        </div>
-      )}
+      {me.state.kind === "failed" && <MeLoadFailed className="items-start" />}
     </div>
   );
 }

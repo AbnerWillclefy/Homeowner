@@ -6,6 +6,7 @@ import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { SkeletonBar } from "../../../shared/ui/Skeleton";
+import { MeLoadFailed } from "./MeLoadFailed";
 import { Avatar } from "../../residents/components/Avatar";
 import { useStreak } from "../../streak/hooks/useStreak";
 import type { Me } from "../../auth/api/meApi";
@@ -63,16 +64,27 @@ function Loaded({ me, hasHome }: { me: Me; hasHome: boolean }) {
   );
 }
 
+/** One skeleton line at a loaded line's height: a pulsing bar, or just the space while the skeleton is still hidden. */
+function Line({ height, width, show }: { height: string; width: string; show: boolean }) {
+  return show ? <SkeletonBar className={`${height} ${width}`} /> : <span className={`block ${height}`} />;
+}
+
 /** The header's shape while `GET /me` loads: the Avatar circle and three lines, at the loaded sizes. */
 function Skeleton({ showBars, hasHome }: { showBars: boolean; hasHome: boolean }) {
-  const bar = (height: string, width: string) =>
-    showBars ? <SkeletonBar className={`${height} ${width}`} /> : <span className={`block ${height}`} />;
   return (
     <div aria-hidden="true" className={COLUMN}>
       <span className={`block size-20 rounded-pill ${showBars ? "bg-muted/20 motion-safe:animate-pulse" : ""}`} />
-      <div className={`mt-1 flex w-full justify-center ${NAME_LINE}`}>{bar(NAME_LINE, "w-1/2")}</div>
-      <div className={`flex w-full justify-center ${EMAIL_LINE}`}>{bar(EMAIL_LINE, "w-2/3")}</div>
-      {hasHome && <div className={`flex w-full justify-center ${STREAK_LINE}`}>{bar(STREAK_LINE, "w-1/4")}</div>}
+      <div className={`mt-1 flex w-full justify-center ${NAME_LINE}`}>
+        <Line height={NAME_LINE} width="w-1/2" show={showBars} />
+      </div>
+      <div className={`flex w-full justify-center ${EMAIL_LINE}`}>
+        <Line height={EMAIL_LINE} width="w-2/3" show={showBars} />
+      </div>
+      {hasHome && (
+        <div className={`flex w-full justify-center ${STREAK_LINE}`}>
+          <Line height={STREAK_LINE} width="w-1/4" show={showBars} />
+        </div>
+      )}
     </div>
   );
 }
@@ -99,16 +111,7 @@ export function MeHeader() {
       </h2>
       {loading && <Skeleton showBars={showSkeleton} hasHome={hasHome} />}
       {me.state.kind === "ready" && <Loaded me={me.state.me} hasHome={hasHome} />}
-      {me.state.kind === "failed" && (
-        <div className="flex flex-col items-center gap-3 pb-4 text-center">
-          <p role="alert" className="my-0 font-semibold">
-            {t("me.header.loadFailed")}
-          </p>
-          <Button variant="secondary" onClick={me.reload}>
-            {t("me.header.retry")}
-          </Button>
-        </div>
-      )}
+      {me.state.kind === "failed" && <MeLoadFailed className="items-center pb-4 text-center" />}
     </div>
   );
 }

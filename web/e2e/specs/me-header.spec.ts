@@ -212,6 +212,26 @@ for (const l of LOCALES) {
         await page.getByRole("button", { name: l.retry }).click();
         await expect(page.getByText("Abner Lima", { exact: true })).toBeVisible();
       });
+
+      test("the edit screen shows Retry too, and Retry brings the form back", async ({ page, baseURL, fakeApi }) => {
+        let broken = false;
+        fakeApi.override("GET /me", (_, state) => {
+          if (broken) return json(500, { error: "internal error" });
+          const { id, email, displayName, photoUrl } = state.user;
+          return json(200, { id, email, displayName: displayName ?? null, name: displayName ?? email, photoUrl: photoUrl ?? null });
+        });
+        await openMe(page, baseURL);
+        await page.getByRole("link", { name: l.edit }).click();
+        await expect(page.getByLabel(l.nameLabel)).toBeVisible();
+
+        // Reloading on the edit route makes the app ask for /me again, now failing.
+        broken = true;
+        await page.reload();
+        await expect(page.getByRole("alert").filter({ hasText: l.loadFailed })).toBeVisible();
+        broken = false;
+        await page.getByRole("button", { name: l.retry }).click();
+        await expect(page.getByLabel(l.nameLabel)).toHaveValue("Abner Lima");
+      });
     });
   });
 }

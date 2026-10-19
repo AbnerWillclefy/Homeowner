@@ -11,7 +11,6 @@ import { PageLoading } from "../../shared/ui/PageLoading";
 import { ChoresPageSkeleton, HomeSkeleton, TodaySkeleton } from "../../domains/home/components/HomeSkeleton";
 import { formatAllocationTime } from "../../domains/home/logic/allocationTimes";
 import { InviteShare } from "../../domains/invite/components/InviteShare";
-import { MeEdit } from "../../domains/profile/components/MeEdit";
 import { MeHeader } from "../../domains/profile/components/MeHeader";
 import { MeProfile } from "../../domains/profile/components/MeProfile";
 import { SettingsCard } from "../../domains/settings/components/Settings";
@@ -103,9 +102,4 @@ export function MePage() {
       </div>
     </PageLoading>
   );
-}
-
-/** Me's edit screen, a route under the Me tab (see MeEdit). */
-export function MeEditPage() {
-  return <MeEdit />;
 }
