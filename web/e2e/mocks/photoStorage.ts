@@ -10,6 +10,8 @@ export interface StoredRequest {
   authorization: string | null;
   /** Every header the browser sent, lower-cased, to prove no extra one was added to the signed request. */
   headers: Record<string, string>;
+  /** When the fake received it (`performance.now()`), to order it against the API calls. */
+  at: number;
 }
 
 export interface FakeStorage extends Fake {
@@ -35,6 +37,7 @@ export function createFakeStorage(): FakeStorage {
         contentType: request.headers["content-type"] ?? null,
         authorization: request.authorization,
         headers: request.headers,
+        at: performance.now(),
       });
       return { status: failures.shift() ?? 200 };
     },

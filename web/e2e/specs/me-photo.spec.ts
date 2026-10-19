@@ -174,15 +174,6 @@ for (const l of LOCALES) {
         baseURL,
         fakeApi,
       }) => {
-        let putsWhenConfirmed = -1;
-        fakeApi.override("PUT /me/photo", (request, state) => {
-          putsWhenConfirmed = storage.puts.length;
-          const key = (request.body as { key: string }).key;
-          expect(key).toMatch(/^pending\/user-1\//);
-          state.user.photoUrl = NEW_PHOTO_URL;
-          state.residents![0]!.photoUrl = NEW_PHOTO_URL;
-          return json(200, { photoUrl: NEW_PHOTO_URL });
-        });
         await openEdit(page, baseURL);
         await page.evaluate(() => ((window as unknown as { __kept: boolean }).__kept = true));
         const residentsBefore = fakeApi.requests.filter((r) => r.method === "GET" && r.path === "/home/residents").length;
@@ -201,9 +192,12 @@ for (const l of LOCALES) {
         expect(asked.contentType).toBe("image/webp");
         expect(asked.size).toBeGreaterThan(0);
         expect(asked.size).toBeLessThanOrEqual(524288);
-        expect(putsWhenConfirmed).toBe(1);
-
+        const confirm = photoRequests(fakeApi.requests)[1]!;
+        expect((confirm.body as { key: string }).key).toMatch(/^pending\/user-1\//);
         expect(storage.puts).toHaveLength(1);
+        // The photo reached storage before the API was told to confirm it.
+        expect(storage.puts[0]!.at).toBeLessThan(confirm.at);
+
         const put = storage.puts[0]!;
         expect(put.method).toBe("PUT");
         expect(put.url).toMatch(/^https:\/\/photos\.test\/pending\/user-1\//);
