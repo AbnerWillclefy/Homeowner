@@ -24,6 +24,16 @@ describe("message catalogs", () => {
     expect(extraInPt, `keys only in pt-BR: ${extraInPt}`).toEqual([]);
   });
 
+  it("no longer number Residents (\"Resident N\"): names and avatars replaced it", () => {
+    expect("dayplan.others.resident" in en).toBe(false);
+    expect("dayplan.others.resident" in pt).toBe(false);
+    for (const catalog of [en, pt]) {
+      for (const message of Object.values(catalog)) {
+        for (const [, text] of forms(message)) expect(text).not.toMatch(/\b(Resident|Morador) \{number\}/);
+      }
+    }
+  });
+
   it("have the same shape (string or plural) for every key", () => {
     for (const key of Object.keys(en)) {
       expect(typeof pt[key], `shape differs for ${key}`).toBe(typeof en[key]);

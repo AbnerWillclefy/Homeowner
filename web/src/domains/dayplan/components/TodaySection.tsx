@@ -1,4 +1,4 @@
-import { Clock, UserRound } from "lucide-react";
+import { Clock } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Link } from "react-router";
 import type { DayPlan, PlanTask } from "../api/api";
@@ -10,6 +10,7 @@ import { useI18n, type MessageKey } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { GroupHeading } from "../../../shared/ui/GroupHeading";
 import { LOAD_FAILURE_KEY } from "../logic/failureMessages";
+import { ResidentLabel } from "../../residents/components/ResidentLabel";
 import { DoneCard } from "./DoneCard";
 import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { DayPlanSkeleton } from "./DayPlanSkeleton";
@@ -201,9 +202,8 @@ function PlanView({
           <div className="flex flex-col gap-5">
             {plan.others.map((other, index) => (
               <section key={other.residentId} aria-labelledby={`resident-${index}`} className="mt-0">
-                <h4 id={`resident-${index}`} className="mt-0 mb-2 flex items-center gap-1.5 text-sm font-bold text-muted">
-                  <UserRound aria-hidden="true" size={16} className="shrink-0" />
-                  {t("dayplan.others.resident", { number: index + 1 })}
+                <h4 id={`resident-${index}`} className="mt-0 mb-2 text-base font-bold">
+                  <ResidentLabel residentId={other.residentId} />
                 </h4>
                 <ul className={LIST}>
                   {other.tasks.map((task) => card(task, "other"))}
