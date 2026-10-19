@@ -101,8 +101,14 @@ describe("Button pending", () => {
     expect(markup).toContain('aria-busy="true"');
   });
 
-  it("keeps the label", () => {
-    expect(render({ pending: true }, "Salvar")).toContain("Salvar</button>");
+  it("keeps the label in place, hidden under the spinner, so the width does not change", () => {
+    expect(render({ pending: true }, "Salvar")).toContain('<span class="opacity-0">Salvar</span>');
+  });
+
+  it("centres the spinner over a button without a leading icon", () => {
+    const markup = render({ pending: true });
+    expect(classesOf(markup)).toContain("relative");
+    expect(markup).toMatch(/<span[^>]*class="absolute inset-0[^"]*"><svg/);
   });
 
   it("shows a decorative spinner that turns only when motion is allowed", () => {
@@ -119,12 +125,8 @@ describe("Button pending", () => {
     expect(markup).not.toContain("<svg");
   });
 
-  it("lays out the same leading slot idle and pending, so the width does not change", () => {
-    const idle = render({ pending: false });
-    const busy = render({ pending: true });
-    expect(slotOf(idle)).toBeDefined();
-    expect(slotOf(idle)).toBe(slotOf(busy));
-    expect(classesOf(idle)).toEqual(classesOf(busy));
+  it("leaves no empty space before the label while idle", () => {
+    expect(render({ pending: false })).not.toContain("<span");
   });
 
   it("swaps the leading icon for the spinner in the same slot", () => {

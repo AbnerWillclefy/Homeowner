@@ -13,9 +13,8 @@ interface Props extends ComponentProps<"button"> {
   /** Span the container's width, for a form's or a screen's main action. */
   fullWidth?: boolean;
   /**
-   * The action is running: the button is disabled and busy, and a spinner takes the leading icon's place. Pass it
-   * (true or false) on a button whose width must not change, because it then always reserves the leading slot.
-   * `disabled` still means "not available". Ignored with `asChild`, since a link cannot be busy.
+   * The action is running: the button is disabled and busy, and a spinner takes the leading icon's place, or covers
+   * the label when there is no icon. The width does not change. `disabled` still means "not available". Ignored with `asChild`, since a link cannot be busy.
    */
   pending?: boolean;
   /** An icon before the label (for example a lucide icon). The spinner replaces it while pending. Ignored with `asChild`. */
@@ -70,27 +69,32 @@ export function Button({
       </Slot>
     );
   }
-  const hasSlot = pending !== undefined || leadingIcon !== undefined;
+  // The one continuous animation the "under 200ms" motion rule allows, because it carries state.
+  // With reduced motion the same icon is simply static. currentColor keeps it visible in forced colours.
+  const spinner = <LoaderCircle aria-hidden="true" size={16} className="motion-safe:animate-spin" />;
+  // Without a leading icon the spinner covers the label, which keeps its space so the width does not change.
+  const overLabel = pending === true && leadingIcon === undefined;
   return (
     <button
       type={type ?? "button"}
-      className={classes}
+      className={overLabel ? `${classes} relative` : classes}
       disabled={disabled || pending === true}
       aria-busy={pending ? true : undefined}
       {...rest}
     >
-      {hasSlot && (
+      {leadingIcon !== undefined && (
         <span data-slot="leading" className={SLOT}>
-          {pending ? (
-            // The one continuous animation the "under 200ms" motion rule allows, because it carries state.
-            // With reduced motion the same icon is simply static. currentColor keeps it visible in forced colours.
-            <LoaderCircle aria-hidden="true" size={16} className="motion-safe:animate-spin" />
-          ) : (
-            leadingIcon
-          )}
+          {pending ? spinner : leadingIcon}
         </span>
       )}
-      {children}
+      {overLabel ? (
+        <>
+          <span className="absolute inset-0 flex items-center justify-center">{spinner}</span>
+          <span className="opacity-0">{children}</span>
+        </>
+      ) : (
+        children
+      )}
     </button>
   );
 }

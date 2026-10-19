@@ -208,7 +208,7 @@ Soft and sturdy pills, never smaller than 2.75rem in either direction.
 - **Ghost:** no visible edge, for bar controls such as Back.
 - **Link:** teal underlined text inside a sentence.
 - **Disabled:** dashed edge, page fill, muted text. Colour transitions only behind `motion-safe:` (150ms).
-- **Pending:** a small inline spinner replaces the leading icon space and the label stays, so the width does not jump.
+- **Pending:** a small spinner replaces the leading icon, or covers the label on a button without one; the label keeps its space, so the width does not jump and an idle button has no empty slot.
 
 ### Chips
 Icon and Category name on the Category pastel, a pill with a hairline edge, 0.875rem 600. Static chips are 2rem tall; interactive chips grow to the 2.75rem target.
