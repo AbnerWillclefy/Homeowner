@@ -8,7 +8,7 @@ Photos live in a **private S3 bucket**, `homeowner-<env>-photos-<account id>`, w
 
 - **Keys are random and unguessable**, at least 128 bits: `avatars/<random>.<webp|jpg>`. The URL is the capability.
 - **Uploads go by presigned PUT.** The API signs a URL for `pending/<userId>/<random>`; the browser sends the file straight to S3 (the bucket's CORS allows `PUT` from the web origin only). The API then promotes a confirmed upload by copying it to `avatars/` and deleting the pending object. Unconfirmed uploads expire after one day by a lifecycle rule.
-- **The API role gets exactly the object permissions it needs**: put, get and delete on `pending/*`, put and delete on `avatars/*`, and no `s3:ListBucket`. The scheduled job's role gets none.
+- **The API role gets exactly the object permissions it needs**: put, get and delete on `pending/*`, put and delete on `avatars/*`, and `s3:ListBucket` on the bucket (so a missing key answers 404, not 403, and the API tells missing from forbidden). The scheduled job's role gets none.
 - Images are read from the web origin itself, so they need no CORS and no second domain.
 
 ## Alternatives rejected
@@ -23,7 +23,6 @@ Photos live in a **private S3 bucket**, `homeowner-<env>-photos-<account id>`, w
 - **Anyone holding a photo URL can view it.** The key is unguessable, not secret. A URL shared outside the Home keeps working until the object is removed.
 - **Removal is eventually consistent.** Deleting an object does not purge CloudFront; the cached copy lives up to the cache policy's default lifetime (one day). We do not issue invalidations, which keeps it free. A replaced photo gets a new key, so only a deletion has this delay.
 - **JPEG is accepted next to WebP**, because Safari's canvas cannot encode WebP and the PWA resizes photos in a canvas before uploading.
-- **A missing avatar answers 200 with HTML.** Without `s3:ListBucket`, S3 answers 403 for a missing key, and the distribution-wide `custom_error_response` for 403 and 404 (the SPA fallback) then serves `index.html` with status 200. An `<img>` cannot decode it and fires `onerror`, so the Avatar component must fall back on `onerror`, not on the status. CloudFront cannot scope error responses to one behaviour without a Lambda@Edge or CloudFront Function, which we do not add for cost and complexity. For the same reason the API cannot tell a missing pending object (403) from a forbidden one.
-- **Pending objects cost nothing beyond a day** of storage.
+- **A missing avatar answers 200 with HTML.** CloudFront's access to the bucket has no `s3:ListBucket`, so S3 answers it 403 for a missing key, and the distribution-wide `custom_error_response` for 403 and 404 (the SPA fallback) then serves `index.html` with status 200. An `<img>` cannot decode it and fires `onerror`, so the Avatar component must fall back on `onerror`, not on the status. CloudFront cannot scope error responses to one behaviour without a Lambda@Edge or CloudFront Function, which we do not add for cost and complexity.- **Pending objects cost nothing beyond a day** of storage.
 - **Cost is cents a month**: a few hundred objects of about 100 KB are fractions of a cent, and requests and transfer fit the free tier. The new bucket, Origin Access Control and behaviour bill nothing while idle.
 - **Deploying needs the bootstrap grant** from #228: the deploy roles can create `homeowner-<env>-photos-*` buckets only after a human re-applies `infra/bootstrap`.
