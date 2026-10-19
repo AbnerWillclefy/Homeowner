@@ -89,19 +89,18 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
                 {t(DELETE_FAILURE_KEY[remove.failed])}
               </p>
             )}
-            <ButtonRow className="justify-end">
-              <Button ref={keepRef} variant="secondary" disabled={remove.kind === "deleting"} onClick={cancel}>
-                {t("chores.delete.cancel")}
-              </Button>
-              <Button
-                variant="danger"
-                disabled={remove.kind === "deleting"}
-                aria-busy={remove.kind === "deleting"}
-                onClick={() => void confirmDelete()}
-              >
-                {t(remove.kind === "deleting" ? "chores.delete.deleting" : "chores.delete.confirm")}
-              </Button>
-            </ButtonRow>
+            <ButtonRow
+              start={
+                <Button ref={keepRef} variant="secondary" disabled={remove.kind === "deleting"} onClick={cancel}>
+                  {t("chores.delete.cancel")}
+                </Button>
+              }
+              end={
+                <Button variant="danger" pending={remove.kind === "deleting"} onClick={() => void confirmDelete()}>
+                  {t("chores.delete.confirm")}
+                </Button>
+              }
+            />
           </div>
         )}
       </Card>

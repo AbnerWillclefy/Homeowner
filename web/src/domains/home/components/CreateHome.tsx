@@ -198,24 +198,19 @@ export function CreateHome({ onSaved, onRecovered, showHeading = true }: Props) 
           {t(SAVE_FAILURE_KEY[flow.create.reason])}
         </p>
       )}
-      <div className="mt-6 flex flex-col gap-3">
-        <Button
-          fullWidth
-          disabled={saving}
-          aria-busy={saving}
-          onClick={() => void flow.submit()}
-        >
-          {t(saving ? "home.create.submitting" : "home.create.submit")}
-        </Button>
-        <Button
-          variant="ghost"
-          className="self-start px-4"
-          disabled={saving}
-          onClick={() => flow.setStep("questions")}
-        >
-          {t("home.create.back")}
-        </Button>
-      </div>
+      <ButtonRow
+        className="mt-6"
+        start={
+          <Button variant="ghost" className="px-4" disabled={saving} onClick={() => flow.setStep("questions")}>
+            {t("home.create.back")}
+          </Button>
+        }
+        end={
+          <Button pending={saving} onClick={() => void flow.submit()}>
+            {t("home.create.submit")}
+          </Button>
+        }
+      />
     </>
   );
 }
