@@ -46,9 +46,9 @@ func (s *Store) FindOrCreate(ctx context.Context, sub, email string, now time.Ti
 	return u, nil
 }
 
-// SetDisplayName stores the User's display name; nil clears it.
-func (s *Store) SetDisplayName(ctx context.Context, userID string, name *string, now time.Time) error {
-	if _, err := s.db.Exec(ctx, `UPDATE users SET display_name = $2, updated_at = $3 WHERE id = $1`,
+// SetDisplayName stores the User's display name; "" clears it.
+func (s *Store) SetDisplayName(ctx context.Context, userID, name string, now time.Time) error {
+	if _, err := s.db.Exec(ctx, `UPDATE users SET display_name = NULLIF($2, ''), updated_at = $3 WHERE id = $1`,
 		userID, name, now); err != nil {
 		return fmt.Errorf("set display name: %w", err)
 	}

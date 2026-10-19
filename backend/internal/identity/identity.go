@@ -6,6 +6,7 @@ package identity
 
 import (
 	"context"
+	"strings"
 	"time"
 )
 
@@ -18,6 +19,19 @@ type User struct {
 	// DisplayName and PhotoKey are null until the User sets them.
 	DisplayName *string
 	PhotoKey    *string
+}
+
+// ShownName is the name to show for a User: the display name, else the part of
+// the email before the last @ (the whole email when it has none). It is
+// computed on read, never stored, so it follows email changes.
+func ShownName(displayName *string, email string) string {
+	if displayName != nil {
+		return *displayName
+	}
+	if i := strings.LastIndex(email, "@"); i >= 0 {
+		return email[:i]
+	}
+	return email
 }
 
 // Home is the place Residents look after together. AllocationTime is the

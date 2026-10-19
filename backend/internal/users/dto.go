@@ -2,12 +2,8 @@ package users
 
 import "github.com/AbnerWillclefy/Homeowner/backend/internal/identity"
 
-// PhotoURL turns a stored photo key into the URL the app loads, or nil when
-// there is no photo or photos are off. The server builds it, so users and
-// homes import no photos package.
-type PhotoURL func(key *string) *string
-
-// MeResponse is the signed-in User on the wire.
+// MeResponse is the signed-in User on the wire. PhotoURL is always null until
+// resident photos land.
 type MeResponse struct {
 	ID          string  `json:"id"`
 	Email       string  `json:"email"`
@@ -17,9 +13,9 @@ type MeResponse struct {
 }
 
 // NewMeResponse returns u as it goes on the wire.
-func NewMeResponse(u identity.User, photoURL PhotoURL) MeResponse {
+func NewMeResponse(u identity.User) MeResponse {
 	return MeResponse{
 		ID: u.ID, Email: u.Email, DisplayName: u.DisplayName,
-		Name: ShownName(u.DisplayName, u.Email), PhotoURL: photoURL(u.PhotoKey),
+		Name: identity.ShownName(u.DisplayName, u.Email),
 	}
 }

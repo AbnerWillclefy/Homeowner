@@ -10,7 +10,6 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/identity"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
 )
 
 const (
@@ -25,14 +24,12 @@ const (
 type Handler struct {
 	store *Store
 	clock clock.Clock
-	photo users.PhotoURL
 	log   *slog.Logger
 }
 
-// NewHandler returns a Handler over store. photo turns a stored photo key into
-// the URL the app loads.
-func NewHandler(store *Store, clk clock.Clock, photo users.PhotoURL, log *slog.Logger) *Handler {
-	return &Handler{store: store, clock: clk, photo: photo, log: log}
+// NewHandler returns a Handler over store.
+func NewHandler(store *Store, clk clock.Clock, log *slog.Logger) *Handler {
+	return &Handler{store: store, clock: clk, log: log}
 }
 
 // Residents answers GET /home/residents: the Residents of the caller's Home,
@@ -46,7 +43,7 @@ func (h *Handler) Residents(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]ResidentResponse, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, NewResidentResponse(row, m.ResidentID, h.photo))
+		out = append(out, NewResidentResponse(row, m.ResidentID))
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)
 }

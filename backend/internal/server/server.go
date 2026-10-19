@@ -59,9 +59,6 @@ type Deps struct {
 	Replanner replan.Replanner
 }
 
-// noPhotos is the photo URL builder until resident photos land: nobody has one.
-func noPhotos(*string) *string { return nil }
-
 const healthTimeout = 2 * time.Second
 
 // New returns the API handler. It is a plain http.Handler so the Lambda
@@ -78,8 +75,8 @@ func New(deps Deps) http.Handler {
 	homeStore := homes.NewStore(db)
 	s := &server{deps: deps, users: users.NewStore(db), homes: homeStore}
 
-	me := users.NewHandler(s.users, homeStore, clk, noPhotos, log)
-	home := homes.NewHandler(homeStore, clk, noPhotos, log)
+	me := users.NewHandler(s.users, homeStore, clk, log)
+	home := homes.NewHandler(homeStore, clk, log)
 	invite := invites.NewHandler(invites.NewStore(db), clk, log)
 	chore := chores.NewHandler(chores.NewStore(db), clk, log)
 	choreSettings := choresettings.NewHandler(choresettings.NewStore(db), log)

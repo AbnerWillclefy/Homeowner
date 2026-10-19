@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
 )
 
 // settingsBody is the body of PUT /home.
@@ -33,17 +32,16 @@ func NewResponse(h Home) Response {
 	return Response{ID: h.ID, Timezone: h.Timezone, AllocationTime: h.AllocationTime}
 }
 
-// ResidentRow is a Resident as the store reads it. Email is only for computing
-// the shown name; it is never serialised.
+// ResidentRow is a Resident as the store reads it. Name is the shown name, so
+// the email never leaves the store.
 type ResidentRow struct {
-	ResidentID  string
-	UserID      string
-	DisplayName *string
-	Email       string
-	PhotoKey    *string
+	ResidentID string
+	UserID     string
+	Name       string
 }
 
 // ResidentResponse is a Resident of the Home on the wire. It has no email.
+// PhotoURL is always null until resident photos land.
 type ResidentResponse struct {
 	ResidentID string  `json:"residentId"`
 	UserID     string  `json:"userId"`
@@ -54,11 +52,10 @@ type ResidentResponse struct {
 
 // NewResidentResponse returns row as it goes on the wire to the Resident
 // myResidentID.
-func NewResidentResponse(row ResidentRow, myResidentID string, photo users.PhotoURL) ResidentResponse {
+func NewResidentResponse(row ResidentRow, myResidentID string) ResidentResponse {
 	return ResidentResponse{
-		ResidentID: row.ResidentID, UserID: row.UserID,
-		Name:     users.ShownName(row.DisplayName, row.Email),
-		PhotoURL: photo(row.PhotoKey), Me: row.ResidentID == myResidentID,
+		ResidentID: row.ResidentID, UserID: row.UserID, Name: row.Name,
+		Me: row.ResidentID == myResidentID,
 	}
 }
 

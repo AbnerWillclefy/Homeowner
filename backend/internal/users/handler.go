@@ -2,6 +2,7 @@ package users
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -25,7 +26,6 @@ type Handler struct {
 	store *Store
 	homes Homes
 	clock clock.Clock
-	photo PhotoURL
 	log   *slog.Logger
 }
 
@@ -33,8 +33,8 @@ type Handler struct {
 const maxNameBody = 1024
 
 // NewHandler returns a Handler over store.
-func NewHandler(store *Store, homes Homes, clk clock.Clock, photo PhotoURL, log *slog.Logger) *Handler {
-	return &Handler{store: store, homes: homes, clock: clk, photo: photo, log: log}
+func NewHandler(store *Store, homes Homes, clk clock.Clock, log *slog.Logger) *Handler {
+	return &Handler{store: store, homes: homes, clock: clk, log: log}
 }
 
 type onboardingState struct {
@@ -44,25 +44,25 @@ type onboardingState struct {
 // Me answers GET /me.
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	u := identity.CurrentUser(r.Context())
-	httpx.WriteJSON(w, http.StatusOK, NewMeResponse(u, h.photo))
+	httpx.WriteJSON(w, http.StatusOK, NewMeResponse(u))
 }
 
 // SetName answers PUT /me/name: it stores the trimmed name, or clears it when
 // the name is null or blank, and answers the updated User.
 func (h *Handler) SetName(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Name *string `json:"name"`
+		Name string `json:"name"`
 	}
 	if !httpx.DecodeBody(w, r, &body, maxNameBody, true) {
 		return
 	}
-	raw := ""
-	if body.Name != nil {
-		raw = *body.Name
-	}
-	name, code := NormalizeName(raw)
-	if code != "" {
-		httpx.WriteError(w, http.StatusBadRequest, code)
+	name, err := NormalizeName(body.Name)
+	switch {
+	case errors.Is(err, ErrNameTooLong):
+		httpx.WriteError(w, http.StatusBadRequest, "too_long")
+		return
+	case errors.Is(err, ErrNameInvalid):
+		httpx.WriteError(w, http.StatusBadRequest, "invalid")
 		return
 	}
 	u := identity.CurrentUser(r.Context())
@@ -70,8 +70,11 @@ func (h *Handler) SetName(w http.ResponseWriter, r *http.Request) {
 		httpx.InternalError(w, h.log, "set display name", err)
 		return
 	}
-	u.DisplayName = name
-	httpx.WriteJSON(w, http.StatusOK, NewMeResponse(u, h.photo))
+	u.DisplayName = nil
+	if name != "" {
+		u.DisplayName = &name
+	}
+	httpx.WriteJSON(w, http.StatusOK, NewMeResponse(u))
 }
 
 // Onboarding answers the step to show: the one after the stored step, or
