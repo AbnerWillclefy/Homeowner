@@ -2,6 +2,7 @@ package users
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -28,6 +29,9 @@ type Handler struct {
 	log   *slog.Logger
 }
 
+// maxNameBody bounds PUT /me/name; a 40-code-point name fits many times over.
+const maxNameBody = 1024
+
 // NewHandler returns a Handler over store.
 func NewHandler(store *Store, homes Homes, clk clock.Clock, log *slog.Logger) *Handler {
 	return &Handler{store: store, homes: homes, clock: clk, log: log}
@@ -40,7 +44,37 @@ type onboardingState struct {
 // Me answers GET /me.
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	u := identity.CurrentUser(r.Context())
-	httpx.WriteJSON(w, http.StatusOK, map[string]string{"id": u.ID, "email": u.Email})
+	httpx.WriteJSON(w, http.StatusOK, NewMeResponse(u))
+}
+
+// SetName answers PUT /me/name: it stores the trimmed name, or clears it when
+// the name is null or blank, and answers the updated User.
+func (h *Handler) SetName(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Name string `json:"name"`
+	}
+	if !httpx.DecodeBody(w, r, &body, maxNameBody, true) {
+		return
+	}
+	name, err := NormalizeName(body.Name)
+	switch {
+	case errors.Is(err, ErrNameTooLong):
+		httpx.WriteError(w, http.StatusBadRequest, "too_long")
+		return
+	case errors.Is(err, ErrNameInvalid):
+		httpx.WriteError(w, http.StatusBadRequest, "invalid")
+		return
+	}
+	u := identity.CurrentUser(r.Context())
+	if err := h.store.SetDisplayName(r.Context(), u.ID, name, h.clock.Now()); err != nil {
+		httpx.InternalError(w, h.log, "set display name", err)
+		return
+	}
+	u.DisplayName = nil
+	if name != "" {
+		u.DisplayName = &name
+	}
+	httpx.WriteJSON(w, http.StatusOK, NewMeResponse(u))
 }
 
 // Onboarding answers the step to show: the one after the stored step, or

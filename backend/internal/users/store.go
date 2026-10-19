@@ -38,12 +38,21 @@ func (s *Store) FindOrCreate(ctx context.Context, sub, email string, now time.Ti
 		ON CONFLICT (cognito_sub) DO UPDATE
 		SET email = EXCLUDED.email,
 		    updated_at = EXCLUDED.updated_at
-		RETURNING id, email, created_at`,
-		sub, email, now).Scan(&u.ID, &u.Email, &u.CreatedAt)
+		RETURNING id, email, created_at, display_name, photo_key`,
+		sub, email, now).Scan(&u.ID, &u.Email, &u.CreatedAt, &u.DisplayName, &u.PhotoKey)
 	if err != nil {
 		return User{}, fmt.Errorf("find or create user: %w", err)
 	}
 	return u, nil
+}
+
+// SetDisplayName stores the User's display name; "" clears it.
+func (s *Store) SetDisplayName(ctx context.Context, userID, name string, now time.Time) error {
+	if _, err := s.db.Exec(ctx, `UPDATE users SET display_name = NULLIF($2, ''), updated_at = $3 WHERE id = $1`,
+		userID, name, now); err != nil {
+		return fmt.Errorf("set display name: %w", err)
+	}
+	return nil
 }
 
 // OnboardingStep returns the last onboarding step the User completed or

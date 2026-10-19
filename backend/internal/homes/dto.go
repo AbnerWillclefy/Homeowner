@@ -32,6 +32,33 @@ func NewResponse(h Home) Response {
 	return Response{ID: h.ID, Timezone: h.Timezone, AllocationTime: h.AllocationTime}
 }
 
+// ResidentRow is a Resident as the store reads it. Name is the shown name, so
+// the email never leaves the store.
+type ResidentRow struct {
+	ResidentID string
+	UserID     string
+	Name       string
+}
+
+// ResidentResponse is a Resident of the Home on the wire. It has no email.
+// PhotoURL is always null until resident photos land.
+type ResidentResponse struct {
+	ResidentID string  `json:"residentId"`
+	UserID     string  `json:"userId"`
+	Name       string  `json:"name"`
+	PhotoURL   *string `json:"photoUrl"`
+	Me         bool    `json:"me"`
+}
+
+// NewResidentResponse returns row as it goes on the wire to the Resident
+// myResidentID.
+func NewResidentResponse(row ResidentRow, myResidentID string) ResidentResponse {
+	return ResidentResponse{
+		ResidentID: row.ResidentID, UserID: row.UserID, Name: row.Name,
+		Me: row.ResidentID == myResidentID,
+	}
+}
+
 var allocationTimePattern = regexp.MustCompile(`^([01][0-9]|2[0-3]):([0-5][0-9])$`)
 
 // validate returns a stable machine code per invalid field, all at once.
