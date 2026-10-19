@@ -89,9 +89,10 @@ export function CreateHome({ onSaved, onRecovered, showHeading = true }: Props) 
               {t("home.invalid.summary")}
             </p>
           )}
-          <Button type="submit" fullWidth className="mt-8">
-            {t("home.create.next")}
-          </Button>
+          <ButtonRow
+            className="mt-8"
+            end={<Button type="submit">{t("home.create.next")}</Button>}
+          />
         </form>
       </section>
     );
@@ -132,45 +133,41 @@ export function CreateHome({ onSaved, onRecovered, showHeading = true }: Props) 
               <p id="create-regenerate-prompt">
                 {t("catalog.regenerate.prompt")}
               </p>
-              <ButtonRow>
-                <Button variant="secondary" onClick={flow.cancelRegenerate}>
-                  {t("catalog.regenerate.cancel")}
-                </Button>
-                <Button onClick={flow.confirmRegenerate}>
-                  {t("catalog.regenerate.confirm")}
-                </Button>
-              </ButtonRow>
+              <ButtonRow
+                start={
+                  <Button variant="secondary" onClick={flow.cancelRegenerate}>
+                    {t("catalog.regenerate.cancel")}
+                  </Button>
+                }
+                end={<Button onClick={flow.confirmRegenerate}>{t("catalog.regenerate.confirm")}</Button>}
+              />
             </div>
           ) : (
-            <div className="mt-8 flex flex-col gap-3">
-              <Button type="submit" fullWidth disabled={working} aria-busy={working}>
-                {t(
-                  working
-                    ? "catalog.questions.submitting"
-                    : "catalog.questions.submit",
-                )}
-              </Button>
-              <ButtonRow className="justify-between">
-                <Button
-                  variant="ghost"
-                  className="px-4"
-                  disabled={working}
-                  onClick={() => flow.setStep("settings")}
-                >
-                  {t("home.create.back")}
-                </Button>
-                {flow.canSkip && (
-                  <Button
-                    variant="ghost"
-                    className="px-4 underline underline-offset-[0.2em]"
-                    disabled={working}
-                    onClick={flow.skip}
-                  >
-                    {t("catalog.questions.skip")}
+            <ButtonRow
+              className="mt-8"
+              start={
+                <>
+                  <Button variant="ghost" className="px-4" disabled={working} onClick={() => flow.setStep("settings")}>
+                    {t("home.create.back")}
                   </Button>
-                )}
-              </ButtonRow>
-            </div>
+                  {flow.canSkip && (
+                    <Button
+                      variant="ghost"
+                      className="px-4 underline underline-offset-[0.2em]"
+                      disabled={working}
+                      onClick={flow.skip}
+                    >
+                      {t("catalog.questions.skip")}
+                    </Button>
+                  )}
+                </>
+              }
+              end={
+                <Button type="submit" pending={working}>
+                  {t("catalog.questions.submit")}
+                </Button>
+              }
+            />
           )}
         </form>
       </section>
