@@ -30,7 +30,7 @@ Folders:
 
 - `internal/<domain>/`: `users`, `homes`, `invites`, `chores`, `choresettings`, `catalog`, `profile`, `tasks`, `dayplan`, `checkin`, `streak`, `residents`, `push`, `photos`, plus the pure rule packages `allocation`, `schedule`, `onboarding` and the shared ids in `vocab`.
 - `internal/identity/`: who is calling. The server's middleware puts the signed-in User and their Membership in the request context; handlers read them with `identity.CurrentUser` and `identity.CurrentMembership`, so no domain imports another just to know its caller. `users.User`, `homes.Home` and `homes.Membership` are aliases of its types.
-- `internal/platform/`: code that knows no domain. `auth` (token verification), `clock`, `config`, `db`, `httpx` (`WriteJSON`, `WriteError`, `InternalError`, `DecodeBody`), the test harness `apitest` (it counts the SQL statements the API runs, `App.Queries`, `ResetQueries` and `QueriesFor`, through a `pgx.QueryTracer` that `db.Connect` accepts as a pool-config option) and `puritytest`, the shared check behind every `purity_test.go`.
+- `internal/platform/`: code that knows no domain. `auth` (token verification), `clock`, `config`, `db`, `httpx` (`WriteJSON`, `WriteError`, `InternalError`, `DecodeBody`), the test harness `apitest` (it counts the SQL statements the API runs, `App.QueriesFor`, through a `pgx.QueryTracer` that `db.Connect` accepts as a pool-config option) and `puritytest`, the shared check behind every `purity_test.go`.
 - `internal/server/`: the composition root. `server.go` builds every domain `Handler` and lists every route in one table; `auth.go` holds `requireUser` and `requireResident`; `cors.go` and `http.go` the outer middleware.
 
 ```mermaid

@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/identity"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -15,14 +16,13 @@ type Store struct{ db *pgxpool.Pool }
 // NewStore returns a Store over db.
 func NewStore(db *pgxpool.Pool) *Store { return &Store{db: db} }
 
-// Member is a Resident as the store reads it. Email and UserID are read for
-// the name and the avatar only; nothing here is serialised as it is.
+// Member is a Resident as the store reads it. Name is the shown name, so the
+// email never leaves the store. UserID is read for the avatar only.
 type Member struct {
-	ID          string
-	UserID      string
-	DisplayName *string
-	Email       string
-	PhotoKey    *string
+	ID       string
+	UserID   string
+	Name     string
+	PhotoKey *string
 }
 
 // Roster lists the Residents of homeID in one query: the caller first, then
@@ -41,9 +41,12 @@ func (s *Store) Roster(ctx context.Context, homeID, callerResidentID string) ([]
 	var out []Member
 	for rows.Next() {
 		var m Member
-		if err := rows.Scan(&m.ID, &m.UserID, &m.DisplayName, &m.Email, &m.PhotoKey); err != nil {
+		var displayName *string
+		var email string
+		if err := rows.Scan(&m.ID, &m.UserID, &displayName, &email, &m.PhotoKey); err != nil {
 			return nil, fmt.Errorf("list residents: %w", err)
 		}
+		m.Name = identity.ShownName(displayName, email)
 		out = append(out, m)
 	}
 	return out, rows.Err()

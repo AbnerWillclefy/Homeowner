@@ -227,18 +227,17 @@ func TestListShowsTheCallerFirstThenJoiningOrderNeverByStreak(t *testing.T) {
 func TestEachStreakEqualsTheOnesOwnStreakRead(t *testing.T) {
 	t.Parallel()
 	_, cs := homeOf(t, "a@example.com", "b@example.com")
-	a, b := cs[0], cs[1]
+	a := cs[0]
 	completeOne(t, a)
 
+	want := map[string]int{}
+	for _, c := range cs {
+		want[listOf(t, c).Residents[0].ID] = streakOf(t, c)
+	}
 	for _, viewer := range cs {
-		got := listOf(t, viewer)
-		for _, r := range got.Residents {
-			owner := b
-			if r.Name == "a" {
-				owner = a
-			}
-			if want := streakOf(t, owner); r.Streak != want {
-				t.Errorf("%s: streak %d, GET /home/streak says %d", r.Name, r.Streak, want)
+		for _, r := range listOf(t, viewer).Residents {
+			if r.Streak != want[r.ID] {
+				t.Errorf("%s: streak %d, GET /home/streak says %d", r.Name, r.Streak, want[r.ID])
 			}
 		}
 	}

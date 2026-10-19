@@ -21,6 +21,9 @@ func AvatarTone(userID string) string {
 	return pastels[h.Sum32()%uint32(len(pastels))]
 }
 
+// zwj is the zero width joiner, which glues emoji into one sequence.
+const zwj rune = 0x200D
+
 func isInitialsSeparator(r rune) bool {
 	return unicode.IsSpace(r) || r == '.' || r == '_' || r == '-' || r == '+'
 }
@@ -47,21 +50,23 @@ func Initials(name string) string {
 // anything a zero width joiner glues on.
 func firstGrapheme(word string) string {
 	end := 0
+	var prev rune
 	for i, r := range word {
 		if i == 0 {
 			end = utf8.RuneLen(r)
+			prev = r
 			continue
 		}
-		joined := strings.HasSuffix(word[:i], "‍")
-		if !joined && !extends(r) {
+		if prev != zwj && !extends(r) {
 			break
 		}
 		end = i + utf8.RuneLen(r)
+		prev = r
 	}
 	return word[:end]
 }
 
 func extends(r rune) bool {
 	return unicode.In(r, unicode.Mn, unicode.Me, unicode.Mc) ||
-		r == '‍' || (r >= 0xFE00 && r <= 0xFE0F) || (r >= 0x1F3FB && r <= 0x1F3FF)
+		r == zwj || (r >= 0xFE00 && r <= 0xFE0F) || (r >= 0x1F3FB && r <= 0x1F3FF)
 }

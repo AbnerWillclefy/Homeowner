@@ -62,7 +62,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	out := listResponse{Date: today.Time().Format(time.DateOnly), Residents: make([]residentView, 0, len(roster))}
 	for _, member := range roster {
-		name := identity.ShownName(member.DisplayName, member.Email)
+		name := member.Name
 		reading := readings[member.ID]
 		out.Residents = append(out.Residents, residentView{
 			ID: member.ID, You: member.ID == m.ResidentID, Name: name,
