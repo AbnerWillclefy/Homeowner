@@ -12,7 +12,7 @@ export type MeState =
  * through ShellContext: Today's greeting and the Me header read it. It does not depend on a Home, so Me works
  * without one.
  *
- * `set` puts in a User the API just answered (after a name is saved), so every screen shows it at once without
+ * `update` changes the current User from its newest value (for a change that lands after a slow call). `set` puts in a User the API just answered (after a name is saved), so every screen shows it at once without
  * another request. `reload` asks again, after a failure; it shows `loading` meanwhile.
  */
 export function useMe() {
@@ -39,6 +39,11 @@ export function useMe() {
     setState({ kind: "ready", me });
   }, []);
 
+  /** Changes the User from the newest value, so a slow call never overwrites a `set` that landed meanwhile. */
+  const update = useCallback((change: (current: Me) => Me) => {
+    setState((current) => (current.kind === "ready" ? { kind: "ready", me: change(current.me) } : current));
+  }, []);
+
   useEffect(() => {
     reload();
     return () => {
@@ -46,5 +51,5 @@ export function useMe() {
     };
   }, [reload]);
 
-  return { state, set, reload };
+  return { state, set, update, reload };
 }

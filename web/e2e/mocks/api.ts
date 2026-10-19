@@ -70,6 +70,8 @@ export interface RecordedRequest {
   path: string;
   body: unknown;
   authorization: string | null;
+  /** When the fake received it (`performance.now()`), to order it against calls to other fakes. */
+  at: number;
 }
 
 export const json = (status: number, body: unknown): FakeReply => ({ status, body });
@@ -134,7 +136,7 @@ export function createFakeApi(options: { baseUrl: string; state?: FakeState }): 
     requests,
     matches: (url) => url.origin === origin,
     handle(request) {
-      requests.push({ method: request.method, path: request.path, body: request.body, authorization: request.authorization });
+      requests.push({ method: request.method, path: request.path, body: request.body, authorization: request.authorization, at: performance.now() });
       for (const route of routes.values()) {
         if (route.method !== request.method) continue;
         const match = route.pattern.exec(request.path);

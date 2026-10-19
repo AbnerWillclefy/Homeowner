@@ -9,15 +9,17 @@ import { FormError } from "../../../shared/ui/FormError";
 import { formErrorId } from "../../../shared/ui/formErrorId";
 import { PageHeader } from "../../../shared/ui/PageHeader";
 import { useNameForm } from "../hooks/useNameForm";
+import type { Me } from "../../auth/api/meApi";
 import { MeLoadFailed } from "./MeLoadFailed";
+import { PhotoPicker } from "./PhotoPicker";
 
 const FORM = "me-name";
 const INPUT_ID = "me-name-input";
 const HINT_ID = "me-name-hint";
 
-function NameForm({ initial }: { initial: string }) {
+function NameForm({ me }: { me: Me }) {
   const { t } = useI18n();
-  const form = useNameForm(initial);
+  const form = useNameForm(me.displayName ?? "");
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -26,7 +28,7 @@ function NameForm({ initial }: { initial: string }) {
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-4">
-      {/* The photo area goes here (ticket #235). */}
+      <PhotoPicker me={me} />
       <div>
         <label htmlFor={INPUT_ID}>{t("me.edit.nameLabel")}</label>
         {/* No maxLength on purpose: a paste over the limit must show the message, not be cut silently. */}
@@ -55,7 +57,7 @@ function NameForm({ initial }: { initial: string }) {
 
 /**
  * The edit screen under Me: a route, not a dialog. Back returns to Me and discards what was typed (there is no
- * "unsaved changes" prompt). It edits the display name; the photo area is added by its own ticket.
+ * "unsaved changes" prompt). It edits the photo and the display name.
  */
 export function MeEdit() {
   const { t } = useI18n();
@@ -71,7 +73,7 @@ export function MeEdit() {
         </Button>
       </div>
       <PageHeader title={t("me.edit.heading")} />
-      {me.state.kind === "ready" && <NameForm initial={me.state.me.displayName ?? ""} />}
+      {me.state.kind === "ready" && <NameForm me={me.state.me} />}
       {me.state.kind === "loading" && <p role="status">{t("profile.loading")}</p>}
       {me.state.kind === "failed" && <MeLoadFailed className="items-start" />}
     </div>
