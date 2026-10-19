@@ -185,6 +185,7 @@ const DONE = {
   id: "t9",
   choreName: "Take out trash",
   completedAt: "2026-10-11T14:30:00Z",
+  with: [] as string[],
 };
 
 describe("committed and doneToday", () => {
@@ -224,6 +225,34 @@ describe("committed and doneToday", () => {
     expect(await getDayPlan()).toEqual({ kind: "error" });
     stubFetch(Response.json({ ...PLAN, doneToday: "none" }));
     expect(await getDayPlan()).toEqual({ kind: "error" });
+  });
+});
+
+describe("doneToday with and category", () => {
+  const read = async (entry: unknown) => {
+    stubFetch(Response.json({ ...PLAN, doneToday: [entry] }));
+    return getDayPlan();
+  };
+  const { with: _with, ...WITHOUT } = DONE;
+
+  it("keeps a well formed with and category", async () => {
+    const entry = { ...DONE, with: ["r2"], category: "kitchen" };
+    expect(await read(entry)).toEqual({ kind: "ok", plan: { ...PLAN, doneToday: [entry] } });
+  });
+
+  it("reads a missing with (an older API) as empty", async () => {
+    expect(await read(WITHOUT)).toEqual({ kind: "ok", plan: { ...PLAN, doneToday: [DONE] } });
+  });
+
+  it.each([null, "r2", [1], ["r2", 1], {}])("reads with %j as empty, not as an error", async (bad) => {
+    expect(await read({ ...DONE, with: bad })).toEqual({ kind: "ok", plan: { ...PLAN, doneToday: [DONE] } });
+  });
+
+  it("leaves a missing or odd category out", async () => {
+    for (const category of [undefined, null, 3]) {
+      const result = await read({ ...DONE, category });
+      expect(result.kind === "ok" && "category" in result.plan.doneToday[0]!).toBe(false);
+    }
   });
 });
 

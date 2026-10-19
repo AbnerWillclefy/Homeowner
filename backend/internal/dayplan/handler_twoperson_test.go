@@ -105,11 +105,18 @@ func TestEitherResidentCompletesAndTheCompletionListsBoth(t *testing.T) {
 			if got := apitest.Count(t, app, `SELECT count(*) FROM completions`); got != 1 {
 				t.Fatalf("%d completions, want 1", got)
 			}
-			for _, c := range []*apitest.Client{a, b} {
-				r := apitest.DayPlan(t, c)
+			aID, bID := residentIDOf(t, app, "a@example.com"), residentIDOf(t, app, "b@example.com")
+			for _, c := range []struct {
+				c    *apitest.Client
+				with string
+			}{{a, bID}, {b, aID}} {
+				r := apitest.DayPlan(t, c.c)
 				done := apitest.TaskList(t, r.Body["doneToday"])
 				if len(done) != 1 || done[0]["id"] != id || len(apitest.TaskList(t, r.Body["mine"])) != 0 {
 					t.Fatalf("day plan after completing = %s", r.Raw)
+				}
+				if w, _ := done[0]["with"].([]any); len(w) != 1 || w[0] != c.with {
+					t.Fatalf("doneToday with = %v, want only [%s]", done[0]["with"], c.with)
 				}
 			}
 			wantConflict(t, apitest.Act(who[other], "complete", id), "already_done")
