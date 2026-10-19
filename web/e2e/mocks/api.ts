@@ -81,7 +81,21 @@ export const shownName = ({ email, displayName }: { email: string; displayName?:
   displayName ?? email.split("@")[0]!;
 
 /** A Resident the fake stores. The fake adds `initials` and `avatarTone` from the name, as the API does. */
-export type FakeResident = Pick<Resident, "id" | "you" | "name" | "photoUrl"> & Partial<Pick<Resident, "streak" | "doneToday">>;
+export type FakeResident = Pick<Resident, "id" | "you" | "name" | "photoUrl"> &
+  Partial<Pick<Resident, "streak" | "doneToday">> & {
+    /** What the Resident completed, as `GET /home/residents/{id}` groups it by the Home's local day. Absent means nothing. */
+    completions?: FakeCompletion[];
+  };
+
+/** A Completion the fake stores; the handler groups these by local day, oldest first within a day. */
+export interface FakeCompletion {
+  id: string;
+  choreName: string;
+  category: string;
+  /** RFC 3339, UTC. */
+  completedAt: string;
+  with?: { id: string; name: string }[];
+}
 
 /**
  * The avatar fallback the API decides: the first letter of the first and last word of the shown name (words split

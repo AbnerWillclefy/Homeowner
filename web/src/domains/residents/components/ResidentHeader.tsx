@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useI18n } from "../../../shared/i18n";
 import { StatTile } from "../../../shared/ui/StatTile";
 import type { ResidentDetail } from "../api/api";
@@ -11,11 +12,19 @@ import { HEADER_COLUMN, NAME_HEIGHT, STAT_GRID } from "./pageLayout";
  */
 export function ResidentHeader({ resident }: { resident: ResidentDetail }) {
   const { t } = useI18n();
+  const heading = useRef<HTMLHeadingElement>(null);
+  // The Shell moves focus to the new page when the address changes, but the name is not there yet: it lands on the
+  // content container. Once the name appears, take focus from that container (or from nothing, after a Retry),
+  // never from something the person has focused since.
+  useEffect(() => {
+    const active = document.activeElement;
+    if (active === null || active === document.body || active.getAttribute("role") === "group") heading.current?.focus();
+  }, []);
   return (
     <>
       <div className={HEADER_COLUMN}>
         <Avatar size="lg" resident={resident} />
-        <h2 className={`mt-1 mb-0 text-3xl leading-tight font-bold [overflow-wrap:anywhere] ${NAME_HEIGHT}`}>{resident.name}</h2>
+        <h2 ref={heading} tabIndex={-1} className={`mt-1 mb-0 text-3xl leading-tight font-bold [overflow-wrap:anywhere] ${NAME_HEIGHT}`}>{resident.name}</h2>
       </div>
       <div className={STAT_GRID}>
         <StatTile value={resident.streak} label={t("resident.streak", { count: resident.streak })} />
