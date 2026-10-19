@@ -11,7 +11,6 @@ const expected: Record<string, string> = {
   "signUp.confirmLabel": "Confirm password",
   "signUp.mismatch": "The two passwords do not match.",
   "signUp.submit": "Sign up",
-  "signUp.submitting": "Signing up...",
   "signUp.haveLogin": "Already signed up?",
   "signUp.haveLoginAction": "Sign in",
 
@@ -20,7 +19,6 @@ const expected: Record<string, string> = {
   "signIn.emailLabel": "Email",
   "signIn.passwordLabel": "Password",
   "signIn.submit": "Sign in",
-  "signIn.submitting": "Signing in...",
   "signIn.newHere": "New here?",
   "signIn.newHereAction": "Sign up",
 
@@ -28,7 +26,6 @@ const expected: Record<string, string> = {
   "confirm.intro": "We sent a code to {email}.",
   "confirm.codeLabel": "Code from the email",
   "confirm.submit": "Confirm",
-  "confirm.submitting": "Checking...",
   "confirm.resend": "Send a new code",
   "confirm.useOtherEmail": "Use a different email",
   "confirm.resent": "A new code is on its way. Use the latest email.",

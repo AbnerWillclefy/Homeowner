@@ -87,7 +87,6 @@ export const ptBR: Messages = {
   // Reminders
   "reminders.on": "Os lembretes estão ativados neste dispositivo.",
   "reminders.enable": "Ativar lembretes",
-  "reminders.enabling": "Ativando...",
   "reminders.problem.denied":
     "As notificações estão bloqueadas para o Homeowner. Permita-as nos Ajustes (ou Configurações) do celular, em Notificações.",
   "reminders.problem.dismissed":
@@ -452,7 +451,6 @@ export const ptBR: Messages = {
   "signUp.confirmLabel": "Confirmar senha",
   "signUp.mismatch": "As duas senhas não são iguais.",
   "signUp.submit": "Cadastrar",
-  "signUp.submitting": "Cadastrando...",
   "signUp.haveLogin": "Já se cadastrou?",
   "signUp.haveLoginAction": "Entrar",
 
@@ -463,7 +461,6 @@ export const ptBR: Messages = {
   "signIn.emailLabel": "E-mail",
   "signIn.passwordLabel": "Senha",
   "signIn.submit": "Entrar",
-  "signIn.submitting": "Entrando...",
   "signIn.newHere": "Novo por aqui?",
   "signIn.newHereAction": "Cadastrar-se",
 
@@ -472,7 +469,6 @@ export const ptBR: Messages = {
   "confirm.intro": "Enviamos um código para {email}.",
   "confirm.codeLabel": "Código do e-mail",
   "confirm.submit": "Confirmar",
-  "confirm.submitting": "Verificando...",
   "confirm.resend": "Enviar um novo código",
   "confirm.useOtherEmail": "Usar outro e-mail",
   "confirm.resent": "Um novo código está a caminho. Use o e-mail mais recente.",
@@ -548,7 +544,6 @@ export const ptBR: Messages = {
   "invite.join.heading": "Entrar em um lar",
   "invite.join.loading": "Preparando seu convite...",
   "invite.join.submit": "Entrar neste lar",
-  "invite.join.submitting": "Entrando...",
   "invite.join.dismiss": "Agora não",
   "invite.leave.heading": "Entrar significa sair do seu lar",
   "invite.leave.warning":
@@ -611,7 +606,6 @@ export const ptBR: Messages = {
     "Você já tem um lar, então ele foi carregado. Os afazeres que você revisou não foram adicionados; adicione-os pelo Catálogo.",
   "catalog.questions.heading": "Sobre o seu lar",
   "catalog.questions.submit": "Sugerir afazeres",
-  "catalog.questions.submitting": "Preparando os seus afazeres...",
   "catalog.questions.skip": "Pular e adicionar afazeres depois",
   "catalog.questions.invalid":
     "Algumas respostas precisam de ajuste. Confira os campos abaixo.",
@@ -728,7 +722,6 @@ export const ptBR: Messages = {
   "onboarding.retry": "Tentar de novo",
   "onboarding.next": "Avançar",
   "onboarding.back": "Voltar",
-  "onboarding.saving": "Salvando...",
   "onboarding.advance.offline":
     "Não foi possível falar com o serviço, então você continua nesta etapa. Verifique a sua conexão e tente de novo.",
   "onboarding.advance.error":
