@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cropBox, fitsLimit, MAX_PHOTO_BYTES, pickEncoding } from "./photoImage";
+import { ATTEMPTS, cropBox, fitsLimit, isUsable, MAX_PHOTO_BYTES } from "./photoImage";
 
 describe("cropBox", () => {
   it("centres a square on a landscape image", () => {
@@ -24,22 +24,30 @@ describe("cropBox", () => {
   });
 });
 
-describe("pickEncoding", () => {
-  it("keeps WebP when the canvas produced it", () => {
-    expect(pickEncoding("image/webp")).toEqual({ type: "image/webp", quality: 0.85 });
+describe("ATTEMPTS", () => {
+  it("tries WebP, then JPEG, then a smaller JPEG", () => {
+    expect(ATTEMPTS).toEqual([
+      ["image/webp", 0.85],
+      ["image/jpeg", 0.85],
+      ["image/jpeg", 0.7],
+    ]);
+  });
+});
+
+describe("isUsable", () => {
+  it("keeps a blob of the type that was asked for", () => {
+    expect(isUsable("image/webp", { type: "image/webp", size: 1000 })).toBe(true);
   });
 
-  it("falls back to JPEG at 0.85 when Safari answers PNG", () => {
-    expect(pickEncoding("image/png")).toEqual({ type: "image/jpeg", quality: 0.85 });
+  it("refuses PNG when Safari ignores a WebP or JPEG request", () => {
+    expect(isUsable("image/webp", { type: "image/png", size: 1000 })).toBe(false);
+    expect(isUsable("image/jpeg", { type: "image/png", size: 1000 })).toBe(false);
+    expect(isUsable("image/webp", { type: "", size: 1000 })).toBe(false);
   });
 
-  it("falls back to JPEG for an empty or unknown type", () => {
-    expect(pickEncoding("")).toEqual({ type: "image/jpeg", quality: 0.85 });
-    expect(pickEncoding("image/avif")).toEqual({ type: "image/jpeg", quality: 0.85 });
-  });
-
-  it("keeps a JPEG the canvas already produced", () => {
-    expect(pickEncoding("image/jpeg")).toEqual({ type: "image/jpeg", quality: 0.85 });
+  it("refuses a blob over the limit or empty", () => {
+    expect(isUsable("image/jpeg", { type: "image/jpeg", size: 524289 })).toBe(false);
+    expect(isUsable("image/jpeg", { type: "image/jpeg", size: 0 })).toBe(false);
   });
 });
 

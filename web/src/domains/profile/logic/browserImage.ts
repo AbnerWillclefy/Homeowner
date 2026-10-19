@@ -1,4 +1,4 @@
-import { cropBox, fitsLimit, JPEG_QUALITY, JPEG_RETRY_QUALITY, PHOTO_SIZE, pickEncoding } from "./photoImage";
+import { ATTEMPTS, cropBox, isUsable, PHOTO_SIZE } from "./photoImage";
 
 export type PreparedPhoto =
   | { kind: "ok"; blob: Blob }
@@ -26,20 +26,13 @@ function drawSquare(bitmap: ImageBitmap): HTMLCanvasElement | null {
   return canvas;
 }
 
-/**
- * Encodes the canvas as WebP, or as JPEG when the browser did not really produce WebP (Safari ignores the request
- * and answers PNG, so the type of the blob is what tells). A result over the API's limit gets one smaller JPEG try.
- */
+/** The first attempt of `ATTEMPTS` that the browser really produced and that fits the API's limit, or null. */
 async function encode(canvas: HTMLCanvasElement): Promise<Blob | null> {
-  const first = await toBlob(canvas, "image/webp", JPEG_QUALITY);
-  let blob = first;
-  if (first !== null) {
-    const encoding = pickEncoding(first.type);
-    if (encoding.type !== first.type) blob = await toBlob(canvas, encoding.type, encoding.quality);
+  for (const [type, quality] of ATTEMPTS) {
+    const blob = await toBlob(canvas, type, quality);
+    if (blob !== null && isUsable(type, blob)) return blob;
   }
-  if (blob !== null && fitsLimit(blob.size)) return blob;
-  const smaller = await toBlob(canvas, "image/jpeg", JPEG_RETRY_QUALITY);
-  return smaller !== null && fitsLimit(smaller.size) ? smaller : null;
+  return null;
 }
 
 /**
