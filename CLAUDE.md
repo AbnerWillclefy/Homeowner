@@ -40,7 +40,7 @@ Every ticket is refined for the agents. The maintainer is learning Go, AWS and s
 - Read the ticket's `## Technical notes` first; they are the senior engineer's plan.
 - Delegate by area: Go, migrations and Terraform to `backend-engineer`; the React PWA to `frontend-engineer`. A ticket that spans both runs backend first, so the frontend builds against a real API.
 - Before opening the pull request, check every acceptance criterion yourself and point to the test or code that meets it. Fix anything not met.
-- A pull request that changes UI is checked in both locales, pt-BR first: most Residents use the app in Brazilian Portuguese, and its longer words are what break layouts. Prefer the shorter pt-BR wording when two are equally clear (`DESIGN.md`, The Portuguese First Rule).
+- A pull request that changes UI is checked in both locales, pt-BR first: most Residents use the app in Brazilian Portuguese, and its longer words are what break layouts. Prefer the shorter pt-BR wording when two are equally clear (`DESIGN.md`, The Portuguese First Rule). Its description shows a screenshot of the change under a `### pt-BR` heading and another under `### English`; the `ui-screenshots` check fails without them.
 - Small commits, imperative and lowercase after a conventional prefix, for example `feat(allocation): honour restrictions on demands`.
 - The pull request description starts with `Closes #<issue-number>` and lists each acceptance criterion with how it is met.
 - Never merge. A human merges.

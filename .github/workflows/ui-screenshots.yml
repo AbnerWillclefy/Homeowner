@@ -1,0 +1,48 @@
+name: ui-screenshots
+
+# A pull request that changes the UI shows it in both locales: its description
+# has a "### pt-BR" and an "### English" heading, each followed by an image.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ui-screenshots-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  ui-screenshots:
+    name: ui-screenshots
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the description has screenshots in both locales
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          ui_files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename' \
+            | grep -E '^web/(src|public)/|^web/index\.html$' \
+            | grep -vE '\.test\.tsx?$|^web/src/sw' || true)
+          if [[ -z "$ui_files" ]]; then
+            echo "No UI change."
+            exit 0
+          fi
+
+          # Prints the text under a "### <locale>" heading, up to the next heading.
+          section() { awk -v h="$1" '/^#/ { inside = ($0 ~ "^### *" h " *$"); next } inside' <<<"${BODY//$'\r'/}"; }
+          has_image() { grep -qE '!\[[^]]*\]\([^)]+\)|<img[^>]+src=' <<<"$1"; }
+
+          missing=()
+          has_image "$(section 'pt-BR')" || missing+=("pt-BR")
+          has_image "$(section 'English')" || missing+=("English")
+          if (( ${#missing[@]} )); then
+            echo "::error::This pull request changes the UI:"
+            echo "$ui_files"
+            echo "::error::Add a screenshot under each heading in the description: ${missing[*]}"
+            exit 1
+          fi
