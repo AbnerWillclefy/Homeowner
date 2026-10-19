@@ -28,7 +28,7 @@ test("Today shows the planned day", async ({ page, baseURL }) => {
   await expect(tabs.today.mine(page)).toBeVisible();
   for (const name of TASKS) await expect(tabs.today.task(page, name)).toBeVisible();
   await expect(tabs.today.others(page)).toBeVisible();
-  await expect(page.getByText("Resident 1")).toBeVisible();
+  await expect(page.getByText("Bruna Souza")).toBeVisible();
   await expect(tabs.today.pool(page)).toBeVisible();
 });
 

@@ -24,7 +24,7 @@ export interface CategoryStyle {
   icon: LucideIcon;
 }
 
-const TONES: Record<CategoryTone, Pick<CategoryStyle, "fill" | "ink">> = {
+export const TONES: Record<CategoryTone, Pick<CategoryStyle, "fill" | "ink">> = {
   peach: { fill: "bg-cat-peach", ink: "text-cat-peach-ink" },
   mint: { fill: "bg-cat-mint", ink: "text-cat-mint-ink" },
   lavender: { fill: "bg-cat-lavender", ink: "text-cat-lavender-ink" },
@@ -33,6 +33,9 @@ const TONES: Record<CategoryTone, Pick<CategoryStyle, "fill" | "ink">> = {
   salmon: { fill: "bg-cat-salmon", ink: "text-cat-salmon-ink" },
   neutral: { fill: "bg-surface-raised", ink: "text-text" },
 };
+
+/** The six pastels, never neutral: the Category pastels and the initials Avatar share them. */
+export const PASTEL_TONES = (Object.keys(TONES) as CategoryTone[]).filter((tone) => tone !== "neutral");
 
 const BY_CATEGORY: Record<string, { tone: CategoryTone; icon: LucideIcon }> = {
   kitchen: { tone: "peach", icon: CookingPot },
