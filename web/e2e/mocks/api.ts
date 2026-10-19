@@ -2,6 +2,7 @@ import type { CheckIn } from "../../src/domains/checkin/api/api";
 import type { Chore } from "../../src/domains/chores/api/api";
 import type { DayPlan } from "../../src/domains/dayplan/api/api";
 import type { Home } from "../../src/domains/home/api/api";
+import type { Resident } from "../../src/domains/residents/api/api";
 import type { Preference, Weekday } from "../../src/domains/profile/api/api";
 import type { ONBOARDING_STEPS } from "../../src/domains/onboarding/api/api";
 import type { Fake, FakeReply, FakeRequest } from "./router";
@@ -14,7 +15,7 @@ type Equal<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
 export const stepsMatchApp: Equal<typeof STEPS, typeof ONBOARDING_STEPS> = true;
 
 export interface FakeState {
-  user: { id: string; email: string };
+  user: { id: string; email: string; displayName?: string; photoUrl?: string };
   /** The last step completed, not the step to show. Null when onboarding has not started. */
   onboardingStored: string | null;
   home: Home | null;
@@ -33,6 +34,8 @@ export interface FakeState {
   /** Today's Check-in and Day Plan. Absent means nothing yet: the handlers answer an unplanned day. */
   checkIn?: CheckIn;
   dayPlan?: DayPlan;
+  /** The Home's Residents as `GET /home/residents` lists them. Absent means only the caller. */
+  residents?: Resident[];
 }
 
 export function initialState(): FakeState {
@@ -180,7 +183,14 @@ const rank = (step: string | null): number => (step === null ? -1 : step === "do
 /** The handlers the app needs on every load: health, who am I, onboarding progress and the Home. */
 export function coreHandlers(api: FakeApi): void {
   api.on("GET /healthz", () => json(200, { status: "ok" }));
-  api.on("GET /me", signedIn((_, state) => json(200, state.user)));
+  api.on(
+    "GET /me",
+    signedIn((_, state) => {
+      const { id, email, displayName, photoUrl } = state.user;
+      // Like the API: the shown name is the display name, else the email's local part.
+      return json(200, { id, email, displayName: displayName ?? null, name: displayName ?? email.split("@")[0], photoUrl: photoUrl ?? null });
+    }),
+  );
   api.on("GET /me/onboarding", signedIn((_, state) => json(200, { step: nextStep(state.onboardingStored) })));
   api.on(
     "PUT /me/onboarding",

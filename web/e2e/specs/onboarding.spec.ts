@@ -5,6 +5,7 @@ import { json } from "../mocks/api";
 import { catalogHandlers, propose } from "../mocks/handlers/catalog";
 import { homeHandlers } from "../mocks/handlers/home";
 import { onboardingHandlers } from "../mocks/handlers/onboarding";
+import { residentsHandlers } from "../mocks/handlers/residents";
 import { todayHandlers } from "../mocks/handlers/today";
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
@@ -76,6 +77,7 @@ test.beforeEach(async ({ page, baseURL, fakeApi }) => {
   fakeApi.use(homeHandlers);
   fakeApi.use(catalogHandlers);
   fakeApi.use(todayHandlers);
+  fakeApi.use(residentsHandlers);
   await seedSession(page);
   await launchApp(page, baseURL!);
 });
