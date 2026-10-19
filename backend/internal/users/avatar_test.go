@@ -21,7 +21,7 @@ func TestInitials(t *testing.T) {
 		"élio":           "É",
 		"Ângela Maria":   "ÂM",
 		"🙂 Ana":          "🙂A",
-		"👩🏽‍🦰":            "👩🏽‍🦰",
+		"👩🏽‍🦰":           "👩🏽‍🦰",
 		"":               "",
 		"   ":            "",
 		"._-":            "",

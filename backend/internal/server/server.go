@@ -25,6 +25,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/replan"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/residents"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/streak"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/tasks"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
@@ -89,7 +90,7 @@ func New(deps Deps) http.Handler {
 	}
 	photoURL := photos.URLBuilder(photosBase)
 	me := users.NewHandler(s.users, homeStore, photoURL, clk, log)
-	home := homes.NewHandler(homeStore, photoURL, clk, log)
+	home := homes.NewHandler(homeStore, clk, log)
 	photosH := photos.NewHandler(deps.Photos, s.users, photoURL, clk, log)
 	invite := invites.NewHandler(invites.NewStore(db), clk, log)
 	chore := chores.NewHandler(chores.NewStore(db), clk, log)
@@ -97,7 +98,9 @@ func New(deps Deps) http.Handler {
 	task := tasks.NewHandler(tasks.NewStore(db), clk, log)
 	dayPlan := dayplan.NewHandler(dayplan.New(db, deps.Allocator, log), dayplan.NewStore(db), checkin.NewStore(db), clk, log)
 	prof := profile.NewHandler(profile.NewStore(db), log)
-	streaks := streak.NewHandler(streak.NewStore(db), clk, log)
+	streakStore := streak.NewStore(db)
+	streaks := streak.NewHandler(streakStore, clk, log)
+	residentsH := residents.NewHandler(residents.NewStore(db), streakStore, photoURL, clk, log)
 	pushes := push.NewHandler(push.NewStore(db), deps.Push, deps.VAPIDPublicKey, clk, log)
 
 	user, resident := s.requireUser, s.requireResident
@@ -112,7 +115,7 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("PUT /me/onboarding", user(me.AdvanceOnboarding))
 	mux.HandleFunc("POST /home", user(home.Create))
 	mux.HandleFunc("GET /home", resident(home.Get))
-	mux.HandleFunc("GET /home/residents", resident(home.Residents))
+	mux.HandleFunc("GET /home/residents", resident(residentsH.List))
 	mux.HandleFunc("PUT /home", resident(home.Update))
 	mux.HandleFunc("DELETE /home/residents/me", resident(home.Leave))
 	mux.HandleFunc("GET /home/chores", resident(chore.List))
