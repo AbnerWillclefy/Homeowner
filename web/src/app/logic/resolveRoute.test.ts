@@ -101,8 +101,16 @@ const rows: Row[] = [
     expected: to("/"),
   })),
 
+  // A screen under a tab (the edit screen under Me) is part of the shell, not an unknown path
+  { name: "signed out on /me/edit goes to sign-in", input: input({ auth: "signed-out", pathname: "/me/edit" }), expected: to("/signin") },
+  { name: "done on /me/edit renders", input: input({ pathname: "/me/edit" }), expected: render },
+  { name: "done on /me/edit/ renders", input: input({ pathname: "/me/edit/" }), expected: render },
+  { name: "done on /me/nope goes to Today", input: input({ pathname: "/me/nope" }), expected: to("/") },
+  { name: "unfinished on /me/edit goes to the step", input: input({ pathname: "/me/edit", onboarding: ready("baseline") }), expected: to("/welcome/baseline") },
+  { name: "done on /signin wanting /me/edit goes there", input: input({ pathname: "/signin", wanted: "/me/edit" }), expected: to("/me/edit") },
+
   // Pending Invite (signed in): everything but / goes to /, before onboarding is read
-  ...["/chores", "/home", "/me", "/welcome/home", "/signin", "/nope"].flatMap((pathname) =>
+  ...["/chores", "/home", "/me", "/me/edit", "/welcome/home", "/signin", "/nope"].flatMap((pathname) =>
     (["done", "baseline"] as const).map((position) => ({
       name: `pending Invite, ${position}, on ${pathname} goes to Today`,
       input: input({ pathname, hasPendingInvite: true, onboarding: ready(position) }),
@@ -135,7 +143,7 @@ describe("resolveRoute table", () => {
 
   it("never loops over every path, state and device", () => {
     const paths = [
-      "/", "/chores", "/home", "/me", "/signin", "/signup", "/confirm", "/welcome", "/welcome/", "/nope", "/chores/",
+      "/", "/chores", "/home", "/me", "/me/edit", "/signin", "/signup", "/confirm", "/welcome", "/welcome/", "/nope", "/chores/",
       ...ONBOARDING_STEPS.map(stepPath),
     ];
     const onboardings: OnboardingInput[] = [

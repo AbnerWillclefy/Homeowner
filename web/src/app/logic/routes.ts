@@ -4,6 +4,7 @@ export const TODAY_PATH = "/";
 export const CHORES_PATH = "/chores";
 export const HOME_PATH = "/home";
 export const ME_PATH = "/me";
+export const ME_EDIT_PATH = "/me/edit";
 export const SIGN_IN_PATH = "/signin";
 export const SIGN_UP_PATH = "/signup";
 export const CONFIRM_PATH = "/confirm";
@@ -11,6 +12,13 @@ export const WELCOME_PREFIX = "/welcome";
 
 /** The four tabs, in nav order. */
 export const SHELL_PATHS = [TODAY_PATH, CHORES_PATH, HOME_PATH, ME_PATH] as const;
+
+/**
+ * Screens that live inside the shell under a tab, so the guard lets them through. A list of exact paths, not a
+ * prefix: an unknown path under a tab must still go to Today, never render a blank outlet. A later screen (a
+ * Resident under Home) adds its path here, or a matcher for its id.
+ */
+export const SHELL_SUBPATHS = [ME_EDIT_PATH] as const;
 
 /** The full-screen signed-out screens. */
 export const AUTH_PATHS = [SIGN_IN_PATH, SIGN_UP_PATH, CONFIRM_PATH] as const;
@@ -23,7 +31,10 @@ export function normalizePath(path: string): string {
 }
 
 export const isAuthPath = (path: string): boolean => (AUTH_PATHS as readonly string[]).includes(normalizePath(path));
-export const isShellPath = (path: string): boolean => (SHELL_PATHS as readonly string[]).includes(normalizePath(path));
+export const isShellPath = (path: string): boolean => {
+  const p = normalizePath(path);
+  return (SHELL_PATHS as readonly string[]).includes(p) || (SHELL_SUBPATHS as readonly string[]).includes(p);
+};
 
 export function isWelcomePath(path: string): boolean {
   const p = normalizePath(path);
