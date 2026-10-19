@@ -8,6 +8,7 @@ export const ME_EDIT_PATH = "/me/edit";
 /** The route pattern of a Resident's page, nested under the Home tab. */
 const RESIDENTS_PREFIX = `${HOME_PATH}/residents`;
 export const RESIDENT_PATH = `${RESIDENTS_PREFIX}/:id`;
+const RESIDENT_PATTERN = new RegExp(`^${RESIDENTS_PREFIX}/([^/]+)$`);
 /** A Resident's page under the Home tab. */
 export const residentPath = (id: string): string => `${RESIDENTS_PREFIX}/${encodeURIComponent(id)}`;
 export const SIGN_IN_PATH = "/signin";
@@ -42,7 +43,7 @@ export const isAuthPath = (path: string): boolean => (AUTH_PATHS as readonly str
  * path with more than one segment after it. Pure, so the guard can accept the page without a router.
  */
 export function residentIdFromPath(path: string): string | null {
-  const match = new RegExp(`^${RESIDENTS_PREFIX}/([^/]+)$`).exec(normalizePath(path));
+  const match = RESIDENT_PATTERN.exec(normalizePath(path));
   if (match === null) return null;
   try {
     return decodeURIComponent(match[1]!);
