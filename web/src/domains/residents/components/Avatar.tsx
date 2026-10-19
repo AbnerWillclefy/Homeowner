@@ -1,7 +1,6 @@
 import { UserRound } from "lucide-react";
 import { useState } from "react";
-import { toneClasses } from "../../chores/logic/categoryStyle";
-import { avatarTone } from "../logic/avatarTone";
+import { TONES } from "../../chores/logic/categoryStyle";
 import { avatarView, type AvatarView } from "../logic/avatarView";
 
 interface Props {
@@ -13,11 +12,27 @@ interface Props {
 const BOX =
   "inline-flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-pill border border-border text-base font-bold";
 
-function fillFor(view: AvatarView, userId: string): string {
-  if (view.kind === "photo") return "bg-surface";
-  if (view.kind === "icon") return "bg-surface-raised text-muted";
-  const tone = toneClasses(avatarTone(userId));
-  return `${tone.fill} ${tone.ink}`;
+function Face({ view, onError }: { view: AvatarView; onError: (url: string) => void }) {
+  switch (view.kind) {
+    case "photo":
+      return (
+        <span aria-hidden="true" className={`${BOX} bg-surface`}>
+          <img src={view.url} alt="" loading="lazy" decoding="async" className="size-full object-cover" onError={() => onError(view.url)} />
+        </span>
+      );
+    case "initials":
+      return (
+        <span aria-hidden="true" className={`${BOX} ${TONES[view.tone].fill} ${TONES[view.tone].ink}`}>
+          {view.letters}
+        </span>
+      );
+    case "icon":
+      return (
+        <span aria-hidden="true" className={`${BOX} bg-surface-raised text-muted`}>
+          <UserRound size={20} />
+        </span>
+      );
+  }
 }
 
 /**
@@ -29,24 +44,5 @@ function fillFor(view: AvatarView, userId: string): string {
  */
 export function Avatar({ resident }: Props) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
-  const view: AvatarView = resident ? avatarView({ name: resident.name, photoUrl: resident.photoUrl, failedUrl }) : { kind: "icon" };
-
-  return (
-    <span className={`${BOX} ${fillFor(view, resident?.userId ?? "")}`} aria-hidden="true">
-      {view.kind === "photo" ? (
-        <img
-          src={view.url}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          className="size-full object-cover"
-          onError={() => setFailedUrl(view.url)}
-        />
-      ) : view.kind === "initials" ? (
-        view.letters
-      ) : (
-        <UserRound size={20} />
-      )}
-    </span>
-  );
+  return <Face view={avatarView(resident, failedUrl)} onError={setFailedUrl} />;
 }
