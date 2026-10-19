@@ -41,5 +41,5 @@ export function variantFor(slot: ActionSlot): "primary" | "secondary" {
 
 /** The action of this card that is in flight, if any. Another card's action, Accept all or none give null. */
 export function pendingAction(acting: Acting, taskId: string): TaskAction | null {
-  return acting?.taskId === taskId && acting.taskId !== null ? acting.action : null;
+  return acting && acting.action !== "acceptAll" && acting.taskId === taskId ? acting.action : null;
 }

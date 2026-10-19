@@ -38,6 +38,10 @@ const CALLS: Record<TaskAction, (id: string) => Promise<ActionResult>> = {
   done: completeTask,
 };
 
+/** The API call for the action in flight: the one source of what runs, so it cannot drift from what is shown. */
+const callFor = (running: NonNullable<Acting>) =>
+  running.action === "acceptAll" ? acceptAllCall() : CALLS[running.action](running.taskId);
+
 /**
  * What an action's answer does to the screen: the plan to show (absent when the one on screen is still valid)
  * and what to say. After a 409 the screen was stale, so `fresh` is the plan fetched again; without a readable
@@ -101,14 +105,14 @@ export function useDayPlan(version: number) {
     return load();
   }, [load]);
 
-  const act = useCallback(async (call: () => Promise<ActionResult>, running: NonNullable<Acting>) => {
+  const act = useCallback(async (running: NonNullable<Acting>) => {
     if (inFlight.current) return;
     inFlight.current = true;
     const startedAt = loads.current;
     setActing(running);
     setNotice(null);
     try {
-      const result = await call();
+      const result = await callFor(running);
       // The screen was stale: take the server's current plan, in place so the lists and focus stay.
       const fresh = result.kind === "conflict" ? await getDayPlan() : undefined;
       if (!mounted.current) return;
@@ -130,8 +134,11 @@ export function useDayPlan(version: number) {
     }
   }, [fetchPlan]);
 
-  const run = useCallback((action: TaskAction, task: PlanTask) => void act(() => CALLS[action](task.id), { taskId: task.id, action }), [act]);
-  const acceptAll = useCallback(() => void act(acceptAllCall, { taskId: null, action: "acceptAll" }), [act]);
+  const run = useCallback(
+    (action: TaskAction, task: PlanTask) => void act({ taskId: task.id, action }),
+    [act],
+  );
+  const acceptAll = useCallback(() => void act({ taskId: null, action: "acceptAll" }), [act]);
 
   /** Shows a plan that was read elsewhere, without the loading state: the lists update in place. */
   const show = useCallback((plan: DayPlan) => {
