@@ -11,6 +11,8 @@ import { PageLoading } from "../../shared/ui/PageLoading";
 import { ChoresPageSkeleton, HomeSkeleton, TodaySkeleton } from "../../domains/home/components/HomeSkeleton";
 import { formatAllocationTime } from "../../domains/home/logic/allocationTimes";
 import { InviteShare } from "../../domains/invite/components/InviteShare";
+import { MeEdit } from "../../domains/profile/components/MeEdit";
+import { MeHeader } from "../../domains/profile/components/MeHeader";
 import { MeProfile } from "../../domains/profile/components/MeProfile";
 import { SettingsCard } from "../../domains/settings/components/Settings";
 import { useAppAuth } from "./AuthProvider";
@@ -82,7 +84,7 @@ export function HomePage() {
 }
 
 /**
- * Me: one titled card each for the Baseline, Preferences, Restrictions and the settings (Appearance and
+ * Me: the header (Avatar, name, email, Streak), then one titled card each for the Baseline, Preferences, Restrictions and the settings (Appearance and
  * Language), then the account card with sign out last. MePage owns the column, so the cards after
  * the Restrictions still show when the details fail to load.
  */
@@ -93,7 +95,7 @@ export function MePage() {
   return (
     <PageLoading message={t("profile.loading")}>
       <div className="flex flex-col gap-4">
-        <PageHeader title={t("me.heading")} />
+        <MeHeader />
         <MeProfile />
         <SettingsCard />
         {/* Signing out is on purpose: the guard then sends the person to sign-in without remembering this tab. */}
@@ -101,4 +103,9 @@ export function MePage() {
       </div>
     </PageLoading>
   );
+}
+
+/** Me's edit screen, a route under the Me tab (see MeEdit). */
+export function MeEditPage() {
+  return <MeEdit />;
 }
