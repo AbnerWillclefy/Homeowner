@@ -1,6 +1,6 @@
 import { Camera, Trash2 } from "lucide-react";
 import type { ChangeEvent } from "react";
-import { useI18n, type MessageKey } from "../../../shared/i18n";
+import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { FormError } from "../../../shared/ui/FormError";
 import type { Me } from "../../auth/api/meApi";
@@ -47,12 +47,19 @@ function ChooseButton({ label, disabled, onFile }: ChooseProps) {
   );
 }
 
-function Preview({ me, previewUrl, caption }: { me: Me; previewUrl: string; caption: string }) {
+interface Shown {
+  name: string;
+  userId: string;
+  photoUrl: string | null;
+}
+
+function Preview({ resident, caption }: { resident: Shown; caption: string }) {
   return (
     <figure className="m-0 flex flex-col items-center gap-2">
       <div className="flex items-end gap-4">
-        <Avatar size="lg" resident={{ name: me.name, userId: me.id, photoUrl: previewUrl }} />
-        <Avatar size="md" resident={{ name: me.name, userId: me.id, photoUrl: previewUrl }} />
+        {(["lg", "md"] as const).map((size) => (
+          <Avatar key={size} size={size} resident={resident} />
+        ))}
       </div>
       <figcaption className="text-sm font-semibold text-muted">{caption}</figcaption>
     </figure>
@@ -65,12 +72,9 @@ function Preview({ me, previewUrl, caption }: { me: Me; previewUrl: string; capt
  */
 export function PhotoPicker({ me }: { me: Me }) {
   const { t } = useI18n();
-  const photo = usePhotoUpload(me);
-  const { state } = photo;
-
-  const preview = "previewUrl" in state ? state : null;
-  const saving = state.kind === "saving";
-  const message: MessageKey | null = state.kind === "failed" ? state.problem : photo.problem;
+  const photo = usePhotoUpload();
+  const { preview, message } = photo;
+  const shown = (photoUrl: string | null): Shown => ({ name: me.name, userId: me.id, photoUrl });
 
   return (
     <section aria-labelledby={LABEL_ID} className="flex flex-col items-center gap-3 text-center">
@@ -79,12 +83,12 @@ export function PhotoPicker({ me }: { me: Me }) {
       </p>
 
       {preview === null ? (
-        <Avatar size="lg" resident={{ name: me.name, userId: me.id, photoUrl: me.photoUrl }} />
+        <Avatar size="lg" resident={shown(me.photoUrl)} />
       ) : (
-        <Preview me={me} previewUrl={preview.previewUrl} caption={t("me.photo.previewCaption")} />
+        <Preview resident={shown(preview.previewUrl)} caption={t("me.photo.previewCaption")} />
       )}
 
-      {state.kind === "preparing" && <p role="status" className="my-0 text-muted">{t("me.photo.preparing")}</p>}
+      {photo.preparing &&<p role="status" className="my-0 text-muted">{t("me.photo.preparing")}</p>}
 
       <div className="flex flex-wrap items-center justify-center gap-3">
         <ChooseButton
@@ -93,8 +97,8 @@ export function PhotoPicker({ me }: { me: Me }) {
           onFile={photo.choose}
         />
         {preview !== null && (
-          <Button pending={saving} disabled={photo.busy && !saving} onClick={photo.save}>
-            {t(state.kind === "failed" ? "me.photo.retry" : "me.photo.save")}
+          <Button pending={photo.saving} disabled={photo.busy && !photo.saving} onClick={photo.save}>
+            {t(photo.failed ?"me.photo.retry" : "me.photo.save")}
           </Button>
         )}
         {preview === null && me.photoUrl !== null && (

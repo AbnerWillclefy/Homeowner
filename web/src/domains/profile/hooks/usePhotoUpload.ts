@@ -2,23 +2,20 @@ import { useEffect, useRef, useState } from "react";
 import { useShell } from "../../../app/components/ShellContext";
 import type { MessageKey } from "../../../shared/i18n";
 import { useSubmitOnce } from "../../../shared/ui/useSubmitOnce";
-import type { Me } from "../../auth/api/meApi";
 import { confirmUpload, putToStorage, removePhoto, requestUpload } from "../api/photoApi";
 import { preparePhoto } from "../logic/browserImage";
 
-export type SaveStep = "ask" | "put" | "confirm";
-
 /**
- * idle -> preparing -> previewing -> saving(step) -> done (back to idle with the new photo) or failed(step).
+ * idle -> preparing -> previewing -> saving -> done (back to idle with the new photo) or failed.
  * The prepared blob lives in `previewing`, `saving` and `failed`, so Retry starts again from "ask" without
  * choosing again: a presigned URL lasts five minutes, so a new one is always asked for, never reused.
  */
-export type PhotoState =
+type PhotoState =
   | { kind: "idle" }
   | { kind: "preparing" }
   | { kind: "previewing"; blob: Blob; previewUrl: string }
-  | { kind: "saving"; blob: Blob; previewUrl: string; step: SaveStep }
-  | { kind: "failed"; blob: Blob; previewUrl: string; step: SaveStep; problem: MessageKey };
+  | { kind: "saving"; blob: Blob; previewUrl: string }
+  | { kind: "failed"; blob: Blob; previewUrl: string; problem: MessageKey };
 
 type Failed = { kind: "photos-off" | "offline" | "error" | "not-signed-in" };
 
@@ -41,7 +38,7 @@ function previewOf(state: PhotoState): { blob: Blob; previewUrl: string } | null
  * with no reload) and the Residents list is refreshed. Preview URLs are revoked when they are replaced and on
  * unmount.
  */
-export function usePhotoUpload(me: Me) {
+export function usePhotoUpload() {
   const shell = useShell();
   const [state, setState] = useState<PhotoState>({ kind: "idle" });
   /** Why a choice or a removal did not work; the current photo is untouched. */
@@ -80,22 +77,20 @@ export function usePhotoUpload(me: Me) {
     const prepared = previewOf(state);
     if (prepared === null) return;
     const { blob, previewUrl } = prepared;
-    const fail = (step: SaveStep, kind: Failed["kind"]) =>
-      setState({ kind: "failed", blob, previewUrl, step, problem: PROBLEM_KEY[kind] });
+    const fail = (kind: Failed["kind"]) => setState({ kind: "failed", blob, previewUrl, problem: PROBLEM_KEY[kind] });
 
-    setState({ kind: "saving", blob, previewUrl, step: "ask" });
+    setState({ kind: "saving", blob, previewUrl });
     const asked = await requestUpload(blob.type, blob.size);
-    if (asked.kind !== "ok") return fail("ask", asked.kind);
+    if (asked.kind !== "ok") return fail(asked.kind);
 
-    setState({ kind: "saving", blob, previewUrl, step: "put" });
     const put = await putToStorage(asked.upload, blob);
-    if (put.kind !== "ok") return fail("put", put.kind);
+    if (put.kind !== "ok") return fail(put.kind);
 
-    setState({ kind: "saving", blob, previewUrl, step: "confirm" });
     const confirmed = await confirmUpload(asked.upload.key);
-    if (confirmed.kind !== "ok") return fail("confirm", confirmed.kind);
+    if (confirmed.kind !== "ok") return fail(confirmed.kind);
 
-    shell.me.set({ ...me, photoUrl: confirmed.photoUrl });
+    const { photoUrl } = confirmed;
+    shell.me.update((current) => ({ ...current, photoUrl }));
     shell.residents.reload();
     setState({ kind: "idle" });
   });
@@ -107,13 +102,19 @@ export function usePhotoUpload(me: Me) {
       setProblem(result.kind === "photos-off" ? "profile.photo.off" : "profile.photo.removeError");
       return;
     }
-    shell.me.set({ ...me, photoUrl: null });
+    shell.me.update((current) => ({ ...current, photoUrl: null }));
     shell.residents.reload();
   });
 
   return {
-    state,
-    problem,
+    /** The photo being previewed or saved, or null. */
+    preview: url === null ? null : { previewUrl: url },
+    preparing: state.kind === "preparing",
+    saving: state.kind === "saving",
+    /** A save failed: the preview stays and the button says Retry. */
+    failed: state.kind === "failed",
+    /** The one message to show: why a save failed, or why a choice or a removal did not work. */
+    message: state.kind === "failed" ? state.problem : problem,
     choose(file: File) {
       void choose(file);
     },
