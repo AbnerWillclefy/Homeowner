@@ -3,8 +3,8 @@ import { AuthLayout } from "./AuthLayout";
 import { ConfirmPage, SignInPage, SignUpPage } from "./AuthPages";
 import { Guard } from "./Guard";
 import { MeEdit } from "../../domains/profile/components/MeEdit";
-import { ChoresPage, HomePage, MePage, TodayPage } from "./pages";
-import { CHORES_PATH, CONFIRM_PATH, HOME_PATH, ME_EDIT_PATH, ME_PATH, SIGN_IN_PATH, SIGN_UP_PATH, TODAY_PATH, WELCOME_PREFIX } from "../logic/routes";
+import { ChoresPage, HomePage, MePage, ResidentRoute, TodayPage } from "./pages";
+import { CHORES_PATH, CONFIRM_PATH, HOME_PATH, ME_EDIT_PATH, ME_PATH, RESIDENT_PATH, SIGN_IN_PATH, SIGN_UP_PATH, TODAY_PATH, WELCOME_PREFIX } from "../logic/routes";
 import { Shell } from "./Shell";
 import { WelcomeLayout } from "./WelcomeLayout";
 
@@ -26,6 +26,7 @@ export function AppRoutes() {
           <Route path={TODAY_PATH} element={<TodayPage />} />
           <Route path={CHORES_PATH} element={<ChoresPage />} />
           <Route path={HOME_PATH} element={<HomePage />} />
+          <Route path={RESIDENT_PATH} element={<ResidentRoute />} />
           <Route path={ME_PATH} element={<MePage />} />
           <Route path={ME_EDIT_PATH} element={<MeEdit />} />
         </Route>
