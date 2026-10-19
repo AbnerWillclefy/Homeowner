@@ -15,6 +15,7 @@ import {
 } from "../api/api";
 import { ACTION_FAILURE_KEY, conflictMessageKey, LOAD_FAILURE_KEY } from "../logic/failureMessages";
 import { latestOnly } from "../logic/latestOnly";
+import { whenLoadStarts } from "../logic/loadState";
 import type { MessageKey } from "../../../shared/i18n";
 
 type FailedReason = Failure["kind"] | "none";
@@ -56,7 +57,8 @@ export function outcome(result: ActionResult, fresh?: DayPlanResult): { plan?: D
 }
 
 /**
- * Loads today's Day Plan, and again whenever `version` changes. Only mounted with a Home.
+ * Loads today's Day Plan, and again whenever `version` changes. Only mounted with a Home. Only a first load or a
+ * Retry shows the loading state; a reload while a plan is on screen keeps it there until the answer replaces it.
  *
  * `run` and `acceptAll` perform an action (accept, refuse, take, complete; accept everything) and show the
  * plan the server answers with. Nothing is optimistic: the plan on screen only changes from a server answer.
@@ -91,7 +93,7 @@ export function useDayPlan(version: number) {
 
   const load = useCallback(() => {
     loads.current++;
-    setState({ kind: "loading" });
+    setState(whenLoadStarts);
     return fetchPlan();
   }, [fetchPlan]);
 
