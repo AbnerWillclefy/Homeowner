@@ -34,6 +34,14 @@ const TONES: Record<CategoryTone, Pick<CategoryStyle, "fill" | "ink">> = {
   neutral: { fill: "bg-surface-raised", ink: "text-text" },
 };
 
+/** The six pastels, never neutral: the Category pastels and the initials Avatar share them. */
+export const PASTEL_TONES = ["peach", "mint", "lavender", "blue", "yellow", "salmon"] as const satisfies readonly CategoryTone[];
+
+/** The fill and ink classes of a tone. */
+export function toneClasses(tone: CategoryTone): Pick<CategoryStyle, "fill" | "ink"> {
+  return TONES[tone];
+}
+
 const BY_CATEGORY: Record<string, { tone: CategoryTone; icon: LucideIcon }> = {
   kitchen: { tone: "peach", icon: CookingPot },
   bathroom: { tone: "mint", icon: Bath },
