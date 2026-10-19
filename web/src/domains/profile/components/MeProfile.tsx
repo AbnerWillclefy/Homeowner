@@ -2,7 +2,9 @@ import { Ban, Heart, Zap } from "lucide-react";
 import { SectionCard } from "../../../shared/ui/SectionCard";
 import { useI18n } from "../../../shared/i18n";
 import { BaselineFields, PreferenceFields, ProfileStatus, RestrictionFields } from "./ProfileSections";
+import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { useProfile } from "../hooks/useProfile";
+import { ProfileSkeleton } from "./ProfileSkeleton";
 
 /**
  * The first part of the Me tab: the signed-in User's Baseline, Preferences and Restrictions, each in its own
@@ -17,10 +19,14 @@ export function MeProfile() {
   const { t } = useI18n();
   const { state, retry, setBaseline, setPreference, setRestricted } = useProfile();
 
+  // The page's one status announces the wait; the skeleton shows after 300ms. Only the first load and a Retry load.
+  const showSkeleton = useReportFirstLoad(state.kind === "loading");
+
   return (
     <>
+      {showSkeleton && <ProfileSkeleton />}
       {/* Load problems only; each save or undo is a toast, announced once by the toast region. */}
-      <ProfileStatus state={state} retry={retry} />
+      {state.kind !== "loading" && <ProfileStatus state={state} retry={retry} />}
 
       {state.kind === "ready" && (
         <>

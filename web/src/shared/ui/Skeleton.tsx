@@ -19,6 +19,11 @@ export function SkeletonPill({ className = "w-24" }: Props) {
   return <span aria-hidden="true" className={`block h-11 ${FILL} ${className}`} />;
 }
 
+/** A muted rounded square standing in for an `IconTile` (2.75rem). */
+export function SkeletonTile({ className = "" }: Props) {
+  return <span aria-hidden="true" className={`block size-11 shrink-0 rounded-control bg-muted/20 motion-safe:animate-pulse ${className}`} />;
+}
+
 /** A card outline holding skeleton parts. Hidden from screen readers as a whole. */
 export function SkeletonCard({ className = "", children, ...rest }: HTMLAttributes<HTMLDivElement>) {
   return (

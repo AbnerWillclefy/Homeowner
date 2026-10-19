@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { SkeletonBar, SkeletonCard, SkeletonPill } from "./Skeleton";
+import { SkeletonBar, SkeletonCard, SkeletonPill, SkeletonTile } from "./Skeleton";
 
 const render = (element: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(element);
 const classesOf = (markup: string) => /class="([^"]*)"/.exec(markup)?.[1].split(/\s+/) ?? [];
@@ -17,6 +17,12 @@ describe("Skeleton", () => {
 
   it("hides a pill from screen readers", () => {
     expect(render(createElement(SkeletonPill))).toMatch(/aria-hidden="true"/);
+  });
+
+  it("hides a tile from screen readers and pulses it only when motion is allowed", () => {
+    const markup = render(createElement(SkeletonTile));
+    expect(markup).toMatch(/aria-hidden="true"/);
+    expect(classesOf(markup)).toContain("motion-safe:animate-pulse");
   });
 
   it("fills a bar with the muted token at low opacity, not a palette colour", () => {

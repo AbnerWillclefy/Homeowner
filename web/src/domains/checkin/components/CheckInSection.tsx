@@ -5,7 +5,9 @@ import { CardRow } from "../../../shared/ui/CardRow";
 import { useI18n } from "../../../shared/i18n";
 import { demandLabel, labelText } from "../../profile/logic/labels";
 import { Button } from "../../../shared/ui/Button";
+import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { CheckInDialog } from "./CheckInDialog";
+import { CheckInSkeleton } from "./CheckInSkeleton";
 import { LOAD_FAILURE_KEY } from "../logic/failureMessages";
 import { LEVEL_KEYS } from "../logic/labels";
 import { checkInView } from "../logic/state";
@@ -32,16 +34,12 @@ export function CheckInSection({ checkIn, open, onOpen, onClose, energy }: Props
   const { t } = useI18n();
   const { state } = checkIn;
   const view = checkInView(state);
+  // The page's one status announces the wait; the skeleton shows after 300ms. Only the first load and a Retry load.
+  const showSkeleton = useReportFirstLoad(view === "loading");
 
   return (
     <section aria-label={t("checkin.heading")}>
-      {view === "loading" && (
-        <CardRow>
-          <p role="status" className="my-0">
-            {t("checkin.loading")}
-          </p>
-        </CardRow>
-      )}
+      {showSkeleton && <CheckInSkeleton />}
 
       {state.kind === "failed" && (
         <CardRow

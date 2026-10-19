@@ -27,7 +27,7 @@ export const enUS = {
   "me.heading": "About you",
 
   // Home
-  "home.loading": "Loading your Home...",
+  "home.loading": "Loading your Home",
   "home.load.offline":
     "Homeowner cannot reach the service, so your Home could not be loaded. Check your connection and try again.",
   "home.load.error":
@@ -110,7 +110,7 @@ export const enUS = {
     "Close Safari and open Homeowner from its new icon on your Home Screen.",
 
   // Profile
-  "profile.loading": "Loading your details...",
+  "profile.loading": "Loading your details",
   "profile.offline":
     "Could not reach the service, so your details are not shown. Check your connection and try again.",
   "profile.error":
@@ -160,7 +160,7 @@ export const enUS = {
     one: "{count} Chore in your Home",
     other: "{count} Chores in your Home",
   },
-  "chores.loading": "Loading your Chores...",
+  "chores.loading": "Loading your Chores",
   "chores.load.offline":
     "Your Chores could not be loaded because Homeowner cannot reach the service. Check your connection and try again.",
   "chores.load.error":
@@ -263,7 +263,7 @@ export const enUS = {
 
   // Today (the Day Plan)
   "dayplan.heading": "Today",
-  "dayplan.loading": "Loading today's plan...",
+  "dayplan.loading": "Loading today's plan",
   "dayplan.load.offline":
     "Today's plan could not be loaded because Homeowner cannot reach the service. Check your connection and try again.",
   "dayplan.load.error":
@@ -406,7 +406,6 @@ export const enUS = {
   "checkin.heading": "Check-in",
   "checkin.prompt": "How are you today?",
   "checkin.open": "Check in",
-  "checkin.loading": "Loading your Check-in...",
   "checkin.load.offline":
     "Your Check-in could not be loaded because Homeowner cannot reach the service. Check your connection and try again.",
   "checkin.load.error":
