@@ -25,6 +25,12 @@ variable "invoke_function_arns" {
   default     = []
 }
 
+variable "photos_bucket_arn" {
+  description = "ARN of the photo bucket. When set, the role may write, read and delete pending/* and write and delete avatars/* (no ListBucket). Empty adds no statement."
+  type        = string
+  default     = ""
+}
+
 variable "memory_size" {
   type    = number
   default = 512
