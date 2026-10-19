@@ -15,6 +15,9 @@ type User struct {
 	CognitoSub string
 	Email      string
 	CreatedAt  time.Time
+	// DisplayName and PhotoKey are null until the User sets them.
+	DisplayName *string
+	PhotoKey    *string
 }
 
 // Home is the place Residents look after together. AllocationTime is the
