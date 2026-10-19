@@ -4,10 +4,7 @@ import { Button } from "../../../shared/ui/Button";
 import { Card } from "../../../shared/ui/Card";
 import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { ResidentRow } from "./ResidentRow";
-import { ResidentRowSkeleton } from "./ResidentRowSkeleton";
-
-/** Two placeholder rows keep the card the height of the common two-person Home. */
-const PLACEHOLDER_ROWS = [0, 1];
+import { ResidentRowsSkeleton } from "./ResidentRowSkeleton";
 
 /**
  * The first card of the Home tab: the Home's Residents, in the order the API sends them. It reads the Shell's
@@ -32,13 +29,7 @@ export function ResidentsCard() {
           ))}
         </ul>
       )}
-      {state.kind === "loading" && (
-        <ul aria-hidden="true" className={`m-0 list-none p-0 ${showSkeleton ? "" : "invisible"}`}>
-          {PLACEHOLDER_ROWS.map((row) => (
-            <ResidentRowSkeleton key={row} />
-          ))}
-        </ul>
-      )}
+      {state.kind === "loading" && <ResidentRowsSkeleton className={showSkeleton ? "" : "invisible"} />}
       {state.kind === "failed" && (
         <div className="flex flex-col items-start gap-3 py-3">
           <p role="alert" className="my-0 text-danger">

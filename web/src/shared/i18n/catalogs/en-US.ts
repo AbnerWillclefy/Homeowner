@@ -39,7 +39,6 @@ export const enUS = {
   "home.create.recovered":
     "You already have a Home, so Homeowner loaded it instead. Check its settings below.",
   "home.settings.heading": "Your Home",
-  "home.settings.plan.heading": "Day Plan",
   "home.settings.plan.hint": "When each day's plan is made, in your Home's timezone.",
   "home.summary": "Plans are made at {time}, {zone} time.",
   "home.settings.save": "Save changes",

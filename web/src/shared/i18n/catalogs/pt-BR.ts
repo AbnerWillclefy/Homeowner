@@ -43,7 +43,6 @@ export const ptBR: Messages = {
   "home.create.recovered":
     "Você já tem um lar, então o Homeowner o carregou. Confira os ajustes dele abaixo.",
   "home.settings.heading": "Seu lar",
-  "home.settings.plan.heading": "Plano do dia",
   "home.settings.plan.hint": "Quando o plano de cada dia é feito, no fuso horário do seu lar.",
   "home.summary": "Os planos são feitos às {time}, horário de {zone}.",
   "home.settings.save": "Salvar alterações",

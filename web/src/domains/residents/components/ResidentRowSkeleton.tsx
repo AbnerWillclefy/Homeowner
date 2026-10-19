@@ -1,6 +1,16 @@
 import { SkeletonBar } from "../../../shared/ui/Skeleton";
 import { META_LINE, NAME_LINE, ROW_PADDING } from "./ResidentRow";
 
+/** The two placeholder rows that keep the Residents card the height of the common two-person Home. */
+export function ResidentRowsSkeleton({ className = "" }: { className?: string }) {
+  return (
+    <ul aria-hidden="true" className={`m-0 list-none p-0 ${className}`}>
+      <ResidentRowSkeleton />
+      <ResidentRowSkeleton />
+    </ul>
+  );
+}
+
 /** A Residents card row while the list loads: a round Avatar and two lines, at the real row's height. */
 export function ResidentRowSkeleton() {
   return (
