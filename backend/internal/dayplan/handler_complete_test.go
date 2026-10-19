@@ -1,6 +1,7 @@
 package dayplan_test
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"testing"
@@ -28,6 +29,10 @@ func TestCompleteRecordsTheCompletionWithTheResidentAndTheTime(t *testing.T) {
 	}
 	if got := apitest.TaskList(t, apitest.DayPlan(t, b).Body["doneToday"]); len(got) != 0 {
 		t.Fatalf("B sees A's Completion: %v", got)
+	}
+	// A one-person Task says "with": [] (never null, never missing).
+	if !bytes.Contains(r.Raw, []byte(`"with":[]`)) {
+		t.Fatalf("doneToday[0].with is not []: %s", r.Raw)
 	}
 
 	var (
