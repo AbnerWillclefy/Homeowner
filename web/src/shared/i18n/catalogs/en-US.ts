@@ -36,7 +36,6 @@ export const enUS = {
   "home.retry": "Try again",
   "home.create.heading": "Create your Home",
   "home.create.submit": "Create Home",
-  "home.create.submitting": "Creating...",
   "home.create.recovered":
     "You already have a Home, so Homeowner loaded it instead. Check its settings below.",
   "home.settings.heading": "Your Home",
@@ -44,7 +43,6 @@ export const enUS = {
   "home.settings.plan.hint": "When each day's plan is made, in your Home's timezone.",
   "home.summary": "Plans are made at {time}, {zone} time.",
   "home.settings.save": "Save changes",
-  "home.settings.saving": "Saving...",
   "home.settings.saved": "Your changes are saved.",
   "home.timezone.label": "Timezone",
   "home.allocationTime.label": "Allocation time",
@@ -63,7 +61,6 @@ export const enUS = {
     "If you are the last Resident, the Home and its Chores are deleted for good.",
   "home.leave.cancel": "Cancel",
   "home.leave.confirm": "Leave Home",
-  "home.leave.leaving": "Leaving...",
   "home.leave.offline":
     "Homeowner cannot reach the service, so you have not left. Check your connection and try again.",
   "home.leave.error":
@@ -192,7 +189,6 @@ export const enUS = {
   "chores.delete.prompt": "Delete {name}? This cannot be undone.",
   "chores.delete.confirm": "Yes, delete",
   "chores.delete.cancel": "Keep it",
-  "chores.delete.deleting": "Deleting...",
   "chores.delete.offline":
     "The Chore was not deleted because Homeowner cannot reach the service. Check your connection and try again.",
   "chores.delete.error":
@@ -219,7 +215,6 @@ export const enUS = {
   "chores.form.buildsUp.label": "Builds up while undone",
   "chores.form.submit.create": "Add Chore",
   "chores.form.submit.save": "Save Chore",
-  "chores.form.saving": "Saving...",
   "chores.form.cancel": "Cancel",
   "chores.form.saved": "The Chore is saved.",
   "chores.form.invalid.summary":
@@ -568,7 +563,6 @@ export const enUS = {
   "invite.share.heading": "Invite a Resident",
   "invite.share.hint": "A single-use link for someone you live with. It works for seven days.",
   "invite.share.button": "Share an Invite link",
-  "invite.share.creating": "Making the Invite...",
   "invite.share.title": "Join my Home on Homeowner",
   "invite.share.text":
     "Join my Home on Homeowner. This link works once and lasts seven days.",

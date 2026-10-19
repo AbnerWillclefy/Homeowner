@@ -13,7 +13,6 @@ interface Copy {
   heading: MessageKey;
   hint: MessageKey;
   submit: MessageKey;
-  submitting: MessageKey;
   /** The toast after a save. Left out where the form goes away on success. */
   saved?: MessageKey;
 }
@@ -56,11 +55,14 @@ export function HomeForm({ idPrefix, copy, initial, timezones, save, onSaved, on
           onChange={form.change}
         />
         <FormStatusMessage status={form.status} />
-        <ButtonRow stretch className="mt-4">
-          <Button type="submit" variant="primary" disabled={saving} aria-busy={saving}>
-            {t(saving ? copy.submitting : copy.submit)}
-          </Button>
-        </ButtonRow>
+        <ButtonRow
+          className="mt-4"
+          end={
+            <Button type="submit" variant="primary" pending={saving}>
+              {t(copy.submit)}
+            </Button>
+          }
+        />
       </form>
     </SectionCard>
   );
