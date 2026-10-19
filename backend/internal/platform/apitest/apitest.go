@@ -25,6 +25,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/nudge"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/photos"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/db"
@@ -44,6 +45,8 @@ type App struct {
 	Logs  *LogBuffer
 	// Push is the fake Web Push sender; nil unless started WithPush.
 	Push *push.Fake
+	// Photos is the fake object store; nil unless started WithPhotos.
+	Photos *photos.Fake
 	// Auth is the fake token verifier; nil when started WithoutAuth.
 	Auth *auth.Fake
 	// Planner is the Allocation job's planner over the same database. It
@@ -101,6 +104,18 @@ func WithPush(publicKey string) Option {
 	}
 }
 
+// PhotosBaseURL is the public base URL WithPhotos configures.
+const PhotosBaseURL = "https://cdn.test/avatars"
+
+// WithPhotos configures photos with an in-memory object store and the base
+// URL PhotosBaseURL; the fake is exposed as App.Photos.
+func WithPhotos() Option {
+	return func(d *server.Deps) {
+		d.Photos = photos.NewFake()
+		d.PhotosBaseURL = PhotosBaseURL
+	}
+}
+
 // WithReplanner switches the staging-only POST /dev/replan route on, backed by r
 // (usually a *replan.Fake).
 func WithReplanner(r replan.Replanner) Option {
@@ -147,6 +162,7 @@ func Start(t testing.TB, opts ...Option) *App {
 
 	app := &App{URL: srv.URL, Clock: fake, DB: pool, Logs: logs, alloc: swappable}
 	app.Push, _ = deps.Push.(*push.Fake)
+	app.Photos, _ = deps.Photos.(*photos.Fake)
 	if app.Push != nil {
 		// The job nudges through the same fake the server sends with.
 		app.nudger = nudge.New(pool, app.Push, slog.New(slog.NewJSONHandler(logs, nil)))

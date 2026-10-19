@@ -105,7 +105,7 @@ func (s *Store) ForUser(ctx context.Context, userID string) (Membership, error) 
 // Residents lists the Residents of a Home in join order, which is stable.
 func (s *Store) Residents(ctx context.Context, homeID string) ([]ResidentRow, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT r.id, u.id, u.display_name, u.email
+		SELECT r.id, u.id, u.display_name, u.email, u.photo_key
 		FROM residents r JOIN users u ON u.id = r.user_id
 		WHERE r.home_id = $1
 		ORDER BY r.created_at, r.id`, homeID)
@@ -120,7 +120,7 @@ func (s *Store) Residents(ctx context.Context, homeID string) ([]ResidentRow, er
 			displayName *string
 			email       string
 		)
-		if err := rows.Scan(&row.ResidentID, &row.UserID, &displayName, &email); err != nil {
+		if err := rows.Scan(&row.ResidentID, &row.UserID, &displayName, &email, &row.PhotoKey); err != nil {
 			return nil, fmt.Errorf("list residents: %w", err)
 		}
 		row.Name = identity.ShownName(displayName, email)

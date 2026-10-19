@@ -22,14 +22,16 @@ const (
 
 // Handler serves the /home routes.
 type Handler struct {
-	store *Store
-	clock clock.Clock
-	log   *slog.Logger
+	store    *Store
+	photoURL func(*string) *string
+	clock    clock.Clock
+	log      *slog.Logger
 }
 
-// NewHandler returns a Handler over store.
-func NewHandler(store *Store, clk clock.Clock, log *slog.Logger) *Handler {
-	return &Handler{store: store, clock: clk, log: log}
+// NewHandler returns a Handler over store. photoURL turns a stored photo key
+// into its public URL (nil when photos are off).
+func NewHandler(store *Store, photoURL func(*string) *string, clk clock.Clock, log *slog.Logger) *Handler {
+	return &Handler{store: store, photoURL: photoURL, clock: clk, log: log}
 }
 
 // Residents answers GET /home/residents: the Residents of the caller's Home,
@@ -43,7 +45,7 @@ func (h *Handler) Residents(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]ResidentResponse, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, NewResidentResponse(row, m.ResidentID))
+		out = append(out, NewResidentResponse(row, m.ResidentID, h.photoURL))
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)
 }
