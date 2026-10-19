@@ -67,6 +67,12 @@ describe("ButtonRow children", () => {
     expect(markup).toContain("Salvar");
   });
 
+  it("leaves a children-only row without the container, so existing callers lay out as before", () => {
+    const markup = render({ children: save });
+    expect(markup).not.toContain("@container");
+    expect(markup).not.toContain("w-full");
+  });
+
   it("still stacks children with stretch", () => {
     expect(render({ stretch: true, children: save })).toContain("flex-col");
   });

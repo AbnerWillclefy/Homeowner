@@ -1,13 +1,27 @@
 import type { HTMLAttributes, ReactNode } from "react";
 
-interface Props extends HTMLAttributes<HTMLDivElement> {
+type Base = Omit<HTMLAttributes<HTMLDivElement>, "children">;
+
+/** Grouped: deliberate actions in `start`, the expected one in `end`. */
+interface Grouped extends Base {
   /** Deliberate actions, on the left (for example Cancel). A row with only `start` is allowed: a lone deliberate action such as "Leave this Home" sits on the left. */
   start?: ReactNode;
   /** The expected action, on the right, with the primary last (for example Save). Alone, it still sits at the right. */
   end?: ReactNode;
+  children?: never;
+  stretch?: never;
+}
+
+/** Ungrouped, for callers not yet migrated. */
+interface Plain extends Base {
+  start?: never;
+  end?: never;
+  children?: ReactNode;
   /** Stack the buttons, each the full width, for a card's main actions. */
   stretch?: boolean;
 }
+
+type Props = Grouped | Plain;
 
 // A group is a wrapping row of its own. When even it does not fit the row (a narrow container or a large text
 // size, since the query is in rem), it stacks and each button spans the width, so the primary ends up last and full.
@@ -20,7 +34,13 @@ const GROUP = "flex flex-wrap gap-2 @max-[14rem]:w-full @max-[14rem]:flex-col @m
  * yet migrated. Pass spacing (e.g. `mt-4`) through className.
  */
 export function ButtonRow({ start, end, stretch = false, className = "", children, ...rest }: Props) {
-  const layout = stretch ? "flex flex-col gap-2" : "@container flex w-full flex-wrap gap-2";
+  // Only a grouped row is a container: containment would change how the existing children-only rows size.
+  const grouped = start != null || end != null;
+  const layout = grouped
+    ? "@container flex w-full flex-wrap gap-2"
+    : stretch
+      ? "flex flex-col gap-2"
+      : "flex flex-wrap gap-2";
   return (
     <div className={`${layout} ${className}`.trim()} {...rest}>
       {start != null && <div className={GROUP}>{start}</div>}
