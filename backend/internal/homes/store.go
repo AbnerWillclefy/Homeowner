@@ -102,6 +102,28 @@ func (s *Store) ForUser(ctx context.Context, userID string) (Membership, error) 
 	return m, nil
 }
 
+// Residents lists the Residents of a Home in join order, which is stable.
+func (s *Store) Residents(ctx context.Context, homeID string) ([]ResidentRow, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT r.id, u.id, u.display_name, u.email, u.photo_key
+		FROM residents r JOIN users u ON u.id = r.user_id
+		WHERE r.home_id = $1
+		ORDER BY r.created_at, r.id`, homeID)
+	if err != nil {
+		return nil, fmt.Errorf("list residents: %w", err)
+	}
+	defer rows.Close()
+	var out []ResidentRow
+	for rows.Next() {
+		var row ResidentRow
+		if err := rows.Scan(&row.ResidentID, &row.UserID, &row.DisplayName, &row.Email, &row.PhotoKey); err != nil {
+			return nil, fmt.Errorf("list residents: %w", err)
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
 // UpdateSettings replaces the Home's timezone and Allocation time.
 func (s *Store) UpdateSettings(ctx context.Context, homeID, timezone, allocationTime string, now time.Time) error {
 	tag, err := s.db.Exec(ctx, `

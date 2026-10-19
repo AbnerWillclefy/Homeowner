@@ -10,6 +10,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/identity"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
 )
 
 const (
@@ -24,12 +25,30 @@ const (
 type Handler struct {
 	store *Store
 	clock clock.Clock
+	photo users.PhotoURL
 	log   *slog.Logger
 }
 
-// NewHandler returns a Handler over store.
-func NewHandler(store *Store, clk clock.Clock, log *slog.Logger) *Handler {
-	return &Handler{store: store, clock: clk, log: log}
+// NewHandler returns a Handler over store. photo turns a stored photo key into
+// the URL the app loads.
+func NewHandler(store *Store, clk clock.Clock, photo users.PhotoURL, log *slog.Logger) *Handler {
+	return &Handler{store: store, clock: clk, photo: photo, log: log}
+}
+
+// Residents answers GET /home/residents: the Residents of the caller's Home,
+// in join order, each with the name to show. No email is ever serialised.
+func (h *Handler) Residents(w http.ResponseWriter, r *http.Request) {
+	m := identity.CurrentMembership(r.Context())
+	rows, err := h.store.Residents(r.Context(), m.Home.ID)
+	if err != nil {
+		httpx.InternalError(w, h.log, "list residents", err)
+		return
+	}
+	out := make([]ResidentResponse, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, NewResidentResponse(row, m.ResidentID, h.photo))
+	}
+	httpx.WriteJSON(w, http.StatusOK, out)
 }
 
 // readSettings decodes and validates the body, writing the error response

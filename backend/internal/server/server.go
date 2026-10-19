@@ -79,7 +79,7 @@ func New(deps Deps) http.Handler {
 	s := &server{deps: deps, users: users.NewStore(db), homes: homeStore}
 
 	me := users.NewHandler(s.users, homeStore, clk, noPhotos, log)
-	home := homes.NewHandler(homeStore, clk, log)
+	home := homes.NewHandler(homeStore, clk, noPhotos, log)
 	invite := invites.NewHandler(invites.NewStore(db), clk, log)
 	chore := chores.NewHandler(chores.NewStore(db), clk, log)
 	choreSettings := choresettings.NewHandler(choresettings.NewStore(db), log)
@@ -98,6 +98,7 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("PUT /me/onboarding", user(me.AdvanceOnboarding))
 	mux.HandleFunc("POST /home", user(home.Create))
 	mux.HandleFunc("GET /home", resident(home.Get))
+	mux.HandleFunc("GET /home/residents", resident(home.Residents))
 	mux.HandleFunc("PUT /home", resident(home.Update))
 	mux.HandleFunc("DELETE /home/residents/me", resident(home.Leave))
 	mux.HandleFunc("GET /home/chores", resident(chore.List))

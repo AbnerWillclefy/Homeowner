@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
 )
 
 // settingsBody is the body of PUT /home.
@@ -30,6 +31,35 @@ type Response struct {
 // NewResponse returns h as it goes on the wire.
 func NewResponse(h Home) Response {
 	return Response{ID: h.ID, Timezone: h.Timezone, AllocationTime: h.AllocationTime}
+}
+
+// ResidentRow is a Resident as the store reads it. Email is only for computing
+// the shown name; it is never serialised.
+type ResidentRow struct {
+	ResidentID  string
+	UserID      string
+	DisplayName *string
+	Email       string
+	PhotoKey    *string
+}
+
+// ResidentResponse is a Resident of the Home on the wire. It has no email.
+type ResidentResponse struct {
+	ResidentID string  `json:"residentId"`
+	UserID     string  `json:"userId"`
+	Name       string  `json:"name"`
+	PhotoURL   *string `json:"photoUrl"`
+	Me         bool    `json:"me"`
+}
+
+// NewResidentResponse returns row as it goes on the wire to the Resident
+// myResidentID.
+func NewResidentResponse(row ResidentRow, myResidentID string, photo users.PhotoURL) ResidentResponse {
+	return ResidentResponse{
+		ResidentID: row.ResidentID, UserID: row.UserID,
+		Name:     users.ShownName(row.DisplayName, row.Email),
+		PhotoURL: photo(row.PhotoKey), Me: row.ResidentID == myResidentID,
+	}
 }
 
 var allocationTimePattern = regexp.MustCompile(`^([01][0-9]|2[0-3]):([0-5][0-9])$`)
