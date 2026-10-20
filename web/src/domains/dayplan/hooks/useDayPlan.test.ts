@@ -13,6 +13,7 @@ const plan = (date: string): DayPlan => ({
   others: [],
   pool: [],
   doneToday: [],
+  swaps: { incoming: [], outgoing: [] },
 });
 
 describe("outcome", () => {
@@ -39,5 +40,18 @@ describe("outcome", () => {
     expect(outcome({ kind: "conflict", code: "nope" }, { kind: "offline" })).toEqual({
       notice: { tone: "alert", keys: ["dayplan.conflict.unknown", "dayplan.load.offline"] },
     });
+  });
+
+  it("uses the Swap wording after a Swap conflict, and the Task wording otherwise", () => {
+    const fresh = { kind: "ok", plan: plan("2026-10-12") } as const;
+    const result = { kind: "conflict", code: "swap_not_found" } as const;
+    expect(outcome(result, fresh, "swap").notice).toEqual({
+      tone: "status",
+      keys: ["dayplan.swap.conflict.swap_not_found"],
+    });
+    expect(outcome({ kind: "conflict", code: "restricted" }, fresh, "swap").notice?.keys).toEqual([
+      "dayplan.swap.conflict.restricted",
+    ]);
+    expect(outcome(result, fresh).notice?.keys).toEqual(["dayplan.conflict.unknown"]);
   });
 });

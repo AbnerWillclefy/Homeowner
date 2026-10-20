@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Acting, TaskAction } from "../logic/actions";
+import { isSwapAction, type Acting, type SwapAction, type TaskAction } from "../logic/actions";
 import {
   acceptAll as acceptAllCall,
+  acceptSwap,
   acceptTask,
+  cancelSwap,
   completeTask,
+  declineSwap,
   getDayPlan,
+  offerSwap,
   refuseTask,
   takeTask,
   type ActionResult,
@@ -13,7 +17,7 @@ import {
   type Failure,
   type PlanTask,
 } from "../api/api";
-import { ACTION_FAILURE_KEY, conflictMessageKey, LOAD_FAILURE_KEY } from "../logic/failureMessages";
+import { ACTION_FAILURE_KEY, conflictMessageKey, LOAD_FAILURE_KEY, type ConflictFamily } from "../logic/failureMessages";
 import { latestOnly } from "../logic/latestOnly";
 import { whenLoadStarts } from "../logic/loadState";
 import type { MessageKey } from "../../../shared/i18n";
@@ -40,18 +44,40 @@ const CALLS: Record<TaskAction, (id: string) => Promise<ActionResult>> = {
 };
 
 /** The API call for the action in flight: the one source of what runs, so it cannot drift from what is shown. */
-const callFor = (running: NonNullable<Acting>) =>
-  running.action === "acceptAll" ? acceptAllCall() : CALLS[running.action](running.taskId);
+function callFor(running: NonNullable<Acting>): Promise<ActionResult> {
+  switch (running.action) {
+    case "acceptAll":
+      return acceptAllCall();
+    case "offerSwap":
+      return offerSwap(running.offeredTaskId, running.requestedTaskId);
+    case "acceptSwap":
+      return acceptSwap(running.swapId);
+    case "declineSwap":
+      return declineSwap(running.swapId);
+    case "cancelSwap":
+      return cancelSwap(running.swapId);
+    default:
+      return CALLS[running.action](running.taskId);
+  }
+}
+
+/** Which wording an action's conflicts use: the Swap table for the four Swap actions, the Task one otherwise. */
+const familyFor = (running: NonNullable<Acting>): ConflictFamily =>
+  isSwapAction(running.action) ? "swap" : "task";
 
 /**
  * What an action's answer does to the screen: the plan to show (absent when the one on screen is still valid)
  * and what to say. After a 409 the screen was stale, so `fresh` is the plan fetched again; without a readable
  * one the Resident is told both things.
  */
-export function outcome(result: ActionResult, fresh?: DayPlanResult): { plan?: DayPlan; notice: ActionNotice | null } {
+export function outcome(
+  result: ActionResult,
+  fresh?: DayPlanResult,
+  family: ConflictFamily = "task",
+): { plan?: DayPlan; notice: ActionNotice | null } {
   if (result.kind === "ok") return { plan: result.plan, notice: null };
   if (result.kind !== "conflict") return { notice: { tone: "alert", keys: [ACTION_FAILURE_KEY[result.kind]] } };
-  const message = conflictMessageKey(result.code);
+  const message = conflictMessageKey(result.code, family);
   if (fresh?.kind === "ok") return { plan: fresh.plan, notice: { tone: "status", keys: [message] } };
   return { notice: { tone: "alert", keys: [message, LOAD_FAILURE_KEY[fresh?.kind ?? "error"]] } };
 }
@@ -110,6 +136,7 @@ export function useDayPlan(version: number) {
   const act = useCallback(async (running: NonNullable<Acting>) => {
     if (inFlight.current) return;
     inFlight.current = true;
+    const family = familyFor(running);
     const startedAt = loads.current;
     setActing(running);
     setNotice(null);
@@ -124,7 +151,7 @@ export function useDayPlan(version: number) {
         void fetchPlan();
         return;
       }
-      const { plan, notice } = outcome(result, fresh);
+      const { plan, notice } = outcome(result, fresh, family);
       setNotice(notice);
       if (plan) {
         setState({ kind: "ready", plan });
@@ -142,10 +169,18 @@ export function useDayPlan(version: number) {
   );
   const acceptAll = useCallback(() => void act({ taskId: null, action: "acceptAll" }), [act]);
 
+  /** Offers a Swap. Resolves when the action ends, so a dialog can wait for it. Nothing renders it yet. */
+  const offer = useCallback(
+    (offeredTaskId: string, requestedTaskId: string) => act({ action: "offerSwap", offeredTaskId, requestedTaskId }),
+    [act],
+  );
+  /** Accepts, declines or cancels a Swap offer. Resolves when the action ends. */
+  const answerSwap = useCallback((action: SwapAction, swapId: string) => act({ action, swapId }), [act]);
+
   /** Shows a plan that was read elsewhere, without the loading state: the lists update in place. */
   const show = useCallback((plan: DayPlan) => {
     if (mounted.current) setState({ kind: "ready", plan });
   }, []);
 
-  return { state, reload, run, acceptAll, acting, notice, settled, show };
+  return { state, reload, run, acceptAll, offerSwap: offer, answerSwap, acting, notice, settled, show };
 }

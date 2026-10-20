@@ -40,6 +40,7 @@ function plannedDay(): DayPlan {
     others: [{ residentId: "resident-2", tasks: [task("task-3", trash, "due")] }],
     pool: [task("task-4", trash, "no_energy_left")],
     doneToday: [],
+    swaps: { incoming: [], outgoing: [] },
   };
 }
 

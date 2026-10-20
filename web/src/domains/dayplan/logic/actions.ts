@@ -2,8 +2,33 @@ export type TaskRole = "mine" | "other" | "pool";
 export type TaskAction = "accept" | "refuse" | "done" | "take";
 export type ActionSlot = "start" | "end";
 
-/** The action in flight: one on a Task, or Accept all, which belongs to no card. */
-export type Acting = { taskId: string; action: TaskAction } | { taskId: null; action: "acceptAll" } | null;
+export type SwapAction = "acceptSwap" | "declineSwap" | "cancelSwap";
+
+/** Every action that runs on a Swap; `Record` makes a new action fail the typecheck until it is listed here. */
+const IS_SWAP_ACTION: Record<NonNullable<Acting>["action"], boolean> = {
+  accept: false,
+  refuse: false,
+  done: false,
+  take: false,
+  acceptAll: false,
+  offerSwap: true,
+  acceptSwap: true,
+  declineSwap: true,
+  cancelSwap: true,
+};
+
+export const isSwapAction = (action: NonNullable<Acting>["action"]): boolean => IS_SWAP_ACTION[action];
+
+/**
+ * The action in flight: one on a Task, Accept all (which belongs to no card), or a Swap action. A Swap action
+ * has no `taskId` on purpose, so no Task card can mistake it for its own.
+ */
+export type Acting =
+  | { taskId: string; action: TaskAction }
+  | { taskId: null; action: "acceptAll" }
+  | { action: "offerSwap"; offeredTaskId: string; requestedTaskId: string }
+  | { action: SwapAction; swapId: string }
+  | null;
 
 /**
  * What the Resident can do with a Task in the Day Plan, as slots of the card's button row: `start` holds the
@@ -43,5 +68,11 @@ export function variantFor(slot: ActionSlot): "primary" | "secondary" {
 
 /** The action of this card that is in flight, if any. Another card's action, Accept all or none give null. */
 export function pendingAction(acting: Acting, taskId: string): TaskAction | null {
-  return acting && acting.action !== "acceptAll" && acting.taskId === taskId ? acting.action : null;
+  if (!acting || !("taskId" in acting) || acting.taskId === null) return null;
+  return acting.taskId === taskId ? acting.action : null;
+}
+
+/** The Swap action in flight on this offer, if any. Another offer's action, a Task action or none give null. */
+export function pendingSwap(acting: Acting, swapId: string): SwapAction | null {
+  return acting && "swapId" in acting && acting.swapId === swapId ? acting.action : null;
 }

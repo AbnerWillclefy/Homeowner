@@ -367,6 +367,7 @@ export const enUS = {
   "dayplan.assigned.reason.liked": "You like this one.",
   "dayplan.assigned.reason.spared_dislike": "Spared a Chore you dislike.",
   "dayplan.assigned.reason.turn_taking": "It is your turn.",
+  "dayplan.assigned.reason.swapped": "It came from a Swap.",
   "dayplan.action.accept": "Accept",
   "dayplan.action.accept.named": "Accept {task}",
   "dayplan.action.acceptAll": {
@@ -426,6 +427,17 @@ export const enUS = {
     "You checked in Drained today, so rest: this can wait.",
   "dayplan.conflict.unknown":
     "The plan changed since you looked. Your list is up to date.",
+  "dayplan.swap.conflict.not_yours": "That Task is no longer yours. Your list is up to date.",
+  "dayplan.swap.conflict.not_held_by_other": "That Task has moved to someone else. Your list is up to date.",
+  "dayplan.swap.conflict.already_done": "That Task is already done. Your list is up to date.",
+  "dayplan.swap.conflict.two_person_task": "A Task for two people cannot be swapped.",
+  "dayplan.swap.conflict.no_plan_today": "There is no plan for today yet, so no Swaps.",
+  "dayplan.swap.conflict.restricted": "This Swap does not fit today's Restrictions.",
+  "dayplan.swap.conflict.recipient_drained": "This Swap can wait for another day.",
+  "dayplan.swap.conflict.swap_pending": "That Swap is already offered.",
+  "dayplan.swap.conflict.swap_not_found": "That Swap is no longer available. Your list is up to date.",
+  "dayplan.swap.conflict.swap_closed": "That Swap was already answered. Your list is up to date.",
+  "dayplan.swap.conflict.swap_stale": "The Tasks changed, so that Swap no longer applies. Your list is up to date.",
 
   // The start choice, at the end of both onboarding flows
   "startChoice.heading": "When do you want your Tasks?",
