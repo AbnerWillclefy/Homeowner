@@ -34,9 +34,47 @@ const CONFLICT_KEYS = {
   drained: "dayplan.conflict.drained",
 } as const satisfies Record<string, MessageKey>;
 
-/** What to tell the Resident after a 409. A code the app does not know gets a generic "the plan changed". */
-export function conflictMessageKey(code: string): MessageKey {
-  return Object.hasOwn(CONFLICT_KEYS, code)
-    ? CONFLICT_KEYS[code as keyof typeof CONFLICT_KEYS]
-    : "dayplan.conflict.unknown";
+/**
+ * The codes the Swap routes send: the 409s of backend/internal/dayplan/handler_actions.go and the 404
+ * `swap_not_found`, which the client treats as a conflict too.
+ */
+export const SWAP_CONFLICT_CODES = [
+  "not_yours",
+  "not_held_by_other",
+  "already_done",
+  "two_person_task",
+  "no_plan_today",
+  "restricted",
+  "recipient_drained",
+  "swap_pending",
+  "swap_not_found",
+  "swap_closed",
+  "swap_stale",
+] as const;
+
+export type SwapConflictCode = (typeof SWAP_CONFLICT_CODES)[number];
+
+// Kept apart from CONFLICT_KEYS: the same code reads differently for a Swap. `Record<SwapConflictCode, ...>`
+// makes a code left out here a type error, which `satisfies Record<string, ...>` would not.
+const SWAP_CONFLICT_KEYS = {
+  not_yours: "dayplan.swap.conflict.not_yours",
+  not_held_by_other: "dayplan.swap.conflict.not_held_by_other",
+  already_done: "dayplan.swap.conflict.already_done",
+  two_person_task: "dayplan.swap.conflict.two_person_task",
+  no_plan_today: "dayplan.swap.conflict.no_plan_today",
+  restricted: "dayplan.swap.conflict.restricted",
+  recipient_drained: "dayplan.swap.conflict.recipient_drained",
+  swap_pending: "dayplan.swap.conflict.swap_pending",
+  swap_not_found: "dayplan.swap.conflict.swap_not_found",
+  swap_closed: "dayplan.swap.conflict.swap_closed",
+  swap_stale: "dayplan.swap.conflict.swap_stale",
+} as const satisfies Record<SwapConflictCode, MessageKey>;
+
+/** Which action's wording to use: a Swap call or any other. */
+export type ConflictFamily = "task" | "swap";
+
+/** What to tell the Resident after a conflict. A code the app does not know gets a generic "the plan changed". */
+export function conflictMessageKey(code: string, family: ConflictFamily = "task"): MessageKey {
+  const keys: Readonly<Record<string, MessageKey>> = family === "swap" ? SWAP_CONFLICT_KEYS : CONFLICT_KEYS;
+  return Object.hasOwn(keys, code) ? keys[code]! : "dayplan.conflict.unknown";
 }

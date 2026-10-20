@@ -377,6 +377,7 @@ export const ptBR: Messages = {
   "dayplan.assigned.reason.liked": "Você gosta desta.",
   "dayplan.assigned.reason.spared_dislike": "Poupado de uma tarefa de que você não gosta.",
   "dayplan.assigned.reason.turn_taking": "É a sua vez.",
+  "dayplan.assigned.reason.swapped": "Veio de uma troca.",
   "dayplan.action.accept": "Aceitar",
   "dayplan.action.accept.named": "Aceitar {task}",
   "dayplan.action.acceptAll": {
@@ -436,6 +437,17 @@ export const ptBR: Messages = {
     "Você está sem energia hoje, então descanse: isso pode esperar.",
   "dayplan.conflict.unknown":
     "O plano mudou desde que você olhou. Sua lista está atualizada.",
+  "dayplan.swap.conflict.not_yours": "Essa tarefa não está mais com você. Sua lista está atualizada.",
+  "dayplan.swap.conflict.not_held_by_other": "Essa tarefa mudou de mãos. Sua lista está atualizada.",
+  "dayplan.swap.conflict.already_done": "Essa tarefa já foi concluída. Sua lista está atualizada.",
+  "dayplan.swap.conflict.two_person_task": "Uma tarefa para duas pessoas não pode ser trocada.",
+  "dayplan.swap.conflict.no_plan_today": "Ainda não há plano para hoje, então não há trocas.",
+  "dayplan.swap.conflict.restricted": "Essa troca não combina com as restrições de hoje.",
+  "dayplan.swap.conflict.recipient_drained": "Essa troca pode esperar outro dia.",
+  "dayplan.swap.conflict.swap_pending": "Essa troca já foi oferecida.",
+  "dayplan.swap.conflict.swap_not_found": "Essa troca não está mais disponível. Sua lista está atualizada.",
+  "dayplan.swap.conflict.swap_closed": "Essa troca já foi respondida. Sua lista está atualizada.",
+  "dayplan.swap.conflict.swap_stale": "As tarefas mudaram, então essa troca não vale mais. Sua lista está atualizada.",
 
   // The start choice, at the end of both onboarding flows
   "startChoice.heading": "Quando você quer as suas tarefas?",
