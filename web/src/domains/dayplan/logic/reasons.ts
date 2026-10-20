@@ -21,6 +21,7 @@ const ASSIGNMENT_REASON_KEYS = {
   liked: "dayplan.assigned.reason.liked",
   spared_dislike: "dayplan.assigned.reason.spared_dislike",
   turn_taking: "dayplan.assigned.reason.turn_taking",
+  swapped: "dayplan.assigned.reason.swapped",
 } as const satisfies Record<string, MessageKey>;
 
 function reasonLabel(keys: Readonly<Record<string, MessageKey>>, id: string | undefined): Label | null {
