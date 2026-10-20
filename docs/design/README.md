@@ -8,5 +8,6 @@ Mocks for the post-v1 epics, built against [`DESIGN.md`](../../DESIGN.md). Each 
 | 2. Today polish | [HTML](epic-2-today-polish.html) · ![Epic 2](epic-2-today-polish.png) | ![Epic 2 pt-BR](epic-2-today-polish.pt-BR.png) |
 | 3. Resident identity | [HTML](epic-3-resident-identity.html) · ![Epic 3](epic-3-resident-identity.png) | ![Epic 3 pt-BR](epic-3-resident-identity.pt-BR.png) |
 | 4. Housemates | [HTML](epic-4-housemates.html) · ![Epic 4](epic-4-housemates.png) | ![Epic 4 pt-BR](epic-4-housemates.pt-BR.png) |
+| 5. Swap on Today | [HTML](epic-5-swap.html) · ![Epic 5](epic-5-swap.png) | ![Epic 5 pt-BR](epic-5-swap.pt-BR.png) |
 
 `mocks.css` mirrors the tokens in `web/src/index.css`; it is not imported by the app.

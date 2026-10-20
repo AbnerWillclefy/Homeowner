@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Swap on Today</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mocks.css">
+<style>
+  .offer { gap: 0.75rem; }
+  .side { display: flex; flex-direction: column; gap: 0.25rem; }
+  .lbl { font-size: 0.75rem; font-weight: 700; color: var(--muted); }
+  .chore { font-weight: 700; line-height: 1.375; }
+  .hint { font-size: 0.875rem; font-weight: 600; color: var(--muted); }
+  .sent { display: flex; align-items: center; gap: 0.375rem; font-size: 0.875rem; font-weight: 600; color: var(--muted); }
+  .sent svg, .notice svg, .pick svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .notice, .pick { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; }
+  .rule { border-top: 1px dashed var(--border); }
+  .opt { display: flex; align-items: center; gap: 0.75rem; min-height: 2.75rem; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--r-control); background: var(--raised); }
+  .opt .grow { flex: 1; min-width: 0; }
+  .opt .dot { width: 1.25rem; height: 1.25rem; flex-shrink: 0; border-radius: 99px; border: 2px solid var(--border); }
+  .opt.sel { border: 2px solid var(--accent); }
+  .opt.sel .dot { border-color: var(--accent); background: radial-gradient(var(--accent) 45%, transparent 50%); }
+  .opt.dis, .btn.dis { opacity: 0.55; }
+  .sheet { top: 1.5rem; }
+  /* 200% text: the mock sizes in rem, so zoom the screen instead of raising font-size. */
+  .phone.large { width: 320px; min-height: 0; }
+  .phone.large .screen { zoom: 2; }
+  /* At this width the tile and avatar would leave the text a sliver, so the name drops below them. */
+  .phone.large .offer .row { flex-wrap: wrap; }
+  .phone.large .offer .row > .grow, .phone.large .offer .row > p { flex-basis: 100%; }
+  .actions.stacked { flex-direction: column; align-items: stretch; }
+  .actions.stacked .btn { width: 100%; }
+</style>
+</head>
+<body>
+<main class="board">
+  <header>
+    <h1>Epic 5: Swap on Today</h1>
+    <p>A Resident offers one of their Tasks for another Resident's. A Swap happens only when the other Resident accepts; declining costs nothing, and cancelling is just as quiet. When it is accepted, both are Committed to the Task they receive, with no second tap. Copy is illustrative; the i18n catalogs own the real wording. Open with <code>?lang=pt-BR</code> for Portuguese.</p>
+  </header>
+
+  <figure>
+    <div class="phone">
+      <div class="screen">
+        <div class="page-head"><h2 class="page-title">Good morning, Abner</h2><p class="page-sub">Sunday, October 18</p></div>
+        <div class="row"><span class="chip"><i data-lucide="battery-medium"></i>Today's Check-in: Normal</span><button class="btn ghost">Change</button></div>
+        <div><h2 class="group">Offers to you <span class="count">2</span></h2>
+          <div class="stack">
+            <div class="card offer">
+              <div class="row"><span class="avatar xs yellow">AS</span><p class="bold">Ana</p></div>
+              <div class="side"><p class="lbl">Gives</p><div class="row"><span class="tile peach"><i data-lucide="cooking-pot"></i></span><div class="grow"><p class="cat-name">Kitchen</p><p class="chore">Clean the stove</p></div></div></div>
+              <div class="side"><p class="lbl">Wants</p><div class="row"><span class="tile blue"><i data-lucide="shirt"></i></span><div class="grow"><p class="cat-name">Laundry</p><p class="chore">Fold the laundry</p></div></div></div>
+              <div class="actions"><button class="btn">Decline</button><span class="spacer"></span><button class="btn primary">Accept</button></div>
+            </div>
+            <div class="card offer">
+              <div class="row"><span class="avatar xs yellow">AS</span><p class="bold">Ana</p></div>
+              <div class="side"><p class="lbl">Gives</p><div class="row"><span class="tile blue"><i data-lucide="brush"></i></span><div class="grow"><p class="cat-name">Floors</p><p class="chore">Vacuum the living room</p></div></div></div>
+              <div class="side"><p class="lbl">Wants</p><div class="row"><span class="tile peach"><i data-lucide="cooking-pot"></i></span><div class="grow"><p class="cat-name">Kitchen</p><p class="chore">Wash the dishes</p></div></div></div>
+              <div class="actions"><button class="btn">Decline</button><span class="spacer"></span><button class="btn primary">Accept</button></div>
+            </div>
+          </div>
+        </div>
+        <div><h2 class="group">Your Tasks <span class="count">2</span></h2>
+          <div class="stack">
+            <div class="card blue">
+              <div class="row"><span class="tile on-tint"><i data-lucide="shirt"></i></span><div class="grow"><p class="cat-name">Laundry</p><h3 class="card-title">Fold the laundry</h3></div></div>
+              <p class="reason"><i data-lucide="lightbulb"></i>Why: It is due today.</p>
+              <div class="actions"><span class="committed"><i data-lucide="circle-check"></i>Committed</span><button class="btn primary"><i data-lucide="check"></i>Done</button></div>
+            </div>
+            <div class="card yellow">
+              <div class="row"><span class="tile on-tint"><i data-lucide="trash-2"></i></span><div class="grow"><p class="cat-name">Trash</p><h3 class="card-title">Take out the trash</h3></div></div>
+              <p class="reason"><i data-lucide="lightbulb"></i>Why: You like this one.</p>
+              <div class="actions"><span class="committed"><i data-lucide="circle-check"></i>Committed</span><button class="btn primary"><i data-lucide="check"></i>Done</button></div>
+            </div>
+          </div>
+        </div>
+        <div><h2 class="group">Your offers <span class="count">1</span></h2>
+          <div class="stack">
+            <div class="card offer">
+              <div class="side"><p class="lbl">Gives</p><div class="row"><span class="tile yellow"><i data-lucide="trash-2"></i></span><div class="grow"><p class="cat-name">Trash</p><p class="chore">Take out the trash</p></div></div></div>
+              <div class="side"><p class="lbl">Wants</p><div class="row"><span class="tile mint"><i data-lucide="bath"></i></span><div class="grow"><p class="cat-name">Bathroom</p><p class="chore">Clean the sink</p></div></div></div>
+              <p class="hint">If Ana accepts, “Clean the sink” becomes yours, already accepted.</p>
+              <div class="actions"><button class="btn">Cancel</button></div>
+            </div>
+          </div>
+        </div>
+        <div><h2 class="group">Other Residents' Tasks <span class="count">2</span></h2>
+          <div class="stack">
+            <div class="card">
+              <div class="row"><span class="tile mint"><i data-lucide="bath"></i></span><div class="grow"><p class="cat-name">Bathroom</p><h3 class="card-title">Clean the sink</h3></div></div>
+              <p class="sent"><i data-lucide="repeat-2"></i>You offered a swap</p>
+            </div>
+            <div class="card">
+              <div class="row"><span class="tile mint"><i data-lucide="bath"></i></span><div class="grow"><p class="cat-name">Bathroom</p><h3 class="card-title">Deep clean the shower</h3></div></div>
+              <div class="actions"><button class="btn"><i data-lucide="repeat-2"></i>Swap</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <figcaption><strong>Today with offers</strong>Order: Check-in, <b>Offers to you</b> (it needs an answer, so it leads), <b>Your Tasks</b>, <b>Your offers</b> (it waits on someone else, so it sits below your own work and above the others'), then Other Residents' Tasks. Incoming card: avatar and name, what they give, what they want, Decline at the start, Accept at the end. Outgoing card: Cancel alone at the start, and a hint that states the fact: if they accept, the Task is yours and already accepted, with no second tap. Edge cases: two offers from Ana are two cards. The first wants Fold the laundry, which you are already Committed to; accepting it moves that Commitment, with no extra copy. If an incoming and an outgoing offer touch the same Task, accepting one removes the other on the next read, so the card just disappears.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone">
+      <div class="screen">
+        <div class="page-head"><h2 class="page-title">Today</h2></div>
+        <div><h2 class="group">Other Residents' Tasks <span class="count">2</span></h2>
+          <div class="stack">
+            <div class="card">
+              <div class="row"><span class="tile mint"><i data-lucide="bath"></i></span><div class="grow"><p class="cat-name">Bathroom</p><h3 class="card-title">Deep clean the shower</h3></div></div>
+              <p class="sm semi">Ana</p>
+              <div class="actions"><button class="btn"><i data-lucide="repeat-2"></i>Swap</button></div>
+            </div>
+            <div class="card">
+              <div class="row"><span class="tile blue"><i data-lucide="brush"></i></span><div class="grow"><p class="cat-name">Floors</p><h3 class="card-title">Vacuum the living room</h3></div></div>
+              <p class="sm semi">Ana</p>
+              <div class="actions"><button class="btn"><i data-lucide="repeat-2"></i>Swap</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <figcaption><strong>The Swap control</strong>You start from the Task you want. <b>Swap is a secondary button alone in <code>start</code></b>, the lone-deliberate-action row <code>ButtonRow</code> already allows. A teal button on every housemate's card would compete with your own Accept and Done, so there is no primary here and #267 needs no variant override. Tapping it opens the dialog.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone">
+      <div class="screen"><div class="page-head"><h2 class="page-title">Today</h2></div></div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="body">
+          <h2>What will you give?</h2>
+          <div class="side"><p class="lbl">You want</p><div class="row"><span class="tile mint"><i data-lucide="bath"></i></span><div class="grow"><p class="cat-name">Bathroom</p><p class="chore">Clean the sink</p></div></div></div>
+          <div class="stack-sm" role="radiogroup">
+            <div class="opt"><span class="dot"></span><span class="tile blue"><i data-lucide="shirt"></i></span><div class="grow"><p class="cat-name">Laundry</p><p class="chore">Fold the laundry</p></div></div>
+            <div class="opt"><span class="dot"></span><span class="tile yellow"><i data-lucide="trash-2"></i></span><div class="grow"><p class="cat-name">Trash</p><p class="chore">Take out the trash</p></div></div>
+            <div class="opt"><span class="dot"></span><span class="tile peach"><i data-lucide="cooking-pot"></i></span><div class="grow"><p class="cat-name">Kitchen</p><p class="chore">Wash the dishes</p></div></div>
+          </div>
+          <p class="pick" role="alert"><i data-lucide="info"></i>Pick one Task to give.</p>
+        </div>
+        <div class="foot"><div class="actions"><button class="btn">Cancel</button><span class="spacer"></span><button class="btn primary">Offer swap</button></div></div>
+      </div>
+    </div>
+    <figcaption><strong>Dialog: several options, none picked</strong>The requested Task is named at the top. Your one-person Tasks are a radio list drawn like the Check-in level rows. Cancel at the start, Offer swap at the end. Offer swap stays enabled: pressing it with nothing picked shows the inline line above, as the Check-in does with <code>checkin.level.required</code>, because a disabled primary hides the reason. Unlike the Check-in it is plain bold text, not danger colour, since an unpicked radio is not an error; #267 should not use <code>text-danger</code>.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone">
+      <div class="screen"><div class="page-head"><h2 class="page-title">Today</h2></div></div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="body">
+          <h2>What will you give?</h2>
+          <div class="side"><p class="lbl">You want</p><div class="row"><span class="tile mint"><i data-lucide="bath"></i></span><div class="grow"><p class="cat-name">Bathroom</p><p class="chore">Clean the sink</p></div></div></div>
+          <div class="stack-sm" role="radiogroup">
+            <div class="opt sel"><span class="dot"></span><span class="tile yellow"><i data-lucide="trash-2"></i></span><div class="grow"><p class="cat-name">Trash</p><p class="chore">Take out the trash</p></div></div>
+          </div>
+        </div>
+        <div class="foot"><div class="actions"><button class="btn">Cancel</button><span class="spacer"></span><button class="btn primary">Offer swap</button></div></div>
+      </div>
+    </div>
+    <figcaption><strong>Dialog: exactly one option</strong>With a single eligible Task it is preselected, so Offer swap works in one tap.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone">
+      <div class="screen"><div class="page-head"><h2 class="page-title">Today</h2></div></div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="body">
+          <h2>What will you give?</h2>
+          <div class="side"><p class="lbl">You want</p><div class="row"><span class="tile mint"><i data-lucide="bath"></i></span><div class="grow"><p class="cat-name">Bathroom</p><p class="chore">Clean the sink</p></div></div></div>
+          <div class="stack-sm" role="radiogroup">
+            <div class="opt dis"><span class="dot"></span><span class="tile blue"><i data-lucide="shirt"></i></span><div class="grow"><p class="cat-name">Laundry</p><p class="chore">Fold the laundry</p></div></div>
+            <div class="opt sel dis"><span class="dot"></span><span class="tile yellow"><i data-lucide="trash-2"></i></span><div class="grow"><p class="cat-name">Trash</p><p class="chore">Take out the trash</p></div></div>
+            <div class="opt dis"><span class="dot"></span><span class="tile peach"><i data-lucide="cooking-pot"></i></span><div class="grow"><p class="cat-name">Kitchen</p><p class="chore">Wash the dishes</p></div></div>
+          </div>
+        </div>
+        <div class="foot"><div class="actions"><button class="btn dis">Cancel</button><span class="spacer"></span><button class="btn primary pending"><span class="spin"></span>Offer swap</button></div></div>
+      </div>
+    </div>
+    <figcaption><strong>Dialog: pending</strong>A spinner on Offer swap; Cancel and the radios are disabled while the request runs. Offer swap keeps its label.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone">
+      <div class="screen">
+        <div class="page-head"><h2 class="page-title">Today</h2></div>
+        <div><h2 class="group">Offers to you <span class="count">1</span></h2>
+          <div class="stack">
+            <div class="card offer">
+              <div class="row"><span class="avatar xs yellow">AS</span><p class="bold">Ana</p></div>
+              <div class="side"><p class="lbl">Gives</p><div class="row"><span class="tile blue"><i data-lucide="brush"></i></span><div class="grow"><p class="cat-name">Floors</p><p class="chore">Vacuum the living room</p></div></div></div>
+              <div class="side"><p class="lbl">Wants</p><div class="row"><span class="tile peach"><i data-lucide="cooking-pot"></i></span><div class="grow"><p class="cat-name">Kitchen</p><p class="chore">Wash the dishes</p></div></div></div>
+              <div class="actions"><button class="btn">Decline</button><span class="spacer"></span><button class="btn primary">Accept</button></div>
+            </div>
+          </div>
+        </div>
+        <div><h2 class="group">Your Tasks <span class="count">1</span></h2>
+          <div class="stack">
+            <div class="card blue">
+              <div class="row"><span class="tile on-tint"><i data-lucide="shirt"></i></span><div class="grow"><p class="cat-name">Laundry</p><h3 class="card-title">Fold the laundry</h3></div></div>
+              <div class="actions"><span class="committed"><i data-lucide="circle-check"></i>Committed</span><button class="btn primary"><i data-lucide="check"></i>Done</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <figcaption><strong>After Decline, and after Cancel</strong><b>Decision: nothing.</b> No status line, no alert, no danger styling. Ana's first offer was declined and its card simply left. A Decline costs nothing (CONTEXT.md), and a polite "offer declined" line would make a plain no feel like an event. After Cancel it is the same: Your offers loses a card, or disappears when it was the last. This needs no new code path, because a successful action already clears the notice.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone">
+      <div class="screen">
+        <div class="page-head"><h2 class="page-title">Today</h2></div>
+        <p class="notice" role="status"><i data-lucide="info"></i>That offer changed since you looked. Your list is up to date.</p>
+        <div><h2 class="group">Your Tasks <span class="count">1</span></h2>
+          <div class="stack">
+            <div class="card blue">
+              <div class="row"><span class="tile on-tint"><i data-lucide="shirt"></i></span><div class="grow"><p class="cat-name">Laundry</p><h3 class="card-title">Fold the laundry</h3></div></div>
+              <div class="actions"><span class="committed"><i data-lucide="circle-check"></i>Committed</span><button class="btn primary"><i data-lucide="check"></i>Done</button></div>
+            </div>
+          </div>
+        </div>
+        <div><h2 class="group">Other Residents' Tasks <span class="count">1</span></h2>
+          <div class="stack">
+            <div class="card">
+              <div class="row"><span class="tile mint"><i data-lucide="bath"></i></span><div class="grow"><p class="cat-name">Bathroom</p><h3 class="card-title">Deep clean the shower</h3></div></div>
+              <div class="actions"><button class="btn"><i data-lucide="repeat-2"></i>Swap</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <figcaption><strong>After a stale-offer conflict</strong>The list reloads in place and the existing <code>role="status"</code> line (<code>Notice</code>) says so: bold, no <code>text-danger</code>. The wording blames neither Resident, because <code>restricted</code> and <code>recipient_drained</code> can concern either side; it avoids "they" and "you cannot".</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone">
+      <div class="screen">
+        <div><h2 class="group">Other Residents' Tasks <span class="count">1</span></h2>
+          <div class="card">
+            <div class="row"><span class="tile peach"><i data-lucide="cooking-pot"></i></span><div class="grow"><p class="cat-name">Kitchen</p><h3 class="card-title">Clean the stove</h3></div></div>
+            <p class="sm semi">With Ana</p>
+          </div>
+        </div>
+        <div class="rule"></div>
+        <p class="muted">Today's plan is made at 7:00 AM.</p>
+        <div class="rule"></div>
+        <p class="muted">Today's plan could not be used, so no Tasks were given today.</p>
+        <div class="rule"></div>
+        <div><h2 class="group">Other Residents' Tasks <span class="count">1</span></h2>
+          <div class="card">
+            <div class="row"><span class="tile mint"><i data-lucide="bath"></i></span><div class="grow"><p class="cat-name">Bathroom</p><h3 class="card-title">Clean the sink</h3></div></div>
+            <p class="sent"><i data-lucide="repeat-2"></i>You offered a swap</p>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <figcaption><strong>Where the control is absent</strong>Top to bottom, separated by rules (four screens in one phone): (1) a two-person Task shows "With Ana" and no Swap; (2) before the day is planned there are no Tasks to swap, only the planning-time line; (3) after a rejected run the plan text replaces everything and other Residents' Tasks are not listed at all; (4) a Task that already has your outgoing offer shows a quiet line instead of the button.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone">
+      <div class="screen">
+        <div class="page-head"><h2 class="page-title">Today</h2></div>
+        <div><h2 class="group">Your Tasks <span class="count">1</span></h2>
+          <div class="stack">
+            <div class="card mint">
+              <div class="row"><span class="tile on-tint"><i data-lucide="bath"></i></span><div class="grow"><p class="cat-name">Bathroom</p><h3 class="card-title">Deep clean the shower</h3></div></div>
+              <p class="reason"><i data-lucide="lightbulb"></i>Why: Swapped with Ana.</p>
+              <div class="actions"><span class="committed"><i data-lucide="circle-check"></i>Committed</span><button class="btn primary"><i data-lucide="check"></i>Done</button></div>
+            </div>
+          </div>
+        </div>
+        <div><h2 class="group">Other Residents' Tasks <span class="count">1</span></h2>
+          <div class="card">
+            <div class="row"><span class="tile yellow"><i data-lucide="trash-2"></i></span><div class="grow"><p class="cat-name">Trash</p><h3 class="card-title">Take out the trash</h3></div></div>
+            <p class="sm semi">With Ana</p>
+            <p class="reason"><i data-lucide="lightbulb"></i>Why: Swapped with Abner.</p>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <figcaption><strong>The swapped reason line</strong>The received Task is Committed straight away (Committed mark plus Done), and its reason line says it came from a Swap. The given Task shows the same line under the other Resident, with no actions.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone large">
+      <div class="screen">
+        <div class="page-head"><h2 class="page-title">Today</h2></div>
+        <div><h2 class="group">Offers to you <span class="count">1</span></h2>
+          <div class="card offer">
+            <div class="row"><span class="avatar xs lavender">MA</span><p class="bold">Maria Aparecida Albuquerque de Souza Lima</p></div>
+            <div class="side"><p class="lbl">Gives</p><div class="row"><span class="tile peach"><i data-lucide="cooking-pot"></i></span><div class="grow"><p class="cat-name">Kitchen</p><p class="chore">Deep clean the oven hood and its filters</p></div></div></div>
+            <div class="side"><p class="lbl">Wants</p><div class="row"><span class="tile peach"><i data-lucide="cooking-pot"></i></span><div class="grow"><p class="cat-name">Kitchen</p><p class="chore">Wipe down the fridge inside and out</p></div></div></div>
+            <div class="actions stacked"><button class="btn">Decline</button><button class="btn primary">Accept</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <figcaption><strong>Stress: 320px at 200% text</strong>A 40-character name and two long Chore names. At this width <code>ButtonRow</code>'s container is under 14rem, so both groups go full width and stack, Accept last, nearest the thumb. Nothing clips; the text wraps, and each tile or avatar sits above its name so the text keeps the full width. 200% is simulated with <code>zoom: 2</code> on the screen, because the mock sizes in rem. Open with <code>?lang=pt-BR</code> to see the Portuguese wording.</figcaption>
+  </figure>
+</main>
+<script src="mocks-i18n.js"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>
