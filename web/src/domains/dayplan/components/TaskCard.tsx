@@ -10,7 +10,7 @@ import { Card } from "../../../shared/ui/Card";
 import { useI18n, type MessageKey } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { ButtonRow } from "../../../shared/ui/ButtonRow";
-import { actionsFor, variantFor, type ActionSlot, type TaskAction, type TaskRole } from "../logic/actions";
+import { actionsFor, variantFor, type ActionSlot, type CardAction, type TaskAction, type TaskRole } from "../logic/actions";
 import { categoryLabel, importanceLabel, labelText, type Label } from "../../profile/logic/labels";
 import { dueWhen, formatDay } from "../logic/format";
 import { assignmentReasonLabel, poolReasonLabel } from "../logic/reasons";
@@ -31,6 +31,10 @@ interface Props {
   /** This card's own action in flight, which shows the spinner; null when it is another card's or none. */
   pending: TaskAction | null;
   onAction(action: TaskAction, task: PlanTask): void;
+  /** Whether a Swap can be offered for this Task (`canOfferFor`); only another Resident's card shows the control. */
+  canSwap?: boolean;
+  /** Swap opens a dialog and calls nothing, so it has its own handler and `onAction` keeps its type. */
+  onSwap?(task: PlanTask): void;
 }
 
 // Each action's visible label and its accessible name, which says which Task and starts with the visible
@@ -48,25 +52,37 @@ const ACTION_LABELS: Record<TaskAction, { label: MessageKey; named: MessageKey }
  * everything else is text, so nothing depends on colour, the icons or the Effort dots. A missing or unknown
  * Category is the neutral "Other" card, never the raw id.
  */
-export function TaskCard({ task, role, today, busy, pending, onAction }: Props) {
+export function TaskCard({ task, role, today, busy, pending, onAction, canSwap = false, onSwap }: Props) {
   const { t, locale } = useI18n();
   const text = (label: Label) => labelText(t, label);
   const own = role === "mine";
-  const { start, end, committed } = actionsFor(task, role);
+  const { start, end, committed } = actionsFor(task, role, { canSwap });
 
   // The slot picks the variant, and every action button reserves room for the spinner so the width holds.
-  const actionButton = (action: TaskAction, slot: ActionSlot) => (
-    <Button
-      key={action}
-      variant={variantFor(slot)}
-      disabled={busy}
-      pending={pending === action}
-      aria-label={t(ACTION_LABELS[action].named, { task: task.choreName })}
-      onClick={() => onAction(action, task)}
-    >
-      {t(ACTION_LABELS[action].label)}
-    </Button>
-  );
+  // Swap never shows the spinner (the dialog does) and opens a dialog instead of calling `onAction`.
+  const actionButton = (action: CardAction, slot: ActionSlot) =>
+    action === "swap" ? (
+      <Button
+        key={action}
+        variant={variantFor(slot)}
+        disabled={busy}
+        aria-label={t("dayplan.action.swap.named", { task: task.choreName })}
+        onClick={() => onSwap?.(task)}
+      >
+        {t("dayplan.action.swap")}
+      </Button>
+    ) : (
+      <Button
+        key={action}
+        variant={variantFor(slot)}
+        disabled={busy}
+        pending={pending === action}
+        aria-label={t(ACTION_LABELS[action].named, { task: task.choreName })}
+        onClick={() => onAction(action, task)}
+      >
+        {t(ACTION_LABELS[action].label)}
+      </Button>
+    );
 
   const style = categoryStyle(task.category);
   const reason = (role === "pool" ? poolReasonLabel : assignmentReasonLabel)(task.reason);

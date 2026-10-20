@@ -1,5 +1,5 @@
 import { Clock } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import type { DayPlan, PlanTask } from "../api/api";
 import { pendingAction, type Acting, type SwapAction, type TaskAction, type TaskRole } from "../logic/actions";
@@ -14,7 +14,9 @@ import { ResidentLabel } from "../../residents/components/ResidentLabel";
 import { DoneCard } from "./DoneCard";
 import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { DayPlanSkeleton } from "./DayPlanSkeleton";
+import { canOfferFor, offerableTasks } from "../logic/swaps";
 import { OfferGroup } from "./SwapOffers";
+import { OfferSwapDialog } from "./OfferSwapDialog";
 import { TaskCard } from "./TaskCard";
 import type { ActionNotice, useDayPlan } from "../hooks/useDayPlan";
 
@@ -31,7 +33,7 @@ type Day = ReturnType<typeof useDayPlan>;
  */
 export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null }) {
   const { t } = useI18n();
-  const { state, reload, run, acceptAll, answerSwap, acting, notice, settled } = day;
+  const { state, reload, run, acceptAll, answerSwap, offerSwap, acting, notice, settled } = day;
   // The page's one status announces the wait; the skeleton shows after 300ms and only for a first load.
   const showSkeleton = useReportFirstLoad(state.kind === "loading");
   const section = useRef<HTMLElement>(null);
@@ -79,6 +81,7 @@ export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null 
           onAccept={acceptAll}
           onAction={run}
           onAnswer={answerSwap}
+          onOffer={offerSwap}
         />
       )}
     </section>
@@ -138,6 +141,7 @@ function PlanView({
   onAccept,
   onAction,
   onAnswer,
+  onOffer,
 }: {
   plan: DayPlan;
   note: EnergyNote | null;
@@ -145,8 +149,11 @@ function PlanView({
   onAccept(): void;
   onAction(action: TaskAction, task: PlanTask): void;
   onAnswer(action: SwapAction, swapId: string): void;
+  onOffer(offeredTaskId: string, requestedTaskId: string): Promise<void>;
 }) {
   const { t, locale } = useI18n();
+  // The Task a Swap is being offered for. One dialog for the whole plan, mounted only after a tap on Swap.
+  const [offerFor, setOfferFor] = useState<PlanTask | null>(null);
   // The chip's note picks the reason for an empty list, so the two can never disagree.
   const reason = note && noTasksReason(note);
   // Every button waits while anything runs; only the pressed one shows its spinner.
@@ -161,8 +168,11 @@ function PlanView({
       busy={busy}
       pending={pendingAction(acting, task.id)}
       onAction={onAction}
+      canSwap={role === "other" && canOfferFor(plan, task)}
+      onSwap={setOfferFor}
     />
   );
+  const holder = offerFor && plan.others.find((other) => other.tasks.some((task) => task.id === offerFor.id));
 
   return (
     <div className="flex flex-col gap-8">
@@ -242,6 +252,16 @@ function PlanView({
           </ul>
         )}
       </div>
+
+      {offerFor && holder && (
+        <OfferSwapDialog
+          requested={offerFor}
+          holderId={holder.residentId}
+          options={offerableTasks(plan)}
+          offer={onOffer}
+          onClose={() => setOfferFor(null)}
+        />
+      )}
 
       {plan.doneToday.length > 0 && (
         <div>
