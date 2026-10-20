@@ -7,12 +7,10 @@ import { useI18n } from "../../../shared/i18n";
 import { AppDialog } from "../../../shared/ui/AppDialog";
 import { Button } from "../../../shared/ui/Button";
 import { ButtonRow } from "../../../shared/ui/ButtonRow";
+import { RADIO_CARD } from "../../../shared/ui/radioCard";
 import { useSubmitOnce } from "../../../shared/ui/useSubmitOnce";
 import { preselectedOffer } from "../logic/swaps";
 
-// A Task drawn as a full-width row around a hidden radio, filled when picked (as the Check-in levels are).
-const OPTION =
-  "relative mt-0 flex min-h-14 cursor-pointer items-center gap-3 rounded-card border border-border bg-surface-raised px-4 py-3 font-semibold motion-safe:transition-colors motion-safe:duration-150 has-[:checked]:border-accent has-[:checked]:bg-accent has-[:checked]:text-accent-contrast has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus has-[:disabled]:cursor-not-allowed has-[:disabled]:border-dashed";
 
 /**
  * Asks what the Resident will give for another Resident's Task. Mounted by the Today plan only while an offer is
@@ -94,7 +92,7 @@ export function OfferSwapDialog({
           <legend className="p-0 text-lg font-semibold">{t("dayplan.swap.offer.legend")}</legend>
           <div className="mt-3 flex flex-col gap-2">
             {options.map((task) => (
-              <label key={task.id} className={OPTION}>
+              <label key={task.id} className={RADIO_CARD}>
                 <input
                   type="radio"
                   name={groupName}

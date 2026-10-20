@@ -31,19 +31,21 @@ interface Props {
   /** This card's own action in flight, which shows the spinner; null when it is another card's or none. */
   pending: TaskAction | null;
   onAction(action: TaskAction, task: PlanTask): void;
-  /** Whether a Swap can be offered for this Task (`canOfferFor`); only another Resident's card shows the control. */
-  canSwap?: boolean;
-  /** Swap opens a dialog and calls nothing, so it has its own handler and `onAction` keeps its type. */
+  /**
+   * Opens the dialog to offer a Swap for this Task. Pass it only when a Swap can be offered (`canOfferFor`) on
+   * another Resident's card; without it the card has no Swap button. Swap calls nothing, so `onAction` keeps its type.
+   */
   onSwap?(task: PlanTask): void;
 }
 
 // Each action's visible label and its accessible name, which says which Task and starts with the visible
 // label so voice control ("tap Accept") finds it.
-const ACTION_LABELS: Record<TaskAction, { label: MessageKey; named: MessageKey }> = {
+const ACTION_LABELS: Record<CardAction, { label: MessageKey; named: MessageKey }> = {
   accept: { label: "dayplan.action.accept", named: "dayplan.action.accept.named" },
   refuse: { label: "dayplan.action.refuse", named: "dayplan.action.refuse.named" },
   take: { label: "dayplan.action.take", named: "dayplan.action.take.named" },
   done: { label: "dayplan.action.done", named: "dayplan.action.done.named" },
+  swap: { label: "dayplan.action.swap", named: "dayplan.action.swap.named" },
 };
 
 /**
@@ -52,37 +54,26 @@ const ACTION_LABELS: Record<TaskAction, { label: MessageKey; named: MessageKey }
  * everything else is text, so nothing depends on colour, the icons or the Effort dots. A missing or unknown
  * Category is the neutral "Other" card, never the raw id.
  */
-export function TaskCard({ task, role, today, busy, pending, onAction, canSwap = false, onSwap }: Props) {
+export function TaskCard({ task, role, today, busy, pending, onAction, onSwap }: Props) {
   const { t, locale } = useI18n();
   const text = (label: Label) => labelText(t, label);
   const own = role === "mine";
-  const { start, end, committed } = actionsFor(task, role, { canSwap });
+  const { start, end, committed } = actionsFor(task, role, { canSwap: onSwap !== undefined });
 
   // The slot picks the variant, and every action button reserves room for the spinner so the width holds.
-  // Swap never shows the spinner (the dialog does) and opens a dialog instead of calling `onAction`.
-  const actionButton = (action: CardAction, slot: ActionSlot) =>
-    action === "swap" ? (
-      <Button
-        key={action}
-        variant={variantFor(slot)}
-        disabled={busy}
-        aria-label={t("dayplan.action.swap.named", { task: task.choreName })}
-        onClick={() => onSwap?.(task)}
-      >
-        {t("dayplan.action.swap")}
-      </Button>
-    ) : (
-      <Button
-        key={action}
-        variant={variantFor(slot)}
-        disabled={busy}
-        pending={pending === action}
-        aria-label={t(ACTION_LABELS[action].named, { task: task.choreName })}
-        onClick={() => onAction(action, task)}
-      >
-        {t(ACTION_LABELS[action].label)}
-      </Button>
-    );
+  // `pending` is never "swap": the dialog shows its own spinner.
+  const actionButton = (action: CardAction, slot: ActionSlot) => (
+    <Button
+      key={action}
+      variant={variantFor(slot)}
+      disabled={busy}
+      pending={pending === action}
+      aria-label={t(ACTION_LABELS[action].named, { task: task.choreName })}
+      onClick={() => (action === "swap" ? onSwap?.(task) : onAction(action, task))}
+    >
+      {t(ACTION_LABELS[action].label)}
+    </Button>
+  );
 
   const style = categoryStyle(task.category);
   const reason = (role === "pool" ? poolReasonLabel : assignmentReasonLabel)(task.reason);

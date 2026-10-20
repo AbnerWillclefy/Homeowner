@@ -152,14 +152,15 @@ function PlanView({
   onOffer(offeredTaskId: string, requestedTaskId: string): Promise<void>;
 }) {
   const { t, locale } = useI18n();
-  // The Task a Swap is being offered for. One dialog for the whole plan, mounted only after a tap on Swap.
-  const [offerFor, setOfferFor] = useState<PlanTask | null>(null);
+  // The Task a Swap is being offered for and who holds it, both known at the tap. One dialog for the whole plan,
+  // mounted only after a tap on Swap.
+  const [offer, setOffer] = useState<{ task: PlanTask; holderId: string } | null>(null);
   // The chip's note picks the reason for an empty list, so the two can never disagree.
   const reason = note && noTasksReason(note);
   // Every button waits while anything runs; only the pressed one shows its spinner.
   const busy = acting !== null;
   const proposed = plan.mine.filter((task) => !task.committed).length;
-  const card = (task: PlanTask, role: TaskRole) => (
+  const card = (task: PlanTask, role: TaskRole, holderId?: string) => (
     <TaskCard
       key={task.id}
       task={task}
@@ -168,11 +169,13 @@ function PlanView({
       busy={busy}
       pending={pendingAction(acting, task.id)}
       onAction={onAction}
-      canSwap={role === "other" && canOfferFor(plan, task)}
-      onSwap={setOfferFor}
+      onSwap={
+        role === "other" && holderId !== undefined && canOfferFor(plan, task)
+          ? () => setOffer({ task, holderId })
+          : undefined
+      }
     />
   );
-  const holder = offerFor && plan.others.find((other) => other.tasks.some((task) => task.id === offerFor.id));
 
   return (
     <div className="flex flex-col gap-8">
@@ -234,7 +237,7 @@ function PlanView({
                   <ResidentLabel residentId={other.residentId} />
                 </h4>
                 <ul className={LIST}>
-                  {other.tasks.map((task) => card(task, "other"))}
+                  {other.tasks.map((task) => card(task, "other", other.residentId))}
                 </ul>
               </section>
             ))}
@@ -253,13 +256,13 @@ function PlanView({
         )}
       </div>
 
-      {offerFor && holder && (
+      {offer && (
         <OfferSwapDialog
-          requested={offerFor}
-          holderId={holder.residentId}
+          requested={offer.task}
+          holderId={offer.holderId}
           options={offerableTasks(plan)}
           offer={onOffer}
-          onClose={() => setOfferFor(null)}
+          onClose={() => setOffer(null)}
         />
       )}
 
