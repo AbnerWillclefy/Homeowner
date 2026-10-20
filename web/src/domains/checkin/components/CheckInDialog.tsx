@@ -11,6 +11,7 @@ import { ButtonRow } from "../../../shared/ui/ButtonRow";
 import { SAVE_FAILURE_KEY } from "../logic/failureMessages";
 import { formFrom, submission, toggledRestriction, type CheckInFormState } from "../logic/form";
 import { LEVEL_KEYS } from "../logic/labels";
+import { RADIO_CARD } from "../../../shared/ui/radioCard";
 import type { SaveFailure } from "../logic/state";
 
 // Rest, then a battery filling up. Decoration only: the level's name is always written next to it.
@@ -20,10 +21,6 @@ const LEVEL_ICONS: Record<Level, LucideIcon> = {
   normal: BatteryMedium,
   energized: BatteryFull,
 };
-
-// A level drawn as a full-width row around a hidden radio, filled when picked.
-const LEVEL =
-  "relative mt-0 flex min-h-14 cursor-pointer items-center gap-3 rounded-card border border-border bg-surface-raised px-4 py-3 font-semibold motion-safe:transition-colors motion-safe:duration-150 has-[:checked]:border-accent has-[:checked]:bg-accent has-[:checked]:text-accent-contrast has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus has-[:disabled]:cursor-not-allowed has-[:disabled]:border-dashed";
 
 // A Restriction drawn as a pill around a hidden checkbox, as in the Home questionnaire.
 const CHIP =
@@ -117,7 +114,7 @@ export function CheckInDialog({
               const keys = LEVEL_KEYS[level];
               const Icon = LEVEL_ICONS[level];
               return (
-                <label key={level} className={`group ${LEVEL}`}>
+                <label key={level} className={`group ${RADIO_CARD}`}>
                   <input
                     type="radio"
                     name={`${idPrefix}-level`}

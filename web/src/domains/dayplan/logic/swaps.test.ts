@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SwapOffer } from "../api/api";
 import { dayPlan, task } from "../testing/fixtures";
-import { canOfferFor, offerableTasks } from "./swaps";
+import { canOfferFor, offerableTasks, preselectedOffer } from "./swaps";
 
 const twoPerson = (id: string) => ({ ...task(id), people: 2 });
 const offer = (offered: string, requested: string): SwapOffer => ({
@@ -68,5 +68,19 @@ describe("canOfferFor", () => {
 
   it("hides it for my own Task", () => {
     expect(canOfferFor(plan, task("m"))).toBe(false);
+  });
+});
+
+describe("preselectedOffer", () => {
+  it("is the only Task I can give", () => {
+    expect(preselectedOffer([task("a")])).toBe("a");
+  });
+
+  it("is nothing when I can give several, so the choice is mine", () => {
+    expect(preselectedOffer([task("a"), task("b")])).toBeNull();
+  });
+
+  it("is nothing when I can give none", () => {
+    expect(preselectedOffer([])).toBeNull();
   });
 });

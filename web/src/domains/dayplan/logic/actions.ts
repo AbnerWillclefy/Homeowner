@@ -1,5 +1,7 @@
 export type TaskRole = "mine" | "other" | "pool";
 export type TaskAction = "accept" | "refuse" | "done" | "take";
+/** A button on a card: a Task action, or Swap, which opens a dialog and calls nothing by itself. */
+export type CardAction = TaskAction | "swap";
 export type ActionSlot = "start" | "end";
 
 export type SwapAction = "acceptSwap" | "declineSwap" | "cancelSwap";
@@ -36,17 +38,22 @@ export type Acting =
  * says whether to show the Committed mark, which the card puts first in the start slot.
  */
 export interface TaskActions {
-  start: TaskAction[];
-  end: TaskAction[];
+  start: CardAction[];
+  end: CardAction[];
   committed: boolean;
 }
 
 /**
  * The buttons a Task gets. `mine` is a Task assigned to the caller: Proposed until they accept it (Refuse,
  * Accept; Done only once it is Committed), then Committed. Pool Tasks can be taken, or done in one step (Done, secondary, at the start), except those that need two
- * people, which the API refuses for now. Other Residents' Tasks are theirs: nothing to do and nothing to say.
+ * people, which the API refuses for now. Other Residents' Tasks are theirs: nothing to do and nothing to say, except Swap
+ * (alone, at the start, a deliberate secondary action) when `canSwap` says the plan allows an offer.
  */
-export function actionsFor(task: { people: number; committed?: boolean }, role: TaskRole): TaskActions {
+export function actionsFor(
+  task: { people: number; committed?: boolean },
+  role: TaskRole,
+  { canSwap = false }: { canSwap?: boolean } = {},
+): TaskActions {
   switch (role) {
     case "mine":
       return task.committed
@@ -57,7 +64,7 @@ export function actionsFor(task: { people: number; committed?: boolean }, role: 
         ? { start: [], end: [], committed: false }
         : { start: ["done"], end: ["take"], committed: false };
     case "other":
-      return { start: [], end: [], committed: false };
+      return { start: canSwap ? ["swap"] : [], end: [], committed: false };
   }
 }
 

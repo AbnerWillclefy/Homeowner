@@ -34,10 +34,35 @@ function accept(plan: DayPlan, offer: SwapOffer): FakeReply | undefined {
 /**
  * The answer routes of Swap offers, stateful against `state.dayPlan`: each mutates the plan in place and answers
  * it, as the real API does. An id that is not on the right list is `404 swap_not_found`. Not part of
- * `signedInHandlers`: a spec opts in with `fakeApi.use(swapsHandlers)`. `POST /home/swaps` (making an offer) is
- * the one route still to add here.
+ * `signedInHandlers`: a spec opts in with `fakeApi.use(swapsHandlers)`. `POST /home/swaps` makes an offer: the
+ * offered Task must be one of yours (else `409 not_yours`) and the requested one another Resident's (else
+ * `409 not_held_by_other`); the new offer is appended to `swaps.outgoing` and the plan answered. Restrictions,
+ * Drained and a pending offer are the real server's call: a spec forces those with `fakeApi.override`.
  */
 export function swapsHandlers(api: FakeApi): void {
+  api.on(
+    "POST /home/swaps",
+    signedIn((request, state: FakeState) => {
+      const plan = state.dayPlan;
+      if (!plan) return json(409, { error: "no_plan_today" });
+      const { offeredTaskId, requestedTaskId } = (request.body ?? {}) as { offeredTaskId?: string; requestedTaskId?: string };
+      const offered = plan.mine.find((task) => task.id === offeredTaskId);
+      if (!offered) return json(409, { error: "not_yours" });
+      const holder = plan.others.find((other) => other.tasks.some((task) => task.id === requestedTaskId));
+      const requested = holder?.tasks.find((task) => task.id === requestedTaskId);
+      if (!holder || !requested) return json(409, { error: "not_held_by_other" });
+      // As `tasks.Open` does: what the offer shows is the Task, without its reason, Commitment or partners.
+      const open = ({ reason: _reason, committed: _committed, with: _with, ...task }: PlanTask): PlanTask => task as PlanTask;
+      plan.swaps.outgoing.push({
+        id: `swap-${plan.swaps.outgoing.length + plan.swaps.incoming.length + 1}`,
+        residentId: holder.residentId,
+        offered: open(offered),
+        requested: open(requested),
+      });
+      return json(200, plan);
+    }),
+  );
+
   const answer = (list: "incoming" | "outgoing", change: (plan: DayPlan, offer: SwapOffer) => FakeReply | void) =>
     signedIn((request, state: FakeState) => {
       const plan = state.dayPlan;

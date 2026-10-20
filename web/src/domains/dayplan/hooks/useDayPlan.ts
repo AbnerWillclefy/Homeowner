@@ -169,7 +169,7 @@ export function useDayPlan(version: number) {
   );
   const acceptAll = useCallback(() => void act({ taskId: null, action: "acceptAll" }), [act]);
 
-  /** Offers a Swap. Resolves when the action ends, so a dialog can wait for it. Nothing renders it yet. */
+  /** Offers a Swap. Resolves when the action ends, so the offer dialog can wait for it. */
   const offer = useCallback(
     (offeredTaskId: string, requestedTaskId: string) => act({ action: "offerSwap", offeredTaskId, requestedTaskId }),
     [act],
