@@ -8,6 +8,11 @@ export function offerableTasks(plan: DayPlan): PlanTask[] {
   return plan.mine.filter(isOnePerson);
 }
 
+/** The Task the dialog starts on: the only one when there is exactly one, else none (the Resident chooses). */
+export function preselectedOffer(options: PlanTask[]): string | null {
+  return options.length === 1 ? options[0]!.id : null;
+}
+
 /**
  * Whether another Resident's Task shows a Swap control. Not for a two-person Task, before the day is planned,
  * after a rejected run, when the caller has nothing to offer, for their own Task, or when that Task already has
