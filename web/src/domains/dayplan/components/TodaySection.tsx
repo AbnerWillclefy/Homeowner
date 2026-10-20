@@ -14,7 +14,7 @@ import { ResidentLabel } from "../../residents/components/ResidentLabel";
 import { DoneCard } from "./DoneCard";
 import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { DayPlanSkeleton } from "./DayPlanSkeleton";
-import { IncomingOffers, OutgoingOffers } from "./SwapOffers";
+import { OfferGroup } from "./SwapOffers";
 import { TaskCard } from "./TaskCard";
 import type { ActionNotice, useDayPlan } from "../hooks/useDayPlan";
 
@@ -178,9 +178,12 @@ function PlanView({
         </p>
       )}
 
-      {plan.planned && (
-        <IncomingOffers incoming={plan.swaps.incoming} acting={acting} onAnswer={onAnswer} />
-      )}
+      <OfferGroup
+        offers={plan.planned ? plan.swaps.incoming : []}
+        direction="incoming"
+        acting={acting}
+        onAnswer={onAnswer}
+      />
 
       {plan.planned && (
         <div>
@@ -204,9 +207,12 @@ function PlanView({
         </div>
       )}
 
-      {plan.planned && (
-        <OutgoingOffers outgoing={plan.swaps.outgoing} acting={acting} onAnswer={onAnswer} />
-      )}
+      <OfferGroup
+        offers={plan.planned ? plan.swaps.outgoing : []}
+        direction="outgoing"
+        acting={acting}
+        onAnswer={onAnswer}
+      />
 
       {plan.planned && plan.others.length > 0 && (
         <div>

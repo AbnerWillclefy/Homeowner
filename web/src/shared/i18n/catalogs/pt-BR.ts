@@ -449,7 +449,7 @@ export const ptBR: Messages = {
   "dayplan.swap.decline.named": "Recusar troca: {give} por {want}",
   "dayplan.swap.cancel.named": "Cancelar troca: {give} por {want}",
   "dayplan.swap.hint": "Se for aceita, “{task}” fica com você, já assumida, e conta para sua sequência.",
-  "dayplan.swap.conflict.not_yours":"Essa tarefa não está mais com você. Sua lista está atualizada.",
+  "dayplan.swap.conflict.not_yours": "Essa tarefa não está mais com você. Sua lista está atualizada.",
   "dayplan.swap.conflict.not_held_by_other": "Essa tarefa mudou de mãos. Sua lista está atualizada.",
   "dayplan.swap.conflict.already_done": "Essa tarefa já foi concluída. Sua lista está atualizada.",
   "dayplan.swap.conflict.two_person_task": "Uma tarefa para duas pessoas não pode ser trocada.",

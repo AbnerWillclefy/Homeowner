@@ -12,9 +12,11 @@ import { pendingSwap, type Acting, type SwapAction } from "../logic/actions";
 
 const LIST = "m-0 flex list-none flex-col gap-3 p-0";
 
+type Direction = "incoming" | "outgoing";
+
 interface Props {
-  incoming: SwapOffer[];
-  outgoing: SwapOffer[];
+  offers: SwapOffer[];
+  direction: Direction;
   acting: Acting;
   onAnswer(action: SwapAction, swapId: string): void;
 }
@@ -26,32 +28,44 @@ const LABELS: Record<SwapAction, { label: MessageKey; named: MessageKey }> = {
   cancelSwap: { label: "dayplan.swap.cancel", named: "dayplan.swap.cancel.named" },
 };
 
-/** "Offers to you": waiting on the Resident, so it sits above their own Tasks. Empty renders nothing. */
-export function IncomingOffers({ incoming, acting, onAnswer }: Omit<Props, "outgoing">) {
-  const { t } = useI18n();
-  if (incoming.length === 0) return null;
-  return (
-    <div>
-      <GroupHeading count={incoming.length}>{t("dayplan.swap.incoming.heading")}</GroupHeading>
-      <ul className={LIST}>
-        {incoming.map((offer) => (
-          <OfferCard key={offer.id} offer={offer} direction="incoming" acting={acting} onAnswer={onAnswer} />
-        ))}
-      </ul>
-    </div>
-  );
-}
+/**
+ * What differs between the two groups. `offered` is what the offerer gives and `requested` what they ask for, so
+ * an incoming card reads "Gives / Wants" and an outgoing one, said from the caller's side, "You give / You get".
+ */
+const DIRECTIONS: Record<
+  Direction,
+  { heading: MessageKey; offered: MessageKey; requested: MessageKey; hint: boolean; start: SwapAction; end?: SwapAction }
+> = {
+  incoming: {
+    heading: "dayplan.swap.incoming.heading",
+    offered: "dayplan.swap.gives",
+    requested: "dayplan.swap.wants",
+    hint: false,
+    start: "declineSwap",
+    end: "acceptSwap",
+  },
+  outgoing: {
+    heading: "dayplan.swap.outgoing.heading",
+    offered: "dayplan.swap.youGive",
+    requested: "dayplan.swap.youGet",
+    hint: true,
+    start: "cancelSwap",
+  },
+};
 
-/** "Your offers": waiting on someone else, so it sits below the Resident's own Tasks. Empty renders nothing. */
-export function OutgoingOffers({ outgoing, acting, onAnswer }: Omit<Props, "incoming">) {
+/**
+ * "Offers to you" waits on the Resident, so it sits above their own Tasks; "Your offers" waits on someone else,
+ * so it sits below. Empty renders nothing.
+ */
+export function OfferGroup({ offers, direction, acting, onAnswer }: Props) {
   const { t } = useI18n();
-  if (outgoing.length === 0) return null;
+  if (offers.length === 0) return null;
   return (
     <div>
-      <GroupHeading count={outgoing.length}>{t("dayplan.swap.outgoing.heading")}</GroupHeading>
+      <GroupHeading count={offers.length}>{t(DIRECTIONS[direction].heading)}</GroupHeading>
       <ul className={LIST}>
-        {outgoing.map((offer) => (
-          <OfferCard key={offer.id} offer={offer} direction="outgoing" acting={acting} onAnswer={onAnswer} />
+        {offers.map((offer) => (
+          <OfferCard key={offer.id} offer={offer} direction={direction} acting={acting} onAnswer={onAnswer} />
         ))}
       </ul>
     </div>
@@ -75,24 +89,10 @@ function Side({ label, task }: { label: string; task: PlanTask }) {
   );
 }
 
-/**
- * One Swap offer. `offered` is what the offerer gives and `requested` what they ask for, so an incoming card
- * reads "Gives / Wants" and an outgoing one, said from the caller's side, "You give / You get". Declining and
- * cancelling are plain answers, not failures: the card just leaves, with nothing in danger colours.
- */
-function OfferCard({
-  offer,
-  direction,
-  acting,
-  onAnswer,
-}: {
-  offer: SwapOffer;
-  direction: "incoming" | "outgoing";
-  acting: Acting;
-  onAnswer(action: SwapAction, swapId: string): void;
-}) {
+/** One Swap offer. Declining and cancelling are plain answers, not failures: the card just leaves, with nothing in danger colours. */
+function OfferCard({ offer, direction, acting, onAnswer }: Omit<Props, "offers"> & { offer: SwapOffer }) {
   const { t } = useI18n();
-  const incoming = direction === "incoming";
+  const { offered, requested, hint, start, end } = DIRECTIONS[direction];
   const busy = acting !== null;
   const pending = pendingSwap(acting, offer.id);
   const answer = (action: SwapAction, variant: "primary" | "secondary") => (
@@ -114,18 +114,14 @@ function OfferCard({
         <p className="my-0 font-bold">
           <ResidentLabel residentId={offer.residentId} />
         </p>
-        <Side label={t(incoming ? "dayplan.swap.gives" : "dayplan.swap.youGive")} task={offer.offered} />
-        <Side label={t(incoming ? "dayplan.swap.wants" : "dayplan.swap.youGet")} task={offer.requested} />
-        {!incoming && (
+        <Side label={t(offered)} task={offer.offered} />
+        <Side label={t(requested)} task={offer.requested} />
+        {hint && (
           <p className="my-0 text-sm font-semibold text-muted [overflow-wrap:anywhere]">
             {t("dayplan.swap.hint", { task: offer.requested.choreName })}
           </p>
         )}
-        {incoming ? (
-          <ButtonRow start={answer("declineSwap", "secondary")} end={answer("acceptSwap", "primary")} />
-        ) : (
-          <ButtonRow start={answer("cancelSwap", "secondary")} />
-        )}
+        <ButtonRow start={answer(start, "secondary")} end={end && answer(end, "primary")} />
       </Card>
     </li>
   );

@@ -439,7 +439,7 @@ export const enUS = {
   "dayplan.swap.decline.named": "Decline swap: {give} for {want}",
   "dayplan.swap.cancel.named": "Cancel swap: {give} for {want}",
   "dayplan.swap.hint": "If it is accepted, “{task}” becomes yours, already accepted, and counts towards your Streak.",
-  "dayplan.swap.conflict.not_yours":"That Task is no longer yours. Your list is up to date.",
+  "dayplan.swap.conflict.not_yours": "That Task is no longer yours. Your list is up to date.",
   "dayplan.swap.conflict.not_held_by_other": "That Task has moved to someone else. Your list is up to date.",
   "dayplan.swap.conflict.already_done": "That Task is already done. Your list is up to date.",
   "dayplan.swap.conflict.two_person_task": "A Task for two people cannot be swapped.",
