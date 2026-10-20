@@ -1,6 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SESSION_KEY } from "../../auth/logic/session";
-import { acceptAll, acceptTask, completeTask, getDayPlan, planMyDay, refuseTask, replanHome, takeTask } from "./api";
+import {
+  acceptAll,
+  acceptSwap,
+  acceptTask,
+  cancelSwap,
+  completeTask,
+  declineSwap,
+  getDayPlan,
+  offerSwap,
+  planMyDay,
+  refuseTask,
+  replanHome,
+  takeTask,
+} from "./api";
 
 function stubStorage(signedIn: boolean) {
   const data = new Map<string, string>();
@@ -46,6 +59,7 @@ const PLAN = {
   others: [{ residentId: "r2", tasks: [{ ...TASK, id: "t2", reason: "deadline_today" }] }],
   pool: [{ ...TASK, id: "t3", reason: "no_energy_left" }],
   doneToday: [],
+  swaps: { incoming: [], outgoing: [] },
 };
 
 beforeEach(() => stubStorage(true));
@@ -71,6 +85,7 @@ describe("getDayPlan", () => {
       others: [],
       pool: [{ ...TASK }],
       doneToday: [],
+      swaps: { incoming: [], outgoing: [] },
     };
     stubFetch(Response.json(body));
     expect(await getDayPlan()).toEqual({ kind: "ok", plan: body });
@@ -289,6 +304,9 @@ describe.each([
   ["takeTask", () => takeTask("t 1/x"), "/home/tasks/t%201%2Fx/take"],
   ["completeTask", () => completeTask("t 1/x"), "/home/tasks/t%201%2Fx/complete"],
   ["acceptAll", () => acceptAll(), "/home/day-plan/accept-all"],
+  ["acceptSwap", () => acceptSwap("s 1/x"), "/home/swaps/s%201%2Fx/accept"],
+  ["declineSwap", () => declineSwap("s 1/x"), "/home/swaps/s%201%2Fx/decline"],
+  ["cancelSwap", () => cancelSwap("s 1/x"), "/home/swaps/s%201%2Fx/cancel"],
 ])("%s", (_name, call, path) => {
   it("posts to the route with no body and returns the Day Plan", async () => {
     const fetch = stubFetch(Response.json(PLAN));
@@ -324,6 +342,92 @@ describe.each([
     const fetch = stubFetch(Response.json(PLAN));
     expect(await call()).toEqual({ kind: "not-signed-in" });
     expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+const EMPTY_SWAPS = { incoming: [], outgoing: [] };
+const OFFER = { id: "s1", residentId: "r2", offered: { ...TASK, id: "t1" }, requested: { ...TASK, id: "t2" } };
+
+async function readSwaps(swaps: unknown) {
+  stubFetch(Response.json({ ...PLAN, swaps }));
+  const result = await getDayPlan();
+  if (result.kind !== "ok") throw new Error(`expected ok, got ${result.kind}`);
+  return result.plan.swaps;
+}
+
+describe("swaps", () => {
+  it.each([
+    ["absent", undefined],
+    ["null", null],
+    ["a string", "x"],
+    ["an empty object", {}],
+    ["null lists", { incoming: null, outgoing: null }],
+    ["non-array lists", { incoming: "x", outgoing: 3 }],
+    ["empty lists", EMPTY_SWAPS],
+  ])("reads %s as no offers", async (_name, swaps) => {
+    expect(await readSwaps(swaps)).toEqual(EMPTY_SWAPS);
+  });
+
+  it("reads a valid incoming and a valid outgoing offer", async () => {
+    const out = { ...OFFER, id: "s2", residentId: "r3" };
+    expect(await readSwaps({ incoming: [OFFER], outgoing: [out] })).toEqual({ incoming: [OFFER], outgoing: [out] });
+  });
+
+  it("drops a malformed offer, keeps its siblings and the plan stays ok", async () => {
+    const badTask = { ...OFFER, id: "bad", offered: { id: "x" } };
+    const noId = { ...OFFER, id: undefined };
+    const blankId = { ...OFFER, id: "" };
+    const noResident = { ...OFFER, id: "s9", residentId: 4 };
+    const noRequested = { ...OFFER, id: "s8", requested: null };
+    const emptyTask = { ...OFFER, id: "s7", requested: { ...TASK, id: "" } };
+    const swaps = await readSwaps({
+      incoming: [badTask, OFFER, noId, blankId, null, "x", 7, noResident, noRequested, emptyTask],
+      outgoing: [badTask],
+    });
+    expect(swaps).toEqual({ incoming: [OFFER], outgoing: [] });
+  });
+});
+
+describe("offerSwap", () => {
+  it("posts the two Task ids as JSON and returns the Day Plan", async () => {
+    const fetch = stubFetch(Response.json(PLAN));
+    expect(await offerSwap("t1", "t2")).toEqual({ kind: "ok", plan: PLAN });
+    expect(fetch.mock.calls[0]![0]).toBe("http://api.test/home/swaps");
+    const init = fetch.mock.calls[0]![1];
+    expect(init?.method).toBe("POST");
+    expect(new Headers(init?.headers).get("Content-Type")).toBe("application/json");
+    expect(JSON.parse(init?.body as string)).toEqual({ offeredTaskId: "t1", requestedTaskId: "t2" });
+  });
+
+  it("is a conflict with the code on 409, and none on 404 task not found", async () => {
+    stubFetch(Response.json({ error: "swap_pending" }, { status: 409 }));
+    expect(await offerSwap("t1", "t2")).toEqual({ kind: "conflict", code: "swap_pending" });
+    stubFetch(Response.json({ error: "task not found" }, { status: 404 }));
+    expect(await offerSwap("t1", "t2")).toEqual({ kind: "none" });
+  });
+});
+
+describe("a 404 on a Swap route", () => {
+  it("is a conflict when the code is swap_not_found", async () => {
+    stubFetch(Response.json({ error: "swap_not_found" }, { status: 404 }));
+    expect(await acceptSwap("s1")).toEqual({ kind: "conflict", code: "swap_not_found" });
+  });
+
+  it.each([
+    ["another code", () => Response.json({ error: "no home" }, { status: 404 })],
+    ["task not found", () => Response.json({ error: "task not found" }, { status: 404 })],
+    ["no body", () => new Response("", { status: 404 })],
+    ["an unreadable body", () => new Response("<html>", { status: 404 })],
+  ])("stays none with %s", async (_name, reply) => {
+    stubFetch(reply());
+    expect(await declineSwap("s1")).toEqual({ kind: "none" });
+    stubFetch(reply());
+    expect(await takeTask("t1")).toEqual({ kind: "none" });
+  });
+
+  it("is an error, not a conflict, when a read gets swap_not_found", async () => {
+    stubFetch(Response.json({ error: "swap_not_found" }, { status: 404 }));
+    expect(await getDayPlan()).toEqual({ kind: "error" });
   });
 });
 

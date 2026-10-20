@@ -77,8 +77,21 @@ export interface DayPlan {
   pool: PlanTask[];
   /** The caller's Tasks completed today, oldest first. */
   doneToday: CompletedTask[];
+  /** The Swap offers the caller is part of. Always present: an absent or odd `swaps` reads as no offers. */
+  swaps: { incoming: SwapOffer[]; outgoing: SwapOffer[] };
   /** Absent when there is none: before the plan, after a rejected run, or from an older API. */
   explanation?: Explanation;
+}
+
+/**
+ * A live Swap offer. `residentId` is the other Resident: the offerer on an incoming offer, the recipient on an
+ * outgoing one. `offered` is always what the offerer gives and `requested` what they ask for.
+ */
+export interface SwapOffer {
+  id: string;
+  residentId: string;
+  offered: PlanTask;
+  requested: PlanTask;
 }
 
 /**
@@ -201,6 +214,32 @@ function parseExplanation(value: unknown): Explanation | null {
   return { source, headline, detail };
 }
 
+function parseSwapOffer(body: unknown): SwapOffer | null {
+  if (!isRecord(body)) return null;
+  const { id, residentId } = body;
+  if (typeof id !== "string" || id === "" || typeof residentId !== "string") return null;
+  const offered = parseTask(body.offered);
+  const requested = parseTask(body.requested);
+  // A Task missing on the server arrives as an empty one (id ""): not an offer anyone can act on.
+  if (!offered || !requested || offered.id === "" || requested.id === "") return null;
+  return { id, residentId, offered, requested };
+}
+
+/** Never null: a bad list or entry must not cost the Resident their plan. */
+function parseSwapList(value: unknown): SwapOffer[] {
+  if (!Array.isArray(value)) return [];
+  return value.map(parseSwapOffer).filter((offer): offer is SwapOffer => offer !== null);
+}
+
+/**
+ * Lenient, the opposite of `parseTasks`: Swap offers are secondary to the plan, so an offer that cannot be read
+ * is dropped (like `category`) instead of turning the whole Day Plan into an error.
+ */
+function parseSwaps(value: unknown): DayPlan["swaps"] {
+  if (!isRecord(value)) return { incoming: [], outgoing: [] };
+  return { incoming: parseSwapList(value.incoming), outgoing: parseSwapList(value.outgoing) };
+}
+
 function parseDayPlan(body: unknown): DayPlan | null {
   if (!isRecord(body)) return null;
   const { date, allocationTime, planned, rejected, allocator, energy } = body;
@@ -222,7 +261,20 @@ function parseDayPlan(body: unknown): DayPlan | null {
   ) {
     return null;
   }
-  const plan: DayPlan = { date, allocationTime, planned, rejected, allocator, energy, mine, others, pool, doneToday };
+  const swaps = parseSwaps(body.swaps);
+  const plan: DayPlan = {
+    date,
+    allocationTime,
+    planned,
+    rejected,
+    allocator,
+    energy,
+    mine,
+    others,
+    pool,
+    doneToday,
+    swaps,
+  };
   if (typeof body.runId === "string" && body.runId !== "") plan.runId = body.runId;
   if (typeof body.fallbackReason === "string" && body.fallbackReason !== "") plan.fallbackReason = body.fallbackReason;
   const explanation = parseExplanation(body.explanation);
@@ -275,6 +327,22 @@ export const takeTask = (id: string) => post(taskPath(id, "take"));
 /** Records the Completion of one of the caller's Tasks. */
 export const completeTask = (id: string) => post(taskPath(id, "complete"));
 
+const swapPath = (id: string, action: string) => `/home/swaps/${encodeURIComponent(id)}/${action}`;
+
+/** Offers one of the caller's Tasks for another Resident's. Nothing moves until they accept. */
+export const offerSwap = (offeredTaskId: string, requestedTaskId: string) =>
+  send("/home/swaps", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ offeredTaskId, requestedTaskId }),
+  });
+/** Accepts a Swap offered to the caller: the two Tasks change hands. */
+export const acceptSwap = (id: string) => post(swapPath(id, "accept"));
+/** Declines a Swap offered to the caller. */
+export const declineSwap = (id: string) => post(swapPath(id, "decline"));
+/** Takes back a Swap the caller offered. */
+export const cancelSwap = (id: string) => post(swapPath(id, "cancel"));
+
 /** A read: a 409 is not something a read can get, so it counts as an error. */
 async function dayPlanCall(path: string, init?: RequestInit): Promise<DayPlanResult> {
   const result = await send(path, init);
@@ -285,7 +353,12 @@ async function send(path: string, init?: RequestInit): Promise<ActionResult> {
   try {
     const result = await authedFetch(path, init);
     if (result.kind === "not-signed-in") return result;
-    if (result.response.status === 404) return { kind: "none" };
+    if (result.response.status === 404) {
+      // A Swap that was answered or vanished: the screen is stale, like a 409. Any other 404 is a missing Home or Task.
+      return (await errorCode(result.response)) === "swap_not_found"
+        ? { kind: "conflict", code: "swap_not_found" }
+        : { kind: "none" };
+    }
     if (result.response.status === 409) return { kind: "conflict", code: (await errorCode(result.response)) ?? "unknown" };
     if (result.response.status !== 200) return { kind: "error" };
     const plan = parseDayPlan(await result.response.json());
