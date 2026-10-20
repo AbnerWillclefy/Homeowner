@@ -2,7 +2,7 @@ import { Clock } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Link } from "react-router";
 import type { DayPlan, PlanTask } from "../api/api";
-import { pendingAction, type Acting, type TaskAction, type TaskRole } from "../logic/actions";
+import { pendingAction, type Acting, type SwapAction, type TaskAction, type TaskRole } from "../logic/actions";
 import { ME_PATH } from "../../../app/logic/routes";
 import { noTasksReason, type EnergyNote, type NoTasksReason } from "../../checkin/logic/state";
 import { formatAllocationTime } from "../../home/logic/allocationTimes";
@@ -14,6 +14,7 @@ import { ResidentLabel } from "../../residents/components/ResidentLabel";
 import { DoneCard } from "./DoneCard";
 import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { DayPlanSkeleton } from "./DayPlanSkeleton";
+import { IncomingOffers, OutgoingOffers } from "./SwapOffers";
 import { TaskCard } from "./TaskCard";
 import type { ActionNotice, useDayPlan } from "../hooks/useDayPlan";
 
@@ -30,7 +31,7 @@ type Day = ReturnType<typeof useDayPlan>;
  */
 export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null }) {
   const { t } = useI18n();
-  const { state, reload, run, acceptAll, acting, notice, settled } = day;
+  const { state, reload, run, acceptAll, answerSwap, acting, notice, settled } = day;
   // The page's one status announces the wait; the skeleton shows after 300ms and only for a first load.
   const showSkeleton = useReportFirstLoad(state.kind === "loading");
   const section = useRef<HTMLElement>(null);
@@ -77,6 +78,7 @@ export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null 
           acting={acting}
           onAccept={acceptAll}
           onAction={run}
+          onAnswer={answerSwap}
         />
       )}
     </section>
@@ -135,12 +137,14 @@ function PlanView({
   acting,
   onAccept,
   onAction,
+  onAnswer,
 }: {
   plan: DayPlan;
   note: EnergyNote | null;
   acting: Acting;
   onAccept(): void;
   onAction(action: TaskAction, task: PlanTask): void;
+  onAnswer(action: SwapAction, swapId: string): void;
 }) {
   const { t, locale } = useI18n();
   // The chip's note picks the reason for an empty list, so the two can never disagree.
@@ -175,6 +179,10 @@ function PlanView({
       )}
 
       {plan.planned && (
+        <IncomingOffers incoming={plan.swaps.incoming} acting={acting} onAnswer={onAnswer} />
+      )}
+
+      {plan.planned && (
         <div>
           <GroupHeading count={plan.mine.length}>{t("dayplan.mine.heading")}</GroupHeading>
           {proposed > 0 && (
@@ -194,6 +202,10 @@ function PlanView({
             <EmptyMine reason={reason} />
           )}
         </div>
+      )}
+
+      {plan.planned && (
+        <OutgoingOffers outgoing={plan.swaps.outgoing} acting={acting} onAnswer={onAnswer} />
       )}
 
       {plan.planned && plan.others.length > 0 && (
