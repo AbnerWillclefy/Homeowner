@@ -117,20 +117,12 @@ const PT = {
   "Kitchen · 7:40 PM": "Cozinha · 19:40",
   "Nothing completed in the last 7 days.": "Nada concluído nos últimos 7 dias.",
   // Epic 5: Swap on Today
-  "Today": "Hoje",
-  "Chores": "Afazeres",
-  "Home": "Lar",
-  "Me": "Eu",
-  "Committed": "Assumida",
-  "Done": "Concluir",
   "Offers to you": "Trocas para você",
   "Your offers": "Suas trocas",
   "Other Residents' Tasks": "Tarefas dos outros moradores",
   "Gives": "Oferece",
   "Wants": "Quer",
   "You want": "Você quer",
-  "Accept": "Aceitar",
-  "Cancel": "Cancelar",
   "Swap": "Trocar",
   "Offer swap": "Oferecer troca",
   "What will you give?": "O que você oferece?",
@@ -148,7 +140,6 @@ const PT = {
   "Maria Aparecida Albuquerque de Souza Lima": "Maria Aparecida Albuquerque de Souza Lima",
   "Deep clean the oven hood and its filters": "Faxinar a coifa e os filtros do fogão",
   "Wipe down the fridge inside and out": "Limpar a geladeira por dentro e por fora",
-  "Ana": "Ana",
 };
 
 if (new URLSearchParams(location.search).get("lang") === "pt-BR") {
