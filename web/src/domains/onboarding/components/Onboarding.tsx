@@ -97,6 +97,7 @@ export function Onboarding({ position, onPosition }: Props) {
     return {
       body: (
         <>
+          {profile.state.kind === "loading" && <p role="status">{t("profile.loading")}</p>}
           <ProfileStatus state={profile.state} retry={profile.retry} />
           {profile.state.kind === "ready" && fields(profile.state)}
           {extra}
@@ -229,11 +230,11 @@ function NextButton({
     <Button
       variant={primary ? "primary" : "secondary"}
       fullWidth
-      disabled={saving || disabled}
-      aria-busy={saving}
+      disabled={disabled}
+      pending={saving}
       onClick={onClick}
     >
-      {saving ? t("onboarding.saving") : t(label)}
+      {t(label)}
     </Button>
   );
 }

@@ -10,6 +10,11 @@ output "web_bucket_name" {
   value = module.web.bucket_name
 }
 
+output "photos_bucket_name" {
+  description = "The private photo bucket, for debugging."
+  value       = module.photos.bucket_name
+}
+
 output "web_distribution_id" {
   value = module.web.distribution_id
 }

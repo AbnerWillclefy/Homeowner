@@ -3,6 +3,11 @@ variable "bucket_name" {
   type        = string
 }
 
+variable "photos_origin_domain" {
+  description = "Regional domain of the photo bucket. /avatars/* is served from it as a second origin."
+  type        = string
+}
+
 variable "name" {
   description = "Name used for the Origin Access Control and the distribution comment."
   type        = string

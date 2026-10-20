@@ -27,7 +27,7 @@ export const enUS = {
   "me.heading": "About you",
 
   // Home
-  "home.loading": "Loading your Home...",
+  "home.loading": "Loading your Home",
   "home.load.offline":
     "Homeowner cannot reach the service, so your Home could not be loaded. Check your connection and try again.",
   "home.load.error":
@@ -36,16 +36,33 @@ export const enUS = {
   "home.retry": "Try again",
   "home.create.heading": "Create your Home",
   "home.create.submit": "Create Home",
-  "home.create.submitting": "Creating...",
   "home.create.recovered":
     "You already have a Home, so Homeowner loaded it instead. Check its settings below.",
   "home.settings.heading": "Your Home",
-  "home.settings.plan.heading": "Day Plan",
   "home.settings.plan.hint": "When each day's plan is made, in your Home's timezone.",
   "home.summary": "Plans are made at {time}, {zone} time.",
   "home.settings.save": "Save changes",
-  "home.settings.saving": "Saving...",
   "home.settings.saved": "Your changes are saved.",
+  "home.settings.card.title": "Home settings",
+  "home.settings.card.hint": "Planning time and time zone",
+  "home.residents.heading": "Residents",
+  "home.residents.you": "You",
+  "home.residents.streak": { one: "{count} day", other: "{count} days" },
+  "home.residents.doneToday": { one: "{count} done today", other: "{count} done today" },
+  "home.residents.error": "Something went wrong loading the Residents. Try again in a moment.",
+  "resident.loading": "Loading this Resident",
+  "resident.back": "Your Home",
+  "resident.streak": { one: "day Streak", other: "day Streak" },
+  "resident.done7": { one: "Task done in 7 days", other: "Tasks done in 7 days" },
+  "resident.recent.heading": "Done lately",
+  "resident.day.today": "Today",
+  "resident.day.yesterday": "Yesterday",
+  "resident.completion.meta": "{category} · {time}",
+  "resident.completion.metaWith": "{category} · {time}, with {name}",
+  "resident.empty": "Nothing completed in the last 7 days.",
+  "resident.notFound": "We could not find this Resident in your Home.",
+  "resident.error": "Something went wrong loading this Resident. Try again in a moment.",
+  "resident.offline": "Homeowner cannot reach the service. Check your connection and try again.",
   "home.timezone.label": "Timezone",
   "home.allocationTime.label": "Allocation time",
   "home.save.offline":
@@ -63,7 +80,6 @@ export const enUS = {
     "If you are the last Resident, the Home and its Chores are deleted for good.",
   "home.leave.cancel": "Cancel",
   "home.leave.confirm": "Leave Home",
-  "home.leave.leaving": "Leaving...",
   "home.leave.offline":
     "Homeowner cannot reach the service, so you have not left. Check your connection and try again.",
   "home.leave.error":
@@ -82,7 +98,6 @@ export const enUS = {
   // Reminders
   "reminders.on": "Reminders are on for this device.",
   "reminders.enable": "Enable reminders",
-  "reminders.enabling": "Turning on...",
   "reminders.problem.denied":
     "Notifications are blocked for Homeowner. Allow them in your phone's Settings, under Notifications.",
   "reminders.problem.dismissed":
@@ -110,7 +125,7 @@ export const enUS = {
     "Close Safari and open Homeowner from its new icon on your Home Screen.",
 
   // Profile
-  "profile.loading": "Loading your details...",
+  "profile.loading": "Loading your details",
   "profile.offline":
     "Could not reach the service, so your details are not shown. Check your connection and try again.",
   "profile.error":
@@ -123,6 +138,37 @@ export const enUS = {
     "Could not save your change, so it was undone. Check your connection and try again.",
   "profile.saveFailed.notSignedIn":
     "You are not signed in any more, so your change was undone. Sign in again.",
+  "me.header.addLink": "Add your name and photo",
+  "me.header.edit": "Edit name and photo",
+  "me.header.loadFailed": "Could not load your name.",
+  "me.header.retry": "Try again",
+  "me.edit.heading": "Your name",
+  "me.edit.back": "Back",
+  "me.edit.nameLabel": "Name",
+  "me.edit.nameHint": "Your housemates see this name. Leave it empty and the start of your email is used.",
+  "me.edit.counter": "{count}/{max}",
+  "me.edit.save": "Save",
+  "profile.name.tooLong": "A name can have at most {max} characters. Shorten it and save again.",
+  "profile.name.invalid": "This name has characters that are not allowed. Remove them and save again.",
+  "profile.name.offline": "Could not reach the service, so your name was not saved. Check your connection and try again.",
+  "profile.name.error": "Something went wrong saving your name. Try again in a moment.",
+  "profile.name.notSignedIn": "You are not signed in any more. Sign in again to save your name.",
+  "me.photo.label": "Photo",
+  "me.photo.choose": "Choose photo",
+  "me.photo.another": "Choose another",
+  "me.photo.save": "Save photo",
+  "me.photo.retry": "Try again",
+  "me.photo.remove": "Remove photo",
+  "me.photo.preparing": "Preparing your photo...",
+  "me.photo.previewCaption": "This is how it will look",
+  "me.photo.hint": "Your housemates see it. It is cropped to a square, and nothing is sent until you save.",
+  "profile.photo.unreadable": "We could not read this file. Choose a photo in JPEG, PNG or WebP.",
+  "profile.photo.unprepared": "We could not prepare this photo. Try another one.",
+  "profile.photo.off": "Photos are not available right now. Try again later.",
+  "profile.photo.offline": "Could not reach the service, so the photo was not saved. Check your connection and try again.",
+  "profile.photo.error": "The photo was not saved and your current photo is unchanged. Try again.",
+  "profile.photo.removeError": "The photo was not removed. Try again.",
+  "profile.photo.notSignedIn": "You are not signed in any more. Sign in again to change your photo.",
   "profile.baseline.heading": "Baseline",
   "profile.baseline.hint": "Your usual Energy on each day of the week. Your Check-in adjusts it for the day.",
   "profile.baseline.level.low": "Low",
@@ -160,7 +206,7 @@ export const enUS = {
     one: "{count} Chore in your Home",
     other: "{count} Chores in your Home",
   },
-  "chores.loading": "Loading your Chores...",
+  "chores.loading": "Loading your Chores",
   "chores.load.offline":
     "Your Chores could not be loaded because Homeowner cannot reach the service. Check your connection and try again.",
   "chores.load.error":
@@ -192,7 +238,6 @@ export const enUS = {
   "chores.delete.prompt": "Delete {name}? This cannot be undone.",
   "chores.delete.confirm": "Yes, delete",
   "chores.delete.cancel": "Keep it",
-  "chores.delete.deleting": "Deleting...",
   "chores.delete.offline":
     "The Chore was not deleted because Homeowner cannot reach the service. Check your connection and try again.",
   "chores.delete.error":
@@ -219,7 +264,6 @@ export const enUS = {
   "chores.form.buildsUp.label": "Builds up while undone",
   "chores.form.submit.create": "Add Chore",
   "chores.form.submit.save": "Save Chore",
-  "chores.form.saving": "Saving...",
   "chores.form.cancel": "Cancel",
   "chores.form.saved": "The Chore is saved.",
   "chores.form.invalid.summary":
@@ -263,7 +307,7 @@ export const enUS = {
 
   // Today (the Day Plan)
   "dayplan.heading": "Today",
-  "dayplan.loading": "Loading today's plan...",
+  "dayplan.loading": "Loading today's plan",
   "dayplan.load.offline":
     "Today's plan could not be loaded because Homeowner cannot reach the service. Check your connection and try again.",
   "dayplan.load.error":
@@ -276,6 +320,9 @@ export const enUS = {
   "dayplan.greeting.morning": "Good morning",
   "dayplan.greeting.afternoon": "Good afternoon",
   "dayplan.greeting.evening": "Good evening",
+  "dayplan.greeting.morningName": "Good morning, {name}",
+  "dayplan.greeting.afternoonName": "Good afternoon, {name}",
+  "dayplan.greeting.eveningName": "Good evening, {name}",
   "dayplan.energy.value": "Energy {energy}",
   "dayplan.energy.planned": "{planned} of {energy} planned for you",
   "dayplan.energy.drained": "Drained today, no Tasks",
@@ -286,7 +333,10 @@ export const enUS = {
     "No Baseline for today, so no Tasks for you.",
   "dayplan.mine.empty.noBaseline.link": "Set your Baseline",
   "dayplan.others.heading": "Other Residents' Tasks",
-  "dayplan.others.resident": "Resident {number}",
+  "dayplan.others.someone": "A housemate",
+  "dayplan.summary.mine": { one: "{count} Task for you", other: "{count} Tasks for you" },
+  "dayplan.summary.others": { one: "{count} for others", other: "{count} for others" },
+  "dayplan.summary.pool": { one: "{count} still to do", other: "{count} still to do" },
   "dayplan.pool.heading": "Still to do",
   "dayplan.pool.empty": "No other open Tasks. Everything is planned or done.",
   "dayplan.task.effort": "Effort: {level}",
@@ -330,15 +380,33 @@ export const enUS = {
   "dayplan.action.done": "Done",
   "dayplan.action.done.named": "Done with {task}",
   "dayplan.task.committed": "Committed",
+  "dayplan.task.with": "With {name}",
+  "dayplan.task.withYou": "With you",
+  "dayplan.task.withSomeone": "With a housemate",
   "dayplan.task.suggestTwoPerson": "This keeps growing. Make it two-person?",
   "dayplan.task.suggestTwoPerson.action": "Make it two-person",
   "dayplan.task.suggestTwoPerson.action.named": "Make {task} two-person",
   "dayplan.done.heading": "Done today",
-  "dayplan.done.item": "{task} at {time}",
+  "dayplan.done.at": "Done at {time}",
+  "dayplan.done.atTogether": "Done at {time}, together",
   "dayplan.action.failed.offline":
     "You seem to be offline, so that did not go through. Check your connection and try again.",
   "dayplan.action.failed.error":
     "Something went wrong and that did not go through. Try again in a moment.",
+  "dayplan.replan.action": "Replan now",
+  "dayplan.replan.waiting": "Replanning. This can take a minute.",
+  "dayplan.replan.timedOut": "The new plan is taking a while. It may still arrive, so check back in a moment.",
+  "dayplan.replan.done.llm": "The AI made this plan.",
+  "dayplan.replan.done.baseline": "The baseline planner made this plan, without the AI.",
+  "dayplan.replan.fallback.llm_daily_cap_reached":
+    "This is the baseline plan, not the AI's: the daily AI limit was reached.",
+  "dayplan.replan.fallback.llm_error": "This is the baseline plan, not the AI's: the AI had a problem.",
+  "dayplan.replan.fallback.llm_timeout": "This is the baseline plan, not the AI's: the AI took too long.",
+  "dayplan.replan.fallback.llm_invalid_response":
+    "This is the baseline plan, not the AI's: the AI's answer could not be used.",
+  "dayplan.replan.fallback.llm_rejected_by_checker":
+    "This is the baseline plan, not the AI's: the AI's plan did not pass the check.",
+  "dayplan.replan.fallback.unknown": "This is the baseline plan, not the AI's: the AI's plan was not used.",
   "dayplan.conflict.already_done":
     "That Task was already done. It is in Done today now.",
   "dayplan.conflict.not_proposed":
@@ -348,12 +416,14 @@ export const enUS = {
   "dayplan.conflict.not_in_pool":
     "Someone else already has that Task. Your list is up to date.",
   "dayplan.conflict.not_yours":
-    "That Task is not yours to finish. Take it first.",
+    "Someone else has that Task. Your list is up to date.",
   "dayplan.conflict.no_plan_today": "There is no plan for today yet.",
   "dayplan.conflict.two_person_task":
     "That Task needs two people, which is not available yet.",
   "dayplan.conflict.restricted":
-    "You have a Restriction on that Task, so you cannot take it.",
+    "You have a Restriction on that Task, so it is not for you today.",
+  "dayplan.conflict.drained":
+    "You checked in Drained today, so rest: this can wait.",
   "dayplan.conflict.unknown":
     "The plan changed since you looked. Your list is up to date.",
 
@@ -387,7 +457,6 @@ export const enUS = {
   "checkin.heading": "Check-in",
   "checkin.prompt": "How are you today?",
   "checkin.open": "Check in",
-  "checkin.loading": "Loading your Check-in...",
   "checkin.load.offline":
     "Your Check-in could not be loaded because Homeowner cannot reach the service. Check your connection and try again.",
   "checkin.load.error":
@@ -403,7 +472,6 @@ export const enUS = {
   "checkin.level.required": "Choose how your Energy is today, then save.",
   "checkin.restrictions.legend": "Anything you cannot do today?",
   "checkin.submit": "Save",
-  "checkin.saving": "Saving...",
   "checkin.cancel": "Cancel",
   "checkin.change": "Change",
   "checkin.saved": "Check-in saved",
@@ -424,7 +492,6 @@ export const enUS = {
   "signUp.confirmLabel": "Confirm password",
   "signUp.mismatch": "The two passwords do not match.",
   "signUp.submit": "Sign up",
-  "signUp.submitting": "Signing up...",
   "signUp.haveLogin": "Already signed up?",
   "signUp.haveLoginAction": "Sign in",
 
@@ -435,7 +502,6 @@ export const enUS = {
   "signIn.emailLabel": "Email",
   "signIn.passwordLabel": "Password",
   "signIn.submit": "Sign in",
-  "signIn.submitting": "Signing in...",
   "signIn.newHere": "New here?",
   "signIn.newHereAction": "Sign up",
 
@@ -444,7 +510,6 @@ export const enUS = {
   "confirm.intro": "We sent a code to {email}.",
   "confirm.codeLabel": "Code from the email",
   "confirm.submit": "Confirm",
-  "confirm.submitting": "Checking...",
   "confirm.resend": "Send a new code",
   "confirm.useOtherEmail": "Use a different email",
   "confirm.resent": "A new code is on its way. Use the latest email.",
@@ -520,7 +585,6 @@ export const enUS = {
   "invite.join.heading": "Join a Home",
   "invite.join.loading": "Getting your Invite ready...",
   "invite.join.submit": "Join this Home",
-  "invite.join.submitting": "Joining...",
   "invite.join.dismiss": "Not now",
   "invite.leave.heading": "Joining means leaving your Home",
   "invite.leave.warning":
@@ -549,7 +613,6 @@ export const enUS = {
   "invite.share.heading": "Invite a Resident",
   "invite.share.hint": "A single-use link for someone you live with. It works for seven days.",
   "invite.share.button": "Share an Invite link",
-  "invite.share.creating": "Making the Invite...",
   "invite.share.title": "Join my Home on Homeowner",
   "invite.share.text":
     "Join my Home on Homeowner. This link works once and lasts seven days.",
@@ -583,7 +646,6 @@ export const enUS = {
     "You already have a Home, so it was loaded. The Chores you reviewed were not added; add them from the Catalog.",
   "catalog.questions.heading": "About your Home",
   "catalog.questions.submit": "Suggest Chores",
-  "catalog.questions.submitting": "Working out your Chores...",
   "catalog.questions.skip": "Skip and add Chores later",
   "catalog.questions.invalid":
     "Some answers need fixing. Check the fields below.",
@@ -699,7 +761,6 @@ export const enUS = {
   "onboarding.retry": "Try again",
   "onboarding.next": "Next",
   "onboarding.back": "Back",
-  "onboarding.saving": "Saving...",
   "onboarding.advance.offline":
     "Could not reach the service, so you are still on this step. Check your connection and try again.",
   "onboarding.advance.error":

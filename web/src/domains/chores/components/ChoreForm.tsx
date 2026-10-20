@@ -168,8 +168,8 @@ export function ChoreForm({
   const heading = t(mode === "edit" ? "chores.form.edit.heading" : "chores.form.create.heading");
   const formId = `${idPrefix}-form`;
   const submit = (
-    <Button type="submit" form={formId} disabled={saving} aria-busy={saving}>
-      {t(saving ? "chores.form.saving" : mode === "edit" ? "chores.form.submit.save" : "chores.form.submit.create")}
+    <Button type="submit" form={formId} pending={saving}>
+      {t(mode === "edit" ? "chores.form.submit.save" : "chores.form.submit.create")}
     </Button>
   );
   const cancel = (
@@ -186,12 +186,7 @@ export function ChoreForm({
       headingRef={headingRef}
       saving={saving}
       onCancel={onCancel}
-      footer={
-        <>
-          {cancel}
-          {submit}
-        </>
-      }
+      footer={<ButtonRow start={cancel} end={submit} />}
     >
       <form id={formId} onSubmit={form.submit} noValidate aria-busy={saving}>
         <div>
@@ -367,12 +362,7 @@ export function ChoreForm({
           </p>
         )}
   
-        {!inDialog && (
-          <ButtonRow className="mt-4">
-            {submit}
-            {cancel}
-          </ButtonRow>
-        )}
+        {!inDialog && <ButtonRow className="mt-4" start={cancel} end={submit} />}
       </form>
     </ChoreFormFrame>
   );

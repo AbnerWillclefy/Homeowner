@@ -20,7 +20,7 @@
 //
 // A two-person Task (People of two or more) goes to exactly two distinct
 // Residents, each spending the full Effort, so it appears once per Resident in
-// a Day Plan. Plan and Check share peopleNeeded so they cannot disagree.
+// a Day Plan. Plan and Check share PeopleNeeded so they cannot disagree.
 //
 // Preconditions: Effort is 1 to 5 and Energy is a whole number of points.
 // Negative Energy is treated as 0. A Task with Effort below 1 is invalid and

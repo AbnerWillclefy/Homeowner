@@ -15,6 +15,7 @@ describe("conflictMessageKey", () => {
     "already_done",
     "two_person_task",
     "restricted",
+    "drained",
   ])("has a message in both languages for the API's %s", (code) => {
     const key = conflictMessageKey(code);
     expect(both(key)).toBe(true);

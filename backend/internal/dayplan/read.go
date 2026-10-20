@@ -46,8 +46,15 @@ type View struct {
 	// the checker refused the proposal, so nothing is assigned today.
 	Planned  bool `json:"planned"`
 	Rejected bool `json:"rejected"`
+	// RunID is today's run; a replan replaces it, even with the same plan.
+	// Absent before the day is planned.
+	RunID string `json:"runId,omitempty"`
 	// Allocator names who made the plan; empty before the day is planned.
 	Allocator string `json:"allocator"`
+	// FallbackReason is why the baseline planned instead of the LLM allocator,
+	// one of the fallbackReason ids; absent when there was no fallback and
+	// before the day is planned.
+	FallbackReason string `json:"fallbackReason,omitempty"`
 	// Energy is the caller's Energy the plan was made with; null before the
 	// plan, and 0 when they have no Baseline for the weekday.
 	Energy *int `json:"energy"`
@@ -91,6 +98,9 @@ type DoneView struct {
 	Category    string    `json:"category"`
 	Effort      int       `json:"currentEffort"`
 	CompletedAt time.Time `json:"completedAt"`
+	// With is the ids of the other Residents on the Completion, sorted. Never
+	// null: a one-person Task is [].
+	With []string `json:"with"`
 }
 
 // Store reads the stored Day Plan.
@@ -150,7 +160,7 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 		}
 		return v, nil
 	}
-	v.Allocator = run.allocator
+	v.RunID, v.Allocator, v.FallbackReason = run.id, run.allocator, run.fallbackReason
 	v.Planned, v.Rejected = run.outcome == string(Planned), run.outcome == string(Rejected)
 
 	rs := run.reasons
@@ -202,7 +212,7 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 		return View{}, err
 	}
 	if v.Planned {
-		if v.Explanation, err = s.explanationFor(ctx, run, residentID, open); err != nil {
+		if v.Explanation, err = s.explanationFor(ctx, run, residentID, allocation.DateOf(date), open); err != nil {
 			return View{}, err
 		}
 	}
@@ -226,9 +236,9 @@ type assignment struct {
 // dayRun is a Home's stored run for a date: who made it, what came of it, the
 // reasons it recorded and the assignments.
 type dayRun struct {
-	id, allocator, outcome string
-	reasons                reasons
-	assigned               []assignment
+	id, allocator, outcome, fallbackReason string
+	reasons                                reasons
+	assigned                               []assignment
 }
 
 // readRun reads the Home's run for the date, or reports that there is none.
@@ -238,8 +248,8 @@ func readRun(ctx context.Context, q reader, homeID string, date time.Time) (dayR
 		raw []byte
 	)
 	err := q.QueryRow(ctx, `
-		SELECT id, allocator, outcome, reasons FROM allocation_runs WHERE home_id = $1 AND plan_date = $2`,
-		homeID, date).Scan(&run.id, &run.allocator, &run.outcome, &raw)
+		SELECT id, allocator, outcome, COALESCE(fallback_reason, ''), reasons FROM allocation_runs WHERE home_id = $1 AND plan_date = $2`,
+		homeID, date).Scan(&run.id, &run.allocator, &run.outcome, &run.fallbackReason, &raw)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return dayRun{}, false, nil
 	}
@@ -318,7 +328,10 @@ func (s *Store) liveSwaps(ctx context.Context, homeID, residentID, runID string,
 // doneToday is the Tasks the Resident completed on the date, oldest first.
 func (s *Store) doneToday(ctx context.Context, residentID string, date time.Time) ([]DoneView, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT t.id, c.id, c.name, c.category, t.current_effort, k.completed_at
+		SELECT t.id, c.id, c.name, c.category, t.current_effort, k.completed_at,
+				COALESCE((SELECT array_agg(o.resident_id::text ORDER BY o.resident_id::text)
+					FROM completion_residents o
+					WHERE o.completion_id = k.id AND o.resident_id <> $1), '{}')
 		FROM completions k
 		JOIN completion_residents cr ON cr.completion_id = k.id
 		JOIN tasks t ON t.id = k.task_id
@@ -330,8 +343,11 @@ func (s *Store) doneToday(ctx context.Context, residentID string, date time.Time
 	}
 	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (d DoneView, err error) {
 		var effort int16
-		if err := r.Scan(&d.ID, &d.ChoreID, &d.ChoreName, &d.Category, &effort, &d.CompletedAt); err != nil {
+		if err := r.Scan(&d.ID, &d.ChoreID, &d.ChoreName, &d.Category, &effort, &d.CompletedAt, &d.With); err != nil {
 			return d, err
+		}
+		if d.With == nil {
+			d.With = []string{}
 		}
 		d.Effort = int(effort)
 		return d, nil

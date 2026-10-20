@@ -90,6 +90,51 @@ data "aws_iam_policy_document" "runtime" {
     actions   = ["ssm:GetParameter"]
     resources = ["${local.ssm_arn_prefix}/*"]
   }
+
+  # Absent unless the caller lists functions, so an environment that does not
+  # use it keeps an unchanged policy.
+  dynamic "statement" {
+    for_each = length(var.invoke_function_arns) == 0 ? [] : [1]
+
+    content {
+      sid       = "InvokeFunctions"
+      actions   = ["lambda:InvokeFunction"]
+      resources = var.invoke_function_arns
+    }
+  }
+
+  # Resident photos (docs/adr/0012). Absent unless the caller passes the bucket.
+  # s3:ListBucket on the bucket itself, so a HEAD on a missing key answers 404,
+  # not 403, and the API can tell "missing" from "forbidden".
+  dynamic "statement" {
+    for_each = var.photos_bucket_arn == "" ? [] : [1]
+
+    content {
+      sid       = "PhotosList"
+      actions   = ["s3:ListBucket"]
+      resources = [var.photos_bucket_arn]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = var.photos_bucket_arn == "" ? [] : [1]
+
+    content {
+      sid       = "PhotosPending"
+      actions   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
+      resources = ["${var.photos_bucket_arn}/pending/*"]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = var.photos_bucket_arn == "" ? [] : [1]
+
+    content {
+      sid       = "PhotosAvatars"
+      actions   = ["s3:PutObject", "s3:DeleteObject"]
+      resources = ["${var.photos_bucket_arn}/avatars/*"]
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "runtime" {

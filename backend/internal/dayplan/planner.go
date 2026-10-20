@@ -178,27 +178,96 @@ func (p *Planner) RunDue(ctx context.Context, now time.Time) (Summary, error) {
 			sum.AlreadyPlanned++
 		}
 	}
-	// Explanations come after every Home is planned, and before the pushes, on
-	// a budget of their own: the plan never waits for them and a slow model
-	// cannot eat the nudge deadline.
-	p.explainHomes(ctx, planned, now)
-	// Every Home is planned before any push is attempted, so a slow or failing
-	// push service can never delay or fail an Allocation.
-	ids := make([]string, len(planned))
-	for i, h := range planned {
-		ids[i] = h.ID
-	}
-	p.sendNudges(ctx, ids, now)
+	p.finishPlanned(ctx, planned, now, plannedAndReminders)
 	p.log.Info("allocation tick done", "due", sum.Due, "planned", sum.Planned,
 		"already_planned", sum.AlreadyPlanned, "rejected", sum.Rejected, "failed", sum.Failed)
 	return sum, nil
 }
 
+// nudgeScope says which pushes follow planning. The Check-in reminders scan
+// every Home in the reminder window, not just the Homes planned, so they are a
+// scope of their own: the tick wants them, a replan of one Home must not send
+// them to other Homes' Residents.
+type nudgeScope int
+
+const (
+	// plannedOnly sends "Day Plan ready" for the Homes just planned.
+	plannedOnly nudgeScope = iota
+	// plannedAndReminders also sends the Check-in reminders.
+	plannedAndReminders
+)
+
+// finishPlanned is what follows planning, for the Homes just planned: the
+// explanations, then the pushes. RunDue and ReplanHome both call it, so the two
+// paths cannot drift.
+//
+// Explanations come after every Home is planned, and before the pushes, on a
+// budget of their own: the plan never waits for them and a slow model cannot
+// eat the nudge deadline. Every Home is planned before any push is attempted,
+// so a slow or failing push service can never delay or fail an Allocation.
+func (p *Planner) finishPlanned(ctx context.Context, planned []HomeDay, now time.Time, scope nudgeScope) {
+	p.explainHomes(ctx, planned, now)
+	ids := make([]string, len(planned))
+	for i, h := range planned {
+		ids[i] = h.ID
+	}
+	p.sendNudges(ctx, ids, now, scope)
+}
+
+// ReplanHome discards the Home's Day Plan for its local date and plans it again
+// through the normal path (the LLM when on, then the Allocator), explains it
+// and sends "Day Plan ready" as a tick would. It is for staging, where the
+// maintainer wants a fresh plan without waiting for tomorrow (REPLAN_ENABLED).
+//
+// Step 1 deletes the run under the Home lock, in a transaction of its own that
+// commits. It cannot share the planning transaction: the LLM is asked before
+// that one, and askLLM answers "already planned" while a run exists. The
+// assignments and explanations go with the run (ON DELETE CASCADE). The Home's
+// "Day Plan ready" ledger rows for the date go too, or the nudge would be
+// claimed already and a second replan of the day would send nothing.
+//
+// Existing Commitments to Tasks (task_residents) are left in place, so a
+// Resident may still hold a Commitment to a Task the new plan gives to someone
+// else. llm_calls is not touched: the daily cap still applies.
+//
+// A tick landing between step 1 and step 2 may plan the Home first. Then
+// planHome answers AlreadyPlanned, nothing is explained or nudged twice (the
+// tick did both), and the Home still has a fresh run.
+func (p *Planner) ReplanHome(ctx context.Context, homeID string, now time.Time) (Outcome, error) {
+	var date allocation.Date
+	err := p.inHomeTx(ctx, homeID, now, "replan home", func(tx pgx.Tx, clock homeClock) error {
+		date = clock.date
+		if _, err := tx.Exec(ctx, `DELETE FROM allocation_runs WHERE home_id = $1 AND plan_date = $2`, homeID, date.Time()); err != nil {
+			return fmt.Errorf("replan home: delete run: %w", err)
+		}
+		if _, err := tx.Exec(ctx, `
+			DELETE FROM nudges WHERE kind = 'day_plan_ready' AND local_date = $2
+			AND resident_id IN (SELECT id FROM residents WHERE home_id = $1)`, homeID, date.Time()); err != nil {
+			return fmt.Errorf("replan home: clear nudges: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	llmCtx, cancel := context.WithTimeout(ctx, p.llm.TickBudget)
+	defer cancel()
+	outcome, err := p.planHome(ctx, llmCtx, homeID, now)
+	if err != nil {
+		return "", err
+	}
+	if outcome == Planned {
+		p.finishPlanned(ctx, []HomeDay{{ID: homeID, Date: date}}, now, plannedOnly)
+	}
+	p.log.Info("home replanned", "home", homeID, "outcome", string(outcome))
+	return outcome, nil
+}
+
 // sendNudges sends "Day Plan ready" for the Homes this tick planned (not for
-// ones already planned or rejected), then the Check-in reminders. A panic is
-// logged and swallowed: nothing here may change the tick's answer. Both calls
-// share one deadline.
-func (p *Planner) sendNudges(ctx context.Context, planned []string, now time.Time) {
+// ones already planned or rejected), then the Check-in reminders when scope
+// is plannedAndReminders. A panic is logged and swallowed: nothing here may change the answer.
+// Both calls share one deadline.
+func (p *Planner) sendNudges(ctx context.Context, planned []string, now time.Time, scope nudgeScope) {
 	if p.nudge == nil {
 		return
 	}
@@ -210,7 +279,9 @@ func (p *Planner) sendNudges(ctx context.Context, planned []string, now time.Tim
 	ctx, cancel := context.WithTimeout(ctx, p.nudgeTimeout)
 	defer cancel()
 	p.nudge.DayPlanReady(ctx, planned, now)
-	p.nudge.CheckinReminders(ctx, now)
+	if scope == plannedAndReminders {
+		p.nudge.CheckinReminders(ctx, now)
+	}
 }
 
 // DueHomes returns the ids of the Homes whose local time at now is at or past
@@ -316,16 +387,17 @@ func UnplannedHomes(ctx context.Context, db *pgxpool.Pool, log *slog.Logger, now
 // Home already has a run for that date. It does not look at the Allocation
 // time: choosing when to plan is the caller's business (see DueHomes).
 //
-// Steps: bring the Tasks up to date, ask the LLM when it is on, then in one
-// transaction lock the Home, look for the day's run, build the State, have
-// Check referee the LLM's proposal, ask the Allocator when it is not used, and
-// store the run with its assignments. The lock makes
-// overlapping invocations plan once, and the unique key on the run is the last
-// guard. A crash leaves nothing half-written.
+// Steps, all in one transaction (inHomeTx): lock the Home, bring the Tasks up
+// to date for the date the lock returned, look for the day's run, build the
+// State, have Check referee the LLM's proposal, ask the Allocator when it is
+// not used, and store the run with its assignments. The lock makes overlapping
+// invocations plan once, and the unique key on the run is the last guard. A
+// crash leaves nothing half-written.
 //
-// The Tasks are refreshed before the lock, not inside it, so a call never holds
-// a connection while waiting for a second one from the pool. Refresh is
-// idempotent, so overlapping calls only repeat it.
+// When the LLM is on it is asked before that transaction, because the call is
+// slow and must not hold the Home lock. That first look is a short
+// inHomeTx of its own that refreshes the Tasks and reads the State, so the
+// model sees the same Tasks the plan will use.
 func (p *Planner) PlanHome(ctx context.Context, homeID string, now time.Time) (Outcome, error) {
 	return p.planHome(ctx, ctx, homeID, now)
 }
@@ -333,52 +405,69 @@ func (p *Planner) PlanHome(ctx context.Context, homeID string, now time.Time) (O
 // planHome is PlanHome with llmCtx bounding the LLM call, so RunDue can share
 // one LLM budget across its Homes.
 func (p *Planner) planHome(ctx, llmCtx context.Context, homeID string, now time.Time) (Outcome, error) {
-	day, done, err := p.planned(ctx, homeID, now)
-	if err != nil || done {
-		return AlreadyPlanned, err
-	}
-	if err := p.tasks.Refresh(ctx, homeID, now); err != nil {
-		return "", err
-	}
 	// The LLM is asked before the transaction: the call is slow, and it must
 	// not hold the Home lock (a Check-in would wait) or a connection.
-	ans := p.askLLM(llmCtx, homeID, day)
-
-	tx, err := p.db.Begin(ctx)
-	if err != nil {
-		return "", fmt.Errorf("plan home: %w", err)
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-
-	date, err := lockHome(ctx, tx, homeID, now)
-	if err != nil {
-		return "", fmt.Errorf("plan home: %w", err)
-	}
-	exists, err := runExists(ctx, tx, homeID, date)
-	if err != nil {
-		return "", fmt.Errorf("plan home: %w", err)
-	}
-	if exists {
-		return AlreadyPlanned, nil
-	}
-	if date != day {
-		ans = llmAnswer{} // the Home's zone changed during the call: that plan was for another day
-	}
-
-	st, err := loadState(ctx, tx, homeID, date)
-	if err != nil {
-		return "", err
-	}
-	run := p.propose(st, ans)
-	if err := store(ctx, tx, homeID, date, now, run); err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == uniqueViolation {
-			return AlreadyPlanned, nil
+	var (
+		ans llmAnswer
+		day allocation.Date
+	)
+	if p.llm.Proposer != nil {
+		var planned bool
+		var err error
+		day, planned, ans, err = p.askLLM(ctx, llmCtx, homeID, now)
+		if err != nil || planned {
+			return AlreadyPlanned, err
 		}
+	}
+
+	var (
+		run     runRecord
+		date    allocation.Date
+		outcome = Planned
+	)
+	err := p.refreshedHomeTx(ctx, homeID, now, "plan home", func(tx pgx.Tx, d allocation.Date) error {
+		date = d
+		exists, err := runExists(ctx, tx, homeID, date)
+		if err != nil {
+			return fmt.Errorf("plan home: %w", err)
+		}
+		if exists {
+			outcome = AlreadyPlanned
+			return nil
+		}
+		if p.llm.Proposer != nil && date != day {
+			ans = llmAnswer{} // the Home's zone changed during the call: that plan was for another day
+		}
+
+		st, err := loadState(ctx, tx, homeID, date)
+		if err != nil {
+			return err
+		}
+		run = p.propose(st, ans)
+		// A savepoint, so a unique violation does not abort the transaction.
+		sp, err := tx.Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("plan home: %w", err)
+		}
+		defer sp.Rollback(ctx) //nolint:errcheck
+		if err := store(ctx, sp, homeID, date, now, run); err != nil {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.Code == uniqueViolation {
+				outcome = AlreadyPlanned
+				return nil
+			}
+			return err
+		}
+		if err := sp.Commit(ctx); err != nil {
+			return fmt.Errorf("plan home: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
 		return "", err
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return "", fmt.Errorf("plan home: commit: %w", err)
+	if outcome == AlreadyPlanned {
+		return AlreadyPlanned, nil
 	}
 
 	if run.fallback != "" {
@@ -394,24 +483,6 @@ func (p *Planner) planHome(ctx, llmCtx context.Context, homeID string, now time.
 	return Planned, nil
 }
 
-// planned returns the Home's local date at now and whether the Home already
-// has a run for it, without taking any lock.
-func (p *Planner) planned(ctx context.Context, homeID string, now time.Time) (allocation.Date, bool, error) {
-	var zone string
-	if err := p.db.QueryRow(ctx, `SELECT timezone FROM homes WHERE id = $1`, homeID).Scan(&zone); err != nil {
-		return 0, false, fmt.Errorf("plan home: load home: %w", err)
-	}
-	date, err := LocalDate(zone, now)
-	if err != nil {
-		return 0, false, fmt.Errorf("plan home: %w", err)
-	}
-	exists, err := runExists(ctx, p.db, homeID, date)
-	if err != nil {
-		return 0, false, fmt.Errorf("plan home: %w", err)
-	}
-	return date, exists, nil
-}
-
 // querier is the QueryRow half of *pgxpool.Pool and pgx.Tx.
 type querier interface {
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
@@ -419,11 +490,24 @@ type querier interface {
 
 // LocalDate is the date at now in the IANA zone.
 func LocalDate(zone string, now time.Time) (allocation.Date, error) {
+	c, err := clockIn(zone, now)
+	return c.date, err
+}
+
+// homeClock is a Home's local date at a moment, with the zone it was worked
+// out in.
+type homeClock struct {
+	date allocation.Date
+	loc  *time.Location
+}
+
+// clockIn is the one place a zone name becomes a local date.
+func clockIn(zone string, now time.Time) (homeClock, error) {
 	loc, err := time.LoadLocation(zone)
 	if err != nil {
-		return 0, fmt.Errorf("timezone %q: %w", zone, err)
+		return homeClock{}, fmt.Errorf("timezone %q: %w", zone, err)
 	}
-	return allocation.DateOf(now.In(loc)), nil
+	return homeClock{date: allocation.DateOf(now.In(loc)), loc: loc}, nil
 }
 
 // runExists reports whether the Home has a run for the date.
@@ -474,7 +558,7 @@ type llmAnswer struct {
 // that errors or breaks a rule is a rejected run with nothing assigned.
 func (p *Planner) propose(st loaded, ans llmAnswer) runRecord {
 	rec := runRecord{allocator: p.alloc.Name(), outcome: Planned,
-		reasons: reasons{Energy: st.energy, Assigned: []assigned{}, Pool: []pooled{}}}
+		reasons: reasons{Energy: st.energy, Pool: []pooled{}}}
 	if worthAsking(st.state) {
 		if ans.proposal != nil {
 			vs := allocation.Check(ans.proposal.DayPlan, st.state)
@@ -502,16 +586,38 @@ func (p *Planner) propose(st loaded, ans llmAnswer) runRecord {
 	return rec
 }
 
-// askLLM asks the LLM for a proposal for the Home's date, when it is on and
-// there is something to plan. ctx is the LLM's budget (the tick's, in RunDue):
-// once spent, the call is skipped without reserving. Otherwise it reads the
-// State, reserves one of the Home's daily calls (on the pool, so a later
-// rollback cannot give back a call that was paid) and asks under the call
-// timeout. It takes no lock and holds no connection while the model answers.
-func (p *Planner) askLLM(ctx context.Context, homeID string, date allocation.Date) llmAnswer {
-	if p.llm.Proposer == nil {
-		return llmAnswer{}
+// askLLM asks the LLM for a proposal for the Home's date, when there is
+// something to plan. llmCtx is the LLM's budget (the tick's, in RunDue): once
+// spent, the call is skipped without reserving. It first looks at the Home in
+// a short inHomeTx of its own (which refreshes the Tasks, so the model sees the
+// ones the plan will), and reports planned when the Home already has a run for
+// its date. Then it reserves one of the Home's daily calls (on the pool, so a
+// later rollback cannot give back a call that was paid) and asks under the
+// call timeout. It holds no lock and no connection while the model answers.
+func (p *Planner) askLLM(ctx, llmCtx context.Context, homeID string, now time.Time) (date allocation.Date, planned bool, ans llmAnswer, err error) {
+	var st allocation.State
+	err = p.refreshedHomeTx(ctx, homeID, now, "plan home", func(tx pgx.Tx, d allocation.Date) error {
+		date = d
+		exists, err := runExists(ctx, tx, homeID, date)
+		if err != nil {
+			return fmt.Errorf("plan home: %w", err)
+		}
+		if exists {
+			planned = true
+			return nil
+		}
+		l, err := loadState(ctx, tx, homeID, date)
+		st = l.state
+		return err
+	})
+	if err != nil || planned {
+		return date, planned, llmAnswer{}, err
 	}
+	return date, false, p.ask(llmCtx, homeID, date, st), nil
+}
+
+// ask is the LLM call of askLLM, for a State already read.
+func (p *Planner) ask(ctx context.Context, homeID string, date allocation.Date, st allocation.State) llmAnswer {
 	failed := func(err error) llmAnswer {
 		reason := llmFailure(ctx, err)
 		if reason == fallbackError {
@@ -520,10 +626,6 @@ func (p *Planner) askLLM(ctx context.Context, homeID string, date allocation.Dat
 		return llmAnswer{fallback: reason}
 	}
 	if err := ctx.Err(); err != nil {
-		return failed(err)
-	}
-	st, err := p.readState(ctx, homeID, date)
-	if err != nil {
 		return failed(err)
 	}
 	if !worthAsking(st) {
@@ -543,18 +645,6 @@ func (p *Planner) askLLM(ctx context.Context, homeID string, date allocation.Dat
 		return failed(err)
 	}
 	return llmAnswer{proposal: &res}
-}
-
-// readState loads the Home's State for date in a short transaction of its own,
-// without the Home lock.
-func (p *Planner) readState(ctx context.Context, homeID string, date allocation.Date) (allocation.State, error) {
-	tx, err := p.db.Begin(ctx)
-	if err != nil {
-		return allocation.State{}, fmt.Errorf("read state: %w", err)
-	}
-	defer tx.Rollback(ctx) //nolint:errcheck
-	st, err := loadState(ctx, tx, homeID, date)
-	return st.state, err
 }
 
 // worthAsking reports whether there is anything for the LLM to plan: an open

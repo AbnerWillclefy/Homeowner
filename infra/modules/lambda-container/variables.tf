@@ -19,6 +19,18 @@ variable "environment" {
   default     = {}
 }
 
+variable "invoke_function_arns" {
+  description = "ARNs of Lambda functions this function may invoke (lambda:InvokeFunction on exactly these, nothing broader). Empty adds no statement."
+  type        = list(string)
+  default     = []
+}
+
+variable "photos_bucket_arn" {
+  description = "ARN of the photo bucket. When set, the role may write, read and delete pending/* and write and delete avatars/*, and list the bucket (so a missing key answers 404, not 403). Empty adds no statement."
+  type        = string
+  default     = ""
+}
+
 variable "memory_size" {
   type    = number
   default = 512

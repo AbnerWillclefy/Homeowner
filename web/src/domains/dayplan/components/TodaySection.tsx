@@ -1,9 +1,8 @@
-import { Clock, UserRound } from "lucide-react";
+import { Clock } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Link } from "react-router";
 import type { DayPlan, PlanTask } from "../api/api";
-import type { TaskAction, TaskRole } from "../logic/actions";
-import { formatTime } from "../logic/format";
+import { pendingAction, type Acting, type TaskAction, type TaskRole } from "../logic/actions";
 import { ME_PATH } from "../../../app/logic/routes";
 import { noTasksReason, type EnergyNote, type NoTasksReason } from "../../checkin/logic/state";
 import { formatAllocationTime } from "../../home/logic/allocationTimes";
@@ -11,6 +10,10 @@ import { useI18n, type MessageKey } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { GroupHeading } from "../../../shared/ui/GroupHeading";
 import { LOAD_FAILURE_KEY } from "../logic/failureMessages";
+import { ResidentLabel } from "../../residents/components/ResidentLabel";
+import { DoneCard } from "./DoneCard";
+import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
+import { DayPlanSkeleton } from "./DayPlanSkeleton";
 import { TaskCard } from "./TaskCard";
 import type { ActionNotice, useDayPlan } from "../hooks/useDayPlan";
 
@@ -28,6 +31,8 @@ type Day = ReturnType<typeof useDayPlan>;
 export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null }) {
   const { t } = useI18n();
   const { state, reload, run, acceptAll, acting, notice, settled } = day;
+  // The page's one status announces the wait; the skeleton shows after 300ms and only for a first load.
+  const showSkeleton = useReportFirstLoad(state.kind === "loading");
   const section = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
 
@@ -50,7 +55,7 @@ export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null 
 
       <Notice notice={notice} />
 
-      {state.kind === "loading" && <p role="status">{t("dayplan.loading")}</p>}
+      {showSkeleton && <DayPlanSkeleton />}
 
       {state.kind === "failed" && (
         <>
@@ -69,7 +74,7 @@ export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null 
         <PlanView
           plan={state.plan}
           note={note}
-          busy={acting}
+          acting={acting}
           onAccept={acceptAll}
           onAction={run}
         />
@@ -127,22 +132,32 @@ function EmptyMine({ reason }: { reason: NoTasksReason | null }) {
 function PlanView({
   plan,
   note,
-  busy,
+  acting,
   onAccept,
   onAction,
 }: {
   plan: DayPlan;
   note: EnergyNote | null;
-  busy: boolean;
+  acting: Acting;
   onAccept(): void;
   onAction(action: TaskAction, task: PlanTask): void;
 }) {
   const { t, locale } = useI18n();
   // The chip's note picks the reason for an empty list, so the two can never disagree.
   const reason = note && noTasksReason(note);
+  // Every button waits while anything runs; only the pressed one shows its spinner.
+  const busy = acting !== null;
   const proposed = plan.mine.filter((task) => !task.committed).length;
   const card = (task: PlanTask, role: TaskRole) => (
-    <TaskCard key={task.id} task={task} role={role} today={plan.date} busy={busy} onAction={onAction} />
+    <TaskCard
+      key={task.id}
+      task={task}
+      role={role}
+      today={plan.date}
+      busy={busy}
+      pending={pendingAction(acting, task.id)}
+      onAction={onAction}
+    />
   );
 
   return (
@@ -163,7 +178,13 @@ function PlanView({
         <div>
           <GroupHeading count={plan.mine.length}>{t("dayplan.mine.heading")}</GroupHeading>
           {proposed > 0 && (
-            <Button fullWidth className="mb-3" disabled={busy} onClick={onAccept}>
+            <Button
+              fullWidth
+              className="mb-3"
+              disabled={busy}
+              pending={acting?.action === "acceptAll"}
+              onClick={onAccept}
+            >
               {t("dayplan.action.acceptAll", { count: proposed })}
             </Button>
           )}
@@ -181,9 +202,8 @@ function PlanView({
           <div className="flex flex-col gap-5">
             {plan.others.map((other, index) => (
               <section key={other.residentId} aria-labelledby={`resident-${index}`} className="mt-0">
-                <h4 id={`resident-${index}`} className="mt-0 mb-2 flex items-center gap-1.5 text-sm font-bold text-muted">
-                  <UserRound aria-hidden="true" size={16} className="shrink-0" />
-                  {t("dayplan.others.resident", { number: index + 1 })}
+                <h4 id={`resident-${index}`} className="mt-0 mb-2 text-base font-bold">
+                  <ResidentLabel residentId={other.residentId} />
                 </h4>
                 <ul className={LIST}>
                   {other.tasks.map((task) => card(task, "other"))}
@@ -208,11 +228,9 @@ function PlanView({
       {plan.doneToday.length > 0 && (
         <div>
           <GroupHeading count={plan.doneToday.length}>{t("dayplan.done.heading")}</GroupHeading>
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          <ul className={LIST}>
             {plan.doneToday.map((done) => (
-              <li key={done.id} className="my-0 [overflow-wrap:anywhere]">
-                {t("dayplan.done.item", { task: done.choreName, time: formatTime(done.completedAt, locale) })}
-              </li>
+              <DoneCard key={done.id} done={done} />
             ))}
           </ul>
         </div>

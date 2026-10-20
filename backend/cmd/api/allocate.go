@@ -69,9 +69,15 @@ func events(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	}
 	defer closeDB()
 
+	// Replan is staging-only: the flag is set on that function alone.
+	var evOpts []dayplan.EventsOption
+	if cfg.ReplanEnabled {
+		evOpts = append(evOpts, dayplan.WithReplan())
+		log.Warn("replan on: the function replans a Home on request")
+	}
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           dayplan.EventsHandler(p, clock.System{}, log),
+		Handler:           dayplan.EventsHandler(p, clock.System{}, log, evOpts...),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	errc := make(chan error, 1)

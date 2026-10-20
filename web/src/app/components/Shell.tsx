@@ -1,6 +1,8 @@
 import { useCallback, useRef, useState } from "react";
 import { Outlet, useLocation } from "react-router";
 import { useHome } from "../../domains/home/hooks/useHome";
+import { useMe } from "../../domains/profile/hooks/useMe";
+import { useResidents } from "../../domains/residents/hooks/useResidents";
 import { useI18n } from "../../shared/i18n";
 import { useInvite } from "../../domains/invite/components/PendingInviteProvider";
 import { JoinInvite } from "../../domains/invite/components/JoinInvite";
@@ -22,6 +24,8 @@ import { useFocusOnNavigate } from "../hooks/useFocusOnNavigate";
 export function Shell() {
   const { t } = useI18n();
   const home = useHome();
+  const residents = useResidents(home.state.kind === "ready");
+  const me = useMe();
   const [planVersion, setPlanVersion] = useState(0);
   const planChanged = useCallback(() => setPlanVersion((v) => v + 1), []);
   const { pathname } = useLocation();
@@ -47,7 +51,7 @@ export function Shell() {
   const dialog = pathname === TODAY_PATH ? dialogToShow({ inviteToken: invite.token, after: session.after, choosing: session.choosing }) : null;
 
   return (
-    <ShellContext.Provider value={{ home, planVersion, planChanged }}>
+    <ShellContext.Provider value={{ home, residents, me, planVersion, planChanged }}>
       <div className="flex min-h-dvh flex-col">
         <PageFrame className="flex-1">
           <div ref={content}>

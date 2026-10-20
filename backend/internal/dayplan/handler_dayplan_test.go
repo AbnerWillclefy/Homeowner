@@ -338,7 +338,7 @@ func TestEveryRunIsRecordedWithItsAllocatorAndReasons(t *testing.T) {
 	var assigned, pooled int
 	err := app.DB.QueryRow(context.Background(), `
 		SELECT allocator, outcome, plan_date::text,
-		       jsonb_array_length(reasons -> 'assigned'), jsonb_array_length(reasons -> 'pool')
+		       (SELECT count(*) FROM day_plan_assignments WHERE run_id = allocation_runs.id), jsonb_array_length(reasons -> 'pool')
 		FROM allocation_runs`).Scan(&allocator, &outcome, &date, &assigned, &pooled)
 	if err != nil {
 		t.Fatal(err)

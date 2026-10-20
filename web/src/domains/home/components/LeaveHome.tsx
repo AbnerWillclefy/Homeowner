@@ -26,7 +26,8 @@ export function LeaveHome({ onLeft }: Props) {
 
   return (
     <SectionCard id="home-leave-heading" icon={LogOut} tone="danger" title={t("home.leave.heading")} hint={t("home.leave.stays")}>
-      <ButtonRow stretch>
+      <ButtonRow
+        start={
         <AppDialog
           open={state.kind !== "closed"}
           onDismiss={cancel}
@@ -51,17 +52,27 @@ export function LeaveHome({ onLeft }: Props) {
               {t(LEAVE_FAILURE_KEY[state.failed])}
             </p>
           )}
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Button ref={cancelRef} variant="secondary" disabled={leaving} onClick={cancel}>
-              {t("home.leave.cancel")}
-            </Button>
-            <Button variant="danger" disabled={leaving} aria-busy={leaving} onClick={() => void confirm()}>
-              <LogOut aria-hidden="true" className="size-5 shrink-0" />
-              {t(leaving ? "home.leave.leaving" : "home.leave.confirm")}
-            </Button>
-          </div>
+          <ButtonRow
+            className="mt-4"
+            start={
+              <Button ref={cancelRef} variant="secondary" disabled={leaving} onClick={cancel}>
+                {t("home.leave.cancel")}
+              </Button>
+            }
+            end={
+              <Button
+                variant="danger"
+                pending={leaving}
+                leadingIcon={<LogOut aria-hidden="true" className="size-4" />}
+                onClick={() => void confirm()}
+              >
+                {t("home.leave.confirm")}
+              </Button>
+            }
+          />
         </AppDialog>
-      </ButtonRow>
+        }
+      />
     </SectionCard>
   );
 }

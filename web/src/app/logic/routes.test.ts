@@ -3,8 +3,11 @@ import { ONBOARDING_STEPS } from "../../domains/onboarding/api/api";
 import {
   authState,
   confirmNeedsEmail,
+  isShellPath,
   isWelcomePath,
   normalizePath,
+  residentIdFromPath,
+  residentPath,
   safeWantedPath,
   stepFromPath,
   stepPath,
@@ -100,5 +103,61 @@ describe("confirmNeedsEmail", () => {
 
   it("is false with an email", () => {
     expect(confirmNeedsEmail({ email: "a@b.c" })).toBe(false);
+  });
+});
+
+describe("isShellPath", () => {
+  it.each(["/", "/chores", "/home", "/me", "/me/", "/me?x=1"])("accepts the tab %s", (path) => {
+    expect(isShellPath(path)).toBe(true);
+  });
+
+  it("accepts the edit screen under Me, with a trailing slash, search or hash", () => {
+    expect(isShellPath("/me/edit")).toBe(true);
+    expect(isShellPath("/me/edit/?a=1#b")).toBe(true);
+  });
+
+  it.each(["/me/other", "/me/edit/more", "/chores/edit", "/signin", "/welcome/home", "/nope", "/mex"])("rejects %s", (path) => {
+    expect(isShellPath(path)).toBe(false);
+  });
+});
+
+describe("residentPath", () => {
+  it("is the Resident page under the Home tab", () => {
+    expect(residentPath("r-42")).toBe("/home/residents/r-42");
+  });
+
+  it("encodes an id so it can never change the path", () => {
+    expect(residentPath("a/b?c")).toBe("/home/residents/a%2Fb%3Fc");
+  });
+});
+
+describe("residentIdFromPath", () => {
+  it("gives the id of exactly one segment under /home/residents", () => {
+    expect(residentIdFromPath("/home/residents/abc")).toBe("abc");
+    expect(residentIdFromPath("/home/residents/abc/?x=1#y")).toBe("abc");
+  });
+
+  it("decodes what residentPath encoded", () => {
+    expect(residentIdFromPath(residentPath("a/b?c"))).toBe("a/b?c");
+  });
+
+  it.each(["/home/residents", "/home/residents/", "/home/residents/a/b", "/home", "/me/residents/a", "/home/resident/a", "/home/residents/%E0%A4%A"])(
+    "gives null for %s",
+    (path) => {
+      expect(residentIdFromPath(path)).toBeNull();
+    },
+  );
+});
+
+describe("the Resident page path", () => {
+  it("is a shell path, but only with exactly one id segment", () => {
+    expect(isShellPath("/home/residents/abc")).toBe(true);
+    expect(isShellPath("/home/residents/abc/")).toBe(true);
+    expect(isShellPath("/home/residents")).toBe(false);
+    expect(isShellPath("/home/residents/a/b")).toBe(false);
+  });
+
+  it("is kept as the wanted path, so a deep link survives sign-in", () => {
+    expect(safeWantedPath("/home/residents/abc")).toBe("/home/residents/abc");
   });
 });

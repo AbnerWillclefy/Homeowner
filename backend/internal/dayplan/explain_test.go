@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -45,10 +46,14 @@ func newExHome(t *testing.T, opts ...apitest.Option) exHome {
 	return h
 }
 
-// item is one explainer entry; the Portuguese text is the English one with a
-// "pt " prefix.
+// item is one explainer entry: the headline is en and the detail is "Detail "
+// plus en; the Portuguese texts are those with a "pt " prefix.
 func item(id, en string) string {
-	b, _ := json.Marshal(map[string]string{"resident_id": id, "en_US": en, "pt_BR": "pt " + en})
+	b, _ := json.Marshal(map[string]string{
+		"resident_id":    id,
+		"headline_en_US": en, "headline_pt_BR": "pt " + en,
+		"detail_en_US": "Detail " + en, "detail_pt_BR": "pt detail " + en,
+	})
 	return string(b)
 }
 
@@ -57,9 +62,10 @@ func say(entries ...string) string {
 	return `{"explanations": [` + strings.Join(entries, ",") + `]}`
 }
 
-// explanation is the caller's explanation in the Day Plan: source and both
-// texts, or ok false when it is null.
-func explanationOf(t *testing.T, c *apitest.Client) (source, en, pt string, ok bool) {
+// summaryOf is the caller's explanation in the Day Plan: source and the
+// headline and detail in both languages, or ok false when it is null. It also
+// checks that text is always the headline followed by the detail.
+func summaryOf(t *testing.T, c *apitest.Client) (source string, s explain.Summary, ok bool) {
 	t.Helper()
 	r := apitest.DayPlan(t, c)
 	x, has := r.Body["explanation"]
@@ -67,21 +73,42 @@ func explanationOf(t *testing.T, c *apitest.Client) (source, en, pt string, ok b
 		t.Fatalf("no explanation key in %s", r.Raw)
 	}
 	if x == nil {
-		return "", "", "", false
+		return "", explain.Summary{}, false
 	}
 	m := x.(map[string]any)
-	text := m["text"].(map[string]any)
-	return m["source"].(string), text["en-US"].(string), text["pt-BR"].(string), true
+	texts := func(key string) explain.Texts {
+		v, isMap := m[key].(map[string]any)
+		if !isMap {
+			t.Fatalf("explanation has no %q object: %s", key, r.Raw)
+		}
+		return explain.Texts{EnUS: v["en-US"].(string), PtBR: v["pt-BR"].(string)}
+	}
+	s = explain.Summary{Headline: texts("headline"), Detail: texts("detail")}
+	if got := texts("text"); got != s.Joined() {
+		t.Fatalf("text = %+v, want the headline followed by the detail %+v", got, s.Joined())
+	}
+	return m["source"].(string), s, true
+}
+
+// explanationOf is summaryOf with the headline only, in both languages.
+func explanationOf(t *testing.T, c *apitest.Client) (source, en, pt string, ok bool) {
+	t.Helper()
+	source, s, ok := summaryOf(t, c)
+	return source, s.Headline.EnUS, s.Headline.PtBR, ok
 }
 
 // factsOf rebuilds the caller's Facts from their Day Plan view, to compute
 // the template the same facts must give.
-func factsOf(t *testing.T, c *apitest.Client) explain.Facts {
+// checkin is the level the caller checked in with, if they did.
+func factsOf(t *testing.T, c *apitest.Client, checkin ...string) explain.Facts {
 	t.Helper()
 	body := apitest.DayPlan(t, c).Body
 	f := explain.Facts{Energy: int(body["energy"].(float64)), Tasks: []explain.Task{}, Pool: []string{}}
+	if len(checkin) > 0 {
+		f.Checkin = checkin[0]
+	}
 	for _, tk := range apitest.TaskList(t, body["mine"]) {
-		f.Tasks = append(f.Tasks, explain.Task{Reason: tk["reason"].(string), People: int(tk["people"].(float64))})
+		f.Tasks = append(f.Tasks, explain.Task{Reason: tk["reason"].(string), Effort: int(tk["currentEffort"].(float64)), People: int(tk["people"].(float64))})
 	}
 	for _, tk := range apitest.TaskList(t, body["pool"]) {
 		f.Pool = append(f.Pool, tk["reason"].(string))
@@ -94,12 +121,12 @@ func llmCalls(t *testing.T, app *apitest.App) int {
 	return apitest.Count(t, app, `SELECT coalesce(sum(calls), 0) FROM llm_calls`)
 }
 
-func wantTemplate(t *testing.T, c *apitest.Client, who string) {
+func wantTemplate(t *testing.T, c *apitest.Client, who string, checkin ...string) {
 	t.Helper()
-	source, en, pt, ok := explanationOf(t, c)
-	want := explain.Template(factsOf(t, c))
-	if !ok || source != "template" || en != want.EnUS || pt != want.PtBR {
-		t.Fatalf("%s: explanation = %q %q %q, want the template %+v", who, source, en, pt, want)
+	source, got, ok := summaryOf(t, c)
+	want := explain.Template(factsOf(t, c, checkin...))
+	if !ok || source != "template" || got != want {
+		t.Fatalf("%s: explanation = %q %+v, want the template %+v", who, source, got, want)
 	}
 }
 
@@ -126,7 +153,7 @@ func TestADrainedResidentAndAHomeWithNothingAssignableStillGetOne(t *testing.T) 
 	_, a, b := apitest.DuoHome(t, 0, 0) // no Energy anywhere: Carry stays in the pool
 	for who, c := range map[string]*apitest.Client{"a": a, "b": b} {
 		source, en, pt, ok := explanationOf(t, c)
-		if !ok || source != "template" || !strings.Contains(en, "no energy") || pt == "" {
+		if !ok || source != "template" || !strings.Contains(en, "Rest is the plan") || !strings.Contains(pt, "descansar") {
 			t.Errorf("%s: explanation = %q %q %q %v", who, source, en, pt, ok)
 		}
 	}
@@ -136,8 +163,30 @@ func TestADrainedResidentAndAHomeWithNothingAssignableStillGetOne(t *testing.T) 
 	apitest.SetBaseline(t, empty, map[string]any{"monday": 4})
 	app.Clock.Set(apitest.MondayAt(7))
 	app.RunAllocation(t)
-	if source, en, _, ok := explanationOf(t, empty); !ok || source != "template" || !strings.Contains(en, "no tasks") {
+	if source, en, _, ok := explanationOf(t, empty); !ok || source != "template" || !strings.Contains(en, "Nothing needs you today") {
 		t.Errorf("empty Home: explanation = %q %q %v", source, en, ok)
+	}
+}
+
+func TestADrainedCheckInGivesTheRestSummary(t *testing.T) {
+	t.Parallel()
+	_, a, _ := apitest.TwoResidents(t)
+	apitest.CheckIn(t, a, "drained")
+	wantTemplate(t, a, "a", "drained")
+	_, en, pt, _ := explanationOf(t, a)
+	if !strings.HasPrefix(en, "Rest is the plan today.") || !strings.HasPrefix(pt, "Hoje o plano é descansar.") {
+		t.Fatalf("got %q / %q", en, pt)
+	}
+}
+
+func TestALowCheckInGivesTheLighterDayHeadline(t *testing.T) {
+	t.Parallel()
+	_, a, _ := apitest.TwoResidents(t)
+	apitest.CheckIn(t, a, "low")
+	wantTemplate(t, a, "a", "low")
+	_, en, pt, _ := explanationOf(t, a)
+	if !strings.HasPrefix(en, "A lighter day, with Low Energy.") || !strings.HasPrefix(pt, "Dia mais leve, com energia baixa.") {
+		t.Fatalf("got %q / %q", en, pt)
 	}
 }
 
@@ -167,7 +216,7 @@ func TestAResidentWhoJoinedAfterThePlanGetsATemplate(t *testing.T) {
 	h.app.RunAllocation(t)
 	c := apitest.ExtraResident(t, h.app, h.a, "c@example.com")
 	source, en, _, ok := explanationOf(t, c)
-	if !ok || source != "template" || !strings.Contains(en, "no") {
+	if !ok || source != "template" || !strings.Contains(en, "Rest is the plan") {
 		t.Fatalf("explanation = %q %q %v", source, en, ok)
 	}
 }
@@ -186,7 +235,7 @@ func TestTheLLMTextIsUsedAndEachResidentSeesOnlyTheirOwn(t *testing.T) {
 		if !ok || source != "llm" || en != want.en || pt != "pt "+want.en {
 			t.Errorf("%s: explanation = %q %q %q", who, source, en, pt)
 		}
-		if raw := apitest.DayPlan(t, want.c).Raw; strings.Count(string(raw), "text.") != 2 {
+		if raw := string(apitest.DayPlan(t, want.c).Raw); strings.Contains(raw, map[string]string{"a": "Bravo", "b": "Alpha"}[who]) {
 			t.Errorf("%s: the view holds more than their own text: %s", who, raw)
 		}
 	}
@@ -253,6 +302,161 @@ func TestAnInvalidWholeAnswerGivesTheTemplateForEveryone(t *testing.T) {
 				t.Errorf("llm_calls = %d, want 2", llmCalls(t, h.app))
 			}
 		})
+	}
+}
+
+// AC: the AI text carries a headline and a detail, and the joined text stays
+// for a cached copy of the app.
+func TestTheLLMSummaryHasAHeadlineADetailAndTheJoinedText(t *testing.T) {
+	t.Parallel()
+	h := newExHome(t)
+	h.expl.Answer(say(item(h.ra, "Alpha text."), item(h.rb, "Bravo text.")))
+	h.app.RunAllocation(t)
+
+	source, s, ok := summaryOf(t, h.a)
+	want := explain.Summary{
+		Headline: explain.Texts{EnUS: "Alpha text.", PtBR: "pt Alpha text."},
+		Detail:   explain.Texts{EnUS: "Detail Alpha text.", PtBR: "pt detail Alpha text."},
+	}
+	if !ok || source != "llm" || s != want {
+		t.Fatalf("explanation = %q %+v, want the LLM summary %+v", source, s, want)
+	}
+	text := apitest.DayPlan(t, h.a).Body["explanation"].(map[string]any)["text"].(map[string]any)
+	if text["en-US"] != "Alpha text. Detail Alpha text." || text["pt-BR"] != "pt Alpha text. pt detail Alpha text." {
+		t.Errorf("text = %v", text)
+	}
+}
+
+// A part missing, blank or over its own limit gives the template for that
+// Resident, and nothing is stored for them.
+func TestAPartialOrInvalidAnswerStoresNothingAndGivesTheTemplate(t *testing.T) {
+	t.Parallel()
+	for name, mod := range map[string]map[string]string{
+		"missing headline":  {"headline_pt_BR": ""},
+		"blank detail":      {"detail_en_US": "   "},
+		"headline over 120": {"headline_en_US": strings.Repeat("a", 121)},
+		"detail over 280":   {"detail_pt_BR": strings.Repeat("a", 281)},
+		"markup":            {"detail_en_US": "Do <b>this</b>."},
+		"link":              {"headline_pt_BR": "Veja www.x.example."},
+		"newline":           {"detail_pt_BR": "a\nb"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := newExHome(t)
+			m := map[string]string{
+				"resident_id":    h.ra,
+				"headline_en_US": "H.", "headline_pt_BR": "H.", "detail_en_US": "D.", "detail_pt_BR": "D.",
+			}
+			for k, v := range mod {
+				m[k] = v
+			}
+			b, _ := json.Marshal(m)
+			h.expl.Answer(say(string(b), item(h.rb, "Bravo text.")))
+			h.app.RunAllocation(t)
+
+			wantTemplate(t, h.a, "a")
+			if n := apitest.Count(t, h.app, `SELECT count(*) FROM day_plan_explanations WHERE resident_id = '`+h.ra+`'`); n != 0 {
+				t.Errorf("%d rows stored for the invalid answer", n)
+			}
+			if source, _, _ := summaryOf(t, h.b); source != "llm" {
+				t.Errorf("b: source = %q, want llm", source)
+			}
+		})
+	}
+}
+
+// A client error stores nothing for anyone.
+func TestAClientErrorStoresNothing(t *testing.T) {
+	t.Parallel()
+	h := newExHome(t)
+	h.expl.Fail(errors.New("503 overloaded"))
+	h.app.RunAllocation(t)
+	wantTemplate(t, h.a, "a")
+	if n := apitest.Count(t, h.app, `SELECT count(*) FROM day_plan_explanations`); n != 0 {
+		t.Errorf("%d rows stored after a client error", n)
+	}
+}
+
+// An answer in the old shape (en_US and pt_BR) is rejected whole.
+func TestAnAnswerInTheOldShapeGivesTheTemplate(t *testing.T) {
+	t.Parallel()
+	h := newExHome(t)
+	old := func(id string) string {
+		return `{"resident_id": "` + id + `", "en_US": "Old.", "pt_BR": "Velho."}`
+	}
+	h.expl.Answer(say(old(h.ra), old(h.rb)))
+	h.app.RunAllocation(t)
+	wantTemplate(t, h.a, "a")
+	wantTemplate(t, h.b, "b")
+	if n := apitest.Count(t, h.app, `SELECT count(*) FROM day_plan_explanations`); n != 0 {
+		t.Errorf("%d rows stored for the old shape", n)
+	}
+}
+
+// A row written before the headline columns has none: it reads as absent, with
+// no error.
+func TestALegacyRowWithoutAHeadlineGivesTheTemplate(t *testing.T) {
+	t.Parallel()
+	h := newExHome(t)
+	h.expl.Answer(say(item(h.ra, "Alpha text."), item(h.rb, "Bravo text.")))
+	h.app.RunAllocation(t)
+	if source, _, _ := summaryOf(t, h.a); source != "llm" {
+		t.Fatalf("before the change a has %q", source)
+	}
+	if _, err := h.app.DB.Exec(context.Background(), `UPDATE day_plan_explanations SET headline_en = NULL, headline_pt = NULL`); err != nil {
+		t.Fatal(err)
+	}
+	wantTemplate(t, h.a, "a")
+	wantTemplate(t, h.b, "b")
+}
+
+// A Drained Resident gets the rest summary whatever the source: they are not
+// even asked about before the run...
+func TestADrainedResidentIsNotAskedAboutAndGetsTheRestSummary(t *testing.T) {
+	t.Parallel()
+	h := newExHome(t)
+	apitest.CheckIn(t, h.a, "drained")
+	h.expl.Answer(say(item(h.ra, "Alpha text."), item(h.rb, "Bravo text.")))
+	h.app.RunAllocation(t)
+
+	if user := h.expl.LastRequest().User; strings.Contains(user, h.ra) || !strings.Contains(user, h.rb) {
+		t.Errorf("the request must hold only b: %s", user)
+	}
+	wantTemplate(t, h.a, "a", "drained")
+	if _, en, _, _ := explanationOf(t, h.a); !strings.HasPrefix(en, "Rest is the plan") {
+		t.Errorf("headline = %q", en)
+	}
+	if source, _, _ := summaryOf(t, h.b); source != "llm" {
+		t.Errorf("b: source = %q", source)
+	}
+}
+
+// ... and a Drained Check-in after the text was written hides it.
+func TestADrainedCheckInAfterTheLLMTextShowsTheRestSummary(t *testing.T) {
+	t.Parallel()
+	h := newExHome(t)
+	h.expl.Answer(say(item(h.ra, "Alpha text."), item(h.rb, "Bravo text.")))
+	h.app.RunAllocation(t)
+	if source, _, _ := summaryOf(t, h.a); source != "llm" {
+		t.Fatalf("before the check-in a has %q", source)
+	}
+	apitest.CheckIn(t, h.a, "drained")
+	wantTemplate(t, h.a, "a", "drained")
+	if n := apitest.Count(t, h.app, `SELECT count(*) FROM day_plan_explanations WHERE resident_id = '`+h.ra+`'`); n != 1 {
+		t.Errorf("the stored row was expected to stay, found %d", n)
+	}
+}
+
+// A Normal Check-in keeps the Energy and the wording, so the stored text
+// stays. Energized raises the Energy, which can change the wording.
+func TestANormalCheckInKeepsTheLLMText(t *testing.T) {
+	t.Parallel()
+	h := newExHome(t)
+	h.expl.Answer(say(item(h.ra, "Alpha text."), item(h.rb, "Bravo text.")))
+	h.app.RunAllocation(t)
+	apitest.CheckIn(t, h.a, "normal")
+	if source, _, _ := summaryOf(t, h.a); source != "llm" {
+		t.Errorf("after a normal check-in a has %q, want llm", source)
 	}
 }
 
@@ -366,8 +570,13 @@ func TestTextGoesStaleWhenTheCallersPlanChanges(t *testing.T) {
 			change(t, h)
 			wantTemplate(t, h.a, "a")
 			if name == "refuse" {
-				if _, en, _, _ := explanationOf(t, h.a); !strings.Contains(en, "refused") {
-					t.Errorf("the template ignores the live pool reasons: %q", en)
+				// The summary tells the pool by its count, so the refused Task
+				// shows as a pool reason in the facts and as an open task in the text.
+				if !slices.Contains(factsOf(t, h.a).Pool, "refused") {
+					t.Error("the refused Task is not in the pool")
+				}
+				if _, s, _ := summaryOf(t, h.a); !strings.Contains(s.Detail.EnUS, "open task") {
+					t.Errorf("the template ignores the live pool: %q", s.Detail.EnUS)
 				}
 			}
 			if name == "swap" {

@@ -28,10 +28,53 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("getMe", () => {
   it("returns the signed-in User from GET /me", async () => {
-    const fetch = stubFetch(Response.json({ id: "u1", email: "a@example.com" }));
-    expect(await getMe()).toEqual({ kind: "ok", id: "u1", email: "a@example.com" });
+    const fetch = stubFetch(Response.json({ id: "u1", email: "a@example.com", name: "a" }));
+    expect(await getMe()).toEqual({
+      kind: "ok",
+      id: "u1",
+      email: "a@example.com",
+      displayName: null,
+      name: "a",
+      photoUrl: null,
+      initials: "",
+      avatarTone: "",
+    });
     expect(fetch.mock.calls[0]![0]).toBe("http://api.test/me");
     expect(new Headers(fetch.mock.calls[0]![1]?.headers).get("Authorization")).toBe("Bearer id-1");
+  });
+
+  it("reads the display name, the shown name, the photo and the avatar fallback", async () => {
+    stubFetch(
+      Response.json({
+        id: "u1",
+        email: "a@example.com",
+        displayName: "Abner",
+        name: "Abner",
+        photoUrl: "https://cdn.test/u1.jpg",
+        initials: "A",
+        avatarTone: "pets",
+      }),
+    );
+    expect(await getMe()).toEqual({
+      kind: "ok",
+      id: "u1",
+      email: "a@example.com",
+      displayName: "Abner",
+      name: "Abner",
+      photoUrl: "https://cdn.test/u1.jpg",
+      initials: "A",
+      avatarTone: "pets",
+    });
+  });
+
+  it("reads absent optional fields as null", async () => {
+    stubFetch(Response.json({ id: "u1", email: "abner.w@example.com", displayName: "  ", name: "abner.w", photoUrl: 3 }));
+    expect(await getMe()).toMatchObject({ name: "abner.w", displayName: null, photoUrl: null });
+  });
+
+  it("is an error when the API sends no shown name", async () => {
+    stubFetch(Response.json({ id: "u1", email: "a@example.com", name: " " }));
+    expect(await getMe()).toEqual({ kind: "error" });
   });
 
   it("is not signed in without a session", async () => {

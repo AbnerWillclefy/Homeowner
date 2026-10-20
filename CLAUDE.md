@@ -24,6 +24,8 @@ Each stage is a workflow in `.github/workflows/` started by a label or an event.
 4. Pull request opened: Claude reviews it, then the engineer applies the valid findings once and labels the pull request `review-addressed`.
 5. A human merges; the deploy to staging runs.
 
+A change that fits one pull request skips stage 1: file it as a single ticket with acceptance criteria and label it `needs-refinement`. The maintainer brings in both kinds with `/idea` (`.claude/skills/idea/SKILL.md`).
+
 ## Building a ticket
 
 Every ticket is refined for the agents. The maintainer is learning Go, AWS and system design, and builds a ticket one of two ways: labelling it `implement` for the pipeline, or locally with `/ticket <n>`, where Claude writes the code and teaches as it goes (see `.claude/skills/ticket/SKILL.md`). The review-fix stage skips pull requests not authored by `homeowner-agents`, so a `/ticket` pull request gets its review applied locally with the maintainer. Each ticket's `### Learning focus` names the concepts it exercises. `ready-for-human` is reserved for tickets that need a step no agent can take, such as a purchase, console access or a secret; the implement stage refuses them. When the maintainer asks a question on a ticket or pull request, teach: answer it, explain the concept, and point to the relevant code or docs.
@@ -38,6 +40,7 @@ Every ticket is refined for the agents. The maintainer is learning Go, AWS and s
 - Read the ticket's `## Technical notes` first; they are the senior engineer's plan.
 - Delegate by area: Go, migrations and Terraform to `backend-engineer`; the React PWA to `frontend-engineer`. A ticket that spans both runs backend first, so the frontend builds against a real API.
 - Before opening the pull request, check every acceptance criterion yourself and point to the test or code that meets it. Fix anything not met.
+- A pull request that changes UI is checked in both locales, pt-BR first: most Residents use the app in Brazilian Portuguese, and its longer words are what break layouts. Prefer the shorter pt-BR wording when two are equally clear (`DESIGN.md`, The Portuguese First Rule). Its description shows a screenshot of the change under a `### pt-BR` heading and another under `### English`; the `ui-screenshots` check fails without them.
 - Small commits, imperative and lowercase after a conventional prefix, for example `feat(allocation): honour restrictions on demands`.
 - The pull request description starts with `Closes #<issue-number>` and lists each acceptance criterion with how it is met.
 - Never merge. A human merges.

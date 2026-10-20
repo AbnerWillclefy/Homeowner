@@ -9,6 +9,8 @@ interface ImportMetaEnv {
   readonly VITE_COGNITO_CLIENT_ID: string;
   /** The pool's password rules as one JSON object (Terraform output password_policy), baked in at build time. Public. */
   readonly VITE_PASSWORD_POLICY: string;
+  /** "true" shows the staging-only "Replan now" button on the Day Plan. Optional: unset means off. */
+  readonly VITE_REPLAN_ENABLED?: string;
 }
 
 interface ImportMeta{

@@ -6,6 +6,7 @@ import {
   getProfile,
   putBaseline,
   putPreference,
+  setName,
   setRestriction,
 } from "./api";
 
@@ -154,5 +155,54 @@ describe("the writes", () => {
     expect(await putPreference("kitchen", "like")).toEqual({ kind: "offline" });
     expect(await setRestriction("bending", false)).toEqual({ kind: "offline" });
     expect(await putBaseline({ monday: 1 })).toEqual({ kind: "offline" });
+  });
+});
+
+describe("setName", () => {
+  const saved = { id: "u1", email: "a@example.com", displayName: "Abner", name: "Abner", photoUrl: null, initials: "A", avatarTone: "kitchen" };
+
+  it("PUTs the name and returns the updated User", async () => {
+    const fetch = stubFetch(Response.json(saved));
+    expect(await setName("Abner")).toEqual({ kind: "ok", me: saved });
+    const [url, init] = fetch.mock.calls[0]!;
+    expect(url).toBe("http://api.test/me/name");
+    expect(init?.method).toBe("PUT");
+    expect(JSON.parse(init?.body as string)).toEqual({ name: "Abner" });
+  });
+
+  it("sends null to clear the name", async () => {
+    const cleared = { ...saved, displayName: null, name: "a" };
+    const fetch = stubFetch(Response.json(cleared));
+    expect(await setName(null)).toEqual({ kind: "ok", me: cleared });
+    expect(JSON.parse(fetch.mock.calls[0]![1]?.body as string)).toEqual({ name: null });
+  });
+
+  it("is an error when a 200 does not describe a User", async () => {
+    stubFetch(Response.json({ nope: true }));
+    expect(await setName("Abner")).toEqual({ kind: "error" });
+  });
+
+  it("names a 400 too_long and a 400 invalid", async () => {
+    stubFetch(Response.json({ error: "too_long" }, { status: 400 }));
+    expect(await setName("x")).toEqual({ kind: "too_long" });
+    stubFetch(Response.json({ error: "invalid" }, { status: 400 }));
+    expect(await setName("x")).toEqual({ kind: "invalid" });
+  });
+
+  it("is an error for a 400 with another code, and for a 500", async () => {
+    stubFetch(Response.json({ error: "bad request" }, { status: 400 }));
+    expect(await setName("x")).toEqual({ kind: "error" });
+    stubFetch(Response.json({ error: "internal error" }, { status: 500 }));
+    expect(await setName("x")).toEqual({ kind: "error" });
+  });
+
+  it("is offline when the request cannot be sent", async () => {
+    stubFetch(new TypeError("Failed to fetch"));
+    expect(await setName("x")).toEqual({ kind: "offline" });
+  });
+
+  it("is not-signed-in without a session", async () => {
+    stubStorage(false);
+    expect(await setName("x")).toEqual({ kind: "not-signed-in" });
   });
 });

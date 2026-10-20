@@ -11,10 +11,8 @@ interface Props {
 }
 
 const COPY = {
-  heading: "home.settings.plan.heading",
   hint: "home.settings.plan.hint",
   submit: "home.settings.save",
-  submitting: "home.settings.saving",
   saved: "home.settings.saved",
 } as const;
 

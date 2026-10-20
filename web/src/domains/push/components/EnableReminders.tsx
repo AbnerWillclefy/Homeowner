@@ -19,14 +19,8 @@ export function EnableReminders({
     reminders.kind === "problem" ? problemText(reminders.problem) : null;
   return (
     <div className="flex flex-col">
-      <Button
-        onClick={onEnable}
-        disabled={reminders.kind === "working"}
-        aria-busy={reminders.kind === "working"}
-      >
-        {reminders.kind === "working"
-          ? t("reminders.enabling")
-          : t("reminders.enable")}
+      <Button onClick={onEnable} pending={reminders.kind === "working"}>
+        {t("reminders.enable")}
       </Button>
       {problem && <p role="alert">{t(problem.key, problem.params)}</p>}
     </div>

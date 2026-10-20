@@ -27,19 +27,28 @@ func breaksRestriction(r Resident, t Task) (demand Demand, demandBroken, choreBr
 	return demand, demandBroken, choreBroken
 }
 
-// weekdayAllowed reports whether the Task may be done on the day. Plan and
-// Check both use it so they cannot disagree.
-func weekdayAllowed(t Task, day Date) bool {
+// WeekdayAllowed reports whether the Task may be done on the day. Plan, Check
+// and the LLM allocator's pre-filter use it so they cannot disagree.
+func WeekdayAllowed(t Task, day Date) bool {
 	return len(t.AllowedWeekdays) == 0 || slices.Contains(t.AllowedWeekdays, day.Weekday())
 }
 
-// peopleNeeded is how many Residents the Task is given to: one, or two for a
-// two-person Task. Plan and Check both use it so they cannot disagree.
-func peopleNeeded(t Task) int {
+// PeopleNeeded is how many Residents the Task is given to: one, or two for a
+// two-person Task. Plan, Check and the LLM allocator's pre-filter use it so
+// they cannot disagree.
+func PeopleNeeded(t Task) int {
 	if t.People >= 2 {
 		return 2
 	}
 	return 1
+}
+
+// Eligible reports whether the Resident may be given the Task on the day by
+// the hard rules that do not depend on Energy: the Task's weekday and the
+// Resident's Restrictions. It reuses the helpers Plan and Check use, so the
+// three cannot disagree.
+func Eligible(r Resident, t Task, day Date) bool {
+	return WeekdayAllowed(t, day) && !restricted(r, t)
 }
 
 func restricted(r Resident, t Task) bool {
@@ -119,7 +128,7 @@ func Plan(s State) (Result, error) {
 		case t.Effort < 1:
 			res.Pool = append(res.Pool, PoolEntry{t.ID, ReasonInvalidEffort})
 			continue
-		case !weekdayAllowed(t, s.Today):
+		case !WeekdayAllowed(t, s.Today):
 			res.Pool = append(res.Pool, PoolEntry{t.ID, ReasonWeekdayNotAllowed})
 			continue
 		}
@@ -137,7 +146,7 @@ func Plan(s State) (Result, error) {
 			}
 		}
 		slices.SortStableFunc(fits, func(a, b int) int { return compareCandidates(residents[a], residents[b], left[a], left[b], t) })
-		need := peopleNeeded(t)
+		need := PeopleNeeded(t)
 		if len(fits) < need {
 			why := ReasonNoEnergyLeft
 			switch {

@@ -34,11 +34,25 @@ type Task struct {
 // Facts are what one Resident's explanation is built from: their Energy, their
 // Tasks, and the reason of each Task left in the pool (about everyone, not
 // about them).
+//
+// Checkin is the level of the Resident's Check-in today (CheckinDrained and
+// the like), or "" when they made none. It is one word of a closed set and
+// carries no name or free text.
 type Facts struct {
-	Energy int      `json:"energy"`
-	Tasks  []Task   `json:"tasks"`
-	Pool   []string `json:"pool"`
+	Energy  int      `json:"energy"`
+	Tasks   []Task   `json:"tasks"`
+	Pool    []string `json:"pool"`
+	Checkin string   `json:"checkin,omitempty"`
 }
+
+// The Check-in levels Facts.Checkin may hold. They repeat the checkin
+// package's values because this package imports nothing of the app.
+const (
+	CheckinDrained   = "drained"
+	CheckinLow       = "low"
+	CheckinNormal    = "normal"
+	CheckinEnergized = "energized"
+)
 
 // ResidentFacts is the Facts of the Resident with the id. It is also the shape
 // sent to the model, so the tags are the prompt's keys. Whoever builds Facts
@@ -55,6 +69,17 @@ type Texts struct {
 	PtBR string `json:"pt-BR"`
 }
 
+// Summary is the explanation of a day as a headline and a short detail.
+type Summary struct {
+	Headline Texts
+	Detail   Texts
+}
+
+// Joined is the headline followed by the detail, in each language.
+func (s Summary) Joined() Texts {
+	return Texts{EnUS: s.Headline.EnUS + " " + s.Detail.EnUS, PtBR: s.Headline.PtBR + " " + s.Detail.PtBR}
+}
+
 // MaxLength is the most characters an explanation may have in one language.
 const MaxLength = 400
 
@@ -64,6 +89,24 @@ const MaxLength = 400
 // refereed elsewhere.
 func Valid(t Texts) bool {
 	return validText(t.EnUS) && validText(t.PtBR)
+}
+
+// The most characters a headline and a detail may have in one language.
+const (
+	MaxHeadline = 120
+	MaxDetail   = 280
+)
+
+// ValidSummary reports whether both parts of the summary are fit to show: each
+// passes Valid and stays within its own limit (MaxHeadline, MaxDetail). It is
+// the check on model prose; the template is held to the same limits by its tests.
+func ValidSummary(s Summary) bool {
+	return Valid(s.Headline) && Valid(s.Detail) &&
+		within(s.Headline, MaxHeadline) && within(s.Detail, MaxDetail)
+}
+
+func within(t Texts, limit int) bool {
+	return utf8.RuneCountInString(t.EnUS) <= limit && utf8.RuneCountInString(t.PtBR) <= limit
 }
 
 // linkMarkers are what makes a text a link: "//" is a scheme separator
@@ -91,10 +134,11 @@ func validText(s string) bool {
 // Pair is one assignment as the fingerprint sees it.
 type Pair struct{ TaskID, Reason string }
 
-// Fingerprint identifies the Energy and assignments an explanation was written
-// for. It does not depend on the order of pairs, and it changes when any pair
-// or the Energy does. The caller's slice is left as it is.
-func Fingerprint(energy int, pairs []Pair) string {
+// Fingerprint identifies the Energy, Check-in level and assignments an
+// explanation was written for. It does not depend on the order of pairs, and it
+// changes when any pair, the Energy or a Low or Drained Check-in does. The caller's slice is
+// left as it is.
+func Fingerprint(energy int, checkin string, pairs []Pair) string {
 	sorted := slices.Clone(pairs)
 	slices.SortFunc(sorted, func(a, b Pair) int {
 		if c := strings.Compare(a.TaskID, b.TaskID); c != 0 {
@@ -104,6 +148,11 @@ func Fingerprint(energy int, pairs []Pair) string {
 	})
 	h := sha256.New()
 	h.Write([]byte(strconv.Itoa(energy)))
+	// Only the levels that change the wording count: no Check-in, Normal and
+	// Energized read the same, so they must not stale a stored summary.
+	if checkin == CheckinLow || checkin == CheckinDrained {
+		h.Write([]byte("#" + checkin))
+	}
 	for _, p := range sorted {
 		// Length-prefixed, so no two different lists make the same bytes.
 		h.Write([]byte("|" + strconv.Itoa(len(p.TaskID)) + ":" + p.TaskID + strconv.Itoa(len(p.Reason)) + ":" + p.Reason))

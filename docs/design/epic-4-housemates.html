@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Housemates</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mocks.css">
+<style>
+  .chev-r { width: 20px; height: 20px; color: var(--muted); flex-shrink: 0; }
+  .back { display: inline-flex; align-items: center; gap: 0.25rem; min-height: 2.75rem; font-weight: 600; margin: -0.5rem 0 0 -0.5rem; padding: 0 0.5rem; }
+  .back svg { width: 20px; height: 20px; }
+  .resident-head { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.5rem; padding-bottom: 0.5rem; }
+  .resident-head h2 { margin: 0.25rem 0 0; font-size: 1.875rem; font-weight: 700; line-height: 1.25; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .stat { gap: 0.25rem; }
+  .stat .v { font-size: 1.875rem; font-weight: 700; line-height: 1.25; }
+  .stat .l { font-size: 0.875rem; font-weight: 600; }
+  .day h4 { margin: 0 0 0.5rem; font-size: 0.875rem; font-weight: 700; color: var(--muted); }
+  .mini { flex-direction: row; align-items: center; padding: 0.75rem; gap: 0.75rem; }
+  .mini .grow { flex: 1; min-width: 0; }
+  .mini .t { font-weight: 700; }
+  .mini .w { font-size: 0.875rem; font-weight: 600; color: var(--muted); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="photo-abner" viewBox="0 0 96 96">
+    <rect width="96" height="96" fill="#b9d8c6"/>
+    <circle cx="48" cy="38" r="17" fill="#8a5a3c"/>
+    <path d="M14 96c4-20 18-30 34-30s30 10 34 30z" fill="#2f4a5c"/>
+    <path d="M31 33c2-12 32-14 34 0-6-5-28-5-34 0z" fill="#2b1d14"/>
+  </symbol>
+</svg>
+<main class="board">
+  <header>
+    <h1>Epic 4: Housemates</h1>
+    <p>The Home tab leads with its people. Each Resident opens a page with their name, photo, current Streak and what they completed in the last 7 days. Preferences, Restrictions and Baseline stay private.</p>
+  </header>
+
+  <figure>
+    <div class="phone">
+      <div class="screen">
+        <div class="page-head">
+          <h2 class="page-title">Your Home</h2>
+          <p class="page-sub">Plans at 7:00 AM, America/Sao Paulo</p>
+        </div>
+        <section class="card" style="padding:0.25rem 1rem">
+          <h3 class="sr" style="position:absolute;left:-9999px">Residents</h3>
+          <ul class="people">
+            <li class="person">
+              <span class="avatar sm"><svg class="photo"><use href="#photo-abner"/></svg></span>
+              <div class="grow"><p class="name">Abner <span class="tag">You</span></p><p class="meta"><span><i data-lucide="flame"></i>6 days</span><span><i data-lucide="circle-check"></i>2 done today</span></p></div>
+              <i class="chev-r" data-lucide="chevron-right"></i>
+            </li>
+            <li class="person">
+              <span class="avatar sm yellow">AS</span>
+              <div class="grow"><p class="name">Ana</p><p class="meta"><span><i data-lucide="flame"></i>11 days</span><span><i data-lucide="circle-check"></i>3 done today</span></p></div>
+              <i class="chev-r" data-lucide="chevron-right"></i>
+            </li>
+          </ul>
+        </section>
+        <section class="card">
+          <div class="row"><span class="tile accent"><i data-lucide="user-plus"></i></span><div class="grow"><h3 class="card-title">Invite a Resident</h3><p class="sm muted">A single-use link, valid for seven days.</p></div></div>
+          <button class="btn primary full"><i data-lucide="share-2"></i>Share an invite link</button>
+        </section>
+        <section class="card fold">
+          <div class="fold-head"><span class="tile accent"><i data-lucide="settings"></i></span><div class="grow"><h3>Home settings</h3><p>Name, planning time and time zone.</p></div><i class="chev" data-lucide="chevron-down"></i></div>
+        </section>
+        <div class="actions" style="margin-top:.5rem;justify-content:flex-start"><button class="btn danger"><i data-lucide="log-out"></i>Leave Home</button></div>
+      </div>
+      <nav class="tabs"><span class="tab"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab on"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <figcaption><strong>Home tab</strong>Residents first, as one card of rows (avatar, name, Streak, done today), each row a 44px+ link to that Resident's page; "You" opens Me. Then Invite, settings folded, and Leave Home last. Leave Home is the most deliberate action in the app, so it sits left.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone">
+      <div class="screen">
+        <a class="back"><i data-lucide="chevron-left"></i>Your Home</a>
+        <div class="resident-head">
+          <span class="avatar lg yellow">AS</span>
+          <h2>Ana</h2>
+        </div>
+        <div class="stats">
+          <div class="card stat"><span class="v">11</span><span class="l">day Streak</span></div>
+          <div class="card stat"><span class="v">14</span><span class="l">Tasks done in 7 days</span></div>
+        </div>
+        <div style="margin-top:.5rem" class="stack">
+          <h3 class="group" style="margin:0">Done lately</h3>
+          <div class="day"><h4>Today</h4>
+            <div class="stack">
+              <div class="card mini"><span class="tile mint"><i data-lucide="bath"></i></span><div class="grow"><p class="t">Deep clean the shower</p><p class="w">Bathroom · 9:02 AM</p></div></div>
+              <div class="card mini"><span class="tile blue"><i data-lucide="brush"></i></span><div class="grow"><p class="t">Vacuum the living room</p><p class="w">Floors · 9:15 AM, with Abner</p></div></div>
+            </div>
+          </div>
+          <div class="day"><h4>Yesterday</h4>
+            <div class="stack">
+              <div class="card mini"><span class="tile peach"><i data-lucide="cooking-pot"></i></span><div class="grow"><p class="t">Clean the stove</p><p class="w">Kitchen · 7:40 PM</p></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs"><span class="tab"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab on"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <figcaption><strong>Resident page</strong>Route <code>/home/residents/:id</code> under the Home tab. Name and photo, two plain stat tiles, then completions grouped by day for up to 7 days, newest first, without actions. No Energy, Preferences or Restrictions.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone">
+      <div class="screen">
+        <a class="back"><i data-lucide="chevron-left"></i>Your Home</a>
+        <div class="resident-head">
+          <span class="avatar lg blue">JR</span>
+          <h2>jrocha</h2>
+        </div>
+        <div class="stats">
+          <div class="card stat"><span class="v">0</span><span class="l">day Streak</span></div>
+          <div class="card stat"><span class="v">0</span><span class="l">Tasks done in 7 days</span></div>
+        </div>
+        <div class="stack" style="margin-top:.5rem">
+          <h3 class="group" style="margin:0">Done lately</h3>
+          <p class="muted">Nothing completed in the last 7 days.</p>
+        </div>
+      </div>
+      <nav class="tabs"><span class="tab"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab on"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <figcaption><strong>Quiet week, no name set</strong>Fallback name and initials. Zeros read in the same neutral voice (The Calm at Every Number Rule). The empty line states a fact; it never prods.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="phone">
+      <div class="screen">
+        <div class="page-head">
+          <div class="sk" style="width:55%;height:2rem"></div>
+          <div class="sk" style="width:70%;height:1rem;margin-top:.6rem"></div>
+        </div>
+        <div class="sk-card" style="padding:.25rem 1rem">
+          <div class="person"><div class="sk" style="width:2.75rem;height:2.75rem"></div><div class="grow stack-sm"><div class="sk" style="width:35%;height:1rem"></div><div class="sk" style="width:60%;height:.8rem"></div></div></div>
+          <div class="person"><div class="sk" style="width:2.75rem;height:2.75rem"></div><div class="grow stack-sm"><div class="sk" style="width:30%;height:1rem"></div><div class="sk" style="width:55%;height:.8rem"></div></div></div>
+        </div>
+        <div class="sk-card"><div class="row"><div class="sk block" style="width:2.75rem;height:2.75rem"></div><div class="grow stack-sm"><div class="sk" style="width:55%;height:1rem"></div><div class="sk" style="width:75%;height:.8rem"></div></div></div><div class="sk" style="width:100%;height:2.75rem"></div></div>
+      </div>
+      <nav class="tabs"><span class="tab"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab on"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <figcaption><strong>Home skeleton</strong>Round avatar placeholders in the Residents card, then the Invite card's shape. Same 300ms delay and motion-safe pulse as Today.</figcaption>
+  </figure>
+</main>
+<script src="mocks-i18n.js"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

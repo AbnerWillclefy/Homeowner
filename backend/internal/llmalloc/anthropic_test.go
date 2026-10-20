@@ -1,10 +1,12 @@
 package llmalloc_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -113,6 +115,91 @@ func TestTheAnthropicClientStopsAtTheDeadline(t *testing.T) {
 	}
 	if time.Since(start) > time.Second {
 		t.Fatalf("took %s, want to stop at the deadline", time.Since(start))
+	}
+}
+
+func messageWith(content []map[string]any, usage map[string]any) string {
+	b, _ := json.Marshal(map[string]any{
+		"id": "msg_1", "type": "message", "role": "assistant", "model": "claude-haiku-5-5",
+		"content": content, "stop_reason": "end_turn", "usage": usage,
+	})
+	return string(b)
+}
+
+func TestAThinkingRequestAsksForAdaptiveThinkingAtLowEffort(t *testing.T) {
+	client, _, got, _ := fakeAPI(t, http.StatusOK, message("end_turn", `{}`), 0)
+	req := request
+	req.Thinking = true
+	req.MaxTokens = 4224
+
+	if _, err := client.Complete(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	body := *got
+	thinking, _ := body["thinking"].(map[string]any)
+	effort := body["output_config"].(map[string]any)["effort"]
+	if thinking["type"] != "adaptive" || thinking["display"] != "omitted" || effort != "low" || body["max_tokens"] != float64(4224) {
+		t.Fatalf("thinking = %v, effort = %v, max_tokens = %v", thinking, effort, body["max_tokens"])
+	}
+	if _, ok := thinking["budget_tokens"]; ok {
+		t.Error("adaptive thinking takes no budget_tokens")
+	}
+}
+
+func TestARequestWithoutThinkingKeepsItOff(t *testing.T) {
+	client, _, got, _ := fakeAPI(t, http.StatusOK, message("end_turn", `{}`), 0)
+	if _, err := client.Complete(context.Background(), request); err != nil {
+		t.Fatal(err)
+	}
+	if thinking, _ := (*got)["thinking"].(map[string]any); thinking["type"] != "disabled" {
+		t.Fatalf("thinking = %v, want disabled", thinking)
+	}
+}
+
+func TestAThinkingBlockBeforeTheTextIsSkipped(t *testing.T) {
+	body := messageWith([]map[string]any{
+		{"type": "thinking", "thinking": "", "signature": "sig"},
+		{"type": "text", "text": `{"assignments": [], "pool": []}`},
+	}, map[string]any{"input_tokens": 10, "output_tokens": 5})
+	client, _, _, _ := fakeAPI(t, http.StatusOK, body, 0)
+
+	raw, err := client.Complete(context.Background(), request)
+	if err != nil || string(raw) != `{"assignments": [], "pool": []}` {
+		t.Fatalf("answer = %s, err = %v", raw, err)
+	}
+}
+
+func TestAThinkingBlockWithoutTextIsInvalid(t *testing.T) {
+	body := messageWith([]map[string]any{{"type": "thinking", "thinking": "", "signature": "sig"}},
+		map[string]any{"input_tokens": 10, "output_tokens": 5})
+	client, _, _, _ := fakeAPI(t, http.StatusOK, body, 0)
+	if _, err := client.Complete(context.Background(), request); !errors.Is(err, llmalloc.ErrInvalidResponse) {
+		t.Fatalf("want ErrInvalidResponse, got %v", err)
+	}
+}
+
+func TestEveryCallLogsItsTokenUsageAndNothingElse(t *testing.T) {
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	body := messageWith([]map[string]any{{"type": "text", "text": `{}`}},
+		map[string]any{"input_tokens": 321, "output_tokens": 1234})
+	client, _, _, _ := fakeAPI(t, http.StatusOK, body, 0)
+
+	if _, err := client.Complete(context.Background(), request); err != nil {
+		t.Fatal(err)
+	}
+	var line map[string]any
+	if err := json.Unmarshal(buf.Bytes(), &line); err != nil {
+		t.Fatalf("log = %q: %v", buf.String(), err)
+	}
+	if line["msg"] != "llm_usage" || line["input_tokens"] != float64(321) || line["output_tokens"] != float64(1234) ||
+		line["model"] != "claude-haiku-5-5" {
+		t.Fatalf("log line = %v", line)
+	}
+	if strings.Contains(buf.String(), request.User) || strings.Contains(buf.String(), request.System) {
+		t.Fatalf("the log line holds prompt text: %s", buf.String())
 	}
 }
 

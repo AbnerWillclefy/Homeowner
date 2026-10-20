@@ -25,10 +25,12 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/nudge"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/photos"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/db"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/replan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/server"
 )
 
@@ -43,16 +45,19 @@ type App struct {
 	Logs  *LogBuffer
 	// Push is the fake Web Push sender; nil unless started WithPush.
 	Push *push.Fake
+	// Photos is the fake object store; nil unless started WithPhotos.
+	Photos *photos.Fake
 	// Auth is the fake token verifier; nil when started WithoutAuth.
 	Auth *auth.Fake
 	// Planner is the Allocation job's planner over the same database. It
 	// plans with the baseline allocator unless UseAllocator replaces it.
 	Planner *dayplan.Planner
 
-	alloc  *swapAllocator
-	nudger dayplan.Nudger
-	llm    dayplan.Option
-	llmCfg dayplan.LLMConfig
+	queries *queryCounter
+	alloc   *swapAllocator
+	nudger  dayplan.Nudger
+	llm     dayplan.Option
+	llmCfg  dayplan.LLMConfig
 }
 
 // swapAllocator is the Allocator the server and the job share, so a test can
@@ -100,6 +105,24 @@ func WithPush(publicKey string) Option {
 	}
 }
 
+// PhotosBaseURL is the public base URL WithPhotos configures.
+const PhotosBaseURL = "https://cdn.test/avatars"
+
+// WithPhotos configures photos with an in-memory object store and the base
+// URL PhotosBaseURL; the fake is exposed as App.Photos.
+func WithPhotos() Option {
+	return func(d *server.Deps) {
+		d.Photos = photos.NewFake()
+		d.PhotosBaseURL = PhotosBaseURL
+	}
+}
+
+// WithReplanner switches the staging-only POST /dev/replan route on, backed by r
+// (usually a *replan.Fake).
+func WithReplanner(r replan.Replanner) Option {
+	return func(d *server.Deps) { d.Replanner = r }
+}
+
 // WithoutAuth leaves the token verifier unconfigured (nil), so routes that
 // need a signed-in User answer 503.
 func WithoutAuth() Option {
@@ -111,7 +134,8 @@ func Start(t testing.TB, opts ...Option) *App {
 	t.Helper()
 	dbURL := NewMigratedDatabase(t)
 
-	pool, err := db.Connect(context.Background(), dbURL, 0)
+	counter := &queryCounter{}
+	pool, err := db.Connect(context.Background(), dbURL, 0, counter.trace)
 	if err != nil {
 		t.Fatalf("apitest: connect: %v", err)
 	}
@@ -138,8 +162,9 @@ func Start(t testing.TB, opts ...Option) *App {
 	srv := httptest.NewServer(server.New(deps))
 	t.Cleanup(srv.Close)
 
-	app := &App{URL: srv.URL, Clock: fake, DB: pool, Logs: logs, alloc: swappable}
+	app := &App{URL: srv.URL, Clock: fake, DB: pool, Logs: logs, alloc: swappable, queries: counter}
 	app.Push, _ = deps.Push.(*push.Fake)
+	app.Photos, _ = deps.Photos.(*photos.Fake)
 	if app.Push != nil {
 		// The job nudges through the same fake the server sends with.
 		app.nudger = nudge.New(pool, app.Push, slog.New(slog.NewJSONHandler(logs, nil)))

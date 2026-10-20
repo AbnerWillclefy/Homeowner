@@ -9,6 +9,10 @@ export interface FakeRequest {
   body: unknown;
   /** The raw Authorization header, or null. */
   authorization: string | null;
+  /** The X-Amz-Target header (which Cognito action), or null. */
+  target: string | null;
+  /** Every request header, lower-cased. */
+  headers: Record<string, string>;
 }
 
 export interface FakeReply {
@@ -103,6 +107,8 @@ export function createRouter(): Router {
       path: url.pathname,
       body: parseBody(request.postData()),
       authorization: request.headers()["authorization"] ?? null,
+      target: request.headers()["x-amz-target"] ?? null,
+      headers: request.headers(),
     });
     if (reply === null) {
       unmocked.push({ method: request.method(), url: request.url() });

@@ -2,7 +2,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { config } from "../../../shared/config";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
-import { createConfirmSubmitter } from "../logic/authSubmit";
+import { createConfirmSubmitter, type ConfirmAction } from "../logic/authSubmit";
 import type { CognitoFailure, CognitoResult } from "../api/cognito";
 import { EMAIL_MARKER, splitAtEmail } from "../logic/emailMarker";
 import { failureMessage, fieldError } from "../logic/failureText";
@@ -13,6 +13,7 @@ import { useStableHandlers } from "../../../shared/ui/useStableHandlers";
 import { useToast } from "../../../shared/ui/useToast";
 
 const FORM = "confirm";
+const noop = () => {};
 
 interface Props {
   email: string;
@@ -24,7 +25,9 @@ interface Props {
 
 export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) {
   const { t } = useI18n();
-  const [busy, setBusy] = useState(false);
+  // Which button runs, so only that one spins; the other is just disabled while any runs.
+  const [running, setRunning] = useState<ConfirmAction | null>(null);
+  const busy = running !== null;
   // State holds the failure and a flag, never their words, so a language switch re-words them.
   const [problem, setProblem] = useState<CognitoFailure | null>(null);
   const toast = useToast();
@@ -36,7 +39,8 @@ export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) 
     () =>
       createConfirmSubmitter({
         ...stable,
-        onBusy: setBusy,
+        onBusy: noop, // `running` already says whether anything is in flight
+        onRunning: setRunning,
         onProblem: setProblem,
         // A new code was sent and nothing is left to decide: a toast, not a message the form has to clear.
         onResent: () => toast.show({ messageKey: "confirm.resent", tone: "success" }),
@@ -78,11 +82,11 @@ export function Confirm({ email, confirm, resend, onConfirmed, onBack }: Props) 
             {...fieldError(problem, "code", FORM)}
           />
           <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
-          <Button type="submit" fullWidth className="mt-4" disabled={busy} aria-busy={busy}>
-            {busy ? t("confirm.submitting") : t("confirm.submit")}
+          <Button type="submit" fullWidth className="mt-4" disabled={busy} pending={running === "submit"}>
+            {t("confirm.submit")}
           </Button>
         </form>
-        <Button variant="secondary" fullWidth className="mt-3" onClick={sendAgain} disabled={busy} aria-busy={busy}>
+        <Button variant="secondary" fullWidth className="mt-3" onClick={sendAgain} disabled={busy} pending={running === "resend"}>
           {t("confirm.resend")}
         </Button>
       </Card>

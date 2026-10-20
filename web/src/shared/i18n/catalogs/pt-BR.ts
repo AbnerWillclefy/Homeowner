@@ -31,7 +31,7 @@ export const ptBR: Messages = {
   "me.heading": "Sobre você",
 
   // Lar
-  "home.loading": "Carregando o seu lar...",
+  "home.loading": "Carregando o lar",
   "home.load.offline":
     "O Homeowner não consegue acessar o serviço, então não foi possível carregar o seu lar. Verifique sua conexão e tente novamente.",
   "home.load.error":
@@ -40,16 +40,33 @@ export const ptBR: Messages = {
   "home.retry": "Tentar novamente",
   "home.create.heading": "Crie o seu lar",
   "home.create.submit": "Criar lar",
-  "home.create.submitting": "Criando...",
   "home.create.recovered":
     "Você já tem um lar, então o Homeowner o carregou. Confira os ajustes dele abaixo.",
   "home.settings.heading": "Seu lar",
-  "home.settings.plan.heading": "Plano do dia",
   "home.settings.plan.hint": "Quando o plano de cada dia é feito, no fuso horário do seu lar.",
   "home.summary": "Os planos são feitos às {time}, horário de {zone}.",
   "home.settings.save": "Salvar alterações",
-  "home.settings.saving": "Salvando...",
   "home.settings.saved": "Suas alterações foram salvas.",
+  "home.settings.card.title": "Ajustes do lar",
+  "home.settings.card.hint": "Horário do planejamento e fuso horário",
+  "home.residents.heading": "Moradores",
+  "home.residents.you": "Você",
+  "home.residents.streak": { one: "{count} dia", other: "{count} dias" },
+  "home.residents.doneToday": { one: "{count} concluída hoje", other: "{count} concluídas hoje" },
+  "home.residents.error": "Algo deu errado ao carregar os moradores. Tente novamente em instantes.",
+  "resident.loading": "Carregando o morador",
+  "resident.back": "Seu lar",
+  "resident.streak": { one: "dia de sequência", other: "dias de sequência" },
+  "resident.done7": { one: "Tarefa concluída em 7 dias", other: "Tarefas concluídas em 7 dias" },
+  "resident.recent.heading": "Concluídas há pouco",
+  "resident.day.today": "Hoje",
+  "resident.day.yesterday": "Ontem",
+  "resident.completion.meta": "{category} · {time}",
+  "resident.completion.metaWith": "{category} · {time}, com {name}",
+  "resident.empty": "Nada concluído nos últimos 7 dias.",
+  "resident.notFound": "Não encontramos este morador no seu lar.",
+  "resident.error": "Algo deu errado ao carregar este morador. Tente novamente em instantes.",
+  "resident.offline": "O Homeowner não consegue acessar o serviço. Verifique a sua conexão e tente de novo.",
   "home.timezone.label": "Fuso horário",
   "home.allocationTime.label": "Horário da alocação",
   "home.save.offline":
@@ -67,7 +84,6 @@ export const ptBR: Messages = {
     "Se você for o último morador, o lar e seus afazeres são apagados de vez.",
   "home.leave.cancel": "Cancelar",
   "home.leave.confirm": "Sair do lar",
-  "home.leave.leaving": "Saindo...",
   "home.leave.offline":
     "O Homeowner não consegue acessar o serviço, então você ainda não saiu. Verifique sua conexão e tente novamente.",
   "home.leave.error":
@@ -87,7 +103,6 @@ export const ptBR: Messages = {
   // Reminders
   "reminders.on": "Os lembretes estão ativados neste dispositivo.",
   "reminders.enable": "Ativar lembretes",
-  "reminders.enabling": "Ativando...",
   "reminders.problem.denied":
     "As notificações estão bloqueadas para o Homeowner. Permita-as nos Ajustes (ou Configurações) do celular, em Notificações.",
   "reminders.problem.dismissed":
@@ -116,7 +131,7 @@ export const ptBR: Messages = {
     "Feche o Safari e abra o Homeowner pelo novo ícone na sua Tela de Início.",
 
   // Profile
-  "profile.loading": "Carregando seus dados...",
+  "profile.loading": "Carregando seus dados",
   "profile.offline":
     "Não foi possível falar com o serviço, então seus dados não aparecem. Verifique sua conexão e tente de novo.",
   "profile.error":
@@ -129,6 +144,37 @@ export const ptBR: Messages = {
     "Não foi possível salvar sua alteração, então ela foi desfeita. Verifique sua conexão e tente de novo.",
   "profile.saveFailed.notSignedIn":
     "Você não está mais conectado, então sua alteração foi desfeita. Entre de novo.",
+  "me.header.addLink": "Adicione seu nome e foto",
+  "me.header.edit": "Editar nome e foto",
+  "me.header.loadFailed": "Não foi possível carregar seu nome.",
+  "me.header.retry": "Tentar de novo",
+  "me.edit.heading": "Seu nome",
+  "me.edit.back": "Voltar",
+  "me.edit.nameLabel": "Nome",
+  "me.edit.nameHint": "Quem mora com você vê este nome. Vazio, usamos o começo do e-mail.",
+  "me.edit.counter": "{count}/{max}",
+  "me.edit.save": "Salvar",
+  "profile.name.tooLong": "O nome pode ter no máximo {max} caracteres. Encurte e salve de novo.",
+  "profile.name.invalid": "O nome tem caracteres não permitidos. Remova e salve de novo.",
+  "profile.name.offline": "Não foi possível falar com o serviço, então o nome não foi salvo. Verifique sua conexão e tente de novo.",
+  "profile.name.error": "Algo deu errado ao salvar o nome. Tente de novo em instantes.",
+  "profile.name.notSignedIn": "Você não está mais conectado. Entre de novo para salvar o nome.",
+  "me.photo.label": "Foto",
+  "me.photo.choose": "Escolher foto",
+  "me.photo.another": "Escolher outra",
+  "me.photo.save": "Salvar foto",
+  "me.photo.retry": "Tentar de novo",
+  "me.photo.remove": "Remover foto",
+  "me.photo.preparing": "Preparando a foto...",
+  "me.photo.previewCaption": "Assim ela vai ficar",
+  "me.photo.hint": "Quem mora com você vê a foto. Cortamos em quadrado e nada é enviado até você salvar.",
+  "profile.photo.unreadable": "Não foi possível ler este arquivo. Escolha uma foto JPEG, PNG ou WebP.",
+  "profile.photo.unprepared": "Não foi possível preparar esta foto. Tente outra.",
+  "profile.photo.off": "Fotos indisponíveis no momento. Tente mais tarde.",
+  "profile.photo.offline": "Sem conexão com o serviço, a foto não foi salva. Verifique e tente de novo.",
+  "profile.photo.error": "A foto não foi salva e a atual continua a mesma. Tente de novo.",
+  "profile.photo.removeError": "Não foi possível remover a foto. Tente de novo.",
+  "profile.photo.notSignedIn": "Você não está mais conectado. Entre de novo para mudar a foto.",
   "profile.baseline.heading": "Energia base",
   "profile.baseline.hint": "Sua energia de costume em cada dia da semana. O check-in ajusta para o dia.",
   "profile.baseline.level.low": "Baixa",
@@ -166,7 +212,7 @@ export const ptBR: Messages = {
     one: "{count} afazer no seu lar",
     other: "{count} afazeres no seu lar",
   },
-  "chores.loading": "Carregando os seus afazeres...",
+  "chores.loading": "Carregando os afazeres",
   "chores.load.offline":
     "Não foi possível carregar os seus afazeres porque o Homeowner não consegue falar com o serviço. Confira a sua conexão e tente de novo.",
   "chores.load.error":
@@ -198,7 +244,6 @@ export const ptBR: Messages = {
   "chores.delete.prompt": "Excluir {name}? Isso não pode ser desfeito.",
   "chores.delete.confirm": "Sim, excluir",
   "chores.delete.cancel": "Manter",
-  "chores.delete.deleting": "Excluindo...",
   "chores.delete.offline":
     "O afazer não foi excluído porque o Homeowner não consegue falar com o serviço. Confira a sua conexão e tente de novo.",
   "chores.delete.error":
@@ -226,7 +271,6 @@ export const ptBR: Messages = {
   "chores.form.buildsUp.label": "Acumula enquanto não é feito",
   "chores.form.submit.create": "Adicionar afazer",
   "chores.form.submit.save": "Salvar afazer",
-  "chores.form.saving": "Salvando...",
   "chores.form.cancel": "Cancelar",
   "chores.form.saved": "O afazer foi salvo.",
   "chores.form.invalid.summary":
@@ -271,7 +315,7 @@ export const ptBR: Messages = {
 
   // Hoje (o plano do dia)
   "dayplan.heading": "Hoje",
-  "dayplan.loading": "Carregando o plano de hoje...",
+  "dayplan.loading": "Carregando o plano de hoje",
   "dayplan.load.offline":
     "Não foi possível carregar o plano de hoje porque o Homeowner não consegue falar com o serviço. Confira a sua conexão e tente de novo.",
   "dayplan.load.error":
@@ -284,6 +328,9 @@ export const ptBR: Messages = {
   "dayplan.greeting.morning": "Bom dia",
   "dayplan.greeting.afternoon": "Boa tarde",
   "dayplan.greeting.evening": "Boa noite",
+  "dayplan.greeting.morningName": "Bom dia, {name}",
+  "dayplan.greeting.afternoonName": "Boa tarde, {name}",
+  "dayplan.greeting.eveningName": "Boa noite, {name}",
   "dayplan.energy.value": "Energia {energy}",
   "dayplan.energy.planned": "{planned} de {energy} planejados para você",
   "dayplan.energy.drained": "Esgotado hoje, sem tarefas",
@@ -294,7 +341,10 @@ export const ptBR: Messages = {
   "dayplan.mine.heading": "Suas tarefas",
   "dayplan.mine.empty": "Nada para você hoje. Aproveite o dia.",
   "dayplan.others.heading": "Tarefas dos outros moradores",
-  "dayplan.others.resident": "Morador {number}",
+  "dayplan.others.someone": "Um morador",
+  "dayplan.summary.mine": { one: "{count} tarefa sua", other: "{count} tarefas suas" },
+  "dayplan.summary.others": { one: "{count} dos outros", other: "{count} dos outros" },
+  "dayplan.summary.pool": { one: "{count} por fazer", other: "{count} por fazer" },
   "dayplan.pool.heading": "Ainda por fazer",
   "dayplan.pool.empty":
     "Nenhuma outra tarefa em aberto. Tudo está planejado ou feito.",
@@ -340,15 +390,33 @@ export const ptBR: Messages = {
   "dayplan.action.done": "Concluir",
   "dayplan.action.done.named": "Concluir {task}",
   "dayplan.task.committed": "Assumida",
+  "dayplan.task.with": "Com {name}",
+  "dayplan.task.withYou": "Com você",
+  "dayplan.task.withSomeone": "Com um morador",
   "dayplan.task.suggestTwoPerson": "Esse afazer só cresce. Que tal fazê-lo em dupla?",
   "dayplan.task.suggestTwoPerson.action": "Tornar para duas pessoas",
   "dayplan.task.suggestTwoPerson.action.named": "Tornar {task} para duas pessoas",
   "dayplan.done.heading": "Concluídas hoje",
-  "dayplan.done.item": "{task} às {time}",
+  "dayplan.done.at": "Concluída às {time}",
+  "dayplan.done.atTogether": "Concluída às {time}, em dupla",
   "dayplan.action.failed.offline":
     "Parece que você está sem internet, então isso não foi enviado. Confira sua conexão e tente de novo.",
   "dayplan.action.failed.error":
     "Algo deu errado e isso não foi enviado. Tente de novo daqui a pouco.",
+  "dayplan.replan.action": "Replanejar agora",
+  "dayplan.replan.waiting": "Replanejando. Pode levar um minuto.",
+  "dayplan.replan.timedOut": "O novo plano está demorando. Ele ainda pode chegar, volte daqui a pouco.",
+  "dayplan.replan.done.llm": "A IA fez este plano.",
+  "dayplan.replan.done.baseline": "O alocador padrão fez este plano, sem a IA.",
+  "dayplan.replan.fallback.llm_daily_cap_reached":
+    "Este é o plano padrão, não o da IA: o limite diário da IA foi atingido.",
+  "dayplan.replan.fallback.llm_error": "Este é o plano padrão, não o da IA: a IA teve um problema.",
+  "dayplan.replan.fallback.llm_timeout": "Este é o plano padrão, não o da IA: a IA demorou demais.",
+  "dayplan.replan.fallback.llm_invalid_response":
+    "Este é o plano padrão, não o da IA: a resposta da IA não pôde ser usada.",
+  "dayplan.replan.fallback.llm_rejected_by_checker":
+    "Este é o plano padrão, não o da IA: o plano da IA não passou na verificação.",
+  "dayplan.replan.fallback.unknown": "Este é o plano padrão, não o da IA: o plano da IA não foi usado.",
   "dayplan.conflict.already_done":
     "Essa tarefa já foi concluída. Ela está em Concluídas hoje.",
   "dayplan.conflict.not_proposed":
@@ -358,12 +426,14 @@ export const ptBR: Messages = {
   "dayplan.conflict.not_in_pool":
     "Outro morador já pegou essa tarefa. Sua lista está atualizada.",
   "dayplan.conflict.not_yours":
-    "Essa tarefa não é sua para concluir. Pegue-a primeiro.",
+    "Outro morador está com essa tarefa. Sua lista está atualizada.",
   "dayplan.conflict.no_plan_today": "Ainda não há plano para hoje.",
   "dayplan.conflict.two_person_task":
     "Essa tarefa precisa de duas pessoas, o que ainda não está disponível.",
   "dayplan.conflict.restricted":
-    "Você tem uma restrição para essa tarefa, então não pode pegá-la.",
+    "Você tem uma restrição para essa tarefa, então ela não é para você hoje.",
+  "dayplan.conflict.drained":
+    "Você está sem energia hoje, então descanse: isso pode esperar.",
   "dayplan.conflict.unknown":
     "O plano mudou desde que você olhou. Sua lista está atualizada.",
 
@@ -397,7 +467,6 @@ export const ptBR: Messages = {
   "checkin.heading": "Check-in",
   "checkin.prompt": "Como você está hoje?",
   "checkin.open": "Fazer check-in",
-  "checkin.loading": "Carregando o seu check-in...",
   "checkin.load.offline":
     "Não foi possível carregar o seu check-in porque o Homeowner não consegue acessar o serviço. Verifique a sua conexão e tente de novo.",
   "checkin.load.error":
@@ -413,7 +482,6 @@ export const ptBR: Messages = {
   "checkin.level.required": "Escolha como está a sua energia hoje e salve.",
   "checkin.restrictions.legend": "Algo que você não pode fazer hoje?",
   "checkin.submit": "Salvar",
-  "checkin.saving": "Salvando...",
   "checkin.cancel": "Cancelar",
   "checkin.change": "Mudar",
   "checkin.saved": "Check-in salvo",
@@ -434,7 +502,6 @@ export const ptBR: Messages = {
   "signUp.confirmLabel": "Confirmar senha",
   "signUp.mismatch": "As duas senhas não são iguais.",
   "signUp.submit": "Cadastrar",
-  "signUp.submitting": "Cadastrando...",
   "signUp.haveLogin": "Já se cadastrou?",
   "signUp.haveLoginAction": "Entrar",
 
@@ -445,7 +512,6 @@ export const ptBR: Messages = {
   "signIn.emailLabel": "E-mail",
   "signIn.passwordLabel": "Senha",
   "signIn.submit": "Entrar",
-  "signIn.submitting": "Entrando...",
   "signIn.newHere": "Novo por aqui?",
   "signIn.newHereAction": "Cadastrar-se",
 
@@ -454,7 +520,6 @@ export const ptBR: Messages = {
   "confirm.intro": "Enviamos um código para {email}.",
   "confirm.codeLabel": "Código do e-mail",
   "confirm.submit": "Confirmar",
-  "confirm.submitting": "Verificando...",
   "confirm.resend": "Enviar um novo código",
   "confirm.useOtherEmail": "Usar outro e-mail",
   "confirm.resent": "Um novo código está a caminho. Use o e-mail mais recente.",
@@ -530,7 +595,6 @@ export const ptBR: Messages = {
   "invite.join.heading": "Entrar em um lar",
   "invite.join.loading": "Preparando seu convite...",
   "invite.join.submit": "Entrar neste lar",
-  "invite.join.submitting": "Entrando...",
   "invite.join.dismiss": "Agora não",
   "invite.leave.heading": "Entrar significa sair do seu lar",
   "invite.leave.warning":
@@ -559,7 +623,6 @@ export const ptBR: Messages = {
   "invite.share.heading": "Convidar um morador",
   "invite.share.hint": "Um link de uso único para quem mora com você. Vale por sete dias.",
   "invite.share.button": "Compartilhar link do convite",
-  "invite.share.creating": "Criando o convite...",
   "invite.share.title": "Entre no meu lar no Homeowner",
   "invite.share.text":
     "Entre no meu lar no Homeowner. Este link funciona uma vez e dura sete dias.",
@@ -593,7 +656,6 @@ export const ptBR: Messages = {
     "Você já tem um lar, então ele foi carregado. Os afazeres que você revisou não foram adicionados; adicione-os pelo Catálogo.",
   "catalog.questions.heading": "Sobre o seu lar",
   "catalog.questions.submit": "Sugerir afazeres",
-  "catalog.questions.submitting": "Preparando os seus afazeres...",
   "catalog.questions.skip": "Pular e adicionar afazeres depois",
   "catalog.questions.invalid":
     "Algumas respostas precisam de ajuste. Confira os campos abaixo.",
@@ -710,7 +772,6 @@ export const ptBR: Messages = {
   "onboarding.retry": "Tentar de novo",
   "onboarding.next": "Avançar",
   "onboarding.back": "Voltar",
-  "onboarding.saving": "Salvando...",
   "onboarding.advance.offline":
     "Não foi possível falar com o serviço, então você continua nesta etapa. Verifique a sua conexão e tente de novo.",
   "onboarding.advance.error":

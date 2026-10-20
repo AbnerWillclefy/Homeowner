@@ -38,12 +38,21 @@ func (s *Store) FindOrCreate(ctx context.Context, sub, email string, now time.Ti
 		ON CONFLICT (cognito_sub) DO UPDATE
 		SET email = EXCLUDED.email,
 		    updated_at = EXCLUDED.updated_at
-		RETURNING id, email, created_at`,
-		sub, email, now).Scan(&u.ID, &u.Email, &u.CreatedAt)
+		RETURNING id, email, created_at, display_name, photo_key`,
+		sub, email, now).Scan(&u.ID, &u.Email, &u.CreatedAt, &u.DisplayName, &u.PhotoKey)
 	if err != nil {
 		return User{}, fmt.Errorf("find or create user: %w", err)
 	}
 	return u, nil
+}
+
+// SetDisplayName stores the User's display name; "" clears it.
+func (s *Store) SetDisplayName(ctx context.Context, userID, name string, now time.Time) error {
+	if _, err := s.db.Exec(ctx, `UPDATE users SET display_name = NULLIF($2, ''), updated_at = $3 WHERE id = $1`,
+		userID, name, now); err != nil {
+		return fmt.Errorf("set display name: %w", err)
+	}
+	return nil
 }
 
 // OnboardingStep returns the last onboarding step the User completed or
@@ -82,6 +91,32 @@ func (s *Store) AdvanceOnboarding(ctx context.Context, userID, step string, now 
 // Execer is what a pool or a transaction offers for writing.
 type Execer interface {
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+}
+
+// SetPhotoKey stores key as the User's photo and returns the previous key
+// (nil when there was none). It is one statement that locks the row while it
+// reads the old key, so two simultaneous confirms each get the right key to
+// delete.
+func (s *Store) SetPhotoKey(ctx context.Context, userID, key string, now time.Time) (*string, error) {
+	return s.swapPhotoKey(ctx, userID, &key, now)
+}
+
+// ClearPhotoKey removes the User's photo and returns the previous key.
+func (s *Store) ClearPhotoKey(ctx context.Context, userID string, now time.Time) (*string, error) {
+	return s.swapPhotoKey(ctx, userID, nil, now)
+}
+
+func (s *Store) swapPhotoKey(ctx context.Context, userID string, key *string, now time.Time) (*string, error) {
+	var old *string
+	err := s.db.QueryRow(ctx, `
+		UPDATE users u SET photo_key = $2, updated_at = $3
+		FROM (SELECT photo_key FROM users WHERE id = $1 FOR UPDATE) old
+		WHERE u.id = $1
+		RETURNING old.photo_key`, userID, key, now).Scan(&old)
+	if err != nil {
+		return nil, fmt.Errorf("swap photo key: %w", err)
+	}
+	return old, nil
 }
 
 // MarkOnboardingDone stores that the User finished onboarding, on ex so a

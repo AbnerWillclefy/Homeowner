@@ -14,7 +14,9 @@ import { PageHeader } from "../../../shared/ui/PageHeader";
 import { categoryLabel, labelText } from "../../profile/logic/labels";
 import { CategoryTile } from "./FactList";
 import { groupByCategory } from "../logic/groups";
+import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { ChoreForm } from "./ChoreForm";
+import { ChoresSkeleton } from "./ChoresSkeleton";
 import { ChoreItem } from "./ChoreItem";
 import { LOAD_FAILURE_KEY } from "../logic/failureMessages";
 import { emptyForm, formFromChore } from "../logic/form";
@@ -42,6 +44,8 @@ export function ChoresSection() {
   const { t } = useI18n();
   const toast = useToast();
   const { state, reload, upsert, remove } = useChores();
+  // The page's one status announces the wait; the skeleton shows after 300ms. Only the first load and a Retry load.
+  const showSkeleton = useReportFirstLoad(state.kind === "loading");
   // A Task card's two-person hint links here with ?edit=<choreId>, which opens that Chore's edit form.
   const [params, setParams] = useSearchParams();
   const [editing, setEditing] = useState<Editing>(() => {
@@ -82,7 +86,7 @@ export function ChoresSection() {
         {state.kind === "ready" && state.chores.length > 0 && t("chores.count", { count: state.chores.length })}
       </PageHeader>
 
-      {state.kind === "loading" && <p role="status">{t("chores.loading")}</p>}
+      {showSkeleton && <ChoresSkeleton />}
 
       {state.kind === "failed" && (
         <>

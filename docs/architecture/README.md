@@ -37,6 +37,7 @@ In diagrams, solid boxes and lines are built; dashed boxes and lines are planned
 | [0009](../adr/0009-navigate-with-a-bottom-tab-router-and-amend-the-look.md) | Navigate with a bottom-tab router and amend the look of ADR 0007 |
 | [0010](../adr/0010-organise-the-pwa-by-domain-module.md) | Organise the PWA by domain module |
 | [0011](../adr/0011-split-each-domain-into-layer-folders.md) | Split each domain into the same layers, in the PWA and the backend |
+| [0012](../adr/0012-serve-resident-photos-from-a-private-bucket-through-the-web-cloudfront.md) | Serve Resident photos from a private bucket through the web CloudFront under unguessable keys |
 
 ## Keeping this current
 

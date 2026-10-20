@@ -18,11 +18,14 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/invites"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/photos"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/replan"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/residents"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/streak"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/tasks"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
@@ -52,6 +55,16 @@ type Deps struct {
 	// was made; nil means allocation.Baseline. It must be the Allocator the
 	// scheduled job uses.
 	Allocator allocation.Allocator
+	// Replanner asks the Allocation function to plan one Home again; nil means
+	// the staging-only POST /dev/replan route does not exist (404), as in
+	// production.
+	Replanner replan.Replanner
+	// Photos is the private photo bucket; nil means photos are not configured
+	// and the /me/photo routes answer 503.
+	Photos photos.ObjectStore
+	// PhotosBaseURL is the public URL photos are served from, without a
+	// trailing slash.
+	PhotosBaseURL string
 }
 
 const healthTimeout = 2 * time.Second
@@ -70,25 +83,40 @@ func New(deps Deps) http.Handler {
 	homeStore := homes.NewStore(db)
 	s := &server{deps: deps, users: users.NewStore(db), homes: homeStore}
 
-	me := users.NewHandler(s.users, homeStore, clk, log)
+	// Photos are off when there is no store, and then no URL is built either.
+	photosBase := deps.PhotosBaseURL
+	if deps.Photos == nil {
+		photosBase = ""
+	}
+	photoURL := photos.URLBuilder(photosBase)
+	me := users.NewHandler(s.users, homeStore, photoURL, clk, log)
 	home := homes.NewHandler(homeStore, clk, log)
+	photosH := photos.NewHandler(deps.Photos, s.users, photoURL, clk, log)
 	invite := invites.NewHandler(invites.NewStore(db), clk, log)
 	chore := chores.NewHandler(chores.NewStore(db), clk, log)
 	choreSettings := choresettings.NewHandler(choresettings.NewStore(db), log)
 	task := tasks.NewHandler(tasks.NewStore(db), clk, log)
 	dayPlan := dayplan.NewHandler(dayplan.New(db, deps.Allocator, log), dayplan.NewStore(db), checkin.NewStore(db), clk, log)
 	prof := profile.NewHandler(profile.NewStore(db), log)
-	streaks := streak.NewHandler(streak.NewStore(db), clk, log)
+	streakStore := streak.NewStore(db)
+	streaks := streak.NewHandler(streakStore, clk, log)
+	residentsH := residents.NewHandler(residents.NewStore(db), streakStore, photoURL, clk, log)
 	pushes := push.NewHandler(push.NewStore(db), deps.Push, deps.VAPIDPublicKey, clk, log)
 
 	user, resident := s.requireUser, s.requireResident
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.healthz)
 	mux.HandleFunc("GET /me", user(me.Me))
+	mux.HandleFunc("PUT /me/name", user(me.SetName))
+	mux.HandleFunc("POST /me/photo/uploads", photosH.RequireConfigured(user(photosH.Presign)))
+	mux.HandleFunc("PUT /me/photo", photosH.RequireConfigured(user(photosH.Confirm)))
+	mux.HandleFunc("DELETE /me/photo", photosH.RequireConfigured(user(photosH.Remove)))
 	mux.HandleFunc("GET /me/onboarding", user(me.Onboarding))
 	mux.HandleFunc("PUT /me/onboarding", user(me.AdvanceOnboarding))
 	mux.HandleFunc("POST /home", user(home.Create))
 	mux.HandleFunc("GET /home", resident(home.Get))
+	mux.HandleFunc("GET /home/residents", resident(residentsH.List))
+	mux.HandleFunc("GET /home/residents/{id}", resident(residentsH.Get))
 	mux.HandleFunc("PUT /home", resident(home.Update))
 	mux.HandleFunc("DELETE /home/residents/me", resident(home.Leave))
 	mux.HandleFunc("GET /home/chores", resident(chore.List))
@@ -130,6 +158,9 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("GET /push/vapid-public-key", pushes.RequireConfigured(pushes.PublicKey))
 	mux.HandleFunc("PUT /push/subscription", pushes.RequireConfigured(user(pushes.PutSubscription)))
 	mux.HandleFunc("POST /push/test", pushes.RequireConfigured(user(pushes.SendTest)))
+	if deps.Replanner != nil {
+		mux.HandleFunc("POST /dev/replan", resident(replan.NewHandler(deps.Replanner, log).Replan))
+	}
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not found")
 	})

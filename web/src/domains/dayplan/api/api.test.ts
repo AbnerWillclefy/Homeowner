@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SESSION_KEY } from "../../auth/logic/session";
-import { acceptAll, acceptTask, completeTask, getDayPlan, planMyDay, refuseTask, takeTask } from "./api";
+import { acceptAll, acceptTask, completeTask, getDayPlan, planMyDay, refuseTask, replanHome, takeTask } from "./api";
 
 function stubStorage(signedIn: boolean) {
   const data = new Map<string, string>();
@@ -76,19 +76,30 @@ describe("getDayPlan", () => {
     expect(await getDayPlan()).toEqual({ kind: "ok", plan: body });
   });
 
-  it("keeps the explanation the API sends, with both languages", async () => {
-    const explanation = { source: "llm", text: { "en-US": "A light day.", "pt-BR": "Um dia leve." } };
-    stubFetch(Response.json({ ...PLAN, explanation }));
+  const EXPLANATION = {
+    source: "llm",
+    headline: { "en-US": "A light day", "pt-BR": "Um dia leve" },
+    detail: { "en-US": "Rest is the plan.", "pt-BR": "Descansar é o plano." },
+  };
+
+  it("keeps the explanation the API sends, with headline and detail in both languages", async () => {
+    stubFetch(Response.json({ ...PLAN, explanation: { ...EXPLANATION, text: { "en-US": "old", "pt-BR": "velho" } } }));
     const result = await getDayPlan();
-    expect(result.kind === "ok" && result.plan.explanation).toEqual(explanation);
+    expect(result.kind === "ok" && result.plan.explanation).toEqual(EXPLANATION);
   });
 
   it.each([
     ["null", null],
-    ["an unknown source", { source: "robot", text: { "en-US": "a", "pt-BR": "b" } }],
-    ["a missing language", { source: "template", text: { "en-US": "a" } }],
-    ["a text that is not a string", { source: "template", text: { "en-US": "a", "pt-BR": 3 } }],
     ["a string", "A light day."],
+    ["only the old text field", { source: "llm", text: { "en-US": "a", "pt-BR": "b" } }],
+    ["an unknown source", { ...EXPLANATION, source: "robot" }],
+    ["a missing headline", { source: "template", detail: EXPLANATION.detail }],
+    ["a missing detail", { source: "template", headline: EXPLANATION.headline }],
+    ["a missing headline language", { ...EXPLANATION, headline: { "en-US": "a" } }],
+    ["a missing detail language", { ...EXPLANATION, detail: { "pt-BR": "a" } }],
+    ["a blank headline", { ...EXPLANATION, headline: { "en-US": "a", "pt-BR": "  " } }],
+    ["a blank detail", { ...EXPLANATION, detail: { "en-US": "", "pt-BR": "b" } }],
+    ["a headline that is not a string", { ...EXPLANATION, headline: { "en-US": "a", "pt-BR": 3 } }],
   ])("reads %s as no explanation and still reads the plan", async (_name, explanation) => {
     stubFetch(Response.json({ ...PLAN, explanation }));
     const result = await getDayPlan();
@@ -174,6 +185,7 @@ const DONE = {
   id: "t9",
   choreName: "Take out trash",
   completedAt: "2026-10-11T14:30:00Z",
+  with: [] as string[],
 };
 
 describe("committed and doneToday", () => {
@@ -213,6 +225,34 @@ describe("committed and doneToday", () => {
     expect(await getDayPlan()).toEqual({ kind: "error" });
     stubFetch(Response.json({ ...PLAN, doneToday: "none" }));
     expect(await getDayPlan()).toEqual({ kind: "error" });
+  });
+});
+
+describe("doneToday with and category", () => {
+  const read = async (entry: unknown) => {
+    stubFetch(Response.json({ ...PLAN, doneToday: [entry] }));
+    return getDayPlan();
+  };
+  const { with: _with, ...WITHOUT } = DONE;
+
+  it("keeps a well formed with and category", async () => {
+    const entry = { ...DONE, with: ["r2"], category: "kitchen" };
+    expect(await read(entry)).toEqual({ kind: "ok", plan: { ...PLAN, doneToday: [entry] } });
+  });
+
+  it("reads a missing with (an older API) as empty", async () => {
+    expect(await read(WITHOUT)).toEqual({ kind: "ok", plan: { ...PLAN, doneToday: [DONE] } });
+  });
+
+  it.each([null, "r2", [1], ["r2", 1], {}])("reads with %j as empty, not as an error", async (bad) => {
+    expect(await read({ ...DONE, with: bad })).toEqual({ kind: "ok", plan: { ...PLAN, doneToday: [DONE] } });
+  });
+
+  it("leaves a missing or odd category out", async () => {
+    for (const category of [undefined, null, 3]) {
+      const result = await read({ ...DONE, category });
+      expect(result.kind === "ok" && "category" in result.plan.doneToday[0]!).toBe(false);
+    }
   });
 });
 
@@ -325,5 +365,48 @@ describe("planMyDay", () => {
   it("is offline when the request cannot be made", async () => {
     stubFetch(new TypeError("Failed to fetch"));
     expect(await planMyDay()).toEqual({ kind: "offline" });
+  });
+});
+
+describe("replanHome", () => {
+  it("posts to /dev/replan with no body and reads 202 as ok", async () => {
+    const fetch = stubFetch(new Response(null, { status: 202 }));
+    expect(await replanHome()).toEqual({ kind: "ok" });
+    expect(fetch.mock.calls[0]![0]).toBe("http://api.test/dev/replan");
+    expect(fetch.mock.calls[0]![1]?.method).toBe("POST");
+    expect(fetch.mock.calls[0]![1]?.body).toBeUndefined();
+  });
+
+  it("reads 404 as none: the route does not exist outside staging", async () => {
+    stubFetch(new Response(null, { status: 404 }));
+    expect(await replanHome()).toEqual({ kind: "none" });
+  });
+
+  it("reads another status as an error", async () => {
+    stubFetch(new Response(null, { status: 500 }));
+    expect(await replanHome()).toEqual({ kind: "error" });
+  });
+
+  it("reads a network failure as offline", async () => {
+    stubFetch(new TypeError("Failed to fetch"));
+    expect(await replanHome()).toEqual({ kind: "offline" });
+  });
+
+  it("reads no session as not-signed-in", async () => {
+    stubStorage(false);
+    stubFetch(new Response(null, { status: 202 }));
+    expect(await replanHome()).toEqual({ kind: "not-signed-in" });
+  });
+});
+
+describe("getDayPlan run identity", () => {
+  it("keeps runId and fallbackReason when they are strings", async () => {
+    stubFetch(Response.json({ ...PLAN, runId: "run-1", fallbackReason: "llm_error" }));
+    expect(await getDayPlan()).toEqual({ kind: "ok", plan: { ...PLAN, runId: "run-1", fallbackReason: "llm_error" } });
+  });
+
+  it("leaves them out when absent or odd, never failing the plan", async () => {
+    stubFetch(Response.json({ ...PLAN, runId: 7, fallbackReason: null }));
+    expect(await getDayPlan()).toEqual({ kind: "ok", plan: PLAN });
   });
 });

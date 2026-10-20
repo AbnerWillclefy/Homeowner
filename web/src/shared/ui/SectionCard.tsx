@@ -1,13 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { IconTile } from "./IconTile";
+import { IconTile, TONES } from "./IconTile";
 import { Card } from "./Card";
-
-// Whole class strings, so Tailwind finds them.
-const TONES = {
-  accent: "bg-accent/10 text-accent",
-  danger: "bg-danger/10 text-danger",
-} as const;
 
 interface Props {
   /** Names the heading, which labels the section. */

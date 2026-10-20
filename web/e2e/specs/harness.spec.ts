@@ -1,4 +1,4 @@
-import { apiBaseUrl } from "../env";
+import { apiBaseUrl, cognitoRegion } from "../env";
 import { test, expect } from "../fixtures";
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
@@ -45,4 +45,21 @@ test("a request nothing covers is reported as unmocked", async ({ page, baseURL,
     { method: "GET", url: `${apiBaseUrl}/not-a-route` },
     { method: "GET", url: "https://unmocked.e2e.test/anything" },
   ]);
+});
+
+test("a Cognito action the fake does not support is reported as unmocked", async ({ page, baseURL, router, fakeCognito }) => {
+  await launchApp(page, baseURL!);
+
+  const status = await page.evaluate(async (region) => {
+    const response = await fetch(`https://cognito-idp.${region}.amazonaws.com/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-amz-json-1.1", "X-Amz-Target": "AWSCognitoIdentityProviderService.GlobalSignOut" },
+      body: JSON.stringify({ ClientId: "anything" }),
+    });
+    return response.status;
+  }, cognitoRegion);
+
+  expect(status).toBe(501);
+  expect(fakeCognito.requests).toEqual([]);
+  expect(router.takeUnmocked()).toEqual([{ method: "POST", url: `https://cognito-idp.${cognitoRegion}.amazonaws.com/` }]);
 });

@@ -1,7 +1,9 @@
 package dayplan_test
 
 import (
+	"bytes"
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
@@ -27,6 +29,10 @@ func TestCompleteRecordsTheCompletionWithTheResidentAndTheTime(t *testing.T) {
 	}
 	if got := apitest.TaskList(t, apitest.DayPlan(t, b).Body["doneToday"]); len(got) != 0 {
 		t.Fatalf("B sees A's Completion: %v", got)
+	}
+	// A one-person Task says "with": [] (never null, never missing).
+	if !bytes.Contains(r.Raw, []byte(`"with":[]`)) {
+		t.Fatalf("doneToday[0].with is not []: %s", r.Raw)
 	}
 
 	var (
@@ -73,17 +79,105 @@ func TestCompleteWorksOnAnAcceptedTaskAndTwiceIsAlreadyDone(t *testing.T) {
 func TestCompleteNeedsTheCallerToHoldTheTask(t *testing.T) {
 	t.Parallel()
 	app, a, b := apitest.TwoResidents(t)
-	wantConflict(t, apitest.Act(a, "complete", apitest.MineOf(t, b)[0]["id"].(string)), "not_yours")
-	wantConflict(t, apitest.Act(a, "complete", apitest.TaskList(t, apitest.DayPlan(t, a).Body["pool"])[0]["id"].(string)), "not_yours")
+	other := apitest.MineOf(t, b)
+	wantConflict(t, apitest.Act(a, "complete", other[0]["id"].(string)), "not_yours")
+	apitest.MustAct(t, b, "accept", other[1]["id"].(string))
+	wantConflict(t, apitest.Act(a, "complete", other[1]["id"].(string)), "not_yours")
 	if got := apitest.Count(t, app, `SELECT count(*) FROM completions`); got != 0 {
 		t.Fatalf("%d completions", got)
 	}
 }
 
-func TestCompleteWithoutATodayPlanIsNotYours(t *testing.T) {
+func TestCompleteWithoutATodayPlanIsNoPlanToday(t *testing.T) {
 	t.Parallel()
 	_, me := planned(t, 5, apitest.Chore("Dishes", 7, 2, "normal", []string{}))
-	wantConflict(t, apitest.Act(me, "complete", apitest.Pool(t, me)[0]["id"].(string)), "not_yours")
+	wantConflict(t, apitest.Act(me, "complete", apitest.Pool(t, me)[0]["id"].(string)), "no_plan_today")
+}
+
+func TestCompleteTakesAPoolTaskAndCompletesItInOneStep(t *testing.T) {
+	t.Parallel()
+	app, a, _ := apitest.TwoResidents(t)
+	pooled := apitest.TaskList(t, apitest.DayPlan(t, a).Body["pool"])[0]
+	id, name := pooled["id"].(string), pooled["choreName"].(string)
+
+	r := apitest.MustAct(t, a, "complete", id)
+	done := apitest.TaskList(t, r.Body["doneToday"])
+	if len(done) != 1 || done[0]["id"] != id || done[0]["choreName"] != name {
+		t.Fatalf("doneToday = %s", r.Raw)
+	}
+	if len(apitest.TaskList(t, r.Body["pool"])) != 0 {
+		t.Fatalf("still in the pool: %s", r.Raw)
+	}
+	counts := []struct {
+		query string
+		want  int
+	}{
+		{`SELECT count(*) FROM completions WHERE task_id = $1`, 1},
+		{`SELECT count(*) FROM completion_residents cr JOIN completions c ON c.id = cr.completion_id WHERE c.task_id = $1`, 1},
+		{`SELECT count(*) FROM completion_residents cr JOIN completions c ON c.id = cr.completion_id
+			JOIN residents r ON r.id = cr.resident_id JOIN users u ON u.id = r.user_id
+			WHERE c.task_id = $1 AND u.email = 'a@example.com'`, 1},
+		{`SELECT count(*) FROM task_residents WHERE task_id = $1 AND committed_on = '2026-03-02'`, 1},
+		{`SELECT count(*) FROM day_plan_assignments WHERE task_id = $1 AND reason = 'taken'`, 1},
+	}
+	for _, c := range counts {
+		if got := apitest.Count(t, app, c.query, id); got != c.want {
+			t.Errorf("%d rows, want %d: %s", got, c.want, c.query)
+		}
+	}
+	s := a.Get("/home/streak")
+	apitest.ExpectStatus(t, s, http.StatusOK)
+	if s.Body["todayGrew"] != true || s.Body["current"] != float64(1) {
+		t.Fatalf("streak = %s", s.Raw)
+	}
+	// A second complete of the same Task finds it done.
+	wantConflict(t, apitest.Act(a, "complete", id), "already_done")
+}
+
+func TestCompleteOnAPoolTaskNeverBreaksARestriction(t *testing.T) {
+	t.Parallel()
+	app, me := planned(t, 10, apitest.Chore("Move sofa", 7, 2, "normal", []string{"heavy_lifting"}))
+	apitest.ExpectStatus(t, me.Put("/me/restrictions/heavy_lifting", nil), http.StatusNoContent)
+	allocate(app, t)
+	before := apitest.Count(t, app, `SELECT count(*) FROM day_plan_assignments`)
+	wantConflict(t, apitest.Act(me, "complete", apitest.Pool(t, me)[0]["id"].(string)), "restricted")
+	wantNothingWritten(t, app, before)
+}
+
+func TestCompleteCannotFinishATwoPersonPoolTask(t *testing.T) {
+	t.Parallel()
+	two := apitest.Chore("Move bed", 7, 2, "normal", []string{})
+	two["people"] = 2
+	app, me := planned(t, 10, two)
+	allocate(app, t)
+	before := apitest.Count(t, app, `SELECT count(*) FROM day_plan_assignments`)
+	wantConflict(t, apitest.Act(me, "complete", apitest.Pool(t, me)[0]["id"].(string)), "two_person_task")
+	wantNothingWritten(t, app, before)
+}
+
+func TestCompleteOnAPoolTaskRefusesADrainedResident(t *testing.T) {
+	t.Parallel()
+	app, a, _ := apitest.TwoResidents(t)
+	apitest.CheckIn(t, a, "drained")
+	pool := apitest.TaskList(t, apitest.DayPlan(t, a).Body["pool"])
+	if len(pool) == 0 {
+		t.Fatal("setup: empty pool")
+	}
+	before := apitest.Count(t, app, `SELECT count(*) FROM day_plan_assignments`)
+	wantConflict(t, apitest.Act(a, "complete", pool[0]["id"].(string)), "drained")
+	wantNothingWritten(t, app, before)
+}
+
+func wantNothingWritten(t *testing.T, app *apitest.App, assignments int) {
+	t.Helper()
+	for _, table := range []string{"completions", "task_residents"} {
+		if got := apitest.Count(t, app, `SELECT count(*) FROM `+table); got != 0 {
+			t.Errorf("%d rows in %s, want 0", got, table)
+		}
+	}
+	if got := apitest.Count(t, app, `SELECT count(*) FROM day_plan_assignments`); got != assignments {
+		t.Errorf("%d assignments, want %d", got, assignments)
+	}
 }
 
 func TestCompletedOnIsTheHomesLocalDateNotUTCs(t *testing.T) {

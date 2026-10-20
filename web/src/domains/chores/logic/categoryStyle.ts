@@ -24,7 +24,7 @@ export interface CategoryStyle {
   icon: LucideIcon;
 }
 
-const TONES: Record<CategoryTone, Pick<CategoryStyle, "fill" | "ink">> = {
+export const TONES: Record<CategoryTone, Pick<CategoryStyle, "fill" | "ink">> = {
   peach: { fill: "bg-cat-peach", ink: "text-cat-peach-ink" },
   mint: { fill: "bg-cat-mint", ink: "text-cat-mint-ink" },
   lavender: { fill: "bg-cat-lavender", ink: "text-cat-lavender-ink" },

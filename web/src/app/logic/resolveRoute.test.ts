@@ -101,8 +101,26 @@ const rows: Row[] = [
     expected: to("/"),
   })),
 
+  // A screen under a tab (the edit screen under Me) is part of the shell, not an unknown path
+  { name: "signed out on /me/edit goes to sign-in", input: input({ auth: "signed-out", pathname: "/me/edit" }), expected: to("/signin") },
+  { name: "done on /me/edit renders", input: input({ pathname: "/me/edit" }), expected: render },
+  { name: "done on /me/edit/ renders", input: input({ pathname: "/me/edit/" }), expected: render },
+  { name: "done on /me/nope goes to Today", input: input({ pathname: "/me/nope" }), expected: to("/") },
+  { name: "unfinished on /me/edit goes to the step", input: input({ pathname: "/me/edit", onboarding: ready("baseline") }), expected: to("/welcome/baseline") },
+  { name: "done on /signin wanting /me/edit goes there", input: input({ pathname: "/signin", wanted: "/me/edit" }), expected: to("/me/edit") },
+
+  // A Resident's page under Home: a parameterised path the guard must let through
+  { name: "done on /home/residents/abc renders", input: input({ pathname: "/home/residents/abc" }), expected: render },
+  { name: "done on /home/residents/abc/ renders", input: input({ pathname: "/home/residents/abc/" }), expected: render },
+  { name: "done on /home/residents goes to Today", input: input({ pathname: "/home/residents" }), expected: to("/") },
+  { name: "done on /home/residents/a/b goes to Today", input: input({ pathname: "/home/residents/a/b" }), expected: to("/") },
+  { name: "signed out on a Resident page goes to sign-in", input: input({ auth: "signed-out", pathname: "/home/residents/abc" }), expected: to("/signin") },
+  { name: "unfinished on a Resident page goes to the step", input: input({ pathname: "/home/residents/abc", onboarding: ready("baseline") }), expected: to("/welcome/baseline") },
+  { name: "done on /signin wanting a Resident page goes there", input: input({ pathname: "/signin", wanted: "/home/residents/abc" }), expected: to("/home/residents/abc") },
+  { name: "pending Invite on a Resident page goes to Today", input: input({ pathname: "/home/residents/abc", hasPendingInvite: true }), expected: to("/") },
+
   // Pending Invite (signed in): everything but / goes to /, before onboarding is read
-  ...["/chores", "/home", "/me", "/welcome/home", "/signin", "/nope"].flatMap((pathname) =>
+  ...["/chores", "/home", "/me", "/me/edit", "/welcome/home", "/signin", "/nope"].flatMap((pathname) =>
     (["done", "baseline"] as const).map((position) => ({
       name: `pending Invite, ${position}, on ${pathname} goes to Today`,
       input: input({ pathname, hasPendingInvite: true, onboarding: ready(position) }),
@@ -135,7 +153,7 @@ describe("resolveRoute table", () => {
 
   it("never loops over every path, state and device", () => {
     const paths = [
-      "/", "/chores", "/home", "/me", "/signin", "/signup", "/confirm", "/welcome", "/welcome/", "/nope", "/chores/",
+      "/", "/chores", "/home", "/me", "/me/edit", "/home/residents/abc", "/home/residents", "/signin", "/signup", "/confirm", "/welcome", "/welcome/", "/nope", "/chores/",
       ...ONBOARDING_STEPS.map(stepPath),
     ];
     const onboardings: OnboardingInput[] = [

@@ -1,4 +1,5 @@
-import { authedFetch } from "../../auth/api/request";
+import { parseMe, type Me } from "../../auth/api/meApi";
+import { authedFetch, errorCode } from "../../auth/api/request";
 
 /** The wire keys of the Baseline, in the API's order (0 = Sunday). The screen reorders them to start on Monday. */
 export const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
@@ -122,4 +123,35 @@ export function putPreference(category: string, preference: Preference): Promise
 /** Both directions are idempotent on the API. */
 export function setRestriction(demand: string, restricted: boolean): Promise<WriteResult> {
   return write(`/me/restrictions/${encodeURIComponent(demand)}`, { method: restricted ? "PUT" : "DELETE" });
+}
+
+export type SetNameResult =
+  /** `me` is the updated User, as the API now shows it. */
+  | { kind: "ok"; me: Me }
+  /** 400 `too_long`: over 40 characters. */
+  | { kind: "too_long" }
+  /** 400 `invalid`: for example a control character. */
+  | { kind: "invalid" }
+  | { kind: "not-signed-in" }
+  | { kind: "offline" }
+  | { kind: "error" };
+
+/** Sets the display name, or clears it with null (the shown name is then the email's local part). */
+export async function setName(name: string | null): Promise<SetNameResult> {
+  try {
+    const result = await authedFetch("/me/name", { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify({ name }) });
+    if (result.kind === "not-signed-in") return result;
+    const { response } = result;
+    if (response.status === 200) {
+      const me = parseMe(await response.json());
+      return me === null ? { kind: "error" } : { kind: "ok", me };
+    }
+    if (response.status === 400) {
+      const code = await errorCode(response);
+      if (code === "too_long" || code === "invalid") return { kind: code };
+    }
+    return { kind: "error" };
+  } catch {
+    return { kind: "offline" };
+  }
 }
