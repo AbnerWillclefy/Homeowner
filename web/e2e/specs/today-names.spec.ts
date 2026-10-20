@@ -8,7 +8,7 @@ import { launchApp } from "../pages/launch";
 // What this covers: Today names Residents instead of numbering them, in both locales. The greeting uses the
 // Resident's name, another Resident's group and a two-person Task show a name and an avatar, a photo that answers
 // text/html falls back to initials, and a failed residents call still leaves Today working with a placeholder.
-// Swap offers are not built in the PWA yet, so no swap card is covered here.
+// The Swap offer cards, which name the other Resident the same way, are covered in today-swap.spec.ts.
 
 const PHOTO_URL = "https://photos.test/carlos.jpg";
 const LONG_NAME = "Abcdefghijklmnopqrstuvwxyzabcdefghijklmn"; // 40 characters, no break opportunity

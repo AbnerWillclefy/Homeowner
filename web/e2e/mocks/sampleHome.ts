@@ -65,3 +65,27 @@ export function signedInResident(): FakeState {
     dayPlan: plannedDay(),
   };
 }
+
+/** Bruna Souza (`resident-2`) offers her `task-3` for your `task-1`. Edits the state and returns it. */
+export function withIncomingOffer(state: FakeState): FakeState {
+  const plan = state.dayPlan!;
+  plan.swaps.incoming.push({
+    id: "swap-in-1",
+    residentId: "resident-2",
+    offered: plan.others[0]!.tasks[0]!,
+    requested: plan.mine[0]!,
+  });
+  return state;
+}
+
+/** You offer your `task-2` to Bruna Souza (`resident-2`) for her `task-3`. Edits the state and returns it. */
+export function withOutgoingOffer(state: FakeState): FakeState {
+  const plan = state.dayPlan!;
+  plan.swaps.outgoing.push({
+    id: "swap-out-1",
+    residentId: "resident-2",
+    offered: plan.mine[1]!,
+    requested: plan.others[0]!.tasks[0]!,
+  });
+  return state;
+}
