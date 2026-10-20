@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Acting, SwapAction, TaskAction } from "../logic/actions";
+import { isSwapAction, type Acting, type SwapAction, type TaskAction } from "../logic/actions";
 import {
   acceptAll as acceptAllCall,
   acceptSwap,
@@ -63,7 +63,7 @@ function callFor(running: NonNullable<Acting>): Promise<ActionResult> {
 
 /** Which wording an action's conflicts use: the Swap table for the four Swap actions, the Task one otherwise. */
 const familyFor = (running: NonNullable<Acting>): ConflictFamily =>
-  running.action.endsWith("Swap") ? "swap" : "task";
+  isSwapAction(running.action) ? "swap" : "task";
 
 /**
  * What an action's answer does to the screen: the plan to show (absent when the one on screen is still valid)

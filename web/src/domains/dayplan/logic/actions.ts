@@ -4,6 +4,21 @@ export type ActionSlot = "start" | "end";
 
 export type SwapAction = "acceptSwap" | "declineSwap" | "cancelSwap";
 
+/** Every action that runs on a Swap; `Record` makes a new action fail the typecheck until it is listed here. */
+const IS_SWAP_ACTION: Record<NonNullable<Acting>["action"], boolean> = {
+  accept: false,
+  refuse: false,
+  done: false,
+  take: false,
+  acceptAll: false,
+  offerSwap: true,
+  acceptSwap: true,
+  declineSwap: true,
+  cancelSwap: true,
+};
+
+export const isSwapAction = (action: NonNullable<Acting>["action"]): boolean => IS_SWAP_ACTION[action];
+
 /**
  * The action in flight: one on a Task, Accept all (which belongs to no card), or a Swap action. A Swap action
  * has no `taskId` on purpose, so no Task card can mistake it for its own.

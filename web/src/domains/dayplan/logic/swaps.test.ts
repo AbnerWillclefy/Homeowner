@@ -28,6 +28,10 @@ describe("offerableTasks", () => {
 });
 
 describe("canOfferFor", () => {
+  it("is false for a Task with a partner even if people says one", () => {
+    expect(canOfferFor(dayPlan({ mine: [task("m")] }), { ...task("o"), with: ["r2"] })).toBe(false);
+  });
+
   const plan = dayPlan({ mine: [task("m")] });
 
   it("shows the control for another Resident's one-person Task when I hold a one-person Task", () => {

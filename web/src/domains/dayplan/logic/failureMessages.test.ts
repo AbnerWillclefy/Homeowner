@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { enUS } from "../../../shared/i18n/catalogs/en-US";
 import { ptBR } from "../../../shared/i18n/catalogs/pt-BR";
-import { ACTION_FAILURE_KEY, conflictMessageKey, SWAP_CONFLICT_CODES } from "./failureMessages";
+import { ACTION_FAILURE_KEY, conflictMessageKey, SWAP_CONFLICT_KEYS } from "./failureMessages";
 
 const both = (key: string) => key in enUS && key in ptBR;
 
@@ -54,7 +54,7 @@ const BACKEND_SWAP_CODES = [
 
 describe("conflictMessageKey for a Swap", () => {
   it("covers exactly the codes the backend sends", () => {
-    expect([...SWAP_CONFLICT_CODES].sort()).toEqual([...BACKEND_SWAP_CODES].sort());
+    expect(Object.keys(SWAP_CONFLICT_KEYS).sort()).toEqual([...BACKEND_SWAP_CODES].sort());
   });
 
   it.each(BACKEND_SWAP_CODES)("has a message in both languages for %s", (code) => {
