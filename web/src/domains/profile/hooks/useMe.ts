@@ -2,13 +2,24 @@ import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { meKey, meQuery } from "../../auth/api/queries";
 import type { Me } from "../../auth/api/meApi";
-import { viewOf } from "../../../shared/query/view";
+import { viewOf, type QueryViewState } from "../../../shared/query/view";
 
 export type MeState =
   | { kind: "loading" }
   | { kind: "ready"; me: Me }
   /** The call failed (offline, server error). Callers fall back to what they showed before the name existed. */
   | { kind: "failed" };
+
+function meStateOf(state: QueryViewState<Me>): MeState {
+  switch (state.kind) {
+    case "loading":
+      return state;
+    case "failed":
+      return { kind: "failed" };
+    case "ready":
+      return { kind: "ready", me: state.data };
+  }
+}
 
 /**
  * The signed-in User as `GET /me` last said, with the shown name and photo, read from the query cache that
@@ -39,7 +50,5 @@ export function useMe() {
     [queryClient],
   );
 
-  const meState: MeState =
-    state.kind === "ready" ? { kind: "ready", me: state.data } : state.kind === "failed" ? { kind: "failed" } : { kind: "loading" };
-  return { state: meState, set, update, reload };
+  return { state: meStateOf(state), set, update, reload };
 }

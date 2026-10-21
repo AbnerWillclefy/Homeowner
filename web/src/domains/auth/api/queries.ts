@@ -1,5 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
-import { ApiFailure, toQueryData } from "../../../shared/query/ApiFailure";
+import { toQueryData } from "../../../shared/query/ApiFailure";
 import { getMe, type Me } from "./meApi";
 
 /** `GET /me`. Under it go `["me","profile"]` and `["me","onboarding"]` (ADR 0013). */
@@ -16,8 +16,6 @@ export const meQuery = queryOptions({
   queryKey: meKey,
   queryFn: async (): Promise<Me> => {
     const result = toQueryData(await getMe());
-    // getMe never answers "none"; the check narrows the type.
-    if (result === null) throw new ApiFailure("error");
     const { kind: _kind, ...me } = result;
     return me;
   },

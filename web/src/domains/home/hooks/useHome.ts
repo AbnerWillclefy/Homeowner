@@ -14,7 +14,6 @@ export type HomeState =
 function homeState(state: QueryViewState<Home | null>): HomeState {
   switch (state.kind) {
     case "loading":
-      return state;
     case "failed":
       return state;
     case "ready":
