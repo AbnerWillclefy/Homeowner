@@ -27,7 +27,7 @@ export type ResidentsResult =
   | { kind: "offline" }
   | { kind: "error" };
 
-const count =(value: unknown): number => (typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : 0);
+const count = (value: unknown): number => (typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : 0);
 
 /** A row the app cannot use is dropped, so one bad row never hides the others. A missing photoUrl is null. */
 function parseResident(row: unknown): Resident | null {
