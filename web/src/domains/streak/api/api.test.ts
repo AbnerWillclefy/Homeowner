@@ -29,6 +29,11 @@ beforeEach(() => stubStorage(true));
 afterEach(() => vi.unstubAllGlobals());
 
 describe("getStreak", () => {
+  it("is an error when a 200 carries a body that is not JSON", async () => {
+    stubFetch(new Response("<html>", { status: 200 }));
+    expect(await getStreak()).toEqual({ kind: "error" });
+  });
+
   it("reads the current Streak from GET /home/streak", async () => {
     const fetch = stubFetch(Response.json(BODY));
     expect(await getStreak()).toEqual({ kind: "ok", streak: { current: 3, todayGrew: true } });

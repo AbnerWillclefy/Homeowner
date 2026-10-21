@@ -1,4 +1,4 @@
-import axios, {
+import {
   type AxiosAdapter,
   type AxiosInstance,
   type AxiosRequestConfig,
@@ -9,8 +9,7 @@ import { browserKeeper } from "./browserKeeper";
 import type { Session } from "../logic/session";
 import type { TokenKeeper } from "../logic/tokenKeeper";
 import { config } from "../../../shared/config";
-import { refuseAbsoluteUrl } from "../../../shared/api/absoluteUrl";
-import { fetchAdapter } from "../../../shared/api/fetchAdapter";
+import { createHttpClient } from "../../../shared/api/http";
 
 export type AuthedResult =
   | { kind: "response"; response: AxiosResponse }
@@ -43,15 +42,8 @@ export function createApiClient(deps: ApiClientDeps): AxiosInstance {
   const sessionUsed = new WeakMap<InternalAxiosRequestConfig, Session>();
 
   function instance(): AxiosInstance {
-    const created = axios.create({
-      baseURL: deps.baseUrl,
-      validateStatus: () => true,
-      allowAbsoluteUrls: false,
-      adapter: deps.adapter ?? fetchAdapter,
-    });
+    const created = createHttpClient({ baseURL: deps.baseUrl, ...(deps.adapter && { adapter: deps.adapter }) });
     created.interceptors.request.use(async (request) => {
-      // Refuse before any token is attached.
-      refuseAbsoluteUrl(request.url);
       const session = await keeper.usableSession();
       if (session === null) throw new NotSignedIn();
       request.headers.set("Authorization", `Bearer ${session.idToken}`);

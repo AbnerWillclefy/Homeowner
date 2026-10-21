@@ -52,7 +52,7 @@ export function parseHome(body: unknown): Home | null {
   return { id, timezone, allocationTime };
 }
 
-function parseFields(response: AxiosResponse): FieldCodes | null {
+export function parseFields(response: AxiosResponse): FieldCodes | null {
   const body: unknown = response.data;
   if (!isRecord(body) || !isRecord(body.fields)) return null;
   const entries = Object.entries(body.fields).filter((e): e is [string, string] => typeof e[1] === "string");

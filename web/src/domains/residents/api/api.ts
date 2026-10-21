@@ -27,7 +27,7 @@ export type ResidentsResult =
   | { kind: "offline" }
   | { kind: "error" };
 
-const count = (value: unknown): number => (typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : 0);
+const count =(value: unknown): number => (typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : 0);
 
 /** A row the app cannot use is dropped, so one bad row never hides the others. A missing photoUrl is null. */
 function parseResident(row: unknown): Resident | null {
@@ -54,8 +54,8 @@ export async function getResidents(): Promise<ResidentsResult> {
     const { status } = result.response;
     if (status === 404) return { kind: "none" };
     if (status !== 200) return { kind: "error" };
-    const body = result.response.data as { date?: unknown; residents?: unknown } | null;
-    if (typeof body?.date !== "string" || !Array.isArray(body.residents)) return { kind: "error" };
+    const body: unknown = result.response.data;
+    if (!isRecord(body) || typeof body.date !== "string" || !Array.isArray(body.residents)) return { kind: "error" };
     const residents = body.residents.map(parseResident).filter((resident): resident is Resident => resident !== null);
     return { kind: "ok", date: body.date, residents };
   } catch {

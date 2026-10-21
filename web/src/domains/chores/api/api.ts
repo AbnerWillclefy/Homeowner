@@ -1,5 +1,4 @@
-import type { FieldCodes } from "../../home/api/api";
-import type { AxiosResponse } from "axios";
+import { parseFields, type FieldCodes } from "../../home/api/api";
 import { authedRequest } from "../../auth/api/client";
 
 /** What a Resident edits about a Chore, as the API takes it. Weekdays are 0 to 6 with 0 = Sunday. */
@@ -72,13 +71,6 @@ function parseChore(body: unknown): Chore | null {
     return null;
   }
   return { id, name, category, demands, baseEffort, importance, people, intervalDays, allowedWeekdays, buildsUp };
-}
-
-function parseFields(response: AxiosResponse): FieldCodes | null {
-  const body: unknown = response.data;
-  if (!isRecord(body) || !isRecord(body.fields)) return null;
-  const entries = Object.entries(body.fields).filter((e): e is [string, string] => typeof e[1] === "string");
-  return entries.length > 0 ? Object.fromEntries(entries) : null;
 }
 
 export async function listChores(): Promise<ListChoresResult> {
