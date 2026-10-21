@@ -81,6 +81,22 @@ describe("putToStorage", () => {
     expect(init?.body).toBe(blob);
   });
 
+  it("carries exactly the API-returned headers and no Authorization, even while signed in", async () => {
+    const returned = { "Content-Type": "image/webp", "x-amz-meta-user": "user-1" };
+    const fetch = vi.fn(async (_url: string, _init?: RequestInit) => new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+
+    // The same session is live: an authenticated call carries the bearer token...
+    await removePhoto();
+    expect(new Headers(fetch.mock.calls[0]![1]?.headers).get("Authorization")).toBe("Bearer id-1");
+
+    // ...but the presigned PUT carries only what the API returned.
+    await putToStorage({ ...UPLOAD, headers: returned }, new Blob(["x"]));
+    const sent = fetch.mock.calls[1]![1]?.headers;
+    expect(sent).toEqual(returned);
+    expect(new Headers(sent).has("Authorization")).toBe(false);
+  });
+
   it("maps a refusal to error and a thrown request to offline", async () => {
     stubFetch(new Response(null, { status: 403 }));
     expect(await putToStorage(UPLOAD, new Blob(["x"]))).toEqual({ kind: "error" });

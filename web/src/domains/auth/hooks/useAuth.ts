@@ -33,7 +33,7 @@ export function useAuth() {
     void resolveSignedIn().then((next) => {
       if (!cancelled) setState(next);
     });
-    // authedFetch clears the session when Cognito and the API both turn it down: go back to sign-in.
+    // The API client clears the session when Cognito and the API both turn it down: go back to sign-in.
     const off = browserSession.subscribe(() => {
       if (browserSession.load() === null) setState({ kind: "signed-out" });
     });

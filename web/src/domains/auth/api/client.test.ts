@@ -38,9 +38,11 @@ function setup(
   const accepted = options.accepted ?? ["id-new"];
 
   const calls: Call[] = [];
+  const sent: InternalAxiosRequestConfig[] = [];
   const adapter: AxiosAdapter = async (config: InternalAxiosRequestConfig) => {
     const auth = config.headers.get("Authorization") as string | undefined;
     calls.push({ url: config.url, auth });
+    sent.push(config);
     if (options.adapterError) throw options.adapterError;
     const token = auth?.replace("Bearer ", "");
     const status = options.status ?? (token && accepted.includes(token) ? 200 : 401);
@@ -58,7 +60,7 @@ function setup(
     baseUrl: "http://api.test",
     adapter,
   });
-  return { store, calls, refresh, client, authedRequest: createAuthedRequest(client) };
+  return { store, calls, sent, refresh, client, authedRequest: createAuthedRequest(client) };
 }
 
 describe("api client", () => {
@@ -68,6 +70,23 @@ describe("api client", () => {
     expect(result.kind).toBe("response");
     expect(calls).toEqual([{ url: "/me", auth: "Bearer id-1" }]);
     expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("keeps the caller's method, headers and body next to the bearer", async () => {
+    const { authedRequest, sent } = setup(fresh, { accepted: ["id-1"] });
+    await authedRequest({ url: "/me", method: "PUT", headers: { "X-Test": "1" }, data: "{}" });
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toMatchObject({ method: "put", data: "{}" });
+    expect(sent[0]!.headers.get("X-Test")).toBe("1");
+    expect(sent[0]!.headers.get("Authorization")).toBe("Bearer id-1");
+  });
+
+  it("sends the old token when the refresh before the request cannot reach Cognito", async () => {
+    const { authedRequest, calls, store } = setup(nearExpiry, { refresh: { kind: "network" }, accepted: ["id-old"] });
+    const result = await authedRequest({ url: "/me" });
+    expect(result).toMatchObject({ kind: "response", response: { status: 200 } });
+    expect(calls).toEqual([{ url: "/me", auth: "Bearer id-old" }]);
+    expect(store.load()).toEqual(nearExpiry);
   });
 
   it("is not signed in, and sends nothing, without a session", async () => {

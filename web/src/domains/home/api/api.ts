@@ -39,8 +39,6 @@ export type UpdateHomeResult =
   | { kind: "invalid"; fields: FieldCodes }
   | Failure;
 
-const JSON_HEADERS = { "Content-Type": "application/json" };
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -84,7 +82,7 @@ async function sendHome<S>(
 }
 
 function withBody(method: string, body: HomeSettings | (HomeSettings & { chores: ChoreWire[] })): AxiosRequestConfig {
-  return { method, headers: JSON_HEADERS, data: JSON.stringify(body) };
+  return { method, data: body };
 }
 
 /** The caller's Home. `none` (a 404) means they have not made one yet. */

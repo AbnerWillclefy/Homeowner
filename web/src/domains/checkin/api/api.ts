@@ -61,7 +61,6 @@ export const getCheckIn = (): Promise<CheckInResult> => request() as Promise<Che
 export function putCheckIn(level: Level, restrictions: readonly string[]): Promise<SaveCheckInResult> {
   return request({
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    data: JSON.stringify({ level, restrictions }),
+    data: { level, restrictions },
   });
 }

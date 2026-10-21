@@ -1,4 +1,4 @@
-import { config } from "../../shared/config";
+import { httpClient } from "../../shared/api/http";
 
 export type HealthResult =
   | { kind: "ok" }
@@ -22,8 +22,8 @@ export async function getHealth(signal?: AbortSignal): Promise<HealthResult> {
   const combined = signal ? AbortSignal.any([signal, timeout.signal]) : timeout.signal;
 
   try {
-    const res = await fetch(`${config.apiBaseUrl}/healthz`, { signal: combined, cache: "no-store" });
-    const body: unknown = await res.json();
+    const res = await httpClient.get("/healthz", { signal: combined, fetchOptions: { cache: "no-store" } });
+    const body: unknown = res.data;
     if (res.status === 200 && hasStatus(body, "ok")) return { kind: "ok" };
     if (res.status === 503 && hasStatus(body, "unavailable")) return { kind: "unavailable" };
     return { kind: "unreachable" };
