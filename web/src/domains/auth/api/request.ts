@@ -1,6 +1,8 @@
+import { browserKeeper } from "./browserKeeper";
 import { refreshSession, type RefreshResult } from "./cognito";
 import { browserSession } from "../logic/browserSession";
-import type { Session, SessionStore } from "../logic/session";
+import type { SessionStore } from "../logic/session";
+import { createTokenKeeper, type TokenKeeper } from "../logic/tokenKeeper";
 import { config } from "../../../shared/config";
 
 export type AuthedResult =
@@ -14,50 +16,19 @@ export interface AuthedFetchDeps {
   fetch: typeof fetch;
   now(): number;
   baseUrl: string;
+  /** Share one keeper with the Axios client, so the two transports never send two refreshes at once. */
+  keeper?: TokenKeeper;
 }
-
-/** Refresh a token that has less than this left, so a request does not race the expiry. */
-export const REFRESH_MARGIN_MS = 60_000;
-
-type RefreshOutcome = "refreshed" | "rejected" | "unavailable";
 
 /**
  * Calls the API as the signed-in person. Adds the bearer ID token, refreshes it first when it is about to
  * expire, and on a 401 refreshes once and retries once. A network failure of the API call itself throws,
  * like fetch, so callers keep their own error handling. Only a refresh Cognito rejects, or a 401 that
  * survives a fresh token, ends the session; an unreachable Cognito does not (the person may be offline).
+ * The refresh rules live in the token keeper.
  */
 export function createAuthedFetch(deps: AuthedFetchDeps) {
-  let inflight: Promise<RefreshOutcome> | null = null;
-
-  async function doRefresh(used: Session): Promise<RefreshOutcome> {
-    const current = deps.session.load();
-    if (current === null) return "rejected";
-    // Another request already replaced the token this one used; just use the new one.
-    if (current.idToken !== used.idToken) return "refreshed";
-
-    const result = await deps.refresh(current.refreshToken);
-    if (result.kind === "ok") {
-      deps.session.save({
-        idToken: result.tokens.idToken,
-        refreshToken: result.tokens.refreshToken ?? current.refreshToken,
-        expiresAt: deps.now() + result.tokens.expiresInSeconds * 1000,
-      });
-      return "refreshed";
-    }
-    if (result.kind === "not-authorized") {
-      deps.session.clear();
-      return "rejected";
-    }
-    return "unavailable";
-  }
-
-  function refreshOnce(used: Session): Promise<RefreshOutcome> {
-    inflight ??= doRefresh(used).finally(() => {
-      inflight = null;
-    });
-    return inflight;
-  }
+  const keeper = deps.keeper ?? createTokenKeeper(deps);
 
   function send(path: string, init: RequestInit | undefined, idToken: string): Promise<Response> {
     const headers = new Headers(init?.headers);
@@ -66,19 +37,13 @@ export function createAuthedFetch(deps: AuthedFetchDeps) {
   }
 
   return async function authedFetch(path: string, init?: RequestInit): Promise<AuthedResult> {
-    let session = deps.session.load();
+    const session = await keeper.usableSession();
     if (session === null) return { kind: "not-signed-in" };
-
-    if (deps.session.expiresWithin(session, REFRESH_MARGIN_MS)) {
-      if ((await refreshOnce(session)) === "rejected") return { kind: "not-signed-in" };
-      session = deps.session.load();
-      if (session === null) return { kind: "not-signed-in" };
-    }
 
     const response = await send(path, init, session.idToken);
     if (response.status !== 401) return { kind: "response", response };
 
-    const outcome = await refreshOnce(session);
+    const outcome = await keeper.afterUnauthorized(session);
     if (outcome === "rejected") return { kind: "not-signed-in" };
     // Cognito could not be reached: keep the session and let the caller see the 401.
     if (outcome === "unavailable") return { kind: "response", response };
@@ -106,6 +71,7 @@ export async function errorCode(response: Response): Promise<string | null> {
 export const authedFetch = createAuthedFetch({
   session: browserSession,
   refresh: refreshSession,
+  keeper: browserKeeper,
   fetch: (...args) => fetch(...args),
   now: Date.now,
   baseUrl: config.apiBaseUrl,
