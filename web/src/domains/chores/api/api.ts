@@ -1,4 +1,4 @@
-import { parseFields, type FieldCodes } from "../../home/api/api";
+import { parseFields, type FieldCodes } from "../../../shared/api/fieldErrors";
 import { authedRequest } from "../../auth/api/client";
 
 /** What a Resident edits about a Chore, as the API takes it. Weekdays are 0 to 6 with 0 = Sunday. */

@@ -1,6 +1,7 @@
 import type { ChoreWire } from "../../chores/api/api";
-import type { AxiosRequestConfig, AxiosResponse } from "axios";
+import type { AxiosRequestConfig } from "axios";
 import { authedRequest } from "../../auth/api/client";
+import { parseFields, type FieldCodes } from "../../../shared/api/fieldErrors";
 
 /** What a Resident can change about their Home. `allocationTime` is "HH:MM", 24 hours, in the Home's zone. */
 export interface HomeSettings {
@@ -12,8 +13,7 @@ export interface Home extends HomeSettings {
   id: string;
 }
 
-/** Field name to the API's stable machine code, for example `{ timezone: "unknown" }`. */
-export type FieldCodes = Record<string, string>;
+export type { FieldCodes };
 
 /** Failures every call can have. */
 export type Failure =
@@ -50,13 +50,6 @@ export function parseHome(body: unknown): Home | null {
   const { id, timezone, allocationTime } = body;
   if (typeof id !== "string" || typeof timezone !== "string" || typeof allocationTime !== "string") return null;
   return { id, timezone, allocationTime };
-}
-
-export function parseFields(response: AxiosResponse): FieldCodes | null {
-  const body: unknown = response.data;
-  if (!isRecord(body) || !isRecord(body.fields)) return null;
-  const entries = Object.entries(body.fields).filter((e): e is [string, string] => typeof e[1] === "string");
-  return entries.length > 0 ? Object.fromEntries(entries) : null;
 }
 
 type Shared = { kind: "ok"; home: Home } | { kind: "invalid"; fields: FieldCodes } | Failure;
