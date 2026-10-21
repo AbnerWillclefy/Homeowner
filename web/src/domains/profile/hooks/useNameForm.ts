@@ -36,7 +36,7 @@ export function useNameForm(initial: string) {
     if (check.kind === "too_long") return;
     const result = await setName(check.kind === "ok" ? check.name : null);
     if (result.kind === "ok") {
-      me.set(result.me);
+      await me.set(result.me);
       residents.reload();
       void navigate(ME_PATH);
       return;

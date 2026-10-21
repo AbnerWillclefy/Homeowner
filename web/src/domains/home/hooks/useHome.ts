@@ -35,7 +35,14 @@ export function useHome() {
     await refetch();
   }, [refetch]);
 
-  const setHome = useCallback((home: Home) => queryClient.setQueryData(homeKey, home), [queryClient]);
+  /** A read that started before is cancelled first, so its older answer cannot bring the old Home back. */
+  const setHome = useCallback(
+    async (home: Home) => {
+      await queryClient.cancelQueries({ queryKey: homeKey });
+      queryClient.setQueryData(homeKey, home);
+    },
+    [queryClient],
+  );
 
   /**
    * The caller has left their Home: show the create form. A read that started before the leave is cancelled

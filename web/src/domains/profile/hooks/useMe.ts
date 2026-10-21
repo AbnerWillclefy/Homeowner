@@ -40,11 +40,19 @@ export function useMe() {
     void refetch();
   }, [refetch]);
 
-  const set = useCallback((me: Me) => queryClient.setQueryData(meKey, me), [queryClient]);
+  /** A read that started before is cancelled first, so its older answer cannot bring the old User back. */
+  const set = useCallback(
+    async (me: Me) => {
+      await queryClient.cancelQueries({ queryKey: meKey });
+      queryClient.setQueryData(meKey, me);
+    },
+    [queryClient],
+  );
 
   /** Changes the User from the newest cached value, so a slow call never overwrites a `set` that landed meanwhile. */
   const update = useCallback(
-    (change: (current: Me) => Me) => {
+    async (change: (current: Me) => Me) => {
+      await queryClient.cancelQueries({ queryKey: meKey });
       queryClient.setQueryData<Me>(meKey, (current) => (current === undefined ? current : change(current)));
     },
     [queryClient],

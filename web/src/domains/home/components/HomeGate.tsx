@@ -51,10 +51,10 @@ export function HomeGate({ skeleton, children }: { skeleton: ReactNode; children
     case "create":
       return (
         <CreateHome
-          onSaved={setHome}
+          onSaved={(saved: Home) => void setHome(saved)}
           onRecovered={(found: Home, choresDropped: boolean) => {
             setRecovered(choresDropped ? "chores-dropped" : "plain");
-            setHome(found);
+            void setHome(found);
           }}
         />
       );

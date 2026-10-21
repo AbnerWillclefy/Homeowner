@@ -80,7 +80,7 @@ export function HomePage() {
                 home={current}
                 onSaved={(saved: Home) => {
                   setRecovered("no");
-                  home.setHome(saved);
+                  void home.setHome(saved);
                 }}
               />
             </CollapsibleCard>
