@@ -134,8 +134,8 @@ export function useDayPlan(version: number) {
   }, [refetch]);
 
   /**
-   * Puts a plan the server answered into the cache, in place so the lists and focus stay. A read that started
-   * before is cancelled first, so its older answer cannot bring the old plan back.
+   * Puts a plan the server answered (or the replan read) into the cache, without the loading state: the lists and
+   * focus stay. A read that started before is cancelled first, so its older answer cannot bring the old plan back.
    */
   const show = useCallback(
     async (plan: DayPlan) => {
@@ -144,9 +144,6 @@ export function useDayPlan(version: number) {
     },
     [queryClient],
   );
-
-  /** Shows a plan that was read elsewhere (the replan), without the loading state: the lists update in place. */
-  const showPlan = useCallback((plan: DayPlan) => void show(plan), [show]);
 
   const act = useCallback(async (running: NonNullable<Acting>) => {
     if (inFlight.current) return;
@@ -192,5 +189,5 @@ export function useDayPlan(version: number) {
   /** Accepts, declines or cancels a Swap offer. Resolves when the action ends. */
   const answerSwap = useCallback((action: SwapAction, swapId: string) => act({ action, swapId }), [act]);
 
-  return { state, refreshing, reload, run, acceptAll, offerSwap: offer, answerSwap, acting, notice, settled, show: showPlan };
+  return { state, refreshing, reload, run, acceptAll, offerSwap: offer, answerSwap, acting, notice, settled, show };
 }

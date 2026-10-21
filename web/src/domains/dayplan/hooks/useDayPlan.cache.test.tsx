@@ -69,4 +69,15 @@ describe("useDayPlan over the query cache", () => {
     expect(getDayPlan).toHaveBeenCalledTimes(2);
     expect(client.getQueryData(dayPlanKey)).toEqual(FRESH);
   });
+
+  it("puts a plan into the cache with `show`, and does not throw after unmount", async () => {
+    getDayPlan.mockResolvedValue({ kind: "ok", plan: CACHED });
+    const client = mount();
+    await settle();
+    const { show } = day;
+    rendered?.unmount();
+    rendered = undefined;
+    await expect(show(FRESH)).resolves.toBeUndefined();
+    expect(client.getQueryData(dayPlanKey)).toEqual(FRESH);
+  });
 });

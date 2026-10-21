@@ -22,7 +22,7 @@ export function useCheckIn(onSaved: () => void) {
   const { refetch: refetchCheckIn } = checkInRead;
   const { refetch: refetchDemands } = demandsRead;
 
-  /** Retry: asks again for whatever has no answer yet. */
+  /** Retry: reads the Check-in and the Demand list again. */
   const reload = useCallback(async () => {
     await Promise.all([refetchCheckIn(), refetchDemands()]);
   }, [refetchCheckIn, refetchDemands]);
