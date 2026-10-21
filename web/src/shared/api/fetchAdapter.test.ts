@@ -60,4 +60,15 @@ describe("fetchAdapter", () => {
     });
     await expect(client().get("/x")).rejects.toThrow();
   });
+
+  it("rejects with ECONNABORTED when the timeout passes", async () => {
+    vi.stubGlobal(
+      "fetch",
+      (_url: unknown, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+        }),
+    );
+    await expect(client().get("/x", { timeout: 10 })).rejects.toMatchObject({ code: "ECONNABORTED" });
+  });
 });

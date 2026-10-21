@@ -1,20 +1,15 @@
-import axios, { type AxiosAdapter, type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from "axios";
+import axios, {
+  type AxiosAdapter,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+  type AxiosResponse,
+  type InternalAxiosRequestConfig,
+} from "axios";
 import { browserKeeper } from "./browserKeeper";
-import { refreshSession, type RefreshResult } from "./cognito";
-import { browserSession } from "../logic/browserSession";
-import type { Session, SessionStore } from "../logic/session";
-import { createTokenKeeper, type TokenKeeper } from "../logic/tokenKeeper";
+import type { Session } from "../logic/session";
+import type { TokenKeeper } from "../logic/tokenKeeper";
 import { config } from "../../../shared/config";
 import { fetchAdapter } from "../../../shared/api/fetchAdapter";
-
-declare module "axios" {
-  interface AxiosRequestConfig {
-    /** The session whose token this request carried, so a 401 refreshes only if it is still current. */
-    sessionUsed?: Session;
-    /** Set once the request has been re-issued after a refresh. */
-    retried?: boolean;
-  }
-}
 
 export type AuthedResult =
   | { kind: "response"; response: AxiosResponse }
@@ -22,13 +17,10 @@ export type AuthedResult =
   | { kind: "not-signed-in" };
 
 export interface ApiClientDeps {
-  session: SessionStore;
-  refresh(refreshToken: string): Promise<RefreshResult>;
-  now(): number;
+  /** Shared with other transports so they never send two refreshes at once. */
+  keeper: TokenKeeper;
   baseUrl: string;
   adapter?: AxiosAdapter;
-  /** Share one keeper with other transports so they never send two refreshes at once. */
-  keeper?: TokenKeeper;
 }
 
 /** Thrown inside the client when the person has no usable session. `authedRequest` turns it into a result. */
@@ -47,42 +39,51 @@ const ABSOLUTE_URL = /^([a-z][a-z\d+.-]*:|\/\/)/i;
  * once. It refuses absolute URLs, so the token only ever goes to `baseUrl`.
  */
 export function createApiClient(deps: ApiClientDeps): AxiosInstance {
-  const keeper = deps.keeper ?? createTokenKeeper(deps);
-  const client = axios.create({
-    baseURL: deps.baseUrl,
-    validateStatus: () => true,
-    allowAbsoluteUrls: false,
-    adapter: deps.adapter ?? fetchAdapter,
-  });
+  const { keeper } = deps;
+  // The session each request carried, kept here so no auth state shows on callers' request configs.
+  const sessionUsed = new WeakMap<InternalAxiosRequestConfig, Session>();
 
-  client.interceptors.request.use(async (request) => {
-    // allowAbsoluteUrls: false alone would glue the two URLs together, so refuse before any token is attached.
-    if (request.url && ABSOLUTE_URL.test(request.url)) {
-      throw new Error(`The API client refuses the absolute URL ${request.url}`);
-    }
-    const session = await keeper.usableSession();
-    if (session === null) throw new NotSignedIn();
-    request.headers.set("Authorization", `Bearer ${session.idToken}`);
-    request.sessionUsed = session;
-    return request;
-  });
+  function instance(): AxiosInstance {
+    const created = axios.create({
+      baseURL: deps.baseUrl,
+      validateStatus: () => true,
+      allowAbsoluteUrls: false,
+      adapter: deps.adapter ?? fetchAdapter,
+    });
+    created.interceptors.request.use(async (request) => {
+      // allowAbsoluteUrls: false alone would glue the two URLs together, so refuse before any token is attached.
+      if (request.url && ABSOLUTE_URL.test(request.url)) {
+        throw new Error(`The API client refuses the absolute URL ${request.url}`);
+      }
+      const session = await keeper.usableSession();
+      if (session === null) throw new NotSignedIn();
+      request.headers.set("Authorization", `Bearer ${session.idToken}`);
+      sessionUsed.set(request, session);
+      return request;
+    });
+    return created;
+  }
+
+  // The retry goes through its own instance, which has no 401 handling, so a request is retried at most once.
+  const retrier = instance();
+  const client = instance();
 
   // The fulfilled path: with validateStatus always true a 401 never rejects.
   client.interceptors.response.use(async (response) => {
-    const request = response.config;
-    if (response.status !== 401 || request.sessionUsed === undefined) return response;
+    const used = sessionUsed.get(response.config);
+    if (response.status !== 401 || used === undefined) return response;
 
-    if (request.retried) {
-      deps.session.clear();
-      throw new NotSignedIn();
-    }
-    const outcome = await keeper.afterUnauthorized(request.sessionUsed);
+    const outcome = await keeper.afterUnauthorized(used);
     if (outcome === "rejected") throw new NotSignedIn();
     // Cognito could not be reached: keep the session and let the caller see the 401.
     if (outcome === "unavailable") return response;
 
-    request.retried = true;
-    return client.request(request);
+    const retried = await retrier.request(response.config);
+    if (retried.status === 401) {
+      keeper.rejectSession();
+      throw new NotSignedIn();
+    }
+    return retried;
   });
 
   return client;
@@ -109,12 +110,6 @@ export function errorCode(response: AxiosResponse): string | null {
 }
 
 /** The app's own: the stored session, Cognito and the real API. */
-export const apiClient = createApiClient({
-  session: browserSession,
-  refresh: refreshSession,
-  now: Date.now,
-  baseUrl: config.apiBaseUrl,
-  keeper: browserKeeper,
-});
+export const apiClient = createApiClient({ keeper: browserKeeper, baseUrl: config.apiBaseUrl });
 
 export const authedRequest = createAuthedRequest(apiClient);

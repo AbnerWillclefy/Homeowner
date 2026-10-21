@@ -2,6 +2,7 @@ import type { AxiosAdapter, AxiosResponse, InternalAxiosRequestConfig } from "ax
 import { describe, expect, it, vi } from "vitest";
 import type { RefreshResult } from "./cognito";
 import { createApiClient, createAuthedRequest, errorCode } from "./client";
+import { createTokenKeeper } from "../logic/tokenKeeper";
 import { createSessionStore, type Session, type StorageLike } from "../logic/session";
 
 function memoryStorage(): StorageLike {
@@ -52,7 +53,11 @@ function setup(
     return r ?? { kind: "ok", tokens: { idToken: "id-new", expiresInSeconds: 3600 } };
   });
 
-  const client = createApiClient({ session: store, refresh, now: () => NOW, baseUrl: "http://api.test", adapter });
+  const client = createApiClient({
+    keeper: createTokenKeeper({ session: store, refresh, now: () => NOW }),
+    baseUrl: "http://api.test",
+    adapter,
+  });
   return { store, calls, refresh, client, authedRequest: createAuthedRequest(client) };
 }
 

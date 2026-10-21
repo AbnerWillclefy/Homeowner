@@ -20,6 +20,8 @@ export interface TokenKeeper {
   usableSession(): Promise<Session | null>;
   /** After a 401 on a request that used `used`: refresh once, however many callers ask at the same time. */
   afterUnauthorized(used: Session): Promise<RefreshOutcome>;
+  /** The API turned down even a freshly refreshed token: the session is over. */
+  rejectSession(): void;
 }
 
 /**
@@ -67,5 +69,6 @@ export function createTokenKeeper(deps: TokenKeeperDeps): TokenKeeper {
       return deps.session.load();
     },
     afterUnauthorized: refreshOnce,
+    rejectSession: () => deps.session.clear(),
   };
 }

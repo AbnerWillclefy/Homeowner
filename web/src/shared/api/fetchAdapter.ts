@@ -1,4 +1,4 @@
-import axios, { AxiosHeaders, type AxiosAdapter, type AxiosResponse } from "axios";
+import axios, { AxiosError, AxiosHeaders, type AxiosAdapter, type AxiosResponse } from "axios";
 
 /**
  * An Axios adapter that calls the global `fetch(url, init)` at call time. Axios's own adapters would either
@@ -11,15 +11,25 @@ export const fetchAdapter: AxiosAdapter = async (config) => {
   const url = axios.getUri(config);
   const headers = AxiosHeaders.from(config.headers).toJSON();
   const method = (config.method ?? "get").toUpperCase();
-  const body = config.data === undefined || config.data === null ? undefined : config.data;
+  const timeout = config.timeout ? AbortSignal.timeout(config.timeout) : undefined;
+  // Axios types `signal` as GenericAbortSignal; in a browser it is always a real AbortSignal.
+  const signals = [config.signal as AbortSignal | undefined, timeout].filter((s) => s !== undefined && s !== null);
 
-  const response = await fetch(url, {
-    ...config.fetchOptions,
-    method,
-    headers: headers as Record<string, string>,
-    body,
-    signal: config.signal as AbortSignal | undefined,
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...config.fetchOptions,
+      method,
+      headers: headers as Record<string, string>,
+      body: config.data ?? undefined,
+      signal: signals.length > 0 ? AbortSignal.any(signals) : undefined,
+    });
+  } catch (error) {
+    if (timeout?.aborted && !config.signal?.aborted) {
+      throw new AxiosError(`timeout of ${config.timeout}ms exceeded`, AxiosError.ECONNABORTED, config);
+    }
+    throw error;
+  }
 
   // Axios runs transformResponse on this after the adapter returns.
   const result: AxiosResponse = {
