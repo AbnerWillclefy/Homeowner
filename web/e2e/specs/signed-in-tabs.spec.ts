@@ -115,6 +115,47 @@ test("a day with no Tasks says so", async ({ page, baseURL, fakeApi }) => {
   for (const name of TASKS) await expect(tabs.today.task(page, name)).toHaveCount(0);
 });
 
+test("launching asks for the User once: the Shell reads the entry sign-in already cached", async ({ page, baseURL, fakeApi }) => {
+  await launchApp(page, baseURL!);
+  await expect(tabs.today.mine(page)).toBeVisible();
+
+  expect(fakeApi.requests.filter((r) => r.method === "GET" && r.path === "/me")).toHaveLength(1);
+});
+
+test.describe("a refresh with the Home on screen", () => {
+  // React Query refetches stale data when the app regains focus; the page reports it as a visibility change.
+  const regainFocus = (page: import("@playwright/test").Page) => page.evaluate(() => document.dispatchEvent(new Event("visibilitychange", { bubbles: true })));
+
+  test("shows the Refreshing indicator and keeps the content, with no skeleton", async ({ page, baseURL }) => {
+    await launchApp(page, baseURL!);
+    await shell.openTab(page, "Home");
+    await expect(tabs.home.heading(page)).toBeVisible();
+
+    await page.route((url) => url.pathname === "/home", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      await route.fallback();
+    });
+    await regainFocus(page);
+
+    await expect(page.getByRole("img", { name: "Refreshing" })).toBeVisible();
+    await expect(tabs.home.timezone(page)).toHaveValue("America/Sao_Paulo");
+    await expect(page.getByRole("img", { name: "Refreshing" })).toHaveCount(0);
+  });
+
+  test("keeps the content and shows no alert when the refresh fails", async ({ page, baseURL, fakeApi }) => {
+    await launchApp(page, baseURL!);
+    await shell.openTab(page, "Home");
+    await expect(tabs.home.heading(page)).toBeVisible();
+
+    fakeApi.override("GET /home", json(500, { error: "internal error" }), { once: true });
+    await regainFocus(page);
+    await expect.poll(() => fakeApi.requests.filter((r) => r.method === "GET" && r.path === "/home").length).toBe(2);
+
+    await expect(tabs.home.timezone(page)).toHaveValue("America/Sao_Paulo");
+    await expect(page.getByRole("alert")).toHaveCount(0);
+  });
+});
+
 test("a Day Plan that fails to load shows a message and recovers on retry", async ({ page, baseURL, fakeApi }) => {
   fakeApi.override("GET /home/day-plan", json(500, { error: "internal error" }), { once: true });
   await launchApp(page, baseURL!);

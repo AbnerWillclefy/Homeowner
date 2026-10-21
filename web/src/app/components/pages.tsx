@@ -80,14 +80,14 @@ export function HomePage() {
                 home={current}
                 onSaved={(saved: Home) => {
                   setRecovered("no");
-                  home.setHome(saved);
+                  void home.setHome(saved);
                 }}
               />
             </CollapsibleCard>
             <LeaveHome
               onLeft={() => {
                 setRecovered("no");
-                home.clearHome();
+                void home.clearHome();
               }}
             />
           </div>

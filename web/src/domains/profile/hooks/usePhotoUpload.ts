@@ -90,7 +90,7 @@ export function usePhotoUpload() {
     if (confirmed.kind !== "ok") return fail(confirmed.kind);
 
     const { photoUrl } = confirmed;
-    shell.me.update((current) => ({ ...current, photoUrl }));
+    await shell.me.update((current) => ({ ...current, photoUrl }));
     shell.residents.reload();
     setState({ kind: "idle" });
   });
@@ -102,7 +102,7 @@ export function usePhotoUpload() {
       setProblem(result.kind === "photos-off" ? "profile.photo.off" : "profile.photo.removeError");
       return;
     }
-    shell.me.update((current) => ({ ...current, photoUrl: null }));
+    await shell.me.update((current) => ({ ...current, photoUrl: null }));
     shell.residents.reload();
   });
 
