@@ -151,6 +151,13 @@ describe("api client", () => {
     },
   );
 
+  it("refuses an absolute URL before refreshing a token near expiry", async () => {
+    const { client, calls, refresh } = setup(nearExpiry);
+    await expect(client.request({ url: "https://evil.test/x" })).rejects.toThrow(/absolute/i);
+    expect(refresh).not.toHaveBeenCalled();
+    expect(calls).toEqual([]);
+  });
+
   it("lets a network failure reach the caller", async () => {
     const { authedRequest } = setup(fresh, { adapterError: new Error("Network Error") });
     await expect(authedRequest({ url: "/me" })).rejects.toThrow("Network Error");

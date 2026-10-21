@@ -10,6 +10,7 @@ import type { Session } from "../logic/session";
 import type { TokenKeeper } from "../logic/tokenKeeper";
 import { config } from "../../../shared/config";
 import { createHttpClient } from "../../../shared/api/http";
+import { refuseAbsoluteUrl } from "../../../shared/api/absoluteUrl";
 
 export type AuthedResult =
   | { kind: "response"; response: AxiosResponse }
@@ -44,6 +45,9 @@ export function createApiClient(deps: ApiClientDeps): AxiosInstance {
   function instance(): AxiosInstance {
     const created = createHttpClient({ baseURL: deps.baseUrl, ...(deps.adapter && { adapter: deps.adapter }) });
     created.interceptors.request.use(async (request) => {
+      // Axios runs request interceptors last-registered first, so this one runs before the guard in
+      // createHttpClient. Refuse here too, before a refresh or a token touches a request that would go elsewhere.
+      refuseAbsoluteUrl(request.url);
       const session = await keeper.usableSession();
       if (session === null) throw new NotSignedIn();
       request.headers.set("Authorization", `Bearer ${session.idToken}`);
