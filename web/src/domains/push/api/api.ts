@@ -1,5 +1,5 @@
-import { config } from "../../../shared/config";
-import { authedFetch } from "../../auth/api/request";
+import { httpClient } from "../../../shared/api/http";
+import { authedRequest } from "../../auth/api/client";
 
 /** The browser's PushSubscription.toJSON() shape, as the API expects it. */
 export interface SubscriptionJSON {
@@ -15,11 +15,10 @@ const JSON_HEADERS = { "Content-Type": "application/json" };
 
 export async function getVapidPublicKey(): Promise<VapidKeyResult> {
   try {
-    const res = await fetch(`${config.apiBaseUrl}/push/vapid-public-key`, { cache: "no-store" });
+    const res = await httpClient.get("/push/vapid-public-key", { fetchOptions: { cache: "no-store" } });
     if (res.status === 503) return { kind: "not-configured" };
-    if (!res.ok) return { kind: "error" };
-    const body: unknown = await res.json();
-    const key = (body as { key?: unknown } | null)?.key;
+    if (res.status < 200 || res.status > 299) return { kind: "error" };
+    const key = (res.data as { key?: unknown } | null)?.key;
     return typeof key === "string" && key !== "" ? { kind: "ok", key } : { kind: "error" };
   } catch {
     return { kind: "error" };
@@ -29,10 +28,11 @@ export async function getVapidPublicKey(): Promise<VapidKeyResult> {
 /** Idempotent: safe to call on every launch. */
 export async function saveSubscription(sub: SubscriptionJSON, userAgent: string): Promise<SaveResult> {
   try {
-    const result = await authedFetch("/push/subscription", {
+    const result = await authedRequest({
+      url: "/push/subscription",
       method: "PUT",
       headers: JSON_HEADERS,
-      body: JSON.stringify({ endpoint: sub.endpoint, keys: sub.keys, userAgent }),
+      data: JSON.stringify({ endpoint: sub.endpoint, keys: sub.keys, userAgent }),
     });
     if (result.kind === "not-signed-in") return result;
     return result.response.status === 204 ? { kind: "ok" } : { kind: "error" };

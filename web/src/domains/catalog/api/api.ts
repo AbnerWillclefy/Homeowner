@@ -1,6 +1,6 @@
 import type { Chore, ChoreInput, Failure } from "../../chores/api/api";
 import type { FieldCodes } from "../../home/api/api";
-import { authedFetch } from "../../auth/api/request";
+import { authedRequest } from "../../auth/api/client";
 
 /** One Catalog Chore. `id` is the Catalog id (for example `clean_bathroom`), not a stored Chore's id. */
 export interface CatalogEntry extends Chore {
@@ -87,10 +87,10 @@ function parseList<T>(body: unknown, key: string, parse: (item: unknown) => T | 
 
 export async function getCatalog(): Promise<GetCatalogResult> {
   try {
-    const result = await authedFetch("/catalog");
+    const result = await authedRequest({ url: "/catalog" });
     if (result.kind === "not-signed-in") return result;
     if (result.response.status !== 200) return { kind: "error" };
-    const entries = parseList(await result.response.json(), "entries", parseEntry);
+    const entries = parseList(result.response.data, "entries", parseEntry);
     return entries ? { kind: "ok", entries } : { kind: "error" };
   } catch {
     return { kind: "offline" };
@@ -100,21 +100,22 @@ export async function getCatalog(): Promise<GetCatalogResult> {
 /** Turns the answers into proposed Chores. Writes nothing, so it can be called as often as needed. */
 export async function proposeChores(answers: AnswersBody): Promise<ProposeResult> {
   try {
-    const result = await authedFetch("/catalog/proposals", {
+    const result = await authedRequest({
+      url: "/catalog/proposals",
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(answers),
+      data: JSON.stringify(answers),
     });
     if (result.kind === "not-signed-in") return result;
     const { response } = result;
     if (response.status === 400) {
-      const body: unknown = await response.json().catch(() => null);
+      const body: unknown = response.data;
       if (!isRecord(body) || !isRecord(body.fields)) return { kind: "error" };
       const entries = Object.entries(body.fields).filter((e): e is [string, string] => typeof e[1] === "string");
       return entries.length > 0 ? { kind: "invalid", fields: Object.fromEntries(entries) } : { kind: "error" };
     }
     if (response.status !== 200) return { kind: "error" };
-    const proposals = parseList(await response.json(), "proposals", parseProposal);
+    const proposals = parseList(response.data, "proposals", parseProposal);
     return proposals ? { kind: "ok", proposals } : { kind: "error" };
   } catch {
     return { kind: "offline" };
