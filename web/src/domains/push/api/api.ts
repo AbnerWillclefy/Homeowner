@@ -11,12 +11,17 @@ export type VapidKeyResult = { kind: "ok"; key: string } | { kind: "not-configur
 /** "not-signed-in": there is no session, or it was turned down; the person must sign in again. */
 export type SaveResult = { kind: "ok" } | { kind: "not-signed-in" } | { kind: "error" };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 export async function getVapidPublicKey(): Promise<VapidKeyResult> {
   try {
     const res = await httpClient.get("/push/vapid-public-key", { fetchOptions: { cache: "no-store" } });
     if (res.status === 503) return { kind: "not-configured" };
     if (res.status !== 200) return { kind: "error" };
-    const key = (res.data as { key?: unknown } | null)?.key;
+    const body: unknown = res.data;
+    const key = isRecord(body) ? body.key : undefined;
     return typeof key === "string" && key !== "" ? { kind: "ok", key } : { kind: "error" };
   } catch {
     return { kind: "error" };

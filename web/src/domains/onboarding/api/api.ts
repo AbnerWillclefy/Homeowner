@@ -22,13 +22,17 @@ function isPosition(value: unknown): value is OnboardingPosition {
   return value === "done" || (ONBOARDING_STEPS as readonly unknown[]).includes(value);
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 async function call(init?: AxiosRequestConfig): Promise<OnboardingResult> {
   try {
     const result = await authedRequest({ ...init, url: "/me/onboarding" });
     if (result.kind === "not-signed-in") return result;
     if (result.response.status !== 200) return { kind: "error" };
-    const body = result.response.data as { step?: unknown } | null;
-    return isPosition(body?.step) ? { kind: "ok", step: body.step } : { kind: "error" };
+    const body: unknown = result.response.data;
+    return isRecord(body) && isPosition(body.step) ? { kind: "ok", step: body.step } : { kind: "error" };
   } catch {
     return { kind: "offline" };
   }

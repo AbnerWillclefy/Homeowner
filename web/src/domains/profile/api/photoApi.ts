@@ -84,8 +84,8 @@ export async function confirmUpload(key: string): Promise<ConfirmResult> {
     });
     if (result.kind === "not-signed-in") return result;
     if (result.response.status !== 200) return failure(result.response.status);
-    const body = result.response.data as { photoUrl?: unknown } | null;
-    const photoUrl = body?.photoUrl;
+    const body: unknown = result.response.data;
+    const photoUrl = typeof body === "object" && body !== null && "photoUrl" in body ? body.photoUrl : undefined;
     return typeof photoUrl === "string" && photoUrl !== "" ? { kind: "ok", photoUrl } : { kind: "error" };
   } catch {
     return { kind: "offline" };

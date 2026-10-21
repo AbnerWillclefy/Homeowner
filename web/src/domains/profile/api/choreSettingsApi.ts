@@ -1,5 +1,4 @@
-import type { AxiosRequestConfig } from "axios";
-import type { Preference, WriteResult } from "./api";
+import { write, type Preference, type WriteResult } from "./api";
 import { authedRequest } from "../../auth/api/client";
 
 /** The caller's effective Preference for a Chore, and whether they restricted that Chore itself. */
@@ -49,16 +48,6 @@ export async function getOwnChoreSettings(): Promise<OwnChoreSettingsResult> {
     if (result.response.status !== 200) return { kind: "error" };
     const settings = parseOwn(result.response.data);
     return settings ? { kind: "ok", settings } : { kind: "error" };
-  } catch {
-    return { kind: "offline" };
-  }
-}
-
-async function write(path: string, init: AxiosRequestConfig): Promise<WriteResult> {
-  try {
-    const result = await authedRequest({ ...init, url: path });
-    if (result.kind === "not-signed-in") return result;
-    return result.response.status === 204 ? { kind: "ok" } : { kind: "error" };
   } catch {
     return { kind: "offline" };
   }

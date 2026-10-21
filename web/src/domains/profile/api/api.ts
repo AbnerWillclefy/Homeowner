@@ -44,13 +44,17 @@ function isStringList(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 async function getIds(path: string, field: "categories" | "demands"): Promise<IdsResult> {
   try {
     const result = await authedRequest({ url: path });
     if (result.kind === "not-signed-in") return result;
     if (result.response.status !== 200) return { kind: "error" };
-    const body = result.response.data as Record<string, unknown> | null;
-    const ids = body?.[field];
+    const body: unknown = result.response.data;
+    const ids = isRecord(body) ? body[field] : undefined;
     return isStringList(ids) ? { kind: "ok", ids } : { kind: "error" };
   } catch {
     return { kind: "offline" };
@@ -95,7 +99,7 @@ export async function getProfile(): Promise<ProfileResult> {
   }
 }
 
-async function write(path: string, init: AxiosRequestConfig): Promise<WriteResult> {
+export async function write(path: string, init: AxiosRequestConfig): Promise<WriteResult> {
   try {
     const result = await authedRequest({ ...init, url: path });
     if (result.kind === "not-signed-in") return result;
