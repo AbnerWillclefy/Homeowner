@@ -1,20 +1,12 @@
 // @vitest-environment jsdom
-import { act, createElement, type ReactNode } from "react";
-import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { enUS } from "../i18n/catalogs/en-US";
-import { I18nContext } from "../i18n/context";
+import { act, createElement } from "react";
+import { describe, expect, it, vi } from "vitest";
 import { PageHeader } from "./PageHeader";
 import { PageLoading, useReportFetching } from "./PageLoading";
+import { mountWithI18n } from "./testing";
 
-(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-
-let container: HTMLElement;
-let root: Root;
-
-const i18n = { locale: "en-US", setLocale: () => {}, t: (key: keyof typeof enUS) => enUS[key] };
-const render = (node: ReactNode) => act(() => root.render(createElement(I18nContext.Provider, { value: i18n as never }, node)));
-const slot = () => container.querySelector('[data-slot="fetching"]');
+const { render, container } = mountWithI18n();
+const slot = () => container().querySelector('[data-slot="fetching"]');
 
 function Fetching({ on }: { on: boolean }) {
   useReportFetching(on);
@@ -27,30 +19,17 @@ const page = (on: boolean) =>
     children: [createElement(PageHeader, { key: "h", title: "Today" }), createElement(Fetching, { key: "f", on })],
   });
 
-beforeEach(() => {
-  vi.useFakeTimers();
-  container = document.createElement("div");
-  document.body.append(container);
-  root = createRoot(container);
-});
-
-afterEach(() => {
-  act(() => root.unmount());
-  container.remove();
-  vi.useRealTimers();
-});
-
 describe("PageHeader", () => {
   it("has no fetching slot outside a PageLoading", () => {
     render(createElement(PageHeader, { title: "Sign in" }));
     expect(slot()).toBeNull();
-    expect(container.querySelector("h2")?.textContent).toBe("Sign in");
+    expect(container().querySelector("h2")?.textContent).toBe("Sign in");
   });
 
-  it("reserves an empty 1rem slot inside a PageLoading while idle", () => {
+  it("reserves an empty slot inside a PageLoading while idle", () => {
     render(page(false));
     expect(slot()).not.toBeNull();
-    expect(slot()!.className).toContain("size-4");
+    expect(slot()!.className).toContain("w-4");
     expect(slot()!.querySelector("svg")).toBeNull();
   });
 
@@ -62,7 +41,7 @@ describe("PageHeader", () => {
     expect(slot()!.querySelector('[aria-label="Refreshing"]')).not.toBeNull();
     render(page(false));
     expect(slot()!.querySelector("svg")).toBeNull();
-    expect(container.querySelectorAll('[data-slot="fetching"]')).toHaveLength(1);
+    expect(container().querySelectorAll('[data-slot="fetching"]')).toHaveLength(1);
   });
 
   it("shows one spinner however many sections fetch", () => {
@@ -77,6 +56,6 @@ describe("PageHeader", () => {
       }),
     );
     act(() => vi.advanceTimersByTime(300));
-    expect(container.querySelectorAll("svg")).toHaveLength(1);
+    expect(container().querySelectorAll("svg")).toHaveLength(1);
   });
 });
