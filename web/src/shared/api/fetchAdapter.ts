@@ -9,7 +9,9 @@ import axios, { AxiosError, AxiosHeaders, type AxiosAdapter, type AxiosResponse 
  */
 export const fetchAdapter: AxiosAdapter = async (config) => {
   const url = axios.getUri(config);
-  const headers = AxiosHeaders.from(config.headers).toJSON();
+  const headers = AxiosHeaders.from(config.headers);
+  // Axios gives every bodyless POST a form Content-Type; fetch sends none, and so must we.
+  if (config.data === undefined) headers.delete("Content-Type");
   const method = (config.method ?? "get").toUpperCase();
   const timeout = config.timeout ? AbortSignal.timeout(config.timeout) : undefined;
   // Axios types `signal` as GenericAbortSignal; in a browser it is always a real AbortSignal.
@@ -20,7 +22,7 @@ export const fetchAdapter: AxiosAdapter = async (config) => {
     response = await fetch(url, {
       ...config.fetchOptions,
       method,
-      headers: headers as Record<string, string>,
+      headers: headers.toJSON() as Record<string, string>,
       body: config.data ?? undefined,
       signal: signals.length > 0 ? AbortSignal.any(signals) : undefined,
     });

@@ -1,4 +1,4 @@
-import { authedFetch } from "./request";
+import { authedRequest } from "./client";
 
 export interface Me {
   id: string;
@@ -47,10 +47,10 @@ export function parseMe(raw: unknown): Me | null {
 /** Who the API says is signed in. The first call after sign-in is what creates the User. */
 export async function getMe(): Promise<MeResult> {
   try {
-    const result = await authedFetch("/me");
+    const result = await authedRequest({ url: "/me" });
     if (result.kind === "not-signed-in") return result;
     if (result.response.status !== 200) return { kind: "error" };
-    const me = parseMe(await result.response.json());
+    const me = parseMe(result.response.data);
     return me === null ? { kind: "error" } : { kind: "ok", ...me };
   } catch {
     return { kind: "offline" };

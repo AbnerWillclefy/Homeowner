@@ -27,6 +27,11 @@ beforeEach(() => stubStorage(true));
 afterEach(() => vi.unstubAllGlobals());
 
 describe("getMe", () => {
+  it("is an error when a 200 carries a body that is not JSON", async () => {
+    stubFetch(new Response("<html>", { status: 200 }));
+    expect(await getMe()).toEqual({ kind: "error" });
+  });
+
   it("returns the signed-in User from GET /me", async () => {
     const fetch = stubFetch(Response.json({ id: "u1", email: "a@example.com", name: "a" }));
     expect(await getMe()).toEqual({

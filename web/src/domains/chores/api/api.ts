@@ -1,5 +1,5 @@
-import type { FieldCodes } from "../../home/api/api";
-import { authedFetch } from "../../auth/api/request";
+import { parseFields, type FieldCodes } from "../../../shared/api/fieldErrors";
+import { authedRequest } from "../../auth/api/client";
 
 /** What a Resident edits about a Chore, as the API takes it. Weekdays are 0 to 6 with 0 = Sunday. */
 export interface ChoreInput {
@@ -73,19 +73,12 @@ function parseChore(body: unknown): Chore | null {
   return { id, name, category, demands, baseEffort, importance, people, intervalDays, allowedWeekdays, buildsUp };
 }
 
-async function parseFields(response: Response): Promise<FieldCodes | null> {
-  const body: unknown = await response.json().catch(() => null);
-  if (!isRecord(body) || !isRecord(body.fields)) return null;
-  const entries = Object.entries(body.fields).filter((e): e is [string, string] => typeof e[1] === "string");
-  return entries.length > 0 ? Object.fromEntries(entries) : null;
-}
-
 export async function listChores(): Promise<ListChoresResult> {
   try {
-    const result = await authedFetch("/home/chores");
+    const result = await authedRequest({ url: "/home/chores" });
     if (result.kind === "not-signed-in") return result;
     if (result.response.status !== 200) return { kind: "error" };
-    const body: unknown = await result.response.json();
+    const body: unknown = result.response.data;
     if (!isRecord(body) || !Array.isArray(body.chores)) return { kind: "error" };
     const chores = body.chores.map(parseChore);
     return chores.every((c) => c !== null) ? { kind: "ok", chores } : { kind: "error" };
@@ -96,16 +89,16 @@ export async function listChores(): Promise<ListChoresResult> {
 
 async function save(path: string, method: "POST" | "PUT", input: ChoreWire, okStatus: number): Promise<SaveChoreResult> {
   try {
-    const result = await authedFetch(path, { method, headers: JSON_HEADERS, body: JSON.stringify(input) });
+    const result = await authedRequest({ url: path, method, headers: JSON_HEADERS, data: JSON.stringify(input) });
     if (result.kind === "not-signed-in") return result;
     const { response } = result;
     if (response.status === 404) return { kind: "none" };
     if (response.status === 400) {
-      const fields = await parseFields(response);
+      const fields = parseFields(response);
       return fields ? { kind: "invalid", fields } : { kind: "error" };
     }
     if (response.status !== okStatus) return { kind: "error" };
-    const chore = parseChore(await response.json());
+    const chore = parseChore(response.data);
     return chore ? { kind: "ok", chore } : { kind: "error" };
   } catch {
     return { kind: "offline" };
@@ -123,7 +116,7 @@ export function updateChore(id: string, input: ChoreWire): Promise<SaveChoreResu
 
 export async function deleteChore(id: string): Promise<DeleteChoreResult> {
   try {
-    const result = await authedFetch(`/home/chores/${encodeURIComponent(id)}`, { method: "DELETE" });
+    const result = await authedRequest({ url: `/home/chores/${encodeURIComponent(id)}`, method: "DELETE" });
     if (result.kind === "not-signed-in") return result;
     if (result.response.status === 404) return { kind: "none" };
     return result.response.status === 204 ? { kind: "ok" } : { kind: "error" };

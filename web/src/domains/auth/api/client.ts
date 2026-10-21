@@ -1,4 +1,4 @@
-import axios, {
+import {
   type AxiosAdapter,
   type AxiosInstance,
   type AxiosRequestConfig,
@@ -9,7 +9,8 @@ import { browserKeeper } from "./browserKeeper";
 import type { Session } from "../logic/session";
 import type { TokenKeeper } from "../logic/tokenKeeper";
 import { config } from "../../../shared/config";
-import { fetchAdapter } from "../../../shared/api/fetchAdapter";
+import { createBaseClient } from "../../../shared/api/http";
+import { refuseAbsoluteUrl } from "../../../shared/api/absoluteUrl";
 
 export type AuthedResult =
   | { kind: "response"; response: AxiosResponse }
@@ -31,8 +32,6 @@ export class NotSignedIn extends Error {
   }
 }
 
-const ABSOLUTE_URL = /^([a-z][a-z\d+.-]*:|\/\/)/i;
-
 /**
  * The one Axios instance for the API. It accepts every status (callers read `status`, as with fetch), adds
  * the bearer token, refreshes first when the token is near expiry, and on a 401 refreshes once and retries
@@ -44,17 +43,10 @@ export function createApiClient(deps: ApiClientDeps): AxiosInstance {
   const sessionUsed = new WeakMap<InternalAxiosRequestConfig, Session>();
 
   function instance(): AxiosInstance {
-    const created = axios.create({
-      baseURL: deps.baseUrl,
-      validateStatus: () => true,
-      allowAbsoluteUrls: false,
-      adapter: deps.adapter ?? fetchAdapter,
-    });
+    const created = createBaseClient({ baseURL: deps.baseUrl, ...(deps.adapter && { adapter: deps.adapter }) });
     created.interceptors.request.use(async (request) => {
-      // allowAbsoluteUrls: false alone would glue the two URLs together, so refuse before any token is attached.
-      if (request.url && ABSOLUTE_URL.test(request.url)) {
-        throw new Error(`The API client refuses the absolute URL ${request.url}`);
-      }
+      // Refuse first, before a refresh or a token touches a request that would go elsewhere.
+      refuseAbsoluteUrl(request.url);
       const session = await keeper.usableSession();
       if (session === null) throw new NotSignedIn();
       request.headers.set("Authorization", `Bearer ${session.idToken}`);
