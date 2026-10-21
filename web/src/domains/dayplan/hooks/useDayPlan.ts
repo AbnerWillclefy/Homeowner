@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { isSwapAction, type Acting, type SwapAction, type TaskAction } from "../logic/actions";
 import {
   acceptAll as acceptAllCall,
@@ -18,8 +19,9 @@ import {
   type PlanTask,
 } from "../api/api";
 import { ACTION_FAILURE_KEY, conflictMessageKey, LOAD_FAILURE_KEY, type ConflictFamily } from "../logic/failureMessages";
-import { latestOnly } from "../logic/latestOnly";
-import { whenLoadStarts } from "../logic/loadState";
+import { dayPlanKey, dayPlanQuery } from "../api/queries";
+import { dayPlanStateOf } from "../logic/dayPlanState";
+import { viewOf } from "../../../shared/query/view";
 import type { MessageKey } from "../../../shared/i18n";
 
 type FailedReason = Failure["kind"] | "none";
@@ -83,8 +85,9 @@ export function outcome(
 }
 
 /**
- * Loads today's Day Plan, and again whenever `version` changes. Only mounted with a Home. Only a first load or a
- * Retry shows the loading state; a reload while a plan is on screen keeps it there until the answer replaces it.
+ * Today's Day Plan from the query cache, read again whenever `version` changes. Only mounted with a Home. The
+ * cached plan shows at once and a refetch runs behind it (`refreshing`); only a first load or a Retry shows the
+ * loading state, and a failed refetch keeps the plan on screen with no alert.
  *
  * `run` and `acceptAll` perform an action (accept, refuse, take, complete; accept everything) and show the
  * plan the server answers with. Nothing is optimistic: the plan on screen only changes from a server answer.
@@ -94,7 +97,11 @@ export function outcome(
  * counts the actions that changed the plan, for moving focus.
  */
 export function useDayPlan(version: number) {
-  const [state, setState] = useState<DayPlanState>({ kind: "loading" });
+  const queryClient = useQueryClient();
+  const query = useQuery(dayPlanQuery);
+  const { state: viewState, refreshing } = viewOf(query);
+  const state = dayPlanStateOf(viewState);
+  const { refetch } = query;
   const [acting, setActing] = useState<Acting>(null);
   const [notice, setNotice] = useState<ActionNotice | null>(null);
   const [settled, setSettled] = useState(0);
@@ -109,29 +116,37 @@ export function useDayPlan(version: number) {
     };
   }, []);
 
-  const fetchPlan = useMemo(
-    () =>
-      latestOnly(getDayPlan, (result) =>
-        setState(result.kind === "ok" ? { kind: "ready", plan: result.plan } : { kind: "failed", reason: result.kind }),
-      ),
-    [],
-  );
-
-  const load = useCallback(() => {
-    loads.current++;
-    setState(whenLoadStarts);
-    return fetchPlan();
-  }, [fetchPlan]);
-
+  // A changed `version` (a saved Check-in, the start choice, a join) marks the plan stale and it is read again.
+  // The first render needs no read of its own: the query reads on mount.
+  const lastVersion = useRef(version);
   useEffect(() => {
-    void load();
-  }, [load, version]);
+    if (version === lastVersion.current) return;
+    lastVersion.current = version;
+    loads.current++;
+    void queryClient.invalidateQueries({ queryKey: dayPlanKey });
+  }, [queryClient, version]);
 
   /** Retry: ignored while an action runs. A load that starts anyway (`version` changed) is handled by `act`. */
-  const reload = useCallback(() => {
-    if (inFlight.current) return Promise.resolve();
-    return load();
-  }, [load]);
+  const reload = useCallback(async () => {
+    if (inFlight.current) return;
+    loads.current++;
+    await refetch();
+  }, [refetch]);
+
+  /**
+   * Puts a plan the server answered into the cache, in place so the lists and focus stay. A read that started
+   * before is cancelled first, so its older answer cannot bring the old plan back.
+   */
+  const show = useCallback(
+    async (plan: DayPlan) => {
+      await queryClient.cancelQueries({ queryKey: dayPlanKey });
+      queryClient.setQueryData(dayPlanKey, plan);
+    },
+    [queryClient],
+  );
+
+  /** Shows a plan that was read elsewhere (the replan), without the loading state: the lists update in place. */
+  const showPlan = useCallback((plan: DayPlan) => void show(plan), [show]);
 
   const act = useCallback(async (running: NonNullable<Acting>) => {
     if (inFlight.current) return;
@@ -148,20 +163,20 @@ export function useDayPlan(version: number) {
       // A load started meanwhile (`version` changed) and may have read the plan before this action: drop the
       // answer and read again in place, so the last word is a read made after the action.
       if (loads.current !== startedAt) {
-        void fetchPlan();
+        void queryClient.refetchQueries({ queryKey: dayPlanKey });
         return;
       }
       const { plan, notice } = outcome(result, fresh, family);
       setNotice(notice);
       if (plan) {
-        setState({ kind: "ready", plan });
-        setSettled((n) => n + 1);
+        await show(plan);
+        if (mounted.current) setSettled((n) => n + 1);
       }
     } finally {
       inFlight.current = false;
       if (mounted.current) setActing(null);
     }
-  }, [fetchPlan]);
+  }, [queryClient, show]);
 
   const run = useCallback(
     (action: TaskAction, task: PlanTask) => void act({ taskId: task.id, action }),
@@ -177,10 +192,5 @@ export function useDayPlan(version: number) {
   /** Accepts, declines or cancels a Swap offer. Resolves when the action ends. */
   const answerSwap = useCallback((action: SwapAction, swapId: string) => act({ action, swapId }), [act]);
 
-  /** Shows a plan that was read elsewhere, without the loading state: the lists update in place. */
-  const show = useCallback((plan: DayPlan) => {
-    if (mounted.current) setState({ kind: "ready", plan });
-  }, []);
-
-  return { state, reload, run, acceptAll, offerSwap: offer, answerSwap, acting, notice, settled, show };
+  return { state, refreshing, reload, run, acceptAll, offerSwap: offer, answerSwap, acting, notice, settled, show: showPlan };
 }
