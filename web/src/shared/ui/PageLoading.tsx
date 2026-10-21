@@ -6,6 +6,9 @@ interface PageLoadingValue {
   report(id: string, loading: boolean): void;
   /** Some section has been loading for over 300ms: skeletons may show, and the status has its text. */
   show: boolean;
+  reportFetching(id: string, fetching: boolean): void;
+  /** Some section is refreshing data that is already on screen. */
+  fetching: boolean;
 }
 
 const PageLoadingContext = createContext<PageLoadingValue | null>(null);
@@ -20,7 +23,13 @@ export function PageLoading({ message, children }: { message: string; children: 
   const [loading, setLoading] = useState<ReadonlySet<string>>(new Set());
   const show = useDelayedFlag(loading.size > 0);
   const report = useCallback((id: string, isLoading: boolean) => setLoading((current) => withReport(current, id, isLoading)), []);
-  const value = useMemo(() => ({ report, show }), [report, show]);
+  const [fetchingIds, setFetchingIds] = useState<ReadonlySet<string>>(new Set());
+  const reportFetching = useCallback(
+    (id: string, isFetching: boolean) => setFetchingIds((current) => withReport(current, id, isFetching)),
+    [],
+  );
+  const fetching = fetchingIds.size > 0;
+  const value = useMemo(() => ({ report, show, reportFetching, fetching }), [report, show, reportFetching, fetching]);
 
   return (
     <PageLoadingContext value={value}>
@@ -49,4 +58,26 @@ export function useReportFirstLoad(loading: boolean): boolean {
   }, [report, id, loading]);
 
   return page.show && loading;
+}
+
+/**
+ * A section calls this with whether it is refreshing data that is already on screen, for example
+ * `isFetching && data !== undefined`. The page header shows one indicator however many sections report.
+ * Must be used inside a `PageLoading`.
+ */
+export function useReportFetching(fetching: boolean): void {
+  const page = useContext(PageLoadingContext);
+  if (!page) throw new Error("useReportFetching must be used inside <PageLoading>");
+  const id = useId();
+  const { reportFetching } = page;
+
+  useEffect(() => {
+    reportFetching(id, fetching);
+    return () => reportFetching(id, false);
+  }, [reportFetching, id, fetching]);
+}
+
+/** Whether the page is refreshing, or null outside a `PageLoading` (the header then has no slot). */
+export function usePageFetchingOptional(): boolean | null {
+  return useContext(PageLoadingContext)?.fetching ?? null;
 }
