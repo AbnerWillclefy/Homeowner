@@ -1,5 +1,6 @@
 import type { Locale } from "../../../shared/i18n/locales";
-import { authedFetch, errorCode } from "../../auth/api/request";
+import type { AxiosRequestConfig } from "axios";
+import { authedRequest, errorCode } from "../../auth/api/client";
 
 /** An open Task as the Day Plan shows it. Dates are "YYYY-MM-DD". */
 export interface PlanTask {
@@ -303,7 +304,7 @@ export type ReplanResult = { kind: "ok" } | { kind: "none" } | Failure;
  */
 export async function replanHome(): Promise<ReplanResult> {
   try {
-    const result = await authedFetch("/dev/replan", { method: "POST" });
+    const result = await authedRequest({ url: "/dev/replan", method: "POST" });
     if (result.kind === "not-signed-in") return result;
     if (result.response.status === 202) return { kind: "ok" };
     if (result.response.status === 404) return { kind: "none" };
@@ -334,7 +335,7 @@ export const offerSwap = (offeredTaskId: string, requestedTaskId: string) =>
   send("/home/swaps", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ offeredTaskId, requestedTaskId }),
+    data: JSON.stringify({ offeredTaskId, requestedTaskId }),
   });
 /** Accepts a Swap offered to the caller: the two Tasks change hands. */
 export const acceptSwap = (id: string) => post(swapPath(id, "accept"));
@@ -344,24 +345,24 @@ export const declineSwap = (id: string) => post(swapPath(id, "decline"));
 export const cancelSwap = (id: string) => post(swapPath(id, "cancel"));
 
 /** A read: a 409 is not something a read can get, so it counts as an error. */
-async function dayPlanCall(path: string, init?: RequestInit): Promise<DayPlanResult> {
+async function dayPlanCall(path: string, init?: AxiosRequestConfig): Promise<DayPlanResult> {
   const result = await send(path, init);
   return result.kind === "conflict" ? { kind: "error" } : result;
 }
 
-async function send(path: string, init?: RequestInit): Promise<ActionResult> {
+async function send(path: string, init?: AxiosRequestConfig): Promise<ActionResult> {
   try {
-    const result = await authedFetch(path, init);
+    const result = await authedRequest({ ...init, url: path });
     if (result.kind === "not-signed-in") return result;
     if (result.response.status === 404) {
       // A Swap that was answered or vanished: the screen is stale, like a 409. Any other 404 is a missing Home or Task.
-      return (await errorCode(result.response)) === "swap_not_found"
+      return errorCode(result.response) === "swap_not_found"
         ? { kind: "conflict", code: "swap_not_found" }
         : { kind: "none" };
     }
-    if (result.response.status === 409) return { kind: "conflict", code: (await errorCode(result.response)) ?? "unknown" };
+    if (result.response.status === 409) return { kind: "conflict", code: errorCode(result.response) ?? "unknown" };
     if (result.response.status !== 200) return { kind: "error" };
-    const plan = parseDayPlan(await result.response.json());
+    const plan = parseDayPlan(result.response.data);
     return plan ? { kind: "ok", plan } : { kind: "error" };
   } catch {
     return { kind: "offline" };

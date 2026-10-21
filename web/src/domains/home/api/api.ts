@@ -1,5 +1,6 @@
 import type { ChoreWire } from "../../chores/api/api";
-import { authedFetch } from "../../auth/api/request";
+import type { AxiosRequestConfig, AxiosResponse } from "axios";
+import { authedRequest } from "../../auth/api/client";
 
 /** What a Resident can change about their Home. `allocationTime` is "HH:MM", 24 hours, in the Home's zone. */
 export interface HomeSettings {
@@ -51,8 +52,8 @@ export function parseHome(body: unknown): Home | null {
   return { id, timezone, allocationTime };
 }
 
-async function parseFields(response: Response): Promise<FieldCodes | null> {
-  const body: unknown = await response.json().catch(() => null);
+function parseFields(response: AxiosResponse): FieldCodes | null {
+  const body: unknown = response.data;
   if (!isRecord(body) || !isRecord(body.fields)) return null;
   const entries = Object.entries(body.fields).filter((e): e is [string, string] => typeof e[1] === "string");
   return entries.length > 0 ? Object.fromEntries(entries) : null;
@@ -66,31 +67,31 @@ type Shared = { kind: "ok"; home: Home } | { kind: "invalid"; fields: FieldCodes
  * so a call whose success has no body can map its status there.
  */
 async function sendHome<S>(
-  init: RequestInit,
+  request: AxiosRequestConfig,
   okStatus: number,
   special: Readonly<Record<number, S>>,
-  path = "/home",
+  url = "/home",
 ): Promise<Shared | S> {
   try {
-    const result = await authedFetch(path, init);
+    const result = await authedRequest({ ...request, url });
     if (result.kind === "not-signed-in") return result;
     const { response } = result;
     const mapped = special[response.status];
     if (mapped !== undefined) return mapped;
     if (response.status === 400) {
-      const fields = await parseFields(response);
+      const fields = parseFields(response);
       return fields ? { kind: "invalid", fields } : { kind: "error" };
     }
     if (response.status !== okStatus) return { kind: "error" };
-    const home = parseHome(await response.json());
+    const home = parseHome(response.data);
     return home ? { kind: "ok", home } : { kind: "error" };
   } catch {
     return { kind: "offline" };
   }
 }
 
-function withBody(method: string, body: HomeSettings | (HomeSettings & { chores: ChoreWire[] })): RequestInit {
-  return { method, headers: JSON_HEADERS, body: JSON.stringify(body) };
+function withBody(method: string, body: HomeSettings | (HomeSettings & { chores: ChoreWire[] })): AxiosRequestConfig {
+  return { method, headers: JSON_HEADERS, data: JSON.stringify(body) };
 }
 
 /** The caller's Home. `none` (a 404) means they have not made one yet. */

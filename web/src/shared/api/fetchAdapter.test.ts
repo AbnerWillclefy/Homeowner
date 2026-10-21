@@ -36,6 +36,12 @@ describe("fetchAdapter", () => {
     expect(stub.mock.calls[0]![1]?.body).toBeUndefined();
   });
 
+  it("sends no Content-Type for a POST with no data", async () => {
+    const stub = stubFetch(() => new Response(null, { status: 204 }));
+    await client().post("/home/day-plan/me");
+    expect(new Headers(stub.mock.calls[0]![1]?.headers).has("Content-Type")).toBe(false);
+  });
+
   it("passes fetchOptions on", async () => {
     const stub = stubFetch(() => new Response("{}", { status: 200 }));
     await client().get("/me", { fetchOptions: { cache: "no-store" } });

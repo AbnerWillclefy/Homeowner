@@ -9,6 +9,7 @@ import { browserKeeper } from "./browserKeeper";
 import type { Session } from "../logic/session";
 import type { TokenKeeper } from "../logic/tokenKeeper";
 import { config } from "../../../shared/config";
+import { refuseAbsoluteUrl } from "../../../shared/api/absoluteUrl";
 import { fetchAdapter } from "../../../shared/api/fetchAdapter";
 
 export type AuthedResult =
@@ -31,8 +32,6 @@ export class NotSignedIn extends Error {
   }
 }
 
-const ABSOLUTE_URL = /^([a-z][a-z\d+.-]*:|\/\/)/i;
-
 /**
  * The one Axios instance for the API. It accepts every status (callers read `status`, as with fetch), adds
  * the bearer token, refreshes first when the token is near expiry, and on a 401 refreshes once and retries
@@ -51,10 +50,8 @@ export function createApiClient(deps: ApiClientDeps): AxiosInstance {
       adapter: deps.adapter ?? fetchAdapter,
     });
     created.interceptors.request.use(async (request) => {
-      // allowAbsoluteUrls: false alone would glue the two URLs together, so refuse before any token is attached.
-      if (request.url && ABSOLUTE_URL.test(request.url)) {
-        throw new Error(`The API client refuses the absolute URL ${request.url}`);
-      }
+      // Refuse before any token is attached.
+      refuseAbsoluteUrl(request.url);
       const session = await keeper.usableSession();
       if (session === null) throw new NotSignedIn();
       request.headers.set("Authorization", `Bearer ${session.idToken}`);

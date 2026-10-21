@@ -1,4 +1,4 @@
-import { authedFetch, errorCode } from "../../auth/api/request";
+import { authedRequest, errorCode } from "../../auth/api/client";
 
 /** One Resident of the signed-in User's Home, as `GET /home/residents` lists them. Never carries an email or a user id. */
 export interface Resident {
@@ -49,12 +49,12 @@ function parseResident(row: unknown): Resident | null {
 /** Reads `GET /home/residents`. */
 export async function getResidents(): Promise<ResidentsResult> {
   try {
-    const result = await authedFetch("/home/residents");
+    const result = await authedRequest({ url: "/home/residents" });
     if (result.kind === "not-signed-in") return result;
     const { status } = result.response;
     if (status === 404) return { kind: "none" };
     if (status !== 200) return { kind: "error" };
-    const body = (await result.response.json()) as { date?: unknown; residents?: unknown } | null;
+    const body = result.response.data as { date?: unknown; residents?: unknown } | null;
     if (typeof body?.date !== "string" || !Array.isArray(body.residents)) return { kind: "error" };
     const residents = body.residents.map(parseResident).filter((resident): resident is Resident => resident !== null);
     return { kind: "ok", date: body.date, residents };
@@ -174,12 +174,12 @@ function parseDetail(body: unknown): ResidentDetail | null {
 /** Reads `GET /home/residents/{id}`. The two 404s are told apart by the API's `error` code. */
 export async function getResident(id: string): Promise<ResidentResult> {
   try {
-    const result = await authedFetch(`/home/residents/${encodeURIComponent(id)}`);
+    const result = await authedRequest({ url: `/home/residents/${encodeURIComponent(id)}` });
     if (result.kind === "not-signed-in") return result;
     const { response } = result;
-    if (response.status === 404) return (await errorCode(response)) === "no home" ? { kind: "none" } : { kind: "not-found" };
+    if (response.status === 404) return errorCode(response) === "no home" ? { kind: "none" } : { kind: "not-found" };
     if (response.status !== 200) return { kind: "error" };
-    const resident = parseDetail(await response.json().catch(() => null));
+    const resident = parseDetail(response.data);
     return resident === null ? { kind: "error" } : { kind: "ok", resident };
   } catch {
     return { kind: "offline" };
