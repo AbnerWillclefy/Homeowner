@@ -87,7 +87,7 @@ export function HomePage() {
             <LeaveHome
               onLeft={() => {
                 setRecovered("no");
-                home.clearHome();
+                void home.clearHome();
               }}
             />
           </div>

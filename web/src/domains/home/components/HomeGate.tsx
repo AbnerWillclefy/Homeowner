@@ -5,7 +5,7 @@ import type { Home } from "../api/api";
 import { useI18n } from "../../../shared/i18n";
 import { useInvite } from "../../invite/components/PendingInviteProvider";
 import { Button } from "../../../shared/ui/Button";
-import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
+import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { CreateHome } from "./CreateHome";
 import { LOAD_FAILURE_KEY } from "../logic/failureMessages";
 import { homeView } from "../logic/homeView";
@@ -21,10 +21,12 @@ export function HomeGate({ skeleton, children }: { skeleton: ReactNode; children
   const { home } = useShell();
   const { setRecovered } = useSession();
   const invite = useInvite();
-  const { state, reload, setHome } = home;
+  const { state, refreshing, reload, setHome } = home;
   const view = homeView(state, invite.token !== null);
   // The page's one status speaks for the Home loading; this shows the page's skeleton once the wait passes 300ms.
   const showSkeleton = useReportFirstLoad(view === "loading");
+  // A refresh over a Home already on screen shows the page's quiet indicator, never the skeleton.
+  useReportFetching(refreshing);
 
   switch (view) {
     case "loading":
