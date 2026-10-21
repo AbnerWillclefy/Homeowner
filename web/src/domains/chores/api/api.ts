@@ -39,8 +39,6 @@ export type SaveChoreResult =
 
 export type DeleteChoreResult = { kind: "ok" } | { kind: "none" } | Failure;
 
-const JSON_HEADERS = { "Content-Type": "application/json" };
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -89,7 +87,7 @@ export async function listChores(): Promise<ListChoresResult> {
 
 async function save(path: string, method: "POST" | "PUT", input: ChoreWire, okStatus: number): Promise<SaveChoreResult> {
   try {
-    const result = await authedRequest({ url: path, method, headers: JSON_HEADERS, data: JSON.stringify(input) });
+    const result = await authedRequest({ url: path, method, data: input });
     if (result.kind === "not-signed-in") return result;
     const { response } = result;
     if (response.status === 404) return { kind: "none" };

@@ -23,8 +23,6 @@ export type PutResult = { kind: "ok" } | { kind: "offline" } | { kind: "error" }
 export type ConfirmResult = { kind: "ok"; photoUrl: string } | Failure;
 export type RemoveResult = { kind: "ok" } | Failure;
 
-const JSON_HEADERS = { "Content-Type": "application/json" };
-
 /** An Upload from the API's answer, or null when it is not one. */
 export function parseUpload(raw: unknown): Upload | null {
   const body = typeof raw === "object" ? (raw as Record<string, unknown> | null) : null;
@@ -51,8 +49,7 @@ export async function requestUpload(contentType: string, size: number): Promise<
     const result = await authedRequest({
       url: "/me/photo/uploads",
       method: "POST",
-      headers: JSON_HEADERS,
-      data: JSON.stringify({ contentType, size }),
+      data: { contentType, size },
     });
     if (result.kind === "not-signed-in") return result;
     if (result.response.status !== 200) return failure(result.response.status);
@@ -83,8 +80,7 @@ export async function confirmUpload(key: string): Promise<ConfirmResult> {
     const result = await authedRequest({
       url: "/me/photo",
       method: "PUT",
-      headers: JSON_HEADERS,
-      data: JSON.stringify({ key }),
+      data: { key },
     });
     if (result.kind === "not-signed-in") return result;
     if (result.response.status !== 200) return failure(result.response.status);

@@ -334,8 +334,7 @@ const swapPath = (id: string, action: string) => `/home/swaps/${encodeURICompone
 export const offerSwap = (offeredTaskId: string, requestedTaskId: string) =>
   send("/home/swaps", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    data: JSON.stringify({ offeredTaskId, requestedTaskId }),
+    data: { offeredTaskId, requestedTaskId },
   });
 /** Accepts a Swap offered to the caller: the two Tasks change hands. */
 export const acceptSwap = (id: string) => post(swapPath(id, "accept"));

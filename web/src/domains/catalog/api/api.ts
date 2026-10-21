@@ -103,8 +103,7 @@ export async function proposeChores(answers: AnswersBody): Promise<ProposeResult
     const result = await authedRequest({
       url: "/catalog/proposals",
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      data: JSON.stringify(answers),
+      data: answers,
     });
     if (result.kind === "not-signed-in") return result;
     const { response } = result;

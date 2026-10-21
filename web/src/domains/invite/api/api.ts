@@ -74,8 +74,7 @@ export async function acceptInvite(token: string, confirmLeave: boolean): Promis
     const result = await authedRequest({
       url: `/invites/${encodeURIComponent(token)}/accept`,
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      data: JSON.stringify({ confirmLeave }),
+      data: { confirmLeave },
     });
     if (result.kind === "not-signed-in") return result;
     const { response } = result;

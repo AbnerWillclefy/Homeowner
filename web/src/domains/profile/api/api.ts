@@ -36,8 +36,6 @@ export type ProfileResult =
 
 export type WriteResult = { kind: "ok" } | { kind: "not-signed-in" } | { kind: "offline" } | { kind: "error" };
 
-const JSON_HEADERS = { "Content-Type": "application/json" };
-
 function isPreference(value: unknown): value is Preference {
   return typeof value === "string" && (PREFERENCES as readonly string[]).includes(value);
 }
@@ -109,15 +107,14 @@ async function write(path: string, init: AxiosRequestConfig): Promise<WriteResul
 
 /** Sets (a number) or clears (null) only the days named; the others are untouched. */
 export function putBaseline(days: Partial<Record<Weekday, number | null>>): Promise<WriteResult> {
-  return write("/me/baseline", { method: "PUT", headers: JSON_HEADERS, data: JSON.stringify(days) });
+  return write("/me/baseline", { method: "PUT", data: days });
 }
 
 /** Neutral clears the Preference on the API. */
 export function putPreference(category: string, preference: Preference): Promise<WriteResult> {
   return write(`/me/preferences/${encodeURIComponent(category)}`, {
     method: "PUT",
-    headers: JSON_HEADERS,
-    data: JSON.stringify({ preference }),
+    data: { preference },
   });
 }
 
@@ -143,8 +140,7 @@ export async function setName(name: string | null): Promise<SetNameResult> {
     const result = await authedRequest({
       url: "/me/name",
       method: "PUT",
-      headers: JSON_HEADERS,
-      data: JSON.stringify({ name }),
+      data: { name },
     });
     if (result.kind === "not-signed-in") return result;
     const { response } = result;

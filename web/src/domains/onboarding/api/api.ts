@@ -39,4 +39,4 @@ export const getOnboarding = (): Promise<OnboardingResult> => call();
 
 /** Records a step as completed or skipped. Never moves progress backwards; returns the step to show next. */
 export const putOnboardingStep = (step: ReportableStep): Promise<OnboardingResult> =>
-  call({ method: "PUT", headers: { "Content-Type": "application/json" }, data: JSON.stringify({ step }) });
+  call({ method: "PUT", data: { step } });

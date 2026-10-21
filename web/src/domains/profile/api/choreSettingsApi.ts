@@ -18,8 +18,6 @@ export type OwnChoreSettingsResult =
   | { kind: "offline" }
   | { kind: "error" };
 
-const JSON_HEADERS = { "Content-Type": "application/json" };
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -72,8 +70,7 @@ const choreUrl = (id: string, part: "preference" | "restriction") => `/home/chor
 export function putChorePreference(choreId: string, preference: Preference): Promise<WriteResult> {
   return write(choreUrl(choreId, "preference"), {
     method: "PUT",
-    headers: JSON_HEADERS,
-    data: JSON.stringify({ preference }),
+    data: { preference },
   });
 }
 
