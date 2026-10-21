@@ -12,7 +12,9 @@ const { categoriesKey, categoriesQuery, demandsKey, demandsQuery } = await impor
 describe.each([
   ["categoriesQuery", categoriesKey, categoriesQuery, getCategories, ["categories"]],
   ["demandsQuery", demandsKey, demandsQuery, getDemands, ["demands"]],
-] as const)("%s", (_name, key, query, call, path) => {
+] as const)("%s", (_name, key, anyQuery, call, path) => {
+  // Both lists share one shape; the key literal is the only difference.
+  const query = anyQuery as typeof categoriesQuery;
   beforeEach(() => call.mockReset());
 
   it("has a key shaped like the API path, outside the Home: the lists are the same for every Home", () => {
