@@ -1,5 +1,6 @@
 import { parseMe, type Me } from "../../auth/api/meApi";
-import { authedFetch, errorCode } from "../../auth/api/request";
+import type { AxiosRequestConfig } from "axios";
+import { authedRequest, errorCode } from "../../auth/api/client";
 
 /** The wire keys of the Baseline, in the API's order (0 = Sunday). The screen reorders them to start on Monday. */
 export const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
@@ -47,10 +48,10 @@ function isStringList(value: unknown): value is string[] {
 
 async function getIds(path: string, field: "categories" | "demands"): Promise<IdsResult> {
   try {
-    const result = await authedFetch(path);
+    const result = await authedRequest({ url: path });
     if (result.kind === "not-signed-in") return result;
     if (result.response.status !== 200) return { kind: "error" };
-    const body = (await result.response.json()) as Record<string, unknown> | null;
+    const body = result.response.data as Record<string, unknown> | null;
     const ids = body?.[field];
     return isStringList(ids) ? { kind: "ok", ids } : { kind: "error" };
   } catch {
@@ -86,19 +87,19 @@ function parseProfile(body: unknown): Profile | null {
 
 export async function getProfile(): Promise<ProfileResult> {
   try {
-    const result = await authedFetch("/me/profile");
+    const result = await authedRequest({ url: "/me/profile" });
     if (result.kind === "not-signed-in") return result;
     if (result.response.status !== 200) return { kind: "error" };
-    const profile = parseProfile(await result.response.json());
+    const profile = parseProfile(result.response.data);
     return profile ? { kind: "ok", profile } : { kind: "error" };
   } catch {
     return { kind: "offline" };
   }
 }
 
-async function write(path: string, init: RequestInit): Promise<WriteResult> {
+async function write(path: string, init: AxiosRequestConfig): Promise<WriteResult> {
   try {
-    const result = await authedFetch(path, init);
+    const result = await authedRequest({ ...init, url: path });
     if (result.kind === "not-signed-in") return result;
     return result.response.status === 204 ? { kind: "ok" } : { kind: "error" };
   } catch {
@@ -108,7 +109,7 @@ async function write(path: string, init: RequestInit): Promise<WriteResult> {
 
 /** Sets (a number) or clears (null) only the days named; the others are untouched. */
 export function putBaseline(days: Partial<Record<Weekday, number | null>>): Promise<WriteResult> {
-  return write("/me/baseline", { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify(days) });
+  return write("/me/baseline", { method: "PUT", headers: JSON_HEADERS, data: JSON.stringify(days) });
 }
 
 /** Neutral clears the Preference on the API. */
@@ -116,7 +117,7 @@ export function putPreference(category: string, preference: Preference): Promise
   return write(`/me/preferences/${encodeURIComponent(category)}`, {
     method: "PUT",
     headers: JSON_HEADERS,
-    body: JSON.stringify({ preference }),
+    data: JSON.stringify({ preference }),
   });
 }
 
@@ -139,15 +140,20 @@ export type SetNameResult =
 /** Sets the display name, or clears it with null (the shown name is then the email's local part). */
 export async function setName(name: string | null): Promise<SetNameResult> {
   try {
-    const result = await authedFetch("/me/name", { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify({ name }) });
+    const result = await authedRequest({
+      url: "/me/name",
+      method: "PUT",
+      headers: JSON_HEADERS,
+      data: JSON.stringify({ name }),
+    });
     if (result.kind === "not-signed-in") return result;
     const { response } = result;
     if (response.status === 200) {
-      const me = parseMe(await response.json());
+      const me = parseMe(response.data);
       return me === null ? { kind: "error" } : { kind: "ok", me };
     }
     if (response.status === 400) {
-      const code = await errorCode(response);
+      const code = errorCode(response);
       if (code === "too_long" || code === "invalid") return { kind: code };
     }
     return { kind: "error" };

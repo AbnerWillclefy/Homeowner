@@ -1,4 +1,4 @@
-import { authedFetch } from "../../auth/api/request";
+import { authedRequest } from "../../auth/api/client";
 
 /** What `POST /me/photo/uploads` hands out: where to send the photo and exactly how. */
 export interface Upload {
@@ -48,14 +48,15 @@ function failure(status: number): Failure {
 /** Step 1, ask: a short-lived upload for a photo of this type and size. */
 export async function requestUpload(contentType: string, size: number): Promise<RequestUploadResult> {
   try {
-    const result = await authedFetch("/me/photo/uploads", {
+    const result = await authedRequest({
+      url: "/me/photo/uploads",
       method: "POST",
       headers: JSON_HEADERS,
-      body: JSON.stringify({ contentType, size }),
+      data: JSON.stringify({ contentType, size }),
     });
     if (result.kind === "not-signed-in") return result;
     if (result.response.status !== 200) return failure(result.response.status);
-    const upload = parseUpload(await result.response.json());
+    const upload = parseUpload(result.response.data);
     return upload === null ? { kind: "error" } : { kind: "ok", upload };
   } catch {
     return { kind: "offline" };
@@ -63,9 +64,9 @@ export async function requestUpload(contentType: string, size: number): Promise<
 }
 
 /**
- * Step 2, put: the photo goes straight to storage. This is plain `fetch`, never `authedFetch`: the bearer token
- * must not be sent to S3, and any header beyond the ones the API returned would break the signature. The browser
- * sets Content-Length from the blob, which the signature binds.
+ * Step 2, put: the photo goes straight to storage. This is plain `fetch`, never the Axios client
+ * (`authedRequest` or `httpClient`): the bearer token must not be sent to S3, and any header beyond the ones the
+ * API returned would break the signature. The browser sets Content-Length from the blob, which the signature binds.
  */
 export async function putToStorage(upload: Pick<Upload, "url" | "method" | "headers">, blob: Blob): Promise<PutResult> {
   try {
@@ -79,10 +80,15 @@ export async function putToStorage(upload: Pick<Upload, "url" | "method" | "head
 /** Step 3, confirm: the API checks the object and makes it the User's photo. */
 export async function confirmUpload(key: string): Promise<ConfirmResult> {
   try {
-    const result = await authedFetch("/me/photo", { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify({ key }) });
+    const result = await authedRequest({
+      url: "/me/photo",
+      method: "PUT",
+      headers: JSON_HEADERS,
+      data: JSON.stringify({ key }),
+    });
     if (result.kind === "not-signed-in") return result;
     if (result.response.status !== 200) return failure(result.response.status);
-    const body = (await result.response.json()) as { photoUrl?: unknown } | null;
+    const body = result.response.data as { photoUrl?: unknown } | null;
     const photoUrl = body?.photoUrl;
     return typeof photoUrl === "string" && photoUrl !== "" ? { kind: "ok", photoUrl } : { kind: "error" };
   } catch {
@@ -93,7 +99,7 @@ export async function confirmUpload(key: string): Promise<ConfirmResult> {
 /** Removes the photo. Idempotent on the API. */
 export async function removePhoto(): Promise<RemoveResult> {
   try {
-    const result = await authedFetch("/me/photo", { method: "DELETE" });
+    const result = await authedRequest({ url: "/me/photo", method: "DELETE" });
     if (result.kind === "not-signed-in") return result;
     return result.response.status === 204 ? { kind: "ok" } : failure(result.response.status);
   } catch {
