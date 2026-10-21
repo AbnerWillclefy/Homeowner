@@ -20,12 +20,11 @@ type Failed = { kind: ApiFailureKind };
  * ApiFailure for offline, error and not-signed-in. Use it in every `queryFn`.
  */
 export function toQueryData<R extends Okay | None | Failed>(result: R): Extract<R, Okay> | null {
-  switch (result.kind) {
-    case "ok":
-      return result as Extract<R, Okay>;
-    case "none":
-      return null;
-    default:
-      throw new ApiFailure(result.kind);
-  }
+  if (isOkay(result)) return result;
+  if (result.kind === "none") return null;
+  throw new ApiFailure((result as Failed).kind);
+}
+
+function isOkay<R extends Okay | None | Failed>(result: R): result is Extract<R, Okay> {
+  return result.kind === "ok";
 }

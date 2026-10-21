@@ -21,8 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(() => {
     setOnPurpose(true);
     rawSignOut();
-    queryClient.clear();
-  }, [rawSignOut, queryClient]);
+  }, [rawSignOut]);
 
   // Nothing a Resident saw may show to the next person on this phone. This also catches a sign-out the API
   // client forces after a surviving 401, which only clears the session.
