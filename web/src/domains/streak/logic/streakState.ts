@@ -1,17 +1,22 @@
-import type { Streak, StreakResult } from "../api/api";
+import type { Streak } from "../api/api";
 
 export interface StreakState {
   streak: Streak | null;
-  /** True until the first answer, of any kind, arrives. A reload later never sets it again. */
+  /** True until the first answer, of any kind, arrives. A refetch later never sets it again. */
   loading: boolean;
 }
 
-export const INITIAL_STREAK_STATE: StreakState = { streak: null, loading: true };
+/** The part of a query result that `streakStateOf` reads. */
+export interface StreakSnapshot {
+  data: Streak | null | undefined;
+  isPending: boolean;
+  fetchStatus: "fetching" | "paused" | "idle";
+}
 
 /**
- * The state after an answer from `GET /home/streak`. Any answer ends `loading`, a failure included, so the
- * skeleton never stays up. A failed reload keeps the last number.
+ * The Streak card's state. Any first answer ends `loading`, a failure included, so the skeleton never stays up
+ * (a failed first load has no data and is no longer pending). A refetch keeps the last number, also when it fails.
  */
-export function afterStreakAnswer(previous: StreakState, result: StreakResult): StreakState {
-  return { streak: result.kind === "ok" ? result.streak : previous.streak, loading: false };
+export function streakStateOf({ data, isPending, fetchStatus }: StreakSnapshot): StreakState {
+  return { streak: data ?? null, loading: isPending && fetchStatus !== "idle" };
 }

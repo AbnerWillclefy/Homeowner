@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { ApiFailure } from "../../../shared/query/ApiFailure";
+import { viewOf, type QuerySnapshot } from "../../../shared/query/view";
 import type { CheckIn, Level } from "../api/api";
-import { checkInReducer, checkInView, energyNote, noTasksReason, type CheckInState } from "./state";
+import { checkInStateOf, checkInView, energyNote, noTasksReason, type CheckInState } from "./state";
 
 const MISSING: CheckIn = { date: "2026-10-12", checkedIn: false, level: null, restrictions: [] };
 const LOW: CheckIn = { date: "2026-10-12", checkedIn: true, level: "low", restrictions: ["bending"] };
@@ -17,34 +19,46 @@ describe("checkInView", () => {
     expect(checkInView({ kind: "loading" })).toBe("loading");
     expect(checkInView({ kind: "failed", reason: "offline" })).toBe("failed");
   });
-
-  it("shows a saved Check-in as a summary: the form lives in the dialog, so there is no change view", () => {
-    const saved = checkInReducer(ready(MISSING), { type: "saved", checkIn: LOW });
-    expect(checkInView(saved)).toBe("summary");
-  });
-
-  it("asks again on every open: a new load of a missing Check-in is a prompt, nothing is remembered", () => {
-    const reloaded = checkInReducer(ready(MISSING), { type: "loaded", checkIn: MISSING });
-    expect(checkInView(reloaded)).toBe("prompt");
-  });
 });
 
-describe("checkInReducer", () => {
-  it("loads, or fails to load", () => {
-    expect(checkInReducer({ kind: "loading" }, { type: "loaded", checkIn: LOW })).toEqual(ready(LOW));
-    expect(checkInReducer({ kind: "loading" }, { type: "load-failed", reason: "none" })).toEqual({
+const checkInSnap = (over: Partial<QuerySnapshot<CheckIn | null>>) =>
+  viewOf<CheckIn | null>({ data: undefined, error: null, isFetching: true, ...over }).state;
+const demandsSnap = (over: Partial<QuerySnapshot<string[]>>) =>
+  viewOf<string[]>({ data: undefined, error: null, isFetching: true, ...over }).state;
+const DEMANDS = demandsSnap({ data: ["bending"], isFetching: false });
+
+describe("checkInStateOf", () => {
+  it("is loading while either the Check-in or the Demand list loads", () => {
+    expect(checkInStateOf(checkInSnap({}), DEMANDS)).toEqual({ kind: "loading" });
+    expect(checkInStateOf(checkInSnap({ data: LOW, isFetching: false }), demandsSnap({}))).toEqual({ kind: "loading" });
+  });
+
+  it("is ready when both answered, and asks again when the Check-in is missing", () => {
+    expect(checkInStateOf(checkInSnap({ data: LOW, isFetching: false }), DEMANDS)).toEqual(ready(LOW));
+    const missing = checkInStateOf(checkInSnap({ data: MISSING, isFetching: false }), DEMANDS);
+    expect(checkInView(missing)).toBe("prompt");
+  });
+
+  it("fails with the Check-in's failure first, then the Demand list's", () => {
+    const checkInFailed = checkInSnap({ error: new ApiFailure("offline"), isFetching: false });
+    const demandsFailed = demandsSnap({ error: new ApiFailure("error"), isFetching: false });
+    expect(checkInStateOf(checkInFailed, demandsFailed)).toEqual({ kind: "failed", reason: "offline" });
+    expect(checkInStateOf(checkInSnap({ data: LOW, isFetching: false }), demandsFailed)).toEqual({
+      kind: "failed",
+      reason: "error",
+    });
+  });
+
+  it("fails with none when the caller has no Home (null Check-in)", () => {
+    expect(checkInStateOf(checkInSnap({ data: null, isFetching: false }), DEMANDS)).toEqual({
       kind: "failed",
       reason: "none",
     });
-    expect(checkInReducer({ kind: "failed", reason: "error" }, { type: "load" })).toEqual({ kind: "loading" });
   });
 
-  it("holds the saved Check-in", () => {
-    expect(checkInReducer(ready(MISSING), { type: "saved", checkIn: LOW })).toEqual(ready(LOW));
-  });
-
-  it("ignores a save before the Check-in is loaded", () => {
-    expect(checkInReducer({ kind: "loading" }, { type: "saved", checkIn: LOW })).toEqual({ kind: "loading" });
+  it("keeps the Check-in on screen when a background refetch failed", () => {
+    const refetchFailed = checkInSnap({ data: LOW, error: new ApiFailure("offline"), isFetching: false });
+    expect(checkInStateOf(refetchFailed, DEMANDS)).toEqual(ready(LOW));
   });
 });
 

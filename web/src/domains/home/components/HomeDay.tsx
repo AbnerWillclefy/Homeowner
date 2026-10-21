@@ -10,6 +10,7 @@ import { TodaySection } from "../../dayplan/components/TodaySection";
 import { useDayPlan } from "../../dayplan/hooks/useDayPlan";
 import { StreakCard } from "../../streak/components/StreakCard";
 import { useStreak } from "../../streak/hooks/useStreak";
+import { useReportFetching } from "../../../shared/ui/PageLoading";
 
 /**
  * Today: the greeting, then the Check-in card with today's Energy, then the Day Plan. A saved Check-in can change
@@ -24,6 +25,8 @@ export function HomeDay({ version, onPlanChanged }: { version: number; onPlanCha
   const day = useDayPlan(version);
   const { state } = day;
   const streak = useStreak(`${version}:${day.settled}`);
+  // Today's single header slot spins once, whichever of the three reads refreshes over what is on screen.
+  useReportFetching(day.refreshing || checkIn.refreshing || streak.refreshing);
   const [checkInOpen, setCheckInOpen] = useState(false);
   const today = checkIn.state.kind === "ready" ? checkIn.state.checkIn : null;
   const energy = state.kind === "ready" ? state.plan.energy : null;
