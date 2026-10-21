@@ -236,6 +236,8 @@ The Category tile and name, the Chore as card title, then a wrapping line of fac
 ### Loading
 First loads of page data show skeletons in the shape of what is coming (card outlines with muted bars), after a 300ms delay so fast loads never flash. Skeleton bars are `muted` at low opacity, pulse only behind `motion-safe:`. No full-screen spinners.
 
+A refresh of data already on screen keeps the data and shows only a 1rem muted spinner at the end of the page header, after the same 300ms delay, behind `motion-safe:`; never a skeleton or overlay.
+
 ## Do's and Don'ts
 
 ### Do:

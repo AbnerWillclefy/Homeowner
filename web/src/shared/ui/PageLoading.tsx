@@ -1,14 +1,42 @@
 import { createContext, useCallback, useContext, useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { FetchingIndicator } from "./FetchingIndicator";
 import { withReport } from "./loadingReports";
 import { useDelayedFlag } from "./useDelayedFlag";
 
+type Report = (id: string, on: boolean) => void;
+
 interface PageLoadingValue {
-  report(id: string, loading: boolean): void;
+  report: Report;
   /** Some section has been loading for over 300ms: skeletons may show, and the status has its text. */
   show: boolean;
+  reportFetching: Report;
+  /** Some section is refreshing data that is already on screen. */
+  fetching: boolean;
 }
 
 const PageLoadingContext = createContext<PageLoadingValue | null>(null);
+
+/** The ids of the sections reporting true right now: `active` is whether any does. */
+function useReportSet(): { active: boolean; report: Report } {
+  const [ids, setIds] = useState<ReadonlySet<string>>(new Set());
+  const report = useCallback<Report>((id, on) => setIds((current) => withReport(current, id, on)), []);
+  return { active: ids.size > 0, report };
+}
+
+/** Reports `on` under this component's own id for as long as it is mounted, and false after. */
+function useRegisterReport(hook: string, pick: (page: PageLoadingValue) => Report, on: boolean): PageLoadingValue {
+  const page = useContext(PageLoadingContext);
+  if (!page) throw new Error(`${hook} must be used inside <PageLoading>`);
+  const id = useId();
+  const report = pick(page);
+
+  useEffect(() => {
+    report(id, on);
+    return () => report(id, false);
+  }, [report, id, on]);
+
+  return page;
+}
 
 /**
  * One polite status for a whole page. It renders a single always-mounted, visually hidden `role="status"` region
@@ -17,10 +45,16 @@ const PageLoadingContext = createContext<PageLoadingValue | null>(null);
  * Check-in, Day Plan and Streak) is announced once, and the skeletons it shows are `aria-hidden`.
  */
 export function PageLoading({ message, children }: { message: string; children: ReactNode }) {
-  const [loading, setLoading] = useState<ReadonlySet<string>>(new Set());
-  const show = useDelayedFlag(loading.size > 0);
-  const report = useCallback((id: string, isLoading: boolean) => setLoading((current) => withReport(current, id, isLoading)), []);
-  const value = useMemo(() => ({ report, show }), [report, show]);
+  const loading = useReportSet();
+  const fetching = useReportSet();
+  const show = useDelayedFlag(loading.active);
+  const report = loading.report;
+  const reportFetching = fetching.report;
+  const isFetching = fetching.active;
+  const value = useMemo(
+    () => ({ report, show, reportFetching, fetching: isFetching }),
+    [report, show, reportFetching, isFetching],
+  );
 
   return (
     <PageLoadingContext value={value}>
@@ -38,15 +72,29 @@ export function PageLoading({ message, children }: { message: string; children: 
  * showing the content. Must be used inside a `PageLoading`.
  */
 export function useReportFirstLoad(loading: boolean): boolean {
-  const page = useContext(PageLoadingContext);
-  if (!page) throw new Error("useReportFirstLoad must be used inside <PageLoading>");
-  const id = useId();
-  const { report } = page;
-
-  useEffect(() => {
-    report(id, loading);
-    return () => report(id, false);
-  }, [report, id, loading]);
-
+  const page = useRegisterReport("useReportFirstLoad", (p) => p.report, loading);
   return page.show && loading;
+}
+
+/**
+ * A section calls this with whether it is refreshing data that is already on screen, for example
+ * `isFetching && data !== undefined`. The page header shows one indicator however many sections report.
+ * Must be used inside a `PageLoading`.
+ */
+export function useReportFetching(fetching: boolean): void {
+  useRegisterReport("useReportFetching", (p) => p.reportFetching, fetching);
+}
+
+/**
+ * The refresh indicator's place in the page header: a slot as tall as the title's first line (text-3xl at
+ * leading-tight) that centres the 1rem spinner, so the title never moves. Renders nothing outside a `PageLoading`.
+ */
+export function PageFetchingSlot() {
+  const page = useContext(PageLoadingContext);
+  if (!page) return null;
+  return (
+    <span data-slot="fetching" className="flex h-[calc(1.875rem*1.25)] w-4 shrink-0 items-center justify-center">
+      <FetchingIndicator active={page.fetching} />
+    </span>
+  );
 }
