@@ -12,7 +12,10 @@ export async function writeActionAnswer(client: QueryClient, plan: DayPlan): Pro
   client.setQueryData(dayPlanKey, plan);
 }
 
-/** A Completion changes the Streak: mark it stale, and read it again if Today is showing it. */
-export function afterCompletion(client: QueryClient): Promise<void> {
+/**
+ * An action the server accepted may change the Streak: a Completion does, and so can a Task taken or swapped,
+ * because the Streak reads who holds today's Tasks. Mark it stale, and read it again if Today is showing it.
+ */
+export function invalidateStreak(client: QueryClient): Promise<void> {
   return client.invalidateQueries({ queryKey: streakKey });
 }

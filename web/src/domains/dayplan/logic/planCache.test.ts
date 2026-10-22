@@ -4,7 +4,7 @@ import { createTestQueryClient } from "../../../shared/query/testing";
 import { dayPlanKey } from "../api/queries";
 import { streakKey } from "../../streak/api/queries";
 import { dayPlan } from "../testing/fixtures";
-import { afterCompletion, writeActionAnswer } from "./planCache";
+import { invalidateStreak, writeActionAnswer } from "./planCache";
 
 const OLD = dayPlan({ energy: 3 });
 const NEW = dayPlan({ energy: 8 });
@@ -50,7 +50,7 @@ describe("writeActionAnswer", () => {
   });
 });
 
-describe("afterCompletion", () => {
+describe("invalidateStreak", () => {
   it("reads the Streak again when something shows it", async () => {
     const client = createTestQueryClient();
     let reads = 0;
@@ -59,7 +59,7 @@ describe("afterCompletion", () => {
     await client.fetchQuery({ queryKey: streakKey, queryFn });
     expect(reads).toBe(1);
 
-    await afterCompletion(client);
+    await invalidateStreak(client);
 
     expect(reads).toBe(2);
     expect(client.getQueryData(streakKey)).toBe(2);
@@ -69,7 +69,7 @@ describe("afterCompletion", () => {
   it("marks an unused Streak invalid without reading it", async () => {
     const client = createTestQueryClient();
     client.setQueryData(streakKey, 1);
-    await afterCompletion(client);
+    await invalidateStreak(client);
     expect(client.getQueryState(streakKey)?.isInvalidated).toBe(true);
   });
 });
