@@ -1,6 +1,105 @@
 # Homeowner
 
-Domain language lives in `CONTEXT.md`, decisions in `docs/adr/`.
+**A housework advisor that decides who does what today, from how everyone in the Home actually feels.**
+
+Homeowner is a phone app (an installable PWA, in Brazilian Portuguese and US English) for people who look after their own Home and share the housework. Each morning every Resident says how much Energy they have. The app then proposes a Day Plan that gives each person Tasks that fit their Energy, never breaks a Restriction, puts the most urgent work first and rolls the rest over to another day.
+
+It is also an experiment in building software with a team of AI agents: almost every ticket on this repository was planned, refined, built and reviewed by Claude agents working through GitHub labels, with a human steering and merging.
+
+## The idea
+
+Chore apps track what needs doing. That is rarely the hard part. The hard part is the daily negotiation over who does it, especially when one person in the Home has much less Energy than the other on most days. The person with less Energy feels guilty and overwhelmed; the one with more quietly carries the load.
+
+Homeowner takes that negotiation off the table:
+
+- **Advise, never command.** The app proposes a plan. Only a Task a Resident explicitly commits to counts as a promise.
+- **Rest is never punished.** A Drained day gets no Tasks and simply pauses your Streak. Only a broken commitment breaks it.
+- **Never past the limit.** No plan puts a Resident over their Energy or gives them work they told the app they cannot do (bending, heavy lifting, heights, strong chemicals).
+- **Explain every decision** in plain language, so the plan feels fair instead of bossy.
+- **Fair over time.** Preferences are honoured where possible, essential work still comes first, and the load evens out across the week.
+
+The daily plan can be drafted by an LLM, but a deterministic referee written in Go checks every proposal against the rules and falls back to a rule-based planner whenever the model is slow, wrong or switched off ([ADR 0004](docs/adr/0004-ai-allocates-behind-a-deterministic-referee.md)). The model only sees opaque ids and numbers, never names or health-related details.
+
+The domain language (Home, Resident, Chore, Task, Energy, Check-in, Day Plan, Streak and friends) is defined in [CONTEXT.md](CONTEXT.md), and the product's principles in [PRODUCT.md](PRODUCT.md).
+
+## Screenshots
+
+Most Residents use the app in Brazilian Portuguese, so it is designed pt-BR first.
+
+| Today | Check-in | Chores | Home | Me |
+|---|---|---|---|---|
+| <img src="docs/screenshots/today-pt-BR.png" width="160" alt="Today: the Resident's Energy and their Tasks for the day"> | <img src="docs/screenshots/checkin-pt-BR.png" width="160" alt="Check-in: choose today's Energy and any one-day Restrictions"> | <img src="docs/screenshots/chores-pt-BR.png" width="160" alt="Chores: the Home's Chores grouped by Category"> | <img src="docs/screenshots/home-pt-BR.png" width="160" alt="Home: Residents, invite and Home settings"> | <img src="docs/screenshots/me-pt-BR.png" width="160" alt="Me: Baseline, Preferences and Restrictions"> |
+
+<details>
+<summary>The same screens in English</summary>
+
+| Today | Check-in | Chores | Home | Me |
+|---|---|---|---|---|
+| <img src="docs/screenshots/today-en.png" width="160" alt="Today"> | <img src="docs/screenshots/checkin-en.png" width="160" alt="Check-in"> | <img src="docs/screenshots/chores-en.png" width="160" alt="Chores"> | <img src="docs/screenshots/home-en.png" width="160" alt="Home"> | <img src="docs/screenshots/me-en.png" width="160" alt="Me"> |
+
+</details>
+
+<sub>Captured from the app with the end-to-end test fakes (sample data, no real accounts).</sub>
+
+## A day in Homeowner
+
+1. **Check in.** Open the app and pick Drained, Low, Normal or Energized, plus anything you cannot do today. Your weekly Baseline is adjusted for the day.
+2. **Get your Day Plan.** At the Home's Allocation time the plan is made for everyone, and a push notification nudges you. You can also ask to be planned right away.
+3. **Commit.** Accept or refuse your Tasks, or take one nobody could fit. Accepted Tasks are your promise for the day.
+4. **Mark it done.** Finishing what you committed to keeps your Streak going. Whatever nobody could take rolls over, most urgent first.
+
+## How it is built
+
+| Part | What it is |
+|---|---|
+| `web/` | React 19 PWA (Vite, TypeScript, Tailwind v4, Radix, TanStack Query), light and dark themes, offline-capable |
+| `backend/` | Go API and the scheduled Allocation job, Postgres with goose migrations |
+| `infra/` | Terraform for AWS: Lambda behind API Gateway, EventBridge, S3 and CloudFront, Cognito, plus a Neon Postgres branch per environment |
+
+Staging deploys on every merge to `main`; production deploys when `main` is promoted to the `production` branch. The whole thing is designed to run for under $20 a month ([ADR 0002](docs/adr/0002-mirror-the-work-stack.md)).
+
+The as-built architecture, with diagrams, is in [docs/architecture/](docs/architecture/README.md), and every decision is an ADR in [docs/adr/](docs/adr/).
+
+## The agentic pipeline
+
+Homeowner is built by a small team of Claude agents, each with its own role and prompt in [`.claude/agents/`](.claude/agents/):
+
+| Role | Owns |
+|---|---|
+| Product manager | What gets built: user stories, acceptance criteria, tickets |
+| Software architect | How the system is shaped: design overviews, ADRs, the architecture docs |
+| Senior engineer | Technical refinement of each ticket before it is built |
+| Backend engineer | Go, migrations, Terraform |
+| Frontend engineer | The React PWA |
+
+They all post from the same GitHub account, so every comment starts with the role speaking, like `**Senior Engineer:**`.
+
+Work moves through GitHub labels. Each stage is a workflow in [`.github/workflows/`](.github/workflows/), and a human acts at only three points: requesting a feature, saying "build this", and merging.
+
+```mermaid
+flowchart TD
+    H1([Human files an idea<br/>with /idea]) --> FR[Issue labelled feature-request]
+    FR -->|architect + product manager| EP[Design overview and<br/>tickets as sub-issues]
+    H1 -.->|small change| NR
+    EP --> NR[Labelled needs-refinement]
+    NR -->|senior engineer| RA[Tickets refined:<br/>technical notes, learning focus<br/>labelled ready-for-agent]
+    RA --> H2([Human labels a ticket implement])
+    H2 -->|backend then frontend engineer| PR[Pull request opened]
+    PR -->|Claude Code Review| RV[Review findings]
+    RV -->|engineer applies valid findings| RD[Labelled review-addressed]
+    RD --> H3([Human merges])
+    H3 --> ST[Deploy to staging]
+```
+
+1. **Plan** (`agent-plan-feature.yml`). An issue labelled `feature-request` gets a design overview from the architect, and the product manager breaks it into tickets with acceptance criteria. The request becomes an epic.
+2. **Refine** (`agent-refine.yml`). Labelling `needs-refinement` makes the senior engineer write each ticket's technical notes and label it `ready-for-agent`. A change small enough for one pull request skips planning and starts here.
+3. **Implement** (`agent-implement.yml`). A human labels a ticket `implement`. The engineers check every "Blocked by" issue is closed, build backend first so the frontend works against a real API, check each acceptance criterion against a test or line of code, and open a pull request.
+4. **Review and fix** (`claude-code-review.yml`, `agent-review-fix.yml`). Claude reviews every pull request; the engineer applies the valid findings and labels it `review-addressed`. After two rounds with findings still open, it asks for a human with `needs-human`.
+5. **Merge and deploy.** A human merges and staging deploys.
+
+Around those stages, deterministic workflows keep things moving: CI for the Go tests, typecheck, end-to-end tests and Terraform checks; a `ui-screenshots` check that every UI pull request shows the change in pt-BR and English; an agent that resolves merge conflicts after `main` moves; a notification when a pull request is ready to merge; and a sync that moves each issue across the project board.
+
+The maintainer is also using Homeowner to learn Go, AWS and system design. Besides labelling a ticket `implement`, they can build it locally with Claude using `/ticket <n>` ([skill](.claude/skills/ticket/SKILL.md)), which writes the code while teaching each concept the ticket's "Learning focus" names. The agents' standing instructions live in [CLAUDE.md](CLAUDE.md).
 
 ## Run everything locally
 
@@ -123,93 +222,6 @@ Check the API logs with `docker compose logs api`. A `sign-in disabled` or
   push with `npm run build && npm run preview` (http://localhost:4173). Add
   that origin to `CORS_ALLOWED_ORIGINS` in `docker-compose.yml` first.
 
-## Backend
+## Development reference
 
-The Go module is in `backend/`.
-
-### Run locally
-
-```sh
-docker compose up
-curl localhost:8080/healthz   # {"status":"ok"}
-```
-
-Compose starts Postgres 16 and the API; the API migrates on start
-(`MIGRATE_ON_START=true`, set in Compose only). No `.env` is needed.
-
-### Tests
-
-```sh
-docker compose up -d db
-cd backend
-go vet ./...
-go test -race ./...
-```
-
-Tests use `TEST_DATABASE_URL` (default
-`postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable`). They
-fail loudly if Postgres is unreachable. Each API test gets its own database
-cloned from a migrated template.
-
-### Migrations
-
-SQL files in `backend/migrations/` (goose, `NNNN_description.sql`). Run them
-with one command:
-
-```sh
-DATABASE_URL=postgres://... go run ./cmd/api migrate
-```
-
-`migrate` reads `MIGRATE_DATABASE_URL` and falls back to `DATABASE_URL`. On
-Neon, set `MIGRATE_DATABASE_URL` to the direct (non-pooled) URL: pooled
-(PgBouncer, transaction mode) URLs can break migrations that use session
-locks. Never enable `MIGRATE_ON_START` on Lambda: every cold start would race.
-
-### Configuration
-
-`DATABASE_URL` (required), `PORT` (8080), `MIGRATE_ON_START` (false),
-`MIGRATE_DATABASE_URL`, `DB_MAX_CONNS` (5), `CORS_ALLOWED_ORIGINS` (comma-separated browser origins
-allowed to call the API; empty sends no CORS headers).
-
-## Web
-
-The React PWA is in `web/` (Vite, TypeScript, `vite-plugin-pwa`). Node 22 (`web/.nvmrc`).
-
-### Run locally
-
-```sh
-docker compose up -d        # the API, at localhost:8080
-cd web
-npm ci
-npm run dev                 # http://localhost:5173 shows the API status
-```
-
-### Typecheck and build
-
-```sh
-cd web
-npm run typecheck
-npm run build               # typecheck, then a production build with the service worker
-npm run preview             # serve the build to test the manifest and install
-```
-
-CI runs `npm ci`, `npm run typecheck` and `npm run build` on every pull request.
-
-### Look and feel
-
-Styling is Tailwind CSS v4 over semantic colour tokens (`bg-surface`, `text-muted`; raw
-palette classes do not compile and a test fails on them). The appearance is System,
-Light or Dark, chosen in the Settings section at the bottom of the home screen and
-remembered on the device under `homeowner.theme`. A new screen must be checked by hand
-in both themes and at the largest text size; see
-[The React PWA](docs/architecture/web.md#ui-layer) and
-[ADR 0007](docs/adr/0007-tailwind-and-radix-for-an-accessible-calm-ui.md).
-
-### Configuration
-
-`VITE_API_BASE_URL` (required) is the API's base URL. It is read at build time,
-so each environment is its own build. `npm run dev` uses `web/.env.development`
-(`http://localhost:8080`); override it in an untracked `web/.env.local`. See
-`web/.env.example`. The value is public in the bundle: never put secrets in it.
-The API must list the web origin in `CORS_ALLOWED_ORIGINS` (Compose already
-allows `http://localhost:5173`).
+Tests, migrations, builds and every configuration variable for the backend and the web app are in [docs/development.md](docs/development.md).

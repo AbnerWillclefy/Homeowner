@@ -1,6 +1,6 @@
 # Homeowner
 
-The v1 spec is issue #1; each ticket is a child issue linking back to it. Domain terms live in `CONTEXT.md`, decisions in `docs/adr/`.
+The v1 spec is issue #1; each ticket is a child issue linking back to it. Domain terms live in `CONTEXT.md`, decisions in `docs/adr/`. Local setup is under "Run everything locally" in `README.md`; test, migration, build and configuration commands are in `docs/development.md`.
 
 ## The team
 
