@@ -1,5 +1,6 @@
 import { test, expect } from "../fixtures";
 import { onboardingHandlers } from "../mocks/handlers/onboarding";
+import { hold } from "../mocks/hold";
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
 import { onboarding, type Day, type Level } from "../pages/onboarding";
@@ -28,20 +29,14 @@ test("going Back to the Baseline shows it at once, with no loading line, while t
   await onboarding.completeBaseline(page, WEEK_LEVELS);
   await onboarding.expectOnStep(page, "Your Restrictions", 3, 5);
 
-  let release!: () => void;
-  const held = new Promise<void>((resolve) => (release = resolve));
-  await page.route(/\/me\/profile$/, async (route) => {
-    if (route.request().resourceType() === "document") return route.fallback();
-    await held;
-    await route.fallback();
-  });
+  const held = hold(page, /\/me\/profile$/);
 
   await page.getByRole("button", { name: "Back", exact: true }).click();
   await expect(page).toHaveURL(/\/welcome\/baseline$/);
   await expect(onboarding.baselineDay(page, "Monday")).toBeVisible();
   await expect(page.getByText("Loading your details")).toHaveCount(0);
   await expect(onboarding.baselineDay(page, "Monday").getByLabel("Normal", { exact: true })).toBeChecked();
-  release();
+  held.release();
 
   // The saved step is still Restrictions: Next goes on from the Baseline to it without a new answer to wait for.
   await onboarding.next(page);

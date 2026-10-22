@@ -2,7 +2,8 @@ import type { Page } from "@playwright/test";
 import { test, expect } from "../fixtures";
 import { json, signedIn } from "../mocks/api";
 import { signedInHandlers } from "../mocks/handlers/signedIn";
-import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
+import { hold } from "../mocks/hold";
+import { RESIDENT_EMAIL, SECOND_RESIDENT_EMAIL, secondResident, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { GOOD_PASSWORD } from "../mocks/users";
 import { launchApp } from "../pages/launch";
@@ -43,19 +44,7 @@ const LOCALES = [
 
 const FIRST_NAME = "Ana Alvarenga";
 const SECOND_NAME = "Beto Bezerra";
-const SECOND_EMAIL = "beto@example.test";
 const DISHES = "Wash the dishes";
-
-/** Holds every request whose path matches until `release()` is called, then lets the fake answer it. */
-function hold(page: Page, pattern: RegExp): { release(): void; released: Promise<void> } {
-  let release!: () => void;
-  const released = new Promise<void>((resolve) => (release = resolve));
-  void page.route(pattern, async (route) => {
-    await released;
-    await route.fallback();
-  });
-  return { release, released };
-}
 
 const DAY_PLAN = /\/home\/day-plan$/;
 
@@ -71,8 +60,7 @@ for (const l of LOCALES) {
     });
 
     const tab = (page: Page, name: string) => page.getByRole("navigation").getByRole("link", { name, exact: true });
-    // The wrapper of DayPlanSkeleton: an aria-hidden element holding the aria-hidden Task card skeletons.
-    const skeleton = (page: Page) => page.locator('div[aria-hidden="true"]:has(> div[aria-hidden="true"])');
+    const skeleton = (page: Page) => page.getByTestId("day-plan-skeleton");
     const refreshing = (page: Page) => page.getByRole("img", { name: l.refreshing });
     const dishes = (page: Page) => page.getByText(DISHES, { exact: true });
     const planReads = (requests: { method: string; path: string }[]) =>
@@ -139,16 +127,12 @@ for (const l of LOCALES) {
       await expect(page.getByLabel(l.password, { exact: true })).toBeVisible();
 
       // The server now answers for Resident B: another name, Home and Tasks.
-      const second = signedInResident();
-      second.user = { id: "user-2", email: SECOND_EMAIL, displayName: SECOND_NAME };
-      second.residents![0]!.name = SECOND_NAME;
-      second.home = { id: "home-2", timezone: "America/Manaus", allocationTime: "06:30" };
-      const renamed = JSON.parse(JSON.stringify(second).replaceAll(DISHES, "Water the plants")) as typeof second;
-      Object.assign(fakeApi.state, renamed);
-      fakeCognito.addUser({ email: SECOND_EMAIL, password: GOOD_PASSWORD, confirmed: true });
+      // The fake's handlers hold its state object, so the new Resident's state is copied over it in place.
+      Object.assign(fakeApi.state, secondResident());
+      fakeCognito.addUser({ email: SECOND_RESIDENT_EMAIL, password: GOOD_PASSWORD, confirmed: true });
 
       const loading = hold(page, DAY_PLAN);
-      await page.getByLabel(l.email, { exact: true }).fill(SECOND_EMAIL);
+      await page.getByLabel(l.email, { exact: true }).fill(SECOND_RESIDENT_EMAIL);
       await page.getByLabel(l.password, { exact: true }).fill(GOOD_PASSWORD);
       await page.getByRole("button", { name: l.signIn, exact: true }).click();
 

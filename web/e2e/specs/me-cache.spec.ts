@@ -1,5 +1,6 @@
 import { test, expect } from "../fixtures";
 import { signedInHandlers } from "../mocks/handlers/signedIn";
+import { hold } from "../mocks/hold";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
@@ -22,18 +23,12 @@ test("Me opens at once from the cache with the indicator while the profile read 
   await page.getByRole("link", { name: "Today" }).click();
   await expect(page.getByRole("link", { name: "Me", exact: true })).toBeVisible();
 
-  let release!: () => void;
-  const held = new Promise<void>((resolve) => (release = resolve));
-  await page.route(/\/me\/profile$/, async (route) => {
-    if (route.request().resourceType() === "document") return route.fallback();
-    await held;
-    await route.fallback();
-  });
+  const held = hold(page, /\/me\/profile$/);
   await page.getByRole("link", { name: "Me", exact: true }).click();
 
   await expect(baseline).toBeVisible();
   await expect(page.getByRole("img", { name: "Refreshing" })).toBeVisible();
-  release();
+  held.release();
   await expect(page.getByRole("img", { name: "Refreshing" })).toHaveCount(0);
   await expect(baseline).toBeVisible();
 });
