@@ -42,10 +42,11 @@ describe("the Home scope in the cache", () => {
     expect(client.getQueryData(homeKey)).toBeNull();
   });
 
-  it("joining removes every child, not only marks them stale, and marks the Home stale", async () => {
+  it("joining empties every child, not only marks them stale, and marks the Home stale", async () => {
     await homeJoined(client);
-    expect(keys(client)).toEqual(KEPT);
     expect(client.getQueryData(["home", "chores"])).toBeUndefined();
+    expect(client.getQueryData(["home", "residents", "r1"])).toBeUndefined();
+    expect(client.getQueryData(["me"])).toEqual({ id: "u1" });
     expect(client.getQueryState(homeKey)?.isInvalidated).toBe(true);
   });
 

@@ -38,7 +38,7 @@ export function Shell() {
     (outcome: JoinOutcome) => {
       session.recordJoin(outcome);
       // What the Shell cached behind the dialog (the Home and everything under it) is out of date, and the
-      // children may belong to another Home: they are removed, not only marked stale, and the Home is read again.
+      // children may belong to another Home: they are reset, not only marked stale, and read again.
       void homeJoined(queryClient);
     },
     [session, queryClient],

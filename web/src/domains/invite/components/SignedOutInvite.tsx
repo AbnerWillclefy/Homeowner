@@ -21,17 +21,15 @@ interface Props {
  */
 export function SignedOutInvite({ token, onDismiss, children }: Props) {
   const { t } = useI18n();
-  const { data: found, isError } = useQuery(inviteQuery(token));
+  const { data: found, isError: lookupFailed } = useQuery(inviteQuery(token));
 
-  // Still checking, or the check itself failed (offline or an error): the person can still sign up, with a note.
-  if (found === undefined && !isError) return <p role="status">{t("invite.checking")}</p>;
-  const result = found ?? { kind: "error" as const };
+  if (found === undefined && !lookupFailed) return <p role="status">{t("invite.checking")}</p>;
 
-  if (isDeadInvite(result)) {
+  if (found !== undefined && isDeadInvite(found)) {
     return (
       <Card as="section" aria-labelledby="invite-dead-heading">
         <h2 id="invite-dead-heading">{t("invite.signedOut.heading")}</h2>
-        <p role="alert">{t(DEAD_INVITE_KEY[result.kind])}</p>
+        <p role="alert">{t(DEAD_INVITE_KEY[found.kind])}</p>
         <Button variant="secondary" fullWidth className="mt-2" onClick={onDismiss}>
           {t("invite.dead.continue")}
         </Button>
@@ -39,7 +37,8 @@ export function SignedOutInvite({ token, onDismiss, children }: Props) {
     );
   }
 
-  const valid = result.kind === "valid";
+  // The check itself failed (offline or an error): the person can still sign up, with a note.
+  const valid = found?.kind === "valid";
   return (
     <>
       <Card as="section" aria-labelledby="invite-welcome-heading">

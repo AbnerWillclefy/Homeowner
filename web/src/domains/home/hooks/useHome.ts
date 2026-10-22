@@ -46,11 +46,9 @@ export function useHome() {
   );
 
   /**
-   * The caller has left their Home: show the create form and forget everything cached under the old Home. A read
-   * that started before the leave is cancelled first, so its old answer cannot bring the Home back.
+   * The caller has left their Home: show the create form and forget everything cached under the old Home.
    */
   const clearHome = useCallback(async () => {
-    await queryClient.cancelQueries({ queryKey: homeKey, exact: true });
     await homeLeft(queryClient);
   }, [queryClient]);
 
