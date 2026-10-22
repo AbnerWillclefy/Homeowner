@@ -27,5 +27,5 @@ This **amends [ADR 0010](0010-organise-the-pwa-by-domain-module.md)**, which say
 ## Consequences
 
 - **A 200 whose body is not JSON is no longer `offline`.** With `fetch`, `response.json()` throws and the caller's catch reports `offline`. Through Axios the body stays a string and the caller sees an `error`. That is more honest, but it is a change.
-- **Two transports exist during the migration** (#273, #274), sharing one token keeper.
+- **Two transports exist during the migration** (#273, #274), sharing one token keeper. _Update (epic #271): the migration is done; `request.ts` and its fetch helper are gone and every authenticated call uses `authedRequest`. The as-built keys, defaults and cache writes are in [the web architecture](../architecture/web.md#data-layer)._
 - **No custom request headers.** The API's CORS allows only `Authorization` and `Content-Type`; Axios's default `Accept` is safelisted.
