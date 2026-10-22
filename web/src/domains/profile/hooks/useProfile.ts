@@ -13,6 +13,7 @@ import { categoriesQuery, demandsQuery, profileKey, profileQuery } from "../api/
 import { useToast } from "../../../shared/ui/useToast";
 import type { MessageKey } from "../../../shared/i18n";
 import { updateCached } from "../../../shared/query/cacheUpdate";
+import { useCachedData } from "../../../shared/query/useCachedData";
 import { viewOf } from "../../../shared/query/view";
 import { withBaseline, withPreference, withRestriction } from "../logic/changes";
 import { performChange } from "../logic/performChange";
@@ -47,7 +48,12 @@ export function useProfile() {
   // The lists and the profile are independent reads; the first failure decides the problem shown.
   const categoriesView = viewOf(categoriesRead);
   const demandsView = viewOf(demandsRead);
-  const profileView = viewOf(profileRead);
+  // The value comes from the cache directly, so a tap on a controlled control is on screen before its handler ends.
+  const profileView = viewOf({
+    data: useCachedData<Profile>(profileKey),
+    error: profileRead.error,
+    isFetching: profileRead.isFetching,
+  });
   const { state: categories } = categoriesView;
   const { state: demands } = demandsView;
   const { state: profile } = profileView;
