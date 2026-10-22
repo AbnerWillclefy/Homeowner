@@ -6,7 +6,11 @@ import { profileKey } from "../api/queries";
 import { withBaseline } from "./changes";
 import { performChange } from "./performChange";
 
-const SEED: Profile = { baseline: { monday: 3, tuesday: 5 }, preferences: {}, restrictions: [] };
+const SEED: Profile = {
+  baseline: { sunday: null, monday: 3, tuesday: 5, wednesday: null, thursday: null, friday: null, saturday: null },
+  preferences: {},
+  restrictions: [],
+};
 
 /** A change wired the way useProfile wires it: apply and revert write the cache, one field each. */
 function setup() {
@@ -52,6 +56,6 @@ describe("a profile change over the cache", () => {
     await baseline("tuesday", 1, () => Promise.resolve({ kind: "ok" }));
     fail({ kind: "offline" });
     await first;
-    expect(read().baseline).toEqual({ monday: 3, tuesday: 1 });
+    expect(read()).toEqual({ ...SEED, baseline: { ...SEED.baseline, monday: 3, tuesday: 1 } });
   });
 });

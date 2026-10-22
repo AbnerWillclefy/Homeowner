@@ -2,7 +2,7 @@ import { Ban, Heart, Zap } from "lucide-react";
 import { CollapsibleCard } from "../../../shared/ui/CollapsibleCard";
 import { useI18n } from "../../../shared/i18n";
 import { BaselineFields, PreferenceFields, ProfileStatus, RestrictionFields } from "./ProfileSections";
-import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
+import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { useProfile } from "../hooks/useProfile";
 import { ProfileSkeleton } from "./ProfileSkeleton";
 
@@ -17,10 +17,12 @@ import { ProfileSkeleton } from "./ProfileSkeleton";
  */
 export function MeProfile() {
   const { t } = useI18n();
-  const { state, retry, setBaseline, setPreference, setRestricted } = useProfile();
+  const { state, refreshing, retry, setBaseline, setPreference, setRestricted } = useProfile();
 
   // The page's one status announces the wait; the skeleton shows after 300ms. Only the first load and a Retry load.
   const showSkeleton = useReportFirstLoad(state.kind === "loading");
+  // A read behind a profile already on screen shows the quiet indicator in the header, never a skeleton.
+  useReportFetching(refreshing);
 
   return (
     <>
