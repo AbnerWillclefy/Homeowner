@@ -14,7 +14,7 @@ import { PageHeader } from "../../../shared/ui/PageHeader";
 import { categoryLabel, labelText } from "../../profile/logic/labels";
 import { CategoryTile } from "./FactList";
 import { groupByCategory } from "../logic/groups";
-import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
+import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { ChoreForm } from "./ChoreForm";
 import { ChoresSkeleton } from "./ChoresSkeleton";
 import { ChoreItem } from "./ChoreItem";
@@ -43,9 +43,11 @@ type Editing =
 export function ChoresSection() {
   const { t } = useI18n();
   const toast = useToast();
-  const { state, reload, upsert, remove } = useChores();
+  const { state, refreshing, reload, upsert, remove } = useChores();
   // The page's one status announces the wait; the skeleton shows after 300ms. Only the first load and a Retry load.
   const showSkeleton = useReportFirstLoad(state.kind === "loading");
+  // A refetch behind the cached lists shows the quiet indicator in the page header, never a skeleton.
+  useReportFetching(refreshing);
   // A Task card's two-person hint links here with ?edit=<choreId>, which opens that Chore's edit form.
   const [params, setParams] = useSearchParams();
   const [editing, setEditing] = useState<Editing>(() => {
