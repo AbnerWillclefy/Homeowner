@@ -11,7 +11,7 @@ These pages describe the system **as built**. Anything the spec calls for that d
 3. [Daily Allocation](allocation.md): from the scheduled job to a Day Plan, and the referee.
 4. [Data model](data-model.md): what the migrations contain.
 5. [Infrastructure and delivery](infrastructure.md): AWS, Terraform, CI/CD, cost.
-6. [The React PWA](web.md): its modules, localization and UI layer.
+6. [The React PWA](web.md): its modules, localization, UI layer and data layer (query keys and cache writes).
 
 ## Legend
 
