@@ -2,7 +2,7 @@ import { useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "../../../shared/ui/useToast";
 import { updateCached } from "../../../shared/query/cacheUpdate";
-import { useCachedData } from "../../../shared/query/useCachedData";
+import { useOptimisticView } from "../../../shared/query/useOptimisticView";
 import { viewOf } from "../../../shared/query/view";
 import { performChange } from "../../profile/logic/performChange";
 import { choresQuery } from "../../chores/api/queries";
@@ -27,13 +27,7 @@ const DEFAULT_SETTING: OwnChoreSetting = { preference: "neutral", restricted: fa
 export function useRatingStep() {
   const queryClient = useQueryClient();
   const chores = viewOf(useQuery(choresQuery)).state;
-  const settingsRead = useQuery(choreSettingsQuery);
-  // The value comes from the cache directly, so a tap on a radio is on screen before its handler ends.
-  const settings = viewOf({
-    data: useCachedData<OwnChoreSettings>(choreSettingsKey),
-    error: settingsRead.error,
-    isFetching: settingsRead.isFetching,
-  }).state;
+  const settings = useOptimisticView(choreSettingsQuery).state;
   const toast = useToast();
   const inFlight = useRef(new Set<string>());
 

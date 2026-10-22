@@ -13,7 +13,7 @@ import { categoriesQuery, demandsQuery, profileKey, profileQuery } from "../api/
 import { useToast } from "../../../shared/ui/useToast";
 import type { MessageKey } from "../../../shared/i18n";
 import { updateCached } from "../../../shared/query/cacheUpdate";
-import { useCachedData } from "../../../shared/query/useCachedData";
+import { useOptimisticView } from "../../../shared/query/useOptimisticView";
 import { viewOf } from "../../../shared/query/view";
 import { withBaseline, withPreference, withRestriction } from "../logic/changes";
 import { performChange } from "../logic/performChange";
@@ -40,7 +40,6 @@ export type ProfileState =
 export function useProfile() {
   const toast = useToast();
   const queryClient = useQueryClient();
-  const profileRead = useQuery(profileQuery);
   const categoriesRead = useQuery(categoriesQuery);
   const demandsRead = useQuery(demandsQuery);
   const inFlight = useRef(new Set<string>());
@@ -48,19 +47,15 @@ export function useProfile() {
   // The lists and the profile are independent reads; the first failure decides the problem shown.
   const categoriesView = viewOf(categoriesRead);
   const demandsView = viewOf(demandsRead);
-  // The value comes from the cache directly, so a tap on a controlled control is on screen before its handler ends.
-  const profileView = viewOf({
-    data: useCachedData<Profile>(profileKey),
-    error: profileRead.error,
-    isFetching: profileRead.isFetching,
-  });
+  const profileView = useOptimisticView(profileQuery);
+  const profileRead = profileView.read;
   const { state: categories } = categoriesView;
   const { state: demands } = demandsView;
   const { state: profile } = profileView;
-  const failed = [categories, demands, profile].find((s) => s.kind === "failed");
+  const [failed] = [categories, demands, profile].flatMap((s) => (s.kind === "failed" ? [s] : []));
 
   const state: ProfileState =
-    failed?.kind === "failed"
+    failed
       ? { kind: "problem", problem: failed.reason }
       : categories.kind === "ready" && demands.kind === "ready" && profile.kind === "ready"
         ? { kind: "ready", profile: profile.data, categories: categories.data, demands: demands.data }

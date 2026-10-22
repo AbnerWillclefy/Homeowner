@@ -35,7 +35,7 @@ function previewOf(state: PhotoState): { blob: Blob; previewUrl: string } | null
 /**
  * The photo area of the edit screen. Nothing is sent before Save. Save asks for an upload, puts the photo in
  * storage and confirms it; the current photo changes only when the confirm answers 200, so a failure at any step
- * leaves `me` as it was. On success the User gets the new URL through the shell (the Me header and Today change
+ * leaves `me` as it was. On success the `me` cache gets the new URL via `savePhoto` (the Me header and Today change
  * with no reload) and the Residents are marked stale. Preview URLs are revoked when they are replaced and on
  * unmount.
  */
