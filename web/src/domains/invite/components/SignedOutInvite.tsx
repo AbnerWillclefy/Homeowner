@@ -1,5 +1,6 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { lookupInvite, type LookupInviteResult } from "../api/api";
+import type { ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { inviteQuery } from "../api/queries";
 import { Card } from "../../../shared/ui/Card";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
@@ -20,26 +21,15 @@ interface Props {
  */
 export function SignedOutInvite({ token, onDismiss, children }: Props) {
   const { t } = useI18n();
-  const [result, setResult] = useState<LookupInviteResult | null>(null);
+  const { data: found, isError: lookupFailed } = useQuery(inviteQuery(token));
 
-  useEffect(() => {
-    let cancelled = false;
-    setResult(null);
-    void lookupInvite(token).then((r) => {
-      if (!cancelled) setResult(r);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
+  if (found === undefined && !lookupFailed) return <p role="status">{t("invite.checking")}</p>;
 
-  if (result === null) return <p role="status">{t("invite.checking")}</p>;
-
-  if (isDeadInvite(result)) {
+  if (found !== undefined && isDeadInvite(found)) {
     return (
       <Card as="section" aria-labelledby="invite-dead-heading">
         <h2 id="invite-dead-heading">{t("invite.signedOut.heading")}</h2>
-        <p role="alert">{t(DEAD_INVITE_KEY[result.kind])}</p>
+        <p role="alert">{t(DEAD_INVITE_KEY[found.kind])}</p>
         <Button variant="secondary" fullWidth className="mt-2" onClick={onDismiss}>
           {t("invite.dead.continue")}
         </Button>
@@ -47,7 +37,8 @@ export function SignedOutInvite({ token, onDismiss, children }: Props) {
     );
   }
 
-  const valid = result.kind === "valid";
+  // The check itself failed (offline or an error): the person can still sign up, with a note.
+  const valid = found?.kind === "valid";
   return (
     <>
       <Card as="section" aria-labelledby="invite-welcome-heading">

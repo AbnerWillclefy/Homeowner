@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { FailureReason, Home } from "../api/api";
-import { homeKey, homeQuery } from "../api/queries";
+import { homeKey, homeLeft, homeQuery } from "../api/queries";
 import { viewOf, type QueryViewState } from "../../../shared/query/view";
 
 export type HomeState =
@@ -38,19 +38,18 @@ export function useHome() {
   /** A read that started before is cancelled first, so its older answer cannot bring the old Home back. */
   const setHome = useCallback(
     async (home: Home) => {
-      await queryClient.cancelQueries({ queryKey: homeKey });
+      // Exact: only the read of the Home itself, not the reads under it, which a save does not change.
+      await queryClient.cancelQueries({ queryKey: homeKey, exact: true });
       queryClient.setQueryData(homeKey, home);
     },
     [queryClient],
   );
 
   /**
-   * The caller has left their Home: show the create form. A read that started before the leave is cancelled
-   * first, so its old answer cannot bring the Home back.
+   * The caller has left their Home: show the create form and forget everything cached under the old Home.
    */
   const clearHome = useCallback(async () => {
-    await queryClient.cancelQueries({ queryKey: homeKey });
-    queryClient.setQueryData(homeKey, null);
+    await homeLeft(queryClient);
   }, [queryClient]);
 
   return { state: homeState(state), refreshing, reload, setHome, clearHome };
