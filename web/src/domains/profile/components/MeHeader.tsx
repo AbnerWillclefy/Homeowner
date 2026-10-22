@@ -21,7 +21,7 @@ const COLUMN = "flex flex-col items-center gap-2 pb-4 text-center";
 /** The current Streak, only for a Resident with a Home (it is the Home's). A Streak of 0 shows nothing: it is no failure to show. */
 function HeaderStreak() {
   const { t } = useI18n();
-  const { streak } = useStreak("me-header");
+  const { streak } = useStreak();
   return (
     <p className={`my-0 flex items-center gap-1.5 font-bold ${STREAK_LINE}`}>
       {streak !== null && streak.current > 0 && (

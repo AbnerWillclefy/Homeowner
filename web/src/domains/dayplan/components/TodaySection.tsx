@@ -33,7 +33,7 @@ type Day = ReturnType<typeof useDayPlan>;
  */
 export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null }) {
   const { t } = useI18n();
-  const { state, reload, run, acceptAll, answerSwap, offerSwap, acting, notice, settled } = day;
+  const { state, reload, run, acceptAll, answerSwap, offerSwap, acting, notice, changed } = day;
   // The page's one status announces the wait; the skeleton shows after 300ms and only for a first load.
   const showSkeleton = useReportFirstLoad(state.kind === "loading");
   const section = useRef<HTMLElement>(null);
@@ -42,12 +42,12 @@ export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null 
   // A Task that leaves its list takes its button with it, so focus would fall to <body>. Bring it back to the
   // section's heading when the plan changed, unless focus is still on something inside the section.
   useEffect(() => {
-    if (settled === 0) return;
+    if (changed === 0) return;
     const active = document.activeElement;
     if (!(active instanceof HTMLElement) || active === section.current || !section.current?.contains(active)) {
       heading.current?.focus();
     }
-  }, [settled]);
+  }, [changed]);
 
   return (
     <section ref={section} aria-labelledby="today-heading">

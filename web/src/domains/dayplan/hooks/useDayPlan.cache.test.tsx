@@ -1,12 +1,17 @@
 // @vitest-environment jsdom
-import { act, createElement, useState } from "react";
+import { act, createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestQueryClient, renderWithQueryClient, type Rendered } from "../../../shared/query/testing";
-import { dayPlan } from "../testing/fixtures";
-import type { DayPlanResult } from "../api/api";
+import { dayPlan, task } from "../testing/fixtures";
+import type { ActionResult, DayPlanResult } from "../api/api";
 
 const getDayPlan = vi.fn<() => Promise<DayPlanResult>>();
-vi.mock("../api/api", async (importOriginal) => ({ ...(await importOriginal<object>()), getDayPlan: () => getDayPlan() }));
+const acceptTask = vi.fn<() => Promise<ActionResult>>();
+vi.mock("../api/api", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  getDayPlan: () => getDayPlan(),
+  acceptTask: () => acceptTask(),
+}));
 
 const { dayPlanKey } = await import("../api/queries");
 const { useDayPlan } = await import("./useDayPlan");
@@ -20,11 +25,8 @@ const settle = () => act(() => new Promise<void>((resolve) => setTimeout(resolve
 describe("useDayPlan over the query cache", () => {
   let rendered: Rendered | undefined;
   let day!: ReturnType<typeof useDayPlan>;
-  let setVersion!: (version: number) => void;
   const Probe = () => {
-    const [version, set] = useState(0);
-    setVersion = set;
-    day = useDayPlan(version);
+    day = useDayPlan();
     return null;
   };
   const mount = () => {
@@ -35,6 +37,7 @@ describe("useDayPlan over the query cache", () => {
   };
   beforeEach(() => {
     getDayPlan.mockReset();
+    acceptTask.mockReset();
   });
   afterEach(() => rendered?.unmount());
 
@@ -58,15 +61,50 @@ describe("useDayPlan over the query cache", () => {
     expect(day.refreshing).toBe(false);
   });
 
-  it("reads again when `version` changes, and not on the first render", async () => {
+  it("shows an action's answer without reading the plan again, and counts the change", async () => {
     getDayPlan.mockResolvedValue({ kind: "ok", plan: CACHED });
+    acceptTask.mockResolvedValue({ kind: "ok", plan: FRESH });
     const client = mount();
     await settle();
     expect(getDayPlan).toHaveBeenCalledTimes(1);
-    getDayPlan.mockResolvedValue({ kind: "ok", plan: FRESH });
-    act(() => setVersion(1));
+    const changedBefore = day.changed;
+    await act(async () => day.run("accept", task("t1")));
     await settle();
-    expect(getDayPlan).toHaveBeenCalledTimes(2);
+    expect(getDayPlan).toHaveBeenCalledTimes(1);
+    expect(client.getQueryData(dayPlanKey)).toEqual(FRESH);
+    expect(day.changed).toBe(changedBefore + 1);
+  });
+
+  it("reads the plan exactly once after a 409, and shows it", async () => {
+    getDayPlan.mockResolvedValue({ kind: "ok", plan: CACHED });
+    acceptTask.mockResolvedValue({ kind: "conflict", code: "not_proposed" });
+    const client = mount();
+    await settle();
+    getDayPlan.mockClear();
+    getDayPlan.mockResolvedValue({ kind: "ok", plan: FRESH });
+    await act(async () => day.run("accept", task("t1")));
+    await settle();
+    expect(getDayPlan).toHaveBeenCalledTimes(1);
+    expect(client.getQueryData(dayPlanKey)).toEqual(FRESH);
+    expect(day.notice?.tone).toBe("status");
+  });
+
+  it("keeps the answer when a read that started during the action finishes after it", async () => {
+    getDayPlan.mockResolvedValue({ kind: "ok", plan: CACHED });
+    let answer!: (result: ActionResult) => void;
+    acceptTask.mockImplementation(() => new Promise<ActionResult>((resolve) => (answer = resolve)));
+    const client = mount();
+    await settle();
+    await act(async () => day.run("accept", task("t1")));
+    // Window focus while the call is out: a read starts and will answer with the old plan.
+    let late!: (result: DayPlanResult) => void;
+    getDayPlan.mockImplementation(() => new Promise<DayPlanResult>((resolve) => (late = resolve)));
+    void client.refetchQueries({ queryKey: dayPlanKey });
+    await settle();
+    answer({ kind: "ok", plan: FRESH });
+    await settle();
+    late({ kind: "ok", plan: CACHED });
+    await settle();
     expect(client.getQueryData(dayPlanKey)).toEqual(FRESH);
   });
 

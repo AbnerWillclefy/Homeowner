@@ -100,8 +100,13 @@ for (const l of LOCALES) {
     test("accepting moves both Tasks and both read swapped", async ({ page, baseURL, fakeApi }) => {
       withIncomingOffer(fakeApi.state);
       await launchApp(page, baseURL!);
+      const planReads = () => fakeApi.requests.filter((r) => r.method === "GET" && r.path === "/home/day-plan").length;
+      await expect(page.getByRole("button", { name: new RegExp(`^${l.accept}`) })).toBeVisible();
+      const readsBefore = planReads();
       await page.getByRole("button", { name: new RegExp(`^${l.accept}`) }).click();
       await expect(page.getByRole("heading", { level: 3, name: l.incoming })).toHaveCount(0);
+      // The server's answer is written into the cache: the action sends no read of the plan.
+      expect(planReads()).toBe(readsBefore);
 
       const received = group(page, l.mine).getByRole("listitem").filter({ hasText: "Take out the trash" });
       await expect(received).toBeVisible();
@@ -151,8 +156,13 @@ for (const l of LOCALES) {
         { once: true },
       );
       await launchApp(page, baseURL!);
+      const planReads = () => fakeApi.requests.filter((r) => r.method === "GET" && r.path === "/home/day-plan").length;
+      await expect(page.getByRole("button", { name: new RegExp(`^${l.accept}`) })).toBeVisible();
+      const readsBefore = planReads();
       await page.getByRole("button", { name: new RegExp(`^${l.accept}`) }).click();
       await expect(page.getByRole("status").filter({ hasText: l.stale })).toBeVisible();
+      // A 409 reads the plan once, to show the fresh one.
+      expect(planReads()).toBe(readsBefore + 1);
       await expect(page.getByRole("heading", { level: 3, name: l.incoming })).toHaveCount(0);
       await noAlertText(page);
     });

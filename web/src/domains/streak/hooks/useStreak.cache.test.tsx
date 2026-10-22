@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, createElement, useState } from "react";
+import { act, createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestQueryClient, renderWithQueryClient, type Rendered } from "../../../shared/query/testing";
 import type { StreakResult } from "../api/api";
@@ -15,11 +15,8 @@ const settle = () => act(() => new Promise<void>((resolve) => setTimeout(resolve
 
 describe("useStreak over the query cache", () => {
   let rendered: Rendered | undefined;
-  let setKey!: (key: string) => void;
   const Probe = () => {
-    const [key, set] = useState("a");
-    setKey = set;
-    useStreak(key);
+    useStreak();
     return null;
   };
   beforeEach(() => {
@@ -27,7 +24,7 @@ describe("useStreak over the query cache", () => {
   });
   afterEach(() => rendered?.unmount());
 
-  it("reads once on the first render, and again when `reloadKey` changes", async () => {
+  it("reads once on the first render, and again when the Streak is invalidated", async () => {
     getStreak.mockResolvedValue({ kind: "ok", streak: { current: 3, todayGrew: false } });
     const client = createTestQueryClient();
     rendered = renderWithQueryClient(createElement(Probe), client);
@@ -36,7 +33,7 @@ describe("useStreak over the query cache", () => {
     expect(client.getQueryData(streakKey)).toEqual({ current: 3, todayGrew: false });
 
     getStreak.mockResolvedValue({ kind: "ok", streak: { current: 4, todayGrew: true } });
-    act(() => setKey("b"));
+    await act(() => client.invalidateQueries({ queryKey: streakKey }));
     await settle();
     expect(getStreak).toHaveBeenCalledTimes(2);
     expect(client.getQueryData(streakKey)).toEqual({ current: 4, todayGrew: true });
