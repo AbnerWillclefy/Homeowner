@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router";
 import { putOnboardingStep, type OnboardingPosition, type OnboardingStep } from "../api/api";
 import { useSubmitOnce } from "../../../shared/ui/useSubmitOnce";
 import { stepFromPath, stepPath } from "../../../app/logic/routes";
-import type { OnboardingProblem } from "./useOnboarding";
+import type { OnboardingProblem } from "../logic/onboardingState";
 import { effectiveStep, pathAfterAdvance, previousStep } from "../logic/steps";
 
 export type AdvanceState = { kind: "idle" } | { kind: "saving" } | { kind: "failed"; problem: OnboardingProblem };

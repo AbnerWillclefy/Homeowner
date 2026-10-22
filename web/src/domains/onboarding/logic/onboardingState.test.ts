@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { ApiFailure } from "../../../shared/query/ApiFailure";
-import { viewOf, type QuerySnapshot } from "../../../shared/query/view";
+import type { QuerySnapshot } from "../../../shared/query/view";
 import { onboardingInput, resolveRoute } from "../../../app/logic/resolveRoute";
 import { ONBOARDING_STEPS, type OnboardingPosition } from "../api/api";
 import { onboardingStateOf } from "./onboardingState";
 
-const stateOf = (snapshot: QuerySnapshot<OnboardingPosition>) => onboardingStateOf(viewOf(snapshot).state);
+const stateOf = (snapshot: QuerySnapshot<OnboardingPosition>) => onboardingStateOf(snapshot);
 
 describe("onboardingStateOf", () => {
   it("is loading before the first answer", () => {

@@ -11,7 +11,7 @@ import { Button } from "../../../shared/ui/Button";
 import { allBaselineDaysSet } from "../logic/baselineComplete";
 import { OnboardingLayout } from "./OnboardingLayout";
 import { progress } from "../logic/steps";
-import type { OnboardingProblem } from "../hooks/useOnboarding";
+import type { OnboardingProblem } from "../logic/onboardingState";
 import { useWalk } from "../hooks/useWalk";
 
 interface Props {

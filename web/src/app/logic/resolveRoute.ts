@@ -1,6 +1,6 @@
 import type { OnboardingPosition, OnboardingStep } from "../../domains/onboarding/api/api";
 import { effectiveStep } from "../../domains/onboarding/logic/steps";
-import type { OnboardingState } from "../../domains/onboarding/hooks/useOnboarding";
+import type { OnboardingState } from "../../domains/onboarding/logic/onboardingState";
 import {
   SIGN_IN_PATH,
   SIGN_UP_PATH,

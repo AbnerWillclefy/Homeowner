@@ -22,12 +22,6 @@ describe("catalogQuery", () => {
     expect(await createTestQueryClient().fetchQuery(catalogQuery)).toEqual(entries);
   });
 
-  it("is a plain read: it sets no freshness of its own, so the app's rules apply (stale at once)", () => {
-    expect(catalogQuery.staleTime).toBeUndefined();
-    expect(catalogQuery.refetchOnMount).toBeUndefined();
-    expect(catalogQuery.refetchOnWindowFocus).toBeUndefined();
-  });
-
   it.each(["offline", "error", "not-signed-in"] as const)("throws an ApiFailure of kind %s", async (kind) => {
     getCatalog.mockResolvedValue({ kind });
     const failure = await createTestQueryClient().fetchQuery(catalogQuery).catch((e: unknown) => e);

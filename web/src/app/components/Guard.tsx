@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useLocation } from "react-router";
 import { useI18n, type MessageKey } from "../../shared/i18n";
 import { useInvite } from "../../domains/invite/components/PendingInviteProvider";
-import type { OnboardingProblem } from "../../domains/onboarding/hooks/useOnboarding";
+import type { OnboardingProblem } from "../../domains/onboarding/logic/onboardingState";
 import { Button } from "../../shared/ui/Button";
 import { useAppAuth } from "./AuthProvider";
 import { PageFrame } from "./PageFrame";
