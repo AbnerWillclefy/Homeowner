@@ -1,5 +1,6 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { lookupInvite, type LookupInviteResult } from "../api/api";
+import type { ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { inviteQuery } from "../api/queries";
 import { Card } from "../../../shared/ui/Card";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
@@ -20,20 +21,11 @@ interface Props {
  */
 export function SignedOutInvite({ token, onDismiss, children }: Props) {
   const { t } = useI18n();
-  const [result, setResult] = useState<LookupInviteResult | null>(null);
+  const { data: found, isError } = useQuery(inviteQuery(token));
 
-  useEffect(() => {
-    let cancelled = false;
-    setResult(null);
-    void lookupInvite(token).then((r) => {
-      if (!cancelled) setResult(r);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
-
-  if (result === null) return <p role="status">{t("invite.checking")}</p>;
+  // Still checking, or the check itself failed (offline or an error): the person can still sign up, with a note.
+  if (found === undefined && !isError) return <p role="status">{t("invite.checking")}</p>;
+  const result = found ?? { kind: "error" as const };
 
   if (isDeadInvite(result)) {
     return (
