@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { putCheckIn, type Level } from "../api/api";
 import { checkInKey, checkInQuery } from "../api/queries";
-import { dayPlanKey } from "../../dayplan/api/queries";
+import { invalidateDayPlan } from "../../dayplan/logic/planCache";
 import { demandsQuery } from "../../profile/api/queries";
 import { viewOf } from "../../../shared/query/view";
 import { checkInStateOf, type SaveFailure } from "../logic/state";
@@ -38,7 +38,7 @@ export function useCheckIn() {
       queryClient.setQueryData(checkInKey, result.checkIn);
       // The API plans the Resident again, so the Day Plan is stale: mark it, and it is read once if Today shows it.
       // Not awaited: the dialog closes now, whether or not that read succeeds.
-      void queryClient.invalidateQueries({ queryKey: dayPlanKey });
+      void invalidateDayPlan(queryClient);
       return null;
     },
     [queryClient],
