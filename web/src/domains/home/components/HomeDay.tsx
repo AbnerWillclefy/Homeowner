@@ -13,18 +13,18 @@ import { useStreak } from "../../streak/hooks/useStreak";
 import { useReportFetching } from "../../../shared/ui/PageLoading";
 
 /**
- * Today: the greeting, then the Check-in card with today's Energy, then the Day Plan. A saved Check-in can change
- * the plan (the API plans the Resident again), and so can the start choice, so the owner keeps one `version`
- * and the plan reloads whenever it changes, instead of polling. This is the one owner of the plan: the Energy
+ * Today: the greeting, then the Check-in card with today's Energy, then the Day Plan. Whatever changes the plan
+ * (an action, a saved Check-in, the start choice, a join) writes or invalidates the query cache, so nothing here
+ * tracks a version or polls. This is the one owner of the plan: the Energy
  * summary and the plan section are both views of it, and share the one Energy note computed here. It also owns
  * whether the Check-in dialog is open. That flag is local, not
  * `app/dialogToShow.ts`: the Check-in is the Resident's own choice, not a session-wide flow to queue.
  */
-export function HomeDay({ version, onPlanChanged }: { version: number; onPlanChanged(): void }) {
-  const checkIn = useCheckIn(onPlanChanged);
-  const day = useDayPlan(version);
+export function HomeDay() {
+  const checkIn = useCheckIn();
+  const day = useDayPlan();
   const { state } = day;
-  const streak = useStreak(`${version}:${day.settled}`);
+  const streak = useStreak();
   // Today's single header slot spins once, whichever of the three reads refreshes over what is on screen.
   useReportFetching(day.refreshing || checkIn.refreshing || streak.refreshing);
   const [checkInOpen, setCheckInOpen] = useState(false);
