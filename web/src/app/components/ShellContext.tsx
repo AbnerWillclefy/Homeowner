@@ -9,9 +9,6 @@ interface ShellValue {
   residents: ReturnType<typeof useResidents>;
   /** The signed-in User's own name and photo from `GET /me`. */
   me: ReturnType<typeof useMe>;
-  /** Bumped whenever the plan changed, so Today reloads. */
-  planVersion: number;
-  planChanged(): void;
 }
 
 export const ShellContext = createContext<ShellValue | null>(null);

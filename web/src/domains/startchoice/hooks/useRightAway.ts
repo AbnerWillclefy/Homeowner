@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { planMyDay, type DayPlan } from "../../dayplan/api/api";
+import { writeActionAnswer } from "../../dayplan/logic/planCache";
 import { useSubmitOnce } from "../../../shared/ui/useSubmitOnce";
 
 export type RightAwayState =
@@ -9,15 +11,17 @@ export type RightAwayState =
   | { kind: "done"; plan: DayPlan };
 
 /** "Get my tasks right away": one call at a time, so a double tap never sends two. */
-export function useRightAway(onPlanned: () => void) {
+export function useRightAway() {
+  const queryClient = useQueryClient();
   const [state, setState] = useState<RightAwayState>({ kind: "idle" });
 
   const { run: start } = useSubmitOnce(async () => {
     setState({ kind: "planning" });
     const result = await planMyDay();
     if (result.kind === "ok") {
+      // The plan the call answered goes into the cache, so Today shows it without a read of its own.
+      await writeActionAnswer(queryClient, result.plan);
       setState({ kind: "done", plan: result.plan });
-      onPlanned();
     } else {
       // A 404 means the Home went away under us: nothing to plan, so it reads as a failure.
       setState({ kind: "failed", reason: result.kind === "none" ? "error" : result.kind });

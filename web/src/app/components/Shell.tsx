@@ -1,5 +1,7 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Outlet, useLocation } from "react-router";
+import { dayPlanKey } from "../../domains/dayplan/api/queries";
 import { useHome } from "../../domains/home/hooks/useHome";
 import { useMe } from "../../domains/profile/hooks/useMe";
 import { useResidents } from "../../domains/residents/hooks/useResidents";
@@ -26,8 +28,7 @@ export function Shell() {
   const home = useHome();
   const residents = useResidents(home.state.kind === "ready");
   const me = useMe();
-  const [planVersion, setPlanVersion] = useState(0);
-  const planChanged = useCallback(() => setPlanVersion((v) => v + 1), []);
+  const queryClient = useQueryClient();
   const { pathname } = useLocation();
   const invite = useInvite();
   const session = useSession();
@@ -39,9 +40,11 @@ export function Shell() {
       session.recordJoin(outcome);
       // The Shell fetched the Home behind the dialog; after a join it is out of date.
       void reload();
-      planChanged();
+      // The Day Plan read before the join belongs to another Home (or none). TODO(#281): the Home-scope removal
+      // of Home queries covers this; drop the line then.
+      void queryClient.invalidateQueries({ queryKey: dayPlanKey });
     },
-    [session, reload, planChanged],
+    [session, reload, queryClient],
   );
 
   const content = useRef<HTMLDivElement>(null);
@@ -51,7 +54,7 @@ export function Shell() {
   const dialog = pathname === TODAY_PATH ? dialogToShow({ inviteToken: invite.token, after: session.after, choosing: session.choosing }) : null;
 
   return (
-    <ShellContext.Provider value={{ home, residents, me, planVersion, planChanged }}>
+    <ShellContext.Provider value={{ home, residents, me }}>
       <div className="flex min-h-dvh flex-col">
         <PageFrame className="flex-1">
           <div ref={content}>
@@ -64,7 +67,7 @@ export function Shell() {
         <JoinInvite token={invite.token} onDismiss={invite.clear} onFinished={finishJoin} />
       )}
       {dialog === "rating" && <RatingStep onClose={session.closeRating} />}
-      {dialog === "start-choice" && <StartChoice onDecided={session.decide} onPlanned={planChanged} />}
+      {dialog === "start-choice" && <StartChoice onDecided={session.decide} />}
     </ShellContext.Provider>
   );
 }

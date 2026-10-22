@@ -21,8 +21,6 @@ const OUTCOME_KEY: Record<RightAwayOutcome, MessageKey> = {
 interface Props {
   /** The Resident chose to wait, or has read the result: the choice is over. Nothing is stored. */
   onDecided(): void;
-  /** Their Tasks were planned, so the Today section must show the new plan. */
-  onPlanned(): void;
 }
 
 /**
@@ -30,9 +28,9 @@ interface Props {
  * Allocation. "Start tomorrow" only dismisses (so do Escape and a tap outside, except while planning);
  * "right away" plans this Resident alone and the result appears in Today.
  */
-export function StartChoice({ onDecided, onPlanned }: Props) {
+export function StartChoice({ onDecided }: Props) {
   const { t } = useI18n();
-  const { state, start } = useRightAway(onPlanned);
+  const { state, start } = useRightAway();
   const planning = state.kind === "planning";
 
   return (
