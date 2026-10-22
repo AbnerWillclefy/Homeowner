@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { planMyDay, type DayPlan } from "../../dayplan/api/api";
-import { writeActionAnswer } from "../../dayplan/logic/planCache";
+import { writeAcceptedAnswer } from "../../dayplan/logic/planCache";
 import { useSubmitOnce } from "../../../shared/ui/useSubmitOnce";
 
 export type RightAwayState =
@@ -20,7 +20,7 @@ export function useRightAway() {
     const result = await planMyDay();
     if (result.kind === "ok") {
       // The plan the call answered goes into the cache, so Today shows it without a read of its own.
-      await writeActionAnswer(queryClient, result.plan);
+      await writeAcceptedAnswer(queryClient, result.plan);
       setState({ kind: "done", plan: result.plan });
     } else {
       // A 404 means the Home went away under us: nothing to plan, so it reads as a failure.

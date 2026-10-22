@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Outlet, useLocation } from "react-router";
-import { dayPlanKey } from "../../domains/dayplan/api/queries";
+import { invalidateDayPlan } from "../../domains/dayplan/logic/planCache";
 import { useHome } from "../../domains/home/hooks/useHome";
 import { useMe } from "../../domains/profile/hooks/useMe";
 import { useResidents } from "../../domains/residents/hooks/useResidents";
@@ -42,7 +42,7 @@ export function Shell() {
       void reload();
       // The Day Plan read before the join belongs to another Home (or none). TODO(#281): the Home-scope removal
       // of Home queries covers this; drop the line then.
-      void queryClient.invalidateQueries({ queryKey: dayPlanKey });
+      void invalidateDayPlan(queryClient);
     },
     [session, reload, queryClient],
   );

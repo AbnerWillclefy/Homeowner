@@ -19,9 +19,9 @@ import {
   type PlanTask,
 } from "../api/api";
 import { ACTION_FAILURE_KEY, conflictMessageKey, LOAD_FAILURE_KEY, type ConflictFamily } from "../logic/failureMessages";
-import { dayPlanKey, dayPlanQuery } from "../api/queries";
+import { dayPlanQuery } from "../api/queries";
 import { dayPlanStateOf } from "../logic/dayPlanState";
-import { invalidateStreak, writeActionAnswer } from "../logic/planCache";
+import { writeAcceptedAnswer, writeActionAnswer } from "../logic/planCache";
 import { viewOf } from "../../../shared/query/view";
 import type { MessageKey } from "../../../shared/i18n";
 
@@ -133,8 +133,6 @@ export function useDayPlan() {
     setActing(running);
     setNotice(null);
     try {
-      // A read already running (window focus) is dropped now; `writeActionAnswer` drops any that started during the call.
-      await queryClient.cancelQueries({ queryKey: dayPlanKey });
       const result = await callFor(running);
       // The screen was stale: take the server's current plan, in place so the lists and focus stay.
       const fresh = result.kind === "conflict" ? await getDayPlan() : undefined;
@@ -142,9 +140,8 @@ export function useDayPlan() {
       const { plan, notice } = outcome(result, fresh, family);
       setNotice(notice);
       if (plan) {
-        await writeActionAnswer(queryClient, plan);
         // Any accepted action may change the Streak, not only `done`; see `invalidateStreak`.
-        if (result.kind === "ok") void invalidateStreak(queryClient);
+        await (result.kind === "ok" ? writeAcceptedAnswer : writeActionAnswer)(queryClient, plan);
         if (mounted.current) setChanged((n) => n + 1);
       }
     } finally {

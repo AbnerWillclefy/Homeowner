@@ -4,7 +4,7 @@ import { createTestQueryClient } from "../../../shared/query/testing";
 import { dayPlanKey } from "../api/queries";
 import { streakKey } from "../../streak/api/queries";
 import { dayPlan } from "../testing/fixtures";
-import { invalidateStreak, writeActionAnswer } from "./planCache";
+import { invalidateDayPlan, invalidateStreak, writeAcceptedAnswer, writeActionAnswer } from "./planCache";
 
 const OLD = dayPlan({ energy: 3 });
 const NEW = dayPlan({ energy: 8 });
@@ -28,25 +28,37 @@ describe("writeActionAnswer", () => {
     expect(client.getQueryData(dayPlanKey)).toEqual(NEW);
   });
 
-  it("is not overwritten by a refetch that started after the first cancel, in the middle of the action", async () => {
-    const client = createTestQueryClient();
-    await client.cancelQueries({ queryKey: dayPlanKey }); // the cancel before the call
-    const read = deferred<typeof OLD>();
-    // Window focus while the call runs.
-    const refetch = client.fetchQuery({ queryKey: dayPlanKey, queryFn: () => read.promise }).catch(() => undefined);
-
-    await writeActionAnswer(client, NEW); // the cancel again, then the write
-    read.resolve(OLD);
-    await refetch;
-
-    expect(client.getQueryData(dayPlanKey)).toEqual(NEW);
-  });
-
   it("replaces a cached plan when nothing is in flight", async () => {
     const client = createTestQueryClient();
     client.setQueryData(dayPlanKey, OLD);
     await writeActionAnswer(client, NEW);
     expect(client.getQueryData(dayPlanKey)).toEqual(NEW);
+  });
+});
+
+describe("writeAcceptedAnswer", () => {
+  it("writes the plan and marks the Streak stale", async () => {
+    const client = createTestQueryClient();
+    client.setQueryData(streakKey, 1);
+    await writeAcceptedAnswer(client, NEW);
+    expect(client.getQueryData(dayPlanKey)).toEqual(NEW);
+    expect(client.getQueryState(streakKey)?.isInvalidated).toBe(true);
+  });
+
+  it("is the only write that touches the Streak", async () => {
+    const client = createTestQueryClient();
+    client.setQueryData(streakKey, 1);
+    await writeActionAnswer(client, NEW);
+    expect(client.getQueryState(streakKey)?.isInvalidated).toBe(false);
+  });
+});
+
+describe("invalidateDayPlan", () => {
+  it("marks the Day Plan stale", async () => {
+    const client = createTestQueryClient();
+    client.setQueryData(dayPlanKey, OLD);
+    await invalidateDayPlan(client);
+    expect(client.getQueryState(dayPlanKey)?.isInvalidated).toBe(true);
   });
 });
 

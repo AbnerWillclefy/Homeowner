@@ -19,3 +19,17 @@ export async function writeActionAnswer(client: QueryClient, plan: DayPlan): Pro
 export function invalidateStreak(client: QueryClient): Promise<void> {
   return client.invalidateQueries({ queryKey: streakKey });
 }
+
+/**
+ * A plan the server answered to an accepted action: written to the cache, then the Streak is marked stale (see
+ * `invalidateStreak`). A plan read after a 409 is not an accepted action and goes through `writeActionAnswer`.
+ */
+export async function writeAcceptedAnswer(client: QueryClient, plan: DayPlan): Promise<void> {
+  await writeActionAnswer(client, plan);
+  void invalidateStreak(client);
+}
+
+/** Marks the Day Plan stale, and reads it again if Today is showing it: after a Check-in, a start choice or a join. */
+export function invalidateDayPlan(client: QueryClient): Promise<void> {
+  return client.invalidateQueries({ queryKey: dayPlanKey });
+}
