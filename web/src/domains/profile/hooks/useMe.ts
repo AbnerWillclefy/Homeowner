@@ -1,6 +1,6 @@
 import { useCallback } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { meKey, meQuery } from "../../auth/api/queries";
+import { useQuery } from "@tanstack/react-query";
+import { meQuery } from "../../auth/api/queries";
 import type { Me } from "../../auth/api/meApi";
 import { viewOf, type QueryViewState } from "../../../shared/query/view";
 
@@ -26,37 +26,18 @@ function meStateOf(state: QueryViewState<Me>): MeState {
  * `resolveSignedIn` already filled. Mounted in the Shell and shared through ShellContext: Today's greeting and
  * the Me header read it. It does not depend on a Home, so Me works without one.
  *
- * `update` changes the current User from its newest value (for a change that lands after a slow call). `set` puts in a User the API just answered (after a name is saved), so every screen shows it at once without
- * another request. `reload` asks again, after a failure; it shows `loading` meanwhile. A failed refresh keeps the
- * User on screen.
+ * A saved name or photo is written by `saveMe` and `savePhoto` (api/cacheWrites), which also refresh the
+ * Residents. `reload` asks again, after a failure; it shows `loading` meanwhile. A failed refresh keeps the User
+ * on screen, and `refreshing` is true while a read runs over a User already shown.
  */
 export function useMe() {
-  const queryClient = useQueryClient();
   const query = useQuery(meQuery);
-  const { state } = viewOf(query);
+  const { state, refreshing } = viewOf(query);
   const { refetch } = query;
 
   const reload = useCallback(() => {
     void refetch();
   }, [refetch]);
 
-  /** A read that started before is cancelled first, so its older answer cannot bring the old User back. */
-  const set = useCallback(
-    async (me: Me) => {
-      await queryClient.cancelQueries({ queryKey: meKey });
-      queryClient.setQueryData(meKey, me);
-    },
-    [queryClient],
-  );
-
-  /** Changes the User from the newest cached value, so a slow call never overwrites a `set` that landed meanwhile. */
-  const update = useCallback(
-    async (change: (current: Me) => Me) => {
-      await queryClient.cancelQueries({ queryKey: meKey });
-      queryClient.setQueryData<Me>(meKey, (current) => (current === undefined ? current : change(current)));
-    },
-    [queryClient],
-  );
-
-  return { state: meStateOf(state), set, update, reload };
+  return { state: meStateOf(state), refreshing, reload };
 }
