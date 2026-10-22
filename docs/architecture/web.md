@@ -243,6 +243,8 @@ A new User is walked through install, reminders, Baseline, Restrictions, Prefere
 
 Progress lives on the server (`users.onboarding_step`, see the backend docs), because on iOS the install step ends with the User leaving Safari for the Home Screen app, which has its own `localStorage`. `src/domains/onboarding/api/api.ts` has `getOnboarding` (`GET /me/onboarding`: the step to show, or `done`) and `putOnboardingStep` (`PUT /me/onboarding`: records a step as completed or skipped and returns the next step). It returns the usual result union (`ok`, `not-signed-in`, `offline`, `error`). `home` is never sent: `POST /home` completes it on the server.
 
+`useOnboarding` reads the position from `onboardingQuery` (`src/domains/onboarding/api/queries.ts`, key `["me","onboarding"]`). The pure `onboardingStateOf` (`logic/onboardingState.ts`) maps the query view to the guard's `loading`, `problem` or `ready`: a position that was read stays `ready` through a refetch, failed or not, so a refocus mid-walk never makes the guard wait or retry (tested through `viewOf` and `resolveRoute`). `setPosition` is the cache write: it cancels a read in flight, then `setQueryData`s the position the `PUT` answered; every `putOnboardingStep` `ok` (in `useWalk`) and the Home step's finish go through it. A read cannot run ahead of the walk, since the server stores only what a `PUT` sent. Onboarding has no header slot, so it shows no refresh indicator, keeps its plain loading line and prefetches nothing: its pace is unchanged.
+
 ```mermaid
 flowchart TD
     SES[SessionProvider: useOnboarding GET /me/onboarding] --> GUARD[Guard: resolveRoute]
@@ -310,7 +312,7 @@ flowchart TD
 
 ## Catalog
 
-The Catalog and its rules are Go code (see [backend.md](backend.md)); the PWA only asks for them. `src/domains/catalog/api/api.ts` has `getCatalog` (`GET /catalog`) and `proposeChores` (`POST /catalog/proposals`, which writes nothing), with the usual result union (`ok`, `not-signed-in`, `offline`, `error`, and `invalid` with the field codes for the proposals call). `createHome` in `domains/home/api/api.ts` takes an optional list of Chores, sent as `chores` on `POST /home` only when there are some.
+The Catalog and its rules are Go code (see [backend.md](backend.md)); the PWA only asks for them. `src/domains/catalog/api/api.ts` has `getCatalog` (`GET /catalog`) and `proposeChores` (`POST /catalog/proposals`, which writes nothing; a POST that builds a proposal, so it stays out of the cache). `useCatalog` reads `catalogQuery` (`api/queries.ts`, key `["catalog"]`, the same defaults as every read: stale at once, read again on mount and focus), so reopening the picker shows the list at once with no loading line, with the usual result union (`ok`, `not-signed-in`, `offline`, `error`, and `invalid` with the field codes for the proposals call). `createHome` in `domains/home/api/api.ts` takes an optional list of Chores, sent as `chores` on `POST /home` only when there are some.
 
 ```mermaid
 flowchart TD

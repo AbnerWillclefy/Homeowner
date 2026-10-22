@@ -1,25 +1,32 @@
-import { useCallback, useEffect, useState } from "react";
-import { getCatalog, type CatalogEntry } from "../api/api";
+import { useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import type { CatalogEntry } from "../api/api";
+import { catalogQuery } from "../api/queries";
 import type { Failure } from "../../chores/api/api";
+import { viewOf, type QuerySnapshot } from "../../../shared/query/view";
 
 export type CatalogState =
   | { kind: "loading" }
   | { kind: "failed"; reason: Failure["kind"] }
   | { kind: "ready"; entries: CatalogEntry[] };
 
-/** Loads the Catalog when mounted. */
+function catalogStateOf(query: QuerySnapshot<CatalogEntry[]>): CatalogState {
+  const { state } = viewOf(query);
+  return state.kind === "ready" ? { kind: "ready", entries: state.data } : state;
+}
+
+/**
+ * The Catalog, read from the query cache under the same rules as every read: a list seen before shows at once
+ * (going back to the picker shows no loading line) and is read again behind it. Only a first load or a Retry is
+ * `loading`.
+ */
 export function useCatalog() {
-  const [state, setState] = useState<CatalogState>({ kind: "loading" });
+  const query = useQuery(catalogQuery);
+  const { refetch } = query;
 
-  const load = useCallback(async () => {
-    setState({ kind: "loading" });
-    const result = await getCatalog();
-    setState(result.kind === "ok" ? { kind: "ready", entries: result.entries } : { kind: "failed", reason: result.kind });
-  }, []);
+  const reload = useCallback(() => {
+    void refetch();
+  }, [refetch]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  return { state, reload: load };
+  return { state: catalogStateOf(query), reload };
 }
