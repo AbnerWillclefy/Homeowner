@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { toQueryData } from "../../../shared/query/ApiFailure";
 import { getHome, type Home } from "./api";
 
@@ -10,3 +10,27 @@ export const homeQuery = queryOptions({
   queryKey: homeKey,
   queryFn: async (): Promise<Home | null> => toQueryData(await getHome())?.home ?? null,
 });
+
+const inHomeScope = (key: readonly unknown[]) => key[0] === homeKey[0] && key.length > 1;
+
+/**
+ * Cancels and removes every query under the Home (the Day Plan, Chores, Residents, ...) and keeps `["home"]`
+ * itself. Called when the Home changes hands: whatever was cached belongs to another Home, and it is removed
+ * rather than marked stale so the new Home never shows the old one's data while it loads.
+ */
+export async function forgetHomeScope(client: QueryClient): Promise<void> {
+  await client.cancelQueries({ predicate: (query) => inHomeScope(query.queryKey) });
+  client.removeQueries({ predicate: (query) => inHomeScope(query.queryKey) });
+}
+
+/** The caller left their Home: forget its data, then show the create form (no Home). */
+export async function homeLeft(client: QueryClient): Promise<void> {
+  await forgetHomeScope(client);
+  client.setQueryData(homeKey, null);
+}
+
+/** The caller joined a Home: forget the old one's data and read the new Home. */
+export async function homeJoined(client: QueryClient): Promise<void> {
+  await forgetHomeScope(client);
+  await client.invalidateQueries({ queryKey: homeKey, exact: true });
+}

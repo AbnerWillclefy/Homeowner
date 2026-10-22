@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Outlet, useLocation } from "react-router";
-import { invalidateDayPlan } from "../../domains/dayplan/logic/planCache";
+import { homeJoined } from "../../domains/home/api/queries";
 import { useHome } from "../../domains/home/hooks/useHome";
 import { useMe } from "../../domains/profile/hooks/useMe";
 import { useResidents } from "../../domains/residents/hooks/useResidents";
@@ -32,19 +32,16 @@ export function Shell() {
   const { pathname } = useLocation();
   const invite = useInvite();
   const session = useSession();
-  const { reload } = home;
 
   // The one owner of "a join ended": the session records it, then the Shell refreshes what it shows.
   const finishJoin = useCallback(
     (outcome: JoinOutcome) => {
       session.recordJoin(outcome);
-      // The Shell fetched the Home behind the dialog; after a join it is out of date.
-      void reload();
-      // The Day Plan read before the join belongs to another Home (or none). TODO(#281): the Home-scope removal
-      // of Home queries covers this; drop the line then.
-      void invalidateDayPlan(queryClient);
+      // What the Shell cached behind the dialog (the Home and everything under it) is out of date, and the
+      // children may belong to another Home: they are removed, not only marked stale, and the Home is read again.
+      void homeJoined(queryClient);
     },
-    [session, reload, queryClient],
+    [session, queryClient],
   );
 
   const content = useRef<HTMLDivElement>(null);
