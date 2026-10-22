@@ -5,11 +5,21 @@ import { removeChore, upsertChore } from "./choreList";
 
 /**
  * Applies a change to the cached Chores. A read of the list that is still running is cancelled first, so its
- * older answer cannot land after this one and bring the old list back. A list that was never loaded stays unloaded.
+ * older answer cannot land after this one and bring the old list back. A list that was never loaded, or a cancel
+ * that fails, invalidates the list instead, so it is read from the server and shows the change. Never rejects.
  */
 async function writeChores(client: QueryClient, update: (chores: Chore[]) => Chore[]): Promise<void> {
-  await client.cancelQueries({ queryKey: choresKey, exact: true });
-  client.setQueryData<Chore[]>(choresKey, (current) => (current === undefined ? undefined : update(current)));
+  try {
+    await client.cancelQueries({ queryKey: choresKey, exact: true });
+    const current = client.getQueryData<Chore[]>(choresKey);
+    if (current !== undefined) {
+      client.setQueryData<Chore[]>(choresKey, update(current));
+      return;
+    }
+  } catch {
+    // fall through to the read below
+  }
+  await client.invalidateQueries({ queryKey: choresKey, exact: true }).catch(() => undefined);
 }
 
 /** Puts a Chore the server created or updated into the list: added at the end, or replaced in place. */

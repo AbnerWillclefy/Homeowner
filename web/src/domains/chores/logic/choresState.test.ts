@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { QueryViewState } from "../../../shared/query/view";
 import type { Chore } from "../api/api";
-import { choreListsStateOf, choresStateOf } from "./choresState";
+import { choreListsStateOf, choresStateOf, combineViews } from "./choresState";
 
 const ready = <T>(data: T): QueryViewState<T> => ({ kind: "ready", data });
 const loading: QueryViewState<never> = { kind: "loading" };
@@ -19,9 +19,15 @@ describe("choresStateOf", () => {
   });
 
   it("is loading while any of the three is loading, even if another failed", () => {
-    expect(choresStateOf(loading, ready([]), ready(CHORES))).toEqual({ kind: "loading" });
-    expect(choresStateOf(ready([]), ready([]), loading)).toEqual({ kind: "loading" });
-    expect(choresStateOf(failed("error"), ready([]), loading)).toEqual({ kind: "loading" });
+    expect(choresStateOf(loading, ready([]), ready(CHORES))).toEqual({
+      kind: "loading",
+    });
+    expect(choresStateOf(ready([]), ready([]), loading)).toEqual({
+      kind: "loading",
+    });
+    expect(choresStateOf(failed("error"), ready([]), loading)).toEqual({
+      kind: "loading",
+    });
   });
 
   it("fails with the first failure in the order categories, demands, chores", () => {
@@ -37,6 +43,22 @@ describe("choresStateOf", () => {
   });
 });
 
+describe("combineViews", () => {
+  it("is loading while any view loads, even after a failure", () => {
+    expect(combineViews([failed("error"), loading])).toEqual({
+      kind: "loading",
+    });
+  });
+
+  it("reports the first failure", () => {
+    expect(combineViews([ready(1), failed("offline"), failed("error")])).toEqual({ kind: "failed", reason: "offline" });
+  });
+
+  it("is ready when all are ready", () => {
+    expect(combineViews([ready(1)])).toEqual({ kind: "ready" });
+  });
+});
+
 describe("choreListsStateOf", () => {
   it("is ready with both lists", () => {
     expect(choreListsStateOf(ready(["kitchen"]), ready(["heavy"]))).toEqual({
@@ -48,7 +70,13 @@ describe("choreListsStateOf", () => {
 
   it("is loading while either is loading, and fails with categories first", () => {
     expect(choreListsStateOf(ready([]), loading)).toEqual({ kind: "loading" });
-    expect(choreListsStateOf(failed("offline"), failed("error"))).toEqual({ kind: "failed", reason: "offline" });
-    expect(choreListsStateOf(ready([]), failed("error"))).toEqual({ kind: "failed", reason: "error" });
+    expect(choreListsStateOf(failed("offline"), failed("error"))).toEqual({
+      kind: "failed",
+      reason: "offline",
+    });
+    expect(choreListsStateOf(ready([]), failed("error"))).toEqual({
+      kind: "failed",
+      reason: "error",
+    });
   });
 });

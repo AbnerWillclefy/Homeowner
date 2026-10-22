@@ -1,14 +1,10 @@
 import { useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { Failure } from "../api/api";
 import { categoriesQuery, demandsQuery } from "../../profile/api/queries";
-import { choreListsStateOf } from "../logic/choresState";
+import { choreListsStateOf, type ChoreListsState } from "../logic/choresState";
 import { viewOf } from "../../../shared/query/view";
 
-export type ChoreListsState =
-  | { kind: "loading" }
-  | { kind: "failed"; reason: Failure["kind"] }
-  | { kind: "ready"; categories: string[]; demands: string[] };
+export type { ChoreListsState };
 
 /** The Category and Demand lists the Chore form offers, from the cache. For forms shown before the Home has Chores. */
 export function useChoreLists() {

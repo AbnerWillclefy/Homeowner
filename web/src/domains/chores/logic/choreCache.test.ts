@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createTestQueryClient } from "../../../shared/query/testing";
 import { categoriesKey } from "../../profile/api/queries";
 import type { Chore } from "../api/api";
@@ -35,16 +35,27 @@ describe("saveChoreInCache", () => {
     expect(client.getQueryData<Chore[]>(choresKey)?.map((c) => c.name)).toEqual(["Wash dishes", "Trash"]);
   });
 
-  it("writes nothing when the list was never loaded", async () => {
+  it("writes nothing but invalidates the list when it was never loaded", async () => {
     const client = createTestQueryClient();
+    const invalidate = vi.spyOn(client, "invalidateQueries");
     await saveChoreInCache(client, chore("c", "Floors"));
     expect(client.getQueryData(choresKey)).toBeUndefined();
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: choresKey,
+      exact: true,
+    });
   });
 
   it("is not overwritten by a read that started before the save", async () => {
     const client = seeded();
     const read = deferred<Chore[]>();
-    const refetch = client.fetchQuery({ queryKey: choresKey, queryFn: () => read.promise, staleTime: 0 }).catch(() => undefined);
+    const refetch = client
+      .fetchQuery({
+        queryKey: choresKey,
+        queryFn: () => read.promise,
+        staleTime: 0,
+      })
+      .catch(() => undefined);
     await saveChoreInCache(client, chore("c", "Floors"));
     read.resolve(SEEDED);
     await refetch;

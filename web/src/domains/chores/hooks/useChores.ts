@@ -1,16 +1,13 @@
 import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Chore, Failure } from "../api/api";
+import type { Chore } from "../api/api";
 import { choresQuery } from "../api/queries";
 import { categoriesQuery, demandsQuery } from "../../profile/api/queries";
 import { removeChoreFromCache, saveChoreInCache } from "../logic/choreCache";
-import { choresStateOf } from "../logic/choresState";
+import { choresStateOf, type ChoresState } from "../logic/choresState";
 import { viewOf } from "../../../shared/query/view";
 
-export type ChoresState =
-  | { kind: "loading" }
-  | { kind: "failed"; reason: Failure["kind"] }
-  | { kind: "ready"; chores: Chore[]; categories: string[]; demands: string[] };
+export type { ChoresState };
 
 /**
  * The Home's Chores with the Category and Demand lists the form needs, from three queries in the cache. Only
