@@ -5,6 +5,7 @@ import { initialState } from "./api";
 import { FAKE_TODAY } from "./handlers/today";
 
 export const RESIDENT_EMAIL = "resident@example.test";
+export const SECOND_RESIDENT_EMAIL = "beto@example.test";
 
 const CHORES: Chore[] = [
   { id: "chore-1", name: "Wash the dishes", category: "kitchen", demands: [], baseEffort: 2, importance: "normal", people: 1, intervalDays: 1, allowedWeekdays: [], buildsUp: false },
@@ -40,6 +41,7 @@ function plannedDay(): DayPlan {
     others: [{ residentId: "resident-2", tasks: [task("task-3", trash, "due")] }],
     pool: [task("task-4", trash, "no_energy_left")],
     doneToday: [],
+    swaps: { incoming: [], outgoing: [] },
   };
 }
 
@@ -63,4 +65,40 @@ export function signedInResident(): FakeState {
     checkIn: { date: FAKE_TODAY, checkedIn: false, level: null, restrictions: [] },
     dayPlan: plannedDay(),
   };
+}
+
+/** A different Resident in another Home: Beto Bezerra, whose one Task is "Water the plants". */
+export function secondResident(): FakeState {
+  const state = signedInResident();
+  const plants: Chore = { ...CHORES[0]!, id: "chore-4", name: "Water the plants", category: "outdoor" };
+  state.user = { id: "user-2", email: SECOND_RESIDENT_EMAIL, displayName: "Beto Bezerra" };
+  state.home = { id: "home-2", timezone: "America/Manaus", allocationTime: "06:30" };
+  state.chores = [plants];
+  state.residents = [{ id: "resident-3", you: true, name: "Beto Bezerra", photoUrl: null }];
+  state.dayPlan = { ...plannedDay(), allocationTime: "06:30", mine: [task("task-5", plants, "due")], others: [], pool: [] };
+  return state;
+}
+
+/** Bruna Souza (`resident-2`) offers her `task-3` for your `task-1`. Edits the state and returns it. */
+export function withIncomingOffer(state: FakeState): FakeState {
+  const plan = state.dayPlan!;
+  plan.swaps.incoming.push({
+    id: "swap-in-1",
+    residentId: "resident-2",
+    offered: plan.others[0]!.tasks[0]!,
+    requested: plan.mine[0]!,
+  });
+  return state;
+}
+
+/** You offer your `task-2` to Bruna Souza (`resident-2`) for her `task-3`. Edits the state and returns it. */
+export function withOutgoingOffer(state: FakeState): FakeState {
+  const plan = state.dayPlan!;
+  plan.swaps.outgoing.push({
+    id: "swap-out-1",
+    residentId: "resident-2",
+    offered: plan.mine[1]!,
+    requested: plan.others[0]!.tasks[0]!,
+  });
+  return state;
 }

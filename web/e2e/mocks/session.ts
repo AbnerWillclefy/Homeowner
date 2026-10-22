@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { SESSION_KEY, type Session } from "../../src/domains/auth/logic/session";
 import { makeIdToken } from "./tokens";
 
-// Year 2100. A token with under a minute left makes authedFetch call Cognito, which would be an unmocked request.
+// Year 2100. A token with under a minute left makes the API client call Cognito, which would be an unmocked request.
 const FAR_FUTURE_MS = Date.UTC(2100, 0, 1);
 
 /**

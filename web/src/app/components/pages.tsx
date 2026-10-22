@@ -28,12 +28,11 @@ import { useShell } from "./ShellContext";
 /** Today: the Check-in and the Day Plan. */
 export function TodayPage() {
   const { t } = useI18n();
-  const { planVersion, planChanged } = useShell();
   const { after } = useSession();
   return (
     <PageLoading message={t("dayplan.loading")}>
       {after === "already-here" && <p role="status">{t("invite.alreadyHere")}</p>}
-      <HomeGate skeleton={<TodaySkeleton />}>{() => <HomeDay version={planVersion} onPlanChanged={planChanged} />}</HomeGate>
+      <HomeGate skeleton={<TodaySkeleton />}>{() => <HomeDay />}</HomeGate>
     </PageLoading>
   );
 }
@@ -80,14 +79,14 @@ export function HomePage() {
                 home={current}
                 onSaved={(saved: Home) => {
                   setRecovered("no");
-                  home.setHome(saved);
+                  void home.setHome(saved);
                 }}
               />
             </CollapsibleCard>
             <LeaveHome
               onLeft={() => {
                 setRecovered("no");
-                home.clearHome();
+                void home.clearHome();
               }}
             />
           </div>

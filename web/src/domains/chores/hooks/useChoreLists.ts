@@ -1,27 +1,22 @@
-import { useCallback, useEffect, useState } from "react";
-import type { Failure } from "../api/api";
-import { getCategories, getDemands } from "../../profile/api/api";
+import { useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { categoriesQuery, demandsQuery } from "../../profile/api/queries";
+import { choreListsStateOf, type ChoreListsState } from "../logic/choresState";
+import { viewOf } from "../../../shared/query/view";
 
-export type ChoreListsState =
-  | { kind: "loading" }
-  | { kind: "failed"; reason: Failure["kind"] }
-  | { kind: "ready"; categories: string[]; demands: string[] };
+export type { ChoreListsState };
 
-/** Loads the Category and Demand lists the Chore form offers. For forms shown before the Home has Chores. */
+/** The Category and Demand lists the Chore form offers, from the cache. For forms shown before the Home has Chores. */
 export function useChoreLists() {
-  const [state, setState] = useState<ChoreListsState>({ kind: "loading" });
+  const categories = useQuery(categoriesQuery);
+  const demands = useQuery(demandsQuery);
+  const state = choreListsStateOf(viewOf(categories).state, viewOf(demands).state);
+  const { refetch: refetchCategories } = categories;
+  const { refetch: refetchDemands } = demands;
 
-  const load = useCallback(async () => {
-    setState({ kind: "loading" });
-    const [categories, demands] = await Promise.all([getCategories(), getDemands()]);
-    if (categories.kind !== "ok") return setState({ kind: "failed", reason: categories.kind });
-    if (demands.kind !== "ok") return setState({ kind: "failed", reason: demands.kind });
-    setState({ kind: "ready", categories: categories.ids, demands: demands.ids });
-  }, []);
+  const reload = useCallback(async () => {
+    await Promise.all([refetchCategories(), refetchDemands()]);
+  }, [refetchCategories, refetchDemands]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  return { state, reload: load };
+  return { state, reload };
 }

@@ -1,5 +1,5 @@
-import { config } from "../../../shared/config";
-import { authedFetch } from "../../auth/api/request";
+import { httpClient } from "../../../shared/api/http";
+import { authedRequest } from "../../auth/api/client";
 
 /** The browser's PushSubscription.toJSON() shape, as the API expects it. */
 export interface SubscriptionJSON {
@@ -11,15 +11,17 @@ export type VapidKeyResult = { kind: "ok"; key: string } | { kind: "not-configur
 /** "not-signed-in": there is no session, or it was turned down; the person must sign in again. */
 export type SaveResult = { kind: "ok" } | { kind: "not-signed-in" } | { kind: "error" };
 
-const JSON_HEADERS = { "Content-Type": "application/json" };
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
 export async function getVapidPublicKey(): Promise<VapidKeyResult> {
   try {
-    const res = await fetch(`${config.apiBaseUrl}/push/vapid-public-key`, { cache: "no-store" });
+    const res = await httpClient.get("/push/vapid-public-key", { fetchOptions: { cache: "no-store" } });
     if (res.status === 503) return { kind: "not-configured" };
-    if (!res.ok) return { kind: "error" };
-    const body: unknown = await res.json();
-    const key = (body as { key?: unknown } | null)?.key;
+    if (res.status !== 200) return { kind: "error" };
+    const body: unknown = res.data;
+    const key = isRecord(body) ? body.key : undefined;
     return typeof key === "string" && key !== "" ? { kind: "ok", key } : { kind: "error" };
   } catch {
     return { kind: "error" };
@@ -29,10 +31,10 @@ export async function getVapidPublicKey(): Promise<VapidKeyResult> {
 /** Idempotent: safe to call on every launch. */
 export async function saveSubscription(sub: SubscriptionJSON, userAgent: string): Promise<SaveResult> {
   try {
-    const result = await authedFetch("/push/subscription", {
+    const result = await authedRequest({
+      url: "/push/subscription",
       method: "PUT",
-      headers: JSON_HEADERS,
-      body: JSON.stringify({ endpoint: sub.endpoint, keys: sub.keys, userAgent }),
+      data: { endpoint: sub.endpoint, keys: sub.keys, userAgent },
     });
     if (result.kind === "not-signed-in") return result;
     return result.response.status === 204 ? { kind: "ok" } : { kind: "error" };

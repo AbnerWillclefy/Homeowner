@@ -26,6 +26,7 @@ function plan(over: Partial<DayPlan>): DayPlan {
     others: [],
     pool: [],
     doneToday: [],
+    swaps: { incoming: [], outgoing: [] },
     ...over,
   };
 }

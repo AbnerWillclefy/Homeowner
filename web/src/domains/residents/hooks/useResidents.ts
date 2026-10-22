@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
-import { getResidents, type Resident } from "../api/api";
+import { useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { Resident } from "../api/api";
+import { residentsKey, residentsQuery } from "../api/queries";
+import { viewOf } from "../../../shared/query/view";
 
 export type ResidentsState =
   /** Waiting for the first answer, or there is no Home yet. */
@@ -9,36 +12,27 @@ export type ResidentsState =
   | { kind: "failed" };
 
 /**
- * The Residents of the signed-in User's Home, loaded once while there is a Home and again whenever the Home
- * appears, disappears or changes hands (a join or a leave). Mounted in the Shell and shared through ShellContext,
- * so every screen reads one copy.
+ * The Residents of the signed-in User's Home from the query cache, read only while there is a Home. Without one
+ * the query is disabled and the state is `loading`, as before; a join or leave removes the cached list (see
+ * `forgetHomeScope`), so the next Home reads its own. Mounted in the Shell and shared through ShellContext, so
+ * every screen reads one copy. `refreshing` is true while a read runs over a list already on screen.
  *
  * `byResidentId` is the join with the Day Plan, which names Residents by their `id`. It answers
  * `undefined` while loading, after a failure and for an id the list does not hold; callers show a placeholder.
  */
 export function useResidents(hasHome: boolean) {
-  const [state, setState] = useState<ResidentsState>({ kind: "loading" });
-  const [version, setVersion] = useState(0);
-  // Bumping the version loads again but keeps the list on screen: a reload after a name change must not flash.
-  const reload = useCallback(() => setVersion((v) => v + 1), []);
+  const queryClient = useQueryClient();
+  const query = useQuery({ ...residentsQuery, enabled: hasHome });
+  const { state: view, refreshing } = viewOf(query);
 
-  useEffect(() => {
-    if (!hasHome) {
-      setState({ kind: "loading" });
-      return;
-    }
-    let current = true;
-    void getResidents().then((result) => {
-      if (!current) return;
-      setState(result.kind === "ok" ? { kind: "ready", residents: result.residents } : { kind: "failed" });
-    });
-    return () => {
-      current = false;
-    };
-  }, [hasHome, version]);
+  const state: ResidentsState =
+    view.kind === "ready" ? { kind: "ready", residents: view.data } : view.kind === "failed" ? { kind: "failed" } : { kind: "loading" };
+
+  /** Reads the list again and keeps it on screen meanwhile: a reload after a name change must not flash. */
+  const reload = useCallback(() => void queryClient.invalidateQueries({ queryKey: residentsKey, exact: true }), [queryClient]);
 
   const byResidentId = (residentId: string): Resident | undefined =>
     state.kind === "ready" ? state.residents.find((resident) => resident.id === residentId) : undefined;
 
-  return { state, byResidentId, reload };
+  return { state, refreshing: state.kind === "ready" && refreshing, byResidentId, reload };
 }

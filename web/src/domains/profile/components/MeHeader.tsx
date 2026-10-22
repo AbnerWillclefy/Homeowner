@@ -4,7 +4,7 @@ import { useShell } from "../../../app/components/ShellContext";
 import { ME_EDIT_PATH } from "../../../app/logic/routes";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
-import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
+import { PageFetchingSlot, useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { SkeletonBar } from "../../../shared/ui/Skeleton";
 import { MeLoadFailed } from "./MeLoadFailed";
 import { Avatar } from "../../residents/components/Avatar";
@@ -21,7 +21,7 @@ const COLUMN = "flex flex-col items-center gap-2 pb-4 text-center";
 /** The current Streak, only for a Resident with a Home (it is the Home's). A Streak of 0 shows nothing: it is no failure to show. */
 function HeaderStreak() {
   const { t } = useI18n();
-  const { streak } = useStreak("me-header");
+  const { streak } = useStreak();
   return (
     <p className={`my-0 flex items-center gap-1.5 font-bold ${STREAK_LINE}`}>
       {streak !== null && streak.current > 0 && (
@@ -49,7 +49,13 @@ function Loaded({ me, hasHome }: { me: Me; hasHome: boolean }) {
           </Button>
         )}
       </div>
-      <p className="mt-1 mb-0 text-3xl leading-tight font-bold [overflow-wrap:anywhere]">{me.name}</p>
+      {/* The name keeps the middle: the fixed slot on the right shows the refresh indicator, and an empty twin on
+          the left of the same width keeps the name centred. */}
+      <div className="mt-1 flex w-full items-start gap-2">
+        <span aria-hidden="true" className="w-4 shrink-0" />
+        <p className="my-0 min-w-0 flex-1 text-3xl leading-tight font-bold [overflow-wrap:anywhere]">{me.name}</p>
+        <PageFetchingSlot />
+      </div>
       <p className="my-0 text-sm font-semibold text-muted [overflow-wrap:anywhere]">{me.email}</p>
       {hasHome && <HeaderStreak />}
       {nothingSet && (
@@ -103,6 +109,7 @@ export function MeHeader() {
   const hasHome = home.state.kind === "ready";
   const loading = me.state.kind === "loading";
   const showSkeleton = useReportFirstLoad(loading);
+  useReportFetching(me.refreshing);
 
   return (
     <div>

@@ -1,7 +1,7 @@
 import { useShell } from "../../../app/components/ShellContext";
 import { useI18n } from "../../../shared/i18n";
 import { Card } from "../../../shared/ui/Card";
-import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
+import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { ResidentRow } from "./ResidentRow";
 import { ResidentRowsSkeleton } from "./ResidentRowSkeleton";
 import { ResidentsError } from "./ResidentsError";
@@ -14,8 +14,10 @@ import { ResidentsError } from "./ResidentsError";
  */
 export function ResidentsCard() {
   const { t } = useI18n();
-  const { state, reload } = useShell().residents;
+  const { state, refreshing, reload } = useShell().residents;
   const showSkeleton = useReportFirstLoad(state.kind === "loading");
+  // A refetch over the list already on screen spins the page header's indicator, never the skeleton.
+  useReportFetching(refreshing);
 
   return (
     <Card as="section" aria-labelledby="home-residents-heading" className="mt-0 py-1">

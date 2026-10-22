@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { actionsFor, pendingAction, variantFor } from "./actions";
+import { actionsFor, pendingAction, pendingSwap, variantFor } from "./actions";
 
 const TASK = { people: 1, committed: false };
 
@@ -32,6 +32,20 @@ describe("actionsFor", () => {
     expect(actionsFor({ people: 1, committed: true }, "other")).toEqual(none);
   });
 
+  it("puts Swap alone at the start of another Resident's Task when a Swap can be offered", () => {
+    expect(actionsFor(TASK, "other", { canSwap: true })).toEqual({ start: ["swap"], end: [], committed: false });
+  });
+
+  it("offers no Swap on another Resident's Task unless asked", () => {
+    expect(actionsFor(TASK, "other", { canSwap: false })).toEqual(actionsFor(TASK, "other"));
+  });
+
+  it("never adds Swap to your own Tasks or the pool, whatever canSwap says", () => {
+    for (const role of ["mine", "pool"] as const) {
+      expect(actionsFor(TASK, role, { canSwap: true })).toEqual(actionsFor(TASK, role));
+    }
+  });
+
   it("gives a two-person Task of your own the same slots as a one-person one", () => {
     expect(actionsFor({ people: 2, committed: false }, "mine")).toEqual(actionsFor(TASK, "mine"));
     expect(actionsFor({ people: 2, committed: true }, "mine")).toEqual(
@@ -62,5 +76,32 @@ describe("pendingAction", () => {
 
   it("gives nothing when no action runs", () => {
     expect(pendingAction(null, "a")).toBeNull();
+  });
+});
+
+describe("Swap actions in flight", () => {
+  const swapActions = [
+    { action: "offerSwap", offeredTaskId: "a", requestedTaskId: "b" },
+    { action: "acceptSwap", swapId: "a" },
+    { action: "declineSwap", swapId: "a" },
+    { action: "cancelSwap", swapId: "a" },
+  ] as const;
+
+  it.each(swapActions)("makes no Task card spin for $action, even one named like its Task", (acting) => {
+    for (const id of ["a", "b", "x"]) expect(pendingAction(acting, id)).toBeNull();
+  });
+
+  it("gives an offer its own action and no other offer", () => {
+    expect(pendingSwap({ action: "acceptSwap", swapId: "s1" }, "s1")).toBe("acceptSwap");
+    expect(pendingSwap({ action: "declineSwap", swapId: "s1" }, "s1")).toBe("declineSwap");
+    expect(pendingSwap({ action: "cancelSwap", swapId: "s1" }, "s1")).toBe("cancelSwap");
+    expect(pendingSwap({ action: "cancelSwap", swapId: "s1" }, "s2")).toBeNull();
+  });
+
+  it("gives an offer nothing for Task actions, offering, Accept all or no action", () => {
+    expect(pendingSwap({ taskId: "s1", action: "accept" }, "s1")).toBeNull();
+    expect(pendingSwap({ taskId: null, action: "acceptAll" }, "s1")).toBeNull();
+    expect(pendingSwap({ action: "offerSwap", offeredTaskId: "s1", requestedTaskId: "s1" }, "s1")).toBeNull();
+    expect(pendingSwap(null, "s1")).toBeNull();
   });
 });

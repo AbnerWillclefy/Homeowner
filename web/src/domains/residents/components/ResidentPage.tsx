@@ -2,7 +2,7 @@ import { Navigate } from "react-router";
 import { ME_PATH } from "../../../app/logic/routes";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
-import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
+import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import type { ResidentDetail } from "../api/api";
 import { useResident } from "../hooks/useResident";
 import { dayHeading, dayHeadingText } from "../logic/dayHeading";
@@ -46,8 +46,10 @@ function Days({ resident, timeZone }: { resident: ResidentDetail; timeZone: stri
  */
 export function ResidentPage({ id, timeZone }: { id: string; timeZone: string }) {
   const { t } = useI18n();
-  const { state, retry } = useResident(id);
+  const { state, refreshing, retry } = useResident(id);
   const showSkeleton = useReportFirstLoad(state.kind === "loading");
+  // A refetch over a page already on screen shows the indicator in the header, never the skeleton.
+  useReportFetching(refreshing);
 
   switch (state.kind) {
     case "loading":

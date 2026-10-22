@@ -1,37 +1,33 @@
-import { useCallback, useEffect, useState } from "react";
-import { getOnboarding, type OnboardingPosition } from "../api/api";
-
-export type OnboardingProblem = "offline" | "error" | "not-signed-in";
-
-export type OnboardingState =
-  | { kind: "loading" }
-  | { kind: "problem"; problem: OnboardingProblem }
-  /** The step the server says to show, or `done`. */
-  | { kind: "ready"; position: OnboardingPosition };
+import { useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { OnboardingPosition } from "../api/api";
+import { onboardingKey, onboardingQuery } from "../api/queries";
+import { onboardingStateOf } from "../logic/onboardingState";
 
 /**
  * Where the signed-in User is in onboarding, read from the server because progress has to survive leaving
  * Safari for the Home Screen app, which has its own storage. Only mounted while signed in (see App).
- * When the read fails there is no guess: the person sees the problem and can retry.
+ * When the first read fails there is no guess: the person sees the problem and can retry. A position that was
+ * read stays `ready` while it is read again, so a refocus mid-walk never flips the guard to "wait".
+ * The server only stores what a step report sent, so a read cannot run ahead of the walk.
  */
 export function useOnboarding() {
-  const [state, setState] = useState<OnboardingState>({ kind: "loading" });
-  const [attempt, setAttempt] = useState(0);
+  const query = useQuery(onboardingQuery);
+  const queryClient = useQueryClient();
+  const { refetch } = query;
 
-  useEffect(() => {
-    let cancelled = false;
-    setState({ kind: "loading" });
-    getOnboarding().then((result) => {
-      if (cancelled) return;
-      setState(result.kind === "ok" ? { kind: "ready", position: result.step } : { kind: "problem", problem: result.kind });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [attempt]);
+  const retry = useCallback(() => {
+    void refetch();
+  }, [refetch]);
 
-  const retry = useCallback(() => setAttempt((n) => n + 1), []);
-  const setPosition = useCallback((position: OnboardingPosition) => setState({ kind: "ready", position }), []);
+  /** The step report's answer goes straight into the cache. A read still in flight is cancelled so its older answer cannot lower it. */
+  const setPosition = useCallback(
+    (position: OnboardingPosition) => {
+      void queryClient.cancelQueries({ queryKey: onboardingKey, exact: true });
+      queryClient.setQueryData<OnboardingPosition>(onboardingKey, position);
+    },
+    [queryClient],
+  );
 
-  return { state, retry, setPosition };
+  return { state: onboardingStateOf(query), retry, setPosition };
 }

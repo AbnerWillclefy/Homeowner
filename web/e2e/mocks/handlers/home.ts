@@ -47,7 +47,7 @@ function intCode(value: unknown, lo: number, hi: number): string | null {
 }
 
 /** Mirrors `chores.Validate` in backend/internal/chores/validate.go, keyed by field name. */
-function choreErrors(value: unknown, state: FakeState): Fields {
+export function choreErrors(value: unknown, state: FakeState): Fields {
   const fields: Fields = {};
   // Anything that is not an object fails every required field, like an empty one.
   const chore: Record<string, unknown> = isRecord(value) ? value : {};

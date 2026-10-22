@@ -1,8 +1,8 @@
 import { Clock } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import type { DayPlan, PlanTask } from "../api/api";
-import { pendingAction, type Acting, type TaskAction, type TaskRole } from "../logic/actions";
+import { pendingAction, type Acting, type SwapAction, type TaskAction, type TaskRole } from "../logic/actions";
 import { ME_PATH } from "../../../app/logic/routes";
 import { noTasksReason, type EnergyNote, type NoTasksReason } from "../../checkin/logic/state";
 import { formatAllocationTime } from "../../home/logic/allocationTimes";
@@ -14,6 +14,9 @@ import { ResidentLabel } from "../../residents/components/ResidentLabel";
 import { DoneCard } from "./DoneCard";
 import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { DayPlanSkeleton } from "./DayPlanSkeleton";
+import { canOfferFor, offerableTasks } from "../logic/swaps";
+import { OfferGroup } from "./SwapOffers";
+import { OfferSwapDialog } from "./OfferSwapDialog";
 import { TaskCard } from "./TaskCard";
 import type { ActionNotice, useDayPlan } from "../hooks/useDayPlan";
 
@@ -30,7 +33,7 @@ type Day = ReturnType<typeof useDayPlan>;
  */
 export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null }) {
   const { t } = useI18n();
-  const { state, reload, run, acceptAll, acting, notice, settled } = day;
+  const { state, reload, run, acceptAll, answerSwap, offerSwap, acting, notice, changed } = day;
   // The page's one status announces the wait; the skeleton shows after 300ms and only for a first load.
   const showSkeleton = useReportFirstLoad(state.kind === "loading");
   const section = useRef<HTMLElement>(null);
@@ -39,12 +42,12 @@ export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null 
   // A Task that leaves its list takes its button with it, so focus would fall to <body>. Bring it back to the
   // section's heading when the plan changed, unless focus is still on something inside the section.
   useEffect(() => {
-    if (settled === 0) return;
+    if (changed === 0) return;
     const active = document.activeElement;
     if (!(active instanceof HTMLElement) || active === section.current || !section.current?.contains(active)) {
       heading.current?.focus();
     }
-  }, [settled]);
+  }, [changed]);
 
   return (
     <section ref={section} aria-labelledby="today-heading">
@@ -77,6 +80,8 @@ export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null 
           acting={acting}
           onAccept={acceptAll}
           onAction={run}
+          onAnswer={answerSwap}
+          onOffer={offerSwap}
         />
       )}
     </section>
@@ -135,20 +140,27 @@ function PlanView({
   acting,
   onAccept,
   onAction,
+  onAnswer,
+  onOffer,
 }: {
   plan: DayPlan;
   note: EnergyNote | null;
   acting: Acting;
   onAccept(): void;
   onAction(action: TaskAction, task: PlanTask): void;
+  onAnswer(action: SwapAction, swapId: string): void;
+  onOffer(offeredTaskId: string, requestedTaskId: string): Promise<void>;
 }) {
   const { t, locale } = useI18n();
+  // The Task a Swap is being offered for and who holds it, both known at the tap. One dialog for the whole plan,
+  // mounted only after a tap on Swap.
+  const [offer, setOffer] = useState<{ task: PlanTask; holderId: string } | null>(null);
   // The chip's note picks the reason for an empty list, so the two can never disagree.
   const reason = note && noTasksReason(note);
   // Every button waits while anything runs; only the pressed one shows its spinner.
   const busy = acting !== null;
   const proposed = plan.mine.filter((task) => !task.committed).length;
-  const card = (task: PlanTask, role: TaskRole) => (
+  const card = (task: PlanTask, role: TaskRole, holderId?: string) => (
     <TaskCard
       key={task.id}
       task={task}
@@ -157,6 +169,11 @@ function PlanView({
       busy={busy}
       pending={pendingAction(acting, task.id)}
       onAction={onAction}
+      onSwap={
+        role === "other" && holderId !== undefined && canOfferFor(plan, task)
+          ? () => setOffer({ task, holderId })
+          : undefined
+      }
     />
   );
 
@@ -173,6 +190,13 @@ function PlanView({
           {t("dayplan.rejected")}
         </p>
       )}
+
+      <OfferGroup
+        offers={plan.planned ? plan.swaps.incoming : []}
+        direction="incoming"
+        acting={acting}
+        onAnswer={onAnswer}
+      />
 
       {plan.planned && (
         <div>
@@ -196,6 +220,13 @@ function PlanView({
         </div>
       )}
 
+      <OfferGroup
+        offers={plan.planned ? plan.swaps.outgoing : []}
+        direction="outgoing"
+        acting={acting}
+        onAnswer={onAnswer}
+      />
+
       {plan.planned && plan.others.length > 0 && (
         <div>
           <GroupHeading>{t("dayplan.others.heading")}</GroupHeading>
@@ -206,7 +237,7 @@ function PlanView({
                   <ResidentLabel residentId={other.residentId} />
                 </h4>
                 <ul className={LIST}>
-                  {other.tasks.map((task) => card(task, "other"))}
+                  {other.tasks.map((task) => card(task, "other", other.residentId))}
                 </ul>
               </section>
             ))}
@@ -224,6 +255,16 @@ function PlanView({
           </ul>
         )}
       </div>
+
+      {offer && (
+        <OfferSwapDialog
+          requested={offer.task}
+          holderId={offer.holderId}
+          options={offerableTasks(plan)}
+          offer={onOffer}
+          onClose={() => setOffer(null)}
+        />
+      )}
 
       {plan.doneToday.length > 0 && (
         <div>

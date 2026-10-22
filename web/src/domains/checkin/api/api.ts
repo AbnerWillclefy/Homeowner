@@ -1,4 +1,5 @@
-import { authedFetch } from "../../auth/api/request";
+import type { AxiosRequestConfig } from "axios";
+import { authedRequest } from "../../auth/api/client";
 
 export const LEVELS = ["drained", "low", "normal", "energized"] as const;
 /** How much Energy a Resident says they have today. */
@@ -38,15 +39,15 @@ function parseCheckIn(body: unknown): CheckIn | null {
   return { date, checkedIn, level: level as Level | null, restrictions: restrictions as string[] };
 }
 
-async function request(init?: RequestInit): Promise<SaveCheckInResult> {
+async function request(init?: AxiosRequestConfig): Promise<SaveCheckInResult> {
   try {
-    const result = await authedFetch("/home/check-in", init);
+    const result = await authedRequest({ ...init, url: "/home/check-in" });
     if (result.kind === "not-signed-in") return result;
     const { status } = result.response;
     if (status === 404) return { kind: "none" };
     if (status === 400) return { kind: "invalid" };
     if (status !== 200) return { kind: "error" };
-    const checkIn = parseCheckIn(await result.response.json());
+    const checkIn = parseCheckIn(result.response.data);
     return checkIn ? { kind: "ok", checkIn } : { kind: "error" };
   } catch {
     return { kind: "offline" };
@@ -60,7 +61,6 @@ export const getCheckIn = (): Promise<CheckInResult> => request() as Promise<Che
 export function putCheckIn(level: Level, restrictions: readonly string[]): Promise<SaveCheckInResult> {
   return request({
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ level, restrictions }),
+    data: { level, restrictions },
   });
 }

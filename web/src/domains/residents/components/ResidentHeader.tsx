@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useI18n } from "../../../shared/i18n";
+import { PageFetchingSlot } from "../../../shared/ui/PageLoading";
 import { StatTile } from "../../../shared/ui/StatTile";
 import type { ResidentDetail } from "../api/api";
 import { Avatar } from "./Avatar";
@@ -24,7 +25,19 @@ export function ResidentHeader({ resident }: { resident: ResidentDetail }) {
     <>
       <div className={HEADER_COLUMN}>
         <Avatar size="lg" resident={resident} />
-        <h2 ref={heading} tabIndex={-1} className={`mt-1 mb-0 text-3xl leading-tight font-bold [overflow-wrap:anywhere] ${NAME_HEIGHT}`}>{resident.name}</h2>
+        {/* The name keeps the middle: the fixed slot on the right shows the refresh indicator, and an empty
+            twin on the left of the same width keeps the name centred. */}
+        <div className="flex w-full items-start gap-2">
+          <span aria-hidden="true" className="w-4 shrink-0" />
+          <h2
+            ref={heading}
+            tabIndex={-1}
+            className={`mt-1 mb-0 min-w-0 flex-1 text-3xl leading-tight font-bold [overflow-wrap:anywhere] ${NAME_HEIGHT}`}
+          >
+            {resident.name}
+          </h2>
+          <PageFetchingSlot />
+        </div>
       </div>
       <div className={STAT_GRID}>
         <StatTile value={resident.streak} label={t("resident.streak", { count: resident.streak })} />

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { useShell } from "../../../app/components/ShellContext";
+import { useQueryClient } from "@tanstack/react-query";
 import type { MessageKey } from "../../../shared/i18n";
 import { useSubmitOnce } from "../../../shared/ui/useSubmitOnce";
+import { savePhoto } from "../api/cacheWrites";
 import { confirmUpload, putToStorage, removePhoto, requestUpload } from "../api/photoApi";
 import { preparePhoto } from "../logic/browserImage";
 
@@ -34,12 +35,12 @@ function previewOf(state: PhotoState): { blob: Blob; previewUrl: string } | null
 /**
  * The photo area of the edit screen. Nothing is sent before Save. Save asks for an upload, puts the photo in
  * storage and confirms it; the current photo changes only when the confirm answers 200, so a failure at any step
- * leaves `me` as it was. On success the User gets the new URL through the shell (the Me header and Today change
- * with no reload) and the Residents list is refreshed. Preview URLs are revoked when they are replaced and on
+ * leaves `me` as it was. On success the `me` cache gets the new URL via `savePhoto` (the Me header and Today change
+ * with no reload) and the Residents are marked stale. Preview URLs are revoked when they are replaced and on
  * unmount.
  */
 export function usePhotoUpload() {
-  const shell = useShell();
+  const queryClient = useQueryClient();
   const [state, setState] = useState<PhotoState>({ kind: "idle" });
   /** Why a choice or a removal did not work; the current photo is untouched. */
   const [problem, setProblem] = useState<MessageKey | null>(null);
@@ -90,8 +91,7 @@ export function usePhotoUpload() {
     if (confirmed.kind !== "ok") return fail(confirmed.kind);
 
     const { photoUrl } = confirmed;
-    shell.me.update((current) => ({ ...current, photoUrl }));
-    shell.residents.reload();
+    await savePhoto(queryClient, photoUrl);
     setState({ kind: "idle" });
   });
 
@@ -102,8 +102,7 @@ export function usePhotoUpload() {
       setProblem(result.kind === "photos-off" ? "profile.photo.off" : "profile.photo.removeError");
       return;
     }
-    shell.me.update((current) => ({ ...current, photoUrl: null }));
-    shell.residents.reload();
+    await savePhoto(queryClient, null);
   });
 
   return {

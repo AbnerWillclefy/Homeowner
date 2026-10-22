@@ -1,3 +1,4 @@
+import type { QueryViewState } from "../../../shared/query/view";
 import type { CheckIn, Failure, Level } from "../api/api";
 
 /** Why a save did not go through. `invalid` is the API refusing values the form should never send. */
@@ -8,23 +9,16 @@ export type CheckInState =
   | { kind: "failed"; reason: Failure["kind"] | "none" }
   | { kind: "ready"; checkIn: CheckIn };
 
-export type CheckInAction =
-  | { type: "load" }
-  | { type: "loaded"; checkIn: CheckIn }
-  | { type: "load-failed"; reason: Failure["kind"] | "none" }
-  | { type: "saved"; checkIn: CheckIn };
-
-export function checkInReducer(state: CheckInState, action: CheckInAction): CheckInState {
-  switch (action.type) {
-    case "load":
-      return { kind: "loading" };
-    case "loaded":
-      return { kind: "ready", checkIn: action.checkIn };
-    case "load-failed":
-      return { kind: "failed", reason: action.reason };
-  }
-  if (state.kind !== "ready") return state;
-  return { kind: "ready", checkIn: action.checkIn };
+/** The Check-in card's state from the two reads it needs. The Check-in's failure is reported before the Demand list's. */
+export function checkInStateOf(
+  checkIn: QueryViewState<CheckIn | null>,
+  demands: QueryViewState<string[]>,
+): CheckInState {
+  if (checkIn.kind === "failed") return checkIn;
+  if (demands.kind === "failed") return demands;
+  if (checkIn.kind === "loading" || demands.kind === "loading") return { kind: "loading" };
+  // Null is a 404: the caller has no Home, which this section treats as a failed load.
+  return checkIn.data === null ? { kind: "failed", reason: "none" } : { kind: "ready", checkIn: checkIn.data };
 }
 
 export type CheckInView = "loading" | "failed" | "prompt" | "summary";

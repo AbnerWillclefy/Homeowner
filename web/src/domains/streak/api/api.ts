@@ -1,4 +1,4 @@
-import { authedFetch } from "../../auth/api/request";
+import { authedRequest } from "../../auth/api/client";
 
 /** The signed-in Resident's current Streak, in days. */
 export interface Streak {
@@ -26,12 +26,12 @@ function parseStreak(body: unknown): Streak | null {
 /** Reads `GET /home/streak`. A Streak of 0 is an ok result, not a failure. */
 export async function getStreak(): Promise<StreakResult> {
   try {
-    const result = await authedFetch("/home/streak");
+    const result = await authedRequest({ url: "/home/streak" });
     if (result.kind === "not-signed-in") return result;
     const { status } = result.response;
     if (status === 404) return { kind: "none" };
     if (status !== 200) return { kind: "error" };
-    const streak = parseStreak(await result.response.json());
+    const streak = parseStreak(result.response.data);
     return streak ? { kind: "ok", streak } : { kind: "error" };
   } catch {
     return { kind: "offline" };

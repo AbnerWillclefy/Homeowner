@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { useShell } from "../../../app/components/ShellContext";
+import { useQueryClient } from "@tanstack/react-query";
 import { ME_PATH } from "../../../app/logic/routes";
 import type { MessageKey } from "../../../shared/i18n";
 import { useSubmitOnce } from "../../../shared/ui/useSubmitOnce";
 import { setName, type SetNameResult } from "../api/api";
+import { saveMe } from "../api/cacheWrites";
 import { checkName, NAME_MAX, type NameCheck } from "../logic/nameRules";
 
 /** The words for each way a save can fail; `ok` has none. */
@@ -20,11 +21,11 @@ const PROBLEM_KEY: Record<Exclude<SetNameResult["kind"], "ok">, MessageKey> = {
  * The state of the name field on the edit screen. The typed value is never reset by a failure, so a retry sends
  * exactly what was typed. The length is checked on every keystroke with the server's own rule, so a name that is
  * too long is stopped before any request; the API's `too_long` and `invalid` answers are shown the same way.
- * On success the User the API answered goes into the shell (so Me and Today's greeting change with no reload),
- * the Residents list is refreshed (the name is shown to housemates) and the screen returns to Me.
+ * On success the User the API answered goes into the `me` cache (so Me and Today's greeting change with no reload),
+ * the Residents are marked stale (the name is shown to housemates) and the screen returns to Me.
  */
 export function useNameForm(initial: string) {
-  const { me, residents } = useShell();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [value, setValue] = useState(initial);
   const [problem, setProblem] = useState<MessageKey | null>(null);
@@ -36,8 +37,7 @@ export function useNameForm(initial: string) {
     if (check.kind === "too_long") return;
     const result = await setName(check.kind === "ok" ? check.name : null);
     if (result.kind === "ok") {
-      me.set(result.me);
-      residents.reload();
+      await saveMe(queryClient, result.me);
       void navigate(ME_PATH);
       return;
     }

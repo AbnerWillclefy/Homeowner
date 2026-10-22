@@ -1,9 +1,36 @@
 export type TaskRole = "mine" | "other" | "pool";
 export type TaskAction = "accept" | "refuse" | "done" | "take";
+/** A button on a card: a Task action, or Swap, which opens a dialog and calls nothing by itself. */
+export type CardAction = TaskAction | "swap";
 export type ActionSlot = "start" | "end";
 
-/** The action in flight: one on a Task, or Accept all, which belongs to no card. */
-export type Acting = { taskId: string; action: TaskAction } | { taskId: null; action: "acceptAll" } | null;
+export type SwapAction = "acceptSwap" | "declineSwap" | "cancelSwap";
+
+/** Every action that runs on a Swap; `Record` makes a new action fail the typecheck until it is listed here. */
+const IS_SWAP_ACTION: Record<NonNullable<Acting>["action"], boolean> = {
+  accept: false,
+  refuse: false,
+  done: false,
+  take: false,
+  acceptAll: false,
+  offerSwap: true,
+  acceptSwap: true,
+  declineSwap: true,
+  cancelSwap: true,
+};
+
+export const isSwapAction = (action: NonNullable<Acting>["action"]): boolean => IS_SWAP_ACTION[action];
+
+/**
+ * The action in flight: one on a Task, Accept all (which belongs to no card), or a Swap action. A Swap action
+ * has no `taskId` on purpose, so no Task card can mistake it for its own.
+ */
+export type Acting =
+  | { taskId: string; action: TaskAction }
+  | { taskId: null; action: "acceptAll" }
+  | { action: "offerSwap"; offeredTaskId: string; requestedTaskId: string }
+  | { action: SwapAction; swapId: string }
+  | null;
 
 /**
  * What the Resident can do with a Task in the Day Plan, as slots of the card's button row: `start` holds the
@@ -11,17 +38,22 @@ export type Acting = { taskId: string; action: TaskAction } | { taskId: null; ac
  * says whether to show the Committed mark, which the card puts first in the start slot.
  */
 export interface TaskActions {
-  start: TaskAction[];
-  end: TaskAction[];
+  start: CardAction[];
+  end: CardAction[];
   committed: boolean;
 }
 
 /**
  * The buttons a Task gets. `mine` is a Task assigned to the caller: Proposed until they accept it (Refuse,
  * Accept; Done only once it is Committed), then Committed. Pool Tasks can be taken, or done in one step (Done, secondary, at the start), except those that need two
- * people, which the API refuses for now. Other Residents' Tasks are theirs: nothing to do and nothing to say.
+ * people, which the API refuses for now. Other Residents' Tasks are theirs: nothing to do and nothing to say, except Swap
+ * (alone, at the start, a deliberate secondary action) when `canSwap` says the plan allows an offer.
  */
-export function actionsFor(task: { people: number; committed?: boolean }, role: TaskRole): TaskActions {
+export function actionsFor(
+  task: { people: number; committed?: boolean },
+  role: TaskRole,
+  { canSwap = false }: { canSwap?: boolean } = {},
+): TaskActions {
   switch (role) {
     case "mine":
       return task.committed
@@ -32,7 +64,7 @@ export function actionsFor(task: { people: number; committed?: boolean }, role: 
         ? { start: [], end: [], committed: false }
         : { start: ["done"], end: ["take"], committed: false };
     case "other":
-      return { start: [], end: [], committed: false };
+      return { start: canSwap ? ["swap"] : [], end: [], committed: false };
   }
 }
 
@@ -43,5 +75,11 @@ export function variantFor(slot: ActionSlot): "primary" | "secondary" {
 
 /** The action of this card that is in flight, if any. Another card's action, Accept all or none give null. */
 export function pendingAction(acting: Acting, taskId: string): TaskAction | null {
-  return acting && acting.action !== "acceptAll" && acting.taskId === taskId ? acting.action : null;
+  if (!acting || !("taskId" in acting) || acting.taskId === null) return null;
+  return acting.taskId === taskId ? acting.action : null;
+}
+
+/** The Swap action in flight on this offer, if any. Another offer's action, a Task action or none give null. */
+export function pendingSwap(acting: Acting, swapId: string): SwapAction | null {
+  return acting && "swapId" in acting && acting.swapId === swapId ? acting.action : null;
 }

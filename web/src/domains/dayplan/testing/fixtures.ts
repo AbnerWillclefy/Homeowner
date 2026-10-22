@@ -27,6 +27,7 @@ export function dayPlan(overrides: Partial<DayPlan> = {}): DayPlan {
     others: [],
     pool: [],
     doneToday: [],
+    swaps: { incoming: [], outgoing: [] },
     ...overrides,
   };
 }

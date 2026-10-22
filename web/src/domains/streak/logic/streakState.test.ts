@@ -1,33 +1,43 @@
 import { describe, expect, it } from "vitest";
-import type { StreakResult } from "../api/api";
-import { afterStreakAnswer, INITIAL_STREAK_STATE } from "./streakState";
+import type { Streak } from "../api/api";
+import { streakStateOf, type StreakSnapshot } from "./streakState";
 
-const ok: StreakResult = { kind: "ok", streak: { current: 4, todayGrew: true } };
+const STREAK: Streak = { current: 4, todayGrew: true };
+const snapshot = (over: Partial<StreakSnapshot>): StreakSnapshot => ({
+  data: undefined,
+  isPending: true,
+  fetchStatus: "fetching",
+  ...over,
+});
 
-describe("afterStreakAnswer", () => {
-  it("starts loading with no Streak", () => {
-    expect(INITIAL_STREAK_STATE).toEqual({ streak: null, loading: true });
+describe("streakStateOf", () => {
+  it("is loading with no Streak until the first answer", () => {
+    expect(streakStateOf(snapshot({}))).toEqual({ streak: null, loading: true });
   });
 
-  it("ends loading with the Streak on a first ok answer", () => {
-    expect(afterStreakAnswer(INITIAL_STREAK_STATE, ok)).toEqual({ streak: { current: 4, todayGrew: true }, loading: false });
+  it("ends loading with the Streak on the first answer", () => {
+    expect(streakStateOf(snapshot({ data: STREAK, isPending: false, fetchStatus: "idle" }))).toEqual({
+      streak: STREAK,
+      loading: false,
+    });
   });
 
-  it.each<StreakResult>([{ kind: "none" }, { kind: "not-signed-in" }, { kind: "offline" }, { kind: "error" }])(
-    "ends loading with no Streak when the first answer is $kind",
-    (failure) => {
-      expect(afterStreakAnswer(INITIAL_STREAK_STATE, failure)).toEqual({ streak: null, loading: false });
-    },
-  );
-
-  it("keeps the last number when a reload fails", () => {
-    const shown = afterStreakAnswer(INITIAL_STREAK_STATE, ok);
-    expect(afterStreakAnswer(shown, { kind: "offline" })).toEqual(shown);
+  it("ends loading with no Streak when the first answer failed or the caller has no Home", () => {
+    expect(streakStateOf(snapshot({ isPending: false, fetchStatus: "idle" }))).toEqual({ streak: null, loading: false });
+    expect(streakStateOf(snapshot({ data: null, isPending: false, fetchStatus: "idle" }))).toEqual({
+      streak: null,
+      loading: false,
+    });
   });
 
-  it("replaces the number on a later ok answer and never loads again", () => {
-    const shown = afterStreakAnswer(INITIAL_STREAK_STATE, ok);
-    const next = afterStreakAnswer(shown, { kind: "ok", streak: { current: 5, todayGrew: true } });
-    expect(next).toEqual({ streak: { current: 5, todayGrew: true }, loading: false });
+  it("never loads again on a refetch, and keeps the last number when it fails", () => {
+    expect(streakStateOf(snapshot({ data: STREAK, isPending: false, fetchStatus: "fetching" }))).toEqual({
+      streak: STREAK,
+      loading: false,
+    });
+  });
+
+  it("is not loading when the query is idle without data (a paused or disabled query shows no skeleton)", () => {
+    expect(streakStateOf(snapshot({ fetchStatus: "idle" }))).toEqual({ streak: null, loading: false });
   });
 });

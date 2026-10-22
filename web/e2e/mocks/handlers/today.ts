@@ -35,6 +35,7 @@ export function todayHandlers(api: FakeApi): void {
         others: [],
         pool: [],
         doneToday: [],
+        swaps: { incoming: [], outgoing: [] },
       };
       return json(200, state.dayPlan ?? unplanned);
     }),
