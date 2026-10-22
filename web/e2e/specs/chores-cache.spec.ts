@@ -1,5 +1,6 @@
 import { test, expect } from "../fixtures";
 import { signedInHandlers } from "../mocks/handlers/signedIn";
+import { hold } from "../mocks/hold";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
@@ -56,19 +57,14 @@ test("coming back to Chores shows the cached list at once and the indicator whil
   await shell.openTab(page, "Today");
   await expect(tabs.today.heading(page)).toBeVisible();
 
-  let release!: () => void;
-  const held = new Promise<void>((resolve) => (release = resolve));
-  await page.route(/\/home\/chores$/, async (route) => {
-    await held;
-    await route.fallback();
-  });
+  const held = hold(page, /\/home\/chores$/);
   await shell.openTab(page, "Chores");
 
   // The cached list and the add buttons are there while the read is held: a skeleton would have replaced them.
   for (const name of CHORES) await expect(tabs.chores.chore(page, name)).toBeVisible();
   await expect(page.getByRole("button", { name: "Add a Chore" })).toBeVisible();
   await expect(page.getByRole("img", { name: "Refreshing" })).toBeVisible();
-  release();
+  held.release();
   await expect(page.getByRole("img", { name: "Refreshing" })).toHaveCount(0);
   for (const name of CHORES) await expect(tabs.chores.chore(page, name)).toBeVisible();
 });

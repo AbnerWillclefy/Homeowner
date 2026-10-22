@@ -1,5 +1,6 @@
 import { test, expect } from "../fixtures";
 import { signedInHandlers } from "../mocks/handlers/signedIn";
+import { hold } from "../mocks/hold";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
@@ -29,19 +30,13 @@ test("a page visited before opens at once with the indicator while the read is h
   await page.getByRole("link", { name: "Your Home" }).click();
   await expect(ana).toBeVisible();
 
-  let release!: () => void;
-  const held = new Promise<void>((resolve) => (release = resolve));
-  await page.route(/\/home\/residents\/resident-2$/, async (route) => {
-    if (route.request().resourceType() === "document") return route.fallback();
-    await held;
-    await route.fallback();
-  });
+  const held = hold(page, /\/home\/residents\/resident-2$/);
   await ana.click();
 
   await expect(page.getByRole("heading", { name: "Ana Souza", level: 2 })).toBeVisible();
   await expect(page.getByTestId("resident-skeleton")).toHaveCount(0);
   await expect(page.getByRole("img", { name: "Refreshing" })).toBeVisible();
-  release();
+  held.release();
   await expect(page.getByRole("img", { name: "Refreshing" })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Ana Souza", level: 2 })).toBeVisible();
 });

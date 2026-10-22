@@ -22,7 +22,7 @@ function TaskCardSkeleton() {
 /** What Today's Day Plan section shows while its first load runs: a group heading and three Task cards. */
 export function DayPlanSkeleton() {
   return (
-    <div aria-hidden="true" className="flex flex-col gap-3">
+    <div aria-hidden="true" data-testid="day-plan-skeleton" className="flex flex-col gap-3">
       <SkeletonBar className="mb-1 h-6 w-1/2" />
       <TaskCardSkeleton />
       <TaskCardSkeleton />
