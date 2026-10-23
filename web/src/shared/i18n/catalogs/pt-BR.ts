@@ -491,7 +491,22 @@ export const ptBR: Messages = {
   "startChoice.done.close": "Entendi",
 
   // Streak
-  "streak.heading": "Sequência",
+  "streak.button": {
+    one: "Sequência: {count} dia",
+    other: "Sequência: {count} dias",
+  },
+  "streak.button.zero": "Sequência: 0 dias",
+  "streak.stat": {
+    one: "dia de sequência",
+    other: "dias de sequência",
+  },
+  "streak.stat.zero": "dias de sequência",
+  "streak.dialog.title": "Sua sequência",
+  "streak.rule.grow": "Concluir uma tarefa no dia aumenta a sequência.",
+  "streak.rule.pause": "Um dia sem tarefas assumidas, ou esgotado, pausa a sequência.",
+  "streak.rule.break": "Assumir tarefas e não concluir nenhuma quebra a sequência.",
+  "streak.rule.refuse": "Recusar ou ignorar uma tarefa proposta nunca quebra a sequência.",
+  "streak.close": "Fechar",
   "streak.days": {
     one: "Sequência de {count} dia",
     other: "Sequência de {count} dias",
