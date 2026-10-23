@@ -35,9 +35,10 @@ jobs:
 
       - name: Read the tier and check the description
         id: risk
+        # Its key=value lines (declared, floor, effective, reason, problem) are the step's output
         run: |
           .github/scripts/pr-risk.sh "$PR" | tee result.txt
-          echo "effective=$(sed -n 's/^effective=//p' result.txt)" >> "$GITHUB_OUTPUT"
+          grep '^effective=' result.txt >> "$GITHUB_OUTPUT"
 
       - name: Label the pull request with its tier
         env:
@@ -53,9 +54,11 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/issues/$PR/labels" -f "labels[]=risk:$TIER" --silent
 
       - name: Fail on a missing or understated tier
+        env:
+          TIER: ${{ steps.risk.outputs.effective }}
         run: |
           {
-            echo "### Risk: $(sed -n 's/^effective=//p' result.txt)"
+            echo "### Risk: $TIER"
             sed -n 's/^reason=/- floor /p' result.txt
             sed -n 's/^problem=/- **to fix:** /p' result.txt
           } >> "$GITHUB_STEP_SUMMARY"
