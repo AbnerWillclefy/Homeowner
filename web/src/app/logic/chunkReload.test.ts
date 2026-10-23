@@ -84,6 +84,21 @@ describe("createChunkRecovery.load", () => {
     expect(reload).not.toHaveBeenCalled();
   });
 
+  it("keeps the marker and never settles when a preload error already started the reload", async () => {
+    // Vite swallows a prevented preload error and lets the import resolve with nothing.
+    const { storage, reload, recovery } = setup();
+    const settled = vi.fn();
+    const loading = recovery.load(async () => {
+      recovery.onPreloadError({ preventDefault: () => {} });
+      return undefined;
+    });
+    void loading.then(settled, settled);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(settled).not.toHaveBeenCalled();
+    expect(storage.getItem(CHUNK_RELOAD_KEY)).toBe(String(NOW));
+  });
+
   it("reloads only once when two loads fail together", async () => {
     const { reload, recovery } = setup();
     void recovery.load(() => Promise.reject(new Error("a")));

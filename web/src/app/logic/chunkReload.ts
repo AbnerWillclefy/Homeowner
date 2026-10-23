@@ -63,6 +63,9 @@ export function createChunkRecovery({ storage, now, reload }: Deps) {
     async load<T>(importer: () => Promise<T>): Promise<T> {
       try {
         const loaded = await importer();
+        // A preload error that was prevented makes Vite resolve the import with nothing: the reload is on its
+        // way, and the marker must survive it, or the next load would reload again and loop.
+        if (reloading) return new Promise<T>(() => {});
         clearMarker(storage);
         return loaded;
       } catch (error) {

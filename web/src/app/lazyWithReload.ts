@@ -17,6 +17,8 @@ export const chunkRecovery = createChunkRecovery({
  * `React.lazy` for a screen's chunk. A chunk that fails to load reloads the page once; a second failure is thrown
  * to the nearest `ChunkErrorBoundary`. Declare it at module level, never inside a component.
  */
-export function lazyWithReload<T extends ComponentType<never>>(importer: () => Promise<{ default: T }>) {
+// `any` props, as React's own `lazy` has: the component's props are kept by T.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function lazyWithReload<T extends ComponentType<any>>(importer: () => Promise<{ default: T }>) {
   return lazy(() => chunkRecovery.load(importer));
 }

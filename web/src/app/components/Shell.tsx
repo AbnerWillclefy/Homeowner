@@ -7,17 +7,21 @@ import { useMe } from "../../domains/profile/hooks/useMe";
 import { useResidents } from "../../domains/residents/hooks/useResidents";
 import { useI18n } from "../../shared/i18n";
 import { useInvite } from "../../domains/invite/components/PendingInviteProvider";
-import { JoinInvite } from "../../domains/invite/components/JoinInvite";
-import { RatingStep } from "../../domains/invite/components/RatingStep";
 import type { JoinOutcome } from "../../domains/invite/hooks/useJoinInvite";
 import { StartChoice } from "../../domains/startchoice/components/StartChoice";
+import { lazyWithReload } from "../lazyWithReload";
 import { BottomNav } from "./BottomNav";
+import { LazyDialog } from "./LazyPage";
 import { dialogToShow } from "../logic/dialogToShow";
 import { PageFrame } from "./PageFrame";
 import { useSession } from "./SessionProvider";
 import { ShellContext } from "./ShellContext";
 import { TODAY_PATH } from "../logic/routes";
 import { useFocusOnNavigate } from "../hooks/useFocusOnNavigate";
+
+// The dialogs load on demand: most launches never show them.
+const JoinInvite = lazyWithReload(() => import("../../domains/invite/components/JoinInvite").then((module) => ({ default: module.JoinInvite })));
+const RatingStep = lazyWithReload(() => import("../../domains/invite/components/RatingStep").then((module) => ({ default: module.RatingStep })));
 
 /**
  * The app once onboarding is done: the current tab, the bottom nav, and the dialogs over Today. The Home loads
@@ -61,9 +65,15 @@ export function Shell() {
         <BottomNav />
       </div>
       {dialog === "join" && invite.token !== null && (
-        <JoinInvite token={invite.token} onDismiss={invite.clear} onFinished={finishJoin} />
+        <LazyDialog>
+          <JoinInvite token={invite.token} onDismiss={invite.clear} onFinished={finishJoin} />
+        </LazyDialog>
       )}
-      {dialog === "rating" && <RatingStep onClose={session.closeRating} />}
+      {dialog === "rating" && (
+        <LazyDialog>
+          <RatingStep onClose={session.closeRating} />
+        </LazyDialog>
+      )}
       {dialog === "start-choice" && <StartChoice onDecided={session.decide} />}
     </ShellContext.Provider>
   );
