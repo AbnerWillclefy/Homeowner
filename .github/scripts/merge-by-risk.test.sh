@@ -102,16 +102,21 @@ else echo "ok   an API error fails the run after sweeping every pull request"; f
 reset; if "$here/merge-by-risk.sh" 7 >/dev/null 2>&1; then echo "ok   a merge exits 0"; else echo "FAIL a merge should exit 0"; failures=$((failures + 1)); fi
 reset; set_tier high; if "$here/merge-by-risk.sh" 7 >/dev/null 2>&1; then echo "ok   a gate not met exits 0"; else echo "FAIL a gate not met should exit 0"; failures=$((failures + 1)); fi
 
-# The names merge-by-risk depends on must exist, or it waits forever or never wakes
+# The names merge-by-risk depends on must exist, or it waits forever or never wakes, and the
+# workflow of every required check must wake it
 workflows="$here/../workflows"
+triggers=$(sed -n 's/^ *workflows: \[\(.*\)\]$/\1/p' "$workflows/merge-by-risk.yml" | tr ',' '\n' | sed 's/^ *"//; s/" *$//')
 for name in $(sed -n 's/^required_checks=(\(.*\))$/\1/p' "$here/merge-by-risk.sh"); do
-  if grep -qE "^  $name:\$|^    name: $name\$" "$workflows"/*.yml; then echo "ok   required check $name is a job"
-  else echo "FAIL required check $name is not a job in .github/workflows"; failures=$((failures + 1)); fi
+  file=$(grep -lE "^  $name:\$|^    name: $name\$" "$workflows"/*.yml | head -n 1 || true)
+  if [[ -z "$file" ]]; then echo "FAIL required check $name is not a job in .github/workflows"; failures=$((failures + 1)); continue; fi
+  wf=$(sed -n 's/^name: *//p' "$file" | head -n 1)
+  if grep -qxF "$wf" <<<"$triggers"; then echo "ok   required check $name runs in \"$wf\", which wakes the merger"
+  else echo "FAIL required check $name runs in \"$wf\", which is missing from merge-by-risk.yml's workflows list"; failures=$((failures + 1)); fi
 done
 while read -r wf; do
   if grep -qxF "name: $wf" "$workflows"/*.yml; then echo "ok   trigger workflow \"$wf\" exists"
   else echo "FAIL merge-by-risk.yml waits on a workflow named \"$wf\" that does not exist"; failures=$((failures + 1)); fi
-done < <(sed -n 's/^ *workflows: \[\(.*\)\]$/\1/p' "$workflows/merge-by-risk.yml" | tr ',' '\n' | sed 's/^ *"//; s/" *$//')
+done <<<"$triggers"
 
 if (( failures )); then echo "$failures failed"; exit 1; fi
 echo "all passed"

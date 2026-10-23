@@ -131,6 +131,13 @@ run_case "renaming sign-in code to a test name is still high" \
   "$(files "$(jq -n '{filename: "backend/internal/platform/auth/auth_test.go", previous_filename: "backend/internal/platform/auth/auth.go", status: "renamed"}')")" "$(complete_body high)" \
   "floor=high"
 
+# The case arms in floor_for are ordered: protected paths, then the test exemption, then medium.
+# These pin that order, so a reorder fails here.
+run_case "a test under identity stays high (above the exemption)" \
+  "$(files "$(file backend/internal/identity/identity_test.go modified)")" "$(complete_body high)" "floor=high"
+run_case "a test under the allocator is exempt (below the exemption)" \
+  "$(files "$(file backend/internal/allocation/plan_test.go modified)")" "$(complete_body low)" "floor=low"
+
 run_case "the allocator is medium" \
   "$(files "$(file backend/internal/allocation/check.go modified)" "$(file backend/internal/llmalloc/llmalloc.go modified)")" "$(complete_body medium)" \
   "floor=medium" "!problem="

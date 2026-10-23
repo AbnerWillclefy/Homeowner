@@ -41,6 +41,8 @@ The check then labels the pull request `risk:low`, `risk:medium` or `risk:high`.
 
 To run it by hand: Actions, **Merge by risk**, Run workflow, optionally with a pull request number.
 
+What counts as a Claude finding is defined twice: in `.github/scripts/claude-findings.sh` and in the gate of `agent-review-fix.yml`, which only a human may edit. Keep the two the same; when that workflow is next edited, it should call the script instead.
+
 A new CI workflow on pull requests must be registered in two places, or low-risk pull requests either merge without it or wait for another wake-up: its workflow name in the `workflows:` list of `merge-by-risk.yml`, and, if it runs on every pull request, its check name in `required_checks` in `merge-by-risk.sh`.
 
 ## Reverting
