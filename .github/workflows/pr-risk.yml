@@ -6,18 +6,21 @@ name: PR risk
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened, ready_for_review]
-  # Re-runs on the maintainer's approval, so merge-by-risk.yml (on workflow_run) wakes up
+  # Re-runs on the maintainer's review, so merge-by-risk.yml (on workflow_run) wakes up
   pull_request_review:
     types: [submitted, dismissed]
-
-concurrency:
-  group: pr-risk-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
 
 jobs:
   pr-risk:
     name: pr-risk
-    if: github.event.pull_request.base.ref == 'main'
+    # Claude's reviews also fire pull_request_review; only the maintainer's matter here
+    if: >-
+      github.event.pull_request.base.ref == 'main' &&
+      (github.event_name == 'pull_request' || github.event.review.user.login == 'AbnerWillclefy')
+    # On the job, so a skipped run for a bot review never cancels a real one
+    concurrency:
+      group: pr-risk-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
