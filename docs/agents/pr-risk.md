@@ -8,7 +8,7 @@ The change sets the tier, not who wrote it. The engineer who opens the pull requ
 
 | Tier | Typical changes | Who merges |
 |---|---|---|
-| `low` | Docs, copy and translations, tests, styling, refactors with no change in behaviour, a small fix with a test that shows it, new behaviour behind a flag that is off | `merge-by-risk.yml`, once every check is green and Claude's latest review of the head commit raised nothing |
+| `low` | Docs, copy and translations, tests, styling, refactors with no change in behaviour, a small fix with a test that shows it, new behaviour behind a flag that is off | `merge-by-risk.yml`, once every check is green, Claude's latest review of the head commit raised nothing, and every Claude review thread is resolved |
 | `medium` | Ordinary product changes: a new screen or endpoint, a changed rule a Resident sees, an additive migration, dependency updates, the API's wiring, the service worker | `merge-by-risk.yml`, under the same conditions plus the maintainer's approval of the head commit |
 | `high` | CI and deploy workflows, the agents' instructions, Terraform, sign-in, operations scripts, a migration that drops, renames or rewrites data or edits an old migration, anything that could lose a Resident's data or lock them out | The maintainer, by hand |
 

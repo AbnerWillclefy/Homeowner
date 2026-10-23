@@ -25,6 +25,7 @@ case "$*" in
   "api "*"/runs?"*) serve runs.json ;;
   "api "*"/comments"*) serve comments.json ;;
   "api "*"/reviews"*) serve reviews.json ;;
+  "api graphql"*) serve threads.json ;;
   *) echo "stub gh: unexpected call: $*" >&2; exit 1 ;;
 esac
 STUB
@@ -52,6 +53,10 @@ reset() {
   echo '{"workflow_runs":[{"conclusion":"success","created_at":"2026-01-01T10:00:00Z"}]}' >"$fix/runs.json"
   echo '[{"user":{"login":"claude[bot]"},"in_reply_to_id":null,"created_at":"2026-01-01T09:00:00Z","id":1}]' >"$fix/comments.json"
   echo '[]' >"$fix/reviews.json"
+  # One resolved Claude thread and one open thread started by the maintainer: neither blocks
+  echo '{"data":{"repository":{"pullRequest":{"reviewThreads":{"nodes":[
+    {"isResolved":true,"comments":{"nodes":[{"author":{"login":"claude"}}]}},
+    {"isResolved":false,"comments":{"nodes":[{"author":{"login":"maintainer"}}]}}]}}}}}' >"$fix/threads.json"
 }
 
 set_tier() { jq --arg b "$(body "$1")" '.body = $b' "$fix/pr.json" >"$fix/t" && mv "$fix/t" "$fix/pr.json"; }
@@ -80,6 +85,8 @@ reset; echo '[{"name":"web-e2e","bucket":"pass","startedAt":"2026-01-01T10:00:00
 reset; echo '[{"user":{"login":"claude[bot]"},"in_reply_to_id":null,"created_at":"2026-01-01T10:01:00Z","id":2}]' >"$fix/comments.json"; expect kept "a Claude finding after the review started"
 reset; echo '[{"user":{"login":"claude[bot]"},"in_reply_to_id":1,"created_at":"2026-01-01T10:01:00Z","id":2},{"user":{"login":"maintainer"},"in_reply_to_id":null,"created_at":"2026-01-01T10:01:00Z","id":3}]' >"$fix/comments.json"; expect merged "replies and the maintainer's comments are not findings"
 reset; echo '{"workflow_runs":[]}' >"$fix/runs.json"; expect kept "no review of the head commit"
+reset; jq '.data.repository.pullRequest.reviewThreads.nodes += [{isResolved: false, comments: {nodes: [{author: {login: "claude"}}]}}]' "$fix/threads.json" >"$fix/t" && mv "$fix/t" "$fix/threads.json"
+expect kept "an older Claude finding is still unresolved, though the latest run is clean"
 reset; set_tier high; expect kept "high"
 reset; echo '[{"filename":".github/workflows/x.yml","status":"modified"}]' >"$fix/files.json"; expect kept "pr-risk reports a problem (low on a workflow)"
 reset; jq '.author.login = "maintainer"' "$fix/pr.json" >"$fix/t" && mv "$fix/t" "$fix/pr.json"; expect kept "the maintainer's own pull request"

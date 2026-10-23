@@ -64,16 +64,20 @@ check_ci_green() {
   done
 }
 
-# Claude's latest review ran on this exact commit and raised nothing
+# Claude's latest review ran on this exact commit and raised nothing, and every earlier finding
+# was answered (its thread resolved)
 check_claude_review_clean() {
-  local review conclusion started findings
+  local review conclusion started findings open
   review=$(gh api "repos/$repo/actions/workflows/claude-code-review.yml/runs?head_sha=$sha&per_page=20" \
     --jq '.workflow_runs | sort_by(.created_at) | last | "\(.conclusion) \(.created_at)"') \
     || failed "Claude's review runs could not be read" || return
   read -r conclusion started <<<"$review"
   [ "$conclusion" = success ] || blocked "Claude has not finished reviewing $sha" || return
   findings=$("$here/claude-findings.sh" "$pr" "$started") || failed "Claude's findings could not be read" || return
-  [ "$findings" = 0 ] || blocked "Claude's latest review has $findings findings"
+  [ "$findings" = 0 ] || blocked "Claude's latest review has $findings findings" || return
+  # Earlier findings stay open until their thread is resolved, even when this run raised nothing
+  open=$("$here/claude-open-threads.sh" "$pr") || failed "Claude's review threads could not be read" || return
+  [ "$open" = 0 ] || blocked "$open of Claude's review threads are unresolved"
 }
 
 # The maintainer's latest verdict: changes requested blocks any tier; medium needs an approval

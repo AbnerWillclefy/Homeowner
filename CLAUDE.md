@@ -21,7 +21,7 @@ Each stage is a workflow in `.github/workflows/` started by a label or an event.
 1. Issue labelled `feature-request`: the architect posts a design overview, the product manager creates the tickets as its sub-issues, and the request becomes an `epic` labelled `needs-refinement`. Epics are not worked directly and stay off the board's columns.
 2. Request labelled `needs-refinement`: the senior engineer refines each of its open tickets and labels them `ready-for-agent`.
 3. Ticket labelled `implement`: the engineers build it and open a pull request (see Working a ticket).
-4. Pull request opened: Claude reviews it, then the engineer applies the valid findings once and labels the pull request `review-addressed`.
+4. Pull request opened: Claude reviews it, then the engineer applies the valid findings once and labels the pull request `review-addressed`. Every finding gets answered: resolve its thread once fixed, or reply why it is rejected and resolve it (`gh api graphql` with `resolveReviewThread`). An unresolved Claude thread blocks the automatic merge.
 5. The pull request's risk tier decides who merges it (`docs/agents/pr-risk.md`): `merge-by-risk.yml` merges `low` once checks and review are clean, and `medium` once the maintainer also approves; the maintainer merges `high`. The deploy to staging runs on the merge.
 
 A change that fits one pull request skips stage 1: file it as a single ticket with acceptance criteria and label it `needs-refinement`. The maintainer brings in both kinds with `/idea` (`.claude/skills/idea/SKILL.md`).
