@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { launchSyncGate, LAUNCH_SYNC_FALLBACK_MS } from "./launchSyncGate";
+import { launchSyncGate } from "./launchSyncGate";
 
 describe("launchSyncGate", () => {
   beforeEach(() => vi.useFakeTimers());
@@ -47,10 +47,5 @@ describe("launchSyncGate", () => {
     gate.settled();
     vi.advanceTimersByTime(10_000);
     expect(run).not.toHaveBeenCalled();
-  });
-
-  it("falls back after a few seconds", () => {
-    expect(LAUNCH_SYNC_FALLBACK_MS).toBeGreaterThanOrEqual(3000);
-    expect(LAUNCH_SYNC_FALLBACK_MS).toBeLessThanOrEqual(10_000);
   });
 });

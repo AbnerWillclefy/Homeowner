@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useId, useMemo, useReducer, useRef, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { FirstLoadSettledContext } from "./FirstLoadSettledContext";
 import { FetchingIndicator } from "./FetchingIndicator";
 import { withReport } from "./loadingReports";
@@ -17,25 +17,30 @@ interface PageLoadingValue {
 
 const PageLoadingContext = createContext<PageLoadingValue | null>(null);
 
+/** The ids of the sections reporting true right now: `active` is whether any does. */
+function useReportSet(): { active: boolean; report: Report } {
+  const [ids, setIds] = useState<ReadonlySet<string>>(new Set());
+  const report = useCallback<Report>((id, on) => setIds((current) => withReport(current, id, on)), []);
+  return { active: ids.size > 0, report };
+}
+
 /**
- * The ids of the sections reporting true right now: `active` is whether any does. The set lives in a ref, updated the
- * moment a section reports, and a counter re-renders; `settled()` reads the same ref, so it never sees a render-old set.
+ * Wraps the loading report to also keep the ids in a ref, updated the moment a section reports: state lags a render
+ * behind, and the first-load check must not mistake that lag for an empty page. Only the effect reads the ref.
  */
-function useReportSet(): { active: boolean; report: Report; settled(): boolean } {
+function useSettledCheck(report: Report): { report: Report; settled(): boolean } {
   const ids = useRef<ReadonlySet<string>>(new Set());
   const heard = useRef(false);
-  const [, rerender] = useReducer((n: number) => n + 1, 0);
-  const report = useCallback<Report>((id, on) => {
-    heard.current = true;
-    const next = withReport(ids.current, id, on);
-    if (next === ids.current) return;
-    ids.current = next;
-    rerender();
-  }, []);
-  // Read during render on purpose: the ref is the one source of truth and the counter only schedules this render.
-  const active = ids.current.size > 0;
+  const tracked = useCallback<Report>(
+    (id, on) => {
+      heard.current = true;
+      ids.current = withReport(ids.current, id, on);
+      report(id, on);
+    },
+    [report],
+  );
   const settled = useCallback(() => heard.current && ids.current.size === 0, []);
-  return { active, report, settled };
+  return { report: tracked, settled };
 }
 
 /**
@@ -84,10 +89,11 @@ function useRegisterReport(hook: string, pick: (page: PageLoadingValue) => Repor
  */
 export function PageLoading({ message, children }: { message: string; children: ReactNode }) {
   const loading = useReportSet();
-  useReportFirstSettle(loading.active, loading.settled);
+  const tracking = useSettledCheck(loading.report);
+  useReportFirstSettle(loading.active, tracking.settled);
   const fetching = useReportSet();
   const show = useDelayedFlag(loading.active);
-  const report = loading.report;
+  const report = tracking.report;
   const reportFetching = fetching.report;
   const isFetching = fetching.active;
   const value = useMemo(
