@@ -18,10 +18,17 @@ interface PageLoadingValue {
 const PageLoadingContext = createContext<PageLoadingValue | null>(null);
 
 /** The ids of the sections reporting true right now: `active` is whether any does. */
-function useReportSet(): { active: boolean; report: Report } {
+function useReportSet(): { active: boolean; report: Report; isEmpty(): boolean } {
   const [ids, setIds] = useState<ReadonlySet<string>>(new Set());
-  const report = useCallback<Report>((id, on) => setIds((current) => withReport(current, id, on)), []);
-  return { active: ids.size > 0, report };
+  // The same set, updated the moment a section reports: state lags a render behind, and the first-load check must
+  // not mistake that lag (sections that have reported but not yet rendered) for an empty page.
+  const live = useRef<ReadonlySet<string>>(ids);
+  const report = useCallback<Report>((id, on) => {
+    live.current = withReport(live.current, id, on);
+    setIds((current) => withReport(current, id, on));
+  }, []);
+  const isEmpty = useCallback(() => live.current.size === 0, []);
+  return { active: ids.size > 0, report, isEmpty };
 }
 
 /**
@@ -30,7 +37,7 @@ function useReportSet(): { active: boolean; report: Report } {
  * Check-in, Day Plan and Streak) is not mistaken for the end. A page whose data was cached never reports loading,
  * so it settles after the first effect pass. Failures count: a failed section reports false.
  */
-function useReportFirstSettle(active: boolean) {
+function useReportFirstSettle(active: boolean, isEmpty: () => boolean) {
   const onSettled = useContext(FirstLoadSettledContext);
   const latest = useRef(onSettled);
   latest.current = onSettled;
@@ -39,11 +46,12 @@ function useReportFirstSettle(active: boolean) {
   useEffect(() => {
     if (active || fired.current) return;
     const timer = setTimeout(() => {
+      if (!isEmpty()) return;
       fired.current = true;
       latest.current();
     }, 0);
     return () => clearTimeout(timer);
-  }, [active]);
+  }, [active, isEmpty]);
 }
 
 /** Reports `on` under this component's own id for as long as it is mounted, and false after. */
@@ -69,7 +77,7 @@ function useRegisterReport(hook: string, pick: (page: PageLoadingValue) => Repor
  */
 export function PageLoading({ message, children }: { message: string; children: ReactNode }) {
   const loading = useReportSet();
-  useReportFirstSettle(loading.active);
+  useReportFirstSettle(loading.active, loading.isEmpty);
   const fetching = useReportSet();
   const show = useDelayedFlag(loading.active);
   const report = loading.report;
