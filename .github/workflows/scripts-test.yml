@@ -3,7 +3,8 @@ name: scripts-test
 # Tests the pipeline scripts in .github/scripts, which decide what merges without a human.
 on:
   pull_request:
-    paths: [".github/scripts/**", ".github/workflows/scripts-test.yml"]
+    # Workflows too: the merge test checks the required checks against the workflow files
+    paths: [".github/scripts/**", ".github/workflows/**"]
 
 permissions:
   contents: read
