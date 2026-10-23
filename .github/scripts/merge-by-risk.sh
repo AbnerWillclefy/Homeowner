@@ -34,7 +34,15 @@ check_basics() {
   [ "$(get .isDraft)" = false ] || blocked "it is a draft" || return
   # No grep -q here: an early exit would break the pipe and, under pipefail, flip the result
   ! get '.labels[].name' | grep -xE 'needs-human|do-not-merge' >/dev/null || blocked "it is labelled needs-human or do-not-merge" || return
-  [ "$(get .mergeable)" = MERGEABLE ] || blocked "GitHub says it is $(get .mergeable)"
+  # GitHub computes mergeable lazily, so it reads UNKNOWN right after a push or a move of main.
+  # With no cron, nothing would retry, so wait for the answer here.
+  local mergeable tries=0
+  mergeable=$(get .mergeable)
+  while [ "$mergeable" = UNKNOWN ] && (( tries++ < 5 )); do
+    sleep "${MERGEABLE_WAIT:-5}"
+    mergeable=$(gh pr view "$pr" -R "$repo" --json mergeable --jq .mergeable) || failed "its mergeability could not be read" || return
+  done
+  [ "$mergeable" = MERGEABLE ] || blocked "GitHub says it is $mergeable"
 }
 
 # The tier is read again with main's script, so a pull request cannot loosen its own rules

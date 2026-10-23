@@ -19,6 +19,8 @@ done
 serve() { jq -r "$filter" "$FIX/$1"; }
 case "$*" in
   "pr merge"*) touch "$FIX/merged" ;;
+  # A mergeable-only read serves the next answer from mergeable.txt (one per line), if present
+  "pr view"*"--json mergeable "*) if [[ -s "$FIX/mergeable.txt" ]]; then head -n 1 "$FIX/mergeable.txt"; sed -i 1d "$FIX/mergeable.txt"; else serve pr.json; fi ;;
   "pr view"*) serve pr.json ;;
   "pr checks"*) serve checks.json ;;
   "api "*"/files"*) serve files.json ;;
@@ -31,7 +33,7 @@ esac
 STUB
 chmod +x "$fix/bin/gh"
 
-export PATH="$fix/bin:$PATH" FIX="$fix" GITHUB_REPOSITORY=o/r AGENT_LOGIN=homeowner-agents MAINTAINER_LOGIN=maintainer
+export PATH="$fix/bin:$PATH" MERGEABLE_WAIT=0 FIX="$fix" GITHUB_REPOSITORY=o/r AGENT_LOGIN=homeowner-agents MAINTAINER_LOGIN=maintainer
 failures=0
 head=abc123
 
@@ -41,7 +43,7 @@ body() { # body <tier>
 
 # Defaults: a low-risk agent pull request, all green, clean review, no maintainer review
 reset() {
-  rm -f "$fix/merged"
+  rm -f "$fix/merged" "$fix/mergeable.txt"
   jq -n --arg b "$(body low)" --arg sha "$head" \
     '{state: "OPEN", author: {login: "homeowner-agents"}, baseRefName: "main", isDraft: false,
       labels: [{name: "review-addressed"}], headRefOid: $sha, mergeable: "MERGEABLE", title: "t", url: "u", body: $b}' >"$fix/pr.json"
@@ -94,6 +96,11 @@ if "$here/merge-by-risk.sh" 7 >"$fix/out" 2>&1 || ! grep "review threads could n
   echo "FAIL more than 100 review threads is an error, not a count"; cat "$fix/out"; failures=$((failures + 1))
 else echo "ok   more than 100 review threads is an error, not a count"; fi
 reset; set_tier high; expect kept "high"
+reset; jq '.mergeable = "UNKNOWN"' "$fix/pr.json" >"$fix/t" && mv "$fix/t" "$fix/pr.json"; printf 'UNKNOWN\nMERGEABLE\n' >"$fix/mergeable.txt"
+expect merged "mergeable is UNKNOWN at first, then MERGEABLE"
+reset; jq '.mergeable = "UNKNOWN"' "$fix/pr.json" >"$fix/t" && mv "$fix/t" "$fix/pr.json"; printf 'UNKNOWN\n%.0s' 1 2 3 4 5 >"$fix/mergeable.txt"
+expect kept "mergeable stays UNKNOWN"
+reset; jq '.mergeable = "CONFLICTING"' "$fix/pr.json" >"$fix/t" && mv "$fix/t" "$fix/pr.json"; expect kept "a conflict"
 reset; echo '[{"filename":".github/workflows/x.yml","status":"modified"}]' >"$fix/files.json"; expect kept "pr-risk reports a problem (low on a workflow)"
 reset; jq '.author.login = "maintainer"' "$fix/pr.json" >"$fix/t" && mv "$fix/t" "$fix/pr.json"; expect kept "the maintainer's own pull request"
 reset; jq '.labels += [{name: "needs-human"}]' "$fix/pr.json" >"$fix/t" && mv "$fix/t" "$fix/pr.json"; expect kept "labelled needs-human"
