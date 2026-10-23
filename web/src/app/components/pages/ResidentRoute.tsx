@@ -11,7 +11,7 @@ import { PageLoading } from "../../../shared/ui/PageLoading";
  * A housemate's page, nested under the Home tab. The back link is outside the Home gate so it is there while the
  * Home loads and when it fails. The id comes from the address; the route always has one.
  */
-export default function ResidentRoute() {
+export function ResidentRoute() {
   const { t } = useI18n();
   const { id } = useParams();
   if (id === undefined) return null;

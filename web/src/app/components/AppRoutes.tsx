@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from "react-router";
 import { ChoresPageSkeleton, HomeSkeleton } from "../../domains/home/components/HomeSkeleton";
-import { lazyNamed, lazyWithReload } from "../lazyWithReload";
+import { lazyNamed } from "../lazyWithReload";
 import { AuthLayout } from "./AuthLayout";
 import { ConfirmPage, SignInPage, SignUpPage } from "./AuthPages";
 import { Guard } from "./Guard";
@@ -13,10 +13,10 @@ import { WelcomeLayout } from "./WelcomeLayout";
 
 // Every screen but Today loads on demand. Declared at module level: a lazy() inside a component would be a new
 // component type on every render and remount the screen.
-const ChoresPage = lazyWithReload(() => import("./pages/ChoresPage"));
-const HomePage = lazyWithReload(() => import("./pages/HomePage"));
-const ResidentRoute = lazyWithReload(() => import("./pages/ResidentRoute"));
-const MePage = lazyWithReload(() => import("./pages/MePage"));
+const ChoresPage = lazyNamed(() => import("./pages/ChoresPage"), "ChoresPage");
+const HomePage = lazyNamed(() => import("./pages/HomePage"), "HomePage");
+const ResidentRoute = lazyNamed(() => import("./pages/ResidentRoute"), "ResidentRoute");
+const MePage = lazyNamed(() => import("./pages/MePage"), "MePage");
 const MeEdit = lazyNamed(() => import("../../domains/profile/components/MeEdit"), "MeEdit");
 
 /**

@@ -5,7 +5,7 @@ import { useI18n } from "../../../shared/i18n";
 import { PageLoading } from "../../../shared/ui/PageLoading";
 
 /** Chores: the list, add and edit. */
-export default function ChoresPage() {
+export function ChoresPage() {
   const { t } = useI18n();
   return (
     <PageLoading message={t("chores.loading")}>

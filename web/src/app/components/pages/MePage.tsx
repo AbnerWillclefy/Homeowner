@@ -11,7 +11,7 @@ import { useAppAuth } from "../AuthProvider";
  * Language), then the account card with sign out last. MePage owns the column, so the cards after
  * the Restrictions still show when the details fail to load.
  */
-export default function MePage() {
+export function MePage() {
   const { t } = useI18n();
   const auth = useAppAuth();
   if (auth.state.kind !== "signed-in") return null;

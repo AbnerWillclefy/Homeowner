@@ -15,7 +15,7 @@ import { useSession } from "../SessionProvider";
 import { useShell } from "../ShellContext";
 
 /** Home: its Residents, the Invite to share, its settings (folded) and Leave last. */
-export default function HomePage() {
+export function HomePage() {
   const { recovered, setRecovered } = useSession();
   const { home } = useShell();
   const { t, locale } = useI18n();
