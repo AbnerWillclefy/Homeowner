@@ -8,7 +8,7 @@
 #   effective=low|medium|high       the higher of the two
 #   reason=<text>                   why the floor is what it is (one line each)
 #   problem=<text>                  what the description is missing (one line each)
-# The tiers and path floors are explained in docs/agents/pr-risk.md; keep both in step.
+# The tiers are explained in docs/agents/pr-risk.md; floor_for below is the only list of path floors.
 set -euo pipefail
 
 pr="$1"

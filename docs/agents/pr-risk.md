@@ -16,14 +16,13 @@ When unsure between two tiers, pick the higher one. A pull request labelled `nee
 
 ## Path floors
 
-`.github/scripts/pr-risk.sh` raises the tier to at least this when a pull request changes these paths. A renamed file counts under its old and new paths. Test files (`*_test.go`, `*.test.ts(x)`, `web/e2e/`) do not raise it, except under the `high` paths, which have no exemption.
+Some changes are risky whatever the description says, so the changed paths set a floor the tier cannot go under. The exact list is `floor_for` in `.github/scripts/pr-risk.sh`, the one place the rules live; each `pr-risk` run prints the floor it found and why. In short:
 
-| Floor | Paths |
-|---|---|
-| `high` | `.github/`, `.claude/`, `CLAUDE.md`, `infra/`, `scripts/`, sign-in and access (`backend/internal/platform/auth/`, `backend/internal/identity/`, `backend/internal/users/`, `backend/internal/invites/`, `web/src/domains/auth/`, `AuthProvider.tsx`, `SessionProvider.tsx`, `web/src/shared/api/http.ts`), a migration that is edited or whose added lines drop, rename, truncate, delete rows, or change a column's type or nullability |
-| `medium` | a new migration in `backend/migrations/`, the allocator and its referee (`backend/internal/allocation/`, `backend/internal/llmalloc/`), `backend/cmd/`, `backend/internal/platform/`, `backend/Dockerfile`, `docker-compose.yml`, `go.mod`/`go.sum`, `package.json`/`package-lock.json`, `web/src/sw.ts`, `web/src/sw/`, `web/vite.config.ts` |
+- **high**: CI and the pipeline (`.github/`, `.claude/`, `CLAUDE.md`), Terraform (`infra/`), operations scripts, sign-in, accounts and invites, and a migration that edits an old one or drops, renames or rewrites data. Test files there count too.
+- **medium**: a new migration, the allocator and its referee (ADR 0004), how the API starts or is wired, dependencies, and the service worker.
+- Anything else has no floor. A renamed file counts under its old and new paths, and a migration GitHub returns no diff for counts as high.
 
-A path missing from this table can still be medium or high: the floor is a minimum, and the engineer's judgement against the table above decides the rest. A migration whose diff GitHub does not return (a very large one) counts as high. Only a migration's Up section is checked for destructive SQL. `INSERT … SELECT` stays medium, because it adds rows without changing existing ones. `.github/scripts/pr-risk.test.sh` covers these rules; change it with them.
+A path with no floor can still be medium or high: the engineer judges it against the tiers above. Change `floor_for` and `.github/scripts/pr-risk.test.sh` together.
 
 ## The description
 
