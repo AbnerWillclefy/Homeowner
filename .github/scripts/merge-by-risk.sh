@@ -95,6 +95,9 @@ merge() {
     | curl -sS --fail -X POST -H 'Content-Type: application/json' --data @- "$SLACK_WEBHOOK_URL" || true
 }
 
+for arg in "$@"; do
+  [[ "$arg" =~ ^[0-9]+$ ]] || { echo "::error::not a pull request number: $arg"; exit 1; }
+done
 if (( $# )); then prs=("$@"); else
   mapfile -t prs < <(gh pr list -R "$repo" --base main --state open --author "$AGENT_LOGIN" --json number --jq '.[].number')
 fi

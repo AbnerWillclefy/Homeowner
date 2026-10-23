@@ -44,4 +44,4 @@ jobs:
           MAINTAINER_LOGIN: AbnerWillclefy
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           PR: ${{ inputs.pr }}
-        run: .github/scripts/merge-by-risk.sh $PR
+        run: .github/scripts/merge-by-risk.sh ${PR:+"$PR"}
