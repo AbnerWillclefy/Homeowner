@@ -44,9 +44,10 @@ reset() {
   jq -n --arg b "$(body low)" --arg sha "$head" \
     '{state: "OPEN", author: {login: "homeowner-agents"}, baseRefName: "main", isDraft: false,
       labels: [{name: "review-addressed"}], headRefOid: $sha, mergeable: "MERGEABLE", title: "t", url: "u", body: $b}' >"$fix/pr.json"
-  echo '[{"name":"backend-test","bucket":"pass","startedAt":"2026-01-01T10:00:00Z"},
-         {"name":"pr-risk","bucket":"cancel","startedAt":"2026-01-01T10:00:00Z"},
-         {"name":"pr-risk","bucket":"pass","startedAt":"2026-01-01T10:05:00Z"}]' >"$fix/checks.json"
+  jq -n '[("backend-test", "web-typecheck", "web-e2e", "ui-screenshots", "claude-review", "claude-security-review")
+          | {name: ., bucket: "pass", startedAt: "2026-01-01T10:00:00Z"}]
+        + [{name: "pr-risk", bucket: "cancel", startedAt: "2026-01-01T10:00:00Z"},
+           {name: "pr-risk", bucket: "pass", startedAt: "2026-01-01T10:05:00Z"}]' >"$fix/checks.json"
   echo '[{"filename":"web/src/a.tsx","status":"modified"}]' >"$fix/files.json"
   echo '{"workflow_runs":[{"conclusion":"success","created_at":"2026-01-01T10:00:00Z"}]}' >"$fix/runs.json"
   echo '[{"user":{"login":"claude[bot]"},"in_reply_to_id":null,"created_at":"2026-01-01T09:00:00Z","id":1}]' >"$fix/comments.json"
@@ -72,6 +73,7 @@ reset; set_tier medium; review APPROVED old; expect kept "medium approved on an 
 reset; set_tier medium; review APPROVED "$head"; expect merged "medium approved on the head commit"
 reset; review APPROVED "$head" CHANGES_REQUESTED "$head"; expect kept "changes requested after an approval"
 reset; set_tier medium; review APPROVED "$head" DISMISSED "$head"; expect kept "medium whose approval was dismissed"
+reset; jq 'map(select(.name == "pr-risk"))' "$fix/checks.json" >"$fix/t" && mv "$fix/t" "$fix/checks.json"; expect kept "only pr-risk has run so far"
 reset; echo '[{"name":"web-e2e","bucket":"fail","startedAt":"2026-01-01T10:00:00Z"}]' >"$fix/checks.json"; expect kept "one failing check"
 reset; echo '[{"name":"web-e2e","bucket":"pending","startedAt":"2026-01-01T10:00:00Z"}]' >"$fix/checks.json"; expect kept "one pending check"
 reset; echo '[{"name":"web-e2e","bucket":"pass","startedAt":"2026-01-01T10:00:00Z"},{"name":"web-e2e","bucket":"pending","startedAt":"0001-01-01T00:00:00Z"}]' >"$fix/checks.json"; expect kept "a queued re-run of a passing check"

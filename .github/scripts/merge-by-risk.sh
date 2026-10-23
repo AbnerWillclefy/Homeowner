@@ -42,14 +42,21 @@ check_tier() {
   [[ "$tier" == low || "$tier" == medium ]] || blocked "its tier could not be read"
 }
 
+# Checks that run on every pull request into main, so they must be present and green: GitHub
+# lists a check only once its run exists. Path-filtered ones (infra-check) count only when they run.
+required_checks=(pr-risk backend-test web-typecheck web-e2e ui-screenshots claude-review claude-security-review)
+
 # Any pending run blocks (a queued run has no real start time). Otherwise only the latest run of
 # each check counts, since a superseded run shows as cancelled. gh exits non-zero while any check
-# is pending or failed, so its exit code is ignored and the buckets decide.
+# is pending or failed, so its exit code is ignored and the results decide.
 check_ci_green() {
-  local buckets
-  buckets=$(gh pr checks "$pr" -R "$repo" --json name,bucket,startedAt \
-    --jq 'if any(.[]; .bucket == "pending") then "pending" else group_by(.name) | map(max_by(.startedAt)) | .[].bucket end') || true
-  [ -n "$buckets" ] && ! grep -qvxE 'pass|skipping' <<<"$buckets" || blocked "not every check is green yet"
+  local latest name
+  latest=$(gh pr checks "$pr" -R "$repo" --json name,bucket,startedAt \
+    --jq 'if any(.[]; .bucket == "pending") then "-\tpending" else group_by(.name) | map(max_by(.startedAt)) | .[] | "\(.name)\t\(.bucket)" end') || true
+  [ -n "$latest" ] && ! cut -f2 <<<"$latest" | grep -vxE 'pass|skipping' >/dev/null || blocked "not every check is green yet" || return
+  for name in "${required_checks[@]}"; do
+    grep -qxF "$name"$'\t'pass <<<"$latest" || blocked "$name has not passed on this commit yet" || return
+  done
 }
 
 # Claude's latest review ran on this exact commit and raised nothing
