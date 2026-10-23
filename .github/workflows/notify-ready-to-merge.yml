@@ -28,13 +28,19 @@ jobs:
             echo "SLACK_WEBHOOK_URL is not set; skipping"
             exit 0
           fi
-          # The risk tier says what the maintainer still has to do (merge-by-risk.yml merges the rest);
-          # the maintainer's own pull requests are always merged by hand
-          case "$PR_AUTHOR,$PR_LABELS," in
-            homeowner-agents,*risk:low,*)    icon=':robot_face:'; ask='passed review (risk: low). It merges itself to staging once every check is green.' ;;
-            homeowner-agents,*risk:medium,*) icon=':eyes:'; ask='is ready for your approval (risk: medium). Once you approve, it merges itself to staging.' ;;
-            homeowner-agents,*risk:high,*)   icon=':rotating_light:'; ask='is ready for you to review and merge (risk: high). Its description says why and how to revert.' ;;
-            *)                               icon=':eyes:'; ask='is ready for your review and merge' ;;
+          # The risk tier says what the maintainer still has to do (merge-by-risk.yml merges the rest).
+          # The highest tier wins, since pr-risk.yml adds the new label before removing the old one.
+          # The maintainer's own pull requests are always merged by hand.
+          tier=none
+          for t in low medium high; do
+            grep -qx "risk:$t" <<<"${PR_LABELS//,/$'\n'}" && tier=$t
+          done
+          [ "$PR_AUTHOR" = homeowner-agents ] || tier=none
+          case "$tier" in
+            low)    icon=':robot_face:'; ask='passed review (risk: low). It merges itself to staging once every check is green.' ;;
+            medium) icon=':eyes:'; ask='is ready for your approval (risk: medium). Once you approve, it merges itself to staging.' ;;
+            high)   icon=':rotating_light:'; ask='is ready for you to review and merge (risk: high). Its description says why and how to revert.' ;;
+            *)      icon=':eyes:'; ask='is ready for your review and merge' ;;
           esac
           text=$(printf '%s *PR #%s %s*\n<%s|%s>\nby %s, %s. Claude has reviewed it and the engineer has addressed the review.' \
             "$icon" "$PR_NUMBER" "$ask" "$PR_URL" "$PR_TITLE" "$PR_AUTHOR" "$PR_STATS")
