@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { MeHeaderSkeleton } from "../../domains/profile/components/MeHeaderSkeleton";
 import { ProfileSkeleton } from "../../domains/profile/components/ProfileSkeleton";
 import { useI18n } from "../../shared/i18n";
-import { SkeletonCard } from "../../shared/ui/Skeleton";
+import { SkeletonBar, SkeletonPill } from "../../shared/ui/Skeleton";
 import { SkeletonHeader } from "../../shared/ui/SkeletonHeader";
 import { useShell } from "./ShellContext";
 
@@ -20,12 +20,20 @@ export function MeFallback() {
   );
 }
 
-/** The edit screen: a title and one card for the form. */
+/** The edit screen: the Back link, the title, the photo and the name field, at roughly the loaded sizes. */
 export function MeEditFallback() {
   return (
     <div aria-hidden="true" className="flex flex-col gap-4">
+      <SkeletonPill className="w-24" />
       <SkeletonHeader withLine={false} />
-      <SkeletonCard className="h-40" />
+      <div className="flex flex-col items-center gap-3">
+        <SkeletonBar className="h-5 w-12" />
+        <span className="block size-20 rounded-pill bg-muted/20 motion-safe:animate-pulse" />
+        <SkeletonPill className="w-40" />
+      </div>
+      <SkeletonBar className="h-5 w-16" />
+      <SkeletonPill className="w-full" />
+      <SkeletonPill className="w-full" />
     </div>
   );
 }
