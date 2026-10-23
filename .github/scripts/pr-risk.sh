@@ -37,39 +37,43 @@ fi
 # One record per file, base64 so a name or patch with any character stays one field
 while read -r record; do
   field() { base64 -d <<<"$record" | jq -r "$1"; }
-  file=$(field .filename)
   status=$(field .status)
 
-  # Tests change no behaviour a Resident sees
-  [[ "$file" =~ (_test\.go|\.test\.tsx?)$ || "$file" == web/e2e/* ]] && continue
+  # A rename is judged by both names, so moving a protected file out of its folder still counts
+  for file in "$(field .filename)" "$(field '.previous_filename // ""')"; do
+    [[ -z "$file" ]] && continue
 
-  case "$file" in
-    .github/*)          raise high "$file changes CI, deploys or the pipeline" ;;
-    .claude/*|CLAUDE.md) raise high "$file changes how the agents work" ;;
-    infra/*)            raise high "$file changes AWS infrastructure" ;;
-    scripts/*)          raise high "$file changes an operations script" ;;
-    backend/internal/platform/auth/*|web/src/domains/auth/*)
-                        raise high "$file changes sign-in" ;;
-    backend/migrations/*.sql)
-      patch=$(field '.patch // ""')
-      if [[ "$status" != added ]]; then
-        raise high "$file edits a migration that may already have run"
-      elif [[ -z "$patch" ]]; then
-        # GitHub leaves out the patch of a large diff: fail closed
-        raise high "$file is a migration whose diff GitHub did not return, so it cannot be checked"
-      # Added lines that are not SQL comments; no grep -q, which would break the pipe under pipefail
-      elif grep -E '^\+' <<<"$patch" | grep -vE '^\+[[:space:]]*--' | grep -iE "$destructive_sql" >/dev/null; then
-        raise high "$file drops, renames or rewrites existing data"
-      else
-        raise medium "$file adds a migration"
-      fi ;;
-    backend/cmd/*|backend/internal/platform/*|backend/Dockerfile|docker-compose.yml)
-                        raise medium "$file changes how the API starts or is wired" ;;
-    */go.mod|*/go.sum|*/package.json|*/package-lock.json)
-                        raise medium "$file changes dependencies" ;;
-    web/src/sw.ts|web/src/sw/*|web/vite.config.ts)
-                        raise medium "$file changes the service worker or build, which stay cached on phones" ;;
-  esac
+    # Tests change no behaviour a Resident sees
+    [[ "$file" =~ (_test\.go|\.test\.tsx?)$ || "$file" == web/e2e/* ]] && continue
+
+    case "$file" in
+      .github/*)          raise high "$file changes CI, deploys or the pipeline" ;;
+      .claude/*|CLAUDE.md) raise high "$file changes how the agents work" ;;
+      infra/*)            raise high "$file changes AWS infrastructure" ;;
+      scripts/*)          raise high "$file changes an operations script" ;;
+      backend/internal/platform/auth/*|web/src/domains/auth/*)
+                          raise high "$file changes sign-in" ;;
+      backend/migrations/*.sql)
+        patch=$(field '.patch // ""')
+        if [[ "$status" != added ]]; then
+          raise high "$file edits a migration that may already have run"
+        elif [[ -z "$patch" ]]; then
+          # GitHub leaves out the patch of a large diff: fail closed
+          raise high "$file is a migration whose diff GitHub did not return, so it cannot be checked"
+        # Added lines that are not SQL comments; no grep -q, which would break the pipe under pipefail
+        elif grep -E '^\+' <<<"$patch" | grep -vE '^\+[[:space:]]*--' | grep -iE "$destructive_sql" >/dev/null; then
+          raise high "$file drops, renames or rewrites existing data"
+        else
+          raise medium "$file adds a migration"
+        fi ;;
+      backend/cmd/*|backend/internal/platform/*|backend/Dockerfile|docker-compose.yml)
+                          raise medium "$file changes how the API starts or is wired" ;;
+      */go.mod|*/go.sum|*/package.json|*/package-lock.json)
+                          raise medium "$file changes dependencies" ;;
+      web/src/sw.ts|web/src/sw/*|web/vite.config.ts)
+                          raise medium "$file changes the service worker or build, which stay cached on phones" ;;
+    esac
+  done
 done < <(jq -r '.[] | @base64' <<<"$files")
 
 # --- Declared tier and description -----------------------------------------

@@ -87,6 +87,14 @@ run_case "workflow change declared low is a problem" \
   "$(files "$(file .github/workflows/x.yml modified)")" "$(complete_body low)" \
   "floor=high" "effective=high" "problem=the changed paths make this at least high risk, but the description says low"
 
+run_case "moving a workflow out of .github is high" \
+  "$(files "$(jq -n '{filename: "docs/x.yml", previous_filename: ".github/workflows/x.yml", status: "renamed"}')")" "$(complete_body high)" \
+  "floor=high"
+
+run_case "renaming sign-in code to a test name is still high" \
+  "$(files "$(jq -n '{filename: "backend/internal/platform/auth/auth_test.go", previous_filename: "backend/internal/platform/auth/auth.go", status: "renamed"}')")" "$(complete_body high)" \
+  "floor=high"
+
 run_case "a file name with quotes is read safely" \
   "$(files "$(file 'docs/a "b".md' added)")" "$(complete_body low)" \
   "floor=low" "!problem="
