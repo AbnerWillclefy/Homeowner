@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import App from "./App";
+import { HealthProvider } from "./app/components/HealthProvider";
 import { ToastProvider } from "./shared/ui/ToastProvider";
 import { I18nProvider } from "./shared/i18n";
 import { PendingInviteProvider } from "./domains/invite/components/PendingInviteProvider";
@@ -26,9 +27,12 @@ createRoot(document.getElementById("root")!).render(
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
             <PendingInviteProvider>
-              <BrowserRouter>
-                <App />
-              </BrowserRouter>
+              {/* Above the router: nothing under it can remount the check, so /healthz is asked once per load. */}
+              <HealthProvider>
+                <BrowserRouter>
+                  <App />
+                </BrowserRouter>
+              </HealthProvider>
             </PendingInviteProvider>
           </ToastProvider>
         </QueryClientProvider>
