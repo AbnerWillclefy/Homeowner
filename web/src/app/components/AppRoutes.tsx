@@ -1,13 +1,11 @@
 import { Navigate, Route, Routes } from "react-router";
 import { ChoresPageSkeleton, HomeSkeleton } from "../../domains/home/components/HomeSkeleton";
-import { ResidentPageSkeleton } from "../../domains/residents/components/ResidentPageSkeleton";
-import { BackToHome } from "../../domains/residents/components/BackToHome";
-import { lazyWithReload } from "../lazyWithReload";
+import { lazyNamed, lazyWithReload } from "../lazyWithReload";
 import { AuthLayout } from "./AuthLayout";
 import { ConfirmPage, SignInPage, SignUpPage } from "./AuthPages";
 import { Guard } from "./Guard";
 import { LazyPage } from "./LazyPage";
-import { MeEditFallback, MeFallback } from "./lazyFallbacks";
+import { MeEditFallback, MeFallback, ResidentFallback } from "./lazyFallbacks";
 import { TodayPage } from "./pages";
 import { CHORES_PATH, CONFIRM_PATH, HOME_PATH, ME_EDIT_PATH, ME_PATH, RESIDENT_PATH, SIGN_IN_PATH, SIGN_UP_PATH, TODAY_PATH, WELCOME_PREFIX } from "../logic/routes";
 import { Shell } from "./Shell";
@@ -19,7 +17,7 @@ const ChoresPage = lazyWithReload(() => import("./pages/ChoresPage"));
 const HomePage = lazyWithReload(() => import("./pages/HomePage"));
 const ResidentRoute = lazyWithReload(() => import("./pages/ResidentRoute"));
 const MePage = lazyWithReload(() => import("./pages/MePage"));
-const MeEdit = lazyWithReload(() => import("../../domains/profile/components/MeEdit").then((module) => ({ default: module.MeEdit })));
+const MeEdit = lazyNamed(() => import("../../domains/profile/components/MeEdit"), "MeEdit");
 
 /**
  * Every route sits under the Guard, which decides where the person may be (see resolveRoute). The catch-all
@@ -59,16 +57,7 @@ export function AppRoutes() {
           <Route
             path={RESIDENT_PATH}
             element={
-              <LazyPage
-                key="resident"
-                message="resident.loading"
-                skeleton={
-                  <>
-                    <BackToHome />
-                    <ResidentPageSkeleton />
-                  </>
-                }
-              >
+              <LazyPage key="resident" message="resident.loading" skeleton={<ResidentFallback />}>
                 <ResidentRoute />
               </LazyPage>
             }

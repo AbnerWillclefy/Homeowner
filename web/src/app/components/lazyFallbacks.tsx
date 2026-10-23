@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { MeHeaderSkeleton } from "../../domains/profile/components/MeHeaderSkeleton";
 import { ProfileSkeleton } from "../../domains/profile/components/ProfileSkeleton";
+import { BackToHome } from "../../domains/residents/components/BackToHome";
+import { ResidentPageSkeleton } from "../../domains/residents/components/ResidentPageSkeleton";
 import { useI18n } from "../../shared/i18n";
 import { SkeletonBar, SkeletonPill } from "../../shared/ui/Skeleton";
 import { SkeletonHeader } from "../../shared/ui/SkeletonHeader";
@@ -17,6 +19,16 @@ export function MeFallback() {
       <MeHeaderSkeleton showBars hasHome={home.state.kind === "ready"} />
       <ProfileSkeleton />
     </div>
+  );
+}
+
+/** A Resident's page: the back link, then the page's skeleton. ResidentRoute shows the same pair once loaded, so nothing jumps. */
+export function ResidentFallback() {
+  return (
+    <>
+      <BackToHome />
+      <ResidentPageSkeleton />
+    </>
   );
 }
 
