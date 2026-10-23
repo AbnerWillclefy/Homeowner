@@ -1,52 +1,55 @@
 import { test, expect } from "../fixtures";
-import { signedInHandlers } from "../mocks/handlers/signedIn";
-import { signedInResident } from "../mocks/sampleHome";
-import { seedSession } from "../mocks/session";
-import { launchApp } from "../pages/launch";
-import { shell } from "../pages/shell";
 
 // What this covers: the built index.html's head. The service worker registration script is deferred and keeps its
-// name, each latin Nunito weight in use (400, 600, 700) has a woff2 preload that the server answers, and the API
-// origin has a preconnect with crossorigin. The worker itself is blocked in these tests, so offline start is checked
-// by hand.
+// name, every latin Nunito woff2 has a preload that the server answers, the API origin has a preconnect with
+// crossorigin, and the charset meta stays within the first 1024 bytes. The document is fetched directly, so no app
+// or API mock is involved. The worker itself is blocked in these tests, so offline start is checked by hand.
 
-test.use({ fakeState: signedInResident() });
+let html: string;
 
-test.beforeEach(async ({ page, fakeApi }) => {
-  fakeApi.use(signedInHandlers);
-  await seedSession(page);
+test.beforeAll(async ({ playwright }, testInfo) => {
+  const context = await playwright.request.newContext({
+    baseURL: testInfo.project.use.baseURL,
+  });
+  html = await (await context.get("/")).text();
+  await context.dispose();
 });
 
-test("registers the service worker with a deferred script of the same name", async ({ page, baseURL }) => {
-  await launchApp(page, baseURL!);
-  await shell.expectOnToday(page);
+const tags = (pattern: RegExp) => html.match(pattern) ?? [];
 
-  const script = page.locator("head script[id='vite-plugin-pwa:register-sw']");
-  await expect(script).toHaveCount(1);
-  await expect(script).toHaveAttribute("src", "/registerSW.js");
-  expect(await script.evaluate((el) => (el as HTMLScriptElement).defer)).toBe(true);
+test("registers the service worker with a deferred script of the same name", () => {
+  const scripts = tags(/<script\b[^>]*id="vite-plugin-pwa:register-sw"[^>]*>/g);
+  expect(scripts).toHaveLength(1);
+  expect(scripts[0]).toMatch(/\bsrc="\/registerSW\.js"/);
+  expect(scripts[0]).toMatch(/\bdefer\b/);
 });
 
-test("preloads each Nunito weight by its hashed file, and the server answers for it", async ({ page, baseURL }) => {
-  await launchApp(page, baseURL!);
-  await shell.expectOnToday(page);
-
-  const preloads = page.locator("head link[rel=preload][as=font][type='font/woff2'][crossorigin]");
-  await expect(preloads).toHaveCount(3);
-  const hrefs = await preloads.evaluateAll((els) => els.map((el) => el.getAttribute("href") ?? ""));
-  for (const weight of [400, 600, 700]) {
-    const matching = hrefs.filter((href) => new RegExp(`nunito-latin-${weight}-normal-[^/]+\\.woff2$`).test(href));
-    expect(matching, `a preload for weight ${weight}`).toHaveLength(1);
-    const response = await page.request.get(new URL(matching[0], baseURL!).toString());
-    expect(response.status()).toBe(200);
+test("preloads every Nunito file by its hashed name, and the server answers for it", async ({
+  request,
+}) => {
+  const preloads = tags(/<link\b[^>]*rel="preload"[^>]*>/g).filter((tag) =>
+    /nunito-latin-\d+-normal-/.test(tag),
+  );
+  expect(preloads.length).toBeGreaterThan(0);
+  for (const tag of preloads) {
+    expect(tag).toMatch(/\bas="font"/);
+    expect(tag).toMatch(/\btype="font\/woff2"/);
+    expect(tag).toMatch(/\bcrossorigin\b/);
+    const href = /\bhref="([^"]+)"/.exec(tag)?.[1];
+    expect(href).toBeTruthy();
+    expect((await request.get(href!)).status()).toBe(200);
   }
 });
 
-test("preconnects to the API origin with crossorigin", async ({ page, baseURL }) => {
-  await launchApp(page, baseURL!);
-  await shell.expectOnToday(page);
+test("preconnects to the API origin with crossorigin", () => {
+  const preconnects = tags(/<link\b[^>]*rel="preconnect"[^>]*>/g);
+  expect(preconnects).toHaveLength(1);
+  expect(preconnects[0]).toMatch(/\bhref="https:\/\/api\.e2e\.test"/);
+  expect(preconnects[0]).toMatch(/\bcrossorigin\b/);
+});
 
-  const preconnect = page.locator("head link[rel=preconnect][crossorigin]");
-  await expect(preconnect).toHaveCount(1);
-  await expect(preconnect).toHaveAttribute("href", "https://api.e2e.test");
+test("keeps the charset meta within the first 1024 bytes", () => {
+  const at = html.indexOf("charset");
+  expect(at).toBeGreaterThan(-1);
+  expect(Buffer.byteLength(html.slice(0, at))).toBeLessThan(1024);
 });

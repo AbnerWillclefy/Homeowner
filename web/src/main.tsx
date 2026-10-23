@@ -10,7 +10,6 @@ import { ThemeProvider } from "./shared/theme";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createQueryClient } from "./shared/query/queryClient";
 // Only the latin subset and the weights in use; the bare package would pull every subset.
-// A weight added here must also be added to NUNITO_WEIGHTS in vite.config.ts, which preloads the files.
 import "@fontsource/nunito/latin-400.css";
 import "@fontsource/nunito/latin-600.css";
 import "@fontsource/nunito/latin-700.css";
