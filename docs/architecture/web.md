@@ -173,7 +173,8 @@ The Me tab shows Baseline, Preferences and Restrictions (`MeProfile`) as `Collap
 
 ### Type, layout and components
 
-- Nunito is the app font, self-hosted through `@fontsource/nunito` (static package): `main.tsx` imports only the latin 400, 600 and 700 files, never the bare package, which pulls every subset. The system stack stays as the fallback. The built `.woff2` files are in the precache (`woff2` is in `injectManifest.globPatterns`), so text still renders in Nunito offline.
+- Nunito is the app font, self-hosted through `@fontsource/nunito` (static package): `main.tsx` imports only the latin 400, 600 and 700 files, never the bare package, which pulls every subset. The system stack stays as the fallback. The `preloadFonts` plugin in `vite.config.ts` adds a `<link rel="preload" as="font" type="font/woff2" crossorigin>` to the built `index.html` for each of the three latin files, by its hashed name, ahead of the CSS, so text does not change weight after first paint (`crossorigin` is needed even for same-origin fonts, or the browser fetches them twice). Its `NUNITO_WEIGHTS` constant sits beside the three imports in `main.tsx`, and `npm run build` fails, naming the weight, if one has no built file. The built `.woff2` files are in the precache (`woff2` is in `injectManifest.globPatterns`), so text still renders in Nunito offline.
+- The `preconnectApi` plugin adds `<link rel="preconnect" href="<origin>" crossorigin>` to the built `index.html`, with the origin of the build's `VITE_API_BASE_URL` (a path in the URL is dropped). It has `crossorigin` because the API calls are CORS requests without credentials, which use the anonymous connection pool, and a plain preconnect would warm the wrong one. It is skipped when the variable is missing or not a URL. Both plugins run in `vite build` only.
 - `html` uses `font: -apple-system-body` so `rem` follows iOS Dynamic Type, with a plain `font-size` and `font-family` for other browsers. All sizes are `rem`; tappable elements use a `2.75rem` minimum (44px at the default size) that grows with text. `h1` and `h2` use `overflow-wrap: anywhere`, so a long word breaks instead of forcing horizontal scroll at the largest text size.
 - One column of `32rem`, with the safe-area insets kept on all four sides (the `page` utility).
 - Every button is `shared/ui/Button` (primary, secondary, danger, ghost, link; `icon` for a square icon-only button; `asChild` through Radix Slot so a router `Link` can wear it; `2.75rem` minimum target on every variant). Pill variants keep a border so they stay visible in forced-colors mode, a disabled pill is dashed as well as muted, and danger also has a thick border so it is not colour alone. Links and fields are native elements styled by base rules in `index.css`.
@@ -594,6 +595,8 @@ flowchart TD
 - Pure modules with vitest tests: `pendingInvite.ts`, `share.ts`, `ratingChores.ts`, `domains/invite/api/api.ts`, `domains/profile/api/choreSettingsApi.ts`. The components and hooks are checked by hand.
 
 ## Service worker
+
+The worker is registered by `registerSW.js`, which the PWA plugin injects into `index.html` as `<script defer>` (`injectRegister: "script-defer"`), so registration does not block first paint but still runs before `load`. The file keeps its name, so the deploy's `no-cache` upload of `registerSW.js` still applies. The inline `theme-init` script stays synchronous.
 
 The worker shows a fallback notification when a push has no usable title (no payload, malformed JSON, or an empty title). Its text comes from `fallback.ts`, a record keyed by locale that lives outside the catalogs.
 
