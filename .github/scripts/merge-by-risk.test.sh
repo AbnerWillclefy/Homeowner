@@ -89,6 +89,10 @@ reset; jq '.data.repository.pullRequest.reviewThreads.nodes += [{isResolved: fal
 expect kept "an older Claude finding is still unresolved, though the latest run is clean"
 reset; jq '.data.repository.pullRequest.reviewThreads.pageInfo = {hasNextPage: true}' "$fix/threads.json" >"$fix/t" && mv "$fix/t" "$fix/threads.json"
 expect kept "more than 100 review threads fails closed"
+reset; jq '.data.repository.pullRequest.reviewThreads.pageInfo = {hasNextPage: true}' "$fix/threads.json" >"$fix/t" && mv "$fix/t" "$fix/threads.json"
+if "$here/merge-by-risk.sh" 7 >"$fix/out" 2>&1 || ! grep "review threads could not be read" "$fix/out" >/dev/null; then
+  echo "FAIL more than 100 review threads is an error, not a count"; cat "$fix/out"; failures=$((failures + 1))
+else echo "ok   more than 100 review threads is an error, not a count"; fi
 reset; set_tier high; expect kept "high"
 reset; echo '[{"filename":".github/workflows/x.yml","status":"modified"}]' >"$fix/files.json"; expect kept "pr-risk reports a problem (low on a workflow)"
 reset; jq '.author.login = "maintainer"' "$fix/pr.json" >"$fix/t" && mv "$fix/t" "$fix/pr.json"; expect kept "the maintainer's own pull request"
