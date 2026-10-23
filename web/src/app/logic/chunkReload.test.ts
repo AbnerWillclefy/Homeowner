@@ -1,6 +1,28 @@
 import { describe, expect, it, vi } from "vitest";
 import type { StorageLike } from "../../domains/auth/logic/session";
-import { CHUNK_RELOAD_KEY, CHUNK_RELOAD_WINDOW_MS, createChunkRecovery, shouldReload } from "./chunkReload";
+import { CHUNK_RELOAD_KEY, CHUNK_RELOAD_WINDOW_MS, createChunkRecovery, isChunkLoadError, shouldReload } from "./chunkReload";
+
+describe("isChunkLoadError", () => {
+  it.each([
+    "Failed to fetch dynamically imported module: https://x/assets/Me-abc.js",
+    "error loading dynamically imported module: https://x/assets/Me-abc.js",
+    "Importing a module script failed.",
+    "Failed to load module script: Expected a JavaScript module script but the server responded with a MIME type of \"text/html\".",
+    "Unable to preload CSS for /assets/Me.css",
+  ])("recognises %s", (message) => {
+    expect(isChunkLoadError(new Error(message))).toBe(true);
+  });
+
+  it("recognises a string rejection", () => {
+    expect(isChunkLoadError("Importing a module script failed.")).toBe(true);
+  });
+
+  it("does not take a render bug for a chunk failure", () => {
+    expect(isChunkLoadError(new TypeError("Cannot read properties of undefined (reading 'name')"))).toBe(false);
+    expect(isChunkLoadError(null)).toBe(false);
+    expect(isChunkLoadError({ message: "Failed to fetch dynamically imported module" })).toBe(false);
+  });
+});
 
 function memoryStorage(initial: Record<string, string> = {}): StorageLike {
   const data = new Map(Object.entries(initial));

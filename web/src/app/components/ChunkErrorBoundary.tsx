@@ -1,6 +1,7 @@
 import { Component, type ComponentType, type ReactNode } from "react";
 import { useI18n } from "../../shared/i18n";
 import { Button } from "../../shared/ui/Button";
+import { isChunkLoadError } from "../logic/chunkReload";
 
 interface Props {
   children: ReactNode;
@@ -27,15 +28,19 @@ function ChunkFailed({ frame: Frame }: { frame?: ComponentType<{ children: React
  * Catches a screen whose code could not load even after the one automatic reload (see lazyWithReload), and shows a
  * calm alert with Retry in the screen's place. Nothing else in the app is affected: the tabs stay. One boundary
  * per lazy element, keyed by the route, so moving to another tab clears it.
+ *
+ * Only chunk-load failures are shown here. Any other error is thrown again from render, so it reaches the next
+ * boundary up (or the console) instead of hiding behind a "could not be loaded" alert.
  */
-export class ChunkErrorBoundary extends Component<Props, { failed: boolean }> {
-  state = { failed: false };
+export class ChunkErrorBoundary extends Component<Props, { error: unknown; failed: boolean }> {
+  state = { error: null as unknown, failed: false };
 
-  static getDerivedStateFromError() {
-    return { failed: true };
+  static getDerivedStateFromError(error: unknown) {
+    return { error, failed: isChunkLoadError(error) };
   }
 
   render() {
+    if (this.state.error !== null && !this.state.failed) throw this.state.error;
     if (!this.state.failed) return this.props.children;
     if (this.props.quiet) return null;
     return <ChunkFailed frame={this.props.frame} />;

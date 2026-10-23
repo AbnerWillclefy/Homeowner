@@ -1,5 +1,22 @@
 import type { StorageLike } from "../../domains/auth/logic/session";
 
+// What each engine says when a dynamic import cannot load: Chrome, Firefox, Safari, the module MIME-type check (an
+// old chunk answered with index.html) and Vite's own CSS preload failure.
+const CHUNK_ERROR_PATTERNS = [
+  /failed to fetch dynamically imported module/i,
+  /error loading dynamically imported module/i,
+  /importing a module script failed/i,
+  /failed to load module script/i,
+  /server responded with a mime type/i,
+  /unable to preload css/i,
+];
+
+/** Whether an error is a screen's code failing to load, as opposed to a bug while rendering it. */
+export function isChunkLoadError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  return CHUNK_ERROR_PATTERNS.some((pattern) => pattern.test(message));
+}
+
 /** The sessionStorage key holding when the app last reloaded because a chunk would not load. */
 export const CHUNK_RELOAD_KEY = "homeowner.chunk-reload";
 
