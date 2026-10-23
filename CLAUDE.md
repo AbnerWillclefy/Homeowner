@@ -16,13 +16,13 @@ Each role is a subagent in `.claude/agents/`. Every comment or issue posted on G
 
 ## The pipeline
 
-Each stage is a workflow in `.github/workflows/` started by a label or an event. A human acts at three points: requesting a feature, labelling a ticket `implement`, and merging.
+Each stage is a workflow in `.github/workflows/` started by a label or an event. A human acts at three points: requesting a feature, labelling a ticket `implement`, and approving or merging the pull requests whose risk tier needs them.
 
 1. Issue labelled `feature-request`: the architect posts a design overview, the product manager creates the tickets as its sub-issues, and the request becomes an `epic` labelled `needs-refinement`. Epics are not worked directly and stay off the board's columns.
 2. Request labelled `needs-refinement`: the senior engineer refines each of its open tickets and labels them `ready-for-agent`.
 3. Ticket labelled `implement`: the engineers build it and open a pull request (see Working a ticket).
 4. Pull request opened: Claude reviews it, then the engineer applies the valid findings once and labels the pull request `review-addressed`.
-5. A human merges; the deploy to staging runs.
+5. The pull request's risk tier decides who merges it (`docs/agents/pr-risk.md`): `merge-by-risk.yml` merges `low` once checks and review are clean, and `medium` once the maintainer also approves; the maintainer merges `high`. The deploy to staging runs on the merge.
 
 A change that fits one pull request skips stage 1: file it as a single ticket with acceptance criteria and label it `needs-refinement`. The maintainer brings in both kinds with `/idea` (`.claude/skills/idea/SKILL.md`).
 
@@ -42,8 +42,9 @@ Every ticket is refined for the agents. The maintainer is learning Go, AWS and s
 - Before opening the pull request, check every acceptance criterion yourself and point to the test or code that meets it. Fix anything not met.
 - A pull request that changes UI is checked in both locales, pt-BR first: most Residents use the app in Brazilian Portuguese, and its longer words are what break layouts. Prefer the shorter pt-BR wording when two are equally clear (`DESIGN.md`, The Portuguese First Rule). Its description shows a screenshot of the change under a `### pt-BR` heading and another under `### English`; the `ui-screenshots` check fails without them.
 - Small commits, imperative and lowercase after a conventional prefix, for example `feat(allocation): honour restrictions on demands`.
-- The pull request description starts with `Closes #<issue-number>` and lists each acceptance criterion with how it is met.
-- Never merge. A human merges.
+- Write the pull request description from `.github/pull_request_template.md` (pass it with `gh pr create --body-file`). It is for the human who merges, not the AI reviewer: why the change exists, what changes, its risk tier and what can go wrong, how it was tested, how to revert it, and each acceptance criterion with how it is met. It starts with `Closes #<issue-number>`.
+- Pick the risk tier from `docs/agents/pr-risk.md`: at least the floor its paths set, and the higher tier when unsure. A `high` pull request says why it is high and gives exact revert steps. The `pr-risk` check fails if a section is empty or the tier is under the floor. If a later push changes what the pull request does, update the description to match.
+- Never merge. `merge-by-risk.yml` or a human merges, by risk tier.
 - You may add new workflows under `.github/workflows/`, but never modify `agent-*.yml`, `claude.yml` or `claude-code-review.yml`. Changes to the pipeline itself are made by a human.
 
 ## Agent skills
