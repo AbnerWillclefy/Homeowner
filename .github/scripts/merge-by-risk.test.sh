@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests merge-by-risk.sh with a stub gh that serves canned JSON and applies --jq itself,
+# Tests merge-by-risk.sh (and claude-findings.sh, which it calls) with a stub gh that serves canned JSON and applies --jq itself,
 # so the scripts' jq filters are tested too.
 # Run: .github/scripts/merge-by-risk.test.sh
 set -euo pipefail
@@ -76,19 +76,12 @@ reset; echo '[{"name":"web-e2e","bucket":"fail","startedAt":"2026-01-01T10:00:00
 reset; echo '[{"name":"web-e2e","bucket":"pending","startedAt":"2026-01-01T10:00:00Z"}]' >"$fix/checks.json"; expect kept "one pending check"
 reset; echo '[{"name":"web-e2e","bucket":"pass","startedAt":"2026-01-01T10:00:00Z"},{"name":"web-e2e","bucket":"pending","startedAt":"0001-01-01T00:00:00Z"}]' >"$fix/checks.json"; expect kept "a queued re-run of a passing check"
 reset; echo '[{"user":{"login":"claude[bot]"},"in_reply_to_id":null,"created_at":"2026-01-01T10:01:00Z","id":2}]' >"$fix/comments.json"; expect kept "a Claude finding after the review started"
+reset; echo '[{"user":{"login":"claude[bot]"},"in_reply_to_id":1,"created_at":"2026-01-01T10:01:00Z","id":2},{"user":{"login":"maintainer"},"in_reply_to_id":null,"created_at":"2026-01-01T10:01:00Z","id":3}]' >"$fix/comments.json"; expect merged "replies and the maintainer's comments are not findings"
 reset; echo '{"workflow_runs":[]}' >"$fix/runs.json"; expect kept "no review of the head commit"
 reset; set_tier high; expect kept "high"
 reset; echo '[{"filename":".github/workflows/x.yml","status":"modified"}]' >"$fix/files.json"; expect kept "pr-risk reports a problem (low on a workflow)"
 reset; jq '.author.login = "maintainer"' "$fix/pr.json" >"$fix/t" && mv "$fix/t" "$fix/pr.json"; expect kept "the maintainer's own pull request"
 reset; jq '.labels += [{name: "needs-human"}]' "$fix/pr.json" >"$fix/t" && mv "$fix/t" "$fix/pr.json"; expect kept "labelled needs-human"
-
-# The findings filter must match the one agent-review-fix.yml uses to decide a review is clean
-filter() { grep -o 'select(.user.login == \\"claude\[bot\]\\"[^)]*' "$1" | sed 's/\$[A-Za-z_]*/$SINCE/'; }
-if [[ -n "$(filter "$here/merge-by-risk.sh")" && "$(filter "$here/merge-by-risk.sh")" == "$(filter "$here/../workflows/agent-review-fix.yml")" ]]; then
-  echo "ok   the findings filter matches agent-review-fix.yml"
-else
-  echo "FAIL the findings filter differs from agent-review-fix.yml"; failures=$((failures + 1))
-fi
 
 reset; echo 'not json' >"$fix/runs.json"; expect kept "an API error skips the pull request instead of stopping"
 
