@@ -1,11 +1,6 @@
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import {
-  defineConfig,
-  loadEnv,
-  type HtmlTagDescriptor,
-  type Plugin,
-} from "vite";
+import { defineConfig, loadEnv, type HtmlTagDescriptor, type Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import { parsePolicy } from "./src/domains/auth/logic/passwordPolicy.ts";
 
@@ -16,11 +11,7 @@ function requirePasswordPolicy(): Plugin {
     name: "require-password-policy",
     apply: "build",
     configResolved(resolved) {
-      raw = loadEnv(
-        resolved.mode,
-        resolved.envDir || process.cwd(),
-        "VITE_",
-      ).VITE_PASSWORD_POLICY;
+      raw = loadEnv(resolved.mode, resolved.envDir || process.cwd(), "VITE_").VITE_PASSWORD_POLICY;
     },
     buildStart() {
       if (!raw?.trim()) {
@@ -81,11 +72,7 @@ function preconnectApi(): Plugin {
     name: "preconnect-api",
     apply: "build",
     configResolved(resolved) {
-      const raw = loadEnv(
-        resolved.mode,
-        resolved.envDir || process.cwd(),
-        "VITE_",
-      ).VITE_API_BASE_URL;
+      const raw = loadEnv(resolved.mode, resolved.envDir || process.cwd(), "VITE_").VITE_API_BASE_URL;
       try {
         origin = new URL(raw ?? "").origin;
       } catch {
