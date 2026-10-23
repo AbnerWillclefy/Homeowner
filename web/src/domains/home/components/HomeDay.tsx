@@ -2,7 +2,6 @@ import { useState } from "react";
 import { CheckInSection } from "../../checkin/components/CheckInSection";
 import { energyNote } from "../../checkin/logic/state";
 import { useCheckIn } from "../../checkin/hooks/useCheckIn";
-import { DaySummary } from "../../dayplan/components/DaySummary";
 import { EnergySummary, showsEnergy } from "../../dayplan/components/EnergySummary";
 import { ReplanControl } from "../../dayplan/components/ReplanControl";
 import { TodayHeader } from "../../dayplan/components/TodayHeader";
@@ -13,7 +12,9 @@ import { useStreak } from "../../streak/hooks/useStreak";
 import { useReportFetching } from "../../../shared/ui/PageLoading";
 
 /**
- * Today: the greeting, then the Check-in card with today's Energy, then the Day Plan. Whatever changes the plan
+ * Today: the greeting, then the Check-in card with today's Energy, the Streak card, the replan control (staging
+ * only) and the Day Plan. The folded explanation belongs to the Day Plan: it shows right under "Your Tasks",
+ * before the Tasks, and only on a planned day. Whatever changes the plan
  * (an action, a saved Check-in, the start choice, a join) writes or invalidates the query cache, so nothing here
  * tracks a version or polls. This is the one owner of the plan: the Energy
  * summary and the plan section are both views of it, and share the one Energy note computed here. It also owns
@@ -43,7 +44,6 @@ export function HomeDay() {
         onClose={() => setCheckInOpen(false)}
         energy={showsEnergy(note) ? <EnergySummary note={note} energy={energy ?? 0} planned={planned} /> : null}
       />
-      {state.kind === "ready" ? <DaySummary plan={state.plan} /> : null}
       <StreakCard streak={streak.streak} loading={streak.loading} />
       <ReplanControl plan={state.kind === "ready" ? state.plan : undefined} show={day.show} />
       <TodaySection day={day} note={note} />

@@ -73,5 +73,7 @@ Not domain terms, but kept consistent across the copy. CONTEXT.md has no **Remin
 | Baseline allocator (the plan made without the AI) | alocador padrão; its plan is "plano padrão" | alocador básico, alocador base | Not "base": "energia base" is the User's Baseline, a different thing. Used in `dayplan.replan.*`. |
 | for others (the combined count of other Residents' Tasks on the Today summary card) | dos outros | para outros moradores (longer) | Matches "Tarefas dos outros moradores". Used in `dayplan.summary.others`. Pending native-speaker review. |
 | still to do (the pool) | por fazer | pendente, em aberto | Matches the pool heading "Ainda por fazer". Used in `dayplan.summary.pool`. Pending native-speaker review. |
+| written by the assistant (the explanation came from the model) | Escrito pelo assistente | Escrito pela IA (shorter; the glossary uses "IA" in `dayplan.replan.*`) | Used in `dayplan.summary.source.llm`. Pending native-speaker review. |
+| standard summary of today's reasons (the explanation built from the Allocation's recorded reasons) | Resumo padrão dos motivos de hoje | resumo básico, resumo automático | "padrão" matches "plano padrão" for the baseline allocator. Used in `dayplan.summary.source.template`. Pending native-speaker review. |
 
 Apple and Android labels must match what the device shows in pt-BR. They are not yet verified on a pt-BR device.

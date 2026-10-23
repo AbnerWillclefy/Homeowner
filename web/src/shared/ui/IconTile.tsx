@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 // Whole class strings, so Tailwind finds them.
 export const TONES = {
   accent: "bg-accent/10 text-accent",
+  neutral: "bg-muted/10 text-muted",
   danger: "bg-danger/10 text-danger",
 } as const;
 

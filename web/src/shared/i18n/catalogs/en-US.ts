@@ -338,6 +338,8 @@ export const enUS = {
   "dayplan.summary.mine": { one: "{count} Task for you", other: "{count} Tasks for you" },
   "dayplan.summary.others": { one: "{count} for others", other: "{count} for others" },
   "dayplan.summary.pool": { one: "{count} still to do", other: "{count} still to do" },
+  "dayplan.summary.source.llm": "Written by the assistant",
+  "dayplan.summary.source.template": "Standard summary of today's reasons",
   "dayplan.pool.heading": "Still to do",
   "dayplan.pool.empty": "No other open Tasks. Everything is planned or done.",
   "dayplan.task.effort": "Effort: {level}",
