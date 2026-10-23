@@ -135,7 +135,7 @@ run_case "the allocator is medium" \
   "$(files "$(file backend/internal/allocation/check.go modified)" "$(file backend/internal/llmalloc/llmalloc.go modified)")" "$(complete_body medium)" \
   "floor=medium" "!problem="
 
-for f in backend/internal/identity/identity.go web/src/app/components/AuthProvider.tsx web/src/app/components/SessionProvider.tsx web/src/shared/api/http.ts; do
+for f in backend/internal/identity/identity.go backend/internal/users/store.go backend/internal/invites/invites.go web/src/app/components/AuthProvider.tsx web/src/app/components/SessionProvider.tsx web/src/shared/api/http.ts; do
   run_case "$f is sign-in, so high" "$(files "$(file "$f" modified)")" "$(complete_body high)" "floor=high"
 done
 

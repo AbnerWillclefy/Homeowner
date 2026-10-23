@@ -37,9 +37,10 @@ floor_for() {
     .claude/*|CLAUDE.md) printf 'high\t%s changes how the agents work\n' "$file" ;;
     infra/*)             printf 'high\t%s changes AWS infrastructure\n' "$file" ;;
     scripts/*)           printf 'high\t%s changes an operations script\n' "$file" ;;
-    backend/internal/platform/auth/*|backend/internal/identity/*|web/src/domains/auth/*|\
+    backend/internal/platform/auth/*|backend/internal/identity/*|backend/internal/users/*|backend/internal/invites/*|\
+    web/src/domains/auth/*|\
     web/src/app/components/AuthProvider.tsx|web/src/app/components/SessionProvider.tsx|web/src/shared/api/http.ts)
-                         printf 'high\t%s changes sign-in or who may do what\n' "$file" ;;
+                         printf 'high\t%s changes sign-in, accounts, invites or who may do what\n' "$file" ;;
     # Tests change no behaviour a Resident sees; below the protected paths, which have no exemption
     *_test.go|*.test.ts|*.test.tsx|web/e2e/*) ;;
     backend/migrations/*.sql)
