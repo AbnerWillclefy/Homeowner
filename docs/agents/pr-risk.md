@@ -20,10 +20,10 @@ When unsure between two tiers, pick the higher one. A pull request labelled `nee
 
 | Floor | Paths |
 |---|---|
-| `high` | `.github/`, `.claude/`, `CLAUDE.md`, `infra/`, `scripts/`, `backend/internal/platform/auth/`, `web/src/domains/auth/`, a migration that is edited or whose added lines drop, rename, truncate, delete rows, or change a column's type or nullability |
-| `medium` | a new migration in `backend/migrations/`, `backend/cmd/`, `backend/internal/platform/`, `backend/Dockerfile`, `docker-compose.yml`, `go.mod`/`go.sum`, `package.json`/`package-lock.json`, `web/src/sw.ts`, `web/src/sw/`, `web/vite.config.ts` |
+| `high` | `.github/`, `.claude/`, `CLAUDE.md`, `infra/`, `scripts/`, sign-in and access (`backend/internal/platform/auth/`, `backend/internal/identity/`, `web/src/domains/auth/`, `AuthProvider.tsx`, `SessionProvider.tsx`, `web/src/shared/api/http.ts`), a migration that is edited or whose added lines drop, rename, truncate, delete rows, or change a column's type or nullability |
+| `medium` | a new migration in `backend/migrations/`, the allocator and its referee (`backend/internal/allocation/`, `backend/internal/llmalloc/`), `backend/cmd/`, `backend/internal/platform/`, `backend/Dockerfile`, `docker-compose.yml`, `go.mod`/`go.sum`, `package.json`/`package-lock.json`, `web/src/sw.ts`, `web/src/sw/`, `web/vite.config.ts` |
 
-A path missing from this table can still be medium or high: the floor is a minimum, and the engineer's judgement against the table above decides the rest. A migration whose diff GitHub does not return (a very large one) counts as high. `.github/scripts/pr-risk.test.sh` covers these rules; change it with them.
+A path missing from this table can still be medium or high: the floor is a minimum, and the engineer's judgement against the table above decides the rest. A migration whose diff GitHub does not return (a very large one) counts as high. Only a migration's Up section is checked for destructive SQL. `INSERT … SELECT` stays medium, because it adds rows without changing existing ones. `.github/scripts/pr-risk.test.sh` covers these rules; change it with them.
 
 ## The description
 
