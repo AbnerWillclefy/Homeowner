@@ -22,12 +22,21 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           PR_STATS: "+${{ github.event.pull_request.additions }} -${{ github.event.pull_request.deletions }} in ${{ github.event.pull_request.changed_files }} files"
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
         run: |
           if [ -z "$SLACK_WEBHOOK_URL" ]; then
             echo "SLACK_WEBHOOK_URL is not set; skipping"
             exit 0
           fi
-          text=$(printf ':eyes: *PR #%s is ready for your review and merge*\n<%s|%s>\nby %s, %s. Claude has reviewed it and the engineer has addressed the review.' \
-            "$PR_NUMBER" "$PR_URL" "$PR_TITLE" "$PR_AUTHOR" "$PR_STATS")
+          # The risk tier says what the maintainer still has to do (merge-by-risk.yml merges the rest)
+          case ",$PR_LABELS," in
+            *,risk:low,*)    icon=':robot_face:'; ask='passed review (risk: low). It merges itself to staging once every check is green.' ;;
+            *,risk:medium,*) icon=':eyes:'; ask='is ready for your approval (risk: medium). Once you approve, it merges itself to staging.' ;;
+            *,risk:high,*)   icon=':rotating_light:'; ask='is ready for you to review and merge (risk: high). Its description says why and how to revert.' ;;
+            *)               icon=':eyes:'; ask='is ready for your review and merge' ;;
+          esac
+          if [ "$PR_AUTHOR" != homeowner-agents ]; then icon=':eyes:'; ask='is ready for your review and merge'; fi
+          text=$(printf '%s *PR #%s %s*\n<%s|%s>\nby %s, %s. Claude has reviewed it and the engineer has addressed the review.' \
+            "$icon" "$PR_NUMBER" "$ask" "$PR_URL" "$PR_TITLE" "$PR_AUTHOR" "$PR_STATS")
           jq -n --arg text "$text" '{text: $text}' \
             | curl -sS --fail -X POST -H 'Content-Type: application/json' --data @- "$SLACK_WEBHOOK_URL"
