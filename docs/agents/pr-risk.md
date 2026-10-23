@@ -23,7 +23,7 @@ When unsure between two tiers, pick the higher one. A pull request labelled `nee
 | `high` | `.github/`, `.claude/`, `CLAUDE.md`, `infra/`, `scripts/`, `backend/internal/platform/auth/`, `web/src/domains/auth/`, a migration that is edited or whose added lines drop, rename, truncate, delete rows, or change a column's type or nullability |
 | `medium` | a new migration in `backend/migrations/`, `backend/cmd/`, `backend/internal/platform/`, `backend/Dockerfile`, `docker-compose.yml`, `go.mod`/`go.sum`, `package.json`/`package-lock.json`, `web/src/sw.ts`, `web/src/sw/`, `web/vite.config.ts` |
 
-A path missing from this table can still be medium or high: the floor is a minimum, and the engineer's judgement against the table above decides the rest.
+A path missing from this table can still be medium or high: the floor is a minimum, and the engineer's judgement against the table above decides the rest. A migration whose diff GitHub does not return (a very large one) counts as high. `.github/scripts/pr-risk.test.sh` covers these rules; change it with them.
 
 ## The description
 
@@ -38,7 +38,7 @@ The check then labels the pull request `risk:low`, `risk:medium` or `risk:high`.
 
 ## How a merge happens
 
-`merge-by-risk.yml` runs when CI, Claude's review, the review fix or the `pr-risk` check finishes (the last one also runs on the maintainer's approval). It runs from `main`, so a pull request cannot change the rules that merge it, and it reads the tier again from scratch. It merges with the agents' token, so the push to `main` starts **Deploy staging**, and with `--match-head-commit`, so a push after the checks stops the merge. If Slack is set up, it posts each merge.
+`merge-by-risk.yml` runs when CI, Claude's review, the review fix or the `pr-risk` check finishes (the last one also runs on the maintainer's reviews), and each run checks every open agent pull request. It runs from `main`, so a pull request cannot change the rules that merge it, and it reads the tier again from scratch. It merges with the agents' token, so the push to `main` starts **Deploy staging**, and with `--match-head-commit`, so a push after the checks stops the merge. If Slack is set up, it posts each merge.
 
 To run it by hand: Actions, **Merge by risk**, Run workflow, optionally with a pull request number.
 
