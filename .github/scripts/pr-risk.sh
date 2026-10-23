@@ -75,7 +75,7 @@ while IFS=$'\t' read -r status file; do
   patch=''
   [[ "$file" == backend/migrations/* ]] && patch=$(jq -r --arg f "$file" '.[] | select(.filename == $f) | .patch // ""' <<<"$files")
   while IFS=$'\t' read -r tier reason; do
-    (( $(rank "$tier") > $(rank "$floor") )) && floor="$tier"
+    floor=$(max_tier "$floor" "$tier")
     reasons+=("$tier: $reason")
   done < <(floor_for "$status" "$file" "$patch")
 done < <(jq -r '.[] | [.status, .filename], (select(.previous_filename) | [.status, .previous_filename]) | @tsv' <<<"$files")
