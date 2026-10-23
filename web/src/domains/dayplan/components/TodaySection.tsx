@@ -1,5 +1,5 @@
 import { Clock } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import type { DayPlan, PlanTask } from "../api/api";
 import { pendingAction, type Acting, type SwapAction, type TaskAction, type TaskRole } from "../logic/actions";
@@ -31,7 +31,16 @@ type Day = ReturnType<typeof useDayPlan>;
  * loads the plan and shows its Energy in the header's chip; `note` is that chip's note, null while the
  * Check-in is not known.
  */
-export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null }) {
+export function TodaySection({
+  day,
+  note,
+  summary,
+}: {
+  day: Day;
+  note: EnergyNote | null;
+  /** The folded explanation, shown under "Your Tasks" on a planned day only. */
+  summary?: ReactNode;
+}) {
   const { t } = useI18n();
   const { state, reload, run, acceptAll, answerSwap, offerSwap, acting, notice, changed } = day;
   // The page's one status announces the wait; the skeleton shows after 300ms and only for a first load.
@@ -77,6 +86,7 @@ export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null 
         <PlanView
           plan={state.plan}
           note={note}
+          summary={summary}
           acting={acting}
           onAccept={acceptAll}
           onAction={run}
@@ -137,6 +147,7 @@ function EmptyMine({ reason }: { reason: NoTasksReason | null }) {
 function PlanView({
   plan,
   note,
+  summary,
   acting,
   onAccept,
   onAction,
@@ -145,6 +156,7 @@ function PlanView({
 }: {
   plan: DayPlan;
   note: EnergyNote | null;
+  summary?: ReactNode;
   acting: Acting;
   onAccept(): void;
   onAction(action: TaskAction, task: PlanTask): void;
@@ -201,6 +213,7 @@ function PlanView({
       {plan.planned && (
         <div>
           <GroupHeading count={plan.mine.length}>{t("dayplan.mine.heading")}</GroupHeading>
+          {summary ? <div className="mb-3 empty:hidden">{summary}</div> : null}
           {proposed > 0 && (
             <Button
               fullWidth
