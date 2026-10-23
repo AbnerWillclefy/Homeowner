@@ -16,7 +16,7 @@ import { shell } from "../pages/shell";
 // through that one check. Signed in with a Home, and mid-onboarding.
 
 const healthCalls = (fakeApi: FakeApi) => fakeApi.requests.filter((r) => r.method === "GET" && r.path === "/healthz");
-const banner = (page: import("@playwright/test").Page) => page.getByRole("status").filter({ hasText: /\S/ });
+const banner = (page: import("@playwright/test").Page) => page.locator("[role=status][data-state]");
 const retry = (page: import("@playwright/test").Page) => page.getByRole("button", { name: "Try again" });
 
 test.describe("signed in with a Home", () => {
