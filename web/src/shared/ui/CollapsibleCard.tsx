@@ -58,7 +58,7 @@ export function CollapsibleCard({
           aria-labelledby={titleId}
           aria-describedby={describedBy}
           onClick={() => setOpen((value) => !value)}
-          className="flex min-h-11 w-full items-center gap-3 rounded-control bg-transparent p-0 text-start font-[inherit] text-inherit"
+          className="flex min-h-11 w-full items-start gap-3 rounded-control bg-transparent p-0 text-start font-[inherit] text-inherit"
         >
           <IconTile icon={icon} className={TONES[tone]} />
           <span className="flex min-w-0 flex-1 flex-col gap-1">
