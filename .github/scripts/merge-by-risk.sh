@@ -22,6 +22,11 @@ get() { jq -r "$1" <<<"$pr_json"; }
 # where set -e is off, so every command that can fail ends in `|| blocked ...`.
 blocked() { echo "#$pr: not merged, $1"; return 1; }
 
+# Like blocked, for something that should not happen (an API or script error, a refused merge):
+# the sweep goes on, then fails at the end so the run shows red instead of a quiet log line.
+errors=0
+failed() { echo "::warning::#$pr: not merged, $1"; errors=$((errors + 1)); return 1; }
+
 check_basics() {
   [ "$(get .state)" = OPEN ] || blocked "it is not open" || return
   [ "$(get .author.login)" = "$AGENT_LOGIN" ] || blocked "the maintainer's own pull requests are merged by hand" || return
@@ -35,11 +40,11 @@ check_basics() {
 # The tier is read again with main's script, so a pull request cannot loosen its own rules
 check_tier() {
   local risk
-  risk=$("$here/pr-risk.sh" "$pr") || blocked "pr-risk.sh failed" || return
+  risk=$("$here/pr-risk.sh" "$pr") || failed "pr-risk.sh failed" || return
   ! grep -q '^problem=' <<<"$risk" || blocked "its description fails the pr-risk check" || return
   tier=$(sed -n 's/^effective=//p' <<<"$risk")
   [ "$tier" != high ] || blocked "it is high risk, so the maintainer merges it" || return
-  [[ "$tier" == low || "$tier" == medium ]] || blocked "its tier could not be read"
+  [[ "$tier" == low || "$tier" == medium ]] || failed "its tier could not be read"
 }
 
 # Checks that run on every pull request into main, so they must be present and green: GitHub
@@ -64,10 +69,10 @@ check_claude_review_clean() {
   local review conclusion started findings
   review=$(gh api "repos/$repo/actions/workflows/claude-code-review.yml/runs?head_sha=$sha&per_page=20" \
     --jq '.workflow_runs | sort_by(.created_at) | last | "\(.conclusion) \(.created_at)"') \
-    || blocked "Claude's review runs could not be read" || return
+    || failed "Claude's review runs could not be read" || return
   read -r conclusion started <<<"$review"
   [ "$conclusion" = success ] || blocked "Claude has not finished reviewing $sha" || return
-  findings=$("$here/claude-findings.sh" "$pr" "$started") || blocked "Claude's findings could not be read" || return
+  findings=$("$here/claude-findings.sh" "$pr" "$started") || failed "Claude's findings could not be read" || return
   [ "$findings" = 0 ] || blocked "Claude's latest review has $findings findings"
 }
 
@@ -77,7 +82,7 @@ check_maintainer_verdict() {
   local verdict state commit
   verdict=$(gh api "repos/$repo/pulls/$pr/reviews" --paginate \
     --jq ".[] | select(.user.login == \"$MAINTAINER_LOGIN\" and (.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\" or .state == \"DISMISSED\")) | \"\(.state) \(.commit_id)\"" \
-    | tail -n 1) || blocked "the maintainer's reviews could not be read" || return
+    | tail -n 1) || failed "the maintainer's reviews could not be read" || return
   read -r state commit <<<"$verdict"
   [ "$state" != CHANGES_REQUESTED ] || blocked "the maintainer requested changes" || return
   [ "$tier" != medium ] || { [ "$state" = APPROVED ] && [ "$commit" = "$sha" ]; } \
@@ -86,7 +91,7 @@ check_maintainer_verdict() {
 
 merge() {
   # --match-head-commit refuses the merge if anything was pushed since these checks
-  gh pr merge "$pr" -R "$repo" --merge --match-head-commit "$sha" || blocked "the merge was refused" || return
+  gh pr merge "$pr" -R "$repo" --merge --match-head-commit "$sha" || failed "the merge was refused" || return
   echo "#$pr: merged ($tier risk)"
   [ -n "${SLACK_WEBHOOK_URL:-}" ] || return 0
   printf ':rocket: *PR #%s merged itself to staging* (risk: %s)\n<%s|%s>\nIts description says how to revert it.' \
@@ -106,7 +111,9 @@ fi
 for pr in "${prs[@]}"; do
   tier=''
   pr_json=$(gh pr view "$pr" -R "$repo" --json state,author,baseRefName,isDraft,labels,headRefOid,mergeable,title,url) \
-    || { blocked "it could not be read" || true; continue; }
+    || { failed "it could not be read" || true; continue; }
   sha=$(get .headRefOid)
   check_basics && check_tier && check_ci_green && check_claude_review_clean && check_maintainer_verdict && merge || true
 done
+
+(( errors == 0 )) || { echo "::error::$errors pull request(s) hit an error; see the warnings above"; exit 1; }

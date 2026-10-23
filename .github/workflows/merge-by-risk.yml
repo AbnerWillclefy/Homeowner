@@ -10,6 +10,7 @@ on:
   workflow_run:
     # Whichever finishes last wakes the merge: CI, Claude's review, the review fix, or the maintainer's approval (PR risk).
     # A new pull request workflow goes here too (and in required_checks in merge-by-risk.sh): see docs/agents/pr-risk.md.
+    # merge-by-risk.test.sh fails if a name here or in required_checks matches no workflow.
     # No schedule: a cron sweep would cost Actions minutes on every tick in this private repository.
     workflows: ["PR risk", "Claude Code Review", "Agent - Apply review", "backend-test", "web-typecheck", "web-e2e", "infra-check", "ui-screenshots"]
     types: [completed]
