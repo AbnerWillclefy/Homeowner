@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+# Reads a pull request's declared risk tier and checks its description.
+# Usage: pr-risk.sh <pr-number>   (needs GH_TOKEN and GITHUB_REPOSITORY)
+#
+# Prints key=value lines:
+#   declared=low|medium|high|none   the tier the description states
+#   floor=low|medium|high           the lowest tier the changed paths allow
+#   effective=low|medium|high       the higher of the two
+#   reason=<text>                   why the floor is what it is (one line each)
+#   problem=<text>                  what the description is missing (one line each)
+# The tiers and path floors are explained in docs/agents/pr-risk.md; keep both in step.
+set -euo pipefail
+
+pr="$1"
+repo="${GITHUB_REPOSITORY:?}"
+
+rank() { case "$1" in low) echo 1 ;; medium) echo 2 ;; high) echo 3 ;; *) echo 0 ;; esac; }
+max_tier() { if (( $(rank "$1") >= $(rank "$2") )); then echo "$1"; else echo "$2"; fi; }
+
+# --- Floor: the changed paths set the lowest allowed tier -------------------
+
+floor=low
+reasons=()
+raise() { # raise <tier> <reason>
+  if (( $(rank "$1") > $(rank "$floor") )); then floor="$1"; fi
+  reasons+=("$1: $2")
+}
+
+destructive_sql='\b(drop|rename|truncate)\b|delete[[:space:]]+from|alter[[:space:]]+column.*\b(type|set[[:space:]]+not[[:space:]]+null)\b'
+
+while IFS=$'\t' read -r file status; do
+  # Tests change no behaviour a Resident sees
+  [[ "$file" =~ (_test\.go|\.test\.tsx?)$ || "$file" == web/e2e/* ]] && continue
+
+  case "$file" in
+    .github/*)          raise high "$file changes CI, deploys or the pipeline" ;;
+    .claude/*|CLAUDE.md) raise high "$file changes how the agents work" ;;
+    infra/*)            raise high "$file changes AWS infrastructure" ;;
+    scripts/*)          raise high "$file changes an operations script" ;;
+    backend/internal/platform/auth/*|web/src/domains/auth/*)
+                        raise high "$file changes sign-in" ;;
+    backend/migrations/*)
+      patch=$(gh api "repos/$repo/pulls/$pr/files" --paginate \
+        --jq ".[] | select(.filename == \"$file\") | .patch // \"\"")
+      if [[ "$status" != added ]]; then
+        raise high "$file edits a migration that may already have run"
+      # Added lines that are not SQL comments; no grep -q, which would break the pipe under pipefail
+      elif grep -E '^\+' <<<"$patch" | grep -vE '^\+[[:space:]]*--' | grep -iE "$destructive_sql" >/dev/null; then
+        raise high "$file drops, renames or rewrites existing data"
+      else
+        raise medium "$file adds a migration"
+      fi ;;
+    backend/cmd/*|backend/internal/platform/*|backend/Dockerfile|docker-compose.yml)
+                        raise medium "$file changes how the API starts or is wired" ;;
+    */go.mod|*/go.sum|*/package.json|*/package-lock.json)
+                        raise medium "$file changes dependencies" ;;
+    web/src/sw.ts|web/src/sw/*|web/vite.config.ts)
+                        raise medium "$file changes the service worker or build, which stay cached on phones" ;;
+  esac
+done < <(gh api "repos/$repo/pulls/$pr/files" --paginate --jq '.[] | [.filename, .status] | @tsv')
+
+# --- Declared tier and description -----------------------------------------
+
+# HTML comments are the template's hints, not content
+body=$(gh pr view "$pr" -R "$repo" --json body --jq .body | tr -d '\r' | perl -0pe 's/<!--.*?-->//gs')
+
+declared=$(grep -m1 -oiE '^\*\*Risk:\*\*[[:space:]]*(low|medium|high)\b' <<<"$body" \
+  | grep -oiE '(low|medium|high)$' | tr '[:upper:]' '[:lower:]' || true)
+declared="${declared:-none}"
+
+# Prints the text under "## <name>" or "### <name>", up to the next heading
+section() { awk -v h="$1" '/^#/ { inside = ($0 ~ "^###? *" h " *$"); next } inside' <<<"$body"; }
+filled() { grep -q '[^[:space:]]' <<<"$1"; }
+
+problems=()
+[[ "$declared" == none ]] && problems+=("state the tier on its own line under ## Risk, as **Risk:** low, medium or high")
+for name in "Why" "What changes" "What can go wrong" "How it was tested" "How to revert"; do
+  filled "$(section "$name")" || problems+=("fill in the \"$name\" section")
+done
+filled "$(section "Risk" | grep -viE '^\*\*Risk:\*\*')" \
+  || problems+=("explain under ## Risk why the change is this tier")
+
+effective=$(max_tier "${declared/none/low}" "$floor")
+if [[ "$declared" != none ]] && (( $(rank "$declared") < $(rank "$floor") )); then
+  problems+=("the changed paths make this at least $floor risk, but the description says $declared")
+fi
+
+echo "declared=$declared"
+echo "floor=$floor"
+echo "effective=$effective"
+for r in "${reasons[@]+"${reasons[@]}"}"; do echo "reason=$r"; done
+for p in "${problems[@]+"${problems[@]}"}"; do echo "problem=$p"; done
