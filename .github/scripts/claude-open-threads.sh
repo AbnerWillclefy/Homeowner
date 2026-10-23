@@ -6,15 +6,19 @@
 set -euo pipefail
 
 pr="$1"
+# Past 100 threads the rest are unread, so it fails closed: 999, a count that blocks the merge
 gh api graphql -F owner="${GITHUB_REPOSITORY%%/*}" -F name="${GITHUB_REPOSITORY#*/}" -F pr="$pr" -f query='
   query($owner: String!, $name: String!, $pr: Int!) {
     repository(owner: $owner, name: $name) {
       pullRequest(number: $pr) {
         reviewThreads(first: 100) {
+          pageInfo { hasNextPage }
           nodes { isResolved comments(first: 1) { nodes { author { login } } } }
         }
       }
     }
-  }' --jq '[.data.repository.pullRequest.reviewThreads.nodes[]
-           | select(.isResolved | not)
-           | select(.comments.nodes[0].author.login | test("^claude(\\[bot\\])?$"))] | length'
+  }' --jq '.data.repository.pullRequest.reviewThreads
+           | if .pageInfo.hasNextPage then 999 else
+               [.nodes[] | select(.isResolved | not)
+                | select(.comments.nodes[0].author.login | test("^claude(\\[bot\\])?$"))] | length
+             end'

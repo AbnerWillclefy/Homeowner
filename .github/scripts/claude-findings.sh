@@ -10,6 +10,8 @@ set -euo pipefail
 
 pr="$1"
 since="$2"
+# $since goes into the jq program, so it must be a plain timestamp
+[[ "$since" =~ ^[0-9T:Z.+-]+$ ]] || { echo "not a timestamp: $since" >&2; exit 1; }
 gh api "repos/${GITHUB_REPOSITORY:?}/pulls/$pr/comments" --paginate \
   --jq ".[] | select(.user.login == \"claude[bot]\" and .in_reply_to_id == null and .created_at >= \"$since\") | .id" \
   | wc -l | tr -d ' '
