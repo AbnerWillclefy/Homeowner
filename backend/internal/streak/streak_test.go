@@ -25,7 +25,10 @@ func TestJudgeOneDay(t *testing.T) {
 		{"a Drained day pauses", streak.Day{Drained: true}, streak.Pause},
 		{"a Drained day with an undone Commitment pauses", streak.Day{Undone: 1, Drained: true}, streak.Pause},
 		{"a Commitment left undone breaks", streak.Day{Undone: 1}, streak.Break},
-		{"a Commitment left undone breaks despite a Completion", streak.Day{Completions: 3, Undone: 1}, streak.Break},
+		{"a Completion keeps the day despite a Commitment left undone", streak.Day{Completions: 3, Undone: 1}, streak.Grow},
+		{"half the Commitments done grows", streak.Day{Completions: 2, Undone: 2}, streak.Grow},
+		{"a Drained day with a Completion and an undone Commitment grows", streak.Day{Completions: 1, Undone: 1, Drained: true}, streak.Grow},
+		{"several Commitments and no Completion breaks", streak.Day{Undone: 3}, streak.Break},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -43,6 +46,7 @@ func TestCurrentStreak(t *testing.T) {
 	pause := func(n int) streak.Day { return streak.Day{Date: day(n), Drained: true} }
 	brk := func(n int) streak.Day { return streak.Day{Date: day(n), Undone: 1} }
 	open := streak.Day{Date: day(4), Completions: 1, Undone: 1}
+	half := func(n int) streak.Day { return streak.Day{Date: day(n), Completions: 2, Undone: 2} }
 	tests := []struct {
 		name      string
 		days      []streak.Day
@@ -57,7 +61,10 @@ func TestCurrentStreak(t *testing.T) {
 		{"a break as the latest final day gives 0", []streak.Day{grow(3), brk(4)}, day(5), 0, false},
 		{"days given out of order are sorted", []streak.Day{grow(7), brk(5), grow(6), grow(3)}, day(8), 2, false},
 		{"today with an open Commitment does not break", []streak.Day{grow(3), brk(4)}, day(4), 1, false},
-		{"today with an open Commitment adds nothing", []streak.Day{grow(3), open}, day(4), 1, false},
+		{"today with a Completion and an open Commitment counts", []streak.Day{grow(3), open}, day(4), 2, true},
+		{"a 3-day Streak then a day of 2 Completions and 2 undone Commitments reaches 4 (production report)",
+			[]streak.Day{grow(2), grow(3), grow(4), half(5)}, day(6), 4, false},
+		{"a partially finished day no longer breaks the run", []streak.Day{grow(3), half(4), grow(5)}, day(6), 3, false},
 		{"today counts only when it grows", []streak.Day{grow(3), grow(4)}, day(4), 2, true},
 		{"today with nothing pauses", []streak.Day{grow(3), pause(4)}, day(4), 1, false},
 		{"days after today are ignored", []streak.Day{grow(3), grow(9)}, day(4), 1, false},

@@ -28,7 +28,7 @@ In diagrams, solid boxes and lines are built; dashed boxes and lines are planned
 |---|---|
 | [0001](../adr/0001-chores-come-due-in-flexible-windows.md) | Chores come due in flexible windows |
 | [0002](../adr/0002-mirror-the-work-stack.md) | Go, React, Terraform on AWS serverless, under $20 a month |
-| [0003](../adr/0003-only-broken-commitments-break-a-streak.md) | Only broken commitments break a Streak |
+| [0003](../adr/0003-only-broken-commitments-break-a-streak.md) | Only broken commitments break a Streak (amended by 0014) |
 | [0004](../adr/0004-ai-allocates-behind-a-deterministic-referee.md) | AI allocates behind a deterministic referee |
 | [0005](../adr/0005-ship-a-react-pwa-not-a-native-app.md) | React PWA, not a native app |
 | [0006](../adr/0006-localize-with-a-small-typed-module.md) | Localize with a small typed module, not a library |
@@ -38,6 +38,7 @@ In diagrams, solid boxes and lines are built; dashed boxes and lines are planned
 | [0010](../adr/0010-organise-the-pwa-by-domain-module.md) | Organise the PWA by domain module |
 | [0011](../adr/0011-split-each-domain-into-layer-folders.md) | Split each domain into the same layers, in the PWA and the backend |
 | [0012](../adr/0012-serve-resident-photos-from-a-private-bucket-through-the-web-cloudfront.md) | Serve Resident photos from a private bucket through the web CloudFront under unguessable keys |
+| [0014](../adr/0014-a-day-with-any-completion-keeps-the-streak.md) | A day with any Completion keeps the Streak |
 
 ## Keeping this current
 

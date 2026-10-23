@@ -105,5 +105,5 @@ _Avoid_: Trade, Exchange
 ### Rewards
 
 **Streak**:
-The run of days on which a Resident completed at least one Task and every Task they Committed to. A day with neither pauses it; only a Committed Task left undone breaks it.
+The run of days on which a Resident completed at least one Task. A day on which they Committed to Tasks and completed none breaks it, unless they checked in Drained; any other day pauses it.
 _Avoid_: Combo, Chain
