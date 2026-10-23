@@ -47,11 +47,16 @@ jobs:
           gh label create risk:low    -R "$GITHUB_REPOSITORY" --force --color 0e8a16 --description "Merges itself to staging when checks and review are clean"
           gh label create risk:medium -R "$GITHUB_REPOSITORY" --force --color fbca04 --description "Merges itself once the maintainer approves"
           gh label create risk:high   -R "$GITHUB_REPOSITORY" --force --color d93f0b --description "The maintainer merges it by hand"
-          for t in low medium high; do
-            [ "$t" = "$TIER" ] && continue
-            gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/$PR/labels/risk:$t" --silent 2>/dev/null || true
-          done
+          [ -n "$TIER" ] || { echo "::error::pr-risk.sh printed no tier"; exit 1; }
+          # Add the new tier before removing the old ones, so the pull request is never without one.
+          # (Not one PUT of every label: that would drop a label another workflow adds meanwhile.)
           gh api "repos/$GITHUB_REPOSITORY/issues/$PR/labels" -f "labels[]=risk:$TIER" --silent
+          current=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/labels" --jq '.[].name')
+          for t in low medium high; do
+            if [ "$t" != "$TIER" ] && grep -qx "risk:$t" <<<"$current"; then
+              gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/$PR/labels/risk:$t" --silent
+            fi
+          done
 
       - name: Fail on a missing or understated tier
         env:
