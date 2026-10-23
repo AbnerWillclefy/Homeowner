@@ -1,12 +1,12 @@
 import { useI18n } from "../../shared/i18n";
 import { Button } from "../../shared/ui/Button";
-import { useHealth } from "../hooks/useHealth";
 import { bannerFor } from "../logic/bannerFor";
+import { useHealthStatus } from "./HealthProvider";
 
-/** A slim banner with Retry, shown only when the API is unavailable or unreachable. */
+/** A slim banner with Retry, shown only when the API is unavailable or unreachable. It reads the one shared check. */
 export function HealthBanner() {
   const { t } = useI18n();
-  const { state, retry } = useHealth();
+  const { state, retry } = useHealthStatus();
   const key = bannerFor(state);
   if (key === null) return null;
   return (
