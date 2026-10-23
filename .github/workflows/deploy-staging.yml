@@ -256,7 +256,10 @@ jobs:
       - name: Delete stale objects
         # Everything is already uploaded with its headers, so --size-only
         # makes this sync a pure delete of what the build no longer has.
-        run: aws s3 sync dist "s3://${BUCKET}" --delete --size-only
+        # assets/ is excluded (sync never deletes an excluded key): a tab still
+        # running the previous version loads its screens on demand from old
+        # hashed files, which must stay until nothing runs that version.
+        run: aws s3 sync dist "s3://${BUCKET}" --delete --size-only --exclude "assets/*"
 
       - name: Invalidate CloudFront
         run: |
