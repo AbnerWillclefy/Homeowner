@@ -43,9 +43,6 @@ while read -r record; do
   for file in "$(field .filename)" "$(field '.previous_filename // ""')"; do
     [[ -z "$file" ]] && continue
 
-    # Tests change no behaviour a Resident sees
-    [[ "$file" =~ (_test\.go|\.test\.tsx?)$ || "$file" == web/e2e/* ]] && continue
-
     case "$file" in
       .github/*)          raise high "$file changes CI, deploys or the pipeline" ;;
       .claude/*|CLAUDE.md) raise high "$file changes how the agents work" ;;
@@ -53,6 +50,8 @@ while read -r record; do
       scripts/*)          raise high "$file changes an operations script" ;;
       backend/internal/platform/auth/*|web/src/domains/auth/*)
                           raise high "$file changes sign-in" ;;
+      # Tests change no behaviour a Resident sees; below the protected paths, which have no exemption
+      *_test.go|*.test.ts|*.test.tsx|web/e2e/*) ;;
       backend/migrations/*.sql)
         patch=$(field '.patch // ""')
         if [[ "$status" != added ]]; then

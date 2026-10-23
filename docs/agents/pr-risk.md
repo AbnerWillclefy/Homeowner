@@ -16,7 +16,7 @@ When unsure between two tiers, pick the higher one. A pull request labelled `nee
 
 ## Path floors
 
-`.github/scripts/pr-risk.sh` raises the tier to at least this when a pull request changes these paths. Test files (`*_test.go`, `*.test.ts(x)`, `web/e2e/`) never raise it.
+`.github/scripts/pr-risk.sh` raises the tier to at least this when a pull request changes these paths. A renamed file counts under its old and new paths. Test files (`*_test.go`, `*.test.ts(x)`, `web/e2e/`) do not raise it, except under the `high` paths, which have no exemption.
 
 | Floor | Paths |
 |---|---|

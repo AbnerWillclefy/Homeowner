@@ -60,8 +60,16 @@ run_case "web change declared low stays low" \
   "floor=low" "effective=low" "!problem="
 
 run_case "test-only change sets no floor" \
-  "$(files "$(file backend/internal/platform/auth/auth_test.go modified)" "$(file web/e2e/today.spec.ts added)")" "$(complete_body low)" \
+  "$(files "$(file backend/internal/platform/db/db_test.go modified)" "$(file web/e2e/today.spec.ts added)" "$(file web/src/sw/payload.test.ts modified)")" "$(complete_body low)" \
   "floor=low" "!problem="
+
+run_case "a test file under a protected path is still high" \
+  "$(files "$(file .github/x.test.ts added)")" "$(complete_body high)" \
+  "floor=high"
+
+run_case "a sign-in test is still high" \
+  "$(files "$(file backend/internal/platform/auth/auth_test.go modified)")" "$(complete_body high)" \
+  "floor=high"
 
 run_case "additive migration is medium" \
   "$(files "$(file backend/migrations/0016_x.sql added $'+CREATE TABLE x (id int);')")" "$(complete_body medium)" \
