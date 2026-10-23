@@ -29,7 +29,7 @@ raise() { # raise <tier> <reason>
 }
 
 # Matched against all added lines joined into one, so a statement split over lines still counts
-destructive_sql='\b(drop|rename|truncate)\b|\bdelete[[:space:]]+from\b|\bupdate[[:space:]]+[a-z_".]+[[:space:]]+set\b|\balter[[:space:]]+(column[[:space:]]+)?[a-z_"]+[[:space:]]+(set[[:space:]]+(data[[:space:]]+)?)?type\b|\bset[[:space:]]+not[[:space:]]+null\b'
+destructive_sql='\b(drop|rename|truncate)\b|\bdelete[[:space:]]+from\b|\bupdate\b[^;]*\bset\b|\balter[[:space:]]+(column[[:space:]]+)?[a-z_"]+[[:space:]]+(set[[:space:]]+(data[[:space:]]+)?)?type\b|\bset[[:space:]]+not[[:space:]]+null\b'
 
 if [[ -n "${PR_RISK_FILES:-}" ]]; then files=$(cat "$PR_RISK_FILES"); else
   files=$(gh api "repos/$repo/pulls/$pr/files" --paginate --jq '.[]' | jq -s .)

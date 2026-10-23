@@ -80,7 +80,7 @@ run_case "migration that drops a column is high" \
   "floor=high" "!problem="
 
 for sql in $'+ALTER TABLE x\n+  ALTER COLUMN y\n+  TYPE text;' $'+ALTER TABLE x ALTER y TYPE int;' $'+ALTER TABLE x ALTER COLUMN y SET DATA TYPE int;' \
-           $'+ALTER TABLE x ALTER COLUMN y\n+  SET NOT NULL;' $'+UPDATE chores SET name = lower(name);' $'+DELETE FROM x;'; do
+           $'+ALTER TABLE x ALTER COLUMN y\n+  SET NOT NULL;' $'+UPDATE chores SET name = lower(name);' $'+UPDATE ONLY public.chores AS c\n+  SET name = lower(c.name);' $'+DELETE FROM x;'; do
   run_case "rewriting data is high: ${sql//$'\n'/ }" \
     "$(files "$(file backend/migrations/0016_x.sql added "$sql")")" "$(complete_body high)" "floor=high"
 done
