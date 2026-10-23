@@ -79,6 +79,20 @@ run_case "migration that drops a column is high" \
   "$(files "$(file backend/migrations/0016_x.sql added $'+ALTER TABLE x DROP COLUMN y;')")" "$(complete_body high)" \
   "floor=high" "!problem="
 
+for sql in $'+ALTER TABLE x\n+  ALTER COLUMN y\n+  TYPE text;' $'+ALTER TABLE x ALTER y TYPE int;' $'+ALTER TABLE x ALTER COLUMN y SET DATA TYPE int;' \
+           $'+ALTER TABLE x ALTER COLUMN y\n+  SET NOT NULL;' $'+UPDATE chores SET name = lower(name);' $'+DELETE FROM x;'; do
+  run_case "rewriting data is high: ${sql//$'\n'/ }" \
+    "$(files "$(file backend/migrations/0016_x.sql added "$sql")")" "$(complete_body high)" "floor=high"
+done
+
+run_case "adding a nullable column is medium" \
+  "$(files "$(file backend/migrations/0016_x.sql added $'+ALTER TABLE x ADD COLUMN y text;\n+CREATE INDEX x_y ON x (y);')")" "$(complete_body medium)" \
+  "floor=medium"
+
+run_case "the Down section's drop does not count" \
+  "$(files "$(file backend/migrations/0016_x.sql added $'+-- +goose Up\n+CREATE TABLE x (id int);\n+-- +goose Down\n+DROP TABLE x;')")" "$(complete_body medium)" \
+  "floor=medium"
+
 run_case "a drop in an SQL comment does not count" \
   "$(files "$(file backend/migrations/0016_x.sql added $'+-- nothing is dropped here\n+CREATE TABLE x (id int);')")" "$(complete_body medium)" \
   "floor=medium"

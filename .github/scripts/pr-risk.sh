@@ -28,7 +28,8 @@ raise() { # raise <tier> <reason>
   reasons+=("$1: $2")
 }
 
-destructive_sql='\b(drop|rename|truncate)\b|delete[[:space:]]+from|alter[[:space:]]+column.*\b(type|set[[:space:]]+not[[:space:]]+null)\b'
+# Matched against all added lines joined into one, so a statement split over lines still counts
+destructive_sql='\b(drop|rename|truncate)\b|\bdelete[[:space:]]+from\b|\bupdate[[:space:]]+[a-z_".]+[[:space:]]+set\b|\balter[[:space:]]+(column[[:space:]]+)?[a-z_"]+[[:space:]]+(set[[:space:]]+(data[[:space:]]+)?)?type\b|\bset[[:space:]]+not[[:space:]]+null\b'
 
 if [[ -n "${PR_RISK_FILES:-}" ]]; then files=$(cat "$PR_RISK_FILES"); else
   files=$(gh api "repos/$repo/pulls/$pr/files" --paginate --jq '.[]' | jq -s .)
@@ -59,8 +60,10 @@ while read -r record; do
         elif [[ -z "$patch" ]]; then
           # GitHub leaves out the patch of a large diff: fail closed
           raise high "$file is a migration whose diff GitHub did not return, so it cannot be checked"
-        # Added lines that are not SQL comments; no grep -q, which would break the pipe under pipefail
-        elif grep -E '^\+' <<<"$patch" | grep -vE '^\+[[:space:]]*--' | grep -iE "$destructive_sql" >/dev/null; then
+          # Added lines of the Up migration (goose's Down undoes it, so it always drops),
+        # without SQL comments, joined into one line
+        elif sed -n 's/^+//p' <<<"$patch" | sed '/^--[[:space:]]*+goose[[:space:]]\{1,\}Down/,$d' | sed 's/--.*//' \
+            | tr '\n' ' ' | grep -iE "$destructive_sql" >/dev/null; then
           raise high "$file drops, renames or rewrites existing data"
         else
           raise medium "$file adds a migration"
