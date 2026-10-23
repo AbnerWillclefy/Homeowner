@@ -18,9 +18,12 @@ if (( $# )); then prs=("$@"); else
 fi
 
 skip() { echo "#$pr: not merged, $1"; }
+# Each lookup below fails soft with `|| { skip ...; continue; }`, so one API error skips
+# that pull request instead of stopping the sweep
 
 for pr in "${prs[@]}"; do
-  pr_json=$(gh pr view "$pr" -R "$repo" --json state,author,baseRefName,isDraft,labels,headRefOid,mergeable,title,url)
+  pr_json=$(gh pr view "$pr" -R "$repo" --json state,author,baseRefName,isDraft,labels,headRefOid,mergeable,title,url) \
+    || { skip "it could not be read"; continue; }
   get() { jq -r "$1" <<<"$pr_json"; }
   sha=$(get .headRefOid)
 
@@ -32,10 +35,11 @@ for pr in "${prs[@]}"; do
   [ "$(get .mergeable)" = MERGEABLE ] || { skip "GitHub says it is $(get .mergeable)"; continue; }
 
   # The tier is read again with main's script, so a pull request cannot loosen its own rules
-  result=$("$here/pr-risk.sh" "$pr")
+  result=$("$here/pr-risk.sh" "$pr") || { skip "pr-risk.sh failed"; continue; }
   tier=$(sed -n 's/^effective=//p' <<<"$result")
   if grep -q '^problem=' <<<"$result"; then skip "its description fails the pr-risk check"; continue; fi
   [ "$tier" != high ] || { skip "it is high risk, so the maintainer merges it"; continue; }
+  [[ "$tier" == low || "$tier" == medium ]] || { skip "its tier could not be read"; continue; }
 
   # Every check on the head commit finished green. Only the latest run of each check counts,
   # since a superseded run shows as cancelled (gh exits non-zero while any is pending or failed)
@@ -43,19 +47,23 @@ for pr in "${prs[@]}"; do
     --jq 'group_by(.name) | map(max_by(.startedAt)) | .[].bucket' || true)
   if [ -z "$buckets" ] || grep -qvxE 'pass|skipping' <<<"$buckets"; then skip "not every check is green yet"; continue; fi
 
-  # Claude's latest review ran on this exact commit and raised nothing (as agent-review-fix.yml counts findings)
+  # Claude's latest review ran on this exact commit and raised nothing. The findings filter is
+  # a copy of agent-review-fix.yml's, and merge-by-risk.test.sh fails if the two drift apart
   review=$(gh api "repos/$repo/actions/workflows/claude-code-review.yml/runs?head_sha=$sha&per_page=20" \
-    --jq '.workflow_runs | sort_by(.created_at) | last | "\(.conclusion) \(.created_at)"')
+    --jq '.workflow_runs | sort_by(.created_at) | last | "\(.conclusion) \(.created_at)"') \
+    || { skip "Claude's review runs could not be read"; continue; }
   read -r review_conclusion review_started <<<"$review"
   [ "$review_conclusion" = success ] || { skip "Claude has not finished reviewing $sha"; continue; }
   findings=$(gh api "repos/$repo/pulls/$pr/comments" --paginate \
-    --jq ".[] | select(.user.login == \"claude[bot]\" and .in_reply_to_id == null and .created_at >= \"$review_started\") | .id" | wc -l)
+    --jq ".[] | select(.user.login == \"claude[bot]\" and .in_reply_to_id == null and .created_at >= \"$review_started\") | .id" | wc -l) \
+    || { skip "Claude's findings could not be read"; continue; }
   (( findings == 0 )) || { skip "Claude's latest review has $findings findings"; continue; }
 
   # The maintainer's latest verdict: changes requested blocks any tier; medium needs an approval of this commit
   verdict=$(gh api "repos/$repo/pulls/$pr/reviews" --paginate \
     --jq ".[] | select(.user.login == \"$MAINTAINER_LOGIN\" and (.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\" or .state == \"DISMISSED\")) | \"\(.state) \(.commit_id)\"" \
-    | tail -n 1)  # --jq runs per page, so print every verdict and keep the last
+    | tail -n 1) || { skip "the maintainer's reviews could not be read"; continue; }
+  # (--jq runs per page, so the filter prints every verdict and tail keeps the last)
   read -r verdict_state verdict_sha <<<"$verdict"
   [ "$verdict_state" != CHANGES_REQUESTED ] || { skip "the maintainer requested changes"; continue; }
   if [ "$tier" = medium ] && ! { [ "$verdict_state" = APPROVED ] && [ "$verdict_sha" = "$sha" ]; }; then

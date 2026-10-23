@@ -81,5 +81,15 @@ reset; echo '[{"filename":".github/workflows/x.yml","status":"modified"}]' >"$fi
 reset; jq '.author.login = "maintainer"' "$fix/pr.json" >"$fix/t" && mv "$fix/t" "$fix/pr.json"; expect kept "the maintainer's own pull request"
 reset; jq '.labels += [{name: "needs-human"}]' "$fix/pr.json" >"$fix/t" && mv "$fix/t" "$fix/pr.json"; expect kept "labelled needs-human"
 
+# The findings filter must match the one agent-review-fix.yml uses to decide a review is clean
+filter() { grep -o 'select(.user.login == \\"claude\[bot\]\\"[^)]*' "$1" | sed 's/\$[A-Za-z_]*/$SINCE/'; }
+if [[ -n "$(filter "$here/merge-by-risk.sh")" && "$(filter "$here/merge-by-risk.sh")" == "$(filter "$here/../workflows/agent-review-fix.yml")" ]]; then
+  echo "ok   the findings filter matches agent-review-fix.yml"
+else
+  echo "FAIL the findings filter differs from agent-review-fix.yml"; failures=$((failures + 1))
+fi
+
+reset; echo 'not json' >"$fix/runs.json"; expect kept "an API error skips the pull request instead of stopping"
+
 if (( failures )); then echo "$failures failed"; exit 1; fi
 echo "all passed"
