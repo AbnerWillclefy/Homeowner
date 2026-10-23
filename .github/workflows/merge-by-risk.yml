@@ -17,7 +17,8 @@ on:
         description: Pull request number (empty checks every open agent pull request)
         required: false
 
-# One merger at a time; a queued sweep replaces an older queued one, which is fine
+# One merger at a time. GitHub keeps one queued run and drops older ones, so every
+# run sweeps all open agent pull requests and a dropped run loses nothing.
 concurrency:
   group: merge-by-risk
   cancel-in-progress: false
@@ -42,5 +43,5 @@ jobs:
           AGENT_LOGIN: homeowner-agents
           MAINTAINER_LOGIN: AbnerWillclefy
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          PR: ${{ inputs.pr || github.event.workflow_run.pull_requests[0].number }}
+          PR: ${{ inputs.pr }}
         run: .github/scripts/merge-by-risk.sh $PR

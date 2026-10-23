@@ -37,8 +37,10 @@ for pr in "${prs[@]}"; do
   if grep -q '^problem=' <<<"$result"; then skip "its description fails the pr-risk check"; continue; fi
   [ "$tier" != high ] || { skip "it is high risk, so the maintainer merges it"; continue; }
 
-  # Every check on the head commit finished green (gh exits non-zero while any is pending or failed)
-  buckets=$(gh pr checks "$pr" -R "$repo" --json bucket --jq '.[].bucket' || true)
+  # Every check on the head commit finished green. Only the latest run of each check counts,
+  # since a superseded run shows as cancelled (gh exits non-zero while any is pending or failed)
+  buckets=$(gh pr checks "$pr" -R "$repo" --json name,bucket,startedAt \
+    --jq 'group_by(.name) | map(max_by(.startedAt)) | .[].bucket' || true)
   if [ -z "$buckets" ] || grep -qvxE 'pass|skipping' <<<"$buckets"; then skip "not every check is green yet"; continue; fi
 
   # Claude's latest review ran on this exact commit and raised nothing (as agent-review-fix.yml counts findings)
@@ -52,8 +54,8 @@ for pr in "${prs[@]}"; do
 
   # The maintainer's latest verdict: changes requested blocks any tier; medium needs an approval of this commit
   verdict=$(gh api "repos/$repo/pulls/$pr/reviews" --paginate \
-    --jq "[.[] | select(.user.login == \"$MAINTAINER_LOGIN\" and (.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\" or .state == \"DISMISSED\"))] | last | \"\(.state) \(.commit_id)\"" \
-    | tail -n 1)
+    --jq ".[] | select(.user.login == \"$MAINTAINER_LOGIN\" and (.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\" or .state == \"DISMISSED\")) | \"\(.state) \(.commit_id)\"" \
+    | tail -n 1)  # --jq runs per page, so print every verdict and keep the last
   read -r verdict_state verdict_sha <<<"$verdict"
   [ "$verdict_state" != CHANGES_REQUESTED ] || { skip "the maintainer requested changes"; continue; }
   if [ "$tier" = medium ] && ! { [ "$verdict_state" = APPROVED ] && [ "$verdict_sha" = "$sha" ]; }; then
