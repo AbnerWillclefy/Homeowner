@@ -15,6 +15,8 @@ type Messages = {
 export const ptBR: Messages = {
   "app.name": "Homeowner",
   "common.refreshing": "Atualizando",
+  "app.chunkFailed": "Não foi possível carregar esta tela. Verifique a conexão e tente de novo.",
+  "app.chunkRetry": "Tentar de novo",
   "home.tagline": "Gerencie os afazeres domésticos do seu lar.",
   "health.unavailable":
     "Status do serviço: indisponível. O serviço está no ar, mas não consegue acessar o banco de dados.",

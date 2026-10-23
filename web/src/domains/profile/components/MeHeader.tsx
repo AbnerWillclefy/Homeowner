@@ -5,18 +5,11 @@ import { ME_EDIT_PATH } from "../../../app/logic/routes";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { PageFetchingSlot, useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
-import { SkeletonBar } from "../../../shared/ui/Skeleton";
+import { COLUMN, EMAIL_TEXT, MeHeaderSkeleton, NAME_TEXT, STREAK_LINE } from "./MeHeaderSkeleton";
 import { MeLoadFailed } from "./MeLoadFailed";
 import { Avatar } from "../../residents/components/Avatar";
 import { useStreak } from "../../streak/hooks/useStreak";
 import type { Me } from "../../auth/api/meApi";
-
-// The three lines under the Avatar have one height each, in the loaded header and in its skeleton, so nothing
-// moves when the answer arrives: the name (text-3xl, line height 1.25), the email (text-sm) and the Streak line.
-const NAME_LINE = "h-[2.34rem]";
-const EMAIL_LINE = "h-5";
-const STREAK_LINE = "h-6";
-const COLUMN = "flex flex-col items-center gap-2 pb-4 text-center";
 
 /** The current Streak, only for a Resident with a Home (it is the Home's). A Streak of 0 shows nothing: it is no failure to show. */
 function HeaderStreak() {
@@ -53,10 +46,10 @@ function Loaded({ me, hasHome }: { me: Me; hasHome: boolean }) {
           the left of the same width keeps the name centred. */}
       <div className="mt-1 flex w-full items-start gap-2">
         <span aria-hidden="true" className="w-4 shrink-0" />
-        <p className="my-0 min-w-0 flex-1 text-3xl leading-tight font-bold [overflow-wrap:anywhere]">{me.name}</p>
+        <p className={`my-0 min-w-0 flex-1 ${NAME_TEXT} [overflow-wrap:anywhere]`}>{me.name}</p>
         <PageFetchingSlot />
       </div>
-      <p className="my-0 text-sm font-semibold text-muted [overflow-wrap:anywhere]">{me.email}</p>
+      <p className={`my-0 ${EMAIL_TEXT} [overflow-wrap:anywhere]`}>{me.email}</p>
       {hasHome && <HeaderStreak />}
       {nothingSet && (
         <Button asChild variant="link">
@@ -65,31 +58,6 @@ function Loaded({ me, hasHome }: { me: Me; hasHome: boolean }) {
             {t("me.header.addLink")}
           </Link>
         </Button>
-      )}
-    </div>
-  );
-}
-
-/** One skeleton line at a loaded line's height: a pulsing bar, or just the space while the skeleton is still hidden. */
-function Line({ height, width, show }: { height: string; width: string; show: boolean }) {
-  return show ? <SkeletonBar className={`${height} ${width}`} /> : <span className={`block ${height}`} />;
-}
-
-/** The header's shape while `GET /me` loads: the Avatar circle and three lines, at the loaded sizes. */
-function Skeleton({ showBars, hasHome }: { showBars: boolean; hasHome: boolean }) {
-  return (
-    <div aria-hidden="true" className={COLUMN}>
-      <span className={`block size-20 rounded-pill ${showBars ? "bg-muted/20 motion-safe:animate-pulse" : ""}`} />
-      <div className={`mt-1 flex w-full justify-center ${NAME_LINE}`}>
-        <Line height={NAME_LINE} width="w-1/2" show={showBars} />
-      </div>
-      <div className={`flex w-full justify-center ${EMAIL_LINE}`}>
-        <Line height={EMAIL_LINE} width="w-2/3" show={showBars} />
-      </div>
-      {hasHome && (
-        <div className={`flex w-full justify-center ${STREAK_LINE}`}>
-          <Line height={STREAK_LINE} width="w-1/4" show={showBars} />
-        </div>
       )}
     </div>
   );
@@ -116,7 +84,7 @@ export function MeHeader() {
       <h2 className="sr-only">
         {t("me.heading")}
       </h2>
-      {loading && <Skeleton showBars={showSkeleton} hasHome={hasHome} />}
+      {loading && <MeHeaderSkeleton showBars={showSkeleton} hasHome={hasHome} />}
       {me.state.kind === "ready" && <Loaded me={me.state.me} hasHome={hasHome} />}
       {me.state.kind === "failed" && <MeLoadFailed className="items-center pb-4 text-center" />}
     </div>

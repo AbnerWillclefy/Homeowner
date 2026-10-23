@@ -11,6 +11,8 @@ import type { Message } from "../translate";
 export const enUS = {
   "app.name": "Homeowner",
   "common.refreshing": "Refreshing",
+  "app.chunkFailed": "This screen could not be loaded. Check your connection and try again.",
+  "app.chunkRetry": "Try again",
   "home.tagline": "Manage the housework in your Home.",
   "health.unavailable":
     "Service status: unavailable. The service is up but cannot reach its database.",
