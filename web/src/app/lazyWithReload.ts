@@ -1,0 +1,22 @@
+import { lazy, type ComponentType } from "react";
+import { createChunkRecovery } from "./logic/chunkReload";
+
+/** The one recovery for the page: `main.tsx` also listens to `vite:preloadError` with it. */
+export const chunkRecovery = createChunkRecovery({
+  // Read only inside the recovery's try blocks: touching sessionStorage can throw where storage is blocked.
+  storage: {
+    getItem: (key) => window.sessionStorage.getItem(key),
+    setItem: (key, value) => window.sessionStorage.setItem(key, value),
+    removeItem: (key) => window.sessionStorage.removeItem(key),
+  },
+  now: () => Date.now(),
+  reload: () => window.location.reload(),
+});
+
+/**
+ * `React.lazy` for a screen's chunk. A chunk that fails to load reloads the page once; a second failure is thrown
+ * to the nearest `ChunkErrorBoundary`. Declare it at module level, never inside a component.
+ */
+export function lazyWithReload<T extends ComponentType<never>>(importer: () => Promise<{ default: T }>) {
+  return lazy(() => chunkRecovery.load(importer));
+}
