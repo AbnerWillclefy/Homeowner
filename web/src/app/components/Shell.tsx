@@ -9,7 +9,7 @@ import { useI18n } from "../../shared/i18n";
 import { useInvite } from "../../domains/invite/components/PendingInviteProvider";
 import type { JoinOutcome } from "../../domains/invite/hooks/useJoinInvite";
 import { StartChoice } from "../../domains/startchoice/components/StartChoice";
-import { lazyWithReload } from "../lazyWithReload";
+import { lazyNamed } from "../lazyWithReload";
 import { BottomNav } from "./BottomNav";
 import { LazyDialog } from "./LazyPage";
 import { dialogToShow } from "../logic/dialogToShow";
@@ -20,8 +20,8 @@ import { TODAY_PATH } from "../logic/routes";
 import { useFocusOnNavigate } from "../hooks/useFocusOnNavigate";
 
 // The dialogs load on demand: most launches never show them.
-const JoinInvite = lazyWithReload(() => import("../../domains/invite/components/JoinInvite").then((module) => ({ default: module.JoinInvite })));
-const RatingStep = lazyWithReload(() => import("../../domains/invite/components/RatingStep").then((module) => ({ default: module.RatingStep })));
+const JoinInvite = lazyNamed(() => import("../../domains/invite/components/JoinInvite"), "JoinInvite");
+const RatingStep = lazyNamed(() => import("../../domains/invite/components/RatingStep"), "RatingStep");
 
 /**
  * The app once onboarding is done: the current tab, the bottom nav, and the dialogs over Today. The Home loads

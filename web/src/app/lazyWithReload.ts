@@ -22,3 +22,12 @@ export const chunkRecovery = createChunkRecovery({
 export function lazyWithReload<T extends ComponentType<any>>(importer: () => Promise<{ default: T }>) {
   return lazy(() => chunkRecovery.load(importer));
 }
+
+/**
+ * `lazyWithReload` for a module with a named export instead of a default one:
+ * `lazyNamed(() => import("./X"), "X")`. With `lazyWithReload`, the only way to declare a lazy screen.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function lazyNamed<K extends string, T extends ComponentType<any>>(importer: () => Promise<Record<K, T>>, name: K) {
+  return lazyWithReload(() => importer().then((module) => ({ default: module[name] })));
+}

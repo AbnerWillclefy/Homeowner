@@ -1,11 +1,9 @@
 import { useSession } from "./SessionProvider";
 import { LazyPage } from "./LazyPage";
 import { OnboardingFallback, OnboardingFrame } from "./lazyFallbacks";
-import { lazyWithReload } from "../lazyWithReload";
+import { lazyNamed } from "../lazyWithReload";
 
-const Onboarding = lazyWithReload(() =>
-  import("../../domains/onboarding/components/Onboarding").then((module) => ({ default: module.Onboarding })),
-);
+const Onboarding = lazyNamed(() => import("../../domains/onboarding/components/Onboarding"), "Onboarding");
 
 /**
  * Onboarding at /welcome/<step>: full screen, no nav and no page chrome. The guard has already put the person on
