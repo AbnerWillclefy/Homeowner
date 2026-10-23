@@ -201,7 +201,7 @@ func TestCompletingTheNextDayDoesNotRepairTheBreak(t *testing.T) {
 	wantStreak(t, me, 1, false)
 }
 
-func TestTodayWithAnOpenCommitmentDoesNotBreak(t *testing.T) {
+func TestTodayKeepsCountingWhenAnotherCommitmentIsAdded(t *testing.T) {
 	t.Parallel()
 	app, me := dailyHome(t, "Dishes", "Mop")
 	allocateOn(app, t, 2)
@@ -209,10 +209,30 @@ func TestTodayWithAnOpenCommitmentDoesNotBreak(t *testing.T) {
 	apitest.MustAct(t, me, "complete", apitest.IDOf(t, mine, "Dishes"))
 	wantStreak(t, me, 1, true)
 	apitest.MustAct(t, me, "accept", apitest.IDOf(t, mine, "Mop"))
-	// Another Commitment after growing: today's +1 waits for it, nothing breaks.
-	wantStreak(t, me, 0, false)
+	// Another Commitment after growing: today still counts, nothing breaks.
+	wantStreak(t, me, 1, true)
 	app.Clock.Set(at(2, 23))
+	wantStreak(t, me, 1, true)
+}
+
+func TestAPartiallyFinishedDayKeepsTheStreak(t *testing.T) {
+	t.Parallel()
+	app, me := dailyHome(t, "Dishes", "Mop")
+
+	allocateOn(app, t, 2)
+	mine := apitest.MineOf(t, me)
+	if len(mine) != 2 {
+		t.Fatalf("setup: %v", mine)
+	}
+	apitest.MustAct(t, me, "accept", apitest.IDOf(t, mine, "Dishes"))
+	apitest.MustAct(t, me, "accept", apitest.IDOf(t, mine, "Mop"))
 	wantStreak(t, me, 0, false)
+	apitest.MustAct(t, me, "complete", apitest.IDOf(t, mine, "Dishes"))
+	wantStreak(t, me, 1, true) // Mop is still Committed and open
+
+	// Tuesday: Monday is final with Mop undone, and it grew.
+	app.Clock.Set(at(3, 9))
+	wantStreak(t, me, 1, false)
 }
 
 func TestLeavingTheHomeAndJoiningAnotherStartsAtZero(t *testing.T) {
