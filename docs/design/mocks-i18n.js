@@ -140,6 +140,22 @@ const PT = {
   "Maria Aparecida Albuquerque de Souza Lima": "Maria Aparecida Albuquerque de Souza Lima",
   "Deep clean the oven hood and its filters": "Faxinar a coifa e os filtros do fogão",
   "Wipe down the fridge inside and out": "Limpar a geladeira por dentro e por fora",
+  // Epic 6: A leaner Today
+  "Good afternoon, Maria Eduarda": "Boa tarde, Maria Eduarda",
+  "Friday, October 23": "sexta-feira, 23 de outubro",
+  "Accept all": "Aceitar todas",
+  "Your day follows your Normal Energy.": "Seu dia segue a sua energia normal.",
+  "Essential work comes first, then the Tasks you like.": "O essencial vem primeiro, depois as tarefas de que você gosta.",
+  "Written by the assistant": "Escrito pelo assistente",
+  "Standard summary of today's reasons": "Resumo padrão dos motivos de hoje",
+  "days of Streak": "dias de sequência",
+  "Today counts": "Hoje conta",
+  "Finish a Task to start one": "Conclua uma tarefa para começar uma",
+  "Close": "Fechar",
+  "Finishing one Task in a day grows it.": "Concluir uma tarefa no dia aumenta a sequência.",
+  "A day with nothing taken on, or a Drained day, pauses it.": "Um dia sem tarefas assumidas, ou esgotado, pausa a sequência.",
+  "Taking on Tasks and finishing none breaks it.": "Assumir tarefas e não concluir nenhuma quebra a sequência.",
+  "Refusing or ignoring a proposed Task never breaks it.": "Recusar ou ignorar uma tarefa proposta nunca quebra a sequência.",
 };
 
 if (new URLSearchParams(location.search).get("lang") === "pt-BR") {

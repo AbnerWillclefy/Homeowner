@@ -223,6 +223,18 @@ Icon and Category name on the Category pastel, a pill with a hairline edge, 0.87
 - **Section card:** an icon tile and an h3 in a row, an optional muted hint, then the body.
 - **Card row:** glyph left, text in the middle, actions on the right (they wrap to their own end-aligned row when narrow).
 - **Stat tile:** a big number over its label.
+- **Collapsible card:** a section card whose whole head row toggles it.
+  - The head row is one native button inside the heading, so Enter and Space work. It starts closed and the state is not remembered; the body stays in the page when hidden.
+  - The chevron rotates only behind `motion-safe:`.
+  - Closed, it shows at most one line of title: no hint when the title is server text. The title wraps at large text and is never cut with an ellipsis (The Wrap, Never Truncate Rule).
+  - The icon tile is decorative unless it carries meaning. When it does, it has a text description and the open body repeats it as a visible caption, never a tooltip. A state that is not an error (a fallback text, say) uses the neutral tile (muted tint, muted ink), not a warning icon.
+
+### Header icon button
+An icon with a short value, at the end of a page header's title row after the refresh spinner slot.
+- At least 2.75rem, never shrinking, aligned to the top while the title wraps. Tabular figures, so a changing value does not move it.
+- Ink or muted at every value, 0 included (The Calm at Every Number Rule), never teal (The One Voice Rule).
+- It always has a text accessible name that includes the value, and opens a short centred dialog that returns focus to it on close.
+- It has its own placeholder while loading, and is absent when its data could not be read.
 
 ### Inputs / Fields
 Full width, 2.75rem minimum, card fill, 1px Hedge Line edge, 0.75rem radius, 1rem text. Focus is the global 2px Focus Blue outline. Labels sit above in 600.
