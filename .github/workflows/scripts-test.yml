@@ -1,0 +1,20 @@
+name: scripts-test
+
+# Tests the pipeline scripts in .github/scripts, which decide what merges without a human.
+on:
+  pull_request:
+    paths: [".github/scripts/**", ".github/workflows/scripts-test.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  scripts-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the scripts parse
+        run: for f in .github/scripts/*.sh; do bash -n "$f"; done
+      - name: Test pr-risk.sh
+        run: .github/scripts/pr-risk.test.sh

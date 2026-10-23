@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Reads a pull request's declared risk tier and checks its description.
 # Usage: pr-risk.sh <pr-number>   (needs GH_TOKEN and GITHUB_REPOSITORY)
+# Tests set PR_RISK_FILES (the pulls/<n>/files JSON) and PR_RISK_BODY (the description)
+# to files instead, so no API is called: see pr-risk.test.sh.
 #
 # Prints key=value lines:
 #   declared=low|medium|high|none   the tier the description states
@@ -11,8 +13,8 @@
 # The tiers and path floors are explained in docs/agents/pr-risk.md; keep both in step.
 set -euo pipefail
 
-pr="$1"
-repo="${GITHUB_REPOSITORY:?}"
+pr="${1:-}"
+repo="${GITHUB_REPOSITORY:-}"
 
 rank() { case "$1" in low) echo 1 ;; medium) echo 2 ;; high) echo 3 ;; *) echo 0 ;; esac; }
 max_tier() { if (( $(rank "$1") >= $(rank "$2") )); then echo "$1"; else echo "$2"; fi; }
@@ -28,7 +30,16 @@ raise() { # raise <tier> <reason>
 
 destructive_sql='\b(drop|rename|truncate)\b|delete[[:space:]]+from|alter[[:space:]]+column.*\b(type|set[[:space:]]+not[[:space:]]+null)\b'
 
-while IFS=$'\t' read -r file status; do
+if [[ -n "${PR_RISK_FILES:-}" ]]; then files=$(cat "$PR_RISK_FILES"); else
+  files=$(gh api "repos/$repo/pulls/$pr/files" --paginate --jq '.[]' | jq -s .)
+fi
+
+# One record per file, base64 so a name or patch with any character stays one field
+while read -r record; do
+  field() { base64 -d <<<"$record" | jq -r "$1"; }
+  file=$(field .filename)
+  status=$(field .status)
+
   # Tests change no behaviour a Resident sees
   [[ "$file" =~ (_test\.go|\.test\.tsx?)$ || "$file" == web/e2e/* ]] && continue
 
@@ -39,11 +50,13 @@ while IFS=$'\t' read -r file status; do
     scripts/*)          raise high "$file changes an operations script" ;;
     backend/internal/platform/auth/*|web/src/domains/auth/*)
                         raise high "$file changes sign-in" ;;
-    backend/migrations/*)
-      patch=$(gh api "repos/$repo/pulls/$pr/files" --paginate \
-        --jq ".[] | select(.filename == \"$file\") | .patch // \"\"")
+    backend/migrations/*.sql)
+      patch=$(field '.patch // ""')
       if [[ "$status" != added ]]; then
         raise high "$file edits a migration that may already have run"
+      elif [[ -z "$patch" ]]; then
+        # GitHub leaves out the patch of a large diff: fail closed
+        raise high "$file is a migration whose diff GitHub did not return, so it cannot be checked"
       # Added lines that are not SQL comments; no grep -q, which would break the pipe under pipefail
       elif grep -E '^\+' <<<"$patch" | grep -vE '^\+[[:space:]]*--' | grep -iE "$destructive_sql" >/dev/null; then
         raise high "$file drops, renames or rewrites existing data"
@@ -57,12 +70,15 @@ while IFS=$'\t' read -r file status; do
     web/src/sw.ts|web/src/sw/*|web/vite.config.ts)
                         raise medium "$file changes the service worker or build, which stay cached on phones" ;;
   esac
-done < <(gh api "repos/$repo/pulls/$pr/files" --paginate --jq '.[] | [.filename, .status] | @tsv')
+done < <(jq -r '.[] | @base64' <<<"$files")
 
 # --- Declared tier and description -----------------------------------------
 
 # HTML comments are the template's hints, not content
-body=$(gh pr view "$pr" -R "$repo" --json body --jq .body | tr -d '\r' | perl -0pe 's/<!--.*?-->//gs')
+if [[ -n "${PR_RISK_BODY:-}" ]]; then body=$(cat "$PR_RISK_BODY"); else
+  body=$(gh pr view "$pr" -R "$repo" --json body --jq .body)
+fi
+body=$(tr -d '\r' <<<"$body" | perl -0pe 's/<!--.*?-->//gs')
 
 declared=$(grep -m1 -oiE '^\*\*Risk:\*\*[[:space:]]*(low|medium|high)\b' <<<"$body" \
   | grep -oiE '(low|medium|high)$' | tr '[:upper:]' '[:lower:]' || true)
