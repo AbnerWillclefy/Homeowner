@@ -7,13 +7,14 @@ import { ReplanControl } from "../../dayplan/components/ReplanControl";
 import { TodayHeader } from "../../dayplan/components/TodayHeader";
 import { TodaySection } from "../../dayplan/components/TodaySection";
 import { useDayPlan } from "../../dayplan/hooks/useDayPlan";
-import { StreakCard } from "../../streak/components/StreakCard";
+import { StreakButton } from "../../streak/components/StreakButton";
 import { useStreak } from "../../streak/hooks/useStreak";
 import { useReportFetching } from "../../../shared/ui/PageLoading";
 
 /**
- * Today: the greeting, then the Check-in card with today's Energy, the Streak card, the replan control (staging
- * only) and the Day Plan. The folded explanation belongs to the Day Plan: it shows right under "Your Tasks",
+ * Today: the greeting with the Streak flame button at the end of its row (built here and passed to the header, so
+ * the Day Plan domain never imports the Streak), then the Check-in card with today's Energy, the replan control
+ * (staging only) and the Day Plan. The folded explanation belongs to the Day Plan: it shows right under "Your Tasks",
  * before the Tasks, and only on a planned day. Whatever changes the plan
  * (an action, a saved Check-in, the start choice, a join) writes or invalidates the query cache, so nothing here
  * tracks a version or polls. This is the one owner of the plan: the Energy
@@ -36,7 +37,7 @@ export function HomeDay() {
 
   return (
     <>
-      <TodayHeader />
+      <TodayHeader aside={<StreakButton streak={streak.streak} loading={streak.loading} />} />
       <CheckInSection
         checkIn={checkIn}
         open={checkInOpen}
@@ -44,7 +45,6 @@ export function HomeDay() {
         onClose={() => setCheckInOpen(false)}
         energy={showsEnergy(note) ? <EnergySummary note={note} energy={energy ?? 0} planned={planned} /> : null}
       />
-      <StreakCard streak={streak.streak} loading={streak.loading} />
       <ReplanControl plan={state.kind === "ready" ? state.plan : undefined} show={day.show} />
       <TodaySection day={day} note={note} />
     </>

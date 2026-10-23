@@ -4,7 +4,6 @@ import { CheckInSkeleton } from "../../checkin/components/CheckInSkeleton";
 import { ChoresSkeleton } from "../../chores/components/ChoresSkeleton";
 import { DayPlanSkeleton } from "../../dayplan/components/DayPlanSkeleton";
 import { ResidentRowsSkeleton } from "../../residents/components/ResidentRowSkeleton";
-import { StreakSkeleton } from "../../streak/components/StreakSkeleton";
 
 function TitledCardSkeleton({ lines }: { lines: number }) {
   return (
@@ -38,15 +37,14 @@ export function HomeSkeleton() {
   );
 }
 
-/** Today while its Home loads: the greeting, then the Check-in, Streak and Day Plan sections, spaced as `HomeDay` spaces them. */
+/** Today while its Home loads: the greeting, then the Check-in and Day Plan sections, with a Streak button placeholder in the header, spaced as `HomeDay` spaces them. */
 export function TodaySkeleton() {
   return (
     <div aria-hidden="true">
-      <SkeletonHeader />
+      <SkeletonHeader aside />
       <section>
         <CheckInSkeleton />
       </section>
-      <StreakSkeleton />
       <section>
         <DayPlanSkeleton />
       </section>

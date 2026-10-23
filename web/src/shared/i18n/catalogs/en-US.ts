@@ -481,7 +481,22 @@ export const enUS = {
   "startChoice.done.close": "Got it",
 
   // Streak
-  "streak.heading": "Streak",
+  "streak.button": {
+    one: "Streak: {count} day",
+    other: "Streak: {count} days",
+  },
+  "streak.button.zero": "Streak: 0 days",
+  "streak.stat": {
+    one: "day Streak",
+    other: "day Streak",
+  },
+  "streak.stat.zero": "day Streak",
+  "streak.dialog.title": "Your Streak",
+  "streak.rule.grow": "Finishing one Task in a day grows it.",
+  "streak.rule.pause": "A day with nothing taken on, or a Drained day, pauses it.",
+  "streak.rule.break": "Taking on Tasks and finishing none breaks it.",
+  "streak.rule.refuse": "Refusing or ignoring a proposed Task never breaks it.",
+  "streak.close": "Close",
   "streak.days": {
     one: "{count}-day Streak",
     other: "{count}-day Streak",
