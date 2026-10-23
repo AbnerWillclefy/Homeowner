@@ -5,7 +5,7 @@ import { ME_EDIT_PATH } from "../../../app/logic/routes";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { PageFetchingSlot, useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
-import { COLUMN, MeHeaderSkeleton, STREAK_LINE } from "./MeHeaderSkeleton";
+import { COLUMN, EMAIL_TEXT, MeHeaderSkeleton, NAME_TEXT, STREAK_LINE } from "./MeHeaderSkeleton";
 import { MeLoadFailed } from "./MeLoadFailed";
 import { Avatar } from "../../residents/components/Avatar";
 import { useStreak } from "../../streak/hooks/useStreak";
@@ -46,10 +46,10 @@ function Loaded({ me, hasHome }: { me: Me; hasHome: boolean }) {
           the left of the same width keeps the name centred. */}
       <div className="mt-1 flex w-full items-start gap-2">
         <span aria-hidden="true" className="w-4 shrink-0" />
-        <p className="my-0 min-w-0 flex-1 text-3xl leading-tight font-bold [overflow-wrap:anywhere]">{me.name}</p>
+        <p className={`my-0 min-w-0 flex-1 ${NAME_TEXT} [overflow-wrap:anywhere]`}>{me.name}</p>
         <PageFetchingSlot />
       </div>
-      <p className="my-0 text-sm font-semibold text-muted [overflow-wrap:anywhere]">{me.email}</p>
+      <p className={`my-0 ${EMAIL_TEXT} [overflow-wrap:anywhere]`}>{me.email}</p>
       {hasHome && <HeaderStreak />}
       {nothingSet && (
         <Button asChild variant="link">

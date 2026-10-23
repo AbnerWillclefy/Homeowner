@@ -2,8 +2,11 @@ import { SkeletonBar } from "../../../shared/ui/Skeleton";
 
 // The three lines under the Avatar have one height each, in the loaded header and in its skeleton, so nothing
 // moves when the answer arrives: the name (text-3xl, line height 1.25), the email (text-sm) and the Streak line.
-export const NAME_LINE = "h-[2.34rem]";
-export const EMAIL_LINE = "h-5";
+// MeHeader takes the type classes from here, and each height below is that type's line height, so the two cannot drift.
+export const NAME_TEXT = "text-3xl leading-tight font-bold";
+export const EMAIL_TEXT = "text-sm font-semibold text-muted";
+const NAME_LINE = "h-[2.34rem]";
+const EMAIL_LINE = "h-5";
 export const STREAK_LINE = "h-6";
 export const COLUMN = "flex flex-col items-center gap-2 pb-4 text-center";
 
