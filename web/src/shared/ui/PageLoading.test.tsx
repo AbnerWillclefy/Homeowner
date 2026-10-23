@@ -2,6 +2,7 @@
 import { act, createElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { FirstLoadSettledContext } from "./FirstLoadSettledContext";
 import { PageLoading, useReportFirstLoad } from "./PageLoading";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -77,5 +78,63 @@ describe("PageLoading", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     expect(() => act(() => root.render(createElement(Section, { name: "a", loading: true })))).toThrow(/inside <PageLoading>/);
     error.mockRestore();
+  });
+
+  describe("first load settled", () => {
+    const mountWith = (onSettled: () => void, children: ReactNode) =>
+      act(() =>
+        root.render(
+          createElement(FirstLoadSettledContext, { value: onSettled }, createElement(PageLoading, { message: "Loading", children })),
+        ),
+      );
+    const flush = () => act(() => vi.advanceTimersByTime(0));
+
+    it("fires once after the only section reports true then false", () => {
+      const onSettled = vi.fn();
+      mountWith(onSettled, createElement(Section, { name: "a", loading: true }));
+      flush();
+      expect(onSettled).not.toHaveBeenCalled();
+      mountWith(onSettled, createElement(Section, { name: "a", loading: false }));
+      flush();
+      expect(onSettled).toHaveBeenCalledTimes(1);
+      mountWith(onSettled, createElement(Section, { name: "a", loading: true }));
+      mountWith(onSettled, createElement(Section, { name: "a", loading: false }));
+      flush();
+      expect(onSettled).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not fire while a section hands over to another that is loading", () => {
+      const onSettled = vi.fn();
+      mountWith(onSettled, createElement(Section, { key: "gate", name: "gate", loading: true }));
+      flush();
+      mountWith(onSettled, createElement(Section, { key: "plan", name: "plan", loading: true }));
+      flush();
+      expect(onSettled).not.toHaveBeenCalled();
+      mountWith(onSettled, createElement(Section, { key: "plan", name: "plan", loading: false }));
+      flush();
+      expect(onSettled).toHaveBeenCalledTimes(1);
+    });
+
+    it("fires for a section that fails, which reports false like a loaded one", () => {
+      const onSettled = vi.fn();
+      mountWith(onSettled, createElement(Section, { name: "a", loading: true }));
+      mountWith(onSettled, createElement(Section, { name: "a", loading: false }));
+      flush();
+      expect(onSettled).toHaveBeenCalledTimes(1);
+    });
+
+    it("fires once for a page whose sections report false from the start", () => {
+      const onSettled = vi.fn();
+      mountWith(onSettled, createElement(Section, { name: "a", loading: false }));
+      flush();
+      expect(onSettled).toHaveBeenCalledTimes(1);
+      act(() => vi.advanceTimersByTime(1000));
+      expect(onSettled).toHaveBeenCalledTimes(1);
+    });
+
+    it("does nothing without the context", () => {
+      mount(createElement(Section, { name: "a", loading: false }));
+      expect(() => flush()).not.toThrow();
+    });
   });
 });

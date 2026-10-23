@@ -5,6 +5,7 @@ import type { JoinOutcome } from "../../domains/invite/hooks/useJoinInvite";
 import { stepsFor } from "../../domains/onboarding/logic/steps";
 import { useOnboarding } from "../../domains/onboarding/hooks/useOnboarding";
 import { usePush } from "../../domains/push/hooks/usePush";
+import { FirstLoadSettledContext } from "../../shared/ui/FirstLoadSettledContext";
 import type { FlowNotice } from "../logic/dialogToShow";
 
 type Onboarding = ReturnType<typeof useOnboarding>;
@@ -12,7 +13,7 @@ type Push = ReturnType<typeof usePush>;
 
 interface Session {
   onboarding: Onboarding;
-  /** The one push hook: shared by onboarding, the Me tab and the launch re-subscribe. */
+  /** The one push hook: shared by onboarding, the Me tab and the launch re-subscribe (which runs once the first page load settles). */
   push: Push;
   /** The onboarding steps that apply on this device. */
   steps: ReturnType<typeof stepsFor>;
@@ -71,7 +72,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     () => ({ onboarding, push, steps, after, choosing, recovered, setRecovered, recordJoin, closeRating, decide, onHomeFinished }),
     [onboarding, push, steps, after, choosing, recovered, recordJoin, closeRating, decide, onHomeFinished],
   );
-  return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
+  return (
+    <SessionContext.Provider value={value}>
+      <FirstLoadSettledContext value={push.markPageSettled}>{children}</FirstLoadSettledContext>
+    </SessionContext.Provider>
+  );
 }
 
 export function useSession(): Session {

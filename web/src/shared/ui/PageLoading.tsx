@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { FirstLoadSettledContext } from "./FirstLoadSettledContext";
 import { FetchingIndicator } from "./FetchingIndicator";
 import { withReport } from "./loadingReports";
 import { useDelayedFlag } from "./useDelayedFlag";
@@ -21,6 +22,28 @@ function useReportSet(): { active: boolean; report: Report } {
   const [ids, setIds] = useState<ReadonlySet<string>>(new Set());
   const report = useCallback<Report>((id, on) => setIds((current) => withReport(current, id, on)), []);
   return { active: ids.size > 0, report };
+}
+
+/**
+ * Tells the app, once per mount, that this page's first load has settled: the loading set is empty. The check waits
+ * a tick and is cancelled if a section reports loading again, so a hand-over between sections (the Home, then the
+ * Check-in, Day Plan and Streak) is not mistaken for the end. A page whose data was cached never reports loading,
+ * so it settles after the first effect pass. Failures count: a failed section reports false.
+ */
+function useReportFirstSettle(active: boolean) {
+  const onSettled = useContext(FirstLoadSettledContext);
+  const latest = useRef(onSettled);
+  latest.current = onSettled;
+  const fired = useRef(false);
+
+  useEffect(() => {
+    if (active || fired.current) return;
+    const timer = setTimeout(() => {
+      fired.current = true;
+      latest.current();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [active]);
 }
 
 /** Reports `on` under this component's own id for as long as it is mounted, and false after. */
@@ -46,6 +69,7 @@ function useRegisterReport(hook: string, pick: (page: PageLoadingValue) => Repor
  */
 export function PageLoading({ message, children }: { message: string; children: ReactNode }) {
   const loading = useReportSet();
+  useReportFirstSettle(loading.active);
   const fetching = useReportSet();
   const show = useDelayedFlag(loading.active);
   const report = loading.report;
