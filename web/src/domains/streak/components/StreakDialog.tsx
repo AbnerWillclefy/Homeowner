@@ -15,14 +15,12 @@ export function StreakDialog({ streak }: { streak: Streak }) {
   const value = new Intl.NumberFormat(locale).format(current);
   const label = current === 0 ? t("streak.stat.zero") : t("streak.stat", { count: current });
 
+  const note = current === 0 ? t("streak.empty") : streak.todayGrew ? t("streak.todayCounts") : null;
+
   return (
     <div className="mt-4 flex flex-col gap-4">
       <StatTile value={value} label={label} />
-      {current === 0 ? (
-        <p className="my-0 text-sm text-muted">{t("streak.empty")}</p>
-      ) : (
-        streak.todayGrew && <p className="my-0 text-sm text-muted">{t("streak.todayCounts")}</p>
-      )}
+      {note && <p className="my-0 text-sm text-muted">{note}</p>}
       <ul className="m-0 flex list-none flex-col gap-2 p-0">
         {RULES.map((key) => (
           <li key={key}>{t(key)}</li>
