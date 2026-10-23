@@ -1,5 +1,5 @@
 import { Clock } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import type { DayPlan, PlanTask } from "../api/api";
 import { pendingAction, type Acting, type SwapAction, type TaskAction, type TaskRole } from "../logic/actions";
@@ -11,6 +11,7 @@ import { Button } from "../../../shared/ui/Button";
 import { GroupHeading } from "../../../shared/ui/GroupHeading";
 import { LOAD_FAILURE_KEY } from "../logic/failureMessages";
 import { ResidentLabel } from "../../residents/components/ResidentLabel";
+import { DaySummary } from "./DaySummary";
 import { DoneCard } from "./DoneCard";
 import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { DayPlanSkeleton } from "./DayPlanSkeleton";
@@ -34,12 +35,9 @@ type Day = ReturnType<typeof useDayPlan>;
 export function TodaySection({
   day,
   note,
-  summary,
 }: {
   day: Day;
   note: EnergyNote | null;
-  /** The folded explanation, shown under "Your Tasks" on a planned day only. */
-  summary?: ReactNode;
 }) {
   const { t } = useI18n();
   const { state, reload, run, acceptAll, answerSwap, offerSwap, acting, notice, changed } = day;
@@ -86,7 +84,6 @@ export function TodaySection({
         <PlanView
           plan={state.plan}
           note={note}
-          summary={summary}
           acting={acting}
           onAccept={acceptAll}
           onAction={run}
@@ -147,7 +144,6 @@ function EmptyMine({ reason }: { reason: NoTasksReason | null }) {
 function PlanView({
   plan,
   note,
-  summary,
   acting,
   onAccept,
   onAction,
@@ -156,7 +152,6 @@ function PlanView({
 }: {
   plan: DayPlan;
   note: EnergyNote | null;
-  summary?: ReactNode;
   acting: Acting;
   onAccept(): void;
   onAction(action: TaskAction, task: PlanTask): void;
@@ -213,7 +208,7 @@ function PlanView({
       {plan.planned && (
         <div>
           <GroupHeading count={plan.mine.length}>{t("dayplan.mine.heading")}</GroupHeading>
-          {summary ? <div className="mb-3 empty:hidden">{summary}</div> : null}
+          <DaySummary plan={plan} />
           {proposed > 0 && (
             <Button
               fullWidth

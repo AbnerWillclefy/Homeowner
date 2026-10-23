@@ -20,6 +20,8 @@ interface Props {
   iconLabel?: string;
   /** The heading level: 4 when the card sits under an h3 group heading. Never skip a level. */
   headingLevel?: 3 | 4;
+  /** Extra classes for the card, for the spacing around it. */
+  className?: string;
   children?: ReactNode;
 }
 
@@ -38,6 +40,7 @@ export function CollapsibleCard({
   defaultOpen = false,
   iconLabel,
   headingLevel = 3,
+  className = "",
   children,
 }: Props) {
   const [open, setOpen] = useState(defaultOpen);
@@ -49,7 +52,7 @@ export function CollapsibleCard({
   const describedBy = [hint ? hintId : null, iconLabel ? iconId : null].filter(Boolean).join(" ") || undefined;
 
   return (
-    <Card as="section" aria-labelledby={id} className="mt-0 flex flex-col gap-3">
+    <Card as="section" aria-labelledby={id} className={`mt-0 flex flex-col gap-3 ${className}`}>
       <Heading id={id} className="my-0 text-lg font-bold leading-snug">
         <button
           type="button"

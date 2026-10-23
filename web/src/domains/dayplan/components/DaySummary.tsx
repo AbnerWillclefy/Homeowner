@@ -4,7 +4,7 @@ import { useI18n } from "../../../shared/i18n";
 import { CollapsibleCard } from "../../../shared/ui/CollapsibleCard";
 import { Fact, FactIcon, FactList } from "../../chores/components/FactList";
 import type { DayPlan } from "../api/api";
-import { explanationSource } from "../logic/explanationSource";
+import { EXPLANATION_SOURCES } from "../logic/explanationSource";
 import { summaryCounts } from "../logic/summaryCounts";
 
 /**
@@ -28,7 +28,7 @@ export function DaySummary({ plan }: { plan: DayPlan }) {
     { key: "dayplan.summary.pool", icon: Inbox, count: counts.pool },
   ] as const;
   const shown = rows.filter((row) => row.count > 0);
-  const { icon: SourceIcon, labelKey } = explanationSource(explanation.source);
+  const { icon: SourceIcon, labelKey } = EXPLANATION_SOURCES[explanation.source];
   const label = t(labelKey);
   return (
     <CollapsibleCard
@@ -37,6 +37,7 @@ export function DaySummary({ plan }: { plan: DayPlan }) {
       iconLabel={label}
       tone="neutral"
       headingLevel={4}
+      className="mb-3"
       title={explanation.headline[locale]}
     >
       <p className="my-0 text-muted [overflow-wrap:anywhere]">{explanation.detail[locale]}</p>
