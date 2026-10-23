@@ -18,7 +18,7 @@ When unsure between two tiers, pick the higher one. A pull request labelled `nee
 
 Some changes are risky whatever the description says, so the changed paths set a floor the tier cannot go under. The exact list is `floor_for` in `.github/scripts/pr-risk.sh`, the one place the rules live; each `pr-risk` run prints the floor it found and why. In short:
 
-- **high**: CI and the pipeline (`.github/`, `.claude/`, `CLAUDE.md`), Terraform (`infra/`), operations scripts, sign-in, accounts and invites, and a migration that edits an old one or drops, renames or rewrites data. Test files there count too.
+- **high**: CI and the pipeline (`.github/`, `.claude/`, `CLAUDE.md`), Terraform (`infra/`), operations scripts, sign-in, accounts and invites, the API's authentication middleware and CORS policy, a non-SQL file in `backend/migrations/`, and a migration that edits an old one or drops, renames or rewrites data. Test files there count too.
 - **medium**: a new migration, the allocator and its referee (ADR 0004), how the API starts or is wired, dependencies, and the service worker.
 - Anything else has no floor. A renamed file counts under its old and new paths, and a migration GitHub returns no diff for counts as high.
 

@@ -85,6 +85,22 @@ run_case "a sign-in test is still high" \
   "$(files "$(file backend/internal/platform/auth/auth_test.go modified)")" "$(complete_body high)" \
   "floor=high"
 
+run_case "the API's authentication middleware is high" \
+  "$(files "$(file backend/internal/server/auth.go modified)")" "$(complete_body high)" \
+  "floor=high"
+
+run_case "the CORS policy is high" \
+  "$(files "$(file backend/internal/server/cors.go modified)")" "$(complete_body high)" \
+  "floor=high"
+
+run_case "the API's route wiring is medium" \
+  "$(files "$(file backend/internal/server/server.go modified)")" "$(complete_body medium)" \
+  "floor=medium" "!problem="
+
+run_case "the migrations embed is high" \
+  "$(files "$(file backend/migrations/migrations.go modified)")" "$(complete_body high)" \
+  "floor=high"
+
 run_case "additive migration is medium" \
   "$(files "$(file backend/migrations/0016_x.sql added $'+CREATE TABLE x (id int);')")" "$(complete_body medium)" \
   "floor=medium" "effective=medium" "!problem="
