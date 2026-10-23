@@ -74,6 +74,7 @@ reset; review APPROVED "$head" CHANGES_REQUESTED "$head"; expect kept "changes r
 reset; set_tier medium; review APPROVED "$head" DISMISSED "$head"; expect kept "medium whose approval was dismissed"
 reset; echo '[{"name":"web-e2e","bucket":"fail","startedAt":"2026-01-01T10:00:00Z"}]' >"$fix/checks.json"; expect kept "one failing check"
 reset; echo '[{"name":"web-e2e","bucket":"pending","startedAt":"2026-01-01T10:00:00Z"}]' >"$fix/checks.json"; expect kept "one pending check"
+reset; echo '[{"name":"web-e2e","bucket":"pass","startedAt":"2026-01-01T10:00:00Z"},{"name":"web-e2e","bucket":"pending","startedAt":"0001-01-01T00:00:00Z"}]' >"$fix/checks.json"; expect kept "a queued re-run of a passing check"
 reset; echo '[{"user":{"login":"claude[bot]"},"in_reply_to_id":null,"created_at":"2026-01-01T10:01:00Z","id":2}]' >"$fix/comments.json"; expect kept "a Claude finding after the review started"
 reset; echo '{"workflow_runs":[]}' >"$fix/runs.json"; expect kept "no review of the head commit"
 reset; set_tier high; expect kept "high"

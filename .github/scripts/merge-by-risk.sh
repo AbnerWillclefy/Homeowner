@@ -41,10 +41,11 @@ for pr in "${prs[@]}"; do
   [ "$tier" != high ] || { skip "it is high risk, so the maintainer merges it"; continue; }
   [[ "$tier" == low || "$tier" == medium ]] || { skip "its tier could not be read"; continue; }
 
-  # Every check on the head commit finished green. Only the latest run of each check counts,
-  # since a superseded run shows as cancelled (gh exits non-zero while any is pending or failed)
+  # Every check on the head commit finished green. Any pending run blocks (a queued run has no
+  # real start time); otherwise only the latest run of each check counts, since a superseded run
+  # shows as cancelled. gh exits non-zero while any is pending or failed, hence || true.
   buckets=$(gh pr checks "$pr" -R "$repo" --json name,bucket,startedAt \
-    --jq 'group_by(.name) | map(max_by(.startedAt)) | .[].bucket' || true)
+    --jq 'if any(.[]; .bucket == "pending") then "pending" else group_by(.name) | map(max_by(.startedAt)) | .[].bucket end' || true)
   if [ -z "$buckets" ] || grep -qvxE 'pass|skipping' <<<"$buckets"; then skip "not every check is green yet"; continue; fi
 
   # Claude's latest review ran on this exact commit and raised nothing. The findings filter is
