@@ -132,6 +132,14 @@ describe("PageLoading", () => {
       expect(onSettled).toHaveBeenCalledTimes(1);
     });
 
+    it("never fires for a page with no section that reports, so the launch sync falls back to its timer", () => {
+      const onSettled = vi.fn();
+      mountWith(onSettled, createElement("p", null, "static"));
+      flush();
+      act(() => vi.advanceTimersByTime(1000));
+      expect(onSettled).not.toHaveBeenCalled();
+    });
+
     it("does nothing without the context", () => {
       mount(createElement(Section, { name: "a", loading: false }));
       expect(() => flush()).not.toThrow();

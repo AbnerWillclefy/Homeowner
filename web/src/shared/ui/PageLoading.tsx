@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useMemo, useReducer, useRef, type ReactNode } from "react";
 import { FirstLoadSettledContext } from "./FirstLoadSettledContext";
 import { FetchingIndicator } from "./FetchingIndicator";
 import { withReport } from "./loadingReports";
@@ -17,41 +17,48 @@ interface PageLoadingValue {
 
 const PageLoadingContext = createContext<PageLoadingValue | null>(null);
 
-/** The ids of the sections reporting true right now: `active` is whether any does. */
-function useReportSet(): { active: boolean; report: Report; isEmpty(): boolean } {
-  const [ids, setIds] = useState<ReadonlySet<string>>(new Set());
-  // The same set, updated the moment a section reports: state lags a render behind, and the first-load check must
-  // not mistake that lag (sections that have reported but not yet rendered) for an empty page.
-  const live = useRef<ReadonlySet<string>>(ids);
+/**
+ * The ids of the sections reporting true right now: `active` is whether any does. The set lives in a ref, updated the
+ * moment a section reports, and a counter re-renders; `settled()` reads the same ref, so it never sees a render-old set.
+ */
+function useReportSet(): { active: boolean; report: Report; settled(): boolean } {
+  const ids = useRef<ReadonlySet<string>>(new Set());
+  const heard = useRef(false);
+  const [, rerender] = useReducer((n: number) => n + 1, 0);
   const report = useCallback<Report>((id, on) => {
-    live.current = withReport(live.current, id, on);
-    setIds((current) => withReport(current, id, on));
+    heard.current = true;
+    const next = withReport(ids.current, id, on);
+    if (next === ids.current) return;
+    ids.current = next;
+    rerender();
   }, []);
-  const isEmpty = useCallback(() => live.current.size === 0, []);
-  return { active: ids.size > 0, report, isEmpty };
+  // Read during render on purpose: the ref is the one source of truth and the counter only schedules this render.
+  const active = ids.current.size > 0;
+  const settled = useCallback(() => heard.current && ids.current.size === 0, []);
+  return { active, report, settled };
 }
 
 /**
- * Tells the app, once per mount, that this page's first load has settled: the loading set is empty. The check waits
- * a tick and is cancelled if a section reports loading again, so a hand-over between sections (the Home, then the
- * Check-in, Day Plan and Streak) is not mistaken for the end. A page whose data was cached never reports loading,
- * so it settles after the first effect pass. Failures count: a failed section reports false.
+ * Tells the app, once per mount, that this page's first load has settled: at least one section has reported and
+ * none is loading. The check waits a tick and is cancelled if a section reports loading again, so a hand-over
+ * between sections (the Home, then the Check-in, Day Plan and Streak) is not mistaken for the end. A section
+ * whose data was cached reports false at once, so that page settles after the first effect pass. Failures count:
+ * a failed section reports false. A page with no section that reports (a static onboarding step) never settles,
+ * so the launch sync falls back to its timer.
  */
-function useReportFirstSettle(active: boolean, isEmpty: () => boolean) {
+function useReportFirstSettle(active: boolean, settled: () => boolean) {
   const onSettled = useContext(FirstLoadSettledContext);
-  const latest = useRef(onSettled);
-  latest.current = onSettled;
   const fired = useRef(false);
 
   useEffect(() => {
     if (active || fired.current) return;
     const timer = setTimeout(() => {
-      if (!isEmpty()) return;
+      if (!settled()) return;
       fired.current = true;
-      latest.current();
+      onSettled();
     }, 0);
     return () => clearTimeout(timer);
-  }, [active, isEmpty]);
+  }, [active, settled, onSettled]);
 }
 
 /** Reports `on` under this component's own id for as long as it is mounted, and false after. */
@@ -77,7 +84,7 @@ function useRegisterReport(hook: string, pick: (page: PageLoadingValue) => Repor
  */
 export function PageLoading({ message, children }: { message: string; children: ReactNode }) {
   const loading = useReportSet();
-  useReportFirstSettle(loading.active, loading.isEmpty);
+  useReportFirstSettle(loading.active, loading.settled);
   const fetching = useReportSet();
   const show = useDelayedFlag(loading.active);
   const report = loading.report;

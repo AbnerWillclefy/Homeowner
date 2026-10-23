@@ -13,30 +13,21 @@ export interface LaunchSyncGate {
  * so the launch re-subscribe waits for the first screen but is never lost. Pure of React for fake-timer tests.
  */
 export function launchSyncGate(fallbackMs: number, run: () => void): LaunchSyncGate {
-  let done = false;
-  let disposed = false;
-  let timer: ReturnType<typeof setTimeout> | undefined = setTimeout(fire, fallbackMs);
+  const timer = setTimeout(settled, fallbackMs);
+  let live = true;
 
-  function clear() {
-    if (timer !== undefined) clearTimeout(timer);
-    timer = undefined;
-  }
-  function fire() {
-    if (done || disposed) return;
-    done = true;
-    clear();
+  function settled() {
+    if (!live) return;
+    live = false;
+    clearTimeout(timer);
     run();
   }
 
   return {
-    settled() {
-      if (done || disposed) return;
-      clear();
-      queueMicrotask(fire);
-    },
+    settled,
     dispose() {
-      disposed = true;
-      clear();
+      live = false;
+      clearTimeout(timer);
     },
   };
 }
