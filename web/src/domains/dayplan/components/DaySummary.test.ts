@@ -50,16 +50,46 @@ describe("DaySummary", () => {
   it.each([
     ["en-US", "A light day for you", "Two small Tasks, and the rest can wait."],
     ["pt-BR", "Um dia leve para você", "Duas tarefas pequenas, o resto pode esperar."],
-  ] as const)("shows the server headline and detail in %s, the headline labelling the section", (locale, headline, detail) => {
+  ] as const)("closed in %s: an h4 labels the section, the body is hidden but present", (locale, headline, detail) => {
     const html = render(EXPLANATION, ALL, locale);
-    const id = /<h3 id="([^"]+)"/.exec(html)?.[1];
+    const id = /<h4 id="([^"]+)"/.exec(html)?.[1];
     expect(id).toBeTruthy();
     expect(html).toMatch(/^<section /);
     expect(html).toContain(`aria-labelledby="${id}"`);
-    expect(html).toContain(`>${headline}</h3>`);
+    expect(html).toMatch(/<button type="button" aria-expanded="false" aria-controls="[^"]+-body"/);
+    expect(html).toContain(`>${headline}</span>`);
+    expect(html).toMatch(/<div id="[^"]+-body" hidden=""/);
     expect(html).toContain(`>${detail}</p>`);
-    expect(html.indexOf("</h3>")).toBeLessThan(html.indexOf("<p "));
+    expect(html).not.toContain("<h3");
+    expect(html.indexOf("</h4>")).toBeLessThan(html.indexOf("<p "));
     expect(html.indexOf("</p>")).toBeLessThan(html.indexOf("<ul"));
+  });
+
+  it("names the button by the headline alone", () => {
+    const html = render(EXPLANATION, ALL, "en-US");
+    const titleId = /aria-labelledby="([^"]+-title)"/.exec(html)?.[1];
+    expect(html).toContain(`<span id="${titleId}" class="[overflow-wrap:anywhere]">A light day for you</span>`);
+  });
+
+  it.each([
+    ["llm", "en-US", "Written by the assistant"],
+    ["llm", "pt-BR", "Escrito pelo assistente"],
+    ["template", "en-US", "Standard summary of today&#x27;s reasons"],
+    ["template", "pt-BR", "Resumo padrão dos motivos de hoje"],
+  ] as const)("describes the %s source in %s outside the heading and repeats it as a caption", (source, locale, label) => {
+    const html = render({ ...EXPLANATION, source }, ALL, locale);
+    const iconId = /aria-describedby="([^"]+-icon)"/.exec(html)?.[1];
+    expect(iconId).toBeTruthy();
+    expect(html).toContain(`<span id="${iconId}" hidden="">${label}</span>`);
+    expect(html.indexOf("</h4>")).toBeLessThan(html.indexOf(`id="${iconId}"`));
+    // Once as the description, once as the visible caption with an aria-hidden icon.
+    expect(html.split(label)).toHaveLength(3);
+    expect(html).toMatch(new RegExp(`<p [^>]*text-muted[^>]*><svg[^>]*aria-hidden="true"[^>]*>.*</svg>${label}</p>`));
+  });
+
+  it("shows a different small icon for each source", () => {
+    expect(render(EXPLANATION, ALL, "en-US")).toContain("lucide-sparkles");
+    expect(render(DRAINED, ALL, "en-US")).toContain("lucide-scroll-text");
   });
 
   it("does not show the other language", () => {
@@ -73,7 +103,7 @@ describe("DaySummary", () => {
     const html = render(EXPLANATION, ALL, locale);
     expect(html.match(/<li /g)).toHaveLength(3);
     for (const text of texts) expect(html).toContain(`>${text}</span>`);
-    expect(html.match(/<svg[^>]*aria-hidden="true"/g)).toHaveLength(3);
+    expect(html.match(/<li [^>]*><svg[^>]*aria-hidden="true"/g)).toHaveLength(3);
   });
 
   it.each([
@@ -107,6 +137,8 @@ describe("DaySummary", () => {
       const html = render(DRAINED, { mine: 0, others: 1, pool: 2 }, locale);
       expect(html).not.toMatch(/role=|aria-live|danger|warning|error|alert|!/i);
       expect(html).toContain(DRAINED.headline[locale]);
+      expect(html).toContain("bg-muted/10 text-muted");
+      expect(html).not.toMatch(/text-accent|text-danger|bg-accent/);
     },
   );
 });
