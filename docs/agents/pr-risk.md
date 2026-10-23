@@ -41,6 +41,8 @@ The check then labels the pull request `risk:low`, `risk:medium` or `risk:high`.
 
 To run it by hand: Actions, **Merge by risk**, Run workflow, optionally with a pull request number.
 
+A new CI workflow on pull requests must be registered in two places, or low-risk pull requests either merge without it or wait for another wake-up: its workflow name in the `workflows:` list of `merge-by-risk.yml`, and, if it runs on every pull request, its check name in `required_checks` in `merge-by-risk.sh`.
+
 ## Reverting
 
 Revert the merge commit from the pull request page (Revert button) or with `git revert -m 1 <merge-sha>`, and merge the revert pull request: staging redeploys. Migrations are expand-only, so a reverted feature leaves its new tables in place; that is expected. Follow the pull request's own How to revert for anything else.
