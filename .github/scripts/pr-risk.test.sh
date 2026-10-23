@@ -1,11 +1,25 @@
 #!/usr/bin/env bash
-# Tests pr-risk.sh against fixture files instead of the GitHub API.
+# Tests pr-risk.sh with a stub gh that serves fixture JSON and applies --jq itself.
 # Run: .github/scripts/pr-risk.test.sh
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
+mkdir -p "$tmp/bin"
+cat >"$tmp/bin/gh" <<'STUB'
+#!/usr/bin/env bash
+filter=.
+args=("$@")
+for ((i = 0; i < ${#args[@]}; i++)); do [[ "${args[i]}" == --jq ]] && filter="${args[i + 1]}"; done
+case "$*" in
+  "pr view"*) jq -r "$filter" "$FIX/pr.json" ;;
+  "api "*"/files"*) jq -r "$filter" "$FIX/files.json" ;;
+  *) echo "stub gh: unexpected call: $*" >&2; exit 1 ;;
+esac
+STUB
+chmod +x "$tmp/bin/gh"
+export PATH="$tmp/bin:$PATH" FIX="$tmp" GITHUB_REPOSITORY=o/r
 failures=0
 
 complete_body() { # complete_body <tier>
@@ -39,9 +53,9 @@ MD
 run_case() {
   local name="$1" files="$2" body="$3"; shift 3
   printf '%s' "$files" >"$tmp/files.json"
-  printf '%s' "$body" >"$tmp/body.md"
+  jq -n --arg b "$body" '{body: $b}' >"$tmp/pr.json"
   local out before=$failures
-  out=$(PR_RISK_FILES="$tmp/files.json" PR_RISK_BODY="$tmp/body.md" "$here/pr-risk.sh")
+  out=$("$here/pr-risk.sh" 7)
   for want in "$@"; do
     if [[ "$want" == !* ]]; then
       if grep -qF -- "${want#!}" <<<"$out"; then echo "FAIL $name: did not expect '${want#!}'"; echo "$out"; failures=$((failures + 1)); fi
@@ -116,6 +130,14 @@ run_case "moving a workflow out of .github is high" \
 run_case "renaming sign-in code to a test name is still high" \
   "$(files "$(jq -n '{filename: "backend/internal/platform/auth/auth_test.go", previous_filename: "backend/internal/platform/auth/auth.go", status: "renamed"}')")" "$(complete_body high)" \
   "floor=high"
+
+run_case "the allocator is medium" \
+  "$(files "$(file backend/internal/allocation/check.go modified)" "$(file backend/internal/llmalloc/llmalloc.go modified)")" "$(complete_body medium)" \
+  "floor=medium" "!problem="
+
+for f in backend/internal/identity/identity.go web/src/app/components/AuthProvider.tsx web/src/app/components/SessionProvider.tsx web/src/shared/api/http.ts; do
+  run_case "$f is sign-in, so high" "$(files "$(file "$f" modified)")" "$(complete_body high)" "floor=high"
+done
 
 run_case "a file name with quotes is read safely" \
   "$(files "$(file 'docs/a "b".md' added)")" "$(complete_body low)" \

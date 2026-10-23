@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # Reads a pull request's declared risk tier and checks its description.
-# Usage: pr-risk.sh <pr-number>   (needs GH_TOKEN and GITHUB_REPOSITORY)
-# Tests set PR_RISK_FILES (the pulls/<n>/files JSON) and PR_RISK_BODY (the description)
-# to files instead, so no API is called: see pr-risk.test.sh.
+# Usage: pr-risk.sh <pr-number>   (needs GH_TOKEN and GITHUB_REPOSITORY; tested in pr-risk.test.sh)
 #
 # Prints key=value lines:
 #   declared=low|medium|high|none   the tier the description states
@@ -13,78 +11,77 @@
 # The tiers and path floors are explained in docs/agents/pr-risk.md; keep both in step.
 set -euo pipefail
 
-pr="${1:-}"
-repo="${GITHUB_REPOSITORY:-}"
+pr="$1"
+repo="${GITHUB_REPOSITORY:?}"
 
 rank() { case "$1" in low) echo 1 ;; medium) echo 2 ;; high) echo 3 ;; *) echo 0 ;; esac; }
 max_tier() { if (( $(rank "$1") >= $(rank "$2") )); then echo "$1"; else echo "$2"; fi; }
 
 # --- Floor: the changed paths set the lowest allowed tier -------------------
 
-floor=low
-reasons=()
-raise() { # raise <tier> <reason>
-  if (( $(rank "$1") > $(rank "$floor") )); then floor="$1"; fi
-  reasons+=("$1: $2")
-}
-
 # Matched against all added lines joined into one, so a statement split over lines still counts
 destructive_sql='\b(drop|rename|truncate)\b|\bdelete[[:space:]]+from\b|\bupdate\b[^;]*\bset\b|\balter[[:space:]]+(column[[:space:]]+)?[a-z_"]+[[:space:]]+(set[[:space:]]+(data[[:space:]]+)?)?type\b|\bset[[:space:]]+not[[:space:]]+null\b'
 
-if [[ -n "${PR_RISK_FILES:-}" ]]; then files=$(cat "$PR_RISK_FILES"); else
-  files=$(gh api "repos/$repo/pulls/$pr/files" --paginate --jq '.[]' | jq -s .)
-fi
+# Whether a migration's patch adds SQL that drops, renames or rewrites data. Reads only the Up
+# migration (goose's Down undoes it, so it always drops) and ignores SQL comments.
+adds_destructive_sql() {
+  sed -n 's/^+//p' <<<"$1" | sed '/^--[[:space:]]*+goose[[:space:]]\{1,\}Down/,$d' | sed 's/--.*//' \
+    | tr '\n' ' ' | grep -iE "$destructive_sql" >/dev/null  # no grep -q: an early exit breaks the pipe
+}
 
-# One record per file, base64 so a name or patch with any character stays one field
-while read -r record; do
-  field() { base64 -d <<<"$record" | jq -r "$1"; }
-  status=$(field .status)
+# floor_for <status> <path> <patch>: prints "<tier><TAB><reason>" when the path sets a floor
+floor_for() {
+  local status="$1" file="$2" patch="$3"
+  case "$file" in
+    .github/*)           printf 'high\t%s changes CI, deploys or the pipeline\n' "$file" ;;
+    .claude/*|CLAUDE.md) printf 'high\t%s changes how the agents work\n' "$file" ;;
+    infra/*)             printf 'high\t%s changes AWS infrastructure\n' "$file" ;;
+    scripts/*)           printf 'high\t%s changes an operations script\n' "$file" ;;
+    backend/internal/platform/auth/*|backend/internal/identity/*|web/src/domains/auth/*|\
+    web/src/app/components/AuthProvider.tsx|web/src/app/components/SessionProvider.tsx|web/src/shared/api/http.ts)
+                         printf 'high\t%s changes sign-in or who may do what\n' "$file" ;;
+    # Tests change no behaviour a Resident sees; below the protected paths, which have no exemption
+    *_test.go|*.test.ts|*.test.tsx|web/e2e/*) ;;
+    backend/migrations/*.sql)
+      if [[ "$status" != added ]]; then
+        printf 'high\t%s edits a migration that may already have run\n' "$file"
+      elif [[ -z "$patch" ]]; then
+        # GitHub leaves out the patch of a large diff: fail closed
+        printf 'high\t%s is a migration whose diff GitHub did not return, so it cannot be checked\n' "$file"
+      elif adds_destructive_sql "$patch"; then
+        printf 'high\t%s drops, renames or rewrites existing data\n' "$file"
+      else
+        printf 'medium\t%s adds a migration\n' "$file"
+      fi ;;
+    backend/internal/allocation/*|backend/internal/llmalloc/*)
+                         printf 'medium\t%s changes the allocator or its referee (ADR 0004)\n' "$file" ;;
+    backend/cmd/*|backend/internal/platform/*|backend/Dockerfile|docker-compose.yml)
+                         printf 'medium\t%s changes how the API starts or is wired\n' "$file" ;;
+    */go.mod|*/go.sum|*/package.json|*/package-lock.json)
+                         printf 'medium\t%s changes dependencies\n' "$file" ;;
+    web/src/sw.ts|web/src/sw/*|web/vite.config.ts)
+                         printf 'medium\t%s changes the service worker or build, which stay cached on phones\n' "$file" ;;
+  esac
+}
 
-  # A rename is judged by both names, so moving a protected file out of its folder still counts
-  for file in "$(field .filename)" "$(field '.previous_filename // ""')"; do
-    [[ -z "$file" ]] && continue
+floor=low
+reasons=()
+files=$(gh api "repos/$repo/pulls/$pr/files" --paginate --jq '.[]' | jq -s .)
 
-    case "$file" in
-      .github/*)          raise high "$file changes CI, deploys or the pipeline" ;;
-      .claude/*|CLAUDE.md) raise high "$file changes how the agents work" ;;
-      infra/*)            raise high "$file changes AWS infrastructure" ;;
-      scripts/*)          raise high "$file changes an operations script" ;;
-      backend/internal/platform/auth/*|web/src/domains/auth/*)
-                          raise high "$file changes sign-in" ;;
-      # Tests change no behaviour a Resident sees; below the protected paths, which have no exemption
-      *_test.go|*.test.ts|*.test.tsx|web/e2e/*) ;;
-      backend/migrations/*.sql)
-        patch=$(field '.patch // ""')
-        if [[ "$status" != added ]]; then
-          raise high "$file edits a migration that may already have run"
-        elif [[ -z "$patch" ]]; then
-          # GitHub leaves out the patch of a large diff: fail closed
-          raise high "$file is a migration whose diff GitHub did not return, so it cannot be checked"
-          # Added lines of the Up migration (goose's Down undoes it, so it always drops),
-        # without SQL comments, joined into one line
-        elif sed -n 's/^+//p' <<<"$patch" | sed '/^--[[:space:]]*+goose[[:space:]]\{1,\}Down/,$d' | sed 's/--.*//' \
-            | tr '\n' ' ' | grep -iE "$destructive_sql" >/dev/null; then
-          raise high "$file drops, renames or rewrites existing data"
-        else
-          raise medium "$file adds a migration"
-        fi ;;
-      backend/cmd/*|backend/internal/platform/*|backend/Dockerfile|docker-compose.yml)
-                          raise medium "$file changes how the API starts or is wired" ;;
-      */go.mod|*/go.sum|*/package.json|*/package-lock.json)
-                          raise medium "$file changes dependencies" ;;
-      web/src/sw.ts|web/src/sw/*|web/vite.config.ts)
-                          raise medium "$file changes the service worker or build, which stay cached on phones" ;;
-    esac
-  done
-done < <(jq -r '.[] | @base64' <<<"$files")
+# A rename is judged by both names, so moving a protected file out of its folder still counts
+while IFS=$'\t' read -r status file; do
+  patch=''
+  [[ "$file" == backend/migrations/* ]] && patch=$(jq -r --arg f "$file" '.[] | select(.filename == $f) | .patch // ""' <<<"$files")
+  while IFS=$'\t' read -r tier reason; do
+    (( $(rank "$tier") > $(rank "$floor") )) && floor="$tier"
+    reasons+=("$tier: $reason")
+  done < <(floor_for "$status" "$file" "$patch")
+done < <(jq -r '.[] | [.status, .filename], (select(.previous_filename) | [.status, .previous_filename]) | @tsv' <<<"$files")
 
 # --- Declared tier and description -----------------------------------------
 
 # HTML comments are the template's hints, not content
-if [[ -n "${PR_RISK_BODY:-}" ]]; then body=$(cat "$PR_RISK_BODY"); else
-  body=$(gh pr view "$pr" -R "$repo" --json body --jq .body)
-fi
-body=$(tr -d '\r' <<<"$body" | perl -0pe 's/<!--.*?-->//gs')
+body=$(gh pr view "$pr" -R "$repo" --json body --jq .body | tr -d '\r' | perl -0pe 's/<!--.*?-->//gs')
 
 declared=$(grep -m1 -oiE '^\*\*Risk:\*\*[[:space:]]*(low|medium|high)\b' <<<"$body" \
   | grep -oiE '(low|medium|high)$' | tr '[:upper:]' '[:lower:]' || true)
