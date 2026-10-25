@@ -35,21 +35,14 @@ export function firstLoadFiles(manifest) {
 function main() {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const manifestPath = path.resolve(process.argv[2] ?? path.join(root, "dist/.vite/manifest.json"));
-  let manifest;
-  try {
-    manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  } catch (error) {
-    console.error(
-      `Cannot read the build manifest at ${manifestPath}: ${error.message}\n` +
-        `Run "npm run build" first, and keep build.manifest: true in vite.config.ts.`,
-    );
-    process.exit(1);
-  }
   let files;
   try {
-    files = firstLoadFiles(manifest);
+    files = firstLoadFiles(JSON.parse(readFileSync(manifestPath, "utf8")));
   } catch (error) {
-    console.error(`Bundle budget: ${error.message} (${manifestPath}).`);
+    console.error(
+      `Bundle budget: ${error.message}\n` +
+        `Run "npm run build" first, and keep build.manifest: true in vite.config.ts.`,
+    );
     process.exit(1);
   }
   const outDir = path.dirname(path.dirname(manifestPath));
