@@ -30,7 +30,7 @@ export default defineConfig({
     // Runs only the specs that need Replan on. A spec in both projects reads the project name to know which build it has.
     {
       name: "chromium-replan",
-      testMatch: ["**/today-first-load.spec.ts"],
+      testMatch: ["**/today-first-load.spec.ts", "**/replan-target.spec.ts"],
       use: { ...devices["Desktop Chrome"], baseURL: replanBaseURL },
     },
   ],

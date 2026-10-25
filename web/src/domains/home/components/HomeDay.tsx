@@ -16,8 +16,8 @@ import { TodaySkeleton } from "./HomeSkeleton";
 
 /**
  * Today: the greeting with the Streak flame button at the end of its row (built here and passed to the header, so
- * the Day Plan domain never imports the Streak), then the Check-in card with today's Energy, the replan control
- * (staging only) and the Day Plan. All of it arrives in one swap, after the three reads have answered (see
+ * the Day Plan domain never imports the Streak), then the replan control (staging only, high on the page so the
+ * sticky bottom nav is not over it when Today loads), the Check-in card with today's Energy and the Day Plan. All of it arrives in one swap, after the three reads have answered (see
  * `todayLoaded`); before that Today is its skeleton. The folded explanation belongs to the Day Plan: it shows right under "Your Tasks",
  * before the Tasks, and only on a planned day. Whatever changes the plan
  * (an action, a saved Check-in, the start choice, a join) writes or invalidates the query cache, so nothing here
@@ -56,6 +56,7 @@ export function HomeDay() {
   return (
     <>
       <TodayHeader aside={<StreakButton streak={streak.streak} loading={streak.loading} />} />
+      <ReplanControl plan={state.kind === "ready" ? state.plan : undefined} show={day.show} />
       <CheckInSection
         checkIn={checkIn}
         open={checkInOpen}
@@ -63,7 +64,6 @@ export function HomeDay() {
         onClose={() => setCheckInOpen(false)}
         energy={showsEnergy(note) ? <EnergySummary note={note} energy={energy ?? 0} planned={planned} /> : null}
       />
-      <ReplanControl plan={state.kind === "ready" ? state.plan : undefined} show={day.show} />
       <TodaySection day={day} note={note} />
     </>
   );
