@@ -27,7 +27,7 @@ function ExplanationSkeleton() {
   return (
     <SkeletonCard data-skeleton="explanation" className="mb-3 flex-row items-center gap-3">
       <SkeletonTile />
-      <SkeletonBar className="h-5 w-2/3" />
+      <SkeletonBar className="h-5 flex-1" />
     </SkeletonCard>
   );
 }
