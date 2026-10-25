@@ -94,6 +94,8 @@ function preconnectApi(): Plugin {
 }
 
 export default defineConfig({
+  // Writes dist/.vite/manifest.json, which scripts/check-bundle-budget.mjs reads.
+  build: { manifest: true },
   plugins: [
     requirePasswordPolicy(),
     preloadFonts(),
