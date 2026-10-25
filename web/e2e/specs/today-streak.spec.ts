@@ -2,13 +2,14 @@ import type { Page } from "@playwright/test";
 import { test, expect } from "../fixtures";
 import { json } from "../mocks/api";
 import { signedInHandlers } from "../mocks/handlers/signedIn";
+import { hold } from "../mocks/hold";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
 
 // What this covers: the Streak as a flame button at the end of Today's header. It opens a centred dialog and
 // focus comes back to it on close (Close button and Escape), a Streak of 0 looks like any other number, a held
-// Streak shows a placeholder of the button's size, a Streak that could not be read leaves no button, a failed
+// Streak holds the whole of Today as its skeleton until the flame arrives with the header, a Streak that could not be read leaves no button, a failed
 // refresh keeps the number, and the header holds at 320px with a long greeting and three digits. No Streak card
 // is left in the body. Each test runs in pt-BR first, then en-US.
 
@@ -142,26 +143,18 @@ for (const l of LOCALES) {
       });
     });
 
-    test("while the Streak is held the header shows a placeholder of the button's size, then the button without moving the row", async ({ page, baseURL }) => {
-      let release!: () => void;
-      const held = new Promise<void>((resolve) => (release = resolve));
-      await page.route(/\/home\/streak$/, async (route) => {
-        await held;
-        await route.fallback();
-      });
+    test("while the Streak is held the whole of Today waits as its skeleton, then the header and the flame arrive together", async ({ page, baseURL }) => {
+      const streak = hold(page, /\/home\/streak$/);
       await launchApp(page, baseURL!);
-      await expect(heading(page)).toBeVisible();
-      const row = heading(page).locator("xpath=..");
-      const placeholder = page.locator('header div[aria-hidden="true"] > span');
-      await expect(placeholder).toBeVisible();
+      // The skeleton's flame placeholder is in the header row; no real header and no greeting yet.
+      await expect(page.getByTestId("day-plan-skeleton")).toBeVisible();
+      await expect(heading(page)).toHaveCount(0);
       await expect(page.getByRole("button", { name: l.streakName })).toHaveCount(0);
-      const before = await row.boundingBox();
 
-      release();
+      streak.release();
       await expect(flame(page, 3)).toBeVisible();
-      await expect(placeholder).toHaveCount(0);
-      const after = await row.boundingBox();
-      expect(after!.height).toBe(before!.height);
+      await expect(heading(page)).toBeVisible({ timeout: 0 });
+      await expect(page.getByTestId("day-plan-skeleton")).toHaveCount(0);
     });
 
     test("a Streak that could not be read leaves no button and no alert", async ({ page, baseURL, fakeApi }) => {

@@ -5,6 +5,7 @@ web/dist
 web/dev-dist
 web/.env*.local
 web/dist-e2e
+web/dist-e2e-replan
 web/playwright-report
 web/test-results
 web/blob-report
