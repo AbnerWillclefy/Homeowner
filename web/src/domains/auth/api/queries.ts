@@ -9,9 +9,9 @@ export const meKey = ["me"] as const;
 /**
  * The signed-in User. The queryFn throws an `ApiFailure` for offline, error and not-signed-in.
  *
- * `refetchOnMount` is the one named exception to "stale at once" (ADR 0013): `resolveSignedIn` fills this entry
- * with `fetchQuery`, and the Shell's `useMe` mounts right after. A cached success is not read again on mount,
- * so launch makes one `GET /me`; a failed or empty entry still is. Window focus still refreshes it.
+ * `refetchOnMount` is the named exception to "stale at once" (ADR 0013, ADR 0016): the launch wave or sign-in fills
+ * this entry, and the Shell's `useMe` mounts right after. A cached success is not read again on mount, so launch
+ * makes one `GET /me`; a failed or empty entry still is. Window focus still refreshes it.
  */
 export const meQuery = queryOptions({
   queryKey: meKey,
