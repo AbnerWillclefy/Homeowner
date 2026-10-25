@@ -15,7 +15,7 @@ export function TodayPage() {
   return (
     <PageLoading message={t("dayplan.loading")}>
       {after === "already-here" && <p role="status">{t("invite.alreadyHere")}</p>}
-      <HomeGate skeleton={<TodaySkeleton />}>{() => <HomeDay />}</HomeGate>
+      <HomeGate reserve skeleton={<TodaySkeleton />}>{() => <HomeDay />}</HomeGate>
     </PageLoading>
   );
 }

@@ -1,4 +1,5 @@
-import { SkeletonBar, SkeletonCard, SkeletonPill, SkeletonTile } from "../../../shared/ui/Skeleton";
+import { config } from "../../../shared/config";
+import { SkeletonBar,SkeletonCard, SkeletonPill, SkeletonTile } from "../../../shared/ui/Skeleton";
 import { SkeletonHeader } from "../../../shared/ui/SkeletonHeader";
 import { CheckInSkeleton } from "../../checkin/components/CheckInSkeleton";
 import { ChoresSkeleton } from "../../chores/components/ChoresSkeleton";
@@ -37,7 +38,25 @@ export function HomeSkeleton() {
   );
 }
 
-/** Today while its Home loads: the greeting, then the Check-in and Day Plan sections, with a Streak button placeholder in the header, spaced as `HomeDay` spaces them. */
+/**
+ * The shape of `ReplanButton`: its `mb-6` wrapper, a full-width button, and the status paragraph with its own
+ * classes and no text, so it takes the same text-relative height as the real one.
+ */
+function ReplanSkeleton() {
+  return (
+    <div data-skeleton="replan" className="mb-6">
+      <SkeletonPill className="w-full" />
+      <p className="mt-2 mb-0 text-muted" />
+    </div>
+  );
+}
+
+/**
+ * Today's final layout, for the wait before its reads answer (the Home, then the Check-in, Day Plan and Streak):
+ * the header with the Streak button placeholder, the Check-in card, the Replan block when Replan is enabled, and the
+ * Tasks section with its heading, the folded explanation card and the Task cards. Spaced as `HomeDay` spaces them,
+ * by structure and `rem`, so pt-BR and the largest text size grow it as they grow the page.
+ */
 export function TodaySkeleton() {
   return (
     <div aria-hidden="true">
@@ -45,8 +64,9 @@ export function TodaySkeleton() {
       <section>
         <CheckInSkeleton />
       </section>
+      {config.replanEnabled && <ReplanSkeleton />}
       <section>
-        <DayPlanSkeleton />
+        <DayPlanSkeleton explanation />
       </section>
     </div>
   );

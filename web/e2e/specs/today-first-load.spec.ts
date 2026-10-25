@@ -1,0 +1,247 @@
+import type { Page } from "@playwright/test";
+import { test, expect } from "../fixtures";
+import { json } from "../mocks/api";
+import { signedInHandlers } from "../mocks/handlers/signedIn";
+import { todayHandlers } from "../mocks/handlers/today";
+import { hold } from "../mocks/hold";
+import { RESIDENT_EMAIL, signedInResident, withExplanation } from "../mocks/sampleHome";
+import { seedSession } from "../mocks/session";
+import { launchApp } from "../pages/launch";
+
+// What this covers: Today's first load shows its skeleton until the Check-in, Day Plan and Streak have each
+// answered, then everything in one swap, and stays still (Cumulative Layout Shift under 0.1). In pt-BR first, then
+// en-US, at a phone size and at 320px with 200% text, with the reads held long enough for the skeleton to show and
+// answered at once (the skeleton never flashes). A failed read shows its own alert in place; a refresh of what is on
+// screen keeps it. It runs in two projects: `chromium` (Replan off, like production) and `chromium-replan` (the
+// staging build with the "Replan now" control), and the skeleton's Replan block follows the build.
+
+const LOCALES = [
+  {
+    locale: "pt-BR",
+    mine: "Suas tarefas",
+    prompt: "Como você está hoje?",
+    headline: "Um dia leve para você",
+    streak: /^Sequência: /,
+    replan: "Replanejar agora",
+    retry: "Tentar de novo",
+    today: "Hoje",
+    chores: "Afazeres",
+  },
+  {
+    locale: "en-US",
+    mine: "Your Tasks",
+    prompt: "How are you today?",
+    headline: "A light day for you",
+    streak: /^Streak: /,
+    replan: "Replan now",
+    retry: "Try again",
+    today: "Today",
+    chores: "Chores",
+  },
+] as const;
+
+const SIZES = [
+  { name: "412px phone", viewport: { width: 412, height: 823 }, scale: false },
+  { name: "320px at 200% text", viewport: { width: 320, height: 640 }, scale: true },
+] as const;
+
+const READS = /\/home\/(day-plan|check-in|streak)$/;
+const SKELETON = '[data-testid="day-plan-skeleton"]';
+
+declare global {
+  interface Window {
+    __cls: number;
+    __skeletonShown: boolean;
+  }
+}
+
+/** Sums every layout shift not caused by input, and notes whether the skeleton was ever visible (not `invisible`). */
+async function observe(page: Page) {
+  await page.addInitScript(() => {
+    window.__cls = 0;
+    window.__skeletonShown = false;
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        const shift = entry as PerformanceEntry & { value: number; hadRecentInput: boolean };
+        if (!shift.hadRecentInput) window.__cls += shift.value;
+      }
+    }).observe({ type: "layout-shift", buffered: true });
+    new MutationObserver(() => {
+      const skeleton = document.querySelector('[data-testid="day-plan-skeleton"]');
+      if (skeleton && !skeleton.closest(".invisible")) window.__skeletonShown = true;
+    }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"] });
+  });
+}
+
+/** Largest text size: every size in the app is in rem, so the root font size scales the whole page. */
+async function scaleText(page: Page) {
+  await page.addInitScript(() => {
+    document.addEventListener("DOMContentLoaded", () => {
+      document.documentElement.style.fontSize = "200%";
+    });
+  });
+}
+
+const cls = (page: Page) => page.evaluate(() => window.__cls);
+
+for (const l of LOCALES) {
+  test.describe(l.locale, () => {
+    test.use({ locale: l.locale, fakeState: withExplanation(signedInResident(), "llm") });
+
+    test.beforeEach(async ({ page, fakeApi }) => {
+      fakeApi.use(signedInHandlers);
+      fakeApi.state.streak = 5;
+      await seedSession(page, { email: RESIDENT_EMAIL });
+    });
+
+    const mine = (page: Page) => page.getByRole("heading", { level: 3, name: l.mine });
+    const prompt = (page: Page) => page.getByText(l.prompt);
+    const explanation = (page: Page) => page.getByRole("button", { name: l.headline });
+    const streak = (page: Page) => page.getByRole("button", { name: l.streak });
+    const task = (page: Page) => page.getByText("Wash the dishes", { exact: true });
+    const replanButton = (page: Page) => page.getByRole("button", { name: l.replan });
+    const skeleton = (page: Page) => page.locator(SKELETON);
+    const replanBlock = (page: Page) => page.locator('[data-skeleton="replan"]');
+
+    for (const size of SIZES) {
+      test.describe(size.name, () => {
+        test.use({ viewport: size.viewport });
+
+        test.beforeEach(async ({ page }) => {
+          await observe(page);
+          if (size.scale) await scaleText(page);
+        });
+
+        test("held reads: the skeleton shows, then Today swaps in once and nothing moves", async ({ page, baseURL }, testInfo) => {
+          const replan = testInfo.project.name === "chromium-replan";
+          const held = { checkIn: hold(page, /\/home\/check-in$/), plan: hold(page, /\/home\/day-plan$/), streak: hold(page, /\/home\/streak$/) };
+          await launchApp(page, baseURL!);
+
+          await expect(skeleton(page)).toBeVisible();
+          await expect(replanBlock(page)).toHaveCount(replan ? 1 : 0);
+          await expect(page.locator("header h2")).toHaveCount(0);
+          await page.waitForTimeout(300);
+
+          // One read at a time: Today shows nothing of it until the last has answered.
+          for (const read of [held.checkIn, held.plan]) {
+            read.release();
+            await page.waitForTimeout(150);
+            await expect(prompt(page)).toHaveCount(0);
+            await expect(mine(page)).toHaveCount(0);
+            await expect(streak(page)).toHaveCount(0);
+            await expect(skeleton(page)).toBeVisible();
+          }
+          held.streak.release();
+
+          await expect(mine(page)).toBeVisible();
+          // The same render brought everything, and took the skeleton away.
+          await expect(prompt(page)).toBeVisible({ timeout: 0 });
+          await expect(explanation(page)).toBeVisible({ timeout: 0 });
+          await expect(task(page)).toBeVisible({ timeout: 0 });
+          await expect(streak(page)).toBeVisible({ timeout: 0 });
+          await expect(skeleton(page)).toHaveCount(0);
+          await expect(replanButton(page)).toHaveCount(replan ? 1 : 0);
+
+          await page.waitForTimeout(500);
+          expect(await cls(page)).toBeLessThan(0.1);
+        });
+
+        test("fast reads: Today shows at once, the skeleton never flashes and nothing moves", async ({ page, baseURL, fakeApi }) => {
+          await launchApp(page, baseURL!);
+
+          await expect(mine(page)).toBeVisible();
+          await expect(prompt(page)).toBeVisible();
+          await expect(streak(page)).toBeVisible();
+          await expect(skeleton(page)).toHaveCount(0);
+          await page.waitForTimeout(500);
+
+          expect(await page.evaluate(() => window.__skeletonShown)).toBe(false);
+          expect(await cls(page)).toBeLessThan(0.1);
+          expect(fakeApi.requests.filter((r) => READS.test(r.path))).toHaveLength(3);
+        });
+      });
+    }
+
+    test.describe("a read that fails", () => {
+      test.use({ viewport: { width: 390, height: 844 } });
+
+      test("the Streak: no flame, and the rest of Today shows normally", async ({ page, baseURL, fakeApi }) => {
+        fakeApi.override("GET /home/streak", json(500, { error: "boom" }));
+        await launchApp(page, baseURL!);
+
+        await expect(mine(page)).toBeVisible();
+        await expect(prompt(page)).toBeVisible();
+        await expect(task(page)).toBeVisible();
+        await expect(streak(page)).toHaveCount(0);
+        await expect(skeleton(page)).toHaveCount(0);
+      });
+
+      test("the Check-in: its own alert in place, with the Tasks shown", async ({ page, baseURL, fakeApi }) => {
+        fakeApi.override("GET /home/check-in", json(500, { error: "boom" }));
+        await launchApp(page, baseURL!);
+
+        await expect(mine(page)).toBeVisible();
+        await expect(page.getByRole("region", { name: "Check-in" }).getByRole("alert")).toBeVisible();
+        await expect(task(page)).toBeVisible();
+        await expect(streak(page)).toBeVisible();
+        await expect(skeleton(page)).toHaveCount(0);
+      });
+
+      test("the Day Plan: its own alert in place, and Retry loads only that section", async ({ page, baseURL, fakeApi }) => {
+        fakeApi.override("GET /home/day-plan", json(500, { error: "boom" }));
+        await launchApp(page, baseURL!);
+
+        await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toBeVisible();
+        await expect(prompt(page)).toBeVisible();
+        await expect(streak(page)).toBeVisible();
+        await expect(skeleton(page)).toHaveCount(0);
+
+        // The server recovers. Retry draws the section's own skeleton, not the whole page's.
+        fakeApi.use(todayHandlers);
+        await page.getByRole("button", { name: l.retry }).click();
+        await expect(mine(page)).toBeVisible();
+        await expect(task(page)).toBeVisible();
+        // The Check-in and the flame stayed where they were.
+        await expect(prompt(page)).toBeVisible();
+        await expect(streak(page)).toBeVisible();
+      });
+    });
+
+    test("a refresh of data on screen keeps it and never brings the skeleton back", async ({ page, baseURL }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await launchApp(page, baseURL!);
+      await expect(mine(page)).toBeVisible();
+
+      // Held, so the refresh stays in flight; the fake only logs a request once it answers it.
+      const refresh = hold(page, READS);
+      const asked = page.waitForRequest(/\/home\/day-plan$/);
+      await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange", { bubbles: true })));
+      await asked;
+
+      await page.waitForTimeout(450);
+      await expect(mine(page)).toBeVisible();
+      await expect(task(page)).toBeVisible();
+      await expect(skeleton(page)).toHaveCount(0);
+      refresh.release();
+      await expect(mine(page)).toBeVisible();
+    });
+
+    test("opening Today again with its data cached shows it at once and focus lands on the greeting", async ({ page, baseURL }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await launchApp(page, baseURL!);
+      await expect(mine(page)).toBeVisible();
+
+      const nav = page.getByRole("navigation");
+      await nav.getByRole("link", { name: l.chores, exact: true }).click();
+      await expect(page).toHaveURL(/\/chores$/);
+      const reads = hold(page, READS);
+      await nav.getByRole("link", { name: l.today, exact: true }).click();
+
+      // The cached data shows with no skeleton while the refresh is held.
+      await expect(mine(page)).toBeVisible();
+      await expect(skeleton(page)).toHaveCount(0);
+      await expect(page.locator("header h2")).toBeFocused();
+      reads.release();
+    });
+  });
+}

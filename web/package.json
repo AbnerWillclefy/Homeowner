@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.sw.json && tsc --noEmit -p tsconfig.e2e.json",
     "check:bundle": "node scripts/check-bundle-budget.mjs",
     "build:e2e": "vite build --mode e2e --outDir dist-e2e",
-    "e2e": "playwright test"
+    "build:e2e:replan": "VITE_REPLAN_ENABLED=true vite build --mode e2e --outDir dist-e2e-replan",
+    "e2e":"playwright test"
   },
   "dependencies": {
     "@fontsource/nunito": "^5.3.0",
