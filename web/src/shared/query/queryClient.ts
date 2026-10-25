@@ -5,7 +5,8 @@ import { QueryClient, type Query } from "@tanstack/react-query";
  * entry has not yet succeeded, so data the app already fetched is not requested a second time. Window focus still
  * refreshes it. The cost is that returning to a screen no longer reads the server on mount (see ADR 0016).
  */
-export const refetchUnlessSucceeded = (query: Query): boolean => query.state.status !== "success";
+export const refetchUnlessSucceeded = (query: { state: Pick<Query["state"], "status"> }): boolean =>
+  query.state.status !== "success";
 
 /**
  * The defaults for every query and mutation (ADR 0013). Queries are stale at once, so opening a screen or

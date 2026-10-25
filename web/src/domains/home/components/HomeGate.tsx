@@ -21,7 +21,7 @@ export function HomeGate({ skeleton, children }: { skeleton: ReactNode; children
   const { home } = useShell();
   const { setRecovered } = useSession();
   const invite = useInvite();
-  const { state, refreshing, reload, setHome } = home;
+  const { state, refreshing, reload, setCreatedHome } = home;
   const view = homeView(state, invite.token !== null);
   // The page's one status speaks for the Home loading; this shows the page's skeleton once the wait passes 300ms.
   const showSkeleton = useReportFirstLoad(view === "loading");
@@ -51,10 +51,10 @@ export function HomeGate({ skeleton, children }: { skeleton: ReactNode; children
     case "create":
       return (
         <CreateHome
-          onSaved={(saved: Home) => void setHome(saved)}
+          onSaved={(saved: Home) => void setCreatedHome(saved)}
           onRecovered={(found: Home, choresDropped: boolean) => {
             setRecovered(choresDropped ? "chores-dropped" : "plain");
-            void setHome(found);
+            void setCreatedHome(found);
           }}
         />
       );

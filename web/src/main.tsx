@@ -8,7 +8,7 @@ import { ToastProvider } from "./shared/ui/ToastProvider";
 import { I18nProvider } from "./shared/i18n";
 import { PendingInviteProvider } from "./domains/invite/components/PendingInviteProvider";
 import { ThemeProvider } from "./shared/theme";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, type FetchQueryOptions } from "@tanstack/react-query";
 import { createQueryClient } from "./shared/query/queryClient";
 import { launchReads } from "./app/logic/launchReads";
 import { browserSession } from "./domains/auth/logic/browserSession";
@@ -28,7 +28,8 @@ const queryClient = createQueryClient();
 // Start Today's reads now, together, instead of one screen at a time as each answer lets the next one mount
 // (ADR 0016). prefetchQuery never throws: a failure is stored on the query and the screen's own hook shows it.
 for (const read of launchReads(window.location.pathname, browserSession.load() !== null)) {
-  void queryClient.prefetchQuery(read);
+  // Each member of the union is valid on its own; TypeScript cannot pick one overload for the union.
+  void queryClient.prefetchQuery(read as FetchQueryOptions);
 }
 
 createRoot(document.getElementById("root")!).render(

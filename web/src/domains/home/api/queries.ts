@@ -26,6 +26,18 @@ export async function forgetHomeScope(client: QueryClient): Promise<void> {
 }
 
 /**
+ * The caller created (or recovered) their Home. The launch reads cached "none" for the Day Plan, Check-in, Streak
+ * and the rest while they had no Home, and a success is not read again on mount (ADR 0016), so those answers are
+ * forgotten before the new Home is shown. The read of the Home itself is cancelled first so an older answer
+ * cannot bring the null back.
+ */
+export async function homeCreated(client: QueryClient, home: Home): Promise<void> {
+  await client.cancelQueries({ queryKey: homeKey, exact: true });
+  await forgetHomeScope(client);
+  client.setQueryData(homeKey, home);
+}
+
+/**
  * The caller left their Home: forget its data, then show the create form (no Home). The read of the Home itself
  * is cancelled first, so an older answer cannot bring the old Home back over the null.
  */
