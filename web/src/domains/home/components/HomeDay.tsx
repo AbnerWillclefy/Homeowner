@@ -9,10 +9,9 @@ import { TodaySection } from "../../dayplan/components/TodaySection";
 import { useDayPlan } from "../../dayplan/hooks/useDayPlan";
 import { StreakButton } from "../../streak/components/StreakButton";
 import { useStreak } from "../../streak/hooks/useStreak";
-import { config } from "../../../shared/config";
 import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { ReservedSkeleton } from "../../../shared/ui/ReservedSkeleton";
-import { todayLoaded } from "../logic/todayLoaded";
+import { useTodayLoaded } from "../hooks/useTodayLoaded";
 import { TodaySkeleton } from "./HomeSkeleton";
 
 /**
@@ -43,18 +42,13 @@ export function HomeDay() {
   // final layout's space from the first frame and shows after the page's 300ms. Then the header and every section
   // arrive in the same render. The sections' own first-load skeletons therefore never draw on mount; they still
   // draw for a Retry after a failure.
-  // Once swapped in it stays: a Retry after a failure makes that one section load again, and it shows its own
-  // skeleton in place rather than bringing the whole page back.
-  const [swapped, setSwapped] = useState(false);
-  const settled = todayLoaded({ checkIn: checkIn.state, dayPlan: state, streakLoading: streak.loading });
-  if (settled && !swapped) setSwapped(true);
-  const loaded = settled || swapped;
+  const loaded = useTodayLoaded({ checkIn: checkIn.state, dayPlan: state, streakLoading: streak.loading });
   const showSkeleton = useReportFirstLoad(!loaded);
 
   if (!loaded) {
     return (
       <ReservedSkeleton show={showSkeleton}>
-        <TodaySkeleton replan={config.replanEnabled} />
+        <TodaySkeleton />
       </ReservedSkeleton>
     );
   }

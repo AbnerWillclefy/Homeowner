@@ -1,9 +1,16 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
-import { TodaySkeleton } from "./HomeSkeleton";
+import { describe, expect, it, vi } from "vitest";
 
-const render = (replan: boolean) => renderToStaticMarkup(createElement(TodaySkeleton, { replan }));
+const config = vi.hoisted(() => ({ replanEnabled: false }));
+vi.mock("../../../shared/config", () => ({ config }));
+
+const { TodaySkeleton } = await import("./HomeSkeleton");
+
+const render = (replan: boolean) => {
+  config.replanEnabled = replan;
+  return renderToStaticMarkup(createElement(TodaySkeleton));
+};
 
 describe("TodaySkeleton", () => {
   it("holds a block for the Replan control only when Replan is enabled", () => {

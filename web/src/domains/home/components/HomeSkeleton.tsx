@@ -1,4 +1,5 @@
-import { SkeletonBar, SkeletonCard, SkeletonPill, SkeletonTile } from "../../../shared/ui/Skeleton";
+import { config } from "../../../shared/config";
+import { SkeletonBar,SkeletonCard, SkeletonPill, SkeletonTile } from "../../../shared/ui/Skeleton";
 import { SkeletonHeader } from "../../../shared/ui/SkeletonHeader";
 import { CheckInSkeleton } from "../../checkin/components/CheckInSkeleton";
 import { ChoresSkeleton } from "../../chores/components/ChoresSkeleton";
@@ -52,18 +53,18 @@ function ReplanSkeleton() {
 
 /**
  * Today's final layout, for the wait before its reads answer (the Home, then the Check-in, Day Plan and Streak):
- * the header with the Streak button placeholder, the Check-in card, the Replan block when `replan` is on, and the
+ * the header with the Streak button placeholder, the Check-in card, the Replan block when Replan is enabled, and the
  * Tasks section with its heading, the folded explanation card and the Task cards. Spaced as `HomeDay` spaces them,
  * by structure and `rem`, so pt-BR and the largest text size grow it as they grow the page.
  */
-export function TodaySkeleton({ replan }: { replan: boolean }) {
+export function TodaySkeleton() {
   return (
     <div aria-hidden="true">
       <SkeletonHeader aside />
       <section>
         <CheckInSkeleton />
       </section>
-      {replan && <ReplanSkeleton />}
+      {config.replanEnabled && <ReplanSkeleton />}
       <section>
         <DayPlanSkeleton explanation />
       </section>
