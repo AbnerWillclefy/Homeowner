@@ -6,6 +6,7 @@ import { useI18n } from "../../../shared/i18n";
 import { useInvite } from "../../invite/components/PendingInviteProvider";
 import { Button } from "../../../shared/ui/Button";
 import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
+import { ReservedSkeleton } from "../../../shared/ui/ReservedSkeleton";
 import { CreateHome } from "./CreateHome";
 import { LOAD_FAILURE_KEY } from "../logic/failureMessages";
 import { homeView } from "../logic/homeView";
@@ -16,7 +17,19 @@ import { homeView } from "../logic/homeView";
  * with Retry, or the create form. With a Home it renders the tab's content. While an Invite is pending a missing
  * Home reads as loading, because joining is how this person gets one.
  */
-export function HomeGate({ skeleton, children }: { skeleton: ReactNode; children(home: Home): ReactNode }) {
+export function HomeGate({
+  skeleton,
+  reserve = false,
+  children,
+}: {
+  skeleton: ReactNode;
+  /**
+   * Hold the skeleton's space from the first frame, invisible until the 300ms pass (Today only), instead of
+   * drawing nothing until then. The page below the wait then never moves when the skeleton appears.
+   */
+  reserve?: boolean;
+  children(home: Home): ReactNode;
+}) {
   const { t } = useI18n();
   const { home } = useShell();
   const { setRecovered } = useSession();
@@ -30,6 +43,7 @@ export function HomeGate({ skeleton, children }: { skeleton: ReactNode; children
 
   switch (view) {
     case "loading":
+      if (reserve) return <ReservedSkeleton show={showSkeleton}>{skeleton}</ReservedSkeleton>;
       return showSkeleton ? <>{skeleton}</> : null;
 
     case "failed":

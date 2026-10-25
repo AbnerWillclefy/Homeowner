@@ -1,6 +1,7 @@
 import { HomeDay } from "../../domains/home/components/HomeDay";
 import { HomeGate } from "../../domains/home/components/HomeGate";
 import { TodaySkeleton } from "../../domains/home/components/HomeSkeleton";
+import { config } from "../../shared/config";
 import { useI18n } from "../../shared/i18n";
 import { PageLoading } from "../../shared/ui/PageLoading";
 import { useSession } from "./SessionProvider";
@@ -15,7 +16,7 @@ export function TodayPage() {
   return (
     <PageLoading message={t("dayplan.loading")}>
       {after === "already-here" && <p role="status">{t("invite.alreadyHere")}</p>}
-      <HomeGate skeleton={<TodaySkeleton />}>{() => <HomeDay />}</HomeGate>
+      <HomeGate reserve skeleton={<TodaySkeleton replan={config.replanEnabled} />}>{() => <HomeDay />}</HomeGate>
     </PageLoading>
   );
 }
