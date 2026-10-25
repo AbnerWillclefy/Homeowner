@@ -2,6 +2,8 @@ import type { Page } from "@playwright/test";
 import { test, expect } from "../fixtures";
 import { signedInHandlers } from "../mocks/handlers/signedIn";
 import { onboardingHandlers } from "../mocks/handlers/onboarding";
+import { residentsHandlers } from "../mocks/handlers/residents";
+import { todayHandlers } from "../mocks/handlers/today";
 import { hold } from "../mocks/hold";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
@@ -158,6 +160,9 @@ test.describe("onboarding mid-walk", () => {
 
   test.beforeEach(async ({ page, fakeApi }) => {
     fakeApi.use(onboardingHandlers);
+    // Launching on Today starts its reads at once; with no Home they answer "none" (ADR 0016).
+    fakeApi.use(todayHandlers);
+    fakeApi.use(residentsHandlers);
     await seedSession(page, { email: RESIDENT_EMAIL });
   });
 

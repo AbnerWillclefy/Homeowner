@@ -5,7 +5,9 @@ import { hold } from "../mocks/hold";
 import { homeHandlers } from "../mocks/handlers/home";
 import { onboardingHandlers } from "../mocks/handlers/onboarding";
 import { FAKE_VAPID_KEY, pushHandlers } from "../mocks/handlers/push";
+import { residentsHandlers } from "../mocks/handlers/residents";
 import { signedInHandlers } from "../mocks/handlers/signedIn";
+import { todayHandlers } from "../mocks/handlers/today";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
@@ -76,6 +78,9 @@ test.describe("permission granted, subscription exists", () => {
     test("runs after the fallback delay when no page reports a first load", async ({ page, baseURL, fakeApi }) => {
       fakeApi.use(onboardingHandlers);
       fakeApi.use(homeHandlers);
+      // Launching on Today starts its reads at once; with no Home they answer "none" (ADR 0016).
+      fakeApi.use(todayHandlers);
+      fakeApi.use(residentsHandlers);
       const started = Date.now();
       await launchApp(page, baseURL!);
       await expect(page).toHaveURL(/\/welcome\/reminders$/);

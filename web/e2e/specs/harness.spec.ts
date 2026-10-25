@@ -1,5 +1,8 @@
 import { apiBaseUrl, cognitoRegion } from "../env";
 import { test, expect } from "../fixtures";
+import { onboardingHandlers } from "../mocks/handlers/onboarding";
+import { residentsHandlers } from "../mocks/handlers/residents";
+import { todayHandlers } from "../mocks/handlers/today";
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
 
@@ -7,6 +10,10 @@ test.describe("seeded session", () => {
   test.use({ fakeState: { onboardingStored: "done" } });
 
   test("opens signed in, sends the bearer token and survives a reload", async ({ page, baseURL, fakeApi }) => {
+    // Launching on Today starts its reads at once, even with no Home to show (ADR 0016).
+    fakeApi.use(onboardingHandlers);
+    fakeApi.use(todayHandlers);
+    fakeApi.use(residentsHandlers);
     await seedSession(page);
     await launchApp(page, baseURL!);
 

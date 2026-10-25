@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { OnboardingPosition, OnboardingStep } from "../api/api";
 import { useSession } from "../../../app/components/SessionProvider";
+import { useQueryClient } from "@tanstack/react-query";
+import { homeCreated } from "../../home/api/queries";
 import { CreateHome } from "../../home/components/CreateHome";
 import { useI18n, type MessageKey } from "../../../shared/i18n";
 import { BaselineFields, PreferenceFields, ProfileStatus, RestrictionFields } from "../../profile/components/ProfileSections";
@@ -57,6 +59,7 @@ interface StepView {
  */
 export function Onboarding({ position, onPosition }: Props) {
   const { t } = useI18n();
+  const queryClient = useQueryClient();
   const { push, steps, onHomeFinished } = useSession();
   const profile = useProfile();
   const walk = useWalk(position, steps, onPosition);
@@ -173,13 +176,19 @@ export function Onboarding({ position, onPosition }: Props) {
       body: (
         <CreateHome
           showHeading={false}
-          onSaved={() => {
-            onPosition("done");
-            onHomeFinished(null);
+          // The Home goes into the cache before the walk ends: the launch reads cached "none" for it and for
+          // everything under it, and the Shell would show that on mount (ADR 0016).
+          onSaved={(home) => {
+            void homeCreated(queryClient, home).then(() => {
+              onPosition("done");
+              onHomeFinished(null);
+            });
           }}
-          onRecovered={(_home, choresDropped) => {
-            onPosition("done");
-            onHomeFinished(choresDropped ? "chores-dropped" : "plain");
+          onRecovered={(home, choresDropped) => {
+            void homeCreated(queryClient, home).then(() => {
+              onPosition("done");
+              onHomeFinished(choresDropped ? "chores-dropped" : "plain");
+            });
           }}
         />
       ),
