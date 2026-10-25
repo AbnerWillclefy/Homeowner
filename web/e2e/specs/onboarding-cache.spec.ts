@@ -1,6 +1,8 @@
 import { test, expect } from "../fixtures";
 import { onboardingHandlers } from "../mocks/handlers/onboarding";
 import { hold } from "../mocks/hold";
+import { residentsHandlers } from "../mocks/handlers/residents";
+import { todayHandlers } from "../mocks/handlers/today";
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
 import { onboarding, type Day, type Level } from "../pages/onboarding";
@@ -20,6 +22,9 @@ const WEEK_LEVELS: Record<Day, Level> = {
 
 test.beforeEach(async ({ page, baseURL, fakeApi }) => {
   fakeApi.use(onboardingHandlers);
+  // Launching on Today starts its reads at once; with no Home they answer "none" (ADR 0016).
+  fakeApi.use(todayHandlers);
+  fakeApi.use(residentsHandlers);
   await seedSession(page);
   await launchApp(page, baseURL!);
 });

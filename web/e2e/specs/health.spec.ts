@@ -5,6 +5,8 @@ import { signedInHandlers } from "../mocks/handlers/signedIn";
 import { homeHandlers } from "../mocks/handlers/home";
 import { catalogHandlers } from "../mocks/handlers/catalog";
 import { onboardingHandlers } from "../mocks/handlers/onboarding";
+import { residentsHandlers } from "../mocks/handlers/residents";
+import { todayHandlers } from "../mocks/handlers/today";
 import { signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
@@ -60,6 +62,9 @@ test.describe("mid-onboarding", () => {
     fakeApi.use(onboardingHandlers);
     fakeApi.use(homeHandlers);
     fakeApi.use(catalogHandlers);
+    // Launching on Today starts its reads at once; with no Home they answer "none" (ADR 0016).
+    fakeApi.use(todayHandlers);
+    fakeApi.use(residentsHandlers);
     await seedSession(page);
   });
 

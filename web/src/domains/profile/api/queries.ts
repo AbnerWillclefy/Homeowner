@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { toQueryData } from "../../../shared/query/ApiFailure";
+import { refetchUnlessSucceeded } from "../../../shared/query/queryClient";
 import { getCategories, getDemands, getProfile, type Profile } from "./api";
 import { getOwnChoreSettings, type OwnChoreSettings } from "./choreSettingsApi";
 
@@ -39,4 +40,5 @@ export const choreSettingsQuery = queryOptions({
 export const demandsQuery = queryOptions({
   queryKey: demandsKey,
   queryFn: async (): Promise<string[]> => toQueryData(await getDemands()).ids,
+  refetchOnMount: refetchUnlessSucceeded,
 });

@@ -16,6 +16,8 @@ export function createTestQueryClient(): QueryClient {
 export interface Rendered {
   client: QueryClient;
   container: HTMLElement;
+  /** Renders a new element in the same root, under the same client. */
+  rerender(element: ReactElement): void;
   unmount(): void;
 }
 
@@ -29,6 +31,9 @@ export function renderWithQueryClient(element: ReactElement, client: QueryClient
   return {
     client,
     container,
+    rerender(next) {
+      act(() => root.render(createElement(QueryClientProvider, { client }, next)));
+    },
     unmount() {
       act(() => root.unmount());
       container.remove();

@@ -43,7 +43,7 @@ The `web-e2e` workflow builds the app with `npm run build:e2e` (a production bui
 | `e2e/fixtures.ts` | The `test` every spec imports. Its `router` fixture fails a test that leaves an unmocked request behind; `fakeApi` gives each test a fresh state, and `fakeCognito` (`mocks/cognito.ts`) answers the Cognito sign-up, confirmation and password sign-in calls with no AWS access. |
 | `e2e/mocks/photoStorage.ts` | The fake presigned-URL host (`photos.test`): records each PUT with its headers, answers 200 or a status set by `failNext`. `handlers/photos.ts` fakes the three photo routes. |
 | `e2e/fixtures/` | Small images for the photo spec: `landscape.jpg`, `portrait-exif6.jpg` (stored sideways with EXIF orientation 6) and `not-an-image.jpg` (text). Not to be confused with `e2e/fixtures.ts`, the `test` object. |
-| `e2e/specs/` | The specs. |
+| `e2e/specs/` | The specs. `launch-reads.spec.ts` covers the launch wave (see Launch reads): with the Home held, the Day Plan, Check-in, Streak, Residents, Demands and onboarding reads are already requested, and each is asked once; another path starts none; a person still in onboarding sees no error and Today reads again once the Home exists. A spec that launches on `/` with a session must register the Today and Residents handlers, even with no Home, or the fixture fails on the unmocked reads. |
 
 ## Localization
 
@@ -224,7 +224,27 @@ flowchart TD
 
 ### Defaults
 
-`createQueryClient` sets, for every query: `staleTime: 0` (stale at once), `refetchOnMount: true` and `refetchOnWindowFocus: true` (opening a screen or bringing the PWA back reads the server again; this is also how "today" moves on, since no key carries a date), and `retry: false` (a failure shows the Resident's Retry at once). Queries and mutations use `networkMode: "always"`: with TanStack's default `"online"`, a `queryFn` does not run while `navigator.onLine` is false and the query sits paused with the skeleton up forever; with `"always"` the request runs, fails, and the client reports `offline`, so the offline alert shows. `gcTime` stays at the default 5 minutes. Nothing is persisted: the cache lives in memory and is emptied when a signed-in session ends. One query overrides a default, named in ADR 0013: `meQuery` sets `refetchOnMount` to read again only when the entry is not a success, because sign-in already filled it with `fetchQuery(meQuery)` (`useAuth`) just before the Shell's `useMe` mounts.
+`createQueryClient` sets, for every query: `staleTime: 0` (stale at once), `refetchOnMount: true` and `refetchOnWindowFocus: true` (opening a screen or bringing the PWA back reads the server again; this is also how "today" moves on, since no key carries a date), and `retry: false` (a failure shows the Resident's Retry at once). Queries and mutations use `networkMode: "always"`: with TanStack's default `"online"`, a `queryFn` does not run while `navigator.onLine` is false and the query sits paused with the skeleton up forever; with `"always"` the request runs, fails, and the client reports `offline`, so the offline alert shows. `gcTime` stays at the default 5 minutes. Nothing is persisted: the cache lives in memory and is emptied when a signed-in session ends. The launch queries override one default, named in ADR 0013 and ADR 0016: `meQuery` and each query in the list below set `refetchOnMount: refetchUnlessSucceeded` (`shared/query/queryClient.ts`), which reads on mount only when the entry has not succeeded, because the launch wave or sign-in has already filled it. Window focus still refreshes them. The cost is that returning to Today from another tab no longer reads the Day Plan, Check-in and Streak again; they refresh on window focus, after an action, or after a failed read.
+
+### Launch reads
+
+When the app opens on Today with a stored session, `main.tsx` starts the reads Today needs before the first render, all at once, so they do not wait on each other's answers ([ADR 0016](../adr/0016-start-todays-reads-at-launch-not-in-route-loaders.md)). `launchReads(pathname, hasStoredSession)` (`app/logic/launchReads.ts`, pure) returns the query options: the eight below when `normalizePath(pathname)` is Today and a session is stored, `[]` on any other path or without a session. `main.tsx` calls it with `window.location.pathname` and `browserSession.load() !== null` and runs `queryClient.prefetchQuery` on each, at module level next to `createQueryClient()` so StrictMode cannot repeat it. `prefetchQuery` never throws: a failure is stored on the query and the screen's own hook shows it.
+
+| Query | Key |
+|---|---|
+| `meQuery` | `["me"]` |
+| `onboardingQuery` | `["me","onboarding"]` |
+| `homeQuery` | `["home"]` |
+| `dayPlanQuery` | `["home","day-plan"]` |
+| `checkInQuery` | `["home","check-in"]` |
+| `streakQuery` | `["home","streak"]` |
+| `residentsQuery` | `["home","residents"]` |
+| `demandsQuery` | `["demands"]` |
+
+- **One token refresh.** Every read goes through `usableSession()`, so an expiring token is refreshed once and shared by all eight.
+- **`useAuth` joins the wave.** It resolves the User with `ensureQueryData(meQuery)`: it joins `GET /me` while in flight and keeps a result that already arrived, where `fetchQuery` would read it again.
+- **Answers of "none".** A Resident still in onboarding, or without a Home, gets 404 "no home" from the Home-scoped reads; `toQueryData` makes it `null` (the Residents list stores a failure instead), and no screen shows either. Because a success is not read again on mount, creating a Home forgets them first: `homeCreated` (`domains/home/api/queries.ts`) cancels the read of the Home, runs `forgetHomeScope` and sets the new Home. The Create Home form in Today's gate (`useHome.setCreatedHome`) and the last onboarding step both call it; joining already removes the children.
+- **Residents.** `useResidents` stays disabled until the Home is ready, and enabling an observer reads a stale entry regardless of `refetchOnMount`, so the first enable treats a list already in the cache as fresh (`staleTime: Infinity` until the hook has been on once).
 
 ### Query keys
 
@@ -232,19 +252,19 @@ Keys are defined next to their query, never typed inline. The *scope* says what 
 
 | Key | Endpoint | Defined in | Scope | Override or note |
 |---|---|---|---|---|
-| `["me"]` | `GET /me` | `domains/auth/api/queries.ts` (`meQuery`) | Me | `refetchOnMount` only when not a success; filled at sign-in by `fetchQuery` |
+| `["me"]` | `GET /me` | `domains/auth/api/queries.ts` (`meQuery`) | Me | Launch read; `refetchOnMount` only when not a success; `useAuth` joins it with `ensureQueryData` |
 | `["me","profile"]` | `GET /me/profile` | `domains/profile/api/queries.ts` | Me | Read with `useOptimisticView`; a write to `["me"]` leaves it alone |
-| `["me","onboarding"]` | `GET /me/onboarding` | `domains/onboarding/api/queries.ts` | Me | |
-| `["home"]` | `GET /home` | `domains/home/api/queries.ts` | Home root | Kept by `forgetHomeScope`; `null` means no Home |
-| `["home","day-plan"]` | `GET /home/day-plan` | `domains/dayplan/api/queries.ts` | Home | No date in the key |
-| `["home","check-in"]` | `GET /home/check-in` | `domains/checkin/api/queries.ts` | Home | No date in the key |
-| `["home","streak"]` | `GET /home/streak` | `domains/streak/api/queries.ts` | Home | |
+| `["me","onboarding"]` | `GET /me/onboarding` | `domains/onboarding/api/queries.ts` | Me | Launch read |
+| `["home"]` | `GET /home` | `domains/home/api/queries.ts` | Home root | Launch read; kept by `forgetHomeScope`; `null` means no Home |
+| `["home","day-plan"]` | `GET /home/day-plan` | `domains/dayplan/api/queries.ts` | Home | Launch read; no date in the key |
+| `["home","check-in"]` | `GET /home/check-in` | `domains/checkin/api/queries.ts` | Home | Launch read; no date in the key |
+| `["home","streak"]` | `GET /home/streak` | `domains/streak/api/queries.ts` | Home | Launch read |
 | `["home","chores"]` | `GET /home/chores` | `domains/chores/api/queries.ts` | Home | Prefix of the settings key, so its writes use `exact` |
 | `["home","chores","settings"]` | `GET /home/chores/settings` | `domains/profile/api/queries.ts` | Home | The caller's own row; read with `useOptimisticView` |
-| `["home","residents"]` | `GET /home/residents` | `domains/residents/api/queries.ts` | Home | `enabled` only while there is a Home; prefix of the pages' keys |
+| `["home","residents"]` | `GET /home/residents` | `domains/residents/api/queries.ts` | Home | Launch read; `enabled` only while there is a Home; prefix of the pages' keys |
 | `["home","residents",id]` | `GET /home/residents/{id}` | `domains/residents/api/queries.ts` | Home | One entry per Resident |
 | `["categories"]` | `GET /categories` | `domains/profile/api/queries.ts` | Global | Shared by Chores, Check-in and Profile |
-| `["demands"]` | `GET /demands` | `domains/profile/api/queries.ts` | Global | Shared by Chores, Check-in and Profile |
+| `["demands"]` | `GET /demands` | `domains/profile/api/queries.ts` | Global | Launch read; shared by Chores, Check-in and Profile |
 | `["catalog"]` | `GET /catalog` | `domains/catalog/api/queries.ts` | Global | `POST /catalog/proposals` builds a proposal and stays out of the cache |
 | `["invites",token]` | `GET /invites/{token}` | `domains/invite/api/queries.ts` | Global, signed out | Through `httpClient`; dead Invites are data, only `offline` and `error` fail |
 
@@ -275,7 +295,7 @@ A join resets the Home's children rather than only marking them stale (the old H
 
 ## Navigation
 
-`react-router` (v7, declarative: `BrowserRouter`, `Routes`, `Route`, `Outlet`, `NavLink`, `Navigate`; no data routers or loaders) gives the app real routes. Every route sits under one `Guard`.
+`react-router` (v7, declarative: `BrowserRouter`, `Routes`, `Route`, `Outlet`, `NavLink`, `Navigate`; no data routers or loaders) gives the app real routes. Every route sits under one `Guard`. The Guard decides from the same answers as ever (the session, `/me`, onboarding, the Home); on a launch at Today they may already be in the cache, because `main.tsx` started their reads before the first render (see Launch reads).
 
 | Route | Screen | Nav |
 |---|---|---|

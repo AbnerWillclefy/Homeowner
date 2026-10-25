@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { FailureReason, Home } from "../api/api";
-import { homeKey, homeLeft, homeQuery } from "../api/queries";
+import { homeCreated, homeKey, homeLeft, homeQuery } from "../api/queries";
 import { viewOf, type QueryViewState } from "../../../shared/query/view";
 
 export type HomeState =
@@ -19,6 +19,12 @@ function homeState(state: QueryViewState<Home | null>): HomeState {
     case "ready":
       return state.data === null ? { kind: "none" } : { kind: "ready", home: state.data };
   }
+}
+
+/** The caller created or recovered a Home: forget the "none" answers cached while they had none, then show it. */
+export function useHomeCreated() {
+  const queryClient = useQueryClient();
+  return useCallback((home: Home) => homeCreated(queryClient, home), [queryClient]);
 }
 
 /**
@@ -45,6 +51,8 @@ export function useHome() {
     [queryClient],
   );
 
+  const setCreatedHome = useHomeCreated();
+
   /**
    * The caller has left their Home: show the create form and forget everything cached under the old Home.
    */
@@ -52,5 +60,5 @@ export function useHome() {
     await homeLeft(queryClient);
   }, [queryClient]);
 
-  return { state: homeState(state), refreshing, reload, setHome, clearHome };
+  return { state: homeState(state), refreshing, reload, setHome, setCreatedHome, clearHome };
 }

@@ -157,6 +157,8 @@ test.describe("a refresh with the Home on screen", () => {
 });
 
 test("a Day Plan that fails to load shows a message and recovers on retry", async ({ page, baseURL, fakeApi }) => {
+  // Two failures: the launch read, then the read Today makes on mount because the launch read did not succeed.
+  fakeApi.override("GET /home/day-plan", json(500, { error: "internal error" }), { once: true });
   fakeApi.override("GET /home/day-plan", json(500, { error: "internal error" }), { once: true });
   await launchApp(page, baseURL!);
 

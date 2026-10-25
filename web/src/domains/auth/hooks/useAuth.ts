@@ -12,12 +12,16 @@ export type AuthState =
   /** offline: a stored session is kept but the API could not be reached, so the email comes from the stored token. */
   | { kind: "signed-in"; email: string | null; offline: boolean };
 
-/** Reads the User through the query cache, so the Shell's `useMe` finds the same entry and asks no second time. */
+/**
+ * Reads the User through the query cache, so the Shell's `useMe` finds the same entry and asks no second time.
+ * `ensureQueryData` joins the launch read while it is in flight and keeps what it fetched (`fetchQuery` would
+ * read `/me` again, ADR 0016); with no entry, or a failed one, it fetches.
+ */
 async function resolveSignedIn(queryClient: QueryClient): Promise<AuthState> {
   const stored = browserSession.load();
   if (stored === null) return { kind: "signed-out" };
   try {
-    const me = await queryClient.fetchQuery(meQuery);
+    const me = await queryClient.ensureQueryData(meQuery);
     return { kind: "signed-in", email: me.email, offline: false };
   } catch (failure) {
     if (failure instanceof ApiFailure && failure.kind === "not-signed-in") return { kind: "signed-out" };

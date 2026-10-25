@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { toQueryData } from "../../../shared/query/ApiFailure";
+import { refetchUnlessSucceeded } from "../../../shared/query/queryClient";
 import { getDayPlan, type DayPlan } from "./api";
 
 /**
@@ -13,4 +14,5 @@ export const dayPlanKey = ["home", "day-plan"] as const;
 export const dayPlanQuery = queryOptions({
   queryKey: dayPlanKey,
   queryFn: async (): Promise<DayPlan | null> => toQueryData(await getDayPlan())?.plan ?? null,
+  refetchOnMount: refetchUnlessSucceeded,
 });

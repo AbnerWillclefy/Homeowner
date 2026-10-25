@@ -8,8 +8,10 @@ import { ToastProvider } from "./shared/ui/ToastProvider";
 import { I18nProvider } from "./shared/i18n";
 import { PendingInviteProvider } from "./domains/invite/components/PendingInviteProvider";
 import { ThemeProvider } from "./shared/theme";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, type FetchQueryOptions } from "@tanstack/react-query";
 import { createQueryClient } from "./shared/query/queryClient";
+import { launchReads } from "./app/logic/launchReads";
+import { browserSession } from "./domains/auth/logic/browserSession";
 // Only the latin subset and the weights in use; the bare package would pull every subset.
 import "@fontsource/nunito/latin-400.css";
 import "@fontsource/nunito/latin-600.css";
@@ -22,6 +24,13 @@ window.addEventListener("vite:preloadError", (event) => chunkRecovery.onPreloadE
 
 // Module level, so StrictMode's double mount does not create two caches.
 const queryClient = createQueryClient();
+
+// Start Today's reads now, together, instead of one screen at a time as each answer lets the next one mount
+// (ADR 0016). prefetchQuery never throws: a failure is stored on the query and the screen's own hook shows it.
+for (const read of launchReads(window.location.pathname, browserSession.load() !== null)) {
+  // Each member of the union is valid on its own; TypeScript cannot pick one overload for the union.
+  void queryClient.prefetchQuery(read as FetchQueryOptions);
+}
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
