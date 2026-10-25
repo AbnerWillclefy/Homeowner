@@ -104,6 +104,22 @@ describe("api client", () => {
     expect(store.load()?.idToken).toBe("id-new");
   });
 
+  it("shares one refresh between the eight launch reads sent at once with an expiring token", async () => {
+    let release: (r: RefreshResult) => void = () => {};
+    const { authedRequest, calls, refresh } = setup(nearExpiry, {
+      refresh: () => new Promise<RefreshResult>((resolve) => (release = resolve)),
+    });
+    const results = Promise.all(Array.from({ length: 8 }, (_, i) => authedRequest({ url: `/read${i}` })));
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalled());
+    expect(calls).toEqual([]);
+    release({ kind: "ok", tokens: { idToken: "id-new", expiresInSeconds: 3600 } });
+    const all = await results;
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(all.every((r) => r.kind === "response" && r.response.status === 200)).toBe(true);
+    expect(calls).toHaveLength(8);
+    expect(calls.every((c) => c.auth === "Bearer id-new")).toBe(true);
+  });
+
   it("is not signed in when Cognito rejects the refresh before the request", async () => {
     const { authedRequest, calls } = setup(nearExpiry, { refresh: { kind: "not-authorized" } });
     expect(await authedRequest({ url: "/me" })).toEqual({ kind: "not-signed-in" });
