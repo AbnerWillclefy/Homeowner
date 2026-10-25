@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiFailure, toQueryData } from "./ApiFailure";
-import { createQueryClient } from "./queryClient";
+import { QueryObserver } from "@tanstack/react-query";
+import { createQueryClient, refetchUnlessSucceeded } from "./queryClient";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -22,6 +23,31 @@ describe("createQueryClient", () => {
     const queryFn = vi.fn().mockResolvedValue("data");
     await expect(createQueryClient().fetchQuery({ queryKey: ["home"], queryFn })).resolves.toBe("data");
     expect(queryFn).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("refetchUnlessSucceeded", () => {
+  const options = (queryFn: () => Promise<string>) => ({ queryKey: ["launch"], queryFn, refetchOnMount: refetchUnlessSucceeded });
+
+  it("does not read again on mount when the prefetch succeeded", async () => {
+    const queryFn = vi.fn().mockResolvedValue("data");
+    const client = createQueryClient();
+    await client.prefetchQuery(options(queryFn));
+    const unsubscribe = new QueryObserver(client, options(queryFn)).subscribe(() => {});
+    await Promise.resolve();
+    unsubscribe();
+    expect(queryFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("reads again on mount after a failed prefetch", async () => {
+    const queryFn = vi.fn().mockRejectedValueOnce(new ApiFailure("offline")).mockResolvedValueOnce("data");
+    const client = createQueryClient();
+    await client.prefetchQuery(options(queryFn));
+    const observer = new QueryObserver(client, options(queryFn));
+    const unsubscribe = observer.subscribe(() => {});
+    await vi.waitFor(() => expect(observer.getCurrentResult().data).toBe("data"));
+    unsubscribe();
+    expect(queryFn).toHaveBeenCalledTimes(2);
   });
 });
 

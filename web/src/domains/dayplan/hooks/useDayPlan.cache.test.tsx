@@ -41,10 +41,19 @@ describe("useDayPlan over the query cache", () => {
   });
   afterEach(() => rendered?.unmount());
 
-  it("shows the cached plan at once, with no loading state, while a refetch runs behind it", async () => {
+  it("shows the cached plan at once and does not read it on mount, since the launch wave already did (ADR 0016)", async () => {
+    mount();
+    await settle();
+    expect(day.state).toEqual({ kind: "ready", plan: CACHED });
+    expect(getDayPlan).not.toHaveBeenCalled();
+  });
+
+  it("shows the cached plan at once, with no loading state, while a window-focus refetch runs behind it", async () => {
     let answer!: (result: DayPlanResult) => void;
     getDayPlan.mockImplementation(() => new Promise<DayPlanResult>((resolve) => (answer = resolve)));
-    mount();
+    const client = mount();
+    void client.refetchQueries({ queryKey: dayPlanKey });
+    await settle();
     expect(day.state).toEqual({ kind: "ready", plan: CACHED });
     expect(day.refreshing).toBe(true);
     answer({ kind: "ok", plan: FRESH });
@@ -55,7 +64,8 @@ describe("useDayPlan over the query cache", () => {
 
   it("keeps the cached plan, with no alert state, when the refetch fails", async () => {
     getDayPlan.mockResolvedValue({ kind: "offline" });
-    mount();
+    const client = mount();
+    await client.refetchQueries({ queryKey: dayPlanKey });
     await settle();
     expect(day.state).toEqual({ kind: "ready", plan: CACHED });
     expect(day.refreshing).toBe(false);
@@ -66,11 +76,11 @@ describe("useDayPlan over the query cache", () => {
     acceptTask.mockResolvedValue({ kind: "ok", plan: FRESH });
     const client = mount();
     await settle();
-    expect(getDayPlan).toHaveBeenCalledTimes(1);
+    expect(getDayPlan).not.toHaveBeenCalled();
     const changedBefore = day.changed;
     await act(async () => day.run("accept", task("t1")));
     await settle();
-    expect(getDayPlan).toHaveBeenCalledTimes(1);
+    expect(getDayPlan).not.toHaveBeenCalled();
     expect(client.getQueryData(dayPlanKey)).toEqual(FRESH);
     expect(day.changed).toBe(changedBefore + 1);
   });

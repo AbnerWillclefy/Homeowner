@@ -1,5 +1,6 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { toQueryData } from "../../../shared/query/ApiFailure";
+import { refetchUnlessSucceeded } from "../../../shared/query/queryClient";
 import { getHome, type Home } from "./api";
 
 /** `GET /home`. Home-scoped children go under it, so one partial key reaches them all (ADR 0013). */
@@ -9,6 +10,7 @@ export const homeKey = ["home"] as const;
 export const homeQuery = queryOptions({
   queryKey: homeKey,
   queryFn: async (): Promise<Home | null> => toQueryData(await getHome())?.home ?? null,
+  refetchOnMount: refetchUnlessSucceeded,
 });
 
 const inHomeScope = (key: readonly unknown[]) => key[0] === homeKey[0] && key.length > 1;

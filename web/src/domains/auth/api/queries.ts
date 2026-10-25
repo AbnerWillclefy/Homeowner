@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { toQueryData } from "../../../shared/query/ApiFailure";
+import { refetchUnlessSucceeded } from "../../../shared/query/queryClient";
 import { getMe, type Me } from "./meApi";
 
 /** `GET /me`. Under it go `["me","profile"]` and `["me","onboarding"]` (ADR 0013). */
@@ -19,5 +20,5 @@ export const meQuery = queryOptions({
     const { kind: _kind, ...me } = result;
     return me;
   },
-  refetchOnMount: (query) => query.state.status !== "success",
+  refetchOnMount: refetchUnlessSucceeded,
 });
