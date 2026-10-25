@@ -175,7 +175,7 @@ Each is a fill with a paired ink. Kitchen peach, bathroom mint, bedroom and livi
 
 One centred column, `max-width: 32rem`, with 1.5rem side padding plus the device's safe-area insets, and 2rem top and bottom. Cards stack with a 1rem gap; groups of cards are separated by a group heading and 2rem of space. Inside a card the rhythm is 0.75rem between rows, 1rem padding. Lists are real lists with no bullets.
 
-The bottom tab bar holds four equal tabs in the same 32rem column, keeps the bottom safe-area inset, and sits after the content so it never covers it.
+The bottom tab bar holds four equal tabs in the same 32rem column, keeps the bottom safe-area inset, and sits after the content, sticky, so it covers nothing once the page is scrolled to the end but does cover what lies at the fold while scrolling: keep a control that must be tappable on load high on the page.
 
 ### Thumb reach
 Actions live where a right thumb lands. A card's actions are on their own row at the bottom of the card.
