@@ -238,7 +238,7 @@ jobs:
           aws s3 sync dist "s3://${BUCKET}" \
             --exclude "assets/*" --exclude "index.html" --exclude "sw.js" \
             --exclude "registerSW.js" --exclude "manifest.webmanifest" \
-            --exclude "workbox-*.js" \
+            --exclude "workbox-*.js" --exclude ".vite/*" \
             --cache-control "public,max-age=3600"
 
       - name: Upload app shell and service worker
@@ -259,7 +259,7 @@ jobs:
         # assets/ is excluded (sync never deletes an excluded key): a tab still
         # running the previous version loads its screens on demand from old
         # hashed files, which must stay until nothing runs that version.
-        run: aws s3 sync dist "s3://${BUCKET}" --delete --size-only --exclude "assets/*"
+        run: aws s3 sync dist "s3://${BUCKET}" --delete --size-only --exclude "assets/*" --exclude ".vite/*"
 
       - name: Invalidate CloudFront
         run: |
