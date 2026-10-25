@@ -21,6 +21,12 @@ function homeState(state: QueryViewState<Home | null>): HomeState {
   }
 }
 
+/** The caller created or recovered a Home: forget the "none" answers cached while they had none, then show it. */
+export function useHomeCreated() {
+  const queryClient = useQueryClient();
+  return useCallback((home: Home) => homeCreated(queryClient, home), [queryClient]);
+}
+
 /**
  * The caller's Home from the query cache, which is only read while signed in (see App). `refreshing` is true
  * while a read runs over a Home already on screen; a failed refresh keeps that Home and shows no alert.
@@ -45,8 +51,7 @@ export function useHome() {
     [queryClient],
   );
 
-  /** The caller created or recovered a Home: forget the "none" answers cached while they had none, then show it. */
-  const setCreatedHome = useCallback((home: Home) => homeCreated(queryClient, home), [queryClient]);
+  const setCreatedHome = useHomeCreated();
 
   /**
    * The caller has left their Home: show the create form and forget everything cached under the old Home.
