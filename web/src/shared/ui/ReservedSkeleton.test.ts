@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { ReservedSkeleton } from "./ReservedSkeleton";
 
 const render = (show: boolean) =>
-  renderToStaticMarkup(createElement(ReservedSkeleton, { show }, createElement("span", null, "inside")));
+  renderToStaticMarkup(createElement(ReservedSkeleton, { show, children: createElement("span", null, "inside") }));
 const classesOf = (markup: string) => /class="([^"]*)"/.exec(markup)?.[1].split(/\s+/) ?? [];
 
 describe("ReservedSkeleton", () => {
