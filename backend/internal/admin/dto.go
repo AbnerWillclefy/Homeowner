@@ -166,6 +166,38 @@ type TemplateReasons struct {
 	NotAsked          int `json:"notAsked"`
 }
 
+// FlowResponse is GET /admin/flow: the daily pipeline as one funnel, totalled
+// over the range. Steps are in pipeline order, so a page can render them
+// generically. The server sends counts only; the page divides (guarding zero).
+//
+// homesDue has no stored source (the job computes it in memory and a Home whose
+// planning failed leaves no row), so it is defined as the Homes that existed
+// at the end of each day of the range (homes.created_at on or before the day,
+// the day taken in UTC) summed over the days. A Home counts once per day, so
+// it is a count of Home-days. The gap between homesDue and runs is "not
+// planned": a failed planning, an unknown timezone, or a Home created after
+// its Allocation time that day. The UTC day approximates the Home-local day,
+// so a Home created near midnight can count one day early or late.
+type FlowResponse struct {
+	Range string     `json:"range"`
+	From  string     `json:"from"`
+	To    string     `json:"to"`
+	Steps []FlowStep `json:"steps"`
+}
+
+// FlowStep is one step of the funnel. Of names the step it is measured
+// against, empty when the step has no denominator.
+//
+// rejectedRuns is the checker refusing the baseline's plan, not the LLM being
+// refused. llmAsked counts allocator calls that were made; llmSkipped the ones
+// the cap or the budget stopped. Pushes are the day_plan_ready nudges only;
+// delivered means accepted by the push service, not shown on a phone.
+type FlowStep struct {
+	ID    string `json:"id"`
+	Count int    `json:"count"`
+	Of    string `json:"of,omitempty"`
+}
+
 // KindCount is how many allocator calls in the range reported a violation kind.
 type KindCount struct {
 	Kind  string `json:"kind"`
