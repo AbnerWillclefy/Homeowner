@@ -13,8 +13,8 @@ const (
 	MaxKitchens = 3
 	MaxOutdoor  = 10
 	// MaxProposals bounds what Propose can return; a test proves the largest
-	// possible answers stay within it. The largest answers give 122: 52 indoor,
-	// 10 pet and 60 outdoor.
+	// possible answers stay within it (see
+	// TestAHomeKeepingEveryProposalForTheLargestAnswersIsCreated).
 	MaxProposals = 125
 )
 

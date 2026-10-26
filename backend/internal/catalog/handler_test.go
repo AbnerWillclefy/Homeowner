@@ -156,12 +156,19 @@ func TestOutdoorAreasProposeOutdoorChoresPerArea(t *testing.T) {
 	outdoor := func(counts map[string]any) []map[string]any {
 		return inCategory(apitest.Proposals(t, me, map[string]any{"outdoor": counts}), "outdoor")
 	}
-	instances := func(ps []map[string]any, id string) []any {
-		out := []any{}
+	byID := func(ps []map[string]any, id string) []map[string]any {
+		var out []map[string]any
 		for _, p := range ps {
 			if p["catalogId"] == id {
-				out = append(out, p["instance"])
+				out = append(out, p)
 			}
+		}
+		return out
+	}
+	instances := func(ps []map[string]any, id string) []any {
+		out := []any{}
+		for _, p := range byID(ps, id) {
+			out = append(out, p["instance"])
 		}
 		return out
 	}
@@ -169,12 +176,7 @@ func TestOutdoorAreasProposeOutdoorChoresPerArea(t *testing.T) {
 	t.Run("two gardens", func(t *testing.T) {
 		got := outdoor(map[string]any{"gardens": 2})
 		for _, id := range []string{"sweep_yard", "weed_garden", "water_garden"} {
-			var pair []map[string]any
-			for _, p := range got {
-				if p["catalogId"] == id {
-					pair = append(pair, p)
-				}
-			}
+			pair := byID(got, id)
 			if len(pair) != 2 {
 				t.Fatalf("%s proposals = %d, want two (all: %v)", id, len(pair), catalogIDs(got))
 			}

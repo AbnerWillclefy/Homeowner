@@ -117,6 +117,8 @@ export function Questionnaire({ idPrefix, value, onChange, errors, disabled }: P
   // The type just added from its chip: the chip unmounts, so the new row's field takes focus.
   const [justAdded, setJustAdded] = useState<OutdoorType | null>(null);
 
+  const shownOutdoor = OUTDOOR_TYPES.filter((type) => outdoorRowShown(value.outdoor[type], focusedOutdoor === type));
+
   const errorText = (field: string) => (errors[field] ? t(answerErrorKey(errors[field])) : undefined);
 
   /** A fieldset whose errors are read with its legend. */
@@ -194,7 +196,7 @@ export function Questionnaire({ idPrefix, value, onChange, errors, disabled }: P
               onSet={(next) => onChange({ ...value, rooms: { ...value.rooms, [type]: next } })}
             />
           ))}
-          {OUTDOOR_TYPES.filter((type) => outdoorRowShown(value.outdoor[type], focusedOutdoor === type)).map((type) => (
+          {shownOutdoor.map((type) => (
             <CountRow
               key={type}
               id={`${idPrefix}-outdoor-${type}`}
@@ -224,7 +226,7 @@ export function Questionnaire({ idPrefix, value, onChange, errors, disabled }: P
         t("catalog.outdoor.legend"),
         [],
         <div className={CHIPS}>
-          {OUTDOOR_TYPES.filter((type) => !outdoorRowShown(value.outdoor[type], focusedOutdoor === type)).map((type) => {
+          {OUTDOOR_TYPES.filter((type) => !shownOutdoor.includes(type)).map((type) => {
             const area = t(OUTDOOR_LABEL_KEYS[type]);
             return (
               <button
