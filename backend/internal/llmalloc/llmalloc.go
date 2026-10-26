@@ -44,10 +44,24 @@ type Request struct {
 	Thinking bool
 }
 
+// Usage is what one call to the model consumed. Model is the one the client
+// was configured with (LLM_MODEL), the key of the price table, not the
+// snapshot id a response may carry. Adaptive thinking tokens are inside
+// OutputTokens.
+type Usage struct {
+	Model        string
+	InputTokens  int64
+	OutputTokens int64
+}
+
 // Client sends a Request to a model and returns its structured answer, the
 // JSON object that follows Request.Schema. It must honour ctx's deadline.
+//
+// The *Usage is nil when the API sent none (a timeout, a transport or HTTP
+// error), and non-nil whenever a response came back, even with an error such
+// as ErrInvalidResponse: the tokens were spent. nil is not zero tokens.
 type Client interface {
-	Complete(ctx context.Context, req Request) (json.RawMessage, error)
+	Complete(ctx context.Context, req Request) (json.RawMessage, *Usage, error)
 }
 
 // Allocator proposes Day Plans through a Client.
@@ -84,17 +98,21 @@ func maxTokens(n int) int { return min(thinkingAllowance+answerTokensPerTask*n, 
 // context.DeadlineExceeded); an answer that is not a well-formed plan is
 // ErrInvalidResponse. A well-formed plan may still break every rule: only
 // allocation.Check decides.
-func (a *Allocator) Propose(ctx context.Context, st allocation.State) (allocation.Result, error) {
+//
+// The *Usage is what the call consumed, also when the answer is invalid. called
+// says whether the model was asked at all: false (with a nil Usage) when
+// nothing was left to ask, true with a nil Usage when the call returned none.
+func (a *Allocator) Propose(ctx context.Context, st allocation.State) (res allocation.Result, usage *Usage, called bool, err error) {
 	open, pooled := screen(st)
 	if len(open) == 0 {
-		return build(nil, nil, st, pooled), nil
+		return build(nil, nil, st, pooled), nil, false, nil
 	}
 	in := inputOf(st, open)
 	user, err := json.Marshal(in)
 	if err != nil {
-		return allocation.Result{}, fmt.Errorf("llm: build prompt: %w", err)
+		return allocation.Result{}, nil, false, fmt.Errorf("llm: build prompt: %w", err)
 	}
-	raw, err := a.client.Complete(ctx, Request{
+	raw, usage, err := a.client.Complete(ctx, Request{
 		System:    systemPrompt,
 		User:      string(user),
 		Schema:    schema,
@@ -102,9 +120,10 @@ func (a *Allocator) Propose(ctx context.Context, st allocation.State) (allocatio
 		Thinking:  true,
 	})
 	if err != nil {
-		return allocation.Result{}, err
+		return allocation.Result{}, usage, true, err
 	}
-	return decode(raw, st, pooled)
+	res, err = decode(raw, st, pooled)
+	return res, usage, true, err
 }
 
 // AssignmentReasons and PoolReasons are the only reasons the model may give.

@@ -49,7 +49,7 @@ func TestAWeekdayBlockedTaskIsPooledAndNotSent(t *testing.T) {
 	st.Tasks[0].AllowedWeekdays = []int{(st.Today.Weekday() + 1) % 7}
 	fake := emptyAnswer()
 
-	res, err := llmalloc.New(fake).Propose(context.Background(), st)
+	res, _, _, err := llmalloc.New(fake).Propose(context.Background(), st)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestEachTaskCarriesItsEligibleResidents(t *testing.T) {
 	st.Residents = append(st.Residents, allocation.Resident{ID: "a0", Energy: 2})
 	st.Tasks[0].Demands = []allocation.Demand{"heights"} // t1: not r1
 	fake := emptyAnswer()
-	if _, err := llmalloc.New(fake).Propose(context.Background(), st); err != nil {
+	if _, _, _, err := llmalloc.New(fake).Propose(context.Background(), st); err != nil {
 		t.Fatal(err)
 	}
 	got := sent(t, fake)
@@ -106,7 +106,7 @@ func TestATaskNoOneCanTakeIsPooledInGo(t *testing.T) {
 	// t2 needs two people and only r1 is left eligible.
 	fake := emptyAnswer()
 
-	res, err := llmalloc.New(fake).Propose(context.Background(), st)
+	res, _, _, err := llmalloc.New(fake).Propose(context.Background(), st)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +127,7 @@ func TestWhenEveryTaskIsPooledInGoTheModelIsNotCalled(t *testing.T) {
 	st.Tasks[0].AllowedWeekdays = []int{(st.Today.Weekday() + 1) % 7}
 	fake := emptyAnswer()
 
-	res, err := llmalloc.New(fake).Propose(context.Background(), st)
+	res, _, _, err := llmalloc.New(fake).Propose(context.Background(), st)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,6 +144,17 @@ func TestWhenEveryTaskIsPooledInGoTheModelIsNotCalled(t *testing.T) {
 	}
 	if v := allocation.Check(res.DayPlan, st); len(v) != 0 {
 		t.Fatalf("Check = %+v", v)
+	}
+}
+
+// No call is told apart from a call that came back without usage.
+func TestWhenNoCallIsMadeThereIsNoUsageAndCalledIsFalse(t *testing.T) {
+	st := state()
+	st.Residents = st.Residents[:1]
+	st.Tasks[0].AllowedWeekdays = []int{(st.Today.Weekday() + 1) % 7}
+	_, usage, called, err := llmalloc.New(emptyAnswer()).Propose(context.Background(), st)
+	if err != nil || called || usage != nil {
+		t.Fatalf("usage = %+v, called = %v, err = %v", usage, called, err)
 	}
 }
 
@@ -226,7 +237,8 @@ func proposeWithAnswer(t *testing.T, st allocation.State, answer string) (alloca
 	t.Helper()
 	fake := llmalloc.NewFakeClient()
 	fake.Answer(answer)
-	return llmalloc.New(fake).Propose(context.Background(), st)
+	res, _, _, err := llmalloc.New(fake).Propose(context.Background(), st)
+	return res, err
 }
 
 // No name, email, title or free text can reach the model: the State carries
@@ -235,7 +247,7 @@ func TestNoFreeTextReachesTheModel(t *testing.T) {
 	st := state()
 	st.Residents[0].ID = "res-1"
 	fake := emptyAnswer()
-	if _, err := llmalloc.New(fake).Propose(context.Background(), st); err != nil {
+	if _, _, _, err := llmalloc.New(fake).Propose(context.Background(), st); err != nil {
 		t.Fatal(err)
 	}
 	for _, leak := range []string{"Alice", "alice@example.com", "Wash the dishes"} {
@@ -247,7 +259,7 @@ func TestNoFreeTextReachesTheModel(t *testing.T) {
 
 func TestTheAllocatorAsksForThinking(t *testing.T) {
 	fake := emptyAnswer()
-	if _, err := llmalloc.New(fake).Propose(context.Background(), state()); err != nil {
+	if _, _, _, err := llmalloc.New(fake).Propose(context.Background(), state()); err != nil {
 		t.Fatal(err)
 	}
 	if !fake.LastRequest().Thinking {
@@ -268,7 +280,7 @@ func TestMaxTokensLeavesRoomToThinkAndIsCapped(t *testing.T) {
 	var prev int
 	for _, n := range []int{1, 2, 10, 20, 32, 33, 100} {
 		fake := emptyAnswer()
-		if _, err := llmalloc.New(fake).Propose(context.Background(), tasks(n)); err != nil {
+		if _, _, _, err := llmalloc.New(fake).Propose(context.Background(), tasks(n)); err != nil {
 			t.Fatal(err)
 		}
 		got := fake.LastRequest().MaxTokens
@@ -278,10 +290,10 @@ func TestMaxTokensLeavesRoomToThinkAndIsCapped(t *testing.T) {
 		prev = got
 	}
 	fake := emptyAnswer()
-	_, _ = llmalloc.New(fake).Propose(context.Background(), tasks(1))
+	_, _, _, _ = llmalloc.New(fake).Propose(context.Background(), tasks(1))
 	one := fake.LastRequest().MaxTokens
 	fake = emptyAnswer()
-	_, _ = llmalloc.New(fake).Propose(context.Background(), tasks(2))
+	_, _, _, _ = llmalloc.New(fake).Propose(context.Background(), tasks(2))
 	if fake.LastRequest().MaxTokens != one+128 {
 		t.Errorf("each Task adds 128 tokens: %d then %d", one, fake.LastRequest().MaxTokens)
 	}
