@@ -102,6 +102,10 @@ type LLMConfig struct {
 	DailyCap int
 	// CallTimeout bounds one call.
 	CallTimeout time.Duration
+	// Model is the configured model id, recorded on an llm_call_events row when
+	// the call reported no usage (skipped, or failed before an answer). Proposer.Name
+	// cannot stand in: it is "llm", the allocator name stored on runs.
+	Model string
 	// TickBudget bounds all the calls of one RunDue; zero means the default.
 	TickBudget time.Duration
 	// Explainer writes the plain-language explanations of the Day Plans a
@@ -424,9 +428,13 @@ func (p *Planner) planHome(ctx, llmCtx context.Context, homeID string, now time.
 	}
 
 	var (
-		run     runRecord
-		date    allocation.Date
-		outcome = Planned
+		run   runRecord
+		runID string
+		date  allocation.Date
+
+		zoneChanged bool
+		outcome     = Planned
+		asked       = ans // kept: the zone reset below drops ans
 	)
 	err := p.refreshedHomeTx(ctx, homeID, now, "plan home", func(tx pgx.Tx, d allocation.Date) error {
 		date = d
@@ -440,6 +448,7 @@ func (p *Planner) planHome(ctx, llmCtx context.Context, homeID string, now time.
 		}
 		if p.llm.Proposer != nil && date != day {
 			ans = llmAnswer{} // the Home's zone changed during the call: that plan was for another day
+			zoneChanged = true
 		}
 
 		st, err := loadState(ctx, tx, homeID, date)
@@ -453,7 +462,8 @@ func (p *Planner) planHome(ctx, llmCtx context.Context, homeID string, now time.
 			return fmt.Errorf("plan home: %w", err)
 		}
 		defer sp.Rollback(ctx) //nolint:errcheck
-		if err := store(ctx, sp, homeID, date, now, run); err != nil {
+		id, err := store(ctx, sp, homeID, date, now, run)
+		if err != nil {
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) && pgErr.Code == uniqueViolation {
 				outcome = AlreadyPlanned
@@ -464,8 +474,20 @@ func (p *Planner) planHome(ctx, llmCtx context.Context, homeID string, now time.
 		if err := sp.Commit(ctx); err != nil {
 			return fmt.Errorf("plan home: %w", err)
 		}
+		runID = id
 		return nil
 	})
+	// The event is written after the planning transaction, outside it: its FK on
+	// the run needs the commit, and a failure must not touch the plan. Without a
+	// run of ours it has no run and the outcome of the call itself. A zone change
+	// during the call also leaves it without one: the stored run never saw the proposal.
+	if asked.asked {
+		if err != nil || outcome == AlreadyPlanned || zoneChanged {
+			p.recordLLMEvent(ctx, eventOf(homeID, day, now, asked.attempt, asked.fallback, "", nil))
+		} else {
+			p.recordLLMEvent(ctx, eventOf(homeID, date, now, asked.attempt, asked.fallback, runID, &run))
+		}
+	}
 	if err != nil {
 		return "", err
 	}
@@ -532,6 +554,8 @@ type runRecord struct {
 	reasons   reasons
 	// fallback says why the LLM's plan was not used, when it was asked.
 	fallback fallbackReason
+	// refereed is true when an LLM proposal went through Check for this run.
+	refereed bool
 }
 
 // fallbackReason is why the LLM's plan was not used, stored in
@@ -552,6 +576,10 @@ const (
 type llmAnswer struct {
 	proposal *allocation.Result
 	fallback fallbackReason
+	// asked is true when the model was worth asking, so llm_call_events gets a
+	// row; attempt says how the ask went.
+	asked   bool
+	attempt attempt
 }
 
 // propose referees the LLM's proposal against st, the State under the Home
@@ -564,6 +592,7 @@ func (p *Planner) propose(st loaded, ans llmAnswer) runRecord {
 		reasons: reasons{Energy: st.energy, Pool: []pooled{}}}
 	if worthAsking(st.state) {
 		if ans.proposal != nil {
+			rec.refereed = true
 			vs := allocation.Check(ans.proposal.DayPlan, st.state)
 			if len(vs) == 0 {
 				rec.allocator, rec.result = p.llm.Proposer.Name(), *ans.proposal
@@ -628,26 +657,43 @@ func (p *Planner) ask(ctx context.Context, homeID string, date allocation.Date, 
 		}
 		return llmAnswer{fallback: reason}
 	}
-	if err := ctx.Err(); err != nil {
-		return failed(err)
+	worth := worthAsking(st)
+	// skippedBy is a failure before any call. The event says why the model was
+	// not called; a spent budget is skipped_budget there only, while the run
+	// still falls back as llm_timeout.
+	skippedBy := func(err error, o eventOutcome) llmAnswer {
+		ans := failed(err)
+		ans.asked, ans.attempt.skipped = worth, o
+		return ans
 	}
-	if !worthAsking(st) {
+	if err := ctx.Err(); err != nil {
+		return skippedBy(err, eventSkippedBudget)
+	}
+	if !worth {
 		return llmAnswer{}
 	}
 	ok, err := reserveLLMCall(ctx, p.db, homeID, date, p.llm.DailyCap)
 	if err != nil {
-		return failed(err)
+		return skippedBy(err, eventError)
 	}
 	if !ok {
-		return llmAnswer{fallback: fallbackCapReached}
+		return llmAnswer{fallback: fallbackCapReached, asked: true, attempt: attempt{skipped: eventSkippedCap}}
 	}
 	callCtx, cancel := context.WithTimeout(ctx, p.llm.CallTimeout)
 	defer cancel()
-	prop, err := p.llm.Proposer.Propose(callCtx, st) // usage is recorded by a later ticket
-	if err != nil {
-		return failed(err)
+	start := time.Now()
+	prop, err := p.llm.Proposer.Propose(callCtx, st)
+	a := attempt{usage: prop.Usage}
+	if prop.Called {
+		d := time.Since(start)
+		a.latency = &d
 	}
-	return llmAnswer{proposal: &prop.Result}
+	if err != nil {
+		ans := failed(err)
+		ans.asked, ans.attempt = true, a
+		return ans
+	}
+	return llmAnswer{proposal: &prop.Result, asked: true, attempt: a}
 }
 
 // worthAsking reports whether there is anything for the LLM to plan: an open
