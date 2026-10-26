@@ -38,7 +38,7 @@ export function Shell() {
   const me = useMe();
   const hasHome = home.state.kind === "ready";
   const streak = useStreak(hasHome);
-  const { checkIn, note, energy, openCheckIn, checkInOpen, closeCheckIn, returnFocusRef } = useShellCheckIn(hasHome);
+  const { checkIn, note, energy, planned, openCheckIn, checkInOpen, closeCheckIn, returnFocusRef } = useShellCheckIn(hasHome);
   const queryClient = useQueryClient();
   const { pathname } = useLocation();
   const invite = useInvite();
@@ -82,8 +82,8 @@ export function Shell() {
         </LazyDialog>
       )}
       {dialog === "start-choice" && <StartChoice onDecided={session.decide} />}
-      {/* The one Check-in dialog, opened by the pill and by Today's card. */}
-      <ShellCheckInDialog checkIn={checkIn} open={checkInOpen} onClose={closeCheckIn} returnFocusRef={returnFocusRef} />
+      {/* The one Check-in dialog, opened by the pill. */}
+      <ShellCheckInDialog checkIn={checkIn} open={checkInOpen} planned={planned} onClose={closeCheckIn} returnFocusRef={returnFocusRef} />
     </ShellContext.Provider>
   );
 }
