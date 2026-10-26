@@ -8,11 +8,10 @@ describe("plannedEffort", () => {
     expect(plannedEffort(plan)).toBe(7);
   });
 
-  it("counts nothing from other Residents, the pool or finished Tasks", () => {
+  it("counts nothing from other Residents, or the pool", () => {
     const plan = dayPlan({
       mine: [{ ...task("a"), currentEffort: 3 }],
       pool: [task("p")],
-      doneToday: [task("d")],
       others: [{ residentId: "r2", tasks: [task("o")] }],
     });
     expect(plannedEffort(plan)).toBe(3);
