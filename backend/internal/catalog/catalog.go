@@ -59,10 +59,6 @@ func hasPet(kind string) func(clean) bool {
 	return func(c clean) bool { return slices.Contains(c.pets, kind) }
 }
 
-func outdoorIs(kinds ...string) func(clean) bool {
-	return func(c clean) bool { return slices.Contains(kinds, c.outdoor) }
-}
-
 func hasKitchen(c clean) bool { return c.kitchens > 0 }
 
 func hasRooms(c clean) bool {
@@ -122,16 +118,16 @@ var table = []Entry{
 	entry("put_out_recycling", "Put out the recycling", "trash", none, 1, "essential", 7, false, false).
 		counts(when(func(c clean) bool { return len(c.recyclingDays) > 0 })).
 		adjusts(func(f *chores.Fields, c clean) { f.AllowedWeekdays = slices.Clone(c.recyclingDays) }),
-	entry("sweep_balcony", "Sweep the balcony", "outdoor", bending, 1, "nice_to_have", 14, true, false).
-		counts(when(outdoorIs("balcony"))),
-	entry("mow_lawn", "Mow the lawn", "outdoor", []string{"heavy_lifting"}, 4, "normal", 14, true, false).
-		counts(when(outdoorIs("yard"))),
-	entry("sweep_yard", "Sweep the yard", "outdoor", bending, 2, "nice_to_have", 14, true, false).
-		counts(when(outdoorIs("yard", "garden"))),
-	entry("weed_garden", "Weed the garden", "outdoor", bending, 3, "normal", 14, true, false).
-		counts(when(outdoorIs("garden"))),
-	entry("water_garden", "Water the garden", "outdoor", none, 1, "normal", 2, false, false).
-		counts(when(outdoorIs("garden"))),
+	entry("sweep_balcony", "Sweep the balcony", "outdoor", bending, 1, "nice_to_have", 14, true, true).
+		counts(func(c clean) int { return c.balconies }),
+	entry("mow_lawn", "Mow the lawn", "outdoor", []string{"heavy_lifting"}, 4, "normal", 14, true, true).
+		counts(func(c clean) int { return c.yards }),
+	entry("sweep_yard", "Sweep the yard", "outdoor", bending, 2, "nice_to_have", 14, true, true).
+		counts(func(c clean) int { return c.yards + c.gardens }),
+	entry("weed_garden", "Weed the garden", "outdoor", bending, 3, "normal", 14, true, true).
+		counts(func(c clean) int { return c.gardens }),
+	entry("water_garden", "Water the garden", "outdoor", none, 1, "normal", 2, false, true).
+		counts(func(c clean) int { return c.gardens }),
 	entry("walk_dog", "Walk the dog", "pets", none, 2, "essential", 1, false, false).
 		counts(when(hasPet("dog"))),
 	entry("feed_dog", "Feed the dog", "pets", none, 1, "essential", 1, false, false).

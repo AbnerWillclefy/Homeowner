@@ -58,7 +58,7 @@ Not domain terms, but kept consistent across the copy. CONTEXT.md has no **Remin
 | Room | cômodo | Bedroom "quarto", bathroom "banheiro", kitchen "cozinha", living room "sala", laundry area "área de serviço". Used in `catalog.rooms.*`. |
 | Suggested Chores | afazeres sugeridos | What the questionnaire's answers produce and the Resident reviews. Used in `catalog.review.*`. |
 | Pet | animal de estimação | Not "bicho". Used in `catalog.pets.*`. |
-| Outdoor space | área externa | Balcony "varanda", yard "quintal", garden "jardim". Used in `catalog.outdoor.*`. |
+| Outdoor space | área externa | Balcony "varanda", yard "quintal", garden "jardim"; plurals "varandas", "quintais", "jardins" for the counter rows. Used in `catalog.outdoor.*`. |
 | Timezone | fuso horário | Used in `home.timezone.label`. |
 | Reminders | lembretes | |
 | test notification | notificação de teste | |

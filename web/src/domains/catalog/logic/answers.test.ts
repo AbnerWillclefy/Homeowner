@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { clampCount, emptyAnswers, initialAnswers, ROOM_LIMITS, toRequestBody, withDayToggled } from "./answers";
+import {
+  clampCount,
+  emptyAnswers,
+  initialAnswers,
+  OUTDOOR_LABEL_KEYS,
+  OUTDOOR_LIMITS,
+  OUTDOOR_TYPES,
+  outdoorRowShown,
+  ROOM_LIMITS,
+  toRequestBody,
+  withDayToggled,
+} from "./answers";
 
 describe("toRequestBody", () => {
   it("sends nothing for answers that say none, since a missing section means none", () => {
@@ -7,8 +18,17 @@ describe("toRequestBody", () => {
   });
 
   it("sends each section that has an answer and leaves the others out", () => {
-    const answers = { ...emptyAnswers(), outdoor: "yard", pets: ["dog", "cat"] };
-    expect(toRequestBody(answers)).toEqual({ outdoor: "yard", pets: ["dog", "cat"] });
+    const answers = { ...emptyAnswers(), pets: ["dog", "cat"] };
+    expect(toRequestBody(answers)).toEqual({ pets: ["dog", "cat"] });
+  });
+
+  it("leaves outdoor out when all three counts are 0", () => {
+    expect(toRequestBody(emptyAnswers()).outdoor).toBeUndefined();
+  });
+
+  it("sends all three outdoor counts once any is above 0", () => {
+    const answers = { ...emptyAnswers(), outdoor: { balconies: 0, yards: 0, gardens: 2 } };
+    expect(toRequestBody(answers)).toEqual({ outdoor: { balconies: 0, yards: 0, gardens: 2 } });
   });
 
   it("sends all the room counts once any room is counted", () => {
@@ -41,6 +61,28 @@ describe("initialAnswers", () => {
     expect(toRequestBody(initialAnswers())).toEqual({
       rooms: { bedrooms: 1, bathrooms: 1, kitchens: 1, livingRooms: 1, laundryAreas: 0 },
     });
+  });
+});
+
+describe("outdoor areas", () => {
+  it("start with none, in emptyAnswers and in initialAnswers", () => {
+    expect(emptyAnswers().outdoor).toEqual({ balconies: 0, yards: 0, gardens: 0 });
+    expect(initialAnswers().outdoor).toEqual({ balconies: 0, yards: 0, gardens: 0 });
+  });
+
+  it("have three types in display order, each 0 to 10, as the API takes them", () => {
+    expect(OUTDOOR_TYPES).toEqual(["balconies", "yards", "gardens"]);
+    expect(OUTDOOR_LIMITS).toEqual({ balconies: 10, yards: 10, gardens: 10 });
+  });
+
+  it("have no None option", () => {
+    expect(Object.keys(OUTDOOR_LABEL_KEYS)).not.toContain("none");
+  });
+
+  it("show a row while the count is above 0 or its field has focus", () => {
+    expect(outdoorRowShown(1, false)).toBe(true);
+    expect(outdoorRowShown(0, false)).toBe(false);
+    expect(outdoorRowShown(0, true)).toBe(true);
   });
 });
 

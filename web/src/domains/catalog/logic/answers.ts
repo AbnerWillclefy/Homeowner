@@ -22,16 +22,38 @@ export const ROOM_LABEL_KEYS = {
   laundryAreas: "catalog.rooms.laundryAreas",
 } as const satisfies Record<RoomType, MessageKey>;
 
-export const OUTDOORS = ["none", "balcony", "yard", "garden"] as const;
+/** The outdoor area types and their limits, as the API takes them (backend/internal/catalog/answers.go). */
+export const OUTDOOR_LIMITS = { balconies: 10, yards: 10, gardens: 10 } as const;
+
+export type OutdoorType = keyof typeof OUTDOOR_LIMITS;
+
+/** In the order the rows show, whatever order the Resident added them in. */
+export const OUTDOOR_TYPES = Object.keys(OUTDOOR_LIMITS) as OutdoorType[];
+
 export const PETS = ["dog", "cat", "fish", "bird", "other"] as const;
 export const COOKINGS = ["rarely", "sometimes", "daily"] as const;
 
+/** The chip that adds an area of this type: singular. */
 export const OUTDOOR_LABEL_KEYS = {
-  none: "catalog.outdoor.none",
-  balcony: "catalog.outdoor.balcony",
-  yard: "catalog.outdoor.yard",
-  garden: "catalog.outdoor.garden",
-} as const satisfies Record<(typeof OUTDOORS)[number], MessageKey>;
+  balconies: "catalog.outdoor.balcony",
+  yards: "catalog.outdoor.yard",
+  gardens: "catalog.outdoor.garden",
+} as const satisfies Record<OutdoorType, MessageKey>;
+
+/** The counter row for this type: plural, like the room rows. */
+export const OUTDOOR_ROW_LABEL_KEYS = {
+  balconies: "catalog.outdoor.balconies",
+  yards: "catalog.outdoor.yards",
+  gardens: "catalog.outdoor.gardens",
+} as const satisfies Record<OutdoorType, MessageKey>;
+
+/**
+ * Whether an outdoor type's counter row shows: while its count is above 0, or its field has focus. The focus
+ * rule keeps the row when the Resident clears the field to type a new number, which reads as 0 for a moment.
+ */
+export function outdoorRowShown(count: number, focused: boolean): boolean {
+  return count > 0 || focused;
+}
 
 export const PET_LABEL_KEYS = {
   dog: "catalog.pets.dog",
@@ -50,7 +72,7 @@ export const COOKING_LABEL_KEYS = {
 /** What the questionnaire holds as the Resident fills it in. */
 export interface AnswersState {
   rooms: Record<RoomType, number>;
-  outdoor: string;
+  outdoor: Record<OutdoorType, number>;
   pets: string[];
   /** Weekdays 0 to 6 with 0 = Sunday, as on the wire. */
   collection: { trash: number[]; recycling: number[] };
@@ -61,7 +83,7 @@ export interface AnswersState {
 export function emptyAnswers(): AnswersState {
   return {
     rooms: { bedrooms: 0, bathrooms: 0, kitchens: 0, livingRooms: 0, laundryAreas: 0 },
-    outdoor: "none",
+    outdoor: { balconies: 0, yards: 0, gardens: 0 },
     pets: [],
     collection: { trash: [], recycling: [] },
     habits: { cooking: "sometimes", dishwasher: false, washingMachine: false },
@@ -82,7 +104,7 @@ const sortedDays = (days: readonly number[]) => [...new Set(days)].sort((a, b) =
 export function toRequestBody(answers: AnswersState): AnswersBody {
   const body: AnswersBody = {};
   if (ROOM_TYPES.some((type) => answers.rooms[type] > 0)) body.rooms = { ...answers.rooms };
-  if (answers.outdoor !== "none") body.outdoor = answers.outdoor;
+  if (OUTDOOR_TYPES.some((type) => answers.outdoor[type] > 0)) body.outdoor = { ...answers.outdoor };
   if (answers.pets.length > 0) body.pets = [...answers.pets];
   if (answers.collection.trash.length > 0 || answers.collection.recycling.length > 0) {
     body.collection = { trash: sortedDays(answers.collection.trash), recycling: sortedDays(answers.collection.recycling) };

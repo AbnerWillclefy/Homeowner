@@ -17,7 +17,7 @@ export interface Proposal extends ChoreInput {
 /** The questionnaire as sent. Every part is optional; a missing one means none. */
 export interface AnswersBody {
   rooms?: { bedrooms: number; bathrooms: number; kitchens: number; livingRooms: number; laundryAreas: number };
-  outdoor?: string;
+  outdoor?: { balconies: number; yards: number; gardens: number };
   pets?: string[];
   collection?: { trash: number[]; recycling: number[] };
   habits?: { cooking: string; dishwasher: boolean; washingMachine: boolean };

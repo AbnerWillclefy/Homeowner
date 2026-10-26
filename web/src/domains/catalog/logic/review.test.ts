@@ -53,21 +53,23 @@ describe("errorsStillApply", () => {
 });
 
 describe("afterQuestions", () => {
+  const YARD = '{"outdoor":{"balconies":0,"yards":1,"gardens":0}}';
+
   it("proposes when there is no list yet, or the list was skipped", () => {
     expect(afterQuestions("{}", null)).toBe("propose");
     expect(afterQuestions("{}", { proposedFor: null, edited: false })).toBe("propose");
   });
 
   it("keeps the reviewed list, edits and all, when the answers are unchanged", () => {
-    expect(afterQuestions('{"outdoor":"yard"}', { proposedFor: '{"outdoor":"yard"}', edited: true })).toBe("review");
+    expect(afterQuestions(YARD, { proposedFor: YARD, edited: true })).toBe("review");
   });
 
   it("regenerates silently when changed answers would discard no edits", () => {
-    expect(afterQuestions("{}", { proposedFor: '{"outdoor":"yard"}', edited: false })).toBe("propose");
+    expect(afterQuestions("{}", { proposedFor: YARD, edited: false })).toBe("propose");
   });
 
   it("asks first when changed answers would discard edits", () => {
-    expect(afterQuestions("{}", { proposedFor: '{"outdoor":"yard"}', edited: true })).toBe("confirm");
+    expect(afterQuestions("{}", { proposedFor: YARD, edited: true })).toBe("confirm");
   });
 });
 

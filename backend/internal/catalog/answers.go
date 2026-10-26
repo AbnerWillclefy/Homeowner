@@ -7,24 +7,22 @@ import (
 )
 
 // Bounds on the answers. Room counts are 0 to MaxRooms, kitchens 0 to
-// MaxKitchens.
+// MaxKitchens, each outdoor area type 0 to MaxOutdoor.
 const (
 	MaxRooms    = 10
 	MaxKitchens = 3
+	MaxOutdoor  = 10
 	// MaxProposals bounds what Propose can return; a test proves the largest
-	// possible answers stay within it.
-	MaxProposals = 80
+	// possible answers stay within it (see
+	// TestAHomeKeepingEveryProposalForTheLargestAnswersIsCreated).
+	MaxProposals = 125
 )
 
 // Answer vocabularies. They are never stored, so they live here, not in vocab.
 var (
-	outdoors = []string{"none", "balcony", "yard", "garden"}
 	pets     = []string{"dog", "cat", "fish", "bird", "other"}
 	cookings = []string{"rarely", "sometimes", "daily"}
 )
-
-// Outdoors returns the outdoor space answers.
-func Outdoors() []string { return slices.Clone(outdoors) }
 
 // Pets returns the pet answers.
 func Pets() []string { return slices.Clone(pets) }
@@ -38,10 +36,18 @@ func Cookings() []string { return slices.Clone(cookings) }
 // string or 2.5 is a field error with a code rather than a bad request.
 type Answers struct {
 	Rooms      *RoomAnswers       `json:"rooms"`
-	Outdoor    string             `json:"outdoor"`
+	Outdoor    *OutdoorAnswers    `json:"outdoor"`
 	Pets       []string           `json:"pets"`
 	Collection *CollectionAnswers `json:"collection"`
 	Habits     *HabitAnswers      `json:"habits"`
+}
+
+// OutdoorAnswers are the outdoor area counts by type. They are kept apart from
+// RoomAnswers so an outdoor area never counts as a room for the floor Chores.
+type OutdoorAnswers struct {
+	Balconies any `json:"balconies"`
+	Yards     any `json:"yards"`
+	Gardens   any `json:"gardens"`
 }
 
 // RoomAnswers are the room counts by type.
@@ -70,7 +76,7 @@ type HabitAnswers struct {
 // clean is Answers after validation, with defaults applied.
 type clean struct {
 	bedrooms, bathrooms, kitchens, livingRooms, laundryAreas int
-	outdoor                                                  string
+	balconies, yards, gardens                                int
 	pets                                                     []string
 	trashDays, recyclingDays                                 []int
 	cooking                                                  string
@@ -111,12 +117,10 @@ func normalise(a Answers) (clean, chores.FieldErrors) {
 		c.laundryAreas = count("rooms.laundryAreas", r.LaundryAreas, MaxRooms)
 	}
 
-	c.outdoor = a.Outdoor
-	switch {
-	case c.outdoor == "":
-		c.outdoor = "none"
-	case !slices.Contains(outdoors, c.outdoor):
-		add(errs, "outdoor", "unknown")
+	if o := a.Outdoor; o != nil {
+		c.balconies = count("outdoor.balconies", o.Balconies, MaxOutdoor)
+		c.yards = count("outdoor.yards", o.Yards, MaxOutdoor)
+		c.gardens = count("outdoor.gardens", o.Gardens, MaxOutdoor)
 	}
 
 	for _, p := range a.Pets {
