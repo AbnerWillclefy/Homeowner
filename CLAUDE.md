@@ -2,6 +2,10 @@
 
 The v1 spec is issue #1; each ticket is a child issue linking back to it. Domain terms live in `GLOSSARY.md`, decisions in `docs/adr/`. Local setup is under "Run everything locally" in `README.md`; test, migration, build and configuration commands are in `docs/development.md`.
 
+Every session and subagent writes code by the Ponytail ruleset (v5.1.0, from DietrichGebert/ponytail):
+
+@AGENTS.md
+
 ## The team
 
 Each role is a subagent in `.claude/agents/`. Every comment or issue posted on GitHub starts with the role speaking, for example `**Senior Engineer:**`, because all of them post from the same account. In GitHub Actions runs, run subagents in the foreground and wait for them: the run ends when the main session stops.
