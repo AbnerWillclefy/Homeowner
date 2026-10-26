@@ -25,6 +25,7 @@ const (
 const (
 	eventInsertTimeout    = 5 * time.Second
 	allocatorEventService = "allocator"
+	explainerEventService = "explainer"
 )
 
 // attempt is the facts of asking the allocator model, before the referee ran.
@@ -69,6 +70,7 @@ func (a attempt) final(fallback fallbackReason, rec *runRecord) eventOutcome {
 
 // event is one llm_call_events row, resolved.
 type event struct {
+	service string // allocatorEventService or explainerEventService
 	home    string
 	date    allocation.Date
 	now     time.Time
@@ -77,12 +79,16 @@ type event struct {
 	kinds   []string // sorted, distinct Check violation kinds of a rejected proposal
 	latency *time.Duration
 	usage   *llmalloc.Usage
+	// itemsSent and itemsAccepted are the Residents an explainer call asked
+	// about and the summaries kept. Nil on allocator rows; itemsAccepted is also
+	// nil when no call was made.
+	itemsSent, itemsAccepted *int
 }
 
 // eventOf resolves the event of an attempt. runID and rec are the run this
 // invocation stored: empty and nil when none came of the attempt.
 func eventOf(homeID string, date allocation.Date, now time.Time, a attempt, fallback fallbackReason, runID string, rec *runRecord) event {
-	e := event{home: homeID, date: date, now: now, outcome: a.final(fallback, rec), kinds: []string{}, latency: a.latency, usage: a.usage}
+	e := event{service: allocatorEventService, home: homeID, date: date, now: now, outcome: a.final(fallback, rec), kinds: []string{}, latency: a.latency, usage: a.usage}
 	if runID != "" {
 		e.run = &runID
 	}
@@ -118,10 +124,11 @@ func (p *Planner) recordLLMEvent(ctx context.Context, e event) {
 	defer cancel()
 	_, err := p.db.Exec(ctx, `
 		INSERT INTO llm_call_events (created_at, local_date, home_id, run_id, service, model, outcome, violation_kinds,
-		                             latency_ms, input_tokens, output_tokens, est_cost_micros)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-		e.now, e.date.Time(), e.home, e.run, allocatorEventService, model, string(e.outcome), e.kinds, latency, in, out, cost)
+		                             latency_ms, input_tokens, output_tokens, est_cost_micros, items_sent, items_accepted)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+		e.now, e.date.Time(), e.home, e.run, e.service, model, string(e.outcome), e.kinds, latency, in, out, cost,
+		e.itemsSent, e.itemsAccepted)
 	if err != nil {
-		p.log.Warn("llm call event not recorded", "home", e.home, "outcome", string(e.outcome), "error", err.Error())
+		p.log.Warn("llm call event not recorded", "home", e.home, "service", e.service, "outcome", string(e.outcome), "error", err.Error())
 	}
 }

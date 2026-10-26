@@ -22,13 +22,14 @@ type event struct {
 	violationKinds                       []string
 	latencyMs, inputTokens, outputTokens *int32
 	estCostMicros                        *int64
+	itemsSent, itemsAccepted             *int32
 }
 
 func events(t *testing.T, app *apitest.App) []event {
 	t.Helper()
 	rows, err := app.DB.Query(context.Background(), `
 		SELECT home_id, run_id, local_date, service, model, outcome, violation_kinds,
-		       latency_ms, input_tokens, output_tokens, est_cost_micros
+		       latency_ms, input_tokens, output_tokens, est_cost_micros, items_sent, items_accepted
 		FROM llm_call_events ORDER BY created_at, id`)
 	if err != nil {
 		t.Fatal(err)
@@ -38,7 +39,7 @@ func events(t *testing.T, app *apitest.App) []event {
 	for rows.Next() {
 		var e event
 		if err := rows.Scan(&e.homeID, &e.runID, &e.localDate, &e.service, &e.model, &e.outcome, &e.violationKinds,
-			&e.latencyMs, &e.inputTokens, &e.outputTokens, &e.estCostMicros); err != nil {
+			&e.latencyMs, &e.inputTokens, &e.outputTokens, &e.estCostMicros, &e.itemsSent, &e.itemsAccepted); err != nil {
 			t.Fatal(err)
 		}
 		out = append(out, e)
@@ -297,7 +298,7 @@ func TestEventsHoldOnlyIdsNumbersAndVocabulary(t *testing.T) {
 		cols = append(cols, c)
 	}
 	want := []string{"created_at", "est_cost_micros", "home_id", "id", "input_tokens",
-		"latency_ms", "local_date", "model", "outcome", "output_tokens", "run_id", "service", "violation_kinds"}
+		"items_accepted", "items_sent", "latency_ms", "local_date", "model", "outcome", "output_tokens", "run_id", "service", "violation_kinds"}
 	if !slices.Equal(cols, want) {
 		t.Fatalf("columns = %v, want %v", cols, want)
 	}
