@@ -251,8 +251,8 @@ for (const l of LOCALES) {
       await expect(offers.getByText("Take out the trash", { exact: true })).toBeVisible();
       await expect(swapButton(page)).toHaveCount(0);
       await noAlertText(page);
-      // The Swap button is gone, so focus lands inside the page, never on nothing.
-      expect(await page.evaluate(() => document.activeElement === document.body)).toBe(false);
+      // The Swap button is gone, so focus lands on the Today heading, never on nothing or on <main>.
+      await expect(page.locator("#today-heading")).toBeFocused();
 
       // Cancel the offer: Swap is back on the Task.
       await offers.getByRole("button", { name: new RegExp(`^${l.cancel}`) }).click();
