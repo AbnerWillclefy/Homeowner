@@ -8,13 +8,13 @@ import { PageFetchingSlot, useReportFetching, useReportFirstLoad } from "../../.
 import { COLUMN, EMAIL_TEXT, MeHeaderSkeleton, NAME_TEXT, STREAK_LINE } from "./MeHeaderSkeleton";
 import { MeLoadFailed } from "./MeLoadFailed";
 import { Avatar } from "../../residents/components/Avatar";
-import { useStreak } from "../../streak/hooks/useStreak";
 import type { Me } from "../../auth/api/meApi";
 
 /** The current Streak, only for a Resident with a Home (it is the Home's). A Streak of 0 shows nothing: it is no failure to show. */
 function HeaderStreak() {
   const { t } = useI18n();
-  const { streak } = useStreak();
+  // The Shell reads the Streak once for the top bar; Me shows the same copy.
+  const { streak } = useShell().streak;
   return (
     <p className={`my-0 flex items-center gap-1.5 font-bold ${STREAK_LINE}`}>
       {streak !== null && streak.current > 0 && (

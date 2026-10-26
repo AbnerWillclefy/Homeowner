@@ -5,6 +5,7 @@ import { homeJoined } from "../../domains/home/api/queries";
 import { useHome } from "../../domains/home/hooks/useHome";
 import { useMe } from "../../domains/profile/hooks/useMe";
 import { useResidents } from "../../domains/residents/hooks/useResidents";
+import { useStreak } from "../../domains/streak/hooks/useStreak";
 import { useI18n } from "../../shared/i18n";
 import { useInvite } from "../../domains/invite/components/PendingInviteProvider";
 import type { JoinOutcome } from "../../domains/invite/hooks/useJoinInvite";
@@ -16,6 +17,7 @@ import { dialogToShow } from "../logic/dialogToShow";
 import { PageFrame } from "./PageFrame";
 import { useSession } from "./SessionProvider";
 import { ShellContext } from "./ShellContext";
+import { TopBar } from "./TopBar";
 import { TODAY_PATH } from "../logic/routes";
 import { useFocusOnNavigate } from "../hooks/useFocusOnNavigate";
 
@@ -32,6 +34,7 @@ export function Shell() {
   const home = useHome();
   const residents = useResidents(home.state.kind === "ready");
   const me = useMe();
+  const streak = useStreak(home.state.kind === "ready");
   const queryClient = useQueryClient();
   const { pathname } = useLocation();
   const invite = useInvite();
@@ -55,9 +58,9 @@ export function Shell() {
   const dialog = pathname === TODAY_PATH ? dialogToShow({ inviteToken: invite.token, after: session.after, choosing: session.choosing }) : null;
 
   return (
-    <ShellContext.Provider value={{ home, residents, me }}>
+    <ShellContext.Provider value={{ home, residents, me, streak }}>
       <div className="flex min-h-dvh flex-col">
-        <PageFrame className="flex-1">
+        <PageFrame className="flex-1" top={<TopBar />}>
           <div ref={content}>
             <Outlet />
           </div>

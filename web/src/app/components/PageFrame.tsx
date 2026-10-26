@@ -1,23 +1,27 @@
 import type { ReactNode } from "react";
-import { useI18n } from "../../shared/i18n";
+import { Logo } from "../../shared/ui/Logo";
 import { HealthBanner } from "./HealthBanner";
 
-/** The one centred column every screen sits in: the app name, the tagline, the health banner, then the screen. */
+/**
+ * The one centred column every screen sits in: the top of the page, the health banner, then the screen. The top is
+ * the logo alone (the page's `h1`) unless the caller passes its own, as the Shell passes the top bar, which holds
+ * the logo as the `h1`. There is exactly one `h1` per screen.
+ */
 export function PageFrame({
   children,
   className = "",
+  top = <Logo />,
 }: {
   children: ReactNode;
   className?: string;
+  top?: ReactNode;
 }) {
-  const { t } = useI18n();
   return (
     <main
       tabIndex={-1}
       className={`page w-full focus:outline-none ${className}`}
     >
-      <h1 className="mb-0 text-lg font-bold text-accent">{t("app.name")}</h1>
-      <p className="mt-0 mb-6 text-sm text-muted">{t("home.tagline")}</p>
+      <div className="mb-6">{top}</div>
       <HealthBanner />
       {children}
     </main>
