@@ -9,4 +9,7 @@ web/dist-e2e-replan
 web/playwright-report
 web/test-results
 web/blob-report
+admin/node_modules
+admin/dist
+admin/.env*.local
 *.tsbuildinfo

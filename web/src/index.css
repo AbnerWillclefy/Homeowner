@@ -1,88 +1,5 @@
 @import "tailwindcss";
-
-/*
-  Semantic colour tokens (ADR 0007). Components use bg-surface, text-text and so on,
-  never raw palette classes. The values here are the LIGHT theme; the dark values are
-  a plain override on [data-theme="dark"] below, so components never need dark: variants.
-  Not "@theme inline": that would bake the light value into every utility.
-
-  Removing the default palette means a raw palette class compiles to nothing.
-  Contrast ratios for every pair are recorded in docs/architecture/web.md.
-*/
-@theme {
-  --color-*: initial;
-
-  --color-surface: #f7f8f5;
-  --color-surface-raised: #ffffff;
-  --color-text: #1c2421;
-  --color-muted: #4d5a54;
-  --color-accent: #2f6f4f;
-  --color-accent-contrast: #ffffff;
-  --color-danger: #b3261e;
-  --color-focus: #1a5fb4;
-  --color-border: #6b7a73;
-
-  /* A toast fades in; used behind motion-safe: only. Its keyframes are at the end of this file. */
-  --animate-toast-in: toast-in 150ms ease-out;
-
-  /* Onboarding's soft full-bleed gradient (top to bottom). Static, never animated. */
-  --color-welcome-from: #e3f3ea;
-  --color-welcome-to: #f1ecfb;
-
-  /* Category pastels (ADR 0009): a fill and the ink for text and icons drawn on it. "Other" has no
-     pastel; it uses surface-raised with text. The cat- prefix keeps bg-cat-blue clear of the
-     raw-palette check in semanticClasses.test.ts. */
-  --color-cat-peach: #fde3d0;
-  --color-cat-peach-ink: #5c2e12;
-  --color-cat-mint: #d3f0e0;
-  --color-cat-mint-ink: #11452d;
-  --color-cat-lavender: #e5defa;
-  --color-cat-lavender-ink: #35286b;
-  --color-cat-blue: #d6e8fa;
-  --color-cat-blue-ink: #12426e;
-  --color-cat-yellow: #fbf0c4;
-  --color-cat-yellow-ink: #5a4300;
-  --color-cat-salmon: #fbd5d2;
-  --color-cat-salmon-ink: #6e1f1a;
-
-  --radius-control: 0.75rem;
-  --radius-card: 1.25rem;
-  --radius-pill: 62.5rem;
-}
-
-:root {
-  color-scheme: light;
-}
-
-[data-theme="dark"] {
-  color-scheme: dark;
-
-  --color-surface: #121816;
-  --color-surface-raised: #1b2320;
-  --color-text: #e8eeea;
-  --color-muted: #a9b5ae;
-  --color-accent: #6fcf9f;
-  --color-accent-contrast: #0b1a12;
-  --color-danger: #ff8a80;
-  --color-focus: #8ab4f8;
-  --color-border: #7f8d86;
-  --color-welcome-from: #17251e;
-  --color-welcome-to: #1d1b2e;
-
-  /* Muted, desaturated pastels on the dark surface, with light inks. */
-  --color-cat-peach: #4a3226;
-  --color-cat-peach-ink: #f5cdb4;
-  --color-cat-mint: #25402f;
-  --color-cat-mint-ink: #bfe8d0;
-  --color-cat-lavender: #38335a;
-  --color-cat-lavender-ink: #d6cff7;
-  --color-cat-blue: #2a3f56;
-  --color-cat-blue-ink: #bcd8f2;
-  --color-cat-yellow: #413b1f;
-  --color-cat-yellow-ink: #efe2a0;
-  --color-cat-salmon: #4f2f2e;
-  --color-cat-salmon-ink: #f4c4c0;
-}
+@import "./tokens.css";
 
 @layer base {
   /*
@@ -106,11 +23,6 @@
     margin: 0;
     background-color: var(--color-surface);
     color: var(--color-text);
-  }
-
-  :focus-visible {
-    outline: 2px solid var(--color-focus);
-    outline-offset: 2px;
   }
 
   h1 {

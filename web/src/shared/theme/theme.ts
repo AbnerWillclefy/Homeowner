@@ -10,7 +10,7 @@ export type AppliedTheme = "light" | "dark";
 
 export const THEME_STORAGE_KEY = "homeowner.theme";
 
-/** The `surface` token per theme, for the status bar (theme-color). Keep in step with index.css. */
+/** The `surface` token per theme, for the status bar (theme-color). Keep in step with tokens.css. */
 export const THEME_COLORS: Record<AppliedTheme, string> = { light: "#f7f8f5", dark: "#121816" };
 
 export function isThemeChoice(value: unknown): value is ThemeChoice {
