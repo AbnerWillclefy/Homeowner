@@ -308,7 +308,6 @@ export const enUS = {
   "chores.field.unknown": "This value is not accepted. Check it and try again.",
 
   // Today (the Day Plan)
-  "dayplan.heading": "Today",
   "dayplan.loading": "Loading today's plan",
   "dayplan.load.offline":
     "Today's plan could not be loaded because Homeowner cannot reach the service. Check your connection and try again.",
@@ -319,16 +318,6 @@ export const enUS = {
   "dayplan.notPlanned": "Today's plan is made at {time}.",
   "dayplan.rejected":
     "Today's plan could not be used, so no Tasks were given today.",
-  "dayplan.greeting.morning": "Good morning",
-  "dayplan.greeting.afternoon": "Good afternoon",
-  "dayplan.greeting.evening": "Good evening",
-  "dayplan.greeting.morningName": "Good morning, {name}",
-  "dayplan.greeting.afternoonName": "Good afternoon, {name}",
-  "dayplan.greeting.eveningName": "Good evening, {name}",
-  "dayplan.energy.value": "Energy {energy}",
-  "dayplan.energy.planned": "{planned} of {energy} planned for you",
-  "dayplan.energy.drained": "Drained today, no Tasks",
-  "dayplan.energy.noBaseline": "Set your Baseline to get Energy",
   "dayplan.mine.heading": "Your Tasks",
   "dayplan.mine.empty": "Nothing for you today. Enjoy the day.",
   "dayplan.mine.empty.noBaseline":
@@ -493,8 +482,6 @@ export const enUS = {
 
   // Check-in
   "checkin.heading": "Check-in",
-  "checkin.prompt": "How are you today?",
-  "checkin.open": "Check in",
   "checkin.load.offline":
     "Your Check-in could not be loaded because Homeowner cannot reach the service. Check your connection and try again.",
   "checkin.load.error":
@@ -511,7 +498,6 @@ export const enUS = {
   "checkin.restrictions.legend": "Anything you cannot do today?",
   "checkin.submit": "Save",
   "checkin.cancel": "Cancel",
-  "checkin.change": "Change",
   "checkin.saved": "Check-in saved",
   "checkin.save.offline":
     "Your Check-in was not saved because Homeowner cannot reach the service. Check your connection and try again.",
@@ -519,8 +505,9 @@ export const enUS = {
     "Something went wrong saving your Check-in. Try again in a moment.",
   "checkin.save.invalid":
     "Homeowner did not accept that Check-in. Choose again and try once more.",
-  "checkin.summary": "Today's Check-in: {level}",
   "checkin.summary.restrictions": "Not today: {demands}",
+  "checkin.summary.restrictions.none": "No restrictions today",
+  "checkin.planned": "{planned} of {energy} planned",
   "checkin.pill.unset": "Check-in",
   "checkin.pill.failed": "Failed",
   "checkin.pill.name.unset": "Check in",

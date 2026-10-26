@@ -19,32 +19,29 @@ function TaskCardSkeleton() {
   );
 }
 
-/**
- * The shape of the folded explanation card (`CollapsibleCard` closed): its head row, an icon tile and a title
- * line, and the gap `DaySummary` leaves below it.
- */
-function ExplanationSkeleton() {
+/** The one muted line of `DaySummary`: one text line high (1.5rem), and the space `PlanView` leaves below it. */
+function SummarySkeleton() {
   return (
-    <SkeletonCard data-skeleton="explanation" className="mb-3 flex-row items-center gap-3">
-      <SkeletonTile />
-      <SkeletonBar className="h-5 flex-1" />
-    </SkeletonCard>
+    <div data-skeleton="summary" className="mb-6">
+      <SkeletonBar className="h-6 w-3/4" />
+    </div>
   );
 }
 
 /**
- * What Today's Day Plan section shows while its first load runs: a group heading and three Task cards. With
- * `explanation` the folded explanation card sits between them, as it does on a planned day; Today's whole-page
- * skeleton passes it, a Retry's does not.
+ * What Today's Day Plan section shows while its first load runs: three Task cards under the page header (which
+ * Today draws itself). With `summary` the one-line summary sits above them, as it does on a planned day; Today's
+ * whole-page skeleton passes it, a Retry's does not.
  */
-export function DayPlanSkeleton({ explanation = false }: { explanation?: boolean }) {
+export function DayPlanSkeleton({ summary = false }: { summary?: boolean }) {
   return (
-    <div aria-hidden="true" data-testid="day-plan-skeleton" className="flex flex-col gap-3">
-      <SkeletonBar className="mb-1 h-6 w-1/2" />
-      {explanation && <ExplanationSkeleton />}
-      <TaskCardSkeleton />
-      <TaskCardSkeleton />
-      <TaskCardSkeleton />
+    <div aria-hidden="true" data-testid="day-plan-skeleton">
+      {summary && <SummarySkeleton />}
+      <div className="flex flex-col gap-3">
+        <TaskCardSkeleton />
+        <TaskCardSkeleton />
+        <TaskCardSkeleton />
+      </div>
     </div>
   );
 }

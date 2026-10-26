@@ -1,32 +1,30 @@
+import { useId, useRef } from "react";
 import { useShell } from "../../../app/components/ShellContext";
-import { CheckInSection } from "../../checkin/components/CheckInSection";
-import { EnergySummary, showsEnergy } from "../../dayplan/components/EnergySummary";
-import { TodayHeader } from "../../dayplan/components/TodayHeader";
 import { TodaySection } from "../../dayplan/components/TodaySection";
-import { plannedEffort } from "../../dayplan/logic/plannedEffort";
 import { useDayPlan } from "../../dayplan/hooks/useDayPlan";
+import { useI18n } from "../../../shared/i18n";
+import { PageHeader } from "../../../shared/ui/PageHeader";
 import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { ReservedSkeleton } from "../../../shared/ui/ReservedSkeleton";
 import { useTodayLoaded } from "../hooks/useTodayLoaded";
 import { TodaySkeleton } from "./HomeSkeleton";
 
 /**
- * Today: the greeting, then the Check-in card with today's Energy and the Day Plan. All of it arrives in one swap,
- * after the two reads have answered (see
- * `todayLoaded`); before that Today is its skeleton. The folded explanation belongs to the Day Plan: it shows right under "Your Tasks",
- * before the Tasks, and only on a planned day. Whatever changes the plan
- * (an action, a saved Check-in, the start choice, a join) writes or invalidates the query cache, so nothing here
- * tracks a version or polls. This is the one owner of the plan: the Energy
- * summary and the plan section are both views of it. The Check-in, its dialog and the Energy note come from the
- * Shell (`useShell`), which reads them on every tab for the top bar's Energy pill: one owner of the save and one
- * Energy note, shared with the pill.
+ * Today: "Your Tasks" with its count, the day's one-line summary, then the Task cards. All of it arrives in one
+ * swap, after the two reads have answered (see `todayLoaded`); before that Today is its skeleton. The Check-in is
+ * read here only because the empty list's reason comes from its Energy note: the Check-in itself is the top
+ * bar's pill and the Shell's dialog. Whatever changes the plan (an action, a saved Check-in, the start choice,
+ * a join) writes or invalidates the query cache, so nothing here tracks a version or polls. The page header
+ * is the tab's first heading, so focus lands on it when the tab opens, and it names the plan section.
  */
 export function HomeDay() {
-  // The Shell owns the Check-in (and its dialog), the Energy note and the planned figure; Today only shows them.
-  const { checkIn, note, energy, openCheckIn } = useShell();
+  const { t } = useI18n();
+  // The Shell owns the Check-in (and its dialog) and the Energy note; Today only reads them.
+  const { checkIn, note } = useShell();
   const day = useDayPlan();
   const { state } = day;
-  const planned = plannedEffort(state.kind === "ready" ? state.plan : null);
+  const headingId = useId();
+  const heading = useRef<HTMLHeadingElement>(null);
   // Today's single header slot spins once, whichever of its two reads refreshes over what is on screen. The
   // Streak's refresh is the top bar's, not Today's.
   useReportFetching(day.refreshing || checkIn.refreshing);
@@ -47,13 +45,14 @@ export function HomeDay() {
 
   return (
     <>
-      <TodayHeader />
-      <CheckInSection
-        checkIn={checkIn}
-        onOpen={openCheckIn}
-        energy={showsEnergy(note) ? <EnergySummary note={note} energy={energy ?? 0} planned={planned} /> : null}
+      <PageHeader
+        id={headingId}
+        headingRef={heading}
+        tight
+        title={t("dayplan.mine.heading")}
+        count={state.kind === "ready" && state.plan.planned ? state.plan.mine.length : undefined}
       />
-      <TodaySection day={day} note={note} />
+      <TodaySection day={day} note={note} headingId={headingId} headingRef={heading} />
     </>
   );
 }

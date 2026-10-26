@@ -1,5 +1,5 @@
 import { Clock } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { Link } from "react-router";
 import type { DayPlan, PlanTask } from "../api/api";
 import { pendingAction, type Acting, type SwapAction, type TaskAction, type TaskRole } from "../logic/actions";
@@ -36,16 +36,22 @@ type SwapOffering = { task: PlanTask; holderId: string };
 export function TodaySection({
   day,
   note,
+  headingId,
+  headingRef,
 }: {
   day: Day;
   note: EnergyNote | null;
+  /** The id of the page's header title, which names this section. */
+  headingId: string;
+  /** The header title's element: where focus returns after the plan changed. */
+  headingRef: RefObject<HTMLHeadingElement | null>;
 }) {
   const { t } = useI18n();
   const { state, reload, run, acceptAll, answerSwap, offerSwap, acting, notice, changed } = day;
   // The page's one status announces the wait; the skeleton shows after 300ms and only for a first load.
   const showSkeleton = useReportFirstLoad(state.kind === "loading");
   const section = useRef<HTMLElement>(null);
-  const heading = useRef<HTMLHeadingElement>(null);
+  const heading = headingRef;
   // The Task a Swap is being offered for and who holds it, both known at the tap. One dialog for the whole plan,
   // mounted only after a tap on Swap.
   const [offer, setOffer] = useState<SwapOffering | null>(null);
@@ -65,16 +71,10 @@ export function TodaySection({
   }, [changed, offer]);
 
   return (
-    <section ref={section} aria-labelledby="today-heading">
-      {/* The greeting is the visible title; this one names the landmark for screen readers. */}
-      <h2 id="today-heading" ref={heading} tabIndex={-1} className="sr-only">
-        {t("dayplan.heading")}
-      </h2>
-
+    <section ref={section} aria-labelledby={headingId}>
       <Notice notice={notice} />
 
       {showSkeleton && <DayPlanSkeleton />}
-
       {state.kind === "failed" && (
         <>
           <p role="alert" className="text-danger">
@@ -196,6 +196,12 @@ function PlanView({
   );
 
   return (
+    <>
+      {plan.planned && (
+        <div className="mb-6">
+          <DaySummary plan={plan} />
+        </div>
+      )}
     <div className="flex flex-col gap-8">
       {!plan.planned && !plan.rejected && (
         <p role="status" className="my-0 flex items-center gap-2 font-semibold text-muted">
@@ -218,8 +224,6 @@ function PlanView({
 
       {plan.planned && (
         <div>
-          <GroupHeading count={plan.mine.length}>{t("dayplan.mine.heading")}</GroupHeading>
-          <DaySummary plan={plan} />
           {proposed > 0 && (
             <Button
               fullWidth
@@ -296,6 +300,7 @@ function PlanView({
         </div>
       )}
     </div>
+    </>
   );
 }
 

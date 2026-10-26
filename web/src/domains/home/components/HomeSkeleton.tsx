@@ -1,6 +1,5 @@
 import { SkeletonBar,SkeletonCard, SkeletonPill, SkeletonTile } from "../../../shared/ui/Skeleton";
 import { SkeletonHeader } from "../../../shared/ui/SkeletonHeader";
-import { CheckInSkeleton } from "../../checkin/components/CheckInSkeleton";
 import { ChoresSkeleton } from "../../chores/components/ChoresSkeleton";
 import { DayPlanSkeleton } from "../../dayplan/components/DayPlanSkeleton";
 import { ResidentRowsSkeleton } from "../../residents/components/ResidentRowSkeleton";
@@ -39,20 +38,14 @@ export function HomeSkeleton() {
 
 /**
  * Today's final layout, for the wait before its reads answer (the Home, then the Check-in and Day Plan):
- * the header, the Check-in card, and the
- * Tasks section with its heading, the folded explanation card and the Task cards. Spaced as `HomeDay` spaces them,
- * by structure and `rem`, so pt-BR and the largest text size grow it as they grow the page.
+ * the header (a title, no line under it), the one-line summary and the Task cards. Spaced as `HomeDay` spaces
+ * them, by structure and `rem`, so pt-BR and the largest text size grow it as they grow the page.
  */
 export function TodaySkeleton() {
   return (
     <div aria-hidden="true">
-      <SkeletonHeader />
-      <section>
-        <CheckInSkeleton />
-      </section>
-      <section>
-        <DayPlanSkeleton explanation />
-      </section>
+      <SkeletonHeader withLine={false} tight />
+      <DayPlanSkeleton summary />
     </div>
   );
 }
