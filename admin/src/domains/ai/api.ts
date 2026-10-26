@@ -51,6 +51,15 @@ export interface TemplateReasons {
   notAsked: number;
 }
 
+/** The window right before the range (#372): range totals per service, without daily rows or the top lists. */
+export interface AiPrevious {
+  from: string;
+  to: string;
+  services: { allocator: ServiceDay; explainer: ServiceDay };
+  allocatorShare: { llm: number; baseline: number };
+  explanationShare: { llm: number; template: number; templateReasons: TemplateReasons };
+}
+
 export interface AiUsage {
   range: Range;
   from: string;
@@ -63,6 +72,8 @@ export interface AiUsage {
   explanationShare: { llm: number; template: number; templateReasons: TemplateReasons };
   topViolationKinds: { kind: string; count: number }[];
   topFallbackReasons: { reason: string; count: number }[];
+  /** Optional: an older API build leaves it out, and the page then shows no delta. */
+  previous?: AiPrevious;
 }
 
 export async function fetchAiUsage(range: Range): Promise<AiUsage> {
