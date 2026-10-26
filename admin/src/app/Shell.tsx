@@ -1,4 +1,3 @@
-import { Route, Routes } from "react-router";
 import { useAdminMe } from "../api/adminMe";
 import { useAuth } from "../auth/AuthContext";
 import { SignIn } from "../auth/SignIn";
@@ -7,9 +6,8 @@ import { EnvironmentBadge } from "../environment/EnvironmentBadge";
 import { EnvironmentSwitch } from "../environment/EnvironmentSwitch";
 import { MismatchBanner } from "../environment/MismatchBanner";
 import { Button } from "../shared/Button";
+import { AppRoutes } from "./AppRoutes";
 import { Gate } from "./Gate";
-import { Layout } from "./Layout";
-import { Placeholder } from "./Placeholder";
 
 /**
  * Everything that shows on every page: the skip link, the mismatch banner, and a header with the environment
@@ -43,14 +41,7 @@ export function Shell() {
       <main id="main" tabIndex={-1} className="flex flex-1 flex-col focus:outline-none">
         {signedIn ? (
           <Gate>
-            <Routes>
-              <Route element={<Layout />}>
-                <Route index element={<Placeholder title="Overview" note="The overview arrives with the usage pages." />} />
-                <Route path="ai" element={<Placeholder title="AI usage" note="Coming soon." />} />
-                <Route path="flow" element={<Placeholder title="Flow" note="Coming soon." />} />
-                <Route path="*" element={<Placeholder title="Page not found" note="Use the menu to go back." />} />
-              </Route>
-            </Routes>
+            <AppRoutes />
           </Gate>
         ) : (
           <SignIn />

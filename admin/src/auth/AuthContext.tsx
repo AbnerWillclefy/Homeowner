@@ -26,9 +26,11 @@ export function AuthProvider({ children, session = browserSession }: { children:
   useEffect(() => {
     if (current === null) queryClient.clear();
   }, [current, queryClient]);
+  const signedIn = current !== null;
+  // Keyed on signedIn, not the session object: a token refresh must not re-render every useAuth consumer.
   const value = useMemo<Auth>(
     () => ({
-      signedIn: current !== null,
+      signedIn,
       async signIn(email, password) {
         const result = await cognitoSignIn(email, password);
         if (result.kind !== "ok") return result;
@@ -44,7 +46,7 @@ export function AuthProvider({ children, session = browserSession }: { children:
         session.clear();
       },
     }),
-    [current, session, queryClient],
+    [signedIn, session],
   );
   return <AuthContext value={value}>{children}</AuthContext>;
 }
