@@ -49,15 +49,11 @@ func (r Range) Window(now time.Time) []string {
 	return out
 }
 
-// Previous lists the N days right before Window(now), oldest first, so the two
-// windows are adjacent and never overlap: the comparison period of a report.
+// Previous lists the Days dates immediately before Window(now), oldest first:
+// the same length, ending the day before the window starts. Unlike the
+// window, which includes today (partial), it is made of full days.
 func (r Range) Previous(now time.Time) []string {
-	first := now.UTC().Truncate(24*time.Hour).AddDate(0, 0, -2*r.Days+1)
-	out := make([]string, r.Days)
-	for i := range out {
-		out[i] = first.AddDate(0, 0, i).Format(dateLayout)
-	}
-	return out
+	return r.Window(now.AddDate(0, 0, -r.Days))
 }
 
 // ZeroFill returns one Day per entry of days, in that order, taking the

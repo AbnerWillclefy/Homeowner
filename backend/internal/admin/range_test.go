@@ -58,34 +58,58 @@ func TestWindowOf30DaysHasThirtyEntries(t *testing.T) {
 	}
 }
 
-func TestPreviousIsTheNDaysRightBeforeTheWindow(t *testing.T) {
+func TestPreviousIsTheNDatesBeforeTheWindowOldestFirst(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 3, 2, 23, 30, 0, 0, time.UTC)
+	r7, _ := ParseRange("7d")
+	r30, _ := ParseRange("30d")
+
+	got := r7.Previous(now)
+
+	want := []string{"2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-23"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Previous = %v, want %v (crossing a month boundary)", got, want)
+	}
+	p := r30.Previous(now)
+	if len(p) != 30 || p[0] != "2026-01-02" || p[29] != "2026-01-31" {
+		t.Fatalf("30d Previous = %v", p)
+	}
+}
+
+func TestPreviousEndsTheDayBeforeTheWindowStarts(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 3, 4, 9, 0, 0, 0, time.UTC)
+	for _, name := range []string{"7d", "30d"} {
+		r, _ := ParseRange(name)
+		prev, cur := r.Previous(now), r.Window(now)
+		last, _ := time.Parse(dateLayout, prev[len(prev)-1])
+		first, _ := time.Parse(dateLayout, cur[0])
+		if !last.AddDate(0, 0, 1).Equal(first) {
+			t.Errorf("%s: previous ends %s, window starts %s", name, prev[len(prev)-1], cur[0])
+		}
+	}
+}
+
+func TestPreviousUsesTheUTCDateOfAZonedInstant(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 3, 1, 22, 0, 0, 0, time.FixedZone("BRT", -3*3600)) // 2 March in UTC
 	r, _ := ParseRange("7d")
 
-	got := r.Previous(now)
+	days := r.Previous(now)
 
-	want := []string{"2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-23", "2026-02-24", "2026-02-25"}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("Previous = %v, want %v", got, want)
-	}
-	if cur := r.Window(now); cur[0] != "2026-02-26" {
-		t.Fatalf("window starts %s, want it to follow the previous window", cur[0])
-	}
-	r30, _ := ParseRange("30d")
-	if p := r30.Previous(now); len(p) != 30 || p[29] != "2026-02-02" {
-		t.Fatalf("30d Previous = %v", p)
+	if days[len(days)-1] != "2026-02-23" {
+		t.Fatalf("last previous day = %s, want 2026-02-23", days[len(days)-1])
 	}
 }
 
 func TestZeroFillKeepsOrderAndAddsMissingDays(t *testing.T) {
 	t.Parallel()
 	days := []string{"2026-03-01", "2026-03-02", "2026-03-03"}
-	got := map[string]Day{"2026-03-02": {Date: "2026-03-02", Runs: 2}}
+	got := map[string]Day{"2026-03-02": {Date: "2026-03-02", DayCounts: DayCounts{Runs: 2}}}
 
 	out := ZeroFill(days, got)
 
-	want := []Day{{Date: "2026-03-01"}, {Date: "2026-03-02", Runs: 2}, {Date: "2026-03-03"}}
+	want := []Day{{Date: "2026-03-01"}, {Date: "2026-03-02", DayCounts: DayCounts{Runs: 2}}, {Date: "2026-03-03"}}
 	if !reflect.DeepEqual(out, want) {
 		t.Fatalf("ZeroFill = %+v, want %+v", out, want)
 	}

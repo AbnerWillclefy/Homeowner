@@ -14,41 +14,94 @@ type Overview struct {
 	// Days holds only the dates with data, keyed by YYYY-MM-DD; ZeroFill adds
 	// the rest.
 	Days map[string]Day
+	// PreviousActive and Previous are the active counts and the summed
+	// counters of the previous window.
+	PreviousActive Active
+	Previous       DayCounts
 }
 
-// Overview reads the overview for the dates from..to (YYYY-MM-DD, inclusive)
-// in one read-only transaction and three queries: totals, active counts and
-// one UNION ALL of every per-day metric. It never loops per day.
-func (s *Store) Overview(ctx context.Context, from, to string) (Overview, error) {
+// window is a span of dates, YYYY-MM-DD, both ends inclusive.
+type window struct{ From, To string }
+
+// windowOf is the span of a list of dates in order, such as Range.Window.
+func windowOf(days []string) window { return window{From: days[0], To: days[len(days)-1]} }
+
+// Overview reads the overview for the current and previous windows in one
+// read-only transaction and five queries: totals, then active counts and one
+// UNION ALL of every per-day metric for each window. It never loops per day.
+// The previous window's days are summed into one set of counters; its active
+// counts are their own query, as distinct Residents cannot be summed.
+func (s *Store) Overview(ctx context.Context, cur, prev window) (Overview, error) {
 	var out Overview
 	err := readOnly(ctx, s.db, func(tx pgx.Tx) error {
 		if err := tx.QueryRow(ctx, totalsSQL).Scan(
 			&out.Totals.Users, &out.Totals.Homes, &out.Totals.Residents, &out.Totals.Chores); err != nil {
 			return fmt.Errorf("totals: %w", err)
 		}
-		if err := tx.QueryRow(ctx, activeSQL, from, to).Scan(&out.Active.Residents, &out.Active.Homes); err != nil {
-			return fmt.Errorf("active: %w", err)
+		var err error
+		if out.Active, err = readActive(ctx, tx, cur); err != nil {
+			return err
 		}
-		rows, err := tx.Query(ctx, dailySQL, from, to,
-			outcomeRejected, reasonRefused, reasonTaken, swapAccepted,
-			pushDelivered, pushFailed, pushGone)
+		if out.Days, err = readDays(ctx, tx, cur); err != nil {
+			return err
+		}
+		if out.PreviousActive, err = readActive(ctx, tx, prev); err != nil {
+			return fmt.Errorf("previous %w", err)
+		}
+		days, err := readDays(ctx, tx, prev)
 		if err != nil {
-			return fmt.Errorf("daily: %w", err)
+			return fmt.Errorf("previous %w", err)
 		}
-		defer rows.Close()
-		out.Days = map[string]Day{}
-		for rows.Next() {
-			var d Day
-			if err := rows.Scan(&d.Date, &d.Runs, &d.Rejected, &d.Fallbacks, &d.Checkins,
-				&d.Completions, &d.Refuses, &d.Takes, &d.SwapsAccepted,
-				&d.Pushes.Delivered, &d.Pushes.Failed, &d.Pushes.Gone, &d.Pushes.Unknown); err != nil {
-				return fmt.Errorf("daily: %w", err)
-			}
-			out.Days[d.Date] = d
+		for _, d := range days {
+			out.Previous.add(d.DayCounts)
 		}
-		return rows.Err()
+		return nil
 	})
 	return out, err
+}
+
+func (c *DayCounts) add(o DayCounts) {
+	c.Runs += o.Runs
+	c.Rejected += o.Rejected
+	c.Fallbacks += o.Fallbacks
+	c.Checkins += o.Checkins
+	c.Completions += o.Completions
+	c.Refuses += o.Refuses
+	c.Takes += o.Takes
+	c.SwapsAccepted += o.SwapsAccepted
+	c.Pushes.Delivered += o.Pushes.Delivered
+	c.Pushes.Failed += o.Pushes.Failed
+	c.Pushes.Gone += o.Pushes.Gone
+	c.Pushes.Unknown += o.Pushes.Unknown
+}
+
+func readActive(ctx context.Context, tx pgx.Tx, w window) (Active, error) {
+	var a Active
+	if err := tx.QueryRow(ctx, activeSQL, w.From, w.To).Scan(&a.Residents, &a.Homes); err != nil {
+		return a, fmt.Errorf("active: %w", err)
+	}
+	return a, nil
+}
+
+func readDays(ctx context.Context, tx pgx.Tx, w window) (map[string]Day, error) {
+	rows, err := tx.Query(ctx, dailySQL, w.From, w.To,
+		outcomeRejected, reasonRefused, reasonTaken, swapAccepted,
+		pushDelivered, pushFailed, pushGone)
+	if err != nil {
+		return nil, fmt.Errorf("daily: %w", err)
+	}
+	defer rows.Close()
+	days := map[string]Day{}
+	for rows.Next() {
+		var d Day
+		if err := rows.Scan(&d.Date, &d.Runs, &d.Rejected, &d.Fallbacks, &d.Checkins,
+			&d.Completions, &d.Refuses, &d.Takes, &d.SwapsAccepted,
+			&d.Pushes.Delivered, &d.Pushes.Failed, &d.Pushes.Gone, &d.Pushes.Unknown); err != nil {
+			return nil, fmt.Errorf("daily: %w", err)
+		}
+		days[d.Date] = d
+	}
+	return days, rows.Err()
 }
 
 const totalsSQL = `

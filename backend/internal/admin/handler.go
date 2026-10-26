@@ -47,8 +47,9 @@ func (h *Handler) AI(w http.ResponseWriter, r *http.Request) {
 	now := h.clock.Now()
 	days := rng.Window(now)
 	from, to := days[0], days[len(days)-1]
+	prev := windowOf(rng.Previous(now))
 
-	ai, err := h.store.AI(r.Context(), from, to, now, h.log)
+	ai, err := h.store.AI(r.Context(), window{From: from, To: to}, prev, now, h.log)
 	if err != nil {
 		httpx.InternalError(w, h.log, "admin ai", err)
 		return
@@ -62,6 +63,10 @@ func (h *Handler) AI(w http.ResponseWriter, r *http.Request) {
 		ExplanationShare:   ai.Explanation,
 		TopViolationKinds:  ai.Kinds,
 		TopFallbackReasons: ai.Reasons,
+		Previous: AIPrevious{
+			From: prev.From, To: prev.To, Services: ai.Previous.Services,
+			AllocatorShare: ai.Previous.Allocator, ExplanationShare: ai.Previous.Explanation,
+		},
 	}
 	for i, d := range days {
 		out.Days[i] = AIDay{Date: d, Services: ai.Days[d]}
@@ -139,10 +144,14 @@ func (h *Handler) Overview(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid range")
 		return
 	}
-	days := rng.Window(h.clock.Now())
+	// One reading of the clock builds both windows, so they cannot leave a gap
+	// or overlap when midnight passes between two calls.
+	now := h.clock.Now()
+	days := rng.Window(now)
 	from, to := days[0], days[len(days)-1]
+	prev := windowOf(rng.Previous(now))
 
-	ov, err := h.store.Overview(r.Context(), from, to)
+	ov, err := h.store.Overview(r.Context(), window{From: from, To: to}, prev)
 	if err != nil {
 		httpx.InternalError(w, h.log, "admin overview", err)
 		return
@@ -150,5 +159,6 @@ func (h *Handler) Overview(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, OverviewResponse{
 		Range: rng.Name, From: from, To: to,
 		Totals: ov.Totals, Active: ov.Active, Days: ZeroFill(days, ov.Days),
+		Previous: OverviewPrevious{From: prev.From, To: prev.To, Active: ov.PreviousActive, DayCounts: ov.Previous},
 	})
 }
