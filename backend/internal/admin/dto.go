@@ -146,9 +146,24 @@ type AllocatorShare struct {
 // than accepted, "partial" and "notAsked", all always present. Assignments
 // change after planning (Take, Swap), so Template is approximate.
 type ExplanationShare struct {
-	LLM             int            `json:"llm"`
-	Template        int            `json:"template"`
-	TemplateReasons map[string]int `json:"templateReasons"`
+	LLM             int             `json:"llm"`
+	Template        int             `json:"template"`
+	TemplateReasons TemplateReasons `json:"templateReasons"`
+}
+
+// TemplateReasons splits the Residents left on the template by why. The first
+// six are the explainer outcomes (same keys as Outcomes); Partial is an
+// accepted call that kept only some Residents; NotAsked is everyone the
+// explainer never accounted for.
+type TemplateReasons struct {
+	RejectedByReferee int `json:"rejected_by_referee"`
+	InvalidResponse   int `json:"invalid_response"`
+	Timeout           int `json:"timeout"`
+	Error             int `json:"error"`
+	SkippedCap        int `json:"skipped_cap"`
+	SkippedBudget     int `json:"skipped_budget"`
+	Partial           int `json:"partial"`
+	NotAsked          int `json:"notAsked"`
 }
 
 // KindCount is how many allocator calls in the range reported a violation kind.

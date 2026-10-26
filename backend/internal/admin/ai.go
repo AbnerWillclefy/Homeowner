@@ -13,6 +13,9 @@ import (
 // migration 0022; the source of truth is package dayplan's event outcomes).
 const (
 	eventAccepted = "accepted"
+	// The llm_call_events.service values.
+	serviceAllocator = "allocator"
+	serviceExplainer = "explainer"
 	// outcomePlanned is the allocation_runs.outcome of a run that made a Day
 	// Plan (dayplan.Planned).
 	outcomePlanned = "planned"
@@ -22,12 +25,6 @@ const (
 	// topN bounds the violation-kind and fallback-reason lists.
 	topN = 10
 )
-
-// templateOutcomes are the explainer outcomes that leave a Resident on the
-// template, in the order the response lists them.
-var templateOutcomes = []string{
-	"rejected_by_referee", "invalid_response", "timeout", "error", "skipped_cap", "skipped_budget",
-}
 
 // AI is what the store reads for GET /admin/ai.
 type AI struct {
@@ -63,15 +60,23 @@ func (s *Store) AI(ctx context.Context, from, to string, now time.Time, log *slo
 		if out.Explanation, err = readExplanationShare(ctx, tx, from, to, log); err != nil {
 			return err
 		}
-		if out.Kinds, err = readCounts(ctx, tx, "violation kinds", violationKindsSQL, func(k string, n int) KindCount {
-			return KindCount{Kind: k, Count: n}
-		}, from, to, topN); err != nil {
+		kinds, err := readCounts(ctx, tx, "violation kinds", violationKindsSQL, from, to, topN)
+		if err != nil {
 			return err
 		}
-		out.Reasons, err = readCounts(ctx, tx, "fallback reasons", fallbackReasonsSQL, func(r string, n int) ReasonCount {
-			return ReasonCount{Reason: r, Count: n}
-		}, from, to, topN)
-		return err
+		out.Kinds = make([]KindCount, len(kinds))
+		for i, k := range kinds {
+			out.Kinds[i] = KindCount{Kind: k.Key, Count: k.Count}
+		}
+		reasons, err := readCounts(ctx, tx, "fallback reasons", fallbackReasonsSQL, from, to, topN)
+		if err != nil {
+			return err
+		}
+		out.Reasons = make([]ReasonCount, len(reasons))
+		for i, r := range reasons {
+			out.Reasons[i] = ReasonCount{Reason: r.Key, Count: r.Count}
+		}
+		return nil
 	})
 	return out, err
 }
@@ -92,10 +97,13 @@ func readServiceDays(ctx context.Context, tx pgx.Tx, from, to string, into map[s
 			return fmt.Errorf("service days: %w", err)
 		}
 		day := into[date]
-		if service == "allocator" {
+		switch service {
+		case serviceAllocator:
 			day.Allocator = d
-		} else {
+		case serviceExplainer:
 			day.Explainer = d
+		default:
+			return fmt.Errorf("service days: unknown service %q", service)
 		}
 		into[date] = day
 	}
@@ -117,10 +125,6 @@ func readExplanationShare(ctx context.Context, tx pgx.Tx, from, to string, log *
 	}
 	s.Template = max(pairs-s.LLM, 0)
 
-	s.TemplateReasons = map[string]int{"partial": 0, "notAsked": 0}
-	for _, o := range templateOutcomes {
-		s.TemplateReasons[o] = 0
-	}
 	rows, err := tx.Query(ctx, templateReasonsSQL, from, to, eventAccepted)
 	if err != nil {
 		return s, fmt.Errorf("template reasons: %w", err)
@@ -133,10 +137,25 @@ func readExplanationShare(ctx context.Context, tx pgx.Tx, from, to string, log *
 		if err := rows.Scan(&outcome, &n); err != nil {
 			return s, fmt.Errorf("template reasons: %w", err)
 		}
-		if outcome == eventAccepted {
-			outcome = "partial"
+		r := &s.TemplateReasons
+		switch outcome {
+		case eventAccepted:
+			r.Partial = n
+		case "rejected_by_referee":
+			r.RejectedByReferee = n
+		case "invalid_response":
+			r.InvalidResponse = n
+		case "timeout":
+			r.Timeout = n
+		case "error":
+			r.Error = n
+		case "skipped_cap":
+			r.SkippedCap = n
+		case "skipped_budget":
+			r.SkippedBudget = n
+		default:
+			log.Warn("admin ai: unknown explainer outcome", "outcome", outcome)
 		}
-		s.TemplateReasons[outcome] = n
 		explained += n
 	}
 	if err := rows.Err(); err != nil {
@@ -150,25 +169,30 @@ func readExplanationShare(ctx context.Context, tx pgx.Tx, from, to string, log *
 		log.Warn("admin ai: template reasons exceed the template count", "template", s.Template, "explained", explained)
 		notAsked = 0
 	}
-	s.TemplateReasons["notAsked"] = notAsked
+	s.TemplateReasons.NotAsked = notAsked
 	return s, nil
 }
 
+// keyCount is one (key, count) row of a top-N list.
+type keyCount struct {
+	Key   string
+	Count int
+}
+
 // readCounts reads (key, count) pairs, most frequent first, ties by key.
-func readCounts[T any](ctx context.Context, tx pgx.Tx, what, sql string, mk func(string, int) T, from, to string, limit int) ([]T, error) {
+func readCounts(ctx context.Context, tx pgx.Tx, what, sql, from, to string, limit int) ([]keyCount, error) {
 	rows, err := tx.Query(ctx, sql, from, to, limit)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", what, err)
 	}
 	defer rows.Close()
-	out := []T{}
+	var out []keyCount
 	for rows.Next() {
-		var k string
-		var n int
-		if err := rows.Scan(&k, &n); err != nil {
+		var k keyCount
+		if err := rows.Scan(&k.Key, &k.Count); err != nil {
 			return nil, fmt.Errorf("%s: %w", what, err)
 		}
-		out = append(out, mk(k, n))
+		out = append(out, k)
 	}
 	return out, rows.Err()
 }

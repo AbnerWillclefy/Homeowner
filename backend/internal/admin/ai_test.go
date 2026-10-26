@@ -3,7 +3,6 @@ package admin_test
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"reflect"
 	"slices"
@@ -266,12 +265,9 @@ func TestAISharesAndTemplateReasons(t *testing.T) {
 	// Two Residents on three planned days is six explanations. The LLM wrote
 	// three (2 + 1). Of the other three, two were never asked for (the cap
 	// skipped day 3) and one was asked for but came back invalid (partial).
-	wantReasons := map[string]int{
-		"rejected_by_referee": 0, "invalid_response": 0, "timeout": 0, "error": 0,
-		"skipped_cap": 2, "skipped_budget": 0, "partial": 1, "notAsked": 0,
-	}
+	wantReasons := admin.TemplateReasons{SkippedCap: 2, Partial: 1}
 	e := got.ExplanationShare
-	if e.LLM != 3 || e.Template != 3 || fmt.Sprint(e.TemplateReasons) != fmt.Sprint(wantReasons) {
+	if e.LLM != 3 || e.Template != 3 || e.TemplateReasons != wantReasons {
 		t.Errorf("explanationShare = %+v, want llm 3, template 3, reasons %v", e, wantReasons)
 	}
 }
