@@ -93,11 +93,11 @@ flowchart TD
     CK -->|violations, error or timeout| B
     Q -->|no| B["Baseline Plan"]
     B --> CK2["Check: the referee"]
-    CK2 -->|no violations| S["Store Day Plan and allocation run"]
-    CK2 -->|violations| RJ["Store a rejected run, nothing assigned"]
+    CK2 -->|no violations| S["Store Day Plan and allocation run; after commit, the allocator's llm_call_events row"]
+    CK2 -->|violations| RJ["Store a rejected run, nothing assigned; after commit, the allocator's llm_call_events row"]
     S --> EX{"After all Homes are planned: LLM switched on, explain budget left, a Resident has Tasks and is not resting, and Home under daily cap?"}
-    EX -->|yes| EL["One LLM call for the Home: a headline and detail per Resident, validated, stored in day_plan_explanations"]
-    EX -->|no, or the call fails| TP["No row: the Day Plan view computes the template from the reasons"]
+    EX -->|yes| EL["One LLM call for the Home: a headline and detail per Resident, validated, stored in day_plan_explanations; one explainer llm_call_events row"]
+    EX -->|no, or the call fails| TP["No explanation row: the Day Plan view computes the template from the reasons; an explainer llm_call_events row when a Resident was to be explained"]
     EL --> N
     TP --> N["Day Plan ready push for Planned Homes, then Check-in reminders; best-effort, logged, never fails the tick"]
     GR["POST /home/day-plan/me: Planner.PlanResident"] --> GF["Lock the Home, Refresh Tasks"]
@@ -110,11 +110,16 @@ flowchart TD
     CR -->|none| CS["Save only; the job reads it"]
     CR -->|rejected| CS2["Save only; nothing changes"]
     CR -->|planned| RP["Plan that one Resident again, Check, replace their assignments"]
-
-    classDef planned stroke-dasharray: 5 5,color:#666
 ```
 
-Dashed boxes are planned; solid boxes are built (the reminder step in the last box also runs for Homes in their reminder window that were not planned this tick). A failed LLM proposal (an error, a timeout, an invalid answer or a violation) falls back to the baseline plan, which is checked the same way, and the run records why.
+Every box is built (the reminder step in the last box also runs for Homes in their reminder window that were not planned this tick). A failed LLM proposal (an error, a timeout, an invalid answer or a violation) falls back to the baseline plan, which is checked the same way, and the run records why.
+
+**Where the tick writes LLM call events.** `llm_call_events` is what the admin dashboard's AI usage and Flow pages read ([The admin dashboard](admin.md)). The tick writes it in two places, both outside any transaction and best effort (a failed insert is logged and changes nothing):
+
+1. **Allocator rows, once per Home, after its planning transaction ends.** `PlanHome` (`dayplan/planner.go`) writes one row whenever the LLM was considered: `accepted`, `rejected_by_referee`, `invalid_response`, `timeout` or `error` after a call, and `skipped_cap` or `skipped_budget` when the cap or the tick's 20 second budget stopped it. It waits for the commit because the row points at the run; when no run of its own was stored (a failure, or the Home was planned meanwhile) the row has a null run. With the LLM off, or nothing worth asking, there is no row. Check-in and "right away" re-plans never ask the model, so they write none.
+2. **Explainer rows, once per planned Home, in the explanation step.** After every due Home is planned and before the pushes, `explainHomes` writes one row per Home it had a Resident to explain for, with the outcome and `items_sent` and `items_accepted`.
+
+The nudge step that follows writes `nudges.outcome`, the other column the dashboard reads.
 
 The rule that matters: the model may propose, but only a plan that passes `Check` is used. On any failure the baseline takes over, so the app never depends on the model behaving. A Resident who did not check in is planned from their Baseline Energy ([ADR 0005](../adr/0005-ship-a-react-pwa-not-a-native-app.md)).
 
