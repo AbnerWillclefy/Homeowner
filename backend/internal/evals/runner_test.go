@@ -156,7 +156,7 @@ type gate struct {
 	maxFlight int
 }
 
-func (g *gate) Propose(ctx context.Context, st allocation.State) (allocation.Result, error) {
+func (g *gate) Propose(ctx context.Context, st allocation.State) (llmalloc.Proposal, error) {
 	g.mu.Lock()
 	g.inFlight++
 	g.maxFlight = max(g.maxFlight, g.inFlight)
@@ -165,7 +165,7 @@ func (g *gate) Propose(ctx context.Context, st allocation.State) (allocation.Res
 	g.mu.Lock()
 	g.inFlight--
 	g.mu.Unlock()
-	return allocation.Result{}, errors.New("no plan")
+	return llmalloc.Proposal{Called: true}, errors.New("no plan")
 }
 
 func TestRunBoundsConcurrentCallsAndKeepsEverySlot(t *testing.T) {

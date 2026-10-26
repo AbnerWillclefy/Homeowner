@@ -66,7 +66,7 @@ func message(stopReason, text string) string {
 func TestTheAnthropicClientReturnsTheStructuredAnswer(t *testing.T) {
 	client, calls, got, header := fakeAPI(t, http.StatusOK, message("end_turn", `{"assignments": [], "pool": []}`), 0)
 
-	raw, err := client.Complete(context.Background(), request)
+	raw, _, err := client.Complete(context.Background(), request)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestTheAnthropicClientReturnsTheStructuredAnswer(t *testing.T) {
 func TestTheAnthropicClientFailsWithoutRetrying(t *testing.T) {
 	for name, status := range map[string]int{"rate limited": http.StatusTooManyRequests, "server error": http.StatusInternalServerError} {
 		client, calls, _, _ := fakeAPI(t, status, `{"type":"error","error":{"type":"x","message":"no"}}`, 0)
-		_, err := client.Complete(context.Background(), request)
+		_, _, err := client.Complete(context.Background(), request)
 		if err == nil || errors.Is(err, llmalloc.ErrInvalidResponse) {
 			t.Errorf("%s: want a client error, got %v", name, err)
 		}
@@ -109,7 +109,7 @@ func TestTheAnthropicClientStopsAtTheDeadline(t *testing.T) {
 	defer cancel()
 
 	start := time.Now()
-	_, err := client.Complete(ctx, request)
+	_, _, err := client.Complete(ctx, request)
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("want context.DeadlineExceeded, got %v", err)
 	}
@@ -132,7 +132,7 @@ func TestAThinkingRequestAsksForAdaptiveThinkingAtLowEffort(t *testing.T) {
 	req.Thinking = true
 	req.MaxTokens = 4224
 
-	if _, err := client.Complete(context.Background(), req); err != nil {
+	if _, _, err := client.Complete(context.Background(), req); err != nil {
 		t.Fatal(err)
 	}
 	body := *got
@@ -148,7 +148,7 @@ func TestAThinkingRequestAsksForAdaptiveThinkingAtLowEffort(t *testing.T) {
 
 func TestARequestWithoutThinkingKeepsItOff(t *testing.T) {
 	client, _, got, _ := fakeAPI(t, http.StatusOK, message("end_turn", `{}`), 0)
-	if _, err := client.Complete(context.Background(), request); err != nil {
+	if _, _, err := client.Complete(context.Background(), request); err != nil {
 		t.Fatal(err)
 	}
 	if thinking, _ := (*got)["thinking"].(map[string]any); thinking["type"] != "disabled" {
@@ -163,7 +163,7 @@ func TestAThinkingBlockBeforeTheTextIsSkipped(t *testing.T) {
 	}, map[string]any{"input_tokens": 10, "output_tokens": 5})
 	client, _, _, _ := fakeAPI(t, http.StatusOK, body, 0)
 
-	raw, err := client.Complete(context.Background(), request)
+	raw, _, err := client.Complete(context.Background(), request)
 	if err != nil || string(raw) != `{"assignments": [], "pool": []}` {
 		t.Fatalf("answer = %s, err = %v", raw, err)
 	}
@@ -173,7 +173,7 @@ func TestAThinkingBlockWithoutTextIsInvalid(t *testing.T) {
 	body := messageWith([]map[string]any{{"type": "thinking", "thinking": "", "signature": "sig"}},
 		map[string]any{"input_tokens": 10, "output_tokens": 5})
 	client, _, _, _ := fakeAPI(t, http.StatusOK, body, 0)
-	if _, err := client.Complete(context.Background(), request); !errors.Is(err, llmalloc.ErrInvalidResponse) {
+	if _, _, err := client.Complete(context.Background(), request); !errors.Is(err, llmalloc.ErrInvalidResponse) {
 		t.Fatalf("want ErrInvalidResponse, got %v", err)
 	}
 }
@@ -187,7 +187,7 @@ func TestEveryCallLogsItsTokenUsageAndNothingElse(t *testing.T) {
 		map[string]any{"input_tokens": 321, "output_tokens": 1234})
 	client, _, _, _ := fakeAPI(t, http.StatusOK, body, 0)
 
-	if _, err := client.Complete(context.Background(), request); err != nil {
+	if _, _, err := client.Complete(context.Background(), request); err != nil {
 		t.Fatal(err)
 	}
 	var line map[string]any
@@ -206,8 +206,61 @@ func TestEveryCallLogsItsTokenUsageAndNothingElse(t *testing.T) {
 func TestAnUnfinishedAnswerIsInvalid(t *testing.T) {
 	for _, stop := range []string{"max_tokens", "refusal"} {
 		client, _, _, _ := fakeAPI(t, http.StatusOK, message(stop, `{"assignments": [`), 0)
-		if _, err := client.Complete(context.Background(), request); !errors.Is(err, llmalloc.ErrInvalidResponse) {
+		if _, _, err := client.Complete(context.Background(), request); !errors.Is(err, llmalloc.ErrInvalidResponse) {
 			t.Errorf("%s: want ErrInvalidResponse, got %v", stop, err)
 		}
+	}
+}
+
+func TestACompletedCallReportsItsUsage(t *testing.T) {
+	client, _, _, _ := fakeAPI(t, http.StatusOK, message("end_turn", `{}`), 0)
+	_, usage, err := client.Complete(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The model is the configured one, the key the price table uses.
+	want := llmalloc.Usage{Model: "claude-haiku-5-5", InputTokens: 10, OutputTokens: 5}
+	if usage == nil || *usage != want {
+		t.Fatalf("usage = %+v, want %+v", usage, want)
+	}
+}
+
+func TestTheModelInTheUsageIsTheConfiguredOneNotTheSnapshotInTheResponse(t *testing.T) {
+	body := strings.Replace(message("end_turn", `{}`), `"model":"claude-haiku-5-5"`, `"model":"claude-haiku-5-5-20261001"`, 1)
+	client, _, _, _ := fakeAPI(t, http.StatusOK, body, 0)
+	_, usage, err := client.Complete(context.Background(), request)
+	if err != nil || usage == nil || usage.Model != "claude-haiku-5-5" {
+		t.Fatalf("usage = %+v, err = %v", usage, err)
+	}
+}
+
+// The tokens of a truncated answer were spent all the same.
+func TestAnInvalidAnswerStillReportsItsUsage(t *testing.T) {
+	client, _, _, _ := fakeAPI(t, http.StatusOK, message("max_tokens", `{"assignments": [`), 0)
+	_, usage, err := client.Complete(context.Background(), request)
+	if !errors.Is(err, llmalloc.ErrInvalidResponse) {
+		t.Fatalf("want ErrInvalidResponse, got %v", err)
+	}
+	if usage == nil || usage.InputTokens != 10 || usage.OutputTokens != 5 {
+		t.Fatalf("usage = %+v, want 10 in and 5 out", usage)
+	}
+	body := messageWith([]map[string]any{{"type": "thinking", "thinking": "", "signature": "sig"}},
+		map[string]any{"input_tokens": 7, "output_tokens": 0})
+	client, _, _, _ = fakeAPI(t, http.StatusOK, body, 0)
+	if _, usage, _ = client.Complete(context.Background(), request); usage == nil || usage.InputTokens != 7 || usage.OutputTokens != 0 {
+		t.Fatalf("no text block: usage = %+v, want 7 in and 0 out reported, not none", usage)
+	}
+}
+
+func TestAFailedCallWithoutAResponseReportsNoUsage(t *testing.T) {
+	client, _, _, _ := fakeAPI(t, http.StatusInternalServerError, `{"type":"error","error":{"type":"x","message":"no"}}`, 0)
+	if _, usage, err := client.Complete(context.Background(), request); err == nil || usage != nil {
+		t.Fatalf("500: usage = %+v, err = %v", usage, err)
+	}
+	client, _, _, _ = fakeAPI(t, http.StatusOK, message("end_turn", `{}`), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	if _, usage, err := client.Complete(ctx, request); err == nil || usage != nil {
+		t.Fatalf("deadline: usage = %+v, err = %v", usage, err)
 	}
 }

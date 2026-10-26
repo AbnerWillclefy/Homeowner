@@ -22,6 +22,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/tasks"
 )
 
@@ -89,7 +90,9 @@ func WithNudgeTimeout(d time.Duration) Option {
 type Proposer interface {
 	// Name goes in the run record when its plan is used.
 	Name() string
-	Propose(ctx context.Context, st allocation.State) (allocation.Result, error)
+	// Propose also returns what the call consumed and whether the model was
+	// asked at all; see llmalloc.Proposal.
+	Propose(ctx context.Context, st allocation.State) (llmalloc.Proposal, error)
 }
 
 // LLMConfig is the optional LLM allocator of the daily Allocation.
@@ -640,11 +643,11 @@ func (p *Planner) ask(ctx context.Context, homeID string, date allocation.Date, 
 	}
 	callCtx, cancel := context.WithTimeout(ctx, p.llm.CallTimeout)
 	defer cancel()
-	res, err := p.llm.Proposer.Propose(callCtx, st)
+	prop, err := p.llm.Proposer.Propose(callCtx, st) // usage is recorded by a later ticket
 	if err != nil {
 		return failed(err)
 	}
-	return llmAnswer{proposal: &res}
+	return llmAnswer{proposal: &prop.Result}
 }
 
 // worthAsking reports whether there is anything for the LLM to plan: an open

@@ -25,7 +25,8 @@ func explainWith(t *testing.T, answer string) (map[string]explain.Summary, error
 	t.Helper()
 	fake := llmalloc.NewFakeClient()
 	fake.Answer(answer)
-	return llmalloc.NewExplainer(fake).Explain(context.Background(), facts())
+	got, _, err := llmalloc.NewExplainer(fake).Explain(context.Background(), facts())
+	return got, err
 }
 
 // parts is the four texts of an entry: headline and detail, English first.
@@ -153,8 +154,36 @@ func TestExplainerClientErrorsPassThrough(t *testing.T) {
 	boom := errors.New("boom")
 	fake := llmalloc.NewFakeClient()
 	fake.Fail(boom)
-	if _, err := llmalloc.NewExplainer(fake).Explain(context.Background(), facts()); !errors.Is(err, boom) {
+	if _, _, err := llmalloc.NewExplainer(fake).Explain(context.Background(), facts()); !errors.Is(err, boom) {
 		t.Fatalf("got %v", err)
+	}
+}
+
+func TestExplainPassesTheUsageUpOnSuccessAndOnAnInvalidAnswer(t *testing.T) {
+	t.Parallel()
+	want := llmalloc.Usage{Model: "claude-haiku-5-5", InputTokens: 900, OutputTokens: 410}
+	for name, answer := range map[string]string{"valid": `{"explanations": []}`, "invalid": `nope`} {
+		fake := llmalloc.NewFakeClient()
+		fake.ReportUsage(want.Model, want.InputTokens, want.OutputTokens)
+		fake.Answer(answer)
+		_, usage, err := llmalloc.NewExplainer(fake).Explain(context.Background(), facts())
+		if (name == "invalid") != errors.Is(err, llmalloc.ErrInvalidResponse) || usage == nil || *usage != want {
+			t.Errorf("%s: usage = %+v, err = %v", name, usage, err)
+		}
+	}
+}
+
+func TestExplainReportsNoUsageWhenTheClientFailsWithout(t *testing.T) {
+	t.Parallel()
+	fake := llmalloc.NewFakeClient()
+	fake.Fail(errors.New("boom"))
+	if _, usage, err := llmalloc.NewExplainer(fake).Explain(context.Background(), facts()); err == nil || usage != nil {
+		t.Fatalf("usage = %+v, err = %v", usage, err)
+	}
+	boom := errors.New("paid")
+	fake.FailWithUsage(boom)
+	if _, usage, err := llmalloc.NewExplainer(fake).Explain(context.Background(), facts()); !errors.Is(err, boom) || usage == nil {
+		t.Fatalf("usage = %+v, err = %v", usage, err)
 	}
 }
 
@@ -163,11 +192,11 @@ func TestAnExplanationCallIsBoundedByTheResidentCount(t *testing.T) {
 	fake := llmalloc.NewFakeClient()
 	fake.Answer(`{"explanations": []}`)
 	e := llmalloc.NewExplainer(fake)
-	if _, err := e.Explain(context.Background(), facts()); err != nil {
+	if _, _, err := e.Explain(context.Background(), facts()); err != nil {
 		t.Fatal(err)
 	}
 	two := fake.LastRequest().MaxTokens
-	if _, err := e.Explain(context.Background(), append(facts(), facts()...)); err != nil {
+	if _, _, err := e.Explain(context.Background(), append(facts(), facts()...)); err != nil {
 		t.Fatal(err)
 	}
 	if four := fake.LastRequest().MaxTokens; four <= two || four > 4000 {
@@ -181,7 +210,7 @@ func TestTheExplanationPromptHoldsOnlyIDsNumbersAndVocabulary(t *testing.T) {
 	t.Parallel()
 	fake := llmalloc.NewFakeClient()
 	fake.Answer(`{"explanations": []}`)
-	if _, err := llmalloc.NewExplainer(fake).Explain(context.Background(), facts()); err != nil {
+	if _, _, err := llmalloc.NewExplainer(fake).Explain(context.Background(), facts()); err != nil {
 		t.Fatal(err)
 	}
 	var input any
@@ -205,7 +234,7 @@ func TestTheExplanationSchemaIsClosedAndRequiresEveryField(t *testing.T) {
 	t.Parallel()
 	fake := llmalloc.NewFakeClient()
 	fake.Answer(`{"explanations": []}`)
-	if _, err := llmalloc.NewExplainer(fake).Explain(context.Background(), facts()); err != nil {
+	if _, _, err := llmalloc.NewExplainer(fake).Explain(context.Background(), facts()); err != nil {
 		t.Fatal(err)
 	}
 	schema := fake.LastRequest().Schema
@@ -230,7 +259,7 @@ func TestTheExplanationSystemPromptIsFactsOnly(t *testing.T) {
 	t.Parallel()
 	fake := llmalloc.NewFakeClient()
 	fake.Answer(`{"explanations": []}`)
-	if _, err := llmalloc.NewExplainer(fake).Explain(context.Background(), facts()); err != nil {
+	if _, _, err := llmalloc.NewExplainer(fake).Explain(context.Background(), facts()); err != nil {
 		t.Fatal(err)
 	}
 	sys := fake.LastRequest().System

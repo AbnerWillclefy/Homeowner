@@ -31,22 +31,24 @@ func NewExplainer(client Client) *Explainer { return &Explainer{client: client} 
 // an answer that is not a well-formed list, or is in the old shape, is
 // ErrInvalidResponse. An entry with an unknown or repeated Resident id, a
 // missing part, or a part that fails explain.ValidSummary, is dropped, so a
-// Resident can be missing from the result.
-func (e *Explainer) Explain(ctx context.Context, residents []explain.ResidentFacts) (map[string]explain.Summary, error) {
+// Resident can be missing from the result. The *Usage is what the call
+// consumed, also when the answer is invalid; nil when the call returned none.
+func (e *Explainer) Explain(ctx context.Context, residents []explain.ResidentFacts) (map[string]explain.Summary, *Usage, error) {
 	user, err := json.Marshal(explainInput{Residents: residents})
 	if err != nil {
-		return nil, fmt.Errorf("llm: build explanation prompt: %w", err)
+		return nil, nil, fmt.Errorf("llm: build explanation prompt: %w", err)
 	}
-	raw, err := e.client.Complete(ctx, Request{
+	raw, usage, err := e.client.Complete(ctx, Request{
 		System:    explainSystemPrompt,
 		User:      string(user),
 		Schema:    explainSchema,
 		MaxTokens: min(256+400*len(residents), 4000),
 	})
 	if err != nil {
-		return nil, err
+		return nil, usage, err
 	}
-	return decodeExplanations(raw, residents)
+	texts, err := decodeExplanations(raw, residents)
+	return texts, usage, err
 }
 
 const explainSystemPrompt = `You explain today's household Day Plan to each Resident of one Home.

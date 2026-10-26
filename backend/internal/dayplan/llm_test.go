@@ -327,7 +327,7 @@ type peek struct {
 	during func()
 }
 
-func (p peek) Propose(ctx context.Context, st allocation.State) (allocation.Result, error) {
+func (p peek) Propose(ctx context.Context, st allocation.State) (llmalloc.Proposal, error) {
 	p.during()
 	return p.Allocator.Propose(ctx, st)
 }

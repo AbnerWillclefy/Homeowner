@@ -21,7 +21,8 @@ import (
 // package knows nothing of how the model is asked. One call covers every
 // Resident given; a Resident missing from the answer gets no text.
 type Explainer interface {
-	Explain(ctx context.Context, residents []explain.ResidentFacts) (map[string]explain.Summary, error)
+	// Explain also returns what the call consumed, nil when the API sent none.
+	Explain(ctx context.Context, residents []explain.ResidentFacts) (map[string]explain.Summary, *llmalloc.Usage, error)
 }
 
 // Explanation sources.
@@ -234,7 +235,7 @@ func (p *Planner) callExplainer(ctx context.Context, h HomeDay, in explainInput,
 	}
 	callCtx, cancel := context.WithTimeout(ctx, p.llm.CallTimeout)
 	defer cancel()
-	texts, err := p.llm.Explainer.Explain(callCtx, in.ask)
+	texts, _, err := p.llm.Explainer.Explain(callCtx, in.ask) // usage is recorded by a later ticket
 	if err != nil {
 		return &explainSkip{reason: explainReason(llmFailure(ctx, err)), residents: n, err: err}
 	}

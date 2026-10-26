@@ -33,7 +33,10 @@ func NewAnthropic(apiKey, model string, opts ...option.RequestOption) *Anthropic
 // sent; current models reject non-default sampling. One llm_usage line with
 // the token counts is logged per call, never prompt text, so the cost per call
 // can be read from the logs.
-func (a *Anthropic) Complete(ctx context.Context, req Request) (json.RawMessage, error) {
+//
+// The Usage is nil when there is no response (HTTP, transport or deadline
+// error) and set from the response otherwise, also for ErrInvalidResponse.
+func (a *Anthropic) Complete(ctx context.Context, req Request) (json.RawMessage, *Usage, error) {
 	thinking := anthropic.ThinkingConfigParamUnion{OfDisabled: &anthropic.ThinkingConfigDisabledParam{}}
 	if req.Thinking {
 		thinking = anthropic.ThinkingConfigParamUnion{OfAdaptive: &anthropic.ThinkingConfigAdaptiveParam{
@@ -51,18 +54,19 @@ func (a *Anthropic) Complete(ctx context.Context, req Request) (json.RawMessage,
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("anthropic: %w", err)
+		return nil, nil, fmt.Errorf("anthropic: %w", err)
 	}
+	usage := &Usage{Model: a.model, InputTokens: msg.Usage.InputTokens, OutputTokens: msg.Usage.OutputTokens}
 	slog.InfoContext(ctx, "llm_usage", "model", a.model, "thinking", req.Thinking,
 		"input_tokens", msg.Usage.InputTokens, "output_tokens", msg.Usage.OutputTokens,
 		"stop_reason", string(msg.StopReason))
 	if msg.StopReason != anthropic.StopReasonEndTurn {
-		return nil, fmt.Errorf("%w: stop reason %s", ErrInvalidResponse, msg.StopReason)
+		return nil, usage, fmt.Errorf("%w: stop reason %s", ErrInvalidResponse, msg.StopReason)
 	}
 	for _, block := range msg.Content {
 		if text, ok := block.AsAny().(anthropic.TextBlock); ok {
-			return json.RawMessage(text.Text), nil
+			return json.RawMessage(text.Text), usage, nil
 		}
 	}
-	return nil, fmt.Errorf("%w: no text in the answer", ErrInvalidResponse)
+	return nil, usage, fmt.Errorf("%w: no text in the answer", ErrInvalidResponse)
 }
