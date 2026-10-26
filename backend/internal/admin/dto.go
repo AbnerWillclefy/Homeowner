@@ -245,3 +245,87 @@ type ReasonCount struct {
 	Reason string `json:"reason"`
 	Count  int    `json:"count"`
 }
+
+// WorthResponse is GET /admin/worth: the counts behind the four headline
+// measures (outcome, reliability, cost, explanations) for the range, for the N
+// days before it, and per day. It returns counts only; the page divides,
+// guarding zero. The definitions are in docs/architecture/admin.md.
+//
+// Every number is a sum of per-day counts, so the days add up to Current.
+type WorthResponse struct {
+	Range          string        `json:"range"`
+	From           string        `json:"from"`
+	To             string        `json:"to"`
+	CostIsEstimate bool          `json:"costIsEstimate"`
+	Current        WorthCounts   `json:"current"`
+	Previous       WorthPrevious `json:"previous"`
+	Days           []WorthDay    `json:"days"`
+	MonthToDate    MonthToDate   `json:"monthToDate"`
+}
+
+// WorthPrevious is the window right before the range, with its own bounds.
+type WorthPrevious struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+	WorthCounts
+}
+
+// WorthDay is one date of the range.
+type WorthDay struct {
+	Date string `json:"date"`
+	WorthCounts
+}
+
+// WorthCounts is every count of the report for a span of days.
+type WorthCounts struct {
+	Outcome      WorthOutcome      `json:"outcome"`
+	Reliability  WorthReliability  `json:"reliability"`
+	Cost         WorthCost         `json:"cost"`
+	Explanations WorthExplanations `json:"explanations"`
+}
+
+// WorthOutcome splits the outcome counts by the arm that planned the run: the
+// LLM allocator, or the baseline (every other planned run, whether the Home
+// fell back or the LLM was not asked).
+type WorthOutcome struct {
+	LLM      ArmOutcome `json:"llm"`
+	Baseline ArmOutcome `json:"baseline"`
+}
+
+// ArmOutcome counts, for the planned runs of an arm: Proposed is the distinct
+// (run, Task) pairs the plan kept (a Task taken from the pool is not one) plus
+// the Tasks it refused; Completed is the proposed Tasks with a Completion on
+// the plan date; Refused is the refused entries still in the pool, a lower
+// bound because a refused Task later Taken leaves it.
+type ArmOutcome struct {
+	Proposed  int `json:"proposed"`
+	Completed int `json:"completed"`
+	Refused   int `json:"refused"`
+}
+
+// WorthReliability counts runs and allocator calls. RunsLLM, RunsFallback and
+// RunsLLMNotAsked partition every run of the span, planned or rejected.
+// RunsLLMNotAsked is "the LLM was not asked": it is switched off for the
+// environment, or there was nothing worth asking.
+type WorthReliability struct {
+	RunsLLM         int `json:"runsLlm"`
+	RunsFallback    int `json:"runsFallback"`
+	RunsLLMNotAsked int `json:"runsLlmNotAsked"`
+	AllocatorCalls  int `json:"allocatorCalls"`
+	RefereeRejected int `json:"refereeRejected"`
+}
+
+// WorthCost is the allocator's estimated spend, fallbacks included. The
+// explainer's spend is not here. UncostedCalls are calls with no estimate, so
+// the cost is a lower bound.
+type WorthCost struct {
+	AllocatorCostMicros int64 `json:"allocatorCostMicros"`
+	UncostedCalls       int   `json:"uncostedCalls"`
+}
+
+// WorthExplanations counts Resident explanations of planned runs, with the
+// same meaning as ExplanationShare.
+type WorthExplanations struct {
+	LLM      int `json:"llm"`
+	Template int `json:"template"`
+}
