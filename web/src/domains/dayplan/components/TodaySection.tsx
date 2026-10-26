@@ -1,5 +1,5 @@
 import { Clock } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import type { DayPlan, PlanTask } from "../api/api";
 import { pendingAction, type Acting, type SwapAction, type TaskAction, type TaskRole } from "../logic/actions";
@@ -47,14 +47,20 @@ export function TodaySection({
   const heading = useRef<HTMLHeadingElement>(null);
 
   // A Task that leaves its list takes its button with it, so focus would fall to <body>. Bring it back to the
-  // section's heading when the plan changed, unless focus is still on something inside the section.
-  useEffect(() => {
-    if (changed === 0) return;
+  // section's heading, unless focus is still on something inside the section or inside an open dialog (the
+  // dialog's focus trap owns it). `preventScroll`: the heading is at the top of the section, and a plain focus()
+  // would scroll the page up to it.
+  const catchLostFocus = useCallback(() => {
     const active = document.activeElement;
+    if (active instanceof HTMLElement && active.closest('[role="dialog"]')) return;
     if (!(active instanceof HTMLElement) || active === section.current || !section.current?.contains(active)) {
-      heading.current?.focus();
+      heading.current?.focus({ preventScroll: true });
     }
-  }, [changed]);
+  }, []);
+
+  useEffect(() => {
+    if (changed !== 0) catchLostFocus();
+  }, [changed, catchLostFocus]);
 
   return (
     <section ref={section} aria-labelledby="today-heading">
@@ -89,6 +95,7 @@ export function TodaySection({
           onAction={run}
           onAnswer={answerSwap}
           onOffer={offerSwap}
+          onDialogClosed={catchLostFocus}
         />
       )}
     </section>
@@ -149,6 +156,7 @@ function PlanView({
   onAction,
   onAnswer,
   onOffer,
+  onDialogClosed,
 }: {
   plan: DayPlan;
   note: EnergyNote | null;
@@ -157,11 +165,20 @@ function PlanView({
   onAction(action: TaskAction, task: PlanTask): void;
   onAnswer(action: SwapAction, swapId: string): void;
   onOffer(offeredTaskId: string, requestedTaskId: string): Promise<void>;
+  /** Called once the offer dialog has closed and gone, to catch focus that fell to the page with it. */
+  onDialogClosed(): void;
 }) {
   const { t, locale } = useI18n();
   // The Task a Swap is being offered for and who holds it, both known at the tap. One dialog for the whole plan,
   // mounted only after a tap on Swap.
   const [offer, setOffer] = useState<{ task: PlanTask; holderId: string } | null>(null);
+  // An effect, not `onClose`: it runs after the dialog has unmounted, when focus really is lost. Where the Swap
+  // button is still there, the dialog's own return of focus to it runs after this and wins.
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (offer === null && wasOpen.current) onDialogClosed();
+    wasOpen.current = offer !== null;
+  }, [offer, onDialogClosed]);
   // The chip's note picks the reason for an empty list, so the two can never disagree.
   const reason = note && noTasksReason(note);
   // Every button waits while anything runs; only the pressed one shows its spinner.
