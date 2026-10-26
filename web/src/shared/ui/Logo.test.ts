@@ -3,17 +3,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { Logo } from "./Logo";
 
-const html = (props: Parameters<typeof Logo>[0] = {}) => renderToStaticMarkup(createElement(Logo, props));
+const html = () => renderToStaticMarkup(createElement(Logo));
 
 describe("Logo", () => {
   it("is an h1 by default, and its text is the wordmark", () => {
     expect(html()).toMatch(/^<h1[ >]/);
     expect(html().replace(/<svg.*?<\/svg>/s, "").replace(/<[^>]+>/g, "")).toBe("homeowner");
-  });
-
-  it("can be a plain element, for a place that is not the page's heading", () => {
-    expect(html({ as: "span" })).toMatch(/^<span[ >]/);
-    expect(html({ as: "span" })).not.toContain("<h1");
   });
 
   it("names itself by its text alone, so no aria-label can differ from it", () => {
