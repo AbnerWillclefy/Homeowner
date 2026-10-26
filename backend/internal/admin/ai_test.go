@@ -362,7 +362,7 @@ func TestAILeaksNoPersonalDataAndHasAKnownKeySet(t *testing.T) {
 		"monthToDate", "month", "limitMicros", "dailyCapPerHome",
 		"allocatorShare", "llm", "baseline",
 		"explanationShare", "template", "templateReasons", "partial", "notAsked",
-		"topViolationKinds", "kind", "count", "topFallbackReasons", "reason"} {
+		"topViolationKinds", "kind", "count", "topFallbackReasons", "reason", "previous"} {
 		if !keys[k] {
 			t.Errorf("response lacks the key %q", k)
 		}

@@ -117,7 +117,7 @@ func TestOverviewCountsEveryEventOnItsOwnDay(t *testing.T) {
 
 	got := overview(t, app.SignInAsSuperAdmin("admin@example.com"), "7d")
 
-	want := map[string]admin.Day{
+	want := map[string]admin.DayCounts{
 		"2026-03-01": {Pushes: admin.Pushes{Unknown: 1}},
 		"2026-03-02": {Runs: 3, Rejected: 1, Fallbacks: 1, Completions: 1, Refuses: 1, Takes: 1, SwapsAccepted: 1,
 			Pushes: admin.Pushes{Delivered: 1, Failed: 1, Gone: 1}},
@@ -128,9 +128,8 @@ func TestOverviewCountsEveryEventOnItsOwnDay(t *testing.T) {
 	}
 	for _, day := range got.Days {
 		w := want[day.Date]
-		w.Date = day.Date
-		if day != w {
-			t.Errorf("%s = %+v, want %+v", day.Date, day, w)
+		if day.DayCounts != w {
+			t.Errorf("%s = %+v, want %+v", day.Date, day.DayCounts, w)
 		}
 	}
 }

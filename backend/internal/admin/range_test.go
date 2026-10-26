@@ -105,11 +105,11 @@ func TestPreviousUsesTheUTCDateOfAZonedInstant(t *testing.T) {
 func TestZeroFillKeepsOrderAndAddsMissingDays(t *testing.T) {
 	t.Parallel()
 	days := []string{"2026-03-01", "2026-03-02", "2026-03-03"}
-	got := map[string]Day{"2026-03-02": {Date: "2026-03-02", Runs: 2}}
+	got := map[string]Day{"2026-03-02": {Date: "2026-03-02", DayCounts: DayCounts{Runs: 2}}}
 
 	out := ZeroFill(days, got)
 
-	want := []Day{{Date: "2026-03-01"}, {Date: "2026-03-02", Runs: 2}, {Date: "2026-03-03"}}
+	want := []Day{{Date: "2026-03-01"}, {Date: "2026-03-02", DayCounts: DayCounts{Runs: 2}}, {Date: "2026-03-03"}}
 	if !reflect.DeepEqual(out, want) {
 		t.Fatalf("ZeroFill = %+v, want %+v", out, want)
 	}

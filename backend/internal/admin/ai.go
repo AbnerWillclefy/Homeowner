@@ -37,12 +37,19 @@ type AI struct {
 	Explanation        ExplanationShare
 	Kinds              []KindCount
 	Reasons            []ReasonCount
+	// The previous window's range totals.
+	PreviousServices    AIServices
+	PreviousAllocator   AllocatorShare
+	PreviousExplanation ExplanationShare
 }
 
-// AI reads the LLM report for the dates from..to (YYYY-MM-DD, inclusive) and
-// the UTC calendar month of now, in one read-only transaction.
-func (s *Store) AI(ctx context.Context, from, to string, now time.Time, log *slog.Logger) (AI, error) {
+// AI reads the LLM report for the current window and the UTC calendar month of
+// now, and the totals of the previous window, in one read-only transaction.
+// The previous window has no top lists and no month to date: lists are not
+// totals, and the month is a calendar month, not a range.
+func (s *Store) AI(ctx context.Context, cur, prev window, now time.Time, log *slog.Logger) (AI, error) {
 	out := AI{Days: map[string]AIServices{}}
+	from, to := cur.From, cur.To
 	err := readOnly(ctx, s.db, func(tx pgx.Tx) error {
 		if err := readServiceDays(ctx, tx, from, to, out.Days); err != nil {
 			return err
@@ -57,7 +64,17 @@ func (s *Store) AI(ctx context.Context, from, to string, now time.Time, log *slo
 			return fmt.Errorf("allocator share: %w", err)
 		}
 		var err error
-		if out.Explanation, err = readExplanationShare(ctx, tx, from, to, log); err != nil {
+		if out.Explanation, err = readExplanationShare(ctx, tx, from, to, log.With("window", "current")); err != nil {
+			return err
+		}
+		if out.PreviousServices, err = readServiceRange(ctx, tx, prev); err != nil {
+			return fmt.Errorf("previous %w", err)
+		}
+		if err := tx.QueryRow(ctx, allocatorShareSQL, prev.From, prev.To, outcomePlanned, allocatorLLM).Scan(
+			&out.PreviousAllocator.LLM, &out.PreviousAllocator.Baseline); err != nil {
+			return fmt.Errorf("previous allocator share: %w", err)
+		}
+		if out.PreviousExplanation, err = readExplanationShare(ctx, tx, prev.From, prev.To, log.With("window", "previous")); err != nil {
 			return err
 		}
 		kinds, err := readCounts(ctx, tx, "violation kinds", violationKindsSQL, from, to, topN)
@@ -90,24 +107,59 @@ func readServiceDays(ctx context.Context, tx pgx.Tx, from, to string, into map[s
 	for rows.Next() {
 		var date, service string
 		var d ServiceDay
-		o := &d.Outcomes
-		if err := rows.Scan(&date, &service, &o.Accepted, &o.RejectedByReferee, &o.InvalidResponse, &o.Timeout,
-			&o.Error, &o.SkippedCap, &o.SkippedBudget, &d.LatencyP50Ms, &d.LatencyMaxMs,
-			&d.InputTokens, &d.OutputTokens, &d.EstCostMicros, &d.UncostedCalls); err != nil {
+		if err := rows.Scan(append([]any{&date, &service}, d.dest()...)...); err != nil {
 			return fmt.Errorf("service days: %w", err)
 		}
 		day := into[date]
-		switch service {
-		case serviceAllocator:
-			day.Allocator = d
-		case serviceExplainer:
-			day.Explainer = d
-		default:
-			return fmt.Errorf("service days: unknown service %q", service)
+		if err := day.set(service, d); err != nil {
+			return fmt.Errorf("service days: %w", err)
 		}
 		into[date] = day
 	}
 	return rows.Err()
+}
+
+// readServiceRange reads the range totals of each service over the window, in
+// one row per service. A service with no event stays at its zero value.
+func readServiceRange(ctx context.Context, tx pgx.Tx, w window) (AIServices, error) {
+	var out AIServices
+	rows, err := tx.Query(ctx, serviceRangeSQL, w.From, w.To)
+	if err != nil {
+		return out, fmt.Errorf("service range: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var service string
+		var d ServiceDay
+		if err := rows.Scan(append([]any{&service}, d.dest()...)...); err != nil {
+			return out, fmt.Errorf("service range: %w", err)
+		}
+		if err := out.set(service, d); err != nil {
+			return out, fmt.Errorf("service range: %w", err)
+		}
+	}
+	return out, rows.Err()
+}
+
+// dest lists the scan targets of a ServiceDay in the column order of
+// serviceDaysSQL and serviceRangeSQL, after their key columns.
+func (d *ServiceDay) dest() []any {
+	o := &d.Outcomes
+	return []any{&o.Accepted, &o.RejectedByReferee, &o.InvalidResponse, &o.Timeout,
+		&o.Error, &o.SkippedCap, &o.SkippedBudget, &d.LatencyP50Ms, &d.LatencyMaxMs,
+		&d.InputTokens, &d.OutputTokens, &d.EstCostMicros, &d.UncostedCalls}
+}
+
+func (s *AIServices) set(service string, d ServiceDay) error {
+	switch service {
+	case serviceAllocator:
+		s.Allocator = d
+	case serviceExplainer:
+		s.Explainer = d
+	default:
+		return fmt.Errorf("unknown service %q", service)
+	}
+	return nil
 }
 
 // readExplanationShare counts LLM-written explanations and the Residents left
@@ -220,6 +272,28 @@ SELECT local_date::text, service,
   FROM llm_call_events
  WHERE local_date BETWEEN $1::text::date AND $2::text::date
  GROUP BY local_date, service`
+
+// serviceRangeSQL is serviceDaysSQL over the whole range: one row per service,
+// with no date. A range median cannot be built from daily medians, so it is
+// its own query.
+const serviceRangeSQL = `
+SELECT service,
+       count(*) FILTER (WHERE outcome = 'accepted')::int,
+       count(*) FILTER (WHERE outcome = 'rejected_by_referee')::int,
+       count(*) FILTER (WHERE outcome = 'invalid_response')::int,
+       count(*) FILTER (WHERE outcome = 'timeout')::int,
+       count(*) FILTER (WHERE outcome = 'error')::int,
+       count(*) FILTER (WHERE outcome = 'skipped_cap')::int,
+       count(*) FILTER (WHERE outcome = 'skipped_budget')::int,
+       percentile_cont(0.5) WITHIN GROUP (ORDER BY latency_ms),
+       max(latency_ms),
+       coalesce(sum(input_tokens), 0)::bigint,
+       coalesce(sum(output_tokens), 0)::bigint,
+       coalesce(sum(est_cost_micros), 0)::bigint,
+       count(*) FILTER (WHERE latency_ms IS NOT NULL AND est_cost_micros IS NULL)::int
+  FROM llm_call_events
+ WHERE local_date BETWEEN $1::text::date AND $2::text::date
+ GROUP BY service`
 
 // monthSQL: $1 and $2 are the UTC month's first instant and the next month's.
 const monthSQL = `

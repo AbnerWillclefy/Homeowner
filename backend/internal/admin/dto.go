@@ -11,6 +11,21 @@ type OverviewResponse struct {
 	Totals Totals `json:"totals"`
 	Active Active `json:"active"`
 	Days   []Day  `json:"days"`
+	// Previous holds the range totals of the N days just before the window.
+	// Always present: a window with no data is all zeros.
+	Previous OverviewPrevious `json:"previous"`
+}
+
+// OverviewPrevious is the previous window's totals: the same counters as a
+// Day, summed over the window, and Active computed over the whole window
+// (distinct Homes and Residents cannot be summed from days). There are no
+// daily rows. The window is made of full days while the current one includes
+// today, so count deltas lean down; the page does the division.
+type OverviewPrevious struct {
+	From   string `json:"from"`
+	To     string `json:"to"`
+	Active Active `json:"active"`
+	DayCounts
 }
 
 // Totals counts every row of four tables, whatever the range.
@@ -37,7 +52,13 @@ type Active struct {
 // lower bound. A replanned day (staging only) is deleted and recreated, so it
 // counts once.
 type Day struct {
-	Date          string `json:"date"`
+	Date string `json:"date"`
+	DayCounts
+}
+
+// DayCounts are the counters of a Day. They are embedded, so the JSON of a Day
+// stays flat, and OverviewPrevious reuses them for a whole window.
+type DayCounts struct {
 	Runs          int    `json:"runs"`
 	Rejected      int    `json:"rejected"`
 	Fallbacks     int    `json:"fallbacks"`
@@ -77,6 +98,21 @@ type AIResponse struct {
 	ExplanationShare   ExplanationShare `json:"explanationShare"`
 	TopViolationKinds  []KindCount      `json:"topViolationKinds"`
 	TopFallbackReasons []ReasonCount    `json:"topFallbackReasons"`
+	// Previous holds the range totals of the N days just before the window,
+	// without the month-to-date figure and the top lists. Always present.
+	Previous AIPrevious `json:"previous"`
+}
+
+// AIPrevious is the previous window's totals. Each service holds range totals
+// in the ServiceDay shape; the latency median and max are range-level, null
+// when the window had no call. The window is made of full days while the
+// current one includes today, so count deltas lean down.
+type AIPrevious struct {
+	From             string           `json:"from"`
+	To               string           `json:"to"`
+	Services         AIServices       `json:"services"`
+	AllocatorShare   AllocatorShare   `json:"allocatorShare"`
+	ExplanationShare ExplanationShare `json:"explanationShare"`
 }
 
 // AIDay is one date of the range, a ServiceDay per LLM service.
