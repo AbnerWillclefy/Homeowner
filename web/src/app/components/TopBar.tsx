@@ -15,7 +15,7 @@ import { useShell } from "./ShellContext";
  * then the slots are empty. The pill opens the Shell's one Check-in dialog.
  */
 export function TopBar() {
-  const { streak, checkIn, note, energy, home, openCheckIn } = useShell();
+  const { streak, checkIn, note, energy, home, openCheckIn, pillRef } = useShell();
   const input = pillInput({ checkInState: checkIn.state, note, energy, homeReady: home.state.kind === "ready" });
   return (
     <header data-testid="top-bar" className="flex min-h-11 flex-wrap items-center justify-between gap-x-2">
@@ -24,7 +24,7 @@ export function TopBar() {
       </div>
       <div className="ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-x-2">
         <div data-slot="energy" className="flex min-h-11 items-center">
-          {input && <EnergyPill input={input} onOpen={openCheckIn} onRetry={() => void checkIn.reload()} />}
+          {input && <EnergyPill input={input} buttonRef={pillRef} onOpen={openCheckIn} onRetry={() => void checkIn.reload()} />}
         </div>
         <div data-slot="streak" className="flex h-11 min-w-16 items-center justify-end">
           <StreakButton streak={streak.streak} loading={streak.loading} />

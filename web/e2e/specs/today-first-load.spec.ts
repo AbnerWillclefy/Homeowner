@@ -20,7 +20,8 @@ const LOCALES = [
     mine: "Suas tarefas",
     headline: "Um dia leve para você",
     streak: /^Sequência: /,
-    pill: "Fazer check-in",
+    // Any state of the pill: the fake's day is checked in, so it shows the Energy ("Energia hoje: 8. Mudar check-in").
+    pill: /check-in/i,
     unavailable: "Energia indisponível. Tentar de novo",
     retry: "Tentar de novo",
     today: "Hoje",
@@ -31,7 +32,7 @@ const LOCALES = [
     mine: "Your Tasks",
     headline: "A light day for you",
     streak: /^Streak: /,
-    pill: "Check in",
+    pill: /check.?in/i,
     unavailable: "Energy unavailable. Try again",
     retry: "Try again",
     today: "Today",

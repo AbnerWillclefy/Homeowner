@@ -38,7 +38,7 @@ export function Shell() {
   const me = useMe();
   const hasHome = home.state.kind === "ready";
   const streak = useStreak(hasHome);
-  const { checkIn, note, energy, planned, openCheckIn, checkInOpen, closeCheckIn, returnFocusRef } = useShellCheckIn(hasHome);
+  const { checkIn, note, energy, planned, openCheckIn, openFor, closeCheckIn, latchCheckIn, pillRef, returnFocusRef } = useShellCheckIn(hasHome);
   const queryClient = useQueryClient();
   const { pathname } = useLocation();
   const invite = useInvite();
@@ -59,10 +59,32 @@ export function Shell() {
   useFocusOnNavigate(content, pathname, t("app.name"));
 
   // Dialogs wait on the other tabs; a pending Invite sends every path to Today anyway (see resolveRoute).
-  const dialog = pathname === TODAY_PATH ? dialogToShow({ inviteToken: invite.token, after: session.after, choosing: session.choosing }) : null;
+  const dialog = dialogToShow({
+    onToday: pathname === TODAY_PATH,
+    inviteToken: invite.token,
+    after: session.after,
+    choosing: session.choosing,
+    checkIn: checkIn.state.kind === "ready" ? checkIn.state.checkIn : null,
+    checkInDismissedFor: session.checkInDismissedFor,
+  });
+
+  // The Check-in dialog latches once it shows (set during render, from the same decision), so a refetch cannot close
+  // it. Any other dialog takes priority over a latched one. A close dismisses the date the Home reads now: if the day
+  // rolled over under the open form, the Resident has seen the new day's prompt, and dismissing only the old date
+  // would reopen it the moment they tap "Not now".
+  const autoDate = dialog === "checkin" && checkIn.state.kind === "ready" ? checkIn.state.checkIn.date : null;
+  if (autoDate !== null && openFor === null) latchCheckIn(autoDate);
+  const checkInShown = dialog === "checkin" || (openFor !== null && dialog === null);
+  const dismissCheckIn = () => {
+    const shownFor = checkIn.state.kind === "ready" ? checkIn.state.checkIn.date : openFor;
+    if (shownFor !== null) session.dismissCheckIn(shownFor);
+    // The dialog opened by itself has no opener: focus goes back to the pill, the control that reopens it.
+    returnFocusRef.current ??= pillRef.current;
+    closeCheckIn();
+  };
 
   return (
-    <ShellContext.Provider value={{ home, residents, me, streak, checkIn, note, energy, openCheckIn }}>
+    <ShellContext.Provider value={{ home, residents, me, streak, checkIn, note, energy, openCheckIn, pillRef }}>
       <div className="flex min-h-dvh flex-col">
         <PageFrame className="flex-1" top={<TopBar />}>
           <div ref={content}>
@@ -82,8 +104,14 @@ export function Shell() {
         </LazyDialog>
       )}
       {dialog === "start-choice" && <StartChoice onDecided={session.decide} />}
-      {/* The one Check-in dialog, opened by the pill. */}
-      <ShellCheckInDialog checkIn={checkIn} open={checkInOpen} planned={planned} onClose={closeCheckIn} returnFocusRef={returnFocusRef} />
+      {/* The one Check-in dialog, opened by the pill or by itself on launch. Never two. */}
+      <ShellCheckInDialog
+        checkIn={checkIn}
+        open={checkInShown}
+        planned={planned}
+        onClose={dismissCheckIn}
+        returnFocusRef={returnFocusRef}
+      />
     </ShellContext.Provider>
   );
 }

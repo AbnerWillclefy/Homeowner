@@ -497,7 +497,7 @@ export const enUS = {
   "checkin.level.required": "Choose how your Energy is today, then save.",
   "checkin.restrictions.legend": "Anything you cannot do today?",
   "checkin.submit": "Save",
-  "checkin.cancel": "Cancel",
+  "checkin.cancel": "Not now",
   "checkin.saved": "Check-in saved",
   "checkin.save.offline":
     "Your Check-in was not saved because Homeowner cannot reach the service. Check your connection and try again.",

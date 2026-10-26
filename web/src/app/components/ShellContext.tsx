@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, type RefObject } from "react";
 import type { useCheckIn } from "../../domains/checkin/hooks/useCheckIn";
 import type { EnergyNote } from "../../domains/checkin/logic/state";
 import type { useHome } from "../../domains/home/hooks/useHome";
@@ -26,6 +26,8 @@ interface ShellValue {
    * Check-in is ready.
    */
   openCheckIn(returnFocusTo?: HTMLElement): void;
+  /** The Energy pill, where focus returns when the Check-in dialog opens by itself and so has no opener. */
+  pillRef: RefObject<HTMLButtonElement | null>;
 }
 
 export const ShellContext = createContext<ShellValue | null>(null);

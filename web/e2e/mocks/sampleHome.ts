@@ -62,7 +62,9 @@ export function signedInResident(): FakeState {
       { id: "resident-1", you: true, name: "resident", photoUrl: null },
       { id: "resident-2", you: false, name: "Bruna Souza", photoUrl: null },
     ],
-    checkIn: { date: FAKE_TODAY, checkedIn: false, level: null, restrictions: [] },
+    // Checked in, so the Check-in dialog does not open over every spec (it opens by itself on an unchecked day).
+    // A spec that needs the dashed pill or the dialog sets `uncheckedDay()` as `fakeState.checkIn`.
+    checkIn: { date: FAKE_TODAY, checkedIn: true, level: "normal", restrictions: [] },
     dayPlan: plannedDay(),
   };
 }

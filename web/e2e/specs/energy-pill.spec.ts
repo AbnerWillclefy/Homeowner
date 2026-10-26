@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { test, expect } from "../fixtures";
 import { json } from "../mocks/api";
 import { signedInHandlers } from "../mocks/handlers/signedIn";
+import { uncheckedDay } from "../mocks/handlers/today";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { launchApp, visit } from "../pages/launch";
@@ -24,7 +25,7 @@ const LOCALES = [
     streak: /^Sequência: /,
     normal: "Normal",
     save: "Salvar",
-    cancel: "Cancelar",
+    cancel: "Agora não",
     plannedLine: /^\d+ de 8 planejados$/,
     noRestrictions: "Nenhuma restrição hoje",
     wordmark: "Check-in",
@@ -38,7 +39,7 @@ const LOCALES = [
     streak: /^Streak: /,
     normal: "Normal",
     save: "Save",
-    cancel: "Cancel",
+    cancel: "Not now",
     plannedLine: /^\d+ of 8 planned$/,
     noRestrictions: "No restrictions today",
     wordmark: "Check-in",
@@ -49,7 +50,9 @@ const PATHS = ["/", "/chores", "/home", "/me"] as const;
 
 for (const l of LOCALES) {
   test.describe(l.locale, () => {
-    test.use({ locale: l.locale, viewport: { width: 390, height: 844 }, fakeState: signedInResident() });
+    // An unchecked day: the fake's default is checked in. On Today the dialog then opens by itself on launch
+    // (see checkin-launch.spec.ts); the tests here that need the bare pill on Today close it first.
+    test.use({ locale: l.locale, viewport: { width: 390, height: 844 }, fakeState: { ...signedInResident(), checkIn: uncheckedDay() } });
 
     test.beforeEach(async ({ page, fakeApi }) => {
       fakeApi.use(signedInHandlers);
@@ -63,6 +66,12 @@ for (const l of LOCALES) {
     for (const path of PATHS) {
       test(`before a Check-in the pill is dashed and says Check-in on ${path}`, async ({ page, baseURL }) => {
         await visit(page, new URL(path, baseURL!).toString());
+        if (path === "/") {
+          // Today offers the Check-in by itself; "not now" leaves the dashed pill.
+          await expect(dialog(page)).toBeVisible();
+          await page.keyboard.press("Escape");
+          await expect(dialog(page)).toBeHidden();
+        }
         const button = pill(page, l.unset);
         await expect(button).toBeVisible();
         await expect(button).toContainText("Check-in");
@@ -86,8 +95,9 @@ for (const l of LOCALES) {
       await expect(button).toBeFocused();
     });
 
-    test("Cancel also returns focus to the pill, and the keyboard opens it with Enter", async ({ page, baseURL }) => {
-      await launchApp(page, baseURL!);
+    test("Not now also returns focus to the pill, and the keyboard opens it with Enter", async ({ page, baseURL }) => {
+      // On Chores, where nothing opens by itself.
+      await visit(page, new URL("/chores", baseURL!).toString());
       const button = pill(page, l.unset);
       await expect(button).toBeVisible();
       await button.focus();
@@ -114,8 +124,12 @@ for (const l of LOCALES) {
       await expect(page).toHaveURL(/\/me$/);
     });
 
-    test("on Today only the pill opens the one dialog; nothing else on the page does", async ({ page, baseURL }) => {
+    test("on Today only the pill reopens the one dialog; nothing else on the page does", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
+      // The dialog opens by itself on launch; Escape is "not now".
+      await expect(page.getByRole("dialog")).toHaveCount(1);
+      await page.keyboard.press("Escape");
+      await expect(dialog(page)).toBeHidden();
       await expect(pill(page, l.unset)).toBeVisible();
       // No Check-in card and no second button of that name in the page.
       await expect(page.getByRole("button", { name: l.unset, exact: true })).toHaveCount(1);

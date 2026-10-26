@@ -507,7 +507,7 @@ export const ptBR: Messages = {
   "checkin.level.required": "Escolha como está a sua energia hoje e salve.",
   "checkin.restrictions.legend": "Algo que você não pode fazer hoje?",
   "checkin.submit": "Salvar",
-  "checkin.cancel": "Cancelar",
+  "checkin.cancel": "Agora não",
   "checkin.saved": "Check-in salvo",
   "checkin.save.offline":
     "O seu check-in não foi salvo porque o Homeowner não consegue acessar o serviço. Verifique a sua conexão e tente de novo.",
