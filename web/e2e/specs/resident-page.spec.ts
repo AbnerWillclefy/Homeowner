@@ -119,8 +119,9 @@ for (const l of LOCALES) {
     test("has no actions on a Completion and nothing private", async ({ page }) => {
       await visit(page, "/home/residents/resident-2");
       await expect(page.getByRole("heading", { name: "Ana Souza", level: 2 })).toBeVisible();
-      // A Completion is a record: no button on the page and no link inside a card.
-      await expect(page.getByRole("button")).toHaveCount(0);
+      // A Completion is a record: no button on the page (the top bar's Streak is the only one) and no link inside a card.
+      await expect(page.getByRole("button")).toHaveCount(1);
+      await expect(page.getByTestId("top-bar").getByRole("button")).toHaveCount(1);
       await expect(page.getByRole("listitem").filter({ hasText: " · " }).getByRole("link")).toHaveCount(0);
       await expect(page.locator("body")).not.toContainText(/Energy|Energia|Baseline|Check-in|Preference|Preferência|Restriction|Restrição/);
     });
@@ -131,7 +132,9 @@ for (const l of LOCALES) {
       await expect(page.getByText(l.empty)).toBeVisible();
       // Zero reads in the same voice as any number (pt-BR counts 0 as singular).
       await expect(page.getByText(/^(Tarefas? concluídas? em 7 dias|Tasks done in 7 days)$/)).toBeVisible();
-      await expect(page.getByText("0", { exact: true })).toHaveCount(2);
+      // The page's two zeros, and the top bar's Streak button, which also reads 0 for this Home.
+      await expect(page.getByText("0", { exact: true })).toHaveCount(3);
+      await expect(page.getByTestId("top-bar").getByText("0", { exact: true })).toHaveCount(1);
       await expect(page.getByRole("heading", { level: 4 })).toHaveCount(0);
     });
 

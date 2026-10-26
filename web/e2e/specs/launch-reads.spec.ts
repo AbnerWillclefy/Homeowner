@@ -51,10 +51,13 @@ test.describe("signed in with a Home", () => {
 
     await expect(tabs.chores.heading(page)).toBeVisible();
     await expect(tabs.chores.chore(page, "Wash the dishes")).toBeVisible();
-    // The Residents are not on this list: the Shell reads them on every tab, as before.
-    for (const path of ["/home/day-plan", "/home/check-in", "/home/streak"]) {
+    // The Residents are not on this list: the Shell reads them on every tab, as before. Nor is the Streak: the
+    // top bar reads it on every tab once the Home answers, but the launch wave is Today's only (ADR 0016).
+    for (const path of ["/home/day-plan", "/home/check-in"]) {
       expect(asked(fakeApi, path), path).toBe(false);
     }
+    await expect(page.getByTestId("top-bar").getByRole("button")).toBeVisible();
+    expect(count(fakeApi, "/home/streak")).toBe(1);
   });
 });
 

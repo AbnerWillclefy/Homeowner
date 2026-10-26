@@ -8,8 +8,8 @@ import { RESIDENT_EMAIL, signedInResident, withExplanation } from "../mocks/samp
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
 
-// What this covers: Today's first load shows its skeleton until the Check-in, Day Plan and Streak have each
-// answered, then everything in one swap, and stays still (Cumulative Layout Shift under 0.1). In pt-BR first, then
+// What this covers: Today's first load shows its skeleton until the Check-in and the Day Plan have each
+// answered, then everything in one swap (the Streak is in the top bar, which holds its box), and stays still (Cumulative Layout Shift under 0.1). In pt-BR first, then
 // en-US, at a phone size and at 320px with 200% text, with the reads held long enough for the skeleton to show and
 // answered at once (the skeleton never flashes). A failed read shows its own alert in place; a refresh of what is on
 // screen keeps it. It runs in two projects: `chromium` (Replan off, like production) and `chromium-replan` (the
@@ -98,6 +98,8 @@ for (const l of LOCALES) {
     const prompt = (page: Page) => page.getByText(l.prompt);
     const explanation = (page: Page) => page.getByRole("button", { name: l.headline });
     const streak = (page: Page) => page.getByRole("button", { name: l.streak });
+    // Today's greeting is its first h2 (it changes with the hour, so it is matched by role alone; an sr-only "Today" h2 follows).
+    const todayHeading = (page: Page) => page.getByRole("heading", { level: 2 }).first();
     const task = (page: Page) => page.getByText("Wash the dishes", { exact: true });
     const replanButton = (page: Page) => page.getByRole("button", { name: l.replan });
     const skeleton = (page: Page) => page.locator(SKELETON);
@@ -119,29 +121,47 @@ for (const l of LOCALES) {
 
           await expect(skeleton(page)).toBeVisible();
           await expect(replanBlock(page)).toHaveCount(replan ? 1 : 0);
-          await expect(page.locator("header h2")).toHaveCount(0);
+          await expect(todayHeading(page)).toHaveCount(0);
           await page.waitForTimeout(300);
 
-          // One read at a time: Today shows nothing of it until the last has answered.
-          for (const read of [held.checkIn, held.plan]) {
-            read.release();
-            await page.waitForTimeout(150);
-            await expect(prompt(page)).toHaveCount(0);
-            await expect(mine(page)).toHaveCount(0);
-            await expect(streak(page)).toHaveCount(0);
-            await expect(skeleton(page)).toBeVisible();
-          }
-          held.streak.release();
+          // Today's two reads, one at a time: Today shows nothing of them until the last has answered.
+          // The Streak is not one of them; it is held the whole time and the bar keeps its box.
+          held.checkIn.release();
+          await page.waitForTimeout(150);
+          await expect(prompt(page)).toHaveCount(0);
+          await expect(mine(page)).toHaveCount(0);
+          await expect(skeleton(page)).toBeVisible();
+          held.plan.release();
 
           await expect(mine(page)).toBeVisible();
-          // The same render brought everything, and took the skeleton away.
+          // The same render brought everything, and took the skeleton away, while the flame still waits.
           await expect(prompt(page)).toBeVisible({ timeout: 0 });
           await expect(explanation(page)).toBeVisible({ timeout: 0 });
           await expect(task(page)).toBeVisible({ timeout: 0 });
-          await expect(streak(page)).toBeVisible({ timeout: 0 });
           await expect(skeleton(page)).toHaveCount(0);
           await expect(replanButton(page)).toHaveCount(replan ? 1 : 0);
+          await expect(streak(page)).toHaveCount(0);
 
+          // The flame arrives in its reserved box in the bar.
+          held.streak.release();
+          await expect(streak(page)).toBeVisible();
+
+          await page.waitForTimeout(500);
+          expect(await cls(page)).toBeLessThan(0.1);
+        });
+
+        test("the Streak held alone: Today swaps in without it and nothing moves", async ({ page, baseURL }) => {
+          const streakRead = hold(page, /\/home\/streak$/);
+          await launchApp(page, baseURL!);
+
+          await expect(mine(page)).toBeVisible();
+          await expect(prompt(page)).toBeVisible();
+          await expect(skeleton(page)).toHaveCount(0);
+          await page.waitForTimeout(400);
+          await expect(streak(page)).toHaveCount(0);
+
+          streakRead.release();
+          await expect(streak(page)).toBeVisible();
           await page.waitForTimeout(500);
           expect(await cls(page)).toBeLessThan(0.1);
         });
@@ -240,7 +260,7 @@ for (const l of LOCALES) {
       // The cached data shows with no skeleton while the refresh is held.
       await expect(mine(page)).toBeVisible();
       await expect(skeleton(page)).toHaveCount(0);
-      await expect(page.locator("header h2")).toBeFocused();
+      await expect(todayHeading(page)).toBeFocused();
       reads.release();
     });
   });

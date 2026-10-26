@@ -9,6 +9,10 @@ const PATHS: Record<Tab, string> = { Today: "/", Chores: "/chores", Home: "/home
 
 export const shell = {
   nav: (page: Page) => page.getByRole("navigation", { name: "Main" }),
+  /** The page's one main heading: the logo, named by its wordmark. */
+  logo: (page: Page) => page.getByRole("heading", { level: 1, name: "homeowner", exact: true }),
+  /** The top bar above every tab. */
+  topBar: (page: Page) => page.getByTestId("top-bar"),
   tab: (page: Page, name: Tab) => shell.nav(page).getByRole("link", { name, exact: true }),
 
   /** Clicks a tab in the Main bar. */
