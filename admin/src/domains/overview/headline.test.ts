@@ -4,9 +4,11 @@ import {
   costPerLlmRun,
   explanationShare,
   fallbackShare,
+  hasWorthData,
   ratioSeries,
   refereeRate,
   sampledRateDelta,
+  seriesLabel,
 } from "./headline";
 import type { WorthCounts, WorthReliability } from "./worth";
 
@@ -94,5 +96,26 @@ describe("sampledRateDelta", () => {
   it("shows points when both windows are big enough, and none without a previous window", () => {
     expect(sampledRateDelta({ part: 15, whole: 20 }, { part: 10, whole: 20 }, 20)).toEqual({ type: "points", change: 25 });
     expect(sampledRateDelta({ part: 15, whole: 20 }, undefined, 20)).toEqual({ type: "none" });
+  });
+});
+
+describe("hasWorthData", () => {
+  it("is false for all zeros and true as soon as anything was counted", () => {
+    expect(hasWorthData(counts())).toBe(false);
+    expect(hasWorthData(counts({ explanations: { llm: 1, template: 0 } }))).toBe(true);
+    expect(hasWorthData(counts({ reliability: reliability({ runsLlmNotAsked: 2 }) }))).toBe(true);
+  });
+});
+
+describe("seriesLabel", () => {
+  it("describes the first, last and highest day, and says when there is no data", () => {
+    expect(seriesLabel("Share", [10, null, 30, 20])).toBe("Share, per day, last 4 days: 10% to 20%, highest 30%");
+    expect(seriesLabel("Share", [null, null])).toBe("Share, per day, last 2 days: no data");
+  });
+
+  it("formats with a given function, for money", () => {
+    expect(seriesLabel("Cost", [1000, 3000], (v) => `${v} micros`)).toBe(
+      "Cost, per day, last 2 days: 1000 micros to 3000 micros, highest 3000 micros",
+    );
   });
 });

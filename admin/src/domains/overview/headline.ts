@@ -1,6 +1,6 @@
 import { rateDelta, type DeltaResult, type Ratio } from "../../shared/delta";
 import { MIN_PROPOSED_PER_ARM } from "../../shared/thresholds";
-import type { ArmOutcome, WorthReliability } from "./worth";
+import type { ArmOutcome, WorthCounts, WorthReliability } from "./worth";
 
 // The page divides: /admin/worth sends counts only. Every division here guards a zero denominator, so no figure is
 // NaN or infinite.
@@ -66,10 +66,18 @@ export function sampledRateDelta(current: Ratio, previous: Ratio | undefined, mi
   return rateDelta(current, previous);
 }
 
-/** The text alternative of a sparkline. */
-export function seriesLabel(name: string, series: (number | null)[]): string {
+/** The text alternative of a sparkline; `format` writes one value (a percent by default). */
+export function seriesLabel(name: string, series: (number | null)[], format: (value: number) => string = (v) => `${v}%`): string {
   const known = series.filter((v): v is number => v !== null);
   const prefix = `${name}, per day, last ${series.length} days:`;
   if (known.length === 0) return `${prefix} no data`;
-  return `${prefix} ${known[0]}% to ${known.at(-1)}%, highest ${Math.max(...known)}%`;
+  return `${prefix} ${format(known[0]!)} to ${format(known.at(-1)!)}, highest ${format(Math.max(...known))}`;
+}
+
+/** False for a range where nothing was counted at all. */
+export function hasWorthData(c: WorthCounts): boolean {
+  const { outcome, reliability: r, explanations: e } = c;
+  return [
+    outcome.llm.proposed, outcome.baseline.proposed, r.runsLlm, r.runsFallback, r.runsLlmNotAsked, r.allocatorCalls, e.llm, e.template,
+  ].some((n) => n > 0);
 }

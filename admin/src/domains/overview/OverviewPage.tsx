@@ -2,12 +2,10 @@ import { useEffect } from "react";
 import { BarTable, BarTableSkeleton, type BarColumn } from "../../shared/BarTable";
 import { Button } from "../../shared/Button";
 import { Collapsible } from "../../shared/Collapsible";
-import { Delta } from "../../shared/Delta";
-import { Sparkline } from "../../shared/Sparkline";
 import { rangeDays, useRange } from "../../shared/range";
 import { RangeControl } from "../../shared/RangeControl";
 import { useOverview, type Overview, type OverviewDay } from "./api";
-import { fallbackHeadline } from "./headline";
+import { WorthHeadline } from "./WorthHeadline";
 
 const COLUMNS: BarColumn<OverviewDay>[] = [
   { key: "runs", label: "Runs", value: (d) => d.runs },
@@ -51,6 +49,8 @@ export function OverviewPage() {
         <RangeControl value={range} onChange={setRange} />
       </div>
 
+      <WorthHeadline range={range} />
+
       {query.isError ? (
         <div role="alert" className="my-4 rounded-control border-2 border-danger p-4">
           <p className="m-0 font-semibold">The overview could not be loaded.</p>
@@ -70,33 +70,10 @@ export function OverviewPage() {
   );
 }
 
-/**
- * The headline kit on one real figure. It has no status badge on purpose: this ratio counts every run, including those
- * where the LLM was never asked, so the 20% and 40% Fallback share thresholds would mislead. The headline Fallback
- * share replaces it later.
- */
-function FallbackTile({ overview }: { overview: Overview }) {
-  const h = fallbackHeadline(overview);
-  return (
-    <section aria-labelledby="fallbacks" data-headline className="mt-4 rounded-control border border-border bg-surface-raised px-4 py-3">
-      <h2 id="fallbacks" className="m-0 text-base font-semibold text-muted">
-        Fallbacks per run (all runs)
-      </h2>
-      <p className="m-0 text-2xl font-bold tabular-nums">
-        {h.value}{" "}
-        <Delta kind="rate" result={h.delta} days={overview.days.length} />
-      </p>
-      <Sparkline values={h.series} label={h.label} />
-    </section>
-  );
-}
-
 function Loaded({ overview, caption }: { overview: Overview; caption: string }) {
   const { totals, active } = overview;
   return (
     <>
-      <FallbackTile overview={overview} />
-
       <section aria-labelledby="totals" className="mt-6">
         <h2 id="totals" className="mb-2 text-xl font-semibold">
           Totals
