@@ -24,6 +24,7 @@ import type { ActionNotice, useDayPlan } from "../hooks/useDayPlan";
 const LIST = "m-0 flex list-none flex-col gap-3 p-0";
 
 type Day = ReturnType<typeof useDayPlan>;
+type SwapOffering = { task: PlanTask; holderId: string };
 
 /**
  * Today's Day Plan: your Tasks, other Residents' Tasks and the pool that remains, and what you did today. A Day
@@ -45,16 +46,23 @@ export function TodaySection({
   const showSkeleton = useReportFirstLoad(state.kind === "loading");
   const section = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  // The Task a Swap is being offered for and who holds it, both known at the tap. One dialog for the whole plan,
+  // mounted only after a tap on Swap.
+  const [offer, setOffer] = useState<SwapOffering | null>(null);
 
   // A Task that leaves its list takes its button with it, so focus would fall to <body>. Bring it back to the
-  // section's heading when the plan changed, unless focus is still on something inside the section.
+  // section's heading, unless focus is still on something inside the section. `preventScroll`: the heading is at
+  // the top of the section, and a plain focus() would scroll the page up to it.
+  // It waits for the offer dialog to be gone (its focus trap owns focus while open): closing it re-runs this
+  // effect, after the dialog has unmounted. Where the Swap button is still there, the dialog's own return of focus
+  // to it runs after this and wins.
   useEffect(() => {
-    if (changed === 0) return;
+    if (changed === 0 || offer !== null) return;
     const active = document.activeElement;
     if (!(active instanceof HTMLElement) || active === section.current || !section.current?.contains(active)) {
-      heading.current?.focus();
+      heading.current?.focus({ preventScroll: true });
     }
-  }, [changed]);
+  }, [changed, offer]);
 
   return (
     <section ref={section} aria-labelledby="today-heading">
@@ -89,6 +97,8 @@ export function TodaySection({
           onAction={run}
           onAnswer={answerSwap}
           onOffer={offerSwap}
+          offer={offer}
+          onOfferChange={setOffer}
         />
       )}
     </section>
@@ -149,6 +159,8 @@ function PlanView({
   onAction,
   onAnswer,
   onOffer,
+  offer,
+  onOfferChange,
 }: {
   plan: DayPlan;
   note: EnergyNote | null;
@@ -157,11 +169,10 @@ function PlanView({
   onAction(action: TaskAction, task: PlanTask): void;
   onAnswer(action: SwapAction, swapId: string): void;
   onOffer(offeredTaskId: string, requestedTaskId: string): Promise<void>;
+  offer: SwapOffering | null;
+  onOfferChange(offer: SwapOffering | null): void;
 }) {
   const { t, locale } = useI18n();
-  // The Task a Swap is being offered for and who holds it, both known at the tap. One dialog for the whole plan,
-  // mounted only after a tap on Swap.
-  const [offer, setOffer] = useState<{ task: PlanTask; holderId: string } | null>(null);
   // The chip's note picks the reason for an empty list, so the two can never disagree.
   const reason = note && noTasksReason(note);
   // Every button waits while anything runs; only the pressed one shows its spinner.
@@ -178,7 +189,7 @@ function PlanView({
       onAction={onAction}
       onSwap={
         role === "other" && holderId !== undefined && canOfferFor(plan, task)
-          ? () => setOffer({ task, holderId })
+          ? () => onOfferChange({ task, holderId })
           : undefined
       }
     />
@@ -270,7 +281,7 @@ function PlanView({
           holderId={offer.holderId}
           options={offerableTasks(plan)}
           offer={onOffer}
-          onClose={() => setOffer(null)}
+          onClose={() => onOfferChange(null)}
         />
       )}
 
