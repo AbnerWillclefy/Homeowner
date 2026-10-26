@@ -11,6 +11,7 @@ package nudge
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -29,6 +30,9 @@ const (
 	// belongs to the caller (dayplan); whatever is claimed and not yet sent when
 	// it runs out is lost, by design.
 	sendTimeout = 5 * time.Second
+
+	// outcomeTimeout bounds the update that records a send's outcome.
+	outcomeTimeout = 2 * time.Second
 
 	// reminderLead is how long before the Allocation time the reminder goes.
 	reminderLead = time.Hour
@@ -227,17 +231,65 @@ func (n *Nudger) deliver(ctx context.Context, targets []target, kind string, pay
 		if !isClaimed[t.residentID] {
 			continue
 		}
-		for _, sub := range subs[t.userID] {
-			if ctx.Err() != nil {
-				n.log.Warn("nudge: deadline reached, the rest is dropped", "kind", kind)
-				return
-			}
-			sctx, cancel := context.WithTimeout(ctx, sendTimeout)
-			err := n.subs.Deliver(sctx, n.sender, sub, payload)
-			cancel()
-			if err != nil {
-				n.log.Warn("nudge: send failed", "kind", kind, "home", t.homeID, "resident", t.residentID, "error", err.Error())
+		outcome, attempted := n.sendToDevices(ctx, t, kind, subs[t.userID], payload)
+		if attempted {
+			n.recordOutcome(ctx, t, kind, outcome)
+		}
+		if ctx.Err() != nil {
+			return
+		}
+	}
+}
+
+// The outcomes a nudge row can hold. They match the CHECK on nudges.outcome.
+const (
+	OutcomeDelivered = "delivered"
+	OutcomeFailed    = "failed"
+	OutcomeGone      = "gone"
+)
+
+// outcomeRank orders the outcomes of one Resident's devices: the best wins.
+var outcomeRank = map[string]int{OutcomeGone: 0, OutcomeFailed: 1, OutcomeDelivered: 2}
+
+// sendToDevices pushes to each of a Resident's devices and combines the
+// answers: delivered if any device accepted, else failed if any failed, else
+// gone. attempted is false when the deadline ended before the first send.
+func (n *Nudger) sendToDevices(ctx context.Context, t target, kind string, devices []push.Subscription, payload push.Payload) (outcome string, attempted bool) {
+	for _, sub := range devices {
+		if ctx.Err() != nil {
+			n.log.Warn("nudge: deadline reached, the rest is dropped", "kind", kind)
+			break
+		}
+		sctx, cancel := context.WithTimeout(ctx, sendTimeout)
+		err := n.subs.Deliver(sctx, n.sender, sub, payload)
+		cancel()
+		got := OutcomeDelivered
+		if err != nil {
+			n.log.Warn("nudge: send failed", "kind", kind, "home", t.homeID, "resident", t.residentID, "error", err.Error())
+			got = OutcomeFailed
+			if errors.Is(err, push.ErrGone) {
+				got = OutcomeGone
 			}
 		}
+		if !attempted || outcomeRank[got] > outcomeRank[outcome] {
+			outcome = got
+		}
+		attempted = true
+	}
+	return outcome, attempted
+}
+
+// recordOutcome stores the outcome on the claimed ledger row. It runs detached
+// from ctx, because the nudge deadline may have ended during the send. A failure
+// is logged and swallowed: the push has gone out either way.
+func (n *Nudger) recordOutcome(ctx context.Context, t target, kind, outcome string) {
+	uctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), outcomeTimeout)
+	defer cancel()
+	_, err := n.db.Exec(uctx, `
+		UPDATE nudges SET outcome = $4
+		WHERE resident_id = $1 AND kind = $2 AND local_date = $3`,
+		t.residentID, kind, t.date.Time(), outcome)
+	if err != nil {
+		n.log.Warn("nudge: outcome update failed", "kind", kind, "home", t.homeID, "error", err.Error())
 	}
 }
