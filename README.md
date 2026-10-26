@@ -222,6 +222,24 @@ Check the API logs with `docker compose logs api`. A `sign-in disabled` or
   push with `npm run build && npm run preview` (http://localhost:4173). Add
   that origin to `CORS_ALLOWED_ORIGINS` in `docker-compose.yml` first.
 
+## The super admin role
+
+The API's `/admin/` routes are for the maintainer only ([ADR 0017](docs/adr/0017-operate-through-a-separate-admin-app-per-environment.md)).
+Terraform creates a `super-admin` group in each environment's Cognito pool; who
+belongs to it is a manual step, per environment (find the pool id with
+`aws cognito-idp list-user-pools --max-results 10`, or `terraform output user_pool_id`
+of `module.auth`):
+
+```sh
+# Grant
+aws cognito-idp admin-add-user-to-group --user-pool-id <pool id> --username <email or sub> --group-name super-admin
+# Revoke
+aws cognito-idp admin-remove-user-from-group --user-pool-id <pool id> --username <email or sub> --group-name super-admin
+```
+
+Revoking takes effect when the person's ID token next refreshes, up to 60
+minutes. More in [docs/development.md](docs/development.md#the-super-admin-role).
+
 ## Development reference
 
 Tests, migrations, builds and every configuration variable for the backend and the web app are in [docs/development.md](docs/development.md).

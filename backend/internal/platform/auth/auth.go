@@ -17,6 +17,9 @@ type Claims struct {
 	// Subject is the stable identity (Cognito "sub"), not the email.
 	Subject string
 	Email   string
+	// Groups are the Cognito groups the token names (cognito:groups); nil when
+	// the claim is absent or malformed. ADR 0017 uses one for the super admin.
+	Groups []string
 }
 
 // Verifier turns a raw bearer token into Claims, or an error wrapping

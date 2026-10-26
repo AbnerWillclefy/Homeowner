@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 )
 
@@ -20,6 +21,17 @@ func NewFake() *Fake { return &Fake{tokens: map[string]Claims{}} }
 // signing in twice is the same person; a different email is a different one.
 func (f *Fake) SignIn(email string) string {
 	return f.SignInSubject("fake-sub-"+email, email)
+}
+
+// SignInWithGroups is SignIn for a person who belongs to groups. It has the
+// same subject as SignIn(email) but a different token, so both can be live.
+func (f *Fake) SignInWithGroups(email string, groups ...string) string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	sub := "fake-sub-" + email
+	token := "fake-token-for-" + sub + "-" + email + "-groups-" + strings.Join(groups, ",")
+	f.tokens[token] = Claims{Subject: sub, Email: email, Groups: groups}
+	return token
 }
 
 // SignInSubject returns a token for the given Cognito subject and email, for

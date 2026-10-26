@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -141,8 +142,43 @@ func TestCognitoAcceptsAValidIDToken(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got != (auth.Claims{Subject: "sub-1", Email: "a@example.com"}) {
+	if got.Subject != "sub-1" || got.Email != "a@example.com" || got.Groups != nil {
 		t.Fatalf("claims = %+v", got)
+	}
+}
+
+func TestCognitoReadsTheGroupsClaim(t *testing.T) {
+	t.Parallel()
+	k := newKey(t, "k1")
+	p := newPool(t, k)
+	v, _ := verifier(p)
+
+	cases := []struct {
+		name   string
+		groups any
+		want   []string
+	}{
+		{"absent", nil, nil},
+		{"one group", []string{"super-admin"}, []string{"super-admin"}},
+		{"two groups", []any{"a", "super-admin"}, []string{"a", "super-admin"}},
+		{"non-string elements skipped", []any{1, "super-admin", nil}, []string{"super-admin"}},
+		{"not an array", "super-admin", nil},
+		{"an object", map[string]any{"super-admin": true}, nil},
+	}
+	for _, tc := range cases {
+		c := p.claims()
+		if tc.groups != nil {
+			c["cognito:groups"] = tc.groups
+		}
+
+		got, err := v.Verify(context.Background(), sign(t, k, c))
+
+		if err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		if !reflect.DeepEqual(got.Groups, tc.want) {
+			t.Errorf("%s: groups = %#v, want %#v", tc.name, got.Groups, tc.want)
+		}
 	}
 }
 

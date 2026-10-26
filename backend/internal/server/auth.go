@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
@@ -26,29 +27,39 @@ func unauthorized(w http.ResponseWriter) {
 	httpx.WriteError(w, http.StatusUnauthorized, "unauthorized")
 }
 
+// verifiedClaims answers the request itself (503 or 401) and returns ok=false
+// when the caller has no valid token. Every verification failure is the same
+// 401; with no Verifier configured it fails closed with 503.
+func (s *server) verifiedClaims(w http.ResponseWriter, r *http.Request) (auth.Claims, bool) {
+	if s.deps.Verifier == nil {
+		httpx.WriteError(w, http.StatusServiceUnavailable, "auth not configured")
+		return auth.Claims{}, false
+	}
+	token, ok := bearerToken(r.Header.Get("Authorization"))
+	if !ok {
+		unauthorized(w)
+		return auth.Claims{}, false
+	}
+	claims, err := s.deps.Verifier.Verify(r.Context(), token)
+	if err != nil {
+		// The reason never contains the token.
+		if errors.Is(err, auth.ErrKeysUnavailable) {
+			s.deps.Logger.Error("token not verified: signing keys unavailable", "reason", err.Error())
+		} else {
+			s.deps.Logger.Info("token rejected", "reason", err.Error())
+		}
+		unauthorized(w)
+		return auth.Claims{}, false
+	}
+	return claims, true
+}
+
 // requireUser wraps a handler so it only runs for a signed-in User, whom it
-// finds or creates on first sight. Every verification failure is the same 401;
-// with no Verifier configured it fails closed with 503.
+// finds or creates on first sight.
 func (s *server) requireUser(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if s.deps.Verifier == nil {
-			httpx.WriteError(w, http.StatusServiceUnavailable, "auth not configured")
-			return
-		}
-		token, ok := bearerToken(r.Header.Get("Authorization"))
+		claims, ok := s.verifiedClaims(w, r)
 		if !ok {
-			unauthorized(w)
-			return
-		}
-		claims, err := s.deps.Verifier.Verify(r.Context(), token)
-		if err != nil {
-			// The reason never contains the token.
-			if errors.Is(err, auth.ErrKeysUnavailable) {
-				s.deps.Logger.Error("token not verified: signing keys unavailable", "reason", err.Error())
-			} else {
-				s.deps.Logger.Info("token rejected", "reason", err.Error())
-			}
-			unauthorized(w)
 			return
 		}
 		u, err := s.users.FindOrCreate(r.Context(), claims.Subject, claims.Email, s.deps.Clock.Now())
@@ -59,6 +70,28 @@ func (s *server) requireUser(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next(w, r.WithContext(identity.WithUser(r.Context(), u)))
 	}
+}
+
+// superAdminGroup is the Cognito group whose members may call /admin/ routes.
+const superAdminGroup = "super-admin"
+
+// requireSuperAdmin wraps a handler so it only runs for a caller whose ID
+// token names the super-admin group (ADR 0017). It verifies the token like
+// requireUser, but never finds or creates a User and never looks at a Home:
+// the role says nothing about Homes. No valid token is 401, no group is 403.
+func (s *server) requireSuperAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claims, ok := s.verifiedClaims(w, r)
+		if !ok {
+			return
+		}
+		if !slices.Contains(claims.Groups, superAdminGroup) {
+			s.deps.Logger.Info("admin access refused", "path", r.URL.Path)
+			httpx.WriteError(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // requireResident wraps a handler so it only runs for a signed-in User who

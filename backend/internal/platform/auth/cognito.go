@@ -103,7 +103,21 @@ func (c *Cognito) Verify(ctx context.Context, token string) (Claims, error) {
 	if sub == "" || email == "" {
 		return Claims{}, invalid(errors.New("token has no subject or email"))
 	}
-	return Claims{Subject: sub, Email: email}, nil
+	return Claims{Subject: sub, Email: email, Groups: groups(claims["cognito:groups"])}, nil
+}
+
+// groups reads cognito:groups, a JSON array of strings. Anything else, and any
+// non-string element, is ignored: a malformed claim means no groups, never a
+// failed verification.
+func groups(v any) []string {
+	list, _ := v.([]any)
+	var out []string
+	for _, e := range list {
+		if s, ok := e.(string); ok {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 func invalid(reason error) error {

@@ -65,6 +65,8 @@ type Deps struct {
 	// PhotosBaseURL is the public URL photos are served from, without a
 	// trailing slash.
 	PhotosBaseURL string
+	// Environment is local, staging or production; /admin/me reports it.
+	Environment string
 }
 
 const healthTimeout = 2 * time.Second
@@ -161,6 +163,8 @@ func New(deps Deps) http.Handler {
 	if deps.Replanner != nil {
 		mux.HandleFunc("POST /dev/replan", resident(replan.NewHandler(deps.Replanner, log).Replan))
 	}
+	// Every /admin/ path, known or not, goes through the guard first.
+	mux.Handle("/admin/", s.requireSuperAdmin(s.adminMux()))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not found")
 	})
