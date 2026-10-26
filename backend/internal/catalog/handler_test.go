@@ -149,29 +149,87 @@ func TestCollectionDaysSetWeekdayLimits(t *testing.T) {
 	}
 }
 
-func TestOutdoorSpaceProposesOutdoorChores(t *testing.T) {
+func TestOutdoorAreasProposeOutdoorChoresPerArea(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
+	outdoor := func(counts map[string]any) []map[string]any {
+		return inCategory(apitest.Proposals(t, me, map[string]any{"outdoor": counts}), "outdoor")
+	}
+	instances := func(ps []map[string]any, id string) []any {
+		out := []any{}
+		for _, p := range ps {
+			if p["catalogId"] == id {
+				out = append(out, p["instance"])
+			}
+		}
+		return out
+	}
 
-	outdoor := func(space string) []map[string]any {
-		return inCategory(apitest.Proposals(t, me, map[string]any{"outdoor": space}), "outdoor")
-	}
-	if got := outdoor("none"); len(got) != 0 {
-		t.Fatalf("none proposed %v", got)
-	}
-	if got := catalogIDs(outdoor("balcony")); !reflect.DeepEqual(got, []string{"sweep_balcony"}) {
-		t.Fatalf("balcony proposed %v, want one light Chore", got)
-	}
-	yard := outdoor("yard")
-	if ids := catalogIDs(yard); !slices.Contains(ids, "mow_lawn") {
-		t.Fatalf("yard proposed %v, want mowing", ids)
-	}
-	garden := outdoor("garden")
-	weed := one(t, garden, "weed_garden")
-	if !slices.Contains(weed["demands"].([]any), any("bending")) {
-		t.Fatalf("weeding demands = %v, want bending", weed["demands"])
-	}
+	t.Run("two gardens", func(t *testing.T) {
+		got := outdoor(map[string]any{"gardens": 2})
+		for _, id := range []string{"sweep_yard", "weed_garden", "water_garden"} {
+			var pair []map[string]any
+			for _, p := range got {
+				if p["catalogId"] == id {
+					pair = append(pair, p)
+				}
+			}
+			if len(pair) != 2 {
+				t.Fatalf("%s proposals = %d, want two (all: %v)", id, len(pair), catalogIDs(got))
+			}
+			if pair[0]["instance"] != float64(1) || pair[1]["instance"] != float64(2) {
+				t.Fatalf("%s instances = %v, %v, want 1 and 2", id, pair[0]["instance"], pair[1]["instance"])
+			}
+			delete(pair[0], "instance")
+			delete(pair[1], "instance")
+			if !reflect.DeepEqual(pair[0], pair[1]) {
+				t.Fatalf("the two %s Chores differ: %v vs %v", id, pair[0], pair[1])
+			}
+		}
+		if len(got) != 6 {
+			t.Fatalf("two gardens proposed %v, want six", catalogIDs(got))
+		}
+	})
+	t.Run("a yard and two gardens", func(t *testing.T) {
+		got := outdoor(map[string]any{"yards": 1, "gardens": 2})
+		if sweep := instances(got, "sweep_yard"); !reflect.DeepEqual(sweep, []any{float64(1), float64(2), float64(3)}) {
+			t.Fatalf("sweep_yard instances = %v, want 1 to 3", sweep)
+		}
+		if mow := instances(got, "mow_lawn"); !reflect.DeepEqual(mow, []any{nil}) {
+			t.Fatalf("mow_lawn instances = %v, want one with instance null", mow)
+		}
+	})
+	t.Run("a balcony", func(t *testing.T) {
+		got := outdoor(map[string]any{"balconies": 1})
+		if !reflect.DeepEqual(catalogIDs(got), []string{"sweep_balcony"}) || got[0]["instance"] != nil {
+			t.Fatalf("balcony proposed %v, want one sweep_balcony with instance null", got)
+		}
+	})
+	t.Run("a weeding Chore bends", func(t *testing.T) {
+		weed := one(t, outdoor(map[string]any{"gardens": 1}), "weed_garden")
+		if !slices.Contains(weed["demands"].([]any), any("bending")) {
+			t.Fatalf("weeding demands = %v, want bending", weed["demands"])
+		}
+	})
+	t.Run("no outdoor area", func(t *testing.T) {
+		for name, body := range map[string]map[string]any{
+			"missing": {},
+			"empty":   {"outdoor": map[string]any{}},
+			"zeros":   {"outdoor": map[string]any{"balconies": 0, "yards": 0, "gardens": 0}},
+			"nulls":   {"outdoor": map[string]any{"balconies": nil, "gardens": nil}},
+		} {
+			if got := inCategory(apitest.Proposals(t, me, body), "outdoor"); len(got) != 0 {
+				t.Errorf("%s proposed %v", name, got)
+			}
+		}
+	})
+	t.Run("outdoor areas alone propose no floor Chores", func(t *testing.T) {
+		got := apitest.Proposals(t, me, map[string]any{"outdoor": map[string]any{"balconies": 2, "yards": 2, "gardens": 2}})
+		if floors := inCategory(got, "floors"); len(floors) != 0 {
+			t.Fatalf("outdoor areas proposed floors %v", floors)
+		}
+	})
 }
 
 func TestHabitsChangeTheChoresNotOnlyTheirNumber(t *testing.T) {
@@ -213,7 +271,7 @@ func TestTheSameAnswersGiveTheSameProposalsInTheSameOrder(t *testing.T) {
 	me := app.SignInAs("a@example.com")
 	answers := map[string]any{
 		"rooms":      map[string]any{"bedrooms": 3, "bathrooms": 2, "kitchens": 1, "livingRooms": 1, "laundryAreas": 1},
-		"outdoor":    "garden",
+		"outdoor":    map[string]any{"gardens": 2},
 		"pets":       []string{"cat", "dog", "bird"},
 		"collection": map[string]any{"trash": []int{2, 5}, "recycling": []int{3}},
 		"habits":     map[string]any{"cooking": "daily", "dishwasher": true, "washingMachine": true},
@@ -232,7 +290,7 @@ func TestTheLargestAnswersStayWithinTheProposalBound(t *testing.T) {
 
 	got := apitest.Proposals(t, me, map[string]any{
 		"rooms":      map[string]any{"bedrooms": 10, "bathrooms": 10, "kitchens": 3, "livingRooms": 10, "laundryAreas": 10},
-		"outdoor":    "garden",
+		"outdoor":    map[string]any{"balconies": 10, "yards": 10, "gardens": 10},
 		"pets":       []string{"dog", "cat", "fish", "bird", "other"},
 		"collection": map[string]any{"trash": []int{1}, "recycling": []int{2}},
 		"habits":     map[string]any{"cooking": "daily", "washingMachine": true},
@@ -258,13 +316,19 @@ func TestInvalidAnswersAreRejectedWithFieldCodesAllAtOnce(t *testing.T) {
 		{"too many kitchens", `{"rooms":{"kitchens":4}}`, 400, map[string]string{"rooms.kitchens": "out_of_range"}},
 		{"string count", `{"rooms":{"livingRooms":"two"}}`, 400, map[string]string{"rooms.livingRooms": "invalid"}},
 		{"fractional count", `{"rooms":{"laundryAreas":2.5}}`, 400, map[string]string{"rooms.laundryAreas": "invalid"}},
-		{"unknown outdoor", `{"outdoor":"rooftop"}`, 400, map[string]string{"outdoor": "unknown"}},
+		{"too many gardens", `{"outdoor":{"gardens":11}}`, 400, map[string]string{"outdoor.gardens": "out_of_range"}},
+		{"negative gardens", `{"outdoor":{"gardens":-1}}`, 400, map[string]string{"outdoor.gardens": "out_of_range"}},
+		{"fractional gardens", `{"outdoor":{"gardens":2.5}}`, 400, map[string]string{"outdoor.gardens": "invalid"}},
+		{"string yards", `{"outdoor":{"yards":"two"}}`, 400, map[string]string{"outdoor.yards": "invalid"}},
+		{"too many balconies", `{"outdoor":{"balconies":11}}`, 400, map[string]string{"outdoor.balconies": "out_of_range"}},
+		{"unknown outdoor type", `{"outdoor":{"pools":1}}`, 400, nil},
+		{"old outdoor string", `{"outdoor":"garden"}`, 400, nil},
 		{"unknown pet", `{"pets":["dog","dragon"]}`, 400, map[string]string{"pets": "unknown"}},
 		{"weekday 7", `{"collection":{"trash":[7]}}`, 400, map[string]string{"collection.trash": "out_of_range"}},
 		{"string weekday", `{"collection":{"recycling":["tue"]}}`, 400, map[string]string{"collection.recycling": "invalid"}},
 		{"unknown cooking", `{"habits":{"cooking":"always"}}`, 400, map[string]string{"habits.cooking": "unknown"}},
-		{"all at once", `{"rooms":{"bathrooms":-1,"bedrooms":"x"},"outdoor":"moon","collection":{"trash":[9]}}`, 400, map[string]string{
-			"rooms.bathrooms": "out_of_range", "rooms.bedrooms": "invalid", "outdoor": "unknown", "collection.trash": "out_of_range",
+		{"all at once", `{"rooms":{"bathrooms":-1,"bedrooms":"x"},"outdoor":{"gardens":11,"yards":"x"},"collection":{"trash":[9]}}`, 400, map[string]string{
+			"rooms.bathrooms": "out_of_range", "rooms.bedrooms": "invalid", "outdoor.gardens": "out_of_range", "outdoor.yards": "invalid", "collection.trash": "out_of_range",
 		}},
 		{"unknown field", `{"swimmingPool":true}`, 400, nil},
 		{"unknown nested field", `{"rooms":{"attics":1}}`, 400, nil},
@@ -294,7 +358,7 @@ func TestInvalidAnswersAreRejectedWithFieldCodesAllAtOnce(t *testing.T) {
 	}
 
 	// A missing section means none, not an error.
-	for _, body := range []string{`{}`, `{"rooms":{}}`, `{"rooms":null,"pets":null,"habits":{}}`, `{"collection":{}}`} {
+	for _, body := range []string{`{}`, `{"rooms":{}}`, `{"outdoor":{}}`, `{"outdoor":null}`, `{"rooms":null,"pets":null,"habits":{}}`, `{"collection":{}}`} {
 		if r := me.SendRaw(http.MethodPost, "/catalog/proposals", []byte(body)); r.Status != http.StatusOK {
 			t.Errorf("%s = %d %s, want 200", body, r.Status, r.Raw)
 		}

@@ -63,7 +63,13 @@ func roomAnswers(n int) *RoomAnswers {
 func spread() []Answers {
 	all := []string{"dog", "cat", "fish", "bird", "other"}
 	var out []Answers
-	for _, outdoor := range Outdoors() {
+	outdoors := []*OutdoorAnswers{nil, {}}
+	for _, n := range []int{1, 2, MaxOutdoor} {
+		f := float64(n)
+		outdoors = append(outdoors, &OutdoorAnswers{Balconies: f}, &OutdoorAnswers{Yards: f},
+			&OutdoorAnswers{Gardens: f}, &OutdoorAnswers{Balconies: f, Yards: f, Gardens: f})
+	}
+	for _, outdoor := range outdoors {
 		for _, cooking := range Cookings() {
 			for _, n := range []int{0, 1, 2, MaxRooms} {
 				for _, dw := range []bool{false, true} {
