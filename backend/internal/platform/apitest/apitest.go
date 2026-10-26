@@ -28,7 +28,6 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/photos"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/config"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/db"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/replan"
@@ -202,7 +201,6 @@ func (a *App) UseAllocator(al allocation.Allocator) {
 // calls per Home and timeout per call, falling back to the current allocator.
 func (a *App) UseLLM(p dayplan.Proposer, dailyCap int, timeout time.Duration) {
 	a.llmCfg.Proposer, a.llmCfg.DailyCap, a.llmCfg.CallTimeout = p, dailyCap, timeout
-	a.llmCfg.Model = config.DefaultLLMModel
 	a.llm = dayplan.WithLLM(a.llmCfg)
 	a.UseAllocator(a.alloc.get())
 }

@@ -51,8 +51,6 @@ type Planner struct {
 	llm   LLMConfig
 	// nudgeTimeout is the one deadline for all the nudging of a tick.
 	nudgeTimeout time.Duration
-	// elapsed reads the wall clock around an LLM call to measure its latency.
-	elapsed func() time.Time
 }
 
 // defaultNudgeTimeout bounds both nudge calls of a tick together, well inside
@@ -87,13 +85,6 @@ func WithNudgeTimeout(d time.Duration) Option {
 	return func(p *Planner) { p.nudgeTimeout = d }
 }
 
-// WithElapsed sets the clock that measures the latency of an LLM call
-// (default time.Now). The Planner's own time comes in as a parameter; this one
-// must move while a call runs. It exists for tests.
-func WithElapsed(now func() time.Time) Option {
-	return func(p *Planner) { p.elapsed = now }
-}
-
 // Proposer is the LLM allocator as the Planner sees it: like an Allocator, but
 // it takes a context, because it calls out and must stop at a deadline.
 type Proposer interface {
@@ -112,7 +103,8 @@ type LLMConfig struct {
 	// CallTimeout bounds one call.
 	CallTimeout time.Duration
 	// Model is the configured model id, recorded on an llm_call_events row when
-	// the call reported no usage.
+	// the call reported no usage (skipped, or failed before an answer). Proposer.Name
+	// cannot stand in: it is "llm", the allocator name stored on runs.
 	Model string
 	// TickBudget bounds all the calls of one RunDue; zero means the default.
 	TickBudget time.Duration
@@ -151,7 +143,7 @@ const defaultExplainBudget = 15 * time.Second
 
 // New returns a Planner that asks alloc for every proposal.
 func New(db *pgxpool.Pool, alloc allocation.Allocator, log *slog.Logger, opts ...Option) *Planner {
-	p := &Planner{db: db, tasks: tasks.NewStore(db), alloc: alloc, log: log, nudgeTimeout: defaultNudgeTimeout, elapsed: time.Now}
+	p := &Planner{db: db, tasks: tasks.NewStore(db), alloc: alloc, log: log, nudgeTimeout: defaultNudgeTimeout}
 	for _, opt := range opts {
 		opt(p)
 	}
@@ -440,7 +432,7 @@ func (p *Planner) planHome(ctx, llmCtx context.Context, homeID string, now time.
 		runID   string
 		date    allocation.Date
 		outcome = Planned
-		att     = ans.attempt // kept: the zone reset below drops ans
+		asked   = ans // kept: the zone reset below drops ans
 	)
 	err := p.refreshedHomeTx(ctx, homeID, now, "plan home", func(tx pgx.Tx, d allocation.Date) error {
 		date = d
@@ -485,11 +477,11 @@ func (p *Planner) planHome(ctx, llmCtx context.Context, homeID string, now time.
 	// The event is written after the planning transaction, outside it: its FK on
 	// the run needs the commit, and a failure must not touch the plan. Without a
 	// run of ours it has no run and the outcome of the call itself.
-	if att != nil {
+	if asked.asked {
 		if err != nil || outcome == AlreadyPlanned {
-			p.recordLLMEvent(ctx, homeID, day, now, *att, "", nil)
+			p.recordLLMEvent(ctx, eventOf(homeID, day, now, asked.attempt, asked.fallback, "", nil))
 		} else {
-			p.recordLLMEvent(ctx, homeID, date, now, *att, runID, &run)
+			p.recordLLMEvent(ctx, eventOf(homeID, date, now, asked.attempt, asked.fallback, runID, &run))
 		}
 	}
 	if err != nil {
@@ -580,9 +572,10 @@ const (
 type llmAnswer struct {
 	proposal *allocation.Result
 	fallback fallbackReason
-	// attempt says how the ask went, for llm_call_events; nil when the model
-	// was not worth asking.
-	attempt *attempt
+	// asked is true when the model was worth asking, so llm_call_events gets a
+	// row; attempt says how the ask went.
+	asked   bool
+	attempt attempt
 }
 
 // propose referees the LLM's proposal against st, the State under the Home
@@ -653,53 +646,50 @@ func (p *Planner) askLLM(ctx, llmCtx context.Context, homeID string, now time.Ti
 
 // ask is the LLM call of askLLM, for a State already read.
 func (p *Planner) ask(ctx context.Context, homeID string, date allocation.Date, st allocation.State) llmAnswer {
-	// failed is a failure with the attempt that goes with it; a is nil when the
-	// model was not worth asking, so no event.
-	failed := func(err error, a *attempt) llmAnswer {
+	failed := func(err error) llmAnswer {
 		reason := llmFailure(ctx, err)
 		if reason == fallbackError {
 			p.log.Error("llm allocator failed", "home", homeID, "error", err.Error())
 		}
-		if a != nil && a.outcome == "" {
-			a.outcome = eventOutcomeOf(reason)
-		}
-		return llmAnswer{fallback: reason, attempt: a}
+		return llmAnswer{fallback: reason}
 	}
 	worth := worthAsking(st)
-	// The spent budget is recorded as skipped_budget in the event only; the run
+	// skippedBy is a failure before any call. The event says why the model was
+	// not called; a spent budget is skipped_budget there only, while the run
 	// still falls back as llm_timeout.
-	skip := func(o eventOutcome) *attempt {
-		if !worth {
-			return nil
-		}
-		return &attempt{outcome: o}
+	skippedBy := func(err error, o eventOutcome) llmAnswer {
+		ans := failed(err)
+		ans.asked, ans.attempt.skipped = worth, o
+		return ans
 	}
 	if err := ctx.Err(); err != nil {
-		return failed(err, skip(eventSkippedBudget))
+		return skippedBy(err, eventSkippedBudget)
 	}
 	if !worth {
 		return llmAnswer{}
 	}
 	ok, err := reserveLLMCall(ctx, p.db, homeID, date, p.llm.DailyCap)
 	if err != nil {
-		return failed(err, skip(eventError))
+		return skippedBy(err, eventError)
 	}
 	if !ok {
-		return llmAnswer{fallback: fallbackCapReached, attempt: skip(eventSkippedCap)}
+		return llmAnswer{fallback: fallbackCapReached, asked: true, attempt: attempt{skipped: eventSkippedCap}}
 	}
 	callCtx, cancel := context.WithTimeout(ctx, p.llm.CallTimeout)
 	defer cancel()
-	start := p.elapsed()
+	start := time.Now()
 	prop, err := p.llm.Proposer.Propose(callCtx, st)
-	a := &attempt{usage: prop.Usage}
+	a := attempt{usage: prop.Usage}
 	if prop.Called {
-		d := p.elapsed().Sub(start)
+		d := time.Since(start)
 		a.latency = &d
 	}
 	if err != nil {
-		return failed(err, a)
+		ans := failed(err)
+		ans.asked, ans.attempt = true, a
+		return ans
 	}
-	return llmAnswer{proposal: &prop.Result, attempt: a}
+	return llmAnswer{proposal: &prop.Result, asked: true, attempt: a}
 }
 
 // worthAsking reports whether there is anything for the LLM to plan: an open

@@ -20,7 +20,6 @@ type event struct {
 	localDate                            time.Time
 	service, model, outcome              string
 	violationKinds                       []string
-	itemsSent, itemsAccepted             *int16
 	latencyMs, inputTokens, outputTokens *int32
 	estCostMicros                        *int64
 }
@@ -29,7 +28,7 @@ func events(t *testing.T, app *apitest.App) []event {
 	t.Helper()
 	rows, err := app.DB.Query(context.Background(), `
 		SELECT home_id, run_id, local_date, service, model, outcome, violation_kinds,
-		       items_sent, items_accepted, latency_ms, input_tokens, output_tokens, est_cost_micros
+		       latency_ms, input_tokens, output_tokens, est_cost_micros
 		FROM llm_call_events ORDER BY created_at, id`)
 	if err != nil {
 		t.Fatal(err)
@@ -39,7 +38,7 @@ func events(t *testing.T, app *apitest.App) []event {
 	for rows.Next() {
 		var e event
 		if err := rows.Scan(&e.homeID, &e.runID, &e.localDate, &e.service, &e.model, &e.outcome, &e.violationKinds,
-			&e.itemsSent, &e.itemsAccepted, &e.latencyMs, &e.inputTokens, &e.outputTokens, &e.estCostMicros); err != nil {
+			&e.latencyMs, &e.inputTokens, &e.outputTokens, &e.estCostMicros); err != nil {
 			t.Fatal(err)
 		}
 		out = append(out, e)
@@ -155,8 +154,8 @@ func TestAReplanOverTheCapIsRecordedAsSkippedCap(t *testing.T) {
 	if len(es) != 2 || i < 0 || es[1-i].outcome != "accepted" {
 		t.Fatalf("events = %+v, want a call then skipped_cap", es)
 	}
-	if e := es[i]; e.latencyMs != nil || e.inputTokens != nil || e.outputTokens != nil || e.estCostMicros != nil || e.model == "" || e.runID == nil {
-		t.Errorf("skipped event = %+v, want no latency, tokens or cost, but a model and a run", e)
+	if e := es[i]; e.latencyMs != nil || e.inputTokens != nil || e.outputTokens != nil || e.estCostMicros != nil || e.runID == nil {
+		t.Errorf("skipped event = %+v, want no latency, tokens or cost, but a run", e)
 	}
 }
 
@@ -187,6 +186,11 @@ func TestASpentBudgetIsRecordedAsSkippedBudgetButStillFallsBackAsTimeout(t *test
 	slices.Sort(got)
 	if !slices.Equal(got, []string{"skipped_budget", "timeout"}) {
 		t.Errorf("outcomes = %v", got)
+	}
+	for _, e := range es {
+		if e.outcome == "skipped_budget" && e.model != "claude-haiku-5-5" {
+			t.Errorf("skipped_budget event model = %q, want the configured model", e.model)
+		}
 	}
 	if n := apitest.Count(t, app, `SELECT count(*) FROM allocation_runs WHERE fallback_reason = 'llm_timeout'`); n != 2 {
 		t.Errorf("%d runs with llm_timeout, want 2: the run record is unchanged", n)
@@ -274,7 +278,7 @@ func TestEventsHoldOnlyIdsNumbersAndVocabulary(t *testing.T) {
 		}
 		cols = append(cols, c)
 	}
-	want := []string{"created_at", "est_cost_micros", "home_id", "id", "input_tokens", "items_accepted", "items_sent",
+	want := []string{"created_at", "est_cost_micros", "home_id", "id", "input_tokens",
 		"latency_ms", "local_date", "model", "outcome", "output_tokens", "run_id", "service", "violation_kinds"}
 	if !slices.Equal(cols, want) {
 		t.Fatalf("columns = %v, want %v", cols, want)
