@@ -30,67 +30,26 @@ func (s *Store) Overview(ctx context.Context, from, to string) (Overview, error)
 			return fmt.Errorf("active: %w", err)
 		}
 		rows, err := tx.Query(ctx, dailySQL, from, to,
-			outcomeRejected, reasonRefused, reasonTaken, swapAccepted)
+			outcomeRejected, reasonRefused, reasonTaken, swapAccepted,
+			pushDelivered, pushFailed, pushGone)
 		if err != nil {
 			return fmt.Errorf("daily: %w", err)
 		}
 		defer rows.Close()
 		out.Days = map[string]Day{}
 		for rows.Next() {
-			var date, metric string
-			var n int
-			if err := rows.Scan(&date, &metric, &n); err != nil {
+			var d Day
+			if err := rows.Scan(&d.Date, &d.Runs, &d.Rejected, &d.Fallbacks, &d.Checkins,
+				&d.Completions, &d.Refuses, &d.Takes, &d.SwapsAccepted,
+				&d.Pushes.Delivered, &d.Pushes.Failed, &d.Pushes.Gone, &d.Pushes.Unknown); err != nil {
 				return fmt.Errorf("daily: %w", err)
 			}
-			day := out.Days[date]
-			day.Date = date
-			switch metric {
-			case metricRuns:
-				day.Runs = n
-			case metricRejected:
-				day.Rejected = n
-			case metricFallbacks:
-				day.Fallbacks = n
-			case metricCheckins:
-				day.Checkins = n
-			case metricCompletions:
-				day.Completions = n
-			case metricRefuses:
-				day.Refuses = n
-			case metricTakes:
-				day.Takes = n
-			case metricSwaps:
-				day.SwapsAccepted = n
-			case metricPush + pushDelivered:
-				day.Pushes.Delivered = n
-			case metricPush + pushFailed:
-				day.Pushes.Failed = n
-			case metricPush + pushGone:
-				day.Pushes.Gone = n
-			case metricPush + pushUnknown:
-				day.Pushes.Unknown = n
-			}
-			out.Days[date] = day
+			out.Days[d.Date] = d
 		}
 		return rows.Err()
 	})
 	return out, err
 }
-
-// Metric names of the daily query's second column.
-const (
-	metricRuns        = "runs"
-	metricRejected    = "rejected"
-	metricFallbacks   = "fallbacks"
-	metricCheckins    = "checkins"
-	metricCompletions = "completions"
-	metricRefuses     = "refuses"
-	metricTakes       = "takes"
-	metricSwaps       = "swaps"
-	// metricPush starts the push metrics: "push_" + outcome (see dailySQL).
-	metricPush  = "push_"
-	pushUnknown = "unknown"
-)
 
 const totalsSQL = `
 SELECT (SELECT count(*) FROM users), (SELECT count(*) FROM homes),
@@ -113,43 +72,48 @@ WITH active AS (
 SELECT count(*), count(DISTINCT r.home_id)
   FROM active a JOIN residents r ON r.id = a.resident_id`
 
-// dailySQL returns (date, metric, count) rows for $1..$2, only where the count
-// is above zero. $3 is the rejected outcome, $4 the refused pool reason, $5 the
-// taken assignment reason and $6 the accepted swap status. The pool is read
-// only when reasons->'pool' is an array.
+// dailySQL returns one row per date in $1..$2 that has data, with one count
+// per Day field in Scan order. $3 is the rejected outcome, $4 the refused pool
+// reason, $5 the taken assignment reason, $6 the accepted swap status and
+// $7..$9 the delivered, failed and gone push outcomes (a NULL outcome is
+// unknown). Each source selects its own counts and zeros for the rest; the
+// outer query sums them per date. The pool is read only when reasons->'pool'
+// is an array.
 const dailySQL = `
-SELECT day::text, metric, n FROM (
-    SELECT plan_date AS day, 'runs' AS metric, count(*) AS n
-      FROM allocation_runs WHERE plan_date BETWEEN $1::text::date AND $2::text::date GROUP BY 1
+WITH w AS (SELECT $1::text::date AS lo, $2::text::date AS hi)
+SELECT day::text, sum(runs)::int, sum(rejected)::int, sum(fallbacks)::int, sum(checkins)::int,
+       sum(completions)::int, sum(refuses)::int, sum(takes)::int, sum(swaps)::int,
+       sum(delivered)::int, sum(failed)::int, sum(gone)::int, sum(unknown)::int
+FROM (
+    SELECT plan_date AS day, count(*) AS runs,
+           count(*) FILTER (WHERE outcome = $3) AS rejected,
+           count(*) FILTER (WHERE fallback_reason IS NOT NULL) AS fallbacks,
+           0 AS checkins, 0 AS completions, 0 AS refuses, 0 AS takes, 0 AS swaps,
+           0 AS delivered, 0 AS failed, 0 AS gone, 0 AS unknown
+      FROM allocation_runs, w WHERE plan_date BETWEEN w.lo AND w.hi GROUP BY 1
     UNION ALL
-    SELECT plan_date, 'rejected', count(*)
-      FROM allocation_runs
-     WHERE plan_date BETWEEN $1::text::date AND $2::text::date AND outcome = $3 GROUP BY 1
+    SELECT checkin_date, 0, 0, 0, count(*), 0, 0, 0, 0, 0, 0, 0, 0
+      FROM checkins, w WHERE checkin_date BETWEEN w.lo AND w.hi GROUP BY 1
     UNION ALL
-    SELECT plan_date, 'fallbacks', count(*)
-      FROM allocation_runs
-     WHERE plan_date BETWEEN $1::text::date AND $2::text::date AND fallback_reason IS NOT NULL GROUP BY 1
+    SELECT completed_on, 0, 0, 0, 0, count(*), 0, 0, 0, 0, 0, 0, 0
+      FROM completions, w WHERE completed_on BETWEEN w.lo AND w.hi GROUP BY 1
     UNION ALL
-    SELECT checkin_date, 'checkins', count(*)
-      FROM checkins WHERE checkin_date BETWEEN $1::text::date AND $2::text::date GROUP BY 1
-    UNION ALL
-    SELECT completed_on, 'completions', count(*)
-      FROM completions WHERE completed_on BETWEEN $1::text::date AND $2::text::date GROUP BY 1
-    UNION ALL
-    SELECT ar.plan_date, 'refuses', count(*)
-      FROM allocation_runs ar
+    SELECT ar.plan_date, 0, 0, 0, 0, 0, count(*), 0, 0, 0, 0, 0, 0
+      FROM allocation_runs ar, w
       CROSS JOIN LATERAL jsonb_array_elements(
           CASE WHEN jsonb_typeof(ar.reasons->'pool') = 'array' THEN ar.reasons->'pool' ELSE '[]'::jsonb END) e
-     WHERE ar.plan_date BETWEEN $1::text::date AND $2::text::date AND e->>'reason' = $4 GROUP BY 1
+     WHERE ar.plan_date BETWEEN w.lo AND w.hi AND e->>'reason' = $4 GROUP BY 1
     UNION ALL
-    SELECT ar.plan_date, 'takes', count(*)
-      FROM day_plan_assignments dpa JOIN allocation_runs ar ON ar.id = dpa.run_id
-     WHERE ar.plan_date BETWEEN $1::text::date AND $2::text::date AND dpa.reason = $5 GROUP BY 1
+    SELECT ar.plan_date, 0, 0, 0, 0, 0, 0, count(*), 0, 0, 0, 0, 0
+      FROM day_plan_assignments dpa JOIN allocation_runs ar ON ar.id = dpa.run_id, w
+     WHERE ar.plan_date BETWEEN w.lo AND w.hi AND dpa.reason = $5 GROUP BY 1
     UNION ALL
-    SELECT plan_date, 'swaps', count(*)
-      FROM swap_offers
-     WHERE plan_date BETWEEN $1::text::date AND $2::text::date AND status = $6 GROUP BY 1
+    SELECT plan_date, 0, 0, 0, 0, 0, 0, 0, count(*), 0, 0, 0, 0
+      FROM swap_offers, w WHERE plan_date BETWEEN w.lo AND w.hi AND status = $6 GROUP BY 1
     UNION ALL
-    SELECT local_date, 'push_' || coalesce(outcome, 'unknown'), count(*)
-      FROM nudges WHERE local_date BETWEEN $1::text::date AND $2::text::date GROUP BY 1, 2
-) m`
+    SELECT local_date, 0, 0, 0, 0, 0, 0, 0, 0,
+           count(*) FILTER (WHERE outcome = $7), count(*) FILTER (WHERE outcome = $8),
+           count(*) FILTER (WHERE outcome = $9), count(*) FILTER (WHERE outcome IS NULL)
+      FROM nudges, w WHERE local_date BETWEEN w.lo AND w.hi GROUP BY 1
+) m
+GROUP BY day`

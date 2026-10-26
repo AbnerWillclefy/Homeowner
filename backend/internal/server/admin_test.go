@@ -11,6 +11,9 @@ import (
 
 var wildcard = regexp.MustCompile(`\{[^}]*\}`)
 
+// requiredQuery holds the query a route needs before a super admin gets a 200.
+var requiredQuery = map[string]string{"/admin/overview": "?range=7d"}
+
 // Every route on the admin sub-mux is walked, so a route added to the table
 // without the guard's behaviour fails here.
 func TestEveryAdminRouteIsGuarded(t *testing.T) {
@@ -25,7 +28,7 @@ func TestEveryAdminRouteIsGuarded(t *testing.T) {
 		t.Fatal("no admin routes registered")
 	}
 	for _, r := range routes {
-		path := wildcard.ReplaceAllString(r.Probe, "x")
+		path := wildcard.ReplaceAllString(r.Pattern, "x") + requiredQuery[r.Pattern]
 		name := r.Method + " " + path
 
 		res := app.Do(r.Method, path, nil)
