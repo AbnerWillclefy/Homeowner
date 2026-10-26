@@ -257,6 +257,24 @@ func TestAnUnrefereedProposalIsRecordedAsErrorWithoutARun(t *testing.T) {
 	}
 }
 
+func TestAProposalForAnotherDayIsRecordedAsErrorWithoutTheBaselineRun(t *testing.T) {
+	t.Parallel()
+	app, a, fake, _ := llmHome(t)
+	home := homeIDOf(t, a)
+	app.UseLLM(peek{llmalloc.New(fake), func() {
+		// The Home moves to a zone where it is still the day before.
+		if _, err := app.DB.Exec(context.Background(), `UPDATE homes SET timezone = 'Pacific/Pago_Pago' WHERE id = $1`, home); err != nil {
+			t.Error(err)
+		}
+	}}, llmDailyCap, time.Second)
+
+	app.RunAllocation(t)
+	e := theEvent(t, app)
+	if e.outcome != "error" || e.runID != nil || e.inputTokens == nil {
+		t.Fatalf("event = %+v", e)
+	}
+}
+
 func TestEventsHoldOnlyIdsNumbersAndVocabulary(t *testing.T) {
 	t.Parallel()
 	app, _, fake, st := llmHome(t)

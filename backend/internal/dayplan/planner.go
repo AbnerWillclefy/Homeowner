@@ -428,11 +428,13 @@ func (p *Planner) planHome(ctx, llmCtx context.Context, homeID string, now time.
 	}
 
 	var (
-		run     runRecord
-		runID   string
-		date    allocation.Date
-		outcome = Planned
-		asked   = ans // kept: the zone reset below drops ans
+		run   runRecord
+		runID string
+		date  allocation.Date
+
+		zoneChanged bool
+		outcome     = Planned
+		asked       = ans // kept: the zone reset below drops ans
 	)
 	err := p.refreshedHomeTx(ctx, homeID, now, "plan home", func(tx pgx.Tx, d allocation.Date) error {
 		date = d
@@ -446,6 +448,7 @@ func (p *Planner) planHome(ctx, llmCtx context.Context, homeID string, now time.
 		}
 		if p.llm.Proposer != nil && date != day {
 			ans = llmAnswer{} // the Home's zone changed during the call: that plan was for another day
+			zoneChanged = true
 		}
 
 		st, err := loadState(ctx, tx, homeID, date)
@@ -476,9 +479,10 @@ func (p *Planner) planHome(ctx, llmCtx context.Context, homeID string, now time.
 	})
 	// The event is written after the planning transaction, outside it: its FK on
 	// the run needs the commit, and a failure must not touch the plan. Without a
-	// run of ours it has no run and the outcome of the call itself.
+	// run of ours it has no run and the outcome of the call itself. A zone change
+	// during the call also leaves it without one: the stored run never saw the proposal.
 	if asked.asked {
-		if err != nil || outcome == AlreadyPlanned {
+		if err != nil || outcome == AlreadyPlanned || zoneChanged {
 			p.recordLLMEvent(ctx, eventOf(homeID, day, now, asked.attempt, asked.fallback, "", nil))
 		} else {
 			p.recordLLMEvent(ctx, eventOf(homeID, date, now, asked.attempt, asked.fallback, runID, &run))
