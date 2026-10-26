@@ -40,6 +40,13 @@ export interface OverviewDay {
   pushes: OverviewPushes;
 }
 
+/** The window right before the range (#372): the counters of a day, summed over the window, and no daily rows. */
+export interface OverviewPrevious extends Omit<OverviewDay, "date"> {
+  from: string;
+  to: string;
+  active: OverviewActive;
+}
+
 export interface Overview {
   range: Range;
   from: string;
@@ -48,6 +55,8 @@ export interface Overview {
   active: OverviewActive;
   /** Exactly 7 or 30 entries, oldest first; a day with no data is all zeros. */
   days: OverviewDay[];
+  /** Optional: an older API build leaves it out, and the page then shows no delta. */
+  previous?: OverviewPrevious;
 }
 
 export async function fetchOverview(range: Range): Promise<Overview> {

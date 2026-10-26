@@ -1,6 +1,19 @@
 @import "tailwindcss";
 @import "../../web/src/tokens.css";
 
+/*
+ * Admin-only amber for the "warn" state of a StatusBadge. The shared tokens have no warning colour, and the category
+ * pastels must not be used for status (DESIGN.md). Both values are at least 4.5:1 as text on surface-raised
+ * (checked in src/shared/StatusBadge.test.tsx).
+ */
+@theme {
+  --color-warning: #7a4f00;
+}
+
+[data-theme="dark"] {
+  --color-warning: #f2c14e;
+}
+
 /* The admin is English only and desktop-first, with the system font stack (no web fonts). */
 @layer base {
   html {

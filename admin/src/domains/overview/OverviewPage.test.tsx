@@ -20,8 +20,12 @@ function day(n: number, over: Partial<OverviewDay> = {}): OverviewDay {
   };
 }
 
-function overview(days: OverviewDay[], range: "7d" | "30d" = "7d"): Overview {
+function overview(
+  days: OverviewDay[],
+  { range = "7d", previous }: { range?: "7d" | "30d"; previous?: Overview["previous"] } = {},
+): Overview {
   return {
+    previous,
     range,
     from: days[0].date,
     to: days[days.length - 1].date,
@@ -68,7 +72,7 @@ describe("OverviewPage", () => {
   it("asks for 30 days from the URL and shows the glossary labels", async () => {
     get.mockResolvedValue({
       status: 200,
-      data: overview(Array.from({ length: 30 }, (_, i) => day(i + 1)), "30d"),
+      data: overview(Array.from({ length: 30 }, (_, i) => day(i + 1)), { range: "30d" }),
     });
     await render(page("/?range=30d"));
     expect(get).toHaveBeenCalledWith("/admin/overview", { params: { range: "30d" } });
@@ -118,6 +122,55 @@ describe("OverviewPage", () => {
     expect(row.querySelector("th")!.textContent).toBe("2026-10-03");
     expect(row.querySelectorAll("td")[0].textContent).toBe("6");
     expect(container().querySelector("[data-bar]")!.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  describe("fallbacks per run tile", () => {
+    const previous = {
+      from: "2026-09-24", to: "2026-09-30", active: { homes: 0, residents: 0 },
+      ...day(1, { runs: 100, fallbacks: 10 }),
+    } as Overview["previous"];
+    const days = sevenDays((n) => ({ runs: 10, fallbacks: n }));
+
+    it("shows the share for all runs, a sparkline and no status badge", async () => {
+      get.mockResolvedValue({ status: 200, data: overview(days) });
+      await render(page());
+      const tile = container().querySelector("[data-headline]")!;
+      expect(tile.textContent).toContain("Fallbacks per run (all runs)");
+      expect(tile.textContent).toContain("40%");
+      expect(tile.querySelector('svg[role="img"]')!.getAttribute("aria-label")).toContain("Fallbacks per run, per day, last 7 days");
+      expect(tile.textContent).not.toContain("Fallback share");
+    });
+
+    it("shows the change against the previous range in points when the API sends previous", async () => {
+      get.mockResolvedValue({ status: 200, data: overview(days, { previous }) });
+      await render(page());
+      expect(container().querySelector("[data-headline]")!.textContent).toContain("+30 pp");
+    });
+
+    it("shows no change and does not crash when previous is missing", async () => {
+      get.mockResolvedValue({ status: 200, data: overview(days) });
+      await render(page());
+      expect(container().querySelector("[data-headline]")!.textContent).not.toContain("previous");
+    });
+
+    it("says n/a with no runs", async () => {
+      get.mockResolvedValue({ status: 200, data: overview(sevenDays()) });
+      await render(page());
+      const tile = container().querySelector("[data-headline]")!;
+      expect(tile.textContent).toContain("n/a");
+      expect(tile.textContent).not.toContain("NaN");
+    });
+  });
+
+  it("keeps the Per day table inside a collapsed region, still in the document", async () => {
+    get.mockResolvedValue({ status: 200, data: overview(sevenDays()) });
+    await render(page());
+    const region = container().querySelector<HTMLElement>("[data-collapsible-region]")!;
+    expect(region.hidden).toBe(true);
+    expect(region.querySelector("table")).not.toBeNull();
+    const toggle = container().querySelector('button[aria-controls]')!;
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle.textContent).toContain("per-day table");
   });
 
   it("renders only numbers and dates: no @ and no string that is not in the fixture's numbers or dates", async () => {
