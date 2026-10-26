@@ -12,7 +12,8 @@ import (
 var wildcard = regexp.MustCompile(`\{[^}]*\}`)
 
 // requiredQuery holds the query a route needs before a super admin gets a 200.
-var requiredQuery = map[string]string{"/admin/overview": "?range=7d", "/admin/ai": "?range=7d"}
+var requiredQuery = map[string]string{"/admin/overview": "?range=7d", "/admin/ai": "?range=7d",
+	"/admin/flow": "?range=7d"}
 
 // Every route on the admin sub-mux is walked, so a route added to the table
 // without the guard's behaviour fails here.

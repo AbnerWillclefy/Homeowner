@@ -74,6 +74,25 @@ func (h *Handler) AI(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, out)
 }
 
+// Flow answers GET /admin/flow?range=7d|30d, with the same range rules and
+// error handling as Overview.
+func (h *Handler) Flow(w http.ResponseWriter, r *http.Request) {
+	rng, err := ParseRange(r.URL.Query().Get("range"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid range")
+		return
+	}
+	days := rng.Window(h.clock.Now())
+	from, to := days[0], days[len(days)-1]
+
+	steps, err := h.store.Flow(r.Context(), from, to, h.log)
+	if err != nil {
+		httpx.InternalError(w, h.log, "admin flow", err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, FlowResponse{Range: rng.Name, From: from, To: to, Steps: steps})
+}
+
 // Overview answers GET /admin/overview?range=7d|30d. `range` is required: a
 // missing, empty or unknown value is 400 "invalid range", because the page
 // always sends one. A store error, a statement timeout included, is logged and
