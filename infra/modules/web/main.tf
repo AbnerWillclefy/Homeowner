@@ -13,6 +13,11 @@ terraform {
 # Nothing here bills while idle (storage and requests only). No WAF, no Origin
 # Shield, no access logs, no custom domain or certificate.
 
+# Photos are optional: no photo origin domain, no photo origin or behavior.
+locals {
+  photos_enabled = var.photos_origin_domain != ""
+}
+
 # ---------------------------------------------------------------------- bucket
 
 resource "aws_s3_bucket" "this" {
@@ -66,9 +71,9 @@ resource "aws_cloudfront_origin_access_control" "this" {
 # A separate control for the photo origin, so the web one is untouched.
 # Only created when a photo origin is wanted.
 resource "aws_cloudfront_origin_access_control" "photos" {
-  count = var.photos_origin_domain == "" ? 0 : 1
+  count = local.photos_enabled ? 1 : 0
 
-  name                             = "${var.name}-photos"
+  name                              = "${var.name}-photos"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
   signing_protocol                  = "sigv4"
@@ -106,7 +111,7 @@ resource "aws_cloudfront_distribution" "this" {
   # /avatars/x.webp reads the key avatars/x.webp.
   # Absent when photos_origin_domain is empty.
   dynamic "origin" {
-    for_each = var.photos_origin_domain == "" ? [] : [1]
+    for_each = local.photos_enabled ? [1] : []
 
     content {
       domain_name              = var.photos_origin_domain
@@ -116,7 +121,7 @@ resource "aws_cloudfront_distribution" "this" {
   }
 
   dynamic "ordered_cache_behavior" {
-    for_each = var.photos_origin_domain == "" ? [] : [1]
+    for_each = local.photos_enabled ? [1] : []
 
     content {
       path_pattern               = "/avatars/*"
