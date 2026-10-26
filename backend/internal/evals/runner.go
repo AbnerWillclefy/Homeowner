@@ -6,12 +6,15 @@ import (
 	"time"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
 )
 
 // Proposer is the LLM allocator as the evals reach it: llmalloc.Allocator
 // satisfies it. Its Result is not yet refereed; Run referees it.
 type Proposer interface {
-	Propose(ctx context.Context, st allocation.State) (allocation.Result, error)
+	// Propose also returns the call's usage and whether the model was asked;
+	// the evals do not read them yet.
+	Propose(ctx context.Context, st allocation.State) (allocation.Result, *llmalloc.Usage, bool, error)
 }
 
 // Config says how to run the evals.
@@ -105,7 +108,7 @@ func proposeOnce(ctx context.Context, cfg Config, st allocation.State) Outcome {
 		ctx, cancel = context.WithTimeout(ctx, cfg.Timeout)
 		defer cancel()
 	}
-	res, err := cfg.Proposer.Propose(ctx, st)
+	res, _, _, err := cfg.Proposer.Propose(ctx, st)
 	return outcome(st, res, err)
 }
 
