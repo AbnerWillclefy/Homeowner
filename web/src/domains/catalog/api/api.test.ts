@@ -79,7 +79,7 @@ describe("proposeChores", () => {
         ],
       }),
     );
-    const result = await proposeChores({ outdoor: "yard" });
+    const result = await proposeChores({ outdoor: { balconies: 0, yards: 1, gardens: 0 } });
     expect(result).toEqual({
       kind: "ok",
       proposals: [
@@ -90,7 +90,7 @@ describe("proposeChores", () => {
     const [url, init] = fetch.mock.calls[0]!;
     expect(url).toBe("http://api.test/catalog/proposals");
     expect(init?.method).toBe("POST");
-    expect(JSON.parse(init?.body as string)).toEqual({ outdoor: "yard" });
+    expect(JSON.parse(init?.body as string)).toEqual({ outdoor: { balconies: 0, yards: 1, gardens: 0 } });
   });
 
   it("is invalid with the field codes on a 400", async () => {
