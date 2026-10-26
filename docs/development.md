@@ -81,6 +81,15 @@ their ID token next refreshes, up to 60 minutes (`id_token_validity = 60` in
 `infra/modules/auth`); until then `GET <api>/admin/me` still answers 200. After
 that it answers 403.
 
+### Replan a staging Home
+
+To see a fresh Day Plan for one Home on staging without waiting for the next
+Allocation, run the workflow by hand: GitHub, Actions, "Replan staging", Run
+workflow (branch `main`), paste the Home id (a UUID) and run. It invokes the
+allocation function and prints the outcome in the run summary; a bad id, an
+unknown Home or a failed replan fails the run with the reason. The LLM daily cap
+still applies, so a second replan of a day often gets a baseline plan.
+
 ## Web
 
 The React PWA is in `web/` (Vite, TypeScript, `vite-plugin-pwa`). Node 22 (`web/.nvmrc`).

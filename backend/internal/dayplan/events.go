@@ -16,8 +16,9 @@ import (
 const maxEventBody = 64 * 1024
 
 // The replan event, an EventBridge-shaped object so the handler decodes it like
-// the scheduled one. Whatever sends it (the staging replan route) builds its
-// payload with NewReplanEvent, so the two sides cannot drift.
+// the scheduled one. The manual workflow .github/workflows/replan-staging.yml
+// sends it, building the payload with jq; replan_event_json_test.go pins
+// NewReplanEvent to that same JSON, so the two sides cannot drift.
 const (
 	ReplanSource     = "homeowner.dev"
 	ReplanDetailType = "Replan Home"
@@ -105,8 +106,9 @@ func tick(w http.ResponseWriter, r *http.Request, p *Planner, clk clock.Clock, l
 	_ = json.NewEncoder(w).Encode(sum)
 }
 
-// replan answers the replan event. Async invocations ignore the status, so the
-// log line is the only record of a failure there.
+// replan answers the replan event. The workflow invokes synchronously and reads
+// the status and body, so the run fails with these texts; the log line records
+// it too.
 func replan(w http.ResponseWriter, r *http.Request, p *Planner, clk clock.Clock, log *slog.Logger, homeID string) {
 	if !chores.ValidID(homeID) {
 		log.Warn("ignored a replan event with a bad home id")

@@ -25,7 +25,6 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/replan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/residents"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/streak"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/tasks"
@@ -56,10 +55,6 @@ type Deps struct {
 	// was made; nil means allocation.Baseline. It must be the Allocator the
 	// scheduled job uses.
 	Allocator allocation.Allocator
-	// Replanner asks the Allocation function to plan one Home again; nil means
-	// the staging-only POST /dev/replan route does not exist (404), as in
-	// production.
-	Replanner replan.Replanner
 	// Photos is the private photo bucket; nil means photos are not configured
 	// and the /me/photo routes answer 503.
 	Photos photos.ObjectStore
@@ -169,9 +164,6 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("GET /push/vapid-public-key", pushes.RequireConfigured(pushes.PublicKey))
 	mux.HandleFunc("PUT /push/subscription", pushes.RequireConfigured(user(pushes.PutSubscription)))
 	mux.HandleFunc("POST /push/test", pushes.RequireConfigured(user(pushes.SendTest)))
-	if deps.Replanner != nil {
-		mux.HandleFunc("POST /dev/replan", resident(replan.NewHandler(deps.Replanner, log).Replan))
-	}
 	// Every /admin/ path, known or not, goes through the guard first.
 	mux.Handle("/admin/", s.requireSuperAdmin(s.adminMux()))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

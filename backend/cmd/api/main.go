@@ -17,7 +17,6 @@ import (
 	_ "time/tzdata" // time.LoadLocation must work on Lambda, distroless and CI
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/photos"
@@ -26,7 +25,6 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/config"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/db"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/replan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/server"
 )
 
@@ -107,15 +105,6 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 			&http.Client{Timeout: 5 * time.Second}, clock.System{})
 	} else {
 		log.Warn("sign-in disabled: COGNITO_ISSUER and COGNITO_CLIENT_ID are not set")
-	}
-
-	if cfg.ReplanAllocateFunction != "" {
-		awsCfg, err := awsconfig.LoadDefaultConfig(ctx)
-		if err != nil {
-			return fmt.Errorf("load AWS config for the dev replan route: %w", err)
-		}
-		deps.Replanner = replan.NewLambda(lambda.NewFromConfig(awsCfg), cfg.ReplanAllocateFunction)
-		log.Warn("dev replan route is on: POST /dev/replan invokes the allocate function", "function", cfg.ReplanAllocateFunction)
 	}
 
 	if cfg.PhotosEnabled() {
