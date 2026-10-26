@@ -30,8 +30,8 @@ type SwapOffering = { task: PlanTask; holderId: string };
  * Today's Day Plan: your Tasks, other Residents' Tasks and the pool that remains, and what you did today. A Day
  * Plan is a proposal: you accept, refuse, take or complete Tasks, and the plan only changes from the server's
  * answer. Rendered inside the Home section, so it only exists while the signed-in User has a Home. The owner
- * loads the plan and shows its Energy in the header's chip; `note` is that chip's note, null while the
- * Check-in is not known.
+ * loads the plan; `note` is the Shell's Energy note, which only decides why an empty list is empty, and is
+ * null while the Check-in is not known.
  */
 export function TodaySection({
   day,
@@ -196,13 +196,8 @@ function PlanView({
   );
 
   return (
-    <>
-      {plan.planned && (
-        <div className="mb-6">
-          <DaySummary plan={plan} />
-        </div>
-      )}
     <div className="flex flex-col gap-8">
+      {plan.planned && <DaySummary plan={plan} />}
       {!plan.planned && !plan.rejected && (
         <p role="status" className="my-0 flex items-center gap-2 font-semibold text-muted">
           <Clock aria-hidden="true" size={18} className="shrink-0" />
@@ -300,7 +295,6 @@ function PlanView({
         </div>
       )}
     </div>
-    </>
   );
 }
 
