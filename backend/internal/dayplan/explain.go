@@ -137,12 +137,9 @@ func (p *Planner) explainHomes(ctx context.Context, homes []HomeDay, now time.Ti
 			p.log.Error("explanations panicked", "panic", fmt.Sprint(r))
 		}
 	}()
-	// The budget bounds the calls only; reading a Home's plan and recording an
-	// event run under the tick's own context.
-	budget, cancel := context.WithTimeout(ctx, p.llm.ExplainBudget)
-	defer cancel()
+	deadline := time.Now().Add(p.llm.ExplainBudget)
 	for _, h := range homes {
-		if skip := p.explainHome(ctx, budget, h, now); skip != nil {
+		if skip := p.explainHome(ctx, deadline, h, now); skip != nil {
 			attrs := []any{"home", h.ID, "fallback_reason", skip.reason, "residents", skip.residents}
 			if skip.err != nil {
 				attrs = append(attrs, "error", skip.err.Error())
@@ -175,12 +172,12 @@ type explainInput struct {
 	fingerprints map[string]string
 }
 
-// explainHome explains one Home's plan: it reads the plan under ctx, the
-// tick's context, then makes the call (callExplainer) under the budget. The
-// plan is read first so that a spent budget is only recorded for a Home that
-// had Residents to ask about. It returns nil when all went well or there was
-// nothing to do, and otherwise why not; it does not log.
-func (p *Planner) explainHome(ctx, budget context.Context, h HomeDay, now time.Time) *explainSkip {
+// explainHome explains one Home's plan: it reads the plan, then makes the call
+// (callExplainer), which must end by deadline, the end of the explain budget.
+// The plan is read first so that a spent budget is only recorded for a Home
+// that had Residents to ask about. It returns nil when all went well or there
+// was nothing to do, and otherwise why not; it does not log.
+func (p *Planner) explainHome(ctx context.Context, deadline time.Time, h HomeDay, now time.Time) *explainSkip {
 	in, err := p.loadExplainInput(ctx, h)
 	if err != nil {
 		return &explainSkip{reason: explainDBError, err: err}
@@ -188,11 +185,11 @@ func (p *Planner) explainHome(ctx, budget context.Context, h HomeDay, now time.T
 	if len(in.ask) == 0 {
 		return nil
 	}
-	if budget.Err() != nil {
-		p.recordExplainerEvent(ctx, h, in, now, eventSkippedBudget, nil, nil, nil)
+	if time.Now().After(deadline) {
+		p.recordExplainerEvent(ctx, h, in, now, eventSkippedBudget, attempt{}, 0)
 		return &explainSkip{reason: "explain_budget_spent", residents: len(in.ask)}
 	}
-	return p.callExplainer(ctx, budget, h, in, now)
+	return p.callExplainer(ctx, deadline, h, in, now)
 }
 
 // loadExplainInput reads the Home's planned run and open Tasks and picks the
@@ -229,59 +226,66 @@ func (p *Planner) loadExplainInput(ctx context.Context, h HomeDay) (explainInput
 // call, so a failed call still counts), asks once for every Resident in the
 // input and stores the valid texts with the fingerprint of the plan they were
 // written for. It records the outcome as an llm_call_events row where it is
-// known. ctx is the tick's; the reservation and the call run under budget.
-func (p *Planner) callExplainer(ctx, budget context.Context, h HomeDay, in explainInput, now time.Time) *explainSkip {
+// known. The reservation, the call and the store end by deadline.
+func (p *Planner) callExplainer(ctx context.Context, deadline time.Time, h HomeDay, in explainInput, now time.Time) *explainSkip {
 	n := len(in.ask)
-	ok, err := reserveLLMCall(budget, p.db, h.ID, h.Date, p.llm.DailyCap)
+	ctx, cancelBudget := context.WithDeadline(ctx, deadline)
+	defer cancelBudget()
+	ok, err := reserveLLMCall(ctx, p.db, h.ID, h.Date, p.llm.DailyCap)
 	switch {
 	case err != nil:
-		p.recordExplainerEvent(ctx, h, in, now, eventError, nil, nil, nil)
+		p.recordExplainerEvent(ctx, h, in, now, eventError, attempt{}, 0)
 		return &explainSkip{reason: explainDBError, residents: n, err: err}
 	case !ok:
-		p.recordExplainerEvent(ctx, h, in, now, eventSkippedCap, nil, nil, nil)
+		p.recordExplainerEvent(ctx, h, in, now, eventSkippedCap, attempt{}, 0)
 		return &explainSkip{reason: "explain_llm_daily_cap_reached", residents: n}
 	}
-	callCtx, cancel := context.WithTimeout(budget, p.llm.CallTimeout)
+	callCtx, cancel := context.WithTimeout(ctx, p.llm.CallTimeout)
 	defer cancel()
 	start := time.Now()
 	texts, usage, err := p.llm.Explainer.Explain(callCtx, in.ask)
 	latency := time.Since(start)
-	none := 0
+	a := attempt{usage: usage, latency: &latency}
 	if err != nil {
-		reason := llmFailure(budget, err)
-		p.recordExplainerEvent(ctx, h, in, now, eventOutcomeOf(reason), usage, &latency, &none)
+		reason := llmFailure(ctx, err)
+		p.recordExplainerEvent(ctx, h, in, now, eventOutcomeOf(reason), a, 0)
 		return &explainSkip{reason: explainReason(reason), residents: n, err: err}
 	}
-	if err := p.storeExplanations(budget, in.run.id, texts, in.fingerprints, now); err != nil {
-		p.recordExplainerEvent(ctx, h, in, now, eventError, usage, &latency, &none)
+	if err := p.storeExplanations(ctx, in.run.id, texts, in.fingerprints, now); err != nil {
+		p.recordExplainerEvent(ctx, h, in, now, eventError, a, 0)
 		return &explainSkip{reason: explainDBError, residents: n, err: err}
 	}
 	kept := len(texts)
 	if kept == 0 {
-		p.recordExplainerEvent(ctx, h, in, now, eventInvalidResponse, usage, &latency, &none)
+		p.recordExplainerEvent(ctx, h, in, now, eventInvalidResponse, a, 0)
 		return &explainSkip{reason: explainReason(fallbackInvalid), residents: n}
 	}
-	p.recordExplainerEvent(ctx, h, in, now, eventAccepted, usage, &latency, &kept)
+	p.recordExplainerEvent(ctx, h, in, now, eventAccepted, a, kept)
 	if missing := n - kept; missing > 0 {
 		return &explainSkip{reason: explainReason(fallbackInvalid), residents: missing}
 	}
 	return nil
 }
 
-// recordExplainerEvent records the explainer's attempt for the Home. usage,
-// latency and accepted are nil when no call was made. Best effort, like the
-// allocator's: see recordLLMEvent.
-func (p *Planner) recordExplainerEvent(ctx context.Context, h HomeDay, in explainInput, now time.Time, outcome eventOutcome, usage *llmalloc.Usage, latency *time.Duration, accepted *int) {
+// recordExplainerEvent records the explainer's attempt for the Home. accepted
+// is how many texts were kept; it is recorded only when a call was made, that
+// is when a.latency is set. Best effort, like the allocator's: see
+// recordLLMEvent.
+func (p *Planner) recordExplainerEvent(ctx context.Context, h HomeDay, in explainInput, now time.Time, outcome eventOutcome, a attempt, accepted int) {
 	runID, sent := in.run.id, len(in.ask)
-	p.recordLLMEvent(ctx, event{
+	e := event{
 		service: explainerEventService, home: h.ID, date: allocation.DateOf(h.Date.Time()), now: now,
-		run: &runID, outcome: outcome, kinds: []string{}, latency: latency, usage: usage,
-		itemsSent: &sent, itemsAccepted: accepted,
-	})
+		run: &runID, outcome: outcome, kinds: []string{}, latency: a.latency, usage: a.usage,
+		itemsSent: &sent,
+	}
+	if a.latency != nil {
+		e.itemsAccepted = &accepted
+	}
+	p.recordLLMEvent(ctx, e)
 }
 
 // llmFailure maps a failed LLM call to the fallback reason it is recorded as.
-// ctx is the budget the call ran under.
+// ctx is the one the call ran under, bounded by the explain budget.
 func llmFailure(ctx context.Context, err error) fallbackReason {
 	switch {
 	case ctx.Err() != nil, errors.Is(err, context.DeadlineExceeded):
