@@ -1,13 +1,29 @@
 import type { Translate } from "../../../shared/i18n/context";
 import type { Level } from "../api/api";
 import { LEVEL_KEYS } from "./labels";
-import type { EnergyNote } from "./state";
+import type { CheckInState, EnergyNote } from "./state";
 
 /** What the pill is given: the Check-in read's outcome, and for a ready one the note from `energyNote`. */
 export type PillInput =
   | { kind: "loading" }
   | { kind: "failed" }
   | { kind: "ready"; note: EnergyNote; energy: number | null; level: Level | null };
+
+/**
+ * What the pill is given from the Check-in read: nothing before the Home is ready (the slot stays empty), `loading`
+ * while it reads, `failed` after a failure, and `ready` once the Check-in and its note are known.
+ */
+export function pillInput(args: {
+  checkInState: CheckInState;
+  note: EnergyNote | null;
+  energy: number | null;
+  homeReady: boolean;
+}): PillInput | null {
+  const { checkInState, note, energy, homeReady } = args;
+  if (checkInState.kind === "failed") return { kind: "failed" };
+  if (checkInState.kind === "ready" && note !== null) return { kind: "ready", note, energy, level: checkInState.checkIn.level };
+  return homeReady ? { kind: "loading" } : null;
+}
 
 export type PillIcon = "none" | "zap" | "moon" | "check" | "alert";
 

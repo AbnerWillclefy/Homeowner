@@ -6,7 +6,7 @@ import type { Locale } from "../../../shared/i18n/locales";
 import { createTranslate, type Catalogs } from "../../../shared/i18n/translate";
 import type { Level } from "../api/api";
 import type { EnergyNote } from "./state";
-import { energyPill, pillWidthTexts, type PillInput } from "./energyPill";
+import { energyPill, pillInput, pillWidthTexts, type PillInput } from "./energyPill";
 
 const translate = createTranslate({ "en-US": enUS, "pt-BR": ptBR } as Catalogs);
 const tFor = (locale: Locale): Translate => (key, params) => translate(locale, key, params);
@@ -65,6 +65,31 @@ describe("energyPill", () => {
 
   it("formats the number with the given formatter", () => {
     expect(energyPill(tFor("pt-BR"), ready("energy", 1234), (n) => `#${n}`).text).toBe("#1234");
+  });
+});
+
+describe("pillInput", () => {
+  const checkIn = { date: "2030-01-15", checkedIn: true, level: "normal" as Level, restrictions: [] };
+
+  it("is null before the Home is ready", () => {
+    expect(pillInput({ checkInState: { kind: "loading" }, note: null, energy: null, homeReady: false })).toBeNull();
+  });
+
+  it("is loading while the Check-in reads on a ready Home", () => {
+    expect(pillInput({ checkInState: { kind: "loading" }, note: null, energy: null, homeReady: true })).toEqual({ kind: "loading" });
+  });
+
+  it("is failed when the Check-in read failed", () => {
+    expect(pillInput({ checkInState: { kind: "failed", reason: "none" }, note: null, energy: null, homeReady: true })).toEqual({ kind: "failed" });
+  });
+
+  it("is ready with the note, the Energy and the level once the Check-in is known", () => {
+    expect(pillInput({ checkInState: { kind: "ready", checkIn }, note: "energy", energy: 9, homeReady: true })).toEqual({
+      kind: "ready",
+      note: "energy",
+      energy: 9,
+      level: "normal",
+    });
   });
 });
 

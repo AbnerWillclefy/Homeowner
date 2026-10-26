@@ -1,5 +1,5 @@
 import { EnergyPill } from "../../domains/checkin/components/EnergyPill";
-import type { PillInput } from "../../domains/checkin/logic/energyPill";
+import { pillInput } from "../../domains/checkin/logic/energyPill";
 import { StreakButton } from "../../domains/streak/components/StreakButton";
 import { Logo } from "../../shared/ui/Logo";
 import { useShell } from "./ShellContext";
@@ -16,14 +16,7 @@ import { useShell } from "./ShellContext";
  */
 export function TopBar() {
   const { streak, checkIn, note, energy, home, openCheckIn } = useShell();
-  const input: PillInput | null =
-    checkIn.state.kind === "failed"
-      ? { kind: "failed" }
-      : checkIn.state.kind === "ready" && note !== null
-        ? { kind: "ready", note, energy, level: checkIn.state.checkIn.level }
-        : home.state.kind === "ready"
-          ? { kind: "loading" }
-          : null;
+  const input = pillInput({ checkInState: checkIn.state, note, energy, homeReady: home.state.kind === "ready" });
   return (
     <header data-testid="top-bar" className="flex min-h-11 flex-wrap items-center justify-between gap-x-2">
       <div className="min-w-0 max-w-full">

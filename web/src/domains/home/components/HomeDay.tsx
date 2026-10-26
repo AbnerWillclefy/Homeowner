@@ -22,13 +22,12 @@ import { TodaySkeleton } from "./HomeSkeleton";
  */
 export function HomeDay() {
   // The Shell owns the Check-in (and its dialog), the Energy note and the planned figure; Today only shows them.
-  const { checkIn, note, planned } = useShell();
+  const { checkIn, note, energy, planned, openCheckIn } = useShell();
   const day = useDayPlan();
   const { state } = day;
   // Today's single header slot spins once, whichever of its two reads refreshes over what is on screen. The
   // Streak's refresh is the top bar's, not Today's.
   useReportFetching(day.refreshing || checkIn.refreshing);
-  const energy = state.kind === "ready" ? state.plan.energy : null;
   // One swap: until each of the two reads has answered (data or failure) Today is its skeleton, which holds the
   // final layout's space from the first frame and shows after the page's 300ms. Then the header and every section
   // arrive in the same render. The sections' own first-load skeletons therefore never draw on mount; they still
@@ -49,6 +48,7 @@ export function HomeDay() {
       <TodayHeader />
       <CheckInSection
         checkIn={checkIn}
+        onOpen={openCheckIn}
         energy={showsEnergy(note) ? <EnergySummary note={note} energy={energy ?? 0} planned={planned} /> : null}
       />
       <TodaySection day={day} note={note} />
