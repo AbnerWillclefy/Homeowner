@@ -81,6 +81,7 @@ describe("AiPage", () => {
     expect(get).toHaveBeenCalledWith("/admin/ai", { params: { range: "30d" } });
     const headings = [...container().querySelectorAll("h2")].map((h) => h.textContent);
     expect(headings).toEqual([
+      "Key numbers",
       "Cost this month (estimated)",
       "Calls per day",
       "Who planned the day",
@@ -224,5 +225,124 @@ describe("AiPage", () => {
     const hrefs = [...container().querySelectorAll<HTMLAnchorElement>("nav a")].map((a) => a.getAttribute("href"));
     expect(hrefs).toContain("/?range=30d");
     expect(hrefs).toContain("/ai?range=30d");
+  });
+});
+
+describe("AiPage headline", () => {
+  const busy = (n: number) =>
+    day(n, { outcomes: { ...service().outcomes, accepted: 3, rejected_by_referee: 1, timeout: 1 }, estCostMicros: 40_000 }, { outcomes: { ...service().outcomes, accepted: 2 }, estCostMicros: 5_000 });
+  const previous = (): AiUsage["previous"] => ({
+    from: "2026-09-24",
+    to: "2026-09-30",
+    services: { allocator: service({ outcomes: { ...service().outcomes, accepted: 70 } }), explainer: service() },
+    allocatorShare: { llm: 0, baseline: 0 },
+    explanationShare: { llm: 0, template: 0, templateReasons: { rejected_by_referee: 0, invalid_response: 0, timeout: 0, error: 0, skipped_cap: 0, skipped_budget: 0, partial: 0, notAsked: 0 } },
+  });
+  const tile = (name: string) => container().querySelector<HTMLElement>(`[data-headline="${name}"]`)!;
+  const month = (estCostMicros: number, limitMicros: number | null) => ({ month: "2026-10", estCostMicros, uncostedCalls: 0, limitMicros });
+
+  it("shows the five key numbers above the tables, each with a sparkline and a text alternative", async () => {
+    get.mockResolvedValue({ status: 200, data: usage(week(busy)) });
+    await render(page());
+    const names = [...container().querySelectorAll("[data-headline]")].map((t) => t.getAttribute("data-headline"));
+    expect(names).toEqual(["calls", "failure", "referee", "cost", "month"]);
+    expect(container().querySelector("h2")!.textContent).toBe("Key numbers");
+    expect(tile("month").compareDocumentPosition(container().querySelector("table")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(tile("calls").textContent).toContain("49");
+    expect(tile("calls").querySelector('svg[role="img"]')!.getAttribute("aria-label")).toBe("Total LLM calls, per day, last 7 days: 7 to 7, highest 7");
+    expect(tile("failure").textContent).toContain("14%");
+    expect(tile("failure").querySelectorAll('svg[role="img"]')).toHaveLength(1);
+    expect(tile("referee").querySelectorAll('svg[role="img"]')).toHaveLength(1);
+    expect(tile("cost").querySelectorAll('svg[role="img"]')).toHaveLength(2);
+  });
+
+  it("shows the change against the previous range for calls and a rate", async () => {
+    get.mockResolvedValue({ status: 200, data: usage(week(busy), { previous: previous() }) });
+    await render(page());
+    expect(tile("calls").textContent).toContain("-30% (count; today is partial) vs previous 7 days");
+    expect(tile("failure").textContent).toContain("+14 pp vs previous 7 days");
+    expect(tile("cost").textContent).toContain("new (today is partial) vs previous 7 days");
+  });
+
+  it("renders without a delta or an error when previous is missing", async () => {
+    get.mockResolvedValue({ status: 200, data: usage(week(busy)) });
+    await render(page());
+    expect(text()).not.toContain("vs previous");
+    expect(container().querySelector('[role="alert"]')).toBeNull();
+    expect(tile("calls").textContent).toContain("49");
+  });
+
+  it("badges a referee rejection rate of 20% as elevated, in text and with an icon", async () => {
+    get.mockResolvedValue({ status: 200, data: usage(week(busy)) });
+    await render(page());
+    expect(tile("referee").textContent).toContain("20%");
+    expect(tile("referee").textContent).toContain("Rejections elevated");
+    expect(tile("referee").querySelector("svg[aria-hidden]")).not.toBeNull();
+  });
+
+  it("says not enough data below the minimum sample of allocator calls", async () => {
+    get.mockResolvedValue({
+      status: 200,
+      data: usage(week((n) => (n === 1 ? day(n, { outcomes: { ...service().outcomes, rejected_by_referee: 5 } }) : day(n)))),
+    });
+    await render(page());
+    expect(tile("referee").textContent).toContain("Not enough data");
+  });
+
+  it("badges month to date at 110% as over the limit", async () => {
+    get.mockResolvedValue({ status: 200, data: usage(week(), { monthToDate: month(11_000_000, 10_000_000) }) });
+    await render(page());
+    expect(tile("month").textContent).toContain("$11.00 of $10.00");
+    expect(tile("month").textContent).toContain("Over the limit");
+  });
+
+  it("names a missing limit and shows no delta for month to date", async () => {
+    get.mockResolvedValue({ status: 200, data: usage(week(), { monthToDate: month(1_000_000, null), previous: previous() }) });
+    await render(page());
+    expect(tile("month").textContent).toContain("No limit set");
+    expect(tile("month").textContent).not.toContain("vs previous");
+  });
+
+  it("shows allocator and explainer cost as separate figures with a lower-bound note", async () => {
+    get.mockResolvedValue({
+      status: 200,
+      data: usage(week((n) => (n === 1 ? day(n, { estCostMicros: 40_000, uncostedCalls: 2 }, { estCostMicros: 5_000 }) : day(n)))),
+    });
+    await render(page());
+    const cost = tile("cost").textContent!;
+    expect(cost).toContain("Allocator");
+    expect(cost).toContain("$0.04");
+    expect(cost).toContain("Explainer");
+    expect(cost).toContain("$0.0050");
+    expect(cost).toContain("+2 calls without a price");
+  });
+
+  it("keeps the daily tables, collapsed by default", async () => {
+    get.mockResolvedValue({ status: 200, data: usage(week(busy)) });
+    await render(page());
+    const button = [...container().querySelectorAll("button")].find((b) => b.getAttribute("aria-expanded") !== null)!;
+    expect(button.getAttribute("aria-expanded")).toBe("false");
+    expect(container().querySelector("[data-collapsible-region]")!.hasAttribute("hidden")).toBe(true);
+    expect(container().querySelectorAll("[data-collapsible-region] table")).toHaveLength(2);
+  });
+
+  it("updates the figures when the range changes", async () => {
+    get.mockImplementation(async (_url: string, { params }: { params: { range: string } }) => ({
+      status: 200,
+      data: params.range === "7d" ? usage(week(busy)) : usage(Array.from({ length: 30 }, (_, i) => busy(i + 1)), { range: "30d" }),
+    }));
+    const tree = page();
+    await render(tree);
+    expect(tile("calls").textContent).toContain("49");
+    const radio = container().querySelector<HTMLInputElement>('input[value="30d"]')!;
+    await act(async () => radio.click());
+    await render(tree);
+    expect(tile("calls").textContent).toContain("210");
+  });
+
+  it("shows the headline skeleton while loading", async () => {
+    get.mockReturnValue(new Promise(() => {}));
+    await render(page());
+    expect(container().querySelectorAll("[data-headline-skeleton]").length).toBe(5);
   });
 });
