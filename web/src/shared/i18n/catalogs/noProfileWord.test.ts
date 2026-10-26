@@ -3,7 +3,7 @@ import type { Message } from "../translate";
 import { enUS } from "./en-US";
 import { ptBR } from "./pt-BR";
 
-// CONTEXT.md avoids "Profile" for a User; the screen is called Me. No text a User can see or hear may say it.
+// GLOSSARY.md avoids "Profile" for a User; the screen is called Me. No text a User can see or hear may say it.
 
 function values(message: Message): string[] {
   return typeof message === "string" ? [message] : Object.values(message);

@@ -20,7 +20,7 @@ Homeowner takes that negotiation off the table:
 
 The daily plan can be drafted by an LLM, but a deterministic referee written in Go checks every proposal against the rules and falls back to a rule-based planner whenever the model is slow, wrong or switched off ([ADR 0004](docs/adr/0004-ai-allocates-behind-a-deterministic-referee.md)). The model only sees opaque ids and numbers, never names or health-related details.
 
-The domain language (Home, Resident, Chore, Task, Energy, Check-in, Day Plan, Streak and friends) is defined in [CONTEXT.md](CONTEXT.md), and the product's principles in [PRODUCT.md](PRODUCT.md).
+The domain language (Home, Resident, Chore, Task, Energy, Check-in, Day Plan, Streak and friends) is defined in [GLOSSARY.md](GLOSSARY.md), and the product's principles in [PRODUCT.md](PRODUCT.md).
 
 ## Screenshots
 

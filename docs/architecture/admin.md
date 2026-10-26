@@ -1,6 +1,6 @@
 # The admin dashboard
 
-Related: [ADR 0017](../adr/0017-operate-through-a-separate-admin-app-per-environment.md), [ADR 0013](../adr/0013-own-server-state-with-tanstack-query-over-one-axios-client.md), [ADR 0004](../adr/0004-ai-allocates-behind-a-deterministic-referee.md). Terms: **Allocation**, **Day Plan**, **Home**, **Check-in** in [CONTEXT.md](../../CONTEXT.md).
+Related: [ADR 0017](../adr/0017-operate-through-a-separate-admin-app-per-environment.md), [ADR 0013](../adr/0013-own-server-state-with-tanstack-query-over-one-axios-client.md), [ADR 0004](../adr/0004-ai-allocates-behind-a-deterministic-referee.md). Terms: **Allocation**, **Day Plan**, **Home**, **Check-in** in [GLOSSARY.md](../../GLOSSARY.md).
 
 The admin dashboard is how the maintainer sees whether Homeowner is working: how many Homes are planned each day, how the LLM behaves and what it costs, and where the daily pipeline loses Homes. It is built. It has two halves: a small React app in `admin/`, and a read-only set of `/admin/` routes in the Go API (the `admin` package, see [The Go backend](backend.md#packages)).
 

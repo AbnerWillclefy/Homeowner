@@ -12,7 +12,7 @@ The PWA is shown in US English (`en-US`) or Brazilian Portuguese (`pt-BR`), chos
 - **Offline.** Both catalogs are imported statically and land in the precached main chunk, so both languages work offline with no service worker change. The service worker cannot share a React runtime; #49 gives it its own tiny fallback strings built on `locales.ts` and `resolveLocale.ts`.
 - **The page's `lang`.** The provider sets `<html lang>` to the shown locale before paint, because screen readers pick their voice from it. `index.html` ships `lang="en-US"` for the moment before JavaScript runs.
 - **One manifest, in English.** The app name is a brand and is the same in both languages. The manifest `description` stays English: there are no per-locale manifests.
-- **Wording.** Agreed `pt-BR` equivalents of the [CONTEXT.md](../../CONTEXT.md) terms are in [docs/glossary-pt-BR.md](../glossary-pt-BR.md).
+- **Wording.** Agreed `pt-BR` equivalents of the [GLOSSARY.md](../../GLOSSARY.md) terms are in [docs/glossary-pt-BR.md](../glossary-pt-BR.md).
 - **Components import only from `src/i18n`** (its `index.ts`), so swapping in a library later touches that folder only.
 
 ## Considered Options

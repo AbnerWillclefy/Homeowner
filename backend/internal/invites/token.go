@@ -1,5 +1,5 @@
 // Package invites stores Invites: single-use links a Resident shares to bring
-// a new Resident into their Home (see CONTEXT.md).
+// a new Resident into their Home (see GLOSSARY.md).
 package invites
 
 import (

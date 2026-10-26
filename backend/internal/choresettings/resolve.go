@@ -1,6 +1,6 @@
 // Package choresettings stores a Resident's Preference and Restriction on a
 // specific Chore of their Home, and works out the effective ones: the specific
-// setting beats the User's general one (see CONTEXT.md). It is kept apart from
+// setting beats the User's general one (see GLOSSARY.md). It is kept apart from
 // profile (the User's general settings) and chores (the Home's Chores).
 package choresettings
 
