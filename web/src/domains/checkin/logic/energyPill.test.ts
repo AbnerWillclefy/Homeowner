@@ -29,8 +29,8 @@ describe("energyPill", () => {
     ["en-US", ready("drained", 0), "0", "Drained today. Change Check-in", false, "moon"],
     ["pt-BR", ready("no-baseline", 0), "0", "Sem energia base hoje. Mudar check-in", false, "zap"],
     ["en-US", ready("no-baseline", 0), "0", "No Baseline today. Change Check-in", false, "zap"],
-    ["pt-BR", ready("pending", null, "low"), "Baixa", "Check-in feito: Baixa. Mudar check-in", false, "check"],
-    ["en-US", ready("pending", null, "low"), "Low", "Checked in: Low. Change Check-in", false, "check"],
+    ["pt-BR", ready("pending", null, "low"), "Check-in", "Check-in feito: Baixa. Mudar check-in", false, "check"],
+    ["en-US", ready("pending", null, "low"), "Check-in", "Checked in: Low. Change Check-in", false, "check"],
     ["pt-BR", { kind: "failed" }, "Falhou", "Energia indisponível. Tentar de novo", false, "alert"],
     ["en-US", { kind: "failed" }, "Failed", "Energy unavailable. Try again", false, "alert"],
   ] as const)("in %s %j reads %s, is named %s, dashed %s, icon %s", (locale, input, text, name, dashed, icon) => {
@@ -51,7 +51,11 @@ describe("energyPill", () => {
     expect(new Set(views.map((v) => v.name)).size).toBe(views.length);
   });
 
-  it("falls back to the Check-in word when a checked-in Resident has no level", () => {
+  it("keeps a check mark and the Check-in word for a Check-in made before the plan has Energy, and names the level", () => {
+    expect(view("en-US", ready("pending", null, "low"))).toMatchObject({ text: "Check-in", icon: "check", dashed: false });
+  });
+
+  it("names a checked-in Resident without a level plainly", () => {
     expect(view("en-US", ready("pending", null))).toMatchObject({ text: "Check-in", name: "Checked in. Change Check-in" });
   });
 
@@ -67,6 +71,6 @@ describe("energyPill", () => {
 describe("pillWidthTexts", () => {
   it("lists every text the pill can show, so the box is as wide as the widest", () => {
     const texts = pillWidthTexts(tFor("pt-BR"), "5");
-    expect(texts).toEqual(expect.arrayContaining(["Check-in", "5", "Falhou", "Baixa", "Normal", "Energizado"]));
+    expect(texts).toEqual(["Check-in", "Falhou", "5"]);
   });
 });

@@ -43,10 +43,9 @@ export function energyPill(t: Translate, input: PillInput, formatNumber: (n: num
     case "no-baseline":
       return { kind: note, text: formatNumber(0), name: t("checkin.pill.name.noBaseline"), dashed: false, icon: "zap" };
     case "pending": {
-      if (level === null)
-        return { kind: note, text: t("checkin.pill.unset"), name: t("checkin.pill.name.done"), dashed: false, icon: "check" };
-      const label = t(LEVEL_KEYS[level].label);
-      return { kind: note, text: label, name: t("checkin.pill.name.pending", { level: label }), dashed: false, icon: "check" };
+      // No number yet, so a check mark and the Check-in word (short, so the pill stays one width); the name has the level.
+      const name = level === null ? t("checkin.pill.name.done") : t("checkin.pill.name.pending", { level: t(LEVEL_KEYS[level].label) });
+      return { kind: note, text: t("checkin.pill.unset"), name, dashed: false, icon: "check" };
     }
   }
 }
@@ -56,12 +55,5 @@ export function energyPill(t: Translate, input: PillInput, formatNumber: (n: num
  * invisibly and be as wide as the widest from the first frame, with no width written in pixels.
  */
 export function pillWidthTexts(t: Translate, number: string): string[] {
-  return [
-    t("checkin.pill.unset"),
-    t("checkin.pill.failed"),
-    number,
-    t(LEVEL_KEYS.low.label),
-    t(LEVEL_KEYS.normal.label),
-    t(LEVEL_KEYS.energized.label),
-  ];
+  return [t("checkin.pill.unset"), t("checkin.pill.failed"), number];
 }

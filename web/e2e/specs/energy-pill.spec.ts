@@ -137,13 +137,14 @@ for (const l of LOCALES) {
       await expect(pill(page, l.unset)).toBeVisible();
     });
 
-    test("checked in before the Allocation, the pill shows the level instead of a number", async ({ page, baseURL, fakeApi }) => {
+    test("checked in before the Allocation, the pill shows a check mark and Check-in, and names the level", async ({ page, baseURL, fakeApi }) => {
       fakeApi.state.checkIn = { date: "2030-01-15", checkedIn: true, level: "low", restrictions: [] };
       fakeApi.state.dayPlan = { ...fakeApi.state.dayPlan!, planned: false, energy: null, mine: [], others: [], pool: [] };
       await visit(page, new URL("/home", baseURL!).toString());
       const level = l.locale === "pt-BR" ? "Baixa" : "Low";
       await expect(pill(page, l.pending(level))).toBeVisible();
-      await expect(pill(page, l.pending(level))).toContainText(level);
+      await expect(pill(page, l.pending(level))).toHaveText("Check-in", { useInnerText: true });
+      expect(await pill(page, l.pending(level)).evaluate((el) => getComputedStyle(el).borderStyle)).toBe("solid");
     });
   });
 }
