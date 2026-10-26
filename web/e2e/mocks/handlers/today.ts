@@ -1,4 +1,4 @@
-import { LEVELS, type CheckIn, type Level } from "../../../src/domains/checkin/api/api";
+import type { CheckIn, Level } from "../../../src/domains/checkin/api/api";
 import type { DayPlan } from "../../../src/domains/dayplan/api/api";
 import { json, signedIn, type FakeApi } from "../api";
 
@@ -7,6 +7,9 @@ export const FAKE_TODAY = "2030-01-15";
 
 /** The Energy the fake plans for each level, so a spec can tell a saved Check-in from the one it replaced. */
 const ENERGY_OF_LEVEL: Record<Level, number> = { drained: 0, low: 4, normal: 9, energized: 14 };
+
+// Type-only imports from the app: a value import pulls in its config, which reads `import.meta.env` that Node lacks.
+const isLevel = (value: unknown): value is Level => typeof value === "string" && Object.hasOwn(ENERGY_OF_LEVEL, value);
 
 /**
  * What Today reads as soon as it mounts: the Check-in, the Day Plan and the Streak. With nothing in the state they
@@ -31,7 +34,7 @@ export function todayHandlers(api: FakeApi): void {
       if (state.home === null) return json(404, { error: "no home" });
       const body = typeof request.body === "object" && request.body !== null ? (request.body as Record<string, unknown>) : {};
       const level = body["level"];
-      if (typeof level !== "string" || !(LEVELS as readonly string[]).includes(level)) return json(400, { error: "invalid" });
+      if (!isLevel(level)) return json(400, { error: "invalid" });
       const restrictions = Array.isArray(body["restrictions"]) ? body["restrictions"].filter((id): id is string => typeof id === "string") : [];
       state.checkIn = { date: FAKE_TODAY, checkedIn: true, level, restrictions };
       if (state.dayPlan) state.dayPlan = { ...state.dayPlan, energy: ENERGY_OF_LEVEL[level] };
