@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { barPercent } from "./range";
 
 export interface BarColumn<T> {
@@ -5,6 +6,8 @@ export interface BarColumn<T> {
   label: string;
   /** The number this column shows for a row's data. */
   value(data: T): number;
+  /** What the cell shows instead of the number (a formatted figure); the bar still follows `value`. */
+  display?(data: T): ReactNode;
 }
 
 export interface BarRow<T> {
@@ -70,7 +73,7 @@ export function BarTable<T>({ caption, rowHeader, columns, rows }: Props<T>) {
                         style={{ width: `${percent}%` }}
                       />
                     )}
-                    <span className="relative">{value}</span>
+                    <span className="relative">{column.display ? column.display(row.data) : value}</span>
                   </td>
                 );
               })}

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { OverviewPage } from "../domains/overview/OverviewPage";
+import { AiPage } from "../domains/ai/AiPage";
 import { Placeholder } from "./Placeholder";
 
 export interface Page {
@@ -9,9 +10,9 @@ export interface Page {
   element: ReactNode;
 }
 
-// The one table of pages: the nav and the routes both read it. Placeholders until #326 (AI usage), #330 and #331 (Flow).
+// The one table of pages: the nav and the routes both read it. Flow is a placeholder until #331.
 export const PAGES: Page[] = [
   { path: "", label: "Overview", element: <OverviewPage /> },
-  { path: "ai", label: "AI usage", element: <Placeholder title="AI usage" note="Coming soon." /> },
+  { path: "ai", label: "AI usage", element: <AiPage /> },
   { path: "flow", label: "Flow", element: <Placeholder title="Flow" note="Coming soon." /> },
 ];
