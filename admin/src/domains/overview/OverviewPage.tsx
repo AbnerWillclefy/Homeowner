@@ -3,43 +3,22 @@ import { BarTable, BarTableSkeleton, type BarColumn } from "../../shared/BarTabl
 import { Button } from "../../shared/Button";
 import { rangeDays, useRange } from "../../shared/range";
 import { RangeControl } from "../../shared/RangeControl";
-import { isQuiet, useOverview, type Overview } from "./api";
+import { useOverview, type Overview, type OverviewDay } from "./api";
 
-const COLUMNS: BarColumn[] = [
-  { key: "runs", label: "Runs" },
-  { key: "rejected", label: "Rejected" },
-  { key: "fallbacks", label: "Fallbacks" },
-  { key: "checkins", label: "Check-ins" },
-  { key: "completions", label: "Completions" },
-  { key: "refuses", label: "Refuses (lower bound)" },
-  { key: "takes", label: "Takes" },
-  { key: "swaps", label: "Swaps accepted" },
-  { key: "delivered", label: "Pushes accepted by push service" },
-  { key: "failed", label: "Pushes failed" },
-  { key: "gone", label: "Pushes gone" },
-  { key: "unknown", label: "Pushes unknown outcome" },
+const COLUMNS: BarColumn<OverviewDay>[] = [
+  { key: "runs", label: "Runs", value: (d) => d.runs },
+  { key: "rejected", label: "Rejected", value: (d) => d.rejected },
+  { key: "fallbacks", label: "Fallbacks", value: (d) => d.fallbacks },
+  { key: "checkins", label: "Check-ins", value: (d) => d.checkins },
+  { key: "completions", label: "Completions", value: (d) => d.completions },
+  { key: "refuses", label: "Refuses (lower bound)", value: (d) => d.refuses },
+  { key: "takes", label: "Takes", value: (d) => d.takes },
+  { key: "swaps", label: "Swaps accepted", value: (d) => d.swapsAccepted },
+  { key: "delivered", label: "Pushes accepted by push service", value: (d) => d.pushes.delivered },
+  { key: "failed", label: "Pushes failed", value: (d) => d.pushes.failed },
+  { key: "gone", label: "Pushes gone", value: (d) => d.pushes.gone },
+  { key: "unknown", label: "Pushes unknown outcome", value: (d) => d.pushes.unknown },
 ];
-
-function rowsOf(overview: Overview) {
-  return overview.days.map((d) => ({
-    id: d.date,
-    label: d.date,
-    values: [
-      d.runs,
-      d.rejected,
-      d.fallbacks,
-      d.checkins,
-      d.completions,
-      d.refuses,
-      d.takes,
-      d.swapsAccepted,
-      d.pushes.delivered,
-      d.pushes.failed,
-      d.pushes.gone,
-      d.pushes.unknown,
-    ],
-  }));
-}
 
 function Tile({ label, value }: { label: string; value: number }) {
   return (
@@ -118,8 +97,8 @@ function Loaded({ overview, caption }: { overview: Overview; caption: string }) 
         <h2 id="days" className="mb-2 text-xl font-semibold">
           Per day
         </h2>
-        {isQuiet(overview.days) && <p className="font-semibold">No activity in this range</p>}
-        <BarTable caption={caption} rowHeader="Date" columns={COLUMNS} rows={rowsOf(overview)} />
+        {overview.days.every((d) => COLUMNS.every((c) => c.value(d) === 0)) && <p className="font-semibold">No activity in this range</p>}
+        <BarTable caption={caption} rowHeader="Date" columns={COLUMNS} rows={overview.days.map((d) => ({ id: d.date, label: d.date, data: d }))} />
         <ul className="mt-3 list-disc pl-6 text-sm text-muted">
           <li>Refuses is a lower bound: a refused Task that is taken later is not counted.</li>
           <li>Pushes accepted by push service were taken by the push service, not necessarily shown on a phone.</li>

@@ -88,13 +88,17 @@ describe("OverviewPage", () => {
 
   it("shows an error with a Retry button that refetches", async () => {
     get.mockRejectedValueOnce(new Error("boom"));
-    await render(page());
+    // One tree and one QueryClient throughout: rendering the same element again only waits, it does not remount.
+    const tree = page();
+    await render(tree);
     expect(container().querySelector('[role="alert"]')!.textContent).toContain("could not be loaded");
     get.mockResolvedValue({ status: 200, data: overview(sevenDays()) });
     const retry = [...container().querySelectorAll("button")].find((b) => b.textContent === "Retry")!;
     await act(async () => retry.click());
-    await render(page());
+    await render(tree);
     expect(get).toHaveBeenCalledTimes(2);
+    expect(container().querySelector('[role="alert"]')).toBeNull();
+    expect(container().textContent).toContain("Active Homes");
   });
 
   it("shows the table with zeros and one line when every count is 0", async () => {

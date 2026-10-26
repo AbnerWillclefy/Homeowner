@@ -61,12 +61,3 @@ export const overviewKey = (range: Range) => ["admin", "overview", range] as con
 export function useOverview(range: Range) {
   return useQuery({ queryKey: overviewKey(range), queryFn: () => fetchOverview(range) });
 }
-
-/** True when nothing happened on any day of the range. */
-export function isQuiet(days: OverviewDay[]): boolean {
-  return days.every(
-    (d) =>
-      d.runs + d.rejected + d.fallbacks + d.checkins + d.completions + d.refuses + d.takes + d.swapsAccepted === 0 &&
-      d.pushes.delivered + d.pushes.failed + d.pushes.gone + d.pushes.unknown === 0,
-  );
-}

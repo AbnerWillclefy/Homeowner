@@ -1,27 +1,28 @@
 import { barPercent } from "./range";
 
-export interface BarColumn {
+export interface BarColumn<T> {
   key: string;
   label: string;
+  /** The number this column shows for a row's data. */
+  value(data: T): number;
 }
 
-export interface BarRow {
+export interface BarRow<T> {
   id: string;
   /** The row header, for example a date. */
   label: string;
-  /** One number per column, in column order. */
-  values: number[];
+  data: T;
 }
 
-interface Props {
+interface Props<T> {
   caption: string;
   /** The header of the row-header column. */
   rowHeader: string;
-  columns: BarColumn[];
-  rows: BarRow[];
+  columns: BarColumn<T>[];
+  rows: BarRow<T>[];
 }
 
-function Head({ rowHeader, columns }: Pick<Props, "rowHeader" | "columns">) {
+function Head<T>({ rowHeader, columns }: Pick<Props<T>, "rowHeader" | "columns">) {
   return (
     <thead>
       <tr>
@@ -43,8 +44,8 @@ function Head({ rowHeader, columns }: Pick<Props, "rowHeader" | "columns">) {
  * and never meets the bar (aria-hidden). Each column's bars scale to its own largest value; with a largest of 0
  * there is no bar, only the 0. The bar is a decorative extra: the number carries the meaning.
  */
-export function BarTable({ caption, rowHeader, columns, rows }: Props) {
-  const maxima = columns.map((_, i) => Math.max(0, ...rows.map((row) => row.values[i] ?? 0)));
+export function BarTable<T>({ caption, rowHeader, columns, rows }: Props<T>) {
+  const maxima = columns.map((column) => Math.max(0, ...rows.map((row) => column.value(row.data))));
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-left tabular-nums">
@@ -57,7 +58,7 @@ export function BarTable({ caption, rowHeader, columns, rows }: Props) {
                 {row.label}
               </th>
               {columns.map((column, i) => {
-                const value = row.values[i] ?? 0;
+                const value = column.value(row.data);
                 const percent = barPercent(value, maxima[i]);
                 return (
                   <td key={column.key} className="relative min-w-20 border-b border-border px-3 py-2">
@@ -82,7 +83,7 @@ export function BarTable({ caption, rowHeader, columns, rows }: Props) {
 }
 
 /** The table's shape before the data arrives: the right number of rows, so the layout does not jump. */
-export function BarTableSkeleton({ caption, rowHeader, columns, rowCount }: Omit<Props, "rows"> & { rowCount: number }) {
+export function BarTableSkeleton<T>({ caption, rowHeader, columns, rowCount }: Omit<Props<T>, "rows"> & { rowCount: number }) {
   const block = "inline-block h-4 rounded-control bg-border/40 motion-safe:animate-pulse";
   return (
     <div className="overflow-x-auto" aria-busy="true">
