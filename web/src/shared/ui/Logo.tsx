@@ -13,7 +13,9 @@ interface Props {
  */
 export function Logo({ as: Element = "h1" }: Props) {
   return (
-    <Element className="m-0 inline-flex min-h-11 min-w-0 items-center gap-2 text-xl leading-none font-extrabold text-text">
+    // The wordmark never breaks inside the word; where even it does not fit (the largest text on a narrow phone)
+    // the drawing and the word wrap onto two lines instead.
+    <Element className="m-0 inline-flex min-h-11 max-w-full flex-wrap items-center gap-x-2 text-xl leading-none font-extrabold text-text">
       <svg
         aria-hidden="true"
         viewBox="0 0 32 32"
@@ -29,7 +31,7 @@ export function Logo({ as: Element = "h1" }: Props) {
         <path d="M4 15 L16 4 L28 15 M7.5 12.5 V27 H24.5 V12.5" />
         <path d="M12 19.5 L15 22.5 L20.5 16" className="text-accent forced-colors:text-[CanvasText]" />
       </svg>
-      <span>homeowner</span>
+      <span className="whitespace-nowrap">homeowner</span>
     </Element>
   );
 }
