@@ -32,11 +32,12 @@ test("Today shows the planned day", async ({ page, baseURL }) => {
   await expect(tabs.today.pool(page)).toBeVisible();
 });
 
-test("Today has no Replan now button: the e2e build has VITE_REPLAN_ENABLED off, like production", async ({ page, baseURL }) => {
+test("Today has no Replan control, in either language", async ({ page, baseURL }) => {
   await launchApp(page, baseURL!);
 
   await expect(tabs.today.mine(page)).toBeVisible();
   await expect(page.getByRole("button", { name: "Replan now" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Replanejar agora" })).toHaveCount(0);
 });
 
 test("Chores lists the Home's Chores", async ({ page, baseURL }) => {

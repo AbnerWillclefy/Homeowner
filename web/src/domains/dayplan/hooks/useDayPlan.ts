@@ -123,9 +123,6 @@ export function useDayPlan() {
     await refetch();
   }, [refetch]);
 
-  /** Puts a plan the server answered (or the replan read) into the cache, without the loading state. */
-  const show = useCallback((plan: DayPlan) => writeActionAnswer(queryClient, plan), [queryClient]);
-
   const act = useCallback(async (running: NonNullable<Acting>) => {
     if (inFlight.current) return;
     inFlight.current = true;
@@ -164,5 +161,5 @@ export function useDayPlan() {
   /** Accepts, declines or cancels a Swap offer. Resolves when the action ends. */
   const answerSwap = useCallback((action: SwapAction, swapId: string) => act({ action, swapId }), [act]);
 
-  return { state, refreshing, reload, run, acceptAll, offerSwap: offer, answerSwap, acting, notice, changed, show };
+  return { state, refreshing, reload, run, acceptAll, offerSwap: offer, answerSwap, acting, notice, changed };
 }
