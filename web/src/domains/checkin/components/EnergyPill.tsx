@@ -1,4 +1,5 @@
 import { CircleAlert, Moon, Zap, Check, type LucideIcon } from "lucide-react";
+import type { RefObject } from "react";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { SkeletonPill } from "../../../shared/ui/Skeleton";
@@ -39,6 +40,8 @@ function Content({ texts, real }: { texts: string[]; real: { icon: PillIcon; tex
 interface Props {
   /** The Check-in read's outcome and, once ready, the Energy note (from `energyNote`) and the plan's Energy. */
   input: PillInput;
+  /** The pill button, for the Shell: focus returns to it when the dialog opens by itself. */
+  buttonRef: RefObject<HTMLButtonElement | null>;
   /** Opens the Check-in dialog. Gets the pill, so focus can return to it. */
   onOpen(opener: HTMLElement): void;
   /** Reads the Check-in and the Demands again, from the unavailable state. */
@@ -52,7 +55,7 @@ interface Props {
  * state, never the accent (The One Voice Rule). While the Check-in loads it is an empty box of its final size (a
  * pulse after 300ms), and `aria-hidden`, because the bar is not a place to announce a wait.
  */
-export function EnergyPill({ input, onOpen, onRetry }: Props) {
+export function EnergyPill({ input, buttonRef, onOpen, onRetry }: Props) {
   const { t, locale } = useI18n();
   const format = (n: number) => new Intl.NumberFormat(locale).format(n);
   const texts = pillWidthTexts(t, input.kind === "ready" && input.energy !== null ? format(input.energy) : format(0));
@@ -75,6 +78,7 @@ export function EnergyPill({ input, onOpen, onRetry }: Props) {
   return (
     <Button
       variant="secondary"
+      ref={buttonRef}
       aria-label={view.name}
       onClick={(event) => (view.kind === "failed" ? onRetry() : onOpen(event.currentTarget))}
       className={`px-3! whitespace-nowrap ${view.dashed ? "border-dashed" : ""}`}

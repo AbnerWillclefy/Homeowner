@@ -36,5 +36,13 @@ export function useShellCheckIn(hasHome: boolean) {
   );
   const closeCheckIn = useCallback(() => setCheckInOpen(false), []);
 
-  return { checkIn, note, energy, planned, openCheckIn, checkInOpen, closeCheckIn, returnFocusRef };
+  // The dialog opened by itself has no opener: focus goes back to the pill, the control that reopens it.
+  const pillRef = useRef<HTMLButtonElement | null>(null);
+  /** Keeps the dialog open until its own close, whatever a refetch says in the meantime. */
+  const latchCheckIn = useCallback(() => {
+    returnFocusRef.current = pillRef.current;
+    setCheckInOpen(true);
+  }, []);
+
+  return { checkIn, note, energy, planned, openCheckIn, checkInOpen, closeCheckIn, latchCheckIn, pillRef, returnFocusRef };
 }

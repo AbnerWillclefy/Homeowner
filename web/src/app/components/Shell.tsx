@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Outlet, useLocation } from "react-router";
 import { ShellCheckInDialog } from "../../domains/checkin/components/ShellCheckInDialog";
@@ -38,7 +38,7 @@ export function Shell() {
   const me = useMe();
   const hasHome = home.state.kind === "ready";
   const streak = useStreak(hasHome);
-  const { checkIn, note, energy, planned, openCheckIn, checkInOpen, closeCheckIn, returnFocusRef } = useShellCheckIn(hasHome);
+  const { checkIn, note, energy, planned, openCheckIn, checkInOpen, closeCheckIn, latchCheckIn, pillRef, returnFocusRef } = useShellCheckIn(hasHome);
   const queryClient = useQueryClient();
   const { pathname } = useLocation();
   const invite = useInvite();
@@ -59,10 +59,27 @@ export function Shell() {
   useFocusOnNavigate(content, pathname, t("app.name"));
 
   // Dialogs wait on the other tabs; a pending Invite sends every path to Today anyway (see resolveRoute).
-  const dialog = pathname === TODAY_PATH ? dialogToShow({ inviteToken: invite.token, after: session.after, choosing: session.choosing }) : null;
+  const dialog = dialogToShow({
+    onToday: pathname === TODAY_PATH,
+    inviteToken: invite.token,
+    after: session.after,
+    choosing: session.choosing,
+    checkIn: checkIn.state.kind === "ready" ? checkIn.state.checkIn : null,
+    checkInDismissedFor: session.checkInDismissedFor,
+  });
+
+  // The Check-in dialog is latched once it shows: a refetch (saved on another device, midnight) cannot unmount the
+  // form under the Resident's thumb. Only its own close ends it, and that counts as "not now" for the date.
+  useEffect(() => {
+    if (dialog === "checkin") latchCheckIn();
+  }, [dialog, latchCheckIn]);
+  const dismissCheckIn = () => {
+    if (checkIn.state.kind === "ready") session.dismissCheckIn(checkIn.state.checkIn.date);
+    closeCheckIn();
+  };
 
   return (
-    <ShellContext.Provider value={{ home, residents, me, streak, checkIn, note, energy, openCheckIn }}>
+    <ShellContext.Provider value={{ home, residents, me, streak, checkIn, note, energy, openCheckIn, pillRef }}>
       <div className="flex min-h-dvh flex-col">
         <PageFrame className="flex-1" top={<TopBar />}>
           <div ref={content}>
@@ -82,8 +99,14 @@ export function Shell() {
         </LazyDialog>
       )}
       {dialog === "start-choice" && <StartChoice onDecided={session.decide} />}
-      {/* The one Check-in dialog, opened by the pill. */}
-      <ShellCheckInDialog checkIn={checkIn} open={checkInOpen} planned={planned} onClose={closeCheckIn} returnFocusRef={returnFocusRef} />
+      {/* The one Check-in dialog, opened by the pill or by itself on launch. Never two. */}
+      <ShellCheckInDialog
+        checkIn={checkIn}
+        open={checkInOpen || dialog === "checkin"}
+        planned={planned}
+        onClose={dismissCheckIn}
+        returnFocusRef={returnFocusRef}
+      />
     </ShellContext.Provider>
   );
 }
