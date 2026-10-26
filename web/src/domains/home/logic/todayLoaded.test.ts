@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { todayLoaded, type TodayReads } from "./todayLoaded";
 
-const settled: TodayReads = { checkIn: { kind: "ready" }, dayPlan: { kind: "ready" }, streakLoading: false };
+const settled: TodayReads = { checkIn: { kind: "ready" }, dayPlan: { kind: "ready" } };
 
 describe("todayLoaded", () => {
-  it("is true when all three reads have data", () => {
+  it("is true when both reads have data", () => {
     expect(todayLoaded(settled)).toBe(true);
   });
 
@@ -16,13 +16,14 @@ describe("todayLoaded", () => {
     expect(todayLoaded({ ...settled, dayPlan: { kind: "loading" } })).toBe(false);
   });
 
-  it("stays false while the Streak is on its first load", () => {
-    expect(todayLoaded({ ...settled, streakLoading: true })).toBe(false);
+  it("does not wait for the Streak: it lives in the top bar, not in Today", () => {
+    // A stray field (an old caller passing the Streak's loading flag) changes nothing.
+    expect(todayLoaded({ ...settled, streakLoading: true } as TodayReads)).toBe(true);
   });
 
-  it("stays false until the slowest read answers, however many have", () => {
-    expect(todayLoaded({ checkIn: { kind: "ready" }, dayPlan: { kind: "ready" }, streakLoading: true })).toBe(false);
-    expect(todayLoaded({ checkIn: { kind: "failed" }, dayPlan: { kind: "loading" }, streakLoading: false })).toBe(false);
+  it("stays false until the slowest read answers", () => {
+    expect(todayLoaded({ checkIn: { kind: "loading" }, dayPlan: { kind: "ready" } })).toBe(false);
+    expect(todayLoaded({ checkIn: { kind: "failed" }, dayPlan: { kind: "loading" } })).toBe(false);
   });
 
   it("counts a failed Check-in as settled", () => {
@@ -37,11 +38,7 @@ describe("todayLoaded", () => {
     }
   });
 
-  it("counts a Streak that ended loading with no number as settled", () => {
-    expect(todayLoaded({ ...settled, streakLoading: false })).toBe(true);
-  });
-
   it("is true when every read failed", () => {
-    expect(todayLoaded({ checkIn: { kind: "failed" }, dayPlan: { kind: "failed" }, streakLoading: false })).toBe(true);
+    expect(todayLoaded({ checkIn: { kind: "failed" }, dayPlan: { kind: "failed" } })).toBe(true);
   });
 });

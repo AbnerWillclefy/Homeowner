@@ -56,6 +56,11 @@ typography:
     fontSize: "1.875rem"
     fontWeight: 700
     lineHeight: 1.25
+  wordmark:
+    fontFamily: "Nunito, system-ui, sans-serif"
+    fontSize: "1.25rem"
+    fontWeight: 800
+    lineHeight: 1
 rounded:
   control: "0.75rem"
   card: "1.25rem"
@@ -123,7 +128,8 @@ It is light and dark by token swap, not by variant, and it holds at the largest 
 - Flat white cards with a 1px edge on a pale green-grey surface.
 - One teal accent for primary actions; pastels label Categories only.
 - Pills for buttons and chips, rounded squares for icon tiles, big rounded rectangles for cards.
-- Nunito at 400, 600 and 700 only.
+- Nunito at 400, 600 and 700, plus 800 for the wordmark only.
+- One quiet top bar on every tab: the logo on the left, the Streak on the right.
 - Thumb-reach: no primary action is stranded on the left.
 
 ## Colors
@@ -146,7 +152,7 @@ A muted, sage-tinted neutral world with one deep teal voice and six soft pastels
 Each is a fill with a paired ink. Kitchen peach, bathroom mint, bedroom and living room lavender, laundry and floors blue, trash and outdoor yellow, pets salmon. "Other" and anything unknown is the neutral card. The pastel fills the whole card only for your own Tasks; elsewhere it lives on the icon tile and the chip.
 
 ### Named Rules
-**The One Voice Rule.** Teal means "this is the action". It never decorates, never labels a Category, and never appears on more than one button per card.
+**The One Voice Rule.** Teal means "this is the action". It never decorates, never labels a Category, and never appears on more than one button per card. One named exception: the mint check that is the door of the logo is decoration, in the brand mark only (`accent`, so it follows light and dark by token swap; the system text colour in forced-colours mode). It is never on a control, never repeated elsewhere, and never stands for a state.
 
 **The Pastels Name, Never Rank Rule.** A pastel says what kind of work it is, or, on an initials avatar, tells Residents apart. It is never used for status, urgency, success or Importance.
 
@@ -154,7 +160,7 @@ Each is a fill with a paired ink. Kitchen peach, bathroom mint, bedroom and livi
 
 ## Typography
 
-**Body Font:** Nunito (with system-ui, -apple-system, Segoe UI, Roboto, sans-serif). Self-hosted, latin subset, 400/600/700.
+**Body Font:** Nunito (with system-ui, -apple-system, Segoe UI, Roboto, sans-serif). Self-hosted, latin subset, 400/600/700, and 800 for the wordmark only.
 
 **Character:** One rounded humanist sans for everything. Friendly without being cute; hierarchy comes from weight and size, never from a second family.
 
@@ -165,6 +171,7 @@ Each is a fill with a paired ink. Kitchen peach, bathroom mint, bedroom and livi
 - **Body** (400, 1rem, 1.5): sentences. Never below 1rem in inputs (iOS zoom).
 - **Label** (600, 0.875rem, 1.5): the Category name above a Chore, facts, hints, chip text.
 - **Stat** (700, 1.875rem, 1.25): a number in a stat tile, over its label.
+- **Wordmark** (800, 1.25rem, 1): the lowercase "homeowner" in the logo. The only 800 in the app; it is preloaded with the other weights so it never swaps in. It is a brand name and is not translated.
 
 ### Named Rules
 **The Portuguese First Rule.** Most Residents read the app in Brazilian Portuguese, which runs about a third longer than English. Every screen is designed and checked in pt-BR as well as en-US, at the largest text size. Where two pt-BR wordings are equally clear, pick the shorter one ("5 de 5 planejados", not "5 de 5 planejados para você"). A row that holds text and an action lets the action drop to its own end-aligned line rather than squeeze the text.
@@ -229,12 +236,21 @@ Icon and Category name on the Category pastel, a pill with a hairline edge, 0.87
   - Closed, it shows at most one line of title: no hint when the title is server text. The title wraps at large text and is never cut with an ellipsis (The Wrap, Never Truncate Rule).
   - The icon tile is decorative unless it carries meaning. When it does, it has a text description and the open body repeats it as a visible caption, never a tooltip. A state that is not an error (a fallback text, say) uses the neutral tile (muted tint, muted ink), not a warning icon.
 
-### Header icon button
-An icon with a short value, at the end of a page header's title row after the refresh spinner slot.
-- At least 2.75rem, never shrinking, aligned to the top while the title wraps. Tabular figures, so a changing value does not move it.
+### Top bar
+One quiet row above the content of every tab, in the same centred column, with no fill or edge of its own. On the left the logo; on the right two fixed slots, the Energy slot (empty until the Energy pill arrives) and the Streak slot.
+- It reserves its whole height (at least 2.75rem) and both slots from the first frame, whatever the data, so nothing moves while the Streak loads or when the Energy pill is added. The right group never shrinks; at the largest text size on a narrow phone the bar wraps and the Streak drops under the logo, on the right, instead of leaving the screen.
+- It replaces the app name and the tagline: neither appears on any tab. On the pre-Home screens (sign-in, sign-up, the waiting and retry screens) the logo stands alone, without the slots; the onboarding walk has its own frame. While the Home loads inside the app the bar is there with its slots empty, so it never appears late.
+- The logo is the page's one `h1`. Each tab's own first `h2` still receives focus when the tab opens.
+
+### Logo
+A house drawn in one rounded line (stroke follows the ink colour) with a check as its door, then the lowercase wordmark "homeowner" in Nunito 800. The drawing is `aria-hidden`; the accessible name is the visible text, "homeowner", with no `aria-label` that could differ. The check is the one mint accent that is decoration (see The One Voice Rule); in forced-colours mode both the house and the check use the system text colour so the logo never vanishes. If the word does not fit beside the drawing at the largest text size, the drawing sits above it; the word is never broken or cut.
+
+### Streak slot (header icon button)
+The Streak is an icon with a short value, in the top bar's right-hand slot.
+- At least 2.75rem, never shrinking. Tabular figures, so a changing value does not move it.
 - Ink or muted at every value, 0 included (The Calm at Every Number Rule), never teal (The One Voice Rule).
 - It always has a text accessible name that includes the value, and opens a short centred dialog that returns focus to it on close.
-- It has its own placeholder while loading, and is absent when its data could not be read.
+- The slot keeps its box while the data loads (a pulsing placeholder after 300ms) and when it could not be read, when the button is simply absent. It fills only once the Home is ready.
 
 ### Inputs / Fields
 Full width, 2.75rem minimum, card fill, 1px Hedge Line edge, 0.75rem radius, 1rem text. Focus is the global 2px Focus Blue outline. Labels sit above in 600.

@@ -7,7 +7,7 @@ import { useTodayLoaded } from "./useTodayLoaded";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const settled: TodayReads = { checkIn: { kind: "ready" }, dayPlan: { kind: "ready" }, streakLoading: false };
+const settled: TodayReads = { checkIn: { kind: "ready" }, dayPlan: { kind: "ready" } };
 const loading: TodayReads = { ...settled, dayPlan: { kind: "loading" } };
 
 describe("useTodayLoaded", () => {

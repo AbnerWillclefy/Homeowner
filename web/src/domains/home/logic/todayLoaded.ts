@@ -4,15 +4,14 @@ type ReadKind = { kind: "loading" | "failed" | "ready" };
 export interface TodayReads {
   checkIn: ReadKind;
   dayPlan: ReadKind;
-  /** `useStreak().loading`: true only until the first answer. */
-  streakLoading: boolean;
 }
 
 /**
- * Whether Today's three reads (Check-in, Day Plan, Streak) have each answered, with data or a failure. A failure
- * is settled: its section shows its own alert in place. Today shows its skeleton until this is true, then
- * everything in one swap, so no section arrives after another and nothing is pushed down.
+ * Whether Today's two reads (Check-in and Day Plan) have each answered, with data or a failure. A failure is
+ * settled: its section shows its own alert in place. Today shows its skeleton until this is true, then everything
+ * in one swap, so no section arrives after another and nothing is pushed down. The Streak is not part of it: it
+ * lives in the top bar, which holds its box while the Streak loads.
  */
-export function todayLoaded({ checkIn, dayPlan, streakLoading }: TodayReads): boolean {
-  return checkIn.kind !== "loading" && dayPlan.kind !== "loading" && !streakLoading;
+export function todayLoaded({ checkIn, dayPlan }: TodayReads): boolean {
+  return checkIn.kind !== "loading" && dayPlan.kind !== "loading";
 }
