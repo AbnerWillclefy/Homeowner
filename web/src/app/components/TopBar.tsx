@@ -13,7 +13,7 @@ import { useShell } from "./ShellContext";
 export function TopBar() {
   const { streak } = useShell();
   return (
-    <header className="flex min-h-11 items-center justify-between gap-2">
+    <header data-testid="top-bar" className="flex min-h-11 items-center justify-between gap-2">
       <div className="min-w-0">
         <Logo />
       </div>

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { streakQuery } from "../api/queries";
 import { streakStateOf, type StreakState } from "../logic/streakState";
@@ -16,11 +16,13 @@ import { streakStateOf, type StreakState } from "../logic/streakState";
 export function useStreak(hasHome: boolean): StreakState & { refreshing: boolean } {
   // The launch read (ADR 0016) may have filled the Streak before the Home answered. Turning `enabled` on reads a
   // stale entry whatever `refetchOnMount` says, so the first time only, an entry already in the cache counts as
-  // fresh. Later flips (leave, then create a Home) find it removed and read it.
-  const wasEnabled = useRef(false);
-  const query = useQuery({ ...streakQuery, enabled: hasHome, staleTime: wasEnabled.current ? 0 : Infinity });
+  // fresh. Later flips (leave, then create a Home) find it removed and read it. It is state, not a ref, so the
+  // render after the first enabled one runs for certain and puts the normal staleTime back; a ref could stay
+  // Infinity when no other render follows, and then a return to the app would never refresh the number.
+  const [seenHome, setSeenHome] = useState(false);
+  const query = useQuery({ ...streakQuery, enabled: hasHome, staleTime: seenHome ? 0 : Infinity });
   useEffect(() => {
-    if (hasHome) wasEnabled.current = true;
+    if (hasHome) setSeenHome(true);
   }, [hasHome]);
   return { ...streakStateOf(query), refreshing: query.isFetching && query.data !== undefined };
 }

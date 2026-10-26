@@ -62,4 +62,12 @@ describe("useStreak over the query cache", () => {
     expect(getStreak).not.toHaveBeenCalled();
     expect(hook.streak).toEqual({ current: 7, todayGrew: true });
   });
+
+  it("goes back to stale-at-once after that first read, so returning to the app refreshes the number", async () => {
+    const client = createTestQueryClient();
+    client.setQueryData(streakKey, { current: 7, todayGrew: true });
+    rendered = renderWithQueryClient(createElement(Probe, { hasHome: true }), client);
+    await settle();
+    expect(client.getQueryCache().find({ queryKey: streakKey })!.isStale()).toBe(true);
+  });
 });
