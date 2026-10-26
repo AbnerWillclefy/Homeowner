@@ -58,6 +58,26 @@ func TestWindowOf30DaysHasThirtyEntries(t *testing.T) {
 	}
 }
 
+func TestPreviousIsTheNDaysRightBeforeTheWindow(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 3, 4, 9, 0, 0, 0, time.UTC)
+	r, _ := ParseRange("7d")
+
+	got := r.Previous(now)
+
+	want := []string{"2026-02-19", "2026-02-20", "2026-02-21", "2026-02-22", "2026-02-23", "2026-02-24", "2026-02-25"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Previous = %v, want %v", got, want)
+	}
+	if cur := r.Window(now); cur[0] != "2026-02-26" {
+		t.Fatalf("window starts %s, want it to follow the previous window", cur[0])
+	}
+	r30, _ := ParseRange("30d")
+	if p := r30.Previous(now); len(p) != 30 || p[29] != "2026-02-02" {
+		t.Fatalf("30d Previous = %v", p)
+	}
+}
+
 func TestZeroFillKeepsOrderAndAddsMissingDays(t *testing.T) {
 	t.Parallel()
 	days := []string{"2026-03-01", "2026-03-02", "2026-03-03"}

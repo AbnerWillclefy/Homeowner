@@ -49,6 +49,17 @@ func (r Range) Window(now time.Time) []string {
 	return out
 }
 
+// Previous lists the N days right before Window(now), oldest first, so the two
+// windows are adjacent and never overlap: the comparison period of a report.
+func (r Range) Previous(now time.Time) []string {
+	first := now.UTC().Truncate(24*time.Hour).AddDate(0, 0, -2*r.Days+1)
+	out := make([]string, r.Days)
+	for i := range out {
+		out[i] = first.AddDate(0, 0, i).Format(dateLayout)
+	}
+	return out
+}
+
 // ZeroFill returns one Day per entry of days, in that order, taking the
 // counted day from got and an all-zero Day for a date with no data, so a chart
 // has no gaps.
