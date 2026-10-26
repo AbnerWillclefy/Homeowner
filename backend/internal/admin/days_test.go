@@ -80,7 +80,7 @@ func TestOverviewCountsEveryEventOnItsOwnDay(t *testing.T) {
 
 	refused := apitest.MineOf(t, a)[0]["id"].(string)
 	apitest.MustAct(t, a, "refuse", refused) // stays in the pool: 1 refuse
-	var other string // the Task the plan left in the pool; which Chore it is does not matter
+	var other string                         // the Task the plan left in the pool; which Chore it is does not matter
 	for _, tk := range apitest.TaskList(t, apitest.DayPlan(t, b).Body["pool"]) {
 		if tk["id"] != refused {
 			other = tk["id"].(string)
