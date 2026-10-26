@@ -5,6 +5,18 @@ import { json, signedIn, type FakeApi } from "../api";
 /** A fixed day, so nothing here depends on the clock. */
 export const FAKE_TODAY = "2030-01-15";
 
+/**
+ * What `GET /home/check-in` answers when a spec sets none: a Check-in already saved, so the Check-in dialog (which
+ * opens by itself on an unchecked day) does not cover every screen. A spec about an unchecked day sets
+ * `fakeState.checkIn` to `uncheckedDay()`.
+ */
+const CHECKED_IN: CheckIn = { date: FAKE_TODAY, checkedIn: true, level: "normal", restrictions: [] };
+
+/** A day with no Check-in yet: the pill is dashed and the dialog opens on launch. */
+export function uncheckedDay(date: string = FAKE_TODAY): CheckIn {
+  return { date, checkedIn: false, level: null, restrictions: [] };
+}
+
 /** The Energy the fake plans for each level, so a spec can tell a saved Check-in from the one it replaced. */
 const ENERGY_OF_LEVEL: Record<Level, number> = { drained: 0, low: 4, normal: 9, energized: 14 };
 
@@ -13,7 +25,7 @@ const isLevel = (value: unknown): value is Level => typeof value === "string" &&
 
 /**
  * What Today reads as soon as it mounts: the Check-in, the Day Plan and the Streak. With nothing in the state they
- * answer a day nobody has planned yet; a spec that needs more sets `state.checkIn` or `state.dayPlan`. Both need a
+ * answer a checked-in day nobody has planned yet; a spec that needs more sets `state.checkIn` or `state.dayPlan`. Both need a
  * Home, like the API (404 without one).
  */
 export function todayHandlers(api: FakeApi): void {
@@ -21,8 +33,7 @@ export function todayHandlers(api: FakeApi): void {
     "GET /home/check-in",
     signedIn((_, state) => {
       if (state.home === null) return json(404, { error: "no home" });
-      const unchecked: CheckIn = { date: FAKE_TODAY, checkedIn: false, level: null, restrictions: [] };
-      return json(200, state.checkIn ?? unchecked);
+      return json(200, state.checkIn ?? CHECKED_IN);
     }),
   );
 
