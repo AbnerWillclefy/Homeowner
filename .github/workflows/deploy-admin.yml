@@ -1,0 +1,152 @@
+name: Deploy admin
+
+# Called by deploy-staging.yml and deploy-production.yml. Builds the admin app
+# against the API URL the caller's apply just produced and publishes it to that
+# environment's own admin bucket. The other environment is only a URL here.
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: staging or production
+        required: true
+        type: string
+      role_to_assume:
+        description: The environment's deploy role (vars are not read from the caller's job context)
+        required: true
+        type: string
+      admin_url:
+        required: true
+        type: string
+      api_url:
+        required: true
+        type: string
+      bucket:
+        required: true
+        type: string
+      distribution_id:
+        required: true
+        type: string
+      cognito_client_id:
+        required: true
+        type: string
+      cognito_region:
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  admin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ENVIRONMENT: ${{ inputs.environment }}
+      ADMIN_URL: ${{ inputs.admin_url }}
+      API_URL: ${{ inputs.api_url }}
+      BUCKET: ${{ inputs.bucket }}
+      DISTRIBUTION_ID: ${{ inputs.distribution_id }}
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ inputs.role_to_assume }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: admin/.nvmrc
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      - run: npm ci
+
+      # The environment switch links to the other admin app. Variables that
+      # are not set yet are left out, and the switch shows "not configured".
+      - name: Build the admin URLs
+        id: urls
+        env:
+          ADMIN_URL_STAGING: ${{ vars.ADMIN_URL_STAGING }}
+          ADMIN_URL_PRODUCTION: ${{ vars.ADMIN_URL_PRODUCTION }}
+        run: |
+          if [ -z "$ADMIN_URL_STAGING" ] || [ -z "$ADMIN_URL_PRODUCTION" ]; then
+            echo "::notice::ADMIN_URL_STAGING or ADMIN_URL_PRODUCTION is not set; the environment switch will show \"not configured\"."
+          fi
+          # This environment's own URL comes from the Terraform output, which
+          # is right even before the variables are set.
+          urls=$(jq -nc \
+            --arg env "$ENVIRONMENT" \
+            --arg own "$ADMIN_URL" \
+            --arg staging "$ADMIN_URL_STAGING" \
+            --arg production "$ADMIN_URL_PRODUCTION" \
+            '{staging: $staging, production: $production}
+             | .[$env] = $own
+             | with_entries(select(.value != ""))')
+          echo "urls=${urls}" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_ENVIRONMENT: ${{ inputs.environment }}
+          VITE_API_URL: ${{ inputs.api_url }}
+          # Public identifiers of the Cognito app client, not secrets.
+          VITE_COGNITO_CLIENT_ID: ${{ inputs.cognito_client_id }}
+          VITE_COGNITO_REGION: ${{ inputs.cognito_region }}
+          VITE_ADMIN_URLS: ${{ steps.urls.outputs.urls }}
+
+      # Fingerprinted assets are immutable and index.html goes last, so no
+      # visitor gets an index that refers to assets not uploaded yet.
+      - name: Upload fingerprinted assets
+        run: |
+          aws s3 sync dist/assets "s3://${BUCKET}/assets" \
+            --cache-control "public,max-age=31536000,immutable"
+
+      - name: Upload other static files
+        run: |
+          aws s3 sync dist "s3://${BUCKET}" \
+            --exclude "assets/*" --exclude "index.html" --exclude ".vite/*" \
+            --cache-control "public,max-age=3600"
+
+      - name: Upload app shell
+        run: |
+          aws s3 cp dist/index.html "s3://${BUCKET}/index.html" \
+            --cache-control "no-cache" --content-type "text/html"
+
+      - name: Delete stale objects
+        # Everything is already uploaded with its headers, so --size-only
+        # makes this sync a pure delete. assets/ is excluded so a tab on the
+        # previous version can still load its old hashed files.
+        run: aws s3 sync dist "s3://${BUCKET}" --delete --size-only --exclude "assets/*" --exclude ".vite/*"
+
+      - name: Invalidate CloudFront
+        run: |
+          id=$(aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" \
+            --paths "/*" --query Invalidation.Id --output text)
+          aws cloudfront wait invalidation-completed --distribution-id "$DISTRIBUTION_ID" --id "$id"
+
+      - name: Smoke test
+        run: |
+          curl_ok() { curl --silent --show-error --fail --retry 6 --retry-delay 5 --retry-all-errors "$@"; }
+
+          curl_ok "${ADMIN_URL}/" | grep -q 'id="root"'
+
+          ct=$(curl_ok -o /dev/null -w '%{content_type}' "${ADMIN_URL}/ai")
+          echo "deep link content-type: $ct"
+          case "$ct" in text/html*) ;; *) echo "::error::Deep link did not return the app"; exit 1 ;; esac
+
+          # The API must trust the admin origin (the CORS change reached it).
+          acao=$(curl_ok -D - -o /dev/null -H "Origin: ${ADMIN_URL}" "${API_URL}/healthz" \
+            | tr -d '\r' | awk -F': ' 'tolower($1)=="access-control-allow-origin" {print $2}')
+          echo "access-control-allow-origin: $acao"
+          [ "$acao" = "${ADMIN_URL}" ]
+
+          # The admin guard is deployed: no token, no access.
+          code=$(curl --silent --show-error --retry 6 --retry-delay 5 --retry-all-errors \
+            -o /dev/null -w '%{http_code}' "${API_URL}/admin/me")
+          echo "GET /admin/me without a token: $code"
+          [ "$code" = "401" ]
