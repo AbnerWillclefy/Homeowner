@@ -23,6 +23,9 @@ jobs:
       web_url: ${{ steps.out.outputs.web_url }}
       web_bucket_name: ${{ steps.out.outputs.web_bucket_name }}
       web_distribution_id: ${{ steps.out.outputs.web_distribution_id }}
+      admin_url: ${{ steps.out.outputs.admin_url }}
+      admin_bucket_name: ${{ steps.out.outputs.admin_bucket_name }}
+      admin_distribution_id: ${{ steps.out.outputs.admin_distribution_id }}
       cognito_client_id: ${{ steps.out.outputs.cognito_client_id }}
       cognito_region: ${{ steps.out.outputs.cognito_region }}
       cognito_password_policy: ${{ steps.out.outputs.cognito_password_policy }}
@@ -140,6 +143,9 @@ jobs:
             echo "web_url=$(terraform output -raw web_url)"
             echo "web_bucket_name=$(terraform output -raw web_bucket_name)"
             echo "web_distribution_id=$(terraform output -raw web_distribution_id)"
+            echo "admin_url=$(terraform output -raw admin_url)"
+            echo "admin_bucket_name=$(terraform output -raw admin_bucket_name)"
+            echo "admin_distribution_id=$(terraform output -raw admin_distribution_id)"
             echo "cognito_client_id=$(terraform output -raw cognito_client_id)"
             echo "cognito_region=$(terraform output -raw cognito_region)"
             echo "cognito_password_policy=$(terraform output -raw cognito_password_policy)"
@@ -165,6 +171,10 @@ jobs:
             echo "### Staging web"
             echo ""
             echo "URL: ${{ steps.out.outputs.web_url }}"
+            echo ""
+            echo "### Staging admin"
+            echo ""
+            echo "URL: ${{ steps.out.outputs.admin_url }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
   # Builds the PWA against the API URL the apply just produced (it is baked
@@ -295,3 +305,118 @@ jobs:
             | tr -d '\r' | awk -F': ' 'tolower($1)=="access-control-allow-origin" {print $2}')
           echo "access-control-allow-origin: $acao"
           [ "$acao" = "${WEB_URL}" ]
+
+  # Builds the admin app against the API URL the apply just produced and
+  # publishes it to this environment's own admin bucket, with this
+  # workflow's own deploy role. The other environment is only a URL here.
+  admin:
+    needs: api
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ADMIN_URL: ${{ needs.api.outputs.admin_url }}
+      API_URL: ${{ needs.api.outputs.api_url }}
+      BUCKET: ${{ needs.api.outputs.admin_bucket_name }}
+      DISTRIBUTION_ID: ${{ needs.api.outputs.admin_distribution_id }}
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: admin/.nvmrc
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      - run: npm ci
+
+      # The environment switch links to the other admin app. Variables that
+      # are not set yet are left out, and the switch shows "not configured".
+      - name: Build the admin URLs
+        id: urls
+        env:
+          ADMIN_URL_STAGING: ${{ vars.ADMIN_URL_STAGING }}
+          ADMIN_URL_PRODUCTION: ${{ vars.ADMIN_URL_PRODUCTION }}
+        run: |
+          if [ -z "$ADMIN_URL_STAGING" ] || [ -z "$ADMIN_URL_PRODUCTION" ]; then
+            echo "::notice::ADMIN_URL_STAGING or ADMIN_URL_PRODUCTION is not set; the environment switch will show \"not configured\"."
+          fi
+          # This environment's own URL comes from the Terraform output, which
+          # is right even before the variables are set.
+          urls=$(jq -nc \
+            --arg own "$ADMIN_URL" \
+            --arg staging "$ADMIN_URL_STAGING" \
+            --arg production "$ADMIN_URL_PRODUCTION" \
+            '{staging: $staging, production: $production}
+             | .staging = $own
+             | with_entries(select(.value != ""))')
+          echo "urls=${urls}" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_ENVIRONMENT: staging
+          VITE_API_URL: ${{ env.API_URL }}
+          # Public identifiers of the Cognito app client, not secrets.
+          VITE_COGNITO_CLIENT_ID: ${{ needs.api.outputs.cognito_client_id }}
+          VITE_COGNITO_REGION: ${{ needs.api.outputs.cognito_region }}
+          VITE_ADMIN_URLS: ${{ steps.urls.outputs.urls }}
+
+      # Fingerprinted assets are immutable and index.html goes last, so no
+      # visitor gets an index that refers to assets not uploaded yet.
+      - name: Upload fingerprinted assets
+        run: |
+          aws s3 sync dist/assets "s3://${BUCKET}/assets" \
+            --cache-control "public,max-age=31536000,immutable"
+
+      - name: Upload other static files
+        run: |
+          aws s3 sync dist "s3://${BUCKET}" \
+            --exclude "assets/*" --exclude "index.html" --exclude ".vite/*" \
+            --cache-control "public,max-age=3600"
+
+      - name: Upload app shell
+        run: |
+          aws s3 cp dist/index.html "s3://${BUCKET}/index.html" \
+            --cache-control "no-cache" --content-type "text/html"
+
+      - name: Delete stale objects
+        # Everything is already uploaded with its headers, so --size-only
+        # makes this sync a pure delete. assets/ is excluded so a tab on the
+        # previous version can still load its old hashed files.
+        run: aws s3 sync dist "s3://${BUCKET}" --delete --size-only --exclude "assets/*" --exclude ".vite/*"
+
+      - name: Invalidate CloudFront
+        run: |
+          id=$(aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" \
+            --paths "/*" --query Invalidation.Id --output text)
+          aws cloudfront wait invalidation-completed --distribution-id "$DISTRIBUTION_ID" --id "$id"
+
+      - name: Smoke test
+        run: |
+          curl_ok() { curl --silent --show-error --fail --retry 6 --retry-delay 5 --retry-all-errors "$@"; }
+
+          curl_ok "${ADMIN_URL}/" | grep -q 'id="root"'
+
+          ct=$(curl_ok -o /dev/null -w '%{content_type}' "${ADMIN_URL}/ai")
+          echo "deep link content-type: $ct"
+          case "$ct" in text/html*) ;; *) echo "::error::Deep link did not return the app"; exit 1 ;; esac
+
+          # The API must trust the admin origin (the CORS change reached it).
+          acao=$(curl_ok -D - -o /dev/null -H "Origin: ${ADMIN_URL}" "${API_URL}/healthz" \
+            | tr -d '\r' | awk -F': ' 'tolower($1)=="access-control-allow-origin" {print $2}')
+          echo "access-control-allow-origin: $acao"
+          [ "$acao" = "${ADMIN_URL}" ]
+
+          # The admin guard is deployed: no token, no access.
+          code=$(curl --silent --show-error --retry 6 --retry-delay 5 --retry-all-errors \
+            -o /dev/null -w '%{http_code}' "${API_URL}/admin/me")
+          echo "GET /admin/me without a token: $code"
+          [ "$code" = "401" ]
