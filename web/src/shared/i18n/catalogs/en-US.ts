@@ -521,6 +521,15 @@ export const enUS = {
     "Homeowner did not accept that Check-in. Choose again and try once more.",
   "checkin.summary": "Today's Check-in: {level}",
   "checkin.summary.restrictions": "Not today: {demands}",
+  "checkin.pill.unset": "Check-in",
+  "checkin.pill.failed": "Failed",
+  "checkin.pill.name.unset": "Check in",
+  "checkin.pill.name.energy": "Energy today: {energy}. Change Check-in",
+  "checkin.pill.name.drained": "Drained today. Change Check-in",
+  "checkin.pill.name.noBaseline": "No Baseline today. Change Check-in",
+  "checkin.pill.name.pending": "Checked in: {level}. Change Check-in",
+  "checkin.pill.name.done": "Checked in. Change Check-in",
+  "checkin.pill.name.failed": "Energy unavailable. Try again",
 
   // Sign up
   "signUp.heading": "Sign up",
