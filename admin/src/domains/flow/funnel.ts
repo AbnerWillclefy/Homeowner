@@ -1,3 +1,4 @@
+import { barPercent } from "../../shared/range";
 import type { FlowStep } from "./api";
 
 // How each step reads. `progress` rows say how much of the reference got through; `failure` rows count what went
@@ -32,13 +33,13 @@ const STEPS: Record<string, StepInfo> = {
   pushesUnknown: { label: "Pushes unknown", description: "no outcome recorded", tone: "progress", group: "pushes" },
 };
 
-const GROUP_LABELS = { pushes: "pushes", explanations: "explanations" } as const;
-
 export interface FunnelRow {
   id: string;
   label: string;
   description: string | null;
   count: number;
+  /** The bar width, 0 to 100, scaled to the first step. */
+  barPercent: number;
   /** What the rate is measured against, for the text; null when nothing. */
   referenceLabel: string | null;
   /** count / reference; null when there is no reference or it is 0. May exceed 1. */
@@ -55,44 +56,57 @@ function percent(rate: number): string {
   return `${Math.round(rate * 100)}%`;
 }
 
+interface Reference {
+  value: number;
+  label: string;
+}
+
+/** What the step is measured against: its group's total, or the step named by `of`. Null when nothing. */
+function referenceFor(step: FlowStep, info: StepInfo, counts: Map<string, number>, groupTotal: (group: string) => number): Reference | null {
+  if (info.group) return { value: groupTotal(info.group), label: info.group };
+  if (step.of !== undefined && step.of !== "" && counts.has(step.of)) {
+    return { value: counts.get(step.of)!, label: STEPS[step.of]?.label ?? step.of };
+  }
+  return null;
+}
+
+/** The share lost or failed. Counts above their reference are real (a different unit, say): no drop is computed. */
+function dropRateFor(info: StepInfo, count: number, reference: number, rate: number): number | null {
+  if (info.tone === "failure") return rate;
+  if (info.tone === "drop" && count <= reference) return (reference - count) / reference;
+  return null;
+}
+
+function describe(info: StepInfo, count: number, rate: number, dropRate: number | null, referenceLabel: string): string {
+  if (info.tone === "failure") return `${count} ${info.verb ?? "failed"} (${percent(rate)})`;
+  const text = `${percent(rate)} of ${referenceLabel}`;
+  return info.tone === "drop" && dropRate !== null && dropRate > 0 ? `${text} (${percent(dropRate)} ${info.lost})` : text;
+}
+
 /** Turns #328's ordered steps into display rows. A reference of 0 gives a null rate ("n/a"), never NaN. */
 export function buildFunnel(steps: FlowStep[]): FunnelRow[] {
   const counts = new Map(steps.map((s) => [s.id, s.count]));
-  const groupTotal = (group: string) =>
-    steps.reduce((sum, s) => sum + (STEPS[s.id]?.group === group ? s.count : 0), 0);
+  const groupTotal = (group: string) => steps.reduce((sum, s) => sum + (STEPS[s.id]?.group === group ? s.count : 0), 0);
+  const first = steps[0]?.count ?? 0;
 
   const rows = steps.map((s): FunnelRow => {
-    const info = STEPS[s.id];
-    let reference: number | null = null;
-    let referenceLabel: string | null = null;
-    if (info?.group) {
-      reference = groupTotal(info.group);
-      referenceLabel = GROUP_LABELS[info.group];
-    } else if (s.of !== undefined && s.of !== "" && counts.has(s.of)) {
-      reference = counts.get(s.of)!;
-      referenceLabel = STEPS[s.of]?.label ?? s.of;
-    }
-
+    const info: StepInfo = STEPS[s.id] ?? { label: s.id, tone: "progress" };
+    const reference = referenceFor(s, info, counts, groupTotal);
     const base = {
       id: s.id,
-      label: info?.label ?? s.id,
-      description: info?.description ?? null,
+      label: info.label,
+      description: info.description ?? null,
       count: s.count,
-      referenceLabel,
+      barPercent: barPercent(s.count, first),
+      referenceLabel: reference?.label ?? null,
       weakest: false,
     };
-    if (referenceLabel === null) return { ...base, rate: null, dropRate: null, rateText: "" };
-    if (reference === null || reference <= 0) return { ...base, rate: null, dropRate: null, rateText: "n/a" };
+    if (reference === null) return { ...base, rate: null, dropRate: null, rateText: "" };
+    if (reference.value <= 0) return { ...base, rate: null, dropRate: null, rateText: "n/a" };
 
-    const rate = s.count / reference;
-    // Counts above their reference are real (a different unit, say): show them, and compute no drop.
-    const dropRate =
-      info?.tone === "failure" ? rate : info?.tone === "drop" && s.count <= reference ? (reference - s.count) / reference : null;
-
-    let rateText = `${percent(rate)} of ${referenceLabel}`;
-    if (info?.tone === "failure") rateText = `${s.count} ${info.verb ?? "failed"} (${percent(rate)})`;
-    else if (info?.tone === "drop" && dropRate !== null && dropRate > 0) rateText += ` (${percent(dropRate)} ${info.lost})`;
-    return { ...base, rate, dropRate, rateText };
+    const rate = s.count / reference.value;
+    const dropRate = dropRateFor(info, s.count, reference.value, rate);
+    return { ...base, rate, dropRate, rateText: describe(info, s.count, rate, dropRate, reference.label) };
   });
 
   const worst = Math.max(0, ...rows.map((r) => r.dropRate ?? 0));

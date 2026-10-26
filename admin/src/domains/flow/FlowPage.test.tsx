@@ -81,7 +81,7 @@ describe("FlowPage", () => {
     expect(flagged[0].querySelector("h2")!.textContent).toContain("Pushes failed");
     expect(flagged[0].textContent).toContain("6 failed (60%)");
     expect(flagged[0].querySelector('svg[role="img"]')!.getAttribute("aria-label")).toBe("Warning");
-    expect(flagged[0].className).toContain("border-4");
+    expect(items().filter((li) => li.getAttribute("data-weakest") === "true")).toEqual(flagged);
     expect(text().match(/Weakest step/g)).toHaveLength(1);
   });
 
