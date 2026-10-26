@@ -173,6 +173,8 @@ for (const l of LOCALES) {
       await launchApp(page, baseURL!);
       await expect(flame(page, 3)).toBeVisible();
       fakeApi.override("GET /home/streak", json(500, { error: "boom" }), { once: true });
+      // The launch read stays fresh for 5s (`useStreak`), and the clock is fixed: move it past that so focus refetches.
+      await page.clock.setFixedTime(new Date("2030-01-14T15:00:10"));
       const answered = page.waitForResponse(/\/home\/streak$/);
       await regainFocus(page);
       expect((await answered).status()).toBe(500);
