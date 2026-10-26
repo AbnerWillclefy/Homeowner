@@ -29,8 +29,6 @@ jobs:
       - run: npm ci
       # The public dummy values come from web/.env.e2e; nothing here is a secret.
       - run: npm run build:e2e
-      # The same build with the Replan control on, for the specs that need it (the Today first-load layout).
-      - run: npm run build:e2e:replan
       # The lock file pins Playwright, which pins the Chromium build, so it is the cache key.
       - uses: actions/cache@v4
         with:
