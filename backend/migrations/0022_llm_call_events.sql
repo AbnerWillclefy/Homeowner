@@ -27,8 +27,6 @@ CREATE TABLE llm_call_events (
         'accepted', 'rejected_by_referee', 'invalid_response', 'timeout',
         'error', 'skipped_cap', 'skipped_budget')),
     violation_kinds text[]      NOT NULL DEFAULT '{}',
-    items_sent      smallint    NULL,
-    items_accepted  smallint    NULL,
     latency_ms      integer     NULL,
     input_tokens    integer     NULL,
     output_tokens   integer     NULL,
