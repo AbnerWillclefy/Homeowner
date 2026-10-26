@@ -123,7 +123,7 @@ Acting on production while thinking it is staging is the mistake this app is des
 
 ## The routes
 
-All four are `GET`, super admin only, read-only, and return aggregates and opaque counts: no email, name, user id or Chore title (a test walks the response keys). The response shapes are the Go types in [`backend/internal/admin/dto.go`](../../backend/internal/admin/dto.go); [backend](backend.md#routes) lists every field.
+All five are `GET`, super admin only, read-only, and return aggregates and opaque counts: no email, name, user id or Chore title (a test walks the response keys). The response shapes are the Go types in [`backend/internal/admin/dto.go`](../../backend/internal/admin/dto.go); [backend](backend.md#routes) lists every field.
 
 | Route | Query | Returns |
 |---|---|---|
@@ -131,6 +131,7 @@ All four are `GET`, super admin only, read-only, and return aggregates and opaqu
 | `/admin/overview` | `range=7d` or `30d`, required | Totals of Users, Homes, Residents and Chores; active Homes and Residents in the range; per-day runs, rejected runs, fallbacks, Check-ins, Completions, Refuses, Takes, accepted Swaps and push outcomes. |
 | `/admin/ai` | `range`, as above | Per-day and per-service (allocator, explainer) LLM call outcomes, latency, tokens and estimated cost; the month-to-date estimate against the configured spend limit; the daily cap; who planned the runs and who wrote the explanations; the top violation kinds and fallback reasons. |
 | `/admin/flow` | `range`, as above | The daily pipeline as thirteen funnel steps of range totals, from Homes due through runs, LLM calls, explanations and Day Plan ready pushes. Counts only; the page divides. |
+| `/admin/worth` | `range`, as above | The counts behind whether the LLM allocator is worth it, for the range (`current`), for the same number of days right before it (`previous`) and per day (`days`, zero-filled, oldest first). Per set: outcome per arm (`llm`, `baseline`: `proposed`, `completed`, `refused`), reliability (`runsLlm`, `runsFallback`, `runsLlmNotAsked`, `allocatorCalls`, `refereeRejected`), cost (`allocatorCostMicros`, `uncostedCalls`) and explanations (`llm`, `template`); plus the same `monthToDate` as `/admin/ai`. Counts only; the page divides. |
 
 A missing or unknown `range` is `400 {"error":"invalid range"}`; there is no default on the server. Every report runs in one `READ ONLY` transaction with a 5 second statement timeout, so it cannot write and a slow query cannot hold one of the Lambda's two database connections for long.
 
@@ -144,6 +145,17 @@ Some numbers are approximations by design. This is the wording from the DTO comm
 - **Delivered means accepted by the push service**, not shown on a phone. `unknown` is a null outcome: a row from before the column, a crash, or a send dropped by the tick's deadline.
 - **Estimated cost.** Every cost is an estimate (`costIsEstimate: true`); the Anthropic Console is the source of truth. Money is integer micro-USD, priced from the table in `backend/internal/llmalloc/pricing.go`. Calls with no estimated cost (an unknown model, or no usage reported, as after a timeout) are counted in `uncostedCalls` and add nothing, so the cost is a lower bound. The month-to-date figure is the UTC calendar month, whatever the range. The limit beside it is `LLM_MONTHLY_SPEND_LIMIT_USD`, shown only: the Anthropic Console enforces it, and the value must be kept equal to the Console's by hand.
 - **Explanations "written", not "shown".** The LLM share counts stored LLM texts; a stored text whose fingerprint later mismatches is shown as the template but still counts. Assignments change after planning (Take, Swap), so the template count is approximate.
+- **What `/admin/worth` counts.** The page does the division; these are the definitions it relies on.
+  - *Proposed*: the distinct (run, Task) pairs of the Day Plan whose assignment reason is not `taken`, plus the run's refused pool entries. A two-person Task has two assignment rows and counts once. Only planned runs count; a rejected run has no assignments and an empty pool.
+  - *Completed*: a proposed Task with a Completion recorded on the plan date. The same day, not "any time before the window closes".
+  - *Refused*: the refused entries in the run's pool. A lower bound: a refused Task that is later Taken leaves the pool. It reads low for both arms equally.
+  - *Baseline arm*: every Allocation planned by the baseline allocator, whether or not the LLM was asked. So `n` for the baseline is its proposed Tasks, and runs where the LLM was not asked add runs but rarely proposed Tasks. Splitting out fallback-only runs is a follow-up.
+  - *Fallback share*: `runsFallback` divided by `runsLlm + runsFallback`. `runsLlmNotAsked` is left out. It means "the LLM was not asked", not a per-Home switch (none exists): it is off for the environment (`LLM_ALLOCATOR_ENABLED`), or there was nothing worth asking (no open Task, or no Resident with Energy). The three run counts partition every run, planned or rejected.
+  - *Referee rejection rate*: `refereeRejected` divided by `allocatorCalls`, the allocator events that are not a cap or budget skip (the same as `llmAsked` in `/admin/flow`).
+  - *Cost per LLM-planned Allocation*: `allocatorCostMicros` divided by `runsLlm`. The cost covers every allocator call, so calls that ended in a fallback are included. Explainer cost is not included and stays on the AI usage page. `uncostedCalls` makes it a lower bound.
+  - *Previous* is the N days right before the window, with its own `from` and `to`. Every number is a sum of per-day counts, so `days` add up to `current`.
+  - A Task Taken and then Swapped has the assignment reason `swapped`, so it counts as proposed. This is rare and is not special-cased.
+- **The LLM-versus-baseline comparison is observational, not an A/B test.** Fallbacks cluster on unusual days (an outage, a hard Home), and Homes differ between the arms: the Homes the LLM plans are not a random half. A difference between the arms is a hint, not a measured effect.
 
 ## Where the data comes from
 
