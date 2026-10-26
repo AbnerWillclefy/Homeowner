@@ -129,6 +129,11 @@ func WithoutAuth() Option {
 	return func(d *server.Deps) { d.Verifier = nil }
 }
 
+// WithEnvironment sets the environment name /admin/me reports.
+func WithEnvironment(env string) Option {
+	return func(d *server.Deps) { d.Environment = env }
+}
+
 // Start boots the API on a fresh database cloned from the migrated template.
 func Start(t testing.TB, opts ...Option) *App {
 	t.Helper()
@@ -237,6 +242,15 @@ func (a *App) SignInAs(email string) *Client {
 		panic("apitest: SignInAs needs the fake verifier (do not use WithoutAuth)")
 	}
 	return a.client(a.Auth.SignIn(email))
+}
+
+// SignInAsSuperAdmin is SignInAs for a person in the super-admin Cognito
+// group: the same User as SignInAs(email), with a token that names the group.
+func (a *App) SignInAsSuperAdmin(email string) *Client {
+	if a.Auth == nil {
+		panic("apitest: SignInAsSuperAdmin needs the fake verifier (do not use WithoutAuth)")
+	}
+	return a.client(a.Auth.SignInWithGroups(email, "super-admin"))
 }
 
 // SignInAsSubject is SignInAs for a given Cognito subject, to model a person
