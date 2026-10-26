@@ -99,7 +99,7 @@ FROM (
       FROM completions, w WHERE completed_on BETWEEN w.lo AND w.hi GROUP BY 1
     UNION ALL
     SELECT ar.plan_date, 0, 0, 0, 0, 0, count(*), 0, 0, 0, 0, 0, 0
-      FROM allocation_runs ar, w
+      FROM w CROSS JOIN allocation_runs ar
       CROSS JOIN LATERAL jsonb_array_elements(
           CASE WHEN jsonb_typeof(ar.reasons->'pool') = 'array' THEN ar.reasons->'pool' ELSE '[]'::jsonb END) e
      WHERE ar.plan_date BETWEEN w.lo AND w.hi AND e->>'reason' = $4 GROUP BY 1
