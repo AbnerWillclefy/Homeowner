@@ -25,7 +25,7 @@ func TestEveryAdminRouteIsGuarded(t *testing.T) {
 		t.Fatal("no admin routes registered")
 	}
 	for _, r := range routes {
-		path := wildcard.ReplaceAllString(r.Pattern, "x")
+		path := wildcard.ReplaceAllString(r.Probe, "x")
 		name := r.Method + " " + path
 
 		res := app.Do(r.Method, path, nil)

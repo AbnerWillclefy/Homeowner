@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/admin"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/catalog"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkin"
@@ -83,7 +84,8 @@ func New(deps Deps) http.Handler {
 	}
 	db, clk, log := deps.DB, deps.Clock, deps.Logger
 	homeStore := homes.NewStore(db)
-	s := &server{deps: deps, users: users.NewStore(db), homes: homeStore}
+	s := &server{deps: deps, users: users.NewStore(db), homes: homeStore,
+		admin: admin.NewHandler(admin.NewStore(db), clk, log)}
 
 	// Photos are off when there is no store, and then no URL is built either.
 	photosBase := deps.PhotosBaseURL
@@ -178,6 +180,8 @@ type server struct {
 	deps  Deps
 	users *users.Store
 	homes *homes.Store
+	// admin serves the routes of the admin route table (admin.go).
+	admin *admin.Handler
 }
 
 func (s *server) healthz(w http.ResponseWriter, r *http.Request) {
