@@ -2,7 +2,7 @@ import type { AxiosAdapter, AxiosResponse, InternalAxiosRequestConfig } from "ax
 import { describe, expect, it, vi } from "vitest";
 import type { AuthResult } from "../auth/cognito";
 import { createSessionStore, type Session } from "../auth/session";
-import { createApiClient, NotSignedIn } from "./client";
+import { createApiClient, NotSignedIn, RefreshUnavailable } from "./client";
 
 const NOW = 1_000_000;
 
@@ -76,10 +76,9 @@ describe("api client", () => {
     expect(store.load()).toBeNull();
   });
 
-  it("keeps the session and returns the 401 when Cognito is unreachable", async () => {
+  it("keeps the session and throws RefreshUnavailable when Cognito is unreachable", async () => {
     const { client, store } = setup({ statuses: [401], refresh: { kind: "network" } });
-    const response = await client.get("/admin/me");
-    expect(response.status).toBe(401);
+    await expect(client.get("/admin/me")).rejects.toBeInstanceOf(RefreshUnavailable);
     expect(store.load()).not.toBeNull();
   });
 });

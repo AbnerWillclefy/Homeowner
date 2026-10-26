@@ -60,6 +60,14 @@ describe("Gate", () => {
     expect(container().textContent).not.toContain("the app");
   });
 
+  it("keeps the session and offers a retry when the token refresh could not reach Cognito", async () => {
+    const { signOut } = await renderGate(async () => {
+      throw new Error("could not reach the sign-in service");
+    });
+    expect(container().textContent).toContain("Could not reach the API");
+    expect(signOut).not.toHaveBeenCalled();
+  });
+
   it("shows only a status while the answer is pending", async () => {
     await renderGate(() => new Promise(() => {}));
     expect(container().textContent).toBe("Checking your access…");

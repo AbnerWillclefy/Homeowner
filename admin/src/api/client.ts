@@ -14,6 +14,14 @@ export class NotSignedIn extends Error {
   }
 }
 
+/** Thrown when a 401 could not be resolved because Cognito was unreachable. The session is kept: it may still be good. */
+export class RefreshUnavailable extends Error {
+  constructor() {
+    super("could not reach the sign-in service");
+    this.name = "RefreshUnavailable";
+  }
+}
+
 export interface ApiClientDeps {
   baseUrl: string;
   session: SessionStore;
@@ -91,7 +99,7 @@ export function createApiClient(deps: ApiClientDeps): AxiosInstance {
     if (response.status !== 401 || sent === undefined) return response;
     const outcome = await refreshOnce(sent);
     if (outcome === "rejected") throw new NotSignedIn();
-    if (outcome === "unavailable") return response;
+    if (outcome === "unavailable") throw new RefreshUnavailable();
     const retried = await retrier.request(response.config);
     if (retried.status === 401) {
       session.clear();
