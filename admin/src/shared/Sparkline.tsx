@@ -42,7 +42,15 @@ export function Sparkline({ values, label }: { values: (number | null)[]; label:
       <line x1="0" y1={HEIGHT} x2={WIDTH} y2={HEIGHT} stroke="currentColor" strokeOpacity="0.35" strokeWidth="1" vectorEffect="non-scaling-stroke" />
       {segments.map((segment, i) =>
         segment.length === 1 ? (
-          <circle key={i} cx={segment[0]![0]} cy={segment[0]![1]} r="2.5" fill="currentColor" />
+          <polyline
+            key={i}
+            points={`${segment[0]![0]},${segment[0]![1]} ${segment[0]![0]},${segment[0]![1]}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="5"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
         ) : (
           <polyline
             key={i}

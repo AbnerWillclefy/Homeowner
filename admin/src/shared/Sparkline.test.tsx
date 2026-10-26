@@ -46,9 +46,10 @@ describe("Sparkline", () => {
     expect(container().querySelectorAll("polyline")).toHaveLength(1);
   });
 
-  it("draws a dot for a single point", async () => {
+  it("draws a single point as a round-capped zero-length line, not a circle", async () => {
     await render(<Sparkline values={[3]} label="one" />);
-    expect(container().querySelector("circle")).not.toBeNull();
+    expect(container().querySelector("circle")).toBeNull();
+    expect(container().querySelectorAll("polyline")).toHaveLength(1);
     expect(container().innerHTML).not.toContain("NaN");
   });
 
