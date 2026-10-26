@@ -4,7 +4,7 @@ import { Button } from "../../shared/Button";
 import { rangeDays, useRange } from "../../shared/range";
 import { RangeControl } from "../../shared/RangeControl";
 import { useAiUsage, type AiDay, type AiUsage, type MonthToDate, type ServiceDay, type TemplateReasons } from "./api";
-import { formatLatency, formatMicros, formatPercent, formatTokens } from "./format";
+import { formatLatency, formatMicros, formatPercent, formatTokens } from "../../shared/format";
 import { FALLBACK_GLOSSES, TEMPLATE_REASON_LABELS, VIOLATION_GLOSSES } from "./glosses";
 
 type Service = "allocator" | "explainer";
