@@ -21,6 +21,7 @@ const LOCALES = [
     prompt: "Como você está hoje?",
     headline: "Um dia leve para você",
     streak: /^Sequência: /,
+    pill: "Fazer check-in",
     retry: "Tentar de novo",
     today: "Hoje",
     chores: "Afazeres",
@@ -31,6 +32,7 @@ const LOCALES = [
     prompt: "How are you today?",
     headline: "A light day for you",
     streak: /^Streak: /,
+    pill: "Check in",
     retry: "Try again",
     today: "Today",
     chores: "Chores",
@@ -138,6 +140,33 @@ for (const l of LOCALES) {
           held.streak.release();
           await expect(streak(page)).toBeVisible();
 
+          await page.waitForTimeout(500);
+          expect(await cls(page)).toBeLessThan(0.1);
+        });
+
+        test("the Check-in held: the pill reserves its box from the first frame and fills it without moving the bar", async ({ page, baseURL }) => {
+          const checkIn = hold(page, /\/home\/check-in$/);
+          await launchApp(page, baseURL!);
+
+          // The bar is up with the Streak while the Check-in is held; the pill's slot already has its final box.
+          await expect(streak(page)).toBeVisible();
+          await page.waitForTimeout(400);
+          const slot = page.locator('[data-slot="energy"]');
+          const loading = (await slot.boundingBox())!;
+          const barLoading = (await page.getByTestId("top-bar").boundingBox())!;
+          const flame = (await streak(page).boundingBox())!;
+          expect(loading.width).toBeGreaterThanOrEqual(44);
+          expect(loading.height).toBeGreaterThanOrEqual(44);
+          await expect(page.getByTestId("top-bar").getByRole("button", { name: l.pill })).toHaveCount(0);
+
+          checkIn.release();
+          const pill = page.getByTestId("top-bar").getByRole("button", { name: l.pill });
+          await expect(pill).toBeVisible();
+          const loaded = (await slot.boundingBox())!;
+          const barLoaded = (await page.getByTestId("top-bar").boundingBox())!;
+          expect(loaded).toEqual(loading);
+          expect(barLoaded).toEqual(barLoading);
+          expect(await streak(page).boundingBox()).toEqual(flame);
           await page.waitForTimeout(500);
           expect(await cls(page)).toBeLessThan(0.1);
         });

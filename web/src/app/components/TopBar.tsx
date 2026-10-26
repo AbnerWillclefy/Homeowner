@@ -29,7 +29,7 @@ export function TopBar() {
       <div className="min-w-0 max-w-full">
         <Logo />
       </div>
-      <div className="ml-auto flex shrink-0 items-center gap-2">
+      <div className="ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-x-2">
         <div data-slot="energy" className="flex min-h-11 items-center">
           {input && <EnergyPill input={input} onOpen={openCheckIn} onRetry={() => void checkIn.reload()} />}
         </div>

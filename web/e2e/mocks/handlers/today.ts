@@ -1,9 +1,12 @@
-import type { CheckIn } from "../../../src/domains/checkin/api/api";
+import type { CheckIn, Level } from "../../../src/domains/checkin/api/api";
 import type { DayPlan } from "../../../src/domains/dayplan/api/api";
 import { json, signedIn, type FakeApi } from "../api";
 
 /** A fixed day, so nothing here depends on the clock. */
 export const FAKE_TODAY = "2030-01-15";
+
+/** The Energy the fake plans for each level, so a spec can tell a saved Check-in from the one it replaced. */
+const ENERGY_OF_LEVEL: Record<string, number> = { drained: 0, low: 4, normal: 9, energized: 14 };
 
 /**
  * What Today reads as soon as it mounts: the Check-in, the Day Plan and the Streak. With nothing in the state they
@@ -17,6 +20,22 @@ export function todayHandlers(api: FakeApi): void {
       if (state.home === null) return json(404, { error: "no home" });
       const unchecked: CheckIn = { date: FAKE_TODAY, checkedIn: false, level: null, restrictions: [] };
       return json(200, state.checkIn ?? unchecked);
+    }),
+  );
+
+  // A saved Check-in replaces today's, and the planned day is made again for the level: the next read of the Day
+  // Plan carries the Energy of that level (the real API plans the Resident again).
+  api.on(
+    "PUT /home/check-in",
+    signedIn((request, state) => {
+      if (state.home === null) return json(404, { error: "no home" });
+      const body = typeof request.body === "object" && request.body !== null ? (request.body as Record<string, unknown>) : {};
+      const level = body["level"];
+      if (typeof level !== "string" || !(level in ENERGY_OF_LEVEL)) return json(400, { error: "invalid" });
+      const restrictions = Array.isArray(body["restrictions"]) ? body["restrictions"].filter((id): id is string => typeof id === "string") : [];
+      state.checkIn = { date: FAKE_TODAY, checkedIn: true, level: level as Level, restrictions };
+      if (state.dayPlan) state.dayPlan = { ...state.dayPlan, energy: ENERGY_OF_LEVEL[level]! };
+      return json(200, state.checkIn);
     }),
   );
 

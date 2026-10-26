@@ -119,11 +119,17 @@ for (const l of LOCALES) {
     test("has no actions on a Completion and nothing private", async ({ page }) => {
       await visit(page, "/home/residents/resident-2");
       await expect(page.getByRole("heading", { name: "Ana Souza", level: 2 })).toBeVisible();
-      // A Completion is a record: no button on the page (the top bar's Streak is the only one) and no link inside a card.
-      await expect(page.getByRole("button")).toHaveCount(1);
-      await expect(page.getByTestId("top-bar").getByRole("button")).toHaveCount(1);
+      // A Completion is a record: no button on the page (the top bar's Energy pill and Streak are the only two) and no link inside a card.
+      await expect(page.getByRole("button")).toHaveCount(2);
+      await expect(page.getByTestId("top-bar").getByRole("button")).toHaveCount(2);
       await expect(page.getByRole("listitem").filter({ hasText: " · " }).getByRole("link")).toHaveCount(0);
-      await expect(page.locator("body")).not.toContainText(/Energy|Energia|Baseline|Check-in|Preference|Preferência|Restriction|Restrição/);
+      // The Resident's own Energy is in the top bar; nothing private about the other Resident is in the page.
+      const body = await page.locator("main").evaluate((main) => {
+        const copy = main.cloneNode(true) as HTMLElement;
+        copy.querySelector('[data-testid="top-bar"]')?.remove();
+        return copy.textContent ?? "";
+      });
+      expect(body).not.toMatch(/Energy|Energia|Baseline|Check-in|Preference|Preferência|Restriction|Restrição/);
     });
 
     test("an empty week shows a neutral line, and the name and Streak still show", async ({ page }) => {
