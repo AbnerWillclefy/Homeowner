@@ -10,7 +10,7 @@ The issue is the handoff: once it is filed, the pipeline owns the idea and this 
 
 ## 1. Grill
 
-Run the `grilling` skill on the idea. Ground the questions in `GLOSSARY.md`, `docs/adr/` and `docs/architecture/`, and use the domain terms. Stop when the maintainer can state what changes for a Resident, what is out of scope, and which open issue (if any) it waits on.
+Call the Skill tool with `grilling` on the idea. Ground the questions in `GLOSSARY.md`, `docs/adr/` and `docs/architecture/`, and use the domain terms. Stop when the maintainer can state what changes for a Resident, what is out of scope, and which open issue (if any) it waits on.
 
 ## 2. Pick the path
 
