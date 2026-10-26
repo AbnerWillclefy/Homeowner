@@ -46,81 +46,71 @@ func (s *Store) Worth(ctx context.Context, cur, prev []string, now time.Time) (W
 	}
 
 	err := readOnly(ctx, s.db, func(tx pgx.Tx) error {
-		rows, err := tx.Query(ctx, worthOutcomeSQL, from, to, allocatorLLM, outcomePlanned, reasonTaken, reasonRefused)
+		err := scanDays(ctx, tx, "outcome", worthOutcomeSQL,
+			[]any{from, to, allocatorLLM, outcomePlanned, reasonTaken, reasonRefused},
+			func(rows pgx.Rows) error {
+				var date string
+				var isLLM bool
+				var a ArmOutcome
+				if err := rows.Scan(&date, &isLLM, &a.Proposed, &a.Completed, &a.Refused); err != nil {
+					return err
+				}
+				if isLLM {
+					day(date).Outcome.LLM = a
+				} else {
+					day(date).Outcome.Baseline = a
+				}
+				return nil
+			})
 		if err != nil {
-			return fmt.Errorf("worth outcome: %w", err)
-		}
-		for rows.Next() {
-			var date, arm string
-			var a ArmOutcome
-			if err := rows.Scan(&date, &arm, &a.Proposed, &a.Completed, &a.Refused); err != nil {
-				rows.Close()
-				return fmt.Errorf("worth outcome: %w", err)
-			}
-			if arm == "llm" {
-				day(date).Outcome.LLM = a
-			} else {
-				day(date).Outcome.Baseline = a
-			}
-		}
-		if err := rows.Err(); err != nil {
-			return fmt.Errorf("worth outcome: %w", err)
+			return err
 		}
 
-		rows, err = tx.Query(ctx, worthRunsSQL, from, to, allocatorLLM)
+		err = scanDays(ctx, tx, "runs", worthRunsSQL, []any{from, to, allocatorLLM},
+			func(rows pgx.Rows) error {
+				var date string
+				var r WorthReliability
+				if err := rows.Scan(&date, &r.RunsLLM, &r.RunsFallback, &r.RunsLLMNotAsked); err != nil {
+					return err
+				}
+				c := day(date)
+				c.Reliability.RunsLLM, c.Reliability.RunsFallback, c.Reliability.RunsLLMNotAsked =
+					r.RunsLLM, r.RunsFallback, r.RunsLLMNotAsked
+				return nil
+			})
 		if err != nil {
-			return fmt.Errorf("worth runs: %w", err)
-		}
-		for rows.Next() {
-			var date string
-			var r WorthReliability
-			if err := rows.Scan(&date, &r.RunsLLM, &r.RunsFallback, &r.RunsLLMNotAsked); err != nil {
-				rows.Close()
-				return fmt.Errorf("worth runs: %w", err)
-			}
-			c := day(date)
-			c.Reliability.RunsLLM, c.Reliability.RunsFallback, c.Reliability.RunsLLMNotAsked =
-				r.RunsLLM, r.RunsFallback, r.RunsLLMNotAsked
-		}
-		if err := rows.Err(); err != nil {
-			return fmt.Errorf("worth runs: %w", err)
+			return err
 		}
 
-		rows, err = tx.Query(ctx, worthCallsSQL, from, to, serviceAllocator)
+		err = scanDays(ctx, tx, "calls", worthCallsSQL, []any{from, to, serviceAllocator},
+			func(rows pgx.Rows) error {
+				var date string
+				var calls, rejected int
+				var cost WorthCost
+				if err := rows.Scan(&date, &calls, &rejected, &cost.AllocatorCostMicros, &cost.UncostedCalls); err != nil {
+					return err
+				}
+				c := day(date)
+				c.Reliability.AllocatorCalls, c.Reliability.RefereeRejected, c.Cost = calls, rejected, cost
+				return nil
+			})
 		if err != nil {
-			return fmt.Errorf("worth calls: %w", err)
-		}
-		for rows.Next() {
-			var date string
-			var calls, rejected int
-			var cost WorthCost
-			if err := rows.Scan(&date, &calls, &rejected, &cost.AllocatorCostMicros, &cost.UncostedCalls); err != nil {
-				rows.Close()
-				return fmt.Errorf("worth calls: %w", err)
-			}
-			c := day(date)
-			c.Reliability.AllocatorCalls, c.Reliability.RefereeRejected, c.Cost = calls, rejected, cost
-		}
-		if err := rows.Err(); err != nil {
-			return fmt.Errorf("worth calls: %w", err)
+			return err
 		}
 
-		rows, err = tx.Query(ctx, worthExplanationsSQL, from, to, outcomePlanned)
+		err = scanDays(ctx, tx, "explanations", worthExplanationsSQL, []any{from, to, outcomePlanned},
+			func(rows pgx.Rows) error {
+				var date string
+				var llm, pairs int
+				if err := rows.Scan(&date, &llm, &pairs); err != nil {
+					return err
+				}
+				// The same rule as readExplanationShare, applied per day.
+				day(date).Explanations = WorthExplanations{LLM: llm, Template: max(pairs-llm, 0)}
+				return nil
+			})
 		if err != nil {
-			return fmt.Errorf("worth explanations: %w", err)
-		}
-		for rows.Next() {
-			var date string
-			var llm, pairs int
-			if err := rows.Scan(&date, &llm, &pairs); err != nil {
-				rows.Close()
-				return fmt.Errorf("worth explanations: %w", err)
-			}
-			// The same rule as readExplanationShare, applied per day.
-			day(date).Explanations = WorthExplanations{LLM: llm, Template: max(pairs-llm, 0)}
-		}
-		if err := rows.Err(); err != nil {
-			return fmt.Errorf("worth explanations: %w", err)
+			return err
 		}
 
 		out.MonthEstCostMicros, out.MonthUncostedCalls, err = readMonth(ctx, tx, now)
@@ -140,6 +130,25 @@ func (s *Store) Worth(ctx context.Context, cur, prev []string, now time.Time) (W
 	return out, nil
 }
 
+// scanDays runs one measure's query and hands each row to row, wrapping any
+// error with the measure's name.
+func scanDays(ctx context.Context, tx pgx.Tx, name, sql string, args []any, row func(rows pgx.Rows) error) error {
+	rows, err := tx.Query(ctx, sql, args...)
+	if err != nil {
+		return fmt.Errorf("worth %s: %w", name, err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		if err := row(rows); err != nil {
+			return fmt.Errorf("worth %s: %w", name, err)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("worth %s: %w", name, err)
+	}
+	return nil
+}
+
 // add returns the sum of two sets of counts.
 func (a WorthCounts) add(b WorthCounts) WorthCounts {
 	a.Outcome.LLM = a.Outcome.LLM.add(b.Outcome.LLM)
@@ -157,10 +166,10 @@ func (a WorthCounts) add(b WorthCounts) WorthCounts {
 }
 
 func (a ArmOutcome) add(b ArmOutcome) ArmOutcome {
-	return ArmOutcome{a.Proposed + b.Proposed, a.Completed + b.Completed, a.Refused + b.Refused}
+	return ArmOutcome{Proposed: a.Proposed + b.Proposed, Completed: a.Completed + b.Completed, Refused: a.Refused + b.Refused}
 }
 
-// worthOutcomeSQL: per (plan date, arm) of the planned runs, the Tasks the
+// worthOutcomeSQL: per (plan date, is_llm) of the planned runs, the Tasks the
 // plan proposed and how they ended. $3 is the LLM allocator's name, $4 the
 // planned outcome, $5 the taken assignment reason and $6 the refused pool
 // reason.
@@ -173,21 +182,21 @@ func (a ArmOutcome) add(b ArmOutcome) ArmOutcome {
 // join matches at most one row.
 const worthOutcomeSQL = `
 WITH runs AS (
-    SELECT id, plan_date, CASE WHEN allocator = $3 THEN 'llm' ELSE 'baseline' END AS arm, reasons
+    SELECT id, plan_date, allocator = $3 AS is_llm, reasons
       FROM allocation_runs
      WHERE plan_date BETWEEN $1::text::date AND $2::text::date AND outcome = $4
 ), proposed AS (
-    SELECT r.plan_date, r.arm, a.task_id, false AS refused
+    SELECT r.plan_date, r.is_llm, a.task_id, false AS refused
       FROM runs r
       JOIN (SELECT DISTINCT run_id, task_id FROM day_plan_assignments WHERE reason <> $5) a ON a.run_id = r.id
     UNION ALL
-    SELECT r.plan_date, r.arm, (e->>'taskId')::uuid, true
+    SELECT r.plan_date, r.is_llm, (e->>'taskId')::uuid, true
       FROM runs r
       CROSS JOIN LATERAL jsonb_array_elements(
           CASE WHEN jsonb_typeof(r.reasons->'pool') = 'array' THEN r.reasons->'pool' ELSE '[]'::jsonb END) e
      WHERE e->>'reason' = $6
 )
-SELECT p.plan_date::text, p.arm, count(*)::int, count(c.id)::int, count(*) FILTER (WHERE p.refused)::int
+SELECT p.plan_date::text, p.is_llm, count(*)::int, count(c.id)::int, count(*) FILTER (WHERE p.refused)::int
   FROM proposed p
   LEFT JOIN completions c ON c.task_id = p.task_id AND c.completed_on = p.plan_date
  GROUP BY 1, 2`
