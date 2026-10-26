@@ -98,6 +98,7 @@ module "api" {
   environment = merge(
     {
       PORT                           = "8080"
+      ENVIRONMENT                    = "staging"
       REPLAN_ALLOCATE_FUNCTION_NAME  = module.allocation_job.function_name
       DB_MAX_CONNS                   = "2"
       CORS_ALLOWED_ORIGINS           = join(",", compact(["https://${module.web.domain_name}", var.cors_allowed_origins]))

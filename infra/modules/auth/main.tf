@@ -52,6 +52,15 @@ resource "aws_cognito_user_pool" "this" {
   }
 }
 
+# The super admin role (ADR 0017). The API reads this group from the ID token's
+# cognito:groups claim. Membership is a manual step with the AWS CLI (see
+# docs/development.md), so no code or config names a person.
+resource "aws_cognito_user_group" "super_admin" {
+  name         = "super-admin"
+  user_pool_id = aws_cognito_user_pool.this.id
+  description  = "The maintainer: may call the API's /admin/ routes. Granted by hand."
+}
+
 # The app client for the PWA. A browser cannot keep a secret, so there is none.
 resource "aws_cognito_user_pool_client" "web" {
   name         = "${var.name}-web"

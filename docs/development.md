@@ -50,7 +50,34 @@ locks. Never enable `MIGRATE_ON_START` on Lambda: every cold start would race.
 
 `DATABASE_URL` (required), `PORT` (8080), `MIGRATE_ON_START` (false),
 `MIGRATE_DATABASE_URL`, `DB_MAX_CONNS` (5), `CORS_ALLOWED_ORIGINS` (comma-separated browser origins
-allowed to call the API; empty sends no CORS headers).
+allowed to call the API; empty sends no CORS headers), `ENVIRONMENT` (`local`,
+`staging` or `production`; default `local`; any other value stops the API at
+start; `GET /admin/me` reports it).
+
+### The super admin role
+
+Every `/admin/` route needs an ID token whose `cognito:groups` claim contains
+`super-admin` ([ADR 0017](adr/0017-operate-through-a-separate-admin-app-per-environment.md)).
+Terraform creates the group in each environment's pool (`infra/modules/auth`);
+membership is granted by hand, once per environment, and no code names a person.
+
+Find the pool id with `aws cognito-idp list-user-pools --max-results 10`, or
+the `user_pool_id` output of `module.auth`.
+
+```sh
+# Grant, then check
+aws cognito-idp admin-add-user-to-group --user-pool-id <pool id> --username <email or sub> --group-name super-admin
+aws cognito-idp admin-list-groups-for-user --user-pool-id <pool id> --username <email>
+
+# Revoke, then check
+aws cognito-idp admin-remove-user-from-group --user-pool-id <pool id> --username <email or sub> --group-name super-admin
+aws cognito-idp admin-list-groups-for-user --user-pool-id <pool id> --username <email>
+```
+
+A grant shows up after the person signs in again. A revoke takes effect when
+their ID token next refreshes, up to 60 minutes (`id_token_validity = 60` in
+`infra/modules/auth`); until then `GET <api>/admin/me` still answers 200. After
+that it answers 403.
 
 ## Web
 

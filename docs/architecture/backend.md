@@ -180,6 +180,8 @@ An Invite token is also a credential, and it travels in the URL path of `/invite
 
 `requireResident` wraps `requireUser` for routes on a Home's data. It loads the caller's Home, puts the Membership in the context (`identity.WithMembership`), and answers `404 {"error":"no home"}` when the User lives in none, so a new User never gets a 500 and nobody can reach another Home's data. Every Home-scoped route goes behind it.
 
+`requireSuperAdmin` guards the operator API ([ADR 0017](../adr/0017-operate-through-a-separate-admin-app-per-environment.md)). The `/admin/` routes are listed in one table in `server/admin.go` and registered on a sub-mux that `server.New` wraps once: `mux.Handle("/admin/", requireSuperAdmin(adminMux))`. The guard verifies the token like `requireUser` (401 for none or a bad one, 503 with no Verifier), then answers `403 {"error":"forbidden"}` unless the token's `cognito:groups` claim (`auth.Claims.Groups`) contains `super-admin`. It never creates a User or loads a Home, and an unknown `/admin/x` meets the guard first, so only a super admin ever sees a 404 there. `GET /admin/me` returns the `environment` from `Deps.Environment` (the `ENVIRONMENT` setting: `local`, `staging` or `production`). A guard test walks the route table, so a new admin route is checked for 401, 403 and 200 without extra work.
+
 `httpx.DecodeBody` reads a JSON body with a caller-chosen size cap and an option to reject unknown fields. `cmd/api` imports `time/tzdata`, so `time.LoadLocation` works on Lambda and in distroless images.
 
 ## Routes

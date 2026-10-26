@@ -95,6 +95,7 @@ module "api" {
   environment = merge(
     {
       PORT                           = "8080"
+      ENVIRONMENT                    = "production"
       DB_MAX_CONNS                   = "2"
       CORS_ALLOWED_ORIGINS           = join(",", compact(["https://${module.web.domain_name}", var.cors_allowed_origins]))
       DATABASE_URL_SSM_PARAM         = module.database.database_url_param
