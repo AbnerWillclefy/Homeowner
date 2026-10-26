@@ -49,6 +49,13 @@ func (r Range) Window(now time.Time) []string {
 	return out
 }
 
+// Previous lists the Days dates immediately before Window(now), oldest first:
+// the same length, ending the day before the window starts. Unlike the
+// window, which includes today (partial), it is made of full days.
+func (r Range) Previous(now time.Time) []string {
+	return r.Window(now.AddDate(0, 0, -r.Days))
+}
+
 // ZeroFill returns one Day per entry of days, in that order, taking the
 // counted day from got and an all-zero Day for a date with no data, so a chart
 // has no gaps.

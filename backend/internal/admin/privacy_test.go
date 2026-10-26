@@ -64,7 +64,7 @@ func TestOverviewLeaksNoPersonalData(t *testing.T) {
 	walk(decoded, func(k string) { keys[k] = true }, func(string) {})
 	for _, k := range []string{"range", "from", "to", "totals", "users", "homes", "residents", "chores", "active",
 		"days", "date", "runs", "rejected", "fallbacks", "checkins", "completions", "refuses", "takes",
-		"swapsAccepted", "pushes", "delivered", "failed", "gone", "unknown"} {
+		"swapsAccepted", "pushes", "delivered", "failed", "gone", "unknown", "previous"} {
 		if !keys[k] {
 			t.Errorf("response lacks the key %q", k)
 		}
