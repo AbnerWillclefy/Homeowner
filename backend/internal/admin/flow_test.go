@@ -54,8 +54,8 @@ var flowOrder = []string{"homesDue", "runs", "llmAsked", "llmSkipped", "llmAccep
 //	       fails, so both explanations are the template.
 //	4 Mar: Home B (no Energy) is created. Home A's LLM call times out; the
 //	       fallback allocator breaks a rule, so both Homes' runs are rejected by
-//	       the checker. Two more allocator events were skipped by the cap and
-//	       the budget.
+//	       the checker. Four more allocator events are inserted: skipped by
+//	       the cap and the budget, and an error and an invalid response.
 //
 // Plus one check-in reminder delivered on 4 March, which the flow ignores and
 // the overview counts. The clock ends at 09:00 UTC on 4 March.
@@ -92,7 +92,7 @@ func flowWeek(t *testing.T) (*apitest.App, string) {
 	app.UseAllocator(overEnergy{})
 	app.UseLLM(proposer(timesOut), 3, time.Second)
 	app.RunAllocation(t)
-	for _, outcome := range []string{"skipped_cap", "skipped_budget"} {
+	for _, outcome := range []string{"skipped_cap", "skipped_budget", "error", "invalid_response"} {
 		if _, err := app.DB.Exec(context.Background(), `
 			INSERT INTO llm_call_events (created_at, local_date, service, model, outcome)
 			VALUES ($1, '2026-03-04', 'allocator', 'claude-haiku-5-5', $2)`, app.Clock.Now(), outcome); err != nil {
@@ -124,12 +124,13 @@ func TestFlowCountsEveryStepOfThePipelineEndToEnd(t *testing.T) {
 		t.Fatalf("steps = %v, want %v", ids, flowOrder)
 	}
 	// Home A was due on three days and Home B on one. Four runs: two planned,
-	// two rejected. Three calls were made (accepted, refused by the referee, one
-	// timeout; Home B has no Energy, so it is never asked) and two were skipped. Two planned runs of two Residents are four
+	// two rejected. Five calls were made (accepted, refused by the referee, one
+	// timeout, an error and an invalid response; Home B has no Energy, so it is
+	// never asked) and two were skipped. Two planned runs of two Residents are four
 	// explanations, two by the LLM. The plan-ready push of each planned day:
 	// a's accepted, b's failed.
 	want := map[string]int{
-		"homesDue": 4, "runs": 4, "llmAsked": 3, "llmSkipped": 2, "llmAccepted": 1, "llmFallback": 2,
+		"homesDue": 4, "runs": 4, "llmAsked": 5, "llmSkipped": 2, "llmAccepted": 1, "llmFallback": 4,
 		"rejectedRuns": 2, "explanationsLlm": 2, "explanationsTemplate": 2,
 		"pushesDelivered": 2, "pushesFailed": 2, "pushesGone": 0, "pushesUnknown": 0,
 	}
