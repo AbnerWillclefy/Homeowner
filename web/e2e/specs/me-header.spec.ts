@@ -104,7 +104,7 @@ for (const l of LOCALES) {
         expect(fakeApi.requests.some((r) => r.method === "PUT" && r.path === "/me/name")).toBe(false);
       });
 
-      test("saving a name returns to Me and changes the greeting on Today without a reload", async ({ page, baseURL }) => {
+      test("saving a name returns to Me, and Today opens at the Tasks without a reload", async ({ page, baseURL }) => {
         await openMe(page, baseURL);
         await page.evaluate(() => ((window as unknown as { __kept: boolean }).__kept = true));
         await page.getByRole("link", { name: l.edit }).click();
@@ -116,7 +116,8 @@ for (const l of LOCALES) {
         await expect(page.getByText("Bia Costa", { exact: true })).toBeVisible();
         await expect(page.getByText("BC", { exact: true })).toBeVisible();
         await nav(page, l.today).click();
-        await expect(page.getByRole("heading", { level: 2, name: /, Bia Costa$/ })).toBeVisible();
+        await expect(page.getByRole("heading", { level: 2, name: /Suas tarefas|Your Tasks/ })).toBeVisible();
+        await expect(page.getByRole("heading", { level: 2, name: /, Bia Costa$/ })).toHaveCount(0);
         expect(await page.evaluate(() => (window as unknown as { __kept?: boolean }).__kept)).toBe(true);
       });
 

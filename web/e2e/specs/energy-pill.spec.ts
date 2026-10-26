@@ -10,7 +10,8 @@ import { shell } from "../pages/shell";
 // What this covers: the Energy pill in the top bar, on all four tabs. Before a Check-in it reads "Check-in" with a
 // dashed edge; a tap opens the one Check-in dialog (focus on its title, Escape closes it, focus is back on the
 // pill); saving updates the pill to the Energy number without a reload; a failed Check-in read gives an
-// unavailable pill while the Streak still shows; Today's card opens the same, single dialog; the targets are at
+// unavailable pill while the Streak still shows; on Today the pill alone opens the one dialog, which shows the planned
+// Effort and the day's Restrictions; the targets are at
 // least 2.75rem. Each test runs in pt-BR first, then en-US.
 
 const LOCALES = [
@@ -24,6 +25,8 @@ const LOCALES = [
     normal: "Normal",
     save: "Salvar",
     cancel: "Cancelar",
+    plannedLine: /^\d+ de 8 planejados$/,
+    noRestrictions: "Nenhuma restrição hoje",
     wordmark: "Check-in",
   },
   {
@@ -36,6 +39,8 @@ const LOCALES = [
     normal: "Normal",
     save: "Save",
     cancel: "Cancel",
+    plannedLine: /^\d+ of 8 planned$/,
+    noRestrictions: "No restrictions today",
     wordmark: "Check-in",
   },
 ] as const;
@@ -109,19 +114,28 @@ for (const l of LOCALES) {
       await expect(page).toHaveURL(/\/me$/);
     });
 
-    test("Today's card opens the same, single dialog, and the pill and the card agree", async ({ page, baseURL }) => {
+    test("on Today only the pill opens the one dialog; nothing else on the page does", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
-      const card = page.getByRole("region", { name: l.wordmark }).getByRole("button", { name: l.unset, exact: true });
-      await expect(card).toBeVisible();
-      await card.click();
+      await expect(pill(page, l.unset)).toBeVisible();
+      // No Check-in card and no second button of that name in the page.
+      await expect(page.getByRole("button", { name: l.unset, exact: true })).toHaveCount(1);
+      await expect(page.getByRole("region", { name: l.wordmark })).toHaveCount(0);
+
+      await pill(page, l.unset).click();
       await expect(page.getByRole("dialog")).toHaveCount(1);
       await expect(dialog(page).getByRole("heading", { name: l.wordmark })).toBeFocused();
       await page.keyboard.press("Escape");
       await expect(dialog(page)).toBeHidden();
-      await expect(card).toBeFocused();
+      await expect(pill(page, l.unset)).toBeFocused();
+    });
 
-      await pill(page, l.unset).click();
-      await expect(page.getByRole("dialog")).toHaveCount(1);
+    test("the dialog shows the planned Effort against Energy and the day's Restrictions once checked in", async ({ page, baseURL, fakeApi }) => {
+      fakeApi.state.checkIn = { date: "2030-01-15", checkedIn: true, level: "normal", restrictions: [] };
+      await launchApp(page, baseURL!);
+      await pill(page, l.energy(8)).click();
+      await expect(dialog(page).getByText(l.plannedLine)).toBeVisible();
+      await expect(dialog(page).getByText(l.noRestrictions, { exact: true })).toBeVisible();
+      await expect(dialog(page).getByRole("radio")).toHaveCount(4);
     });
 
     test("a Check-in read that failed gives the unavailable pill, and the Streak still shows", async ({ page, baseURL, fakeApi }) => {

@@ -5,8 +5,8 @@ import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
 
-// What this covers: Today names Residents instead of numbering them, in both locales. The greeting uses the
-// Resident's name, another Resident's group and a two-person Task show a name and an avatar, a photo that answers
+// What this covers: Today names Residents instead of numbering them, in both locales. Another
+// Resident's group and a two-person Task show a name and an avatar, a photo that answers
 // text/html falls back to initials, and a failed residents call still leaves Today working with a placeholder.
 // The Swap offer cards, which name the other Resident the same way, are covered in today-swap.spec.ts.
 
@@ -48,11 +48,6 @@ for (const l of LOCALES) {
       await page.route(PHOTO_URL, (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<html></html>" }));
     });
 
-    test("the greeting uses the Resident's name", async ({ page, baseURL }) => {
-      await launchApp(page, baseURL!);
-      await expect(page.getByRole("heading", { level: 2, name: /, Abner$/ })).toBeVisible();
-    });
-
     test("another Resident's group shows their name and initials", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
       const group = page.getByRole("heading", { level: 4, name: "Ana Souza" });
@@ -87,7 +82,6 @@ for (const l of LOCALES) {
       fakeApi.state.user.displayName = LONG_NAME;
       await launchApp(page, baseURL!);
       await expect(page.getByRole("heading", { level: 4, name: LONG_NAME })).toBeVisible();
-      await expect(page.getByRole("heading", { level: 2, name: new RegExp(LONG_NAME) })).toBeVisible();
       const overflows = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
       expect(overflows).toBe(false);
     });

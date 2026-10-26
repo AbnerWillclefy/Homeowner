@@ -11,7 +11,7 @@ import { shell } from "../pages/shell";
 // What this covers: the Streak as a flame button in the top bar's Streak slot. It opens a centred dialog and
 // focus comes back to it on close (Close button and Escape), a Streak of 0 looks like any other number, a held
 // Streak does not hold Today (the flame arrives in its reserved slot), a Streak that could not be read leaves no button, a failed
-// refresh keeps the number, and the bar holds at 320px with a long greeting and three digits. No Streak card
+// refresh keeps the number, and the bar holds at 320px with three digits. No Streak card
 // is left in the body. Each test runs in pt-BR first, then en-US.
 
 const LOCALES = [
@@ -29,7 +29,6 @@ const LOCALES = [
       "Assumir tarefas e não concluir nenhuma quebra a sequência.",
       "Recusar ou ignorar uma tarefa proposta nunca quebra a sequência.",
     ],
-    greeting: "Boa tarde, Maria Eduarda",
   },
   {
     locale: "en-US",
@@ -45,11 +44,10 @@ const LOCALES = [
       "Taking on Tasks and finishing none breaks it.",
       "Refusing or ignoring a proposed Task never breaks it.",
     ],
-    greeting: "Good afternoon, Maria Eduarda",
   },
 ] as const;
 
-// Today's greeting: the first h2 (an sr-only "Today" h2 follows it).
+// Today's title ("Your Tasks"): the tab's first h2.
 const heading = (page: Page) => page.getByRole("heading", { level: 2 }).first();
 const regainFocus = (page: Page) => page.evaluate(() => document.dispatchEvent(new Event("visibilitychange", { bubbles: true })));
 
@@ -149,7 +147,7 @@ for (const l of LOCALES) {
     test("while the Streak is held Today shows without it, and the flame arrives in the bar's reserved slot", async ({ page, baseURL }) => {
       const streak = hold(page, /\/home\/streak$/);
       await launchApp(page, baseURL!);
-      // Today does not wait for the Streak: the greeting shows, the bar holds the flame's place.
+      // Today does not wait for the Streak: the title shows, the bar holds the flame's place.
       await expect(heading(page)).toBeVisible();
       await expect(page.getByTestId("day-plan-skeleton")).toHaveCount(0);
       await expect(shell.logo(page)).toBeVisible();
@@ -181,7 +179,7 @@ for (const l of LOCALES) {
       await expect(flame(page, 3)).toBeVisible();
     });
 
-    test.describe("320px with a long greeting and three digits", () => {
+    test.describe("320px with three digits", () => {
       test.use({
         viewport: { width: 320, height: 640 },
         fakeState: (() => {
@@ -196,7 +194,7 @@ for (const l of LOCALES) {
         await launchApp(page, baseURL!);
         const button = flame(page, 100);
         await expect(button).toBeVisible();
-        await expect(heading(page)).toContainText("Maria Eduarda");
+        await expect(heading(page)).toBeVisible();
         const overflows = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
         expect(overflows).toBe(false);
         const box = await button.boundingBox();

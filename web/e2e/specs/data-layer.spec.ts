@@ -131,7 +131,12 @@ for (const l of LOCALES) {
     test("a different Resident signing in after sign-out never sees the first one's data", async ({ page, baseURL, fakeApi, fakeCognito }) => {
       await launchApp(page, baseURL!);
       await expect(dishes(page)).toBeVisible();
+
+      // Today no longer greets by name, so the name shows on Me.
+      await tab(page, l.me).click();
       await expect(page.getByText(FIRST_NAME).first()).toBeVisible();
+      await tab(page, l.today).click();
+      await expect(dishes(page)).toBeVisible();
 
       await tab(page, l.me).click();
       await page.getByRole("button", { name: l.signOut, exact: true }).click();
@@ -154,9 +159,11 @@ for (const l of LOCALES) {
 
       loading.release();
       await expect(page.getByText("Water the plants", { exact: true })).toBeVisible();
-      await expect(page.getByText(SECOND_NAME).first()).toBeVisible();
       await expect(page.getByText(FIRST_NAME)).toHaveCount(0);
       await expect(dishes(page)).toHaveCount(0);
+      await tab(page, l.me).click();
+      await expect(page.getByText(SECOND_NAME).first()).toBeVisible();
+      await expect(page.getByText(FIRST_NAME)).toHaveCount(0);
     });
 
     test("resuming the page refetches the current page", async ({ page, baseURL, fakeApi }) => {

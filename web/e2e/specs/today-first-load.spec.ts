@@ -18,10 +18,10 @@ const LOCALES = [
   {
     locale: "pt-BR",
     mine: "Suas tarefas",
-    prompt: "Como você está hoje?",
     headline: "Um dia leve para você",
     streak: /^Sequência: /,
     pill: "Fazer check-in",
+    unavailable: "Energia indisponível. Tentar de novo",
     retry: "Tentar de novo",
     today: "Hoje",
     chores: "Afazeres",
@@ -29,10 +29,10 @@ const LOCALES = [
   {
     locale: "en-US",
     mine: "Your Tasks",
-    prompt: "How are you today?",
     headline: "A light day for you",
     streak: /^Streak: /,
     pill: "Check in",
+    unavailable: "Energy unavailable. Try again",
     retry: "Try again",
     today: "Today",
     chores: "Chores",
@@ -93,12 +93,11 @@ for (const l of LOCALES) {
       await seedSession(page, { email: RESIDENT_EMAIL });
     });
 
-    const mine = (page: Page) => page.getByRole("heading", { level: 3, name: l.mine });
-    const prompt = (page: Page) => page.getByText(l.prompt);
-    const explanation = (page: Page) => page.getByRole("button", { name: l.headline });
+    const mine = (page: Page) => page.getByRole("heading", { level: 2, name: l.mine });
+    // The one muted summary line under the title: plain text, no longer a button.
+    const summary = (page: Page) => page.getByText(l.headline);
+    const pill = (page: Page) => page.getByTestId("top-bar").getByRole("button", { name: l.pill });
     const streak = (page: Page) => page.getByRole("button", { name: l.streak });
-    // Today's greeting is its first h2 (it changes with the hour, so it is matched by role alone; an sr-only "Today" h2 follows).
-    const todayHeading = (page: Page) => page.getByRole("heading", { level: 2 }).first();
     const task = (page: Page) => page.getByText("Wash the dishes", { exact: true });
     const skeleton = (page: Page) => page.locator(SKELETON);
 
@@ -116,22 +115,21 @@ for (const l of LOCALES) {
           await launchApp(page, baseURL!);
 
           await expect(skeleton(page)).toBeVisible();
-          await expect(todayHeading(page)).toHaveCount(0);
+          await expect(mine(page)).toHaveCount(0);
           await page.waitForTimeout(300);
 
           // Today's two reads, one at a time: Today shows nothing of them until the last has answered.
           // The Streak is not one of them; it is held the whole time and the bar keeps its box.
           held.checkIn.release();
           await page.waitForTimeout(150);
-          await expect(prompt(page)).toHaveCount(0);
+          await expect(summary(page)).toHaveCount(0);
           await expect(mine(page)).toHaveCount(0);
           await expect(skeleton(page)).toBeVisible();
           held.plan.release();
 
           await expect(mine(page)).toBeVisible();
           // The same render brought everything, and took the skeleton away, while the flame still waits.
-          await expect(prompt(page)).toBeVisible({ timeout: 0 });
-          await expect(explanation(page)).toBeVisible({ timeout: 0 });
+          await expect(summary(page)).toBeVisible({ timeout: 0 });
           await expect(task(page)).toBeVisible({ timeout: 0 });
           await expect(skeleton(page)).toHaveCount(0);
           await expect(streak(page)).toHaveCount(0);
@@ -143,6 +141,20 @@ for (const l of LOCALES) {
           await page.waitForTimeout(500);
           expect(await cls(page)).toBeLessThan(0.1);
         });
+
+        if (size.scale) {
+          test("the summary wraps onto a second line instead of being cut", async ({ page, baseURL }) => {
+            await launchApp(page, baseURL!);
+            const line = summary(page);
+            await expect(line).toBeVisible();
+            const box = await line.evaluate((el) => {
+              const style = getComputedStyle(el);
+              return { height: el.getBoundingClientRect().height, lineHeight: parseFloat(style.lineHeight), overflows: el.scrollWidth > el.clientWidth };
+            });
+            expect(box.height).toBeGreaterThanOrEqual(box.lineHeight * 2 - 1);
+            expect(box.overflows).toBe(false);
+          });
+        }
 
         test("the Check-in held: the pill reserves its box from the first frame and fills it without moving the bar", async ({ page, baseURL }) => {
           const checkIn = hold(page, /\/home\/check-in$/);
@@ -176,7 +188,7 @@ for (const l of LOCALES) {
           await launchApp(page, baseURL!);
 
           await expect(mine(page)).toBeVisible();
-          await expect(prompt(page)).toBeVisible();
+          await expect(summary(page)).toBeVisible();
           await expect(skeleton(page)).toHaveCount(0);
           await page.waitForTimeout(400);
           await expect(streak(page)).toHaveCount(0);
@@ -191,7 +203,7 @@ for (const l of LOCALES) {
           await launchApp(page, baseURL!);
 
           await expect(mine(page)).toBeVisible();
-          await expect(prompt(page)).toBeVisible();
+          await expect(summary(page)).toBeVisible();
           await expect(streak(page)).toBeVisible();
           await expect(skeleton(page)).toHaveCount(0);
           await page.waitForTimeout(500);
@@ -211,21 +223,26 @@ for (const l of LOCALES) {
         await launchApp(page, baseURL!);
 
         await expect(mine(page)).toBeVisible();
-        await expect(prompt(page)).toBeVisible();
+        await expect(summary(page)).toBeVisible();
         await expect(task(page)).toBeVisible();
         await expect(streak(page)).toHaveCount(0);
         await expect(skeleton(page)).toHaveCount(0);
       });
 
-      test("the Check-in: its own alert in place, with the Tasks shown", async ({ page, baseURL, fakeApi }) => {
+      test("the Check-in: only the pill says it is unavailable, with the Tasks shown and nothing moving", async ({ page, baseURL, fakeApi }) => {
+        await observe(page);
         fakeApi.override("GET /home/check-in", json(500, { error: "boom" }));
         await launchApp(page, baseURL!);
 
         await expect(mine(page)).toBeVisible();
-        await expect(page.getByRole("region", { name: "Check-in" }).getByRole("alert")).toBeVisible();
+        await expect(page.getByTestId("top-bar").getByRole("button", { name: l.unavailable })).toBeVisible();
         await expect(task(page)).toBeVisible();
         await expect(streak(page)).toBeVisible();
         await expect(skeleton(page)).toHaveCount(0);
+        // Not a region on Today: no alert on the page for the Check-in.
+        await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toHaveCount(0);
+        await page.waitForTimeout(500);
+        expect(await cls(page)).toBeLessThan(0.1);
       });
 
       test("the Day Plan: its own alert in place, and Retry loads only that section", async ({ page, baseURL, fakeApi }) => {
@@ -233,7 +250,8 @@ for (const l of LOCALES) {
         await launchApp(page, baseURL!);
 
         await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toBeVisible();
-        await expect(prompt(page)).toBeVisible();
+        await expect(mine(page)).toBeVisible();
+        await expect(pill(page)).toBeVisible();
         await expect(streak(page)).toBeVisible();
         await expect(skeleton(page)).toHaveCount(0);
 
@@ -242,8 +260,8 @@ for (const l of LOCALES) {
         await page.getByRole("button", { name: l.retry }).click();
         await expect(mine(page)).toBeVisible();
         await expect(task(page)).toBeVisible();
-        // The Check-in and the flame stayed where they were.
-        await expect(prompt(page)).toBeVisible();
+        // The pill and the flame stayed where they were.
+        await expect(pill(page)).toBeVisible();
         await expect(streak(page)).toBeVisible();
       });
     });
@@ -267,7 +285,7 @@ for (const l of LOCALES) {
       await expect(mine(page)).toBeVisible();
     });
 
-    test("opening Today again with its data cached shows it at once and focus lands on the greeting", async ({ page, baseURL }) => {
+    test("opening Today again with its data cached shows it at once and focus lands on the title", async ({ page, baseURL }) => {
       await page.setViewportSize({ width: 390, height: 844 });
       await launchApp(page, baseURL!);
       await expect(mine(page)).toBeVisible();
@@ -281,7 +299,7 @@ for (const l of LOCALES) {
       // The cached data shows with no skeleton while the refresh is held.
       await expect(mine(page)).toBeVisible();
       await expect(skeleton(page)).toHaveCount(0);
-      await expect(todayHeading(page)).toBeFocused();
+      await expect(mine(page)).toBeFocused();
       reads.release();
     });
   });

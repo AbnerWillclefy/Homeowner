@@ -123,6 +123,9 @@ const topOf = (locator: Locator) => locator.evaluate((element) => element.getBou
  */
 async function press(page: Page, button: Locator): Promise<number> {
   await button.evaluate((element) => element.scrollIntoView({ block: "center" }));
+  // A button right under the title (Accept all) cannot be centred without scrolling past the top: scroll a little
+  // down instead, so it is still on screen but the page has a position to keep.
+  if ((await scrollY(page)) <= 100) await page.evaluate(() => window.scrollTo(0, 120));
   const before = await scrollY(page);
   // A short screen and a tall plan: a position of 0 would prove nothing.
   expect(before).toBeGreaterThan(100);
