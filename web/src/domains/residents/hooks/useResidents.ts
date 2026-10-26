@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Resident } from "../api/api";
 import { residentsKey, residentsQuery } from "../api/queries";
+import { useLaunchStaleTime } from "../../../shared/query/useLaunchStaleTime";
 import { viewOf } from "../../../shared/query/view";
 
 export type ResidentsState =
@@ -22,14 +23,9 @@ export type ResidentsState =
  */
 export function useResidents(hasHome: boolean) {
   const queryClient = useQueryClient();
-  // The launch read (ADR 0016) may have filled the list before the Home answered. Turning `enabled` on reads a
-  // stale entry whatever `refetchOnMount` says, so the first time only, a list already in the cache counts as
-  // fresh. Later flips (leave, then create a Home) find the list removed and read it.
-  const wasEnabled = useRef(false);
-  const query = useQuery({ ...residentsQuery, enabled: hasHome, staleTime: wasEnabled.current ? 0 : Infinity });
-  useEffect(() => {
-    if (hasHome) wasEnabled.current = true;
-  }, [hasHome]);
+  // A list the launch read already cached counts as fresh the first time only (see `useLaunchStaleTime`).
+  const staleTime = useLaunchStaleTime(hasHome);
+  const query = useQuery({ ...residentsQuery, enabled: hasHome, staleTime });
   const { state: view, refreshing } = viewOf(query);
 
   const state: ResidentsState =

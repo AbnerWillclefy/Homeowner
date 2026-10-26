@@ -29,8 +29,9 @@ const settle = () => act(() => new Promise<void>((resolve) => setTimeout(resolve
 describe("useCheckIn save over the query cache", () => {
   let rendered: Rendered | undefined;
   let checkIn!: ReturnType<typeof useCheckIn>;
+  let hasHome = true;
   const Probe = () => {
-    checkIn = useCheckIn();
+    checkIn = useCheckIn(hasHome);
     return null;
   };
   const mount = async () => {
@@ -40,10 +41,24 @@ describe("useCheckIn save over the query cache", () => {
     return client;
   };
   beforeEach(() => {
+    hasHome = true;
     getCheckIn.mockReset().mockResolvedValue({ kind: "ok", checkIn: BEFORE });
     putCheckIn.mockReset();
   });
   afterEach(() => rendered?.unmount());
+
+  it("sends no request without a Home, and reads once the Home is there", async () => {
+    hasHome = false;
+    const client = await mount();
+    expect(getCheckIn).not.toHaveBeenCalled();
+    expect(checkIn.state).toEqual({ kind: "loading" });
+    hasHome = true;
+    rendered!.rerender(createElement(Probe));
+    await settle();
+    expect(getCheckIn).toHaveBeenCalledTimes(1);
+    expect(checkIn.state.kind).toBe("ready");
+    expect(client.getQueryData(checkInKey)).toEqual(BEFORE);
+  });
 
   it("writes the saved Check-in to the cache, does not read it again, and invalidates the Day Plan", async () => {
     putCheckIn.mockResolvedValue({ kind: "ok", checkIn: SAVED });

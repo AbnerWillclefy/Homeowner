@@ -1,5 +1,5 @@
 import { BatteryFull, BatteryLow, BatteryMedium, Moon, type LucideIcon } from "lucide-react";
-import { useId, useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent, type RefObject } from "react";
 import { LEVELS, type CheckIn, type Level } from "../api/api";
 import { AppDialog } from "../../../shared/ui/AppDialog";
 import { useSubmitOnce } from "../../../shared/ui/useSubmitOnce";
@@ -38,12 +38,15 @@ export function CheckInDialog({
   demands,
   save: saveCheckIn,
   onClose,
+  returnFocusRef,
 }: {
   checkIn: CheckIn;
   demands: readonly string[];
   /** Resolves to null once saved, else why it was not. */
   save(level: Level, restrictions: readonly string[]): Promise<SaveFailure | null>;
   onClose(): void;
+  /** The control that opened the dialog, which gets focus back on close. */
+  returnFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const { t } = useI18n();
   const toast = useToast();
@@ -87,6 +90,7 @@ export function CheckInDialog({
       title={t("checkin.heading")}
       onDismiss={onClose}
       dismissible={!saving}
+      returnFocusRef={returnFocusRef}
       footer={
         <ButtonRow
           start={

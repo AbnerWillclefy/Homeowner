@@ -129,7 +129,7 @@ It is light and dark by token swap, not by variant, and it holds at the largest 
 - One teal accent for primary actions; pastels label Categories only.
 - Pills for buttons and chips, rounded squares for icon tiles, big rounded rectangles for cards.
 - Nunito at 400, 600 and 700, plus 800 for the wordmark only.
-- One quiet top bar on every tab: the logo on the left, the Streak on the right.
+- One quiet top bar on every tab: the logo on the left, the Energy pill and the Streak on the right.
 - Thumb-reach: no primary action is stranded on the left.
 
 ## Colors
@@ -237,10 +237,16 @@ Icon and Category name on the Category pastel, a pill with a hairline edge, 0.87
   - The icon tile is decorative unless it carries meaning. When it does, it has a text description and the open body repeats it as a visible caption, never a tooltip. A state that is not an error (a fallback text, say) uses the neutral tile (muted tint, muted ink), not a warning icon.
 
 ### Top bar
-One quiet row above the content of every tab, in the same centred column, with no fill or edge of its own. On the left the logo; on the right two fixed slots, the Energy slot (empty until the Energy pill arrives) and the Streak slot.
-- It reserves its whole height (at least 2.75rem) and both slots from the first frame, whatever the data, so nothing moves while the Streak loads or when the Energy pill is added. The right group never shrinks; at the largest text size on a narrow phone the bar wraps and the Streak drops under the logo, on the right, instead of leaving the screen.
+One quiet row above the content of every tab, in the same centred column, with no fill or edge of its own. On the left the logo; on the right two fixed slots, the Energy pill and the Streak slot.
+- It reserves its whole height (at least 2.75rem) and both slots from the first frame, whatever the data, so nothing moves while the Check-in or the Streak loads. The right group never shrinks; at the largest text size on a narrow phone the bar wraps and the pill and the Streak drop under the logo, on the right, instead of leaving the screen.
 - It replaces the app name and the tagline: neither appears on any tab. On the pre-Home screens (sign-in, sign-up, the waiting and retry screens) the logo stands alone, without the slots; the onboarding walk has its own frame. While the Home loads inside the app the bar is there with its slots empty, so it never appears late.
 - The logo is the page's one `h1`. Each tab's own first `h2` still receives focus when the tab opens.
+
+### Energy pill
+Today's Energy in the top bar, left of the Streak, shown on every tab. It is a bordered pill (the secondary button's look, at least 2.75rem high) in neutral ink, never the accent (The One Voice Rule).
+- **States, each with its own words.** A Zap and the number once the day has Energy; a Moon and "0" when Drained; a Zap and "0" with no Baseline; a check mark and "Check-in" when the Resident has checked in but the plan has no Energy yet (before the Allocation time); "Check-in" with a **dashed** edge when there is no Check-in today; an alert icon and "Falhou" ("Failed") when the Check-in could not be read, which tries again on a tap. The accessible name says the whole state and what a tap does ("Energia hoje: 5. Mudar check-in"). The dashed edge and the icons only add to the words; no state relies on them alone. The wording is the single Energy rule (`energyNote`) mapped by `energyPill`, never a second rule.
+- **Reserved width.** The pill is as wide as its widest text in the current language and text size, from the first frame: every possible text is stacked invisibly in one grid cell under the real one, so no width is written in pixels. While the Check-in loads it is an empty box of that size (a pulse after 300ms), hidden from screen readers. Nothing moves when it fills.
+- **Tap.** It opens the app's one Check-in dialog (the Shell owns it), from any tab; closing it returns focus to the pill. The pill never blocks the Streak: a failed Check-in read leaves the Streak where it is.
 
 ### Logo
 A house drawn in one rounded line (stroke follows the ink colour) with a check as its door, then the lowercase wordmark "homeowner" in Nunito 800. The drawing is `aria-hidden`; the accessible name is the visible text, "homeowner", with no `aria-label` that could differ. The check is the one mint accent that is decoration (see The One Voice Rule); in forced-colours mode both the house and the check use the system text colour so the logo never vanishes. If the word does not fit beside the drawing at the largest text size, the drawing sits above it; the word is never broken or cut.

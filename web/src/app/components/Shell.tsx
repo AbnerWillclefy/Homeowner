@@ -1,6 +1,7 @@
 import { useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Outlet, useLocation } from "react-router";
+import { ShellCheckInDialog } from "../../domains/checkin/components/ShellCheckInDialog";
 import { homeJoined } from "../../domains/home/api/queries";
 import { useHome } from "../../domains/home/hooks/useHome";
 import { useMe } from "../../domains/profile/hooks/useMe";
@@ -20,6 +21,7 @@ import { ShellContext } from "./ShellContext";
 import { TopBar } from "./TopBar";
 import { TODAY_PATH } from "../logic/routes";
 import { useFocusOnNavigate } from "../hooks/useFocusOnNavigate";
+import { useShellCheckIn } from "../hooks/useShellCheckIn";
 
 // The dialogs load on demand: most launches never show them.
 const JoinInvite = lazyNamed(() => import("../../domains/invite/components/JoinInvite"), "JoinInvite");
@@ -34,7 +36,9 @@ export function Shell() {
   const home = useHome();
   const residents = useResidents(home.state.kind === "ready");
   const me = useMe();
-  const streak = useStreak(home.state.kind === "ready");
+  const hasHome = home.state.kind === "ready";
+  const streak = useStreak(hasHome);
+  const { checkIn, note, energy, openCheckIn, checkInOpen, closeCheckIn, returnFocusRef } = useShellCheckIn(hasHome);
   const queryClient = useQueryClient();
   const { pathname } = useLocation();
   const invite = useInvite();
@@ -58,7 +62,7 @@ export function Shell() {
   const dialog = pathname === TODAY_PATH ? dialogToShow({ inviteToken: invite.token, after: session.after, choosing: session.choosing }) : null;
 
   return (
-    <ShellContext.Provider value={{ home, residents, me, streak }}>
+    <ShellContext.Provider value={{ home, residents, me, streak, checkIn, note, energy, openCheckIn }}>
       <div className="flex min-h-dvh flex-col">
         <PageFrame className="flex-1" top={<TopBar />}>
           <div ref={content}>
@@ -78,6 +82,8 @@ export function Shell() {
         </LazyDialog>
       )}
       {dialog === "start-choice" && <StartChoice onDecided={session.decide} />}
+      {/* The one Check-in dialog, opened by the pill and by Today's card. */}
+      <ShellCheckInDialog checkIn={checkIn} open={checkInOpen} onClose={closeCheckIn} returnFocusRef={returnFocusRef} />
     </ShellContext.Provider>
   );
 }

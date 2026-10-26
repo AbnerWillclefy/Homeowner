@@ -531,6 +531,15 @@ export const ptBR: Messages = {
     "O Homeowner não aceitou esse check-in. Escolha de novo e tente mais uma vez.",
   "checkin.summary": "Check-in de hoje: {level}",
   "checkin.summary.restrictions": "Não hoje: {demands}",
+  "checkin.pill.unset": "Check-in",
+  "checkin.pill.failed": "Falhou",
+  "checkin.pill.name.unset": "Fazer check-in",
+  "checkin.pill.name.energy": "Energia hoje: {energy}. Mudar check-in",
+  "checkin.pill.name.drained": "Esgotado hoje. Mudar check-in",
+  "checkin.pill.name.noBaseline": "Sem energia base hoje. Mudar check-in",
+  "checkin.pill.name.pending": "Check-in feito: {level}. Mudar check-in",
+  "checkin.pill.name.done": "Check-in feito. Mudar check-in",
+  "checkin.pill.name.failed": "Energia indisponível. Tentar de novo",
 
   // Cadastro
   "signUp.heading": "Cadastrar-se",
