@@ -3,9 +3,9 @@ import { BarTable, BarTableSkeleton, type BarColumn } from "../../shared/BarTabl
 import { Button } from "../../shared/Button";
 import { rangeDays, useRange } from "../../shared/range";
 import { RangeControl } from "../../shared/RangeControl";
-import { useAiUsage, type AiDay, type AiUsage, type MonthToDate, type ServiceDay } from "./api";
+import { useAiUsage, type AiDay, type AiUsage, type MonthToDate, type ServiceDay, type TemplateReasons } from "./api";
 import { formatLatency, formatMicros, formatPercent, formatTokens } from "./format";
-import { FALLBACK_GLOSSES, TEMPLATE_REASON_LABELS, VIOLATION_GLOSSES, withGloss } from "./glosses";
+import { FALLBACK_GLOSSES, TEMPLATE_REASON_LABELS, VIOLATION_GLOSSES } from "./glosses";
 
 type Service = "allocator" | "explainer";
 
@@ -132,13 +132,12 @@ function Loaded({ usage, days }: { usage: AiUsage; days: number }) {
         <h2 id="planned" className="mb-2 text-xl font-semibold">
           Who planned the day
         </h2>
-        <BarTable
+        <ShareTable
           caption="Planned runs in this range, by who planned them"
           rowHeader="Planner"
-          columns={shareColumns()}
-          rows={[
-            { id: "llm", label: "LLM", data: { count: allocatorShare.llm, whole: allocatorShare.llm + allocatorShare.baseline } },
-            { id: "baseline", label: "Baseline allocator", data: { count: allocatorShare.baseline, whole: allocatorShare.llm + allocatorShare.baseline } },
+          parts={[
+            { id: "llm", label: "LLM", count: allocatorShare.llm },
+            { id: "baseline", label: "Baseline allocator", count: allocatorShare.baseline },
           ]}
         />
       </section>
@@ -147,13 +146,12 @@ function Loaded({ usage, days }: { usage: AiUsage; days: number }) {
         <h2 id="explained" className="mb-2 text-xl font-semibold">
           Who wrote the explanation
         </h2>
-        <BarTable
+        <ShareTable
           caption="Resident explanations in this range, by who wrote them"
           rowHeader="Writer"
-          columns={shareColumns()}
-          rows={[
-            { id: "llm", label: "LLM", data: { count: explanationShare.llm, whole: explanationShare.llm + explanationShare.template } },
-            { id: "template", label: "Template", data: { count: explanationShare.template, whole: explanationShare.llm + explanationShare.template } },
+          parts={[
+            { id: "llm", label: "LLM", count: explanationShare.llm },
+            { id: "template", label: "Template", count: explanationShare.template },
           ]}
         />
         <div className="mt-4">
@@ -161,10 +159,10 @@ function Loaded({ usage, days }: { usage: AiUsage; days: number }) {
             caption="Why the template was used"
             rowHeader="Reason"
             columns={[{ key: "count", label: "Explanations", value: (n: number) => n }]}
-            rows={Object.entries(TEMPLATE_REASON_LABELS).map(([key, label]) => ({
+            rows={(Object.keys(TEMPLATE_REASON_LABELS) as (keyof TemplateReasons)[]).map((key) => ({
               id: key,
-              label,
-              data: explanationShare.templateReasons[key as keyof typeof explanationShare.templateReasons] ?? 0,
+              label: TEMPLATE_REASON_LABELS[key],
+              data: explanationShare.templateReasons[key],
             }))}
           />
         </div>
@@ -184,51 +182,49 @@ function Loaded({ usage, days }: { usage: AiUsage; days: number }) {
   );
 }
 
-interface Share {
+interface Part {
+  id: string;
+  label: string;
   count: number;
-  whole: number;
 }
 
-function shareColumns(): BarColumn<Share>[] {
-  return [
-    { key: "count", label: "Count", value: (s) => s.count },
-    { key: "share", label: "Share", value: (s) => s.count, display: (s) => formatPercent(s.count, s.whole) },
-  ];
+const shareColumns: BarColumn<{ count: number; whole: number }>[] = [
+  { key: "count", label: "Count", value: (s) => s.count },
+  { key: "share", label: "Share", value: (s) => s.count, display: (s) => formatPercent(s.count, s.whole) },
+];
+
+function ShareTable({ caption, rowHeader, parts }: { caption: string; rowHeader: string; parts: Part[] }) {
+  const whole = parts.reduce((sum, p) => sum + p.count, 0);
+  return (
+    <BarTable
+      caption={caption}
+      rowHeader={rowHeader}
+      columns={shareColumns}
+      rows={parts.map((p) => ({ id: p.id, label: p.label, data: { count: p.count, whole } }))}
+    />
+  );
 }
+
+const countColumn: BarColumn<number>[] = [{ key: "count", label: "Count", value: (n) => n }];
 
 function IdTable({ caption, head, rows, glosses }: { caption: string; head: string; rows: { id: string; count: number }[]; glosses: Record<string, string> }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-left tabular-nums">
-        <caption className="pb-2 text-left font-semibold">{caption}</caption>
-        <thead>
-          <tr>
-            <th scope="col" className="border-b-2 border-border px-3 py-2">{head}</th>
-            <th scope="col" className="border-b-2 border-border px-3 py-2">Count</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 ? (
-            <tr>
-              <td colSpan={2} className="px-3 py-2 text-muted">None in this range</td>
-            </tr>
-          ) : (
-            rows.map((row) => {
-              const { id, gloss } = withGloss(row.id, glosses);
-              return (
-                <tr key={id}>
-                  <th scope="row" className="border-b border-border px-3 py-2 font-normal">
-                    <code>{id}</code>
-                    {gloss !== null && <span className="block text-sm text-muted">{gloss}</span>}
-                  </th>
-                  <td className="border-b border-border px-3 py-2">{row.count}</td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </table>
-    </div>
+    <BarTable
+      caption={caption}
+      rowHeader={head}
+      columns={countColumn}
+      empty="None in this range"
+      rows={rows.map((row) => ({
+        id: row.id,
+        label: (
+          <>
+            <code>{row.id}</code>
+            {Object.hasOwn(glosses, row.id) && <span className="block text-sm text-muted">{glosses[row.id]}</span>}
+          </>
+        ),
+        data: row.count,
+      }))}
+    />
   );
 }
 

@@ -1,5 +1,7 @@
+import type { TemplateReasons } from "./api";
+
 // Short English glosses for the fixed vocabularies the backend reports. Keep them all here. An id that is missing from
-// a map is shown raw (see `withGloss`), so a new kind or reason still renders.
+// a map is shown raw, so a new kind or reason still renders.
 
 /** Violation kinds from allocation.Check (backend/internal/allocation/types.go). */
 export const VIOLATION_GLOSSES: Record<string, string> = {
@@ -22,7 +24,7 @@ export const FALLBACK_GLOSSES: Record<string, string> = {
 };
 
 /** Why a Resident's explanation is the template. Keys are the backend's templateReasons. */
-export const TEMPLATE_REASON_LABELS: Record<string, string> = {
+export const TEMPLATE_REASON_LABELS: Record<keyof TemplateReasons, string> = {
   skipped_cap: "cap reached",
   skipped_budget: "tick budget spent",
   timeout: "timeout",
@@ -32,8 +34,3 @@ export const TEMPLATE_REASON_LABELS: Record<string, string> = {
   partial: "some summaries rejected",
   notAsked: "not asked (rest day or LLM off)",
 };
-
-/** The raw id, then the gloss when there is one. */
-export function withGloss(id: string, glosses: Record<string, string>): { id: string; gloss: string | null } {
-  return { id, gloss: Object.hasOwn(glosses, id) ? glosses[id] : null };
-}

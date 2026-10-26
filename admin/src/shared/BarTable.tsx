@@ -13,7 +13,7 @@ export interface BarColumn<T> {
 export interface BarRow<T> {
   id: string;
   /** The row header, for example a date. */
-  label: string;
+  label: ReactNode;
   data: T;
 }
 
@@ -23,6 +23,8 @@ interface Props<T> {
   rowHeader: string;
   columns: BarColumn<T>[];
   rows: BarRow<T>[];
+  /** Shown in place of the rows when there are none. */
+  empty?: string;
 }
 
 function Head<T>({ rowHeader, columns }: Pick<Props<T>, "rowHeader" | "columns">) {
@@ -47,7 +49,7 @@ function Head<T>({ rowHeader, columns }: Pick<Props<T>, "rowHeader" | "columns">
  * and never meets the bar (aria-hidden). Each column's bars scale to its own largest value; with a largest of 0
  * there is no bar, only the 0. The bar is a decorative extra: the number carries the meaning.
  */
-export function BarTable<T>({ caption, rowHeader, columns, rows }: Props<T>) {
+export function BarTable<T>({ caption, rowHeader, columns, rows, empty }: Props<T>) {
   const maxima = columns.map((column) => Math.max(0, ...rows.map((row) => column.value(row.data))));
   return (
     <div className="overflow-x-auto">
@@ -55,6 +57,13 @@ export function BarTable<T>({ caption, rowHeader, columns, rows }: Props<T>) {
         <caption className="pb-2 text-left font-semibold">{caption}</caption>
         <Head rowHeader={rowHeader} columns={columns} />
         <tbody>
+          {rows.length === 0 && empty !== undefined && (
+            <tr>
+              <td colSpan={columns.length + 1} className="px-3 py-2 text-muted">
+                {empty}
+              </td>
+            </tr>
+          )}
           {rows.map((row) => (
             <tr key={row.id}>
               <th scope="row" className="whitespace-nowrap border-b border-border px-3 py-2 font-normal">
@@ -86,7 +95,7 @@ export function BarTable<T>({ caption, rowHeader, columns, rows }: Props<T>) {
 }
 
 /** The table's shape before the data arrives: the right number of rows, so the layout does not jump. */
-export function BarTableSkeleton<T>({ caption, rowHeader, columns, rowCount }: Omit<Props<T>, "rows"> & { rowCount: number }) {
+export function BarTableSkeleton<T>({ caption, rowHeader, columns, rowCount }: Omit<Props<T>, "rows" | "empty"> & { rowCount: number }) {
   const block = "inline-block h-4 rounded-control bg-border/40 motion-safe:animate-pulse";
   return (
     <div className="overflow-x-auto" aria-busy="true">
