@@ -100,7 +100,20 @@ const offer = (id: string, offered: PlanTask, requested: PlanTask): SwapOffer =>
   requested: open(requested),
 });
 
-const scrollY = (page: Page) => page.evaluate(() => window.scrollY);
+/**
+ * Gives the plan `count` Swap offers in one direction, each pairing one of Bruna's Tasks with one of yours.
+ * Incoming offers ask for your Proposed Tasks (Mine 1 up); outgoing ones give your last Committed ones (Mine 6 down).
+ */
+function withSwaps(plan: DayPlan, direction: "incoming" | "outgoing", count: number) {
+  plan.swaps[direction] = Array.from({ length: count }, (_, i) => {
+    const theirs = plan.others[0]!.tasks[i]!;
+    return direction === "incoming"
+      ? offer(`swap-in-${i + 1}`, theirs, plan.mine[i]!)
+      : offer(`swap-out-${i + 1}`, plan.mine[plan.mine.length - 1 - i]!, theirs);
+  });
+}
+
+const scrollY =(page: Page) => page.evaluate(() => window.scrollY);
 
 const topOf = (locator: Locator) => locator.evaluate((element) => element.getBoundingClientRect().top);
 
@@ -208,48 +221,27 @@ for (const l of LOCALES) {
       expect(await topOf(mine4)).toBe(top);
     });
 
-    test("accepting a Swap keeps the scroll position", async ({ page, baseURL, fakeApi }) => {
-      const plan = fakeApi.state.dayPlan!;
-      plan.swaps.incoming = [
-        offer("swap-in-1", plan.others[0]!.tasks[0]!, plan.mine[0]!),
-        offer("swap-in-2", plan.others[0]!.tasks[1]!, plan.mine[1]!),
-        offer("swap-in-3", plan.others[0]!.tasks[2]!, plan.mine[2]!),
-      ];
-      await launchApp(page, baseURL!);
-      const before = await press(page, byName(page, new RegExp(`^${l.acceptSwap}`)).last());
-      await expect(byName(page, new RegExp(`^${l.acceptSwap}`))).toHaveCount(2);
-      await expectStill(page, before);
-    });
+    // One row per way of answering a Swap: press the last matching button, one fewer is left, and nothing moved.
+    const swapAnswers = [
+      { name: "accepting a Swap", label: l.acceptSwap, direction: "incoming", count: 3 },
+      { name: "declining a Swap", label: l.declineSwap, direction: "incoming", count: 3 },
+      { name: "cancelling your Swap offer", label: l.cancelSwap, direction: "outgoing", count: 2 },
+    ] as const;
 
-    test("declining a Swap keeps the scroll position", async ({ page, baseURL, fakeApi }) => {
-      const plan = fakeApi.state.dayPlan!;
-      plan.swaps.incoming = [
-        offer("swap-in-1", plan.others[0]!.tasks[0]!, plan.mine[0]!),
-        offer("swap-in-2", plan.others[0]!.tasks[1]!, plan.mine[1]!),
-        offer("swap-in-3", plan.others[0]!.tasks[2]!, plan.mine[2]!),
-      ];
-      await launchApp(page, baseURL!);
-      const before = await press(page, byName(page, new RegExp(`^${l.declineSwap}`)).last());
-      await expect(byName(page, new RegExp(`^${l.declineSwap}`))).toHaveCount(2);
-      await expectStill(page, before);
-    });
-
-    test("cancelling your Swap offer keeps the scroll position", async ({ page, baseURL, fakeApi }) => {
-      const plan = fakeApi.state.dayPlan!;
-      plan.swaps.outgoing = [
-        offer("swap-out-1", plan.mine[4]!, plan.others[0]!.tasks[0]!),
-        offer("swap-out-2", plan.mine[5]!, plan.others[0]!.tasks[1]!),
-      ];
-      await launchApp(page, baseURL!);
-      const before = await press(page, byName(page, new RegExp(`^${l.cancelSwap}`)).last());
-      await expect(byName(page, new RegExp(`^${l.cancelSwap}`))).toHaveCount(1);
-      await expectStill(page, before);
-    });
+    for (const answer of swapAnswers) {
+      test(`${answer.name} keeps the scroll position`, async ({ page, baseURL, fakeApi }) => {
+        withSwaps(fakeApi.state.dayPlan!, answer.direction, answer.count);
+        await launchApp(page, baseURL!);
+        const buttons = byName(page, new RegExp(`^${answer.label}`));
+        const before = await press(page, buttons.last());
+        await expect(buttons).toHaveCount(answer.count - 1);
+        await expectStill(page, before);
+      });
+    }
 
     test("offering a Swap through the dialog keeps the scroll position and ends on the Today heading", async ({ page, baseURL, fakeApi }) => {
       // An offer already exists, so "Your offers" is in the page before and after: only its card count changes.
-      const plan = fakeApi.state.dayPlan!;
-      plan.swaps.outgoing = [offer("swap-out-1", plan.mine[5]!, plan.others[0]!.tasks[0]!)];
+      withSwaps(fakeApi.state.dayPlan!, "outgoing", 1);
       await launchApp(page, baseURL!);
       const before = await press(page, byName(page, l.swap("Theirs 3")));
       const dialog = page.getByRole("dialog", { name: l.dialogTitle });
