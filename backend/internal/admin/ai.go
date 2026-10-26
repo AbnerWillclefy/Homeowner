@@ -47,16 +47,14 @@ func (s *Store) AI(ctx context.Context, from, to string, now time.Time, log *slo
 		if err := readServiceDays(ctx, tx, from, to, out.Days); err != nil {
 			return err
 		}
-		start := time.Date(now.UTC().Year(), now.UTC().Month(), 1, 0, 0, 0, 0, time.UTC)
-		if err := tx.QueryRow(ctx, monthSQL, start, start.AddDate(0, 1, 0)).Scan(
-			&out.MonthEstCostMicros, &out.MonthUncostedCalls); err != nil {
-			return fmt.Errorf("month to date: %w", err)
+		var err error
+		if out.MonthEstCostMicros, out.MonthUncostedCalls, err = readMonth(ctx, tx, now); err != nil {
+			return err
 		}
 		if err := tx.QueryRow(ctx, allocatorShareSQL, from, to, outcomePlanned, allocatorLLM).Scan(
 			&out.Allocator.LLM, &out.Allocator.Baseline); err != nil {
 			return fmt.Errorf("allocator share: %w", err)
 		}
-		var err error
 		if out.Explanation, err = readExplanationShare(ctx, tx, from, to, log); err != nil {
 			return err
 		}
@@ -79,6 +77,16 @@ func (s *Store) AI(ctx context.Context, from, to string, now time.Time, log *slo
 		return nil
 	})
 	return out, err
+}
+
+// readMonth reads the estimated cost and the uncosted calls of the UTC calendar
+// month of now. AI and Worth both use it, so their month-to-date agrees.
+func readMonth(ctx context.Context, tx pgx.Tx, now time.Time) (costMicros int64, uncosted int, err error) {
+	start := time.Date(now.UTC().Year(), now.UTC().Month(), 1, 0, 0, 0, 0, time.UTC)
+	if err := tx.QueryRow(ctx, monthSQL, start, start.AddDate(0, 1, 0)).Scan(&costMicros, &uncosted); err != nil {
+		return 0, 0, fmt.Errorf("month to date: %w", err)
+	}
+	return costMicros, uncosted, nil
 }
 
 func readServiceDays(ctx context.Context, tx pgx.Tx, from, to string, into map[string]AIServices) error {

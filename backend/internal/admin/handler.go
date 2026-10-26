@@ -6,6 +6,7 @@ package admin
 import (
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
@@ -54,22 +55,57 @@ func (h *Handler) AI(w http.ResponseWriter, r *http.Request) {
 	}
 	out := AIResponse{
 		Range: rng.Name, From: from, To: to, CostIsEstimate: true,
-		Days: make([]AIDay, len(days)),
-		MonthToDate: MonthToDate{
-			Month: now.UTC().Format("2006-01"), EstCostMicros: ai.MonthEstCostMicros, UncostedCalls: ai.MonthUncostedCalls,
-		},
+		Days:               make([]AIDay, len(days)),
+		MonthToDate:        h.monthToDate(now, ai.MonthEstCostMicros, ai.MonthUncostedCalls),
 		DailyCapPerHome:    h.display.DailyCapPerHome,
 		AllocatorShare:     ai.Allocator,
 		ExplanationShare:   ai.Explanation,
 		TopViolationKinds:  ai.Kinds,
 		TopFallbackReasons: ai.Reasons,
 	}
-	if h.display.MonthlySpendLimitMicros > 0 {
-		limit := h.display.MonthlySpendLimitMicros
-		out.MonthToDate.LimitMicros = &limit
-	}
 	for i, d := range days {
 		out.Days[i] = AIDay{Date: d, Services: ai.Days[d]}
+	}
+	httpx.WriteJSON(w, http.StatusOK, out)
+}
+
+// monthToDate is the month-to-date block of /admin/ai and /admin/worth: the
+// stored spend of the UTC month of now and the configured limit.
+func (h *Handler) monthToDate(now time.Time, costMicros int64, uncosted int) MonthToDate {
+	m := MonthToDate{Month: now.UTC().Format("2006-01"), EstCostMicros: costMicros, UncostedCalls: uncosted}
+	if h.display.MonthlySpendLimitMicros > 0 {
+		limit := h.display.MonthlySpendLimitMicros
+		m.LimitMicros = &limit
+	}
+	return m
+}
+
+// Worth answers GET /admin/worth?range=7d|30d, with the same range rules and
+// error handling as Overview. The clock is read once, so the two windows and
+// the month agree.
+func (h *Handler) Worth(w http.ResponseWriter, r *http.Request) {
+	rng, err := ParseRange(r.URL.Query().Get("range"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid range")
+		return
+	}
+	now := h.clock.Now()
+	days, prev := rng.Window(now), rng.Previous(now)
+
+	worth, err := h.store.Worth(r.Context(), days, prev, now)
+	if err != nil {
+		httpx.InternalError(w, h.log, "admin worth", err)
+		return
+	}
+	out := WorthResponse{
+		Range: rng.Name, From: days[0], To: days[len(days)-1], CostIsEstimate: true,
+		Current:     worth.Current,
+		Previous:    WorthPrevious{From: prev[0], To: prev[len(prev)-1], WorthCounts: worth.Previous},
+		Days:        make([]WorthDay, len(days)),
+		MonthToDate: h.monthToDate(now, worth.MonthEstCostMicros, worth.MonthUncostedCalls),
+	}
+	for i, d := range days {
+		out.Days[i] = WorthDay{Date: d, WorthCounts: worth.Days[d]}
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)
 }

@@ -20,6 +20,7 @@ var adminRoutes = []adminRoute{
 	{http.MethodGet, "/admin/overview", (*server).adminOverview},
 	{http.MethodGet, "/admin/ai", (*server).adminAI},
 	{http.MethodGet, "/admin/flow", (*server).adminFlow},
+	{http.MethodGet, "/admin/worth", (*server).adminWorth},
 }
 
 // adminMux builds the sub-mux from the table. Unknown /admin/ paths 404 here,
@@ -51,6 +52,11 @@ func (s *server) adminAI(w http.ResponseWriter, r *http.Request) {
 // adminFlow serves the operator's daily pipeline funnel.
 func (s *server) adminFlow(w http.ResponseWriter, r *http.Request) {
 	s.admin.Flow(w, r)
+}
+
+// adminWorth serves the operator's counts for whether the LLM allocator is worth it.
+func (s *server) adminWorth(w http.ResponseWriter, r *http.Request) {
+	s.admin.Worth(w, r)
 }
 
 // adminMe tells the maintainer's app which environment it is talking to.
