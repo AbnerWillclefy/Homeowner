@@ -17,6 +17,7 @@ type adminRoute struct {
 // adminRoutes is the admin route table. Patterns carry their full path.
 var adminRoutes = []adminRoute{
 	{http.MethodGet, "/admin/me", (*server).adminMe},
+	{http.MethodGet, "/admin/overview", (*server).adminOverview},
 }
 
 // adminMux builds the sub-mux from the table. Unknown /admin/ paths 404 here,
@@ -33,6 +34,11 @@ func (s *server) adminMux() http.Handler {
 		httpx.WriteError(w, http.StatusNotFound, "not found")
 	})
 	return mux
+}
+
+// adminOverview serves the operator's overview of usage.
+func (s *server) adminOverview(w http.ResponseWriter, r *http.Request) {
+	s.admin.Overview(w, r)
 }
 
 // adminMe tells the maintainer's app which environment it is talking to.
