@@ -49,6 +49,44 @@ func TestLLMAllocatorEnabledNeedsAKey(t *testing.T) {
 	}
 }
 
+func TestLLMMonthlySpendLimitIsUnsetByDefault(t *testing.T) {
+	c, err := config.Load(env(map[string]string{"DATABASE_URL": "postgres://x"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.LLMMonthlySpendLimitMicros != 0 {
+		t.Fatalf("limit = %d, want 0 (no limit configured)", c.LLMMonthlySpendLimitMicros)
+	}
+}
+
+func TestLLMMonthlySpendLimitIsStoredAsMicroUSD(t *testing.T) {
+	for in, want := range map[string]int64{
+		"10":        10_000_000,
+		"10.5":      10_500_000,
+		"0.000001":  1,
+		" 20.25 ":   20_250_000,
+		"1234.0010": 1_234_001_000,
+	} {
+		c, err := config.Load(env(map[string]string{"DATABASE_URL": "postgres://x", "LLM_MONTHLY_SPEND_LIMIT_USD": in}))
+		if err != nil {
+			t.Errorf("%q: %v", in, err)
+			continue
+		}
+		if c.LLMMonthlySpendLimitMicros != want {
+			t.Errorf("%q = %d micro-USD, want %d", in, c.LLMMonthlySpendLimitMicros, want)
+		}
+	}
+}
+
+func TestLLMMonthlySpendLimitMustBeAPositiveDecimal(t *testing.T) {
+	for _, in := range []string{"0", "0.0", "-5", "ten", "1e3", "1.2.3", "$10", "0.0000001", ".", "7.", "99999999999999999999"} {
+		_, err := config.Load(env(map[string]string{"DATABASE_URL": "postgres://x", "LLM_MONTHLY_SPEND_LIMIT_USD": in}))
+		if err == nil || !strings.Contains(err.Error(), "LLM_MONTHLY_SPEND_LIMIT_USD") {
+			t.Errorf("%q: want an error naming LLM_MONTHLY_SPEND_LIMIT_USD, got %v", in, err)
+		}
+	}
+}
+
 func TestLLMSettingsMustBeValid(t *testing.T) {
 	for name, kv := range map[string][2]string{
 		"enabled not a bool": {"LLM_ALLOCATOR_ENABLED", "yes please"},

@@ -18,6 +18,7 @@ type adminRoute struct {
 var adminRoutes = []adminRoute{
 	{http.MethodGet, "/admin/me", (*server).adminMe},
 	{http.MethodGet, "/admin/overview", (*server).adminOverview},
+	{http.MethodGet, "/admin/ai", (*server).adminAI},
 }
 
 // adminMux builds the sub-mux from the table. Unknown /admin/ paths 404 here,
@@ -39,6 +40,11 @@ func (s *server) adminMux() http.Handler {
 // adminOverview serves the operator's overview of usage.
 func (s *server) adminOverview(w http.ResponseWriter, r *http.Request) {
 	s.admin.Overview(w, r)
+}
+
+// adminAI serves the operator's report on LLM usage and estimated cost.
+func (s *server) adminAI(w http.ResponseWriter, r *http.Request) {
+	s.admin.AI(w, r)
 }
 
 // adminMe tells the maintainer's app which environment it is talking to.

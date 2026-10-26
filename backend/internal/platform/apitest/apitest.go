@@ -135,6 +135,14 @@ func WithEnvironment(env string) Option {
 	return func(d *server.Deps) { d.Environment = env }
 }
 
+// WithLLMDisplay sets the per-Home daily cap and the monthly spend limit (in
+// micro-USD, zero for none) that GET /admin/ai shows.
+func WithLLMDisplay(dailyCap int, limitMicros int64) Option {
+	return func(d *server.Deps) {
+		d.LLMDailyCapPerHome, d.LLMMonthlySpendLimitMicros = dailyCap, limitMicros
+	}
+}
+
 // Start boots the API on a fresh database cloned from the migrated template.
 func Start(t testing.TB, opts ...Option) *App {
 	t.Helper()

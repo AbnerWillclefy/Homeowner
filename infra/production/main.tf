@@ -1,6 +1,15 @@
 locals {
   name_prefix = "homeowner-production"
   ssm_prefix  = "/homeowner/production"
+
+  # LLM limits, set on both the API and the Allocation job so GET /admin/ai
+  # shows what the job enforces. The cap is enforced by the job. The monthly
+  # spend limit is display-only: no code enforces it. It must match the spend
+  # limit set in the Anthropic Console, which only the maintainer can see. 10 is
+  # a placeholder (ADR 0002's $20 ceiling less $10 for the AWS budget), to be
+  # confirmed by the maintainer.
+  llm_daily_cap_per_home      = 3
+  llm_monthly_spend_limit_usd = 10
 }
 
 provider "aws" {
@@ -118,6 +127,10 @@ module "api" {
       # Resident photos (#230); the API reads both or neither.
       PHOTOS_BUCKET   = module.photos.bucket_name
       PHOTOS_BASE_URL = "https://${module.web.domain_name}/avatars"
+
+      # Shown by GET /admin/ai, never enforced here (see locals).
+      LLM_DAILY_CAP_PER_HOME      = tostring(local.llm_daily_cap_per_home)
+      LLM_MONTHLY_SPEND_LIMIT_USD = tostring(local.llm_monthly_spend_limit_usd)
     },
     # Web Push (#7). The private key is a SecureString a human puts in SSM
     # (Terraform never sees it); without the public key push stays off and the
@@ -155,6 +168,11 @@ module "allocation_job" {
       PORT                   = "8080"
       DB_MAX_CONNS           = "2"
       DATABASE_URL_SSM_PARAM = module.database.database_url_param
+
+      # The cap the job enforces. The limit is only read for display by the
+      # API; the job sets it so both come from the same locals.
+      LLM_DAILY_CAP_PER_HOME      = tostring(local.llm_daily_cap_per_home)
+      LLM_MONTHLY_SPEND_LIMIT_USD = tostring(local.llm_monthly_spend_limit_usd)
 
       # Lambda Web Adapter forwards the scheduled event to POST /events (its
       # default pass-through path); it is told explicitly where to check

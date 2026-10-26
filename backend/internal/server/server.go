@@ -68,6 +68,12 @@ type Deps struct {
 	PhotosBaseURL string
 	// Environment is local, staging or production; /admin/me reports it.
 	Environment string
+	// LLMDailyCapPerHome and LLMMonthlySpendLimitMicros are what GET /admin/ai
+	// shows beside the usage: the job's per-Home daily cap and the Anthropic
+	// Console's monthly limit in micro-USD (zero: none configured). Display
+	// only, nothing in the API enforces either.
+	LLMDailyCapPerHome         int
+	LLMMonthlySpendLimitMicros int64
 }
 
 const healthTimeout = 2 * time.Second
@@ -85,7 +91,8 @@ func New(deps Deps) http.Handler {
 	db, clk, log := deps.DB, deps.Clock, deps.Logger
 	homeStore := homes.NewStore(db)
 	s := &server{deps: deps, users: users.NewStore(db), homes: homeStore,
-		admin: admin.NewHandler(admin.NewStore(db), clk, log)}
+		admin: admin.NewHandler(admin.NewStore(db), clk, log,
+			admin.Display{DailyCapPerHome: deps.LLMDailyCapPerHome, MonthlySpendLimitMicros: deps.LLMMonthlySpendLimitMicros})}
 
 	// Photos are off when there is no store, and then no URL is built either.
 	photosBase := deps.PhotosBaseURL
