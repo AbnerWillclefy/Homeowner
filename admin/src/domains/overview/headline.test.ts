@@ -1,49 +1,98 @@
 import { describe, expect, it } from "vitest";
-import type { Overview, OverviewDay } from "./api";
-import { fallbackHeadline } from "./headline";
+import {
+  armRates,
+  costPerLlmRun,
+  explanationShare,
+  fallbackShare,
+  ratioSeries,
+  refereeRate,
+  sampledRateDelta,
+} from "./headline";
+import type { WorthCounts, WorthReliability } from "./worth";
 
-function day(n: number, runs: number, fallbacks: number): OverviewDay {
+const zeroArm = { proposed: 0, completed: 0, refused: 0 };
+
+function reliability(over: Partial<WorthReliability> = {}): WorthReliability {
+  return { runsLlm: 0, runsFallback: 0, runsLlmNotAsked: 0, allocatorCalls: 0, refereeRejected: 0, ...over };
+}
+
+function counts(over: Partial<WorthCounts> = {}): WorthCounts {
   return {
-    date: `2026-10-${String(n).padStart(2, "0")}`,
-    runs, rejected: 0, fallbacks, checkins: 0, completions: 0, refuses: 0, takes: 0, swapsAccepted: 0,
-    pushes: { delivered: 0, failed: 0, gone: 0, unknown: 0 },
+    outcome: { llm: zeroArm, baseline: zeroArm },
+    reliability: reliability(),
+    cost: { allocatorCostMicros: 0, uncostedCalls: 0 },
+    explanations: { llm: 0, template: 0 },
+    ...over,
   };
 }
 
-const overview = (days: OverviewDay[], previous?: Overview["previous"]): Overview => ({
-  range: "7d", from: days[0]!.date, to: days.at(-1)!.date,
-  totals: { users: 0, homes: 0, residents: 0, chores: 0 }, active: { homes: 0, residents: 0 }, days, previous,
+describe("armRates", () => {
+  it("gives the completion and refuse rate of the proposed Tasks", () => {
+    expect(armRates({ proposed: 40, completed: 30, refused: 10 })).toEqual({ n: 40, completion: 0.75, refuse: 0.25 });
+  });
+
+  it("needs exactly 20 proposed Tasks: 19 is not enough data, 20 gives rates", () => {
+    expect(armRates({ proposed: 19, completed: 19, refused: 0 })).toBe("not-enough-data");
+    expect(armRates({ proposed: 20, completed: 10, refused: 0 })).toEqual({ n: 20, completion: 0.5, refuse: 0 });
+  });
+
+  it("is not enough data with nothing proposed, never NaN", () => {
+    expect(armRates(zeroArm)).toBe("not-enough-data");
+  });
 });
 
-describe("fallbackHeadline", () => {
-  it("sums fallbacks and runs over the range and shows the share as a whole percent", () => {
-    const h = fallbackHeadline(overview([day(1, 10, 1), day(2, 10, 3)]));
-    expect(h.fallbacks).toBe(4);
-    expect(h.runs).toBe(20);
-    expect(h.value).toBe("20%");
+describe("fallbackShare", () => {
+  it("is fallbacks over LLM-planned plus fallen back, and leaves out the runs where the LLM was not asked", () => {
+    expect(fallbackShare(reliability({ runsLlm: 6, runsFallback: 2, runsLlmNotAsked: 50 }))).toEqual({ part: 2, whole: 8 });
+  });
+});
+
+describe("refereeRate", () => {
+  it("is rejections over allocator calls", () => {
+    expect(refereeRate(reliability({ refereeRejected: 3, allocatorCalls: 12 }))).toEqual({ part: 3, whole: 12 });
+  });
+});
+
+describe("costPerLlmRun", () => {
+  it("divides the allocator cost by the LLM-planned runs", () => {
+    expect(costPerLlmRun(counts({ cost: { allocatorCostMicros: 9000, uncostedCalls: 0 }, reliability: reliability({ runsLlm: 3 }) }))).toBe(3000);
   });
 
-  it("builds the per-day series, with null for a day without runs", () => {
-    const h = fallbackHeadline(overview([day(1, 10, 1), day(2, 0, 0), day(3, 4, 4)]));
-    expect(h.series).toEqual([10, null, 100]);
+  it("is null (n/a) when no run was planned by the LLM", () => {
+    expect(costPerLlmRun(counts({ cost: { allocatorCostMicros: 9000, uncostedCalls: 0 } }))).toBeNull();
+  });
+});
+
+describe("explanationShare", () => {
+  it("is LLM over LLM plus template", () => {
+    expect(explanationShare({ llm: 1, template: 3 })).toEqual({ part: 1, whole: 4 });
+  });
+});
+
+describe("ratioSeries", () => {
+  it("gives a whole percent per day and null on a day whose denominator is 0", () => {
+    const days = [
+      counts({ explanations: { llm: 1, template: 3 } }),
+      counts(),
+      counts({ explanations: { llm: 2, template: 0 } }),
+    ];
+    const series = ratioSeries(days, (d) => explanationShare(d.explanations));
+    expect(series).toEqual([25, null, 100]);
+    expect(series.some((v) => Number.isNaN(v))).toBe(false);
+  });
+});
+
+describe("sampledRateDelta", () => {
+  it("shows no delta when the previous window is under the sample size", () => {
+    expect(sampledRateDelta({ part: 15, whole: 30 }, { part: 1, whole: 2 }, 20)).toEqual({ type: "none" });
   });
 
-  it("describes the series for a screen reader", () => {
-    const h = fallbackHeadline(overview([day(1, 10, 1), day(2, 0, 0), day(3, 4, 2)]));
-    expect(h.label).toBe("Fallbacks per run, per day, last 3 days: 10% to 50%, highest 50%");
+  it("shows no delta when the current window is under the sample size", () => {
+    expect(sampledRateDelta({ part: 1, whole: 2 }, { part: 15, whole: 30 }, 20)).toEqual({ type: "none" });
   });
 
-  it("says n/a and has no range in the label when there are no runs", () => {
-    const h = fallbackHeadline(overview([day(1, 0, 0), day(2, 0, 0)]));
-    expect(h.value).toBe("n/a");
-    expect(h.series).toEqual([null, null]);
-    expect(h.label).toBe("Fallbacks per run, per day, last 2 days: no runs");
-  });
-
-  it("compares with the previous block, or shows no delta without one", () => {
-    const previous = { from: "a", to: "b", active: { homes: 0, residents: 0 }, ...day(1, 100, 10) } as Overview["previous"];
-    const withPrev = fallbackHeadline(overview([day(1, 10, 3)], previous));
-    expect(withPrev.delta).toEqual({ type: "points", change: 20 });
-    expect(fallbackHeadline(overview([day(1, 10, 3)])).delta).toEqual({ type: "none" });
+  it("shows points when both windows are big enough, and none without a previous window", () => {
+    expect(sampledRateDelta({ part: 15, whole: 20 }, { part: 10, whole: 20 }, 20)).toEqual({ type: "points", change: 25 });
+    expect(sampledRateDelta({ part: 15, whole: 20 }, undefined, 20)).toEqual({ type: "none" });
   });
 });
