@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useCheckIn } from "../../domains/checkin/hooks/useCheckIn";
 import { energyNote } from "../../domains/checkin/logic/state";
 import { dayPlanQuery } from "../../domains/dayplan/api/queries";
+import { plannedEffort } from "../../domains/dayplan/logic/plannedEffort";
 import { useLaunchStaleTime } from "../../shared/query/useLaunchStaleTime";
 
 /**
@@ -19,6 +20,9 @@ export function useShellCheckIn(hasHome: boolean) {
   const checkInToday = checkIn.state.kind === "ready" ? checkIn.state.checkIn : null;
   const note = checkInToday ? energyNote(energy, checkInToday) : null;
 
+  // Shown in the dialog only when there is Energy to plan against.
+  const planned = note === "energy" && energy !== null ? { planned: plannedEffort(plan), energy } : null;
+
   const [checkInOpen, setCheckInOpen] = useState(false);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const checkInReady = checkIn.state.kind === "ready";
@@ -32,5 +36,5 @@ export function useShellCheckIn(hasHome: boolean) {
   );
   const closeCheckIn = useCallback(() => setCheckInOpen(false), []);
 
-  return { checkIn, note, energy, openCheckIn, checkInOpen, closeCheckIn, returnFocusRef };
+  return { checkIn, note, energy, planned, openCheckIn, checkInOpen, closeCheckIn, returnFocusRef };
 }

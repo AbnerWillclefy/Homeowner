@@ -4,10 +4,10 @@ import { RESIDENT_EMAIL, signedInResident, withExplanation } from "../mocks/samp
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
 
-// What this covers: the leaner Today. The folded explanation sits under "Your Tasks" and before the Tasks, closed
-// by default, opens with Enter and closes with Space, names its source with a hidden description and a visible
-// caption, shows nothing before planning or on a rejected run, is not remembered, and holds at 320px with a long
-// headline. Each test runs in pt-BR first, then en-US.
+// What this covers: the lean Today. Under the top bar it opens with "Your Tasks" and its count, then the day's summary
+// as one muted line (plain text, not a control), then the Tasks. The summary names its source as visually hidden
+// text, shows nothing before planning or on a rejected run, and wraps at 320px with a long headline. The greeting,
+// the Energy card and the Check-in card are gone. Each test runs in pt-BR first, then en-US.
 
 const LONG_HEADLINE = {
   "en-US": "A very long headline that goes on and on about why today looks the way it does for everybody here",
@@ -21,8 +21,8 @@ const LOCALES = [
     detail: "Duas tarefas pequenas, o resto pode esperar.",
     llm: "Escrito pelo assistente",
     template: "Resumo padrão dos motivos de hoje",
-    prompt: "Como você está hoje?",
     mine: "Suas tarefas",
+    gone: [/Bom dia|Boa tarde|Boa noite/, "Como você está hoje?", "Mudar", /^Energia \d/],
   },
   {
     locale: "en-US",
@@ -30,8 +30,8 @@ const LOCALES = [
     detail: "Two small Tasks, and the rest can wait.",
     llm: "Written by the assistant",
     template: "Standard summary of today's reasons",
-    prompt: "How are you today?",
     mine: "Your Tasks",
+    gone: [/Good (morning|afternoon|evening)/, "How are you today?", "Change", /^Energy \d/],
   },
 ] as const;
 
@@ -44,69 +44,53 @@ for (const l of LOCALES) {
       await seedSession(page, { email: RESIDENT_EMAIL });
     });
 
-    const toggle = (page: import("@playwright/test").Page) => page.getByRole("button", { name: l.headline, exact: true });
+    const summary = (page: import("@playwright/test").Page) => page.locator("p", { hasText: l.headline });
 
-    test("the Check-in comes first, then the summary, then the Tasks", async ({ page, baseURL }) => {
+    test("the title comes first, then the summary line, then the Tasks", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
-      await expect(toggle(page)).toBeVisible();
-      const checkIn = await page.getByText(l.prompt, { exact: true }).boundingBox();
-      const heading = await page.getByRole("heading", { level: 3, name: new RegExp(l.mine) }).boundingBox();
-      const summary = await toggle(page).boundingBox();
+      await expect(summary(page)).toBeVisible();
+      const heading = await page.getByRole("heading", { level: 2, name: new RegExp(l.mine) }).boundingBox();
+      const line = await summary(page).boundingBox();
       const task = await page.getByText("Wash the dishes", { exact: true }).boundingBox();
-      expect(checkIn!.y).toBeLessThan(heading!.y);
-      expect(heading!.y).toBeLessThan(summary!.y);
-      expect(summary!.y).toBeLessThan(task!.y);
-      await expect(page.getByRole("heading", { level: 4, name: l.headline })).toBeVisible();
+      expect(heading!.y).toBeLessThan(line!.y);
+      expect(line!.y).toBeLessThan(task!.y);
+      // The summary is a line of text, not a control, and not a heading.
+      await expect(page.getByRole("button", { name: l.headline })).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: l.headline })).toHaveCount(0);
+      await expect(page.getByText(l.detail, { exact: true })).toHaveCount(0);
     });
 
-    test("it starts closed and opens with Enter and closes with Space, without moving the toggle", async ({ page, baseURL }) => {
+    test("the greeting, the date, the Energy card and the Check-in card are gone", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
-      const button = toggle(page);
-      await expect(button).toHaveAttribute("aria-expanded", "false");
-      await expect(page.getByText(l.detail, { exact: true })).toBeHidden();
-      const before = (await button.boundingBox())!.y;
-
-      await button.focus();
-      await page.keyboard.press("Enter");
-      await expect(button).toHaveAttribute("aria-expanded", "true");
-      await expect(page.getByText(l.detail, { exact: true })).toBeVisible();
-      expect((await button.boundingBox())!.y).toBe(before);
-      await expect(button).toBeFocused();
-
-      await page.keyboard.press("Space");
-      await expect(button).toHaveAttribute("aria-expanded", "false");
-      await expect(page.getByText(l.detail, { exact: true })).toBeHidden();
-      expect((await button.boundingBox())!.y).toBe(before);
+      await expect(summary(page)).toBeVisible();
+      for (const text of l.gone) await expect(page.getByText(text)).toHaveCount(0);
+      await expect(page.getByRole("region", { name: "Check-in" })).toHaveCount(0);
     });
 
-    test("the model-written text names its source, described and as a caption", async ({ page, baseURL }) => {
+    test("the model-written text names its source as hidden text", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
-      await expect(toggle(page)).toHaveAccessibleDescription(l.llm);
-      const caption = page.locator("p").getByText(l.llm, { exact: true });
-      await expect(caption).toBeHidden();
-      await toggle(page).click();
-      await expect(caption).toBeVisible();
+      await expect(summary(page)).toBeVisible();
+      await expect(summary(page)).toContainText(l.llm);
+      await expect(summary(page).getByText(l.llm)).toHaveClass(/sr-only/);
     });
 
     test.describe("standard text", () => {
       test.use({ fakeState: withExplanation(signedInResident(), "template") });
 
-      test("names its source, described and as a caption", async ({ page, baseURL }) => {
+      test("names its source as hidden text", async ({ page, baseURL }) => {
         await launchApp(page, baseURL!);
-        await expect(toggle(page)).toHaveAccessibleDescription(l.template);
-        await toggle(page).click();
-        await expect(page.locator("p").getByText(l.template, { exact: true })).toBeVisible();
+        await expect(summary(page)).toBeVisible();
+        await expect(summary(page).getByText(l.template)).toHaveClass(/sr-only/);
       });
     });
 
     test.describe("before planning", () => {
       test.use({ fakeState: (() => { const s = signedInResident(); delete s.dayPlan; return s; })() });
 
-      test("shows no summary card", async ({ page, baseURL }) => {
+      test("shows the title with no count and no summary", async ({ page, baseURL }) => {
         await launchApp(page, baseURL!);
-        await expect(page.getByText(l.prompt, { exact: true })).toBeVisible();
-        await expect(page.getByRole("button", { expanded: false, name: l.headline })).toHaveCount(0);
-        await expect(page.getByRole("heading", { level: 4 })).toHaveCount(0);
+        await expect(page.getByRole("heading", { level: 2, name: l.mine, exact: true })).toBeVisible();
+        await expect(page.getByText(l.headline)).toHaveCount(0);
       });
     });
 
@@ -119,23 +103,11 @@ for (const l of LOCALES) {
         })(),
       });
 
-      test("shows no summary card", async ({ page, baseURL }) => {
+      test("shows the title and no summary", async ({ page, baseURL }) => {
         await launchApp(page, baseURL!);
-        await expect(page.getByText(l.prompt, { exact: true })).toBeVisible();
-        await expect(page.getByRole("heading", { level: 4 })).toHaveCount(0);
+        await expect(page.getByRole("heading", { level: 2, name: l.mine, exact: true })).toBeVisible();
         await expect(page.getByText(l.headline)).toHaveCount(0);
       });
-    });
-
-    test("the open state is not remembered", async ({ page, baseURL }) => {
-      await launchApp(page, baseURL!);
-      await toggle(page).click();
-      await expect(toggle(page)).toHaveAttribute("aria-expanded", "true");
-      const links = page.getByRole("navigation").getByRole("link");
-      await links.nth(1).click();
-      await expect(page).toHaveURL((url) => url.pathname === "/chores");
-      await links.nth(0).click();
-      await expect(toggle(page)).toHaveAttribute("aria-expanded", "false");
     });
 
     test.describe("320px with a long headline", () => {
@@ -146,8 +118,7 @@ for (const l of LOCALES) {
 
       test("wraps the headline without scrolling sideways", async ({ page, baseURL }) => {
         await launchApp(page, baseURL!);
-        await expect(page.getByRole("button", { name: LONG_HEADLINE[l.locale], exact: true })).toBeVisible();
-        await page.getByRole("button", { name: LONG_HEADLINE[l.locale], exact: true }).click();
+        await expect(page.locator("p", { hasText: LONG_HEADLINE[l.locale] })).toBeVisible();
         const overflows = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
         expect(overflows).toBe(false);
       });

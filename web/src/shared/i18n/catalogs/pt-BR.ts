@@ -316,7 +316,6 @@ export const ptBR: Messages = {
   "chores.field.unknown": "Este valor não é aceito. Confira e tente de novo.",
 
   // Hoje (o plano do dia)
-  "dayplan.heading": "Hoje",
   "dayplan.loading": "Carregando o plano de hoje",
   "dayplan.load.offline":
     "Não foi possível carregar o plano de hoje porque o Homeowner não consegue falar com o serviço. Confira a sua conexão e tente de novo.",
@@ -327,16 +326,6 @@ export const ptBR: Messages = {
   "dayplan.notPlanned": "O plano de hoje é feito às {time}.",
   "dayplan.rejected":
     "Não foi possível usar o plano de hoje, então nenhuma tarefa foi dada hoje.",
-  "dayplan.greeting.morning": "Bom dia",
-  "dayplan.greeting.afternoon": "Boa tarde",
-  "dayplan.greeting.evening": "Boa noite",
-  "dayplan.greeting.morningName": "Bom dia, {name}",
-  "dayplan.greeting.afternoonName": "Boa tarde, {name}",
-  "dayplan.greeting.eveningName": "Boa noite, {name}",
-  "dayplan.energy.value": "Energia {energy}",
-  "dayplan.energy.planned": "{planned} de {energy} planejados para você",
-  "dayplan.energy.drained": "Esgotado hoje, sem tarefas",
-  "dayplan.energy.noBaseline": "Defina a sua energia base para ter energia",
   "dayplan.mine.empty.noBaseline":
     "Sem energia base para hoje, então nenhuma tarefa para você.",
   "dayplan.mine.empty.noBaseline.link": "Definir a energia base",
@@ -503,8 +492,6 @@ export const ptBR: Messages = {
 
   // Check-in
   "checkin.heading": "Check-in",
-  "checkin.prompt": "Como você está hoje?",
-  "checkin.open": "Fazer check-in",
   "checkin.load.offline":
     "Não foi possível carregar o seu check-in porque o Homeowner não consegue acessar o serviço. Verifique a sua conexão e tente de novo.",
   "checkin.load.error":
@@ -521,7 +508,6 @@ export const ptBR: Messages = {
   "checkin.restrictions.legend": "Algo que você não pode fazer hoje?",
   "checkin.submit": "Salvar",
   "checkin.cancel": "Cancelar",
-  "checkin.change": "Mudar",
   "checkin.saved": "Check-in salvo",
   "checkin.save.offline":
     "O seu check-in não foi salvo porque o Homeowner não consegue acessar o serviço. Verifique a sua conexão e tente de novo.",
@@ -529,8 +515,9 @@ export const ptBR: Messages = {
     "Algo deu errado ao salvar o seu check-in. Tente de novo em instantes.",
   "checkin.save.invalid":
     "O Homeowner não aceitou esse check-in. Escolha de novo e tente mais uma vez.",
-  "checkin.summary": "Check-in de hoje: {level}",
   "checkin.summary.restrictions": "Não hoje: {demands}",
+  "checkin.summary.restrictions.none": "Nenhuma restrição hoje",
+  "checkin.planned": "{planned} de {energy} planejados",
   "checkin.pill.unset": "Check-in",
   "checkin.pill.failed": "Falhou",
   "checkin.pill.name.unset": "Fazer check-in",

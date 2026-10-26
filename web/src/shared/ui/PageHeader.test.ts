@@ -59,6 +59,18 @@ describe("PageHeader", () => {
     expect(children[2]!.querySelector("#aside")?.textContent).toBe("7");
   });
 
+  it("draws a count as a muted figure inside the title, and none when it is absent or zero", () => {
+    render(createElement(PageHeader, { title: "Your Tasks", count: 3 }));
+    const figure = container().querySelector("h2 span");
+    expect(figure?.textContent).toBe("3");
+    expect(figure?.className).toContain("text-muted");
+    expect(container().querySelector("h2")?.textContent).toBe("Your Tasks3");
+    render(createElement(PageHeader, { title: "Your Tasks", count: 0 }));
+    expect(container().querySelector("h2 span")).toBeNull();
+    render(createElement(PageHeader, { title: "Your Tasks" }));
+    expect(container().querySelector("h2 span")).toBeNull();
+  });
+
   it("leaves the title row as it was without an aside", () => {
     render(createElement(PageHeader, { title: "Today" }));
     const row = container().querySelector("h2")!.parentElement!;

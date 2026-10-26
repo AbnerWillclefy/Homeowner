@@ -11,6 +11,7 @@ import { ButtonRow } from "../../../shared/ui/ButtonRow";
 import { SAVE_FAILURE_KEY } from "../logic/failureMessages";
 import { formFrom, submission, toggledRestriction, type CheckInFormState } from "../logic/form";
 import { LEVEL_KEYS } from "../logic/labels";
+import { CheckInDayLines } from "./CheckInDayLines";
 import { RADIO_CARD } from "../../../shared/ui/radioCard";
 import type { SaveFailure } from "../logic/state";
 
@@ -36,12 +37,15 @@ const LEGEND = "p-0 text-lg font-semibold";
 export function CheckInDialog({
   checkIn,
   demands,
+  planned,
   save: saveCheckIn,
   onClose,
   returnFocusRef,
 }: {
   checkIn: CheckIn;
   demands: readonly string[];
+  /** The planned Effort against today's Energy, or null when there is no figure to show (the Shell decides). */
+  planned: { planned: number; energy: number } | null;
   /** Resolves to null once saved, else why it was not. */
   save(level: Level, restrictions: readonly string[]): Promise<SaveFailure | null>;
   onClose(): void;
@@ -88,6 +92,7 @@ export function CheckInDialog({
     <AppDialog
       size="sheet"
       title={t("checkin.heading")}
+      description={<CheckInDayLines planned={planned} restrictions={checkIn.restrictions} />}
       onDismiss={onClose}
       dismissible={!saving}
       returnFocusRef={returnFocusRef}
@@ -106,7 +111,7 @@ export function CheckInDialog({
         />
       }
     >
-      <form id={formId} onSubmit={onSubmit} noValidate className="flex flex-col gap-8">
+      <form id={formId} onSubmit={onSubmit} noValidate className="mt-6 flex flex-col gap-8">
         <fieldset
           className="m-0 min-w-0 border-0 p-0"
           disabled={saving}
