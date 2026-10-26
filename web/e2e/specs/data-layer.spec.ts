@@ -88,7 +88,13 @@ for (const l of LOCALES) {
 
       // Resuming the page still refreshes it; held, the indicator shows over the cached Tasks.
       const second = hold(page, DAY_PLAN);
-      await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange", { bubbles: true })));
+      // Today's queries subscribe in an effect after the click's commit, so a resume sent right after the click can
+      // reach them unsubscribed and skip the plan. Resume until the plan read is held.
+      await expect(async () => {
+        const planRead = page.waitForRequest(DAY_PLAN, { timeout: 500 });
+        await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange", { bubbles: true })));
+        await planRead;
+      }).toPass();
       // The indicator is delayed by 300ms: the web-first assertion waits for it, no sleep.
       await expect(refreshing(page)).toBeVisible();
       await expect(dishes(page)).toBeVisible();
