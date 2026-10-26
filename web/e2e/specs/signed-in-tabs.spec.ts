@@ -158,14 +158,16 @@ test.describe("a refresh with the Home on screen", () => {
 });
 
 test("a Day Plan that fails to load shows a message and recovers on retry", async ({ page, baseURL, fakeApi }) => {
-  // Two failures: the launch read, then the read Today makes on mount because the launch read did not succeed.
-  fakeApi.override("GET /home/day-plan", json(500, { error: "internal error" }), { once: true });
-  fakeApi.override("GET /home/day-plan", json(500, { error: "internal error" }), { once: true });
+  // Every read fails until Retry. How many reads the launch makes before Today shows the error is not fixed (the
+  // launch read, and sometimes another on mount), so a count of `once` failures raced the Retry click.
+  fakeApi.override("GET /home/day-plan", json(500, { error: "internal error" }));
   await launchApp(page, baseURL!);
 
   await expect(tabs.today.heading(page)).toBeVisible();
   await expect(tabs.today.loadError(page)).toBeVisible();
 
+  // Back to the signed-in handlers, so the Day Plan reads again.
+  fakeApi.use(signedInHandlers);
   await tabs.today.retry(page).click();
   for (const name of TASKS) await expect(tabs.today.task(page, name)).toBeVisible();
   await expect(tabs.today.loadError(page)).toHaveCount(0);
