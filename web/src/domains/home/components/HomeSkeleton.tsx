@@ -52,15 +52,15 @@ function ReplanSkeleton() {
 }
 
 /**
- * Today's final layout, for the wait before its reads answer (the Home, then the Check-in, Day Plan and Streak):
- * the header with the Streak button placeholder, the Replan block when Replan is enabled, the Check-in card, and the
+ * Today's final layout, for the wait before its reads answer (the Home, then the Check-in and Day Plan):
+ * the header, the Replan block when Replan is enabled, the Check-in card, and the
  * Tasks section with its heading, the folded explanation card and the Task cards. Spaced as `HomeDay` spaces them,
  * by structure and `rem`, so pt-BR and the largest text size grow it as they grow the page.
  */
 export function TodaySkeleton() {
   return (
     <div aria-hidden="true">
-      <SkeletonHeader aside />
+      <SkeletonHeader />
       {config.replanEnabled && <ReplanSkeleton />}
       <section>
         <CheckInSkeleton />

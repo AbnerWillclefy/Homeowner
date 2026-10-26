@@ -7,16 +7,13 @@ import { ReplanControl } from "../../dayplan/components/ReplanControl";
 import { TodayHeader } from "../../dayplan/components/TodayHeader";
 import { TodaySection } from "../../dayplan/components/TodaySection";
 import { useDayPlan } from "../../dayplan/hooks/useDayPlan";
-import { StreakButton } from "../../streak/components/StreakButton";
-import { useStreak } from "../../streak/hooks/useStreak";
 import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { ReservedSkeleton } from "../../../shared/ui/ReservedSkeleton";
 import { useTodayLoaded } from "../hooks/useTodayLoaded";
 import { TodaySkeleton } from "./HomeSkeleton";
 
 /**
- * Today: the greeting with the Streak flame button at the end of its row (built here and passed to the header, so
- * the Day Plan domain never imports the Streak), then the replan control (staging only, high on the page so the
+ * Today: the greeting, then the replan control (staging only, high on the page so the
  * sticky bottom nav is not over it when Today loads), the Check-in card with today's Energy and the Day Plan. All of it arrives in one swap, after the three reads have answered (see
  * `todayLoaded`); before that Today is its skeleton. The folded explanation belongs to the Day Plan: it shows right under "Your Tasks",
  * before the Tasks, and only on a planned day. Whatever changes the plan
@@ -30,19 +27,19 @@ export function HomeDay() {
   const checkIn = useCheckIn();
   const day = useDayPlan();
   const { state } = day;
-  const streak = useStreak();
-  // Today's single header slot spins once, whichever of the three reads refreshes over what is on screen.
-  useReportFetching(day.refreshing || checkIn.refreshing || streak.refreshing);
+  // Today's single header slot spins once, whichever of its two reads refreshes over what is on screen. The
+  // Streak's refresh is the top bar's, not Today's.
+  useReportFetching(day.refreshing || checkIn.refreshing);
   const [checkInOpen, setCheckInOpen] = useState(false);
   const today = checkIn.state.kind === "ready" ? checkIn.state.checkIn : null;
   const energy = state.kind === "ready" ? state.plan.energy : null;
   const note = today ? energyNote(energy, today) : null;
   const planned = state.kind === "ready" ? state.plan.mine.reduce((sum, task) => sum + task.currentEffort, 0) : 0;
-  // One swap: until each of the three reads has answered (data or failure) Today is its skeleton, which holds the
+  // One swap: until each of the two reads has answered (data or failure) Today is its skeleton, which holds the
   // final layout's space from the first frame and shows after the page's 300ms. Then the header and every section
   // arrive in the same render. The sections' own first-load skeletons therefore never draw on mount; they still
   // draw for a Retry after a failure.
-  const loaded = useTodayLoaded({ checkIn: checkIn.state, dayPlan: state, streakLoading: streak.loading });
+  const loaded = useTodayLoaded({ checkIn: checkIn.state, dayPlan: state });
   const showSkeleton = useReportFirstLoad(!loaded);
 
   if (!loaded) {
@@ -55,7 +52,7 @@ export function HomeDay() {
 
   return (
     <>
-      <TodayHeader aside={<StreakButton streak={streak.streak} loading={streak.loading} />} />
+      <TodayHeader />
       <ReplanControl plan={state.kind === "ready" ? state.plan : undefined} show={day.show} />
       <CheckInSection
         checkIn={checkIn}
