@@ -20,7 +20,7 @@ Success: the work gets shared fairly over time, nobody is pushed past their limi
 
 ## Positioning
 
-Chore apps track what needs doing. Homeowner decides who does what today, from each Resident's Energy, Preferences and Restrictions, and explains why in plain language. It advises and never commands: only a Task a Resident explicitly Commits to counts as a promise, and an honest bad day never costs anything (a Drained day pauses the Streak; only a broken commitment breaks it).
+Chore apps track what needs doing. Homeowner decides who does what today, from each Resident's Energy, Preferences and Restrictions, and explains why in plain language. It advises and never commands: only a Task a Resident explicitly Commits to counts as a promise, and an honest bad day never costs anything (a Drained day pauses the Streak; only a day of broken commitments with nothing done breaks it).
 
 ## Operating Context
 

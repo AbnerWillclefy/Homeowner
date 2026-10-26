@@ -66,7 +66,7 @@ for (const l of LOCALES) {
     const planReads = (requests: { method: string; path: string }[]) =>
       requests.filter((r) => r.method === "GET" && r.path === "/home/day-plan").length;
 
-    test("coming back to Today shows the cached plan with no skeleton, and the indicator only while the refetch is held", async ({ page, baseURL }) => {
+    test("coming back to Today shows the cached plan with no skeleton and no new read; the indicator shows only while a focus refetch is held", async ({ page, baseURL, fakeApi }) => {
       // First load, held: the skeleton shows. This proves the locator finds it, so its absence below means something.
       const first = hold(page, DAY_PLAN);
       await launchApp(page, baseURL!);
@@ -79,11 +79,16 @@ for (const l of LOCALES) {
       await expect(page.getByText("Mop the floors", { exact: true })).toBeVisible();
       await expect(tab(page, l.chores)).toHaveAttribute("aria-current", "page");
 
-      const second = hold(page, DAY_PLAN);
+      // The launch read already succeeded, so returning to Today does not read the plan again (ADR 0016).
+      const readsBefore = planReads(fakeApi.requests);
       await tab(page, l.today).click();
-      // The cached Tasks are there at once, and the skeleton never replaces them.
       await expect(dishes(page)).toBeVisible();
       await expect(skeleton(page)).toHaveCount(0);
+      expect(planReads(fakeApi.requests)).toBe(readsBefore);
+
+      // Resuming the page still refreshes it; held, the indicator shows over the cached Tasks.
+      const second = hold(page, DAY_PLAN);
+      await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange", { bubbles: true })));
       // The indicator is delayed by 300ms: the web-first assertion waits for it, no sleep.
       await expect(refreshing(page)).toBeVisible();
       await expect(dishes(page)).toBeVisible();

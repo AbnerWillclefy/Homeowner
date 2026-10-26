@@ -11,6 +11,7 @@ import { Button } from "../../../shared/ui/Button";
 import { GroupHeading } from "../../../shared/ui/GroupHeading";
 import { LOAD_FAILURE_KEY } from "../logic/failureMessages";
 import { ResidentLabel } from "../../residents/components/ResidentLabel";
+import { DaySummary } from "./DaySummary";
 import { DoneCard } from "./DoneCard";
 import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { DayPlanSkeleton } from "./DayPlanSkeleton";
@@ -31,7 +32,13 @@ type Day = ReturnType<typeof useDayPlan>;
  * loads the plan and shows its Energy in the header's chip; `note` is that chip's note, null while the
  * Check-in is not known.
  */
-export function TodaySection({ day, note }: { day: Day; note: EnergyNote | null }) {
+export function TodaySection({
+  day,
+  note,
+}: {
+  day: Day;
+  note: EnergyNote | null;
+}) {
   const { t } = useI18n();
   const { state, reload, run, acceptAll, answerSwap, offerSwap, acting, notice, changed } = day;
   // The page's one status announces the wait; the skeleton shows after 300ms and only for a first load.
@@ -201,6 +208,7 @@ function PlanView({
       {plan.planned && (
         <div>
           <GroupHeading count={plan.mine.length}>{t("dayplan.mine.heading")}</GroupHeading>
+          <DaySummary plan={plan} />
           {proposed > 0 && (
             <Button
               fullWidth

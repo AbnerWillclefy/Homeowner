@@ -11,6 +11,8 @@ import type { Message } from "../translate";
 export const enUS = {
   "app.name": "Homeowner",
   "common.refreshing": "Refreshing",
+  "app.chunkFailed": "This screen could not be loaded. Check your connection and try again.",
+  "app.chunkRetry": "Try again",
   "home.tagline": "Manage the housework in your Home.",
   "health.unavailable":
     "Service status: unavailable. The service is up but cannot reach its database.",
@@ -338,6 +340,8 @@ export const enUS = {
   "dayplan.summary.mine": { one: "{count} Task for you", other: "{count} Tasks for you" },
   "dayplan.summary.others": { one: "{count} for others", other: "{count} for others" },
   "dayplan.summary.pool": { one: "{count} still to do", other: "{count} still to do" },
+  "dayplan.summary.source.llm": "Written by the assistant",
+  "dayplan.summary.source.template": "Standard summary of today's reasons",
   "dayplan.pool.heading": "Still to do",
   "dayplan.pool.empty": "No other open Tasks. Everything is planned or done.",
   "dayplan.task.effort": "Effort: {level}",
@@ -479,7 +483,22 @@ export const enUS = {
   "startChoice.done.close": "Got it",
 
   // Streak
-  "streak.heading": "Streak",
+  "streak.button": {
+    one: "Streak: {count} day",
+    other: "Streak: {count} days",
+  },
+  "streak.button.zero": "Streak: 0 days",
+  "streak.stat": {
+    one: "day Streak",
+    other: "day Streak",
+  },
+  "streak.stat.zero": "day Streak",
+  "streak.dialog.title": "Your Streak",
+  "streak.rule.grow": "Finishing one Task in a day grows it.",
+  "streak.rule.pause": "A day with nothing taken on, or a Drained day, pauses it.",
+  "streak.rule.break": "Taking on Tasks and finishing none breaks it.",
+  "streak.rule.refuse": "Refusing or ignoring a proposed Task never breaks it.",
+  "streak.close": "Close",
   "streak.days": {
     one: "{count}-day Streak",
     other: "{count}-day Streak",

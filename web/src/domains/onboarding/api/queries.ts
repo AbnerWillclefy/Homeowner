@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { toQueryData } from "../../../shared/query/ApiFailure";
+import { refetchUnlessSucceeded } from "../../../shared/query/queryClient";
 import { getOnboarding, type OnboardingPosition } from "./api";
 
 /** `GET /me/onboarding`, under `me` (ADR 0013): sign-out clears it with the rest. */
@@ -12,4 +13,5 @@ export const onboardingKey = ["me", "onboarding"] as const;
 export const onboardingQuery = queryOptions({
   queryKey: onboardingKey,
   queryFn: async (): Promise<OnboardingPosition> => toQueryData(await getOnboarding()).step,
+  refetchOnMount: refetchUnlessSucceeded,
 });

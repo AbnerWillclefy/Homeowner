@@ -1,11 +1,12 @@
 // Package streak is the rule that turns a Resident's history into their
-// Streak (ADR 0003). It is pure: the facts and today's date come in as
-// arguments, and nothing is read from a clock or a database.
+// Streak (ADR 0003, amended by ADR 0014). It is pure: the facts and today's
+// date come in as arguments, and nothing is read from a clock or a database.
 //
-// A day grows the Streak when the Resident did at least one Completion and
-// left no Committed Task undone, breaks it when a Committed Task was left
-// undone, and otherwise pauses it. A Drained day cannot break. Refusing or
-// ignoring a proposed Task creates no Commitment, so it never reaches a break.
+// A day grows the Streak when the Resident did at least one Completion,
+// whatever else they Committed to and left undone. It breaks it only when they
+// Committed to at least one Task, completed none and did not check in Drained.
+// Every other day pauses it. A Drained day cannot break. Refusing or ignoring
+// a proposed Task creates no Commitment, so it never reaches a break.
 //
 // A day is final only once the Home's local date has moved past it, so today
 // is never judged a break.
@@ -52,10 +53,10 @@ func (o Outcome) String() string {
 // Judge says what one day does to the Streak.
 func Judge(d Day) Outcome {
 	switch {
+	case d.Completions >= 1:
+		return Grow
 	case d.Undone > 0 && !d.Drained:
 		return Break
-	case d.Completions >= 1 && d.Undone == 0:
-		return Grow
 	default:
 		return Pause
 	}

@@ -175,7 +175,7 @@ Each is a fill with a paired ink. Kitchen peach, bathroom mint, bedroom and livi
 
 One centred column, `max-width: 32rem`, with 1.5rem side padding plus the device's safe-area insets, and 2rem top and bottom. Cards stack with a 1rem gap; groups of cards are separated by a group heading and 2rem of space. Inside a card the rhythm is 0.75rem between rows, 1rem padding. Lists are real lists with no bullets.
 
-The bottom tab bar holds four equal tabs in the same 32rem column, keeps the bottom safe-area inset, and sits after the content so it never covers it.
+The bottom tab bar holds four equal tabs in the same 32rem column, keeps the bottom safe-area inset, and sits after the content, sticky, so it covers nothing once the page is scrolled to the end but does cover what lies at the fold while scrolling: keep a control that must be tappable on load high on the page.
 
 ### Thumb reach
 Actions live where a right thumb lands. A card's actions are on their own row at the bottom of the card.
@@ -223,6 +223,18 @@ Icon and Category name on the Category pastel, a pill with a hairline edge, 0.87
 - **Section card:** an icon tile and an h3 in a row, an optional muted hint, then the body.
 - **Card row:** glyph left, text in the middle, actions on the right (they wrap to their own end-aligned row when narrow).
 - **Stat tile:** a big number over its label.
+- **Collapsible card:** a section card whose whole head row toggles it.
+  - The head row is one native button inside the heading, so Enter and Space work. It starts closed and the state is not remembered; the body stays in the page when hidden.
+  - The chevron rotates only behind `motion-safe:`.
+  - Closed, it shows at most one line of title: no hint when the title is server text. The title wraps at large text and is never cut with an ellipsis (The Wrap, Never Truncate Rule).
+  - The icon tile is decorative unless it carries meaning. When it does, it has a text description and the open body repeats it as a visible caption, never a tooltip. A state that is not an error (a fallback text, say) uses the neutral tile (muted tint, muted ink), not a warning icon.
+
+### Header icon button
+An icon with a short value, at the end of a page header's title row after the refresh spinner slot.
+- At least 2.75rem, never shrinking, aligned to the top while the title wraps. Tabular figures, so a changing value does not move it.
+- Ink or muted at every value, 0 included (The Calm at Every Number Rule), never teal (The One Voice Rule).
+- It always has a text accessible name that includes the value, and opens a short centred dialog that returns focus to it on close.
+- It has its own placeholder while loading, and is absent when its data could not be read.
 
 ### Inputs / Fields
 Full width, 2.75rem minimum, card fill, 1px Hedge Line edge, 0.75rem radius, 1rem text. Focus is the global 2px Focus Blue outline. Labels sit above in 600.

@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A leaner Today</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mocks.css">
+<style>
+  figure.pair figcaption { max-width: 46rem; }
+  .phones { display: flex; gap: 1.5rem; align-items: flex-start; }
+</style>
+</head>
+<body>
+<main class="board">
+  <header>
+    <h1>Epic 6: A leaner Today</h1>
+    <p>Today puts the Tasks first. The explanation of the Day Plan is a closed card under the heading, and the Streak moves to a flame in the page header that opens a short dialog. Every state is drawn at 390px and, at the largest text size, at 320px. Copy is illustrative; the i18n catalogs own the real wording. Open with <code>?lang=pt-BR</code> for Portuguese, where the longer words are what break layouts. The Me tab's flame stays teal; Today's is neutral.</p>
+  </header>
+
+  <figure class="pair">
+    <div class="phones">
+    <div class="phone ">
+      <div class="screen">
+        <div class="head-row">
+          <div class="grow"><h2 class="page-title">Good afternoon, Maria Eduarda</h2><p class="page-sub">Friday, October 23</p></div>
+          <span class="slot"></span>
+          <button class="head-btn"><i data-lucide="flame"></i>3</button>
+        </div>
+        <section class="card"><div class="row wrap">
+          <span class="tile accent"><i data-lucide="zap"></i></span>
+          <div class="grow"><p class="sm muted">Today's Check-in: Normal</p><p class="bold">5 of 5 Energy planned for you</p></div>
+          <button class="btn">Change</button></div></section>
+        <div>
+          <h2 class="group">Your Tasks <span class="count">2</span></h2>
+          <div class="stack">
+        <section class="card fold">
+          <div class="fold-head center"><span class="tile neutral"><i data-lucide="sparkles"></i></span><div class="grow"><h3 class="headline">A lighter day, shaped around your Low Energy.</h3></div><i class="chev" data-lucide="chevron-down"></i></div>
+        </section>
+        <div class="actions"><button class="btn primary">Accept all</button></div>
+        <div class="stack">
+          <div class="card peach">
+            <div class="row"><span class="tile on-tint"><i data-lucide="cooking-pot"></i></span>
+              <div class="grow"><p class="cat-name">Kitchen</p><h3 class="card-title">Wash the dishes</h3></div></div>
+            <div class="facts"><span class="fact"><span class="dots"><i class="f"></i><i class="f"></i><i></i><i></i><i></i></span>Effort: Light</span><span class="fact"><i data-lucide="calendar-days"></i>Due today</span></div>
+            <p class="reason"><i data-lucide="lightbulb"></i>Why: You like this one.</p>
+            <div class="actions"><button class="btn">Refuse</button><span class="spacer"></span><button class="btn primary">Accept</button></div>
+          </div>
+          <div class="card blue">
+            <div class="row"><span class="tile on-tint"><i data-lucide="shirt"></i></span>
+              <div class="grow"><p class="cat-name">Laundry</p><h3 class="card-title">Fold the laundry</h3></div></div>
+            <div class="facts"><span class="fact"><span class="dots"><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i></span>Effort: Moderate</span><span class="fact"><i data-lucide="calendar-days"></i>Due today</span></div>
+            <p class="reason"><i data-lucide="lightbulb"></i>Why: It is due today.</p>
+            <div class="actions"><button class="btn">Refuse</button><span class="spacer"></span><button class="btn primary">Accept</button></div>
+          </div>
+        </div>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <div class="phone large narrow">
+      <div class="screen">
+        <div class="head-row">
+          <div class="grow"><h2 class="page-title">Good afternoon, Maria Eduarda</h2><p class="page-sub">Friday, October 23</p></div>
+          <span class="slot"></span>
+          <button class="head-btn"><i data-lucide="flame"></i>3</button>
+        </div>
+        <section class="card"><div class="row wrap">
+          <span class="tile accent"><i data-lucide="zap"></i></span>
+          <div class="grow"><p class="sm muted">Today's Check-in: Normal</p><p class="bold">5 of 5 Energy planned for you</p></div>
+          <button class="btn">Change</button></div></section>
+        <div>
+          <h2 class="group">Your Tasks <span class="count">2</span></h2>
+          <div class="stack">
+        <section class="card fold">
+          <div class="fold-head center"><span class="tile neutral"><i data-lucide="sparkles"></i></span><div class="grow"><h3 class="headline">A lighter day, shaped around your Low Energy.</h3></div><i class="chev" data-lucide="chevron-down"></i></div>
+        </section>
+        <div class="actions"><button class="btn primary">Accept all</button></div>
+        <div class="stack">
+          <div class="card peach">
+            <div class="row"><span class="tile on-tint"><i data-lucide="cooking-pot"></i></span>
+              <div class="grow"><p class="cat-name">Kitchen</p><h3 class="card-title">Wash the dishes</h3></div></div>
+            <div class="facts"><span class="fact"><span class="dots"><i class="f"></i><i class="f"></i><i></i><i></i><i></i></span>Effort: Light</span><span class="fact"><i data-lucide="calendar-days"></i>Due today</span></div>
+            <p class="reason"><i data-lucide="lightbulb"></i>Why: You like this one.</p>
+            <div class="actions"><button class="btn">Refuse</button><span class="spacer"></span><button class="btn primary">Accept</button></div>
+          </div>
+          <div class="card blue">
+            <div class="row"><span class="tile on-tint"><i data-lucide="shirt"></i></span>
+              <div class="grow"><p class="cat-name">Laundry</p><h3 class="card-title">Fold the laundry</h3></div></div>
+            <div class="facts"><span class="fact"><span class="dots"><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i></span>Effort: Moderate</span><span class="fact"><i data-lucide="calendar-days"></i>Due today</span></div>
+            <p class="reason"><i data-lucide="lightbulb"></i>Why: It is due today.</p>
+            <div class="actions"><button class="btn">Refuse</button><span class="spacer"></span><button class="btn primary">Accept</button></div>
+          </div>
+        </div>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    </div>
+    <figcaption><strong>Today, closed</strong>Left: 390px. Right: 320px at the largest text size. The Tasks come right after the greeting: Check-in, then <b>Your Tasks</b>, then the explanation card closed right under the heading (one row: icon tile, headline, chevron; no hint line), then Accept all and the Task cards. The Streak card is gone from the page; the flame is in the header. Swap offers to you, when there are any, still sit above <b>Your Tasks</b>.</figcaption>
+  </figure>
+
+  <figure class="pair">
+    <div class="phones">
+    <div class="phone ">
+      <div class="screen">
+        <div class="head-row">
+          <div class="grow"><h2 class="page-title">Good afternoon, Maria Eduarda</h2><p class="page-sub">Friday, October 23</p></div>
+          <span class="slot"></span>
+          <button class="head-btn"><i data-lucide="flame"></i>3</button>
+        </div>
+        <section class="card"><div class="row wrap">
+          <span class="tile accent"><i data-lucide="zap"></i></span>
+          <div class="grow"><p class="sm muted">Today's Check-in: Normal</p><p class="bold">5 of 5 Energy planned for you</p></div>
+          <button class="btn">Change</button></div></section>
+        <div>
+          <h2 class="group">Your Tasks <span class="count">2</span></h2>
+          <div class="stack">
+        <section class="card fold">
+          <div class="fold-head center"><span class="tile neutral"><i data-lucide="sparkles"></i></span><div class="grow"><h3 class="headline">A lighter day, shaped around your Low Energy.</h3></div><i class="chev open" data-lucide="chevron-down"></i></div>
+          <div class="fold-body">
+            <p>The bathroom deep clean went to Ana, who checked in Energized. You kept the dishes, which you like, and the laundry, which is due today.</p>
+            <ul class="facts" style="margin:0;padding:0;list-style:none">
+              <li class="fact"><i data-lucide="list-checks"></i>2 Tasks for you</li>
+              <li class="fact"><i data-lucide="users"></i>3 for Ana</li>
+              <li class="fact"><i data-lucide="inbox"></i>2 still to do</li>
+            </ul>
+            <p class="source"><i data-lucide="sparkles"></i>Written by the assistant</p>
+          </div>
+        </section>
+        <div class="actions"><button class="btn primary">Accept all</button></div>
+        <div class="stack">
+          <div class="card peach">
+            <div class="row"><span class="tile on-tint"><i data-lucide="cooking-pot"></i></span>
+              <div class="grow"><p class="cat-name">Kitchen</p><h3 class="card-title">Wash the dishes</h3></div></div>
+            <div class="facts"><span class="fact"><span class="dots"><i class="f"></i><i class="f"></i><i></i><i></i><i></i></span>Effort: Light</span><span class="fact"><i data-lucide="calendar-days"></i>Due today</span></div>
+            <p class="reason"><i data-lucide="lightbulb"></i>Why: You like this one.</p>
+            <div class="actions"><button class="btn">Refuse</button><span class="spacer"></span><button class="btn primary">Accept</button></div>
+          </div>
+          <div class="card blue">
+            <div class="row"><span class="tile on-tint"><i data-lucide="shirt"></i></span>
+              <div class="grow"><p class="cat-name">Laundry</p><h3 class="card-title">Fold the laundry</h3></div></div>
+            <div class="facts"><span class="fact"><span class="dots"><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i></span>Effort: Moderate</span><span class="fact"><i data-lucide="calendar-days"></i>Due today</span></div>
+            <p class="reason"><i data-lucide="lightbulb"></i>Why: It is due today.</p>
+            <div class="actions"><button class="btn">Refuse</button><span class="spacer"></span><button class="btn primary">Accept</button></div>
+          </div>
+        </div>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    <div class="phone large narrow">
+      <div class="screen">
+        <div class="head-row">
+          <div class="grow"><h2 class="page-title">Good afternoon, Maria Eduarda</h2><p class="page-sub">Friday, October 23</p></div>
+          <span class="slot"></span>
+          <button class="head-btn"><i data-lucide="flame"></i>3</button>
+        </div>
+        <section class="card"><div class="row wrap">
+          <span class="tile accent"><i data-lucide="zap"></i></span>
+          <div class="grow"><p class="sm muted">Today's Check-in: Normal</p><p class="bold">5 of 5 Energy planned for you</p></div>
+          <button class="btn">Change</button></div></section>
+        <div>
+          <h2 class="group">Your Tasks <span class="count">2</span></h2>
+          <div class="stack">
+        <section class="card fold">
+          <div class="fold-head center"><span class="tile neutral"><i data-lucide="sparkles"></i></span><div class="grow"><h3 class="headline">A lighter day, shaped around your Low Energy.</h3></div><i class="chev open" data-lucide="chevron-down"></i></div>
+          <div class="fold-body">
+            <p>The bathroom deep clean went to Ana, who checked in Energized. You kept the dishes, which you like, and the laundry, which is due today.</p>
+            <ul class="facts" style="margin:0;padding:0;list-style:none">
+              <li class="fact"><i data-lucide="list-checks"></i>2 Tasks for you</li>
+              <li class="fact"><i data-lucide="users"></i>3 for Ana</li>
+              <li class="fact"><i data-lucide="inbox"></i>2 still to do</li>
+            </ul>
+            <p class="source"><i data-lucide="sparkles"></i>Written by the assistant</p>
+          </div>
+        </section>
+        <div class="actions"><button class="btn primary">Accept all</button></div>
+        <div class="stack">
+          <div class="card peach">
+            <div class="row"><span class="tile on-tint"><i data-lucide="cooking-pot"></i></span>
+              <div class="grow"><p class="cat-name">Kitchen</p><h3 class="card-title">Wash the dishes</h3></div></div>
+            <div class="facts"><span class="fact"><span class="dots"><i class="f"></i><i class="f"></i><i></i><i></i><i></i></span>Effort: Light</span><span class="fact"><i data-lucide="calendar-days"></i>Due today</span></div>
+            <p class="reason"><i data-lucide="lightbulb"></i>Why: You like this one.</p>
+            <div class="actions"><button class="btn">Refuse</button><span class="spacer"></span><button class="btn primary">Accept</button></div>
+          </div>
+          <div class="card blue">
+            <div class="row"><span class="tile on-tint"><i data-lucide="shirt"></i></span>
+              <div class="grow"><p class="cat-name">Laundry</p><h3 class="card-title">Fold the laundry</h3></div></div>
+            <div class="facts"><span class="fact"><span class="dots"><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i></span>Effort: Moderate</span><span class="fact"><i data-lucide="calendar-days"></i>Due today</span></div>
+            <p class="reason"><i data-lucide="lightbulb"></i>Why: It is due today.</p>
+            <div class="actions"><button class="btn">Refuse</button><span class="spacer"></span><button class="btn primary">Accept</button></div>
+          </div>
+        </div>
+          </div>
+        </div>
+      </div>
+      <nav class="tabs"><span class="tab on"><i data-lucide="calendar-check"></i>Today</span><span class="tab"><i data-lucide="list-checks"></i>Chores</span><span class="tab"><i data-lucide="house"></i>Home</span><span class="tab"><i data-lucide="user"></i>Me</span></nav>
+    </div>
+    </div>
+    <figcaption><strong>The same card, open</strong>The whole head row is the button; the chevron has turned. The body holds the detail, the counts (icon and words) and a muted caption naming the source. The body stays in the page when the card is closed, hidden.</figcaption>
+  </figure>
+
+  <figure class="pair">
+    <div class="phones">
+    <div class="phone short">
+      <div class="screen">
+        <h2 class="group">Your Tasks <span class="count">2</span></h2>
+        <section class="card fold">
+          <div class="fold-head center"><span class="tile neutral"><i data-lucide="sparkles"></i></span><div class="grow"><h3 class="headline">A lighter day, shaped around your Low Energy.</h3></div><i class="chev open" data-lucide="chevron-down"></i></div>
+          <div class="fold-body">
+            <p>The bathroom deep clean went to Ana, who checked in Energized. You kept the dishes, which you like, and the laundry, which is due today.</p>
+            <ul class="facts" style="margin:0;padding:0;list-style:none">
+              <li class="fact"><i data-lucide="list-checks"></i>2 Tasks for you</li>
+              <li class="fact"><i data-lucide="users"></i>3 for Ana</li>
+              <li class="fact"><i data-lucide="inbox"></i>2 still to do</li>
+            </ul>
+            <p class="source"><i data-lucide="sparkles"></i>Written by the assistant</p>
+          </div>
+        </section>
+      </div>
+      
+    </div>
+    <div class="phone short large narrow">
+      <div class="screen">
+        <h2 class="group">Your Tasks <span class="count">2</span></h2>
+        <section class="card fold">
+          <div class="fold-head center"><span class="tile neutral"><i data-lucide="sparkles"></i></span><div class="grow"><h3 class="headline">A lighter day, shaped around your Low Energy.</h3></div><i class="chev open" data-lucide="chevron-down"></i></div>
+          <div class="fold-body">
+            <p>The bathroom deep clean went to Ana, who checked in Energized. You kept the dishes, which you like, and the laundry, which is due today.</p>
+            <ul class="facts" style="margin:0;padding:0;list-style:none">
+              <li class="fact"><i data-lucide="list-checks"></i>2 Tasks for you</li>
+              <li class="fact"><i data-lucide="users"></i>3 for Ana</li>
+              <li class="fact"><i data-lucide="inbox"></i>2 still to do</li>
+            </ul>
+            <p class="source"><i data-lucide="sparkles"></i>Written by the assistant</p>
+          </div>
+        </section>
+      </div>
+      
+    </div>
+    </div>
+    <figcaption><strong>Source: written by the assistant</strong>The <b>sparkles</b> icon on a neutral tile, and the caption in words. The tile is a muted tint with muted ink, so it reads as information, not a warning. The icon is never the only carrier: the caption says the same thing, and there is no tooltip.</figcaption>
+  </figure>
+
+  <figure class="pair">
+    <div class="phones">
+    <div class="phone short">
+      <div class="screen">
+        <h2 class="group">Your Tasks <span class="count">2</span></h2>
+        <section class="card fold">
+          <div class="fold-head center"><span class="tile neutral"><i data-lucide="scroll-text"></i></span><div class="grow"><h3 class="headline">Your day follows your Normal Energy.</h3></div><i class="chev open" data-lucide="chevron-down"></i></div>
+          <div class="fold-body">
+            <p>Essential work comes first, then the Tasks you like.</p>
+            <ul class="facts" style="margin:0;padding:0;list-style:none">
+              <li class="fact"><i data-lucide="list-checks"></i>2 Tasks for you</li>
+              <li class="fact"><i data-lucide="users"></i>3 for Ana</li>
+              <li class="fact"><i data-lucide="inbox"></i>2 still to do</li>
+            </ul>
+            <p class="source"><i data-lucide="scroll-text"></i>Standard summary of today's reasons</p>
+          </div>
+        </section>
+      </div>
+      
+    </div>
+    <div class="phone short large narrow">
+      <div class="screen">
+        <h2 class="group">Your Tasks <span class="count">2</span></h2>
+        <section class="card fold">
+          <div class="fold-head center"><span class="tile neutral"><i data-lucide="scroll-text"></i></span><div class="grow"><h3 class="headline">Your day follows your Normal Energy.</h3></div><i class="chev open" data-lucide="chevron-down"></i></div>
+          <div class="fold-body">
+            <p>Essential work comes first, then the Tasks you like.</p>
+            <ul class="facts" style="margin:0;padding:0;list-style:none">
+              <li class="fact"><i data-lucide="list-checks"></i>2 Tasks for you</li>
+              <li class="fact"><i data-lucide="users"></i>3 for Ana</li>
+              <li class="fact"><i data-lucide="inbox"></i>2 still to do</li>
+            </ul>
+            <p class="source"><i data-lucide="scroll-text"></i>Standard summary of today's reasons</p>
+          </div>
+        </section>
+      </div>
+      
+    </div>
+    </div>
+    <figcaption><strong>Source: standard text</strong>The <b>scroll-text</b> icon on the same neutral tile, with the caption "Standard summary of today's reasons". No <b>triangle-alert</b>, <b>info</b> or <b>circle-alert</b>: falling back to the standard text is not an error and the Resident has nothing to fix.</figcaption>
+  </figure>
+
+  <figure class="pair">
+    <div class="phones">
+    <div class="phone short">
+      <div class="screen">
+        <div class="head-row">
+          <div class="grow"><h2 class="page-title">Good afternoon, Maria Eduarda</h2><p class="page-sub">Friday, October 23</p></div>
+          <span class="slot"></span>
+          <button class="head-btn"><i data-lucide="flame"></i>0</button>
+        </div>
+        <section class="card"><div class="row wrap">
+          <span class="tile accent"><i data-lucide="zap"></i></span>
+          <div class="grow"><p class="sm muted">Today's Check-in: Normal</p><p class="bold">5 of 5 Energy planned for you</p></div>
+          <button class="btn">Change</button></div></section>
+      </div>
+      
+    </div>
+    <div class="phone short large narrow">
+      <div class="screen">
+        <div class="head-row">
+          <div class="grow"><h2 class="page-title">Good afternoon, Maria Eduarda</h2><p class="page-sub">Friday, October 23</p></div>
+          <span class="slot"></span>
+          <button class="head-btn"><i data-lucide="flame"></i>0</button>
+        </div>
+        <section class="card"><div class="row wrap">
+          <span class="tile accent"><i data-lucide="zap"></i></span>
+          <div class="grow"><p class="sm muted">Today's Check-in: Normal</p><p class="bold">5 of 5 Energy planned for you</p></div>
+          <button class="btn">Change</button></div></section>
+      </div>
+      
+    </div>
+    </div>
+    <figcaption><strong>Header flame at 0</strong>A Streak of 0 wears the same ink and card fill as any other number (The Calm at Every Number Rule). The flame is never the only signal: the number sits next to it, and the accessible name is "Streak: 0 days" (pt-BR "Sequência: 0 dias", not "0 dia").</figcaption>
+  </figure>
+
+  <figure class="pair">
+    <div class="phones">
+    <div class="phone short">
+      <div class="screen">
+        <div class="head-row">
+          <div class="grow"><h2 class="page-title">Good afternoon, Maria Eduarda</h2><p class="page-sub">Friday, October 23</p></div>
+          <span class="slot"></span>
+          <button class="head-btn"><i data-lucide="flame"></i>3</button>
+        </div>
+        <section class="card"><div class="row wrap">
+          <span class="tile accent"><i data-lucide="zap"></i></span>
+          <div class="grow"><p class="sm muted">Today's Check-in: Normal</p><p class="bold">5 of 5 Energy planned for you</p></div>
+          <button class="btn">Change</button></div></section>
+      </div>
+      
+    </div>
+    <div class="phone short large narrow">
+      <div class="screen">
+        <div class="head-row">
+          <div class="grow"><h2 class="page-title">Good afternoon, Maria Eduarda</h2><p class="page-sub">Friday, October 23</p></div>
+          <span class="slot"></span>
+          <button class="head-btn"><i data-lucide="flame"></i>3</button>
+        </div>
+        <section class="card"><div class="row wrap">
+          <span class="tile accent"><i data-lucide="zap"></i></span>
+          <div class="grow"><p class="sm muted">Today's Check-in: Normal</p><p class="bold">5 of 5 Energy planned for you</p></div>
+          <button class="btn">Change</button></div></section>
+      </div>
+      
+    </div>
+    </div>
+    <figcaption><strong>Header flame at 3</strong>Accessible name "Streak: 3 days". The button is the last item in the title row, after the empty 1rem refresh spinner slot (<code>w-4</code>), at least 2.75rem, never shrinking, and aligned to the top of the first title line while the greeting wraps.</figcaption>
+  </figure>
+
+  <figure class="pair">
+    <div class="phones">
+    <div class="phone short">
+      <div class="screen">
+        <div class="head-row">
+          <div class="grow"><h2 class="page-title">Good afternoon, Maria Eduarda</h2><p class="page-sub">Friday, October 23</p></div>
+          <span class="slot"></span>
+          <button class="head-btn"><i data-lucide="flame"></i>100</button>
+        </div>
+        <section class="card"><div class="row wrap">
+          <span class="tile accent"><i data-lucide="zap"></i></span>
+          <div class="grow"><p class="sm muted">Today's Check-in: Normal</p><p class="bold">5 of 5 Energy planned for you</p></div>
+          <button class="btn">Change</button></div></section>
+      </div>
+      
+    </div>
+    <div class="phone short large narrow">
+      <div class="screen">
+        <div class="head-row">
+          <div class="grow"><h2 class="page-title">Good afternoon, Maria Eduarda</h2><p class="page-sub">Friday, October 23</p></div>
+          <span class="slot"></span>
+          <button class="head-btn"><i data-lucide="flame"></i>100</button>
+        </div>
+        <section class="card"><div class="row wrap">
+          <span class="tile accent"><i data-lucide="zap"></i></span>
+          <div class="grow"><p class="sm muted">Today's Check-in: Normal</p><p class="bold">5 of 5 Energy planned for you</p></div>
+          <button class="btn">Change</button></div></section>
+      </div>
+      
+    </div>
+    </div>
+    <figcaption><strong>Header flame at 100</strong>Three digits widen the button; the number is tabular so a changing value does not move it. At the largest text size the greeting takes the remaining width and wraps onto more lines; nothing overflows sideways and no word is cut with an ellipsis.</figcaption>
+  </figure>
+
+  <figure class="pair">
+    <div class="phones">
+    <div class="phone tall">
+      <div class="screen" style="opacity:.35">
+        <div class="head-row">
+          <div class="grow"><h2 class="page-title">Good afternoon, Maria Eduarda</h2><p class="page-sub">Friday, October 23</p></div>
+          <span class="slot"></span>
+          <button class="head-btn"><i data-lucide="flame"></i>3</button>
+        </div>
+        <section class="card"><div class="row wrap">
+          <span class="tile accent"><i data-lucide="zap"></i></span>
+          <div class="grow"><p class="sm muted">Today's Check-in: Normal</p><p class="bold">5 of 5 Energy planned for you</p></div>
+          <button class="btn">Change</button></div></section>
+      </div>
+      <div class="scrim"></div>
+      <div class="dialog-wrap"><div class="dialog" role="dialog">
+          <h2>Streak</h2>
+          <div class="stat"><span class="n">3</span><span class="l">days of Streak</span><p class="today"><i data-lucide="circle-check"></i>Today counts</p></div>
+          <ul class="rules">
+            <li><i data-lucide="circle-check"></i>Finishing one Task in a day grows it.</li>
+            <li><i data-lucide="circle-pause"></i>A day with nothing taken on, or a Drained day, pauses it.</li>
+            <li><i data-lucide="circle-minus"></i>Taking on Tasks and finishing none breaks it.</li>
+            <li><i data-lucide="shield-check"></i>Refusing or ignoring a proposed Task never breaks it.</li>
+          </ul>
+          <button class="btn primary full">Close</button>
+      </div></div>
+      
+    </div>
+    <div class="phone tall large narrow">
+      <div class="screen" style="opacity:.35">
+        <div class="head-row">
+          <div class="grow"><h2 class="page-title">Good afternoon, Maria Eduarda</h2><p class="page-sub">Friday, October 23</p></div>
+          <span class="slot"></span>
+          <button class="head-btn"><i data-lucide="flame"></i>3</button>
+        </div>
+        <section class="card"><div class="row wrap">
+          <span class="tile accent"><i data-lucide="zap"></i></span>
+          <div class="grow"><p class="sm muted">Today's Check-in: Normal</p><p class="bold">5 of 5 Energy planned for you</p></div>
+          <button class="btn">Change</button></div></section>
+      </div>
+      <div class="scrim"></div>
+      <div class="dialog-wrap"><div class="dialog" role="dialog">
+          <h2>Streak</h2>
+          <div class="stat"><span class="n">3</span><span class="l">days of Streak</span><p class="today"><i data-lucide="circle-check"></i>Today counts</p></div>
+          <ul class="rules">
+            <li><i data-lucide="circle-check"></i>Finishing one Task in a day grows it.</li>
+            <li><i data-lucide="circle-pause"></i>A day with nothing taken on, or a Drained day, pauses it.</li>
+            <li><i data-lucide="circle-minus"></i>Taking on Tasks and finishing none breaks it.</li>
+            <li><i data-lucide="shield-check"></i>Refusing or ignoring a proposed Task never breaks it.</li>
+          </ul>
+          <button class="btn primary full">Close</button>
+      </div></div>
+      
+    </div>
+    </div>
+    <figcaption><strong>Streak dialog</strong>A short centred dialog: the title, a stat tile with the number and "Today counts", the four rule lines, then one full-width Close button (Short dialogs stack). The rules follow the amended Streak rule: finishing one Task grows the day; nothing taken on, or Drained, pauses; taking on Tasks and finishing none breaks; refusing or ignoring never breaks.</figcaption>
+  </figure>
+
+  <figure class="pair">
+    <div class="phones">
+    <div class="phone tall">
+      <div class="screen" style="opacity:.35">
+        <div class="head-row">
+          <div class="grow"><h2 class="page-title">Good afternoon, Maria Eduarda</h2><p class="page-sub">Friday, October 23</p></div>
+          <span class="slot"></span>
+          <button class="head-btn"><i data-lucide="flame"></i>0</button>
+        </div>
+        <section class="card"><div class="row wrap">
+          <span class="tile accent"><i data-lucide="zap"></i></span>
+          <div class="grow"><p class="sm muted">Today's Check-in: Normal</p><p class="bold">5 of 5 Energy planned for you</p></div>
+          <button class="btn">Change</button></div></section>
+      </div>
+      <div class="scrim"></div>
+      <div class="dialog-wrap"><div class="dialog" role="dialog">
+          <h2>Streak</h2>
+          <div class="stat"><span class="n">0</span><span class="l">days of Streak</span><p class="today">Finish a Task to start one</p></div>
+          <ul class="rules">
+            <li><i data-lucide="circle-check"></i>Finishing one Task in a day grows it.</li>
+            <li><i data-lucide="circle-pause"></i>A day with nothing taken on, or a Drained day, pauses it.</li>
+            <li><i data-lucide="circle-minus"></i>Taking on Tasks and finishing none breaks it.</li>
+            <li><i data-lucide="shield-check"></i>Refusing or ignoring a proposed Task never breaks it.</li>
+          </ul>
+          <button class="btn primary full">Close</button>
+      </div></div>
+      
+    </div>
+    <div class="phone tall large narrow">
+      <div class="screen" style="opacity:.35">
+        <div class="head-row">
+          <div class="grow"><h2 class="page-title">Good afternoon, Maria Eduarda</h2><p class="page-sub">Friday, October 23</p></div>
+          <span class="slot"></span>
+          <button class="head-btn"><i data-lucide="flame"></i>0</button>
+        </div>
+        <section class="card"><div class="row wrap">
+          <span class="tile accent"><i data-lucide="zap"></i></span>
+          <div class="grow"><p class="sm muted">Today's Check-in: Normal</p><p class="bold">5 of 5 Energy planned for you</p></div>
+          <button class="btn">Change</button></div></section>
+      </div>
+      <div class="scrim"></div>
+      <div class="dialog-wrap"><div class="dialog" role="dialog">
+          <h2>Streak</h2>
+          <div class="stat"><span class="n">0</span><span class="l">days of Streak</span><p class="today">Finish a Task to start one</p></div>
+          <ul class="rules">
+            <li><i data-lucide="circle-check"></i>Finishing one Task in a day grows it.</li>
+            <li><i data-lucide="circle-pause"></i>A day with nothing taken on, or a Drained day, pauses it.</li>
+            <li><i data-lucide="circle-minus"></i>Taking on Tasks and finishing none breaks it.</li>
+            <li><i data-lucide="shield-check"></i>Refusing or ignoring a proposed Task never breaks it.</li>
+          </ul>
+          <button class="btn primary full">Close</button>
+      </div></div>
+      
+    </div>
+    </div>
+    <figcaption><strong>Streak dialog at 0</strong>The empty line "Finish a Task to start one" replaces "Today counts" in the same colours. No alarm colour, no exclamation mark. In pt-BR the plural rule reads "0 dias" (<code>Intl.PluralRules</code> says "one" for 0 in pt-BR, so the code must not use the singular here).</figcaption>
+  </figure>
+</main>
+<script src="mocks-i18n.js"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

@@ -15,6 +15,8 @@ type Messages = {
 export const ptBR: Messages = {
   "app.name": "Homeowner",
   "common.refreshing": "Atualizando",
+  "app.chunkFailed": "Não foi possível carregar esta tela. Verifique a conexão e tente de novo.",
+  "app.chunkRetry": "Tentar de novo",
   "home.tagline": "Gerencie os afazeres domésticos do seu lar.",
   "health.unavailable":
     "Status do serviço: indisponível. O serviço está no ar, mas não consegue acessar o banco de dados.",
@@ -346,6 +348,8 @@ export const ptBR: Messages = {
   "dayplan.summary.mine": { one: "{count} tarefa sua", other: "{count} tarefas suas" },
   "dayplan.summary.others": { one: "{count} dos outros", other: "{count} dos outros" },
   "dayplan.summary.pool": { one: "{count} por fazer", other: "{count} por fazer" },
+  "dayplan.summary.source.llm": "Escrito pelo assistente",
+  "dayplan.summary.source.template": "Resumo padrão dos motivos de hoje",
   "dayplan.pool.heading": "Ainda por fazer",
   "dayplan.pool.empty":
     "Nenhuma outra tarefa em aberto. Tudo está planejado ou feito.",
@@ -489,7 +493,22 @@ export const ptBR: Messages = {
   "startChoice.done.close": "Entendi",
 
   // Streak
-  "streak.heading": "Sequência",
+  "streak.button": {
+    one: "Sequência: {count} dia",
+    other: "Sequência: {count} dias",
+  },
+  "streak.button.zero": "Sequência: 0 dias",
+  "streak.stat": {
+    one: "dia de sequência",
+    other: "dias de sequência",
+  },
+  "streak.stat.zero": "dias de sequência",
+  "streak.dialog.title": "Sua sequência",
+  "streak.rule.grow": "Concluir uma tarefa no dia aumenta a sequência.",
+  "streak.rule.pause": "Um dia sem tarefas assumidas, ou esgotado, pausa a sequência.",
+  "streak.rule.break": "Assumir tarefas e não concluir nenhuma quebra a sequência.",
+  "streak.rule.refuse": "Recusar ou ignorar uma tarefa proposta nunca quebra a sequência.",
+  "streak.close": "Fechar",
   "streak.days": {
     one: "Sequência de {count} dia",
     other: "Sequência de {count} dias",

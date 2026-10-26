@@ -20,7 +20,7 @@ Agreed Brazilian Portuguese equivalents for the terms in [CONTEXT.md](../CONTEXT
 | Resident | morador | membro, proprietário, dono | Plural "moradores". A User who lives in a Home; all Residents have equal say. Used in `home.leave.*` and `invite.*`. |
 | Invite | convite | código de convite, link de entrada | A single-use link a Resident shares; valid for seven days ("sete dias"). Used in `invite.*`. |
 | Allocation | alocação | agendamento, distribuição | The daily run that proposes Tasks. "Allocation time" is "horário da alocação" (the time of day it runs). Used in `home.allocationTime.label`. |
-| Streak | sequência | combo, corrente | Used in `streak.*`. CONTEXT.md avoids Combo and Chain, so their calques are avoided too. Awaiting native-speaker review. |
+| Streak | sequência | combo, corrente | Used in `streak.*`. CONTEXT.md avoids Combo and Chain, so their calques are avoided too. The header button's name is "Sequência: 3 dias"; the dialog title "Your Streak" is "Sua sequência"; the rule lines say "assumir" for Committing to a Task ("Assumir tarefas e não concluir nenhuma quebra a sequência.") and "esgotado" for a Drained day. Awaiting native-speaker review. |
 | Task | tarefa | atribuição, ocorrência, instância | Plural "tarefas" in running text. Used in `dayplan.*`. |
 | Day Plan | plano do dia | agenda, cronograma, programação, lista diária | Used in `home.leave.removes`. |
 | Committed | assumida | confirmada, comprometida | A Task the Resident accepted. Feminine, agreeing with "tarefa". Shown as text on the card. Draft for the native speaker to confirm. Used in `dayplan.task.committed`. |
@@ -73,5 +73,7 @@ Not domain terms, but kept consistent across the copy. CONTEXT.md has no **Remin
 | Baseline allocator (the plan made without the AI) | alocador padrão; its plan is "plano padrão" | alocador básico, alocador base | Not "base": "energia base" is the User's Baseline, a different thing. Used in `dayplan.replan.*`. |
 | for others (the combined count of other Residents' Tasks on the Today summary card) | dos outros | para outros moradores (longer) | Matches "Tarefas dos outros moradores". Used in `dayplan.summary.others`. Pending native-speaker review. |
 | still to do (the pool) | por fazer | pendente, em aberto | Matches the pool heading "Ainda por fazer". Used in `dayplan.summary.pool`. Pending native-speaker review. |
+| written by the assistant (the explanation came from the model) | Escrito pelo assistente | Escrito pela IA (shorter; the glossary uses "IA" in `dayplan.replan.*`) | Used in `dayplan.summary.source.llm`. Pending native-speaker review. |
+| standard summary of today's reasons (the explanation built from the Allocation's recorded reasons) | Resumo padrão dos motivos de hoje | resumo básico, resumo automático | "padrão" matches "plano padrão" for the baseline allocator. Used in `dayplan.summary.source.template`. Pending native-speaker review. |
 
 Apple and Android labels must match what the device shows in pt-BR. They are not yet verified on a pt-BR device.

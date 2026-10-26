@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { toQueryData } from "../../../shared/query/ApiFailure";
+import { refetchUnlessSucceeded } from "../../../shared/query/queryClient";
 import { getStreak, type Streak } from "./api";
 
 /** `GET /home/streak`, under the Home's key. */
@@ -9,4 +10,5 @@ export const streakKey = ["home", "streak"] as const;
 export const streakQuery = queryOptions({
   queryKey: streakKey,
   queryFn: async (): Promise<Streak | null> => toQueryData(await getStreak())?.streak ?? null,
+  refetchOnMount: refetchUnlessSucceeded,
 });

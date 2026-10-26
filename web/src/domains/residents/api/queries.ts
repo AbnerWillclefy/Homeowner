@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { ApiFailure, toQueryData } from "../../../shared/query/ApiFailure";
+import { refetchUnlessSucceeded } from "../../../shared/query/queryClient";
 import { getResident, getResidents, type Resident, type ResidentDetail } from "./api";
 
 /**
@@ -20,6 +21,7 @@ export const residentsQuery = queryOptions({
     if (result.kind === "none") throw new ApiFailure("error");
     return toQueryData(result).residents;
   },
+  refetchOnMount: refetchUnlessSucceeded,
 });
 
 /**

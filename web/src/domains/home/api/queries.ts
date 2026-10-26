@@ -1,5 +1,6 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { toQueryData } from "../../../shared/query/ApiFailure";
+import { refetchUnlessSucceeded } from "../../../shared/query/queryClient";
 import { getHome, type Home } from "./api";
 
 /** `GET /home`. Home-scoped children go under it, so one partial key reaches them all (ADR 0013). */
@@ -9,6 +10,7 @@ export const homeKey = ["home"] as const;
 export const homeQuery = queryOptions({
   queryKey: homeKey,
   queryFn: async (): Promise<Home | null> => toQueryData(await getHome())?.home ?? null,
+  refetchOnMount: refetchUnlessSucceeded,
 });
 
 const inHomeScope = (key: readonly unknown[]) => key[0] === homeKey[0] && key.length > 1;
@@ -21,6 +23,18 @@ const inHomeScope = (key: readonly unknown[]) => key[0] === homeKey[0] && key.le
 export async function forgetHomeScope(client: QueryClient): Promise<void> {
   await client.cancelQueries({ predicate: (query) => inHomeScope(query.queryKey) });
   client.removeQueries({ predicate: (query) => inHomeScope(query.queryKey) });
+}
+
+/**
+ * The caller created (or recovered) their Home. The launch reads cached "none" for the Day Plan, Check-in, Streak
+ * and the rest while they had no Home, and a success is not read again on mount (ADR 0016), so those answers are
+ * forgotten before the new Home is shown. The read of the Home itself is cancelled first so an older answer
+ * cannot bring the null back.
+ */
+export async function homeCreated(client: QueryClient, home: Home): Promise<void> {
+  await client.cancelQueries({ queryKey: homeKey, exact: true });
+  await forgetHomeScope(client);
+  client.setQueryData(homeKey, home);
 }
 
 /**

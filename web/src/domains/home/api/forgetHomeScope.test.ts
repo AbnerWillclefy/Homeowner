@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { QueryClient } from "@tanstack/react-query";
 import { createTestQueryClient } from "../../../shared/query/testing";
-import { forgetHomeScope, homeJoined, homeKey, homeLeft } from "./queries";
+import { forgetHomeScope, homeCreated, homeJoined, homeKey, homeLeft } from "./queries";
 
 const HOME = { id: "h1", timezone: "America/Sao_Paulo", allocationTime: "07:00" };
 
@@ -40,6 +40,15 @@ describe("the Home scope in the cache", () => {
     await homeLeft(client);
     expect(keys(client)).toEqual(KEPT);
     expect(client.getQueryData(homeKey)).toBeNull();
+  });
+
+  it("creating a Home drops the null answers the launch reads cached and shows the new Home", async () => {
+    client.setQueryData(homeKey, null);
+    client.setQueryData(["home", "day-plan"], null);
+    const created = { ...HOME, id: "h2" };
+    await homeCreated(client, created);
+    expect(keys(client)).toEqual(KEPT);
+    expect(client.getQueryData(homeKey)).toEqual(created);
   });
 
   it("joining empties every child, not only marks them stale, and marks the Home stale", async () => {

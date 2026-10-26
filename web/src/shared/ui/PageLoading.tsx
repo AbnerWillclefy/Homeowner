@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { FirstLoadSettledContext } from "./FirstLoadSettledContext";
 import { FetchingIndicator } from "./FetchingIndicator";
 import { withReport } from "./loadingReports";
 import { useDelayedFlag } from "./useDelayedFlag";
@@ -21,6 +22,48 @@ function useReportSet(): { active: boolean; report: Report } {
   const [ids, setIds] = useState<ReadonlySet<string>>(new Set());
   const report = useCallback<Report>((id, on) => setIds((current) => withReport(current, id, on)), []);
   return { active: ids.size > 0, report };
+}
+
+/**
+ * Wraps the loading report to also keep the ids in a ref, updated the moment a section reports: state lags a render
+ * behind, and the first-load check must not mistake that lag for an empty page. Only the effect reads the ref.
+ */
+function useSettledCheck(report: Report): { report: Report; settled(): boolean } {
+  const ids = useRef<ReadonlySet<string>>(new Set());
+  const heard = useRef(false);
+  const tracked = useCallback<Report>(
+    (id, on) => {
+      heard.current = true;
+      ids.current = withReport(ids.current, id, on);
+      report(id, on);
+    },
+    [report],
+  );
+  const settled = useCallback(() => heard.current && ids.current.size === 0, []);
+  return { report: tracked, settled };
+}
+
+/**
+ * Tells the app, once per mount, that this page's first load has settled: at least one section has reported and
+ * none is loading. The check waits a tick and is cancelled if a section reports loading again, so a hand-over
+ * between sections (the Home, then the Check-in, Day Plan and Streak) is not mistaken for the end. A section
+ * whose data was cached reports false at once, so that page settles after the first effect pass. Failures count:
+ * a failed section reports false. A page with no section that reports (a static onboarding step) never settles,
+ * so the launch sync falls back to its timer.
+ */
+function useReportFirstSettle(active: boolean, settled: () => boolean) {
+  const onSettled = useContext(FirstLoadSettledContext);
+  const fired = useRef(false);
+
+  useEffect(() => {
+    if (active || fired.current) return;
+    const timer = setTimeout(() => {
+      if (!settled()) return;
+      fired.current = true;
+      onSettled();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [active, settled, onSettled]);
 }
 
 /** Reports `on` under this component's own id for as long as it is mounted, and false after. */
@@ -46,9 +89,11 @@ function useRegisterReport(hook: string, pick: (page: PageLoadingValue) => Repor
  */
 export function PageLoading({ message, children }: { message: string; children: ReactNode }) {
   const loading = useReportSet();
+  const tracking = useSettledCheck(loading.report);
+  useReportFirstSettle(loading.active, tracking.settled);
   const fetching = useReportSet();
   const show = useDelayedFlag(loading.active);
-  const report = loading.report;
+  const report = tracking.report;
   const reportFetching = fetching.report;
   const isFetching = fetching.active;
   const value = useMemo(

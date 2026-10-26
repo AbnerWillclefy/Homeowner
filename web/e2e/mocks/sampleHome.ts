@@ -79,6 +79,16 @@ export function secondResident(): FakeState {
   return state;
 }
 
+/** Gives the planned day an explanation written by `source`. Edits the state and returns it. */
+export function withExplanation(state: FakeState, source: "llm" | "template", headline?: { "en-US": string; "pt-BR": string }): FakeState {
+  state.dayPlan!.explanation = {
+    source,
+    headline: headline ?? { "en-US": "A light day for you", "pt-BR": "Um dia leve para você" },
+    detail: { "en-US": "Two small Tasks, and the rest can wait.", "pt-BR": "Duas tarefas pequenas, o resto pode esperar." },
+  };
+  return state;
+}
+
 /** Bruna Souza (`resident-2`) offers her `task-3` for your `task-1`. Edits the state and returns it. */
 export function withIncomingOffer(state: FakeState): FakeState {
   const plan = state.dayPlan!;

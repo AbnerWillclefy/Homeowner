@@ -1,0 +1,73 @@
+name: PR risk
+
+# Checks a pull request into main states its risk tier and fills in the sections a
+# human reviewer needs, then labels it risk:low, risk:medium or risk:high.
+# merge-by-risk.yml decides who may merge it from that tier. See docs/agents/pr-risk.md.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+  # Re-runs on the maintainer's review, so merge-by-risk.yml (on workflow_run) wakes up
+  pull_request_review:
+    types: [submitted, dismissed]
+
+jobs:
+  pr-risk:
+    name: pr-risk
+    # Claude's reviews also fire pull_request_review; only the maintainer's matter here
+    if: >-
+      github.event.pull_request.base.ref == 'main' &&
+      (github.event_name == 'pull_request' || github.event.review.user.login == 'AbnerWillclefy')
+    # On the job, so a skipped run for a bot review never cancels a real one
+    concurrency:
+      group: pr-risk-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the tier and check the description
+        id: risk
+        # Its key=value lines (declared, floor, effective, reason, problem) are the step's output
+        run: |
+          .github/scripts/pr-risk.sh "$PR" | tee result.txt
+          grep '^effective=' result.txt >> "$GITHUB_OUTPUT"
+
+      - name: Label the pull request with its tier
+        env:
+          TIER: ${{ steps.risk.outputs.effective }}
+        run: |
+          gh label create risk:low    -R "$GITHUB_REPOSITORY" --force --color 0e8a16 --description "Merges itself to staging when checks and review are clean"
+          gh label create risk:medium -R "$GITHUB_REPOSITORY" --force --color fbca04 --description "Merges itself once the maintainer approves"
+          gh label create risk:high   -R "$GITHUB_REPOSITORY" --force --color d93f0b --description "The maintainer merges it by hand"
+          [ -n "$TIER" ] || { echo "::error::pr-risk.sh printed no tier"; exit 1; }
+          # Add the new tier before removing the old ones, so the pull request is never without one.
+          # (Not one PUT of every label: that would drop a label another workflow adds meanwhile.)
+          gh api "repos/$GITHUB_REPOSITORY/issues/$PR/labels" -f "labels[]=risk:$TIER" --silent
+          current=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/labels" --jq '.[].name')
+          for t in low medium high; do
+            if [ "$t" != "$TIER" ] && grep -qx "risk:$t" <<<"$current"; then
+              gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/$PR/labels/risk:$t" --silent
+            fi
+          done
+
+      - name: Fail on a missing or understated tier
+        env:
+          TIER: ${{ steps.risk.outputs.effective }}
+        run: |
+          {
+            echo "### Risk: $TIER"
+            sed -n 's/^reason=/- floor /p' result.txt
+            sed -n 's/^problem=/- **to fix:** /p' result.txt
+          } >> "$GITHUB_STEP_SUMMARY"
+          if grep -q '^problem=' result.txt; then
+            sed -n 's/^problem=/::error::The description needs to /p' result.txt
+            exit 1
+          fi

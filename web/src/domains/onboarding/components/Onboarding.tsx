@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { OnboardingPosition, OnboardingStep } from "../api/api";
 import { useSession } from "../../../app/components/SessionProvider";
+import type { Home } from "../../home/api/api";
 import { CreateHome } from "../../home/components/CreateHome";
+import { useHomeCreated } from "../../home/hooks/useHome";
+import type { RecoveredNotice } from "../../home/logic/recovered";
 import { useI18n, type MessageKey } from "../../../shared/i18n";
 import { BaselineFields, PreferenceFields, ProfileStatus, RestrictionFields } from "../../profile/components/ProfileSections";
 import { useProfile, type ProfileState } from "../../profile/hooks/useProfile";
@@ -57,6 +60,7 @@ interface StepView {
  */
 export function Onboarding({ position, onPosition }: Props) {
   const { t } = useI18n();
+  const setCreatedHome = useHomeCreated();
   const { push, steps, onHomeFinished } = useSession();
   const profile = useProfile();
   const walk = useWalk(position, steps, onPosition);
@@ -79,6 +83,17 @@ export function Onboarding({ position, onPosition }: Props) {
   const ready = profile.state.kind === "ready";
 
   const goNext = () => void walk.next();
+
+  // The Home goes into the cache before the walk ends: the launch reads cached "none" for it and for everything
+  // under it, and the Shell would show that on mount (ADR 0016). The walk advances even if the cache update fails.
+  async function finishHome(home: Home, notice: RecoveredNotice | null) {
+    try {
+      await setCreatedHome(home);
+    } finally {
+      onPosition("done");
+      onHomeFinished(notice);
+    }
+  }
 
   function nextFromBaseline() {
     if (profile.state.kind !== "ready" || !allBaselineDaysSet(profile.state.profile.baseline)) {
@@ -173,14 +188,8 @@ export function Onboarding({ position, onPosition }: Props) {
       body: (
         <CreateHome
           showHeading={false}
-          onSaved={() => {
-            onPosition("done");
-            onHomeFinished(null);
-          }}
-          onRecovered={(_home, choresDropped) => {
-            onPosition("done");
-            onHomeFinished(choresDropped ? "chores-dropped" : "plain");
-          }}
+          onSaved={(home) => void finishHome(home, null)}
+          onRecovered={(home, choresDropped) => void finishHome(home, choresDropped ? "chores-dropped" : "plain")}
         />
       ),
     }),
