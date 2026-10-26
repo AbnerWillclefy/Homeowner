@@ -329,15 +329,15 @@ func insertRun(ctx context.Context, tx pgx.Tx, homeID string, date allocation.Da
 }
 
 // store writes the run and its assignments.
-func store(ctx context.Context, tx pgx.Tx, homeID string, date allocation.Date, now time.Time, rec runRecord) error {
-	runID, err := insertRun(ctx, tx, homeID, date, now, rec.allocator, rec.fallback, rec.outcome, rec.reasons)
+func store(ctx context.Context, tx pgx.Tx, homeID string, date allocation.Date, now time.Time, rec runRecord) (runID string, err error) {
+	runID, err = insertRun(ctx, tx, homeID, date, now, rec.allocator, rec.fallback, rec.outcome, rec.reasons)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if err := insertAssignments(ctx, tx, runID, rec.result.DayPlan.Assignments); err != nil {
-		return fmt.Errorf("store assignment: %w", err)
+		return "", fmt.Errorf("store assignment: %w", err)
 	}
-	return nil
+	return runID, nil
 }
 
 // insertAssignments is the one writer of day_plan_assignments rows: the plan,

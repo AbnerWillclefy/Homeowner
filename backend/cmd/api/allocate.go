@@ -38,6 +38,7 @@ func newPlanner(ctx context.Context, cfg config.Config, log *slog.Logger) (*dayp
 		opts = append(opts, dayplan.WithLLM(dayplan.LLMConfig{
 			Proposer: llmalloc.New(client), Explainer: llmalloc.NewExplainer(client),
 			DailyCap: cfg.LLMDailyCapPerHome, CallTimeout: cfg.LLMTimeout,
+			Model: cfg.LLMModel,
 		}))
 		log.Info("llm allocator on", "model", cfg.LLMModel, "daily_cap_per_home", cfg.LLMDailyCapPerHome)
 	} else {
