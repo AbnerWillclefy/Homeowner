@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Outlet, useLocation } from "react-router";
 import { ShellCheckInDialog } from "../../domains/checkin/components/ShellCheckInDialog";
@@ -38,7 +38,7 @@ export function Shell() {
   const me = useMe();
   const hasHome = home.state.kind === "ready";
   const streak = useStreak(hasHome);
-  const { checkIn, note, energy, planned, openCheckIn, checkInOpen, closeCheckIn, latchCheckIn, pillRef, returnFocusRef } = useShellCheckIn(hasHome);
+  const { checkIn, note, energy, planned, openCheckIn, openFor, closeCheckIn, latchCheckIn, pillRef, returnFocusRef } = useShellCheckIn(hasHome);
   const queryClient = useQueryClient();
   const { pathname } = useLocation();
   const invite = useInvite();
@@ -68,13 +68,15 @@ export function Shell() {
     checkInDismissedFor: session.checkInDismissedFor,
   });
 
-  // The Check-in dialog is latched once it shows: a refetch (saved on another device, midnight) cannot unmount the
-  // form under the Resident's thumb. Only its own close ends it, and that counts as "not now" for the date.
-  useEffect(() => {
-    if (dialog === "checkin") latchCheckIn();
-  }, [dialog, latchCheckIn]);
+  // The Check-in dialog latches once it shows (set during render, from the same decision), and a close dismisses the
+  // date it opened for, not whatever date the Home reads now. Any other dialog takes priority over a latched one.
+  const autoDate = dialog === "checkin" && checkIn.state.kind === "ready" ? checkIn.state.checkIn.date : null;
+  if (autoDate !== null && openFor === null) latchCheckIn(autoDate);
+  const checkInShown = dialog === "checkin" || (openFor !== null && dialog === null);
   const dismissCheckIn = () => {
-    if (checkIn.state.kind === "ready") session.dismissCheckIn(checkIn.state.checkIn.date);
+    if (openFor !== null) session.dismissCheckIn(openFor);
+    // The dialog opened by itself has no opener: focus goes back to the pill, the control that reopens it.
+    returnFocusRef.current ??= pillRef.current;
     closeCheckIn();
   };
 
@@ -102,7 +104,7 @@ export function Shell() {
       {/* The one Check-in dialog, opened by the pill or by itself on launch. Never two. */}
       <ShellCheckInDialog
         checkIn={checkIn}
-        open={checkInOpen || dialog === "checkin"}
+        open={checkInShown}
         planned={planned}
         onClose={dismissCheckIn}
         returnFocusRef={returnFocusRef}

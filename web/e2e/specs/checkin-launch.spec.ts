@@ -153,7 +153,22 @@ for (const l of LOCALES) {
       await expect(dialog(page).getByRole("button", { name: l.save, exact: true })).toBeVisible();
     });
 
-    test("a failed Check-in read opens nothing", async ({ page, baseURL, fakeApi }) => {
+    test("a day rolling over under an open form dismisses the day it opened for, so the new day still prompts", async ({ page, baseURL, fakeApi }) => {
+      await launchApp(page, baseURL!);
+      await expect(dialog(page)).toBeVisible();
+
+      // Midnight passes while the form is open: the Home now reads the next day, still unchecked.
+      fakeApi.state.checkIn = uncheckedDay("2030-01-16");
+      await resume(page);
+      await expect(dialog(page)).toBeVisible();
+
+      await dialog(page).getByRole("button", { name: l.notNow, exact: true }).click();
+      await expect(dialog(page)).toBeHidden();
+      // The dismissal was for the 15th: the 16th has not been dismissed, so it opens again.
+      await expect(dialog(page)).toBeVisible();
+    });
+
+    test("a failed Check-in read opens nothing",async ({ page, baseURL, fakeApi }) => {
       fakeApi.override("GET /home/check-in", json(500, { error: "boom" }));
       await launchApp(page, baseURL!);
       await expect(shell.topBar(page).getByRole("button", { name: /^(Energia indisponível|Energy unavailable)/ })).toBeVisible();

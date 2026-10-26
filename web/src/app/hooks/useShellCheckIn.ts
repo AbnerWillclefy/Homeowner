@@ -23,26 +23,21 @@ export function useShellCheckIn(hasHome: boolean) {
   // Shown in the dialog only when there is Energy to plan against.
   const planned = note === "energy" && energy !== null ? { planned: plannedEffort(plan), energy } : null;
 
-  const [checkInOpen, setCheckInOpen] = useState(false);
+  // The date of the Check-in the dialog is open for, or null while closed. Opened by the pill, or latched by the Shell
+  // when the dialog shows by itself, so a refetch (saved on another device, midnight) cannot unmount the form.
+  const [openFor, setOpenFor] = useState<string | null>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
-  const checkInReady = checkIn.state.kind === "ready";
+  const pillRef = useRef<HTMLButtonElement | null>(null);
   const openCheckIn = useCallback(
     (returnFocusTo?: HTMLElement) => {
-      if (!checkInReady) return;
+      if (checkInToday === null) return;
       returnFocusRef.current = returnFocusTo ?? null;
-      setCheckInOpen(true);
+      setOpenFor(checkInToday.date);
     },
-    [checkInReady],
+    [checkInToday],
   );
-  const closeCheckIn = useCallback(() => setCheckInOpen(false), []);
+  const latchCheckIn = useCallback((date: string) => setOpenFor((current) => current ?? date), []);
+  const closeCheckIn = useCallback(() => setOpenFor(null), []);
 
-  // The dialog opened by itself has no opener: focus goes back to the pill, the control that reopens it.
-  const pillRef = useRef<HTMLButtonElement | null>(null);
-  /** Keeps the dialog open until its own close, whatever a refetch says in the meantime. */
-  const latchCheckIn = useCallback(() => {
-    returnFocusRef.current = pillRef.current;
-    setCheckInOpen(true);
-  }, []);
-
-  return { checkIn, note, energy, planned, openCheckIn, checkInOpen, closeCheckIn, latchCheckIn, pillRef, returnFocusRef };
+  return { checkIn, note, energy, planned, openCheckIn, openFor, closeCheckIn, latchCheckIn, pillRef, returnFocusRef };
 }
