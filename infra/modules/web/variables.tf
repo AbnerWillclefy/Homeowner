@@ -4,8 +4,9 @@ variable "bucket_name" {
 }
 
 variable "photos_origin_domain" {
-  description = "Regional domain of the photo bucket. /avatars/* is served from it as a second origin."
+  description = "Regional domain of the photo bucket. /avatars/* is served from it as a second origin. Empty means no photo origin, behaviour or access control."
   type        = string
+  default     = ""
 }
 
 variable "name" {
