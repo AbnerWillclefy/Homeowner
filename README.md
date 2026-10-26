@@ -222,6 +222,23 @@ Check the API logs with `docker compose logs api`. A `sign-in disabled` or
   push with `npm run build && npm run preview` (http://localhost:4173). Add
   that origin to `CORS_ALLOWED_ORIGINS` in `docker-compose.yml` first.
 
+### 7. Admin app (optional)
+
+The maintainer's admin app lives in `admin/` and runs on port 5174 against the
+Compose API. It needs a super admin in the pool your `.env` points to (see the
+next section).
+
+```sh
+cd admin
+cp .env.example .env.local     # fill in VITE_COGNITO_REGION and VITE_COGNITO_CLIENT_ID (same as web/.env.local)
+npm ci
+npm run dev                    # http://localhost:5174
+```
+
+Note `admin/` calls the API URL `VITE_API_URL`, where the PWA calls it
+`VITE_API_BASE_URL`. Variables are explained in
+[docs/development.md](docs/development.md#admin).
+
 ## The super admin role
 
 The API's `/admin/` routes are for the maintainer only ([ADR 0017](docs/adr/0017-operate-through-a-separate-admin-app-per-environment.md)).
