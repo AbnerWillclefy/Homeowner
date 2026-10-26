@@ -126,6 +126,22 @@ for (const l of LOCALES) {
       await expect(dialog(page)).toBeVisible();
     });
 
+    test("an auto-open after one from the pill returns focus to the pill", async ({ page, baseURL, fakeApi }) => {
+      await launchApp(page, baseURL!);
+      await page.keyboard.press("Escape");
+      await pill(page).click();
+      await expect(dialog(page)).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(dialog(page)).toBeHidden();
+
+      fakeApi.state.checkIn = uncheckedDay("2030-01-16");
+      await resume(page);
+      await expect(dialog(page)).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(dialog(page)).toBeHidden();
+      await expect(pill(page)).toBeFocused();
+    });
+
     test("a Check-in saved for today means no dialog on launch", async ({ page, baseURL, fakeApi }) => {
       fakeApi.state.checkIn = { date: "2030-01-15", checkedIn: true, level: "normal", restrictions: [] };
       await launchApp(page, baseURL!);

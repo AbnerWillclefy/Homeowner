@@ -36,7 +36,11 @@ export function useShellCheckIn(hasHome: boolean) {
     },
     [checkInToday],
   );
-  const latchCheckIn = useCallback((date: string) => setOpenFor((current) => current ?? date), []);
+  // Opening by itself has no opener, so drop one left from an earlier open: focus returns to the pill.
+  const latchCheckIn = useCallback((date: string) => {
+    returnFocusRef.current = pillRef.current;
+    setOpenFor((current) => current ?? date);
+  }, []);
   const closeCheckIn = useCallback(() => setOpenFor(null), []);
 
   return { checkIn, note, energy, planned, openCheckIn, openFor, closeCheckIn, latchCheckIn, pillRef, returnFocusRef };
