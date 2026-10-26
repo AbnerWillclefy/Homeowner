@@ -68,13 +68,16 @@ export function Shell() {
     checkInDismissedFor: session.checkInDismissedFor,
   });
 
-  // The Check-in dialog latches once it shows (set during render, from the same decision), and a close dismisses the
-  // date it opened for, not whatever date the Home reads now. Any other dialog takes priority over a latched one.
+  // The Check-in dialog latches once it shows (set during render, from the same decision), so a refetch cannot close
+  // it. Any other dialog takes priority over a latched one. A close dismisses the date the Home reads now: if the day
+  // rolled over under the open form, the Resident has seen the new day's prompt, and dismissing only the old date
+  // would reopen it the moment they tap "Not now".
   const autoDate = dialog === "checkin" && checkIn.state.kind === "ready" ? checkIn.state.checkIn.date : null;
   if (autoDate !== null && openFor === null) latchCheckIn(autoDate);
   const checkInShown = dialog === "checkin" || (openFor !== null && dialog === null);
   const dismissCheckIn = () => {
-    if (openFor !== null) session.dismissCheckIn(openFor);
+    const shownFor = checkIn.state.kind === "ready" ? checkIn.state.checkIn.date : openFor;
+    if (shownFor !== null) session.dismissCheckIn(shownFor);
     // The dialog opened by itself has no opener: focus goes back to the pill, the control that reopens it.
     returnFocusRef.current ??= pillRef.current;
     closeCheckIn();

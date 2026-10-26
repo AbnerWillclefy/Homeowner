@@ -128,7 +128,9 @@ for (const l of LOCALES) {
 
     test("an auto-open after one from the pill returns focus to the pill", async ({ page, baseURL, fakeApi }) => {
       await launchApp(page, baseURL!);
+      await expect(dialog(page)).toBeVisible();
       await page.keyboard.press("Escape");
+      await expect(dialog(page)).toBeHidden();
       await pill(page).click();
       await expect(dialog(page)).toBeVisible();
       await page.keyboard.press("Escape");
@@ -169,7 +171,7 @@ for (const l of LOCALES) {
       await expect(dialog(page).getByRole("button", { name: l.save, exact: true })).toBeVisible();
     });
 
-    test("a day rolling over under an open form dismisses the day it opened for, so the new day still prompts", async ({ page, baseURL, fakeApi }) => {
+    test("a day rolling over under an open form stays open, and Not now closes it for the new day", async ({ page, baseURL, fakeApi }) => {
       await launchApp(page, baseURL!);
       await expect(dialog(page)).toBeVisible();
 
@@ -178,10 +180,12 @@ for (const l of LOCALES) {
       await resume(page);
       await expect(dialog(page)).toBeVisible();
 
+      // The Resident has seen the 16th's prompt: Not now closes it and a same-day resume does not reopen it.
       await dialog(page).getByRole("button", { name: l.notNow, exact: true }).click();
       await expect(dialog(page)).toBeHidden();
-      // The dismissal was for the 15th: the 16th has not been dismissed, so it opens again.
-      await expect(dialog(page)).toBeVisible();
+      await resume(page);
+      await expect(dialog(page)).toBeHidden();
+      await expect(pill(page)).toBeFocused();
     });
 
     test("a failed Check-in read opens nothing",async ({ page, baseURL, fakeApi }) => {
