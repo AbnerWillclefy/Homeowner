@@ -60,6 +60,16 @@ module "web" {
   photos_origin_domain = module.photos.bucket_regional_domain_name
 }
 
+# The admin app (#325): its own private bucket and distribution, no photos. The
+# bucket name falls under the deploy role's homeowner-<env>-web-* grant. The
+# bundle is public static code; access control is the API's 403 (ADR 0014).
+module "admin_web" {
+  source = "../modules/web"
+
+  name        = "${local.name_prefix}-web-admin"
+  bucket_name = "${local.name_prefix}-web-admin-${data.aws_caller_identity.current.account_id}"
+}
+
 # Resident photos (docs/adr/0012). Not a cycle: the bucket needs only the
 # distribution's ARN (policy, CORS origin) and the distribution only the
 # bucket's domain; Terraform orders individual values, not whole modules.
@@ -97,7 +107,7 @@ module "api" {
       PORT                           = "8080"
       ENVIRONMENT                    = "production"
       DB_MAX_CONNS                   = "2"
-      CORS_ALLOWED_ORIGINS           = join(",", compact(["https://${module.web.domain_name}", var.cors_allowed_origins]))
+      CORS_ALLOWED_ORIGINS           = join(",", compact(["https://${module.web.domain_name}", "https://${module.admin_web.domain_name}", var.cors_allowed_origins]))
       DATABASE_URL_SSM_PARAM         = module.database.database_url_param
       MIGRATE_DATABASE_URL_SSM_PARAM = module.database.migrate_database_url_param
 
