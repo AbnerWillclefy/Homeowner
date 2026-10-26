@@ -61,7 +61,7 @@ module "web" {
 
 # The admin app (#325): its own private bucket and distribution, no photos. The
 # bucket name falls under the deploy role's homeowner-<env>-web-* grant. The
-# bundle is public static code; access control is the API's 403 (ADR 0014).
+# bundle is public static code; access control is the API's 403 (ADR 0017).
 module "admin_web" {
   source = "../modules/web"
 
