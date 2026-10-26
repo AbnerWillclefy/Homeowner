@@ -7,7 +7,10 @@ type Price struct {
 	OutputMicroUSDPerMTok int64
 }
 
-// prices maps the model id the client is configured with (LLM_MODEL) to its
+// PriceTable maps a model id to its Price.
+type PriceTable map[string]Price
+
+// Prices maps the model id the client is configured with (LLM_MODEL) to its
 // price.
 //
 // Read from https://platform.claude.com/docs/en/about-claude/pricing on
@@ -24,23 +27,21 @@ type Price struct {
 // Adaptive thinking tokens are billed as output tokens and are already inside
 // output_tokens. No prompt caching is used, so cache-write and cache-read
 // prices are not needed.
-var prices = map[string]Price{
+var Prices = PriceTable{
 	"claude-haiku-5-5":  {InputMicroUSDPerMTok: 100_000, OutputMicroUSDPerMTok: 500_000},
 	"claude-sonnet-5-5": {InputMicroUSDPerMTok: 2_000_000, OutputMicroUSDPerMTok: 10_000_000},
 }
 
-// EstimateCostMicroUSD is the estimated cost of one call in micro-USD:
+// Estimate is the estimated cost of one call in micro-USD:
 // (input tokens * input price + output tokens * output price) / 1_000_000,
 // rounded half up once on the total. ok is false, never a zero cost, when
 // there is no usage or the model has no price: an unknown cost is not a free
 // one.
-func EstimateCostMicroUSD(u *Usage) (cost int64, ok bool) { return estimateCost(prices, u) }
-
-func estimateCost(table map[string]Price, u *Usage) (int64, bool) {
+func (t PriceTable) Estimate(u *Usage) (cost int64, ok bool) {
 	if u == nil {
 		return 0, false
 	}
-	p, known := table[u.Model]
+	p, known := t[u.Model]
 	if !known {
 		return 0, false
 	}

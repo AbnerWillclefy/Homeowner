@@ -11,27 +11,27 @@ import (
 // Guard: the model the app runs by default must be priced, or its calls would
 // be recorded without a cost.
 func TestTheDefaultModelHasAPrice(t *testing.T) {
-	cost, ok := llmalloc.EstimateCostMicroUSD(&llmalloc.Usage{Model: config.DefaultLLMModel, InputTokens: 1_000_000, OutputTokens: 1_000_000})
+	cost, ok := llmalloc.Prices.Estimate(&llmalloc.Usage{Model: config.DefaultLLMModel, InputTokens: 1_000_000, OutputTokens: 1_000_000})
 	if !ok || cost <= 0 {
 		t.Fatalf("%s: cost = %d, ok = %v; add it to the price table", config.DefaultLLMModel, cost, ok)
 	}
 }
 
 func TestAnUnknownModelHasNoEstimate(t *testing.T) {
-	if cost, ok := llmalloc.EstimateCostMicroUSD(&llmalloc.Usage{Model: "claude-nonesuch", InputTokens: 1000, OutputTokens: 1000}); ok || cost != 0 {
+	if cost, ok := llmalloc.Prices.Estimate(&llmalloc.Usage{Model: "claude-nonesuch", InputTokens: 1000, OutputTokens: 1000}); ok || cost != 0 {
 		t.Fatalf("cost = %d, ok = %v, want unknown", cost, ok)
 	}
 }
 
 func TestNoUsageHasNoEstimate(t *testing.T) {
-	if _, ok := llmalloc.EstimateCostMicroUSD(nil); ok {
+	if _, ok := llmalloc.Prices.Estimate(nil); ok {
 		t.Fatal("nil usage must have no estimate")
 	}
 }
 
 // Zero tokens on a known model is a real, free call: not unknown.
 func TestZeroTokensOnAKnownModelCostsZero(t *testing.T) {
-	cost, ok := llmalloc.EstimateCostMicroUSD(&llmalloc.Usage{Model: config.DefaultLLMModel})
+	cost, ok := llmalloc.Prices.Estimate(&llmalloc.Usage{Model: config.DefaultLLMModel})
 	if !ok || cost != 0 {
 		t.Fatalf("cost = %d, ok = %v", cost, ok)
 	}
@@ -40,8 +40,8 @@ func TestZeroTokensOnAKnownModelCostsZero(t *testing.T) {
 // Worked example with a table of our own: 2_000 in at 3_000_000 micro-USD per
 // million is 6_000; 500 out at 15_000_000 is 7_500.
 func TestTheCostIsTokensTimesPricePerMillion(t *testing.T) {
-	prices := map[string]llmalloc.Price{"m": {InputMicroUSDPerMTok: 3_000_000, OutputMicroUSDPerMTok: 15_000_000}}
-	cost, ok := llmalloc.EstimateCostWith(prices, &llmalloc.Usage{Model: "m", InputTokens: 2000, OutputTokens: 500})
+	prices := llmalloc.PriceTable{"m": {InputMicroUSDPerMTok: 3_000_000, OutputMicroUSDPerMTok: 15_000_000}}
+	cost, ok := prices.Estimate(&llmalloc.Usage{Model: "m", InputTokens: 2000, OutputTokens: 500})
 	if !ok || cost != 13_500 {
 		t.Fatalf("cost = %d, ok = %v, want 13500", cost, ok)
 	}
@@ -51,8 +51,8 @@ func TestTheCostIsTokensTimesPricePerMillion(t *testing.T) {
 // at 499_999 it is 0.499999, rounds to 0.
 func TestTheCostRoundsHalfUp(t *testing.T) {
 	for price, want := range map[int64]int64{500_000: 1, 499_999: 0, 1_500_000: 2} {
-		prices := map[string]llmalloc.Price{"m": {InputMicroUSDPerMTok: price}}
-		cost, ok := llmalloc.EstimateCostWith(prices, &llmalloc.Usage{Model: "m", InputTokens: 1})
+		prices := llmalloc.PriceTable{"m": {InputMicroUSDPerMTok: price}}
+		cost, ok := prices.Estimate(&llmalloc.Usage{Model: "m", InputTokens: 1})
 		if !ok || cost != want {
 			t.Errorf("price %d: cost = %d, ok = %v, want %d", price, cost, ok, want)
 		}
@@ -63,7 +63,7 @@ func TestTheCostRoundsHalfUp(t *testing.T) {
 // bounds the input; the arithmetic must fit int64 for every table entry.
 func TestNoPriceInTheTableCanOverflowAtTheLargestCall(t *testing.T) {
 	const largestInput = 2_000_000 // far above any context window
-	for model, p := range llmalloc.Prices() {
+	for model, p := range llmalloc.Prices {
 		if p.InputMicroUSDPerMTok <= 0 || p.OutputMicroUSDPerMTok <= 0 {
 			t.Errorf("%s: prices must be positive: %+v", model, p)
 		}
