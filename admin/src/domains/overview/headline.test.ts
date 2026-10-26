@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  armRates,
+  costDelta,
   costPerLlmRun,
   explanationShare,
   fallbackShare,
+  hasEnoughData,
   hasWorthData,
   ratioSeries,
   refereeRate,
@@ -28,18 +29,14 @@ function counts(over: Partial<WorthCounts> = {}): WorthCounts {
   };
 }
 
-describe("armRates", () => {
-  it("gives the completion and refuse rate of the proposed Tasks", () => {
-    expect(armRates({ proposed: 40, completed: 30, refused: 10 })).toEqual({ n: 40, completion: 0.75, refuse: 0.25 });
+describe("hasEnoughData", () => {
+  it("needs exactly 20 proposed Tasks: 19 is not enough data, 20 is", () => {
+    expect(hasEnoughData({ proposed: 19, completed: 19, refused: 0 })).toBe(false);
+    expect(hasEnoughData({ proposed: 20, completed: 10, refused: 0 })).toBe(true);
   });
 
-  it("needs exactly 20 proposed Tasks: 19 is not enough data, 20 gives rates", () => {
-    expect(armRates({ proposed: 19, completed: 19, refused: 0 })).toBe("not-enough-data");
-    expect(armRates({ proposed: 20, completed: 10, refused: 0 })).toEqual({ n: 20, completion: 0.5, refuse: 0 });
-  });
-
-  it("is not enough data with nothing proposed, never NaN", () => {
-    expect(armRates(zeroArm)).toBe("not-enough-data");
+  it("is not enough data with nothing proposed", () => {
+    expect(hasEnoughData(zeroArm)).toBe(false);
   });
 });
 
@@ -62,6 +59,21 @@ describe("costPerLlmRun", () => {
 
   it("is null (n/a) when no run was planned by the LLM", () => {
     expect(costPerLlmRun(counts({ cost: { allocatorCostMicros: 9000, uncostedCalls: 0 } }))).toBeNull();
+  });
+});
+
+describe("costDelta", () => {
+  const withRuns = (runsLlm: number, allocatorCostMicros: number) =>
+    counts({ cost: { allocatorCostMicros, uncostedCalls: 0 }, reliability: reliability({ runsLlm }) });
+
+  it("compares the cost per run of two windows with enough runs", () => {
+    expect(costDelta(withRuns(20, 400_000), withRuns(20, 200_000))).toEqual({ type: "percent", change: 100 });
+  });
+
+  it("is none without a previous window or with fewer than 20 runs in either", () => {
+    expect(costDelta(withRuns(20, 400_000), undefined)).toEqual({ type: "none" });
+    expect(costDelta(withRuns(1, 400_000), withRuns(40, 200_000))).toEqual({ type: "none" });
+    expect(costDelta(withRuns(40, 400_000), withRuns(19, 200_000))).toEqual({ type: "none" });
   });
 });
 

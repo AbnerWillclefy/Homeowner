@@ -1,23 +1,13 @@
-import { rateDelta, type DeltaResult, type Ratio } from "../../shared/delta";
-import { MIN_PROPOSED_PER_ARM } from "../../shared/thresholds";
+import { changeDelta, rateDelta, type DeltaResult, type Ratio } from "../../shared/delta";
+import { MIN_ALLOCATOR_CALLS, MIN_PROPOSED_PER_ARM } from "../../shared/thresholds";
 import type { ArmOutcome, WorthCounts, WorthReliability } from "./worth";
 
 // The page divides: /admin/worth sends counts only. Every division here guards a zero denominator, so no figure is
 // NaN or infinite.
 
-export interface ArmRates {
-  /** Proposed Tasks. */
-  n: number;
-  /** 0 to 1. */
-  completion: number;
-  /** 0 to 1; a lower bound, because a refused Task that is Taken later leaves the count. */
-  refuse: number;
-}
-
-/** The rates of one arm, or "not-enough-data" below `MIN_PROPOSED_PER_ARM` proposed Tasks. */
-export function armRates(arm: ArmOutcome): ArmRates | "not-enough-data" {
-  if (arm.proposed < MIN_PROPOSED_PER_ARM) return "not-enough-data";
-  return { n: arm.proposed, completion: arm.completed / arm.proposed, refuse: arm.refused / arm.proposed };
+/** Whether an arm has `MIN_PROPOSED_PER_ARM` proposed Tasks, the least that makes its rates worth showing. */
+export function hasEnoughData(arm: ArmOutcome): boolean {
+  return arm.proposed >= MIN_PROPOSED_PER_ARM;
 }
 
 /** The Outcome rates as parts, for the delta and the sparkline. */
@@ -44,10 +34,20 @@ export function explanationShare(e: { llm: number; template: number }): Ratio {
   return { part: e.llm, whole: e.llm + e.template };
 }
 
-/** Estimated allocator cost per LLM-planned Allocation in micro-USD; null (shown "n/a") with none. */
-export function costPerLlmRun(c: { cost: { allocatorCostMicros: number }; reliability: { runsLlm: number } }): number | null {
+/** Estimated allocator cost per LLM-planned Allocation in whole micro-USD; null (shown "n/a") with none. */
+export function costPerLlmRun(c: WorthCounts): number | null {
   const runs = c.reliability.runsLlm;
-  return runs > 0 ? c.cost.allocatorCostMicros / runs : null;
+  return runs > 0 ? Math.round(c.cost.allocatorCostMicros / runs) : null;
+}
+
+/** The change in cost per run; needs `MIN_ALLOCATOR_CALLS` LLM-planned runs in both windows, like the rate deltas. */
+export function costDelta(current: WorthCounts, previous: WorthCounts | undefined): DeltaResult {
+  if (previous === undefined) return { type: "none" };
+  if (current.reliability.runsLlm < MIN_ALLOCATOR_CALLS || previous.reliability.runsLlm < MIN_ALLOCATOR_CALLS) return { type: "none" };
+  const now = costPerLlmRun(current);
+  const before = costPerLlmRun(previous);
+  if (now === null || before === null) return { type: "none" };
+  return changeDelta("money", now, before);
 }
 
 /** A ratio as a whole percent; null when the denominator is 0, so a sparkline breaks instead of showing 0. */

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { Button } from "../../shared/Button";
-import { changeDelta, type DeltaResult, type Ratio } from "../../shared/delta";
+import type { DeltaResult, Ratio } from "../../shared/delta";
 import { Delta } from "../../shared/Delta";
 import { formatMicros, formatPercent } from "../../shared/format";
 import type { Range } from "../../shared/range";
@@ -13,13 +13,15 @@ import {
   MIN_PROPOSED_PER_ARM,
   monthStatus,
   refereeStatus,
+  type Status,
 } from "../../shared/thresholds";
 import {
-  armRates,
   completionRatio,
+  costDelta,
   costPerLlmRun,
   explanationShare,
   fallbackShare,
+  hasEnoughData,
   hasWorthData,
   llmShare,
   ratioSeries,
@@ -28,7 +30,7 @@ import {
   sampledRateDelta,
   seriesLabel,
 } from "./headline";
-import { useWorth, type ArmOutcome, type Worth } from "./worth";
+import { useWorth, type ArmOutcome, type Worth, type WorthCounts } from "./worth";
 
 /**
  * "Is the AI worth it?": four measures for the range, each with its change against the previous range and a
@@ -99,17 +101,15 @@ function Figure({
   deltaKind = "rate",
   days,
   series,
-  seriesName,
   format,
 }: {
   label: string;
   value: string;
-  status?: { state: "ok" | "warn" | "bad" | "neutral"; label: string };
+  status?: Status;
   delta?: DeltaResult;
   deltaKind?: "rate" | "money";
   days: number;
   series?: (number | null)[];
-  seriesName?: string;
   format?: (value: number) => string;
 }) {
   return (
@@ -124,37 +124,67 @@ function Figure({
           <Delta kind={deltaKind} result={delta} days={days} />
         </p>
       )}
-      {series && seriesName && <Sparkline values={series} label={seriesLabel(seriesName, series, format)} />}
+      {series && <Sparkline values={series} label={seriesLabel(label, series, format)} />}
     </div>
   );
 }
 
+/** A `Figure` for a share: it picks the ratio from the range, the previous range and each day, and derives the rest. */
+function RatioFigure({
+  label,
+  worth,
+  pick,
+  minWhole,
+  status,
+}: {
+  label: string;
+  worth: Worth;
+  pick: (counts: WorthCounts) => Ratio;
+  minWhole: number;
+  status?: (ratio: Ratio) => Status;
+}) {
+  const current = pick(worth.current);
+  return (
+    <Figure
+      label={label}
+      value={formatPercent(current.part, current.whole)}
+      status={status?.(current)}
+      delta={sampledRateDelta(current, worth.previous && pick(worth.previous), minWhole)}
+      days={worth.days.length}
+      series={ratioSeries(worth.days, pick)}
+    />
+  );
+}
+
+const ARMS = [
+  { name: "LLM", key: "llm" },
+  { name: "Baseline", key: "baseline" },
+] as const;
+
 function OutcomeCard({ worth }: { worth: Worth }) {
   const days = worth.days.length;
-  const arms = [
-    { name: "LLM", arm: worth.current.outcome.llm, previous: worth.previous?.outcome.llm, pick: (d: Worth["current"]) => d.outcome.llm },
-    { name: "Baseline", arm: worth.current.outcome.baseline, previous: worth.previous?.outcome.baseline, pick: (d: Worth["current"]) => d.outcome.baseline },
-  ];
   const rateRow = (label: string, ratio: (arm: ArmOutcome) => Ratio) => (
     <tr>
       <th scope="row" className="py-2 pr-3 text-left font-semibold align-top">
         {label}
       </th>
-      {arms.map(({ name, arm, previous, pick }) => {
-        const rates = armRates(arm);
-        if (rates === "not-enough-data") {
+      {ARMS.map(({ name, key }) => {
+        const arm = worth.current.outcome[key];
+        if (!hasEnoughData(arm)) {
           return (
             <td key={name} className="py-2 align-top">
               <StatusBadge state="neutral" label="Not enough data" />
             </td>
           );
         }
-        const series = ratioSeries(worth.days, (d) => ratio(pick(d)));
+        const r = ratio(arm);
+        const previous = worth.previous?.outcome[key];
+        const series = ratioSeries(worth.days, (d) => ratio(d.outcome[key]));
         return (
           <td key={name} className="py-2 align-top">
-            <span className="text-2xl font-bold tabular-nums">{formatPercent(ratio(arm).part, ratio(arm).whole)}</span>
+            <span className="text-2xl font-bold tabular-nums">{formatPercent(r.part, r.whole)}</span>
             <br />
-            <Delta kind="rate" result={sampledRateDelta(ratio(arm), previous && ratio(previous), MIN_PROPOSED_PER_ARM)} days={days} />
+            <Delta kind="rate" result={sampledRateDelta(r, previous && ratio(previous), MIN_PROPOSED_PER_ARM)} days={days} />
             <Sparkline values={series} label={seriesLabel(`${label}, ${name}`, series)} />
           </td>
         );
@@ -169,7 +199,7 @@ function OutcomeCard({ worth }: { worth: Worth }) {
             <th scope="col" className="text-left">
               <span className="sr-only">Measure</span>
             </th>
-            {arms.map(({ name }) => (
+            {ARMS.map(({ name }) => (
               <th key={name} scope="col" className="text-left">
                 {name}
               </th>
@@ -183,9 +213,9 @@ function OutcomeCard({ worth }: { worth: Worth }) {
             <th scope="row" className="py-2 pr-3 text-left font-semibold">
               Proposed Tasks (n)
             </th>
-            {arms.map(({ name, arm }) => (
+            {ARMS.map(({ name, key }) => (
               <td key={name} className="py-2 tabular-nums">
-                {arm.proposed}
+                {worth.current.outcome[key].proposed}
               </td>
             ))}
           </tr>
@@ -198,41 +228,23 @@ function OutcomeCard({ worth }: { worth: Worth }) {
 }
 
 function ReliabilityCard({ worth }: { worth: Worth }) {
-  const days = worth.days.length;
   const r = worth.current.reliability;
-  const p = worth.previous?.reliability;
-  const fallback = fallbackShare(r);
-  const referee = refereeRate(r);
-  const fallbackSeries = ratioSeries(worth.days, (d) => fallbackShare(d.reliability));
-  const llmSeries = ratioSeries(worth.days, (d) => llmShare(d.reliability));
-  const refereeSeries = ratioSeries(worth.days, (d) => refereeRate(d.reliability));
   return (
     <Card name="reliability" title="Reliability">
-      <Figure
-        label="Planned by the LLM"
-        value={formatPercent(llmShare(r).part, llmShare(r).whole)}
-        delta={sampledRateDelta(llmShare(r), p && llmShare(p), MIN_ALLOCATOR_CALLS)}
-        days={days}
-        series={llmSeries}
-        seriesName="Planned by the LLM"
-      />
-      <Figure
+      <RatioFigure label="Planned by the LLM" worth={worth} pick={(c) => llmShare(c.reliability)} minWhole={MIN_ALLOCATOR_CALLS} />
+      <RatioFigure
         label="Fell back to baseline"
-        value={formatPercent(fallback.part, fallback.whole)}
-        status={fallbackStatus(fallback.part, fallback.whole)}
-        delta={sampledRateDelta(fallback, p && fallbackShare(p), MIN_ALLOCATOR_CALLS)}
-        days={days}
-        series={fallbackSeries}
-        seriesName="Fell back to baseline"
+        worth={worth}
+        pick={(c) => fallbackShare(c.reliability)}
+        status={(x) => fallbackStatus(x.part, x.whole)}
+        minWhole={MIN_ALLOCATOR_CALLS}
       />
-      <Figure
+      <RatioFigure
         label="Referee rejection rate"
-        value={formatPercent(referee.part, referee.whole)}
-        status={refereeStatus(referee.part, referee.whole)}
-        delta={sampledRateDelta(referee, p && refereeRate(p), MIN_ALLOCATOR_CALLS)}
-        days={days}
-        series={refereeSeries}
-        seriesName="Referee rejection rate"
+        worth={worth}
+        pick={(c) => refereeRate(c.reliability)}
+        status={(x) => refereeStatus(x.part, x.whole)}
+        minWhole={MIN_ALLOCATOR_CALLS}
       />
       <Note>
         {r.runsLlmNotAsked} {r.runsLlmNotAsked === 1 ? "run where the LLM was not asked is" : "runs where the LLM was not asked are"} excluded.
@@ -242,27 +254,18 @@ function ReliabilityCard({ worth }: { worth: Worth }) {
 }
 
 function CostCard({ worth, range }: { worth: Worth; range: Range }) {
-  const days = worth.days.length;
   const perRun = costPerLlmRun(worth.current);
-  const previousPerRun = worth.previous && costPerLlmRun(worth.previous);
-  const series = worth.days.map((d) => {
-    const v = costPerLlmRun(d);
-    return v === null ? null : Math.round(v);
-  });
-  const delta: DeltaResult =
-    perRun === null || previousPerRun == null ? { type: "none" } : changeDelta("money", Math.round(perRun), Math.round(previousPerRun));
   const month = worth.monthToDate;
   const lowerBound = worth.current.cost.uncostedCalls > 0;
   return (
     <Card name="cost" title="Cost">
       <Figure
         label="Estimated allocator cost per LLM-planned Allocation"
-        value={perRun === null ? "n/a" : formatMicros(Math.round(perRun))}
-        delta={delta}
+        value={perRun === null ? "n/a" : formatMicros(perRun)}
+        delta={costDelta(worth.current, worth.previous)}
         deltaKind="money"
-        days={days}
-        series={series}
-        seriesName="Estimated allocator cost per LLM-planned Allocation"
+        days={worth.days.length}
+        series={worth.days.map(costPerLlmRun)}
         format={formatMicros}
       />
       {lowerBound && (
@@ -274,7 +277,7 @@ function CostCard({ worth, range }: { worth: Worth; range: Range }) {
         label="Month to date, this calendar month"
         value={month.limitMicros === null ? formatMicros(month.estCostMicros) : `${formatMicros(month.estCostMicros)} of ${formatMicros(month.limitMicros)}`}
         status={monthStatus(month.estCostMicros, month.limitMicros)}
-        days={days}
+        days={worth.days.length}
       />
       <Note>
         Estimated cost. Explainer cost is not included; see <Link to={`/ai?range=${range}`}>AI usage</Link>.
@@ -284,19 +287,10 @@ function CostCard({ worth, range }: { worth: Worth; range: Range }) {
 }
 
 function ExplanationCard({ worth }: { worth: Worth }) {
-  const days = worth.days.length;
   const e = explanationShare(worth.current.explanations);
-  const share = ratioSeries(worth.days, (d) => explanationShare(d.explanations));
   return (
     <Card name="explanations" title="Explanation share">
-      <Figure
-        label="Day Plan explanations written by the LLM"
-        value={formatPercent(e.part, e.whole)}
-        delta={sampledRateDelta(e, worth.previous && explanationShare(worth.previous.explanations), 1)}
-        days={days}
-        series={share}
-        seriesName="Day Plan explanations written by the LLM"
-      />
+      <RatioFigure label="Day Plan explanations written by the LLM" worth={worth} pick={(c) => explanationShare(c.explanations)} minWhole={1} />
       <p className="m-0 text-sm text-muted">
         Written from the template: {formatPercent(e.whole - e.part, e.whole)}
       </p>
