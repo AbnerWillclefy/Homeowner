@@ -15,9 +15,12 @@ import (
 const (
 	maxSettingsBody = 4 * 1024
 	// maxNewHomeBody and maxNewHomeChores bound POST /home, which also carries
-	// the reviewed Chores. The Catalog proposes at most catalog.MaxProposals.
-	maxNewHomeBody   = 64 * 1024
-	maxNewHomeChores = 100
+	// the reviewed Chores. The Catalog proposes at most catalog.MaxProposals,
+	// so maxNewHomeChores stays above it; maxNewHomeBody leaves room for
+	// that many Chores with names edited up to 100 runes. A test posts the
+	// largest answers' proposals to keep the three in step.
+	maxNewHomeBody   = 128 * 1024
+	maxNewHomeChores = 150
 )
 
 // Handler serves the /home routes.

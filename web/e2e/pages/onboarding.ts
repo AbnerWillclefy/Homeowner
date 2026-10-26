@@ -114,6 +114,12 @@ export const onboarding = {
     }
   },
 
+  /** The chip that adds an outdoor area, found by its visible label ("Garden"); a row hides it while shown. */
+  outdoorChip: (page: Page, label: string) => page.getByRole("button", { name: new RegExp(label, "i") }),
+
+  /** The number field of an outdoor row, found by its plural label ("Gardens"). */
+  outdoorCount: (page: Page, label: string) => page.getByLabel(label, { exact: true }),
+
   async suggestChores(page: Page): Promise<void> {
     await page.getByRole("button", { name: "Suggest Chores", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Review your Chores", level: 2 })).toBeVisible();

@@ -3,7 +3,6 @@ import { CheckInSection } from "../../checkin/components/CheckInSection";
 import { energyNote } from "../../checkin/logic/state";
 import { useCheckIn } from "../../checkin/hooks/useCheckIn";
 import { EnergySummary, showsEnergy } from "../../dayplan/components/EnergySummary";
-import { ReplanControl } from "../../dayplan/components/ReplanControl";
 import { TodayHeader } from "../../dayplan/components/TodayHeader";
 import { TodaySection } from "../../dayplan/components/TodaySection";
 import { useDayPlan } from "../../dayplan/hooks/useDayPlan";
@@ -13,8 +12,8 @@ import { useTodayLoaded } from "../hooks/useTodayLoaded";
 import { TodaySkeleton } from "./HomeSkeleton";
 
 /**
- * Today: the greeting, then the replan control (staging only, high on the page so the
- * sticky bottom nav is not over it when Today loads), the Check-in card with today's Energy and the Day Plan. All of it arrives in one swap, after the three reads have answered (see
+ * Today: the greeting, then the Check-in card with today's Energy and the Day Plan. All of it arrives in one swap,
+ * after the two reads have answered (see
  * `todayLoaded`); before that Today is its skeleton. The folded explanation belongs to the Day Plan: it shows right under "Your Tasks",
  * before the Tasks, and only on a planned day. Whatever changes the plan
  * (an action, a saved Check-in, the start choice, a join) writes or invalidates the query cache, so nothing here
@@ -53,7 +52,6 @@ export function HomeDay() {
   return (
     <>
       <TodayHeader />
-      <ReplanControl plan={state.kind === "ready" ? state.plan : undefined} show={day.show} />
       <CheckInSection
         checkIn={checkIn}
         open={checkInOpen}

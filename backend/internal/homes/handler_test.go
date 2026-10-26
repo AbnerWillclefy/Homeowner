@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/catalog"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
 
@@ -161,26 +162,58 @@ func TestCreatingAHomeWithoutOrWithEmptyChoresAddsNone(t *testing.T) {
 	}
 }
 
+// The questionnaire's bound (catalog.MaxProposals) and POST /home's Chore and
+// body limits depend on each other: keeping every suggestion for the largest
+// Home, with each name edited up to 100 characters, must still be accepted.
+func TestAHomeKeepingEveryProposalForTheLargestAnswersIsCreated(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := app.SignInAs("a@example.com")
+
+	ps := apitest.Proposals(t, me, map[string]any{
+		"rooms":      map[string]any{"bedrooms": 10, "bathrooms": 10, "kitchens": 3, "livingRooms": 10, "laundryAreas": 10},
+		"outdoor":    map[string]any{"balconies": 10, "yards": 10, "gardens": 10},
+		"pets":       []string{"dog", "cat", "fish", "bird", "other"},
+		"collection": map[string]any{"trash": []int{1}, "recycling": []int{2}},
+		"habits":     map[string]any{"cooking": "daily", "washingMachine": true},
+	})
+	chores := make([]map[string]any, 0, len(ps))
+	for _, p := range ps {
+		c := map[string]any{}
+		for _, k := range []string{"name", "category", "demands", "baseEffort", "importance", "people", "intervalDays", "allowedWeekdays", "buildsUp"} {
+			c[k] = p[k]
+		}
+		c["name"] = strings.Repeat("é", 100) // the longest a Resident can make it
+		chores = append(chores, c)
+	}
+	if len(ps) <= 100 || len(ps) > catalog.MaxProposals {
+		t.Fatalf("largest answers gave %d proposals, want 101 to %d", len(ps), catalog.MaxProposals)
+	}
+	if r := me.Post("/home", homeWithChores(chores...)); r.Status != http.StatusCreated {
+		t.Fatalf("POST /home with %d Chores = %d %s, want 201", len(ps), r.Status, r.Raw)
+	}
+}
+
 func TestTheChoresListOfANewHomeIsBoundedAndPutHomeTakesNoChores(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
 
-	many := make([]map[string]any, 101)
+	many := make([]map[string]any, 151)
 	for i := range many {
 		many[i] = apitest.ValidChore()
 	}
 	r := me.Post("/home", apitest.WithField(apitest.HomeBody("UTC", "07:00"), "chores", many))
 	if r.Status != http.StatusBadRequest || !reflect.DeepEqual(r.Body["fields"], map[string]any{"chores": "too_many"}) {
-		t.Fatalf("101 Chores = %d %s, want 400 chores too_many", r.Status, r.Raw)
+		t.Fatalf("151 Chores = %d %s, want 400 chores too_many", r.Status, r.Raw)
 	}
 	if n := countHomes(t, app); n != 0 {
 		t.Fatalf("Homes = %d, want 0", n)
 	}
 
-	huge := apitest.WithField(apitest.HomeBody("UTC", "07:00"), "chores", []map[string]any{apitest.WithField(apitest.ValidChore(), "name", strings.Repeat("x", 70*1024))})
+	huge := apitest.WithField(apitest.HomeBody("UTC", "07:00"), "chores", []map[string]any{apitest.WithField(apitest.ValidChore(), "name", strings.Repeat("x", 130*1024))})
 	if r := me.Post("/home", huge); r.Status != http.StatusRequestEntityTooLarge {
-		t.Fatalf("70 KB body = %d, want 413", r.Status)
+		t.Fatalf("130 KB body = %d, want 413", r.Status)
 	}
 
 	me.Post("/home", apitest.HomeBody("UTC", "07:00"))
@@ -426,7 +459,7 @@ func TestInvalidHomeBodiesAreRejected(t *testing.T) {
 			t.Errorf("%s = %d %s, want 400", name, res.Status, res.Raw)
 		}
 	}
-	big := []byte(`{"timezone":"` + strings.Repeat("a", 70*1024) + `"}`) // over POST /home's 64 KB cap
+	big := []byte(`{"timezone":"` + strings.Repeat("a", 130*1024) + `"}`) // over POST /home's 128 KB cap
 	if res := me.SendRaw(http.MethodPost, "/home", big); res.Status != http.StatusRequestEntityTooLarge {
 		t.Errorf("oversized body = %d, want 413", res.Status)
 	}

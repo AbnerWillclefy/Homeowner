@@ -32,10 +32,10 @@ describe("the Catalog names", () => {
     expect([...CATALOG_IDS].sort()).toEqual(keys.sort());
   });
 
-  it("stay within the API's 100 characters in both languages, even with the largest instance number", () => {
+  it("stay within the API's 100 characters in both languages, even with the largest instance number (20, the yards plus gardens of sweep_yard)", () => {
     for (const id of CATALOG_IDS) {
       for (const t of [english, portuguese]) {
-        expect([...catalogName(id, 10, "", t)].length).toBeLessThanOrEqual(100);
+        expect([...catalogName(id, 20, "", t)].length).toBeLessThanOrEqual(100);
       }
     }
   });

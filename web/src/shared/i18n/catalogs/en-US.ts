@@ -407,20 +407,6 @@ export const enUS = {
     "You seem to be offline, so that did not go through. Check your connection and try again.",
   "dayplan.action.failed.error":
     "Something went wrong and that did not go through. Try again in a moment.",
-  "dayplan.replan.action": "Replan now",
-  "dayplan.replan.waiting": "Replanning. This can take a minute.",
-  "dayplan.replan.timedOut": "The new plan is taking a while. It may still arrive, so check back in a moment.",
-  "dayplan.replan.done.llm": "The AI made this plan.",
-  "dayplan.replan.done.baseline": "The baseline planner made this plan, without the AI.",
-  "dayplan.replan.fallback.llm_daily_cap_reached":
-    "This is the baseline plan, not the AI's: the daily AI limit was reached.",
-  "dayplan.replan.fallback.llm_error": "This is the baseline plan, not the AI's: the AI had a problem.",
-  "dayplan.replan.fallback.llm_timeout": "This is the baseline plan, not the AI's: the AI took too long.",
-  "dayplan.replan.fallback.llm_invalid_response":
-    "This is the baseline plan, not the AI's: the AI's answer could not be used.",
-  "dayplan.replan.fallback.llm_rejected_by_checker":
-    "This is the baseline plan, not the AI's: the AI's plan did not pass the check.",
-  "dayplan.replan.fallback.unknown": "This is the baseline plan, not the AI's: the AI's plan was not used.",
   "dayplan.conflict.already_done":
     "That Task was already done. It is in Done today now.",
   "dayplan.conflict.not_proposed":
@@ -717,10 +703,13 @@ export const enUS = {
   "catalog.rooms.livingRooms": "Living rooms",
   "catalog.rooms.laundryAreas": "Laundry areas",
   "catalog.outdoor.legend": "Outdoor space",
-  "catalog.outdoor.none": "None",
   "catalog.outdoor.balcony": "Balcony",
   "catalog.outdoor.yard": "Yard",
   "catalog.outdoor.garden": "Garden",
+  "catalog.outdoor.add": "Add a {area}",
+  "catalog.outdoor.balconies": "Balconies",
+  "catalog.outdoor.yards": "Yards",
+  "catalog.outdoor.gardens": "Gardens",
   "catalog.pets.legend": "Pets",
   "catalog.pets.dog": "Dog",
   "catalog.pets.cat": "Cat",
@@ -766,7 +755,7 @@ export const enUS = {
     "Homeowner cannot reach the service, so the Catalog could not be loaded. Check your connection and try again.",
   "chores.catalog.load.error":
     "Something went wrong loading the Catalog. Try again in a moment.",
-  "chores.catalog.perRoom": "Once for each room",
+  "chores.catalog.perRoom": "Once per room or area",
   "chores.catalog.add": "Add",
   "chores.catalog.add.label": "Add {name}",
   "chores.catalog.close": "Close the Catalog",
