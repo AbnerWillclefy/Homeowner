@@ -61,6 +61,9 @@ type Config struct {
 	// neither set, the photo routes answer 503.
 	PhotosBucket  string
 	PhotosBaseURL string
+	// Environment (ENVIRONMENT) names the deployment: local, staging or
+	// production. It defaults to local. /admin/me reports it (ADR 0017).
+	Environment string
 }
 
 // PhotosEnabled reports whether resident photos are configured.
@@ -153,6 +156,14 @@ func Load(getenv func(string) string) (Config, error) {
 		c.ReplanEnabled = b
 	}
 	c.ReplanAllocateFunction = strings.TrimSpace(getenv("REPLAN_ALLOCATE_FUNCTION_NAME"))
+	c.Environment = strings.TrimSpace(getenv("ENVIRONMENT"))
+	switch c.Environment {
+	case "":
+		c.Environment = "local"
+	case "local", "staging", "production":
+	default:
+		return Config{}, fmt.Errorf("ENVIRONMENT must be local, staging or production, got %q", c.Environment)
+	}
 	return c, nil
 }
 
