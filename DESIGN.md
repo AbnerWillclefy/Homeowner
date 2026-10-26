@@ -239,7 +239,7 @@ Icon and Category name on the Category pastel, a pill with a hairline edge, 0.87
 ### Top bar
 One quiet row above the content of every tab, in the same centred column, with no fill or edge of its own. On the left the logo; on the right two fixed slots, the Energy slot (empty until the Energy pill arrives) and the Streak slot.
 - It reserves its whole height (at least 2.75rem) and both slots from the first frame, whatever the data, so nothing moves while the Streak loads or when the Energy pill is added. The right group never shrinks; at the largest text size on a narrow phone the bar wraps and the Streak drops under the logo, on the right, instead of leaving the screen.
-- It replaces the app name and the tagline: neither appears on any tab. Before the Home exists (sign-in, onboarding, waiting and retry screens) the logo stands alone, without the slots.
+- It replaces the app name and the tagline: neither appears on any tab. On the pre-Home screens (sign-in, sign-up, the waiting and retry screens) the logo stands alone, without the slots; the onboarding walk has its own frame. While the Home loads inside the app the bar is there with its slots empty, so it never appears late.
 - The logo is the page's one `h1`. Each tab's own first `h2` still receives focus when the tab opens.
 
 ### Logo
