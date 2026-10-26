@@ -20,8 +20,6 @@ interface ShellValue {
   note: EnergyNote | null;
   /** The Day Plan's Energy, or null before there is a plan. */
   energy: number | null;
-  /** The Effort of the Resident's own Tasks in the Day Plan (0 with no plan). */
-  planned: number;
   /**
    * Opens the one Check-in dialog. `returnFocusTo` is the control that opened it (the pill, the card's button): Escape
    * and Cancel put focus back there, because iOS Safari does not focus a tapped button. Does nothing until the

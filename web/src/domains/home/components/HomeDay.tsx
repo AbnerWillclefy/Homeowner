@@ -3,6 +3,7 @@ import { CheckInSection } from "../../checkin/components/CheckInSection";
 import { EnergySummary, showsEnergy } from "../../dayplan/components/EnergySummary";
 import { TodayHeader } from "../../dayplan/components/TodayHeader";
 import { TodaySection } from "../../dayplan/components/TodaySection";
+import { plannedEffort } from "../../dayplan/logic/plannedEffort";
 import { useDayPlan } from "../../dayplan/hooks/useDayPlan";
 import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { ReservedSkeleton } from "../../../shared/ui/ReservedSkeleton";
@@ -22,9 +23,10 @@ import { TodaySkeleton } from "./HomeSkeleton";
  */
 export function HomeDay() {
   // The Shell owns the Check-in (and its dialog), the Energy note and the planned figure; Today only shows them.
-  const { checkIn, note, energy, planned, openCheckIn } = useShell();
+  const { checkIn, note, energy, openCheckIn } = useShell();
   const day = useDayPlan();
   const { state } = day;
+  const planned = plannedEffort(state.kind === "ready" ? state.plan : null);
   // Today's single header slot spins once, whichever of its two reads refreshes over what is on screen. The
   // Streak's refresh is the top bar's, not Today's.
   useReportFetching(day.refreshing || checkIn.refreshing);

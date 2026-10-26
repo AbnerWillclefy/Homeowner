@@ -10,9 +10,10 @@ import { energyPill, pillInput, pillWidthTexts, type PillInput } from "./energyP
 
 const translate = createTranslate({ "en-US": enUS, "pt-BR": ptBR } as Catalogs);
 const tFor = (locale: Locale): Translate => (key, params) => translate(locale, key, params);
-const view = (locale: Locale, input: PillInput) => energyPill(tFor(locale), input, (n) => String(n));
+type Worded = Exclude<PillInput, { kind: "loading" }>;
+const view = (locale: Locale, input: Worded) => energyPill(tFor(locale), input, (n) => String(n));
 
-const ready = (note: EnergyNote, energy: number | null, level: Level | null = null): PillInput => ({
+const ready = (note: EnergyNote, energy: number | null, level: Level | null = null): Worded => ({
   kind: "ready",
   note,
   energy,
@@ -38,7 +39,7 @@ describe("energyPill", () => {
   });
 
   it("dashes only the unset state, and every state has its own accessible name", () => {
-    const inputs: PillInput[] = [
+    const inputs: Worded[] = [
       ready("unset", null),
       ready("energy", 5),
       ready("drained", 0),
@@ -57,10 +58,6 @@ describe("energyPill", () => {
 
   it("names a checked-in Resident without a level plainly", () => {
     expect(view("en-US", ready("pending", null))).toMatchObject({ text: "Check-in", name: "Checked in. Change Check-in" });
-  });
-
-  it("is empty while loading", () => {
-    expect(view("en-US", { kind: "loading" })).toMatchObject({ kind: "loading", text: "", name: "" });
   });
 
   it("formats the number with the given formatter", () => {

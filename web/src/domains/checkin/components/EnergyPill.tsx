@@ -55,12 +55,10 @@ interface Props {
 export function EnergyPill({ input, onOpen, onRetry }: Props) {
   const { t, locale } = useI18n();
   const format = (n: number) => new Intl.NumberFormat(locale).format(n);
-  const view = energyPill(t, input, format);
   const texts = pillWidthTexts(t, input.kind === "ready" && input.energy !== null ? format(input.energy) : format(0));
-  const loading = view.kind === "loading";
-  const showSkeleton = useDelayedFlag(loading);
+  const showSkeleton = useDelayedFlag(input.kind === "loading");
 
-  if (loading) {
+  if (input.kind === "loading") {
     return (
       <span aria-hidden="true" className={`${BOX} relative border-transparent`}>
         <Content texts={texts} real={null} />
@@ -73,6 +71,7 @@ export function EnergyPill({ input, onOpen, onRetry }: Props) {
     );
   }
 
+  const view = energyPill(t, input, format);
   return (
     <Button
       variant="secondary"

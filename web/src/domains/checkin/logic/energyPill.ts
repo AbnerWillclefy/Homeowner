@@ -28,8 +28,8 @@ export function pillInput(args: {
 export type PillIcon = "none" | "zap" | "moon" | "check" | "alert";
 
 export interface PillView {
-  kind: "loading" | "failed" | EnergyNote;
-  /** What the pill shows. Empty while loading. */
+  kind: "failed" | EnergyNote;
+  /** What the pill shows. */
   text: string;
   /** The accessible name: the whole state in words, and what a tap does. */
   name: string;
@@ -42,8 +42,7 @@ export interface PillView {
  * The Energy pill's wording, mapped from the one rule (`energyNote`), never re-derived: which note shows which text,
  * icon and name. `formatNumber` is the locale's number format. Colour and the edge never carry a state alone.
  */
-export function energyPill(t: Translate, input: PillInput, formatNumber: (n: number) => string): PillView {
-  if (input.kind === "loading") return { kind: "loading", text: "", name: "", dashed: false, icon: "none" };
+export function energyPill(t: Translate, input: Exclude<PillInput, { kind: "loading" }>, formatNumber: (n: number) => string): PillView {
   if (input.kind === "failed")
     return { kind: "failed", text: t("checkin.pill.failed"), name: t("checkin.pill.name.failed"), dashed: false, icon: "alert" };
 

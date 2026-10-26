@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Outlet, useLocation } from "react-router";
-import { CheckInDialog } from "../../domains/checkin/components/CheckInDialog";
+import { ShellCheckInDialog } from "../../domains/checkin/components/ShellCheckInDialog";
 import { homeJoined } from "../../domains/home/api/queries";
 import { useHome } from "../../domains/home/hooks/useHome";
 import { useMe } from "../../domains/profile/hooks/useMe";
@@ -38,7 +38,7 @@ export function Shell() {
   const me = useMe();
   const hasHome = home.state.kind === "ready";
   const streak = useStreak(hasHome);
-  const { checkIn, note, energy, planned, dialog: checkInDialog } = useShellCheckIn(hasHome);
+  const { checkIn, note, energy, openCheckIn, checkInOpen, closeCheckIn, returnFocusRef } = useShellCheckIn(hasHome);
   const queryClient = useQueryClient();
   const { pathname } = useLocation();
   const invite = useInvite();
@@ -62,7 +62,7 @@ export function Shell() {
   const dialog = pathname === TODAY_PATH ? dialogToShow({ inviteToken: invite.token, after: session.after, choosing: session.choosing }) : null;
 
   return (
-    <ShellContext.Provider value={{ home, residents, me, streak, checkIn, note, energy, planned, openCheckIn: checkInDialog.openCheckIn }}>
+    <ShellContext.Provider value={{ home, residents, me, streak, checkIn, note, energy, openCheckIn }}>
       <div className="flex min-h-dvh flex-col">
         <PageFrame className="flex-1" top={<TopBar />}>
           <div ref={content}>
@@ -82,17 +82,8 @@ export function Shell() {
         </LazyDialog>
       )}
       {dialog === "start-choice" && <StartChoice onDecided={session.decide} />}
-      {/* The one Check-in dialog, opened by the pill and by Today's card. Mounted only while open, so the form
-          starts again from the saved Check-in each time. */}
-      {checkInDialog.checkInOpen && checkIn.state.kind === "ready" && (
-        <CheckInDialog
-          checkIn={checkIn.state.checkIn}
-          demands={checkIn.demands}
-          save={checkIn.save}
-          onClose={checkInDialog.close}
-          returnFocusRef={checkInDialog.returnFocusRef}
-        />
-      )}
+      {/* The one Check-in dialog, opened by the pill and by Today's card. */}
+      <ShellCheckInDialog checkIn={checkIn} open={checkInOpen} onClose={closeCheckIn} returnFocusRef={returnFocusRef} />
     </ShellContext.Provider>
   );
 }
