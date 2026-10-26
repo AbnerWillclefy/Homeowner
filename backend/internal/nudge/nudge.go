@@ -11,6 +11,7 @@ package nudge
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -29,6 +30,9 @@ const (
 	// belongs to the caller (dayplan); whatever is claimed and not yet sent when
 	// it runs out is lost, by design.
 	sendTimeout = 5 * time.Second
+
+	// outcomeTimeout bounds the update that records a send's outcome.
+	outcomeTimeout = 2 * time.Second
 
 	// reminderLead is how long before the Allocation time the reminder goes.
 	reminderLead = time.Hour
@@ -227,17 +231,59 @@ func (n *Nudger) deliver(ctx context.Context, targets []target, kind string, pay
 		if !isClaimed[t.residentID] {
 			continue
 		}
+		attempted, delivered, failed := false, false, false
 		for _, sub := range subs[t.userID] {
 			if ctx.Err() != nil {
 				n.log.Warn("nudge: deadline reached, the rest is dropped", "kind", kind)
-				return
+				break
 			}
+			attempted = true
 			sctx, cancel := context.WithTimeout(ctx, sendTimeout)
 			err := n.subs.Deliver(sctx, n.sender, sub, payload)
 			cancel()
 			if err != nil {
 				n.log.Warn("nudge: send failed", "kind", kind, "home", t.homeID, "resident", t.residentID, "error", err.Error())
 			}
+			switch {
+			case err == nil:
+				delivered = true
+			case !errors.Is(err, push.ErrGone):
+				failed = true
+			}
 		}
+		if attempted {
+			n.recordOutcome(ctx, t, kind, outcomeOf(delivered, failed))
+		}
+		if ctx.Err() != nil {
+			return
+		}
+	}
+}
+
+// outcomeOf combines the answers of a Resident's devices: delivered if any
+// device accepted, else failed if any failed, else gone.
+func outcomeOf(delivered, failed bool) string {
+	switch {
+	case delivered:
+		return "delivered"
+	case failed:
+		return "failed"
+	default:
+		return "gone"
+	}
+}
+
+// recordOutcome stores the outcome on the claimed ledger row. It runs detached
+// from ctx, because the nudge deadline may have ended during the send. A failure
+// is logged and swallowed: the push has gone out either way.
+func (n *Nudger) recordOutcome(ctx context.Context, t target, kind, outcome string) {
+	uctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), outcomeTimeout)
+	defer cancel()
+	_, err := n.db.Exec(uctx, `
+		UPDATE nudges SET outcome = $4
+		WHERE resident_id = $1 AND kind = $2 AND local_date = $3`,
+		t.residentID, kind, t.date.Time(), outcome)
+	if err != nil {
+		n.log.Warn("nudge: outcome update failed", "kind", kind, "home", t.homeID, "error", err.Error())
 	}
 }
