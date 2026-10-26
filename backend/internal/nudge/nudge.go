@@ -231,28 +231,9 @@ func (n *Nudger) deliver(ctx context.Context, targets []target, kind string, pay
 		if !isClaimed[t.residentID] {
 			continue
 		}
-		attempted, delivered, failed := false, false, false
-		for _, sub := range subs[t.userID] {
-			if ctx.Err() != nil {
-				n.log.Warn("nudge: deadline reached, the rest is dropped", "kind", kind)
-				break
-			}
-			attempted = true
-			sctx, cancel := context.WithTimeout(ctx, sendTimeout)
-			err := n.subs.Deliver(sctx, n.sender, sub, payload)
-			cancel()
-			if err != nil {
-				n.log.Warn("nudge: send failed", "kind", kind, "home", t.homeID, "resident", t.residentID, "error", err.Error())
-			}
-			switch {
-			case err == nil:
-				delivered = true
-			case !errors.Is(err, push.ErrGone):
-				failed = true
-			}
-		}
+		outcome, attempted := n.sendToDevices(ctx, t, kind, subs[t.userID], payload)
 		if attempted {
-			n.recordOutcome(ctx, t, kind, outcomeOf(delivered, failed))
+			n.recordOutcome(ctx, t, kind, outcome)
 		}
 		if ctx.Err() != nil {
 			return
@@ -260,17 +241,42 @@ func (n *Nudger) deliver(ctx context.Context, targets []target, kind string, pay
 	}
 }
 
-// outcomeOf combines the answers of a Resident's devices: delivered if any
-// device accepted, else failed if any failed, else gone.
-func outcomeOf(delivered, failed bool) string {
-	switch {
-	case delivered:
-		return "delivered"
-	case failed:
-		return "failed"
-	default:
-		return "gone"
+// The outcomes a nudge row can hold. They match the CHECK on nudges.outcome.
+const (
+	OutcomeDelivered = "delivered"
+	OutcomeFailed    = "failed"
+	OutcomeGone      = "gone"
+)
+
+// outcomeRank orders the outcomes of one Resident's devices: the best wins.
+var outcomeRank = map[string]int{OutcomeGone: 0, OutcomeFailed: 1, OutcomeDelivered: 2}
+
+// sendToDevices pushes to each of a Resident's devices and combines the
+// answers: delivered if any device accepted, else failed if any failed, else
+// gone. attempted is false when the deadline ended before the first send.
+func (n *Nudger) sendToDevices(ctx context.Context, t target, kind string, devices []push.Subscription, payload push.Payload) (outcome string, attempted bool) {
+	for _, sub := range devices {
+		if ctx.Err() != nil {
+			n.log.Warn("nudge: deadline reached, the rest is dropped", "kind", kind)
+			break
+		}
+		sctx, cancel := context.WithTimeout(ctx, sendTimeout)
+		err := n.subs.Deliver(sctx, n.sender, sub, payload)
+		cancel()
+		got := OutcomeDelivered
+		if err != nil {
+			n.log.Warn("nudge: send failed", "kind", kind, "home", t.homeID, "resident", t.residentID, "error", err.Error())
+			got = OutcomeFailed
+			if errors.Is(err, push.ErrGone) {
+				got = OutcomeGone
+			}
+		}
+		if !attempted || outcomeRank[got] > outcomeRank[outcome] {
+			outcome = got
+		}
+		attempted = true
 	}
+	return outcome, attempted
 }
 
 // recordOutcome stores the outcome on the claimed ledger row. It runs detached
