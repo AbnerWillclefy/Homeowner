@@ -15,13 +15,9 @@ export const MIN_ALLOCATOR_CALLS = 20;
 
 const NOT_ENOUGH_DATA: Status = { state: "neutral", label: "Not enough data" };
 
-export function hasSample(n: number, min: number): boolean {
-  return n >= min;
-}
-
 /** Baseline fallback share: warn above 20%, bad above 40%. `asked` is the runs where the LLM was asked. */
 export function fallbackStatus(fallbacks: number, asked: number): Status {
-  if (!hasSample(asked, MIN_ALLOCATOR_CALLS)) return NOT_ENOUGH_DATA;
+  if (asked < MIN_ALLOCATOR_CALLS) return NOT_ENOUGH_DATA;
   if (fallbacks * 100 > asked * 40) return { state: "bad", label: "Fallback share high" };
   if (fallbacks * 100 > asked * 20) return { state: "warn", label: "Fallback share elevated" };
   return { state: "ok", label: "Fallback share normal" };
@@ -29,7 +25,7 @@ export function fallbackStatus(fallbacks: number, asked: number): Status {
 
 /** Referee rejection rate: warn above 15%. */
 export function refereeStatus(rejected: number, calls: number): Status {
-  if (!hasSample(calls, MIN_ALLOCATOR_CALLS)) return NOT_ENOUGH_DATA;
+  if (calls < MIN_ALLOCATOR_CALLS) return NOT_ENOUGH_DATA;
   if (rejected * 100 > calls * 15) return { state: "warn", label: "Rejections elevated" };
   return { state: "ok", label: "Rejections normal" };
 }

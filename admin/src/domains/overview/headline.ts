@@ -1,4 +1,4 @@
-import { delta, type DeltaResult } from "../../shared/delta";
+import { rateDelta, type DeltaResult } from "../../shared/delta";
 import { formatPercent } from "../../shared/format";
 import type { Overview } from "./api";
 
@@ -33,6 +33,6 @@ export function fallbackHeadline(overview: Overview): FallbackHeadline {
     value: formatPercent(fallbacks, runs),
     series,
     label,
-    delta: delta("rate", { part: fallbacks, whole: runs }, previous && { part: previous.fallbacks, whole: previous.runs }),
+    delta: rateDelta({ part: fallbacks, whole: runs }, previous && { part: previous.fallbacks, whole: previous.runs }),
   };
 }

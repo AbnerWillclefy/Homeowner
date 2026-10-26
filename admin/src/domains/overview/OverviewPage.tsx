@@ -6,8 +6,8 @@ import { Delta } from "../../shared/Delta";
 import { Sparkline } from "../../shared/Sparkline";
 import { rangeDays, useRange } from "../../shared/range";
 import { RangeControl } from "../../shared/RangeControl";
+import { useOverview, type Overview, type OverviewDay } from "./api";
 import { fallbackHeadline } from "./headline";
-import { useOverview,type Overview, type OverviewDay } from "./api";
 
 const COLUMNS: BarColumn<OverviewDay>[] = [
   { key: "runs", label: "Runs", value: (d) => d.runs },

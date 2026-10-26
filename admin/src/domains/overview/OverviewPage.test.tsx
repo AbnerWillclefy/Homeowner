@@ -20,10 +20,12 @@ function day(n: number, over: Partial<OverviewDay> = {}): OverviewDay {
   };
 }
 
-function overview(days: OverviewDay[], rangeOrPrevious: "7d" | "30d" | Overview["previous"] = "7d", previous?: Overview["previous"]): Overview {
-  const range = typeof rangeOrPrevious === "string" ? rangeOrPrevious : "7d";
+function overview(
+  days: OverviewDay[],
+  { range = "7d", previous }: { range?: "7d" | "30d"; previous?: Overview["previous"] } = {},
+): Overview {
   return {
-    previous: typeof rangeOrPrevious === "object" ? rangeOrPrevious : previous,
+    previous,
     range,
     from: days[0].date,
     to: days[days.length - 1].date,
@@ -70,7 +72,7 @@ describe("OverviewPage", () => {
   it("asks for 30 days from the URL and shows the glossary labels", async () => {
     get.mockResolvedValue({
       status: 200,
-      data: overview(Array.from({ length: 30 }, (_, i) => day(i + 1)), "30d"),
+      data: overview(Array.from({ length: 30 }, (_, i) => day(i + 1)), { range: "30d" }),
     });
     await render(page("/?range=30d"));
     expect(get).toHaveBeenCalledWith("/admin/overview", { params: { range: "30d" } });
@@ -140,7 +142,7 @@ describe("OverviewPage", () => {
     });
 
     it("shows the change against the previous range in points when the API sends previous", async () => {
-      get.mockResolvedValue({ status: 200, data: overview(days, previous) });
+      get.mockResolvedValue({ status: 200, data: overview(days, { previous }) });
       await render(page());
       expect(container().querySelector("[data-headline]")!.textContent).toContain("+30 pp");
     });

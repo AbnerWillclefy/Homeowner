@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fallbackStatus, hasSample, MIN_ALLOCATOR_CALLS, MIN_PROPOSED_PER_ARM, monthStatus, refereeStatus } from "./thresholds";
+import { fallbackStatus, MIN_ALLOCATOR_CALLS, MIN_PROPOSED_PER_ARM, monthStatus, refereeStatus } from "./thresholds";
 
 const NOT_ENOUGH = { state: "neutral", label: "Not enough data" };
 
@@ -7,11 +7,6 @@ describe("minimum sample", () => {
   it("names the minimums", () => {
     expect(MIN_PROPOSED_PER_ARM).toBe(20);
     expect(MIN_ALLOCATOR_CALLS).toBe(20);
-  });
-  it("needs at least the minimum, inclusive", () => {
-    expect(hasSample(19, 20)).toBe(false);
-    expect(hasSample(20, 20)).toBe(true);
-    expect(hasSample(21, 20)).toBe(true);
   });
 });
 
