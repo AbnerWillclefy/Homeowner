@@ -1,4 +1,4 @@
-import { useId, useRef } from "react";
+import { useRef } from "react";
 import { useShell } from "../../../app/components/ShellContext";
 import { TodaySection } from "../../dayplan/components/TodaySection";
 import { useDayPlan } from "../../dayplan/hooks/useDayPlan";
@@ -8,6 +8,9 @@ import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLo
 import { ReservedSkeleton } from "../../../shared/ui/ReservedSkeleton";
 import { useTodayLoaded } from "../hooks/useTodayLoaded";
 import { TodaySkeleton } from "./HomeSkeleton";
+
+// A stable id: it names the plan section, and the e2e specs look for focus on it.
+const HEADING_ID = "today-heading";
 
 /**
  * Today: "Your Tasks" with its count, the day's one-line summary, then the Task cards. All of it arrives in one
@@ -23,7 +26,6 @@ export function HomeDay() {
   const { checkIn, note } = useShell();
   const day = useDayPlan();
   const { state } = day;
-  const headingId = useId();
   const heading = useRef<HTMLHeadingElement>(null);
   // Today's single header slot spins once, whichever of its two reads refreshes over what is on screen. The
   // Streak's refresh is the top bar's, not Today's.
@@ -46,13 +48,13 @@ export function HomeDay() {
   return (
     <>
       <PageHeader
-        id={headingId}
+        id={HEADING_ID}
         headingRef={heading}
         tight
         title={t("dayplan.mine.heading")}
         count={state.kind === "ready" && state.plan.planned ? state.plan.mine.length : undefined}
       />
-      <TodaySection day={day} note={note} headingId={headingId} headingRef={heading} />
+      <TodaySection day={day} note={note} headingId={HEADING_ID} headingRef={heading} />
     </>
   );
 }
