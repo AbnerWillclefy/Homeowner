@@ -52,7 +52,9 @@ locks. Never enable `MIGRATE_ON_START` on Lambda: every cold start would race.
 `MIGRATE_DATABASE_URL`, `DB_MAX_CONNS` (5), `CORS_ALLOWED_ORIGINS` (comma-separated browser origins
 allowed to call the API; empty sends no CORS headers), `ENVIRONMENT` (`local`,
 `staging` or `production`; default `local`; any other value stops the API at
-start; `GET /admin/me` reports it).
+start; `GET /admin/me` reports it), `LLM_MONTHLY_SPEND_LIMIT_USD` (optional,
+positive decimal dollars; the Anthropic Console's monthly limit, shown by
+`GET /admin/ai` and never enforced; unset shows no limit).
 
 ### The super admin role
 
