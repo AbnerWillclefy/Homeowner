@@ -99,18 +99,19 @@ func maxTokens(n int) int { return min(thinkingAllowance+answerTokensPerTask*n, 
 // ErrInvalidResponse. A well-formed plan may still break every rule: only
 // allocation.Check decides.
 //
-// The *Usage is what the call consumed, also when the answer is invalid. called
-// says whether the model was asked at all: false (with a nil Usage) when
-// nothing was left to ask, true with a nil Usage when the call returned none.
-func (a *Allocator) Propose(ctx context.Context, st allocation.State) (res allocation.Result, usage *Usage, called bool, err error) {
+// The Proposal's Usage is what the call consumed, also when the answer is
+// invalid (the Proposal is returned with the error then). Called says whether
+// the model was asked at all: false (with a nil Usage) when nothing was left
+// to ask, true with a nil Usage when the call returned none.
+func (a *Allocator) Propose(ctx context.Context, st allocation.State) (Proposal, error) {
 	open, pooled := screen(st)
 	if len(open) == 0 {
-		return build(nil, nil, st, pooled), nil, false, nil
+		return Proposal{Result: build(nil, nil, st, pooled)}, nil
 	}
 	in := inputOf(st, open)
 	user, err := json.Marshal(in)
 	if err != nil {
-		return allocation.Result{}, nil, false, fmt.Errorf("llm: build prompt: %w", err)
+		return Proposal{}, fmt.Errorf("llm: build prompt: %w", err)
 	}
 	raw, usage, err := a.client.Complete(ctx, Request{
 		System:    systemPrompt,
@@ -120,10 +121,19 @@ func (a *Allocator) Propose(ctx context.Context, st allocation.State) (res alloc
 		Thinking:  true,
 	})
 	if err != nil {
-		return allocation.Result{}, usage, true, err
+		return Proposal{Usage: usage, Called: true}, err
 	}
-	res, err = decode(raw, st, pooled)
-	return res, usage, true, err
+	res, err := decode(raw, st, pooled)
+	return Proposal{Result: res, Usage: usage, Called: true}, err
+}
+
+// Proposal is what Propose returns: the plan and what asking for it cost.
+type Proposal struct {
+	Result allocation.Result
+	// Usage is what the call consumed; nil when the API sent none.
+	Usage *Usage
+	// Called is false when nothing was left to ask the model.
+	Called bool
 }
 
 // AssignmentReasons and PoolReasons are the only reasons the model may give.

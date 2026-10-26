@@ -14,7 +14,7 @@ import (
 type Proposer interface {
 	// Propose also returns the call's usage and whether the model was asked;
 	// the evals do not read them yet.
-	Propose(ctx context.Context, st allocation.State) (allocation.Result, *llmalloc.Usage, bool, error)
+	Propose(ctx context.Context, st allocation.State) (llmalloc.Proposal, error)
 }
 
 // Config says how to run the evals.
@@ -108,7 +108,8 @@ func proposeOnce(ctx context.Context, cfg Config, st allocation.State) Outcome {
 		ctx, cancel = context.WithTimeout(ctx, cfg.Timeout)
 		defer cancel()
 	}
-	res, _, _, err := cfg.Proposer.Propose(ctx, st)
+	prop, err := cfg.Proposer.Propose(ctx, st)
+	res := prop.Result
 	return outcome(st, res, err)
 }
 
