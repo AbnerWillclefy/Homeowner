@@ -2,6 +2,7 @@ package admin_test
 
 import (
 	"context"
+	"reflect"
 	"testing"
 	"time"
 
@@ -104,18 +105,7 @@ func TestOverviewPreviousEqualsTheCurrentSumsOfNDaysEarlier(t *testing.T) {
 
 	var sum admin.DayCounts
 	for _, d := range thisWeek.Days {
-		sum.Runs += d.Runs
-		sum.Rejected += d.Rejected
-		sum.Fallbacks += d.Fallbacks
-		sum.Checkins += d.Checkins
-		sum.Completions += d.Completions
-		sum.Refuses += d.Refuses
-		sum.Takes += d.Takes
-		sum.SwapsAccepted += d.SwapsAccepted
-		sum.Pushes.Delivered += d.Pushes.Delivered
-		sum.Pushes.Failed += d.Pushes.Failed
-		sum.Pushes.Gone += d.Pushes.Gone
-		sum.Pushes.Unknown += d.Pushes.Unknown
+		addInts(reflect.ValueOf(&sum).Elem(), reflect.ValueOf(d.DayCounts))
 	}
 	if sum.Runs == 0 {
 		t.Fatal("setup: the fixture week has no runs")
@@ -126,5 +116,18 @@ func TestOverviewPreviousEqualsTheCurrentSumsOfNDaysEarlier(t *testing.T) {
 	}
 	if next.Previous.From != thisWeek.From || next.Previous.To != thisWeek.To {
 		t.Errorf("previous = %s..%s, want %s..%s", next.Previous.From, next.Previous.To, thisWeek.From, thisWeek.To)
+	}
+}
+
+// addInts adds every int field of src into dst, recursing into structs, so a
+// counter added to DayCounts is summed without touching the test.
+func addInts(dst, src reflect.Value) {
+	for i := 0; i < dst.NumField(); i++ {
+		switch f := dst.Field(i); f.Kind() {
+		case reflect.Int:
+			f.SetInt(f.Int() + src.Field(i).Int())
+		case reflect.Struct:
+			addInts(f, src.Field(i))
+		}
 	}
 }

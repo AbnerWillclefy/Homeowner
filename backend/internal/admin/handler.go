@@ -65,8 +65,8 @@ func (h *Handler) AI(w http.ResponseWriter, r *http.Request) {
 		TopViolationKinds:  ai.Kinds,
 		TopFallbackReasons: ai.Reasons,
 		Previous: AIPrevious{
-			From: prev.From, To: prev.To, Services: ai.PreviousServices,
-			AllocatorShare: ai.PreviousAllocator, ExplanationShare: ai.PreviousExplanation,
+			From: prev.From, To: prev.To, Services: ai.Previous.Services,
+			AllocatorShare: ai.Previous.Allocator, ExplanationShare: ai.Previous.Explanation,
 		},
 	}
 	if h.display.MonthlySpendLimitMicros > 0 {

@@ -37,10 +37,14 @@ type AI struct {
 	Explanation        ExplanationShare
 	Kinds              []KindCount
 	Reasons            []ReasonCount
-	// The previous window's range totals.
-	PreviousServices    AIServices
-	PreviousAllocator   AllocatorShare
-	PreviousExplanation ExplanationShare
+	Previous           AITotals
+}
+
+// AITotals is the range totals of one window.
+type AITotals struct {
+	Services    AIServices
+	Allocator   AllocatorShare
+	Explanation ExplanationShare
 }
 
 // AI reads the LLM report for the current window and the UTC calendar month of
@@ -59,23 +63,15 @@ func (s *Store) AI(ctx context.Context, cur, prev window, now time.Time, log *sl
 			&out.MonthEstCostMicros, &out.MonthUncostedCalls); err != nil {
 			return fmt.Errorf("month to date: %w", err)
 		}
-		if err := tx.QueryRow(ctx, allocatorShareSQL, from, to, outcomePlanned, allocatorLLM).Scan(
-			&out.Allocator.LLM, &out.Allocator.Baseline); err != nil {
-			return fmt.Errorf("allocator share: %w", err)
-		}
 		var err error
-		if out.Explanation, err = readExplanationShare(ctx, tx, from, to, log.With("window", "current")); err != nil {
-			return err
+		if out.Allocator, out.Explanation, err = readShares(ctx, tx, cur, log.With("window", "current")); err != nil {
+			return fmt.Errorf("current: %w", err)
 		}
-		if out.PreviousServices, err = readServiceRange(ctx, tx, prev); err != nil {
-			return fmt.Errorf("previous %w", err)
+		if out.Previous.Services, err = readServiceRange(ctx, tx, prev); err != nil {
+			return fmt.Errorf("previous: %w", err)
 		}
-		if err := tx.QueryRow(ctx, allocatorShareSQL, prev.From, prev.To, outcomePlanned, allocatorLLM).Scan(
-			&out.PreviousAllocator.LLM, &out.PreviousAllocator.Baseline); err != nil {
-			return fmt.Errorf("previous allocator share: %w", err)
-		}
-		if out.PreviousExplanation, err = readExplanationShare(ctx, tx, prev.From, prev.To, log.With("window", "previous")); err != nil {
-			return err
+		if out.Previous.Allocator, out.Previous.Explanation, err = readShares(ctx, tx, prev, log.With("window", "previous")); err != nil {
+			return fmt.Errorf("previous: %w", err)
 		}
 		kinds, err := readCounts(ctx, tx, "violation kinds", violationKindsSQL, from, to, topN)
 		if err != nil {
@@ -96,6 +92,25 @@ func (s *Store) AI(ctx context.Context, cur, prev window, now time.Time, log *sl
 		return nil
 	})
 	return out, err
+}
+
+// readShares reads the allocator and explanation shares of one window.
+func readShares(ctx context.Context, tx pgx.Tx, w window, log *slog.Logger) (AllocatorShare, ExplanationShare, error) {
+	allocator, err := readAllocatorShare(ctx, tx, w)
+	if err != nil {
+		return allocator, ExplanationShare{}, err
+	}
+	explanation, err := readExplanationShare(ctx, tx, w.From, w.To, log)
+	return allocator, explanation, err
+}
+
+func readAllocatorShare(ctx context.Context, tx pgx.Tx, w window) (AllocatorShare, error) {
+	var s AllocatorShare
+	if err := tx.QueryRow(ctx, allocatorShareSQL, w.From, w.To, outcomePlanned, allocatorLLM).Scan(
+		&s.LLM, &s.Baseline); err != nil {
+		return s, fmt.Errorf("allocator share: %w", err)
+	}
+	return s, nil
 }
 
 func readServiceDays(ctx context.Context, tx pgx.Tx, from, to string, into map[string]AIServices) error {
