@@ -56,11 +56,11 @@ interface CountRowProps {
 function CountRow({ id, label, range, count, max, disabled, error, autoFocus, onSet, onFocus, onBlur }: CountRowProps) {
   return (
     <div className="py-2">
-      <div className="flex items-center justify-between gap-3">
-        <label htmlFor={id} className="mt-0 min-w-0 [overflow-wrap:anywhere]">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <label htmlFor={id} className="mt-0 min-w-0 flex-1 basis-32 [overflow-wrap:anywhere]">
           {label}
         </label>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="ms-auto flex shrink-0 items-center gap-1">
           <button type="button" aria-hidden="true" tabIndex={-1} className={STEP} disabled={disabled || count <= 0} onClick={() => onSet(count - 1, false)}>
             <Minus className="size-4" />
           </button>
