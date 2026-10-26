@@ -12,8 +12,7 @@ import { launchApp } from "../pages/launch";
 // answered, then everything in one swap, and stays still (Cumulative Layout Shift under 0.1). In pt-BR first, then
 // en-US, at a phone size and at 320px with 200% text, with the reads held long enough for the skeleton to show and
 // answered at once (the skeleton never flashes). A failed read shows its own alert in place; a refresh of what is on
-// screen keeps it. It runs in two projects: `chromium` (Replan off, like production) and `chromium-replan` (the
-// staging build with the "Replan now" control), and the skeleton's Replan block follows the build.
+// screen keeps it.
 
 const LOCALES = [
   {
@@ -22,7 +21,6 @@ const LOCALES = [
     prompt: "Como você está hoje?",
     headline: "Um dia leve para você",
     streak: /^Sequência: /,
-    replan: "Replanejar agora",
     retry: "Tentar de novo",
     today: "Hoje",
     chores: "Afazeres",
@@ -33,7 +31,6 @@ const LOCALES = [
     prompt: "How are you today?",
     headline: "A light day for you",
     streak: /^Streak: /,
-    replan: "Replan now",
     retry: "Try again",
     today: "Today",
     chores: "Chores",
@@ -99,9 +96,7 @@ for (const l of LOCALES) {
     const explanation = (page: Page) => page.getByRole("button", { name: l.headline });
     const streak = (page: Page) => page.getByRole("button", { name: l.streak });
     const task = (page: Page) => page.getByText("Wash the dishes", { exact: true });
-    const replanButton = (page: Page) => page.getByRole("button", { name: l.replan });
     const skeleton = (page: Page) => page.locator(SKELETON);
-    const replanBlock = (page: Page) => page.locator('[data-skeleton="replan"]');
 
     for (const size of SIZES) {
       test.describe(size.name, () => {
@@ -112,13 +107,11 @@ for (const l of LOCALES) {
           if (size.scale) await scaleText(page);
         });
 
-        test("held reads: the skeleton shows, then Today swaps in once and nothing moves", async ({ page, baseURL }, testInfo) => {
-          const replan = testInfo.project.name === "chromium-replan";
+        test("held reads: the skeleton shows, then Today swaps in once and nothing moves", async ({ page, baseURL }) => {
           const held = { checkIn: hold(page, /\/home\/check-in$/), plan: hold(page, /\/home\/day-plan$/), streak: hold(page, /\/home\/streak$/) };
           await launchApp(page, baseURL!);
 
           await expect(skeleton(page)).toBeVisible();
-          await expect(replanBlock(page)).toHaveCount(replan ? 1 : 0);
           await expect(page.locator("header h2")).toHaveCount(0);
           await page.waitForTimeout(300);
 
@@ -140,7 +133,6 @@ for (const l of LOCALES) {
           await expect(task(page)).toBeVisible({ timeout: 0 });
           await expect(streak(page)).toBeVisible({ timeout: 0 });
           await expect(skeleton(page)).toHaveCount(0);
-          await expect(replanButton(page)).toHaveCount(replan ? 1 : 0);
 
           await page.waitForTimeout(500);
           expect(await cls(page)).toBeLessThan(0.1);

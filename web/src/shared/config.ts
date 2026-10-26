@@ -51,9 +51,4 @@ export const config = {
   ),
   /** The user pool's password rules, so the sign-up text follows Terraform. Public. */
   passwordPolicy: parsePolicy(readSet("VITE_PASSWORD_POLICY", import.meta.env.VITE_PASSWORD_POLICY)),
-  /**
-   * Shows the "Replan now" test button. Optional: true only for the literal string `true`, so a production
-   * build (variable unset) never shows it. Only staging sets it. Public.
-   */
-  replanEnabled: import.meta.env.VITE_REPLAN_ENABLED?.trim() === "true",
 } as const;

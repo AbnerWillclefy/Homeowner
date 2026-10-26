@@ -231,8 +231,6 @@ jobs:
           VITE_COGNITO_CLIENT_ID: ${{ needs.api.outputs.cognito_client_id }}
           VITE_COGNITO_REGION: ${{ needs.api.outputs.cognito_region }}
           VITE_PASSWORD_POLICY: ${{ needs.api.outputs.cognito_password_policy }}
-          # Staging only: shows the "Replan now" test button on the Day Plan.
-          VITE_REPLAN_ENABLED: "true"
 
       # Cache headers differ per file kind, so upload in passes:
       # fingerprinted assets are immutable, the app shell and service worker
