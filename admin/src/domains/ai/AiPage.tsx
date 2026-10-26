@@ -3,7 +3,9 @@ import { BarTable, BarTableSkeleton, type BarColumn } from "../../shared/BarTabl
 import { Button } from "../../shared/Button";
 import { rangeDays, useRange } from "../../shared/range";
 import { RangeControl } from "../../shared/RangeControl";
+import { Collapsible } from "../../shared/Collapsible";
 import { useAiUsage, type AiDay, type AiUsage, type MonthToDate, type ServiceDay, type TemplateReasons } from "./api";
+import { Headline } from "./Headline";
 import { formatLatency, formatMicros, formatPercent, formatTokens } from "../../shared/format";
 import { FALLBACK_GLOSSES, TEMPLATE_REASON_LABELS, VIOLATION_GLOSSES } from "./glosses";
 
@@ -79,6 +81,11 @@ export function AiPage() {
       ) : query.data === undefined ? (
         <div role="status" className="mt-4">
           <p className="text-muted">Loading the AI usage…</p>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 5 }, (_, i) => (
+              <div key={i} data-headline-skeleton="" className="h-32 rounded-control border border-border bg-surface-raised" />
+            ))}
+          </div>
           {SERVICES.map(({ service, title }) => (
             <div key={service} className="mt-4">
               <BarTableSkeleton caption={`${title}, last ${rangeDays(range)} days`} rowHeader="Date" columns={columnsFor(service)} rowCount={rangeDays(range)} />
@@ -97,35 +104,39 @@ function Loaded({ usage, days }: { usage: AiUsage; days: number }) {
   const anyUncosted = usage.days.some((d) => SERVICES.some(({ service }) => d.services[service].uncostedCalls > 0));
   return (
     <>
+      <Headline usage={usage} days={days} />
+
       <MonthSection month={usage.monthToDate} cap={usage.dailyCapPerHome} />
 
       <section aria-labelledby="calls" className="mt-6">
         <h2 id="calls" className="mb-2 text-xl font-semibold">
           Calls per day
         </h2>
-        {hasCalls(usage.days) ? (
-          <>
-            {SERVICES.map(({ service, title }) => (
-              <div key={service} className="mt-4">
-                <BarTable
-                  caption={`${title}, last ${days} days`}
-                  rowHeader="Date"
-                  columns={columnsFor(service)}
-                  rows={usage.days.map((d) => ({ id: d.date, label: d.date, data: d }))}
-                />
-              </div>
-            ))}
-            <ul className="mt-3 list-disc pl-6 text-sm text-muted">
-              {anyUncosted && (
-                <li>* Calls without a price (an unknown model, or no usage reported) add nothing to the estimate, so the cost is a lower bound.</li>
-              )}
-              <li>Latency counts only calls the model was asked; it is n/a on a day with none.</li>
-              <li>Each bar is scaled to the largest value in its own column.</li>
-            </ul>
-          </>
-        ) : (
-          <p className="font-semibold">No model calls in this range</p>
-        )}
+        <Collapsible title="Show daily tables">
+          {hasCalls(usage.days) ? (
+            <>
+              {SERVICES.map(({ service, title }) => (
+                <div key={service} className="mt-4">
+                  <BarTable
+                    caption={`${title}, last ${days} days`}
+                    rowHeader="Date"
+                    columns={columnsFor(service)}
+                    rows={usage.days.map((d) => ({ id: d.date, label: d.date, data: d }))}
+                  />
+                </div>
+              ))}
+              <ul className="mt-3 list-disc pl-6 text-sm text-muted">
+                {anyUncosted && (
+                  <li>* Calls without a price (an unknown model, or no usage reported) add nothing to the estimate, so the cost is a lower bound.</li>
+                )}
+                <li>Latency counts only calls the model was asked; it is n/a on a day with none.</li>
+                <li>Each bar is scaled to the largest value in its own column.</li>
+              </ul>
+            </>
+          ) : (
+            <p className="font-semibold">No model calls in this range</p>
+          )}
+        </Collapsible>
       </section>
 
       <section aria-labelledby="planned" className="mt-6">
