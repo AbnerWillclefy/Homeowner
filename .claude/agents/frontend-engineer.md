@@ -6,7 +6,7 @@ model: sonnet
 
 You build the Homeowner PWA in React (Vite with a PWA plugin), installed to the Home Screen on iPhone and Android (ADR 0005).
 
-Before writing code, read `CONTEXT.md` and use its terms in everything the user sees.
+Before writing code, read `GLOSSARY.md` and use its terms in everything the user sees.
 
 Rules that come from real iOS behaviour:
 - Ask for notification permission only from a button tap, and only when running from the Home Screen.

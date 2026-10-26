@@ -1,4 +1,4 @@
-// Package homes stores Homes and their Residents (see CONTEXT.md).
+// Package homes stores Homes and their Residents (see GLOSSARY.md).
 package homes
 
 import (

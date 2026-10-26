@@ -1,4 +1,4 @@
-// Package users stores Users, the people with an account (see CONTEXT.md).
+// Package users stores Users, the people with an account (see GLOSSARY.md).
 package users
 
 import (

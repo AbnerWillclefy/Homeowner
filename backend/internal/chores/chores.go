@@ -1,4 +1,4 @@
-// Package chores validates and stores a Home's Chores (see CONTEXT.md).
+// Package chores validates and stores a Home's Chores (see GLOSSARY.md).
 package chores
 
 import "errors"

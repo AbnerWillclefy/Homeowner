@@ -1,5 +1,5 @@
 // Package profile stores a User's profile: Baseline Energy per weekday,
-// Preference per Category and Restrictions on Demands (see CONTEXT.md). It is
+// Preference per Category and Restrictions on Demands (see GLOSSARY.md). It is
 // keyed to the User, not the Resident, so it survives leaving a Home.
 package profile
 

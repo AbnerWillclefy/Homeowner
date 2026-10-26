@@ -1,5 +1,5 @@
 // Package residents serves the Residents of a Home: who lives there, with the
-// Streak and what each did today (see CONTEXT.md).
+// Streak and what each did today (see GLOSSARY.md).
 package residents
 
 import (

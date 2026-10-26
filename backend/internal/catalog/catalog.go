@@ -1,5 +1,5 @@
 // Package catalog is the fixed Catalog of common Chores and the rules that
-// turn answers about a Home into proposed Chores (see CONTEXT.md). The rules
+// turn answers about a Home into proposed Chores (see GLOSSARY.md). The rules
 // are pure: no database, HTTP or clock; handler.go is the HTTP edge. Nothing
 // here is stored; a Chore made from an Entry is an ordinary Chore.
 package catalog

@@ -1,6 +1,6 @@
 # Architecture
 
-Homeowner helps the people who look after their own home share the housework fairly. Each day it proposes which open **Tasks** each **Resident** does without exceeding anyone's **Energy** (see [CONTEXT.md](../../CONTEXT.md) for the domain terms, in bold here). The full v1 spec is issue #1.
+Homeowner helps the people who look after their own home share the housework fairly. Each day it proposes which open **Tasks** each **Resident** does without exceeding anyone's **Energy** (see [GLOSSARY.md](../../GLOSSARY.md) for the domain terms, in bold here). The full v1 spec is issue #1.
 
 These pages describe the system **as built**. Anything the spec calls for that does not exist yet is marked planned.
 

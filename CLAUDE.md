@@ -1,6 +1,6 @@
 # Homeowner
 
-The v1 spec is issue #1; each ticket is a child issue linking back to it. Domain terms live in `CONTEXT.md`, decisions in `docs/adr/`. Local setup is under "Run everything locally" in `README.md`; test, migration, build and configuration commands are in `docs/development.md`.
+The v1 spec is issue #1; each ticket is a child issue linking back to it. Domain terms live in `GLOSSARY.md`, decisions in `docs/adr/`. Local setup is under "Run everything locally" in `README.md`; test, migration, build and configuration commands are in `docs/development.md`.
 
 ## The team
 
@@ -59,4 +59,4 @@ Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-
 
 ### Domain docs
 
-Single-context: one root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.
+Single-context: one root `GLOSSARY.md` plus `docs/adr/`. See `docs/agents/domain.md`.

@@ -1,5 +1,5 @@
 // Package dayplan runs Allocation for Homes and keeps the Day Plan it makes
-// (see CONTEXT.md and docs/adr/0004). The Planner is the one orchestrator the
+// (see GLOSSARY.md and docs/adr/0004). The Planner is the one orchestrator the
 // scheduled job calls, and that later features (a Check-in, a new Home that
 // wants its first Day Plan) can call too: it builds the allocation.State from
 // the database, asks an Allocator for a proposal, has allocation.Check referee
