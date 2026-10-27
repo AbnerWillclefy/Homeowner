@@ -8,8 +8,7 @@ import { seedSession } from "../mocks/session";
 import { launchApp, visit } from "../pages/launch";
 import { shell } from "../pages/shell";
 
-// What this covers: the Energy pill in the top bar, on all four tabs. Before a Check-in it reads "Check-in" with a
-// dashed edge; a tap opens the one Check-in dialog (focus on its title, Escape closes it, focus is back on the
+// What this covers: the Energy indicator in the top bar, on all four tabs. Before a Check-in it is a muted Zap and "?"; a tap opens the one Check-in dialog (focus on its title, Escape closes it, focus is back on the
 // pill); saving updates the pill to the Energy number without a reload; a failed Check-in read gives an
 // unavailable pill while the Streak still shows; on Today the pill alone opens the one dialog, which shows the planned
 // Effort and the day's Restrictions; the targets are at
@@ -64,7 +63,7 @@ for (const l of LOCALES) {
     const dialog = (page: Page) => page.getByRole("dialog", { name: l.wordmark });
 
     for (const path of PATHS) {
-      test(`before a Check-in the pill is dashed and says Check-in on ${path}`, async ({ page, baseURL }) => {
+      test(`before a Check-in the pill is a muted "?" on ${path}`, async ({ page, baseURL }) => {
         await visit(page, new URL(path, baseURL!).toString());
         if (path === "/") {
           // Today offers the Check-in by itself; "not now" leaves the dashed pill.
@@ -74,8 +73,8 @@ for (const l of LOCALES) {
         }
         const button = pill(page, l.unset);
         await expect(button).toBeVisible();
-        await expect(button).toContainText("Check-in");
-        expect(await button.evaluate((el) => getComputedStyle(el).borderStyle)).toBe("dashed");
+        await expect(button).toHaveText("?", { useInnerText: true });
+        expect(await button.evaluate((el) => getComputedStyle(el).borderStyle)).not.toBe("dashed");
         const box = await button.boundingBox();
         expect(box!.width).toBeGreaterThanOrEqual(44);
         expect(box!.height).toBeGreaterThanOrEqual(44);
@@ -118,7 +117,6 @@ for (const l of LOCALES) {
       const done = pill(page, l.energy(9));
       await expect(done).toBeVisible();
       await expect(done).toHaveText("9", { useInnerText: true });
-      expect(await done.evaluate((el) => getComputedStyle(el).borderStyle)).toBe("solid");
       await expect(done).toBeFocused();
       // The same page: nothing navigated.
       await expect(page).toHaveURL(/\/me$/);
@@ -165,14 +163,13 @@ for (const l of LOCALES) {
       await expect(pill(page, l.unset)).toBeVisible();
     });
 
-    test("checked in before the Allocation, the pill shows a check mark and Check-in, and names the level", async ({ page, baseURL, fakeApi }) => {
+    test("checked in before the Allocation, the pill shows a check mark and a dash, and names the level", async ({ page, baseURL, fakeApi }) => {
       fakeApi.state.checkIn = { date: "2030-01-15", checkedIn: true, level: "low", restrictions: [] };
       fakeApi.state.dayPlan = { ...fakeApi.state.dayPlan!, planned: false, energy: null, mine: [], others: [], pool: [] };
       await visit(page, new URL("/home", baseURL!).toString());
       const level = l.locale === "pt-BR" ? "Baixa" : "Low";
       await expect(pill(page, l.pending(level))).toBeVisible();
-      await expect(pill(page, l.pending(level))).toHaveText("Check-in", { useInnerText: true });
-      expect(await pill(page, l.pending(level)).evaluate((el) => getComputedStyle(el).borderStyle)).toBe("solid");
+      await expect(pill(page, l.pending(level))).toHaveText("–", { useInnerText: true });
     });
   });
 }

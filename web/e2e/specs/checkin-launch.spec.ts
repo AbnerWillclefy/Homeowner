@@ -9,7 +9,7 @@ import { launchApp, visit } from "../pages/launch";
 import { shell } from "../pages/shell";
 
 // What this covers: the Check-in dialog opening by itself on Today when the day has no Check-in. It opens on a cold
-// start; "Agora não" / "Not now" and Escape close it, the pill keeps the dashed "Check-in", and it stays closed on
+// start; "Agora não" / "Not now" and Escape close it, the pill keeps the muted "?", and it stays closed on
 // the same day (switching tabs, resuming) until the next launch; a new Home day opens it again; a saved Check-in
 // or any tab but Today never opens it; it waits behind the Invite, the rating step and the start choice. Each
 // test runs in pt-BR first, then en-US.
@@ -77,12 +77,12 @@ for (const l of LOCALES) {
       await expect(page.getByRole("dialog")).toHaveCount(1);
     });
 
-    test("Not now closes it, the pill stays dashed, and switching tabs does not bring it back", async ({ page, baseURL }) => {
+    test("Not now closes it, the pill stays muted, and switching tabs does not bring it back", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
       await dialog(page).getByRole("button", { name: l.notNow, exact: true }).click();
       await expect(dialog(page)).toBeHidden();
       await expect(pill(page)).toBeFocused();
-      expect(await pill(page).evaluate((el) => getComputedStyle(el).borderStyle)).toBe("dashed");
+      await expect(pill(page)).toHaveText("?", { useInnerText: true });
 
       await tab(page, l.chores).click();
       await expect(tab(page, l.chores)).toHaveAttribute("aria-current", "page");
@@ -98,7 +98,7 @@ for (const l of LOCALES) {
       await page.keyboard.press("Escape");
       await expect(dialog(page)).toBeHidden();
       await expect(pill(page)).toBeFocused();
-      expect(await pill(page).evaluate((el) => getComputedStyle(el).borderStyle)).toBe("dashed");
+      await expect(pill(page)).toHaveText("?", { useInnerText: true });
     });
 
     test("a resume on the same day does not reopen it, and a reload does", async ({ page, baseURL }) => {
