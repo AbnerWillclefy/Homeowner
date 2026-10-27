@@ -114,6 +114,20 @@ npm run preview             # serve the build to test the manifest and install
 
 CI runs `npm ci`, `npm run typecheck` and `npm run build` on every pull request.
 
+### README screenshots
+
+The screenshots in `docs/screenshots/` come from the built app running against the
+end-to-end fakes (sample data, a 390x844 phone, both locales). After a UI change,
+capture them again:
+
+```sh
+cd web
+npm run build:e2e
+npx playwright test -c playwright.readme.config.ts   # rewrites docs/screenshots/*.png
+```
+
+The capture lives in `web/e2e/readme/`, outside the e2e suite, so CI never rewrites the images.
+
 ### Look and feel
 
 Styling is Tailwind CSS v4 over semantic colour tokens (`bg-surface`, `text-muted`; raw
