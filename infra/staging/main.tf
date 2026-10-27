@@ -1,6 +1,15 @@
 locals {
   name_prefix = "homeowner-staging"
   ssm_prefix  = "/homeowner/staging"
+
+  # LLM limits, set on both the API and the Allocation job so GET /admin/ai
+  # shows what the job enforces. The cap is enforced by the job. The monthly
+  # spend limit is display-only: no code enforces it. It must match the spend
+  # limit set in the Anthropic Console, which only the maintainer can see. 10 is
+  # a placeholder (ADR 0002's $20 ceiling less $10 for the AWS budget), to be
+  # confirmed by the maintainer.
+  llm_daily_cap_per_home      = 3
+  llm_monthly_spend_limit_usd = 10
 }
 
 provider "aws" {
@@ -59,6 +68,16 @@ module "web" {
   photos_origin_domain = module.photos.bucket_regional_domain_name
 }
 
+# The admin app (#325): its own private bucket and distribution, no photos. The
+# bucket name falls under the deploy role's homeowner-<env>-web-* grant. The
+# bundle is public static code; access control is the API's 403 (ADR 0017).
+module "admin_web" {
+  source = "../modules/web"
+
+  name        = "${local.name_prefix}-web-admin"
+  bucket_name = "${local.name_prefix}-web-admin-${data.aws_caller_identity.current.account_id}"
+}
+
 # Resident photos (docs/adr/0012). Not a cycle: the bucket needs only the
 # distribution's ARN (policy, CORS origin) and the distribution only the
 # bucket's domain; Terraform orders individual values, not whole modules.
@@ -88,19 +107,15 @@ module "api" {
   timeout         = 25
   ssm_path_prefix = local.ssm_prefix
 
-  # Staging only (#199): the dev replan route invokes the allocation function.
-  # Exactly its ARN, nothing broader; production passes nothing.
-  invoke_function_arns = [module.allocation_job.function_arn]
-
   # Resident photos (#230): sign uploads, promote and delete. The job gets none.
   photos_bucket_arn = module.photos.bucket_arn
 
   environment = merge(
     {
       PORT                           = "8080"
-      REPLAN_ALLOCATE_FUNCTION_NAME  = module.allocation_job.function_name
+      ENVIRONMENT                    = "staging"
       DB_MAX_CONNS                   = "2"
-      CORS_ALLOWED_ORIGINS           = join(",", compact(["https://${module.web.domain_name}", var.cors_allowed_origins]))
+      CORS_ALLOWED_ORIGINS           = join(",", compact(["https://${module.web.domain_name}", "https://${module.admin_web.domain_name}", var.cors_allowed_origins]))
       DATABASE_URL_SSM_PARAM         = module.database.database_url_param
       MIGRATE_DATABASE_URL_SSM_PARAM = module.database.migrate_database_url_param
 
@@ -111,6 +126,10 @@ module "api" {
       # Resident photos (#230); the API reads both or neither.
       PHOTOS_BUCKET   = module.photos.bucket_name
       PHOTOS_BASE_URL = "https://${module.web.domain_name}/avatars"
+
+      # Shown by GET /admin/ai, never enforced here (see locals).
+      LLM_DAILY_CAP_PER_HOME      = tostring(local.llm_daily_cap_per_home)
+      LLM_MONTHLY_SPEND_LIMIT_USD = tostring(local.llm_monthly_spend_limit_usd)
     },
     # Web Push (#7). The private key is a SecureString a human puts in SSM
     # (Terraform never sees it); without the public key push stays off and the
@@ -149,12 +168,18 @@ module "allocation_job" {
       DB_MAX_CONNS           = "2"
       DATABASE_URL_SSM_PARAM = module.database.database_url_param
 
+      # The cap the job enforces. The limit is only read for display by the
+      # API; the job sets it so both come from the same locals.
+      LLM_DAILY_CAP_PER_HOME      = tostring(local.llm_daily_cap_per_home)
+      LLM_MONTHLY_SPEND_LIMIT_USD = tostring(local.llm_monthly_spend_limit_usd)
+
       # Lambda Web Adapter forwards the scheduled event to POST /events (its
       # default pass-through path); it is told explicitly where to check
       # readiness, since "/" is not served by the job.
       AWS_LWA_READINESS_CHECK_PATH = "/healthz"
 
-      # Lets the job accept a replan event from the API (#197). Hard-coded:
+      # Lets the job accept a replan event, sent by the manual "Replan
+      # staging" workflow (#351). Hard-coded:
       # staging is the only environment where it is ever on, so there is no
       # variable and no repository variable to set.
       REPLAN_ENABLED = "true"
@@ -177,8 +202,9 @@ module "allocation_job" {
   )
 }
 
-# A replan is an asynchronous invoke from the API (#198). Lambda would retry a
-# failed one twice by default, replanning a Home again, so turn retries off.
+# An asynchronous invoke that fails is retried twice by default, which would
+# replan a Home again, so turn retries off. The "Replan staging" workflow
+# invokes synchronously; this still guards any async invoke.
 # Here rather than in the shared module so production is untouched.
 resource "aws_lambda_function_event_invoke_config" "allocate_replan" {
   function_name          = module.allocation_job.function_name

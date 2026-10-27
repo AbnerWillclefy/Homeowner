@@ -6,11 +6,12 @@ import { hold } from "../mocks/hold";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
+import { shell } from "../pages/shell";
 
-// What this covers: the Streak as a flame button at the end of Today's header. It opens a centred dialog and
+// What this covers: the Streak as a flame button in the top bar's Streak slot. It opens a centred dialog and
 // focus comes back to it on close (Close button and Escape), a Streak of 0 looks like any other number, a held
-// Streak holds the whole of Today as its skeleton until the flame arrives with the header, a Streak that could not be read leaves no button, a failed
-// refresh keeps the number, and the header holds at 320px with a long greeting and three digits. No Streak card
+// Streak does not hold Today (the flame arrives in its reserved slot), a Streak that could not be read leaves no button, a failed
+// refresh keeps the number, and the bar holds at 320px with three digits. No Streak card
 // is left in the body. Each test runs in pt-BR first, then en-US.
 
 const LOCALES = [
@@ -28,7 +29,6 @@ const LOCALES = [
       "Assumir tarefas e não concluir nenhuma quebra a sequência.",
       "Recusar ou ignorar uma tarefa proposta nunca quebra a sequência.",
     ],
-    greeting: "Boa tarde, Maria Eduarda",
   },
   {
     locale: "en-US",
@@ -44,11 +44,11 @@ const LOCALES = [
       "Taking on Tasks and finishing none breaks it.",
       "Refusing or ignoring a proposed Task never breaks it.",
     ],
-    greeting: "Good afternoon, Maria Eduarda",
   },
 ] as const;
 
-const heading = (page: Page) => page.locator("header h2");
+// Today's title ("Your Tasks"): the tab's first h2.
+const heading = (page: Page) => page.getByRole("heading", { level: 2 }).first();
 const regainFocus = (page: Page) => page.evaluate(() => document.dispatchEvent(new Event("visibilitychange", { bubbles: true })));
 
 for (const l of LOCALES) {
@@ -72,14 +72,15 @@ for (const l of LOCALES) {
 
     const flame = (page: Page, count: number) => page.getByRole("button", { name: l.name(count), exact: true });
 
-    test("the flame sits after the greeting, opens the dialog, and focus returns on Close and on Escape", async ({ page, baseURL }) => {
+    test("the flame sits in the top bar after the logo, opens the dialog, and focus returns on Close and on Escape", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
       const button = flame(page, 3);
       await expect(button).toBeVisible();
       await expect(button).toContainText("3");
-      const title = await heading(page).boundingBox();
+      await expect(shell.topBar(page).getByRole("button", { name: l.streakName })).toBeVisible();
+      const logo = await shell.logo(page).boundingBox();
       const box = await button.boundingBox();
-      expect(box!.x).toBeGreaterThan(title!.x + title!.width - 1);
+      expect(box!.x).toBeGreaterThan(logo!.x + logo!.width - 1);
       expect(box!.width).toBeGreaterThanOrEqual(44);
       expect(box!.height).toBeGreaterThanOrEqual(44);
       await expect(button.locator("svg")).toHaveAttribute("aria-hidden", "true");
@@ -143,18 +144,17 @@ for (const l of LOCALES) {
       });
     });
 
-    test("while the Streak is held the whole of Today waits as its skeleton, then the header and the flame arrive together", async ({ page, baseURL }) => {
+    test("while the Streak is held Today shows without it, and the flame arrives in the bar's reserved slot", async ({ page, baseURL }) => {
       const streak = hold(page, /\/home\/streak$/);
       await launchApp(page, baseURL!);
-      // The skeleton's flame placeholder is in the header row; no real header and no greeting yet.
-      await expect(page.getByTestId("day-plan-skeleton")).toBeVisible();
-      await expect(heading(page)).toHaveCount(0);
+      // Today does not wait for the Streak: the title shows, the bar holds the flame's place.
+      await expect(heading(page)).toBeVisible();
+      await expect(page.getByTestId("day-plan-skeleton")).toHaveCount(0);
+      await expect(shell.logo(page)).toBeVisible();
       await expect(page.getByRole("button", { name: l.streakName })).toHaveCount(0);
 
       streak.release();
       await expect(flame(page, 3)).toBeVisible();
-      await expect(heading(page)).toBeVisible({ timeout: 0 });
-      await expect(page.getByTestId("day-plan-skeleton")).toHaveCount(0);
     });
 
     test("a Streak that could not be read leaves no button and no alert", async ({ page, baseURL, fakeApi }) => {
@@ -171,13 +171,15 @@ for (const l of LOCALES) {
       await launchApp(page, baseURL!);
       await expect(flame(page, 3)).toBeVisible();
       fakeApi.override("GET /home/streak", json(500, { error: "boom" }), { once: true });
+      // The launch read stays fresh for 5s (`useStreak`), and the clock is fixed: move it past that so focus refetches.
+      await page.clock.setFixedTime(new Date("2030-01-14T15:00:10"));
       const answered = page.waitForResponse(/\/home\/streak$/);
       await regainFocus(page);
       expect((await answered).status()).toBe(500);
       await expect(flame(page, 3)).toBeVisible();
     });
 
-    test.describe("320px with a long greeting and three digits", () => {
+    test.describe("320px with three digits", () => {
       test.use({
         viewport: { width: 320, height: 640 },
         fakeState: (() => {
@@ -188,18 +190,19 @@ for (const l of LOCALES) {
         })(),
       });
 
-      test("fits with no sideways scroll, the button keeps its size and stays level with the greeting", async ({ page, baseURL }) => {
+      test("fits with no sideways scroll, and the button keeps its size inside the bar", async ({ page, baseURL }) => {
         await launchApp(page, baseURL!);
         const button = flame(page, 100);
         await expect(button).toBeVisible();
-        await expect(heading(page)).toContainText("Maria Eduarda");
+        await expect(heading(page)).toBeVisible();
         const overflows = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
         expect(overflows).toBe(false);
         const box = await button.boundingBox();
         expect(box!.width).toBeGreaterThanOrEqual(44);
         expect(box!.height).toBeGreaterThanOrEqual(44);
-        const title = await heading(page).boundingBox();
-        expect(Math.abs(box!.y - title!.y)).toBeLessThanOrEqual(1);
+        const bar = await shell.topBar(page).boundingBox();
+        expect(box!.y).toBeGreaterThanOrEqual(bar!.y - 1);
+        expect(box!.y + box!.height).toBeLessThanOrEqual(bar!.y + bar!.height + 1);
         expect(box!.x + box!.width).toBeLessThanOrEqual(320);
       });
     });

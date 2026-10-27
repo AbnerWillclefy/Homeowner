@@ -1,7 +1,5 @@
-import { config } from "../../../shared/config";
 import { SkeletonBar,SkeletonCard, SkeletonPill, SkeletonTile } from "../../../shared/ui/Skeleton";
 import { SkeletonHeader } from "../../../shared/ui/SkeletonHeader";
-import { CheckInSkeleton } from "../../checkin/components/CheckInSkeleton";
 import { ChoresSkeleton } from "../../chores/components/ChoresSkeleton";
 import { DayPlanSkeleton } from "../../dayplan/components/DayPlanSkeleton";
 import { ResidentRowsSkeleton } from "../../residents/components/ResidentRowSkeleton";
@@ -39,35 +37,15 @@ export function HomeSkeleton() {
 }
 
 /**
- * The shape of `ReplanButton`: its `mb-6` wrapper, a full-width button, and the status paragraph with its own
- * classes and no text, so it takes the same text-relative height as the real one.
- */
-function ReplanSkeleton() {
-  return (
-    <div data-skeleton="replan" className="mb-6">
-      <SkeletonPill className="w-full" />
-      <p className="mt-2 mb-0 text-muted" />
-    </div>
-  );
-}
-
-/**
- * Today's final layout, for the wait before its reads answer (the Home, then the Check-in, Day Plan and Streak):
- * the header with the Streak button placeholder, the Replan block when Replan is enabled, the Check-in card, and the
- * Tasks section with its heading, the folded explanation card and the Task cards. Spaced as `HomeDay` spaces them,
- * by structure and `rem`, so pt-BR and the largest text size grow it as they grow the page.
+ * Today's final layout, for the wait before its reads answer (the Home, then the Check-in and Day Plan):
+ * the header (a title, no line under it), the one-line summary and the Task cards. Spaced as `HomeDay` spaces
+ * them, by structure and `rem`, so pt-BR and the largest text size grow it as they grow the page.
  */
 export function TodaySkeleton() {
   return (
     <div aria-hidden="true">
-      <SkeletonHeader aside />
-      {config.replanEnabled && <ReplanSkeleton />}
-      <section>
-        <CheckInSkeleton />
-      </section>
-      <section>
-        <DayPlanSkeleton explanation />
-      </section>
+      <SkeletonHeader withLine={false} tight />
+      <DayPlanSkeleton summary />
     </div>
   );
 }

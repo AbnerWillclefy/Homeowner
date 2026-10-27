@@ -1,5 +1,5 @@
 import type { AnswersBody, Proposal } from "../../../src/domains/catalog/api/api";
-import { COOKINGS, OUTDOORS, PETS, ROOM_LIMITS, type RoomType } from "../../../src/domains/catalog/logic/answers";
+import { COOKINGS, OUTDOOR_LIMITS, PETS, ROOM_LIMITS, type OutdoorType, type RoomType } from "../../../src/domains/catalog/logic/answers";
 import { json, signedIn, type FakeApi } from "../api";
 
 type Fields = Record<string, string>;
@@ -23,8 +23,12 @@ function answerErrors(body: Record<string, unknown>): Fields {
       if (count !== undefined && count !== null) whole(count, `rooms.${type}`, ROOM_LIMITS[type]);
     }
   }
-  const outdoor = body["outdoor"];
-  if (outdoor !== undefined && outdoor !== "" && !(OUTDOORS as readonly unknown[]).includes(outdoor)) add("outdoor", "unknown");
+  if (isRecord(body["outdoor"])) {
+    for (const type of Object.keys(OUTDOOR_LIMITS) as OutdoorType[]) {
+      const count = body["outdoor"][type];
+      if (count !== undefined && count !== null) whole(count, `outdoor.${type}`, OUTDOOR_LIMITS[type]);
+    }
+  }
   const pets = body["pets"];
   if (Array.isArray(pets) && pets.some((pet) => !(PETS as readonly unknown[]).includes(pet))) add("pets", "unknown");
   if (isRecord(body["collection"])) {
@@ -75,6 +79,9 @@ export function propose(body: AnswersBody): Proposal[] {
     ),
     ...perRoom(rooms?.laundryAreas ?? 0, (n) =>
       proposal("clean_laundry_area", n, { name: "Clean the laundry area", category: "laundry", demands: [], baseEffort: 2, importance: "normal", people: 1, intervalDays: 30, allowedWeekdays: ALL_DAYS, buildsUp: false }),
+    ),
+    ...perRoom(body.outdoor?.gardens ?? 0, (n) =>
+      proposal("water_garden", n, { name: "Water the garden", category: "outdoor", demands: [], baseEffort: 1, importance: "normal", people: 1, intervalDays: 3, allowedWeekdays: ALL_DAYS, buildsUp: false }),
     ),
   );
   if (body.pets?.includes("dog")) {

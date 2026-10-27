@@ -18,6 +18,11 @@ interface Props {
   /** Where focus lands on opening instead of the title, for example Cancel on a destructive action. */
   initialFocusRef?: RefObject<HTMLElement | null>;
   /**
+   * Where focus returns on close, when the opener is not a `trigger`. Without it (or when its element is gone) focus
+   * returns to what had it on opening, which on iOS Safari can be the body after a tap.
+   */
+  returnFocusRef?: RefObject<HTMLElement | null>;
+  /**
    * "centered" (default) is a short dialog in the middle. "sheet" is near full height for forms. Either way the
    * body scrolls and `footer` stays pinned below it.
    */
@@ -50,6 +55,7 @@ export function AppDialog({
   trigger,
   open = true,
   initialFocusRef,
+  returnFocusRef,
   size = "centered",
   footer,
   children,
@@ -74,11 +80,12 @@ export function AppDialog({
           onCloseAutoFocus={(event) => {
             if (trigger !== undefined) return;
             event.preventDefault();
-            const previous = before.current;
+            // The named element first: iOS Safari does not focus a tapped button, so `before` can be the body.
+            const previous = returnFocusRef?.current?.isConnected ? returnFocusRef.current : before.current;
             if (previous instanceof HTMLElement && previous !== document.body && previous.isConnected) previous.focus();
             // A dialog stacked on another may close after it, so only catch focus that has nowhere to be.
             else if (document.activeElement === null || document.activeElement === document.body)
-              document.querySelector<HTMLElement>("main")?.focus();
+              document.querySelector<HTMLElement>("main")?.focus({ preventScroll: true });
           }}
           onEscapeKeyDown={(event) => !dismissible && event.preventDefault()}
           onInteractOutside={(event) => !dismissible && event.preventDefault()}

@@ -71,7 +71,9 @@ for (const l of LOCALES) {
     /** The block under a group heading: the heading's parent. */
     const group = (page: import("@playwright/test").Page, name: string) =>
       page.getByRole("heading", { level: 3, name }).locator("..");
-    const noAlertText = (page: import("@playwright/test").Page) =>
+    /** Your own Task cards: the list whose parent holds no group heading (the others have an h3 or sit under a Resident). */
+    const mineCards = (page: import("@playwright/test").Page) => page.locator("div:not(:has(> h3)) > ul");
+    const noAlertText =(page: import("@playwright/test").Page) =>
       expect(page.getByRole("alert").filter({ hasText: /\S/ })).toHaveCount(0);
 
     test("an incoming offer shows who gives what, Decline first and Accept last, above Your Tasks", async ({ page, baseURL, fakeApi }) => {
@@ -86,12 +88,14 @@ for (const l of LOCALES) {
       await expect(buttons).toHaveCount(2);
       await expect(buttons.first()).toHaveAccessibleName(new RegExp(`^${l.decline}`));
       await expect(buttons.last()).toHaveAccessibleName(new RegExp(`^${l.accept}`));
+      // The offers come after the title and the summary, and before your own Task cards.
       const above = await page.evaluate(
-        ([a, b]) => {
-          const heading = (text: string) => [...document.querySelectorAll("h3")].find((h) => h.textContent?.startsWith(text))!;
-          return !!(heading(a!).compareDocumentPosition(heading(b!)) & Node.DOCUMENT_POSITION_FOLLOWING);
+        ([incoming]) => {
+          const offers = [...document.querySelectorAll("h3")].find((h) => h.textContent?.startsWith(incoming!))!;
+          const cards = document.querySelector("div:not(:has(> h3)) > ul")!;
+          return !!(offers.compareDocumentPosition(cards) & Node.DOCUMENT_POSITION_FOLLOWING);
         },
-        [l.incoming, l.mine],
+        [l.incoming],
       );
       expect(above).toBe(true);
       await expect(page.getByRole("heading", { level: 3, name: l.outgoing })).toHaveCount(0);
@@ -108,11 +112,11 @@ for (const l of LOCALES) {
       // The server's answer is written into the cache: the action sends no read of the plan.
       expect(planReads()).toBe(readsBefore);
 
-      const received = group(page, l.mine).getByRole("listitem").filter({ hasText: "Take out the trash" });
+      const received = mineCards(page).getByRole("listitem").filter({ hasText: "Take out the trash" });
       await expect(received).toBeVisible();
       await expect(received.getByText(l.committed, { exact: true })).toBeVisible();
       await expect(received.getByText(l.swapped)).toBeVisible();
-      await expect(group(page, l.mine).getByText("Wash the dishes")).toHaveCount(0);
+      await expect(mineCards(page).getByText("Wash the dishes")).toHaveCount(0);
 
       const bruna = page.locator("section").filter({ has: page.getByRole("heading", { level: 4, name: "Bruna Souza" }) });
       const given = bruna.getByRole("listitem").filter({ hasText: "Wash the dishes" });
@@ -126,7 +130,7 @@ for (const l of LOCALES) {
       await launchApp(page, baseURL!);
       await page.getByRole("button", { name: new RegExp(`^${l.decline}`) }).click();
       await expect(page.getByRole("heading", { level: 3, name: l.incoming })).toHaveCount(0);
-      await expect(group(page, l.mine).getByText("Wash the dishes")).toBeVisible();
+      await expect(mineCards(page).getByText("Wash the dishes")).toBeVisible();
       await noAlertText(page);
       await expect(page.getByRole("status").filter({ hasText: /\S/ })).toHaveCount(0);
     });
@@ -224,7 +228,7 @@ for (const l of LOCALES) {
       await expect(swapButton(page)).toHaveCount(1);
       await expect(brunaCard(page).getByRole("button", { name: l.swap })).toBeVisible();
       // Not on your own Tasks, nor in the pool.
-      await expect(group(page, l.mine).getByRole("button", { name: new RegExp(`^${l.swap}`) })).toHaveCount(0);
+      await expect(mineCards(page).getByRole("button", { name: new RegExp(`^${l.swap}`) })).toHaveCount(0);
       await expect(page.getByRole("dialog")).toHaveCount(0);
     });
 
@@ -251,8 +255,8 @@ for (const l of LOCALES) {
       await expect(offers.getByText("Take out the trash", { exact: true })).toBeVisible();
       await expect(swapButton(page)).toHaveCount(0);
       await noAlertText(page);
-      // The Swap button is gone, so focus lands inside the page, never on nothing.
-      expect(await page.evaluate(() => document.activeElement === document.body)).toBe(false);
+      // The Swap button is gone, so focus lands on the Today heading, never on nothing or on <main>.
+      await expect(page.locator("#today-heading")).toBeFocused();
 
       // Cancel the offer: Swap is back on the Task.
       await offers.getByRole("button", { name: new RegExp(`^${l.cancel}`) }).click();

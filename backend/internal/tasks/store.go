@@ -1,5 +1,5 @@
 // Package tasks keeps a Home's Tasks up to date and lists the open pool (see
-// CONTEXT.md). The rule for when Tasks open and grow lives in the pure
+// GLOSSARY.md). The rule for when Tasks open and grow lives in the pure
 // schedule package; this package reads, applies it and writes in one
 // transaction.
 package tasks

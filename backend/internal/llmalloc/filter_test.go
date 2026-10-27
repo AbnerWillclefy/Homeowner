@@ -49,7 +49,8 @@ func TestAWeekdayBlockedTaskIsPooledAndNotSent(t *testing.T) {
 	st.Tasks[0].AllowedWeekdays = []int{(st.Today.Weekday() + 1) % 7}
 	fake := emptyAnswer()
 
-	res, err := llmalloc.New(fake).Propose(context.Background(), st)
+	prop, err := llmalloc.New(fake).Propose(context.Background(), st)
+	res := prop.Result
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +107,8 @@ func TestATaskNoOneCanTakeIsPooledInGo(t *testing.T) {
 	// t2 needs two people and only r1 is left eligible.
 	fake := emptyAnswer()
 
-	res, err := llmalloc.New(fake).Propose(context.Background(), st)
+	prop, err := llmalloc.New(fake).Propose(context.Background(), st)
+	res := prop.Result
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +129,8 @@ func TestWhenEveryTaskIsPooledInGoTheModelIsNotCalled(t *testing.T) {
 	st.Tasks[0].AllowedWeekdays = []int{(st.Today.Weekday() + 1) % 7}
 	fake := emptyAnswer()
 
-	res, err := llmalloc.New(fake).Propose(context.Background(), st)
+	prop, err := llmalloc.New(fake).Propose(context.Background(), st)
+	res := prop.Result
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,6 +147,17 @@ func TestWhenEveryTaskIsPooledInGoTheModelIsNotCalled(t *testing.T) {
 	}
 	if v := allocation.Check(res.DayPlan, st); len(v) != 0 {
 		t.Fatalf("Check = %+v", v)
+	}
+}
+
+// No call is told apart from a call that came back without usage.
+func TestWhenNoCallIsMadeThereIsNoUsageAndCalledIsFalse(t *testing.T) {
+	st := state()
+	st.Residents = st.Residents[:1]
+	st.Tasks[0].AllowedWeekdays = []int{(st.Today.Weekday() + 1) % 7}
+	prop, err := llmalloc.New(emptyAnswer()).Propose(context.Background(), st)
+	if err != nil || prop.Called || prop.Usage != nil {
+		t.Fatalf("usage = %+v, called = %v, err = %v", prop.Usage, prop.Called, err)
 	}
 }
 
@@ -226,7 +240,9 @@ func proposeWithAnswer(t *testing.T, st allocation.State, answer string) (alloca
 	t.Helper()
 	fake := llmalloc.NewFakeClient()
 	fake.Answer(answer)
-	return llmalloc.New(fake).Propose(context.Background(), st)
+	prop, err := llmalloc.New(fake).Propose(context.Background(), st)
+	res := prop.Result
+	return res, err
 }
 
 // No name, email, title or free text can reach the model: the State carries

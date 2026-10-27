@@ -15,8 +15,9 @@ const settle = () => act(() => new Promise<void>((resolve) => setTimeout(resolve
 
 describe("useStreak over the query cache", () => {
   let rendered: Rendered | undefined;
-  const Probe = () => {
-    useStreak();
+  let hook!: ReturnType<typeof useStreak>;
+  const Probe = ({ hasHome }: { hasHome: boolean }) => {
+    hook = useStreak(hasHome);
     return null;
   };
   beforeEach(() => {
@@ -24,10 +25,10 @@ describe("useStreak over the query cache", () => {
   });
   afterEach(() => rendered?.unmount());
 
-  it("reads once on the first render, and again when the Streak is invalidated", async () => {
+  it("reads once on the first render with a Home, and again when the Streak is invalidated", async () => {
     getStreak.mockResolvedValue({ kind: "ok", streak: { current: 3, todayGrew: false } });
     const client = createTestQueryClient();
-    rendered = renderWithQueryClient(createElement(Probe), client);
+    rendered = renderWithQueryClient(createElement(Probe, { hasHome: true }), client);
     await settle();
     expect(getStreak).toHaveBeenCalledTimes(1);
     expect(client.getQueryData(streakKey)).toEqual({ current: 3, todayGrew: false });
@@ -37,5 +38,45 @@ describe("useStreak over the query cache", () => {
     await settle();
     expect(getStreak).toHaveBeenCalledTimes(2);
     expect(client.getQueryData(streakKey)).toEqual({ current: 4, todayGrew: true });
+  });
+
+  it("does not read until there is a Home, then reads", async () => {
+    getStreak.mockResolvedValue({ kind: "ok", streak: { current: 2, todayGrew: false } });
+    rendered = renderWithQueryClient(createElement(Probe, { hasHome: false }));
+    await settle();
+    expect(getStreak).not.toHaveBeenCalled();
+    expect(hook.streak).toBeNull();
+
+    rendered.rerender(createElement(Probe, { hasHome: true }));
+    await settle();
+    expect(getStreak).toHaveBeenCalledTimes(1);
+    expect(hook.streak).toEqual({ current: 2, todayGrew: false });
+  });
+
+  it("keeps a launch read that answered before the Home, instead of reading it again", async () => {
+    const client = createTestQueryClient();
+    client.setQueryData(streakKey, { current: 7, todayGrew: true });
+    rendered = renderWithQueryClient(createElement(Probe, { hasHome: false }), client);
+    rendered.rerender(createElement(Probe, { hasHome: true }));
+    await settle();
+    expect(getStreak).not.toHaveBeenCalled();
+    expect(hook.streak).toEqual({ current: 7, todayGrew: true });
+  });
+
+  it("reads again after leaving a Home and creating another, once the cached Streak is removed", async () => {
+    getStreak.mockResolvedValue({ kind: "ok", streak: { current: 1, todayGrew: false } });
+    const client = createTestQueryClient();
+    client.setQueryData(streakKey, { current: 7, todayGrew: true });
+    rendered = renderWithQueryClient(createElement(Probe, { hasHome: true }), client);
+    await settle();
+    expect(getStreak).not.toHaveBeenCalled();
+
+    rendered.rerender(createElement(Probe, { hasHome: false }));
+    client.removeQueries({ queryKey: streakKey });
+    await settle();
+    rendered.rerender(createElement(Probe, { hasHome: true }));
+    await settle();
+    expect(getStreak).toHaveBeenCalledTimes(1);
+    expect(hook.streak).toEqual({ current: 1, todayGrew: false });
   });
 });

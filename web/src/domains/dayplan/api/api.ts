@@ -61,16 +61,6 @@ export interface DayPlan {
   /** Today's run exists but the checker refused the proposal, so nothing is assigned. */
   rejected: boolean;
   allocator: string;
-  /**
-   * Which allocation run made the plan. Absent before the day is planned, so a new run is a different id.
-   * Read leniently: a non-string is left out.
-   */
-  runId?: string;
-  /**
-   * Why the baseline planned instead of the AI (an id such as llm_daily_cap_reached); absent when there was no
-   * fallback. Read leniently like `category`.
-   */
-  fallbackReason?: string;
   /** The caller's Energy for the plan: null before it, 0 when they have no Baseline for the weekday. */
   energy: number | null;
   mine: PlanTask[];
@@ -276,8 +266,6 @@ function parseDayPlan(body: unknown): DayPlan | null {
     doneToday,
     swaps,
   };
-  if (typeof body.runId === "string" && body.runId !== "") plan.runId = body.runId;
-  if (typeof body.fallbackReason === "string" && body.fallbackReason !== "") plan.fallbackReason = body.fallbackReason;
   const explanation = parseExplanation(body.explanation);
   return explanation ? { ...plan, explanation } : plan;
 }
@@ -293,25 +281,6 @@ export function getDayPlan(): Promise<DayPlanResult> {
  */
 export function planMyDay(): Promise<DayPlanResult> {
   return dayPlanCall("/home/day-plan/me", { method: "POST" });
-}
-
-/** What asking for a new plan answers. `none` (404) means the route does not exist: not a staging build. */
-export type ReplanResult = { kind: "ok" } | { kind: "none" } | Failure;
-
-/**
- * Asks the API to plan the Home again now (staging only: `POST /dev/replan`, no body). The API answers 202 and
- * plans in the background, so the new plan is found by reading the Day Plan until its run changes.
- */
-export async function replanHome(): Promise<ReplanResult> {
-  try {
-    const result = await authedRequest({ url: "/dev/replan", method: "POST" });
-    if (result.kind === "not-signed-in") return result;
-    if (result.response.status === 202) return { kind: "ok" };
-    if (result.response.status === 404) return { kind: "none" };
-    return { kind: "error" };
-  } catch {
-    return { kind: "offline" };
-  }
 }
 
 const post = (path: string) => send(path, { method: "POST" });

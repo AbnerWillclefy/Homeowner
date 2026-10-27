@@ -88,7 +88,13 @@ for (const l of LOCALES) {
 
       // Resuming the page still refreshes it; held, the indicator shows over the cached Tasks.
       const second = hold(page, DAY_PLAN);
-      await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange", { bubbles: true })));
+      // Today's queries subscribe in an effect after the click's commit, so a resume sent right after the click can
+      // reach them unsubscribed and skip the plan. Resume until the plan read is held.
+      await expect(async () => {
+        const planRead = page.waitForRequest(DAY_PLAN, { timeout: 500 });
+        await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange", { bubbles: true })));
+        await planRead;
+      }).toPass();
       // The indicator is delayed by 300ms: the web-first assertion waits for it, no sleep.
       await expect(refreshing(page)).toBeVisible();
       await expect(dishes(page)).toBeVisible();
@@ -125,7 +131,12 @@ for (const l of LOCALES) {
     test("a different Resident signing in after sign-out never sees the first one's data", async ({ page, baseURL, fakeApi, fakeCognito }) => {
       await launchApp(page, baseURL!);
       await expect(dishes(page)).toBeVisible();
+
+      // Today no longer greets by name, so the name shows on Me.
+      await tab(page, l.me).click();
       await expect(page.getByText(FIRST_NAME).first()).toBeVisible();
+      await tab(page, l.today).click();
+      await expect(dishes(page)).toBeVisible();
 
       await tab(page, l.me).click();
       await page.getByRole("button", { name: l.signOut, exact: true }).click();
@@ -148,9 +159,11 @@ for (const l of LOCALES) {
 
       loading.release();
       await expect(page.getByText("Water the plants", { exact: true })).toBeVisible();
-      await expect(page.getByText(SECOND_NAME).first()).toBeVisible();
       await expect(page.getByText(FIRST_NAME)).toHaveCount(0);
       await expect(dishes(page)).toHaveCount(0);
+      await tab(page, l.me).click();
+      await expect(page.getByText(SECOND_NAME).first()).toBeVisible();
+      await expect(page.getByText(FIRST_NAME)).toHaveCount(0);
     });
 
     test("resuming the page refetches the current page", async ({ page, baseURL, fakeApi }) => {

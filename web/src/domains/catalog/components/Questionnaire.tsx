@@ -1,5 +1,5 @@
 import { Minus, Plus } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { WEEKDAYS } from "../../profile/api/api";
 import type { FieldCodes } from "../../home/api/api";
 import { useI18n } from "../../../shared/i18n";
@@ -10,7 +10,10 @@ import {
   COOKING_LABEL_KEYS,
   COOKINGS,
   OUTDOOR_LABEL_KEYS,
-  OUTDOORS,
+  OUTDOOR_LIMITS,
+  OUTDOOR_ROW_LABEL_KEYS,
+  OUTDOOR_TYPES,
+  outdoorRowShown,
   PET_LABEL_KEYS,
   PETS,
   ROOM_LABEL_KEYS,
@@ -18,6 +21,7 @@ import {
   ROOM_TYPES,
   withDayToggled,
   type AnswersState,
+  type OutdoorType,
 } from "../logic/answers";
 
 const CHECK = "size-5 w-5 min-h-0 mt-0 shrink-0 accent-accent";
@@ -31,6 +35,66 @@ const CHIPS = "flex flex-wrap gap-2 mt-2";
 // The round − and + beside a room count. Pointer-only: the number field itself takes the keyboard and screen readers.
 const STEP =
   "flex size-11 shrink-0 items-center justify-center rounded-pill border border-border bg-surface-raised text-text disabled:cursor-not-allowed disabled:border-dashed disabled:text-muted";
+
+interface CountRowProps {
+  id: string;
+  label: string;
+  /** Read by screen readers with the field: "From 0 to 10". */
+  range: string;
+  count: number;
+  max: number;
+  disabled: boolean;
+  error: string | undefined;
+  autoFocus?: boolean;
+  /** `typed` is true when the Resident typed the number, false for the − and + buttons. */
+  onSet(next: number, typed: boolean): void;
+  onFocus?(): void;
+  onBlur?(): void;
+}
+
+/** One counted thing, a room or an outdoor area: a label, − and + for the pointer, and the number field for everyone. */
+function CountRow({ id, label, range, count, max, disabled, error, autoFocus, onSet, onFocus, onBlur }: CountRowProps) {
+  return (
+    <div className="py-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <label htmlFor={id} className="mt-0 min-w-0 flex-1 basis-32 [overflow-wrap:anywhere]">
+          {label}
+        </label>
+        <div className="ms-auto flex shrink-0 items-center gap-1">
+          <button type="button" aria-hidden="true" tabIndex={-1} className={STEP} disabled={disabled || count <= 0} onClick={() => onSet(count - 1, false)}>
+            <Minus className="size-4" />
+          </button>
+          <input
+            id={id}
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={max}
+            value={count}
+            autoFocus={autoFocus}
+            className="mt-0 w-14 border-transparent bg-transparent px-0 text-center text-lg font-semibold tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? `${id}-range ${id}-error` : `${id}-range`}
+            onChange={(event) => onSet(clampCount(event.target.value, max), true)}
+            onFocus={onFocus}
+            onBlur={onBlur}
+          />
+          <button type="button" aria-hidden="true" tabIndex={-1} className={STEP} disabled={disabled || count >= max} onClick={() => onSet(count + 1, false)}>
+            <Plus className="size-4" />
+          </button>
+        </div>
+      </div>
+      <p id={`${id}-range`} className="sr-only">
+        {range}
+      </p>
+      {error && (
+        <p id={`${id}-error`} className="text-danger">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
 
 interface Props {
   /** Names the element ids, so two questionnaires on a page never share one. */
@@ -48,6 +112,12 @@ interface Props {
  */
 export function Questionnaire({ idPrefix, value, onChange, errors, disabled }: Props) {
   const { t, locale } = useI18n();
+  // The outdoor type whose number field has focus, so a row emptied by typing stays until the field is left.
+  const [focusedOutdoor, setFocusedOutdoor] = useState<OutdoorType | null>(null);
+  // The type just added from its chip: the chip unmounts, so the new row's field takes focus.
+  const [justAdded, setJustAdded] = useState<OutdoorType | null>(null);
+
+  const shownOutdoor = OUTDOOR_TYPES.filter((type) => outdoorRowShown(value.outdoor[type], focusedOutdoor === type));
 
   const errorText = (field: string) => (errors[field] ? t(answerErrorKey(errors[field])) : undefined);
 
@@ -113,69 +183,68 @@ export function Questionnaire({ idPrefix, value, onChange, errors, disabled }: P
         t("catalog.rooms.legend"),
         [],
         <div className="flex flex-col divide-y divide-border/30">
-          {ROOM_TYPES.map((type) => {
-            const id = `${idPrefix}-rooms-${type}`;
-            const error = errorText(`rooms.${type}`);
-            const count = value.rooms[type];
-            const max = ROOM_LIMITS[type];
-            const set = (next: number) => onChange({ ...value, rooms: { ...value.rooms, [type]: next } });
-            return (
-              <div key={type} className="py-2">
-                <div className="flex items-center justify-between gap-3">
-                  <label htmlFor={id} className="mt-0 min-w-0 [overflow-wrap:anywhere]">
-                    {t(ROOM_LABEL_KEYS[type])}
-                  </label>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <button type="button" aria-hidden="true" tabIndex={-1} className={STEP} disabled={disabled || count <= 0} onClick={() => set(count - 1)}>
-                      <Minus className="size-4" />
-                    </button>
-                    <input
-                      id={id}
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      max={max}
-                      value={count}
-                      className="mt-0 w-14 border-transparent bg-transparent px-0 text-center text-lg font-semibold tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                      aria-invalid={error ? true : undefined}
-                      aria-describedby={error ? `${id}-range ${id}-error` : `${id}-range`}
-                      onChange={(event) => set(clampCount(event.target.value, max))}
-                    />
-                    <button type="button" aria-hidden="true" tabIndex={-1} className={STEP} disabled={disabled || count >= max} onClick={() => set(count + 1)}>
-                      <Plus className="size-4" />
-                    </button>
-                  </div>
-                </div>
-                <p id={`${id}-range`} className="sr-only">
-                  {t("catalog.rooms.range", { max })}
-                </p>
-                {error && (
-                  <p id={`${id}-error`} className="text-danger">
-                    {error}
-                  </p>
-                )}
-              </div>
-            );
-          })}
+          {ROOM_TYPES.map((type) => (
+            <CountRow
+              key={type}
+              id={`${idPrefix}-rooms-${type}`}
+              label={t(ROOM_LABEL_KEYS[type])}
+              range={t("catalog.rooms.range", { max: ROOM_LIMITS[type] })}
+              count={value.rooms[type]}
+              max={ROOM_LIMITS[type]}
+              disabled={disabled}
+              error={errorText(`rooms.${type}`)}
+              onSet={(next) => onChange({ ...value, rooms: { ...value.rooms, [type]: next } })}
+            />
+          ))}
+          {shownOutdoor.map((type) => (
+            <CountRow
+              key={type}
+              id={`${idPrefix}-outdoor-${type}`}
+              label={t(OUTDOOR_ROW_LABEL_KEYS[type])}
+              range={t("catalog.rooms.range", { max: OUTDOOR_LIMITS[type] })}
+              count={value.outdoor[type]}
+              max={OUTDOOR_LIMITS[type]}
+              disabled={disabled}
+              error={errorText(`outdoor.${type}`)}
+              autoFocus={justAdded === type}
+              onSet={(next, typed) => {
+                // Stepping down to 0 removes the row now; typing 0 keeps it until the field loses focus.
+                if (next === 0 && !typed) setFocusedOutdoor(null);
+                onChange({ ...value, outdoor: { ...value.outdoor, [type]: next } });
+              }}
+              onFocus={() => setFocusedOutdoor(type)}
+              onBlur={() => {
+                setFocusedOutdoor(null);
+                setJustAdded(null);
+              }}
+            />
+          ))}
         </div>,
       )}
 
       {group(
         t("catalog.outdoor.legend"),
-        ["outdoor"],
+        [],
         <div className={CHIPS}>
-          {OUTDOORS.map((id) => (
-            <label key={id} className={CHIP}>
-              <input
-                type="radio"
-                name={`${idPrefix}-outdoor`}
-                className="sr-only"
-                checked={value.outdoor === id}
-                onChange={() => onChange({ ...value, outdoor: id })}
-              />
-              {t(OUTDOOR_LABEL_KEYS[id])}
-            </label>
-          ))}
+          {OUTDOOR_TYPES.filter((type) => !shownOutdoor.includes(type)).map((type) => {
+            const area = t(OUTDOOR_LABEL_KEYS[type]);
+            return (
+              <button
+                key={type}
+                type="button"
+                className={`${CHIP} gap-2 disabled:cursor-not-allowed disabled:border-dashed disabled:text-muted`}
+                disabled={disabled}
+                aria-label={t("catalog.outdoor.add", { area: area.toLocaleLowerCase(locale) })}
+                onClick={() => {
+                  setJustAdded(type);
+                  onChange({ ...value, outdoor: { ...value.outdoor, [type]: 1 } });
+                }}
+              >
+                <Plus className="size-4 shrink-0" aria-hidden="true" />
+                {area}
+              </button>
+            );
+          })}
         </div>,
       )}
 

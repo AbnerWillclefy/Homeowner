@@ -1,0 +1,80 @@
+name: Replan staging
+
+# Replans one Home on staging by invoking the allocation function directly, with
+# the same event the API used to send. Run by hand from the main branch only:
+# the OIDC trust of the deploy role refuses any other ref as well.
+on:
+  workflow_dispatch:
+    inputs:
+      home_id:
+        description: Home id (a UUID), from the homes table or GET /home as a Resident of that Home
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+# Overlapping replans are safe (the Home lock), this only keeps the logs readable.
+concurrency:
+  group: replan-staging
+  cancel-in-progress: false
+
+jobs:
+  replan:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # The function's own timeout is 90 s.
+    timeout-minutes: 5
+    env:
+      # Never write the input inside a run script: that is a script injection.
+      HOME_ID: ${{ inputs.home_id }}
+    steps:
+      - name: Check the Home id is a UUID
+        run: |
+          pattern='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+          if [[ ! "$HOME_ID" =~ $pattern ]]; then
+            echo "::error::home_id is not a UUID"
+            exit 1
+          fi
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Replan the Home
+        run: |
+          # Same JSON as dayplan.NewReplanEvent; backend/internal/dayplan/replan_event_json_test.go pins it.
+          jq -n --arg id "$HOME_ID" \
+            '{source: "homeowner.dev", "detail-type": "Replan Home", detail: {homeId: $id}}' > payload.json
+
+          # Synchronous, and the CLI waits longer than its 60 s default: the function's timeout is 90 s.
+          aws lambda invoke \
+            --function-name homeowner-staging-allocate \
+            --invocation-type RequestResponse \
+            --cli-binary-format raw-in-base64-out \
+            --cli-read-timeout 120 \
+            --payload file://payload.json \
+            out.json > invoke.json
+
+          if jq -e '.FunctionError' invoke.json > /dev/null; then
+            echo "::error::the allocation function crashed or timed out: $(tr '\n' ' ' < out.json)"
+            exit 1
+          fi
+
+          # Lambda Web Adapter hands an HTTP error (bad home id, no such home,
+          # replan failed) back as the payload of a successful invoke, so read the body.
+          if ! jq -e '.outcome' out.json > /dev/null 2>&1; then
+            echo "::error::replan failed: $(tr '\n' ' ' < out.json)"
+            exit 1
+          fi
+
+          cat out.json
+          {
+            echo "### Replanned Home $HOME_ID"
+            echo
+            echo '```json'
+            cat out.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

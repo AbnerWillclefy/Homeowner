@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"math"
 	"net/url"
 	"strconv"
 	"strings"
@@ -48,19 +49,23 @@ type Config struct {
 	LLMDailyCapPerHome int
 	// LLMTimeout bounds one LLM call.
 	LLMTimeout time.Duration
+	// LLMMonthlySpendLimitMicros (LLM_MONTHLY_SPEND_LIMIT_USD) is the Anthropic
+	// Console's monthly spend limit in micro-USD, so it compares exactly with
+	// est_cost_micros. Zero means none is configured. It is display-only: the
+	// admin page shows month-to-date cost against it and no code enforces it.
+	LLMMonthlySpendLimitMicros int64
 	// ReplanEnabled lets the Allocation function replan one Home on request
 	// (REPLAN_ENABLED). Off by default; only staging switches it on.
 	ReplanEnabled bool
-	// ReplanAllocateFunction is the name of the Allocation Lambda function the
-	// API's POST /dev/replan route invokes (REPLAN_ALLOCATE_FUNCTION_NAME).
-	// Empty means the route does not exist; only the staging API sets it.
-	ReplanAllocateFunction string
 	// PhotosBucket (PHOTOS_BUCKET) is the private bucket resident photos are
 	// uploaded to; PhotosBaseURL (PHOTOS_BASE_URL) is the public https URL they
 	// are served from, without a trailing slash. Optional as a pair: with
 	// neither set, the photo routes answer 503.
 	PhotosBucket  string
 	PhotosBaseURL string
+	// Environment (ENVIRONMENT) names the deployment: local, staging or
+	// production. It defaults to local. /admin/me reports it (ADR 0017).
+	Environment string
 }
 
 // PhotosEnabled reports whether resident photos are configured.
@@ -152,7 +157,14 @@ func Load(getenv func(string) string) (Config, error) {
 		}
 		c.ReplanEnabled = b
 	}
-	c.ReplanAllocateFunction = strings.TrimSpace(getenv("REPLAN_ALLOCATE_FUNCTION_NAME"))
+	c.Environment = strings.TrimSpace(getenv("ENVIRONMENT"))
+	switch c.Environment {
+	case "":
+		c.Environment = "local"
+	case "local", "staging", "production":
+	default:
+		return Config{}, fmt.Errorf("ENVIRONMENT must be local, staging or production, got %q", c.Environment)
+	}
 	return c, nil
 }
 
@@ -187,5 +199,41 @@ func loadLLM(getenv func(string) string, c *Config) error {
 		}
 		c.LLMTimeout = time.Duration(n) * time.Second
 	}
+	if v := strings.TrimSpace(getenv("LLM_MONTHLY_SPEND_LIMIT_USD")); v != "" {
+		m, ok := parseMicroUSD(v)
+		if !ok {
+			return fmt.Errorf("LLM_MONTHLY_SPEND_LIMIT_USD must be a positive decimal number of dollars with at most 6 decimals, got %q", v)
+		}
+		c.LLMMonthlySpendLimitMicros = m
+	}
 	return nil
+}
+
+// parseMicroUSD reads a positive decimal number of dollars ("10", "10.5",
+// "0.000001") as micro-USD without going through floating point. ok is false
+// for anything else: a sign, an exponent, more than 6 decimals, zero, junk or
+// a value that overflows int64.
+func parseMicroUSD(s string) (micros int64, ok bool) {
+	whole, frac, _ := strings.Cut(s, ".")
+	if whole == "" || len(frac) > 6 || strings.Contains(s, ".") && frac == "" {
+		return 0, false
+	}
+	for _, part := range []string{whole, frac} {
+		for _, r := range part {
+			if r < '0' || r > '9' {
+				return 0, false
+			}
+		}
+	}
+	dollars, err := strconv.ParseInt(whole, 10, 64)
+	if err != nil || dollars > math.MaxInt64/1_000_000-1 {
+		return 0, false
+	}
+	frac += strings.Repeat("0", 6-len(frac))
+	f, err := strconv.ParseInt(frac, 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	micros = dollars*1_000_000 + f
+	return micros, micros > 0
 }

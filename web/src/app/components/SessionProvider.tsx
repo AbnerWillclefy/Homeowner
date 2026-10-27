@@ -21,6 +21,12 @@ interface Session {
   after: FlowNotice | null;
   /** The start choice is due. */
   choosing: boolean;
+  /**
+   * The Check-in date the Resident said "not now" to. Memory only: no storage, no server. A cold start empties it,
+   * a same-day resume keeps it, and a new Home day has a new date, so it no longer matches.
+   */
+  checkInDismissedFor: string | null;
+  dismissCheckIn(date: string): void;
   recovered: RecoveredNotice | "no";
   setRecovered(recovered: RecoveredNotice | "no"): void;
   /** State only: drops the pending Invite and notes what to show next. The Shell finishes the join. */
@@ -48,6 +54,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const steps = useMemo(() => stepsFor(push.availability), [kind]);
   const [after, setAfter] = useState<FlowNotice | null>(null);
   const [choosing, setChoosing] = useState(false);
+  const [checkInDismissedFor, setCheckInDismissedFor] = useState<string | null>(null);
   const [recovered, setRecovered] = useState<RecoveredNotice | "no">("no");
   const { clear: clearInvite } = invite;
 
@@ -62,6 +69,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setAfter(null);
     setChoosing(true);
   }, []);
+  const dismissCheckIn = useCallback((date: string) => setCheckInDismissedFor(date), []);
   const decide = useCallback(() => setChoosing(false), []);
   const onHomeFinished = useCallback((notice: RecoveredNotice | null) => {
     setRecovered(notice ?? "no");
@@ -69,8 +77,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<Session>(
-    () => ({ onboarding, push, steps, after, choosing, recovered, setRecovered, recordJoin, closeRating, decide, onHomeFinished }),
-    [onboarding, push, steps, after, choosing, recovered, recordJoin, closeRating, decide, onHomeFinished],
+    () => ({ onboarding, push, steps, after, choosing, checkInDismissedFor, dismissCheckIn, recovered, setRecovered, recordJoin, closeRating, decide, onHomeFinished }),
+    [onboarding, push, steps, after, choosing, checkInDismissedFor, dismissCheckIn, recovered, recordJoin, closeRating, decide, onHomeFinished],
   );
   return (
     <SessionContext.Provider value={value}>

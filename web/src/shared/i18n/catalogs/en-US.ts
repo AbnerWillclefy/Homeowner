@@ -13,7 +13,6 @@ export const enUS = {
   "common.refreshing": "Refreshing",
   "app.chunkFailed": "This screen could not be loaded. Check your connection and try again.",
   "app.chunkRetry": "Try again",
-  "home.tagline": "Manage the housework in your Home.",
   "health.unavailable":
     "Service status: unavailable. The service is up but cannot reach its database.",
   "health.unreachable":
@@ -309,7 +308,6 @@ export const enUS = {
   "chores.field.unknown": "This value is not accepted. Check it and try again.",
 
   // Today (the Day Plan)
-  "dayplan.heading": "Today",
   "dayplan.loading": "Loading today's plan",
   "dayplan.load.offline":
     "Today's plan could not be loaded because Homeowner cannot reach the service. Check your connection and try again.",
@@ -320,16 +318,6 @@ export const enUS = {
   "dayplan.notPlanned": "Today's plan is made at {time}.",
   "dayplan.rejected":
     "Today's plan could not be used, so no Tasks were given today.",
-  "dayplan.greeting.morning": "Good morning",
-  "dayplan.greeting.afternoon": "Good afternoon",
-  "dayplan.greeting.evening": "Good evening",
-  "dayplan.greeting.morningName": "Good morning, {name}",
-  "dayplan.greeting.afternoonName": "Good afternoon, {name}",
-  "dayplan.greeting.eveningName": "Good evening, {name}",
-  "dayplan.energy.value": "Energy {energy}",
-  "dayplan.energy.planned": "{planned} of {energy} planned for you",
-  "dayplan.energy.drained": "Drained today, no Tasks",
-  "dayplan.energy.noBaseline": "Set your Baseline to get Energy",
   "dayplan.mine.heading": "Your Tasks",
   "dayplan.mine.empty": "Nothing for you today. Enjoy the day.",
   "dayplan.mine.empty.noBaseline":
@@ -408,20 +396,6 @@ export const enUS = {
     "You seem to be offline, so that did not go through. Check your connection and try again.",
   "dayplan.action.failed.error":
     "Something went wrong and that did not go through. Try again in a moment.",
-  "dayplan.replan.action": "Replan now",
-  "dayplan.replan.waiting": "Replanning. This can take a minute.",
-  "dayplan.replan.timedOut": "The new plan is taking a while. It may still arrive, so check back in a moment.",
-  "dayplan.replan.done.llm": "The AI made this plan.",
-  "dayplan.replan.done.baseline": "The baseline planner made this plan, without the AI.",
-  "dayplan.replan.fallback.llm_daily_cap_reached":
-    "This is the baseline plan, not the AI's: the daily AI limit was reached.",
-  "dayplan.replan.fallback.llm_error": "This is the baseline plan, not the AI's: the AI had a problem.",
-  "dayplan.replan.fallback.llm_timeout": "This is the baseline plan, not the AI's: the AI took too long.",
-  "dayplan.replan.fallback.llm_invalid_response":
-    "This is the baseline plan, not the AI's: the AI's answer could not be used.",
-  "dayplan.replan.fallback.llm_rejected_by_checker":
-    "This is the baseline plan, not the AI's: the AI's plan did not pass the check.",
-  "dayplan.replan.fallback.unknown": "This is the baseline plan, not the AI's: the AI's plan was not used.",
   "dayplan.conflict.already_done":
     "That Task was already done. It is in Done today now.",
   "dayplan.conflict.not_proposed":
@@ -508,8 +482,6 @@ export const enUS = {
 
   // Check-in
   "checkin.heading": "Check-in",
-  "checkin.prompt": "How are you today?",
-  "checkin.open": "Check in",
   "checkin.load.offline":
     "Your Check-in could not be loaded because Homeowner cannot reach the service. Check your connection and try again.",
   "checkin.load.error":
@@ -525,8 +497,7 @@ export const enUS = {
   "checkin.level.required": "Choose how your Energy is today, then save.",
   "checkin.restrictions.legend": "Anything you cannot do today?",
   "checkin.submit": "Save",
-  "checkin.cancel": "Cancel",
-  "checkin.change": "Change",
+  "checkin.cancel": "Not now",
   "checkin.saved": "Check-in saved",
   "checkin.save.offline":
     "Your Check-in was not saved because Homeowner cannot reach the service. Check your connection and try again.",
@@ -534,8 +505,16 @@ export const enUS = {
     "Something went wrong saving your Check-in. Try again in a moment.",
   "checkin.save.invalid":
     "Homeowner did not accept that Check-in. Choose again and try once more.",
-  "checkin.summary": "Today's Check-in: {level}",
   "checkin.summary.restrictions": "Not today: {demands}",
+  "checkin.summary.restrictions.none": "No restrictions today",
+  "checkin.planned": "{planned} of {energy} planned",
+  "checkin.pill.name.unset": "Check in",
+  "checkin.pill.name.energy": "Energy today: {energy}. Change Check-in",
+  "checkin.pill.name.drained": "Drained today. Change Check-in",
+  "checkin.pill.name.noBaseline": "No Baseline today. Change Check-in",
+  "checkin.pill.name.pending": "Checked in: {level}. Change Check-in",
+  "checkin.pill.name.done": "Checked in. Change Check-in",
+  "checkin.pill.name.failed": "Energy unavailable. Try again",
 
   // Sign up
   "signUp.heading": "Sign up",
@@ -718,10 +697,13 @@ export const enUS = {
   "catalog.rooms.livingRooms": "Living rooms",
   "catalog.rooms.laundryAreas": "Laundry areas",
   "catalog.outdoor.legend": "Outdoor space",
-  "catalog.outdoor.none": "None",
   "catalog.outdoor.balcony": "Balcony",
   "catalog.outdoor.yard": "Yard",
   "catalog.outdoor.garden": "Garden",
+  "catalog.outdoor.add": "Add a {area}",
+  "catalog.outdoor.balconies": "Balconies",
+  "catalog.outdoor.yards": "Yards",
+  "catalog.outdoor.gardens": "Gardens",
   "catalog.pets.legend": "Pets",
   "catalog.pets.dog": "Dog",
   "catalog.pets.cat": "Cat",
@@ -767,7 +749,7 @@ export const enUS = {
     "Homeowner cannot reach the service, so the Catalog could not be loaded. Check your connection and try again.",
   "chores.catalog.load.error":
     "Something went wrong loading the Catalog. Try again in a moment.",
-  "chores.catalog.perRoom": "Once for each room",
+  "chores.catalog.perRoom": "Once per room or area",
   "chores.catalog.add": "Add",
   "chores.catalog.add.label": "Add {name}",
   "chores.catalog.close": "Close the Catalog",

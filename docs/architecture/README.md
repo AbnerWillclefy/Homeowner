@@ -1,6 +1,6 @@
 # Architecture
 
-Homeowner helps the people who look after their own home share the housework fairly. Each day it proposes which open **Tasks** each **Resident** does without exceeding anyone's **Energy** (see [CONTEXT.md](../../CONTEXT.md) for the domain terms, in bold here). The full v1 spec is issue #1.
+Homeowner helps the people who look after their own home share the housework fairly. Each day it proposes which open **Tasks** each **Resident** does without exceeding anyone's **Energy** (see [GLOSSARY.md](../../GLOSSARY.md) for the domain terms, in bold here). The full v1 spec is issue #1.
 
 These pages describe the system **as built**. Anything the spec calls for that does not exist yet is marked planned.
 
@@ -12,6 +12,7 @@ These pages describe the system **as built**. Anything the spec calls for that d
 4. [Data model](data-model.md): what the migrations contain.
 5. [Infrastructure and delivery](infrastructure.md): AWS, Terraform, CI/CD, cost.
 6. [The React PWA](web.md): its modules, localization, UI layer and data layer (query keys and cache writes).
+7. [The admin dashboard](admin.md): the maintainer's app per environment, its deploy, the super-admin guard and the `/admin/` routes.
 
 ## Legend
 
@@ -38,7 +39,11 @@ In diagrams, solid boxes and lines are built; dashed boxes and lines are planned
 | [0010](../adr/0010-organise-the-pwa-by-domain-module.md) | Organise the PWA by domain module |
 | [0011](../adr/0011-split-each-domain-into-layer-folders.md) | Split each domain into the same layers, in the PWA and the backend |
 | [0012](../adr/0012-serve-resident-photos-from-a-private-bucket-through-the-web-cloudfront.md) | Serve Resident photos from a private bucket through the web CloudFront under unguessable keys |
+| [0013](../adr/0013-own-server-state-with-tanstack-query-over-one-axios-client.md) | Own server state with TanStack Query over one Axios client |
 | [0014](../adr/0014-a-day-with-any-completion-keeps-the-streak.md) | A day with any Completion keeps the Streak |
+| [0015](../adr/0015-merge-agent-pull-requests-by-risk-tier.md) | Merge agent pull requests by risk tier |
+| [0016](../adr/0016-start-todays-reads-at-launch-not-in-route-loaders.md) | Start Today's reads at launch, not in route loaders |
+| [0017](../adr/0017-operate-through-a-separate-admin-app-per-environment.md) | Operate through a separate admin app per environment, gated by a Cognito group, fed by a per-call LLM record |
 
 ## Keeping this current
 

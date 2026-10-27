@@ -9,9 +9,14 @@ terraform {
   }
 }
 
-# The PWA: a private S3 bucket behind CloudFront on its default HTTPS domain.
+# A web app (the PWA, the admin app): a private S3 bucket behind CloudFront on its default HTTPS domain.
 # Nothing here bills while idle (storage and requests only). No WAF, no Origin
 # Shield, no access logs, no custom domain or certificate.
+
+# Photos are optional: no photo origin domain, no photo origin or behavior.
+locals {
+  photos_enabled = var.photos_origin_domain != ""
+}
 
 # ---------------------------------------------------------------------- bucket
 
@@ -64,11 +69,21 @@ resource "aws_cloudfront_origin_access_control" "this" {
 }
 
 # A separate control for the photo origin, so the web one is untouched.
+# Only created when a photo origin is wanted.
 resource "aws_cloudfront_origin_access_control" "photos" {
+  count = local.photos_enabled ? 1 : 0
+
   name                              = "${var.name}-photos"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
   signing_protocol                  = "sigv4"
+}
+
+# Adding count moved the address; this keeps the existing control in place
+# instead of destroying and recreating it.
+moved {
+  from = aws_cloudfront_origin_access_control.photos
+  to   = aws_cloudfront_origin_access_control.photos[0]
 }
 
 data "aws_cloudfront_cache_policy" "caching_optimized" {
@@ -94,21 +109,30 @@ resource "aws_cloudfront_distribution" "this" {
 
   # Resident photos (docs/adr/0012). The path is forwarded whole, so
   # /avatars/x.webp reads the key avatars/x.webp.
-  origin {
-    domain_name              = var.photos_origin_domain
-    origin_id                = "photos"
-    origin_access_control_id = aws_cloudfront_origin_access_control.photos.id
+  # Absent when photos_origin_domain is empty.
+  dynamic "origin" {
+    for_each = local.photos_enabled ? [1] : []
+
+    content {
+      domain_name              = var.photos_origin_domain
+      origin_id                = "photos"
+      origin_access_control_id = aws_cloudfront_origin_access_control.photos[0].id
+    }
   }
 
-  ordered_cache_behavior {
-    path_pattern               = "/avatars/*"
-    target_origin_id           = "photos"
-    viewer_protocol_policy     = "redirect-to-https"
-    allowed_methods            = ["GET", "HEAD"]
-    cached_methods             = ["GET", "HEAD"]
-    compress                   = true
-    cache_policy_id            = data.aws_cloudfront_cache_policy.caching_optimized.id
-    response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
+  dynamic "ordered_cache_behavior" {
+    for_each = local.photos_enabled ? [1] : []
+
+    content {
+      path_pattern               = "/avatars/*"
+      target_origin_id           = "photos"
+      viewer_protocol_policy     = "redirect-to-https"
+      allowed_methods            = ["GET", "HEAD"]
+      cached_methods             = ["GET", "HEAD"]
+      compress                   = true
+      cache_policy_id            = data.aws_cloudfront_cache_policy.caching_optimized.id
+      response_headers_policy_id = data.aws_cloudfront_response_headers_policy.security_headers.id
+    }
   }
 
   default_cache_behavior {
@@ -124,9 +148,9 @@ resource "aws_cloudfront_distribution" "this" {
   # SPA routing. With OAC and no s3:ListBucket grant, S3 answers 403 (not 404)
   # for a missing key, so both are mapped. TTL 0 stops a 404 for a hashed asset
   # requested mid-deploy from being cached as index.html. Known limit: a missing
-  # /assets/<hash>.js also returns index.html with 200, and so does a missing
-  # /avatars/ photo (the mapping is distribution-wide), so an <img> must fall
-  # back on onerror, not on the status.
+  # /assets/<hash>.js also returns index.html with 200. When photos are on, so
+  # does a missing /avatars/ photo (the mapping is distribution-wide), so an
+  # <img> must fall back on onerror, not on the status.
   custom_error_response {
     error_code            = 403
     response_code         = 200

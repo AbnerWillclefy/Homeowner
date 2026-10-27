@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/admin"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/catalog"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/checkin"
@@ -24,7 +25,6 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/replan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/residents"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/streak"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/tasks"
@@ -55,16 +55,20 @@ type Deps struct {
 	// was made; nil means allocation.Baseline. It must be the Allocator the
 	// scheduled job uses.
 	Allocator allocation.Allocator
-	// Replanner asks the Allocation function to plan one Home again; nil means
-	// the staging-only POST /dev/replan route does not exist (404), as in
-	// production.
-	Replanner replan.Replanner
 	// Photos is the private photo bucket; nil means photos are not configured
 	// and the /me/photo routes answer 503.
 	Photos photos.ObjectStore
 	// PhotosBaseURL is the public URL photos are served from, without a
 	// trailing slash.
 	PhotosBaseURL string
+	// Environment is local, staging or production; /admin/me reports it.
+	Environment string
+	// LLMDailyCapPerHome and LLMMonthlySpendLimitMicros are what GET /admin/ai
+	// shows beside the usage: the job's per-Home daily cap and the Anthropic
+	// Console's monthly limit in micro-USD (zero: none configured). Display
+	// only, nothing in the API enforces either.
+	LLMDailyCapPerHome         int
+	LLMMonthlySpendLimitMicros int64
 }
 
 const healthTimeout = 2 * time.Second
@@ -81,7 +85,9 @@ func New(deps Deps) http.Handler {
 	}
 	db, clk, log := deps.DB, deps.Clock, deps.Logger
 	homeStore := homes.NewStore(db)
-	s := &server{deps: deps, users: users.NewStore(db), homes: homeStore}
+	s := &server{deps: deps, users: users.NewStore(db), homes: homeStore,
+		admin: admin.NewHandler(admin.NewStore(db), clk, log,
+			admin.Display{DailyCapPerHome: deps.LLMDailyCapPerHome, MonthlySpendLimitMicros: deps.LLMMonthlySpendLimitMicros})}
 
 	// Photos are off when there is no store, and then no URL is built either.
 	photosBase := deps.PhotosBaseURL
@@ -158,9 +164,8 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("GET /push/vapid-public-key", pushes.RequireConfigured(pushes.PublicKey))
 	mux.HandleFunc("PUT /push/subscription", pushes.RequireConfigured(user(pushes.PutSubscription)))
 	mux.HandleFunc("POST /push/test", pushes.RequireConfigured(user(pushes.SendTest)))
-	if deps.Replanner != nil {
-		mux.HandleFunc("POST /dev/replan", resident(replan.NewHandler(deps.Replanner, log).Replan))
-	}
+	// Every /admin/ path, known or not, goes through the guard first.
+	mux.Handle("/admin/", s.requireSuperAdmin(s.adminMux()))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not found")
 	})
@@ -174,6 +179,8 @@ type server struct {
 	deps  Deps
 	users *users.Store
 	homes *homes.Store
+	// admin serves the routes of the admin route table (admin.go).
+	admin *admin.Handler
 }
 
 func (s *server) healthz(w http.ResponseWriter, r *http.Request) {

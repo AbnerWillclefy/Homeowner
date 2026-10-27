@@ -1,5 +1,5 @@
 // Package photos lets a User upload, replace and remove their photo (see
-// CONTEXT.md, User). The browser uploads straight to a private bucket through
+// GLOSSARY.md, User). The browser uploads straight to a private bucket through
 // a presigned URL; the API only signs it, checks what arrived and promotes it
 // to a public key. The bucket sits behind the ObjectStore interface, so tests
 // use the in-memory Fake as push tests use push.Fake.

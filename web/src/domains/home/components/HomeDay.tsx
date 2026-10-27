@@ -1,48 +1,40 @@
-import { useState } from "react";
-import { CheckInSection } from "../../checkin/components/CheckInSection";
-import { energyNote } from "../../checkin/logic/state";
-import { useCheckIn } from "../../checkin/hooks/useCheckIn";
-import { EnergySummary, showsEnergy } from "../../dayplan/components/EnergySummary";
-import { ReplanControl } from "../../dayplan/components/ReplanControl";
-import { TodayHeader } from "../../dayplan/components/TodayHeader";
+import { useRef } from "react";
+import { useShell } from "../../../app/components/ShellContext";
 import { TodaySection } from "../../dayplan/components/TodaySection";
 import { useDayPlan } from "../../dayplan/hooks/useDayPlan";
-import { StreakButton } from "../../streak/components/StreakButton";
-import { useStreak } from "../../streak/hooks/useStreak";
+import { useI18n } from "../../../shared/i18n";
+import { PageHeader } from "../../../shared/ui/PageHeader";
 import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { ReservedSkeleton } from "../../../shared/ui/ReservedSkeleton";
 import { useTodayLoaded } from "../hooks/useTodayLoaded";
 import { TodaySkeleton } from "./HomeSkeleton";
 
+// A stable id: it names the plan section, and the e2e specs look for focus on it.
+const HEADING_ID = "today-heading";
+
 /**
- * Today: the greeting with the Streak flame button at the end of its row (built here and passed to the header, so
- * the Day Plan domain never imports the Streak), then the replan control (staging only, high on the page so the
- * sticky bottom nav is not over it when Today loads), the Check-in card with today's Energy and the Day Plan. All of it arrives in one swap, after the three reads have answered (see
- * `todayLoaded`); before that Today is its skeleton. The folded explanation belongs to the Day Plan: it shows right under "Your Tasks",
- * before the Tasks, and only on a planned day. Whatever changes the plan
- * (an action, a saved Check-in, the start choice, a join) writes or invalidates the query cache, so nothing here
- * tracks a version or polls. This is the one owner of the plan: the Energy
- * summary and the plan section are both views of it, and share the one Energy note computed here. It also owns
- * whether the Check-in dialog is open. That flag is local, not
- * `app/dialogToShow.ts`: the Check-in is the Resident's own choice, not a session-wide flow to queue.
+ * Today: "Your Tasks" with its count, the day's one-line summary, then the Task cards. All of it arrives in one
+ * swap, after the two reads have answered (see `todayLoaded`); before that Today is its skeleton. The Check-in is
+ * read here only because the empty list's reason comes from its Energy note: the Check-in itself is the top
+ * bar's pill and the Shell's dialog. Whatever changes the plan (an action, a saved Check-in, the start choice,
+ * a join) writes or invalidates the query cache, so nothing here tracks a version or polls. The page header
+ * is the tab's first heading, so focus lands on it when the tab opens, and it names the plan section.
  */
 export function HomeDay() {
-  const checkIn = useCheckIn();
+  const { t } = useI18n();
+  // The Shell owns the Check-in (and its dialog) and the Energy note; Today only reads them.
+  const { checkIn, note } = useShell();
   const day = useDayPlan();
   const { state } = day;
-  const streak = useStreak();
-  // Today's single header slot spins once, whichever of the three reads refreshes over what is on screen.
-  useReportFetching(day.refreshing || checkIn.refreshing || streak.refreshing);
-  const [checkInOpen, setCheckInOpen] = useState(false);
-  const today = checkIn.state.kind === "ready" ? checkIn.state.checkIn : null;
-  const energy = state.kind === "ready" ? state.plan.energy : null;
-  const note = today ? energyNote(energy, today) : null;
-  const planned = state.kind === "ready" ? state.plan.mine.reduce((sum, task) => sum + task.currentEffort, 0) : 0;
-  // One swap: until each of the three reads has answered (data or failure) Today is its skeleton, which holds the
+  const heading = useRef<HTMLHeadingElement>(null);
+  // Today's single header slot spins once, whichever of its two reads refreshes over what is on screen. The
+  // Streak's refresh is the top bar's, not Today's.
+  useReportFetching(day.refreshing || checkIn.refreshing);
+  // One swap: until each of the two reads has answered (data or failure) Today is its skeleton, which holds the
   // final layout's space from the first frame and shows after the page's 300ms. Then the header and every section
   // arrive in the same render. The sections' own first-load skeletons therefore never draw on mount; they still
   // draw for a Retry after a failure.
-  const loaded = useTodayLoaded({ checkIn: checkIn.state, dayPlan: state, streakLoading: streak.loading });
+  const loaded = useTodayLoaded({ checkIn: checkIn.state, dayPlan: state });
   const showSkeleton = useReportFirstLoad(!loaded);
 
   if (!loaded) {
@@ -55,16 +47,14 @@ export function HomeDay() {
 
   return (
     <>
-      <TodayHeader aside={<StreakButton streak={streak.streak} loading={streak.loading} />} />
-      <ReplanControl plan={state.kind === "ready" ? state.plan : undefined} show={day.show} />
-      <CheckInSection
-        checkIn={checkIn}
-        open={checkInOpen}
-        onOpen={() => setCheckInOpen(true)}
-        onClose={() => setCheckInOpen(false)}
-        energy={showsEnergy(note) ? <EnergySummary note={note} energy={energy ?? 0} planned={planned} /> : null}
+      <PageHeader
+        id={HEADING_ID}
+        headingRef={heading}
+        tight
+        title={t("dayplan.mine.heading")}
+        count={state.kind === "ready" && state.plan.planned ? state.plan.mine.length : undefined}
       />
-      <TodaySection day={day} note={note} />
+      <TodaySection day={day} note={note} headingId={HEADING_ID} headingRef={heading} />
     </>
   );
 }

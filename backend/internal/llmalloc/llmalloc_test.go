@@ -39,7 +39,9 @@ func propose(t *testing.T, answer string) (allocation.Result, error) {
 	t.Helper()
 	fake := llmalloc.NewFakeClient()
 	fake.Answer(answer)
-	return llmalloc.New(fake).Propose(context.Background(), state())
+	prop, err := llmalloc.New(fake).Propose(context.Background(), state())
+	res := prop.Result
+	return res, err
 }
 
 func TestAGoodAnswerBecomesAResult(t *testing.T) {
@@ -109,6 +111,46 @@ func TestClientErrorsPassThrough(t *testing.T) {
 	_, err := llmalloc.New(fake).Propose(context.Background(), state())
 	if !errors.Is(err, context.DeadlineExceeded) || errors.Is(err, llmalloc.ErrInvalidResponse) {
 		t.Fatalf("want the client's error, got %v", err)
+	}
+}
+
+func TestProposePassesTheUsageUp(t *testing.T) {
+	fake := llmalloc.NewFakeClient()
+	fake.ReportUsage("claude-haiku-5-5", 1200, 340)
+	prop, err := llmalloc.New(fake).Propose(context.Background(), state())
+	want := llmalloc.Usage{Model: "claude-haiku-5-5", InputTokens: 1200, OutputTokens: 340}
+	if err != nil || !prop.Called || prop.Usage == nil || *prop.Usage != want {
+		t.Fatalf("usage = %+v, called = %v, err = %v; want %+v", prop.Usage, prop.Called, err, want)
+	}
+}
+
+// A paid call whose answer is unusable still spent its tokens.
+func TestProposeReportsTheUsageOfAnInvalidAnswer(t *testing.T) {
+	fake := llmalloc.NewFakeClient()
+	fake.Answer(`not json`)
+	prop, err := llmalloc.New(fake).Propose(context.Background(), state())
+	if !errors.Is(err, llmalloc.ErrInvalidResponse) || !prop.Called || prop.Usage == nil {
+		t.Fatalf("usage = %+v, called = %v, err = %v", prop.Usage, prop.Called, err)
+	}
+	fake.FailWithUsage(llmalloc.ErrInvalidResponse)
+	prop, err = llmalloc.New(fake).Propose(context.Background(), state())
+	if !errors.Is(err, llmalloc.ErrInvalidResponse) || !prop.Called || prop.Usage == nil {
+		t.Fatalf("client failure with usage: usage = %+v, called = %v, err = %v", prop.Usage, prop.Called, err)
+	}
+}
+
+func TestProposeReportsNoUsageWhenTheClientHasNone(t *testing.T) {
+	fake := llmalloc.NewFakeClient()
+	fake.Fail(context.DeadlineExceeded)
+	prop, err := llmalloc.New(fake).Propose(context.Background(), state())
+	if err == nil || !prop.Called || prop.Usage != nil {
+		t.Fatalf("usage = %+v, called = %v, err = %v: a call was made, without usage", prop.Usage, prop.Called, err)
+	}
+	fake = llmalloc.NewFakeClient()
+	fake.NoUsage()
+	prop, err = llmalloc.New(fake).Propose(context.Background(), state())
+	if err != nil || !prop.Called || prop.Usage != nil {
+		t.Fatalf("usage = %+v, called = %v, err = %v", prop.Usage, prop.Called, err)
 	}
 }
 

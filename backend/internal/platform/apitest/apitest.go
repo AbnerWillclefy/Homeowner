@@ -28,9 +28,9 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/photos"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/config"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/db"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/replan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/server"
 )
 
@@ -117,16 +117,23 @@ func WithPhotos() Option {
 	}
 }
 
-// WithReplanner switches the staging-only POST /dev/replan route on, backed by r
-// (usually a *replan.Fake).
-func WithReplanner(r replan.Replanner) Option {
-	return func(d *server.Deps) { d.Replanner = r }
-}
-
 // WithoutAuth leaves the token verifier unconfigured (nil), so routes that
 // need a signed-in User answer 503.
 func WithoutAuth() Option {
 	return func(d *server.Deps) { d.Verifier = nil }
+}
+
+// WithEnvironment sets the environment name /admin/me reports.
+func WithEnvironment(env string) Option {
+	return func(d *server.Deps) { d.Environment = env }
+}
+
+// WithLLMDisplay sets the per-Home daily cap and the monthly spend limit (in
+// micro-USD, zero for none) that GET /admin/ai shows.
+func WithLLMDisplay(dailyCap int, limitMicros int64) Option {
+	return func(d *server.Deps) {
+		d.LLMDailyCapPerHome, d.LLMMonthlySpendLimitMicros = dailyCap, limitMicros
+	}
 }
 
 // Start boots the API on a fresh database cloned from the migrated template.
@@ -196,6 +203,7 @@ func (a *App) UseAllocator(al allocation.Allocator) {
 // calls per Home and timeout per call, falling back to the current allocator.
 func (a *App) UseLLM(p dayplan.Proposer, dailyCap int, timeout time.Duration) {
 	a.llmCfg.Proposer, a.llmCfg.DailyCap, a.llmCfg.CallTimeout = p, dailyCap, timeout
+	a.llmCfg.Model = config.DefaultLLMModel // what a row records when the call reported no usage
 	a.llm = dayplan.WithLLM(a.llmCfg)
 	a.UseAllocator(a.alloc.get())
 }
@@ -237,6 +245,15 @@ func (a *App) SignInAs(email string) *Client {
 		panic("apitest: SignInAs needs the fake verifier (do not use WithoutAuth)")
 	}
 	return a.client(a.Auth.SignIn(email))
+}
+
+// SignInAsSuperAdmin is SignInAs for a person in the super-admin Cognito
+// group: the same User as SignInAs(email), with a token that names the group.
+func (a *App) SignInAsSuperAdmin(email string) *Client {
+	if a.Auth == nil {
+		panic("apitest: SignInAsSuperAdmin needs the fake verifier (do not use WithoutAuth)")
+	}
+	return a.client(a.Auth.SignInWithGroups(email, "super-admin"))
 }
 
 // SignInAsSubject is SignInAs for a given Cognito subject, to model a person

@@ -32,7 +32,7 @@ Chore apps track what needs doing. Homeowner decides who does what today, from e
 
 ## Capabilities and Constraints
 
-- Domain vocabulary is fixed in `CONTEXT.md` (Home, Resident, Chore, Task, Effort, Energy, Baseline, Check-in, Day Plan, Committed, Streak, and their avoided synonyms). Portuguese wording is in `docs/glossary-pt-BR.md`. Copy uses these terms.
+- Domain vocabulary is fixed in `GLOSSARY.md` (Home, Resident, Chore, Task, Effort, Energy, Baseline, Check-in, Day Plan, Committed, Streak, and their avoided synonyms). Portuguese wording is in `docs/glossary-pt-BR.md`. Copy uses these terms.
 - Stack: React PWA with Tailwind v4 semantic tokens and Radix Primitives only where native HTML cannot be made accessible (ADR 0007, 0009). Raw palette classes in components are a review failure.
 - Light and dark themes, following the system by default with an in-app choice.
 - Offline capable: fonts and both language catalogs are precached.

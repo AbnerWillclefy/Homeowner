@@ -59,6 +59,8 @@ test("coming back to Chores shows the cached list at once and the indicator whil
 
   const held = hold(page, /\/home\/chores$/);
   await shell.openTab(page, "Chores");
+  // Today's plan cards carry the same names, so wait for Chores to replace them before matching by text.
+  await expect(tabs.chores.heading(page)).toBeVisible();
 
   // The cached list and the add buttons are there while the read is held: a skeleton would have replaced them.
   for (const name of CHORES) await expect(tabs.chores.chore(page, name)).toBeVisible();

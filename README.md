@@ -18,9 +18,9 @@ Homeowner takes that negotiation off the table:
 - **Explain every decision** in plain language, so the plan feels fair instead of bossy.
 - **Fair over time.** Preferences are honoured where possible, essential work still comes first, and the load evens out across the week.
 
-The daily plan can be drafted by an LLM, but a deterministic referee written in Go checks every proposal against the rules and falls back to a rule-based planner whenever the model is slow, wrong or switched off ([ADR 0004](docs/adr/0004-ai-allocates-behind-a-deterministic-referee.md)). The model only sees opaque ids and numbers, never names or health-related details.
+The daily plan is drafted by an LLM (Claude Haiku), but a deterministic referee written in Go checks every proposal against the rules and falls back to a rule-based planner whenever the model is slow, wrong or switched off ([ADR 0004](docs/adr/0004-ai-allocates-behind-a-deterministic-referee.md)). A second call writes the plain-language explanation of each Day Plan. The model only sees opaque ids and numbers, never names or health-related details, and every call is recorded with its cost for the admin dashboard.
 
-The domain language (Home, Resident, Chore, Task, Energy, Check-in, Day Plan, Streak and friends) is defined in [CONTEXT.md](CONTEXT.md), and the product's principles in [PRODUCT.md](PRODUCT.md).
+The domain language (Home, Resident, Chore, Task, Energy, Check-in, Day Plan, Streak and friends) is defined in [GLOSSARY.md](GLOSSARY.md), and the product's principles in [PRODUCT.md](PRODUCT.md).
 
 ## Screenshots
 
@@ -53,8 +53,9 @@ Most Residents use the app in Brazilian Portuguese, so it is designed pt-BR firs
 | Part | What it is |
 |---|---|
 | `web/` | React 19 PWA (Vite, TypeScript, Tailwind v4, Radix, TanStack Query), light and dark themes, offline-capable |
-| `backend/` | Go API and the scheduled Allocation job, Postgres with goose migrations |
-| `infra/` | Terraform for AWS: Lambda behind API Gateway, EventBridge, S3 and CloudFront, Cognito, plus a Neon Postgres branch per environment |
+| `admin/` | The maintainer's desktop dashboard (React): usage, LLM cost and reliability, and the daily planning funnel, one per environment |
+| `backend/` | Go API and the scheduled Allocation job, Postgres with goose migrations, the Anthropic Go SDK for the LLM allocator |
+| `infra/` | Terraform for AWS: Lambda behind API Gateway, EventBridge, S3 and CloudFront, Cognito, SSM for secrets, plus a Neon Postgres branch per environment |
 
 Staging deploys on every merge to `main`; production deploys when `main` is promoted to the `production` branch. The whole thing is designed to run for under $20 a month ([ADR 0002](docs/adr/0002-mirror-the-work-stack.md)).
 
@@ -74,7 +75,7 @@ Homeowner is built by a small team of Claude agents, each with its own role and 
 
 They all post from the same GitHub account, so every comment starts with the role speaking, like `**Senior Engineer:**`.
 
-Work moves through GitHub labels. Each stage is a workflow in [`.github/workflows/`](.github/workflows/), and a human acts at only three points: requesting a feature, saying "build this", and merging.
+Work moves through GitHub labels. Each stage is a workflow in [`.github/workflows/`](.github/workflows/), and a human acts at only three points: requesting a feature, saying "build this", and approving the riskier merges.
 
 ```mermaid
 flowchart TD
@@ -87,19 +88,24 @@ flowchart TD
     H2 -->|backend then frontend engineer| PR[Pull request opened]
     PR -->|Claude Code Review| RV[Review findings]
     RV -->|engineer applies valid findings| RD[Labelled review-addressed]
-    RD --> H3([Human merges])
-    H3 --> ST[Deploy to staging]
+    RD --> RT{Risk tier}
+    RT -->|low| AM[Merged automatically]
+    RT -->|medium| H3([Human approves])
+    RT -->|high| H4([Human merges])
+    H3 --> AM
+    AM --> ST[Deploy to staging]
+    H4 --> ST
 ```
 
 1. **Plan** (`agent-plan-feature.yml`). An issue labelled `feature-request` gets a design overview from the architect, and the product manager breaks it into tickets with acceptance criteria. The request becomes an epic.
 2. **Refine** (`agent-refine.yml`). Labelling `needs-refinement` makes the senior engineer write each ticket's technical notes and label it `ready-for-agent`. A change small enough for one pull request skips planning and starts here.
 3. **Implement** (`agent-implement.yml`). A human labels a ticket `implement`. The engineers check every "Blocked by" issue is closed, build backend first so the frontend works against a real API, check each acceptance criterion against a test or line of code, and open a pull request.
 4. **Review and fix** (`claude-code-review.yml`, `agent-review-fix.yml`). Claude reviews every pull request; the engineer applies the valid findings and labels it `review-addressed`. After two rounds with findings still open, it asks for a human with `needs-human`.
-5. **Merge and deploy.** A human merges and staging deploys.
+5. **Merge and deploy** (`pr-risk.yml`, `merge-by-risk.yml`). Every pull request states a risk tier, and its changed paths set a floor it cannot go under. Low-risk pull requests merge themselves once checks and review are clean, medium ones once the maintainer approves, and the maintainer merges high ones ([ADR 0015](docs/adr/0015-merge-agent-pull-requests-by-risk-tier.md), [tiers](docs/agents/pr-risk.md)). Staging deploys on every merge.
 
 Around those stages, deterministic workflows keep things moving: CI for the Go tests, typecheck, end-to-end tests and Terraform checks; a `ui-screenshots` check that every UI pull request shows the change in pt-BR and English; an agent that resolves merge conflicts after `main` moves; a notification when a pull request is ready to merge; and a sync that moves each issue across the project board.
 
-The maintainer is also using Homeowner to learn Go, AWS and system design. Besides labelling a ticket `implement`, they can build it locally with Claude using `/ticket <n>` ([skill](.claude/skills/ticket/SKILL.md)), which writes the code while teaching each concept the ticket's "Learning focus" names. The agents' standing instructions live in [CLAUDE.md](CLAUDE.md).
+The maintainer is also using Homeowner to learn Go, AWS and system design. Besides labelling a ticket `implement`, they can build it locally with Claude using `/ticket <n>` ([skill](.claude/skills/ticket/SKILL.md)), which writes the code while teaching each concept the ticket's "Learning focus" names. The agents' standing instructions live in [CLAUDE.md](CLAUDE.md), and every agent writes code by the [Ponytail](https://github.com/DietrichGebert/ponytail) ruleset in [AGENTS.md](AGENTS.md): the smallest complete change, no code nobody asked for.
 
 ## Run everything locally
 
@@ -221,6 +227,41 @@ Check the API logs with `docker compose logs api`. A `sign-in disabled` or
   without HTTPS. The service worker only exists in a production build, so test
   push with `npm run build && npm run preview` (http://localhost:4173). Add
   that origin to `CORS_ALLOWED_ORIGINS` in `docker-compose.yml` first.
+
+### 7. Admin app (optional)
+
+The maintainer's admin app lives in `admin/` and runs on port 5174 against the
+Compose API. It needs a super admin in the pool your `.env` points to (see the
+next section).
+
+```sh
+cd admin
+cp .env.example .env.local     # fill in VITE_COGNITO_REGION and VITE_COGNITO_CLIENT_ID (same as web/.env.local)
+npm ci
+npm run dev                    # http://localhost:5174
+```
+
+Note `admin/` calls the API URL `VITE_API_URL`, where the PWA calls it
+`VITE_API_BASE_URL`. Variables are explained in
+[docs/development.md](docs/development.md#admin).
+
+## The super admin role
+
+The API's `/admin/` routes are for the maintainer only ([ADR 0017](docs/adr/0017-operate-through-a-separate-admin-app-per-environment.md)).
+Terraform creates a `super-admin` group in each environment's Cognito pool; who
+belongs to it is a manual step, per environment (find the pool id with
+`aws cognito-idp list-user-pools --max-results 10`, or `terraform output user_pool_id`
+of `module.auth`):
+
+```sh
+# Grant
+aws cognito-idp admin-add-user-to-group --user-pool-id <pool id> --username <email or sub> --group-name super-admin
+# Revoke
+aws cognito-idp admin-remove-user-from-group --user-pool-id <pool id> --username <email or sub> --group-name super-admin
+```
+
+Revoking takes effect when the person's ID token next refreshes, up to 60
+minutes. More in [docs/development.md](docs/development.md#the-super-admin-role).
 
 ## Development reference
 

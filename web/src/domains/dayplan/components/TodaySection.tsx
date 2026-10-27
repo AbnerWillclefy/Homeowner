@@ -1,5 +1,5 @@
 import { Clock } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { Link } from "react-router";
 import type { DayPlan, PlanTask } from "../api/api";
 import { pendingAction, type Acting, type SwapAction, type TaskAction, type TaskRole } from "../logic/actions";
@@ -24,49 +24,57 @@ import type { ActionNotice, useDayPlan } from "../hooks/useDayPlan";
 const LIST = "m-0 flex list-none flex-col gap-3 p-0";
 
 type Day = ReturnType<typeof useDayPlan>;
+type SwapOffering = { task: PlanTask; holderId: string };
 
 /**
  * Today's Day Plan: your Tasks, other Residents' Tasks and the pool that remains, and what you did today. A Day
  * Plan is a proposal: you accept, refuse, take or complete Tasks, and the plan only changes from the server's
  * answer. Rendered inside the Home section, so it only exists while the signed-in User has a Home. The owner
- * loads the plan and shows its Energy in the header's chip; `note` is that chip's note, null while the
- * Check-in is not known.
+ * loads the plan; `note` is the Shell's Energy note, which only decides why an empty list is empty, and is
+ * null while the Check-in is not known.
  */
 export function TodaySection({
   day,
   note,
+  headingId,
+  headingRef,
 }: {
   day: Day;
   note: EnergyNote | null;
+  /** The id of the page's header title, which names this section. */
+  headingId: string;
+  /** The header title's element: where focus returns after the plan changed. */
+  headingRef: RefObject<HTMLHeadingElement | null>;
 }) {
   const { t } = useI18n();
   const { state, reload, run, acceptAll, answerSwap, offerSwap, acting, notice, changed } = day;
   // The page's one status announces the wait; the skeleton shows after 300ms and only for a first load.
   const showSkeleton = useReportFirstLoad(state.kind === "loading");
   const section = useRef<HTMLElement>(null);
-  const heading = useRef<HTMLHeadingElement>(null);
+  const heading = headingRef;
+  // The Task a Swap is being offered for and who holds it, both known at the tap. One dialog for the whole plan,
+  // mounted only after a tap on Swap.
+  const [offer, setOffer] = useState<SwapOffering | null>(null);
 
   // A Task that leaves its list takes its button with it, so focus would fall to <body>. Bring it back to the
-  // section's heading when the plan changed, unless focus is still on something inside the section.
+  // section's heading, unless focus is still on something inside the section. `preventScroll`: the heading is at
+  // the top of the section, and a plain focus() would scroll the page up to it.
+  // It waits for the offer dialog to be gone (its focus trap owns focus while open): closing it re-runs this
+  // effect, after the dialog has unmounted. Where the Swap button is still there, the dialog's own return of focus
+  // to it runs after this and wins.
   useEffect(() => {
-    if (changed === 0) return;
+    if (changed === 0 || offer !== null) return;
     const active = document.activeElement;
     if (!(active instanceof HTMLElement) || active === section.current || !section.current?.contains(active)) {
-      heading.current?.focus();
+      heading.current?.focus({ preventScroll: true });
     }
-  }, [changed]);
+  }, [changed, offer]);
 
   return (
-    <section ref={section} aria-labelledby="today-heading">
-      {/* The greeting is the visible title; this one names the landmark for screen readers. */}
-      <h2 id="today-heading" ref={heading} tabIndex={-1} className="sr-only">
-        {t("dayplan.heading")}
-      </h2>
-
+    <section ref={section} aria-labelledby={headingId}>
       <Notice notice={notice} />
 
       {showSkeleton && <DayPlanSkeleton />}
-
       {state.kind === "failed" && (
         <>
           <p role="alert" className="text-danger">
@@ -89,6 +97,8 @@ export function TodaySection({
           onAction={run}
           onAnswer={answerSwap}
           onOffer={offerSwap}
+          offer={offer}
+          onOfferChange={setOffer}
         />
       )}
     </section>
@@ -149,6 +159,8 @@ function PlanView({
   onAction,
   onAnswer,
   onOffer,
+  offer,
+  onOfferChange,
 }: {
   plan: DayPlan;
   note: EnergyNote | null;
@@ -157,11 +169,10 @@ function PlanView({
   onAction(action: TaskAction, task: PlanTask): void;
   onAnswer(action: SwapAction, swapId: string): void;
   onOffer(offeredTaskId: string, requestedTaskId: string): Promise<void>;
+  offer: SwapOffering | null;
+  onOfferChange(offer: SwapOffering | null): void;
 }) {
   const { t, locale } = useI18n();
-  // The Task a Swap is being offered for and who holds it, both known at the tap. One dialog for the whole plan,
-  // mounted only after a tap on Swap.
-  const [offer, setOffer] = useState<{ task: PlanTask; holderId: string } | null>(null);
   // The chip's note picks the reason for an empty list, so the two can never disagree.
   const reason = note && noTasksReason(note);
   // Every button waits while anything runs; only the pressed one shows its spinner.
@@ -178,7 +189,7 @@ function PlanView({
       onAction={onAction}
       onSwap={
         role === "other" && holderId !== undefined && canOfferFor(plan, task)
-          ? () => setOffer({ task, holderId })
+          ? () => onOfferChange({ task, holderId })
           : undefined
       }
     />
@@ -186,6 +197,7 @@ function PlanView({
 
   return (
     <div className="flex flex-col gap-8">
+      {plan.planned && <DaySummary plan={plan} />}
       {!plan.planned && !plan.rejected && (
         <p role="status" className="my-0 flex items-center gap-2 font-semibold text-muted">
           <Clock aria-hidden="true" size={18} className="shrink-0" />
@@ -207,8 +219,6 @@ function PlanView({
 
       {plan.planned && (
         <div>
-          <GroupHeading count={plan.mine.length}>{t("dayplan.mine.heading")}</GroupHeading>
-          <DaySummary plan={plan} />
           {proposed > 0 && (
             <Button
               fullWidth
@@ -270,7 +280,7 @@ function PlanView({
           holderId={offer.holderId}
           options={offerableTasks(plan)}
           offer={onOffer}
-          onClose={() => setOffer(null)}
+          onClose={() => onOfferChange(null)}
         />
       )}
 

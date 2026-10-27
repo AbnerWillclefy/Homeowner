@@ -17,7 +17,6 @@ export const ptBR: Messages = {
   "common.refreshing": "Atualizando",
   "app.chunkFailed": "Não foi possível carregar esta tela. Verifique a conexão e tente de novo.",
   "app.chunkRetry": "Tentar de novo",
-  "home.tagline": "Gerencie os afazeres domésticos do seu lar.",
   "health.unavailable":
     "Status do serviço: indisponível. O serviço está no ar, mas não consegue acessar o banco de dados.",
   "health.unreachable":
@@ -317,7 +316,6 @@ export const ptBR: Messages = {
   "chores.field.unknown": "Este valor não é aceito. Confira e tente de novo.",
 
   // Hoje (o plano do dia)
-  "dayplan.heading": "Hoje",
   "dayplan.loading": "Carregando o plano de hoje",
   "dayplan.load.offline":
     "Não foi possível carregar o plano de hoje porque o Homeowner não consegue falar com o serviço. Confira a sua conexão e tente de novo.",
@@ -328,16 +326,6 @@ export const ptBR: Messages = {
   "dayplan.notPlanned": "O plano de hoje é feito às {time}.",
   "dayplan.rejected":
     "Não foi possível usar o plano de hoje, então nenhuma tarefa foi dada hoje.",
-  "dayplan.greeting.morning": "Bom dia",
-  "dayplan.greeting.afternoon": "Boa tarde",
-  "dayplan.greeting.evening": "Boa noite",
-  "dayplan.greeting.morningName": "Bom dia, {name}",
-  "dayplan.greeting.afternoonName": "Boa tarde, {name}",
-  "dayplan.greeting.eveningName": "Boa noite, {name}",
-  "dayplan.energy.value": "Energia {energy}",
-  "dayplan.energy.planned": "{planned} de {energy} planejados para você",
-  "dayplan.energy.drained": "Esgotado hoje, sem tarefas",
-  "dayplan.energy.noBaseline": "Defina a sua energia base para ter energia",
   "dayplan.mine.empty.noBaseline":
     "Sem energia base para hoje, então nenhuma tarefa para você.",
   "dayplan.mine.empty.noBaseline.link": "Definir a energia base",
@@ -418,20 +406,6 @@ export const ptBR: Messages = {
     "Parece que você está sem internet, então isso não foi enviado. Confira sua conexão e tente de novo.",
   "dayplan.action.failed.error":
     "Algo deu errado e isso não foi enviado. Tente de novo daqui a pouco.",
-  "dayplan.replan.action": "Replanejar agora",
-  "dayplan.replan.waiting": "Replanejando. Pode levar um minuto.",
-  "dayplan.replan.timedOut": "O novo plano está demorando. Ele ainda pode chegar, volte daqui a pouco.",
-  "dayplan.replan.done.llm": "A IA fez este plano.",
-  "dayplan.replan.done.baseline": "O alocador padrão fez este plano, sem a IA.",
-  "dayplan.replan.fallback.llm_daily_cap_reached":
-    "Este é o plano padrão, não o da IA: o limite diário da IA foi atingido.",
-  "dayplan.replan.fallback.llm_error": "Este é o plano padrão, não o da IA: a IA teve um problema.",
-  "dayplan.replan.fallback.llm_timeout": "Este é o plano padrão, não o da IA: a IA demorou demais.",
-  "dayplan.replan.fallback.llm_invalid_response":
-    "Este é o plano padrão, não o da IA: a resposta da IA não pôde ser usada.",
-  "dayplan.replan.fallback.llm_rejected_by_checker":
-    "Este é o plano padrão, não o da IA: o plano da IA não passou na verificação.",
-  "dayplan.replan.fallback.unknown": "Este é o plano padrão, não o da IA: o plano da IA não foi usado.",
   "dayplan.conflict.already_done":
     "Essa tarefa já foi concluída. Ela está em Concluídas hoje.",
   "dayplan.conflict.not_proposed":
@@ -518,8 +492,6 @@ export const ptBR: Messages = {
 
   // Check-in
   "checkin.heading": "Check-in",
-  "checkin.prompt": "Como você está hoje?",
-  "checkin.open": "Fazer check-in",
   "checkin.load.offline":
     "Não foi possível carregar o seu check-in porque o Homeowner não consegue acessar o serviço. Verifique a sua conexão e tente de novo.",
   "checkin.load.error":
@@ -535,8 +507,7 @@ export const ptBR: Messages = {
   "checkin.level.required": "Escolha como está a sua energia hoje e salve.",
   "checkin.restrictions.legend": "Algo que você não pode fazer hoje?",
   "checkin.submit": "Salvar",
-  "checkin.cancel": "Cancelar",
-  "checkin.change": "Mudar",
+  "checkin.cancel": "Agora não",
   "checkin.saved": "Check-in salvo",
   "checkin.save.offline":
     "O seu check-in não foi salvo porque o Homeowner não consegue acessar o serviço. Verifique a sua conexão e tente de novo.",
@@ -544,8 +515,16 @@ export const ptBR: Messages = {
     "Algo deu errado ao salvar o seu check-in. Tente de novo em instantes.",
   "checkin.save.invalid":
     "O Homeowner não aceitou esse check-in. Escolha de novo e tente mais uma vez.",
-  "checkin.summary": "Check-in de hoje: {level}",
   "checkin.summary.restrictions": "Não hoje: {demands}",
+  "checkin.summary.restrictions.none": "Nenhuma restrição hoje",
+  "checkin.planned": "{planned} de {energy} planejados",
+  "checkin.pill.name.unset": "Fazer check-in",
+  "checkin.pill.name.energy": "Energia hoje: {energy}. Mudar check-in",
+  "checkin.pill.name.drained": "Esgotado hoje. Mudar check-in",
+  "checkin.pill.name.noBaseline": "Sem energia base hoje. Mudar check-in",
+  "checkin.pill.name.pending": "Check-in feito: {level}. Mudar check-in",
+  "checkin.pill.name.done": "Check-in feito. Mudar check-in",
+  "checkin.pill.name.failed": "Energia indisponível. Tentar de novo",
 
   // Cadastro
   "signUp.heading": "Cadastrar-se",
@@ -728,10 +707,13 @@ export const ptBR: Messages = {
   "catalog.rooms.livingRooms": "Salas",
   "catalog.rooms.laundryAreas": "Áreas de serviço",
   "catalog.outdoor.legend": "Área externa",
-  "catalog.outdoor.none": "Nenhuma",
   "catalog.outdoor.balcony": "Varanda",
   "catalog.outdoor.yard": "Quintal",
   "catalog.outdoor.garden": "Jardim",
+  "catalog.outdoor.add": "Adicionar {area}",
+  "catalog.outdoor.balconies": "Varandas",
+  "catalog.outdoor.yards": "Quintais",
+  "catalog.outdoor.gardens": "Jardins",
   "catalog.pets.legend": "Animais de estimação",
   "catalog.pets.dog": "Cachorro",
   "catalog.pets.cat": "Gato",
@@ -778,7 +760,7 @@ export const ptBR: Messages = {
     "O Homeowner não consegue acessar o serviço, então o Catálogo não pôde ser carregado. Confira sua conexão e tente de novo.",
   "chores.catalog.load.error":
     "Algo deu errado ao carregar o Catálogo. Tente de novo em instantes.",
-  "chores.catalog.perRoom": "Um para cada cômodo",
+  "chores.catalog.perRoom": "Um por cômodo ou área",
   "chores.catalog.add": "Adicionar",
   "chores.catalog.add.label": "Adicionar {name}",
   "chores.catalog.close": "Fechar o Catálogo",

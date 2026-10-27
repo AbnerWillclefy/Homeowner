@@ -8,21 +8,21 @@ import { RESIDENT_EMAIL, signedInResident, withExplanation } from "../mocks/samp
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
 
-// What this covers: Today's first load shows its skeleton until the Check-in, Day Plan and Streak have each
-// answered, then everything in one swap, and stays still (Cumulative Layout Shift under 0.1). In pt-BR first, then
+// What this covers: Today's first load shows its skeleton until the Check-in and the Day Plan have each
+// answered, then everything in one swap (the Streak is in the top bar, which holds its box), and stays still (Cumulative Layout Shift under 0.1). In pt-BR first, then
 // en-US, at a phone size and at 320px with 200% text, with the reads held long enough for the skeleton to show and
 // answered at once (the skeleton never flashes). A failed read shows its own alert in place; a refresh of what is on
-// screen keeps it. It runs in two projects: `chromium` (Replan off, like production) and `chromium-replan` (the
-// staging build with the "Replan now" control), and the skeleton's Replan block follows the build.
+// screen keeps it.
 
 const LOCALES = [
   {
     locale: "pt-BR",
     mine: "Suas tarefas",
-    prompt: "Como você está hoje?",
     headline: "Um dia leve para você",
     streak: /^Sequência: /,
-    replan: "Replanejar agora",
+    // Any state of the pill: the fake's day is checked in, so it shows the Energy ("Energia hoje: 8. Mudar check-in").
+    pill: /check-in/i,
+    unavailable: "Energia indisponível. Tentar de novo",
     retry: "Tentar de novo",
     today: "Hoje",
     chores: "Afazeres",
@@ -30,10 +30,10 @@ const LOCALES = [
   {
     locale: "en-US",
     mine: "Your Tasks",
-    prompt: "How are you today?",
     headline: "A light day for you",
     streak: /^Streak: /,
-    replan: "Replan now",
+    pill: /check.?in/i,
+    unavailable: "Energy unavailable. Try again",
     retry: "Try again",
     today: "Today",
     chores: "Chores",
@@ -94,14 +94,13 @@ for (const l of LOCALES) {
       await seedSession(page, { email: RESIDENT_EMAIL });
     });
 
-    const mine = (page: Page) => page.getByRole("heading", { level: 3, name: l.mine });
-    const prompt = (page: Page) => page.getByText(l.prompt);
-    const explanation = (page: Page) => page.getByRole("button", { name: l.headline });
+    const mine = (page: Page) => page.getByRole("heading", { level: 2, name: l.mine });
+    // The one muted summary line under the title: plain text, no longer a button.
+    const summary = (page: Page) => page.getByText(l.headline);
+    const pill = (page: Page) => page.getByTestId("top-bar").getByRole("button", { name: l.pill });
     const streak = (page: Page) => page.getByRole("button", { name: l.streak });
     const task = (page: Page) => page.getByText("Wash the dishes", { exact: true });
-    const replanButton = (page: Page) => page.getByRole("button", { name: l.replan });
     const skeleton = (page: Page) => page.locator(SKELETON);
-    const replanBlock = (page: Page) => page.locator('[data-skeleton="replan"]');
 
     for (const size of SIZES) {
       test.describe(size.name, () => {
@@ -112,36 +111,91 @@ for (const l of LOCALES) {
           if (size.scale) await scaleText(page);
         });
 
-        test("held reads: the skeleton shows, then Today swaps in once and nothing moves", async ({ page, baseURL }, testInfo) => {
-          const replan = testInfo.project.name === "chromium-replan";
+        test("held reads: the skeleton shows, then Today swaps in once and nothing moves", async ({ page, baseURL }) => {
           const held = { checkIn: hold(page, /\/home\/check-in$/), plan: hold(page, /\/home\/day-plan$/), streak: hold(page, /\/home\/streak$/) };
           await launchApp(page, baseURL!);
 
           await expect(skeleton(page)).toBeVisible();
-          await expect(replanBlock(page)).toHaveCount(replan ? 1 : 0);
-          await expect(page.locator("header h2")).toHaveCount(0);
+          await expect(mine(page)).toHaveCount(0);
           await page.waitForTimeout(300);
 
-          // One read at a time: Today shows nothing of it until the last has answered.
-          for (const read of [held.checkIn, held.plan]) {
-            read.release();
-            await page.waitForTimeout(150);
-            await expect(prompt(page)).toHaveCount(0);
-            await expect(mine(page)).toHaveCount(0);
-            await expect(streak(page)).toHaveCount(0);
-            await expect(skeleton(page)).toBeVisible();
-          }
-          held.streak.release();
+          // Today's two reads, one at a time: Today shows nothing of them until the last has answered.
+          // The Streak is not one of them; it is held the whole time and the bar keeps its box.
+          held.checkIn.release();
+          await page.waitForTimeout(150);
+          await expect(summary(page)).toHaveCount(0);
+          await expect(mine(page)).toHaveCount(0);
+          await expect(skeleton(page)).toBeVisible();
+          held.plan.release();
 
           await expect(mine(page)).toBeVisible();
-          // The same render brought everything, and took the skeleton away.
-          await expect(prompt(page)).toBeVisible({ timeout: 0 });
-          await expect(explanation(page)).toBeVisible({ timeout: 0 });
+          // The same render brought everything, and took the skeleton away, while the flame still waits.
+          await expect(summary(page)).toBeVisible({ timeout: 0 });
           await expect(task(page)).toBeVisible({ timeout: 0 });
-          await expect(streak(page)).toBeVisible({ timeout: 0 });
           await expect(skeleton(page)).toHaveCount(0);
-          await expect(replanButton(page)).toHaveCount(replan ? 1 : 0);
+          await expect(streak(page)).toHaveCount(0);
 
+          // The flame arrives in its reserved box in the bar.
+          held.streak.release();
+          await expect(streak(page)).toBeVisible();
+
+          await page.waitForTimeout(500);
+          expect(await cls(page)).toBeLessThan(0.1);
+        });
+
+        if (size.scale) {
+          test("the summary wraps onto a second line instead of being cut", async ({ page, baseURL }) => {
+            await launchApp(page, baseURL!);
+            const line = summary(page);
+            await expect(line).toBeVisible();
+            const box = await line.evaluate((el) => {
+              const style = getComputedStyle(el);
+              return { height: el.getBoundingClientRect().height, lineHeight: parseFloat(style.lineHeight), overflows: el.scrollWidth > el.clientWidth };
+            });
+            expect(box.height).toBeGreaterThanOrEqual(box.lineHeight * 2 - 1);
+            expect(box.overflows).toBe(false);
+          });
+        }
+
+        test("the Check-in held: the pill reserves its box from the first frame and fills it without moving the bar", async ({ page, baseURL }) => {
+          const checkIn = hold(page, /\/home\/check-in$/);
+          await launchApp(page, baseURL!);
+
+          // The bar is up with the Streak while the Check-in is held; the pill's slot already has its final box.
+          await expect(streak(page)).toBeVisible();
+          await page.waitForTimeout(400);
+          const slot = page.locator('[data-slot="energy"]');
+          const loading = (await slot.boundingBox())!;
+          const barLoading = (await page.getByTestId("top-bar").boundingBox())!;
+          const flame = (await streak(page).boundingBox())!;
+          expect(loading.width).toBeGreaterThanOrEqual(44);
+          expect(loading.height).toBeGreaterThanOrEqual(44);
+          await expect(page.getByTestId("top-bar").getByRole("button", { name: l.pill })).toHaveCount(0);
+
+          checkIn.release();
+          const pill = page.getByTestId("top-bar").getByRole("button", { name: l.pill });
+          await expect(pill).toBeVisible();
+          const loaded = (await slot.boundingBox())!;
+          const barLoaded = (await page.getByTestId("top-bar").boundingBox())!;
+          expect(loaded).toEqual(loading);
+          expect(barLoaded).toEqual(barLoading);
+          expect(await streak(page).boundingBox()).toEqual(flame);
+          await page.waitForTimeout(500);
+          expect(await cls(page)).toBeLessThan(0.1);
+        });
+
+        test("the Streak held alone: Today swaps in without it and nothing moves", async ({ page, baseURL }) => {
+          const streakRead = hold(page, /\/home\/streak$/);
+          await launchApp(page, baseURL!);
+
+          await expect(mine(page)).toBeVisible();
+          await expect(summary(page)).toBeVisible();
+          await expect(skeleton(page)).toHaveCount(0);
+          await page.waitForTimeout(400);
+          await expect(streak(page)).toHaveCount(0);
+
+          streakRead.release();
+          await expect(streak(page)).toBeVisible();
           await page.waitForTimeout(500);
           expect(await cls(page)).toBeLessThan(0.1);
         });
@@ -150,7 +204,7 @@ for (const l of LOCALES) {
           await launchApp(page, baseURL!);
 
           await expect(mine(page)).toBeVisible();
-          await expect(prompt(page)).toBeVisible();
+          await expect(summary(page)).toBeVisible();
           await expect(streak(page)).toBeVisible();
           await expect(skeleton(page)).toHaveCount(0);
           await page.waitForTimeout(500);
@@ -170,21 +224,26 @@ for (const l of LOCALES) {
         await launchApp(page, baseURL!);
 
         await expect(mine(page)).toBeVisible();
-        await expect(prompt(page)).toBeVisible();
+        await expect(summary(page)).toBeVisible();
         await expect(task(page)).toBeVisible();
         await expect(streak(page)).toHaveCount(0);
         await expect(skeleton(page)).toHaveCount(0);
       });
 
-      test("the Check-in: its own alert in place, with the Tasks shown", async ({ page, baseURL, fakeApi }) => {
+      test("the Check-in: only the pill says it is unavailable, with the Tasks shown and nothing moving", async ({ page, baseURL, fakeApi }) => {
+        await observe(page);
         fakeApi.override("GET /home/check-in", json(500, { error: "boom" }));
         await launchApp(page, baseURL!);
 
         await expect(mine(page)).toBeVisible();
-        await expect(page.getByRole("region", { name: "Check-in" }).getByRole("alert")).toBeVisible();
+        await expect(page.getByTestId("top-bar").getByRole("button", { name: l.unavailable })).toBeVisible();
         await expect(task(page)).toBeVisible();
         await expect(streak(page)).toBeVisible();
         await expect(skeleton(page)).toHaveCount(0);
+        // Not a region on Today: no alert on the page for the Check-in.
+        await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toHaveCount(0);
+        await page.waitForTimeout(500);
+        expect(await cls(page)).toBeLessThan(0.1);
       });
 
       test("the Day Plan: its own alert in place, and Retry loads only that section", async ({ page, baseURL, fakeApi }) => {
@@ -192,7 +251,8 @@ for (const l of LOCALES) {
         await launchApp(page, baseURL!);
 
         await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toBeVisible();
-        await expect(prompt(page)).toBeVisible();
+        await expect(mine(page)).toBeVisible();
+        await expect(pill(page)).toBeVisible();
         await expect(streak(page)).toBeVisible();
         await expect(skeleton(page)).toHaveCount(0);
 
@@ -201,8 +261,8 @@ for (const l of LOCALES) {
         await page.getByRole("button", { name: l.retry }).click();
         await expect(mine(page)).toBeVisible();
         await expect(task(page)).toBeVisible();
-        // The Check-in and the flame stayed where they were.
-        await expect(prompt(page)).toBeVisible();
+        // The pill and the flame stayed where they were.
+        await expect(pill(page)).toBeVisible();
         await expect(streak(page)).toBeVisible();
       });
     });
@@ -226,7 +286,7 @@ for (const l of LOCALES) {
       await expect(mine(page)).toBeVisible();
     });
 
-    test("opening Today again with its data cached shows it at once and focus lands on the greeting", async ({ page, baseURL }) => {
+    test("opening Today again with its data cached shows it at once and focus lands on the title", async ({ page, baseURL }) => {
       await page.setViewportSize({ width: 390, height: 844 });
       await launchApp(page, baseURL!);
       await expect(mine(page)).toBeVisible();
@@ -240,7 +300,7 @@ for (const l of LOCALES) {
       // The cached data shows with no skeleton while the refresh is held.
       await expect(mine(page)).toBeVisible();
       await expect(skeleton(page)).toHaveCount(0);
-      await expect(page.locator("header h2")).toBeFocused();
+      await expect(mine(page)).toBeFocused();
       reads.release();
     });
   });

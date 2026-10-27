@@ -1,0 +1,331 @@
+package admin
+
+// Everything here is an aggregate or an opaque count: no email, name, user id
+// or Chore title ever enters these types (a test walks the response keys).
+
+// OverviewResponse is GET /admin/overview.
+type OverviewResponse struct {
+	Range  string `json:"range"`
+	From   string `json:"from"`
+	To     string `json:"to"`
+	Totals Totals `json:"totals"`
+	Active Active `json:"active"`
+	Days   []Day  `json:"days"`
+	// Previous holds the range totals of the N days just before the window.
+	// Always present: a window with no data is all zeros.
+	Previous OverviewPrevious `json:"previous"`
+}
+
+// OverviewPrevious is the previous window's totals: the same counters as a
+// Day, summed over the window, and Active computed over the whole window
+// (distinct Homes and Residents cannot be summed from days). There are no
+// daily rows. The window is made of full days while the current one includes
+// today, so count deltas lean down; the page does the division.
+type OverviewPrevious struct {
+	From   string `json:"from"`
+	To     string `json:"to"`
+	Active Active `json:"active"`
+	DayCounts
+}
+
+// Totals counts every row of four tables, whatever the range.
+type Totals struct {
+	Users     int `json:"users"`
+	Homes     int `json:"homes"`
+	Residents int `json:"residents"`
+	Chores    int `json:"chores"`
+}
+
+// Active counts the Homes and Residents with a Check-in, Commitment or
+// Completion in the range. Residents who left a Home are gone (their rows
+// cascade), so this describes current Residents only.
+type Active struct {
+	Homes     int `json:"homes"`
+	Residents int `json:"residents"`
+}
+
+// Day is one date of the range. Dates are the stored Home-local date where a
+// table has one, otherwise UTC.
+//
+// Refuses and Takes are current state, not an event log: a refused Task that
+// someone later Takes leaves the pool (take releases it), so Refuses is a
+// lower bound. A replanned day (staging only) is deleted and recreated, so it
+// counts once.
+type Day struct {
+	Date string `json:"date"`
+	DayCounts
+}
+
+// DayCounts are the counters of a Day. They are embedded, so the JSON of a Day
+// stays flat, and OverviewPrevious reuses them for a whole window.
+type DayCounts struct {
+	Runs          int    `json:"runs"`
+	Rejected      int    `json:"rejected"`
+	Fallbacks     int    `json:"fallbacks"`
+	Checkins      int    `json:"checkins"`
+	Completions   int    `json:"completions"`
+	Refuses       int    `json:"refuses"`
+	Takes         int    `json:"takes"`
+	SwapsAccepted int    `json:"swapsAccepted"`
+	Pushes        Pushes `json:"pushes"`
+}
+
+// Pushes counts nudges by what the push service answered. Unknown is a NULL
+// outcome: a row from before the column, a crash, or a send dropped by the
+// tick's deadline. Both nudge kinds are counted together. Delivered means
+// accepted by the push service, not shown on a phone.
+type Pushes struct {
+	Delivered int `json:"delivered"`
+	Failed    int `json:"failed"`
+	Gone      int `json:"gone"`
+	Unknown   int `json:"unknown"`
+}
+
+// AIResponse is GET /admin/ai. Every cost is an estimate (CostIsEstimate): the
+// Anthropic Console is the source of truth. Money is integer micro-USD
+// (millionths of a dollar); the page formats it.
+type AIResponse struct {
+	Range          string      `json:"range"`
+	From           string      `json:"from"`
+	To             string      `json:"to"`
+	CostIsEstimate bool        `json:"costIsEstimate"`
+	Days           []AIDay     `json:"days"`
+	MonthToDate    MonthToDate `json:"monthToDate"`
+	// DailyCapPerHome is the cap the Allocation job enforces, shown as
+	// configured on the API (same Terraform local).
+	DailyCapPerHome    int              `json:"dailyCapPerHome"`
+	AllocatorShare     AllocatorShare   `json:"allocatorShare"`
+	ExplanationShare   ExplanationShare `json:"explanationShare"`
+	TopViolationKinds  []KindCount      `json:"topViolationKinds"`
+	TopFallbackReasons []ReasonCount    `json:"topFallbackReasons"`
+	// Previous holds the range totals of the N days just before the window,
+	// without the month-to-date figure and the top lists. Always present.
+	Previous AIPrevious `json:"previous"`
+}
+
+// AIPrevious is the previous window's totals. Each service holds range totals
+// in the ServiceDay shape; the latency median and max are range-level, null
+// when the window had no call. The window is made of full days while the
+// current one includes today, so count deltas lean down.
+type AIPrevious struct {
+	From             string           `json:"from"`
+	To               string           `json:"to"`
+	Services         AIServices       `json:"services"`
+	AllocatorShare   AllocatorShare   `json:"allocatorShare"`
+	ExplanationShare ExplanationShare `json:"explanationShare"`
+}
+
+// AIDay is one date of the range, a ServiceDay per LLM service.
+type AIDay struct {
+	Date     string     `json:"date"`
+	Services AIServices `json:"services"`
+}
+
+// AIServices holds the two LLM services of the Allocation job.
+type AIServices struct {
+	Allocator ServiceDay `json:"allocator"`
+	Explainer ServiceDay `json:"explainer"`
+}
+
+// ServiceDay is one service's llm_call_events on one local date.
+//
+// A "call" is a row with a latency: the model was asked. UncostedCalls counts
+// those without an estimated cost (an unknown model, or no usage reported, as
+// after a timeout). They add nothing to EstCostMicros, so the cost is a lower
+// bound. The latency figures ignore rows with no latency (skips), and are null
+// on a day with no calls.
+type ServiceDay struct {
+	Outcomes      Outcomes `json:"outcomes"`
+	LatencyP50Ms  *float64 `json:"latencyP50Ms"`
+	LatencyMaxMs  *int     `json:"latencyMaxMs"`
+	InputTokens   int64    `json:"inputTokens"`
+	OutputTokens  int64    `json:"outputTokens"`
+	EstCostMicros int64    `json:"estCostMicros"`
+	UncostedCalls int      `json:"uncostedCalls"`
+}
+
+// Outcomes counts llm_call_events by outcome.
+type Outcomes struct {
+	Accepted          int `json:"accepted"`
+	RejectedByReferee int `json:"rejected_by_referee"`
+	InvalidResponse   int `json:"invalid_response"`
+	Timeout           int `json:"timeout"`
+	Error             int `json:"error"`
+	SkippedCap        int `json:"skipped_cap"`
+	SkippedBudget     int `json:"skipped_budget"`
+}
+
+// MonthToDate is the estimated cost of the current calendar month, whatever
+// the range. The month boundary is UTC, taken from the clock, because
+// Anthropic bills by calendar month. LimitMicros is null when no limit is
+// configured; it is the Console's limit as configured here, never enforced.
+type MonthToDate struct {
+	Month         string `json:"month"` // YYYY-MM
+	EstCostMicros int64  `json:"estCostMicros"`
+	UncostedCalls int    `json:"uncostedCalls"`
+	LimitMicros   *int64 `json:"limitMicros"`
+}
+
+// AllocatorShare counts the planned runs of the range by who planned them:
+// the LLM allocator, or everything else (the baseline, after a fallback or
+// with the LLM off). Rejected runs are not planned and are not counted.
+type AllocatorShare struct {
+	LLM      int `json:"llm"`
+	Baseline int `json:"baseline"`
+}
+
+// ExplanationShare counts Resident explanations of the planned runs of the
+// range. LLM is "written by the LLM" (a stored day_plan_explanations row), not
+// "shown": a stored text whose fingerprint later mismatches is shown as the
+// template but still counts here. Template is every other (run, Resident)
+// pair, and TemplateReasons splits it by why: the explainer outcomes other
+// than accepted, "partial" and "notAsked", all always present. Assignments
+// change after planning (Take, Swap), so Template is approximate.
+type ExplanationShare struct {
+	LLM             int             `json:"llm"`
+	Template        int             `json:"template"`
+	TemplateReasons TemplateReasons `json:"templateReasons"`
+}
+
+// TemplateReasons splits the Residents left on the template by why. The first
+// six are the explainer outcomes (same keys as Outcomes); Partial is an
+// accepted call that kept only some Residents; NotAsked is everyone the
+// explainer never accounted for.
+type TemplateReasons struct {
+	RejectedByReferee int `json:"rejected_by_referee"`
+	InvalidResponse   int `json:"invalid_response"`
+	Timeout           int `json:"timeout"`
+	Error             int `json:"error"`
+	SkippedCap        int `json:"skipped_cap"`
+	SkippedBudget     int `json:"skipped_budget"`
+	Partial           int `json:"partial"`
+	NotAsked          int `json:"notAsked"`
+}
+
+// FlowResponse is GET /admin/flow: the daily pipeline as one funnel, totalled
+// over the range. Steps are in pipeline order, so a page can render them
+// generically. The server sends counts only; the page divides (guarding zero).
+//
+// homesDue has no stored source (the job computes it in memory and a Home whose
+// planning failed leaves no row), so it is defined as the Homes that existed
+// at the end of each day of the range (homes.created_at on or before the day,
+// the day taken in UTC) summed over the days. A Home counts once per day, so
+// it is a count of Home-days. The gap between homesDue and runs is "not
+// planned": a failed planning, an unknown timezone, or a Home created after
+// its Allocation time that day. The UTC day approximates the Home-local day,
+// so a Home created near midnight can count one day early or late.
+type FlowResponse struct {
+	Range string     `json:"range"`
+	From  string     `json:"from"`
+	To    string     `json:"to"`
+	Steps []FlowStep `json:"steps"`
+}
+
+// FlowStep is one step of the funnel. Of names the step it is measured
+// against, empty when the step has no denominator.
+//
+// rejectedRuns is the checker refusing the baseline's plan, not the LLM being
+// refused. llmAsked counts allocator calls that were made; llmSkipped the ones
+// the cap or the budget stopped. Pushes are the day_plan_ready nudges only;
+// delivered means accepted by the push service, not shown on a phone.
+type FlowStep struct {
+	ID    string `json:"id"`
+	Count int    `json:"count"`
+	Of    string `json:"of,omitempty"`
+}
+
+// KindCount is how many allocator calls in the range reported a violation kind.
+type KindCount struct {
+	Kind  string `json:"kind"`
+	Count int    `json:"count"`
+}
+
+// ReasonCount is how many runs in the range fell back for a reason.
+type ReasonCount struct {
+	Reason string `json:"reason"`
+	Count  int    `json:"count"`
+}
+
+// WorthResponse is GET /admin/worth: the counts behind the four headline
+// measures (outcome, reliability, cost, explanations) for the range, for the N
+// days before it, and per day. It returns counts only; the page divides,
+// guarding zero. The definitions are in docs/architecture/admin.md.
+//
+// Every number is a sum of per-day counts, so the days add up to Current.
+type WorthResponse struct {
+	Range          string        `json:"range"`
+	From           string        `json:"from"`
+	To             string        `json:"to"`
+	CostIsEstimate bool          `json:"costIsEstimate"`
+	Current        WorthCounts   `json:"current"`
+	Previous       WorthPrevious `json:"previous"`
+	Days           []WorthDay    `json:"days"`
+	MonthToDate    MonthToDate   `json:"monthToDate"`
+}
+
+// WorthPrevious is the window right before the range, with its own bounds.
+type WorthPrevious struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+	WorthCounts
+}
+
+// WorthDay is one date of the range.
+type WorthDay struct {
+	Date string `json:"date"`
+	WorthCounts
+}
+
+// WorthCounts is every count of the report for a span of days.
+type WorthCounts struct {
+	Outcome      WorthOutcome      `json:"outcome"`
+	Reliability  WorthReliability  `json:"reliability"`
+	Cost         WorthCost         `json:"cost"`
+	Explanations WorthExplanations `json:"explanations"`
+}
+
+// WorthOutcome splits the outcome counts by the arm that planned the run: the
+// LLM allocator, or the baseline (every other planned run, whether the Home
+// fell back or the LLM was not asked).
+type WorthOutcome struct {
+	LLM      ArmOutcome `json:"llm"`
+	Baseline ArmOutcome `json:"baseline"`
+}
+
+// ArmOutcome counts, for the planned runs of an arm: Proposed is the distinct
+// (run, Task) pairs the plan kept (a Task taken from the pool is not one) plus
+// the Tasks it refused; Completed is the proposed Tasks with a Completion on
+// the plan date; Refused is the refused entries still in the pool, a lower
+// bound because a refused Task later Taken leaves it.
+type ArmOutcome struct {
+	Proposed  int `json:"proposed"`
+	Completed int `json:"completed"`
+	Refused   int `json:"refused"`
+}
+
+// WorthReliability counts runs and allocator calls. RunsLLM, RunsFallback and
+// RunsLLMNotAsked partition every run of the span, planned or rejected.
+// RunsLLMNotAsked is "the LLM was not asked": it is switched off for the
+// environment, or there was nothing worth asking.
+type WorthReliability struct {
+	RunsLLM         int `json:"runsLlm"`
+	RunsFallback    int `json:"runsFallback"`
+	RunsLLMNotAsked int `json:"runsLlmNotAsked"`
+	AllocatorCalls  int `json:"allocatorCalls"`
+	RefereeRejected int `json:"refereeRejected"`
+}
+
+// WorthCost is the allocator's estimated spend, fallbacks included. The
+// explainer's spend is not here. UncostedCalls are calls with no estimate, so
+// the cost is a lower bound.
+type WorthCost struct {
+	AllocatorCostMicros int64 `json:"allocatorCostMicros"`
+	UncostedCalls       int   `json:"uncostedCalls"`
+}
+
+// WorthExplanations counts Resident explanations of planned runs, with the
+// same meaning as ExplanationShare.
+type WorthExplanations struct {
+	LLM      int `json:"llm"`
+	Template int `json:"template"`
+}

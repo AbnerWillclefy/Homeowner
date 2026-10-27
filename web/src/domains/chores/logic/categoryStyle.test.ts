@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { CATEGORY_KEYS } from "../../profile/logic/labels";
 import { categoryStyle } from "./categoryStyle";
 
-const css = readFileSync(resolve(import.meta.dirname, "../../../index.css"), "utf8");
+const css = readFileSync(resolve(import.meta.dirname, "../../../tokens.css"), "utf8");
 
 // The request's table, written out independently of the implementation.
 const TONES: Record<string, string> = {
@@ -57,7 +57,7 @@ describe("categoryStyle", () => {
     });
   });
 
-  it("uses only classes whose tokens exist in index.css", () => {
+  it("uses only classes whose tokens exist in tokens.css", () => {
     for (const id of [...Object.keys(TONES), "unknown"]) {
       const { fill, ink } = categoryStyle(id);
       for (const cls of [fill, ink]) {

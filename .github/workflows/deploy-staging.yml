@@ -23,6 +23,9 @@ jobs:
       web_url: ${{ steps.out.outputs.web_url }}
       web_bucket_name: ${{ steps.out.outputs.web_bucket_name }}
       web_distribution_id: ${{ steps.out.outputs.web_distribution_id }}
+      admin_url: ${{ steps.out.outputs.admin_url }}
+      admin_bucket_name: ${{ steps.out.outputs.admin_bucket_name }}
+      admin_distribution_id: ${{ steps.out.outputs.admin_distribution_id }}
       cognito_client_id: ${{ steps.out.outputs.cognito_client_id }}
       cognito_region: ${{ steps.out.outputs.cognito_region }}
       cognito_password_policy: ${{ steps.out.outputs.cognito_password_policy }}
@@ -140,6 +143,9 @@ jobs:
             echo "web_url=$(terraform output -raw web_url)"
             echo "web_bucket_name=$(terraform output -raw web_bucket_name)"
             echo "web_distribution_id=$(terraform output -raw web_distribution_id)"
+            echo "admin_url=$(terraform output -raw admin_url)"
+            echo "admin_bucket_name=$(terraform output -raw admin_bucket_name)"
+            echo "admin_distribution_id=$(terraform output -raw admin_distribution_id)"
             echo "cognito_client_id=$(terraform output -raw cognito_client_id)"
             echo "cognito_region=$(terraform output -raw cognito_region)"
             echo "cognito_password_policy=$(terraform output -raw cognito_password_policy)"
@@ -165,6 +171,10 @@ jobs:
             echo "### Staging web"
             echo ""
             echo "URL: ${{ steps.out.outputs.web_url }}"
+            echo ""
+            echo "### Staging admin"
+            echo ""
+            echo "URL: ${{ steps.out.outputs.admin_url }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
   # Builds the PWA against the API URL the apply just produced (it is baked
@@ -221,8 +231,6 @@ jobs:
           VITE_COGNITO_CLIENT_ID: ${{ needs.api.outputs.cognito_client_id }}
           VITE_COGNITO_REGION: ${{ needs.api.outputs.cognito_region }}
           VITE_PASSWORD_POLICY: ${{ needs.api.outputs.cognito_password_policy }}
-          # Staging only: shows the "Replan now" test button on the Day Plan.
-          VITE_REPLAN_ENABLED: "true"
 
       # Cache headers differ per file kind, so upload in passes:
       # fingerprinted assets are immutable, the app shell and service worker
@@ -295,3 +303,19 @@ jobs:
             | tr -d '\r' | awk -F': ' 'tolower($1)=="access-control-allow-origin" {print $2}')
           echo "access-control-allow-origin: $acao"
           [ "$acao" = "${WEB_URL}" ]
+
+  # Builds the admin app against the API URL the apply just produced and
+  # publishes it to this environment's own admin bucket, with this
+  # workflow's own deploy role. The other environment is only a URL here.
+  admin:
+    needs: api
+    uses: ./.github/workflows/deploy-admin.yml
+    with:
+      environment: staging
+      role_to_assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+      admin_url: ${{ needs.api.outputs.admin_url }}
+      api_url: ${{ needs.api.outputs.api_url }}
+      bucket: ${{ needs.api.outputs.admin_bucket_name }}
+      distribution_id: ${{ needs.api.outputs.admin_distribution_id }}
+      cognito_client_id: ${{ needs.api.outputs.cognito_client_id }}
+      cognito_region: ${{ needs.api.outputs.cognito_region }}

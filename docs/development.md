@@ -50,7 +50,45 @@ locks. Never enable `MIGRATE_ON_START` on Lambda: every cold start would race.
 
 `DATABASE_URL` (required), `PORT` (8080), `MIGRATE_ON_START` (false),
 `MIGRATE_DATABASE_URL`, `DB_MAX_CONNS` (5), `CORS_ALLOWED_ORIGINS` (comma-separated browser origins
-allowed to call the API; empty sends no CORS headers).
+allowed to call the API; empty sends no CORS headers), `ENVIRONMENT` (`local`,
+`staging` or `production`; default `local`; any other value stops the API at
+start; `GET /admin/me` reports it), `LLM_MONTHLY_SPEND_LIMIT_USD` (optional,
+positive decimal dollars; the Anthropic Console's monthly limit, shown by
+`GET /admin/ai` and never enforced; unset shows no limit).
+
+### The super admin role
+
+Every `/admin/` route needs an ID token whose `cognito:groups` claim contains
+`super-admin` ([ADR 0017](adr/0017-operate-through-a-separate-admin-app-per-environment.md)).
+Terraform creates the group in each environment's pool (`infra/modules/auth`);
+membership is granted by hand, once per environment, and no code names a person.
+
+Find the pool id with `aws cognito-idp list-user-pools --max-results 10`, or
+the `user_pool_id` output of `module.auth`.
+
+```sh
+# Grant, then check
+aws cognito-idp admin-add-user-to-group --user-pool-id <pool id> --username <email or sub> --group-name super-admin
+aws cognito-idp admin-list-groups-for-user --user-pool-id <pool id> --username <email>
+
+# Revoke, then check
+aws cognito-idp admin-remove-user-from-group --user-pool-id <pool id> --username <email or sub> --group-name super-admin
+aws cognito-idp admin-list-groups-for-user --user-pool-id <pool id> --username <email>
+```
+
+A grant shows up after the person signs in again. A revoke takes effect when
+their ID token next refreshes, up to 60 minutes (`id_token_validity = 60` in
+`infra/modules/auth`); until then `GET <api>/admin/me` still answers 200. After
+that it answers 403.
+
+### Replan a staging Home
+
+To see a fresh Day Plan for one Home on staging without waiting for the next
+Allocation, run the workflow by hand: GitHub, Actions, "Replan staging", Run
+workflow (branch `main`), paste the Home id (a UUID) and run. It invokes the
+allocation function and prints the outcome in the run summary; a bad id, an
+unknown Home or a failed replan fails the run with the reason. The LLM daily cap
+still applies, so a second replan of a day often gets a baseline plan.
 
 ## Web
 
@@ -94,3 +132,57 @@ so each environment is its own build. `npm run dev` uses `web/.env.development`
 `web/.env.example`. The value is public in the bundle: never put secrets in it.
 The API must list the web origin in `CORS_ALLOWED_ORIGINS` (Compose already
 allows `http://localhost:5173`).
+
+## Admin
+
+The maintainer's admin app is in `admin/` (Vite, React, TypeScript; Node 22 from
+`admin/.nvmrc`). It is desktop-first and English only, with no service worker,
+manifest or push. It shares only the design tokens with the PWA
+(`web/src/tokens.css`, imported by both apps' `index.css`); it imports nothing
+else from `web/`.
+
+### Run locally
+
+You need a user in the `super-admin` group of the pool your root `.env` points to
+(see [The super admin role](#the-super-admin-role)), then:
+
+```sh
+docker compose up -d        # the API, at localhost:8080
+cd admin
+cp .env.example .env.local  # then fill in VITE_COGNITO_REGION and VITE_COGNITO_CLIENT_ID
+npm ci
+npm run dev                 # http://localhost:5174 (strict port)
+```
+
+Sign in with the same account you use in the PWA. A user outside the group sees
+"This account is not allowed here" after signing in (the API answered 403).
+
+### Test, typecheck and build
+
+```sh
+cd admin
+npm run typecheck
+npm test                    # vitest, jsdom
+npm run build               # typecheck, then a production build
+```
+
+CI (`admin-typecheck.yml`) runs `npm ci`, typecheck, tests and build when a pull
+request touches `admin/` or `web/src/tokens.css`.
+
+### Configuration
+
+All values are read at build time and validated on load, so a bad build fails
+loudly. Each environment is its own build, and its own origin, so a session
+(kept in `localStorage` under `admin.session`) never carries over to another.
+
+| Variable | Meaning |
+|---|---|
+| `VITE_ENVIRONMENT` | `local`, `staging` or `production`. Shown as the badge. It must match the API's `ENVIRONMENT`; the app shows an error banner if `GET /admin/me` says otherwise. |
+| `VITE_API_URL` | Base URL of the API. The PWA's equivalent is named `VITE_API_BASE_URL`; the two differ on purpose, so do not copy one file over the other. |
+| `VITE_COGNITO_REGION`, `VITE_COGNITO_CLIENT_ID` | The same pool and app client as the PWA. |
+| `VITE_ADMIN_URLS` | JSON object from environment name to that environment's admin origin, for the "Switch to ..." link, which keeps the path and query. Empty or partial is valid: a missing entry shows "<Environment> URL not configured". |
+
+`npm run dev` reads `admin/.env.development` (`local`, `http://localhost:8080`,
+`{"local":"http://localhost:5174"}`); put the Cognito values in an untracked
+`admin/.env.local`. See `admin/.env.example`. The API must list
+`http://localhost:5174` in `CORS_ALLOWED_ORIGINS` (Compose already does).

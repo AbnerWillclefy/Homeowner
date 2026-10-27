@@ -51,9 +51,11 @@ test.describe("signed in with a Home", () => {
 
     await expect(tabs.chores.heading(page)).toBeVisible();
     await expect(tabs.chores.chore(page, "Wash the dishes")).toBeVisible();
-    // The Residents are not on this list: the Shell reads them on every tab, as before.
+    // The Shell reads the Residents, the Streak, the Check-in and the Day Plan on every tab once the Home answers
+    // (the top bar needs them), but the launch wave is Today's only (ADR 0016). Each is asked once, not twice.
+    await expect(page.getByTestId("top-bar").getByRole("button", { name: /check-in|check in/i })).toBeVisible();
     for (const path of ["/home/day-plan", "/home/check-in", "/home/streak"]) {
-      expect(asked(fakeApi, path), path).toBe(false);
+      await expect.poll(() => count(fakeApi, path), { message: path }).toBe(1);
     }
   });
 });

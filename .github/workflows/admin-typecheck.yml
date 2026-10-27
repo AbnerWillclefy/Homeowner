@@ -1,0 +1,40 @@
+name: admin-typecheck
+
+on:
+  pull_request:
+    paths:
+      - "admin/**"
+      - "web/src/tokens.css"
+      - ".github/workflows/admin-typecheck.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: admin-typecheck-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  admin-typecheck:
+    name: admin-typecheck
+    runs-on: ubuntu-latest
+    env:
+      VITE_ENVIRONMENT: staging
+      VITE_API_URL: http://localhost:8080
+      VITE_COGNITO_REGION: eu-west-1
+      VITE_COGNITO_CLIENT_ID: dummyclientid
+      VITE_ADMIN_URLS: ""
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: admin/.nvmrc
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

@@ -17,7 +17,7 @@ describe("contrastRatio", () => {
   });
 });
 
-const css = readFileSync(resolve(import.meta.dirname, "../../index.css"), "utf8");
+const css = readFileSync(resolve(import.meta.dirname, "../../tokens.css"), "utf8");
 const light = parseTokens(css, "@theme");
 const dark = { ...light, ...parseTokens(css, '[data-theme="dark"]') };
 
