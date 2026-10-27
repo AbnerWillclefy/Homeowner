@@ -25,50 +25,46 @@ export function pillInput(args: {
   return homeReady ? { kind: "loading" } : null;
 }
 
-export type PillIcon = "none" | "zap" | "moon" | "check" | "alert";
+// Symbols, not words, so they are not catalog keys. The accessible name carries the meaning.
+const UNKNOWN = "?";
+const DASH = "–";
+
+export type PillIcon = "zap" | "moon" | "check" | "alert";
 
 export interface PillView {
   kind: "failed" | EnergyNote;
-  /** What the pill shows. */
+  /** What the indicator shows: a short number or symbol, never a word. */
   text: string;
   /** The accessible name: the whole state in words, and what a tap does. */
   name: string;
-  /** Only "no Check-in yet" has the dashed edge, and its text says so too. */
-  dashed: boolean;
+  /** Only "no Check-in yet" is muted (Lichen); the "?" and the name say so too. */
+  muted: boolean;
   icon: PillIcon;
 }
 
+// shortcut: the fixed `min-w-16` slot assumes Energy stays at most two digits (cap 20); bring back a width stack if the cap passes 99.
 /**
- * The Energy pill's wording, mapped from the one rule (`energyNote`), never re-derived: which note shows which text,
- * icon and name. `formatNumber` is the locale's number format. Colour and the edge never carry a state alone.
+ * The Energy indicator's wording, mapped from the one rule (`energyNote`), never re-derived: which note shows which
+ * text, icon and name. `formatNumber` is the locale's number format. Colour never carries a state alone.
  */
 export function energyPill(t: Translate, input: Exclude<PillInput, { kind: "loading" }>, formatNumber: (n: number) => string): PillView {
-  if (input.kind === "failed")
-    return { kind: "failed", text: t("checkin.pill.failed"), name: t("checkin.pill.name.failed"), dashed: false, icon: "alert" };
+  if (input.kind === "failed") return { kind: "failed", text: DASH, name: t("checkin.pill.name.failed"), muted: false, icon: "alert" };
 
   const { note, energy, level } = input;
   const number = formatNumber(energy ?? 0);
   switch (note) {
     case "unset":
-      return { kind: note, text: t("checkin.pill.unset"), name: t("checkin.pill.name.unset"), dashed: true, icon: "none" };
+      return { kind: note, text: UNKNOWN, name: t("checkin.pill.name.unset"), muted: true, icon: "zap" };
     case "energy":
-      return { kind: note, text: number, name: t("checkin.pill.name.energy", { energy: number }), dashed: false, icon: "zap" };
+      return { kind: note, text: number, name: t("checkin.pill.name.energy", { energy: number }), muted: false, icon: "zap" };
     case "drained":
-      return { kind: note, text: formatNumber(0), name: t("checkin.pill.name.drained"), dashed: false, icon: "moon" };
+      return { kind: note, text: formatNumber(0), name: t("checkin.pill.name.drained"), muted: false, icon: "moon" };
     case "no-baseline":
-      return { kind: note, text: formatNumber(0), name: t("checkin.pill.name.noBaseline"), dashed: false, icon: "zap" };
+      return { kind: note, text: formatNumber(0), name: t("checkin.pill.name.noBaseline"), muted: false, icon: "zap" };
     case "pending": {
-      // No number yet, so a check mark and the Check-in word (short, so the pill stays one width); the name has the level.
+      // No number yet, so a check mark and a dash; the name has the level.
       const name = level === null ? t("checkin.pill.name.done") : t("checkin.pill.name.pending", { level: t(LEVEL_KEYS[level].label) });
-      return { kind: note, text: t("checkin.pill.unset"), name, dashed: false, icon: "check" };
+      return { kind: note, text: DASH, name, muted: false, icon: "check" };
     }
   }
-}
-
-/**
- * Every text the pill can show in this locale (the number is the current one), so the pill can stack them
- * invisibly and be as wide as the widest from the first frame, with no width written in pixels.
- */
-export function pillWidthTexts(t: Translate, number: string): string[] {
-  return [t("checkin.pill.unset"), t("checkin.pill.failed"), number];
 }

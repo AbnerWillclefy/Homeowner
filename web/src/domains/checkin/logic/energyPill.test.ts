@@ -6,7 +6,7 @@ import type { Locale } from "../../../shared/i18n/locales";
 import { createTranslate, type Catalogs } from "../../../shared/i18n/translate";
 import type { Level } from "../api/api";
 import type { EnergyNote } from "./state";
-import { energyPill, pillInput, pillWidthTexts, type PillInput } from "./energyPill";
+import { energyPill, pillInput, type PillInput } from "./energyPill";
 
 const translate = createTranslate({ "en-US": enUS, "pt-BR": ptBR } as Catalogs);
 const tFor = (locale: Locale): Translate => (key, params) => translate(locale, key, params);
@@ -22,23 +22,23 @@ const ready = (note: EnergyNote, energy: number | null, level: Level | null = nu
 
 describe("energyPill", () => {
   it.each([
-    ["pt-BR", ready("unset", null), "Check-in", "Fazer check-in", true, "none"],
-    ["en-US", ready("unset", null), "Check-in", "Check in", true, "none"],
+    ["pt-BR", ready("unset", null), "?", "Fazer check-in", true, "zap"],
+    ["en-US", ready("unset", null), "?", "Check in", true, "zap"],
     ["pt-BR", ready("energy", 5), "5", "Energia hoje: 5. Mudar check-in", false, "zap"],
     ["en-US", ready("energy", 5), "5", "Energy today: 5. Change Check-in", false, "zap"],
     ["pt-BR", ready("drained", 0), "0", "Esgotado hoje. Mudar check-in", false, "moon"],
     ["en-US", ready("drained", 0), "0", "Drained today. Change Check-in", false, "moon"],
     ["pt-BR", ready("no-baseline", 0), "0", "Sem energia base hoje. Mudar check-in", false, "zap"],
     ["en-US", ready("no-baseline", 0), "0", "No Baseline today. Change Check-in", false, "zap"],
-    ["pt-BR", ready("pending", null, "low"), "Check-in", "Check-in feito: Baixa. Mudar check-in", false, "check"],
-    ["en-US", ready("pending", null, "low"), "Check-in", "Checked in: Low. Change Check-in", false, "check"],
-    ["pt-BR", { kind: "failed" }, "Falhou", "Energia indisponível. Tentar de novo", false, "alert"],
-    ["en-US", { kind: "failed" }, "Failed", "Energy unavailable. Try again", false, "alert"],
-  ] as const)("in %s %j reads %s, is named %s, dashed %s, icon %s", (locale, input, text, name, dashed, icon) => {
-    expect(view(locale, input)).toMatchObject({ text, name, dashed, icon });
+    ["pt-BR", ready("pending", null, "low"), "–", "Check-in feito: Baixa. Mudar check-in", false, "check"],
+    ["en-US", ready("pending", null, "low"), "–", "Checked in: Low. Change Check-in", false, "check"],
+    ["pt-BR", { kind: "failed" }, "–", "Energia indisponível. Tentar de novo", false, "alert"],
+    ["en-US", { kind: "failed" }, "–", "Energy unavailable. Try again", false, "alert"],
+  ] as const)("in %s %j reads %s, is named %s, muted %s, icon %s", (locale, input, text, name, muted, icon) => {
+    expect(view(locale, input)).toMatchObject({ text, name, muted, icon });
   });
 
-  it("dashes only the unset state, and every state has its own accessible name", () => {
+  it("mutes only the unset state, and every state has its own accessible name", () => {
     const inputs: Worded[] = [
       ready("unset", null),
       ready("energy", 5),
@@ -48,16 +48,16 @@ describe("energyPill", () => {
       { kind: "failed" },
     ];
     const views = inputs.map((input) => view("en-US", input));
-    expect(views.filter((v) => v.dashed)).toHaveLength(1);
+    expect(views.filter((v) => v.muted)).toHaveLength(1);
     expect(new Set(views.map((v) => v.name)).size).toBe(views.length);
   });
 
-  it("keeps a check mark and the Check-in word for a Check-in made before the plan has Energy, and names the level", () => {
-    expect(view("en-US", ready("pending", null, "low"))).toMatchObject({ text: "Check-in", icon: "check", dashed: false });
+  it("keeps a check mark and a dash for a Check-in made before the plan has Energy, and names the level", () => {
+    expect(view("en-US", ready("pending", null, "low"))).toMatchObject({ text: "–", icon: "check", muted: false });
   });
 
   it("names a checked-in Resident without a level plainly", () => {
-    expect(view("en-US", ready("pending", null))).toMatchObject({ text: "Check-in", name: "Checked in. Change Check-in" });
+    expect(view("en-US", ready("pending", null))).toMatchObject({ text: "–", name: "Checked in. Change Check-in" });
   });
 
   it("formats the number with the given formatter", () => {
@@ -87,12 +87,5 @@ describe("pillInput", () => {
       energy: 9,
       level: "normal",
     });
-  });
-});
-
-describe("pillWidthTexts", () => {
-  it("lists every text the pill can show, so the box is as wide as the widest", () => {
-    const texts = pillWidthTexts(tFor("pt-BR"), "5");
-    expect(texts).toEqual(["Check-in", "Falhou", "5"]);
   });
 });

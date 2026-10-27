@@ -508,8 +508,6 @@ export const enUS = {
   "checkin.summary.restrictions": "Not today: {demands}",
   "checkin.summary.restrictions.none": "No restrictions today",
   "checkin.planned": "{planned} of {energy} planned",
-  "checkin.pill.unset": "Check-in",
-  "checkin.pill.failed": "Failed",
   "checkin.pill.name.unset": "Check in",
   "checkin.pill.name.energy": "Energy today: {energy}. Change Check-in",
   "checkin.pill.name.drained": "Drained today. Change Check-in",

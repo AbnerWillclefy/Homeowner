@@ -518,8 +518,6 @@ export const ptBR: Messages = {
   "checkin.summary.restrictions": "Não hoje: {demands}",
   "checkin.summary.restrictions.none": "Nenhuma restrição hoje",
   "checkin.planned": "{planned} de {energy} planejados",
-  "checkin.pill.unset": "Check-in",
-  "checkin.pill.failed": "Falhou",
   "checkin.pill.name.unset": "Fazer check-in",
   "checkin.pill.name.energy": "Energia hoje: {energy}. Mudar check-in",
   "checkin.pill.name.drained": "Esgotado hoje. Mudar check-in",
