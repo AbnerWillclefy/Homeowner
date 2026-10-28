@@ -253,7 +253,53 @@ data "aws_iam_policy_document" "deploy" {
   statement {
     sid       = "ApiGatewaySubResources"
     actions   = ["apigateway:GET", "apigateway:POST", "apigateway:PUT", "apigateway:PATCH", "apigateway:DELETE"]
-    resources = ["arn:aws:apigateway:${var.aws_region}::/apis/*/*", "arn:aws:apigateway:${var.aws_region}::/tags/*"]
+    resources = ["arn:aws:apigateway:${var.aws_region}::/apis/*/*"]
+  }
+
+  # API Gateway authorises tagging through these verbs on /tags/<arn>, so they
+  # need the same wall as the API itself: only an API the role already owns.
+  statement {
+    sid       = "ApiGatewayTagsRead"
+    actions   = ["apigateway:GET"]
+    resources = ["arn:aws:apigateway:${var.aws_region}::/tags/*"]
+  }
+
+  statement {
+    sid       = "ApiGatewayTagsWrite"
+    actions   = ["apigateway:POST", "apigateway:PUT", "apigateway:DELETE"]
+    resources = ["arn:aws:apigateway:${var.aws_region}::/tags/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/environment"
+      values   = [each.key]
+    }
+  }
+
+  statement {
+    sid       = "DenyApiGatewayRetagToOtherEnvironment"
+    effect    = "Deny"
+    actions   = ["apigateway:POST", "apigateway:PUT"]
+    resources = ["arn:aws:apigateway:${var.aws_region}::/tags/*"]
+
+    condition {
+      test     = "StringNotEqualsIfExists"
+      variable = "aws:RequestTag/environment"
+      values   = [each.key]
+    }
+  }
+
+  statement {
+    sid       = "DenyApiGatewayUntagEnvironment"
+    effect    = "Deny"
+    actions   = ["apigateway:DELETE"]
+    resources = ["arn:aws:apigateway:${var.aws_region}::/tags/*"]
+
+    condition {
+      test     = "ForAnyValue:StringEquals"
+      variable = "aws:TagKeys"
+      values   = ["environment"]
+    }
   }
 
   # The environment's web bucket: Terraform manages it, the web job syncs into it.

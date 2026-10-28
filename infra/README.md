@@ -138,8 +138,9 @@ through AWS.
 
 Resources with generated ids are scoped by their `environment` tag (every
 resource gets it from `default_tags`), so each role acts only on its own
-environment's Cognito user pool, CloudFront distributions and HTTP API objects,
-and can create them only with its own tag. Two gaps remain, both by type only:
+environment's Cognito user pool, CloudFront distributions and HTTP API objects
+(including their `/tags/` resources, where retagging or untagging `environment`
+is denied), and can create them only with its own tag. Two gaps remain, both by type only:
 CloudFront origin access controls (they cannot carry tags; deleting one breaks
 the S3 read until the next apply and loses no data) and API Gateway
 sub-resources (routes, integrations, stages), which probably do not inherit the
