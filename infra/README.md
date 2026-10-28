@@ -130,11 +130,38 @@ and its own `deploy-production` concurrency group.
 
 The wall between the environments is IAM. `bootstrap/` creates
 `homeowner-github-deploy-production`, assumable only by workflow runs on
-`refs/heads/production`, with the staging role's permissions on the
+`refs/heads/production` (or the `production` GitHub Environment, which the `api`
+job uses), with the staging role's permissions on the
 `homeowner-production-` prefix, the `/homeowner/production/*` path and the
 `production/*` state objects. So a workflow on `main` cannot touch production
-through AWS. The type-scoped statements (API Gateway, CloudFront, Cognito) and
-the shared `NEON_API_KEY` still reach both environments; see #186.
+through AWS.
+
+Resources with generated ids are scoped by their `environment` tag (every
+resource gets it from `default_tags`), so each role acts only on its own
+environment's Cognito user pool, CloudFront distributions and HTTP API objects,
+and can create them only with its own tag. Two gaps remain, both by type only:
+CloudFront origin access controls (they cannot carry tags; deleting one breaks
+the S3 read until the next apply and loses no data) and API Gateway
+sub-resources (routes, integrations, stages), which probably do not inherit the
+API's tags. `ListUserPools` and the list calls stay on `*`.
+
+After merging a change to these statements, a human with admin credentials
+checks that every existing resource carries the tag
+(`aws resourcegroupstaggingapi get-resources --tag-filters Key=environment`),
+re-applies `bootstrap/`, then deploys staging before promoting production.
+Verify with `aws iam simulate-principal-policy` (pass
+`aws:ResourceTag/environment` as a context entry) that the staging role gets
+`implicitDeny` on `cognito-idp:AdminDeleteUser` for the production pool and the
+reverse, then one read-only `aws cognito-idp describe-user-pool` on the other
+environment's pool, which must answer `AccessDenied`.
+
+**Neon key.** The repository secret `NEON_API_KEY` is readable by any workflow
+on `main`, so it must not be able to touch production's project. Production's
+key is a secret of the GitHub Environment `production`, restricted to the
+`production` branch and scoped to the production Neon project; the repository
+secret becomes staging's project-scoped key. Print the OIDC subject the `api`
+job gets (it should be `repo:<owner>@<id>/<repo>@<id>:environment:production`)
+before relying on the trust policy in `bootstrap/`, which accepts both subjects.
 
 **Neon.** Production owns its own project (`homeowner-production`) instead of a
 branch of staging's: a `destroy` in `staging/` cannot delete production's data,
@@ -321,10 +348,9 @@ customer-managed KMS keys, RDS/Aurora, DynamoDB, EC2.
 ## Known follow-ups
 
 - Each deploy role is least privilege by prefix (`homeowner-<environment>-*`,
-  the SSM path `/homeowner/<environment>/*`), but API Gateway ids are generated,
-  so its API Gateway permissions are scoped to HTTP APIs in the region, not to
-  one API. The same holds for CloudFront and Cognito below, so each role can
-  reach the other environment's API, distribution and user pool (#186).
+  the SSM path `/homeowner/<environment>/*`). API Gateway, CloudFront and
+  Cognito ids are generated, so those are scoped by the `environment` tag (#186);
+  origin access controls and API sub-resources are still by type (see Production).
 - CloudFront ids are generated, so the deploy role's CloudFront permissions are
   scoped to distributions and origin access controls of this account, not to
   one distribution; the list and managed-policy lookups need `*`.
