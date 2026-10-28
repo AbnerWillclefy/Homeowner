@@ -116,6 +116,15 @@ test("a day with no Tasks says so", async ({ page, baseURL, fakeApi }) => {
   for (const name of TASKS) await expect(tabs.today.task(page, name)).toHaveCount(0);
 });
 
+test("a day with every Task finished says all done", async ({ page, baseURL, fakeApi }) => {
+  const done = { id: "task-1", choreName: "Wash the dishes", completedAt: "2026-01-01T12:00:00Z", with: [] };
+  fakeApi.state.dayPlan = { ...fakeApi.state.dayPlan!, mine: [], doneToday: [done] };
+  await launchApp(page, baseURL!);
+
+  await expect(tabs.today.allDone(page)).toBeVisible();
+  await expect(tabs.today.empty(page)).toHaveCount(0);
+});
+
 test("launching asks for the User once: the Shell reads the entry sign-in already cached", async ({ page, baseURL, fakeApi }) => {
   await launchApp(page, baseURL!);
   await expect(tabs.today.mine(page)).toBeVisible();

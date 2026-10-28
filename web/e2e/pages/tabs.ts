@@ -14,6 +14,7 @@ export const tabs = {
     pool: (page: Page) => h3(page, "Still to do"),
     task: (page: Page, name: string) => page.getByText(name, { exact: true }),
     empty: (page: Page) => page.getByText("Nothing for you today. Enjoy the day."),
+    allDone: (page: Page) => page.getByText("All done for today. Nice work."),
     loadError: (page: Page) => page.getByRole("alert").filter({ hasText: "Something went wrong loading today's plan." }),
     retry: (page: Page) => page.getByRole("button", { name: "Try again" }),
   },
