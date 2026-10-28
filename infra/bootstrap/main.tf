@@ -218,7 +218,10 @@ data "aws_iam_policy_document" "deploy" {
   # API Gateway HTTP APIs. API ids are generated, so they cannot be scoped by
   # name: the API object is scoped by its environment tag instead. Sub-resources
   # (routes, integrations, stages...) are separate ARNs that probably do not
-  # carry the API's tags, so they stay scoped by type only (#186).
+  # carry the API's tags, so they stay scoped by type only (#186). IAM's `*`
+  # also matches `/`, so /apis/* overlaps /apis/*/*: the tag condition applies to
+  # sub-resources too and ApiGatewaySubResources is what authorises them. That
+  # overlap is unverified (no spike run).
   statement {
     sid       = "ApiGatewayApis"
     actions   = ["apigateway:GET", "apigateway:PUT", "apigateway:PATCH", "apigateway:DELETE"]
@@ -273,32 +276,6 @@ data "aws_iam_policy_document" "deploy" {
       test     = "StringEquals"
       variable = "aws:ResourceTag/environment"
       values   = [each.key]
-    }
-  }
-
-  statement {
-    sid       = "DenyApiGatewayRetagToOtherEnvironment"
-    effect    = "Deny"
-    actions   = ["apigateway:POST", "apigateway:PUT"]
-    resources = ["arn:aws:apigateway:${var.aws_region}::/tags/*"]
-
-    condition {
-      test     = "StringNotEqualsIfExists"
-      variable = "aws:RequestTag/environment"
-      values   = [each.key]
-    }
-  }
-
-  statement {
-    sid       = "DenyApiGatewayUntagEnvironment"
-    effect    = "Deny"
-    actions   = ["apigateway:DELETE"]
-    resources = ["arn:aws:apigateway:${var.aws_region}::/tags/*"]
-
-    condition {
-      test     = "ForAnyValue:StringEquals"
-      variable = "aws:TagKeys"
-      values   = ["environment"]
     }
   }
 
@@ -440,11 +417,13 @@ data "aws_iam_policy_document" "deploy" {
     resources = ["*"]
   }
 
-  # Stops a role retagging a resource to slip past the tag conditions above.
+  # Stops a role retagging a resource to slip past the tag conditions above. The
+  # apigateway verbs cover /tags/<arn>; other API Gateway calls carry no request
+  # tag or tag keys, so these conditions leave them alone.
   statement {
     sid       = "DenyRetagToOtherEnvironment"
     effect    = "Deny"
-    actions   = ["cognito-idp:TagResource", "cloudfront:TagResource"]
+    actions   = ["cognito-idp:TagResource", "cloudfront:TagResource", "apigateway:POST", "apigateway:PUT"]
     resources = ["*"]
 
     condition {
@@ -457,7 +436,7 @@ data "aws_iam_policy_document" "deploy" {
   statement {
     sid       = "DenyUntagEnvironment"
     effect    = "Deny"
-    actions   = ["cognito-idp:UntagResource", "cloudfront:UntagResource"]
+    actions   = ["cognito-idp:UntagResource", "cloudfront:UntagResource", "apigateway:DELETE"]
     resources = ["*"]
 
     condition {
