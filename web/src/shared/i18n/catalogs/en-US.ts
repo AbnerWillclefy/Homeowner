@@ -320,6 +320,7 @@ export const enUS = {
     "Today's plan could not be used, so no Tasks were given today.",
   "dayplan.mine.heading": "Your Tasks",
   "dayplan.mine.empty": "Nothing for you today. Enjoy the day.",
+  "dayplan.mine.empty.allDone": "All done for today. Nice work.",
   "dayplan.mine.empty.noBaseline":
     "No Baseline for today, so no Tasks for you.",
   "dayplan.mine.empty.noBaseline.link": "Set your Baseline",

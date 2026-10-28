@@ -132,14 +132,14 @@ const EMPTY_MINE = {
   "nothing-due": "dayplan.mine.empty",
 } as const satisfies Record<NoTasksReason, MessageKey>;
 
-/** Why the Resident has no Tasks today; without a Baseline it also points to where to set one. */
-function EmptyMine({ reason }: { reason: NoTasksReason | null }) {
+/** Why the Resident has no Tasks today; without a Baseline it also points to where to set one. A Resident who has done Tasks today is told they are done. */
+function EmptyMine({ reason, allDone }: { reason: NoTasksReason | null; allDone: boolean }) {
   const { t } = useI18n();
   // Without a known Check-in the reason is unknown, so say nothing rather than guess.
   if (!reason) return null;
   return (
     <>
-      <p className="my-0 text-muted">{t(EMPTY_MINE[reason])}</p>
+      <p className="my-0 text-muted">{t(reason === "nothing-due" && allDone ? "dayplan.mine.empty.allDone" : EMPTY_MINE[reason])}</p>
       {reason === "no-baseline" && (
         <p className="mt-1 mb-0">
           <Link to={ME_PATH} className="font-semibold text-accent underline">
@@ -233,7 +233,7 @@ function PlanView({
           {plan.mine.length > 0 ? (
             <ul className={LIST}>{plan.mine.map((task) => card(task, "mine"))}</ul>
           ) : (
-            <EmptyMine reason={reason} />
+            <EmptyMine reason={reason} allDone={plan.doneToday.length > 0} />
           )}
         </div>
       )}
