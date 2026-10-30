@@ -29,11 +29,15 @@ export function SignIn() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="mx-auto max-w-sm py-12" aria-describedby={failure ? errorId : undefined}>
+    <form
+      onSubmit={onSubmit}
+      className="mx-auto my-12 w-full max-w-sm rounded-card border border-border/50 bg-surface-raised p-6"
+      aria-describedby={failure ? errorId : undefined}
+    >
       <h1>Sign in</h1>
-      <p className="text-muted">Use the account you use in the Homeowner app. Only the maintainer is allowed in.</p>
+      <p className="text-sm text-muted">Use the account you use in the Homeowner app. Only the maintainer is allowed in.</p>
       {failure !== null && (
-        <p id={errorId} role="alert" className="font-semibold text-danger">
+        <p id={errorId} role="alert" className="rounded-control border-l-4 border-danger bg-surface px-3 py-2 text-sm font-semibold text-danger">
           {MESSAGES[failure.kind]}
         </p>
       )}

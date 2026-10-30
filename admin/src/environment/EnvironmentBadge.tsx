@@ -9,7 +9,7 @@ const LOOK: Record<Environment, string> = {
 
 export function EnvironmentBadge({ environment }: { environment: Environment }) {
   return (
-    <span className={`inline-flex items-center rounded-pill border px-3 py-1 text-sm font-bold tracking-wide ${LOOK[environment]}`}>
+    <span className={`inline-flex items-center rounded-control border px-2 py-0.5 font-mono text-xs font-semibold tracking-wider ${LOOK[environment]}`}>
       <span className="sr-only">Environment: </span>
       {environment.toUpperCase()}
     </span>

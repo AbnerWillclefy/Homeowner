@@ -1,69 +1,31 @@
-export type Point = [x: number, y: number];
+import { Line, LineChart, ReferenceLine, YAxis } from "recharts";
+
+const WIDTH = 160;
+const HEIGHT = 36;
 
 /**
- * The points of each unbroken run of a series, scaled into a `width` by `height` box (y grows downwards, so the
- * baseline is `height`). A `null` breaks the line. The scale is `max(values, 1)`, so an all-zero series sits flat on
- * the baseline instead of dividing by zero.
+ * A small trend line. A `null` day breaks the line, a day alone between gaps gets a dot, and an all-zero series sits
+ * on the baseline (the top is at least 1). `label` is the text alternative; the chart inside is decorative.
  */
-export function sparklinePaths(values: (number | null)[], width: number, height: number): Point[][] {
-  const top = Math.max(1, ...values.map((v) => v ?? 0));
-  const segments: Point[][] = [];
-  let current: Point[] | null = null;
-  values.forEach((value, i) => {
-    if (value === null) {
-      current = null;
-      return;
-    }
-    const x = values.length === 1 ? width / 2 : (i / (values.length - 1)) * width;
-    const point: Point = [x, height - (value / top) * height];
-    if (current === null) {
-      current = [];
-      segments.push(current);
-    }
-    current.push(point);
-  });
-  return segments;
-}
-
-const WIDTH = 100;
-const HEIGHT = 24;
-
-/** A small trend line in inline SVG, no chart library. `label` is its text alternative. */
 export function Sparkline({ values, label }: { values: (number | null)[]; label: string }) {
-  const segments = sparklinePaths(values, WIDTH, HEIGHT);
+  const data = values.map((value, day) => ({ day, value }));
+  const lone = (day: number) => values[day] !== null && (values[day - 1] ?? null) === null && (values[day + 1] ?? null) === null;
   return (
-    <svg
-      role="img"
-      aria-label={label}
-      viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-      preserveAspectRatio="none"
-      className="h-8 w-full max-w-48 overflow-visible text-accent"
-    >
-      <line x1="0" y1={HEIGHT} x2={WIDTH} y2={HEIGHT} stroke="currentColor" strokeOpacity="0.35" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-      {segments.map((segment, i) =>
-        segment.length === 1 ? (
-          <polyline
-            key={i}
-            points={`${segment[0]![0]},${segment[0]![1]} ${segment[0]![0]},${segment[0]![1]}`}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="5"
-            strokeLinecap="round"
-            vectorEffect="non-scaling-stroke"
-          />
-        ) : (
-          <polyline
-            key={i}
-            points={segment.map(([x, y]) => `${x},${y}`).join(" ")}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            vectorEffect="non-scaling-stroke"
-          />
-        ),
-      )}
-    </svg>
+    <div role="img" aria-label={label} className="mt-2" style={{ width: WIDTH, height: HEIGHT }}>
+      <LineChart width={WIDTH} height={HEIGHT} data={data} margin={{ top: 4, right: 4, bottom: 4, left: 4 }} accessibilityLayer={false}>
+        <YAxis hide domain={[0, (top: number) => Math.max(1, top)]} />
+        <ReferenceLine y={0} stroke="var(--color-border)" strokeOpacity={0.5} />
+        <Line
+          dataKey="value"
+          stroke="var(--color-accent)"
+          strokeWidth={2}
+          connectNulls={false}
+          isAnimationActive={false}
+          dot={({ cx, cy, index }: { cx?: number; cy?: number; index: number }) =>
+            lone(index) ? <circle key={index} data-lone-day="" cx={cx} cy={cy} r={2.5} fill="var(--color-accent)" /> : <g key={index} />
+          }
+        />
+      </LineChart>
+    </div>
   );
 }
