@@ -29,4 +29,16 @@ describe("TrendChart", () => {
     expect(container().querySelector("figcaption")!.textContent).toBe("Activity per day");
     expect(container().textContent).toContain("Runs");
   });
+
+  it("keeps the chart out of the tab order, since the image's text alternative and the table carry the numbers", async () => {
+    await render(<TrendChart title="Activity per day" dates={dates} series={[{ label: "Runs", values: [1, 4, 2] }]} />);
+    const svg = container().querySelector('[role="img"] svg')!;
+    expect(svg.hasAttribute("tabindex")).toBe(false);
+    expect(svg.getAttribute("role")).not.toBe("application");
+  });
+
+  it("refuses more series than it has line styles, with an error that says so", async () => {
+    const four = ["A", "B", "C", "D"].map((label) => ({ label, values: [1, 2, 3] }));
+    await expect(render(<TrendChart title="Too many" dates={dates} series={four} />)).rejects.toThrow("at most 3 series");
+  });
 });
