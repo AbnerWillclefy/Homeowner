@@ -15,7 +15,7 @@ export function EnvironmentSwitch({ current, urls }: { current: Environment; url
   const targets = switchTargets(current, urls, { pathname, search });
   if (targets.length === 0) return null;
   return (
-    <ul className="m-0 flex list-none gap-4 p-0">
+    <ul className="m-0 flex list-none gap-4 p-0 text-sm">
       {targets.map(({ environment, href }) => (
         <li key={environment} className="m-0">
           {href === null ? (
@@ -24,7 +24,7 @@ export function EnvironmentSwitch({ current, urls }: { current: Environment; url
             <a
               href={href}
               aria-label={`Switch to ${environment} admin`}
-              className="inline-flex min-h-11 items-center text-accent underline underline-offset-4"
+              className="inline-flex min-h-11 items-center text-accent underline underline-offset-4 hover:no-underline"
             >
               Switch to {environment}
             </a>

@@ -101,6 +101,7 @@ function page(entry = "/") {
 const headline = () => container().querySelector<HTMLElement>("[data-worth]")!;
 const dayRows = () => container().querySelectorAll("[data-collapsible-region] tbody tr");
 const dayCells = () => [...container().querySelectorAll("[data-collapsible-region] tbody td")].map((c) => c.textContent!);
+const chart = () => container().querySelector<HTMLElement>('figure [role="img"]')!;
 const card = (name: string) => headline().querySelector<HTMLElement>(`[data-card="${name}"]`)!;
 
 beforeEach(() => {
@@ -108,7 +109,7 @@ beforeEach(() => {
 });
 
 describe("OverviewPage", () => {
-  it("asks /admin/overview for the range, and shows totals, active counts and a row per day with proportional bars", async () => {
+  it("asks /admin/overview for the range, and shows totals, active counts, a trend chart and a row per day", async () => {
     serve({ overview: overview(sevenDays((n) => ({ checkins: n === 2 ? 4 : n === 5 ? 2 : 0 }))) });
     await render(page("/?range=7d"));
 
@@ -119,8 +120,7 @@ describe("OverviewPage", () => {
     }
     expect(dayRows()).toHaveLength(7);
     expect(text).not.toContain("No activity in this range");
-    const widths = [...container().querySelectorAll<HTMLElement>("[data-bar]")].map((b) => b.style.width);
-    expect(widths).toEqual(["100%", "50%"]);
+    expect(chart().getAttribute("aria-label")).toContain("Check-ins: 6 in total, highest 4 on 2026-10-02.");
   });
 
   it("asks for 30 days from the URL and shows the glossary labels", async () => {
@@ -166,17 +166,17 @@ describe("OverviewPage", () => {
     await render(page());
     expect(container().textContent).toContain("No activity in this range");
     expect(dayRows()).toHaveLength(7);
-    expect(container().querySelectorAll("[data-bar]")).toHaveLength(0);
+    expect(chart().getAttribute("aria-label")).toContain("Runs: none.");
     expect(dayCells().every((c) => c === "0")).toBe(true);
   });
 
-  it("reads each table cell as its number, so a screen reader never needs the bars", async () => {
+  it("reads each table cell as its number, and gives the chart a text alternative", async () => {
     serve({ overview: overview(sevenDays((n) => ({ runs: n === 3 ? 6 : 0 }))) });
     await render(page());
     const row = dayRows()[2];
     expect(row.querySelector("th")!.textContent).toBe("2026-10-03");
     expect(row.querySelectorAll("td")[0].textContent).toBe("6");
-    expect(container().querySelector("[data-bar]")!.getAttribute("aria-hidden")).toBe("true");
+    expect(chart().getAttribute("aria-label")).toContain("Runs: 6 in total, highest 6 on 2026-10-03.");
   });
 
   it("keeps the Per day table inside a collapsed region, still in the document", async () => {
@@ -276,7 +276,7 @@ describe("worth headline", () => {
     it("draws a sparkline per arm with a text alternative", async () => {
       serve({});
       await render(page());
-      const labels = [...card("outcome").querySelectorAll('svg[role="img"]')].map((s) => s.getAttribute("aria-label")!);
+      const labels = [...card("outcome").querySelectorAll('[role="img"]')].map((s) => s.getAttribute("aria-label")!);
       expect(labels.length).toBeGreaterThanOrEqual(2);
       expect(labels.every((l) => l.length > 0)).toBe(true);
       expect(labels.some((l) => l.includes("LLM"))).toBe(true);
@@ -354,7 +354,7 @@ describe("worth headline", () => {
       const c = card("explanations");
       expect(c.textContent).toContain("60%");
       expect(c.textContent).toContain("40%");
-      expect(c.querySelector('svg[role="img"]')!.getAttribute("aria-label")).toContain("per day");
+      expect(c.querySelector('[role="img"]')!.getAttribute("aria-label")).toContain("per day");
     });
   });
 

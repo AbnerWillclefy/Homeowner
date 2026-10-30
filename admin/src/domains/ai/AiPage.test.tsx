@@ -249,11 +249,11 @@ describe("AiPage headline", () => {
     expect(container().querySelector("h2")!.textContent).toBe("Key numbers");
     expect(tile("month").compareDocumentPosition(container().querySelector("table")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(tile("calls").textContent).toContain("49");
-    expect(tile("calls").querySelector('svg[role="img"]')!.getAttribute("aria-label")).toBe("Total LLM calls, per day, last 7 days: 7 to 7, highest 7");
+    expect(tile("calls").querySelector('[role="img"]')!.getAttribute("aria-label")).toBe("Total LLM calls, per day, last 7 days: 7 to 7, highest 7");
     expect(tile("failure").textContent).toContain("14%");
-    expect(tile("failure").querySelectorAll('svg[role="img"]')).toHaveLength(1);
-    expect(tile("referee").querySelectorAll('svg[role="img"]')).toHaveLength(1);
-    expect(tile("cost").querySelectorAll('svg[role="img"]')).toHaveLength(2);
+    expect(tile("failure").querySelectorAll('[role="img"]')).toHaveLength(1);
+    expect(tile("referee").querySelectorAll('[role="img"]')).toHaveLength(1);
+    expect(tile("cost").querySelectorAll('[role="img"]')).toHaveLength(2);
   });
 
   it("shows the change against the previous range for calls and a rate", async () => {

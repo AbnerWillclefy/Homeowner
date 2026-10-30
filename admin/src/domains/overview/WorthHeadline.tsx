@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { Button } from "../../shared/Button";
 import type { DeltaResult, Ratio } from "../../shared/delta";
 import { Delta } from "../../shared/Delta";
 import { formatMicros, formatPercent } from "../../shared/format";
+import { LoadError } from "../../shared/LoadError";
 import type { Range } from "../../shared/range";
 import { Sparkline } from "../../shared/Sparkline";
 import { StatusBadge } from "../../shared/StatusBadge";
@@ -39,19 +39,14 @@ import { useWorth, type ArmOutcome, type Worth, type WorthCounts } from "./worth
 export function WorthHeadline({ range }: { range: Range }) {
   const query = useWorth(range);
   return (
-    <section aria-labelledby="worth" data-worth className="mt-4">
-      <h2 id="worth" className="mb-2 text-xl font-semibold">
+    <section aria-labelledby="worth" data-worth>
+      <h2 id="worth" className="mb-3 text-base font-semibold">
         Is the AI worth it?
       </h2>
       {query.isError ? (
-        <div role="alert" className="rounded-control border-2 border-danger p-4">
-          <p className="m-0 font-semibold">The headline could not be loaded.</p>
-          <Button className="mt-3" onClick={() => void query.refetch()}>
-            Retry
-          </Button>
-        </div>
+        <LoadError what="The headline" onRetry={() => void query.refetch()} />
       ) : query.data === undefined ? (
-        <p role="status" className="text-muted">
+        <p role="status" className="text-sm text-muted">
           Loading the headline…
         </p>
       ) : (
@@ -79,8 +74,8 @@ function Loaded({ worth, range }: { worth: Worth; range: Range }) {
 function Card({ name, title, children }: { name: string; title: string; children: ReactNode }) {
   const id = `worth-${name}`;
   return (
-    <section aria-labelledby={id} data-card={name} className="rounded-control border border-border bg-surface-raised px-4 py-3">
-      <h3 id={id} className="m-0 mb-2 text-base font-semibold">
+    <section aria-labelledby={id} data-card={name} className="rounded-card border border-border/50 bg-surface-raised p-4">
+      <h3 id={id} className="m-0 mb-3 text-xs font-semibold uppercase tracking-wide text-muted">
         {title}
       </h3>
       {children}
@@ -113,10 +108,10 @@ function Figure({
   format?: (value: number) => string;
 }) {
   return (
-    <div className="mb-3">
-      <p className="m-0 text-sm text-muted">{label}</p>
+    <div className="mb-4 last:mb-0">
+      <p className="m-0 text-sm">{label}</p>
       <p className="m-0 flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="text-2xl font-bold tabular-nums">{value}</span>
+        <span className="font-mono text-2xl font-semibold tabular-nums">{value}</span>
         {status && <StatusBadge state={status.state} label={status.label} />}
       </p>
       {delta && (
@@ -165,14 +160,14 @@ function OutcomeCard({ worth }: { worth: Worth }) {
   const days = worth.days.length;
   const rateRow = (label: string, ratio: (arm: ArmOutcome) => Ratio) => (
     <tr>
-      <th scope="row" className="py-2 pr-3 text-left font-semibold align-top">
+      <th scope="row" className="border-t border-border/40 py-2 pr-3 text-left text-sm font-normal align-top">
         {label}
       </th>
       {ARMS.map(({ name, key }) => {
         const arm = worth.current.outcome[key];
         if (!hasEnoughData(arm)) {
           return (
-            <td key={name} className="py-2 align-top">
+            <td key={name} className="border-t border-border/40 py-2 align-top">
               <StatusBadge state="neutral" label="Not enough data" />
             </td>
           );
@@ -181,8 +176,8 @@ function OutcomeCard({ worth }: { worth: Worth }) {
         const previous = worth.previous?.outcome[key];
         const series = ratioSeries(worth.days, (d) => ratio(d.outcome[key]));
         return (
-          <td key={name} className="py-2 align-top">
-            <span className="text-2xl font-bold tabular-nums">{formatPercent(r.part, r.whole)}</span>
+          <td key={name} className="border-t border-border/40 py-2 align-top">
+            <span className="font-mono text-2xl font-semibold tabular-nums">{formatPercent(r.part, r.whole)}</span>
             <br />
             <Delta kind="rate" result={sampledRateDelta(r, previous && ratio(previous), MIN_PROPOSED_PER_ARM)} days={days} />
             <Sparkline values={series} label={seriesLabel(`${label}, ${name}`, series)} />
@@ -200,7 +195,7 @@ function OutcomeCard({ worth }: { worth: Worth }) {
               <span className="sr-only">Measure</span>
             </th>
             {ARMS.map(({ name }) => (
-              <th key={name} scope="col" className="text-left">
+              <th key={name} scope="col" className="pb-1 text-left text-xs font-semibold uppercase tracking-wide text-muted">
                 {name}
               </th>
             ))}
@@ -210,11 +205,11 @@ function OutcomeCard({ worth }: { worth: Worth }) {
           {rateRow("Completion rate", completionRatio)}
           {rateRow("Refuse rate (lower bound)", refuseRatio)}
           <tr>
-            <th scope="row" className="py-2 pr-3 text-left font-semibold">
+            <th scope="row" className="border-t border-border/40 py-2 pr-3 text-left text-sm font-normal">
               Proposed Tasks (n)
             </th>
             {ARMS.map(({ name, key }) => (
-              <td key={name} className="py-2 tabular-nums">
+              <td key={name} className="border-t border-border/40 py-2 font-mono tabular-nums">
                 {worth.current.outcome[key].proposed}
               </td>
             ))}
@@ -291,7 +286,7 @@ function ExplanationCard({ worth }: { worth: Worth }) {
   return (
     <Card name="explanations" title="Explanation share">
       <RatioFigure label="Day Plan explanations written by the LLM" worth={worth} pick={(c) => explanationShare(c.explanations)} minWhole={1} />
-      <p className="m-0 text-sm text-muted">
+      <p className="m-0 mt-2 text-sm text-muted">
         Written from the template: {formatPercent(e.whole - e.part, e.whole)}
       </p>
     </Card>

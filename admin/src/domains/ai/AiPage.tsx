@@ -1,15 +1,19 @@
 import { useEffect } from "react";
-import { BarTable, BarTableSkeleton, type BarColumn } from "../../shared/BarTable";
-import { Button } from "../../shared/Button";
-import { rangeDays, useRange } from "../../shared/range";
-import { RangeControl } from "../../shared/RangeControl";
+import { DataTable, DataTableSkeleton, type DataColumn } from "../../shared/DataTable";
 import { Collapsible } from "../../shared/Collapsible";
+import { LoadError } from "../../shared/LoadError";
+import { PageHeader } from "../../shared/PageHeader";
+import { rangeDays, useRange } from "../../shared/range";
+import { TrendChart } from "../../shared/TrendChart";
 import { useAiUsage, type AiDay, type AiUsage, type MonthToDate, type ServiceDay, type TemplateReasons } from "./api";
 import { Headline } from "./Headline";
+import { callsOf } from "./headline";
 import { formatLatency, formatMicros, formatPercent, formatTokens } from "../../shared/format";
 import { FALLBACK_GLOSSES, TEMPLATE_REASON_LABELS, VIOLATION_GLOSSES } from "./glosses";
 
 type Service = "allocator" | "explainer";
+
+const SECTION = "mb-3 text-base font-semibold";
 
 const CONSOLE_URL = "https://console.anthropic.com";
 
@@ -26,7 +30,7 @@ function costCell(s: ServiceDay) {
   );
 }
 
-function columnsFor(service: Service): BarColumn<AiDay>[] {
+function columnsFor(service: Service): DataColumn<AiDay>[] {
   const s = (d: AiDay) => d.services[service];
   return [
     { key: "accepted", label: "Accepted", value: (d) => s(d).outcomes.accepted },
@@ -66,29 +70,21 @@ export function AiPage() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1>AI usage</h1>
-        <RangeControl value={range} onChange={setRange} />
-      </div>
+      <PageHeader title="AI usage" note="What the LLM is asked, how it answers, and what it costs. Money is estimated." range={range} onRange={setRange} />
 
       {query.isError ? (
-        <div role="alert" className="my-4 rounded-control border-2 border-danger p-4">
-          <p className="m-0 font-semibold">The AI usage could not be loaded.</p>
-          <Button className="mt-3" onClick={() => void query.refetch()}>
-            Retry
-          </Button>
-        </div>
+        <LoadError what="The AI usage" onRetry={() => void query.refetch()} />
       ) : query.data === undefined ? (
-        <div role="status" className="mt-4">
-          <p className="text-muted">Loading the AI usage…</p>
+        <div role="status">
+          <p className="text-sm text-muted">Loading the AI usage…</p>
           <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 5 }, (_, i) => (
-              <div key={i} data-headline-skeleton="" className="h-32 rounded-control border border-border bg-surface-raised" />
+              <div key={i} data-headline-skeleton="" className="h-32 rounded-card border border-border/50 bg-surface-raised motion-safe:animate-pulse" />
             ))}
           </div>
           {SERVICES.map(({ service, title }) => (
             <div key={service} className="mt-4">
-              <BarTableSkeleton caption={`${title}, last ${rangeDays(range)} days`} rowHeader="Date" columns={columnsFor(service)} rowCount={rangeDays(range)} />
+              <DataTableSkeleton caption={`${title}, last ${rangeDays(range)} days`} rowHeader="Date" columns={columnsFor(service)} rowCount={rangeDays(range)} />
             </div>
           ))}
         </div>
@@ -108,16 +104,21 @@ function Loaded({ usage, days }: { usage: AiUsage; days: number }) {
 
       <MonthSection month={usage.monthToDate} cap={usage.dailyCapPerHome} />
 
-      <section aria-labelledby="calls" className="mt-6">
-        <h2 id="calls" className="mb-2 text-xl font-semibold">
+      <section aria-labelledby="calls" className="mt-8">
+        <h2 id="calls" className={SECTION}>
           Calls per day
         </h2>
+        <TrendChart
+          title={`LLM calls per day, last ${days} days`}
+          dates={usage.days.map((d) => d.date)}
+          series={SERVICES.map(({ service, title }) => ({ label: title, values: usage.days.map((d) => callsOf(d.services[service])) }))}
+        />
         <Collapsible title="Show daily tables">
           {hasCalls(usage.days) ? (
             <>
               {SERVICES.map(({ service, title }) => (
                 <div key={service} className="mt-4">
-                  <BarTable
+                  <DataTable
                     caption={`${title}, last ${days} days`}
                     rowHeader="Date"
                     columns={columnsFor(service)}
@@ -130,7 +131,6 @@ function Loaded({ usage, days }: { usage: AiUsage; days: number }) {
                   <li>* Calls without a price (an unknown model, or no usage reported) add nothing to the estimate, so the cost is a lower bound.</li>
                 )}
                 <li>Latency counts only calls the model was asked; it is n/a on a day with none.</li>
-                <li>Each bar is scaled to the largest value in its own column.</li>
               </ul>
             </>
           ) : (
@@ -139,56 +139,58 @@ function Loaded({ usage, days }: { usage: AiUsage; days: number }) {
         </Collapsible>
       </section>
 
-      <section aria-labelledby="planned" className="mt-6">
-        <h2 id="planned" className="mb-2 text-xl font-semibold">
-          Who planned the day
-        </h2>
-        <ShareTable
-          caption="Planned runs in this range, by who planned them"
-          rowHeader="Planner"
-          parts={[
-            { id: "llm", label: "LLM", count: allocatorShare.llm },
-            { id: "baseline", label: "Baseline allocator", count: allocatorShare.baseline },
-          ]}
-        />
-      </section>
-
-      <section aria-labelledby="explained" className="mt-6">
-        <h2 id="explained" className="mb-2 text-xl font-semibold">
-          Who wrote the explanation
-        </h2>
-        <ShareTable
-          caption="Resident explanations in this range, by who wrote them"
-          rowHeader="Writer"
-          parts={[
-            { id: "llm", label: "LLM", count: explanationShare.llm },
-            { id: "template", label: "Template", count: explanationShare.template },
-          ]}
-        />
-        <div className="mt-4">
-          <BarTable
-            caption="Why the template was used"
-            rowHeader="Reason"
-            columns={[{ key: "count", label: "Explanations", value: (n: number) => n }]}
-            rows={(Object.keys(TEMPLATE_REASON_LABELS) as (keyof TemplateReasons)[]).map((key) => ({
-              id: key,
-              label: TEMPLATE_REASON_LABELS[key],
-              data: explanationShare.templateReasons[key],
-            }))}
+      <div className="mt-8 grid gap-8 lg:grid-cols-2">
+        <section aria-labelledby="planned">
+          <h2 id="planned" className={SECTION}>
+            Who planned the day
+          </h2>
+          <ShareTable
+            caption="Planned runs in this range, by who planned them"
+            rowHeader="Planner"
+            parts={[
+              { id: "llm", label: "LLM", count: allocatorShare.llm },
+              { id: "baseline", label: "Baseline allocator", count: allocatorShare.baseline },
+            ]}
           />
-        </div>
-        <p className="text-sm text-muted">The template count is approximate: Assignments change after planning.</p>
-      </section>
+        </section>
 
-      <section aria-labelledby="referee" className="mt-6">
-        <h2 id="referee" className="mb-2 text-xl font-semibold">
-          Why the referee said no
-        </h2>
-        <div className="grid gap-6 md:grid-cols-2">
-          <IdTable caption="Top violation kinds" head="Kind" rows={usage.topViolationKinds.map((k) => ({ id: k.kind, count: k.count }))} glosses={VIOLATION_GLOSSES} />
-          <IdTable caption="Top fallback reasons" head="Reason" rows={usage.topFallbackReasons.map((r) => ({ id: r.reason, count: r.count }))} glosses={FALLBACK_GLOSSES} />
-        </div>
-      </section>
+        <section aria-labelledby="explained">
+          <h2 id="explained" className={SECTION}>
+            Who wrote the explanation
+          </h2>
+          <ShareTable
+            caption="Resident explanations in this range, by who wrote them"
+            rowHeader="Writer"
+            parts={[
+              { id: "llm", label: "LLM", count: explanationShare.llm },
+              { id: "template", label: "Template", count: explanationShare.template },
+            ]}
+          />
+          <div className="mt-4">
+            <DataTable
+              caption="Why the template was used"
+              rowHeader="Reason"
+              columns={[{ key: "count", label: "Explanations", value: (n: number) => n }]}
+              rows={(Object.keys(TEMPLATE_REASON_LABELS) as (keyof TemplateReasons)[]).map((key) => ({
+                id: key,
+                label: TEMPLATE_REASON_LABELS[key],
+                data: explanationShare.templateReasons[key],
+              }))}
+            />
+          </div>
+          <p className="text-sm text-muted">The template count is approximate: Assignments change after planning.</p>
+        </section>
+
+        <section aria-labelledby="referee" className="lg:col-span-2">
+          <h2 id="referee" className={SECTION}>
+            Why the referee said no
+          </h2>
+          <div className="grid gap-8 md:grid-cols-2">
+            <IdTable caption="Top violation kinds" head="Kind" rows={usage.topViolationKinds.map((k) => ({ id: k.kind, count: k.count }))} glosses={VIOLATION_GLOSSES} />
+            <IdTable caption="Top fallback reasons" head="Reason" rows={usage.topFallbackReasons.map((r) => ({ id: r.reason, count: r.count }))} glosses={FALLBACK_GLOSSES} />
+          </div>
+        </section>
+      </div>
     </>
   );
 }
@@ -199,7 +201,7 @@ interface Part {
   count: number;
 }
 
-const shareColumns: BarColumn<{ count: number; whole: number }>[] = [
+const shareColumns: DataColumn<{ count: number; whole: number }>[] = [
   { key: "count", label: "Count", value: (s) => s.count },
   { key: "share", label: "Share", value: (s) => s.count, display: (s) => formatPercent(s.count, s.whole) },
 ];
@@ -207,7 +209,7 @@ const shareColumns: BarColumn<{ count: number; whole: number }>[] = [
 function ShareTable({ caption, rowHeader, parts }: { caption: string; rowHeader: string; parts: Part[] }) {
   const whole = parts.reduce((sum, p) => sum + p.count, 0);
   return (
-    <BarTable
+    <DataTable
       caption={caption}
       rowHeader={rowHeader}
       columns={shareColumns}
@@ -216,11 +218,11 @@ function ShareTable({ caption, rowHeader, parts }: { caption: string; rowHeader:
   );
 }
 
-const countColumn: BarColumn<number>[] = [{ key: "count", label: "Count", value: (n) => n }];
+const countColumn: DataColumn<number>[] = [{ key: "count", label: "Count", value: (n) => n }];
 
 function IdTable({ caption, head, rows, glosses }: { caption: string; head: string; rows: { id: string; count: number }[]; glosses: Record<string, string> }) {
   return (
-    <BarTable
+    <DataTable
       caption={caption}
       rowHeader={head}
       columns={countColumn}
@@ -244,24 +246,24 @@ function MonthSection({ month, cap }: { month: MonthToDate; cap: number }) {
   const over = limit !== null && cost > limit;
   const percent = limit === null || limit <= 0 ? 0 : Math.min(100, (cost / limit) * 100);
   return (
-    <section aria-labelledby="cost" className="mt-4">
-      <h2 id="cost" className="mb-2 text-xl font-semibold">
+    <section aria-labelledby="cost" className="mt-8 rounded-card border border-border/50 bg-surface-raised p-4">
+      <h2 id="cost" className={SECTION}>
         Cost this month (estimated)
       </h2>
       {limit === null ? (
         <>
-          <p className="m-0 text-2xl font-bold tabular-nums">{formatMicros(cost)} estimated</p>
+          <p className="m-0 font-mono text-2xl font-semibold tabular-nums">{formatMicros(cost)} estimated</p>
           <p className="m-0">No monthly limit configured</p>
         </>
       ) : (
         <>
-          <p className="m-0 text-2xl font-bold tabular-nums">
+          <p className="m-0 font-mono text-2xl font-semibold tabular-nums">
             {formatMicros(cost)} of {formatMicros(limit)} limit, estimated
           </p>
-          <div aria-hidden="true" className={`my-2 h-3 w-full max-w-md overflow-hidden rounded-control border ${over ? "border-danger" : "border-border"}`}>
+          <div aria-hidden="true" className={`my-3 h-2 w-full max-w-xl overflow-hidden rounded-control bg-surface outline outline-1 ${over ? "outline-danger" : "outline-border/50"}`}>
             <div data-month-bar="" className={`h-full ${over ? "bg-danger" : "bg-accent"}`} style={{ width: `${percent}%` }} />
           </div>
-          <p className="m-0 font-semibold">{over ? "Over the limit" : "Under the limit"}</p>
+          <p className={`m-0 text-sm font-semibold ${over ? "text-danger" : ""}`}>{over ? "Over the limit" : "Under the limit"}</p>
         </>
       )}
       {month.uncostedCalls > 0 && (
@@ -269,7 +271,7 @@ function MonthSection({ month, cap }: { month: MonthToDate; cap: number }) {
           +{month.uncostedCalls} {month.uncostedCalls === 1 ? "call" : "calls"} without a price this month, so the estimate is a lower bound.
         </p>
       )}
-      <p className="m-0 mt-2">Up to {cap} model calls per Home per day</p>
+      <p className="m-0 mt-2 text-sm">Up to {cap} model calls per Home per day</p>
       <p className="mt-2 text-sm text-muted">
         Estimated from token counts. The Anthropic Console is the source of truth for the bill.{" "}
         <a href={CONSOLE_URL} target="_blank" rel="noreferrer">
