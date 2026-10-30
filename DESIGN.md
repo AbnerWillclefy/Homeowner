@@ -113,6 +113,8 @@ components:
 
 # Design System: Homeowner
 
+This file covers the PWA. The admin app has its own design system in `admin/design-system/homeowner-admin/MASTER.md`.
+
 ## Overview
 
 **Creative North Star: "The Calm Advisor"**
