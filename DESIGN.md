@@ -113,7 +113,7 @@ components:
 
 # Design System: Homeowner
 
-This file covers the PWA. The admin app has its own design system in `admin/design-system/homeowner-admin/MASTER.md`.
+This file covers the PWA. The admin app follows `admin/design-system/homeowner-admin/MASTER.md`, with its token values in `admin/src/index.css`.
 
 ## Overview
 

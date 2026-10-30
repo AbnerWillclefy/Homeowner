@@ -4,8 +4,8 @@
 /*
  * The admin's own look (design-system/homeowner-admin/MASTER.md): slate neutrals, a status green, Fira Sans with
  * Fira Code for headings and figures, tight radii. It overrides the shared semantic tokens here only, so the PWA's
- * web/src/tokens.css is untouched. Two changes from the generated palette, for contrast on the dark card: danger is
- * #f87171 (not #ef4444, 4.2:1) and border is #64748b (not #475569, 2.1:1).
+ * web/src/tokens.css is untouched. Dark danger and border are lighter than the ui-ux-pro-max palette, whose
+ * #ef4444 (4.2:1) and #475569 (2.1:1) fail contrast on the dark card.
  *
  * warning is admin-only: the shared tokens have no amber, and the category pastels must not carry status (DESIGN.md).
  * Status colours are at least 4.5:1 as text on surface-raised in both themes (src/shared/StatusBadge.test.tsx).
