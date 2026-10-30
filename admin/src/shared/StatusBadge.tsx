@@ -28,7 +28,7 @@ const ICONS: Record<StatusState, ReactNode> = {
 /** A status pill: always a text label and an icon as well as colour, with a border for forced-colours mode. */
 export function StatusBadge({ state, label }: { state: StatusState; label: string }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border bg-surface-raised px-2.5 py-0.5 text-sm font-semibold ${CLASSES[state]}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-control border bg-surface-raised px-2 py-0.5 text-xs font-semibold ${CLASSES[state]}`}>
       <svg aria-hidden="true" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
         {ICONS[state]}
       </svg>

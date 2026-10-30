@@ -106,8 +106,10 @@ resource "aws_iam_openid_connect_provider" "github" {
 # get AWS credentials.
 locals {
   deploy_environments = {
-    staging    = "refs/heads/main"
-    production = "refs/heads/production"
+    staging = ["ref:refs/heads/main"]
+    # The api job runs in the "production" GitHub Environment (it holds the
+    # production-only NEON_API_KEY), whose OIDC subject is environment:production.
+    production = ["ref:refs/heads/production", "environment:production"]
   }
 
   # What the AWS provider needs to create, refresh and delete an aws_s3_bucket.
@@ -145,7 +147,7 @@ data "aws_iam_policy_document" "deploy_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:ref:${each.value}"]
+      values   = [for subject in each.value : "repo:${var.github_repo}:${subject}"]
     }
   }
 }
@@ -213,19 +215,68 @@ data "aws_iam_policy_document" "deploy" {
     resources = ["arn:aws:events:${var.aws_region}:${local.account_id}:rule/homeowner-${each.key}-*"]
   }
 
-  # API Gateway HTTP APIs. API ids are generated, so this cannot be narrowed
-  # by name; it is limited to API Gateway v2 resources in this region.
+  # API Gateway HTTP APIs. API ids are generated, so they cannot be scoped by
+  # name: the API object is scoped by its environment tag instead. Sub-resources
+  # (routes, integrations, stages...) are separate ARNs that probably do not
+  # carry the API's tags, so they stay scoped by type only (#186). IAM's `*`
+  # also matches `/`, so /apis/* overlaps /apis/*/*: the tag condition applies to
+  # sub-resources too and ApiGatewaySubResources is what authorises them. That
+  # overlap is unverified (no spike run).
   statement {
-    sid = "ApiGateway"
-    actions = [
-      "apigateway:GET", "apigateway:POST", "apigateway:PUT",
-      "apigateway:PATCH", "apigateway:DELETE", "apigateway:TagResource",
-    ]
-    resources = [
-      "arn:aws:apigateway:${var.aws_region}::/apis",
-      "arn:aws:apigateway:${var.aws_region}::/apis/*",
-      "arn:aws:apigateway:${var.aws_region}::/tags/*",
-    ]
+    sid       = "ApiGatewayApis"
+    actions   = ["apigateway:GET", "apigateway:PUT", "apigateway:PATCH", "apigateway:DELETE"]
+    resources = ["arn:aws:apigateway:${var.aws_region}::/apis/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/environment"
+      values   = [each.key]
+    }
+  }
+
+  statement {
+    sid       = "ApiGatewayCreate"
+    actions   = ["apigateway:POST"]
+    resources = ["arn:aws:apigateway:${var.aws_region}::/apis"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/environment"
+      values   = [each.key]
+    }
+  }
+
+  statement {
+    sid       = "ApiGatewayList"
+    actions   = ["apigateway:GET"]
+    resources = ["arn:aws:apigateway:${var.aws_region}::/apis"]
+  }
+
+  # shortcut: sub-resources of any API stay reachable, upgrade once a spike shows they inherit the API's tags.
+  statement {
+    sid       = "ApiGatewaySubResources"
+    actions   = ["apigateway:GET", "apigateway:POST", "apigateway:PUT", "apigateway:PATCH", "apigateway:DELETE"]
+    resources = ["arn:aws:apigateway:${var.aws_region}::/apis/*/*"]
+  }
+
+  # API Gateway authorises tagging through these verbs on /tags/<arn>, so they
+  # need the same wall as the API itself: only an API the role already owns.
+  statement {
+    sid       = "ApiGatewayTagsRead"
+    actions   = ["apigateway:GET"]
+    resources = ["arn:aws:apigateway:${var.aws_region}::/tags/*"]
+  }
+
+  statement {
+    sid       = "ApiGatewayTagsWrite"
+    actions   = ["apigateway:POST", "apigateway:PUT", "apigateway:DELETE"]
+    resources = ["arn:aws:apigateway:${var.aws_region}::/tags/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/environment"
+      values   = [each.key]
+    }
   }
 
   # The environment's web bucket: Terraform manages it, the web job syncs into it.
@@ -250,12 +301,13 @@ data "aws_iam_policy_document" "deploy" {
     resources = ["arn:aws:s3:::homeowner-${each.key}-photos-*"]
   }
 
-  # CloudFront ids are generated, so distributions and access controls cannot
-  # be scoped by name, only by type.
+  # CloudFront ids are generated, so distributions are scoped by their
+  # environment tag. Access controls cannot carry tags, so they are scoped by
+  # type only (#186).
   statement {
     sid = "CloudFrontDistributions"
     actions = [
-      "cloudfront:CreateDistribution", "cloudfront:GetDistribution",
+      "cloudfront:GetDistribution",
       "cloudfront:GetDistributionConfig", "cloudfront:UpdateDistribution",
       "cloudfront:DeleteDistribution", "cloudfront:TagResource",
       "cloudfront:UntagResource", "cloudfront:ListTagsForResource",
@@ -263,6 +315,24 @@ data "aws_iam_policy_document" "deploy" {
       "cloudfront:ListInvalidations",
     ]
     resources = ["arn:aws:cloudfront::${local.account_id}:distribution/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/environment"
+      values   = [each.key]
+    }
+  }
+
+  statement {
+    sid       = "CloudFrontCreateDistribution"
+    actions   = ["cloudfront:CreateDistribution", "cloudfront:CreateDistributionWithTags"]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/environment"
+      values   = [each.key]
+    }
   }
 
   statement {
@@ -313,20 +383,67 @@ data "aws_iam_policy_document" "deploy" {
     resources = ["*"]
   }
 
-  # Cognito user pools (#8). Pool ids are generated, so this cannot be scoped
-  # by name, only to user pools of this account and region.
+  # Cognito user pools (#8). Pool ids are generated, so pools are scoped by
+  # their environment tag instead of by name (#186).
   statement {
     sid       = "CognitoUserPools"
     actions   = ["cognito-idp:*"]
     resources = ["arn:aws:cognito-idp:${var.aws_region}:${local.account_id}:userpool/*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/environment"
+      values   = [each.key]
+    }
   }
 
-  # CreateUserPool has no pool yet to name, so Terraform cannot be limited to
-  # one; the provider also lists pools. Both need "*".
+  # CreateUserPool has no pool yet to tag-check, so the request's tag is
+  # checked; ListUserPools has no resource-level permission and needs "*".
   statement {
-    sid       = "CognitoUserPoolsList"
-    actions   = ["cognito-idp:CreateUserPool", "cognito-idp:ListUserPools", "cognito-idp:DescribeUserPool"]
+    sid       = "CognitoCreateUserPool"
+    actions   = ["cognito-idp:CreateUserPool"]
     resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/environment"
+      values   = [each.key]
+    }
+  }
+
+  statement {
+    sid       = "CognitoListUserPools"
+    actions   = ["cognito-idp:ListUserPools"]
+    resources = ["*"]
+  }
+
+  # Stops a role retagging a resource to slip past the tag conditions above. The
+  # apigateway verbs cover /tags/<arn>; other API Gateway calls carry no request
+  # tag or tag keys, so these conditions leave them alone.
+  statement {
+    sid       = "DenyRetagToOtherEnvironment"
+    effect    = "Deny"
+    actions   = ["cognito-idp:TagResource", "cloudfront:TagResource", "apigateway:POST", "apigateway:PUT"]
+    resources = ["*"]
+
+    condition {
+      test     = "StringNotEqualsIfExists"
+      variable = "aws:RequestTag/environment"
+      values   = [each.key]
+    }
+  }
+
+  statement {
+    sid       = "DenyUntagEnvironment"
+    effect    = "Deny"
+    actions   = ["cognito-idp:UntagResource", "cloudfront:UntagResource", "apigateway:DELETE"]
+    resources = ["*"]
+
+    condition {
+      test     = "ForAnyValue:StringEquals"
+      variable = "aws:TagKeys"
+      values   = ["environment"]
+    }
   }
 
   # IAM only for roles prefixed homeowner-<environment>-.

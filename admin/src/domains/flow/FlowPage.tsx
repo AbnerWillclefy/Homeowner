@@ -1,14 +1,14 @@
 import { useEffect } from "react";
-import { Button } from "../../shared/Button";
+import { LoadError } from "../../shared/LoadError";
+import { PageHeader } from "../../shared/PageHeader";
 import { useRange } from "../../shared/range";
-import { RangeControl } from "../../shared/RangeControl";
 import { useFlow } from "./api";
 import { buildFunnel, isEmptyFlow, type FunnelRow } from "./funnel";
 
 /** An outlined flag. The text carries the meaning; the icon repeats it and the heavier border adds to it. */
 function WeakestBadge() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-control border-2 border-danger px-2 py-0.5 text-sm font-bold text-danger">
+    <span className="inline-flex items-center gap-1 rounded-control border border-danger px-2 py-0.5 text-xs font-bold text-danger">
       <svg role="img" aria-label="Warning" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 3 2 21h20L12 3Z" />
         <path d="M12 10v5M12 18h.01" />
@@ -18,20 +18,26 @@ function WeakestBadge() {
   );
 }
 
-function Step({ row }: { row: FunnelRow }) {
+function Step({ row, n }: { row: FunnelRow; n: number }) {
   return (
-    <li data-weakest={row.weakest} className={`m-0 rounded-control p-3 ${row.weakest ? "border-4 border-danger" : "border border-border"}`}>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="m-0 text-base font-semibold">
-          {row.label}
-          {row.description !== null && <span className="font-normal text-muted"> ({row.description})</span>}
-        </h2>
-        <p className="m-0 text-xl font-bold tabular-nums">{row.count}</p>
-      </div>
-      <div aria-hidden="true" className="my-2 h-3 w-full overflow-hidden rounded-control border border-border">
+    <li
+      data-weakest={row.weakest}
+      className={`m-0 grid grid-cols-[2rem_1fr_auto] items-baseline gap-x-3 rounded-card bg-surface-raised px-4 py-3 ${
+        row.weakest ? "border border-l-4 border-danger" : "border border-border/50"
+      }`}
+    >
+      <span aria-hidden="true" className="font-mono text-sm text-muted">
+        {String(n).padStart(2, "0")}
+      </span>
+      <h2 className="m-0 font-sans text-sm font-semibold">
+        {row.label}
+        {row.description !== null && <span className="font-normal text-muted"> ({row.description})</span>}
+      </h2>
+      <p className="m-0 font-mono text-xl font-semibold tabular-nums">{row.count}</p>
+      <div aria-hidden="true" className="col-start-2 col-end-4 my-2 h-1.5 w-full overflow-hidden rounded-control bg-surface">
         <div data-bar="" className={`h-full ${row.weakest ? "bg-danger" : "bg-accent"}`} style={{ width: `${row.barPercent}%` }} />
       </div>
-      <p className="m-0 flex flex-wrap items-center gap-2">
+      <p className="col-start-2 col-end-4 m-0 flex flex-wrap items-center gap-2 text-sm text-muted">
         {row.rateText !== "" && <span>{row.rateText}</span>}
         {row.weakest && <WeakestBadge />}
       </p>
@@ -41,11 +47,11 @@ function Step({ row }: { row: FunnelRow }) {
 
 function Skeleton() {
   return (
-    <div role="status" className="mt-4">
-      <p className="text-muted">Loading the flow…</p>
-      <ol aria-hidden="true" className="m-0 flex list-none flex-col gap-3 p-0">
+    <div role="status">
+      <p className="text-sm text-muted">Loading the flow…</p>
+      <ol aria-hidden="true" className="m-0 flex list-none flex-col gap-2 p-0">
         {Array.from({ length: 6 }, (_, i) => (
-          <li key={i} className="m-0 rounded-control border border-border p-3">
+          <li key={i} className="m-0 rounded-card border border-border/50 bg-surface-raised px-4 py-3">
             <span className="block h-5 w-1/2 rounded-control bg-border/40 motion-safe:animate-pulse" />
             <span className="mt-3 block h-3 w-full rounded-control bg-border/40 motion-safe:animate-pulse" />
           </li>
@@ -58,9 +64,9 @@ function Skeleton() {
 function Funnel({ rows }: { rows: FunnelRow[] }) {
   return (
     <>
-      <ol aria-label="Pipeline steps, in order" className="m-0 mt-4 flex list-none flex-col gap-3 p-0">
-        {rows.map((row) => (
-          <Step key={row.id} row={row} />
+      <ol aria-label="Pipeline steps, in order" className="m-0 flex list-none flex-col gap-2 p-0">
+        {rows.map((row, i) => (
+          <Step key={row.id} row={row} n={i + 1} />
         ))}
       </ol>
       <ul className="mt-3 list-disc pl-6 text-sm text-muted">
@@ -74,18 +80,11 @@ function Funnel({ rows }: { rows: FunnelRow[] }) {
 
 function FlowBody({ query }: { query: ReturnType<typeof useFlow> }) {
   if (query.isError) {
-    return (
-      <div role="alert" className="my-4 rounded-control border-2 border-danger p-4">
-        <p className="m-0 font-semibold">The flow could not be loaded.</p>
-        <Button className="mt-3" onClick={() => void query.refetch()}>
-          Retry
-        </Button>
-      </div>
-    );
+    return <LoadError what="The flow" onRetry={() => void query.refetch()} />;
   }
   const steps = query.data?.steps;
   if (steps === undefined) return <Skeleton />;
-  if (isEmptyFlow(steps)) return <p className="mt-4 font-semibold">No pipeline activity in this range</p>;
+  if (isEmptyFlow(steps)) return <p className="font-semibold">No pipeline activity in this range</p>;
   return <Funnel rows={buildFunnel(steps)} />;
 }
 
@@ -100,10 +99,7 @@ export function FlowPage() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1>Flow</h1>
-        <RangeControl value={range} onChange={setRange} />
-      </div>
+      <PageHeader title="Flow" note="One day's pipeline, totalled over the range: where Homes get through, and where they leak." range={range} onRange={setRange} />
       <FlowBody query={query} />
     </>
   );

@@ -39,7 +39,7 @@ Most Residents use the app in Brazilian Portuguese, so it is designed pt-BR firs
 
 </details>
 
-<sub>Captured from the app with the end-to-end test fakes (sample data, no real accounts).</sub>
+<sub>Captured from the app with the end-to-end test fakes (sample data, no real accounts). To capture them again, see [README screenshots](docs/development.md#readme-screenshots).</sub>
 
 ## A day in Homeowner
 

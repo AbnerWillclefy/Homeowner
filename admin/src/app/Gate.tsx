@@ -18,13 +18,13 @@ export function Gate({ children }: { children: ReactNode }) {
     if (unauthorized) signOut();
   }, [unauthorized, signOut]);
 
-  if (me.isPending) return <p role="status">Checking your access…</p>;
+  if (me.isPending) return <p role="status" className="p-6 text-sm text-muted">Checking your access…</p>;
 
   if (me.isError) {
     return (
-      <section className="mx-auto max-w-sm py-12">
+      <section className="mx-auto my-12 w-full max-w-sm rounded-card border border-border/50 bg-surface-raised p-6">
         <h1>Could not reach the API</h1>
-        <p role="alert">Check your connection, then try again.</p>
+        <p role="alert" className="text-sm">Check your connection, then try again.</p>
         <div className="mt-6 flex gap-3">
           <Button onClick={() => void me.refetch()} disabled={me.isFetching}>
             Try again
@@ -40,9 +40,9 @@ export function Gate({ children }: { children: ReactNode }) {
   switch (me.data.kind) {
     case "forbidden":
       return (
-        <section className="mx-auto max-w-sm py-12">
+        <section className="mx-auto my-12 w-full max-w-sm rounded-card border border-border/50 bg-surface-raised p-6">
           <h1>This account is not allowed here</h1>
-          <p>The admin app is for the maintainer only. Sign out and use another account.</p>
+          <p className="text-sm">The admin app is for the maintainer only. Sign out and use another account.</p>
           <Button className="mt-6" onClick={signOut}>
             Sign out
           </Button>

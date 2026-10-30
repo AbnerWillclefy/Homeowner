@@ -1,13 +1,14 @@
 import { useEffect } from "react";
-import { BarTable, BarTableSkeleton, type BarColumn } from "../../shared/BarTable";
-import { Button } from "../../shared/Button";
+import { DataTable, DataTableSkeleton, type DataColumn } from "../../shared/DataTable";
 import { Collapsible } from "../../shared/Collapsible";
+import { LoadError } from "../../shared/LoadError";
+import { PageHeader } from "../../shared/PageHeader";
 import { rangeDays, useRange } from "../../shared/range";
-import { RangeControl } from "../../shared/RangeControl";
+import { TrendChart } from "../../shared/TrendChart";
 import { useOverview, type Overview, type OverviewDay } from "./api";
 import { WorthHeadline } from "./WorthHeadline";
 
-const COLUMNS: BarColumn<OverviewDay>[] = [
+const COLUMNS: DataColumn<OverviewDay>[] = [
   { key: "runs", label: "Runs", value: (d) => d.runs },
   { key: "rejected", label: "Rejected", value: (d) => d.rejected },
   { key: "fallbacks", label: "Fallbacks", value: (d) => d.fallbacks },
@@ -24,14 +25,16 @@ const COLUMNS: BarColumn<OverviewDay>[] = [
 
 function Tile({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-control border border-border bg-surface-raised px-4 py-3">
-      <dt className="text-muted">{label}</dt>
-      <dd className="m-0 text-2xl font-bold tabular-nums">{value}</dd>
+    <div className="rounded-card border border-border/50 bg-surface-raised px-4 py-3">
+      <dt className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</dt>
+      <dd className="m-0 mt-1 font-mono text-2xl font-semibold tabular-nums">{value}</dd>
     </div>
   );
 }
 
-/** The system's activity for the last 7 or 30 days: aggregates only, as tables with bars. */
+const SECTION = "mb-3 text-base font-semibold";
+
+/** The system's activity for the last 7 or 30 days: aggregates only, as a trend chart over a table. */
 export function OverviewPage() {
   const [range, setRange] = useRange();
   const query = useOverview(range);
@@ -44,24 +47,16 @@ export function OverviewPage() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1>Overview</h1>
-        <RangeControl value={range} onChange={setRange} />
-      </div>
+      <PageHeader title="Overview" note="Is Homeowner working, and is the AI worth it?" range={range} onRange={setRange} />
 
       <WorthHeadline range={range} />
 
       {query.isError ? (
-        <div role="alert" className="my-4 rounded-control border-2 border-danger p-4">
-          <p className="m-0 font-semibold">The overview could not be loaded.</p>
-          <Button className="mt-3" onClick={() => void query.refetch()}>
-            Retry
-          </Button>
-        </div>
+        <LoadError what="The overview" onRetry={() => void query.refetch()} />
       ) : query.data === undefined ? (
-        <div role="status" className="mt-4">
-          <p className="text-muted">Loading the overview…</p>
-          <BarTableSkeleton caption={caption} rowHeader="Date" columns={COLUMNS} rowCount={rangeDays(range)} />
+        <div role="status" className="mt-8">
+          <p className="text-sm text-muted">Loading the overview…</p>
+          <DataTableSkeleton caption={caption} rowHeader="Date" columns={COLUMNS} rowCount={rangeDays(range)} />
         </div>
       ) : (
         <Loaded overview={query.data} caption={caption} />
@@ -71,44 +66,54 @@ export function OverviewPage() {
 }
 
 function Loaded({ overview, caption }: { overview: Overview; caption: string }) {
-  const { totals, active } = overview;
+  const { totals, active, days } = overview;
   return (
     <>
-      <section aria-labelledby="totals" className="mt-6">
-        <h2 id="totals" className="mb-2 text-xl font-semibold">
-          Totals
-        </h2>
-        <dl className="m-0 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Tile label="Users" value={totals.users} />
-          <Tile label="Homes" value={totals.homes} />
-          <Tile label="Residents" value={totals.residents} />
-          <Tile label="Chores" value={totals.chores} />
-        </dl>
-      </section>
+      <div className="mt-8 grid gap-6 lg:grid-cols-3">
+        <section aria-labelledby="totals" className="lg:col-span-2">
+          <h2 id="totals" className={SECTION}>
+            Totals
+          </h2>
+          <dl className="m-0 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Tile label="Users" value={totals.users} />
+            <Tile label="Homes" value={totals.homes} />
+            <Tile label="Residents" value={totals.residents} />
+            <Tile label="Chores" value={totals.chores} />
+          </dl>
+        </section>
 
-      <section aria-labelledby="active" className="mt-6">
-        <h2 id="active" className="mb-2 text-xl font-semibold">
-          Active in this range
-        </h2>
-        <dl className="m-0 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Tile label="Active Homes" value={active.homes} />
-          <Tile label="Active Residents" value={active.residents} />
-        </dl>
-        <p className="text-sm text-muted">Active means a Check-in, Commitment or Completion in the range.</p>
-      </section>
+        <section aria-labelledby="active">
+          <h2 id="active" className={SECTION}>
+            Active in this range
+          </h2>
+          <dl className="m-0 grid grid-cols-2 gap-3">
+            <Tile label="Active Homes" value={active.homes} />
+            <Tile label="Active Residents" value={active.residents} />
+          </dl>
+          <p className="text-sm text-muted">Active means a Check-in, Commitment or Completion in the range.</p>
+        </section>
+      </div>
 
-      <section aria-labelledby="days" className="mt-6">
-        <h2 id="days" className="mb-2 text-xl font-semibold">
+      <section aria-labelledby="days" className="mt-8">
+        <h2 id="days" className={SECTION}>
           Per day
         </h2>
-        {overview.days.every((d) => COLUMNS.every((c) => c.value(d) === 0)) && <p className="font-semibold">No activity in this range</p>}
+        {days.every((d) => COLUMNS.every((c) => c.value(d) === 0)) && <p className="font-semibold">No activity in this range</p>}
+        <TrendChart
+          title={caption}
+          dates={days.map((d) => d.date)}
+          series={[
+            { label: "Runs", values: days.map((d) => d.runs) },
+            { label: "Check-ins", values: days.map((d) => d.checkins) },
+            { label: "Completions", values: days.map((d) => d.completions) },
+          ]}
+        />
         <Collapsible title="Show per-day table">
-          <BarTable caption={caption} rowHeader="Date" columns={COLUMNS} rows={overview.days.map((d) => ({ id: d.date, label: d.date, data: d }))} />
+          <DataTable caption={caption} rowHeader="Date" columns={COLUMNS} rows={days.map((d) => ({ id: d.date, label: d.date, data: d }))} />
           <ul className="mt-3 list-disc pl-6 text-sm text-muted">
             <li>Refuses is a lower bound: a refused Task that is taken later is not counted.</li>
             <li>Pushes accepted by push service were taken by the push service, not necessarily shown on a phone.</li>
             <li>Pushes unknown outcome (sent before tracking, or dropped at the deadline) have no recorded answer from the push service.</li>
-            <li>Each bar is scaled to the largest value in its own column.</li>
           </ul>
         </Collapsible>
       </section>
