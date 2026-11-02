@@ -84,9 +84,9 @@ func (h *Handler) detail(ctx context.Context, m identity.Membership, id string) 
 	return detailResponse{
 		Date: today.Time().Format(time.DateOnly), ID: member.ID, You: member.ID == m.ResidentID,
 		Name: member.Name, PhotoURL: h.photoURL(member.PhotoKey),
-		Initials:      users.Initials(member.Name),
-		AvatarTone:    users.AvatarTone(member.UserID),
-		Streak:        readings[id].Current,
+		Initials:       users.Initials(member.Name),
+		AvatarTone:     users.AvatarTone(member.UserID),
+		Streak:         readings[id].Current,
 		DoneLast30Days: len(done),
 		DoneLast7Days:  doneSince(done, today-6),
 		Days:           groupByDay(done),
