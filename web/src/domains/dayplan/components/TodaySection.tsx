@@ -13,6 +13,7 @@ import { GroupHeading } from "../../../shared/ui/GroupHeading";
 import { LOAD_FAILURE_KEY } from "../logic/failureMessages";
 import { ResidentLabel } from "../../residents/components/ResidentLabel";
 import { DaySummary } from "./DaySummary";
+import { ChangeTimeAction } from "../../residents/components/ChangeTimeAction";
 import { DoneCard } from "./DoneCard";
 import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { DayPlanSkeleton } from "./DayPlanSkeleton";
@@ -302,7 +303,16 @@ function PlanView({
               <DoneCard
                 key={done.id}
                 done={done}
-                change={timeZone === null ? undefined : { today: plan.date, timeZone, onMoved: () => setMovedId(done.id) }}
+                action={
+                  timeZone !== null && done.completionId !== undefined ? (
+                    <ChangeTimeAction
+                      completion={{ id: done.completionId, choreName: done.choreName, completedAt: done.completedAt }}
+                      today={plan.date}
+                      timeZone={timeZone}
+                      onMoved={() => setMovedId(done.id)}
+                    />
+                  ) : undefined
+                }
                 busy={refreshing && movedId === done.id}
               />
             ))}

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { CircleCheck } from "lucide-react";
 import type { CompletedTask } from "../api/api";
 import { categoryStyle } from "../../chores/logic/categoryStyle";
@@ -5,7 +6,6 @@ import { CategoryTile } from "../../chores/components/FactList";
 import { categoryLabel, labelText } from "../../profile/logic/labels";
 import { useI18n } from "../../../shared/i18n";
 import { Card } from "../../../shared/ui/Card";
-import { ChangeTimeAction } from "../../residents/components/ChangeTimeAction";
 import { formatTime } from "../logic/format";
 
 /**
@@ -16,12 +16,12 @@ import { formatTime } from "../logic/format";
  */
 export function DoneCard({
   done,
-  change,
+  action,
   busy = false,
 }: {
   done: CompletedTask;
-  /** Where "Change time" gets its bounds. Without it, or without `done.completionId`, the card has no action. */
-  change?: { today: string; timeZone: string; onMoved(): void };
+  /** An action on its own row at the bottom (Change time); the caller decides whether there is one. */
+  action?: ReactNode;
   /** The Completion was just moved and the Day Plan is being read again: dimmed and busy, not blank. */
   busy?: boolean;
 }) {
@@ -45,14 +45,7 @@ export function DoneCard({
             {t(done.with.length > 0 ? "dayplan.done.atTogether" : "dayplan.done.at", { time })}
           </span>
         </p>
-        {change !== undefined && done.completionId !== undefined && (
-          <ChangeTimeAction
-            completion={{ id: done.completionId, choreName: done.choreName, completedAt: done.completedAt }}
-            today={change.today}
-            timeZone={change.timeZone}
-            onMoved={change.onMoved}
-          />
-        )}
+        {action}
       </Card>
     </li>
   );

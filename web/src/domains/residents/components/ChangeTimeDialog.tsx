@@ -5,7 +5,7 @@ import { Button } from "../../../shared/ui/Button";
 import { ButtonRow } from "../../../shared/ui/ButtonRow";
 import { useSubmitOnce } from "../../../shared/ui/useSubmitOnce";
 import { useMoveCompletion } from "../hooks/useMoveCompletion";
-import { completionBounds, fromLocalInput, pickedProblem, toLocalInput } from "../logic/completionTimeBounds";
+import { completionBounds, parsePicked, toLocalInput } from "../logic/completionTimeBounds";
 import { moveFailureKey, pickedProblemKey } from "../logic/moveFailures";
 
 /** The Completion to move. `completedAt` is an instant, RFC 3339. */
@@ -50,10 +50,10 @@ export function ChangeTimeDialog({
 
   // The guard covers a second Enter or tap in the same tick, which the async `pending` state does not.
   const { run: save, pending } = useSubmitOnce(async () => {
-    const problem = pickedProblem(value, bounds);
-    if (problem !== null) return setFailure(pickedProblemKey(problem));
+    const picked = parsePicked(value, bounds);
+    if ("problem" in picked) return setFailure(pickedProblemKey(picked.problem));
     setFailure(null);
-    const result = await move({ id: completion.id, completedAt: fromLocalInput(value)!.toISOString() });
+    const result = await move({ id: completion.id, completedAt: picked.date.toISOString() });
     if (result.kind !== "ok") return setFailure(moveFailureKey(result));
     onMoved?.();
     onClose();

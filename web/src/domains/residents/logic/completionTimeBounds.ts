@@ -66,13 +66,23 @@ export function fromLocalInput(value: string, timeZone: string = deviceZone()): 
 }
 
 /**
- * Why a picked value cannot be sent, or null when it can. iOS Safari ignores `min` and `max` on `datetime-local`,
+ * The instant a picked value means, or why it cannot be sent. iOS Safari ignores `min` and `max` on `datetime-local`,
  * so Save asks this again before calling the API.
  */
-export function pickedProblem(value: string, bounds: TimeBounds, timeZone: string = deviceZone()): "in_future" | "too_old" | "invalid" | null {
-  const at = fromLocalInput(value, timeZone);
-  if (at === null) return "invalid";
-  if (at > bounds.max) return "in_future";
-  if (at < bounds.min) return "too_old";
-  return null;
+export function parsePicked(
+  value: string,
+  bounds: TimeBounds,
+  timeZone: string = deviceZone(),
+): { date: Date } | { problem: "in_future" | "too_old" | "invalid" } {
+  const date = fromLocalInput(value, timeZone);
+  if (date === null) return { problem: "invalid" };
+  if (date > bounds.max) return { problem: "in_future" };
+  if (date < bounds.min) return { problem: "too_old" };
+  return { date };
+}
+
+/** Why a picked value cannot be sent, or null when it can. */
+export function pickedProblem(value: string, bounds: TimeBounds, timeZone: string = deviceZone()) {
+  const picked = parsePicked(value, bounds, timeZone);
+  return "problem" in picked ? picked.problem : null;
 }
