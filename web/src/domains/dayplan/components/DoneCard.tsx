@@ -5,6 +5,7 @@ import { CategoryTile } from "../../chores/components/FactList";
 import { categoryLabel, labelText } from "../../profile/logic/labels";
 import { useI18n } from "../../../shared/i18n";
 import { Card } from "../../../shared/ui/Card";
+import { ChangeTimeAction } from "../../residents/components/ChangeTimeAction";
 import { formatTime } from "../logic/format";
 
 /**
@@ -13,14 +14,24 @@ import { formatTime } from "../logic/format";
  * quieter than the Task cards. A two-person Task says it was done together; when Resident names exist, only
  * that string and its argument change.
  */
-export function DoneCard({ done }: { done: CompletedTask }) {
+export function DoneCard({
+  done,
+  change,
+  busy = false,
+}: {
+  done: CompletedTask;
+  /** Where "Change time" gets its bounds. Without it, or without `done.completionId`, the card has no action. */
+  change?: { today: string; timeZone: string; onMoved(): void };
+  /** The Completion was just moved and the Day Plan is being read again: dimmed and busy, not blank. */
+  busy?: boolean;
+}) {
   const { t, locale } = useI18n();
   const style = categoryStyle(done.category);
   const time = formatTime(done.completedAt, locale);
 
   return (
     <li className="my-0 list-none">
-      <Card className="flex flex-col gap-3">
+      <Card className={`flex flex-col gap-3 ${busy ? "opacity-60 motion-safe:transition-opacity motion-safe:duration-150" : ""}`} aria-busy={busy || undefined}>
         <div className="flex items-center gap-3">
           <CategoryTile category={done.category} />
           <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
@@ -34,6 +45,14 @@ export function DoneCard({ done }: { done: CompletedTask }) {
             {t(done.with.length > 0 ? "dayplan.done.atTogether" : "dayplan.done.at", { time })}
           </span>
         </p>
+        {change !== undefined && done.completionId !== undefined && (
+          <ChangeTimeAction
+            completion={{ id: done.completionId, choreName: done.choreName, completedAt: done.completedAt }}
+            today={change.today}
+            timeZone={change.timeZone}
+            onMoved={change.onMoved}
+          />
+        )}
       </Card>
     </li>
   );

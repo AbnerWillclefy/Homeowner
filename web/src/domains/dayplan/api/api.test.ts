@@ -254,6 +254,12 @@ describe("doneToday with and category", () => {
     expect(await read(entry)).toEqual({ kind: "ok", plan: { ...PLAN, doneToday: [entry] } });
   });
 
+  it("keeps the completionId the Change time action needs, and leaves it out when missing or odd", async () => {
+    const entry = { ...DONE, completionId: "c7" };
+    expect(await read(entry)).toEqual({ kind: "ok", plan: { ...PLAN, doneToday: [entry] } });
+    expect(await read({ ...DONE, completionId: 7 })).toEqual({ kind: "ok", plan: { ...PLAN, doneToday: [DONE] } });
+  });
+
   it("reads a missing with (an older API) as empty", async () => {
     expect(await read(WITHOUT)).toEqual({ kind: "ok", plan: { ...PLAN, doneToday: [DONE] } });
   });
