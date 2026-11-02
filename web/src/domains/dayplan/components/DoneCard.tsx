@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { CircleCheck } from "lucide-react";
 import type { CompletedTask } from "../api/api";
 import { categoryStyle } from "../../chores/logic/categoryStyle";
@@ -13,14 +14,24 @@ import { formatTime } from "../logic/format";
  * quieter than the Task cards. A two-person Task says it was done together; when Resident names exist, only
  * that string and its argument change.
  */
-export function DoneCard({ done }: { done: CompletedTask }) {
+export function DoneCard({
+  done,
+  action,
+  busy = false,
+}: {
+  done: CompletedTask;
+  /** An action on its own row at the bottom (Change time); the caller decides whether there is one. */
+  action?: ReactNode;
+  /** The Completion was just moved and the Day Plan is being read again: dimmed and busy, not blank. */
+  busy?: boolean;
+}) {
   const { t, locale } = useI18n();
   const style = categoryStyle(done.category);
   const time = formatTime(done.completedAt, locale);
 
   return (
     <li className="my-0 list-none">
-      <Card className="flex flex-col gap-3">
+      <Card className={`flex flex-col gap-3 ${busy ? "opacity-60 motion-safe:transition-opacity motion-safe:duration-150" : ""}`} aria-busy={busy || undefined}>
         <div className="flex items-center gap-3">
           <CategoryTile category={done.category} />
           <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
@@ -34,6 +45,7 @@ export function DoneCard({ done }: { done: CompletedTask }) {
             {t(done.with.length > 0 ? "dayplan.done.atTogether" : "dayplan.done.at", { time })}
           </span>
         </p>
+        {action}
       </Card>
     </li>
   );

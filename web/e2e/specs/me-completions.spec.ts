@@ -11,8 +11,8 @@ import { launchApp, visit } from "../pages/launch";
 // What this covers, in both locales and at the largest text size: Me's "My Completions" section. The last 30 days by
 // day, newest first, with the older days dated; the "with" line of a two-person Completion; the neutral empty state;
 // the skeleton while the detail is held, with the rest of Me usable; a failed detail with Retry that recovers while
-// the other cards work; a failed Residents list that offers Retry and never says "nothing completed"; no section
-// no action on a Completion; and the shared query key (no second detail read inside staleTime, a deep link to your
+// the other cards work; a failed Residents list that offers Retry and never says "nothing completed"; only the
+// Change time action on a Completion (the rest is in me-change-time.spec.ts); and the shared query key (no second detail read inside staleTime, a deep link to your
 // own id redirecting to Me).
 
 const LOCALES = [
@@ -29,6 +29,7 @@ const LOCALES = [
     error: "Não foi possível carregar suas conclusões. Tente de novo em instantes.",
     retry: "Tentar novamente",
     baseline: "Energia base",
+    change: /^Mudar hora/,
   },
   {
     locale: "en-US",
@@ -43,6 +44,7 @@ const LOCALES = [
     error: "Could not load your Completions. Try again in a moment.",
     retry: "Try again",
     baseline: "Baseline",
+    change: /^Change time/,
   },
 ] as const;
 
@@ -88,11 +90,12 @@ for (const l of LOCALES) {
       await expect(page.getByText("Old chore")).toHaveCount(0);
     });
 
-    test("has no action on a Completion and nothing is cut off", async ({ page, baseURL }) => {
+    test("has only the Change time action on a Completion (see me-change-time) and nothing is cut off", async ({ page, baseURL }) => {
       await openMe(page, baseURL);
       await expect(page.getByRole("heading", { name: l.heading, level: 3 })).toBeVisible();
       const section = page.getByRole("region", { name: l.heading });
-      await expect(section.getByRole("button")).toHaveCount(0);
+      await expect(section.getByRole("button")).toHaveCount(5);
+      await expect(section.getByRole("button", { name: l.change })).toHaveCount(5);
       await expect(section.getByRole("link")).toHaveCount(0);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     });

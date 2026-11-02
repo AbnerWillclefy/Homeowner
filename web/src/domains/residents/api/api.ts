@@ -185,3 +185,38 @@ export async function getResident(id: string): Promise<ResidentResult> {
     return { kind: "offline" };
   }
 }
+
+/** The codes `PATCH /home/completions/{id}` refuses with (backend/internal/residents/move.go). */
+export const MOVE_REJECTIONS = ["in_future", "too_old", "before_task", "invalid_completed_at", "not_yours"] as const;
+export type MoveRejection = (typeof MOVE_REJECTIONS)[number];
+
+export type MoveResult =
+  /** The caller's own detail, with the Completion on the day the server counted it for. */
+  | { kind: "ok"; resident: ResidentDetail }
+  | { kind: "rejected"; code: MoveRejection }
+  /** 404 `completion not found`. */
+  | { kind: "not-found" }
+  /** 404 `no home`. */
+  | { kind: "none" }
+  | { kind: "not-signed-in" }
+  | { kind: "offline" }
+  | { kind: "error" };
+
+const isRejection = (code: string | null): code is MoveRejection => MOVE_REJECTIONS.some((known) => known === code);
+
+/** Moves one of the caller's Completions to `completedAt` (RFC 3339). The server decides the day. */
+export async function moveCompletion(id: string, completedAt: string): Promise<MoveResult> {
+  try {
+    const result = await authedRequest({ url: `/home/completions/${encodeURIComponent(id)}`, method: "PATCH", data: { completedAt } });
+    if (result.kind === "not-signed-in") return result;
+    const { response } = result;
+    const code = errorCode(response);
+    if (response.status === 404) return code === "no home" ? { kind: "none" } : { kind: "not-found" };
+    if (response.status === 400 || response.status === 409) return isRejection(code) ? { kind: "rejected", code } : { kind: "error" };
+    if (response.status !== 200) return { kind: "error" };
+    const resident = parseDetail(response.data);
+    return resident === null ? { kind: "error" } : { kind: "ok", resident };
+  } catch {
+    return { kind: "offline" };
+  }
+}
