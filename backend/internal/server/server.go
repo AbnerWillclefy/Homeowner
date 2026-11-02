@@ -102,11 +102,12 @@ func New(deps Deps) http.Handler {
 	chore := chores.NewHandler(chores.NewStore(db), clk, log)
 	choreSettings := choresettings.NewHandler(choresettings.NewStore(db), log)
 	task := tasks.NewHandler(tasks.NewStore(db), clk, log)
-	dayPlan := dayplan.NewHandler(dayplan.New(db, deps.Allocator, log), dayplan.NewStore(db), checkin.NewStore(db), clk, log)
+	planner := dayplan.New(db, deps.Allocator, log)
+	dayPlan := dayplan.NewHandler(planner, dayplan.NewStore(db), checkin.NewStore(db), clk, log)
 	prof := profile.NewHandler(profile.NewStore(db), log)
 	streakStore := streak.NewStore(db)
 	streaks := streak.NewHandler(streakStore, clk, log)
-	residentsH := residents.NewHandler(residents.NewStore(db), streakStore, photoURL, clk, log)
+	residentsH := residents.NewHandler(residents.NewStore(db), streakStore, planner, photoURL, clk, log)
 	pushes := push.NewHandler(push.NewStore(db), deps.Push, deps.VAPIDPublicKey, clk, log)
 
 	user, resident := s.requireUser, s.requireResident
@@ -123,6 +124,7 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("GET /home", resident(home.Get))
 	mux.HandleFunc("GET /home/residents", resident(residentsH.List))
 	mux.HandleFunc("GET /home/residents/{id}", resident(residentsH.Get))
+	mux.HandleFunc("PATCH /home/completions/{id}", resident(residentsH.MoveCompletion))
 	mux.HandleFunc("PUT /home", resident(home.Update))
 	mux.HandleFunc("DELETE /home/residents/me", resident(home.Leave))
 	mux.HandleFunc("GET /home/chores", resident(chore.List))

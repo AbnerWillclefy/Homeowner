@@ -25,8 +25,9 @@ func NewStore(db *pgxpool.Pool) *Store { return &Store{db: db} }
 // the Residents in $1 up to and including today ($2). Dates are the Home's
 // local dates already, so there is no timezone arithmetic here.
 //
-// undone: their Commitments of that date whose Task has no Completion dated
-// that same date. completions: the Completions they are on, by completed_on.
+// undone: their Commitments of that date whose Task has no Completion dated on
+// or before that date (a Completion re-dated earlier still keeps its promise,
+// ADR 0018). completions: the Completions they are on, by completed_on.
 // drained: their Check-in of that date is Drained.
 const factsQuery = `
 SELECT resident_id::text, day, sum(completions)::int, sum(undone)::int, bool_or(drained)
@@ -34,7 +35,7 @@ FROM (
 	SELECT tr.resident_id, tr.committed_on AS day, 0 AS completions,
 	       (k.id IS NULL)::int AS undone, false AS drained
 	FROM task_residents tr
-	LEFT JOIN completions k ON k.task_id = tr.task_id AND k.completed_on = tr.committed_on
+	LEFT JOIN completions k ON k.task_id = tr.task_id AND k.completed_on <= tr.committed_on
 	WHERE tr.resident_id = ANY($1::uuid[]) AND tr.committed_on <= $2
 	UNION ALL
 	SELECT cr.resident_id, k.completed_on, 1, 0, false

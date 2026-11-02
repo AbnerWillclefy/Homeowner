@@ -92,12 +92,14 @@ type SwapView struct {
 
 // DoneView is a Task the caller completed today.
 type DoneView struct {
-	ID          string    `json:"id"`
-	ChoreID     string    `json:"choreId"`
-	ChoreName   string    `json:"choreName"`
-	Category    string    `json:"category"`
-	Effort      int       `json:"currentEffort"`
-	CompletedAt time.Time `json:"completedAt"`
+	ID string `json:"id"`
+	// CompletionID names the Completion, for PATCH /home/completions/{id}.
+	CompletionID string    `json:"completionId"`
+	ChoreID      string    `json:"choreId"`
+	ChoreName    string    `json:"choreName"`
+	Category     string    `json:"category"`
+	Effort       int       `json:"currentEffort"`
+	CompletedAt  time.Time `json:"completedAt"`
 	// With is the ids of the other Residents on the Completion, sorted. Never
 	// null: a one-person Task is [].
 	With []string `json:"with"`
@@ -328,7 +330,7 @@ func (s *Store) liveSwaps(ctx context.Context, homeID, residentID, runID string,
 // doneToday is the Tasks the Resident completed on the date, oldest first.
 func (s *Store) doneToday(ctx context.Context, residentID string, date time.Time) ([]DoneView, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT t.id, c.id, c.name, c.category, t.current_effort, k.completed_at,
+		SELECT t.id, k.id, c.id, c.name, c.category, t.current_effort, k.completed_at,
 				COALESCE((SELECT array_agg(o.resident_id::text ORDER BY o.resident_id::text)
 					FROM completion_residents o
 					WHERE o.completion_id = k.id AND o.resident_id <> $1), '{}')
@@ -343,7 +345,7 @@ func (s *Store) doneToday(ctx context.Context, residentID string, date time.Time
 	}
 	out, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (d DoneView, err error) {
 		var effort int16
-		if err := r.Scan(&d.ID, &d.ChoreID, &d.ChoreName, &d.Category, &effort, &d.CompletedAt, &d.With); err != nil {
+		if err := r.Scan(&d.ID, &d.CompletionID, &d.ChoreID, &d.ChoreName, &d.Category, &effort, &d.CompletedAt, &d.With); err != nil {
 			return d, err
 		}
 		if d.With == nil {
