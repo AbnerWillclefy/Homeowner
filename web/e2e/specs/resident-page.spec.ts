@@ -73,8 +73,8 @@ state.residents = [
       { id: "c1", choreName: "Deep clean the shower", category: "bathroom", completedAt: "2030-01-15T12:02:00Z" },
       { id: "c4", choreName: "Clean the stove", category: "kitchen", completedAt: "2030-01-14T22:40:00Z" },
       { id: "c5", choreName: "Wash the dishes", category: "kitchen", completedAt: "2030-01-12T14:00:00Z" },
-      // Eight local days back: outside the window, so it is never shown or counted.
-      { id: "c6", choreName: "Old chore", category: "other", completedAt: "2030-01-07T14:00:00Z" },
+      // Thirty-six local days back: outside the 30-day window, so it is never shown or counted.
+      { id: "c6", choreName: "Old chore", category: "other", completedAt: "2029-12-10T14:00:00Z" },
     ],
   },
   { id: "resident-4", you: false, name: "jrocha", photoUrl: null, streak: 0 },

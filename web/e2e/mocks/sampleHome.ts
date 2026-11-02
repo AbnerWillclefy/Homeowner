@@ -1,6 +1,6 @@
 import type { Chore } from "../../src/domains/chores/api/api";
 import type { DayPlan, PlanTask } from "../../src/domains/dayplan/api/api";
-import type { FakeState } from "./api";
+import type { FakeCompletion, FakeState } from "./api";
 import { initialState } from "./api";
 import { FAKE_TODAY } from "./handlers/today";
 
@@ -67,6 +67,22 @@ export function signedInResident(): FakeState {
     checkIn: { date: FAKE_TODAY, checkedIn: true, level: "normal", restrictions: [] },
     dayPlan: plannedDay(),
   };
+}
+
+/**
+ * The caller's last 30 days against FAKE_TODAY (2030-01-15, Home zone America/Sao_Paulo): two Completions today (one
+ * with Bruna Souza), one yesterday, one on 2030-01-02, one on the first day of the window (2029-12-17), and one a day
+ * outside it that is never shown. Out of order on purpose.
+ */
+export function thirtyDayHistory(): FakeCompletion[] {
+  return [
+    { id: "h5", choreName: "Old chore", category: "other", completedAt: "2029-12-16T14:00:00Z" },
+    { id: "h2", choreName: "Vacuum the living room", category: "floors", completedAt: "2030-01-15T12:15:00Z", with: [{ id: "resident-2", name: "Bruna Souza" }] },
+    { id: "h1", choreName: "Deep clean the shower", category: "bathroom", completedAt: "2030-01-15T12:02:00Z" },
+    { id: "h3", choreName: "Clean the stove", category: "kitchen", completedAt: "2030-01-14T22:40:00Z" },
+    { id: "h4", choreName: "Wash the dishes", category: "kitchen", completedAt: "2030-01-02T14:00:00Z" },
+    { id: "h6", choreName: "Mop the floors", category: "floors", completedAt: "2029-12-17T14:00:00Z" },
+  ];
 }
 
 /** A different Resident in another Home: Beto Bezerra, whose one Task is "Water the plants". */

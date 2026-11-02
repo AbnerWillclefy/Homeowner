@@ -8,14 +8,14 @@ function localDate(iso: string, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(Date.parse(iso));
 }
 
-/** The seven local dates ending at today, as the API's window: today and six before. */
-function windowStart(today: string): string {
-  return new Date(Date.parse(`${today}T00:00:00Z`) - 6 * DAY_MS).toISOString().slice(0, 10);
+/** The first of the `days` local dates ending at today: the API's window is 30 (today and 29 before). */
+function windowStart(today: string, days: number): string {
+  return new Date(Date.parse(`${today}T00:00:00Z`) - (days - 1) * DAY_MS).toISOString().slice(0, 10);
 }
 
-/** Completions in the window grouped into days, newest day first and oldest first within a day. */
+/** Completions of the last 30 local days grouped into days, newest day first and oldest first within a day. */
 function groupByDay(completions: FakeCompletion[], timeZone: string) {
-  const from = windowStart(FAKE_TODAY);
+  const from = windowStart(FAKE_TODAY, 30);
   const inWindow = completions
     .map((completion) => ({ completion, date: localDate(completion.completedAt, timeZone) }))
     .filter(({ date }) => date >= from && date <= FAKE_TODAY)
@@ -28,7 +28,8 @@ function groupByDay(completions: FakeCompletion[], timeZone: string) {
     if (last?.date === date) last.completions.push(row);
     else days.push({ date, completions: [row] });
   }
-  return { days, count: inWindow.length };
+  const last7 = windowStart(FAKE_TODAY, 7);
+  return { days, count: inWindow.length, last7: inWindow.filter(({ date }) => date >= last7).length };
 }
 
 /**
@@ -37,13 +38,13 @@ function groupByDay(completions: FakeCompletion[], timeZone: string) {
  * that does not care about housemates still gets a valid answer. 404 without a Home.
  *
  * `GET /home/residents/{id}`: one of those Residents with their Streak, the number of Completions in the last 7
- * local days and those Completions grouped by day (from `FakeResident.completions`, in the Home's time zone). An
+ * and 30 local days and the 30 days' Completions grouped by day (from `FakeResident.completions`, in the Home's time zone). An
  * id that is not in the list is `404 resident not found`, like the API; 404 `no home` without a Home.
  */
 export function residentsHandlers(api: FakeApi): void {
   const list = (state: FakeState): FakeResident[] => {
     const { email, displayName, photoUrl } = state.user;
-    const caller: FakeResident = { id: "resident-1", you: true, name: shownName({ email, displayName }), photoUrl: photoUrl ?? null };
+    const caller: FakeResident = { id: "resident-1", you: true, name: shownName({ email, displayName }), photoUrl: photoUrl ?? null, completions: state.callerCompletions };
     return state.residents ?? [caller];
   };
 
@@ -70,7 +71,7 @@ export function residentsHandlers(api: FakeApi): void {
       if (state.home === null) return json(404, { error: "no home" });
       const resident = list(state).find((row) => row.id === request.params["id"]);
       if (resident === undefined) return json(404, { error: "resident not found" });
-      const { days, count } = groupByDay(resident.completions ?? [], state.home.timezone);
+      const { days, count, last7 } = groupByDay(resident.completions ?? [], state.home.timezone);
       return json(200, {
         date: FAKE_TODAY,
         id: resident.id,
@@ -79,7 +80,8 @@ export function residentsHandlers(api: FakeApi): void {
         photoUrl: resident.photoUrl,
         ...avatarFor(resident.name),
         streak: resident.streak ?? 0,
-        doneLast7Days: count,
+        doneLast30Days: count,
+        doneLast7Days: last7,
         days,
       });
     }),
