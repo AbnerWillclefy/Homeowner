@@ -99,6 +99,8 @@ export interface FakeCompletion {
   /** RFC 3339, UTC. */
   completedAt: string;
   with?: { id: string; name: string }[];
+  /** The Task's first day, YYYY-MM-DD: a move to an earlier Home day is `before_task`. Absent means no limit. */
+  windowStart?: string;
 }
 
 /**
