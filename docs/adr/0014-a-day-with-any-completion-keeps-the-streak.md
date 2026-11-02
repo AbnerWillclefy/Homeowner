@@ -12,6 +12,8 @@
 
 Today counts (`todayGrew`) as soon as the Resident has one Completion. Today is still never judged a break, and a Completion on a later day still does not repair an earlier day.
 
+_Amended by [ADR 0018](0018-a-resident-can-re-date-a-completion-up-to-30-days-back.md): a Resident can re-date a Completion up to 30 days back, so a Completion can now be moved onto an earlier day, and a Commitment is undone only when its Task has no Completion dated on or before its day._
+
 ADR 0003's principles stand: refusing or ignoring a proposed Task creates no Commitment and never breaks the Streak, a Drained day never breaks it, and growth needs a Completion.
 
 ## Considered Options
