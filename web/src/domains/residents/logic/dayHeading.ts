@@ -1,4 +1,9 @@
-export type DayHeading = { kind: "today" } | { kind: "yesterday" } | { kind: "weekday"; day: string };
+export type DayHeading =
+  | { kind: "today" }
+  | { kind: "yesterday" }
+  | { kind: "weekday"; day: string }
+  /** A week or more back, where a weekday name alone would repeat. */
+  | { kind: "date"; day: string };
 
 const DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
 const MS_PER_DAY = 86_400_000;
@@ -12,14 +17,14 @@ function utcMidnight(day: string): number {
 
 /**
  * What a day's group is called, against the Home's own date. Both arguments are "YYYY-MM-DD": `today` is the
- * `date` the API answered (today in the Home's zone), never the device clock. The window is 7 days, so a weekday
- * name never repeats within it.
+ * `date` the API answered (today in the Home's zone), never the device clock. Within a week the weekday is
+ * enough; from a week back it would repeat, so the heading adds the day of the month.
  */
 export function dayHeading(day: string, today: string): DayHeading {
   const apart = Math.round((utcMidnight(today) - utcMidnight(day)) / MS_PER_DAY);
   if (apart === 0) return { kind: "today" };
   if (apart === 1) return { kind: "yesterday" };
-  return { kind: "weekday", day };
+  return apart >= 7 ? { kind: "date", day } : { kind: "weekday", day };
 }
 
 /** The heading's words. The weekday comes from `Intl` in the locale, not from the catalogs. */
@@ -32,5 +37,6 @@ export function dayHeadingText(
   if (heading.kind === "yesterday") return words.yesterday;
   const at = utcMidnight(heading.day);
   if (Number.isNaN(at)) return heading.day;
-  return new Intl.DateTimeFormat(locale, { weekday: "long", timeZone: "UTC" }).format(at);
+  const parts: Intl.DateTimeFormatOptions = heading.kind === "date" ? { weekday: "short", day: "numeric", month: "short" } : { weekday: "long" };
+  return new Intl.DateTimeFormat(locale, { ...parts, timeZone: "UTC" }).format(at);
 }

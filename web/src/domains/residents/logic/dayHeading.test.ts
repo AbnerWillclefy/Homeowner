@@ -17,6 +17,11 @@ describe("dayHeading", () => {
     }
   });
 
+  it("is the date, weekday and day of the month, from a week back, because the weekday alone would repeat", () => {
+    expect(dayHeading("2030-01-08", "2030-01-15")).toEqual({ kind: "date", day: "2030-01-08" });
+    expect(dayHeading("2029-12-17", "2030-01-15")).toEqual({ kind: "date", day: "2029-12-17" });
+  });
+
   it("counts across a month boundary", () => {
     expect(dayHeading("2026-02-28", "2026-03-01")).toEqual({ kind: "yesterday" });
     expect(dayHeading("2026-02-27", "2026-03-01")).toEqual({ kind: "weekday", day: "2026-02-27" });
@@ -42,6 +47,11 @@ describe("dayHeadingText", () => {
   it("names the weekday in the locale, from the calendar date alone", () => {
     expect(dayHeadingText({ kind: "weekday", day: "2030-01-12" }, "en-US", words)).toBe("Saturday");
     expect(dayHeadingText({ kind: "weekday", day: "2030-01-12" }, "pt-BR", words)).toBe("sábado");
+  });
+
+  it("writes an older day as a short weekday, the day and the month, in the locale", () => {
+    expect(dayHeadingText({ kind: "date", day: "2030-01-02" }, "en-US", words)).toBe("Wed, Jan 2");
+    expect(dayHeadingText({ kind: "date", day: "2030-01-02" }, "pt-BR", words)).toBe("qua., 2 de jan.");
   });
 
   it("uses the given words for today and yesterday", () => {
