@@ -131,7 +131,7 @@ const DETAIL = {
   initials: "A",
   avatarTone: "mint",
   streak: 11,
-  doneLast7Days: 2,
+  doneLast30Days: 2,
   days: [{ date: "2026-10-19", completions: [COMPLETION, { ...COMPLETION, id: "c2", with: [] }] }],
 };
 
@@ -151,7 +151,7 @@ describe("getResident", () => {
         initials: "A",
         avatarTone: "mint",
         streak: 11,
-        doneLast7Days: 2,
+        doneLast30Days: 2,
         days: [
           {
             date: "2026-10-19",
@@ -172,7 +172,7 @@ describe("getResident", () => {
   });
 
   it("reads no days as an empty list", async () => {
-    stubFetch(Response.json({ ...DETAIL, doneLast7Days: 0, days: [] }));
+    stubFetch(Response.json({ ...DETAIL, doneLast30Days: 0, days: [] }));
     const result = await getResident("r1");
     expect(result.kind === "ok" && result.resident.days).toEqual([]);
   });
@@ -195,7 +195,8 @@ describe("getResident", () => {
     ["completedAt is not a date", { ...DETAIL, days: [{ date: "2026-10-19", completions: [{ ...COMPLETION, completedAt: "later" }] }] }],
     ["a Completion without a Chore name", { ...DETAIL, days: [{ date: "2026-10-19", completions: [{ ...COMPLETION, choreName: 3 }] }] }],
     ["a negative Streak", { ...DETAIL, streak: -1 }],
-    ["a fractional count", { ...DETAIL, doneLast7Days: 1.5 }],
+    ["a fractional count", { ...DETAIL, doneLast30Days: 1.5 }],
+    ["a missing doneLast30Days, even with the old doneLast7Days", { ...DETAIL, doneLast30Days: undefined, doneLast7Days: 2 }],
     ["a missing date", { ...DETAIL, date: undefined }],
     ["a missing name", { ...DETAIL, name: undefined }],
     ["you is not a boolean", { ...DETAIL, you: "no" }],

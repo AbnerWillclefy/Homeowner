@@ -7,7 +7,7 @@ import { Avatar } from "./Avatar";
 import { HEADER_COLUMN, NAME_HEIGHT, STAT_GRID } from "./pageLayout";
 
 /**
- * Who this is and two plain numbers: their current Streak and how many Tasks they completed in the last 7 days.
+ * Who this is and two plain numbers: their current Streak and how many Tasks they completed in the last 30 days.
  * The name is the page's h2, where focus lands. Zeros read in the same voice as any other number, and nothing
  * here compares one Resident with another.
  */
@@ -41,7 +41,7 @@ export function ResidentHeader({ resident }: { resident: ResidentDetail }) {
       </div>
       <div className={STAT_GRID}>
         <StatTile value={resident.streak} label={t("resident.streak", { count: resident.streak })} />
-        <StatTile value={resident.doneLast7Days} label={t("resident.done7", { count: resident.doneLast7Days })} />
+        <StatTile value={resident.doneLast30Days} label={t("resident.done30", { count: resident.doneLast30Days })} />
       </div>
     </>
   );

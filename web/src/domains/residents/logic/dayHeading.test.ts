@@ -39,9 +39,9 @@ describe("dayHeading", () => {
 describe("dayHeadingText", () => {
   const words = { today: "Today", yesterday: "Yesterday" };
 
-  it("names the weekday in the locale, from the calendar date alone", () => {
-    expect(dayHeadingText({ kind: "weekday", day: "2030-01-12" }, "en-US", words)).toBe("Saturday");
-    expect(dayHeadingText({ kind: "weekday", day: "2030-01-12" }, "pt-BR", words)).toBe("sábado");
+  it("names the weekday and the date in the locale, from the calendar date alone, so a weekday never repeats", () => {
+    expect(dayHeadingText({ kind: "weekday", day: "2030-01-12" }, "en-US", words)).toBe("Saturday, January 12");
+    expect(dayHeadingText({ kind: "weekday", day: "2030-01-12" }, "pt-BR", words)).toBe("sábado, 12 de janeiro");
   });
 
   it("uses the given words for today and yesterday", () => {
@@ -60,7 +60,7 @@ describe("dayHeadingText", () => {
       process.env.TZ = zone;
       expect(dayHeading("2030-01-14", "2030-01-15")).toEqual({ kind: "yesterday" });
       expect(dayHeading("2030-01-12", "2030-01-15")).toEqual({ kind: "weekday", day: "2030-01-12" });
-      expect(dayHeadingText({ kind: "weekday", day: "2030-01-12" }, "en-US", words)).toBe("Saturday");
+      expect(dayHeadingText({ kind: "weekday", day: "2030-01-12" }, "en-US", words)).toBe("Saturday, January 12");
     });
   });
 });

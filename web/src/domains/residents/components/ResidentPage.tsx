@@ -39,7 +39,7 @@ function Days({ resident, timeZone }: { resident: ResidentDetail; timeZone: stri
 }
 
 /**
- * A housemate's page: their name and photo, current Streak, the Tasks done in the last 7 days and their
+ * A housemate's page: their name and photo, current Streak, the Tasks done in the last 30 days and their
  * Completions by day, newest day first, with no actions. Your own id goes to Me. Not found is a calm message, not
  * a redirect, so a stale link cannot loop; a failed load is an inline message with Retry. The back link is the
  * route's, outside this component, so it is there in every state.

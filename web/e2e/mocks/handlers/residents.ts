@@ -8,9 +8,9 @@ function localDate(iso: string, timeZone: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(Date.parse(iso));
 }
 
-/** The seven local dates ending at today, as the API's window: today and six before. */
+/** The thirty local dates ending at today, as the API's window: today and 29 before. */
 function windowStart(today: string): string {
-  return new Date(Date.parse(`${today}T00:00:00Z`) - 6 * DAY_MS).toISOString().slice(0, 10);
+  return new Date(Date.parse(`${today}T00:00:00Z`) - 29 * DAY_MS).toISOString().slice(0, 10);
 }
 
 /** Completions in the window grouped into days, newest day first and oldest first within a day. */
@@ -36,7 +36,7 @@ function groupByDay(completions: FakeCompletion[], timeZone: string) {
  * and done-today count, and no emails or user ids. Without `state.residents` it lists only the caller, so a spec
  * that does not care about housemates still gets a valid answer. 404 without a Home.
  *
- * `GET /home/residents/{id}`: one of those Residents with their Streak, the number of Completions in the last 7
+ * `GET /home/residents/{id}`: one of those Residents with their Streak, the number of Completions in the last 30
  * local days and those Completions grouped by day (from `FakeResident.completions`, in the Home's time zone). An
  * id that is not in the list is `404 resident not found`, like the API; 404 `no home` without a Home.
  */
@@ -79,7 +79,7 @@ export function residentsHandlers(api: FakeApi): void {
         photoUrl: resident.photoUrl,
         ...avatarFor(resident.name),
         streak: resident.streak ?? 0,
-        doneLast7Days: count,
+        doneLast30Days: count,
         days,
       });
     }),

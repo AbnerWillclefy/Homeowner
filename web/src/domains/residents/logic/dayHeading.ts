@@ -12,8 +12,8 @@ function utcMidnight(day: string): number {
 
 /**
  * What a day's group is called, against the Home's own date. Both arguments are "YYYY-MM-DD": `today` is the
- * `date` the API answered (today in the Home's zone), never the device clock. The window is 7 days, so a weekday
- * name never repeats within it.
+ * `date` the API answered (today in the Home's zone), never the device clock. The window is 30 days, so older
+ * days carry their date as well as the weekday.
  */
 export function dayHeading(day: string, today: string): DayHeading {
   const apart = Math.round((utcMidnight(today) - utcMidnight(day)) / MS_PER_DAY);
@@ -22,7 +22,7 @@ export function dayHeading(day: string, today: string): DayHeading {
   return { kind: "weekday", day };
 }
 
-/** The heading's words. The weekday comes from `Intl` in the locale, not from the catalogs. */
+/** The heading's words. The weekday and date come from `Intl` in the locale, not from the catalogs. */
 export function dayHeadingText(
   heading: DayHeading,
   locale: string,
@@ -32,5 +32,5 @@ export function dayHeadingText(
   if (heading.kind === "yesterday") return words.yesterday;
   const at = utcMidnight(heading.day);
   if (Number.isNaN(at)) return heading.day;
-  return new Intl.DateTimeFormat(locale, { weekday: "long", timeZone: "UTC" }).format(at);
+  return new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(at);
 }
