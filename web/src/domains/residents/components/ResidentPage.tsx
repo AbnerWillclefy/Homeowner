@@ -3,40 +3,10 @@ import { ME_PATH } from "../../../app/logic/routes";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
-import type { ResidentDetail } from "../api/api";
 import { useResident } from "../hooks/useResident";
-import { dayHeading, dayHeadingText } from "../logic/dayHeading";
-import { CompletionCard } from "./CompletionCard";
+import { CompletionDays } from "./CompletionDays";
 import { ResidentHeader } from "./ResidentHeader";
 import { ResidentPageSkeleton } from "./ResidentPageSkeleton";
-
-function Days({ resident, timeZone }: { resident: ResidentDetail; timeZone: string }) {
-  const { t, locale } = useI18n();
-  const words = { today: t("resident.day.today"), yesterday: t("resident.day.yesterday") };
-  return (
-    <section aria-labelledby="resident-recent-heading" className="flex flex-col gap-4">
-      <h3 id="resident-recent-heading" className="my-0 text-xl leading-snug font-bold">
-        {t("resident.recent.heading")}
-      </h3>
-      {resident.days.length === 0 ? (
-        <p className="my-0 text-muted">{t("resident.empty")}</p>
-      ) : (
-        resident.days.map((day) => (
-          <div key={day.date} className="flex flex-col gap-3">
-            <h4 className="my-0 text-base font-bold first-letter:uppercase">
-              {dayHeadingText(dayHeading(day.date, resident.date), locale, words)}
-            </h4>
-            <ul className="m-0 flex list-none flex-col gap-3 p-0">
-              {day.completions.map((completion) => (
-                <CompletionCard key={completion.id} completion={completion} timeZone={timeZone} />
-              ))}
-            </ul>
-          </div>
-        ))
-      )}
-    </section>
-  );
-}
 
 /**
  * A housemate's page: their name and photo, current Streak, the Tasks done in the last 30 days and their
@@ -72,7 +42,13 @@ export function ResidentPage({ id, timeZone }: { id: string; timeZone: string })
       return (
         <div className="flex flex-col gap-4">
           <ResidentHeader resident={state.resident} />
-          <Days resident={state.resident} timeZone={timeZone} />
+          <CompletionDays
+            days={state.resident.days}
+            today={state.resident.date}
+            timeZone={timeZone}
+            heading={t("resident.recent.heading")}
+            empty={t("resident.empty")}
+          />
         </div>
       );
   }

@@ -43,7 +43,7 @@ function groupByDay(completions: FakeCompletion[], timeZone: string) {
 export function residentsHandlers(api: FakeApi): void {
   const list = (state: FakeState): FakeResident[] => {
     const { email, displayName, photoUrl } = state.user;
-    const caller: FakeResident = { id: "resident-1", you: true, name: shownName({ email, displayName }), photoUrl: photoUrl ?? null };
+    const caller: FakeResident = { id: "resident-1", you: true, name: shownName({ email, displayName }), photoUrl: photoUrl ?? null, completions: state.callerCompletions };
     return state.residents ?? [caller];
   };
 

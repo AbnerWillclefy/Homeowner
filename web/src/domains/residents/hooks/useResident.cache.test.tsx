@@ -24,17 +24,17 @@ const BRUNA = residentDetail("r2", "Bruna");
 describe("useResident over the query cache", () => {
   let rendered: Rendered | undefined;
   let hook!: ReturnType<typeof useResident>;
-  let setId!: (id: string) => void;
-  const Probe = ({ first }: { first: string }) => {
-    const [id, set] = useState(first);
+  let setId!: (id: string | undefined) => void;
+  const Probe = ({ first }: { first: string | undefined }) => {
+    const [id, set] = useState<string | undefined>(first);
     setId = set;
     hook = useResident(id);
     return null;
   };
-  /** Mounts the hook for `id`, with Ana's page already in the cache. */
-  const mount = (id: string) => {
+  /** Mounts the hook for `id`, with Ana's page already in the cache, read `ageMs` ago (older than the 30s `staleTime` by default). */
+  const mount = (id: string | undefined, ageMs = 60_000, cached = ANA) => {
     const client = createTestQueryClient();
-    client.setQueryData(residentKey("r1"), ANA);
+    client.setQueryData(residentKey(cached.id), cached, { updatedAt: Date.now() - ageMs });
     rendered = renderWithQueryClient(createElement(Probe, { first: id }), client);
     return client;
   };
@@ -62,6 +62,28 @@ describe("useResident over the query cache", () => {
     await settle();
     expect(hook.state).toMatchObject({ kind: "ready", resident: { streak: 9 } });
     expect(hook.refreshing).toBe(false);
+  });
+
+  it("does not read your own page again inside 30s, so Me and the page share one read", async () => {
+    const client = mount("me", 5_000, residentDetail("me", "Eu", true));
+    await settle();
+    expect(getResident).not.toHaveBeenCalled();
+    expect(hook.refreshing).toBe(false);
+    expect(client.getQueryData(residentKey("me"))).toMatchObject({ you: true });
+  });
+
+  it("reads a housemate's page again on every visit, even a second later", () => {
+    getResident.mockReturnValue(new Promise(() => {}));
+    mount("r1", 1_000);
+    expect(getResident).toHaveBeenCalledTimes(1);
+    expect(hook.refreshing).toBe(true);
+  });
+
+  it("sends no request and stays loading while there is no id", async () => {
+    mount(undefined);
+    await settle();
+    expect(getResident).not.toHaveBeenCalled();
+    expect(hook.state).toEqual({ kind: "loading" });
   });
 
   it("keeps the cached page, with no failed state, when the refetch fails", async () => {
