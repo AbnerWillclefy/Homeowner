@@ -6,7 +6,7 @@ import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
 
 // What this covers, in both locales: a housemate's page at /home/residents/:id under the Home tab. The header
-// (name, Streak, last-7-days count), the day groups (Today, Yesterday, then the weekday, from the Home's date and
+// (name, Streak, last-30-days count), the day groups (Today, Yesterday, then the weekday, from the Home's date and
 // zone: 02:30Z is still the evening before in Sao Paulo), the oldest Completion first, the "with" line and no
 // actions, the empty state, not found, an error with Retry, the skeleton and its steady layout, a deep link and
 // reload that keep the Home tab highlighted, your own id going to Me, and Back returning to /home.
@@ -16,17 +16,19 @@ const LOCALES = [
     locale: "pt-BR",
     back: "Seu lar",
     streak: "dias de sequência",
-    done7: "Tarefas concluídas em 7 dias",
+    done30: "Tarefas concluídas em 30 dias",
     recent: "Concluídas há pouco",
     today: "Hoje",
     yesterday: "Ontem",
     // Intl writes the weekday in lower case; the heading capitalises its first letter with CSS.
-    saturday: "sábado",
+    saturday: "sábado, 12 de janeiro",
+    tenBack: "sábado, 5 de janeiro",
+    twentyNineBack: "segunda-feira, 17 de dezembro",
     shower: "9:02",
     vacuumMeta: "Pisos · 9:15, com Bruna Souza",
     stoveMeta: "Cozinha · 19:40",
     trashMeta: "Lixo · 23:30",
-    empty: "Nada concluído nos últimos 7 dias.",
+    empty: "Nada concluído nos últimos 30 dias.",
     notFound: "Não encontramos este morador no seu lar.",
     error: "Algo deu errado ao carregar este morador. Tente novamente em instantes.",
     retry: "Tentar novamente",
@@ -38,16 +40,18 @@ const LOCALES = [
     locale: "en-US",
     back: "Your Home",
     streak: "day Streak",
-    done7: "Tasks done in 7 days",
+    done30: "Tasks done in 30 days",
     recent: "Done lately",
     today: "Today",
     yesterday: "Yesterday",
-    saturday: "Saturday",
+    saturday: "Saturday, January 12",
+    tenBack: "Saturday, January 5",
+    twentyNineBack: "Monday, December 17",
     shower: "9:02 AM",
     vacuumMeta: "Floors · 9:15 AM, with Bruna Souza",
     stoveMeta: "Kitchen · 7:40 PM",
     trashMeta: "Trash · 11:30 PM",
-    empty: "Nothing completed in the last 7 days.",
+    empty: "Nothing completed in the last 30 days.",
     notFound: "We could not find this Resident in your Home.",
     error: "Something went wrong loading this Resident. Try again in a moment.",
     retry: "Try again",
@@ -73,8 +77,21 @@ state.residents = [
       { id: "c1", choreName: "Deep clean the shower", category: "bathroom", completedAt: "2030-01-15T12:02:00Z" },
       { id: "c4", choreName: "Clean the stove", category: "kitchen", completedAt: "2030-01-14T22:40:00Z" },
       { id: "c5", choreName: "Wash the dishes", category: "kitchen", completedAt: "2030-01-12T14:00:00Z" },
-      // Eight local days back: outside the window, so it is never shown or counted.
-      { id: "c6", choreName: "Old chore", category: "other", completedAt: "2030-01-07T14:00:00Z" },
+      // Thirty local days back: outside the window, so it is never shown or counted.
+      { id: "c6", choreName: "Old chore", category: "other", completedAt: "2029-12-16T14:00:00Z" },
+    ],
+  },
+  {
+    id: "resident-5",
+    you: false,
+    name: "Carla Lima",
+    photoUrl: null,
+    streak: 2,
+    completions: [
+      { id: "d1", choreName: "Water the plants", category: "outdoor", completedAt: "2030-01-15T12:00:00Z" },
+      { id: "d2", choreName: "Mop the kitchen", category: "floors", completedAt: "2030-01-05T14:00:00Z" },
+      { id: "d3", choreName: "Clean the oven", category: "kitchen", completedAt: "2029-12-17T14:00:00Z" },
+      { id: "d4", choreName: "Old chore", category: "other", completedAt: "2029-12-16T14:00:00Z" },
     ],
   },
   { id: "resident-4", you: false, name: "jrocha", photoUrl: null, streak: 0 },
@@ -89,11 +106,11 @@ for (const l of LOCALES) {
       await seedSession(page, { email: RESIDENT_EMAIL });
     });
 
-    test("shows the name, Streak, the 7-day count and the days newest first with their headings", async ({ page }) => {
+    test("shows the name, Streak, the 30-day count and the days newest first with their headings", async ({ page }) => {
       await visit(page, "/home/residents/resident-2");
       await expect(page.getByRole("heading", { name: "Ana Souza", level: 2 })).toBeVisible();
       await expect(page.getByText(l.streak, { exact: true })).toBeVisible();
-      await expect(page.getByText(l.done7, { exact: true })).toBeVisible();
+      await expect(page.getByText(l.done30, { exact: true })).toBeVisible();
       // The Streak is 11 and five Completions fall in the window (the old one is out).
       await expect(page.getByText("11", { exact: true })).toBeVisible();
       await expect(page.getByText("5", { exact: true })).toBeVisible();
@@ -114,6 +131,32 @@ for (const l of LOCALES) {
       await expect(cards.nth(3)).toContainText(l.trashMeta);
       await expect(cards.nth(4)).toContainText("Wash the dishes");
       await expect(page.getByText("Old chore")).toHaveCount(0);
+    });
+
+    test("lists the whole 30-day window: today-10 and today-29 show, today-30 does not", async ({ page }) => {
+      await visit(page, "/home/residents/resident-5");
+      await expect(page.getByRole("heading", { name: "Carla Lima", level: 2 })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 4 })).toHaveText([l.today, l.tenBack, l.twentyNineBack]);
+      await expect(page.getByText(l.done30, { exact: true })).toBeVisible();
+      await expect(page.getByText("3", { exact: true })).toBeVisible();
+      await expect(page.getByText("Old chore")).toHaveCount(0);
+    });
+
+    test("at the largest text size nothing is cut with an ellipsis and nothing overflows sideways", async ({ page }) => {
+      await visit(page, "/home/residents/resident-5");
+      await expect(page.getByRole("heading", { name: "Carla Lima", level: 2 })).toBeVisible();
+      await page.evaluate(() => (document.documentElement.style.fontSize = "200%"));
+      await expect(page.getByText(l.done30, { exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 4, name: l.twentyNineBack })).toBeVisible();
+      const clipped = await page.locator("main *").evaluateAll(
+        (nodes) =>
+          nodes.filter((n) => {
+            const style = getComputedStyle(n);
+            return style.textOverflow === "ellipsis" || (n.scrollWidth > n.clientWidth + 1 && style.overflowX !== "visible");
+          }).length,
+      );
+      expect(clipped).toBe(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     });
 
     test("has no actions on a Completion and nothing private", async ({ page }) => {
@@ -137,7 +180,7 @@ for (const l of LOCALES) {
       await expect(page.getByRole("heading", { name: "jrocha", level: 2 })).toBeVisible();
       await expect(page.getByText(l.empty)).toBeVisible();
       // Zero reads in the same voice as any number (pt-BR counts 0 as singular).
-      await expect(page.getByText(/^(Tarefas? concluídas? em 7 dias|Tasks done in 7 days)$/)).toBeVisible();
+      await expect(page.getByText(/^(Tarefas? concluídas? em 30 dias|Tasks done in 30 days)$/)).toBeVisible();
       // The page's two zeros, and the top bar's Streak button, which also reads 0 for this Home.
       await expect(page.getByText("0", { exact: true })).toHaveCount(3);
       await expect(page.getByTestId("top-bar").getByText("0", { exact: true })).toHaveCount(1);
