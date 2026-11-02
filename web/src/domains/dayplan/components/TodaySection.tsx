@@ -189,6 +189,9 @@ function PlanView({
   const timeZone = home.state.kind === "ready" ? home.state.home.timezone : null;
   // The Done card just moved: it stays, dimmed and busy, until the Day Plan read behind it answers.
   const [movedId, setMovedId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!refreshing) setMovedId(null);
+  }, [refreshing]);
   const card = (task: PlanTask, role: TaskRole, holderId?: string) => (
     <TaskCard
       key={task.id}
