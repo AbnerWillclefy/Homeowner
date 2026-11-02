@@ -147,6 +147,9 @@ export const ptBR: Messages = {
   "profile.saveFailed.notSignedIn":
     "Você não está mais conectado, então sua alteração foi desfeita. Entre de novo.",
   "me.header.addLink": "Adicione seu nome e foto",
+  "me.completions.heading": "Minhas conclusões",
+  "me.completions.empty": "Nada concluído nos últimos 30 dias.",
+  "me.completions.error": "Não foi possível carregar suas conclusões. Tente de novo em instantes.",
   "me.header.edit": "Editar nome e foto",
   "me.header.loadFailed": "Não foi possível carregar seu nome.",
   "me.header.retry": "Tentar de novo",

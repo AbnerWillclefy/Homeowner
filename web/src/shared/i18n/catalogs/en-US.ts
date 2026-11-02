@@ -141,6 +141,9 @@ export const enUS = {
   "profile.saveFailed.notSignedIn":
     "You are not signed in any more, so your change was undone. Sign in again.",
   "me.header.addLink": "Add your name and photo",
+  "me.completions.heading": "My Completions",
+  "me.completions.empty": "Nothing completed in the last 30 days.",
+  "me.completions.error": "Could not load your Completions. Try again in a moment.",
   "me.header.edit": "Edit name and photo",
   "me.header.loadFailed": "Could not load your name.",
   "me.header.retry": "Try again",
