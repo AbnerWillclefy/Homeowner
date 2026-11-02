@@ -15,9 +15,6 @@ import (
 var (
 	// ErrCompletionNotFound: no such Completion in the Home.
 	ErrCompletionNotFound = errors.New("completion not found")
-	// ErrNotOnCompletion: the caller is not named on the Completion. Its wire
-	// code is not_yours too, but it is not ErrNotYours (a Task not held today).
-	ErrNotOnCompletion = errors.New("resident is not on the completion")
 	// ErrInFuture: the new time is after now.
 	ErrInFuture = errors.New("completion time is in the future")
 	// ErrTooOld: the new Home-local date is before today-29.
@@ -57,7 +54,7 @@ func (p *Planner) MoveCompletion(ctx context.Context, homeID, residentID, comple
 			return fmt.Errorf("move completion: %w", err)
 		}
 		if !named {
-			return ErrNotOnCompletion
+			return ErrNotYours
 		}
 		date := allocation.DateOf(at.In(clock.loc))
 		switch {

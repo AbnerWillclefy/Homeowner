@@ -1,7 +1,6 @@
 package residents
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"time"
@@ -11,13 +10,6 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/identity"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
 )
-
-// CompletionMover re-dates a Completion. *dayplan.Planner is one; the interface
-// lives here because dayplan cannot render the Resident detail (residents
-// already imports dayplan).
-type CompletionMover interface {
-	MoveCompletion(ctx context.Context, homeID, residentID, completionID string, at, now time.Time) error
-}
 
 type moveBody struct {
 	CompletedAt string `json:"completedAt"`
@@ -29,7 +21,7 @@ var moveErrors = []struct {
 	code   string
 }{
 	{dayplan.ErrCompletionNotFound, http.StatusNotFound, "completion not found"},
-	{dayplan.ErrNotOnCompletion, http.StatusConflict, "not_yours"},
+	{dayplan.ErrNotYours, http.StatusConflict, "not_yours"},
 	{dayplan.ErrInFuture, http.StatusBadRequest, "in_future"},
 	{dayplan.ErrTooOld, http.StatusBadRequest, "too_old"},
 	{dayplan.ErrBeforeTask, http.StatusBadRequest, "before_task"},
