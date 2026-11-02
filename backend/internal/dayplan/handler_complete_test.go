@@ -27,6 +27,10 @@ func TestCompleteRecordsTheCompletionWithTheResidentAndTheTime(t *testing.T) {
 	if len(done) != 1 || done[0]["id"] != task["id"] || done[0]["choreName"] != name || done[0]["completedAt"] != "2026-03-02T11:00:00Z" {
 		t.Fatalf("doneToday = %s", r.Raw)
 	}
+	var completionID string
+	if err := app.DB.QueryRow(context.Background(), `SELECT id FROM completions WHERE task_id = $1`, task["id"]).Scan(&completionID); err != nil || done[0]["completionId"] != completionID {
+		t.Fatalf("doneToday[0].completionId = %v, want %s (%v)", done[0]["completionId"], completionID, err)
+	}
 	if got := apitest.TaskList(t, apitest.DayPlan(t, b).Body["doneToday"]); len(got) != 0 {
 		t.Fatalf("B sees A's Completion: %v", got)
 	}

@@ -26,6 +26,7 @@ type Streaks interface {
 type Handler struct {
 	store    *Store
 	streaks  Streaks
+	mover    *dayplan.Planner
 	photoURL func(*string) *string
 	clock    clock.Clock
 	log      *slog.Logger
@@ -33,8 +34,8 @@ type Handler struct {
 
 // NewHandler returns a Handler. photoURL turns a stored photo key into its
 // public URL (nil when photos are off).
-func NewHandler(store *Store, streaks Streaks, photoURL func(*string) *string, clk clock.Clock, log *slog.Logger) *Handler {
-	return &Handler{store: store, streaks: streaks, photoURL: photoURL, clock: clk, log: log}
+func NewHandler(store *Store, streaks Streaks, mover *dayplan.Planner, photoURL func(*string) *string, clk clock.Clock, log *slog.Logger) *Handler {
+	return &Handler{store: store, streaks: streaks, mover: mover, photoURL: photoURL, clock: clk, log: log}
 }
 
 // windowDays is how many local dates the detail covers: today and 29 before.
