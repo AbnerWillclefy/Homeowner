@@ -18,6 +18,17 @@ function DayGroupSkeleton({ cards }: { cards: number }) {
   );
 }
 
+/** The day list while it loads: its heading bar and two day groups at the loaded sizes. The Resident page and Me share it. */
+export function CompletionDaysSkeleton() {
+  return (
+    <div className="flex flex-col gap-4">
+      <SkeletonBar className="h-7 w-1/3" />
+      <DayGroupSkeleton cards={2} />
+      <DayGroupSkeleton cards={1} />
+    </div>
+  );
+}
+
 /**
  * The Resident page while it loads: the header (round Avatar, a name bar, two stat tiles) and two day groups, at
  * the loaded sizes. It takes its space at once and is `invisible` until the page says the wait passed 300ms, so
@@ -40,9 +51,7 @@ export function ResidentPageSkeleton({ className = "" }: { className?: string })
           </SkeletonCard>
         ))}
       </div>
-      <SkeletonBar className="h-7 w-1/3" />
-      <DayGroupSkeleton cards={2} />
-      <DayGroupSkeleton cards={1} />
+      <CompletionDaysSkeleton />
     </div>
   );
 }
