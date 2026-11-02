@@ -87,7 +87,7 @@ export interface ResidentDay {
   completions: ResidentCompletion[];
 }
 
-/** `GET /home/residents/{id}`: one Resident, their Streak and their last 7 days. */
+/** `GET /home/residents/{id}`: one Resident, their Streak and their last 30 days. */
 export interface ResidentDetail {
   /** Today in the Home's time zone, YYYY-MM-DD: the day the headings are counted from. */
   date: string;
@@ -98,7 +98,7 @@ export interface ResidentDetail {
   initials: string;
   avatarTone: string;
   streak: number;
-  doneLast7Days: number;
+  doneLast30Days: number;
   /** Only the days that have Completions, newest first. */
   days: ResidentDay[];
 }
@@ -152,9 +152,9 @@ function parseDay(value: unknown): ResidentDay | null {
 /** Strict: a page built on a half-understood answer would mislead, so anything off is an error with Retry. */
 function parseDetail(body: unknown): ResidentDetail | null {
   if (!isRecord(body)) return null;
-  const { date, id, you, name, photoUrl, initials, avatarTone, streak, doneLast7Days, days } = body;
+  const { date, id, you, name, photoUrl, initials, avatarTone, streak, doneLast30Days, days } = body;
   if (typeof date !== "string" || typeof id !== "string" || typeof name !== "string" || typeof you !== "boolean") return null;
-  if (!isCount(streak) || !isCount(doneLast7Days) || !Array.isArray(days)) return null;
+  if (!isCount(streak) || !isCount(doneLast30Days) || !Array.isArray(days)) return null;
   const parsedDays = parseAll(days, parseDay);
   if (parsedDays === null) return null;
   return {
@@ -166,7 +166,7 @@ function parseDetail(body: unknown): ResidentDetail | null {
     initials: typeof initials === "string" ? initials : "",
     avatarTone: typeof avatarTone === "string" ? avatarTone : "",
     streak,
-    doneLast7Days,
+    doneLast30Days,
     days: parsedDays,
   };
 }

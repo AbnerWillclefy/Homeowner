@@ -16,7 +16,7 @@ export function residentDetail(id: string, name: string, you = false): ResidentD
     initials: name.slice(0, 2).toUpperCase(),
     avatarTone: "kitchen",
     streak: 3,
-    doneLast7Days: 2,
+    doneLast30Days: 2,
     days: [],
   };
 }

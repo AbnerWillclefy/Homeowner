@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "../fixtures";
 import { json } from "../mocks/api";
+import { residentsHandlers } from "../mocks/handlers/residents";
 import { signedInHandlers } from "../mocks/handlers/signedIn";
 import { hold } from "../mocks/hold";
 import { RESIDENT_EMAIL, signedInResident, thirtyDayHistory } from "../mocks/sampleHome";
@@ -22,7 +23,7 @@ const LOCALES = [
     heading: "Minhas conclusões",
     today: "Hoje",
     yesterday: "Ontem",
-    older: ["qua., 2 de jan.", "seg., 17 de dez."],
+    older: ["quarta-feira, 2 de janeiro", "segunda-feira, 17 de dezembro"],
     vacuumMeta: "Pisos · 9:15, com Bruna Souza",
     empty: "Nada concluído nos últimos 30 dias.",
     error: "Não foi possível carregar suas conclusões. Tente de novo em instantes.",
@@ -36,7 +37,7 @@ const LOCALES = [
     heading: "My Completions",
     today: "Today",
     yesterday: "Yesterday",
-    older: ["Wed, Jan 2", "Mon, Dec 17"],
+    older: ["Wednesday, January 2", "Monday, December 17"],
     vacuumMeta: "Floors · 9:15 AM, with Bruna Souza",
     empty: "Nothing completed in the last 30 days.",
     error: "Could not load your Completions. Try again in a moment.",
@@ -137,13 +138,14 @@ for (const l of LOCALES) {
     });
 
     test("a failed Residents list offers Retry that reloads it, and never says nothing was completed", async ({ page, baseURL, fakeApi }) => {
-      // Two failures: the launch read, then the Shell's own read of a list that has not succeeded (ADR 0016).
-      for (let read = 0; read < 2; read++) fakeApi.override("GET /home/residents", json(500, { error: "internal error" }), { once: true });
+      // The list fails on every read until the failure shows: how often the Shell reads it before Me depends on timing (ADR 0016).
+      fakeApi.override("GET /home/residents", json(500, { error: "internal error" }));
       await openMe(page, baseURL);
       await expect(page.getByRole("alert").filter({ hasText: l.error })).toBeVisible();
       await expect(page.getByText(l.empty)).toHaveCount(0);
       expect(detailReads(fakeApi.requests)).toHaveLength(0);
 
+      fakeApi.use(residentsHandlers);
       await page.getByRole("button", { name: l.retry }).click();
       await expect(page.getByRole("heading", { name: l.heading, level: 3 })).toBeVisible();
     });
