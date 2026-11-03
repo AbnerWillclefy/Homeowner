@@ -9,9 +9,10 @@ import { useAppAuth } from "../AuthProvider";
 import { useShell } from "../ShellContext";
 
 /**
- * Me: the header (Avatar, name, email, Streak), My Completions (with a Home), then one titled card each for the Baseline, Preferences, Restrictions and the settings (Appearance and
- * Language), then the account card with sign out last. MePage owns the column, so the cards after
- * the Restrictions still show when the details fail to load.
+ * Me: the header (Avatar, name, email, Streak), then two separate parts under the tab's h2, each a section named by
+ * an h3: My Completions (only with a Home), and the settings, whose h4 cards are the Baseline, Preferences,
+ * Restrictions, Appearance and Language, and the account card with sign out last. MePage owns the settings column,
+ * so the cards after the Restrictions still show when the details fail to load.
  */
 export function MePage() {
   const { t } = useI18n();
@@ -20,14 +21,19 @@ export function MePage() {
   if (auth.state.kind !== "signed-in") return null;
   return (
     <PageLoading message={t("profile.loading")}>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-8">
         <MeHeader />
         {/* Only a Resident with a Home has a history; the section stands alone, so the cards below never wait on it. */}
         {home.state.kind === "ready" && <MyCompletions timeZone={home.state.home.timezone} />}
-        <MeProfile />
-        <SettingsCard />
-        {/* Signing out is on purpose: the guard then sends the person to sign-in without remembering this tab. */}
-        <SignedIn email={auth.state.email} offline={auth.state.offline} onSignOut={auth.signOut} />
+        <section aria-labelledby="me-settings-heading" className="flex flex-col gap-4">
+          <h3 id="me-settings-heading" className="my-0 text-xl leading-snug font-bold [overflow-wrap:anywhere]">
+            {t("me.settings.heading")}
+          </h3>
+          <MeProfile />
+          <SettingsCard headingLevel={4} />
+          {/* Signing out is on purpose: the guard then sends the person to sign-in without remembering this tab. */}
+          <SignedIn email={auth.state.email} offline={auth.state.offline} onSignOut={auth.signOut} />
+        </section>
       </div>
     </PageLoading>
   );

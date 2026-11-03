@@ -43,6 +43,18 @@ describe("CompletionDays", () => {
     expect([...container.querySelectorAll("h4")].map((h) => h.textContent)).toEqual(["Today", "Yesterday"]);
   });
 
+  it("without a heading renders no h3 and no section, only the days or the empty text", () => {
+    const bare = (days: ResidentDay[]) =>
+      createElement(CompletionDays, { days, today: "2030-01-15", timeZone: "America/Sao_Paulo", empty: "Nothing yet." });
+    act(() => root.render(createElement(I18nProvider, null, bare(DAYS))));
+    expect(container.querySelector("h3")).toBeNull();
+    expect(container.querySelector("section")).toBeNull();
+    expect([...container.querySelectorAll("h4")].map((h) => h.textContent)).toEqual(["Today", "Yesterday"]);
+    act(() => root.render(createElement(I18nProvider, null, bare([]))));
+    expect(container.querySelector("h3")).toBeNull();
+    expect(container.textContent).toBe("Nothing yet.");
+  });
+
   it("names who a two-person Completion was done with", () => {
     render(list(DAYS, "Done lately"));
     const items = [...container.querySelectorAll("li")].map((li) => li.textContent);
