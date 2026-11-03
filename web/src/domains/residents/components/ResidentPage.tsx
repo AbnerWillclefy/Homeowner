@@ -2,6 +2,7 @@ import { Navigate } from "react-router";
 import { ME_PATH } from "../../../app/logic/routes";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
+import { HeadedSection } from "../../../shared/ui/HeadedSection";
 import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { useResident } from "../hooks/useResident";
 import { CompletionDays } from "./CompletionDays";
@@ -42,13 +43,9 @@ export function ResidentPage({ id, timeZone }: { id: string; timeZone: string })
       return (
         <div className="flex flex-col gap-4">
           <ResidentHeader resident={state.resident} />
-          <CompletionDays
-            days={state.resident.days}
-            today={state.resident.date}
-            timeZone={timeZone}
-            heading={t("resident.recent.heading")}
-            empty={t("resident.empty")}
-          />
+          <HeadedSection title={t("resident.recent.heading")}>
+            <CompletionDays days={state.resident.days} today={state.resident.date} timeZone={timeZone} empty={t("resident.empty")} />
+          </HeadedSection>
         </div>
       );
   }

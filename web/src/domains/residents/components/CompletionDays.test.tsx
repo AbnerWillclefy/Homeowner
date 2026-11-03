@@ -32,35 +32,36 @@ afterEach(() => {
   container.remove();
 });
 
-const list = (days: ResidentDay[], heading: string, key?: string) =>
-  createElement(CompletionDays, { key, days, today: "2030-01-15", timeZone: "America/Sao_Paulo", heading, empty: "Nothing yet." });
-const render = (...lists: ReturnType<typeof list>[]) => act(() => root.render(createElement(I18nProvider, null, lists)));
+const render = (days: ResidentDay[]) =>
+  act(() =>
+    root.render(
+      createElement(
+        I18nProvider,
+        null,
+        createElement(CompletionDays, { days, today: "2030-01-15", timeZone: "America/Sao_Paulo", empty: "Nothing yet." }),
+      ),
+    ),
+  );
 
 describe("CompletionDays", () => {
-  it("shows the days newest first under the heading, in the order given", () => {
-    render(list(DAYS, "Done lately"));
-    expect(container.querySelector("h3")?.textContent).toBe("Done lately");
+  it("shows the days newest first, in the order given, with no h3 or section of its own", () => {
+    render(DAYS);
+    expect(container.querySelector("h3")).toBeNull();
+    expect(container.querySelector("section")).toBeNull();
     expect([...container.querySelectorAll("h4")].map((h) => h.textContent)).toEqual(["Today", "Yesterday"]);
   });
 
   it("names who a two-person Completion was done with", () => {
-    render(list(DAYS, "Done lately"));
+    render(DAYS);
     const items = [...container.querySelectorAll("li")].map((li) => li.textContent);
     expect(items[0]).toContain("Kitchen · 12:00 PM, with Bruna");
     expect(items[1]).toContain("Kitchen · 12:00 PM");
     expect(items[1]).not.toContain("with");
   });
 
-  it("shows the empty text and no day when there are no Completions", () => {
-    render(list([], "Done lately"));
-    expect(container.textContent).toContain("Nothing yet.");
+  it("shows only the empty text when there are no Completions", () => {
+    render([]);
+    expect(container.textContent).toBe("Nothing yet.");
     expect(container.querySelector("h4")).toBeNull();
-  });
-
-  it("labels each list by its own heading, so two lists on one page do not collide", () => {
-    render(list(DAYS, "A", "a"), list(DAYS, "B", "b"));
-    const ids = [...container.querySelectorAll("section")].map((s) => s.getAttribute("aria-labelledby"));
-    expect(new Set(ids).size).toBe(2);
-    for (const id of ids) expect(document.getElementById(id!)).not.toBeNull();
   });
 });

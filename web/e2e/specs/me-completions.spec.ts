@@ -29,6 +29,12 @@ const LOCALES = [
     error: "Não foi possível carregar suas conclusões. Tente de novo em instantes.",
     retry: "Tentar novamente",
     baseline: "Energia base",
+    preferences: "Preferências",
+    restrictions: "Restrições",
+    appearance: "Aparência",
+    language: "Idioma",
+    signOut: "Sair",
+    settingsHeading: "Seus ajustes",
     change: /^Mudar hora/,
   },
   {
@@ -44,6 +50,12 @@ const LOCALES = [
     error: "Could not load your Completions. Try again in a moment.",
     retry: "Try again",
     baseline: "Baseline",
+    preferences: "Preferences",
+    restrictions: "Restrictions",
+    appearance: "Appearance",
+    language: "Language",
+    signOut: "Sign out",
+    settingsHeading: "Your settings",
     change: /^Change time/,
   },
 ] as const;
@@ -77,7 +89,7 @@ for (const l of LOCALES) {
     test("shows the last 30 days by day, newest first, older days dated, and who a Completion was done with", async ({ page, baseURL }) => {
       await openMe(page, baseURL);
       await expect(page.getByRole("heading", { name: l.heading, level: 3 })).toBeVisible();
-      await expect(page.getByRole("heading", { level: 4 })).toHaveText([l.today, l.yesterday, ...l.older]);
+      await expect(page.getByRole("region", { name: l.heading }).getByRole("heading", { level: 4 })).toHaveText([l.today, l.yesterday, ...l.older]);
 
       const cards = page.getByRole("listitem").filter({ hasText: " · " });
       await expect(cards).toHaveCount(5);
@@ -100,6 +112,36 @@ for (const l of LOCALES) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     });
 
+    test("keeps the history and the settings apart: history first, the h3s are the two group headings, the settings in order", async ({ page, baseURL }) => {
+      await openMe(page, baseURL);
+      const history = page.getByRole("region", { name: l.heading, exact: true });
+      const settings = page.getByRole("region", { name: l.settingsHeading, exact: true });
+      await expect(history).toBeVisible();
+      await expect(settings).toBeVisible();
+      await expect(page.getByRole("heading", { level: 3 })).toHaveText([l.heading, l.settingsHeading]);
+
+      const [h, s] = [await history.boundingBox(), await settings.boundingBox()];
+      expect(h!.y + h!.height).toBeLessThan(s!.y);
+      await expect(history.getByRole("button", { name: l.baseline })).toHaveCount(0);
+
+      // Inside the settings part, in order: Baseline, Preferences, Restrictions, Appearance, Language, Sign out.
+      const order = [
+        settings.getByRole("button", { name: l.baseline, exact: true }),
+        settings.getByRole("button", { name: l.preferences, exact: true }),
+        settings.getByRole("button", { name: l.restrictions, exact: true }),
+        settings.getByLabel(l.appearance, { exact: true }),
+        settings.getByLabel(l.language, { exact: true }),
+        settings.getByRole("button", { name: l.signOut, exact: true }),
+      ];
+      let previous = -1;
+      for (const control of order) {
+        await expect(control).toBeVisible();
+        const y = (await control.boundingBox())!.y;
+        expect(y).toBeGreaterThan(previous);
+        previous = y;
+      }
+    });
+
     test.describe("with nothing completed", () => {
       test.use({ fakeState: signedInResident() });
 
@@ -108,7 +150,7 @@ for (const l of LOCALES) {
         await expect(page.getByText(l.empty)).toBeVisible();
         await expect(page.getByText(l.empty)).not.toContainText("!");
         await expect(page.getByRole("alert")).toHaveCount(0);
-        await expect(page.getByRole("heading", { level: 4 })).toHaveCount(0);
+        await expect(page.getByRole("region", { name: l.heading }).getByRole("heading", { level: 4 })).toHaveCount(0);
         await expect(page.getByRole("button", { name: l.baseline })).toBeVisible();
       });
     });
@@ -117,6 +159,7 @@ for (const l of LOCALES) {
       const held = hold(page, /\/home\/residents\/resident-1$/);
       await openMe(page, baseURL);
       await expect(page.getByTestId("my-completions-skeleton")).toBeVisible();
+      await expect(page.getByRole("heading", { name: l.heading, level: 3 })).toBeVisible();
       const baseline = page.getByRole("button", { name: l.baseline });
       await baseline.click();
       await expect(baseline).toHaveAttribute("aria-expanded", "true");
@@ -130,8 +173,13 @@ for (const l of LOCALES) {
     test("a failed read shows the message and Retry, the other cards work, and Retry recovers", async ({ page, baseURL, fakeApi }) => {
       fakeApi.override("GET /home/residents/{id}", json(500, { error: "internal error" }), { once: true });
       await openMe(page, baseURL);
-      await expect(page.getByRole("alert").filter({ hasText: l.error })).toBeVisible();
+      const history = page.getByRole("region", { name: l.heading, exact: true });
+      await expect(history.getByRole("heading", { name: l.heading, level: 3 })).toBeVisible();
+      await expect(history.getByRole("alert").filter({ hasText: l.error })).toBeVisible();
+      await expect(history.getByRole("button", { name: l.retry })).toBeVisible();
       const baseline = page.getByRole("button", { name: l.baseline });
+      await expect(history.getByRole("button", { name: l.baseline })).toHaveCount(0);
+      await expect(page.getByRole("region", { name: l.settingsHeading, exact: true }).getByRole("button", { name: l.baseline })).toBeVisible();
       await baseline.click();
       await expect(baseline).toHaveAttribute("aria-expanded", "true");
 

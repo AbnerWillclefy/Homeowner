@@ -191,6 +191,13 @@ for (const l of LOCALES) {
         await expect(page.getByText(l.streak, { exact: true })).toHaveCount(0);
         await expect(page.getByText(/Streak|Sequência/)).toHaveCount(0);
       });
+
+      test("shows the settings part and no history part", async ({ page, baseURL }) => {
+        await openMe(page, baseURL);
+        await expect(page.getByRole("heading", { name: /^(Your settings|Seus ajustes)$/, level: 3 })).toBeVisible();
+        await expect(page.getByRole("heading", { name: /^(My Completions|Minhas conclusões)$/ })).toHaveCount(0);
+        await expect(page.getByRole("region", { name: /^(My Completions|Minhas conclusões)$/ })).toHaveCount(0);
+      });
     });
 
     test.describe("when GET /me fails", () => {

@@ -148,6 +148,7 @@ export const ptBR: Messages = {
     "Você não está mais conectado, então sua alteração foi desfeita. Entre de novo.",
   "me.header.addLink": "Adicione seu nome e foto",
   "me.completions.heading": "Minhas conclusões",
+  "me.settings.heading": "Seus ajustes",
   "me.completions.empty": "Nada concluído nos últimos 30 dias.",
   "me.completions.error": "Não foi possível carregar suas conclusões. Tente de novo em instantes.",
   "completion.changeTime": "Mudar hora",

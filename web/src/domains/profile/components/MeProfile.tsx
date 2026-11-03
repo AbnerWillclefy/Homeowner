@@ -8,7 +8,7 @@ import { ProfileSkeleton } from "./ProfileSkeleton";
 
 /**
  * The first part of the Me tab: the signed-in User's Baseline, Preferences and Restrictions, each in its own
- * collapsible card, closed on first view (an h3 holding the toggle button, and a region, under the tab's h2). Each control saves on its own: the change shows at once and is undone
+ * collapsible card, closed on first view (an h4 holding the toggle button, and a region, under the settings h3). Each control saves on its own: the change shows at once and is undone
  * with an error toast if the API refuses it, and a toast says it was saved. Baseline saves on blur. Onboarding shows the same three
  * parts one step at a time.
  *
@@ -32,11 +32,12 @@ export function MeProfile() {
 
       {state.kind === "ready" && (
         <>
-          <CollapsibleCard id="me-baseline-heading" icon={Zap} title={t("profile.baseline.heading")} hint={t("profile.baseline.hint")}>
+          <CollapsibleCard headingLevel={4} id="me-baseline-heading" icon={Zap} title={t("profile.baseline.heading")} hint={t("profile.baseline.hint")}>
             <BaselineFields baseline={state.profile.baseline} onSave={setBaseline} />
           </CollapsibleCard>
 
           <CollapsibleCard
+            headingLevel={4}
             id="me-preferences-heading"
             icon={Heart}
             title={t("profile.preferences.heading")}
@@ -46,6 +47,7 @@ export function MeProfile() {
           </CollapsibleCard>
 
           <CollapsibleCard
+            headingLevel={4}
             id="me-restrictions-heading"
             icon={Ban}
             title={t("profile.restrictions.heading")}

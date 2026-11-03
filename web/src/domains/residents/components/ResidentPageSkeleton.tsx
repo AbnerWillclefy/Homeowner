@@ -18,11 +18,10 @@ function DayGroupSkeleton({ cards }: { cards: number }) {
   );
 }
 
-/** The day list while it loads: its heading bar and two day groups at the loaded sizes. The Resident page and Me share it. */
+/** The day list while it loads: two day groups at the loaded sizes, without a heading bar (each page draws its own). The Resident page and Me share it. */
 export function CompletionDaysSkeleton() {
   return (
     <div className="flex flex-col gap-4">
-      <SkeletonBar className="h-7 w-1/3" />
       <DayGroupSkeleton cards={2} />
       <DayGroupSkeleton cards={1} />
     </div>
@@ -51,6 +50,7 @@ export function ResidentPageSkeleton({ className = "" }: { className?: string })
           </SkeletonCard>
         ))}
       </div>
+      <SkeletonBar className="h-7 w-1/3" />
       <CompletionDaysSkeleton />
     </div>
   );

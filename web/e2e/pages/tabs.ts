@@ -30,9 +30,12 @@ export const tabs = {
   },
   me: {
     heading: (page: Page) => h2(page, "About you"),
-    baseline: (page: Page) => h3(page, "Baseline"),
-    preferences: (page: Page) => h3(page, "Preferences"),
-    restrictions: (page: Page) => h3(page, "Restrictions"),
+    /** The two parts of Me, each a region named by its h3; the cards inside are h4. */
+    history: (page: Page) => page.getByRole("region", { name: "My Completions", exact: true }),
+    settings: (page: Page) => page.getByRole("region", { name: "Your settings", exact: true }),
+    baseline: (page: Page) => page.getByRole("heading", { name: "Baseline", level: 4 }),
+    preferences: (page: Page) => page.getByRole("heading", { name: "Preferences", level: 4 }),
+    restrictions: (page: Page) => page.getByRole("heading", { name: "Restrictions", level: 4 }),
     /** The head row of a card: one native button (the heading wraps it) that opens and closes the card. */
     trigger: (page: Page, name: string) => page.getByRole("button", { name, exact: true }),
     /** Opens a card if it is closed. */
