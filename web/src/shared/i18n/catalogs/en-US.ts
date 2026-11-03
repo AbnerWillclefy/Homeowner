@@ -142,6 +142,7 @@ export const enUS = {
     "You are not signed in any more, so your change was undone. Sign in again.",
   "me.header.addLink": "Add your name and photo",
   "me.completions.heading": "My Completions",
+  "me.settings.heading": "Your settings",
   "me.completions.empty": "Nothing completed in the last 30 days.",
   "me.completions.error": "Could not load your Completions. Try again in a moment.",
   "completion.changeTime": "Change time",
