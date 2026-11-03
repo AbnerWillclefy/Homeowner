@@ -59,7 +59,7 @@ How much it matters that a Chore gets done: essential, normal or nice to have.
 _Avoid_: Priority, Urgency
 
 **Completion**:
-The record that specific people did a Task at a specific time. Any one of the Task's Residents can record it for all of them.
+The record that specific people did a Task at a specific time. Any one of the Task's Residents can record it for all of them. A named Resident can correct its time, up to 30 days back.
 _Avoid_: Done flag, Checkmark
 
 ### Capacity

@@ -34,7 +34,7 @@ type residentView struct {
 }
 
 // detailResponse is GET /home/residents/{id} on the wire: one Resident, their
-// Streak and what they completed in the last 7 days. Like listResponse it is
+// Streak and what they completed in the last 30 days. Like listResponse it is
 // plain structs filled field by field, with no embedded User, profile, Check-in
 // or Day Plan type, and the same privacy rule: never Energy, Baseline,
 // Check-ins, Preferences, Restrictions, email or user id.
@@ -49,7 +49,10 @@ type detailResponse struct {
 	AvatarTone string  `json:"avatarTone"`
 	// Streak is the current Streak, as in the list and GET /home/streak.
 	Streak int `json:"streak"`
-	// DoneLast7Days is the number of Completions in Days.
+	// DoneLast30Days is the number of Completions in Days.
+	DoneLast30Days int `json:"doneLast30Days"`
+	// DoneLast7Days counts those of the last 7 local dates. Cached PWAs still
+	// read it; a cleanup ticket removes it.
 	DoneLast7Days int `json:"doneLast7Days"`
 	// Days has only the local dates with Completions, newest first.
 	Days []dayView `json:"days"`

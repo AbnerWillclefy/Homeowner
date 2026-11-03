@@ -87,7 +87,7 @@ export interface ResidentDay {
   completions: ResidentCompletion[];
 }
 
-/** `GET /home/residents/{id}`: one Resident, their Streak and their last 7 days. */
+/** `GET /home/residents/{id}`: one Resident, their Streak and their last 30 days. */
 export interface ResidentDetail {
   /** Today in the Home's time zone, YYYY-MM-DD: the day the headings are counted from. */
   date: string;
@@ -98,7 +98,7 @@ export interface ResidentDetail {
   initials: string;
   avatarTone: string;
   streak: number;
-  doneLast7Days: number;
+  doneLast30Days: number;
   /** Only the days that have Completions, newest first. */
   days: ResidentDay[];
 }
@@ -152,9 +152,9 @@ function parseDay(value: unknown): ResidentDay | null {
 /** Strict: a page built on a half-understood answer would mislead, so anything off is an error with Retry. */
 function parseDetail(body: unknown): ResidentDetail | null {
   if (!isRecord(body)) return null;
-  const { date, id, you, name, photoUrl, initials, avatarTone, streak, doneLast7Days, days } = body;
+  const { date, id, you, name, photoUrl, initials, avatarTone, streak, doneLast30Days, days } = body;
   if (typeof date !== "string" || typeof id !== "string" || typeof name !== "string" || typeof you !== "boolean") return null;
-  if (!isCount(streak) || !isCount(doneLast7Days) || !Array.isArray(days)) return null;
+  if (!isCount(streak) || !isCount(doneLast30Days) || !Array.isArray(days)) return null;
   const parsedDays = parseAll(days, parseDay);
   if (parsedDays === null) return null;
   return {
@@ -166,7 +166,7 @@ function parseDetail(body: unknown): ResidentDetail | null {
     initials: typeof initials === "string" ? initials : "",
     avatarTone: typeof avatarTone === "string" ? avatarTone : "",
     streak,
-    doneLast7Days,
+    doneLast30Days,
     days: parsedDays,
   };
 }
@@ -178,6 +178,41 @@ export async function getResident(id: string): Promise<ResidentResult> {
     if (result.kind === "not-signed-in") return result;
     const { response } = result;
     if (response.status === 404) return errorCode(response) === "no home" ? { kind: "none" } : { kind: "not-found" };
+    if (response.status !== 200) return { kind: "error" };
+    const resident = parseDetail(response.data);
+    return resident === null ? { kind: "error" } : { kind: "ok", resident };
+  } catch {
+    return { kind: "offline" };
+  }
+}
+
+/** The codes `PATCH /home/completions/{id}` refuses with (backend/internal/residents/move.go). */
+export const MOVE_REJECTIONS = ["in_future", "too_old", "before_task", "invalid_completed_at", "not_yours"] as const;
+export type MoveRejection = (typeof MOVE_REJECTIONS)[number];
+
+export type MoveResult =
+  /** The caller's own detail, with the Completion on the day the server counted it for. */
+  | { kind: "ok"; resident: ResidentDetail }
+  | { kind: "rejected"; code: MoveRejection }
+  /** 404 `completion not found`. */
+  | { kind: "not-found" }
+  /** 404 `no home`. */
+  | { kind: "none" }
+  | { kind: "not-signed-in" }
+  | { kind: "offline" }
+  | { kind: "error" };
+
+const isRejection = (code: string | null): code is MoveRejection => MOVE_REJECTIONS.some((known) => known === code);
+
+/** Moves one of the caller's Completions to `completedAt` (RFC 3339). The server decides the day. */
+export async function moveCompletion(id: string, completedAt: string): Promise<MoveResult> {
+  try {
+    const result = await authedRequest({ url: `/home/completions/${encodeURIComponent(id)}`, method: "PATCH", data: { completedAt } });
+    if (result.kind === "not-signed-in") return result;
+    const { response } = result;
+    const code = errorCode(response);
+    if (response.status === 404) return code === "no home" ? { kind: "none" } : { kind: "not-found" };
+    if (response.status === 400 || response.status === 409) return isRejection(code) ? { kind: "rejected", code } : { kind: "error" };
     if (response.status !== 200) return { kind: "error" };
     const resident = parseDetail(response.data);
     return resident === null ? { kind: "error" } : { kind: "ok", resident };

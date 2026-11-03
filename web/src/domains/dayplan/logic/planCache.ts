@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { streakKey } from "../../streak/api/queries";
+import { residentsKey } from "../../residents/api/queries";
 import { dayPlanKey } from "../api/queries";
 import type { DayPlan } from "../api/api";
 
@@ -22,11 +23,13 @@ export function invalidateStreak(client: QueryClient): Promise<void> {
 
 /**
  * A plan the server answered to an accepted action: written to the cache, then the Streak is marked stale (see
- * `invalidateStreak`). A plan read after a 409 is not an accepted action and goes through `writeActionAnswer`.
+ * `invalidateStreak`). Residents are marked stale too: My Completions reads a Resident's page, whose own entry has
+ * a 30s `staleTime`, and a Completion or an undo changes it. A plan read after a 409 is not an accepted action and goes through `writeActionAnswer`.
  */
 export async function writeAcceptedAnswer(client: QueryClient, plan: DayPlan): Promise<void> {
   await writeActionAnswer(client, plan);
   void invalidateStreak(client);
+  void client.invalidateQueries({ queryKey: residentsKey });
 }
 
 /** Marks the Day Plan stale, and reads it again if Today is showing it: after a Check-in, a start choice or a join. */

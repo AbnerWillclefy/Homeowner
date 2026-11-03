@@ -94,10 +94,10 @@ export function Settings() {
 }
 
 /** Appearance and Language on the Me tab and the signed-out screens: one titled card, a row each, the name on the left as its label. */
-export function SettingsCard() {
+export function SettingsCard({ headingLevel }: { headingLevel?: 3 | 4 }) {
   const { t } = useI18n();
   return (
-    <SectionCard id="settings-card-heading" icon={Settings2} title={t("settings.heading")}>
+    <SectionCard id="settings-card-heading" icon={Settings2} title={t("settings.heading")} headingLevel={headingLevel}>
       <div className="flex flex-col divide-y divide-border/30">
         <div className={ROW}>
           <label htmlFor="settings-appearance" className="mt-0">

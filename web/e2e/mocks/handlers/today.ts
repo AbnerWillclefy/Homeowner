@@ -5,6 +5,9 @@ import { json, signedIn, type FakeApi } from "../api";
 /** A fixed day, so nothing here depends on the clock. */
 export const FAKE_TODAY = "2030-01-15";
 
+/** The instant the app's clock reads in specs that fix it (`page.clock.setFixedTime`): 10:30 on FAKE_TODAY in the Home's zone. */
+export const FAKE_NOW = "2030-01-15T13:30:00Z";
+
 /**
  * What `GET /home/check-in` answers when a spec sets none: a Check-in already saved, so the Check-in dialog (which
  * opens by itself on an unchecked day) does not cover every screen. A spec about an unchecked day sets

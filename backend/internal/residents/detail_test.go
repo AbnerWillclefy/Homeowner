@@ -10,7 +10,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
 
-// GET /home/residents/{id}: one Resident, their Streak and the last 7 days.
+// GET /home/residents/{id}: one Resident, their Streak and the last 30 days.
 
 func detail(c *apitest.Client, id string) apitest.Response {
 	return c.Get("/home/residents/" + id)
@@ -67,7 +67,7 @@ func TestDetailWithNoCompletionsIsZeroAndAnEmptyArray(t *testing.T) {
 	a := apitest.HomeWithResident(t, app, "a@example.com")
 
 	res := detailOf(t, a, ownID(t, a))
-	if res.Body["doneLast7Days"] != float64(0) || res.Body["streak"] != float64(0) {
+	if res.Body["doneLast7Days"] != float64(0) || res.Body["doneLast30Days"] != float64(0) || res.Body["streak"] != float64(0) {
 		t.Errorf("body = %s, want doneLast7Days 0 and streak 0", res.Raw)
 	}
 	if !strings.Contains(string(res.Raw), `"days":[]`) {
@@ -241,7 +241,7 @@ func TestDetailOfATwoPersonCompletionAppearsOnBothPagesNamingTheOther(t *testing
 		wantName     string
 	}{{a, a, b, "b"}, {a, b, a, "a"}, {b, a, b, "b"}, {b, b, a, "a"}} {
 		res := detailOf(t, c.viewer, ownID(t, c.whose))
-		if res.Body["doneLast7Days"] != float64(1) {
+		if res.Body["doneLast7Days"] != float64(1) || res.Body["doneLast30Days"] != float64(1) {
 			t.Errorf("doneLast7Days = %v, want 1 for each Resident on it: %s", res.Body["doneLast7Days"], res.Raw)
 		}
 		k := apitest.TaskList(t, apitest.TaskList(t, res.Body["days"])[0]["completions"])[0]
@@ -270,7 +270,7 @@ func TestDetailHasExactlyTheAgreedKeysAndLeaksNothingPrivate(t *testing.T) {
 
 	for _, viewer := range []*apitest.Client{a, b} {
 		res := detailOf(t, viewer, ownID(t, a))
-		wantKeys(t, "body", res.Body, "avatarTone", "date", "days", "doneLast7Days", "id", "initials", "name", "photoUrl", "streak", "you")
+		wantKeys(t, "body", res.Body, "avatarTone", "date", "days", "doneLast30Days", "doneLast7Days", "id", "initials", "name", "photoUrl", "streak", "you")
 		days := daysOf(t, res)
 		if len(days) != 1 {
 			t.Fatalf("days = %s, want 1", res.Raw)
@@ -300,7 +300,7 @@ func TestDetailHasExactlyTheAgreedKeysAndLeaksNothingPrivate(t *testing.T) {
 	}
 }
 
-func TestDetailWindowIsTodayAndSixLocalDatesBackInANonUTCHome(t *testing.T) {
+func TestDetailWindowIsTodayAndTwentyNineLocalDatesBackInANonUTCHome(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
@@ -315,38 +315,38 @@ func TestDetailWindowIsTodayAndSixLocalDatesBackInANonUTCHome(t *testing.T) {
 		apitest.CreateChore(t, me, apitest.Chore(n, 1, 2, "normal", []string{}))
 	}
 
-	// One Completion per local date from 2 to 10 March. The one on the 3rd (the
-	// eighth day back from the 10th) is at 23:30 local, 02:30 UTC on the 4th,
-	// which would be inside the window by its UTC date. The one on the 6th is
-	// at 23:30 local too, and must group under the 6th, not the 7th.
-	for day := range 9 {
+	// Day 0 is 2 March and "today" is day 30 (1 April), so day 1 is today-29 (in)
+	// and day 0 is today-30 (out). Day 0 is done at 23:30 local, 02:30 UTC on
+	// day 1, so by its UTC date it would be in. Day 24 (today-6) is also done at
+	// 23:30 local and must group under its local date.
+	for _, day := range []int{0, 1, 23, 24} {
 		planned := apitest.MondayAt(10).AddDate(0, 0, day)
 		ids := planAt(t, app, me, planned)
 		done := planned.Add(5 * time.Hour) // 12:00 local
-		if day == 1 || day == 4 {
+		if day == 0 || day == 24 {
 			done = planned.AddDate(0, 0, 1).Add(-7*time.Hour - 30*time.Minute) // 23:30 local
 		}
 		completeAt(t, app, me, ids[0], done)
 	}
-	app.Clock.Set(apitest.MondayAt(10).AddDate(0, 0, 8).Add(6 * time.Hour)) // 10 March, 13:00 local
+	app.Clock.Set(apitest.MondayAt(10).AddDate(0, 0, 30).Add(6 * time.Hour)) // 1 April, 13:00 local
 
 	res := detailOf(t, me, ownID(t, me))
-	if res.Body["date"] != "2026-03-10" {
-		t.Errorf("date = %v, want 2026-03-10", res.Body["date"])
+	if res.Body["date"] != "2026-04-01" {
+		t.Errorf("date = %v, want 2026-04-01", res.Body["date"])
 	}
 	var dates []string
 	for _, d := range daysOf(t, res) {
 		dates = append(dates, d["date"].(string))
 	}
-	want := []string{"2026-03-10", "2026-03-09", "2026-03-08", "2026-03-07", "2026-03-06", "2026-03-05", "2026-03-04"}
+	want := []string{"2026-03-26", "2026-03-25", "2026-03-03"}
 	if !slices.Equal(dates, want) {
-		t.Fatalf("days = %v, want %v (the 4th is six dates back, the 3rd is the eighth day and out)", dates, want)
+		t.Fatalf("days = %v, want %v (the 3rd is today-29 and in, the 2nd is today-30 and out)", dates, want)
 	}
-	if res.Body["doneLast7Days"] != float64(7) {
-		t.Errorf("doneLast7Days = %v, want 7", res.Body["doneLast7Days"])
+	if res.Body["doneLast30Days"] != float64(3) || res.Body["doneLast7Days"] != float64(1) {
+		t.Errorf("doneLast30Days, doneLast7Days = %v, %v; want 3 and 1", res.Body["doneLast30Days"], res.Body["doneLast7Days"])
 	}
-	sixth := apitest.TaskList(t, daysOf(t, res)[4]["completions"])
-	if len(sixth) != 1 || sixth[0]["completedAt"] != "2026-03-07T02:30:00Z" {
-		t.Errorf("the 6th = %v, want the Completion at 02:30 UTC on the 7th", sixth)
+	late := apitest.TaskList(t, daysOf(t, res)[0]["completions"])
+	if len(late) != 1 || late[0]["completedAt"] != "2026-03-27T02:30:00Z" {
+		t.Errorf("the 26th = %v, want the Completion at 02:30 UTC on the 27th", late)
 	}
 }

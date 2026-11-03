@@ -1,6 +1,7 @@
 import { Clock } from "lucide-react";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { Link } from "react-router";
+import { useShell } from "../../../app/components/ShellContext";
 import type { DayPlan, PlanTask } from "../api/api";
 import { pendingAction, type Acting, type SwapAction, type TaskAction, type TaskRole } from "../logic/actions";
 import { ME_PATH } from "../../../app/logic/routes";
@@ -12,6 +13,7 @@ import { GroupHeading } from "../../../shared/ui/GroupHeading";
 import { LOAD_FAILURE_KEY } from "../logic/failureMessages";
 import { ResidentLabel } from "../../residents/components/ResidentLabel";
 import { DaySummary } from "./DaySummary";
+import { ChangeTimeAction } from "../../residents/components/ChangeTimeAction";
 import { DoneCard } from "./DoneCard";
 import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { DayPlanSkeleton } from "./DayPlanSkeleton";
@@ -91,6 +93,7 @@ export function TodaySection({
       {state.kind === "ready" && (
         <PlanView
           plan={state.plan}
+          refreshing={day.refreshing}
           note={note}
           acting={acting}
           onAccept={acceptAll}
@@ -153,6 +156,7 @@ function EmptyMine({ reason }: { reason: NoTasksReason | null }) {
 
 function PlanView({
   plan,
+  refreshing,
   note,
   acting,
   onAccept,
@@ -163,6 +167,8 @@ function PlanView({
   onOfferChange,
 }: {
   plan: DayPlan;
+  /** The Day Plan is being read again behind what is on screen. */
+  refreshing: boolean;
   note: EnergyNote | null;
   acting: Acting;
   onAccept(): void;
@@ -178,6 +184,14 @@ function PlanView({
   // Every button waits while anything runs; only the pressed one shows its spinner.
   const busy = acting !== null;
   const proposed = plan.mine.filter((task) => !task.committed).length;
+  // Change time needs the Home's zone for its bounds; without it the Done cards stay plain records.
+  const { home } = useShell();
+  const timeZone = home.state.kind === "ready" ? home.state.home.timezone : null;
+  // The Done card just moved: it stays, dimmed and busy, until the Day Plan read behind it answers.
+  const [movedId, setMovedId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!refreshing) setMovedId(null);
+  }, [refreshing]);
   const card = (task: PlanTask, role: TaskRole, holderId?: string) => (
     <TaskCard
       key={task.id}
@@ -289,7 +303,21 @@ function PlanView({
           <GroupHeading count={plan.doneToday.length}>{t("dayplan.done.heading")}</GroupHeading>
           <ul className={LIST}>
             {plan.doneToday.map((done) => (
-              <DoneCard key={done.id} done={done} />
+              <DoneCard
+                key={done.id}
+                done={done}
+                action={
+                  timeZone !== null && done.completionId !== undefined ? (
+                    <ChangeTimeAction
+                      completion={{ id: done.completionId, choreName: done.choreName, completedAt: done.completedAt }}
+                      today={plan.date}
+                      timeZone={timeZone}
+                      onMoved={() => setMovedId(done.id)}
+                    />
+                  ) : undefined
+                }
+                busy={refreshing && movedId === done.id}
+              />
             ))}
           </ul>
         </div>

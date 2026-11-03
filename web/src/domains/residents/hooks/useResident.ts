@@ -10,8 +10,9 @@ import { viewOf } from "../../../shared/query/view";
  * keeps the page with no alert. When `id` changes the new key has no data, so the page is `loading` and never
  * shows the old person under the new name.
  */
-export function useResident(id: string) {
-  const query = useQuery(residentQuery(id));
+export function useResident(id: string | undefined) {
+  // Without an id (Me, before the Residents list answers) the query is off, so no request goes out and the state is `loading`.
+  const query = useQuery({ ...residentQuery(id ?? ""), enabled: id !== undefined });
   const { state: view, refreshing } = viewOf(query);
   const { refetch } = query;
   const retry = useCallback(() => void refetch(), [refetch]);

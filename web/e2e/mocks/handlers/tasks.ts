@@ -65,6 +65,7 @@ export function tasksHandlers(api: FakeApi): void {
       if (!task) return notFound();
       plan.doneToday.push({
         id: task.id,
+        completionId: `completion-of-${task.id}`,
         choreName: task.choreName,
         completedAt: COMPLETED_AT,
         with: [],

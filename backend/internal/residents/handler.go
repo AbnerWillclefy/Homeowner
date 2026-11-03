@@ -26,6 +26,7 @@ type Streaks interface {
 type Handler struct {
 	store    *Store
 	streaks  Streaks
+	mover    *dayplan.Planner
 	photoURL func(*string) *string
 	clock    clock.Clock
 	log      *slog.Logger
@@ -33,15 +34,15 @@ type Handler struct {
 
 // NewHandler returns a Handler. photoURL turns a stored photo key into its
 // public URL (nil when photos are off).
-func NewHandler(store *Store, streaks Streaks, photoURL func(*string) *string, clk clock.Clock, log *slog.Logger) *Handler {
-	return &Handler{store: store, streaks: streaks, photoURL: photoURL, clock: clk, log: log}
+func NewHandler(store *Store, streaks Streaks, mover *dayplan.Planner, photoURL func(*string) *string, clk clock.Clock, log *slog.Logger) *Handler {
+	return &Handler{store: store, streaks: streaks, mover: mover, photoURL: photoURL, clock: clk, log: log}
 }
 
-// windowDays is how many local dates the detail covers: today and six before.
-const windowDays = 7
+// windowDays is how many local dates the detail covers: today and 29 before.
+const windowDays = 30
 
 // Get answers GET /home/residents/{id}: one Resident of the caller's Home with
-// their Streak and the Completions of the last 7 local days, grouped by date.
+// their Streak and the Completions of the last 30 local days, grouped by date.
 // A malformed id is answered before any query, and every way of not finding
 // the Resident (malformed, unknown, another Home, left) gives the same 404.
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
@@ -84,12 +85,24 @@ func (h *Handler) detail(ctx context.Context, m identity.Membership, id string) 
 	return detailResponse{
 		Date: today.Time().Format(time.DateOnly), ID: member.ID, You: member.ID == m.ResidentID,
 		Name: member.Name, PhotoURL: h.photoURL(member.PhotoKey),
-		Initials:      users.Initials(member.Name),
-		AvatarTone:    users.AvatarTone(member.UserID),
-		Streak:        readings[id].Current,
-		DoneLast7Days: len(done),
-		Days:          groupByDay(done),
+		Initials:       users.Initials(member.Name),
+		AvatarTone:     users.AvatarTone(member.UserID),
+		Streak:         readings[id].Current,
+		DoneLast30Days: len(done),
+		DoneLast7Days:  doneSince(done, today-6),
+		Days:           groupByDay(done),
 	}, nil
+}
+
+// doneSince counts the Completions dated from or after the Home-local date from.
+func doneSince(done []Completion, from allocation.Date) int {
+	n := 0
+	for _, k := range done {
+		if allocation.DateOf(k.CompletedOn) >= from {
+			n++
+		}
+	}
+	return n
 }
 
 // groupByDay groups Completions by local date. The rows arrive newest date

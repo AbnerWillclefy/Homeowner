@@ -45,6 +45,8 @@ export interface CompletedTask {
    * reads as empty.
    */
   with: string[];
+  /** The Completion's id, for `PATCH /home/completions/{id}`. Optional like `category`: without it there is no Change time. */
+  completionId?: string;
 }
 
 export interface ResidentTasks {
@@ -152,6 +154,7 @@ function parseCompleted(body: unknown): CompletedTask | null {
   const partners = Array.isArray(body.with) && body.with.every((p) => typeof p === "string") ? (body.with as string[]) : [];
   const done: CompletedTask = { id, choreName, completedAt, with: partners };
   if (typeof body.category === "string") done.category = body.category;
+  if (typeof body.completionId === "string") done.completionId = body.completionId;
   return done;
 }
 

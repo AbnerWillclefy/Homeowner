@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SESSION_KEY } from "../../auth/logic/session";
-import { getResident, getResidents } from "./api";
+import { getResident, getResidents, moveCompletion } from "./api";
 
 function stubStorage(signedIn: boolean) {
   const data = new Map<string, string>();
@@ -131,7 +131,7 @@ const DETAIL = {
   initials: "A",
   avatarTone: "mint",
   streak: 11,
-  doneLast7Days: 2,
+  doneLast30Days: 2,
   days: [{ date: "2026-10-19", completions: [COMPLETION, { ...COMPLETION, id: "c2", with: [] }] }],
 };
 
@@ -151,7 +151,7 @@ describe("getResident", () => {
         initials: "A",
         avatarTone: "mint",
         streak: 11,
-        doneLast7Days: 2,
+        doneLast30Days: 2,
         days: [
           {
             date: "2026-10-19",
@@ -172,7 +172,7 @@ describe("getResident", () => {
   });
 
   it("reads no days as an empty list", async () => {
-    stubFetch(Response.json({ ...DETAIL, doneLast7Days: 0, days: [] }));
+    stubFetch(Response.json({ ...DETAIL, doneLast30Days: 0, days: [] }));
     const result = await getResident("r1");
     expect(result.kind === "ok" && result.resident.days).toEqual([]);
   });
@@ -195,7 +195,8 @@ describe("getResident", () => {
     ["completedAt is not a date", { ...DETAIL, days: [{ date: "2026-10-19", completions: [{ ...COMPLETION, completedAt: "later" }] }] }],
     ["a Completion without a Chore name", { ...DETAIL, days: [{ date: "2026-10-19", completions: [{ ...COMPLETION, choreName: 3 }] }] }],
     ["a negative Streak", { ...DETAIL, streak: -1 }],
-    ["a fractional count", { ...DETAIL, doneLast7Days: 1.5 }],
+    ["a fractional count", { ...DETAIL, doneLast30Days: 1.5 }],
+    ["a missing doneLast30Days, even with the old doneLast7Days", { ...DETAIL, doneLast30Days: undefined, doneLast7Days: 2 }],
     ["a missing date", { ...DETAIL, date: undefined }],
     ["a missing name", { ...DETAIL, name: undefined }],
     ["you is not a boolean", { ...DETAIL, you: "no" }],
@@ -234,5 +235,55 @@ describe("getResident", () => {
   it("is offline when the API cannot be reached", async () => {
     stubFetch(new TypeError("Failed to fetch"));
     expect(await getResident("r1")).toEqual({ kind: "offline" });
+  });
+});
+
+describe("moveCompletion", () => {
+  const AT = "2026-10-18T22:30:00.000Z";
+  const reject = (status: number, error: string) => stubFetch(Response.json({ error }, { status }));
+
+  it("sends PATCH /home/completions/{id} with the instant and reads the detail back", async () => {
+    const fetch = stubFetch(Response.json(DETAIL));
+    const result = await moveCompletion("c 1", AT);
+    expect(result.kind === "ok" && result.resident.id).toBe("r1");
+    expect(fetch.mock.calls[0]![0]).toBe("http://api.test/home/completions/c%201");
+    expect(fetch.mock.calls[0]![1]?.method).toBe("PATCH");
+    expect(JSON.parse(String(fetch.mock.calls[0]![1]?.body))).toEqual({ completedAt: AT });
+  });
+
+  it.each([
+    [400, "in_future"],
+    [400, "too_old"],
+    [400, "before_task"],
+    [400, "invalid_completed_at"],
+    [409, "not_yours"],
+  ] as const)("is rejected with %i %s", async (status, code) => {
+    reject(status, code);
+    expect(await moveCompletion("c1", AT)).toEqual({ kind: "rejected", code });
+  });
+
+  it("tells the two 404s apart", async () => {
+    reject(404, "completion not found");
+    expect(await moveCompletion("c1", AT)).toEqual({ kind: "not-found" });
+    reject(404, "no home");
+    expect(await moveCompletion("c1", AT)).toEqual({ kind: "none" });
+  });
+
+  it("is an error for an unknown code, a server failure or a body it cannot read", async () => {
+    reject(400, "something_new");
+    expect(await moveCompletion("c1", AT)).toEqual({ kind: "error" });
+    reject(500, "internal error");
+    expect(await moveCompletion("c1", AT)).toEqual({ kind: "error" });
+    stubFetch(Response.json({ nonsense: true }));
+    expect(await moveCompletion("c1", AT)).toEqual({ kind: "error" });
+  });
+
+  it("is not signed in without a session, and offline when the API cannot be reached", async () => {
+    stubStorage(false);
+    stubFetch(Response.json(DETAIL));
+    expect(await moveCompletion("c1", AT)).toEqual({ kind: "not-signed-in" });
+    stubStorage(true);
+    stubFetch(new TypeError("Failed to fetch"));
+    expect(await moveCompletion("c1", AT)).toEqual({ kind: "offline" });
   });
 });
