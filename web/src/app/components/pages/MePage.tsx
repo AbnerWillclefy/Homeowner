@@ -3,6 +3,7 @@ import { MeHeader } from "../../../domains/profile/components/MeHeader";
 import { MeProfile } from "../../../domains/profile/components/MeProfile";
 import { SettingsCard } from "../../../domains/settings/components/Settings";
 import { useI18n } from "../../../shared/i18n";
+import { HeadedSection } from "../../../shared/ui/HeadedSection";
 import { PageLoading } from "../../../shared/ui/PageLoading";
 import { MyCompletions } from "../../../domains/residents/components/MyCompletions";
 import { useAppAuth } from "../AuthProvider";
@@ -25,15 +26,12 @@ export function MePage() {
         <MeHeader />
         {/* Only a Resident with a Home has a history; the section stands alone, so the cards below never wait on it. */}
         {home.state.kind === "ready" && <MyCompletions timeZone={home.state.home.timezone} />}
-        <section aria-labelledby="me-settings-heading" className="flex flex-col gap-4">
-          <h3 id="me-settings-heading" className="my-0 text-xl leading-snug font-bold [overflow-wrap:anywhere]">
-            {t("me.settings.heading")}
-          </h3>
+        <HeadedSection title={t("me.settings.heading")}>
           <MeProfile />
           <SettingsCard headingLevel={4} />
           {/* Signing out is on purpose: the guard then sends the person to sign-in without remembering this tab. */}
           <SignedIn email={auth.state.email} offline={auth.state.offline} onSignOut={auth.signOut} />
-        </section>
+        </HeadedSection>
       </div>
     </PageLoading>
   );

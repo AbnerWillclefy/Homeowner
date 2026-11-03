@@ -1,5 +1,6 @@
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
+import { HeadedSection } from "../../../shared/ui/HeadedSection";
 import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { useMyCompletions } from "../hooks/useMyCompletions";
 import { ChangeTimeAction } from "./ChangeTimeAction";
@@ -20,10 +21,7 @@ export function MyCompletions({ timeZone }: { timeZone: string }) {
   useReportFetching(refreshing);
 
   return (
-    <section aria-labelledby="me-completions-heading" className="flex flex-col gap-4">
-      <h3 id="me-completions-heading" className="my-0 text-xl leading-snug font-bold [overflow-wrap:anywhere]">
-        {t("me.completions.heading")}
-      </h3>
+    <HeadedSection title={t("me.completions.heading")}>
       {state.kind === "loading" && (
         <div aria-hidden="true" data-testid="my-completions-skeleton" className={showSkeleton ? "" : "invisible"}>
           <CompletionDaysSkeleton />
@@ -48,6 +46,6 @@ export function MyCompletions({ timeZone }: { timeZone: string }) {
           action={(completion) => <ChangeTimeAction completion={completion} today={state.detail.date} timeZone={timeZone} />}
         />
       )}
-    </section>
+    </HeadedSection>
   );
 }
