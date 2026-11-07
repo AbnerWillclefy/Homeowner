@@ -1,0 +1,6 @@
+{
+  "message": "client keys are invalid",
+  "code": 401,
+  "codeDescription": "CLIENT_KEYS_UNAUTHORIZED",
+  "errorId": "6e87d8e1-bcf5-433f-b086-fd9a9db37bbf"
+}
