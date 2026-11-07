@@ -12,6 +12,8 @@ export interface Me {
   initials: string;
   /** The pastel of the initials Avatar, as a Category id (kitchen, bathroom, ...). */
   avatarTone: string;
+  /** Whether this User is on the Finances allowlist. Absent from the API means false. */
+  finance: boolean;
 }
 
 export type MeResult =
@@ -41,6 +43,7 @@ export function parseMe(raw: unknown): Me | null {
     photoUrl: nonBlank(body?.["photoUrl"]),
     initials: typeof body?.["initials"] === "string" ? body["initials"] : "",
     avatarTone: typeof body?.["avatarTone"] === "string" ? body["avatarTone"] : "",
+    finance: body?.["finance"] === true,
   };
 }
 

@@ -50,6 +50,16 @@ export function MeEditFallback() {
   );
 }
 
+/** Finances: the title bar and the empty line's height. */
+export function FinancesFallback() {
+  return (
+    <div aria-hidden="true">
+      <SkeletonHeader withLine={false} />
+      <SkeletonBar className="h-5 w-full" />
+    </div>
+  );
+}
+
 /** Onboarding's gradient frame, the one the screen draws, so nothing jumps when the step arrives. */
 export function OnboardingFrame({ children }: { children: ReactNode }) {
   return (

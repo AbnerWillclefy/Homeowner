@@ -3,6 +3,7 @@ import { ONBOARDING_STEPS, type OnboardingStep } from "../../domains/onboarding/
 export const TODAY_PATH = "/";
 export const CHORES_PATH = "/chores";
 export const HOME_PATH = "/home";
+export const FINANCES_PATH = "/finances";
 export const ME_PATH = "/me";
 export const ME_EDIT_PATH = "/me/edit";
 /** The route pattern of a Resident's page, nested under the Home tab. */
@@ -16,8 +17,8 @@ export const SIGN_UP_PATH = "/signup";
 export const CONFIRM_PATH = "/confirm";
 export const WELCOME_PREFIX = "/welcome";
 
-/** The four tabs, in nav order. */
-export const SHELL_PATHS = [TODAY_PATH, CHORES_PATH, HOME_PATH, ME_PATH] as const;
+/** The tabs, in nav order. Finances is the fifth, shown in the bar only with the `finance` flag (see financeAccess). */
+export const SHELL_PATHS = [TODAY_PATH, CHORES_PATH, HOME_PATH, ME_PATH, FINANCES_PATH] as const;
 
 /**
  * Screens that live inside the shell under a tab, so the guard lets them through. A list of exact paths, not a
