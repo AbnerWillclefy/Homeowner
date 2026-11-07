@@ -44,15 +44,17 @@ func withSSMSecrets(ctx context.Context, client parameterGetter, getenv func(str
 			continue
 		}
 		out, err := client.GetParameter(ctx, &ssm.GetParameterInput{Name: &name, WithDecryption: boolPtr(true)})
-		if err == nil && (out.Parameter == nil || out.Parameter.Value == nil || *out.Parameter.Value == "") {
-			err = errors.New("empty")
+		if err != nil {
+			err = fmt.Errorf("read SSM parameter %s: %w", name, err)
+		} else if out.Parameter == nil || out.Parameter.Value == nil || *out.Parameter.Value == "" {
+			err = fmt.Errorf("SSM parameter %s is empty", name)
 		}
 		if err != nil && s.optional {
-			slog.Warn("finance disabled: encryption key unavailable", "parameter", name)
+			slog.Warn("optional SSM parameter unavailable, feature disabled", "parameter", name, "error", err)
 			continue
 		}
 		if err != nil {
-			return nil, fmt.Errorf("read SSM parameter %s: %w", name, err)
+			return nil, err
 		}
 		resolved[s.plain] = *out.Parameter.Value
 	}

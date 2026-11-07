@@ -30,9 +30,8 @@ variable "ssm_path_prefix" {
 }
 
 variable "ssm_parameter_names" {
-  description = "Names under ssm_path_prefix the function may read, for example database-url. Empty means everything under the prefix."
+  description = "Names under ssm_path_prefix the function may read, for example database-url. Required, so a job never reads a secret it was not given."
   type        = list(string)
-  default     = []
 }
 
 variable "environment" {

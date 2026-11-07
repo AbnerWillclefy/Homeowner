@@ -148,9 +148,6 @@ func WithFinance(key *[32]byte, emails ...string) Option {
 	return func(d *server.Deps) { d.FinanceAllowlist, d.FinanceKey = emails, key }
 }
 
-// WithFinanceAllowlist is WithFinance with the test key.
-func WithFinanceAllowlist(emails ...string) Option { return WithFinance(FinanceTestKey(), emails...) }
-
 // Start boots the API on a fresh database cloned from the migrated template.
 func Start(t testing.TB, opts ...Option) *App {
 	t.Helper()
