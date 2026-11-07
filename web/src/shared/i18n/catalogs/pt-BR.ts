@@ -30,6 +30,10 @@ export const ptBR: Messages = {
   "nav.chores": "Afazeres",
   "nav.home": "Lar",
   "nav.me": "Eu",
+  "nav.finances": "Finanças",
+  "finances.title": "Finanças",
+  "finances.empty": "Suas finanças são só suas. Conecte seus bancos para começar.",
+  "finances.loading": "Carregando suas finanças",
   "me.heading": "Sobre você",
 
   // Lar
