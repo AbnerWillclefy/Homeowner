@@ -10,12 +10,18 @@ import (
 
 // requireFinance wraps a handler so it only runs for a signed-in User whose
 // verified email is on the allowlist. No token is 401 (requireUser); a User
-// off the list, or an empty list, is 403.
+// off the list, or an empty list, is 403. After that check, a missing
+// encryption key is 503 on every finance route (fail closed), so an outsider
+// learns nothing about the configuration.
 func (s *server) requireFinance(allow finance.Allowlist, next http.Handler) http.Handler {
 	return s.requireUser(func(w http.ResponseWriter, r *http.Request) {
 		if !allow.Allows(identity.CurrentUser(r.Context()).Email) {
 			s.deps.Logger.Info("finance access refused", "path", r.URL.Path)
 			httpx.WriteError(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		if s.deps.FinanceKey == nil {
+			httpx.WriteError(w, http.StatusServiceUnavailable, "finance not configured")
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -24,9 +30,11 @@ func (s *server) requireFinance(allow finance.Allowlist, next http.Handler) http
 
 // financeMux holds the /me/finance routes. The guard wraps it once, so every
 // path under the prefix, known or not, meets the allowlist first.
-func financeMux() http.Handler {
+func financeMux(h *finance.Handler) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /me/finance", finance.Status)
+	mux.HandleFunc("GET /me/finance", h.Status)
+	mux.HandleFunc("PUT /me/finance/credentials", h.PutCredentials)
+	mux.HandleFunc("DELETE /me/finance/credentials", h.DeleteCredentials)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not found")
 	})

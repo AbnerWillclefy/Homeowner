@@ -73,6 +73,9 @@ type Deps struct {
 	// FinanceAllowlist is the emails that may use Finances, read once at
 	// start-up. Empty or nil means nobody.
 	FinanceAllowlist []string
+	// FinanceKey seals the Pluggy credentials. Nil means finance routes
+	// answer 503 to allowed Users.
+	FinanceKey *[32]byte
 }
 
 const healthTimeout = 2 * time.Second
@@ -174,7 +177,7 @@ func New(deps Deps) http.Handler {
 	// Every /admin/ path, known or not, goes through the guard first.
 	mux.Handle("/admin/", s.requireSuperAdmin(s.adminMux()))
 	// Every /me/finance path, known or not, meets the allowlist first.
-	guarded := s.requireFinance(financeAllow, financeMux())
+	guarded := s.requireFinance(financeAllow, financeMux(finance.NewHandler(finance.NewStore(db), deps.FinanceKey, clk, log)))
 	mux.Handle("/me/finance", guarded)
 	mux.Handle("/me/finance/", guarded)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

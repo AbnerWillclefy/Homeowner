@@ -136,10 +136,20 @@ func WithLLMDisplay(dailyCap int, limitMicros int64) Option {
 	}
 }
 
-// WithFinanceAllowlist sets the emails that may use Finances.
-func WithFinanceAllowlist(emails ...string) Option {
-	return func(d *server.Deps) { d.FinanceAllowlist = emails }
+// FinanceTestKey is the fixed encryption key tests start Finances with.
+func FinanceTestKey() *[32]byte {
+	k := [32]byte{1, 2, 3}
+	return &k
 }
+
+// WithFinance sets the emails that may use Finances and the key that seals
+// their credentials; a nil key starts the API as if none were configured.
+func WithFinance(key *[32]byte, emails ...string) Option {
+	return func(d *server.Deps) { d.FinanceAllowlist, d.FinanceKey = emails, key }
+}
+
+// WithFinanceAllowlist is WithFinance with the test key.
+func WithFinanceAllowlist(emails ...string) Option { return WithFinance(FinanceTestKey(), emails...) }
 
 // Start boots the API on a fresh database cloned from the migrated template.
 func Start(t testing.TB, opts ...Option) *App {
