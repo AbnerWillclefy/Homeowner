@@ -15,7 +15,8 @@ func TestLoadFinanceAllowlist(t *testing.T) {
 		{"unset", "", nil},
 		{"placeholder allows nobody", "none", nil},
 		{"one", "ana@example.com", []string{"ana@example.com"}},
-		{"trimmed and lowercased", " Ana@Example.com , B@Y.com ", []string{"ana@example.com", "b@y.com"}},
+		{"trimmed", " Ana@Example.com , B@Y.com ", []string{"Ana@Example.com", "B@Y.com"}},
+		{"not an email is kept", "ana.example.com", []string{"ana.example.com"}},
 		{"empty entries dropped", "a@x.com,,", []string{"a@x.com"}},
 	}
 	for _, tc := range cases {

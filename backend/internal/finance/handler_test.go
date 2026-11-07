@@ -16,14 +16,8 @@ func TestAllowedUserSeesFinanceStatusAndFlag(t *testing.T) {
 	if res.Status != http.StatusOK {
 		t.Fatalf("GET /me/finance = %d %s", res.Status, res.Raw)
 	}
-	want := map[string]any{"configured": false, "importing": false, "lastSyncedAt": nil}
-	for k, v := range want {
-		if got, ok := res.Body[k]; !ok || got != v {
-			t.Errorf("status[%q] = %v, want %v (body %s)", k, got, v, res.Raw)
-		}
-	}
-	if s, ok := res.Body["sources"].([]any); !ok || len(s) != 0 {
-		t.Errorf("sources = %v, want []", res.Body["sources"])
+	if got, ok := res.Body["configured"]; !ok || got != false || len(res.Body) != 1 {
+		t.Errorf("body = %s, want {\"configured\":false}", res.Raw)
 	}
 	if me := ana.Get("/me"); me.Body["finance"] != true {
 		t.Errorf("GET /me finance = %v, want true", me.Body["finance"])

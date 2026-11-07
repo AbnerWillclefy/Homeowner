@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"net/url"
 	"strconv"
@@ -66,8 +67,8 @@ type Config struct {
 	// Environment (ENVIRONMENT) names the deployment: local, staging or
 	// production. It defaults to local. /admin/me reports it (ADR 0017).
 	Environment string
-	// FinanceAllowlist (FINANCE_ALLOWLIST) is the lowercased emails that may use
-	// Finances, comma-separated. Entries without an @ are dropped, so the
+	// FinanceAllowlist (FINANCE_ALLOWLIST) is the trimmed emails that may use
+	// Finances, comma-separated; finance.NewAllowlist lowercases them. The
 	// Terraform placeholder "none" allows nobody.
 	FinanceAllowlist []string
 }
@@ -161,9 +162,14 @@ func Load(getenv func(string) string) (Config, error) {
 		}
 		c.ReplanEnabled = b
 	}
-	for _, e := range strings.Split(getenv("FINANCE_ALLOWLIST"), ",") {
-		if e = strings.ToLower(strings.TrimSpace(e)); strings.Contains(e, "@") {
-			c.FinanceAllowlist = append(c.FinanceAllowlist, e)
+	for i, e := range strings.Split(getenv("FINANCE_ALLOWLIST"), ",") {
+		switch t := strings.TrimSpace(e); {
+		case t == "", strings.EqualFold(t, "none"): // "none" is the Terraform placeholder
+		case !strings.Contains(t, "@"):
+			slog.Warn("FINANCE_ALLOWLIST entry is not an email, it will match nobody", "entry_position", i+1)
+			fallthrough
+		default:
+			c.FinanceAllowlist = append(c.FinanceAllowlist, t)
 		}
 	}
 	c.Environment = strings.TrimSpace(getenv("ENVIRONMENT"))
