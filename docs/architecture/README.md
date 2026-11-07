@@ -44,6 +44,7 @@ In diagrams, solid boxes and lines are built; dashed boxes and lines are planned
 | [0015](../adr/0015-merge-agent-pull-requests-by-risk-tier.md) | Merge agent pull requests by risk tier |
 | [0016](../adr/0016-start-todays-reads-at-launch-not-in-route-loaders.md) | Start Today's reads at launch, not in route loaders |
 | [0017](../adr/0017-operate-through-a-separate-admin-app-per-environment.md) | Operate through a separate admin app per environment, gated by a Cognito group, fed by a per-call LLM record |
+| [0019](../adr/0019-take-bank-data-from-pluggy-with-per-user-credentials-encrypted-by-the-app.md) | Take bank data from Pluggy with per-User credentials encrypted by the app |
 
 ## Keeping this current
 
