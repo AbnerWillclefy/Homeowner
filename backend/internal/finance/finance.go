@@ -13,13 +13,16 @@ type Allowlist map[string]struct{}
 func NewAllowlist(emails []string) Allowlist {
 	a := Allowlist{}
 	for _, e := range emails {
-		a[strings.ToLower(strings.TrimSpace(e))] = struct{}{}
+		if e = strings.ToLower(strings.TrimSpace(e)); e != "" {
+			a[e] = struct{}{}
+		}
 	}
 	return a
 }
 
 // Allows reports whether email is on the list.
 func (a Allowlist) Allows(email string) bool {
-	_, ok := a[strings.ToLower(strings.TrimSpace(email))]
-	return ok
+	email = strings.ToLower(strings.TrimSpace(email))
+	_, ok := a[email]
+	return email != "" && ok
 }
