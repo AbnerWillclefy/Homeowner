@@ -66,6 +66,10 @@ type Config struct {
 	// Environment (ENVIRONMENT) names the deployment: local, staging or
 	// production. It defaults to local. /admin/me reports it (ADR 0017).
 	Environment string
+	// FinanceAllowlist (FINANCE_ALLOWLIST) is the lowercased emails that may use
+	// Finances, comma-separated. Entries without an @ are dropped, so the
+	// Terraform placeholder "none" allows nobody.
+	FinanceAllowlist []string
 }
 
 // PhotosEnabled reports whether resident photos are configured.
@@ -156,6 +160,11 @@ func Load(getenv func(string) string) (Config, error) {
 			return Config{}, fmt.Errorf("REPLAN_ENABLED: %w", err)
 		}
 		c.ReplanEnabled = b
+	}
+	for _, e := range strings.Split(getenv("FINANCE_ALLOWLIST"), ",") {
+		if e = strings.ToLower(strings.TrimSpace(e)); strings.Contains(e, "@") {
+			c.FinanceAllowlist = append(c.FinanceAllowlist, e)
+		}
 	}
 	c.Environment = strings.TrimSpace(getenv("ENVIRONMENT"))
 	switch c.Environment {

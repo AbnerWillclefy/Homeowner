@@ -26,6 +26,7 @@ type Handler struct {
 	store    *Store
 	homes    Homes
 	photoURL func(*string) *string
+	finance  func(email string) bool
 	clock    clock.Clock
 	log      *slog.Logger
 }
@@ -34,9 +35,10 @@ type Handler struct {
 const maxNameBody = 1024
 
 // NewHandler returns a Handler over store. photoURL turns a stored photo key
-// into its public URL (nil when photos are off).
-func NewHandler(store *Store, homes Homes, photoURL func(*string) *string, clk clock.Clock, log *slog.Logger) *Handler {
-	return &Handler{store: store, homes: homes, photoURL: photoURL, clock: clk, log: log}
+// into its public URL (nil when photos are off). finance says whether an email
+// may use Finances.
+func NewHandler(store *Store, homes Homes, photoURL func(*string) *string, finance func(email string) bool, clk clock.Clock, log *slog.Logger) *Handler {
+	return &Handler{store: store, homes: homes, photoURL: photoURL, finance: finance, clock: clk, log: log}
 }
 
 type onboardingState struct {
@@ -46,7 +48,7 @@ type onboardingState struct {
 // Me answers GET /me.
 func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 	u := identity.CurrentUser(r.Context())
-	httpx.WriteJSON(w, http.StatusOK, NewMeResponse(u, h.photoURL))
+	httpx.WriteJSON(w, http.StatusOK, NewMeResponse(u, h.photoURL, h.finance(u.Email)))
 }
 
 // SetName answers PUT /me/name: it stores the trimmed name, or clears it when
@@ -76,7 +78,7 @@ func (h *Handler) SetName(w http.ResponseWriter, r *http.Request) {
 	if name != "" {
 		u.DisplayName = &name
 	}
-	httpx.WriteJSON(w, http.StatusOK, NewMeResponse(u, h.photoURL))
+	httpx.WriteJSON(w, http.StatusOK, NewMeResponse(u, h.photoURL, h.finance(u.Email)))
 }
 
 // Onboarding answers the step to show: the one after the stored step, or
