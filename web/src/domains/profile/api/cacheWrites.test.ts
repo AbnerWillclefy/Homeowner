@@ -5,7 +5,7 @@ import type { Me } from "../../auth/api/meApi";
 import { residentKey, residentsKey } from "../../residents/api/queries";
 import { saveMe, savePhoto } from "./cacheWrites";
 
-const OLD: Me = { id: "u1", email: "a@b.c", displayName: null, name: "Old", photoUrl: null, initials: "O", avatarTone: "kitchen" };
+const OLD: Me = { id: "u1", email: "a@b.c", displayName: null, name: "Old", photoUrl: null, initials: "O", avatarTone: "kitchen", finance: false };
 const NEW: Me = { ...OLD, displayName: "New", name: "New", initials: "N" };
 
 function seeded() {
