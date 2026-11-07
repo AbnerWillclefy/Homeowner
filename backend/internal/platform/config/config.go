@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"net/url"
 	"strconv"
@@ -66,6 +67,10 @@ type Config struct {
 	// Environment (ENVIRONMENT) names the deployment: local, staging or
 	// production. It defaults to local. /admin/me reports it (ADR 0017).
 	Environment string
+	// FinanceAllowlist (FINANCE_ALLOWLIST) is the trimmed emails that may use
+	// Finances, comma-separated; finance.NewAllowlist lowercases them. The
+	// Terraform placeholder "none" allows nobody.
+	FinanceAllowlist []string
 }
 
 // PhotosEnabled reports whether resident photos are configured.
@@ -156,6 +161,16 @@ func Load(getenv func(string) string) (Config, error) {
 			return Config{}, fmt.Errorf("REPLAN_ENABLED: %w", err)
 		}
 		c.ReplanEnabled = b
+	}
+	for i, e := range strings.Split(getenv("FINANCE_ALLOWLIST"), ",") {
+		switch t := strings.TrimSpace(e); {
+		case t == "", strings.EqualFold(t, "none"): // "none" is the Terraform placeholder
+		case !strings.Contains(t, "@"):
+			slog.Warn("FINANCE_ALLOWLIST entry is not an email, it will match nobody", "entry_position", i+1)
+			fallthrough
+		default:
+			c.FinanceAllowlist = append(c.FinanceAllowlist, t)
+		}
 	}
 	c.Environment = strings.TrimSpace(getenv("ENVIRONMENT"))
 	switch c.Environment {

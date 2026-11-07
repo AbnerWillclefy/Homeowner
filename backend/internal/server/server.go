@@ -17,6 +17,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/choresettings"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/finance"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/invites"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/photos"
@@ -69,6 +70,9 @@ type Deps struct {
 	// only, nothing in the API enforces either.
 	LLMDailyCapPerHome         int
 	LLMMonthlySpendLimitMicros int64
+	// FinanceAllowlist is the emails that may use Finances, read once at
+	// start-up. Empty or nil means nobody.
+	FinanceAllowlist []string
 }
 
 const healthTimeout = 2 * time.Second
@@ -95,7 +99,8 @@ func New(deps Deps) http.Handler {
 		photosBase = ""
 	}
 	photoURL := photos.URLBuilder(photosBase)
-	me := users.NewHandler(s.users, homeStore, photoURL, clk, log)
+	financeAllow := finance.NewAllowlist(deps.FinanceAllowlist)
+	me := users.NewHandler(s.users, homeStore, photoURL, financeAllow.Allows, clk, log)
 	home := homes.NewHandler(homeStore, clk, log)
 	photosH := photos.NewHandler(deps.Photos, s.users, photoURL, clk, log)
 	invite := invites.NewHandler(invites.NewStore(db), clk, log)
@@ -168,6 +173,10 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("POST /push/test", pushes.RequireConfigured(user(pushes.SendTest)))
 	// Every /admin/ path, known or not, goes through the guard first.
 	mux.Handle("/admin/", s.requireSuperAdmin(s.adminMux()))
+	// Every /me/finance path, known or not, meets the allowlist first.
+	guarded := s.requireFinance(financeAllow, financeMux())
+	mux.Handle("/me/finance", guarded)
+	mux.Handle("/me/finance/", guarded)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not found")
 	})

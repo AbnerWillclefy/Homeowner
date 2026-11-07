@@ -136,6 +136,11 @@ func WithLLMDisplay(dailyCap int, limitMicros int64) Option {
 	}
 }
 
+// WithFinanceAllowlist sets the emails that may use Finances.
+func WithFinanceAllowlist(emails ...string) Option {
+	return func(d *server.Deps) { d.FinanceAllowlist = emails }
+}
+
 // Start boots the API on a fresh database cloned from the migrated template.
 func Start(t testing.TB, opts ...Option) *App {
 	t.Helper()

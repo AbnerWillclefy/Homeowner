@@ -56,6 +56,19 @@ func TestSecretsResolvedFromSSMWhenParameterNamesAreSet(t *testing.T) {
 	}
 }
 
+func TestFinanceAllowlistResolvedFromSSM(t *testing.T) {
+	fake := &fakeSSM{params: map[string]string{"/p/finance": "ana@example.com"}}
+	getenv, err := withSSMSecrets(context.Background(), fake, envOf(map[string]string{
+		"FINANCE_ALLOWLIST_SSM_PARAM": "/p/finance",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := getenv("FINANCE_ALLOWLIST"); got != "ana@example.com" {
+		t.Errorf("FINANCE_ALLOWLIST = %q", got)
+	}
+}
+
 func TestVAPIDPrivateKeyResolvedFromSSM(t *testing.T) {
 	fake := &fakeSSM{params: map[string]string{"/p/vapid": "private-key-value"}}
 	getenv, err := withSSMSecrets(context.Background(), fake, envOf(map[string]string{

@@ -39,7 +39,7 @@ The fixed list of common Chores built into the app, from which a new Home's firs
 _Avoid_: Templates, Library, Defaults
 
 **Category**:
-What kind of work a Chore is, such as kitchen, laundry, bathroom, floors, trash, outdoor or pets. Every Chore has exactly one.
+What kind of work a Chore is, such as kitchen, laundry, bathroom, floors, trash, outdoor or pets. Every Chore has exactly one. "Category" belongs to Chores only: money uses Spending Category.
 _Avoid_: Type, Area, Tag
 
 **Demand**:
@@ -107,3 +107,31 @@ _Avoid_: Trade, Exchange
 **Streak**:
 The run of days on which a Resident completed at least one Task. A day on which they Committed to Tasks and completed none breaks it, unless they checked in Drained; any other day pauses it.
 _Avoid_: Combo, Chain
+
+### Money
+
+Finances is open only to Users on an allowlist of emails. These terms are about money; "Category" stays with Chores.
+
+**Transaction**:
+One movement of money on a Source, such as a purchase or a payment, with a date, an amount and a description.
+_Avoid_: Entry, Expense, Payment
+
+**Source**:
+A place Transactions come from, such as a bank account or a credit card, connected to the app.
+_Avoid_: Account, Bank, Connection
+
+**Spending Category**:
+What a Transaction was spent on, such as groceries, transport or rent. Every Transaction has at most one. It is not a Chore's Category.
+_Avoid_: Category, Tag, Label
+
+**Bill to pay**:
+Money owed that is due on a date, such as the credit card bill, rent or a utility. It is not a Transaction until it is paid.
+_Avoid_: Invoice, Debt, Due
+
+**Installment plan**:
+A purchase paid in several equal parts over several months. Each part is a Transaction.
+_Avoid_: Financing, Loan, Subscription
+
+**Monthly income**:
+The money a User expects to receive each month, which Finances compares with what is spent.
+_Avoid_: Salary, Revenue, Earnings

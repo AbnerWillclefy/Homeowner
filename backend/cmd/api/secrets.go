@@ -17,6 +17,7 @@ var secretParams = []struct{ plain, param string }{
 	{"MIGRATE_DATABASE_URL", "MIGRATE_DATABASE_URL_SSM_PARAM"},
 	{"VAPID_PRIVATE_KEY", "VAPID_PRIVATE_KEY_SSM_PARAM"},
 	{"ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY_SSM_PARAM"},
+	{"FINANCE_ALLOWLIST", "FINANCE_ALLOWLIST_SSM_PARAM"},
 }
 
 // parameterGetter is the slice of the SSM client the resolver needs.
