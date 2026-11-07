@@ -1,6 +1,7 @@
 import { CalendarCheck, House, ListChecks, User, Wallet, type LucideIcon } from "lucide-react";
 import { NavLink } from "react-router";
 import { useI18n } from "../../shared/i18n";
+import { financeAccess } from "../logic/financeAccess";
 import { navItems, type NavIcon } from "../logic/navItems";
 import { TODAY_PATH } from "../logic/routes";
 import { useShell } from "./ShellContext";
@@ -21,8 +22,8 @@ const ICONS: Record<NavIcon, LucideIcon> = {
 export function BottomNav() {
   const { t } = useI18n();
   const { me } = useShell();
-  // Four tabs until Me is read: a slow or failed read never shows Finances.
-  const finance = me.state.kind === "ready" && me.state.me.finance;
+  // Four tabs until Me is read.
+  const finance = financeAccess(me.state) === "render";
   return (
     <nav
       aria-label={t("nav.label")}
@@ -43,7 +44,7 @@ export function BottomNav() {
                 }
               >
                 <Icon aria-hidden="true" size={24} className="shrink-0" />
-                <span className="max-w-full hyphens-auto [overflow-wrap:anywhere]">{t(labelKey)}</span>
+                <span className="max-w-full [overflow-wrap:anywhere]">{t(labelKey)}</span>
               </NavLink>
             </li>
           );

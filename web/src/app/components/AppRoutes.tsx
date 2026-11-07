@@ -18,8 +18,8 @@ const ChoresPage = lazyNamed(() => import("./pages/ChoresPage"), "ChoresPage");
 const HomePage = lazyNamed(() => import("./pages/HomePage"), "HomePage");
 const ResidentRoute = lazyNamed(() => import("./pages/ResidentRoute"), "ResidentRoute");
 const MePage = lazyNamed(() => import("./pages/MePage"), "MePage");
-const FinancesPage = lazyNamed(() => import("./pages/FinancesPage"), "FinancesPage");
-const MeEdit =lazyNamed(() => import("../../domains/profile/components/MeEdit"), "MeEdit");
+const FinancesTab = lazyNamed(() => import("../../domains/finance/components/FinancesTab"), "FinancesTab");
+const MeEdit = lazyNamed(() => import("../../domains/profile/components/MeEdit"), "MeEdit");
 
 /**
  * Every route sits under the Guard, which decides where the person may be (see resolveRoute). The catch-all
@@ -77,7 +77,7 @@ export function AppRoutes() {
             element={
               <FinanceRoute>
                 <LazyPage key="finances" message="finances.loading" skeleton={<FinancesFallback />}>
-                  <FinancesPage />
+                  <FinancesTab />
                 </LazyPage>
               </FinanceRoute>
             }
