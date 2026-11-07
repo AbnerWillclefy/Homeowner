@@ -91,7 +91,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	}
 	defer pool.Close()
 
-	deps := server.Deps{DB: pool, Clock: clock.System{}, Logger: log, CORSAllowedOrigins: cfg.CORSAllowedOrigins, Environment: cfg.Environment, FinanceAllowlist: cfg.FinanceAllowlist,
+	deps := server.Deps{DB: pool, Clock: clock.System{}, Logger: log, CORSAllowedOrigins: cfg.CORSAllowedOrigins, Environment: cfg.Environment, FinanceAllowlist: cfg.FinanceAllowlist, FinanceKey: cfg.FinanceKey,
 		LLMDailyCapPerHome: cfg.LLMDailyCapPerHome, LLMMonthlySpendLimitMicros: cfg.LLMMonthlySpendLimitMicros}
 	if cfg.VAPIDEnabled() {
 		deps.Push = push.NewWebPushSender(cfg.VAPIDPublicKey, cfg.VAPIDPrivateKey, cfg.VAPIDSubject)

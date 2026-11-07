@@ -2,6 +2,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -71,6 +72,9 @@ type Config struct {
 	// Finances, comma-separated; finance.NewAllowlist lowercases them. The
 	// Terraform placeholder "none" allows nobody.
 	FinanceAllowlist []string
+	// FinanceKey (FINANCE_ENCRYPTION_KEY, base64 of 32 bytes) seals the Pluggy
+	// credentials. Nil when unset or malformed; Load only warns.
+	FinanceKey *[32]byte
 }
 
 // PhotosEnabled reports whether resident photos are configured.
@@ -170,6 +174,15 @@ func Load(getenv func(string) string) (Config, error) {
 			fallthrough
 		default:
 			c.FinanceAllowlist = append(c.FinanceAllowlist, t)
+		}
+	}
+	if v := strings.TrimSpace(getenv("FINANCE_ENCRYPTION_KEY")); v != "" {
+		// Never fail: a bad key disables Finances, not the whole API. Neither
+		// the value nor the decode error is logged.
+		if b, err := base64.StdEncoding.DecodeString(v); err == nil && len(b) == 32 {
+			c.FinanceKey = (*[32]byte)(b)
+		} else {
+			slog.Warn("FINANCE_ENCRYPTION_KEY is not base64 of 32 bytes, finance is disabled")
 		}
 	}
 	c.Environment = strings.TrimSpace(getenv("ENVIRONMENT"))

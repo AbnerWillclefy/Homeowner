@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ssm"
@@ -12,12 +13,19 @@ import (
 // secretParams maps a plain variable to the variable naming the SSM parameter
 // that holds its value. Lambda environment variables cannot reference SSM and
 // would expose the URLs in the console, so the function reads them at startup.
-var secretParams = []struct{ plain, param string }{
-	{"DATABASE_URL", "DATABASE_URL_SSM_PARAM"},
-	{"MIGRATE_DATABASE_URL", "MIGRATE_DATABASE_URL_SSM_PARAM"},
-	{"VAPID_PRIVATE_KEY", "VAPID_PRIVATE_KEY_SSM_PARAM"},
-	{"ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY_SSM_PARAM"},
-	{"FINANCE_ALLOWLIST", "FINANCE_ALLOWLIST_SSM_PARAM"},
+//
+// An optional entry disables one feature instead of the service: when its
+// read fails, the variable stays empty and a warning names the parameter.
+var secretParams = []struct {
+	plain, param string
+	optional     bool
+}{
+	{"DATABASE_URL", "DATABASE_URL_SSM_PARAM", false},
+	{"MIGRATE_DATABASE_URL", "MIGRATE_DATABASE_URL_SSM_PARAM", false},
+	{"VAPID_PRIVATE_KEY", "VAPID_PRIVATE_KEY_SSM_PARAM", false},
+	{"ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY_SSM_PARAM", false},
+	{"FINANCE_ALLOWLIST", "FINANCE_ALLOWLIST_SSM_PARAM", false},
+	{"FINANCE_ENCRYPTION_KEY", "FINANCE_ENCRYPTION_KEY_SSM_PARAM", true},
 }
 
 // parameterGetter is the slice of the SSM client the resolver needs.
@@ -37,10 +45,16 @@ func withSSMSecrets(ctx context.Context, client parameterGetter, getenv func(str
 		}
 		out, err := client.GetParameter(ctx, &ssm.GetParameterInput{Name: &name, WithDecryption: boolPtr(true)})
 		if err != nil {
-			return nil, fmt.Errorf("read SSM parameter %s: %w", name, err)
+			err = fmt.Errorf("read SSM parameter %s: %w", name, err)
+		} else if out.Parameter == nil || out.Parameter.Value == nil || *out.Parameter.Value == "" {
+			err = fmt.Errorf("SSM parameter %s is empty", name)
 		}
-		if out.Parameter == nil || out.Parameter.Value == nil || *out.Parameter.Value == "" {
-			return nil, fmt.Errorf("SSM parameter %s is empty", name)
+		if err != nil && s.optional {
+			slog.Warn("optional SSM parameter unavailable, feature disabled", "parameter", name, "error", err)
+			continue
+		}
+		if err != nil {
+			return nil, err
 		}
 		resolved[s.plain] = *out.Parameter.Value
 	}

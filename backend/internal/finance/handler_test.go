@@ -9,7 +9,7 @@ import (
 
 func TestAllowedUserSeesFinanceStatusAndFlag(t *testing.T) {
 	t.Parallel()
-	app := apitest.Start(t, apitest.WithFinanceAllowlist("ana@example.com"))
+	app := apitest.Start(t, apitest.WithFinance(apitest.FinanceTestKey(), "ana@example.com"))
 	ana := app.SignInAs("ana@example.com")
 
 	res := ana.Get("/me/finance")
@@ -29,7 +29,7 @@ func TestAllowedUserSeesFinanceStatusAndFlag(t *testing.T) {
 
 func TestUserNotOnTheListIsRefused(t *testing.T) {
 	t.Parallel()
-	app := apitest.Start(t, apitest.WithFinanceAllowlist("ana@example.com"))
+	app := apitest.Start(t, apitest.WithFinance(apitest.FinanceTestKey(), "ana@example.com"))
 	bob := app.SignInAs("bob@example.com")
 
 	for _, p := range []string{"/me/finance", "/me/finance/", "/me/finance/anything"} {
@@ -46,7 +46,7 @@ func TestEmptyOrAbsentListRefusesEveryone(t *testing.T) {
 	t.Parallel()
 	for name, opts := range map[string][]apitest.Option{
 		"absent": nil,
-		"empty":  {apitest.WithFinanceAllowlist()},
+		"empty":  {apitest.WithFinance(apitest.FinanceTestKey())},
 	} {
 		app := apitest.Start(t, opts...)
 		c := app.SignInAs("ana@example.com")
@@ -61,7 +61,7 @@ func TestEmptyOrAbsentListRefusesEveryone(t *testing.T) {
 
 func TestEmailMatchingIgnoresCase(t *testing.T) {
 	t.Parallel()
-	app := apitest.Start(t, apitest.WithFinanceAllowlist("Ana@Example.com"))
+	app := apitest.Start(t, apitest.WithFinance(apitest.FinanceTestKey(), "Ana@Example.com"))
 	ana := app.SignInAs("ana@example.COM")
 
 	if res := ana.Get("/me/finance"); res.Status != http.StatusOK {
@@ -71,7 +71,7 @@ func TestEmailMatchingIgnoresCase(t *testing.T) {
 
 func TestRenameKeepsFinanceFlag(t *testing.T) {
 	t.Parallel()
-	app := apitest.Start(t, apitest.WithFinanceAllowlist("ana@example.com"))
+	app := apitest.Start(t, apitest.WithFinance(apitest.FinanceTestKey(), "ana@example.com"))
 	ana := app.SignInAs("ana@example.com")
 
 	res := ana.Put("/me/name", map[string]any{"name": "Ana"})
@@ -82,7 +82,7 @@ func TestRenameKeepsFinanceFlag(t *testing.T) {
 
 func TestNoTokenIs401NotForbidden(t *testing.T) {
 	t.Parallel()
-	app := apitest.Start(t, apitest.WithFinanceAllowlist("ana@example.com"))
+	app := apitest.Start(t, apitest.WithFinance(apitest.FinanceTestKey(), "ana@example.com"))
 	if res := app.Get("/me/finance"); res.Status != http.StatusUnauthorized {
 		t.Errorf("GET /me/finance without token = %d, want 401", res.Status)
 	}
