@@ -1,0 +1,83 @@
+{
+  "total": 2,
+  "totalPages": 1,
+  "page": 1,
+  "results": [
+    {
+      "id": "7e5bc95d-85bb-4b3a-9b97-58d456872529",
+      "type": "BANK",
+      "subtype": "CHECKING_ACCOUNT",
+      "name": "Conta Corrente",
+      "balance": 43701.43,
+      "currencyCode": "BRL",
+      "itemId": "72ff2ef2-60b0-42d5-9514-7b9a55eb4267",
+      "number": "0001/12345-0",
+      "createdAt": "2026-11-07T17:21:41.609Z",
+      "updatedAt": "2026-11-07T17:21:41.684Z",
+      "marketingName": "GOLD Conta Corrente",
+      "taxNumber": "416.799.495-00",
+      "owner": "John Doe",
+      "bankData": {
+        "transferNumber": "123/0001/12345-0",
+        "closingBalance": 43701.43,
+        "automaticallyInvestedBalance": 4370.143,
+        "overdraftContractedLimit": null,
+        "overdraftUsedLimit": null,
+        "unarrangedOverdraftAmount": null,
+        "hasReservedBalance": true,
+        "reservedBalances": [
+          {
+            "name": "Caixinha Para Férias",
+            "identification": "d78fc4e5-37ca-4da3-adf2-9b082bf92280",
+            "availableAmounts": [
+              {
+                "amount": 1000.04,
+                "currencyCode": "BRL",
+                "remuneration": {
+                  "indexer": "CDI",
+                  "rateType": "LINEAR",
+                  "calculation": "DIAS_UTEIS",
+                  "preFixedRate": 0.3,
+                  "ratePeriodicity": "MENSAL"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "creditData": null
+    },
+    {
+      "id": "8e09cce6-cf99-433f-9d73-f9bd99b9ca3f",
+      "type": "CREDIT",
+      "subtype": "CREDIT_CARD",
+      "name": "Mastercard Black",
+      "balance": -916.3,
+      "currencyCode": "BRL",
+      "itemId": "72ff2ef2-60b0-42d5-9514-7b9a55eb4267",
+      "number": "9437",
+      "createdAt": "2026-11-07T17:21:41.689Z",
+      "updatedAt": "2026-11-07T17:21:41.757Z",
+      "marketingName": "PLUGGY UNICLASS MASTERCARD BLACK",
+      "taxNumber": null,
+      "owner": null,
+      "bankData": null,
+      "creditData": {
+        "level": "BLACK",
+        "brand": "MASTERCARD",
+        "brandAdditionalInfo": null,
+        "balanceCloseDate": "2026-11-07",
+        "balanceDueDate": "2026-11-12",
+        "availableCreditLimit": 300000,
+        "balanceForeignCurrency": null,
+        "minimumPayment": 183.26,
+        "creditLimit": 300000,
+        "isLimitFlexible": false,
+        "holderType": "MAIN",
+        "status": "ACTIVE",
+        "disaggregatedCreditLimits": null,
+        "additionalCards": null
+      }
+    }
+  ]
+}
