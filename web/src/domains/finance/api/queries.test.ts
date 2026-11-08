@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
-import { commitmentsKey, financeDeleted, financeStatusKey, invalidateFinance, invalidateMonth, monthKey, reportKey, writeFinanceStatus } from "./queries";
+import { commitmentsKey, financeDeleted, financeStatusKey, invalidateFinance, invalidateMonth, monthKey, writeFinanceStatus } from "./queries";
 import type { FinanceStatus } from "./api";
 
 const STATUS: FinanceStatus = { configured: true, sources: [], importing: true, lastSyncedAt: null };
@@ -16,16 +16,16 @@ describe("finance cache", () => {
     expect(client.getQueryData(financeStatusKey)).toEqual(STATUS);
   });
 
-  it("keys each month under the status key, and invalidating one leaves the others", async () => {
+  it("keys each month under the status key, and a PATCH invalidates every month but not other finance reads", async () => {
     expect(monthKey("2026-11")).toEqual(["me", "finance", "transactions", "2026-11"]);
     const client = new QueryClient();
     client.setQueryData(monthKey("2026-11"), { n: 1 });
     client.setQueryData(monthKey("2026-10"), { n: 2 });
-    client.setQueryData(reportKey("2026-12"), { n: 3 });
-    await invalidateMonth(client, "2026-11");
-    expect(client.getQueryState(reportKey("2026-12"))?.isInvalidated).toBe(true);
+    client.setQueryData(commitmentsKey("2026-12"), { n: 3 });
+    await invalidateMonth(client);
     expect(client.getQueryState(monthKey("2026-11"))?.isInvalidated).toBe(true);
-    expect(client.getQueryState(monthKey("2026-10"))?.isInvalidated).toBe(false);
+    expect(client.getQueryState(monthKey("2026-10"))?.isInvalidated).toBe(true);
+    expect(client.getQueryState(commitmentsKey("2026-12"))?.isInvalidated).toBe(false);
   });
 
   it("keys commitments under the finance prefix, which invalidateFinance marks stale", async () => {
