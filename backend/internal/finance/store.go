@@ -319,6 +319,112 @@ func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string,
 	return err
 }
 
+// transactionColumns reads a Transaction as TransactionResponse, with its Source's name.
+const transactionColumns = `t.id, t.posted_on::text, t.description, s.name, t.amount_cents, t.currency, t.type,
+	t.spending_category, t.type_set_by, t.category_set_by, t.installment_number, t.total_installments`
+
+func scanTransaction(r pgx.Row) (TransactionResponse, error) {
+	var t TransactionResponse
+	var n, total *int
+	err := r.Scan(&t.ID, &t.PostedOn, &t.Description, &t.SourceName, &t.AmountCents, &t.Currency, &t.Type,
+		&t.SpendingCategory, &t.TypeSetBy, &t.CategorySetBy, &n, &total)
+	if n != nil && total != nil {
+		t.Installment = &InstallmentResponse{Number: *n, Total: *total}
+	}
+	return t, err
+}
+
+// MonthTransactions returns the User's Transactions posted in [from, to), newest first.
+func (s *Store) MonthTransactions(ctx context.Context, userID string, from, to time.Time) ([]TransactionResponse, error) {
+	rows, err := s.db.Query(ctx, `SELECT `+transactionColumns+`
+		FROM finance_transactions t JOIN finance_sources s ON s.id = t.source_id
+		WHERE t.user_id = $1 AND t.posted_on >= $2 AND t.posted_on < $3
+		ORDER BY t.posted_on DESC, t.id`, userID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []TransactionResponse{}
+	for rows.Next() {
+		t, err := scanTransaction(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
+// ErrCategoryNeedsExpense is a category sent for a Transaction that is not, or
+// does not become, an Expense.
+var ErrCategoryNeedsExpense = errors.New("category needs expense")
+
+// UpdateTransaction applies the User's edit in one database transaction. found
+// is false when the row is not the User's. typ and category are nil when absent.
+//
+// Setting a category on a merchant saves the correction and files the User's
+// other Expenses of that merchant, except those the User set, under it as 'auto'.
+func (s *Store) UpdateTransaction(ctx context.Context, userID, id string, typ, category *string, now time.Time) (out TransactionResponse, found bool, err error) {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return out, false, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // a no-op after Commit
+	var curType, merchant string
+	var curCat, curBy *string
+	err = tx.QueryRow(ctx, `SELECT type, spending_category, category_set_by, merchant_key FROM finance_transactions
+		WHERE id = $1 AND user_id = $2 FOR UPDATE`, id, userID).Scan(&curType, &curCat, &curBy, &merchant)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return out, false, nil
+	} else if err != nil {
+		return out, false, err
+	}
+	newType := curType
+	if typ != nil {
+		newType = *typ
+	}
+	var newCat, by *string
+	switch {
+	case newType != "expense" && category != nil:
+		return out, true, ErrCategoryNeedsExpense
+	case newType != "expense":
+	case category != nil:
+		newCat, by = category, ptr("user")
+	case curCat != nil:
+		newCat, by = curCat, curBy
+	default:
+		newCat, by = ptr("other"), ptr("fallback")
+	}
+	if _, err = tx.Exec(ctx, `
+		UPDATE finance_transactions SET type = $3, type_set_by = CASE WHEN $4 THEN 'user' ELSE type_set_by END,
+			spending_category = $5, category_set_by = $6, updated_at = $7
+		WHERE id = $1 AND user_id = $2`, id, userID, newType, typ != nil, newCat, by, now); err != nil {
+		return out, true, err
+	}
+	if category != nil && merchant != "" {
+		if _, err = tx.Exec(ctx, `
+			INSERT INTO finance_merchant_categories (user_id, merchant_key, spending_category, updated_at) VALUES ($1, $2, $3, $4)
+			ON CONFLICT (user_id, merchant_key) DO UPDATE SET spending_category = $3, updated_at = $4`,
+			userID, merchant, *category, now); err != nil {
+			return out, true, err
+		}
+		if _, err = tx.Exec(ctx, `
+			UPDATE finance_transactions SET spending_category = $3, category_set_by = 'auto', updated_at = $4
+			WHERE user_id = $1 AND merchant_key = $2 AND type = 'expense' AND id <> $5 AND category_set_by IS DISTINCT FROM 'user'`,
+			userID, merchant, *category, now, id); err != nil {
+			return out, true, err
+		}
+	}
+	out, err = scanTransaction(tx.QueryRow(ctx, `SELECT `+transactionColumns+`
+		FROM finance_transactions t JOIN finance_sources s ON s.id = t.source_id WHERE t.id = $1`, id))
+	if err != nil {
+		return out, true, err
+	}
+	return out, true, tx.Commit(ctx)
+}
+
+func ptr(s string) *string { return &s }
+
 // FallbackUser is a User with Expenses nothing has categorised yet.
 type FallbackUser struct{ ID, Email string }
 

@@ -27,6 +27,49 @@ type CredentialsRequest struct {
 	ClientSecret string `json:"clientSecret"`
 }
 
+// TransactionResponse is one Transaction on the wire. AmountCents is signed:
+// negative is money out. What was spent is -AmountCents, for Expenses.
+type TransactionResponse struct {
+	ID               string               `json:"id"`
+	PostedOn         string               `json:"postedOn"`
+	Description      string               `json:"description"`
+	SourceName       string               `json:"sourceName"`
+	AmountCents      int64                `json:"amountCents"`
+	Currency         string               `json:"currency"`
+	Type             string               `json:"type"`
+	SpendingCategory *string              `json:"spendingCategory"`
+	TypeSetBy        string               `json:"typeSetBy"`
+	CategorySetBy    *string              `json:"categorySetBy"`
+	Installment      *InstallmentResponse `json:"installment"`
+}
+
+// InstallmentResponse is "number of total" of a card purchase paid in parts.
+type InstallmentResponse struct {
+	Number int `json:"number"`
+	Total  int `json:"total"`
+}
+
+// CategoryTotal is the spend of one Spending Category.
+type CategoryTotal struct {
+	Category   string `json:"category"`
+	SpentCents int64  `json:"spentCents"`
+}
+
+// MonthResponse is the answer of GET /me/finance/transactions.
+type MonthResponse struct {
+	Month        string                `json:"month"`
+	SpentCents   int64                 `json:"spentCents"`
+	Categories   []CategoryTotal       `json:"categories"`
+	Transactions []TransactionResponse `json:"transactions"`
+}
+
+// PatchTransactionRequest is the body of PATCH /me/finance/transactions/{id}:
+// an absent field is left as it is.
+type PatchTransactionRequest struct {
+	Type             *string `json:"type"`
+	SpendingCategory *string `json:"spendingCategory"`
+}
+
 // ConnectItemRequest is the body of POST /me/finance/items.
 type ConnectItemRequest struct {
 	ItemID string `json:"itemId"`
