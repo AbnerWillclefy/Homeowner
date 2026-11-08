@@ -24,6 +24,7 @@ import (
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/finance"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/nudge"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/photos"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
@@ -56,6 +57,9 @@ type App struct {
 	// Planner is the Allocation job's planner over the same database. It
 	// plans with the baseline allocator unless UseAllocator replaces it.
 	Planner *dayplan.Planner
+	// FinanceSyncer is the finance sync over the same database and fake Pluggy;
+	// nil unless started with a finance key and WithPluggy.
+	FinanceSyncer *finance.Syncer
 
 	queries *queryCounter
 	alloc   *swapAllocator
@@ -152,6 +156,12 @@ func WithFinance(key *[32]byte, emails ...string) Option {
 	return func(d *server.Deps) { d.FinanceAllowlist, d.FinanceKey = emails, key }
 }
 
+// WithFinanceSyncBudget sets how long one RunFinanceSync works. A tiny one ends
+// each run after its first window, to test a resumed import.
+func WithFinanceSyncBudget(d time.Duration) Option {
+	return func(deps *server.Deps) { deps.FinanceSyncBudget = d }
+}
+
 // pending marks Deps.Pluggy until Start has a *testing.TB to start the fake with.
 var pending = pluggy.NewHTTP("")
 
@@ -208,6 +218,10 @@ func Start(t testing.TB, opts ...Option) *App {
 	}
 	app.UseAllocator(allocation.Baseline{})
 	app.Auth, _ = deps.Verifier.(*auth.Fake)
+	if deps.Pluggy != nil && deps.FinanceKey != nil {
+		app.FinanceSyncer = finance.NewSyncer(finance.NewStore(pool), deps.Pluggy, deps.FinanceKey,
+			finance.NewAllowlist(deps.FinanceAllowlist), slog.New(slog.NewJSONHandler(logs, nil)), deps.FinanceSyncBudget)
+	}
 	return app
 }
 
@@ -256,6 +270,21 @@ func (a *App) RunAllocation(t testing.TB) dayplan.Summary {
 	sum, err := a.Planner.RunDue(context.Background(), a.Clock.Now())
 	if err != nil {
 		t.Fatalf("apitest: RunAllocation: %v", err)
+	}
+	return sum
+}
+
+// RunFinanceSync runs the finance sync once at the fake clock's current time,
+// exactly as the hourly event does, and returns what it did. It needs
+// WithFinance (with a key) and WithPluggy.
+func (a *App) RunFinanceSync(t testing.TB) finance.Summary {
+	t.Helper()
+	if a.FinanceSyncer == nil {
+		t.Fatal("apitest: RunFinanceSync needs WithFinance with a key and WithPluggy")
+	}
+	sum, err := a.FinanceSyncer.Run(context.Background(), a.Clock.Now())
+	if err != nil {
+		t.Fatalf("apitest: RunFinanceSync: %v", err)
 	}
 	return sum
 }
