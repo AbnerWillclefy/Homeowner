@@ -95,6 +95,13 @@ const section = (page: Page, heading: string) => page.getByRole("region", { name
 
 /** Opens a Finances view and returns its panel. */
 async function view(page: Page, name: string) {
+  // Ajustes is a route behind a button beside the title, not a tab.
+  if (name === "Ajustes" || name === "Settings") {
+    await page.getByRole("link", { name }).click();
+    return page.locator("main");
+  }
+  // Ajustes is a route: leave it before picking a tab.
+  if (page.url().endsWith("/finances/ajustes")) await page.getByRole("button", { name: /^(Voltar|Back)$/ }).click();
   await page.getByRole("tab", { name }).click();
   return page.getByRole("tabpanel", { name });
 }

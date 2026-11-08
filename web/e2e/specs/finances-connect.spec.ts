@@ -153,7 +153,7 @@ for (const l of LOCALES) {
 
       test("lists the Sources and the last sync, and asks nothing of the CDN before the tap", async ({ page, baseURL, pluggyCdn }) => {
         await visit(page, new URL("/finances", baseURL!).toString());
-        await page.getByRole("tab", { name: l.settings }).click();
+        await page.getByRole("link", { name: l.settings }).click();
         await expect(page.getByText(l.saved, { exact: true })).toBeVisible();
         await expect(page.getByText(l.checking, { exact: true })).toBeVisible();
         await expect(page.getByText(l.card, { exact: true })).toBeVisible();
@@ -168,10 +168,10 @@ for (const l of LOCALES) {
           Object.assign(window, { __pluggyMode: "success", __pluggyItemId: "item-abc" });
         });
         await visit(page, new URL("/finances", baseURL!).toString());
-        await page.getByRole("tab", { name: l.settings }).click();
+        await page.getByRole("link", { name: l.settings }).click();
         await page.getByRole("button", { name: l.connect }).click();
 
-        await expect(page.getByRole("tabpanel", { name: l.settings }).getByText(l.importing)).toBeVisible();
+        await expect(page.getByText(l.importing)).toBeVisible();
         expect(pluggyCdn.requests).toEqual(["GET /pluggy-connect.js"]);
         const script = page.locator("script[src*='pluggy']");
         await expect(script).toHaveAttribute("integrity", pluggyConnectSri);
@@ -188,7 +188,7 @@ for (const l of LOCALES) {
       test("closing the widget without connecting is calm and registers nothing", async ({ page, baseURL, fakeApi, pluggyCdn }) => {
         void pluggyCdn;
         await visit(page, new URL("/finances", baseURL!).toString());
-        await page.getByRole("tab", { name: l.settings }).click();
+        await page.getByRole("link", { name: l.settings }).click();
         await page.getByRole("button", { name: l.connect }).click();
         await expect(page.getByText(l.closed)).toBeVisible();
         await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toHaveCount(0);
@@ -198,7 +198,7 @@ for (const l of LOCALES) {
       test("rejected credentials show a calm message and no widget", async ({ page, baseURL, fakeApi, pluggyCdn }) => {
         fakeApi.override("POST /me/finance/connect-token", { status: 422, body: { error: "pluggy_credentials_rejected" } });
         await visit(page, new URL("/finances", baseURL!).toString());
-        await page.getByRole("tab", { name: l.settings }).click();
+        await page.getByRole("link", { name: l.settings }).click();
         await page.getByRole("button", { name: l.connect }).click();
         // Every form keeps its own empty live region in the page, so pick the one that has the message.
         await expect(page.getByRole("alert").filter({ hasText: l.rejected })).toBeVisible();
@@ -207,7 +207,7 @@ for (const l of LOCALES) {
 
       test("removing the credentials asks first", async ({ page, baseURL }) => {
         await visit(page, new URL("/finances", baseURL!).toString());
-        await page.getByRole("tab", { name: l.settings }).click();
+        await page.getByRole("link", { name: l.settings }).click();
         await page.getByRole("button", { name: l.remove, exact: true }).click();
         const dialog = page.getByRole("dialog");
         await dialog.getByRole("button", { name: l.cancel }).click();
@@ -221,7 +221,7 @@ for (const l of LOCALES) {
 
       test("deleting the finance data: cancel keeps it, confirm clears it, and the dialog has the danger action last", async ({ page, baseURL, fakeApi }) => {
         await visit(page, new URL("/finances", baseURL!).toString());
-        await page.getByRole("tab", { name: l.settings }).click();
+        await page.getByRole("link", { name: l.settings }).click();
         await page.getByRole("button", { name: l.del }).click();
         const dialog = page.getByRole("dialog", { name: l.delTitle });
         await expect(dialog).toContainText(l.stays);
@@ -250,7 +250,7 @@ for (const l of LOCALES) {
           document.addEventListener("DOMContentLoaded", () => (document.documentElement.style.fontSize = "200%"));
         });
         await visit(page, new URL("/finances", baseURL!).toString());
-        await page.getByRole("tab", { name: l.settings }).click();
+        await page.getByRole("link", { name: l.settings }).click();
         await expect(page.getByText(l.saved, { exact: true })).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
       });

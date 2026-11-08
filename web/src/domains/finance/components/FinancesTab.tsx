@@ -1,149 +1,100 @@
-import { useState } from "react";
+import { Settings } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router";
+import { FINANCES_SETTINGS_PATH } from "../../../app/logic/routes";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { PageHeader } from "../../../shared/ui/PageHeader";
-import { PageLoading, useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
-import { SkeletonBar } from "../../../shared/ui/Skeleton";
+import { PageLoading } from "../../../shared/ui/PageLoading";
 import { useFinance } from "../hooks/useFinance";
-import { BankSources } from "./BankSources";
 import { BillsSection } from "./BillsSection";
 import { ChartPreview } from "./charts/ChartPreview";
-import { Commitments, MonthlyIncome } from "./Commitments";
-import { CredentialsForm } from "./CredentialsForm";
-import { DeleteFinanceData } from "./DeleteFinanceData";
-import { FinanceTabs } from "./FinanceTabs";
+import { Commitments } from "./Commitments";
+import { FinanceSetup, FinanceStatusGate } from "./FinanceSetup";
+import { FinanceTabs, VIEWS, type FinanceView } from "./FinanceTabs";
 import { MonthSpending } from "./MonthSpending";
-import { SavedCredentials } from "./SavedCredentials";
-import { SetupSteps } from "./SetupSteps";
 
 /** Finances: private to the User, with no link to Residents, Chores, Tasks or Allocation. */
 export function FinancesTab() {
   const { t } = useI18n();
+  const finance = useFinance();
+  // Ajustes only once there are Sources: before that the setup flow is the whole page.
+  const hasSources = finance.state.kind === "ready" && finance.state.data.sources.length > 0;
   return (
     <PageLoading message={t("finances.loading")}>
-      <PageHeader title={t("finances.title")} />
+      <PageHeader
+        title={t("finances.title")}
+        aside={
+          hasSources && (
+            <Button asChild variant="secondary">
+              <Link to={FINANCES_SETTINGS_PATH}>
+                <Settings aria-hidden="true" size={18} />
+                {t("finances.settings.open")}
+              </Link>
+            </Button>
+          )
+        }
+      />
       {import.meta.env.DEV && <ChartPreview />}
-      <FinancesBody />
+      <FinancesBody finance={finance} />
     </PageLoading>
   );
 }
 
-function FinancesBody() {
+/** The view kept in this history entry's state, so Back from Ajustes returns to it. Never in the URL. */
+function useView(): [FinanceView, (view: FinanceView) => void] {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const kept = (location.state as { view?: unknown } | null)?.view;
+  const view = VIEWS.find((v) => v === kept) ?? "summary";
+  // Same path, so the shell's focus-on-navigate (keyed on the pathname) does not fire.
+  return [view, (next) => navigate(".", { replace: true, state: { view: next } })];
+}
+
+function FinancesBody({ finance }: { finance: ReturnType<typeof useFinance> }) {
   const { t } = useI18n();
-  const finance = useFinance();
-  const { state, busy, problem } = finance;
-  const [replacing, setReplacing] = useState(false);
-  const skeleton = useReportFirstLoad(state.kind === "loading");
-  useReportFetching(finance.refreshing);
-
-  const problemIn = (area: "form" | "connect" | "data") => (problem?.area === area ? problem.problem : null);
-
-  if (state.kind === "loading") {
-    return skeleton ? (
-      <div aria-hidden="true">
-        <SkeletonBar className="h-5 w-full" />
-      </div>
-    ) : null;
-  }
-  if (state.kind === "failed") {
-    return (
-      <div className="flex flex-col items-start gap-3">
-        <p role="alert" className="my-0 font-semibold">
-          {t("finances.load.failed")}
-        </p>
-        <Button variant="secondary" onClick={() => void finance.reload()}>
-          {t("finances.load.retry")}
-        </Button>
-      </div>
-    );
-  }
-
-  const status = state.data;
-  const showForm = !status.configured || replacing;
-  const credentials = (
-    <>
-      {!status.configured && (
-        <>
-          <p className="my-0">{t("finances.empty")}</p>
-          <SetupSteps />
-        </>
-      )}
-      {showForm ? (
-        <CredentialsForm
-          saving={busy === "save"}
-          problem={problemIn("form")}
-          onSave={async (id, secret) => {
-            const saved = await finance.save(id, secret);
-            if (saved) setReplacing(false);
-            return saved;
-          }}
-          {...(status.configured && { onCancel: () => { setReplacing(false); finance.clearProblem(); } })}
-        />
-      ) : (
-        <SavedCredentials
-          removing={busy === "remove"}
-          problem={problemIn("data")}
-          onReplace={() => setReplacing(true)}
-          onRemove={finance.remove}
-          onDismissProblem={finance.clearProblem}
-        />
-      )}
-    </>
-  );
-  const deletion = (status.configured || status.sources.length > 0) && (
-    <DeleteFinanceData
-      deleting={busy === "delete"}
-      problem={problemIn("data")}
-      onDelete={finance.deleteAll}
-      onDismissProblem={finance.clearProblem}
-    />
-  );
-  const sources = status.configured && !replacing && (
-    <BankSources
-      status={status}
-      connecting={busy === "connect"}
-      problem={problemIn("connect")}
-      closed={finance.closed}
-      onConnect={() => void finance.connect()}
-    />
-  );
-
-  // Before the first Source there is nothing to read yet: the setup flow stays one short column.
-  if (status.sources.length === 0) {
-    return (
-      <div className="flex flex-col gap-4">
-        <BillsSection />
-        {credentials}
-        {sources}
-        {deletion}
-      </div>
-    );
-  }
+  const [view, setView] = useView();
 
   return (
-    <FinanceTabs
-      panels={{
-        spending: (
-          <>
-            {status.importing && <p className="my-0 text-muted">{t("finances.importing")}</p>}
-            <MonthSpending />
-          </>
-        ),
-        bills: (
-          <>
-            <BillsSection />
-            <Commitments />
-          </>
-        ),
-        settings: (
-          <>
-            {sources}
-            <MonthlyIncome />
-            {credentials}
-            {deletion}
-          </>
-        ),
-      }}
-    />
+    <FinanceStatusGate finance={finance}>
+      {(status) => (
+        <FinanceSetup finance={finance} status={status}>
+          {({ sources, credentials, deletion }) =>
+            // Before the first Source there is nothing to read yet: the setup flow stays one short column.
+            status.sources.length === 0 ? (
+              <div className="flex flex-col gap-4">
+                <BillsSection />
+                {credentials}
+                {sources}
+                {deletion}
+              </div>
+            ) : (
+              <FinanceTabs
+                view={view}
+                onView={setView}
+                panels={{
+                  summary: (
+                    <Button asChild variant="link">
+                      <Link to={FINANCES_SETTINGS_PATH}>{t("finances.summary.income")}</Link>
+                    </Button>
+                  ),
+                  spending: (
+                    <>
+                      {status.importing && <p className="my-0 text-muted">{t("finances.importing")}</p>}
+                      <MonthSpending />
+                    </>
+                  ),
+                  bills: (
+                    <>
+                      <BillsSection />
+                      <Commitments />
+                    </>
+                  ),
+                }}
+              />
+            )
+          }
+        </FinanceSetup>
+      )}
+    </FinanceStatusGate>
   );
 }

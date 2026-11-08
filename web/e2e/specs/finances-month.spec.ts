@@ -84,6 +84,7 @@ for (const l of LOCALES) {
       fakeApi.use(signedInHandlers);
       await seedSession(page, { email: RESIDENT_EMAIL });
       await visit(page, new URL("/finances", baseURL!).toString());
+      await page.getByRole("tab", { name: /^(Gastos|Spending)$/ }).click(); // Finances opens on Resumo
     });
 
     test("shows the total, the categories, a refund in words and the transfers apart", async ({ page }) => {
@@ -163,6 +164,7 @@ for (const l of LOCALES) {
         document.addEventListener("DOMContentLoaded", () => (document.documentElement.style.fontSize = "200%"));
       });
       await visit(page, new URL("/finances", baseURL!).toString());
+      await page.getByRole("tab", { name: /^(Gastos|Spending)$/ }).click(); // Finances opens on Resumo
       await page.getByRole("button", { name: new RegExp(l.groceries) }).click();
       await expect(page.getByText(l.refund)).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
