@@ -55,6 +55,7 @@ func twoSynced(t *testing.T) (app *apitest.App, ana, bia *apitest.Client, anaID,
 			id, bill.Body["id"]); err != nil {
 			t.Fatal(err)
 		}
+		apitest.ExpectStatus(t, c.Put("/me/finance/budgets/groceries", map[string]any{"limitCents": 40000}), http.StatusNoContent)
 		apitest.ExpectStatus(t, c.Put("/me/finance/income", map[string]any{"monthlyIncomeCents": 500000}), http.StatusNoContent)
 		for i, n := range rowsOf(t, app, id) {
 			if n == 0 {

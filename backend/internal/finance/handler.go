@@ -70,6 +70,11 @@ func (h *Handler) Month(w http.ResponseWriter, r *http.Request) {
 		httpx.InternalError(w, h.log, "finance: read month", err)
 		return
 	}
+	limits, err := h.store.Budgets(r.Context(), identity.CurrentUser(r.Context()).ID)
+	if err != nil {
+		httpx.InternalError(w, h.log, "finance: read budgets", err)
+		return
+	}
 	totals := MonthTotals(toTxns(txns))
 	cats := []CategoryTotal{}
 	for c, cents := range totals.ByCategory {
@@ -80,7 +85,7 @@ func (h *Handler) Month(w http.ResponseWriter, r *http.Request) {
 	slices.SortFunc(cats, func(a, b CategoryTotal) int {
 		return cmp.Or(cmp.Compare(b.SpentCents, a.SpentCents), cmp.Compare(a.Category, b.Category))
 	})
-	httpx.WriteJSON(w, http.StatusOK, MonthResponse{Month: month, SpentCents: totals.Spend, Categories: cats, Transactions: txns})
+	httpx.WriteJSON(w, http.StatusOK, MonthResponse{Month: month, SpentCents: totals.Spend, Categories: cats, Transactions: txns, Limits: limits})
 }
 
 // SpendingCategories is the fixed, ordered list of Spending Category ids.

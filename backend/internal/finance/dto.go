@@ -61,6 +61,7 @@ type MonthResponse struct {
 	SpentCents   int64                 `json:"spentCents"`
 	Categories   []CategoryTotal       `json:"categories"`
 	Transactions []TransactionResponse `json:"transactions"`
+	Limits       map[string]int64      `json:"limits"` // category to monthly limit; the same every month
 }
 
 // ReportMonth is one month of GET /me/finance/report: all 13 categories, in order.
