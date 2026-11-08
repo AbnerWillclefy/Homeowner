@@ -99,13 +99,27 @@ their `locals`, backend key, `environment` tag, Neon project and budget.
      --type SecureString --value "$(openssl rand -base64 32)"
    ```
    Create it by hand so the key never lands in Terraform state. Only the API
-   role may read it: the Allocation job's policy names its parameters one by
-   one. **Never `--overwrite` a key in use**: every saved credential becomes
+   role and the finance job's may read it: the Allocation job's policy names
+   its parameters one by one. **Never `--overwrite` a key in use**: every saved credential becomes
    unreadable and Users must paste theirs again (Transactions are unaffected).
    The API reads the key once per cold start. To check the grant:
    `aws iam simulate-principal-policy --policy-source-arn <allocate role arn>
    --action-names ssm:GetParameter --resource-arns <key arn>` answers
    `implicitDeny`; the same call with the API role answers `allowed`.
+
+## The finance sync job
+
+`module "finance_job"` (both roots) is a third Lambda from the API image,
+command `finance-events`, named `homeowner-<env>-finance`, started by an
+EventBridge rule every hour. It reads only `database-url`,
+`finance-encryption-key` and `finance-allowlist`. Cost: 24 invocations a day;
+most find nobody due and last milliseconds, and a User's 12-month import takes
+a few runs of up to 60 seconds, once. Nothing bills while idle.
+
+Rejected credentials make the job retry that User every hour, so up to 24
+failed Pluggy `Auth` calls a day until the User fixes them. That is accepted
+for now. Without the encryption key the job answers each event and logs
+`finance sync disabled`.
 
 ## How a deploy works
 

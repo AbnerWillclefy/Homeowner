@@ -210,6 +210,39 @@ module "allocation_job" {
   )
 }
 
+# The Finances sync (#425): the same image, started with the command
+# "finance-events", once an hour. It imports a User's last 12 months in monthly
+# windows that resume across runs, then refreshes each User once a day, so most
+# invocations find nobody due and end in milliseconds (docs/adr/0008).
+module "finance_job" {
+  source = "../modules/scheduled-job"
+
+  name                = "${local.name_prefix}-finance"
+  description         = "Imports and refreshes the Transactions of every User whose sync is due"
+  image_uri           = "${module.api.ecr_repository_url}:${var.image_tag}"
+  command             = ["finance-events"]
+  schedule_expression = "rate(1 hour)"
+  ssm_path_prefix     = local.ssm_prefix
+
+  # Only this job and the API may read the finance encryption key (#423).
+  ssm_parameter_names = ["database-url", "finance-encryption-key", "finance-allowlist"]
+
+  # A run works up to 60s and stops starting windows with 10s left.
+  timeout = 90
+
+  environment = {
+    PORT                             = "8080"
+    DB_MAX_CONNS                     = "2"
+    DATABASE_URL_SSM_PARAM           = module.database.database_url_param
+    FINANCE_ENCRYPTION_KEY_SSM_PARAM = "${local.ssm_prefix}/finance-encryption-key"
+    FINANCE_ALLOWLIST_SSM_PARAM      = aws_ssm_parameter.finance_allowlist.name
+
+    # Lambda Web Adapter forwards the scheduled event to POST /events; "/" is
+    # not served by the job.
+    AWS_LWA_READINESS_CHECK_PATH = "/healthz"
+  }
+}
+
 # Emails allowed to use Finances (#422), a StringList a human edits with
 # `aws ssm put-parameter --overwrite` (docs/development.md). Terraform creates
 # it with a placeholder (SSM refuses an empty value; "none" has no @, so it
