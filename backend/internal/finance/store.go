@@ -375,6 +375,30 @@ func (s *Store) MonthTransactions(ctx context.Context, userID string, from, to t
 	return out, rows.Err()
 }
 
+// SpendRows returns what the daily pace reads of the User's Transactions posted
+// in [from, to): date, signed amount, type and category, with no join.
+func (s *Store) SpendRows(ctx context.Context, userID string, from, to time.Time) ([]Txn, error) {
+	rows, err := s.db.Query(ctx, `SELECT posted_on, amount_cents, type, spending_category
+		FROM finance_transactions WHERE user_id = $1 AND posted_on >= $2 AND posted_on < $3`, userID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Txn
+	for rows.Next() {
+		var t Txn
+		var category *string
+		if err := rows.Scan(&t.PostedOn, &t.AmountCents, &t.Type, &category); err != nil {
+			return nil, err
+		}
+		if category != nil {
+			t.Category = *category
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
 // ErrCategoryNeedsExpense is a category sent for a Transaction that is not, or
 // does not become, an Expense.
 var ErrCategoryNeedsExpense = errors.New("category needs expense")

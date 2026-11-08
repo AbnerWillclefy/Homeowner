@@ -357,7 +357,8 @@ func UsualPace(months [][]int64, days int) []int64 {
 		for _, m := range months {
 			sum += m[min(d, len(m)-1)]
 		}
-		out[d] = (2*sum + n) / (2 * n)	}
+		out[d] = (2*sum + n) / (2 * n)
+	}
 	return out
 }
 
