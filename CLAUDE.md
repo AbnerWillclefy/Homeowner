@@ -37,7 +37,7 @@ Every ticket is refined for the agents. The maintainer is learning Go, AWS and s
 
 ## Architecture documentation
 
-`docs/architecture/` describes the system as built, owned by `software-architect`. A documentation ticket is delegated to `software-architect`. Any pull request that changes the system's shape (a new module, entry point, AWS resource, data table, or external service) updates `docs/architecture/` in the same pull request. Diagrams are Mermaid, so GitHub renders them.
+`docs/architecture/` describes the system as built, owned by `software-architect`. A documentation ticket is delegated to `software-architect`. A pull request that changes the system's shape (a new module, entry point, AWS resource, data table, or external service) updates `docs/architecture/` in the same pull request, unless its ticket belongs to an epic: an epic's tickets build in parallel and their doc edits conflicted, so its last ticket, blocked by all the others, updates `docs/architecture/` for the whole epic. Diagrams are Mermaid, so GitHub renders them.
 
 ## Working a ticket
 

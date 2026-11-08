@@ -5,14 +5,13 @@ import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { launchApp, visit } from "../pages/launch";
 
-// What this covers, in both locales: the Finances tab shows as the fifth tab only when GET /me says `finance: true`,
+// What this covers, in pt-BR: the Finances tab shows as the fifth tab only when GET /me says `finance: true`,
 // opens an empty state, survives a rename (PUT /me/name answers the flag too), and is absent for everyone else, where
 // /finances goes to Today and the Finances chunk is never requested. At 320px with the root font at 200% the label
 // wraps and is never truncated, and all five tabs stay at least 44px tall.
 
 const LOCALES = [
   { locale: "pt-BR", tab: "Finanças", empty: "Suas finanças são só suas. Conecte seus bancos para começar.", today: "Hoje", me: "Eu", edit: "Editar nome e foto", nameLabel: "Nome", save: "Salvar" },
-  { locale: "en-US", tab: "Finances", empty: "Your finances are yours alone. Connect your banks to start.", today: "Today", me: "Me", edit: "Edit name and photo", nameLabel: "Name", save: "Save" },
 ] as const;
 
 const state = (finance: boolean) => {

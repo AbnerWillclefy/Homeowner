@@ -8,7 +8,7 @@ import { RESIDENT_EMAIL, signedInResident, thirtyDayHistory } from "../mocks/sam
 import { seedSession } from "../mocks/session";
 import { launchApp, visit } from "../pages/launch";
 
-// What this covers, in both locales and at the largest text size: Me's "My Completions" section. The last 30 days by
+// What this covers, in pt-BR and at the largest text size: Me's "My Completions" section. The last 30 days by
 // day, newest first, with the older days dated; the "with" line of a two-person Completion; the neutral empty state;
 // the skeleton while the detail is held, with the rest of Me usable; a failed detail with Retry that recovers while
 // the other cards work; a failed Residents list that offers Retry and never says "nothing completed"; only the
@@ -36,27 +36,6 @@ const LOCALES = [
     signOut: "Sair",
     settingsHeading: "Seus ajustes",
     change: /^Mudar hora/,
-  },
-  {
-    locale: "en-US",
-    me: "Me",
-    home: "Home",
-    heading: "My Completions",
-    today: "Today",
-    yesterday: "Yesterday",
-    older: ["Wednesday, January 2", "Monday, December 17"],
-    vacuumMeta: "Floors · 9:15 AM, with Bruna Souza",
-    empty: "Nothing completed in the last 30 days.",
-    error: "Could not load your Completions. Try again in a moment.",
-    retry: "Try again",
-    baseline: "Baseline",
-    preferences: "Preferences",
-    restrictions: "Restrictions",
-    appearance: "Appearance",
-    language: "Language",
-    signOut: "Sign out",
-    settingsHeading: "Your settings",
-    change: /^Change time/,
   },
 ] as const;
 

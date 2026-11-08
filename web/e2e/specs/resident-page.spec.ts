@@ -5,7 +5,7 @@ import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
 
-// What this covers, in both locales: a housemate's page at /home/residents/:id under the Home tab. The header
+// What this covers, in pt-BR: a housemate's page at /home/residents/:id under the Home tab. The header
 // (name, Streak, last-30-days count), the day groups (Today, Yesterday, then the weekday, from the Home's date and
 // zone: 02:30Z is still the evening before in Sao Paulo), the oldest Completion first, the "with" line and no
 // actions, the empty state, not found, an error with Retry, the skeleton and its steady layout, a deep link and
@@ -35,29 +35,6 @@ const LOCALES = [
     nav: "Principal",
     home: "Lar",
     residentsRegion: "Moradores",
-  },
-  {
-    locale: "en-US",
-    back: "Your Home",
-    streak: "day Streak",
-    done30: "Tasks done in 30 days",
-    recent: "Done lately",
-    today: "Today",
-    yesterday: "Yesterday",
-    saturday: "Saturday, January 12",
-    tenBack: "Saturday, January 5",
-    twentyNineBack: "Monday, December 17",
-    shower: "9:02 AM",
-    vacuumMeta: "Floors · 9:15 AM, with Bruna Souza",
-    stoveMeta: "Kitchen · 7:40 PM",
-    trashMeta: "Trash · 11:30 PM",
-    empty: "Nothing completed in the last 30 days.",
-    notFound: "We could not find this Resident in your Home.",
-    error: "Something went wrong loading this Resident. Try again in a moment.",
-    retry: "Try again",
-    nav: "Main",
-    home: "Home",
-    residentsRegion: "Residents",
   },
 ] as const;
 

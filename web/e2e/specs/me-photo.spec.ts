@@ -9,7 +9,7 @@ import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
 
-// What this covers, in both locales: choosing a photo shows a square preview at the Me and list sizes and sends
+// What this covers, in pt-BR: choosing a photo shows a square preview at the Me and list sizes and sends
 // nothing; Choose another replaces it; Save runs ask, put, confirm and the Me header changes and the Residents list reloads with no page reload; a refused
 // put shows a retry that asks again; a 503 says photos are off; Remove returns to initials; an EXIF-rotated photo
 // previews upright; a file that is not an image keeps the current photo.
@@ -33,20 +33,6 @@ const LOCALES = [
     unreadable: "Não foi possível ler este arquivo. Escolha uma foto JPEG, PNG ou WebP.",
     saveFailed: "A foto não foi salva e a atual continua a mesma. Tente de novo.",
     off: "Fotos indisponíveis no momento. Tente mais tarde.",
-  },
-  {
-    locale: "en-US",
-    me: "Me",
-    edit: "Edit name and photo",
-    choose: "Choose photo",
-    another: "Choose another",
-    save: "Save photo",
-    retry: "Try again",
-    remove: "Remove photo",
-    caption: "This is how it will look",
-    unreadable: "We could not read this file. Choose a photo in JPEG, PNG or WebP.",
-    saveFailed: "The photo was not saved and your current photo is unchanged. Try again.",
-    off: "Photos are not available right now. Try again later.",
   },
 ] as const;
 

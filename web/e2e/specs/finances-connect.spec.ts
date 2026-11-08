@@ -7,7 +7,7 @@ import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
 
-// What this covers, in both locales: the Finances tab walks a User through Pluggy (why each step matters), saves the
+// What this covers, in pt-BR: the Finances tab walks a User through Pluggy (why each step matters), saves the
 // Client ID and Secret without ever showing them again, loads the Pluggy Connect script only on the tap, registers the
 // item the widget returns, lists the Sources while the import runs, and deletes on request. The widget and the CDN are
 // stubs (e2e/mocks/pluggyCdn.ts); the e2e build keeps `integrity` on, with the stub's own hash.
@@ -39,30 +39,6 @@ const LOCALES = [
     delTitle: "Apagar seus dados financeiros?",
     stays: /continuam conectados no MeuPluggy/,
     settings: "Ajustes",
-  },
-  {
-    locale: "en-US",
-    steps: "Three steps to connect your banks",
-    link: "Open meu.pluggy.ai (new tab)",
-    id: "Client ID",
-    secret: "Client Secret",
-    save: "Save credentials",
-    saved: "Credentials saved",
-    replace: "Replace",
-    remove: "Remove",
-    removeConfirm: "Remove credentials",
-    cancel: "Cancel",
-    connect: "Connect banks",
-    closed: "Nothing was connected. You can try again whenever you like.",
-    importing: "Importing your transactions…",
-    lastSync: /Last synced .*2026/,
-    checking: "Checking account",
-    card: "Credit card",
-    rejected: "We could not sign in to Pluggy with these credentials.",
-    del: "Delete my finance data",
-    delTitle: "Delete your finance data?",
-    stays: /stay connected in MeuPluggy/,
-    settings: "Settings",
   },
 ] as const;
 

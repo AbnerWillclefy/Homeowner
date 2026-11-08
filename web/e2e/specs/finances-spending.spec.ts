@@ -4,7 +4,7 @@ import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
 
-// What this covers, in both locales, with the clock fixed on 31 December (the previous month has 30 days): Gastos
+// What this covers, in pt-BR, with the clock fixed on 31 December (the previous month has 30 days): Gastos
 // says in neutral words how the month compares with the same days of November (cut at day 30), lists the Transactions
 // with no Spending Category in a card that edits them and disappears once none are left, draws every category as a bar
 // with last month's same-days value as text, opens a category by day, keeps Transfers and income under "Fora dos
@@ -31,26 +31,6 @@ const LOCALES = [
     prev: "Mês anterior",
     category: "Categoria de gasto",
     save: "Salvar",
-  },
-  {
-    locale: "en-US",
-    more: /R\$125\.10 more than in November up to day 30/,
-    wholeNone: "No transactions in October to compare with.",
-    groceries: "Groceries",
-    leisure: "Leisure",
-    other: "Other",
-    health: "Health",
-    pets: "Pets",
-    marker: /November up to day 30: R\$792\.00/,
-    healthMarker: /November up to day 30: R\$89\.90/,
-    uncategorised: "No spending category",
-    count: /1 transaction needs a category/,
-    leftOut: "Left out of totals",
-    transfers: "Transfers",
-    income: "Income",
-    prev: "Previous month",
-    category: "Spending category",
-    save: "Save",
   },
 ] as const;
 

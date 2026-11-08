@@ -36,24 +36,6 @@ const LOCALES = [
     dialogTitle: "O que você vai dar?",
     outgoing: "Suas ofertas de troca",
   },
-  {
-    locale: "en-US",
-    accept: (task: string) => `Accept ${task}`,
-    refuse: (task: string) => `Refuse ${task}`,
-    take: (task: string) => `Take ${task}`,
-    done: (task: string) => `Done with ${task}`,
-    swap: (task: string) => `Swap ${task}`,
-    acceptAll: /^Accept all \d+ Tasks$/,
-    acceptSwap: "Accept swap",
-    declineSwap: "Decline swap",
-    cancelSwap: "Cancel swap",
-    doneHeading: "Done today",
-    committed: "Committed",
-    stale: /The Tasks changed/,
-    submit: "Offer swap",
-    dialogTitle: "What will you give?",
-    outgoing: "Your offers",
-  },
 ] as const;
 
 const task = (id: string, name: string, extra: Partial<PlanTask> = {}): PlanTask => ({

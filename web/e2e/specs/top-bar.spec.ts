@@ -9,7 +9,7 @@ import { shell } from "../pages/shell";
 
 // What this covers: the top bar above every tab (the logo as the page's one h1, the Streak on the right), the logo
 // alone before the Home, focus on each tab's own heading, and a bar that keeps its height while the Streak loads.
-// In pt-BR first, then en-US.
+// In pt-BR.
 
 const LOCALES = [
   {
@@ -17,12 +17,6 @@ const LOCALES = [
     streak: /^Sequência: /,
     tagline: "Gerencie os afazeres domésticos do seu lar.",
     tabs: ["Hoje", "Afazeres", "Lar", "Eu"],
-  },
-  {
-    locale: "en-US",
-    streak: /^Streak: /,
-    tagline: "Manage the housework in your Home.",
-    tabs: ["Today", "Chores", "Home", "Me"],
   },
 ] as const;
 

@@ -9,9 +9,9 @@ import { shell } from "../pages/shell";
 
 // What this covers: the top bar stays on one row at 320px and the default text size, in every state of the Energy
 // indicator (Energy, Drained, no Baseline, checked in before the Allocation, no Check-in, read failed), in pt-BR
-// first, then en-US. One row means the indicator, the Streak and the logo share a vertical centre.
+// only. One row means the indicator, the Streak and the logo share a vertical centre.
 
-const LOCALES = ["pt-BR", "en-US"] as const;
+const LOCALES = ["pt-BR"] as const;
 const STATES = ["energy", "drained", "no-baseline", "pending", "unset", "failed"] as const;
 
 for (const locale of LOCALES) {

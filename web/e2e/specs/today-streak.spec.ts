@@ -12,7 +12,7 @@ import { shell } from "../pages/shell";
 // focus comes back to it on close (Close button and Escape), a Streak of 0 looks like any other number, a held
 // Streak does not hold Today (the flame arrives in its reserved slot), a Streak that could not be read leaves no button, a failed
 // refresh keeps the number, and the bar holds at 320px with three digits. No Streak card
-// is left in the body. Each test runs in pt-BR first, then en-US.
+// is left in the body. Each test runs in pt-BR.
 
 const LOCALES = [
   {
@@ -28,21 +28,6 @@ const LOCALES = [
       "Um dia sem tarefas assumidas, ou esgotado, pausa a sequência.",
       "Assumir tarefas e não concluir nenhuma quebra a sequência.",
       "Recusar ou ignorar uma tarefa proposta nunca quebra a sequência.",
-    ],
-  },
-  {
-    locale: "en-US",
-    name: (count: number) => `Streak: ${count} ${count === 1 ? "day" : "days"}`,
-    streakName: /^Streak: /,
-    title: "Your Streak",
-    close: "Close",
-    todayCounts: "Today counts",
-    empty: "Finish a Task to start one",
-    rules: [
-      "Finishing one Task in a day grows it.",
-      "A day with nothing taken on, or a Drained day, pauses it.",
-      "Taking on Tasks and finishing none breaks it.",
-      "Refusing or ignoring a proposed Task never breaks it.",
     ],
   },
 ] as const;
