@@ -5,35 +5,64 @@ import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
 
-// What this covers, in pt-BR: the Installments section (in the Bills view) lists the coming months with their committed amount in
-// BRL and no percentage until a Monthly income is set; setting the income shows the share (also above 100%, with no
-// alarm word, icon or exclamation mark); clearing it takes the shares away; a month opens to its components; a
-// bad income gets a message; and no installments is said calmly. The Monthly income field is in the Settings view. At 320px with the root font at 200% nothing
-// overflows sideways. The 320px runs also save the screenshots for the pull request description.
+// What this covers, pt-BR first and then English, with the clock fixed on 15 November 2026: "Próximos meses" (in the
+// Contas view) draws every month with a commitment as a bar split into Bills and installments, with each total and the
+// split as text, labels the current month as only the Bills still to pay, lists the Installment plans in progress with
+// the next part, the total and the last month (one that ends this month, one that crosses into next year), and
+// shows the Monthly income as text and a line on every bar once it is set, with no alarm word, icon or exclamation
+// mark, even above 100%. The income is not edited there: a link goes to Ajustes, where the field is, with its messages.
+// No commitments is said calmly. At 320px with the root font at 200% nothing overflows sideways.
 
 const LOCALES = [
   {
     locale: "pt-BR",
-    file: "pt-BR",
-    heading: "Parcelamentos",
+    heading: "Próximos meses",
     bills: "Contas",
     settings: "Ajustes",
     income: "Renda mensal",
     save: "Salvar",
     clear: "Remover",
-    december: /dezembro de 2026/i,
-    january: /janeiro de 2027/i,
-    dec: /R\$\s*870,00/,
-    jan: /R\$\s*570,00/,
-    pct: (n: number) => `${n}% da renda já comprometido`,
-    sharePattern: /da renda/,
-    fridge: "Geladeira 4 de 10",
-    bill: "Internet",
-    empty: "Nenhum parcelamento nos próximos meses.",
-    failed: "Não conseguimos carregar os parcelamentos. Verifique sua conexão e tente de novo.",
+    november: /novembro de 2026: R\$\s*320,00/i,
+    december: /dezembro de 2026: R\$\s*870,00/i,
+    january: /janeiro de 2027: R\$\s*570,00/i,
+    split: /Contas R\$\s*120,00 · Parcelamentos R\$\s*750,00/,
+    currentNote: "Só contas ainda a pagar",
+    plansHeading: "Parcelamentos em andamento",
+    plans: ["Sofá: próxima 3 de 3 · última em novembro", "Geladeira: próxima 4 de 10 · última em junho", "Televisão: próxima 2 de 6 · última em abril"],
+    incomeText: /Renda mensal: R\$\s*600,00/,
+    change: "Alterar renda",
+    set: "Informar renda mensal",
+    marker: "A linha em cada barra marca a sua renda mensal.",
+    empty: "Nenhuma conta ou parcelamento nos próximos meses.",
+    failed: "Não conseguimos carregar os próximos meses. Verifique sua conexão e tente de novo.",
     retry: "Tentar novamente",
     problems: { empty: "Digite sua renda mensal, por exemplo 5.000,00.", zero: "A renda mensal precisa ser maior que zero.", junk: "Use só números, por exemplo 5.000,00." },
-    typed: { high: "600,00", low: "5.000,00" },
+    typed: { high: "600,00" },
+  },
+  {
+    locale: "en-US",
+    heading: "Coming months",
+    bills: "Bills",
+    settings: "Settings",
+    income: "Monthly income",
+    save: "Save",
+    clear: "Clear",
+    november: /November 2026: R\$\s*320\.00/i,
+    december: /December 2026: R\$\s*870\.00/i,
+    january: /January 2027: R\$\s*570\.00/i,
+    split: /Bills R\$\s*120\.00 · Installments R\$\s*750\.00/,
+    currentNote: "Only bills still to pay",
+    plansHeading: "Installment plans in progress",
+    plans: ["Sofá: next 3 of 3 · last in November", "Geladeira: next 4 of 10 · last in June", "Televisão: next 2 of 6 · last in April"],
+    incomeText: /Monthly income: R\$\s*600\.00/,
+    change: "Change income",
+    set: "Set monthly income",
+    marker: "The line on each bar marks your monthly income.",
+    empty: "No bills or installments in the coming months.",
+    failed: "We could not load the coming months. Check your connection and try again.",
+    retry: "Try again",
+    problems: { empty: "Enter your monthly income, for example 5,000.00.", zero: "Monthly income must be more than zero.", junk: "Use numbers only, for example 5,000.00." },
+    typed: { high: "600.00" },
   },
 ] as const;
 
@@ -47,6 +76,12 @@ const connected = (withMonths: boolean) => {
     lastSyncedAt: "2026-11-08T13:05:00Z",
     commitments: withMonths
       ? [
+          {
+            month: "2026-11",
+            committedCents: 32000,
+            installments: [{ name: "Sofá", number: 3, total: 3, amountCents: 20000 }],
+            bills: [{ id: "bill-1", name: "Internet", expectedCents: 12000 }],
+          },
           {
             month: "2026-12",
             committedCents: 87000,
@@ -74,7 +109,7 @@ const section = (page: Page, heading: string) => page.getByRole("region", { name
 async function view(page: Page, name: string) {
   // Ajustes is a route behind a button beside the title, not a tab.
   if (name === "Ajustes" || name === "Settings") {
-    await page.getByRole("link", { name }).click();
+    await page.getByRole("link", { name, exact: true }).click();
     return page.locator("main");
   }
   // Ajustes is a route: leave it before picking a tab.
@@ -91,61 +126,71 @@ for (const l of LOCALES) {
 
     test.beforeEach(async ({ page, baseURL, fakeApi }) => {
       fakeApi.use(signedInHandlers);
+      await page.clock.setFixedTime(new Date("2026-11-15T12:00:00-03:00"));
       await seedSession(page, { email: RESIDENT_EMAIL });
       await visit(page, new URL("/finances", baseURL!).toString());
     });
 
-    const installments = async (page: Page) => {
+    const comingMonths = async (page: Page) => {
       await view(page, l.bills);
       return section(page, l.heading);
     };
 
-    test.describe("with installments", () => {
+    test.describe("with commitments", () => {
       test.use({ fakeState: connected(true) });
 
-      test("without income shows amounts only, and the income field is not required", async ({ page }) => {
-        const s = await installments(page);
-        await expect(s.getByText(l.dec)).toBeVisible();
-        await expect(s.getByText(l.jan)).toBeVisible();
-        await expect(s.getByText(l.sharePattern)).toHaveCount(0);
+      test("draws each month as a bar split into Bills and installments, with every total as text", async ({ page }) => {
+        const s = await comingMonths(page);
+        await expect(s.getByText(l.november)).toBeVisible();
+        await expect(s.getByText(l.december)).toBeVisible();
+        await expect(s.getByText(l.january)).toBeVisible();
+        await expect(s.getByText(l.split)).toBeVisible();
+        await expect(s.getByRole("listitem").filter({ hasText: l.december }).locator("[data-fill]")).toHaveCount(2);
+        await expect(s.getByText(l.currentNote)).toHaveCount(1);
+      });
+
+      test("lists the plans in progress with the next part, the total and the last month", async ({ page }) => {
+        const s = await comingMonths(page);
+        await expect(s.getByRole("heading", { name: l.plansHeading })).toBeVisible();
+        for (const text of l.plans) await expect(s.getByText(text)).toBeVisible();
+        // A plan that appears in two months is listed once.
+        await expect(s.getByText(/Geladeira/)).toHaveCount(1);
+      });
+
+      test("without income the bars have no income line, and a link offers to set it", async ({ page }) => {
+        const s = await comingMonths(page);
+        await expect(s.locator("[data-marker]")).toHaveCount(0);
+        await expect(s.getByText(l.incomeText)).toHaveCount(0);
+        await expect(s.getByRole("link", { name: l.set })).toBeVisible();
         await view(page, l.settings);
         await expect(income(page).getByRole("button", { name: l.clear })).toHaveCount(0);
         await expect(page.getByLabel(l.income)).toHaveValue("");
       });
 
-      test("setting an income shows the shares, above 100% too, without alarm; clearing removes them", async ({ page }) => {
-        await view(page, l.settings);
+      test("setting an income shows it as text and a line on every bar, without alarm; clearing removes them", async ({ page }) => {
+        let s = await comingMonths(page);
+        await s.getByRole("link", { name: l.set }).click();
+        await expect(page).toHaveURL(/\/finances\/ajustes$/);
         await page.getByLabel(l.income).fill(l.typed.high);
         await income(page).getByRole("button", { name: l.save }).click();
         await expect(page.getByLabel(l.income)).toHaveValue(l.typed.high);
         await expect(income(page).getByRole("alert")).toBeEmpty();
-        let s = await installments(page);
-        await expect(s.getByText(l.pct(145))).toBeVisible();
-        await expect(s.getByText(l.pct(95))).toBeVisible();
+
+        s = await comingMonths(page);
+        await expect(s.getByText(l.incomeText)).toBeVisible();
+        await expect(s.getByText(l.marker)).toBeVisible();
+        await expect(s.locator("[data-marker]")).toHaveCount(3);
+        await expect(s.getByRole("link", { name: l.change })).toBeVisible();
         expect(await s.innerText()).not.toContain("!");
         await expect(s.locator("svg.lucide-triangle-alert, svg.lucide-circle-alert")).toHaveCount(0);
 
         await view(page, l.settings);
-        await page.getByLabel(l.income).fill(l.typed.low);
-        await income(page).getByRole("button", { name: l.save }).click();
-        s = await installments(page);
-        await expect(s.getByText(l.pct(17))).toBeVisible();
-
-        await view(page, l.settings);
         await income(page).getByRole("button", { name: l.clear }).click();
         await expect(page.getByLabel(l.income)).toHaveValue("");
-        s = await installments(page);
-        await expect(s.getByText(l.sharePattern)).toHaveCount(0);
-        await expect(s.getByText(l.dec)).toBeVisible();
-      });
-
-      test("opening a month shows its installments and Bills", async ({ page }) => {
-        const s = await installments(page);
-        const month = s.getByRole("button", { name: l.december });
-        await expect(month).toHaveAttribute("aria-expanded", "false");
-        await month.click();
-        await expect(s.getByText(l.fridge)).toBeVisible();
-        await expect(s.getByRole("region", { name: l.december }).getByText(l.bill)).toBeVisible();
+        s = await comingMonths(page);
+        await expect(s.getByText(l.incomeText)).toHaveCount(0);
+        await expect(s.locator("[data-marker]")).toHaveCount(0);
+        await expect(s.getByText(l.december)).toBeVisible();
       });
 
       test("an income that is empty, zero or not a number is explained and not sent", async ({ page, fakeApi }) => {
@@ -164,18 +209,19 @@ for (const l of LOCALES) {
       });
     });
 
-    test.describe("without installments", () => {
+    test.describe("without commitments", () => {
       test.use({ fakeState: connected(false) });
 
       test("says so calmly and still offers the income", async ({ page }) => {
-        const s = await installments(page);
+        const s = await comingMonths(page);
         await expect(s.getByText(l.empty)).toBeVisible();
+        await expect(s.getByRole("link", { name: l.set })).toBeVisible();
         await view(page, l.settings);
         await expect(page.getByLabel(l.income)).toBeVisible();
       });
     });
 
-    test.describe("when the installments cannot be read", () => {
+    test.describe("when the commitments cannot be read", () => {
       test.use({ fakeState: connected(true) });
 
       test("Settings says so where the income was, with Retry", async ({ page, fakeApi }) => {
@@ -199,13 +245,9 @@ for (const l of LOCALES) {
         await page.getByLabel(l.income).fill(l.typed.high);
         await income(page).getByRole("button", { name: l.save }).click();
         await expect(page.getByLabel(l.income)).toHaveValue(l.typed.high);
-        const s = await installments(page);
-        await s.getByRole("button", { name: l.december }).click();
-        await expect(s.getByText(l.fridge)).toBeVisible();
+        const s = await comingMonths(page);
+        await expect(s.getByText(l.plans[0])).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
-        // Kept under test-results/ for the pull request description; the sticky tab bar would cover the card.
-        await page.getByRole("navigation").evaluate((nav) => (nav.style.display = "none"));
-        await s.screenshot({ path: test.info().outputPath(`commitments-${l.file}.png`) });
       });
     });
   });

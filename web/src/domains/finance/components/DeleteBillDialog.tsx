@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type RefObject } from "react";
 import { useI18n } from "../../../shared/i18n";
 import { AppDialog } from "../../../shared/ui/AppDialog";
 import { Button } from "../../../shared/ui/Button";
@@ -9,7 +9,17 @@ import type { Bill } from "../api/api";
 import type { BillOutcome } from "../hooks/useBills";
 
 /** Asks before deleting a Bill. Focus starts on Cancel; a failed delete stays open to retry. */
-export function DeleteBillDialog({ bill, remove, onClose }: { bill: Bill; remove(id: string): Promise<BillOutcome>; onClose(): void }) {
+export function DeleteBillDialog({
+  bill,
+  returnFocusRef,
+  remove,
+  onClose,
+}: {
+  bill: Bill;
+  returnFocusRef?: RefObject<HTMLElement | null>;
+  remove(id: string): Promise<BillOutcome>;
+  onClose(): void;
+}) {
   const { t } = useI18n();
   const cancel = useRef<HTMLButtonElement>(null);
   const [failed, setFailed] = useState(false);
@@ -23,6 +33,7 @@ export function DeleteBillDialog({ bill, remove, onClose }: { bill: Bill; remove
       title={t("finances.bills.delete.title")}
       description={<p className="mb-0 [overflow-wrap:anywhere]">{t("finances.bills.delete.body", { name: bill.name })}</p>}
       initialFocusRef={cancel}
+      returnFocusRef={returnFocusRef}
       dismissible={!pending}
       onDismiss={onClose}
       footer={
