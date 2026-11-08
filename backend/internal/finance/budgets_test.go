@@ -56,12 +56,14 @@ func TestLimitsRejectBadInput(t *testing.T) {
 		body     any
 		want     string
 	}{
-		"zero":     {"groceries", map[string]any{"limitCents": 0}, "invalid limit"},
-		"negative": {"groceries", map[string]any{"limitCents": -1}, "invalid limit"},
-		"too big":  {"groceries", map[string]any{"limitCents": int64(1_000_000_000_001)}, "invalid limit"},
-		"float":    {"groceries", map[string]any{"limitCents": 1.5}, ""},
-		"missing":  {"groceries", map[string]any{}, ""},
-		"unknown":  {"pizza", map[string]any{"limitCents": 100}, "invalid category"},
+		"zero":      {"groceries", map[string]any{"limitCents": 0}, "invalid limit"},
+		"negative":  {"groceries", map[string]any{"limitCents": -1}, "invalid limit"},
+		"too big":   {"groceries", map[string]any{"limitCents": int64(1_000_000_000_001)}, "invalid limit"},
+		"float":     {"groceries", map[string]any{"limitCents": 1.5}, ""},
+		"missing":   {"groceries", map[string]any{}, ""},
+		"unknown":   {"pizza", map[string]any{"limitCents": 100}, "invalid category"},
+		"extra key": {"groceries", map[string]any{"limitCents": 100, "month": "2026-11"}, "invalid limit"},
+		"string":    {"groceries", map[string]any{"limitCents": "100"}, "invalid limit"},
 	} {
 		res := putLimit(ana, c.category, c.body)
 		if res.Status != http.StatusBadRequest {
