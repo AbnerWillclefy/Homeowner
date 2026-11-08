@@ -135,6 +135,46 @@ func reportMonth(month string, rows []TransactionResponse) ReportMonth {
 	return ReportMonth{Month: month, SpentCents: totals.Spend, Categories: cats}
 }
 
+// commitmentMonths is the horizon of GET /me/finance/commitments.
+const commitmentMonths = 12
+
+// Commitments answers GET /me/finance/commitments?from=YYYY-MM: 12 months from
+// `from`, each with the installments its plans still owe.
+// Each month also lists the User's unpaid Bills and counts their expected amounts.
+func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
+	from, _, ok := parseMonth(r.URL.Query().Get("from"))
+	if !ok {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid month")
+		return
+	}
+	plans, err := h.store.InstallmentPlans(r.Context(), identity.CurrentUser(r.Context()).ID)
+	if err != nil {
+		httpx.InternalError(w, h.log, "finance: read commitments", err)
+		return
+	}
+	months := make([]MonthCommitment, commitmentMonths)
+	for i, lines := range ProjectInstallments(plans, from, commitmentMonths) {
+		m := MonthCommitment{Month: from.AddDate(0, i, 0).Format("2006-01"), Installments: []InstallmentLine{}, Bills: []BillLine{}}
+		for _, l := range lines {
+			m.Installments = append(m.Installments, l)
+			m.CommittedCents += l.AmountCents
+		}
+		bills, err := h.store.MonthBills(r.Context(), identity.CurrentUser(r.Context()).ID, from.AddDate(0, i, 0))
+		if err != nil {
+			httpx.InternalError(w, h.log, "finance: read commitment bills", err)
+			return
+		}
+		for _, b := range bills {
+			if !b.Paid {
+				m.Bills = append(m.Bills, BillLine{ID: b.ID, Name: b.Name, ExpectedCents: b.ExpectedCents})
+				m.CommittedCents += b.ExpectedCents
+			}
+		}
+		months[i] = m
+	}
+	httpx.WriteJSON(w, http.StatusOK, CommitmentsResponse{From: from.Format("2006-01"), Months: months})
+}
+
 // PatchTransaction answers PATCH /me/finance/transactions/{id}. A malformed id
 // and another User's row both answer 404, so ids cannot be probed.
 func (h *Handler) PatchTransaction(w http.ResponseWriter, r *http.Request) {

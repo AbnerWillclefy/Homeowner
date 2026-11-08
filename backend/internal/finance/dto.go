@@ -76,11 +76,57 @@ type ReportResponse struct {
 	Previous ReportMonth `json:"previous"`
 }
 
+// MonthCommitment is what a month already owes. Not the Task "commitments"
+// table: that one is unrelated.
+type MonthCommitment struct {
+	Month          string            `json:"month"`
+	CommittedCents int64             `json:"committedCents"`
+	Installments   []InstallmentLine `json:"installments"`
+	Bills          []BillLine        `json:"bills"`
+}
+
+// BillLine is a Bill to pay in a month.
+type BillLine struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	ExpectedCents int64  `json:"expectedCents"`
+}
+
+// CommitmentsResponse is the answer of GET /me/finance/commitments.
+type CommitmentsResponse struct {
+	From   string            `json:"from"`
+	Months []MonthCommitment `json:"months"`
+}
+
 // PatchTransactionRequest is the body of PATCH /me/finance/transactions/{id}:
 // an absent field is left as it is.
 type PatchTransactionRequest struct {
 	Type             *string `json:"type"`
 	SpendingCategory *string `json:"spendingCategory"`
+}
+
+// BillRequest is the body of POST /me/finance/bills and PUT /me/finance/bills/{id}.
+type BillRequest struct {
+	Name          string `json:"name"`
+	ExpectedCents int64  `json:"expectedCents"`
+	DueDay        int    `json:"dueDay"`
+}
+
+// BillResponse is a Bill as created or updated.
+type BillResponse struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	ExpectedCents int64  `json:"expectedCents"`
+	DueDay        int    `json:"dueDay"`
+}
+
+// MonthBill is a Bill with its due date and paid state in one month. PaidBy is
+// null, "hand" or "bank".
+type MonthBill struct {
+	BillResponse
+	DueDate string  `json:"dueDate"`
+	Paid    bool    `json:"paid"`
+	PaidBy  *string `json:"paidBy"`
 }
 
 // ConnectItemRequest is the body of POST /me/finance/items.

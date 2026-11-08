@@ -46,6 +46,10 @@ func twoSynced(t *testing.T) (app *apitest.App, ana, bia *apitest.Client, anaID,
 				t.Fatal(err)
 			}
 		}
+		c := users[map[string]string{anaID: "ana@example.com", biaID: "bia@example.com"}[id]]
+		bill := c.Post("/me/finance/bills", map[string]any{"name": "Rent", "expectedCents": 150000, "dueDay": 5})
+		apitest.ExpectStatus(t, bill, http.StatusCreated)
+		apitest.ExpectStatus(t, c.Put("/me/finance/bills/"+bill.Body["id"].(string)+"/payments/2026-11", nil), http.StatusNoContent)
 		for i, n := range rowsOf(t, app, id) {
 			if n == 0 {
 				t.Fatalf("setup: %s has no rows for the User", finance.FinanceTables[i])

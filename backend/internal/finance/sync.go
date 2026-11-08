@@ -243,8 +243,12 @@ func toRows(txs []pluggy.Transaction) (rows []Row, skippedCurrency int) {
 		if tx.Category != nil && r.Type == "expense" {
 			r.Category = pluggyCategories[*tx.Category]
 		}
-		if m := tx.CreditCardMetadata; m != nil && m.InstallmentNumber >= 1 && m.InstallmentNumber <= m.TotalInstallments {
-			r.InstallmentNumber, r.TotalInstallments = int32(m.InstallmentNumber), int32(m.TotalInstallments)
+		var metaN, metaM int
+		if m := tx.CreditCardMetadata; m != nil {
+			metaN, metaM = m.InstallmentNumber, m.TotalInstallments
+		}
+		if n, m, ok := ParseInstallment(tx.Description, metaN, metaM); ok {
+			r.InstallmentNumber, r.TotalInstallments = int32(n), int32(m)
 		}
 		rows = append(rows, r)
 	}

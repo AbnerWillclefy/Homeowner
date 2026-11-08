@@ -48,6 +48,17 @@ export interface FakeState {
     sources: { id: string; name: string; kind: string; currency: string }[];
     importing: boolean;
     lastSyncedAt: string | null;
+    /** What `GET /me/finance/transactions` reads, any month; the PATCH edits these. Absent means none. */
+    transactions?: {
+      id: string;
+      postedOn: string;
+      description: string;
+      sourceName: string;
+      amountCents: number;
+      currency: string;
+      type: "income" | "expense" | "transfer";
+      spendingCategory: string | null;
+    }[];
   };
 }
 

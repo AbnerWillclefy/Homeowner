@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
-import { financeDeleted, financeStatusKey, writeFinanceStatus } from "./queries";
+import { financeDeleted, financeStatusKey, invalidateMonth, monthKey, writeFinanceStatus } from "./queries";
 import type { FinanceStatus } from "./api";
 
 const STATUS: FinanceStatus = { configured: true, sources: [], importing: true, lastSyncedAt: null };
@@ -14,6 +14,16 @@ describe("finance cache", () => {
     const client = new QueryClient();
     await writeFinanceStatus(client, STATUS);
     expect(client.getQueryData(financeStatusKey)).toEqual(STATUS);
+  });
+
+  it("keys each month under the status key, and invalidating one leaves the others", async () => {
+    expect(monthKey("2026-11")).toEqual(["me", "finance", "transactions", "2026-11"]);
+    const client = new QueryClient();
+    client.setQueryData(monthKey("2026-11"), { n: 1 });
+    client.setQueryData(monthKey("2026-10"), { n: 2 });
+    await invalidateMonth(client, "2026-11");
+    expect(client.getQueryState(monthKey("2026-11"))?.isInvalidated).toBe(true);
+    expect(client.getQueryState(monthKey("2026-10"))?.isInvalidated).toBe(false);
   });
 
   it("drops every finance entry after a delete, keeps ['me'], and sets the empty status", async () => {

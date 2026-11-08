@@ -5,6 +5,7 @@ import (
 	"math"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -19,6 +20,8 @@ var (
 	saoPaulo = mustLoad("America/Sao_Paulo")
 	// installmentMark is "PARC 03/10" in a description, which changes per charge.
 	installmentMark = regexp.MustCompile(`\bPARC\s*\d+\s*/\s*\d+`)
+	// installmentText captures "PARC 03/10" or "PARCELA 3/10": number, then total.
+	installmentText = regexp.MustCompile(`(?i)\bPARC(?:ELA)?\s*(\d{1,2})\s*/\s*(\d{1,2})\b`)
 	notLetters      = regexp.MustCompile(`[^A-Z]+`)
 	accents         = strings.NewReplacer(
 		"Á", "A", "À", "A", "Â", "A", "Ã", "A", "Ä", "A",
@@ -164,6 +167,80 @@ func Classify(txns []Txn, kinds map[string]Kind) []Txn {
 		}
 	}
 	return changed
+}
+
+// ParseInstallment is the installment a charge belongs to: Pluggy's own numbers
+// (metaN of metaM, 0 when absent) first, else a "PARC 03/10" in the description.
+// Only 1 <= n <= m with m >= 2 is accepted, so "PARC 10/10" is the last one and
+// "PARC 00/10", "PARC 11/10", "PARC 3/" and a bare date "10/11" are refused.
+func ParseInstallment(description string, metaN, metaM int) (n, m int, ok bool) {
+	if validInstallment(metaN, metaM) {
+		return metaN, metaM, true
+	}
+	g := installmentText.FindStringSubmatch(description)
+	if g == nil {
+		return 0, 0, false
+	}
+	n, _ = strconv.Atoi(g[1])
+	m, _ = strconv.Atoi(g[2])
+	if !validInstallment(n, m) {
+		return 0, 0, false
+	}
+	return n, m, true
+}
+
+func validInstallment(n, m int) bool { return m >= 2 && n >= 1 && n <= m }
+
+// Plan is the latest seen charge of an Installment plan.
+type Plan struct {
+	Name          string
+	Number, Total int
+	AmountCents   int64 // what one installment costs, positive
+	// Month is the month (first day, UTC) of the charge numbered Number.
+	Month time.Time
+}
+
+// PlanName is the description without its installment token, or the merchant
+// key when nothing else is left.
+func PlanName(description, merchantKey string) string {
+	if name := strings.Join(strings.Fields(installmentText.ReplaceAllString(description, " ")), " "); name != "" {
+		return name
+	}
+	return merchantKey
+}
+
+// InstallmentLine is one plan's installment due in a month.
+type InstallmentLine struct {
+	Name        string `json:"name"`
+	Number      int    `json:"number"`
+	Total       int    `json:"total"`
+	AmountCents int64  `json:"amountCents"`
+}
+
+// ProjectInstallments lists, for each of the months months from from (a first
+// of month), the installments the plans still owe: number n+1 falls one month
+// after the latest seen charge, and so on to the last. A finished plan owes
+// nothing. shortcut: the current amount is repeated, a plan whose price changes is wrong.
+func ProjectInstallments(plans []Plan, from time.Time, months int) [][]InstallmentLine {
+	out := make([][]InstallmentLine, months)
+	for _, p := range plans {
+		for k := p.Number + 1; k <= p.Total; k++ {
+			i := monthIndex(p.Month.AddDate(0, k-p.Number, 0)) - monthIndex(from)
+			if i >= 0 && i < months {
+				out[i] = append(out[i], InstallmentLine{p.Name, k, p.Total, p.AmountCents})
+			}
+		}
+	}
+	return out
+}
+
+func monthIndex(t time.Time) int { return t.Year()*12 + int(t.Month()) }
+
+// DueDate is the day a Bill with dueDay falls due in the month, as a UTC
+// midnight: a day past the month end falls on its last day.
+func DueDate(year int, month time.Month, dueDay int) time.Time {
+	last := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC)
+	return time.Date(year, month, min(dueDay, last.Day()), 0, 0, 0, 0, time.UTC)
 }
 
 // Totals is the spend of a set of Transactions, in centavos.

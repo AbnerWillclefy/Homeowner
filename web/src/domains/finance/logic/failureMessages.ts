@@ -12,4 +12,6 @@ export const FINANCE_FAILURE_KEY: Record<ConnectProblem, MessageKey> = {
   "no-credentials": "finances.error.noCredentials",
   unavailable: "finances.error.unavailable",
   widget: "finances.error.widget",
+  // Only a Transaction edit can answer it, and the month screen words that itself.
+  "not-found": "finances.edit.gone",
 };
