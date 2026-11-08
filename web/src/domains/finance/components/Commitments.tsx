@@ -24,7 +24,7 @@ const PROBLEM_KEY = { empty: "finances.income.empty", zero: "finances.income.zer
 export function Commitments() {
   const { t, locale } = useI18n();
   const [from] = useState(() => currentMonth(new Date()));
-  const { state, refreshing, reload, saveIncome } = useCommitments(from);
+  const { state, refreshing, reload } = useCommitments(from);
   const skeleton = useReportFirstLoad(state.kind === "loading");
   useReportFetching(refreshing);
 
@@ -48,22 +48,41 @@ export function Commitments() {
           </Button>
         </div>
       )}
-      {state.kind === "ready" && (
-        <>
-          {state.data.months.every((m) => m.installments.length === 0 && m.bills.length === 0) ? (
-            <p className="my-0 text-muted">{t("finances.commit.empty")}</p>
-          ) : (
-            state.data.months.map((m) => <MonthCard key={m.month} month={m} locale={locale} />)
-          )}
-          <IncomeForm
-            // A new key after a save puts the stored value back in the field.
-            key={state.data.monthlyIncomeCents ?? "none"}
-            income={state.data.monthlyIncomeCents}
-            onSave={saveIncome}
-          />
-        </>
-      )}
+      {state.kind === "ready" &&
+        (state.data.months.every((m) => m.installments.length === 0 && m.bills.length === 0) ? (
+          <p className="my-0 text-muted">{t("finances.commit.empty")}</p>
+        ) : (
+          state.data.months.map((m) => <MonthCard key={m.month} month={m} locale={locale} />)
+        ))}
     </section>
+  );
+}
+
+/** The optional Monthly income, which turns the installments into a share of it. It shares the installments' read. */
+export function MonthlyIncome() {
+  const { t } = useI18n();
+  const [from] = useState(() => currentMonth(new Date()));
+  const { state, reload, saveIncome } = useCommitments(from);
+  // The installments' own alert is on another view, so the failure is said here too.
+  if (state.kind === "failed")
+    return (
+      <div className="flex flex-col items-start gap-3">
+        <p role="alert" className="my-0 font-semibold">
+          {t("finances.commit.failed")}
+        </p>
+        <Button variant="secondary" onClick={() => void reload()}>
+          {t("finances.load.retry")}
+        </Button>
+      </div>
+    );
+  if (state.kind !== "ready") return null;
+  return (
+    <IncomeForm
+      // A new key after a save puts the stored value back in the field.
+      key={state.data.monthlyIncomeCents ?? "none"}
+      income={state.data.monthlyIncomeCents}
+      onSave={saveIncome}
+    />
   );
 }
 
@@ -100,7 +119,7 @@ function MonthCard({ month, locale }: { month: CommitmentMonth; locale: string }
       <ul id={`${id}-body`} hidden={!open} className="m-0 flex list-none flex-col gap-2 p-0">
         {month.installments.map((i, index) => (
           // A line has no plan id, so name + number can collide; the server-ordered list is never reordered here.
-          <Line key={index}name={t("finances.commit.installment", { name: i.name, n: i.number, m: i.total })} cents={i.amountCents} locale={locale} />
+          <Line key={index} name={t("finances.commit.installment", { name: i.name, n: i.number, m: i.total })} cents={i.amountCents} locale={locale} />
         ))}
         {month.bills.map((b) => (
           <Line key={b.id} name={b.name} cents={b.expectedCents} locale={locale} />

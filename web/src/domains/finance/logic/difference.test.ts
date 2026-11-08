@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { barWidth, difference } from "./difference";
+import { difference, lastMonth } from "./difference";
 
 describe("difference", () => {
   it("says more, less or the same, with the size of the gap", () => {
@@ -19,18 +19,33 @@ describe("difference", () => {
   });
 });
 
-describe("barWidth", () => {
-  it("is the share of the largest value, in percent", () => {
-    expect(barWidth(5000, 10000)).toBe(50);
-    expect(barWidth(10000, 10000)).toBe(100);
+describe("lastMonth", () => {
+  const report = {
+    month: { month: "2026-11", spentCents: 97780, categories: [{ category: "housing" as const, spentCents: 80000 }] },
+    previous: {
+      month: "2026-10",
+      spentCents: 127270,
+      categories: [
+        { category: "housing" as const, spentCents: 80000 },
+        { category: "health" as const, spentCents: 8990 },
+        { category: "household_bills" as const, spentCents: 30500 },
+        { category: "leisure" as const, spentCents: 0 },
+      ],
+    },
+  };
+
+  it("gives last month's spend by category", () => {
+    expect(lastMonth(report, ["housing"]).spentBy.get("housing")).toBe(80000);
   });
 
-  it("is zero, not a division by zero, when the largest value is zero", () => {
-    expect(barWidth(0, 0)).toBe(0);
+  it("lists only categories spent last month and not shown, biggest first", () => {
+    expect(lastMonth(report, ["housing"]).only).toEqual([
+      { category: "household_bills", spentCents: 30500 },
+      { category: "health", spentCents: 8990 },
+    ]);
   });
 
-  it("draws a negative value as zero width", () => {
-    expect(barWidth(-3000, 10000)).toBe(0);
-    expect(barWidth(-3000, -1000)).toBe(0);
+  it("says the difference of the totals", () => {
+    expect(lastMonth(report, []).diff).toEqual({ key: "less", amount: 29490 });
   });
 });

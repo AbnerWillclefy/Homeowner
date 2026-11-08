@@ -4,37 +4,33 @@ import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
 
-// What this covers, in both locales: the Report section compares this month's spending by Spending Category with the
-// month before, every category as a list item whose text carries both values, a sentence that says the difference
-// neutrally, a month change that asks for the new month and updates the sentence, and a calm empty month. At 320px
-// with the root font at 200% nothing overflows sideways and the longest category names wrap.
+// What this covers, in both locales: the Spending view compares the month with the one before as text. The total
+// says the difference neutrally, each category card says what it was last month, a category spent on only last month
+// is listed apart, and a category at zero in both months is not listed at all. A month change asks for that month's
+// report. At 320px with the root font at 200% nothing overflows sideways.
 
 const LOCALES = [
   {
     locale: "pt-BR",
-    heading: "Relatório",
     groceries: "Mercado",
-    household: "Contas da casa",
+    health: "Saúde",
     taxes: "Impostos e taxas",
-    more: (month: string) => new RegExp(`R\\$\\s*240,00 a mais que em ${month}`),
-    thisValue: (month: string) => new RegExp(`${month}: R\\$\\s*812,00`),
+    more: (month: string) => new RegExp(`R\\$\\s*150,10 a mais que em ${month}`),
     previousValue: (month: string) => new RegExp(`${month}: R\\$\\s*692,00`),
-    zero: /R\$\s*0,00/,
-    empty: /Sem gastos em/,
-    prev: "Mês anterior do relatório",
+    allLess: (month: string) => new RegExp(`R\\$\\s*781,90 a menos que em ${month}`),
+    onlyLast: (month: string) => `Só em ${month}`,
+    prev: "Mês anterior",
   },
   {
     locale: "en-US",
-    heading: "Report",
     groceries: "Groceries",
-    household: "Household bills",
+    health: "Health",
     taxes: "Taxes and fees",
-    more: (month: string) => new RegExp(`R\\$240\\.00 more than in ${month}`),
-    thisValue: (month: string) => new RegExp(`${month}: R\\$812\\.00`),
+    more: (month: string) => new RegExp(`R\\$150\\.10 more than in ${month}`),
     previousValue: (month: string) => new RegExp(`${month}: R\\$692\\.00`),
-    zero: /R\$0\.00/,
-    empty: /No spending in/,
-    prev: "Previous report month",
+    allLess: (month: string) => new RegExp(`R\\$781\\.90 less than in ${month}`),
+    onlyLast: (month: string) => `Only in ${month}`,
+    prev: "Previous month",
   },
 ] as const;
 
@@ -48,7 +44,7 @@ const row = (id: string, back: number, description: string, amountCents: number,
   id, postedOn: `${month(back).id}-05`, description, sourceName: "Pluggy Bank", amountCents, currency: "BRL", type: "expense" as const, spendingCategory,
 });
 
-const connected = () => {
+const connected = (thisMonth = true) => {
   const s = signedInResident();
   s.user.finance = true;
   s.finance = {
@@ -57,9 +53,9 @@ const connected = () => {
     importing: false,
     lastSyncedAt: "2026-11-08T13:05:00Z",
     transactions: [
-      row("a", 0, "Mercado grande", -81200, "groceries"),
-      row("b", 0, "Cinema", -12000, "leisure"),
+      ...(thisMonth ? [row("a", 0, "Mercado grande", -81200, "groceries"), row("b", 0, "Cinema", -12000, "leisure")] : []),
       row("c", 1, "Mercado do mês passado", -69200, "groceries"),
+      row("d", 1, "Farmácia", -8990, "health"),
     ],
   };
   return s;
@@ -75,33 +71,32 @@ for (const l of LOCALES) {
       await visit(page, new URL("/finances", baseURL!).toString());
     });
 
-    test("lists every category with both months in text, and says the difference", async ({ page }) => {
-      const report = page.getByRole("region", { name: l.heading });
-      await expect(report.getByText(l.more(nameOf(1, l.locale)))).toBeVisible();
-      await expect(report.getByRole("listitem")).toHaveCount(13);
-      const groceries = report.getByRole("listitem").filter({ hasText: l.groceries });
-      await expect(groceries).toContainText(l.thisValue(nameOf(0, l.locale)));
-      await expect(groceries).toContainText(l.previousValue(nameOf(1, l.locale)));
-      // A category with no spending is still there, with its zero in text.
-      await expect(report.getByRole("listitem").filter({ hasText: l.taxes })).toContainText(l.zero);
-      await expect(report.getByRole("listitem").filter({ hasText: l.household })).toBeVisible();
+    test("says the difference, last month per category, and leaves out categories at zero", async ({ page }) => {
+      const last = nameOf(1, l.locale);
+      await expect(page.getByText(l.more(last))).toBeVisible();
+      await expect(page.getByRole("button", { name: new RegExp(l.groceries) })).toContainText(l.previousValue(last));
+      const only = page.getByRole("region", { name: l.onlyLast(last) });
+      await expect(only).toContainText(l.health);
+      await expect(page.getByText(l.taxes)).toHaveCount(0);
     });
 
-    test("changing the month asks for it and updates the sentence", async ({ page }) => {
-      const report = page.getByRole("region", { name: l.heading });
+    test("changing the month asks for that month's report", async ({ page }) => {
       const asked = page.waitForRequest((r) => r.url().includes("/me/finance/report") && r.url().includes(`month=${month(1).id}`));
-      await report.getByRole("button", { name: l.prev }).click();
+      await page.getByRole("button", { name: l.prev, exact: true }).click();
       await asked;
-      await expect(report.getByRole("listitem").filter({ hasText: l.groceries })).toContainText(l.previousValue(nameOf(1, l.locale)));
-      await expect(report.getByText(nameOf(2, l.locale), { exact: false }).first()).toBeVisible();
+      await expect(page.getByRole("button", { name: new RegExp(l.groceries) })).toContainText(nameOf(2, l.locale));
     });
 
-    test("an empty month is a calm line with no bars", async ({ page }) => {
-      const report = page.getByRole("region", { name: l.heading });
-      await report.getByRole("button", { name: l.prev }).click();
-      await report.getByRole("button", { name: l.prev }).click();
-      await expect(report.getByText(l.empty)).toBeVisible();
-      await expect(report.getByRole("listitem")).toHaveCount(0);
+    test.describe("a month with nothing yet", () => {
+      test.use({ fakeState: connected(false) });
+
+      test("still says the difference and lists last month's categories", async ({ page }) => {
+        const last = nameOf(1, l.locale);
+        await expect(page.getByText(l.allLess(last))).toBeVisible();
+        const only = page.getByRole("region", { name: l.onlyLast(last) });
+        await expect(only).toContainText(l.groceries);
+        await expect(only).toContainText(l.health);
+      });
     });
 
     test("at 320px and the largest text nothing overflows sideways", async ({ page, baseURL }) => {
@@ -110,8 +105,7 @@ for (const l of LOCALES) {
         document.addEventListener("DOMContentLoaded", () => (document.documentElement.style.fontSize = "200%"));
       });
       await visit(page, new URL("/finances", baseURL!).toString());
-      const report = page.getByRole("region", { name: l.heading });
-      await expect(report.getByText(l.taxes)).toBeVisible();
+      await expect(page.getByRole("region", { name: l.onlyLast(nameOf(1, l.locale)) })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     });
   });

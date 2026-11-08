@@ -7,10 +7,10 @@ import { SkeletonBar } from "../../../shared/ui/Skeleton";
 import { useFinance } from "../hooks/useFinance";
 import { BankSources } from "./BankSources";
 import { BillsSection } from "./BillsSection";
-import { Commitments } from "./Commitments";
+import { Commitments, MonthlyIncome } from "./Commitments";
 import { CredentialsForm } from "./CredentialsForm";
 import { DeleteFinanceData } from "./DeleteFinanceData";
-import { MonthReport } from "./MonthReport";
+import { FinanceTabs } from "./FinanceTabs";
 import { MonthSpending } from "./MonthSpending";
 import { SavedCredentials } from "./SavedCredentials";
 import { SetupSteps } from "./SetupSteps";
@@ -58,12 +58,8 @@ function FinancesBody() {
 
   const status = state.data;
   const showForm = !status.configured || replacing;
-  return (
-    <div className="flex flex-col gap-4">
-      <BillsSection />
-      {status.sources.length > 0 && <MonthSpending />}
-      {status.sources.length > 0 && <MonthReport />}
-      {status.sources.length > 0 && <Commitments />}
+  const credentials = (
+    <>
       {!status.configured && (
         <>
           <p className="my-0">{t("finances.empty")}</p>
@@ -90,23 +86,62 @@ function FinancesBody() {
           onDismissProblem={finance.clearProblem}
         />
       )}
-      {status.configured && !replacing && (
-        <BankSources
-          status={status}
-          connecting={busy === "connect"}
-          problem={problemIn("connect")}
-          closed={finance.closed}
-          onConnect={() => void finance.connect()}
-        />
-      )}
-      {(status.configured || status.sources.length > 0) && (
-        <DeleteFinanceData
-          deleting={busy === "delete"}
-          problem={problemIn("data")}
-          onDelete={finance.deleteAll}
-          onDismissProblem={finance.clearProblem}
-        />
-      )}
-    </div>
+    </>
+  );
+  const deletion = (status.configured || status.sources.length > 0) && (
+    <DeleteFinanceData
+      deleting={busy === "delete"}
+      problem={problemIn("data")}
+      onDelete={finance.deleteAll}
+      onDismissProblem={finance.clearProblem}
+    />
+  );
+  const sources = status.configured && !replacing && (
+    <BankSources
+      status={status}
+      connecting={busy === "connect"}
+      problem={problemIn("connect")}
+      closed={finance.closed}
+      onConnect={() => void finance.connect()}
+    />
+  );
+
+  // Before the first Source there is nothing to read yet: the setup flow stays one short column.
+  if (status.sources.length === 0) {
+    return (
+      <div className="flex flex-col gap-4">
+        <BillsSection />
+        {credentials}
+        {sources}
+        {deletion}
+      </div>
+    );
+  }
+
+  return (
+    <FinanceTabs
+      panels={{
+        spending: (
+          <>
+            {status.importing && <p className="my-0 text-muted">{t("finances.importing")}</p>}
+            <MonthSpending />
+          </>
+        ),
+        bills: (
+          <>
+            <BillsSection />
+            <Commitments />
+          </>
+        ),
+        settings: (
+          <>
+            {sources}
+            <MonthlyIncome />
+            {credentials}
+            {deletion}
+          </>
+        ),
+      }}
+    />
   );
 }

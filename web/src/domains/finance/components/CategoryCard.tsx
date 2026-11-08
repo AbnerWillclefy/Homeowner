@@ -9,10 +9,11 @@ import { spendingKey } from "../logic/spendingCategories";
 import { TransactionRow } from "./TransactionRow";
 
 /**
- * A Spending Category and its total; the head is one full-width button that opens its Transactions (the disclosure
- * pattern). Neutral colours only: the Chore Category pastels name a different vocabulary.
+ * A Spending Category, its total and, once the report is in, last month's; the head is one full-width button that
+ * opens its Transactions (the disclosure pattern). Neutral colours only: the Chore Category pastels name a different
+ * vocabulary.
  */
-export function CategoryCard({ group, onEdit }: { group: CategoryGroup; onEdit(tx: Transaction): void }) {
+export function CategoryCard({ group, lastMonth, onEdit }: { group: CategoryGroup; lastMonth?: string; onEdit(tx: Transaction): void }) {
   const { t, locale } = useI18n();
   const [open, setOpen] = useState(false);
   const id = useId();
@@ -32,6 +33,7 @@ export function CategoryCard({ group, onEdit }: { group: CategoryGroup; onEdit(t
             </span>
             <span className="text-sm font-normal text-muted">{t("finances.month.count", { count: group.transactions.length })}</span>
             <span className="text-lg">{formatCents(group.spentCents, locale)}</span>
+            {lastMonth && <span className="text-sm font-normal text-muted [overflow-wrap:anywhere]">{lastMonth}</span>}
           </span>
           <ChevronDown
             aria-hidden="true"
