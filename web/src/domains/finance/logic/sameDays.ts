@@ -1,6 +1,6 @@
 import type { Transaction } from "../api/api";
 import { scaleMax } from "./chart";
-import { addMonths, currentMonth, type Month } from "./month";
+import { addMonths, currentMonth, daysInMonth, type Month } from "./month";
 import { spent } from "./monthView";
 import type { SpendingCategory } from "./spendingCategories";
 
@@ -16,18 +16,13 @@ export interface SameDays {
 
 const dayOf = (postedOn: string) => Number(postedOn.slice(8, 10));
 
-function lastDay(month: Month): number {
-  const [y, m] = month.split("-").map(Number) as [number, number];
-  return new Date(y, m, 0).getDate();
-}
-
 /**
  * This month against the same days of the previous one. Expenses only, a refund offsets (`spent`), and no category
  * is Other: the same rules as `monthView`, so the two cannot disagree. Posted dates are compared as day numbers
  * from the string, never as `Date`.
  */
 export function sameDays(current: Transaction[], previous: Transaction[], month: Month, today: Date): SameDays {
-  const cutDay = month === currentMonth(today) ? Math.min(today.getDate(), lastDay(addMonths(month, -1))) : null;
+  const cutDay = month === currentMonth(today) ? Math.min(today.getDate(), daysInMonth(addMonths(month, -1))) : null;
   const byCategory: SameDays["byCategory"] = new Map();
   const total = { spent: 0, previousSpent: 0 };
   const add = (rows: Transaction[], key: "spent" | "previousSpent", cut: number | null) => {

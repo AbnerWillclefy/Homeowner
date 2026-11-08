@@ -9,6 +9,11 @@ export const currentMonth = (now: Date): Month => `${now.getFullYear()}-${pad(no
 /** The calendar day on the device's clock, `YYYY-MM-DD`. */
 export const currentDay = (now: Date): string => `${currentMonth(now)}-${pad(now.getDate())}`;
 
+export function daysInMonth(month: Month): number {
+  const [y, m] = month.split("-").map(Number) as [number, number];
+  return new Date(y, m, 0).getDate();
+}
+
 export function addMonths(month: Month, n: number): Month {
   const [y, m] = month.split("-").map(Number) as [number, number];
   const index = y * 12 + (m - 1) + n;
