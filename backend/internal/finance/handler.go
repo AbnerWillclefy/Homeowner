@@ -128,11 +128,16 @@ func (h *Handler) ConnectItem(w http.ResponseWriter, r *http.Request) {
 	}
 	// Asking Pluggy with the User's own key stops them registering an Item
 	// from someone else's Pluggy application.
-	if _, err := h.pluggy.GetItem(r.Context(), apiKey, req.ItemID); errors.Is(err, pluggy.ErrNotFound) {
+	item, err := h.pluggy.GetItem(r.Context(), apiKey, req.ItemID)
+	if errors.Is(err, pluggy.ErrNotFound) {
 		httpx.WriteError(w, http.StatusNotFound, "item not found")
 		return
 	} else if err != nil {
 		h.pluggyFailed(w, "get item", err)
+		return
+	}
+	if item.Status == "LOGIN_ERROR" {
+		httpx.WriteError(w, http.StatusUnprocessableEntity, "item login failed")
 		return
 	}
 	accounts, err := h.pluggy.ListAccounts(r.Context(), apiKey, req.ItemID)
@@ -145,6 +150,10 @@ func (h *Handler) ConnectItem(w http.ResponseWriter, r *http.Request) {
 		if kind := sourceKind(a); kind != "" {
 			sources = append(sources, NewSource{PluggyAccountID: a.ID, Kind: kind, Name: a.Name, Currency: a.Currency})
 		}
+	}
+	if len(sources) == 0 {
+		httpx.WriteError(w, http.StatusUnprocessableEntity, "no supported accounts")
+		return
 	}
 	if err := h.store.ConnectItem(r.Context(), identity.CurrentUser(r.Context()).ID, req.ItemID, h.clk.Now(), sources); err != nil {
 		httpx.InternalError(w, h.log, "finance: connect item", err)

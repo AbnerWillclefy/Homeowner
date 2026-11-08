@@ -18,12 +18,14 @@ var fixtures embed.FS
 
 // What the fake accepts and serves; all but the credentials come from the capture.
 const (
-	ClientID          = "test-client-id"
-	ClientSecret      = "test-client-secret"
-	APIKey            = "test-api-key"
-	ConnectToken      = "test-connect-token"
-	ItemID            = "72ff2ef2-60b0-42d5-9514-7b9a55eb4267"
-	UnknownItemID     = "00000000-0000-4000-8000-0000000000ff"
+	ClientID      = "test-client-id"
+	ClientSecret  = "test-client-secret"
+	APIKey        = "test-api-key"
+	ConnectToken  = "test-connect-token"
+	ItemID        = "72ff2ef2-60b0-42d5-9514-7b9a55eb4267"
+	UnknownItemID = "00000000-0000-4000-8000-0000000000ff"
+	// EmptyItemID is an Item with no checking, savings or card accounts.
+	EmptyItemID       = "00000000-0000-4000-8000-0000000000ee"
 	CheckingAccountID = "7e5bc95d-85bb-4b3a-9b97-58d456872529"
 	CardAccountID     = "8e09cce6-cf99-433f-9d73-f9bd99b9ca3f"
 	// FailBody is the body a forced failure answers, so a test can check it
@@ -79,12 +81,17 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		if authorized(w, r) {
 			serveFixture(w, 200, "connect_token.json")
 		}
-	case "GET /items/" + ItemID:
+	case "GET /items/" + EmptyItemID, "GET /items/" + ItemID:
 		if authorized(w, r) {
 			serveFixture(w, 200, "item.json")
 		}
 	case "GET /accounts":
 		if !authorized(w, r) {
+			return
+		}
+		if q.Get("itemId") == EmptyItemID {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"results":[]}`))
 			return
 		}
 		if q.Get("itemId") != ItemID {

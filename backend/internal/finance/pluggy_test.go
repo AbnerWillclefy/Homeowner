@@ -144,6 +144,9 @@ func TestConnectItemRefusals(t *testing.T) {
 	if res := c.Post("/me/finance/items", map[string]any{"itemId": pluggytest.UnknownItemID}); res.Status != http.StatusNotFound || res.Body["error"] != "item not found" {
 		t.Errorf("unknown item = %d %s, want 404", res.Status, res.Raw)
 	}
+	if res := c.Post("/me/finance/items", map[string]any{"itemId": pluggytest.EmptyItemID}); res.Status != http.StatusUnprocessableEntity || res.Body["error"] != "no supported accounts" {
+		t.Errorf("item without accounts = %d %s, want 422", res.Status, res.Raw)
+	}
 	if n := count(t, app, "finance_items"); n != 0 {
 		t.Errorf("%d items stored after refusals", n)
 	}
