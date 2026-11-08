@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -102,42 +103,58 @@ func toTxns(rows []TransactionResponse) []Txn {
 	return in
 }
 
-// Report answers GET /me/finance/report?month=YYYY-MM: the month and the one
-// before it, from one read of both and MonthTotals on each, so it agrees with Month.
-func (h *Handler) Report(w http.ResponseWriter, r *http.Request) {
-	month := r.URL.Query().Get("month")
-	from, to, ok := parseMonth(month)
+const (
+	historyMonths    = 6  // default window of History
+	historyMaxMonths = 12 // matches commitmentMonths
+)
+
+// History answers GET /me/finance/history?to=YYYY-MM&months=N: the N months
+// ending at `to`, oldest first, from one read and MonthTotals on each month, so
+// it agrees with Month. `to` defaults to the current São Paulo month.
+func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	to := q.Get("to")
+	if !q.Has("to") {
+		to = postedOn(h.clk.Now()).Format("2006-01")
+	}
+	last, end, ok := parseMonth(to)
 	if !ok {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid month")
 		return
 	}
-	prevFrom := time.Date(from.Year(), from.Month()-1, 1, 0, 0, 0, 0, time.UTC)
-	txns, err := h.store.MonthTransactions(r.Context(), identity.CurrentUser(r.Context()).ID, prevFrom, to)
-	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read report", err)
-		return
-	}
-	var cur, prev []TransactionResponse
-	for _, t := range txns {
-		if t.PostedOn >= from.Format(time.DateOnly) {
-			cur = append(cur, t)
-		} else {
-			prev = append(prev, t)
+	n := historyMonths
+	if q.Has("months") {
+		var err error
+		if n, err = strconv.Atoi(q.Get("months")); err != nil || n < 1 || n > historyMaxMonths {
+			httpx.WriteError(w, http.StatusBadRequest, "invalid months")
+			return
 		}
 	}
-	httpx.WriteJSON(w, http.StatusOK, ReportResponse{
-		Month:    reportMonth(month, cur),
-		Previous: reportMonth(prevFrom.Format("2006-01"), prev),
-	})
+	first := last.AddDate(0, -(n - 1), 0)
+	txns, err := h.store.MonthTransactions(r.Context(), identity.CurrentUser(r.Context()).ID, first, end)
+	if err != nil {
+		httpx.InternalError(w, h.log, "finance: read history", err)
+		return
+	}
+	byMonth := map[string][]TransactionResponse{}
+	for _, t := range txns {
+		byMonth[t.PostedOn[:7]] = append(byMonth[t.PostedOn[:7]], t)
+	}
+	months := make([]HistoryMonth, n)
+	for i := range months {
+		m := first.AddDate(0, i, 0).Format("2006-01")
+		months[i] = historyMonth(m, byMonth[m])
+	}
+	httpx.WriteJSON(w, http.StatusOK, HistoryResponse{To: to, Months: months})
 }
 
-func reportMonth(month string, rows []TransactionResponse) ReportMonth {
+func historyMonth(month string, rows []TransactionResponse) HistoryMonth {
 	totals := MonthTotals(toTxns(rows))
 	cats := make([]CategoryTotal, len(SpendingCategories))
 	for i, c := range SpendingCategories {
 		cats[i] = CategoryTotal{Category: c, SpentCents: totals.ByCategory[c]}
 	}
-	return ReportMonth{Month: month, SpentCents: totals.Spend, Categories: cats}
+	return HistoryMonth{Month: month, SpentCents: totals.Spend, Categories: cats}
 }
 
 // paceMonths is how many months before the asked one the usual pace averages.

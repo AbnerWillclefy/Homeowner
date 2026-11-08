@@ -64,17 +64,17 @@ type MonthResponse struct {
 	Limits       map[string]int64      `json:"limits"` // category to monthly limit; the same every month
 }
 
-// ReportMonth is one month of GET /me/finance/report: all 13 categories, in order.
-type ReportMonth struct {
+// HistoryMonth is one month of GET /me/finance/history: all 13 categories, in order.
+type HistoryMonth struct {
 	Month      string          `json:"month"`
 	SpentCents int64           `json:"spentCents"`
 	Categories []CategoryTotal `json:"categories"`
 }
 
-// ReportResponse is the answer of GET /me/finance/report.
-type ReportResponse struct {
-	Month    ReportMonth `json:"month"`
-	Previous ReportMonth `json:"previous"`
+// HistoryResponse is the answer of GET /me/finance/history, oldest month first.
+type HistoryResponse struct {
+	To     string         `json:"to"`
+	Months []HistoryMonth `json:"months"`
 }
 
 // DailyResponse is the answer of GET /me/finance/daily: cumulative spend in
