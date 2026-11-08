@@ -61,6 +61,9 @@ type App struct {
 	// FinanceSyncer is the finance sync over the same database and fake Pluggy;
 	// nil unless started with a finance key and WithPluggy.
 	FinanceSyncer *finance.Syncer
+	// FinanceReminders sends the Bill reminders through the fake Web Push
+	// sender; nil unless started WithPush.
+	FinanceReminders *finance.Reminders
 
 	queries *queryCounter
 	alloc   *swapAllocator
@@ -216,6 +219,8 @@ func Start(t testing.TB, opts ...Option) *App {
 	if app.Push != nil {
 		// The job nudges through the same fake the server sends with.
 		app.nudger = nudge.New(pool, app.Push, slog.New(slog.NewJSONHandler(logs, nil)))
+		app.FinanceReminders = finance.NewReminders(finance.NewStore(pool), push.NewStore(pool), app.Push,
+			finance.NewAllowlist(deps.FinanceAllowlist), slog.New(slog.NewJSONHandler(logs, nil)))
 	}
 	app.UseAllocator(allocation.Baseline{})
 	app.Auth, _ = deps.Verifier.(*auth.Fake)
@@ -298,6 +303,18 @@ func (a *App) RunFinanceSync(t testing.TB) finance.Summary {
 		t.Fatalf("apitest: RunFinanceSync: %v", err)
 	}
 	return sum
+}
+
+// RunFinanceReminders sends the Bill reminders once at the fake clock's current
+// time, as the hourly event does after the sync. It needs WithPush.
+func (a *App) RunFinanceReminders(t testing.TB) {
+	t.Helper()
+	if a.FinanceReminders == nil {
+		t.Fatal("apitest: RunFinanceReminders needs WithPush")
+	}
+	if err := a.FinanceReminders.Run(context.Background(), a.Clock.Now()); err != nil {
+		t.Fatalf("apitest: RunFinanceReminders: %v", err)
+	}
 }
 
 // Client is a signed-in caller: every request carries its bearer token.

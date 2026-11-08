@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 )
 
 // Sign convention: amount_cents is signed from the Source's point of view,
@@ -243,6 +245,60 @@ func monthIndex(t time.Time) int { return t.Year()*12 + int(t.Month()) }
 func DueDate(year int, month time.Month, dueDay int) time.Time {
 	last := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC)
 	return time.Date(year, month, min(dueDay, last.Day()), 0, 0, 0, 0, time.UTC)
+}
+
+// ReminderQuietUntilHour is the local hour before which no Bill reminder is
+// sent: the job is hourly, so without it a reminder could arrive at 01:00.
+const ReminderQuietUntilHour = 9
+
+// The ledger kinds of a Bill reminder (finance_bill_reminders.kind).
+const (
+	ledgerDueSoon = "due_soon"
+	ledgerOverdue = "overdue"
+)
+
+// ReminderBill is a Bill as the reminder rule sees it. Paid is whether the
+// local month has a payment that is not undone.
+type ReminderBill struct {
+	ID     string
+	DueDay int
+	Paid   bool
+}
+
+// BillReminder is a reminder to send: the Bill, its ledger kind and the
+// push.Kind the worker words.
+type BillReminder struct {
+	BillID, Ledger, Notice string
+}
+
+// DueReminders picks the Bills to remind about at local, the User's wall clock.
+// Unpaid Bills due today or tomorrow are due_soon and those due earlier in the
+// month are overdue; nothing is sent before ReminderQuietUntilHour. Earlier
+// months are left out, so it never nags about history.
+// shortcut: a Bill due on the 1st is not reminded on the last day of the month
+// before, because payments are read for the local month only; add next month's
+// payments if that is missed.
+func DueReminders(bills []ReminderBill, local time.Time) []BillReminder {
+	if local.Hour() < ReminderQuietUntilHour {
+		return nil
+	}
+	y, m, d := local.Date()
+	today := time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+	var out []BillReminder
+	for _, b := range bills {
+		if b.Paid {
+			continue
+		}
+		switch due := DueDate(y, m, b.DueDay); {
+		case due.Equal(today):
+			out = append(out, BillReminder{b.ID, ledgerDueSoon, push.KindBillDueToday})
+		case due.Equal(today.AddDate(0, 0, 1)):
+			out = append(out, BillReminder{b.ID, ledgerDueSoon, push.KindBillDueSoon})
+		case due.Before(today):
+			out = append(out, BillReminder{b.ID, ledgerOverdue, push.KindBillOverdue})
+		}
+	}
+	return out
 }
 
 // Totals is the spend of a set of Transactions, in centavos.

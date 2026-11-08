@@ -327,7 +327,7 @@ func TestSyncLogsNoSensitiveData(t *testing.T) {
 func TestEventsHandlerRunsOnlyOnAScheduledEvent(t *testing.T) {
 	t.Parallel()
 	app, _ := startSync(t, []string{"ana@example.com"})
-	srv := httptest.NewServer(finance.EventsHandler(app.FinanceSyncer, app.Clock, slog.New(slog.NewTextHandler(io.Discard, nil))))
+	srv := httptest.NewServer(finance.EventsHandler(app.FinanceSyncer, nil, app.Clock, slog.New(slog.NewTextHandler(io.Discard, nil))))
 	t.Cleanup(srv.Close)
 	post := func(body string) int {
 		res, err := http.Post(srv.URL+"/events", "application/json", strings.NewReader(body))

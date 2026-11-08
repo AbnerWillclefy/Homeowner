@@ -13,6 +13,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/config"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/db"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/pluggy"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 )
 
 // financeEvents serves the finance Lambda: an HTTP server whose only work is the
@@ -21,6 +22,7 @@ import (
 // an encryption key there is nothing to open, so it answers and does nothing.
 func financeEvents(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	var syncer *finance.Syncer
+	var rem *finance.Reminders
 	if cfg.FinanceKey != nil {
 		pool, err := db.Connect(ctx, cfg.DatabaseURL, cfg.DBMaxConns)
 		if err != nil {
@@ -36,10 +38,17 @@ func financeEvents(ctx context.Context, cfg config.Config, log *slog.Logger) err
 		} else {
 			log.Info("categorizer off: no Anthropic key, uncategorised Expenses stay Other")
 		}
+		if cfg.VAPIDEnabled() {
+			rem = finance.NewReminders(finance.NewStore(pool), push.NewStore(pool),
+				push.NewWebPushSender(cfg.VAPIDPublicKey, cfg.VAPIDPrivateKey, cfg.VAPIDSubject),
+				finance.NewAllowlist(cfg.FinanceAllowlist), log)
+		} else {
+			log.Warn("bill reminders off: VAPID keys are not set")
+		}
 	}
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           finance.EventsHandler(syncer, clock.System{}, log),
+		Handler:           finance.EventsHandler(syncer, rem, clock.System{}, log),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	errc := make(chan error, 1)
