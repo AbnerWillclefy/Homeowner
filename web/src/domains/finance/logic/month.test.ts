@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { addMonths, currentMonth, formatDay, monthLabel } from "./month";
+import { addMonths, currentDay, currentMonth, formatDay, monthLabel } from "./month";
+
+describe("currentDay", () => {
+  it("is the device's calendar day, padded", () => {
+    expect(currentDay(new Date(2026, 10, 8))).toBe("2026-11-08");
+  });
+});
 
 describe("formatDay", () => {
   it("writes a posting date as day and month in the locale, with no time zone shift", () => {

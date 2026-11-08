@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { formatCents, parseMoney } from "./money";
+import { centsToInput, formatCents, parseMoney } from "./money";
+
+describe("centsToInput", () => {
+  it("writes the amount the way the locale types it, and parseMoney reads it back", () => {
+    expect(centsToInput(123456, "pt-BR")).toBe("1234,56");
+    expect(centsToInput(123456, "en-US")).toBe("1234.56");
+    expect(parseMoney(centsToInput(123456, "pt-BR"))).toBe(123456);
+  });
+});
 
 // pt-BR puts a non-breaking space after R$.
 const plain = (s: string) => s.replace(/\s/g, " ");
