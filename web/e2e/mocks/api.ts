@@ -49,6 +49,15 @@ export interface FakeState {
     importing: boolean;
     lastSyncedAt: string | null;
     /** What `GET /me/finance/transactions` reads, any month; the PATCH edits these. Absent means none. */
+    /** Monthly income, which `PUT /me/finance/income` sets. Absent means none. */
+    monthlyIncomeCents?: number | null;
+    /** The months `GET /me/finance/commitments` lists; the fake adds `percentOfIncome` from the income. Absent means none. */
+    commitments?: {
+      month: string;
+      committedCents: number;
+      installments: { name: string; number: number; total: number; amountCents: number }[];
+      bills: { id: string; name: string; expectedCents: number }[];
+    }[];
     transactions?: {
       id: string;
       postedOn: string;

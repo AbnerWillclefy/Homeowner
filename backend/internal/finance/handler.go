@@ -152,6 +152,11 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 		httpx.InternalError(w, h.log, "finance: read commitments", err)
 		return
 	}
+	income, err := h.store.Income(r.Context(), identity.CurrentUser(r.Context()).ID)
+	if err != nil {
+		httpx.InternalError(w, h.log, "finance: read income", err)
+		return
+	}
 	months := make([]MonthCommitment, commitmentMonths)
 	for i, lines := range ProjectInstallments(plans, from, commitmentMonths) {
 		m := MonthCommitment{Month: from.AddDate(0, i, 0).Format("2006-01"), Installments: []InstallmentLine{}, Bills: []BillLine{}}
@@ -170,9 +175,33 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 				m.CommittedCents += b.ExpectedCents
 			}
 		}
+		if income != nil { // income <= 10^12 and committed is small, so *100 cannot overflow int64
+			pct := (m.CommittedCents*100 + *income/2) / *income
+			m.PercentOfIncome = &pct
+		}
 		months[i] = m
 	}
-	httpx.WriteJSON(w, http.StatusOK, CommitmentsResponse{From: from.Format("2006-01"), Months: months})
+	httpx.WriteJSON(w, http.StatusOK, CommitmentsResponse{From: from.Format("2006-01"), MonthlyIncomeCents: income, Months: months})
+}
+
+// maxIncomeCents bounds the income so the percentage arithmetic cannot overflow.
+const maxIncomeCents = 1_000_000_000_000
+
+// PutIncome answers PUT /me/finance/income: sets the Monthly income, or clears it with null.
+func (h *Handler) PutIncome(w http.ResponseWriter, r *http.Request) {
+	var req IncomeRequest
+	if !httpx.DecodeBody(w, r, &req, maxBodyBytes, true) {
+		return
+	}
+	if v := req.MonthlyIncomeCents; v != nil && (*v <= 0 || *v > maxIncomeCents) {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid income")
+		return
+	}
+	if err := h.store.SetIncome(r.Context(), identity.CurrentUser(r.Context()).ID, req.MonthlyIncomeCents, h.clk.Now()); err != nil {
+		httpx.InternalError(w, h.log, "finance: set income", err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // PatchTransaction answers PATCH /me/finance/transactions/{id}. A malformed id
