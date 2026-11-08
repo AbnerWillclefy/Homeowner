@@ -5,6 +5,8 @@ import {
   deleteCredentials,
   deleteFinanceData,
   getFinanceStatus,
+  getMonth,
+  patchTransaction,
   putCredentials,
   registerItem,
 } from "./api";
@@ -150,5 +152,44 @@ describe("registerItem", () => {
   it("is item-refused for a 422 that is not about the credentials", async () => {
     stubFetch(Response.json({ error: "item login failed" }, { status: 422 }));
     expect(await registerItem("item-1")).toEqual({ kind: "item-refused" });
+  });
+});
+
+const MONTH = {
+  month: "2026-11",
+  spentCents: 1000,
+  categories: [{ category: "groceries", spentCents: 1000 }],
+  transactions: [
+    { id: "t1", postedOn: "2026-11-02", description: "Mercado", sourceName: "Nubank", amountCents: -1000, currency: "BRL", type: "expense", spendingCategory: "groceries", typeSetBy: "rule", categorySetBy: "rule", installment: null },
+  ],
+};
+
+describe("getMonth", () => {
+  it("reads GET /me/finance/transactions with the month", async () => {
+    const fetch = stubFetch(Response.json(MONTH));
+    expect(await getMonth("2026-11")).toEqual({ kind: "ok", month: MONTH });
+    expect(fetch.mock.calls[0]![0]).toBe("http://api.test/me/finance/transactions?month=2026-11");
+  });
+
+  it("is an error for a body it cannot read", async () => {
+    stubFetch(Response.json({ ...MONTH, transactions: [{ id: 1 }] }));
+    expect(await getMonth("2026-11")).toEqual({ kind: "error" });
+  });
+});
+
+describe("patchTransaction", () => {
+  it("sends only the fields changed", async () => {
+    const fetch = stubFetch(Response.json(MONTH.transactions[0]));
+    expect(await patchTransaction("t1", { type: "transfer" })).toEqual({ kind: "ok" });
+    const [url, init] = fetch.mock.calls[0]!;
+    expect(`${init?.method} ${url}`).toBe("PATCH http://api.test/me/finance/transactions/t1");
+    expect(JSON.parse(String(init?.body))).toEqual({ type: "transfer" });
+  });
+
+  it("names a missing row and a refused edit", async () => {
+    stubFetch(Response.json({ error: "not found" }, { status: 404 }));
+    expect(await patchTransaction("t1", { type: "income" })).toEqual({ kind: "not-found" });
+    stubFetch(Response.json({ error: "x" }, { status: 400 }));
+    expect(await patchTransaction("t1", { spendingCategory: "pets" })).toEqual({ kind: "invalid" });
   });
 });
