@@ -26,7 +26,7 @@ const MaxCategorizerBatch = 100
 //
 // It sees merchant keys only (finance.MerchantKey: uppercase letters, no
 // digits, dates or card fragments), never an amount, a date, an account name or
-// an id. Keys that start like a transfer to a person are held back in Go, since
+// an id. Keys that hold a transfer word (PIX, TED, DOC, TRANSF...) are held back in Go, since
 // their bank descriptions carry the counterparty's name.
 type Categorizer struct {
 	client Client
@@ -38,8 +38,10 @@ func NewCategorizer(client Client) *Categorizer { return &Categorizer{client: cl
 // Sendable reports whether a merchant key may leave for the model: not a
 // transfer to a person (PIX, TED, DOC, TRANSF...), whose key holds a name.
 func Sendable(merchant string) bool {
-	first, _, _ := strings.Cut(merchant, " ")
-	return merchant != "" && first != "PIX" && first != "TED" && first != "DOC" && !strings.HasPrefix(first, "TRANSF")
+	// Any word, not the first: banks also write "PAGAMENTO PIX FULANO".
+	return merchant != "" && !slices.ContainsFunc(strings.Fields(merchant), func(w string) bool {
+		return w == "PIX" || w == "TED" || w == "DOC" || strings.HasPrefix(w, "TRANSF")
+	})
 }
 
 // Categorize asks the model for the Spending Category of each merchant and

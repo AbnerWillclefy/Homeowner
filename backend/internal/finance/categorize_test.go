@@ -225,3 +225,40 @@ func TestTheDatabaseRefusesACategoryOutsideTheThirteen(t *testing.T) {
 		t.Error("a Transaction with a category outside the 13 was stored")
 	}
 }
+
+func TestMoreThanOneBatchMapsEachAnswerToItsOwnKeyAndTransfersNeverLeave(t *testing.T) {
+	t.Parallel()
+	app, _ := startSync(t, []string{ana})
+	app.RunFinanceSync(t) // no Categorizer yet: the fixtures' Expenses are on fallback
+	n := llmalloc.MaxCategorizerBatch + 5
+	if _, err := app.DB.Exec(context.Background(), `
+		INSERT INTO finance_transactions (user_id, source_id, provider_id, posted_on, amount_cents, currency, description,
+		       merchant_key, type, type_set_by, spending_category, category_set_by, created_at, updated_at)
+		SELECT user_id, source_id, 'bulk-' || k, posted_on, amount_cents, currency, description,
+		       CASE WHEN k = 0 THEN 'PAGAMENTO PIX FULANO' ELSE 'MERCHANT ' || lpad(k::text, 3, '0') END,
+		       type, type_set_by, 'other', 'fallback', created_at, updated_at
+		FROM (SELECT * FROM finance_transactions WHERE category_set_by = 'fallback' LIMIT 1) t, generate_series(0, $1::int) k`, n); err != nil {
+		t.Fatal(err)
+	}
+	fake := llmalloc.NewFakeClient()
+	fake.Answer(`{"items":[{"i":0,"c":"pets"}]}`) // the first merchant of whichever batch is asked
+	app.UseCategorizer(fake)
+	app.RunFinanceSync(t)
+
+	// 105 bulk merchants + 3 from the fixtures = 108 sendable, so two batches.
+	if fake.Calls() != 2 {
+		t.Fatalf("calls = %d, want 2", fake.Calls())
+	}
+	if strings.Contains(fake.LastRequest().User, "PIX") {
+		t.Error("a PIX key went to the model")
+	}
+	if c, by := categoryOf(t, app, "MERCHANT 101"); c != "pets" || by != "auto" {
+		t.Errorf("first of the second batch = %s/%s, want pets/auto", c, by)
+	}
+	if c, by := categoryOf(t, app, "MERCHANT 002"); c != "other" || by != "fallback" {
+		t.Errorf("second of the first batch = %s/%s, want other/fallback", c, by)
+	}
+	if c, by := categoryOf(t, app, "PAGAMENTO PIX FULANO"); c != "other" || by != "fallback" {
+		t.Errorf("held back = %s/%s, want other/fallback", c, by)
+	}
+}

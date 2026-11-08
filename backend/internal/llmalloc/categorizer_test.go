@@ -147,7 +147,7 @@ func TestAnIndexKeepsItsPlaceWhenAMerchantIsHeldBack(t *testing.T) {
 
 func TestNothingToAskMakesNoCall(t *testing.T) {
 	t.Parallel()
-	got, fake, err := categorizeWith(t, `{"items":[]}`, "PIX FULANO")
+	got, fake, err := categorizeWith(t, `{"items":[]}`, "PIX FULANO", "PAGAMENTO PIX FULANO", "ENVIO TED FULANO")
 	if err != nil || len(got) != 0 || fake.Calls() != 0 {
 		t.Fatalf("got %v, %v, %d calls", got, err, fake.Calls())
 	}
