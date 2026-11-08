@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finances redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.light{--surface:#f7f8f5;--raised:#ffffff;--text:#1c2421;--muted:#4d5a54;--accent:#2f6f4f;--on-accent:#ffffff;--border:#6b7a73;--chart:#2b3631;--soft:#87978f;--faint:#e4e9e6}
+.dark{--surface:#121816;--raised:#1b2320;--text:#e8eeea;--muted:#a9b5ae;--accent:#6fcf9f;--on-accent:#0b1a12;--border:#7f8d86;--chart:#dfe7e2;--soft:#6d7d75;--faint:#29332f}
+a{color:var(--accent)}
+.num{font-variant-numeric:tabular-nums}
+.hatch{background:repeating-linear-gradient(135deg,var(--soft) 0 2px,transparent 2px 6px);box-shadow:inset 0 0 0 1px var(--soft)}
+::selection{background:var(--accent);color:var(--on-accent)}
+
+.light{--danger:#b3261e}
+.board{padding:32px;background:#eef1ee;font-family:Nunito,system-ui,sans-serif;color:#1c2421}
+.board>header{max-width:60rem;margin-bottom:24px}
+.board>header p{line-height:1.5}
+</style>
+</head>
+<body style="margin:0">
+<main class="board">
+  <header lang="en">
+    <h1 style="margin:0 0 8px">Epic 7: Finances redesign</h1>
+    <p style="margin:0">Finances splits into three views that each answer one question: Resumo (how is the month going?), Gastos (where did the money go?) and Contas (what is still to pay?). Ajustes leaves the tabs. Charts are neutral ink with a hatch and always carry the amounts as text; teal stays for actions. Drawn in pt-BR with sample data at 390px; every number comes from data the API already returns. Copy is illustrative; the i18n catalogs own the real wording.</p>
+  </header>
+  <div style="display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap">
+<figure id="main" style="margin:0;display:flex;flex-direction:column;gap:12px;width:390px">
+  <div style="border:1px solid #6b7a73;border-radius:28px;overflow:hidden">
+<div class="light" style="width: 390px; min-height: 1660px; box-sizing: border-box; background: var(--surface); color: var(--text); font-family: Nunito, system-ui, sans-serif; display: flex; flex-direction: column;">
+
+  <header style="display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 0 24px; min-height: 44px;">
+    <h1 style="margin: 0; display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 800; line-height: 1;">
+      <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"></path><path d="m9.5 15 2 2 3.5-4" stroke="var(--accent)"></path></svg>
+      homeowner
+    </h1>
+    <div style="display: flex; margin-right: -8px;">
+      <button type="button" aria-label="Energia hoje: 5. Mudar check-in" style="min-width: 64px; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 4px; background: none; border: 0; color: var(--text); font: 700 16px Nunito, sans-serif;">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"></path></svg>
+        <span class="num">5</span>
+      </button>
+      <button type="button" aria-label="Sequência: 12 dias" style="min-width: 64px; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 4px; background: none; border: 0; color: var(--text); font: 700 16px Nunito, sans-serif;">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+        <span class="num">12</span>
+      </button>
+    </div>
+  </header>
+
+  <main style="flex: 1; display: flex; flex-direction: column; gap: 16px; padding: 16px 24px 32px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+      <h2 style="margin: 0; font-size: 30px; font-weight: 700; line-height: 1.25;">Finanças</h2>
+      <a href="#ajustes" aria-label="Ajustes de finanças" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 999px; border: 1px solid var(--border); background: var(--raised); color: var(--text);">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"></path></svg>
+      </a>
+    </div>
+
+    <nav aria-label="Finanças" style="display: flex; gap: 4px; padding: 4px; border-radius: 20px; border: 1px solid var(--border); background: var(--raised);">
+      <a href="#main" aria-current="page" style="flex: 1; min-height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-weight: 600; text-decoration: none;">Resumo</a>
+      <a href="#gastos" style="flex: 1; min-height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 999px; color: var(--muted); font-weight: 600; text-decoration: none;">Gastos</a>
+      <a href="#contas" style="flex: 1; min-height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 999px; color: var(--muted); font-weight: 600; text-decoration: none;">Contas</a>
+    </nav>
+
+    <div role="group" aria-label="Mês" style="display: flex; align-items: center; justify-content: space-between;">
+      <button type="button" aria-label="Mês anterior" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 999px; border: 1px solid var(--border); background: var(--raised); color: var(--text);">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+      </button>
+      <p style="margin: 0; font-weight: 700; font-size: 18px;">novembro de 2026</p>
+      <button type="button" disabled aria-label="Próximo mês" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 999px; border: 1px dashed var(--border); background: var(--surface); color: var(--muted);">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+      </button>
+    </div>
+
+    <section aria-labelledby="main-income-h" style="display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--raised);">
+      <h3 id="main-income-h" style="margin: 0; font-size: 18px; font-weight: 700; line-height: 1.375;">A renda de novembro</h3>
+      <p style="margin: 0; font-size: 16px; line-height: 1.5;">Depois do que já foi gasto e das contas que faltam, <strong class="num">R$ 2.702,20</strong> continuam livres.</p>
+      <div aria-hidden="true" style="display: flex; gap: 2px; height: 20px;">
+        <div style="flex: 0 0 35.9%; background: var(--chart); border-radius: 6px 0 0 6px;"></div>
+        <div class="hatch" style="flex: 0 0 35.6%;"></div>
+        <div style="flex: 1; background: var(--faint); border-radius: 0 6px 6px 0; box-shadow: inset 0 0 0 1px var(--soft);"></div>
+      </div>
+      <dl style="margin: 0; display: flex; flex-direction: column; gap: 8px; font-size: 16px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span aria-hidden="true" style="width: 14px; height: 14px; border-radius: 4px; background: var(--chart); flex-shrink: 0;"></span>
+          <dt style="flex: 1;">Gasto até hoje</dt>
+          <dd class="num" style="margin: 0; font-weight: 700;">R$ 3.412,80</dd>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span aria-hidden="true" class="hatch" style="width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0;"></span>
+          <dt style="flex: 1;">Contas a pagar</dt>
+          <dd class="num" style="margin: 0; font-weight: 700;">R$ 3.385,00</dd>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span aria-hidden="true" style="width: 14px; height: 14px; border-radius: 4px; background: var(--faint); box-shadow: inset 0 0 0 1px var(--soft); flex-shrink: 0;"></span>
+          <dt style="flex: 1;">Livre</dt>
+          <dd class="num" style="margin: 0; font-weight: 700;">R$ 2.702,20</dd>
+        </div>
+      </dl>
+      <p style="margin: 0; padding-top: 12px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 12px; font-size: 14px; font-weight: 600; color: var(--muted);">
+        <span class="num">Renda mensal: R$ 9.500,00</span>
+        <a href="#ajustes" style="min-height: 44px; display: inline-flex; align-items: center;">Mudar</a>
+      </p>
+    </section>
+
+    <section aria-labelledby="main-pace-h" style="display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--raised);">
+      <h3 id="main-pace-h" style="margin: 0; font-size: 18px; font-weight: 700; line-height: 1.375;">Gasto ao longo do mês</h3>
+      <p style="margin: 0; font-size: 16px; line-height: 1.5;">Até dia 8 você gastou <strong class="num">R$ 392,80 a mais</strong> que até 8 de outubro. O aluguel no dia 5 explica o salto.</p>
+      <div style="display: flex; gap: 16px; font-size: 14px; font-weight: 600; color: var(--muted);">
+        <span style="display: inline-flex; align-items: center; gap: 6px;"><svg aria-hidden="true" width="20" height="4"><line x1="0" y1="2" x2="20" y2="2" stroke="var(--chart)" stroke-width="2.5"></line></svg>novembro</span>
+        <span style="display: inline-flex; align-items: center; gap: 6px;"><svg aria-hidden="true" width="20" height="4"><line x1="0" y1="2" x2="20" y2="2" stroke="var(--soft)" stroke-width="2" stroke-dasharray="4 3"></line></svg>outubro</span>
+      </div>
+      <svg role="img" aria-label="Gasto acumulado por dia. Novembro: R$ 3.412,80 até dia 8. Outubro: R$ 3.020,00 até dia 8 e R$ 7.840,00 no mês." viewBox="0 0 342 150" style="width: 100%; height: auto; overflow: visible;">
+        <g font-family="Nunito, sans-serif" font-size="11" fill="var(--muted)">
+          <line x1="36" y1="130" x2="334" y2="130" stroke="var(--soft)" stroke-width="1"></line>
+          <line x1="36" y1="71" x2="334" y2="71" stroke="var(--faint)" stroke-width="1"></line>
+          <line x1="36" y1="12" x2="334" y2="12" stroke="var(--faint)" stroke-width="1"></line>
+          <text x="30" y="134" text-anchor="end">0</text>
+          <text x="30" y="75" text-anchor="end">4 mil</text>
+          <text x="30" y="16" text-anchor="end">8 mil</text>
+          <text x="36" y="146" text-anchor="middle">1</text>
+          <text x="175" y="146" text-anchor="middle">15</text>
+          <text x="324" y="146" text-anchor="middle">30</text>
+        </g>
+        <line x1="105.5" y1="12" x2="105.5" y2="130" stroke="var(--soft)" stroke-width="1" stroke-dasharray="2 3"></line>
+        <polyline fill="none" stroke="var(--soft)" stroke-width="2" stroke-dasharray="4 3" stroke-linejoin="round" points="36.0,130.0 45.9,128.2 55.9,126.2 65.8,124.0 75.7,94.9 85.7,93.9 95.6,91.7 105.5,85.5 115.5,83.5 125.4,81.9 135.3,76.9 145.3,75.4 155.2,73.7 165.1,68.8 175.1,65.1 185.0,63.3 194.9,62.0 204.9,59.2 214.8,56.0 224.7,54.0 234.7,51.8 244.6,47.4 254.5,44.7 264.5,43.0 274.4,39.3 284.3,37.1 294.3,32.7 304.2,27.5 314.1,22.3 324.1,17.9 334.0,14.4"></polyline>
+        <path d="M36.0,128.6 L45.9,126.5 L55.9,117.8 L65.8,115.1 L75.7,85.9 L85.7,84.0 L95.6,81.9 L105.5,79.7 L105.5,130.0 L36.0,130.0 Z" fill="var(--faint)"></path>
+        <polyline fill="none" stroke="var(--chart)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points="36.0,128.6 45.9,126.5 55.9,117.8 65.8,115.1 75.7,85.9 85.7,84.0 95.6,81.9 105.5,79.7"></polyline>
+        <circle cx="105.5" cy="79.7" r="5" fill="var(--chart)" stroke="var(--raised)" stroke-width="2"></circle>
+        <g font-family="Nunito, sans-serif" font-size="12" font-weight="700">
+          <text x="113" y="74" fill="var(--text)">hoje R$ 3.412</text>
+          <text x="330" y="32" text-anchor="end" fill="var(--muted)">out. R$ 7.840</text>
+        </g>
+      </svg>
+      <button type="button" style="align-self: flex-end; min-height: 44px; padding: 0 4px; background: none; border: 0; color: var(--accent); font: 600 14px Nunito, sans-serif; text-decoration: underline; text-underline-offset: 3px;">Ver dia a dia em tabela</button>
+    </section>
+
+    <section aria-labelledby="main-next-h" style="display: flex; flex-direction: column; gap: 4px; padding: 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--raised);">
+      <h3 id="main-next-h" style="margin: 0 0 8px; font-size: 18px; font-weight: 700; line-height: 1.375;">Próximas contas</h3>
+      <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column;">
+        <li style="display: flex; align-items: center; gap: 12px; padding: 10px 0;">
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18M12 14v3"></path></svg>
+          <span style="flex: 1; display: flex; flex-direction: column;"><span style="font-weight: 700;">Fatura do cartão</span><span style="font-size: 14px; font-weight: 600; color: var(--muted);">Venceu dia 7</span></span>
+          <span class="num" style="font-weight: 700;">R$ 2.340,00</span>
+        </li>
+        <li style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--faint);">
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+          <span style="flex: 1; display: flex; flex-direction: column;"><span style="font-weight: 700;">Condomínio</span><span style="font-size: 14px; font-weight: 600; color: var(--muted);">Vence dia 10, em 2 dias</span></span>
+          <span class="num" style="font-weight: 700;">R$ 620,00</span>
+        </li>
+        <li style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--faint);">
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+          <span style="flex: 1; display: flex; flex-direction: column;"><span style="font-weight: 700;">Luz</span><span style="font-size: 14px; font-weight: 600; color: var(--muted);">Vence dia 12</span></span>
+          <span class="num" style="font-weight: 700;">R$ 210,00</span>
+        </li>
+      </ul>
+      <a href="#contas" style="align-self: flex-end; min-height: 44px; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px;">Ver as 7 contas do mês
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
+      </a>
+    </section>
+
+    <section aria-labelledby="main-top-h" style="display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--raised);">
+      <h3 id="main-top-h" style="margin: 0; font-size: 18px; font-weight: 700; line-height: 1.375;">Onde mais gastou</h3>
+      <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px;">
+        <li style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="display: flex; justify-content: space-between; gap: 12px;"><span style="font-weight: 600;">Moradia</span><span class="num" style="font-weight: 700;">R$ 1.850,00</span></span>
+          <span aria-hidden="true" style="height: 8px; border-radius: 4px; background: var(--faint); display: flex;"><span style="width: 100%; border-radius: 4px; background: var(--chart);"></span></span>
+        </li>
+        <li style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="display: flex; justify-content: space-between; gap: 12px;"><span style="font-weight: 600;">Mercado</span><span class="num" style="font-weight: 700;">R$ 642,30</span></span>
+          <span aria-hidden="true" style="height: 8px; border-radius: 4px; background: var(--faint); display: flex;"><span style="width: 34.7%; border-radius: 4px; background: var(--chart);"></span></span>
+        </li>
+        <li style="display: flex; flex-direction: column; gap: 6px;">
+          <span style="display: flex; justify-content: space-between; gap: 12px;"><span style="font-weight: 600;">Restaurantes</span><span class="num" style="font-weight: 700;">R$ 318,90</span></span>
+          <span aria-hidden="true" style="height: 8px; border-radius: 4px; background: var(--faint); display: flex;"><span style="width: 17.2%; border-radius: 4px; background: var(--chart);"></span></span>
+        </li>
+      </ul>
+      <a href="#gastos" style="align-self: flex-end; min-height: 44px; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px;">Ver todos os gastos
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"></path></svg>
+      </a>
+    </section>
+
+    <p role="status" style="margin: 0; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--muted);">
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"></path></svg>
+      Última atualização: hoje às 07:12
+    </p>
+  </main>
+
+  <nav aria-label="Principal" style="position: sticky; bottom: 0; display: flex; border-top: 1px solid var(--border); background: var(--raised); padding-bottom: 8px;">
+    <a href="#" style="flex: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-top: 4px solid transparent; color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none;"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>Hoje</a>
+    <a href="#" style="flex: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-top: 4px solid transparent; color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none;"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8"></path></svg>Afazeres</a>
+    <a href="#" style="flex: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-top: 4px solid transparent; color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none;"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path><path d="M3 10a2 2 0 0 1 .71-1.53l7-6a2 2 0 0 1 2.58 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>Lar</a>
+    <a href="#main" aria-current="page" style="flex: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-top: 4px solid var(--accent); color: var(--accent); font-size: 12px; font-weight: 600; text-decoration: none;"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path></svg>Finanças</a>
+    <a href="#" style="flex: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-top: 4px solid transparent; color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none;"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"></circle><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path></svg>Eu</a>
+  </nav>
+</div>
+</div>
+  <figcaption style="font:600 14px/1.5 Nunito,sans-serif;color:#4d5a54">Resumo: the new first view. How the month's income splits, spending pace against last month, next Bills, top Spending Categories.</figcaption>
+</figure>
+<figure id="gastos" style="margin:0;display:flex;flex-direction:column;gap:12px;width:390px">
+  <div style="border:1px solid #6b7a73;border-radius:28px;overflow:hidden">
+<div class="light" style="width: 390px; min-height: 1880px; box-sizing: border-box; background: var(--surface); color: var(--text); font-family: Nunito, system-ui, sans-serif; display: flex; flex-direction: column;">
+
+  <header style="display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 0 24px; min-height: 44px;">
+    <h1 style="margin: 0; display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 800; line-height: 1;">
+      <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"></path><path d="m9.5 15 2 2 3.5-4" stroke="var(--accent)"></path></svg>
+      homeowner
+    </h1>
+    <div style="display: flex; margin-right: -8px;">
+      <button type="button" aria-label="Energia hoje: 5. Mudar check-in" style="min-width: 64px; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 4px; background: none; border: 0; color: var(--text); font: 700 16px Nunito, sans-serif;">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"></path></svg>
+        <span class="num">5</span>
+      </button>
+      <button type="button" aria-label="Sequência: 12 dias" style="min-width: 64px; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 4px; background: none; border: 0; color: var(--text); font: 700 16px Nunito, sans-serif;">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+        <span class="num">12</span>
+      </button>
+    </div>
+  </header>
+
+  <main style="flex: 1; display: flex; flex-direction: column; gap: 16px; padding: 16px 24px 32px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+      <h2 style="margin: 0; font-size: 30px; font-weight: 700; line-height: 1.25;">Finanças</h2>
+      <a href="#ajustes" aria-label="Ajustes de finanças" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 999px; border: 1px solid var(--border); background: var(--raised); color: var(--text);">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"></path></svg>
+      </a>
+    </div>
+
+    <nav aria-label="Finanças" style="display: flex; gap: 4px; padding: 4px; border-radius: 20px; border: 1px solid var(--border); background: var(--raised);">
+      <a href="#main" style="flex: 1; min-height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 999px; color: var(--muted); font-weight: 600; text-decoration: none;">Resumo</a>
+      <a href="#gastos" aria-current="page" style="flex: 1; min-height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-weight: 600; text-decoration: none;">Gastos</a>
+      <a href="#contas" style="flex: 1; min-height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 999px; color: var(--muted); font-weight: 600; text-decoration: none;">Contas</a>
+    </nav>
+
+    <div role="group" aria-label="Mês" style="display: flex; align-items: center; justify-content: space-between;">
+      <button type="button" aria-label="Mês anterior" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 999px; border: 1px solid var(--border); background: var(--raised); color: var(--text);">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+      </button>
+      <p style="margin: 0; font-weight: 700; font-size: 18px;">novembro de 2026</p>
+      <button type="button" disabled aria-label="Próximo mês" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 999px; border: 1px dashed var(--border); background: var(--surface); color: var(--muted);">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+      </button>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 2px; padding: 4px 0;">
+      <p class="num" style="margin: 0; font-size: 30px; font-weight: 700; line-height: 1.25;">R$ 3.412,80</p>
+      <p style="margin: 0; font-size: 14px; font-weight: 600;">gastos de 1 a 8 de novembro</p>
+      <p class="num" style="margin: 0; font-size: 14px; color: var(--muted);">R$ 392,80 a mais que de 1 a 8 de outubro</p>
+    </div>
+
+    <section aria-labelledby="gastos-uncat-h" style="display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--raised);">
+      <div style="display: flex; gap: 12px; align-items: flex-start;">
+        <span aria-hidden="true" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: var(--faint); color: var(--muted);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.59 2.59A2 2 0 0 0 11.17 2H4a2 2 0 0 0-2 2v7.17a2 2 0 0 0 .59 1.42l8.7 8.7a2.43 2.43 0 0 0 3.42 0l6.58-6.58a2.43 2.43 0 0 0 0-3.42z"></path><circle cx="7.5" cy="7.5" r="1"></circle></svg>
+        </span>
+        <span style="display: flex; flex-direction: column;">
+          <h3 id="gastos-uncat-h" style="margin: 0; font-size: 18px; font-weight: 700; line-height: 1.375;">3 lançamentos sem categoria</h3>
+          <span style="font-size: 14px; color: var(--muted);">Eles contam como Outros até você escolher uma.</span>
+        </span>
+      </div>
+      <button type="button" style="align-self: flex-end; min-height: 44px; padding: 8px 20px; border-radius: 999px; border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent); font: 600 16px Nunito, sans-serif;">Escolher categorias</button>
+    </section>
+
+    <section aria-labelledby="gastos-cats-h" style="display: flex; flex-direction: column; gap: 4px;">
+      <div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin: 16px 0 8px;">
+        <h3 id="gastos-cats-h" style="margin: 0; font-size: 20px; font-weight: 700; line-height: 1.3;">Por categoria</h3>
+        <span style="display: inline-flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 600; color: var(--muted);">
+          <span style="display: inline-flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 14px; height: 8px; border-radius: 4px; background: var(--chart);"></span>nov.</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 3px; height: 14px; border-radius: 2px; background: var(--muted);"></span>out. até dia 8</span>
+        </span>
+      </div>
+
+      <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; border-radius: 20px; border: 1px solid var(--border); background: var(--raised); overflow: hidden;">
+        <li>
+          <button type="button" aria-expanded="false" style="width: 100%; min-height: 44px; display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; background: none; border: 0; color: inherit; font: inherit; text-align: start;">
+            <span style="width: 100%; display: flex; align-items: center; gap: 8px;"><span style="flex: 1; font-weight: 700;">Moradia</span><span class="num" style="font-weight: 700;">R$ 1.850,00</span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span>
+            <span aria-hidden="true" style="position: relative; width: 100%; height: 8px; border-radius: 4px; background: var(--faint);"><span style="position: absolute; inset: 0 auto 0 0; width: 100%; border-radius: 4px; background: var(--chart);"></span><span style="position: absolute; top: -3px; left: calc(100% - 3px); width: 3px; height: 14px; border-radius: 2px; background: var(--muted); box-shadow: 0 0 0 2px var(--raised);"></span></span>
+            <span class="num" style="font-size: 14px; color: var(--muted);">1 lançamento · igual a outubro</span>
+          </button>
+        </li>
+        <li style="border-top: 1px solid var(--faint);">
+          <button type="button" aria-expanded="true" aria-controls="gastos-mercado-list" style="width: 100%; min-height: 44px; display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 10px; background: none; border: 0; color: inherit; font: inherit; text-align: start;">
+            <span style="width: 100%; display: flex; align-items: center; gap: 8px;"><span style="flex: 1; font-weight: 700;">Mercado</span><span class="num" style="font-weight: 700;">R$ 642,30</span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"></path></svg></span>
+            <span aria-hidden="true" style="position: relative; width: 100%; height: 8px; border-radius: 4px; background: var(--faint);"><span style="position: absolute; inset: 0 auto 0 0; width: 34.7%; border-radius: 4px; background: var(--chart);"></span><span style="position: absolute; top: -3px; left: 28.1%; width: 3px; height: 14px; border-radius: 2px; background: var(--muted); box-shadow: 0 0 0 2px var(--raised);"></span></span>
+            <span class="num" style="font-size: 14px; color: var(--muted);">4 lançamentos · R$ 122,30 a mais que em outubro</span>
+          </button>
+          <ul id="gastos-mercado-list" style="margin: 0 16px 12px; padding: 4px 12px; list-style: none; border-radius: 12px; background: var(--surface);">
+            <li style="padding: 8px 0 2px; font-size: 13px; font-weight: 700; color: var(--muted);">sáb., 7 nov.</li>
+            <li><button type="button" aria-haspopup="dialog" style="width: 100%; min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 6px 0; background: none; border: 0; color: inherit; font: inherit; text-align: start;"><span style="flex: 1; display: flex; flex-direction: column;"><span style="font-weight: 600;">Pão de Açúcar</span><span style="font-size: 13px; color: var(--muted);">Nubank · cartão</span></span><span class="num" style="font-weight: 700;">R$ 186,40</span></button></li>
+            <li style="padding: 8px 0 2px; font-size: 13px; font-weight: 700; color: var(--muted); border-top: 1px solid var(--faint);">qui., 5 nov.</li>
+            <li><button type="button" aria-haspopup="dialog" style="width: 100%; min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 6px 0; background: none; border: 0; color: inherit; font: inherit; text-align: start;"><span style="flex: 1; display: flex; flex-direction: column;"><span style="font-weight: 600;">Hortifruti Natural da Terra</span><span style="font-size: 13px; color: var(--muted);">Itaú · conta</span></span><span class="num" style="font-weight: 700;">R$ 74,90</span></button></li>
+            <li style="padding: 8px 0 2px; font-size: 13px; font-weight: 700; color: var(--muted); border-top: 1px solid var(--faint);">ter., 3 nov.</li>
+            <li><button type="button" aria-haspopup="dialog" style="width: 100%; min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 6px 0; background: none; border: 0; color: inherit; font: inherit; text-align: start;"><span style="flex: 1; display: flex; flex-direction: column;"><span style="font-weight: 600;">Assaí Atacadista</span><span style="font-size: 13px; color: var(--muted);">Nubank · cartão</span></span><span class="num" style="font-weight: 700;">R$ 312,50</span></button></li>
+            <li style="padding: 8px 0 2px; font-size: 13px; font-weight: 700; color: var(--muted); border-top: 1px solid var(--faint);">seg., 2 nov.</li>
+            <li><button type="button" aria-haspopup="dialog" style="width: 100%; min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 6px 0; background: none; border: 0; color: inherit; font: inherit; text-align: start;"><span style="flex: 1; display: flex; flex-direction: column;"><span style="font-weight: 600;">Padaria Real</span><span style="font-size: 13px; color: var(--muted);">Nubank · cartão</span></span><span class="num" style="font-weight: 700;">R$ 68,50</span></button></li>
+          </ul>
+        </li>
+        <li style="border-top: 1px solid var(--faint);">
+          <button type="button" aria-expanded="false" style="width: 100%; min-height: 44px; display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; background: none; border: 0; color: inherit; font: inherit; text-align: start;">
+            <span style="width: 100%; display: flex; align-items: center; gap: 8px;"><span style="flex: 1; font-weight: 700;">Restaurantes</span><span class="num" style="font-weight: 700;">R$ 318,90</span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span>
+            <span aria-hidden="true" style="position: relative; width: 100%; height: 8px; border-radius: 4px; background: var(--faint);"><span style="position: absolute; inset: 0 auto 0 0; width: 17.2%; border-radius: 4px; background: var(--chart);"></span><span style="position: absolute; top: -3px; left: 14.1%; width: 3px; height: 14px; border-radius: 2px; background: var(--muted); box-shadow: 0 0 0 2px var(--raised);"></span></span>
+            <span class="num" style="font-size: 14px; color: var(--muted);">6 lançamentos · R$ 58,90 a mais que em outubro</span>
+          </button>
+        </li>
+        <li style="border-top: 1px solid var(--faint);">
+          <button type="button" aria-expanded="false" style="width: 100%; min-height: 44px; display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; background: none; border: 0; color: inherit; font: inherit; text-align: start;">
+            <span style="width: 100%; display: flex; align-items: center; gap: 8px;"><span style="flex: 1; font-weight: 700;">Transporte</span><span class="num" style="font-weight: 700;">R$ 214,60</span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span>
+            <span aria-hidden="true" style="position: relative; width: 100%; height: 8px; border-radius: 4px; background: var(--faint);"><span style="position: absolute; inset: 0 auto 0 0; width: 11.6%; border-radius: 4px; background: var(--chart);"></span><span style="position: absolute; top: -3px; left: 9.7%; width: 3px; height: 14px; border-radius: 2px; background: var(--muted); box-shadow: 0 0 0 2px var(--raised);"></span></span>
+            <span class="num" style="font-size: 14px; color: var(--muted);">9 lançamentos · R$ 34,60 a mais que em outubro</span>
+          </button>
+        </li>
+        <li style="border-top: 1px solid var(--faint);">
+          <button type="button" aria-expanded="false" style="width: 100%; min-height: 44px; display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; background: none; border: 0; color: inherit; font: inherit; text-align: start;">
+            <span style="width: 100%; display: flex; align-items: center; gap: 8px;"><span style="flex: 1; font-weight: 700;">Assinaturas</span><span class="num" style="font-weight: 700;">R$ 189,70</span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span>
+            <span aria-hidden="true" style="position: relative; width: 100%; height: 8px; border-radius: 4px; background: var(--faint);"><span style="position: absolute; inset: 0 auto 0 0; width: 10.3%; border-radius: 4px; background: var(--chart);"></span><span style="position: absolute; top: -3px; left: calc(10.3% - 3px); width: 3px; height: 14px; border-radius: 2px; background: var(--muted); box-shadow: 0 0 0 2px var(--raised);"></span></span>
+            <span class="num" style="font-size: 14px; color: var(--muted);">5 lançamentos · igual a outubro</span>
+          </button>
+        </li>
+        <li style="border-top: 1px solid var(--faint);">
+          <button type="button" aria-expanded="false" style="width: 100%; min-height: 44px; display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; background: none; border: 0; color: inherit; font: inherit; text-align: start;">
+            <span style="width: 100%; display: flex; align-items: center; gap: 8px;"><span style="flex: 1; font-weight: 700;">Saúde</span><span class="num" style="font-weight: 700;">R$ 120,00</span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span>
+            <span aria-hidden="true" style="position: relative; width: 100%; height: 8px; border-radius: 4px; background: var(--faint);"><span style="position: absolute; inset: 0 auto 0 0; width: 6.5%; border-radius: 4px; background: var(--chart);"></span></span>
+            <span class="num" style="font-size: 14px; color: var(--muted);">1 lançamento · nada em outubro até dia 8</span>
+          </button>
+        </li>
+        <li style="border-top: 1px solid var(--faint);">
+          <button type="button" aria-expanded="false" style="width: 100%; min-height: 44px; display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; background: none; border: 0; color: inherit; font: inherit; text-align: start;">
+            <span style="width: 100%; display: flex; align-items: center; gap: 8px;"><span style="flex: 1; font-weight: 700;">Outros</span><span class="num" style="font-weight: 700;">R$ 77,30</span><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span>
+            <span aria-hidden="true" style="position: relative; width: 100%; height: 8px; border-radius: 4px; background: var(--faint);"><span style="position: absolute; inset: 0 auto 0 0; width: 4.2%; border-radius: 4px; background: var(--chart);"></span><span style="position: absolute; top: -3px; left: 1.1%; width: 3px; height: 14px; border-radius: 2px; background: var(--muted); box-shadow: 0 0 0 2px var(--raised);"></span></span>
+            <span class="num" style="font-size: 14px; color: var(--muted);">3 lançamentos, todos sem categoria</span>
+          </button>
+        </li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="gastos-out-h" style="display: flex; flex-direction: column; gap: 4px; margin-top: 16px;">
+      <h3 id="gastos-out-h" style="margin: 0; font-size: 20px; font-weight: 700; line-height: 1.3;">Fora dos totais</h3>
+      <p style="margin: 0 0 8px; font-size: 14px; color: var(--muted);">Não entram no gasto do mês. Toque num lançamento para mudar o tipo.</p>
+      <ul style="margin: 0; padding: 0; list-style: none; border-radius: 20px; border: 1px solid var(--border); background: var(--raised); overflow: hidden;">
+        <li>
+          <button type="button" aria-expanded="false" style="width: 100%; min-height: 56px; display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: none; border: 0; color: inherit; font: inherit; text-align: start;">
+            <span style="flex: 1; display: flex; flex-direction: column;"><span style="font-weight: 700;">Receitas</span><span style="font-size: 14px; color: var(--muted);">2 lançamentos</span></span>
+            <span class="num" style="font-weight: 700;">R$ 9.500,00</span>
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
+          </button>
+        </li>
+        <li style="border-top: 1px solid var(--faint);">
+          <button type="button" aria-expanded="false" style="width: 100%; min-height: 56px; display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: none; border: 0; color: inherit; font: inherit; text-align: start;">
+            <span style="flex: 1; display: flex; flex-direction: column;"><span style="font-weight: 700;">Transferências</span><span style="font-size: 14px; color: var(--muted);">5 lançamentos</span></span>
+            <span class="num" style="font-weight: 700;">R$ 2.100,00</span>
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
+          </button>
+        </li>
+      </ul>
+    </section>
+  </main>
+
+  <nav aria-label="Principal" style="position: sticky; bottom: 0; display: flex; border-top: 1px solid var(--border); background: var(--raised); padding-bottom: 8px;">
+    <a href="#" style="flex: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-top: 4px solid transparent; color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none;"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>Hoje</a>
+    <a href="#" style="flex: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-top: 4px solid transparent; color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none;"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8"></path></svg>Afazeres</a>
+    <a href="#" style="flex: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-top: 4px solid transparent; color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none;"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path><path d="M3 10a2 2 0 0 1 .71-1.53l7-6a2 2 0 0 1 2.58 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>Lar</a>
+    <a href="#main" aria-current="page" style="flex: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-top: 4px solid var(--accent); color: var(--accent); font-size: 12px; font-weight: 600; text-decoration: none;"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path></svg>Finanças</a>
+    <a href="#" style="flex: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-top: 4px solid transparent; color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none;"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"></circle><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path></svg>Eu</a>
+  </nav>
+</div>
+</div>
+  <figcaption style="font:600 14px/1.5 Nunito,sans-serif;color:#4d5a54">Gastos: month total against the same days last month, uncategorised Transactions, one list of Spending Categories with bars and last month's marker, Transfers and income apart.</figcaption>
+</figure>
+<figure id="contas" style="margin:0;display:flex;flex-direction:column;gap:12px;width:390px">
+  <div style="border:1px solid #6b7a73;border-radius:28px;overflow:hidden">
+<div class="light" style="width: 390px; min-height: 2260px; box-sizing: border-box; background: var(--surface); color: var(--text); font-family: Nunito, system-ui, sans-serif; display: flex; flex-direction: column;">
+
+  <header style="display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 0 24px; min-height: 44px;">
+    <h1 style="margin: 0; display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 800; line-height: 1;">
+      <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"></path><path d="m9.5 15 2 2 3.5-4" stroke="var(--accent)"></path></svg>
+      homeowner
+    </h1>
+    <div style="display: flex; margin-right: -8px;">
+      <button type="button" aria-label="Energia hoje: 5. Mudar check-in" style="min-width: 64px; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 4px; background: none; border: 0; color: var(--text); font: 700 16px Nunito, sans-serif;">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.920 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"></path></svg>
+        <span class="num">5</span>
+      </button>
+      <button type="button" aria-label="Sequência: 12 dias" style="min-width: 64px; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 4px; background: none; border: 0; color: var(--text); font: 700 16px Nunito, sans-serif;">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+        <span class="num">12</span>
+      </button>
+    </div>
+  </header>
+
+  <main style="flex: 1; display: flex; flex-direction: column; gap: 16px; padding: 16px 24px 32px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+      <h2 style="margin: 0; font-size: 30px; font-weight: 700; line-height: 1.25;">Finanças</h2>
+      <a href="#ajustes" aria-label="Ajustes de finanças" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 999px; border: 1px solid var(--border); background: var(--raised); color: var(--text);">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"></path></svg>
+      </a>
+    </div>
+
+    <nav aria-label="Finanças" style="display: flex; gap: 4px; padding: 4px; border-radius: 20px; border: 1px solid var(--border); background: var(--raised);">
+      <a href="#main" style="flex: 1; min-height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 999px; color: var(--muted); font-weight: 600; text-decoration: none;">Resumo</a>
+      <a href="#gastos" style="flex: 1; min-height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 999px; color: var(--muted); font-weight: 600; text-decoration: none;">Gastos</a>
+      <a href="#contas" aria-current="page" style="flex: 1; min-height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-weight: 600; text-decoration: none;">Contas</a>
+    </nav>
+
+    <section aria-labelledby="contas-month-h" style="display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--raised);">
+      <h3 id="contas-month-h" style="margin: 0; font-size: 18px; font-weight: 700; line-height: 1.375;">Contas de novembro</h3>
+      <p style="margin: 0; line-height: 1.5;"><strong class="num">R$ 2.330,00</strong> de <span class="num">R$ 5.715,00</span> pagos. Faltam <strong class="num">R$ 3.385,00</strong> em 5 contas.</p>
+      <div aria-hidden="true" style="display: flex; gap: 2px; height: 14px;">
+        <div style="flex: 0 0 40.8%; background: var(--chart); border-radius: 6px 0 0 6px;"></div>
+        <div class="hatch" style="flex: 1; border-radius: 0 6px 6px 0;"></div>
+      </div>
+      <div style="display: flex; gap: 16px; font-size: 13px; font-weight: 600; color: var(--muted);">
+        <span style="display: inline-flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 999px; background: var(--chart);"></span>paga</span>
+        <span style="display: inline-flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 999px; box-shadow: inset 0 0 0 2px var(--chart);"></span>a pagar</span>
+      </div>
+      <svg role="img" aria-label="Vencimentos em novembro: dia 3 e dia 5 pagas; dias 7, 10, 12, 15 e 20 a pagar. Hoje é dia 8." viewBox="0 0 310 64" style="width: 100%; height: auto; overflow: visible;">
+        <line x1="10" y1="26" x2="300" y2="26" stroke="var(--soft)" stroke-width="2" stroke-linecap="round"></line>
+        <line x1="80" y1="6" x2="80" y2="44" stroke="var(--text)" stroke-width="1.5" stroke-dasharray="3 3"></line>
+        <circle cx="30" cy="26" r="7" fill="var(--chart)" stroke="var(--raised)" stroke-width="2"></circle>
+        <circle cx="50" cy="26" r="7" fill="var(--chart)" stroke="var(--raised)" stroke-width="2"></circle>
+        <circle cx="70" cy="26" r="6.5" fill="var(--raised)" stroke="var(--chart)" stroke-width="2.5"></circle>
+        <circle cx="100" cy="26" r="6.5" fill="var(--raised)" stroke="var(--chart)" stroke-width="2.5"></circle>
+        <circle cx="120" cy="26" r="6.5" fill="var(--raised)" stroke="var(--chart)" stroke-width="2.5"></circle>
+        <circle cx="150" cy="26" r="6.5" fill="var(--raised)" stroke="var(--chart)" stroke-width="2.5"></circle>
+        <circle cx="200" cy="26" r="6.5" fill="var(--raised)" stroke="var(--chart)" stroke-width="2.5"></circle>
+        <g font-family="Nunito, sans-serif" font-size="11" fill="var(--muted)" font-weight="600">
+          <text x="10" y="60" text-anchor="middle">1</text>
+          <text x="80" y="60" text-anchor="middle" fill="var(--text)" font-weight="700">hoje</text>
+          <text x="150" y="60" text-anchor="middle">15</text>
+          <text x="300" y="60" text-anchor="middle">30</text>
+        </g>
+      </svg>
+    </section>
+
+    <section aria-labelledby="contas-late-h" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+      <h3 id="contas-late-h" style="margin: 0; font-size: 20px; font-weight: 700; line-height: 1.3;">Vencida <span style="font-weight: 600; color: var(--muted);">1</span></h3>
+      <ul style="margin: 0; padding: 0; list-style: none; border-radius: 20px; border: 1px solid var(--border); background: var(--raised);">
+        <li style="display: flex; align-items: center; gap: 8px; padding: 12px 12px 12px 16px;">
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+            <span style="font-weight: 700; overflow-wrap: anywhere;">Fatura do cartão</span>
+            <span class="num" style="font-weight: 700;">R$ 2.340,00</span>
+            <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--muted);"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>Venceu dia 7</span>
+          </span>
+          <button type="button" aria-label="Mais opções para Fatura do cartão" aria-haspopup="menu" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 999px; border: 0; background: none; color: var(--muted);"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg></button>
+          <button type="button" aria-label="Marcar Fatura do cartão como paga" style="min-height: 44px; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent); font: 600 16px Nunito, sans-serif;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Paguei</button>
+        </li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="contas-due-h" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+      <h3 id="contas-due-h" style="margin: 0; font-size: 20px; font-weight: 700; line-height: 1.3;">A pagar <span style="font-weight: 600; color: var(--muted);">4</span></h3>
+      <ul style="margin: 0; padding: 0; list-style: none; border-radius: 20px; border: 1px solid var(--border); background: var(--raised);">
+        <li style="display: flex; align-items: center; gap: 8px; padding: 12px 12px 12px 16px;">
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+            <span style="font-weight: 700;">Condomínio</span>
+            <span class="num" style="font-weight: 700;">R$ 620,00</span>
+            <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--muted);"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>Vence dia 10, em 2 dias</span>
+          </span>
+          <button type="button" aria-label="Mais opções para Condomínio" aria-haspopup="menu" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 999px; border: 0; background: none; color: var(--muted);"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg></button>
+          <button type="button" aria-label="Marcar Condomínio como paga" style="min-height: 44px; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border); background: var(--raised); color: var(--text); font: 600 16px Nunito, sans-serif;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Paguei</button>
+        </li>
+        <li style="display: flex; align-items: center; gap: 8px; padding: 12px 12px 12px 16px; border-top: 1px solid var(--faint);">
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+            <span style="font-weight: 700;">Luz</span>
+            <span class="num" style="font-weight: 700;">R$ 210,00</span>
+            <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--muted);"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>Vence dia 12</span>
+          </span>
+          <button type="button" aria-label="Mais opções para Luz" aria-haspopup="menu" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 999px; border: 0; background: none; color: var(--muted);"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg></button>
+          <button type="button" aria-label="Marcar Luz como paga" style="min-height: 44px; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border); background: var(--raised); color: var(--text); font: 600 16px Nunito, sans-serif;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Paguei</button>
+        </li>
+        <li style="display: flex; align-items: center; gap: 8px; padding: 12px 12px 12px 16px; border-top: 1px solid var(--faint);">
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+            <span style="font-weight: 700;">Internet</span>
+            <span class="num" style="font-weight: 700;">R$ 120,00</span>
+            <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--muted);"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>Vence dia 15</span>
+          </span>
+          <button type="button" aria-label="Mais opções para Internet" aria-haspopup="menu" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 999px; border: 0; background: none; color: var(--muted);"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg></button>
+          <button type="button" aria-label="Marcar Internet como paga" style="min-height: 44px; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border); background: var(--raised); color: var(--text); font: 600 16px Nunito, sans-serif;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Paguei</button>
+        </li>
+        <li style="display: flex; align-items: center; gap: 8px; padding: 12px 12px 12px 16px; border-top: 1px solid var(--faint);">
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+            <span style="font-weight: 700;">Água</span>
+            <span class="num" style="font-weight: 700;">R$ 95,00</span>
+            <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--muted);"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>Vence dia 20</span>
+          </span>
+          <button type="button" aria-label="Mais opções para Água" aria-haspopup="menu" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 999px; border: 0; background: none; color: var(--muted);"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg></button>
+          <button type="button" aria-label="Marcar Água como paga" style="min-height: 44px; flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border); background: var(--raised); color: var(--text); font: 600 16px Nunito, sans-serif;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Paguei</button>
+        </li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="contas-paid-h" style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+      <h3 id="contas-paid-h" style="margin: 0; font-size: 20px; font-weight: 700; line-height: 1.3;">Pagas <span style="font-weight: 600; color: var(--muted);">2</span></h3>
+      <ul style="margin: 0; padding: 0; list-style: none; border-radius: 20px; border: 1px solid var(--border); background: var(--raised);">
+        <li style="display: flex; align-items: center; gap: 8px; padding: 12px 12px 12px 16px;">
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+            <span style="font-weight: 700;">Aluguel</span>
+            <span class="num" style="font-weight: 700;">R$ 1.850,00</span>
+            <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--muted);"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22h18M6 18v-7M10 18v-7M14 18v-7M18 18v-7M12 2l8 5H4z"></path></svg>Paga pelo banco, dia 5</span>
+          </span>
+          <button type="button" aria-label="Mais opções para Aluguel" aria-haspopup="menu" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 999px; border: 0; background: none; color: var(--muted);"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg></button>
+        </li>
+        <li style="display: flex; align-items: center; gap: 8px; padding: 12px 12px 12px 16px; border-top: 1px solid var(--faint);">
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+            <span style="font-weight: 700;">Plano de saúde</span>
+            <span class="num" style="font-weight: 700;">R$ 480,00</span>
+            <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--muted);"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="m8.5 12 2.5 2.5 4.5-5"></path></svg>Marcada como paga</span>
+          </span>
+          <button type="button" aria-label="Mais opções para Plano de saúde" aria-haspopup="menu" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 999px; border: 0; background: none; color: var(--muted);"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg></button>
+          <button type="button" aria-label="Desfazer pagamento de Plano de saúde" style="min-height: 44px; flex-shrink: 0; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border); background: var(--raised); color: var(--text); font: 600 16px Nunito, sans-serif;">Desfazer</button>
+        </li>
+      </ul>
+    </section>
+
+    <button type="button" style="min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 20px; border-radius: 999px; border: 1px solid var(--border); background: var(--raised); color: var(--text); font: 600 16px Nunito, sans-serif;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"></path></svg>Adicionar conta</button>
+
+    <section aria-labelledby="contas-ahead-h" style="display: flex; flex-direction: column; gap: 12px; margin-top: 24px;">
+      <h3 id="contas-ahead-h" style="margin: 0; font-size: 20px; font-weight: 700; line-height: 1.3;">Próximos meses</h3>
+      <div style="display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--raised);">
+        <p style="margin: 0; line-height: 1.5;">Em dezembro, <strong class="num">77% da renda</strong> já está comprometida com contas e parcelas. Até abril, as parcelas que terminam liberam <strong class="num">R$ 1.238,50</strong> por mês.</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; font-weight: 600; color: var(--muted);">
+          <span style="display: inline-flex; align-items: center; gap: 6px;"><span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 3px; background: var(--chart);"></span>parcelas</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px;"><span aria-hidden="true" class="hatch" style="width: 12px; height: 12px; border-radius: 3px;"></span>contas fixas</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px;"><svg aria-hidden="true" width="18" height="4"><line x1="0" y1="2" x2="18" y2="2" stroke="var(--text)" stroke-width="1.5" stroke-dasharray="4 3"></line></svg>renda</span>
+        </div>
+        <svg role="img" aria-label="Comprometido por mês, de dezembro a maio: 77%, 77%, 72%, 67%, 64% e 64% da renda de R$ 9.500. Contas fixas R$ 5.715 todo mês; parcelas R$ 1.628,40 em dezembro e janeiro, R$ 1.088,40 em fevereiro, R$ 675,90 em março, R$ 389,90 em abril e maio." viewBox="0 0 342 196" style="width: 100%; height: auto; overflow: visible;">
+          <defs>
+            <pattern id="contas-hatch-c" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--raised)"></rect><rect width="2" height="6" fill="var(--soft)"></rect></pattern>
+          </defs>
+          <line x1="30" y1="164" x2="334" y2="164" stroke="var(--soft)" stroke-width="1"></line>
+          <g>
+            <rect x="40" y="78.3" width="28" height="85.7" fill="url(#contas-hatch-c)" stroke="var(--soft)" stroke-width="1"></rect>
+            <rect x="40" y="51.8" width="28" height="24.4" rx="4" fill="var(--chart)"></rect>
+            <rect x="90" y="78.3" width="28" height="85.7" fill="url(#contas-hatch-c)" stroke="var(--soft)" stroke-width="1"></rect>
+            <rect x="90" y="51.8" width="28" height="24.4" rx="4" fill="var(--chart)"></rect>
+            <rect x="140" y="78.3" width="28" height="85.7" fill="url(#contas-hatch-c)" stroke="var(--soft)" stroke-width="1"></rect>
+            <rect x="140" y="59.9" width="28" height="16.3" rx="4" fill="var(--chart)"></rect>
+            <rect x="190" y="78.3" width="28" height="85.7" fill="url(#contas-hatch-c)" stroke="var(--soft)" stroke-width="1"></rect>
+            <rect x="190" y="66.1" width="28" height="10.1" rx="3" fill="var(--chart)"></rect>
+            <rect x="240" y="78.3" width="28" height="85.7" fill="url(#contas-hatch-c)" stroke="var(--soft)" stroke-width="1"></rect>
+            <rect x="240" y="70.4" width="28" height="5.8" rx="2" fill="var(--chart)"></rect>
+            <rect x="290" y="78.3" width="28" height="85.7" fill="url(#contas-hatch-c)" stroke="var(--soft)" stroke-width="1"></rect>
+            <rect x="290" y="70.4" width="28" height="5.8" rx="2" fill="var(--chart)"></rect>
+          </g>
+          <line x1="30" y1="21.5" x2="334" y2="21.5" stroke="var(--text)" stroke-width="1.5" stroke-dasharray="4 3"></line>
+          <g font-family="Nunito, sans-serif" font-size="12" font-weight="700" fill="var(--text)" text-anchor="middle">
+            <text x="54" y="44">77%</text>
+            <text x="104" y="44">77%</text>
+            <text x="154" y="52">72%</text>
+            <text x="204" y="58">67%</text>
+            <text x="254" y="62">64%</text>
+            <text x="304" y="62">64%</text>
+            <text x="334" y="14" text-anchor="end" font-size="11" fill="var(--muted)">renda R$ 9.500</text>
+          </g>
+          <g font-family="Nunito, sans-serif" font-size="12" font-weight="600" fill="var(--muted)" text-anchor="middle">
+            <text x="54" y="184">dez.</text>
+            <text x="104" y="184">jan.</text>
+            <text x="154" y="184">fev.</text>
+            <text x="204" y="184">mar.</text>
+            <text x="254" y="184">abr.</text>
+            <text x="304" y="184">mai.</text>
+          </g>
+        </svg>
+      </div>
+
+      <div style="display: flex; flex-direction: column; padding: 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--raised);">
+        <h4 style="margin: 0 0 4px; font-size: 18px; font-weight: 700; line-height: 1.375;">Parcelas em andamento</h4>
+        <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column;">
+          <li style="display: flex; flex-direction: column; gap: 6px; padding: 12px 0;">
+            <span style="display: flex; justify-content: space-between; gap: 12px;"><span style="font-weight: 700;">Sofá</span><span class="num" style="font-weight: 700;">R$ 540,00/mês</span></span>
+            <span aria-hidden="true" style="display: flex; gap: 3px; height: 6px;"><span style="flex: 1; border-radius: 3px; background: var(--chart);"></span><span style="flex: 1; border-radius: 3px; background: var(--chart);"></span><span style="flex: 1; border-radius: 3px; background: var(--faint); box-shadow: inset 0 0 0 1px var(--soft);"></span></span>
+            <span class="num" style="font-size: 14px; color: var(--muted);">2 de 3 em dezembro · última em janeiro</span>
+          </li>
+          <li style="display: flex; flex-direction: column; gap: 6px; padding: 12px 0; border-top: 1px solid var(--faint);">
+            <span style="display: flex; justify-content: space-between; gap: 12px;"><span style="font-weight: 700;">Notebook</span><span class="num" style="font-weight: 700;">R$ 412,50/mês</span></span>
+            <span aria-hidden="true" style="display: flex; height: 6px; border-radius: 3px; background: var(--faint); box-shadow: inset 0 0 0 1px var(--soft);"><span style="width: 83.3%; border-radius: 3px; background: var(--chart);"></span></span>
+            <span class="num" style="font-size: 14px; color: var(--muted);">10 de 12 em dezembro · última em fevereiro</span>
+          </li>
+          <li style="display: flex; flex-direction: column; gap: 6px; padding: 12px 0; border-top: 1px solid var(--faint);">
+            <span style="display: flex; justify-content: space-between; gap: 12px;"><span style="font-weight: 700;">Passagens</span><span class="num" style="font-weight: 700;">R$ 286,00/mês</span></span>
+            <span aria-hidden="true" style="display: flex; height: 6px; border-radius: 3px; background: var(--faint); box-shadow: inset 0 0 0 1px var(--soft);"><span style="width: 50%; border-radius: 3px; background: var(--chart);"></span></span>
+            <span class="num" style="font-size: 14px; color: var(--muted);">3 de 6 em dezembro · última em março</span>
+          </li>
+          <li style="display: flex; flex-direction: column; gap: 6px; padding: 12px 0 0; border-top: 1px solid var(--faint);">
+            <span style="display: flex; justify-content: space-between; gap: 12px;"><span style="font-weight: 700;">Geladeira</span><span class="num" style="font-weight: 700;">R$ 389,90/mês</span></span>
+            <span aria-hidden="true" style="display: flex; height: 6px; border-radius: 3px; background: var(--faint); box-shadow: inset 0 0 0 1px var(--soft);"><span style="width: 40%; border-radius: 3px; background: var(--chart);"></span></span>
+            <span class="num" style="font-size: 14px; color: var(--muted);">4 de 10 em dezembro · última em junho</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <nav aria-label="Principal" style="position: sticky; bottom: 0; display: flex; border-top: 1px solid var(--border); background: var(--raised); padding-bottom: 8px;">
+    <a href="#" style="flex: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-top: 4px solid transparent; color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none;"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>Hoje</a>
+    <a href="#" style="flex: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-top: 4px solid transparent; color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none;"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4M3 7l2 2 4-4M13 6h8M13 12h8M13 18h8"></path></svg>Afazeres</a>
+    <a href="#" style="flex: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-top: 4px solid transparent; color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none;"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path><path d="M3 10a2 2 0 0 1 .71-1.53l7-6a2 2 0 0 1 2.58 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>Lar</a>
+    <a href="#main" aria-current="page" style="flex: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-top: 4px solid var(--accent); color: var(--accent); font-size: 12px; font-weight: 600; text-decoration: none;"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path></svg>Finanças</a>
+    <a href="#" style="flex: 1; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-top: 4px solid transparent; color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none;"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"></circle><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path></svg>Eu</a>
+  </nav>
+</div>
+</div>
+  <figcaption style="font:600 14px/1.5 Nunito,sans-serif;color:#4d5a54">Contas: paid against still to pay, a due-date strip, Bills grouped Vencida / A pagar / Pagas with Paguei on the right; Próximos meses replaces Parcelamentos.</figcaption>
+</figure>
+<figure id="ajustes" style="margin:0;display:flex;flex-direction:column;gap:12px;width:390px">
+  <div style="border:1px solid #6b7a73;border-radius:28px;overflow:hidden">
+<div class="light" style="width: 390px; min-height: 1220px; box-sizing: border-box; background: var(--surface); color: var(--text); font-family: Nunito, system-ui, sans-serif; display: flex; flex-direction: column;">
+
+  <header style="display: flex; align-items: center; padding: 16px 24px 0 12px; min-height: 44px;">
+    <a href="#main" style="min-height: 44px; display: inline-flex; align-items: center; gap: 4px; padding: 0 12px; border-radius: 999px; color: var(--text); font-weight: 600; text-decoration: none;">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+      Finanças
+    </a>
+  </header>
+
+  <main style="flex: 1; display: flex; flex-direction: column; gap: 16px; padding: 8px 24px 32px;">
+    <h2 style="margin: 0 0 8px; font-size: 30px; font-weight: 700; line-height: 1.25;">Ajustes de finanças</h2>
+
+    <section aria-labelledby="ajustes-inc-h" style="display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--raised);">
+      <h3 id="ajustes-inc-h" style="margin: 0; font-size: 18px; font-weight: 700; line-height: 1.375;">Renda mensal</h3>
+      <p style="margin: 0; font-size: 14px; color: var(--muted);">Usada no Resumo e em Próximos meses. Fica só com você.</p>
+      <label for="ajustes-income" style="margin-top: 4px; font-size: 14px; font-weight: 600;">Quanto entra por mês</label>
+      <input id="ajustes-income" type="text" inputmode="decimal" value="9.500,00" style="min-height: 44px; box-sizing: border-box; width: 100%; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--raised); color: var(--text); font: 400 16px Nunito, sans-serif;">
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+        <button type="button" style="min-height: 44px; padding: 8px 20px; border-radius: 999px; border: 1px solid var(--border); background: var(--raised); color: var(--text); font: 600 16px Nunito, sans-serif;">Limpar</button>
+        <button type="button" style="min-height: 44px; padding: 8px 20px; border-radius: 999px; border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent); font: 600 16px Nunito, sans-serif;">Salvar</button>
+      </div>
+    </section>
+
+    <section aria-labelledby="ajustes-src-h" style="display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--raised);">
+      <h3 id="ajustes-src-h" style="margin: 0; font-size: 18px; font-weight: 700; line-height: 1.375;">Fontes conectadas</h3>
+      <ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column;">
+        <li style="display: flex; align-items: center; gap: 12px; padding: 10px 0;">
+          <span aria-hidden="true" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: var(--faint); color: var(--muted);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path></svg></span>
+          <span style="display: flex; flex-direction: column;"><span style="font-weight: 700;">Nubank</span><span style="font-size: 14px; color: var(--muted);">Cartão de crédito</span></span>
+        </li>
+        <li style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--faint);">
+          <span aria-hidden="true" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: var(--faint); color: var(--muted);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22h18M6 18v-7M10 18v-7M14 18v-7M18 18v-7M12 2l8 5H4z"></path></svg></span>
+          <span style="display: flex; flex-direction: column;"><span style="font-weight: 700;">Nubank</span><span style="font-size: 14px; color: var(--muted);">Conta corrente</span></span>
+        </li>
+        <li style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--faint);">
+          <span aria-hidden="true" style="width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: var(--faint); color: var(--muted);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 22h18M6 18v-7M10 18v-7M14 18v-7M18 18v-7M12 2l8 5H4z"></path></svg></span>
+          <span style="display: flex; flex-direction: column;"><span style="font-weight: 700;">Itaú</span><span style="font-size: 14px; color: var(--muted);">Conta corrente</span></span>
+        </li>
+      </ul>
+      <p role="status" style="margin: 0; font-size: 14px; color: var(--muted);">Última atualização: hoje às 07:12</p>
+      <button type="button" style="margin-top: 8px; min-height: 44px; padding: 8px 20px; border-radius: 999px; border: 1px solid var(--border); background: var(--raised); color: var(--text); font: 600 16px Nunito, sans-serif;">Conectar bancos</button>
+    </section>
+
+    <section aria-labelledby="ajustes-cred-h" style="display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--raised);">
+      <h3 id="ajustes-cred-h" style="margin: 0; font-size: 18px; font-weight: 700; line-height: 1.375;">Credenciais do MeuPluggy</h3>
+      <p style="margin: 0; font-size: 14px; color: var(--muted);">Salvas. Só são usadas para ler seus bancos.</p>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+        <button type="button" style="min-height: 44px; padding: 8px 20px; border-radius: 999px; border: 1px solid var(--border); background: var(--raised); color: var(--text); font: 600 16px Nunito, sans-serif;">Remover</button>
+        <button type="button" style="min-height: 44px; padding: 8px 20px; border-radius: 999px; border: 1px solid var(--border); background: var(--raised); color: var(--text); font: 600 16px Nunito, sans-serif;">Trocar</button>
+      </div>
+    </section>
+
+    <section aria-labelledby="ajustes-del-h" style="display: flex; flex-direction: column; gap: 8px; padding: 16px; margin-top: 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--raised);">
+      <h3 id="ajustes-del-h" style="margin: 0; font-size: 18px; font-weight: 700; line-height: 1.375;">Apagar dados de finanças</h3>
+      <p style="margin: 0; font-size: 14px; color: var(--muted);">Apaga lançamentos, contas, renda e credenciais deste app. Os bancos continuam conectados no MeuPluggy.</p>
+      <button type="button" style="align-self: flex-start; margin-top: 8px; min-height: 44px; padding: 8px 20px; border-radius: 999px; border: 2px solid var(--danger); background: var(--raised); color: var(--danger); font: 700 16px Nunito, sans-serif;">Apagar tudo</button>
+    </section>
+  </main>
+</div>
+</div>
+  <figcaption style="font:600 14px/1.5 Nunito,sans-serif;color:#4d5a54">Ajustes: out of the tabs, behind the button next to the title. Monthly income, Sources, credentials, delete.</figcaption>
+</figure>
+  </div>
+</main>
+</body>
+</html>
