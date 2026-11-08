@@ -60,6 +60,43 @@ export function financeHandlers(api: FakeApi): void {
     }),
   );
 
+  // The month, as `finance.Handler.Month` answers: totals count Expenses only, biggest category first.
+  api.on(
+    "GET /me/finance/transactions",
+    signedIn((request, state) => {
+      const month = request.url.searchParams.get("month") ?? "";
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return json(400, { error: "invalid month" });
+      const transactions = (finance(state).transactions ?? []).filter((t) => t.postedOn.startsWith(`${month}-`));
+      const byCategory = new Map<string, number>();
+      let spentCents = 0;
+      for (const t of transactions) {
+        if (t.type !== "expense") continue;
+        spentCents -= t.amountCents;
+        const category = t.spendingCategory ?? "other";
+        byCategory.set(category, (byCategory.get(category) ?? 0) - t.amountCents);
+      }
+      const categories = [...byCategory]
+        .filter(([, cents]) => cents !== 0)
+        .map(([category, cents]) => ({ category, spentCents: cents }))
+        .sort((a, b) => b.spentCents - a.spentCents);
+      return json(200, { month, spentCents, categories, transactions });
+    }),
+  );
+
+  api.on(
+    "PATCH /me/finance/transactions/{id}",
+    signedIn((request, state) => {
+      const row = finance(state).transactions?.find((t) => t.id === request.params["id"]);
+      if (!row) return json(404, { error: "not found" });
+      const body = request.body as { type?: "income" | "expense" | "transfer"; spendingCategory?: string } | null;
+      const type = body?.type ?? row.type;
+      if (body?.spendingCategory !== undefined && type !== "expense") return json(400, { error: "category needs expense" });
+      row.type = type;
+      row.spendingCategory = type !== "expense" ? null : (body?.spendingCategory ?? row.spendingCategory ?? "other");
+      return json(200, row);
+    }),
+  );
+
   api.on(
     "DELETE /me/finance",
     signedIn((_, state) => {
