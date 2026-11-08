@@ -38,6 +38,7 @@ func financeMux(h *finance.Handler) http.Handler {
 	mux.HandleFunc("GET /me/finance/report", h.Report)
 	mux.HandleFunc("GET /me/finance/commitments", h.Commitments)
 	mux.HandleFunc("PUT /me/finance/income", h.PutIncome)
+	mux.HandleFunc("PUT /me/finance/budgets/{category}", h.PutBudget)
 	mux.HandleFunc("PATCH /me/finance/transactions/{id}", h.PatchTransaction)
 	mux.HandleFunc("POST /me/finance/bills", h.CreateBill)
 	mux.HandleFunc("GET /me/finance/bills", h.ListBills)
