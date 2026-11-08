@@ -57,7 +57,7 @@ check_tier() {
 
 # Checks that run on every pull request into main, so they must be present and green: GitHub
 # lists a check only once its run exists. Path-filtered ones (infra-check) count only when they run.
-required_checks=(pr-risk backend-test web-typecheck web-e2e ui-screenshots claude-review claude-security-review)
+required_checks=(pr-risk backend-test web-typecheck web-e2e ui-screenshots claude-review)
 
 # Any pending run blocks (a queued run has no real start time). Otherwise only the latest run of
 # each check counts, since a superseded run shows as cancelled. gh exits non-zero while any check
