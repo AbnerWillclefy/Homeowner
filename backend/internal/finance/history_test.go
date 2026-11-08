@@ -126,6 +126,9 @@ func TestHistoryRefundOffsetsAndCorrectedCategoryMoves(t *testing.T) {
 func TestHistoryRejectsBadParametersAndOtherUsersRowsNeverCount(t *testing.T) {
 	t.Parallel()
 	app, ana := seedMonth(t)
+	if _, ms := readHistory(t, ana, "?months=12"); len(ms) != 12 || ms[0].Month != "2025-12" {
+		t.Fatalf("months=12 = %d months, want 12 from 2025-12", len(ms))
+	}
 	for _, q := range []string{"?months=0", "?months=13", "?months=abc", "?months="} {
 		if res := ana.Get("/me/finance/history" + q); res.Status != http.StatusBadRequest || res.Body["error"] != "invalid months" {
 			t.Errorf("%s = %d %s, want 400 invalid months", q, res.Status, res.Raw)
