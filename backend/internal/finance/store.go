@@ -427,15 +427,18 @@ func (s *Store) UpdateTransaction(ctx context.Context, userID, id string, typ, c
 func ptr(s string) *string { return &s }
 
 // InstallmentPlans returns the latest seen charge of each of the User's
-// Installment plans, a plan being the same Source, merchant, total and amount.
-// Grouping keeps the repeated charges of a plan from counting twice.
+// Installment plans, a plan being the same Source, merchant, total and start
+// month (posted_on minus n-1 months). Grouping keeps the repeated charges of a
+// plan from counting twice, and a centavo of rounding between them keeps it one plan.
 func (s *Store) InstallmentPlans(ctx context.Context, userID string) ([]Plan, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT DISTINCT ON (source_id, merchant_key, total_installments, amount_cents)
+		SELECT DISTINCT ON (source_id, merchant_key, total_installments,
+				date_trunc('month', posted_on) - (installment_number - 1) * interval '1 month')
 			description, merchant_key, installment_number, total_installments, -amount_cents, posted_on
 		FROM finance_transactions
 		WHERE user_id = $1 AND type = 'expense' AND amount_cents < 0 AND installment_number IS NOT NULL
-		ORDER BY source_id, merchant_key, total_installments, amount_cents, installment_number DESC`, userID)
+		ORDER BY source_id, merchant_key, total_installments,
+			date_trunc('month', posted_on) - (installment_number - 1) * interval '1 month', installment_number DESC`, userID)
 	if err != nil {
 		return nil, err
 	}

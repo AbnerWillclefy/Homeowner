@@ -79,6 +79,18 @@ func TestCommitmentsProjectPlansMidwayAndEnding(t *testing.T) {
 	}
 }
 
+func TestCommitmentsCountARoundedPlanOnce(t *testing.T) {
+	t.Parallel()
+	app, ana := seedMonth(t)
+	insertPlan(t, app, "ana@example.com", "r1", "Loja PARC 01/03", "LOJA", "2026-09-05", -3334, 1, 3)
+	insertPlan(t, app, "ana@example.com", "r2", "Loja PARC 02/03", "LOJA", "2026-10-05", -3333, 2, 3)
+
+	m := readCommitments(t, ana, "2026-11").Months[0]
+	if m.CommittedCents != 3333 || len(m.Installments) != 1 || m.Installments[0].Number != 3 {
+		t.Errorf("november = %+v, want installment 3 once at 3333", m)
+	}
+}
+
 func TestCommitmentsOfAUserWithNoInstallments(t *testing.T) {
 	t.Parallel()
 	_, ana := seedMonth(t)
