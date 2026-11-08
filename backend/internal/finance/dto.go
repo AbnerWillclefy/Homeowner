@@ -70,6 +70,30 @@ type PatchTransactionRequest struct {
 	SpendingCategory *string `json:"spendingCategory"`
 }
 
+// BillRequest is the body of POST /me/finance/bills and PUT /me/finance/bills/{id}.
+type BillRequest struct {
+	Name          string `json:"name"`
+	ExpectedCents int64  `json:"expectedCents"`
+	DueDay        int    `json:"dueDay"`
+}
+
+// BillResponse is a Bill as created or updated.
+type BillResponse struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	ExpectedCents int64  `json:"expectedCents"`
+	DueDay        int    `json:"dueDay"`
+}
+
+// MonthBill is a Bill with its due date and paid state in one month. PaidBy is
+// null, "hand" or "bank".
+type MonthBill struct {
+	BillResponse
+	DueDate string  `json:"dueDate"`
+	Paid    bool    `json:"paid"`
+	PaidBy  *string `json:"paidBy"`
+}
+
 // ConnectItemRequest is the body of POST /me/finance/items.
 type ConnectItemRequest struct {
 	ItemID string `json:"itemId"`
