@@ -87,6 +87,7 @@ Finances is open only to Users on an allowlist. "Category" stays with Chores, so
 | Spending Category | categoria de gasto | categoria (alone), tag, etiqueta | Always "categoria de gasto" so it never reads as a Chore's category. |
 | Bill to pay | conta a pagar | fatura, boleto, dívida | Plural "contas a pagar". Money owed on a date. |
 | Installment plan | parcelamento | financiamento, empréstimo | A purchase paid in parts; each part is a "parcela". |
+| Summary (Finances view) | resumo | visão geral | The first Finances view. en-US "Summary". |
 | Monthly income | renda mensal | salário, receita, ganhos | What a User expects to receive each month. |
 
 Apple and Android labels must match what the device shows in pt-BR. They are not yet verified on a pt-BR device.

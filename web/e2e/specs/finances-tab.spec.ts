@@ -23,7 +23,18 @@ const state = (finance: boolean) => {
   return s;
 };
 
-const links = (page: Page) => page.getByRole("navigation").getByRole("link");
+const sourced = () => {
+  const s = state(true);
+  s.finance = {
+    configured: true,
+    sources: [{ id: "source-1", name: "Pluggy Bank", kind: "checking", currency: "BRL" }],
+    importing: false,
+    lastSyncedAt: "2026-11-08T13:05:00Z",
+  };
+  return s;
+};
+
+const links =(page: Page) => page.getByRole("navigation").getByRole("link");
 
 for (const l of LOCALES) {
   test.describe(l.locale, () => {
@@ -85,6 +96,56 @@ for (const l of LOCALES) {
           expect(await label.evaluate((el) => getComputedStyle(el).textOverflow)).not.toBe("ellipsis");
         }
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+      });
+    });
+
+    test.describe("with a Source", () => {
+      test.use({ fakeState: sourced() });
+      const names = l.locale === "pt-BR" ? { views: ["Resumo", "Gastos", "Contas"], settings: "Ajustes", back: "Voltar" } : { views: ["Summary", "Spending", "Bills"], settings: "Settings", back: "Back" };
+
+      test("opens on the summary, switches views with no new request, and Ajustes is a route with Back", async ({ page, baseURL, fakeApi }) => {
+        await visit(page, new URL("/finances", baseURL!).toString());
+        const tabs = page.getByRole("tab");
+        await expect(tabs).toHaveText(names.views);
+        await expect(tabs.first()).toHaveAttribute("aria-selected", "true");
+        await expect(page.getByRole("tab", { name: names.settings })).toHaveCount(0);
+
+        const before = fakeApi.requests.length;
+        await page.getByRole("tab", { name: names.views[2] }).click();
+        await expect(page.getByRole("tab", { name: names.views[2] })).toHaveAttribute("aria-selected", "true");
+        expect(fakeApi.requests.length).toBe(before);
+
+        await page.getByRole("link", { name: names.settings }).click();
+        await expect(page).toHaveURL((url) => url.pathname === "/finances/ajustes");
+        await page.getByRole("button", { name: names.back }).click();
+        await expect(page).toHaveURL((url) => url.pathname === "/finances");
+        await expect(page.getByRole("tab", { name: names.views[2] })).toHaveAttribute("aria-selected", "true");
+      });
+
+      test("a reload on /finances/ajustes stays, and Back goes to Finances", async ({ page, baseURL }) => {
+        await visit(page, new URL("/finances/ajustes", baseURL!).toString());
+        await expect(page.getByRole("heading", { level: 2, name: names.settings, exact: true })).toBeVisible();
+        await page.getByRole("button", { name: names.back }).click();
+        await expect(page).toHaveURL((url) => url.pathname === "/finances");
+      });
+
+      test("at 320px and the largest text nothing overflows sideways", async ({ page, baseURL }) => {
+        await page.setViewportSize({ width: 320, height: 640 });
+        await page.addInitScript(() => {
+          document.addEventListener("DOMContentLoaded", () => (document.documentElement.style.fontSize = "200%"));
+        });
+        await visit(page, new URL("/finances", baseURL!).toString());
+        await expect(page.getByRole("link", { name: names.settings })).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+      });
+    });
+
+    test.describe("without the flag", () => {
+      test.use({ fakeState: state(false) });
+
+      test("/finances/ajustes lands on Today", async ({ page, baseURL }) => {
+        await visit(page, new URL("/finances/ajustes", baseURL!).toString());
+        await expect(page).toHaveURL((url) => url.pathname === "/");
       });
     });
 

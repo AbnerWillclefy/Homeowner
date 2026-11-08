@@ -69,6 +69,7 @@ for (const l of LOCALES) {
       fakeApi.use(signedInHandlers);
       await seedSession(page, { email: RESIDENT_EMAIL });
       await visit(page, new URL("/finances", baseURL!).toString());
+      await page.getByRole("tab", { name: /^(Gastos|Spending)$/ }).click(); // Finances opens on Resumo
     });
 
     test("says the difference, last month per category, and leaves out categories at zero", async ({ page }) => {
@@ -105,6 +106,7 @@ for (const l of LOCALES) {
         document.addEventListener("DOMContentLoaded", () => (document.documentElement.style.fontSize = "200%"));
       });
       await visit(page, new URL("/finances", baseURL!).toString());
+      await page.getByRole("tab", { name: /^(Gastos|Spending)$/ }).click(); // Finances opens on Resumo
       await expect(page.getByRole("region", { name: l.onlyLast(nameOf(1, l.locale)) })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     });
