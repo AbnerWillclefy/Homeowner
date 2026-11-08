@@ -24,6 +24,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/pluggy"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/residents"
@@ -76,6 +77,9 @@ type Deps struct {
 	// FinanceKey seals the Pluggy credentials. Nil means finance routes
 	// answer 503 to allowed Users.
 	FinanceKey *[32]byte
+	// Pluggy reads the User's banks; nil means the routes that call Pluggy
+	// answer 503.
+	Pluggy pluggy.Client
 }
 
 const healthTimeout = 2 * time.Second
@@ -177,7 +181,7 @@ func New(deps Deps) http.Handler {
 	// Every /admin/ path, known or not, goes through the guard first.
 	mux.Handle("/admin/", s.requireSuperAdmin(s.adminMux()))
 	// Every /me/finance path, known or not, meets the allowlist first.
-	guarded := s.requireFinance(financeAllow, financeMux(finance.NewHandler(finance.NewStore(db), deps.FinanceKey, clk, log)))
+	guarded := s.requireFinance(financeAllow, financeMux(finance.NewHandler(finance.NewStore(db), deps.FinanceKey, deps.Pluggy, deps.Environment, clk, log)))
 	mux.Handle("/me/finance", guarded)
 	mux.Handle("/me/finance/", guarded)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

@@ -16,8 +16,8 @@ func TestAllowedUserSeesFinanceStatusAndFlag(t *testing.T) {
 	if res.Status != http.StatusOK {
 		t.Fatalf("GET /me/finance = %d %s", res.Status, res.Raw)
 	}
-	if got, ok := res.Body["configured"]; !ok || got != false || len(res.Body) != 1 {
-		t.Errorf("body = %s, want {\"configured\":false}", res.Raw)
+	if got, ok := res.Body["configured"]; !ok || got != false || res.Body["importing"] != false {
+		t.Errorf("body = %s, want configured false and not importing", res.Raw)
 	}
 	if me := ana.Get("/me"); me.Body["finance"] != true {
 		t.Errorf("GET /me finance = %v, want true", me.Body["finance"])
