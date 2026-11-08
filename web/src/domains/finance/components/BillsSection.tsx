@@ -54,7 +54,8 @@ export function BillsSection() {
           </Button>
         </div>
       )}
-      <FormError form="finances-bills">{failed && t("finances.bills.failed")}</FormError>
+      {/* Mounted only on a failure, so the tab has no second empty alert beside the connect flow's own. */}
+      {failed && <FormError form="finances-bills">{t("finances.bills.failed")}</FormError>}
       {state.kind === "ready" &&
         (state.data.length === 0 ? (
           <p className="my-0 text-muted">{t("finances.bills.empty")}</p>
