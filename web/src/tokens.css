@@ -22,6 +22,12 @@
   --color-focus: #1a5fb4;
   --color-border: #6b7a73;
 
+  /* Charts (DESIGN.md, Charts): neutral ink only, never accent or a cat- pastel. ink = main series,
+     muted = second series and hatch lines, track = the empty bar behind a value. */
+  --color-chart-ink: #3a4640;
+  --color-chart-muted: #6b7a73;
+  --color-chart-track: #e3e8e4;
+
   /* A toast fades in; used behind motion-safe: only. Its keyframes are in index.css. */
   --animate-toast-in: toast-in 150ms ease-out;
 
@@ -66,6 +72,9 @@
   --color-danger: #ff8a80;
   --color-focus: #8ab4f8;
   --color-border: #7f8d86;
+  --color-chart-ink: #cdd6d1;
+  --color-chart-muted: #8f9d96;
+  --color-chart-track: #2b3631;
   --color-welcome-from: #17251e;
   --color-welcome-to: #1d1b2e;
 
