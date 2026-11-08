@@ -136,6 +136,20 @@ func TestDailyAveragesWhatHistoryExists(t *testing.T) {
 	}
 }
 
+func TestDailyCountsATransferOnlyMonthAsHistory(t *testing.T) {
+	t.Parallel()
+	app, ana := seedMonth(t)
+	app.Clock.Set(time.Date(2027, time.March, 15, 12, 0, 0, 0, time.UTC))
+	seedRow(t, app, "ana@example.com", "2032-05-03", "expense", -1001)
+	seedRow(t, app, "ana@example.com", "2032-04-10", "transfer", -5000)
+
+	got := readDaily(t, ana, "2032-06")
+	// May spent 1001, April only moved money: two months, so the pace halves.
+	if got.AverageMonths != 2 || len(got.Average) != 30 || got.Average[29] != 500 {
+		t.Errorf("transfer-only month: %+v, want 2 months and a 500 average", got)
+	}
+}
+
 func TestDailyShowsOnlyTheCallersRows(t *testing.T) {
 	t.Parallel()
 	app, _ := seedDaily(t)
