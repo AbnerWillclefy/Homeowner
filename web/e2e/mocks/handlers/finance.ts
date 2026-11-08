@@ -97,6 +97,94 @@ export function financeHandlers(api: FakeApi): void {
     }),
   );
 
+  // Bills, as `finance/bills.go` answers them: the same field codes on a 400, a due day past the month's end falls on its last day.
+  const bills = (state: FakeState) => (finance(state).bills ??= []);
+  const monthOf = (value: string | undefined) => (value && /^\d{4}-(0[1-9]|1[0-2])$/.test(value) ? value : null);
+  const dueDate = (month: string, dueDay: number) => {
+    const [y, m] = month.split("-").map(Number) as [number, number];
+    return `${month}-${String(Math.min(dueDay, new Date(y, m, 0).getDate())).padStart(2, "0")}`;
+  };
+  const billFields = (body: { name?: unknown; expectedCents?: unknown; dueDay?: unknown } | null) => {
+    const fields: Record<string, string> = {};
+    const name = typeof body?.name === "string" ? body.name.trim() : "";
+    if (name === "") fields.name = "required";
+    else if ([...name].length > 60) fields.name = "too_long";
+    if (!Number.isInteger(body?.expectedCents) || (body?.expectedCents as number) < 1) fields.expectedCents = "invalid";
+    if (!Number.isInteger(body?.dueDay) || (body?.dueDay as number) < 1 || (body?.dueDay as number) > 31) fields.dueDay = "invalid";
+    return { fields, name };
+  };
+
+  api.on(
+    "GET /me/finance/bills",
+    signedIn((request, state) => {
+      const month = monthOf(request.url.searchParams.get("month") ?? undefined);
+      if (!month) return json(400, { error: "invalid month" });
+      return json(
+        200,
+        bills(state).map(({ paid, ...b }) => ({ ...b, dueDate: dueDate(month, b.dueDay), paid: month in paid, paidBy: paid[month] ?? null })),
+      );
+    }),
+  );
+
+  api.on(
+    "POST /me/finance/bills",
+    signedIn((request, state) => {
+      const body = request.body as { expectedCents: number; dueDay: number } | null;
+      const { fields, name } = billFields(body);
+      if (Object.keys(fields).length > 0) return json(400, { error: "invalid bill", fields });
+      const bill = { id: `bill-${bills(state).length + 1}`, name, expectedCents: body!.expectedCents, dueDay: body!.dueDay };
+      bills(state).push({ ...bill, paid: {} });
+      return json(201, bill);
+    }),
+  );
+
+  api.on(
+    "PUT /me/finance/bills/{id}",
+    signedIn((request, state) => {
+      const row = bills(state).find((b) => b.id === request.params["id"]);
+      if (!row) return json(404, { error: "not found" });
+      const body = request.body as { expectedCents: number; dueDay: number } | null;
+      const { fields, name } = billFields(body);
+      if (Object.keys(fields).length > 0) return json(400, { error: "invalid bill", fields });
+      Object.assign(row, { name, expectedCents: body!.expectedCents, dueDay: body!.dueDay });
+      return json(200, { id: row.id, name, expectedCents: row.expectedCents, dueDay: row.dueDay });
+    }),
+  );
+
+  api.on(
+    "DELETE /me/finance/bills/{id}",
+    signedIn((request, state) => {
+      const index = bills(state).findIndex((b) => b.id === request.params["id"]);
+      if (index < 0) return json(404, { error: "not found" });
+      bills(state).splice(index, 1);
+      return empty();
+    }),
+  );
+
+  api.on(
+    "PUT /me/finance/bills/{id}/payments/{month}",
+    signedIn((request, state) => {
+      const row = bills(state).find((b) => b.id === request.params["id"]);
+      const month = monthOf(request.params["month"]);
+      if (!row) return json(404, { error: "not found" });
+      if (!month) return json(400, { error: "invalid month" });
+      row.paid[month] ??= "hand";
+      return empty();
+    }),
+  );
+
+  api.on(
+    "DELETE /me/finance/bills/{id}/payments/{month}",
+    signedIn((request, state) => {
+      const row = bills(state).find((b) => b.id === request.params["id"]);
+      const month = monthOf(request.params["month"]);
+      if (!row) return json(404, { error: "not found" });
+      if (!month) return json(400, { error: "invalid month" });
+      delete row.paid[month];
+      return empty();
+    }),
+  );
+
   api.on(
     "DELETE /me/finance",
     signedIn((_, state) => {
