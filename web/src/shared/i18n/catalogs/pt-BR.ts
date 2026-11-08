@@ -89,7 +89,6 @@ export const ptBR: Messages = {
   "finances.month.transfers": "Transferências",
   "finances.month.income": "Receitas",
   "finances.month.leftOut": "Fora dos totais",
-  "finances.month.edit": "Editar",
   "finances.edit.title": "Editar lançamento",
   "finances.edit.type": "Tipo",
   "finances.edit.category": "Categoria de gasto",

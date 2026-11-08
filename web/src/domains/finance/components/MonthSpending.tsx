@@ -31,6 +31,11 @@ export function MonthSpending() {
     setGone(outcome === "gone");
   }
 
+  function go(n: number) {
+    setGone(false);
+    setMonth(addMonths(month, n));
+  }
+
   const label = monthLabel(month, locale);
   return (
     // No outer card: the category cards inside it get the full width, which they need at the largest text.
@@ -48,7 +53,7 @@ export function MonthSpending() {
           icon
           variant="secondary"
           aria-label={t("finances.month.prev")}
-          onClick={() => setMonth(addMonths(month, -1))}
+          onClick={() => go(-1)}
         >
           <ChevronLeft aria-hidden="true" size={20} />
         </Button>
@@ -57,7 +62,7 @@ export function MonthSpending() {
           variant="secondary"
           aria-label={t("finances.month.next")}
           disabled={month >= today}
-          onClick={() => setMonth(addMonths(month, 1))}
+          onClick={() => go(1)}
         >
           <ChevronRight aria-hidden="true" size={20} />
         </Button>

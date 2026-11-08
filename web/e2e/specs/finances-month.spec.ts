@@ -143,6 +143,9 @@ for (const l of LOCALES) {
       await expect(dialog).toHaveCount(0);
       await expect(page.getByText(l.gone)).toBeVisible();
       await expect(page.getByRole("button", { name: new RegExp(l.leisure) })).toHaveCount(0);
+
+      await page.getByRole("button", { name: l.prev }).click();
+      await expect(page.getByText(l.gone)).toHaveCount(0);
     });
 
     test("an empty month is a calm line, and the next month is not offered past this one", async ({ page }) => {

@@ -85,7 +85,6 @@ export const enUS = {
   "finances.month.transfers": "Transfers",
   "finances.month.income": "Income",
   "finances.month.leftOut": "Left out of totals",
-  "finances.month.edit": "Edit",
   "finances.edit.title": "Edit transaction",
   "finances.edit.type": "Type",
   "finances.edit.category": "Spending category",
