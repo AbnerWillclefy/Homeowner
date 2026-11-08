@@ -1,7 +1,7 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ApiFailure } from "../../../shared/query/ApiFailure";
 import { refetchUnlessSucceeded } from "../../../shared/query/queryClient";
-import { getFinanceStatus, getMonth, type FinanceStatus, type MonthResponse } from "./api";
+import { getCommitments, getFinanceStatus, getMonth, type Commitments, type FinanceStatus, type MonthResponse } from "./api";
 
 /** `GET /me/finance`. Under `["me"]`, so sign-out empties it; the finance views go under it too (web.md, Query keys). */
 export const financeStatusKey = ["me", "finance"] as const;
@@ -34,6 +34,23 @@ export const monthQuery = (month: string) =>
 
 /** After a PATCH: the totals changed, and the server may have recategorised other rows of the same merchant, so read the month again. */
 export const invalidateMonth = (client: QueryClient, month: string) => client.invalidateQueries({ queryKey: monthKey(month) });
+
+/** `GET /me/finance/commitments?from=`, under the status key so a delete removes it and an income or Bill write can invalidate the prefix. */
+export const commitmentsKey = (from: string) => ["me", "finance", "commitments", from] as const;
+
+export const commitmentsQuery = (from: string) =>
+  queryOptions({
+    queryKey: commitmentsKey(from),
+    queryFn: async (): Promise<Commitments> => {
+      const result = await getCommitments(from);
+      if (result.kind === "ok") return result.commitments;
+      throw new ApiFailure(result.kind === "offline" || result.kind === "not-signed-in" ? result.kind : "error");
+    },
+    refetchOnMount: refetchUnlessSucceeded,
+  });
+
+/** After an income write, or a Bill write: every finance read that carries the totals is read again. */
+export const invalidateFinance = (client: QueryClient) => client.invalidateQueries({ queryKey: financeStatusKey });
 
 const EMPTY: FinanceStatus = { configured: false, sources: [], importing: false, lastSyncedAt: null };
 
