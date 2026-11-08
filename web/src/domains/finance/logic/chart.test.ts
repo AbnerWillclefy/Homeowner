@@ -35,6 +35,7 @@ describe("linePoints", () => {
   });
   it("draws a flat line across the width for a single day", () => {
     expect(linePoints([50], 100, 100, 40)).toBe("0,20 100,20");
+    expect(linePoints([50], 100, 100, 40, 5)).toBe("0,20 25,20");
   });
   it("draws all zeros along the bottom, even with a maximum of 0", () => {
     expect(linePoints([0, 0], 0, 100, 40)).toBe("0,40 100,40");
