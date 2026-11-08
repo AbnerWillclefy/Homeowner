@@ -127,7 +127,7 @@ export const enUS = {
   "finances.commit.plans": "Installment plans in progress",
   "finances.commit.plan": "{name}: next {n} of {m} · last in {month}",
   "finances.commit.planAmount": "{amount} a month",
-  "finances.commit.failed": "We could not load the installments. Check your connection and try again.",
+  "finances.commit.failed": "We could not load the coming months. Check your connection and try again.",
   "finances.income.label": "Monthly income",
   "finances.income.save": "Save",
   "finances.income.clear": "Clear",

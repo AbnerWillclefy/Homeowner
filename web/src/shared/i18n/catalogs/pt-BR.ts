@@ -131,7 +131,7 @@ export const ptBR: Messages = {
   "finances.commit.plans": "Parcelamentos em andamento",
   "finances.commit.plan": "{name}: próxima {n} de {m} · última em {month}",
   "finances.commit.planAmount": "{amount} por mês",
-  "finances.commit.failed": "Não conseguimos carregar os parcelamentos. Verifique sua conexão e tente de novo.",
+  "finances.commit.failed": "Não conseguimos carregar os próximos meses. Verifique sua conexão e tente de novo.",
   "finances.income.label": "Renda mensal",
   "finances.income.save": "Salvar",
   "finances.income.clear": "Remover",
