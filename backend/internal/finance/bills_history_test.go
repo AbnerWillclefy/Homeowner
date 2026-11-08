@@ -86,6 +86,13 @@ func TestABankPaymentReportsTheTransactionAmountAndSurvivesItsDeletion(t *testin
 	if got := listBills(t, ana, "2026-11")[0]; got.PaidCents != nil {
 		t.Errorf("after undo = %+v, want unpaid", got)
 	}
+	// Paying the undone bank row by hand takes the Bill's current amount.
+	apitest.ExpectStatus(t, ana.Put("/me/finance/bills/"+id, map[string]any{"name": "Água", "expectedCents": 9000, "dueDay": 10}), http.StatusOK)
+	apitest.ExpectStatus(t, ana.Put("/me/finance/bills/"+id+"/payments/2026-11", nil), http.StatusNoContent)
+	got = listBills(t, ana, "2026-11")[0]
+	if got.PaidBy == nil || *got.PaidBy != "hand" || got.ExpectedCents != 9000 || got.PaidCents == nil || *got.PaidCents != 9000 {
+		t.Errorf("after repaying by hand = %+v, want hand, expected 9000 and paid 9000", got)
+	}
 }
 
 func TestTheBankDoesNotPayAMonthBeforeTheBillExisted(t *testing.T) {
