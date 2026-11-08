@@ -249,13 +249,12 @@ type Row struct {
 // stays. It inserts by source only, so a Source deleted meanwhile fails the
 // foreign key instead of getting its rows back.
 //
-// The type of a stored row is kept: classify re-decides every auto row of the
-// page right after, and a sign-based type here would clash with a kept category
-// on a card refund. A new expense is Other because nothing has decided yet
-// ('fallback'). A category already set by the User or by a rule is kept, and so
-// is the category of a row whose type the User set. shortcut: a sign flip on a
-// row whose category is kept would break the type/category CHECK; Pluggy does
-// not flip the sign of a posted row.
+// The type and category of a stored row are kept together: classify re-decides
+// every auto row of the page right after, and taking either from the sign-based
+// insert values would break the type/category CHECK on a transfer or a card
+// refund. A new expense is Other because nothing has decided yet ('fallback').
+// shortcut: a sign flip on a stored row is ignored; Pluggy does not flip the
+// sign of a posted row.
 func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string, rows []Row, now time.Time) error {
 	n := len(rows)
 	ids, days, cents, descs, keys, types := make([]string, n), make([]time.Time, n), make([]int64, n), make([]string, n), make([]string, n), make([]string, n)
@@ -277,10 +276,7 @@ func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string,
 			merchant_key = EXCLUDED.merchant_key, installment_number = EXCLUDED.installment_number,
 			total_installments = EXCLUDED.total_installments, updated_at = EXCLUDED.updated_at,
 			type = finance_transactions.type,
-			spending_category = CASE WHEN finance_transactions.category_set_by IN ('user', 'auto') OR finance_transactions.type_set_by = 'user'
-				THEN finance_transactions.spending_category ELSE EXCLUDED.spending_category END,
-			category_set_by = CASE WHEN finance_transactions.category_set_by IN ('user', 'auto') OR finance_transactions.type_set_by = 'user'
-				THEN finance_transactions.category_set_by ELSE EXCLUDED.category_set_by END`,
+			spending_category = finance_transactions.spending_category, category_set_by = finance_transactions.category_set_by`,
 		userID, sourceID, now, ids, days, cents, descs, keys, types, inst, total)
 	return err
 }

@@ -205,6 +205,12 @@ func TestSyncClassifiesBillPaymentsAsTransfers(t *testing.T) {
 	if n == 0 || n != scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE description LIKE 'PAGAMENTO FATURA%'`) {
 		t.Fatalf("auto transfers = %d, want every bill payment", n)
 	}
+	// A repeat sync re-reads the rows and must keep them transfers.
+	app.Clock.Advance(25 * time.Hour)
+	app.RunFinanceSync(t)
+	if got := scalar(t, app, q); got != n {
+		t.Fatalf("auto transfers after a repeat sync = %d, want %d", got, n)
+	}
 	// A row the User typed stays, and a repeat sync keeps the result.
 	if _, err := app.DB.Exec(context.Background(), `
 		UPDATE finance_transactions SET type = 'expense', type_set_by = 'user', spending_category = 'other', category_set_by = 'user'
