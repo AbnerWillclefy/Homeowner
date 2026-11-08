@@ -1,7 +1,7 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ApiFailure } from "../../../shared/query/ApiFailure";
 import { refetchUnlessSucceeded } from "../../../shared/query/queryClient";
-import { getBills, getFinanceStatus, getMonth, type Bill, type FinanceStatus, type MonthResponse } from "./api";
+import { getBills, getCommitments, getFinanceStatus, getMonth, type Bill, type Commitments, type FinanceStatus, type MonthResponse } from "./api";
 
 /** `GET /me/finance`. Under `["me"]`, so sign-out empties it; the finance views go under it too (web.md, Query keys). */
 export const financeStatusKey = ["me", "finance"] as const;
@@ -49,8 +49,22 @@ export const billsQuery = (month: string) =>
     refetchOnMount: refetchUnlessSucceeded,
   });
 
-/** After any Bill write: read the month again, since the list, the due date and the paid state all come from the server. */
-export const invalidateBills = (client: QueryClient, month: string) => client.invalidateQueries({ queryKey: billsKey(month) });
+/** `GET /me/finance/commitments?from=`, under the status key so a delete removes it and an income or Bill write can invalidate the prefix. */
+export const commitmentsKey = (from: string) => ["me", "finance", "commitments", from] as const;
+
+export const commitmentsQuery = (from: string) =>
+  queryOptions({
+    queryKey: commitmentsKey(from),
+    queryFn: async (): Promise<Commitments> => {
+      const result = await getCommitments(from);
+      if (result.kind === "ok") return result.commitments;
+      throw new ApiFailure(result.kind === "offline" || result.kind === "not-signed-in" ? result.kind : "error");
+    },
+    refetchOnMount: refetchUnlessSucceeded,
+  });
+
+/** After an income write, or a Bill write: every finance read that carries the totals is read again. */
+export const invalidateFinance = (client: QueryClient) => client.invalidateQueries({ queryKey: financeStatusKey });
 
 const EMPTY: FinanceStatus = { configured: false, sources: [], importing: false, lastSyncedAt: null };
 

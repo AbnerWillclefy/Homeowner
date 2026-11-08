@@ -3,11 +3,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { FieldCodes } from "../../../shared/api/fieldErrors";
 import { viewOf } from "../../../shared/query/view";
 import { deleteBill, saveBill, setBillPaid, type BillInput } from "../api/api";
-import { billsQuery, invalidateBills } from "../api/queries";
+import { billsQuery, invalidateFinance } from "../api/queries";
 
 export type BillOutcome = { kind: "ok" } | { kind: "fields"; fields: FieldCodes } | { kind: "failed" };
 
-/** One month of Bills and the writes that change them. Every write reads the month again. */
+/** One month of Bills and the writes that change them. Every write reads the finance views again. */
 export function useBills(month: string) {
   const client = useQueryClient();
   const query = useQuery(billsQuery(month));
@@ -18,7 +18,7 @@ export function useBills(month: string) {
   const settle = useCallback(
     (kind: string): BillOutcome => {
       if (kind === "ok" || kind === "not-found") {
-        void invalidateBills(client, month);
+        void invalidateFinance(client); // the commitments carry the Bills too
         return { kind: "ok" };
       }
       return { kind: "failed" };

@@ -83,6 +83,27 @@ export function financeHandlers(api: FakeApi): void {
     }),
   );
 
+  // The committed months, with `percentOfIncome` only while an income is set, as the API answers.
+  api.on(
+    "GET /me/finance/commitments",
+    signedIn((request, state) => {
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(request.url.searchParams.get("from") ?? "")) return json(400, { error: "invalid month" });
+      const { monthlyIncomeCents = null, commitments = [] } = finance(state);
+      const months = commitments.map((m) => (monthlyIncomeCents ? { ...m, percentOfIncome: (m.committedCents * 100) / monthlyIncomeCents } : m));
+      return json(200, { monthlyIncomeCents, months });
+    }),
+  );
+
+  api.on(
+    "PUT /me/finance/income",
+    signedIn((request, state) => {
+      const cents = (request.body as { monthlyIncomeCents?: unknown } | null)?.monthlyIncomeCents;
+      if (cents !== null && !(Number.isInteger(cents) && (cents as number) > 0)) return json(400, { error: "invalid income" });
+      finance(state).monthlyIncomeCents = cents as number | null;
+      return empty();
+    }),
+  );
+
   api.on(
     "PATCH /me/finance/transactions/{id}",
     signedIn((request, state) => {
