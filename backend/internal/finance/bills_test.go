@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
@@ -15,6 +16,7 @@ type billBody struct {
 	DueDay            int
 	Paid              bool
 	PaidBy            *string
+	PaidCents         *int64
 }
 
 func twoUsers(t *testing.T) (*apitest.App, *apitest.Client, *apitest.Client) {
@@ -122,7 +124,8 @@ func TestBillValidationReportsEveryFieldWithAStableCode(t *testing.T) {
 
 func TestADueDayOf31FallsOnTheLastDayOfAShortMonth(t *testing.T) {
 	t.Parallel()
-	_, ana, _ := twoUsers(t)
+	app, ana, _ := twoUsers(t)
+	app.Clock.Set(time.Date(2025, 12, 1, 12, 0, 0, 0, time.UTC)) // before every month listed
 	newBill(t, ana, "Card", 5000, 31)
 	for month, want := range map[string]string{"2026-02": "2026-02-28", "2028-02": "2028-02-29", "2026-04": "2026-04-30", "2026-01": "2026-01-31"} {
 		if got := listBills(t, ana, month); len(got) != 1 || got[0].DueDate != want {

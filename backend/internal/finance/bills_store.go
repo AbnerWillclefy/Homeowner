@@ -32,13 +32,18 @@ func (s *Store) DeleteBill(ctx context.Context, userID, id string) (bool, error)
 }
 
 // MonthBills lists the User's Bills with the payment of the month starting at
-// month; DueDate is left for the caller.
+// month; DueDate is left for the caller. A paid month shows the amount expected
+// when it was paid (the Bill's current one for payments made before that was
+// recorded), and a Bill is listed only from the month it was created.
 func (s *Store) MonthBills(ctx context.Context, userID string, month time.Time) ([]MonthBill, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT b.id, b.name, b.expected_cents, b.due_day, p.paid_by
+		SELECT b.id, b.name, COALESCE(p.expected_cents, b.expected_cents), b.due_day, p.paid_by,
+		       CASE p.paid_by WHEN 'bank' THEN COALESCE(-t.amount_cents, p.expected_cents, b.expected_cents)
+		                      WHEN 'hand' THEN COALESCE(p.expected_cents, b.expected_cents) END
 		FROM finance_bills b
 		LEFT JOIN finance_bill_payments p ON p.bill_id = b.id AND p.month = $2 AND p.undone_at IS NULL
-		WHERE b.user_id = $1 ORDER BY b.due_day, b.name, b.id`, userID, month)
+		LEFT JOIN finance_transactions t ON t.id = p.transaction_id
+		WHERE b.user_id = $1 AND date_trunc('month', b.created_at AT TIME ZONE 'America/Sao_Paulo')::date <= $2::date ORDER BY b.due_day, b.name, b.id`, userID, month)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +51,7 @@ func (s *Store) MonthBills(ctx context.Context, userID string, month time.Time) 
 	out := []MonthBill{}
 	for rows.Next() {
 		var m MonthBill
-		if err := rows.Scan(&m.ID, &m.Name, &m.ExpectedCents, &m.DueDay, &m.PaidBy); err != nil {
+		if err := rows.Scan(&m.ID, &m.Name, &m.ExpectedCents, &m.DueDay, &m.PaidBy, &m.PaidCents); err != nil {
 			return nil, err
 		}
 		m.Paid = m.PaidBy != nil
@@ -61,12 +66,13 @@ func (s *Store) MonthBills(ctx context.Context, userID string, month time.Time) 
 func (s *Store) PayBillByHand(ctx context.Context, userID, id string, month, now time.Time) (bool, error) {
 	var got string
 	err := s.db.QueryRow(ctx, `
-		INSERT INTO finance_bill_payments (bill_id, user_id, month, paid_by, paid_at)
-		SELECT id, user_id, $3, 'hand', $4 FROM finance_bills WHERE id = $1 AND user_id = $2
+		INSERT INTO finance_bill_payments (bill_id, user_id, month, paid_by, paid_at, expected_cents)
+		SELECT id, user_id, $3, 'hand', $4, expected_cents FROM finance_bills WHERE id = $1 AND user_id = $2
 		ON CONFLICT (bill_id, month) DO UPDATE SET
 			paid_by = CASE WHEN finance_bill_payments.undone_at IS NULL THEN finance_bill_payments.paid_by ELSE 'hand' END,
 			transaction_id = CASE WHEN finance_bill_payments.undone_at IS NULL THEN finance_bill_payments.transaction_id END,
 			paid_at = CASE WHEN finance_bill_payments.undone_at IS NULL THEN finance_bill_payments.paid_at ELSE EXCLUDED.paid_at END,
+			expected_cents = CASE WHEN finance_bill_payments.undone_at IS NULL THEN finance_bill_payments.expected_cents ELSE EXCLUDED.expected_cents END,
 			undone_at = NULL
 		RETURNING bill_id`, id, userID, month, now).Scan(&got)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -143,9 +149,11 @@ func (s *Store) PayBillsFromBank(ctx context.Context, userID string, from, to, n
 		billIDs[i], months[i], txnIDs[i] = m.BillID, m.Month, m.TxnID
 	}
 	_, err = s.db.Exec(ctx, `
-		INSERT INTO finance_bill_payments (bill_id, user_id, month, paid_by, transaction_id, paid_at)
-		SELECT m.bill_id, $1, m.month, 'bank', m.transaction_id, $5
+		INSERT INTO finance_bill_payments (bill_id, user_id, month, paid_by, transaction_id, paid_at, expected_cents)
+		SELECT m.bill_id, $1, m.month, 'bank', m.transaction_id, $5, b.expected_cents
 		FROM unnest($2::uuid[], $3::date[], $4::uuid[]) AS m (bill_id, month, transaction_id)
+		JOIN finance_bills b ON b.id = m.bill_id
+		WHERE m.month >= date_trunc('month', b.created_at AT TIME ZONE 'America/Sao_Paulo')::date -- not listed before the created month
 		ON CONFLICT DO NOTHING`, userID, billIDs, months, txnIDs, now)
 	return err
 }
