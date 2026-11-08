@@ -70,7 +70,7 @@ for (const l of LOCALES) {
     });
 
     test("shows the total, the categories, a refund in words and the transfers apart", async ({ page }) => {
-      await expect(page.getByText(l.total).first()).toBeVisible();
+      await expect(page.getByText(l.total).locator("visible=true").first()).toBeVisible();
       await expect(page.getByRole("button", { name: new RegExp(l.groceries) })).toBeVisible();
       await expect(page.getByRole("button", { name: new RegExp(l.leisure) })).toBeVisible();
 
@@ -96,7 +96,7 @@ for (const l of LOCALES) {
 
       await expect(dialog).toHaveCount(0);
       expect(fakeApi.requests.find((r) => r.method === "PATCH")?.body).toEqual({ type: "transfer" });
-      await expect(page.getByText(l.afterTransfer).first()).toBeVisible();
+      await expect(page.getByText(l.afterTransfer).locator("visible=true").first()).toBeVisible();
       await expect(page.getByRole("button", { name: new RegExp(l.leisure) })).toHaveCount(0);
       await expect(page.getByRole("region", { name: l.leftOut }).getByRole("group", { name: l.transfers }).getByText("Cinema")).toBeVisible();
     });
@@ -112,7 +112,7 @@ for (const l of LOCALES) {
       expect(fakeApi.requests.find((r) => r.method === "PATCH")?.body).toEqual({ spendingCategory: "pets" });
       await expect(page.getByRole("button", { name: new RegExp(l.pets) })).toBeVisible();
       await expect(page.getByRole("button", { name: new RegExp(l.leisure) })).toHaveCount(0);
-      await expect(page.getByText(l.total).first()).toBeVisible();
+      await expect(page.getByText(l.total).locator("visible=true").first()).toBeVisible();
     });
 
     test("a transaction that is gone reads the month again", async ({ page, fakeApi }) => {
@@ -137,7 +137,7 @@ for (const l of LOCALES) {
       await expect(page.getByText(l.empty)).toBeVisible();
       await expect(page.getByRole("button", { name: l.next, exact: true })).toBeEnabled();
       await page.getByRole("button", { name: l.next, exact: true }).click();
-      await expect(page.getByText(l.total).first()).toBeVisible();
+      await expect(page.getByText(l.total).locator("visible=true").first()).toBeVisible();
     });
 
     test("at 320px and the largest text nothing overflows sideways", async ({ page, baseURL }) => {
