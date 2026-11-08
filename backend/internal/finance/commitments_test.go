@@ -20,7 +20,7 @@ type commitmentsBody struct {
 			Number, Total int
 			AmountCents   int64
 		}
-		Bills []any
+		Bills []struct{ ExpectedCents int64 }
 	}
 }
 
@@ -88,6 +88,22 @@ func TestCommitmentsCountARoundedPlanOnce(t *testing.T) {
 	m := readCommitments(t, ana, "2026-11").Months[0]
 	if m.CommittedCents != 3333 || len(m.Installments) != 1 || m.Installments[0].Number != 3 {
 		t.Errorf("november = %+v, want installment 3 once at 3333", m)
+	}
+}
+
+func TestCommitmentsListUnpaidBillsOnly(t *testing.T) {
+	t.Parallel()
+	_, ana := seedMonth(t)
+	rent := newBill(t, ana, "Rent", 150000, 5)
+	newBill(t, ana, "Internet", 12000, 10)
+	apitest.ExpectStatus(t, ana.Put("/me/finance/bills/"+rent+"/payments/2026-11", nil), http.StatusNoContent)
+
+	b := readCommitments(t, ana, "2026-11")
+	if m := b.Months[0]; m.CommittedCents != 12000 || len(m.Bills) != 1 {
+		t.Errorf("november = %+v, want only the unpaid Internet", m)
+	}
+	if m := b.Months[1]; m.CommittedCents != 162000 || len(m.Bills) != 2 {
+		t.Errorf("december = %+v, want both Bills", m)
 	}
 }
 

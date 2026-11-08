@@ -94,7 +94,7 @@ const commitmentMonths = 12
 
 // Commitments answers GET /me/finance/commitments?from=YYYY-MM: 12 months from
 // `from`, each with the installments its plans still owe.
-// shortcut: Bills are not read yet (they land with #433), so bills is empty.
+// Each month also lists the User's unpaid Bills and counts their expected amounts.
 func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 	from, _, ok := parseMonth(r.URL.Query().Get("from"))
 	if !ok {
@@ -112,6 +112,17 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 		for _, l := range lines {
 			m.Installments = append(m.Installments, l)
 			m.CommittedCents += l.AmountCents
+		}
+		bills, err := h.store.MonthBills(r.Context(), identity.CurrentUser(r.Context()).ID, from.AddDate(0, i, 0))
+		if err != nil {
+			httpx.InternalError(w, h.log, "finance: read commitment bills", err)
+			return
+		}
+		for _, b := range bills {
+			if !b.Paid {
+				m.Bills = append(m.Bills, BillLine{ID: b.ID, Name: b.Name, ExpectedCents: b.ExpectedCents})
+				m.CommittedCents += b.ExpectedCents
+			}
 		}
 		months[i] = m
 	}
