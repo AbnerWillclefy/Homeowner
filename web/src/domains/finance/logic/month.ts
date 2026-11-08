@@ -18,6 +18,12 @@ export function formatDay(postedOn: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(new Date(y, m - 1, d));
 }
 
+/** Just the month's name ("outubro"), for sentences like "a mais que em outubro". */
+export function monthName(month: Month, locale: string): string {
+  const [y, m] = month.split("-").map(Number) as [number, number];
+  return new Intl.DateTimeFormat(locale, { month: "long" }).format(new Date(y, m - 1, 1));
+}
+
 export function monthLabel(month: Month, locale: string): string {
   const [y, m] = month.split("-").map(Number) as [number, number];
   return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(new Date(y, m - 1, 1));

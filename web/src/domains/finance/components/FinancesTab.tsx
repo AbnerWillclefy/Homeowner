@@ -8,6 +8,7 @@ import { useFinance } from "../hooks/useFinance";
 import { BankSources } from "./BankSources";
 import { CredentialsForm } from "./CredentialsForm";
 import { DeleteFinanceData } from "./DeleteFinanceData";
+import { MonthReport } from "./MonthReport";
 import { MonthSpending } from "./MonthSpending";
 import { SavedCredentials } from "./SavedCredentials";
 import { SetupSteps } from "./SetupSteps";
@@ -58,6 +59,7 @@ function FinancesBody() {
   return (
     <div className="flex flex-col gap-4">
       {status.sources.length > 0 && <MonthSpending />}
+      {status.sources.length > 0 && <MonthReport />}
       {!status.configured && (
         <>
           <p className="my-0">{t("finances.empty")}</p>

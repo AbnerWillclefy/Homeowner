@@ -1,4 +1,3 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
@@ -11,6 +10,7 @@ import { formatCents } from "../logic/money";
 import { addMonths, currentMonth, monthLabel } from "../logic/month";
 import { monthView } from "../logic/monthView";
 import { CategoryCard } from "./CategoryCard";
+import { MonthPicker } from "./MonthPicker";
 import { EditTransactionDialog } from "./EditTransactionDialog";
 import { LeftOutGroup } from "./LeftOutGroup";
 
@@ -43,31 +43,14 @@ export function MonthSpending() {
       <h3 id="finances-month-heading" className="my-0 text-lg font-bold leading-snug [overflow-wrap:anywhere]">
         {t("finances.month.heading")}
       </h3>
-      {/* The month on its own line, so the two buttons never squeeze it into one letter per line. */}
-      <div role="group" aria-label={t("finances.month.heading")} className="flex flex-col gap-2">
-        <span className="text-center font-semibold capitalize [overflow-wrap:anywhere]" aria-live="polite">
-          {label}
-        </span>
-        <div className="flex items-center justify-between gap-2">
-        <Button
-          icon
-          variant="secondary"
-          aria-label={t("finances.month.prev")}
-          onClick={() => go(-1)}
-        >
-          <ChevronLeft aria-hidden="true" size={20} />
-        </Button>
-        <Button
-          icon
-          variant="secondary"
-          aria-label={t("finances.month.next")}
-          disabled={month >= today}
-          onClick={() => go(1)}
-        >
-          <ChevronRight aria-hidden="true" size={20} />
-        </Button>
-        </div>
-      </div>
+      <MonthPicker
+        month={month}
+        today={today}
+        groupLabel={t("finances.month.heading")}
+        prevLabel={t("finances.month.prev")}
+        nextLabel={t("finances.month.next")}
+        onStep={go}
+      />
 
       {state.kind === "loading" && skeleton && (
         <div aria-hidden="true">
