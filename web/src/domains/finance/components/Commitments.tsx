@@ -60,8 +60,21 @@ export function Commitments() {
 
 /** The optional Monthly income, which turns the installments into a share of it. It shares the installments' read. */
 export function MonthlyIncome() {
+  const { t } = useI18n();
   const [from] = useState(() => currentMonth(new Date()));
-  const { state, saveIncome } = useCommitments(from);
+  const { state, reload, saveIncome } = useCommitments(from);
+  // The installments' own alert is on another view, so the failure is said here too.
+  if (state.kind === "failed")
+    return (
+      <div className="flex flex-col items-start gap-3">
+        <p role="alert" className="my-0 font-semibold">
+          {t("finances.commit.failed")}
+        </p>
+        <Button variant="secondary" onClick={() => void reload()}>
+          {t("finances.load.retry")}
+        </Button>
+      </div>
+    );
   if (state.kind !== "ready") return null;
   return (
     <IncomeForm

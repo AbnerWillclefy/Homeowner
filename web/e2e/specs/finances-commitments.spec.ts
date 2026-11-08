@@ -30,6 +30,8 @@ const LOCALES = [
     fridge: "Geladeira 4 de 10",
     bill: "Internet",
     empty: "Nenhum parcelamento nos próximos meses.",
+    failed: "Não conseguimos carregar os parcelamentos. Verifique sua conexão e tente de novo.",
+    retry: "Tentar novamente",
     problems: { empty: "Digite sua renda mensal, por exemplo 5.000,00.", zero: "A renda mensal precisa ser maior que zero.", junk: "Use só números, por exemplo 5.000,00." },
     typed: { high: "600,00", low: "5.000,00" },
   },
@@ -51,6 +53,8 @@ const LOCALES = [
     fridge: "Geladeira 4 of 10",
     bill: "Internet",
     empty: "No installments in the coming months.",
+    failed: "We could not load the installments. Check your connection and try again.",
+    retry: "Try again",
     problems: { empty: "Enter your monthly income, for example 5,000.00.", zero: "Monthly income must be more than zero.", junk: "Use numbers only, for example 5,000.00." },
     typed: { high: "600.00", low: "5,000.00" },
   },
@@ -184,6 +188,18 @@ for (const l of LOCALES) {
         await expect(s.getByText(l.empty)).toBeVisible();
         await view(page, l.settings);
         await expect(page.getByLabel(l.income)).toBeVisible();
+      });
+    });
+
+    test.describe("when the installments cannot be read", () => {
+      test.use({ fakeState: connected(true) });
+
+      test("Settings says so where the income was, with Retry", async ({ page, fakeApi }) => {
+        fakeApi.override("GET /me/finance/commitments", { status: 500, body: { error: "boom" } });
+        await page.reload();
+        const settings = await view(page, l.settings);
+        await expect(settings.getByRole("alert").filter({ hasText: l.failed })).toBeVisible();
+        await expect(settings.getByRole("button", { name: l.retry })).toBeVisible();
       });
     });
 
