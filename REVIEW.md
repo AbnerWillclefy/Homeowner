@@ -20,7 +20,8 @@ Domain terms are in `GLOSSARY.md`, decisions in `docs/adr/`.
 ## Docs
 
 - A change to the system's shape (a new module, entry point, AWS resource, data table, or external service) updates
-  `docs/architecture/` in the same pull request (`CLAUDE.md`). Missing it is a finding.
+  `docs/architecture/` in the same pull request (`CLAUDE.md`). Missing it is a finding, except on a ticket whose
+  parent is an epic: the epic's last ticket updates the docs.
 
 ## Interface
 
