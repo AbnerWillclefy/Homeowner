@@ -169,6 +169,31 @@ func TestSyncKeepsWhatTheUserSet(t *testing.T) {
 	}
 }
 
+// The sandbox has only the checking side of the card bill payment (the card has
+// no matching credit), so the PAGAMENTO FATURA rows are what the sync must type
+// as transfers; pairing across Sources is covered by TestClassify.
+func TestSyncClassifiesBillPaymentsAsTransfers(t *testing.T) {
+	t.Parallel()
+	app, _ := startSync(t, []string{"ana@example.com"})
+	app.RunFinanceSync(t)
+	q := `SELECT count(*) FROM finance_transactions WHERE description LIKE 'PAGAMENTO FATURA%' AND type = 'transfer' AND type_set_by = 'auto' AND spending_category IS NULL`
+	n := scalar(t, app, q)
+	if n == 0 || n != scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE description LIKE 'PAGAMENTO FATURA%'`) {
+		t.Fatalf("auto transfers = %d, want every bill payment", n)
+	}
+	// A row the User typed stays, and a repeat sync keeps the result.
+	if _, err := app.DB.Exec(context.Background(), `
+		UPDATE finance_transactions SET type = 'expense', type_set_by = 'user', spending_category = 'other', category_set_by = 'user'
+		WHERE description LIKE 'PAGAMENTO FATURA%'`); err != nil {
+		t.Fatal(err)
+	}
+	app.Clock.Advance(25 * time.Hour)
+	app.RunFinanceSync(t)
+	if got := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE description LIKE 'PAGAMENTO FATURA%' AND type = 'expense' AND type_set_by = 'user'`); got != n {
+		t.Errorf("user-typed bill payments = %d, want %d untouched", got, n)
+	}
+}
+
 func TestFailingPluggyLeavesTheUserDueAndOthersSynced(t *testing.T) {
 	t.Parallel()
 	app, users := startSync(t, []string{"ana@example.com", "bob@example.com"})

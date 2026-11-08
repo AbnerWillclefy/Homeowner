@@ -176,6 +176,62 @@ func (s *Store) FinishSync(ctx context.Context, itemID string, now time.Time) er
 	return err
 }
 
+// ClassifyInput returns the User's auto Transactions posted in [from, to] on
+// every Source, and the kind of each Source, for Classify.
+func (s *Store) ClassifyInput(ctx context.Context, userID string, from, to time.Time) ([]Txn, map[string]Kind, error) {
+	kinds := map[string]Kind{}
+	srcs, err := s.db.Query(ctx, `SELECT id, kind FROM finance_sources WHERE user_id = $1`, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer srcs.Close()
+	for srcs.Next() {
+		var id string
+		var k Kind
+		if err := srcs.Scan(&id, &k); err != nil {
+			return nil, nil, err
+		}
+		kinds[id] = k
+	}
+	if err := srcs.Err(); err != nil {
+		return nil, nil, err
+	}
+	rows, err := s.db.Query(ctx, `
+		SELECT id, source_id, currency, merchant_key, posted_on, amount_cents, type, type_set_by,
+		       COALESCE(spending_category, ''), COALESCE(category_set_by, '')
+		FROM finance_transactions
+		WHERE user_id = $1 AND type_set_by = 'auto' AND posted_on BETWEEN $2 AND $3`, userID, from, to)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	var out []Txn
+	for rows.Next() {
+		var t Txn
+		if err := rows.Scan(&t.ID, &t.SourceID, &t.Currency, &t.MerchantKey, &t.PostedOn, &t.AmountCents, &t.Type, &t.TypeSetBy, &t.Category, &t.CategorySetBy); err != nil {
+			return nil, nil, err
+		}
+		out = append(out, t)
+	}
+	return out, kinds, rows.Err()
+}
+
+// SetClassified writes the type and category Classify decided. A row the User
+// set meanwhile is left alone.
+func (s *Store) SetClassified(ctx context.Context, txns []Txn, now time.Time) error {
+	n := len(txns)
+	ids, types, cats, by := make([]string, n), make([]string, n), make([]string, n), make([]string, n)
+	for i, t := range txns {
+		ids[i], types[i], cats[i], by[i] = t.ID, t.Type, t.Category, t.CategorySetBy
+	}
+	_, err := s.db.Exec(ctx, `
+		UPDATE finance_transactions f SET type = p.type, spending_category = NULLIF(p.category, ''),
+			category_set_by = NULLIF(p.by, ''), updated_at = $5
+		FROM unnest($1::uuid[], $2::text[], $3::text[], $4::text[]) AS p (id, type, category, by)
+		WHERE f.id = p.id AND f.type_set_by = 'auto'`, ids, types, cats, by, now)
+	return err
+}
+
 // Row is one Transaction to store, in the form the sync keeps.
 type Row struct {
 	ProviderID  string
