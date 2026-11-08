@@ -63,6 +63,13 @@ type MonthResponse struct {
 	Transactions []TransactionResponse `json:"transactions"`
 }
 
+// PatchTransactionRequest is the body of PATCH /me/finance/transactions/{id}:
+// an absent field is left as it is.
+type PatchTransactionRequest struct {
+	Type             *string `json:"type"`
+	SpendingCategory *string `json:"spendingCategory"`
+}
+
 // ConnectItemRequest is the body of POST /me/finance/items.
 type ConnectItemRequest struct {
 	ItemID string `json:"itemId"`

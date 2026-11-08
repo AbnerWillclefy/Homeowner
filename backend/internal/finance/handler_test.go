@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
@@ -132,6 +133,179 @@ func readMonth(t *testing.T, c *apitest.Client, month string) (spent int64, cats
 		}
 	}
 	return body.SpentCents, cats, body.Transactions
+}
+
+func patch(c *apitest.Client, id string, body any) apitest.Response {
+	return c.Do(http.MethodPatch, "/me/finance/transactions/"+id, body, nil)
+}
+
+// find returns the first Transaction of month with that description.
+func find(t *testing.T, c *apitest.Client, month, description string) txnBody {
+	t.Helper()
+	_, _, txns := readMonth(t, c, month)
+	for _, x := range txns {
+		if x.Description == description {
+			return x
+		}
+	}
+	t.Fatalf("no %q in %s", description, month)
+	return txnBody{}
+}
+
+func TestChangingToTransferTakesTheRowOutOfTheTotals(t *testing.T) {
+	t.Parallel()
+	_, ana := seedMonth(t)
+	boleto := find(t, ana, "2026-11", "Pagamento de boleto")
+
+	res := patch(ana, boleto.ID, map[string]string{"type": "transfer"})
+	if res.Status != http.StatusOK || res.Body["type"] != "transfer" || res.Body["typeSetBy"] != "user" || res.Body["spendingCategory"] != nil || res.Body["categorySetBy"] != nil {
+		t.Fatalf("PATCH = %d %s, want the row as a user transfer without category", res.Status, res.Raw)
+	}
+	if spent, cats, _ := readMonth(t, ana, "2026-11"); spent != 87780 || cats["other"] != 0 {
+		t.Errorf("spent %d cats %v, want 87780 without the transfer", spent, cats)
+	}
+}
+
+func TestChangingToExpenseDefaultsToOtherAndKeepsAGivenCategory(t *testing.T) {
+	t.Parallel()
+	_, ana := seedMonth(t)
+	lab := find(t, ana, "2026-11", "lab")
+	interest := find(t, ana, "2026-11", "Intereses Compensatorios")
+
+	res := patch(ana, lab.ID, map[string]string{"type": "expense"})
+	if res.Status != http.StatusOK || res.Body["type"] != "expense" || res.Body["spendingCategory"] != "other" || res.Body["categorySetBy"] != "fallback" {
+		t.Errorf("PATCH expense = %d %s, want other/fallback", res.Status, res.Raw)
+	}
+	res = patch(ana, interest.ID, map[string]string{"type": "expense", "spendingCategory": "taxes_fees"})
+	if res.Status != http.StatusOK || res.Body["spendingCategory"] != "taxes_fees" || res.Body["categorySetBy"] != "user" {
+		t.Errorf("PATCH expense with category = %d %s, want taxes_fees/user", res.Status, res.Raw)
+	}
+}
+
+func TestChangingTheCategoryKeepsTheTypeAuto(t *testing.T) {
+	t.Parallel()
+	_, ana := seedMonth(t)
+	boleto := find(t, ana, "2026-11", "Pagamento de boleto")
+
+	res := patch(ana, boleto.ID, map[string]string{"spendingCategory": "leisure"})
+	if res.Status != http.StatusOK || res.Body["spendingCategory"] != "leisure" || res.Body["categorySetBy"] != "user" || res.Body["typeSetBy"] != "auto" {
+		t.Fatalf("PATCH = %d %s, want leisure set by user and the type still auto", res.Status, res.Raw)
+	}
+	if _, cats, _ := readMonth(t, ana, "2026-11"); cats["leisure"] != 10000 || cats["other"] != 0 {
+		t.Errorf("cats %v, want leisure 10000", cats)
+	}
+}
+
+func TestPatchRejectsBadInput(t *testing.T) {
+	t.Parallel()
+	_, ana := seedMonth(t)
+	boleto := find(t, ana, "2026-11", "Pagamento de boleto")
+	salary := find(t, ana, "2026-11", "SALARIO EMPRESA XYZ LTDA")
+
+	for name, body := range map[string]any{
+		"empty":            map[string]string{},
+		"unknown type":     map[string]string{"type": "gift"},
+		"unknown category": map[string]string{"spendingCategory": "yachts"},
+		"unknown field":    map[string]string{"description": "x"},
+	} {
+		if res := patch(ana, boleto.ID, body); res.Status != http.StatusBadRequest {
+			t.Errorf("%s = %d %s, want 400", name, res.Status, res.Raw)
+		}
+	}
+	for name, c := range map[string]struct {
+		id   string
+		body map[string]string
+	}{
+		"transfer with category": {boleto.ID, map[string]string{"type": "transfer", "spendingCategory": "other"}},
+		"category on an income":  {salary.ID, map[string]string{"spendingCategory": "other"}},
+		"income with a category": {boleto.ID, map[string]string{"type": "income", "spendingCategory": "other"}},
+	} {
+		if res := patch(ana, c.id, c.body); res.Status != http.StatusBadRequest || res.Body["error"] != "category needs expense" {
+			t.Errorf("%s = %d %s, want 400 category needs expense", name, res.Status, res.Raw)
+		}
+	}
+	if got := find(t, ana, "2026-11", "Pagamento de boleto"); got.Type != "expense" || got.TypeSetBy != "auto" {
+		t.Errorf("rejected edits changed the row: %+v", got)
+	}
+}
+
+func TestPatchOfAnotherUsersOrUnknownRowIs404(t *testing.T) {
+	t.Parallel()
+	app, ana := seedMonth(t)
+	bob := app.SignInAs("bob@example.com")
+	boleto := find(t, ana, "2026-11", "Pagamento de boleto")
+
+	for name, id := range map[string]string{
+		"another User's": boleto.ID,
+		"unknown":        "00000000-0000-4000-8000-000000000000",
+		"malformed":      "nope",
+	} {
+		if res := patch(bob, id, map[string]string{"type": "transfer"}); res.Status != http.StatusNotFound {
+			t.Errorf("%s id = %d %s, want 404", name, res.Status, res.Raw)
+		}
+	}
+	if got := find(t, ana, "2026-11", "Pagamento de boleto"); got.Type != "expense" {
+		t.Errorf("Bob's attempt changed Ana's row: %+v", got)
+	}
+}
+
+func TestAnEditSurvivesAReSync(t *testing.T) {
+	t.Parallel()
+	app, ana := seedMonth(t)
+	boleto := find(t, ana, "2026-11", "Pagamento de boleto")
+	salary := find(t, ana, "2026-11", "SALARIO EMPRESA XYZ LTDA")
+	patch(ana, boleto.ID, map[string]string{"type": "transfer"})
+	patch(ana, salary.ID, map[string]string{"type": "expense", "spendingCategory": "pets"})
+
+	app.Clock.Advance(25 * time.Hour)
+	app.RunFinanceSync(t)
+
+	if got := find(t, ana, "2026-11", "Pagamento de boleto"); got.Type != "transfer" || got.TypeSetBy != "user" || got.SpendingCategory != nil {
+		t.Errorf("boleto after the sync = %+v, want the user's transfer", got)
+	}
+	if got := find(t, ana, "2026-11", "SALARIO EMPRESA XYZ LTDA"); got.Type != "expense" || *got.SpendingCategory != "pets" || *got.CategorySetBy != "user" {
+		t.Errorf("salary after the sync = %+v, want the user's pets expense", got)
+	}
+}
+
+func TestAMerchantCorrectionReachesOtherRowsAndLaterSyncs(t *testing.T) {
+	t.Parallel()
+	app, ana := seedMonth(t)
+	netflix := func(month string) txnBody { return find(t, ana, month, "NETFLIX.COM") }
+	// The User had already filed October's charge under shopping.
+	if res := patch(ana, netflix("2026-10").ID, map[string]string{"spendingCategory": "shopping"}); res.Status != http.StatusOK {
+		t.Fatal(res.Raw)
+	}
+	if got := netflix("2026-11"); *got.SpendingCategory != "shopping" || *got.CategorySetBy != "auto" {
+		t.Fatalf("first correction left november at %+v, want shopping/auto", got)
+	}
+
+	// A second correction moves every unedited row, and leaves the user's own alone.
+	if res := patch(ana, netflix("2026-11").ID, map[string]string{"spendingCategory": "leisure"}); res.Status != http.StatusOK {
+		t.Fatal(res.Raw)
+	}
+	if got := netflix("2026-10"); *got.SpendingCategory != "shopping" || *got.CategorySetBy != "user" {
+		t.Errorf("october's own edit = %+v, want shopping/user", got)
+	}
+	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions t JOIN users u ON u.id = t.user_id
+		WHERE u.email = 'ana@example.com' AND merchant_key = 'NETFLIX COM' AND spending_category = 'leisure'`); n != 5 {
+		t.Errorf("rows of the merchant in leisure = %d, want 5 of 6", n)
+	}
+	// Bob's rows of the same merchant are untouched.
+	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions t JOIN users u ON u.id = t.user_id
+		WHERE u.email = 'bob@example.com' AND merchant_key = 'NETFLIX COM' AND spending_category = 'leisure'`); n != 0 {
+		t.Errorf("bob's rows in leisure = %d, want 0", n)
+	}
+
+	// A new row of the merchant, arriving in a later sync, takes the correction.
+	if _, err := app.DB.Exec(context.Background(), `DELETE FROM finance_transactions WHERE description = 'NETFLIX.COM' AND posted_on = '2026-11-01'`); err != nil {
+		t.Fatal(err)
+	}
+	app.Clock.Advance(25 * time.Hour)
+	app.RunFinanceSync(t)
+	if got := netflix("2026-11"); *got.SpendingCategory != "leisure" || *got.CategorySetBy != "auto" {
+		t.Errorf("new november row = %+v, want leisure/auto from the saved correction", got)
+	}
 }
 
 func TestMonthListsTransactionsAndTotalsPerCategory(t *testing.T) {

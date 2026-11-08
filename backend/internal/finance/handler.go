@@ -11,7 +11,9 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/identity"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/pluggy"
@@ -85,6 +87,37 @@ func (h *Handler) Month(w http.ResponseWriter, r *http.Request) {
 		return cmp.Or(cmp.Compare(b.SpentCents, a.SpentCents), cmp.Compare(a.Category, b.Category))
 	})
 	httpx.WriteJSON(w, http.StatusOK, MonthResponse{Month: month, SpentCents: totals.Spend, Categories: cats, Transactions: txns})
+}
+
+// PatchTransaction answers PATCH /me/finance/transactions/{id}. A malformed id
+// and another User's row both answer 404, so ids cannot be probed.
+func (h *Handler) PatchTransaction(w http.ResponseWriter, r *http.Request) {
+	var req PatchTransactionRequest
+	if !httpx.DecodeBody(w, r, &req, 1<<10, true) {
+		return
+	}
+	if (req.Type == nil && req.SpendingCategory == nil) ||
+		(req.Type != nil && !slices.Contains([]string{"income", "expense", "transfer"}, *req.Type)) ||
+		(req.SpendingCategory != nil && !slices.Contains(llmalloc.SpendingCategories, *req.SpendingCategory)) {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid transaction edit")
+		return
+	}
+	id := r.PathValue("id")
+	if !chores.ValidID(id) {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return
+	}
+	t, found, err := h.store.UpdateTransaction(r.Context(), identity.CurrentUser(r.Context()).ID, id, req.Type, req.SpendingCategory, h.clk.Now())
+	switch {
+	case errors.Is(err, ErrCategoryNeedsExpense):
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+	case err != nil:
+		httpx.InternalError(w, h.log, "finance: update transaction", err)
+	case !found:
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+	default:
+		httpx.WriteJSON(w, http.StatusOK, t)
+	}
 }
 
 // PutCredentials answers PUT /me/finance/credentials.
