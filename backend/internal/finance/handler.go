@@ -140,6 +140,53 @@ func reportMonth(month string, rows []TransactionResponse) ReportMonth {
 	return ReportMonth{Month: month, SpentCents: totals.Spend, Categories: cats}
 }
 
+// paceMonths is how many months before the asked one the usual pace averages.
+const paceMonths = 3
+
+// Daily answers GET /me/finance/daily?month=YYYY-MM from one read of the three
+// months before it and the month itself. A previous month has history when it
+// has at least one Transaction of any type, so a month of only Transfers counts
+// as a real zero and a month before the first import does not count.
+func (h *Handler) Daily(w http.ResponseWriter, r *http.Request) {
+	month := r.URL.Query().Get("month")
+	from, to, ok := parseMonth(month)
+	if !ok {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid month")
+		return
+	}
+	rows, err := h.store.SpendRows(r.Context(), identity.CurrentUser(r.Context()).ID, from.AddDate(0, -paceMonths, 0), to)
+	if err != nil {
+		httpx.InternalError(w, h.log, "finance: read daily", err)
+		return
+	}
+	byMonth := map[time.Time][]Txn{}
+	for _, t := range rows {
+		m := time.Date(t.PostedOn.Year(), t.PostedOn.Month(), 1, 0, 0, 0, 0, time.UTC)
+		byMonth[m] = append(byMonth[m], t)
+	}
+	days := int(to.Sub(from).Hours() / 24)
+	current := CumulativeDaily(byMonth[from], from)
+	today := postedOn(h.clk.Now())
+	switch thisMonth := time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC); {
+	case from.After(thisMonth):
+		current = []int64{}
+	case from.Equal(thisMonth):
+		current = current[:today.Day()]
+	}
+	var history [][]int64
+	for i := paceMonths; i >= 1; i-- {
+		m := from.AddDate(0, -i, 0)
+		if len(byMonth[m]) > 0 {
+			history = append(history, CumulativeDaily(byMonth[m], m))
+		}
+	}
+	prev := from.AddDate(0, -1, 0)
+	httpx.WriteJSON(w, http.StatusOK, DailyResponse{
+		Month: month, Days: days, Current: current,
+		Previous: CumulativeDaily(byMonth[prev], prev), Average: UsualPace(history, days), AverageMonths: len(history),
+	})
+}
+
 // commitmentMonths is the horizon of GET /me/finance/commitments.
 const commitmentMonths = 12
 
