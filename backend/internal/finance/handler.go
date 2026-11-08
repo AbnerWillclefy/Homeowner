@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -69,14 +70,7 @@ func (h *Handler) Month(w http.ResponseWriter, r *http.Request) {
 		httpx.InternalError(w, h.log, "finance: read month", err)
 		return
 	}
-	in := make([]Txn, len(txns))
-	for i, t := range txns {
-		in[i] = Txn{Type: t.Type, AmountCents: t.AmountCents}
-		if t.SpendingCategory != nil {
-			in[i].Category = *t.SpendingCategory
-		}
-	}
-	totals := MonthTotals(in)
+	totals := MonthTotals(toTxns(txns))
 	cats := []CategoryTotal{}
 	for c, cents := range totals.ByCategory {
 		if cents != 0 {
@@ -87,6 +81,58 @@ func (h *Handler) Month(w http.ResponseWriter, r *http.Request) {
 		return cmp.Or(cmp.Compare(b.SpentCents, a.SpentCents), cmp.Compare(a.Category, b.Category))
 	})
 	httpx.WriteJSON(w, http.StatusOK, MonthResponse{Month: month, SpentCents: totals.Spend, Categories: cats, Transactions: txns})
+}
+
+// SpendingCategories is the fixed, ordered list of Spending Category ids.
+var SpendingCategories = llmalloc.SpendingCategories
+
+func toTxns(rows []TransactionResponse) []Txn {
+	in := make([]Txn, len(rows))
+	for i, t := range rows {
+		in[i] = Txn{Type: t.Type, AmountCents: t.AmountCents}
+		if t.SpendingCategory != nil {
+			in[i].Category = *t.SpendingCategory
+		}
+	}
+	return in
+}
+
+// Report answers GET /me/finance/report?month=YYYY-MM: the month and the one
+// before it, from one read of both and MonthTotals on each, so it agrees with Month.
+func (h *Handler) Report(w http.ResponseWriter, r *http.Request) {
+	month := r.URL.Query().Get("month")
+	from, to, ok := parseMonth(month)
+	if !ok {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid month")
+		return
+	}
+	prevFrom := time.Date(from.Year(), from.Month()-1, 1, 0, 0, 0, 0, time.UTC)
+	txns, err := h.store.MonthTransactions(r.Context(), identity.CurrentUser(r.Context()).ID, prevFrom, to)
+	if err != nil {
+		httpx.InternalError(w, h.log, "finance: read report", err)
+		return
+	}
+	var cur, prev []TransactionResponse
+	for _, t := range txns {
+		if t.PostedOn >= from.Format(time.DateOnly) {
+			cur = append(cur, t)
+		} else {
+			prev = append(prev, t)
+		}
+	}
+	httpx.WriteJSON(w, http.StatusOK, ReportResponse{
+		Month:    reportMonth(month, cur),
+		Previous: reportMonth(prevFrom.Format("2006-01"), prev),
+	})
+}
+
+func reportMonth(month string, rows []TransactionResponse) ReportMonth {
+	totals := MonthTotals(toTxns(rows))
+	cats := make([]CategoryTotal, len(SpendingCategories))
+	for i, c := range SpendingCategories {
+		cats[i] = CategoryTotal{Category: c, SpentCents: totals.ByCategory[c]}
+	}
+	return ReportMonth{Month: month, SpentCents: totals.Spend, Categories: cats}
 }
 
 // commitmentMonths is the horizon of GET /me/finance/commitments.
