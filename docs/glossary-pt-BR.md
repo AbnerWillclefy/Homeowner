@@ -89,5 +89,6 @@ Finances is open only to Users on an allowlist. "Category" stays with Chores, so
 | Installment plan | parcelamento | financiamento, empréstimo | A purchase paid in parts; each part is a "parcela". |
 | Summary (Finances view) | resumo | visão geral | The first Finances view. en-US "Summary". |
 | Monthly income | renda mensal | salário, receita, ganhos | What a User expects to receive each month. |
+| Spending limit | limite | orçamento, teto, meta | A User's monthly cap for one Spending Category; en-US "limit". |
 
 Apple and Android labels must match what the device shows in pt-BR. They are not yet verified on a pt-BR device.
