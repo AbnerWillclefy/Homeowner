@@ -38,7 +38,8 @@ func (s *Store) DeleteCredentials(ctx context.Context, userID string) error {
 // financeTables is every finance table, children first. Each has user_id, and
 // a test fails if the schema has a finance_* table that is not listed here, so
 // a later ticket adds its table to this list.
-var financeTables = []string{"finance_transactions", "finance_sources", "finance_items", "finance_credentials"}
+var financeTables = []string{"finance_transactions", "finance_sources", "finance_items", "finance_credentials",
+	"finance_merchant_categories", "finance_llm_calls"}
 
 // DeleteAll removes all of the User's finance data in one transaction. The
 // cascades would remove the children anyway; listing every table keeps the

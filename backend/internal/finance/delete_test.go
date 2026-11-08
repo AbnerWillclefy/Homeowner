@@ -37,6 +37,15 @@ func twoSynced(t *testing.T) (app *apitest.App, ana, bia *apitest.Client, anaID,
 	app.RunFinanceSync(t)
 	anaID, biaID = userID(t, app, "ana@example.com"), userID(t, app, "bia@example.com")
 	for _, id := range []string{anaID, biaID} {
+		// The sync has no Categorizer here, so seed a correction and a call.
+		for _, q := range []string{
+			`INSERT INTO finance_merchant_categories (user_id, merchant_key, spending_category, updated_at) VALUES ($1, 'NETFLIX COM', 'leisure', now())`,
+			`INSERT INTO finance_llm_calls (user_id, call_date, calls) VALUES ($1, current_date, 1)`,
+		} {
+			if _, err := app.DB.Exec(context.Background(), q, id); err != nil {
+				t.Fatal(err)
+			}
+		}
 		for i, n := range rowsOf(t, app, id) {
 			if n == 0 {
 				t.Fatalf("setup: %s has no rows for the User", finance.FinanceTables[i])
