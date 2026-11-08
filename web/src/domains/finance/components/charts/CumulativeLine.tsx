@@ -102,7 +102,7 @@ export function CumulativeLine({ title, series }: { title: string; series: LineS
             </svg>
             <span className="flex min-w-0 flex-col">
               <span className="text-sm text-muted [overflow-wrap:anywhere]">{s.label}</span>
-              <span className="text-lg font-bold">{money(last(s.points))}</span>
+              <span className="text-lg font-bold [overflow-wrap:anywhere]">{money(last(s.points))}</span>
             </span>
           </li>
         ))}

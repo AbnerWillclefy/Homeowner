@@ -1,0 +1,17 @@
+import type { Translate } from "../../../shared/i18n/context";
+import { difference } from "./difference";
+import { addMonths, monthName, type Month } from "./month";
+import type { SameDays } from "./sameDays";
+import { formatCents } from "./money";
+
+/**
+ * "Até dia 8 você gastou R$ 392,80 a mais que até 8 de outubro": this month up to `day` against the same days of the
+ * previous one, which `sameDays` cut (clamped, so 31 October reads 30 September). Null when there is no cut.
+ */
+export function paceSentence(t: Translate, locale: string, days: SameDays, day: number, month: Month): string | null {
+  if (days.cutDay === null) return null;
+  const previous = monthName(addMonths(month, -1), locale);
+  if (days.noPrevious) return t("finances.spending.noPrevious", { month: previous });
+  const gap = difference(days.spent, days.previousSpent);
+  return t(`finances.summary.pace.${gap.key}`, { amount: formatCents(gap.amount, locale), day, cut: days.cutDay, month: previous });
+}
