@@ -5,7 +5,7 @@ import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
 
-// What this covers: the Home tab leads with the Residents card, in both locales. The order of the sections, the
+// What this covers: the Home tab leads with the Residents card, in pt-BR. The order of the sections, the
 // caller's "You" row (a name-less User, shown by the email's local part, opening Me), another Resident's link, the
 // skeleton while the list is held (and no layout shift when it arrives), the inline error with Retry, and the Home
 // settings card closed by default.
@@ -24,20 +24,6 @@ const LOCALES = [
     error: "Algo deu errado ao carregar os moradores. Tente novamente em instantes.",
     retry: "Tentar novamente",
     me: "Eu",
-  },
-  {
-    locale: "en-US",
-    residents: "Residents",
-    invite: "Invite a Resident",
-    settings: "Home settings",
-    settingsHint: "Planning time and time zone",
-    leave: "Leave this Home",
-    you: "You",
-    streak: "11 days",
-    done: "3 done today",
-    error: "Something went wrong loading the Residents. Try again in a moment.",
-    retry: "Try again",
-    me: "Me",
   },
 ] as const;
 

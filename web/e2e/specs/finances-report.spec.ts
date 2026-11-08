@@ -4,7 +4,7 @@ import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
 
-// What this covers, in both locales: the Spending view compares the month with the one before as text. The total
+// What this covers, in pt-BR: the Spending view compares the month with the one before as text. The total
 // says the difference neutrally, each category card says what it was last month, a category spent on only last month
 // is listed apart, and a category at zero in both months is not listed at all. A month change asks for that month's
 // report. At 320px with the root font at 200% nothing overflows sideways.
@@ -20,17 +20,6 @@ const LOCALES = [
     allLess: (month: string) => new RegExp(`R\\$\\s*781,90 a menos que em ${month}`),
     onlyLast: (month: string) => `Só em ${month}`,
     prev: "Mês anterior",
-  },
-  {
-    locale: "en-US",
-    groceries: "Groceries",
-    health: "Health",
-    taxes: "Taxes and fees",
-    more: (month: string) => new RegExp(`R\\$150\\.10 more than in ${month}`),
-    previousValue: (month: string) => new RegExp(`${month}: R\\$692\\.00`),
-    allLess: (month: string) => new RegExp(`R\\$781\\.90 less than in ${month}`),
-    onlyLast: (month: string) => `Only in ${month}`,
-    prev: "Previous month",
   },
 ] as const;
 

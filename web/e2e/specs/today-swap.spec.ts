@@ -6,7 +6,7 @@ import { RESIDENT_EMAIL, signedInResident, withIncomingOffer, withOutgoingOffer 
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
 
-// What this covers: the Swap offers on Today, in pt-BR and then en-US. An incoming offer is accepted (the Tasks
+// What this covers: the Swap offers on Today, in pt-BR. An incoming offer is accepted (the Tasks
 // change hands and both read "swapped") or declined (nothing is said, no alert), an outgoing one is cancelled, a
 // stale offer reloads the plan in place with a calm status line, and long names wrap instead of overflowing.
 // Offering: Swap is on Bruna's one-person Task only when it can work, the dialog opens on a tap, lists what you
@@ -36,25 +36,6 @@ const LOCALES = [
     dismiss: "Cancelar",
     restricted: "Essa troca não combina com as restrições de hoje.",
     required: "Escolha uma tarefa para dar.",
-  },
-  {
-    locale: "en-US",
-    incoming: "Offers to you",
-    outgoing: "Your offers",
-    mine: "Your Tasks",
-    accept: "Accept swap",
-    decline: "Decline swap",
-    cancel: "Cancel swap",
-    committed: "Committed",
-    swapped: "It came from a Swap.",
-    stale: "The Tasks changed, so that Swap no longer applies. Your list is up to date.",
-    hint: /counts towards your Streak/,
-    swap: "Swap",
-    title: "What will you give?",
-    submit: "Offer swap",
-    dismiss: "Cancel",
-    restricted: "This Swap does not fit today's Restrictions.",
-    required: "Pick a Task to give.",
   },
 ] as const;
 

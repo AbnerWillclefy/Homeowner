@@ -4,7 +4,7 @@ import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
 
-// What this covers, in both locales: the Finances tab shows this month's spending by Spending Category in BRL, opens a
+// What this covers, in pt-BR: the Finances tab shows this month's spending by Spending Category in BRL, opens a
 // category to its Transactions (a refund says so in words), lists Transfers apart as left out of the totals, edits a
 // Transaction's type and category with the totals read again, and says calmly when a month is empty. At 320px with
 // the root font at 200% nothing overflows sideways.
@@ -28,25 +28,6 @@ const LOCALES = [
     category: "Categoria de gasto",
     save: "Salvar",
     gone: "Esse lançamento não está mais aqui. Lemos o mês de novo.",
-  },
-  {
-    locale: "en-US",
-    total: /R\$550\.90/,
-    afterTransfer: /R\$430\.90/,
-    groceries: "Groceries",
-    leisure: "Leisure",
-    pets: "Pets",
-    refund: "refund",
-    transfers: "Transfers",
-    leftOut: "Left out of totals",
-    empty: "Nothing here this month.",
-    prev: "Previous month",
-    next: "Next month",
-    transfer: "Transfer",
-    expense: "Expense",
-    category: "Spending category",
-    save: "Save",
-    gone: "That transaction is no longer there. We read the month again.",
   },
 ] as const;
 

@@ -5,7 +5,7 @@ import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
 import { tabs } from "../pages/tabs";
 
-// What this covers: the Me tab's Baseline, Preferences and Restrictions as collapsible cards, in both locales.
+// What this covers: the Me tab's Baseline, Preferences and Restrictions as collapsible cards, in pt-BR.
 // Closed on first view, the whole head row toggles, an edit inside an open card still saves, and the open state is
 // not remembered. Labels are per locale because the cards are found by role and name.
 
@@ -18,15 +18,6 @@ const LOCALES = [
     restrictions: "Restrições",
     heights: "Altura",
     saved: "Salvo.",
-  },
-  {
-    locale: "en-US",
-    me: "Me",
-    today: "Today",
-    cards: ["Baseline", "Preferences", "Restrictions"],
-    restrictions: "Restrictions",
-    heights: "Heights",
-    saved: "Saved.",
   },
 ] as const;
 

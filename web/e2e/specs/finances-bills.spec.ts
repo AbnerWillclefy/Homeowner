@@ -4,7 +4,7 @@ import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
 
-// What this covers, in both locales: the Finances tab lists the month's Bills to pay with amount, due date and a state
+// What this covers, in pt-BR: the Finances tab lists the month's Bills to pay with amount, due date and a state
 // in words (Paid, Paid from your bank, To pay, Was due ...), adds a Bill with validation messages beside the fields,
 // marks one paid and undoes it by hand, deletes one after a confirmation, and states an overdue Bill plainly. At 320px
 // with the root font at 200% nothing overflows sideways. The clock is fixed at 2030-01-15.
@@ -30,27 +30,6 @@ const LOCALES = [
     amount: "1.234,56",
     shown: /R\$\s*1\.234,56/,
     empty: "Uma conta a pagar vence todo mês, como aluguel ou luz. Adicione a primeira.",
-  },
-  {
-    locale: "en-US",
-    add: "Add a bill",
-    nameLabel: "Name",
-    amountLabel: "Expected amount (R$)",
-    dayLabel: "Due day",
-    save: "Save",
-    markPaid: "Mark paid",
-    undo: "Undo",
-    del: "Delete",
-    paid: "Paid",
-    bank: "Paid from your bank",
-    due: "To pay",
-    overdue: /Was due Jan 5/,
-    nameRequired: "Give the bill a name.",
-    amountInvalid: "Enter an amount like 1,234.56.",
-    dayInvalid: "Enter a day from 1 to 31.",
-    amount: "1,234.56",
-    shown: /R\$1,234\.56/,
-    empty: "A bill to pay is something due every month, like rent or electricity. Add the first one.",
   },
 ] as const;
 

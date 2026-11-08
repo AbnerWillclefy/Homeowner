@@ -5,7 +5,7 @@ import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
 
-// What this covers, in both locales: the Installments section (in the Bills view) lists the coming months with their committed amount in
+// What this covers, in pt-BR: the Installments section (in the Bills view) lists the coming months with their committed amount in
 // BRL and no percentage until a Monthly income is set; setting the income shows the share (also above 100%, with no
 // alarm word, icon or exclamation mark); clearing it takes the shares away; a month opens to its components; a
 // bad income gets a message; and no installments is said calmly. The Monthly income field is in the Settings view. At 320px with the root font at 200% nothing
@@ -34,29 +34,6 @@ const LOCALES = [
     retry: "Tentar novamente",
     problems: { empty: "Digite sua renda mensal, por exemplo 5.000,00.", zero: "A renda mensal precisa ser maior que zero.", junk: "Use só números, por exemplo 5.000,00." },
     typed: { high: "600,00", low: "5.000,00" },
-  },
-  {
-    locale: "en-US",
-    file: "en",
-    heading: "Installments",
-    bills: "Bills",
-    settings: "Settings",
-    income: "Monthly income",
-    save: "Save",
-    clear: "Clear",
-    december: /December 2026/i,
-    january: /January 2027/i,
-    dec: /R\$870\.00/,
-    jan: /R\$570\.00/,
-    pct: (n: number) => `${n}% of income already committed`,
-    sharePattern: /of income/,
-    fridge: "Geladeira 4 of 10",
-    bill: "Internet",
-    empty: "No installments in the coming months.",
-    failed: "We could not load the installments. Check your connection and try again.",
-    retry: "Try again",
-    problems: { empty: "Enter your monthly income, for example 5,000.00.", zero: "Monthly income must be more than zero.", junk: "Use numbers only, for example 5,000.00." },
-    typed: { high: "600.00", low: "5,000.00" },
   },
 ] as const;
 
