@@ -17,6 +17,9 @@
 // TRANSF) are never sent, since bank descriptions of those carry the
 // counterparty's name. The answer is a closed enum by index, so the model never
 // writes text back.
+//
+// Voice commands (package voice) send Chore titles and the Resident's words,
+// behind a confirmation: see ADR 0020.
 package llmalloc
 
 import (

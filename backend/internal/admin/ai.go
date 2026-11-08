@@ -18,6 +18,8 @@ const (
 	serviceExplainer = "explainer"
 	// serviceCategorizer rows come from the finance sync (migration 0027).
 	serviceCategorizer = "categorizer"
+	// serviceVoice rows come from the voice interpret endpoint (migration 0032).
+	serviceVoice = "voice"
 	// outcomePlanned is the allocation_runs.outcome of a run that made a Day
 	// Plan (dayplan.Planned).
 	outcomePlanned = "planned"
@@ -183,6 +185,8 @@ func (s *AIServices) set(service string, d ServiceDay) error {
 		s.Explainer = d
 	case serviceCategorizer:
 		s.Categorizer = d
+	case serviceVoice:
+		s.Voice = d
 	default:
 		return fmt.Errorf("unknown service %q", service)
 	}
