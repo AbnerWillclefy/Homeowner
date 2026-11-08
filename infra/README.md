@@ -234,6 +234,16 @@ activated in Billing, Cost allocation tags; a deactivated tag makes it report $0
 Budgets lag by hours and only warn; the Anthropic limit is the one that refuses
 requests.
 
+The Finances Categorizer (#427) spends from the same Anthropic limit, capped by
+`categorizerDailyCap = 10` calls per User per day (São Paulo date,
+`backend/internal/finance/categorize.go`; change the constant to change it).
+Worst case: a 100-merchant call is about 1.6k input and 1.2k output tokens; at
+`claude-haiku-5-5`'s $0.10 / $0.50 per MTok (`llmalloc/pricing.go`) that is about
+$0.0008 a call, so 10 calls x 30 days is about $0.25 a month per User. Past the
+cap, uncategorised Expenses stay Other and are retried the next day. The job
+needs `LLM_ALLOCATOR_ENABLED` and the `anthropic-api-key` parameter, like the
+allocator.
+
 ### Migrations: expand, then contract
 
 Migrations run before the new code is live, and a failing migration stops the
