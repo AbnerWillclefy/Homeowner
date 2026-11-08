@@ -283,7 +283,7 @@ type Match struct {
 	Month         time.Time
 }
 
-// minBillName keeps a short name such as "Gas" from matching everything.
+// minBillName keeps a two-letter name such as "Gá" from matching everything.
 const minBillName = 3
 
 // fold is uppercase with accents folded and spaces collapsed.
