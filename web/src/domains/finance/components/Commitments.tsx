@@ -98,8 +98,9 @@ function MonthCard({ month, locale }: { month: CommitmentMonth; locale: string }
         </button>
       </h4>
       <ul id={`${id}-body`} hidden={!open} className="m-0 flex list-none flex-col gap-2 p-0">
-        {month.installments.map((i) => (
-          <Line key={`${i.name}-${i.number}`} name={t("finances.commit.installment", { name: i.name, n: i.number, m: i.total })} cents={i.amountCents} locale={locale} />
+        {month.installments.map((i, index) => (
+          // A line has no plan id, so name + number can collide; the server-ordered list is never reordered here.
+          <Line key={index}name={t("finances.commit.installment", { name: i.name, n: i.number, m: i.total })} cents={i.amountCents} locale={locale} />
         ))}
         {month.bills.map((b) => (
           <Line key={b.id} name={b.name} cents={b.expectedCents} locale={locale} />
