@@ -31,6 +31,7 @@ const LOCALES = [
     dueLine: /R\$\s*210,50 · Vence 20 de jan/,
     emptyBills: "Nenhuma conta a pagar neste mês.",
     seeBills: "Ver contas",
+    retry: "Tentar novamente",
     seeSpending: "Ver gastos",
     groceries: "Mercado",
     amounts: [/R\$\s*450,00/, /R\$\s*120,00/, /R\$\s*30,00/],
@@ -56,6 +57,7 @@ const LOCALES = [
     dueLine: /R\$\s*210\.50 · Due Jan 20/,
     emptyBills: "No bills left to pay this month.",
     seeBills: "See bills",
+    retry: "Try again",
     seeSpending: "See spending",
     groceries: "Groceries",
     amounts: [/R\$\s*450\.00/, /R\$\s*120\.00/, /R\$\s*30\.00/],
@@ -178,6 +180,25 @@ for (const l of LOCALES) {
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
       });
     }
+
+    test.describe("when the bills cannot be read", () => {
+      test("only the blocks that need them say so, each with Retry, and Retry brings the bills back", async ({ page, baseURL, fakeApi }) => {
+        fakeApi.override("GET /me/finance/bills", { status: 500, body: { error: "boom" } }, { once: true });
+        await visit(page, new URL("/finances", baseURL!).toString());
+        const bills = page.getByRole("region", { name: l.heading.bills });
+        const split = page.getByRole("region", { name: l.heading.split });
+        for (const block of [bills, split]) {
+          await expect(block.getByRole("alert")).toBeVisible();
+          await expect(block.getByRole("button", { name: l.retry })).toBeVisible();
+        }
+        await expect(page.getByRole("region", { name: l.heading.pace }).getByText(l.more)).toBeVisible();
+        await expect(page.getByRole("region", { name: l.heading.top }).getByRole("listitem")).toHaveCount(3);
+        await bills.getByRole("button", { name: l.retry }).click();
+        await expect(bills.getByRole("listitem")).toHaveCount(3);
+        await expect(split.getByRole("alert")).toHaveCount(0);
+        await expect(page.getByText(l.left)).toBeVisible();
+      });
+    });
 
     test.describe("over the income", () => {
       test.use({ fakeState: connected({ income: 200000 }) });
