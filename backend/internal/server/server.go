@@ -80,6 +80,9 @@ type Deps struct {
 	// Pluggy reads the User's banks; nil means the routes that call Pluggy
 	// answer 503.
 	Pluggy pluggy.Client
+	// FinanceSyncBudget is the time budget of the sync that apitest runs; the
+	// server never reads it (the finance Lambda is another command).
+	FinanceSyncBudget time.Duration
 }
 
 const healthTimeout = 2 * time.Second

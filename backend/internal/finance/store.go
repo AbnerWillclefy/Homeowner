@@ -107,3 +107,121 @@ func (s *Store) Overview(ctx context.Context, userID string) (StatusResponse, er
 		FROM finance_items WHERE user_id = $1`, userID).Scan(&out.Configured, &out.Importing, &out.LastSyncedAt)
 	return out, err
 }
+
+// DueItem is an Item to sync, with its User's sealed credentials.
+type DueItem struct {
+	ID, UserID, Email string
+	IDEnc, SecretEnc  []byte
+	ImportComplete    bool
+}
+
+// DueItems returns the Items that have credentials and have not finished the
+// import or have not synced since staleBefore, the longest-waiting first.
+func (s *Store) DueItems(ctx context.Context, staleBefore time.Time) ([]DueItem, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT i.id, i.user_id, u.email, i.import_complete, c.client_id_enc, c.client_secret_enc
+		FROM finance_items i
+		JOIN users u ON u.id = i.user_id
+		JOIN finance_credentials c ON c.user_id = i.user_id
+		WHERE NOT i.import_complete OR i.last_synced_at IS NULL OR i.last_synced_at < $1
+		ORDER BY i.last_synced_at NULLS FIRST, i.id`, staleBefore)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []DueItem
+	for rows.Next() {
+		var d DueItem
+		if err := rows.Scan(&d.ID, &d.UserID, &d.Email, &d.ImportComplete, &d.IDEnc, &d.SecretEnc); err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
+// SyncSource is a Source to read: its Pluggy account and how far it is imported.
+type SyncSource struct {
+	ID, PluggyAccountID string
+	ImportCursor        *time.Time
+}
+
+// SyncSources returns the Item's Sources.
+func (s *Store) SyncSources(ctx context.Context, itemID string) ([]SyncSource, error) {
+	rows, err := s.db.Query(ctx, `SELECT id, pluggy_account_id, import_cursor FROM finance_sources WHERE item_id = $1 ORDER BY id`, itemID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []SyncSource
+	for rows.Next() {
+		var src SyncSource
+		if err := rows.Scan(&src.ID, &src.PluggyAccountID, &src.ImportCursor); err != nil {
+			return nil, err
+		}
+		out = append(out, src)
+	}
+	return out, rows.Err()
+}
+
+// SetImportCursor records the last day of the Source that is fully imported.
+func (s *Store) SetImportCursor(ctx context.Context, sourceID string, day time.Time) error {
+	_, err := s.db.Exec(ctx, `UPDATE finance_sources SET import_cursor = $2 WHERE id = $1`, sourceID, day)
+	return err
+}
+
+// FinishSync marks the Item imported and synced at now.
+func (s *Store) FinishSync(ctx context.Context, itemID string, now time.Time) error {
+	_, err := s.db.Exec(ctx, `UPDATE finance_items SET import_complete = true, last_synced_at = $2 WHERE id = $1`, itemID, now)
+	return err
+}
+
+// Row is one Transaction to store, in the form the sync keeps.
+type Row struct {
+	ProviderID  string
+	PostedOn    time.Time
+	AmountCents int64
+	Description string
+	MerchantKey string
+	Type        string
+	// Installment fields are 0 when the row is not an installment.
+	InstallmentNumber, TotalInstallments int32
+}
+
+// UpsertTransactions writes one page with a single statement. A Transaction
+// seen again is refreshed, never duplicated; a type or category the User set
+// stays. It inserts by source only, so a Source deleted meanwhile fails the
+// foreign key instead of getting its rows back.
+//
+// Until the category rules exist, an expense is Other because nothing has
+// decided yet ('fallback'). A category already set by the User or by a rule is
+// kept, and so is the category of a row whose type the User set. shortcut: a sign flip on a row whose category is kept would break the
+// type/category CHECK; Pluggy does not flip the sign of a posted row.
+func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string, rows []Row, now time.Time) error {
+	n := len(rows)
+	ids, days, cents, descs, keys, types := make([]string, n), make([]time.Time, n), make([]int64, n), make([]string, n), make([]string, n), make([]string, n)
+	inst, total := make([]int32, n), make([]int32, n)
+	for i, r := range rows {
+		ids[i], days[i], cents[i], descs[i], keys[i], types[i] = r.ProviderID, r.PostedOn, r.AmountCents, r.Description, r.MerchantKey, r.Type
+		inst[i], total[i] = r.InstallmentNumber, r.TotalInstallments
+	}
+	_, err := s.db.Exec(ctx, `
+		INSERT INTO finance_transactions (user_id, source_id, provider_id, posted_on, amount_cents, currency, description,
+			merchant_key, type, type_set_by, spending_category, category_set_by, installment_number, total_installments, created_at, updated_at)
+		SELECT $1, $2, provider_id, posted_on, amount_cents, 'BRL', description, merchant_key, type, 'auto',
+			CASE WHEN type = 'expense' THEN 'other' END, CASE WHEN type = 'expense' THEN 'fallback' END,
+			NULLIF(inst, 0), NULLIF(total, 0), $3, $3
+		FROM unnest($4::text[], $5::date[], $6::bigint[], $7::text[], $8::text[], $9::text[], $10::int[], $11::int[])
+			AS p (provider_id, posted_on, amount_cents, description, merchant_key, type, inst, total)
+		ON CONFLICT (source_id, provider_id) DO UPDATE SET
+			posted_on = EXCLUDED.posted_on, amount_cents = EXCLUDED.amount_cents, description = EXCLUDED.description,
+			merchant_key = EXCLUDED.merchant_key, installment_number = EXCLUDED.installment_number,
+			total_installments = EXCLUDED.total_installments, updated_at = EXCLUDED.updated_at,
+			type = CASE WHEN finance_transactions.type_set_by = 'user' THEN finance_transactions.type ELSE EXCLUDED.type END,
+			spending_category = CASE WHEN finance_transactions.category_set_by IN ('user', 'auto') OR finance_transactions.type_set_by = 'user'
+				THEN finance_transactions.spending_category ELSE EXCLUDED.spending_category END,
+			category_set_by = CASE WHEN finance_transactions.category_set_by IN ('user', 'auto') OR finance_transactions.type_set_by = 'user'
+				THEN finance_transactions.category_set_by ELSE EXCLUDED.category_set_by END`,
+		userID, sourceID, now, ids, days, cents, descs, keys, types, inst, total)
+	return err
+}
