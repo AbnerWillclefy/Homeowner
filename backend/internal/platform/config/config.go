@@ -75,6 +75,9 @@ type Config struct {
 	// FinanceKey (FINANCE_ENCRYPTION_KEY, base64 of 32 bytes) seals the Pluggy
 	// credentials. Nil when unset or malformed; Load only warns.
 	FinanceKey *[32]byte
+	// PluggyBaseURL (PLUGGY_BASE_URL) is where the Pluggy adapter calls,
+	// without a trailing slash. It defaults to production.
+	PluggyBaseURL string
 }
 
 // PhotosEnabled reports whether resident photos are configured.
@@ -184,6 +187,13 @@ func Load(getenv func(string) string) (Config, error) {
 		} else {
 			slog.Warn("FINANCE_ENCRYPTION_KEY is not base64 of 32 bytes, finance is disabled")
 		}
+	}
+	c.PluggyBaseURL = strings.TrimRight(strings.TrimSpace(getenv("PLUGGY_BASE_URL")), "/")
+	if c.PluggyBaseURL == "" {
+		c.PluggyBaseURL = "https://api.pluggy.ai"
+	}
+	if u, err := url.Parse(c.PluggyBaseURL); err != nil || u.Host == "" || u.Scheme != "http" && u.Scheme != "https" {
+		return Config{}, errors.New("PLUGGY_BASE_URL must be an http(s) URL")
 	}
 	c.Environment = strings.TrimSpace(getenv("ENVIRONMENT"))
 	switch c.Environment {
