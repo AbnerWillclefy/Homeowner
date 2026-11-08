@@ -57,6 +57,11 @@ pairs.push(
     { label: `focus on ${stop}`, fg: "focus", bg: stop, min: 3 },
   ]),
   { label: "accent-contrast on accent", fg: "accent-contrast", bg: "accent", min: 4.5 },
+  // Charts (WCAG 1.4.11, non-text): a mark must read against the card and a filled bar against its own track.
+  { label: "chart-ink on surface-raised", fg: "chart-ink", bg: "surface-raised", min: 3 },
+  { label: "chart-muted on surface-raised", fg: "chart-muted", bg: "surface-raised", min: 3 },
+  { label: "chart-ink on chart-track", fg: "chart-ink", bg: "chart-track", min: 3 },
+  { label: "chart-muted on chart-track", fg: "chart-muted", bg: "chart-track", min: 3 },
 );
 
 for (const [name, theme] of [
