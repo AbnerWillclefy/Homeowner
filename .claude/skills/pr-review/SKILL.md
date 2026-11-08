@@ -457,10 +457,14 @@ Post each finding, suggestion and review question as one inline comment with
 (see the Evidence Pack's changed anchor). Post no summary comment. If nothing
 survives, post one short comment with `gh pr comment` saying so.
 
-Every comment body uses exactly one of these structures, in English:
+Every comment body uses exactly one of these structures, in English. The
+`(<category>)` after the kind is the checklist category the item came from,
+exactly one of: `correctness`, `conventions`, `blast-radius`, `dependencies`,
+`maintainability`, `tests`, `security`, `performance`, `accessibility`, `docs`,
+`description`. The weekly review-lessons job counts comments by it.
 
 ````md
-**[Finding] <one-line issue title>**
+**[Finding] (<category>) <one-line issue title>**
 
 <the failure mode: who calls the code, with which input or state, and what then goes wrong>
 
@@ -482,8 +486,8 @@ changes minimal, and validate with the relevant tests/typecheck.
 </details>
 ````
 
-A suggestion uses the same structure titled `**[Suggestion] …**`. A review
-question is titled `**[Question] <one-line author-facing question>**`, states
+A suggestion uses the same structure titled `**[Suggestion] (<category>) …**`. A
+review question is titled `**[Question] (<category>) <one-line author-facing question>**`, states
 the evidence for both sides and the precise answer needed, and its prompt
 opens with:
 
