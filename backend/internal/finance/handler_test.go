@@ -196,6 +196,17 @@ func TestChangingTheCategoryKeepsTheTypeAuto(t *testing.T) {
 	}
 }
 
+func TestConfirmingAnExpenseKeepsItsCategory(t *testing.T) {
+	t.Parallel()
+	_, ana := seedMonth(t)
+	boleto := find(t, ana, "2026-11", "Pagamento de boleto")
+
+	res := patch(ana, boleto.ID, map[string]string{"type": "expense"})
+	if res.Status != http.StatusOK || res.Body["typeSetBy"] != "user" || res.Body["spendingCategory"] != *boleto.SpendingCategory || res.Body["categorySetBy"] != *boleto.CategorySetBy {
+		t.Errorf("PATCH type only = %d %s, want the category kept", res.Status, res.Raw)
+	}
+}
+
 func TestPatchRejectsBadInput(t *testing.T) {
 	t.Parallel()
 	_, ana := seedMonth(t)
