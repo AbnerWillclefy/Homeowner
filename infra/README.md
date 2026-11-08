@@ -112,7 +112,12 @@ their `locals`, backend key, `environment` tag, Neon project and budget.
 `module "finance_job"` (both roots) is a third Lambda from the API image,
 command `finance-events`, named `homeowner-<env>-finance`, started by an
 EventBridge rule every hour. It reads only `database-url`,
-`finance-encryption-key` and `finance-allowlist`. Cost: 24 invocations a day;
+`finance-encryption-key`, `finance-allowlist`, `anthropic-api-key` and
+`vapid-private-key`. After each sync it sends the push reminders for Bills to
+pay (#435), so it gets the API's VAPID settings (`VAPID_PUBLIC_KEY`,
+`VAPID_SUBJECT`, `VAPID_PRIVATE_KEY_SSM_PARAM`) when `vapid_public_key` is set;
+without them it logs `bill reminders off` and sends none. The VAPID step above
+already creates the parameter. Cost: 24 invocations a day;
 most find nobody due and last milliseconds, and a User's 12-month import takes
 a few runs of up to 60 seconds, once. Nothing bills while idle.
 

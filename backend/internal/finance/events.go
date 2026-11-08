@@ -15,8 +15,9 @@ const maxEventBody = 64 * 1024
 // check and the scheduled event that Lambda Web Adapter forwards to
 // POST /events (docs/adr/0008). Like the Allocation job's, the body must be an
 // EventBridge scheduled event: a sanity check, not authentication. A nil Syncer
-// means Finances are not configured: the event is answered and ignored.
-func EventsHandler(s *Syncer, clk clock.Clock, log *slog.Logger) http.Handler {
+// means Finances are not configured: the sync is skipped. The Reminders run
+// after the sync in the same event; nil means no VAPID keys, so none are sent.
+func EventsHandler(s *Syncer, rem *Reminders, clk clock.Clock, log *slog.Logger) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 	mux.HandleFunc("POST /events", func(w http.ResponseWriter, r *http.Request) {
@@ -30,14 +31,25 @@ func EventsHandler(s *Syncer, clk clock.Clock, log *slog.Logger) http.Handler {
 			http.Error(w, "unrecognised event", http.StatusBadRequest)
 			return
 		}
+		var sum Summary
+		var syncErr error
 		if s == nil {
 			log.Warn("finance sync disabled")
+		} else {
+			sum, syncErr = s.Run(r.Context(), clk.Now())
+		}
+		// Reminders run even when the sync failed: the Bills are already stored.
+		if rem != nil {
+			if err := rem.Run(r.Context(), clk.Now()); err != nil {
+				log.Error("finance reminders failed", "error", safeErr(err))
+			}
+		}
+		if s == nil {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		sum, err := s.Run(r.Context(), clk.Now())
-		if err != nil {
-			log.Error("finance sync failed", "error", safeErr(err))
+		if syncErr != nil {
+			log.Error("finance sync failed", "error", safeErr(syncErr))
 			http.Error(w, "finance sync failed", http.StatusInternalServerError)
 			return
 		}

@@ -33,6 +33,9 @@ type Payload struct {
 const (
 	KindCheckinReminder = "checkin_reminder"
 	KindDayPlanReady    = "day_plan_ready"
+	KindBillDueToday    = "bill_due_today"
+	KindBillDueSoon     = "bill_due_soon"
+	KindBillOverdue     = "bill_overdue"
 )
 
 // ErrGone means the push service answered 404 or 410: the subscription no
