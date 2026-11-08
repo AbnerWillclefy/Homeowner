@@ -1,5 +1,5 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
-import { toQueryData } from "../../../shared/query/ApiFailure";
+import { ApiFailure } from "../../../shared/query/ApiFailure";
 import { refetchUnlessSucceeded } from "../../../shared/query/queryClient";
 import { getFinanceStatus, type FinanceStatus } from "./api";
 
@@ -9,7 +9,12 @@ export const financeStatusKey = ["me", "finance"] as const;
 /** Credentials never reach a cache: this holds only the status, which has no secret in it. */
 export const financeStatusQuery = queryOptions({
   queryKey: financeStatusKey,
-  queryFn: async (): Promise<FinanceStatus> => toQueryData(await getFinanceStatus()).status,
+  queryFn: async (): Promise<FinanceStatus> => {
+    const result = await getFinanceStatus();
+    if (result.kind === "ok") return result.status;
+    // The read has no other failure the screen words differently.
+    throw new ApiFailure(result.kind === "offline" || result.kind === "not-signed-in" ? result.kind : "error");
+  },
   refetchOnMount: refetchUnlessSucceeded,
 });
 

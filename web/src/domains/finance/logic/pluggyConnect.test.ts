@@ -6,7 +6,7 @@ const SCRIPT = { url: "https://cdn.example/p.js", integrity: "sha384-abc" };
 /** A document that can append a script, and a window the script "defines" PluggyConnect on when it loads. */
 function browser(outcome: "load" | "error" = "load") {
   const appended: Record<string, string>[] = [];
-  const widget: { options?: PluggyOptions; init: ReturnType<typeof vi.fn> } = { init: vi.fn() };
+  const widget: { options?: PluggyOptions; init: ReturnType<typeof vi.fn<() => void>> } = { init: vi.fn<() => void>() };
   const win: { PluggyConnect?: new (options: PluggyOptions) => { init(): void } } = {};
   const doc = {
     createElement: () => {
@@ -26,7 +26,9 @@ function browser(outcome: "load" | "error" = "load") {
             constructor(options: PluggyOptions) {
               widget.options = options;
             }
-            init = widget.init;
+            init() {
+              widget.init();
+            }
           };
           el.onload();
         } else el.onerror();
