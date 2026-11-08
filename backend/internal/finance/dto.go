@@ -63,6 +63,19 @@ type MonthResponse struct {
 	Transactions []TransactionResponse `json:"transactions"`
 }
 
+// ReportMonth is one month of GET /me/finance/report: all 13 categories, in order.
+type ReportMonth struct {
+	Month      string          `json:"month"`
+	SpentCents int64           `json:"spentCents"`
+	Categories []CategoryTotal `json:"categories"`
+}
+
+// ReportResponse is the answer of GET /me/finance/report.
+type ReportResponse struct {
+	Month    ReportMonth `json:"month"`
+	Previous ReportMonth `json:"previous"`
+}
+
 // PatchTransactionRequest is the body of PATCH /me/finance/transactions/{id}:
 // an absent field is left as it is.
 type PatchTransactionRequest struct {
