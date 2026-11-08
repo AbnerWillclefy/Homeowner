@@ -308,8 +308,9 @@ func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string,
 		LEFT JOIN finance_merchant_categories mc ON mc.user_id = $1 AND mc.merchant_key = p.merchant_key
 		ON CONFLICT (source_id, provider_id) DO UPDATE SET
 			posted_on = EXCLUDED.posted_on, amount_cents = EXCLUDED.amount_cents, description = EXCLUDED.description,
-			merchant_key = EXCLUDED.merchant_key, installment_number = EXCLUDED.installment_number,
-			total_installments = EXCLUDED.total_installments, updated_at = EXCLUDED.updated_at,
+			merchant_key = EXCLUDED.merchant_key,
+			installment_number = COALESCE(finance_transactions.installment_number, EXCLUDED.installment_number),
+			total_installments = COALESCE(finance_transactions.total_installments, EXCLUDED.total_installments), updated_at = EXCLUDED.updated_at,
 			type = finance_transactions.type,
 			spending_category = CASE WHEN finance_transactions.category_set_by = 'fallback' AND finance_transactions.type_set_by = 'auto'
 				AND EXCLUDED.type = 'expense' THEN EXCLUDED.spending_category ELSE finance_transactions.spending_category END,
@@ -424,6 +425,35 @@ func (s *Store) UpdateTransaction(ctx context.Context, userID, id string, typ, c
 }
 
 func ptr(s string) *string { return &s }
+
+// InstallmentPlans returns the latest seen charge of each of the User's
+// Installment plans, a plan being the same Source, merchant, total and amount.
+// Grouping keeps the repeated charges of a plan from counting twice.
+func (s *Store) InstallmentPlans(ctx context.Context, userID string) ([]Plan, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT DISTINCT ON (source_id, merchant_key, total_installments, amount_cents)
+			description, merchant_key, installment_number, total_installments, -amount_cents, posted_on
+		FROM finance_transactions
+		WHERE user_id = $1 AND type = 'expense' AND amount_cents < 0 AND installment_number IS NOT NULL
+		ORDER BY source_id, merchant_key, total_installments, amount_cents, installment_number DESC`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Plan
+	for rows.Next() {
+		var p Plan
+		var desc, key string
+		var posted time.Time
+		if err := rows.Scan(&desc, &key, &p.Number, &p.Total, &p.AmountCents, &posted); err != nil {
+			return nil, err
+		}
+		p.Name = PlanName(desc, key)
+		p.Month = time.Date(posted.Year(), posted.Month(), 1, 0, 0, 0, 0, time.UTC)
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
 
 // FallbackUser is a User with Expenses nothing has categorised yet.
 type FallbackUser struct{ ID, Email string }

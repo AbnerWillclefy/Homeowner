@@ -63,6 +63,28 @@ type MonthResponse struct {
 	Transactions []TransactionResponse `json:"transactions"`
 }
 
+// MonthCommitment is what a month already owes. Not the Task "commitments"
+// table: that one is unrelated.
+type MonthCommitment struct {
+	Month          string            `json:"month"`
+	CommittedCents int64             `json:"committedCents"`
+	Installments   []InstallmentLine `json:"installments"`
+	Bills          []BillLine        `json:"bills"`
+}
+
+// BillLine is a Bill to pay in a month.
+type BillLine struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	ExpectedCents int64  `json:"expectedCents"`
+}
+
+// CommitmentsResponse is the answer of GET /me/finance/commitments.
+type CommitmentsResponse struct {
+	From   string            `json:"from"`
+	Months []MonthCommitment `json:"months"`
+}
+
 // PatchTransactionRequest is the body of PATCH /me/finance/transactions/{id}:
 // an absent field is left as it is.
 type PatchTransactionRequest struct {
