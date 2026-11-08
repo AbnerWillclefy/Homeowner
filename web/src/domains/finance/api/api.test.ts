@@ -6,6 +6,7 @@ import {
   deleteFinanceData,
   getFinanceStatus,
   getMonth,
+  getReport,
   patchTransaction,
   putCredentials,
   registerItem,
@@ -174,6 +175,25 @@ describe("getMonth", () => {
   it("is an error for a body it cannot read", async () => {
     stubFetch(Response.json({ ...MONTH, transactions: [{ id: 1 }] }));
     expect(await getMonth("2026-11")).toEqual({ kind: "error" });
+  });
+});
+
+const REPORT_MONTH = { month: "2026-11", spentCents: 1000, categories: [{ category: "groceries", spentCents: 1000 }] };
+const REPORT = { month: REPORT_MONTH, previous: { ...REPORT_MONTH, month: "2026-10" } };
+
+describe("getReport", () => {
+  it("reads GET /me/finance/report with the month", async () => {
+    const fetch = stubFetch(Response.json(REPORT));
+    expect(await getReport("2026-11")).toEqual({ kind: "ok", report: REPORT });
+    expect(fetch.mock.calls[0]![0]).toBe("http://api.test/me/finance/report?month=2026-11");
+  });
+
+  it("is an error for a body it cannot read", async () => {
+    stubFetch(Response.json({ month: REPORT_MONTH }));
+    expect(await getReport("2026-11")).toEqual({ kind: "error" });
+    const bad = { ...REPORT_MONTH, categories: [{ category: "groceries", spentCents: "1" }] };
+    stubFetch(Response.json({ ...REPORT, previous: bad }));
+    expect(await getReport("2026-11")).toEqual({ kind: "error" });
   });
 });
 
