@@ -144,9 +144,9 @@ func TestDailyCountsATransferOnlyMonthAsHistory(t *testing.T) {
 	seedRow(t, app, "ana@example.com", "2032-04-10", "transfer", -5000)
 
 	got := readDaily(t, ana, "2032-06")
-	// May spent 1001, April only moved money: two months, so the pace halves.
-	if got.AverageMonths != 2 || len(got.Average) != 30 || got.Average[29] != 500 {
-		t.Errorf("transfer-only month: %+v, want 2 months and a 500 average", got)
+	// May spent 1001, April only moved money: two months, so the pace halves (500.5, rounded half up).
+	if got.AverageMonths != 2 || len(got.Average) != 30 || got.Average[29] != 501 {
+		t.Errorf("transfer-only month: %+v, want 2 months and a 501 average", got)
 	}
 }
 

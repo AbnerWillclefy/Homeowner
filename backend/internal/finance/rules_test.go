@@ -166,7 +166,8 @@ func TestUsualPace(t *testing.T) {
 		"one month is itself": {[][]int64{thirty}, 30, map[int]int64{1: 10, 30: 300}},
 		"a plain day":         {[][]int64{thirty, thirtyOne}, 31, map[int]int64{1: 15, 30: 450}},
 		"a short month holds its final total on day 31": {[][]int64{thirty, thirtyOne}, 31, map[int]int64{31: 460}},
-		"rounds half up": {[][]int64{{1}, {2}}, 1, map[int]int64{1: 2}},
+		"rounds half up":               {[][]int64{{1}, {2}}, 1, map[int]int64{1: 2}},
+		"rounds a negative average up": {[][]int64{{-1}, {-1}, {0}}, 1, map[int]int64{1: -1}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
