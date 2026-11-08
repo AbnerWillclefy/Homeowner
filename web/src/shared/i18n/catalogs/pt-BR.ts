@@ -170,7 +170,7 @@ export const ptBR: Messages = {
   "finances.bills.state.due": "A pagar",
   "finances.bills.state.overdue": "Venceu em {date}",
   "finances.bills.markPaid": "Paguei",
-  "finances.bills.markPaid.label": "Marcar como paga: {name}",
+  "finances.bills.markPaid.label": "Paguei: {name}",
   "finances.bills.undo": "Desfazer",
   "finances.bills.undo.label": "Desfazer: {name}",
   "finances.bills.edit": "Editar",

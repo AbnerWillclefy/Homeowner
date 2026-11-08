@@ -166,7 +166,7 @@ export const enUS = {
   "finances.bills.state.due": "To pay",
   "finances.bills.state.overdue": "Was due {date}",
   "finances.bills.markPaid": "I paid",
-  "finances.bills.markPaid.label": "Mark paid: {name}",
+  "finances.bills.markPaid.label": "I paid: {name}",
   "finances.bills.undo": "Undo",
   "finances.bills.undo.label": "Undo: {name}",
   "finances.bills.edit": "Edit",

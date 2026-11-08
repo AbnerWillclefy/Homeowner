@@ -32,13 +32,14 @@ export function BillRow({ bill, today, busy, onPaid, onEdit, onDelete }: Props) 
         ? t("finances.bills.due", { date })
         : t(BILL_STATE_KEY[state]);
   return (
-    <li className="m-0 flex list-none items-start gap-2 py-2">
-      <div className="min-w-0 flex-1">
+    // At the largest text the actions wrap under the name instead of squeezing it to nothing.
+    <li className="m-0 flex list-none flex-wrap items-start justify-between gap-2 py-2">
+      <div className="min-w-32 flex-1">
         <p className="my-0 font-semibold [overflow-wrap:anywhere]">{bill.name}</p>
         <p className="my-0">{formatCents(bill.expectedCents, locale)}</p>
         <p className="my-0 text-sm text-muted [overflow-wrap:anywhere]">{line}</p>
       </div>
-      <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+      <div className="flex max-w-full flex-wrap items-center justify-end gap-1">
         {state === "paid-bank" ? null : state === "paid-hand" ? (
           <Button variant="secondary" pending={busy} aria-label={t("finances.bills.undo.label", { name: bill.name })} onClick={() => onPaid(false)}>
             {t("finances.bills.undo")}
