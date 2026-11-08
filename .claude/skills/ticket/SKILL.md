@@ -42,4 +42,4 @@ Check every acceptance criterion and point to the test or code that meets it. Op
 
 ## 5. Apply the review
 
-The review-fix stage skips the maintainer's pull requests. Once Claude's review lands, read the findings with `gh api repos/{owner}/{repo}/pulls/<pr>/comments` and go through them one at a time: what the reviewer saw, whether it is valid and why, then fix the valid ones together. Push, then label the pull request `review-addressed`.
+The review-fix stage skips the maintainer's pull requests. Once Claude's review lands, read the findings with `gh api repos/{owner}/{repo}/pulls/<pr>/comments` and go through them one at a time: what the reviewer saw, whether it is valid and why, then fix the valid ones together. Reply on the thread of each finding you reject with the reason, and do not reply to the ones you fix: the weekly review-lessons job counts a reply as a rejection. Push, then label the pull request `review-addressed`.
