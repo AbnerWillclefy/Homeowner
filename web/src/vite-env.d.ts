@@ -9,6 +9,10 @@ interface ImportMetaEnv {
   readonly VITE_COGNITO_CLIENT_ID: string;
   /** The pool's password rules as one JSON object (Terraform output password_policy), baked in at build time. Public. */
   readonly VITE_PASSWORD_POLICY: string;
+  /** Set only by the e2e build, to a stub of Pluggy Connect. Without both, the pinned CDN script is used. */
+  readonly VITE_PLUGGY_CONNECT_URL?: string;
+  /** The `sha384-...` hash of the script at VITE_PLUGGY_CONNECT_URL. */
+  readonly VITE_PLUGGY_CONNECT_SRI?: string;
 }
 
 interface ImportMeta{
