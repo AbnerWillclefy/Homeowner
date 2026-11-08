@@ -239,7 +239,7 @@ module "finance_job" {
   ssm_path_prefix     = local.ssm_prefix
 
   # Only this job and the API may read the finance encryption key (#423).
-  ssm_parameter_names = ["database-url", "finance-encryption-key", "finance-allowlist", "anthropic-api-key"]
+  ssm_parameter_names = ["database-url", "finance-encryption-key", "finance-allowlist", "anthropic-api-key", "vapid-private-key"]
 
   # A run works up to 60s and stops starting windows with 10s left.
   timeout = 90
@@ -261,6 +261,13 @@ module "finance_job" {
     var.llm_allocator_enabled ? {
       ANTHROPIC_API_KEY_SSM_PARAM = "${local.ssm_prefix}/anthropic-api-key"
     } : {},
+    # The Bill reminders (#435) push with the same VAPID settings as the API;
+    # without the public key the job sends none.
+    var.vapid_public_key == "" ? {} : {
+      VAPID_PUBLIC_KEY            = var.vapid_public_key
+      VAPID_SUBJECT               = var.vapid_subject
+      VAPID_PRIVATE_KEY_SSM_PARAM = "${local.ssm_prefix}/vapid-private-key"
+    },
   )
 }
 
