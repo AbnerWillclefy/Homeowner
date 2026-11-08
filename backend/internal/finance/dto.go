@@ -83,6 +83,14 @@ type MonthCommitment struct {
 	CommittedCents int64             `json:"committedCents"`
 	Installments   []InstallmentLine `json:"installments"`
 	Bills          []BillLine        `json:"bills"`
+	// PercentOfIncome is absent, not null, when no income is set, so "not set"
+	// and 0% stay distinct.
+	PercentOfIncome *int64 `json:"percentOfIncome,omitempty"`
+}
+
+// IncomeRequest is the body of PUT /me/finance/income; null clears the income.
+type IncomeRequest struct {
+	MonthlyIncomeCents *int64 `json:"monthlyIncomeCents"`
 }
 
 // BillLine is a Bill to pay in a month.
@@ -94,8 +102,9 @@ type BillLine struct {
 
 // CommitmentsResponse is the answer of GET /me/finance/commitments.
 type CommitmentsResponse struct {
-	From   string            `json:"from"`
-	Months []MonthCommitment `json:"months"`
+	From               string            `json:"from"`
+	MonthlyIncomeCents *int64            `json:"monthlyIncomeCents"`
+	Months             []MonthCommitment `json:"months"`
 }
 
 // PatchTransactionRequest is the body of PATCH /me/finance/transactions/{id}:
