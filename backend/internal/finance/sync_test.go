@@ -169,6 +169,86 @@ func TestSyncKeepsWhatTheUserSet(t *testing.T) {
 	}
 }
 
+// A card refund is an expense by Source kind; a category the User set on it must
+// survive the next sync without breaking the type/category CHECK.
+func TestSyncKeepsAUserCategoryOnACardRefund(t *testing.T) {
+	t.Parallel()
+	app, _ := startSync(t, []string{"ana@example.com"})
+	ctx := context.Background()
+	if _, err := app.DB.Exec(ctx, `UPDATE finance_sources SET kind = 'credit_card'`); err != nil {
+		t.Fatal(err)
+	}
+	app.RunFinanceSync(t)
+	if _, err := app.DB.Exec(ctx, `UPDATE finance_transactions SET spending_category = 'leisure', category_set_by = 'user' WHERE amount_cents > 0 AND type = 'expense'`); err != nil {
+		t.Fatal(err)
+	}
+	n := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE category_set_by = 'user'`)
+	if n == 0 {
+		t.Fatal("no card refund to categorise")
+	}
+	app.Clock.Advance(25 * time.Hour)
+	app.RunFinanceSync(t)
+	if got := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE amount_cents > 0 AND type = 'expense' AND spending_category = 'leisure' AND category_set_by = 'user'`); got != n {
+		t.Errorf("categorised refunds = %d, want %d kept", got, n)
+	}
+}
+
+// The sandbox has only the checking side of the card bill payment (the card has
+// no matching credit), so the PAGAMENTO FATURA rows are what the sync must type
+// as transfers; pairing across Sources is covered by TestClassify.
+func TestSyncClassifiesBillPaymentsAsTransfers(t *testing.T) {
+	t.Parallel()
+	app, _ := startSync(t, []string{"ana@example.com"})
+	app.RunFinanceSync(t)
+	q := `SELECT count(*) FROM finance_transactions WHERE description LIKE 'PAGAMENTO FATURA%' AND type = 'transfer' AND type_set_by = 'auto' AND spending_category IS NULL`
+	n := scalar(t, app, q)
+	if n == 0 || n != scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE description LIKE 'PAGAMENTO FATURA%'`) {
+		t.Fatalf("auto transfers = %d, want every bill payment", n)
+	}
+	// A repeat sync re-reads the rows and must keep them transfers.
+	app.Clock.Advance(25 * time.Hour)
+	app.RunFinanceSync(t)
+	if got := scalar(t, app, q); got != n {
+		t.Fatalf("auto transfers after a repeat sync = %d, want %d", got, n)
+	}
+	// A row the User typed stays, and a repeat sync keeps the result.
+	if _, err := app.DB.Exec(context.Background(), `
+		UPDATE finance_transactions SET type = 'expense', type_set_by = 'user', spending_category = 'other', category_set_by = 'user'
+		WHERE description LIKE 'PAGAMENTO FATURA%'`); err != nil {
+		t.Fatal(err)
+	}
+	app.Clock.Advance(25 * time.Hour)
+	app.RunFinanceSync(t)
+	if got := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE description LIKE 'PAGAMENTO FATURA%' AND type = 'expense' AND type_set_by = 'user'`); got != n {
+		t.Errorf("user-typed bill payments = %d, want %d untouched", got, n)
+	}
+}
+
+// The synthetic checking page holds 2026-01-14 and 01-15, so classify reads
+// 01-08..01-21 and writes only 01-11..01-18. A pair across the write edge must
+// see its partner, and a pair across the read edge must not be written half-seen.
+func TestSyncKeepsTransfersWholeAtTheWindowEdges(t *testing.T) {
+	t.Parallel()
+	app, _ := startSync(t, []string{"ana@example.com"})
+	app.RunFinanceSync(t)
+	if _, err := app.DB.Exec(context.Background(), `
+		INSERT INTO finance_transactions (user_id, source_id, provider_id, posted_on, amount_cents, currency, description,
+			merchant_key, type, type_set_by, created_at, updated_at)
+		SELECT s.user_id, s.id, 'edge-' || p.day, p.day, p.cents, 'BRL', 'EDGE', 'edge', 'transfer', 'auto', now(), now()
+		FROM (VALUES ('checking', DATE '2026-01-12', -12345), ('credit_card', DATE '2026-01-09', 12345),
+		             ('checking', DATE '2026-01-09', -67890), ('credit_card', DATE '2026-01-06', 67890)) AS p (kind, day, cents)
+		JOIN finance_sources s ON s.kind = p.kind`); err != nil {
+		t.Fatal(err)
+	}
+
+	app.Clock.Advance(25 * time.Hour)
+	app.RunFinanceSync(t)
+
+	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE description = 'EDGE' AND type = 'transfer'`); n != 4 {
+		t.Errorf("edge transfers = %d, want 4 kept whole", n)
+	}
+}
+
 func TestFailingPluggyLeavesTheUserDueAndOthersSynced(t *testing.T) {
 	t.Parallel()
 	app, users := startSync(t, []string{"ana@example.com", "bob@example.com"})

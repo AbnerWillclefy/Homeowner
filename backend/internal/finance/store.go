@@ -38,7 +38,8 @@ func (s *Store) DeleteCredentials(ctx context.Context, userID string) error {
 // financeTables is every finance table, children first. Each has user_id, and
 // a test fails if the schema has a finance_* table that is not listed here, so
 // a later ticket adds its table to this list.
-var financeTables = []string{"finance_transactions", "finance_sources", "finance_items", "finance_credentials"}
+var financeTables = []string{"finance_transactions", "finance_sources", "finance_items", "finance_credentials",
+	"finance_merchant_categories", "finance_llm_calls"}
 
 // DeleteAll removes all of the User's finance data in one transaction. The
 // cascades would remove the children anyway; listing every table keeps the
@@ -203,6 +204,62 @@ func (s *Store) FinishSync(ctx context.Context, itemID string, now time.Time) er
 	return err
 }
 
+// ClassifyInput returns the User's auto Transactions posted in [from, to] on
+// every Source, and the kind of each Source, for Classify.
+func (s *Store) ClassifyInput(ctx context.Context, userID string, from, to time.Time) ([]Txn, map[string]Kind, error) {
+	kinds := map[string]Kind{}
+	srcs, err := s.db.Query(ctx, `SELECT id, kind FROM finance_sources WHERE user_id = $1`, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer srcs.Close()
+	for srcs.Next() {
+		var id string
+		var k Kind
+		if err := srcs.Scan(&id, &k); err != nil {
+			return nil, nil, err
+		}
+		kinds[id] = k
+	}
+	if err := srcs.Err(); err != nil {
+		return nil, nil, err
+	}
+	rows, err := s.db.Query(ctx, `
+		SELECT id, source_id, currency, merchant_key, posted_on, amount_cents, type, type_set_by,
+		       COALESCE(spending_category, ''), COALESCE(category_set_by, '')
+		FROM finance_transactions
+		WHERE user_id = $1 AND type_set_by = 'auto' AND posted_on BETWEEN $2 AND $3`, userID, from, to)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	var out []Txn
+	for rows.Next() {
+		var t Txn
+		if err := rows.Scan(&t.ID, &t.SourceID, &t.Currency, &t.MerchantKey, &t.PostedOn, &t.AmountCents, &t.Type, &t.TypeSetBy, &t.Category, &t.CategorySetBy); err != nil {
+			return nil, nil, err
+		}
+		out = append(out, t)
+	}
+	return out, kinds, rows.Err()
+}
+
+// SetClassified writes the type and category Classify decided. A row the User
+// set meanwhile is left alone.
+func (s *Store) SetClassified(ctx context.Context, txns []Txn, now time.Time) error {
+	n := len(txns)
+	ids, types, cats, by := make([]string, n), make([]string, n), make([]string, n), make([]string, n)
+	for i, t := range txns {
+		ids[i], types[i], cats[i], by[i] = t.ID, t.Type, t.Category, t.CategorySetBy
+	}
+	_, err := s.db.Exec(ctx, `
+		UPDATE finance_transactions f SET type = p.type, spending_category = NULLIF(p.category, ''),
+			category_set_by = NULLIF(p.by, ''), updated_at = $5
+		FROM unnest($1::uuid[], $2::text[], $3::text[], $4::text[]) AS p (id, type, category, by)
+		WHERE f.id = p.id AND f.type_set_by = 'auto'`, ids, types, cats, by, now)
+	return err
+}
+
 // Row is one Transaction to store, in the form the sync keeps.
 type Row struct {
 	ProviderID  string
@@ -222,10 +279,13 @@ type Row struct {
 // stays. It inserts by source only, so a Source deleted meanwhile fails the
 // foreign key instead of getting its rows back.
 //
-// Until the category rules exist, an expense is Other because nothing has
-// decided yet ('fallback'). A category already set by the User or by a rule is
-// kept, and so is the category of a row whose type the User set. shortcut: a sign flip on a row whose category is kept would break the
-// type/category CHECK; Pluggy does not flip the sign of a posted row.
+// The type and category of a stored row are kept together: classify re-decides
+// every auto row of the page right after, and taking either from the sign-based
+// insert values would break the type/category CHECK on a transfer or a card
+// refund. Only a 'fallback' category on a row that is still an expense takes a
+// category Pluggy now gives. A new expense is Other because nothing has decided yet ('fallback').
+// shortcut: a sign flip on a stored row is ignored; Pluggy does not flip the
+// sign of a posted row.
 func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string, rows []Row, now time.Time) error {
 	n := len(rows)
 	ids, days, cents, descs, keys, types := make([]string, n), make([]time.Time, n), make([]int64, n), make([]string, n), make([]string, n), make([]string, n)
@@ -250,11 +310,11 @@ func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string,
 			posted_on = EXCLUDED.posted_on, amount_cents = EXCLUDED.amount_cents, description = EXCLUDED.description,
 			merchant_key = EXCLUDED.merchant_key, installment_number = EXCLUDED.installment_number,
 			total_installments = EXCLUDED.total_installments, updated_at = EXCLUDED.updated_at,
-			type = CASE WHEN finance_transactions.type_set_by = 'user' THEN finance_transactions.type ELSE EXCLUDED.type END,
-			spending_category = CASE WHEN finance_transactions.category_set_by IN ('user', 'auto') OR finance_transactions.type_set_by = 'user'
-				THEN finance_transactions.spending_category ELSE EXCLUDED.spending_category END,
-			category_set_by = CASE WHEN finance_transactions.category_set_by IN ('user', 'auto') OR finance_transactions.type_set_by = 'user'
-				THEN finance_transactions.category_set_by ELSE EXCLUDED.category_set_by END`,
+			type = finance_transactions.type,
+			spending_category = CASE WHEN finance_transactions.category_set_by = 'fallback' AND finance_transactions.type_set_by = 'auto'
+				AND EXCLUDED.type = 'expense' THEN EXCLUDED.spending_category ELSE finance_transactions.spending_category END,
+			category_set_by = CASE WHEN finance_transactions.category_set_by = 'fallback' AND finance_transactions.type_set_by = 'auto'
+				AND EXCLUDED.type = 'expense' THEN EXCLUDED.category_set_by ELSE finance_transactions.category_set_by END`,
 		userID, sourceID, now, ids, days, cents, descs, keys, types, inst, total, cats)
 	return err
 }

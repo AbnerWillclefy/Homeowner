@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -182,6 +183,9 @@ func (s *Syncer) syncWindow(ctx context.Context, userID, apiKey string, src Sync
 			if err := s.store.UpsertTransactions(ctx, userID, src.ID, rows, now); err != nil {
 				return err
 			}
+			if err := s.classify(ctx, userID, rows, now); err != nil {
+				return err
+			}
 		}
 		sum.Rows += len(rows)
 		sum.SkippedCurrency += skipped
@@ -190,6 +194,34 @@ func (s *Syncer) syncWindow(ctx context.Context, userID, apiKey string, src Sync
 		}
 		cursor = page.Next
 	}
+}
+
+// classify re-runs the type rules over the User's auto rows around a stored
+// page, across all their Sources: the other half of a Transfer may have arrived
+// in an earlier run, or may arrive in a later one.
+func (s *Syncer) classify(ctx context.Context, userID string, rows []Row, now time.Time) error {
+	from, to := rows[0].PostedOn, rows[0].PostedOn
+	for _, r := range rows {
+		if r.PostedOn.Before(from) {
+			from = r.PostedOn
+		}
+		if r.PostedOn.After(to) {
+			to = r.PostedOn
+		}
+	}
+	// Read twice the window so rows at its edge see their partners, but write
+	// only rows within one window of the page, so no Transfer is split.
+	txns, kinds, err := s.store.ClassifyInput(ctx, userID, from.AddDate(0, 0, -2*transferWindowDays), to.AddDate(0, 0, 2*transferWindowDays))
+	if err != nil {
+		return err
+	}
+	changed := slices.DeleteFunc(Classify(txns, kinds), func(t Txn) bool {
+		return t.PostedOn.Before(from.AddDate(0, 0, -transferWindowDays)) || t.PostedOn.After(to.AddDate(0, 0, transferWindowDays))
+	})
+	if len(changed) == 0 {
+		return nil
+	}
+	return s.store.SetClassified(ctx, changed, now)
 }
 
 // toRows picks what to store: pending rows are left out (they come back as

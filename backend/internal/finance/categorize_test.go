@@ -10,11 +10,11 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
 
-// In the fixtures, three Expenses have no category Pluggy's map decides. In
-// merchant_key order they are the Categorizer's indexes 0, 1 and 2:
-// PAGAMENTO DE BOLETO, PAGAMENTO FATURA CARTAO VISA, SYNTHETIC SECOND PAGE DEBIT.
+// In the fixtures, two Expenses have no category Pluggy's map decides (the bill
+// payment is a Transfer). In merchant_key order they are the Categorizer's
+// indexes 0 and 1: PAGAMENTO DE BOLETO, SYNTHETIC SECOND PAGE DEBIT.
 const (
-	allThree = `{"items":[{"i":0,"c":"taxes_fees"},{"i":1,"c":"other"},{"i":2,"c":"groceries"}]}`
+	allBoth = `{"items":[{"i":0,"c":"taxes_fees"},{"i":1,"c":"groceries"}]}`
 )
 
 func categoryOf(t *testing.T, app *apitest.App, key string) (category, setBy string) {
@@ -38,7 +38,7 @@ func startCategorizing(t *testing.T, answer string) (*apitest.App, *llmalloc.Fak
 
 func TestACorrectionBeatsPluggyAndPluggyBeatsTheCategorizer(t *testing.T) {
 	t.Parallel()
-	app, fake := startCategorizing(t, allThree)
+	app, fake := startCategorizing(t, allBoth)
 	if _, err := app.DB.Exec(context.Background(), `
 		INSERT INTO finance_merchant_categories (user_id, merchant_key, spending_category, updated_at)
 		SELECT id, 'NETFLIX COM', 'leisure', now() FROM users WHERE email = $1`, ana); err != nil {
@@ -47,15 +47,14 @@ func TestACorrectionBeatsPluggyAndPluggyBeatsTheCategorizer(t *testing.T) {
 	app.RunFinanceSync(t)
 
 	for key, want := range map[string][2]string{
-		"NETFLIX COM":                  {"leisure", "auto"},         // the correction beats Pluggy's "Video streaming"
-		"SPOTIFY AB":                   {"subscriptions", "auto"},   // Pluggy's "Music streaming"
-		"SMART FIT ACADEMIA":           {"health", "auto"},          // Pluggy's "Gyms and fitness centers"
-		"CONDOMINIO EDIFICIO SOLAR":    {"housing", "auto"},         // Pluggy's "Housing"
-		"ELETROBRAS LIGHT SA":          {"household_bills", "auto"}, // Pluggy's "Electricity"
-		"VIVO SERVICOS E COMERCIO":     {"household_bills", "auto"},
-		"PAGAMENTO DE BOLETO":          {"taxes_fees", "auto"}, // the Categorizer
-		"PAGAMENTO FATURA CARTAO VISA": {"other", "auto"},      // the Categorizer chose Other: decided, not a fallback
-		"SYNTHETIC SECOND PAGE DEBIT":  {"groceries", "auto"},
+		"NETFLIX COM":                 {"leisure", "auto"},         // the correction beats Pluggy's "Video streaming"
+		"SPOTIFY AB":                  {"subscriptions", "auto"},   // Pluggy's "Music streaming"
+		"SMART FIT ACADEMIA":          {"health", "auto"},          // Pluggy's "Gyms and fitness centers"
+		"CONDOMINIO EDIFICIO SOLAR":   {"housing", "auto"},         // Pluggy's "Housing"
+		"ELETROBRAS LIGHT SA":         {"household_bills", "auto"}, // Pluggy's "Electricity"
+		"VIVO SERVICOS E COMERCIO":    {"household_bills", "auto"},
+		"PAGAMENTO DE BOLETO":         {"taxes_fees", "auto"}, // the Categorizer
+		"SYNTHETIC SECOND PAGE DEBIT": {"groceries", "auto"},
 	} {
 		if c, by := categoryOf(t, app, key); c != want[0] || by != want[1] {
 			t.Errorf("%s = %s/%s, want %s/%s", key, c, by, want[0], want[1])
@@ -75,7 +74,7 @@ func TestACorrectionBeatsPluggyAndPluggyBeatsTheCategorizer(t *testing.T) {
 
 func TestOnlyExpensesGetACategory(t *testing.T) {
 	t.Parallel()
-	app, _ := startCategorizing(t, allThree)
+	app, _ := startCategorizing(t, allBoth)
 	app.RunFinanceSync(t)
 	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE type <> 'expense'`); n == 0 {
 		t.Fatal("setup: the fixtures hold no Income")
@@ -90,7 +89,7 @@ func TestOnlyExpensesGetACategory(t *testing.T) {
 
 func TestPastTheCapTheExpensesStayOtherAndAreRetriedOnALaterDay(t *testing.T) {
 	t.Parallel()
-	app, fake := startCategorizing(t, allThree)
+	app, fake := startCategorizing(t, allBoth)
 	if _, err := app.DB.Exec(context.Background(), `
 		INSERT INTO finance_llm_calls (user_id, call_date, calls)
 		SELECT id, '2026-11-08', 10 FROM users WHERE email = $1`, ana); err != nil {
@@ -131,7 +130,7 @@ func TestTheCapIsPerUserAndPerDay(t *testing.T) {
 
 func TestAnUnanswerableMerchantStaysOtherAndFallback(t *testing.T) {
 	t.Parallel()
-	app, _ := startCategorizing(t, `{"items":[{"i":2,"c":"pets"}]}`)
+	app, _ := startCategorizing(t, `{"items":[{"i":1,"c":"pets"}]}`)
 	app.RunFinanceSync(t)
 	if c, by := categoryOf(t, app, "PAGAMENTO DE BOLETO"); c != "other" || by != "fallback" {
 		t.Errorf("unanswered = %s/%s, want other/fallback", c, by)
@@ -143,7 +142,7 @@ func TestAnUnanswerableMerchantStaysOtherAndFallback(t *testing.T) {
 
 func TestACategoryTheUserSetIsNeverTouched(t *testing.T) {
 	t.Parallel()
-	app, _ := startCategorizing(t, allThree)
+	app, _ := startCategorizing(t, allBoth)
 	app.RunFinanceSync(t)
 	if _, err := app.DB.Exec(context.Background(),
 		`UPDATE finance_transactions SET spending_category = 'pets', category_set_by = 'user' WHERE merchant_key = 'SPOTIFY AB'`); err != nil {
@@ -158,7 +157,7 @@ func TestACategoryTheUserSetIsNeverTouched(t *testing.T) {
 
 func TestEachAttemptLeavesAnEventWithCountsAndCostOnly(t *testing.T) {
 	t.Parallel()
-	app, _ := startCategorizing(t, allThree)
+	app, _ := startCategorizing(t, allBoth)
 	app.RunFinanceSync(t)
 	var service, outcome, model string
 	var home, run *string
@@ -174,7 +173,7 @@ func TestEachAttemptLeavesAnEventWithCountsAndCostOnly(t *testing.T) {
 	if service != "categorizer" || outcome != "accepted" || home != nil || run != nil || date != "2026-11-08" {
 		t.Errorf("event = %s %s home=%v run=%v %s", service, outcome, home, run, date)
 	}
-	if sent == nil || *sent != 3 || accepted == nil || *accepted != 3 || in == nil || out == nil || cost == nil || *cost <= 0 {
+	if sent == nil || *sent != 2 || accepted == nil || *accepted != 2 || in == nil || out == nil || cost == nil || *cost <= 0 {
 		t.Errorf("counts = sent %v accepted %v in %v out %v cost %v", sent, accepted, in, out, cost)
 	}
 	// The table has no column that names a User.
