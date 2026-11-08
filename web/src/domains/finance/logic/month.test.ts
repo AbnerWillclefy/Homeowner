@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { addMonths, currentMonth, monthLabel } from "./month";
+import { addMonths, currentMonth, formatDay, monthLabel } from "./month";
+
+describe("formatDay", () => {
+  it("writes a posting date as day and month in the locale, with no time zone shift", () => {
+    expect(formatDay("2026-11-02", "en-US")).toBe("Nov 2");
+    expect(formatDay("2026-11-02", "pt-BR")).toBe("2 de nov.");
+  });
+});
 
 describe("month", () => {
   it("takes the current month from device time", () => {
