@@ -61,6 +61,7 @@ type MonthResponse struct {
 	SpentCents   int64                 `json:"spentCents"`
 	Categories   []CategoryTotal       `json:"categories"`
 	Transactions []TransactionResponse `json:"transactions"`
+	Limits       map[string]int64      `json:"limits"` // category to monthly limit; the same every month
 }
 
 // HistoryMonth is one month of GET /me/finance/history: all 13 categories, in order.
@@ -74,6 +75,20 @@ type HistoryMonth struct {
 type HistoryResponse struct {
 	To     string         `json:"to"`
 	Months []HistoryMonth `json:"months"`
+}
+
+// DailyResponse is the answer of GET /me/finance/daily: cumulative spend in
+// cents at the end of each day. Current stops at today for the running month and
+// is empty for a future one; Previous is the month before, whole; Average is the
+// usual pace of the AverageMonths months before Month that have history, one
+// entry per day of Month, empty when there are none.
+type DailyResponse struct {
+	Month         string  `json:"month"`
+	Days          int     `json:"days"`
+	Current       []int64 `json:"current"`
+	Previous      []int64 `json:"previous"`
+	Average       []int64 `json:"average"`
+	AverageMonths int     `json:"averageMonths"`
 }
 
 // MonthCommitment is what a month already owes. Not the Task "commitments"

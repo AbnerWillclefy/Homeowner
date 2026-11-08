@@ -139,3 +139,7 @@ _Avoid_: Financing, Loan, Subscription
 **Monthly income**:
 The money a User expects to receive each month, which Finances compares with what is spent.
 _Avoid_: Salary, Revenue, Earnings
+
+**Spending limit**:
+The most a User wants to spend in one Spending Category in a month. It is set once and holds for every month; a category with no limit has none.
+_Avoid_: Budget (in copy), Cap, Quota

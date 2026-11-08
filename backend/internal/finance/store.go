@@ -58,7 +58,7 @@ func (s *Store) Income(ctx context.Context, userID string) (*int64, error) {
 // a test fails if the schema has a finance_* table that is not listed here, so
 // a later ticket adds its table to this list.
 var financeTables = []string{"finance_transactions", "finance_sources", "finance_items", "finance_credentials",
-	"finance_merchant_categories", "finance_llm_calls", "finance_bill_reminders", "finance_bill_payments", "finance_bills", "finance_settings"}
+	"finance_merchant_categories", "finance_llm_calls", "finance_bill_reminders", "finance_bill_payments", "finance_bills", "finance_settings", "finance_category_budgets"}
 
 // DeleteAll removes all of the User's finance data in one transaction. The
 // cascades would remove the children anyway; listing every table keeps the
@@ -369,6 +369,30 @@ func (s *Store) MonthTransactions(ctx context.Context, userID string, from, to t
 		t, err := scanTransaction(rows)
 		if err != nil {
 			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
+// SpendRows returns what the daily pace reads of the User's Transactions posted
+// in [from, to): date, signed amount, type and category, with no join.
+func (s *Store) SpendRows(ctx context.Context, userID string, from, to time.Time) ([]Txn, error) {
+	rows, err := s.db.Query(ctx, `SELECT posted_on, amount_cents, type, spending_category
+		FROM finance_transactions WHERE user_id = $1 AND posted_on >= $2 AND posted_on < $3`, userID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Txn
+	for rows.Next() {
+		var t Txn
+		var category *string
+		if err := rows.Scan(&t.PostedOn, &t.AmountCents, &t.Type, &category); err != nil {
+			return nil, err
+		}
+		if category != nil {
+			t.Category = *category
 		}
 		out = append(out, t)
 	}
