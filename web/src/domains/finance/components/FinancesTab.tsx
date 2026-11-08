@@ -10,6 +10,7 @@ import { BillsSection } from "./BillsSection";
 import { Commitments } from "./Commitments";
 import { CredentialsForm } from "./CredentialsForm";
 import { DeleteFinanceData } from "./DeleteFinanceData";
+import { MonthReport } from "./MonthReport";
 import { MonthSpending } from "./MonthSpending";
 import { SavedCredentials } from "./SavedCredentials";
 import { SetupSteps } from "./SetupSteps";
@@ -61,6 +62,7 @@ function FinancesBody() {
     <div className="flex flex-col gap-4">
       <BillsSection />
       {status.sources.length > 0 && <MonthSpending />}
+      {status.sources.length > 0 && <MonthReport />}
       {status.sources.length > 0 && <Commitments />}
       {!status.configured && (
         <>

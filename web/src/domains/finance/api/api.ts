@@ -172,6 +172,36 @@ export const getMonth = (month: string): Promise<MonthResult> =>
     return parsed && { month: parsed };
   }) as Promise<MonthResult>;
 
+export interface ReportMonth {
+  month: string;
+  spentCents: number;
+  /** All Spending Categories, in the picker's order, zero ones included. */
+  categories: { category: SpendingCategory; spentCents: number }[];
+}
+
+/** `GET /me/finance/report`: the month and the one before it. */
+export interface ReportResponse {
+  month: ReportMonth;
+  previous: ReportMonth;
+}
+
+export type ReportResult = { kind: "ok"; report: ReportResponse } | Failure;
+
+const isReportMonth = (v: unknown): v is ReportMonth =>
+  isObject(v) &&
+  typeof v.month === "string" &&
+  typeof v.spentCents === "number" &&
+  Array.isArray(v.categories) &&
+  v.categories.every((c) => isObject(c) && typeof c.category === "string" && typeof c.spentCents === "number");
+
+/** `GET /me/finance/report?month=YYYY-MM`. */
+export const getReport = (month: string): Promise<ReportResult> =>
+  call({ url: "/me/finance/report", params: { month } }, 200, (data) =>
+    isObject(data) && isReportMonth(data.month) && isReportMonth(data.previous)
+      ? { report: data as unknown as ReportResponse }
+      : null,
+  ) as Promise<ReportResult>;
+
 export interface CommitmentMonth {
   month: string;
   committedCents: number;

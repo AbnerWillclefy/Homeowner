@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
-import { commitmentsKey, financeDeleted, financeStatusKey, invalidateFinance, invalidateMonth, monthKey, writeFinanceStatus } from "./queries";
+import { commitmentsKey, financeDeleted, financeStatusKey, invalidateFinance, invalidateMonth, monthKey, reportKey, writeFinanceStatus } from "./queries";
 import type { FinanceStatus } from "./api";
 
 const STATUS: FinanceStatus = { configured: true, sources: [], importing: true, lastSyncedAt: null };
@@ -21,7 +21,9 @@ describe("finance cache", () => {
     const client = new QueryClient();
     client.setQueryData(monthKey("2026-11"), { n: 1 });
     client.setQueryData(monthKey("2026-10"), { n: 2 });
+    client.setQueryData(reportKey("2026-12"), { n: 3 });
     await invalidateMonth(client, "2026-11");
+    expect(client.getQueryState(reportKey("2026-12"))?.isInvalidated).toBe(true);
     expect(client.getQueryState(monthKey("2026-11"))?.isInvalidated).toBe(true);
     expect(client.getQueryState(monthKey("2026-10"))?.isInvalidated).toBe(false);
   });

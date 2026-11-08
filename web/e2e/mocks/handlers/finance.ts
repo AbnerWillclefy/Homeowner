@@ -1,3 +1,4 @@
+import { SPENDING_CATEGORIES } from "../../../src/domains/finance/logic/spendingCategories";
 import { empty, json, signedIn, type FakeApi, type FakeState } from "../api";
 
 type FinanceState = NonNullable<FakeState["finance"]>;
@@ -80,6 +81,30 @@ export function financeHandlers(api: FakeApi): void {
         .map(([category, cents]) => ({ category, spentCents: cents }))
         .sort((a, b) => b.spentCents - a.spentCents);
       return json(200, { month, spentCents, categories, transactions });
+    }),
+  );
+
+  // The report, as `finance.Handler.Report` answers: the month and the one before, all 13 categories in picker order.
+  api.on(
+    "GET /me/finance/report",
+    signedIn((request, state) => {
+      const month = request.url.searchParams.get("month") ?? "";
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return json(400, { error: "invalid month" });
+      const [y, m] = month.split("-").map(Number) as [number, number];
+      const before = new Date(y, m - 2, 1);
+      const previous = `${before.getFullYear()}-${String(before.getMonth() + 1).padStart(2, "0")}`;
+      const spending = (id: string) => {
+        const byCategory = new Map<string, number>();
+        let spentCents = 0;
+        for (const t of finance(state).transactions ?? []) {
+          if (t.type !== "expense" || !t.postedOn.startsWith(`${id}-`)) continue;
+          spentCents -= t.amountCents;
+          const category = t.spendingCategory ?? "other";
+          byCategory.set(category, (byCategory.get(category) ?? 0) - t.amountCents);
+        }
+        return { month: id, spentCents, categories: SPENDING_CATEGORIES.map((category) => ({ category, spentCents: byCategory.get(category) ?? 0 })) };
+      };
+      return json(200, { month: spending(month), previous: spending(previous) });
     }),
   );
 

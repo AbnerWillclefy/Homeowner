@@ -87,7 +87,7 @@ for (const l of LOCALES) {
     });
 
     test("shows the total, the categories, a refund in words and the transfers apart", async ({ page }) => {
-      await expect(page.getByText(l.total)).toBeVisible();
+      await expect(page.getByText(l.total).first()).toBeVisible();
       await expect(page.getByRole("button", { name: new RegExp(l.groceries) })).toBeVisible();
       await expect(page.getByRole("button", { name: new RegExp(l.leisure) })).toBeVisible();
 
@@ -113,7 +113,7 @@ for (const l of LOCALES) {
 
       await expect(dialog).toHaveCount(0);
       expect(fakeApi.requests.find((r) => r.method === "PATCH")?.body).toEqual({ type: "transfer" });
-      await expect(page.getByText(l.afterTransfer)).toBeVisible();
+      await expect(page.getByText(l.afterTransfer).first()).toBeVisible();
       await expect(page.getByRole("button", { name: new RegExp(l.leisure) })).toHaveCount(0);
       await expect(page.getByRole("region", { name: l.transfers }).getByText("Cinema")).toBeVisible();
     });
@@ -129,7 +129,7 @@ for (const l of LOCALES) {
       expect(fakeApi.requests.find((r) => r.method === "PATCH")?.body).toEqual({ spendingCategory: "pets" });
       await expect(page.getByRole("button", { name: new RegExp(l.pets) })).toBeVisible();
       await expect(page.getByRole("button", { name: new RegExp(l.leisure) })).toHaveCount(0);
-      await expect(page.getByText(l.total)).toBeVisible();
+      await expect(page.getByText(l.total).first()).toBeVisible();
     });
 
     test("a transaction that is gone reads the month again", async ({ page, fakeApi }) => {
@@ -144,17 +144,17 @@ for (const l of LOCALES) {
       await expect(page.getByText(l.gone)).toBeVisible();
       await expect(page.getByRole("button", { name: new RegExp(l.leisure) })).toHaveCount(0);
 
-      await page.getByRole("button", { name: l.prev }).click();
+      await page.getByRole("button", { name: l.prev, exact: true }).click();
       await expect(page.getByText(l.gone)).toHaveCount(0);
     });
 
     test("an empty month is a calm line, and the next month is not offered past this one", async ({ page }) => {
-      await expect(page.getByRole("button", { name: l.next })).toBeDisabled();
-      await page.getByRole("button", { name: l.prev }).click();
+      await expect(page.getByRole("button", { name: l.next, exact: true })).toBeDisabled();
+      await page.getByRole("button", { name: l.prev, exact: true }).click();
       await expect(page.getByText(l.empty)).toBeVisible();
-      await expect(page.getByRole("button", { name: l.next })).toBeEnabled();
-      await page.getByRole("button", { name: l.next }).click();
-      await expect(page.getByText(l.total)).toBeVisible();
+      await expect(page.getByRole("button", { name: l.next, exact: true })).toBeEnabled();
+      await page.getByRole("button", { name: l.next, exact: true }).click();
+      await expect(page.getByText(l.total).first()).toBeVisible();
     });
 
     test("at 320px and the largest text nothing overflows sideways", async ({ page, baseURL }) => {

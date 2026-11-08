@@ -1,7 +1,7 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ApiFailure } from "../../../shared/query/ApiFailure";
 import { refetchUnlessSucceeded } from "../../../shared/query/queryClient";
-import { getBills, getCommitments, getFinanceStatus, getMonth, type Bill, type Commitments, type FinanceStatus, type MonthResponse } from "./api";
+import { getBills, getCommitments, getFinanceStatus, getMonth, getReport, type Bill, type Commitments, type FinanceStatus, type MonthResponse, type ReportResponse } from "./api";
 
 /** `GET /me/finance`. Under `["me"]`, so sign-out empties it; the finance views go under it too (web.md, Query keys). */
 export const financeStatusKey = ["me", "finance"] as const;
@@ -32,8 +32,27 @@ export const monthQuery = (month: string) =>
     refetchOnMount: refetchUnlessSucceeded,
   });
 
+/** `GET /me/finance/report?month=`, under the status key like the month. */
+export const reportKey = (month: string) => ["me", "finance", "report", month] as const;
+
+export const reportQuery = (month: string) =>
+  queryOptions({
+    queryKey: reportKey(month),
+    queryFn: async (): Promise<ReportResponse> => {
+      const result = await getReport(month);
+      if (result.kind === "ok") return result.report;
+      throw new ApiFailure(result.kind === "offline" || result.kind === "not-signed-in" ? result.kind : "error");
+    },
+    refetchOnMount: refetchUnlessSucceeded,
+  });
+
 /** After a PATCH: the totals changed, and the server may have recategorised other rows of the same merchant, so read the month again. */
-export const invalidateMonth = (client: QueryClient, month: string) => client.invalidateQueries({ queryKey: monthKey(month) });
+export const invalidateMonth = (client: QueryClient, month: string) =>
+  Promise.all([
+    client.invalidateQueries({ queryKey: monthKey(month) }),
+    // Any report may hold this month as its "previous", so every report is read again.
+    client.invalidateQueries({ queryKey: ["me", "finance", "report"] }),
+  ]);
 
 /** `GET /me/finance/bills?month=`, one entry per month, under the status key so a delete removes them too. */
 export const billsKey = (month: string) => ["me", "finance", "bills", month] as const;
