@@ -20,7 +20,7 @@ function service(over: Part = {}): ServiceDay {
 
 const day = (n: number, allocator: Part = {}, explainer: Part = {}): AiDay => ({
   date: `2026-10-${String(n).padStart(2, "0")}`,
-  services: { allocator: service(allocator), explainer: service(explainer) },
+  services: { allocator: service(allocator), explainer: service(explainer), voice: service() },
 });
 
 const shares = {
@@ -46,7 +46,7 @@ const usage = (days: AiDay[], previous?: { allocator?: Part; explainer?: Part })
   previous: previous && {
     from: "2026-09-24",
     to: "2026-09-30",
-    services: { allocator: service(previous.allocator), explainer: service(previous.explainer) },
+    services: { allocator: service(previous.allocator), explainer: service(previous.explainer), voice: service() },
     ...shares,
   },
 });

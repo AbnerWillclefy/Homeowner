@@ -28,7 +28,7 @@ export interface ServiceDay {
 export interface AiDay {
   /** YYYY-MM-DD */
   date: string;
-  services: { allocator: ServiceDay; explainer: ServiceDay };
+  services: { allocator: ServiceDay; explainer: ServiceDay; voice: ServiceDay };
 }
 
 export interface MonthToDate {
@@ -55,7 +55,7 @@ export interface TemplateReasons {
 export interface AiPrevious {
   from: string;
   to: string;
-  services: { allocator: ServiceDay; explainer: ServiceDay };
+  services: { allocator: ServiceDay; explainer: ServiceDay; voice: ServiceDay };
   allocatorShare: { llm: number; baseline: number };
   explanationShare: { llm: number; template: number; templateReasons: TemplateReasons };
 }

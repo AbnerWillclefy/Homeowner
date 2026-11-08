@@ -102,6 +102,10 @@ _Avoid_: Assigned, Claimed
 One Resident's offer to exchange one of their Tasks for another Resident's in today's Day Plan. It happens only when the other Resident accepts; declining changes nothing and costs nothing. When it happens, both Residents are Committed to the Task they receive.
 _Avoid_: Trade, Exchange
 
+**Voice command**:
+Something a Resident says to the app, such as "I'll take the dishes", that it turns into proposed changes to Chores or Tasks. Nothing changes until the Resident confirms them.
+_Avoid_: Voice assistant, Speech command
+
 ### Rewards
 
 **Streak**:

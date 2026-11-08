@@ -127,6 +127,7 @@ type AIServices struct {
 	Allocator   ServiceDay `json:"allocator"`
 	Explainer   ServiceDay `json:"explainer"`
 	Categorizer ServiceDay `json:"categorizer"`
+	Voice       ServiceDay `json:"voice"`
 }
 
 // ServiceDay is one service's llm_call_events on one local date.
