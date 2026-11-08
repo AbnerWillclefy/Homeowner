@@ -112,6 +112,16 @@ for (const l of LOCALES) {
         await expect(page.getByLabel(l.secret)).toHaveAttribute("autocomplete", "off");
       });
 
+      test("at 320px and the largest text the steps and the form do not overflow sideways", async ({ page, baseURL }) => {
+        await page.setViewportSize({ width: 320, height: 640 });
+        await page.addInitScript(() => {
+          document.addEventListener("DOMContentLoaded", () => (document.documentElement.style.fontSize = "200%"));
+        });
+        await visit(page, new URL("/finances", baseURL!).toString());
+        await expect(page.getByRole("heading", { name: l.steps })).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+      });
+
       test("saves the credentials and the page holds neither value afterwards", async ({ page, baseURL, fakeApi }) => {
         await visit(page, new URL("/finances", baseURL!).toString());
         await page.getByLabel(l.id).fill(CLIENT_ID);

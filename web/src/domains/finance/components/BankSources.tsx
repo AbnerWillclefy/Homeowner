@@ -1,8 +1,7 @@
-import { Landmark } from "lucide-react";
 import { useI18n, type MessageKey } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { FormError } from "../../../shared/ui/FormError";
-import { SectionCard } from "../../../shared/ui/SectionCard";
+import { FinanceCard } from "./FinanceCard";
 import type { FinanceStatus } from "../api/api";
 import type { ConnectProblem } from "../logic/connectFlow";
 import { FINANCE_FAILURE_KEY } from "../logic/failureMessages";
@@ -27,7 +26,7 @@ interface Props {
 export function BankSources({ status, connecting, problem, closed, onConnect }: Props) {
   const { t, locale } = useI18n();
   return (
-    <SectionCard id="finances-sources-heading" icon={Landmark} title={t("finances.sources.heading")}>
+    <FinanceCard id="finances-sources-heading" title={t("finances.sources.heading")}>
       <Button fullWidth pending={connecting} onClick={onConnect}>
         {t("finances.connect")}
       </Button>
@@ -55,6 +54,6 @@ export function BankSources({ status, connecting, problem, closed, onConnect }: 
           ? t("finances.importing")
           : status.lastSyncedAt && t("finances.lastSync", { when: formatSyncTime(status.lastSyncedAt, locale) })}
       </p>
-    </SectionCard>
+    </FinanceCard>
   );
 }

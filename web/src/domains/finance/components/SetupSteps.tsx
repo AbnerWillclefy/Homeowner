@@ -13,7 +13,7 @@ export function SetupSteps() {
       <h3 id="finances-steps-heading" className="my-0 text-lg font-bold leading-snug">
         {t("finances.steps.heading")}
       </h3>
-      <ol className="my-0 flex list-decimal flex-col gap-3 ps-5">
+      <ol className="my-0 flex list-decimal flex-col gap-3 ps-5 *:[overflow-wrap:anywhere]">
         <li>
           {t("finances.steps.one")}
           <div className="mt-1">

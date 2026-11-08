@@ -1,11 +1,10 @@
-import { Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useI18n } from "../../../shared/i18n";
 import { AppDialog } from "../../../shared/ui/AppDialog";
 import { Button } from "../../../shared/ui/Button";
 import { ButtonRow } from "../../../shared/ui/ButtonRow";
 import { FormError } from "../../../shared/ui/FormError";
-import { SectionCard } from "../../../shared/ui/SectionCard";
+import { FinanceCard } from "./FinanceCard";
 import type { ConnectProblem } from "../logic/connectFlow";
 import { FINANCE_FAILURE_KEY } from "../logic/failureMessages";
 
@@ -29,7 +28,7 @@ export function DeleteFinanceData({ deleting, problem, onDelete, onDismissProble
   };
 
   return (
-    <SectionCard id="finances-delete-heading" icon={Trash2} tone="danger" title={t("finances.delete.heading")} hint={t("finances.delete.hint")}>
+    <FinanceCard id="finances-delete-heading" title={t("finances.delete.heading")} hint={t("finances.delete.hint")}>
       <ButtonRow
         start={
           <AppDialog
@@ -67,6 +66,6 @@ export function DeleteFinanceData({ deleting, problem, onDelete, onDismissProble
           </AppDialog>
         }
       />
-    </SectionCard>
+    </FinanceCard>
   );
 }
