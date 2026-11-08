@@ -169,6 +169,30 @@ func TestSyncKeepsWhatTheUserSet(t *testing.T) {
 	}
 }
 
+// A card refund is an expense by Source kind; a category the User set on it must
+// survive the next sync without breaking the type/category CHECK.
+func TestSyncKeepsAUserCategoryOnACardRefund(t *testing.T) {
+	t.Parallel()
+	app, _ := startSync(t, []string{"ana@example.com"})
+	ctx := context.Background()
+	if _, err := app.DB.Exec(ctx, `UPDATE finance_sources SET kind = 'credit_card'`); err != nil {
+		t.Fatal(err)
+	}
+	app.RunFinanceSync(t)
+	if _, err := app.DB.Exec(ctx, `UPDATE finance_transactions SET spending_category = 'leisure', category_set_by = 'user' WHERE amount_cents > 0 AND type = 'expense'`); err != nil {
+		t.Fatal(err)
+	}
+	n := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE category_set_by = 'user'`)
+	if n == 0 {
+		t.Fatal("no card refund to categorise")
+	}
+	app.Clock.Advance(25 * time.Hour)
+	app.RunFinanceSync(t)
+	if got := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE amount_cents > 0 AND type = 'expense' AND spending_category = 'leisure' AND category_set_by = 'user'`); got != n {
+		t.Errorf("categorised refunds = %d, want %d kept", got, n)
+	}
+}
+
 // The sandbox has only the checking side of the card bill payment (the card has
 // no matching credit), so the PAGAMENTO FATURA rows are what the sync must type
 // as transfers; pairing across Sources is covered by TestClassify.

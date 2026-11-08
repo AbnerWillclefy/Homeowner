@@ -249,10 +249,13 @@ type Row struct {
 // stays. It inserts by source only, so a Source deleted meanwhile fails the
 // foreign key instead of getting its rows back.
 //
-// Until the category rules exist, an expense is Other because nothing has
-// decided yet ('fallback'). A category already set by the User or by a rule is
-// kept, and so is the category of a row whose type the User set. shortcut: a sign flip on a row whose category is kept would break the
-// type/category CHECK; Pluggy does not flip the sign of a posted row.
+// The type of a stored row is kept: classify re-decides every auto row of the
+// page right after, and a sign-based type here would clash with a kept category
+// on a card refund. A new expense is Other because nothing has decided yet
+// ('fallback'). A category already set by the User or by a rule is kept, and so
+// is the category of a row whose type the User set. shortcut: a sign flip on a
+// row whose category is kept would break the type/category CHECK; Pluggy does
+// not flip the sign of a posted row.
 func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string, rows []Row, now time.Time) error {
 	n := len(rows)
 	ids, days, cents, descs, keys, types := make([]string, n), make([]time.Time, n), make([]int64, n), make([]string, n), make([]string, n), make([]string, n)
@@ -273,7 +276,7 @@ func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string,
 			posted_on = EXCLUDED.posted_on, amount_cents = EXCLUDED.amount_cents, description = EXCLUDED.description,
 			merchant_key = EXCLUDED.merchant_key, installment_number = EXCLUDED.installment_number,
 			total_installments = EXCLUDED.total_installments, updated_at = EXCLUDED.updated_at,
-			type = CASE WHEN finance_transactions.type_set_by = 'user' THEN finance_transactions.type ELSE EXCLUDED.type END,
+			type = finance_transactions.type,
 			spending_category = CASE WHEN finance_transactions.category_set_by IN ('user', 'auto') OR finance_transactions.type_set_by = 'user'
 				THEN finance_transactions.spending_category ELSE EXCLUDED.spending_category END,
 			category_set_by = CASE WHEN finance_transactions.category_set_by IN ('user', 'auto') OR finance_transactions.type_set_by = 'user'

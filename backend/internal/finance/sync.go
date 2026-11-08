@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -201,11 +202,15 @@ func (s *Syncer) classify(ctx context.Context, userID string, rows []Row, now ti
 			to = r.PostedOn
 		}
 	}
-	txns, kinds, err := s.store.ClassifyInput(ctx, userID, from.AddDate(0, 0, -transferWindowDays), to.AddDate(0, 0, transferWindowDays))
+	// Read twice the window so rows at its edge see their partners, but write
+	// only rows within one window of the page, so no Transfer is split.
+	txns, kinds, err := s.store.ClassifyInput(ctx, userID, from.AddDate(0, 0, -2*transferWindowDays), to.AddDate(0, 0, 2*transferWindowDays))
 	if err != nil {
 		return err
 	}
-	changed := Classify(txns, kinds)
+	changed := slices.DeleteFunc(Classify(txns, kinds), func(t Txn) bool {
+		return t.PostedOn.Before(from.AddDate(0, 0, -transferWindowDays)) || t.PostedOn.After(to.AddDate(0, 0, transferWindowDays))
+	})
 	if len(changed) == 0 {
 		return nil
 	}

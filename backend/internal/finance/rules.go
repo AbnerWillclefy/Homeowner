@@ -81,7 +81,8 @@ type Txn struct {
 // Transfers; any other credit on a credit_card Source is an Expense, a refund
 // (a negative spend); any other credit is Income, any other debit an Expense.
 //
-// Accepted: an unrelated debit and credit that coincide are paired. The User
+// Accepted: a Transfer has no category, so a row the User only categorised
+// loses that category when it pairs. An unrelated debit and credit that coincide are paired. The User
 // can correct it, and their choice is never overwritten. A row that drops out
 // of a pair after a re-fetch goes back to its single-row rule, so callers pass
 // the whole window, not only the new rows.
