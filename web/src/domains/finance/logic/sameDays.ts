@@ -1,4 +1,5 @@
 import type { Transaction } from "../api/api";
+import { scaleMax } from "./chart";
 import { addMonths, currentMonth, type Month } from "./month";
 import { spent } from "./monthView";
 import type { SpendingCategory } from "./spendingCategories";
@@ -42,6 +43,24 @@ export function sameDays(current: Transaction[], previous: Transaction[], month:
   add(current, "spent", null);
   add(previous, "previousSpent", cutDay);
   return { ...total, cutDay, noPrevious: previous.length === 0, byCategory };
+}
+
+/** Every category with something in either month, biggest spend first, and the one scale their bars and markers share. */
+export function categoryRows(byCategory: SameDays["byCategory"]) {
+  const rows = [...byCategory]
+    .filter(([, v]) => v.spent !== 0 || v.previousSpent !== 0)
+    .map(([category, v]) => ({ category, ...v }))
+    .sort((a, b) => b.spent - a.spent || b.previousSpent - a.previousSpent);
+  return { rows, max: scaleMax(rows.map((r) => r.spent), rows.map((r) => r.previousSpent)) };
+}
+
+/** Transactions by posted day, newest day first. */
+export function groupByDay(rows: Transaction[]): { day: string; transactions: Transaction[] }[] {
+  const days = new Map<string, Transaction[]>();
+  for (const tx of rows) days.set(tx.postedOn, [...(days.get(tx.postedOn) ?? []), tx]);
+  return [...days]
+    .sort(([a], [b]) => (a < b ? 1 : a > b ? -1 : 0))
+    .map(([day, transactions]) => ({ day, transactions }));
 }
 
 /** The Expenses with no Spending Category the server could settle. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Transaction } from "../api/api";
-import { sameDays, uncategorised } from "./sameDays";
+import { categoryRows, groupByDay, sameDays, uncategorised } from "./sameDays";
 
 const tx = (postedOn: string, amountCents: number, over: Partial<Transaction> = {}): Transaction => ({
   id: postedOn + amountCents, postedOn, description: "x", sourceName: "Nubank", amountCents, currency: "BRL",
@@ -70,6 +70,29 @@ describe("sameDays", () => {
   it("lists a category spent only last month", () => {
     const r = sameDays([], [tx("2026-10-02", -400, { spendingCategory: "health" })], "2026-11", on(2026, 11, 8));
     expect(r.byCategory.get("health")).toEqual({ spent: 0, previousSpent: 400 });
+  });
+});
+
+describe("categoryRows", () => {
+  it("sorts by amount, lists last-month-only categories, drops empty ones and scales to the biggest of both", () => {
+    const byCategory = new Map([
+      ["groceries" as const, { spent: 5000, previousSpent: 9000 }],
+      ["health" as const, { spent: 0, previousSpent: 300 }],
+      ["leisure" as const, { spent: 7000, previousSpent: 0 }],
+      ["pets" as const, { spent: 0, previousSpent: 0 }],
+      ["other" as const, { spent: -200, previousSpent: 0 }],
+    ]);
+    const { rows, max } = categoryRows(byCategory);
+    expect(rows.map((r) => r.category)).toEqual(["leisure", "groceries", "health", "other"]);
+    expect(max).toBe(9000);
+  });
+});
+
+describe("groupByDay", () => {
+  it("groups by posted day, newest first, keeping the order within a day", () => {
+    const days = groupByDay([tx("2026-11-02", -1), tx("2026-11-05", -2), tx("2026-11-02", -3)]);
+    expect(days.map((d) => d.day)).toEqual(["2026-11-05", "2026-11-02"]);
+    expect(days[1]!.transactions.map((t) => t.amountCents)).toEqual([-1, -3]);
   });
 });
 

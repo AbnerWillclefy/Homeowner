@@ -11,7 +11,7 @@ import { ChartPreview } from "./charts/ChartPreview";
 import { Commitments } from "./Commitments";
 import { FinanceSetup, FinanceStatusGate } from "./FinanceSetup";
 import { FinanceTabs, VIEWS, type FinanceView } from "./FinanceTabs";
-import { MonthSpending } from "./MonthSpending";
+import { Spending } from "./Spending";
 
 /** Finances: private to the User, with no link to Residents, Chores, Tasks or Allocation. */
 export function FinancesTab() {
@@ -80,7 +80,7 @@ function FinancesBody({ finance }: { finance: ReturnType<typeof useFinance> }) {
                   spending: (
                     <>
                       {status.importing && <p className="my-0 text-muted">{t("finances.importing")}</p>}
-                      <MonthSpending />
+                      <Spending />
                     </>
                   ),
                   bills: (

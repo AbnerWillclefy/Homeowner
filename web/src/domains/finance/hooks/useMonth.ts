@@ -15,17 +15,17 @@ export function useMonth(month: string) {
   const { refetch } = query;
 
   /**
-   * The totals change with an edit, and a category edit can recategorise other rows of the same merchant, so the
-   * month is read again rather than patched in place. A missing row (404) is read again too: it is gone.
+   * The totals change with an edit, and a category edit can recategorise other rows of the same merchant in any
+   * month, so every cached month is read again rather than patched in place. A missing row (404) does the same: it is gone.
    */
   const edit = useCallback(
     async (id: string, body: TransactionEdit): Promise<EditOutcome> => {
       const result = await patchTransaction(id, body);
-      if (result.kind === "ok" || result.kind === "not-found") void invalidateMonth(client, month);
+      if (result.kind === "ok" || result.kind === "not-found") void invalidateMonth(client);
       if (result.kind === "ok") return "saved";
       return result.kind === "not-found" ? "gone" : "failed";
     },
-    [client, month],
+    [client],
   );
 
   return { state, refreshing, reload: useCallback(async () => void (await refetch()), [refetch]), edit };
