@@ -34,7 +34,8 @@ floor_for() {
   local status="$1" file="$2" patch="$3"
   case "$file" in
     .github/*)           printf 'high\t%s changes CI, deploys or the pipeline\n' "$file" ;;
-    .claude/*|CLAUDE.md) printf 'high\t%s changes how the agents work\n' "$file" ;;
+    .claude/*|CLAUDE.md|*/CLAUDE.md|AGENTS.md|REVIEW.md)
+                         printf 'high\t%s changes how the agents work\n' "$file" ;;
     infra/*)             printf 'high\t%s changes AWS infrastructure\n' "$file" ;;
     scripts/*)           printf 'high\t%s changes an operations script\n' "$file" ;;
     backend/internal/platform/auth/*|backend/internal/identity/*|backend/internal/users/*|backend/internal/invites/*|\
