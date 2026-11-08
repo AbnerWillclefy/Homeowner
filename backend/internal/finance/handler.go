@@ -1,10 +1,12 @@
 package finance
 
 import (
+	"cmp"
 	"errors"
 	"log/slog"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -49,6 +51,40 @@ func (h *Handler) Status(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, st)
+}
+
+// Month answers GET /me/finance/transactions?month=YYYY-MM. The totals come from
+// MonthTotals over the rows just read, so every endpoint that shows money agrees.
+func (h *Handler) Month(w http.ResponseWriter, r *http.Request) {
+	month := r.URL.Query().Get("month")
+	from, to, ok := parseMonth(month)
+	if !ok {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid month")
+		return
+	}
+	txns, err := h.store.MonthTransactions(r.Context(), identity.CurrentUser(r.Context()).ID, from, to)
+	if err != nil {
+		httpx.InternalError(w, h.log, "finance: read month", err)
+		return
+	}
+	in := make([]Txn, len(txns))
+	for i, t := range txns {
+		in[i] = Txn{Type: t.Type, AmountCents: t.AmountCents}
+		if t.SpendingCategory != nil {
+			in[i].Category = *t.SpendingCategory
+		}
+	}
+	totals := MonthTotals(in)
+	cats := []CategoryTotal{}
+	for c, cents := range totals.ByCategory {
+		if cents != 0 {
+			cats = append(cats, CategoryTotal{Category: c, SpentCents: cents})
+		}
+	}
+	slices.SortFunc(cats, func(a, b CategoryTotal) int {
+		return cmp.Or(cmp.Compare(b.SpentCents, a.SpentCents), cmp.Compare(a.Category, b.Category))
+	})
+	httpx.WriteJSON(w, http.StatusOK, MonthResponse{Month: month, SpentCents: totals.Spend, Categories: cats, Transactions: txns})
 }
 
 // PutCredentials answers PUT /me/finance/credentials.

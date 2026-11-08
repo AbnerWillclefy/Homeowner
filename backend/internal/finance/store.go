@@ -319,6 +319,42 @@ func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string,
 	return err
 }
 
+// transactionColumns reads a Transaction as TransactionResponse, with its Source's name.
+const transactionColumns = `t.id, t.posted_on::text, t.description, s.name, t.amount_cents, t.currency, t.type,
+	t.spending_category, t.type_set_by, t.category_set_by, t.installment_number, t.total_installments`
+
+func scanTransaction(r pgx.Row) (TransactionResponse, error) {
+	var t TransactionResponse
+	var n, total *int
+	err := r.Scan(&t.ID, &t.PostedOn, &t.Description, &t.SourceName, &t.AmountCents, &t.Currency, &t.Type,
+		&t.SpendingCategory, &t.TypeSetBy, &t.CategorySetBy, &n, &total)
+	if n != nil && total != nil {
+		t.Installment = &InstallmentResponse{Number: *n, Total: *total}
+	}
+	return t, err
+}
+
+// MonthTransactions returns the User's Transactions posted in [from, to), newest first.
+func (s *Store) MonthTransactions(ctx context.Context, userID string, from, to time.Time) ([]TransactionResponse, error) {
+	rows, err := s.db.Query(ctx, `SELECT `+transactionColumns+`
+		FROM finance_transactions t JOIN finance_sources s ON s.id = t.source_id
+		WHERE t.user_id = $1 AND t.posted_on >= $2 AND t.posted_on < $3
+		ORDER BY t.posted_on DESC, t.id`, userID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []TransactionResponse{}
+	for rows.Next() {
+		t, err := scanTransaction(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
 // FallbackUser is a User with Expenses nothing has categorised yet.
 type FallbackUser struct{ ID, Email string }
 

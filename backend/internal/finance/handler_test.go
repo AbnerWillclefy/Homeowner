@@ -1,7 +1,10 @@
 package finance_test
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
@@ -85,5 +88,117 @@ func TestNoTokenIs401NotForbidden(t *testing.T) {
 	app := apitest.Start(t, apitest.WithFinance(apitest.FinanceTestKey(), "ana@example.com"))
 	if res := app.Get("/me/finance"); res.Status != http.StatusUnauthorized {
 		t.Errorf("GET /me/finance without token = %d, want 401", res.Status)
+	}
+}
+
+// seedMonth runs the sandbox sync for Ana and Bob; the newest month is 2026-11.
+func seedMonth(t *testing.T) (*apitest.App, *apitest.Client) {
+	t.Helper()
+	app, users := startSync(t, []string{"ana@example.com", "bob@example.com"})
+	app.RunFinanceSync(t)
+	return app, users["ana@example.com"]
+}
+
+type txnBody struct {
+	ID, SourceName, Type, Description, TypeSetBy string
+	AmountCents                                  int64
+	SpendingCategory, CategorySetBy              *string
+}
+
+type catBody struct {
+	Category   string
+	SpentCents int64
+}
+
+func readMonth(t *testing.T, c *apitest.Client, month string) (spent int64, cats map[string]int64, txns []txnBody) {
+	t.Helper()
+	res := c.Get("/me/finance/transactions?month=" + month)
+	if res.Status != http.StatusOK {
+		t.Fatalf("GET month %s = %d %s", month, res.Status, res.Raw)
+	}
+	var body struct {
+		SpentCents   int64
+		Categories   []catBody
+		Transactions []txnBody
+	}
+	if err := json.Unmarshal(res.Raw, &body); err != nil {
+		t.Fatal(err)
+	}
+	cats = map[string]int64{}
+	for i, c := range body.Categories {
+		cats[c.Category] = c.SpentCents
+		if i > 0 && body.Categories[i-1].SpentCents < c.SpentCents {
+			t.Errorf("categories not sorted largest first: %s", res.Raw)
+		}
+	}
+	return body.SpentCents, cats, body.Transactions
+}
+
+func TestMonthListsTransactionsAndTotalsPerCategory(t *testing.T) {
+	t.Parallel()
+	_, ana := seedMonth(t)
+
+	spent, cats, txns := readMonth(t, ana, "2026-11")
+	if spent != 97780 || len(cats) != 3 || cats["housing"] != 80000 || cats["other"] != 10000 || cats["subscriptions"] != 7780 {
+		t.Errorf("spent %d cats %v, want 97780 with housing 80000, other 10000, subscriptions 7780", spent, cats)
+	}
+	if len(txns) != 7 {
+		t.Fatalf("transactions = %d, want 7", len(txns))
+	}
+	if f := txns[0]; f.Description != "Pagamento de boleto" || f.AmountCents != -10000 || f.SourceName == "" || f.Type != "expense" {
+		t.Errorf("newest = %+v, want the boleto expense of -10000", f)
+	}
+	if res := ana.Get("/me/finance/transactions?month=2026-11"); !strings.Contains(string(res.Raw), `"currency":"BRL"`) || !strings.Contains(string(res.Raw), `"installment":null`) {
+		t.Errorf("body lacks currency or installment: %s", res.Raw)
+	}
+}
+
+func TestTransfersAreLeftOutAndRefundsOffset(t *testing.T) {
+	t.Parallel()
+	app, ana := seedMonth(t)
+
+	if spent, cats, _ := readMonth(t, ana, "2026-10"); spent != 127270 || cats["household_bills"] != 30500 {
+		t.Errorf("october spent %d cats %v, want 127270 and household_bills 30500 with the 16770 transfer left out", spent, cats)
+	}
+	if _, err := app.DB.Exec(context.Background(), `
+		INSERT INTO finance_transactions (user_id, source_id, provider_id, posted_on, amount_cents, currency, description,
+			merchant_key, type, type_set_by, spending_category, category_set_by, created_at, updated_at)
+		SELECT user_id, id, 'refund', DATE '2026-11-03', 3000, 'BRL', 'REFUND', 'REFUND', 'expense', 'auto', 'housing', 'user', now(), now()
+		FROM finance_sources WHERE kind = 'credit_card' AND user_id = (SELECT id FROM users WHERE email = 'ana@example.com')`); err != nil {
+		t.Fatal(err)
+	}
+	if spent, cats, _ := readMonth(t, ana, "2026-11"); spent != 94780 || cats["housing"] != 77000 {
+		t.Errorf("november spent %d cats %v, want the refund to offset housing to 77000", spent, cats)
+	}
+}
+
+func TestInvalidMonthIs400(t *testing.T) {
+	t.Parallel()
+	_, ana := seedMonth(t)
+
+	for _, m := range []string{"", "2026-13", "2026-1", "nope", "1999-12", "2101-01"} {
+		if res := ana.Get("/me/finance/transactions?month=" + m); res.Status != http.StatusBadRequest || res.Body["error"] != "invalid month" {
+			t.Errorf("month %q = %d %s, want 400 invalid month", m, res.Status, res.Raw)
+		}
+	}
+	if res := ana.Get("/me/finance/transactions"); res.Status != http.StatusBadRequest {
+		t.Errorf("no month = %d, want 400", res.Status)
+	}
+}
+
+func TestMonthNeverShowsAnotherUsersRows(t *testing.T) {
+	t.Parallel()
+	app, ana := seedMonth(t)
+	bob := app.SignInAs("bob@example.com")
+
+	// Both synced the same Item; with Bob's rows gone, Ana's must not fill in for him.
+	if _, err := app.DB.Exec(context.Background(), `DELETE FROM finance_transactions WHERE user_id = (SELECT id FROM users WHERE email = 'bob@example.com')`); err != nil {
+		t.Fatal(err)
+	}
+	if spent, _, txns := readMonth(t, bob, "2026-11"); spent != 0 || len(txns) != 0 {
+		t.Errorf("bob sees spent %d in %d rows, want nothing", spent, len(txns))
+	}
+	if _, _, txns := readMonth(t, ana, "2026-11"); len(txns) != 7 {
+		t.Errorf("ana sees %d rows, want 7", len(txns))
 	}
 }
