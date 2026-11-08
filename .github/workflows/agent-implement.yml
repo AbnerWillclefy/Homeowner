@@ -12,9 +12,24 @@ jobs:
       group: agent-issue-${{ github.event.issue.number }}
       cancel-in-progress: false
     timeout-minutes: 90
+    # The Go tests need Postgres, as in backend-test.yml; without it the agent pushes code whose DB tests never ran
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     permissions:
       contents: read
       id-token: write
+    env:
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
     steps:
       - uses: actions/checkout@v4
         with:
