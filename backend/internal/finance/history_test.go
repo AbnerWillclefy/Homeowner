@@ -99,7 +99,11 @@ func TestHistoryWindowCrossesAYearWithZerosForEmptyMonths(t *testing.T) {
 	if ms[1].cents("pets") != 4200 || ms[1].SpentCents != 4200 {
 		t.Errorf("december = %+v, want pets 4200", ms[1])
 	}
-	for _, i := range []int{0, 2, 3} {
+	// January holds the sandbox fixture's 12.34 debit from 2026-01-15.
+	if ms[2].SpentCents != 1234 || ms[2].cents("pets") != 0 {
+		t.Errorf("january = %+v, want only the fixture's 1234", ms[2])
+	}
+	for _, i := range []int{0, 3} {
 		if ms[i].SpentCents != 0 || ms[i].cents("pets") != 0 {
 			t.Errorf("%s = %+v, want zeros", ms[i].Month, ms[i])
 		}
