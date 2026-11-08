@@ -326,6 +326,41 @@ func MonthTotals(txns []Txn) Totals {
 	return out
 }
 
+// CumulativeDaily is the running spend at the end of each day of month (a UTC
+// first-of-month), one entry per day. The rule is MonthTotals', applied to each
+// day's Txns; Txns outside the month are the caller's to leave out.
+func CumulativeDaily(txns []Txn, month time.Time) []int64 {
+	byDay := make([][]Txn, month.AddDate(0, 1, -1).Day())
+	for _, t := range txns {
+		byDay[t.PostedOn.Day()-1] = append(byDay[t.PostedOn.Day()-1], t)
+	}
+	out := make([]int64, len(byDay))
+	var sum int64
+	for i, day := range byDay {
+		sum += MonthTotals(day).Spend
+		out[i] = sum
+	}
+	return out
+}
+
+// UsualPace averages cumulative month series by day of month, for a month of
+// `days` days. A day past a shorter month's end takes that month's final total.
+// No series gives an empty result. Rounds half up.
+func UsualPace(months [][]int64, days int) []int64 {
+	if len(months) == 0 {
+		return []int64{}
+	}
+	n := int64(len(months))
+	out := make([]int64, days)
+	for d := range out {
+		var sum int64
+		for _, m := range months {
+			sum += m[min(d, len(m)-1)]
+		}
+		out[d] = (2*sum + n) / (2 * n)	}
+	return out
+}
+
 // Bill is the part of a Bill the matcher reads.
 type Bill struct {
 	ID, Name      string
