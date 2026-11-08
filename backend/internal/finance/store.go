@@ -2,8 +2,10 @@ package finance
 
 import (
 	"context"
+	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -33,9 +35,75 @@ func (s *Store) DeleteCredentials(ctx context.Context, userID string) error {
 	return err
 }
 
-// HasCredentials reports whether the User has saved credentials.
-func (s *Store) HasCredentials(ctx context.Context, userID string) (bool, error) {
-	var ok bool
-	err := s.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM finance_credentials WHERE user_id = $1)`, userID).Scan(&ok)
-	return ok, err
+// Credentials returns the User's sealed Client ID and Secret; ok is false
+// when none are saved.
+func (s *Store) Credentials(ctx context.Context, userID string) (idEnc, secretEnc []byte, ok bool, err error) {
+	err = s.db.QueryRow(ctx, `SELECT client_id_enc, client_secret_enc FROM finance_credentials WHERE user_id = $1`, userID).Scan(&idEnc, &secretEnc)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil, false, nil
+	}
+	return idEnc, secretEnc, err == nil, err
+}
+
+// NewSource is an account to store under an Item.
+type NewSource struct {
+	PluggyAccountID, Kind, Name, Currency string
+}
+
+// ConnectItem stores the User's Item and its Sources in one transaction.
+// Calling it again changes no row count: the Item is kept as it was and each
+// Source is refreshed in place.
+func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, now time.Time, sources []NewSource) error {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // a no-op after Commit
+	var itemID string
+	// DO UPDATE with the same value, so RETURNING gives the id on a repeat too.
+	err = tx.QueryRow(ctx, `
+		INSERT INTO finance_items (user_id, pluggy_item_id, connected_at) VALUES ($1, $2, $3)
+		ON CONFLICT (user_id, pluggy_item_id) DO UPDATE SET pluggy_item_id = EXCLUDED.pluggy_item_id
+		RETURNING id`, userID, pluggyItemID, now).Scan(&itemID)
+	if err != nil {
+		return err
+	}
+	for _, src := range sources {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO finance_sources (user_id, item_id, pluggy_account_id, kind, name, currency)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			ON CONFLICT (item_id, pluggy_account_id) DO UPDATE SET kind = $4, name = $5, currency = $6`,
+			userID, itemID, src.PluggyAccountID, src.Kind, src.Name, src.Currency)
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+
+// Overview reads the whole status body: Sources, import state and credentials flag.
+func (s *Store) Overview(ctx context.Context, userID string) (StatusResponse, error) {
+	out := StatusResponse{Sources: []SourceResponse{}}
+	rows, err := s.db.Query(ctx, `SELECT id, name, kind, currency FROM finance_sources WHERE user_id = $1 ORDER BY name, id`, userID)
+	if err != nil {
+		return out, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var src SourceResponse
+		if err := rows.Scan(&src.ID, &src.Name, &src.Kind, &src.Currency); err != nil {
+			return out, err
+		}
+		out.Sources = append(out.Sources, src)
+	}
+	if err := rows.Err(); err != nil {
+		return out, err
+	}
+	// The oldest sync, or null while any Item has never synced.
+	err = s.db.QueryRow(ctx, `
+		SELECT EXISTS (SELECT 1 FROM finance_credentials WHERE user_id = $1),
+		       COALESCE(bool_or(NOT import_complete), false),
+		       CASE WHEN bool_or(last_synced_at IS NULL) THEN NULL ELSE min(last_synced_at) END
+		FROM finance_items WHERE user_id = $1`, userID).Scan(&out.Configured, &out.Importing, &out.LastSyncedAt)
+	return out, err
 }

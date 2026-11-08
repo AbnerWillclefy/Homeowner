@@ -28,7 +28,7 @@ func TestCredentialsSaveReportAndRemove(t *testing.T) {
 		t.Fatalf("PUT = %d %s, want 204 empty", res.Status, res.Raw)
 	}
 	res := ana.Get("/me/finance")
-	if res.Body["configured"] != true || len(res.Body) != 1 {
+	if res.Body["configured"] != true {
 		t.Errorf("GET after PUT = %s", res.Raw)
 	}
 	if res := bob.Get("/me/finance"); res.Body["configured"] != false {

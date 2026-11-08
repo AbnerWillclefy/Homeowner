@@ -30,6 +30,8 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/config"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/db"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/pluggy"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/pluggy/pluggytest"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/server"
 )
@@ -47,6 +49,8 @@ type App struct {
 	Push *push.Fake
 	// Photos is the fake object store; nil unless started WithPhotos.
 	Photos *photos.Fake
+	// Pluggy is the fake Pluggy server; nil unless started WithPluggy.
+	Pluggy *pluggytest.Server
 	// Auth is the fake token verifier; nil when started WithoutAuth.
 	Auth *auth.Fake
 	// Planner is the Allocation job's planner over the same database. It
@@ -148,6 +152,15 @@ func WithFinance(key *[32]byte, emails ...string) Option {
 	return func(d *server.Deps) { d.FinanceAllowlist, d.FinanceKey = emails, key }
 }
 
+// pending marks Deps.Pluggy until Start has a *testing.TB to start the fake with.
+var pending = pluggy.NewHTTP("")
+
+// WithPluggy points Finances at the fake Pluggy replaying the sandbox capture.
+// The real adapter runs against it; the fake is exposed as App.Pluggy.
+func WithPluggy() Option {
+	return func(d *server.Deps) { d.Pluggy = pending }
+}
+
 // Start boots the API on a fresh database cloned from the migrated template.
 func Start(t testing.TB, opts ...Option) *App {
 	t.Helper()
@@ -178,10 +191,15 @@ func Start(t testing.TB, opts ...Option) *App {
 	for _, opt := range opts {
 		opt(&deps)
 	}
+	var fakePluggy *pluggytest.Server
+	if deps.Pluggy == pending {
+		fakePluggy = pluggytest.NewServer(t)
+		deps.Pluggy = pluggy.NewHTTP(fakePluggy.URL)
+	}
 	srv := httptest.NewServer(server.New(deps))
 	t.Cleanup(srv.Close)
 
-	app := &App{URL: srv.URL, Clock: fake, DB: pool, Logs: logs, alloc: swappable, queries: counter}
+	app := &App{URL: srv.URL, Clock: fake, DB: pool, Logs: logs, Pluggy: fakePluggy, alloc: swappable, queries: counter}
 	app.Push, _ = deps.Push.(*push.Fake)
 	app.Photos, _ = deps.Photos.(*photos.Fake)
 	if app.Push != nil {
