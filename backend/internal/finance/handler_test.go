@@ -36,7 +36,7 @@ func TestUserNotOnTheListIsRefused(t *testing.T) {
 	app := apitest.Start(t, apitest.WithFinance(apitest.FinanceTestKey(), "ana@example.com"))
 	bob := app.SignInAs("bob@example.com")
 
-	for _, p := range []string{"/me/finance", "/me/finance/", "/me/finance/anything"} {
+	for _, p := range []string{"/me/finance", "/me/finance/", "/me/finance/anything", "/me/finance/history"} {
 		if res := bob.Get(p); res.Status != http.StatusForbidden || res.Body["error"] != "forbidden" {
 			t.Errorf("GET %s = %d %s, want 403 forbidden", p, res.Status, res.Raw)
 		}
