@@ -19,6 +19,7 @@ const LOCALES = [
     pets: "Pets",
     refund: "estorno",
     transfers: "Transferências",
+    income: "Receitas",
     leftOut: "Fora dos totais",
     empty: "Nada por aqui neste mês.",
     prev: "Mês anterior",
@@ -80,9 +81,9 @@ for (const l of LOCALES) {
       await expect(page.getByText("Supermercado Pão de Açúcar Paulista filial centro")).toBeVisible();
       await expect(page.getByText(l.refund)).toBeVisible();
 
-      const group = page.getByRole("region", { name: l.transfers });
-      await expect(group.getByText(l.leftOut)).toBeVisible();
-      await expect(group.getByText("Transferência para poupança")).toBeVisible();
+      const leftOut = page.getByRole("region", { name: l.leftOut });
+      await expect(leftOut.getByRole("group", { name: l.transfers }).getByText("Transferência para poupança")).toBeVisible();
+      await expect(leftOut.getByRole("group", { name: l.income }).getByText("Salário")).toBeVisible();
     });
 
     test("editing a transaction to a Transfer takes it out of the totals", async ({ page, fakeApi }) => {
@@ -97,7 +98,7 @@ for (const l of LOCALES) {
       expect(fakeApi.requests.find((r) => r.method === "PATCH")?.body).toEqual({ type: "transfer" });
       await expect(page.getByText(l.afterTransfer).first()).toBeVisible();
       await expect(page.getByRole("button", { name: new RegExp(l.leisure) })).toHaveCount(0);
-      await expect(page.getByRole("region", { name: l.transfers }).getByText("Cinema")).toBeVisible();
+      await expect(page.getByRole("region", { name: l.leftOut }).getByRole("group", { name: l.transfers }).getByText("Cinema")).toBeVisible();
     });
 
     test("changing the category files the expense under the new one", async ({ page, fakeApi }) => {

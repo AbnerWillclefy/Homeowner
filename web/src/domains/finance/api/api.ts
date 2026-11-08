@@ -57,7 +57,11 @@ export interface Transaction {
   type: TransactionType;
   /** Only an Expense has one. */
   spendingCategory: SpendingCategory | null;
+  /** `fallback` means nothing could categorise it yet. */
+  categorySetBy: CategorySetBy;
 }
+
+export type CategorySetBy = "auto" | "user" | "fallback" | null;
 
 export interface MonthResponse {
   month: string;
@@ -162,7 +166,13 @@ function parseMonth(body: unknown): MonthResponse | null {
       (t.type === "income" || t.type === "expense" || t.type === "transfer") &&
       (t.spendingCategory === null || typeof t.spendingCategory === "string"),
   );
-  return valid ? (body as unknown as MonthResponse) : null;
+  if (!valid) return null;
+  // A body without it (an older mock or API) reads as null, so the parse never breaks on it.
+  const transactions = (body.transactions as Record<string, unknown>[]).map((t) => ({
+    ...t,
+    categorySetBy: t.categorySetBy === "auto" || t.categorySetBy === "user" || t.categorySetBy === "fallback" ? t.categorySetBy : null,
+  }));
+  return { ...(body as unknown as MonthResponse), transactions: transactions as unknown as Transaction[] };
 }
 
 /** `GET /me/finance/transactions?month=YYYY-MM`. */
@@ -171,36 +181,6 @@ export const getMonth = (month: string): Promise<MonthResult> =>
     const parsed = parseMonth(data);
     return parsed && { month: parsed };
   }) as Promise<MonthResult>;
-
-export interface ReportMonth {
-  month: string;
-  spentCents: number;
-  /** All Spending Categories, in the picker's order, zero ones included. */
-  categories: { category: SpendingCategory; spentCents: number }[];
-}
-
-/** `GET /me/finance/report`: the month and the one before it. */
-export interface ReportResponse {
-  month: ReportMonth;
-  previous: ReportMonth;
-}
-
-export type ReportResult = { kind: "ok"; report: ReportResponse } | Failure;
-
-const isReportMonth = (v: unknown): v is ReportMonth =>
-  isObject(v) &&
-  typeof v.month === "string" &&
-  typeof v.spentCents === "number" &&
-  Array.isArray(v.categories) &&
-  v.categories.every((c) => isObject(c) && typeof c.category === "string" && typeof c.spentCents === "number");
-
-/** `GET /me/finance/report?month=YYYY-MM`. */
-export const getReport = (month: string): Promise<ReportResult> =>
-  call({ url: "/me/finance/report", params: { month } }, 200, (data) =>
-    isObject(data) && isReportMonth(data.month) && isReportMonth(data.previous)
-      ? { report: data as unknown as ReportResponse }
-      : null,
-  ) as Promise<ReportResult>;
 
 export interface CommitmentMonth {
   month: string;

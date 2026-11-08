@@ -9,7 +9,6 @@ import {
   getFinanceStatus,
   getCommitments,
   getMonth,
-  getReport,
   patchTransaction,
   putIncome,
   putCredentials,
@@ -167,7 +166,7 @@ const MONTH = {
   spentCents: 1000,
   categories: [{ category: "groceries", spentCents: 1000 }],
   transactions: [
-    { id: "t1", postedOn: "2026-11-02", description: "Mercado", sourceName: "Nubank", amountCents: -1000, currency: "BRL", type: "expense", spendingCategory: "groceries", typeSetBy: "rule", categorySetBy: "rule", installment: null },
+    { id: "t1", postedOn: "2026-11-02", description: "Mercado", sourceName: "Nubank", amountCents: -1000, currency: "BRL", type: "expense", spendingCategory: "groceries", typeSetBy: "rule", categorySetBy: "auto", installment: null },
   ],
 };
 
@@ -178,28 +177,16 @@ describe("getMonth", () => {
     expect(fetch.mock.calls[0]![0]).toBe("http://api.test/me/finance/transactions?month=2026-11");
   });
 
+  it("reads a missing or unknown categorySetBy as null", async () => {
+    const row = (categorySetBy?: string) => ({ ...MONTH.transactions[0], categorySetBy });
+    stubFetch(Response.json({ ...MONTH, transactions: [row(undefined), row("fallback"), row("rule")] }));
+    const result = await getMonth("2026-11");
+    expect(result.kind === "ok" && result.month.transactions.map((t) => t.categorySetBy)).toEqual([null, "fallback", null]);
+  });
+
   it("is an error for a body it cannot read", async () => {
     stubFetch(Response.json({ ...MONTH, transactions: [{ id: 1 }] }));
     expect(await getMonth("2026-11")).toEqual({ kind: "error" });
-  });
-});
-
-const REPORT_MONTH = { month: "2026-11", spentCents: 1000, categories: [{ category: "groceries", spentCents: 1000 }] };
-const REPORT = { month: REPORT_MONTH, previous: { ...REPORT_MONTH, month: "2026-10" } };
-
-describe("getReport", () => {
-  it("reads GET /me/finance/report with the month", async () => {
-    const fetch = stubFetch(Response.json(REPORT));
-    expect(await getReport("2026-11")).toEqual({ kind: "ok", report: REPORT });
-    expect(fetch.mock.calls[0]![0]).toBe("http://api.test/me/finance/report?month=2026-11");
-  });
-
-  it("is an error for a body it cannot read", async () => {
-    stubFetch(Response.json({ month: REPORT_MONTH }));
-    expect(await getReport("2026-11")).toEqual({ kind: "error" });
-    const bad = { ...REPORT_MONTH, categories: [{ category: "groceries", spentCents: "1" }] };
-    stubFetch(Response.json({ ...REPORT, previous: bad }));
-    expect(await getReport("2026-11")).toEqual({ kind: "error" });
   });
 });
 

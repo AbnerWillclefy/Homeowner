@@ -86,7 +86,7 @@ export function MonthlyIncome() {
   );
 }
 
-/** The head is one full-width disclosure button laid out like `CategoryCard`: `CollapsibleCard`'s icon tile leaves a letter per line at 320px and the largest text. */
+/** The head is one full-width disclosure button (not `CollapsibleCard`, whose icon tile leaves a letter per line at 320px and the largest text). */
 function MonthCard({ month, locale }: { month: CommitmentMonth; locale: string }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
