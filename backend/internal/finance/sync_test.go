@@ -224,6 +224,31 @@ func TestSyncClassifiesBillPaymentsAsTransfers(t *testing.T) {
 	}
 }
 
+// The synthetic checking page holds 2026-01-14 and 01-15, so classify reads
+// 01-08..01-21 and writes only 01-11..01-18. A pair across the write edge must
+// see its partner, and a pair across the read edge must not be written half-seen.
+func TestSyncKeepsTransfersWholeAtTheWindowEdges(t *testing.T) {
+	t.Parallel()
+	app, _ := startSync(t, []string{"ana@example.com"})
+	app.RunFinanceSync(t)
+	if _, err := app.DB.Exec(context.Background(), `
+		INSERT INTO finance_transactions (user_id, source_id, provider_id, posted_on, amount_cents, currency, description,
+			merchant_key, type, type_set_by, created_at, updated_at)
+		SELECT s.user_id, s.id, 'edge-' || p.day, p.day, p.cents, 'BRL', 'EDGE', 'edge', 'transfer', 'auto', now(), now()
+		FROM (VALUES ('checking', DATE '2026-01-12', -12345), ('credit_card', DATE '2026-01-09', 12345),
+		             ('checking', DATE '2026-01-09', -67890), ('credit_card', DATE '2026-01-06', 67890)) AS p (kind, day, cents)
+		JOIN finance_sources s ON s.kind = p.kind`); err != nil {
+		t.Fatal(err)
+	}
+
+	app.Clock.Advance(25 * time.Hour)
+	app.RunFinanceSync(t)
+
+	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE description = 'EDGE' AND type = 'transfer'`); n != 4 {
+		t.Errorf("edge transfers = %d, want 4 kept whole", n)
+	}
+}
+
 func TestFailingPluggyLeavesTheUserDueAndOthersSynced(t *testing.T) {
 	t.Parallel()
 	app, users := startSync(t, []string{"ana@example.com", "bob@example.com"})
