@@ -50,6 +50,11 @@ func twoSynced(t *testing.T) (app *apitest.App, ana, bia *apitest.Client, anaID,
 		bill := c.Post("/me/finance/bills", map[string]any{"name": "Rent", "expectedCents": 150000, "dueDay": 5})
 		apitest.ExpectStatus(t, bill, http.StatusCreated)
 		apitest.ExpectStatus(t, c.Put("/me/finance/bills/"+bill.Body["id"].(string)+"/payments/2026-11", nil), http.StatusNoContent)
+		if _, err := app.DB.Exec(context.Background(), `
+			INSERT INTO finance_bill_reminders (user_id, bill_id, month, kind, sent_at) VALUES ($1, $2, '2026-11-01', 'due_soon', now())`,
+			id, bill.Body["id"]); err != nil {
+			t.Fatal(err)
+		}
 		apitest.ExpectStatus(t, c.Put("/me/finance/income", map[string]any{"monthlyIncomeCents": 500000}), http.StatusNoContent)
 		for i, n := range rowsOf(t, app, id) {
 			if n == 0 {
