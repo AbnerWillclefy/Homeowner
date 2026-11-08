@@ -154,6 +154,15 @@ for (const l of LOCALES) {
       await expect(page.getByRole("button", { name: l.groceries })).toBeVisible();
     });
 
+    test("with the month before failing, the bars stay and there is no sentence or marker", async ({ page, baseURL }) => {
+      await page.route(/\/me\/finance\/transactions\?month=2026-11/, (route) => route.fulfill({ status: 500, contentType: "application/json", body: "{}" }));
+      await visit(page, new URL("/finances", baseURL!).toString());
+      await page.getByRole("tab", { name: /^(Gastos|Spending)$/ }).click();
+      await expect(page.getByRole("button", { name: l.groceries })).toBeVisible();
+      await expect(page.getByText(l.more)).toHaveCount(0);
+      await expect(page.getByText(l.marker)).toHaveCount(0);
+    });
+
     test("at 320px and the largest text nothing overflows sideways", async ({ page, baseURL }) => {
       await page.setViewportSize({ width: 320, height: 640 });
       await page.addInitScript(() => {

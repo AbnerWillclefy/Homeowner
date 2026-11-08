@@ -24,7 +24,7 @@ import { UncategorisedCard } from "./UncategorisedCard";
  */
 export function Spending() {
   const { t, locale } = useI18n();
-  const [today] = useState(() => new Date());
+  const today = new Date(); // each render, so a resumed app cuts last month at the device's day, not the mount day
   const thisMonth = currentMonth(today);
   const [month, setMonth] = useState(thisMonth);
   const previousMonth = addMonths(month, -1);
@@ -37,14 +37,11 @@ export function Spending() {
   const listId = useId();
 
   const view = useMemo(() => (state.kind === "ready" ? monthView(state.data) : null), [state]);
-  const compared = useMemo(
-    () =>
-      state.kind === "ready" && previous.state.kind === "ready"
-        ? sameDays(state.data.transactions, previous.state.data.transactions, month, today)
-        : null,
-    [state, previous.state, month, today],
-  );
-  const rows = useMemo(() => (compared ? categoryRows(compared.byCategory) : null), [compared]);
+  const compared =
+    state.kind === "ready" && previous.state.kind === "ready"
+      ? sameDays(state.data.transactions, previous.state.data.transactions, month, today)
+      : null;
+  const rows = compared ? categoryRows(compared.byCategory) : null;
   const own = useMemo(() => (view ? categoryRows(new Map(view.categories.map((g) => [g.category, { spent: g.spentCents, previousSpent: 0 }]))) : null), [view]);
   const shown = rows ?? own;
   const missing = useMemo(() => (state.kind === "ready" ? uncategorised(state.data.transactions) : []), [state]);
