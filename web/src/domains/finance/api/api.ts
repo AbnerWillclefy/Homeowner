@@ -1,4 +1,5 @@
 import type { AxiosRequestConfig } from "axios";
+import type { SpendingCategory } from "../logic/spendingCategories";
 import { authedRequest, errorCode } from "../../auth/api/client";
 
 export interface FinanceSource {
@@ -32,12 +33,40 @@ export type FinanceFailureKind =
   /** 409: there are no credentials to use. */
   | "no-credentials"
   /** 502: Pluggy did not answer. */
-  | "unavailable";
+  | "unavailable"
+  /** 404: the Transaction is gone, so the month is read again. */
+  | "not-found";
 
 type Failure = { kind: FinanceFailureKind };
 export type WriteResult = { kind: "ok" } | Failure;
 export type StatusResult = { kind: "ok"; status: FinanceStatus } | Failure;
 export type ConnectTokenResult = { kind: "ok"; connectToken: string; includeSandbox: boolean } | Failure;
+
+export type TransactionType = "income" | "expense" | "transfer";
+
+/** One Transaction of `GET /me/finance/transactions`. `amountCents` is signed: negative is money out. */
+export interface Transaction {
+  id: string;
+  /** `YYYY-MM-DD`. */
+  postedOn: string;
+  description: string;
+  sourceName: string;
+  amountCents: number;
+  currency: string;
+  type: TransactionType;
+  /** Only an Expense has one. */
+  spendingCategory: SpendingCategory | null;
+}
+
+export interface MonthResponse {
+  month: string;
+  /** What was spent in the month: Expenses only, refunds netted off. */
+  spentCents: number;
+  categories: { category: SpendingCategory; spentCents: number }[];
+  transactions: Transaction[];
+}
+
+export type MonthResult = { kind: "ok"; month: MonthResponse } | Failure;
 
 function parseStatus(body: unknown): FinanceStatus | null {
   if (typeof body !== "object" || body === null) return null;
@@ -57,6 +86,7 @@ function parseStatus(body: unknown): FinanceStatus | null {
 /** The failure for a status that was not the expected one. */
 function failureOf(status: number, code: string | null): FinanceFailureKind {
   if (status === 400) return "invalid";
+  if (status === 404) return "not-found";
   if (status === 409) return "no-credentials";
   if (status === 422) return code === "pluggy_credentials_rejected" ? "rejected" : "item-refused";
   if (status === 502) return "unavailable";
@@ -114,3 +144,36 @@ export const createConnectToken = (): Promise<ConnectTokenResult> =>
 /** Registers the item the widget made. The answer is the new status. */
 export const registerItem = (itemId: string): Promise<StatusResult> =>
   call({ url: "/me/finance/items", method: "POST", data: { itemId } }, 200, statusOf) as Promise<StatusResult>;
+
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
+
+function parseMonth(body: unknown): MonthResponse | null {
+  if (!isObject(body) || typeof body.month !== "string" || typeof body.spentCents !== "number") return null;
+  if (!Array.isArray(body.transactions) || !Array.isArray(body.categories)) return null;
+  const valid = body.transactions.every(
+    (t) =>
+      isObject(t) &&
+      typeof t.id === "string" &&
+      typeof t.postedOn === "string" &&
+      typeof t.description === "string" &&
+      typeof t.sourceName === "string" &&
+      typeof t.amountCents === "number" &&
+      (t.type === "income" || t.type === "expense" || t.type === "transfer") &&
+      (t.spendingCategory === null || typeof t.spendingCategory === "string"),
+  );
+  return valid ? (body as unknown as MonthResponse) : null;
+}
+
+/** `GET /me/finance/transactions?month=YYYY-MM`. */
+export const getMonth = (month: string): Promise<MonthResult> =>
+  call({ url: "/me/finance/transactions", params: { month } }, 200, (data) => {
+    const parsed = parseMonth(data);
+    return parsed && { month: parsed };
+  }) as Promise<MonthResult>;
+
+/** `PATCH /me/finance/transactions/{id}`; an absent field stays as it is. The answer is the row, which the screen does not need. */
+export const patchTransaction = (
+  id: string,
+  edit: { type?: TransactionType; spendingCategory?: SpendingCategory },
+): Promise<WriteResult> =>
+  call({ url: `/me/finance/transactions/${encodeURIComponent(id)}`, method: "PATCH", data: edit }, 200, nothing);

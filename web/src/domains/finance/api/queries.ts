@@ -1,7 +1,7 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ApiFailure } from "../../../shared/query/ApiFailure";
 import { refetchUnlessSucceeded } from "../../../shared/query/queryClient";
-import { getFinanceStatus, type FinanceStatus } from "./api";
+import { getFinanceStatus, getMonth, type FinanceStatus, type MonthResponse } from "./api";
 
 /** `GET /me/finance`. Under `["me"]`, so sign-out empties it; the finance views go under it too (web.md, Query keys). */
 export const financeStatusKey = ["me", "finance"] as const;
@@ -17,6 +17,23 @@ export const financeStatusQuery = queryOptions({
   },
   refetchOnMount: refetchUnlessSucceeded,
 });
+
+/** `GET /me/finance/transactions?month=`, one entry per month, under the status key so a delete removes them too. */
+export const monthKey = (month: string) => ["me", "finance", "transactions", month] as const;
+
+export const monthQuery = (month: string) =>
+  queryOptions({
+    queryKey: monthKey(month),
+    queryFn: async (): Promise<MonthResponse> => {
+      const result = await getMonth(month);
+      if (result.kind === "ok") return result.month;
+      throw new ApiFailure(result.kind === "offline" || result.kind === "not-signed-in" ? result.kind : "error");
+    },
+    refetchOnMount: refetchUnlessSucceeded,
+  });
+
+/** After a PATCH: the totals changed, and the server may have recategorised other rows of the same merchant, so read the month again. */
+export const invalidateMonth = (client: QueryClient, month: string) => client.invalidateQueries({ queryKey: monthKey(month) });
 
 const EMPTY: FinanceStatus = { configured: false, sources: [], importing: false, lastSyncedAt: null };
 

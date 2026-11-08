@@ -236,6 +236,13 @@ func ProjectInstallments(plans []Plan, from time.Time, months int) [][]Installme
 
 func monthIndex(t time.Time) int { return t.Year()*12 + int(t.Month()) }
 
+// DueDate is the day a Bill with dueDay falls due in the month, as a UTC
+// midnight: a day past the month end falls on its last day.
+func DueDate(year int, month time.Month, dueDay int) time.Time {
+	last := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC)
+	return time.Date(year, month, min(dueDay, last.Day()), 0, 0, 0, 0, time.UTC)
+}
+
 // Totals is the spend of a set of Transactions, in centavos.
 type Totals struct {
 	Spend      int64
