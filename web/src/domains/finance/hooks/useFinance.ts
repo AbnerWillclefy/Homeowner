@@ -84,18 +84,35 @@ export function useFinance() {
     setBusy("connect");
     setProblem(null);
     setClosed(false);
+    // The widget outlives connectBanks, so the outcome releases the guard; once per run,
+    // so a late onClose cannot release a newer action's guard.
+    let released = false;
+    const done = () => {
+      if (released) return;
+      released = true;
+      running.current = false;
+      setBusy(null);
+    };
     try {
       await connectBanks(
         { createToken: createConnectToken, open: openPluggyConnect, register: registerItem },
         {
-          connected: (status) => void writeFinanceStatus(client, status),
-          closed: () => setClosed(true),
-          problem: (kind) => setProblem({ area: "connect", problem: kind }),
+          connected: (status) => {
+            void writeFinanceStatus(client, status);
+            done();
+          },
+          closed: () => {
+            setClosed(true);
+            done();
+          },
+          problem: (kind) => {
+            setProblem({ area: "connect", problem: kind });
+            done();
+          },
         },
       );
-    } finally {
-      running.current = false;
-      setBusy(null);
+    } catch {
+      done();
     }
   }, [client]);
 
