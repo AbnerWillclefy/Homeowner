@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/finance"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/config"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/db"
@@ -28,6 +29,13 @@ func financeEvents(ctx context.Context, cfg config.Config, log *slog.Logger) err
 		defer pool.Close()
 		syncer = finance.NewSyncer(finance.NewStore(pool), pluggy.NewHTTP(cfg.PluggyBaseURL), cfg.FinanceKey,
 			finance.NewAllowlist(cfg.FinanceAllowlist), log, finance.DefaultSyncBudget)
+		// The Categorizer is step 3 of the order of decision; without a key the
+		// Expenses that no correction and no Pluggy category decide stay Other.
+		if cfg.AnthropicAPIKey != "" {
+			syncer.WithCategorizer(llmalloc.NewCategorizer(llmalloc.NewAnthropic(cfg.AnthropicAPIKey, cfg.LLMModel)), cfg.LLMModel)
+		} else {
+			log.Info("categorizer off: no Anthropic key, uncategorised Expenses stay Other")
+		}
 	}
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,

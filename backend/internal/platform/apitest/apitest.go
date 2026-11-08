@@ -25,6 +25,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/finance"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/nudge"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/photos"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
@@ -223,6 +224,16 @@ func Start(t testing.TB, opts ...Option) *App {
 			finance.NewAllowlist(deps.FinanceAllowlist), slog.New(slog.NewJSONHandler(logs, nil)), deps.FinanceSyncBudget)
 	}
 	return app
+}
+
+// UseCategorizer makes the finance sync ask fake for the Spending Category of
+// the Expenses that no correction and no Pluggy category decide. It needs
+// WithFinance (with a key) and WithPluggy.
+func (a *App) UseCategorizer(fake *llmalloc.FakeClient) {
+	if a.FinanceSyncer == nil {
+		panic("apitest: UseCategorizer needs WithFinance with a key and WithPluggy")
+	}
+	a.FinanceSyncer.WithCategorizer(llmalloc.NewCategorizer(fake), config.DefaultLLMModel)
 }
 
 // UseAllocator makes the Allocation job plan with al, for example a stub that

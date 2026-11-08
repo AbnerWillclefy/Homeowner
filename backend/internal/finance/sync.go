@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/pluggy"
 )
 
@@ -42,6 +43,9 @@ type Syncer struct {
 	allow  Allowlist
 	log    *slog.Logger
 	budget time.Duration
+	// cat and model are set by WithCategorizer; nil cat skips step 3.
+	cat   *llmalloc.Categorizer
+	model string
 }
 
 // NewSyncer returns a Syncer that stops a run after budget (zero: DefaultSyncBudget).
@@ -99,6 +103,9 @@ func (s *Syncer) Run(ctx context.Context, now time.Time) (Summary, error) {
 			sum.Partial++
 		}
 	}
+	// After the imports, and for every User with a fallback Expense, not only
+	// those just synced: a day later the cap is fresh.
+	s.categorize(ctx, now, deadline)
 	s.log.Info("finance sync done", "due", sum.Due, "synced", sum.Synced, "partial", sum.Partial, "failed", sum.Failed,
 		"rows", sum.Rows, "skipped_currency", sum.SkippedCurrency)
 	return sum, nil
@@ -200,6 +207,9 @@ func toRows(txs []pluggy.Transaction) (rows []Row, skippedCurrency int) {
 			Description: tx.Description, MerchantKey: MerchantKey(tx.Description), Type: "income"}
 		if tx.AmountCents < 0 {
 			r.Type = "expense"
+		}
+		if tx.Category != nil && r.Type == "expense" {
+			r.Category = pluggyCategories[*tx.Category]
 		}
 		if m := tx.CreditCardMetadata; m != nil && m.InstallmentNumber >= 1 && m.InstallmentNumber <= m.TotalInstallments {
 			r.InstallmentNumber, r.TotalInstallments = int32(m.InstallmentNumber), int32(m.TotalInstallments)
