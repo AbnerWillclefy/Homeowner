@@ -195,6 +195,16 @@ for (const l of LOCALES) {
       await expect(dialog.getByLabel(l.nameLabel)).toHaveValue("Luz");
     });
 
+    test("saving the edit form gives focus back to the bill's menu button", async ({ page }) => {
+      const trigger = menuOf(page, "Luz");
+      await trigger.focus();
+      await page.keyboard.press("Enter");
+      await page.keyboard.press("Enter");
+      await page.getByRole("dialog", { name: l.editTitle }).getByRole("button", { name: l.save }).click();
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+      await expect(trigger).toBeFocused();
+    });
+
     test("deleting a bill from the menu by keyboard asks first", async ({ page, fakeApi }) => {
       await menuOf(page, "Luz").focus();
       await page.keyboard.press("Enter");

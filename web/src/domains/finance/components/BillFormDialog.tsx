@@ -1,5 +1,5 @@
 import { CircleAlert } from "lucide-react";
-import { useId, useState, type FormEvent, type ReactNode } from "react";
+import { useId, useState, type FormEvent, type ReactNode, type RefObject } from "react";
 import { useI18n } from "../../../shared/i18n";
 import { AppDialog } from "../../../shared/ui/AppDialog";
 import { Button } from "../../../shared/ui/Button";
@@ -15,10 +15,12 @@ import { centsToInput } from "../logic/money";
 /** Adds a Bill, or edits `bill`. Field problems show beside their fields; a failed save stays open to retry. */
 export function BillFormDialog({
   bill,
+  returnFocusRef,
   save,
   onClose,
 }: {
   bill: Bill | null;
+  returnFocusRef?: RefObject<HTMLElement | null>;
   save(input: BillInput): Promise<BillOutcome>;
   onClose(): void;
 }) {
@@ -83,6 +85,7 @@ export function BillFormDialog({
       title={t(bill ? "finances.bills.form.editTitle" : "finances.bills.form.addTitle")}
       onDismiss={onClose}
       dismissible={!saving}
+      returnFocusRef={returnFocusRef}
       footer={
         <ButtonRow
           start={

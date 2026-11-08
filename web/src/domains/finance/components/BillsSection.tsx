@@ -17,7 +17,8 @@ import { BillSummary } from "./BillSummary";
 import { DeleteBillDialog } from "./DeleteBillDialog";
 import { DueStrip } from "./DueStrip";
 
-type Open = { kind: "form"; bill: Bill | null } | { kind: "delete"; bill: Bill } | null;
+// `opener` is the "⋯" button focus returns to on close; null when the dialog's opener keeps focus itself.
+type Open = { kind: "form"; bill: Bill | null; opener: HTMLElement | null } | { kind: "delete"; bill: Bill; opener: HTMLElement | null } | null;
 
 const GROUPS = ["overdue", "due", "paid"] as const;
 
@@ -89,8 +90,8 @@ export function BillsSection() {
                         today={today}
                         busy={busy === bill.id}
                         onPaid={(paid) => void mark(bill, paid)}
-                        onEdit={() => setOpen({ kind: "form", bill })}
-                        onDelete={() => setOpen({ kind: "delete", bill })}
+                        onEdit={(opener) => setOpen({ kind: "form", bill, opener })}
+                        onDelete={(opener) => setOpen({ kind: "delete", bill, opener })}
                       />
                     ))}
                   </ul>
@@ -98,15 +99,20 @@ export function BillsSection() {
               ))}
             </>
           )}
-          <Button variant="secondary" leadingIcon={<Plus aria-hidden="true" size={16} />} onClick={() => setOpen({ kind: "form", bill: null })}>
+          <Button variant="secondary" leadingIcon={<Plus aria-hidden="true" size={16} />} onClick={() => setOpen({ kind: "form", bill: null, opener: null })}>
             {t("finances.bills.add")}
           </Button>
         </>
       )}
       {open?.kind === "form" && (
-        <BillFormDialog bill={open.bill} save={(input) => save(open.bill?.id ?? null, input)} onClose={() => setOpen(null)} />
+        <BillFormDialog
+          bill={open.bill}
+          returnFocusRef={{ current: open.opener }}
+          save={(input) => save(open.bill?.id ?? null, input)}
+          onClose={() => setOpen(null)}
+        />
       )}
-      {open?.kind === "delete" && <DeleteBillDialog bill={open.bill} remove={remove} onClose={() => setOpen(null)} />}
+      {open?.kind === "delete" && <DeleteBillDialog bill={open.bill} returnFocusRef={{ current: open.opener }} remove={remove} onClose={() => setOpen(null)} />}
     </section>
   );
 }

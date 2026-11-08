@@ -13,8 +13,8 @@ interface Props {
   /** A write on this Bill is running. */
   busy: boolean;
   onPaid(paid: boolean): void;
-  onEdit(): void;
-  onDelete(): void;
+  onEdit(opener: HTMLElement | null): void;
+  onDelete(opener: HTMLElement | null): void;
 }
 
 /**
