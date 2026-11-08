@@ -71,6 +71,13 @@ describe("aiHeadline", () => {
     expect(h.calls.label).toBe("Total LLM calls, per day, last 2 days: 15 to 9, highest 15");
   });
 
+  it("counts voice calls and failures in the headlines", () => {
+    const withVoice = days.map((d) => ({ ...d, services: { ...d.services, voice: service({ outcomes: { accepted: 1, timeout: 1 } }) } }));
+    const h = aiHeadline(usage(withVoice));
+    expect(h.calls.value).toBe(24 + 4);
+    expect(h.failure.part).toBe(aiHeadline(usage(days)).failure.part + 2);
+  });
+
   it("shares failures (timeout, error, cap skip) over all attempts of both services", () => {
     const h = aiHeadline(usage(days));
     expect(h.failure.part).toBe(5);
