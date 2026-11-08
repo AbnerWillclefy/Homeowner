@@ -1,5 +1,6 @@
-import { ChevronDown } from "lucide-react";
-import { useId, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
+import { Link } from "react-router";
+import { FINANCES_SETTINGS_PATH } from "../../../app/logic/routes";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { ButtonRow } from "../../../shared/ui/ButtonRow";
@@ -8,21 +9,26 @@ import { FormError } from "../../../shared/ui/FormError";
 import { formErrorId } from "../../../shared/ui/formErrorId";
 import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { SkeletonBar } from "../../../shared/ui/Skeleton";
-import type { CommitmentMonth } from "../api/api";
+import type { Commitments as CommitmentsData } from "../api/api";
 import { useCommitments } from "../hooks/useCommitments";
+import { scaleMax } from "../logic/chart";
+import { committedBars } from "../logic/committedBars";
 import { readIncome, type IncomeProblem } from "../logic/income";
 import { formatCents } from "../logic/money";
-import { currentMonth, monthLabel } from "../logic/month";
+import { currentMonth, monthLabel, monthName } from "../logic/month";
+import { plansInProgress } from "../logic/plansInProgress";
+import { SplitBar } from "./charts/SplitBar";
 
 const FORM = "finances-income";
 const PROBLEM_KEY = { empty: "finances.income.empty", zero: "finances.income.zero", junk: "finances.income.junk" } as const;
 
 /**
- * Installments: what is already committed in the coming months, and the optional Monthly income that turns it into
- * a share. Neutral on purpose: no danger colour or alarm icon, even above 100%. The app states a fact, it never commands.
+ * "Próximos meses": what is already committed in the coming months (Bills and Installment plans) against the Monthly
+ * income line, then the Installment plans in progress. Neutral on purpose: no danger colour or alarm icon, even above
+ * the income. The app states a fact, it never commands.
  */
 export function Commitments() {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const [from] = useState(() => currentMonth(new Date()));
   const { state, refreshing, reload } = useCommitments(from);
   const skeleton = useReportFirstLoad(state.kind === "loading");
@@ -48,13 +54,70 @@ export function Commitments() {
           </Button>
         </div>
       )}
-      {state.kind === "ready" &&
-        (state.data.months.every((m) => m.installments.length === 0 && m.bills.length === 0) ? (
-          <p className="my-0 text-muted">{t("finances.commit.empty")}</p>
-        ) : (
-          state.data.months.map((m) => <MonthCard key={m.month} month={m} locale={locale} />)
-        ))}
+      {state.kind === "ready" && <ComingMonths data={state.data} from={from} />}
     </section>
+  );
+}
+
+function ComingMonths({ data, from }: { data: CommitmentsData; from: string }) {
+  const { t, locale } = useI18n();
+  const income = data.monthlyIncomeCents;
+  const bars = committedBars(data.months);
+  const plans = plansInProgress(data.months);
+  // One scale for every month, so the bars compare; the income line is on it too.
+  const max = scaleMax(
+    bars.map((b) => b.total),
+    income ? [income] : [],
+  );
+  return (
+    <>
+      <p className="my-0 flex flex-wrap items-center gap-x-3">
+        {income !== null && <span className="font-semibold">{t("finances.commit.income", { amount: formatCents(income, locale) })}</span>}
+        <Button asChild variant="link">
+          <Link to={FINANCES_SETTINGS_PATH}>{t(income === null ? "finances.commit.incomeSet" : "finances.commit.incomeChange")}</Link>
+        </Button>
+      </p>
+      {bars.length === 0 ? (
+        <p className="my-0 text-muted">{t("finances.commit.empty")}</p>
+      ) : (
+        <Card className="flex flex-col gap-4">
+          {income !== null && <p className="my-0 text-sm text-muted">{t("finances.commit.incomeMarker")}</p>}
+          <ul className="m-0 flex list-none flex-col gap-4 p-0">
+            {bars.map((b) => (
+              <li key={b.month} className="flex flex-col gap-1">
+                <span className="font-semibold first-letter:uppercase [overflow-wrap:anywhere]">
+                  {t("finances.commit.month", { month: monthLabel(b.month, locale), total: formatCents(b.total, locale) })}
+                </span>
+                <SplitBar solid={b.bills} hatched={b.installments} max={max} markers={income ? [income] : []} />
+                <span className="text-sm text-muted [overflow-wrap:anywhere]">
+                  {t("finances.commit.split", { bills: formatCents(b.bills, locale), installments: formatCents(b.installments, locale) })}
+                </span>
+                {/* The current month counts only unpaid Bills (Handler.Commitments), so it is not read as the whole month. */}
+                {b.month === from && <span className="text-sm text-muted">{t("finances.commit.currentNote")}</span>}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+      {plans.length > 0 && (
+        <section aria-labelledby="finances-plans-heading" className="flex flex-col gap-2">
+          <h4 id="finances-plans-heading" className="my-0 text-base font-bold leading-snug">
+            {t("finances.commit.plans")}
+          </h4>
+          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+            {plans.map((p) => (
+              // A line has no plan id, so a plan is its name and total.
+              <li key={`${p.name}/${p.total}`} className="flex flex-col">
+                <span className="[overflow-wrap:anywhere]">
+                  {t("finances.commit.plan", { name: p.name, n: p.next, m: p.total, month: monthName(p.last, locale) })}
+                </span>
+                <span className="text-sm text-muted">{t("finances.commit.planAmount", { amount: formatCents(p.amountCents, locale) })}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </>
   );
 }
 
@@ -83,58 +146,6 @@ export function MonthlyIncome() {
       income={state.data.monthlyIncomeCents}
       onSave={saveIncome}
     />
-  );
-}
-
-/** The head is one full-width disclosure button (not `CollapsibleCard`, whose icon tile leaves a letter per line at 320px and the largest text). */
-function MonthCard({ month, locale }: { month: CommitmentMonth; locale: string }) {
-  const { t } = useI18n();
-  const [open, setOpen] = useState(false);
-  const id = useId();
-  const pct = month.percentOfIncome;
-  return (
-    <Card as="section" aria-labelledby={`${id}-title`} className="mt-0 flex flex-col gap-2">
-      <h4 className="m-0 text-base font-bold leading-snug">
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls={`${id}-body`}
-          onClick={() => setOpen((value) => !value)}
-          className="flex min-h-11 w-full items-start gap-3 rounded-control bg-transparent p-0 text-start font-[inherit] text-inherit"
-        >
-          <span className="flex min-w-0 flex-1 flex-col">
-            <span id={`${id}-title`} className="first-letter:uppercase [overflow-wrap:anywhere]">
-              {monthLabel(month.month, locale)}
-            </span>
-            <span className="text-lg">{formatCents(month.committedCents, locale)}</span>
-            {pct !== undefined && <span className="text-sm font-normal text-muted">{t("finances.commit.pct", { pct: Math.round(pct) })}</span>}
-          </span>
-          <ChevronDown
-            aria-hidden="true"
-            size={22}
-            className={`mt-1 shrink-0 text-muted motion-safe:transition-transform motion-safe:duration-150 ${open ? "rotate-180" : ""}`}
-          />
-        </button>
-      </h4>
-      <ul id={`${id}-body`} hidden={!open} className="m-0 flex list-none flex-col gap-2 p-0">
-        {month.installments.map((i, index) => (
-          // A line has no plan id, so name + number can collide; the server-ordered list is never reordered here.
-          <Line key={index} name={t("finances.commit.installment", { name: i.name, n: i.number, m: i.total })} cents={i.amountCents} locale={locale} />
-        ))}
-        {month.bills.map((b) => (
-          <Line key={b.id} name={b.name} cents={b.expectedCents} locale={locale} />
-        ))}
-      </ul>
-    </Card>
-  );
-}
-
-function Line({ name, cents, locale }: { name: string; cents: number; locale: string }) {
-  return (
-    <li className="flex flex-wrap justify-between gap-x-3">
-      <span className="min-w-0 [overflow-wrap:anywhere]">{name}</span>
-      <span className="font-semibold">{formatCents(cents, locale)}</span>
-    </li>
   );
 }
 
