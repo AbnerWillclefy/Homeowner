@@ -5,10 +5,10 @@ import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
 
-// What this covers, in both locales: the Installments section lists the coming months with their committed amount in
+// What this covers, in both locales: the Installments section (in the Bills view) lists the coming months with their committed amount in
 // BRL and no percentage until a Monthly income is set; setting the income shows the share (also above 100%, with no
 // alarm word, icon or exclamation mark); clearing it takes the shares away; a month opens to its components; a
-// bad income gets a message; and no installments is said calmly. At 320px with the root font at 200% nothing
+// bad income gets a message; and no installments is said calmly. The Monthly income field is in the Settings view. At 320px with the root font at 200% nothing
 // overflows sideways. The 320px runs also save the screenshots for the pull request description.
 
 const LOCALES = [
@@ -16,6 +16,8 @@ const LOCALES = [
     locale: "pt-BR",
     file: "pt-BR",
     heading: "Parcelamentos",
+    bills: "Contas",
+    settings: "Ajustes",
     income: "Renda mensal",
     save: "Salvar",
     clear: "Remover",
@@ -35,6 +37,8 @@ const LOCALES = [
     locale: "en-US",
     file: "en",
     heading: "Installments",
+    bills: "Bills",
+    settings: "Settings",
     income: "Monthly income",
     save: "Save",
     clear: "Clear",
@@ -85,6 +89,14 @@ const connected = (withMonths: boolean) => {
 
 const section = (page: Page, heading: string) => page.getByRole("region", { name: heading, exact: true });
 
+/** Opens a Finances view and returns its panel. */
+async function view(page: Page, name: string) {
+  await page.getByRole("tab", { name }).click();
+  return page.getByRole("tabpanel", { name });
+}
+/** The income form alone: the Settings view has other forms with their own alerts. */
+const income = (page: Page) => page.locator("form").filter({ has: page.getByLabel(/^(Renda mensal|Monthly income)$/) });
+
 for (const l of LOCALES) {
   test.describe(l.locale, () => {
     test.use({ locale: l.locale, viewport: { width: 390, height: 844 } });
@@ -95,41 +107,52 @@ for (const l of LOCALES) {
       await visit(page, new URL("/finances", baseURL!).toString());
     });
 
+    const installments = async (page: Page) => {
+      await view(page, l.bills);
+      return section(page, l.heading);
+    };
+
     test.describe("with installments", () => {
       test.use({ fakeState: connected(true) });
 
       test("without income shows amounts only, and the income field is not required", async ({ page }) => {
-        const s = section(page, l.heading);
+        const s = await installments(page);
         await expect(s.getByText(l.dec)).toBeVisible();
         await expect(s.getByText(l.jan)).toBeVisible();
         await expect(s.getByText(l.sharePattern)).toHaveCount(0);
-        await expect(s.getByRole("button", { name: l.clear })).toHaveCount(0);
-        await expect(s.getByLabel(l.income)).toHaveValue("");
+        await view(page, l.settings);
+        await expect(income(page).getByRole("button", { name: l.clear })).toHaveCount(0);
+        await expect(page.getByLabel(l.income)).toHaveValue("");
       });
 
       test("setting an income shows the shares, above 100% too, without alarm; clearing removes them", async ({ page }) => {
-        const s = section(page, l.heading);
-        await s.getByLabel(l.income).fill(l.typed.high);
-        await s.getByRole("button", { name: l.save }).click();
+        await view(page, l.settings);
+        await page.getByLabel(l.income).fill(l.typed.high);
+        await income(page).getByRole("button", { name: l.save }).click();
+        await expect(page.getByLabel(l.income)).toHaveValue(l.typed.high);
+        await expect(income(page).getByRole("alert")).toBeEmpty();
+        let s = await installments(page);
         await expect(s.getByText(l.pct(145))).toBeVisible();
         await expect(s.getByText(l.pct(95))).toBeVisible();
-        await expect(s.getByLabel(l.income)).toHaveValue(l.typed.high);
         expect(await s.innerText()).not.toContain("!");
         await expect(s.locator("svg.lucide-triangle-alert, svg.lucide-circle-alert")).toHaveCount(0);
-        await expect(s.getByRole("alert")).toBeEmpty();
 
-        await s.getByLabel(l.income).fill(l.typed.low);
-        await s.getByRole("button", { name: l.save }).click();
+        await view(page, l.settings);
+        await page.getByLabel(l.income).fill(l.typed.low);
+        await income(page).getByRole("button", { name: l.save }).click();
+        s = await installments(page);
         await expect(s.getByText(l.pct(17))).toBeVisible();
 
-        await s.getByRole("button", { name: l.clear }).click();
+        await view(page, l.settings);
+        await income(page).getByRole("button", { name: l.clear }).click();
+        await expect(page.getByLabel(l.income)).toHaveValue("");
+        s = await installments(page);
         await expect(s.getByText(l.sharePattern)).toHaveCount(0);
-        await expect(s.getByLabel(l.income)).toHaveValue("");
         await expect(s.getByText(l.dec)).toBeVisible();
       });
 
       test("opening a month shows its installments and Bills", async ({ page }) => {
-        const s = section(page, l.heading);
+        const s = await installments(page);
         const month = s.getByRole("button", { name: l.december });
         await expect(month).toHaveAttribute("aria-expanded", "false");
         await month.click();
@@ -138,16 +161,17 @@ for (const l of LOCALES) {
       });
 
       test("an income that is empty, zero or not a number is explained and not sent", async ({ page, fakeApi }) => {
-        const s = section(page, l.heading);
-        const save = s.getByRole("button", { name: l.save });
+        await view(page, l.settings);
+        const form = income(page);
+        const save = form.getByRole("button", { name: l.save });
         await save.click();
-        await expect(s.getByRole("alert")).toHaveText(l.problems.empty);
-        await s.getByLabel(l.income).fill("0");
+        await expect(form.getByRole("alert")).toHaveText(l.problems.empty);
+        await page.getByLabel(l.income).fill("0");
         await save.click();
-        await expect(s.getByRole("alert")).toHaveText(l.problems.zero);
-        await s.getByLabel(l.income).fill("abc");
+        await expect(form.getByRole("alert")).toHaveText(l.problems.zero);
+        await page.getByLabel(l.income).fill("abc");
         await save.click();
-        await expect(s.getByRole("alert")).toHaveText(l.problems.junk);
+        await expect(form.getByRole("alert")).toHaveText(l.problems.junk);
         expect(fakeApi.requests.filter((r) => r.path === "/me/finance/income")).toEqual([]);
       });
     });
@@ -156,9 +180,10 @@ for (const l of LOCALES) {
       test.use({ fakeState: connected(false) });
 
       test("says so calmly and still offers the income", async ({ page }) => {
-        const s = section(page, l.heading);
+        const s = await installments(page);
         await expect(s.getByText(l.empty)).toBeVisible();
-        await expect(s.getByLabel(l.income)).toBeVisible();
+        await view(page, l.settings);
+        await expect(page.getByLabel(l.income)).toBeVisible();
       });
     });
 
@@ -170,9 +195,11 @@ for (const l of LOCALES) {
           document.addEventListener("DOMContentLoaded", () => (document.documentElement.style.fontSize = "200%"));
         });
         await page.reload();
-        const s = section(page, l.heading);
-        await s.getByLabel(l.income).fill(l.typed.high);
-        await s.getByRole("button", { name: l.save }).click();
+        await view(page, l.settings);
+        await page.getByLabel(l.income).fill(l.typed.high);
+        await income(page).getByRole("button", { name: l.save }).click();
+        await expect(page.getByLabel(l.income)).toHaveValue(l.typed.high);
+        const s = await installments(page);
         await s.getByRole("button", { name: l.december }).click();
         await expect(s.getByText(l.fridge)).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
