@@ -7,6 +7,7 @@ import { SkeletonBar } from "../../../shared/ui/Skeleton";
 import { useFinance } from "../hooks/useFinance";
 import { BankSources } from "./BankSources";
 import { BillsSection } from "./BillsSection";
+import { ChartPreview } from "./charts/ChartPreview";
 import { Commitments, MonthlyIncome } from "./Commitments";
 import { CredentialsForm } from "./CredentialsForm";
 import { DeleteFinanceData } from "./DeleteFinanceData";
@@ -21,6 +22,7 @@ export function FinancesTab() {
   return (
     <PageLoading message={t("finances.loading")}>
       <PageHeader title={t("finances.title")} />
+      {import.meta.env.DEV && <ChartPreview />}
       <FinancesBody />
     </PageLoading>
   );
