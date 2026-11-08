@@ -6,6 +6,7 @@ import { PageLoading, useReportFetching, useReportFirstLoad } from "../../../sha
 import { SkeletonBar } from "../../../shared/ui/Skeleton";
 import { useFinance } from "../hooks/useFinance";
 import { BankSources } from "./BankSources";
+import { Commitments } from "./Commitments";
 import { CredentialsForm } from "./CredentialsForm";
 import { DeleteFinanceData } from "./DeleteFinanceData";
 import { MonthSpending } from "./MonthSpending";
@@ -58,6 +59,7 @@ function FinancesBody() {
   return (
     <div className="flex flex-col gap-4">
       {status.sources.length > 0 && <MonthSpending />}
+      {status.sources.length > 0 && <Commitments />}
       {!status.configured && (
         <>
           <p className="my-0">{t("finances.empty")}</p>

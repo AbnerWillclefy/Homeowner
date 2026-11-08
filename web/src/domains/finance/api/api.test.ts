@@ -5,8 +5,10 @@ import {
   deleteCredentials,
   deleteFinanceData,
   getFinanceStatus,
+  getCommitments,
   getMonth,
   patchTransaction,
+  putIncome,
   putCredentials,
   registerItem,
 } from "./api";
@@ -174,6 +176,34 @@ describe("getMonth", () => {
   it("is an error for a body it cannot read", async () => {
     stubFetch(Response.json({ ...MONTH, transactions: [{ id: 1 }] }));
     expect(await getMonth("2026-11")).toEqual({ kind: "error" });
+  });
+});
+
+describe("commitments", () => {
+  const COMMITMENTS = {
+    monthlyIncomeCents: null,
+    months: [{ month: "2026-12", committedCents: 87000, installments: [{ name: "Geladeira", number: 4, total: 10, amountCents: 45000 }], bills: [] }],
+  };
+
+  it("reads GET /me/finance/commitments?from=, with no percentage when there is no income", async () => {
+    const fetch = stubFetch(Response.json(COMMITMENTS));
+    expect(await getCommitments("2026-11")).toEqual({ kind: "ok", commitments: COMMITMENTS });
+    expect(fetch.mock.calls[0]![0]).toBe("http://api.test/me/finance/commitments?from=2026-11");
+  });
+
+  it("is an error for a body it cannot read", async () => {
+    stubFetch(Response.json({ monthlyIncomeCents: "x", months: [] }));
+    expect(await getCommitments("2026-11")).toEqual({ kind: "error" });
+  });
+
+  it("puts the income, or null to clear it", async () => {
+    const fetch = stubFetch(new Response(null, { status: 204 }));
+    expect(await putIncome(500000)).toEqual({ kind: "ok" });
+    expect(await putIncome(null)).toEqual({ kind: "ok" });
+    const [url, init] = fetch.mock.calls[0]!;
+    expect(`${init?.method} ${url}`).toBe("PUT http://api.test/me/finance/income");
+    expect(JSON.parse(String(init?.body))).toEqual({ monthlyIncomeCents: 500000 });
+    expect(JSON.parse(String(fetch.mock.calls[1]![1]?.body))).toEqual({ monthlyIncomeCents: null });
   });
 });
 

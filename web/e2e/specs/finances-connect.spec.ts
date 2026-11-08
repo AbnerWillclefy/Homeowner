@@ -194,7 +194,8 @@ for (const l of LOCALES) {
         fakeApi.override("POST /me/finance/connect-token", { status: 422, body: { error: "pluggy_credentials_rejected" } });
         await visit(page, new URL("/finances", baseURL!).toString());
         await page.getByRole("button", { name: l.connect }).click();
-        await expect(page.getByRole("alert")).toContainText(l.rejected);
+        // Every form keeps its own empty live region in the page, so pick the one that has the message.
+        await expect(page.getByRole("alert").filter({ hasText: l.rejected })).toBeVisible();
         expect(pluggyCdn.requests).toEqual([]);
       });
 
