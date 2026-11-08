@@ -37,7 +37,7 @@ func (s *Store) MonthBills(ctx context.Context, userID string, month time.Time) 
 	rows, err := s.db.Query(ctx, `
 		SELECT b.id, b.name, b.expected_cents, b.due_day, p.paid_by
 		FROM finance_bills b
-		LEFT JOIN finance_bill_payments p ON p.bill_id = b.id AND p.month = $2
+		LEFT JOIN finance_bill_payments p ON p.bill_id = b.id AND p.month = $2 AND p.undone_at IS NULL
 		WHERE b.user_id = $1 ORDER BY b.due_day, b.name, b.id`, userID, month)
 	if err != nil {
 		return nil, err
@@ -56,13 +56,18 @@ func (s *Store) MonthBills(ctx context.Context, userID string, month time.Time) 
 }
 
 // PayBillByHand marks the month paid; an existing payment, bank or hand, is
-// kept. found is false when the Bill is not the User's.
+// kept, except an undone one, which becomes a hand payment. found is false when
+// the Bill is not the User's.
 func (s *Store) PayBillByHand(ctx context.Context, userID, id string, month, now time.Time) (bool, error) {
 	var got string
 	err := s.db.QueryRow(ctx, `
 		INSERT INTO finance_bill_payments (bill_id, user_id, month, paid_by, paid_at)
 		SELECT id, user_id, $3, 'hand', $4 FROM finance_bills WHERE id = $1 AND user_id = $2
-		ON CONFLICT (bill_id, month) DO UPDATE SET paid_at = finance_bill_payments.paid_at
+		ON CONFLICT (bill_id, month) DO UPDATE SET
+			paid_by = CASE WHEN finance_bill_payments.undone_at IS NULL THEN finance_bill_payments.paid_by ELSE 'hand' END,
+			transaction_id = CASE WHEN finance_bill_payments.undone_at IS NULL THEN finance_bill_payments.transaction_id END,
+			paid_at = CASE WHEN finance_bill_payments.undone_at IS NULL THEN finance_bill_payments.paid_at ELSE EXCLUDED.paid_at END,
+			undone_at = NULL
 		RETURNING bill_id`, id, userID, month, now).Scan(&got)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
@@ -70,14 +75,92 @@ func (s *Store) PayBillByHand(ctx context.Context, userID, id string, month, now
 	return err == nil, err
 }
 
-// UnpayBill deletes the month payment; found is false when the Bill is not the
-// User's. The time is unused, so it fits the same handler as PayBillByHand.
-func (s *Store) UnpayBill(ctx context.Context, userID, id string, month, _ time.Time) (bool, error) {
+// PayBillsFromBank pays the User's Bills from the Expenses posted in [from, to)
+// that no payment links yet. The payment rows already there, undone ones
+// included, are never paid again, and the two unique keys make a repeated run
+// insert nothing.
+func (s *Store) PayBillsFromBank(ctx context.Context, userID string, from, to, now time.Time) error {
+	var bills []Bill
+	rows, err := s.db.Query(ctx, `SELECT id, name, expected_cents FROM finance_bills WHERE user_id = $1`, userID)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var b Bill
+		if err := rows.Scan(&b.ID, &b.Name, &b.ExpectedCents); err != nil {
+			rows.Close()
+			return err
+		}
+		bills = append(bills, b)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil || len(bills) == 0 {
+		return err
+	}
+	taken := map[billMonth]bool{}
+	rows, err = s.db.Query(ctx, `SELECT bill_id, month FROM finance_bill_payments WHERE user_id = $1`, userID)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var k billMonth
+		if err := rows.Scan(&k.BillID, &k.Month); err != nil {
+			rows.Close()
+			return err
+		}
+		taken[k] = true
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	var txns []Txn
+	rows, err = s.db.Query(ctx, `
+		SELECT t.id, t.description, t.posted_on, t.amount_cents, t.type FROM finance_transactions t
+		WHERE t.user_id = $1 AND t.type = 'expense' AND t.posted_on >= $2 AND t.posted_on < $3
+		  AND NOT EXISTS (SELECT 1 FROM finance_bill_payments p WHERE p.transaction_id = t.id)`, userID, from, to)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var t Txn
+		if err := rows.Scan(&t.ID, &t.Description, &t.PostedOn, &t.AmountCents, &t.Type); err != nil {
+			rows.Close()
+			return err
+		}
+		txns = append(txns, t)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	matches := MatchBills(bills, txns, taken)
+	if len(matches) == 0 {
+		return nil
+	}
+	billIDs, months, txnIDs := make([]string, len(matches)), make([]time.Time, len(matches)), make([]string, len(matches))
+	for i, m := range matches {
+		billIDs[i], months[i], txnIDs[i] = m.BillID, m.Month, m.TxnID
+	}
+	_, err = s.db.Exec(ctx, `
+		INSERT INTO finance_bill_payments (bill_id, user_id, month, paid_by, transaction_id, paid_at)
+		SELECT m.bill_id, $1, m.month, 'bank', m.transaction_id, $5
+		FROM unnest($2::uuid[], $3::date[], $4::uuid[]) AS m (bill_id, month, transaction_id)
+		ON CONFLICT DO NOTHING`, userID, billIDs, months, txnIDs, now)
+	return err
+}
+
+// UnpayBill undoes the month payment: a hand one is deleted, a bank one stays
+// as a tombstone (undone_at) so the matcher never pays that month again. found
+// is false when the Bill is not the User's.
+func (s *Store) UnpayBill(ctx context.Context, userID, id string, month, now time.Time) (bool, error) {
 	var got string
 	err := s.db.QueryRow(ctx, `
 		WITH b AS (SELECT id FROM finance_bills WHERE id = $1 AND user_id = $2),
-		     d AS (DELETE FROM finance_bill_payments WHERE bill_id IN (SELECT id FROM b) AND month = $3)
-		SELECT id FROM b`, id, userID, month).Scan(&got)
+		     d AS (DELETE FROM finance_bill_payments WHERE bill_id IN (SELECT id FROM b) AND month = $3 AND paid_by = 'hand'),
+		     u AS (UPDATE finance_bill_payments SET undone_at = COALESCE(undone_at, $4)
+		           WHERE bill_id IN (SELECT id FROM b) AND month = $3 AND paid_by = 'bank')
+		SELECT id FROM b`, id, userID, month, now).Scan(&got)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}

@@ -1,6 +1,7 @@
 import type { AxiosRequestConfig } from "axios";
 import type { SpendingCategory } from "../logic/spendingCategories";
 import { authedRequest, errorCode } from "../../auth/api/client";
+import { parseFields, type FieldCodes } from "../../../shared/api/fieldErrors";
 
 export interface FinanceSource {
   id: string;
@@ -253,3 +254,74 @@ export const patchTransaction = (
   edit: { type?: TransactionType; spendingCategory?: SpendingCategory },
 ): Promise<WriteResult> =>
   call({ url: `/me/finance/transactions/${encodeURIComponent(id)}`, method: "PATCH", data: edit }, 200, nothing);
+
+/** One Bill in one month, as `GET /me/finance/bills` lists it. `paidBy` is null while unpaid. */
+export interface Bill {
+  id: string;
+  name: string;
+  expectedCents: number;
+  /** 1 to 31; 31 means the last day of a shorter month. */
+  dueDay: number;
+  /** `YYYY-MM-DD`, the due day in the month asked for. */
+  dueDate: string;
+  paid: boolean;
+  paidBy?: "hand" | "bank" | null;
+}
+
+export interface BillInput {
+  name: string;
+  expectedCents: number;
+  dueDay: number;
+}
+
+export type BillsResult = { kind: "ok"; bills: Bill[] } | Failure;
+/** A 400 carries the codes per field, which the form shows beside each field. */
+export type SaveBillResult = WriteResult | { kind: "fields"; fields: FieldCodes };
+
+function parseBills(body: unknown): Bill[] | null {
+  if (!Array.isArray(body)) return null;
+  const valid = body.every(
+    (b) =>
+      isObject(b) &&
+      typeof b.id === "string" &&
+      typeof b.name === "string" &&
+      typeof b.expectedCents === "number" &&
+      typeof b.dueDay === "number" &&
+      typeof b.dueDate === "string" &&
+      typeof b.paid === "boolean" &&
+      (b.paidBy === undefined || b.paidBy === null || b.paidBy === "hand" || b.paidBy === "bank"),
+  );
+  return valid ? (body as Bill[]) : null;
+}
+
+/** `GET /me/finance/bills?month=YYYY-MM`. */
+export const getBills = (month: string): Promise<BillsResult> =>
+  call({ url: "/me/finance/bills", params: { month } }, 200, (data) => {
+    const bills = parseBills(data);
+    return bills && { bills };
+  }) as Promise<BillsResult>;
+
+/** `POST /me/finance/bills`, or `PUT /{id}` when `id` is given. */
+export async function saveBill(id: string | null, input: BillInput): Promise<SaveBillResult> {
+  try {
+    const result = await authedRequest({
+      url: id ? `/me/finance/bills/${encodeURIComponent(id)}` : "/me/finance/bills",
+      method: id ? "PUT" : "POST",
+      data: input,
+    });
+    if (result.kind === "not-signed-in") return result;
+    const { response } = result;
+    if (response.status === (id ? 200 : 201)) return { kind: "ok" };
+    const fields = response.status === 400 ? parseFields(response) : null;
+    return fields ? { kind: "fields", fields } : { kind: failureOf(response.status, errorCode(response)) };
+  } catch {
+    return { kind: "offline" };
+  }
+}
+
+export const deleteBill = (id: string): Promise<WriteResult> =>
+  call({ url: `/me/finance/bills/${encodeURIComponent(id)}`, method: "DELETE" }, 204, nothing);
+
+/** Marks the Bill paid by hand in `month`, or takes the mark off. */
+export const setBillPaid = (id: string, month: string, paid: boolean): Promise<WriteResult> =>
+  call({ url: `/me/finance/bills/${encodeURIComponent(id)}/payments/${month}`, method: paid ? "PUT" : "DELETE" }, 204, nothing);

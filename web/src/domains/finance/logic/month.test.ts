@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { addMonths, currentMonth, formatDay, monthLabel, monthName } from "./month";
+import { addMonths, currentDay, currentMonth, formatDay, monthLabel, monthName } from "./month";
 
 describe("monthName", () => {
   it("is the month alone, in the locale", () => {
     expect(monthName("2026-10", "pt-BR")).toBe("outubro");
     expect(monthName("2026-10", "en-US")).toBe("October");
+  });
+});
+
+describe("currentDay", () => {
+  it("is the device's calendar day, padded", () => {
+    expect(currentDay(new Date(2026, 10, 8))).toBe("2026-11-08");
   });
 });
 

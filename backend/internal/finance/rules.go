@@ -84,9 +84,11 @@ var billPayments = []string{"PAGAMENTO FATURA", "PAGAMENTO RECEBIDO"}
 // Txn is the part of a Transaction the rules read and decide.
 type Txn struct {
 	ID, SourceID, Currency, MerchantKey string
-	PostedOn                            time.Time
-	AmountCents                         int64
-	Type, TypeSetBy                     string
+	// Description is the raw text, read only by MatchBills.
+	Description     string
+	PostedOn        time.Time
+	AmountCents     int64
+	Type, TypeSetBy string
 	// Category is the spending category, empty unless Type is expense.
 	Category, CategorySetBy string
 }
@@ -260,5 +262,83 @@ func MonthTotals(txns []Txn) Totals {
 			out.ByCategory[t.Category] -= t.AmountCents
 		}
 	}
+	return out
+}
+
+// Bill is the part of a Bill the matcher reads.
+type Bill struct {
+	ID, Name      string
+	ExpectedCents int64
+}
+
+// billMonth is one Bill in one month (the first day, UTC): the key of a payment.
+type billMonth struct {
+	BillID string
+	Month  time.Time
+}
+
+// Match says a Transaction pays a Bill for the month of its posted_on.
+type Match struct {
+	BillID, TxnID string
+	Month         time.Time
+}
+
+// minBillName keeps a two-letter name such as "Gá" from matching everything.
+const minBillName = 3
+
+// fold is uppercase with accents folded and spaces collapsed.
+func fold(s string) string {
+	return strings.Join(strings.Fields(accents.Replace(strings.ToUpper(s))), " ")
+}
+
+// MatchBills pairs Expenses with the Bills they pay. A Bill matches a
+// Transaction posted in the Bill's month when its folded name is contained in
+// the folded description and -amount equals the expected amount exactly. A
+// Transaction pays one Bill: the longest name, then the lowest id. A Bill-month
+// takes one Transaction: the earliest, then the lowest id. A Bill-month in
+// taken (paid by hand, by the bank, or undone) is skipped. Matches come ordered
+// by month, then Bill id.
+//
+// shortcut: a Bill paid early, in the month before its Transaction posts, does
+// not match; when that hurts, widen the month by the Bill's due day.
+func MatchBills(bills []Bill, txns []Txn, taken map[billMonth]bool) []Match {
+	txns = slices.Clone(txns)
+	slices.SortFunc(txns, func(a, b Txn) int { return cmp.Or(a.PostedOn.Compare(b.PostedOn), cmp.Compare(a.ID, b.ID)) })
+	names := make([]string, len(bills))
+	for i, b := range bills {
+		names[i] = fold(b.Name)
+	}
+	won := map[billMonth]Match{}
+	for _, t := range txns {
+		if t.Type != "expense" {
+			continue
+		}
+		desc := fold(t.Description)
+		month := time.Date(t.PostedOn.Year(), t.PostedOn.Month(), 1, 0, 0, 0, 0, time.UTC)
+		best := -1
+		for i, b := range bills {
+			if len(names[i]) < minBillName || b.ExpectedCents != -t.AmountCents || !strings.Contains(desc, names[i]) {
+				continue
+			}
+			if best < 0 || cmp.Or(cmp.Compare(len(names[i]), len(names[best])), cmp.Compare(bills[best].ID, b.ID)) > 0 {
+				best = i
+			}
+		}
+		if best < 0 {
+			continue
+		}
+		k := billMonth{bills[best].ID, month}
+		if taken[k] { // the best Bill is spoken for: do not fall through to a shorter name
+			continue
+		}
+		if _, done := won[k]; !done {
+			won[k] = Match{k.BillID, t.ID, month}
+		}
+	}
+	var out []Match
+	for _, m := range won {
+		out = append(out, m)
+	}
+	slices.SortFunc(out, func(a, b Match) int { return cmp.Or(a.Month.Compare(b.Month), cmp.Compare(a.BillID, b.BillID)) })
 	return out
 }

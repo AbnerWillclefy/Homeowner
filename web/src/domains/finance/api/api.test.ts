@@ -3,7 +3,9 @@ import { SESSION_KEY } from "../../auth/logic/session";
 import {
   createConnectToken,
   deleteCredentials,
+  deleteBill,
   deleteFinanceData,
+  getBills,
   getFinanceStatus,
   getCommitments,
   getMonth,
@@ -12,6 +14,8 @@ import {
   putIncome,
   putCredentials,
   registerItem,
+  saveBill,
+  setBillPaid,
 } from "./api";
 
 function stubStorage(signedIn: boolean) {
@@ -241,5 +245,72 @@ describe("patchTransaction", () => {
     expect(await patchTransaction("t1", { type: "income" })).toEqual({ kind: "not-found" });
     stubFetch(Response.json({ error: "x" }, { status: 400 }));
     expect(await patchTransaction("t1", { spendingCategory: "pets" })).toEqual({ kind: "invalid" });
+  });
+});
+
+const BILL = { id: "b1", name: "Luz", expectedCents: 15000, dueDay: 10, dueDate: "2030-01-10", paid: false, paidBy: null };
+const INPUT = { name: "Luz", expectedCents: 15000, dueDay: 10 };
+
+describe("getBills", () => {
+  it("reads the list for the month", async () => {
+    const fetch = stubFetch(Response.json([BILL]));
+    expect(await getBills("2030-01")).toEqual({ kind: "ok", bills: [BILL] });
+    expect(fetch.mock.calls[0]![0]).toBe("http://api.test/me/finance/bills?month=2030-01");
+  });
+
+  it("is an error for a bill it cannot read", async () => {
+    stubFetch(Response.json([{ ...BILL, paidBy: "other" }]));
+    expect(await getBills("2030-01")).toEqual({ kind: "error" });
+  });
+});
+
+describe("saveBill", () => {
+  it("posts a new bill and expects 201", async () => {
+    const fetch = stubFetch(Response.json(BILL, { status: 201 }));
+    expect(await saveBill(null, INPUT)).toEqual({ kind: "ok" });
+    const [url, init] = fetch.mock.calls[0]!;
+    expect(`${init?.method} ${url}`).toBe("POST http://api.test/me/finance/bills");
+  });
+
+  it("puts an existing bill and expects 200, not 201", async () => {
+    const fetch = stubFetch(Response.json(BILL));
+    expect(await saveBill("b1", INPUT)).toEqual({ kind: "ok" });
+    const [url, init] = fetch.mock.calls[0]!;
+    expect(`${init?.method} ${url}`).toBe("PUT http://api.test/me/finance/bills/b1");
+    stubFetch(Response.json(BILL, { status: 201 }));
+    expect(await saveBill("b1", INPUT)).not.toEqual({ kind: "ok" });
+  });
+
+  it("hands field codes to the form on a 400", async () => {
+    stubFetch(Response.json({ fields: { name: "invalid" } }, { status: 400 }));
+    expect(await saveBill(null, INPUT)).toEqual({ kind: "fields", fields: { name: "invalid" } });
+  });
+
+  it("names the other failures", async () => {
+    stubFetch(Response.json({ error: "x" }, { status: 400 }));
+    expect(await saveBill(null, INPUT)).toEqual({ kind: "invalid" });
+    stubFetch(Response.json({ error: "not found" }, { status: 404 }));
+    expect(await saveBill("b1", INPUT)).toEqual({ kind: "not-found" });
+    stubFetch(new Error("down"));
+    expect(await saveBill(null, INPUT)).toEqual({ kind: "offline" });
+  });
+});
+
+describe("deleteBill and setBillPaid", () => {
+  it("deletes a bill", async () => {
+    const fetch = stubFetch(new Response(null, { status: 204 }));
+    expect(await deleteBill("b1")).toEqual({ kind: "ok" });
+    expect(`${fetch.mock.calls[0]![1]?.method} ${fetch.mock.calls[0]![0]}`).toBe("DELETE http://api.test/me/finance/bills/b1");
+  });
+
+  it("marks paid with PUT and unmarks with DELETE", async () => {
+    const fetch = stubFetch(new Response(null, { status: 204 }));
+    expect(await setBillPaid("b1", "2030-01", true)).toEqual({ kind: "ok" });
+    expect(await setBillPaid("b1", "2030-01", false)).toEqual({ kind: "ok" });
+    const calls = fetch.mock.calls.map(([u, i]) => `${i?.method} ${u}`);
+    expect(calls).toEqual([
+      "PUT http://api.test/me/finance/bills/b1/payments/2030-01",
+      "DELETE http://api.test/me/finance/bills/b1/payments/2030-01",
+    ]);
   });
 });
