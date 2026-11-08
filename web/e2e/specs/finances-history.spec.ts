@@ -10,8 +10,8 @@ import { visit } from "../pages/launch";
 // Transactions still list.
 
 const LOCALES = [
-  { locale: "pt-BR", groceries: "Mercado", leisure: "Lazer", heading: "Últimos 6 meses", mark: "este mês", empty: "Sem gastos nesta categoria nos últimos 6 meses", failed: "Não conseguimos carregar o histórico.", retry: "Tentar novamente", year: "julho de 2026", plain: "novembro" },
-  { locale: "en-US", groceries: "Groceries", leisure: "Leisure", heading: "Last 6 months", mark: "this month", empty: "No spending in this category in the last 6 months", failed: "We could not load the history.", retry: "Try again", year: "July 2026", plain: "November" },
+  { locale: "pt-BR", groceries: "Mercado", leisure: "Lazer", heading: "Últimos 6 meses", mark: "este mês", empty: "Sem gastos nesta categoria nos últimos 6 meses", failed: "Não conseguimos carregar o histórico.", retry: "Tentar novamente", year: "julho de 2026", plain: "novembro", prev: "Mês anterior", picked: "mês escolhido", january: "janeiro de 2027" },
+  { locale: "en-US", groceries: "Groceries", leisure: "Leisure", heading: "Last 6 months", mark: "this month", empty: "No spending in this category in the last 6 months", failed: "We could not load the history.", retry: "Try again", year: "July 2026", plain: "November", prev: "Previous month", picked: "chosen month", january: "January 2027" },
 ] as const;
 
 const row = (id: string, postedOn: string, description: string, amountCents: number, spendingCategory: string) => ({
@@ -31,6 +31,7 @@ const connected = () => {
       row("d2", "2026-12-10", "Cinema", -12000, "leisure"),
       row("n1", "2026-11-05", "Mercado do mês passado", -69200, "groceries"),
       row("a1", "2026-08-05", "Mercado de agosto", -30000, "groceries"),
+      row("f1", "2027-02-05", "Mercado de fevereiro", -10000, "groceries"),
     ],
   };
   return s;
@@ -69,6 +70,24 @@ for (const l of LOCALES) {
       await leisure.click();
       await expect(page.locator(`#${await leisure.getAttribute("aria-controls")}`).getByText(l.heading)).toBeVisible();
       expect(reads()).toBe(1);
+    });
+
+    test("marks a past month as the chosen one, not as this month", async ({ page }) => {
+      await page.getByRole("button", { name: l.prev, exact: true }).click();
+      const groceries = page.getByRole("button", { name: l.groceries, exact: true });
+      await groceries.click();
+      const body = page.locator(`#${await groceries.getAttribute("aria-controls")}`);
+      await expect(body.getByText(l.picked)).toHaveCount(1);
+      await expect(body.getByText(l.mark)).toHaveCount(0);
+    });
+
+    test("shows the year again where the six months cross into a new one", async ({ page, baseURL }) => {
+      await page.clock.setFixedTime(new Date("2027-02-15T12:00:00-03:00"));
+      await visit(page, new URL("/finances", baseURL!).toString());
+      await page.getByRole("tab", { name: /^(Gastos|Spending)$/ }).click();
+      const groceries = page.getByRole("button", { name: l.groceries, exact: true });
+      await groceries.click();
+      await expect(page.locator(`#${await groceries.getAttribute("aria-controls")}`)).toContainText(l.january);
     });
 
     test("says so when the category had no spending in six months", async ({ page, baseURL }) => {
