@@ -6,7 +6,8 @@ import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLo
 import { SkeletonBar } from "../../../shared/ui/Skeleton";
 import { StatTile } from "../../../shared/ui/StatTile";
 import type { Transaction } from "../api/api";
-import { useMonth, type EditOutcome } from "../hooks/useMonth";
+import { useHistory } from "../hooks/useHistory";
+import { useMonth,type EditOutcome } from "../hooks/useMonth";
 import { difference } from "../logic/difference";
 import { formatCents } from "../logic/money";
 import { addMonths, currentMonth, monthLabel, monthName } from "../logic/month";
@@ -30,6 +31,7 @@ export function Spending() {
   const previousMonth = addMonths(month, -1);
   const { state, refreshing, reload, edit } = useMonth(month);
   const previous = useMonth(previousMonth);
+  const history = useHistory(month); // once for every category: opening one slices it, never reads again
   const skeleton = useReportFirstLoad(state.kind === "loading");
   useReportFetching(refreshing || previous.refreshing);
   const [editing, setEditing] = useState<Transaction | null>(null);
@@ -137,6 +139,9 @@ export function Spending() {
                           : undefined
                       }
                       transactions={groups.get(r.category) ?? []}
+                      history={history}
+                      month={month}
+                      thisMonth={thisMonth}
                       onEdit={setEditing}
                     />
                   ))}
