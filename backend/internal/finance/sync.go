@@ -78,6 +78,7 @@ func (s *Syncer) Run(ctx context.Context, now time.Time) (Summary, error) {
 	today := postedOn(now)
 	keys := map[string]string{} // one Auth per User
 	failedAuth := map[string]error{}
+	synced := map[string]bool{} // Users with an Item finished this run
 	for i, it := range items {
 		if i > 0 && time.Until(deadline) < reserve {
 			break
@@ -100,8 +101,17 @@ func (s *Syncer) Run(ctx context.Context, now time.Time) (Summary, error) {
 			s.log.Error("finance sync failed", "user", it.UserID, "step", "transactions", "error", safeErr(err))
 		case finished:
 			sum.Synced++
+			synced[it.UserID] = true
 		default:
 			sum.Partial++
+		}
+	}
+	// Bills are paid from the fresh rows before anything reads them (reminders).
+	// A failure is logged; the next run matches again.
+	from := time.Date(today.Year(), today.Month()-1, 1, 0, 0, 0, 0, time.UTC) // the previous and the current month
+	for userID := range synced {
+		if err := s.store.PayBillsFromBank(ctx, userID, from, from.AddDate(0, 2, 0), now); err != nil {
+			s.log.Error("finance sync failed", "user", userID, "step", "bills", "error", safeErr(err))
 		}
 	}
 	// After the imports, and for every User with a fallback Expense, not only
