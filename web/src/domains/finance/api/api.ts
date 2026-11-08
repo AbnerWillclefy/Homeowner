@@ -182,6 +182,42 @@ export const getMonth = (month: string): Promise<MonthResult> =>
     return parsed && { month: parsed };
   }) as Promise<MonthResult>;
 
+export interface HistoryMonth {
+  month: string;
+  spentCents: number;
+  categories: { category: SpendingCategory; spentCents: number }[];
+}
+
+export interface History {
+  to: string;
+  months: HistoryMonth[];
+}
+
+export type HistoryResult = { kind: "ok"; history: History } | Failure;
+
+const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+function parseHistory(body: unknown): History | null {
+  if (!isObject(body) || typeof body.to !== "string" || !Array.isArray(body.months)) return null;
+  const valid = body.months.every(
+    (m) =>
+      isObject(m) &&
+      typeof m.month === "string" &&
+      MONTH_PATTERN.test(m.month) &&
+      typeof m.spentCents === "number" &&
+      Array.isArray(m.categories) &&
+      m.categories.every((c) => isObject(c) && typeof c.category === "string" && typeof c.spentCents === "number"),
+  );
+  return valid ? (body as unknown as History) : null;
+}
+
+/** `GET /me/finance/history?to=YYYY-MM&months=N`, oldest month first. */
+export const getHistory = (to: string, months: number): Promise<HistoryResult> =>
+  call({ url: "/me/finance/history", params: { to, months } }, 200, (data) => {
+    const parsed = parseHistory(data);
+    return parsed && { history: parsed };
+  }) as Promise<HistoryResult>;
+
 export interface CommitmentMonth {
   month: string;
   committedCents: number;

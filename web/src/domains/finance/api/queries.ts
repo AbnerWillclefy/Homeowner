@@ -1,7 +1,7 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ApiFailure } from "../../../shared/query/ApiFailure";
 import { refetchUnlessSucceeded } from "../../../shared/query/queryClient";
-import { getBills, getCommitments, getFinanceStatus, getMonth, type Bill, type Commitments, type FinanceStatus, type MonthResponse } from "./api";
+import { getBills, getCommitments, getFinanceStatus, getHistory, getMonth, type Bill, type Commitments, type FinanceStatus, type History, type MonthResponse } from "./api";
 
 /** `GET /me/finance`. Under `["me"]`, so sign-out empties it; the finance views go under it too (web.md, Query keys). */
 export const financeStatusKey = ["me", "finance"] as const;
@@ -36,7 +36,26 @@ export const monthQuery = (month: string) =>
  * After a PATCH: the totals changed, and the server may refile the merchant's other Expenses in every month, so
  * each cached month is read again (last month's same-days markers would go stale otherwise).
  */
-export const invalidateMonth = (client: QueryClient) => client.invalidateQueries({ queryKey: ["me", "finance", "transactions"] });
+export const invalidateMonth = (client: QueryClient) =>
+  Promise.all([
+    client.invalidateQueries({ queryKey: ["me", "finance", "transactions"] }),
+    // A category PATCH moves spend between categories in past months too.
+    client.invalidateQueries({ queryKey: ["me", "finance", "history"] }),
+  ]);
+
+/** `GET /me/finance/history?to=&months=`: every parameter is in the key, under the status key so a delete removes it. */
+export const historyKey = (to: string, months: number) => ["me", "finance", "history", to, months] as const;
+
+export const historyQuery = (to: string, months: number) =>
+  queryOptions({
+    queryKey: historyKey(to, months),
+    queryFn: async (): Promise<History> => {
+      const result = await getHistory(to, months);
+      if (result.kind === "ok") return result.history;
+      throw new ApiFailure(result.kind === "offline" || result.kind === "not-signed-in" ? result.kind : "error");
+    },
+    refetchOnMount: refetchUnlessSucceeded,
+  });
 
 /** `GET /me/finance/bills?month=`, one entry per month, under the status key so a delete removes them too. */
 export const billsKey = (month: string) => ["me", "finance", "bills", month] as const;

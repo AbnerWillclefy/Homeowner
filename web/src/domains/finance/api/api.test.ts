@@ -8,6 +8,7 @@ import {
   getBills,
   getFinanceStatus,
   getCommitments,
+  getHistory,
   getMonth,
   patchTransaction,
   putIncome,
@@ -187,6 +188,21 @@ describe("getMonth", () => {
   it("is an error for a body it cannot read", async () => {
     stubFetch(Response.json({ ...MONTH, transactions: [{ id: 1 }] }));
     expect(await getMonth("2026-11")).toEqual({ kind: "error" });
+  });
+});
+
+describe("getHistory", () => {
+  const HISTORY = { to: "2026-11", months: [{ month: "2026-11", spentCents: 500, categories: [{ category: "groceries", spentCents: 500 }] }] };
+
+  it("reads GET /me/finance/history with to and months", async () => {
+    const fetch = stubFetch(Response.json(HISTORY));
+    expect(await getHistory("2026-11", 6)).toEqual({ kind: "ok", history: HISTORY });
+    expect(fetch.mock.calls[0]![0]).toBe("http://api.test/me/finance/history?to=2026-11&months=6");
+  });
+
+  it("is an error for a body it cannot read", async () => {
+    stubFetch(Response.json({ ...HISTORY, months: [{ month: "2026-13", spentCents: 0, categories: [] }] }));
+    expect(await getHistory("2026-11", 6)).toEqual({ kind: "error" });
   });
 });
 

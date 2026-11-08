@@ -5,6 +5,8 @@ import type { Transaction } from "../api/api";
 import { formatDay } from "../logic/month";
 import { groupByDay } from "../logic/sameDays";
 import { spendingKey, type SpendingCategory } from "../logic/spendingCategories";
+import type { useHistory } from "../hooks/useHistory";
+import { CategoryHistory } from "./CategoryHistory";
 import { Bar } from "./charts/Bar";
 import { TransactionRow } from "./TransactionRow";
 
@@ -19,6 +21,9 @@ export function CategoryBar({
   marker,
   note,
   transactions,
+  history,
+  month,
+  thisMonth,
   onEdit,
 }: {
   category: SpendingCategory;
@@ -28,6 +33,9 @@ export function CategoryBar({
   marker?: number | undefined;
   note?: string | undefined;
   transactions: Transaction[];
+  history: ReturnType<typeof useHistory>;
+  month: string;
+  thisMonth: string;
   onEdit(tx: Transaction): void;
 }) {
   const { t, locale } = useI18n();
@@ -62,6 +70,7 @@ export function CategoryBar({
         note={note}
       />
       <div id={`${id}-body`} hidden={!open} className="flex flex-col gap-1">
+        <CategoryHistory category={category} history={history} marked={month} thisMonth={thisMonth} />
         {days.map(({ day, transactions: rows }) => (
           <section key={day} className="flex flex-col">
             <h5 className="m-0 text-sm font-semibold text-muted">{formatDay(day, locale)}</h5>

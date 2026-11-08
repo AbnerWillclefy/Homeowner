@@ -83,6 +83,32 @@ export function financeHandlers(api: FakeApi): void {
     }),
   );
 
+  // The history, as `finance.Handler.History` answers: `months` months ending at `to`, oldest first, Expenses only.
+  api.on(
+    "GET /me/finance/history",
+    signedIn((request, state) => {
+      const to = request.url.searchParams.get("to") ?? "";
+      const count = Number(request.url.searchParams.get("months") ?? "6");
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(to)) return json(400, { error: "invalid month" });
+      if (!Number.isInteger(count) || count < 1 || count > 12) return json(400, { error: "invalid months" });
+      const [y, m] = to.split("-").map(Number) as [number, number];
+      const months = Array.from({ length: count }, (_, i) => {
+        const index = y * 12 + (m - 1) - (count - 1 - i);
+        const month = `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}`;
+        const byCategory = new Map<string, number>();
+        let spentCents = 0;
+        for (const t of finance(state).transactions ?? []) {
+          if (t.type !== "expense" || !t.postedOn.startsWith(`${month}-`)) continue;
+          spentCents -= t.amountCents;
+          const category = t.spendingCategory ?? "other";
+          byCategory.set(category, (byCategory.get(category) ?? 0) - t.amountCents);
+        }
+        return { month, spentCents, categories: [...byCategory].map(([category, cents]) => ({ category, spentCents: cents })) };
+      });
+      return json(200, { to, months });
+    }),
+  );
+
   // The committed months, with `percentOfIncome` only while an income is set, as the API answers.
   api.on(
     "GET /me/finance/commitments",
