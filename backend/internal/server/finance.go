@@ -33,6 +33,7 @@ func (s *server) requireFinance(allow finance.Allowlist, next http.Handler) http
 func financeMux(h *finance.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /me/finance", h.Status)
+	mux.HandleFunc("DELETE /me/finance", h.DeleteAll)
 	mux.HandleFunc("POST /me/finance/connect-token", h.ConnectToken)
 	mux.HandleFunc("POST /me/finance/items", h.ConnectItem)
 	mux.HandleFunc("PUT /me/finance/credentials", h.PutCredentials)

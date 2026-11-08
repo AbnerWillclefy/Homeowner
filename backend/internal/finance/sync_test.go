@@ -74,7 +74,7 @@ func TestFullImportStoresEveryTransactionExactly(t *testing.T) {
 	}
 	// A card purchase is negative with type CREDIT in Pluggy: the sign decides.
 	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE description = 'NETFLIX.COM' AND amount_cents = -5590 AND type = 'expense'
-		AND spending_category = 'other' AND category_set_by = 'fallback' AND type_set_by = 'auto' AND posted_on = '2026-11-01'`); n != 1 {
+		AND spending_category = 'subscriptions' AND category_set_by = 'auto' AND type_set_by = 'auto' AND posted_on = '2026-11-01'`); n != 1 {
 		t.Errorf("latest NETFLIX.COM rows = %d, want 1 expense of -5590 on 2026-11-01", n)
 	}
 	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE description = 'SALARIO EMPRESA XYZ LTDA' AND amount_cents = 850000

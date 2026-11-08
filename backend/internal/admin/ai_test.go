@@ -210,6 +210,30 @@ func TestAIMedianAndMaxCoverEveryCallOfTheDayAndIgnoreSkips(t *testing.T) {
 	}
 }
 
+func TestAIAnswersWithACategorizerRowAndCountsItsCost(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	if _, err := app.DB.Exec(context.Background(), `
+		INSERT INTO llm_call_events (created_at, local_date, service, model, outcome, latency_ms, input_tokens, output_tokens,
+		                             est_cost_micros, items_sent, items_accepted)
+		VALUES ($1, '2026-03-04', 'categorizer', 'claude-haiku-5-5', 'accepted', 90, 1600, 1200, 760, 100, 98)`,
+		app.Clock.Now()); err != nil {
+		t.Fatal(err)
+	}
+	got := aiAt(t, app.SignInAsSuperAdmin("admin@example.com"), "7d")
+
+	c := got.Days[len(got.Days)-1].Services.Categorizer
+	if c.Outcomes.Accepted != 1 || c.InputTokens != 1600 || c.EstCostMicros != 760 {
+		t.Errorf("categorizer = %+v, want one accepted call of 760 micro-USD", c)
+	}
+	if got.MonthToDate.EstCostMicros != 760 {
+		t.Errorf("month to date = %d, want the categorizer's 760 included", got.MonthToDate.EstCostMicros)
+	}
+	if got.Previous.Services.Categorizer != (admin.ServiceDay{}) {
+		t.Errorf("previous categorizer = %+v, want zero", got.Previous.Services.Categorizer)
+	}
+}
+
 func TestAIMonthToDateCostIsUTCCalendarMonthAndIndependentOfTheRange(t *testing.T) {
 	t.Parallel()
 	app := llmWeek(t, apitest.WithLLMDisplay(3, 10_000_000))
@@ -356,7 +380,7 @@ func TestAILeaksNoPersonalDataAndHasAKnownKeySet(t *testing.T) {
 	// The whole key set is known, so a new field must be added here on purpose.
 	keys := map[string]bool{}
 	walk(decoded, func(k string) { keys[k] = true }, func(string) {})
-	for _, k := range []string{"range", "from", "to", "costIsEstimate", "days", "date", "services", "allocator", "explainer",
+	for _, k := range []string{"range", "from", "to", "costIsEstimate", "days", "date", "services", "allocator", "explainer", "categorizer",
 		"outcomes", "accepted", "rejected_by_referee", "invalid_response", "timeout", "error", "skipped_cap", "skipped_budget",
 		"latencyP50Ms", "latencyMaxMs", "inputTokens", "outputTokens", "estCostMicros", "uncostedCalls",
 		"monthToDate", "month", "limitMicros", "dailyCapPerHome",

@@ -4,9 +4,19 @@
 // the caller referees every proposal with allocation.Check and falls back to
 // the baseline when it fails.
 //
-// The model sees opaque ids, numbers and fixed vocabulary only, never names,
-// emails, Chore titles or any text a User typed. This keeps personal data out
-// of a third party and leaves nothing to inject a prompt through.
+// The Allocator and the Explainer show the model opaque ids, numbers and fixed
+// vocabulary only, never names, emails, Chore titles or any text a User typed.
+// This keeps personal data out of a third party and leaves nothing to inject a
+// prompt through.
+//
+// The Categorizer (categorizer.go) is the exception: it sees bank merchant
+// text, which a bank wrote and a User did not type. What is filtered, in Go and
+// not by the model: only the normalised merchant key is sent (letters only, so
+// no digits, dates or card fragments), never an amount, a date, an account name
+// or an id; and keys that start like a transfer to a person (PIX, TED, DOC,
+// TRANSF) are never sent, since bank descriptions of those carry the
+// counterparty's name. The answer is a closed enum by index, so the model never
+// writes text back.
 package llmalloc
 
 import (

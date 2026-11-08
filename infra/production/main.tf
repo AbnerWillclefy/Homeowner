@@ -225,22 +225,29 @@ module "finance_job" {
   ssm_path_prefix     = local.ssm_prefix
 
   # Only this job and the API may read the finance encryption key (#423).
-  ssm_parameter_names = ["database-url", "finance-encryption-key", "finance-allowlist"]
+  ssm_parameter_names = ["database-url", "finance-encryption-key", "finance-allowlist", "anthropic-api-key"]
 
   # A run works up to 60s and stops starting windows with 10s left.
   timeout = 90
 
-  environment = {
-    PORT                             = "8080"
-    DB_MAX_CONNS                     = "2"
-    DATABASE_URL_SSM_PARAM           = module.database.database_url_param
-    FINANCE_ENCRYPTION_KEY_SSM_PARAM = "${local.ssm_prefix}/finance-encryption-key"
-    FINANCE_ALLOWLIST_SSM_PARAM      = aws_ssm_parameter.finance_allowlist.name
+  environment = merge(
+    {
+      PORT                             = "8080"
+      DB_MAX_CONNS                     = "2"
+      DATABASE_URL_SSM_PARAM           = module.database.database_url_param
+      FINANCE_ENCRYPTION_KEY_SSM_PARAM = "${local.ssm_prefix}/finance-encryption-key"
+      FINANCE_ALLOWLIST_SSM_PARAM      = aws_ssm_parameter.finance_allowlist.name
 
-    # Lambda Web Adapter forwards the scheduled event to POST /events; "/" is
-    # not served by the job.
-    AWS_LWA_READINESS_CHECK_PATH = "/healthz"
-  }
+      # Lambda Web Adapter forwards the scheduled event to POST /events; "/" is
+      # not served by the job.
+      AWS_LWA_READINESS_CHECK_PATH = "/healthz"
+    },
+    # The Categorizer (#427), step 3 of the Spending Category decision. It shares
+    # the allocator's key and its switch; without them step 3 is skipped.
+    var.llm_allocator_enabled ? {
+      ANTHROPIC_API_KEY_SSM_PARAM = "${local.ssm_prefix}/anthropic-api-key"
+    } : {},
+  )
 }
 
 # Emails allowed to use Finances (#422), a StringList a human edits with

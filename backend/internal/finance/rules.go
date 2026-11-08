@@ -46,6 +46,21 @@ func MerchantKey(description string) string {
 	return strings.TrimSpace(notLetters.ReplaceAllString(installmentMark.ReplaceAllString(s, " "), " "))
 }
 
+// pluggyCategories maps the categories Pluggy sends (seen in the sandbox
+// capture) to a Spending Category id. A category not here, or none, goes on to
+// the Categorizer. shortcut: only the capture's categories, add more as real
+// Items show them.
+var pluggyCategories = map[string]string{
+	"Housing":                  "housing",
+	"Electricity":              "household_bills",
+	"Internet":                 "household_bills",
+	"Mobile":                   "household_bills",
+	"Telecommunications":       "household_bills",
+	"Music streaming":          "subscriptions",
+	"Video streaming":          "subscriptions",
+	"Gyms and fitness centers": "health",
+}
+
 // postedOn is the São Paulo calendar day of a Pluggy timestamp, as a UTC
 // midnight so it stores and compares as a plain date. The User has no zone.
 func postedOn(at time.Time) time.Time {

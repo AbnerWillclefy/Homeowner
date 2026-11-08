@@ -35,6 +35,33 @@ func (s *Store) DeleteCredentials(ctx context.Context, userID string) error {
 	return err
 }
 
+// financeTables is every finance table, children first. Each has user_id, and
+// a test fails if the schema has a finance_* table that is not listed here, so
+// a later ticket adds its table to this list.
+var financeTables = []string{"finance_transactions", "finance_sources", "finance_items", "finance_credentials"}
+
+// DeleteAll removes all of the User's finance data in one transaction. The
+// cascades would remove the children anyway; listing every table keeps the
+// intent visible and tested.
+//
+// A sync running meanwhile is harmless: it only inserts Transactions against an
+// existing source_id, so once this commits its upserts fail on the foreign key
+// and are logged. The sync never re-creates Items or Sources; only
+// POST /me/finance/items does. The Item at Pluggy is not touched.
+func (s *Store) DeleteAll(ctx context.Context, userID string) error {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // a no-op after Commit
+	for _, table := range financeTables {
+		if _, err := tx.Exec(ctx, `DELETE FROM `+table+` WHERE user_id = $1`, userID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+
 // Credentials returns the User's sealed Client ID and Secret; ok is false
 // when none are saved.
 func (s *Store) Credentials(ctx context.Context, userID string) (idEnc, secretEnc []byte, ok bool, err error) {
@@ -242,6 +269,8 @@ type Row struct {
 	Type        string
 	// Installment fields are 0 when the row is not an installment.
 	InstallmentNumber, TotalInstallments int32
+	// Category is the Spending Category Pluggy's own category maps to, "" if none.
+	Category string
 }
 
 // UpsertTransactions writes one page with a single statement. A Transaction
@@ -252,31 +281,125 @@ type Row struct {
 // The type and category of a stored row are kept together: classify re-decides
 // every auto row of the page right after, and taking either from the sign-based
 // insert values would break the type/category CHECK on a transfer or a card
-// refund. A new expense is Other because nothing has decided yet ('fallback').
+// refund. Only a 'fallback' category on a row that is still an expense takes a
+// category Pluggy now gives. A new expense is Other because nothing has decided yet ('fallback').
 // shortcut: a sign flip on a stored row is ignored; Pluggy does not flip the
 // sign of a posted row.
 func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string, rows []Row, now time.Time) error {
 	n := len(rows)
 	ids, days, cents, descs, keys, types := make([]string, n), make([]time.Time, n), make([]int64, n), make([]string, n), make([]string, n), make([]string, n)
-	inst, total := make([]int32, n), make([]int32, n)
+	inst, total, cats := make([]int32, n), make([]int32, n), make([]string, n)
 	for i, r := range rows {
+		cats[i] = r.Category
 		ids[i], days[i], cents[i], descs[i], keys[i], types[i] = r.ProviderID, r.PostedOn, r.AmountCents, r.Description, r.MerchantKey, r.Type
 		inst[i], total[i] = r.InstallmentNumber, r.TotalInstallments
 	}
 	_, err := s.db.Exec(ctx, `
 		INSERT INTO finance_transactions (user_id, source_id, provider_id, posted_on, amount_cents, currency, description,
 			merchant_key, type, type_set_by, spending_category, category_set_by, installment_number, total_installments, created_at, updated_at)
-		SELECT $1, $2, provider_id, posted_on, amount_cents, 'BRL', description, merchant_key, type, 'auto',
-			CASE WHEN type = 'expense' THEN 'other' END, CASE WHEN type = 'expense' THEN 'fallback' END,
-			NULLIF(inst, 0), NULLIF(total, 0), $3, $3
-		FROM unnest($4::text[], $5::date[], $6::bigint[], $7::text[], $8::text[], $9::text[], $10::int[], $11::int[])
-			AS p (provider_id, posted_on, amount_cents, description, merchant_key, type, inst, total)
+		SELECT $1, $2, p.provider_id, p.posted_on, p.amount_cents, 'BRL', p.description, p.merchant_key, p.type, 'auto',
+			CASE WHEN p.type = 'expense' THEN COALESCE(mc.spending_category, NULLIF(p.category, ''), 'other') END,
+			CASE WHEN p.type = 'expense' THEN
+				CASE WHEN mc.spending_category IS NOT NULL OR p.category <> '' THEN 'auto' ELSE 'fallback' END END,
+			NULLIF(p.inst, 0), NULLIF(p.total, 0), $3, $3
+		FROM unnest($4::text[], $5::date[], $6::bigint[], $7::text[], $8::text[], $9::text[], $10::int[], $11::int[], $12::text[])
+			AS p (provider_id, posted_on, amount_cents, description, merchant_key, type, inst, total, category)
+		LEFT JOIN finance_merchant_categories mc ON mc.user_id = $1 AND mc.merchant_key = p.merchant_key
 		ON CONFLICT (source_id, provider_id) DO UPDATE SET
 			posted_on = EXCLUDED.posted_on, amount_cents = EXCLUDED.amount_cents, description = EXCLUDED.description,
 			merchant_key = EXCLUDED.merchant_key, installment_number = EXCLUDED.installment_number,
 			total_installments = EXCLUDED.total_installments, updated_at = EXCLUDED.updated_at,
 			type = finance_transactions.type,
-			spending_category = finance_transactions.spending_category, category_set_by = finance_transactions.category_set_by`,
-		userID, sourceID, now, ids, days, cents, descs, keys, types, inst, total)
+			spending_category = CASE WHEN finance_transactions.category_set_by = 'fallback' AND finance_transactions.type_set_by = 'auto'
+				AND EXCLUDED.type = 'expense' THEN EXCLUDED.spending_category ELSE finance_transactions.spending_category END,
+			category_set_by = CASE WHEN finance_transactions.category_set_by = 'fallback' AND finance_transactions.type_set_by = 'auto'
+				AND EXCLUDED.type = 'expense' THEN EXCLUDED.category_set_by ELSE finance_transactions.category_set_by END`,
+		userID, sourceID, now, ids, days, cents, descs, keys, types, inst, total, cats)
 	return err
+}
+
+// FallbackUser is a User with Expenses nothing has categorised yet.
+type FallbackUser struct{ ID, Email string }
+
+// FallbackUsers lists the Users with an Expense still on 'fallback'.
+func (s *Store) FallbackUsers(ctx context.Context) ([]FallbackUser, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT u.id, u.email FROM users u
+		WHERE EXISTS (SELECT 1 FROM finance_transactions t WHERE t.user_id = u.id AND t.category_set_by = 'fallback')
+		ORDER BY u.id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []FallbackUser
+	for rows.Next() {
+		var u FallbackUser
+		if err := rows.Scan(&u.ID, &u.Email); err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
+// ApplyCorrections gives the User's saved corrections to their 'fallback'
+// Expenses, so a correction saved after the import still wins over the model.
+func (s *Store) ApplyCorrections(ctx context.Context, userID string, now time.Time) error {
+	_, err := s.db.Exec(ctx, `
+		UPDATE finance_transactions t SET spending_category = c.spending_category, category_set_by = 'auto', updated_at = $2
+		FROM finance_merchant_categories c
+		WHERE t.user_id = $1 AND c.user_id = t.user_id AND c.merchant_key = t.merchant_key AND t.category_set_by = 'fallback'`,
+		userID, now)
+	return err
+}
+
+// FallbackMerchants returns the distinct merchant keys of the User's Expenses
+// still on 'fallback', sorted.
+func (s *Store) FallbackMerchants(ctx context.Context, userID string) ([]string, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT DISTINCT merchant_key FROM finance_transactions
+		WHERE user_id = $1 AND category_set_by = 'fallback' AND merchant_key <> '' ORDER BY merchant_key`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var k string
+		if err := rows.Scan(&k); err != nil {
+			return nil, err
+		}
+		out = append(out, k)
+	}
+	return out, rows.Err()
+}
+
+// SetCategories files the User's 'fallback' Expenses of each merchant key under
+// its category, as decided by 'auto'. Rows the User or a rule decided meanwhile
+// are left alone.
+func (s *Store) SetCategories(ctx context.Context, userID string, keys, categories []string, now time.Time) error {
+	_, err := s.db.Exec(ctx, `
+		UPDATE finance_transactions t SET spending_category = c.category, category_set_by = 'auto', updated_at = $4
+		FROM unnest($2::text[], $3::text[]) AS c (merchant_key, category)
+		WHERE t.user_id = $1 AND t.merchant_key = c.merchant_key AND t.category_set_by = 'fallback'`,
+		userID, keys, categories, now)
+	return err
+}
+
+// ReserveCategorizerCall takes one of the User's limit Categorizer calls for
+// date and reports whether it got one. One statement inserts or increments, and
+// the WHERE on the conflict update refuses at the limit, so concurrent runs can
+// never pass it. Like dayplan's reserveLLMCall it runs on the pool: a call that
+// was paid for is not given back.
+func (s *Store) ReserveCategorizerCall(ctx context.Context, userID string, date time.Time, limit int) (bool, error) {
+	var calls int
+	err := s.db.QueryRow(ctx, `
+		INSERT INTO finance_llm_calls (user_id, call_date, calls) VALUES ($1, $2, 1)
+		ON CONFLICT (user_id, call_date) DO UPDATE SET calls = finance_llm_calls.calls + 1
+		WHERE finance_llm_calls.calls < $3
+		RETURNING calls`, userID, date, limit).Scan(&calls)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return err == nil, err
 }
