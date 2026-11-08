@@ -6,6 +6,7 @@ import { PageLoading, useReportFetching, useReportFirstLoad } from "../../../sha
 import { SkeletonBar } from "../../../shared/ui/Skeleton";
 import { useFinance } from "../hooks/useFinance";
 import { BankSources } from "./BankSources";
+import { BillsSection } from "./BillsSection";
 import { CredentialsForm } from "./CredentialsForm";
 import { DeleteFinanceData } from "./DeleteFinanceData";
 import { MonthSpending } from "./MonthSpending";
@@ -57,6 +58,7 @@ function FinancesBody() {
   const showForm = !status.configured || replacing;
   return (
     <div className="flex flex-col gap-4">
+      <BillsSection />
       {status.sources.length > 0 && <MonthSpending />}
       {!status.configured && (
         <>
