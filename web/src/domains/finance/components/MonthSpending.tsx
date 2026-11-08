@@ -12,7 +12,6 @@ import { addMonths, currentMonth, monthLabel } from "../logic/month";
 import { monthView } from "../logic/monthView";
 import { CategoryCard } from "./CategoryCard";
 import { EditTransactionDialog } from "./EditTransactionDialog";
-import { FinanceCard } from "./FinanceCard";
 import { LeftOutGroup } from "./LeftOutGroup";
 
 /** The month's spending by Spending Category, with a month picker and a Transaction edit. Shown once there are Sources. */
@@ -34,8 +33,17 @@ export function MonthSpending() {
 
   const label = monthLabel(month, locale);
   return (
-    <FinanceCard id="finances-month-heading" title={t("finances.month.heading")}>
-      <div role="group" aria-label={t("finances.month.heading")} className="flex items-center justify-between gap-2">
+    // No outer card: the category cards inside it get the full width, which they need at the largest text.
+    <section aria-labelledby="finances-month-heading" className="mt-0 flex flex-col gap-3">
+      <h3 id="finances-month-heading" className="my-0 text-lg font-bold leading-snug [overflow-wrap:anywhere]">
+        {t("finances.month.heading")}
+      </h3>
+      {/* The month on its own line, so the two buttons never squeeze it into one letter per line. */}
+      <div role="group" aria-label={t("finances.month.heading")} className="flex flex-col gap-2">
+        <span className="text-center font-semibold capitalize [overflow-wrap:anywhere]" aria-live="polite">
+          {label}
+        </span>
+        <div className="flex items-center justify-between gap-2">
         <Button
           icon
           variant="secondary"
@@ -44,9 +52,6 @@ export function MonthSpending() {
         >
           <ChevronLeft aria-hidden="true" size={20} />
         </Button>
-        <span className="min-w-0 text-center font-semibold capitalize [overflow-wrap:anywhere]" aria-live="polite">
-          {label}
-        </span>
         <Button
           icon
           variant="secondary"
@@ -56,6 +61,7 @@ export function MonthSpending() {
         >
           <ChevronRight aria-hidden="true" size={20} />
         </Button>
+        </div>
       </div>
 
       {state.kind === "loading" && skeleton && (
@@ -90,6 +96,6 @@ export function MonthSpending() {
           </>
         ))}
       {editing && <EditTransactionDialog tx={editing} save={edit} onClose={closed} />}
-    </FinanceCard>
+    </section>
   );
 }
