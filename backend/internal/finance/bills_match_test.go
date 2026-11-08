@@ -44,8 +44,8 @@ func TestSyncPaysABillFromTheBankOnce(t *testing.T) {
 	if got := paidBy(t, ana, "2026-11"); got != "bank" {
 		t.Fatalf("paidBy = %q, want bank", got)
 	}
-	if got := paidBy(t, ana, "2026-10"); got != "" {
-		t.Errorf("October paidBy = %q, want unpaid", got)
+	if got := listBills(t, ana, "2026-10"); len(got) != 0 {
+		t.Errorf("October lists %+v, want nothing before the Bill existed", got)
 	}
 	for range 2 {
 		app.Clock.Advance(25 * time.Hour)

@@ -145,12 +145,13 @@ type BillResponse struct {
 }
 
 // MonthBill is a Bill with its due date and paid state in one month. PaidBy is
-// null, "hand" or "bank".
+// null, "hand" or "bank"; PaidCents is null when unpaid.
 type MonthBill struct {
 	BillResponse
-	DueDate string  `json:"dueDate"`
-	Paid    bool    `json:"paid"`
-	PaidBy  *string `json:"paidBy"`
+	DueDate   string  `json:"dueDate"`
+	Paid      bool    `json:"paid"`
+	PaidBy    *string `json:"paidBy"`
+	PaidCents *int64  `json:"paidCents"`
 }
 
 // ConnectItemRequest is the body of POST /me/finance/items.
