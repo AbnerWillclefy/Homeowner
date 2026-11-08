@@ -201,6 +201,52 @@ export const getReport = (month: string): Promise<ReportResult> =>
       : null,
   ) as Promise<ReportResult>;
 
+export interface CommitmentMonth {
+  month: string;
+  committedCents: number;
+  /** Absent when no Monthly income is set. */
+  percentOfIncome?: number;
+  installments: { name: string; number: number; total: number; amountCents: number }[];
+  bills: { id: string; name: string; expectedCents: number }[];
+}
+
+export interface Commitments {
+  monthlyIncomeCents: number | null;
+  months: CommitmentMonth[];
+}
+
+export type CommitmentsResult = { kind: "ok"; commitments: Commitments } | Failure;
+
+const isNum = (v: unknown) => typeof v === "number";
+
+function parseCommitments(body: unknown): Commitments | null {
+  if (!isObject(body) || !Array.isArray(body.months)) return null;
+  if (body.monthlyIncomeCents !== null && !isNum(body.monthlyIncomeCents)) return null;
+  const valid = body.months.every(
+    (m) =>
+      isObject(m) &&
+      typeof m.month === "string" &&
+      isNum(m.committedCents) &&
+      (m.percentOfIncome === undefined || isNum(m.percentOfIncome)) &&
+      Array.isArray(m.installments) &&
+      m.installments.every((i) => isObject(i) && typeof i.name === "string" && isNum(i.number) && isNum(i.total) && isNum(i.amountCents)) &&
+      Array.isArray(m.bills) &&
+      m.bills.every((b) => isObject(b) && typeof b.id === "string" && typeof b.name === "string" && isNum(b.expectedCents)),
+  );
+  return valid ? (body as unknown as Commitments) : null;
+}
+
+/** `GET /me/finance/commitments?from=YYYY-MM`. */
+export const getCommitments = (from: string): Promise<CommitmentsResult> =>
+  call({ url: "/me/finance/commitments", params: { from } }, 200, (data) => {
+    const parsed = parseCommitments(data);
+    return parsed && { commitments: parsed };
+  }) as Promise<CommitmentsResult>;
+
+/** `PUT /me/finance/income`; null clears it. */
+export const putIncome = (monthlyIncomeCents: number | null): Promise<WriteResult> =>
+  call({ url: "/me/finance/income", method: "PUT", data: { monthlyIncomeCents } }, 204, nothing);
+
 /** `PATCH /me/finance/transactions/{id}`; an absent field stays as it is. The answer is the row, which the screen does not need. */
 export const patchTransaction = (
   id: string,
