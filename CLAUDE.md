@@ -27,6 +27,7 @@ Each stage is a workflow in `.github/workflows/` started by a label or an event.
 3. Ticket labelled `implement`: the engineers build it and open a pull request (see Working a ticket).
 4. Pull request opened: Claude reviews it, then the engineer applies the valid findings once and labels the pull request `review-addressed`. Every finding gets answered: resolve its thread once fixed, or reply why it is rejected and resolve it (`gh api graphql` with `resolveReviewThread`). An unresolved Claude thread blocks the automatic merge.
 5. The pull request's risk tier decides who merges it (`docs/agents/pr-risk.md`): `merge-by-risk.yml` merges `low` once checks and review are clean, and `medium` once the maintainer also approves; the maintainer merges `high`. The deploy to staging runs on the merge.
+6. Every Monday `review-lessons.yml`: the senior engineer turns recurring accepted findings into rules in the area's `CLAUDE.md` (`backend/`, `web/`, `admin/`, `infra/`) and recurring rejected ones into suppressions in `REVIEW.md`, in a pull request the maintainer merges (`.claude/skills/review-lessons/SKILL.md`). Reply on a finding's thread only to reject it: a reply counts as a rejection.
 
 A change that fits one pull request skips stage 1: file it as a single ticket with acceptance criteria and label it `needs-refinement`. The maintainer brings in both kinds with `/idea` (`.claude/skills/idea/SKILL.md`).
 

@@ -21,3 +21,5 @@ jobs:
         run: .github/scripts/pr-risk.test.sh
       - name: Test merge-by-risk.sh
         run: VERBOSE=1 .github/scripts/merge-by-risk.test.sh
+      - name: Test review-outcomes.sh
+        run: .github/scripts/review-outcomes.test.sh
