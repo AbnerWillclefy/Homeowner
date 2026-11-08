@@ -94,13 +94,26 @@ func (r *Reminders) Run(ctx context.Context, now time.Time) error {
 	if err := rows.Err(); err != nil {
 		return err
 	}
+	// One push per User and Notice, however many Bills share it; every claimed row gets its outcome.
+	type group struct{ user, notice string }
+	var order []group
+	groups := map[group][]claim{}
 	for _, c := range todo {
 		if !claimed[key{c.BillID, c.month, c.Ledger}] {
 			continue
 		}
-		outcome, attempted := r.send(ctx, subs[c.userID], reminderPayload(c.Notice))
+		g := group{c.userID, c.Notice}
+		if groups[g] == nil {
+			order = append(order, g)
+		}
+		groups[g] = append(groups[g], c)
+	}
+	for _, g := range order {
+		outcome, attempted := r.send(ctx, subs[g.user], reminderPayload(g.notice))
 		if attempted {
-			r.record(ctx, c, outcome)
+			for _, c := range groups[g] {
+				r.record(ctx, c, outcome)
+			}
 		}
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -213,10 +226,12 @@ func (r *Reminders) record(ctx context.Context, c claim, outcome string) {
 // reminderPayload is the generic English text; the worker words the Notice for
 // the device language. It names no Bill and no amount.
 func reminderPayload(notice string) push.Payload {
-	body := map[string]string{
-		push.KindBillDueToday: "A bill to pay is due today.",
-		push.KindBillDueSoon:  "A bill to pay is due tomorrow.",
-		push.KindBillOverdue:  "A bill to pay is still open.",
-	}[notice]
-	return push.Payload{Title: "Bill to pay", Body: body, URL: "/finances", Kind: notice}
+	kind, body := push.KindBillOverdue, "A bill to pay is still open."
+	switch notice {
+	case noticeDueToday:
+		kind, body = push.KindBillDueToday, "A bill to pay is due today."
+	case noticeDueSoon:
+		kind, body = push.KindBillDueSoon, "A bill to pay is due tomorrow."
+	}
+	return push.Payload{Title: "Bill to pay", Body: body, URL: "/finances", Kind: kind}
 }

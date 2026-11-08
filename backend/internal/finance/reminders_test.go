@@ -12,6 +12,7 @@ import (
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/finance"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const (
@@ -118,6 +119,17 @@ func TestAReminderIsSentOncePerBillMonthAndKind(t *testing.T) {
 	}
 }
 
+func TestBillsSharingANoticeSendOnePush(t *testing.T) {
+	t.Parallel()
+	app, ana := remindersApp(t, afterFixtures)
+	addBill(t, ana, "Aluguel", 9)
+	addBill(t, ana, "Luz", 9)
+	oneKind(t, runKinds(t, app), "bill_due_soon")
+	if n := scalar(t, app, `SELECT count(*) FROM finance_bill_reminders WHERE outcome = 'delivered'`); n != 2 {
+		t.Errorf("delivered ledger rows = %d, want 2", n)
+	}
+}
+
 func TestAPaidBillGetsNoReminder(t *testing.T) {
 	t.Parallel()
 	app, ana := remindersApp(t, afterFixtures)
@@ -204,6 +216,31 @@ func TestAGoneDeviceIsPrunedAndTheOutcomeRecorded(t *testing.T) {
 	if n := scalar(t, app, `SELECT count(*) FROM push_subscriptions`); n != 0 {
 		t.Errorf("subscriptions = %d, want pruned", n)
 	}
+}
+
+func TestRemindersRunWhenTheSyncFails(t *testing.T) {
+	t.Parallel()
+	app, ana := remindersApp(t, afterFixtures)
+	addBill(t, ana, "Aluguel", 9)
+	// A Syncer over a closed pool cannot find the Items, so its Run errors.
+	closed, err := pgxpool.NewWithConfig(context.Background(), app.DB.Config())
+	if err != nil {
+		t.Fatal(err)
+	}
+	closed.Close()
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	syncer := finance.NewSyncer(finance.NewStore(closed), nil, apitest.FinanceTestKey(), finance.NewAllowlist([]string{"ana@example.com"}), log, 0)
+	srv := httptest.NewServer(finance.EventsHandler(syncer, app.FinanceReminders, app.Clock, log))
+	t.Cleanup(srv.Close)
+	res, err := http.Post(srv.URL+"/events", "application/json", strings.NewReader(`{"source":"aws.events","detail-type":"Scheduled Event"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("event = %d, want 500", res.StatusCode)
+	}
+	oneKind(t, sentKinds(app), "bill_due_soon")
 }
 
 func TestTheScheduledEventSendsReminders(t *testing.T) {

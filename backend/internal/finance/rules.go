@@ -8,8 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 )
 
 // Sign convention: amount_cents is signed from the Source's point of view,
@@ -257,6 +255,13 @@ const (
 	ledgerOverdue = "overdue"
 )
 
+// The Notices a reminder can carry; reminders.go maps them to push Kinds.
+const (
+	noticeDueToday = "due_today"
+	noticeDueSoon  = "due_soon"
+	noticeOverdue  = "overdue"
+)
+
 // ReminderBill is a Bill as the reminder rule sees it. Paid is whether the
 // local month has a payment that is not undone.
 type ReminderBill struct {
@@ -266,7 +271,7 @@ type ReminderBill struct {
 }
 
 // BillReminder is a reminder to send: the Bill, its ledger kind and the
-// push.Kind the worker words.
+// Notice the worker words.
 type BillReminder struct {
 	BillID, Ledger, Notice string
 }
@@ -291,11 +296,11 @@ func DueReminders(bills []ReminderBill, local time.Time) []BillReminder {
 		}
 		switch due := DueDate(y, m, b.DueDay); {
 		case due.Equal(today):
-			out = append(out, BillReminder{b.ID, ledgerDueSoon, push.KindBillDueToday})
+			out = append(out, BillReminder{b.ID, ledgerDueSoon, noticeDueToday})
 		case due.Equal(today.AddDate(0, 0, 1)):
-			out = append(out, BillReminder{b.ID, ledgerDueSoon, push.KindBillDueSoon})
+			out = append(out, BillReminder{b.ID, ledgerDueSoon, noticeDueSoon})
 		case due.Before(today):
-			out = append(out, BillReminder{b.ID, ledgerOverdue, push.KindBillOverdue})
+			out = append(out, BillReminder{b.ID, ledgerOverdue, noticeOverdue})
 		}
 	}
 	return out
