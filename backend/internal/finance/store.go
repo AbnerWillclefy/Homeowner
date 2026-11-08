@@ -35,6 +35,33 @@ func (s *Store) DeleteCredentials(ctx context.Context, userID string) error {
 	return err
 }
 
+// financeTables is every finance table, children first. Each has user_id, and
+// a test fails if the schema has a finance_* table that is not listed here, so
+// a later ticket adds its table to this list.
+var financeTables = []string{"finance_transactions", "finance_sources", "finance_items", "finance_credentials"}
+
+// DeleteAll removes all of the User's finance data in one transaction. The
+// cascades would remove the children anyway; listing every table keeps the
+// intent visible and tested.
+//
+// A sync running meanwhile is harmless: it only inserts Transactions against an
+// existing source_id, so once this commits its upserts fail on the foreign key
+// and are logged. The sync never re-creates Items or Sources; only
+// POST /me/finance/items does. The Item at Pluggy is not touched.
+func (s *Store) DeleteAll(ctx context.Context, userID string) error {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // a no-op after Commit
+	for _, table := range financeTables {
+		if _, err := tx.Exec(ctx, `DELETE FROM `+table+` WHERE user_id = $1`, userID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+
 // Credentials returns the User's sealed Client ID and Secret; ok is false
 // when none are saved.
 func (s *Store) Credentials(ctx context.Context, userID string) (idEnc, secretEnc []byte, ok bool, err error) {

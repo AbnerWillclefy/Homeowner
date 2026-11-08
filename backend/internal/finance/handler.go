@@ -96,6 +96,15 @@ func (h *Handler) DeleteCredentials(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// DeleteAll answers DELETE /me/finance: all the User's finance data, nothing else.
+func (h *Handler) DeleteAll(w http.ResponseWriter, r *http.Request) {
+	if err := h.store.DeleteAll(r.Context(), identity.CurrentUser(r.Context()).ID); err != nil {
+		httpx.InternalError(w, h.log, "finance: delete all", err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // ConnectToken answers POST /me/finance/connect-token: a short-lived token the
 // PWA hands to Pluggy Connect.
 func (h *Handler) ConnectToken(w http.ResponseWriter, r *http.Request) {
