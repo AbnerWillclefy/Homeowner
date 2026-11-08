@@ -35,11 +35,30 @@ func (s *Store) DeleteCredentials(ctx context.Context, userID string) error {
 	return err
 }
 
+// SetIncome stores the User's Monthly income; nil clears it.
+func (s *Store) SetIncome(ctx context.Context, userID string, cents *int64, now time.Time) error {
+	_, err := s.db.Exec(ctx, `
+		INSERT INTO finance_settings (user_id, monthly_income_cents, updated_at) VALUES ($1, $2, $3)
+		ON CONFLICT (user_id) DO UPDATE SET monthly_income_cents = $2, updated_at = $3`,
+		userID, cents, now)
+	return err
+}
+
+// Income returns the User's Monthly income, nil when not set.
+func (s *Store) Income(ctx context.Context, userID string) (*int64, error) {
+	var cents *int64
+	err := s.db.QueryRow(ctx, `SELECT monthly_income_cents FROM finance_settings WHERE user_id = $1`, userID).Scan(&cents)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	return cents, err
+}
+
 // financeTables is every finance table, children first. Each has user_id, and
 // a test fails if the schema has a finance_* table that is not listed here, so
 // a later ticket adds its table to this list.
 var financeTables = []string{"finance_transactions", "finance_sources", "finance_items", "finance_credentials",
-	"finance_merchant_categories", "finance_llm_calls", "finance_bill_payments", "finance_bills"}
+	"finance_merchant_categories", "finance_llm_calls", "finance_bill_payments", "finance_bills", "finance_settings"}
 
 // DeleteAll removes all of the User's finance data in one transaction. The
 // cascades would remove the children anyway; listing every table keeps the
