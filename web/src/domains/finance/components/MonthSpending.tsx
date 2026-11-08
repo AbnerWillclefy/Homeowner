@@ -83,7 +83,18 @@ export function MonthSpending() {
       </p>
       {view &&
         (view.isEmpty ? (
-          <p className="my-0 text-muted">{t("finances.month.empty")}</p>
+          <>
+            <p className="my-0 text-muted">{t("finances.month.empty")}</p>
+            {/* Early in a month nothing is imported yet; last month is still worth seeing. */}
+            {last && last.only.length > 0 && (
+              <>
+                <p className="my-0 text-muted">
+                  {t(`finances.report.${last.diff.key}`, { amount: money(last.diff.amount), month: previousName })}
+                </p>
+                <OnlyLastMonth title={t("finances.month.onlyLast", { month: previousName })} rows={last.only} />
+              </>
+            )}
+          </>
         ) : (
           <>
             <StatTile

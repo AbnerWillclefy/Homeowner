@@ -17,6 +17,7 @@ const LOCALES = [
     taxes: "Impostos e taxas",
     more: (month: string) => new RegExp(`R\\$\\s*150,10 a mais que em ${month}`),
     previousValue: (month: string) => new RegExp(`${month}: R\\$\\s*692,00`),
+    allLess: (month: string) => new RegExp(`R\\$\\s*781,90 a menos que em ${month}`),
     onlyLast: (month: string) => `Só em ${month}`,
     prev: "Mês anterior",
   },
@@ -27,6 +28,7 @@ const LOCALES = [
     taxes: "Taxes and fees",
     more: (month: string) => new RegExp(`R\\$150\\.10 more than in ${month}`),
     previousValue: (month: string) => new RegExp(`${month}: R\\$692\\.00`),
+    allLess: (month: string) => new RegExp(`R\\$781\\.90 less than in ${month}`),
     onlyLast: (month: string) => `Only in ${month}`,
     prev: "Previous month",
   },
@@ -42,7 +44,7 @@ const row = (id: string, back: number, description: string, amountCents: number,
   id, postedOn: `${month(back).id}-05`, description, sourceName: "Pluggy Bank", amountCents, currency: "BRL", type: "expense" as const, spendingCategory,
 });
 
-const connected = () => {
+const connected = (thisMonth = true) => {
   const s = signedInResident();
   s.user.finance = true;
   s.finance = {
@@ -51,8 +53,7 @@ const connected = () => {
     importing: false,
     lastSyncedAt: "2026-11-08T13:05:00Z",
     transactions: [
-      row("a", 0, "Mercado grande", -81200, "groceries"),
-      row("b", 0, "Cinema", -12000, "leisure"),
+      ...(thisMonth ? [row("a", 0, "Mercado grande", -81200, "groceries"), row("b", 0, "Cinema", -12000, "leisure")] : []),
       row("c", 1, "Mercado do mês passado", -69200, "groceries"),
       row("d", 1, "Farmácia", -8990, "health"),
     ],
@@ -84,6 +85,18 @@ for (const l of LOCALES) {
       await page.getByRole("button", { name: l.prev, exact: true }).click();
       await asked;
       await expect(page.getByRole("button", { name: new RegExp(l.groceries) })).toContainText(nameOf(2, l.locale));
+    });
+
+    test.describe("a month with nothing yet", () => {
+      test.use({ fakeState: connected(false) });
+
+      test("still says the difference and lists last month's categories", async ({ page }) => {
+        const last = nameOf(1, l.locale);
+        await expect(page.getByText(l.allLess(last))).toBeVisible();
+        const only = page.getByRole("region", { name: l.onlyLast(last) });
+        await expect(only).toContainText(l.groceries);
+        await expect(only).toContainText(l.health);
+      });
     });
 
     test("at 320px and the largest text nothing overflows sideways", async ({ page, baseURL }) => {
