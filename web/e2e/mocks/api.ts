@@ -69,6 +69,8 @@ export interface FakeState {
       currency: string;
       type: "income" | "expense" | "transfer";
       spendingCategory: string | null;
+      /** `fallback` is a Transaction nothing could categorise; the PATCH sets `user`. Absent reads as null. */
+      categorySetBy?: "auto" | "user" | "fallback" | null;
     }[];
   };
 }

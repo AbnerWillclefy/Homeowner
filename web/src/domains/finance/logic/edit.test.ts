@@ -4,7 +4,7 @@ import { editFor } from "./edit";
 
 const tx: Transaction = {
   id: "t", postedOn: "2026-11-02", description: "x", sourceName: "N", amountCents: -1000, currency: "BRL",
-  type: "expense", spendingCategory: "groceries",
+  type: "expense", spendingCategory: "groceries", categorySetBy: "auto",
 };
 
 describe("editFor", () => {
