@@ -147,10 +147,6 @@ for (const l of LOCALES) {
         await visit(page, new URL("/finances/ajustes", baseURL!).toString());
         await expect(page).toHaveURL((url) => url.pathname === "/");
       });
-    });
-
-    test.describe("without the flag", () => {
-      test.use({ fakeState: state(false) });
 
       test("shows four tabs, and /finances lands on Today with nothing of Finances", async ({ page, baseURL }) => {
         const chunks: string[] = [];

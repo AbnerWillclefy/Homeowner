@@ -100,6 +100,8 @@ async function view(page: Page, name: string) {
     await page.getByRole("link", { name }).click();
     return page.locator("main");
   }
+  // Ajustes is a route: leave it before picking a tab.
+  if (page.url().endsWith("/finances/ajustes")) await page.getByRole("button", { name: /^(Voltar|Back)$/ }).click();
   await page.getByRole("tab", { name }).click();
   return page.getByRole("tabpanel", { name });
 }

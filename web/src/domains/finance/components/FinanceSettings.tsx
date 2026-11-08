@@ -1,3 +1,4 @@
+import { ArrowLeft } from "lucide-react";
 import { useLocation, useNavigate } from "react-router";
 import { useI18n } from "../../../shared/i18n";
 import { FINANCES_PATH } from "../../../app/logic/routes";
@@ -17,13 +18,14 @@ export function FinanceSettings() {
   const canGoBack = useLocation().key !== "default";
   return (
     <PageLoading message={t("finances.loading")}>
+      <div className="mb-4">
+        <Button variant="ghost" className="-ms-3" onClick={() => (canGoBack ? navigate(-1) : navigate(FINANCES_PATH))}>
+          <ArrowLeft aria-hidden="true" size={20} />
+          {t("finances.settings.back")}
+        </Button>
+      </div>
       <PageHeader title={t("finances.settings.title")} />
       <div className="flex flex-col gap-8">
-        <div>
-          <Button variant="secondary" onClick={() => (canGoBack ? navigate(-1) : navigate(FINANCES_PATH))}>
-            {t("finances.settings.back")}
-          </Button>
-        </div>
         <FinanceStatusGate finance={finance}>
           {(status) => (
             <FinanceSetup finance={finance} status={status}>
