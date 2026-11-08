@@ -19,6 +19,8 @@ export interface FakeReply {
   status: number;
   /** Serialised as JSON when present. */
   body?: unknown;
+  /** Sent as-is, for a script or other non-JSON body. Its content type is `text/plain` unless `headers` says otherwise. */
+  text?: string;
   headers?: Record<string, string>;
 }
 
@@ -127,10 +129,10 @@ export function createRouter(): Router {
         status: reply.status,
         headers: {
           ...corsHeaders(origin),
-          ...(reply.body === undefined ? {} : { "content-type": "application/json" }),
+          ...(reply.text !== undefined ? { "content-type": "text/plain" } : reply.body === undefined ? {} : { "content-type": "application/json" }),
           ...reply.headers,
         },
-        body: reply.body === undefined ? undefined : JSON.stringify(reply.body),
+        body: reply.text !== undefined ? reply.text : reply.body === undefined ? undefined : JSON.stringify(reply.body),
       }),
     );
   }

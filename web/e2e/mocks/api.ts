@@ -42,6 +42,13 @@ export interface FakeState {
   streak?: number;
   /** Whether `GET /home/streak` says today already grew the Streak. Absent means false. */
   streakTodayGrew?: boolean;
+  /** What `GET /me/finance` answers. Absent means no credentials, no Sources. */
+  finance?: {
+    configured: boolean;
+    sources: { id: string; name: string; kind: string; currency: string }[];
+    importing: boolean;
+    lastSyncedAt: string | null;
+  };
 }
 
 export function initialState(): FakeState {
