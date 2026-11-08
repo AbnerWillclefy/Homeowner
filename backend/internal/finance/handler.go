@@ -20,8 +20,8 @@ const (
 	maxCredential = 200
 )
 
-// itemIDPattern is a sanity bound on a Pluggy Item id; Pluggy issues uuids.
-var itemIDPattern = regexp.MustCompile(`^[0-9a-zA-Z-]{1,64}$`)
+// itemIDPattern accepts only a uuid, the form Pluggy issues Item ids in.
+var itemIDPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // Handler serves the Finances routes behind the allowlist guard. The key is
 // never nil here: the guard answers 503 first.
