@@ -27,6 +27,9 @@ describe("scaleMax", () => {
 });
 
 describe("linePoints", () => {
+  it("places a shorter series on the shared day scale", () => {
+    expect(linePoints([0, 50, 100], 100, 100, 40, 5)).toBe("0,40 25,20 50,0");
+  });
   it("spans the width and puts the maximum at the top", () => {
     expect(linePoints([0, 50, 100], 100, 100, 40)).toBe("0,40 50,20 100,0");
   });

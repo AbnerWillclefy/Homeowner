@@ -75,7 +75,7 @@ export function CumulativeLine({ title, series }: { title: string; series: LineS
           {series.map((s, index) => (
             <polyline
               key={s.label}
-              points={linePoints(s.points, max, W, H)}
+              points={linePoints(s.points, max, W, H, days)}
               fill="none"
               strokeWidth={2.5}
               strokeLinejoin="round"
@@ -107,7 +107,7 @@ export function CumulativeLine({ title, series }: { title: string; series: LineS
           </li>
         ))}
       </ul>
-      <Button variant="secondary" aria-pressed={table} onClick={() => setTable((value) => !value)}>
+      <Button variant="secondary" onClick={() => setTable((value) => !value)}>
         {t(table ? "charts.view.chart" : "charts.view.table")}
       </Button>
     </div>

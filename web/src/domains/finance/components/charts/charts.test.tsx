@@ -68,9 +68,10 @@ describe("CumulativeLine", () => {
   it("swaps to a table with the same numbers and back", () => {
     const c = render(createElement(CumulativeLine, { title: "Gasto", series }));
     const toggle = c.querySelector("button")!;
-    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    const chartLabel = text(toggle);
+    expect(toggle.hasAttribute("aria-pressed")).toBe(false);
     act(() => toggle.click());
-    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    expect(text(toggle)).not.toBe(chartLabel);
     expect(c.querySelector('[role="img"]')).toBeNull();
     expect(c.querySelector("caption")?.textContent).toBe("Gasto");
     const rows = [...c.querySelectorAll("tbody tr")].map((r) => [...r.children].map(text));

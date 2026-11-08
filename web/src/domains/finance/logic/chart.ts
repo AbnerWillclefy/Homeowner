@@ -14,8 +14,8 @@ export function scaleMax(values: number[], markers: number[]): number {
 const round = (n: number) => Math.round(n * 100) / 100;
 
 /** SVG `points` for a series on a width x height viewBox, the maximum at the top. One day is a flat line across. */
-export function linePoints(points: number[], max: number, width: number, height: number): string {
+export function linePoints(points: number[], max: number, width: number, height: number, days = points.length): string {
   const ys = points.map((value) => round(height - (barPercent(value, max) / 100) * height));
-  if (ys.length === 1) return `0,${ys[0]} ${width},${ys[0]}`;
-  return ys.map((y, i) => `${round((i / (ys.length - 1)) * width)},${y}`).join(" ");
+  if (days <= 1) return ys.length ? `0,${ys[0]} ${width},${ys[0]}` : "";
+  return ys.map((y, i) => `${round((i / (days - 1)) * width)},${y}`).join(" ");
 }
