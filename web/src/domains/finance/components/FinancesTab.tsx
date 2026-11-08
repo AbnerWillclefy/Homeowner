@@ -7,11 +7,11 @@ import { PageHeader } from "../../../shared/ui/PageHeader";
 import { PageLoading } from "../../../shared/ui/PageLoading";
 import { useFinance } from "../hooks/useFinance";
 import { BillsSection } from "./BillsSection";
-import { ChartPreview } from "./charts/ChartPreview";
 import { Commitments } from "./Commitments";
 import { FinanceSetup, FinanceStatusGate } from "./FinanceSetup";
 import { FinanceTabs, VIEWS, type FinanceView } from "./FinanceTabs";
 import { Spending } from "./Spending";
+import { Summary } from "./Summary";
 
 /** Finances: private to the User, with no link to Residents, Chores, Tasks or Allocation. */
 export function FinancesTab() {
@@ -34,7 +34,6 @@ export function FinancesTab() {
           )
         }
       />
-      {import.meta.env.DEV && <ChartPreview />}
       <FinancesBody finance={finance} />
     </PageLoading>
   );
@@ -72,11 +71,7 @@ function FinancesBody({ finance }: { finance: ReturnType<typeof useFinance> }) {
                 view={view}
                 onView={setView}
                 panels={{
-                  summary: (
-                    <Button asChild variant="link">
-                      <Link to={FINANCES_SETTINGS_PATH}>{t("finances.summary.income")}</Link>
-                    </Button>
-                  ),
+                  summary: <Summary importing={status.importing} show={setView} />,
                   spending: (
                     <>
                       {status.importing && <p className="my-0 text-muted">{t("finances.importing")}</p>}
