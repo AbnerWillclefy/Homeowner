@@ -90,6 +90,23 @@ their `locals`, backend key, `environment` tag, Neon project and budget.
    The AWS Budget does not see Anthropic spend; the monthly spend limit in
    "Production" below caps it. The per-Home daily cap (3 calls) bounds it in code.
 
+8. **Finance encryption key (#423)**, before anyone saves Pluggy credentials.
+   The API seals each User's Client ID and Secret with it. Without it the
+   `/me/finance` routes answer 503 `finance not configured` for allowed Users;
+   the rest of the API runs. Use a different key for production.
+   ```sh
+   aws ssm put-parameter --name /homeowner/staging/finance-encryption-key \
+     --type SecureString --value "$(openssl rand -base64 32)"
+   ```
+   Create it by hand so the key never lands in Terraform state. Only the API
+   role may read it: the Allocation job's policy names its parameters one by
+   one. **Never `--overwrite` a key in use**: every saved credential becomes
+   unreadable and Users must paste theirs again (Transactions are unaffected).
+   The API reads the key once per cold start. To check the grant:
+   `aws iam simulate-principal-policy --policy-source-arn <allocate role arn>
+   --action-names ssm:GetParameter --resource-arns <key arn>` answers
+   `implicitDeny`; the same call with the API role answers `allowed`.
+
 ## How a deploy works
 
 `.github/workflows/deploy-staging.yml` (named exactly `Deploy staging`) runs on
@@ -330,7 +347,7 @@ ceiling of one call is 8192 output tokens, about $0.004.
 |---|---|
 | Lambda function | pay per use |
 | API Gateway HTTP API (+ `$default` stage) | pay per use |
-| SSM standard parameters (4 per environment: two database URLs, the VAPID private key, the Anthropic API key) | free |
+| SSM standard parameters (6 per environment: two database URLs, the VAPID private key, the Anthropic API key, the finance allowlist, the finance encryption key) | free |
 | AWS Budgets (2: account-wide and production) | free (first two budgets) |
 | Cognito user pool and app client (default email sender, no domain) | free (first 50,000 monthly active users) |
 | ECR repository | storage (lifecycle keeps the last 5 images) |

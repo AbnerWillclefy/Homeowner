@@ -15,7 +15,7 @@ type Equal<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
 export const stepsMatchApp: Equal<typeof STEPS, typeof ONBOARDING_STEPS> = true;
 
 export interface FakeState {
-  user: { id: string; email: string; displayName?: string; photoUrl?: string };
+  user: { id: string; email: string; displayName?: string; photoUrl?: string; finance?: boolean };
   /** The last step completed, not the step to show. Null when onboarding has not started. */
   onboardingStored: string | null;
   home: Home | null;
@@ -230,7 +230,7 @@ export function coreHandlers(api: FakeApi): void {
     signedIn((_, state) => {
       const { id, email, displayName, photoUrl } = state.user;
       const name = shownName({ email, displayName });
-      return json(200, { id, email, displayName: displayName ?? null, name, photoUrl: photoUrl ?? null, ...avatarFor(name) });
+      return json(200, { id, email, displayName: displayName ?? null, name, photoUrl: photoUrl ?? null, ...avatarFor(name), finance: state.user.finance ?? false });
     }),
   );
   // Mirrors NormalizeName in backend/internal/users/name.go for the cases a spec needs: trim, a blank name clears,
@@ -247,7 +247,7 @@ export function coreHandlers(api: FakeApi): void {
       const shown = shownName({ email, displayName });
       const mine = state.residents?.find((resident) => resident.you);
       if (mine) mine.name = shown;
-      return json(200, { id, email, displayName: displayName ?? null, name: shown, photoUrl: photoUrl ?? null, ...avatarFor(shown) });
+      return json(200, { id, email, displayName: displayName ?? null, name: shown, photoUrl: photoUrl ?? null, ...avatarFor(shown), finance: state.user.finance ?? false });
     }),
   );
   api.on("GET /me/onboarding", signedIn((_, state) => json(200, { step: nextStep(state.onboardingStored) })));

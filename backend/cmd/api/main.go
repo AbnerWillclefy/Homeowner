@@ -24,6 +24,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/config"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/db"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/pluggy"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/server"
 )
@@ -91,7 +92,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	}
 	defer pool.Close()
 
-	deps := server.Deps{DB: pool, Clock: clock.System{}, Logger: log, CORSAllowedOrigins: cfg.CORSAllowedOrigins, Environment: cfg.Environment,
+	deps := server.Deps{DB: pool, Clock: clock.System{}, Logger: log, CORSAllowedOrigins: cfg.CORSAllowedOrigins, Environment: cfg.Environment, FinanceAllowlist: cfg.FinanceAllowlist, FinanceKey: cfg.FinanceKey, Pluggy: pluggy.NewHTTP(cfg.PluggyBaseURL),
 		LLMDailyCapPerHome: cfg.LLMDailyCapPerHome, LLMMonthlySpendLimitMicros: cfg.LLMMonthlySpendLimitMicros}
 	if cfg.VAPIDEnabled() {
 		deps.Push = push.NewWebPushSender(cfg.VAPIDPublicKey, cfg.VAPIDPrivateKey, cfg.VAPIDSubject)

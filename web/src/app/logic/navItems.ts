@@ -1,7 +1,7 @@
 import type { MessageKey } from "../../shared/i18n";
-import { CHORES_PATH, HOME_PATH, ME_PATH, TODAY_PATH } from "./routes";
+import { CHORES_PATH, FINANCES_PATH, HOME_PATH, ME_PATH, TODAY_PATH } from "./routes";
 
-export type NavIcon = "today" | "chores" | "home" | "me";
+export type NavIcon = "today" | "chores" | "home" | "me" | "finance";
 
 export interface NavItem {
   path: string;
@@ -16,3 +16,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { path: HOME_PATH, labelKey: "nav.home", icon: "home" },
   { path: ME_PATH, labelKey: "nav.me", icon: "me" },
 ];
+
+/** The fifth tab, shown only to a User with the `finance` flag. */
+export const FINANCE_ITEM: NavItem = { path: FINANCES_PATH, labelKey: "nav.finances", icon: "finance" };
+
+export const navItems = (finance: boolean): readonly NavItem[] => (finance ? [...NAV_ITEMS, FINANCE_ITEM] : NAV_ITEMS);

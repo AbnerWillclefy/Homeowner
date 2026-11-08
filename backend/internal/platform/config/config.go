@@ -2,8 +2,10 @@
 package config
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"net/url"
 	"strconv"
@@ -66,6 +68,16 @@ type Config struct {
 	// Environment (ENVIRONMENT) names the deployment: local, staging or
 	// production. It defaults to local. /admin/me reports it (ADR 0017).
 	Environment string
+	// FinanceAllowlist (FINANCE_ALLOWLIST) is the trimmed emails that may use
+	// Finances, comma-separated; finance.NewAllowlist lowercases them. The
+	// Terraform placeholder "none" allows nobody.
+	FinanceAllowlist []string
+	// FinanceKey (FINANCE_ENCRYPTION_KEY, base64 of 32 bytes) seals the Pluggy
+	// credentials. Nil when unset or malformed; Load only warns.
+	FinanceKey *[32]byte
+	// PluggyBaseURL (PLUGGY_BASE_URL) is where the Pluggy adapter calls,
+	// without a trailing slash. It defaults to production.
+	PluggyBaseURL string
 }
 
 // PhotosEnabled reports whether resident photos are configured.
@@ -156,6 +168,32 @@ func Load(getenv func(string) string) (Config, error) {
 			return Config{}, fmt.Errorf("REPLAN_ENABLED: %w", err)
 		}
 		c.ReplanEnabled = b
+	}
+	for i, e := range strings.Split(getenv("FINANCE_ALLOWLIST"), ",") {
+		switch t := strings.TrimSpace(e); {
+		case t == "", strings.EqualFold(t, "none"): // "none" is the Terraform placeholder
+		case !strings.Contains(t, "@"):
+			slog.Warn("FINANCE_ALLOWLIST entry is not an email, it will match nobody", "entry_position", i+1)
+			fallthrough
+		default:
+			c.FinanceAllowlist = append(c.FinanceAllowlist, t)
+		}
+	}
+	if v := strings.TrimSpace(getenv("FINANCE_ENCRYPTION_KEY")); v != "" {
+		// Never fail: a bad key disables Finances, not the whole API. Neither
+		// the value nor the decode error is logged.
+		if b, err := base64.StdEncoding.DecodeString(v); err == nil && len(b) == 32 {
+			c.FinanceKey = (*[32]byte)(b)
+		} else {
+			slog.Warn("FINANCE_ENCRYPTION_KEY is not base64 of 32 bytes, finance is disabled")
+		}
+	}
+	c.PluggyBaseURL = strings.TrimRight(strings.TrimSpace(getenv("PLUGGY_BASE_URL")), "/")
+	if c.PluggyBaseURL == "" {
+		c.PluggyBaseURL = "https://api.pluggy.ai"
+	}
+	if u, err := url.Parse(c.PluggyBaseURL); err != nil || u.Host == "" || u.Scheme != "http" && u.Scheme != "https" {
+		return Config{}, errors.New("PLUGGY_BASE_URL must be an http(s) URL")
 	}
 	c.Environment = strings.TrimSpace(getenv("ENVIRONMENT"))
 	switch c.Environment {

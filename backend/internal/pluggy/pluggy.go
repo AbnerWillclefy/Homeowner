@@ -1,0 +1,75 @@
+// Package pluggy is the app's one view of the Pluggy API: a Client interface
+// and the few types the app uses. NewHTTP is its only implementation; tests
+// run it against pluggytest, never the real Pluggy.
+package pluggy
+
+import (
+	"context"
+	"errors"
+	"time"
+)
+
+// ErrUnauthorized is a 401 or 403: the credentials or the API key were refused.
+var ErrUnauthorized = errors.New("pluggy: unauthorized")
+
+// ErrNotFound is a 404.
+var ErrNotFound = errors.New("pluggy: not found")
+
+// Client calls Pluggy. The API key is a parameter, never state: the caller
+// holds it for as long as it needs it and drops it.
+type Client interface {
+	// Auth trades a Client ID and Secret for an API key.
+	Auth(ctx context.Context, clientID, clientSecret string) (apiKey string, err error)
+	CreateConnectToken(ctx context.Context, apiKey string) (string, error)
+	GetItem(ctx context.Context, apiKey, itemID string) (Item, error)
+	ListAccounts(ctx context.Context, apiKey, itemID string) ([]Account, error)
+	// ListTransactions reads one page of an account's transactions. Pass an
+	// empty cursor for the first page, then the previous page's Next until
+	// Next is empty.
+	ListTransactions(ctx context.Context, apiKey, accountID string, from, to time.Time, cursor string) (TransactionsPage, error)
+}
+
+// Item is a connection to one institution.
+type Item struct {
+	ID     string
+	Status string
+}
+
+// Account is one account of an Item. Type and Subtype are Pluggy's own words
+// (BANK/CHECKING_ACCOUNT, CREDIT/CREDIT_CARD).
+type Account struct {
+	ID       string
+	Type     string
+	Subtype  string
+	Name     string
+	Currency string
+}
+
+// TransactionsPage is one page of transactions. Next is the cursor of the
+// following page, empty on the last one.
+type TransactionsPage struct {
+	Transactions []Transaction
+	Next         string
+}
+
+// Transaction is one row. Direction is the sign of AmountCents (negative is
+// money out), never Type: on a credit card a purchase is negative with type
+// CREDIT. ProviderID is often missing, so key on ID.
+type Transaction struct {
+	ID                 string
+	ProviderID         *string
+	Date               time.Time // an instant; convert to a São Paulo date before using it as a day
+	Description        string
+	AmountCents        int64
+	Currency           string
+	Type               string // DEBIT or CREDIT
+	Status             string
+	Category           *string // Pluggy's category, null on some rows
+	CreditCardMetadata *CreditCardMetadata
+}
+
+// CreditCardMetadata is what Pluggy knows of an installment purchase.
+type CreditCardMetadata struct {
+	InstallmentNumber int
+	TotalInstallments int
+}

@@ -119,6 +119,15 @@ module "api" {
       DATABASE_URL_SSM_PARAM         = module.database.database_url_param
       MIGRATE_DATABASE_URL_SSM_PARAM = module.database.migrate_database_url_param
 
+      # The Finances allowlist (#422). A resource reference, so Terraform
+      # creates the parameter before the function can start.
+      FINANCE_ALLOWLIST_SSM_PARAM = aws_ssm_parameter.finance_allowlist.name
+
+      # The key that seals Pluggy credentials (#423). A plain string, not a
+      # resource: a human creates the SecureString, so it never enters state.
+      # Without it the finance routes answer 503 and the rest of the API runs.
+      FINANCE_ENCRYPTION_KEY_SSM_PARAM = "${local.ssm_prefix}/finance-encryption-key"
+
       # Public identifiers, not secrets, so plain variables (no SSM).
       COGNITO_ISSUER    = module.auth.issuer
       COGNITO_CLIENT_ID = module.auth.client_id
@@ -155,6 +164,10 @@ module "allocation_job" {
   command             = ["events"]
   schedule_expression = "rate(15 minutes)"
   ssm_path_prefix     = local.ssm_prefix
+
+  # Named, not the whole prefix: the job must not read the finance encryption
+  # key (#423).
+  ssm_parameter_names = ["database-url", "vapid-private-key", "anthropic-api-key"]
 
   # A tick is up to 20s of allocator calls, 15s of explanation calls (#28) and
   # 30s of nudges: 65s in the worst case, so the module's 60s default is too
@@ -209,6 +222,22 @@ module "allocation_job" {
 resource "aws_lambda_function_event_invoke_config" "allocate_replan" {
   function_name          = module.allocation_job.function_name
   maximum_retry_attempts = 0
+}
+
+# Emails allowed to use Finances (#422), a StringList a human edits with
+# `aws ssm put-parameter --overwrite` (docs/development.md). Terraform creates
+# it with a placeholder (SSM refuses an empty value; "none" has no @, so it
+# allows nobody) and ignores later changes to the value. It is here, not in a
+# module, because modules know no environment.
+resource "aws_ssm_parameter" "finance_allowlist" {
+  name  = "${local.ssm_prefix}/finance-allowlist"
+  type  = "StringList"
+  tier  = "Standard"
+  value = "none"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
 }
 
 module "http_api" {

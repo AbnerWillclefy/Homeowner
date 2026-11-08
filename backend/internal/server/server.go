@@ -17,12 +17,14 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/choresettings"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/finance"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/invites"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/photos"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/pluggy"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/residents"
@@ -69,6 +71,15 @@ type Deps struct {
 	// only, nothing in the API enforces either.
 	LLMDailyCapPerHome         int
 	LLMMonthlySpendLimitMicros int64
+	// FinanceAllowlist is the emails that may use Finances, read once at
+	// start-up. Empty or nil means nobody.
+	FinanceAllowlist []string
+	// FinanceKey seals the Pluggy credentials. Nil means finance routes
+	// answer 503 to allowed Users.
+	FinanceKey *[32]byte
+	// Pluggy reads the User's banks; nil means the routes that call Pluggy
+	// answer 503.
+	Pluggy pluggy.Client
 }
 
 const healthTimeout = 2 * time.Second
@@ -95,7 +106,8 @@ func New(deps Deps) http.Handler {
 		photosBase = ""
 	}
 	photoURL := photos.URLBuilder(photosBase)
-	me := users.NewHandler(s.users, homeStore, photoURL, clk, log)
+	financeAllow := finance.NewAllowlist(deps.FinanceAllowlist)
+	me := users.NewHandler(s.users, homeStore, photoURL, financeAllow.Allows, clk, log)
 	home := homes.NewHandler(homeStore, clk, log)
 	photosH := photos.NewHandler(deps.Photos, s.users, photoURL, clk, log)
 	invite := invites.NewHandler(invites.NewStore(db), clk, log)
@@ -168,6 +180,10 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("POST /push/test", pushes.RequireConfigured(user(pushes.SendTest)))
 	// Every /admin/ path, known or not, goes through the guard first.
 	mux.Handle("/admin/", s.requireSuperAdmin(s.adminMux()))
+	// Every /me/finance path, known or not, meets the allowlist first.
+	guarded := s.requireFinance(financeAllow, financeMux(finance.NewHandler(finance.NewStore(db), deps.FinanceKey, deps.Pluggy, deps.Environment, clk, log)))
+	mux.Handle("/me/finance", guarded)
+	mux.Handle("/me/finance/", guarded)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not found")
 	})

@@ -56,6 +56,40 @@ func TestSecretsResolvedFromSSMWhenParameterNamesAreSet(t *testing.T) {
 	}
 }
 
+func TestOptionalFinanceKeyMissingDoesNotStopStartup(t *testing.T) {
+	fake := &fakeSSM{params: map[string]string{"/p/db": "postgres://pooled"}}
+	env := map[string]string{
+		"DATABASE_URL_SSM_PARAM":           "/p/db",
+		"FINANCE_ENCRYPTION_KEY_SSM_PARAM": "/p/key",
+	}
+	getenv, err := withSSMSecrets(context.Background(), fake, envOf(env))
+	if err != nil {
+		t.Fatalf("a missing optional parameter must not fail: %v", err)
+	}
+	if getenv("FINANCE_ENCRYPTION_KEY") != "" || getenv("DATABASE_URL") != "postgres://pooled" {
+		t.Error("key must stay empty and the other secrets resolve")
+	}
+
+	fake.params["/p/key"] = "a2V5"
+	getenv, _ = withSSMSecrets(context.Background(), fake, envOf(env))
+	if got := getenv("FINANCE_ENCRYPTION_KEY"); got != "a2V5" {
+		t.Errorf("FINANCE_ENCRYPTION_KEY = %q", got)
+	}
+}
+
+func TestFinanceAllowlistResolvedFromSSM(t *testing.T) {
+	fake := &fakeSSM{params: map[string]string{"/p/finance": "ana@example.com"}}
+	getenv, err := withSSMSecrets(context.Background(), fake, envOf(map[string]string{
+		"FINANCE_ALLOWLIST_SSM_PARAM": "/p/finance",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := getenv("FINANCE_ALLOWLIST"); got != "ana@example.com" {
+		t.Errorf("FINANCE_ALLOWLIST = %q", got)
+	}
+}
+
 func TestVAPIDPrivateKeyResolvedFromSSM(t *testing.T) {
 	fake := &fakeSSM{params: map[string]string{"/p/vapid": "private-key-value"}}
 	getenv, err := withSSMSecrets(context.Background(), fake, envOf(map[string]string{

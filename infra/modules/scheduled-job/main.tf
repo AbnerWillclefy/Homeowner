@@ -50,11 +50,11 @@ data "aws_iam_policy_document" "runtime" {
     resources = ["${aws_cloudwatch_log_group.this.arn}:*"]
   }
 
-  # Only the parameters under this function's own prefix.
+  # Exactly the named parameters, so the finance encryption key stays unreadable.
   statement {
     sid       = "ReadOwnSecrets"
     actions   = ["ssm:GetParameter"]
-    resources = ["${local.ssm_arn_prefix}/*"]
+    resources = [for n in var.ssm_parameter_names : "${local.ssm_arn_prefix}/${n}"]
   }
 }
 

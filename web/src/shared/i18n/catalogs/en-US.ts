@@ -26,6 +26,10 @@ export const enUS = {
   "nav.chores": "Chores",
   "nav.home": "Home",
   "nav.me": "Me",
+  "nav.finances": "Finances",
+  "finances.title": "Finances",
+  "finances.empty": "Your finances are yours alone. Connect your banks to start.",
+  "finances.loading": "Loading your finances",
   "me.heading": "About you",
 
   // Home

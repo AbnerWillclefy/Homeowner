@@ -1,6 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SESSION_KEY } from "../logic/session";
-import { getMe } from "./meApi";
+import { getMe, parseMe } from "./meApi";
+
+describe("parseMe finance", () => {
+  const base = { id: "u1", email: "a@example.com", name: "a" };
+  it("is true only for a literal true", () => {
+    expect(parseMe({ ...base, finance: true })?.finance).toBe(true);
+    expect(parseMe({ ...base, finance: "true" })?.finance).toBe(false);
+    expect(parseMe({ ...base, finance: 1 })?.finance).toBe(false);
+    expect(parseMe(base)?.finance).toBe(false);
+  });
+});
 
 function stubStorage(signedIn: boolean) {
   const data = new Map<string, string>();
@@ -43,6 +53,7 @@ describe("getMe", () => {
       photoUrl: null,
       initials: "",
       avatarTone: "",
+      finance: false,
     });
     expect(fetch.mock.calls[0]![0]).toBe("http://api.test/me");
     expect(new Headers(fetch.mock.calls[0]![1]?.headers).get("Authorization")).toBe("Bearer id-1");
@@ -69,6 +80,7 @@ describe("getMe", () => {
       photoUrl: "https://cdn.test/u1.jpg",
       initials: "A",
       avatarTone: "pets",
+      finance: false,
     });
   });
 
