@@ -317,7 +317,7 @@ func MatchBills(bills []Bill, txns []Txn, taken map[billMonth]bool) []Match {
 		month := time.Date(t.PostedOn.Year(), t.PostedOn.Month(), 1, 0, 0, 0, 0, time.UTC)
 		best := -1
 		for i, b := range bills {
-			if len(names[i]) < minBillName || b.ExpectedCents != -t.AmountCents || !strings.Contains(desc, names[i]) || taken[billMonth{b.ID, month}] {
+			if len(names[i]) < minBillName || b.ExpectedCents != -t.AmountCents || !strings.Contains(desc, names[i]) {
 				continue
 			}
 			if best < 0 || cmp.Or(cmp.Compare(len(names[i]), len(names[best])), cmp.Compare(bills[best].ID, b.ID)) > 0 {
@@ -328,6 +328,9 @@ func MatchBills(bills []Bill, txns []Txn, taken map[billMonth]bool) []Match {
 			continue
 		}
 		k := billMonth{bills[best].ID, month}
+		if taken[k] { // the best Bill is spoken for: do not fall through to a shorter name
+			continue
+		}
 		if _, done := won[k]; !done {
 			won[k] = Match{k.BillID, t.ID, month}
 		}

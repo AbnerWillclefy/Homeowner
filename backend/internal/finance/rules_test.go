@@ -88,6 +88,9 @@ func TestMatchBills(t *testing.T) {
 		"longer name wins, the other stays unpaid": {
 			[]Bill{{ID: "b1", Name: "Luz", ExpectedCents: 9000}, {ID: "b2", Name: "Luz praia", ExpectedCents: 9000}},
 			[]Txn{exp("t1", "ENEL LUZ PRAIA", 9000, day(nov, 8))}, nil, []Match{{"b2", "t1", nov}}},
+		"taken longest name leaves the shorter unpaid": {
+			[]Bill{{ID: "b1", Name: "Luz", ExpectedCents: 9000}, {ID: "b2", Name: "Luz praia", ExpectedCents: 9000}},
+			[]Txn{exp("t1", "ENEL LUZ PRAIA", 9000, day(nov, 8))}, map[billMonth]bool{{"b2", nov}: true}, nil},
 		"income never matches":   {[]Bill{rent}, []Txn{{ID: "t1", Description: "ALUGUEL", AmountCents: 150000, PostedOn: day(nov, 5), Type: "income"}}, nil, nil},
 		"transfer never matches": {[]Bill{rent}, []Txn{{ID: "t1", Description: "ALUGUEL", AmountCents: -150000, PostedOn: day(nov, 5), Type: "transfer"}}, nil, nil},
 		"each month pays its own": {[]Bill{rent}, []Txn{exp("t1", "ALUGUEL", 150000, day(oct, 5)), exp("t2", "ALUGUEL", 150000, day(nov, 5))}, nil,
