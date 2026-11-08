@@ -81,8 +81,7 @@ func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, no
 	return tx.Commit(ctx)
 }
 
-// Overview reads the Sources and the import state, the part of the status
-// body that is not the credentials flag.
+// Overview reads the whole status body: Sources, import state and credentials flag.
 func (s *Store) Overview(ctx context.Context, userID string) (StatusResponse, error) {
 	out := StatusResponse{Sources: []SourceResponse{}}
 	rows, err := s.db.Query(ctx, `SELECT id, name, kind, currency FROM finance_sources WHERE user_id = $1 ORDER BY name, id`, userID)
@@ -102,15 +101,9 @@ func (s *Store) Overview(ctx context.Context, userID string) (StatusResponse, er
 	}
 	// The oldest sync, or null while any Item has never synced.
 	err = s.db.QueryRow(ctx, `
-		SELECT COALESCE(bool_or(NOT import_complete), false),
+		SELECT EXISTS (SELECT 1 FROM finance_credentials WHERE user_id = $1),
+		       COALESCE(bool_or(NOT import_complete), false),
 		       CASE WHEN bool_or(last_synced_at IS NULL) THEN NULL ELSE min(last_synced_at) END
-		FROM finance_items WHERE user_id = $1`, userID).Scan(&out.Importing, &out.LastSyncedAt)
+		FROM finance_items WHERE user_id = $1`, userID).Scan(&out.Configured, &out.Importing, &out.LastSyncedAt)
 	return out, err
-}
-
-// HasCredentials reports whether the User has saved credentials.
-func (s *Store) HasCredentials(ctx context.Context, userID string) (bool, error) {
-	var ok bool
-	err := s.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM finance_credentials WHERE user_id = $1)`, userID).Scan(&ok)
-	return ok, err
 }

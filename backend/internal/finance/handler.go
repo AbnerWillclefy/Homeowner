@@ -4,11 +4,11 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/identity"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
@@ -19,6 +19,9 @@ const (
 	maxBodyBytes  = 2 << 10
 	maxCredential = 200
 )
+
+// itemIDPattern is a sanity bound on a Pluggy Item id; Pluggy issues uuids.
+var itemIDPattern = regexp.MustCompile(`^[0-9a-zA-Z-]{1,64}$`)
 
 // Handler serves the Finances routes behind the allowlist guard. The key is
 // never nil here: the guard answers 503 first.
@@ -41,9 +44,6 @@ func NewHandler(store *Store, key *[32]byte, client pluggy.Client, env string, c
 func (h *Handler) Status(w http.ResponseWriter, r *http.Request) {
 	userID := identity.CurrentUser(r.Context()).ID
 	st, err := h.store.Overview(r.Context(), userID)
-	if err == nil {
-		st.Configured, err = h.store.HasCredentials(r.Context(), userID)
-	}
 	if err != nil {
 		httpx.InternalError(w, h.log, "finance: read status", err)
 		return
@@ -118,7 +118,7 @@ func (h *Handler) ConnectItem(w http.ResponseWriter, r *http.Request) {
 	if !httpx.DecodeBody(w, r, &req, maxBodyBytes, true) {
 		return
 	}
-	if !chores.ValidID(req.ItemID) {
+	if !itemIDPattern.MatchString(req.ItemID) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid item id")
 		return
 	}
