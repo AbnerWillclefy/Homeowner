@@ -6,20 +6,22 @@ import { Card } from "../../../shared/ui/Card";
 import { FormError } from "../../../shared/ui/FormError";
 import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { SkeletonBar } from "../../../shared/ui/Skeleton";
-import type { Bill } from "../api/api";
+import type { Bill, BillSuggestion } from "../api/api";
+import { useBillSuggestions } from "../hooks/useBillSuggestions";
 import { useBills } from "../hooks/useBills";
 import { billGroups } from "../logic/billGroups";
 import { formatCents } from "../logic/money";
 import { addMonths, currentDay, currentMonth } from "../logic/month";
 import { BillFormDialog } from "./BillFormDialog";
 import { BillRow } from "./BillRow";
+import { BillSuggestions } from "./BillSuggestions";
 import { BillSummary } from "./BillSummary";
 import { DeleteBillDialog } from "./DeleteBillDialog";
 import { DueStrip } from "./DueStrip";
 import { MonthPicker } from "./MonthPicker";
 
 // `opener` is the "⋯" button focus returns to on close; null when the dialog's opener keeps focus itself.
-type Open = { kind: "form"; bill: Bill | null; opener: HTMLElement | null } | { kind: "delete"; bill: Bill; opener: HTMLElement | null } | null;
+type Open = { kind: "form"; bill: Bill | null; opener: HTMLElement | null; suggestion?: BillSuggestion } | { kind: "delete"; bill: Bill; opener: HTMLElement | null } | null;
 
 const GROUPS = ["overdue", "due", "paid"] as const;
 
@@ -37,6 +39,7 @@ export function BillsSection({ current }: { current?: ReactNode }) {
   const { state, refreshing, reload, save, remove, setPaid } = useBills(month);
   const skeleton = useReportFirstLoad(state.kind === "loading");
   useReportFetching(refreshing);
+  const { suggestions, dismiss } = useBillSuggestions();
   const [open, setOpen] = useState<Open>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -89,6 +92,13 @@ export function BillsSection({ current }: { current?: ReactNode }) {
       {failed && <FormError form="finances-bills">{t("finances.bills.failed")}</FormError>}
       {state.kind === "ready" && groups && (
         <>
+          {isCurrent && (
+            <BillSuggestions
+              suggestions={suggestions}
+              dismiss={dismiss}
+              onAdd={(suggestion) => setOpen({ kind: "form", bill: null, opener: null, suggestion })}
+            />
+          )}
           {state.data.length === 0 ? (
             <p className="my-0 text-muted">{t(isCurrent ? "finances.bills.empty" : "finances.bills.past.empty")}</p>
           ) : (
@@ -132,7 +142,13 @@ export function BillsSection({ current }: { current?: ReactNode }) {
         <BillFormDialog
           bill={open.bill}
           returnFocusRef={{ current: open.opener }}
-          save={(input) => save(open.bill?.id ?? null, input)}
+          initial={open.suggestion && { name: open.suggestion.name, expectedCents: open.suggestion.amountCents, dueDay: open.suggestion.dueDay }}
+          save={async (input) => {
+            const outcome = await save(open.bill?.id ?? null, input);
+            // Best-effort: an edited name could make the server suggest the merchant again.
+            if (outcome.kind === "ok" && open.suggestion) await dismiss(open.suggestion.merchantKey);
+            return outcome;
+          }}
           onClose={() => setOpen(null)}
         />
       )}
