@@ -45,8 +45,8 @@ const LOCALES = [
 ] as const;
 
 const suggestions = [
-  { merchantKey: "netflix", name: "Netflix", amountCents: 3990, dueDay: 12 },
-  { merchantKey: "smartfit", name: "Smart Fit", amountCents: 9990, dueDay: 5 },
+  { merchantKey: "NETFLIX", name: "Netflix", amountCents: 3990, dueDay: 12 },
+  { merchantKey: "SMART FIT", name: "Smart Fit", amountCents: 9990, dueDay: 5 },
 ];
 
 const connected = () => {

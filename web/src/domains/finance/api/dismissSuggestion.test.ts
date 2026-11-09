@@ -54,6 +54,19 @@ describe("dismissSuggestion", () => {
     expect(client.getQueryData(billSuggestionsKey)).toEqual([NETFLIX, GYM]);
   });
 
+  it("on overlapping dismissals, a failure brings back only its own suggestion", async () => {
+    const answers: Record<string, (r: { kind: "ok" } | { kind: "offline" }) => void> = {};
+    dismiss.mockImplementation((key: string) => new Promise((resolve) => (answers[key] = resolve)));
+    const first = dismissSuggestion(client, "netflix");
+    const second = dismissSuggestion(client, "smartfit");
+    await vi.waitFor(() => expect(Object.keys(answers)).toHaveLength(2));
+    answers.smartfit({ kind: "ok" });
+    expect(await second).toBe(true);
+    answers.netflix({ kind: "offline" });
+    expect(await first).toBe(false);
+    expect(client.getQueryData(billSuggestionsKey)).toEqual([NETFLIX]);
+  });
+
   it("is refreshed by a Bill write, which invalidates the finance prefix", async () => {
     await invalidateFinance(client);
     expect(client.getQueryState(billSuggestionsKey)?.isInvalidated).toBe(true);

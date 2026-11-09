@@ -297,7 +297,7 @@ export function financeHandlers(api: FakeApi): void {
     "POST /me/finance/bill-suggestions/dismissals",
     signedIn((request, state) => {
       const key = (request.body as { merchantKey?: unknown } | null)?.merchantKey;
-      if (typeof key !== "string" || key.trim() === "") return json(400, { error: "invalid merchant key" });
+      if (typeof key !== "string" || !/^[A-Z ]+$/.test(key)) return json(400, { error: "invalid merchant key" });
       const dismissed = (finance(state).dismissedSuggestions ??= []);
       if (!dismissed.includes(key)) dismissed.push(key);
       return empty();

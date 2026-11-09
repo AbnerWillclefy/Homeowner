@@ -106,7 +106,10 @@ export async function dismissSuggestion(client: QueryClient, merchantKey: string
   const before = client.getQueryData<BillSuggestion[]>(billSuggestionsKey);
   client.setQueryData<BillSuggestion[]>(billSuggestionsKey, (list) => list?.filter((s) => s.merchantKey !== merchantKey));
   if ((await dismissBillSuggestion(merchantKey)).kind === "ok") return true;
-  client.setQueryData(billSuggestionsKey, before);
+  // Revert only this merchant from the newest list, so overlapping dismissals don't undo each other.
+  client.setQueryData<BillSuggestion[]>(billSuggestionsKey, (list) =>
+    before?.filter((s) => s.merchantKey === merchantKey || list?.some((x) => x.merchantKey === s.merchantKey)),
+  );
   return false;
 }
 
