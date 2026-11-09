@@ -1,14 +1,18 @@
 import { EnergyPill } from "../../domains/checkin/components/EnergyPill";
 import { pillInput } from "../../domains/checkin/logic/energyPill";
 import { StreakButton } from "../../domains/streak/components/StreakButton";
+import { MicButton } from "../../domains/voice/components/MicButton";
+import { recognitionCtor } from "../../domains/voice/logic/speech";
 import { Logo } from "../../shared/ui/Logo";
 import { useShell } from "./ShellContext";
 
 /**
- * The quiet bar above every tab: the logo (the page's `h1`) on the left, and on the right two fixed slots, the Energy
- * indicator and the Streak, each a 4rem ghost icon button. The bar reserves its whole height and both slots from the
- * first frame, whatever the data: its row is at least the 2.75rem touch target and each slot is never narrower than
- * 4rem, so filling either moves nothing, and at 320px and the default text size it stays on one row. The right group
+ * The quiet bar above every tab: the logo (the page's `h1`) on the left, and on the right the Energy indicator and the
+ * Streak, each a 4rem ghost icon button in a fixed slot, then the voice microphone in a 2.75rem slot (the touch
+ * target, no more) that exists only where the browser has speech recognition. The bar reserves its whole height and the
+ * two data slots from the first frame, whatever the data: its row is at least the 2.75rem touch target and each of
+ * them is never narrower than 4rem, so filling either moves nothing, and at 320px and the default text size it stays
+ * on one row (see `top-bar-one-row.spec.ts` for what holds with the microphone). The right group
  * never shrinks and the bar wraps, so at the largest text size on a narrow phone the two drop under the logo, on the
  * right, instead of being pushed off screen. Both fill their slots only once the Home is ready (see `useStreak`,
  * `useCheckIn`); until then the slots are empty. The indicator opens the Shell's one Check-in dialog.
@@ -30,6 +34,11 @@ export function TopBar() {
         <div data-slot="streak" className="flex h-11 min-w-16 items-center justify-end">
           <StreakButton streak={streak.streak} loading={streak.loading} />
         </div>
+        {recognitionCtor(window) && (
+          <div data-slot="voice" className="flex h-11 min-w-11 items-center justify-end">
+            <MicButton />
+          </div>
+        )}
       </div>
     </header>
   );
