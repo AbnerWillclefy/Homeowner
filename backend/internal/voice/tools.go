@@ -101,8 +101,14 @@ func userMessage(locale, transcript string, cs []chores.Chore) string {
 	return string(b)
 }
 
+// maxAnswerBytes bounds the answer we decode, as llmalloc does.
+const maxAnswerBytes = 64 << 10
+
 // decodeTools reads the answer of a tool-call request.
 func decodeTools(raw json.RawMessage) ([]llmalloc.ToolCall, error) {
+	if len(raw) > maxAnswerBytes {
+		return nil, llmalloc.ErrInvalidResponse
+	}
 	var calls []llmalloc.ToolCall
 	if err := json.Unmarshal(raw, &calls); err != nil {
 		return nil, err

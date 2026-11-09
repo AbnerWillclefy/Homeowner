@@ -366,6 +366,18 @@ func TestAnAnswerThatIsNotAToolCallListIs502(t *testing.T) {
 	}
 }
 
+func TestAnOversizedAnswerIs502(t *testing.T) {
+	app, me := setup(t)
+	app.Voice.Answer(`[{"name":"not_understood","input":{"reason":"` + strings.Repeat("a", 70<<10) + `"}}]`)
+	if r := interpret(me, "x"); r.Status != http.StatusBadGateway {
+		t.Fatalf("oversized answer = %d, want 502", r.Status)
+	}
+	var outcome string
+	if err := app.DB.QueryRow(context.Background(), `SELECT outcome FROM llm_call_events WHERE service = 'voice'`).Scan(&outcome); err != nil || outcome != "invalid_response" {
+		t.Fatalf("outcome = %q %v", outcome, err)
+	}
+}
+
 func TestABlockedModelCallTimesOutWith504(t *testing.T) {
 	restore := voice.SetCallTimeout(100 * time.Millisecond)
 	defer restore()
