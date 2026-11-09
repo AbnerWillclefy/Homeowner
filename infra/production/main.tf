@@ -10,6 +10,9 @@ locals {
   # confirmed by the maintainer.
   llm_daily_cap_per_home      = 3
   llm_monthly_spend_limit_usd = 10
+
+  # Voice commands (#460): on, checked on staging. Needs /homeowner/production/anthropic-api-key.
+  voice_enabled = true
 }
 
 provider "aws" {
@@ -149,6 +152,11 @@ module "api" {
       VAPID_SUBJECT               = var.vapid_subject
       VAPID_PRIVATE_KEY_SSM_PARAM = "${local.ssm_prefix}/vapid-private-key"
     },
+    # Voice commands (#460): switched by local.voice_enabled.
+    local.voice_enabled ? {
+      VOICE_ENABLED               = "true"
+      ANTHROPIC_API_KEY_SSM_PARAM = "${local.ssm_prefix}/anthropic-api-key"
+    } : {},
   )
 }
 

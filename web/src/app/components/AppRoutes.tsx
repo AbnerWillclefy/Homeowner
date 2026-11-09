@@ -8,7 +8,7 @@ import { LazyPage } from "./LazyPage";
 import { FinancesFallback, MeEditFallback, MeFallback, ResidentFallback } from "./lazyFallbacks";
 import { FinanceRoute } from "./pages/FinanceRoute";
 import { TodayPage } from "./pages";
-import { CHORES_PATH, CONFIRM_PATH, FINANCES_PATH, FINANCES_SETTINGS_PATH, HOME_PATH, ME_EDIT_PATH, ME_PATH, RESIDENT_PATH, SIGN_IN_PATH, SIGN_UP_PATH, TODAY_PATH, WELCOME_PREFIX } from "../logic/routes";
+import { CHORES_PATH, CONFIRM_PATH, FINANCES_BILLS_PATH, FINANCES_PATH, FINANCES_SETTINGS_PATH, FINANCES_SPENDING_PATH, HOME_PATH, ME_EDIT_PATH, ME_PATH, RESIDENT_PATH, SIGN_IN_PATH, SIGN_UP_PATH, TODAY_PATH, WELCOME_PREFIX } from "../logic/routes";
 import { Shell } from "./Shell";
 import { WelcomeLayout } from "./WelcomeLayout";
 
@@ -73,16 +73,19 @@ export function AppRoutes() {
               </LazyPage>
             }
           />
-          <Route
-            path={FINANCES_PATH}
-            element={
-              <FinanceRoute>
-                <LazyPage key="finances" message="finances.loading" skeleton={<FinancesFallback />}>
-                  <FinancesTab />
-                </LazyPage>
-              </FinanceRoute>
-            }
-          />
+          {([[FINANCES_PATH, "summary"], [FINANCES_SPENDING_PATH, "spending"], [FINANCES_BILLS_PATH, "bills"]] as const).map(([path, view]) => (
+            <Route
+              key={path}
+              path={path}
+              element={
+                <FinanceRoute>
+                  <LazyPage key="finances" message="finances.loading" skeleton={<FinancesFallback />}>
+                    <FinancesTab view={view} />
+                  </LazyPage>
+                </FinanceRoute>
+              }
+            />
+          ))}
           <Route
             path={FINANCES_SETTINGS_PATH}
             element={

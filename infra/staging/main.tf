@@ -148,6 +148,12 @@ module "api" {
       VAPID_SUBJECT               = var.vapid_subject
       VAPID_PRIVATE_KEY_SSM_PARAM = "${local.ssm_prefix}/vapid-private-key"
     },
+    # Voice commands (#460): on in staging. The API reads the key under the
+    # prefix grant it already has.
+    {
+      VOICE_ENABLED               = "true"
+      ANTHROPIC_API_KEY_SSM_PARAM = "${local.ssm_prefix}/anthropic-api-key"
+    },
   )
 }
 

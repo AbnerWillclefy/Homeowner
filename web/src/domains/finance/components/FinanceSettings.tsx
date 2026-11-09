@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { useLocation, useNavigate } from "react-router";
 import { useI18n } from "../../../shared/i18n";
 import { FINANCES_PATH } from "../../../app/logic/routes";
@@ -9,7 +9,7 @@ import { useFinance } from "../hooks/useFinance";
 import { MonthlyIncome } from "./Commitments";
 import { FinanceSetup, FinanceStatusGate } from "./FinanceSetup";
 
-/** Ajustes, at /finances/ajustes: Sources, Monthly income, credentials and deleting the data. */
+/** Ajustes, at /finances/ajustes: Monthly income, Sources, credentials and deleting the data. */
 export function FinanceSettings() {
   const { t } = useI18n();
   const finance = useFinance();
@@ -18,23 +18,23 @@ export function FinanceSettings() {
   const canGoBack = useLocation().key !== "default";
   return (
     <PageLoading message={t("finances.loading")}>
-      <div className="mb-4">
-        <Button variant="ghost" className="-ms-3" onClick={() => (canGoBack ? navigate(-1) : navigate(FINANCES_PATH))}>
-          <ArrowLeft aria-hidden="true" size={20} />
+      <div className="mb-2">
+        <Button variant="ghost" className="-ms-3 gap-1 px-3" onClick={() => (canGoBack ? navigate(-1) : navigate(FINANCES_PATH))}>
+          <ChevronLeft aria-hidden="true" size={20} />
           {t("finances.settings.back")}
         </Button>
       </div>
       <PageHeader title={t("finances.settings.title")} />
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-4">
         <FinanceStatusGate finance={finance}>
           {(status) => (
             <FinanceSetup finance={finance} status={status}>
               {({ sources, credentials, deletion }) => (
                 <>
-                  {sources}
                   <MonthlyIncome />
+                  {sources}
                   {credentials}
-                  {deletion}
+                  <div className="mt-4">{deletion}</div>
                 </>
               )}
             </FinanceSetup>

@@ -51,7 +51,8 @@ func TestItemAndAccounts(t *testing.T) {
 	if accts[0] != want {
 		t.Errorf("first account = %+v, want %+v", accts[0], want)
 	}
-	if accts[1].Type != "CREDIT" || accts[1].Subtype != "CREDIT_CARD" {
+	// The card's bill closes on the 7th and is due on the 12th (creditData's dates).
+	if accts[1].Type != "CREDIT" || accts[1].Subtype != "CREDIT_CARD" || accts[1].CloseDay != 7 || accts[1].DueDay != 12 {
 		t.Errorf("second account = %+v", accts[1])
 	}
 }

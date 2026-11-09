@@ -9,7 +9,7 @@ import type { SameDays } from "./sameDays";
 
 const translate = createTranslate({ "en-US": enUS, "pt-BR": ptBR } as Catalogs);
 const same = (spent: number, previousSpent: number, over: Partial<SameDays> = {}): SameDays => ({
-  spent, previousSpent, cutDay: 8, noPrevious: false, byCategory: new Map(), ...over,
+  spent, previousSpent, cutDay: 8, noPrevious: false, due: [], byCategory: new Map(), ...over,
 });
 const say = (locale: Locale, days: SameDays, day = 8, month = "2026-11") => {
   const t: Translate = (key, params) => translate(locale, key, params);

@@ -104,6 +104,10 @@ func (h *HTTP) ListAccounts(ctx context.Context, apiKey, itemID string) ([]Accou
 			Subtype  string `json:"subtype"`
 			Name     string `json:"name"`
 			Currency string `json:"currencyCode"`
+			Credit   *struct {
+				CloseDate string `json:"balanceCloseDate"`
+				DueDate   string `json:"balanceDueDate"`
+			} `json:"creditData"`
 		} `json:"results"`
 	}
 	q := url.Values{"itemId": {itemID}, "pageSize": {"500"}}
@@ -112,7 +116,10 @@ func (h *HTTP) ListAccounts(ctx context.Context, apiKey, itemID string) ([]Accou
 	}
 	accts := make([]Account, len(out.Results))
 	for i, r := range out.Results {
-		accts[i] = Account(r)
+		accts[i] = Account{ID: r.ID, Type: r.Type, Subtype: r.Subtype, Name: r.Name, Currency: r.Currency}
+		if r.Credit != nil {
+			accts[i].CloseDay, accts[i].DueDay = dayOf(r.Credit.CloseDate), dayOf(r.Credit.DueDate)
+		}
 	}
 	return accts, nil
 }
@@ -165,6 +172,15 @@ func (h *HTTP) ListTransactions(ctx context.Context, apiKey, accountID string, f
 		page.Transactions[i] = tx
 	}
 	return page, nil
+}
+
+// dayOf is the day of month of a YYYY-MM-DD date (a timestamp's date part too), or 0.
+func dayOf(s string) int {
+	d, err := time.Parse(time.DateOnly, s[:min(len(s), len(time.DateOnly))])
+	if err != nil {
+		return 0
+	}
+	return d.Day()
 }
 
 // parseCents reads a decimal string of at most two decimals into centavos

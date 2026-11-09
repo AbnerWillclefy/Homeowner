@@ -3,7 +3,7 @@ import type { MonthResponse, Transaction } from "../api/api";
 import { monthView, spent } from "./monthView";
 
 const tx = (over: Partial<Transaction>): Transaction => ({
-  id: "t", postedOn: "2026-11-02", description: "x", sourceName: "Nubank", amountCents: -1000, currency: "BRL",
+  id: "t", postedOn: "2026-11-02", countsOn: "2026-11-02", description: "x", sourceName: "Nubank", amountCents: -1000, currency: "BRL",
   type: "expense", spendingCategory: "other", categorySetBy: "auto", ...over,
 });
 

@@ -45,8 +45,11 @@ type Config struct {
 	// LLMAllocatorEnabled lets the daily Allocation ask the LLM allocator first
 	// (ADR 0004). Off by default; on, it needs AnthropicAPIKey.
 	LLMAllocatorEnabled bool
-	AnthropicAPIKey     string
-	LLMModel            string
+	// VoiceEnabled (VOICE_ENABLED) turns on POST /home/voice/interpret; it
+	// needs AnthropicAPIKey.
+	VoiceEnabled    bool
+	AnthropicAPIKey string
+	LLMModel        string
 	// LLMDailyCapPerHome is how many LLM calls one Home may make per local day.
 	LLMDailyCapPerHome int
 	// LLMTimeout bounds one LLM call.
@@ -219,6 +222,16 @@ func loadLLM(getenv func(string) string, c *Config) error {
 	c.AnthropicAPIKey = getenv("ANTHROPIC_API_KEY")
 	if c.LLMAllocatorEnabled && c.AnthropicAPIKey == "" {
 		return errors.New("ANTHROPIC_API_KEY is required when LLM_ALLOCATOR_ENABLED is true")
+	}
+	if v := getenv("VOICE_ENABLED"); v != "" {
+		b, err := strconv.ParseBool(v)
+		if err != nil {
+			return fmt.Errorf("VOICE_ENABLED: %w", err)
+		}
+		c.VoiceEnabled = b
+	}
+	if c.VoiceEnabled && c.AnthropicAPIKey == "" {
+		return errors.New("ANTHROPIC_API_KEY is required when VOICE_ENABLED is true")
 	}
 	if v := getenv("LLM_MODEL"); v != "" {
 		c.LLMModel = v

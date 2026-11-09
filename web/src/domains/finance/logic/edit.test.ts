@@ -3,7 +3,7 @@ import type { Transaction } from "../api/api";
 import { editFor } from "./edit";
 
 const tx: Transaction = {
-  id: "t", postedOn: "2026-11-02", description: "x", sourceName: "N", amountCents: -1000, currency: "BRL",
+  id: "t", postedOn: "2026-11-02", countsOn: "2026-11-02", description: "x", sourceName: "N", amountCents: -1000, currency: "BRL",
   type: "expense", spendingCategory: "groceries", categorySetBy: "auto",
 };
 

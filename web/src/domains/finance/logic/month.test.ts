@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMonths, currentDay, currentMonth, formatDay, monthLabel, monthName } from "./month";
+import { addMonths, currentDay, currentMonth, formatDay, monthFromParam, monthLabel, monthName } from "./month";
 
 describe("monthName", () => {
   it("is the month alone, in the locale", () => {
@@ -34,5 +34,13 @@ describe("month", () => {
   it("labels the month in the locale", () => {
     expect(monthLabel("2026-11", "en-US")).toBe("November 2026");
     expect(monthLabel("2026-03", "pt-BR")).toBe("março de 2026");
+  });
+});
+
+describe("monthFromParam", () => {
+  it("keeps a valid month up to this one and falls back to this one otherwise", () => {
+    expect(monthFromParam("2026-10", "2026-11")).toBe("2026-10");
+    expect(monthFromParam("2026-11", "2026-11")).toBe("2026-11");
+    for (const bad of [null, "", "2026-12", "2026-13", "2026-1", "x"]) expect(monthFromParam(bad, "2026-11")).toBe("2026-11");
   });
 });
