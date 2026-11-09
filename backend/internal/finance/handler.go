@@ -138,7 +138,8 @@ func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
 	}
 	byMonth := map[string][]TransactionResponse{}
 	for _, t := range txns {
-		byMonth[t.PostedOn[:7]] = append(byMonth[t.PostedOn[:7]], t)
+		m := t.CountsOn.Format("2006-01")
+		byMonth[m] = append(byMonth[m], t)
 	}
 	months := make([]HistoryMonth, n)
 	for i := range months {
@@ -410,7 +411,7 @@ func (h *Handler) ConnectItem(w http.ResponseWriter, r *http.Request) {
 	var sources []NewSource
 	for _, a := range accounts {
 		if kind := sourceKind(a); kind != "" {
-			sources = append(sources, NewSource{PluggyAccountID: a.ID, Kind: kind, Name: a.Name, Currency: a.Currency})
+			sources = append(sources, NewSource{PluggyAccountID: a.ID, Kind: kind, Name: a.Name, Currency: a.Currency, CloseDay: a.CloseDay, DueDay: a.DueDay})
 		}
 	}
 	if len(sources) == 0 {

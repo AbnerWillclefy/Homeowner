@@ -28,6 +28,30 @@ func TestDueDate(t *testing.T) {
 	}
 }
 
+func TestCountsOn(t *testing.T) {
+	t.Parallel()
+	d := func(s string) time.Time { v, _ := time.Parse(time.DateOnly, s); return v }
+	for name, c := range map[string]struct {
+		posted           string
+		kind             Kind
+		closeDay, dueDay int
+		want             string
+	}{
+		"checking counts on posted":               {"2030-01-03", "checking", 7, 12, "2030-01-03"},
+		"card with unknown days counts on posted": {"2030-01-03", "credit_card", 0, 0, "2030-01-03"},
+		"before closing: this month's bill":       {"2030-01-03", "credit_card", 7, 12, "2030-01-12"},
+		"on the closing day: next bill":           {"2030-01-07", "credit_card", 7, 12, "2030-02-12"},
+		"due early next month":                    {"2030-01-20", "credit_card", 25, 5, "2030-02-05"},
+		"after closing, due next month":           {"2030-01-26", "credit_card", 25, 5, "2030-03-05"},
+		"closing 31 in February":                  {"2030-02-28", "credit_card", 31, 10, "2030-04-10"},
+		"December into January":                   {"2029-12-10", "credit_card", 7, 12, "2030-01-12"},
+	} {
+		if got := CountsOn(d(c.posted), c.kind, c.closeDay, c.dueDay); !got.Equal(d(c.want)) {
+			t.Errorf("%s: CountsOn = %s, want %s", name, got.Format(time.DateOnly), c.want)
+		}
+	}
+}
+
 func TestMerchantKey(t *testing.T) {
 	t.Parallel()
 	for in, want := range map[string]string{

@@ -97,6 +97,10 @@ func seedMonth(t *testing.T) (*apitest.App, *apitest.Client) {
 	t.Helper()
 	app, users := startSync(t, []string{"ana@example.com", "bob@example.com"})
 	app.RunFinanceSync(t)
+	// These tests count every row on the day it posted; card_bill_test.go covers the bill days.
+	if _, err := app.DB.Exec(context.Background(), `UPDATE finance_sources SET bill_close_day = NULL, bill_due_day = NULL`); err != nil {
+		t.Fatal(err)
+	}
 	return app, users["ana@example.com"]
 }
 

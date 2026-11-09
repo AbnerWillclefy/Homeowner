@@ -121,7 +121,7 @@ One movement of money on a Source, such as a purchase or a payment, with a date,
 _Avoid_: Entry, Expense, Payment
 
 **Source**:
-A place Transactions come from, such as a bank account or a credit card, connected to the app.
+A place Transactions come from, such as a bank account or a credit card, connected to the app. A credit card's Transactions count as spent in the month their card bill is due, not the day they were made.
 _Avoid_: Account, Bank, Connection
 
 **Spending Category**:

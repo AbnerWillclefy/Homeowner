@@ -248,6 +248,25 @@ func DueDate(year int, month time.Month, dueDay int) time.Time {
 	return time.Date(year, month, min(dueDay, last.Day()), 0, 0, 0, 0, time.UTC)
 }
 
+// CountsOn is the day a Transaction counts as spent: a card charge counts on
+// the due date of the bill it falls in, so a month's spending is what its bills
+// and its non-card rows take; any other row counts on posted. A charge on the
+// closing day or later goes to the next bill. A card with no known closeDay
+// or dueDay (0) counts on posted too.
+func CountsOn(posted time.Time, kind Kind, closeDay, dueDay int) time.Time {
+	if kind != "credit_card" || closeDay == 0 || dueDay == 0 {
+		return posted
+	}
+	closes := DueDate(posted.Year(), posted.Month(), closeDay)
+	if !posted.Before(closes) {
+		closes = DueDate(posted.Year(), posted.Month()+1, closeDay)
+	}
+	if dueDay > closeDay {
+		return DueDate(closes.Year(), closes.Month(), dueDay)
+	}
+	return DueDate(closes.Year(), closes.Month()+1, dueDay)
+}
+
 // ReminderQuietUntilHour is the local hour before which no Bill reminder is
 // sent: the job is hourly, so without it a reminder could arrive at 01:00.
 const ReminderQuietUntilHour = 9

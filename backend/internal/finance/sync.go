@@ -141,6 +141,14 @@ func (s *Syncer) authenticate(ctx context.Context, it DueItem) (string, error) {
 // window re-reads the last refreshDays. A window cut off mid-way is simply read
 // again next run: the upsert makes that harmless.
 func (s *Syncer) syncItem(ctx context.Context, it DueItem, apiKey string, now, today time.Time, deadline time.Time, sum *Summary) (bool, error) {
+	// A card's bill days can move, and Sources connected before they were kept have none.
+	accounts, err := s.pluggy.ListAccounts(ctx, apiKey, it.PluggyItemID)
+	if err != nil {
+		return false, err
+	}
+	if err := s.store.SetBillDays(ctx, it.ID, accounts); err != nil {
+		return false, err
+	}
 	sources, err := s.store.SyncSources(ctx, it.ID)
 	if err != nil {
 		return false, err
