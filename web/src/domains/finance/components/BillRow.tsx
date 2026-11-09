@@ -1,3 +1,4 @@
+import { CalendarDays, Check, CircleCheck, Clock, Landmark } from "lucide-react";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import type { Bill } from "../api/api";
@@ -19,9 +20,12 @@ interface Props {
   onDelete(opener: HTMLElement | null): void;
 }
 
+const ICON = { overdue: CalendarDays, due: Clock, "paid-bank": Landmark, "paid-hand": CircleCheck } as const;
+
 /**
- * One Bill as a compact row: name, amount and date on the left; Paid / Undo and the "⋯" menu on the right. The group
- * heading tells overdue from to pay, and the date line says it in words too, never by colour. A Bill paid by the bank has no Undo.
+ * One Bill as a compact row: name, amount and a date line with an icon on the left; the "⋯" menu and Paid / Undo on
+ * the right. An overdue Bill's Paid is the filled button. The group heading tells overdue from to pay, and the date
+ * line says it in words too, never by colour. A Bill paid by the bank has no Undo.
  */
 export function BillRow({ bill, today, readOnly, busy, onPaid, onEdit, onDelete }: Props) {
   const { t, locale } = useI18n();
@@ -38,26 +42,36 @@ export function BillRow({ bill, today, readOnly, busy, onPaid, onEdit, onDelete 
     bill.paid && bill.paidCents !== null && bill.paidCents !== bill.expectedCents
       ? t("finances.bills.expectedPaid", { expected: formatCents(bill.expectedCents, locale), paid: formatCents(bill.paidCents, locale) })
       : formatCents(bill.expectedCents, locale);
+  const Icon = ICON[state];
   return (
     // At the largest text the actions wrap under the name instead of squeezing it to nothing.
-    <li className="m-0 flex list-none flex-wrap items-start justify-between gap-2 py-2">
-      <div className="min-w-32 flex-1">
-        <p className="my-0 font-semibold [overflow-wrap:anywhere]">{bill.name}</p>
-        <p className="my-0 [overflow-wrap:anywhere]">{amount}</p>
-        <p className="my-0 text-sm text-muted [overflow-wrap:anywhere]">{line}</p>
+    <li className="m-0 flex list-none flex-wrap items-center justify-between gap-2 border-t border-chart-track py-3 first:border-t-0 first:pt-0 last:pb-0">
+      <div className="min-w-0 flex-1 basis-32">
+        <p className="my-0 font-bold [overflow-wrap:anywhere]">{bill.name}</p>
+        <p className="my-0 font-bold [overflow-wrap:anywhere]">{amount}</p>
+        <p className="my-0 flex items-start gap-1.5 text-sm text-muted [overflow-wrap:anywhere]">
+          <Icon aria-hidden="true" size={16} className="mt-0.5 shrink-0" />
+          {line}
+        </p>
       </div>
       {!readOnly && (
         <div className="flex max-w-full flex-wrap items-center justify-end gap-1">
+          <BillMenu name={bill.name} disabled={busy} onEdit={onEdit} onDelete={onDelete} />
           {state === "paid-bank" ? null : state === "paid-hand" ? (
             <Button variant="secondary" pending={busy} aria-label={t("finances.bills.undo.label", { name: bill.name })} onClick={() => onPaid(false)}>
               {t("finances.bills.undo")}
             </Button>
           ) : (
-            <Button pending={busy} aria-label={t("finances.bills.markPaid.label", { name: bill.name })} onClick={() => onPaid(true)}>
+            <Button
+              variant={state === "overdue" ? "primary" : "secondary"}
+              pending={busy}
+              leadingIcon={<Check aria-hidden="true" size={16} />}
+              aria-label={t("finances.bills.markPaid.label", { name: bill.name })}
+              onClick={() => onPaid(true)}
+            >
               {t("finances.bills.markPaid")}
             </Button>
           )}
-          <BillMenu name={bill.name} disabled={busy} onEdit={onEdit} onDelete={onDelete} />
         </div>
       )}
     </li>

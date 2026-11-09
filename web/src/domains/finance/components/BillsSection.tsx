@@ -10,8 +10,8 @@ import type { Bill, BillSuggestion } from "../api/api";
 import { useBillSuggestions } from "../hooks/useBillSuggestions";
 import { useBills } from "../hooks/useBills";
 import { billGroups } from "../logic/billGroups";
-import { formatCents } from "../logic/money";
-import { addMonths, currentDay, currentMonth } from "../logic/month";
+import { useFinanceMonth } from "../hooks/useFinanceMonth";
+import { currentDay, monthName } from "../logic/month";
 import { BillFormDialog } from "./BillFormDialog";
 import { BillRow } from "./BillRow";
 import { BillSuggestions } from "./BillSuggestions";
@@ -29,11 +29,10 @@ const GROUPS = ["overdue", "due", "paid"] as const;
  * "Contas a pagar": a month picker, paid against still to pay, the due dates, then the month's Bills in groups, with add,
  * edit, delete and the paid mark. A past month is history: read-only, no today, and `current` (Próximos meses) is left out.
  */
-export function BillsSection({ current }: { current?: ReactNode }) {
+export function BillsSection({ current, picker = false }: { current?: ReactNode; picker?: boolean }) {
   const { t, locale } = useI18n();
   const [now] = useState(() => new Date());
-  const thisMonth = currentMonth(now);
-  const [month, setMonth] = useState(thisMonth);
+  const { month, thisMonth } = useFinanceMonth();
   const isCurrent = month === thisMonth;
   const today = isCurrent ? currentDay(now) : null;
   const { state, refreshing, reload, save, remove, setPaid } = useBills(month);
@@ -51,28 +50,16 @@ export function BillsSection({ current }: { current?: ReactNode }) {
     setBusy(null);
   }
 
-  function go(n: number) {
-    setOpen(null);
-    setFailed(false);
-    setMonth(addMonths(month, n));
-  }
-
   const groups = state.kind === "ready" ? billGroups(state.data, today) : null;
 
   return (
     <>
-    <section aria-labelledby="finances-bills-heading" className="mt-0 flex flex-col gap-3">
-      <h3 id="finances-bills-heading" className="my-0 text-lg font-bold leading-snug [overflow-wrap:anywhere]">
+    <section aria-labelledby="finances-bills-heading" className="mt-0 flex flex-col gap-4">
+      {/* In the tab the month picker is above, shared by every view; the setup flow has its own. */}
+      <h3 id="finances-bills-heading" className={picker ? "my-0 text-lg font-bold leading-snug [overflow-wrap:anywhere]" : "sr-only"}>
         {t("finances.bills.heading")}
       </h3>
-      <MonthPicker
-        month={month}
-        today={thisMonth}
-        groupLabel={t("finances.bills.month.heading")}
-        prevLabel={t("finances.month.prev")}
-        nextLabel={t("finances.month.next")}
-        onStep={go}
-      />
+      {picker && <MonthPicker groupLabel={t("finances.bills.month.heading")} />}
       {state.kind === "loading" && skeleton && (
         <div aria-hidden="true">
           <SkeletonBar className="h-5 w-full" />
@@ -103,36 +90,41 @@ export function BillsSection({ current }: { current?: ReactNode }) {
             <p className="my-0 text-muted">{t(isCurrent ? "finances.bills.empty" : "finances.bills.past.empty")}</p>
           ) : (
             <>
-              <Card className="flex flex-col gap-4">
-                <BillSummary paidCents={groups.paidCents} toPayCents={groups.toPayCents} />
+              <Card as="section" aria-labelledby="finances-bills-month" className="mt-0 flex flex-col gap-3">
+                <h4 id="finances-bills-month" className="my-0 text-lg font-bold leading-snug">
+                  {t("finances.bills.month.title", { month: monthName(month, locale) })}
+                </h4>
+                <BillSummary paidCents={groups.paidCents} toPayCents={groups.toPayCents} toPayCount={groups.overdue.bills.length + groups.due.bills.length} />
                 <DueStrip bills={state.data} month={month} today={today} />
               </Card>
               {GROUPS.filter((g) => groups[g].bills.length > 0).map((g) => (
-                <section key={g} aria-labelledby={`finances-bills-${g}`} className="flex flex-col">
-                  <h4 id={`finances-bills-${g}`} className="my-0 flex flex-wrap justify-between gap-x-3 text-base font-bold leading-snug">
-                    <span>{t(g === "due" && !isCurrent ? "finances.bills.group.unpaid" : `finances.bills.group.${g}`)}</span>
-                    <span>{formatCents(groups[g].totalCents, locale)}</span>
+                <section key={g} aria-labelledby={`finances-bills-${g}`} className="mt-2 flex flex-col gap-2">
+                  <h4 id={`finances-bills-${g}`} className="my-0 text-xl font-bold leading-snug">
+                    {t(g === "due" && !isCurrent ? "finances.bills.group.unpaid" : `finances.bills.group.${g}`)}{" "}
+                    <span className="font-semibold text-muted">{groups[g].bills.length}</span>
                   </h4>
-                  <ul className="m-0 flex list-none flex-col p-0">
-                    {groups[g].bills.map((bill) => (
-                      <BillRow
-                        key={bill.id}
-                        bill={bill}
-                        today={today}
-                        readOnly={!isCurrent}
-                        busy={busy === bill.id}
-                        onPaid={(paid) => void mark(bill, paid)}
-                        onEdit={(opener) => setOpen({ kind: "form", bill, opener })}
-                        onDelete={(opener) => setOpen({ kind: "delete", bill, opener })}
-                      />
-                    ))}
-                  </ul>
+                  <Card>
+                    <ul className="m-0 flex list-none flex-col p-0">
+                      {groups[g].bills.map((bill) => (
+                        <BillRow
+                          key={bill.id}
+                          bill={bill}
+                          today={today}
+                          readOnly={!isCurrent}
+                          busy={busy === bill.id}
+                          onPaid={(paid) => void mark(bill, paid)}
+                          onEdit={(opener) => setOpen({ kind: "form", bill, opener })}
+                          onDelete={(opener) => setOpen({ kind: "delete", bill, opener })}
+                        />
+                      ))}
+                    </ul>
+                  </Card>
                 </section>
               ))}
             </>
           )}
           {isCurrent && (
-            <Button variant="secondary" leadingIcon={<Plus aria-hidden="true" size={16} />} onClick={() => setOpen({ kind: "form", bill: null, opener: null })}>
+            <Button variant="secondary" fullWidth leadingIcon={<Plus aria-hidden="true" size={16} />} onClick={() => setOpen({ kind: "form", bill: null, opener: null })}>
               {t("finances.bills.add")}
             </Button>
           )}

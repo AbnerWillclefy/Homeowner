@@ -118,6 +118,10 @@ describe("isShellPath", () => {
     expect(isShellPath("/finances/ajustes/")).toBe(true);
   });
 
+  it.each(["/finances/gastos", "/finances/contas?month=2026-10"])("accepts the Finances view %s", (path) => {
+    expect(isShellPath(path)).toBe(true);
+  });
+
   it.each(["/me/other", "/finances/other", "/me/edit/more", "/chores/edit", "/signin", "/welcome/home", "/nope", "/mex"])("rejects %s", (path) => {
     expect(isShellPath(path)).toBe(false);
   });

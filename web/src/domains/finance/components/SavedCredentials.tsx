@@ -30,48 +30,40 @@ export function SavedCredentials({ removing, problem, onReplace, onRemove, onDis
 
   return (
     <FinanceCard id="finances-saved-heading" title={t("finances.saved")} hint={t("finances.saved.hint")}>
-      <ButtonRow
-        start={
-          <AppDialog
-            open={confirming}
-            onDismiss={close}
-            dismissible={!removing}
-            trigger={
-              <Button variant="danger" onClick={() => setConfirming(true)}>
-                {t("finances.saved.remove")}
+      <div className="flex flex-wrap justify-end gap-2">
+        <AppDialog
+          open={confirming}
+          onDismiss={close}
+          dismissible={!removing}
+          trigger={
+            <Button variant="secondary" onClick={() => setConfirming(true)}>
+              {t("finances.saved.remove")}
+            </Button>
+          }
+          initialFocusRef={cancelRef}
+          title={t("finances.remove.title")}
+          description={<p>{t("finances.remove.body")}</p>}
+        >
+          <FormError form="finances-remove">{problem && t(FINANCE_FAILURE_KEY[problem])}</FormError>
+          <ButtonRow
+            className="mt-4"
+            stretch
+            start={
+              <Button ref={cancelRef} variant="secondary" disabled={removing} onClick={close}>
+                {t("finances.remove.cancel")}
               </Button>
             }
-            initialFocusRef={cancelRef}
-            title={t("finances.remove.title")}
-            description={<p>{t("finances.remove.body")}</p>}
-          >
-            <FormError form="finances-remove">{problem && t(FINANCE_FAILURE_KEY[problem])}</FormError>
-            <ButtonRow
-              className="mt-4"
-              stretch
-              start={
-                <Button ref={cancelRef} variant="secondary" disabled={removing} onClick={close}>
-                  {t("finances.remove.cancel")}
-                </Button>
-              }
-              end={
-                <Button
-                  variant="danger"
-                  pending={removing}
-                  onClick={() => void onRemove().then((gone) => gone && setConfirming(false))}
-                >
-                  {t("finances.remove.confirm")}
-                </Button>
-              }
-            />
-          </AppDialog>
-        }
-        end={
-          <Button variant="secondary" onClick={onReplace}>
-            {t("finances.saved.replace")}
-          </Button>
-        }
-      />
+            end={
+              <Button variant="danger" pending={removing} onClick={() => void onRemove().then((gone) => gone && setConfirming(false))}>
+                {t("finances.remove.confirm")}
+              </Button>
+            }
+          />
+        </AppDialog>
+        <Button variant="secondary" onClick={onReplace}>
+          {t("finances.saved.replace")}
+        </Button>
+      </div>
     </FinanceCard>
   );
 }

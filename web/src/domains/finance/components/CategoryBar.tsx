@@ -9,13 +9,13 @@ import { groupByDay } from "../logic/sameDays";
 import { spendingKey, type SpendingCategory } from "../logic/spendingCategories";
 import type { useHistory } from "../hooks/useHistory";
 import { CategoryHistory } from "./CategoryHistory";
-import { Bar } from "./charts/Bar";
+import { Track } from "./charts/Bar";
 import { LimitForm } from "./LimitForm";
 import { TransactionRow } from "./TransactionRow";
 
 /**
- * One Spending Category as a Bar. The name is the disclosure button (the amount and last month's value are text under
- * it); opening lists the Transactions by day, newest first, each still editable.
+ * One Spending Category: its name and amount are the disclosure button, the bar and a line of counts and last
+ * month's value under it; opening lists the Transactions by day, newest first, each still editable.
  */
 export function CategoryBar({
   category,
@@ -51,58 +51,51 @@ export function CategoryBar({
   const id = useId();
   const days = groupByDay(transactions);
   const standing = limit === undefined ? null : limitText(spent, limit);
+  const lines = [t("finances.spending.count", { count: transactions.length }), note].filter(Boolean).join(" · ");
   return (
-    <li className="m-0 flex list-none flex-col gap-2">
-      <Bar
-        label={
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-controls={`${id}-body`}
-            disabled={days.length === 0}
-            onClick={() => setOpen((value) => !value)}
-            className="flex min-h-11 w-full items-center gap-3 rounded-control bg-transparent p-0 text-start font-[inherit] font-semibold text-inherit"
-          >
-            <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{t(spendingKey(category))}</span>
-            {days.length > 0 && (
-              <ChevronDown
-                aria-hidden="true"
-                size={22}
-                className={`shrink-0 text-muted motion-safe:transition-transform motion-safe:duration-150 ${open ? "rotate-180" : ""}`}
-              />
-            )}
-          </button>
-        }
-        value={spent}
-        max={max}
-        markers={marker === undefined ? [] : [marker]}
-        limit={limit}
-        note={
-          standing && limit !== undefined ? (
-            <>
-              {note && <span className="block">{note}</span>}
-              <span className="block">
-                {t(`finances.limit.${standing.key}`, { limit: formatCents(limit, locale), amount: formatCents(standing.amount, locale) })}
-              </span>
-            </>
-          ) : (
-            note
-          )
-        }
-      />
-      <div id={`${id}-body`} hidden={!open} className="flex flex-col gap-1">
+    <li className="m-0 flex list-none flex-col gap-2 border-t border-chart-track py-3 first:border-t-0 first:pt-0 last:pb-0">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={`${id}-body`}
+        disabled={days.length === 0}
+        onClick={() => setOpen((value) => !value)}
+        className="flex min-h-11 w-full flex-wrap items-center gap-x-3 rounded-control bg-transparent p-0 text-start font-[inherit] text-inherit"
+      >
+        <span className="min-w-0 flex-1 font-bold [overflow-wrap:anywhere]">{t(spendingKey(category))}</span>
+        <span className="flex items-center gap-2 font-bold">
+          {formatCents(spent, locale)}
+          {days.length > 0 && (
+            <ChevronDown
+              aria-hidden="true"
+              size={20}
+              className={`shrink-0 text-muted motion-safe:transition-transform motion-safe:duration-150 ${open ? "rotate-180" : ""}`}
+            />
+          )}
+        </span>
+      </button>
+      <Track value={spent} max={max} markers={marker === undefined ? [] : [marker]} limit={limit} />
+      <span className="text-sm text-muted [overflow-wrap:anywhere]">
+        {lines}
+        {standing && limit !== undefined && (
+          <span className="block">{t(`finances.limit.${standing.key}`, { limit: formatCents(limit, locale), amount: formatCents(standing.amount, locale) })}</span>
+        )}
+      </span>
+      <div id={`${id}-body`} hidden={!open} className="flex flex-col gap-3">
         <LimitForm limit={limit} onSave={(cents) => onLimit(category, cents)} />
         <CategoryHistory category={category} history={history} marked={month} thisMonth={thisMonth} />
-        {days.map(({ day, transactions: rows }) => (
-          <section key={day} className="flex flex-col">
-            <h5 className="m-0 text-sm font-semibold text-muted">{formatDay(day, locale)}</h5>
-            <ul className="m-0 flex flex-col p-0">
-              {rows.map((tx) => (
-                <TransactionRow key={tx.id} tx={tx} onEdit={onEdit} />
-              ))}
-            </ul>
-          </section>
-        ))}
+        <div className="flex flex-col gap-2 rounded-control bg-surface px-3 py-2">
+          {days.map(({ day, transactions: rows }) => (
+            <section key={day} className="flex flex-col">
+              <h5 className="m-0 pt-1 text-sm font-bold text-muted">{formatDay(day, locale)}</h5>
+              <ul className="m-0 flex flex-col p-0">
+                {rows.map((tx) => (
+                  <TransactionRow key={tx.id} tx={tx} onEdit={onEdit} showDate={false} />
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
       </div>
     </li>
   );

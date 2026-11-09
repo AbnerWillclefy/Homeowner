@@ -1,31 +1,26 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
-import { monthLabel, type Month } from "../logic/month";
+import { useFinanceMonth } from "../hooks/useFinanceMonth";
+import { monthLabel } from "../logic/month";
 
-interface Props {
-  month: Month;
-  /** The current month: the picker never goes past it. */
-  today: Month;
-  groupLabel: string;
-  prevLabel: string;
-  nextLabel: string;
-  onStep: (n: number) => void;
-}
-
-export function MonthPicker({ month, today, groupLabel, prevLabel, nextLabel, onStep }: Props) {
-  const { locale } = useI18n();
+/**
+ * Previous month, the month, next month, on one row; where the row is narrow (the largest text) the month moves to a
+ * line of its own above the buttons, so it is never squeezed to one letter per line.
+ */
+export function MonthPicker({ groupLabel }: { groupLabel: string }) {
+  const { t, locale } = useI18n();
+  const { month, thisMonth, step } = useFinanceMonth();
   return (
-    // The month on its own line, so the two buttons never squeeze it into one letter per line.
-    <div role="group" aria-label={groupLabel} className="flex flex-col gap-2">
-      <span className="text-center font-semibold capitalize [overflow-wrap:anywhere]" aria-live="polite">
-        {monthLabel(month, locale)}
-      </span>
-      <div className="flex items-center justify-between gap-2">
-        <Button icon variant="secondary" aria-label={prevLabel} onClick={() => onStep(-1)}>
+    <div role="group" aria-label={groupLabel} className="@container">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Button icon variant="secondary" aria-label={t("finances.month.prev")} onClick={() => step(-1)}>
           <ChevronLeft aria-hidden="true" size={20} />
         </Button>
-        <Button icon variant="secondary" aria-label={nextLabel} disabled={month >= today} onClick={() => onStep(1)}>
+        <span className="order-first basis-full text-center text-lg font-bold @[16rem]:order-none @[16rem]:basis-0 @[16rem]:flex-1" aria-live="polite">
+          {monthLabel(month, locale)}
+        </span>
+        <Button icon variant="secondary" aria-label={t("finances.month.next")} disabled={month >= thisMonth} onClick={() => step(1)}>
           <ChevronRight aria-hidden="true" size={20} />
         </Button>
       </div>
