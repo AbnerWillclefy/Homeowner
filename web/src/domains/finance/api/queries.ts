@@ -1,7 +1,7 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ApiFailure } from "../../../shared/query/ApiFailure";
 import { refetchUnlessSucceeded } from "../../../shared/query/queryClient";
-import { getBills, getCommitments, getDaily, getFinanceStatus, getHistory, getMonth, type Bill, type Commitments, type Daily, type FinanceStatus, type History, type MonthResponse } from "./api";
+import { dismissBillSuggestion, getBills, getBillSuggestions, getCommitments, getDaily, getFinanceStatus, getHistory, getMonth, type Bill, type BillSuggestion, type Commitments, type Daily, type FinanceStatus, type History, type MonthResponse } from "./api";
 
 /** `GET /me/finance`. Under `["me"]`, so sign-out empties it; the finance views go under it too (web.md, Query keys). */
 export const financeStatusKey = ["me", "finance"] as const;
@@ -86,6 +86,29 @@ export const billsQuery = (month: string) =>
     },
     refetchOnMount: refetchUnlessSucceeded,
   });
+
+/** `GET /me/finance/bill-suggestions`, under the status key so `invalidateFinance` reads it again and a delete removes it. */
+export const billSuggestionsKey = ["me", "finance", "bill-suggestions"] as const;
+
+export const billSuggestionsQuery = queryOptions({
+  queryKey: billSuggestionsKey,
+  queryFn: async (): Promise<BillSuggestion[]> => {
+    const result = await getBillSuggestions();
+    if (result.kind === "ok") return result.suggestions;
+    throw new ApiFailure(result.kind === "offline" || result.kind === "not-signed-in" ? result.kind : "error");
+  },
+  refetchOnMount: refetchUnlessSucceeded,
+});
+
+/** Hides a suggestion at once and tells the server; if that fails the list comes back as it was. True when it stuck. */
+export async function dismissSuggestion(client: QueryClient, merchantKey: string): Promise<boolean> {
+  await client.cancelQueries({ queryKey: billSuggestionsKey });
+  const before = client.getQueryData<BillSuggestion[]>(billSuggestionsKey);
+  client.setQueryData<BillSuggestion[]>(billSuggestionsKey, (list) => list?.filter((s) => s.merchantKey !== merchantKey));
+  if ((await dismissBillSuggestion(merchantKey)).kind === "ok") return true;
+  client.setQueryData(billSuggestionsKey, before);
+  return false;
+}
 
 /** `GET /me/finance/commitments?from=`, under the status key so a delete removes it and an income or Bill write can invalidate the prefix. */
 export const commitmentsKey = (from: string) => ["me", "finance", "commitments", from] as const;

@@ -377,6 +377,44 @@ export async function saveBill(id: string | null, input: BillInput): Promise<Sav
 export const deleteBill = (id: string): Promise<WriteResult> =>
   call({ url: `/me/finance/bills/${encodeURIComponent(id)}`, method: "DELETE" }, 204, nothing);
 
+/** A Bill the server proposes from a repeating charge. `merchantKey` names the merchant for a dismissal. */
+export interface BillSuggestion {
+  merchantKey: string;
+  name: string;
+  amountCents: number;
+  dueDay: number;
+}
+
+export type BillSuggestionsResult = { kind: "ok"; suggestions: BillSuggestion[] } | Failure;
+
+export function parseBillSuggestions(body: unknown): BillSuggestion[] | null {
+  if (!Array.isArray(body)) return null;
+  const valid = body.every(
+    (s) =>
+      isObject(s) &&
+      typeof s.merchantKey === "string" &&
+      s.merchantKey !== "" &&
+      typeof s.name === "string" &&
+      Number.isInteger(s.amountCents) &&
+      (s.amountCents as number) > 0 &&
+      Number.isInteger(s.dueDay) &&
+      (s.dueDay as number) >= 1 &&
+      (s.dueDay as number) <= 31,
+  );
+  return valid ? (body as BillSuggestion[]).map(({ merchantKey, name, amountCents, dueDay }) => ({ merchantKey, name, amountCents, dueDay })) : null;
+}
+
+/** `GET /me/finance/bill-suggestions`. */
+export const getBillSuggestions = (): Promise<BillSuggestionsResult> =>
+  call({ url: "/me/finance/bill-suggestions" }, 200, (data) => {
+    const suggestions = parseBillSuggestions(data);
+    return suggestions && { suggestions };
+  }) as Promise<BillSuggestionsResult>;
+
+/** `POST /me/finance/bill-suggestions/dismissals`: the server keeps it hidden for good; repeating it is harmless. */
+export const dismissBillSuggestion = (merchantKey: string): Promise<WriteResult> =>
+  call({ url: "/me/finance/bill-suggestions/dismissals", method: "POST", data: { merchantKey } }, 204, nothing);
+
 /** Marks the Bill paid by hand in `month`, or takes the mark off. */
 export const setBillPaid = (id: string, month: string, paid: boolean): Promise<WriteResult> =>
   call({ url: `/me/finance/bills/${encodeURIComponent(id)}/payments/${month}`, method: paid ? "PUT" : "DELETE" }, 204, nothing);
