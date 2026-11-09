@@ -41,6 +41,7 @@ func twoSynced(t *testing.T) (app *apitest.App, ana, bia *apitest.Client, anaID,
 		for _, q := range []string{
 			`INSERT INTO finance_merchant_categories (user_id, merchant_key, spending_category, updated_at) VALUES ($1, 'NETFLIX COM', 'leisure', now())`,
 			`INSERT INTO finance_llm_calls (user_id, call_date, calls) VALUES ($1, current_date, 1)`,
+			`INSERT INTO finance_bill_suggestion_dismissals (user_id, merchant_key, dismissed_at) VALUES ($1, 'SPOTIFY', now())`,
 		} {
 			if _, err := app.DB.Exec(context.Background(), q, id); err != nil {
 				t.Fatal(err)
