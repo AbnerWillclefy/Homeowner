@@ -458,7 +458,7 @@ func TestThePromptCarriesOnlyTheTranscriptLocaleAndChoreBasics(t *testing.T) {
 	var top map[string]any
 	_ = json.Unmarshal([]byte(user), &top)
 	for k := range top {
-		if k != "locale" && k != "transcript" && k != "chores" {
+		if k != "locale" && k != "transcript" && k != "chores" && k != "tasks" {
 			t.Errorf("top-level key %q is not allowed", k)
 		}
 	}

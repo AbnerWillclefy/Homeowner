@@ -27,6 +27,7 @@ type Response struct {
 type Action struct {
 	Kind       string       `json:"kind"`
 	Request    *HTTPRequest `json:"request,omitempty"`
+	TaskID     string       `json:"taskId,omitempty"`
 	ChoreID    string       `json:"choreId,omitempty"`
 	ChoreName  string       `json:"choreName,omitempty"`
 	Changed    []string     `json:"changed,omitempty"`

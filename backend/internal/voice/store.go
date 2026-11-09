@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
 )
 
@@ -40,10 +41,13 @@ func reserveCall(ctx context.Context, q querier, userID string, date allocation.
 
 // Store counts voice calls and records their events. The Chores are read with
 // chores.ListIn on the same pool.
-type Store struct{ db *pgxpool.Pool }
+type Store struct {
+	db   *pgxpool.Pool
+	plan *dayplan.Store
+}
 
 // NewStore returns a Store over db.
-func NewStore(db *pgxpool.Pool) *Store { return &Store{db: db} }
+func NewStore(db *pgxpool.Pool) *Store { return &Store{db: db, plan: dayplan.NewStore(db)} }
 
 // event is one llm_call_events row of voice: counts and cost only, never words.
 type event struct {
