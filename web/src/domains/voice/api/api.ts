@@ -3,12 +3,15 @@ import { authedRequest } from "../../auth/api/client";
 import type { ChoreWire } from "../../chores/api/api";
 
 /** One proposal, as far as the app trusts it: a closed kind, ids and Chore data. Model text never gets this far. */
-export type VoiceAction =
+export type PlainAction =
   | { kind: "create_chore"; choreName: string; body: ChoreWire }
   | { kind: "edit_chore"; choreId: string; choreName: string; changed: ChangedField[]; body: ChoreWire }
-  | { kind: TaskKind; taskId: string; choreName: string }
-  /** Several matches: the Resident picks one in a later step, so it is never sent. */
-  | { kind: "choice" };
+  | { kind: TaskKind; taskId: string; choreName: string };
+
+export type VoiceAction =
+  | PlainAction
+  /** Several matches: the Resident picks one, which replaces this; until then it is never sent. */
+  | { kind: "choice"; candidates: PlainAction[] };
 
 export const TASK_KINDS = ["accept", "take", "refuse", "complete"] as const;
 export type TaskKind = (typeof TASK_KINDS)[number];
@@ -60,7 +63,7 @@ function parseAction(raw: unknown, allowChoice: boolean): VoiceAction | null {
   const { kind, choreName } = raw;
   if (Array.isArray(raw.candidates) && raw.candidates.length > 0) {
     const nested = raw.candidates.map((c) => parseAction(c, false));
-    return allowChoice && nested.every((c) => c !== null) ? { kind: "choice" } : null;
+    return allowChoice && nested.every((c) => c !== null) ? { kind: "choice", candidates: nested as PlainAction[] } : null;
   }
   if (typeof choreName !== "string") return null;
   const body = isRecord(raw.request) ? parseBody(raw.request.body) : null;

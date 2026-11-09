@@ -27,7 +27,9 @@ describe("parseInterpretation", () => {
 
   it("turns candidates into a choice", () => {
     const choice = { kind: "edit_chore", candidates: [edit, { ...edit, choreId: "c2" }] };
-    expect(parseInterpretation(answer([choice]))?.actions).toEqual([{ kind: "choice" }]);
+    const [parsed] = parseInterpretation(answer([choice]))?.actions ?? [];
+    expect(parsed?.kind).toBe("choice");
+    expect(parsed?.kind === "choice" && parsed.candidates.map((c) => c.kind === "edit_chore" && c.choreId)).toEqual(["c1", "c2"]);
   });
 
   it.each([

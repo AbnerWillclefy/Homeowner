@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "../fixtures";
+import { json } from "../mocks/api";
 import { signedInHandlers } from "../mocks/handlers/signedIn";
 import { voiceHandlers } from "../mocks/handlers/voice";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
@@ -132,25 +133,118 @@ for (const [spoken, message] of [
   });
 }
 
-const UNAVAILABLE = "Voice is not available right now. Try again.";
+const UNAVAILABLE = "Voice is not available right now.";
 
-test("a recognition error other than no-speech says voice is unavailable", async ({ page, baseURL, fakeApi }) => {
-  await page.addInitScript(() => {
+/** A fake recognition that fails to start with the browser's error `code`. */
+async function failingRecognition(page: Page, code: string) {
+  await page.addInitScript((error) => {
     const Fake = class {
       onerror: ((e: unknown) => void) | null = null;
       start() {
-        setTimeout(() => this.onerror?.({ error: "not-allowed" }), 50);
+        setTimeout(() => this.onerror?.({ error }), 50);
       }
       abort() {}
     };
     const w = window as unknown as Record<string, unknown>;
     w["SpeechRecognition"] = Fake;
     w["webkitSpeechRecognition"] = Fake;
-  });
+  }, code);
+}
+
+test("microphone permission refused explains how to allow it, with no request", async ({ page, baseURL, fakeApi }) => {
+  await failingRecognition(page, "not-allowed");
   await launchApp(page, baseURL!);
   await mic(page).click();
-  await expect(page.getByRole("dialog").getByText(UNAVAILABLE)).toBeVisible();
+  await expect(page.getByRole("dialog").getByText(/Allow the microphone for this app/)).toBeVisible();
   expect(fakeApi.requests.some((r) => r.path === "/home/voice/interpret")).toBe(false);
+});
+
+test("Safari with Siri off says voice is unavailable and the mic is gone once the panel closes", async ({ page, baseURL }) => {
+  await failingRecognition(page, "service-not-allowed");
+  await launchApp(page, baseURL!);
+  await mic(page).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Voice is not available on this device.")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Say it again" })).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Close" }).click();
+  await expect(mic(page)).toHaveCount(0);
+});
+
+test("the Resident is asked which Task, and Confirm stays off until one is picked", async ({ page, baseURL, fakeApi }) => {
+  await fakeRecognition(page, "complete the laundry");
+  await launchApp(page, baseURL!);
+  await mic(page).click();
+  const dialog = page.getByRole("dialog", { name: "Voice command" });
+  const confirm = dialog.getByRole("button", { name: "Confirm" });
+  await expect(dialog.getByText("Accept Laundry")).toBeVisible();
+  await expect(dialog.getByText("Take Laundry")).toBeVisible();
+  await expect(confirm).toBeDisabled();
+  await expect(dialog.getByText("Pick one option to confirm.")).toBeVisible();
+  await dialog.getByText("Take Laundry").click();
+  await expect(confirm).toBeEnabled();
+  await expect(dialog.getByRole("button", { name: "Remove: Take Laundry" })).toBeVisible();
+  expect(fakeApi.requests.some((r) => r.path.startsWith("/home/tasks/"))).toBe(false);
+});
+
+test("removing the ambiguous action unblocks Confirm for the others", async ({ page, baseURL }) => {
+  await fakeRecognition(page, "complete the laundry");
+  await launchApp(page, baseURL!);
+  await mic(page).click();
+  const dialog = page.getByRole("dialog", { name: "Voice command" });
+  await dialog.getByRole("button", { name: /^Remove/ }).click();
+  await expect(dialog.getByText("Nothing left to apply.")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Confirm" })).toBeDisabled();
+});
+
+test("one failed action does not stop the others and its reason is shown", async ({ page, baseURL, fakeApi }) => {
+  fakeApi.override("POST /home/tasks/{id}/complete", (request, state) =>
+    request.params.id === "task-b" ? json(409, { error: "already_done" }) : json(200, state.dayPlan),
+  );
+  await fakeRecognition(page, "three tasks");
+  await launchApp(page, baseURL!);
+  await mic(page).click();
+  const dialog = page.getByRole("dialog", { name: "Voice command" });
+  await dialog.getByRole("button", { name: "Confirm" }).click();
+  await expect(dialog.getByText("Did not work")).toHaveCount(1);
+  await expect(dialog.getByText("Done", { exact: true })).toHaveCount(2);
+  await expect(dialog.getByText(/Complete Dishes/)).toContainText("Did not work");
+  expect(fakeApi.requests.filter((r) => r.path.endsWith("/complete")).map((r) => r.path)).toEqual([
+    "/home/tasks/task-a/complete",
+    "/home/tasks/task-b/complete",
+    "/home/tasks/task-c/complete",
+  ]);
+});
+
+test("after the last command of the day the next tap says so and sends nothing", async ({ page, baseURL, fakeApi }) => {
+  await fakeRecognition(page, "the last one");
+  await launchApp(page, baseURL!);
+  await mic(page).click();
+  const dialog = page.getByRole("dialog", { name: "Voice command" });
+  await expect(dialog.getByText("Voice commands left today: 0")).toBeVisible();
+  await dialog.getByRole("button", { name: "Close" }).click();
+  await mic(page).click();
+  await expect(dialog.getByText("You have used today's voice commands. They reset tomorrow.")).toBeVisible();
+  expect(fakeApi.requests.filter((r) => r.path === "/home/voice/interpret")).toHaveLength(1);
+});
+
+test("a 429 shows the limit message", async ({ page, baseURL }) => {
+  await fakeRecognition(page, "limit");
+  await launchApp(page, baseURL!);
+  await mic(page).click();
+  await expect(page.getByRole("dialog").getByText("You have used today's voice commands. They reset tomorrow.")).toBeVisible();
+});
+
+test("a 504 offers Try again, which sends the same words and changes nothing", async ({ page, baseURL, fakeApi }) => {
+  await fakeRecognition(page, "slow");
+  await launchApp(page, baseURL!);
+  await mic(page).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Could not understand right now. Nothing was changed.")).toBeVisible();
+  await dialog.getByRole("button", { name: "Try again" }).click();
+  await expect.poll(() => fakeApi.requests.filter((r) => r.path === "/home/voice/interpret").length).toBe(2);
+  const bodies = fakeApi.requests.filter((r) => r.path === "/home/voice/interpret").map((r) => r.body);
+  expect(bodies[1]).toEqual(bodies[0]);
+  expect(fakeApi.requests.filter((r) => r.method !== "GET" && r.path !== "/home/voice/interpret")).toHaveLength(0);
 });
 
 test("a transcript over 500 characters is never sent", async ({ page, baseURL, fakeApi }) => {
