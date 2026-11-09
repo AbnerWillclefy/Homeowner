@@ -6,7 +6,7 @@ import { dailyQuery } from "../api/queries";
 /** The pace series of a month: this month, the previous one and the usual pace, computed by the server. */
 export function useDaily(month: string) {
   const query = useQuery(dailyQuery(month));
-  const { state } = viewOf(query);
+  const { state, refreshing } = viewOf(query);
   const { refetch } = query;
-  return { state, reload: useCallback(async () => void (await refetch()), [refetch]) };
+  return { state, refreshing, reload: useCallback(async () => void (await refetch()), [refetch]) };
 }

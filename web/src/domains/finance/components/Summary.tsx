@@ -53,7 +53,7 @@ function Block({ heading, states, retry, failed, children }: { heading: string; 
 
 /**
  * Resumo: how the month is going, from the same cached reads Gastos and Contas use (all panels stay mounted, so
- * opening Finances has already read them). Nothing is fetched here that the other views do not fetch too.
+ * opening Finances has already read them), plus its own GET /me/finance/daily for the pace chart.
  */
 export function Summary({ importing, show }: { importing: boolean; show: (view: FinanceView) => void }) {
   const { t, locale } = useI18n();
@@ -66,7 +66,7 @@ export function Summary({ importing, show }: { importing: boolean; show: (view: 
   const bills = useBills(month);
   const commitments = useCommitments(month);
   const daily = useDaily(month);
-  useReportFetching(current.refreshing || previous.refreshing || bills.refreshing || commitments.refreshing);
+  useReportFetching(current.refreshing || previous.refreshing || bills.refreshing || commitments.refreshing || daily.refreshing);
 
   const money = (cents: number) => formatCents(cents, locale);
   const rows = current.state.kind === "ready" ? current.state.data.transactions : null;
