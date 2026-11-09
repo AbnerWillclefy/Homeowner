@@ -1,8 +1,10 @@
+import type { Page } from "@playwright/test";
 import { test, expect } from "../fixtures";
 import { signedInHandlers } from "../mocks/handlers/signedIn";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
+import { financeView } from "../pages/finances";
 
 // What this covers, in pt-BR: the Finances tab shows this month's spending by Spending Category in BRL, opens a
 // category to its Transactions (a refund says so in words), lists Transfers apart as left out of the totals, edits a
@@ -59,6 +61,13 @@ const connected = () => {
 };
 
 for (const l of LOCALES) {
+  /** Opens one kind under "Fora dos totais" and returns its rows. */
+  const leftOut = async (page: Page, kind: string) => {
+    const button = page.getByRole("region", { name: l.leftOut }).getByRole("button", { name: new RegExp(`^${kind}`) });
+    if ((await button.getAttribute("aria-expanded")) !== "true") await button.click();
+    return page.locator(`[id="${await button.getAttribute("aria-controls")}"]`);
+  };
+
   test.describe(l.locale, () => {
     test.use({ locale: l.locale, viewport: { width: 390, height: 844 }, fakeState: connected() });
 
@@ -66,7 +75,7 @@ for (const l of LOCALES) {
       fakeApi.use(signedInHandlers);
       await seedSession(page, { email: RESIDENT_EMAIL });
       await visit(page, new URL("/finances", baseURL!).toString());
-      await page.getByRole("tab", { name: /^(Gastos|Spending)$/ }).click(); // Finances opens on Resumo
+      await financeView(page, /^(Gastos|Spending)$/).click(); // Finances opens on Resumo
     });
 
     test("shows the total, the categories, a refund in words and the transfers apart", async ({ page }) => {
@@ -81,9 +90,8 @@ for (const l of LOCALES) {
       await expect(page.getByText("Supermercado Pão de Açúcar Paulista filial centro")).toBeVisible();
       await expect(page.getByText(l.refund)).toBeVisible();
 
-      const leftOut = page.getByRole("region", { name: l.leftOut });
-      await expect(leftOut.getByRole("group", { name: l.transfers }).getByText("Transferência para poupança")).toBeVisible();
-      await expect(leftOut.getByRole("group", { name: l.income }).getByText("Salário")).toBeVisible();
+      await expect((await leftOut(page, l.transfers)).getByText("Transferência para poupança")).toBeVisible();
+      await expect((await leftOut(page, l.income)).getByText("Salário")).toBeVisible();
     });
 
     test("editing a transaction to a Transfer takes it out of the totals", async ({ page, fakeApi }) => {
@@ -98,7 +106,7 @@ for (const l of LOCALES) {
       expect(fakeApi.requests.find((r) => r.method === "PATCH")?.body).toEqual({ type: "transfer" });
       await expect(page.getByText(l.afterTransfer).locator("visible=true").first()).toBeVisible();
       await expect(page.getByRole("button", { name: new RegExp(l.leisure) })).toHaveCount(0);
-      await expect(page.getByRole("region", { name: l.leftOut }).getByRole("group", { name: l.transfers }).getByText("Cinema")).toBeVisible();
+      await expect((await leftOut(page, l.transfers)).getByText("Cinema")).toBeVisible();
     });
 
     test("changing the category files the expense under the new one", async ({ page, fakeApi }) => {
@@ -146,7 +154,7 @@ for (const l of LOCALES) {
         document.addEventListener("DOMContentLoaded", () => (document.documentElement.style.fontSize = "200%"));
       });
       await visit(page, new URL("/finances", baseURL!).toString());
-      await page.getByRole("tab", { name: /^(Gastos|Spending)$/ }).click(); // Finances opens on Resumo
+      await financeView(page, /^(Gastos|Spending)$/).click(); // Finances opens on Resumo
       await page.getByRole("button", { name: new RegExp(l.groceries) }).click();
       await expect(page.getByText(l.refund)).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);

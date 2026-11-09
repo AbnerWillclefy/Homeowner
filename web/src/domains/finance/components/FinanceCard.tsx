@@ -16,7 +16,7 @@ interface Props {
  */
 export function FinanceCard({ id, title, hint, children }: Props) {
   return (
-    <Card as="section" aria-labelledby={id} className="flex flex-col gap-3">
+    <Card as="section" aria-labelledby={id} className="mt-0 flex flex-col gap-3">
       <h3 id={id} className="my-0 text-lg font-bold leading-snug [overflow-wrap:anywhere]">
         {title}
       </h3>

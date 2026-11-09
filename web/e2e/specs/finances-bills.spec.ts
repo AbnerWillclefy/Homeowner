@@ -32,9 +32,8 @@ const LOCALES = [
     addedDue: /Vence 31 de jan/,
     overdue: /Venceu em 5 de jan/,
     groups: { overdue: "Vencida", due: "A pagar", paid: "Pagas" },
-    summary: { paid: /Pago R\$\s*159,90/, toPay: /Falta pagar R\$\s*2\.010,50/ },
-    groupTotals: { overdue: /R\$\s*1\.500,00/, due: /R\$\s*510,50/, paid: /R\$\s*159,90/ },
-    strip: { twoOnTwenty: /Dia 20: 2 contas/, today: /Hoje é dia 15/ },
+    summary: { paid: /R\$\s*159,90 de R\$\s*2\.170,40 pagos\./, toPay: /Faltam R\$\s*2\.010,50 em 3 contas\./ },
+    strip: { twoOnTwenty: /Dia 20: 2 contas/, today: /Hoje é dia 15/, mark: "hoje" },
     nameRequired: "Dê um nome à conta.",
     amountInvalid: "Digite um valor como 1.234,56.",
     dayInvalid: "Digite um dia de 1 a 31.",
@@ -61,9 +60,8 @@ const LOCALES = [
     addedDue: /Due Jan 31/,
     overdue: /Was due Jan 5/,
     groups: { overdue: "Overdue", due: "To pay", paid: "Paid" },
-    summary: { paid: /Paid R\$\s*159\.90/, toPay: /Still to pay R\$\s*2,010\.50/ },
-    groupTotals: { overdue: /R\$\s*1,500\.00/, due: /R\$\s*510\.50/, paid: /R\$\s*159\.90/ },
-    strip: { twoOnTwenty: /Day 20: 2 bills/, today: /Today is day 15/ },
+    summary: { paid: /R\$\s*159\.90 of R\$\s*2,170\.40 paid\./, toPay: /R\$\s*2,010\.50 left in 3 bills\./ },
+    strip: { twoOnTwenty: /Day 20: 2 bills/, today: /Today is day 15/, mark: "today" },
     nameRequired: "Give the bill a name.",
     amountInvalid: "Enter an amount like 1,234.56.",
     dayInvalid: "Enter a day from 1 to 31.",
@@ -109,19 +107,21 @@ for (const l of LOCALES) {
     const group = (page: Page, name: string) => page.getByRole("region", { name: new RegExp(`^${name}`) });
     const menuOf = (page: Page, name: string) => page.getByRole("button", { name: l.menu(name) });
 
-    test("shows paid and still to pay as text that agrees with the group totals", async ({ page }) => {
+    test("says paid of the total and what is left in one sentence, and each group heading counts its bills", async ({ page }) => {
       await expect(page.getByText(l.summary.paid)).toBeVisible();
       await expect(page.getByText(l.summary.toPay)).toBeVisible();
-      await expect(group(page, l.groups.overdue).getByRole("heading")).toContainText(l.groupTotals.overdue);
-      await expect(group(page, l.groups.due).getByRole("heading")).toContainText(l.groupTotals.due);
-      await expect(group(page, l.groups.paid).getByRole("heading")).toContainText(l.groupTotals.paid);
+      await expect(group(page, l.groups.overdue).getByRole("heading")).toHaveText(`${l.groups.overdue} 1`);
+      await expect(group(page, l.groups.due).getByRole("heading")).toHaveText(`${l.groups.due} 2`);
+      await expect(group(page, l.groups.paid).getByRole("heading")).toHaveText(`${l.groups.paid} 2`);
     });
 
     test("the due-date strip marks today and counts two Bills on one day", async ({ page }) => {
       const strip = page.getByRole("img", { name: l.strip.twoOnTwenty });
       await expect(strip).toHaveAccessibleName(l.strip.today);
-      await expect(strip.locator("[data-today]")).toHaveCount(1);
-      await expect(strip.locator("[data-today]")).toContainText("15");
+      await expect(strip.locator("text", { hasText: l.strip.mark })).toHaveCount(1);
+      // A dot per Bill, filled for the two paid ones.
+      await expect(strip.locator("circle")).toHaveCount(5);
+      await expect(strip.locator("circle[data-paid]")).toHaveCount(2);
     });
 
     test("groups Bills as overdue, to pay and paid, and a bank-paid Bill says so and has no Undo", async ({ page }) => {

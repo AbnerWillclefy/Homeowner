@@ -4,6 +4,7 @@ import { signedInHandlers } from "../mocks/handlers/signedIn";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { launchApp, visit } from "../pages/launch";
+import { financeNav, financeView } from "../pages/finances";
 
 // What this covers, in pt-BR: the Finances tab shows as the fifth tab only when GET /me says `finance: true`,
 // opens an empty state, survives a rename (PUT /me/name answers the flag too), and is absent for everyone else, where
@@ -100,25 +101,37 @@ for (const l of LOCALES) {
 
     test.describe("with a Source", () => {
       test.use({ fakeState: sourced() });
-      const names = l.locale === "pt-BR" ? { views: ["Resumo", "Gastos", "Contas"], settings: "Ajustes", back: "Voltar" } : { views: ["Summary", "Spending", "Bills"], settings: "Settings", back: "Back" };
+      const names =
+        l.locale === "pt-BR"
+          ? { views: ["Resumo", "Gastos", "Contas"], settings: "Ajustes de finanças", back: "Finanças", prev: "Mês anterior", month: "outubro de 2026" }
+          : { views: ["Summary", "Spending", "Bills"], settings: "Finance settings", back: "Finances", prev: "Previous month", month: "October 2026" };
 
-      test("opens on the summary, switches views with no new request, and Ajustes is a route with Back", async ({ page, baseURL, fakeApi }) => {
+      test("opens on the summary, each view is its own route, and Ajustes is a route with Back", async ({ page, baseURL }) => {
         await visit(page, new URL("/finances", baseURL!).toString());
-        const tabs = page.getByRole("tab");
-        await expect(tabs).toHaveText(names.views);
-        await expect(tabs.first()).toHaveAttribute("aria-selected", "true");
-        await expect(page.getByRole("tab", { name: names.settings })).toHaveCount(0);
+        await expect(financeNav(page).getByRole("link")).toHaveText(names.views);
+        await expect(financeView(page, names.views[0])).toHaveAttribute("aria-current", "page");
 
-        const before = fakeApi.requests.length;
-        await page.getByRole("tab", { name: names.views[2] }).click();
-        await expect(page.getByRole("tab", { name: names.views[2] })).toHaveAttribute("aria-selected", "true");
-        expect(fakeApi.requests.length).toBe(before);
+        await financeView(page, names.views[2]).click();
+        await expect(page).toHaveURL((url) => url.pathname === "/finances/contas");
+        await expect(financeView(page, names.views[2])).toHaveAttribute("aria-current", "page");
 
         await page.getByRole("link", { name: names.settings }).click();
         await expect(page).toHaveURL((url) => url.pathname === "/finances/ajustes");
         await page.getByRole("button", { name: names.back }).click();
-        await expect(page).toHaveURL((url) => url.pathname === "/finances");
-        await expect(page.getByRole("tab", { name: names.views[2] })).toHaveAttribute("aria-selected", "true");
+        await expect(page).toHaveURL((url) => url.pathname === "/finances/contas");
+        await expect(financeView(page, names.views[2])).toHaveAttribute("aria-current", "page");
+      });
+
+      test("a reload keeps the view and the picked month, and the month goes along to the other views", async ({ page, baseURL }) => {
+        await page.clock.setFixedTime(new Date("2026-11-08T12:00:00-03:00"));
+        await visit(page, new URL("/finances/gastos", baseURL!).toString());
+        await page.getByRole("button", { name: names.prev }).click();
+        await expect(page).toHaveURL((url) => url.pathname === "/finances/gastos" && url.search === "?month=2026-10");
+        await page.reload();
+        await expect(financeView(page, names.views[1])).toHaveAttribute("aria-current", "page");
+        await expect(page.getByText(names.month, { exact: true })).toBeVisible();
+        await financeView(page, names.views[2]).click();
+        await expect(page).toHaveURL((url) => url.pathname === "/finances/contas" && url.search === "?month=2026-10");
       });
 
       test("a reload on /finances/ajustes stays, and Back goes to Finances", async ({ page, baseURL }) => {

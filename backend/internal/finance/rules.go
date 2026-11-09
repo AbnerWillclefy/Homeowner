@@ -229,7 +229,11 @@ type InstallmentLine struct {
 func ProjectInstallments(plans []Plan, from time.Time, months int) [][]InstallmentLine {
 	out := make([][]InstallmentLine, months)
 	for _, p := range plans {
-		for k := p.Number + 1; k <= p.Total; k++ {
+		first := p.Number + 1
+		if monthIndex(p.Month) > monthIndex(from) {
+			first = p.Number // the charge is on a bill not yet due, so it is still to come
+		}
+		for k := first; k <= p.Total; k++ {
 			i := monthIndex(p.Month.AddDate(0, k-p.Number, 0)) - monthIndex(from)
 			if i >= 0 && i < months {
 				out[i] = append(out[i], InstallmentLine{p.Name, k, p.Total, p.AmountCents})
@@ -246,6 +250,25 @@ func monthIndex(t time.Time) int { return t.Year()*12 + int(t.Month()) }
 func DueDate(year int, month time.Month, dueDay int) time.Time {
 	last := time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC)
 	return time.Date(year, month, min(dueDay, last.Day()), 0, 0, 0, 0, time.UTC)
+}
+
+// CountsOn is the day a Transaction counts as spent: a card charge counts on
+// the due date of the bill it falls in, so a month's spending is what its bills
+// and its non-card rows take; any other row counts on posted. A charge on the
+// closing day or later goes to the next bill. A card with no known closeDay
+// or dueDay (0) counts on posted too.
+func CountsOn(posted time.Time, kind Kind, closeDay, dueDay int) time.Time {
+	if kind != "credit_card" || closeDay == 0 || dueDay == 0 {
+		return posted
+	}
+	closes := DueDate(posted.Year(), posted.Month(), closeDay)
+	if !posted.Before(closes) {
+		closes = DueDate(posted.Year(), posted.Month()+1, closeDay)
+	}
+	if dueDay > closeDay {
+		return DueDate(closes.Year(), closes.Month(), dueDay)
+	}
+	return DueDate(closes.Year(), closes.Month()+1, dueDay)
 }
 
 // ReminderQuietUntilHour is the local hour before which no Bill reminder is

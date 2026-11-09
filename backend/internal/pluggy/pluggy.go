@@ -43,6 +43,9 @@ type Account struct {
 	Subtype  string
 	Name     string
 	Currency string
+	// CloseDay and DueDay are the days of the month a card's bill closes and
+	// is due, from its current bill; 0 when Pluggy does not say.
+	CloseDay, DueDay int
 }
 
 // TransactionsPage is one page of transactions. Next is the cursor of the

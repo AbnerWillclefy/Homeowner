@@ -169,7 +169,7 @@ const MONTH = {
   spentCents: 1000,
   categories: [{ category: "groceries", spentCents: 1000 }],
   transactions: [
-    { id: "t1", postedOn: "2026-11-02", description: "Mercado", sourceName: "Nubank", amountCents: -1000, currency: "BRL", type: "expense", spendingCategory: "groceries", typeSetBy: "rule", categorySetBy: "auto", installment: null },
+    { id: "t1", postedOn: "2026-11-02", countsOn: "2026-11-02", description: "Mercado", sourceName: "Nubank", amountCents: -1000, currency: "BRL", type: "expense", spendingCategory: "groceries", typeSetBy: "rule", categorySetBy: "auto", installment: null },
   ],
   limits: { groceries: 80000 },
 };
@@ -179,6 +179,12 @@ describe("getMonth", () => {
     const fetch = stubFetch(Response.json(MONTH));
     expect(await getMonth("2026-11")).toEqual({ kind: "ok", month: MONTH });
     expect(fetch.mock.calls[0]![0]).toBe("http://api.test/me/finance/transactions?month=2026-11");
+  });
+
+  it("reads a Transaction without countsOn as counting on its posted day", async () => {
+    const { countsOn: _countsOn, ...older } = MONTH.transactions[0]!;
+    stubFetch(Response.json({ ...MONTH, transactions: [older] }));
+    expect(await getMonth("2026-11")).toMatchObject({ kind: "ok", month: { transactions: [{ countsOn: "2026-11-02" }] } });
   });
 
   it("reads a body without limits as none, and refuses a limit that is not a positive whole number", async () => {

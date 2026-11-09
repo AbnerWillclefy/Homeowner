@@ -1,8 +1,10 @@
+import type { Page } from "@playwright/test";
 import { test, expect } from "../fixtures";
 import { signedInHandlers } from "../mocks/handlers/signedIn";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
+import { financeView } from "../pages/finances";
 
 // What this covers, in pt-BR, with the clock fixed on 31 December (the previous month has 30 days): Gastos
 // says in neutral words how the month compares with the same days of November (cut at day 30), lists the Transactions
@@ -23,11 +25,13 @@ const LOCALES = [
     pets: "Pets",
     marker: /novembro até dia 30: R\$\s*792,00/,
     healthMarker: /novembro até dia 30: R\$\s*89,90/,
-    uncategorised: "Sem categoria de gasto",
-    count: /1 lançamento precisa de uma categoria/,
+    uncategorised: "1 lançamento sem categoria",
+    count: "Eles contam como Outros até você escolher uma.",
+    pick: "Escolher categorias",
     leftOut: "Fora dos totais",
     transfers: "Transferências",
     income: "Receitas",
+    upcoming: "Próximas faturas do cartão",
     prev: "Mês anterior",
     category: "Categoria de gasto",
     save: "Salvar",
@@ -59,6 +63,7 @@ const connected = () => {
       row("d4", "2026-12-12", "Compra sem nome", -4500, "expense", "other", "fallback"),
       row("d5", "2026-12-15", "Transferência para poupança", -100000, "transfer", null),
       row("d6", "2026-12-16", "Salário", 300000, "income", null),
+      { ...row("j1", "2026-12-28", "Loja no cartão", -15000, "expense", "groceries"), countsOn: "2027-01-12" },
       row("n1", "2026-11-05", "Mercado do mês passado", -69200, "expense", "groceries"),
       row("n2", "2026-11-30", "Mercado de fim de mês", -10000, "expense", "groceries"),
       row("n3", "2026-11-20", "Farmácia", -8990, "expense", "health"),
@@ -66,6 +71,9 @@ const connected = () => {
   };
   return s;
 };
+
+/** A category's disclosure button: its name is the category, then the amount. */
+const category = (page: Page, name: string) => page.getByRole("button", { name: new RegExp(`^${name} R\\$`) });
 
 for (const l of LOCALES) {
   test.describe(l.locale, () => {
@@ -76,28 +84,28 @@ for (const l of LOCALES) {
       await page.clock.setFixedTime(new Date("2026-12-31T12:00:00-03:00"));
       await seedSession(page, { email: RESIDENT_EMAIL });
       await visit(page, new URL("/finances", baseURL!).toString());
-      await page.getByRole("tab", { name: /^(Gastos|Spending)$/ }).click(); // Finances opens on Resumo
+      await financeView(page, /^(Gastos|Spending)$/).click(); // Finances opens on Resumo
     });
 
     test("compares with the same days of the 30-day month before, in neutral words, with every amount as text", async ({ page }) => {
       await expect(page.getByText(l.more)).toBeVisible();
-      const groceries = page.getByRole("listitem").filter({ has: page.getByRole("button", { name: l.groceries }) });
+      const groceries = page.getByRole("listitem").filter({ has: category(page, l.groceries) });
       await expect(groceries).toContainText(/R\$\s?842[.,]00/);
       await expect(groceries).toContainText(l.marker);
       // A category spent only last month is a zero bar with its marker.
-      const health = page.getByRole("listitem").filter({ has: page.getByRole("button", { name: l.health }) });
+      const health = page.getByRole("listitem").filter({ has: category(page, l.health) });
       await expect(health).toContainText(/R\$\s?0[.,]00/);
       await expect(health).toContainText(l.healthMarker);
       // Biggest first.
-      const names = await page.locator("li button[aria-expanded]").allInnerTexts();
-      expect(names.map((n) => n.trim())).toEqual([l.groceries, l.leisure, l.other, l.health]);
+      const names = await page.getByRole("region", { name: "Por categoria" }).locator("li button[aria-expanded]").allInnerTexts();
+      expect(names.map((n) => n.split("\n")[0]!.trim())).toEqual([l.groceries, l.leisure, l.other, l.health]);
     });
 
     test("opens a category by day, newest first", async ({ page }) => {
-      const button = page.getByRole("button", { name: l.groceries, exact: true });
+      const button = category(page, l.groceries);
       await button.click();
       await expect(button).toHaveAttribute("aria-expanded", "true");
-      const body = page.locator(`#${await button.getAttribute("aria-controls")}`);
+      const body = page.locator(`[id="${await button.getAttribute("aria-controls")}"]`);
       await expect(body.getByRole("heading")).toHaveCount(2);
       await expect(body.locator("li").getByRole("button").first()).toContainText("Padaria");
       await expect(body.locator("li").getByRole("button").last()).toContainText("Mercado grande");
@@ -110,6 +118,7 @@ for (const l of LOCALES) {
       page.on("request", (r) => void (r.url().includes("/me/finance/transactions?month=2026-11") && r.method() === "GET" && novemberReads++));
       const before = novemberReads;
 
+      await card.getByRole("button", { name: l.pick }).click();
       await card.getByRole("button", { name: /Compra sem nome/ }).click();
       const dialog = page.getByRole("dialog");
       await dialog.getByLabel(l.category).selectOption("pets");
@@ -117,28 +126,43 @@ for (const l of LOCALES) {
 
       await expect(dialog).toHaveCount(0);
       await expect(page.getByRole("region", { name: l.uncategorised })).toHaveCount(0);
-      await expect(page.getByRole("button", { name: l.pets })).toBeVisible();
+      await expect(category(page, l.pets)).toBeVisible();
       await expect.poll(() => novemberReads).toBeGreaterThan(before);
     });
 
     test("keeps Transfers and income apart, outside every total", async ({ page }) => {
       const leftOut = page.getByRole("region", { name: l.leftOut });
-      await expect(leftOut.getByRole("group", { name: l.transfers })).toContainText("Transferência para poupança");
-      await expect(leftOut.getByRole("group", { name: l.income })).toContainText("Salário");
+      // A card charge on next month's bill is listed apart, so it can be edited before January opens.
+      for (const [kind, text] of [[l.transfers, "Transferência para poupança"], [l.income, "Salário"], [l.upcoming, "Loja no cartão"]] as const) {
+        const button = leftOut.getByRole("button", { name: new RegExp(`^${kind}`) });
+        await button.click();
+        await expect(page.locator(`[id="${await button.getAttribute("aria-controls")}"]`)).toContainText(text);
+      }
       await expect(page.getByText(l.more)).toBeVisible(); // 100700 would differ had they counted
+    });
+
+    test("a card charge on this month's bill not yet due is listed apart, in no category", async ({ page, baseURL, fakeApi }) => {
+      fakeApi.state.finance!.transactions!.push({ ...row("p1", "2026-11-20", "Pet shop no cartão", -12000, "expense", "pets"), countsOn: "2026-12-12" });
+      await page.clock.setFixedTime(new Date("2026-12-08T12:00:00-03:00"));
+      await visit(page, new URL("/finances/gastos", baseURL!).toString());
+      await expect(category(page, l.groceries)).toBeVisible();
+      await expect(category(page, l.pets)).toHaveCount(0);
+      const button = page.getByRole("region", { name: l.leftOut }).getByRole("button", { name: new RegExp(`^${l.upcoming}`) });
+      await button.click();
+      await expect(page.locator(`[id="${await button.getAttribute("aria-controls")}"]`)).toContainText("Pet shop no cartão");
     });
 
     test("a past month is compared whole, and says when the month before has no data", async ({ page }) => {
       await page.getByRole("button", { name: l.prev, exact: true }).click();
       await expect(page.getByText(l.wholeNone)).toBeVisible();
-      await expect(page.getByRole("button", { name: l.groceries })).toBeVisible();
+      await expect(category(page, l.groceries)).toBeVisible();
     });
 
     test("with the month before failing, the bars stay and there is no sentence or marker", async ({ page, baseURL }) => {
       await page.route(/\/me\/finance\/transactions\?month=2026-11/, (route) => route.fulfill({ status: 500, contentType: "application/json", body: "{}" }));
       await visit(page, new URL("/finances", baseURL!).toString());
-      await page.getByRole("tab", { name: /^(Gastos|Spending)$/ }).click();
-      await expect(page.getByRole("button", { name: l.groceries })).toBeVisible();
+      await financeView(page, /^(Gastos|Spending)$/).click();
+      await expect(category(page, l.groceries)).toBeVisible();
       await expect(page.getByText(l.more)).toHaveCount(0);
       await expect(page.getByText(l.marker)).toHaveCount(0);
     });
@@ -149,8 +173,8 @@ for (const l of LOCALES) {
         document.addEventListener("DOMContentLoaded", () => (document.documentElement.style.fontSize = "200%"));
       });
       await visit(page, new URL("/finances", baseURL!).toString());
-      await page.getByRole("tab", { name: /^(Gastos|Spending)$/ }).click();
-      await page.getByRole("button", { name: l.groceries }).click();
+      await financeView(page, /^(Gastos|Spending)$/).click();
+      await category(page, l.groceries).click();
       await expect(page.getByText(l.marker)).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     });

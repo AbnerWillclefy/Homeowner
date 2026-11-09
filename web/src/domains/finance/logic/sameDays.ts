@@ -11,15 +11,17 @@ export interface SameDays {
   cutDay: number | null;
   /** The previous month has no Transactions at all, so the copy can say there is nothing to compare with. */
   noPrevious: boolean;
+  /** This month's card charges whose bill is due after today: in no total yet, listed apart. */
+  due: Transaction[];
   byCategory: Map<SpendingCategory, { spent: number; previousSpent: number }>;
 }
 
-const dayOf = (postedOn: string) => Number(postedOn.slice(8, 10));
+const dayOf = (date: string) => Number(date.slice(8, 10));
 
 /**
  * This month against the same days of the previous one. Expenses only, a refund offsets (`spent`), and no category
  * is Other: the same rules as `monthView`, so the two cannot disagree. Posted dates are compared as day numbers
- * from the string, never as `Date`.
+ * from the string, never as `Date`, and by `countsOn`, so a card charge counts on its bill's due day.
  */
 export function sameDays(current: Transaction[], previous: Transaction[], month: Month, today: Date): SameDays {
   const cutDay = month === currentMonth(today) ? Math.min(today.getDate(), daysInMonth(addMonths(month, -1))) : null;
@@ -27,7 +29,7 @@ export function sameDays(current: Transaction[], previous: Transaction[], month:
   const total = { spent: 0, previousSpent: 0 };
   const add = (rows: Transaction[], key: "spent" | "previousSpent", cut: number | null) => {
     for (const tx of rows) {
-      if (tx.type !== "expense" || (cut !== null && dayOf(tx.postedOn) > cut)) continue;
+      if (tx.type !== "expense" || (cut !== null && dayOf(tx.countsOn) > cut)) continue;
       const category = tx.spendingCategory ?? "other";
       const entry = byCategory.get(category) ?? { spent: 0, previousSpent: 0 };
       entry[key] += spent(tx);
@@ -35,9 +37,12 @@ export function sameDays(current: Transaction[], previous: Transaction[], month:
       total[key] += spent(tx);
     }
   };
-  add(current, "spent", null);
+  // A card bill due later this month has not counted yet, as in the previous month's cut. Only moved rows are cut,
+  // so a row the device's clock sees as tomorrow (São Paulo dates) still counts.
+  const due = cutDay === null ? [] : current.filter((tx) => tx.countsOn !== tx.postedOn && dayOf(tx.countsOn) > today.getDate());
+  add(current.filter((tx) => !due.includes(tx)), "spent", null);
   add(previous, "previousSpent", cutDay);
-  return { ...total, cutDay, noPrevious: previous.length === 0, byCategory };
+  return { ...total, cutDay, due, noPrevious: previous.length === 0, byCategory };
 }
 
 /** Every category with something in either month, biggest spend first, and the one scale their bars and markers share. */

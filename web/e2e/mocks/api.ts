@@ -82,6 +82,8 @@ export interface FakeState {
     transactions?: {
       id: string;
       postedOn: string;
+      /** The day it counts on (a card charge: its bill's due day); postedOn when absent. */
+      countsOn?: string;
       description: string;
       sourceName: string;
       amountCents: number;

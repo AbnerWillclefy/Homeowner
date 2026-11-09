@@ -66,7 +66,7 @@ export function financeHandlers(api: FakeApi): void {
     signedIn((request, state) => {
       const month = request.url.searchParams.get("month") ?? "";
       if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return json(400, { error: "invalid month" });
-      const transactions = (finance(state).transactions ?? []).filter((t) => t.postedOn.startsWith(`${month}-`));
+      const transactions = (finance(state).transactions ?? []).filter((t) => (t.countsOn ?? t.postedOn).startsWith(`${month}-`));
       const byCategory = new Map<string, number>();
       let spentCents = 0;
       for (const t of transactions) {
