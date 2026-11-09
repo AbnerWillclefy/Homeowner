@@ -26,6 +26,7 @@ describe("limit input", () => {
     expect(readIncome("0")).toEqual({ problem: "zero" });
     expect(readIncome("-50")).toEqual({ problem: "junk" });
     expect(readIncome("abc")).toEqual({ problem: "junk" });
+    expect(readIncome("10000000001")).toEqual({ problem: "junk" }); // above the backend ceiling
   });
   it("reads an amount", () => expect(readIncome("800,00")).toEqual({ cents: 80000 }));
 });
