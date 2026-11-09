@@ -1,8 +1,10 @@
+import type { Page } from "@playwright/test";
 import { test, expect } from "../fixtures";
 import { signedInHandlers } from "../mocks/handlers/signedIn";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
+import { financeView } from "../pages/finances";
 
 // What this covers, pt-BR first, with the root font at 200%: a category with a limit shows a marker and its text
 // ("limit R$ 800 · R$ 12 over the limit") in ordinary ink, with no icon; a category without one looks as before;
@@ -60,14 +62,16 @@ for (const l of LOCALES) {
       });
       await seedSession(page, { email: RESIDENT_EMAIL });
       await visit(page, new URL("/finances", baseURL!).toString());
-      await page.getByRole("tab", { name: l.tab }).click();
+      await financeView(page, l.tab).click();
     });
 
-    const bar = (page: import("@playwright/test").Page, name: string) => page.locator("li").filter({ has: page.getByRole("button", { name, exact: true }) });
-    const open = async (page: import("@playwright/test").Page, name: string) => {
-      const button = page.getByRole("button", { name, exact: true });
+    // A category's button is its name, then the amount.
+    const category = (page: Page, name: string) => page.getByRole("button", { name: new RegExp(`^${name} R\\$`) });
+    const bar = (page: Page, name: string) => page.locator("li").filter({ has: category(page, name) });
+    const open = async (page: Page, name: string) => {
+      const button = category(page, name);
       await button.click();
-      return page.locator(`#${await button.getAttribute("aria-controls")}`);
+      return page.locator(`[id="${await button.getAttribute("aria-controls")}"]`);
     };
     const puts = (fakeApi: { requests: { method: string; path: string }[] }) =>
       fakeApi.requests.filter((r) => r.method === "PUT" && r.path.startsWith("/me/finance/budgets/"));

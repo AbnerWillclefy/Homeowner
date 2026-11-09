@@ -4,35 +4,38 @@ import { signedInHandlers } from "../mocks/handlers/signedIn";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
+import { financeView } from "../pages/finances";
 
 // What this covers, pt-BR first and then English, with the clock fixed on 15 November 2026: "Próximos meses" (in the
-// Contas view) draws every month with a commitment as a bar split into Bills and installments, with each total and the
-// split as text, labels the current month as only the Bills still to pay, lists the Installment plans in progress with
-// the next part, the total and the last month (one that ends this month, one that crosses into next year), and
-// shows the Monthly income as text and a line on every bar once it is set, with no alarm word, icon or exclamation
-// mark, even above 100%. The income is not edited there: a link goes to Ajustes, where the field is, with its messages.
-// No commitments is said calmly. At 320px with the root font at 200% nothing overflows sideways.
+// Contas view) draws every month with a commitment as a column split into Bills and installments, with each total and
+// the split in the chart's text, notes that the current month counts only the Bills still to pay, and lists the
+// Installment plans in progress with the next part, the total and the last month (one that ends this month, one that
+// crosses into next year). Once the Monthly income is set (in Ajustes) it says the share of the first month, with no
+// alarm word, icon or exclamation mark. The income field explains its problems. No commitments is said calmly. At
+// 320px with the root font at 200% nothing overflows sideways.
 
 const LOCALES = [
   {
     locale: "pt-BR",
     heading: "Próximos meses",
     bills: "Contas",
-    settings: "Ajustes",
-    income: "Renda mensal",
+    settings: "Ajustes de finanças",
+    back: "Finanças",
+    income: "Quanto entra por mês",
     save: "Salvar",
-    clear: "Remover",
+    clear: "Limpar",
     november: /novembro de 2026: R\$\s*320,00/i,
     december: /dezembro de 2026: R\$\s*870,00/i,
     january: /janeiro de 2027: R\$\s*570,00/i,
     split: /Contas R\$\s*120,00 · Parcelamentos R\$\s*750,00/,
     currentNote: "Só contas ainda a pagar",
-    plansHeading: "Parcelamentos em andamento",
-    plans: ["Sofá: próxima 3 de 3 · última em novembro", "Geladeira: próxima 4 de 10 · última em junho", "Televisão: próxima 2 de 6 · última em abril"],
-    incomeText: /Renda mensal: R\$\s*600,00/,
-    change: "Alterar renda",
-    set: "Informar renda mensal",
-    marker: "A linha em cada barra marca a sua renda mensal.",
+    plansHeading: "Parcelas em andamento",
+    plans: [
+      ["Sofá", "próxima 3 de 3 · última em novembro"],
+      ["Geladeira", "próxima 4 de 10 · última em junho"],
+      ["Televisão", "próxima 2 de 6 · última em abril"],
+    ],
+    share: /53% da renda já está comprometida/,
     empty: "Nenhuma conta ou parcelamento nos próximos meses.",
     failed: "Não conseguimos carregar os próximos meses. Verifique sua conexão e tente de novo.",
     retry: "Tentar novamente",
@@ -43,8 +46,9 @@ const LOCALES = [
     locale: "en-US",
     heading: "Coming months",
     bills: "Bills",
-    settings: "Settings",
-    income: "Monthly income",
+    settings: "Finance settings",
+    back: "Finances",
+    income: "How much comes in each month",
     save: "Save",
     clear: "Clear",
     november: /November 2026: R\$\s*320\.00/i,
@@ -52,12 +56,13 @@ const LOCALES = [
     january: /January 2027: R\$\s*570\.00/i,
     split: /Bills R\$\s*120\.00 · Installments R\$\s*750\.00/,
     currentNote: "Only bills still to pay",
-    plansHeading: "Installment plans in progress",
-    plans: ["Sofá: next 3 of 3 · last in November", "Geladeira: next 4 of 10 · last in June", "Televisão: next 2 of 6 · last in April"],
-    incomeText: /Monthly income: R\$\s*600\.00/,
-    change: "Change income",
-    set: "Set monthly income",
-    marker: "The line on each bar marks your monthly income.",
+    plansHeading: "Installments in progress",
+    plans: [
+      ["Sofá", "next 3 of 3 · last in November"],
+      ["Geladeira", "next 4 of 10 · last in June"],
+      ["Televisão", "next 2 of 6 · last in April"],
+    ],
+    share: /53% of your income is already taken/,
     empty: "No bills or installments in the coming months.",
     failed: "We could not load the coming months. Check your connection and try again.",
     retry: "Try again",
@@ -104,21 +109,8 @@ const connected = (withMonths: boolean) => {
 };
 
 const section = (page: Page, heading: string) => page.getByRole("region", { name: heading, exact: true });
-
-/** Opens a Finances view and returns its panel. */
-async function view(page: Page, name: string) {
-  // Ajustes is a route behind a button beside the title, not a tab.
-  if (name === "Ajustes" || name === "Settings") {
-    await page.getByRole("link", { name, exact: true }).click();
-    return page.locator("main");
-  }
-  // Ajustes is a route: leave it before picking a tab.
-  if (page.url().endsWith("/finances/ajustes")) await page.getByRole("button", { name: /^(Voltar|Back)$/ }).click();
-  await page.getByRole("tab", { name }).click();
-  return page.getByRole("tabpanel", { name });
-}
-/** The income form alone: the Settings view has other forms with their own alerts. */
-const income = (page: Page) => page.locator("form").filter({ has: page.getByLabel(/^(Renda mensal|Monthly income)$/) });
+/** The income form alone: Ajustes has other forms with their own alerts. */
+const income = (page: Page) => page.locator("form").filter({ has: page.getByLabel(/^(Quanto entra por mês|How much comes in each month)$/) });
 
 for (const l of LOCALES) {
   test.describe(l.locale, () => {
@@ -131,70 +123,68 @@ for (const l of LOCALES) {
       await visit(page, new URL("/finances", baseURL!).toString());
     });
 
+    const settings = async (page: Page) => {
+      await page.getByRole("link", { name: l.settings, exact: true }).click();
+      return page.locator("main");
+    };
     const comingMonths = async (page: Page) => {
-      await view(page, l.bills);
+      if (page.url().includes("/finances/ajustes")) await page.getByRole("button", { name: l.back, exact: true }).click();
+      await financeView(page, l.bills).click();
       return section(page, l.heading);
     };
 
     test.describe("with commitments", () => {
       test.use({ fakeState: connected(true) });
 
-      test("draws each month as a bar split into Bills and installments, with every total as text", async ({ page }) => {
+      test("draws each month as a column split into Bills and installments, with every total as text", async ({ page }) => {
         const s = await comingMonths(page);
-        await expect(s.getByText(l.november)).toBeVisible();
-        await expect(s.getByText(l.december)).toBeVisible();
-        await expect(s.getByText(l.january)).toBeVisible();
-        await expect(s.getByText(l.split)).toBeVisible();
-        await expect(s.getByRole("listitem").filter({ hasText: l.december }).locator("[data-fill]")).toHaveCount(2);
+        const chart = s.getByRole("img");
+        await expect(chart).toHaveAttribute("aria-label", l.november);
+        await expect(chart).toHaveAttribute("aria-label", l.december);
+        await expect(chart).toHaveAttribute("aria-label", l.january);
+        await expect(chart).toHaveAttribute("aria-label", l.split);
         await expect(s.getByText(l.currentNote)).toHaveCount(1);
       });
 
       test("lists the plans in progress with the next part, the total and the last month", async ({ page }) => {
         const s = await comingMonths(page);
-        await expect(s.getByRole("heading", { name: l.plansHeading })).toBeVisible();
-        for (const text of l.plans) await expect(s.getByText(text)).toBeVisible();
+        const plans = s.getByRole("region", { name: l.plansHeading });
+        await expect(plans).toBeVisible();
+        for (const [name, text] of l.plans) await expect(plans.getByRole("listitem").filter({ hasText: name })).toContainText(text);
         // A plan that appears in two months is listed once.
-        await expect(s.getByText(/Geladeira/)).toHaveCount(1);
+        await expect(plans.getByText(/Geladeira/)).toHaveCount(1);
       });
 
-      test("without income the bars have no income line, and a link offers to set it", async ({ page }) => {
+      test("without income there is no share, and Ajustes has an empty field", async ({ page }) => {
         const s = await comingMonths(page);
-        await expect(s.locator("[data-marker]")).toHaveCount(0);
-        await expect(s.getByText(l.incomeText)).toHaveCount(0);
-        await expect(s.getByRole("link", { name: l.set })).toBeVisible();
-        await view(page, l.settings);
+        await expect(s.getByText(l.share)).toHaveCount(0);
+        await settings(page);
         await expect(income(page).getByRole("button", { name: l.clear })).toHaveCount(0);
         await expect(page.getByLabel(l.income)).toHaveValue("");
       });
 
-      test("setting an income shows it as text and a line on every bar, without alarm; clearing removes them", async ({ page }) => {
-        let s = await comingMonths(page);
-        await s.getByRole("link", { name: l.set }).click();
-        await expect(page).toHaveURL(/\/finances\/ajustes$/);
+      test("setting an income says the share, without alarm; clearing removes it", async ({ page }) => {
+        await settings(page);
         await page.getByLabel(l.income).fill(l.typed.high);
         await income(page).getByRole("button", { name: l.save }).click();
         await expect(page.getByLabel(l.income)).toHaveValue(l.typed.high);
         await expect(income(page).getByRole("alert")).toBeEmpty();
 
-        s = await comingMonths(page);
-        await expect(s.getByText(l.incomeText)).toBeVisible();
-        await expect(s.getByText(l.marker)).toBeVisible();
-        await expect(s.locator("[data-marker]")).toHaveCount(3);
-        await expect(s.getByRole("link", { name: l.change })).toBeVisible();
+        let s = await comingMonths(page);
+        await expect(s.getByText(l.share)).toBeVisible();
         expect(await s.innerText()).not.toContain("!");
         await expect(s.locator("svg.lucide-triangle-alert, svg.lucide-circle-alert")).toHaveCount(0);
 
-        await view(page, l.settings);
+        await settings(page);
         await income(page).getByRole("button", { name: l.clear }).click();
         await expect(page.getByLabel(l.income)).toHaveValue("");
         s = await comingMonths(page);
-        await expect(s.getByText(l.incomeText)).toHaveCount(0);
-        await expect(s.locator("[data-marker]")).toHaveCount(0);
-        await expect(s.getByText(l.december)).toBeVisible();
+        await expect(s.getByText(l.share)).toHaveCount(0);
+        await expect(s.getByRole("img")).toHaveAttribute("aria-label", l.december);
       });
 
       test("an income that is empty, zero or not a number is explained and not sent", async ({ page, fakeApi }) => {
-        await view(page, l.settings);
+        await settings(page);
         const form = income(page);
         const save = form.getByRole("button", { name: l.save });
         await save.click();
@@ -215,8 +205,7 @@ for (const l of LOCALES) {
       test("says so calmly and still offers the income", async ({ page }) => {
         const s = await comingMonths(page);
         await expect(s.getByText(l.empty)).toBeVisible();
-        await expect(s.getByRole("link", { name: l.set })).toBeVisible();
-        await view(page, l.settings);
+        await settings(page);
         await expect(page.getByLabel(l.income)).toBeVisible();
       });
     });
@@ -227,9 +216,9 @@ for (const l of LOCALES) {
       test("Settings says so where the income was, with Retry", async ({ page, fakeApi }) => {
         fakeApi.override("GET /me/finance/commitments", { status: 500, body: { error: "boom" } });
         await page.reload();
-        const settings = await view(page, l.settings);
-        await expect(settings.getByRole("alert").filter({ hasText: l.failed })).toBeVisible();
-        await expect(settings.getByRole("button", { name: l.retry })).toBeVisible();
+        const main = await settings(page);
+        await expect(main.getByRole("alert").filter({ hasText: l.failed })).toBeVisible();
+        await expect(main.getByRole("button", { name: l.retry })).toBeVisible();
       });
     });
 
@@ -241,12 +230,12 @@ for (const l of LOCALES) {
           document.addEventListener("DOMContentLoaded", () => (document.documentElement.style.fontSize = "200%"));
         });
         await page.reload();
-        await view(page, l.settings);
+        await settings(page);
         await page.getByLabel(l.income).fill(l.typed.high);
         await income(page).getByRole("button", { name: l.save }).click();
         await expect(page.getByLabel(l.income)).toHaveValue(l.typed.high);
         const s = await comingMonths(page);
-        await expect(s.getByText(l.plans[0])).toBeVisible();
+        await expect(s.getByText(l.plans[0][1])).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
       });
     });

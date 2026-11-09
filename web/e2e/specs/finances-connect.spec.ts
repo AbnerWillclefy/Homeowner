@@ -23,8 +23,8 @@ const LOCALES = [
     id: "Client ID",
     secret: "Client Secret",
     save: "Salvar credenciais",
-    saved: "Credenciais salvas",
-    replace: "Substituir",
+    saved: "Credenciais do MeuPluggy",
+    replace: "Trocar",
     remove: "Remover",
     removeConfirm: "Remover credenciais",
     cancel: "Cancelar",
@@ -36,6 +36,7 @@ const LOCALES = [
     card: "Cartão de crédito",
     rejected: "Não conseguimos entrar no Pluggy com essas credenciais.",
     del: "Apagar meus dados financeiros",
+    delOpen: "Apagar tudo",
     delTitle: "Apagar seus dados financeiros?",
     stays: /continuam conectados no MeuPluggy/,
     settings: "Ajustes",
@@ -198,7 +199,7 @@ for (const l of LOCALES) {
       test("deleting the finance data: cancel keeps it, confirm clears it, and the dialog has the danger action last", async ({ page, baseURL, fakeApi }) => {
         await visit(page, new URL("/finances", baseURL!).toString());
         await page.getByRole("link", { name: l.settings }).click();
-        await page.getByRole("button", { name: l.del }).click();
+        await page.getByRole("button", { name: l.delOpen }).click();
         const dialog = page.getByRole("dialog", { name: l.delTitle });
         await expect(dialog).toContainText(l.stays);
 
@@ -213,7 +214,7 @@ for (const l of LOCALES) {
         expect(fakeApi.requests.some((r) => r.method === "DELETE" && r.path === "/me/finance")).toBe(false);
         await expect(page.getByText(l.checking, { exact: true })).toBeVisible();
 
-        await page.getByRole("button", { name: l.del }).click();
+        await page.getByRole("button", { name: l.delOpen }).click();
         await page.getByRole("dialog").getByRole("button", { name: l.del }).click();
         await expect(page.getByRole("heading", { name: l.steps })).toBeVisible();
         expect(fakeApi.requests.some((r) => r.method === "DELETE" && r.path === "/me/finance")).toBe(true);

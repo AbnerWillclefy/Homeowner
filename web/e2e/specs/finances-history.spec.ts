@@ -1,8 +1,10 @@
+import type { Page } from "@playwright/test";
 import { test, expect } from "../fixtures";
 import { signedInHandlers } from "../mocks/handlers/signedIn";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
+import { financeView } from "../pages/finances";
 
 // What this covers, pt-BR first, with the clock fixed on 31 December and the root font at 200%: opening a category
 // shows six months of it, each amount as text, the viewed month marked in words; opening a second category reads
@@ -37,6 +39,9 @@ const connected = () => {
   return s;
 };
 
+/** A category's disclosure button: its name is the category, then the amount. */
+const category = (page: Page, name: string) => page.getByRole("button", { name: new RegExp(`^${name} R\\$`) });
+
 for (const l of LOCALES) {
   test.describe(l.locale, () => {
     test.use({ locale: l.locale, viewport: { width: 390, height: 844 }, fakeState: connected() });
@@ -49,12 +54,12 @@ for (const l of LOCALES) {
       });
       await seedSession(page, { email: RESIDENT_EMAIL });
       await visit(page, new URL("/finances", baseURL!).toString());
-      await page.getByRole("tab", { name: /^(Gastos|Spending)$/ }).click();
+      await financeView(page, /^(Gastos|Spending)$/).click();
     });
 
     test("shows six months with amounts as text, the viewed month marked, and reads once for every category", async ({ page, fakeApi }) => {
       const reads = () => fakeApi.requests.filter((r) => r.method === "GET" && r.path === "/me/finance/history").length;
-      const groceries = page.getByRole("button", { name: l.groceries, exact: true });
+      const groceries = category(page, l.groceries);
       await groceries.click();
       const body = page.locator(`#${await groceries.getAttribute("aria-controls")}`);
       await expect(body.getByText(l.heading)).toBeVisible();
@@ -66,7 +71,7 @@ for (const l of LOCALES) {
       await expect(body.getByText(l.mark)).toHaveCount(1);
       expect(await body.locator("[data-fill]").count()).toBe(3);
 
-      const leisure = page.getByRole("button", { name: l.leisure, exact: true });
+      const leisure = category(page, l.leisure);
       await leisure.click();
       await expect(page.locator(`#${await leisure.getAttribute("aria-controls")}`).getByText(l.heading)).toBeVisible();
       expect(reads()).toBe(1);
@@ -74,7 +79,7 @@ for (const l of LOCALES) {
 
     test("marks a past month as the chosen one, not as this month", async ({ page }) => {
       await page.getByRole("button", { name: l.prev, exact: true }).click();
-      const groceries = page.getByRole("button", { name: l.groceries, exact: true });
+      const groceries = category(page, l.groceries);
       await groceries.click();
       const body = page.locator(`#${await groceries.getAttribute("aria-controls")}`);
       await expect(body.getByText(l.picked)).toHaveCount(1);
@@ -84,8 +89,8 @@ for (const l of LOCALES) {
     test("shows the year again where the six months cross into a new one", async ({ page, baseURL }) => {
       await page.clock.setFixedTime(new Date("2027-02-15T12:00:00-03:00"));
       await visit(page, new URL("/finances", baseURL!).toString());
-      await page.getByRole("tab", { name: /^(Gastos|Spending)$/ }).click();
-      const groceries = page.getByRole("button", { name: l.groceries, exact: true });
+      await financeView(page, /^(Gastos|Spending)$/).click();
+      const groceries = category(page, l.groceries);
       await groceries.click();
       await expect(page.locator(`#${await groceries.getAttribute("aria-controls")}`)).toContainText(l.january);
     });
@@ -95,8 +100,8 @@ for (const l of LOCALES) {
         route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ to: "2026-12", months: [{ month: "2026-12", spentCents: 0, categories: [] }] }) }),
       );
       await visit(page, new URL("/finances", baseURL!).toString());
-      await page.getByRole("tab", { name: /^(Gastos|Spending)$/ }).click();
-      await page.getByRole("button", { name: l.groceries, exact: true }).click();
+      await financeView(page, /^(Gastos|Spending)$/).click();
+      await category(page, l.groceries).click();
       await expect(page.getByText(l.empty).first()).toBeVisible();
     });
 
@@ -104,8 +109,8 @@ for (const l of LOCALES) {
       let failing = true;
       await page.route(/\/me\/finance\/history/, (route) => (failing ? route.fulfill({ status: 500, contentType: "application/json", body: "{}" }) : route.fallback()));
       await visit(page, new URL("/finances", baseURL!).toString());
-      await page.getByRole("tab", { name: /^(Gastos|Spending)$/ }).click();
-      await page.getByRole("button", { name: l.groceries, exact: true }).click();
+      await financeView(page, /^(Gastos|Spending)$/).click();
+      await category(page, l.groceries).click();
       await expect(page.getByText(l.failed).first()).toBeVisible();
       await expect(page.getByText("Mercado grande")).toBeVisible();
       failing = false;

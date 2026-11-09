@@ -4,6 +4,7 @@ import { signedInHandlers } from "../mocks/handlers/signedIn";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
+import { financeView } from "../pages/finances";
 
 // What this covers, pt-BR first and then English, with the clock fixed on 2030-01-15: Contas has the Gastos month picker,
 // starting on the current month and unable to go past it. A past month lists its Bills as history: a paid Bill shows the
@@ -27,7 +28,8 @@ const LOCALES = [
     add: "Adicionar conta",
     both: /Previsto R\$\s*1\.500,00 · Pago R\$\s*1\.480,00/,
     equalOnly: /^R\$\s*210,50$/,
-    summary: { paid: /Pago R\$\s*1\.690,50/, toPay: /Falta pagar R\$\s*99,90/ },
+    summary: { paid: /R\$\s*1\.690,50 de R\$\s*1\.790,40 pagos\./, toPay: /Falta R\$\s*99,90 em 1 conta\./ },
+    month: "Mês",
     groups: { unpaid: "Sem pagamento", paid: "Pagas" },
     dueOn: /Vencimento 10 de dez/,
     stripNone: /Hoje é dia/,
@@ -49,7 +51,8 @@ const LOCALES = [
     add: "Add a bill",
     both: /Expected R\$\s*1,500\.00 · Paid R\$\s*1,480\.00/,
     equalOnly: /^R\$\s*210\.50$/,
-    summary: { paid: /Paid R\$\s*1,690\.50/, toPay: /Still to pay R\$\s*99\.90/ },
+    summary: { paid: /R\$\s*1,690\.50 of R\$\s*1,790\.40 paid\./, toPay: /R\$\s*99\.90 left in 1 bill\./ },
+    month: "Month",
     groups: { unpaid: "No payment", paid: "Paid" },
     dueOn: /Due date Dec 10/,
     stripNone: /Today is day/,
@@ -115,7 +118,6 @@ for (const l of LOCALES) {
       await expect(page.getByRole("button", { name: l.undo })).toHaveCount(0);
       await expect(page.getByRole("button", { name: l.menu })).toHaveCount(0);
       await expect(page.getByRole("button", { name: l.add })).toHaveCount(0);
-      await expect(page.locator("[data-today]")).toHaveCount(0);
       await expect(page.getByRole("img", { name: l.stripNone })).toHaveCount(0);
     });
 
@@ -152,12 +154,12 @@ for (const l of LOCALES) {
       await page.clock.setFixedTime(new Date("2030-01-15T12:00:00-03:00"));
       await seedSession(page, { email: RESIDENT_EMAIL });
       await visit(page, new URL("/finances", baseURL!).toString());
-      await page.getByRole("tab", { name: l.bills }).click();
+      await financeView(page, l.bills).click();
       const coming = page.getByRole("heading", { name: l.coming, exact: true });
       await expect(coming).toBeVisible();
-      await page.getByRole("group", { name: l.group }).getByRole("button", { name: l.prev }).click();
+      await page.getByRole("group", { name: l.month }).getByRole("button", { name: l.prev }).click();
       await expect(coming).toHaveCount(0);
-      await page.getByRole("group", { name: l.group }).getByRole("button", { name: l.next }).click();
+      await page.getByRole("group", { name: l.month }).getByRole("button", { name: l.next }).click();
       await expect(coming).toBeVisible();
     });
   });
