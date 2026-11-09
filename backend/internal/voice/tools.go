@@ -60,7 +60,7 @@ func tools() []llmalloc.Tool {
 	weekdays := map[string]any{"type": "array", "description": "0 = Sunday to 6 = Saturday; empty means any day",
 		"items": map[string]any{"type": "integer"}}
 	obj := func(props map[string]any, required ...string) map[string]any {
-		return map[string]any{"type": "object", "properties": props, "required": required, "additionalProperties": false}
+		return map[string]any{"type": "object", "properties": props, "required": append([]string{}, required...), "additionalProperties": false}
 	}
 	return []llmalloc.Tool{
 		{Name: toolCreateChore, Description: "Propose a new chore.", InputSchema: obj(map[string]any{
