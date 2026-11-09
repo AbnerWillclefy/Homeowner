@@ -11,10 +11,11 @@ export interface BillPayment {
 }
 
 /** `today` is `YYYY-MM-DD`; both are calendar dates, so comparing the strings is exact. */
-export function billState(bill: BillPayment, today: string): BillState {
+export function billState(bill: BillPayment, today: string | null): BillState {
   if (bill.paidBy === "bank") return "paid-bank";
   if (bill.paid) return "paid-hand";
-  return bill.dueDate < today ? "overdue" : "due";
+  // A null `today` is a past month: nothing in it is overdue.
+  return today !== null && bill.dueDate < today ? "overdue" : "due";
 }
 
 /** Overdue has no fixed label: it names the day ("Venceu dia 5"). */

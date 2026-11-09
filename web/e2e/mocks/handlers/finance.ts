@@ -183,7 +183,15 @@ export function financeHandlers(api: FakeApi): void {
       if (!month) return json(400, { error: "invalid month" });
       return json(
         200,
-        bills(state).map(({ paid, ...b }) => ({ ...b, dueDate: dueDate(month, b.dueDay), paid: month in paid, paidBy: paid[month] ?? null })),
+        bills(state)
+          .filter((b) => (b.createdMonth ?? "0000-00") <= month)
+          .map(({ paid, paidCents, createdMonth: _, ...b }) => ({
+            ...b,
+            dueDate: dueDate(month, b.dueDay),
+            paid: month in paid,
+            paidBy: paid[month] ?? null,
+            paidCents: month in paid ? (paidCents?.[month] ?? b.expectedCents) : null,
+          })),
       );
     }),
   );

@@ -48,8 +48,19 @@ export interface FakeState {
     sources: { id: string; name: string; kind: string; currency: string }[];
     importing: boolean;
     lastSyncedAt: string | null;
-    /** What `GET /me/finance/bills` lists. `paid` maps `YYYY-MM` to who paid that month. Absent means none. */
-    bills?: { id: string; name: string; expectedCents: number; dueDay: number; paid: Record<string, "hand" | "bank"> }[];
+    /**
+     * What `GET /me/finance/bills` lists. `paid` maps `YYYY-MM` to who paid that month. Absent means none. `paidCents`
+     * maps a month to what was paid (absent: the expected amount); `createdMonth` hides the Bill from earlier months.
+     */
+    bills?: {
+      id: string;
+      name: string;
+      expectedCents: number;
+      dueDay: number;
+      paid: Record<string, "hand" | "bank">;
+      paidCents?: Record<string, number>;
+      createdMonth?: string;
+    }[];
     /** The Spending limits (category to cents), the same for every month; `PUT /me/finance/budgets/{category}` sets them. Absent means none. */
     limits?: Record<string, number>;
     /** Monthly income, which `PUT /me/finance/income` sets. Absent means none. */

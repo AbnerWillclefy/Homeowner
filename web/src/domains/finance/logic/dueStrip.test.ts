@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Bill } from "../api/api";
 import { dueStrip } from "./dueStrip";
 
-const bill = (id: string, dueDate: string): Bill => ({ id, name: id, expectedCents: 100, dueDay: Number(dueDate.slice(8)), dueDate, paid: false });
+const bill = (id: string, dueDate: string): Bill => ({ id, name: id, expectedCents: 100, dueDay: Number(dueDate.slice(8)), dueDate, paid: false, paidCents: null });
 
 describe("dueStrip", () => {
   it("has one cell per day of the month, a leap February included", () => {
@@ -21,5 +21,9 @@ describe("dueStrip", () => {
   it("marks today's day, or none when today is in another month", () => {
     expect(dueStrip([], "2030-01", "2030-01-15").today).toBe(15);
     expect(dueStrip([], "2030-01", "2030-02-01").today).toBeNull();
+  });
+
+  it("marks no day when today is null, as for a past month", () => {
+    expect(dueStrip([], "2030-01", null).today).toBeNull();
   });
 });

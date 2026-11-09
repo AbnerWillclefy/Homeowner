@@ -10,6 +10,7 @@ const bill = (id: string, dueDate: string, expectedCents: number, over: Partial<
   dueDate,
   paid: false,
   paidBy: null,
+  paidCents: null,
   ...over,
 });
 
@@ -45,5 +46,26 @@ describe("billGroups", () => {
     const none = billGroups([], "2030-01-15");
     expect(none.overdue).toEqual({ bills: [], totalCents: 0 });
     expect(none.toPayCents).toBe(0);
+  });
+
+  describe("for a past month (today is null)", () => {
+    const past = billGroups(
+      [
+        bill("luz", "2030-01-20", 21050, { paid: true, paidBy: "hand", paidCents: 20000 }),
+        bill("net", "2030-01-10", 9990, { paid: true, paidBy: "bank", paidCents: null }),
+        bill("aluguel", "2030-01-05", 150000),
+      ],
+      null,
+    );
+
+    it("has no overdue Bill; an unpaid one goes to the unpaid group", () => {
+      expect(past.overdue.bills).toEqual([]);
+      expect(past.due.bills.map((b) => b.id)).toEqual(["aluguel"]);
+    });
+
+    it("adds up what was paid from paidCents, falling back to the expected amount, and the unpaid from expectedCents", () => {
+      expect(past.paidCents).toBe(29990);
+      expect(past.toPayCents).toBe(150000);
+    });
   });
 });
