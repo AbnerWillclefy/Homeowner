@@ -79,7 +79,21 @@ export function financeHandlers(api: FakeApi): void {
         .filter(([, cents]) => cents !== 0)
         .map(([category, cents]) => ({ category, spentCents: cents }))
         .sort((a, b) => b.spentCents - a.spentCents);
-      return json(200, { month, spentCents, categories, transactions });
+      return json(200, { month, spentCents, categories, transactions, limits: finance(state).limits ?? {} });
+    }),
+  );
+
+  // The Spending limit of one category, as `PUT /me/finance/budgets/{category}` answers: a positive whole number sets, null removes.
+  api.on(
+    "PUT /me/finance/budgets/{category}",
+    signedIn((request, state) => {
+      const category = request.params["category"] ?? "";
+      const cents = (request.body as { limitCents?: unknown } | null)?.limitCents;
+      if (cents !== null && !(Number.isInteger(cents) && (cents as number) > 0 && (cents as number) <= 10 ** 12)) return json(400, { error: "invalid limit" });
+      const limits = (finance(state).limits ??= {});
+      if (cents === null) delete limits[category];
+      else limits[category] = cents as number;
+      return empty();
     }),
   );
 

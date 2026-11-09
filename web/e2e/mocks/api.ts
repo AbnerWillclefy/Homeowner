@@ -51,6 +51,8 @@ export interface FakeState {
     /** What `GET /me/finance/bills` lists. `paid` maps `YYYY-MM` to who paid that month. Absent means none. */
     bills?: { id: string; name: string; expectedCents: number; dueDay: number; paid: Record<string, "hand" | "bank"> }[];
     /** What `GET /me/finance/transactions` reads, any month; the PATCH edits these. Absent means none. */
+    /** The Spending limits (category to cents), the same for every month; `PUT /me/finance/budgets/{category}` sets them. Absent means none. */
+    limits?: Record<string, number>;
     /** Monthly income, which `PUT /me/finance/income` sets. Absent means none. */
     monthlyIncomeCents?: number | null;
     /** The months `GET /me/finance/commitments` lists; the fake adds `percentOfIncome` from the income. Absent means none. */

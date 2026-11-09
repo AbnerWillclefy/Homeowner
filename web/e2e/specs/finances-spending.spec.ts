@@ -99,8 +99,8 @@ for (const l of LOCALES) {
       await expect(button).toHaveAttribute("aria-expanded", "true");
       const body = page.locator(`#${await button.getAttribute("aria-controls")}`);
       await expect(body.getByRole("heading")).toHaveCount(2);
-      await expect(body.getByRole("button").first()).toContainText("Padaria");
-      await expect(body.getByRole("button").last()).toContainText("Mercado grande");
+      await expect(body.locator("li").getByRole("button").first()).toContainText("Padaria");
+      await expect(body.locator("li").getByRole("button").last()).toContainText("Mercado grande");
     });
 
     test("the no-category card counts, edits and goes away, and every month is read again", async ({ page }) => {
