@@ -29,6 +29,7 @@ describe("sameDays", () => {
   it("leaves out this month's card bill until its due day", () => {
     const r = sameDays([tx("2026-10-20", -500, { countsOn: "2026-11-12" }), tx("2026-11-05", -100), tx("2026-11-09", -10)], [], "2026-11", on(2026, 11, 8));
     expect(r.spent).toBe(110);
+    expect(r.due.map((t) => t.countsOn)).toEqual(["2026-11-12"]);
   });
 
   it("clamps day 31 to the whole of a 30-day month", () => {

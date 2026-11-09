@@ -11,6 +11,8 @@ export interface SameDays {
   cutDay: number | null;
   /** The previous month has no Transactions at all, so the copy can say there is nothing to compare with. */
   noPrevious: boolean;
+  /** This month's card charges whose bill is due after today: in no total yet, listed apart. */
+  due: Transaction[];
   byCategory: Map<SpendingCategory, { spent: number; previousSpent: number }>;
 }
 
@@ -40,7 +42,7 @@ export function sameDays(current: Transaction[], previous: Transaction[], month:
   const due = cutDay === null ? [] : current.filter((tx) => tx.countsOn !== tx.postedOn && dayOf(tx.countsOn) > today.getDate());
   add(current.filter((tx) => !due.includes(tx)), "spent", null);
   add(previous, "previousSpent", cutDay);
-  return { ...total, cutDay, noPrevious: previous.length === 0, byCategory };
+  return { ...total, cutDay, due, noPrevious: previous.length === 0, byCategory };
 }
 
 /** Every category with something in either month, biggest spend first, and the one scale their bars and markers share. */

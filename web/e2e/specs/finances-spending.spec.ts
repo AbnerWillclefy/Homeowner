@@ -141,6 +141,17 @@ for (const l of LOCALES) {
       await expect(page.getByText(l.more)).toBeVisible(); // 100700 would differ had they counted
     });
 
+    test("a card charge on this month's bill not yet due is listed apart, in no category", async ({ page, baseURL, fakeApi }) => {
+      fakeApi.state.finance!.transactions!.push({ ...row("p1", "2026-11-20", "Pet shop no cartão", -12000, "expense", "pets"), countsOn: "2026-12-12" });
+      await page.clock.setFixedTime(new Date("2026-12-08T12:00:00-03:00"));
+      await visit(page, new URL("/finances/gastos", baseURL!).toString());
+      await expect(category(page, l.groceries)).toBeVisible();
+      await expect(category(page, l.pets)).toHaveCount(0);
+      const button = page.getByRole("region", { name: l.leftOut }).getByRole("button", { name: new RegExp(`^${l.upcoming}`) });
+      await button.click();
+      await expect(page.locator(`[id="${await button.getAttribute("aria-controls")}"]`)).toContainText("Pet shop no cartão");
+    });
+
     test("a past month is compared whole, and says when the month before has no data", async ({ page }) => {
       await page.getByRole("button", { name: l.prev, exact: true }).click();
       await expect(page.getByText(l.wholeNone)).toBeVisible();

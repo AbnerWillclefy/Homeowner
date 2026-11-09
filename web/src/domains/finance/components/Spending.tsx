@@ -46,7 +46,7 @@ export function Spending() {
     useQuery({ ...monthQuery(addMonths(thisMonth, 1)), enabled: current }),
     useQuery({ ...monthQuery(addMonths(thisMonth, 2)), enabled: current }),
   ];
-  const upcoming = current ? ahead.flatMap((q) => q.data?.transactions ?? []).filter((tx) => tx.type === "expense") : [];
+  const later = current ? ahead.flatMap((q) => q.data?.transactions ?? []).filter((tx) => tx.type === "expense") : [];
 
   const view = useMemo(() => (state.kind === "ready" ? monthView(state.data) : null), [state]);
   const compared =
@@ -79,7 +79,10 @@ export function Spending() {
   const limits = state.kind === "ready" ? state.data.limits : {};
   // The scale holds each limit too, so its tick stays on the track; with no limit it is the same as before.
   const scale = shown ? Math.max(shown.max, ...shown.rows.map((r) => limits[r.category] ?? 0)) : 0;
-  const groups = new Map(view?.categories.map((g) => [g.category, g.transactions]));
+  // A charge on this month's bill not yet due is in no total, so it is listed with the later bills, once.
+  const due = compared?.due ?? [];
+  const upcoming = [...due, ...later];
+  const groups = new Map(view?.categories.map((g) => [g.category, g.transactions.filter((tx) => !due.includes(tx))]));
 
   return (
     <div className="flex flex-col gap-4">
