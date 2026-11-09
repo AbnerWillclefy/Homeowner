@@ -1,4 +1,6 @@
 import { useId, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { monthQuery } from "../api/queries";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { Card } from "../../../shared/ui/Card";
@@ -37,6 +39,14 @@ export function Spending() {
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [gone, setGone] = useState(false);
   const listId = useId();
+  // Card charges already made whose bill is due in a later month (up to two ahead, as the API reads) are in no
+  // month a picker reaches yet, so the current month lists them apart to be edited.
+  const current = month === thisMonth;
+  const ahead = [
+    useQuery({ ...monthQuery(addMonths(thisMonth, 1)), enabled: current }),
+    useQuery({ ...monthQuery(addMonths(thisMonth, 2)), enabled: current }),
+  ];
+  const upcoming = current ? ahead.flatMap((q) => q.data?.transactions ?? []).filter((tx) => tx.type === "expense") : [];
 
   const view = useMemo(() => (state.kind === "ready" ? monthView(state.data) : null), [state]);
   const compared =
@@ -154,7 +164,7 @@ export function Spending() {
                 </Card>
               </section>
             )}
-            <LeftOutGroup transfers={view.transfers} income={view.income} onEdit={setEditing} />
+            <LeftOutGroup transfers={view.transfers} income={view.income} upcoming={upcoming} onEdit={setEditing} />
           </>
         ))}
       {editing && <EditTransactionDialog tx={editing} save={edit} onClose={closed} />}

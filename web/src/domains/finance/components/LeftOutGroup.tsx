@@ -4,6 +4,7 @@ import { useI18n } from "../../../shared/i18n";
 import { Card } from "../../../shared/ui/Card";
 import type { Transaction } from "../api/api";
 import { formatCents } from "../logic/money";
+import { spent } from "../logic/monthView";
 import { TransactionRow } from "./TransactionRow";
 
 /** One kind left out of the totals: what it is, how many and how much, opening to its rows. */
@@ -40,13 +41,25 @@ function Kind({ title, rows, cents, onEdit }: { title: string; rows: Transaction
 
 /**
  * "Fora dos totais": income and Transfers, neither counted in any total. Income adds up what came in; Transfers add
- * up what went out, such as a card bill payment, since each one's other half is money in.
+ * up what went out, such as a card bill payment, since each one's other half is money in. `upcoming` are card
+ * charges already made that count on a later bill, listed here so they can be edited before their month opens.
  */
-export function LeftOutGroup({ transfers, income, onEdit }: { transfers: Transaction[]; income: Transaction[]; onEdit(tx: Transaction): void }) {
+export function LeftOutGroup({
+  transfers,
+  income,
+  upcoming = [],
+  onEdit,
+}: {
+  transfers: Transaction[];
+  income: Transaction[];
+  upcoming?: Transaction[];
+  onEdit(tx: Transaction): void;
+}) {
   const { t } = useI18n();
   const id = useId();
-  if (transfers.length === 0 && income.length === 0) return null;
+  if (transfers.length === 0 && income.length === 0 && upcoming.length === 0) return null;
   const kinds = [
+    { title: t("finances.month.upcoming"), rows: upcoming, cents: upcoming.reduce((sum, tx) => sum + spent(tx), 0) },
     { title: t("finances.month.income"), rows: income, cents: income.reduce((sum, tx) => sum + tx.amountCents, 0) },
     { title: t("finances.month.transfers"), rows: transfers, cents: transfers.reduce((sum, tx) => sum + Math.max(0, -tx.amountCents), 0) },
   ].filter((k) => k.rows.length > 0);

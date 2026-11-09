@@ -123,6 +123,7 @@ export const enUS = {
   "finances.month.refund": "refund",
   "finances.month.transfers": "Transfers",
   "finances.month.income": "Income",
+  "finances.month.upcoming": "Next card bills",
   "finances.month.leftOut": "Left out of totals",
   "finances.month.leftOutHint": "Not counted as spending. Tap a transaction to change its type.",
   "finances.report.more": "{amount} more than in {month}",

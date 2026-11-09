@@ -31,6 +31,7 @@ const LOCALES = [
     leftOut: "Fora dos totais",
     transfers: "Transferências",
     income: "Receitas",
+    upcoming: "Próximas faturas do cartão",
     prev: "Mês anterior",
     category: "Categoria de gasto",
     save: "Salvar",
@@ -62,6 +63,7 @@ const connected = () => {
       row("d4", "2026-12-12", "Compra sem nome", -4500, "expense", "other", "fallback"),
       row("d5", "2026-12-15", "Transferência para poupança", -100000, "transfer", null),
       row("d6", "2026-12-16", "Salário", 300000, "income", null),
+      { ...row("j1", "2026-12-28", "Loja no cartão", -15000, "expense", "groceries"), countsOn: "2027-01-12" },
       row("n1", "2026-11-05", "Mercado do mês passado", -69200, "expense", "groceries"),
       row("n2", "2026-11-30", "Mercado de fim de mês", -10000, "expense", "groceries"),
       row("n3", "2026-11-20", "Farmácia", -8990, "expense", "health"),
@@ -130,7 +132,8 @@ for (const l of LOCALES) {
 
     test("keeps Transfers and income apart, outside every total", async ({ page }) => {
       const leftOut = page.getByRole("region", { name: l.leftOut });
-      for (const [kind, text] of [[l.transfers, "Transferência para poupança"], [l.income, "Salário"]] as const) {
+      // A card charge on next month's bill is listed apart, so it can be edited before January opens.
+      for (const [kind, text] of [[l.transfers, "Transferência para poupança"], [l.income, "Salário"], [l.upcoming, "Loja no cartão"]] as const) {
         const button = leftOut.getByRole("button", { name: new RegExp(`^${kind}`) });
         await button.click();
         await expect(page.locator(`[id="${await button.getAttribute("aria-controls")}"]`)).toContainText(text);

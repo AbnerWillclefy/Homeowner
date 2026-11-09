@@ -127,6 +127,7 @@ export const ptBR: Messages = {
   "finances.month.refund": "estorno",
   "finances.month.transfers": "Transferências",
   "finances.month.income": "Receitas",
+  "finances.month.upcoming": "Próximas faturas do cartão",
   "finances.month.leftOut": "Fora dos totais",
   "finances.month.leftOutHint": "Não entram no gasto do mês. Toque num lançamento para mudar o tipo.",
   "finances.report.more": "{amount} a mais que em {month}",
