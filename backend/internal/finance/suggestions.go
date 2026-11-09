@@ -9,8 +9,8 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
 )
 
-// merchantKeyShape is the alphabet MerchantKey produces, 1 to 200 characters.
-var merchantKeyShape = regexp.MustCompile(`^[A-Z ]{1,200}$`)
+// merchantKeyShape is the alphabet MerchantKey produces, one or more characters.
+var merchantKeyShape = regexp.MustCompile(`^[A-Z ]+$`)
 
 // SuggestionResponse is one suggested Bill; the Resident edits it, then POSTs
 // it to /me/finance/bills.

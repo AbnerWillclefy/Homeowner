@@ -540,6 +540,9 @@ func bankName(key string, descs ...string) string {
 	words := strings.Fields(key)
 	for n := len(words); n > 0; n-- {
 		name := strings.Join(words[:n], " ")
+		if len(name) > 60 { // a Bill name is at most 60 code points
+			continue
+		}
 		if !slices.ContainsFunc(descs, func(d string) bool { return !strings.Contains(d, name) }) {
 			return name
 		}

@@ -112,7 +112,7 @@ func TestDismissingHidesASuggestionForGoodAndIsIdempotent(t *testing.T) {
 func TestADismissalWithABadKeyIs400(t *testing.T) {
 	t.Parallel()
 	_, ana, _ := startSuggest(t)
-	for name, key := range map[string]string{"empty": "", "lowercase": "netflix", "digit": "NETFLIX 2", "long": strings.Repeat("A", 201)} {
+	for name, key := range map[string]string{"empty": "", "lowercase": "netflix", "digit": "NETFLIX 2"} {
 		res := ana.Post("/me/finance/bill-suggestions/dismissals", map[string]string{"merchantKey": key})
 		if res.Status != http.StatusBadRequest || res.Body["error"] != "invalid merchant key" {
 			t.Errorf("%s: %d %s, want 400 invalid merchant key", name, res.Status, res.Raw)
@@ -120,6 +120,12 @@ func TestADismissalWithABadKeyIs400(t *testing.T) {
 	}
 	res := ana.Post("/me/finance/bill-suggestions/dismissals", map[string]any{"merchantKey": "NETFLIX", "extra": 1})
 	apitest.ExpectStatus(t, res, http.StatusBadRequest)
+}
+
+func TestADismissalWithALongKeyIs204(t *testing.T) {
+	t.Parallel()
+	_, ana, _ := startSuggest(t)
+	apitest.ExpectStatus(t, ana.Post("/me/finance/bill-suggestions/dismissals", map[string]string{"merchantKey": strings.Repeat("A", 500)}), http.StatusNoContent)
 }
 
 func TestAnAcceptedSuggestionIsPaidByTheBankOnTheNextCharge(t *testing.T) {
