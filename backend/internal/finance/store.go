@@ -360,20 +360,27 @@ func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string,
 	return err
 }
 
-// transactionColumns reads a Transaction as TransactionResponse, with its Source's name.
+// transactionColumns reads a Transaction as TransactionResponse, with its
+// Source's name, then what CountsOn needs.
 const transactionColumns = `t.id, t.posted_on::text, t.description, s.name, t.amount_cents, t.currency, t.type,
-	t.spending_category, t.type_set_by, t.category_set_by, t.installment_number, t.total_installments`
+	t.spending_category, t.type_set_by, t.category_set_by, t.installment_number, t.total_installments,
+	t.posted_on, s.kind, COALESCE(s.bill_close_day, 0), COALESCE(s.bill_due_day, 0)`
 
-// scanTransaction reads transactionColumns, then any extra columns into extra.
-func scanTransaction(r pgx.Row, extra ...any) (TransactionResponse, error) {
+// scanTransaction reads transactionColumns and sets CountsOn.
+func scanTransaction(r pgx.Row) (TransactionResponse, time.Time, error) {
 	var t TransactionResponse
 	var n, total *int
-	err := r.Scan(append([]any{&t.ID, &t.PostedOn, &t.Description, &t.SourceName, &t.AmountCents, &t.Currency, &t.Type,
-		&t.SpendingCategory, &t.TypeSetBy, &t.CategorySetBy, &n, &total}, extra...)...)
+	var posted time.Time
+	var kind Kind
+	var closeDay, dueDay int
+	err := r.Scan(&t.ID, &t.PostedOn, &t.Description, &t.SourceName, &t.AmountCents, &t.Currency, &t.Type,
+		&t.SpendingCategory, &t.TypeSetBy, &t.CategorySetBy, &n, &total, &posted, &kind, &closeDay, &dueDay)
 	if n != nil && total != nil {
 		t.Installment = &InstallmentResponse{Number: *n, Total: *total}
 	}
-	return t, err
+	on := CountsOn(posted, kind, closeDay, dueDay)
+	t.CountsOn = on.Format(time.DateOnly)
+	return t, on, err
 }
 
 // billLead is how far before its CountsOn a card charge can post: a charge on
@@ -384,7 +391,7 @@ const billLead = 2
 // MonthTransactions returns the User's Transactions that count in [from, to)
 // (CountsOn), newest posted first.
 func (s *Store) MonthTransactions(ctx context.Context, userID string, from, to time.Time) ([]TransactionResponse, error) {
-	rows, err := s.db.Query(ctx, `SELECT `+transactionColumns+`, t.posted_on, s.kind, COALESCE(s.bill_close_day, 0), COALESCE(s.bill_due_day, 0)
+	rows, err := s.db.Query(ctx, `SELECT `+transactionColumns+`
 		FROM finance_transactions t JOIN finance_sources s ON s.id = t.source_id
 		WHERE t.user_id = $1 AND t.posted_on >= $2 AND t.posted_on < $3
 		ORDER BY t.posted_on DESC, t.id`, userID, from.AddDate(0, -billLead, 0), to)
@@ -394,19 +401,13 @@ func (s *Store) MonthTransactions(ctx context.Context, userID string, from, to t
 	defer rows.Close()
 	out := []TransactionResponse{}
 	for rows.Next() {
-		var posted time.Time
-		var kind Kind
-		var closeDay, dueDay int
-		t, err := scanTransaction(rows, &posted, &kind, &closeDay, &dueDay)
+		t, on, err := scanTransaction(rows)
 		if err != nil {
 			return nil, err
 		}
-		on := CountsOn(posted, kind, closeDay, dueDay)
-		if on.Before(from) || !on.Before(to) {
-			continue
+		if !on.Before(from) && on.Before(to) {
+			out = append(out, t)
 		}
-		t.CountsOn = on
-		out = append(out, t)
 	}
 	return out, rows.Err()
 }
@@ -503,7 +504,7 @@ func (s *Store) UpdateTransaction(ctx context.Context, userID, id string, typ, c
 			return out, true, err
 		}
 	}
-	out, err = scanTransaction(tx.QueryRow(ctx, `SELECT `+transactionColumns+`
+	out, _, err = scanTransaction(tx.QueryRow(ctx, `SELECT `+transactionColumns+`
 		FROM finance_transactions t JOIN finance_sources s ON s.id = t.source_id WHERE t.id = $1`, id))
 	if err != nil {
 		return out, true, err

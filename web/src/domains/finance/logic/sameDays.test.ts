@@ -3,7 +3,7 @@ import type { Transaction } from "../api/api";
 import { categoryRows, groupByDay, sameDays, uncategorised } from "./sameDays";
 
 const tx = (postedOn: string, amountCents: number, over: Partial<Transaction> = {}): Transaction => ({
-  id: postedOn + amountCents, postedOn, description: "x", sourceName: "Nubank", amountCents, currency: "BRL",
+  id: postedOn + amountCents, postedOn, countsOn: postedOn, description: "x", sourceName: "Nubank", amountCents, currency: "BRL",
   type: "expense", spendingCategory: "groceries", categorySetBy: "auto", ...over,
 });
 const on = (y: number, m: number, d: number) => new Date(y, m - 1, d);
@@ -18,6 +18,12 @@ describe("sameDays", () => {
     );
     expect(r).toMatchObject({ spent: 1000, previousSpent: 1000, cutDay: 8, noPrevious: false });
     expect(r.byCategory.get("groceries")).toEqual({ spent: 1000, previousSpent: 1000 });
+  });
+
+  it("cuts a card charge by the day its bill is due, not the day it posted", () => {
+    // Posted on 20 September, on October's bill due the 12th: before the cut at the 8th it does not count yet.
+    const r = sameDays([], [tx("2026-09-20", -500, { countsOn: "2026-10-12" }), tx("2026-10-05", -100, { countsOn: "2026-10-05" })], "2026-11", on(2026, 11, 8));
+    expect(r.previousSpent).toBe(100);
   });
 
   it("clamps day 31 to the whole of a 30-day month", () => {

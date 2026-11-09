@@ -50,6 +50,8 @@ export interface Transaction {
   id: string;
   /** `YYYY-MM-DD`. */
   postedOn: string;
+  /** `YYYY-MM-DD`, the day it counts as spent: a card charge counts on its bill's due date, anything else on `postedOn`. */
+  countsOn: string;
   description: string;
   sourceName: string;
   amountCents: number;
@@ -175,6 +177,7 @@ function parseMonth(body: unknown): MonthResponse | null {
   // A body without it (an older mock or API) reads as null, so the parse never breaks on it.
   const transactions = (body.transactions as Record<string, unknown>[]).map((t) => ({
     ...t,
+    countsOn: typeof t.countsOn === "string" ? t.countsOn : t.postedOn,
     categorySetBy: t.categorySetBy === "auto" || t.categorySetBy === "user" || t.categorySetBy === "fallback" ? t.categorySetBy : null,
   }));
   return { ...(body as unknown as MonthResponse), limits, transactions: transactions as unknown as Transaction[] };

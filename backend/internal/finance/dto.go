@@ -41,8 +41,8 @@ type TransactionResponse struct {
 	TypeSetBy        string               `json:"typeSetBy"`
 	CategorySetBy    *string              `json:"categorySetBy"`
 	Installment      *InstallmentResponse `json:"installment"`
-	// CountsOn is the day it counts as spent (see CountsOn), for grouping by month; not sent.
-	CountsOn time.Time `json:"-"`
+	// CountsOn (YYYY-MM-DD) is the day it counts as spent: PostedOn, or a card bill's due date (see CountsOn).
+	CountsOn string `json:"countsOn"`
 }
 
 // InstallmentResponse is "number of total" of a card purchase paid in parts.

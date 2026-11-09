@@ -138,8 +138,7 @@ func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
 	}
 	byMonth := map[string][]TransactionResponse{}
 	for _, t := range txns {
-		m := t.CountsOn.Format("2006-01")
-		byMonth[m] = append(byMonth[m], t)
+		byMonth[t.CountsOn[:7]] = append(byMonth[t.CountsOn[:7]], t)
 	}
 	months := make([]HistoryMonth, n)
 	for i := range months {
