@@ -175,7 +175,7 @@ Some numbers are approximations by design. This is the wording from the DTO comm
 The admin routes only read tables the rest of the system writes. Two were added for them:
 
 - `llm_call_events` (migrations `0022` and `0023`): one row per allocator or explainer attempt, written best effort by the Allocation job after the planning transaction commits. See [Daily Allocation](allocation.md) and [Data model](data-model.md).
-  - Migration `0032` lets it hold `voice` rows, one per voice command call, with ids, numbers and fixed vocabulary only ([ADR 0020](../adr/0020-voice-commands-send-chore-titles-and-the-residents-words-behind-a-confirmation.md)). `/admin/ai` reports them under `services.voice`, and the month-to-date estimate already sums every service. Writing them is planned: the interpret endpoint (#458) does not exist yet.
+  - Migration `0032` lets it hold `voice` rows, one per voice command call, with ids, numbers and fixed vocabulary only ([ADR 0020](../adr/0020-voice-commands-send-chore-titles-and-the-residents-words-behind-a-confirmation.md)). `/admin/ai` reports them under `services.voice`, and the month-to-date estimate already sums every service. `POST /home/voice/interpret` writes them, best effort, one per call including `skipped_cap` (see [Voice commands](backend.md#voice-commands)).
   - `categorizer` rows (migration `0027`) are returned under `services.categorizer` and count toward month to date, but the admin page has no section for them.
 - `nudges.outcome` (migration `0021`): what the push service answered for each nudge.
 
