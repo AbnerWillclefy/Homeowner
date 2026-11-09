@@ -132,6 +132,42 @@ for (const [spoken, message] of [
   });
 }
 
+const UNAVAILABLE = "Voice is not available right now. Try again.";
+
+test("a recognition error other than no-speech says voice is unavailable", async ({ page, baseURL, fakeApi }) => {
+  await page.addInitScript(() => {
+    const Fake = class {
+      onerror: ((e: unknown) => void) | null = null;
+      start() {
+        setTimeout(() => this.onerror?.({ error: "not-allowed" }), 50);
+      }
+      abort() {}
+    };
+    const w = window as unknown as Record<string, unknown>;
+    w["SpeechRecognition"] = Fake;
+    w["webkitSpeechRecognition"] = Fake;
+  });
+  await launchApp(page, baseURL!);
+  await mic(page).click();
+  await expect(page.getByRole("dialog").getByText(UNAVAILABLE)).toBeVisible();
+  expect(fakeApi.requests.some((r) => r.path === "/home/voice/interpret")).toBe(false);
+});
+
+test("a transcript over 500 characters is never sent", async ({ page, baseURL, fakeApi }) => {
+  await fakeRecognition(page, "a".repeat(501));
+  await launchApp(page, baseURL!);
+  await mic(page).click();
+  await expect(page.getByRole("dialog").getByText("I did not catch that. Say it again.")).toBeVisible();
+  expect(fakeApi.requests.some((r) => r.path === "/home/voice/interpret")).toBe(false);
+});
+
+test("a 503 from interpret says voice is unavailable", async ({ page, baseURL }) => {
+  await fakeRecognition(page, "unavailable");
+  await launchApp(page, baseURL!);
+  await mic(page).click();
+  await expect(page.getByRole("dialog").getByText(UNAVAILABLE)).toBeVisible();
+});
+
 test("closing while listening aborts the recognition and sends nothing", async ({ page, baseURL, fakeApi }) => {
   await page.addInitScript(() => {
     const w = window as unknown as Record<string, unknown>;

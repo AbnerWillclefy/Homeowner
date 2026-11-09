@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { useI18n } from "../../../shared/i18n";
 import { choresKey } from "../../chores/api/queries";
 import { dayPlanKey } from "../../dayplan/api/queries";
+import { residentsKey } from "../../residents/api/queries";
 import { streakKey } from "../../streak/api/queries";
 import { interpret, type VoiceAction } from "../api/api";
 import { applyInOrder, type SendResult } from "../logic/apply";
@@ -36,7 +37,7 @@ export function useVoice() {
     mutationFn: (actions: VoiceAction[]) => applyInOrder(actions, sendAction),
     // Settled, not success: a half-applied queue still changed the screens, and a closed panel still invalidates.
     onSettled: () =>
-      Promise.all([choresKey, dayPlanKey, streakKey].map((queryKey) => queryClient.invalidateQueries({ queryKey }))),
+      Promise.all([choresKey, dayPlanKey, streakKey, residentsKey].map((queryKey) => queryClient.invalidateQueries({ queryKey }))),
   });
 
   /** Must be called straight from the tap: Safari only lets `start()` run inside the gesture. */
@@ -81,8 +82,11 @@ export function useVoice() {
     if (state.kind !== "review") return;
     const actions = state.actions.filter((a) => a.kind !== "choice");
     if (actions.length === 0) return;
+    const run = listening.current;
     setState({ kind: "applying", actions });
     const results = await apply.mutateAsync(actions);
+    // The panel was closed meanwhile; onSettled has already refreshed the caches.
+    if (run?.signal.aborted) return;
     setState({ kind: "results", actions, results });
   }
 

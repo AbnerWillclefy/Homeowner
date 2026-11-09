@@ -29,6 +29,7 @@ export function voiceHandlers(api: FakeApi): void {
     "POST /home/voice/interpret",
     signedIn((request) => {
       const transcript = String((request.body as { transcript?: unknown } | null)?.transcript ?? "");
+      if (transcript.includes("unavailable")) return json(503, { error: "unavailable" });
       if (transcript.includes("nothing")) return json(200, { status: "nothing_understood", actions: [], remaining: 9 });
       if (transcript.includes("many")) return json(200, { status: "too_many", actions: [], remaining: 9 });
       return json(200, { status: "ok", actions: [create("Water the plants"), create("Sweep the porch")], remaining: 9 });
