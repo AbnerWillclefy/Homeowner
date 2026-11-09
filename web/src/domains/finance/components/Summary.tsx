@@ -6,6 +6,7 @@ import { SkeletonBar } from "../../../shared/ui/Skeleton";
 import type { QueryViewState } from "../../../shared/query/view";
 import { useBills } from "../hooks/useBills";
 import { useCommitments } from "../hooks/useCommitments";
+import { useDaily } from "../hooks/useDaily";
 import { useMonth } from "../hooks/useMonth";
 import { billGroups } from "../logic/billGroups";
 import { billState } from "../logic/billState";
@@ -15,7 +16,6 @@ import { addMonths, currentDay, currentMonth, formatDay, monthName } from "../lo
 import { monthView } from "../logic/monthView";
 import { nextUnpaid } from "../logic/nextUnpaid";
 import { paceSentence } from "../logic/paceSentence";
-import { paceSeries } from "../logic/paceSeries";
 import { sameDays } from "../logic/sameDays";
 import { spendingKey } from "../logic/spendingCategories";
 import { topCategories } from "../logic/topCategories";
@@ -65,6 +65,7 @@ export function Summary({ importing, show }: { importing: boolean; show: (view: 
   const previous = useMonth(previousMonth);
   const bills = useBills(month);
   const commitments = useCommitments(month);
+  const daily = useDaily(month);
   useReportFetching(current.refreshing || previous.refreshing || bills.refreshing || commitments.refreshing);
 
   const money = (cents: number) => formatCents(cents, locale);
@@ -74,9 +75,11 @@ export function Summary({ importing, show }: { importing: boolean; show: (view: 
   const spent = compared?.spent ?? (current.state.kind === "ready" ? current.state.data.spentCents : 0);
   const unpaid = bills.state.kind === "ready" ? billGroups(bills.state.data, day).toPayCents : 0;
   const income = commitments.state.kind === "ready" ? commitments.state.data.monthlyIncomeCents : null;
-  const series = rows && before ? paceSeries(rows, before, month, today) : null;
+  const usual = daily.state.kind === "ready" ? daily.state.data : null;
+  const averageMonths = usual?.averageMonths ?? 0;
+  const averageToday = usual?.average[today.getDate() - 1];
   const view = current.state.kind === "ready" ? monthView(current.state.data) : null;
-  const sentence = compared ? paceSentence(t, locale, compared, today.getDate(), month) : null;
+  const sentence = compared ? paceSentence(t, locale, compared, today.getDate(), month, averageToday === undefined ? undefined : { cents: averageToday, months: averageMonths }) : null;
   const next = bills.state.kind === "ready" ? nextUnpaid(bills.state.data, day, 3) : [];
   const top = view ? topCategories(view, 3) : [];
   const retryAll = () => void Promise.all([current.reload(), bills.reload(), commitments.reload()]);
@@ -91,14 +94,35 @@ export function Summary({ importing, show }: { importing: boolean; show: (view: 
       <Block heading={t("finances.summary.pace.heading")} states={[current.state, previous.state]} retry={() => void Promise.all([current.reload(), previous.reload()])} failed={t("finances.summary.pace.failed")}>
         {sentence && <p className="my-0 font-semibold">{sentence}</p>}
         {/* No card around the chart: its legend needs the full width at the largest text. */}
-        {series && (
-          <CumulativeLine
-            title={t("finances.summary.pace.title")}
-            series={[
-              { label: monthName(month, locale), points: series.current },
-              { label: monthName(previousMonth, locale), points: series.previous },
-            ]}
-          />
+        {daily.state.kind === "failed" && (
+          <div className="flex flex-col items-start gap-3">
+            <p role="alert" className="my-0 font-semibold">
+              {t("finances.summary.pace.failed")}
+            </p>
+            <Button variant="secondary" onClick={() => void daily.reload()}>
+              {t("finances.load.retry")}
+            </Button>
+          </div>
+        )}
+        {daily.state.kind === "loading" && (
+          <div aria-hidden="true">
+            <SkeletonBar className="h-32 w-full" />
+          </div>
+        )}
+        {usual && (
+          <>
+            <CumulativeLine
+              title={t("finances.summary.pace.title")}
+              series={[
+                { label: monthName(month, locale), points: usual.current },
+                { label: monthName(previousMonth, locale), points: usual.previous },
+                ...(averageMonths > 0
+                  ? [{ label: t(averageMonths === 1 ? "finances.summary.pace.label.one" : "finances.summary.pace.label.other", { n: averageMonths }), points: usual.average }]
+                  : []),
+              ]}
+            />
+            {averageMonths < 3 && <p className="my-0 text-sm text-muted">{t(averageMonths === 0 ? "finances.summary.pace.note.none" : "finances.summary.pace.note.some")}</p>}
+          </>
         )}
       </Block>
 

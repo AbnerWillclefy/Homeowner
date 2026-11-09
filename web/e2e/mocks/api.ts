@@ -50,6 +50,8 @@ export interface FakeState {
     lastSyncedAt: string | null;
     /** What `GET /me/finance/bills` lists. `paid` maps `YYYY-MM` to who paid that month. Absent means none. */
     bills?: { id: string; name: string; expectedCents: number; dueDay: number; paid: Record<string, "hand" | "bank"> }[];
+    /** The day (`YYYY-MM-DD`) `GET /me/finance/daily` stops the running month at, as the server stops at its own today. Absent means the real one. */
+    today?: string;
     /** What `GET /me/finance/transactions` reads, any month; the PATCH edits these. Absent means none. */
     /** Monthly income, which `PUT /me/finance/income` sets. Absent means none. */
     monthlyIncomeCents?: number | null;

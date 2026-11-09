@@ -109,6 +109,38 @@ export function financeHandlers(api: FakeApi): void {
     }),
   );
 
+  // The pace series, as `finance.Handler.Daily` answers: cumulative Expenses per day. `current` stops at today for the
+  // running month and is empty for a later one; `average` covers the up-to-3 months before that have Expenses.
+  api.on(
+    "GET /me/finance/daily",
+    signedIn((request, state) => {
+      const month = request.url.searchParams.get("month") ?? "";
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return json(400, { error: "invalid month" });
+      const rows = (finance(state).transactions ?? []).filter((t) => t.type === "expense");
+      const shift = (by: number) => {
+        const index = Number(month.slice(0, 4)) * 12 + Number(month.slice(5)) - 1 + by;
+        return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}`;
+      };
+      const daysIn = (m: string) => new Date(Number(m.slice(0, 4)), Number(m.slice(5)), 0).getDate();
+      const cumulative = (m: string, days: number) => {
+        const perDay = Array<number>(days).fill(0);
+        for (const t of rows) if (t.postedOn.startsWith(`${m}-`)) perDay[Number(t.postedOn.slice(8, 10)) - 1]! -= t.amountCents;
+        let total = 0;
+        return perDay.map((cents) => (total += cents));
+      };
+      const days = daysIn(month);
+      const today = finance(state).today ?? new Date().toISOString().slice(0, 10);
+      const upTo = month < today.slice(0, 7) ? days : month === today.slice(0, 7) ? Number(today.slice(8, 10)) : 0;
+      const withHistory = [shift(-1), shift(-2), shift(-3)].filter((m) => rows.some((t) => t.postedOn.startsWith(`${m}-`)));
+      const series = withHistory.map((m) => {
+        const whole = cumulative(m, daysIn(m));
+        return Array.from({ length: days }, (_, d) => whole[Math.min(d, whole.length - 1)]!);
+      });
+      const average = series.length === 0 ? [] : Array.from({ length: days }, (_, d) => Math.round(series.reduce((sum, s) => sum + s[d]!, 0) / series.length));
+      return json(200, { month, days, current: cumulative(month, days).slice(0, upTo), previous: cumulative(shift(-1), daysIn(shift(-1))), average, averageMonths: series.length });
+    }),
+  );
+
   // The committed months, with `percentOfIncome` only while an income is set, as the API answers.
   api.on(
     "GET /me/finance/commitments",
