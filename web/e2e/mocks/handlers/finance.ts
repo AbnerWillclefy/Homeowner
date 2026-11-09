@@ -287,6 +287,23 @@ export function financeHandlers(api: FakeApi): void {
     }),
   );
 
+  // Suggested Bills, as `finance/suggestions.go` answers: a dismissed merchant stays hidden, repeating the dismissal is fine.
+  api.on(
+    "GET /me/finance/bill-suggestions",
+    signedIn((_, state) => json(200, (finance(state).billSuggestions ?? []).filter((s) => !(finance(state).dismissedSuggestions ?? []).includes(s.merchantKey)))),
+  );
+
+  api.on(
+    "POST /me/finance/bill-suggestions/dismissals",
+    signedIn((request, state) => {
+      const key = (request.body as { merchantKey?: unknown } | null)?.merchantKey;
+      if (typeof key !== "string" || !/^[A-Z ]+$/.test(key)) return json(400, { error: "invalid merchant key" });
+      const dismissed = (finance(state).dismissedSuggestions ??= []);
+      if (!dismissed.includes(key)) dismissed.push(key);
+      return empty();
+    }),
+  );
+
   api.on(
     "DELETE /me/finance",
     signedIn((_, state) => {

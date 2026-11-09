@@ -15,11 +15,14 @@ import { centsToInput } from "../logic/money";
 /** Adds a Bill, or edits `bill`. Field problems show beside their fields; a failed save stays open to retry. */
 export function BillFormDialog({
   bill,
+  initial,
   returnFocusRef,
   save,
   onClose,
 }: {
   bill: Bill | null;
+  /** Prefills a new Bill (create mode only), for example from a suggestion. */
+  initial?: BillInput;
   returnFocusRef?: RefObject<HTMLElement | null>;
   save(input: BillInput): Promise<BillOutcome>;
   onClose(): void;
@@ -78,6 +81,7 @@ export function BillFormDialog({
     );
   };
 
+  const start = bill ?? initial;
   const formId = `${id}-form`;
   return (
     <AppDialog
@@ -103,15 +107,15 @@ export function BillFormDialog({
     >
       <form id={formId} onSubmit={onSubmit} noValidate className="mt-6 flex flex-col gap-4">
         {field("name", t("finances.bills.form.name"), (p) => (
-          <input {...p} type="text" defaultValue={bill?.name ?? ""} autoComplete="off" maxLength={120} />
+          <input {...p} type="text" defaultValue={start?.name ?? ""} autoComplete="off" maxLength={120} />
         ))}
         {field("expectedCents", t("finances.bills.form.amount"), (p) => (
-          <input {...p} type="text" inputMode="decimal" defaultValue={bill ? centsToInput(bill.expectedCents, locale) : ""} autoComplete="off" />
+          <input {...p} type="text" inputMode="decimal" defaultValue={start ? centsToInput(start.expectedCents, locale) : ""} autoComplete="off" />
         ))}
         {field(
           "dueDay",
           t("finances.bills.form.dueDay"),
-          (p) => <input {...p} type="number" inputMode="numeric" min={1} max={31} step={1} defaultValue={bill?.dueDay ?? ""} />,
+          (p) => <input {...p} type="number" inputMode="numeric" min={1} max={31} step={1} defaultValue={start?.dueDay ?? ""} />,
           t("finances.bills.form.dueDayHint"),
         )}
         <FormError form="finances-bill">{failed && t("finances.bills.failed")}</FormError>
