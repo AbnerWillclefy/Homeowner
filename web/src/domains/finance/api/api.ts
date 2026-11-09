@@ -227,6 +227,33 @@ export const getHistory = (to: string, months: number): Promise<HistoryResult> =
     return parsed && { history: parsed };
   }) as Promise<HistoryResult>;
 
+/** Cumulative spend in cents at the end of each day, as `GET /me/finance/daily` answers. */
+export interface Daily {
+  month: string;
+  days: number;
+  current: number[];
+  previous: number[];
+  average: number[];
+  averageMonths: number;
+}
+
+export type DailyResult = { kind: "ok"; daily: Daily } | Failure;
+
+const numbers = (value: unknown) => Array.isArray(value) && value.every((n) => typeof n === "number" && Number.isFinite(n));
+
+function parseDaily(body: unknown): Daily | null {
+  if (!isObject(body) || typeof body.month !== "string" || !MONTH_PATTERN.test(body.month)) return null;
+  if (!Number.isInteger(body.days) || !Number.isInteger(body.averageMonths)) return null;
+  return numbers(body.current) && numbers(body.previous) && numbers(body.average) ? (body as unknown as Daily) : null;
+}
+
+/** `GET /me/finance/daily?month=YYYY-MM`. */
+export const getDaily = (month: string): Promise<DailyResult> =>
+  call({ url: "/me/finance/daily", params: { month } }, 200, (data) => {
+    const parsed = parseDaily(data);
+    return parsed && { daily: parsed };
+  }) as Promise<DailyResult>;
+
 export interface CommitmentMonth {
   month: string;
   committedCents: number;

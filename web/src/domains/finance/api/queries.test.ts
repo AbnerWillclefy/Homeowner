@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
-import { commitmentsKey, financeDeleted, financeStatusKey, historyKey, invalidateFinance, invalidateMonth, monthKey, writeFinanceStatus } from "./queries";
+import { commitmentsKey, dailyKey, financeDeleted, financeStatusKey, historyKey, invalidateFinance, invalidateMonth, monthKey, writeFinanceStatus } from "./queries";
 import type { FinanceStatus } from "./api";
 
 const STATUS: FinanceStatus = { configured: true, sources: [], importing: true, lastSyncedAt: null };
@@ -34,6 +34,14 @@ describe("finance cache", () => {
     client.setQueryData(historyKey("2026-11", 6), { n: 1 });
     await invalidateMonth(client);
     expect(client.getQueryState(historyKey("2026-11", 6))?.isInvalidated).toBe(true);
+  });
+
+  it("keys the daily series by month, and a PATCH marks it stale", async () => {
+    expect(dailyKey("2026-11")).toEqual(["me", "finance", "daily", "2026-11"]);
+    const client = new QueryClient();
+    client.setQueryData(dailyKey("2026-11"), { n: 1 });
+    await invalidateMonth(client);
+    expect(client.getQueryState(dailyKey("2026-11"))?.isInvalidated).toBe(true);
   });
 
   it("keys commitments under the finance prefix, which invalidateFinance marks stale", async () => {

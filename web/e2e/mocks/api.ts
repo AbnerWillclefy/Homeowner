@@ -61,6 +61,8 @@ export interface FakeState {
       paidCents?: Record<string, number>;
       createdMonth?: string;
     }[];
+    /** The day (`YYYY-MM-DD`) `GET /me/finance/daily` stops the running month at, as the server stops at its own today. Absent means the real one. */
+    today?: string;
     /** The Spending limits (category to cents), the same for every month; `PUT /me/finance/budgets/{category}` sets them. Absent means none. */
     limits?: Record<string, number>;
     /** Monthly income, which `PUT /me/finance/income` sets. Absent means none. */

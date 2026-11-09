@@ -27,6 +27,13 @@ const LOCALES = [
     less: /Até dia 15 você gastou R\$\s*300,00 a menos que até 15 de dezembro/,
     same: /Até dia 15 você gastou o mesmo que até 15 de dezembro/,
     table: "Ver tabela",
+    avgSentence1: /e R\$\s*300,00 a mais que a média de 1 mês/,
+    avgSentence3: /e R\$\s*400,00 a mais que a média de 3 meses/,
+    avgLabel1: "Média de 1 mês",
+    avgLabel3: "Média de 3 meses",
+    avgFinal3: /Média de 3 meses: R\$\s*366,67/,
+    rough: /Menos de 3 meses de histórico/,
+    noAverage: "Ainda sem histórico para a média.",
     overdue: /R\$\s*1\.500,00 · Venceu em 5 de jan/,
     dueLine: /R\$\s*210,50 · Vence 20 de jan/,
     emptyBills: "Nenhuma conta a pagar neste mês.",
@@ -53,6 +60,13 @@ const LOCALES = [
     less: /Up to day 15 you spent R\$\s*300\.00 less than up to December 15/,
     same: /Up to day 15 you spent the same as up to December 15/,
     table: "View table",
+    avgSentence1: /and R\$\s*300\.00 more than your 1-month average/,
+    avgSentence3: /and R\$\s*400\.00 more than your 3-month average/,
+    avgLabel1: "1-month average",
+    avgLabel3: "3-month average",
+    avgFinal3: /3-month average: R\$\s*366\.67/,
+    rough: /Less than 3 months of history/,
+    noAverage: "No history yet for the average.",
     overdue: /R\$\s*1,500\.00 · Was due Jan 5/,
     dueLine: /R\$\s*210\.50 · Due Jan 20/,
     emptyBills: "No bills left to pay this month.",
@@ -71,7 +85,7 @@ const tx = (id: string, postedOn: string, amountCents: number, spendingCategory:
 });
 
 /** January: 600,00 spent. December up to the 15th: `december` cents, and 500,00 more after the 15th that must not count. */
-const connected = ({ income = 350000 as number | null, december = 30000, allPaid = false } = {}) => {
+const connected = ({ income = 350000 as number | null, december = 30000, allPaid = false, older = false, noHistory = false } = {}) => {
   const s = signedInResident();
   s.user.finance = true;
   const paid: Record<string, "bank" | "hand"> = allPaid ? { "2030-01": "hand" } : {};
@@ -81,12 +95,14 @@ const connected = ({ income = 350000 as number | null, december = 30000, allPaid
     importing: false,
     lastSyncedAt: "2030-01-15T12:00:00Z",
     monthlyIncomeCents: income,
+    today: "2030-01-15",
     transactions: [
       tx("j1", "2030-01-02", -45000, "groceries"),
       tx("j2", "2030-01-05", -12000, "leisure"),
       tx("j3", "2030-01-10", -3000, "health"),
-      tx("d1", "2029-12-02", -december, "groceries"),
-      tx("d2", "2029-12-20", -50000, "groceries"),
+      ...(noHistory ? [] : [tx("d1", "2029-12-02", -december, "groceries"), tx("d2", "2029-12-20", -50000, "groceries")]),
+      // November (200,00 by the 15th) and October (100,00) make the average three months.
+      ...(older ? [tx("n1", "2029-11-03", -20000, "groceries"), tx("o1", "2029-10-04", -10000, "groceries")] : []),
     ],
     bills: [
       { id: "b1", name: "Aluguel", expectedCents: 150000, dueDay: 5, paid },
@@ -216,6 +232,53 @@ for (const l of LOCALES) {
           return [color(over ?? null), color(spent ?? null)];
         });
         expect(colours[0]).toBe(colours[1]);
+      });
+    });
+
+    test.describe("with one month of history", () => {
+      test("names the 1-month average in the sentence and the legend, and says the average is rough", async ({ page }) => {
+        const pace = page.getByRole("region", { name: l.heading.pace });
+        await expect(pace.getByText(l.avgSentence1)).toBeVisible();
+        await expect(pace.getByText(l.avgLabel1, { exact: true })).toBeVisible();
+        await expect(pace.getByText(l.rough)).toBeVisible();
+      });
+
+      test("still shows the sentence when the daily series cannot be read, and Retry brings the chart back", async ({ page, baseURL, fakeApi }) => {
+        fakeApi.override("GET /me/finance/daily", { status: 500, body: { error: "boom" } }, { once: true });
+        await visit(page, new URL("/finances", baseURL!).toString());
+        const pace = page.getByRole("region", { name: l.heading.pace });
+        await expect(pace.getByRole("alert")).toBeVisible();
+        await expect(pace.getByText(l.more)).toBeVisible();
+        await expect(pace.getByRole("img")).toHaveCount(0);
+        await pace.getByRole("button", { name: l.retry }).click();
+        await expect(pace.getByRole("img")).toBeVisible();
+        await expect(pace.getByRole("alert")).toHaveCount(0);
+      });
+    });
+
+    test.describe("with three months of history", () => {
+      test.use({ fakeState: connected({ older: true }) });
+
+      test("draws this month, last month and the 3-month average, each final amount as text, and the table has all three", async ({ page }) => {
+        const pace = page.getByRole("region", { name: l.heading.pace });
+        await expect(pace.getByText(l.avgSentence3)).toBeVisible();
+        await expect(pace.getByText(l.avgLabel3, { exact: true })).toBeVisible();
+        await expect(pace.getByText(l.rough)).toHaveCount(0);
+        await expect(pace.getByRole("img")).toHaveAccessibleName(l.avgFinal3);
+        await pace.getByRole("button", { name: l.table }).click();
+        await expect(pace.getByRole("columnheader")).toHaveCount(4); // Day, January, December, average
+        const day15 = pace.getByRole("row").filter({ has: page.getByRole("rowheader", { name: "15", exact: true }) });
+        await expect(day15.getByRole("cell").nth(2)).toContainText(/200[.,]00/);
+      });
+    });
+
+    test.describe("with no history at all", () => {
+      test.use({ fakeState: connected({ noHistory: true }) });
+
+      test("says there is nothing to average and draws two lines", async ({ page }) => {
+        const pace = page.getByRole("region", { name: l.heading.pace });
+        await expect(pace.getByText(l.noAverage)).toBeVisible();
+        await expect(pace.getByText(/Média de|-month average/)).toHaveCount(0);
       });
     });
 
