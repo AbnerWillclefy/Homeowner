@@ -520,13 +520,14 @@ func ptr(s string) *string { return &s }
 // plan from counting twice, and a centavo of rounding between them keeps it one plan.
 func (s *Store) InstallmentPlans(ctx context.Context, userID string) ([]Plan, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT DISTINCT ON (source_id, merchant_key, total_installments,
-				date_trunc('month', posted_on) - (installment_number - 1) * interval '1 month')
-			description, merchant_key, installment_number, total_installments, -amount_cents, posted_on
-		FROM finance_transactions
-		WHERE user_id = $1 AND type = 'expense' AND amount_cents < 0 AND installment_number IS NOT NULL
-		ORDER BY source_id, merchant_key, total_installments,
-			date_trunc('month', posted_on) - (installment_number - 1) * interval '1 month', installment_number DESC`, userID)
+		SELECT DISTINCT ON (t.source_id, t.merchant_key, t.total_installments,
+				date_trunc('month', t.posted_on) - (t.installment_number - 1) * interval '1 month')
+			t.description, t.merchant_key, t.installment_number, t.total_installments, -t.amount_cents, t.posted_on,
+			s.kind, COALESCE(s.bill_close_day, 0), COALESCE(s.bill_due_day, 0)
+		FROM finance_transactions t JOIN finance_sources s ON s.id = t.source_id
+		WHERE t.user_id = $1 AND t.type = 'expense' AND t.amount_cents < 0 AND t.installment_number IS NOT NULL
+		ORDER BY t.source_id, t.merchant_key, t.total_installments,
+			date_trunc('month', t.posted_on) - (t.installment_number - 1) * interval '1 month', t.installment_number DESC`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -536,11 +537,15 @@ func (s *Store) InstallmentPlans(ctx context.Context, userID string) ([]Plan, er
 		var p Plan
 		var desc, key string
 		var posted time.Time
-		if err := rows.Scan(&desc, &key, &p.Number, &p.Total, &p.AmountCents, &posted); err != nil {
+		var kind Kind
+		var closeDay, dueDay int
+		if err := rows.Scan(&desc, &key, &p.Number, &p.Total, &p.AmountCents, &posted, &kind, &closeDay, &dueDay); err != nil {
 			return nil, err
 		}
 		p.Name = PlanName(desc, key)
-		p.Month = time.Date(posted.Year(), posted.Month(), 1, 0, 0, 0, 0, time.UTC)
+		// A card installment is projected from the month its bill is due, as spending counts it.
+		on := CountsOn(posted, kind, closeDay, dueDay)
+		p.Month = time.Date(on.Year(), on.Month(), 1, 0, 0, 0, 0, time.UTC)
 		out = append(out, p)
 	}
 	return out, rows.Err()

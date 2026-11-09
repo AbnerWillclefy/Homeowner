@@ -55,3 +55,20 @@ func TestSyncRefreshesTheCardBillDays(t *testing.T) {
 		t.Errorf("Sources with days 7 and 12 after the sync = %d, want only the card", n)
 	}
 }
+
+// An installment on the card is projected from its bill's month: posted on
+// 20 January, part 3 is on February's bill, so part 4 falls in March.
+func TestCardInstallmentsProjectFromTheirBillMonth(t *testing.T) {
+	t.Parallel()
+	app, users := startSync(t, []string{"ana@example.com"})
+	app.RunFinanceSync(t)
+	insertPlan(t, app, "ana@example.com", "tv3", "TV Loja PARC 03/10", "TV LOJA", "2028-01-20", -25000, 3, 10)
+
+	b := readCommitments(t, users["ana@example.com"], "2028-02")
+	if m := b.Months[0]; m.CommittedCents != 0 {
+		t.Errorf("february = %+v, want nothing: part 3 is already its transaction", m)
+	}
+	if m := b.Months[1]; m.CommittedCents != 25000 || len(m.Installments) != 1 || m.Installments[0].Number != 4 {
+		t.Errorf("march = %+v, want TV Loja 4 of 10", m)
+	}
+}
