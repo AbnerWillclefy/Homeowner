@@ -233,7 +233,7 @@ sequenceDiagram
     P->>A: existing routes, one after another
 ```
 
-**The route and its guard.** `POST /home/voice/interpret` sits behind `requireResident`, wrapped in `voice.Handler.RequireConfigured`, which answers `503 {"error":"voice not configured"}` when `Deps.Voice` is nil (the same pattern as photos; local runs, CI and production have voice off). The body is decoded strictly with a 4 KB cap; a transcript that is empty after trimming, over 500 characters or holds a control character is `400 invalid_transcript`, a locale other than `pt-BR` or `en-US` is `400 invalid_locale`, and neither reaches the model or the counter.
+**The route and its guard.** `POST /home/voice/interpret` sits behind `requireResident`, wrapped in `voice.Handler.RequireConfigured`, which answers `503 {"error":"voice not configured"}` when `Deps.Voice` is nil (the same pattern as photos; local runs and CI have voice off). The body is decoded strictly with a 4 KB cap; a transcript that is empty after trimming, over 500 characters or holds a control character is `400 invalid_transcript`, a locale other than `pt-BR` or `en-US` is `400 invalid_locale`, and neither reaches the model or the counter.
 
 **What the model sees.** The user message is JSON with the locale, the transcript, the Home's Chores (`id`, `title`, `category`, `effort`, `importance`, `people`, `interval_days`, `allowed_weekdays`) and today's open Tasks (`id`, `chore_id`, `people`, `relation`). No Energy, Restrictions, Preferences, Check-ins, Resident names or other Homes; two API tests walk the prompt's keys. Before the Day Plan exists no Tasks are sent, so a Task command then yields `nothing_understood`.
 
