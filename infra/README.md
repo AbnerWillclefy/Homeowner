@@ -77,16 +77,19 @@ their `locals`, backend key, `environment` tag, Neon project and budget.
    browsers re-subscribe on their next launch. Keep the private key out of
    chat, tickets and logs.
 
-7. **LLM allocator (#26)**, optional and off by default. Without it the daily
-   Allocation uses the baseline allocator only.
+7. **Anthropic API key (#26, #460)**, required in staging. The API reads it at
+   cold start for voice commands and fails to start without it, whatever
+   `LLM_ALLOCATOR_ENABLED` says.
    ```sh
    aws ssm put-parameter --name /homeowner/staging/anthropic-api-key \
      --type SecureString --value '<an Anthropic API key>'
    ```
-   Then set the repository variable `LLM_ALLOCATOR_ENABLED` to `true`; the
-   deploy passes it as `TF_VAR_llm_allocator_enabled` and only the Allocation
-   job gets the key. Set it back to `false` (or delete it) to switch the LLM
-   off. Create the parameter by hand so the key never lands in Terraform state.
+   The LLM allocator (#26) is optional and off by default; without it the daily
+   Allocation uses the baseline allocator only. To switch it on, set the
+   repository variable `LLM_ALLOCATOR_ENABLED` to `true`; the deploy passes it
+   as `TF_VAR_llm_allocator_enabled` and the Allocation job gets the key too.
+   Set it back to `false` (or delete it) to switch the LLM off. Create the
+   parameter by hand so the key never lands in Terraform state.
    The AWS Budget does not see Anthropic spend; the monthly spend limit in
    "Production" below caps it. The per-Home daily cap (3 calls) bounds it in code.
 
