@@ -31,3 +31,6 @@ Domain terms are in `GLOSSARY.md`, decisions in `docs/adr/`.
 ## Out of scope
 
 - Formatting, import order and anything the CI's linters and type-checkers already catch.
+- Do not flag that a Spending Category the User set is erased when sync reclassifies the row as a Transfer. Why: a
+  Transfer has no category (the type/category CHECK), keeping it would leave the Transfer in spend totals, and the
+  `Classify` doc comment records the trade-off (#452, #463).
