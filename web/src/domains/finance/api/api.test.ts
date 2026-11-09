@@ -298,7 +298,7 @@ describe("patchTransaction", () => {
   });
 });
 
-const BILL = { id: "b1", name: "Luz", expectedCents: 15000, dueDay: 10, dueDate: "2030-01-10", paid: false, paidBy: null };
+const BILL = { id: "b1", name: "Luz", expectedCents: 15000, dueDay: 10, dueDate: "2030-01-10", paid: false, paidBy: null, paidCents: null };
 const INPUT = { name: "Luz", expectedCents: 15000, dueDay: 10 };
 
 describe("getBills", () => {
@@ -306,6 +306,19 @@ describe("getBills", () => {
     const fetch = stubFetch(Response.json([BILL]));
     expect(await getBills("2030-01")).toEqual({ kind: "ok", bills: [BILL] });
     expect(fetch.mock.calls[0]![0]).toBe("http://api.test/me/finance/bills?month=2030-01");
+  });
+
+  it("reads paidCents, and takes it as null while the API does not send it", async () => {
+    stubFetch(Response.json([{ ...BILL, paid: true, paidCents: 14000 }]));
+    expect(await getBills("2030-01")).toEqual({ kind: "ok", bills: [{ ...BILL, paid: true, paidCents: 14000 }] });
+    const { paidCents: _, ...old } = BILL;
+    stubFetch(Response.json([old]));
+    expect(await getBills("2030-01")).toEqual({ kind: "ok", bills: [BILL] });
+  });
+
+  it("is an error for a paidCents that is not a number or null", async () => {
+    stubFetch(Response.json([{ ...BILL, paidCents: "9" }]));
+    expect(await getBills("2030-01")).toEqual({ kind: "error" });
   });
 
   it("is an error for a bill it cannot read", async () => {

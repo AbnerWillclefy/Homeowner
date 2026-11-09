@@ -7,7 +7,7 @@ import type { Month } from "../logic/month";
  * The month's days in a wrapping grid, with the count of Bills due under each day. Today is outlined (a shape, not a
  * colour). One label on the whole strip lists the days and the count, so a screen reader hears it once, not 31 cells.
  */
-export function DueStrip({ bills, month, today }: { bills: Bill[]; month: Month; today: string }) {
+export function DueStrip({ bills, month, today }: { bills: Bill[]; month: Month; today: string | null }) {
   const { t } = useI18n();
   const strip = dueStrip(bills, month, today);
   const due = strip.days.filter((d) => d.bills.length > 0);

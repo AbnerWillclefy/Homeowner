@@ -318,6 +318,8 @@ export interface Bill {
   dueDate: string;
   paid: boolean;
   paidBy?: "hand" | "bank" | null;
+  /** What was paid, which may differ from `expectedCents`. Null while unpaid, or while the API does not send it. */
+  paidCents: number | null;
 }
 
 export interface BillInput {
@@ -341,9 +343,10 @@ function parseBills(body: unknown): Bill[] | null {
       typeof b.dueDay === "number" &&
       typeof b.dueDate === "string" &&
       typeof b.paid === "boolean" &&
-      (b.paidBy === undefined || b.paidBy === null || b.paidBy === "hand" || b.paidBy === "bank"),
+      (b.paidBy === undefined || b.paidBy === null || b.paidBy === "hand" || b.paidBy === "bank") &&
+      (b.paidCents === undefined || b.paidCents === null || typeof b.paidCents === "number"),
   );
-  return valid ? (body as Bill[]) : null;
+  return valid ? (body as Bill[]).map((b) => ({ ...b, paidCents: b.paidCents ?? null })) : null;
 }
 
 /** `GET /me/finance/bills?month=YYYY-MM`. */

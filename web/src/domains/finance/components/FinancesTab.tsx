@@ -78,12 +78,7 @@ function FinancesBody({ finance }: { finance: ReturnType<typeof useFinance> }) {
                       <Spending />
                     </>
                   ),
-                  bills: (
-                    <>
-                      <BillsSection />
-                      <Commitments />
-                    </>
-                  ),
+                  bills: <BillsSection current={<Commitments />} />,
                 }}
               />
             )

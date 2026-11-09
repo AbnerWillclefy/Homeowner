@@ -25,4 +25,7 @@ describe("billState", () => {
   it("is overdue the day after", () => {
     expect(billState(bill({}), "2026-11-11")).toBe("overdue");
   });
+  it("is never overdue when today is null", () => {
+    expect(billState(bill({ dueDate: "2000-01-01" }), null)).toBe("due");
+  });
 });
