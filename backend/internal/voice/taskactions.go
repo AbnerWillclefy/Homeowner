@@ -19,6 +19,7 @@ const (
 type taskRef struct {
 	id, choreID, choreName, relation string
 	people                           int
+	partnerCommitted                 bool
 }
 
 // taskRefs derives each open Task's relation to the caller from their Day
@@ -31,10 +32,16 @@ func taskRefs(v dayplan.View) []taskRef {
 		return out
 	}
 	seen := map[string]bool{}
+	byPartner := map[string]bool{} // Refuse fails once either partner of a two-person Task committed
+	for _, o := range v.Others {
+		for _, t := range o.Tasks {
+			byPartner[t.ID] = byPartner[t.ID] || t.Committed
+		}
+	}
 	add := func(t dayplan.TaskView, rel string) {
 		if !seen[t.ID] {
 			seen[t.ID] = true
-			out = append(out, taskRef{t.ID, t.ChoreID, t.ChoreName, rel, t.People})
+			out = append(out, taskRef{t.ID, t.ChoreID, t.ChoreName, rel, t.People, byPartner[t.ID]})
 		}
 	}
 	for _, t := range v.Mine {
@@ -62,6 +69,8 @@ func taskRefs(v dayplan.View) []taskRef {
 // reading Check-ins and Restrictions is what voice must not do.
 func taskVerb(tool string, t taskRef) string {
 	switch {
+	case t.relation == relProposed && t.partnerCommitted:
+		return map[string]string{toolCommitTask: "accept", toolCompleteTask: "complete"}[tool]
 	case t.relation == relProposed:
 		return map[string]string{toolCommitTask: "accept", toolRefuseTask: "refuse", toolCompleteTask: "complete"}[tool]
 	case t.relation == relCommitted && tool == toolCompleteTask:

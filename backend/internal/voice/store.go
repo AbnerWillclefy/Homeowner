@@ -40,7 +40,7 @@ func reserveCall(ctx context.Context, q querier, userID string, date allocation.
 }
 
 // Store counts voice calls and records their events. The Chores are read with
-// chores.ListIn on the same pool.
+// chores.ListIn and today's Tasks with dayplan.Store.Today, on the same pool.
 type Store struct {
 	db   *pgxpool.Pool
 	plan *dayplan.Store
