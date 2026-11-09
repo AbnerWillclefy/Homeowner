@@ -19,7 +19,7 @@ import { billState } from "../logic/billState";
 import { incomeSplit } from "../logic/incomeSplit";
 import { formatCents } from "../logic/money";
 import { addMonths, currentDay, daysInMonth, formatDay, monthName } from "../logic/month";
-import { monthView } from "../logic/monthView";
+import { monthView, spent as spentOf } from "../logic/monthView";
 import { nextUnpaid } from "../logic/nextUnpaid";
 import { paceSentence } from "../logic/paceSentence";
 import { sameDays } from "../logic/sameDays";
@@ -119,7 +119,9 @@ export function Summary({ lastSyncedAt }: { lastSyncedAt: string | null }) {
   const spent = compared?.spent ?? (current.state.kind === "ready" ? current.state.data.spentCents : 0);
   const unpaid = bills.state.kind === "ready" ? billGroups(bills.state.data, day).toPayCents : 0;
   const income = commitments.state.kind === "ready" ? commitments.state.data.monthlyIncomeCents : null;
-  const split = incomeSplit(income, spent, unpaid);
+  // A card bill due later this month is not spent yet, but it is still to pay.
+  const dueCents = compared?.due.reduce((sum, tx) => sum + spentOf(tx), 0) ?? 0;
+  const split = incomeSplit(income, spent, unpaid + dueCents);
   const usual = daily.state.kind === "ready" ? daily.state.data : null;
   const averageMonths = usual?.averageMonths ?? 0;
   const averageToday = usual?.average[dayOfMonth - 1];

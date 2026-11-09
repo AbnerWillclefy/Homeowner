@@ -305,6 +305,12 @@ for (const l of LOCALES) {
       });
     });
 
+    test("a card bill due later this month is still to pay, not free", async ({ page, fakeApi }) => {
+      fakeApi.state.finance!.transactions!.push({ ...tx("c1", "2029-12-28", -10000, "groceries"), countsOn: "2030-01-20" });
+      await page.reload();
+      await expect(page.getByRole("region", { name: l.heading.split })).toContainText(/(Contas a pagar|Bills to pay)\s*R\$\s*2[.,]170[.,]50/);
+    });
+
     test.describe("spending less than last month", () => {
       test.use({ fakeState: connected({ december: 90000 }) });
 
