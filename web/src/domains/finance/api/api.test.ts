@@ -8,6 +8,7 @@ import {
   getBills,
   getFinanceStatus,
   getCommitments,
+  getDaily,
   getHistory,
   getMonth,
   patchTransaction,
@@ -203,6 +204,32 @@ describe("getHistory", () => {
   it("is an error for a body it cannot read", async () => {
     stubFetch(Response.json({ ...HISTORY, months: [{ month: "2026-13", spentCents: 0, categories: [] }] }));
     expect(await getHistory("2026-11", 6)).toEqual({ kind: "error" });
+  });
+});
+
+describe("getDaily", () => {
+  const DAILY = { month: "2026-11", days: 30, current: [100, 250], previous: [50, 50, 90], average: [70, 120, 200], averageMonths: 3 };
+
+  it("reads GET /me/finance/daily with the month", async () => {
+    const fetch = stubFetch(Response.json(DAILY));
+    expect(await getDaily("2026-11")).toEqual({ kind: "ok", daily: DAILY });
+    expect(fetch.mock.calls[0]![0]).toBe("http://api.test/me/finance/daily?month=2026-11");
+  });
+
+  it("is an error when a field is missing", async () => {
+    const { average: _average, ...without } = DAILY;
+    stubFetch(Response.json(without));
+    expect(await getDaily("2026-11")).toEqual({ kind: "error" });
+  });
+
+  it.each([
+    ["a series with a string in it", { current: [100, "250"] }],
+    ["a series that is not an array", { previous: null }],
+    ["a days that is not a whole number", { days: "30" }],
+    ["an averageMonths that is not a number", { averageMonths: null }],
+  ])("is an error for %s", async (_, wrong) => {
+    stubFetch(Response.json({ ...DAILY, ...wrong }));
+    expect(await getDaily("2026-11")).toEqual({ kind: "error" });
   });
 });
 

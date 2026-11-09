@@ -1,7 +1,7 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ApiFailure } from "../../../shared/query/ApiFailure";
 import { refetchUnlessSucceeded } from "../../../shared/query/queryClient";
-import { getBills, getCommitments, getFinanceStatus, getHistory, getMonth, type Bill, type Commitments, type FinanceStatus, type History, type MonthResponse } from "./api";
+import { getBills, getCommitments, getDaily, getFinanceStatus, getHistory, getMonth, type Bill, type Commitments, type Daily, type FinanceStatus, type History, type MonthResponse } from "./api";
 
 /** `GET /me/finance`. Under `["me"]`, so sign-out empties it; the finance views go under it too (web.md, Query keys). */
 export const financeStatusKey = ["me", "finance"] as const;
@@ -41,6 +41,8 @@ export const invalidateMonth = (client: QueryClient) =>
     client.invalidateQueries({ queryKey: ["me", "finance", "transactions"] }),
     // A category PATCH moves spend between categories in past months too.
     client.invalidateQueries({ queryKey: ["me", "finance", "history"] }),
+    // The pace chart is made of the same spend.
+    client.invalidateQueries({ queryKey: ["me", "finance", "daily"] }),
   ]);
 
 /** `GET /me/finance/history?to=&months=`: every parameter is in the key, under the status key so a delete removes it. */
@@ -52,6 +54,20 @@ export const historyQuery = (to: string, months: number) =>
     queryFn: async (): Promise<History> => {
       const result = await getHistory(to, months);
       if (result.kind === "ok") return result.history;
+      throw new ApiFailure(result.kind === "offline" || result.kind === "not-signed-in" ? result.kind : "error");
+    },
+    refetchOnMount: refetchUnlessSucceeded,
+  });
+
+/** `GET /me/finance/daily?month=`, one entry per month, under the status key so a delete removes them too. */
+export const dailyKey = (month: string) => ["me", "finance", "daily", month] as const;
+
+export const dailyQuery = (month: string) =>
+  queryOptions({
+    queryKey: dailyKey(month),
+    queryFn: async (): Promise<Daily> => {
+      const result = await getDaily(month);
+      if (result.kind === "ok") return result.daily;
       throw new ApiFailure(result.kind === "offline" || result.kind === "not-signed-in" ? result.kind : "error");
     },
     refetchOnMount: refetchUnlessSucceeded,
