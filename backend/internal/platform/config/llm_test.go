@@ -39,6 +39,33 @@ func TestLLMAllocatorOverrides(t *testing.T) {
 	}
 }
 
+func TestVoiceIsOffByDefaultAndNeedsAKeyWhenOn(t *testing.T) {
+	base := map[string]string{"DATABASE_URL": "postgres://x"}
+	with := func(kv ...string) func(string) string {
+		m := map[string]string{}
+		for k, v := range base {
+			m[k] = v
+		}
+		for i := 0; i < len(kv); i += 2 {
+			m[kv[i]] = kv[i+1]
+		}
+		return env(m)
+	}
+	c, err := config.Load(with())
+	if err != nil || c.VoiceEnabled {
+		t.Fatalf("default: %v, enabled %v", err, c.VoiceEnabled)
+	}
+	if _, err = config.Load(with("VOICE_ENABLED", "true")); err == nil || !strings.Contains(err.Error(), "ANTHROPIC_API_KEY") {
+		t.Fatalf("want an ANTHROPIC_API_KEY error, got %v", err)
+	}
+	if c, err = config.Load(with("VOICE_ENABLED", "true", "ANTHROPIC_API_KEY", "sk-test")); err != nil || !c.VoiceEnabled {
+		t.Fatalf("on: %v, enabled %v", err, c.VoiceEnabled)
+	}
+	if _, err = config.Load(with("VOICE_ENABLED", "maybe")); err == nil {
+		t.Fatal("want an error for a bad VOICE_ENABLED")
+	}
+}
+
 func TestLLMAllocatorEnabledNeedsAKey(t *testing.T) {
 	_, err := config.Load(env(map[string]string{
 		"DATABASE_URL":          "postgres://x",

@@ -55,7 +55,9 @@ allowed to call the API; empty sends no CORS headers), `ENVIRONMENT` (`local`,
 start; `GET /admin/me` reports it), `LLM_MONTHLY_SPEND_LIMIT_USD` (optional,
 positive decimal dollars; the Anthropic Console's monthly limit, shown by
 `GET /admin/ai` and never enforced; unset shows no limit), `PLUGGY_BASE_URL`
-(default `https://api.pluggy.ai`; tests point it at the fake, never at Pluggy).
+(default `https://api.pluggy.ai`; tests point it at the fake, never at Pluggy),
+`VOICE_ENABLED` (default false; turns on `POST /home/voice/interpret`, which
+answers 503 while off; needs `ANTHROPIC_API_KEY` and uses `LLM_MODEL`).
 
 ### The super admin role
 
