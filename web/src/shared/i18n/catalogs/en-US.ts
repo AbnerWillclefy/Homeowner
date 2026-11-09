@@ -1092,7 +1092,7 @@ export const enUS = {
   "voice.action.take": "Take {name}",
   "voice.action.refuse": "Refuse {name}",
   "voice.action.complete": "Complete {name}",
-  "voice.action.choice": "Several matches. Not applied.",
+  "voice.action.choice": "Which one?",
   "voice.change": "{field} {value}",
   "voice.field.name": "name",
   "voice.field.category": "category",

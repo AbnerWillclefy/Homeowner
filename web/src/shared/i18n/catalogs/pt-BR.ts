@@ -1104,7 +1104,7 @@ export const ptBR: Messages = {
   "voice.action.take": "Pegar {name}",
   "voice.action.refuse": "Recusar {name}",
   "voice.action.complete": "Concluir {name}",
-  "voice.action.choice": "Várias opções. Não aplicado.",
+  "voice.action.choice": "Qual delas?",
   "voice.change": "{field} {value}",
   "voice.field.name": "nome",
   "voice.field.category": "categoria",

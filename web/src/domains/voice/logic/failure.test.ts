@@ -27,14 +27,14 @@ describe("failureKey", () => {
 
 describe("speechError", () => {
   it.each([
-    ["service-not-allowed", "device", true],
-    ["not-allowed", "permission", false],
-    ["no-speech", "nothing", false],
-    ["aborted", "nothing", false],
-    ["network", "error", false],
-    ["audio-capture", "error", false],
-    ["something-else", "error", false],
-  ])("%s is %s, hides the mic: %s", (code, message, hideMic) => {
-    expect(speechError(code)).toEqual({ message, hideMic });
+    ["service-not-allowed", "device"],
+    ["not-allowed", "permission"],
+    ["no-speech", "nothing"],
+    ["aborted", "nothing"],
+    ["network", "error"],
+    ["audio-capture", "error"],
+    ["something-else", "error"],
+  ])("%s is %s", (code, message) => {
+    expect(speechError(code)).toBe(message);
   });
 });

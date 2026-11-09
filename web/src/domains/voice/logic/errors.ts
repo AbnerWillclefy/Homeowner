@@ -1,17 +1,17 @@
 import type { VoiceMessage } from "../hooks/useVoice";
 
-/** What a browser speech error code means for the panel; only `service-not-allowed` also takes the mic away. */
-export function speechError(code: string): { message: VoiceMessage; hideMic: boolean } {
+/** What a browser speech error code means for the panel. */
+export function speechError(code: string): VoiceMessage {
   switch (code) {
     case "service-not-allowed":
-      return { message: "device", hideMic: true };
+      return "device";
     case "not-allowed":
-      return { message: "permission", hideMic: false };
+      return "permission";
     case "no-speech":
     case "aborted":
-      return { message: "nothing", hideMic: false };
+      return "nothing";
     default:
       // network, audio-capture and any code not known: ask to try again.
-      return { message: "error", hideMic: false };
+      return "error";
   }
 }

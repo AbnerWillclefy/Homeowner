@@ -49,8 +49,8 @@ export function useVoice() {
   const [state, setState] = useState<VoiceState>({ kind: "idle" });
   const [isOpen, setOpen] = useState(false);
   const listening = useRef<AbortController | null>(null);
-  // Memory only: a reload asks the server again, which is the authority on the daily limit.
-  const remaining = useRef<number | null>(null);
+  // Memory only, and only for the local day it was reached: the server resets per day and is the authority.
+  const limitDay = useRef<string | null>(null);
   const transcript = useRef("");
 
   const interpretation = useMutation({ mutationFn: (text: string) => interpret(text, locale) });
@@ -70,7 +70,7 @@ export function useVoice() {
     listening.current = run;
     setOpen(true);
     // The 20th command was used: say so without listening or calling the API.
-    if (remaining.current === 0) return setState({ kind: "message", message: "limit" });
+    if (limitDay.current === new Date().toDateString()) return setState({ kind: "message", message: "limit" });
     setState({ kind: "listening" });
     void interpretSpeech(listenOnce(ctor, locale, run.signal), run.signal);
   }
@@ -78,7 +78,7 @@ export function useVoice() {
   async function interpretSpeech(heard: ReturnType<typeof listenOnce>, signal: AbortSignal) {
     const speech = await heard;
     if (signal.aborted) return;
-    if (speech.kind === "error") return setState({ kind: "message", message: speechError(speech.code).message });
+    if (speech.kind === "error") return setState({ kind: "message", message: speechError(speech.code) });
     const text = speech.kind === "transcript" ? speech.text.trim() : "";
     // Nothing heard or too long: no call, so no voice call is spent.
     if (!text || [...text].length > MAX_TRANSCRIPT) return setState({ kind: "message", message: "nothing" });
@@ -90,10 +90,10 @@ export function useVoice() {
     setState({ kind: "working" });
     const result = await interpretation.mutateAsync(text);
     if (signal.aborted) return;
-    if (result.kind === "limit") remaining.current = 0;
+    if (result.kind === "limit") limitDay.current = new Date().toDateString();
     if (result.kind !== "ok") return setState({ kind: "message", message: FAILED[result.kind] });
     const { status, actions } = result.interpretation;
-    remaining.current = result.interpretation.remaining;
+    limitDay.current = result.interpretation.remaining === 0 ? new Date().toDateString() : null;
     if (status === "too_many") return setState({ kind: "message", message: "split" });
     setState(
       status === "ok" && actions.length > 0

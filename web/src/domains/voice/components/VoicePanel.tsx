@@ -77,16 +77,10 @@ export function VoicePanel({ voice }: { voice: Voice }) {
                     <legend className="mb-2 font-semibold">{t("voice.action.choice")}</legend>
                     <div className="flex flex-col gap-2">
                       {action.candidates.map((candidate, c) => (
-                        <label key={c} className={RADIO_CARD}>
-                          <input
-                            type="radio"
-                            name={`voice-choice-${index}`}
-                            className="sr-only"
-                            checked={false}
-                            onChange={() => voice.choose(index, c)}
-                          />
+                        // Buttons, not radios: an arrow key in a radio group would pick, and a pick cannot be switched.
+                        <button key={c} type="button" className={`${RADIO_CARD} w-full text-left`} onClick={() => voice.choose(index, c)}>
                           <span className="min-w-0 [overflow-wrap:anywhere]">{label(candidate)}</span>
-                        </label>
+                        </button>
                       ))}
                     </div>
                   </fieldset>
