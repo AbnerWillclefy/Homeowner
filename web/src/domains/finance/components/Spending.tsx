@@ -6,6 +6,7 @@ import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLo
 import { SkeletonBar } from "../../../shared/ui/Skeleton";
 import { StatTile } from "../../../shared/ui/StatTile";
 import type { Transaction } from "../api/api";
+import { useBudget } from "../hooks/useBudget";
 import { useHistory } from "../hooks/useHistory";
 import { useMonth,type EditOutcome } from "../hooks/useMonth";
 import { difference } from "../logic/difference";
@@ -31,6 +32,7 @@ export function Spending() {
   const previousMonth = addMonths(month, -1);
   const { state, refreshing, reload, edit } = useMonth(month);
   const previous = useMonth(previousMonth);
+  const setLimit = useBudget(month);
   const history = useHistory(month); // once for every category: opening one slices it, never reads again
   const skeleton = useReportFirstLoad(state.kind === "loading");
   useReportFetching(refreshing || previous.refreshing);
@@ -71,6 +73,9 @@ export function Spending() {
         : t(`finances.report.${diff.key}Until`, { amount: money(diff.amount), month: last, day: cut });
   const markers = compared !== null && !compared.noPrevious;
   const empty = view?.isEmpty && !(compared && !compared.noPrevious);
+  const limits = state.kind === "ready" ? state.data.limits : {};
+  // The scale holds each limit too, so its tick stays on the track; with no limit it is the same as before.
+  const scale = shown ? Math.max(shown.max, ...shown.rows.map((r) => limits[r.category] ?? 0)) : 0;
   const groups = new Map(view?.categories.map((g) => [g.category, g.transactions]));
 
   return (
@@ -129,7 +134,7 @@ export function Spending() {
                       key={r.category}
                       category={r.category}
                       spent={r.spent}
-                      max={shown.max}
+                      max={scale}
                       marker={markers ? r.previousSpent : undefined}
                       note={
                         markers
@@ -142,6 +147,8 @@ export function Spending() {
                       history={history}
                       month={month}
                       thisMonth={thisMonth}
+                      limit={limits[r.category]}
+                      onLimit={setLimit}
                       onEdit={setEditing}
                     />
                   ))}

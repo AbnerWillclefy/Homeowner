@@ -9,5 +9,6 @@ import (
 // The rules must have no database, HTTP or clock dependency; the other files are the edge.
 func TestPackageIsPure(t *testing.T) {
 	puritytest.Check(t, "handler.go", "store.go", "sync.go", "events.go", "seal.go", "categorize.go",
-		"bills.go", "bills_store.go", "budgets.go", "budgets_store.go")
+		"bills.go", "bills_store.go", "budgets.go", "budgets_store.go",
+		"suggestions.go", "suggestions_store.go")
 }

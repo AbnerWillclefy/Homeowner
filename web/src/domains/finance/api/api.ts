@@ -69,6 +69,8 @@ export interface MonthResponse {
   spentCents: number;
   categories: { category: SpendingCategory; spentCents: number }[];
   transactions: Transaction[];
+  /** The Spending limits, the same for every month. A category with none is absent. */
+  limits: Partial<Record<SpendingCategory, number>>;
 }
 
 export type MonthResult = { kind: "ok"; month: MonthResponse } | Failure;
@@ -167,13 +169,20 @@ function parseMonth(body: unknown): MonthResponse | null {
       (t.spendingCategory === null || typeof t.spendingCategory === "string"),
   );
   if (!valid) return null;
+  // A body without `limits` (an older mock or API) reads as none.
+  const limits = body.limits ?? {};
+  if (!isObject(limits) || !Object.values(limits).every((v) => Number.isInteger(v) && (v as number) > 0)) return null;
   // A body without it (an older mock or API) reads as null, so the parse never breaks on it.
   const transactions = (body.transactions as Record<string, unknown>[]).map((t) => ({
     ...t,
     categorySetBy: t.categorySetBy === "auto" || t.categorySetBy === "user" || t.categorySetBy === "fallback" ? t.categorySetBy : null,
   }));
-  return { ...(body as unknown as MonthResponse), transactions: transactions as unknown as Transaction[] };
+  return { ...(body as unknown as MonthResponse), limits, transactions: transactions as unknown as Transaction[] };
 }
+
+/** `PUT /me/finance/budgets/{category}`; null removes the Spending limit. A limit holds for every month. */
+export const putBudget = (category: SpendingCategory, limitCents: number | null): Promise<WriteResult> =>
+  call({ url: `/me/finance/budgets/${encodeURIComponent(category)}`, method: "PUT", data: { limitCents } }, 204, nothing);
 
 /** `GET /me/finance/transactions?month=YYYY-MM`. */
 export const getMonth = (month: string): Promise<MonthResult> =>

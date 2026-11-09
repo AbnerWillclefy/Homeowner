@@ -43,6 +43,8 @@ func financeMux(h *finance.Handler) http.Handler {
 	mux.HandleFunc("PATCH /me/finance/transactions/{id}", h.PatchTransaction)
 	mux.HandleFunc("POST /me/finance/bills", h.CreateBill)
 	mux.HandleFunc("GET /me/finance/bills", h.ListBills)
+	mux.HandleFunc("GET /me/finance/bill-suggestions", h.BillSuggestions)
+	mux.HandleFunc("POST /me/finance/bill-suggestions/dismissals", h.DismissBillSuggestion)
 	mux.HandleFunc("PUT /me/finance/bills/{id}", h.UpdateBill)
 	mux.HandleFunc("DELETE /me/finance/bills/{id}", h.DeleteBill)
 	mux.HandleFunc("PUT /me/finance/bills/{id}/payments/{month}", h.PayBill)

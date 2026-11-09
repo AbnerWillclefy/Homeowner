@@ -12,6 +12,7 @@ import {
   getHistory,
   getMonth,
   patchTransaction,
+  putBudget,
   putIncome,
   putCredentials,
   registerItem,
@@ -170,6 +171,7 @@ const MONTH = {
   transactions: [
     { id: "t1", postedOn: "2026-11-02", description: "Mercado", sourceName: "Nubank", amountCents: -1000, currency: "BRL", type: "expense", spendingCategory: "groceries", typeSetBy: "rule", categorySetBy: "auto", installment: null },
   ],
+  limits: { groceries: 80000 },
 };
 
 describe("getMonth", () => {
@@ -177,6 +179,24 @@ describe("getMonth", () => {
     const fetch = stubFetch(Response.json(MONTH));
     expect(await getMonth("2026-11")).toEqual({ kind: "ok", month: MONTH });
     expect(fetch.mock.calls[0]![0]).toBe("http://api.test/me/finance/transactions?month=2026-11");
+  });
+
+  it("reads a body without limits as none, and refuses a limit that is not a positive whole number", async () => {
+    const { limits: _limits, ...older } = MONTH;
+    stubFetch(Response.json(older));
+    expect(await getMonth("2026-11")).toMatchObject({ kind: "ok", month: { limits: {} } });
+    stubFetch(Response.json({ ...MONTH, limits: { groceries: 0 } }));
+    expect(await getMonth("2026-11")).toEqual({ kind: "error" });
+  });
+
+  it("puts a limit, or null to remove it", async () => {
+    const fetch = stubFetch(new Response(null, { status: 204 }));
+    expect(await putBudget("groceries", 80000)).toEqual({ kind: "ok" });
+    expect(await putBudget("groceries", null)).toEqual({ kind: "ok" });
+    const [url, init] = fetch.mock.calls[0]!;
+    expect(`${init?.method} ${url}`).toBe("PUT http://api.test/me/finance/budgets/groceries");
+    expect(JSON.parse(String(init?.body))).toEqual({ limitCents: 80000 });
+    expect(JSON.parse(String(fetch.mock.calls[1]![1]?.body))).toEqual({ limitCents: null });
   });
 
   it("reads a missing or unknown categorySetBy as null", async () => {
