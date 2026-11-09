@@ -90,9 +90,16 @@ func (h *Handler) Interpret(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	now := h.clock.Now()
+	view, err := h.store.plan.Today(ctx, home.ID, home.Timezone, identity.CurrentMembership(ctx).ResidentID, now)
+	if err != nil {
+		httpx.InternalError(w, h.log, "voice day plan", err)
+		return
+	}
+	open := taskRefs(view)
+
 	// Reserved after the reads and right before the call: a failed read costs
 	// nothing, a failed call costs one.
-	now := h.clock.Now()
 	day := allocation.DateOf(now.In(loc))
 	calls, ok, err := reserveCall(ctx, h.store.db, identity.CurrentUser(ctx).ID, day, DailyLimit)
 	if err != nil {
@@ -108,7 +115,7 @@ func (h *Handler) Interpret(w http.ResponseWriter, r *http.Request) {
 	callCtx, cancel := context.WithTimeout(ctx, callTimeout)
 	start := time.Now()
 	raw, usage, err := h.client.Complete(callCtx, llmalloc.Request{
-		System: systemPrompt, User: userMessage(body.Locale, transcript, stored),
+		System: systemPrompt, User: userMessage(body.Locale, transcript, stored, open),
 		MaxTokens: maxModelTokens, Tools: tools(),
 	})
 	cancel()
@@ -135,7 +142,7 @@ func (h *Handler) Interpret(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	st, actions := interpretCalls(toolCalls, stored)
+	st, actions := interpretCalls(toolCalls, stored, open)
 	ev.outcome, ev.sent, ev.accepted = "accepted", len(toolCalls), len(actions)
 	h.store.record(ctx, h.log, home.ID, h.model, ev)
 	httpx.WriteJSON(w, http.StatusOK, Response{Status: st, Actions: actions, Remaining: DailyLimit - calls})
