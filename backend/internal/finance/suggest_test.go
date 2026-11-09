@@ -2,6 +2,7 @@ package finance
 
 import (
 	"slices"
+	"strings"
 	"testing"
 	"time"
 )
@@ -65,6 +66,10 @@ func TestSuggestBills(t *testing.T) {
 		"the name is a prefix the bank text contains": {
 			txns: three("NETFLIX.COM", 3990, 3990, 3990, 5, 5, 5), want: []Suggestion{{"NETFLIX COM", "NETFLIX", 3990, 5}}},
 		"a name under 3 characters": {txns: three("GÁ", 3990, 3990, 3990, 5, 5, 5)},
+		"a name is cut to the words that fit 60": {
+			txns: three(strings.Repeat("A", 55)+" BBBBBBBB", 100, 100, 100, 5, 5, 5),
+			want: []Suggestion{{strings.Repeat("A", 55) + " BBBBBBBB", strings.Repeat("A", 55), 100, 5}}},
+		"one word over 60 is not suggested": {txns: three(strings.Repeat("A", 61), 100, 100, 100, 5, 5, 5)},
 		"ordered by due day then name": {
 			txns: slices.Concat(three("ZETA", 100, 100, 100, 9, 9, 9), three("BETA", 100, 100, 100, 9, 9, 9), three("ALFA", 100, 100, 100, 20, 20, 20)),
 			want: []Suggestion{{"BETA", "BETA", 100, 9}, {"ZETA", "ZETA", 100, 9}, {"ALFA", "ALFA", 100, 20}}},
