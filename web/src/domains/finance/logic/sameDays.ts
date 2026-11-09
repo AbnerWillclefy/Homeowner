@@ -35,7 +35,10 @@ export function sameDays(current: Transaction[], previous: Transaction[], month:
       total[key] += spent(tx);
     }
   };
-  add(current, "spent", null);
+  // A card bill due later this month has not counted yet, as in the previous month's cut. Only moved rows are cut,
+  // so a row the device's clock sees as tomorrow (São Paulo dates) still counts.
+  const due = cutDay === null ? [] : current.filter((tx) => tx.countsOn !== tx.postedOn && dayOf(tx.countsOn) > today.getDate());
+  add(current.filter((tx) => !due.includes(tx)), "spent", null);
   add(previous, "previousSpent", cutDay);
   return { ...total, cutDay, noPrevious: previous.length === 0, byCategory };
 }
