@@ -17,6 +17,7 @@ export function Bar({
   max,
   variant = "solid",
   markers = [],
+  limit,
   note,
 }: {
   label: ReactNode;
@@ -24,6 +25,8 @@ export function Bar({
   max: number;
   variant?: "solid" | "hatched";
   markers?: number[];
+  /** The Spending limit, drawn as a second kind of tick. `max` must include it. */
+  limit?: number | undefined;
   /** A line of text under the bar, such as the marker's value ("outubro até dia 8: R$ 410,00"). */
   note?: ReactNode;
 }) {
@@ -46,6 +49,7 @@ export function Bar({
         {markers.map((marker) => (
           <Marker key={marker} value={marker} max={max} />
         ))}
+        {limit !== undefined && <Marker limit value={limit} max={max} />}
       </div>
       {note && <span className="text-sm text-muted [overflow-wrap:anywhere]">{note}</span>}
     </div>

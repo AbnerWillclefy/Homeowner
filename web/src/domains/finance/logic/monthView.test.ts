@@ -19,6 +19,7 @@ describe("monthView", () => {
     month: "2026-11",
     spentCents: 4200,
     categories: [],
+    limits: {},
     transactions: [
       tx({ id: "a", amountCents: -1000, spendingCategory: "groceries" }),
       tx({ id: "b", amountCents: -3500, spendingCategory: "leisure" }),
@@ -44,7 +45,7 @@ describe("monthView", () => {
     expect(view.spentCents).toBe(4200);
   });
   it("is empty for a month with nothing", () => {
-    expect(monthView({ month: "2026-11", spentCents: 0, categories: [], transactions: [] }).isEmpty).toBe(true);
+    expect(monthView({ month: "2026-11", spentCents: 0, categories: [], transactions: [], limits: {} }).isEmpty).toBe(true);
     expect(monthView(response).isEmpty).toBe(false);
   });
 });
