@@ -264,3 +264,121 @@ func TestAFailedCallWithoutAResponseReportsNoUsage(t *testing.T) {
 		t.Fatalf("deadline: usage = %+v, err = %v", usage, err)
 	}
 }
+
+var toolRequest = llmalloc.Request{
+	System: "rules", User: `{"say":"secret chore words"}`, MaxTokens: 512,
+	Tools: []llmalloc.Tool{{
+		Name: "create_chore", Description: "make a chore",
+		InputSchema: map[string]any{
+			"type": "object", "additionalProperties": false, "required": []string{"title"},
+			"properties": map[string]any{"title": map[string]any{"type": "string"}},
+		},
+	}},
+}
+
+func toolMessage(stop string, content ...map[string]any) string {
+	b, _ := json.Marshal(map[string]any{
+		"id": "msg_1", "type": "message", "role": "assistant", "model": "claude-haiku-5-5",
+		"content": content, "stop_reason": stop,
+		"usage": map[string]any{"input_tokens": 7, "output_tokens": 3},
+	})
+	return string(b)
+}
+
+func toolUse(name, input string) map[string]any {
+	return map[string]any{"type": "tool_use", "id": "tu_" + name, "name": name, "input": json.RawMessage(input)}
+}
+
+func TestARequestWithToolsForcesAStrictToolCallWithThinkingOff(t *testing.T) {
+	client, _, got, _ := fakeAPI(t, http.StatusOK, toolMessage("tool_use", toolUse("create_chore", `{"title":"x"}`)), 0)
+	if _, _, err := client.Complete(context.Background(), toolRequest); err != nil {
+		t.Fatal(err)
+	}
+	body := *got
+	tools, _ := body["tools"].([]any)
+	if len(tools) != 1 {
+		t.Fatalf("tools = %v", body["tools"])
+	}
+	tool := tools[0].(map[string]any)
+	schema, _ := tool["input_schema"].(map[string]any)
+	if tool["strict"] != true || tool["name"] != "create_chore" || schema["additionalProperties"] != false ||
+		schema["required"] == nil || schema["properties"] == nil || schema["type"] != "object" {
+		t.Fatalf("tool = %v", tool)
+	}
+	if choice, _ := body["tool_choice"].(map[string]any); choice["type"] != "any" {
+		t.Fatalf("tool_choice = %v", body["tool_choice"])
+	}
+	if thinking, _ := body["thinking"].(map[string]any); thinking["type"] != "disabled" {
+		t.Fatalf("thinking = %v", body["thinking"])
+	}
+	if _, ok := body["output_config"].(map[string]any)["format"]; ok {
+		t.Error("output_config.format must not be sent with tools")
+	}
+}
+
+func TestToolCallsComeBackInOrderAndTheTextIsDropped(t *testing.T) {
+	body := toolMessage("tool_use",
+		toolUse("create_chore", `{"title":"a"}`),
+		map[string]any{"type": "text", "text": "sure!"},
+		toolUse("create_chore", `{"title":"b"}`))
+	client, _, _, _ := fakeAPI(t, http.StatusOK, body, 0)
+
+	raw, _, err := client.Complete(context.Background(), toolRequest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var calls []llmalloc.ToolCall
+	if err := json.Unmarshal(raw, &calls); err != nil {
+		t.Fatal(err)
+	}
+	if len(calls) != 2 || calls[0].Name != "create_chore" || string(calls[0].Input) != `{"title":"a"}` ||
+		string(calls[1].Input) != `{"title":"b"}` || strings.Contains(string(raw), "sure") {
+		t.Fatalf("calls = %s", raw)
+	}
+}
+
+func TestNoToolCallIsAnEmptyListAndATruncatedOneIsInvalid(t *testing.T) {
+	client, _, _, _ := fakeAPI(t, http.StatusOK, toolMessage("tool_use", map[string]any{"type": "text", "text": "hm"}), 0)
+	raw, _, err := client.Complete(context.Background(), toolRequest)
+	if err != nil || string(raw) != "[]" {
+		t.Fatalf("raw = %s, err = %v", raw, err)
+	}
+	client, _, _, _ = fakeAPI(t, http.StatusOK, toolMessage("max_tokens", toolUse("create_chore", `{}`)), 0)
+	_, usage, err := client.Complete(context.Background(), toolRequest)
+	if !errors.Is(err, llmalloc.ErrInvalidResponse) || usage == nil || usage.InputTokens != 7 {
+		t.Fatalf("err = %v, usage = %+v", err, usage)
+	}
+}
+
+func TestToolsWithThinkingFailBeforeAnyCall(t *testing.T) {
+	client, calls, _, _ := fakeAPI(t, http.StatusOK, toolMessage("tool_use"), 0)
+	req := toolRequest
+	req.Thinking = true
+	if _, _, err := client.Complete(context.Background(), req); err == nil || calls.Load() != 0 {
+		t.Fatalf("err = %v, calls = %d", err, calls.Load())
+	}
+}
+
+func TestAToolCallLogsTokenCountsButNotItsInput(t *testing.T) {
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	client, _, _, _ := fakeAPI(t, http.StatusOK, toolMessage("tool_use", toolUse("create_chore", `{"title":"hidden title"}`)), 0)
+
+	if _, _, err := client.Complete(context.Background(), toolRequest); err != nil {
+		t.Fatal(err)
+	}
+	var line map[string]any
+	if err := json.Unmarshal(buf.Bytes(), &line); err != nil {
+		t.Fatalf("log = %q: %v", buf.String(), err)
+	}
+	if line["msg"] != "llm_usage" || line["input_tokens"] != float64(7) || line["output_tokens"] != float64(3) {
+		t.Fatalf("log line = %v", line)
+	}
+	for _, secret := range []string{"hidden title", "secret chore words", "create_chore"} {
+		if strings.Contains(buf.String(), secret) {
+			t.Fatalf("the log line holds %q: %s", secret, buf.String())
+		}
+	}
+}

@@ -55,6 +55,23 @@ type Request struct {
 	// Thinking turns on adaptive thinking, whose tokens count against
 	// MaxTokens. Off, the model answers straight away.
 	Thinking bool
+	// Tools, when set, makes the model answer with tool calls instead of
+	// Schema: Complete then returns a JSON array of ToolCall. Not with Thinking.
+	Tools []Tool
+}
+
+// Tool is one action the model may propose. InputSchema is a strict JSON
+// Schema object: additionalProperties false on every object.
+type Tool struct {
+	Name        string
+	Description string
+	InputSchema map[string]any
+}
+
+// ToolCall is one action the model proposed, with its raw input.
+type ToolCall struct {
+	Name  string          `json:"name"`
+	Input json.RawMessage `json:"input"`
 }
 
 // Usage is what one call to the model consumed. Model is the one the client
