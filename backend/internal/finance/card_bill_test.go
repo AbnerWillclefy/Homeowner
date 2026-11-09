@@ -71,4 +71,13 @@ func TestCardInstallmentsProjectFromTheirBillMonth(t *testing.T) {
 	if m := b.Months[1]; m.CommittedCents != 25000 || len(m.Installments) != 1 || m.Installments[0].Number != 4 {
 		t.Errorf("march = %+v, want TV Loja 4 of 10", m)
 	}
+
+	// Read from January, when part 3 is posted but its bill is not yet due: it is still to come, in February.
+	b = readCommitments(t, users["ana@example.com"], "2028-01")
+	if m := b.Months[1]; m.CommittedCents != 25000 || len(m.Installments) != 1 || m.Installments[0].Number != 3 {
+		t.Errorf("february from january = %+v, want TV Loja 3 of 10", m)
+	}
+	if m := b.Months[2]; len(m.Installments) != 1 || m.Installments[0].Number != 4 {
+		t.Errorf("march from january = %+v, want TV Loja 4 of 10", m)
+	}
 }

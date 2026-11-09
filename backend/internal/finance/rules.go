@@ -229,7 +229,11 @@ type InstallmentLine struct {
 func ProjectInstallments(plans []Plan, from time.Time, months int) [][]InstallmentLine {
 	out := make([][]InstallmentLine, months)
 	for _, p := range plans {
-		for k := p.Number + 1; k <= p.Total; k++ {
+		first := p.Number + 1
+		if monthIndex(p.Month) > monthIndex(from) {
+			first = p.Number // the charge is on a bill not yet due, so it is still to come
+		}
+		for k := first; k <= p.Total; k++ {
 			i := monthIndex(p.Month.AddDate(0, k-p.Number, 0)) - monthIndex(from)
 			if i >= 0 && i < months {
 				out[i] = append(out[i], InstallmentLine{p.Name, k, p.Total, p.AmountCents})
