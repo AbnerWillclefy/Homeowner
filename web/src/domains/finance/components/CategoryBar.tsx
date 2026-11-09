@@ -2,12 +2,15 @@ import { ChevronDown } from "lucide-react";
 import { useId, useState } from "react";
 import { useI18n } from "../../../shared/i18n";
 import type { Transaction } from "../api/api";
+import { limitText } from "../logic/limit";
+import { formatCents } from "../logic/money";
 import { formatDay } from "../logic/month";
 import { groupByDay } from "../logic/sameDays";
 import { spendingKey, type SpendingCategory } from "../logic/spendingCategories";
 import type { useHistory } from "../hooks/useHistory";
 import { CategoryHistory } from "./CategoryHistory";
 import { Bar } from "./charts/Bar";
+import { LimitForm } from "./LimitForm";
 import { TransactionRow } from "./TransactionRow";
 
 /**
@@ -24,6 +27,8 @@ export function CategoryBar({
   history,
   month,
   thisMonth,
+  limit,
+  onLimit,
   onEdit,
 }: {
   category: SpendingCategory;
@@ -36,12 +41,16 @@ export function CategoryBar({
   history: ReturnType<typeof useHistory>;
   month: string;
   thisMonth: string;
+  /** The Spending limit in cents, or undefined when there is none. */
+  limit: number | undefined;
+  onLimit(category: SpendingCategory, cents: number | null): Promise<"saved" | "failed">;
   onEdit(tx: Transaction): void;
 }) {
   const { t, locale } = useI18n();
   const [open, setOpen] = useState(false);
   const id = useId();
   const days = groupByDay(transactions);
+  const standing = limit === undefined ? null : limitText(spent, limit);
   return (
     <li className="m-0 flex list-none flex-col gap-2">
       <Bar
@@ -67,9 +76,22 @@ export function CategoryBar({
         value={spent}
         max={max}
         markers={marker === undefined ? [] : [marker]}
-        note={note}
+        limit={limit}
+        note={
+          standing && limit !== undefined ? (
+            <>
+              {note && <span className="block">{note}</span>}
+              <span className="block">
+                {t(`finances.limit.${standing.key}`, { limit: formatCents(limit, locale), amount: formatCents(standing.amount, locale) })}
+              </span>
+            </>
+          ) : (
+            note
+          )
+        }
       />
       <div id={`${id}-body`} hidden={!open} className="flex flex-col gap-1">
+        <LimitForm limit={limit} onSave={(cents) => onLimit(category, cents)} />
         <CategoryHistory category={category} history={history} marked={month} thisMonth={thisMonth} />
         {days.map(({ day, transactions: rows }) => (
           <section key={day} className="flex flex-col">
