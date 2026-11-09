@@ -20,6 +20,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/finance"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/invites"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/photos"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
@@ -32,6 +33,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/tasks"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/vocab"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/voice"
 )
 
 // Deps is everything outside the system that tests need to fake. Tests build
@@ -57,6 +59,11 @@ type Deps struct {
 	// was made; nil means allocation.Baseline. It must be the Allocator the
 	// scheduled job uses.
 	Allocator allocation.Allocator
+	// Voice is the model behind POST /home/voice/interpret; nil means voice is
+	// off and the route answers 503. VoiceModel is what an event row records
+	// when a call reported no Usage.
+	Voice      llmalloc.Client
+	VoiceModel string
 	// Photos is the private photo bucket; nil means photos are not configured
 	// and the /me/photo routes answer 503.
 	Photos photos.ObjectStore
@@ -123,6 +130,7 @@ func New(deps Deps) http.Handler {
 	streakStore := streak.NewStore(db)
 	streaks := streak.NewHandler(streakStore, clk, log)
 	residentsH := residents.NewHandler(residents.NewStore(db), streakStore, planner, photoURL, clk, log)
+	voiceH := voice.NewHandler(deps.Voice, voice.NewStore(db), deps.VoiceModel, clk, log)
 	pushes := push.NewHandler(push.NewStore(db), deps.Push, deps.VAPIDPublicKey, clk, log)
 
 	user, resident := s.requireUser, s.requireResident
@@ -151,6 +159,7 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("DELETE /home/chores/{id}/preference", resident(choreSettings.ClearPreference))
 	mux.HandleFunc("PUT /home/chores/{id}/restriction", resident(choreSettings.AddRestriction))
 	mux.HandleFunc("DELETE /home/chores/{id}/restriction", resident(choreSettings.RemoveRestriction))
+	mux.HandleFunc("POST /home/voice/interpret", voiceH.RequireConfigured(resident(voiceH.Interpret)))
 	mux.HandleFunc("POST /home/invites", resident(invite.Create))
 	mux.HandleFunc("GET /invites/{token}", invite.Lookup)
 	mux.HandleFunc("POST /invites/{token}/accept", user(invite.Accept))

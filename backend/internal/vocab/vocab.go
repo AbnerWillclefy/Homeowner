@@ -22,6 +22,9 @@ func Categories() []string { return slices.Clone(categories) }
 // Demands returns the Demand ids in display order.
 func Demands() []string { return slices.Clone(demands) }
 
+// Importances returns the Importance ids, most important first.
+func Importances() []string { return slices.Clone(importances) }
+
 // IsCategory reports whether id is a Category.
 func IsCategory(id string) bool { return slices.Contains(categories, id) }
 

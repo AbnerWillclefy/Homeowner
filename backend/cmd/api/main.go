@@ -20,6 +20,7 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/photos"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
@@ -120,6 +121,13 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		deps.PhotosBaseURL = cfg.PhotosBaseURL
 	} else {
 		log.Warn("photos disabled: PHOTOS_BUCKET and PHOTOS_BASE_URL are not set")
+	}
+
+	if cfg.VoiceEnabled {
+		deps.Voice = llmalloc.NewAnthropic(cfg.AnthropicAPIKey, cfg.LLMModel)
+		deps.VoiceModel = cfg.LLMModel
+	} else {
+		log.Warn("voice disabled")
 	}
 
 	srv := &http.Server{
