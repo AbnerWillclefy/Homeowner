@@ -60,7 +60,7 @@ describe("sendAction", () => {
   });
 
   it("never sends a choice", async () => {
-    expect(await sendAction({ kind: "choice" })).toEqual({ kind: "failed", reason: "choice" });
+    expect(await sendAction({ kind: "choice", candidates: [] })).toEqual({ kind: "failed", reason: "choice" });
     for (const fn of Object.values(calls)) expect(fn).not.toHaveBeenCalled();
   });
 });

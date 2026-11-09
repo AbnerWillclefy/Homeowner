@@ -50,6 +50,6 @@ describe("actionLabel", () => {
   it("words task actions and choices from the app's own text", () => {
     expect(actionLabel({ kind: "complete", taskId: "t", choreName: "Mop" }, en, "en-US")).toBe("Complete Mop");
     expect(actionLabel({ kind: "take", taskId: "t", choreName: "Mop" }, pt, "pt-BR")).toBe("Pegar Mop");
-    expect(actionLabel({ kind: "choice" }, en, "en-US")).toBe("Several matches. Not applied.");
+    expect(actionLabel({ kind: "choice", candidates: [] }, en, "en-US")).toBe("Which one?");
   });
 });
