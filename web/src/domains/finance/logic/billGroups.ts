@@ -18,11 +18,12 @@ export interface BillGroups {
 
 const group = (bills: Bill[]): BillGroup => ({
   bills: [...bills].sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
-  totalCents: bills.reduce((sum, b) => sum + b.expectedCents, 0),
+  // A paid Bill counts what was paid when the server says, else its expected amount; the rest count expected amounts.
+  totalCents: bills.reduce((sum, b) => sum + (b.paid ? (b.paidCents ?? b.expectedCents) : b.expectedCents), 0),
 });
 
 /** Vencida, A pagar and Pagas, each by due date. The summary is added up from the groups, so the two always agree. */
-export function billGroups(bills: Bill[], today: string): BillGroups {
+export function billGroups(bills: Bill[], today: string | null): BillGroups {
   const overdue: Bill[] = [];
   const due: Bill[] = [];
   const paid: Bill[] = [];
