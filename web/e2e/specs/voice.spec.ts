@@ -240,6 +240,24 @@ test("the limit gate lifts on the next local day and the tap reaches the server"
   await expect.poll(() => fakeApi.requests.filter((r) => r.path === "/home/voice/interpret").length).toBe(2);
 });
 
+test.describe("a phone in another timezone than the Home", () => {
+  // Lisbon is 3 hours ahead of the Home (São Paulo): at 02:00 in São Paulo the server has reset, Lisbon's day has not.
+  test.use({ timezoneId: "Europe/Lisbon" });
+
+  test("the limit gate lifts on the Home's next day, not the phone's", async ({ page, baseURL, fakeApi }) => {
+    await page.clock.setFixedTime(new Date("2030-01-15T22:00:00-03:00"));
+    await fakeRecognition(page, "the last one");
+    await launchApp(page, baseURL!);
+    await mic(page).click();
+    const dialog = page.getByRole("dialog", { name: "Voice command" });
+    await expect(dialog.getByText("Voice commands left today: 0")).toBeVisible();
+    await dialog.getByRole("button", { name: "Close" }).click();
+    await page.clock.setFixedTime(new Date("2030-01-16T02:00:00-03:00"));
+    await mic(page).click();
+    await expect.poll(() => fakeApi.requests.filter((r) => r.path === "/home/voice/interpret").length).toBe(2);
+  });
+});
+
 test("a 429 shows the limit message", async ({ page, baseURL }) => {
   await fakeRecognition(page, "limit");
   await launchApp(page, baseURL!);

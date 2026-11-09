@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
+import { useShell } from "../../../app/components/ShellContext";
 import { useI18n } from "../../../shared/i18n";
 import { choresKey } from "../../chores/api/queries";
 import { dayPlanKey } from "../../dayplan/api/queries";
@@ -45,11 +46,15 @@ const FAILED = {
 /** The voice panel's state machine: listen once, interpret, review, apply one by one. */
 export function useVoice() {
   const { locale } = useI18n();
+  const { home } = useShell();
+  const zone = home.state.kind === "ready" ? home.state.home.timezone : null;
+  // The server counts the day in the Home's timezone; no Home yet means no gate, so the server decides.
+  const today = () => (zone ? new Date().toLocaleDateString("en-CA", { timeZone: zone }) : null);
   const queryClient = useQueryClient();
   const [state, setState] = useState<VoiceState>({ kind: "idle" });
   const [isOpen, setOpen] = useState(false);
   const listening = useRef<AbortController | null>(null);
-  // Memory only, and only for the local day it was reached: the server resets per day and is the authority.
+  // Memory only, and only for the Home's day it was reached: the server resets per day and is the authority.
   const limitDay = useRef<string | null>(null);
   const transcript = useRef("");
 
@@ -70,7 +75,7 @@ export function useVoice() {
     listening.current = run;
     setOpen(true);
     // The 20th command was used: say so without listening or calling the API.
-    if (limitDay.current === new Date().toDateString()) return setState({ kind: "message", message: "limit" });
+    if (limitDay.current !== null && limitDay.current === today()) return setState({ kind: "message", message: "limit" });
     setState({ kind: "listening" });
     void interpretSpeech(listenOnce(ctor, locale, run.signal), run.signal);
   }
@@ -90,10 +95,10 @@ export function useVoice() {
     setState({ kind: "working" });
     const result = await interpretation.mutateAsync(text);
     if (signal.aborted) return;
-    if (result.kind === "limit") limitDay.current = new Date().toDateString();
+    if (result.kind === "limit") limitDay.current = today();
     if (result.kind !== "ok") return setState({ kind: "message", message: FAILED[result.kind] });
     const { status, actions } = result.interpretation;
-    limitDay.current = result.interpretation.remaining === 0 ? new Date().toDateString() : null;
+    limitDay.current = result.interpretation.remaining === 0 ? today() : null;
     if (status === "too_many") return setState({ kind: "message", message: "split" });
     setState(
       status === "ok" && actions.length > 0
