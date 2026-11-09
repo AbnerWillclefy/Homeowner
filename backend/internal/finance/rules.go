@@ -91,6 +91,9 @@ type Txn struct {
 	Type, TypeSetBy string
 	// Category is the spending category, empty unless Type is expense.
 	Category, CategorySetBy string
+	// Linked (a Bill payment points at it) and Installment (a PARC nn/mm
+	// charge) are read only by SuggestBills.
+	Linked, Installment bool
 }
 
 // Classify sets the type of every auto Txn and returns those whose type or
@@ -442,4 +445,115 @@ func MatchBills(bills []Bill, txns []Txn, taken map[billMonth]bool) []Match {
 	}
 	slices.SortFunc(out, func(a, b Match) int { return cmp.Or(a.Month.Compare(b.Month), cmp.Compare(a.BillID, b.BillID)) })
 	return out
+}
+
+// Suggestion is a Bill the Resident may accept: a merchant that charges every month.
+type Suggestion struct {
+	MerchantKey, Name string
+	AmountCents       int64
+	DueDay            int
+}
+
+const (
+	suggestMonths  = 3
+	suggestDayGap  = 5
+	suggestPercent = 10
+)
+
+// SuggestBills is the product definition of "recurring" (data-model.md). A
+// merchant (by MerchantKey) is suggested when each of the suggestMonths complete
+// months before now's has an Expense; taking each month's largest, the amounts
+// are within 10% of their median and the days within 5 of the median day
+// (clamped to each month's length); no Bill covers it and it is not dismissed.
+// Linked payments, refunds, non-Expenses and installment charges are ignored.
+// The name is the longest run of the key's leading words contained in the folded
+// description of all three charges, so MatchBills can pay it later; under
+// minBillName characters, nothing is suggested.
+//
+// shortcut: days do not wrap around a month end (the 30th and the 2nd are far
+// apart), when that hurts, compare days modulo the month length.
+func SuggestBills(txns []Txn, bills []Bill, dismissed map[string]bool, now time.Time) []Suggestion {
+	first := monthIndex(now) - suggestMonths
+	type pick struct {
+		cents int64
+		day   int
+		desc  string
+	}
+	byMerchant := map[string]*[suggestMonths]*pick{}
+	descs := map[string][]string{}
+	for _, t := range txns {
+		i := monthIndex(t.PostedOn) - first
+		if t.Type != "expense" || t.AmountCents >= 0 || t.Linked || t.Installment || t.MerchantKey == "" || i < 0 || i >= suggestMonths {
+			continue
+		}
+		months := byMerchant[t.MerchantKey]
+		if months == nil {
+			months = new([suggestMonths]*pick)
+			byMerchant[t.MerchantKey] = months
+		}
+		p := pick{-t.AmountCents, t.PostedOn.Day(), fold(t.Description)}
+		descs[t.MerchantKey] = append(descs[t.MerchantKey], p.desc)
+		// the largest charge of the month; the earlier day on a tie
+		if o := months[i]; o == nil || p.cents > o.cents || (p.cents == o.cents && p.day < o.day) {
+			months[i] = &p
+		}
+	}
+	var out []Suggestion
+	for key, months := range byMerchant {
+		if dismissed[key] || slices.Contains(months[:], nil) {
+			continue
+		}
+		cents, days := make([]int64, suggestMonths), make([]int, suggestMonths)
+		for i, p := range months {
+			cents[i], days[i] = p.cents, p.day
+		}
+		slices.Sort(cents)
+		slices.Sort(days)
+		med, medDay := cents[1], days[1]
+		ok := true
+		for i, p := range months {
+			m := first + i - 1 // monthIndex is year*12 + month, so this is zero-based
+			clamped := DueDate(m/12, time.Month(m%12+1), medDay).Day()
+			ok = ok && absInt(p.cents-med)*100 <= med*suggestPercent && absInt(int64(p.day-clamped)) <= suggestDayGap
+		}
+		name := bankName(key, months[0].desc, months[1].desc, months[2].desc)
+		if !ok || len(name) < minBillName || coveredBy(bills, descs[key]) {
+			continue
+		}
+		out = append(out, Suggestion{key, name, months[2].cents, medDay})
+	}
+	slices.SortFunc(out, func(a, b Suggestion) int {
+		return cmp.Or(cmp.Compare(a.DueDay, b.DueDay), cmp.Compare(a.Name, b.Name), cmp.Compare(a.MerchantKey, b.MerchantKey))
+	})
+	return out
+}
+
+func absInt(n int64) int64 {
+	if n < 0 {
+		return -n
+	}
+	return n
+}
+
+// bankName is the longest prefix of the key's words contained in every description.
+func bankName(key string, descs ...string) string {
+	words := strings.Fields(key)
+	for n := len(words); n > 0; n-- {
+		name := strings.Join(words[:n], " ")
+		if !slices.ContainsFunc(descs, func(d string) bool { return !strings.Contains(d, name) }) {
+			return name
+		}
+	}
+	return ""
+}
+
+// coveredBy is MatchBills' name test without the amount.
+func coveredBy(bills []Bill, descs []string) bool {
+	for _, b := range bills {
+		name := fold(b.Name)
+		if len(name) >= minBillName && slices.ContainsFunc(descs, func(d string) bool { return strings.Contains(d, name) }) {
+			return true
+		}
+	}
+	return false
 }
