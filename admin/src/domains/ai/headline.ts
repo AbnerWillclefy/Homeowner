@@ -45,7 +45,7 @@ function figures(days: ServiceDay[]): Figures {
   return f;
 }
 
-/** The two services' figures combined. */
+/** Two services' figures combined. */
 function sum(a: Figures, b: Figures): Figures {
   return {
     calls: a.calls + b.calls,
@@ -106,7 +106,7 @@ export interface CostHeadline {
 
 export interface AiHeadline {
   calls: CountHeadline;
-  /** Both services, over all attempts. Neutral: no badge. */
+  /** Allocator, explainer and voice, over all attempts. Neutral: no badge. */
   failure: RateHeadline;
   /** Allocator only, over its calls. */
   referee: RateHeadline & { status: Status };
@@ -115,7 +115,7 @@ export interface AiHeadline {
 
 /** The five key numbers of the AI usage page, from the daily rows and the optional `previous` block. */
 export function aiHeadline(usage: AiUsage): AiHeadline {
-  const forService = (service: "allocator" | "explainer") => {
+  const forService = (service: "allocator" | "explainer" | "voice") => {
     const days = usage.days.map((d) => d.services[service]);
     const previous = usage.previous?.services[service];
     return {
@@ -126,10 +126,11 @@ export function aiHeadline(usage: AiUsage): AiHeadline {
   };
   const allocator = forService("allocator");
   const explainer = forService("explainer");
+  const voice = forService("voice");
 
-  const perDay = allocator.perDay.map((a, i) => sum(a, explainer.perDay[i]!));
-  const total = sum(allocator.total, explainer.total);
-  const prev = allocator.prev && explainer.prev && sum(allocator.prev, explainer.prev);
+  const perDay = allocator.perDay.map((a, i) => sum(sum(a, explainer.perDay[i]!), voice.perDay[i]!));
+  const total = sum(sum(allocator.total, explainer.total), voice.total);
+  const prev = allocator.prev && explainer.prev && voice.prev && sum(sum(allocator.prev, explainer.prev), voice.prev);
 
   const failureSeries = perDay.map((f) => percentOf(f.failures, f.attempts));
   const refereeSeries = allocator.perDay.map((f) => percentOf(f.rejected, f.calls));

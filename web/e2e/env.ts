@@ -12,4 +12,5 @@ function required(name: string): string {
 export const apiBaseUrl = required("VITE_API_BASE_URL").replace(/\/+$/, "");
 export const cognitoRegion = required("VITE_COGNITO_REGION");
 export const cognitoClientId = required("VITE_COGNITO_CLIENT_ID");
-export const passwordPolicy = required("VITE_PASSWORD_POLICY");
+export const pluggyConnectSri = required("VITE_PLUGGY_CONNECT_SRI");
+export const passwordPolicy =required("VITE_PASSWORD_POLICY");

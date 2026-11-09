@@ -120,6 +120,15 @@ module "api" {
       DATABASE_URL_SSM_PARAM         = module.database.database_url_param
       MIGRATE_DATABASE_URL_SSM_PARAM = module.database.migrate_database_url_param
 
+      # The Finances allowlist (#422). A resource reference, so Terraform
+      # creates the parameter before the function can start.
+      FINANCE_ALLOWLIST_SSM_PARAM = aws_ssm_parameter.finance_allowlist.name
+
+      # The key that seals Pluggy credentials (#423). A plain string, not a
+      # resource: a human creates the SecureString, so it never enters state.
+      # Without it the finance routes answer 503 and the rest of the API runs.
+      FINANCE_ENCRYPTION_KEY_SSM_PARAM = "${local.ssm_prefix}/finance-encryption-key"
+
       # Public identifiers, not secrets, so plain variables (no SSM).
       COGNITO_ISSUER    = module.auth.issuer
       COGNITO_CLIENT_ID = module.auth.client_id
@@ -156,6 +165,10 @@ module "allocation_job" {
   command             = ["events"]
   schedule_expression = "rate(15 minutes)"
   ssm_path_prefix     = local.ssm_prefix
+
+  # Named, not the whole prefix: the job must not read the finance encryption
+  # key (#423).
+  ssm_parameter_names = ["database-url", "vapid-private-key", "anthropic-api-key"]
 
   # A tick is up to 20s of allocator calls, 15s of explanation calls (#28) and
   # 30s of nudges: 65s in the worst case, so the module's 60s default is too
@@ -195,6 +208,69 @@ module "allocation_job" {
       ANTHROPIC_API_KEY_SSM_PARAM = "${local.ssm_prefix}/anthropic-api-key"
     } : {},
   )
+}
+
+# The Finances sync (#425): the same image, started with the command
+# "finance-events", once an hour. It imports a User's last 12 months in monthly
+# windows that resume across runs, then refreshes each User once a day, so most
+# invocations find nobody due and end in milliseconds (docs/adr/0008).
+module "finance_job" {
+  source = "../modules/scheduled-job"
+
+  name                = "${local.name_prefix}-finance"
+  description         = "Imports and refreshes the Transactions of every User whose sync is due"
+  image_uri           = "${module.api.ecr_repository_url}:${var.image_tag}"
+  command             = ["finance-events"]
+  schedule_expression = "rate(1 hour)"
+  ssm_path_prefix     = local.ssm_prefix
+
+  # Only this job and the API may read the finance encryption key (#423).
+  ssm_parameter_names = ["database-url", "finance-encryption-key", "finance-allowlist", "anthropic-api-key", "vapid-private-key"]
+
+  # A run works up to 60s and stops starting windows with 10s left.
+  timeout = 90
+
+  environment = merge(
+    {
+      PORT                             = "8080"
+      DB_MAX_CONNS                     = "2"
+      DATABASE_URL_SSM_PARAM           = module.database.database_url_param
+      FINANCE_ENCRYPTION_KEY_SSM_PARAM = "${local.ssm_prefix}/finance-encryption-key"
+      FINANCE_ALLOWLIST_SSM_PARAM      = aws_ssm_parameter.finance_allowlist.name
+
+      # Lambda Web Adapter forwards the scheduled event to POST /events; "/" is
+      # not served by the job.
+      AWS_LWA_READINESS_CHECK_PATH = "/healthz"
+    },
+    # The Categorizer (#427), step 3 of the Spending Category decision. It shares
+    # the allocator's key and its switch; without them step 3 is skipped.
+    var.llm_allocator_enabled ? {
+      ANTHROPIC_API_KEY_SSM_PARAM = "${local.ssm_prefix}/anthropic-api-key"
+    } : {},
+    # The Bill reminders (#435) push with the same VAPID settings as the API;
+    # without the public key the job sends none.
+    var.vapid_public_key == "" ? {} : {
+      VAPID_PUBLIC_KEY            = var.vapid_public_key
+      VAPID_SUBJECT               = var.vapid_subject
+      VAPID_PRIVATE_KEY_SSM_PARAM = "${local.ssm_prefix}/vapid-private-key"
+    },
+  )
+}
+
+# Emails allowed to use Finances (#422), a StringList a human edits with
+# `aws ssm put-parameter --overwrite` (docs/development.md). Terraform creates
+# it with a placeholder (SSM refuses an empty value; "none" has no @, so it
+# allows nobody) and ignores later changes to the value. It is here, not in a
+# module, because modules know no environment.
+resource "aws_ssm_parameter" "finance_allowlist" {
+  name  = "${local.ssm_prefix}/finance-allowlist"
+  type  = "StringList"
+  tier  = "Standard"
+  value = "none"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
 }
 
 module "http_api" {

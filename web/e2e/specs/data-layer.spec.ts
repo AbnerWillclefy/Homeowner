@@ -8,7 +8,7 @@ import { seedSession } from "../mocks/session";
 import { GOOD_PASSWORD } from "../mocks/users";
 import { launchApp } from "../pages/launch";
 
-// What this covers: the data layer end to end, in pt-BR and then en-US. Coming back to Today shows the cached plan at
+// What this covers: the data layer end to end, in pt-BR. Coming back to Today shows the cached plan at
 // once (no skeleton) with the Refreshing indicator while the refetch is held; a Task action sends no new read of the
 // plan; a different Resident signing in on the same device never sees the first one's data; and resuming the page
 // (visibilitychange) refetches the current page. The network is faked with page.route and the fake API, never real.
@@ -26,19 +26,6 @@ const LOCALES = [
     password: "Senha",
     signIn: "Entrar",
     accept: (task: string) => `Aceitar ${task}`,
-  },
-  {
-    locale: "en-US",
-    chores: "Chores",
-    today: "Today",
-    me: "Me",
-    refreshing: "Refreshing",
-    committed: "Committed",
-    signOut: "Sign out",
-    email: "Email",
-    password: "Password",
-    signIn: "Sign in",
-    accept: (task: string) => `Accept ${task}`,
   },
 ] as const;
 

@@ -66,7 +66,7 @@ describe("notificationFromPush", () => {
   });
 
   describe.each(LOCALES)("a known kind in %s", (locale) => {
-    it.each(["checkin_reminder", "day_plan_ready"] as const)("shows the device-language text for %s", (kind) => {
+    it.each(["checkin_reminder", "day_plan_ready", "bill_due_today", "bill_due_soon", "bill_overdue"] as const)("shows the device-language text for %s", (kind) => {
       const text = JSON.stringify({ kind, title: "Server title", body: "Server body", url: "/" });
       expect(notificationFromPush(text, locale)).toEqual({ ...KIND_TEXT[kind][locale], url: "/" });
     });

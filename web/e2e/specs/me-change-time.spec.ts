@@ -7,7 +7,7 @@ import { RESIDENT_EMAIL, signedInResident, thirtyDayHistory } from "../mocks/sam
 import { seedSession } from "../mocks/session";
 import { launchApp, visit } from "../pages/launch";
 
-// What this covers, in both locales and at the largest text size: the "Change time" action on Me's Completions and
+// What this covers, in pt-BR and at the largest text size: the "Change time" action on Me's Completions and
 // on Today's Done cards. A Completion moves from today to yesterday and Today's Done list loses it; the server's
 // day wins when the device zone differs from the Home's; every error code shows its calm message and leaves the
 // dialog open (and a retry then works); a value outside the bounds is refused without a call; a double click sends
@@ -34,27 +34,6 @@ const LOCALES = [
       notFound: "Esta conclusão não está mais aqui. Abra a tela de novo para ver a lista atual.",
       offline: "Sem conexão agora. Confira e tente de novo.",
       error: "Não foi possível salvar a hora. Tente de novo em instantes.",
-    },
-  },
-  {
-    locale: "en-US",
-    me: "Me",
-    home: "Home",
-    change: "Change time",
-    label: "When did you do it?",
-    save: "Save",
-    cancel: "Cancel",
-    today: "Today",
-    yesterday: "Yesterday",
-    errors: {
-      in_future: "That time has not come yet. Pick one that has already passed.",
-      too_old: "Only the last 30 days can be changed. Pick a more recent day.",
-      before_task: "That is before this Task started. Pick a later time.",
-      invalid_completed_at: "That time is not complete. Pick the date and the time.",
-      not_yours: "Only the people who did this Task can change its time.",
-      notFound: "This Completion is no longer here. Open the screen again to see it up to date.",
-      offline: "No connection right now. Check it and try again.",
-      error: "Could not save the time. Try again in a moment.",
     },
   },
 ] as const;

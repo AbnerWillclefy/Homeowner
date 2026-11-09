@@ -15,7 +15,7 @@ type Equal<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
 export const stepsMatchApp: Equal<typeof STEPS, typeof ONBOARDING_STEPS> = true;
 
 export interface FakeState {
-  user: { id: string; email: string; displayName?: string; photoUrl?: string };
+  user: { id: string; email: string; displayName?: string; photoUrl?: string; finance?: boolean };
   /** The last step completed, not the step to show. Null when onboarding has not started. */
   onboardingStored: string | null;
   home: Home | null;
@@ -42,6 +42,56 @@ export interface FakeState {
   streak?: number;
   /** Whether `GET /home/streak` says today already grew the Streak. Absent means false. */
   streakTodayGrew?: boolean;
+  /** What `GET /me/finance` answers. Absent means no credentials, no Sources. */
+  finance?: {
+    configured: boolean;
+    sources: { id: string; name: string; kind: string; currency: string }[];
+    importing: boolean;
+    lastSyncedAt: string | null;
+    /**
+     * What `GET /me/finance/bills` lists. `paid` maps `YYYY-MM` to who paid that month. Absent means none. `paidCents`
+     * maps a month to what was paid (absent: the expected amount); `createdMonth` hides the Bill from earlier months.
+     */
+    bills?: {
+      id: string;
+      name: string;
+      expectedCents: number;
+      dueDay: number;
+      paid: Record<string, "hand" | "bank">;
+      paidCents?: Record<string, number>;
+      createdMonth?: string;
+    }[];
+    /** What `GET /me/finance/bill-suggestions` proposes, less the keys in `dismissedSuggestions`. Absent means none. */
+    billSuggestions?: { merchantKey: string; name: string; amountCents: number; dueDay: number }[];
+    /** The merchant keys `POST /me/finance/bill-suggestions/dismissals` stored. */
+    dismissedSuggestions?: string[];
+    /** The day (`YYYY-MM-DD`) `GET /me/finance/daily` stops the running month at, as the server stops at its own today. Absent means the real one. */
+    today?: string;
+    /** The Spending limits (category to cents), the same for every month; `PUT /me/finance/budgets/{category}` sets them. Absent means none. */
+    limits?: Record<string, number>;
+    /** Monthly income, which `PUT /me/finance/income` sets. Absent means none. */
+    monthlyIncomeCents?: number | null;
+    /** The months `GET /me/finance/commitments` lists; the fake adds `percentOfIncome` from the income. Absent means none. */
+    commitments?: {
+      month: string;
+      committedCents: number;
+      installments: { name: string; number: number; total: number; amountCents: number }[];
+      bills: { id: string; name: string; expectedCents: number }[];
+    }[];
+    /** What `GET /me/finance/transactions` reads, any month; the PATCH edits these. Absent means none. */
+    transactions?: {
+      id: string;
+      postedOn: string;
+      description: string;
+      sourceName: string;
+      amountCents: number;
+      currency: string;
+      type: "income" | "expense" | "transfer";
+      spendingCategory: string | null;
+      /** `fallback` is a Transaction nothing could categorise; the PATCH sets `user`. Absent reads as null. */
+      categorySetBy?: "auto" | "user" | "fallback" | null;
+    }[];
+  };
 }
 
 export function initialState(): FakeState {
@@ -230,7 +280,7 @@ export function coreHandlers(api: FakeApi): void {
     signedIn((_, state) => {
       const { id, email, displayName, photoUrl } = state.user;
       const name = shownName({ email, displayName });
-      return json(200, { id, email, displayName: displayName ?? null, name, photoUrl: photoUrl ?? null, ...avatarFor(name) });
+      return json(200, { id, email, displayName: displayName ?? null, name, photoUrl: photoUrl ?? null, ...avatarFor(name), finance: state.user.finance ?? false });
     }),
   );
   // Mirrors NormalizeName in backend/internal/users/name.go for the cases a spec needs: trim, a blank name clears,
@@ -247,7 +297,7 @@ export function coreHandlers(api: FakeApi): void {
       const shown = shownName({ email, displayName });
       const mine = state.residents?.find((resident) => resident.you);
       if (mine) mine.name = shown;
-      return json(200, { id, email, displayName: displayName ?? null, name: shown, photoUrl: photoUrl ?? null, ...avatarFor(shown) });
+      return json(200, { id, email, displayName: displayName ?? null, name: shown, photoUrl: photoUrl ?? null, ...avatarFor(shown), finance: state.user.finance ?? false });
     }),
   );
   api.on("GET /me/onboarding", signedIn((_, state) => json(200, { step: nextStep(state.onboardingStored) })));

@@ -47,7 +47,7 @@ reset() {
   jq -n --arg b "$(body low)" --arg sha "$head" \
     '{state: "OPEN", author: {login: "homeowner-agents"}, baseRefName: "main", isDraft: false,
       labels: [{name: "review-addressed"}], headRefOid: $sha, mergeable: "MERGEABLE", title: "t", url: "u", body: $b}' >"$fix/pr.json"
-  jq -n '[("backend-test", "web-typecheck", "web-e2e", "ui-screenshots", "claude-review", "claude-security-review")
+  jq -n '[("backend-test", "web-typecheck", "web-e2e", "ui-screenshots", "claude-review")
           | {name: ., bucket: "pass", startedAt: "2026-01-01T10:00:00Z"}]
         + [{name: "pr-risk", bucket: "cancel", startedAt: "2026-01-01T10:00:00Z"},
            {name: "pr-risk", bucket: "pass", startedAt: "2026-01-01T10:05:00Z"}]' >"$fix/checks.json"

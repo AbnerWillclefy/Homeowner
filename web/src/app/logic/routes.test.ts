@@ -114,9 +114,11 @@ describe("isShellPath", () => {
   it("accepts the edit screen under Me, with a trailing slash, search or hash", () => {
     expect(isShellPath("/me/edit")).toBe(true);
     expect(isShellPath("/me/edit/?a=1#b")).toBe(true);
+    expect(isShellPath("/finances/ajustes")).toBe(true);
+    expect(isShellPath("/finances/ajustes/")).toBe(true);
   });
 
-  it.each(["/me/other", "/me/edit/more", "/chores/edit", "/signin", "/welcome/home", "/nope", "/mex"])("rejects %s", (path) => {
+  it.each(["/me/other", "/finances/other", "/me/edit/more", "/chores/edit", "/signin", "/welcome/home", "/nope", "/mex"])("rejects %s", (path) => {
     expect(isShellPath(path)).toBe(false);
   });
 });

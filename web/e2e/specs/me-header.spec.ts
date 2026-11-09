@@ -6,7 +6,7 @@ import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
 
-// What this covers, in both locales: the Me header (Avatar initials, name, email, Streak), the "Add your name and
+// What this covers, in pt-BR: the Me header (Avatar initials, name, email, Streak), the "Add your name and
 // photo" link and the edit pencil, the edit route (saving, clearing, the length message before and after the
 // request), no Streak line without a Home, and a failed GET /me that leaves the cards below working.
 
@@ -29,21 +29,6 @@ const LOCALES = [
     loadFailed: "Não foi possível carregar seu nome.",
     retry: "Tentar de novo",
     baseline: "Energia base",
-  },
-  {
-    locale: "en-US",
-    me: "Me",
-    today: "Today",
-    addLink: "Add your name and photo",
-    edit: "Edit name and photo",
-    nameLabel: "Name",
-    save: "Save",
-    back: "Back",
-    tooLong: "A name can have at most 40 characters. Shorten it and save again.",
-    streak: "5-day Streak",
-    loadFailed: "Could not load your name.",
-    retry: "Try again",
-    baseline: "Baseline",
   },
 ] as const;
 

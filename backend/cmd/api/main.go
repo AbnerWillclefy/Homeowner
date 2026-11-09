@@ -1,7 +1,8 @@
 // Command api runs the Homeowner HTTP API. `api` (or `api serve`) serves;
 // `api migrate` applies database migrations and exits; `api allocate` runs the
 // Allocation job once and exits; `api events` serves the Allocation job's
-// Lambda (only the scheduled tick, see docs/adr/0008).
+// Lambda (only the scheduled tick, see docs/adr/0008); `api finance-events`
+// serves the finance Lambda (only the hourly Transaction sync).
 package main
 
 import (
@@ -24,6 +25,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/config"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/db"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/pluggy"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/server"
 )
@@ -65,8 +67,10 @@ func run(args []string, log *slog.Logger) error {
 		return allocate(ctx, cfg, log)
 	case "events":
 		return events(ctx, cfg, log)
+	case "finance-events":
+		return financeEvents(ctx, cfg, log)
 	default:
-		return fmt.Errorf("unknown command %q (want serve, migrate, allocate, events or vapid)", cmd)
+		return fmt.Errorf("unknown command %q (want serve, migrate, allocate, events, finance-events or vapid)", cmd)
 	}
 }
 
@@ -91,7 +95,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	}
 	defer pool.Close()
 
-	deps := server.Deps{DB: pool, Clock: clock.System{}, Logger: log, CORSAllowedOrigins: cfg.CORSAllowedOrigins, Environment: cfg.Environment,
+	deps := server.Deps{DB: pool, Clock: clock.System{}, Logger: log, CORSAllowedOrigins: cfg.CORSAllowedOrigins, Environment: cfg.Environment, FinanceAllowlist: cfg.FinanceAllowlist, FinanceKey: cfg.FinanceKey, Pluggy: pluggy.NewHTTP(cfg.PluggyBaseURL),
 		LLMDailyCapPerHome: cfg.LLMDailyCapPerHome, LLMMonthlySpendLimitMicros: cfg.LLMMonthlySpendLimitMicros}
 	if cfg.VAPIDEnabled() {
 		deps.Push = push.NewWebPushSender(cfg.VAPIDPublicKey, cfg.VAPIDPrivateKey, cfg.VAPIDSubject)

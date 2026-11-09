@@ -24,12 +24,16 @@ import (
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/finance"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/nudge"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/photos"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/config"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/db"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/pluggy"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/pluggy/pluggytest"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/push"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/server"
 )
@@ -47,11 +51,19 @@ type App struct {
 	Push *push.Fake
 	// Photos is the fake object store; nil unless started WithPhotos.
 	Photos *photos.Fake
+	// Pluggy is the fake Pluggy server; nil unless started WithPluggy.
+	Pluggy *pluggytest.Server
 	// Auth is the fake token verifier; nil when started WithoutAuth.
 	Auth *auth.Fake
 	// Planner is the Allocation job's planner over the same database. It
 	// plans with the baseline allocator unless UseAllocator replaces it.
 	Planner *dayplan.Planner
+	// FinanceSyncer is the finance sync over the same database and fake Pluggy;
+	// nil unless started with a finance key and WithPluggy.
+	FinanceSyncer *finance.Syncer
+	// FinanceReminders sends the Bill reminders through the fake Web Push
+	// sender; nil unless started WithPush.
+	FinanceReminders *finance.Reminders
 
 	queries *queryCounter
 	alloc   *swapAllocator
@@ -136,6 +148,33 @@ func WithLLMDisplay(dailyCap int, limitMicros int64) Option {
 	}
 }
 
+// FinanceTestKey is the fixed encryption key tests start Finances with.
+func FinanceTestKey() *[32]byte {
+	k := [32]byte{1, 2, 3}
+	return &k
+}
+
+// WithFinance sets the emails that may use Finances and the key that seals
+// their credentials; a nil key starts the API as if none were configured.
+func WithFinance(key *[32]byte, emails ...string) Option {
+	return func(d *server.Deps) { d.FinanceAllowlist, d.FinanceKey = emails, key }
+}
+
+// WithFinanceSyncBudget sets how long one RunFinanceSync works. A tiny one ends
+// each run after its first window, to test a resumed import.
+func WithFinanceSyncBudget(d time.Duration) Option {
+	return func(deps *server.Deps) { deps.FinanceSyncBudget = d }
+}
+
+// pending marks Deps.Pluggy until Start has a *testing.TB to start the fake with.
+var pending = pluggy.NewHTTP("")
+
+// WithPluggy points Finances at the fake Pluggy replaying the sandbox capture.
+// The real adapter runs against it; the fake is exposed as App.Pluggy.
+func WithPluggy() Option {
+	return func(d *server.Deps) { d.Pluggy = pending }
+}
+
 // Start boots the API on a fresh database cloned from the migrated template.
 func Start(t testing.TB, opts ...Option) *App {
 	t.Helper()
@@ -166,19 +205,40 @@ func Start(t testing.TB, opts ...Option) *App {
 	for _, opt := range opts {
 		opt(&deps)
 	}
+	var fakePluggy *pluggytest.Server
+	if deps.Pluggy == pending {
+		fakePluggy = pluggytest.NewServer(t)
+		deps.Pluggy = pluggy.NewHTTP(fakePluggy.URL)
+	}
 	srv := httptest.NewServer(server.New(deps))
 	t.Cleanup(srv.Close)
 
-	app := &App{URL: srv.URL, Clock: fake, DB: pool, Logs: logs, alloc: swappable, queries: counter}
+	app := &App{URL: srv.URL, Clock: fake, DB: pool, Logs: logs, Pluggy: fakePluggy, alloc: swappable, queries: counter}
 	app.Push, _ = deps.Push.(*push.Fake)
 	app.Photos, _ = deps.Photos.(*photos.Fake)
 	if app.Push != nil {
 		// The job nudges through the same fake the server sends with.
 		app.nudger = nudge.New(pool, app.Push, slog.New(slog.NewJSONHandler(logs, nil)))
+		app.FinanceReminders = finance.NewReminders(finance.NewStore(pool), push.NewStore(pool), app.Push,
+			finance.NewAllowlist(deps.FinanceAllowlist), slog.New(slog.NewJSONHandler(logs, nil)))
 	}
 	app.UseAllocator(allocation.Baseline{})
 	app.Auth, _ = deps.Verifier.(*auth.Fake)
+	if deps.Pluggy != nil && deps.FinanceKey != nil {
+		app.FinanceSyncer = finance.NewSyncer(finance.NewStore(pool), deps.Pluggy, deps.FinanceKey,
+			finance.NewAllowlist(deps.FinanceAllowlist), slog.New(slog.NewJSONHandler(logs, nil)), deps.FinanceSyncBudget)
+	}
 	return app
+}
+
+// UseCategorizer makes the finance sync ask fake for the Spending Category of
+// the Expenses that no correction and no Pluggy category decide. It needs
+// WithFinance (with a key) and WithPluggy.
+func (a *App) UseCategorizer(fake *llmalloc.FakeClient) {
+	if a.FinanceSyncer == nil {
+		panic("apitest: UseCategorizer needs WithFinance with a key and WithPluggy")
+	}
+	a.FinanceSyncer.WithCategorizer(llmalloc.NewCategorizer(fake), config.DefaultLLMModel)
 }
 
 // UseAllocator makes the Allocation job plan with al, for example a stub that
@@ -228,6 +288,33 @@ func (a *App) RunAllocation(t testing.TB) dayplan.Summary {
 		t.Fatalf("apitest: RunAllocation: %v", err)
 	}
 	return sum
+}
+
+// RunFinanceSync runs the finance sync once at the fake clock's current time,
+// exactly as the hourly event does, and returns what it did. It needs
+// WithFinance (with a key) and WithPluggy.
+func (a *App) RunFinanceSync(t testing.TB) finance.Summary {
+	t.Helper()
+	if a.FinanceSyncer == nil {
+		t.Fatal("apitest: RunFinanceSync needs WithFinance with a key and WithPluggy")
+	}
+	sum, err := a.FinanceSyncer.Run(context.Background(), a.Clock.Now())
+	if err != nil {
+		t.Fatalf("apitest: RunFinanceSync: %v", err)
+	}
+	return sum
+}
+
+// RunFinanceReminders sends the Bill reminders once at the fake clock's current
+// time, as the hourly event does after the sync. It needs WithPush.
+func (a *App) RunFinanceReminders(t testing.TB) {
+	t.Helper()
+	if a.FinanceReminders == nil {
+		t.Fatal("apitest: RunFinanceReminders needs WithPush")
+	}
+	if err := a.FinanceReminders.Run(context.Background(), a.Clock.Now()); err != nil {
+		t.Fatalf("apitest: RunFinanceReminders: %v", err)
+	}
 }
 
 // Client is a signed-in caller: every request carries its bearer token.

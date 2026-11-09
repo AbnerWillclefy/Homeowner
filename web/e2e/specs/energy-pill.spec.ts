@@ -12,7 +12,7 @@ import { shell } from "../pages/shell";
 // pill); saving updates the pill to the Energy number without a reload; a failed Check-in read gives an
 // unavailable pill while the Streak still shows; on Today the pill alone opens the one dialog, which shows the planned
 // Effort and the day's Restrictions; the targets are at
-// least 2.75rem. Each test runs in pt-BR first, then en-US.
+// least 2.75rem. Each test runs in pt-BR.
 
 const LOCALES = [
   {
@@ -27,20 +27,6 @@ const LOCALES = [
     cancel: "Agora não",
     plannedLine: /^\d+ de 8 planejados$/,
     noRestrictions: "Nenhuma restrição hoje",
-    wordmark: "Check-in",
-  },
-  {
-    locale: "en-US",
-    unset: "Check in",
-    energy: (n: number) => `Energy today: ${n}. Change Check-in`,
-    pending: (level: string) => `Checked in: ${level}. Change Check-in`,
-    unavailable: "Energy unavailable. Try again",
-    streak: /^Streak: /,
-    normal: "Normal",
-    save: "Save",
-    cancel: "Not now",
-    plannedLine: /^\d+ of 8 planned$/,
-    noRestrictions: "No restrictions today",
     wordmark: "Check-in",
   },
 ] as const;

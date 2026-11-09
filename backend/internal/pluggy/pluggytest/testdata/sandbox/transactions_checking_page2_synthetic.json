@@ -1,0 +1,33 @@
+{
+  "results": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "description": "SYNTHETIC SECOND PAGE DEBIT",
+      "descriptionRaw": null,
+      "currencyCode": "BRL",
+      "amount": -12.34,
+      "date": "2026-01-15T03:00:00.000Z",
+      "category": null,
+      "accountId": "7e5bc95d-85bb-4b3a-9b97-58d456872529",
+      "status": "POSTED",
+      "type": "DEBIT",
+      "creditCardMetadata": null,
+      "providerId": null
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "description": "SYNTHETIC SECOND PAGE CREDIT",
+      "descriptionRaw": null,
+      "currencyCode": "BRL",
+      "amount": 100.05,
+      "date": "2026-01-14T03:00:00.000Z",
+      "category": "Transfers",
+      "accountId": "7e5bc95d-85bb-4b3a-9b97-58d456872529",
+      "status": "POSTED",
+      "type": "CREDIT",
+      "creditCardMetadata": null,
+      "providerId": null
+    }
+  ],
+  "next": null
+}

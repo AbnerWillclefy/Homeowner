@@ -11,6 +11,9 @@ colors:
   danger: "#b3261e"
   focus: "#1a5fb4"
   border: "#6b7a73"
+  chart-ink: "#3a4640"
+  chart-muted: "#6b7a73"
+  chart-track: "#e3e8e4"
   welcome-from: "#e3f3ea"
   welcome-to: "#f1ecfb"
   cat-peach: "#fde3d0"
@@ -150,6 +153,13 @@ A muted, sage-tinted neutral world with one deep teal voice and six soft pastels
 - **Focus Blue** (`focus`): the 2px focus outline, offset 2px. Only for focus.
 - **Brick** (`danger`): Leave Home, sign-out confirmations and errors, always paired with a thick 2px edge and words.
 
+### Chart ink
+- **Chart ink** (`chart-ink`): the main series, a filled bar and a reference tick. Dark: `#cdd6d1`.
+- **Chart muted** (`chart-muted`): the second series, drawn as dashes or hatch lines. Dark: `#8f9d96`.
+- **Chart track** (`chart-track`): the empty bar behind a value. Dark: `#2b3631`.
+
+They exist only for Finances charts (bars, markers, cumulative lines). Each is checked at 3:1 (WCAG 1.4.11) against the card, and ink against its own track.
+
 ### Category pastels
 Each is a fill with a paired ink. Kitchen peach, bathroom mint, bedroom and living room lavender, laundry and floors blue, trash and outdoor yellow, pets salmon. "Other" and anything unknown is the neutral card. The pastel fills the whole card only for your own Tasks; elsewhere it lives on the icon tile and the chip.
 
@@ -157,6 +167,8 @@ Each is a fill with a paired ink. Kitchen peach, bathroom mint, bedroom and livi
 **The One Voice Rule.** Teal means "this is the action". It never decorates, never labels a Category, and never appears on more than one button per card. One named exception: the mint check that is the door of the logo is decoration, in the brand mark only (`accent`, so it follows light and dark by token swap; the system text colour in forced-colours mode). It is never on a control, never repeated elsewhere, and never stands for a state.
 
 **The Pastels Name, Never Rank Rule.** A pastel says what kind of work it is, or, on an initials avatar, tells Residents apart. It is never used for status, urgency, success or Importance.
+
+**The Every Amount Is Text Rule.** A chart never carries an amount, a comparison or a trend only in its drawing. Every amount is also text in the page (`R$ 250,00`), every chart has a text alternative, and a line chart can be switched to a table of the same numbers. The drawing is a second way to read it, never the only one.
 
 **The Calm at Every Number Rule.** A Streak of 0, an empty plan or a Drained day uses the same neutral colours as a good day. There is no alarm colour for rest.
 
@@ -184,7 +196,7 @@ Each is a fill with a paired ink. Kitchen peach, bathroom mint, bedroom and livi
 
 One centred column, `max-width: 32rem`, with 1.5rem side padding plus the device's safe-area insets, and 2rem top and bottom. Cards stack with a 1rem gap; groups of cards are separated by a group heading and 2rem of space. Inside a card the rhythm is 0.75rem between rows, 1rem padding. Lists are real lists with no bullets.
 
-The bottom tab bar holds four equal tabs in the same 32rem column, keeps the bottom safe-area inset, and sits after the content, sticky, so it covers nothing once the page is scrolled to the end but does cover what lies at the fold while scrolling: keep a control that must be tappable on load high on the page.
+The bottom tab bar holds four equal tabs, or five with Finances for a User on the allowlist, in the same 32rem column, keeps the bottom safe-area inset, and sits after the content, sticky, so it covers nothing once the page is scrolled to the end but does cover what lies at the fold while scrolling: keep a control that must be tappable on load high on the page.
 
 ### Thumb reach
 Actions live where a right thumb lands. A card's actions are on their own row at the bottom of the card.
@@ -238,6 +250,12 @@ Icon and Category name on the Category pastel, a pill with a hairline edge, 0.87
   - Closed, it shows at most one line of title: no hint when the title is server text. The title wraps at large text and is never cut with an ellipsis (The Wrap, Never Truncate Rule).
   - The icon tile is decorative unless it carries meaning. When it does, it has a text description and the open body repeats it as a visible caption, never a tooltip. A state that is not an error (a fallback text, say) uses the neutral tile (muted tint, muted ink), not a warning icon.
 
+### Charts
+Finances only, hand-drawn in SVG and CSS (no chart library), in the `chart-*` tokens and nothing else: never teal (`accent`), never a Chore Category pastel, which name a different vocabulary. Colour never tells two series apart.
+- **Bar:** the label, the amount as text on its own line under it, then a 0.75rem rounded track (`chart-track`) with the fill on it. The label wraps and is never cut. The fill keeps a 1px edge so it shows in forced-colors mode.
+- **Second series:** hatched (diagonal lines in `chart-muted`) on a bar, dashed on a line. A reference value, such as last month's same-days value, is a tick in `chart-ink` on the bar's scale, with its value written in the text beside the bar.
+- **Cumulative line:** one line per series on a shared scale (solid, dashed, dotted), each series' final amount as text under it, and a "Ver tabela" / "Ver gráfico" toggle that swaps the drawing for a table of the same numbers.
+
 ### Top bar
 One quiet row above the content of every tab, in the same centred column, with no fill or edge of its own. On the left the logo; on the right two fixed slots, the Energy indicator and the Streak slot: two 4rem ghost icon buttons.
 - It reserves its whole height (at least 2.75rem) and both slots from the first frame, whatever the data, so nothing moves while the Check-in or the Streak loads. The bar stays on one row at 320px and the default text size, in both locales and in every state of the Energy indicator; the right group has no gap and a -0.5rem right margin (the buttons carry their own padding) so the logo and both 4rem slots fit the column. Only enlarged text may wrap it: the right group never shrinks, and then the indicator and the Streak drop under the logo, on the right, instead of leaving the screen.
@@ -264,7 +282,7 @@ The Streak is an icon with a short value, in the top bar's right-hand slot.
 Full width, 2.75rem minimum, card fill, 1px Hedge Line edge, 0.75rem radius, 1rem text. Focus is the global 2px Focus Blue outline. Labels sit above in 600.
 
 ### Navigation
-Four tabs, icon over label, equal width. Active tab: 4px Advisor Teal top edge, teal 600 label. Inactive: muted. Labels wrap at large text.
+Four, or five with Finances, tabs, icon over label, equal width. Active tab: 4px Advisor Teal top edge, teal 600 label. Inactive: muted. Labels wrap at large text.
 
 ### Task card (signature)
 The Category tile and name, the Chore as card title, then a wrapping line of facts (Effort dots and words, when it is due, Importance and people when unusual), then one reason line after a hairline divider with a lightbulb. Actions on the last row follow the Right Thumb Rule. Your own Tasks wear their Category pastel; others' and the pool's stay neutral with the pastel on the tile.
@@ -288,6 +306,7 @@ A refresh of data already on screen keeps the data and shows only a 1rem muted s
 - **Don't** add shadows, gradients on cards, or glass effects. The only gradient is onboarding's full-bleed welcome background.
 - **Don't** use teal for anything but the primary action and the active tab.
 - **Don't** use a pastel to mean status, urgency or success.
+- **Don't** colour a chart teal or with a Category pastel, or leave a chart amount only in the drawing.
 - **Don't** truncate text with an ellipsis.
 - **Don't** use alarm colours, exclamation marks or countdowns for rest, empty days or a Streak of 0.
 - **Don't** put the action you expect people to take on the left edge of a card or dialog.

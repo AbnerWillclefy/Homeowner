@@ -4,9 +4,22 @@
 // the caller referees every proposal with allocation.Check and falls back to
 // the baseline when it fails.
 //
-// The model sees opaque ids, numbers and fixed vocabulary only, never names,
-// emails, Chore titles or any text a User typed. This keeps personal data out
-// of a third party and leaves nothing to inject a prompt through.
+// The Allocator and the Explainer show the model opaque ids, numbers and fixed
+// vocabulary only, never names, emails, Chore titles or any text a User typed.
+// This keeps personal data out of a third party and leaves nothing to inject a
+// prompt through.
+//
+// The Categorizer (categorizer.go) is the exception: it sees bank merchant
+// text, which a bank wrote and a User did not type. What is filtered, in Go and
+// not by the model: only the normalised merchant key is sent (letters only, so
+// no digits, dates or card fragments), never an amount, a date, an account name
+// or an id; and keys that start like a transfer to a person (PIX, TED, DOC,
+// TRANSF) are never sent, since bank descriptions of those carry the
+// counterparty's name. The answer is a closed enum by index, so the model never
+// writes text back.
+//
+// Voice commands (package voice) send Chore titles and the Resident's words,
+// behind a confirmation: see ADR 0020.
 package llmalloc
 
 import (
@@ -42,6 +55,23 @@ type Request struct {
 	// Thinking turns on adaptive thinking, whose tokens count against
 	// MaxTokens. Off, the model answers straight away.
 	Thinking bool
+	// Tools, when set, makes the model answer with tool calls instead of
+	// Schema: Complete then returns a JSON array of ToolCall. Not with Thinking.
+	Tools []Tool
+}
+
+// Tool is one action the model may propose. InputSchema is a strict JSON
+// Schema object: additionalProperties false on every object.
+type Tool struct {
+	Name        string
+	Description string
+	InputSchema map[string]any
+}
+
+// ToolCall is one action the model proposed, with its raw input.
+type ToolCall struct {
+	Name  string          `json:"name"`
+	Input json.RawMessage `json:"input"`
 }
 
 // Usage is what one call to the model consumed. Model is the one the client
@@ -55,7 +85,8 @@ type Usage struct {
 }
 
 // Client sends a Request to a model and returns its structured answer, the
-// JSON object that follows Request.Schema. It must honour ctx's deadline.
+// JSON object that follows Request.Schema, or with Request.Tools a JSON array
+// of ToolCall. It must honour ctx's deadline.
 //
 // The *Usage is nil when the API sent none (a timeout, a transport or HTTP
 // error), and non-nil whenever a response came back, even with an error such

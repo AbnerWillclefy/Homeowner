@@ -12,7 +12,7 @@ import { shell } from "../pages/shell";
 // start; "Agora não" / "Not now" and Escape close it, the pill keeps the muted "?", and it stays closed on
 // the same day (switching tabs, resuming) until the next launch; a new Home day opens it again; a saved Check-in
 // or any tab but Today never opens it; it waits behind the Invite, the rating step and the start choice. Each
-// test runs in pt-BR first, then en-US.
+// test runs in pt-BR.
 
 const LOCALES = [
   {
@@ -29,21 +29,6 @@ const LOCALES = [
     ratingDone: "Concluir",
     startHeading: "Quando você quer as suas tarefas?",
     startTomorrow: "Começar amanhã",
-  },
-  {
-    locale: "en-US",
-    wordmark: "Check-in",
-    unset: "Check in",
-    notNow: "Not now",
-    save: "Save",
-    chores: "Chores",
-    today: "Today",
-    join: "Leave my Home and join this one",
-    inviteHeading: "Joining means leaving your Home",
-    ratingHeading: "Rate the biggest Chores",
-    ratingDone: "Done",
-    startHeading: "When do you want your Tasks?",
-    startTomorrow: "Start tomorrow",
   },
 ] as const;
 

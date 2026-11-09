@@ -85,6 +85,12 @@ run_case "a sign-in test is still high" \
   "$(files "$(file backend/internal/platform/auth/auth_test.go modified)")" "$(complete_body high)" \
   "floor=high"
 
+for f in web/CLAUDE.md backend/CLAUDE.md REVIEW.md AGENTS.md; do
+  run_case "the agents' instructions in $f are high" \
+    "$(files "$(file "$f" modified)")" "$(complete_body high)" \
+    "floor=high"
+done
+
 run_case "the API's authentication middleware is high" \
   "$(files "$(file backend/internal/server/auth.go modified)")" "$(complete_body high)" \
   "floor=high"

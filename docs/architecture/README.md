@@ -44,6 +44,9 @@ In diagrams, solid boxes and lines are built; dashed boxes and lines are planned
 | [0015](../adr/0015-merge-agent-pull-requests-by-risk-tier.md) | Merge agent pull requests by risk tier |
 | [0016](../adr/0016-start-todays-reads-at-launch-not-in-route-loaders.md) | Start Today's reads at launch, not in route loaders |
 | [0017](../adr/0017-operate-through-a-separate-admin-app-per-environment.md) | Operate through a separate admin app per environment, gated by a Cognito group, fed by a per-call LLM record |
+| [0018](../adr/0018-a-resident-can-re-date-a-completion-up-to-30-days-back.md) | A Resident can re-date a Completion up to 30 days back (amends 0014) |
+| [0019](../adr/0019-take-bank-data-from-pluggy-with-per-user-credentials-encrypted-by-the-app.md) | Take bank data from Pluggy with per-User credentials encrypted by the app |
+| [0020](../adr/0020-voice-commands-send-chore-titles-and-the-residents-words-behind-a-confirmation.md) | Voice commands send Chore titles and the Resident's words to the LLM, behind a confirmation |
 
 ## Keeping this current
 

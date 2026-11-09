@@ -76,4 +76,19 @@ Not domain terms, but kept consistent across the copy. GLOSSARY.md has no **Remi
 | written by the assistant (the explanation came from the model) | Escrito pelo assistente | Escrito pela IA (shorter; the glossary uses "IA" in `dayplan.replan.*`) | Used in `dayplan.summary.source.llm`. Pending native-speaker review. |
 | standard summary of today's reasons (the explanation built from the Allocation's recorded reasons) | Resumo padrão dos motivos de hoje | resumo básico, resumo automático | "padrão" matches "plano padrão" for the baseline allocator. Used in `dayplan.summary.source.template`. Pending native-speaker review. |
 
+## Money terms
+
+Finances is open only to Users on an allowlist. "Category" stays with Chores, so money uses Spending Category.
+
+| GLOSSARY.md term | pt-BR | pt-BR words to avoid | Note |
+|---|---|---|---|
+| Transaction | lançamento | transação, movimentação | One movement of money on a Source. Plural "lançamentos". Pending native-speaker review. |
+| Source | fonte | conta, banco, conexão | Where Transactions come from (a bank account or card). Avoid "conta": it also means a bill and a User account. |
+| Spending Category | categoria de gasto | categoria (alone), tag, etiqueta | Always "categoria de gasto" so it never reads as a Chore's category. |
+| Bill to pay | conta a pagar | fatura, boleto, dívida | Plural "contas a pagar". Money owed on a date. |
+| Installment plan | parcelamento | financiamento, empréstimo | A purchase paid in parts; each part is a "parcela". |
+| Summary (Finances view) | resumo | visão geral | The first Finances view. en-US "Summary". |
+| Monthly income | renda mensal | salário, receita, ganhos | What a User expects to receive each month. |
+| Spending limit | limite | orçamento, teto, meta | A User's monthly cap for one Spending Category; en-US "limit". |
+
 Apple and Android labels must match what the device shows in pt-BR. They are not yet verified on a pt-BR device.

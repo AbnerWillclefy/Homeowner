@@ -27,17 +27,6 @@ const LOCALES = [
     today: "Hoje",
     chores: "Afazeres",
   },
-  {
-    locale: "en-US",
-    mine: "Your Tasks",
-    headline: "A light day for you",
-    streak: /^Streak: /,
-    pill: /check.?in/i,
-    unavailable: "Energy unavailable. Try again",
-    retry: "Try again",
-    today: "Today",
-    chores: "Chores",
-  },
 ] as const;
 
 const SIZES = [

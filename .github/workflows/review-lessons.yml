@@ -1,0 +1,53 @@
+# Once a week, turns recurring review findings into rules for the engineers and recurring rejected
+# findings into suppressions for the reviewer (.claude/skills/review-lessons). Opens a pull request
+# the maintainer merges by hand: it changes the agents' instructions.
+name: Review lessons
+
+on:
+  schedule:
+    - cron: "0 12 * * 1" # Mondays 09:00 in Brasília
+  workflow_dispatch:
+
+concurrency:
+  group: review-lessons
+  cancel-in-progress: false
+
+jobs:
+  lessons:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GH_TOKEN: ${{ secrets.AGENTS_GH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.AGENTS_GH_TOKEN }}
+
+      - name: Identify the agents' git author
+        run: |
+          git config user.name "Homeowner Agents"
+          git config user.email "${{ vars.AGENTS_GIT_EMAIL }}"
+
+      - name: Collect the last 30 days of review outcomes
+        id: outcomes
+        run: |
+          .github/scripts/review-outcomes.sh threads "$(date -u -d '30 days ago' +%F)" > "$RUNNER_TEMP/threads.json"
+          .github/scripts/review-outcomes.sh summary < "$RUNNER_TEMP/threads.json" > "$RUNNER_TEMP/summary.json"
+          echo "count=$(jq length "$RUNNER_TEMP/threads.json")" >> "$GITHUB_OUTPUT"
+
+      - if: steps.outcomes.outputs.count != '0'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.AGENTS_GH_TOKEN }}
+          prompt: |
+            /review-lessons The review outcomes for ${{ github.repository }} are in ${{ runner.temp }}/threads.json and the weekly summary in ${{ runner.temp }}/summary.json. Today is the date `date -u +%F` prints.
+          claude_args: |
+            --max-turns 60
+            --model opus
+            --allowedTools "Read,Edit,Write,Grep,Glob,Bash(date *),Bash(jq *),Bash(git *),Bash(gh api *),Bash(gh pr create *),Bash(gh issue *)"
+            --disallowedTools "Bash(git push --force *),Bash(git push -f *),Bash(gh pr merge *)"

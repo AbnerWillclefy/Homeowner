@@ -5,9 +5,10 @@ import { AuthLayout } from "./AuthLayout";
 import { ConfirmPage, SignInPage, SignUpPage } from "./AuthPages";
 import { Guard } from "./Guard";
 import { LazyPage } from "./LazyPage";
-import { MeEditFallback, MeFallback, ResidentFallback } from "./lazyFallbacks";
+import { FinancesFallback, MeEditFallback, MeFallback, ResidentFallback } from "./lazyFallbacks";
+import { FinanceRoute } from "./pages/FinanceRoute";
 import { TodayPage } from "./pages";
-import { CHORES_PATH, CONFIRM_PATH, HOME_PATH, ME_EDIT_PATH, ME_PATH, RESIDENT_PATH, SIGN_IN_PATH, SIGN_UP_PATH, TODAY_PATH, WELCOME_PREFIX } from "../logic/routes";
+import { CHORES_PATH, CONFIRM_PATH, FINANCES_PATH, FINANCES_SETTINGS_PATH, HOME_PATH, ME_EDIT_PATH, ME_PATH, RESIDENT_PATH, SIGN_IN_PATH, SIGN_UP_PATH, TODAY_PATH, WELCOME_PREFIX } from "../logic/routes";
 import { Shell } from "./Shell";
 import { WelcomeLayout } from "./WelcomeLayout";
 
@@ -17,7 +18,9 @@ const ChoresPage = lazyNamed(() => import("./pages/ChoresPage"), "ChoresPage");
 const HomePage = lazyNamed(() => import("./pages/HomePage"), "HomePage");
 const ResidentRoute = lazyNamed(() => import("./pages/ResidentRoute"), "ResidentRoute");
 const MePage = lazyNamed(() => import("./pages/MePage"), "MePage");
-const MeEdit = lazyNamed(() => import("../../domains/profile/components/MeEdit"), "MeEdit");
+const FinancesTab = lazyNamed(() => import("../../domains/finance/components/FinancesTab"), "FinancesTab");
+const FinanceSettings = lazyNamed(() => import("../../domains/finance/components/FinanceSettings"), "FinanceSettings");
+const MeEdit =lazyNamed(() => import("../../domains/profile/components/MeEdit"), "MeEdit");
 
 /**
  * Every route sits under the Guard, which decides where the person may be (see resolveRoute). The catch-all
@@ -68,6 +71,26 @@ export function AppRoutes() {
               <LazyPage key="me" message="profile.loading" skeleton={<MeFallback />}>
                 <MePage />
               </LazyPage>
+            }
+          />
+          <Route
+            path={FINANCES_PATH}
+            element={
+              <FinanceRoute>
+                <LazyPage key="finances" message="finances.loading" skeleton={<FinancesFallback />}>
+                  <FinancesTab />
+                </LazyPage>
+              </FinanceRoute>
+            }
+          />
+          <Route
+            path={FINANCES_SETTINGS_PATH}
+            element={
+              <FinanceRoute>
+                <LazyPage key="finances-settings" message="finances.loading" skeleton={<FinancesFallback />}>
+                  <FinanceSettings />
+                </LazyPage>
+              </FinanceRoute>
             }
           />
           <Route

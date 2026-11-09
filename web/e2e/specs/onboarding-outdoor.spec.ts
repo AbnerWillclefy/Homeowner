@@ -26,19 +26,6 @@ const LOCALES = [
     none: "Nenhuma",
     chores: ["Regar o jardim 1", "Regar o jardim 2"],
   },
-  {
-    locale: "en-US",
-    next: "Next: about your Home",
-    suggest: "Suggest Chores",
-    legend: "Outdoor space",
-    garden: "Garden",
-    gardens: "Gardens",
-    balcony: "Balcony",
-    balconies: "Balconies",
-    yards: "Yards",
-    none: "None",
-    chores: ["Water the garden 1", "Water the garden 2"],
-  },
 ] as const;
 
 for (const l of LOCALES) {

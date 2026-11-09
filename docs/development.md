@@ -54,7 +54,8 @@ allowed to call the API; empty sends no CORS headers), `ENVIRONMENT` (`local`,
 `staging` or `production`; default `local`; any other value stops the API at
 start; `GET /admin/me` reports it), `LLM_MONTHLY_SPEND_LIMIT_USD` (optional,
 positive decimal dollars; the Anthropic Console's monthly limit, shown by
-`GET /admin/ai` and never enforced; unset shows no limit).
+`GET /admin/ai` and never enforced; unset shows no limit), `PLUGGY_BASE_URL`
+(default `https://api.pluggy.ai`; tests point it at the fake, never at Pluggy).
 
 ### The super admin role
 
@@ -80,6 +81,35 @@ A grant shows up after the person signs in again. A revoke takes effect when
 their ID token next refreshes, up to 60 minutes (`id_token_validity = 60` in
 `infra/modules/auth`); until then `GET <api>/admin/me` still answers 200. After
 that it answers 403.
+
+### The finance allowlist
+
+Only Users whose verified email is on the allowlist see Finances; every
+`/me/finance` route answers 403 to anyone else, and to everyone when the list is
+empty. `GET /me` tells the app with `finance: true` or `false`. There is no
+admin screen: the list is one SSM `StringList` per environment,
+`/homeowner/<env>/finance-allowlist`, that Terraform creates with the
+placeholder `none` (which allows nobody) and never overwrites. Emails match
+ignoring case. Locally, set `FINANCE_ALLOWLIST` in `.env`.
+
+Edit it (`<env>` is `staging` or `production`):
+
+```sh
+aws ssm put-parameter --name /homeowner/<env>/finance-allowlist \
+  --type StringList --value 'a@x.com,b@y.com' --overwrite
+aws ssm get-parameter --name /homeowner/<env>/finance-allowlist   # check it
+```
+
+The API reads the list once, at start-up, so a change applies at the next cold
+start. Force new instances with any configuration change on the function:
+
+```sh
+aws lambda update-function-configuration --function-name homeowner-<env>-api \
+  --description "allowlist $(date +%F)"
+```
+
+Then sign in as an allowlisted User and check that `GET /me` answers
+`finance: true`.
 
 ### Replan a staging Home
 

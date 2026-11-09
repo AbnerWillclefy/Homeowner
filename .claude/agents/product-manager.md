@@ -18,6 +18,7 @@ When you turn a feature request into tickets:
 2. Write user stories ("As a Resident, I want..., so that...") and the out-of-scope line for the feature.
 3. Split the work into tracer-bullet tickets: each one a thin, complete, demoable path through every layer, sized for one agent session. Give each ticket its blocking edges.
 4. Use the architect's design overview for where the work lands; you own what is built, the architect owns how it is shaped.
+5. End with one ticket that updates `docs/architecture/` to match what the others built, blocked by every other ticket. The other tickets leave `docs/architecture/` alone, so parallel pull requests do not conflict on it.
 
 Each ticket body uses these sections: Parent, What to build, Acceptance criteria (checkboxes), Blocked by. No file paths or code.
 

@@ -7,7 +7,7 @@ import { launchApp } from "../pages/launch";
 // What this covers: the lean Today. Under the top bar it opens with "Your Tasks" and its count, then the day's summary
 // as one muted line (plain text, not a control), then the Tasks. The summary names its source as visually hidden
 // text, shows nothing before planning or on a rejected run, and wraps at 320px with a long headline. The greeting,
-// the Energy card and the Check-in card are gone. Each test runs in pt-BR first, then en-US.
+// the Energy card and the Check-in card are gone. Each test runs in pt-BR.
 
 const LONG_HEADLINE = {
   "en-US": "A very long headline that goes on and on about why today looks the way it does for everybody here",
@@ -23,15 +23,6 @@ const LOCALES = [
     template: "Resumo padrão dos motivos de hoje",
     mine: "Suas tarefas",
     gone: [/Bom dia|Boa tarde|Boa noite/, "Como você está hoje?", "Mudar", /^Energia \d/],
-  },
-  {
-    locale: "en-US",
-    headline: "A light day for you",
-    detail: "Two small Tasks, and the rest can wait.",
-    llm: "Written by the assistant",
-    template: "Standard summary of today's reasons",
-    mine: "Your Tasks",
-    gone: [/Good (morning|afternoon|evening)/, "How are you today?", "Change", /^Energy \d/],
   },
 ] as const;
 

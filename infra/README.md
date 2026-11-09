@@ -90,6 +90,42 @@ their `locals`, backend key, `environment` tag, Neon project and budget.
    The AWS Budget does not see Anthropic spend; the monthly spend limit in
    "Production" below caps it. The per-Home daily cap (3 calls) bounds it in code.
 
+8. **Finance encryption key (#423)**, before anyone saves Pluggy credentials.
+   The API seals each User's Client ID and Secret with it. Without it the
+   `/me/finance` routes answer 503 `finance not configured` for allowed Users;
+   the rest of the API runs. Use a different key for production.
+   ```sh
+   aws ssm put-parameter --name /homeowner/staging/finance-encryption-key \
+     --type SecureString --value "$(openssl rand -base64 32)"
+   ```
+   Create it by hand so the key never lands in Terraform state. Only the API
+   role and the finance job's may read it: the Allocation job's policy names
+   its parameters one by one. **Never `--overwrite` a key in use**: every saved credential becomes
+   unreadable and Users must paste theirs again (Transactions are unaffected).
+   The API reads the key once per cold start. To check the grant:
+   `aws iam simulate-principal-policy --policy-source-arn <allocate role arn>
+   --action-names ssm:GetParameter --resource-arns <key arn>` answers
+   `implicitDeny`; the same call with the API role answers `allowed`.
+
+## The finance sync job
+
+`module "finance_job"` (both roots) is a third Lambda from the API image,
+command `finance-events`, named `homeowner-<env>-finance`, started by an
+EventBridge rule every hour. It reads only `database-url`,
+`finance-encryption-key`, `finance-allowlist`, `anthropic-api-key` and
+`vapid-private-key`. After each sync it sends the push reminders for Bills to
+pay (#435), so it gets the API's VAPID settings (`VAPID_PUBLIC_KEY`,
+`VAPID_SUBJECT`, `VAPID_PRIVATE_KEY_SSM_PARAM`) when `vapid_public_key` is set;
+without them it logs `bill reminders off` and sends none. The VAPID step above
+already creates the parameter. Cost: 24 invocations a day;
+most find nobody due and last milliseconds, and a User's 12-month import takes
+a few runs of up to 60 seconds, once. Nothing bills while idle.
+
+Rejected credentials make the job retry that User every hour, so up to 24
+failed Pluggy `Auth` calls a day until the User fixes them. That is accepted
+for now. Without the encryption key the job answers each event and logs
+`finance sync disabled`.
+
 ## How a deploy works
 
 `.github/workflows/deploy-staging.yml` (named exactly `Deploy staging`) runs on
@@ -202,6 +238,16 @@ production budget filters on the `environment` cost allocation tag, which was
 activated in Billing, Cost allocation tags; a deactivated tag makes it report $0.
 Budgets lag by hours and only warn; the Anthropic limit is the one that refuses
 requests.
+
+The Finances Categorizer (#427) spends from the same Anthropic limit, capped by
+`categorizerDailyCap = 10` calls per User per day (São Paulo date,
+`backend/internal/finance/categorize.go`; change the constant to change it).
+Worst case: a 100-merchant call is about 1.6k input and 1.2k output tokens; at
+`claude-haiku-5-5`'s $0.10 / $0.50 per MTok (`llmalloc/pricing.go`) that is about
+$0.0008 a call, so 10 calls x 30 days is about $0.25 a month per User. Past the
+cap, uncategorised Expenses stay Other and are retried the next day. The job
+needs `LLM_ALLOCATOR_ENABLED` and the `anthropic-api-key` parameter, like the
+allocator.
 
 ### Migrations: expand, then contract
 
@@ -330,7 +376,7 @@ ceiling of one call is 8192 output tokens, about $0.004.
 |---|---|
 | Lambda function | pay per use |
 | API Gateway HTTP API (+ `$default` stage) | pay per use |
-| SSM standard parameters (4 per environment: two database URLs, the VAPID private key, the Anthropic API key) | free |
+| SSM standard parameters (6 per environment: two database URLs, the VAPID private key, the Anthropic API key, the finance allowlist, the finance encryption key) | free |
 | AWS Budgets (2: account-wide and production) | free (first two budgets) |
 | Cognito user pool and app client (default email sender, no domain) | free (first 50,000 monthly active users) |
 | ECR repository | storage (lifecycle keeps the last 5 images) |

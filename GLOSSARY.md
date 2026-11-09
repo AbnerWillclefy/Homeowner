@@ -39,7 +39,7 @@ The fixed list of common Chores built into the app, from which a new Home's firs
 _Avoid_: Templates, Library, Defaults
 
 **Category**:
-What kind of work a Chore is, such as kitchen, laundry, bathroom, floors, trash, outdoor or pets. Every Chore has exactly one.
+What kind of work a Chore is, such as kitchen, laundry, bathroom, floors, trash, outdoor or pets. Every Chore has exactly one. "Category" belongs to Chores only: money uses Spending Category.
 _Avoid_: Type, Area, Tag
 
 **Demand**:
@@ -102,8 +102,44 @@ _Avoid_: Assigned, Claimed
 One Resident's offer to exchange one of their Tasks for another Resident's in today's Day Plan. It happens only when the other Resident accepts; declining changes nothing and costs nothing. When it happens, both Residents are Committed to the Task they receive.
 _Avoid_: Trade, Exchange
 
+**Voice command**:
+Something a Resident says to the app, such as "I'll take the dishes", that it turns into proposed changes to Chores or Tasks. Nothing changes until the Resident confirms them.
+_Avoid_: Voice assistant, Speech command
+
 ### Rewards
 
 **Streak**:
 The run of days on which a Resident completed at least one Task. A day on which they Committed to Tasks and completed none breaks it, unless they checked in Drained; any other day pauses it.
 _Avoid_: Combo, Chain
+
+### Money
+
+Finances is open only to Users on an allowlist of emails. These terms are about money; "Category" stays with Chores.
+
+**Transaction**:
+One movement of money on a Source, such as a purchase or a payment, with a date, an amount and a description.
+_Avoid_: Entry, Expense, Payment
+
+**Source**:
+A place Transactions come from, such as a bank account or a credit card, connected to the app.
+_Avoid_: Account, Bank, Connection
+
+**Spending Category**:
+What a Transaction was spent on, such as groceries, transport or rent. Every Transaction has at most one. It is not a Chore's Category.
+_Avoid_: Category, Tag, Label
+
+**Bill to pay**:
+Money owed that is due on a date, such as the credit card bill, rent or a utility. It is not a Transaction until it is paid.
+_Avoid_: Invoice, Debt, Due
+
+**Installment plan**:
+A purchase paid in several equal parts over several months. Each part is a Transaction.
+_Avoid_: Financing, Loan, Subscription
+
+**Monthly income**:
+The money a User expects to receive each month, which Finances compares with what is spent.
+_Avoid_: Salary, Revenue, Earnings
+
+**Spending limit**:
+The most a User wants to spend in one Spending Category in a month. It is set once and holds for every month; a category with no limit has none.
+_Avoid_: Budget (in copy), Cap, Quota

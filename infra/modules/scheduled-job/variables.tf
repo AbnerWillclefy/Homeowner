@@ -29,6 +29,11 @@ variable "ssm_path_prefix" {
   type        = string
 }
 
+variable "ssm_parameter_names" {
+  description = "Names under ssm_path_prefix the function may read, for example database-url. Required, so a job never reads a secret it was not given."
+  type        = list(string)
+}
+
 variable "environment" {
   description = "Environment variables of the function. Never put secrets here; pass SSM parameter names."
   type        = map(string)

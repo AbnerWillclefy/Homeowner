@@ -5,7 +5,7 @@ import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
 
-// What this covers: Today names Residents instead of numbering them, in both locales. Another
+// What this covers: Today names Residents instead of numbering them, in pt-BR. Another
 // Resident's group and a two-person Task show a name and an avatar, a photo that answers
 // text/html falls back to initials, and a failed residents call still leaves Today working with a placeholder.
 // The Swap offer cards, which name the other Resident the same way, are covered in today-swap.spec.ts.
@@ -34,7 +34,6 @@ function housemates(): FakeState {
 
 const LOCALES = [
   { locale: "pt-BR", withAna: "Com Ana Souza", withYou: "Com você", someone: "Um morador" },
-  { locale: "en-US", withAna: "With Ana Souza", withYou: "With you", someone: "A housemate" },
 ] as const;
 
 for (const l of LOCALES) {

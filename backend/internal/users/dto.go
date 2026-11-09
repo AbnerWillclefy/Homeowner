@@ -14,11 +14,13 @@ type MeResponse struct {
 	Initials    string  `json:"initials"`
 	AvatarTone  string  `json:"avatarTone"`
 	PhotoURL    *string `json:"photoUrl"`
+	// Finance is whether the User may use Finances (the allowlist).
+	Finance bool `json:"finance"`
 }
 
 // NewMeResponse returns u as it goes on the wire. photoURL turns the stored
-// photo key into its public URL.
-func NewMeResponse(u identity.User, photoURL func(*string) *string) MeResponse {
+// photo key into its public URL; finance is the allowlist answer.
+func NewMeResponse(u identity.User, photoURL func(*string) *string, finance bool) MeResponse {
 	name := identity.ShownName(u.DisplayName, u.Email)
 	return MeResponse{
 		ID: u.ID, Email: u.Email, DisplayName: u.DisplayName,
@@ -26,5 +28,6 @@ func NewMeResponse(u identity.User, photoURL func(*string) *string) MeResponse {
 		Initials:   Initials(name),
 		AvatarTone: AvatarTone(u.ID),
 		PhotoURL:   photoURL(u.PhotoKey),
+		Finance:    finance,
 	}
 }
