@@ -51,6 +51,8 @@ type App struct {
 	Push *push.Fake
 	// Photos is the fake object store; nil unless started WithPhotos.
 	Photos *photos.Fake
+	// Voice is the fake model behind voice; nil unless started WithVoice.
+	Voice *llmalloc.FakeClient
 	// Pluggy is the fake Pluggy server; nil unless started WithPluggy.
 	Pluggy *pluggytest.Server
 	// Auth is the fake token verifier; nil when started WithoutAuth.
@@ -126,6 +128,14 @@ func WithPhotos() Option {
 	return func(d *server.Deps) {
 		d.Photos = photos.NewFake()
 		d.PhotosBaseURL = PhotosBaseURL
+	}
+}
+
+// WithVoice turns voice on with a fake model, exposed as App.Voice.
+func WithVoice() Option {
+	return func(d *server.Deps) {
+		d.Voice = llmalloc.NewFakeClient()
+		d.VoiceModel = config.DefaultLLMModel
 	}
 }
 
@@ -216,6 +226,7 @@ func Start(t testing.TB, opts ...Option) *App {
 	app := &App{URL: srv.URL, Clock: fake, DB: pool, Logs: logs, Pluggy: fakePluggy, alloc: swappable, queries: counter}
 	app.Push, _ = deps.Push.(*push.Fake)
 	app.Photos, _ = deps.Photos.(*photos.Fake)
+	app.Voice, _ = deps.Voice.(*llmalloc.FakeClient)
 	if app.Push != nil {
 		// The job nudges through the same fake the server sends with.
 		app.nudger = nudge.New(pool, app.Push, slog.New(slog.NewJSONHandler(logs, nil)))
