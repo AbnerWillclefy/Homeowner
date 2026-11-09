@@ -41,7 +41,9 @@ func nullable(schema map[string]any) map[string]any {
 		out[k] = v
 	}
 	if e, ok := out["enum"].([]any); ok {
+		delete(out, "type")
 		out["enum"] = append(slices.Clone(e), nil)
+		return out
 	}
 	out["type"] = []any{out["type"], "null"}
 	return out
