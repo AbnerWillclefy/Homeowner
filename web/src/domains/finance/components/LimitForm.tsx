@@ -39,7 +39,7 @@ export function LimitForm({ limit, onSave }: { limit: number | undefined; onSave
   }
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col">
+    <form onSubmit={submit} noValidate className="mb-3 flex flex-col">
       <label htmlFor={`${form}-input`} className="mt-0">
         {t("finances.limit.label")}
       </label>
