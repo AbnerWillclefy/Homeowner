@@ -43,3 +43,17 @@ func TestEveryToolSchemaRequiredIsAnArray(t *testing.T) {
 		}
 	}
 }
+
+// Anthropic rejects a strict schema whose enum sits beside a ["string","null"]
+// type (400 "Enum value ... does not match declared type"), so a nullable enum
+// carries null in its values and no type.
+func TestEveryToolEnumHasNoTypeBesideIt(t *testing.T) {
+	for _, tool := range tools() {
+		for name, p := range tool.InputSchema["properties"].(map[string]any) {
+			prop := p.(map[string]any)
+			if _, ok := prop["enum"]; ok && prop["type"] != nil && prop["type"] != "string" {
+				t.Errorf("%s.%s: enum beside type %v", tool.Name, name, prop["type"])
+			}
+		}
+	}
+}
