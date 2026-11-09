@@ -338,7 +338,7 @@ func TestToolCallsComeBackInOrderAndTheTextIsDropped(t *testing.T) {
 }
 
 func TestNoToolCallIsAnEmptyListAndATruncatedOneIsInvalid(t *testing.T) {
-	client, _, _, _ := fakeAPI(t, http.StatusOK, toolMessage("tool_use", map[string]any{"type": "text", "text": "hm"}), 0)
+	client, _, _, _ := fakeAPI(t, http.StatusOK, toolMessage("end_turn", map[string]any{"type": "text", "text": "hm"}), 0)
 	raw, _, err := client.Complete(context.Background(), toolRequest)
 	if err != nil || string(raw) != "[]" {
 		t.Fatalf("raw = %s, err = %v", raw, err)

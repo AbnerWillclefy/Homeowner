@@ -85,7 +85,8 @@ type Usage struct {
 }
 
 // Client sends a Request to a model and returns its structured answer, the
-// JSON object that follows Request.Schema. It must honour ctx's deadline.
+// JSON object that follows Request.Schema, or with Request.Tools a JSON array
+// of ToolCall. It must honour ctx's deadline.
 //
 // The *Usage is nil when the API sent none (a timeout, a transport or HTTP
 // error), and non-nil whenever a response came back, even with an error such

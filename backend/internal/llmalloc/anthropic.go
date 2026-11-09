@@ -13,7 +13,8 @@ import (
 
 // Anthropic is the production Client: one call to the Anthropic Messages API
 // with structured output (output_config.format), so the answer is JSON that
-// follows Request.Schema.
+// follows Request.Schema; with Request.Tools it forces a tool call instead and
+// the answer is a JSON array of ToolCall.
 type Anthropic struct {
 	client anthropic.Client
 	model  string
@@ -27,7 +28,8 @@ func NewAnthropic(apiKey, model string, opts ...option.RequestOption) *Anthropic
 	return &Anthropic{client: anthropic.NewClient(opts...), model: model}
 }
 
-// Complete sends req at effort low. Thinking is adaptive when req asks for it
+// Complete sends req at effort low (with Request.Tools, as a forced tool call
+// rather than output_config.format). Thinking is adaptive when req asks for it
 // (its text is omitted: nobody reads it) and off otherwise; with adaptive
 // thinking MaxTokens is the only ceiling on how much the model thinks. The
 // referee, not the model, decides if the answer is good. No temperature is
