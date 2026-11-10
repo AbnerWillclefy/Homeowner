@@ -42,6 +42,8 @@ func twoSynced(t *testing.T) (app *apitest.App, ana, bia *apitest.Client, anaID,
 			`INSERT INTO finance_merchant_categories (user_id, merchant_key, spending_category, updated_at) VALUES ($1, 'NETFLIX COM', 'leisure', now())`,
 			`INSERT INTO finance_llm_calls (user_id, call_date, calls) VALUES ($1, current_date, 1)`,
 			`INSERT INTO finance_bill_suggestion_dismissals (user_id, merchant_key, dismissed_at) VALUES ($1, 'SPOTIFY', now())`,
+			`INSERT INTO finance_investments (id, user_id, name, value_cents, serves, created_at, updated_at) VALUES (gen_random_uuid(), $1, 'CDB', 100000, 'reserve', now(), now())`,
+			`INSERT INTO finance_goals (id, user_id, name, target_cents, position, created_at, updated_at) VALUES (gen_random_uuid(), $1, 'Trip', 500000, 1, now(), now())`,
 		} {
 			if _, err := app.DB.Exec(context.Background(), q, id); err != nil {
 				t.Fatal(err)
@@ -58,6 +60,8 @@ func twoSynced(t *testing.T) (app *apitest.App, ana, bia *apitest.Client, anaID,
 		}
 		apitest.ExpectStatus(t, c.Put("/me/finance/budgets/groceries", map[string]any{"limitCents": 40000}), http.StatusNoContent)
 		apitest.ExpectStatus(t, c.Put("/me/finance/income", map[string]any{"monthlyIncomeCents": 500000}), http.StatusNoContent)
+		apitest.ExpectStatus(t, putReserve(c, 600000), http.StatusNoContent)
+		apitest.ExpectStatus(t, putContribution(c, 100000, 40), http.StatusNoContent)
 		for i, n := range rowsOf(t, app, id) {
 			if n == 0 {
 				t.Fatalf("setup: %s has no rows for the User", finance.FinanceTables[i])
@@ -79,6 +83,7 @@ func TestDeleteRemovesOnlyTheCallersFinanceData(t *testing.T) {
 			t.Errorf("%s: %d rows left", finance.FinanceTables[i], n)
 		}
 	}
+	wantSavings(t, ana, nil, nil, nil)
 	st := ana.Get("/me/finance")
 	if st.Body["configured"] != false || st.Body["importing"] != false || st.Body["lastSyncedAt"] != nil || len(st.Body["sources"].([]any)) != 0 {
 		t.Errorf("status after delete = %s, want nothing configured", st.Raw)

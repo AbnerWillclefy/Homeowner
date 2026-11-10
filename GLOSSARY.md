@@ -143,3 +143,19 @@ _Avoid_: Salary, Revenue, Earnings
 **Spending limit**:
 The most a User wants to spend in one Spending Category in a month. It is set once and holds for every month; a category with no limit has none.
 _Avoid_: Budget (in copy), Cap, Quota
+
+**Investment**:
+Money a User has put away, with a name, a current value and what it serves: the Emergency reserve or the Goals.
+_Avoid_: Asset, Account, Portfolio
+
+**Emergency reserve**:
+The amount a User wants set aside for the unexpected. It has a target; the Investments that serve it count toward it.
+_Avoid_: Rainy-day fund, Safety net, Savings (alone)
+
+**Goal**:
+Something a User saves toward, with a target amount and, optionally, a target month. Goals are ordered; the order decides who is served first.
+_Avoid_: Objective, Dream, Target (alone)
+
+**Monthly contribution**:
+The amount a User puts into savings each month, and the share of it that goes to the Emergency reserve; the rest goes to the Goals. Sharing it among the Goals is the "contribution split", never "allocation": Allocation is the Chores module.
+_Avoid_: Deposit, Savings rate
