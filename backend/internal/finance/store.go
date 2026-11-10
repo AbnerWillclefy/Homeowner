@@ -104,7 +104,8 @@ type NewSource struct {
 
 // ConnectItem stores the User's Item and its Sources in one transaction.
 // Calling it again changes no row count: the Item is kept as it was and each
-// Source is refreshed in place.
+// Source is refreshed in place, except a card's bill days, which Pluggy fills
+// only while the card has none.
 func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, now time.Time, sources []NewSource) error {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
@@ -125,7 +126,10 @@ func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, no
 			INSERT INTO finance_sources (user_id, item_id, pluggy_account_id, kind, name, currency, bill_close_day, bill_due_day)
 			VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, 0), NULLIF($8, 0))
 			ON CONFLICT (item_id, pluggy_account_id) DO UPDATE SET kind = $4, name = $5, currency = $6,
-				bill_close_day = NULLIF($7, 0), bill_due_day = NULLIF($8, 0)`,
+				bill_close_day = CASE WHEN finance_sources.bill_close_day IS NULL AND finance_sources.bill_due_day IS NULL
+					THEN NULLIF($7, 0) ELSE finance_sources.bill_close_day END,
+				bill_due_day = CASE WHEN finance_sources.bill_close_day IS NULL AND finance_sources.bill_due_day IS NULL
+					THEN NULLIF($8, 0) ELSE finance_sources.bill_due_day END`,
 			userID, itemID, src.PluggyAccountID, src.Kind, src.Name, src.Currency, src.CloseDay, src.DueDay)
 		if err != nil {
 			return err
@@ -223,15 +227,17 @@ func (s *Store) SetImportCursor(ctx context.Context, sourceID string, day time.T
 	return err
 }
 
-// SetBillDays refreshes the bill days of the Item's card Sources from Pluggy's
-// accounts; an account the Item does not hold is ignored.
+// SetBillDays fills the bill days of the Item's card Sources from Pluggy's
+// accounts, only for a card with neither day stored, so a day the User typed
+// stays; an account the Item does not hold is ignored.
 func (s *Store) SetBillDays(ctx context.Context, itemID string, accounts []pluggy.Account) error {
 	for _, a := range accounts {
-		if a.CloseDay == 0 && a.DueDay == 0 {
+		if a.CloseDay == 0 || a.DueDay == 0 {
 			continue
 		}
-		_, err := s.db.Exec(ctx, `UPDATE finance_sources SET bill_close_day = NULLIF($3, 0), bill_due_day = NULLIF($4, 0)
-			WHERE item_id = $1 AND pluggy_account_id = $2 AND kind = 'credit_card'`, itemID, a.ID, a.CloseDay, a.DueDay)
+		_, err := s.db.Exec(ctx, `UPDATE finance_sources SET bill_close_day = $3, bill_due_day = $4
+			WHERE item_id = $1 AND pluggy_account_id = $2 AND kind = 'credit_card'
+				AND bill_close_day IS NULL AND bill_due_day IS NULL`, itemID, a.ID, a.CloseDay, a.DueDay)
 		if err != nil {
 			return err
 		}
