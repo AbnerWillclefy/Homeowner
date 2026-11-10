@@ -1,7 +1,7 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { ApiFailure } from "../../../shared/query/ApiFailure";
 import { refetchUnlessSucceeded } from "../../../shared/query/queryClient";
-import { dismissBillSuggestion, getBills, getBillSuggestions, getCommitments, getDaily, getFinanceStatus, getHistory, getMonth, type Bill, type BillSuggestion, type Commitments, type Daily, type FinanceStatus, type History, type MonthResponse } from "./api";
+import { dismissBillSuggestion, getBills, getBillSuggestions, getCommitments, getDaily, getFinanceStatus, getHistory, getMonth, getSavings, type Bill, type BillSuggestion, type Commitments, type Daily, type FinanceStatus, type History, type MonthResponse, type Savings } from "./api";
 
 /** `GET /me/finance`. Under `["me"]`, so sign-out empties it; the finance views go under it too (web.md, Query keys). */
 export const financeStatusKey = ["me", "finance"] as const;
@@ -126,6 +126,19 @@ export const commitmentsQuery = (from: string) =>
     },
     refetchOnMount: refetchUnlessSucceeded,
   });
+
+/** `GET /me/finance/savings`, under the status key so a delete removes it; the savings writes read it again on their own. */
+export const savingsKey = ["me", "finance", "savings"] as const;
+
+export const savingsQuery = queryOptions({
+  queryKey: savingsKey,
+  queryFn: async (): Promise<Savings> => {
+    const result = await getSavings();
+    if (result.kind === "ok") return result.savings;
+    throw new ApiFailure(result.kind === "offline" || result.kind === "not-signed-in" ? result.kind : "error");
+  },
+  refetchOnMount: refetchUnlessSucceeded,
+});
 
 /** After an income write, or a Bill write: every finance read that carries the totals is read again. */
 export const invalidateFinance = (client: QueryClient) => client.invalidateQueries({ queryKey: financeStatusKey });

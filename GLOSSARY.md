@@ -129,7 +129,7 @@ What a Transaction was spent on, such as groceries, transport or rent. Every Tra
 _Avoid_: Category, Tag, Label
 
 **Bill to pay**:
-Money owed that is due on a date, such as the credit card bill, rent or a utility. It is not a Transaction until it is paid.
+Money owed that is due on a date, such as the credit card bill, rent or a utility. It is not a Transaction until it is paid. A credit card Source's bill is worked out by the app from the card's Expenses and known installments, never entered by the User.
 _Avoid_: Invoice, Debt, Due
 
 **Installment plan**:
@@ -140,6 +140,30 @@ _Avoid_: Financing, Loan, Subscription
 The money a User expects to receive each month, which Finances compares with what is spent.
 _Avoid_: Salary, Revenue, Earnings
 
+**Leftover**:
+What remains of the Monthly income after a month's card bills, Bills to pay and installments. It can be negative, and is absent when no Monthly income is set.
+_Avoid_: Balance, Surplus, Savings
+
+**Planned spending**:
+An amount a User sets aside for a coming month for spending they expect but that is not yet a Bill to pay or a Transaction, which lowers that month's Leftover.
+_Avoid_: Budget, Forecast, Reserve
+
 **Spending limit**:
 The most a User wants to spend in one Spending Category in a month. It is set once and holds for every month; a category with no limit has none.
 _Avoid_: Budget (in copy), Cap, Quota
+
+**Investment**:
+Money a User has put away, with a name, a current value and what it serves: the Emergency reserve or the Goals.
+_Avoid_: Asset, Account, Portfolio
+
+**Emergency reserve**:
+The amount a User wants set aside for the unexpected. It has a target; the Investments that serve it count toward it.
+_Avoid_: Rainy-day fund, Safety net, Savings (alone)
+
+**Goal**:
+Something a User saves toward, with a target amount and, optionally, a target month. Goals are ordered; the order decides who is served first.
+_Avoid_: Objective, Dream, Target (alone)
+
+**Monthly contribution**:
+The amount a User puts into savings each month, and the share of it that goes to the Emergency reserve; the rest goes to the Goals. Sharing it among the Goals is the "contribution split", never "allocation": Allocation is the Chores module.
+_Avoid_: Deposit, Savings rate

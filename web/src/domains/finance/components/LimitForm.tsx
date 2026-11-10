@@ -10,7 +10,7 @@ import { centsToInput, formatCents } from "../logic/money";
 const PROBLEM_KEY = { empty: "finances.limit.empty", zero: "finances.limit.zero", junk: "finances.limit.junk" } as const;
 
 /**
- * The monthly limit of one category, set or removed from inside the opened category. The bar changes at once
+ * The monthly limit of one category, set or removed on the category's own screen. The bar changes at once
  * (`onSave` is optimistic); the `role="status"` line confirms, and a field problem or a failed write is said beside the field.
  */
 export function LimitForm({ limit, onSave }: { limit: number | undefined; onSave: (cents: number | null) => Promise<"saved" | "failed"> }) {

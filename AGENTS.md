@@ -28,3 +28,9 @@ Take the first option that fully works:
 - A shortcut with a known limit gets a code comment in this form: `shortcut: <the limit>, <when to upgrade>`.
 
 Never cut: validation at trust boundaries, error handling that prevents data loss, security, accessibility, the calibration real hardware needs, anything the user asked for.
+
+## Review lessons
+
+These rules come from findings the reviewer raised in more than one pull request (`.claude/skills/review-lessons/`).
+
+- When a change alters what code does or reads, search `docs/architecture/` and the doc comments of every function and type you touched for sentences it makes false, and fix them in the same pull request. On an epic's ticket, leave `docs/architecture/` to the epic's last ticket. Why: stale docs were the most frequent accepted finding (#453, #454, #466, #470, #497, #509, #514, #518, #521, #522, #524).

@@ -105,6 +105,7 @@ const rows: Row[] = [
   { name: "signed out on /me/edit goes to sign-in", input: input({ auth: "signed-out", pathname: "/me/edit" }), expected: to("/signin") },
   { name: "done on /me/edit renders", input: input({ pathname: "/me/edit" }), expected: render },
   { name: "done on /finances/ajustes renders", input: input({ pathname: "/finances/ajustes" }), expected: render },
+  { name: "done on /finances/economias renders", input: input({ pathname: "/finances/economias" }), expected: render },
   { name: "done on /me/edit/ renders", input: input({ pathname: "/me/edit/" }), expected: render },
   { name: "done on /me/nope goes to Today", input: input({ pathname: "/me/nope" }), expected: to("/") },
   { name: "unfinished on /me/edit goes to the step", input: input({ pathname: "/me/edit", onboarding: ready("baseline") }), expected: to("/welcome/baseline") },

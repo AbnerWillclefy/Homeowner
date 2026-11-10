@@ -8,7 +8,7 @@ import { LazyPage } from "./LazyPage";
 import { FinancesFallback, MeEditFallback, MeFallback, ResidentFallback } from "./lazyFallbacks";
 import { FinanceRoute } from "./pages/FinanceRoute";
 import { TodayPage } from "./pages";
-import { CHORES_PATH, CONFIRM_PATH, FINANCES_BILLS_PATH, FINANCES_PATH, FINANCES_SETTINGS_PATH, FINANCES_SPENDING_PATH, HOME_PATH, ME_EDIT_PATH, ME_PATH, RESIDENT_PATH, SIGN_IN_PATH, SIGN_UP_PATH, TODAY_PATH, WELCOME_PREFIX } from "../logic/routes";
+import { CHORES_PATH, CONFIRM_PATH, FINANCES_BILLS_PATH, FINANCES_CATEGORY_PATH, FINANCES_PATH, FINANCES_SAVINGS_PATH, FINANCES_SETTINGS_PATH, FINANCES_SPENDING_PATH, HOME_PATH, ME_EDIT_PATH, ME_PATH, RESIDENT_PATH, SIGN_IN_PATH, SIGN_UP_PATH, TODAY_PATH, WELCOME_PREFIX } from "../logic/routes";
 import { Shell } from "./Shell";
 import { WelcomeLayout } from "./WelcomeLayout";
 
@@ -19,7 +19,9 @@ const HomePage = lazyNamed(() => import("./pages/HomePage"), "HomePage");
 const ResidentRoute = lazyNamed(() => import("./pages/ResidentRoute"), "ResidentRoute");
 const MePage = lazyNamed(() => import("./pages/MePage"), "MePage");
 const FinancesTab = lazyNamed(() => import("../../domains/finance/components/FinancesTab"), "FinancesTab");
+const SpendingCategoryScreen = lazyNamed(() => import("../../domains/finance/components/SpendingCategoryScreen"), "SpendingCategoryScreen");
 const FinanceSettings = lazyNamed(() => import("../../domains/finance/components/FinanceSettings"), "FinanceSettings");
+const FinanceSavings = lazyNamed(() => import("../../domains/finance/components/FinanceSavings"), "FinanceSavings");
 const MeEdit =lazyNamed(() => import("../../domains/profile/components/MeEdit"), "MeEdit");
 
 /**
@@ -87,11 +89,31 @@ export function AppRoutes() {
             />
           ))}
           <Route
+            path={FINANCES_CATEGORY_PATH}
+            element={
+              <FinanceRoute>
+                <LazyPage key="finances-category" message="finances.loading" skeleton={<FinancesFallback />}>
+                  <SpendingCategoryScreen />
+                </LazyPage>
+              </FinanceRoute>
+            }
+          />
+          <Route
             path={FINANCES_SETTINGS_PATH}
             element={
               <FinanceRoute>
                 <LazyPage key="finances-settings" message="finances.loading" skeleton={<FinancesFallback />}>
                   <FinanceSettings />
+                </LazyPage>
+              </FinanceRoute>
+            }
+          />
+          <Route
+            path={FINANCES_SAVINGS_PATH}
+            element={
+              <FinanceRoute>
+                <LazyPage key="finances-savings" message="finances.loading" skeleton={<FinancesFallback />}>
+                  <FinanceSavings />
                 </LazyPage>
               </FinanceRoute>
             }

@@ -1,3 +1,4 @@
+import { SPENDING_CATEGORIES, type SpendingCategory } from "../../domains/finance/logic/spendingCategories";
 import { ONBOARDING_STEPS, type OnboardingStep } from "../../domains/onboarding/api/api";
 
 export const TODAY_PATH = "/";
@@ -5,8 +6,13 @@ export const CHORES_PATH = "/chores";
 export const HOME_PATH = "/home";
 export const FINANCES_PATH = "/finances";
 export const FINANCES_SPENDING_PATH = "/finances/gastos";
+/** The route pattern of one Spending Category's screen: its last six months and its limit. */
+export const FINANCES_CATEGORY_PATH = `${FINANCES_SPENDING_PATH}/:category`;
+/** One Spending Category's screen under Gastos. */
+export const spendingCategoryPath = (category: SpendingCategory): string => `${FINANCES_SPENDING_PATH}/${category}`;
 export const FINANCES_BILLS_PATH = "/finances/contas";
 export const FINANCES_SETTINGS_PATH = "/finances/ajustes";
+export const FINANCES_SAVINGS_PATH = "/finances/economias";
 export const ME_PATH = "/me";
 export const ME_EDIT_PATH = "/me/edit";
 /** The route pattern of a Resident's page, nested under the Home tab. */
@@ -26,9 +32,9 @@ export const SHELL_PATHS = [TODAY_PATH, CHORES_PATH, HOME_PATH, ME_PATH, FINANCE
 /**
  * Screens that live inside the shell under a tab, so the guard lets them through. A list of exact paths, not a
  * prefix: an unknown path under a tab must still go to Today, never render a blank outlet. A screen with an id in
- * its path (a Resident under Home) is matched by `residentIdFromPath` in `isShellPath` instead.
+ * its path (a Resident under Home, a Spending Category under Gastos) is matched by `residentIdFromPath` and `categoryFromPath` in `isShellPath` instead.
  */
-export const SHELL_SUBPATHS = [ME_EDIT_PATH, FINANCES_SPENDING_PATH, FINANCES_BILLS_PATH, FINANCES_SETTINGS_PATH] as const;
+export const SHELL_SUBPATHS = [ME_EDIT_PATH, FINANCES_SPENDING_PATH, FINANCES_BILLS_PATH, FINANCES_SETTINGS_PATH, FINANCES_SAVINGS_PATH] as const;
 
 /** The full-screen signed-out screens. */
 export const AUTH_PATHS = [SIGN_IN_PATH, SIGN_UP_PATH, CONFIRM_PATH] as const;
@@ -56,12 +62,21 @@ export function residentIdFromPath(path: string): string | null {
   }
 }
 
+/** The Spending Category in `/finances/gastos/<id>`, or null for an unknown id, an empty one or an extra segment. */
+export function categoryFromPath(path: string): SpendingCategory | null {
+  const p = normalizePath(path);
+  if (!p.startsWith(`${FINANCES_SPENDING_PATH}/`)) return null;
+  const id = p.slice(FINANCES_SPENDING_PATH.length + 1);
+  return (SPENDING_CATEGORIES as readonly string[]).includes(id) ? (id as SpendingCategory) : null;
+}
+
 export const isShellPath = (path: string): boolean => {
   const p = normalizePath(path);
   return (
     (SHELL_PATHS as readonly string[]).includes(p) ||
     (SHELL_SUBPATHS as readonly string[]).includes(p) ||
-    residentIdFromPath(p) !== null
+    residentIdFromPath(p) !== null ||
+    categoryFromPath(p) !== null
   );
 };
 

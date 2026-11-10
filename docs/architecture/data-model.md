@@ -1,6 +1,6 @@
 # Data model
 
-Related: [ADR 0001](../adr/0001-chores-come-due-in-flexible-windows.md), [ADR 0003](../adr/0003-only-broken-commitments-break-a-streak.md), [ADR 0014](../adr/0014-a-day-with-any-completion-keeps-the-streak.md). Terms: **User**, **Home**, **Resident**, **Invite**, **Chore**, **Task**, **Completion**, **Check-in**, **Preference**, **Restriction**, **Day Plan** in [GLOSSARY.md](../../GLOSSARY.md).
+Related: [ADR 0001](../adr/0001-chores-come-due-in-flexible-windows.md), [ADR 0003](../adr/0003-only-broken-commitments-break-a-streak.md), [ADR 0014](../adr/0014-a-day-with-any-completion-keeps-the-streak.md). Terms: **User**, **Home**, **Resident**, **Invite**, **Chore**, **Task**, **Completion**, **Check-in**, **Preference**, **Restriction**, **Day Plan**, **Investment**, **Emergency reserve**, **Goal**, **Monthly contribution** in [GLOSSARY.md](../../GLOSSARY.md).
 
 ## What is built
 
@@ -43,17 +43,18 @@ Migrations live in `backend/migrations/` as `NNNN_description.sql` files, applie
 | `0033_finance_category_budgets.sql` | `finance_category_budgets`: `user_id` (cascade), `spending_category` (one of the 13 ids, checked in Go), `limit_cents` (`bigint`, `CHECK > 0`), `updated_at`, primary key `(user_id, spending_category)`, which also serves the per-User read. A row is a Spending limit; no row is "no limit". There is no month column: a limit holds for every month and there is no history. Expand only; Down drops the table. |
 | `0034_finance_bill_payment_expected.sql` | `finance_bill_payments.expected_cents` (`bigint`, null, `CHECK > 0`): the Bill's expected amount when the month was paid, so a later edit does not change a paid month. Limits: a payment made before this migration has `NULL` and reads at the Bill's current amount; an unpaid past month shows the current amount; a Bill is listed only from its created month, so history before that is not kept. Bills are not soft-deleted: deleting one, or "delete my finance data", still erases its payments with it. Expand only; Down drops the column. |
 | `0035_finance_bill_suggestion_dismissals.sql` | `finance_bill_suggestion_dismissals`: `user_id` (cascade), `merchant_key`, `dismissed_at`, primary key `(user_id, merchant_key)`: a Bill suggestion the Resident dismissed, never offered again. In `financeTables`, so "delete my finance data" clears it. Expand only; Down drops the table. |
-| `0036_finance_card_bill_days.sql` | `finance_sources.bill_close_day` and `bill_due_day` (`smallint`, null, `CHECK` 1 to 31): a credit card's closing and due day from Pluggy's `creditData`, refreshed on each sync. A card charge counts on the due date of its bill (`finance.CountsOn`); null (any other Source, or a card Pluggy gave no days for) counts on `posted_on`. Expand only; Down drops both. |
+| `0036_finance_card_bill_days.sql` | `finance_sources.bill_close_day` and `bill_due_day` (`smallint`, null, `CHECK` 1 to 31): a credit card's closing and due day from Pluggy's `creditData` or typed by the User (`PUT /me/finance/sources/{id}/bill-days`); a sync or a reconnect fills them only while both are null, and never changes days already there. A card charge counts on the due date of its bill (`finance.CountsOn`); null (any other Source, or a card Pluggy gave no days for) counts on `posted_on`. Expand only; Down drops both. |
+| `0037_finance_savings.sql` | Three nullable columns on `finance_settings`: `reserve_target_cents` (`bigint`, `CHECK > 0`), `contribution_base_cents` (`bigint`, `CHECK > 0`) and `reserve_share_percent` (`smallint`, `CHECK` 0 to 100), with `finance_settings_contribution_pair` requiring the last two to be both set or both null. `finance_investments`: `id`, `user_id` (cascade, indexed), `name`, `value_cents` (`bigint`, `CHECK >= 0`), `serves` (`reserve` or `goals`, `CHECK`), `created_at`, `updated_at`. `finance_goals`: `id`, `user_id` (cascade), `name`, `target_cents` (`bigint`, `CHECK > 0`), `position` (`int`), `target_month` (`date`, null, `CHECK` it is the first day of a month), `created_at`, `updated_at`, with `UNIQUE (user_id, position) DEFERRABLE INITIALLY DEFERRED`, so a reorder can rewrite every position in one transaction. Expand only; Down drops both tables, the constraint and the three columns. |
 
 A Home is created by one transaction that inserts the `homes` row and the creator's `residents` row; if the `residents` insert hits the unique violation the transaction rolls back and no Home is left behind.
 
-A User is created by the first authenticated request, with one `INSERT ... ON CONFLICT (cognito_sub) DO UPDATE ... RETURNING` statement, so two simultaneous first requests create one row. `users`, `push_subscriptions`, the three profile tables, `homes`, `residents`, `chores`, `tasks`, the two specific-setting tables, `allocation_runs`, `day_plan_assignments`, `invites`, `checkins`, `checkin_demand_restrictions`, `nudges`, `task_residents`, `completions`, `completion_residents`, `swap_offers`, `llm_calls`, `day_plan_explanations`, `llm_call_events`, `finance_credentials`, `finance_items`, `finance_sources`, `finance_transactions`, `finance_merchant_categories`, `finance_llm_calls`, `finance_bills`, `finance_bill_payments`, `finance_bill_reminders`, `finance_settings`, `finance_category_budgets`, `finance_bill_suggestion_dismissals` and `voice_calls` are the tables built. Everything else below is the planned schema from issue #1.
+A User is created by the first authenticated request, with one `INSERT ... ON CONFLICT (cognito_sub) DO UPDATE ... RETURNING` statement, so two simultaneous first requests create one row. `users`, `push_subscriptions`, the three profile tables, `homes`, `residents`, `chores`, `tasks`, the two specific-setting tables, `allocation_runs`, `day_plan_assignments`, `invites`, `checkins`, `checkin_demand_restrictions`, `nudges`, `task_residents`, `completions`, `completion_residents`, `swap_offers`, `llm_calls`, `day_plan_explanations`, `llm_call_events`, `finance_credentials`, `finance_items`, `finance_sources`, `finance_transactions`, `finance_merchant_categories`, `finance_llm_calls`, `finance_bills`, `finance_bill_payments`, `finance_bill_reminders`, `finance_settings`, `finance_category_budgets`, `finance_bill_suggestion_dismissals`, `finance_investments`, `finance_goals` and `voice_calls` are the tables built. Everything else below is the planned schema from issue #1.
 
 **"Recurring", the product definition (`SuggestBills`, `finance/rules.go`).** A merchant (grouped by `MerchantKey`) is suggested as a Bill when it has an Expense in each of the last 3 complete São Paulo calendar months; taking each month's largest Expense, the three amounts are each within 10% of their median (integer arithmetic) and the three days of the month are each within 5 days of the median day (clamped to the month's length, no wrap-around: the 30th and the 2nd are far apart). Ignored: income, Transfers, refunds, Transactions already linked to a Bill payment, and installment charges (a `PARC nn/mm` plan repeats monthly but is an Installment, not a Bill). Not suggested when a Bill already covers the merchant (`MatchBills`' name test without the amount: the folded Bill name, at least 3 characters, is contained in a folded description) or the Resident dismissed it. The proposed name is the longest prefix of the key's words contained, folded, in all three descriptions (so `NETFLIX.COM` gives `NETFLIX`) and at least 3 characters, so `MatchBills` can pay the accepted Bill later; the amount is the latest month's and the due day the median day. Known limit: if the amount varies, the accepted Bill matches the bank only on an exact amount, so it is paid by hand.
 
-**Finance data rules.** Every finance table is named `finance_*` and carries `user_id` referencing `users` with `ON DELETE CASCADE`, never a Home, so leaving or changing Home deletes nothing and a future account deletion cascades. `DELETE /me/finance` runs `DELETE ... WHERE user_id = $1` over the `financeTables` list in `internal/finance/store.go` in one transaction (the Pluggy Item is left alone: it lives in the User's own Pluggy account). A catalog test reads `pg_catalog` for every `finance\_%` table and fails if one lacks the `user_id` cascade or is missing from `financeTables`, so a later finance table must be named `finance_*` and added to the list. Today the list has twelve tables, children first: `finance_transactions`, `finance_sources`, `finance_items`, `finance_credentials`, `finance_merchant_categories`, `finance_llm_calls`, `finance_bill_reminders`, `finance_bill_payments`, `finance_bills`, `finance_settings`, `finance_category_budgets` and `finance_bill_suggestion_dismissals`.
+**Finance data rules.** Every finance table is named `finance_*` and carries `user_id` referencing `users` with `ON DELETE CASCADE`, never a Home, so leaving or changing Home deletes nothing and a future account deletion cascades. `DELETE /me/finance` runs `DELETE ... WHERE user_id = $1` over the `financeTables` list in `internal/finance/store.go` in one transaction (the Pluggy Item is left alone: it lives in the User's own Pluggy account). A catalog test reads `pg_catalog` for every `finance\_%` table and fails if one lacks the `user_id` cascade or is missing from `financeTables`, so a later finance table must be named `finance_*` and added to the list. Today the list has fourteen tables, children first: `finance_transactions`, `finance_sources`, `finance_items`, `finance_credentials`, `finance_merchant_categories`, `finance_llm_calls`, `finance_bill_reminders`, `finance_bill_payments`, `finance_bills`, `finance_settings`, `finance_category_budgets`, `finance_bill_suggestion_dismissals`, `finance_investments` and `finance_goals`.
 
-**Finance tables.** Every one hangs on `users`; none touches a Home. The Finances redesign added the last three of the list below: `finance_category_budgets` (Spending limits), `finance_bill_payments.expected_cents` (the snapshot of a paid month) and `finance_bill_suggestion_dismissals`.
+**Finance tables.** Every one hangs on `users`; none touches a Home. The Finances redesign added `finance_category_budgets` (Spending limits), `finance_bill_payments.expected_cents` (the snapshot of a paid month) and `finance_bill_suggestion_dismissals`. Savings (`0037`) added `finance_investments`, `finance_goals` and three settings on `finance_settings`; the diagram shows their columns.
 
 ```mermaid
 erDiagram
@@ -67,14 +68,41 @@ erDiagram
     finance_bills ||--o{ finance_bill_payments : "paid months"
     finance_transactions |o--o| finance_bill_payments : "paid by the bank"
     finance_bills ||--o{ finance_bill_reminders : "reminders sent"
-    users ||--o| finance_settings : "Monthly income"
+    users ||--o| finance_settings : "income, reserve target, Monthly contribution"
     users ||--o{ finance_category_budgets : "Spending limits"
     users ||--o{ finance_bill_suggestion_dismissals : "dismissed suggestions"
+    users ||--o{ finance_investments : "Investments"
+    users ||--o{ finance_goals : "Goals"
+    finance_settings {
+        bigint monthly_income_cents "null = not set"
+        bigint reserve_target_cents "null = no target"
+        bigint contribution_base_cents "null = no Monthly contribution"
+        smallint reserve_share_percent "0 to 100, set with the base"
+    }
+    finance_investments {
+        uuid id
+        uuid user_id
+        text name
+        bigint value_cents ">= 0"
+        text serves "reserve or goals"
+    }
+    finance_goals {
+        uuid id
+        uuid user_id
+        text name
+        bigint target_cents "> 0"
+        int position "unique per User, deferred"
+        date target_month "null = no date"
+    }
 ```
 
 - **Spending limits** (`finance_category_budgets`, `0033`). One row per category with a limit; no row is no limit. A limit holds for every month: there is no month column and no history, so changing it changes past months too. `GET /me/finance/transactions` returns them as `limits`.
 - **The paid-month snapshot** (`finance_bill_payments.expected_cents`, `0034`). Paying a month, by hand or by the bank matcher, copies the Bill's `expected_cents` into the payment row, so editing the Bill later changes only unpaid months. `GET /me/finance/bills` reads `COALESCE(payment, bill)` for `expectedCents`, and `paidCents` is the linked Transaction's amount for a bank payment, else the snapshot. The limit before it shipped: a payment made before `0034` has `NULL` and reads at the Bill's current amount, and an unpaid past month always shows the current amount. A Bill is listed, and paid by the bank, only from its created month (São Paulo), so there is no history before it.
 - **Dismissed suggestions** (`finance_bill_suggestion_dismissals`, `0035`). A merchant key the Resident dismissed is never suggested again; accepting a suggestion creates an ordinary `finance_bills` row, which then covers the merchant.
+- **The savings settings** (`finance_settings`, `0037`). The Emergency reserve target and the Monthly contribution are settings, not entities: nullable columns on the same per-User row as the Monthly income, each written by its own route without touching the others. The reserve's share is a whole percent of the base, so it keeps its meaning when the base changes; the base and the share are set and cleared together (a `CHECK`).
+- **Investments** (`finance_investments`, `0037`). Typed by hand: a name, the current value (zero allowed, for an Investment emptied but kept) and what it serves, the Emergency reserve or the Goals. The User keeps the value up to date; there is no history of values and nothing comes from Pluggy.
+- **Goals** (`finance_goals`, `0037`). A name, a target, a position in the User's order and an optional month (stored as its first day). A new Goal takes the next position after the highest; a delete leaves a gap, closed by the next reorder, which rewrites positions 1 to n in one transaction (the unique constraint is checked at commit).
+- **Progress is never stored.** The reserve's saved amount (the sum of the Investments that serve it), each Goal's saved amount, this month's amounts and the expected months are worked out on every `GET /me/finance/savings` by the contribution split ([backend](backend.md#the-contribution-split)). With no history there is nothing to keep in sync: an Investment the User spends just gets a lower value, and a Goal that is done gets deleted.
 
 ## Planned tables
 

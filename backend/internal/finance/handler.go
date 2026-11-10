@@ -2,6 +2,7 @@ package finance
 
 import (
 	"cmp"
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -209,51 +210,87 @@ const commitmentMonths = 12
 
 // Commitments answers GET /me/finance/commitments?from=YYYY-MM: 12 months from
 // `from`, each with the installments its plans still owe.
-// Each month also lists the User's unpaid Bills and counts their expected amounts.
+// Each month carries the outlook Outlook works out on each read from the counted
+// Transactions, the card Sources, the plans and every Bill: one bill per credit
+// card, the other Bills paid or not, the rest of each Spending limit as planned
+// spending, in the current month (São Paulo) what was spent off the card, a total
+// and the leftover of the income.
 func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 	from, _, ok := parseMonth(r.URL.Query().Get("from"))
 	if !ok {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid month")
 		return
 	}
-	plans, err := h.store.InstallmentPlans(r.Context(), identity.CurrentUser(r.Context()).ID)
+	in, err := h.loadOutlook(r.Context(), identity.CurrentUser(r.Context()).ID, from, commitmentMonths)
 	if err != nil {
 		httpx.InternalError(w, h.log, "finance: read commitments", err)
 		return
 	}
-	income, err := h.store.Income(r.Context(), identity.CurrentUser(r.Context()).ID)
-	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read income", err)
-		return
-	}
+	plans, income, outlook := in.plans, in.income, in.outlook
 	months := make([]MonthCommitment, commitmentMonths)
 	for i, lines := range ProjectInstallments(plans, from, commitmentMonths) {
-		m := MonthCommitment{Month: from.AddDate(0, i, 0).Format("2006-01"), Installments: []InstallmentLine{}, Bills: []BillLine{}}
-		for _, l := range lines {
-			m.Installments = append(m.Installments, l)
-			m.CommittedCents += l.AmountCents
+		m := MonthCommitment{Month: from.AddDate(0, i, 0).Format("2006-01"), Installments: append([]InstallmentLine{}, lines...)}
+		o := outlook[i]
+		m.Cards, m.OtherBills = []CardBillLine{}, []OtherBillLine{}
+		for _, c := range o.Cards {
+			m.Cards = append(m.Cards, CardBillLine(c))
 		}
-		bills, err := h.store.MonthBills(r.Context(), identity.CurrentUser(r.Context()).ID, from.AddDate(0, i, 0))
-		if err != nil {
-			httpx.InternalError(w, h.log, "finance: read commitment bills", err)
-			return
+		for _, b := range o.OtherBills {
+			m.OtherBills = append(m.OtherBills, OtherBillLine(b))
 		}
-		for _, b := range bills {
-			if !b.Paid {
-				m.Bills = append(m.Bills, BillLine{ID: b.ID, Name: b.Name, ExpectedCents: b.ExpectedCents})
-				m.CommittedCents += b.ExpectedCents
-			}
+		m.Planned = []PlannedLineDTO{}
+		for _, p := range o.Planned {
+			m.Planned = append(m.Planned, PlannedLineDTO(p))
 		}
-		if income != nil { // income <= 10^12 and committed is small, so *100 cannot overflow int64
-			pct := (m.CommittedCents*100 + *income/2) / *income
-			m.PercentOfIncome = &pct
-		}
+		m.PlannedCents, m.SpentOffCardCents = o.PlannedCents, o.SpentOffCardCents
+		m.OtherInstallmentsCents, m.TotalCents, m.LeftoverCents = o.OtherInstallmentsCents, o.TotalCents, o.LeftoverCents
 		months[i] = m
 	}
 	httpx.WriteJSON(w, http.StatusOK, CommitmentsResponse{From: from.Format("2006-01"), MonthlyIncomeCents: income, Months: months})
 }
 
-// maxIncomeCents bounds the income so the percentage arithmetic cannot overflow.
+// outlookInputs is what loadOutlook read, with the Outlook it worked out.
+type outlookInputs struct {
+	plans   []Plan
+	rows    []Txn
+	income  *int64
+	limits  map[string]int64
+	outlook []MonthOutlook
+}
+
+// loadOutlook reads the inputs of Outlook for `months` months from `from` and works
+// it out. Commitments and Savings both call it, so their leftovers cannot differ.
+func (h *Handler) loadOutlook(ctx context.Context, uid string, from time.Time, months int) (outlookInputs, error) {
+	var in outlookInputs
+	var err error
+	if in.plans, err = h.store.InstallmentPlans(ctx, uid); err != nil {
+		return in, err
+	}
+	if in.income, err = h.store.Income(ctx, uid); err != nil {
+		return in, err
+	}
+	if in.rows, err = h.store.SpendRows(ctx, uid, from, from.AddDate(0, months, 0)); err != nil {
+		return in, err
+	}
+	cards, err := h.store.CardSources(ctx, uid)
+	if err != nil {
+		return in, err
+	}
+	bills := make([][]MonthBill, months)
+	for i := range bills {
+		if bills[i], err = h.store.MonthBills(ctx, uid, from.AddDate(0, i, 0)); err != nil {
+			return in, err
+		}
+	}
+	if in.limits, err = h.store.Budgets(ctx, uid); err != nil {
+		return in, err
+	}
+	now := postedOn(h.clk.Now())
+	in.outlook = Outlook(in.rows, cards, in.plans, bills, in.income, in.limits, time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC), from, months)
+	return in, nil
+}
+
+// maxIncomeCents bounds the income so the income stays far from int64 overflow in the sums.
 const maxIncomeCents = 1_000_000_000_000
 
 // PutIncome answers PUT /me/finance/income: sets the Monthly income, or clears it with null.
@@ -271,6 +308,38 @@ func (h *Handler) PutIncome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// PutBillDays answers PUT /me/finance/sources/{id}/bill-days: sets a card's
+// closing and due days together, or clears both with null (or {}). One day
+// without the other, or a day outside 1 to 31, answers 400 with the bad keys
+// under "fields". A malformed id, another User's Source and a Source that is
+// not a card all answer 404.
+func (h *Handler) PutBillDays(w http.ResponseWriter, r *http.Request) {
+	var req BillDaysRequest
+	if !httpx.DecodeBody(w, r, &req, maxBodyBytes, true) {
+		return
+	}
+	fields := map[string]string{}
+	for key, v := range map[string]*int{"closeDay": req.CloseDay, "dueDay": req.DueDay} {
+		switch {
+		case v == nil && (req.CloseDay != nil || req.DueDay != nil):
+			fields[key] = "required"
+		case v != nil && (*v < 1 || *v > 31):
+			fields[key] = "invalid"
+		}
+	}
+	if len(fields) > 0 {
+		httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid bill days", "fields": fields})
+		return
+	}
+	id := r.PathValue("id")
+	if !chores.ValidID(id) {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return
+	}
+	found, err := h.store.SetBillDaysByHand(r.Context(), identity.CurrentUser(r.Context()).ID, id, req.CloseDay, req.DueDay)
+	h.answer(w, found, err, "set bill days", func() { w.WriteHeader(http.StatusNoContent) })
 }
 
 // PatchTransaction answers PATCH /me/finance/transactions/{id}. A malformed id

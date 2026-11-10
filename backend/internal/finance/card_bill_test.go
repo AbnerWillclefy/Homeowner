@@ -38,7 +38,7 @@ func TestCardChargesCountInTheMonthTheirBillIsDue(t *testing.T) {
 	}
 }
 
-func TestSyncRefreshesTheCardBillDays(t *testing.T) {
+func TestSyncFillsEmptyCardBillDays(t *testing.T) {
 	t.Parallel()
 	app, _ := startSync(t, []string{"ana@example.com"})
 	app.RunFinanceSync(t)
@@ -56,6 +56,32 @@ func TestSyncRefreshesTheCardBillDays(t *testing.T) {
 	}
 }
 
+// A card with only one day stored is not empty: the sync leaves it alone.
+func TestSyncKeepsTypedBillDays(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ name, set string }{
+		{"both typed", `bill_close_day = 3, bill_due_day = 10`},
+		{"one typed", `bill_close_day = 3, bill_due_day = NULL`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			app, _ := startSync(t, []string{"ana@example.com"})
+			app.RunFinanceSync(t)
+			if _, err := app.DB.Exec(context.Background(), `UPDATE finance_sources SET `+tc.set+` WHERE kind = 'credit_card'`); err != nil {
+				t.Fatal(err)
+			}
+			app.Clock.Set(afterFixtures.Add(25 * time.Hour))
+			app.RunFinanceSync(t)
+			if n := scalar(t, app, `SELECT count(*) FROM finance_sources WHERE bill_close_day = 3 AND bill_due_day IS NOT DISTINCT FROM (CASE WHEN bill_due_day = 10 THEN 10 END)`); n != 1 {
+				t.Errorf("card days changed by the sync, want %s kept", tc.set)
+			}
+			if n := scalar(t, app, `SELECT count(*) FROM finance_sources WHERE bill_close_day = 7 OR bill_due_day = 12`); n != 0 {
+				t.Errorf("Pluggy's days were stored over the typed ones")
+			}
+		})
+	}
+}
+
 // An installment on the card is projected from its bill's month: posted on
 // 20 January, part 3 is on February's bill, so part 4 falls in March.
 func TestCardInstallmentsProjectFromTheirBillMonth(t *testing.T) {
@@ -65,16 +91,16 @@ func TestCardInstallmentsProjectFromTheirBillMonth(t *testing.T) {
 	insertPlan(t, app, "ana@example.com", "tv3", "TV Loja PARC 03/10", "TV LOJA", "2028-01-20", -25000, 3, 10)
 
 	b := readCommitments(t, users["ana@example.com"], "2028-02")
-	if m := b.Months[0]; m.CommittedCents != 0 {
+	if m := b.Months[0]; len(m.Installments) != 0 {
 		t.Errorf("february = %+v, want nothing: part 3 is already its transaction", m)
 	}
-	if m := b.Months[1]; m.CommittedCents != 25000 || len(m.Installments) != 1 || m.Installments[0].Number != 4 {
+	if m := b.Months[1]; len(m.Installments) != 1 || m.Installments[0].AmountCents != 25000 || m.Installments[0].Number != 4 {
 		t.Errorf("march = %+v, want TV Loja 4 of 10", m)
 	}
 
 	// Read from January, when part 3 is posted but its bill is not yet due: it is still to come, in February.
 	b = readCommitments(t, users["ana@example.com"], "2028-01")
-	if m := b.Months[1]; m.CommittedCents != 25000 || len(m.Installments) != 1 || m.Installments[0].Number != 3 {
+	if m := b.Months[1]; len(m.Installments) != 1 || m.Installments[0].AmountCents != 25000 || m.Installments[0].Number != 3 {
 		t.Errorf("february from january = %+v, want TV Loja 3 of 10", m)
 	}
 	if m := b.Months[2]; len(m.Installments) != 1 || m.Installments[0].Number != 4 {

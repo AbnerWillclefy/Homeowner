@@ -1,6 +1,37 @@
 package finance
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
+
+// GoalRequest is the body of POST /me/finance/goals and PUT /me/finance/goals/{id}.
+// TargetCents stays raw so a fractional or non-numeric value is refused by field.
+type GoalRequest struct {
+	Name        string          `json:"name"`
+	TargetCents json.RawMessage `json:"targetCents"`
+	TargetMonth *string         `json:"targetMonth"`
+}
+
+// GoalInput is a validated GoalRequest; TargetMonth is the first day of the month.
+type GoalInput struct {
+	Name        string
+	TargetCents int64
+	TargetMonth *time.Time
+}
+
+// GoalOrderRequest is the body of PUT /me/finance/goals/order.
+type GoalOrderRequest struct {
+	IDs []string `json:"ids"`
+}
+
+// GoalResponse is a Goal as created, updated or listed; TargetMonth is "YYYY-MM" or null.
+type GoalResponse struct {
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	TargetCents int64   `json:"targetCents"`
+	TargetMonth *string `json:"targetMonth"`
+}
 
 // StatusResponse is the Finances status on the wire.
 type StatusResponse struct {
@@ -19,6 +50,17 @@ type SourceResponse struct {
 	Name     string `json:"name"`
 	Kind     string `json:"kind"`
 	Currency string `json:"currency"`
+	// CloseDay and DueDay are a card's bill days, null when not set and
+	// always null on any other kind.
+	CloseDay *int `json:"closeDay"`
+	DueDay   *int `json:"dueDay"`
+}
+
+// BillDaysRequest is the body of PUT /me/finance/sources/{id}/bill-days: both
+// days or neither, and null clears.
+type BillDaysRequest struct {
+	CloseDay *int `json:"closeDay"`
+	DueDay   *int `json:"dueDay"`
 }
 
 // CredentialsRequest is the body of PUT /me/finance/credentials.
@@ -95,26 +137,58 @@ type DailyResponse struct {
 
 // MonthCommitment is what a month already owes. Not the Task "commitments"
 // table: that one is unrelated.
+//
+// Installments are the parts of plans still to come; the rest is the outlook
+// worked out by Outlook.
 type MonthCommitment struct {
-	Month          string            `json:"month"`
-	CommittedCents int64             `json:"committedCents"`
-	Installments   []InstallmentLine `json:"installments"`
-	Bills          []BillLine        `json:"bills"`
-	// PercentOfIncome is absent, not null, when no income is set, so "not set"
-	// and 0% stay distinct.
-	PercentOfIncome *int64 `json:"percentOfIncome,omitempty"`
+	Month        string            `json:"month"`
+	Installments []InstallmentLine `json:"installments"`
+
+	Cards      []CardBillLine  `json:"cards"`
+	OtherBills []OtherBillLine `json:"otherBills"`
+	// OtherInstallmentsCents is what plans on a Source that is not a credit card owe.
+	OtherInstallmentsCents int64 `json:"otherInstallmentsCents"`
+	// Planned is the rest of each Spending limit, PlannedCents their sum.
+	Planned      []PlannedLineDTO `json:"planned"`
+	PlannedCents int64            `json:"plannedCents"`
+	// SpentOffCardCents is present only on the current month: what was spent off
+	// the card, without Expenses that paid a Bill.
+	SpentOffCardCents *int64 `json:"spentOffCardCents,omitempty"`
+	// TotalCents is card bills, other Bills, installments off the card, planned
+	// and spent off the card.
+	TotalCents int64 `json:"totalCents"`
+	// LeftoverCents is the Monthly income minus TotalCents, negative when the
+	// month takes more; absent, not null, when no income is set.
+	LeftoverCents *int64 `json:"leftoverCents,omitempty"`
+}
+
+// CardBillLine is one credit card's bill in a month. BillDaysKnown is false
+// when the card has no closing or due day, so charges count on the day made.
+type CardBillLine struct {
+	SourceID      string `json:"sourceId"`
+	Name          string `json:"name"`
+	AmountCents   int64  `json:"amountCents"`
+	BillDaysKnown bool   `json:"billDaysKnown"`
+}
+
+// PlannedLineDTO is the rest of one Spending Category's limit in a month.
+type PlannedLineDTO struct {
+	Category string `json:"category"`
+	Cents    int64  `json:"cents"`
+}
+
+// OtherBillLine is a Bill to pay that is not a card bill, paid or not; Cents is
+// the amount the month was paid for when Paid.
+type OtherBillLine struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Cents int64  `json:"cents"`
+	Paid  bool   `json:"paid"`
 }
 
 // IncomeRequest is the body of PUT /me/finance/income; null clears the income.
 type IncomeRequest struct {
 	MonthlyIncomeCents *int64 `json:"monthlyIncomeCents"`
-}
-
-// BillLine is a Bill to pay in a month.
-type BillLine struct {
-	ID            string `json:"id"`
-	Name          string `json:"name"`
-	ExpectedCents int64  `json:"expectedCents"`
 }
 
 // CommitmentsResponse is the answer of GET /me/finance/commitments.
@@ -154,6 +228,8 @@ type MonthBill struct {
 	Paid      bool    `json:"paid"`
 	PaidBy    *string `json:"paidBy"`
 	PaidCents *int64  `json:"paidCents"`
+	// CardPaid is set when the month's payment points to a credit card Transaction.
+	CardPaid bool `json:"-"`
 }
 
 // ConnectItemRequest is the body of POST /me/finance/items.

@@ -6,14 +6,15 @@ import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
 import { financeView } from "../pages/finances";
 
-// What this covers, pt-BR first, with the clock fixed on 31 December and the root font at 200%: opening a category
-// shows six months of it, each amount as text, the viewed month marked in words; opening a second category reads
-// nothing again; a category with no spending in six months says so; a failed history read offers a retry while the
-// Transactions still list.
+// What this covers, pt-BR first, with the clock fixed on 31 December, 320px wide and the root font at 200%: a
+// category's own screen (reached by opening its card in Gastos and following "Ver histórico") shows six months of it,
+// each amount as text, the viewed month marked in words; Gastos itself reads no history; a category with no spending
+// in six months says so; a failed history read offers a retry while the limit form still works; the picked month
+// travels there and back, and a deep link goes back to Gastos on its month; nothing overflows sideways.
 
 const LOCALES = [
-  { locale: "pt-BR", groceries: "Mercado", leisure: "Lazer", heading: "Últimos 6 meses", mark: "este mês", empty: "Sem gastos nesta categoria nos últimos 6 meses", failed: "Não conseguimos carregar o histórico.", retry: "Tentar novamente", year: "julho de 2026", plain: "novembro", prev: "Mês anterior", picked: "mês escolhido", january: "janeiro de 2027" },
-  { locale: "en-US", groceries: "Groceries", leisure: "Leisure", heading: "Last 6 months", mark: "this month", empty: "No spending in this category in the last 6 months", failed: "We could not load the history.", retry: "Try again", year: "July 2026", plain: "November", prev: "Previous month", picked: "chosen month", january: "January 2027" },
+  { locale: "pt-BR", groceries: "Mercado", leisure: "Lazer", heading: "Últimos 6 meses", mark: "este mês", empty: "Sem gastos nesta categoria nos últimos 6 meses", failed: "Não conseguimos carregar o histórico.", retry: "Tentar novamente", year: "julho de 2026", plain: "novembro", prev: "Mês anterior", picked: "mês escolhido", january: "janeiro de 2027", link: "Ver histórico", back: "Gastos", limit: "Limite mensal desta categoria", november: "novembro de 2026", december: "dezembro de 2026" },
+  { locale: "en-US", groceries: "Groceries", leisure: "Leisure", heading: "Last 6 months", mark: "this month", empty: "No spending in this category in the last 6 months", failed: "We could not load the history.", retry: "Try again", year: "July 2026", plain: "November", prev: "Previous month", picked: "chosen month", january: "January 2027", link: "See history", back: "Spending", limit: "Monthly limit for this category", november: "November 2026", december: "December 2026" },
 ] as const;
 
 const row = (id: string, postedOn: string, description: string, amountCents: number, spendingCategory: string) => ({
@@ -42,9 +43,17 @@ const connected = () => {
 /** A category's disclosure button: its name is the category, then the amount. */
 const category = (page: Page, name: string) => page.getByRole("button", { name: new RegExp(`^${name} R\\$`) });
 
+const noOverflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
+
 for (const l of LOCALES) {
   test.describe(l.locale, () => {
-    test.use({ locale: l.locale, viewport: { width: 390, height: 844 }, fakeState: connected() });
+    test.use({ locale: l.locale, viewport: { width: 320, height: 640 }, fakeState: connected() });
+
+    /** Opens a category's card in Gastos and follows its link to the category screen. */
+    const openHistory = async (page: Page, name: string) => {
+      await category(page, name).click();
+      await page.getByRole("link", { name: l.link }).click();
+    };
 
     test.beforeEach(async ({ page, baseURL, fakeApi }) => {
       fakeApi.use(signedInHandlers);
@@ -57,42 +66,58 @@ for (const l of LOCALES) {
       await financeView(page, /^(Gastos|Spending)$/).click();
     });
 
-    test("shows six months with amounts as text, the viewed month marked, and reads once for every category", async ({ page, fakeApi }) => {
+    test("shows six months with amounts as text and the viewed month marked; Gastos reads no history", async ({ page, fakeApi }) => {
       const reads = () => fakeApi.requests.filter((r) => r.method === "GET" && r.path === "/me/finance/history").length;
-      const groceries = category(page, l.groceries);
-      await groceries.click();
-      const body = page.locator(`#${await groceries.getAttribute("aria-controls")}`);
-      await expect(body.getByText(l.heading)).toBeVisible();
-      await expect(body).toContainText(l.year); // the first bar carries the year
-      await expect(body).toContainText(l.plain); // the second month of the same year does not
-      await expect(body).toContainText(/R\$\s?812[.,]00/);
-      await expect(body).toContainText(/R\$\s?692[.,]00/);
-      await expect(body).toContainText(/R\$\s?300[.,]00/);
-      await expect(body.getByText(l.mark)).toHaveCount(1);
-      expect(await body.locator("[data-fill]").count()).toBe(3);
-
-      const leisure = category(page, l.leisure);
-      await leisure.click();
-      await expect(page.locator(`#${await leisure.getAttribute("aria-controls")}`).getByText(l.heading)).toBeVisible();
+      await category(page, l.groceries).click();
+      expect(reads()).toBe(0);
+      await page.getByRole("link", { name: l.link }).click();
+      await expect(page).toHaveURL(/\/finances\/gastos\/groceries$/);
+      await expect(page.getByRole("heading", { name: l.groceries })).toBeVisible();
+      await expect(page.getByText(l.heading)).toBeVisible();
+      const main = page.getByRole("main");
+      await expect(main).toContainText(l.year); // the first bar carries the year
+      await expect(main).toContainText(l.plain); // the second month of the same year does not
+      await expect(main).toContainText(/R\$\s?812[.,]00/);
+      await expect(main).toContainText(/R\$\s?692[.,]00/);
+      await expect(main).toContainText(/R\$\s?300[.,]00/);
+      await expect(main.getByText(l.mark)).toHaveCount(1);
+      expect(await main.locator("[data-fill]").count()).toBe(3);
+      expect(await noOverflow(page)).toBe(true);
       expect(reads()).toBe(1);
     });
 
-    test("marks a past month as the chosen one, not as this month", async ({ page }) => {
+    test("keeps the picked month to the category screen and back, and marks it as chosen, not this month", async ({ page }) => {
       await page.getByRole("button", { name: l.prev, exact: true }).click();
-      const groceries = category(page, l.groceries);
-      await groceries.click();
-      const body = page.locator(`#${await groceries.getAttribute("aria-controls")}`);
-      await expect(body.getByText(l.picked)).toHaveCount(1);
-      await expect(body.getByText(l.mark)).toHaveCount(0);
+      await openHistory(page, l.groceries);
+      await expect(page).toHaveURL(/\/finances\/gastos\/groceries\?month=2026-11$/);
+      await expect(page.getByText(l.november)).toBeVisible();
+      await expect(page.getByText(l.picked)).toHaveCount(1);
+      await expect(page.getByText(l.mark)).toHaveCount(0);
+      await page.getByRole("button", { name: l.back, exact: true }).click();
+      await expect(page).toHaveURL(/\/finances\/gastos\?month=2026-11$/);
+      await expect(page.getByText(l.november)).toBeVisible();
+    });
+
+    test("a deep link opens the category and Back goes to Gastos on the same month", async ({ page, baseURL }) => {
+      await visit(page, new URL("/finances/gastos/groceries?month=2026-11", baseURL!).toString());
+      await expect(page.getByRole("heading", { name: l.groceries })).toBeVisible();
+      await expect(page.getByText(l.picked)).toHaveCount(1);
+      await page.getByRole("button", { name: l.back, exact: true }).click();
+      await expect(page).toHaveURL(/\/finances\/gastos\?month=2026-11$/);
+      await expect(category(page, l.groceries)).toBeVisible();
+    });
+
+    test("an unknown category goes to Today, never a blank screen", async ({ page, baseURL }) => {
+      await visit(page, new URL("/finances/gastos/nope?month=2026-11", baseURL!).toString());
+      await expect(page).toHaveURL(new URL("/", baseURL!).toString());
     });
 
     test("shows the year again where the six months cross into a new one", async ({ page, baseURL }) => {
       await page.clock.setFixedTime(new Date("2027-02-15T12:00:00-03:00"));
       await visit(page, new URL("/finances", baseURL!).toString());
       await financeView(page, /^(Gastos|Spending)$/).click();
-      const groceries = category(page, l.groceries);
-      await groceries.click();
-      await expect(page.locator(`#${await groceries.getAttribute("aria-controls")}`)).toContainText(l.january);
+      await openHistory(page, l.groceries);
+      await expect(page.getByRole("main")).toContainText(l.january);
     });
 
     test("says so when the category had no spending in six months", async ({ page, baseURL }) => {
@@ -101,18 +126,19 @@ for (const l of LOCALES) {
       );
       await visit(page, new URL("/finances", baseURL!).toString());
       await financeView(page, /^(Gastos|Spending)$/).click();
-      await category(page, l.groceries).click();
+      await openHistory(page, l.groceries);
       await expect(page.getByText(l.empty).first()).toBeVisible();
     });
 
-    test("a failed history read retries inside the category while the Transactions still list", async ({ page, baseURL }) => {
+    test("a failed history read retries on the category screen while the limit form still works", async ({ page, baseURL }) => {
       let failing = true;
       await page.route(/\/me\/finance\/history/, (route) => (failing ? route.fulfill({ status: 500, contentType: "application/json", body: "{}" }) : route.fallback()));
       await visit(page, new URL("/finances", baseURL!).toString());
       await financeView(page, /^(Gastos|Spending)$/).click();
-      await category(page, l.groceries).click();
+      await openHistory(page, l.groceries);
       await expect(page.getByText(l.failed).first()).toBeVisible();
-      await expect(page.getByText("Mercado grande")).toBeVisible();
+      await expect(page.getByLabel(l.limit)).toBeVisible();
+      expect(await noOverflow(page)).toBe(true);
       failing = false;
       await page.getByRole("button", { name: l.retry }).first().click();
       await expect(page.getByText(l.heading).first()).toBeVisible();

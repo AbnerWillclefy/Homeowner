@@ -60,7 +60,8 @@ func (s *Store) Income(ctx context.Context, userID string) (*int64, error) {
 // a test fails if the schema has a finance_* table that is not listed here, so
 // a later ticket adds its table to this list.
 var financeTables = []string{"finance_transactions", "finance_sources", "finance_items", "finance_credentials",
-	"finance_merchant_categories", "finance_llm_calls", "finance_bill_reminders", "finance_bill_payments", "finance_bills", "finance_settings", "finance_category_budgets", "finance_bill_suggestion_dismissals"}
+	"finance_merchant_categories", "finance_llm_calls", "finance_bill_reminders", "finance_bill_payments", "finance_bills", "finance_settings", "finance_category_budgets", "finance_bill_suggestion_dismissals",
+	"finance_investments", "finance_goals"}
 
 // DeleteAll removes all of the User's finance data in one transaction. The
 // cascades would remove the children anyway; listing every table keeps the
@@ -103,7 +104,8 @@ type NewSource struct {
 
 // ConnectItem stores the User's Item and its Sources in one transaction.
 // Calling it again changes no row count: the Item is kept as it was and each
-// Source is refreshed in place.
+// Source is refreshed in place, except a card's bill days, which Pluggy fills
+// only while the card has none.
 func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, now time.Time, sources []NewSource) error {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
@@ -124,7 +126,10 @@ func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, no
 			INSERT INTO finance_sources (user_id, item_id, pluggy_account_id, kind, name, currency, bill_close_day, bill_due_day)
 			VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, 0), NULLIF($8, 0))
 			ON CONFLICT (item_id, pluggy_account_id) DO UPDATE SET kind = $4, name = $5, currency = $6,
-				bill_close_day = NULLIF($7, 0), bill_due_day = NULLIF($8, 0)`,
+				bill_close_day = CASE WHEN finance_sources.bill_close_day IS NULL AND finance_sources.bill_due_day IS NULL
+					THEN NULLIF($7, 0) ELSE finance_sources.bill_close_day END,
+				bill_due_day = CASE WHEN finance_sources.bill_close_day IS NULL AND finance_sources.bill_due_day IS NULL
+					THEN NULLIF($8, 0) ELSE finance_sources.bill_due_day END`,
 			userID, itemID, src.PluggyAccountID, src.Kind, src.Name, src.Currency, src.CloseDay, src.DueDay)
 		if err != nil {
 			return err
@@ -136,14 +141,14 @@ func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, no
 // Overview reads the whole status body: Sources, import state and credentials flag.
 func (s *Store) Overview(ctx context.Context, userID string) (StatusResponse, error) {
 	out := StatusResponse{Sources: []SourceResponse{}}
-	rows, err := s.db.Query(ctx, `SELECT id, name, kind, currency FROM finance_sources WHERE user_id = $1 ORDER BY name, id`, userID)
+	rows, err := s.db.Query(ctx, `SELECT id, name, kind, currency, bill_close_day, bill_due_day FROM finance_sources WHERE user_id = $1 ORDER BY name, id`, userID)
 	if err != nil {
 		return out, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var src SourceResponse
-		if err := rows.Scan(&src.ID, &src.Name, &src.Kind, &src.Currency); err != nil {
+		if err := rows.Scan(&src.ID, &src.Name, &src.Kind, &src.Currency, &src.CloseDay, &src.DueDay); err != nil {
 			return out, err
 		}
 		out.Sources = append(out.Sources, src)
@@ -222,20 +227,31 @@ func (s *Store) SetImportCursor(ctx context.Context, sourceID string, day time.T
 	return err
 }
 
-// SetBillDays refreshes the bill days of the Item's card Sources from Pluggy's
-// accounts; an account the Item does not hold is ignored.
+// SetBillDays fills the bill days of the Item's card Sources from Pluggy's
+// accounts, only for a card with neither day stored, so a day the User typed
+// stays; an account the Item does not hold is ignored.
 func (s *Store) SetBillDays(ctx context.Context, itemID string, accounts []pluggy.Account) error {
 	for _, a := range accounts {
-		if a.CloseDay == 0 && a.DueDay == 0 {
+		if a.CloseDay == 0 || a.DueDay == 0 {
 			continue
 		}
-		_, err := s.db.Exec(ctx, `UPDATE finance_sources SET bill_close_day = NULLIF($3, 0), bill_due_day = NULLIF($4, 0)
-			WHERE item_id = $1 AND pluggy_account_id = $2 AND kind = 'credit_card'`, itemID, a.ID, a.CloseDay, a.DueDay)
+		_, err := s.db.Exec(ctx, `UPDATE finance_sources SET bill_close_day = $3, bill_due_day = $4
+			WHERE item_id = $1 AND pluggy_account_id = $2 AND kind = 'credit_card'
+				AND bill_close_day IS NULL AND bill_due_day IS NULL`, itemID, a.ID, a.CloseDay, a.DueDay)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// SetBillDaysByHand stores the days a User typed on one of their card Sources,
+// or clears both with nil. found is false for another User's Source and for any
+// Source that is not a credit card.
+func (s *Store) SetBillDaysByHand(ctx context.Context, userID, sourceID string, closeDay, dueDay *int) (found bool, err error) {
+	tag, err := s.db.Exec(ctx, `UPDATE finance_sources SET bill_close_day = $3, bill_due_day = $4
+		WHERE id = $1 AND user_id = $2 AND kind = 'credit_card'`, sourceID, userID, closeDay, dueDay)
+	return tag.RowsAffected() == 1, err
 }
 
 // FinishSync marks the Item imported and synced at now.
@@ -412,12 +428,14 @@ func (s *Store) MonthTransactions(ctx context.Context, userID string, from, to t
 	return out, rows.Err()
 }
 
-// SpendRows returns what the daily pace reads of the User's Transactions that
-// count in [from, to): signed amount, type and category, with PostedOn set to
-// the CountsOn day.
+// SpendRows returns what the daily pace, the commitments outlook and the savings suggestion read of the
+// User's Transactions that count in [from, to): Source, signed amount, type and
+// category, with PostedOn set to the CountsOn day and Linked set when a Bill
+// payment (not undone) points at it.
 func (s *Store) SpendRows(ctx context.Context, userID string, from, to time.Time) ([]Txn, error) {
-	rows, err := s.db.Query(ctx, `SELECT t.posted_on, t.amount_cents, t.type, t.spending_category,
-			s.kind, COALESCE(s.bill_close_day, 0), COALESCE(s.bill_due_day, 0)
+	rows, err := s.db.Query(ctx, `SELECT t.posted_on, t.amount_cents, t.type, t.spending_category, t.source_id,
+			s.kind, COALESCE(s.bill_close_day, 0), COALESCE(s.bill_due_day, 0),
+			EXISTS (SELECT 1 FROM finance_bill_payments p WHERE p.transaction_id = t.id AND p.undone_at IS NULL)
 		FROM finance_transactions t JOIN finance_sources s ON s.id = t.source_id
 		WHERE t.user_id = $1 AND t.posted_on >= $2 AND t.posted_on < $3`, userID, from.AddDate(0, -billLead, 0), to)
 	if err != nil {
@@ -430,7 +448,7 @@ func (s *Store) SpendRows(ctx context.Context, userID string, from, to time.Time
 		var category *string
 		var kind Kind
 		var closeDay, dueDay int
-		if err := rows.Scan(&t.PostedOn, &t.AmountCents, &t.Type, &category, &kind, &closeDay, &dueDay); err != nil {
+		if err := rows.Scan(&t.PostedOn, &t.AmountCents, &t.Type, &category, &t.SourceID, &kind, &closeDay, &dueDay, &t.Linked); err != nil {
 			return nil, err
 		}
 		if t.PostedOn = CountsOn(t.PostedOn, kind, closeDay, dueDay); t.PostedOn.Before(from) || !t.PostedOn.Before(to) {
@@ -523,7 +541,7 @@ func (s *Store) InstallmentPlans(ctx context.Context, userID string) ([]Plan, er
 		SELECT DISTINCT ON (t.source_id, t.merchant_key, t.total_installments,
 				date_trunc('month', t.posted_on) - (t.installment_number - 1) * interval '1 month')
 			t.description, t.merchant_key, t.installment_number, t.total_installments, -t.amount_cents, t.posted_on,
-			s.kind, COALESCE(s.bill_close_day, 0), COALESCE(s.bill_due_day, 0)
+			t.source_id, s.kind, COALESCE(s.bill_close_day, 0), COALESCE(s.bill_due_day, 0), COALESCE(t.spending_category, '')
 		FROM finance_transactions t JOIN finance_sources s ON s.id = t.source_id
 		WHERE t.user_id = $1 AND t.type = 'expense' AND t.amount_cents < 0 AND t.installment_number IS NOT NULL
 		ORDER BY t.source_id, t.merchant_key, t.total_installments,
@@ -539,14 +557,34 @@ func (s *Store) InstallmentPlans(ctx context.Context, userID string) ([]Plan, er
 		var posted time.Time
 		var kind Kind
 		var closeDay, dueDay int
-		if err := rows.Scan(&desc, &key, &p.Number, &p.Total, &p.AmountCents, &posted, &kind, &closeDay, &dueDay); err != nil {
+		if err := rows.Scan(&desc, &key, &p.Number, &p.Total, &p.AmountCents, &posted, &p.SourceID, &kind, &closeDay, &dueDay, &p.Category); err != nil {
 			return nil, err
 		}
 		p.Name = PlanName(desc, key)
+		p.Card = kind == "credit_card"
 		// A card installment is projected from the month its bill is due, as spending counts it.
 		on := CountsOn(posted, kind, closeDay, dueDay)
 		p.Month = time.Date(on.Year(), on.Month(), 1, 0, 0, 0, 0, time.UTC)
 		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// CardSources lists the User's credit card Sources, with whether both bill days are set.
+func (s *Store) CardSources(ctx context.Context, userID string) ([]Card, error) {
+	rows, err := s.db.Query(ctx, `SELECT id, name, bill_close_day IS NOT NULL AND bill_due_day IS NOT NULL
+		FROM finance_sources WHERE user_id = $1 AND kind = 'credit_card' ORDER BY name, id`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Card
+	for rows.Next() {
+		var c Card
+		if err := rows.Scan(&c.ID, &c.Name, &c.BillDaysKnown); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
 	}
 	return out, rows.Err()
 }

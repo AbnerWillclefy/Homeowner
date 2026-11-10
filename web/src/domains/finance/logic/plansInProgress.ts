@@ -15,7 +15,7 @@ export interface Plan {
  * The Installment plans, in order of first appearance. A line has no plan id, so a plan is its name and total.
  * Counting from the first appearance also dates a plan whose end is past the months the API returns.
  */
-export function plansInProgress(months: CommitmentMonth[]): Plan[] {
+export function plansInProgress(months: Pick<CommitmentMonth, "month" | "installments">[]): Plan[] {
   const plans = new Map<string, Plan>();
   for (const m of months) {
     for (const i of m.installments) {

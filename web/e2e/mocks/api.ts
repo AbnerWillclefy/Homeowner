@@ -45,7 +45,7 @@ export interface FakeState {
   /** What `GET /me/finance` answers. Absent means no credentials, no Sources. */
   finance?: {
     configured: boolean;
-    sources: { id: string; name: string; kind: string; currency: string }[];
+    sources: { id: string; name: string; kind: string; currency: string; closeDay?: number | null; dueDay?: number | null }[];
     importing: boolean;
     lastSyncedAt: string | null;
     /**
@@ -71,13 +71,51 @@ export interface FakeState {
     limits?: Record<string, number>;
     /** Monthly income, which `PUT /me/finance/income` sets. Absent means none. */
     monthlyIncomeCents?: number | null;
-    /** The months `GET /me/finance/commitments` lists; the fake adds `percentOfIncome` from the income. Absent means none. */
+    /** The months `GET /me/finance/commitments` lists; the fake adds `leftoverCents` (income minus `totalCents`) while an income is set. Absent means none. */
     commitments?: {
       month: string;
-      committedCents: number;
       installments: { name: string; number: number; total: number; amountCents: number }[];
-      bills: { id: string; name: string; expectedCents: number }[];
+      cards: { sourceId: string; name: string; amountCents: number; billDaysKnown: boolean }[];
+      otherBills: { id: string; name: string; cents: number; paid: boolean }[];
+      otherInstallmentsCents: number;
+      planned: { category: string; cents: number }[];
+      plannedCents: number;
+      /** Only the current month has it. */
+      spentOffCardCents?: number;
+      totalCents: number;
     }[];
+    /** What `GET /me/finance/savings` answers and the savings writes change. Absent means nothing set and no rows. */
+    savings?: {
+      reserveTargetCents: number | null;
+      contributionBaseCents: number | null;
+      reserveSharePercent: number | null;
+      investments: { id: string; name: string; valueCents: number; serves: "reserve" | "goals" }[];
+      /**
+       * In the User's order. `targetMonth` is `YYYY-MM` or null. The progress fields default to nothing saved, no
+       * monthly amount, no expected month and not late, as a User with no Monthly contribution reads.
+       */
+      goals: {
+        id: string;
+        name: string;
+        targetCents: number;
+        targetMonth: string | null;
+        savedCents?: number;
+        monthCents?: number | null;
+        expectedMonth?: string | null;
+        late?: boolean;
+      }[];
+      /**
+       * What the server works out for the month and the fake does not: the reserve's `monthCents` and `expectedMonth`
+       * (its target and saved amount come from the rows above), money no Goal takes, and how the month's leftover
+       * compares with the contribution. Absent means none of it.
+       */
+      suggestion?: {
+        reserve?: { monthCents?: number | null; expectedMonth?: string | null };
+        unassignedCents?: number;
+        leftover?: { leftoverCents: number; extraCents: number; monthsSooner: number | null };
+        overLimit?: { category: string; overCents: number }[];
+      };
+    };
     /** What `GET /me/finance/transactions` reads, any month; the PATCH edits these. Absent means none. */
     transactions?: {
       id: string;

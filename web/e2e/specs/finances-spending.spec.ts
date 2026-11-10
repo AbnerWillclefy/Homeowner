@@ -35,6 +35,7 @@ const LOCALES = [
     prev: "Mês anterior",
     category: "Categoria de gasto",
     save: "Salvar",
+    noTransactions: "Nenhum lançamento em dezembro.",
   },
 ] as const;
 
@@ -109,6 +110,19 @@ for (const l of LOCALES) {
       await expect(body.getByRole("heading")).toHaveCount(2);
       await expect(body.locator("li").getByRole("button").first()).toContainText("Padaria");
       await expect(body.locator("li").getByRole("button").last()).toContainText("Mercado grande");
+      // The limit and the six months moved to the category screen: the card has only a link to it.
+      await expect(body.getByRole("link")).toHaveCount(1);
+      await expect(body.getByRole("textbox")).toHaveCount(0);
+      await expect(body.locator("[data-fill]")).toHaveCount(0);
+    });
+
+    test("opens a category with no Transactions in the month, for the link and one muted line", async ({ page }) => {
+      const button = category(page, l.health);
+      await button.click();
+      const body = page.locator(`[id="${await button.getAttribute("aria-controls")}"]`);
+      await expect(body.getByRole("link")).toBeVisible();
+      await expect(body.getByRole("heading")).toHaveCount(0);
+      await expect(body.getByText(l.noTransactions)).toBeVisible();
     });
 
     test("the no-category card counts, edits and goes away, and every month is read again", async ({ page }) => {

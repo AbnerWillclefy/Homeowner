@@ -5,9 +5,11 @@ import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
 import { financeView } from "../pages/finances";
 
-// What this covers, pt-BR first and then English: Resumo splits the Monthly income into spent, Bills still to pay and
-// what is left, all as text, and over the income says so in ordinary ink with no alert. With no income it asks for one
-// and leads to Ajustes. The pace sentence says "a mais" / "a menos" / "o mesmo" against the same days of last month,
+// What this covers, pt-BR first and then English: Resumo shows the current month's leftover, the first month of
+// "Próximos meses" read from the same single request, with the four group totals as text; over the income it says so
+// in ordinary ink with no alert, and with nothing committed the leftover is the income. With no income it asks for one,
+// leads to Ajustes and keeps the four rows and the Total. A failed commitments read hides only that card. A past month
+// has no card. The pace sentence says "a mais" / "a menos" / "o mesmo" against the same days of last month,
 // and the table view has the line's numbers. The next three unpaid Bills (overdue first) and the top three categories
 // link to Contas and Gastos. Switching tabs adds no request. At 320px with the root font at 200% nothing overflows,
 // in light and dark. The clock is fixed at 2030-01-15, so the previous month is December 2029.
@@ -16,12 +18,22 @@ const LOCALES = [
   {
     locale: "pt-BR",
     views: { spending: "Gastos", bills: "Contas" },
-    heading: { split: "A renda de janeiro", pace: "Gasto ao longo do mês", bills: "Próximas contas", top: "Onde mais gastou" },
-    spent: /Gasto até hoje\s*R\$\s*600,00/,
-    unpaid: /Contas a pagar\s*R\$\s*2\.070,50/,
-    left: /Livre\s*R\$\s*829,50/,
-    over: /Além da renda\s*R\$\s*670,50/,
-    none: "Informe sua renda mensal para ver como o mês está indo.",
+    heading: { split: "A sobra de janeiro", pace: "Gasto ao longo do mês", bills: "Próximas contas", top: "Onde mais gastou" },
+    left: /R\$\s*1\.000,00/,
+    leftSentence: /Depois de tudo o que o mês já tem, sobram R\$\s*1\.000,00 da renda\./,
+    overSentence: /passa a renda em R\$\s*500,00\./,
+    negative: /[-−]\s?R\$\s*500,00/,
+    zeroSentence: /sobram R\$\s*3\.500,00 da renda\./,
+    totals: [/Total\s*R\$\s*2\.500,00/, /Renda mensal\s*R\$\s*3\.500,00/],
+    groups: [
+      /Faturas dos cartões\s*R\$\s*1\.100,00/,
+      /Outras contas\s*R\$\s*700,00/,
+      /Gasto previsto \(o que falta dos limites\)\s*R\$\s*500,00/,
+      /Já gasto fora do cartão\s*R\$\s*200,00/,
+    ],
+    none: "Informe sua renda mensal para ver a sobra do mês.",
+    seeMonths: "Ver próximos meses",
+    commitHeading: "Próximos meses",
     setIncome: "Informar renda mensal",
     changeIncome: "Alterar renda",
     more: /Até dia 15 você gastou R\$\s*300,00 a mais que até 15 de dezembro/,
@@ -49,12 +61,22 @@ const LOCALES = [
   {
     locale: "en-US",
     views: { spending: "Spending", bills: "Bills" },
-    heading: { split: "Your January income", pace: "Spending through the month", bills: "Next bills", top: "Where you spent most" },
-    spent: /Spent so far\s*R\$\s*600\.00/,
-    unpaid: /Bills to pay\s*R\$\s*2,070\.50/,
-    left: /Free\s*R\$\s*829\.50/,
-    over: /Over your income\s*R\$\s*670\.50/,
-    none: "Set your monthly income to see how the month is going.",
+    heading: { split: "Your January leftover", pace: "Spending through the month", bills: "Next bills", top: "Where you spent most" },
+    left: /R\$\s*1,000\.00/,
+    leftSentence: /After everything this month already holds, R\$\s*1,000\.00 of your income is left\./,
+    overSentence: /is R\$\s*500\.00 above your income\./,
+    negative: /[-−]\s?R\$\s*500\.00/,
+    zeroSentence: /R\$\s*3,500\.00 of your income is left\./,
+    totals: [/Total\s*R\$\s*2,500\.00/, /Monthly income\s*R\$\s*3,500\.00/],
+    groups: [
+      /Card bills\s*R\$\s*1,100\.00/,
+      /Other bills\s*R\$\s*700\.00/,
+      /Planned spending \(left of your limits\)\s*R\$\s*500\.00/,
+      /Already spent off the card\s*R\$\s*200\.00/,
+    ],
+    none: "Set your monthly income to see what is left this month.",
+    seeMonths: "See coming months",
+    commitHeading: "Coming months",
     setIncome: "Set monthly income",
     changeIncome: "Change income",
     more: /Up to day 15 you spent R\$\s*300\.00 more than up to December 15/,
@@ -86,7 +108,7 @@ const tx = (id: string, postedOn: string, amountCents: number, spendingCategory:
 });
 
 /** January: 600,00 spent. December up to the 15th: `december` cents, and 500,00 more after the 15th that must not count. */
-const connected = ({ income = 350000 as number | null, december = 30000, allPaid = false, older = false, noHistory = false } = {}) => {
+const connected = ({ income = 350000 as number | null, december = 30000, allPaid = false, older = false, noHistory = false, total = 250000 } = {}) => {
   const s = signedInResident();
   s.user.finance = true;
   const paid: Record<string, "bank" | "hand"> = allPaid ? { "2030-01": "hand" } : {};
@@ -96,6 +118,22 @@ const connected = ({ income = 350000 as number | null, december = 30000, allPaid
     importing: false,
     lastSyncedAt: "2030-01-15T12:00:00Z",
     monthlyIncomeCents: income,
+    // January: cards 1.100,00 + other bills 700,00 + planned 500,00 + spent off the card 200,00 = 2.500,00; the fake derives the leftover.
+    commitments: [
+      total === 0
+        ? { month: "2030-01", installments: [], cards: [], otherBills: [], otherInstallmentsCents: 0, planned: [], plannedCents: 0, spentOffCardCents: 0, totalCents: 0 }
+        : {
+            month: "2030-01",
+            installments: [],
+            cards: [{ sourceId: "card-1", name: "Nubank", amountCents: 110000, billDaysKnown: true }],
+            otherBills: [{ id: "b1", name: "Aluguel", cents: 70000, paid: false }],
+            otherInstallmentsCents: 0,
+            planned: [{ category: "groceries", cents: 50000 }],
+            plannedCents: 50000,
+            spentOffCardCents: 20000,
+            totalCents: total,
+          },
+    ],
     today: "2030-01-15",
     transactions: [
       tx("j1", "2030-01-02", -45000, "groceries"),
@@ -127,13 +165,30 @@ for (const l of LOCALES) {
       await visit(page, new URL("/finances", baseURL!).toString());
     });
 
-    test("splits the income into spent, bills to pay and left, as text, and changing it leads to Ajustes", async ({ page }) => {
-      const split = page.getByRole("region", { name: l.heading.split });
-      await expect(split).toContainText(l.spent);
-      await expect(split).toContainText(l.unpaid);
-      await expect(split).toContainText(l.left);
+    test("shows the current month's leftover from the first of the coming months, with the four groups, and the links lead on", async ({ page }) => {
+      const card = page.getByRole("region", { name: l.heading.split });
+      await expect(card).toContainText(l.left);
+      await expect(card).toContainText(l.leftSentence);
+      for (const row of [...l.totals, ...l.groups]) await expect(card).toContainText(row);
+      // The same number the first month of "Próximos meses" shows.
+      await card.getByRole("link", { name: l.seeMonths }).click();
+      await expect(page).toHaveURL((url) => url.pathname === "/finances/contas");
+      await expect(page.getByRole("region", { name: /janeiro de 2030|January 2030/i })).toContainText(l.left);
+      await page.goBack();
       await page.getByRole("link", { name: l.changeIncome }).click();
       await expect(page).toHaveURL((url) => url.pathname === "/finances/ajustes");
+    });
+
+    test("opening Resumo reads the commitments once", async ({ page, fakeApi }) => {
+      await expect(page.getByRole("region", { name: l.heading.split })).toContainText(l.left);
+      await page.waitForLoadState("networkidle");
+      expect(fakeApi.requests.filter((r) => r.path.startsWith("/me/finance/commitments")).length).toBe(1);
+    });
+
+    test("hides the leftover card on a past month", async ({ page, baseURL }) => {
+      await visit(page, new URL("/finances?month=2029-12", baseURL!).toString());
+      await expect(page.getByRole("region", { name: l.heading.pace })).toBeVisible();
+      await expect(page.getByRole("link", { name: l.seeMonths })).toHaveCount(0);
     });
 
     test("says the pace in words against the same days of last month, and the table has the line's numbers", async ({ page }) => {
@@ -201,40 +256,34 @@ for (const l of LOCALES) {
     }
 
     test.describe("when the bills cannot be read", () => {
-      test("only the blocks that need them say so, each with Retry, and Retry brings the bills back", async ({ page, baseURL, fakeApi }) => {
+      test("only the Bills block says so, with Retry, and the leftover stays", async ({ page, baseURL, fakeApi }) => {
         fakeApi.override("GET /me/finance/bills", { status: 500, body: { error: "boom" } }, { once: true });
         await visit(page, new URL("/finances", baseURL!).toString());
         const bills = page.getByRole("region", { name: l.heading.bills });
-        const split = page.getByRole("region", { name: l.heading.split });
-        for (const block of [bills, split]) {
-          await expect(block.getByRole("alert")).toBeVisible();
-          await expect(block.getByRole("button", { name: l.retry })).toBeVisible();
-        }
+        const card = page.getByRole("region", { name: l.heading.split });
+        await expect(bills.getByRole("alert")).toBeVisible();
+        await expect(bills.getByRole("button", { name: l.retry })).toBeVisible();
+        await expect(card).toContainText(l.left);
+        await expect(card.getByRole("alert")).toHaveCount(0);
         await expect(page.getByRole("region", { name: l.heading.pace }).getByText(l.more)).toBeVisible();
         await expect(page.getByRole("region", { name: l.heading.top }).getByRole("listitem")).toHaveCount(3);
         await bills.getByRole("button", { name: l.retry }).click();
         await expect(bills.getByRole("listitem")).toHaveCount(3);
-        await expect(split.getByRole("alert")).toHaveCount(0);
-        await expect(split).toContainText(l.left);
       });
     });
 
     test.describe("over the income", () => {
       test.use({ fakeState: connected({ income: 200000 }) });
 
-      test("says by how much in ordinary ink, with no alert", async ({ page }) => {
-        const split = page.getByRole("region", { name: l.heading.split });
-        await expect(split).toContainText(l.over);
-        await expect(split).not.toContainText(l.left);
-        await expect(page.getByRole("region", { name: l.heading.split }).getByRole("alert")).toHaveCount(0);
-        const colours = await page.evaluate(() => {
-          const color = (el: Element | null) => (el ? getComputedStyle(el).color : "");
-          const items = [...document.querySelectorAll("dl > div")];
-          const over = items.find((row) => /(Além da renda|Over your income)/.test(row.textContent ?? ""));
-          const spent = items.find((row) => /(Gasto até hoje|Spent so far)/.test(row.textContent ?? ""));
-          return [color(over ?? null), color(spent ?? null)];
-        });
-        expect(colours[0]).toBe(colours[1]);
+      test("states the negative leftover in neutral words: no alert, no danger colour", async ({ page }) => {
+        const card = page.getByRole("region", { name: l.heading.split });
+        await expect(card).toContainText(l.negative);
+        await expect(card).toContainText(l.overSentence);
+        await expect(card.getByRole("alert")).toHaveCount(0);
+        await expect(card.locator("svg")).toHaveCount(0); // no alarm icon
+        const colour = (target: typeof card) => target.evaluate((el) => getComputedStyle(el).color);
+        // The negative stat has the same ink as an ordinary amount in the card.
+        expect(await colour(card.locator("p", { hasText: l.negative }).first())).toBe(await colour(card.locator("dd").first()));
       });
     });
 
@@ -288,11 +337,39 @@ for (const l of LOCALES) {
     test.describe("with no income", () => {
       test.use({ fakeState: connected({ income: null }) });
 
-      test("asks for it and leads to Ajustes instead of the bar", async ({ page }) => {
-        await expect(page.getByText(l.none)).toBeVisible();
-        await expect(page.getByRole("region", { name: l.heading.split })).not.toContainText(l.spent);
-        await page.getByRole("link", { name: l.setIncome }).click();
+      test("asks for it and leads to Ajustes, with the four groups and the Total but no leftover", async ({ page }) => {
+        const card = page.getByRole("region", { name: l.heading.split });
+        await expect(card.getByText(l.none)).toBeVisible();
+        await expect(card).not.toContainText(l.left);
+        await expect(card).not.toContainText(l.totals[1]);
+        for (const row of [l.totals[0], ...l.groups]) await expect(card).toContainText(row);
+        await card.getByRole("link", { name: l.setIncome }).click();
         await expect(page).toHaveURL((url) => url.pathname === "/finances/ajustes");
+      });
+    });
+
+    test.describe("with an income and nothing committed", () => {
+      test.use({ fakeState: connected({ total: 0 }) });
+
+      test("the leftover is the whole income", async ({ page }) => {
+        const card = page.getByRole("region", { name: l.heading.split });
+        await expect(card).toContainText(l.zeroSentence);
+        await expect(card.getByText(l.none)).toHaveCount(0);
+      });
+    });
+
+    test.describe("when the commitments cannot be read", () => {
+      test("only the leftover card says so, with Retry, and Retry brings it back", async ({ page, baseURL, fakeApi }) => {
+        fakeApi.override("GET /me/finance/commitments", { status: 500, body: { error: "boom" } }, { once: true });
+        await visit(page, new URL("/finances", baseURL!).toString());
+        const card = page.getByRole("region", { name: l.heading.split });
+        await expect(card.getByRole("alert")).toBeVisible();
+        await expect(page.getByRole("region", { name: l.heading.bills }).getByRole("listitem")).toHaveCount(3);
+        await expect(page.getByRole("region", { name: l.heading.pace }).getByText(l.more)).toBeVisible();
+        await expect(page.getByRole("region", { name: l.heading.top }).getByRole("listitem")).toHaveCount(3);
+        await card.getByRole("button", { name: l.retry }).click();
+        await expect(card).toContainText(l.left);
+        await expect(card.getByRole("alert")).toHaveCount(0);
       });
     });
 
@@ -303,12 +380,6 @@ for (const l of LOCALES) {
         await expect(page.getByText(l.emptyBills)).toBeVisible();
         await expect(page.getByRole("region", { name: l.heading.bills }).getByRole("listitem")).toHaveCount(0);
       });
-    });
-
-    test("a card bill due later this month is still to pay, not free", async ({ page, fakeApi }) => {
-      fakeApi.state.finance!.transactions!.push({ ...tx("c1", "2029-12-28", -10000, "groceries"), countsOn: "2030-01-20" });
-      await page.reload();
-      await expect(page.getByRole("region", { name: l.heading.split })).toContainText(/(Contas a pagar|Bills to pay)\s*R\$\s*2[.,]170[.,]50/);
     });
 
     test.describe("spending less than last month", () => {

@@ -85,10 +85,16 @@ Finances is open only to Users on an allowlist. "Category" stays with Chores, so
 | Transaction | lançamento | transação, movimentação | One movement of money on a Source. Plural "lançamentos". Pending native-speaker review. |
 | Source | fonte | conta, banco, conexão | Where Transactions come from (a bank account or card). Avoid "conta": it also means a bill and a User account. |
 | Spending Category | categoria de gasto | categoria (alone), tag, etiqueta | Always "categoria de gasto" so it never reads as a Chore's category. |
-| Bill to pay | conta a pagar | fatura, boleto, dívida | Plural "contas a pagar". Money owed on a date. |
+| Bill to pay | conta a pagar | fatura, boleto, dívida | Plural "contas a pagar". Money owed on a date. A credit card Source's bill is worked out by the app, not entered. |
 | Installment plan | parcelamento | financiamento, empréstimo | A purchase paid in parts; each part is a "parcela". |
 | Summary (Finances view) | resumo | visão geral | The first Finances view. en-US "Summary". |
 | Monthly income | renda mensal | salário, receita, ganhos | What a User expects to receive each month. |
+| Leftover | sobra | saldo, resto, economia | What remains of the Monthly income after a month's commitments; can be negative. |
+| Planned spending | gasto previsto | orçamento, reserva, previsão | Spending a User sets aside for a coming month; lowers the Leftover. |
 | Spending limit | limite | orçamento, teto, meta | A User's monthly cap for one Spending Category; en-US "limit". |
+| Investment | investimento | ativo, aplicação | Money put away, with a value and what it serves (reserve or Goals). |
+| Emergency reserve | reserva de emergência | poupança, fundo | The amount set aside for the unexpected; it has a target. |
+| Goal | objetivo | meta, sonho | Something saved toward, with a target amount. Not "meta": that reads as a Spending limit. |
+| Monthly contribution | aporte mensal | depósito, poupança mensal | What a User puts into savings each month. Sharing it among Goals is the "divisão do aporte", never "alocação". |
 
 Apple and Android labels must match what the device shows in pt-BR. They are not yet verified on a pt-BR device.

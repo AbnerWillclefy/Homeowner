@@ -13,21 +13,21 @@ import { useCommitments } from "../hooks/useCommitments";
 import { useDaily } from "../hooks/useDaily";
 import { useFinanceMonth } from "../hooks/useFinanceMonth";
 import { useMonth } from "../hooks/useMonth";
+import { useSavings } from "../hooks/useSavings";
 import { barPercent } from "../logic/chart";
-import { billGroups } from "../logic/billGroups";
 import { billState } from "../logic/billState";
-import { incomeSplit } from "../logic/incomeSplit";
 import { formatCents } from "../logic/money";
 import { addMonths, currentDay, daysInMonth, formatDay, monthName } from "../logic/month";
-import { monthView, spent as spentOf } from "../logic/monthView";
+import { monthRows } from "../logic/monthRows";
+import { monthView } from "../logic/monthView";
 import { nextUnpaid } from "../logic/nextUnpaid";
 import { paceSentence } from "../logic/paceSentence";
 import { sameDays } from "../logic/sameDays";
 import { spendingKey } from "../logic/spendingCategories";
 import { formatSyncTime } from "../logic/syncTime";
 import { topCategories } from "../logic/topCategories";
+import { SavingsSuggestion } from "./SavingsSuggestion";
 import { CumulativeLine } from "./charts/CumulativeLine";
-import { HATCH } from "./charts/Bar";
 import { SplitBar } from "./charts/SplitBar";
 
 /** A card that has not loaded: a quiet bar, or the failure with its own retry, so one failed read never hides the rest. */
@@ -84,18 +84,18 @@ const bold = (sentence: string, amount: string) => {
   );
 };
 
-/** A legend swatch, drawn as the bar draws its part. */
-const Swatch = ({ part }: { part: "spent" | "unpaid" | "left" }) => (
-  <span
-    aria-hidden="true"
-    className={`size-3.5 shrink-0 rounded-sm border ${part === "spent" ? "border-chart-ink bg-chart-ink" : part === "unpaid" ? "border-chart-muted" : "border-border bg-chart-track"}`}
-    style={part === "unpaid" ? { backgroundImage: HATCH } : undefined}
-  />
-);
+const GROUP_LABEL = {
+  cards: "finances.commit.group.cards",
+  bills: "finances.commit.group.bills",
+  planned: "finances.commit.group.plannedCurrent",
+  spent: "finances.commit.group.spent",
+} as const;
 
 /**
  * Resumo: how the picked month is going, from the same cached reads Gastos and Contas use, plus its own
- * GET /me/finance/daily for the pace chart. A past month is read whole: no today, no pace sentence.
+ * GET /me/finance/daily for the pace chart and the savings read of the month's suggestion (current month only,
+ * under the leftover card, from the cache Economias shares). A past month is read whole: no today, no pace sentence, and no leftover
+ * card. The leftover is the current month's, the first month of "Próximos meses", read from that same cached query.
  */
 export function Summary({ lastSyncedAt }: { lastSyncedAt: string | null }) {
   const { t, locale } = useI18n();
@@ -110,18 +110,16 @@ export function Summary({ lastSyncedAt }: { lastSyncedAt: string | null }) {
   const bills = useBills(month);
   const commitments = useCommitments(thisMonth);
   const daily = useDaily(month);
-  useReportFetching(current.refreshing || previous.refreshing || bills.refreshing || commitments.refreshing || daily.refreshing);
+  const savings = useSavings();
+  useReportFetching(current.refreshing || previous.refreshing || bills.refreshing || commitments.refreshing || daily.refreshing || savings.refreshing);
 
   const money = (cents: number) => formatCents(cents, locale);
-  const rows = current.state.kind === "ready" ? current.state.data.transactions : null;
+  const transactions = current.state.kind === "ready" ? current.state.data.transactions : null;
   const before = previous.state.kind === "ready" ? previous.state.data.transactions : null;
-  const compared = rows && before ? sameDays(rows, before, month, today) : null;
-  const spent = compared?.spent ?? (current.state.kind === "ready" ? current.state.data.spentCents : 0);
-  const unpaid = bills.state.kind === "ready" ? billGroups(bills.state.data, day).toPayCents : 0;
+  const compared = transactions && before ? sameDays(transactions, before, month, today) : null;
+  const first = commitments.state.kind === "ready" ? commitments.state.data.months[0] : undefined;
   const income = commitments.state.kind === "ready" ? commitments.state.data.monthlyIncomeCents : null;
-  // A card bill due later this month is not spent yet, but it is still to pay.
-  const dueCents = compared?.due.reduce((sum, tx) => sum + spentOf(tx), 0) ?? 0;
-  const split = incomeSplit(income, spent, unpaid + dueCents);
+  const leftover = first ? monthRows(first) : null;
   const usual = daily.state.kind === "ready" ? daily.state.data : null;
   const averageMonths = usual?.averageMonths ?? 0;
   const averageToday = usual?.average[dayOfMonth - 1];
@@ -131,46 +129,81 @@ export function Summary({ lastSyncedAt }: { lastSyncedAt: string | null }) {
   const billCount = bills.state.kind === "ready" ? bills.state.data.length : 0;
   const top = view ? topCategories(view, 3) : [];
   const topMax = top[0]?.spentCents ?? 0;
-  const retryAll = () => void Promise.all([current.reload(), bills.reload(), commitments.reload()]);
   const name = monthName(month, locale);
 
   return (
     <>
-      <Block heading={t("finances.summary.split.heading", { month: name })} states={[current.state, bills.state, commitments.state]} retry={retryAll} failed={t("finances.summary.split.failed")}>
-        {split ? (
-          <>
-            <p className="my-0">
-              {split.over > 0
-                ? bold(t("finances.summary.split.overSentence", { amount: MARK }), money(split.over))
-                : bold(t("finances.summary.split.leftSentence", { amount: MARK }), money(split.left))}
-            </p>
-            <SplitBar solid={split.spent} hatched={split.unpaid} max={split.scale} />
-            <dl className="m-0 flex flex-col gap-2">
-              {(
-                [
-                  ["spent", t(isCurrent ? "finances.summary.split.spent" : "finances.summary.split.spentMonth"), split.spent],
-                  ["unpaid", t("finances.summary.split.unpaid"), split.unpaid],
-                  ["left", t(split.over > 0 ? "finances.summary.split.over" : "finances.summary.split.left"), split.over > 0 ? split.over : split.left],
-                ] as const
-              ).map(([part, label, cents]) => (
-                <div key={part} className="flex flex-wrap items-center gap-x-2.5">
-                  <Swatch part={part} />
-                  <dt className="min-w-0 flex-1">{label}</dt>
-                  <dd className="m-0 font-bold">{money(cents)}</dd>
-                </div>
-              ))}
-            </dl>
-          </>
-        ) : (
-          <p className="my-0">{t("finances.summary.split.none")}</p>
-        )}
-        <p className="my-0 flex flex-wrap items-center justify-between gap-x-3 border-t border-border pt-3 text-sm font-semibold text-muted">
-          {income !== null && <span>{t("finances.commit.income", { amount: money(income) })}</span>}
-          <Button asChild variant="link">
-            <Link to={FINANCES_SETTINGS_PATH}>{t(income === null ? "finances.commit.incomeSet" : "finances.commit.incomeChange")}</Link>
-          </Button>
-        </p>
-      </Block>
+      {isCurrent && (
+        <Block heading={t("finances.summary.left.heading", { month: name })} states={[commitments.state]} retry={() => void commitments.reload()} failed={t("finances.summary.left.failed")}>
+          {leftover && (
+            <>
+              {income === null || leftover.leftoverCents === null ? (
+                <>
+                  <p className="my-0">{t("finances.summary.left.noIncome")}</p>
+                  <Button asChild className="self-start">
+                    <Link to={FINANCES_SETTINGS_PATH}>{t("finances.commit.incomeSet")}</Link>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="my-0 text-3xl font-bold [overflow-wrap:anywhere]">{money(leftover.leftoverCents)}</p>
+                  <p className="my-0 text-sm text-muted">
+                    {leftover.overCents > 0
+                      ? bold(t("finances.summary.left.over", { amount: MARK }), money(leftover.overCents))
+                      : bold(t("finances.summary.left.sentence", { amount: MARK }), money(leftover.leftoverCents))}
+                  </p>
+                  <SplitBar solid={Math.max(0, leftover.totalCents)} hatched={0} max={Math.max(income, leftover.totalCents)} />
+                  <p className="my-0 flex flex-wrap justify-between gap-x-3 text-sm text-muted">
+                    <span>
+                      {t("finances.commit.total")} {money(leftover.totalCents)}
+                    </span>
+                    <span>
+                      {t("finances.commit.monthlyIncome")} {money(income)}
+                    </span>
+                  </p>
+                </>
+              )}
+              <dl className="m-0 flex flex-col gap-2 border-t border-border pt-3">
+                {(["cards", "bills", "planned", "spent"] as const).map((id) => (
+                  <div key={id} className="flex flex-wrap items-baseline justify-between gap-x-3">
+                    <dt className="min-w-0 [overflow-wrap:anywhere]">{t(GROUP_LABEL[id])}</dt>
+                    <dd className="m-0 font-bold">{money(leftover.groups.find((g) => g.id === id)?.cents ?? 0)}</dd>
+                  </div>
+                ))}
+                {income === null && (
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-t border-border pt-2">
+                    <dt className="font-semibold">{t("finances.commit.total")}</dt>
+                    <dd className="m-0 font-bold">{money(leftover.totalCents)}</dd>
+                  </div>
+                )}
+              </dl>
+              <p className="my-0 flex flex-wrap items-center justify-between gap-x-3 border-t border-border pt-3 text-sm font-semibold">
+                {income !== null && (
+                  <Button asChild variant="link">
+                    <Link to={FINANCES_SETTINGS_PATH}>{t("finances.commit.incomeChange")}</Link>
+                  </Button>
+                )}
+                <Button asChild variant="link">
+                  <Link to={FINANCES_BILLS_PATH}>{t("finances.summary.left.months")}</Link>
+                </Button>
+              </p>
+            </>
+          )}
+        </Block>
+      )}
+
+      {isCurrent && (
+        <Block heading={t("finances.suggestion.heading", { month: name })} states={[savings.state]} retry={() => void savings.reload()} failed={t("finances.suggestion.failed")}>
+          {savings.state.kind === "ready" && (
+            <SavingsSuggestion
+              savings={savings.state.data}
+              month={month}
+              incomeSet={commitments.state.kind === "ready" ? income !== null : null}
+              leftoverCents={leftover?.leftoverCents ?? null}
+            />
+          )}
+        </Block>
+      )}
 
       <Block heading={t("finances.summary.pace.heading")} states={[current.state, previous.state]} retry={() => void Promise.all([current.reload(), previous.reload()])} failed={t("finances.summary.pace.failed")}>
         {sentence && <p className="my-0">{sentence}</p>}
