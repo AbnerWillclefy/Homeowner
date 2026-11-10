@@ -22,7 +22,8 @@ type ContributionRequest struct {
 
 // ReserveProgress is the Emergency reserve in the savings answer. SavedCents is
 // the sum of the Investments that serve it; TargetCents is null without a target,
-// MonthCents and ExpectedMonth ("YYYY-MM") without a Monthly contribution.
+// MonthCents is null without a Monthly contribution; ExpectedMonth ("YYYY-MM") is
+// null then too, and also with no target or when not reached within 120 months.
 type ReserveProgress struct {
 	TargetCents   *int64  `json:"targetCents"`
 	SavedCents    int64   `json:"savedCents"`
@@ -43,6 +44,7 @@ type SavingsGoal struct {
 
 // LeftoverExtra is given when the month's leftover is above the Base: MonthsSooner
 // is how many months sooner the reserve, or the first unfilled Goal, is reached.
+// MonthsSooner is null when nothing is left to fill or either date is beyond 120 months.
 type LeftoverExtra struct {
 	LeftoverCents int64 `json:"leftoverCents"`
 	ExtraCents    int64 `json:"extraCents"`
