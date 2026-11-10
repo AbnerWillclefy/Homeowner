@@ -15,14 +15,17 @@ vi.mock("../api/api", async (importOriginal) => ({
 
 const { useSavings } = await import("./useSavings");
 
+const PROGRESS = { targetMonth: null, savedCents: 0, monthCents: null, expectedMonth: null, late: false };
 const SAVINGS: Savings = {
   reserveTargetCents: null,
   contributionBaseCents: null,
   reserveSharePercent: null,
   investments: [],
+  reserve: { targetCents: null, savedCents: 0, monthCents: null, expectedMonth: null },
+  unassignedCents: 0,
   goals: [
-    { id: "a", name: "A", targetCents: 100, targetMonth: null },
-    { id: "b", name: "B", targetCents: 200, targetMonth: null },
+    { ...PROGRESS, id: "a", name: "A", targetCents: 100 },
+    { ...PROGRESS, id: "b", name: "B", targetCents: 200 },
   ],
 };
 

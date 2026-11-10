@@ -458,13 +458,50 @@ export interface Goal {
 }
 export type GoalInput = Omit<Goal, "id">;
 
+/** A Goal as the savings read gives it, with its progress and this month's share. `monthCents` and `expectedMonth` are null without a Monthly contribution; `expectedMonth` also when the Goal is not reached within 10 years. */
+export interface SavingsGoal extends Goal {
+  savedCents: number;
+  monthCents: number | null;
+  /** `YYYY-MM`. */
+  expectedMonth: string | null;
+  /** A Goal with a date that its expected month passes. */
+  late: boolean;
+}
+
+/** The Emergency reserve's progress; `monthCents` and `expectedMonth` are null as a Goal's are. */
+export interface ReserveProgress {
+  targetCents: number | null;
+  savedCents: number;
+  monthCents: number | null;
+  expectedMonth: string | null;
+}
+
+/** Given when the month's leftover is above the Monthly contribution; `monthsSooner` is null when it cannot be told. */
+export interface LeftoverExtra {
+  leftoverCents: number;
+  extraCents: number;
+  monthsSooner: number | null;
+}
+
+export interface OverLimit {
+  category: string;
+  overCents: number;
+}
+
 /** `GET /me/finance/savings`: the settings (null while unset) and the lists, Goals in the User's order. */
 export interface Savings {
   reserveTargetCents: number | null;
   contributionBaseCents: number | null;
   reserveSharePercent: number | null;
   investments: Investment[];
-  goals: Goal[];
+  reserve: ReserveProgress;
+  goals: SavingsGoal[];
+  /** Money no Goal takes. */
+  unassignedCents: number;
+  /** Set when the month's leftover is above the Monthly contribution. */
+  leftover?: LeftoverExtra;
+  /** Set when it is below: the Spending Categories over their limit, an empty list when none is. */
+  overLimit?: OverLimit[];
 }
 export type SavingsResult = { kind: "ok"; savings: Savings } | Failure;
 
@@ -472,25 +509,50 @@ const nullableNum = (v: unknown) => v === null || typeof v === "number";
 
 /** Reads what this screen uses and ignores the rest, so fields added later do not fail it. */
 export function parseSavings(body: unknown): Savings | null {
-  if (!isObject(body) || !Array.isArray(body.investments) || !Array.isArray(body.goals)) return null;
+  if (!isObject(body) || !Array.isArray(body.investments) || !Array.isArray(body.goals) || !isObject(body.reserve) || typeof body.unassignedCents !== "number") return null;
+  const { reserve, leftover, overLimit } = body;
+  const nullableMonth = (v: unknown) => v === null || typeof v === "string";
   const valid =
     nullableNum(body.reserveTargetCents) &&
     nullableNum(body.contributionBaseCents) &&
     nullableNum(body.reserveSharePercent) &&
+    nullableNum(reserve.targetCents) &&
+    typeof reserve.savedCents === "number" &&
+    nullableNum(reserve.monthCents) &&
+    nullableMonth(reserve.expectedMonth) &&
     body.investments.every(
       (i) => isObject(i) && typeof i.id === "string" && typeof i.name === "string" && typeof i.valueCents === "number" && (i.serves === "reserve" || i.serves === "goals"),
     ) &&
     body.goals.every(
-      (g) => isObject(g) && typeof g.id === "string" && typeof g.name === "string" && typeof g.targetCents === "number" && (g.targetMonth === null || typeof g.targetMonth === "string"),
-    );
+      (g) =>
+        isObject(g) &&
+        typeof g.id === "string" &&
+        typeof g.name === "string" &&
+        typeof g.targetCents === "number" &&
+        nullableMonth(g.targetMonth) &&
+        typeof g.savedCents === "number" &&
+        nullableNum(g.monthCents) &&
+        nullableMonth(g.expectedMonth) &&
+        typeof g.late === "boolean",
+    ) &&
+    (leftover === undefined ||
+      (isObject(leftover) && typeof leftover.leftoverCents === "number" && typeof leftover.extraCents === "number" && nullableNum(leftover.monthsSooner))) &&
+    (overLimit === undefined || (Array.isArray(overLimit) && overLimit.every((o) => isObject(o) && typeof o.category === "string" && typeof o.overCents === "number")));
   if (!valid) return null;
-  const { reserveTargetCents, contributionBaseCents, reserveSharePercent, investments, goals } = body as unknown as Savings;
+  const { reserveTargetCents, contributionBaseCents, reserveSharePercent, investments, goals, unassignedCents } = body as unknown as Savings;
+  const r = reserve as unknown as ReserveProgress;
+  const l = leftover as LeftoverExtra | undefined;
+  const o = overLimit as OverLimit[] | undefined;
   return {
     reserveTargetCents,
     contributionBaseCents,
     reserveSharePercent,
     investments: investments.map(({ id, name, valueCents, serves }) => ({ id, name, valueCents, serves })),
-    goals: goals.map(({ id, name, targetCents, targetMonth }) => ({ id, name, targetCents, targetMonth })),
+    reserve: { targetCents: r.targetCents, savedCents: r.savedCents, monthCents: r.monthCents, expectedMonth: r.expectedMonth },
+    goals: goals.map(({ id, name, targetCents, targetMonth, savedCents, monthCents, expectedMonth, late }) => ({ id, name, targetCents, targetMonth, savedCents, monthCents, expectedMonth, late })),
+    unassignedCents,
+    ...(l && { leftover: { leftoverCents: l.leftoverCents, extraCents: l.extraCents, monthsSooner: l.monthsSooner } }),
+    ...(o && { overLimit: o.map(({ category, overCents }) => ({ category, overCents })) }),
   };
 }
 
