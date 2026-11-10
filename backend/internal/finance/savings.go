@@ -19,14 +19,14 @@ type ContributionRequest struct {
 	ReserveSharePercent *int16 `json:"reserveSharePercent"`
 }
 
-// SavingsResponse answers GET /me/finance/savings. Goals is empty until the
-// ticket that adds it.
+// SavingsResponse answers GET /me/finance/savings. Goals are in the User's
+// order.
 type SavingsResponse struct {
 	ReserveTargetCents    *int64               `json:"reserveTargetCents"`
 	ContributionBaseCents *int64               `json:"contributionBaseCents"`
 	ReserveSharePercent   *int16               `json:"reserveSharePercent"`
 	Investments           []InvestmentResponse `json:"investments"`
-	Goals                 []string             `json:"goals"`
+	Goals                 []GoalResponse       `json:"goals"`
 }
 
 // PutReserve answers PUT /me/finance/reserve: sets the Emergency reserve target, or clears it with null.
@@ -79,5 +79,10 @@ func (h *Handler) Savings(w http.ResponseWriter, r *http.Request) {
 		httpx.InternalError(w, h.log, "finance: read investments", err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, SavingsResponse{reserve, base, share, investments, []string{}})
+	goals, err := h.store.Goals(r.Context(), identity.CurrentUser(r.Context()).ID)
+	if err != nil {
+		httpx.InternalError(w, h.log, "finance: read goals", err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, SavingsResponse{reserve, base, share, investments, goals})
 }
