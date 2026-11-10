@@ -111,7 +111,7 @@ func TestOutlook(t *testing.T) {
 			want: want{cards: []CardBill{{"a", "a", 1500, true}}, total: 1500, leftover: i64(-500)},
 		},
 	} {
-		got := Outlook(c.rows, c.cards, c.plans, [][]MonthBill{c.bills, c.nextBills}, c.income, nov, 2)
+		got := Outlook(c.rows, c.cards, c.plans, [][]MonthBill{c.bills, c.nextBills}, c.income, nil, time.Time{}, nov, 2)
 		m := got[0]
 		if !reflect.DeepEqual(m.Cards, c.want.cards) || !reflect.DeepEqual(m.OtherBills, append([]OtherBill{}, c.want.other...)) ||
 			m.OtherInstallmentsCents != c.want.otherIns || m.TotalCents != c.want.total || !reflect.DeepEqual(m.LeftoverCents, c.want.leftover) {
@@ -130,8 +130,92 @@ func TestOutlookCountsAnOtherSourcePlanInTheTotal(t *testing.T) {
 	t.Parallel()
 	nov := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
 	plans := []Plan{{Name: "Sofa", Number: 1, Total: 3, AmountCents: 900, Month: nov, SourceID: "x"}}
-	got := Outlook(nil, nil, plans, [][]MonthBill{nil, nil, nil}, nil, nov, 3)
+	got := Outlook(nil, nil, plans, [][]MonthBill{nil, nil, nil}, nil, nil, time.Time{}, nov, 3)
 	if got[0].OtherInstallmentsCents != 0 || got[1].OtherInstallmentsCents != 900 || got[1].TotalCents != 900 || got[2].OtherInstallmentsCents != 900 {
 		t.Errorf("outlook = %+v, want 900 in months 1 and 2 only", got)
+	}
+}
+
+func TestOutlookPlannedSpending(t *testing.T) {
+	t.Parallel()
+	d := func(s string) time.Time { v, _ := time.Parse(time.DateOnly, s); return v }
+	nov := d("2026-11-01")
+	row := func(src, day, typ, cat string, cents int64, linked bool) Txn {
+		return Txn{SourceID: src, PostedOn: d(day), AmountCents: -cents, Type: typ, Category: cat, Linked: linked}
+	}
+	card := []Card{{ID: "a", Name: "a", BillDaysKnown: true}}
+	g := func(cents int64) []PlannedLine { return []PlannedLine{{"groceries", cents}} }
+	i64 := func(v int64) *int64 { return &v }
+	type month struct {
+		planned  []PlannedLine
+		off      *int64
+		total    int64
+		plannedC int64
+	}
+	for name, c := range map[string]struct {
+		rows    []Txn
+		plans   []Plan
+		limits  map[string]int64
+		current time.Time
+		m0, m1  month
+	}{
+		"groceries on the card are planned only for the rest of the limit": {
+			rows: []Txn{row("a", "2026-11-03", "expense", "groceries", 30000, false)}, limits: map[string]int64{"groceries": 100000}, current: nov,
+			m0: month{g(70000), i64(0), 100000, 70000}, m1: month{g(100000), nil, 100000, 100000},
+		},
+		"a category with no limit is not planned": {
+			rows: []Txn{row("a", "2026-11-03", "expense", "pets", 500, false)}, limits: map[string]int64{"groceries": 1000}, current: nov,
+			m0: month{g(1000), i64(0), 1500, 1000}, m1: month{g(1000), nil, 1000, 1000},
+		},
+		"no limits plan nothing": {
+			rows: []Txn{row("a", "2026-11-03", "expense", "pets", 500, false)}, current: nov,
+			m0: month{[]PlannedLine{}, i64(0), 500, 0}, m1: month{[]PlannedLine{}, nil, 0, 0},
+		},
+		"a limit already exceeded plans zero, not less": {
+			rows: []Txn{row("a", "2026-11-03", "expense", "groceries", 150000, false)}, limits: map[string]int64{"groceries": 100000}, current: nov,
+			m0: month{g(0), i64(0), 150000, 0}, m1: month{g(100000), nil, 100000, 100000},
+		},
+		"an installment in a limited category lowers its planned amount": {
+			plans:  []Plan{{Name: "TV", Number: 3, Total: 10, AmountCents: 30000, Month: nov, SourceID: "a", Card: true, Category: "groceries"}},
+			limits: map[string]int64{"groceries": 50000}, current: nov,
+			m0: month{g(50000), i64(0), 50000, 50000}, m1: month{g(20000), nil, 50000, 20000},
+		},
+		"an installment off the card lowers it too": {
+			plans:  []Plan{{Name: "Sofa", Number: 1, Total: 3, AmountCents: 30000, Month: nov, SourceID: "x", Category: "groceries"}},
+			limits: map[string]int64{"groceries": 50000}, current: nov,
+			m0: month{g(50000), i64(0), 50000, 50000}, m1: month{g(20000), nil, 50000, 20000},
+		},
+		"a refund above the spend does not lift planned over the limit": {
+			rows: []Txn{{SourceID: "a", PostedOn: d("2026-11-04"), AmountCents: 30000, Type: "expense", Category: "groceries"}}, limits: map[string]int64{"groceries": 100000}, current: nov,
+			m0: month{g(100000), i64(0), 70000, 100000}, m1: month{g(100000), nil, 100000, 100000},
+		},
+		"the current month counts what was spent off the card, without Bill payments, transfers and income": {
+			rows: []Txn{
+				row("checking", "2026-11-02", "expense", "groceries", 20000, false),
+				row("checking", "2026-11-03", "expense", "groceries", 50000, true), // paid a Bill
+				row("checking", "2026-11-04", "transfer", "", 9000, false),
+				{SourceID: "checking", PostedOn: d("2026-11-05"), AmountCents: 7000, Type: "income"},
+			},
+			limits: map[string]int64{"groceries": 100000}, current: nov,
+			m0: month{g(30000), i64(20000), 50000, 30000}, m1: month{g(100000), nil, 100000, 100000},
+		},
+		"a refund off the card makes already spent negative": {
+			rows:    []Txn{{SourceID: "checking", PostedOn: d("2026-11-04"), AmountCents: 3000, Type: "expense"}},
+			current: nov,
+			m0:      month{[]PlannedLine{}, i64(-3000), -3000, 0}, m1: month{[]PlannedLine{}, nil, 0, 0},
+		},
+		"a window without the current month has no already spent": {
+			rows:   []Txn{row("checking", "2026-11-02", "expense", "groceries", 20000, false)},
+			limits: map[string]int64{"groceries": 100000}, current: d("2026-10-01"),
+			m0: month{g(80000), nil, 80000, 80000}, m1: month{g(100000), nil, 100000, 100000},
+		},
+	} {
+		got := Outlook(c.rows, card, c.plans, [][]MonthBill{nil, nil}, nil, c.limits, c.current, nov, 2)
+		for i, want := range []month{c.m0, c.m1} {
+			m := got[i]
+			if !reflect.DeepEqual(m.Planned, want.planned) || !reflect.DeepEqual(m.SpentOffCardCents, want.off) || m.PlannedCents != want.plannedC || m.TotalCents != want.total {
+				t.Errorf("%s: month %d = planned %v (%d) off %v total %d, want %+v", name, i, m.Planned, m.PlannedCents, m.SpentOffCardCents, m.TotalCents, want)
+			}
+		}
 	}
 }

@@ -112,7 +112,15 @@ type MonthCommitment struct {
 	OtherBills []OtherBillLine `json:"otherBills"`
 	// OtherInstallmentsCents is what plans on a Source that is not a credit card owe.
 	OtherInstallmentsCents int64 `json:"otherInstallmentsCents"`
-	TotalCents             int64 `json:"totalCents"`
+	// Planned is the rest of each Spending limit, PlannedCents their sum.
+	Planned      []PlannedLineDTO `json:"planned"`
+	PlannedCents int64            `json:"plannedCents"`
+	// SpentOffCardCents is present only on the current month: what was spent off
+	// the card, without Expenses that paid a Bill.
+	SpentOffCardCents *int64 `json:"spentOffCardCents,omitempty"`
+	// TotalCents is card bills, other Bills, installments off the card, planned
+	// and spent off the card.
+	TotalCents int64 `json:"totalCents"`
 	// LeftoverCents is the Monthly income minus TotalCents, negative when the
 	// month takes more; absent, not null, when no income is set.
 	LeftoverCents *int64 `json:"leftoverCents,omitempty"`
@@ -125,6 +133,12 @@ type CardBillLine struct {
 	Name          string `json:"name"`
 	AmountCents   int64  `json:"amountCents"`
 	BillDaysKnown bool   `json:"billDaysKnown"`
+}
+
+// PlannedLineDTO is the rest of one Spending Category's limit in a month.
+type PlannedLineDTO struct {
+	Category string `json:"category"`
+	Cents    int64  `json:"cents"`
 }
 
 // OtherBillLine is a Bill to pay that is not a card bill, paid or not; Cents is

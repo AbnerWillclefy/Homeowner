@@ -206,6 +206,8 @@ type Plan struct {
 	// SourceID is the Source the plan is charged on; Card is whether it is a credit card.
 	SourceID string
 	Card     bool
+	// Category is the Spending Category of the latest charge, empty when it has none.
+	Category string
 }
 
 // PlanName is the description without its installment token, or the merchant
