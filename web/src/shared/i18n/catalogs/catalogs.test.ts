@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Message } from "../translate";
 import { enUS } from "./en-US";
@@ -5,6 +7,45 @@ import { ptBR } from "./pt-BR";
 
 const en: Record<string, Message> = enUS;
 const pt: Record<string, Message> = ptBR;
+
+// Keys built at runtime. Keep entries narrow: a broad prefix hides dead keys.
+// An entry ending in "." is a prefix, any other entry is an exact key.
+const runtimeKeys = [
+  { key: "spending.", reason: "spendingKey(id) builds it from the category id" },
+  { key: "effort.level.", reason: "effortLevelKey(level)" },
+  { key: "chores.interval.", reason: "built from the preset ids, including custom" },
+  { key: "voice.field.", reason: "built from the edited field name" },
+  { key: "voice.action.accept", reason: "`voice.action.${action.kind}`" },
+  { key: "voice.action.take", reason: "`voice.action.${action.kind}`" },
+  { key: "voice.action.refuse", reason: "`voice.action.${action.kind}`" },
+  { key: "voice.action.complete", reason: "`voice.action.${action.kind}`" },
+  { key: "finances.view.", reason: "FinanceNav builds it from the view id" },
+  { key: "finances.report.", reason: "Spending builds it from diff.key" },
+  { key: "finances.summary.pace.more", reason: "paceSentence builds it from gap.key" },
+  { key: "finances.summary.pace.less", reason: "paceSentence builds it from gap.key" },
+  { key: "finances.summary.pace.same", reason: "paceSentence builds it from gap.key" },
+  { key: "finances.summary.pace.avg.", reason: "paceSentence builds it from usual.key" },
+  { key: "finances.limit.under", reason: "CategoryBar builds it from standing.key" },
+  { key: "finances.limit.over", reason: "CategoryBar builds it from standing.key" },
+  { key: "finances.limit.at", reason: "CategoryBar builds it from standing.key" },
+  { key: "finances.bills.group.overdue", reason: "BillsSection builds it from the group id" },
+  { key: "finances.bills.group.due", reason: "BillsSection builds it from the group id" },
+  { key: "finances.bills.group.paid", reason: "BillsSection builds it from the group id" },
+  { key: "catalog.collection.trash", reason: "Questionnaire builds it from stream" },
+  { key: "catalog.collection.recycling", reason: "Questionnaire builds it from stream" },
+];
+
+const matches = (r: { key: string }, key: string) =>
+  r.key.endsWith(".") ? key.startsWith(r.key) : key === r.key;
+const allowed = (key: string) => runtimeKeys.some((r) => matches(r, key));
+
+function sourceFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const path = join(dir, e.name);
+    if (e.isDirectory()) return e.name === "catalogs" ? [] : sourceFiles(path);
+    return /\.tsx?$/.test(e.name) && !/\.test\.tsx?$/.test(e.name) ? [path] : [];
+  });
+}
 
 function placeholders(text: string): string[] {
   return [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]!).sort();
@@ -22,6 +63,22 @@ describe("message catalogs", () => {
     const extraInPt = Object.keys(pt).filter((k) => !(k in en));
     expect(missingInPt, `keys missing in pt-BR: ${missingInPt}`).toEqual([]);
     expect(extraInPt, `keys only in pt-BR: ${extraInPt}`).toEqual([]);
+  });
+
+  it("have no key that nothing reads", () => {
+    // shortcut: a key quoted in a comment counts as used, upgrade if that hides dead keys.
+    const source = sourceFiles(new URL("../../..", import.meta.url).pathname)
+      .map((f) => readFileSync(f, "utf8"))
+      .join("\n");
+    const unused = Object.keys(en).filter(
+      (k) => !allowed(k) && !['"', "'", "`"].some((q) => source.includes(q + k + q)),
+    );
+    expect(unused, `catalog keys nothing reads: ${unused}`).toEqual([]);
+  });
+
+  it("allow-list only names keys that exist", () => {
+    const stale = runtimeKeys.filter((r) => !Object.keys(en).some((k) => matches(r, k)));
+    expect(stale.map((r) => r.key)).toEqual([]);
   });
 
   it("no longer number Residents (\"Resident N\"): names and avatars replaced it", () => {
