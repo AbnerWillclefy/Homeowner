@@ -1,6 +1,6 @@
 import { SlidersHorizontal } from "lucide-react";
 import { Link } from "react-router";
-import { FINANCES_SETTINGS_PATH } from "../../../app/logic/routes";
+import { FINANCES_SAVINGS_PATH, FINANCES_SETTINGS_PATH } from "../../../app/logic/routes";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { PageHeader } from "../../../shared/ui/PageHeader";
@@ -54,6 +54,12 @@ export function FinancesTab({ view }: { view: FinanceView }) {
                   <MonthPicker groupLabel={t("finances.month.heading")} />
                   {status.importing && <p className="my-0 text-muted">{t("finances.importing")}</p>}
                   {view === "summary" && <Summary lastSyncedAt={status.lastSyncedAt} />}
+                  {/* Until the month's suggestion card (#544) carries "Ver economias", the screen is reached from here. */}
+                  {view === "summary" && (
+                    <Button asChild variant="link" className="self-end">
+                      <Link to={FINANCES_SAVINGS_PATH}>{t("finances.savings.open")}</Link>
+                    </Button>
+                  )}
                   {/* Keyed by month, so a switch starts clean: no open dialog or note from the month before. */}
                   {view === "spending" && <Spending key={month} />}
                   {view === "bills" && <BillsSection key={month} current={<Commitments />} />}

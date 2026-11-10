@@ -115,6 +115,7 @@ describe("isShellPath", () => {
     expect(isShellPath("/me/edit")).toBe(true);
     expect(isShellPath("/me/edit/?a=1#b")).toBe(true);
     expect(isShellPath("/finances/ajustes")).toBe(true);
+    expect(isShellPath("/finances/economias")).toBe(true);
     expect(isShellPath("/finances/ajustes/")).toBe(true);
   });
 
