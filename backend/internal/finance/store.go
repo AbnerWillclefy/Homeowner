@@ -201,11 +201,12 @@ func (s *Store) DueItems(ctx context.Context, staleBefore time.Time) ([]DueItem,
 type SyncSource struct {
 	ID, PluggyAccountID string
 	ImportCursor        *time.Time
+	Card                bool
 }
 
 // SyncSources returns the Item's Sources.
 func (s *Store) SyncSources(ctx context.Context, itemID string) ([]SyncSource, error) {
-	rows, err := s.db.Query(ctx, `SELECT id, pluggy_account_id, import_cursor FROM finance_sources WHERE item_id = $1 ORDER BY id`, itemID)
+	rows, err := s.db.Query(ctx, `SELECT id, pluggy_account_id, import_cursor, kind = 'credit_card' FROM finance_sources WHERE item_id = $1 ORDER BY id`, itemID)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +214,7 @@ func (s *Store) SyncSources(ctx context.Context, itemID string) ([]SyncSource, e
 	var out []SyncSource
 	for rows.Next() {
 		var src SyncSource
-		if err := rows.Scan(&src.ID, &src.PluggyAccountID, &src.ImportCursor); err != nil {
+		if err := rows.Scan(&src.ID, &src.PluggyAccountID, &src.ImportCursor, &src.Card); err != nil {
 			return nil, err
 		}
 		out = append(out, src)

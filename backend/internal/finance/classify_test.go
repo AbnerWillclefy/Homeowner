@@ -21,6 +21,8 @@ func TestClassify(t *testing.T) {
 	userSet.TypeSetBy = "user"
 	usd := tx("c", "sav", 0, 10000)
 	usd.Currency = "USD"
+	santander := tx("sbill", "card", 0, 50000)
+	santander.MerchantKey = MerchantKey("Pagamento de Fatura")
 	categorised := tx("cat", "chk", 0, -500)
 	categorised.Type, categorised.Category, categorised.CategorySetBy = "expense", "groceries", "auto"
 
@@ -28,12 +30,13 @@ func TestClassify(t *testing.T) {
 		in   []Txn
 		want map[string]string // id -> type of every row that changes
 	}{
-		"bill payment, accents and case": {[]Txn{bill}, map[string]string{"bill": "transfer"}},
-		"exact pair across Sources":      {[]Txn{tx("d", "chk", 0, -10000), tx("c", "sav", 1, 10000)}, map[string]string{"d": "transfer", "c": "transfer"}},
-		"same amount on the same Source": {[]Txn{tx("d", "chk", 0, -10000), tx("c", "chk", 0, 10000)}, map[string]string{"d": "expense", "c": "income"}},
-		"another currency":               {[]Txn{tx("d", "chk", 0, -10000), usd}, map[string]string{"d": "expense", "c": "income"}},
-		"3 days apart pairs":             {[]Txn{tx("d", "chk", 0, -10000), tx("c", "sav", 3, 10000)}, map[string]string{"d": "transfer", "c": "transfer"}},
-		"4 days apart does not":          {[]Txn{tx("d", "chk", 0, -10000), tx("c", "sav", 4, 10000)}, map[string]string{"d": "expense", "c": "income"}},
+		"bill payment, accents and case":  {[]Txn{bill}, map[string]string{"bill": "transfer"}},
+		"bill payment, Santander wording": {[]Txn{santander}, map[string]string{"sbill": "transfer"}},
+		"exact pair across Sources":       {[]Txn{tx("d", "chk", 0, -10000), tx("c", "sav", 1, 10000)}, map[string]string{"d": "transfer", "c": "transfer"}},
+		"same amount on the same Source":  {[]Txn{tx("d", "chk", 0, -10000), tx("c", "chk", 0, 10000)}, map[string]string{"d": "expense", "c": "income"}},
+		"another currency":                {[]Txn{tx("d", "chk", 0, -10000), usd}, map[string]string{"d": "expense", "c": "income"}},
+		"3 days apart pairs":              {[]Txn{tx("d", "chk", 0, -10000), tx("c", "sav", 3, 10000)}, map[string]string{"d": "transfer", "c": "transfer"}},
+		"4 days apart does not":           {[]Txn{tx("d", "chk", 0, -10000), tx("c", "sav", 4, 10000)}, map[string]string{"d": "expense", "c": "income"}},
 		"closest candidate wins": {
 			[]Txn{tx("d", "chk", 0, -10000), tx("far", "sav", 3, 10000), tx("near", "sav", 1, 10000)},
 			map[string]string{"d": "transfer", "near": "transfer", "far": "income"}},

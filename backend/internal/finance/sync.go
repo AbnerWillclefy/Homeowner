@@ -196,7 +196,7 @@ func (s *Syncer) syncWindow(ctx context.Context, userID, apiKey string, src Sync
 		if err != nil {
 			return err
 		}
-		rows, skipped := toRows(page.Transactions)
+		rows, skipped := toRows(page.Transactions, src.Card)
 		if len(rows) > 0 {
 			if err := s.store.UpsertTransactions(ctx, userID, src.ID, rows, now); err != nil {
 				return err
@@ -243,8 +243,10 @@ func (s *Syncer) classify(ctx context.Context, userID string, rows []Row, now ti
 }
 
 // toRows picks what to store: pending rows are left out (they come back as
-// posted), and so are rows that are not BRL, which are counted.
-func toRows(txs []pluggy.Transaction) (rows []Row, skippedCurrency int) {
+// posted), and so are rows that are not BRL, which are counted. On a card
+// Pluggy sends a purchase positive and a bill payment negative, so its sign is
+// flipped to the Source's point of view.
+func toRows(txs []pluggy.Transaction, card bool) (rows []Row, skippedCurrency int) {
 	for _, tx := range txs {
 		if tx.Status == "PENDING" {
 			continue
@@ -253,9 +255,13 @@ func toRows(txs []pluggy.Transaction) (rows []Row, skippedCurrency int) {
 			skippedCurrency++
 			continue
 		}
-		r := Row{ProviderID: tx.ID, PostedOn: postedOn(tx.Date), AmountCents: tx.AmountCents,
+		amount := tx.AmountCents
+		if card {
+			amount = -amount
+		}
+		r := Row{ProviderID: tx.ID, PostedOn: postedOn(tx.Date), AmountCents: amount,
 			Description: tx.Description, MerchantKey: MerchantKey(tx.Description), Type: "income"}
-		if tx.AmountCents < 0 {
+		if amount < 0 {
 			r.Type = "expense"
 		}
 		if tx.Category != nil && r.Type == "expense" {

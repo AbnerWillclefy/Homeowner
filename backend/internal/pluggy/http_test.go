@@ -118,8 +118,8 @@ func TestListTransactionsCardKeepsPluggySign(t *testing.T) {
 		t.Fatalf("card page: %d rows, next %q, err %v", len(page.Transactions), page.Next, err)
 	}
 	first := page.Transactions[0]
-	if first.Description != "SPOTIFY AB" || first.AmountCents != -2190 || first.Type != "CREDIT" {
-		t.Errorf("first card row = %+v; a purchase is negative with type CREDIT", first)
+	if first.Description != "SPOTIFY AB" || first.AmountCents != 2190 {
+		t.Errorf("first card row = %+v; Pluggy signs a card purchase positive", first)
 	}
 	var inst *pluggy.Transaction
 	for i, tx := range page.Transactions {
