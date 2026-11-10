@@ -20,13 +20,13 @@ type ContributionRequest struct {
 }
 
 // SavingsResponse answers GET /me/finance/savings. Goals are in the User's
-// order; Investments is empty until the ticket that adds it.
+// order.
 type SavingsResponse struct {
-	ReserveTargetCents    *int64         `json:"reserveTargetCents"`
-	ContributionBaseCents *int64         `json:"contributionBaseCents"`
-	ReserveSharePercent   *int16         `json:"reserveSharePercent"`
-	Investments           []string       `json:"investments"`
-	Goals                 []GoalResponse `json:"goals"`
+	ReserveTargetCents    *int64               `json:"reserveTargetCents"`
+	ContributionBaseCents *int64               `json:"contributionBaseCents"`
+	ReserveSharePercent   *int16               `json:"reserveSharePercent"`
+	Investments           []InvestmentResponse `json:"investments"`
+	Goals                 []GoalResponse       `json:"goals"`
 }
 
 // PutReserve answers PUT /me/finance/reserve: sets the Emergency reserve target, or clears it with null.
@@ -74,10 +74,15 @@ func (h *Handler) Savings(w http.ResponseWriter, r *http.Request) {
 		httpx.InternalError(w, h.log, "finance: read savings", err)
 		return
 	}
+	investments, err := h.store.Investments(r.Context(), identity.CurrentUser(r.Context()).ID)
+	if err != nil {
+		httpx.InternalError(w, h.log, "finance: read investments", err)
+		return
+	}
 	goals, err := h.store.Goals(r.Context(), identity.CurrentUser(r.Context()).ID)
 	if err != nil {
 		httpx.InternalError(w, h.log, "finance: read goals", err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, SavingsResponse{reserve, base, share, []string{}, goals})
+	httpx.WriteJSON(w, http.StatusOK, SavingsResponse{reserve, base, share, investments, goals})
 }
