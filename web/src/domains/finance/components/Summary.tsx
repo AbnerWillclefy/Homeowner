@@ -93,7 +93,8 @@ const GROUP_LABEL = {
 
 /**
  * Resumo: how the picked month is going, from the same cached reads Gastos and Contas use, plus its own
- * GET /me/finance/daily for the pace chart. A past month is read whole: no today, no pace sentence, and no leftover
+ * GET /me/finance/daily for the pace chart and the savings read of the month's suggestion (current month only,
+ * under the leftover card, from the cache Economias shares). A past month is read whole: no today, no pace sentence, and no leftover
  * card. The leftover is the current month's, the first month of "Próximos meses", read from that same cached query.
  */
 export function Summary({ lastSyncedAt }: { lastSyncedAt: string | null }) {
