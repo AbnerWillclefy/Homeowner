@@ -27,12 +27,13 @@ func TestOutlook(t *testing.T) {
 		leftover *int64
 	}
 	for name, c := range map[string]struct {
-		rows   []Txn
-		cards  []Card
-		plans  []Plan
-		bills  []MonthBill
-		income *int64
-		want   want
+		rows      []Txn
+		cards     []Card
+		plans     []Plan
+		bills     []MonthBill
+		nextBills []MonthBill // month 1, checked when set
+		income    *int64
+		want      want
 	}{
 		"charges land in the month they count on": {
 			rows:  []Txn{spend("a", "2026-11-03", 1000), spend("a", "2026-12-03", 400)},
@@ -92,9 +93,10 @@ func TestOutlook(t *testing.T) {
 				other: []OtherBill{{"rent", "rent", 5000, true}, {"gym", "gym", 300, false}}, total: 5300},
 		},
 		"a card paid bill is dropped only for its own month": {
-			cards: one("a", true),
-			bills: []MonthBill{bill("netflix", 50, true, true)},
-			want:  want{cards: []CardBill{{"a", "a", 0, true}}},
+			cards:     one("a", true),
+			bills:     []MonthBill{bill("netflix", 50, true, true)},
+			nextBills: []MonthBill{bill("netflix", 50, false, false)},
+			want:      want{cards: []CardBill{{"a", "a", 0, true}}},
 		},
 		"no income leaves the leftover absent": {
 			rows: []Txn{spend("a", "2026-11-03", 100)}, cards: one("a", true),
@@ -109,11 +111,7 @@ func TestOutlook(t *testing.T) {
 			want: want{cards: []CardBill{{"a", "a", 1500, true}}, total: 1500, leftover: i64(-500)},
 		},
 	} {
-		next := []MonthBill{bill("netflix", 50, false, false)}
-		if name != "a card paid bill is dropped only for its own month" {
-			next = nil
-		}
-		got := Outlook(c.rows, c.cards, c.plans, [][]MonthBill{c.bills, next}, c.income, nov, 2)
+		got := Outlook(c.rows, c.cards, c.plans, [][]MonthBill{c.bills, c.nextBills}, c.income, nov, 2)
 		m := got[0]
 		if !reflect.DeepEqual(m.Cards, c.want.cards) || !reflect.DeepEqual(m.OtherBills, append([]OtherBill{}, c.want.other...)) ||
 			m.OtherInstallmentsCents != c.want.otherIns || m.TotalCents != c.want.total || !reflect.DeepEqual(m.LeftoverCents, c.want.leftover) {
@@ -122,7 +120,7 @@ func TestOutlook(t *testing.T) {
 		if c.want.next != nil && !reflect.DeepEqual(got[1].Cards, c.want.next) {
 			t.Errorf("%s: month 1 cards = %+v, want %+v", name, got[1].Cards, c.want.next)
 		}
-		if next != nil && !reflect.DeepEqual(got[1].OtherBills, []OtherBill{{"netflix", "netflix", 50, false}}) {
+		if c.nextBills != nil && !reflect.DeepEqual(got[1].OtherBills, []OtherBill{{"netflix", "netflix", 50, false}}) {
 			t.Errorf("%s: month 1 other bills = %+v, want the unpaid one", name, got[1].OtherBills)
 		}
 	}
