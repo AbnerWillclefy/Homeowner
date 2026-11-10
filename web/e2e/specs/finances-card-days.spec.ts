@@ -75,11 +75,13 @@ for (const l of LOCALES) {
     test("a card without days says so, and typing both saves them", async ({ page, fakeApi }) => {
       await expect(page.getByText(l.unset)).toHaveCount(1);
       await page.getByRole("button", { name: l.edit }).click();
+      await expect(page.getByLabel(l.close)).toBeFocused();
       await page.getByLabel(l.close).fill("7");
       await page.getByLabel(l.due).fill("12");
       await sources(page).getByRole("button", { name: l.save }).click();
       await expect(page.getByText(l.row)).toBeVisible();
       await expect(page.getByLabel(l.close)).toHaveCount(0);
+      await expect(page.getByRole("button", { name: l.edit })).toBeFocused();
       const put = fakeApi.requests.find((r) => r.method === "PUT" && r.path === "/me/finance/sources/source-2/bill-days");
       expect(put?.body).toEqual({ closeDay: 7, dueDay: 12 });
     });
@@ -112,6 +114,7 @@ for (const l of LOCALES) {
       await expect(page.getByLabel(l.close)).toHaveValue("7");
       await sources(page).getByRole("button", { name: l.clear }).click();
       await expect(page.getByText(l.unset)).toBeVisible();
+      await expect(page.getByRole("button", { name: l.edit })).toBeFocused();
       const puts = fakeApi.requests.filter((r) => r.method === "PUT" && r.path.endsWith("/bill-days"));
       expect(puts.at(-1)?.body).toEqual({ closeDay: null, dueDay: null });
     });

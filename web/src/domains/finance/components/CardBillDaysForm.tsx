@@ -65,6 +65,8 @@ export function CardBillDaysForm({ source, onDone }: { source: FinanceSource; on
               type="text"
               inputMode="numeric"
               autoComplete="off"
+              // Editar is gone once the form opens, so focus moves to the first field.
+              autoFocus={field === "closeDay"}
               defaultValue={source[field] ?? ""}
               aria-invalid={Boolean(problems[field])}
               aria-describedby={problems[field] ? formErrorId(form) : undefined}

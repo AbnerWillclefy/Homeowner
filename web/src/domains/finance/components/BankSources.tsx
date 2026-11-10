@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CreditCard, Landmark } from "lucide-react";
 import { useI18n, type MessageKey } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
@@ -29,6 +29,13 @@ interface Props {
 export function BankSources({ status, connecting, problem, closed, onConnect }: Props) {
   const { t, locale } = useI18n();
   const [editing, setEditing] = useState<string | null>(null);
+  const returnFocus = useRef<string | null>(null);
+  // The form held focus when it closed; give it back to that card's Editar button.
+  useEffect(() => {
+    if (editing !== null || returnFocus.current === null) return;
+    document.getElementById(`finances-bill-days-edit-${returnFocus.current}`)?.focus();
+    returnFocus.current = null;
+  }, [editing]);
   return (
     <FinanceCard id="finances-sources-heading" title={t("finances.sources.heading")}>
       {status.sources.length === 0 ? (
@@ -55,6 +62,7 @@ export function BankSources({ status, connecting, problem, closed, onConnect }: 
                     )}
                     {source.kind === "credit_card" && editing !== source.id && (
                       <Button
+                        id={`finances-bill-days-edit-${source.id}`}
                         variant="secondary"
                         className="mt-1 self-start"
                         aria-label={t("finances.billDays.editFor", { name: source.name })}
@@ -66,7 +74,13 @@ export function BankSources({ status, connecting, problem, closed, onConnect }: 
                   </span>
                 </div>
                 {source.kind === "credit_card" && editing === source.id && (
-                  <CardBillDaysForm source={source} onDone={() => setEditing(null)} />
+                  <CardBillDaysForm
+                    source={source}
+                    onDone={() => {
+                      returnFocus.current = source.id;
+                      setEditing(null);
+                    }}
+                  />
                 )}
               </li>
             );
