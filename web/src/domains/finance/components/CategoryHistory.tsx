@@ -9,7 +9,7 @@ import { monthLabel, monthName } from "../logic/month";
 import type { SpendingCategory } from "../logic/spendingCategories";
 import { Bar } from "./charts/Bar";
 
-/** The last six months of one category, on one scale. The data is the single read Gastos made; this only slices it. */
+/** The last six months of one category, on one scale. The category screen reads the history once; this only slices it. */
 export function CategoryHistory({
   category,
   history,
@@ -18,7 +18,7 @@ export function CategoryHistory({
 }: {
   category: SpendingCategory;
   history: ReturnType<typeof useHistory>;
-  /** The month picked in Gastos, the one the chart marks. */
+  /** The picked month, the one the chart marks. */
   marked: string;
   /** The device's current month, to word the mark. */
   thisMonth: string;

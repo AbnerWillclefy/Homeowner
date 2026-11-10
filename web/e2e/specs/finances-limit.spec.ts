@@ -8,7 +8,7 @@ import { financeView } from "../pages/finances";
 
 // What this covers, pt-BR first, with the root font at 200%: a category with a limit shows a marker and its text
 // ("limit R$ 800 · R$ 12 over the limit") in ordinary ink, with no icon; a category without one looks as before;
-// the limit is set, changed and removed from the opened category with a status line; empty, zero, negative and
+// the limit is set, changed and removed on the category's own screen (Back shows it on the bar) with a status line; empty, zero, negative and
 // junk input is explained and never sent; a failed write puts the old limit back and says so next to the field.
 
 const LOCALES = [
@@ -17,14 +17,14 @@ const LOCALES = [
     over: /limite R\$\s?800,00 · R\$\s?12,00 acima do limite/, under: /limite R\$\s?1\.000,00 · R\$\s?188,00 abaixo do limite/,
     saved: /Limite salvo: R\$\s?1\.000,00 por mês\./, removed: "Limite removido.", failed: /Não conseguimos salvar o limite/,
     empty: "Digite um valor, por exemplo 800,00.", zero: "O limite precisa ser maior que zero.", junk: "Use só números, por exemplo 800,00.",
-    anyLimit: /limite R\$/, tab: "Gastos", typed: "1000,00",
+    anyLimit: /limite R\$/, tab: "Gastos", typed: "1000,00", link: "Ver histórico",
   },
   {
     locale: "en-US", groceries: "Groceries", leisure: "Leisure", save: "Save limit", remove: "Remove limit", label: "Monthly limit for this category",
     over: /limit R\$\s?800\.00 · R\$\s?12\.00 over the limit/, under: /limit R\$\s?1,000\.00 · R\$\s?188\.00 under the limit/,
     saved: /Limit saved: R\$\s?1,000\.00 a month\./, removed: "Limit removed.", failed: /We could not save the limit/,
     empty: "Enter an amount, for example 800.00.", zero: "The limit must be more than zero.", junk: "Use numbers only, for example 800.00.",
-    anyLimit: /limit R\$/, tab: "Spending", typed: "1000.00",
+    anyLimit: /limit R\$/, tab: "Spending", typed: "1000.00", link: "See history",
   },
 ] as const;
 
@@ -52,7 +52,7 @@ const connected = () => {
 
 for (const l of LOCALES) {
   test.describe(l.locale, () => {
-    test.use({ locale: l.locale, viewport: { width: 390, height: 844 }, fakeState: connected() });
+    test.use({ locale: l.locale, viewport: { width: 320, height: 640 }, fakeState: connected() });
 
     test.beforeEach(async ({ page, baseURL, fakeApi }) => {
       fakeApi.use(signedInHandlers);
@@ -68,11 +68,14 @@ for (const l of LOCALES) {
     // A category's button is its name, then the amount.
     const category = (page: Page, name: string) => page.getByRole("button", { name: new RegExp(`^${name} R\\$`) });
     const bar = (page: Page, name: string) => page.locator("li").filter({ has: category(page, name) });
+    /** Opens a category's card in Gastos, follows its link, and returns the category screen's content. */
     const open = async (page: Page, name: string) => {
-      const button = category(page, name);
-      await button.click();
-      return page.locator(`[id="${await button.getAttribute("aria-controls")}"]`);
+      await category(page, name).click();
+      await page.getByRole("link", { name: l.link }).click();
+      return page.getByRole("main");
     };
+    const back = (page: Page) => page.getByRole("button", { name: l.tab, exact: true }).click();
+    const noOverflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
     const puts = (fakeApi: { requests: { method: string; path: string }[] }) =>
       fakeApi.requests.filter((r) => r.method === "PUT" && r.path.startsWith("/me/finance/budgets/"));
 
@@ -81,7 +84,7 @@ for (const l of LOCALES) {
       await expect(groceries.getByText(l.over)).toBeVisible();
       await expect(groceries.locator("[data-limit-marker]")).toHaveCount(1);
       await expect(groceries.locator("[data-marker]")).toHaveCount(1); // last month's tick is still its own shape
-      await expect(groceries.locator("svg")).toHaveCount(1); // the disclosure chevron only: no warning icon
+      await expect(groceries.locator("button svg")).toHaveCount(1); // the disclosure chevron only: no warning icon
       await expect(groceries.getByText(l.over)).not.toHaveClass(/danger/);
 
       const leisure = bar(page, l.leisure);
@@ -93,17 +96,26 @@ for (const l of LOCALES) {
       const body = await open(page, l.groceries);
       await body.getByLabel(l.label).fill(l.typed);
       await body.getByRole("button", { name: l.save }).click();
-      await expect(body.getByRole("status")).toHaveText(l.saved);
-      await expect(bar(page, l.groceries).getByText(l.under)).toBeVisible();
+      await expect(body.locator("p[role=status]")).toHaveText(l.saved);
+      await expect(body.getByText(l.under)).toBeVisible();
       expect(puts(fakeApi)).toHaveLength(1);
       expect(fakeApi.requests.find((r) => r.method === "PUT" && r.path.endsWith("/groceries"))?.body).toEqual({ limitCents: 100000 });
+      expect(await noOverflow(page)).toBe(true);
 
-      await body.getByRole("button", { name: l.remove }).click();
-      await expect(body.getByRole("status")).toHaveText(l.removed);
+      // Back shows the new limit on the bar, from the cache.
+      await back(page);
+      await expect(bar(page, l.groceries).getByText(l.under)).toBeVisible();
+      await expect(bar(page, l.groceries).locator("[data-limit-marker]")).toHaveCount(1);
+
+      const again = await open(page, l.groceries);
+      await again.getByRole("button", { name: l.remove }).click();
+      await expect(again.locator("p[role=status]")).toHaveText(l.removed);
+      await expect(again.getByText(l.anyLimit)).toHaveCount(0);
+      await expect(again.getByRole("button", { name: l.remove })).toHaveCount(0);
+      await expect(again.getByLabel(l.label)).toBeFocused();
+      await back(page);
       await expect(bar(page, l.groceries).locator("[data-limit-marker]")).toHaveCount(0);
       await expect(bar(page, l.groceries).getByText(l.anyLimit)).toHaveCount(0);
-      await expect(body.getByRole("button", { name: l.remove })).toHaveCount(0);
-      await expect(body.getByLabel(l.label)).toBeFocused();
     });
 
     test("explains empty, zero, negative and junk input and sends nothing", async ({ page, fakeApi }) => {
@@ -125,12 +137,28 @@ for (const l of LOCALES) {
       await body.getByLabel(l.label).fill(l.typed);
       await body.getByRole("button", { name: l.save }).click();
       await expect(body.getByText(l.failed)).toBeVisible();
-      await expect(bar(page, l.groceries).getByText(l.over)).toBeVisible();
+      await expect(body.getByText(l.over)).toBeVisible();
       await expect(body.getByLabel(l.label)).not.toHaveValue(l.typed);
       failing = false;
       await body.getByLabel(l.label).fill(l.typed);
       await body.getByRole("button", { name: l.save }).click();
-      await expect(body.getByRole("status")).toHaveText(l.saved);
+      await expect(body.locator("p[role=status]")).toHaveText(l.saved);
     });
   });
 }
+
+test.describe("previous month unreadable", () => {
+  const state = connected();
+  state.finance!.limits = { other: 5000 };
+  state.finance!.transactions = [{ ...row("u1", "2026-12-05", "Sem categoria", -8000, "other"), spendingCategory: null }] as never;
+  test.use({ locale: "pt-BR", fakeState: state });
+
+  test("an uncategorised Expense counts toward the Other limit", async ({ page, baseURL, fakeApi }) => {
+    fakeApi.use(signedInHandlers);
+    await page.clock.setFixedTime(new Date("2026-12-31T12:00:00-03:00"));
+    await page.route(/\/me\/finance\/transactions\?month=2026-11/, (route) => route.fulfill({ status: 500, contentType: "application/json", body: "{}" }));
+    await seedSession(page, { email: RESIDENT_EMAIL });
+    await visit(page, new URL("/finances/gastos/other", baseURL!).toString());
+    await expect(page.getByRole("main").getByText(/limite R\$\s?50,00 · R\$\s?30,00 acima do limite/)).toBeVisible();
+  });
+});
