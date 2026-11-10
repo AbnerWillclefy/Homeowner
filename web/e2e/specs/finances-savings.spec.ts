@@ -173,7 +173,8 @@ for (const l of LOCALES) {
         fakeApi.use(signedInHandlers);
         await seedSession(page, { email: RESIDENT_EMAIL });
         await visit(page, new URL("/finances", baseURL!).toString());
-        await page.getByRole("link", { name: l.open, exact: true }).click();
+        // With no Monthly contribution the suggestion card in Resumo leads to Economias by asking for one.
+        await page.getByRole("link", { name: l.setContribution, exact: true }).click();
         await expect(page).toHaveURL(/\/finances\/economias$/);
         await expect(page.getByRole("heading", { name: l.title, level: 2 })).toBeVisible();
         await expect(card(page, l.cards.contribution)).toContainText(l.emptyContribution);
