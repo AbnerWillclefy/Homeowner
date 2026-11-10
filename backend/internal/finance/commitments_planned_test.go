@@ -86,6 +86,13 @@ func TestCommitmentsPlanSpendingFromTheLimits(t *testing.T) {
 	if m.PlannedCents != 100000 { // 200000 less 30000 on the card and 70000 off it, the Bill's included
 		t.Errorf("planned = %d, want 100000", m.PlannedCents)
 	}
+	// Undoing the payment frees the Expense: it counts as spent off the card again.
+	if _, err := app.DB.Exec(context.Background(), `UPDATE finance_bill_payments SET undone_at = now() WHERE bill_id = $1::uuid`, bill); err != nil {
+		t.Fatal(err)
+	}
+	if u := readPlanned(t, ana).Months[0]; u.SpentOffCardCents == nil || *u.SpentOffCardCents != *m.SpentOffCardCents+50000 {
+		t.Errorf("after undo already spent = %v, want %d", u.SpentOffCardCents, *m.SpentOffCardCents+50000)
+	}
 	sum := m.PlannedCents + *m.SpentOffCardCents + m.OtherInstallmentsCents
 	for _, c := range m.Cards {
 		sum += c.AmountCents
