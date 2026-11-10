@@ -20,7 +20,7 @@ Finances (#419) gives each User a private, read-only money view. Its data comes 
 - **Answers from the sandbox ([#420](https://github.com/AbnerWillclefy/Homeowner/issues/420)),** captured on 2026-11-07 from Pluggy Bank, and what follows from each:
   - `providerId` is missing on every row, so Transactions are de-duplicated by Pluggy's transaction `id`, which was stable across two fetches.
   - `GET /transactions` (v1) returns `410` and is removed on 2026-12-31. The sync uses `GET /v2/transactions?accountId=&dateFrom=&dateTo=` and follows the cursor in `next` until it is `null`. `/accounts`, `/items/{id}` and `/bills` still page by `page`.
-  - Direction comes from the sign of `amount` (negative is money out), never from `type`: card purchases are negative with `type: "CREDIT"`. Amounts have at most 2 decimals.
+  - Direction comes from the sign of `amount` (negative is money out), never from `type`: card purchases are negative with `type: "CREDIT"`. Amounts have at most 2 decimals. *Corrected 2026-11-10:* real cards (Inter, Nubank, Santander) send a purchase positive and a bill payment negative, as Pluggy's docs say; only the sandbox signs them the other way. The sync flips a card row's sign so `amount_cents` keeps the Source's point of view.
   - `date` is a UTC timestamp (São Paulo midnight is `T03:00:00.000Z`); it is converted to a São Paulo date, not truncated.
   - Only `POSTED` rows were seen, so whether a pending row keeps its `id` is unknown. Until it is seen, `PENDING` rows are not imported.
   - Card bills exist (`GET /bills`), and `category` can be `null`.

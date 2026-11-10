@@ -1,7 +1,9 @@
 // Package pluggytest is a fake Pluggy: an httptest server that replays the
 // sandbox capture in testdata/sandbox, so the real adapter runs in tests and
 // CI never calls Pluggy. It is a separate package so the embedded fixtures
-// never reach the production binary; only tests import it.
+// never reach the production binary; only tests import it. The card
+// transactions' amounts are negated from the capture: the sandbox signs a card
+// purchase negative, real cards and Pluggy's docs sign it positive.
 package pluggytest
 
 import (
