@@ -287,6 +287,140 @@ export function financeHandlers(api: FakeApi): void {
     }),
   );
 
+  // Savings, as `finance/savings.go`, `investments.go` and `goals.go` answer: the same field codes on a 400, and a
+  // reorder must carry exactly the User's Goals once each.
+  const savings = (state: FakeState) =>
+    (finance(state).savings ??= { reserveTargetCents: null, contributionBaseCents: null, reserveSharePercent: null, investments: [], goals: [] });
+  const nameCode = (value: unknown) => {
+    const name = typeof value === "string" ? value.trim() : "";
+    return name === "" ? "required" : [...name].length > 60 ? "too_long" : null;
+  };
+  const investmentBody = (body: { name?: unknown; valueCents?: unknown; serves?: unknown } | null) => {
+    const fields: Record<string, string> = {};
+    const code = nameCode(body?.name);
+    if (code) fields.name = code;
+    if (!Number.isInteger(body?.valueCents) || (body?.valueCents as number) < 0) fields.valueCents = "invalid";
+    if (body?.serves !== "reserve" && body?.serves !== "goals") fields.serves = "invalid";
+    return fields;
+  };
+  const goalBody = (body: { name?: unknown; targetCents?: unknown; targetMonth?: unknown } | null) => {
+    const fields: Record<string, string> = {};
+    const code = nameCode(body?.name);
+    if (code) fields.name = code;
+    if (!Number.isInteger(body?.targetCents) || (body?.targetCents as number) < 1) fields.targetCents = "invalid";
+    if (body?.targetMonth !== null && body?.targetMonth !== undefined && !(typeof body.targetMonth === "string" && monthOf(body.targetMonth)))
+      fields.targetMonth = "invalid";
+    return fields;
+  };
+
+  api.on("GET /me/finance/savings", signedIn((_, state) => json(200, savings(state))));
+
+  api.on(
+    "PUT /me/finance/reserve",
+    signedIn((request, state) => {
+      const cents = (request.body as { targetCents?: unknown } | null)?.targetCents;
+      if (cents !== null && !(Number.isInteger(cents) && (cents as number) > 0)) return json(400, { error: "invalid reserve target" });
+      savings(state).reserveTargetCents = cents as number | null;
+      return empty();
+    }),
+  );
+
+  api.on(
+    "PUT /me/finance/contribution",
+    signedIn((request, state) => {
+      const { baseCents, reserveSharePercent } = (request.body ?? {}) as { baseCents?: unknown; reserveSharePercent?: unknown };
+      const bothNull = baseCents === null && reserveSharePercent === null;
+      const valid =
+        Number.isInteger(baseCents) && (baseCents as number) > 0 && Number.isInteger(reserveSharePercent) && (reserveSharePercent as number) >= 0 && (reserveSharePercent as number) <= 100;
+      if (!bothNull && !valid) return json(400, { error: "invalid contribution" });
+      Object.assign(savings(state), { contributionBaseCents: baseCents, reserveSharePercent });
+      return empty();
+    }),
+  );
+
+  api.on(
+    "POST /me/finance/investments",
+    signedIn((request, state) => {
+      const body = request.body as { name: string; valueCents: number; serves: "reserve" | "goals" } | null;
+      const fields = investmentBody(body);
+      if (Object.keys(fields).length > 0) return json(400, { error: "invalid investment", fields });
+      const row = { id: `investment-${savings(state).investments.length + 1}`, name: body!.name.trim(), valueCents: body!.valueCents, serves: body!.serves };
+      savings(state).investments.push(row);
+      return json(201, row);
+    }),
+  );
+
+  api.on(
+    "PUT /me/finance/investments/{id}",
+    signedIn((request, state) => {
+      const row = savings(state).investments.find((i) => i.id === request.params["id"]);
+      if (!row) return json(404, { error: "not found" });
+      const body = request.body as { name: string; valueCents: number; serves: "reserve" | "goals" } | null;
+      const fields = investmentBody(body);
+      if (Object.keys(fields).length > 0) return json(400, { error: "invalid investment", fields });
+      Object.assign(row, { name: body!.name.trim(), valueCents: body!.valueCents, serves: body!.serves });
+      return json(200, row);
+    }),
+  );
+
+  api.on(
+    "DELETE /me/finance/investments/{id}",
+    signedIn((request, state) => {
+      const index = savings(state).investments.findIndex((i) => i.id === request.params["id"]);
+      if (index < 0) return json(404, { error: "not found" });
+      savings(state).investments.splice(index, 1);
+      return empty();
+    }),
+  );
+
+  api.on(
+    "POST /me/finance/goals",
+    signedIn((request, state) => {
+      const body = request.body as { name: string; targetCents: number; targetMonth: string | null } | null;
+      const fields = goalBody(body);
+      if (Object.keys(fields).length > 0) return json(400, { error: "invalid goal", fields });
+      const row = { id: `goal-${savings(state).goals.length + 1}`, name: body!.name.trim(), targetCents: body!.targetCents, targetMonth: body!.targetMonth ?? null };
+      savings(state).goals.push(row);
+      return json(201, row);
+    }),
+  );
+
+  // Registered before `{id}`, which would otherwise take "order" for an id.
+  api.on(
+    "PUT /me/finance/goals/order",
+    signedIn((request, state) => {
+      const ids = (request.body as { ids?: unknown } | null)?.ids;
+      const goals = savings(state).goals;
+      if (!Array.isArray(ids) || ids.length !== goals.length || !goals.every((g) => ids.filter((id) => id === g.id).length === 1))
+        return json(400, { error: "ids must be exactly your goals, once each" });
+      savings(state).goals = (ids as string[]).map((id) => goals.find((g) => g.id === id)!);
+      return empty();
+    }),
+  );
+
+  api.on(
+    "PUT /me/finance/goals/{id}",
+    signedIn((request, state) => {
+      const row = savings(state).goals.find((g) => g.id === request.params["id"]);
+      if (!row) return json(404, { error: "not found" });
+      const body = request.body as { name: string; targetCents: number; targetMonth: string | null } | null;
+      const fields = goalBody(body);
+      if (Object.keys(fields).length > 0) return json(400, { error: "invalid goal", fields });
+      Object.assign(row, { name: body!.name.trim(), targetCents: body!.targetCents, targetMonth: body!.targetMonth ?? null });
+      return json(200, row);
+    }),
+  );
+
+  api.on(
+    "DELETE /me/finance/goals/{id}",
+    signedIn((request, state) => {
+      const index = savings(state).goals.findIndex((g) => g.id === request.params["id"]);
+      if (index < 0) return json(404, { error: "not found" });
+      savings(state).goals.splice(index, 1);
+      return empty();
+    }),
+  );
+
   // Suggested Bills, as `finance/suggestions.go` answers: a dismissed merchant stays hidden, repeating the dismissal is fine.
   api.on(
     "GET /me/finance/bill-suggestions",

@@ -31,7 +31,7 @@ export function InvestmentsCard({ investments, save, remove }: Props) {
     <FinanceCard id="finances-savings-investments" title={t("finances.savings.investments.title")} hint={t("finances.savings.investments.hint")}>
       {investments.length === 0 && <p className="my-0">{t("finances.savings.investments.empty")}</p>}
       {groupInvestments(investments).map((group) => (
-        <section key={group.serves} aria-label={t(group.serves === "reserve" ? "finances.savings.investments.reserve" : "finances.savings.investments.goals")} className="flex flex-col">
+        <div key={group.serves} className="flex flex-col">
           <h4 className="my-0 flex flex-wrap justify-between gap-x-3 text-base font-bold">
             <span>{t(group.serves === "reserve" ? "finances.savings.investments.reserve" : "finances.savings.investments.goals")}</span>
             <span className="[overflow-wrap:anywhere]">{formatCents(group.subtotalCents, locale)}</span>
@@ -53,7 +53,7 @@ export function InvestmentsCard({ investments, save, remove }: Props) {
               </li>
             ))}
           </ul>
-        </section>
+        </div>
       ))}
       <p className="my-0 text-sm text-muted">{t("finances.savings.investments.transferCard")}</p>
       <Button variant="secondary" className="self-start" onClick={(event) => open(null, event.currentTarget)}>
