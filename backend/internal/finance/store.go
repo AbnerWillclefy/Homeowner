@@ -413,7 +413,7 @@ func (s *Store) MonthTransactions(ctx context.Context, userID string, from, to t
 	return out, rows.Err()
 }
 
-// SpendRows returns what the daily pace and the commitments outlook read of the
+// SpendRows returns what the daily pace, the commitments outlook and the savings suggestion read of the
 // User's Transactions that count in [from, to): Source, signed amount, type and
 // category, with PostedOn set to the CountsOn day and Linked set when a Bill
 // payment (not undone) points at it.
