@@ -63,11 +63,11 @@ func TestSplitContribution(t *testing.T) {
 		},
 		"pot fills the dated Goal before an earlier undated one": {
 			ContributionIn{Goals: []ContributionGoal{g("a", 100, nil), g("b", 100, due(5))}, GoalsPot: 150},
-			want{0, -1, []int64{50, 100}, []int64{0, 0}, []int{-1, -1}, []bool{false, true}, 0},
+			want{0, -1, []int64{50, 100}, []int64{0, 0}, []int{-1, -1}, []bool{false, false}, 0},
 		},
 		"pot fills dated Goals earliest date first": {
 			ContributionIn{Goals: []ContributionGoal{g("a", 100, due(6)), g("b", 100, due(2))}, GoalsPot: 130},
-			want{0, -1, []int64{30, 100}, []int64{0, 0}, []int{-1, -1}, []bool{true, true}, 0},
+			want{0, -1, []int64{30, 100}, []int64{0, 0}, []int{-1, -1}, []bool{true, false}, 0},
 		},
 		"pot fills undated Goals in order, each up to its target": {
 			ContributionIn{Goals: []ContributionGoal{g("a", 100, nil), g("b", 100, nil)}, GoalsPot: 150},
@@ -123,7 +123,11 @@ func TestSplitContribution(t *testing.T) {
 		},
 		"base zero: no amounts and no months, the pot still fills": {
 			ContributionIn{ReserveTarget: i64(100), Goals: []ContributionGoal{g("a", 100, nil), g("b", 100, due(3))}, GoalsPot: 150, SharePercent: 50},
-			want{0, -1, []int64{50, 100}, []int64{0, 0}, []int{-1, -1}, []bool{false, true}, 0},
+			want{0, -1, []int64{50, 100}, []int64{0, 0}, []int{-1, -1}, []bool{false, false}, 0},
+		},
+		"dated Goal full from the pot is not late even when the date has passed": {
+			ContributionIn{Goals: []ContributionGoal{g("a", 100, due(-2))}, GoalsPot: 100, Base: 50},
+			want{0, -1, []int64{100}, []int64{0}, []int{0}, []bool{false}, 50},
 		},
 		"negative base is no base": {
 			ContributionIn{Goals: []ContributionGoal{g("a", 100, nil)}, Base: -500},

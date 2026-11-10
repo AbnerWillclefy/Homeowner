@@ -71,7 +71,7 @@ func SplitContribution(in ContributionIn) ContributionOut {
 		}
 	}
 	for i, g := range in.Goals {
-		out.Goals[i].Late = g.Due != nil && (out.Goals[i].Month == nil || out.Goals[i].Month.After(*g.Due))
+		out.Goals[i].Late = g.Due != nil && out.Goals[i].Saved < g.Target && (out.Goals[i].Month == nil || out.Goals[i].Month.After(*g.Due))
 	}
 	return out
 }
