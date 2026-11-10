@@ -7,12 +7,13 @@ import { visit } from "../pages/launch";
 import { financeView } from "../pages/finances";
 
 // What this covers, pt-BR first and then English, with the clock fixed on 15 November 2026: "Próximos meses" (in the
-// Contas view) draws every month with a commitment as a column split into Bills and installments, with each total and
-// the split in the chart's text, notes that the current month counts only the Bills still to pay, and lists the
-// Installment plans in progress with the next part, the total and the last month (one that ends this month, one that
-// crosses into next year). Once the Monthly income is set (in Ajustes) it says the share of the first month, with no
-// alarm word, icon or exclamation mark. The income field explains its problems. No commitments is said calmly. At
-// 320px with the root font at 200% nothing overflows sideways.
+// Contas view) draws one folding card per month, the current one open. Each card says Total and, with a Monthly
+// income, the leftover, closed or open. The open November card lists every group and line the API gives (card bills,
+// other bills with "paga", planned spending, what was already spent off the card) and the income last; a card without
+// its closing day says so; December opens to its own lines and has no "already spent". Without an income there is no
+// leftover and the screen offers to set it; a total above the income says so in neutral words, with no danger colour,
+// alarm icon or exclamation mark. The plans in progress keep their next part, total and last month. A failed read
+// says so with Retry. At 320px with the root font at 200% nothing overflows sideways.
 
 const LOCALES = [
   {
@@ -24,23 +25,33 @@ const LOCALES = [
     income: "Quanto entra por mês",
     save: "Salvar",
     clear: "Limpar",
-    november: /novembro de 2026: R\$\s*320,00/i,
-    december: /dezembro de 2026: R\$\s*870,00/i,
-    january: /janeiro de 2027: R\$\s*570,00/i,
-    split: /Contas R\$\s*120,00 · Parcelamentos R\$\s*750,00/,
-    currentNote: "Só contas ainda a pagar",
+    november: /novembro de 2026/i,
+    december: /dezembro de 2026/i,
+    january: /janeiro de 2027/i,
+    thisMonth: "este mês",
+    total: "Total",
+    leftover: "Sobra",
+    monthlyIncome: "Renda mensal",
+    groups: { cards: "Faturas dos cartões", bills: "Outras contas", planned: "Gasto previsto (o que falta dos limites)", plannedLater: "Gasto previsto", spent: "Já gasto fora do cartão" },
+    paid: "Aluguel · paga",
+    installments: "Parcelamentos fora do cartão",
+    groceries: "Mercado",
+    noDays: "Sem dia de fechamento: conta pela data da compra.",
+    noCard: "Nenhuma fatura conhecida ainda.",
+    over: "O total passa a renda em R$ 1.000,00.",
+    noIncome: "Informe sua renda mensal para ver a sobra de cada mês.",
+    setIncome: "Informar renda mensal",
+    footnote: /Nos meses seguintes, a fatura conta só as parcelas já conhecidas/,
     plansHeading: "Parcelas em andamento",
     plans: [
       ["Sofá", "próxima 3 de 3 · última em novembro"],
       ["Geladeira", "próxima 4 de 10 · última em junho"],
       ["Televisão", "próxima 2 de 6 · última em abril"],
     ],
-    share: /53% da renda já está comprometida/,
-    empty: "Nenhuma conta ou parcelamento nos próximos meses.",
     failed: "Não conseguimos carregar os próximos meses. Verifique sua conexão e tente de novo.",
     retry: "Tentar novamente",
     problems: { empty: "Digite sua renda mensal, por exemplo 5.000,00.", zero: "A renda mensal precisa ser maior que zero.", junk: "Use só números, por exemplo 5.000,00." },
-    typed: { high: "600,00" },
+    typed: "8.000,00",
   },
   {
     locale: "en-US",
@@ -51,27 +62,41 @@ const LOCALES = [
     income: "How much comes in each month",
     save: "Save",
     clear: "Clear",
-    november: /November 2026: R\$\s*320\.00/i,
-    december: /December 2026: R\$\s*870\.00/i,
-    january: /January 2027: R\$\s*570\.00/i,
-    split: /Bills R\$\s*120\.00 · Installments R\$\s*750\.00/,
-    currentNote: "Only bills still to pay",
+    november: /November 2026/i,
+    december: /December 2026/i,
+    january: /January 2027/i,
+    thisMonth: "this month",
+    total: "Total",
+    leftover: "Leftover",
+    monthlyIncome: "Monthly income",
+    groups: { cards: "Card bills", bills: "Other bills", planned: "Planned spending (left of your limits)", plannedLater: "Planned spending", spent: "Already spent off the card" },
+    paid: "Aluguel · paid",
+    installments: "Installments off the card",
+    groceries: "Groceries",
+    noDays: "No closing day from the bank: counted by purchase date.",
+    noCard: "No card bill known yet.",
+    over: "The total is R$1,000.00 above your income.",
+    noIncome: "Set your monthly income to see what is left each month.",
+    setIncome: "Set monthly income",
+    footnote: /In later months a card bill counts only the installments already known/,
     plansHeading: "Installments in progress",
     plans: [
       ["Sofá", "next 3 of 3 · last in November"],
       ["Geladeira", "next 4 of 10 · last in June"],
       ["Televisão", "next 2 of 6 · last in April"],
     ],
-    share: /53% of your income is already taken/,
-    empty: "No bills or installments in the coming months.",
     failed: "We could not load the coming months. Check your connection and try again.",
     retry: "Try again",
     problems: { empty: "Enter your monthly income, for example 5,000.00.", zero: "Monthly income must be more than zero.", junk: "Use numbers only, for example 5,000.00." },
-    typed: { high: "600.00" },
+    typed: "8,000.00",
   },
 ] as const;
 
-const connected = (withMonths: boolean) => {
+const INTER = { sourceId: "card-2", name: "Inter Mastercard Platinum", amountCents: 50000, billDaysKnown: false };
+const NUBANK = { sourceId: "card-1", name: "Nubank", amountCents: 100000, billDaysKnown: true };
+
+const connected = (options: { months?: boolean; income?: number } = {}) => {
+  const { months = true, income } = options;
   const s = signedInResident();
   s.user.finance = true;
   s.finance = {
@@ -79,34 +104,54 @@ const connected = (withMonths: boolean) => {
     sources: [{ id: "source-1", name: "Pluggy Bank", kind: "checking", currency: "BRL" }],
     importing: false,
     lastSyncedAt: "2026-11-08T13:05:00Z",
-    commitments: withMonths
+    ...(income ? { monthlyIncomeCents: income } : {}),
+    commitments: months
       ? [
           {
             month: "2026-11",
-            committedCents: 32000,
             installments: [{ name: "Sofá", number: 3, total: 3, amountCents: 20000 }],
-            bills: [{ id: "bill-1", name: "Internet", expectedCents: 12000 }],
+            cards: [NUBANK, INTER],
+            otherBills: [
+              { id: "bill-1", name: "Aluguel", cents: 200000, paid: true },
+              { id: "bill-2", name: "Luz", cents: 15000, paid: false },
+            ],
+            otherInstallmentsCents: 30000,
+            planned: [{ category: "groceries", cents: 80000 }],
+            plannedCents: 80000,
+            spentOffCardCents: 25000,
+            totalCents: 500000,
           },
           {
             month: "2026-12",
-            committedCents: 87000,
             installments: [
               { name: "Geladeira", number: 4, total: 10, amountCents: 45000 },
               { name: "Televisão", number: 2, total: 6, amountCents: 30000 },
             ],
-            bills: [{ id: "bill-1", name: "Internet", expectedCents: 12000 }],
+            cards: [NUBANK, INTER],
+            otherBills: [{ id: "bill-1", name: "Aluguel", cents: 200000, paid: false }],
+            otherInstallmentsCents: 0,
+            planned: [{ category: "groceries", cents: 80000 }],
+            plannedCents: 80000,
+            totalCents: 430000,
           },
           {
             month: "2027-01",
-            committedCents: 57000,
             installments: [{ name: "Geladeira", number: 5, total: 10, amountCents: 45000 }],
-            bills: [{ id: "bill-1", name: "Internet", expectedCents: 12000 }],
+            cards: [],
+            otherBills: [],
+            otherInstallmentsCents: 0,
+            planned: [],
+            plannedCents: 0,
+            totalCents: 0,
           },
         ]
-      : [{ month: "2026-12", committedCents: 0, installments: [], bills: [] }],
+      : [],
   };
   return s;
 };
+
+/** `R$ 1.234,56` as the locale writes it, with a plain space so a text match does not depend on the no-break one. */
+const brl = (locale: string, cents: number) => new Intl.NumberFormat(locale, { style: "currency", currency: "BRL" }).format(cents / 100).replace(/\s/g, " ");
 
 const section = (page: Page, heading: string) => page.getByRole("region", { name: heading, exact: true });
 /** The income form alone: Ajustes has other forms with their own alerts. */
@@ -115,6 +160,7 @@ const income = (page: Page) => page.locator("form").filter({ has: page.getByLabe
 for (const l of LOCALES) {
   test.describe(l.locale, () => {
     test.use({ locale: l.locale, viewport: { width: 390, height: 844 } });
+    const money = (cents: number) => brl(l.locale, cents);
 
     test.beforeEach(async ({ page, baseURL, fakeApi }) => {
       fakeApi.use(signedInHandlers);
@@ -132,55 +178,110 @@ for (const l of LOCALES) {
       await financeView(page, l.bills).click();
       return section(page, l.heading);
     };
+    const monthCard = (page: Page, name: RegExp) => page.getByRole("region", { name });
 
-    test.describe("with commitments", () => {
-      test.use({ fakeState: connected(true) });
+    test.describe("with an income", () => {
+      test.use({ fakeState: connected({ income: 800000 }) });
 
-      test("draws each month as a column split into Bills and installments, with every total as text", async ({ page }) => {
-        const s = await comingMonths(page);
-        const chart = s.getByRole("img");
-        await expect(chart).toHaveAttribute("aria-label", l.november);
-        await expect(chart).toHaveAttribute("aria-label", l.december);
-        await expect(chart).toHaveAttribute("aria-label", l.january);
-        await expect(chart).toHaveAttribute("aria-label", l.split);
-        await expect(s.getByText(l.currentNote)).toHaveCount(1);
+      test("opens the current month with every group and line, and shows each month's total and leftover closed", async ({ page }) => {
+        await comingMonths(page);
+        const nov = monthCard(page, l.november);
+        await expect(nov).toContainText(l.thisMonth);
+        await expect(nov.getByRole("button", { expanded: true })).toBeVisible();
+        await expect(nov).toContainText(`${l.total} ${money(500000)}`);
+        await expect(nov).toContainText(`${l.leftover} ${money(300000)}`);
+        for (const text of [
+          `${l.groups.cards} ${money(150000)}`,
+          `Nubank ${money(100000)}`,
+          `Inter Mastercard Platinum ${money(50000)}`,
+          `${l.groups.bills} ${money(245000)}`,
+          `${l.paid} ${money(200000)}`,
+          `Luz ${money(15000)}`,
+          `${l.installments} ${money(30000)}`,
+          `${l.groups.planned} ${money(80000)}`,
+          `${l.groceries} ${money(80000)}`,
+          `${l.groups.spent} ${money(25000)}`,
+          `${l.monthlyIncome} ${money(800000)}`,
+        ])
+          await expect(nov).toContainText(text);
+        await expect(nov.getByText(l.over)).toHaveCount(0);
+
+        const dec = monthCard(page, l.december);
+        await expect(dec.getByRole("button", { expanded: false })).toBeVisible();
+        await expect(dec).toContainText(`${l.total} ${money(430000)}`);
+        await expect(dec).toContainText(`${l.leftover} ${money(370000)}`);
+        await expect(dec.getByText(l.groups.spent)).toBeHidden();
+        await dec.getByRole("button").click();
+        await expect(dec.getByText(l.groups.plannedLater, { exact: true })).toBeVisible();
+        await expect(dec.getByText(l.groups.spent)).toHaveCount(0);
+        await expect(dec.getByText("Aluguel", { exact: true })).toBeVisible();
       });
 
-      test("lists the plans in progress with the next part, the total and the last month", async ({ page }) => {
+      test("says in one line under the card which one has no closing day, and what a month with no card bill says", async ({ page }) => {
+        await comingMonths(page);
+        const nov = monthCard(page, l.november);
+        await expect(nov.getByText(l.noDays)).toHaveCount(1);
+        // `last()` is the card's own line, inside the group's line.
+        await expect(nov.getByRole("listitem").filter({ hasText: "Inter Mastercard Platinum" }).last()).toContainText(l.noDays);
+        await expect(nov.getByRole("listitem").filter({ hasText: "Nubank" }).last()).not.toContainText(l.noDays);
+        const jan = monthCard(page, l.january);
+        await jan.getByRole("button").click();
+        await expect(jan.getByText(l.noCard)).toBeVisible();
+      });
+
+      test("lists the plans in progress with the next part, the total and the last month, and the footnote", async ({ page }) => {
         const s = await comingMonths(page);
         const plans = s.getByRole("region", { name: l.plansHeading });
         await expect(plans).toBeVisible();
         for (const [name, text] of l.plans) await expect(plans.getByRole("listitem").filter({ hasText: name })).toContainText(text);
         // A plan that appears in two months is listed once.
         await expect(plans.getByText(/Geladeira/)).toHaveCount(1);
+        await expect(s.getByText(l.footnote)).toBeVisible();
       });
 
-      test("without income there is no share, and Ajustes has an empty field", async ({ page }) => {
-        const s = await comingMonths(page);
-        await expect(s.getByText(l.share)).toHaveCount(0);
-        await settings(page);
-        await expect(income(page).getByRole("button", { name: l.clear })).toHaveCount(0);
-        await expect(page.getByLabel(l.income)).toHaveValue("");
-      });
-
-      test("setting an income says the share, without alarm; clearing removes it", async ({ page }) => {
-        await settings(page);
-        await page.getByLabel(l.income).fill(l.typed.high);
-        await income(page).getByRole("button", { name: l.save }).click();
-        await expect(page.getByLabel(l.income)).toHaveValue(l.typed.high);
-        await expect(income(page).getByRole("alert")).toBeEmpty();
-
-        let s = await comingMonths(page);
-        await expect(s.getByText(l.share)).toBeVisible();
-        expect(await s.innerText()).not.toContain("!");
-        await expect(s.locator("svg.lucide-triangle-alert, svg.lucide-circle-alert")).toHaveCount(0);
-
+      test("clearing the income in Ajustes takes the leftover away", async ({ page }) => {
         await settings(page);
         await income(page).getByRole("button", { name: l.clear }).click();
         await expect(page.getByLabel(l.income)).toHaveValue("");
-        s = await comingMonths(page);
-        await expect(s.getByText(l.share)).toHaveCount(0);
-        await expect(s.getByRole("img")).toHaveAttribute("aria-label", l.december);
+        const s = await comingMonths(page);
+        await expect(s.getByText(l.noIncome)).toBeVisible();
+        await expect(monthCard(page, l.november)).not.toContainText(l.leftover);
+      });
+    });
+
+    test.describe("with a total above the income", () => {
+      test.use({ fakeState: connected({ income: 400000 }) });
+
+      test("shows a negative leftover and says by how much in neutral words, with no alarm", async ({ page }) => {
+        const s = await comingMonths(page);
+        const nov = monthCard(page, l.november);
+        await expect(nov).toContainText(`${l.leftover} ${money(-100000)}`);
+        await expect(nov.getByText(l.over)).toBeVisible();
+        expect(await s.innerText()).not.toContain("!");
+        await expect(s.locator("svg.lucide-triangle-alert, svg.lucide-circle-alert, [class*='danger']")).toHaveCount(0);
+      });
+    });
+
+    test.describe("without an income", () => {
+      test.use({ fakeState: connected() });
+
+      test("has no leftover and offers to set the income; setting it in Ajustes brings the leftover", async ({ page }) => {
+        const s = await comingMonths(page);
+        await expect(s.getByText(l.noIncome)).toBeVisible();
+        await expect(s.getByRole("link", { name: l.setIncome })).toBeVisible();
+        const nov = monthCard(page, l.november);
+        await expect(nov).toContainText(`${l.total} ${money(500000)}`);
+        await expect(nov).not.toContainText(l.leftover);
+        await expect(nov).not.toContainText(l.monthlyIncome);
+
+        await s.getByRole("link", { name: l.setIncome }).click();
+        await expect(page).toHaveURL(/\/finances\/ajustes/);
+        await page.getByLabel(l.income).fill(l.typed);
+        await income(page).getByRole("button", { name: l.save }).click();
+        await expect(page.getByLabel(l.income)).toHaveValue(l.typed);
+        await expect(income(page).getByRole("alert")).toBeEmpty();
+        await comingMonths(page);
+        await expect(monthCard(page, l.november)).toContainText(`${l.leftover} ${money(300000)}`);
       });
 
       test("an income that is empty, zero or not a number is explained and not sent", async ({ page, fakeApi }) => {
@@ -199,23 +300,15 @@ for (const l of LOCALES) {
       });
     });
 
-    test.describe("without commitments", () => {
-      test.use({ fakeState: connected(false) });
-
-      test("says so calmly and still offers the income", async ({ page }) => {
-        const s = await comingMonths(page);
-        await expect(s.getByText(l.empty)).toBeVisible();
-        await settings(page);
-        await expect(page.getByLabel(l.income)).toBeVisible();
-      });
-    });
-
     test.describe("when the commitments cannot be read", () => {
-      test.use({ fakeState: connected(true) });
+      test.use({ fakeState: connected() });
 
-      test("Settings says so where the income was, with Retry", async ({ page, fakeApi }) => {
+      test("the coming months say so with Retry, and so does Ajustes where the income was", async ({ page, fakeApi }) => {
         fakeApi.override("GET /me/finance/commitments", { status: 500, body: { error: "boom" } });
         await page.reload();
+        const s = await comingMonths(page);
+        await expect(s.getByRole("alert").filter({ hasText: l.failed })).toBeVisible();
+        await expect(s.getByRole("button", { name: l.retry })).toBeVisible();
         const main = await settings(page);
         await expect(main.getByRole("alert").filter({ hasText: l.failed })).toBeVisible();
         await expect(main.getByRole("button", { name: l.retry })).toBeVisible();
@@ -223,18 +316,17 @@ for (const l of LOCALES) {
     });
 
     test.describe("at 320px and the largest text", () => {
-      test.use({ fakeState: connected(true), viewport: { width: 320, height: 640 } });
+      test.use({ fakeState: connected({ income: 400000 }), viewport: { width: 320, height: 640 } });
 
-      test("nothing overflows sideways", async ({ page }) => {
+      test("nothing overflows sideways, even with the long card name and the open months", async ({ page }) => {
         await page.addInitScript(() => {
           document.addEventListener("DOMContentLoaded", () => (document.documentElement.style.fontSize = "200%"));
         });
         await page.reload();
-        await settings(page);
-        await page.getByLabel(l.income).fill(l.typed.high);
-        await income(page).getByRole("button", { name: l.save }).click();
-        await expect(page.getByLabel(l.income)).toHaveValue(l.typed.high);
         const s = await comingMonths(page);
+        await monthCard(page, l.december).getByRole("button").click();
+        await monthCard(page, l.january).getByRole("button").click();
+        await expect(monthCard(page, l.november).getByText("Inter Mastercard Platinum")).toBeVisible();
         await expect(s.getByText(l.plans[0][1])).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
       });

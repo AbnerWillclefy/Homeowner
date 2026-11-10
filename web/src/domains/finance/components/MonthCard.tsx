@@ -59,7 +59,7 @@ export function MonthCard({ data, current, income }: { data: CommitmentMonth; cu
         {rows.groups.map((g) => (
           <li key={g.id} className="flex flex-col gap-1">
             <p className={`${ROW} my-0`}>
-              <span className="font-semibold [overflow-wrap:anywhere]">{groupLabel(g)}</span>
+              <span className="font-semibold [overflow-wrap:anywhere]">{groupLabel(g)}</span>{" "}
               <span className="font-bold">{money(g.cents)}</span>
             </p>
             {g.id === "cards" && g.items.length === 0 && <p className="my-0 text-sm text-muted">{t("finances.commit.noCard")}</p>}
@@ -70,7 +70,7 @@ export function MonthCard({ data, current, income }: { data: CommitmentMonth; cu
                     <span className="min-w-0 [overflow-wrap:anywhere]">
                       {itemName(item)}
                       {item.kind === "bill" && item.paid && ` · ${t("finances.commit.paid")}`}
-                    </span>
+                    </span>{" "}
                     <span>{money(item.cents)}</span>
                     {item.kind === "card" && !item.daysKnown && <span className="basis-full">{t("finances.commit.noDays")}</span>}
                   </li>
@@ -82,7 +82,7 @@ export function MonthCard({ data, current, income }: { data: CommitmentMonth; cu
       </ul>
       {income !== null && (
         <p className={`${ROW} my-0 border-t border-border pt-3 text-sm text-muted`}>
-          <span>{t("finances.commit.monthlyIncome")}</span>
+          <span>{t("finances.commit.monthlyIncome")}</span>{" "}
           <span>{money(income)}</span>
         </p>
       )}

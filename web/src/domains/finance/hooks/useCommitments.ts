@@ -4,7 +4,7 @@ import { viewOf } from "../../../shared/query/view";
 import { putIncome } from "../api/api";
 import { commitmentsQuery, invalidateFinance } from "../api/queries";
 
-/** The committed months from `from`, and the Monthly income write that changes their percentages. */
+/** The committed months from `from`, and the Monthly income write that changes their leftovers. */
 export function useCommitments(from: string) {
   const client = useQueryClient();
   const query = useQuery(commitmentsQuery(from));
