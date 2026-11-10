@@ -32,7 +32,13 @@ const LOCALES = [
     total: "Total",
     leftover: "Sobra",
     monthlyIncome: "Renda mensal",
-    groups: { cards: "Faturas dos cartões", bills: "Outras contas", planned: "Gasto previsto (o que falta dos limites)", plannedLater: "Gasto previsto", spent: "Já gasto fora do cartão" },
+    groups: {
+      cards: "Faturas dos cartões",
+      bills: "Outras contas",
+      planned: "Gasto previsto (o que falta dos limites)",
+      plannedLater: "Gasto previsto",
+      spent: "Já gasto fora do cartão",
+    },
     paid: "Aluguel · paga",
     installments: "Parcelamentos fora do cartão",
     groceries: "Mercado",
@@ -41,16 +47,22 @@ const LOCALES = [
     over: "O total passa a renda em R$ 1.000,00.",
     noIncome: "Informe sua renda mensal para ver a sobra de cada mês.",
     setIncome: "Informar renda mensal",
-    footnote: /Nos meses seguintes, a fatura conta só as parcelas já conhecidas/,
+    footnote:
+      /Nos meses seguintes, a fatura conta só as parcelas já conhecidas/,
     plansHeading: "Parcelas em andamento",
     plans: [
       ["Sofá", "próxima 3 de 3 · última em novembro"],
       ["Geladeira", "próxima 4 de 10 · última em junho"],
       ["Televisão", "próxima 2 de 6 · última em abril"],
     ],
-    failed: "Não conseguimos carregar os próximos meses. Verifique sua conexão e tente de novo.",
+    failed:
+      "Não conseguimos carregar os próximos meses. Verifique sua conexão e tente de novo.",
     retry: "Tentar novamente",
-    problems: { empty: "Digite sua renda mensal, por exemplo 5.000,00.", zero: "A renda mensal precisa ser maior que zero.", junk: "Use só números, por exemplo 5.000,00." },
+    problems: {
+      empty: "Digite sua renda mensal, por exemplo 5.000,00.",
+      zero: "A renda mensal precisa ser maior que zero.",
+      junk: "Use só números, por exemplo 5.000,00.",
+    },
     typed: "8.000,00",
   },
   {
@@ -69,7 +81,13 @@ const LOCALES = [
     total: "Total",
     leftover: "Leftover",
     monthlyIncome: "Monthly income",
-    groups: { cards: "Card bills", bills: "Other bills", planned: "Planned spending (left of your limits)", plannedLater: "Planned spending", spent: "Already spent off the card" },
+    groups: {
+      cards: "Card bills",
+      bills: "Other bills",
+      planned: "Planned spending (left of your limits)",
+      plannedLater: "Planned spending",
+      spent: "Already spent off the card",
+    },
     paid: "Aluguel · paid",
     installments: "Installments off the card",
     groceries: "Groceries",
@@ -78,84 +96,122 @@ const LOCALES = [
     over: "The total is R$1,000.00 above your income.",
     noIncome: "Set your monthly income to see what is left each month.",
     setIncome: "Set monthly income",
-    footnote: /In later months a card bill counts only the installments already known/,
+    footnote:
+      /In later months a card bill counts only the installments already known/,
     plansHeading: "Installments in progress",
     plans: [
       ["Sofá", "next 3 of 3 · last in November"],
       ["Geladeira", "next 4 of 10 · last in June"],
       ["Televisão", "next 2 of 6 · last in April"],
     ],
-    failed: "We could not load the coming months. Check your connection and try again.",
+    failed:
+      "We could not load the coming months. Check your connection and try again.",
     retry: "Try again",
-    problems: { empty: "Enter your monthly income, for example 5,000.00.", zero: "Monthly income must be more than zero.", junk: "Use numbers only, for example 5,000.00." },
+    problems: {
+      empty: "Enter your monthly income, for example 5,000.00.",
+      zero: "Monthly income must be more than zero.",
+      junk: "Use numbers only, for example 5,000.00.",
+    },
     typed: "8,000.00",
   },
 ] as const;
 
-const INTER = { sourceId: "card-2", name: "Inter Mastercard Platinum", amountCents: 50000, billDaysKnown: false };
-const NUBANK = { sourceId: "card-1", name: "Nubank", amountCents: 100000, billDaysKnown: true };
+const INTER = {
+  sourceId: "card-2",
+  name: "Inter Mastercard Platinum",
+  amountCents: 50000,
+  billDaysKnown: false,
+};
+const NUBANK = {
+  sourceId: "card-1",
+  name: "Nubank",
+  amountCents: 100000,
+  billDaysKnown: true,
+};
 
-const connected = (options: { months?: boolean; income?: number } = {}) => {
-  const { months = true, income } = options;
+const connected = (options: { income?: number } = {}) => {
+  const { income } = options;
   const s = signedInResident();
   s.user.finance = true;
   s.finance = {
     configured: true,
-    sources: [{ id: "source-1", name: "Pluggy Bank", kind: "checking", currency: "BRL" }],
+    sources: [
+      {
+        id: "source-1",
+        name: "Pluggy Bank",
+        kind: "checking",
+        currency: "BRL",
+      },
+    ],
     importing: false,
     lastSyncedAt: "2026-11-08T13:05:00Z",
     ...(income ? { monthlyIncomeCents: income } : {}),
-    commitments: months
-      ? [
-          {
-            month: "2026-11",
-            installments: [{ name: "Sofá", number: 3, total: 3, amountCents: 20000 }],
-            cards: [NUBANK, INTER],
-            otherBills: [
-              { id: "bill-1", name: "Aluguel", cents: 200000, paid: true },
-              { id: "bill-2", name: "Luz", cents: 15000, paid: false },
-            ],
-            otherInstallmentsCents: 30000,
-            planned: [{ category: "groceries", cents: 80000 }],
-            plannedCents: 80000,
-            spentOffCardCents: 25000,
-            totalCents: 500000,
-          },
-          {
-            month: "2026-12",
-            installments: [
-              { name: "Geladeira", number: 4, total: 10, amountCents: 45000 },
-              { name: "Televisão", number: 2, total: 6, amountCents: 30000 },
-            ],
-            cards: [NUBANK, INTER],
-            otherBills: [{ id: "bill-1", name: "Aluguel", cents: 200000, paid: false }],
-            otherInstallmentsCents: 0,
-            planned: [{ category: "groceries", cents: 80000 }],
-            plannedCents: 80000,
-            totalCents: 430000,
-          },
-          {
-            month: "2027-01",
-            installments: [{ name: "Geladeira", number: 5, total: 10, amountCents: 45000 }],
-            cards: [],
-            otherBills: [],
-            otherInstallmentsCents: 0,
-            planned: [],
-            plannedCents: 0,
-            totalCents: 0,
-          },
-        ]
-      : [],
+    commitments: [
+      {
+        month: "2026-11",
+        installments: [
+          { name: "Sofá", number: 3, total: 3, amountCents: 20000 },
+        ],
+        cards: [NUBANK, INTER],
+        otherBills: [
+          { id: "bill-1", name: "Aluguel", cents: 200000, paid: true },
+          { id: "bill-2", name: "Luz", cents: 15000, paid: false },
+        ],
+        otherInstallmentsCents: 30000,
+        planned: [{ category: "groceries", cents: 80000 }],
+        plannedCents: 80000,
+        spentOffCardCents: 25000,
+        totalCents: 500000,
+      },
+      {
+        month: "2026-12",
+        installments: [
+          { name: "Geladeira", number: 4, total: 10, amountCents: 45000 },
+          { name: "Televisão", number: 2, total: 6, amountCents: 30000 },
+        ],
+        cards: [NUBANK, INTER],
+        otherBills: [
+          { id: "bill-1", name: "Aluguel", cents: 200000, paid: false },
+        ],
+        otherInstallmentsCents: 0,
+        planned: [{ category: "groceries", cents: 80000 }],
+        plannedCents: 80000,
+        totalCents: 430000,
+      },
+      {
+        month: "2027-01",
+        installments: [
+          { name: "Geladeira", number: 5, total: 10, amountCents: 45000 },
+        ],
+        cards: [],
+        otherBills: [],
+        otherInstallmentsCents: 0,
+        planned: [],
+        plannedCents: 0,
+        totalCents: 0,
+      },
+    ],
   };
   return s;
 };
 
 /** `R$ 1.234,56` as the locale writes it, with a plain space so a text match does not depend on the no-break one. */
-const brl = (locale: string, cents: number) => new Intl.NumberFormat(locale, { style: "currency", currency: "BRL" }).format(cents / 100).replace(/\s/g, " ");
+const brl = (locale: string, cents: number) =>
+  new Intl.NumberFormat(locale, { style: "currency", currency: "BRL" })
+    .format(cents / 100)
+    .replace(/\s/g, " ");
 
-const section = (page: Page, heading: string) => page.getByRole("region", { name: heading, exact: true });
+const section = (page: Page, heading: string) =>
+  page.getByRole("region", { name: heading, exact: true });
 /** The income form alone: Ajustes has other forms with their own alerts. */
-const income = (page: Page) => page.locator("form").filter({ has: page.getByLabel(/^(Quanto entra por mês|How much comes in each month)$/) });
+const income = (page: Page) =>
+  page
+    .locator("form")
+    .filter({
+      has: page.getByLabel(
+        /^(Quanto entra por mês|How much comes in each month)$/,
+      ),
+    });
 
 for (const l of LOCALES) {
   test.describe(l.locale, () => {
@@ -174,16 +230,20 @@ for (const l of LOCALES) {
       return page.locator("main");
     };
     const comingMonths = async (page: Page) => {
-      if (page.url().includes("/finances/ajustes")) await page.getByRole("button", { name: l.back, exact: true }).click();
+      if (page.url().includes("/finances/ajustes"))
+        await page.getByRole("button", { name: l.back, exact: true }).click();
       await financeView(page, l.bills).click();
       return section(page, l.heading);
     };
-    const monthCard = (page: Page, name: RegExp) => page.getByRole("region", { name });
+    const monthCard = (page: Page, name: RegExp) =>
+      page.getByRole("region", { name });
 
     test.describe("with an income", () => {
       test.use({ fakeState: connected({ income: 800000 }) });
 
-      test("opens the current month with every group and line, and shows each month's total and leftover closed", async ({ page }) => {
+      test("opens the current month with every group and line, and shows each month's total and leftover closed", async ({
+        page,
+      }) => {
         await comingMonths(page);
         const nov = monthCard(page, l.november);
         await expect(nov).toContainText(l.thisMonth);
@@ -207,39 +267,59 @@ for (const l of LOCALES) {
         await expect(nov.getByText(l.over)).toHaveCount(0);
 
         const dec = monthCard(page, l.december);
-        await expect(dec.getByRole("button", { expanded: false })).toBeVisible();
+        await expect(
+          dec.getByRole("button", { expanded: false }),
+        ).toBeVisible();
         await expect(dec).toContainText(`${l.total} ${money(430000)}`);
         await expect(dec).toContainText(`${l.leftover} ${money(370000)}`);
         await expect(dec.getByText(l.groups.spent)).toBeHidden();
         await dec.getByRole("button").click();
-        await expect(dec.getByText(l.groups.plannedLater, { exact: true })).toBeVisible();
+        await expect(
+          dec.getByText(l.groups.plannedLater, { exact: true }),
+        ).toBeVisible();
         await expect(dec.getByText(l.groups.spent)).toHaveCount(0);
         await expect(dec.getByText("Aluguel", { exact: true })).toBeVisible();
       });
 
-      test("says in one line under the card which one has no closing day, and what a month with no card bill says", async ({ page }) => {
+      test("says in one line under the card which one has no closing day, and what a month with no card bill says", async ({
+        page,
+      }) => {
         await comingMonths(page);
         const nov = monthCard(page, l.november);
         await expect(nov.getByText(l.noDays)).toHaveCount(1);
         // `last()` is the card's own line, inside the group's line.
-        await expect(nov.getByRole("listitem").filter({ hasText: "Inter Mastercard Platinum" }).last()).toContainText(l.noDays);
-        await expect(nov.getByRole("listitem").filter({ hasText: "Nubank" }).last()).not.toContainText(l.noDays);
+        await expect(
+          nov
+            .getByRole("listitem")
+            .filter({ hasText: "Inter Mastercard Platinum" })
+            .last(),
+        ).toContainText(l.noDays);
+        await expect(
+          nov.getByRole("listitem").filter({ hasText: "Nubank" }).last(),
+        ).not.toContainText(l.noDays);
         const jan = monthCard(page, l.january);
         await jan.getByRole("button").click();
         await expect(jan.getByText(l.noCard)).toBeVisible();
       });
 
-      test("lists the plans in progress with the next part, the total and the last month, and the footnote", async ({ page }) => {
+      test("lists the plans in progress with the next part, the total and the last month, and the footnote", async ({
+        page,
+      }) => {
         const s = await comingMonths(page);
         const plans = s.getByRole("region", { name: l.plansHeading });
         await expect(plans).toBeVisible();
-        for (const [name, text] of l.plans) await expect(plans.getByRole("listitem").filter({ hasText: name })).toContainText(text);
+        for (const [name, text] of l.plans)
+          await expect(
+            plans.getByRole("listitem").filter({ hasText: name }),
+          ).toContainText(text);
         // A plan that appears in two months is listed once.
         await expect(plans.getByText(/Geladeira/)).toHaveCount(1);
         await expect(s.getByText(l.footnote)).toBeVisible();
       });
 
-      test("clearing the income in Ajustes takes the leftover away", async ({ page }) => {
+      test("clearing the income in Ajustes takes the leftover away", async ({
+        page,
+      }) => {
         await settings(page);
         await income(page).getByRole("button", { name: l.clear }).click();
         await expect(page.getByLabel(l.income)).toHaveValue("");
@@ -252,20 +332,28 @@ for (const l of LOCALES) {
     test.describe("with a total above the income", () => {
       test.use({ fakeState: connected({ income: 400000 }) });
 
-      test("shows a negative leftover and says by how much in neutral words, with no alarm", async ({ page }) => {
+      test("shows a negative leftover and says by how much in neutral words, with no alarm", async ({
+        page,
+      }) => {
         const s = await comingMonths(page);
         const nov = monthCard(page, l.november);
         await expect(nov).toContainText(`${l.leftover} ${money(-100000)}`);
         await expect(nov.getByText(l.over)).toBeVisible();
         expect(await s.innerText()).not.toContain("!");
-        await expect(s.locator("svg.lucide-triangle-alert, svg.lucide-circle-alert, [class*='danger']")).toHaveCount(0);
+        await expect(
+          s.locator(
+            "svg.lucide-triangle-alert, svg.lucide-circle-alert, [class*='danger']",
+          ),
+        ).toHaveCount(0);
       });
     });
 
     test.describe("without an income", () => {
       test.use({ fakeState: connected() });
 
-      test("has no leftover and offers to set the income; setting it in Ajustes brings the leftover", async ({ page }) => {
+      test("has no leftover and offers to set the income; setting it in Ajustes brings the leftover", async ({
+        page,
+      }) => {
         const s = await comingMonths(page);
         await expect(s.getByText(l.noIncome)).toBeVisible();
         await expect(s.getByRole("link", { name: l.setIncome })).toBeVisible();
@@ -281,10 +369,15 @@ for (const l of LOCALES) {
         await expect(page.getByLabel(l.income)).toHaveValue(l.typed);
         await expect(income(page).getByRole("alert")).toBeEmpty();
         await comingMonths(page);
-        await expect(monthCard(page, l.november)).toContainText(`${l.leftover} ${money(300000)}`);
+        await expect(monthCard(page, l.november)).toContainText(
+          `${l.leftover} ${money(300000)}`,
+        );
       });
 
-      test("an income that is empty, zero or not a number is explained and not sent", async ({ page, fakeApi }) => {
+      test("an income that is empty, zero or not a number is explained and not sent", async ({
+        page,
+        fakeApi,
+      }) => {
         await settings(page);
         const form = income(page);
         const save = form.getByRole("button", { name: l.save });
@@ -296,39 +389,67 @@ for (const l of LOCALES) {
         await page.getByLabel(l.income).fill("abc");
         await save.click();
         await expect(form.getByRole("alert")).toHaveText(l.problems.junk);
-        expect(fakeApi.requests.filter((r) => r.path === "/me/finance/income")).toEqual([]);
+        expect(
+          fakeApi.requests.filter((r) => r.path === "/me/finance/income"),
+        ).toEqual([]);
       });
     });
 
     test.describe("when the commitments cannot be read", () => {
       test.use({ fakeState: connected() });
 
-      test("the coming months say so with Retry, and so does Ajustes where the income was", async ({ page, fakeApi }) => {
-        fakeApi.override("GET /me/finance/commitments", { status: 500, body: { error: "boom" } });
+      test("the coming months say so with Retry, and so does Ajustes where the income was", async ({
+        page,
+        fakeApi,
+      }) => {
+        fakeApi.override("GET /me/finance/commitments", {
+          status: 500,
+          body: { error: "boom" },
+        });
         await page.reload();
         const s = await comingMonths(page);
-        await expect(s.getByRole("alert").filter({ hasText: l.failed })).toBeVisible();
+        await expect(
+          s.getByRole("alert").filter({ hasText: l.failed }),
+        ).toBeVisible();
         await expect(s.getByRole("button", { name: l.retry })).toBeVisible();
         const main = await settings(page);
-        await expect(main.getByRole("alert").filter({ hasText: l.failed })).toBeVisible();
+        await expect(
+          main.getByRole("alert").filter({ hasText: l.failed }),
+        ).toBeVisible();
         await expect(main.getByRole("button", { name: l.retry })).toBeVisible();
       });
     });
 
     test.describe("at 320px and the largest text", () => {
-      test.use({ fakeState: connected({ income: 400000 }), viewport: { width: 320, height: 640 } });
+      test.use({
+        fakeState: connected({ income: 400000 }),
+        viewport: { width: 320, height: 640 },
+      });
 
-      test("nothing overflows sideways, even with the long card name and the open months", async ({ page }) => {
+      test("nothing overflows sideways, even with the long card name and the open months", async ({
+        page,
+      }) => {
         await page.addInitScript(() => {
-          document.addEventListener("DOMContentLoaded", () => (document.documentElement.style.fontSize = "200%"));
+          document.addEventListener(
+            "DOMContentLoaded",
+            () => (document.documentElement.style.fontSize = "200%"),
+          );
         });
         await page.reload();
         const s = await comingMonths(page);
         await monthCard(page, l.december).getByRole("button").click();
         await monthCard(page, l.january).getByRole("button").click();
-        await expect(monthCard(page, l.november).getByText("Inter Mastercard Platinum")).toBeVisible();
+        await expect(
+          monthCard(page, l.november).getByText("Inter Mastercard Platinum"),
+        ).toBeVisible();
         await expect(s.getByText(l.plans[0][1])).toBeVisible();
-        expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+        expect(
+          await page.evaluate(
+            () =>
+              document.documentElement.scrollWidth <=
+              document.documentElement.clientWidth,
+          ),
+        ).toBe(true);
       });
     });
   });
