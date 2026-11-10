@@ -72,7 +72,7 @@ func TestFullImportStoresEveryTransactionExactly(t *testing.T) {
 	if n := scalar(t, app, `SELECT sum(amount_cents) FROM finance_transactions`); n != fixtureCents {
 		t.Errorf("sum of amount_cents = %d, want %d", n, fixtureCents)
 	}
-	// A card purchase is negative with type CREDIT in Pluggy: the sign decides.
+	// Pluggy sends a card purchase positive; the sync stores it negative.
 	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE description = 'NETFLIX.COM' AND amount_cents = -5590 AND type = 'expense'
 		AND spending_category = 'subscriptions' AND category_set_by = 'auto' AND type_set_by = 'auto' AND posted_on = '2026-11-01'`); n != 1 {
 		t.Errorf("latest NETFLIX.COM rows = %d, want 1 expense of -5590 on 2026-11-01", n)

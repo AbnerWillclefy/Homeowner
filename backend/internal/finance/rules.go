@@ -12,9 +12,9 @@ import (
 
 // Sign convention: amount_cents is signed from the Source's point of view,
 // negative is money out and positive is money in. The direction is the sign,
-// never Pluggy's type: on a credit card a purchase is negative with type
-// CREDIT. The amount spent on an expense is -amount_cents, so a refund is a
-// negative spend.
+// never Pluggy's type. Pluggy signs a card row the other way (a purchase is
+// positive), so the sync flips it (toRows). The amount spent on an expense is
+// -amount_cents, so a refund is a negative spend.
 
 var (
 	saoPaulo = mustLoad("America/Sao_Paulo")
@@ -79,7 +79,7 @@ type Kind string
 const transferWindowDays = 3
 
 // billPayments are merchant keys that mark a card bill payment, on either side.
-var billPayments = []string{"PAGAMENTO FATURA", "PAGAMENTO RECEBIDO"}
+var billPayments = []string{"PAGAMENTO FATURA", "PAGAMENTO DE FATURA", "PAGAMENTO RECEBIDO"}
 
 // Txn is the part of a Transaction the rules read and decide.
 type Txn struct {

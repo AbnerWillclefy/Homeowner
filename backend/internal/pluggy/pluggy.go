@@ -56,9 +56,9 @@ type TransactionsPage struct {
 	Next         string
 }
 
-// Transaction is one row. Direction is the sign of AmountCents (negative is
-// money out), never Type: on a credit card a purchase is negative with type
-// CREDIT. ProviderID is often missing, so key on ID.
+// Transaction is one row as Pluggy signs it: on a bank account negative is
+// money out; on a credit card a purchase is positive and a bill payment
+// negative. Type is never read. ProviderID is often missing, so key on ID.
 type Transaction struct {
 	ID                 string
 	ProviderID         *string
