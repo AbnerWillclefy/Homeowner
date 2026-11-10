@@ -31,7 +31,7 @@ func currentVersion(t *testing.T, url string) int64 {
 
 // latestMigration is the number of the newest file in backend/migrations;
 // bump it when adding a migration.
-const latestMigration = 36
+const latestMigration = 37
 
 func TestMigrateRunsOnEmptyDatabaseThenIsANoOp(t *testing.T) {
 	t.Parallel()
