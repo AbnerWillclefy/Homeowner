@@ -1,6 +1,37 @@
 package finance
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
+
+// GoalRequest is the body of POST /me/finance/goals and PUT /me/finance/goals/{id}.
+// TargetCents stays raw so a fractional or non-numeric value is refused by field.
+type GoalRequest struct {
+	Name        string          `json:"name"`
+	TargetCents json.RawMessage `json:"targetCents"`
+	TargetMonth *string         `json:"targetMonth"`
+}
+
+// GoalInput is a validated GoalRequest; TargetMonth is the first day of the month.
+type GoalInput struct {
+	Name        string
+	TargetCents int64
+	TargetMonth *time.Time
+}
+
+// GoalOrderRequest is the body of PUT /me/finance/goals/order.
+type GoalOrderRequest struct {
+	IDs []string `json:"ids"`
+}
+
+// GoalResponse is a Goal as created, updated or listed; TargetMonth is "YYYY-MM" or null.
+type GoalResponse struct {
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	TargetCents int64   `json:"targetCents"`
+	TargetMonth *string `json:"targetMonth"`
+}
 
 // StatusResponse is the Finances status on the wire.
 type StatusResponse struct {
