@@ -130,7 +130,9 @@ function MonthSentence({ part, name, money }: { part: MonthPart; name: string; m
           {part.monthsSooner !== null && (
             <>
               {" "}
-              {t(part.reaches === "reserve" ? "finances.suggestion.soonerReserve" : "finances.suggestion.soonerGoal", { count: part.monthsSooner })}
+              {part.reaches === "reserve"
+                ? t("finances.suggestion.soonerReserve", { count: part.monthsSooner })
+                : t("finances.suggestion.soonerGoal", { count: part.monthsSooner, name: part.reaches.goal })}
             </>
           )}
         </p>

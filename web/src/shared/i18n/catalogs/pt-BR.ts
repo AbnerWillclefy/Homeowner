@@ -324,8 +324,8 @@ export const ptBR: Messages = {
     other: "Guardando esse valor também, a reserva chega {count} meses antes.",
   },
   "finances.suggestion.soonerGoal": {
-    one: "Guardando esse valor também, o primeiro objetivo chega {count} mês antes.",
-    other: "Guardando esse valor também, o primeiro objetivo chega {count} meses antes.",
+    one: "Guardando esse valor também, {name} chega {count} mês antes.",
+    other: "Guardando esse valor também, {name} chega {count} meses antes.",
   },
   "finances.suggestion.below": "A sobra de {month} é {leftover}, {shortfall} abaixo do aporte.",
   "finances.suggestion.belowNoAmount": "A sobra de {month} ficou abaixo do aporte.",

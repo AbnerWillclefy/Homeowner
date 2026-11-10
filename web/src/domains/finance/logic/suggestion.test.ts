@@ -139,8 +139,15 @@ describe("suggestionOf", () => {
     it("reaches the first Goal sooner when the reserve is at its target or has none", () => {
       const leftover = { leftoverCents: 150000, extraCents: 50000, monthsSooner: 2 };
       const full = { targetCents: 3000000, savedCents: 3000000, monthCents: 0, expectedMonth: null };
-      expect(month(savings({ leftover, reserve: full }))).toMatchObject({ reaches: "goal" });
-      expect(month(savings({ leftover, reserve: { ...full, targetCents: null, savedCents: 0 } }))).toMatchObject({ reaches: "goal" });
+      expect(month(savings({ leftover, reserve: full }))).toMatchObject({ reaches: { goal: "Reforma" } });
+      expect(month(savings({ leftover, reserve: { ...full, targetCents: null, savedCents: 0 } }))).toMatchObject({ reaches: { goal: "Reforma" } });
+    });
+
+    it("names the first Goal that is not full, not the first in the list", () => {
+      const leftover = { leftoverCents: 150000, extraCents: 50000, monthsSooner: 2 };
+      const full = { targetCents: 3000000, savedCents: 3000000, monthCents: 0, expectedMonth: null };
+      const goals = [goal({ id: "a", name: "Carro", savedCents: 1000000, monthCents: 0, expectedMonth: null }), goal({ id: "b", name: "Viagem" })];
+      expect(month(savings({ leftover, reserve: full, goals }))).toMatchObject({ reaches: { goal: "Viagem" }, monthsSooner: 2 });
     });
 
     it("leaves the sooner clause out when it is zero or unknown", () => {

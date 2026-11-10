@@ -64,8 +64,8 @@ export type SuggestionRow =
 
 /** How this month's leftover compares with the Monthly contribution. */
 export type MonthPart =
-  /** `reaches` is what comes sooner: the reserve while it is unfilled, else the first Goal. */
-  | { kind: "above"; leftoverCents: number; extraCents: number; monthsSooner: number | null; reaches: "reserve" | "goal" }
+  /** `reaches` is what comes sooner: the reserve while it is unfilled, else the first Goal not yet full (the one the server measured). */
+  | { kind: "above"; leftoverCents: number; extraCents: number; monthsSooner: number | null; reaches: "reserve" | { goal: string } }
   | { kind: "below"; leftoverCents: number | null; shortfallCents: number | null; over: OverLimit[] }
   | { kind: "noIncome" }
   /** The leftover equals the contribution, or the income is not known yet. */
@@ -98,8 +98,12 @@ function monthPart(s: Savings, base: number, rows: SuggestionRow[], ctx: { incom
   if (ctx.incomeSet === false) return { kind: "noIncome" };
   if (s.leftover) {
     const { leftoverCents, extraCents, monthsSooner } = s.leftover;
-    const reaches = rows.some((r) => r.kind === "reserve" && r.when.kind !== "reached") ? "reserve" : "goal";
-    return { kind: "above", leftoverCents, extraCents, monthsSooner: monthsSooner !== null && monthsSooner > 0 ? monthsSooner : null, reaches };
+    const reserveOpen = rows.some((r) => r.kind === "reserve" && r.when.kind !== "reached");
+    const open = rows.find((r) => r.kind === "goal" && r.when.kind !== "reached");
+    const reaches = reserveOpen || open?.kind !== "goal" ? "reserve" : { goal: open.name };
+    // A full reserve and no unfilled Goal: nothing moves sooner, so there is nothing to say.
+    const sooner = reserveOpen || open ? monthsSooner : null;
+    return { kind: "above", leftoverCents, extraCents, monthsSooner: sooner !== null && sooner > 0 ? sooner : null, reaches };
   }
   if (s.overLimit)
     return { kind: "below", leftoverCents: ctx.leftoverCents, shortfallCents: ctx.leftoverCents === null ? null : base - ctx.leftoverCents, over: s.overLimit };

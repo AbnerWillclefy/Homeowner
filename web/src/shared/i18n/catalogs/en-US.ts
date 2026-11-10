@@ -320,8 +320,8 @@ export const enUS = {
     other: "Saving that too gets the reserve there {count} months sooner.",
   },
   "finances.suggestion.soonerGoal": {
-    one: "Saving that too gets your first Goal there {count} month sooner.",
-    other: "Saving that too gets your first Goal there {count} months sooner.",
+    one: "Saving that too gets {name} there {count} month sooner.",
+    other: "Saving that too gets {name} there {count} months sooner.",
   },
   "finances.suggestion.below": "Your {month} leftover is {leftover}, {shortfall} below your contribution.",
   "finances.suggestion.belowNoAmount": "Your {month} leftover is below your contribution.",
