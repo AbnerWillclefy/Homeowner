@@ -168,3 +168,31 @@ func TestFinanceRowsGoWithTheUser(t *testing.T) {
 		t.Errorf("%d finance rows survived the User", n)
 	}
 }
+
+// Connecting an Item again refreshes its Sources but keeps a card's days when
+// the User already has some.
+func TestReconnectKeepsTheCardBillDaysAlreadyStored(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, set     string
+		closeDay, due int
+	}{
+		{"both empty are filled from Pluggy", `bill_close_day = NULL, bill_due_day = NULL`, 7, 12},
+		{"both typed are kept", `bill_close_day = 3, bill_due_day = 10`, 3, 10},
+		{"one typed is kept", `bill_close_day = 3, bill_due_day = NULL`, 3, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			app, users := startSync(t, []string{"ana@example.com"})
+			if _, err := app.DB.Exec(context.Background(), `UPDATE finance_sources SET `+tc.set+` WHERE kind = 'credit_card'`); err != nil {
+				t.Fatal(err)
+			}
+			if res := users["ana@example.com"].Post("/me/finance/items", map[string]any{"itemId": pluggytest.ItemID}); res.Status != http.StatusOK {
+				t.Fatalf("reconnect = %d %s", res.Status, res.Raw)
+			}
+			if n := scalar(t, app, `SELECT count(*) FROM finance_sources WHERE kind = 'credit_card' AND COALESCE(bill_close_day, 0) = $1 AND COALESCE(bill_due_day, 0) = $2`, tc.closeDay, tc.due); n != 1 {
+				t.Errorf("card days after reconnecting are not %d and %d", tc.closeDay, tc.due)
+			}
+		})
+	}
+}

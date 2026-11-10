@@ -310,6 +310,38 @@ func (h *Handler) PutIncome(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// PutBillDays answers PUT /me/finance/sources/{id}/bill-days: sets a card's
+// closing and due days together, or clears both with null (or {}). One day
+// without the other, or a day outside 1 to 31, answers 400 with the bad keys
+// under "fields". A malformed id, another User's Source and a Source that is
+// not a card all answer 404.
+func (h *Handler) PutBillDays(w http.ResponseWriter, r *http.Request) {
+	var req BillDaysRequest
+	if !httpx.DecodeBody(w, r, &req, maxBodyBytes, true) {
+		return
+	}
+	fields := map[string]string{}
+	for key, v := range map[string]*int{"closeDay": req.CloseDay, "dueDay": req.DueDay} {
+		switch {
+		case v == nil && (req.CloseDay != nil || req.DueDay != nil):
+			fields[key] = "required"
+		case v != nil && (*v < 1 || *v > 31):
+			fields[key] = "invalid"
+		}
+	}
+	if len(fields) > 0 {
+		httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid bill days", "fields": fields})
+		return
+	}
+	id := r.PathValue("id")
+	if !chores.ValidID(id) {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return
+	}
+	found, err := h.store.SetBillDaysByHand(r.Context(), identity.CurrentUser(r.Context()).ID, id, req.CloseDay, req.DueDay)
+	h.answer(w, found, err, "set bill days", func() { w.WriteHeader(http.StatusNoContent) })
+}
+
 // PatchTransaction answers PATCH /me/finance/transactions/{id}. A malformed id
 // and another User's row both answer 404, so ids cannot be probed.
 func (h *Handler) PatchTransaction(w http.ResponseWriter, r *http.Request) {

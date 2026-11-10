@@ -44,7 +44,8 @@ type Account struct {
 	Name     string
 	Currency string
 	// CloseDay and DueDay are the days of the month a card's bill closes and
-	// is due, from its current bill; 0 when Pluggy does not say.
+	// is due, from its current bill. They come as a pair: both are 0 when
+	// Pluggy does not send both.
 	CloseDay, DueDay int
 }
 

@@ -38,7 +38,7 @@ func TestCardChargesCountInTheMonthTheirBillIsDue(t *testing.T) {
 	}
 }
 
-func TestSyncRefreshesTheCardBillDays(t *testing.T) {
+func TestSyncFillsEmptyCardBillDays(t *testing.T) {
 	t.Parallel()
 	app, _ := startSync(t, []string{"ana@example.com"})
 	app.RunFinanceSync(t)
@@ -53,6 +53,32 @@ func TestSyncRefreshesTheCardBillDays(t *testing.T) {
 	app.RunFinanceSync(t)
 	if n := scalar(t, app, `SELECT count(*) FROM finance_sources WHERE bill_close_day = 7 AND bill_due_day = 12`); n != 1 {
 		t.Errorf("Sources with days 7 and 12 after the sync = %d, want only the card", n)
+	}
+}
+
+// A card with only one day stored is not empty: the sync leaves it alone.
+func TestSyncKeepsTypedBillDays(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ name, set string }{
+		{"both typed", `bill_close_day = 3, bill_due_day = 10`},
+		{"one typed", `bill_close_day = 3, bill_due_day = NULL`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			app, _ := startSync(t, []string{"ana@example.com"})
+			app.RunFinanceSync(t)
+			if _, err := app.DB.Exec(context.Background(), `UPDATE finance_sources SET `+tc.set+` WHERE kind = 'credit_card'`); err != nil {
+				t.Fatal(err)
+			}
+			app.Clock.Set(afterFixtures.Add(25 * time.Hour))
+			app.RunFinanceSync(t)
+			if n := scalar(t, app, `SELECT count(*) FROM finance_sources WHERE bill_close_day = 3 AND bill_due_day IS NOT DISTINCT FROM (CASE WHEN bill_due_day = 10 THEN 10 END)`); n != 1 {
+				t.Errorf("card days changed by the sync, want %s kept", tc.set)
+			}
+			if n := scalar(t, app, `SELECT count(*) FROM finance_sources WHERE bill_close_day = 7 OR bill_due_day = 12`); n != 0 {
+				t.Errorf("Pluggy's days were stored over the typed ones")
+			}
+		})
 	}
 }
 

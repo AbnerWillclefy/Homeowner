@@ -20,6 +20,7 @@ import {
   saveGoal,
   saveInvestment,
   patchTransaction,
+  putBillDays,
   putBudget,
   putIncome,
   putCredentials,
@@ -51,7 +52,7 @@ function stubFetch(response: Response | Error) {
 
 const STATUS = {
   configured: true,
-  sources: [{ id: "s1", name: "Nubank", kind: "checking", currency: "BRL" }],
+  sources: [{ id: "s1", name: "Nubank", kind: "checking", currency: "BRL", closeDay: null, dueDay: null }],
   importing: false,
   lastSyncedAt: "2026-11-08T10:00:00Z",
 };
@@ -64,6 +65,21 @@ describe("getFinanceStatus", () => {
     const fetch = stubFetch(Response.json(STATUS));
     expect(await getFinanceStatus()).toEqual({ kind: "ok", status: STATUS });
     expect(fetch.mock.calls[0]![0]).toBe("http://api.test/me/finance");
+  });
+
+  it("reads a card's closing and due days", async () => {
+    const card = { id: "s2", name: "Visa", kind: "credit_card", currency: "BRL", closeDay: 7, dueDay: 12 };
+    stubFetch(Response.json({ ...STATUS, sources: [card] }));
+    expect(await getFinanceStatus()).toEqual({ kind: "ok", status: { ...STATUS, sources: [card] } });
+  });
+
+  it("is an error when a day is not a whole number or null, or is missing", async () => {
+    const card = { id: "s2", name: "Visa", kind: "credit_card", currency: "BRL" };
+    const bad = [{ closeDay: "7", dueDay: 12 }, { closeDay: 7, dueDay: 1.5 }, { closeDay: 7, dueDay: undefined }, { closeDay: undefined, dueDay: 12 }];
+    for (const days of bad) {
+      stubFetch(Response.json({ ...STATUS, sources: [{ ...card, ...days }] }));
+      expect(await getFinanceStatus(), JSON.stringify(days)).toEqual({ kind: "error" });
+    }
   });
 
   it("reads a status with no sync yet", async () => {
@@ -316,6 +332,34 @@ describe("commitments", () => {
     expect(`${init?.method} ${url}`).toBe("PUT http://api.test/me/finance/income");
     expect(JSON.parse(String(init?.body))).toEqual({ monthlyIncomeCents: 500000 });
     expect(JSON.parse(String(fetch.mock.calls[1]![1]?.body))).toEqual({ monthlyIncomeCents: null });
+  });
+});
+
+describe("putBillDays", () => {
+  it("puts both days, or nulls to clear them, on the Source", async () => {
+    const fetch = stubFetch(new Response(null, { status: 204 }));
+    expect(await putBillDays("s 2", 7, 12)).toEqual({ kind: "ok" });
+    expect(await putBillDays("s 2", null, null)).toEqual({ kind: "ok" });
+    const [url, init] = fetch.mock.calls[0]!;
+    expect(`${init?.method} ${url}`).toBe("PUT http://api.test/me/finance/sources/s%202/bill-days");
+    expect(JSON.parse(String(init?.body))).toEqual({ closeDay: 7, dueDay: 12 });
+    expect(JSON.parse(String(fetch.mock.calls[1]![1]?.body))).toEqual({ closeDay: null, dueDay: null });
+  });
+
+  it("hands the field codes of a 400 back", async () => {
+    stubFetch(Response.json({ error: "invalid bill days", fields: { closeDay: "required" } }, { status: 400 }));
+    expect(await putBillDays("s2", null, 12)).toEqual({ kind: "fields", fields: { closeDay: "required" } });
+  });
+
+  it("is invalid for a 400 without fields, not-found for a 404, error for another status, offline without a network", async () => {
+    stubFetch(Response.json({ error: "invalid JSON body" }, { status: 400 }));
+    expect(await putBillDays("s2", 7, 12)).toEqual({ kind: "invalid" });
+    stubFetch(Response.json({ error: "not found" }, { status: 404 }));
+    expect(await putBillDays("s2", 7, 12)).toEqual({ kind: "not-found" });
+    stubFetch(new Response(null, { status: 500 }));
+    expect(await putBillDays("s2", 7, 12)).toEqual({ kind: "error" });
+    stubFetch(new TypeError("Failed to fetch"));
+    expect(await putBillDays("s2", 7, 12)).toEqual({ kind: "offline" });
   });
 });
 

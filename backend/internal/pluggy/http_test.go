@@ -3,6 +3,9 @@ package pluggy_test
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -54,6 +57,32 @@ func TestItemAndAccounts(t *testing.T) {
 	// The card's bill closes on the 7th and is due on the 12th (creditData's dates).
 	if accts[1].Type != "CREDIT" || accts[1].Subtype != "CREDIT_CARD" || accts[1].CloseDay != 7 || accts[1].DueDay != 12 {
 		t.Errorf("second account = %+v", accts[1])
+	}
+}
+
+// A lone day is no pair: the adapter reports neither, so a sync never stores half a bill.
+func TestListAccountsKeepsABillDayOnlyWithItsPair(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, credit string
+		close, due   int
+	}{
+		{"both", `"balanceCloseDate":"2026-11-07","balanceDueDate":"2026-11-12"`, 7, 12},
+		{"only the closing date", `"balanceCloseDate":"2026-11-07"`, 0, 0},
+		{"only the due date", `"balanceDueDate":"2026-11-12"`, 0, 0},
+		{"neither", `"level":"BLACK"`, 0, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				fmt.Fprintf(w, `{"results":[{"id":"a","type":"CREDIT","subtype":"CREDIT_CARD","name":"Card","currencyCode":"BRL","creditData":{%s}}]}`, tc.credit)
+			}))
+			t.Cleanup(srv.Close)
+			accts, err := pluggy.NewHTTP(srv.URL).ListAccounts(context.Background(), "key", "item")
+			if err != nil || len(accts) != 1 || accts[0].CloseDay != tc.close || accts[0].DueDay != tc.due {
+				t.Errorf("ListAccounts = %+v, %v, want close %d due %d", accts, err, tc.close, tc.due)
+			}
+		})
 	}
 }
 
