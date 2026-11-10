@@ -34,15 +34,18 @@ func (s *Store) DeleteBill(ctx context.Context, userID, id string) (bool, error)
 // MonthBills lists the User's Bills with the payment of the month starting at
 // month; DueDate is left for the caller. A paid month shows the amount expected
 // when it was paid (the Bill's current one for payments made before that was
-// recorded), and a Bill is listed only from the month it was created.
+// recorded), and a Bill is listed only from the month it was created. CardPaid
+// is true when the month's payment points to a credit card Transaction.
 func (s *Store) MonthBills(ctx context.Context, userID string, month time.Time) ([]MonthBill, error) {
 	rows, err := s.db.Query(ctx, `
 		SELECT b.id, b.name, COALESCE(p.expected_cents, b.expected_cents), b.due_day, p.paid_by,
 		       CASE p.paid_by WHEN 'bank' THEN COALESCE(-t.amount_cents, p.expected_cents, b.expected_cents)
-		                      WHEN 'hand' THEN COALESCE(p.expected_cents, b.expected_cents) END
+		                      WHEN 'hand' THEN COALESCE(p.expected_cents, b.expected_cents) END,
+		       COALESCE(cs.kind = 'credit_card', false)
 		FROM finance_bills b
 		LEFT JOIN finance_bill_payments p ON p.bill_id = b.id AND p.month = $2 AND p.undone_at IS NULL
 		LEFT JOIN finance_transactions t ON t.id = p.transaction_id
+		LEFT JOIN finance_sources cs ON cs.id = t.source_id
 		WHERE b.user_id = $1 AND date_trunc('month', b.created_at AT TIME ZONE 'America/Sao_Paulo')::date <= $2::date ORDER BY b.due_day, b.name, b.id`, userID, month)
 	if err != nil {
 		return nil, err
@@ -51,7 +54,7 @@ func (s *Store) MonthBills(ctx context.Context, userID string, month time.Time) 
 	out := []MonthBill{}
 	for rows.Next() {
 		var m MonthBill
-		if err := rows.Scan(&m.ID, &m.Name, &m.ExpectedCents, &m.DueDay, &m.PaidBy, &m.PaidCents); err != nil {
+		if err := rows.Scan(&m.ID, &m.Name, &m.ExpectedCents, &m.DueDay, &m.PaidBy, &m.PaidCents, &m.CardPaid); err != nil {
 			return nil, err
 		}
 		m.Paid = m.PaidBy != nil

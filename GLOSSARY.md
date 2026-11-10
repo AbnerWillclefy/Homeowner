@@ -129,7 +129,7 @@ What a Transaction was spent on, such as groceries, transport or rent. Every Tra
 _Avoid_: Category, Tag, Label
 
 **Bill to pay**:
-Money owed that is due on a date, such as the credit card bill, rent or a utility. It is not a Transaction until it is paid.
+Money owed that is due on a date, such as the credit card bill, rent or a utility. It is not a Transaction until it is paid. A credit card Source's bill is worked out by the app from the card's Expenses and known installments, never entered by the User.
 _Avoid_: Invoice, Debt, Due
 
 **Installment plan**:
@@ -139,6 +139,14 @@ _Avoid_: Financing, Loan, Subscription
 **Monthly income**:
 The money a User expects to receive each month, which Finances compares with what is spent.
 _Avoid_: Salary, Revenue, Earnings
+
+**Leftover**:
+What remains of the Monthly income after a month's card bills, Bills to pay and installments. It can be negative, and is absent when no Monthly income is set.
+_Avoid_: Balance, Surplus, Savings
+
+**Planned spending**:
+An amount a User sets aside for a coming month for spending they expect but that is not yet a Bill to pay or a Transaction, which lowers that month's Leftover.
+_Avoid_: Budget, Forecast, Reserve
 
 **Spending limit**:
 The most a User wants to spend in one Spending Category in a month. It is set once and holds for every month; a category with no limit has none.

@@ -209,7 +209,11 @@ const commitmentMonths = 12
 
 // Commitments answers GET /me/finance/commitments?from=YYYY-MM: 12 months from
 // `from`, each with the installments its plans still owe.
-// Each month also lists the User's unpaid Bills and counts their expected amounts.
+// Each month also lists the User's unpaid Bills and counts their expected amounts
+// (committedCents, bills, percentOfIncome: what the deployed PWA reads), and
+// carries the outlook Outlook works out on each read from the counted
+// Transactions, the card Sources, the plans and every Bill: one bill per credit
+// card, the other Bills paid or not, a total and the leftover of the income.
 func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 	from, _, ok := parseMonth(r.URL.Query().Get("from"))
 	if !ok {
@@ -226,6 +230,25 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 		httpx.InternalError(w, h.log, "finance: read income", err)
 		return
 	}
+	uid := identity.CurrentUser(r.Context()).ID
+	rows, err := h.store.SpendRows(r.Context(), uid, from, from.AddDate(0, commitmentMonths, 0))
+	if err != nil {
+		httpx.InternalError(w, h.log, "finance: read commitment rows", err)
+		return
+	}
+	cards, err := h.store.CardSources(r.Context(), uid)
+	if err != nil {
+		httpx.InternalError(w, h.log, "finance: read card sources", err)
+		return
+	}
+	allBills := make([][]MonthBill, commitmentMonths)
+	for i := range allBills {
+		if allBills[i], err = h.store.MonthBills(r.Context(), uid, from.AddDate(0, i, 0)); err != nil {
+			httpx.InternalError(w, h.log, "finance: read commitment bills", err)
+			return
+		}
+	}
+	outlook := Outlook(rows, cards, plans, allBills, income, from, commitmentMonths)
 	months := make([]MonthCommitment, commitmentMonths)
 	for i, lines := range ProjectInstallments(plans, from, commitmentMonths) {
 		m := MonthCommitment{Month: from.AddDate(0, i, 0).Format("2006-01"), Installments: []InstallmentLine{}, Bills: []BillLine{}}
@@ -233,12 +256,7 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 			m.Installments = append(m.Installments, l)
 			m.CommittedCents += l.AmountCents
 		}
-		bills, err := h.store.MonthBills(r.Context(), identity.CurrentUser(r.Context()).ID, from.AddDate(0, i, 0))
-		if err != nil {
-			httpx.InternalError(w, h.log, "finance: read commitment bills", err)
-			return
-		}
-		for _, b := range bills {
+		for _, b := range allBills[i] {
 			if !b.Paid {
 				m.Bills = append(m.Bills, BillLine{ID: b.ID, Name: b.Name, ExpectedCents: b.ExpectedCents})
 				m.CommittedCents += b.ExpectedCents
@@ -248,6 +266,15 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 			pct := (m.CommittedCents*100 + *income/2) / *income
 			m.PercentOfIncome = &pct
 		}
+		o := outlook[i]
+		m.Cards, m.OtherBills = []CardBillLine{}, []OtherBillLine{}
+		for _, c := range o.Cards {
+			m.Cards = append(m.Cards, CardBillLine(c))
+		}
+		for _, b := range o.OtherBills {
+			m.OtherBills = append(m.OtherBills, OtherBillLine(b))
+		}
+		m.OtherInstallmentsCents, m.TotalCents, m.LeftoverCents = o.OtherInstallmentsCents, o.TotalCents, o.LeftoverCents
 		months[i] = m
 	}
 	httpx.WriteJSON(w, http.StatusOK, CommitmentsResponse{From: from.Format("2006-01"), MonthlyIncomeCents: income, Months: months})
