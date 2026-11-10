@@ -14,6 +14,7 @@ import { useMonth } from "../hooks/useMonth";
 import { limitText } from "../logic/limit";
 import { formatCents } from "../logic/money";
 import { addMonths, monthLabel } from "../logic/month";
+import { monthView } from "../logic/monthView";
 import { sameDays } from "../logic/sameDays";
 import { type SpendingCategory, spendingKey } from "../logic/spendingCategories";
 import { CategoryHistory } from "./CategoryHistory";
@@ -51,7 +52,7 @@ function Screen({ category }: { category: SpendingCategory }) {
       ? 0
       : previous.state.kind === "ready"
         ? (sameDays(state.data.transactions, previous.state.data.transactions, month, new Date()).byCategory.get(category)?.spent ?? 0)
-        : state.data.transactions.reduce((sum, tx) => (tx.spendingCategory === category && tx.type === "expense" ? sum - tx.amountCents : sum), 0);
+        : (monthView(state.data).categories.find((g) => g.category === category)?.spentCents ?? 0);
   const standing = limit === undefined ? null : limitText(spent, limit);
 
   return (

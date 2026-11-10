@@ -146,3 +146,19 @@ for (const l of LOCALES) {
     });
   });
 }
+
+test.describe("previous month unreadable", () => {
+  const state = connected();
+  state.finance!.limits = { other: 5000 };
+  state.finance!.transactions = [{ ...row("u1", "2026-12-05", "Sem categoria", -8000, "other"), spendingCategory: null }] as never;
+  test.use({ locale: "pt-BR", fakeState: state });
+
+  test("an uncategorised Expense counts toward the Other limit", async ({ page, baseURL, fakeApi }) => {
+    fakeApi.use(signedInHandlers);
+    await page.clock.setFixedTime(new Date("2026-12-31T12:00:00-03:00"));
+    await page.route(/\/me\/finance\/transactions\?month=2026-11/, (route) => route.fulfill({ status: 500, contentType: "application/json", body: "{}" }));
+    await seedSession(page, { email: RESIDENT_EMAIL });
+    await visit(page, new URL("/finances/gastos/other", baseURL!).toString());
+    await expect(page.getByRole("main").getByText(/limite R\$\s?50,00 · R\$\s?30,00 acima do limite/)).toBeVisible();
+  });
+});
