@@ -11,6 +11,14 @@ import {
   getDaily,
   getHistory,
   getMonth,
+  getSavings,
+  deleteGoal,
+  deleteInvestment,
+  putContribution,
+  putGoalOrder,
+  putReserve,
+  saveGoal,
+  saveInvestment,
   patchTransaction,
   putBudget,
   putIncome,
@@ -405,5 +413,123 @@ describe("deleteBill and setBillPaid", () => {
       "PUT http://api.test/me/finance/bills/b1/payments/2030-01",
       "DELETE http://api.test/me/finance/bills/b1/payments/2030-01",
     ]);
+  });
+});
+
+const SAVINGS = {
+  reserveTargetCents: 3000000,
+  contributionBaseCents: 100000,
+  reserveSharePercent: 30,
+  investments: [{ id: "i1", name: "CDB", valueCents: 120000, serves: "reserve" }],
+  goals: [{ id: "g1", name: "Reforma", targetCents: 5000000, targetMonth: "2027-05" }],
+};
+
+describe("getSavings", () => {
+  it("reads GET /me/finance/savings and ignores fields it does not read", async () => {
+    const fetch = stubFetch(Response.json({ ...SAVINGS, suggestion: { later: true } }));
+    expect(await getSavings()).toEqual({ kind: "ok", savings: SAVINGS });
+    expect(fetch.mock.calls[0]![0]).toBe("http://api.test/me/finance/savings");
+  });
+
+  it("reads nulls and empty lists as the empty state", async () => {
+    const empty = { reserveTargetCents: null, contributionBaseCents: null, reserveSharePercent: null, investments: [], goals: [] };
+    stubFetch(Response.json(empty));
+    expect(await getSavings()).toEqual({ kind: "ok", savings: empty });
+  });
+
+  it("is an error for a body it cannot read", async () => {
+    const bodies = [
+      { ...SAVINGS, reserveTargetCents: "3" },
+      { ...SAVINGS, investments: [{ id: "i1", name: "CDB", valueCents: 1, serves: "stocks" }] },
+      { ...SAVINGS, goals: [{ id: "g1", name: "x", targetCents: 1, targetMonth: 5 }] },
+      { ...SAVINGS, goals: null },
+      null,
+    ];
+    for (const body of bodies) {
+      stubFetch(Response.json(body));
+      expect(await getSavings(), JSON.stringify(body)).toEqual({ kind: "error" });
+    }
+  });
+});
+
+describe("savings settings writes", () => {
+  it("puts the reserve target, and null to clear it", async () => {
+    const fetch = stubFetch(new Response(null, { status: 204 }));
+    expect(await putReserve(3000000)).toEqual({ kind: "ok" });
+    expect(await putReserve(null)).toEqual({ kind: "ok" });
+    expect(`${fetch.mock.calls[0]![1]?.method} ${fetch.mock.calls[0]![0]}`).toBe("PUT http://api.test/me/finance/reserve");
+    expect(JSON.parse(String(fetch.mock.calls[0]![1]?.body))).toEqual({ targetCents: 3000000 });
+    expect(JSON.parse(String(fetch.mock.calls[1]![1]?.body))).toEqual({ targetCents: null });
+  });
+
+  it("puts the contribution as base and share, and both null to clear it", async () => {
+    const fetch = stubFetch(new Response(null, { status: 204 }));
+    expect(await putContribution({ baseCents: 100000, reserveSharePercent: 30 })).toEqual({ kind: "ok" });
+    expect(await putContribution(null)).toEqual({ kind: "ok" });
+    expect(`${fetch.mock.calls[0]![1]?.method} ${fetch.mock.calls[0]![0]}`).toBe("PUT http://api.test/me/finance/contribution");
+    expect(JSON.parse(String(fetch.mock.calls[0]![1]?.body))).toEqual({ baseCents: 100000, reserveSharePercent: 30 });
+    expect(JSON.parse(String(fetch.mock.calls[1]![1]?.body))).toEqual({ baseCents: null, reserveSharePercent: null });
+  });
+
+  it("names a refusal and a failure", async () => {
+    stubFetch(Response.json({ error: "x" }, { status: 400 }));
+    expect(await putReserve(-1)).toEqual({ kind: "invalid" });
+    stubFetch(new Error("down"));
+    expect(await putContribution(null)).toEqual({ kind: "offline" });
+  });
+});
+
+describe("saveInvestment and deleteInvestment", () => {
+  const input = { name: "CDB", valueCents: 0, serves: "goals" as const };
+  it("posts a new one expecting 201 and puts an existing one expecting 200", async () => {
+    const fetch = stubFetch(Response.json({ id: "i1", ...input }, { status: 201 }));
+    expect(await saveInvestment(null, input)).toEqual({ kind: "ok" });
+    expect(`${fetch.mock.calls[0]![1]?.method} ${fetch.mock.calls[0]![0]}`).toBe("POST http://api.test/me/finance/investments");
+    expect(JSON.parse(String(fetch.mock.calls[0]![1]?.body))).toEqual(input);
+    const put = stubFetch(Response.json({ id: "i1", ...input }));
+    expect(await saveInvestment("i1", input)).toEqual({ kind: "ok" });
+    expect(`${put.mock.calls[0]![1]?.method} ${put.mock.calls[0]![0]}`).toBe("PUT http://api.test/me/finance/investments/i1");
+  });
+
+  it("hands field codes to the form on a 400 and names a missing row", async () => {
+    stubFetch(Response.json({ fields: { valueCents: "invalid" } }, { status: 400 }));
+    expect(await saveInvestment(null, input)).toEqual({ kind: "fields", fields: { valueCents: "invalid" } });
+    stubFetch(Response.json({ error: "not found" }, { status: 404 }));
+    expect(await saveInvestment("i1", input)).toEqual({ kind: "not-found" });
+  });
+
+  it("deletes with DELETE", async () => {
+    const fetch = stubFetch(new Response(null, { status: 204 }));
+    expect(await deleteInvestment("i1")).toEqual({ kind: "ok" });
+    expect(`${fetch.mock.calls[0]![1]?.method} ${fetch.mock.calls[0]![0]}`).toBe("DELETE http://api.test/me/finance/investments/i1");
+  });
+});
+
+describe("saveGoal, deleteGoal and putGoalOrder", () => {
+  const input = { name: "Reforma", targetCents: 5000000, targetMonth: null };
+  it("posts and puts a goal, sending the month as null when there is none", async () => {
+    const fetch = stubFetch(Response.json({ id: "g1", ...input }, { status: 201 }));
+    expect(await saveGoal(null, input)).toEqual({ kind: "ok" });
+    expect(`${fetch.mock.calls[0]![1]?.method} ${fetch.mock.calls[0]![0]}`).toBe("POST http://api.test/me/finance/goals");
+    expect(JSON.parse(String(fetch.mock.calls[0]![1]?.body))).toEqual(input);
+    const put = stubFetch(Response.json({ id: "g1", ...input }));
+    expect(await saveGoal("g1", input)).toEqual({ kind: "ok" });
+    expect(`${put.mock.calls[0]![1]?.method} ${put.mock.calls[0]![0]}`).toBe("PUT http://api.test/me/finance/goals/g1");
+  });
+
+  it("hands field codes to the form on a 400", async () => {
+    stubFetch(Response.json({ fields: { targetMonth: "invalid" } }, { status: 400 }));
+    expect(await saveGoal(null, input)).toEqual({ kind: "fields", fields: { targetMonth: "invalid" } });
+  });
+
+  it("deletes a goal and sends the whole order, a 400 meaning the list changed", async () => {
+    const fetch = stubFetch(new Response(null, { status: 204 }));
+    expect(await deleteGoal("g1")).toEqual({ kind: "ok" });
+    expect(await putGoalOrder(["g2", "g1"])).toEqual({ kind: "ok" });
+    expect(`${fetch.mock.calls[0]![1]?.method} ${fetch.mock.calls[0]![0]}`).toBe("DELETE http://api.test/me/finance/goals/g1");
+    expect(`${fetch.mock.calls[1]![1]?.method} ${fetch.mock.calls[1]![0]}`).toBe("PUT http://api.test/me/finance/goals/order");
+    expect(JSON.parse(String(fetch.mock.calls[1]![1]?.body))).toEqual({ ids: ["g2", "g1"] });
+    stubFetch(Response.json({ error: "x" }, { status: 400 }));
+    expect(await putGoalOrder(["g1"])).toEqual({ kind: "invalid" });
   });
 });
