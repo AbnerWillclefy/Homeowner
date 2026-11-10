@@ -203,6 +203,9 @@ type Plan struct {
 	AmountCents   int64 // what one installment costs, positive
 	// Month is the month (first day, UTC) of the charge numbered Number.
 	Month time.Time
+	// SourceID is the Source the plan is charged on; Card is whether it is a credit card.
+	SourceID string
+	Card     bool
 }
 
 // PlanName is the description without its installment token, or the merchant

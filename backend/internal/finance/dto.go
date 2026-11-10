@@ -154,6 +154,8 @@ type MonthBill struct {
 	Paid      bool    `json:"paid"`
 	PaidBy    *string `json:"paidBy"`
 	PaidCents *int64  `json:"paidCents"`
+	// CardPaid is set when the month's payment points to a credit card Transaction.
+	CardPaid bool `json:"-"`
 }
 
 // ConnectItemRequest is the body of POST /me/finance/items.
