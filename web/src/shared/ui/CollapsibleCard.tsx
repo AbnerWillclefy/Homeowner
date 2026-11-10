@@ -6,7 +6,8 @@ import { IconTile, TONES } from "./IconTile";
 interface Props {
   /** Names the heading, which labels the section; the body is `${id}-body`. */
   id: string;
-  icon: LucideIcon;
+  /** Left out where the title needs the whole width, as in a list of twelve months at 320px and the largest text. */
+  icon?: LucideIcon;
   tone?: keyof typeof TONES;
   title: ReactNode;
   /** One short muted line under the title saying what the card is for. */
@@ -63,7 +64,7 @@ export function CollapsibleCard({
           onClick={() => setOpen((value) => !value)}
           className="flex min-h-11 w-full items-start gap-3 rounded-control bg-transparent p-0 text-start font-[inherit] text-inherit"
         >
-          <IconTile icon={icon} className={TONES[tone]} />
+          {icon && <IconTile icon={icon} className={TONES[tone]} />}
           <span className="flex min-w-0 flex-1 flex-col gap-1">
             <span id={titleId} className="[overflow-wrap:anywhere]">
               {title}

@@ -3,12 +3,7 @@ import type { CommitmentMonth } from "../api/api";
 import { plansInProgress } from "./plansInProgress";
 
 const plan = (name: string, number: number, total: number, amountCents = 1000) => ({ name, number, total, amountCents });
-const month = (m: string, ...installments: CommitmentMonth["installments"]): CommitmentMonth => ({
-  month: m,
-  committedCents: 0,
-  bills: [],
-  installments,
-});
+const month = (m: string, ...installments: CommitmentMonth["installments"]) => ({ month: m, installments });
 
 describe("plansInProgress", () => {
   it("ends at the first month plus the parts left, across a year change", () => {

@@ -26,6 +26,11 @@ describe("CollapsibleCard", () => {
     expect(html).toContain("rotate-180");
   });
 
+  it("draws no icon tile without an icon", () => {
+    expect(render()).toContain("size-11");
+    expect(render({ icon: undefined })).not.toContain("size-11");
+  });
+
   it("without iconLabel or hint has no description and an h3", () => {
     const html = render();
     expect(html).not.toContain("aria-describedby");

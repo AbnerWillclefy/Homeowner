@@ -259,11 +259,21 @@ export const getDaily = (month: string): Promise<DailyResult> =>
 
 export interface CommitmentMonth {
   month: string;
-  committedCents: number;
-  /** Absent when no Monthly income is set. */
-  percentOfIncome?: number;
   installments: { name: string; number: number; total: number; amountCents: number }[];
-  bills: { id: string; name: string; expectedCents: number }[];
+  /** One credit card's bill; `billDaysKnown` is false when the card has no closing or due day. */
+  cards: { sourceId: string; name: string; amountCents: number; billDaysKnown: boolean }[];
+  /** Bills to pay that are not a card bill, paid or not. */
+  otherBills: { id: string; name: string; cents: number; paid: boolean }[];
+  /** What plans on a Source that is not a credit card owe. */
+  otherInstallmentsCents: number;
+  /** The rest of each Spending limit, and their sum. */
+  planned: { category: string; cents: number }[];
+  plannedCents: number;
+  /** Present only on the current month. */
+  spentOffCardCents?: number;
+  totalCents: number;
+  /** Absent when no Monthly income is set; negative when the month takes more. */
+  leftoverCents?: number;
 }
 
 export interface Commitments {
@@ -278,16 +288,21 @@ const isNum = (v: unknown) => typeof v === "number";
 function parseCommitments(body: unknown): Commitments | null {
   if (!isObject(body) || !Array.isArray(body.months)) return null;
   if (body.monthlyIncomeCents !== null && !isNum(body.monthlyIncomeCents)) return null;
+  const optNum = (v: unknown) => v === undefined || isNum(v);
+  const list = (v: unknown, line: (x: Record<string, unknown>) => boolean) => Array.isArray(v) && v.every((x) => isObject(x) && line(x));
   const valid = body.months.every(
     (m) =>
       isObject(m) &&
       typeof m.month === "string" &&
-      isNum(m.committedCents) &&
-      (m.percentOfIncome === undefined || isNum(m.percentOfIncome)) &&
-      Array.isArray(m.installments) &&
-      m.installments.every((i) => isObject(i) && typeof i.name === "string" && isNum(i.number) && isNum(i.total) && isNum(i.amountCents)) &&
-      Array.isArray(m.bills) &&
-      m.bills.every((b) => isObject(b) && typeof b.id === "string" && typeof b.name === "string" && isNum(b.expectedCents)),
+      list(m.installments, (i) => typeof i.name === "string" && isNum(i.number) && isNum(i.total) && isNum(i.amountCents)) &&
+      list(m.cards, (c) => typeof c.sourceId === "string" && typeof c.name === "string" && isNum(c.amountCents) && typeof c.billDaysKnown === "boolean") &&
+      list(m.otherBills, (b) => typeof b.id === "string" && typeof b.name === "string" && isNum(b.cents) && typeof b.paid === "boolean") &&
+      isNum(m.otherInstallmentsCents) &&
+      list(m.planned, (p) => typeof p.category === "string" && isNum(p.cents)) &&
+      isNum(m.plannedCents) &&
+      isNum(m.totalCents) &&
+      optNum(m.spentOffCardCents) &&
+      optNum(m.leftoverCents),
   );
   return valid ? (body as unknown as Commitments) : null;
 }
