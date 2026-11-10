@@ -421,7 +421,22 @@ const SAVINGS = {
   contributionBaseCents: 100000,
   reserveSharePercent: 30,
   investments: [{ id: "i1", name: "CDB", valueCents: 120000, serves: "reserve" }],
-  goals: [{ id: "g1", name: "Reforma", targetCents: 5000000, targetMonth: "2027-05" }],
+  reserve: { targetCents: 3000000, savedCents: 120000, monthCents: 30000, expectedMonth: "2029-04" },
+  goals: [
+    { id: "g1", name: "Reforma", targetCents: 5000000, targetMonth: "2027-05", savedCents: 0, monthCents: 70000, expectedMonth: "2029-09", late: true },
+    { id: "g2", name: "Viagem", targetCents: 900000, targetMonth: null, savedCents: 900000, monthCents: 0, expectedMonth: null, late: false },
+  ],
+  unassignedCents: 0,
+};
+
+const EMPTY = {
+  reserveTargetCents: null,
+  contributionBaseCents: null,
+  reserveSharePercent: null,
+  investments: [],
+  reserve: { targetCents: null, savedCents: 0, monthCents: null, expectedMonth: null },
+  goals: [],
+  unassignedCents: 0,
 };
 
 describe("getSavings", () => {
@@ -432,13 +447,40 @@ describe("getSavings", () => {
   });
 
   it("reads nulls and empty lists as the empty state", async () => {
-    const empty = { reserveTargetCents: null, contributionBaseCents: null, reserveSharePercent: null, investments: [], goals: [] };
-    stubFetch(Response.json(empty));
-    expect(await getSavings()).toEqual({ kind: "ok", savings: empty });
+    stubFetch(Response.json(EMPTY));
+    expect(await getSavings()).toEqual({ kind: "ok", savings: EMPTY });
+  });
+
+  it("reads the leftover above the contribution, with the months sooner a number or null", async () => {
+    for (const monthsSooner of [1, null]) {
+      const leftover = { leftoverCents: 150000, extraCents: 50000, monthsSooner };
+      stubFetch(Response.json({ ...SAVINGS, leftover }));
+      expect(await getSavings()).toEqual({ kind: "ok", savings: { ...SAVINGS, leftover } });
+    }
+  });
+
+  it("reads the Categories over their limit, an empty list included", async () => {
+    for (const overLimit of [[], [{ category: "restaurants", overCents: 12000 }]]) {
+      stubFetch(Response.json({ ...SAVINGS, overLimit }));
+      expect(await getSavings()).toEqual({ kind: "ok", savings: { ...SAVINGS, overLimit } });
+    }
   });
 
   it("is an error for a body it cannot read", async () => {
+    const goal = SAVINGS.goals[0]!;
     const bodies = [
+      { ...SAVINGS, goals: [{ ...goal, late: "yes" }] },
+      { ...SAVINGS, goals: [{ ...goal, expectedMonth: 202905 }] },
+      { ...SAVINGS, goals: [{ ...goal, monthCents: "7" }] },
+      { ...SAVINGS, goals: [{ id: "g1", name: "x", targetCents: 1, targetMonth: null }] },
+      { ...SAVINGS, reserve: undefined },
+      { ...SAVINGS, reserve: { ...SAVINGS.reserve, savedCents: "1" } },
+      { ...SAVINGS, reserve: { ...SAVINGS.reserve, expectedMonth: 5 } },
+      { ...SAVINGS, unassignedCents: null },
+      { ...SAVINGS, leftover: { leftoverCents: 1, extraCents: "2", monthsSooner: null } },
+      { ...SAVINGS, leftover: { leftoverCents: 1, extraCents: 2, monthsSooner: "1" } },
+      { ...SAVINGS, overLimit: "restaurants" },
+      { ...SAVINGS, overLimit: [{ category: "restaurants" }] },
       { ...SAVINGS, reserveTargetCents: "3" },
       { ...SAVINGS, investments: [{ id: "i1", name: "CDB", valueCents: 1, serves: "stocks" }] },
       { ...SAVINGS, goals: [{ id: "g1", name: "x", targetCents: 1, targetMonth: 5 }] },

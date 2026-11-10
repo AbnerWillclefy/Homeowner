@@ -89,9 +89,6 @@ export function groupInvestments(list: Investment[]): { serves: Serves; items: I
     .filter((g) => g.items.length > 0);
 }
 
-/** How much of the target is saved, rounded down, never above 100. */
-export const reservePercent = (savedCents: number, targetCents: number): number => Math.min(100, Math.floor((savedCents * 100) / targetCents));
-
 const FIELD_KEY: Record<string, MessageKey> = {
   "name.required": "finances.savings.field.name.required",
   "name.too_long": "finances.savings.field.name.too_long",

@@ -3,16 +3,19 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { Card } from "../../../shared/ui/Card";
-import type { Goal, GoalInput } from "../api/api";
+import type { Goal, GoalInput, SavingsGoal } from "../api/api";
 import type { SavingsOutcome } from "../hooks/useSavings";
 import { centsToInput, formatCents } from "../logic/money";
 import { monthLabel } from "../logic/month";
 import { goalInputOf, moveId } from "../logic/savings";
+import { progressPercent, whenOf } from "../logic/suggestion";
+import { Track } from "./charts/Bar";
 import { DeleteSavingsDialog } from "./DeleteSavingsDialog";
+import { MonthLine } from "./MonthLine";
 import { SavingsFormDialog } from "./SavingsFormDialog";
 
 interface Props {
-  goals: Goal[];
+  goals: SavingsGoal[];
   save(id: string | null, input: GoalInput): Promise<SavingsOutcome>;
   remove(id: string): Promise<SavingsOutcome>;
   reorder(ids: string[]): Promise<"saved" | "changed" | "failed">;
@@ -124,20 +127,30 @@ export function GoalsCard({ goals, save, remove, reorder }: Props) {
                 </span>
               </div>
             ) : (
-              <button
-                type="button"
-                className="flex min-h-11 w-full items-center justify-between gap-2 bg-transparent py-2 text-start text-text"
-                onClick={(event) => open(goal, event.currentTarget)}
-              >
-                <span className="min-w-0">
-                  <span className="block font-bold [overflow-wrap:anywhere]">{goal.name}</span>
-                  {goal.targetMonth && <span className="block text-sm text-muted">{t("finances.savings.goals.by", { month: monthLabel(goal.targetMonth, locale) })}</span>}
-                </span>
-                <span className="flex shrink-0 items-center gap-1 font-bold">
-                  {formatCents(goal.targetCents, locale)}
-                  <ChevronRight aria-hidden="true" size={16} className="rtl:rotate-180" />
-                </span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="flex min-h-11 w-full items-center justify-between gap-2 bg-transparent py-2 text-start text-text"
+                  onClick={(event) => open(goal, event.currentTarget)}
+                >
+                  <span className="min-w-0">
+                    <span className="block font-bold [overflow-wrap:anywhere]">{goal.name}</span>
+                    {goal.targetMonth && <span className="block text-sm text-muted">{t("finances.savings.goals.by", { month: monthLabel(goal.targetMonth, locale) })}</span>}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1 font-bold">
+                    {formatCents(goal.targetCents, locale)}
+                    <ChevronRight aria-hidden="true" size={16} className="rtl:rotate-180" />
+                  </span>
+                </button>
+                {/* The saved amount, the target and the percentage are text; the bar only draws them. */}
+                <div className="flex flex-col gap-1.5 pb-3">
+                  <p className="my-0 text-sm text-muted [overflow-wrap:anywhere]">
+                    {t("finances.savings.goals.saved", { saved: formatCents(goal.savedCents, locale), percent: progressPercent(goal.savedCents, goal.targetCents) })}
+                  </p>
+                  <Track value={goal.savedCents} max={goal.targetCents} />
+                  <MonthLine monthCents={goal.monthCents} when={whenOf(goal)} who="goal" />
+                </div>
+              </>
             )}
           </li>
         ))}

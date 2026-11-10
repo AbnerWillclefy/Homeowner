@@ -8,7 +8,7 @@ import { GoalsCard } from "./GoalsCard";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 it("ignores a second move while the first reorder is pending", async () => {
-  const goals = ["a", "b", "c"].map((id) => ({ id, name: id.toUpperCase(), targetCents: 100, targetMonth: null }));
+  const goals = ["a", "b", "c"].map((id) => ({ id, name: id.toUpperCase(), targetCents: 100, targetMonth: null, savedCents: 0, monthCents: null, expectedMonth: null, late: false }));
   let finish!: (r: "saved") => void;
   const reorder = vi.fn(() => new Promise<"saved">((resolve) => (finish = resolve)));
   const container = document.createElement("div");

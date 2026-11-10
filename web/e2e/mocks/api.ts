@@ -90,8 +90,31 @@ export interface FakeState {
       contributionBaseCents: number | null;
       reserveSharePercent: number | null;
       investments: { id: string; name: string; valueCents: number; serves: "reserve" | "goals" }[];
-      /** In the User's order. `targetMonth` is `YYYY-MM` or null. */
-      goals: { id: string; name: string; targetCents: number; targetMonth: string | null }[];
+      /**
+       * In the User's order. `targetMonth` is `YYYY-MM` or null. The progress fields default to nothing saved, no
+       * monthly amount, no expected month and not late, as a User with no Monthly contribution reads.
+       */
+      goals: {
+        id: string;
+        name: string;
+        targetCents: number;
+        targetMonth: string | null;
+        savedCents?: number;
+        monthCents?: number | null;
+        expectedMonth?: string | null;
+        late?: boolean;
+      }[];
+      /**
+       * What the server works out for the month and the fake does not: the reserve's `monthCents` and `expectedMonth`
+       * (its target and saved amount come from the rows above), money no Goal takes, and how the month's leftover
+       * compares with the contribution. Absent means none of it.
+       */
+      suggestion?: {
+        reserve?: { monthCents?: number | null; expectedMonth?: string | null };
+        unassignedCents?: number;
+        leftover?: { leftoverCents: number; extraCents: number; monthsSooner: number | null };
+        overLimit?: { category: string; overCents: number }[];
+      };
     };
     /** What `GET /me/finance/transactions` reads, any month; the PATCH edits these. Absent means none. */
     transactions?: {

@@ -313,7 +313,21 @@ export function financeHandlers(api: FakeApi): void {
     return fields;
   };
 
-  api.on("GET /me/finance/savings", signedIn((_, state) => json(200, savings(state))));
+  api.on(
+    "GET /me/finance/savings",
+    signedIn((_, state) => {
+      const { suggestion = {}, ...stored } = savings(state);
+      const saved = stored.investments.filter((i) => i.serves === "reserve").reduce((sum, i) => sum + i.valueCents, 0);
+      return json(200, {
+        ...stored,
+        reserve: { targetCents: stored.reserveTargetCents, savedCents: saved, monthCents: null, expectedMonth: null, ...suggestion.reserve },
+        goals: stored.goals.map((g) => ({ savedCents: 0, monthCents: null, expectedMonth: null, late: false, ...g })),
+        unassignedCents: suggestion.unassignedCents ?? 0,
+        ...(suggestion.leftover && { leftover: suggestion.leftover }),
+        ...(suggestion.overLimit && { overLimit: suggestion.overLimit }),
+      });
+    }),
+  );
 
   api.on(
     "PUT /me/finance/reserve",
