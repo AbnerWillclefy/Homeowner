@@ -173,6 +173,8 @@ func TestGoalValidationNamesTheFields(t *testing.T) {
 		"month no pad":    {`{"name":"a","targetCents":1,"targetMonth":"2027-1"}`, map[string]string{"targetMonth": "invalid"}},
 		"month full date": {`{"name":"a","targetCents":1,"targetMonth":"2027-01-15"}`, map[string]string{"targetMonth": "invalid"}},
 		"month empty":     {`{"name":"a","targetCents":1,"targetMonth":""}`, map[string]string{"targetMonth": "invalid"}},
+		"month year low":  {`{"name":"a","targetCents":1,"targetMonth":"1999-12"}`, map[string]string{"targetMonth": "invalid"}},
+		"month year high": {`{"name":"a","targetCents":1,"targetMonth":"2101-01"}`, map[string]string{"targetMonth": "invalid"}},
 		"two wrong":       {`{"name":"","targetCents":0,"targetMonth":"x"}`, map[string]string{"name": "required", "targetCents": "invalid", "targetMonth": "invalid"}},
 	} {
 		res := ana.SendRaw(http.MethodPost, "/me/finance/goals", []byte(c.raw))
@@ -193,6 +195,7 @@ func TestGoalValidationNamesTheFields(t *testing.T) {
 	// Both ends of the target range are accepted; an extra key and a wrong name type fail the decode.
 	apitest.ExpectStatus(t, ana.Post("/me/finance/goals", ok("targetCents", 1)), http.StatusCreated)
 	apitest.ExpectStatus(t, ana.Post("/me/finance/goals", ok("targetCents", int64(1_000_000_000_000))), http.StatusCreated)
+	apitest.ExpectStatus(t, ana.Post("/me/finance/goals", ok("name", strings.Repeat("a", 60))), http.StatusCreated)
 	apitest.ExpectStatus(t, ana.Post("/me/finance/goals", ok("x", 1)), http.StatusBadRequest)
 	apitest.ExpectStatus(t, ana.Post("/me/finance/goals", ok("name", 5)), http.StatusBadRequest)
 	// An update validates the same way.

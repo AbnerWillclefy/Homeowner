@@ -18,7 +18,6 @@ import (
 const (
 	maxGoalName  = 60
 	maxGoalCents = 1_000_000_000_000
-	maxGoalIDs   = 1000
 )
 
 // CreateGoal answers POST /me/finance/goals: the new Goal goes last in the order.
