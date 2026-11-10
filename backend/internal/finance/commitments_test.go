@@ -13,14 +13,12 @@ import (
 type commitmentsBody struct {
 	From   string
 	Months []struct {
-		Month          string
-		CommittedCents int64
-		Installments   []struct {
+		Month        string
+		Installments []struct {
 			Name          string
 			Number, Total int
 			AmountCents   int64
 		}
-		Bills []struct{ ExpectedCents int64 }
 	}
 }
 
@@ -62,19 +60,19 @@ func TestCommitmentsProjectPlansMidwayAndEnding(t *testing.T) {
 	if b.From != "2026-11" || len(b.Months) != 12 || b.Months[0].Month != "2026-11" || b.Months[11].Month != "2027-10" {
 		t.Fatalf("horizon = %+v, want 12 months 2026-11..2027-10", b)
 	}
-	if m := b.Months[0]; m.CommittedCents != 0 || len(m.Installments) != 0 {
+	if m := b.Months[0]; len(m.Installments) != 0 {
 		t.Errorf("the current month = %+v, want nothing: its charges are already transactions", m)
 	}
-	if m := b.Months[1]; m.CommittedCents != 25000+9000 || len(m.Installments) != 2 {
+	if m := b.Months[1]; len(m.Installments) != 2 || m.Installments[0].AmountCents+m.Installments[1].AmountCents != 25000+9000 {
 		t.Errorf("december = %+v, want TV 4 of 10 and Sofa 10 of 10", m)
 	}
-	if m := b.Months[2]; m.CommittedCents != 25000 || len(m.Installments) != 1 || m.Installments[0].Name != "TV Loja" || m.Installments[0].Number != 5 || m.Installments[0].Total != 10 {
+	if m := b.Months[2]; len(m.Installments) != 1 || m.Installments[0].AmountCents != 25000 || m.Installments[0].Name != "TV Loja" || m.Installments[0].Number != 5 || m.Installments[0].Total != 10 {
 		t.Errorf("january = %+v, want only TV Loja 5 of 10", m)
 	}
-	if m := b.Months[7]; m.CommittedCents != 25000 || m.Installments[0].Number != 10 {
+	if m := b.Months[7]; len(m.Installments) != 1 || m.Installments[0].AmountCents != 25000 || m.Installments[0].Number != 10 {
 		t.Errorf("june = %+v, want TV 10 of 10", m)
 	}
-	if m := b.Months[8]; m.CommittedCents != 0 || len(m.Installments) != 0 {
+	if m := b.Months[8]; len(m.Installments) != 0 {
 		t.Errorf("july = %+v, want the plan to have stopped", m)
 	}
 }
@@ -86,24 +84,8 @@ func TestCommitmentsCountARoundedPlanOnce(t *testing.T) {
 	insertPlan(t, app, "ana@example.com", "r2", "Loja PARC 02/03", "LOJA", "2026-10-05", -3333, 2, 3)
 
 	m := readCommitments(t, ana, "2026-11").Months[0]
-	if m.CommittedCents != 3333 || len(m.Installments) != 1 || m.Installments[0].Number != 3 {
+	if len(m.Installments) != 1 || m.Installments[0].AmountCents != 3333 || m.Installments[0].Number != 3 {
 		t.Errorf("november = %+v, want installment 3 once at 3333", m)
-	}
-}
-
-func TestCommitmentsListUnpaidBillsOnly(t *testing.T) {
-	t.Parallel()
-	_, ana := seedMonth(t)
-	rent := newBill(t, ana, "Rent", 150000, 5)
-	newBill(t, ana, "Internet", 12000, 10)
-	apitest.ExpectStatus(t, ana.Put("/me/finance/bills/"+rent+"/payments/2026-11", nil), http.StatusNoContent)
-
-	b := readCommitments(t, ana, "2026-11")
-	if m := b.Months[0]; m.CommittedCents != 12000 || len(m.Bills) != 1 {
-		t.Errorf("november = %+v, want only the unpaid Internet", m)
-	}
-	if m := b.Months[1]; m.CommittedCents != 162000 || len(m.Bills) != 2 {
-		t.Errorf("december = %+v, want both Bills", m)
 	}
 }
 
@@ -115,7 +97,7 @@ func TestCommitmentsOfAUserWithNoInstallments(t *testing.T) {
 		t.Fatalf("months = %d, want 12", len(b.Months))
 	}
 	for _, m := range b.Months {
-		if m.CommittedCents != 0 || len(m.Installments) != 0 {
+		if len(m.Installments) != 0 {
 			t.Errorf("month %s = %+v, want zero", m.Month, m)
 		}
 	}
@@ -127,7 +109,7 @@ func TestCommitmentsNeverShowAnotherUsersPlans(t *testing.T) {
 	insertPlan(t, app, "bob@example.com", "b1", "Bob PARC 01/05", "BOB", "2026-11-05", -1000, 1, 5)
 
 	for _, m := range readCommitments(t, ana, "2026-11").Months {
-		if m.CommittedCents != 0 {
+		if len(m.Installments) != 0 {
 			t.Errorf("ana sees bob's plan in %+v", m)
 		}
 	}
@@ -165,11 +147,9 @@ func TestResyncKeepsInstallmentValuesAlreadySet(t *testing.T) {
 
 type outlookBody struct {
 	Months []struct {
-		Month          string
-		CommittedCents int64
-		Bills          []struct{ ExpectedCents int64 }
-		Cards          []outlookCard
-		OtherBills     []struct {
+		Month      string
+		Cards      []outlookCard
+		OtherBills []struct {
 			ID, Name string
 			Cents    int64
 			Paid     bool
@@ -177,7 +157,6 @@ type outlookBody struct {
 		OtherInstallmentsCents int64
 		TotalCents             int64
 		LeftoverCents          *int64
-		PercentOfIncome        *int64
 	}
 }
 
@@ -220,11 +199,11 @@ func TestCommitmentsCardBillAndLeftover(t *testing.T) {
 	if len(m.Cards) != 1 || m.Cards[0].AmountCents != 1000-300+2500 || m.Cards[0].BillDaysKnown || m.Cards[0].SourceID == "" || m.Cards[0].Name == "" {
 		t.Errorf("march cards = %+v, want one card at 3200 with unknown bill days", m.Cards)
 	}
-	if m.TotalCents != 3200 || m.CommittedCents != 0 || m.OtherInstallmentsCents != 0 || len(m.OtherBills) != 0 {
-		t.Errorf("march = %+v, want total 3200 and the old committedCents (0)", m)
+	if m.TotalCents != 3200 || m.OtherInstallmentsCents != 0 || len(m.OtherBills) != 0 {
+		t.Errorf("march = %+v, want total 3200", m)
 	}
-	if a := b.Months[1]; len(a.Cards) != 1 || a.Cards[0].AmountCents != 2500 || a.TotalCents != 2500 || a.CommittedCents != 2500 {
-		t.Errorf("april = %+v, want installment 4 as the card bill and as committedCents", a)
+	if a := b.Months[1]; len(a.Cards) != 1 || a.Cards[0].AmountCents != 2500 || a.TotalCents != 2500 {
+		t.Errorf("april = %+v, want installment 4 as the card bill", a)
 	}
 	if z := b.Months[2]; z.Cards[0].AmountCents != 2500 {
 		t.Errorf("may card = %+v, want installment 5", z.Cards)
@@ -234,9 +213,6 @@ func TestCommitmentsCardBillAndLeftover(t *testing.T) {
 	b, _ = readOutlook(t, ana)
 	if l := b.Months[0].LeftoverCents; l == nil || *l != 6800 {
 		t.Errorf("march leftover = %v, want 6800", l)
-	}
-	if p := b.Months[0].PercentOfIncome; p == nil || *p != 0 {
-		t.Errorf("march percentOfIncome = %v, want the unchanged 0", p)
 	}
 	apitest.ExpectStatus(t, putIncome(ana, 1000), http.StatusNoContent)
 	if b, _ = readOutlook(t, ana); b.Months[0].LeftoverCents == nil || *b.Months[0].LeftoverCents != -2200 {
@@ -278,9 +254,6 @@ func TestCommitmentsListEveryBillAndLeaveOutThoseOnACard(t *testing.T) {
 	}
 	if m.Cards[0].AmountCents != 5000 || m.TotalCents != 5000+150000+12000 {
 		t.Errorf("march = %+v, want the Netflix charge in the card bill once", m)
-	}
-	if m.CommittedCents != 12000 || len(m.Bills) != 1 {
-		t.Errorf("march committed = %d, bills = %+v, want the old unpaid-only values", m.CommittedCents, m.Bills)
 	}
 	if a := b.Months[1]; len(a.OtherBills) != 3 || a.TotalCents != 150000+12000+5000 {
 		t.Errorf("april = %+v, want all three Bills: only the paid month of Netflix is left out", a)

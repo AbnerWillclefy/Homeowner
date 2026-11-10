@@ -209,9 +209,7 @@ const commitmentMonths = 12
 
 // Commitments answers GET /me/finance/commitments?from=YYYY-MM: 12 months from
 // `from`, each with the installments its plans still owe.
-// Each month also lists the User's unpaid Bills and counts their expected amounts
-// (committedCents, bills, percentOfIncome: what the deployed PWA reads), and
-// carries the outlook Outlook works out on each read from the counted
+// Each month carries the outlook Outlook works out on each read from the counted
 // Transactions, the card Sources, the plans and every Bill: one bill per credit
 // card, the other Bills paid or not, the rest of each Spending limit as planned
 // spending, in the current month (São Paulo) what was spent off the card, a total
@@ -259,21 +257,7 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 	outlook := Outlook(rows, cards, plans, allBills, income, limits, time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC), from, commitmentMonths)
 	months := make([]MonthCommitment, commitmentMonths)
 	for i, lines := range ProjectInstallments(plans, from, commitmentMonths) {
-		m := MonthCommitment{Month: from.AddDate(0, i, 0).Format("2006-01"), Installments: []InstallmentLine{}, Bills: []BillLine{}}
-		for _, l := range lines {
-			m.Installments = append(m.Installments, l)
-			m.CommittedCents += l.AmountCents
-		}
-		for _, b := range allBills[i] {
-			if !b.Paid {
-				m.Bills = append(m.Bills, BillLine{ID: b.ID, Name: b.Name, ExpectedCents: b.ExpectedCents})
-				m.CommittedCents += b.ExpectedCents
-			}
-		}
-		if income != nil { // income <= 10^12 and committed is small, so *100 cannot overflow int64
-			pct := (m.CommittedCents*100 + *income/2) / *income
-			m.PercentOfIncome = &pct
-		}
+		m := MonthCommitment{Month: from.AddDate(0, i, 0).Format("2006-01"), Installments: append([]InstallmentLine{}, lines...)}
 		o := outlook[i]
 		m.Cards, m.OtherBills = []CardBillLine{}, []OtherBillLine{}
 		for _, c := range o.Cards {
@@ -293,7 +277,7 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, CommitmentsResponse{From: from.Format("2006-01"), MonthlyIncomeCents: income, Months: months})
 }
 
-// maxIncomeCents bounds the income so the percentage arithmetic cannot overflow.
+// maxIncomeCents bounds the income so the income stays far from int64 overflow in the sums.
 const maxIncomeCents = 1_000_000_000_000
 
 // PutIncome answers PUT /me/finance/income: sets the Monthly income, or clears it with null.

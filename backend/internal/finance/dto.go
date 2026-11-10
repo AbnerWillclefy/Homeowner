@@ -127,17 +127,11 @@ type DailyResponse struct {
 // MonthCommitment is what a month already owes. Not the Task "commitments"
 // table: that one is unrelated.
 //
-// CommittedCents, Installments, Bills and PercentOfIncome are the older fields
-// the deployed PWA reads (only unpaid Bills, no card bills); the rest is the
-// outlook worked out by Outlook, which replaces them in a later ticket.
+// Installments are the parts of plans still to come; the rest is the outlook
+// worked out by Outlook.
 type MonthCommitment struct {
-	Month          string            `json:"month"`
-	CommittedCents int64             `json:"committedCents"`
-	Installments   []InstallmentLine `json:"installments"`
-	Bills          []BillLine        `json:"bills"`
-	// PercentOfIncome is absent, not null, when no income is set, so "not set"
-	// and 0% stay distinct.
-	PercentOfIncome *int64 `json:"percentOfIncome,omitempty"`
+	Month        string            `json:"month"`
+	Installments []InstallmentLine `json:"installments"`
 
 	Cards      []CardBillLine  `json:"cards"`
 	OtherBills []OtherBillLine `json:"otherBills"`
@@ -184,13 +178,6 @@ type OtherBillLine struct {
 // IncomeRequest is the body of PUT /me/finance/income; null clears the income.
 type IncomeRequest struct {
 	MonthlyIncomeCents *int64 `json:"monthlyIncomeCents"`
-}
-
-// BillLine is a Bill to pay in a month.
-type BillLine struct {
-	ID            string `json:"id"`
-	Name          string `json:"name"`
-	ExpectedCents int64  `json:"expectedCents"`
 }
 
 // CommitmentsResponse is the answer of GET /me/finance/commitments.

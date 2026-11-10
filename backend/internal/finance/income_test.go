@@ -29,75 +29,59 @@ func putIncome(c *apitest.Client, v any) apitest.Response {
 	return c.Put("/me/finance/income", map[string]any{"monthlyIncomeCents": v})
 }
 
-func TestCommitmentsWithoutIncomeHaveNoPercent(t *testing.T) {
+func TestCommitmentsWithoutIncomeHaveNoLeftover(t *testing.T) {
 	t.Parallel()
 	_, ana := seedMonth(t)
-	newBill(t, ana, "Rent", 150000, 5)
 	top, months := commitmentsRaw(t, ana)
 	if v, ok := top["monthlyIncomeCents"]; !ok || v != nil {
 		t.Errorf("monthlyIncomeCents = %v (present %v), want null", v, ok)
 	}
 	for _, m := range months {
-		if _, ok := m["percentOfIncome"]; ok {
-			t.Errorf("month %v has percentOfIncome with no income", m["month"])
-		}
-		if m["committedCents"].(float64) != 150000 {
-			t.Errorf("committedCents = %v, want 150000", m["committedCents"])
+		if _, ok := m["leftoverCents"]; ok {
+			t.Errorf("month %v has leftoverCents with no income", m["month"])
 		}
 	}
 }
 
-func TestCommitmentsPercentOfIncome(t *testing.T) {
+func TestCommitmentsLeftoverIsIncomeMinusTheMonth(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
-		name              string
-		income, bill, pct int64
+		name         string
+		income, left int64
 	}{
-		{"thirty", 500000, 150000, 30},
-		{"a third rounds down", 300000, 100000, 33},
-		{"two thirds round up", 300000, 200000, 67},
-		{"over a hundred", 120000, 150000, 125},
+		{"income over the bill", 500000, 350000},
+		{"income under the bill", 120000, -30000},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			_, ana := seedMonth(t)
-			newBill(t, ana, "Rent", tc.bill, 5)
+			newBill(t, ana, "Rent", 150000, 5)
 			apitest.ExpectStatus(t, putIncome(ana, tc.income), http.StatusNoContent)
 			top, months := commitmentsRaw(t, ana)
 			if top["monthlyIncomeCents"] != float64(tc.income) {
 				t.Errorf("monthlyIncomeCents = %v, want %d", top["monthlyIncomeCents"], tc.income)
 			}
-			for _, m := range months {
-				if m["percentOfIncome"] != float64(tc.pct) {
-					t.Errorf("month %v percentOfIncome = %v, want %d", m["month"], m["percentOfIncome"], tc.pct)
-				}
+			if last := months[len(months)-1]; last["leftoverCents"] != float64(tc.left) {
+				t.Errorf("month %v leftoverCents = %v, want %d", last["month"], last["leftoverCents"], tc.left)
 			}
 		})
 	}
 }
 
-func TestZeroCommittedIsZeroPercentNotAbsent(t *testing.T) {
+func TestClearingIncomeRemovesTheLeftover(t *testing.T) {
 	t.Parallel()
 	_, ana := seedMonth(t)
 	apitest.ExpectStatus(t, putIncome(ana, 500000), http.StatusNoContent)
-	_, months := commitmentsRaw(t, ana)
-	if v, ok := months[0]["percentOfIncome"]; !ok || v != float64(0) {
-		t.Errorf("percentOfIncome = %v (present %v), want 0", v, ok)
+	if _, months := commitmentsRaw(t, ana); months[0]["leftoverCents"] == nil {
+		t.Error("no leftoverCents with an income")
 	}
-}
-
-func TestClearingIncomeRemovesThePercent(t *testing.T) {
-	t.Parallel()
-	_, ana := seedMonth(t)
-	newBill(t, ana, "Rent", 150000, 5)
-	apitest.ExpectStatus(t, putIncome(ana, 500000), http.StatusNoContent)
 	apitest.ExpectStatus(t, putIncome(ana, nil), http.StatusNoContent)
 	top, months := commitmentsRaw(t, ana)
 	if top["monthlyIncomeCents"] != nil {
 		t.Errorf("monthlyIncomeCents = %v, want null", top["monthlyIncomeCents"])
 	}
-	if _, ok := months[0]["percentOfIncome"]; ok {
-		t.Error("percentOfIncome stays after clearing")
+	if _, ok := months[0]["leftoverCents"]; ok {
+		t.Error("leftoverCents stays after clearing")
 	}
 	apitest.ExpectStatus(t, putIncome(ana, nil), http.StatusNoContent) // clearing twice is fine
 }

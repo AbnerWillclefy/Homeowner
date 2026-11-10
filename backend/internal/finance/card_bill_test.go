@@ -65,16 +65,16 @@ func TestCardInstallmentsProjectFromTheirBillMonth(t *testing.T) {
 	insertPlan(t, app, "ana@example.com", "tv3", "TV Loja PARC 03/10", "TV LOJA", "2028-01-20", -25000, 3, 10)
 
 	b := readCommitments(t, users["ana@example.com"], "2028-02")
-	if m := b.Months[0]; m.CommittedCents != 0 {
+	if m := b.Months[0]; len(m.Installments) != 0 {
 		t.Errorf("february = %+v, want nothing: part 3 is already its transaction", m)
 	}
-	if m := b.Months[1]; m.CommittedCents != 25000 || len(m.Installments) != 1 || m.Installments[0].Number != 4 {
+	if m := b.Months[1]; len(m.Installments) != 1 || m.Installments[0].AmountCents != 25000 || m.Installments[0].Number != 4 {
 		t.Errorf("march = %+v, want TV Loja 4 of 10", m)
 	}
 
 	// Read from January, when part 3 is posted but its bill is not yet due: it is still to come, in February.
 	b = readCommitments(t, users["ana@example.com"], "2028-01")
-	if m := b.Months[1]; m.CommittedCents != 25000 || len(m.Installments) != 1 || m.Installments[0].Number != 3 {
+	if m := b.Months[1]; len(m.Installments) != 1 || m.Installments[0].AmountCents != 25000 || m.Installments[0].Number != 3 {
 		t.Errorf("february from january = %+v, want TV Loja 3 of 10", m)
 	}
 	if m := b.Months[2]; len(m.Installments) != 1 || m.Installments[0].Number != 4 {
