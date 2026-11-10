@@ -2,6 +2,7 @@ package finance
 
 import (
 	"cmp"
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -220,41 +221,12 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid month")
 		return
 	}
-	plans, err := h.store.InstallmentPlans(r.Context(), identity.CurrentUser(r.Context()).ID)
+	in, err := h.loadOutlook(r.Context(), identity.CurrentUser(r.Context()).ID, from, commitmentMonths)
 	if err != nil {
 		httpx.InternalError(w, h.log, "finance: read commitments", err)
 		return
 	}
-	income, err := h.store.Income(r.Context(), identity.CurrentUser(r.Context()).ID)
-	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read income", err)
-		return
-	}
-	uid := identity.CurrentUser(r.Context()).ID
-	rows, err := h.store.SpendRows(r.Context(), uid, from, from.AddDate(0, commitmentMonths, 0))
-	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read commitment rows", err)
-		return
-	}
-	cards, err := h.store.CardSources(r.Context(), uid)
-	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read card sources", err)
-		return
-	}
-	allBills := make([][]MonthBill, commitmentMonths)
-	for i := range allBills {
-		if allBills[i], err = h.store.MonthBills(r.Context(), uid, from.AddDate(0, i, 0)); err != nil {
-			httpx.InternalError(w, h.log, "finance: read commitment bills", err)
-			return
-		}
-	}
-	limits, err := h.store.Budgets(r.Context(), uid)
-	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read limits", err)
-		return
-	}
-	now := postedOn(h.clk.Now())
-	outlook := Outlook(rows, cards, plans, allBills, income, limits, time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC), from, commitmentMonths)
+	plans, income, outlook := in.plans, in.income, in.outlook
 	months := make([]MonthCommitment, commitmentMonths)
 	for i, lines := range ProjectInstallments(plans, from, commitmentMonths) {
 		m := MonthCommitment{Month: from.AddDate(0, i, 0).Format("2006-01"), Installments: append([]InstallmentLine{}, lines...)}
@@ -275,6 +247,47 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 		months[i] = m
 	}
 	httpx.WriteJSON(w, http.StatusOK, CommitmentsResponse{From: from.Format("2006-01"), MonthlyIncomeCents: income, Months: months})
+}
+
+// outlookInputs is what loadOutlook read, with the Outlook it worked out.
+type outlookInputs struct {
+	plans   []Plan
+	rows    []Txn
+	income  *int64
+	limits  map[string]int64
+	outlook []MonthOutlook
+}
+
+// loadOutlook reads the inputs of Outlook for `months` months from `from` and works
+// it out. Commitments and Savings both call it, so their leftovers cannot differ.
+func (h *Handler) loadOutlook(ctx context.Context, uid string, from time.Time, months int) (outlookInputs, error) {
+	var in outlookInputs
+	var err error
+	if in.plans, err = h.store.InstallmentPlans(ctx, uid); err != nil {
+		return in, err
+	}
+	if in.income, err = h.store.Income(ctx, uid); err != nil {
+		return in, err
+	}
+	if in.rows, err = h.store.SpendRows(ctx, uid, from, from.AddDate(0, months, 0)); err != nil {
+		return in, err
+	}
+	cards, err := h.store.CardSources(ctx, uid)
+	if err != nil {
+		return in, err
+	}
+	bills := make([][]MonthBill, months)
+	for i := range bills {
+		if bills[i], err = h.store.MonthBills(ctx, uid, from.AddDate(0, i, 0)); err != nil {
+			return in, err
+		}
+	}
+	if in.limits, err = h.store.Budgets(ctx, uid); err != nil {
+		return in, err
+	}
+	now := postedOn(h.clk.Now())
+	in.outlook = Outlook(in.rows, cards, in.plans, bills, in.income, in.limits, time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC), from, months)
+	return in, nil
 }
 
 // maxIncomeCents bounds the income so the income stays far from int64 overflow in the sums.
