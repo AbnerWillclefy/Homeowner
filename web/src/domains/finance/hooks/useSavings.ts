@@ -19,7 +19,7 @@ import { savingsKey, savingsQuery } from "../api/queries";
 
 export type SavingsOutcome = { kind: "ok" } | { kind: "fields"; fields: FieldCodes } | { kind: "failed" };
 
-/** The Investments, Goals and the two settings, and the writes that change them. Every write reads the savings again. */
+/** The Investments, Goals and the two settings, and the writes that change them. Every write reads the savings again, except a reorder that saved: it keeps its optimistic order. */
 export function useSavings() {
   const client = useQueryClient();
   const query = useQuery(savingsQuery);

@@ -34,6 +34,8 @@ export function GoalsCard({ goals, save, remove, reorder }: Props) {
   const opener = useRef<HTMLElement | null>(null);
   const buttons = useRef(new Map<string, HTMLButtonElement>());
   const refocus = useRef<{ id: string; direction: Direction } | null>(null);
+  // Presses during a pending write are ignored (the buttons stay enabled so focus stays), so writes never overlap.
+  const inFlight = useRef(false);
 
   // Runs when the list arrives in its new order (the move is optimistic): moving the row can drop focus, so it is put back.
   useEffect(() => {
@@ -51,6 +53,16 @@ export function GoalsCard({ goals, save, remove, reorder }: Props) {
   };
 
   async function move(goal: Goal, direction: Direction) {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    try {
+      await moveOnce(goal, direction);
+    } finally {
+      inFlight.current = false;
+    }
+  }
+
+  async function moveOnce(goal: Goal, direction: Direction) {
     const ids = moveId(goals.map((g) => g.id), goal.id, direction);
     setNotice(null);
     setAnnouncement(t("finances.savings.goals.moved", { name: goal.name, position: ids.indexOf(goal.id) + 1, total: ids.length }));
