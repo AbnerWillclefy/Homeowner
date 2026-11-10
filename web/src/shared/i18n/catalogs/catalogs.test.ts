@@ -35,7 +35,9 @@ const runtimeKeys = [
   { key: "catalog.collection.recycling", reason: "Questionnaire builds it from stream" },
 ];
 
-const allowed = (key: string) => runtimeKeys.some((r) => key.startsWith(r.key));
+const matches = (r: { key: string }, key: string) =>
+  r.key.endsWith(".") ? key.startsWith(r.key) : key === r.key;
+const allowed = (key: string) => runtimeKeys.some((r) => matches(r, key));
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -75,7 +77,7 @@ describe("message catalogs", () => {
   });
 
   it("allow-list only names keys that exist", () => {
-    const stale = runtimeKeys.filter((r) => !Object.keys(en).some((k) => k.startsWith(r.key)));
+    const stale = runtimeKeys.filter((r) => !Object.keys(en).some((k) => matches(r, k)));
     expect(stale.map((r) => r.key)).toEqual([]);
   });
 
