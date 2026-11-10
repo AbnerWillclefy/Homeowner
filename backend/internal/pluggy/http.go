@@ -119,6 +119,9 @@ func (h *HTTP) ListAccounts(ctx context.Context, apiKey, itemID string) ([]Accou
 		accts[i] = Account{ID: r.ID, Type: r.Type, Subtype: r.Subtype, Name: r.Name, Currency: r.Currency}
 		if r.Credit != nil {
 			accts[i].CloseDay, accts[i].DueDay = dayOf(r.Credit.CloseDate), dayOf(r.Credit.DueDate)
+			if accts[i].CloseDay == 0 || accts[i].DueDay == 0 {
+				accts[i].CloseDay, accts[i].DueDay = 0, 0
+			}
 		}
 	}
 	return accts, nil
