@@ -50,6 +50,17 @@ type SourceResponse struct {
 	Name     string `json:"name"`
 	Kind     string `json:"kind"`
 	Currency string `json:"currency"`
+	// CloseDay and DueDay are a card's bill days, null when not set and
+	// always null on any other kind.
+	CloseDay *int `json:"closeDay"`
+	DueDay   *int `json:"dueDay"`
+}
+
+// BillDaysRequest is the body of PUT /me/finance/sources/{id}/bill-days: both
+// days or neither, and null clears.
+type BillDaysRequest struct {
+	CloseDay *int `json:"closeDay"`
+	DueDay   *int `json:"dueDay"`
 }
 
 // CredentialsRequest is the body of PUT /me/finance/credentials.

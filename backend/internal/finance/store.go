@@ -141,14 +141,14 @@ func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, no
 // Overview reads the whole status body: Sources, import state and credentials flag.
 func (s *Store) Overview(ctx context.Context, userID string) (StatusResponse, error) {
 	out := StatusResponse{Sources: []SourceResponse{}}
-	rows, err := s.db.Query(ctx, `SELECT id, name, kind, currency FROM finance_sources WHERE user_id = $1 ORDER BY name, id`, userID)
+	rows, err := s.db.Query(ctx, `SELECT id, name, kind, currency, bill_close_day, bill_due_day FROM finance_sources WHERE user_id = $1 ORDER BY name, id`, userID)
 	if err != nil {
 		return out, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var src SourceResponse
-		if err := rows.Scan(&src.ID, &src.Name, &src.Kind, &src.Currency); err != nil {
+		if err := rows.Scan(&src.ID, &src.Name, &src.Kind, &src.Currency, &src.CloseDay, &src.DueDay); err != nil {
 			return out, err
 		}
 		out.Sources = append(out.Sources, src)
@@ -243,6 +243,15 @@ func (s *Store) SetBillDays(ctx context.Context, itemID string, accounts []plugg
 		}
 	}
 	return nil
+}
+
+// SetBillDaysByHand stores the days a User typed on one of their card Sources,
+// or clears both with nil. found is false for another User's Source and for any
+// Source that is not a credit card.
+func (s *Store) SetBillDaysByHand(ctx context.Context, userID, sourceID string, closeDay, dueDay *int) (found bool, err error) {
+	tag, err := s.db.Exec(ctx, `UPDATE finance_sources SET bill_close_day = $3, bill_due_day = $4
+		WHERE id = $1 AND user_id = $2 AND kind = 'credit_card'`, sourceID, userID, closeDay, dueDay)
+	return tag.RowsAffected() == 1, err
 }
 
 // FinishSync marks the Item imported and synced at now.
