@@ -95,6 +95,10 @@ type DailyResponse struct {
 
 // MonthCommitment is what a month already owes. Not the Task "commitments"
 // table: that one is unrelated.
+//
+// CommittedCents, Installments, Bills and PercentOfIncome are the older fields
+// the deployed PWA reads (only unpaid Bills, no card bills); the rest is the
+// outlook worked out by Outlook, which replaces them in a later ticket.
 type MonthCommitment struct {
 	Month          string            `json:"month"`
 	CommittedCents int64             `json:"committedCents"`
@@ -103,6 +107,33 @@ type MonthCommitment struct {
 	// PercentOfIncome is absent, not null, when no income is set, so "not set"
 	// and 0% stay distinct.
 	PercentOfIncome *int64 `json:"percentOfIncome,omitempty"`
+
+	Cards      []CardBillLine  `json:"cards"`
+	OtherBills []OtherBillLine `json:"otherBills"`
+	// OtherInstallmentsCents is what plans on a Source that is not a credit card owe.
+	OtherInstallmentsCents int64 `json:"otherInstallmentsCents"`
+	TotalCents             int64 `json:"totalCents"`
+	// LeftoverCents is the Monthly income minus TotalCents, negative when the
+	// month takes more; absent, not null, when no income is set.
+	LeftoverCents *int64 `json:"leftoverCents,omitempty"`
+}
+
+// CardBillLine is one credit card's bill in a month. BillDaysKnown is false
+// when the card has no closing or due day, so charges count on the day made.
+type CardBillLine struct {
+	SourceID      string `json:"sourceId"`
+	Name          string `json:"name"`
+	AmountCents   int64  `json:"amountCents"`
+	BillDaysKnown bool   `json:"billDaysKnown"`
+}
+
+// OtherBillLine is a Bill to pay that is not a card bill, paid or not; Cents is
+// the amount the month was paid for when Paid.
+type OtherBillLine struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Cents int64  `json:"cents"`
+	Paid  bool   `json:"paid"`
 }
 
 // IncomeRequest is the body of PUT /me/finance/income; null clears the income.
