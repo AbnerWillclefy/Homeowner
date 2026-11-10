@@ -149,6 +149,8 @@ func TestInvestmentValidationNamesTheFields(t *testing.T) {
 			t.Errorf("%s = %d, want 400", raw, res.Status)
 		}
 	}
+	edge := newInvestment(t, ana, strings.Repeat("ç", 60), 1_000_000_000_000, "reserve") // both bounds are allowed
+	apitest.ExpectStatus(t, ana.Delete("/me/finance/investments/"+edge), http.StatusNoContent)
 	if got := savedInvestments(t, ana); len(got) != 1 || got[0]["valueCents"] != float64(5) {
 		t.Errorf("a refused request changed the data: %v", got)
 	}
