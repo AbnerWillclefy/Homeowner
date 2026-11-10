@@ -84,6 +84,15 @@ export interface FakeState {
       spentOffCardCents?: number;
       totalCents: number;
     }[];
+    /** What `GET /me/finance/savings` answers and the savings writes change. Absent means nothing set and no rows. */
+    savings?: {
+      reserveTargetCents: number | null;
+      contributionBaseCents: number | null;
+      reserveSharePercent: number | null;
+      investments: { id: string; name: string; valueCents: number; serves: "reserve" | "goals" }[];
+      /** In the User's order. `targetMonth` is `YYYY-MM` or null. */
+      goals: { id: string; name: string; targetCents: number; targetMonth: string | null }[];
+    };
     /** What `GET /me/finance/transactions` reads, any month; the PATCH edits these. Absent means none. */
     transactions?: {
       id: string;

@@ -374,11 +374,11 @@ export const getBills = (month: string): Promise<BillsResult> =>
     return bills && { bills };
   }) as Promise<BillsResult>;
 
-/** `POST /me/finance/bills`, or `PUT /{id}` when `id` is given. */
-export async function saveBill(id: string | null, input: BillInput): Promise<SaveBillResult> {
+/** `POST <base>`, or `PUT <base>/{id}` when `id` is given; a 400 with field codes goes back to the form. */
+async function saveRow(base: string, id: string | null, input: object): Promise<SaveBillResult> {
   try {
     const result = await authedRequest({
-      url: id ? `/me/finance/bills/${encodeURIComponent(id)}` : "/me/finance/bills",
+      url: id ? `${base}/${encodeURIComponent(id)}` : base,
       method: id ? "PUT" : "POST",
       data: input,
     });
@@ -391,6 +391,8 @@ export async function saveBill(id: string | null, input: BillInput): Promise<Sav
     return { kind: "offline" };
   }
 }
+
+export const saveBill = (id: string | null, input: BillInput): Promise<SaveBillResult> => saveRow("/me/finance/bills", id, input);
 
 export const deleteBill = (id: string): Promise<WriteResult> =>
   call({ url: `/me/finance/bills/${encodeURIComponent(id)}`, method: "DELETE" }, 204, nothing);
@@ -436,3 +438,86 @@ export const dismissBillSuggestion = (merchantKey: string): Promise<WriteResult>
 /** Marks the Bill paid by hand in `month`, or takes the mark off. */
 export const setBillPaid = (id: string, month: string, paid: boolean): Promise<WriteResult> =>
   call({ url: `/me/finance/bills/${encodeURIComponent(id)}/payments/${month}`, method: paid ? "PUT" : "DELETE" }, 204, nothing);
+
+export type Serves = "reserve" | "goals";
+
+export interface Investment {
+  id: string;
+  name: string;
+  valueCents: number;
+  serves: Serves;
+}
+export type InvestmentInput = Omit<Investment, "id">;
+
+export interface Goal {
+  id: string;
+  name: string;
+  targetCents: number;
+  /** `YYYY-MM`, or null for a Goal with no date. */
+  targetMonth: string | null;
+}
+export type GoalInput = Omit<Goal, "id">;
+
+/** `GET /me/finance/savings`: the settings (null while unset) and the lists, Goals in the User's order. */
+export interface Savings {
+  reserveTargetCents: number | null;
+  contributionBaseCents: number | null;
+  reserveSharePercent: number | null;
+  investments: Investment[];
+  goals: Goal[];
+}
+export type SavingsResult = { kind: "ok"; savings: Savings } | Failure;
+
+const nullableNum = (v: unknown) => v === null || typeof v === "number";
+
+/** Reads what this screen uses and ignores the rest, so fields added later do not fail it. */
+export function parseSavings(body: unknown): Savings | null {
+  if (!isObject(body) || !Array.isArray(body.investments) || !Array.isArray(body.goals)) return null;
+  const valid =
+    nullableNum(body.reserveTargetCents) &&
+    nullableNum(body.contributionBaseCents) &&
+    nullableNum(body.reserveSharePercent) &&
+    body.investments.every(
+      (i) => isObject(i) && typeof i.id === "string" && typeof i.name === "string" && typeof i.valueCents === "number" && (i.serves === "reserve" || i.serves === "goals"),
+    ) &&
+    body.goals.every(
+      (g) => isObject(g) && typeof g.id === "string" && typeof g.name === "string" && typeof g.targetCents === "number" && (g.targetMonth === null || typeof g.targetMonth === "string"),
+    );
+  if (!valid) return null;
+  const { reserveTargetCents, contributionBaseCents, reserveSharePercent, investments, goals } = body as unknown as Savings;
+  return {
+    reserveTargetCents,
+    contributionBaseCents,
+    reserveSharePercent,
+    investments: investments.map(({ id, name, valueCents, serves }) => ({ id, name, valueCents, serves })),
+    goals: goals.map(({ id, name, targetCents, targetMonth }) => ({ id, name, targetCents, targetMonth })),
+  };
+}
+
+export const getSavings = (): Promise<SavingsResult> =>
+  call({ url: "/me/finance/savings" }, 200, (data) => {
+    const savings = parseSavings(data);
+    return savings && { savings };
+  }) as Promise<SavingsResult>;
+
+/** `PUT /me/finance/reserve`; null clears the target. */
+export const putReserve = (targetCents: number | null): Promise<WriteResult> =>
+  call({ url: "/me/finance/reserve", method: "PUT", data: { targetCents } }, 204, nothing);
+
+/** `PUT /me/finance/contribution`; null clears both fields together, as the API wants. */
+export const putContribution = (contribution: { baseCents: number; reserveSharePercent: number } | null): Promise<WriteResult> =>
+  call({ url: "/me/finance/contribution", method: "PUT", data: contribution ?? { baseCents: null, reserveSharePercent: null } }, 204, nothing);
+
+export const saveInvestment = (id: string | null, input: InvestmentInput): Promise<SaveBillResult> => saveRow("/me/finance/investments", id, input);
+
+export const deleteInvestment = (id: string): Promise<WriteResult> =>
+  call({ url: `/me/finance/investments/${encodeURIComponent(id)}`, method: "DELETE" }, 204, nothing);
+
+export const saveGoal = (id: string | null, input: GoalInput): Promise<SaveBillResult> => saveRow("/me/finance/goals", id, input);
+
+export const deleteGoal = (id: string): Promise<WriteResult> =>
+  call({ url: `/me/finance/goals/${encodeURIComponent(id)}`, method: "DELETE" }, 204, nothing);
+
+/** `PUT /me/finance/goals/order` with every Goal id; a 400 means the list changed under the User. */
+export const putGoalOrder = (ids: string[]): Promise<WriteResult> =>
+  call({ url: "/me/finance/goals/order", method: "PUT", data: { ids } }, 204, nothing);
