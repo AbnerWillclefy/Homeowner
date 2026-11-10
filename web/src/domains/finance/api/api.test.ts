@@ -260,20 +260,44 @@ describe("getDaily", () => {
 });
 
 describe("commitments", () => {
-  const COMMITMENTS = {
-    monthlyIncomeCents: null,
-    months: [{ month: "2026-12", committedCents: 87000, installments: [{ name: "Geladeira", number: 4, total: 10, amountCents: 45000 }], bills: [] }],
+  const MONTH_OUTLOOK = {
+    month: "2026-12",
+    installments: [{ name: "Geladeira", number: 4, total: 10, amountCents: 45000 }],
+    cards: [{ sourceId: "c1", name: "Inter", amountCents: 45000, billDaysKnown: false }],
+    otherBills: [{ id: "b1", name: "Internet", cents: 12000, paid: true }],
+    otherInstallmentsCents: 0,
+    planned: [{ category: "groceries", cents: 30000 }],
+    plannedCents: 30000,
+    totalCents: 87000,
   };
+  const COMMITMENTS = { monthlyIncomeCents: null, months: [MONTH_OUTLOOK] };
 
-  it("reads GET /me/finance/commitments?from=, with no percentage when there is no income", async () => {
+  it("reads GET /me/finance/commitments?from=, with the optional fields absent", async () => {
     const fetch = stubFetch(Response.json(COMMITMENTS));
     expect(await getCommitments("2026-11")).toEqual({ kind: "ok", commitments: COMMITMENTS });
     expect(fetch.mock.calls[0]![0]).toBe("http://api.test/me/finance/commitments?from=2026-11");
   });
 
+  it("keeps the leftover and the spending off the card, and does not need the older fields", async () => {
+    stubFetch(Response.json({ monthlyIncomeCents: 85000, months: [{ ...MONTH_OUTLOOK, spentOffCardCents: 5000, leftoverCents: -2000 }] }));
+    expect(await getCommitments("2026-11")).toMatchObject({ kind: "ok", commitments: { months: [{ spentOffCardCents: 5000, leftoverCents: -2000 }] } });
+  });
+
   it("is an error for a body it cannot read", async () => {
     stubFetch(Response.json({ monthlyIncomeCents: "x", months: [] }));
     expect(await getCommitments("2026-11")).toEqual({ kind: "error" });
+    const bad = [
+      { cards: null },
+      { cards: [{ sourceId: "c1", name: "Inter", amountCents: 1 }] },
+      { otherBills: [{ id: "b", name: "x", cents: 1 }] },
+      { planned: [{ category: "x" }] },
+      { totalCents: "1" },
+      { leftoverCents: "1" },
+    ];
+    for (const change of bad) {
+      stubFetch(Response.json({ monthlyIncomeCents: null, months: [{ ...MONTH_OUTLOOK, ...change }] }));
+      expect(await getCommitments("2026-11")).toEqual({ kind: "error" });
+    }
   });
 
   it("puts the income, or null to clear it", async () => {
