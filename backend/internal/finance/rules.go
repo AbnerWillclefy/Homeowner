@@ -91,8 +91,8 @@ type Txn struct {
 	Type, TypeSetBy string
 	// Category is the spending category, empty unless Type is expense.
 	Category, CategorySetBy string
-	// Linked (a Bill payment points at it) and Installment (a PARC nn/mm
-	// charge) are read only by SuggestBills.
+	// Linked (a Bill payment, not undone, points at it) is read by SuggestBills
+	// and Outlook; Installment (a PARC nn/mm charge) only by SuggestBills.
 	Linked, Installment bool
 }
 
@@ -206,6 +206,8 @@ type Plan struct {
 	// SourceID is the Source the plan is charged on; Card is whether it is a credit card.
 	SourceID string
 	Card     bool
+	// Category is the Spending Category of the latest charge, empty when it has none.
+	Category string
 }
 
 // PlanName is the description without its installment token, or the merchant

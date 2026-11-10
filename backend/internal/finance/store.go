@@ -415,10 +415,12 @@ func (s *Store) MonthTransactions(ctx context.Context, userID string, from, to t
 
 // SpendRows returns what the daily pace and the commitments outlook read of the
 // User's Transactions that count in [from, to): Source, signed amount, type and
-// category, with PostedOn set to the CountsOn day.
+// category, with PostedOn set to the CountsOn day and Linked set when a Bill
+// payment (not undone) points at it.
 func (s *Store) SpendRows(ctx context.Context, userID string, from, to time.Time) ([]Txn, error) {
 	rows, err := s.db.Query(ctx, `SELECT t.posted_on, t.amount_cents, t.type, t.spending_category, t.source_id,
-			s.kind, COALESCE(s.bill_close_day, 0), COALESCE(s.bill_due_day, 0)
+			s.kind, COALESCE(s.bill_close_day, 0), COALESCE(s.bill_due_day, 0),
+			EXISTS (SELECT 1 FROM finance_bill_payments p WHERE p.transaction_id = t.id AND p.undone_at IS NULL)
 		FROM finance_transactions t JOIN finance_sources s ON s.id = t.source_id
 		WHERE t.user_id = $1 AND t.posted_on >= $2 AND t.posted_on < $3`, userID, from.AddDate(0, -billLead, 0), to)
 	if err != nil {
@@ -431,7 +433,7 @@ func (s *Store) SpendRows(ctx context.Context, userID string, from, to time.Time
 		var category *string
 		var kind Kind
 		var closeDay, dueDay int
-		if err := rows.Scan(&t.PostedOn, &t.AmountCents, &t.Type, &category, &t.SourceID, &kind, &closeDay, &dueDay); err != nil {
+		if err := rows.Scan(&t.PostedOn, &t.AmountCents, &t.Type, &category, &t.SourceID, &kind, &closeDay, &dueDay, &t.Linked); err != nil {
 			return nil, err
 		}
 		if t.PostedOn = CountsOn(t.PostedOn, kind, closeDay, dueDay); t.PostedOn.Before(from) || !t.PostedOn.Before(to) {
@@ -524,7 +526,7 @@ func (s *Store) InstallmentPlans(ctx context.Context, userID string) ([]Plan, er
 		SELECT DISTINCT ON (t.source_id, t.merchant_key, t.total_installments,
 				date_trunc('month', t.posted_on) - (t.installment_number - 1) * interval '1 month')
 			t.description, t.merchant_key, t.installment_number, t.total_installments, -t.amount_cents, t.posted_on,
-			t.source_id, s.kind, COALESCE(s.bill_close_day, 0), COALESCE(s.bill_due_day, 0)
+			t.source_id, s.kind, COALESCE(s.bill_close_day, 0), COALESCE(s.bill_due_day, 0), COALESCE(t.spending_category, '')
 		FROM finance_transactions t JOIN finance_sources s ON s.id = t.source_id
 		WHERE t.user_id = $1 AND t.type = 'expense' AND t.amount_cents < 0 AND t.installment_number IS NOT NULL
 		ORDER BY t.source_id, t.merchant_key, t.total_installments,
@@ -540,7 +542,7 @@ func (s *Store) InstallmentPlans(ctx context.Context, userID string) ([]Plan, er
 		var posted time.Time
 		var kind Kind
 		var closeDay, dueDay int
-		if err := rows.Scan(&desc, &key, &p.Number, &p.Total, &p.AmountCents, &posted, &p.SourceID, &kind, &closeDay, &dueDay); err != nil {
+		if err := rows.Scan(&desc, &key, &p.Number, &p.Total, &p.AmountCents, &posted, &p.SourceID, &kind, &closeDay, &dueDay, &p.Category); err != nil {
 			return nil, err
 		}
 		p.Name = PlanName(desc, key)

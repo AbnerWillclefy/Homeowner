@@ -213,7 +213,9 @@ const commitmentMonths = 12
 // (committedCents, bills, percentOfIncome: what the deployed PWA reads), and
 // carries the outlook Outlook works out on each read from the counted
 // Transactions, the card Sources, the plans and every Bill: one bill per credit
-// card, the other Bills paid or not, a total and the leftover of the income.
+// card, the other Bills paid or not, the rest of each Spending limit as planned
+// spending, in the current month (São Paulo) what was spent off the card, a total
+// and the leftover of the income.
 func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 	from, _, ok := parseMonth(r.URL.Query().Get("from"))
 	if !ok {
@@ -248,7 +250,13 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	outlook := Outlook(rows, cards, plans, allBills, income, from, commitmentMonths)
+	limits, err := h.store.Budgets(r.Context(), uid)
+	if err != nil {
+		httpx.InternalError(w, h.log, "finance: read limits", err)
+		return
+	}
+	now := postedOn(h.clk.Now())
+	outlook := Outlook(rows, cards, plans, allBills, income, limits, time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC), from, commitmentMonths)
 	months := make([]MonthCommitment, commitmentMonths)
 	for i, lines := range ProjectInstallments(plans, from, commitmentMonths) {
 		m := MonthCommitment{Month: from.AddDate(0, i, 0).Format("2006-01"), Installments: []InstallmentLine{}, Bills: []BillLine{}}
@@ -274,6 +282,11 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 		for _, b := range o.OtherBills {
 			m.OtherBills = append(m.OtherBills, OtherBillLine(b))
 		}
+		m.Planned = []PlannedLineDTO{}
+		for _, p := range o.Planned {
+			m.Planned = append(m.Planned, PlannedLineDTO(p))
+		}
+		m.PlannedCents, m.SpentOffCardCents = o.PlannedCents, o.SpentOffCardCents
 		m.OtherInstallmentsCents, m.TotalCents, m.LeftoverCents = o.OtherInstallmentsCents, o.TotalCents, o.LeftoverCents
 		months[i] = m
 	}
