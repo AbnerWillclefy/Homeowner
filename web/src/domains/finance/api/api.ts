@@ -9,6 +9,9 @@ export interface FinanceSource {
   /** `checking`, `savings` or `credit_card`; the screen labels the ones it knows and shows others as they come. */
   kind: string;
   currency: string;
+  /** A credit card's statement closing and due days (1 to 31), both set or both null; null on every other kind. */
+  closeDay: number | null;
+  dueDay: number | null;
 }
 
 /** `GET /me/finance`. Never carries the credentials. */
@@ -85,9 +88,10 @@ function parseStatus(body: unknown): FinanceStatus | null {
   const parsed: FinanceSource[] = [];
   for (const source of sources) {
     if (typeof source !== "object" || source === null) return null;
-    const { id, name, kind, currency } = source as Record<string, unknown>;
+    const { id, name, kind, currency, closeDay, dueDay } = source as Record<string, unknown>;
     if (typeof id !== "string" || typeof name !== "string" || typeof kind !== "string" || typeof currency !== "string") return null;
-    parsed.push({ id, name, kind, currency });
+    if (!(closeDay === null || Number.isInteger(closeDay)) || !(dueDay === null || Number.isInteger(dueDay))) return null;
+    parsed.push({ id, name, kind, currency, closeDay: closeDay as number | null, dueDay: dueDay as number | null });
   }
   return { configured, sources: parsed, importing, lastSyncedAt };
 }
@@ -393,6 +397,27 @@ async function saveRow(base: string, id: string | null, input: object): Promise<
 }
 
 export const saveBill = (id: string | null, input: BillInput): Promise<SaveBillResult> => saveRow("/me/finance/bills", id, input);
+
+/** The days typed for one card; null clears. The API takes both or neither. */
+export type BillDaysResult = { kind: "ok" } | { kind: "fields"; fields: FieldCodes } | Failure;
+
+/** `PUT /me/finance/sources/{id}/bill-days`; a 400 with field codes goes back to the form. */
+export async function putBillDays(sourceId: string, closeDay: number | null, dueDay: number | null): Promise<BillDaysResult> {
+  try {
+    const result = await authedRequest({
+      url: `/me/finance/sources/${encodeURIComponent(sourceId)}/bill-days`,
+      method: "PUT",
+      data: { closeDay, dueDay },
+    });
+    if (result.kind === "not-signed-in") return result;
+    const { response } = result;
+    if (response.status === 204) return { kind: "ok" };
+    const fields = response.status === 400 ? parseFields(response) : null;
+    return fields ? { kind: "fields", fields } : { kind: failureOf(response.status, errorCode(response)) };
+  } catch {
+    return { kind: "offline" };
+  }
+}
 
 export const deleteBill = (id: string): Promise<WriteResult> =>
   call({ url: `/me/finance/bills/${encodeURIComponent(id)}`, method: "DELETE" }, 204, nothing);
