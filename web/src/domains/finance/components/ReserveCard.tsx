@@ -3,8 +3,11 @@ import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import type { Savings } from "../api/api";
 import { centsToInput, formatCents } from "../logic/money";
-import { groupInvestments, reservePercent, reserveTargetOf } from "../logic/savings";
+import { reserveTargetOf } from "../logic/savings";
+import { progressPercent, whenOf } from "../logic/suggestion";
+import { Track } from "./charts/Bar";
 import { FinanceCard } from "./FinanceCard";
+import { MonthLine } from "./MonthLine";
 import { SavingsFormDialog } from "./SavingsFormDialog";
 
 type Write = (cents: number | null) => Promise<boolean>;
@@ -15,8 +18,8 @@ export function ReserveCard({ savings, save }: { savings: Savings; save: Write }
   const [open, setOpen] = useState(false);
   const opener = useRef<HTMLButtonElement>(null);
   const target = savings.reserveTargetCents;
-  const saved = groupInvestments(savings.investments).find((g) => g.serves === "reserve")?.subtotalCents ?? 0;
-  const percent = target === null ? 0 : reservePercent(saved, target);
+  const { savedCents: saved, monthCents } = savings.reserve;
+  const percent = target === null ? 0 : progressPercent(saved, target);
   return (
     <FinanceCard id="finances-savings-reserve" title={t("finances.savings.reserve.title")}>
       {target !== null ? (
@@ -25,10 +28,10 @@ export function ReserveCard({ savings, save }: { savings: Savings; save: Write }
             <span className="text-3xl font-bold [overflow-wrap:anywhere]">{formatCents(saved, locale)}</span>{" "}
             <span className="text-muted">{t("finances.savings.reserve.of", { amount: formatCents(target, locale) })}</span>
           </p>
-          <span aria-hidden="true" className="flex h-2 rounded-pill bg-chart-track">
-            <span className="rounded-pill bg-chart-ink" style={{ width: `${percent}%` }} />
-          </span>
+          {/* The saved amount, the target and the percentage are text above and below: the bar only draws them. */}
+          <Track value={saved} max={target} />
           <p className="my-0 text-sm text-muted">{t("finances.savings.reserve.percent", { percent })}</p>
+          <MonthLine monthCents={monthCents} when={whenOf({ ...savings.reserve, targetCents: target })} who="reserve" />
           <Button ref={opener} variant="link" className="self-end text-sm" onClick={() => setOpen(true)}>
             {t("finances.savings.reserve.change")}
           </Button>

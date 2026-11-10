@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contributionOf, goalInputOf, groupInvestments, investmentInputOf, moveId, reservePercent, reserveTargetOf, savingsFieldErrorKey, splitContribution } from "./savings";
+import { contributionOf, goalInputOf, groupInvestments, investmentInputOf, moveId,reserveTargetOf, savingsFieldErrorKey, splitContribution } from "./savings";
 
 describe("investmentInputOf", () => {
   it("reads a name, a value and what it serves", () => {
@@ -92,14 +92,6 @@ describe("groupInvestments", () => {
       ["goals", 150, ["1", "3"]],
     ]);
     expect(groupInvestments(list.slice(0, 1)).map((g) => g.serves)).toEqual(["goals"]);
-  });
-});
-
-describe("reservePercent", () => {
-  it("rounds down and stops at 100", () => {
-    expect(reservePercent(41999, 100000)).toBe(41);
-    expect(reservePercent(200000, 100000)).toBe(100);
-    expect(reservePercent(0, 100000)).toBe(0);
   });
 });
 

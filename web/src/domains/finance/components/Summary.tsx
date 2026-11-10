@@ -13,6 +13,7 @@ import { useCommitments } from "../hooks/useCommitments";
 import { useDaily } from "../hooks/useDaily";
 import { useFinanceMonth } from "../hooks/useFinanceMonth";
 import { useMonth } from "../hooks/useMonth";
+import { useSavings } from "../hooks/useSavings";
 import { barPercent } from "../logic/chart";
 import { billState } from "../logic/billState";
 import { formatCents } from "../logic/money";
@@ -25,6 +26,7 @@ import { sameDays } from "../logic/sameDays";
 import { spendingKey } from "../logic/spendingCategories";
 import { formatSyncTime } from "../logic/syncTime";
 import { topCategories } from "../logic/topCategories";
+import { SavingsSuggestion } from "./SavingsSuggestion";
 import { CumulativeLine } from "./charts/CumulativeLine";
 import { SplitBar } from "./charts/SplitBar";
 
@@ -107,7 +109,8 @@ export function Summary({ lastSyncedAt }: { lastSyncedAt: string | null }) {
   const bills = useBills(month);
   const commitments = useCommitments(thisMonth);
   const daily = useDaily(month);
-  useReportFetching(current.refreshing || previous.refreshing || bills.refreshing || commitments.refreshing || daily.refreshing);
+  const savings = useSavings();
+  useReportFetching(current.refreshing || previous.refreshing || bills.refreshing || commitments.refreshing || daily.refreshing || savings.refreshing);
 
   const money = (cents: number) => formatCents(cents, locale);
   const transactions = current.state.kind === "ready" ? current.state.data.transactions : null;
@@ -184,6 +187,19 @@ export function Summary({ lastSyncedAt }: { lastSyncedAt: string | null }) {
                 </Button>
               </p>
             </>
+          )}
+        </Block>
+      )}
+
+      {isCurrent && (
+        <Block heading={t("finances.suggestion.heading", { month: name })} states={[savings.state]} retry={() => void savings.reload()} failed={t("finances.suggestion.failed")}>
+          {savings.state.kind === "ready" && (
+            <SavingsSuggestion
+              savings={savings.state.data}
+              month={month}
+              incomeSet={commitments.state.kind === "ready" ? income !== null : null}
+              leftoverCents={leftover?.leftoverCents ?? null}
+            />
           )}
         </Block>
       )}
