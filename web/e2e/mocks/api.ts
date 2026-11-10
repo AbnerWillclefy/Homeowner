@@ -71,12 +71,18 @@ export interface FakeState {
     limits?: Record<string, number>;
     /** Monthly income, which `PUT /me/finance/income` sets. Absent means none. */
     monthlyIncomeCents?: number | null;
-    /** The months `GET /me/finance/commitments` lists; the fake adds `percentOfIncome` from the income. Absent means none. */
+    /** The months `GET /me/finance/commitments` lists; the fake adds `leftoverCents` (income minus `totalCents`) while an income is set. Absent means none. */
     commitments?: {
       month: string;
-      committedCents: number;
       installments: { name: string; number: number; total: number; amountCents: number }[];
-      bills: { id: string; name: string; expectedCents: number }[];
+      cards: { sourceId: string; name: string; amountCents: number; billDaysKnown: boolean }[];
+      otherBills: { id: string; name: string; cents: number; paid: boolean }[];
+      otherInstallmentsCents: number;
+      planned: { category: string; cents: number }[];
+      plannedCents: number;
+      /** Only the current month has it. */
+      spentOffCardCents?: number;
+      totalCents: number;
     }[];
     /** What `GET /me/finance/transactions` reads, any month; the PATCH edits these. Absent means none. */
     transactions?: {

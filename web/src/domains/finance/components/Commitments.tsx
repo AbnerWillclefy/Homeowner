@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from "react";
+import { Link } from "react-router";
+import { FINANCES_SETTINGS_PATH } from "../../../app/logic/routes";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { Card } from "../../../shared/ui/Card";
@@ -8,26 +10,26 @@ import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLo
 import { SkeletonBar } from "../../../shared/ui/Skeleton";
 import type { Commitments as CommitmentsData } from "../api/api";
 import { useCommitments } from "../hooks/useCommitments";
-import { barPercent, scaleMax } from "../logic/chart";
-import { committedBars } from "../logic/committedBars";
+import { useFinanceMonth } from "../hooks/useFinanceMonth";
+import { barPercent } from "../logic/chart";
 import { readIncome, type IncomeProblem } from "../logic/income";
 import { formatCents } from "../logic/money";
-import { currentMonth, monthLabel, monthName } from "../logic/month";
+import { monthName } from "../logic/month";
 import { plansInProgress } from "../logic/plansInProgress";
-import { HATCH } from "./charts/Bar";
 import { FinanceCard } from "./FinanceCard";
+import { MonthCard } from "./MonthCard";
 
 const FORM = "finances-income";
 const PROBLEM_KEY = { empty: "finances.income.empty", zero: "finances.income.zero", junk: "finances.income.junk" } as const;
 
 /**
- * "Próximos meses": what is already committed in the coming months (Bills and Installment plans) against the Monthly
- * income line, then the Installment plans in progress. Neutral on purpose: no danger colour or alarm icon, even above
- * the income. The app states a fact, it never commands.
+ * "Próximos meses": what each of the next twelve months already has to pay and what is left of the Monthly income,
+ * one folding card per month, then the Installment plans in progress. Neutral on purpose: no danger colour or alarm
+ * icon, even above the income. The app states a fact, it never commands.
  */
 export function Commitments() {
   const { t } = useI18n();
-  const [from] = useState(() => currentMonth(new Date()));
+  const { thisMonth: from } = useFinanceMonth();
   const { state, refreshing, reload } = useCommitments(from);
   const skeleton = useReportFirstLoad(state.kind === "loading");
   useReportFetching(refreshing);
@@ -37,6 +39,7 @@ export function Commitments() {
       <h3 id="finances-commit-heading" className="my-0 text-2xl font-bold leading-snug [overflow-wrap:anywhere]">
         {t("finances.commit.heading")}
       </h3>
+      <p className="my-0 text-muted">{t("finances.commit.intro")}</p>
       {state.kind === "loading" && skeleton && (
         <div aria-hidden="true">
           <SkeletonBar className="h-5 w-full" />
@@ -57,99 +60,26 @@ export function Commitments() {
   );
 }
 
-// The column chart's drawing area inside its viewBox.
-const VW = 300;
-const VH = 170;
-const TOP = 34;
-const BOTTOM = 146;
-
 function ComingMonths({ data, from }: { data: CommitmentsData; from: string }) {
   const { t, locale } = useI18n();
-  const money = (cents: number) => formatCents(cents, locale);
   const income = data.monthlyIncomeCents;
-  const bars = committedBars(data.months);
   const plans = plansInProgress(data.months);
-  // One scale for every month, so the columns compare; the income line is on it too.
-  const max = scaleMax(
-    bars.map((b) => b.total),
-    income ? [income] : [],
-  );
-  const h = (cents: number) => ((BOTTOM - TOP) * barPercent(cents, max)) / 100;
-  const slot = VW / Math.max(bars.length, 1);
-  const width = Math.min(28, slot * 0.6);
-  const first = bars[0];
-  const percent = (cents: number) => (income ? Math.round((cents / income) * 100) : null);
-  const summary = bars
-    .map((b) => `${t("finances.commit.month", { month: monthLabel(b.month, locale), total: money(b.total) })}. ${t("finances.commit.split", { bills: money(b.bills), installments: money(b.installments) })}`)
-    .join(" ");
   return (
     <>
-      {bars.length === 0 ? (
-        <Card>
-          <p className="my-0 text-muted">{t("finances.commit.empty")}</p>
-        </Card>
-      ) : (
-        <Card className="flex flex-col gap-3">
-          {first && income !== null && (
-            <p className="my-0">
-              {t("finances.commit.share", { month: monthName(first.month, locale), percent: percent(first.total) ?? 0 })}
-            </p>
-          )}
-          <p aria-hidden="true" className="m-0 flex flex-wrap gap-x-4 text-sm font-semibold text-muted">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="size-3 rounded-sm bg-chart-ink" />
-              {t("finances.commit.legend.installments")}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="size-3 rounded-sm border border-chart-muted" style={{ backgroundImage: HATCH }} />
-              {t("finances.commit.legend.bills")}
-            </span>
-            {income !== null && (
-              <span className="inline-flex items-center gap-1.5">
-                <span className="w-4 border-t-2 border-dashed border-chart-ink" />
-                {t("finances.commit.legend.income")}
-              </span>
-            )}
-          </p>
-          <svg role="img" aria-label={summary} viewBox={`0 0 ${VW} ${VH}`} className="h-auto w-full overflow-visible">
-            <defs>
-              <pattern id="finances-commit-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                <line x1="0" y1="0" x2="0" y2="6" strokeWidth="2" className="stroke-chart-muted" />
-              </pattern>
-            </defs>
-            {income !== null && (
-              <g aria-hidden="true">
-                <line x1={0} x2={VW} y1={BOTTOM - h(income)} y2={BOTTOM - h(income)} strokeWidth={1.5} strokeDasharray="4 3" className="stroke-chart-ink" />
-                <text x={VW} y={BOTTOM - h(income) - 5} textAnchor="end" fontSize="10" className="fill-muted">
-                  {t("finances.commit.incomeLabel", { amount: money(income) })}
-                </text>
-              </g>
-            )}
-            {bars.map((b, i) => {
-              const cx = slot * i + slot / 2;
-              const billsH = h(b.bills);
-              const instH = h(b.installments);
-              const pct = percent(b.total);
-              return (
-                <g key={b.month} aria-hidden="true">
-                  {billsH > 0 && <rect x={cx - width / 2} y={BOTTOM - billsH} width={width} height={billsH} fill="url(#finances-commit-hatch)" strokeWidth={1} className="stroke-chart-muted" />}
-                  {instH > 0 && <rect x={cx - width / 2} y={BOTTOM - billsH - instH} width={width} height={instH} rx={2} className="fill-chart-ink" />}
-                  {pct !== null && (
-                    <text x={cx} y={BOTTOM - billsH - instH - 6} textAnchor="middle" fontSize="10" fontWeight="700" className="fill-text">
-                      {pct}%
-                    </text>
-                  )}
-                  <text x={cx} y={VH - 6} textAnchor="middle" fontSize="10" className="fill-muted">
-                    {new Intl.DateTimeFormat(locale, { month: "short" }).format(new Date(Number(b.month.slice(0, 4)), Number(b.month.slice(5)) - 1, 1))}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
-          {/* The current month counts only unpaid Bills (Handler.Commitments), so it is not read as the whole month. */}
-          {first?.month === from && <p className="my-0 text-sm text-muted">{t("finances.commit.currentNote")}</p>}
+      {income === null && (
+        <Card className="flex flex-col items-start gap-3">
+          <p className="my-0">{t("finances.commit.noIncome")}</p>
+          <Button asChild>
+            <Link to={FINANCES_SETTINGS_PATH}>{t("finances.commit.incomeSet")}</Link>
+          </Button>
         </Card>
       )}
+      <div className="flex flex-col gap-3">
+        {data.months.map((m) => (
+          <MonthCard key={m.month} data={m} current={m.month === from} income={income} />
+        ))}
+      </div>
+      <p className="my-0 text-sm text-muted">{t("finances.commit.footnote")}</p>
       {plans.length > 0 && (
         <Card as="section" aria-labelledby="finances-plans-heading" className="mt-2 flex flex-col gap-1">
           <h4 id="finances-plans-heading" className="my-0 mb-2 text-lg font-bold leading-snug">
@@ -161,7 +91,7 @@ function ComingMonths({ data, from }: { data: CommitmentsData; from: string }) {
               <li key={`${p.name}/${p.total}`} className="flex flex-col gap-1.5 border-t border-chart-track py-3 first:border-t-0 first:pt-0 last:pb-0">
                 <span className="flex flex-wrap justify-between gap-x-3">
                   <span className="font-bold [overflow-wrap:anywhere]">{p.name}</span>
-                  <span className="font-bold [overflow-wrap:anywhere]">{t("finances.commit.planAmount", { amount: money(p.amountCents) })}</span>
+                  <span className="font-bold [overflow-wrap:anywhere]">{t("finances.commit.planAmount", { amount: formatCents(p.amountCents, locale) })}</span>
                 </span>
                 {/* One segment per installment while they fit, filled up to the next one. */}
                 {p.total <= 12 ? (
@@ -185,10 +115,10 @@ function ComingMonths({ data, from }: { data: CommitmentsData; from: string }) {
   );
 }
 
-/** The optional Monthly income, which turns the installments into a share of it. It shares the installments' read. */
+/** The optional Monthly income, which the leftover of each month is worked out from. It shares the coming months' read. */
 export function MonthlyIncome() {
   const { t } = useI18n();
-  const [from] = useState(() => currentMonth(new Date()));
+  const { thisMonth: from } = useFinanceMonth();
   const { state, reload, saveIncome } = useCommitments(from);
   // The installments' own alert is on another view, so the failure is said here too.
   if (state.kind === "failed")
