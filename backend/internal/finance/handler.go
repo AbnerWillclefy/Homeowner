@@ -342,6 +342,41 @@ func (h *Handler) PutBillDays(w http.ResponseWriter, r *http.Request) {
 	h.answer(w, found, err, "set bill days", func() { w.WriteHeader(http.StatusNoContent) })
 }
 
+// PutSourceName answers PUT /me/finance/sources/{id}/name: sets the name shown
+// for a Source, or clears it with null. An empty, over-long or control-character
+// name answers 400 with fields.name. A malformed id and another User's Source
+// answer 404.
+func (h *Handler) PutSourceName(w http.ResponseWriter, r *http.Request) {
+	var req SourceNameRequest
+	if !httpx.DecodeBody(w, r, &req, maxBodyBytes, true) {
+		return
+	}
+	if req.Name != nil {
+		name := strings.TrimSpace(*req.Name)
+		req.Name = &name
+		field := ""
+		switch n := utf8.RuneCountInString(name); {
+		case n == 0:
+			field = "required"
+		case n > maxBillName:
+			field = "too_long"
+		case strings.IndexFunc(name, unicode.IsControl) >= 0:
+			field = "invalid"
+		}
+		if field != "" {
+			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid source name", "fields": map[string]string{"name": field}})
+			return
+		}
+	}
+	id := r.PathValue("id")
+	if !chores.ValidID(id) {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return
+	}
+	found, err := h.store.SetDisplayName(r.Context(), identity.CurrentUser(r.Context()).ID, id, req.Name)
+	h.answer(w, found, err, "set source name", func() { w.WriteHeader(http.StatusNoContent) })
+}
+
 // PatchTransaction answers PATCH /me/finance/transactions/{id}. A malformed id
 // and another User's row both answer 404, so ids cannot be probed.
 func (h *Handler) PatchTransaction(w http.ResponseWriter, r *http.Request) {

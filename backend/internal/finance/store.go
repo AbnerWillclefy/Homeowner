@@ -142,14 +142,14 @@ func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, no
 // Overview reads the whole status body: Sources, import state and credentials flag.
 func (s *Store) Overview(ctx context.Context, userID string) (StatusResponse, error) {
 	out := StatusResponse{Sources: []SourceResponse{}}
-	rows, err := s.db.Query(ctx, `SELECT id, name, kind, currency, bill_close_day, bill_due_day FROM finance_sources WHERE user_id = $1 ORDER BY name, id`, userID)
+	rows, err := s.db.Query(ctx, `SELECT id, COALESCE(display_name, name) AS shown, name, kind, currency, bill_close_day, bill_due_day FROM finance_sources WHERE user_id = $1 ORDER BY shown, id`, userID)
 	if err != nil {
 		return out, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var src SourceResponse
-		if err := rows.Scan(&src.ID, &src.Name, &src.Kind, &src.Currency, &src.CloseDay, &src.DueDay); err != nil {
+		if err := rows.Scan(&src.ID, &src.Name, &src.BankName, &src.Kind, &src.Currency, &src.CloseDay, &src.DueDay); err != nil {
 			return out, err
 		}
 		out.Sources = append(out.Sources, src)
@@ -253,6 +253,13 @@ func (s *Store) SetBillDays(ctx context.Context, itemID string, accounts []plugg
 func (s *Store) SetBillDaysByHand(ctx context.Context, userID, sourceID string, closeDay, dueDay *int) (found bool, err error) {
 	tag, err := s.db.Exec(ctx, `UPDATE finance_sources SET bill_close_day = $3, bill_due_day = $4
 		WHERE id = $1 AND user_id = $2 AND kind = 'credit_card'`, sourceID, userID, closeDay, dueDay)
+	return tag.RowsAffected() == 1, err
+}
+
+// SetDisplayName stores the name a User gave one of their Sources, or clears it
+// with nil. found is false for another User's Source. A sync never writes it.
+func (s *Store) SetDisplayName(ctx context.Context, userID, sourceID string, name *string) (found bool, err error) {
+	tag, err := s.db.Exec(ctx, `UPDATE finance_sources SET display_name = $3 WHERE id = $1 AND user_id = $2`, sourceID, userID, name)
 	return tag.RowsAffected() == 1, err
 }
 
@@ -421,7 +428,7 @@ func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string,
 
 // transactionColumns reads a Transaction as TransactionResponse, with its
 // Source's name, then what CountsOn needs.
-const transactionColumns = `t.id, t.posted_on::text, t.description, s.name, t.amount_cents, t.currency, t.type,
+const transactionColumns = `t.id, t.posted_on::text, t.description, COALESCE(s.display_name, s.name), t.amount_cents, t.currency, t.type,
 	t.spending_category, t.type_set_by, t.category_set_by, t.installment_number, t.total_installments,
 	t.posted_on, s.kind, COALESCE(s.bill_close_day, 0), COALESCE(s.bill_due_day, 0)`
 
@@ -628,8 +635,8 @@ func (s *Store) InstallmentPlans(ctx context.Context, userID string) ([]Plan, er
 // CardSources lists the User's credit card Sources, with whether both bill days
 // are set and the bills the bank reported for each.
 func (s *Store) CardSources(ctx context.Context, userID string) ([]Card, error) {
-	rows, err := s.db.Query(ctx, `SELECT id, name, bill_close_day IS NOT NULL AND bill_due_day IS NOT NULL
-		FROM finance_sources WHERE user_id = $1 AND kind = 'credit_card' ORDER BY name, id`, userID)
+	rows, err := s.db.Query(ctx, `SELECT id, COALESCE(display_name, name) AS shown, bill_close_day IS NOT NULL AND bill_due_day IS NOT NULL
+		FROM finance_sources WHERE user_id = $1 AND kind = 'credit_card' ORDER BY shown, id`, userID)
 	if err != nil {
 		return nil, err
 	}
