@@ -1,11 +1,11 @@
 import { NavLink, useLocation } from "react-router";
-import { FINANCES_BILLS_PATH, FINANCES_PATH, FINANCES_SPENDING_PATH } from "../../../app/logic/routes";
+import { FINANCES_BILLS_PATH, FINANCES_PATH, FINANCES_SAVINGS_PATH, FINANCES_SPENDING_PATH } from "../../../app/logic/routes";
 import { useI18n } from "../../../shared/i18n";
 
-export const VIEWS = { summary: FINANCES_PATH, spending: FINANCES_SPENDING_PATH, bills: FINANCES_BILLS_PATH } as const;
+export const VIEWS = { summary: FINANCES_PATH, spending: FINANCES_SPENDING_PATH, bills: FINANCES_BILLS_PATH, savings: FINANCES_SAVINGS_PATH } as const;
 export type FinanceView = keyof typeof VIEWS;
 
-/** Resumo, Gastos and Contas as links, one route each, so a reload stays on the view. The picked month goes along. */
+/** Resumo, Gastos, Contas and Economias as links, one route each, so a reload stays on the view. The picked month goes along. */
 export function FinanceNav() {
   const { t } = useI18n();
   const { search } = useLocation();

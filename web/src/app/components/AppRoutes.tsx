@@ -21,7 +21,6 @@ const MePage = lazyNamed(() => import("./pages/MePage"), "MePage");
 const FinancesTab = lazyNamed(() => import("../../domains/finance/components/FinancesTab"), "FinancesTab");
 const SpendingCategoryScreen = lazyNamed(() => import("../../domains/finance/components/SpendingCategoryScreen"), "SpendingCategoryScreen");
 const FinanceSettings = lazyNamed(() => import("../../domains/finance/components/FinanceSettings"), "FinanceSettings");
-const FinanceSavings = lazyNamed(() => import("../../domains/finance/components/FinanceSavings"), "FinanceSavings");
 const MeEdit =lazyNamed(() => import("../../domains/profile/components/MeEdit"), "MeEdit");
 
 /**
@@ -75,7 +74,7 @@ export function AppRoutes() {
               </LazyPage>
             }
           />
-          {([[FINANCES_PATH, "summary"], [FINANCES_SPENDING_PATH, "spending"], [FINANCES_BILLS_PATH, "bills"]] as const).map(([path, view]) => (
+          {([[FINANCES_PATH, "summary"], [FINANCES_SPENDING_PATH, "spending"], [FINANCES_BILLS_PATH, "bills"], [FINANCES_SAVINGS_PATH, "savings"]] as const).map(([path, view]) => (
             <Route
               key={path}
               path={path}
@@ -104,16 +103,6 @@ export function AppRoutes() {
               <FinanceRoute>
                 <LazyPage key="finances-settings" message="finances.loading" skeleton={<FinancesFallback />}>
                   <FinanceSettings />
-                </LazyPage>
-              </FinanceRoute>
-            }
-          />
-          <Route
-            path={FINANCES_SAVINGS_PATH}
-            element={
-              <FinanceRoute>
-                <LazyPage key="finances-savings" message="finances.loading" skeleton={<FinancesFallback />}>
-                  <FinanceSavings />
                 </LazyPage>
               </FinanceRoute>
             }

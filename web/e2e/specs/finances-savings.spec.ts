@@ -6,8 +6,8 @@ import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
 
-// What this covers, pt-BR first and then English: Economias is a route of its own (/finances/economias) with a back
-// link, reached from Resumo. With nothing set every card says what to do first. Each form is a dialog: a refused value
+// What this covers, pt-BR first and then English: Economias is the fourth tab of Finances (/finances/economias), with
+// no month picker, reached from the tab or from Resumo. With nothing set every card says what to do first. Each form is a dialog: a refused value
 // shows its message on the field and a failed write keeps what was typed and succeeds on the next try. An Investment
 // and a Goal can be added, changed and deleted; the Emergency reserve target and the Monthly contribution can be set
 // and cleared, the contribution showing the split in money as it is typed. Goals are reordered in a mode with Up and
@@ -169,22 +169,42 @@ for (const l of LOCALES) {
     test.describe("with nothing set", () => {
       test.use({ fakeState: stateWith() });
 
-      test("every card says what to do first, and the screen is reached from Resumo and goes back to it", async ({ page, baseURL, fakeApi }) => {
+      test("Economias is the fourth tab: it opens the cards, survives a reload and is reached by keyboard", async ({ page, baseURL, fakeApi }) => {
+        fakeApi.use(signedInHandlers);
+        await seedSession(page, { email: RESIDENT_EMAIL });
+        await visit(page, new URL("/finances/gastos", baseURL!).toString());
+        const nav = page.getByRole("navigation", { name: l.back, exact: true });
+        await expect(nav.getByRole("link")).toHaveCount(4);
+        await expect(nav.getByRole("link").nth(3)).toHaveText(l.title);
+        // Keyboard: Tab from the link before it reaches Economias, and Enter opens it.
+        await nav.getByRole("link").nth(2).focus();
+        await page.keyboard.press("Tab");
+        await expect(nav.getByRole("link", { name: l.title, exact: true })).toBeFocused();
+        await page.keyboard.press("Enter");
+        await expect(page).toHaveURL(/\/finances\/economias$/);
+        await expect(nav.getByRole("link", { name: l.title, exact: true })).toHaveAttribute("aria-current", "page");
+        await expect(card(page, l.cards.goals)).toBeVisible();
+        // Savings is not monthly: no month picker here.
+        await expect(page.getByRole("group", { name: /./ })).toHaveCount(0);
+        await page.reload();
+        await expect(page).toHaveURL(/\/finances\/economias$/);
+        await expect(card(page, l.cards.goals)).toBeVisible();
+      });
+
+      test("every card says what to do first, and the screen is reached from Resumo", async ({ page, baseURL, fakeApi }) => {
         fakeApi.use(signedInHandlers);
         await seedSession(page, { email: RESIDENT_EMAIL });
         await visit(page, new URL("/finances", baseURL!).toString());
         // With no Monthly contribution the suggestion card in Resumo leads to Economias by asking for one.
         await page.getByRole("link", { name: l.setContribution, exact: true }).click();
         await expect(page).toHaveURL(/\/finances\/economias$/);
-        await expect(page.getByRole("heading", { name: l.title, level: 2 })).toBeVisible();
+        await expect(page.getByRole("link", { name: l.title, exact: true })).toHaveAttribute("aria-current", "page");
         await expect(card(page, l.cards.contribution)).toContainText(l.emptyContribution);
         await expect(card(page, l.cards.reserve)).toContainText(l.emptyReserve);
         await expect(card(page, l.cards.goals)).toContainText(l.emptyGoals);
         await expect(card(page, l.cards.investments)).toContainText(l.emptyInvestments);
         // The hint about retyping money sent to an unconnected investment sits in the Investments card.
         await expect(card(page, l.cards.investments)).toContainText(l.transfer);
-        await page.getByRole("button", { name: l.back, exact: true }).click();
-        await expect(page).toHaveURL(/\/finances$/);
       });
 
       test("sets and clears the Monthly contribution, showing the split in money as it is typed", async ({ page, baseURL, fakeApi }) => {

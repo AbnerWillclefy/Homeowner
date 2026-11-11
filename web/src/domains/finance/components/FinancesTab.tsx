@@ -11,6 +11,7 @@ import { BillsSection } from "./BillsSection";
 import { Commitments } from "./Commitments";
 import { FinanceNav, type FinanceView } from "./FinanceNav";
 import { FinanceSetup, FinanceStatusGate } from "./FinanceSetup";
+import { SavingsCards } from "./FinanceSavings";
 import { MonthPicker } from "./MonthPicker";
 import { Spending } from "./Spending";
 import { Summary } from "./Summary";
@@ -51,12 +52,14 @@ export function FinancesTab({ view }: { view: FinanceView }) {
               ) : (
                 <div className="flex flex-col gap-4">
                   <FinanceNav />
-                  <MonthPicker groupLabel={t("finances.month.heading")} />
+                  {/* Economias is not monthly, so it has no month to pick. */}
+                  {view !== "savings" && <MonthPicker groupLabel={t("finances.month.heading")} />}
                   {status.importing && <p className="my-0 text-muted">{t("finances.importing")}</p>}
                   {view === "summary" && <Summary lastSyncedAt={status.lastSyncedAt} />}
                   {/* Keyed by month, so a switch starts clean: no open dialog or note from the month before. */}
                   {view === "spending" && <Spending key={month} />}
                   {view === "bills" && <BillsSection key={month} current={<Commitments />} />}
+                  {view === "savings" && <SavingsCards />}
                 </div>
               )
             }

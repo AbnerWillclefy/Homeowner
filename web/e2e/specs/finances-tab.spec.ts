@@ -103,8 +103,8 @@ for (const l of LOCALES) {
       test.use({ fakeState: sourced() });
       const names =
         l.locale === "pt-BR"
-          ? { views: ["Resumo", "Gastos", "Contas"], settings: "Ajustes de finanças", back: "Finanças", prev: "Mês anterior", month: "Outubro de 2026" }
-          : { views: ["Summary", "Spending", "Bills"], settings: "Finance settings", back: "Finances", prev: "Previous month", month: "October 2026" };
+          ? { views: ["Resumo", "Gastos", "Contas", "Economias"], settings: "Ajustes de finanças", back: "Finanças", prev: "Mês anterior", month: "Outubro de 2026" }
+          : { views: ["Summary", "Spending", "Bills", "Savings"], settings: "Finance settings", back: "Finances", prev: "Previous month", month: "October 2026" };
 
       test("opens on the summary, each view is its own route, and Ajustes is a route with Back", async ({ page, baseURL }) => {
         await visit(page, new URL("/finances", baseURL!).toString());
