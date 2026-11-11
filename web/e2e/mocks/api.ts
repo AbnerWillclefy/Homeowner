@@ -82,6 +82,8 @@ export interface FakeState {
       plannedCents: number;
       /** Only the current month has it. */
       spentOffCardCents?: number;
+      /** The larger of the month's saving and the Monthly contribution, counted in `totalCents`. */
+      savingCents?: number;
       totalCents: number;
     }[];
     /** What `GET /me/finance/savings` answers and the savings writes change. Absent means nothing set and no rows. */
@@ -126,7 +128,7 @@ export interface FakeState {
       sourceName: string;
       amountCents: number;
       currency: string;
-      type: "income" | "expense" | "transfer";
+      type: "income" | "expense" | "transfer" | "saving";
       spendingCategory: string | null;
       /** `fallback` is a Transaction nothing could categorise; the PATCH sets `user`. Absent reads as null. */
       categorySetBy?: "auto" | "user" | "fallback" | null;

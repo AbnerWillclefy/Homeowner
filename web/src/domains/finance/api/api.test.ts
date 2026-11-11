@@ -315,6 +315,13 @@ describe("commitments", () => {
     expect(await getCommitments("2026-11")).toMatchObject({ kind: "ok", commitments: { months: [{ spentOffCardCents: 5000, leftoverCents: -2000 }] } });
   });
 
+  it("keeps the money put aside when sent, and reads a month without it", async () => {
+    stubFetch(Response.json({ monthlyIncomeCents: 85000, months: [{ ...MONTH_OUTLOOK, savingCents: 30000 }] }));
+    expect(await getCommitments("2026-11")).toMatchObject({ kind: "ok", commitments: { months: [{ savingCents: 30000 }] } });
+    stubFetch(Response.json({ monthlyIncomeCents: 85000, months: [MONTH_OUTLOOK] }));
+    expect(await getCommitments("2026-11")).toMatchObject({ kind: "ok" });
+  });
+
   it("is an error for a body it cannot read", async () => {
     stubFetch(Response.json({ monthlyIncomeCents: "x", months: [] }));
     expect(await getCommitments("2026-11")).toEqual({ kind: "error" });
@@ -325,6 +332,7 @@ describe("commitments", () => {
       { planned: [{ category: "x" }] },
       { totalCents: "1" },
       { leftoverCents: "1" },
+      { savingCents: "1" },
     ];
     for (const change of bad) {
       stubFetch(Response.json({ monthlyIncomeCents: null, months: [{ ...MONTH_OUTLOOK, ...change }] }));

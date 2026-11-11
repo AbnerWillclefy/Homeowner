@@ -6,6 +6,7 @@ const view = (...spent: number[]): MonthView => ({
   spentCents: 0,
   categories: spent.map((spentCents, i) => ({ category: (["groceries", "leisure", "health", "pets"] as const)[i]!, spentCents, transactions: [] })),
   transfers: [],
+  savings: [],
   income: [],
   isEmpty: false,
 });

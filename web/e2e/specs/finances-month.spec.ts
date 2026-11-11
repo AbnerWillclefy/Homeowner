@@ -27,6 +27,7 @@ const LOCALES = [
     prev: "Mês anterior",
     next: "Próximo mês",
     transfer: "Transferência",
+    saving: "Guardado",
     expense: "Despesa",
     category: "Categoria de gasto",
     save: "Salvar",
@@ -107,6 +108,21 @@ for (const l of LOCALES) {
       await expect(page.getByText(l.afterTransfer).locator("visible=true").first()).toBeVisible();
       await expect(page.getByRole("button", { name: new RegExp(l.leisure) })).toHaveCount(0);
       await expect((await leftOut(page, l.transfers)).getByText("Cinema")).toBeVisible();
+    });
+
+    test("marking a transaction as saving takes it out of the spending and lists it as put aside", async ({ page, fakeApi }) => {
+      await page.getByRole("button", { name: new RegExp(l.leisure) }).click();
+      await page.getByRole("button", { name: /Cinema/ }).click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByRole("radio", { name: l.saving }).check({ force: true });
+      await expect(dialog.getByLabel(l.category)).toHaveCount(0);
+      await dialog.getByRole("button", { name: l.save }).click();
+
+      await expect(dialog).toHaveCount(0);
+      expect(fakeApi.requests.find((r) => r.method === "PATCH")?.body).toEqual({ type: "saving" });
+      await expect(page.getByText(l.afterTransfer).locator("visible=true").first()).toBeVisible();
+      await expect(page.getByRole("button", { name: new RegExp(l.leisure) })).toHaveCount(0);
+      await expect((await leftOut(page, l.saving)).getByText("Cinema")).toBeVisible();
     });
 
     test("changing the category files the expense under the new one", async ({ page, fakeApi }) => {

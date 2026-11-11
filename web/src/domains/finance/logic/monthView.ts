@@ -13,19 +13,22 @@ export interface CategoryGroup {
 export interface MonthView {
   spentCents: number;
   categories: CategoryGroup[];
-  /** Left out of the totals. Saving rows sit here until they get their own group. */
   transfers: Transaction[];
+  /** Money put aside, left out of spending. A negative amount is a withdrawal (Resgate). */
+  savings: Transaction[];
   income: Transaction[];
   isEmpty: boolean;
 }
 
-/** Expenses by category, biggest spend first; transfers and income apart. An Expense not yet categorised counts as Other. */
+/** Expenses by category, biggest spend first; transfers, savings and income apart. An Expense not yet categorised counts as Other. */
 export function monthView(response: MonthResponse): MonthView {
   const groups = new Map<SpendingCategory, CategoryGroup>();
   const transfers: Transaction[] = [];
+  const savings: Transaction[] = [];
   const income: Transaction[] = [];
   for (const tx of response.transactions) {
-    if (tx.type === "transfer" || tx.type === "saving") transfers.push(tx);
+    if (tx.type === "transfer") transfers.push(tx);
+    else if (tx.type === "saving") savings.push(tx);
     else if (tx.type === "income") income.push(tx);
     else {
       const category = tx.spendingCategory ?? "other";
@@ -39,6 +42,7 @@ export function monthView(response: MonthResponse): MonthView {
     spentCents: response.spentCents,
     categories: [...groups.values()].sort((a, b) => b.spentCents - a.spentCents),
     transfers,
+    savings,
     income,
     isEmpty: response.transactions.length === 0,
   };

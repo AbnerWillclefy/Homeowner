@@ -44,10 +44,11 @@ describe("monthView", () => {
     expect(view.income.map((t) => t.id)).toEqual(["e"]);
     expect(view.spentCents).toBe(4200);
   });
-  it("puts saving rows with the transfers, out of the categories", () => {
+  it("puts saving rows in their own list, out of the categories and the transfers", () => {
     const saving = tx({ id: "s", amountCents: -50000, type: "saving", spendingCategory: null });
     const view = monthView({ ...response, transactions: [...response.transactions, saving] });
-    expect(view.transfers.map((t) => t.id)).toEqual(["d", "s"]);
+    expect(view.transfers.map((t) => t.id)).toEqual(["d"]);
+    expect(view.savings.map((t) => t.id)).toEqual(["s"]);
     expect(view.categories.flatMap((c) => c.transactions.map((t) => t.id))).not.toContain("s");
   });
   it("is empty for a month with nothing", () => {

@@ -18,6 +18,10 @@ describe("editFor", () => {
   it("sends only the type when it leaves Expense, whatever the picker still holds", () => {
     expect(editFor(tx, "transfer", "pets")).toEqual({ type: "transfer" });
   });
+  it("sends only the type for a saving, which has no category", () => {
+    expect(editFor(tx, "saving", "pets")).toEqual({ type: "saving" });
+    expect(editFor({ ...tx, type: "saving", spendingCategory: null }, "saving", "other")).toBeNull();
+  });
   it("sends the category with the type when it becomes an Expense", () => {
     expect(editFor({ ...tx, type: "income", spendingCategory: null }, "expense", "health")).toEqual({
       type: "expense",

@@ -89,6 +89,7 @@ const GROUP_LABEL = {
   bills: "finances.commit.group.bills",
   planned: "finances.commit.group.plannedCurrent",
   spent: "finances.commit.group.spent",
+  saving: "finances.commit.group.saving",
 } as const;
 
 /**
@@ -164,7 +165,7 @@ export function Summary({ lastSyncedAt }: { lastSyncedAt: string | null }) {
                 </>
               )}
               <dl className="m-0 flex flex-col gap-2 border-t border-border pt-3">
-                {(["cards", "bills", "planned", "spent"] as const).map((id) => (
+                {(["cards", "bills", "planned", "spent", "saving"] as const).map((id) => (
                   <div key={id} className="flex flex-wrap items-baseline justify-between gap-x-3">
                     <dt className="min-w-0 [overflow-wrap:anywhere]">{t(GROUP_LABEL[id])}</dt>
                     <dd className="m-0 font-bold">{money(leftover.groups.find((g) => g.id === id)?.cents ?? 0)}</dd>

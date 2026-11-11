@@ -62,6 +62,24 @@ describe("monthRows", () => {
     expect(groups.at(-1)).toEqual({ id: "spent", cents: 0, items: [] });
   });
 
+  it("adds the money put aside after the spending off the card, so the groups add up to the total", () => {
+    expect(monthRows(month()).groups.some((g) => g.id === "saving")).toBe(false);
+    const rows = monthRows(
+      month({
+        cards: [{ sourceId: "a", name: "Nubank", amountCents: 100000, billDaysKnown: true }],
+        otherBills: [{ id: "1", name: "Luz", cents: 20000, paid: false }],
+        planned: [{ category: "groceries", cents: 30000 }],
+        plannedCents: 30000,
+        spentOffCardCents: 40000,
+        savingCents: 50000,
+        totalCents: 240000,
+      }),
+    );
+    expect(rows.groups.map((g) => g.id)).toEqual(["cards", "bills", "planned", "spent", "saving"]);
+    expect(rows.groups.at(-1)).toEqual({ id: "saving", cents: 50000, items: [] });
+    expect(rows.groups.reduce((a, g) => a + g.cents, 0)).toBe(rows.totalCents);
+  });
+
   it("has no leftover without income, and says by how much a total passes it", () => {
     expect(monthRows(month({ totalCents: 1000 }))).toMatchObject({ leftoverCents: null, overCents: 0 });
     expect(monthRows(month({ totalCents: 150000, leftoverCents: -50000 }))).toMatchObject({ leftoverCents: -50000, overCents: 50000 });

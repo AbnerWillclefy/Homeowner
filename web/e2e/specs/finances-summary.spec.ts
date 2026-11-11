@@ -30,7 +30,11 @@ const LOCALES = [
       /Outras contas\s*R\$\s*700,00/,
       /Gasto previsto \(o que falta dos limites\)\s*R\$\s*500,00/,
       /Já gasto fora do cartão\s*R\$\s*200,00/,
+      /Guardado\s*R\$\s*0,00/,
     ],
+    savedRow: /Guardado\s*R\$\s*300,00/,
+    savedTotal: /Total\s*R\$\s*2\.800,00/,
+    savedLeft: /R\$\s*700,00/,
     none: "Informe sua renda mensal para ver a sobra do mês.",
     seeMonths: "Ver próximos meses",
     commitHeading: "Próximos meses",
@@ -73,7 +77,11 @@ const LOCALES = [
       /Other bills\s*R\$\s*700\.00/,
       /Planned spending \(left of your limits\)\s*R\$\s*500\.00/,
       /Already spent off the card\s*R\$\s*200\.00/,
+      /Put aside\s*R\$\s*0\.00/,
     ],
+    savedRow: /Put aside\s*R\$\s*300\.00/,
+    savedTotal: /Total\s*R\$\s*2,800\.00/,
+    savedLeft: /R\$\s*700\.00/,
     none: "Set your monthly income to see what is left this month.",
     seeMonths: "See coming months",
     commitHeading: "Coming months",
@@ -108,7 +116,7 @@ const tx = (id: string, postedOn: string, amountCents: number, spendingCategory:
 });
 
 /** January: 600,00 spent. December up to the 15th: `december` cents, and 500,00 more after the 15th that must not count. */
-const connected = ({ income = 350000 as number | null, december = 30000, allPaid = false, older = false, noHistory = false, total = 250000 } = {}) => {
+const connected = ({ income = 350000 as number | null, december = 30000, allPaid = false, older = false, noHistory = false, total = 250000, saving = 0 } = {}) => {
   const s = signedInResident();
   s.user.finance = true;
   const paid: Record<string, "bank" | "hand"> = allPaid ? { "2030-01": "hand" } : {};
@@ -118,7 +126,7 @@ const connected = ({ income = 350000 as number | null, december = 30000, allPaid
     importing: false,
     lastSyncedAt: "2030-01-15T12:00:00Z",
     monthlyIncomeCents: income,
-    // January: cards 1.100,00 + other bills 700,00 + planned 500,00 + spent off the card 200,00 = 2.500,00; the fake derives the leftover.
+    // January: cards 1.100,00 + other bills 700,00 + planned 500,00 + spent off the card 200,00 + put aside `saving` = `total` (2.500,00 by default); the fake derives the leftover.
     commitments: [
       total === 0
         ? { month: "2030-01", installments: [], cards: [], otherBills: [], otherInstallmentsCents: 0, planned: [], plannedCents: 0, spentOffCardCents: 0, totalCents: 0 }
@@ -131,6 +139,7 @@ const connected = ({ income = 350000 as number | null, december = 30000, allPaid
             planned: [{ category: "groceries", cents: 50000 }],
             plannedCents: 50000,
             spentOffCardCents: 20000,
+            savingCents: saving,
             totalCents: total,
           },
     ],
@@ -269,6 +278,16 @@ for (const l of LOCALES) {
         await expect(page.getByRole("region", { name: l.heading.top }).getByRole("listitem")).toHaveCount(3);
         await bills.getByRole("button", { name: l.retry }).click();
         await expect(bills.getByRole("listitem")).toHaveCount(3);
+      });
+    });
+
+    test.describe("with money put aside", () => {
+      test.use({ fakeState: connected({ saving: 30000, total: 280000 }) });
+
+      test("lists the saving line and the parts add up to the total", async ({ page }) => {
+        const card = page.getByRole("region", { name: l.heading.split });
+        // 1.100 + 700 + 500 + 200 + 300 = 2.800, and the leftover is 3.500 - 2.800.
+        for (const row of [...l.groups.slice(0, 4), l.savedRow, l.savedTotal, l.savedLeft]) await expect(card).toContainText(row);
       });
     });
 

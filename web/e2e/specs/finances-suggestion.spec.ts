@@ -32,7 +32,7 @@ const LOCALES = [
     retry: "Tentar novamente",
     failed: "Não deu para carregar o que guardar.",
     noContribution: "Defina um aporte mensal para ver quanto guardar em cada mês.",
-    noIncome: "Informe sua renda mensal para comparar a sobra com o aporte.",
+    noIncome: "Informe sua renda mensal para ver a sobra depois do aporte.",
     noTarget: "Ainda sem meta",
     noGoal: "Sem objetivo",
     noGoalNote: "Crie um objetivo para este valor.",
@@ -44,8 +44,8 @@ const LOCALES = [
     overHeading: "Categorias acima do limite",
     groceries: "Mercado",
     over: (m: string) => `${m} acima`,
-    above: (left: string, extra: string) => `A sobra de Janeiro é ${left}, ${extra} acima do aporte. Guardando esse valor também, a reserva chega 2 meses antes.`,
-    below: (left: string, short: string) => `A sobra de Janeiro é ${left}, ${short} abaixo do aporte.`,
+    above: (left: string) => `A sobra de Janeiro é ${left}, depois do aporte. Guardando esse valor também, a reserva chega 2 meses antes.`,
+    below: (left: string, short: string) => `A sobra de Janeiro é ${left}: o mês gasta ${short} a mais que a renda.`,
     noneOver: "Nenhuma categoria passou do limite.",
     thisMonth: "Neste mês",
     percent: "41% da meta",
@@ -66,7 +66,7 @@ const LOCALES = [
     retry: "Try again",
     failed: "We could not load what to save.",
     noContribution: "Set a monthly contribution to see how much to save each month.",
-    noIncome: "Set your monthly income to compare your leftover with the contribution.",
+    noIncome: "Set your monthly income to see your leftover after your contribution.",
     noTarget: "No target yet",
     noGoal: "No Goal",
     noGoalNote: "Add a Goal for this amount.",
@@ -78,8 +78,8 @@ const LOCALES = [
     overHeading: "Categories over their limit",
     groceries: "Groceries",
     over: (m: string) => `${m} over`,
-    above: (left: string, extra: string) => `Your January leftover is ${left}, ${extra} above your contribution. Saving that too gets the reserve there 2 months sooner.`,
-    below: (left: string, short: string) => `Your January leftover is ${left}, ${short} below your contribution.`,
+    above: (left: string) => `Your January leftover is ${left}, after your contribution. Saving that too gets the reserve there 2 months sooner.`,
+    below: (left: string, short: string) => `Your January leftover is ${left}: the month takes ${short} more than your income.`,
     noneOver: "No category went over its limit.",
     thisMonth: "This month",
     percent: "41% of the target",
@@ -187,7 +187,7 @@ for (const l of LOCALES) {
       test("says how much more could be saved and how much sooner, with no button", async ({ page, baseURL, fakeApi }) => {
         await open(page, baseURL, fakeApi);
         const c = card(page);
-        await expect(c).toContainText(like(l.above(money(200000), money(100000))));
+        await expect(c).toContainText(like(l.above(money(200000))));
         await expect(c.getByRole("button")).toHaveCount(0);
         await expect(c.getByRole("link")).toHaveCount(1);
         expect(await noDanger(c)).toBe(true);
@@ -199,7 +199,7 @@ for (const l of LOCALES) {
 
       test("leaves the sooner sentence out", async ({ page, baseURL, fakeApi }) => {
         await open(page, baseURL, fakeApi);
-        await expect(card(page)).toContainText(like(`${money(100000)} ${l.locale === "pt-BR" ? "acima do aporte" : "above your contribution"}`));
+        await expect(card(page)).toContainText(like(`${money(200000)}, ${l.locale === "pt-BR" ? "depois do aporte" : "after your contribution"}`));
         await expect(card(page)).not.toContainText(/2 (meses antes|months sooner)|(meses antes|months sooner)/);
       });
     });

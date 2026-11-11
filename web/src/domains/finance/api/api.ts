@@ -275,6 +275,8 @@ export interface CommitmentMonth {
   plannedCents: number;
   /** Present only on the current month. */
   spentOffCardCents?: number;
+  /** The larger of the month's saving Transactions (net of withdrawals) and the Monthly contribution; counted in `totalCents`. */
+  savingCents?: number;
   totalCents: number;
   /** Absent when no Monthly income is set; negative when the month takes more. */
   leftoverCents?: number;
@@ -306,6 +308,7 @@ function parseCommitments(body: unknown): Commitments | null {
       isNum(m.plannedCents) &&
       isNum(m.totalCents) &&
       optNum(m.spentOffCardCents) &&
+      optNum(m.savingCents) &&
       optNum(m.leftoverCents),
   );
   return valid ? (body as unknown as Commitments) : null;

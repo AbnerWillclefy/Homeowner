@@ -126,7 +126,7 @@ function MonthSentence({ part, name, money }: { part: MonthPart; name: string; m
     case "above":
       return (
         <p className="my-0 text-sm">
-          {t("finances.suggestion.above", { month: name, leftover: money(part.leftoverCents), extra: money(part.extraCents) })}
+          {t("finances.suggestion.above", { month: name, leftover: money(part.leftoverCents) })}
           {part.monthsSooner !== null && (
             <>
               {" "}

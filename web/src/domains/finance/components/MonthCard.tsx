@@ -11,6 +11,7 @@ const GROUP_KEY = {
   bills: "finances.commit.group.bills",
   planned: "finances.commit.group.planned",
   spent: "finances.commit.group.spent",
+  saving: "finances.commit.group.saving",
 } as const;
 const ROW ="flex flex-wrap items-baseline justify-between gap-x-3";
 

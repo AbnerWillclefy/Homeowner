@@ -16,6 +16,7 @@ const TYPES: { type: TransactionType; key: MessageKey }[] = [
   { type: "income", key: "finances.type.income" },
   { type: "expense", key: "finances.type.expense" },
   { type: "transfer", key: "finances.type.transfer" },
+  { type: "saving", key: "finances.type.saving" },
 ];
 
 /** Changes a Transaction's type and, for an Expense, its Spending Category. A failed save stays open to retry. */
