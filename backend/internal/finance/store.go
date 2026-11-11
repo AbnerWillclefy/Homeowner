@@ -757,3 +757,12 @@ func (s *Store) ReserveCategorizerCall(ctx context.Context, userID string, date 
 	}
 	return err == nil, err
 }
+
+// SpentByPosted is the net of the User's Expenses posted in [from, to), on every
+// Source: Month's Spent since the 1st, by posted day and not CountsOn.
+func (s *Store) SpentByPosted(ctx context.Context, userID string, from, to time.Time) (int64, error) {
+	var cents int64
+	err := s.db.QueryRow(ctx, `SELECT COALESCE(-SUM(amount_cents), 0)::bigint FROM finance_transactions
+		WHERE user_id = $1 AND type = 'expense' AND posted_on >= $2 AND posted_on < $3`, userID, from, to).Scan(&cents)
+	return cents, err
+}
