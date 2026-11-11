@@ -62,13 +62,13 @@ export type SuggestionRow =
   | { kind: "goal"; id: string; name: string; cents: number | null; when: When }
   | { kind: "unassigned"; cents: number };
 
-/** How this month's leftover compares with the Monthly contribution. */
+/** How this month's leftover, which already subtracts the contribution, compares with zero. */
 export type MonthPart =
   /** `reaches` is what comes sooner: the reserve while it is unfilled, else the first Goal not yet full (the one the server measured). */
   | { kind: "above"; leftoverCents: number; extraCents: number; monthsSooner: number | null; reaches: "reserve" | { goal: string } }
   | { kind: "below"; leftoverCents: number | null; shortfallCents: number | null; over: OverLimit[] }
   | { kind: "noIncome" }
-  /** The leftover equals the contribution, or the income is not known yet. */
+  /** The leftover is zero, or the income is not known yet. */
   | { kind: "none" };
 
 export type Suggestion = { kind: "noContribution" } | { kind: "ready"; baseCents: number; rows: SuggestionRow[]; month: MonthPart };

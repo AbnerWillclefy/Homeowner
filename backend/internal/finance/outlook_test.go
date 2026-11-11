@@ -278,7 +278,8 @@ func TestOutlookSavingAndLastMonthPlan(t *testing.T) {
 		rows         []Txn
 		contribution int64
 		last         map[string]int64
-		income       *int64
+		limits       map[string]int64
+		income      *int64
 		saving       int64
 		planned      []PlannedLine
 		total        int64
@@ -293,6 +294,9 @@ func TestOutlookSavingAndLastMonthPlan(t *testing.T) {
 		"a category without a limit plans last month's spend": {
 			last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 700}}, total: 700,
 		},
+		"a limit beats last month's spend": {
+			limits: map[string]int64{"pets": 500}, last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 500}}, total: 500,
+		},
 		"a negative last month plans nothing": {last: map[string]int64{"pets": -50}, planned: none},
 		"a card purchase counts once: in the bill, and out of the plan": {
 			rows: []Txn{cardBuy}, last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 400}}, total: 700,
@@ -301,7 +305,7 @@ func TestOutlookSavingAndLastMonthPlan(t *testing.T) {
 			rows: []Txn{saving(900)}, income: i64(600), saving: 900, planned: none, total: 900, leftover: i64(-300),
 		},
 	} {
-		got := Outlook(c.rows, card, nil, [][]MonthBill{nil}, c.income, nil, c.last, c.contribution, nov, nov, 1)[0]
+		got := Outlook(c.rows, card, nil, [][]MonthBill{nil}, c.income, c.limits, c.last, c.contribution, nov, nov, 1)[0]
 		if got.SavingCents != c.saving || got.TotalCents != c.total || !reflect.DeepEqual(got.Planned, c.planned) || !reflect.DeepEqual(got.LeftoverCents, c.leftover) {
 			t.Errorf("%s: saving %d total %d planned %v leftover %v", name, got.SavingCents, got.TotalCents, got.Planned, got.LeftoverCents)
 		}

@@ -156,7 +156,7 @@ describe("suggestionOf", () => {
       }
     });
 
-    it("is below the contribution with the shortfall and the Categories over", () => {
+    it("is below zero with the shortfall and the Categories over", () => {
       const over = [{ category: "restaurants", overCents: 12000 }];
       expect(month(savings({ overLimit: over }), { incomeSet: true, leftoverCents: -30000 })).toEqual({ kind: "below", leftoverCents: -30000, shortfallCents: 30000, over });
     });
@@ -173,7 +173,7 @@ describe("suggestionOf", () => {
       expect(month(savings(), { incomeSet: false, leftoverCents: null })).toEqual({ kind: "noIncome" });
     });
 
-    it("is neither when the leftover equals the contribution, or the income is not known yet", () => {
+    it("is neither when the leftover is zero, or the income is not known yet", () => {
       expect(month(savings())).toEqual({ kind: "none" });
       expect(month(savings(), { incomeSet: null, leftoverCents: null })).toEqual({ kind: "none" });
     });

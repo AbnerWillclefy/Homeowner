@@ -299,7 +299,13 @@ func (h *Handler) loadOutlook(ctx context.Context, uid string, from time.Time, m
 	if err != nil {
 		return in, err
 	}
-	in.outlook = Outlook(in.rows, cards, in.plans, bills, in.income, in.limits, MonthTotals(prev).ByCategory, contribution, current, from, months)
+	var spent []Txn
+	for _, t := range prev {
+		if !t.Linked { // the paid Bill is already in the other Bills
+			spent = append(spent, t)
+		}
+	}
+	in.outlook = Outlook(in.rows, cards, in.plans, bills, in.income, in.limits, MonthTotals(spent).ByCategory, contribution, current, from, months)
 	return in, nil
 }
 
