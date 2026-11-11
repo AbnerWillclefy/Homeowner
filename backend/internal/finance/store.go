@@ -535,22 +535,28 @@ func ptr(s string) *string { return &s }
 
 // InstallmentPlans returns the latest seen charge of each of the User's
 // Installment plans, a plan being the same Source, merchant, total and start
-// month (posted_on minus n-1 months). Grouping keeps the repeated charges of a
-// plan from counting twice, and a centavo of rounding between them keeps it one plan.
+// month (the month the charge counts in, CountsOn, minus n-1 months). Grouping
+// keeps the repeated charges of a plan from counting twice, and a centavo of
+// rounding between them keeps it one plan. It is done here, not in SQL, because
+// the bill month needs CountsOn: card charges post on different days, so the
+// posted month alone would split one plan in two. shortcut: a card without bill
+// days still counts on posted_on, so its drift remains, until the Resident sets them.
 func (s *Store) InstallmentPlans(ctx context.Context, userID string) ([]Plan, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT DISTINCT ON (t.source_id, t.merchant_key, t.total_installments,
-				date_trunc('month', t.posted_on) - (t.installment_number - 1) * interval '1 month')
-			t.description, t.merchant_key, t.installment_number, t.total_installments, -t.amount_cents, t.posted_on,
+		SELECT t.description, t.merchant_key, t.installment_number, t.total_installments, -t.amount_cents, t.posted_on,
 			t.source_id, s.kind, COALESCE(s.bill_close_day, 0), COALESCE(s.bill_due_day, 0), COALESCE(t.spending_category, '')
 		FROM finance_transactions t JOIN finance_sources s ON s.id = t.source_id
 		WHERE t.user_id = $1 AND t.type = 'expense' AND t.amount_cents < 0 AND t.installment_number IS NOT NULL
-		ORDER BY t.source_id, t.merchant_key, t.total_installments,
-			date_trunc('month', t.posted_on) - (t.installment_number - 1) * interval '1 month', t.installment_number DESC`, userID)
+		ORDER BY t.installment_number DESC, t.posted_on DESC, t.id`, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+	type planKey struct {
+		source, merchant string
+		total, start     int
+	}
+	seen := map[planKey]bool{}
 	var out []Plan
 	for rows.Next() {
 		var p Plan
@@ -561,10 +567,15 @@ func (s *Store) InstallmentPlans(ctx context.Context, userID string) ([]Plan, er
 		if err := rows.Scan(&desc, &key, &p.Number, &p.Total, &p.AmountCents, &posted, &p.SourceID, &kind, &closeDay, &dueDay, &p.Category); err != nil {
 			return nil, err
 		}
-		p.Name = PlanName(desc, key)
-		p.Card = kind == "credit_card"
 		// A card installment is projected from the month its bill is due, as spending counts it.
 		on := CountsOn(posted, kind, closeDay, dueDay)
+		k := planKey{p.SourceID, key, p.Total, monthIndex(on) - (p.Number - 1)}
+		if seen[k] { // rows come highest number first, so the first of a plan is its latest
+			continue
+		}
+		seen[k] = true
+		p.Name = PlanName(desc, key, p.Number, p.Total)
+		p.Card = kind == "credit_card"
 		p.Month = time.Date(on.Year(), on.Month(), 1, 0, 0, 0, 0, time.UTC)
 		out = append(out, p)
 	}

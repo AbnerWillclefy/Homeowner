@@ -20,21 +20,29 @@ export function addMonths(month: Month, n: number): Month {
   return `${Math.floor(index / 12)}-${pad((index % 12) + 1)}`;
 }
 
+/** Formats a date as `Intl` does, with the month's first letter capitalised: pt-BR writes "novembro", Finances shows "Novembro" as en-US does. */
+export function formatCapitalisedMonth(date: Date, locale: string, options: Intl.DateTimeFormatOptions): string {
+  return new Intl.DateTimeFormat(locale, options)
+    .formatToParts(date)
+    .map((p) => (p.type === "month" ? p.value.charAt(0).toLocaleUpperCase(locale) + p.value.slice(1) : p.value))
+    .join("");
+}
+
 /** A posting date (`YYYY-MM-DD`) as day and month, read as a calendar date so no time zone moves it. */
 export function formatDay(postedOn: string, locale: string): string {
   const [y, m, d] = postedOn.split("-").map(Number) as [number, number, number];
-  return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(new Date(y, m - 1, d));
+  return formatCapitalisedMonth(new Date(y, m - 1, d), locale, { day: "numeric", month: "short" });
 }
 
-/** Just the month's name ("outubro"), for sentences like "a mais que em outubro". */
+/** Just the month's name ("Outubro"), for sentences like "a mais que em Outubro". */
 export function monthName(month: Month, locale: string): string {
   const [y, m] = month.split("-").map(Number) as [number, number];
-  return new Intl.DateTimeFormat(locale, { month: "long" }).format(new Date(y, m - 1, 1));
+  return formatCapitalisedMonth(new Date(y, m - 1, 1), locale, { month: "long" });
 }
 
 export function monthLabel(month: Month, locale: string): string {
   const [y, m] = month.split("-").map(Number) as [number, number];
-  return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(new Date(y, m - 1, 1));
+  return formatCapitalisedMonth(new Date(y, m - 1, 1), locale, { month: "long", year: "numeric" });
 }
 
 /** The `?month=` of a Finances view, when it is a real `YYYY-MM` no later than `thisMonth`; anything else is `thisMonth`. */

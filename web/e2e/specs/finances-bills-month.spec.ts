@@ -31,7 +31,7 @@ const LOCALES = [
     summary: { paid: /R\$\s*1\.690,50 de R\$\s*1\.790,40 pagos\./, toPay: /Falta R\$\s*99,90 em 1 conta\./ },
     month: "Mês",
     groups: { unpaid: "Sem pagamento", paid: "Pagas" },
-    dueOn: /Vencimento 10 de dez/,
+    dueOn: /Vencimento 10 de Dez/,
     stripNone: /Hoje é dia/,
     empty: "Nenhuma conta neste mês.",
     coming: "Próximos meses",

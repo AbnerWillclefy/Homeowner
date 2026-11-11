@@ -211,9 +211,13 @@ type Plan struct {
 }
 
 // PlanName is the description without its installment token, or the merchant
-// key when nothing else is left.
-func PlanName(description, merchantKey string) string {
-	if name := strings.Join(strings.Fields(installmentText.ReplaceAllString(description, " ")), " "); name != "" {
+// key when nothing else is left. The token is "PARC nn/mm" or a bare "n/m"
+// equal to the row's own number and total (leading zeros allowed), so a
+// date-like "10/11" in the description survives.
+func PlanName(description, merchantKey string, number, total int) string {
+	bare := regexp.MustCompile(`(^|\s)0*` + strconv.Itoa(number) + `/0*` + strconv.Itoa(total) + `(\s|$)`)
+	description = installmentText.ReplaceAllString(description, " ")
+	if name := strings.Join(strings.Fields(bare.ReplaceAllString(description, " ")), " "); name != "" {
 		return name
 	}
 	return merchantKey

@@ -88,7 +88,7 @@ export function CategoryBar({
         ) : (
           <div className="flex flex-col gap-2 rounded-control bg-surface px-3 py-2">
             {days.map(({ day, transactions: rows }) => (
-              <section key={day} className="flex flex-col">
+              <section key={day} className="mt-0 flex flex-col">
                 <h5 className="m-0 pt-1 text-sm font-bold text-muted">{formatDay(day, locale)}</h5>
                 <ul className="m-0 flex flex-col p-0">
                   {rows.map((tx) => (
