@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -166,6 +167,13 @@ func (s *Syncer) syncItem(ctx context.Context, it DueItem, apiKey string, now, t
 			s.log.Error("finance sync failed", "user", it.UserID, "step", "card bills", "error", safeErr(err))
 		}
 	}
+	var owner pluggy.Party
+	for _, a := range accounts {
+		if a.TaxNumber != "" || a.Owner != "" {
+			owner = pluggy.Party{Name: a.Owner, Document: a.TaxNumber}
+			break
+		}
+	}
 	floor := today.AddDate(-1, 0, 0)
 	for round := 0; ; round++ {
 		// The first round always runs, so every run makes progress.
@@ -189,7 +197,7 @@ func (s *Syncer) syncItem(ctx context.Context, it DueItem, apiKey string, now, t
 			if to.After(today) {
 				to = today
 			}
-			if err := s.syncWindow(ctx, it.UserID, apiKey, *src, from, to, now, sum); err != nil {
+			if err := s.syncWindow(ctx, it.UserID, apiKey, *src, owner, from, to, now, sum); err != nil {
 				return false, err
 			}
 			src.ImportCursor = &to
@@ -202,14 +210,14 @@ func (s *Syncer) syncItem(ctx context.Context, it DueItem, apiKey string, now, t
 }
 
 // syncWindow stores every page of one Source's window, then moves its cursor.
-func (s *Syncer) syncWindow(ctx context.Context, userID, apiKey string, src SyncSource, from, to, now time.Time, sum *Summary) error {
+func (s *Syncer) syncWindow(ctx context.Context, userID, apiKey string, src SyncSource, owner pluggy.Party, from, to, now time.Time, sum *Summary) error {
 	cursor := ""
 	for {
 		page, err := s.pluggy.ListTransactions(ctx, apiKey, src.PluggyAccountID, from, to, cursor)
 		if err != nil {
 			return err
 		}
-		rows, skipped := toRows(page.Transactions, src.Card)
+		rows, skipped := toRows(page.Transactions, src.Card, owner)
 		if len(rows) > 0 {
 			if err := s.store.UpsertTransactions(ctx, userID, src.ID, rows, now); err != nil {
 				return err
@@ -260,11 +268,35 @@ func (s *Syncer) classify(ctx context.Context, userID string, rows []Row, now ti
 	return s.store.SetClassified(ctx, changed, now)
 }
 
+// sameParty reports whether other is the owner. Documents decide when both
+// have the same number of digits (a masked one has fewer); otherwise folded
+// names are compared. Empty values never match.
+// shortcut: a masked document falls back to the name blindly; compare its
+// visible digits if false Transfers appear.
+func sameParty(owner, other pluggy.Party) bool {
+	o, p := digits(owner.Document), digits(other.Document)
+	if o != "" && len(o) == len(p) {
+		return o == p
+	}
+	return fold(owner.Name) != "" && fold(owner.Name) == fold(other.Name)
+}
+
+func digits(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r >= '0' && r <= '9' {
+			return r
+		}
+		return -1
+	}, s)
+}
+
 // toRows picks what to store: pending rows are left out (they come back as
 // posted), and so are rows that are not BRL, which are counted. On a card
 // Pluggy sends a purchase positive and a bill payment negative, so its sign is
-// flipped to the Source's point of view.
-func toRows(txs []pluggy.Transaction, card bool) (rows []Row, skippedCurrency int) {
+// flipped to the Source's point of view. A row's counterpart is reduced to
+// OwnCounterpart here and goes no further. A card row never has one: its payer
+// or receiver was picked from Pluggy's raw sign, which the flip inverts.
+func toRows(txs []pluggy.Transaction, card bool, owner pluggy.Party) (rows []Row, skippedCurrency int) {
 	for _, tx := range txs {
 		if tx.Status == "PENDING" {
 			continue
@@ -279,6 +311,7 @@ func toRows(txs []pluggy.Transaction, card bool) (rows []Row, skippedCurrency in
 		}
 		r := Row{ProviderID: tx.ID, PostedOn: postedOn(tx.Date), AmountCents: amount,
 			Description: tx.Description, MerchantKey: MerchantKey(tx.Description), Type: "income"}
+		r.OwnCounterpart = !card && tx.Counterpart != nil && sameParty(owner, *tx.Counterpart)
 		if amount < 0 {
 			r.Type = "expense"
 		}

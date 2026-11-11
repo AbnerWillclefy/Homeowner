@@ -58,6 +58,15 @@ type Account struct {
 	// is due, from its current bill. They come as a pair: both are 0 when
 	// Pluggy does not send both.
 	CloseDay, DueDay int
+	// Owner and TaxNumber are the account holder's name and CPF; both are
+	// empty on a card.
+	Owner, TaxNumber string
+}
+
+// Party is the other side of a Transaction. It lives in memory only: the sync
+// reduces it to a boolean and never stores or logs it.
+type Party struct {
+	Name, Document string
 }
 
 // TransactionsPage is one page of transactions. Next is the cursor of the
@@ -81,6 +90,9 @@ type Transaction struct {
 	Status             string
 	Category           *string // Pluggy's category, null on some rows
 	CreditCardMetadata *CreditCardMetadata
+	// Counterpart is the payment's receiver when the amount is negative and its
+	// payer when positive; nil without paymentData.
+	Counterpart *Party
 }
 
 // CreditCardMetadata is what Pluggy knows of an installment purchase.

@@ -1,6 +1,7 @@
 package finance
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -37,10 +38,23 @@ func TestClassify(t *testing.T) {
 	aplicacaoCategorised := named("ap", "chk", 0, -50000, "Aplicação - Cdb")
 	aplicacaoCategorised.Type, aplicacaoCategorised.Category, aplicacaoCategorised.CategorySetBy = "expense", "other", "fallback"
 
-	for name, tc := range map[string]struct {
+	own := func(id, src string, cents int64) Txn {
+		t := tx(id, src, 0, cents)
+		t.OwnCounterpart = true
+		return t
+	}
+	ownUser := own("o", "chk", -1000)
+	ownUser.TypeSetBy = "user"
+	ownSaving := named("ap", "chk", 0, -50000, "Aplicação - Cdb")
+	ownSaving.OwnCounterpart = true
+	tests := map[string]struct {
 		in   []Txn
 		want map[string]string // id -> type of every row that changes
 	}{
+		"own-name debit, no partner":      {[]Txn{own("o", "chk", -1000)}, map[string]string{"o": "transfer"}},
+		"own-name credit, no partner":     {[]Txn{own("o", "chk", 1000)}, map[string]string{"o": "transfer"}},
+		"own-name row set by user":        {[]Txn{ownUser}, map[string]string{}},
+		"own-name aplicacao stays saving": {[]Txn{ownSaving}, map[string]string{"ap": "saving"}},
 		"bill payment, accents and case":  {[]Txn{bill}, map[string]string{"bill": "transfer"}},
 		"bill payment, Santander wording": {[]Txn{santander}, map[string]string{"sbill": "transfer"}},
 		"exact pair across Sources":       {[]Txn{tx("d", "chk", 0, -10000), tx("c", "sav", 1, 10000)}, map[string]string{"d": "transfer", "c": "transfer"}},
@@ -62,7 +76,17 @@ func TestClassify(t *testing.T) {
 		"saving set by user is kept":   {[]Txn{savingSet}, map[string]string{}},
 		"aplicacao drops its category": {[]Txn{aplicacaoCategorised}, map[string]string{"ap": "saving"}},
 		"category is kept":             {[]Txn{categorised}, map[string]string{}},
-	} {
+	}
+	for i, desc := range []string{"Pagamento efetuado - Pagamento Fatura", "Pagamento on line", "PAGAMENTO ONLINE", "Pagamento recebido", "Pagamento de fatura"} {
+		for _, src := range []string{"chk", "card"} {
+			id := fmt.Sprintf("p%d%s", i, src)
+			tests["bill phrase "+desc+" on "+src] = struct {
+				in   []Txn
+				want map[string]string
+			}{[]Txn{named(id, src, 0, -700, desc)}, map[string]string{id: "transfer"}}
+		}
+	}
+	for name, tc := range tests {
 		got := map[string]string{}
 		for _, c := range Classify(tc.in, kinds, nil) {
 			got[c.ID] = c.Type

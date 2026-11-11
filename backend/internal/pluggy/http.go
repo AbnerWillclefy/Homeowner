@@ -104,6 +104,8 @@ func (h *HTTP) ListAccounts(ctx context.Context, apiKey, itemID string) ([]Accou
 			Subtype  string `json:"subtype"`
 			Name     string `json:"name"`
 			Currency string `json:"currencyCode"`
+			Owner    string `json:"owner"`
+			TaxNo    string `json:"taxNumber"`
 			Credit   *struct {
 				CloseDate string `json:"balanceCloseDate"`
 				DueDate   string `json:"balanceDueDate"`
@@ -116,7 +118,7 @@ func (h *HTTP) ListAccounts(ctx context.Context, apiKey, itemID string) ([]Accou
 	}
 	accts := make([]Account, len(out.Results))
 	for i, r := range out.Results {
-		accts[i] = Account{ID: r.ID, Type: r.Type, Subtype: r.Subtype, Name: r.Name, Currency: r.Currency}
+		accts[i] = Account{ID: r.ID, Type: r.Type, Subtype: r.Subtype, Name: r.Name, Currency: r.Currency, Owner: r.Owner, TaxNumber: r.TaxNo}
 		if r.Credit != nil {
 			accts[i].CloseDay, accts[i].DueDay = dayOf(r.Credit.CloseDate), dayOf(r.Credit.DueDate)
 			if accts[i].CloseDay == 0 || accts[i].DueDay == 0 {
@@ -125,6 +127,14 @@ func (h *HTTP) ListAccounts(ctx context.Context, apiKey, itemID string) ([]Accou
 		}
 	}
 	return accts, nil
+}
+
+// httpParty is a paymentData payer or receiver; every field may be null.
+type httpParty struct {
+	Name     string `json:"name"`
+	Document struct {
+		Value string `json:"value"`
+	} `json:"documentNumber"`
 }
 
 // ListTransactions implements Client against GET /v2/transactions, which pages
@@ -141,7 +151,11 @@ func (h *HTTP) ListTransactions(ctx context.Context, apiKey, accountID string, f
 			Type        string      `json:"type"`
 			Status      string      `json:"status"`
 			Category    *string     `json:"category"`
-			Card        *struct {
+			Payment     *struct {
+				Payer    httpParty `json:"payer"`
+				Receiver httpParty `json:"receiver"`
+			} `json:"paymentData"`
+			Card *struct {
 				InstallmentNumber int `json:"installmentNumber"`
 				TotalInstallments int `json:"totalInstallments"`
 			} `json:"creditCardMetadata"`
@@ -169,6 +183,13 @@ func (h *HTTP) ListTransactions(ctx context.Context, apiKey, accountID string, f
 		}
 		tx := Transaction{ID: r.ID, ProviderID: r.ProviderID, Date: r.Date, Description: r.Description,
 			AmountCents: cents, Currency: r.Currency, Type: r.Type, Status: r.Status, Category: r.Category}
+		if r.Payment != nil {
+			p := r.Payment.Receiver
+			if cents > 0 {
+				p = r.Payment.Payer
+			}
+			tx.Counterpart = &Party{Name: p.Name, Document: p.Document.Value}
+		}
 		if r.Card != nil {
 			tx.CreditCardMetadata = &CreditCardMetadata{InstallmentNumber: r.Card.InstallmentNumber, TotalInstallments: r.Card.TotalInstallments}
 		}
