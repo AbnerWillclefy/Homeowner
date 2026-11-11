@@ -115,6 +115,10 @@ type MonthResponse struct {
 	Categories   []CategoryTotal       `json:"categories"`
 	Transactions []TransactionResponse `json:"transactions"`
 	Limits       map[string]int64      `json:"limits"` // category to monthly limit; the same every month
+	// CommittedCents is the card bills due in the month plus the non-card Expenses counted in it.
+	CommittedCents int64 `json:"committedCents"`
+	// SpentSinceFirstCents is every Expense posted in the month, on any Source, by posted day.
+	SpentSinceFirstCents int64 `json:"spentSinceFirstCents"`
 }
 
 // HistoryMonth is one month of GET /me/finance/history: all 13 categories, in order.

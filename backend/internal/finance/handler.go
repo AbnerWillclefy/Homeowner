@@ -60,6 +60,8 @@ func (h *Handler) Status(w http.ResponseWriter, r *http.Request) {
 
 // Month answers GET /me/finance/transactions?month=YYYY-MM. The totals come from
 // MonthTotals over the rows just read, so every endpoint that shows money agrees.
+// Committed is Outlook's card bills for the month plus the non-card Expenses
+// counted in it; Spent since the 1st is every Expense by posted day.
 func (h *Handler) Month(w http.ResponseWriter, r *http.Request) {
 	month := r.URL.Query().Get("month")
 	from, to, ok := parseMonth(month)
@@ -78,6 +80,21 @@ func (h *Handler) Month(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	totals := MonthTotals(toTxns(txns))
+	// Committed needs Outlook's card bills, so Month costs one loadOutlook more; no cache (one User).
+	in, err := h.loadOutlook(r.Context(), identity.CurrentUser(r.Context()).ID, from, 1)
+	if err != nil {
+		httpx.InternalError(w, h.log, "finance: read month outlook", err)
+		return
+	}
+	spentSince, err := h.store.SpentByPosted(r.Context(), identity.CurrentUser(r.Context()).ID, from, to)
+	if err != nil {
+		httpx.InternalError(w, h.log, "finance: read spent since the 1st", err)
+		return
+	}
+	committed := MonthTotals(in.offCardRows()).Spend
+	for _, c := range in.outlook[0].Cards {
+		committed += c.AmountCents
+	}
 	cats := []CategoryTotal{}
 	for c, cents := range totals.ByCategory {
 		if cents != 0 {
@@ -87,7 +104,7 @@ func (h *Handler) Month(w http.ResponseWriter, r *http.Request) {
 	slices.SortFunc(cats, func(a, b CategoryTotal) int {
 		return cmp.Or(cmp.Compare(b.SpentCents, a.SpentCents), cmp.Compare(a.Category, b.Category))
 	})
-	httpx.WriteJSON(w, http.StatusOK, MonthResponse{Month: month, SpentCents: totals.Spend, Categories: cats, Transactions: txns, Limits: limits})
+	httpx.WriteJSON(w, http.StatusOK, MonthResponse{Month: month, SpentCents: totals.Spend, Categories: cats, Transactions: txns, Limits: limits, CommittedCents: committed, SpentSinceFirstCents: spentSince})
 }
 
 // SpendingCategories is the fixed, ordered list of Spending Category ids.
@@ -255,7 +272,20 @@ type outlookInputs struct {
 	rows    []Txn
 	income  *int64
 	limits  map[string]int64
+	cards   []Card
 	outlook []MonthOutlook
+}
+
+// offCardRows are the counted rows of Sources that are not credit cards, Bill
+// payments included: money out of the account is committed whether or not a Bill lists it.
+func (in outlookInputs) offCardRows() []Txn {
+	var out []Txn
+	for _, t := range in.rows {
+		if !slices.ContainsFunc(in.cards, func(c Card) bool { return c.ID == t.SourceID }) {
+			out = append(out, t)
+		}
+	}
+	return out
 }
 
 // loadOutlook reads the inputs of Outlook for `months` months from `from` and works
@@ -273,6 +303,7 @@ func (h *Handler) loadOutlook(ctx context.Context, uid string, from time.Time, m
 		return in, err
 	}
 	cards, err := h.store.CardSources(ctx, uid)
+	in.cards = cards
 	if err != nil {
 		return in, err
 	}
