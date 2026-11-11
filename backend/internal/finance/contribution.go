@@ -76,21 +76,22 @@ func SplitContribution(in ContributionIn) ContributionOut {
 	return out
 }
 
-// ContributionExtra is what a leftover above the Base changes.
+// ContributionExtra is what a leftover above zero changes.
 type ContributionExtra struct {
-	Extra        int64 // leftover - base
+	Extra        int64 // the leftover
 	MonthsSooner *int  // nil when not reached within 120 months either way
 }
 
-// Extra reruns the simulation with the leftover in place of the Base and says how
-// many months sooner the reserve is reached, or the first unfilled Goal once the
-// reserve is full. It answers only when the leftover is above the Base.
+// Extra reruns the simulation with the Base plus the leftover (the Leftover
+// already subtracts the Base, so all of it is extra) and says how many months
+// sooner the reserve is reached, or the first unfilled Goal once the reserve is
+// full. It answers only when the leftover is above zero.
 func Extra(in ContributionIn, leftover int64) (ContributionExtra, bool) {
-	if leftover <= in.Base {
+	if leftover <= 0 {
 		return ContributionExtra{}, false
 	}
-	base, more := runContribution(in, in.Base), runContribution(in, leftover)
-	out := ContributionExtra{Extra: leftover - in.Base}
+	base, more := runContribution(in, in.Base), runContribution(in, in.Base+leftover)
+	out := ContributionExtra{Extra: leftover}
 	a, b := base.reserveOffset, more.reserveOffset
 	if base.reserveFull {
 		if base.firstUnfilled < 0 {

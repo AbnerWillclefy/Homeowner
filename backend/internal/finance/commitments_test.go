@@ -186,9 +186,9 @@ type outlookBody struct {
 			Cents    int64
 			Paid     bool
 		}
-		OtherInstallmentsCents int64
-		TotalCents             int64
-		LeftoverCents          *int64
+		OtherInstallmentsCents  int64
+		TotalCents, SavingCents int64
+		LeftoverCents           *int64
 	}
 }
 
@@ -215,6 +215,10 @@ func readOutlook(t *testing.T, c *apitest.Client) (outlookBody, []map[string]any
 	return b, raw.Months
 }
 
+// fixturePlanned is what the sync fixture's October spend (the month before the
+// fake clock) plans in every month from 2027-03, where no counted row has a category.
+const fixturePlanned = 127270
+
 func TestCommitmentsCardBillAndLeftover(t *testing.T) {
 	t.Parallel()
 	app, ana := seedMonth(t)
@@ -231,10 +235,10 @@ func TestCommitmentsCardBillAndLeftover(t *testing.T) {
 	if len(m.Cards) != 1 || m.Cards[0].AmountCents != 1000-300+2500 || m.Cards[0].BillDaysKnown || m.Cards[0].SourceID == "" || m.Cards[0].Name == "" {
 		t.Errorf("march cards = %+v, want one card at 3200 with unknown bill days", m.Cards)
 	}
-	if m.TotalCents != 3200 || m.OtherInstallmentsCents != 0 || len(m.OtherBills) != 0 {
-		t.Errorf("march = %+v, want total 3200", m)
+	if m.TotalCents != 3200+fixturePlanned || m.OtherInstallmentsCents != 0 || len(m.OtherBills) != 0 {
+		t.Errorf("march = %+v, want total 3200 plus the planned spending", m)
 	}
-	if a := b.Months[1]; len(a.Cards) != 1 || a.Cards[0].AmountCents != 2500 || a.TotalCents != 2500 {
+	if a := b.Months[1]; len(a.Cards) != 1 || a.Cards[0].AmountCents != 2500 || a.TotalCents != 2500+fixturePlanned {
 		t.Errorf("april = %+v, want installment 4 as the card bill", a)
 	}
 	if z := b.Months[2]; z.Cards[0].AmountCents != 2500 {
@@ -243,12 +247,19 @@ func TestCommitmentsCardBillAndLeftover(t *testing.T) {
 
 	apitest.ExpectStatus(t, putIncome(ana, 10000), http.StatusNoContent)
 	b, _ = readOutlook(t, ana)
-	if l := b.Months[0].LeftoverCents; l == nil || *l != 6800 {
-		t.Errorf("march leftover = %v, want 6800", l)
+	if l := b.Months[0].LeftoverCents; l == nil || *l != 6800-fixturePlanned {
+		t.Errorf("march leftover = %v, want %d", l, 6800-fixturePlanned)
 	}
 	apitest.ExpectStatus(t, putIncome(ana, 1000), http.StatusNoContent)
-	if b, _ = readOutlook(t, ana); b.Months[0].LeftoverCents == nil || *b.Months[0].LeftoverCents != -2200 {
-		t.Errorf("march leftover = %v, want -2200", b.Months[0].LeftoverCents)
+	if b, _ = readOutlook(t, ana); b.Months[0].LeftoverCents == nil || *b.Months[0].LeftoverCents != -2200-fixturePlanned {
+		t.Errorf("march leftover = %v, want %d", b.Months[0].LeftoverCents, -2200-fixturePlanned)
+	}
+
+	// The Monthly contribution is put aside, and the leftover subtracts it.
+	apitest.ExpectStatus(t, putContribution(ana, 4000, 50), http.StatusNoContent)
+	b, _ = readOutlook(t, ana)
+	if m := b.Months[0]; m.SavingCents != 4000 || m.TotalCents != 3200+fixturePlanned+4000 || m.LeftoverCents == nil || *m.LeftoverCents != 1000-3200-fixturePlanned-4000 {
+		t.Errorf("march = %+v, want savingCents 4000 in the total and the leftover", m)
 	}
 }
 
@@ -284,10 +295,10 @@ func TestCommitmentsListEveryBillAndLeaveOutThoseOnACard(t *testing.T) {
 		m.OtherBills[1].Name != "Internet" || m.OtherBills[1].Paid || m.OtherBills[1].Cents != 12000 {
 		t.Errorf("march otherBills = %+v, want Rent paid and Internet unpaid, no Netflix", m.OtherBills)
 	}
-	if m.Cards[0].AmountCents != 5000 || m.TotalCents != 5000+150000+12000 {
+	if m.Cards[0].AmountCents != 5000 || m.TotalCents != 5000+150000+12000+fixturePlanned {
 		t.Errorf("march = %+v, want the Netflix charge in the card bill once", m)
 	}
-	if a := b.Months[1]; len(a.OtherBills) != 3 || a.TotalCents != 150000+12000+5000 {
+	if a := b.Months[1]; len(a.OtherBills) != 3 || a.TotalCents != 150000+12000+5000+fixturePlanned {
 		t.Errorf("april = %+v, want all three Bills: only the paid month of Netflix is left out", a)
 	}
 }
@@ -302,7 +313,7 @@ func TestCommitmentsKeepAPlanOnAnotherSourceAsItsOwnAmount(t *testing.T) {
 		t.Fatal(err)
 	}
 	b, _ := readOutlook(t, ana)
-	if a := b.Months[1]; a.OtherInstallmentsCents != 900 || a.TotalCents != 900 || a.Cards[0].AmountCents != 0 {
+	if a := b.Months[1]; a.OtherInstallmentsCents != 900 || a.TotalCents != 900+fixturePlanned || a.Cards[0].AmountCents != 0 {
 		t.Errorf("april = %+v, want the Sofa 2 of 3 in otherInstallmentsCents and total, not on the card", a)
 	}
 }

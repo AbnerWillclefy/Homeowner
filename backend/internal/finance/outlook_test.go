@@ -154,7 +154,7 @@ func TestOutlook(t *testing.T) {
 			want: want{cards: []CardBill{{"a", "a", 1500, true}}, total: 1500, leftover: i64(-500)},
 		},
 	} {
-		got := Outlook(c.rows, c.cards, c.plans, [][]MonthBill{c.bills, c.nextBills}, c.income, nil, time.Time{}, nov, 2)
+		got := Outlook(c.rows, c.cards, c.plans, [][]MonthBill{c.bills, c.nextBills}, c.income, nil, nil, 0, time.Time{}, nov, 2)
 		m := got[0]
 		if !reflect.DeepEqual(m.Cards, c.want.cards) || !reflect.DeepEqual(m.OtherBills, append([]OtherBill{}, c.want.other...)) ||
 			m.OtherInstallmentsCents != c.want.otherIns || m.TotalCents != c.want.total || !reflect.DeepEqual(m.LeftoverCents, c.want.leftover) {
@@ -173,7 +173,7 @@ func TestOutlookCountsAnOtherSourcePlanInTheTotal(t *testing.T) {
 	t.Parallel()
 	nov := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
 	plans := []Plan{{Name: "Sofa", Number: 1, Total: 3, AmountCents: 900, Month: nov, SourceID: "x"}}
-	got := Outlook(nil, nil, plans, [][]MonthBill{nil, nil, nil}, nil, nil, time.Time{}, nov, 3)
+	got := Outlook(nil, nil, plans, [][]MonthBill{nil, nil, nil}, nil, nil, nil, 0, time.Time{}, nov, 3)
 	if got[0].OtherInstallmentsCents != 0 || got[1].OtherInstallmentsCents != 900 || got[1].TotalCents != 900 || got[2].OtherInstallmentsCents != 900 {
 		t.Errorf("outlook = %+v, want 900 in months 1 and 2 only", got)
 	}
@@ -253,12 +253,57 @@ func TestOutlookPlannedSpending(t *testing.T) {
 			m0: month{g(80000), nil, 80000, 80000}, m1: month{g(100000), nil, 100000, 100000},
 		},
 	} {
-		got := Outlook(c.rows, card, c.plans, [][]MonthBill{nil, nil}, nil, c.limits, c.current, nov, 2)
+		got := Outlook(c.rows, card, c.plans, [][]MonthBill{nil, nil}, nil, c.limits, nil, 0, c.current, nov, 2)
 		for i, want := range []month{c.m0, c.m1} {
 			m := got[i]
 			if !reflect.DeepEqual(m.Planned, want.planned) || !reflect.DeepEqual(m.SpentOffCardCents, want.off) || m.PlannedCents != want.plannedC || m.TotalCents != want.total {
 				t.Errorf("%s: month %d = planned %v (%d) off %v total %d, want %+v", name, i, m.Planned, m.PlannedCents, m.SpentOffCardCents, m.TotalCents, want)
 			}
+		}
+	}
+}
+
+func TestOutlookSavingAndLastMonthPlan(t *testing.T) {
+	t.Parallel()
+	d := func(s string) time.Time { v, _ := time.Parse(time.DateOnly, s); return v }
+	nov := d("2026-11-01")
+	saving := func(cents int64) Txn {
+		return Txn{SourceID: "checking", PostedOn: d("2026-11-04"), AmountCents: -cents, Type: "saving"}
+	}
+	card := []Card{{ID: "a", Name: "a", BillDaysKnown: true}}
+	cardBuy := Txn{SourceID: "a", PostedOn: d("2026-11-03"), AmountCents: -300, Type: "expense", Category: "pets"}
+	i64 := func(v int64) *int64 { return &v }
+	none := []PlannedLine{}
+	for name, c := range map[string]struct {
+		rows         []Txn
+		contribution int64
+		last         map[string]int64
+		income       *int64
+		saving       int64
+		planned      []PlannedLine
+		total        int64
+		leftover     *int64
+	}{
+		"actual saving above the contribution counts the actual":       {rows: []Txn{saving(900)}, contribution: 500, saving: 900, planned: none, total: 900},
+		"actual saving below the contribution counts the contribution": {rows: []Txn{saving(200)}, contribution: 500, saving: 500, planned: none, total: 500},
+		"no contribution and no saving count nothing":                  {planned: none},
+		"a Resgate larger than the Aplicacao clamps the actual at 0": {
+			rows: []Txn{saving(100), {SourceID: "checking", PostedOn: d("2026-11-05"), AmountCents: 400, Type: "saving"}}, planned: none,
+		},
+		"a category without a limit plans last month's spend": {
+			last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 700}}, total: 700,
+		},
+		"a negative last month plans nothing": {last: map[string]int64{"pets": -50}, planned: none},
+		"a card purchase counts once: in the bill, and out of the plan": {
+			rows: []Txn{cardBuy}, last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 400}}, total: 700,
+		},
+		"the leftover subtracts the saving, and is negative when the month takes more": {
+			rows: []Txn{saving(900)}, income: i64(600), saving: 900, planned: none, total: 900, leftover: i64(-300),
+		},
+	} {
+		got := Outlook(c.rows, card, nil, [][]MonthBill{nil}, c.income, nil, c.last, c.contribution, nov, nov, 1)[0]
+		if got.SavingCents != c.saving || got.TotalCents != c.total || !reflect.DeepEqual(got.Planned, c.planned) || !reflect.DeepEqual(got.LeftoverCents, c.leftover) {
+			t.Errorf("%s: saving %d total %d planned %v leftover %v", name, got.SavingCents, got.TotalCents, got.Planned, got.LeftoverCents)
 		}
 	}
 }

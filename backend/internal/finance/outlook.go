@@ -37,13 +37,15 @@ type MonthOutlook struct {
 	Cards                  []CardBill
 	OtherBills             []OtherBill
 	OtherInstallmentsCents int64
-	// Planned is the rest of each Spending limit, in SpendingCategories order,
-	// only for the categories that have one.
+	// Planned is the rest of what each Spending Category plans, in
+	// SpendingCategories order, only for those planning more than 0.
 	Planned      []PlannedLine
 	PlannedCents int64
 	// SpentOffCardCents is set only on the current month.
 	SpentOffCardCents *int64
-	TotalCents        int64
+	// SavingCents is the larger of the month's actual saving and the Monthly contribution.
+	SavingCents int64
+	TotalCents  int64
 	// LeftoverCents is income minus total; nil when no income is set.
 	LeftoverCents *int64
 }
@@ -60,9 +62,15 @@ type PlannedLine struct {
 //
 // limits are the Spending limits by category; current is the first of the month
 // "now" is in (zero when unknown), the only month with SpentOffCardCents.
-// Planned for a category is its limit minus what already counts for it in the
+// Planned for a category is its limit, or without a limit what it spent in
+// lastMonth (the ByCategory of the month before current, for every month of the
+// horizon; a negative one plans 0), minus what already counts for it in the
 // month (every row, card or not, plus the installments still to come), the
-// counted amount clamped at zero and the result too. SpentOffCardCents is the
+// counted amount clamped at zero and the result too.
+//
+// contribution is the Monthly contribution (0 when none). Each month puts aside
+// the larger of its actual saving (never below 0) and the contribution, so the
+// two are never added: that is SavingCents, part of the total. SpentOffCardCents is the
 // month's Expenses on Sources that are not cards, without those a Bill payment
 // points to: the paid Bill is already in the other Bills.
 //
@@ -81,7 +89,7 @@ type PlannedLine struct {
 // Transaction is left out: that money is in a card bill.
 //
 // shortcut: a card-paid Bill counts twice in the current month until its charge posts (last month's charge is in this month's card bill, this month's is still expected), upgrade when the PWA shows it.
-func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income *int64, limits map[string]int64, current, from time.Time, months int) []MonthOutlook {
+func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income *int64, limits, lastMonth map[string]int64, contribution int64, current, from time.Time, months int) []MonthOutlook {
 	byCard := map[string][]Txn{}
 	for _, t := range rows {
 		byCard[t.SourceID] = append(byCard[t.SourceID], t)
@@ -177,11 +185,16 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 		o.TotalCents += o.OtherInstallmentsCents
 		counted := MonthTotals(monthRows).ByCategory
 		for _, c := range SpendingCategories {
-			if limit, ok := limits[c]; ok {
-				left := max(0, limit-max(0, counted[c]+toCome[i][c]))
-				o.Planned = append(o.Planned, PlannedLine{c, left})
-				o.PlannedCents += left
+			plan, ok := limits[c]
+			if !ok {
+				plan = max(0, lastMonth[c])
 			}
+			if plan <= 0 {
+				continue
+			}
+			left := max(0, plan-max(0, counted[c]+toCome[i][c]))
+			o.Planned = append(o.Planned, PlannedLine{c, left})
+			o.PlannedCents += left
 		}
 		o.TotalCents += o.PlannedCents
 		if monthIndex(m) == monthIndex(current) {
@@ -189,6 +202,8 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 			o.SpentOffCardCents = &spent
 			o.TotalCents += spent
 		}
+		o.SavingCents = max(max(0, MonthTotals(monthRows).Saving), contribution)
+		o.TotalCents += o.SavingCents
 		if income != nil { // income <= maxIncomeCents, so the subtraction cannot overflow
 			left := *income - o.TotalCents
 			o.LeftoverCents = &left

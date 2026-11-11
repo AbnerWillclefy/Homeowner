@@ -91,10 +91,10 @@ export function suggestionOf(s: Savings, ctx: { incomeSet: boolean | null; lefto
     }),
     ...(s.unassignedCents > 0 ? [{ kind: "unassigned", cents: s.unassignedCents } as const] : []),
   ];
-  return { kind: "ready", baseCents: base, rows, month: monthPart(s, base, rows, ctx) };
+  return { kind: "ready", baseCents: base, rows, month: monthPart(s, rows, ctx) };
 }
 
-function monthPart(s: Savings, base: number, rows: SuggestionRow[], ctx: { incomeSet: boolean | null; leftoverCents: number | null }): MonthPart {
+function monthPart(s: Savings, rows: SuggestionRow[], ctx: { incomeSet: boolean | null; leftoverCents: number | null }): MonthPart {
   if (ctx.incomeSet === false) return { kind: "noIncome" };
   if (s.leftover) {
     const { leftoverCents, extraCents, monthsSooner } = s.leftover;
@@ -106,6 +106,6 @@ function monthPart(s: Savings, base: number, rows: SuggestionRow[], ctx: { incom
     return { kind: "above", leftoverCents, extraCents, monthsSooner: sooner !== null && sooner > 0 ? sooner : null, reaches };
   }
   if (s.overLimit)
-    return { kind: "below", leftoverCents: ctx.leftoverCents, shortfallCents: ctx.leftoverCents === null ? null : base - ctx.leftoverCents, over: s.overLimit };
+    return { kind: "below", leftoverCents: ctx.leftoverCents, shortfallCents: ctx.leftoverCents === null ? null : -ctx.leftoverCents, over: s.overLimit };
   return { kind: "none" };
 }

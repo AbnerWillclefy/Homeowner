@@ -158,11 +158,11 @@ describe("suggestionOf", () => {
 
     it("is below the contribution with the shortfall and the Categories over", () => {
       const over = [{ category: "restaurants", overCents: 12000 }];
-      expect(month(savings({ overLimit: over }), { incomeSet: true, leftoverCents: 70000 })).toEqual({ kind: "below", leftoverCents: 70000, shortfallCents: 30000, over });
+      expect(month(savings({ overLimit: over }), { incomeSet: true, leftoverCents: -30000 })).toEqual({ kind: "below", leftoverCents: -30000, shortfallCents: 30000, over });
     });
 
     it("is below with no Category over when the list is empty", () => {
-      expect(month(savings({ overLimit: [] }), { incomeSet: true, leftoverCents: 70000 })).toEqual({ kind: "below", leftoverCents: 70000, shortfallCents: 30000, over: [] });
+      expect(month(savings({ overLimit: [] }), { incomeSet: true, leftoverCents: -30000 })).toEqual({ kind: "below", leftoverCents: -30000, shortfallCents: 30000, over: [] });
     });
 
     it("is below without a shortfall when the leftover could not be read", () => {

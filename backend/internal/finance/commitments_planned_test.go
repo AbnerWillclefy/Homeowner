@@ -38,8 +38,9 @@ func TestCommitmentsPlanSpendingFromTheLimits(t *testing.T) {
 	app, ana := seedMonth(t) // the fake clock is 2026-11-08
 	apitest.ExpectStatus(t, ana.Put("/me/finance/income", map[string]int64{"monthlyIncomeCents": 5000000}), http.StatusNoContent)
 	base := readPlanned(t, ana)
-	if m := base.Months[0]; len(m.Planned) != 0 || m.PlannedCents != 0 || m.SpentOffCardCents == nil || base.Months[1].SpentOffCardCents != nil {
-		t.Fatalf("without limits = %+v, want nothing planned and already spent only on the current month", base.Months[:2])
+	// Without limits each category plans October's spend (127270) less what November already counts.
+	if m := base.Months[0]; len(m.Planned) != 4 || m.PlannedCents != 39490 || m.SpentOffCardCents == nil || base.Months[1].SpentOffCardCents != nil || base.Months[1].PlannedCents != 127270 {
+		t.Fatalf("without limits = %+v, want last month's spend planned and already spent only on the current month", base.Months[:2])
 	}
 
 	insertTxn(t, app, "g1", "2026-11-03", -30000, "groceries")
@@ -47,8 +48,14 @@ func TestCommitmentsPlanSpendingFromTheLimits(t *testing.T) {
 	got := readPlanned(t, ana)
 	for i, want := range []int64{70000, 100000} {
 		m := got.Months[i]
-		if len(m.Planned) != 1 || m.Planned[0].Category != "groceries" || m.Planned[0].Cents != want || m.PlannedCents != want {
-			t.Errorf("month %d planned = %+v (%d), want groceries %d", i, m.Planned, m.PlannedCents, want)
+		var groceries int64 = -1
+		for _, p := range m.Planned {
+			if p.Category == "groceries" {
+				groceries = p.Cents
+			}
+		}
+		if groceries != want || m.PlannedCents != base.Months[i].PlannedCents+want {
+			t.Errorf("month %d planned = %+v (%d), want groceries %d added to the baseline", i, m.Planned, m.PlannedCents, want)
 		}
 	}
 	if m, b := got.Months[0], base.Months[0]; m.TotalCents != b.TotalCents+30000+70000 || *m.LeftoverCents != 5000000-m.TotalCents {
@@ -83,8 +90,8 @@ func TestCommitmentsPlanSpendingFromTheLimits(t *testing.T) {
 	if m.SpentOffCardCents == nil || *m.SpentOffCardCents != *base.Months[0].SpentOffCardCents+20000 {
 		t.Errorf("already spent = %v, want the baseline plus 20000", m.SpentOffCardCents)
 	}
-	if m.PlannedCents != 100000 { // 200000 less 30000 on the card and 70000 off it, the Bill's included
-		t.Errorf("planned = %d, want 100000", m.PlannedCents)
+	if want := base.Months[0].PlannedCents + 100000; m.PlannedCents != want { // 200000 less 30000 on the card and 70000 off it, the Bill's included
+		t.Errorf("planned = %d, want %d", m.PlannedCents, want)
 	}
 	// Undoing the payment frees the Expense: it counts as spent off the card again.
 	if _, err := app.DB.Exec(context.Background(), `UPDATE finance_bill_payments SET undone_at = now() WHERE bill_id = $1::uuid`, bill); err != nil {

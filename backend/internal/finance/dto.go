@@ -157,14 +157,17 @@ type MonthCommitment struct {
 	OtherBills []OtherBillLine `json:"otherBills"`
 	// OtherInstallmentsCents is what plans on a Source that is not a credit card owe.
 	OtherInstallmentsCents int64 `json:"otherInstallmentsCents"`
-	// Planned is the rest of each Spending limit, PlannedCents their sum.
+	// Planned is the rest of what each Spending Category plans (its limit, else
+	// last month's spend), PlannedCents their sum.
 	Planned      []PlannedLineDTO `json:"planned"`
 	PlannedCents int64            `json:"plannedCents"`
 	// SpentOffCardCents is present only on the current month: what was spent off
 	// the card, without Expenses that paid a Bill.
 	SpentOffCardCents *int64 `json:"spentOffCardCents,omitempty"`
-	// TotalCents is card bills, other Bills, installments off the card, planned
-	// and spent off the card.
+	// SavingCents is the larger of the month's actual saving and the Monthly contribution.
+	SavingCents int64 `json:"savingCents"`
+	// TotalCents is card bills, other Bills, installments off the card, planned,
+	// spent off the card and the saving.
 	TotalCents int64 `json:"totalCents"`
 	// LeftoverCents is the Monthly income minus TotalCents, negative when the
 	// month takes more; absent, not null, when no income is set.
