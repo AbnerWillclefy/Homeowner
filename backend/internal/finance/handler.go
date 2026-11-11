@@ -80,7 +80,7 @@ func (h *Handler) Month(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	totals := MonthTotals(toTxns(txns))
-	// Both numbers need Outlook's card bills, so Month costs one loadOutlook more; no cache (one User).
+	// Committed needs Outlook's card bills, so Month costs one loadOutlook more; no cache (one User).
 	in, err := h.loadOutlook(r.Context(), identity.CurrentUser(r.Context()).ID, from, 1)
 	if err != nil {
 		httpx.InternalError(w, h.log, "finance: read month outlook", err)
