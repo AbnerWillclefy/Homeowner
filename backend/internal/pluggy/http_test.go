@@ -132,6 +132,42 @@ func TestListTransactionsCardKeepsPluggySign(t *testing.T) {
 	}
 }
 
+func TestListBillsReadsTheCapture(t *testing.T) {
+	t.Parallel()
+	srv := pluggytest.NewServer(t)
+	c := pluggy.NewHTTP(srv.URL)
+
+	bills, err := c.ListBills(context.Background(), pluggytest.APIKey, pluggytest.CardAccountID)
+	if err != nil || len(bills) != 2 {
+		t.Fatalf("ListBills = %+v, %v", bills, err)
+	}
+	got := bills[0]
+	if got.ID != "0d474e08-cc45-4cc4-ada1-578a0646c6ce" || got.TotalCents != 500000 || got.Currency != "BRL" ||
+		!got.DueDate.Equal(time.Date(2023, 7, 31, 3, 0, 0, 0, time.UTC)) ||
+		!got.ClosingDate.Equal(time.Date(2023, 7, 24, 3, 0, 0, 0, time.UTC)) || bills[1].TotalCents != 300000 {
+		t.Errorf("bills = %+v", bills)
+	}
+	none, err := c.ListBills(context.Background(), pluggytest.APIKey, pluggytest.CheckingAccountID)
+	if err != nil || len(none) != 0 {
+		t.Errorf("checking account bills = %+v, %v, want none", none, err)
+	}
+}
+
+func TestListBillsFailures(t *testing.T) {
+	t.Parallel()
+	srv := pluggytest.NewServer(t)
+	if _, err := pluggy.NewHTTP(srv.URL).ListBills(context.Background(), "wrong", pluggytest.CardAccountID); !errors.Is(err, pluggy.ErrUnauthorized) {
+		t.Errorf("wrong key err = %v, want ErrUnauthorized", err)
+	}
+	bad := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, `{"results":[{"id":"b","dueDate":"2026-01-10T03:00:00.000Z","billClosingDate":"2026-01-03T03:00:00.000Z","totalAmount":1e3,"totalAmountCurrencyCode":"BRL"}]}`)
+	}))
+	t.Cleanup(bad.Close)
+	if _, err := pluggy.NewHTTP(bad.URL).ListBills(context.Background(), "key", "a"); err == nil || err.Error() != "pluggy: list bills: unreadable amount" {
+		t.Errorf("err = %v", err)
+	}
+}
+
 func TestFailuresCarryNoBody(t *testing.T) {
 	t.Parallel()
 	srv := pluggytest.NewServer(t)
