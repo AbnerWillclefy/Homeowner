@@ -62,13 +62,13 @@ export type SuggestionRow =
   | { kind: "goal"; id: string; name: string; cents: number | null; when: When }
   | { kind: "unassigned"; cents: number };
 
-/** How this month's leftover compares with the Monthly contribution. */
+/** How this month's leftover, which already subtracts the contribution, compares with zero. */
 export type MonthPart =
   /** `reaches` is what comes sooner: the reserve while it is unfilled, else the first Goal not yet full (the one the server measured). */
   | { kind: "above"; leftoverCents: number; extraCents: number; monthsSooner: number | null; reaches: "reserve" | { goal: string } }
   | { kind: "below"; leftoverCents: number | null; shortfallCents: number | null; over: OverLimit[] }
   | { kind: "noIncome" }
-  /** The leftover equals the contribution, or the income is not known yet. */
+  /** The leftover is zero, or the income is not known yet. */
   | { kind: "none" };
 
 export type Suggestion = { kind: "noContribution" } | { kind: "ready"; baseCents: number; rows: SuggestionRow[]; month: MonthPart };
@@ -91,10 +91,10 @@ export function suggestionOf(s: Savings, ctx: { incomeSet: boolean | null; lefto
     }),
     ...(s.unassignedCents > 0 ? [{ kind: "unassigned", cents: s.unassignedCents } as const] : []),
   ];
-  return { kind: "ready", baseCents: base, rows, month: monthPart(s, base, rows, ctx) };
+  return { kind: "ready", baseCents: base, rows, month: monthPart(s, rows, ctx) };
 }
 
-function monthPart(s: Savings, base: number, rows: SuggestionRow[], ctx: { incomeSet: boolean | null; leftoverCents: number | null }): MonthPart {
+function monthPart(s: Savings, rows: SuggestionRow[], ctx: { incomeSet: boolean | null; leftoverCents: number | null }): MonthPart {
   if (ctx.incomeSet === false) return { kind: "noIncome" };
   if (s.leftover) {
     const { leftoverCents, extraCents, monthsSooner } = s.leftover;
@@ -106,6 +106,6 @@ function monthPart(s: Savings, base: number, rows: SuggestionRow[], ctx: { incom
     return { kind: "above", leftoverCents, extraCents, monthsSooner: sooner !== null && sooner > 0 ? sooner : null, reaches };
   }
   if (s.overLimit)
-    return { kind: "below", leftoverCents: ctx.leftoverCents, shortfallCents: ctx.leftoverCents === null ? null : base - ctx.leftoverCents, over: s.overLimit };
+    return { kind: "below", leftoverCents: ctx.leftoverCents, shortfallCents: ctx.leftoverCents === null ? null : -ctx.leftoverCents, over: s.overLimit };
   return { kind: "none" };
 }

@@ -242,7 +242,7 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 		for _, p := range o.Planned {
 			m.Planned = append(m.Planned, PlannedLineDTO(p))
 		}
-		m.PlannedCents, m.SpentOffCardCents = o.PlannedCents, o.SpentOffCardCents
+		m.PlannedCents, m.SpentOffCardCents, m.SavingCents = o.PlannedCents, o.SpentOffCardCents, o.SavingCents
 		m.OtherInstallmentsCents, m.TotalCents, m.LeftoverCents = o.OtherInstallmentsCents, o.TotalCents, o.LeftoverCents
 		months[i] = m
 	}
@@ -285,8 +285,27 @@ func (h *Handler) loadOutlook(ctx context.Context, uid string, from time.Time, m
 	if in.limits, err = h.store.Budgets(ctx, uid); err != nil {
 		return in, err
 	}
+	_, base, _, err := h.store.SavingsSettings(ctx, uid)
+	if err != nil {
+		return in, err
+	}
+	var contribution int64
+	if base != nil {
+		contribution = *base
+	}
 	now := postedOn(h.clk.Now())
-	in.outlook = Outlook(in.rows, cards, in.plans, bills, in.income, in.limits, time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC), from, months)
+	current := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	prev, err := h.store.SpendRows(ctx, uid, current.AddDate(0, -1, 0), current)
+	if err != nil {
+		return in, err
+	}
+	var spent []Txn
+	for _, t := range prev {
+		if !t.Linked { // the paid Bill is already in the other Bills
+			spent = append(spent, t)
+		}
+	}
+	in.outlook = Outlook(in.rows, cards, in.plans, bills, in.income, in.limits, MonthTotals(spent).ByCategory, contribution, current, from, months)
 	return in, nil
 }
 

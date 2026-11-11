@@ -205,12 +205,12 @@ for (const l of LOCALES) {
     });
 
     test.describe("below the contribution with a Category over", () => {
-      test.use({ fakeState: stateWith(withSuggestion({ overLimit: [{ category: "groceries", overCents: 12000 }] }), 300000) });
+      test.use({ fakeState: stateWith(withSuggestion({ overLimit: [{ category: "groceries", overCents: 12000 }] }), 200000) });
 
       test("lists the Categories over their limit in neutral words, with a link to Gastos", async ({ page, baseURL, fakeApi }) => {
         await open(page, baseURL, fakeApi);
         const c = card(page);
-        await expect(c).toContainText(like(l.below(money(50000), money(50000))));
+        await expect(c).toContainText(like(l.below(money(-50000), money(50000))));
         await expect(c.getByRole("heading", { name: l.overHeading })).toBeVisible();
         await expect(c).toContainText(l.groceries);
         await expect(c).toContainText(like(l.over(money(12000))));
@@ -222,12 +222,12 @@ for (const l of LOCALES) {
     });
 
     test.describe("below the contribution with none over", () => {
-      test.use({ fakeState: stateWith(withSuggestion({ overLimit: [] }), 300000) });
+      test.use({ fakeState: stateWith(withSuggestion({ overLimit: [] }), 200000) });
 
       test("says the month is tight without naming a category", async ({ page, baseURL, fakeApi }) => {
         await open(page, baseURL, fakeApi);
         const c = card(page);
-        await expect(c).toContainText(like(l.below(money(50000), money(50000))));
+        await expect(c).toContainText(like(l.below(money(-50000), money(50000))));
         await expect(c).toContainText(l.noneOver);
         await expect(c.getByRole("heading", { name: l.overHeading })).toHaveCount(0);
       });

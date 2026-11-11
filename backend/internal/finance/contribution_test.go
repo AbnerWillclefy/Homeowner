@@ -193,34 +193,34 @@ func TestExtra(t *testing.T) {
 		ok       bool
 		want     ContributionExtra
 	}{
-		"leftover equal to the base: no answer": {ContributionIn{Base: 100}, 100, false, ContributionExtra{}},
-		"leftover below the base: no answer":    {ContributionIn{Base: 100}, 50, false, ContributionExtra{}},
+		"leftover of zero: no answer":    {ContributionIn{Base: 100}, 0, false, ContributionExtra{}},
+		"leftover below zero: no answer": {ContributionIn{Base: 100}, -50, false, ContributionExtra{}},
 		"reserve months sooner": {
-			ContributionIn{ReserveTarget: i64(1000), Base: 100, SharePercent: 100}, 200, true,
+			ContributionIn{ReserveTarget: i64(1000), Base: 100, SharePercent: 100}, 100, true,
 			ContributionExtra{100, &five},
 		},
 		"extra does not move the month: zero sooner": {
-			ContributionIn{ReserveTarget: i64(100), Base: 200, SharePercent: 100}, 300, true,
+			ContributionIn{ReserveTarget: i64(100), Base: 200, SharePercent: 100}, 100, true,
 			ContributionExtra{100, &zero},
 		},
 		"reserve full: the first unfilled Goal": {
-			ContributionIn{ReserveTarget: i64(500), ReserveSaved: 500, Goals: goal(1000), Base: 100, SharePercent: 50}, 250, true,
+			ContributionIn{ReserveTarget: i64(500), ReserveSaved: 500, Goals: goal(1000), Base: 100, SharePercent: 50}, 150, true,
 			ContributionExtra{150, &six},
 		},
 		"no reserve target: the first unfilled Goal skips a Goal full from the pot": {
-			ContributionIn{Goals: []ContributionGoal{{ID: "a", Target: 10}, {ID: "b", Target: 1000}}, GoalsPot: 10, Base: 100}, 250, true,
+			ContributionIn{Goals: []ContributionGoal{{ID: "a", Target: 10}, {ID: "b", Target: 1000}}, GoalsPot: 10, Base: 100}, 150, true,
 			ContributionExtra{150, &six},
 		},
 		"reserve full and no unfilled Goal: nothing sooner": {
-			ContributionIn{Goals: goal(10), GoalsPot: 10, Base: 100}, 250, true,
+			ContributionIn{Goals: goal(10), GoalsPot: 10, Base: 100}, 150, true,
 			ContributionExtra{Extra: 150},
 		},
 		"not reached either way: absent": {
-			ContributionIn{ReserveTarget: i64(1_000_000_000), Base: 1, SharePercent: 100}, 2, true,
+			ContributionIn{ReserveTarget: i64(1_000_000_000), Base: 1, SharePercent: 100}, 1, true,
 			ContributionExtra{Extra: 1},
 		},
 		"reached only with the extra: absent": {
-			ContributionIn{ReserveTarget: i64(13000), Base: 100, SharePercent: 100}, 1000, true,
+			ContributionIn{ReserveTarget: i64(13000), Base: 100, SharePercent: 100}, 900, true,
 			ContributionExtra{Extra: 900},
 		},
 		"base zero: absent": {

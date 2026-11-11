@@ -42,7 +42,7 @@ type SavingsGoal struct {
 	Late          bool    `json:"late"`
 }
 
-// LeftoverExtra is given when the month's leftover is above the Base: MonthsSooner
+// LeftoverExtra is given when the month's leftover, which already subtracts the Base, is above zero: MonthsSooner
 // is how many months sooner the reserve, or the first unfilled Goal, is reached.
 // MonthsSooner is null when nothing is left to fill or either date is beyond 120 months.
 type LeftoverExtra struct {
@@ -58,9 +58,9 @@ type OverLimitLine struct {
 }
 
 // SavingsResponse answers GET /me/finance/savings. Goals are in the User's order.
-// Leftover is set when the month's leftover is above the Base, OverLimit (an empty
+// Leftover is set when the month's leftover is above zero, OverLimit (an empty
 // list when no category is over) when it is below; neither is set with no income,
-// no Monthly contribution or a leftover equal to the Base.
+// no Monthly contribution or a leftover of zero.
 type SavingsResponse struct {
 	ReserveTargetCents    *int64               `json:"reserveTargetCents"`
 	ContributionBaseCents *int64               `json:"contributionBaseCents"`
@@ -116,7 +116,7 @@ func (h *Handler) PutContribution(w http.ResponseWriter, r *http.Request) {
 // The reserve's saved amount is the sum of the Investments that serve it, the Goals' pot
 // the sum of those that serve Goals. With no Monthly contribution the saved amounts are
 // still given, with no monthly amounts or expected months. The leftover is the current
-// month's of loadOutlook, the one Commitments gives; above the Base it gives the extra,
+// month's of loadOutlook, the one Commitments gives; above zero it gives the extra,
 // below it the Spending Categories over their limit, and with no income or no Base neither.
 func (h *Handler) Savings(w http.ResponseWriter, r *http.Request) {
 	uid := identity.CurrentUser(r.Context()).ID
@@ -186,7 +186,7 @@ func (h *Handler) Savings(w http.ResponseWriter, r *http.Request) {
 	if left := in.outlook[0].LeftoverCents; left != nil && planned {
 		if extra, ok := Extra(cin, *left); ok {
 			resp.Leftover = &LeftoverExtra{*left, extra.Extra, extra.MonthsSooner}
-		} else if *left < *base {
+		} else if *left < 0 {
 			over := []OverLimitLine{}
 			for _, c := range OverLimit(MonthTotals(in.rows).ByCategory, in.limits) {
 				over = append(over, OverLimitLine(c))
