@@ -311,3 +311,32 @@ func TestOutlookSavingAndBaselinePlan(t *testing.T) {
 		}
 	}
 }
+
+func TestPlannedBaseline(t *testing.T) {
+	cur := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	at := func(month time.Month, cents int64, category string, linked bool) Txn {
+		return Txn{PostedOn: time.Date(2026, month, 10, 0, 0, 0, 0, time.UTC), AmountCents: -cents, Type: "expense", Category: category, Linked: linked}
+	}
+	tests := []struct {
+		name string
+		rows []Txn
+		want map[string]int64
+	}{
+		{"no rows", nil, map[string]int64{}},
+		{"a month without the category divides as 0", []Txn{at(8, 300, "Food", false), at(9, 300, "Food", false), at(10, 100, "Fun", false)}, map[string]int64{"Food": 200, "Fun": 33}},
+		{"one month of history", []Txn{at(10, 500, "Food", false)}, map[string]int64{"Food": 500}},
+		{"two months of history", []Txn{at(9, 500, "Food", false), at(10, 500, "Food", false)}, map[string]int64{"Food": 500}},
+		{"a Linked-only month counts in the divisor, not the sum", []Txn{at(8, 600, "Food", false), at(9, 900, "Food", true)}, map[string]int64{"Food": 300}},
+		{"current and older rows are ignored", []Txn{at(11, 900, "Food", false), at(7, 900, "Food", false), at(10, 300, "Food", false)}, map[string]int64{"Food": 300}},
+		{"net negative stays negative", []Txn{at(10, -600, "Food", false)}, map[string]int64{"Food": -600}},
+		{"half rounds up", []Txn{at(9, 5, "Food", false), at(10, 0, "Other", false)}, map[string]int64{"Food": 3, "Other": 0}},
+		{"negative half rounds up", []Txn{at(9, -5, "Food", false), at(10, 0, "Other", false)}, map[string]int64{"Food": -2, "Other": 0}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := plannedBaseline(tt.rows, cur); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
