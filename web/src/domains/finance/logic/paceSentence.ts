@@ -5,7 +5,7 @@ import type { SameDays } from "./sameDays";
 import { formatCents } from "./money";
 
 /**
- * "Até dia 8 você gastou R$ 392,80 a mais que até 8 de outubro": this month up to `day` against the same days of the
+ * "Até dia 8 você gastou R$ 392,80 a mais que até 8 de Outubro": this month up to `day` against the same days of the
  * previous one, which `sameDays` cut (clamped, so 31 October reads 30 September). Null when there is no cut.
  */
 export function paceSentence(

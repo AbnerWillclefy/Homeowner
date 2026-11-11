@@ -27,7 +27,7 @@ export function Bar({
   markers?: number[];
   /** The Spending limit, drawn as a second kind of tick. `max` must include it. */
   limit?: number | undefined;
-  /** A line of text under the bar, such as the marker's value ("outubro até dia 8: R$ 410,00"). */
+  /** A line of text under the bar, such as the marker's value ("Outubro até dia 8: R$ 410,00"). */
   note?: ReactNode;
 }) {
   const { locale } = useI18n();
