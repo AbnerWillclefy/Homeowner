@@ -114,6 +114,7 @@ Colours are semantic tokens declared in `@theme` in `src/index.css`, with the li
 | `border` | Field and button edges (3:1 against the surface) |
 | `cat-peach`, `cat-mint`, `cat-lavender`, `cat-blue`, `cat-yellow`, `cat-salmon` | The six Category pastel fills ([ADR 0009](../adr/0009-navigate-with-a-bottom-tab-router-and-amend-the-look.md)); muted and desaturated in dark |
 | `chart-ink`, `chart-muted`, `chart-track` | Finances charts only: the main series and the reference tick, the second series (dashes and hatch lines) and the empty bar track. Neutral by rule: never `accent` or a `cat-` pastel. `contrast.test.ts` holds `chart-ink` and `chart-muted` to 3 (WCAG 1.4.11) on `surface-raised` and on `chart-track`, in both themes |
+| `spend-<id>`, `spend-<id>-tint` | The 13 Spending Category colours (`id` with hyphens: `spend-household-bills`) and their icon-tile tints, for charts split by Spending Category only (the Gastos donut, its bars and icon tiles). `spend-housing` is the accent's value, as a category colour and never a control. Education and Subscriptions differ in lightness as well as hue. Ratios below; `contrast.test.ts` holds each colour to 3 on `surface-raised` and on its own tint, in both themes |
 | `cat-*-ink` | Text and icons drawn on the matching pastel fill |
 | `welcome-from`, `welcome-to` | The two stops of onboarding's soft top-to-bottom gradient (`bg-linear-to-b from-welcome-from to-welcome-to`); static, never animated |
 
@@ -139,6 +140,24 @@ Category pairs (each of the six pastels; the lowest and highest shown). `src/sha
 | `border` on each fill | 3 | 3.34 to 3.94 | 3.12 to 3.41 |
 | `focus` on each fill | 3 | 4.66 to 5.50 | 5.13 to 5.61 |
 | `text` / `muted` on `surface-raised` (the neutral card) | 4.5 | 15.86 / 7.23 | 13.65 / 7.58 |
+
+Spending Category colours (WCAG 1.4.11, bar 3), the colour on `surface-raised` / on its own tint. Every proposed value passed as given except Education and Subscriptions, which were moved apart in lightness (light `#5a6ad6` and `#4a3d9c`, dark `#8ea0f5` and `#c3b0f2`):
+
+| Category | Light | Dark |
+|---|---|---|
+| housing | 5.99 / 4.86 | 8.49 / 6.61 |
+| household_bills | 4.15 / 3.47 | 8.13 / 6.31 |
+| groceries | 4.28 / 3.43 | 7.20 / 5.60 |
+| eating_out | 5.46 / 4.15 | 6.69 / 5.61 |
+| transport | 5.67 / 4.48 | 7.20 / 5.68 |
+| health | 5.60 / 4.30 | 6.97 / 5.75 |
+| education | 4.70 / 3.70 | 6.50 / 5.26 |
+| leisure | 4.70 / 3.79 | 7.91 / 5.99 |
+| shopping | 5.83 / 4.50 | 7.17 / 5.87 |
+| subscriptions | 8.61 / 6.78 | 8.27 / 6.91 |
+| pets | 5.63 / 4.46 | 7.20 / 5.94 |
+| taxes_fees | 6.04 / 4.81 | 7.88 / 6.39 |
+| other | 4.51 / 3.76 | 5.68 / 4.44 |
 
 Onboarding text sits straight on the gradient, so `contrast.test.ts` also checks `text`, `muted` and `danger` (4.5) and `border` and `focus` (3) against both `welcome-from` and `welcome-to`, in both themes.
 
