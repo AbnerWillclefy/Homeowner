@@ -48,12 +48,15 @@ export function Track({
   variant = "solid",
   markers = [],
   limit,
+  fill,
 }: {
   value: number;
   max: number;
   variant?: "solid" | "hatched";
   markers?: number[];
   limit?: number | undefined;
+  /** Classes for a solid fill and its edge in place of `chart-ink`: a chart split by Spending Category. */
+  fill?: string;
 }) {
   const percent = barPercent(value, max);
   const hatched = variant === "hatched";
@@ -63,7 +66,7 @@ export function Track({
         // The 1px border keeps the fill visible in forced-colors mode, where gradients disappear.
         <div
           data-fill
-          className={`absolute inset-y-0 start-0 rounded-pill border ${hatched ? "border-chart-muted" : "border-chart-ink bg-chart-ink"}`}
+          className={`absolute inset-y-0 start-0 rounded-pill border ${hatched ? "border-chart-muted" : (fill ?? "border-chart-ink bg-chart-ink")}`}
           style={{ width: `${percent}%`, ...(hatched && { backgroundImage: HATCH }) }}
         />
       )}
