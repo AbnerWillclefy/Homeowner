@@ -14,6 +14,32 @@ colors:
   chart-ink: "#3a4640"
   chart-muted: "#6b7a73"
   chart-track: "#e3e8e4"
+  spend-housing: "#2f6f4f"
+  spend-housing-tint: "#dcebe3"
+  spend-household-bills: "#a3740f"
+  spend-household-bills-tint: "#f5ead0"
+  spend-groceries: "#c05f22"
+  spend-groceries-tint: "#f8e2d3"
+  spend-eating-out: "#b5424b"
+  spend-eating-out-tint: "#f5dadc"
+  spend-transport: "#2d6aa3"
+  spend-transport-tint: "#dae6f2"
+  spend-health: "#a8437a"
+  spend-health-tint: "#f3dbe8"
+  spend-education: "#5a6ad6"
+  spend-education-tint: "#e1e3f6"
+  spend-leisure: "#1f7f8c"
+  spend-leisure-tint: "#d5ebee"
+  spend-shopping: "#8a5a3a"
+  spend-shopping-tint: "#ece0d7"
+  spend-subscriptions: "#4a3d9c"
+  spend-subscriptions-tint: "#e5e2f5"
+  spend-pets: "#8c4f9e"
+  spend-pets-tint: "#efe0f3"
+  spend-taxes-fees: "#56656d"
+  spend-taxes-fees-tint: "#e2e6e8"
+  spend-other: "#6b7a73"
+  spend-other-tint: "#e8ebe9"
   welcome-from: "#e3f3ea"
   welcome-to: "#f1ecfb"
   cat-peach: "#fde3d0"
@@ -163,8 +189,27 @@ They exist only for Finances charts (bars, markers, cumulative lines). Each is c
 ### Category pastels
 Each is a fill with a paired ink. Kitchen peach, bathroom mint, bedroom and living room lavender, laundry and floors blue, trash and outdoor yellow, pets salmon. "Other" and anything unknown is the neutral card. The pastel fills the whole card only for your own Tasks; elsewhere it lives on the icon tile and the chip.
 
+### Spending Category colours
+Each Spending Category has a fixed colour (ring part, bar fill, icon stroke) and a tint (icon tile), plus a fixed icon. Each colour is at least 3:1 against the card in both themes. They name Spending Categories only, never status (The Pastels Name, Never Rank Rule applies to them too). Token names use the id with hyphens (`spend-household-bills`); the dark values are in `web/src/tokens.css`.
+
+| Category | Icon (lucide) | Colour | Tint |
+|---|---|---|---|
+| housing | `House` | `#2f6f4f` | `#dcebe3` |
+| household_bills | `Zap` | `#a3740f` | `#f5ead0` |
+| groceries | `ShoppingCart` | `#c05f22` | `#f8e2d3` |
+| eating_out | `Utensils` | `#b5424b` | `#f5dadc` |
+| transport | `Car` | `#2d6aa3` | `#dae6f2` |
+| health | `HeartPulse` | `#a8437a` | `#f3dbe8` |
+| education | `GraduationCap` | `#5a6ad6` | `#e1e3f6` |
+| leisure | `Ticket` | `#1f7f8c` | `#d5ebee` |
+| shopping | `ShoppingBag` | `#8a5a3a` | `#ece0d7` |
+| subscriptions | `Repeat` | `#4a3d9c` | `#e5e2f5` |
+| pets | `PawPrint` | `#8c4f9e` | `#efe0f3` |
+| taxes_fees | `Receipt` | `#56656d` | `#e2e6e8` |
+| other | `Ellipsis` | `#6b7a73` | `#e8ebe9` |
+
 ### Named Rules
-**The One Voice Rule.** Teal means "this is the action". It never decorates, never labels a Category, and never appears on more than one button per card. One named exception: the mint check that is the door of the logo is decoration, in the brand mark only (`accent`, so it follows light and dark by token swap; the system text colour in forced-colours mode). It is never on a control, never repeated elsewhere, and never stands for a state.
+**The One Voice Rule.** Teal means "this is the action". It never decorates, never labels a Category, and never appears on more than one button per card. One named exception: the mint check that is the door of the logo is decoration, in the brand mark only (`accent`, so it follows light and dark by token swap; the system text colour in forced-colours mode). It is never on a control, never repeated elsewhere, and never stands for a state. A second: Housing's chart colour is the accent's value. It is a category colour, never a control.
 
 **The Pastels Name, Never Rank Rule.** A pastel says what kind of work it is, or, on an initials avatar, tells Residents apart. It is never used for status, urgency, success or Importance.
 
@@ -251,9 +296,10 @@ Icon and Category name on the Category pastel, a pill with a hairline edge, 0.87
   - The icon tile is decorative unless it carries meaning. When it does, it has a text description and the open body repeats it as a visible caption, never a tooltip. A state that is not an error (a fallback text, say) uses the neutral tile (muted tint, muted ink), not a warning icon.
 
 ### Charts
-Finances only, hand-drawn in SVG and CSS (no chart library), in the `chart-*` tokens and nothing else: never teal (`accent`), never a Chore Category pastel, which name a different vocabulary. Colour never tells two series apart.
+Finances only, hand-drawn in SVG and CSS (no chart library), Series and bars use the `chart-*` tokens. A chart split by Spending Category (the Gastos donut and its category list) uses the Spending Category colours instead. Colour never carries meaning alone: every part is also named in text with its amount and share.
 - **Bar:** the label, the amount as text on its own line under it, then a 0.75rem rounded track (`chart-track`) with the fill on it. The label wraps and is never cut. The fill keeps a 1px edge so it shows in forced-colors mode.
 - **Second series:** hatched (diagonal lines in `chart-muted`) on a bar, dashed on a line. A reference value, such as last month's same-days value, is a tick in `chart-ink` on the bar's scale, with its value written in the text beside the bar.
+- **Donut:** one ring, a part per Spending Category above zero, in its colour, split by a 2px gap and drawn largest first, clockwise from the top. Tapping a part thickens it, fades the others to 35% and puts its icon, name, share and amount in the centre; tapping it again brings back the month's total. The category list under it is the legend and the keyboard and screen-reader path: each row carries the same icon tile and colour.
 - **Cumulative line:** one line per series on a shared scale (solid, dashed, dotted), each series' final amount as text under it, and a "Ver tabela" / "Ver gráfico" toggle that swaps the drawing for a table of the same numbers.
 
 ### Top bar
@@ -306,7 +352,7 @@ A refresh of data already on screen keeps the data and shows only a 1rem muted s
 - **Don't** add shadows, gradients on cards, or glass effects. The only gradient is onboarding's full-bleed welcome background.
 - **Don't** use teal for anything but the primary action and the active tab.
 - **Don't** use a pastel to mean status, urgency or success.
-- **Don't** colour a chart teal or with a Category pastel, or leave a chart amount only in the drawing.
+- **Don't** colour a chart with a Chore Category pastel, use Spending Category colours outside a chart split by Spending Category, or leave a chart amount only in the drawing.
 - **Don't** truncate text with an ellipsis.
 - **Don't** use alarm colours, exclamation marks or countdowns for rest, empty days or a Streak of 0.
 - **Don't** put the action you expect people to take on the left edge of a card or dialog.

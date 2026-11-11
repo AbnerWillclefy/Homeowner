@@ -84,7 +84,7 @@ for (const l of LOCALES) {
       await expect(groceries.getByText(l.over)).toBeVisible();
       await expect(groceries.locator("[data-limit-marker]")).toHaveCount(1);
       await expect(groceries.locator("[data-marker]")).toHaveCount(1); // last month's tick is still its own shape
-      await expect(groceries.locator("button svg")).toHaveCount(1); // the disclosure chevron only: no warning icon
+      await expect(groceries.locator("button svg")).toHaveCount(2); // the category icon and the disclosure chevron: no warning icon
       await expect(groceries.getByText(l.over)).not.toHaveClass(/danger/);
 
       const leisure = bar(page, l.leisure);

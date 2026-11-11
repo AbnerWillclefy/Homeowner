@@ -36,6 +36,14 @@ const LOCALES = [
     category: "Categoria de gasto",
     save: "Salvar",
     noTransactions: "Nenhum lançamento em Dezembro.",
+    committed: "Comprometido no mês",
+    spentSince: "Gasto desde o dia 1",
+    later: /R\$\s?150,00 gastos agora caem em faturas de meses seguintes\./,
+    donut: /Gastos por categoria, total R\$\s?1\.007,00/,
+    total: "Total",
+    empty: "Nada por aqui neste mês.",
+    noSpending: "Nenhum gasto neste mês.",
+    importing: "Os números e o gráfico aparecem aqui quando terminar.",
   },
 ] as const;
 
@@ -100,6 +108,61 @@ for (const l of LOCALES) {
       // Biggest first.
       const names = await page.getByRole("region", { name: "Por categoria" }).locator("li button[aria-expanded]").allInnerTexts();
       expect(names.map((n) => n.split("\n")[0]!.trim())).toEqual([l.groceries, l.leisure, l.other, l.health]);
+    });
+
+    test("shows Committed and Spent since the 1st, with a card purchase due next month only in Spent", async ({ page }) => {
+      const numbers = page.locator("dl");
+      await expect(numbers.getByText(l.committed)).toBeVisible();
+      await expect(numbers.getByText(l.spentSince)).toBeVisible();
+      // 100700 counts on December's bills; the 15000 card charge posted on the 28th falls on January's.
+      await expect(numbers.locator("dd")).toHaveText([/R\$\s?1\.007,00/, /R\$\s?1\.157,00/]);
+      await expect(page.getByText(l.later)).toBeVisible();
+    });
+
+    test("draws the donut with a text alternative, and a tap shows a part in the centre and a second tap the total", async ({ page }) => {
+      await expect(page.getByRole("img", { name: l.donut })).toBeVisible();
+      // Transfers and income are not in it: three categories, whose shares add up to 100.
+      await expect(page.locator(".sr-only table tbody tr")).toHaveText([/Mercado.*R\$\s?842,00.*84%/, /Lazer.*R\$\s?120,00.*12%/, /Outros.*R\$\s?45,00.*4%/]);
+      const centre = page.locator("[data-centre]");
+      await expect(centre).toContainText(l.total);
+      // dispatchEvent, because the middle of a ring part's box is the hole, which a click would hit instead.
+      await page.locator('[data-part="groceries"]').dispatchEvent("click");
+      await expect(centre).toContainText(l.groceries);
+      await expect(centre).toContainText("84%");
+      await page.locator('[data-part="groceries"]').dispatchEvent("click");
+      await expect(centre).toContainText(l.total);
+    });
+
+    test("changing the month updates both numbers and the donut", async ({ page }) => {
+      await page.locator('[data-part="groceries"]').dispatchEvent("click");
+      await page.getByRole("button", { name: l.prev, exact: true }).click();
+      await expect(page.locator("dl dd")).toHaveText([/R\$\s?881,90/, /R\$\s?881,90/]);
+      await expect(page.getByText(l.later)).toHaveCount(0);
+      await expect(page.getByRole("img", { name: /total R\$\s?881,90/ })).toBeVisible();
+      await expect(page.locator("[data-centre]")).toContainText(l.total);
+    });
+
+    test("a month with nothing says so, with no donut", async ({ page }) => {
+      await page.getByRole("button", { name: l.prev, exact: true }).click();
+      await page.getByRole("button", { name: l.prev, exact: true }).click();
+      await expect(page.getByText(l.empty)).toBeVisible();
+      await expect(page.locator("dl")).toHaveCount(0);
+      await expect(page.locator("[data-centre]")).toHaveCount(0);
+    });
+
+    test("a month with only income has no spending to draw", async ({ page, baseURL, fakeApi }) => {
+      fakeApi.state.finance!.transactions = [row("s1", "2026-12-16", "Salário", 300000, "income", null)];
+      await visit(page, new URL("/finances/gastos", baseURL!).toString());
+      await expect(page.getByText(l.noSpending)).toBeVisible();
+      await expect(page.locator("[data-centre]")).toHaveCount(0);
+    });
+
+    test("a month still importing says so instead of an empty month", async ({ page, baseURL, fakeApi }) => {
+      fakeApi.state.finance!.transactions = [];
+      fakeApi.state.finance!.importing = true;
+      await visit(page, new URL("/finances/gastos", baseURL!).toString());
+      await expect(page.getByText(l.importing)).toBeVisible();
+      await expect(page.getByText(l.empty)).toHaveCount(0);
     });
 
     test("opens a category by day, newest first", async ({ page }) => {

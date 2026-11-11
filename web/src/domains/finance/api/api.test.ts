@@ -239,6 +239,18 @@ describe("getMonth", () => {
     expect(await getMonth("2026-11")).toEqual({ kind: "error" });
   });
 
+  it("reads committedCents and spentSinceFirstCents, leaves them undefined when absent, and refuses a non-number", async () => {
+    stubFetch(Response.json({ ...MONTH, committedCents: 90000, spentSinceFirstCents: 61000 }));
+    expect(await getMonth("2026-11")).toMatchObject({ kind: "ok", month: { committedCents: 90000, spentSinceFirstCents: 61000 } });
+    stubFetch(Response.json(MONTH));
+    const result = await getMonth("2026-11");
+    expect(result.kind === "ok" && [result.month.committedCents, result.month.spentSinceFirstCents]).toEqual([undefined, undefined]);
+    stubFetch(Response.json({ ...MONTH, committedCents: "90000" }));
+    expect(await getMonth("2026-11")).toEqual({ kind: "error" });
+    stubFetch(Response.json({ ...MONTH, spentSinceFirstCents: null }));
+    expect(await getMonth("2026-11")).toEqual({ kind: "error" });
+  });
+
   it("puts a limit, or null to remove it", async () => {
     const fetch = stubFetch(new Response(null, { status: 204 }));
     expect(await putBudget("groceries", 80000)).toEqual({ kind: "ok" });

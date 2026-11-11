@@ -185,9 +185,16 @@ export function financeHandlers(api: FakeApi): void {
         .filter(([, cents]) => cents !== 0)
         .map(([category, cents]) => ({ category, spentCents: cents }))
         .sort((a, b) => b.spentCents - a.spentCents);
+      // As `finance.Handler.Month` answers: Committed counts what falls on this month's bills (so a card purchase
+      // due next month is not in it); Spent since the 1st counts every Expense posted in the month.
+      const spentSinceFirstCents = (finance(state).transactions ?? [])
+        .filter((t) => t.type === "expense" && t.postedOn.startsWith(`${month}-`))
+        .reduce((sum, t) => sum - t.amountCents, 0);
       return json(200, {
         month,
         spentCents,
+        committedCents: spentCents,
+        spentSinceFirstCents,
         categories,
         transactions,
         limits: finance(state).limits ?? {},

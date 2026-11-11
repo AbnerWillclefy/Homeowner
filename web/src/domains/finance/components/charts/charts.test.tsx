@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { I18nProvider } from "../../../../shared/i18n/I18nProvider";
 import { Bar } from "./Bar";
 import { CumulativeLine } from "./CumulativeLine";
+import { Donut, type DonutItem } from "./Donut";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -86,5 +87,62 @@ describe("CumulativeLine", () => {
     const c = render(createElement(CumulativeLine, { title: "Gasto", series: [{ label: "Novembro", points: [0] }] }));
     expect(c.querySelectorAll("polyline")).toHaveLength(1);
     expect(text(c)).toContain("R$ 0,00");
+  });
+});
+
+describe("Donut", () => {
+  const items: DonutItem[] = [
+    { category: "groceries", cents: 50000 },
+    { category: "leisure", cents: 30000 },
+    { category: "other", cents: 20000 },
+  ];
+  const parts = (c: Element) => [...c.querySelectorAll<SVGPathElement>("[data-part]")];
+  const click = (el: Element) => act(() => el.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+
+  it("draws a part per category that together fill the circle", () => {
+    const c = render(createElement(Donut, { items }));
+    expect(parts(c).map((p) => p.dataset["part"])).toEqual(["groceries", "leisure", "other"]);
+    expect((c.querySelector('[role="img"]')?.getAttribute("aria-label") ?? "").replace(/ /g, " ")).toContain("R$ 1.000,00");
+    // Each part is a closed arc; the angles themselves are checked in logic/chart.test.ts.
+    expect(parts(c).every((p) => p.getAttribute("d")?.endsWith("Z"))).toBe(true);
+  });
+
+  it("draws one category as a full ring without a gap", () => {
+    const c = render(createElement(Donut, { items: [items[0]!] }));
+    expect(parts(c)).toHaveLength(1);
+    expect(parts(c)[0]!.getAttribute("d")?.match(/A/g)).toHaveLength(4);
+  });
+
+  it("leaves out zero and negative categories", () => {
+    const c = render(createElement(Donut, { items: [...items, { category: "health", cents: 0 }, { category: "pets", cents: -4000 }] }));
+    expect(parts(c)).toHaveLength(3);
+    expect(c.querySelector("tbody")?.textContent).not.toContain("Saúde");
+    expect(c.querySelector("tbody")?.textContent).not.toContain("Pets");
+  });
+
+  it("lists every drawn category with its amount and share as text", () => {
+    const c = render(createElement(Donut, { items }));
+    const rows = [...c.querySelectorAll("tbody tr")].map((r) => [...r.children].map(text));
+    expect(rows).toEqual([
+      ["Mercado", "R$ 500,00", "50%"],
+      ["Lazer", "R$ 300,00", "30%"],
+      ["Outros", "R$ 200,00", "20%"],
+    ]);
+    expect(c.querySelector("caption")?.textContent).toBe("Gastos por categoria");
+  });
+
+  it("shows the total in the centre, a tapped part's name and share, and the total again on a second tap", () => {
+    const c = render(createElement(Donut, { items }));
+    const centre = () => text(c.querySelector("[data-centre]")!);
+    expect(centre()).toContain("Total");
+    expect(centre()).toContain("R$ 1.000,00");
+    click(parts(c)[1]!);
+    expect(centre()).toContain("Lazer");
+    expect(centre()).toContain("30%");
+    expect(centre()).toContain("R$ 300,00");
+    expect(parts(c)[0]!.getAttribute("class")).toContain("opacity-35");
+    click(parts(c)[1]!);
+    expect(centre()).toContain("Total");
+    expect(parts(c)[0]!.getAttribute("class")).not.toContain("opacity-35");
   });
 });
