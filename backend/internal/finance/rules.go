@@ -85,8 +85,10 @@ var billPayments = []string{"PAGAMENTO FATURA", "PAGAMENTO DE FATURA", "PAGAMENT
 type Txn struct {
 	ID, SourceID, Currency, MerchantKey string
 	// Description is the raw text, read only by MatchBills.
-	Description     string
-	PostedOn        time.Time
+	Description string
+	PostedOn    time.Time
+	// Posted is the posted day; PostedOn may hold CountsOn.
+	Posted          time.Time
 	AmountCents     int64
 	Type, TypeSetBy string
 	// Category is the spending category, empty unless Type is expense.
@@ -100,7 +102,9 @@ type Txn struct {
 // category changed. A row the User set is neither changed nor used as a partner.
 //
 // Rules, in order: an "Aplicação" (any sign) or a positive "Resgate" is a
-// saving, left out of the pairing below; a bill payment is a Transfer; a debit and a credit of the
+// saving, left out of the pairing below; a bill payment is a Transfer, by its words or, on a Source
+// that is not a credit card, by a debit equal to a stored closed bill's total
+// posted within transferWindowDays of its due date; a debit and a credit of the
 // same amount and currency on two Sources within transferWindowDays are both
 // Transfers; any other credit on a credit_card Source is an Expense, a refund
 // (a negative spend); any other credit is Income, any other debit an Expense.
@@ -112,7 +116,7 @@ type Txn struct {
 // Transfer; the User can correct it. A row that drops out
 // of a pair after a re-fetch goes back to its single-row rule, so callers pass
 // the whole window, not only the new rows.
-func Classify(txns []Txn, kinds map[string]Kind) []Txn {
+func Classify(txns []Txn, kinds map[string]Kind, bills []StoredBill) []Txn {
 	var auto []Txn
 	for _, t := range txns {
 		if t.TypeSetBy == "auto" {
@@ -132,6 +136,13 @@ func Classify(txns []Txn, kinds map[string]Kind) []Txn {
 	for _, t := range rest {
 		for _, p := range billPayments {
 			if strings.Contains(t.MerchantKey, p) {
+				transfer[t.ID] = true
+			}
+		}
+	}
+	for _, t := range auto {
+		for _, b := range bills {
+			if t.AmountCents < 0 && kinds[t.SourceID] != "credit_card" && t.Currency == "BRL" && -t.AmountCents == b.TotalCents && math.Abs(t.PostedOn.Sub(b.DueOn).Hours()/24) <= transferWindowDays {
 				transfer[t.ID] = true
 			}
 		}
@@ -225,9 +236,13 @@ type Plan struct {
 }
 
 // PlanName is the description without its installment token, or the merchant
-// key when nothing else is left.
-func PlanName(description, merchantKey string) string {
-	if name := strings.Join(strings.Fields(installmentText.ReplaceAllString(description, " ")), " "); name != "" {
+// key when nothing else is left. The token is "PARC nn/mm" or a bare "n/m"
+// equal to the row's own number and total (leading zeros allowed), so a
+// date-like "10/11" in the description survives.
+func PlanName(description, merchantKey string, number, total int) string {
+	bare := regexp.MustCompile(`(^|\s)0*` + strconv.Itoa(number) + `/0*` + strconv.Itoa(total) + `(\s|$)`)
+	description = installmentText.ReplaceAllString(description, " ")
+	if name := strings.Join(strings.Fields(bare.ReplaceAllString(description, " ")), " "); name != "" {
 		return name
 	}
 	return merchantKey

@@ -27,6 +27,17 @@ type Client interface {
 	// empty cursor for the first page, then the previous page's Next until
 	// Next is empty.
 	ListTransactions(ctx context.Context, apiKey, accountID string, from, to time.Time, cursor string) (TransactionsPage, error)
+	// ListBills reads a credit card account's bills, closed and open.
+	ListBills(ctx context.Context, apiKey, accountID string) ([]Bill, error)
+}
+
+// Bill is one bill of a credit card as the bank reports it. The dates are
+// instants, like Transaction.Date.
+type Bill struct {
+	ID                   string
+	DueDate, ClosingDate time.Time
+	TotalCents           int64
+	Currency             string
 }
 
 // Item is a connection to one institution.

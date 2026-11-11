@@ -20,6 +20,7 @@ const LOCALES = [
     amountLabel: "Valor esperado (R$)",
     dayLabel: "Dia do vencimento",
     save: "Salvar",
+    cancel: "Cancelar",
     markPaid: /Paguei/,
     undo: /Desfazer/,
     del: "Excluir",
@@ -28,9 +29,9 @@ const LOCALES = [
     menu: (name: string) => `Mais ações: ${name}`,
     paid: "Paga",
     bank: "Paga pelo banco",
-    dueLine: /Vence 20 de jan/,
-    addedDue: /Vence 31 de jan/,
-    overdue: /Venceu em 5 de jan/,
+    dueLine: /Vence 20 de Jan/,
+    addedDue: /Vence 31 de Jan/,
+    overdue: /Venceu em 5 de Jan/,
     groups: { overdue: "Vencida", due: "A pagar", paid: "Pagas" },
     summary: { paid: /R\$\s*159,90 de R\$\s*2\.170,40 pagos\./, toPay: /Faltam R\$\s*2\.010,50 em 3 contas\./ },
     strip: { twoOnTwenty: /Dia 20: 2 contas/, today: /Hoje é dia 15/, mark: "hoje" },
@@ -48,6 +49,7 @@ const LOCALES = [
     amountLabel: "Expected amount (R$)",
     dayLabel: "Due day",
     save: "Save",
+    cancel: "Cancel",
     markPaid: /I paid/,
     undo: /Undo/,
     del: "Delete",
@@ -203,6 +205,37 @@ for (const l of LOCALES) {
       await page.getByRole("dialog", { name: l.editTitle }).getByRole("button", { name: l.save }).click();
       await expect(page.getByRole("dialog")).toHaveCount(0);
       await expect(trigger).toBeFocused();
+    });
+
+    // A pointer click, not the keyboard: the menu was still closing when the dialog opened, which froze the page.
+    test("a dialog opened by click and cancelled leaves the page working, with focus back and no aria-hidden warning", async ({ page }) => {
+      const logs: string[] = [];
+      page.on("console", (m) => logs.push(m.text()));
+      const trigger = menuOf(page, "Luz");
+      await trigger.click();
+      await page.getByRole("menuitem", { name: l.edit }).click();
+      const dialog = page.getByRole("dialog", { name: l.editTitle });
+      await expect(dialog).toBeVisible();
+      await dialog.getByRole("button", { name: l.cancel }).click();
+      await expect(dialog).toHaveCount(0);
+      await expect(trigger).toBeFocused();
+      expect(await page.evaluate(() => getComputedStyle(document.body).pointerEvents)).not.toBe("none");
+      await row(page, "Condomínio").getByRole("button", { name: l.markPaid }).click();
+      await expect(group(page, l.groups.paid).getByText("Condomínio")).toBeVisible();
+
+      for (const confirm of [false, true]) {
+        await menuOf(page, "Luz").click();
+        await page.getByRole("menuitem", { name: l.del }).click();
+        const ask = page.getByRole("dialog");
+        await ask.getByRole("button", { name: confirm ? l.del : l.cancel }).click();
+        await expect(ask).toHaveCount(0);
+        await page.getByRole("button", { name: l.add }).click();
+        await expect(page.getByRole("dialog")).toBeVisible();
+        await page.getByRole("dialog").getByRole("button", { name: l.cancel }).click();
+        await expect(page.getByRole("dialog")).toHaveCount(0);
+        if (!confirm) await expect(row(page, "Luz")).toHaveCount(1);
+      }
+      expect(logs.filter((m) => m.includes("aria-hidden"))).toEqual([]);
     });
 
     test("deleting a bill from the menu by keyboard asks first", async ({ page, fakeApi }) => {

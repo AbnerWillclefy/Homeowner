@@ -10,7 +10,8 @@ const ITEM =
 
 /**
  * The "⋯" button of a Bill: Edit and Delete behind it. Delete only asks to be confirmed; the dialog is the caller's.
- * Each action hands over the button, as the item it was picked from is gone once the dialog closes.
+ * Each action hands over the button, as the item it was picked from is gone once the dialog closes. The action runs
+ * once the menu has closed: a dialog opened while the menu is closing leaves the page unclickable and trips aria-hidden.
  */
 export function BillMenu({
   name,
@@ -25,6 +26,7 @@ export function BillMenu({
 }) {
   const { t } = useI18n();
   const trigger = useRef<HTMLButtonElement>(null);
+  const picked = useRef<"edit" | "delete" | null>(null);
   return (
     <Menu.Root>
       <Menu.Trigger asChild>
@@ -33,11 +35,22 @@ export function BillMenu({
         </Button>
       </Menu.Trigger>
       <Menu.Portal>
-        <Menu.Content align="end" sideOffset={4} className="z-50 min-w-40 rounded-card border border-border bg-surface-raised p-1 text-text">
-          <Menu.Item className={ITEM} onSelect={() => onEdit(trigger.current)}>
+        <Menu.Content
+          align="end"
+          sideOffset={4}
+          onCloseAutoFocus={(event) => {
+            const action = picked.current;
+            picked.current = null;
+            if (action === null) return;
+            event.preventDefault();
+            (action === "edit" ? onEdit : onDelete)(trigger.current);
+          }}
+          className="z-50 min-w-40 rounded-card border border-border bg-surface-raised p-1 text-text"
+        >
+          <Menu.Item className={ITEM} onSelect={() => (picked.current = "edit")}>
             {t("finances.bills.edit")}
           </Menu.Item>
-          <Menu.Item className={ITEM} onSelect={() => onDelete(trigger.current)}>
+          <Menu.Item className={ITEM} onSelect={() => (picked.current = "delete")}>
             {t("finances.bills.delete")}
           </Menu.Item>
         </Menu.Content>

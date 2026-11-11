@@ -12,7 +12,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/migrations"
 )
 
-// 0039 allows the saving type; its Down turns saving rows into Transfers so the old CHECK holds.
+// 0040 allows the saving type; its Down turns saving rows into Transfers so the old CHECK holds.
 func TestFinanceSavingMigrationDownMakesSavingsTransfers(t *testing.T) {
 	t.Parallel()
 	url := apitest.NewEmptyDatabase(t)
@@ -27,8 +27,8 @@ func TestFinanceSavingMigrationDownMakesSavingsTransfers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := provider.UpTo(ctx, 38); err != nil {
-		t.Fatalf("migrate to 38: %v", err)
+	if _, err := provider.UpTo(ctx, 39); err != nil {
+		t.Fatalf("migrate to 39: %v", err)
 	}
 	if _, err := sqlDB.ExecContext(ctx, `
 		WITH u AS (INSERT INTO users (cognito_sub, email, created_at, updated_at) VALUES ('s', 's@example.com', now(), now()) RETURNING id),
@@ -45,16 +45,16 @@ func TestFinanceSavingMigrationDownMakesSavingsTransfers(t *testing.T) {
 		return err
 	}
 	if err := insert("saving"); err == nil {
-		t.Fatal("saving accepted before 0039")
+		t.Fatal("saving accepted before 0040")
 	}
-	if _, err := provider.UpTo(ctx, 39); err != nil {
-		t.Fatalf("migrate to 39: %v", err)
+	if _, err := provider.UpTo(ctx, 40); err != nil {
+		t.Fatalf("migrate to 40: %v", err)
 	}
 	if err := insert("saving"); err != nil {
 		t.Fatalf("insert saving after up: %v", err)
 	}
-	if _, err := provider.DownTo(ctx, 38); err != nil {
-		t.Fatalf("migrate down to 38: %v", err)
+	if _, err := provider.DownTo(ctx, 39); err != nil {
+		t.Fatalf("migrate down to 39: %v", err)
 	}
 	var typ string
 	if err := sqlDB.QueryRowContext(ctx, `SELECT type FROM finance_transactions`).Scan(&typ); err != nil || typ != "transfer" {

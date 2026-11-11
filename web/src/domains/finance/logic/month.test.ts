@@ -3,7 +3,7 @@ import { addMonths, currentDay, currentMonth, formatDay, monthFromParam, monthLa
 
 describe("monthName", () => {
   it("is the month alone, in the locale", () => {
-    expect(monthName("2026-10", "pt-BR")).toBe("outubro");
+    expect(monthName("2026-10", "pt-BR")).toBe("Outubro");
     expect(monthName("2026-10", "en-US")).toBe("October");
   });
 });
@@ -17,7 +17,9 @@ describe("currentDay", () => {
 describe("formatDay", () => {
   it("writes a posting date as day and month in the locale, with no time zone shift", () => {
     expect(formatDay("2026-11-02", "en-US")).toBe("Nov 2");
-    expect(formatDay("2026-11-02", "pt-BR")).toBe("2 de nov.");
+    expect(formatDay("2026-11-02", "pt-BR")).toBe("2 de Nov.");
+    expect(formatDay("2026-09-28", "pt-BR")).toBe("28 de Set.");
+    expect(formatDay("2026-12-05", "pt-BR")).toBe("5 de Dez.");
   });
 });
 
@@ -33,7 +35,7 @@ describe("month", () => {
   });
   it("labels the month in the locale", () => {
     expect(monthLabel("2026-11", "en-US")).toBe("November 2026");
-    expect(monthLabel("2026-03", "pt-BR")).toBe("março de 2026");
+    expect(monthLabel("2026-03", "pt-BR")).toBe("Março de 2026");
   });
 });
 

@@ -38,7 +38,7 @@ export function whenOf(p: {
   return { kind: "expected", month: p.expectedMonth };
 }
 
-/** When, in words ("Prevista para abril de 2029"); null when there is nothing to say. */
+/** When, in words ("Prevista para Abril de 2029"); null when there is nothing to say. */
 export function whenText(t: Translate, locale: string, when: When, who: "reserve" | "goal"): string | null {
   switch (when.kind) {
     case "none":

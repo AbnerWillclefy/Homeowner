@@ -13,7 +13,7 @@ import { financeView } from "../pages/finances";
 // travels there and back, and a deep link goes back to Gastos on its month; nothing overflows sideways.
 
 const LOCALES = [
-  { locale: "pt-BR", groceries: "Mercado", leisure: "Lazer", heading: "Últimos 6 meses", mark: "este mês", empty: "Sem gastos nesta categoria nos últimos 6 meses", failed: "Não conseguimos carregar o histórico.", retry: "Tentar novamente", year: "julho de 2026", plain: "novembro", prev: "Mês anterior", picked: "mês escolhido", january: "janeiro de 2027", link: "Ver histórico", back: "Gastos", limit: "Limite mensal desta categoria", november: "novembro de 2026", december: "dezembro de 2026" },
+  { locale: "pt-BR", groceries: "Mercado", leisure: "Lazer", heading: "Últimos 6 meses", mark: "este mês", empty: "Sem gastos nesta categoria nos últimos 6 meses", failed: "Não conseguimos carregar o histórico.", retry: "Tentar novamente", year: "Julho de 2026", plain: "Novembro", prev: "Mês anterior", picked: "mês escolhido", january: "Janeiro de 2027", link: "Ver histórico", back: "Gastos", limit: "Limite mensal desta categoria", november: "Novembro de 2026", december: "Dezembro de 2026" },
   { locale: "en-US", groceries: "Groceries", leisure: "Leisure", heading: "Last 6 months", mark: "this month", empty: "No spending in this category in the last 6 months", failed: "We could not load the history.", retry: "Try again", year: "July 2026", plain: "November", prev: "Previous month", picked: "chosen month", january: "January 2027", link: "See history", back: "Spending", limit: "Monthly limit for this category", november: "November 2026", december: "December 2026" },
 ] as const;
 

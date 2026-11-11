@@ -12,7 +12,17 @@ func TestOutlook(t *testing.T) {
 	nov := d("2026-11-01")
 	i64 := func(v int64) *int64 { return &v }
 	spend := func(card, day string, cents int64) Txn {
-		return Txn{SourceID: card, PostedOn: d(day), AmountCents: -cents, Type: "expense"}
+		return Txn{SourceID: card, PostedOn: d(day), Posted: d(day), AmountCents: -cents, Type: "expense"}
+	}
+	// counted is a charge posted on one day that counts in the bill of another.
+	counted := func(card, posted, countsOn string, cents int64) Txn {
+		return Txn{SourceID: card, PostedOn: d(countsOn), Posted: d(posted), AmountCents: -cents, Type: "expense"}
+	}
+	stored := func(closes, due string, cents int64) StoredBill {
+		return StoredBill{ClosesOn: d(closes), DueOn: d(due), TotalCents: cents}
+	}
+	withBills := func(card string, bills ...StoredBill) []Card {
+		return []Card{{ID: card, Name: card, BillDaysKnown: true, Bills: bills}}
 	}
 	bill := func(id string, cents int64, paid, byCard bool) MonthBill {
 		return MonthBill{BillResponse: BillResponse{ID: id, Name: id, ExpectedCents: cents}, Paid: paid, CardPaid: byCard}
@@ -61,8 +71,41 @@ func TestOutlook(t *testing.T) {
 		},
 		"two cards each get their own bill and other sources are not cards": {
 			rows:  []Txn{spend("a", "2026-11-03", 100), spend("b", "2026-11-03", 200), spend("checking", "2026-11-03", 999)},
-			cards: []Card{{"a", "a", true}, {"b", "b", true}},
+			cards: []Card{{ID: "a", Name: "a", BillDaysKnown: true}, {ID: "b", Name: "b", BillDaysKnown: true}},
 			want:  want{cards: []CardBill{{"a", "a", 100, true}, {"b", "b", 200, true}}, total: 300},
+		},
+		"a bill due in the month replaces the computed sum and the owed installments": {
+			rows:  []Txn{spend("a", "2026-11-03", 1000)},
+			cards: withBills("a", stored("2026-11-03", "2026-11-10", 5000)),
+			plans: []Plan{{Name: "TV", Number: 3, Total: 10, AmountCents: 2500, Month: d("2026-10-01"), SourceID: "a", Card: true}},
+			want:  want{cards: []CardBill{{"a", "a", 5000, true}}, total: 5000},
+		},
+		"a credit balance bill lowers the month as the bank says": {
+			cards: withBills("a", stored("2026-11-03", "2026-11-10", -700)),
+			want:  want{cards: []CardBill{{"a", "a", -700, true}}, total: -700},
+		},
+		"the open month counts only charges posted on or after the latest closing, plus installments": {
+			rows: []Txn{counted("a", "2026-10-02", "2026-11-10", 700), counted("a", "2026-10-03", "2026-11-10", 800),
+				counted("a", "2026-10-05", "2026-11-10", 300)},
+			cards: withBills("a", stored("2026-09-03", "2026-09-10", 1), stored("2026-10-03", "2026-10-10", 9999)),
+			plans: []Plan{{Name: "TV", Number: 3, Total: 10, AmountCents: 250, Month: d("2026-10-01"), SourceID: "a", Card: true}},
+			want:  want{cards: []CardBill{{"a", "a", 1350, true}}, total: 1350},
+		},
+		"a bill due in a later month does not cut the open month": {
+			rows:  []Txn{counted("a", "2026-10-02", "2026-11-10", 700)},
+			cards: withBills("a", stored("2026-11-03", "2026-12-10", 9999)),
+			want:  want{cards: []CardBill{{"a", "a", 700, true}}, next: []CardBill{{"a", "a", 9999, true}}, total: 700},
+		},
+		"the month after a bill counts only what posted after its closing": {
+			rows:  []Txn{counted("a", "2026-11-02", "2026-12-10", 700), counted("a", "2026-11-05", "2026-12-10", 300)},
+			cards: withBills("a", stored("2026-11-03", "2026-11-10", 5000)),
+			want:  want{cards: []CardBill{{"a", "a", 5000, true}}, next: []CardBill{{"a", "a", 300, true}}, total: 5000},
+		},
+		"a card with bills and a card without each keep their own rule": {
+			rows: []Txn{spend("a", "2026-11-03", 100), spend("b", "2026-11-03", 200)},
+			cards: []Card{{ID: "a", Name: "a", BillDaysKnown: true, Bills: []StoredBill{stored("2026-11-03", "2026-11-10", 5000)}},
+				{ID: "b", Name: "b", BillDaysKnown: true}},
+			want: want{cards: []CardBill{{"a", "a", 5000, true}, {"b", "b", 200, true}}, total: 5200},
 		},
 		"a card without bill days is flagged": {
 			rows:  []Txn{spend("a", "2026-11-03", 100)},
