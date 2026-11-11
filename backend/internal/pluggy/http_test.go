@@ -97,8 +97,8 @@ func TestListTransactionsFollowsNext(t *testing.T) {
 		t.Fatalf("page 1: %d rows, next %q, err %v; want 31 rows and a cursor", len(page1.Transactions), page1.Next, err)
 	}
 	page2, err := c.ListTransactions(ctx, pluggytest.APIKey, pluggytest.CheckingAccountID, from, to, page1.Next)
-	if err != nil || len(page2.Transactions) != 3 || page2.Next != "" {
-		t.Fatalf("page 2: %d rows, next %q, err %v; want 3 rows and no cursor", len(page2.Transactions), page2.Next, err)
+	if err != nil || len(page2.Transactions) != 4 || page2.Next != "" {
+		t.Fatalf("page 2: %d rows, next %q, err %v; want 4 rows and no cursor", len(page2.Transactions), page2.Next, err)
 	}
 	debit := page2.Transactions[0]
 	if debit.AmountCents != -1234 || debit.Type != "DEBIT" || debit.Category != nil || debit.ProviderID != nil ||
@@ -110,6 +110,9 @@ func TestListTransactionsFollowsNext(t *testing.T) {
 	}
 	if cp := page2.Transactions[2].Counterpart; cp == nil || cp.Document != "416.799.495-00" || cp.Name != "Receiver Secret Name" || page2.Transactions[0].Counterpart != nil {
 		t.Errorf("counterpart of the own-name debit = %+v, want the receiver; none on the others", cp)
+	}
+	if cp := page2.Transactions[3].Counterpart; cp == nil || cp.Document != "416.799.495-00" || cp.Name != "Payer Secret Name" {
+		t.Errorf("counterpart of the own-name credit = %+v, want the payer", cp)
 	}
 }
 

@@ -294,7 +294,8 @@ func digits(s string) string {
 // posted), and so are rows that are not BRL, which are counted. On a card
 // Pluggy sends a purchase positive and a bill payment negative, so its sign is
 // flipped to the Source's point of view. A row's counterpart is reduced to
-// OwnCounterpart here and goes no further.
+// OwnCounterpart here and goes no further. A card row never has one: its payer
+// or receiver was picked from Pluggy's raw sign, which the flip inverts.
 func toRows(txs []pluggy.Transaction, card bool, owner pluggy.Party) (rows []Row, skippedCurrency int) {
 	for _, tx := range txs {
 		if tx.Status == "PENDING" {
@@ -310,7 +311,7 @@ func toRows(txs []pluggy.Transaction, card bool, owner pluggy.Party) (rows []Row
 		}
 		r := Row{ProviderID: tx.ID, PostedOn: postedOn(tx.Date), AmountCents: amount,
 			Description: tx.Description, MerchantKey: MerchantKey(tx.Description), Type: "income"}
-		r.OwnCounterpart = tx.Counterpart != nil && sameParty(owner, *tx.Counterpart)
+		r.OwnCounterpart = !card && tx.Counterpart != nil && sameParty(owner, *tx.Counterpart)
 		if amount < 0 {
 			r.Type = "expense"
 		}

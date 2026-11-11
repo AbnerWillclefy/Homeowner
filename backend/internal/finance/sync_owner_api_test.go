@@ -41,6 +41,9 @@ func TestReimportAfterTheResetIsSafeTwice(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if _, err := app.DB.Exec(ctx, `UPDATE finance_transactions SET own_counterpart = false, type = 'expense', spending_category = 'other', category_set_by = 'auto' WHERE description = 'SYNTHETIC OWN NAME PIX'`); err != nil {
+		t.Fatal(err)
+	}
 	reset()
 	before := scalar(t, app, `SELECT count(*) FROM finance_transactions`)
 	for range 2 {
@@ -52,6 +55,9 @@ func TestReimportAfterTheResetIsSafeTwice(t *testing.T) {
 	}
 	if after := scalar(t, app, `SELECT count(*) FROM finance_transactions`); after != before {
 		t.Errorf("rows after the re-import = %d, want %d (no duplicates)", after, before)
+	}
+	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE description = 'SYNTHETIC OWN NAME PIX' AND own_counterpart AND type = 'transfer'`); n != 1 {
+		t.Errorf("own-name Pix turned into a transfer by the re-import = %d, want 1", n)
 	}
 	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE provider_id = 'old-auto' AND type = 'transfer'`); n != 1 {
 		t.Errorf("old auto PAGAMENTO ON LINE transfers = %d, want 1", n)

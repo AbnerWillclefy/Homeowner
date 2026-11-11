@@ -38,15 +38,17 @@ func TestToRowsMarksOwnCounterpart(t *testing.T) {
 		cp    *pluggy.Party
 		owner pluggy.Party
 		want  bool
+		card  bool
 	}{
-		"debit to the owner's document":   {-100, p("x", "416.799.495-00"), owner, true},
-		"credit from the owner":           {100, p("John Doe", ""), owner, true},
-		"same name, another document":     {-100, p("John Doe", "111.111.111-11"), owner, false},
-		"same folded name, no document":   {-100, p("john  DOE", ""), pluggy.Party{Name: "John Doe"}, true},
-		"no payment data":                 {-100, nil, owner, false},
-		"owner without document and name": {-100, p("John Doe", ""), pluggy.Party{}, false},
+		"card purchase, counterpart is the owner": {cents: 100, cp: p("x", "416.799.495-00"), owner: owner, card: true},
+		"debit to the owner's document":           {-100, p("x", "416.799.495-00"), owner, true, false},
+		"credit from the owner":                   {100, p("John Doe", ""), owner, true, false},
+		"same name, another document":             {-100, p("John Doe", "111.111.111-11"), owner, false, false},
+		"same folded name, no document":           {-100, p("john  DOE", ""), pluggy.Party{Name: "John Doe"}, true, false},
+		"no payment data":                         {-100, nil, owner, false, false},
+		"owner without document and name":         {-100, p("John Doe", ""), pluggy.Party{}, false, false},
 	} {
-		rows, _ := toRows([]pluggy.Transaction{{ID: "a", Date: d, Description: "x", AmountCents: tc.cents, Currency: "BRL", Status: "POSTED", Counterpart: tc.cp}}, false, tc.owner)
+		rows, _ := toRows([]pluggy.Transaction{{ID: "a", Date: d, Description: "x", AmountCents: tc.cents, Currency: "BRL", Status: "POSTED", Counterpart: tc.cp}}, tc.card, tc.owner)
 		if rows[0].OwnCounterpart != tc.want {
 			t.Errorf("%s: OwnCounterpart = %v, want %v", name, rows[0].OwnCounterpart, tc.want)
 		}

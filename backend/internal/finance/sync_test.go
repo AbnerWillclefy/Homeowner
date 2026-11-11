@@ -17,8 +17,8 @@ import (
 
 // Fixture facts: the capture plus the synthetic page is 51 rows, newest 2026-11-07, summing to 4269507 centavos.
 const (
-	fixtureRows  = 51
-	fixtureCents = 4269507
+	fixtureRows  = 52
+	fixtureCents = 4275062
 )
 
 var afterFixtures = time.Date(2026, 11, 8, 12, 0, 0, 0, time.UTC)
@@ -310,7 +310,7 @@ func TestSyncLogsNoSensitiveData(t *testing.T) {
 		t.Fatalf("no sync log line in %s", logs)
 	}
 	secrets := []string{"123.45", "12345", pluggytest.ClientID, pluggytest.ClientSecret, pluggytest.APIKey, pluggytest.FailBody,
-		"Receiver Secret Name", "416.799.495-00", "41679949500"}
+		"Receiver Secret Name", "Payer Secret Name", "416.799.495-00", "41679949500"}
 	rows, err := app.DB.Query(context.Background(), `SELECT DISTINCT description FROM finance_transactions UNION SELECT provider_id FROM finance_transactions`)
 	if err != nil {
 		t.Fatal(err)
