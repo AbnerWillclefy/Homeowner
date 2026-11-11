@@ -72,7 +72,7 @@ type PlannedLine struct {
 // total (ADR 0021), the owed installments not added because the total holds
 // them. Otherwise it is the card's Expenses counting in the month plus the
 // installments of its plans numbered above Plan.Number due in it; for a card
-// with reported bills only the Expenses posted after the closing of the latest
+// with reported bills only the Expenses posted on or after the closing of the latest
 // reported bill due before the month count, the earlier ones being inside a
 // bank total. A card with no reported bill uses the second rule over every
 // Expense. ProjectInstallments is not used because it emits the latest charge
@@ -150,7 +150,7 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 			} else {
 				var inMonth []Txn
 				for _, t := range byCard[c.ID] {
-					if monthIndex(t.PostedOn) == monthIndex(m) && (cutoff.IsZero() || t.Posted.After(cutoff)) {
+					if monthIndex(t.PostedOn) == monthIndex(m) && (cutoff.IsZero() || !t.Posted.Before(cutoff)) {
 						inMonth = append(inMonth, t)
 					}
 				}

@@ -84,12 +84,12 @@ func TestOutlook(t *testing.T) {
 			cards: withBills("a", stored("2026-11-03", "2026-11-10", -700)),
 			want:  want{cards: []CardBill{{"a", "a", -700, true}}, total: -700},
 		},
-		"the open month counts only charges posted after the latest closing, plus installments": {
+		"the open month counts only charges posted on or after the latest closing, plus installments": {
 			rows: []Txn{counted("a", "2026-10-02", "2026-11-10", 700), counted("a", "2026-10-03", "2026-11-10", 800),
 				counted("a", "2026-10-05", "2026-11-10", 300)},
 			cards: withBills("a", stored("2026-09-03", "2026-09-10", 1), stored("2026-10-03", "2026-10-10", 9999)),
 			plans: []Plan{{Name: "TV", Number: 3, Total: 10, AmountCents: 250, Month: d("2026-10-01"), SourceID: "a", Card: true}},
-			want:  want{cards: []CardBill{{"a", "a", 550, true}}, total: 550},
+			want:  want{cards: []CardBill{{"a", "a", 1350, true}}, total: 1350},
 		},
 		"a bill due in a later month does not cut the open month": {
 			rows:  []Txn{counted("a", "2026-10-02", "2026-11-10", 700)},

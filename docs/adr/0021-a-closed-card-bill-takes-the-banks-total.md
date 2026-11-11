@@ -5,7 +5,7 @@ The app worked out every card bill from Transactions and typed bill days. Real b
 ## Decision
 
 - A bill Pluggy reports as closed takes its `totalAmount`.
-- The open bill is the charges posted since the last reported closing plus known installments.
+- The open bill is the charges posted on or after the last reported closing day (a closing-day charge goes to the next bill, as in `CountsOn`) plus known installments.
 - A card with no reported bill keeps the computed rule.
 - Bills are stored in `finance_card_bills` by the sync.
 

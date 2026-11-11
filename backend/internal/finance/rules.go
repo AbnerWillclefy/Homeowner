@@ -130,7 +130,7 @@ func Classify(txns []Txn, kinds map[string]Kind, bills []StoredBill) []Txn {
 	}
 	for _, t := range auto {
 		for _, b := range bills {
-			if kinds[t.SourceID] != "credit_card" && -t.AmountCents == b.TotalCents && math.Abs(t.PostedOn.Sub(b.DueOn).Hours()/24) <= transferWindowDays {
+			if kinds[t.SourceID] != "credit_card" && t.Currency == "BRL" && -t.AmountCents == b.TotalCents && math.Abs(t.PostedOn.Sub(b.DueOn).Hours()/24) <= transferWindowDays {
 				transfer[t.ID] = true
 			}
 		}

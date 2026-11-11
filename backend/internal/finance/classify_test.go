@@ -85,6 +85,7 @@ func TestClassifyTakesTheAmountOfAStoredBill(t *testing.T) {
 		"on a card Source":          {tx("p", "card", 0, -253090), "expense"},
 		"a credit of that amount":   {tx("p", "chk", 0, 253090), "income"},
 		"a row the User classified": {userSet, ""},
+		"in another currency":       {Txn{ID: "p", SourceID: "chk", Currency: "USD", MerchantKey: "X", PostedOn: day0, AmountCents: -253090, TypeSetBy: "auto"}, "expense"},
 	} {
 		got := ""
 		for _, c := range Classify([]Txn{tc.in}, kinds, bills) {
