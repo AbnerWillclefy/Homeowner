@@ -275,7 +275,7 @@ export interface CommitmentMonth {
   plannedCents: number;
   /** Present only on the current month. */
   spentOffCardCents?: number;
-  /** Money put aside this month (saving Transactions, net of withdrawals); counted in `totalCents`. */
+  /** The larger of the month's saving Transactions (net of withdrawals) and the Monthly contribution; counted in `totalCents`. */
   savingCents?: number;
   totalCents: number;
   /** Absent when no Monthly income is set; negative when the month takes more. */

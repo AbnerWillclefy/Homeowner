@@ -26,7 +26,7 @@ const sum = (items: { cents: number }[]) => items.reduce((a, i) => a + i.cents, 
 /**
  * A month's groups in the order the screen shows them. The cards group is always there (empty means no bill known
  * yet); the others only when they hold something, and "spent off the card" and "put aside" only when the API sends them
- * (the first for the current month only). Totals and the leftover are the API's, never recomputed.
+ * (the API always sends the second; the first for the current month only). Totals and the leftover are the API's, never recomputed.
  */
 export function monthRows(m: CommitmentMonth): MonthRows {
   const cards = m.cards.map((c): RowItem => ({ kind: "card", key: c.sourceId, name: c.name, cents: c.amountCents, daysKnown: c.billDaysKnown }));

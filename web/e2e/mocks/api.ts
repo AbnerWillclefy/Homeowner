@@ -82,7 +82,7 @@ export interface FakeState {
       plannedCents: number;
       /** Only the current month has it. */
       spentOffCardCents?: number;
-      /** Money put aside, counted in `totalCents`. */
+      /** The larger of the month's saving and the Monthly contribution, counted in `totalCents`. */
       savingCents?: number;
       totalCents: number;
     }[];
