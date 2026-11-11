@@ -49,6 +49,18 @@ describe("refetchUnlessSucceeded", () => {
     unsubscribe();
     expect(queryFn).toHaveBeenCalledTimes(2);
   });
+
+  it("reads again on mount after the entry was invalidated", async () => {
+    const queryFn = vi.fn().mockResolvedValueOnce("old").mockResolvedValueOnce("new");
+    const client = createQueryClient();
+    await client.prefetchQuery(options(queryFn));
+    await client.invalidateQueries({ queryKey: ["launch"], refetchType: "none" });
+    const observer = new QueryObserver(client, options(queryFn));
+    const unsubscribe = observer.subscribe(() => {});
+    await vi.waitFor(() => expect(observer.getCurrentResult().data).toBe("new"));
+    unsubscribe();
+    expect(queryFn).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("toQueryData", () => {

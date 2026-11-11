@@ -5,7 +5,10 @@ import { parseFields, type FieldCodes } from "../../../shared/api/fieldErrors";
 
 export interface FinanceSource {
   id: string;
+  /** What to show: the User's own name for the Source when set, else the bank's. */
   name: string;
+  /** The bank's own name; equals `name` while no custom name is set. */
+  bankName: string;
   /** `checking`, `savings` or `credit_card`; the screen labels the ones it knows and shows others as they come. */
   kind: string;
   currency: string;
@@ -88,10 +91,11 @@ function parseStatus(body: unknown): FinanceStatus | null {
   const parsed: FinanceSource[] = [];
   for (const source of sources) {
     if (typeof source !== "object" || source === null) return null;
-    const { id, name, kind, currency, closeDay, dueDay } = source as Record<string, unknown>;
+    const { id, name, bankName, kind, currency, closeDay, dueDay } = source as Record<string, unknown>;
     if (typeof id !== "string" || typeof name !== "string" || typeof kind !== "string" || typeof currency !== "string") return null;
     if (!(closeDay === null || Number.isInteger(closeDay)) || !(dueDay === null || Number.isInteger(dueDay))) return null;
-    parsed.push({ id, name, kind, currency, closeDay: closeDay as number | null, dueDay: dueDay as number | null });
+    // An older API or mock sends no bankName; the shown name stands in so the status still reads.
+    parsed.push({ id, name, bankName: typeof bankName === "string" ? bankName : name, kind, currency, closeDay: closeDay as number | null, dueDay: dueDay as number | null });
   }
   return { configured, sources: parsed, importing, lastSyncedAt };
 }
@@ -422,7 +426,27 @@ export async function putBillDays(sourceId: string, closeDay: number | null, due
   }
 }
 
-export const deleteBill = (id: string): Promise<WriteResult> =>
+/** `PUT /me/finance/sources/{id}/name`; null goes back to the bank's name. A 400 carries `fields.name`. */
+export type SourceNameResult = BillDaysResult;
+
+export async function putSourceName(sourceId: string, name: string | null): Promise<SourceNameResult> {
+  try {
+    const result = await authedRequest({
+      url: `/me/finance/sources/${encodeURIComponent(sourceId)}/name`,
+      method: "PUT",
+      data: { name },
+    });
+    if (result.kind === "not-signed-in") return result;
+    const { response } = result;
+    if (response.status === 204) return { kind: "ok" };
+    const fields = response.status === 400 ? parseFields(response) : null;
+    return fields ? { kind: "fields", fields } : { kind: failureOf(response.status, errorCode(response)) };
+  } catch {
+    return { kind: "offline" };
+  }
+}
+
+export const deleteBill =(id: string): Promise<WriteResult> =>
   call({ url: `/me/finance/bills/${encodeURIComponent(id)}`, method: "DELETE" }, 204, nothing);
 
 /** A Bill the server proposes from a repeating charge. `merchantKey` names the merchant for a dismissal. */

@@ -21,6 +21,7 @@ import {
   saveInvestment,
   patchTransaction,
   putBillDays,
+  putSourceName,
   putBudget,
   putIncome,
   putCredentials,
@@ -52,7 +53,7 @@ function stubFetch(response: Response | Error) {
 
 const STATUS = {
   configured: true,
-  sources: [{ id: "s1", name: "Nubank", kind: "checking", currency: "BRL", closeDay: null, dueDay: null }],
+  sources: [{ id: "s1", name: "Nubank", bankName: "Nubank", kind: "checking", currency: "BRL", closeDay: null, dueDay: null }],
   importing: false,
   lastSyncedAt: "2026-11-08T10:00:00Z",
 };
@@ -68,7 +69,7 @@ describe("getFinanceStatus", () => {
   });
 
   it("reads a card's closing and due days", async () => {
-    const card = { id: "s2", name: "Visa", kind: "credit_card", currency: "BRL", closeDay: 7, dueDay: 12 };
+    const card = { id: "s2", name: "Visa", bankName: "Visa", kind: "credit_card", currency: "BRL", closeDay: 7, dueDay: 12 };
     stubFetch(Response.json({ ...STATUS, sources: [card] }));
     expect(await getFinanceStatus()).toEqual({ kind: "ok", status: { ...STATUS, sources: [card] } });
   });
@@ -80,6 +81,17 @@ describe("getFinanceStatus", () => {
       stubFetch(Response.json({ ...STATUS, sources: [{ ...card, ...days }] }));
       expect(await getFinanceStatus(), JSON.stringify(days)).toEqual({ kind: "error" });
     }
+  });
+
+  it("reads the bank's name next to the shown one, and falls back to the shown one when an older API sends none", async () => {
+    const renamed = { ...STATUS.sources[0]!, name: "Conta", bankName: "Nu Pagamentos S.A." };
+    stubFetch(Response.json({ ...STATUS, sources: [renamed] }));
+    expect(await getFinanceStatus()).toEqual({ kind: "ok", status: { ...STATUS, sources: [renamed] } });
+    const { bankName: _omitted, ...older } = renamed;
+    stubFetch(Response.json({ ...STATUS, sources: [older] }));
+    expect(await getFinanceStatus()).toEqual({ kind: "ok", status: { ...STATUS, sources: [{ ...older, bankName: "Conta" }] } });
+    stubFetch(Response.json({ ...STATUS, sources: [{ ...older, bankName: 5 }] }));
+    expect(await getFinanceStatus()).toEqual({ kind: "ok", status: { ...STATUS, sources: [{ ...older, bankName: "Conta" }] } });
   });
 
   it("reads a status with no sync yet", async () => {
@@ -376,6 +388,34 @@ describe("putBillDays", () => {
     expect(await putBillDays("s2", 7, 12)).toEqual({ kind: "error" });
     stubFetch(new TypeError("Failed to fetch"));
     expect(await putBillDays("s2", 7, 12)).toEqual({ kind: "offline" });
+  });
+});
+
+describe("putSourceName", () => {
+  it("puts the name, or null to go back to the bank's, on the Source", async () => {
+    const fetch = stubFetch(new Response(null, { status: 204 }));
+    expect(await putSourceName("s 2", "Nubank")).toEqual({ kind: "ok" });
+    expect(await putSourceName("s 2", null)).toEqual({ kind: "ok" });
+    const [url, init] = fetch.mock.calls[0]!;
+    expect(`${init?.method} ${url}`).toBe("PUT http://api.test/me/finance/sources/s%202/name");
+    expect(JSON.parse(String(init?.body))).toEqual({ name: "Nubank" });
+    expect(JSON.parse(String(fetch.mock.calls[1]![1]?.body))).toEqual({ name: null });
+  });
+
+  it("hands the field code of a 400 back", async () => {
+    stubFetch(Response.json({ error: "invalid source name", fields: { name: "too_long" } }, { status: 400 }));
+    expect(await putSourceName("s2", "x")).toEqual({ kind: "fields", fields: { name: "too_long" } });
+  });
+
+  it("is invalid for a 400 without fields, not-found for a 404, error for another status, offline without a network", async () => {
+    stubFetch(Response.json({ error: "invalid JSON body" }, { status: 400 }));
+    expect(await putSourceName("s2", "x")).toEqual({ kind: "invalid" });
+    stubFetch(Response.json({ error: "not found" }, { status: 404 }));
+    expect(await putSourceName("s2", "x")).toEqual({ kind: "not-found" });
+    stubFetch(new Response(null, { status: 500 }));
+    expect(await putSourceName("s2", "x")).toEqual({ kind: "error" });
+    stubFetch(new TypeError("Failed to fetch"));
+    expect(await putSourceName("s2", "x")).toEqual({ kind: "offline" });
   });
 });
 

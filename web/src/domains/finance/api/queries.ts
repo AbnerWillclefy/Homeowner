@@ -140,7 +140,11 @@ export const savingsQuery = queryOptions({
   refetchOnMount: refetchUnlessSucceeded,
 });
 
-/** After an income write, or a Bill write: every finance read that carries the totals is read again. */
+/**
+ * After an income, Bill, bill-days or Source-name write: every cached finance read is marked stale. Only the ones on
+ * show read again now; a screen the User left reads when it opens, because `refetchUnlessSucceeded` lets an
+ * invalidated entry refetch on mount. The Save does not wait for reads of screens nobody is looking at.
+ */
 export const invalidateFinance = (client: QueryClient) => client.invalidateQueries({ queryKey: financeStatusKey });
 
 const EMPTY: FinanceStatus = { configured: false, sources: [], importing: false, lastSyncedAt: null };

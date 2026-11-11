@@ -45,7 +45,8 @@ export interface FakeState {
   /** What `GET /me/finance` answers. Absent means no credentials, no Sources. */
   finance?: {
     configured: boolean;
-    sources: { id: string; name: string; kind: string; currency: string; closeDay?: number | null; dueDay?: number | null }[];
+    /** `name` is the shown name; `bankName` is the bank's, absent until the first rename (the status sends `name` then). */
+    sources: { id: string; name: string; bankName?: string; kind: string; currency: string; closeDay?: number | null; dueDay?: number | null }[];
     importing: boolean;
     lastSyncedAt: string | null;
     /**
