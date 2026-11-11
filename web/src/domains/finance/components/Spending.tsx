@@ -145,7 +145,7 @@ export function Spending() {
             </div>
             {donut.length > 0 ? (
               <Card>
-                <Donut items={donut} />
+                <Donut key={month} items={donut} />
               </Card>
             ) : (
               <p className="my-0 text-muted">{t("finances.spending.noSpending")}</p>

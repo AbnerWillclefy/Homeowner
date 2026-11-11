@@ -134,10 +134,12 @@ for (const l of LOCALES) {
     });
 
     test("changing the month updates both numbers and the donut", async ({ page }) => {
+      await page.locator('[data-part="groceries"]').dispatchEvent("click");
       await page.getByRole("button", { name: l.prev, exact: true }).click();
       await expect(page.locator("dl dd")).toHaveText([/R\$\s?881,90/, /R\$\s?881,90/]);
       await expect(page.getByText(l.later)).toHaveCount(0);
       await expect(page.getByRole("img", { name: /total R\$\s?881,90/ })).toBeVisible();
+      await expect(page.locator("[data-centre]")).toContainText(l.total);
     });
 
     test("a month with nothing says so, with no donut", async ({ page }) => {
