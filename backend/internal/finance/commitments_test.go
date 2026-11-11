@@ -48,6 +48,38 @@ func readCommitments(t *testing.T, c *apitest.Client, from string) commitmentsBo
 	return b
 }
 
+func TestCommitmentsListAPlanOnceWhenItsChargesPostOnDriftingDays(t *testing.T) {
+	t.Parallel()
+	app, ana := seedMonth(t)
+	if _, err := app.DB.Exec(context.Background(), `UPDATE finance_sources SET bill_close_day = 7, bill_due_day = 12`); err != nil {
+		t.Fatal(err)
+	}
+	// 1/12 posts after the closing day (bill of Jul), the rest before it (bills of Aug..Oct): posted months drift, bill months do not.
+	insertPlan(t, app, "ana@example.com", "c1", "Canadian Solar Ecommer 1/12", "CANADIAN SOLAR ECOMMER", "2026-06-20", -10000, 1, 12)
+	insertPlan(t, app, "ana@example.com", "c2", "Canadian Solar Ecommer 2/12", "CANADIAN SOLAR ECOMMER", "2026-08-03", -10000, 2, 12)
+	insertPlan(t, app, "ana@example.com", "c3", "Canadian Solar Ecommer 3/12", "CANADIAN SOLAR ECOMMER", "2026-09-03", -10000, 3, 12)
+	insertPlan(t, app, "ana@example.com", "c4", "Canadian Solar Ecommer 4/12", "CANADIAN SOLAR ECOMMER", "2026-10-03", -10000, 4, 12)
+
+	b := readCommitments(t, ana, "2026-11")
+	for i := range 3 {
+		m := b.Months[i]
+		if len(m.Installments) != 1 || m.Installments[0].Name != "Canadian Solar Ecommer" || m.Installments[0].Number != 5+i || m.Installments[0].Total != 12 {
+			t.Errorf("%s = %+v, want the plan once as %d of 12", m.Month, m.Installments, 5+i)
+		}
+	}
+}
+
+func TestCommitmentsKeepTwoPlansOfTheSameMerchantAndTotalApart(t *testing.T) {
+	t.Parallel()
+	app, ana := seedMonth(t)
+	insertPlan(t, app, "ana@example.com", "a3", "Loja 3/12", "LOJA", "2026-10-05", -10000, 3, 12)
+	insertPlan(t, app, "ana@example.com", "b1", "Loja 1/12", "LOJA", "2026-11-05", -20000, 1, 12)
+
+	if m := readCommitments(t, ana, "2026-11").Months[1]; len(m.Installments) != 2 {
+		t.Errorf("december = %+v, want both plans", m)
+	}
+}
+
 func TestCommitmentsProjectPlansMidwayAndEnding(t *testing.T) {
 	t.Parallel()
 	app, ana := seedMonth(t)
