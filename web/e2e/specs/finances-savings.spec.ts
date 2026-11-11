@@ -345,14 +345,13 @@ for (const l of LOCALES) {
         await expect(goals.getByRole("button", { name: l.addGoal })).toHaveCount(0);
         await expect(goals.getByRole("button", { name: l.up }).first()).toBeDisabled();
         await expect(goals.getByRole("button", { name: l.down }).last()).toBeDisabled();
-        const names = () => goals.getByRole("listitem").evaluateAll((items) => items.map((i) => i.textContent ?? ""));
         const moveUp = goals.getByRole("button", { name: /Notebook/ }).and(goals.getByRole("button", { name: l.up }));
         await moveUp.focus();
         await page.keyboard.press("Enter");
         await expect(moveUp).toBeFocused();
-        expect((await names())[1]).toContain("Notebook");
+        await expect(goals.getByRole("listitem").nth(1)).toContainText("Notebook");
         await page.keyboard.press("Enter");
-        expect((await names())[0]).toContain("Notebook");
+        await expect(goals.getByRole("listitem").first()).toContainText("Notebook");
         // At the top its Up is disabled, so focus moves to its Down twin.
         await expect(goals.getByRole("button", { name: /Notebook/ }).and(goals.getByRole("button", { name: l.down }))).toBeFocused();
         await goals.getByRole("button", { name: l.done }).click();
