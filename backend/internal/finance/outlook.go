@@ -2,10 +2,19 @@ package finance
 
 import "time"
 
-// Card is a credit card Source, with whether both its bill days are set.
+// Card is a credit card Source, with whether both its bill days are set and
+// the bills its bank reported.
 type Card struct {
 	ID, Name      string
 	BillDaysKnown bool
+	Bills         []StoredBill
+}
+
+// StoredBill is a card bill as the bank reported it: the day it closed, the day
+// it is due and its total, which may be negative (a credit balance).
+type StoredBill struct {
+	ClosesOn, DueOn time.Time
+	TotalCents      int64
 }
 
 // CardBill is what one card's bill takes from a month.
@@ -59,11 +68,16 @@ type PlannedLine struct {
 //
 // shortcut: a Bill in a category with a limit counts in both in future months, upgrade when a Bill can name its Spending Category.
 //
-// A card's bill is its Expenses counting in the month plus the installments of
-// its plans numbered above Plan.Number due in it; ProjectInstallments is not
-// used because it emits the latest charge again when it is on a bill not yet
-// due, and that charge is already in rows. A plan on a Source that is not a
-// card stays in OtherInstallmentsCents. A Bill whose month was paid with a card
+// A card's bill is, when the bank reported a bill due in the month, that bill's
+// total (ADR 0021), the owed installments not added because the total holds
+// them. Otherwise it is the card's Expenses counting in the month plus the
+// installments of its plans numbered above Plan.Number due in it; for a card
+// with reported bills only the Expenses posted after the closing of the latest
+// reported bill due before the month count, the earlier ones being inside a
+// bank total. A card with no reported bill uses the second rule over every
+// Expense. ProjectInstallments is not used because it emits the latest charge
+// again when it is on a bill not yet due, and that charge is already in rows. A
+// plan on a Source that is not a card stays in OtherInstallmentsCents. A Bill whose month was paid with a card
 // Transaction is left out: that money is in a card bill.
 //
 // shortcut: a card-paid Bill counts twice in the current month until its charge posts (last month's charge is in this month's card bill, this month's is still expected), upgrade when the PWA shows it.
@@ -120,15 +134,30 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 			}
 		}
 		for _, c := range cards {
-			var inMonth []Txn
-			for _, t := range byCard[c.ID] {
-				if monthIndex(t.PostedOn) == monthIndex(m) {
-					inMonth = append(inMonth, t)
+			var closed *StoredBill // a bill due in the month
+			var cutoff time.Time   // the latest closing of a bill due before the month
+			for _, b := range c.Bills {
+				switch {
+				case monthIndex(b.DueOn) == monthIndex(m):
+					closed = &b
+				case monthIndex(b.DueOn) < monthIndex(m) && b.ClosesOn.After(cutoff):
+					cutoff = b.ClosesOn
 				}
 			}
-			amount := MonthTotals(inMonth).Spend
-			if owed[c.ID] != nil {
-				amount += owed[c.ID][i]
+			var amount int64
+			if closed != nil {
+				amount = closed.TotalCents
+			} else {
+				var inMonth []Txn
+				for _, t := range byCard[c.ID] {
+					if monthIndex(t.PostedOn) == monthIndex(m) && (cutoff.IsZero() || t.Posted.After(cutoff)) {
+						inMonth = append(inMonth, t)
+					}
+				}
+				amount = MonthTotals(inMonth).Spend
+				if owed[c.ID] != nil {
+					amount += owed[c.ID][i]
+				}
 			}
 			o.Cards = append(o.Cards, CardBill{c.ID, c.Name, amount, c.BillDaysKnown})
 			o.TotalCents += amount

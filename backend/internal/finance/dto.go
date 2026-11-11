@@ -162,8 +162,10 @@ type MonthCommitment struct {
 	LeftoverCents *int64 `json:"leftoverCents,omitempty"`
 }
 
-// CardBillLine is one credit card's bill in a month. BillDaysKnown is false
-// when the card has no closing or due day, so charges count on the day made.
+// CardBillLine is one credit card's bill in a month: the bank's total when it
+// reported a bill due in the month, else the app's own sum (ADR 0021).
+// BillDaysKnown is false when the card has no closing or due day, so charges
+// count on the day made.
 type CardBillLine struct {
 	SourceID      string `json:"sourceId"`
 	Name          string `json:"name"`

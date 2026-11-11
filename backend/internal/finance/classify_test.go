@@ -46,7 +46,7 @@ func TestClassify(t *testing.T) {
 		"category is kept":           {[]Txn{categorised}, map[string]string{}},
 	} {
 		got := map[string]string{}
-		for _, c := range Classify(tc.in, kinds) {
+		for _, c := range Classify(tc.in, kinds, nil) {
 			got[c.ID] = c.Type
 			if (c.Type == "expense") != (c.Category != "") {
 				t.Errorf("%s: %s is %s with category %q", name, c.ID, c.Type, c.Category)
@@ -60,6 +60,38 @@ func TestClassify(t *testing.T) {
 			if got[id] != typ {
 				t.Errorf("%s: %s = %q, want %q", name, id, got[id], typ)
 			}
+		}
+	}
+}
+
+// A debit that equals a stored closed bill's total near its due date is a card
+// payment, whatever the bank calls it.
+func TestClassifyTakesTheAmountOfAStoredBill(t *testing.T) {
+	t.Parallel()
+	kinds := map[string]Kind{"chk": "checking", "card": "credit_card"}
+	bills := []StoredBill{{ClosesOn: day0.AddDate(0, 0, -7), DueOn: day0, TotalCents: 253090}}
+	userSet := tx("p", "chk", 0, -253090)
+	userSet.TypeSetBy = "user"
+	for name, tc := range map[string]struct {
+		in   Txn
+		want string // "" when the row stays as it is
+	}{
+		"on the due date":           {tx("p", "chk", 0, -253090), "transfer"},
+		"3 days after, inside":      {tx("p", "chk", 3, -253090), "transfer"},
+		"3 days before, inside":     {tx("p", "chk", -3, -253090), "transfer"},
+		"4 days after, outside":     {tx("p", "chk", 4, -253090), "expense"},
+		"4 days before, outside":    {tx("p", "chk", -4, -253090), "expense"},
+		"one centavo off":           {tx("p", "chk", 0, -253091), "expense"},
+		"on a card Source":          {tx("p", "card", 0, -253090), "expense"},
+		"a credit of that amount":   {tx("p", "chk", 0, 253090), "income"},
+		"a row the User classified": {userSet, ""},
+	} {
+		got := ""
+		for _, c := range Classify([]Txn{tc.in}, kinds, bills) {
+			got = c.Type
+		}
+		if got != tc.want {
+			t.Errorf("%s: type = %q, want %q", name, got, tc.want)
 		}
 	}
 }
