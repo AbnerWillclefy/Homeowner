@@ -18,6 +18,7 @@ const statusOf = (current: FinanceState) => ({
   ...current,
   sources: current.sources.map((s) => ({
     ...s,
+    bankName: s.bankName ?? s.name,
     closeDay: s.closeDay ?? null,
     dueDay: s.dueDay ?? null,
   })),
@@ -64,6 +65,30 @@ export function financeHandlers(api: FakeApi): void {
         return json(400, { error: "invalid bill days", fields });
       source.closeDay = closeDay as number | null;
       source.dueDay = dueDay as number | null;
+      return empty();
+    }),
+  );
+
+  // A Source's own name, as `PUT /me/finance/sources/{id}/name` answers: null goes back to the bank's. The shown name
+  // follows into the card list and the Transactions' sourceName, as the API reads them from the Source.
+  api.on(
+    "PUT /me/finance/sources/{id}/name",
+    signedIn((request, state) => {
+      const current = finance(state);
+      const source = current.sources.find((s) => s.id === request.params["id"]);
+      if (!source) return json(404, { error: "not found" });
+      const raw = (request.body as { name?: unknown } | null)?.name;
+      const text = typeof raw === "string" ? raw.trim() : null;
+      if (raw !== null && text === null) return json(400, { error: "invalid source name", fields: { name: "invalid" } });
+      if (text === "") return json(400, { error: "invalid source name", fields: { name: "required" } });
+      if (text !== null && [...text].length > 60)
+        return json(400, { error: "invalid source name", fields: { name: "too_long" } });
+      const before = source.name;
+      source.bankName ??= source.name;
+      source.name = text ?? source.bankName;
+      for (const m of current.commitments ?? [])
+        for (const card of m.cards) if (card.sourceId === source.id) card.name = source.name;
+      for (const t of current.transactions ?? []) if (t.sourceName === before) t.sourceName = source.name;
       return empty();
     }),
   );

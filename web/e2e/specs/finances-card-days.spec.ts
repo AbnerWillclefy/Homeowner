@@ -101,7 +101,7 @@ for (const l of LOCALES) {
 
     test("a checking Source has no days and no edit control", async ({ page }) => {
       await expect(page.getByText(l.unset)).toHaveCount(1);
-      await expect(page.getByRole("button", { name: /Conta Pluggy/ })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: /(Editar dias da fatura de|Edit bill days of) Conta Pluggy/ })).toHaveCount(0);
     });
 
     test("Remover clears both days", async ({ page, fakeApi }) => {
