@@ -175,6 +175,11 @@ for (const l of LOCALES) {
         await visit(page, new URL("/finances/gastos", baseURL!).toString());
         const nav = page.getByRole("navigation", { name: l.back, exact: true });
         await expect(nav.getByRole("link")).toHaveCount(4);
+        // One row on a 360px phone: Economias does not drop under the others.
+        await page.setViewportSize({ width: 360, height: 800 });
+        const tops = await nav.getByRole("link").evaluateAll((links) => links.map((a) => a.getBoundingClientRect().top));
+        expect(new Set(tops).size).toBe(1);
+        await page.setViewportSize({ width: 390, height: 844 });
         await expect(nav.getByRole("link").nth(3)).toHaveText(l.title);
         // Keyboard: Tab from the link before it reaches Economias, and Enter opens it.
         await nav.getByRole("link").nth(2).focus();

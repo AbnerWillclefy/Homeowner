@@ -10,7 +10,7 @@ export function FinanceNav() {
   const { t } = useI18n();
   const { search } = useLocation();
   return (
-    // Whole links wrap to a second row at the largest text; a label never breaks inside a word.
+    // The four fit one row from 360px; below that or at the largest text, whole links wrap and a label never breaks inside a word.
     <nav aria-label={t("finances.title")} className="flex flex-wrap gap-1 rounded-card border border-border bg-surface-raised p-1">
       {(Object.keys(VIEWS) as FinanceView[]).map((v) => (
         <NavLink
@@ -18,7 +18,7 @@ export function FinanceNav() {
           to={{ pathname: VIEWS[v], search }}
           end
           className={({ isActive }) =>
-            `inline-flex min-h-11 grow basis-auto items-center justify-center rounded-pill px-3 py-1 font-semibold no-underline motion-safe:transition-colors motion-safe:duration-150 ${
+            `inline-flex min-h-11 grow basis-auto items-center justify-center rounded-pill px-1.5 py-1 font-semibold no-underline motion-safe:transition-colors motion-safe:duration-150 ${
               isActive ? "bg-accent text-accent-contrast" : "text-muted"
             }`
           }
