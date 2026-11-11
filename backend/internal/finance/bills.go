@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	maxBillName  = 60
+	maxNameRunes = 60
 	maxBillCents = 1_000_000_000_000
 )
 
@@ -115,21 +115,31 @@ func (h *Handler) answer(w http.ResponseWriter, found bool, err error, what stri
 	}
 }
 
+// nameField trims a User-typed name and returns it with its fields.name error code, "" when valid.
+func nameField(raw string) (string, string) {
+	name := strings.TrimSpace(raw)
+	switch n := utf8.RuneCountInString(name); {
+	case n == 0:
+		return name, "required"
+	case n > maxNameRunes:
+		return name, "too_long"
+	case strings.IndexFunc(name, unicode.IsControl) >= 0:
+		return name, "invalid"
+	}
+	return name, ""
+}
+
 // billBody decodes and validates a Bill body; on failure it has answered.
 func (h *Handler) billBody(w http.ResponseWriter, r *http.Request) (BillRequest, bool) {
 	var req BillRequest
 	if !httpx.DecodeBody(w, r, &req, maxBodyBytes, true) {
 		return req, false
 	}
-	req.Name = strings.TrimSpace(req.Name)
 	fields := map[string]string{}
-	switch n := utf8.RuneCountInString(req.Name); {
-	case n == 0:
-		fields["name"] = "required"
-	case n > maxBillName:
-		fields["name"] = "too_long"
-	case strings.IndexFunc(req.Name, unicode.IsControl) >= 0:
-		fields["name"] = "invalid"
+	var code string
+	req.Name, code = nameField(req.Name)
+	if code != "" {
+		fields["name"] = code
 	}
 	if req.ExpectedCents < 1 || req.ExpectedCents > maxBillCents {
 		fields["expectedCents"] = "invalid"

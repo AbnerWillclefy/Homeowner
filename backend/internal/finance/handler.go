@@ -352,17 +352,8 @@ func (h *Handler) PutSourceName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Name != nil {
-		name := strings.TrimSpace(*req.Name)
+		name, field := nameField(*req.Name)
 		req.Name = &name
-		field := ""
-		switch n := utf8.RuneCountInString(name); {
-		case n == 0:
-			field = "required"
-		case n > maxBillName:
-			field = "too_long"
-		case strings.IndexFunc(name, unicode.IsControl) >= 0:
-			field = "invalid"
-		}
 		if field != "" {
 			httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid source name", "fields": map[string]string{"name": field}})
 			return
