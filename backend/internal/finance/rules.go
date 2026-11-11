@@ -99,14 +99,17 @@ type Txn struct {
 // Classify sets the type of every auto Txn and returns those whose type or
 // category changed. A row the User set is neither changed nor used as a partner.
 //
-// Rules, in order: a bill payment is a Transfer; a debit and a credit of the
+// Rules, in order: an "Aplicação" (any sign) or a positive "Resgate" is a
+// saving, left out of the pairing below; a bill payment is a Transfer; a debit and a credit of the
 // same amount and currency on two Sources within transferWindowDays are both
 // Transfers; any other credit on a credit_card Source is an Expense, a refund
 // (a negative spend); any other credit is Income, any other debit an Expense.
 //
 // Accepted: a Transfer has no category, so a row the User only categorised
 // loses that category when it pairs. An unrelated debit and credit that coincide are paired. The User
-// can correct it, and their choice is never overwritten. A row that drops out
+// can correct it, and their choice is never overwritten.
+// shortcut: the credit half of an Aplicação on a savings Source is Income, not a
+// Transfer; the User can correct it. A row that drops out
 // of a pair after a re-fetch goes back to its single-row rule, so callers pass
 // the whole window, not only the new rows.
 func Classify(txns []Txn, kinds map[string]Kind) []Txn {
@@ -116,8 +119,17 @@ func Classify(txns []Txn, kinds map[string]Kind) []Txn {
 			auto = append(auto, t)
 		}
 	}
-	transfer := map[string]bool{}
+	saving := map[string]bool{}
+	var rest []Txn
 	for _, t := range auto {
+		if strings.HasPrefix(t.MerchantKey, "APLICACAO") || (strings.HasPrefix(t.MerchantKey, "RESGATE") && t.AmountCents > 0) {
+			saving[t.ID] = true
+		} else {
+			rest = append(rest, t)
+		}
+	}
+	transfer := map[string]bool{}
+	for _, t := range rest {
 		for _, p := range billPayments {
 			if strings.Contains(t.MerchantKey, p) {
 				transfer[t.ID] = true
@@ -129,8 +141,8 @@ func Classify(txns []Txn, kinds map[string]Kind) []Txn {
 		gap           int
 	}
 	var pairs []pair
-	for _, d := range auto {
-		for _, c := range auto {
+	for _, d := range rest {
+		for _, c := range rest {
 			if d.AmountCents >= 0 || c.AmountCents != -d.AmountCents || d.SourceID == c.SourceID || d.Currency != c.Currency {
 				continue
 			}
@@ -154,6 +166,8 @@ func Classify(txns []Txn, kinds map[string]Kind) []Txn {
 	for _, t := range auto {
 		n := t
 		switch {
+		case saving[t.ID]:
+			n.Type = "saving"
 		case transfer[t.ID]:
 			n.Type = "transfer"
 		case t.AmountCents < 0, kinds[t.SourceID] == "credit_card":
@@ -337,21 +351,27 @@ func DueReminders(bills []ReminderBill, local time.Time) []BillReminder {
 	return out
 }
 
-// Totals is the spend of a set of Transactions, in centavos.
+// Totals is the spend of a set of Transactions, in centavos, and the money put
+// aside (Saving).
 type Totals struct {
-	Spend      int64
-	ByCategory map[string]int64
+	Spend, Saving int64
+	ByCategory    map[string]int64
 }
 
 // MonthTotals sums the Expenses by Spending Category. Transfers and Income are
 // ignored; a refund (a negative spend) offsets its category. A category can end
-// negative in a refund-heavy month: it is returned as is, not clamped.
+// negative in a refund-heavy month: it is returned as is, not clamped. Saving is
+// the net put aside (-AmountCents over saving rows, so a Resgate lowers it); it
+// is not clamped at zero either, the Leftover work does that.
 func MonthTotals(txns []Txn) Totals {
 	out := Totals{ByCategory: map[string]int64{}}
 	for _, t := range txns {
-		if t.Type == "expense" {
+		switch t.Type {
+		case "expense":
 			out.Spend -= t.AmountCents
 			out.ByCategory[t.Category] -= t.AmountCents
+		case "saving":
+			out.Saving -= t.AmountCents
 		}
 	}
 	return out

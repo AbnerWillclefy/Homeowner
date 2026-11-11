@@ -26,6 +26,17 @@ func TestClassify(t *testing.T) {
 	categorised := tx("cat", "chk", 0, -500)
 	categorised.Type, categorised.Category, categorised.CategorySetBy = "expense", "groceries", "auto"
 
+	named := func(id, src string, days int, cents int64, desc string) Txn {
+		t := tx(id, src, days, cents)
+		t.MerchantKey = MerchantKey(desc)
+		return t
+	}
+	aplicacao := named("ap", "chk", 0, -50000, "Aplicação - Cdb Pos Di Liq. Banco Inter")
+	savingSet := named("ap", "chk", 0, -50000, "Aplicação - Cdb")
+	savingSet.TypeSetBy = "user"
+	aplicacaoCategorised := named("ap", "chk", 0, -50000, "Aplicação - Cdb")
+	aplicacaoCategorised.Type, aplicacaoCategorised.Category, aplicacaoCategorised.CategorySetBy = "expense", "other", "fallback"
+
 	for name, tc := range map[string]struct {
 		in   []Txn
 		want map[string]string // id -> type of every row that changes
@@ -40,10 +51,17 @@ func TestClassify(t *testing.T) {
 		"closest candidate wins": {
 			[]Txn{tx("d", "chk", 0, -10000), tx("far", "sav", 3, 10000), tx("near", "sav", 1, 10000)},
 			map[string]string{"d": "transfer", "near": "transfer", "far": "income"}},
-		"user-set row is no partner": {[]Txn{tx("d", "chk", 0, -10000), userSet}, map[string]string{"d": "expense"}},
-		"card credit is a refund":    {[]Txn{tx("r", "card", 0, 2500)}, map[string]string{"r": "expense"}},
-		"checking credit is income":  {[]Txn{tx("i", "chk", 0, 2500)}, map[string]string{"i": "income"}},
-		"category is kept":           {[]Txn{categorised}, map[string]string{}},
+		"user-set row is no partner":   {[]Txn{tx("d", "chk", 0, -10000), userSet}, map[string]string{"d": "expense"}},
+		"card credit is a refund":      {[]Txn{tx("r", "card", 0, 2500)}, map[string]string{"r": "expense"}},
+		"checking credit is income":    {[]Txn{tx("i", "chk", 0, 2500)}, map[string]string{"i": "income"}},
+		"aplicacao debit is saving":    {[]Txn{aplicacao}, map[string]string{"ap": "saving"}},
+		"aplicacao credit is saving":   {[]Txn{named("ap", "chk", 0, 50000, "Aplicacao Cdb")}, map[string]string{"ap": "saving"}},
+		"positive resgate is saving":   {[]Txn{named("rs", "chk", 0, 50000, "Resgate Cdb Pos Di")}, map[string]string{"rs": "saving"}},
+		"negative resgate is normal":   {[]Txn{named("rs", "chk", 0, -50000, "Resgate Cdb Pos Di")}, map[string]string{"rs": "expense"}},
+		"aplicacao is not paired away": {[]Txn{aplicacao, tx("c", "sav", 1, 50000)}, map[string]string{"ap": "saving", "c": "income"}},
+		"saving set by user is kept":   {[]Txn{savingSet}, map[string]string{}},
+		"aplicacao drops its category": {[]Txn{aplicacaoCategorised}, map[string]string{"ap": "saving"}},
+		"category is kept":             {[]Txn{categorised}, map[string]string{}},
 	} {
 		got := map[string]string{}
 		for _, c := range Classify(tc.in, kinds) {
@@ -66,19 +84,24 @@ func TestClassify(t *testing.T) {
 
 func TestMonthTotals(t *testing.T) {
 	t.Parallel()
+	sav := func(cents int64) Txn { return Txn{Type: "saving", AmountCents: cents} }
 	exp := func(cat string, cents int64) Txn { return Txn{Type: "expense", Category: cat, AmountCents: cents} }
 	for name, tc := range map[string]struct {
 		in    []Txn
 		spend int64
 		food  int64
+		saved int64
 	}{
-		"refund offsets its category":  {[]Txn{exp("groceries", -10000), exp("groceries", 2500)}, 7500, 7500},
-		"transfer and income ignored":  {[]Txn{exp("groceries", -1000), {Type: "transfer", AmountCents: -9000}, {Type: "income", AmountCents: 9000}}, 1000, 1000},
-		"refund beyond purchases goes": {[]Txn{exp("groceries", -1000), exp("groceries", 4000)}, -3000, -3000},
+		"refund offsets its category":    {[]Txn{exp("groceries", -10000), exp("groceries", 2500)}, 7500, 7500, 0},
+		"transfer and income ignored":    {[]Txn{exp("groceries", -1000), {Type: "transfer", AmountCents: -9000}, {Type: "income", AmountCents: 9000}}, 1000, 1000, 0},
+		"refund beyond purchases goes":   {[]Txn{exp("groceries", -1000), exp("groceries", 4000)}, -3000, -3000, 0},
+		"saving is not spending":         {[]Txn{exp("groceries", -1000), sav(-50000)}, 1000, 1000, 50000},
+		"resgate nets against aplicacao": {[]Txn{sav(-50000), sav(20000)}, 0, 0, 30000},
+		"saving is not clamped":          {[]Txn{sav(20000)}, 0, 0, -20000},
 	} {
 		got := MonthTotals(tc.in)
-		if got.Spend != tc.spend || got.ByCategory["groceries"] != tc.food {
-			t.Errorf("%s: %+v, want spend %d groceries %d", name, got, tc.spend, tc.food)
+		if got.Spend != tc.spend || got.ByCategory["groceries"] != tc.food || got.Saving != tc.saved || len(got.ByCategory) > 1 {
+			t.Errorf("%s: %+v, want spend %d groceries %d saved %d", name, got, tc.spend, tc.food, tc.saved)
 		}
 	}
 }

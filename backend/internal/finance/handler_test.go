@@ -170,6 +170,23 @@ func TestChangingToTransferTakesTheRowOutOfTheTotals(t *testing.T) {
 	}
 }
 
+func TestChangingToSavingTakesTheRowOutOfTheTotals(t *testing.T) {
+	t.Parallel()
+	_, ana := seedMonth(t)
+	boleto := find(t, ana, "2026-11", "Pagamento de boleto")
+
+	res := patch(ana, boleto.ID, map[string]string{"type": "saving"})
+	if res.Status != http.StatusOK || res.Body["type"] != "saving" || res.Body["typeSetBy"] != "user" || res.Body["spendingCategory"] != nil {
+		t.Fatalf("PATCH = %d %s, want a user saving without category", res.Status, res.Raw)
+	}
+	if spent, cats, _ := readMonth(t, ana, "2026-11"); spent != 87780 || cats["other"] != 0 {
+		t.Errorf("spent %d cats %v, want 87780 without the saving", spent, cats)
+	}
+	if res := patch(ana, boleto.ID, map[string]string{"type": "saving", "spendingCategory": "other"}); res.Status != http.StatusBadRequest || res.Body["error"] != "category needs expense" {
+		t.Errorf("saving with a category = %d %s, want 400 category needs expense", res.Status, res.Raw)
+	}
+}
+
 func TestChangingToExpenseDefaultsToOtherAndKeepsAGivenCategory(t *testing.T) {
 	t.Parallel()
 	_, ana := seedMonth(t)

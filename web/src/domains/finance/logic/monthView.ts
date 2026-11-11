@@ -13,7 +13,7 @@ export interface CategoryGroup {
 export interface MonthView {
   spentCents: number;
   categories: CategoryGroup[];
-  /** Left out of the totals. */
+  /** Left out of the totals. Saving rows sit here until they get their own group. */
   transfers: Transaction[];
   income: Transaction[];
   isEmpty: boolean;
@@ -25,7 +25,7 @@ export function monthView(response: MonthResponse): MonthView {
   const transfers: Transaction[] = [];
   const income: Transaction[] = [];
   for (const tx of response.transactions) {
-    if (tx.type === "transfer") transfers.push(tx);
+    if (tx.type === "transfer" || tx.type === "saving") transfers.push(tx);
     else if (tx.type === "income") income.push(tx);
     else {
       const category = tx.spendingCategory ?? "other";
