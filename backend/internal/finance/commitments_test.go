@@ -215,9 +215,10 @@ func readOutlook(t *testing.T, c *apitest.Client) (outlookBody, []map[string]any
 	return b, raw.Months
 }
 
-// fixturePlanned is what the sync fixture's October spend (the month before the
-// fake clock) plans in every month from 2027-03, where no counted row has a category.
-const fixturePlanned = 127270
+// fixturePlanned is what the sync fixture's August, September and October spend
+// (the 3 months before the fake clock, averaged per category: 53333 + 30500 + 5993
+// + 5187) plans in every month from 2027-03, where no counted row has a category.
+const fixturePlanned = 95013
 
 func TestCommitmentsCardBillAndLeftover(t *testing.T) {
 	t.Parallel()

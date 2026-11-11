@@ -326,17 +326,11 @@ func (h *Handler) loadOutlook(ctx context.Context, uid string, from time.Time, m
 	}
 	now := postedOn(h.clk.Now())
 	current := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
-	prev, err := h.store.SpendRows(ctx, uid, current.AddDate(0, -1, 0), current)
+	prev, err := h.store.SpendRows(ctx, uid, current.AddDate(0, -paceMonths, 0), current)
 	if err != nil {
 		return in, err
 	}
-	var spent []Txn
-	for _, t := range prev {
-		if !t.Linked { // the paid Bill is already in the other Bills
-			spent = append(spent, t)
-		}
-	}
-	in.outlook = Outlook(in.rows, cards, in.plans, bills, in.income, in.limits, MonthTotals(spent).ByCategory, contribution, current, from, months)
+	in.outlook = Outlook(in.rows, cards, in.plans, bills, in.income, in.limits, plannedBaseline(prev, current), contribution, current, from, months)
 	return in, nil
 }
 

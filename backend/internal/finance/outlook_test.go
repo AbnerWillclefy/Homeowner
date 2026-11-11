@@ -263,7 +263,7 @@ func TestOutlookPlannedSpending(t *testing.T) {
 	}
 }
 
-func TestOutlookSavingAndLastMonthPlan(t *testing.T) {
+func TestOutlookSavingAndBaselinePlan(t *testing.T) {
 	t.Parallel()
 	d := func(s string) time.Time { v, _ := time.Parse(time.DateOnly, s); return v }
 	nov := d("2026-11-01")
@@ -279,7 +279,7 @@ func TestOutlookSavingAndLastMonthPlan(t *testing.T) {
 		contribution int64
 		last         map[string]int64
 		limits       map[string]int64
-		income      *int64
+		income       *int64
 		saving       int64
 		planned      []PlannedLine
 		total        int64
@@ -291,13 +291,13 @@ func TestOutlookSavingAndLastMonthPlan(t *testing.T) {
 		"a Resgate larger than the Aplicacao clamps the actual at 0": {
 			rows: []Txn{saving(100), {SourceID: "checking", PostedOn: d("2026-11-05"), AmountCents: 400, Type: "saving"}}, planned: none,
 		},
-		"a category without a limit plans last month's spend": {
+		"a category without a limit plans its baseline": {
 			last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 700}}, total: 700,
 		},
-		"a limit beats last month's spend": {
+		"a limit beats the baseline": {
 			limits: map[string]int64{"pets": 500}, last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 500}}, total: 500,
 		},
-		"a negative last month plans nothing": {last: map[string]int64{"pets": -50}, planned: none},
+		"a negative baseline plans nothing": {last: map[string]int64{"pets": -50}, planned: none},
 		"a card purchase counts once: in the bill, and out of the plan": {
 			rows: []Txn{cardBuy}, last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 400}}, total: 700,
 		},

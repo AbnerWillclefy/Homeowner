@@ -162,7 +162,7 @@ type MonthCommitment struct {
 	// OtherInstallmentsCents is what plans on a Source that is not a credit card owe.
 	OtherInstallmentsCents int64 `json:"otherInstallmentsCents"`
 	// Planned is the rest of what each Spending Category plans (its limit, else
-	// last month's spend), PlannedCents their sum.
+	// the average of the last 3 months' spend), PlannedCents their sum.
 	Planned      []PlannedLineDTO `json:"planned"`
 	PlannedCents int64            `json:"plannedCents"`
 	// SpentOffCardCents is present only on the current month: what was spent off

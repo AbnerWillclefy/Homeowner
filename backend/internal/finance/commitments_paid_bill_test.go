@@ -20,8 +20,9 @@ func TestCommitmentsDoNotPlanLastMonthsPaidBill(t *testing.T) {
 		FROM finance_sources WHERE kind = 'checking' AND user_id = (SELECT id FROM users WHERE email = 'ana@example.com') LIMIT 1`); err != nil {
 		t.Fatal(err)
 	}
-	if got := readPlanned(t, ana).Months[1].PlannedCents; got != before+150000 {
-		t.Fatalf("unpaid rent expense planned = %d, want %d", got, before+150000)
+	// The fixture has rows in Aug, Sep and Oct, so 3 months are averaged and the 150000 adds 150000/3.
+	if got := readPlanned(t, ana).Months[1].PlannedCents; got != before+50000 {
+		t.Fatalf("unpaid rent expense planned = %d, want %d", got, before+50000)
 	}
 	bill := newBill(t, ana, "Aluguel", 150000, 10)
 	if _, err := app.DB.Exec(context.Background(), `

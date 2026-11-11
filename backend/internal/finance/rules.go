@@ -415,6 +415,16 @@ func CumulativeDaily(txns []Txn, month time.Time) []int64 {
 	return out
 }
 
+// halfUp is sum/n rounded half up for both signs (n > 0); Go's / truncates toward zero.
+func halfUp(sum, n int64) int64 {
+	q := 2*sum + n
+	out := q / (2 * n)
+	if q%(2*n) < 0 {
+		out-- // floor for negatives
+	}
+	return out
+}
+
 // UsualPace averages cumulative month series by day of month, for a month of
 // `days` days. A day past a shorter month's end takes that month's final total.
 // No series gives an empty result. Rounds half up.
@@ -429,11 +439,7 @@ func UsualPace(months [][]int64, days int) []int64 {
 		for _, m := range months {
 			sum += m[min(d, len(m)-1)]
 		}
-		q := 2*sum + n
-		out[d] = q / (2 * n)
-		if q%(2*n) < 0 {
-			out[d]-- // floor for negatives, so half up holds for both signs
-		}
+		out[d] = halfUp(sum, n)
 	}
 	return out
 }
