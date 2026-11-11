@@ -16,15 +16,15 @@ import { financeView } from "../pages/finances";
 const LOCALES = [
   {
     locale: "pt-BR",
-    more: /R\$\s*125,10 a mais que em novembro até dia 30/,
-    wholeNone: "Sem lançamentos em outubro para comparar.",
+    more: /R\$\s*125,10 a mais que em Novembro até dia 30/,
+    wholeNone: "Sem lançamentos em Outubro para comparar.",
     groceries: "Mercado",
     leisure: "Lazer",
     other: "Outros",
     health: "Saúde",
     pets: "Pets",
-    marker: /novembro até dia 30: R\$\s*792,00/,
-    healthMarker: /novembro até dia 30: R\$\s*89,90/,
+    marker: /Novembro até dia 30: R\$\s*792,00/,
+    healthMarker: /Novembro até dia 30: R\$\s*89,90/,
     uncategorised: "1 lançamento sem categoria",
     count: "Eles contam como Outros até você escolher uma.",
     pick: "Escolher categorias",
@@ -35,7 +35,7 @@ const LOCALES = [
     prev: "Mês anterior",
     category: "Categoria de gasto",
     save: "Salvar",
-    noTransactions: "Nenhum lançamento em dezembro.",
+    noTransactions: "Nenhum lançamento em Dezembro.",
   },
 ] as const;
 
@@ -108,6 +108,8 @@ for (const l of LOCALES) {
       await expect(button).toHaveAttribute("aria-expanded", "true");
       const body = page.locator(`[id="${await button.getAttribute("aria-controls")}"]`);
       await expect(body.getByRole("heading")).toHaveCount(2);
+      // No blank gap above the first day: the base section margin is cancelled.
+      await expect(body.locator("section").first()).toHaveCSS("margin-top", "0px");
       await expect(body.locator("li").getByRole("button").first()).toContainText("Padaria");
       await expect(body.locator("li").getByRole("button").last()).toContainText("Mercado grande");
       // The limit and the six months moved to the category screen: the card has only a link to it.
