@@ -19,7 +19,7 @@ flowchart LR
     PL[Pluggy, Open Finance]
 
     R -->|uses on phone| S
-    S -->|"bank accounts and transactions, with the User's own credentials (Finances)"| PL
+    S -->|"bank accounts, transactions and card bills, with the User's own credentials (Finances)"| PL
     MT -->|"reads usage, AI cost and flow, on desktop"| S
     S -->|presign, check, promote photos| B
     S --> N
@@ -31,7 +31,7 @@ flowchart LR
 
 ## Containers
 
-A container here is a separately running piece. The PWA, the admin app, the API, the Allocation job and Postgres run today; Cognito is an AWS-managed service.
+A container here is a separately running piece. The PWA, the admin app, the API, the Allocation job, the finance sync job and Postgres run today; Cognito is an AWS-managed service.
 
 ```mermaid
 flowchart LR
@@ -69,6 +69,11 @@ flowchart LR
     ALLOC -->|pgx| DB
     ALLOC -->|propose plan and explain it, when switched on| LLM
     ALLOC -->|Web Push, VAPID| PUSH
+    FSYNC["Finance sync job, backend/cmd/api finance-events"]
+    FSYNC -->|pgx| DB
+    FSYNC -->|"POST /auth, GET /accounts, /v2/transactions, /bills"| PLUGGY
+    FSYNC -->|"Categorizer, when a key is set"| LLM
+    FSYNC -->|"Web Push, Bill reminders"| PUSH
 ```
 
 | Container | Status | Notes |
@@ -79,7 +84,7 @@ flowchart LR
 | Postgres | Built | Postgres 16 in Docker Compose locally; a Neon branch per environment in staging and production. |
 | Allocation job | Built | The same binary run as `api events` in a second Lambda, started every 15 minutes by EventBridge; it plans each due Home once a day, asking the LLM allocator first when it is switched on and falling back to the baseline allocator. After planning, the same tick has the LLM write each planned Home's Day Plan explanations (one call per Home, best effort), then sends the Check-in reminder (an hour before the Allocation time, to Residents who have not checked in) and the Day Plan ready push, best effort. On staging, a manual GitHub workflow (`replan-staging.yml`) invokes it to replan one Home; the API does not. See [Daily Allocation](allocation.md) and [ADR 0008](../adr/0008-scheduled-jobs-run-as-a-second-lambda-from-the-api-image.md). |
 | Cognito | Built | Sign-up, email confirmation and sign-in (the PWA calls Cognito directly). The API verifies the ID token's signature against the pool's public keys; it never sees a password. |
-| Finance sync job | Built | The same binary run as `api finance-events` in a third Lambda, started every hour by EventBridge; it imports an allowlisted User's last 12 months of Transactions from Pluggy in resumable monthly windows, then refreshes each User once a day. See [the Transaction sync](backend.md) and [ADR 0008](../adr/0008-scheduled-jobs-run-as-a-second-lambda-from-the-api-image.md). |
+| Finance sync job | Built | The same binary run as `api finance-events` in a third Lambda, started every hour by EventBridge; it imports an allowlisted User's last 12 months of Transactions from Pluggy in resumable monthly windows, then refreshes each User once a day. On each run it also reads every card's bills from Pluggy `GET /bills` and stores them, so a closed bill takes the bank's total ([ADR 0021](../adr/0021-a-closed-card-bill-takes-the-banks-total.md)); a connector without `/bills` is logged and skipped, and that card keeps the computed bill. See [the Transaction sync](backend.md) and [ADR 0008](../adr/0008-scheduled-jobs-run-as-a-second-lambda-from-the-api-image.md). |
 | Pluggy Connect script | Built | A third-party script the PWA adds to the page only when a User taps Connect banks, from the exact URL and with the `integrity` hash of [ADR 0019](../adr/0019-take-bank-data-from-pluggy-with-per-user-credentials-encrypted-by-the-app.md), `crossorigin="anonymous"`. It runs in the PWA's origin, so the pin is the guard. The widget it opens talks to Pluggy and hands the PWA an item id, which the PWA registers with the API. See [Finances](web.md#finances). |
 | Anthropic API | Built (allocator, explanations, Categorizer, voice commands) | Called from the Allocation job, the finance sync job and, for voice commands, the API. The LLM allocator: one Messages API call per Home per day from the Allocation job, Claude Haiku 5.5 through the official Go SDK with structured output, off unless switched on per environment, key in SSM. The Day Plan explanations are a second call per Home, after planning, through the same client and key, sharing the per-Home daily cap (so 2 of the default 3 calls on a normal day). Only opaque ids, numbers and fixed vocabulary are sent, never names or Chore titles. The finance sync also uses it as the Categorizer: batches of up to 100 normalised bank merchant keys (letters only; never an amount, date, account or id; never keys starting PIX, TED, DOC or TRANSF), answered as an index and one of 13 category ids, at most 10 calls per User per day. Voice commands are the one exception to "no titles or user text" ([ADR 0020](../adr/0020-voice-commands-send-chore-titles-and-the-residents-words-behind-a-confirmation.md)): the API Lambda sends the transcript, the caller's own Home's Chore titles and today's open Tasks by their relation to the caller, with six tools and a forced tool call, at most 20 calls per Resident per day, through the same client, model and key; never Energy, Restrictions, names or another Home. Nothing changes until the Resident confirms in the PWA. Switched on per environment by `VOICE_ENABLED` (staging only for now). |
 | Browser speech recognition | Built (voice commands) | The browser's own Web Speech API (`SpeechRecognition`, or `webkitSpeechRecognition` in Safari), in the app's locale. The audio goes only to the browser's own speech service; only the transcript reaches our API, and it is neither stored nor logged. Where the browser has none (Firefox) the microphone button is not shown. See [Voice commands](web.md#voice-commands). |
