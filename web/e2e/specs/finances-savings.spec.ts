@@ -61,7 +61,7 @@ const LOCALES = [
     saveFailed: "Não conseguimos salvar. Tente de novo.",
     preview: (reserve: string, goals: string) => `${reserve} para a reserva e ${goals} para os objetivos.`,
     percent: "41% da meta",
-    by: "até maio de 2027",
+    by: "até Maio de 2027",
     typedMoney: "1.500,00",
     typedBig: "30.000,00",
     reorderFailed: "Não conseguimos salvar a nova ordem. Tente de novo.",

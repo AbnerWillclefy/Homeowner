@@ -74,13 +74,13 @@ describe("whenText", () => {
   const say = (locale: Locale, when: When, who: "reserve" | "goal" = "goal") => whenText((key, params) => translate(locale, key, params), locale, when, who);
 
   it("says the expected month, in the grammatical gender of reserve (feminine) and Goal (masculine)", () => {
-    expect(say("pt-BR", { kind: "expected", month: "2029-04" }, "reserve")).toBe("Prevista para abril de 2029");
-    expect(say("pt-BR", { kind: "expected", month: "2029-04" })).toBe("Previsto para abril de 2029");
+    expect(say("pt-BR", { kind: "expected", month: "2029-04" }, "reserve")).toBe("Prevista para Abril de 2029");
+    expect(say("pt-BR", { kind: "expected", month: "2029-04" })).toBe("Previsto para Abril de 2029");
     expect(say("en-US", { kind: "expected", month: "2029-04" })).toBe("Expected in April 2029");
   });
   it("says a late Goal's months after its date, in the singular and the plural", () => {
-    expect(say("pt-BR", { kind: "late", month: "2027-05", monthsLate: 2 })).toBe("Previsto para maio de 2027, 2 meses depois da data");
-    expect(say("pt-BR", { kind: "late", month: "2027-05", monthsLate: 1 })).toBe("Previsto para maio de 2027, 1 mês depois da data");
+    expect(say("pt-BR", { kind: "late", month: "2027-05", monthsLate: 2 })).toBe("Previsto para Maio de 2027, 2 meses depois da data");
+    expect(say("pt-BR", { kind: "late", month: "2027-05", monthsLate: 1 })).toBe("Previsto para Maio de 2027, 1 mês depois da data");
     expect(say("en-US", { kind: "late", month: "2027-05", monthsLate: 2 })).toBe("Expected in May 2027, 2 months after its date");
   });
   it("says reached and beyond the horizon in words, and nothing for none", () => {

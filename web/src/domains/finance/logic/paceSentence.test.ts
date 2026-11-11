@@ -20,9 +20,9 @@ const flat = (text: string | null) => text?.replace(/\s/g, " ");
 
 describe("paceSentence", () => {
   it.each([
-    ["pt-BR", same(81200, 42000), "Até dia 8 você gastou R$ 392,00 a mais que até 8 de outubro"],
-    ["pt-BR", same(42000, 81200), "Até dia 8 você gastou R$ 392,00 a menos que até 8 de outubro"],
-    ["pt-BR", same(42000, 42000), "Até dia 8 você gastou o mesmo que até 8 de outubro"],
+    ["pt-BR", same(81200, 42000), "Até dia 8 você gastou R$ 392,00 a mais que até 8 de Outubro"],
+    ["pt-BR", same(42000, 81200), "Até dia 8 você gastou R$ 392,00 a menos que até 8 de Outubro"],
+    ["pt-BR", same(42000, 42000), "Até dia 8 você gastou o mesmo que até 8 de Outubro"],
     ["en-US", same(81200, 42000), "Up to day 8 you spent R$392.00 more than up to October 8"],
     ["en-US", same(42000, 81200), "Up to day 8 you spent R$392.00 less than up to October 8"],
     ["en-US", same(42000, 42000), "Up to day 8 you spent the same as up to October 8"],
@@ -33,7 +33,7 @@ describe("paceSentence", () => {
   it("names the clamped cut day, so 31 October reads 30 September", () => {
     const sentence = flat(say("pt-BR", same(100, 50, { cutDay: 30 }), 31, "2026-10"));
     expect(sentence).toContain("Até dia 31");
-    expect(sentence).toContain("até 30 de setembro");
+    expect(sentence).toContain("até 30 de Setembro");
   });
 
   it.each([
@@ -54,6 +54,6 @@ describe("paceSentence", () => {
   });
 
   it("says there is nothing to compare with when last month has no Transactions", () => {
-    expect(say("pt-BR", same(100, 0, { noPrevious: true }))).toBe("Sem lançamentos em outubro para comparar.");
+    expect(say("pt-BR", same(100, 0, { noPrevious: true }))).toBe("Sem lançamentos em Outubro para comparar.");
   });
 });

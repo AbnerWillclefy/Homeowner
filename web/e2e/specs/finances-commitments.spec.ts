@@ -51,9 +51,9 @@ const LOCALES = [
       /Nos meses seguintes, a fatura conta só as parcelas já conhecidas/,
     plansHeading: "Parcelas em andamento",
     plans: [
-      ["Sofá", "próxima 3 de 3 · última em novembro"],
-      ["Geladeira", "próxima 4 de 10 · última em junho"],
-      ["Televisão", "próxima 2 de 6 · última em abril"],
+      ["Sofá", "próxima 3 de 3 · última em Novembro"],
+      ["Geladeira", "próxima 4 de 10 · última em Junho"],
+      ["Televisão", "próxima 2 de 6 · última em Abril"],
     ],
     failed:
       "Não conseguimos carregar os próximos meses. Verifique sua conexão e tente de novo.",
