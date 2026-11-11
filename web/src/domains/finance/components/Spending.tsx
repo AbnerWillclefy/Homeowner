@@ -1,6 +1,6 @@
 import { useId, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { monthQuery } from "../api/queries";
+import { financeStatusQuery, monthQuery } from "../api/queries";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { Card } from "../../../shared/ui/Card";
@@ -10,11 +10,13 @@ import { SkeletonBar } from "../../../shared/ui/Skeleton";
 import type { Transaction } from "../api/api";
 import { useMonth,type EditOutcome } from "../hooks/useMonth";
 import { difference } from "../logic/difference";
+import { headerGap } from "../logic/headerGap";
 import { formatCents } from "../logic/money";
 import { addMonths, monthName } from "../logic/month";
 import { monthView } from "../logic/monthView";
 import { categoryRows, sameDays, uncategorised } from "../logic/sameDays";
 import { CategoryBar } from "./CategoryBar";
+import { Donut } from "./charts/Donut";
 import { EditTransactionDialog } from "./EditTransactionDialog";
 import { LeftOutGroup } from "./LeftOutGroup";
 import { UncategorisedCard } from "./UncategorisedCard";
@@ -72,6 +74,12 @@ export function Spending() {
         : t(`finances.report.${diff.key}Until`, { amount: money(diff.amount), month: last, day: cut });
   const markers = compared !== null && !compared.noPrevious;
   const empty = view?.isEmpty && !(compared && !compared.noPrevious);
+  const importing = useQuery(financeStatusQuery).data?.importing === true;
+  const committed = state.kind === "ready" ? state.data.committedCents : undefined;
+  const spentSince = state.kind === "ready" ? state.data.spentSinceFirstCents : undefined;
+  const gap = committed !== undefined && spentSince !== undefined ? headerGap(committed, spentSince) : null;
+  // The ring is the whole month's Spending Categories above zero; a refund-heavy one is left out.
+  const donut = view?.categories.filter((g) => g.spentCents > 0).map((g) => ({ category: g.category, cents: g.spentCents })) ?? [];
   const limits = state.kind === "ready" ? state.data.limits : {};
   // The scale holds each limit too, so its tick stays on the track; with no limit it is the same as before.
   const scale = shown ? Math.max(shown.max, ...shown.rows.map((r) => limits[r.category] ?? 0)) : 0;
@@ -102,18 +110,46 @@ export function Spending() {
       </p>
       {view &&
         (empty ? (
-          <p className="my-0 text-muted">{t("finances.month.empty")}</p>
+          <p role="status" className="my-0 text-muted">
+            {importing ? t("finances.spending.importing") : t("finances.month.empty")}
+          </p>
         ) : (
           <>
-            <div className="flex flex-col">
-              <span className="text-3xl font-bold leading-tight [overflow-wrap:anywhere]">{money(compared?.spent ?? view.spentCents)}</span>
-              <span className="text-sm font-semibold">
-                {month === thisMonth
-                  ? t("finances.month.spentUntil", { day: today.getDate(), month: monthName(month, locale) })
-                  : t("finances.month.spent", { month: monthName(month, locale) })}
-              </span>
-              {comparison && <span className="text-sm text-muted">{comparison}</span>}
+            <div className="flex flex-col gap-2">
+              {committed !== undefined && spentSince !== undefined ? (
+                <dl className="m-0 grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-x-3 gap-y-2">
+                  {(
+                    [
+                      ["finances.spending.committed", committed],
+                      ["finances.spending.spentSince", spentSince],
+                    ] as const
+                  ).map(([key, cents]) => (
+                    <div key={key} className="flex min-w-0 flex-col">
+                      <dt className="text-sm font-semibold">{t(key)}</dt>
+                      <dd className="m-0 text-2xl font-bold leading-tight [overflow-wrap:anywhere]">{money(cents)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : (
+                <div className="flex flex-col">
+                  <span className="text-3xl font-bold leading-tight [overflow-wrap:anywhere]">{money(compared?.spent ?? view.spentCents)}</span>
+                  <span className="text-sm font-semibold">
+                    {month === thisMonth
+                      ? t("finances.month.spentUntil", { day: today.getDate(), month: monthName(month, locale) })
+                      : t("finances.month.spent", { month: monthName(month, locale) })}
+                  </span>
+                </div>
+              )}
+              {gap && <p className="my-0 text-sm">{t(gap.key === "earlier" ? "finances.spending.gapEarlier" : "finances.spending.gapLater", { amount: money(gap.amount) })}</p>}
+              {comparison && <p className="my-0 text-sm text-muted">{comparison}</p>}
             </div>
+            {donut.length > 0 ? (
+              <Card>
+                <Donut items={donut} />
+              </Card>
+            ) : (
+              <p className="my-0 text-muted">{t("finances.spending.noSpending")}</p>
+            )}
             <UncategorisedCard rows={missing} onEdit={setEditing} />
             {shown && shown.rows.length > 0 && (
               <section aria-labelledby={listId} className="mt-2 flex flex-col gap-3">

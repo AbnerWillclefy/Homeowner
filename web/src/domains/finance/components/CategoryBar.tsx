@@ -8,7 +8,7 @@ import { limitText } from "../logic/limit";
 import { formatCents } from "../logic/money";
 import { formatDay, monthName } from "../logic/month";
 import { groupByDay } from "../logic/sameDays";
-import { spendingKey, type SpendingCategory } from "../logic/spendingCategories";
+import { SPENDING_LOOK, spendingKey, type SpendingCategory } from "../logic/spendingCategories";
 import { Track } from "./charts/Bar";
 import { TransactionRow } from "./TransactionRow";
 
@@ -43,6 +43,8 @@ export function CategoryBar({
   onEdit(tx: Transaction): void;
 }) {
   const { t, locale } = useI18n();
+  const look = SPENDING_LOOK[category];
+  const Icon = look.icon;
   const [open, setOpen] = useState(false);
   const { search } = useLocation();
   const id = useId();
@@ -58,6 +60,9 @@ export function CategoryBar({
         onClick={() => setOpen((value) => !value)}
         className="flex min-h-11 w-full flex-wrap items-center gap-x-3 rounded-control bg-transparent p-0 text-start font-[inherit] text-inherit"
       >
+        <span aria-hidden="true" className={`flex size-9 shrink-0 items-center justify-center rounded-control ${look.tile} ${look.ink}`}>
+          <Icon size={20} />
+        </span>
         <span className="min-w-0 flex-1 font-bold [overflow-wrap:anywhere]">{t(spendingKey(category))}</span>
         <span className="flex items-center gap-2 font-bold">
           {formatCents(spent, locale)}
@@ -68,7 +73,7 @@ export function CategoryBar({
           />
         </span>
       </button>
-      <Track value={spent} max={max} markers={marker === undefined ? [] : [marker]} limit={limit} />
+      <Track value={spent} max={max} markers={marker === undefined ? [] : [marker]} limit={limit} fill={`${look.bar} ${look.ink} border-current`} />
       <span className="text-sm text-muted [overflow-wrap:anywhere]">
         {lines}
         {standing && limit !== undefined && (
