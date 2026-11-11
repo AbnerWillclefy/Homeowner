@@ -37,7 +37,7 @@ Every screen and component follows Shneiderman's 8 golden rules of interface des
 - **Brand**: `brand` is Homeowner green. It appears on the primary action, the active navigation item, links and the brand line in charts. In dark the green is light, so text on it is a dark `on-brand`, never white.
 - **Hero**: `hero` is the only saturated block on a screen, reserved for the card that answers the screen's question ("how much can I still spend"). On it: text `on-hero` and `on-hero-muted`, chart line `hero-line`.
 - **State**: `positive`, `warning` and `danger`, each with its `-soft` for badge backgrounds. State always comes with a word or icon, never colour alone. Normal spending is not red: `danger` is only for late, over-limit and error.
-- **Categories**: 13 fixed colours (`cat-housing`, `cat-groceries`…), each with a `-soft`. They are the same in chart, icon, legend and filter, on every screen. All pass 4.5:1 on `surface`, so they also work as text colour.
+- **Categories**: 13 fixed colours (`cat-housing`, `cat-groceries`…), each with a `-soft`. They are the same in chart, icon, legend and filter, on every screen. All pass 4.5:1 on `surface`, so they also work as text colour. For an app that adopts Bedrock, these and the icons in `CategoryTag` replace `DESIGN.md`'s Spending Category table (`spend-*` becomes `cat-*`, Taxes and fees becomes `landmark`, Other becomes `circle-ellipsis`). The web PWA keeps `DESIGN.md` until it migrates.
 - **Focus**: a 2px solid `focus` ring with a 2px offset on every focusable element. It passes 3:1 on every surface.
 
 ## Typography
