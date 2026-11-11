@@ -117,7 +117,7 @@ export function Spending() {
           <>
             <div className="flex flex-col gap-2">
               {committed !== undefined && spentSince !== undefined ? (
-                <dl className="m-0 grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-x-3 gap-y-2">
+                <dl className="m-0 grid grid-cols-[repeat(auto-fit,minmax(min(9rem,100%),1fr))] gap-x-3 gap-y-2">
                   {(
                     [
                       ["finances.spending.committed", committed],

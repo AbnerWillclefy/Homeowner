@@ -80,7 +80,9 @@ export function Donut({ items }: { items: DonutItem[] }) {
           )}
         </div>
       </div>
-      <table className="sr-only">
+      {/* The wrapper is what is clipped: a table ignores the sr-only box and widens the page at large text. */}
+      <div className="sr-only">
+      <table>
         <caption>{t("charts.donut.caption")}</caption>
         <thead>
           <tr>
@@ -99,6 +101,7 @@ export function Donut({ items }: { items: DonutItem[] }) {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
