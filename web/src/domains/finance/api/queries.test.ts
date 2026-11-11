@@ -1,4 +1,5 @@
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryObserver } from "@tanstack/react-query";
+import { refetchUnlessSucceeded } from "../../../shared/query/queryClient";
 import { describe, expect, it, vi } from "vitest";
 import { commitmentsKey, dailyKey, financeDeleted, financeStatusKey, historyKey, invalidateFinance, invalidateMonth, monthKey, writeFinanceStatus } from "./queries";
 import type { FinanceStatus } from "./api";
@@ -54,13 +55,18 @@ describe("finance cache", () => {
     expect(client.getQueryState(["me", "profile"])?.isInvalidated).toBe(false);
   });
 
-  it("reads every cached finance query again, a screen not on show included, so a rename is there when it opens", async () => {
+  it("leaves an inactive finance query alone, then reads it when it mounts again so a rename is there", async () => {
     const client = new QueryClient();
     const queryFn = vi.fn().mockResolvedValueOnce({ n: 1 }).mockResolvedValueOnce({ n: 2 });
-    await client.prefetchQuery({ queryKey: monthKey("2026-11"), queryFn });
+    const options = { queryKey: monthKey("2026-11"), queryFn, refetchOnMount: refetchUnlessSucceeded };
+    await client.prefetchQuery(options);
     await invalidateFinance(client);
+    expect(queryFn).toHaveBeenCalledTimes(1);
+    const observer = new QueryObserver(client, options);
+    const unsubscribe = observer.subscribe(() => {});
+    await vi.waitFor(() => expect(observer.getCurrentResult().data).toEqual({ n: 2 }));
+    unsubscribe();
     expect(queryFn).toHaveBeenCalledTimes(2);
-    expect(client.getQueryData(monthKey("2026-11"))).toEqual({ n: 2 });
   });
 
   it("drops every finance entry after a delete, keeps ['me'], and sets the empty status", async () => {

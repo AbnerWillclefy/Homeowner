@@ -141,11 +141,11 @@ export const savingsQuery = queryOptions({
 });
 
 /**
- * After an income, Bill, bill-days or Source-name write: every cached finance read is read again, a screen not on
- * show included. `refetchType: "all"` is needed because `refetchUnlessSucceeded` skips an entry that succeeded once,
- * so an invalidated month on a screen the User left would otherwise still show the old name when it opens again.
+ * After an income, Bill, bill-days or Source-name write: every cached finance read is marked stale. Only the ones on
+ * show read again now; a screen the User left reads when it opens, because `refetchUnlessSucceeded` lets an
+ * invalidated entry refetch on mount. The Save does not wait for reads of screens nobody is looking at.
  */
-export const invalidateFinance = (client: QueryClient) => client.invalidateQueries({ queryKey: financeStatusKey, refetchType: "all" });
+export const invalidateFinance = (client: QueryClient) => client.invalidateQueries({ queryKey: financeStatusKey });
 
 const EMPTY: FinanceStatus = { configured: false, sources: [], importing: false, lastSyncedAt: null };
 
