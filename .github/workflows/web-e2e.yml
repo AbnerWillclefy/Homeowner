@@ -34,8 +34,9 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('web/package-lock.json') }}
-      # Skips a browser already restored from the cache; the system libraries are installed either way.
-      - run: npx playwright install --with-deps chromium
+      # Skips a browser already restored from the cache. No --with-deps: the runner image already has
+      # Chromium's libraries, and the extra fonts it adds made the job fail whenever the Ubuntu mirrors were unreachable.
+      - run: npx playwright install chromium
       - run: npx playwright test
       - name: Upload the Playwright report
         if: failure()
