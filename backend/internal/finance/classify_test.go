@@ -95,6 +95,13 @@ func TestClassifyTakesTheAmountOfAStoredBill(t *testing.T) {
 			t.Errorf("%s: type = %q, want %q", name, got, tc.want)
 		}
 	}
+	// A credit-balance bill must not turn a matching credit into a Transfer.
+	credit := []StoredBill{{ClosesOn: day0.AddDate(0, 0, -7), DueOn: day0, TotalCents: -253090}}
+	for _, c := range Classify([]Txn{tx("p", "chk", 0, 253090)}, kinds, credit) {
+		if c.Type != "income" {
+			t.Errorf("credit vs negative bill: type = %q, want income", c.Type)
+		}
+	}
 }
 
 func TestMonthTotals(t *testing.T) {
