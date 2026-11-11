@@ -332,7 +332,7 @@ func (s *Store) ClassifyInput(ctx context.Context, userID string, from, to time.
 	}
 	rows, err := s.db.Query(ctx, `
 		SELECT id, source_id, currency, merchant_key, posted_on, amount_cents, type, type_set_by,
-		       COALESCE(spending_category, ''), COALESCE(category_set_by, '')
+		       COALESCE(spending_category, ''), COALESCE(category_set_by, ''), own_counterpart
 		FROM finance_transactions
 		WHERE user_id = $1 AND type_set_by = 'auto' AND posted_on BETWEEN $2 AND $3`, userID, from, to)
 	if err != nil {
@@ -342,7 +342,7 @@ func (s *Store) ClassifyInput(ctx context.Context, userID string, from, to time.
 	var out []Txn
 	for rows.Next() {
 		var t Txn
-		if err := rows.Scan(&t.ID, &t.SourceID, &t.Currency, &t.MerchantKey, &t.PostedOn, &t.AmountCents, &t.Type, &t.TypeSetBy, &t.Category, &t.CategorySetBy); err != nil {
+		if err := rows.Scan(&t.ID, &t.SourceID, &t.Currency, &t.MerchantKey, &t.PostedOn, &t.AmountCents, &t.Type, &t.TypeSetBy, &t.Category, &t.CategorySetBy, &t.OwnCounterpart); err != nil {
 			return nil, nil, err
 		}
 		out = append(out, t)
@@ -378,6 +378,8 @@ type Row struct {
 	InstallmentNumber, TotalInstallments int32
 	// Category is the Spending Category Pluggy's own category maps to, "" if none.
 	Category string
+	// OwnCounterpart: the other side of the payment is the User.
+	OwnCounterpart bool
 }
 
 // UpsertTransactions writes one page with a single statement. A Transaction
@@ -395,26 +397,26 @@ type Row struct {
 func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string, rows []Row, now time.Time) error {
 	n := len(rows)
 	ids, days, cents, descs, keys, types := make([]string, n), make([]time.Time, n), make([]int64, n), make([]string, n), make([]string, n), make([]string, n)
-	inst, total, cats := make([]int32, n), make([]int32, n), make([]string, n)
+	inst, total, cats, own := make([]int32, n), make([]int32, n), make([]string, n), make([]bool, n)
 	for i, r := range rows {
-		cats[i] = r.Category
+		cats[i], own[i] = r.Category, r.OwnCounterpart
 		ids[i], days[i], cents[i], descs[i], keys[i], types[i] = r.ProviderID, r.PostedOn, r.AmountCents, r.Description, r.MerchantKey, r.Type
 		inst[i], total[i] = r.InstallmentNumber, r.TotalInstallments
 	}
 	_, err := s.db.Exec(ctx, `
 		INSERT INTO finance_transactions (user_id, source_id, provider_id, posted_on, amount_cents, currency, description,
-			merchant_key, type, type_set_by, spending_category, category_set_by, installment_number, total_installments, created_at, updated_at)
+			merchant_key, type, type_set_by, spending_category, category_set_by, installment_number, total_installments, own_counterpart, created_at, updated_at)
 		SELECT $1, $2, p.provider_id, p.posted_on, p.amount_cents, 'BRL', p.description, p.merchant_key, p.type, 'auto',
 			CASE WHEN p.type = 'expense' THEN COALESCE(mc.spending_category, NULLIF(p.category, ''), 'other') END,
 			CASE WHEN p.type = 'expense' THEN
 				CASE WHEN mc.spending_category IS NOT NULL OR p.category <> '' THEN 'auto' ELSE 'fallback' END END,
-			NULLIF(p.inst, 0), NULLIF(p.total, 0), $3, $3
-		FROM unnest($4::text[], $5::date[], $6::bigint[], $7::text[], $8::text[], $9::text[], $10::int[], $11::int[], $12::text[])
-			AS p (provider_id, posted_on, amount_cents, description, merchant_key, type, inst, total, category)
+			NULLIF(p.inst, 0), NULLIF(p.total, 0), p.own, $3, $3
+		FROM unnest($4::text[], $5::date[], $6::bigint[], $7::text[], $8::text[], $9::text[], $10::int[], $11::int[], $12::text[], $13::bool[])
+			AS p (provider_id, posted_on, amount_cents, description, merchant_key, type, inst, total, category, own)
 		LEFT JOIN finance_merchant_categories mc ON mc.user_id = $1 AND mc.merchant_key = p.merchant_key
 		ON CONFLICT (source_id, provider_id) DO UPDATE SET
 			posted_on = EXCLUDED.posted_on, amount_cents = EXCLUDED.amount_cents, description = EXCLUDED.description,
-			merchant_key = EXCLUDED.merchant_key,
+			merchant_key = EXCLUDED.merchant_key, own_counterpart = EXCLUDED.own_counterpart,
 			installment_number = COALESCE(finance_transactions.installment_number, EXCLUDED.installment_number),
 			total_installments = COALESCE(finance_transactions.total_installments, EXCLUDED.total_installments), updated_at = EXCLUDED.updated_at,
 			type = finance_transactions.type,
@@ -422,7 +424,7 @@ func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string,
 				AND EXCLUDED.type = 'expense' THEN EXCLUDED.spending_category ELSE finance_transactions.spending_category END,
 			category_set_by = CASE WHEN finance_transactions.category_set_by = 'fallback' AND finance_transactions.type_set_by = 'auto'
 				AND EXCLUDED.type = 'expense' THEN EXCLUDED.category_set_by ELSE finance_transactions.category_set_by END`,
-		userID, sourceID, now, ids, days, cents, descs, keys, types, inst, total, cats)
+		userID, sourceID, now, ids, days, cents, descs, keys, types, inst, total, cats, own)
 	return err
 }
 

@@ -19,7 +19,7 @@ func TestToRowsFilters(t *testing.T) {
 		tx("zero", "POSTED", "BRL", &pluggy.CreditCardMetadata{InstallmentNumber: 0, TotalInstallments: 3}),
 		tx("over", "POSTED", "BRL", &pluggy.CreditCardMetadata{InstallmentNumber: 4, TotalInstallments: 3}),
 		tx("ok", "POSTED", "BRL", &pluggy.CreditCardMetadata{InstallmentNumber: 2, TotalInstallments: 3}),
-	}, false)
+	}, false, pluggy.Party{})
 	if skipped != 1 {
 		t.Fatalf("skippedCurrency = %d, want 1", skipped)
 	}
@@ -42,7 +42,7 @@ func TestToRowsFlipsCardSign(t *testing.T) {
 	rows, _ := toRows([]pluggy.Transaction{
 		{ID: "buy", Date: d, Description: "x", AmountCents: 1000, Currency: "BRL", Status: "POSTED"},
 		{ID: "pay", Date: d, Description: "PAGAMENTO DE FATURA", AmountCents: -500, Currency: "BRL", Status: "POSTED"},
-	}, true)
+	}, true, pluggy.Party{})
 	if rows[0].AmountCents != -1000 || rows[0].Type != "expense" || rows[1].AmountCents != 500 || rows[1].Type != "income" {
 		t.Errorf("rows = %+v, want the purchase -1000 expense and the payment 500 income", rows)
 	}

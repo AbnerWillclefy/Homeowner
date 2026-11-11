@@ -27,6 +27,28 @@
       "type": "CREDIT",
       "creditCardMetadata": null,
       "providerId": null
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "description": "SYNTHETIC OWN NAME PIX",
+      "descriptionRaw": null,
+      "currencyCode": "BRL",
+      "amount": -77.77,
+      "date": "2026-01-16T03:00:00.000Z",
+      "category": null,
+      "accountId": "7e5bc95d-85bb-4b3a-9b97-58d456872529",
+      "status": "POSTED",
+      "type": "DEBIT",
+      "creditCardMetadata": null,
+      "providerId": null,
+      "paymentData": {
+        "payer": null,
+        "paymentMethod": "PIX",
+        "receiver": {
+          "documentNumber": { "type": "CPF", "value": "416.799.495-00" },
+          "name": "Receiver Secret Name"
+        }
+      }
     }
   ],
   "next": null

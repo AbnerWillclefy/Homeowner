@@ -79,7 +79,7 @@ type Kind string
 const transferWindowDays = 3
 
 // billPayments are merchant keys that mark a card bill payment, on either side.
-var billPayments = []string{"PAGAMENTO FATURA", "PAGAMENTO DE FATURA", "PAGAMENTO RECEBIDO"}
+var billPayments = []string{"PAGAMENTO FATURA", "PAGAMENTO DE FATURA", "PAGAMENTO RECEBIDO", "PAGAMENTO ON LINE", "PAGAMENTO ONLINE"}
 
 // Txn is the part of a Transaction the rules read and decide.
 type Txn struct {
@@ -96,13 +96,16 @@ type Txn struct {
 	// Linked (a Bill payment, not undone, points at it) is read by SuggestBills
 	// and Outlook; Installment (a PARC nn/mm charge) only by SuggestBills.
 	Linked, Installment bool
+	// OwnCounterpart: the other side of the money is the User (see sameParty).
+	OwnCounterpart bool
 }
 
 // Classify sets the type of every auto Txn and returns those whose type or
 // category changed. A row the User set is neither changed nor used as a partner.
 //
 // Rules, in order: an "Aplicação" (any sign) or a positive "Resgate" is a
-// saving, left out of the pairing below; a bill payment is a Transfer, by its words or, on a Source
+// saving, left out of the pairing below; a row whose other side is the User
+// (OwnCounterpart), with or without a partner, is a Transfer; a bill payment is a Transfer, by its words or, on a Source
 // that is not a credit card, by a debit equal to a stored closed bill's total
 // posted within transferWindowDays of its due date; a debit and a credit of the
 // same amount and currency on two Sources within transferWindowDays are both
@@ -134,6 +137,9 @@ func Classify(txns []Txn, kinds map[string]Kind, bills []StoredBill) []Txn {
 	}
 	transfer := map[string]bool{}
 	for _, t := range rest {
+		if t.OwnCounterpart {
+			transfer[t.ID] = true
+		}
 		for _, p := range billPayments {
 			if strings.Contains(t.MerchantKey, p) {
 				transfer[t.ID] = true
