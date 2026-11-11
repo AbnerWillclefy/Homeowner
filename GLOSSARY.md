@@ -145,7 +145,7 @@ What remains of the Monthly income after everything a month takes: Monthly incom
 _Avoid_: Balance, Surplus, Savings
 
 **Planned spending**:
-What each Spending Category is still expected to take in a month, which lowers that month's Leftover. A category with a Spending limit plans its limit; one without plans what it spent last month. Both subtract what already counts for the category in the month, never going below zero.
+What each Spending Category is still expected to take in a month, which lowers that month's Leftover. A category with a Spending limit plans its limit; one without plans the average of what it spent in the 3 months before the current one (months before the User's first data left out; a negative average counts as 0). Both subtract what already counts for the category in the month, never going below zero.
 _Avoid_: Budget, Forecast, Reserve
 
 **Saving**:

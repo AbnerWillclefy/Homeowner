@@ -62,9 +62,9 @@ type PlannedLine struct {
 //
 // limits are the Spending limits by category; current is the first of the month
 // "now" is in (zero when unknown), the only month with SpentOffCardCents.
-// Planned for a category is its limit, or without a limit what it spent in
-// lastMonth (the ByCategory of the month before current, for every month of the
-// horizon; a negative one plans 0), minus what already counts for it in the
+// Planned for a category is its limit, or without a limit its baseline (the
+// average of its spend in the 3 months before current, see plannedBaseline, the
+// same for every month of the horizon; a negative one plans 0), minus what already counts for it in the
 // month (every row, card or not, plus the installments still to come), the
 // counted amount clamped at zero and the result too.
 //
@@ -89,7 +89,7 @@ type PlannedLine struct {
 // Transaction is left out: that money is in a card bill.
 //
 // shortcut: a card-paid Bill counts twice in the current month until its charge posts (last month's charge is in this month's card bill, this month's is still expected), upgrade when the PWA shows it.
-func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income *int64, limits, lastMonth map[string]int64, contribution int64, current, from time.Time, months int) []MonthOutlook {
+func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income *int64, limits, baseline map[string]int64, contribution int64, current, from time.Time, months int) []MonthOutlook {
 	byCard := map[string][]Txn{}
 	for _, t := range rows {
 		byCard[t.SourceID] = append(byCard[t.SourceID], t)
@@ -187,7 +187,7 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 		for _, c := range SpendingCategories {
 			plan, ok := limits[c]
 			if !ok {
-				plan = max(0, lastMonth[c])
+				plan = max(0, baseline[c])
 			}
 			if plan <= 0 {
 				continue
@@ -209,6 +209,36 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 			o.LeftoverCents = &left
 		}
 		out[i] = o
+	}
+	return out
+}
+
+// plannedBaseline is what each category plans without a Spending limit: its
+// spend averaged over the 3 months before current (a UTC first-of-month), rounded
+// half up, signed so a refund offsets another month's purchase (Outlook clamps at
+// 0). rows are SpendRows, PostedOn being the CountsOn day. A month counts when it
+// has any row, a Bill payment (Linked) or a Transfer included, so a month with no
+// spend in the category is a 0 and months before the User's first data are not
+// divided by. The sum leaves Linked rows out: the paid Bill is already in the
+// other Bills. current is the real current month, not the month asked for.
+func plannedBaseline(rows []Txn, current time.Time) map[string]int64 {
+	first := monthIndex(current) - paceMonths
+	counted := map[int]bool{}
+	var spent []Txn
+	for _, t := range rows {
+		if m := monthIndex(t.PostedOn); m >= first && m < monthIndex(current) {
+			counted[m] = true
+			if !t.Linked {
+				spent = append(spent, t)
+			}
+		}
+	}
+	out := map[string]int64{}
+	if len(counted) == 0 {
+		return out
+	}
+	for c, sum := range MonthTotals(spent).ByCategory {
+		out[c] = halfUp(sum, int64(len(counted)))
 	}
 	return out
 }

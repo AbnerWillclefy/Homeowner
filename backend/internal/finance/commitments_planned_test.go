@@ -38,9 +38,11 @@ func TestCommitmentsPlanSpendingFromTheLimits(t *testing.T) {
 	app, ana := seedMonth(t) // the fake clock is 2026-11-08
 	apitest.ExpectStatus(t, ana.Put("/me/finance/income", map[string]int64{"monthlyIncomeCents": 5000000}), http.StatusNoContent)
 	base := readPlanned(t, ana)
-	// Without limits each category plans October's spend (127270) less what November already counts.
-	if m := base.Months[0]; len(m.Planned) != 4 || m.PlannedCents != 39490 || m.SpentOffCardCents == nil || base.Months[1].SpentOffCardCents != nil || base.Months[1].PlannedCents != 127270 {
-		t.Fatalf("without limits = %+v, want last month's spend planned and already spent only on the current month", base.Months[:2])
+	// Without limits each category plans its average over Aug, Sep and Oct, less what November already counts.
+	// Averages: housing 160000/3 = 53333, household_bills 91500/3 = 30500, health 17980/3 = 5993, subscriptions 15560/3 = 5187: 95013 in all.
+	// November already holds housing 80000 and subscriptions 7780, which cover their averages, so it plans 30500 + 5993.
+	if m := base.Months[0]; len(m.Planned) != 4 || m.PlannedCents != 36493 || m.SpentOffCardCents == nil || base.Months[1].SpentOffCardCents != nil || base.Months[1].PlannedCents != 95013 {
+		t.Fatalf("without limits = %+v, want the 3-month average planned and already spent only on the current month", base.Months[:2])
 	}
 
 	insertTxn(t, app, "g1", "2026-11-03", -30000, "groceries")
