@@ -140,8 +140,12 @@ export const savingsQuery = queryOptions({
   refetchOnMount: refetchUnlessSucceeded,
 });
 
-/** After an income write, or a Bill write: every finance read that carries the totals is read again. */
-export const invalidateFinance = (client: QueryClient) => client.invalidateQueries({ queryKey: financeStatusKey });
+/**
+ * After an income, Bill, bill-days or Source-name write: every cached finance read is read again, a screen not on
+ * show included. `refetchType: "all"` is needed because `refetchUnlessSucceeded` skips an entry that succeeded once,
+ * so an invalidated month on a screen the User left would otherwise still show the old name when it opens again.
+ */
+export const invalidateFinance = (client: QueryClient) => client.invalidateQueries({ queryKey: financeStatusKey, refetchType: "all" });
 
 const EMPTY: FinanceStatus = { configured: false, sources: [], importing: false, lastSyncedAt: null };
 
