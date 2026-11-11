@@ -153,6 +153,19 @@ func (s *Syncer) syncItem(ctx context.Context, it DueItem, apiKey string, now, t
 	if err != nil {
 		return false, err
 	}
+	// A connector may not support /bills: the card then keeps the computed rule (ADR 0021), so a failure only logs.
+	for _, src := range sources {
+		if !src.Card {
+			continue
+		}
+		bills, err := s.pluggy.ListBills(ctx, apiKey, src.PluggyAccountID)
+		if err == nil {
+			err = s.store.UpsertCardBills(ctx, it.UserID, src.ID, bills)
+		}
+		if err != nil {
+			s.log.Error("finance sync failed", "user", it.UserID, "step", "card bills", "error", safeErr(err))
+		}
+	}
 	floor := today.AddDate(-1, 0, 0)
 	for round := 0; ; round++ {
 		// The first round always runs, so every run makes progress.
@@ -229,11 +242,16 @@ func (s *Syncer) classify(ctx context.Context, userID string, rows []Row, now ti
 	}
 	// Read twice the window so rows at its edge see their partners, but write
 	// only rows within one window of the page, so no Transfer is split.
-	txns, kinds, err := s.store.ClassifyInput(ctx, userID, from.AddDate(0, 0, -2*transferWindowDays), to.AddDate(0, 0, 2*transferWindowDays))
+	wideFrom, wideTo := from.AddDate(0, 0, -2*transferWindowDays), to.AddDate(0, 0, 2*transferWindowDays)
+	txns, kinds, err := s.store.ClassifyInput(ctx, userID, wideFrom, wideTo)
 	if err != nil {
 		return err
 	}
-	changed := slices.DeleteFunc(Classify(txns, kinds), func(t Txn) bool {
+	bills, err := s.store.CardBillsDue(ctx, userID, wideFrom, wideTo)
+	if err != nil {
+		return err
+	}
+	changed := slices.DeleteFunc(Classify(txns, kinds, bills), func(t Txn) bool {
 		return t.PostedOn.Before(from.AddDate(0, 0, -transferWindowDays)) || t.PostedOn.After(to.AddDate(0, 0, transferWindowDays))
 	})
 	if len(changed) == 0 {
