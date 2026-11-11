@@ -46,7 +46,7 @@ export type WriteResult = { kind: "ok" } | Failure;
 export type StatusResult = { kind: "ok"; status: FinanceStatus } | Failure;
 export type ConnectTokenResult = { kind: "ok"; connectToken: string; includeSandbox: boolean } | Failure;
 
-export type TransactionType = "income" | "expense" | "transfer";
+export type TransactionType = "income" | "expense" | "transfer" | "saving";
 
 /** One Transaction of `GET /me/finance/transactions`. `amountCents` is signed: negative is money out. */
 export interface Transaction {
@@ -171,7 +171,7 @@ function parseMonth(body: unknown): MonthResponse | null {
       typeof t.description === "string" &&
       typeof t.sourceName === "string" &&
       typeof t.amountCents === "number" &&
-      (t.type === "income" || t.type === "expense" || t.type === "transfer") &&
+      (t.type === "income" || t.type === "expense" || t.type === "transfer" || t.type === "saving") &&
       (t.spendingCategory === null || typeof t.spendingCategory === "string"),
   );
   if (!valid) return null;

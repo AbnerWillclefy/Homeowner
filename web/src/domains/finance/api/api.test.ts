@@ -211,6 +211,14 @@ describe("getMonth", () => {
     expect(await getMonth("2026-11")).toMatchObject({ kind: "ok", month: { transactions: [{ countsOn: "2026-11-02" }] } });
   });
 
+  it("reads a month with a saving Transaction, and refuses an unknown type", async () => {
+    const saving = { ...MONTH.transactions[0]!, type: "saving", spendingCategory: null };
+    stubFetch(Response.json({ ...MONTH, transactions: [saving] }));
+    expect(await getMonth("2026-11")).toMatchObject({ kind: "ok", month: { transactions: [{ type: "saving" }] } });
+    stubFetch(Response.json({ ...MONTH, transactions: [{ ...saving, type: "bogus" }] }));
+    expect(await getMonth("2026-11")).toEqual({ kind: "error" });
+  });
+
   it("reads a body without limits as none, and refuses a limit that is not a positive whole number", async () => {
     const { limits: _limits, ...older } = MONTH;
     stubFetch(Response.json(older));

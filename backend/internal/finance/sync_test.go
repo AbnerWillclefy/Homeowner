@@ -154,6 +154,8 @@ func TestSyncKeepsWhatTheUserSet(t *testing.T) {
 	if _, err := app.DB.Exec(context.Background(), `
 		UPDATE finance_transactions SET type = 'transfer', type_set_by = 'user', spending_category = NULL, category_set_by = NULL
 		WHERE description = 'NETFLIX.COM';
+		UPDATE finance_transactions SET type = 'saving', type_set_by = 'user', spending_category = NULL, category_set_by = NULL
+		WHERE description = 'SALARIO EMPRESA XYZ LTDA';
 		UPDATE finance_transactions SET spending_category = 'leisure', category_set_by = 'user' WHERE description = 'SPOTIFY AB'`); err != nil {
 		t.Fatal(err)
 	}
@@ -163,6 +165,9 @@ func TestSyncKeepsWhatTheUserSet(t *testing.T) {
 
 	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE description = 'NETFLIX.COM' AND type = 'transfer' AND type_set_by = 'user' AND spending_category IS NULL`); n != 6 {
 		t.Errorf("user-typed rows = %d, want 6 untouched", n)
+	}
+	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE description = 'SALARIO EMPRESA XYZ LTDA' AND type = 'saving' AND type_set_by = 'user'`); n == 0 {
+		t.Error("user-set saving row was reclassified")
 	}
 	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE description = 'SPOTIFY AB' AND spending_category = 'leisure' AND category_set_by = 'user'`); n != 6 {
 		t.Errorf("user-categorised rows = %d, want 6 untouched", n)

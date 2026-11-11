@@ -70,7 +70,8 @@ type CredentialsRequest struct {
 }
 
 // TransactionResponse is one Transaction on the wire. AmountCents is signed:
-// negative is money out. What was spent is -AmountCents, for Expenses.
+// negative is money out. What was spent is -AmountCents, for Expenses. Type is
+// income, expense, transfer or saving; only an Expense has a SpendingCategory.
 type TransactionResponse struct {
 	ID               string               `json:"id"`
 	PostedOn         string               `json:"postedOn"`
@@ -201,7 +202,7 @@ type CommitmentsResponse struct {
 }
 
 // PatchTransactionRequest is the body of PATCH /me/finance/transactions/{id}:
-// an absent field is left as it is.
+// an absent field is left as it is. Type is income, expense, transfer or saving.
 type PatchTransactionRequest struct {
 	Type             *string `json:"type"`
 	SpendingCategory *string `json:"spendingCategory"`

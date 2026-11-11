@@ -350,7 +350,7 @@ func (h *Handler) PatchTransaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if (req.Type == nil && req.SpendingCategory == nil) ||
-		(req.Type != nil && !slices.Contains([]string{"income", "expense", "transfer"}, *req.Type)) ||
+		(req.Type != nil && !slices.Contains([]string{"income", "expense", "transfer", "saving"}, *req.Type)) ||
 		(req.SpendingCategory != nil && !slices.Contains(llmalloc.SpendingCategories, *req.SpendingCategory)) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid transaction edit")
 		return
