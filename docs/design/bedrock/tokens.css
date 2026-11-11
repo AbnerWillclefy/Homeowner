@@ -1,0 +1,161 @@
+/* Bedrock — generated from tokens.json */
+:root, [data-theme="dark"] {
+  --bg: #0e1110;
+  --surface: #161a19;
+  --surface-raised: #1d2321;
+  --surface-sunken: #0b0d0c;
+  --surface-hover: #222927;
+  --border: #262d2a;
+  --border-strong: #68756f;
+  --text: #eef2f0;
+  --text-muted: #a3aea9;
+  --brand: #4cc98a;
+  --brand-hover: #66d69c;
+  --on-brand: #04140b;
+  --brand-soft: #1f362b;
+  --hero: #1e6644;
+  --on-hero: #f2fbf6;
+  --on-hero-muted: #c2e3d0;
+  --hero-line: #7fe0ad;
+  --positive: #5fd394;
+  --positive-soft: #22382d;
+  --warning: #f0b24a;
+  --warning-soft: #393221;
+  --danger: #ff8a80;
+  --danger-soft: #3b2c29;
+  --on-danger: #2a0705;
+  --focus: #8ab8ff;
+  --scrim: rgba(4, 6, 5, 0.64);
+  --chart-grid: #262d2a;
+  --cat-housing: #49ac7a;
+  --cat-housing-soft: #1e3129;
+  --cat-household-bills: #c88f12;
+  --cat-household-bills-soft: #322d18;
+  --cat-groceries: #de8146;
+  --cat-groceries-soft: #362a20;
+  --cat-eating-out: #d18288;
+  --cat-eating-out-soft: #342b2b;
+  --cat-transport: #629dd4;
+  --cat-transport-soft: #222f37;
+  --cat-health: #cc80a9;
+  --cat-health-soft: #332a30;
+  --cat-education: #8793e1;
+  --cat-education-soft: #282d39;
+  --cat-leisure: #29a9ba;
+  --cat-leisure-soft: #193133;
+  --cat-shopping: #c08c6a;
+  --cat-shopping-soft: #312c26;
+  --cat-subscriptions: #998fd3;
+  --cat-subscriptions-soft: #2b2d37;
+  --cat-pets: #b78ac4;
+  --cat-pets-soft: #302c34;
+  --cat-taxes-fees: #8b9ba3;
+  --cat-taxes-fees-soft: #292f2f;
+  --cat-other: #8d9b94;
+  --cat-other-soft: #292f2d;
+  --shadow-card: none;
+  --shadow-overlay: 0 16px 48px rgba(0, 0, 0, 0.56);
+  color-scheme: dark;
+}
+[data-theme="light"] {
+  --bg: #f4f6f5;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #eceeed;
+  --surface-hover: #f0f3f1;
+  --border: #e1e5e3;
+  --border-strong: #8a9690;
+  --text: #121715;
+  --text-muted: #56625d;
+  --brand: #2f6f4f;
+  --brand-hover: #275d42;
+  --on-brand: #ffffff;
+  --brand-soft: #e6eeea;
+  --hero: #2a6b4a;
+  --on-hero: #ffffff;
+  --on-hero-muted: #d3eadc;
+  --hero-line: #a8f0c8;
+  --positive: #1f7a4a;
+  --positive-soft: #e4efe9;
+  --warning: #8a5a00;
+  --warning-soft: #f1ebe0;
+  --danger: #b3261e;
+  --danger-soft: #f6e5e4;
+  --on-danger: #ffffff;
+  --focus: #1a5fb4;
+  --scrim: rgba(18, 23, 21, 0.40);
+  --chart-grid: #e6eae8;
+  --cat-housing: #2f6f4f;
+  --cat-housing-soft: #e0e9e5;
+  --cat-household-bills: #a3740f;
+  --cat-household-bills-soft: #f1eadb;
+  --cat-groceries: #c05f22;
+  --cat-groceries-soft: #f6e7de;
+  --cat-eating-out: #b5424b;
+  --cat-eating-out-soft: #f4e3e4;
+  --cat-transport: #2d6aa3;
+  --cat-transport-soft: #e0e9f1;
+  --cat-health: #a8437a;
+  --cat-health-soft: #f2e3eb;
+  --cat-education: #5a6ad6;
+  --cat-education-soft: #e6e9f9;
+  --cat-leisure: #1f7f8c;
+  --cat-leisure-soft: #ddecee;
+  --cat-shopping: #8a5a3a;
+  --cat-shopping-soft: #ede6e1;
+  --cat-subscriptions: #4a3d9c;
+  --cat-subscriptions-soft: #e4e2f0;
+  --cat-pets: #8c4f9e;
+  --cat-pets-soft: #eee5f0;
+  --cat-taxes-fees: #56656d;
+  --cat-taxes-fees-soft: #e6e8e9;
+  --cat-other: #6b7a73;
+  --cat-other-soft: #e9ebea;
+  --shadow-card: 0 1px 2px rgba(18, 23, 21, 0.06);
+  --shadow-overlay: 0 16px 48px rgba(18, 23, 21, 0.16);
+  color-scheme: light;
+}
+:root {
+  --space-0: 0px;
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --space-48: 48px;
+  --space-64: 64px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+  --control-sm: 32px;
+  --control-md: 40px;
+  --control-lg: 48px;
+  --sidebar-width: 256px;
+  --sidebar-collapsed: 72px;
+  --panel-width: 440px;
+  --content-max: 1440px;
+  --bp-tablet: 768px;
+  --bp-desktop: 1024px;
+  --bp-wide: 1280px;
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-slow: 250ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --font-sans: Inter, "SF Pro Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.page-title { font-family: var(--font-sans); font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.01em; }
+.section-title { font-family: var(--font-sans); font-size: 18px; line-height: 24px; font-weight: 600; }
+.card-label { font-family: var(--font-sans); font-size: 14px; line-height: 20px; font-weight: 500; }
+.value-hero { font-family: var(--font-sans); font-size: 40px; line-height: 48px; font-weight: 600; letter-spacing: -0.02em; }
+.value-lg { font-family: var(--font-sans); font-size: 32px; line-height: 40px; font-weight: 600; letter-spacing: -0.02em; }
+.value-md { font-family: var(--font-sans); font-size: 20px; line-height: 24px; font-weight: 600; letter-spacing: -0.01em; }
+.value-sm { font-family: var(--font-sans); font-size: 14px; line-height: 20px; font-weight: 500; }
+.body { font-family: var(--font-sans); font-size: 14px; line-height: 20px; font-weight: 400; }
+.body-strong { font-family: var(--font-sans); font-size: 14px; line-height: 20px; font-weight: 500; }
+.caption { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 400; }
+.label { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 500; }
+.overline { font-family: var(--font-sans); font-size: 11px; line-height: 16px; font-weight: 600; letter-spacing: 0.06em; }
