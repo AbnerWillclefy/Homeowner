@@ -79,6 +79,10 @@ export interface MonthResponse {
   transactions: Transaction[];
   /** The Spending limits, the same for every month. A category with none is absent. */
   limits: Partial<Record<SpendingCategory, number>>;
+  /** What the month's bills and card commitments come to. Absent from an older API or cached month. */
+  committedCents?: number;
+  /** What was spent from the 1st on, card purchases whose bill falls in a later month included. Absent like `committedCents`. */
+  spentSinceFirstCents?: number;
 }
 
 export type MonthResult = { kind: "ok"; month: MonthResponse } | Failure;
@@ -182,6 +186,8 @@ function parseMonth(body: unknown): MonthResponse | null {
   // A body without `limits` (an older mock or API) reads as none.
   const limits = body.limits ?? {};
   if (!isObject(limits) || !Object.values(limits).every((v) => Number.isInteger(v) && (v as number) > 0)) return null;
+  // The two header numbers may be absent (an older API or mock), but a value that is not a number is malformed.
+  if ([body.committedCents, body.spentSinceFirstCents].some((n) => n !== undefined && typeof n !== "number")) return null;
   // A body without it (an older mock or API) reads as null, so the parse never breaks on it.
   const transactions = (body.transactions as Record<string, unknown>[]).map((t) => ({
     ...t,
