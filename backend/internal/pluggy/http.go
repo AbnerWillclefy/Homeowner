@@ -177,6 +177,33 @@ func (h *HTTP) ListTransactions(ctx context.Context, apiKey, accountID string, f
 	return page, nil
 }
 
+// ListBills implements Client against GET /bills; financeCharges and payments are ignored.
+// shortcut: one page of 500, ADR 0019 says /bills pages by page; follow totalPages if a card ever has more.
+func (h *HTTP) ListBills(ctx context.Context, apiKey, accountID string) ([]Bill, error) {
+	var out struct {
+		Results []struct {
+			ID          string      `json:"id"`
+			DueDate     time.Time   `json:"dueDate"`
+			ClosingDate time.Time   `json:"billClosingDate"`
+			Total       json.Number `json:"totalAmount"`
+			Currency    string      `json:"totalAmountCurrencyCode"`
+		} `json:"results"`
+	}
+	q := url.Values{"accountId": {accountID}, "pageSize": {"500"}}
+	if err := h.do(ctx, "list bills", http.MethodGet, "/bills?"+q.Encode(), apiKey, nil, &out); err != nil {
+		return nil, err
+	}
+	bills := make([]Bill, len(out.Results))
+	for i, r := range out.Results {
+		cents, err := parseCents(r.Total.String())
+		if err != nil {
+			return nil, errors.New("pluggy: list bills: unreadable amount")
+		}
+		bills[i] = Bill{ID: r.ID, DueDate: r.DueDate, ClosingDate: r.ClosingDate, TotalCents: cents, Currency: r.Currency}
+	}
+	return bills, nil
+}
+
 // dayOf is the day of month of a YYYY-MM-DD date (a timestamp's date part too), or 0.
 func dayOf(s string) int {
 	d, err := time.Parse(time.DateOnly, s[:min(len(s), len(time.DateOnly))])

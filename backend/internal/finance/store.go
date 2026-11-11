@@ -3,6 +3,7 @@ package finance
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -59,7 +60,7 @@ func (s *Store) Income(ctx context.Context, userID string) (*int64, error) {
 // financeTables is every finance table, children first. Each has user_id, and
 // a test fails if the schema has a finance_* table that is not listed here, so
 // a later ticket adds its table to this list.
-var financeTables = []string{"finance_transactions", "finance_sources", "finance_items", "finance_credentials",
+var financeTables = []string{"finance_card_bills", "finance_transactions", "finance_sources", "finance_items", "finance_credentials",
 	"finance_merchant_categories", "finance_llm_calls", "finance_bill_reminders", "finance_bill_payments", "finance_bills", "finance_settings", "finance_category_budgets", "finance_bill_suggestion_dismissals",
 	"finance_investments", "finance_goals"}
 
@@ -255,6 +256,47 @@ func (s *Store) SetBillDaysByHand(ctx context.Context, userID, sourceID string, 
 	return tag.RowsAffected() == 1, err
 }
 
+// UpsertCardBills stores the bank's bills of one card Source, so a bill the
+// bank corrects is updated. A bill that is not BRL is left out.
+func (s *Store) UpsertCardBills(ctx context.Context, userID, sourceID string, bills []pluggy.Bill) error {
+	var ids []string
+	var closes, dues []time.Time
+	var totals []int64
+	for _, b := range bills {
+		if b.Currency != "BRL" {
+			continue
+		}
+		ids, closes, dues, totals = append(ids, b.ID), append(closes, postedOn(b.ClosingDate)), append(dues, postedOn(b.DueDate)), append(totals, b.TotalCents)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	_, err := s.db.Exec(ctx, `INSERT INTO finance_card_bills (user_id, source_id, provider_id, closes_on, due_on, total_cents)
+		SELECT $1, $2, * FROM unnest($3::text[], $4::date[], $5::date[], $6::bigint[])
+		ON CONFLICT (source_id, provider_id) DO UPDATE SET closes_on = EXCLUDED.closes_on, due_on = EXCLUDED.due_on, total_cents = EXCLUDED.total_cents`,
+		userID, sourceID, ids, closes, dues, totals)
+	return err
+}
+
+// CardBillsDue returns the User's stored card bills due in [from, to].
+func (s *Store) CardBillsDue(ctx context.Context, userID string, from, to time.Time) ([]StoredBill, error) {
+	rows, err := s.db.Query(ctx, `SELECT closes_on, due_on, total_cents FROM finance_card_bills
+		WHERE user_id = $1 AND due_on BETWEEN $2 AND $3`, userID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []StoredBill
+	for rows.Next() {
+		var b StoredBill
+		if err := rows.Scan(&b.ClosesOn, &b.DueOn, &b.TotalCents); err != nil {
+			return nil, err
+		}
+		out = append(out, b)
+	}
+	return out, rows.Err()
+}
+
 // FinishSync marks the Item imported and synced at now.
 func (s *Store) FinishSync(ctx context.Context, itemID string, now time.Time) error {
 	_, err := s.db.Exec(ctx, `UPDATE finance_items SET import_complete = true, last_synced_at = $2 WHERE id = $1`, itemID, now)
@@ -431,7 +473,7 @@ func (s *Store) MonthTransactions(ctx context.Context, userID string, from, to t
 
 // SpendRows returns what the daily pace, the commitments outlook and the savings suggestion read of the
 // User's Transactions that count in [from, to): Source, signed amount, type and
-// category, with PostedOn set to the CountsOn day and Linked set when a Bill
+// category, with PostedOn set to the CountsOn day (Posted keeps the posted day) and Linked set when a Bill
 // payment (not undone) points at it.
 func (s *Store) SpendRows(ctx context.Context, userID string, from, to time.Time) ([]Txn, error) {
 	rows, err := s.db.Query(ctx, `SELECT t.posted_on, t.amount_cents, t.type, t.spending_category, t.source_id,
@@ -452,6 +494,7 @@ func (s *Store) SpendRows(ctx context.Context, userID string, from, to time.Time
 		if err := rows.Scan(&t.PostedOn, &t.AmountCents, &t.Type, &category, &t.SourceID, &kind, &closeDay, &dueDay, &t.Linked); err != nil {
 			return nil, err
 		}
+		t.Posted = t.PostedOn
 		if t.PostedOn = CountsOn(t.PostedOn, kind, closeDay, dueDay); t.PostedOn.Before(from) || !t.PostedOn.Before(to) {
 			continue
 		}
@@ -582,7 +625,8 @@ func (s *Store) InstallmentPlans(ctx context.Context, userID string) ([]Plan, er
 	return out, rows.Err()
 }
 
-// CardSources lists the User's credit card Sources, with whether both bill days are set.
+// CardSources lists the User's credit card Sources, with whether both bill days
+// are set and the bills the bank reported for each.
 func (s *Store) CardSources(ctx context.Context, userID string) ([]Card, error) {
 	rows, err := s.db.Query(ctx, `SELECT id, name, bill_close_day IS NOT NULL AND bill_due_day IS NOT NULL
 		FROM finance_sources WHERE user_id = $1 AND kind = 'credit_card' ORDER BY name, id`, userID)
@@ -598,7 +642,25 @@ func (s *Store) CardSources(ctx context.Context, userID string) ([]Card, error) 
 		}
 		out = append(out, c)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	bills, err := s.db.Query(ctx, `SELECT source_id, closes_on, due_on, total_cents FROM finance_card_bills WHERE user_id = $1`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer bills.Close()
+	for bills.Next() {
+		var id string
+		var b StoredBill
+		if err := bills.Scan(&id, &b.ClosesOn, &b.DueOn, &b.TotalCents); err != nil {
+			return nil, err
+		}
+		if i := slices.IndexFunc(out, func(c Card) bool { return c.ID == id }); i >= 0 {
+			out[i].Bills = append(out[i].Bills, b)
+		}
+	}
+	return out, bills.Err()
 }
 
 // FallbackUser is a User with Expenses nothing has categorised yet.

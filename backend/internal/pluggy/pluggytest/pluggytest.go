@@ -101,6 +101,16 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		serveFixture(w, 200, "accounts.json")
+	case "GET /bills":
+		if !authorized(w, r) {
+			return
+		}
+		if q.Get("accountId") == CardAccountID {
+			serveFixture(w, 200, "bills.json")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"results":[]}`))
 	case "GET /v2/transactions":
 		if authorized(w, r) {
 			s.transactions(w, q.Get("accountId"), q.Get("after"), q.Get("dateFrom") != "" && q.Get("dateTo") != "" || q.Get("after") != "")
