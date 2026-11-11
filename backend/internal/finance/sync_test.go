@@ -15,7 +15,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/pluggy/pluggytest"
 )
 
-// Fixture facts: the capture plus the synthetic page is 51 rows, newest 2026-11-07, summing to 4269507 centavos.
+// Fixture facts: the capture plus the synthetic page is 52 rows, newest 2026-11-07, summing to 4275062 centavos.
 const (
 	fixtureRows  = 52
 	fixtureCents = 4275062
