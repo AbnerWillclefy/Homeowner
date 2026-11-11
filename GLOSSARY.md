@@ -121,7 +121,7 @@ One movement of money on a Source, such as a purchase or a payment, with a date,
 _Avoid_: Entry, Expense, Payment
 
 **Source**:
-A place Transactions come from, such as a bank account or a credit card, connected to the app. A credit card's Transactions count as spent in the month their card bill is due, not the day they were made.
+A place Transactions come from, such as a bank account or a credit card, connected to the app. A credit card's Transactions count as spent in the month their card bill is due, not the day they were made. The User can give a Source a display name of their own; the bank's name is kept beside it.
 _Avoid_: Account, Bank, Connection
 
 **Spending Category**:
@@ -129,7 +129,7 @@ What a Transaction was spent on, such as groceries, transport or rent. Every Tra
 _Avoid_: Category, Tag, Label
 
 **Bill to pay**:
-Money owed that is due on a date, such as the credit card bill, rent or a utility. It is not a Transaction until it is paid. A credit card Source's bill is worked out by the app from the card's Expenses and known installments, never entered by the User.
+Money owed that is due on a date, such as the credit card bill, rent or a utility. It is not a Transaction until it is paid. A credit card Source's bill is never entered by the User: a closed bill takes the total the bank reports; the open bill is the app's sum of the card's charges since the last closing plus the known installments; a card the bank sends no bills for keeps the app's computed bill.
 _Avoid_: Invoice, Debt, Due
 
 **Installment plan**:
@@ -141,12 +141,16 @@ The money a User expects to receive each month, which Finances compares with wha
 _Avoid_: Salary, Revenue, Earnings
 
 **Leftover**:
-What remains of the Monthly income after a month's card bills, Bills to pay and installments. It can be negative, and is absent when no Monthly income is set.
+What remains of the Monthly income after everything a month takes: Monthly income − (card bills due in the month + other Bills to pay + installments off the card + Planned spending + money already spent off the card this month + the larger of the month's Saving and the Monthly contribution). It can be negative, and is absent when no Monthly income is set.
 _Avoid_: Balance, Surplus, Savings
 
 **Planned spending**:
-An amount a User sets aside for a coming month for spending they expect but that is not yet a Bill to pay or a Transaction, which lowers that month's Leftover.
+What each Spending Category is still expected to take in a month, which lowers that month's Leftover. A category with a Spending limit plans its limit; one without plans what it spent last month. Both subtract what already counts for the category in the month, never going below zero.
 _Avoid_: Budget, Forecast, Reserve
+
+**Saving**:
+Money a User puts aside, such as money moved into an investment, net of what they take back. It is neither spending nor a Transfer: it is left out of spending totals and lowers the Leftover. The Transaction type is `saving`.
+_Avoid_: Investment (that is the asset), Savings (the Savings tab and the Goals and Emergency reserve), Transfer
 
 **Spending limit**:
 The most a User wants to spend in one Spending Category in a month. It is set once and holds for every month; a category with no limit has none.
