@@ -155,7 +155,7 @@ func (h *HTTP) ListTransactions(ctx context.Context, apiKey, accountID string, f
 				Payer    httpParty `json:"payer"`
 				Receiver httpParty `json:"receiver"`
 			} `json:"paymentData"`
-			Card        *struct {
+			Card *struct {
 				InstallmentNumber int `json:"installmentNumber"`
 				TotalInstallments int `json:"totalInstallments"`
 			} `json:"creditCardMetadata"`
