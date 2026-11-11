@@ -160,7 +160,7 @@ export function Spending() {
                 </Card>
               </section>
             )}
-            <LeftOutGroup transfers={view.transfers} income={view.income} upcoming={upcoming} onEdit={setEditing} />
+            <LeftOutGroup transfers={view.transfers} savings={view.savings} income={view.income} upcoming={upcoming} onEdit={setEditing} />
           </>
         ))}
       {editing && <EditTransactionDialog tx={editing} save={edit} onClose={closed} />}

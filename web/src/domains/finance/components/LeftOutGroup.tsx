@@ -40,28 +40,33 @@ function Kind({ title, rows, cents, onEdit }: { title: string; rows: Transaction
 }
 
 /**
- * "Fora dos totais": income and Transfers, neither counted in any total. Income adds up what came in; Transfers add
- * up what went out, such as a card bill payment, since each one's other half is money in. `upcoming` are card
+ * "Fora dos totais": income, Transfers and money put aside, none counted in spending. Income adds up what came in;
+ * Transfers add up what went out, such as a card bill payment, since each one's other half is money in; Savings add
+ * up what is still put aside, net of withdrawals (Resgates). `upcoming` are card
  * charges already made that count on a later bill, listed here so they can be edited before their month opens.
  */
 export function LeftOutGroup({
   transfers,
+  savings,
   income,
   upcoming = [],
   onEdit,
 }: {
   transfers: Transaction[];
+  savings: Transaction[];
   income: Transaction[];
   upcoming?: Transaction[];
   onEdit(tx: Transaction): void;
 }) {
   const { t } = useI18n();
   const id = useId();
-  if (transfers.length === 0 && income.length === 0 && upcoming.length === 0) return null;
+  if (transfers.length === 0 && savings.length === 0 && income.length === 0 && upcoming.length === 0) return null;
   const kinds = [
     { title: t("finances.month.upcoming"), rows: upcoming, cents: upcoming.reduce((sum, tx) => sum + spent(tx), 0) },
     { title: t("finances.month.income"), rows: income, cents: income.reduce((sum, tx) => sum + tx.amountCents, 0) },
     { title: t("finances.month.transfers"), rows: transfers, cents: transfers.reduce((sum, tx) => sum + Math.max(0, -tx.amountCents), 0) },
+    // Net of withdrawals (Resgates), which are money in: what is still put aside.
+    { title: t("finances.month.saving"), rows: savings, cents: savings.reduce((sum, tx) => sum - tx.amountCents, 0) },
   ].filter((k) => k.rows.length > 0);
   return (
     <section aria-labelledby={id} className="mt-4 flex flex-col gap-3">

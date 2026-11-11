@@ -336,7 +336,7 @@ export function financeHandlers(api: FakeApi): void {
       );
       if (!row) return json(404, { error: "not found" });
       const body = request.body as {
-        type?: "income" | "expense" | "transfer";
+        type?: "income" | "expense" | "transfer" | "saving";
         spendingCategory?: string;
       } | null;
       const type = body?.type ?? row.type;
