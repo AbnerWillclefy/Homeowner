@@ -65,7 +65,8 @@ export function Menu({ label, closeLabel, items }: MenuProps) {
       <Sheet open={open} onOpenChange={setOpen} trigger={trigger} title={label} closeLabel={closeLabel}>
         <ul className="flex flex-col">
           {normal.map(row)}
-          {separated && <li role="separator" className="my-1 h-px bg-border" />}
+          {/* A list may only hold li, so the rule is decorative and hidden. */}
+          {separated && <li aria-hidden className="my-1 h-px bg-border" />}
           {danger.map(row)}
         </ul>
       </Sheet>
