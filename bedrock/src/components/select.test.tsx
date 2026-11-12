@@ -16,3 +16,10 @@ it("the error replaces the hint, is announced and describes the trigger", () => 
   expect(screen.getByRole("alert").textContent).toBe("Choose an account.");
   expect(screen.queryByText("Pick one")).toBeNull();
 });
+
+it("shows the placeholder until a value is chosen, and can be disabled", () => {
+  render(<Select label="Account" options={options} placeholder="Choose" disabled />);
+  const trigger = screen.getByRole("combobox", { name: "Account" });
+  expect(trigger.textContent).toContain("Choose");
+  expect((trigger as HTMLButtonElement).disabled).toBe(true);
+});
