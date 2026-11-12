@@ -8,6 +8,7 @@ export { SegmentedControl, type SegmentedControlProps } from "./components/segme
 export { ProgressBar, progressTone, type ProgressBarProps } from "./components/progress-bar";
 export { Card, CardHeader, CardLabel, CardContent, CardFooter, type CardProps } from "./components/card";
 export { Skeleton } from "./components/skeleton";
+export { ChartContainer, ChartTooltipContent, type ChartContainerProps, type ChartTooltipContentProps } from "./components/chart";
 export { Sidebar } from "./components/sidebar";
 export { BottomBar } from "./components/bottom-bar";
 export type { NavItem } from "./components/nav-link";
