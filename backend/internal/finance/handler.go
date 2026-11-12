@@ -231,7 +231,9 @@ const commitmentMonths = 12
 // Transactions, the card Sources, the plans and every Bill: one bill per credit
 // card, the other Bills paid or not, the rest of each Spending limit as planned
 // spending, in the current month (São Paulo) what was spent off the card, a total
-// and the leftover of the income.
+// and the leftover of the income. With a Monthly income, the current month (São
+// Paulo) also carries the Daily allowance and every month up to it the Pace; both
+// are absent without income (see DailyAllowance and Pace).
 func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 	from, _, ok := parseMonth(r.URL.Query().Get("from"))
 	if !ok {
@@ -244,6 +246,12 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	plans, income, outlook := in.plans, in.income, in.outlook
+	today := postedOn(h.clk.Now())
+	byMonth := map[time.Time][]Txn{}
+	for _, t := range in.rows {
+		m := time.Date(t.PostedOn.Year(), t.PostedOn.Month(), 1, 0, 0, 0, 0, time.UTC)
+		byMonth[m] = append(byMonth[m], t)
+	}
 	months := make([]MonthCommitment, commitmentMonths)
 	for i, lines := range ProjectInstallments(plans, from, commitmentMonths) {
 		m := MonthCommitment{Month: from.AddDate(0, i, 0).Format("2006-01"), Installments: append([]InstallmentLine{}, lines...)}
@@ -261,6 +269,11 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 		}
 		m.PlannedCents, m.SpentOffCardCents, m.SavingCents = o.PlannedCents, o.SpentOffCardCents, o.SavingCents
 		m.OtherInstallmentsCents, m.TotalCents, m.LeftoverCents = o.OtherInstallmentsCents, o.TotalCents, o.LeftoverCents
+		month := from.AddDate(0, i, 0)
+		m.DailyAllowanceCents = DailyAllowance(o.LeftoverCents, today, month)
+		if p := Pace(byMonth[month], income, o.LeftoverCents, today, month); p != nil {
+			m.Pace = &PaceDTO{SpentCents: p.SpentCents, LineEndCents: p.LineEndCents}
+		}
 		months[i] = m
 	}
 	httpx.WriteJSON(w, http.StatusOK, CommitmentsResponse{From: from.Format("2006-01"), MonthlyIncomeCents: income, Months: months})
