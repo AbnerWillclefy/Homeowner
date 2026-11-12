@@ -21,7 +21,7 @@ export default function CategoryTagSection({ locale }: { locale: Locale }) {
   return (
     <Section name={title[locale]}>
       {(["md", "sm"] as const).map((size) => (
-        <ul key={size} className="grid grid-cols-1 gap-4 sm:grid-cols-2 desktop:grid-cols-3">
+        <ul key={size} className="grid grid-cols-1 gap-4 tablet:grid-cols-2 desktop:grid-cols-3">
           {ids.map((id, i) => (
             <li key={id}>
               <CategoryTag category={id} label={names[locale][id]} share={`${40 - i * 3}%`} size={size} />
