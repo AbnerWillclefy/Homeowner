@@ -65,10 +65,10 @@ Bedrock puts dark on `:root` (and `[data-theme="dark"]`) and light under `[data-
 The app sets `data-theme` on `<html>`; Bedrock has no `prefers-color-scheme` query. The
 recommended default is the operating system's theme, and dark when there is no preference.
 
-`web/` does the reverse today: light by default, dark under `[data-theme="dark"]`, the choice
-stored in `localStorage` as `homeowner.theme` and applied by the inline script in
-`web/index.html`. An app that migrates flips that in the same pull request, or Residents who
-chose Dark get light.
+`web/`'s CSS does the reverse (light on `:root`, dark under `[data-theme="dark"]`), but its inline
+script in `web/index.html` always sets `data-theme` to `light` or `dark` (the choice is stored as
+`homeowner.theme`; System follows the operating system), so it works with Bedrock unchanged. The
+only difference is the CSS fallback when the attribute is missing: Bedrock dark, `web/` light.
 
 ### Token-name collision
 

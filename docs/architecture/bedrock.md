@@ -47,7 +47,7 @@ flowchart LR
 ```
 
 - **Two tiers of colour.** Primitives (`--green-73`) hold raw values; semantic tokens (`--surface`) point to one primitive per theme. Only semantic colours become utilities: `@theme inline` resets `--color-*` and maps each semantic token, so a utility reads the variable at run time and follows the theme.
-- **The theme switch.** Dark is on `:root`, light under `[data-theme="light"]`, which comes later in the file so it wins when both match. Bedrock has no `prefers-color-scheme` query: the app sets `data-theme`. `web/` does the reverse today (light by default, `[data-theme="dark"]`), so an app that adopts Bedrock flips its theme script in the same pull request.
+- **The theme switch.** Dark is on `:root`, light under `[data-theme="light"]`, which comes later in the file so it wins when both match. Bedrock has no `prefers-color-scheme` query: the app sets `data-theme`. `web/`'s CSS does the reverse (light on `:root`), but its theme script always sets `data-theme` to `light` or `dark`, so it works with Bedrock unchanged.
 - **The copy is checked.** `src/tokens.test.ts` fails when the spec declares a custom property `src/tokens.css` lacks, or when the dark, light or primitive blocks differ from the spec's values (radius, ease and `font-sans`, moved to `@theme static`, excepted).
 - **Name collision.** Bedrock's Tailwind names (`--color-surface`, `--color-text`...) are the same as `web/src/tokens.css`'s. An app loads one set or the other, never both.
 
