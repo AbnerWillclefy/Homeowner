@@ -26,7 +26,7 @@ export function NavLink({ item, onNavigate, className, children }: Props) {
       aria-current={item.current ? "page" : undefined}
       onClick={onClick}
       className={cn(
-        "rounded-md text-text-muted not-aria-[current=page]:hover:bg-surface-hover not-aria-[current=page]:active:bg-surface-hover aria-[current=page]:bg-brand-soft aria-[current=page]:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+        "rounded-md text-text-muted not-aria-[current=page]:hover:bg-surface-hover not-aria-[current=page]:active:bg-surface-hover aria-[current=page]:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
         className,
       )}
     >

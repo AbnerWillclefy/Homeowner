@@ -23,7 +23,7 @@ function Items({ items, labelledBy, onNavigate }: { items: NavItem[]; labelledBy
           <NavLink
             item={item}
             onNavigate={onNavigate}
-            className="body flex h-control-md items-center justify-center gap-2 px-2 pointer-coarse:h-control-lg wide:justify-start"
+            className="body-strong flex h-control-md aria-[current=page]:bg-brand-soft items-center justify-center gap-2 px-2 pointer-coarse:h-control-lg wide:justify-start"
           >
             <item.icon aria-hidden className="size-4 shrink-0" />
             <span className={`min-w-0 truncate ${hideCollapsed}`}>{item.label}</span>
@@ -50,7 +50,7 @@ export function Sidebar({ label, brand, groups, footer, onNavigate }: Props) {
   return (
     <nav
       aria-label={label}
-      className="flex h-full w-sidebar-collapsed flex-col gap-6 border-r border-border bg-surface p-2 wide:w-sidebar"
+      className="flex h-full w-sidebar-collapsed flex-col gap-6 border-r border-border bg-surface px-4 py-6 wide:w-sidebar"
     >
       {brand}
       <div className="flex flex-1 flex-col gap-6">
