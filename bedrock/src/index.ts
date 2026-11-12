@@ -1,6 +1,7 @@
 // The exports of this file are Bedrock's public interface: named and side-effect free.
 export { Input, type InputProps } from "./components/input";
 export { SearchField } from "./components/search-field";
+export { Select, type SelectProps } from "./components/select";
 export { Badge, type BadgeProps } from "./components/badge";
 export { Banner, type BannerProps } from "./components/banner";
 export { Button,type ButtonProps } from "./components/button";
