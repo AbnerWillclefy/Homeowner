@@ -22,12 +22,12 @@ function contrastRatio(a: string, b: string): number {
 }
 
 /** The `--name: value` declarations of the block that starts with `selector`, keyed without `--`. */
-function block(selector: string): Record<string, string> {
-  const start = css.indexOf(`${selector} {`);
-  if (start < 0) throw new Error(`No ${selector} block in tokens.css`);
-  const end = css.indexOf("\n}", start);
+function block(selector: string, source: string = css): Record<string, string> {
+  const start = source.indexOf(`${selector} {`);
+  if (start < 0) throw new Error(`No ${selector} block`);
+  const end = source.indexOf("\n}", start);
   const out: Record<string, string> = {};
-  for (const m of css.slice(start, end).matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)) out[m[1]!] = m[2]!.trim();
+  for (const m of source.slice(start, end).matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)) out[m[1]!] = m[2]!.trim();
   return out;
 }
 
@@ -80,6 +80,17 @@ describe("tokens.css", () => {
     expect(names(spec).filter((n) => !ours.has(n))).toEqual([]);
   });
 
+  // Values, not just names: a spec fix must be re-copied into src/tokens.css.
+  it.each([':root, [data-theme="dark"]', '[data-theme="light"]'])("%s matches the spec", (sel) => {
+    expect(block(sel)).toEqual(block(sel, spec));
+  });
+
+  it("primitives match the spec, bar what moved to @theme static", () => {
+    const moved = /^(radius-|ease-|font-sans$)/;
+    const want = Object.fromEntries(Object.entries(block(":root", spec)).filter(([n]) => !moved.test(n)));
+    expect(primitives).toEqual(want);
+  });
+
   it("puts dark on :root and light under data-theme=light", () => {
     expect(css).toContain(':root, [data-theme="dark"] {');
     expect(css.indexOf('[data-theme="light"] {')).toBeGreaterThan(css.indexOf('[data-theme="dark"] {'));
@@ -94,7 +105,7 @@ describe("tokens.css", () => {
     describe(name, () => {
       for (const [fg, bg, min] of pairs) {
         // Spec defect (raised on the pull request): light border-strong on surface-sunken is 2.63:1.
-        // it.fails keeps the bar at 3:1 and turns red once the spec is fixed, so this entry gets deleted.
+        // it.fails keeps the bar at 3:1 and turns red once src/tokens.css is re-copied from the fixed spec, so this entry gets deleted.
         const run = name === "light" && fg === "border-strong" && bg === "surface-sunken" ? it.fails : it;
         run(`${fg} on ${bg} is at least ${min}:1`, () => {
           const t = themes[name];
