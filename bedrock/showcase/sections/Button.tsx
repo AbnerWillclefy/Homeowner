@@ -1,3 +1,4 @@
+import { Check } from "lucide-react";
 import { Button } from "../../src";
 import type { Locale } from "../App";
 import { Section } from "../Section";
@@ -12,7 +13,7 @@ export default function ButtonSection({ locale }: { locale: Locale }) {
   return (
     <Section name={t.name}>
       <div className="flex flex-wrap items-center gap-4">
-        <Button>{t.pay}</Button>
+        <Button icon={Check}>{t.pay}</Button>
         <Button variant="secondary">{t.cancel}</Button>
         <Button variant="ghost">{t.more}</Button>
         <Button variant="danger">{t.remove}</Button>
@@ -24,7 +25,7 @@ export default function ButtonSection({ locale }: { locale: Locale }) {
         <Button size="lg">{t.save}</Button>
       </div>
       <div className="flex flex-wrap items-center gap-4">
-        <Button loading>{t.loading}</Button>
+        <Button icon={Check} loading>{t.loading}</Button>
         <Button variant="secondary" loading>{t.loading}</Button>
         <Button disabled>{t.disabled}</Button>
         <Button variant="secondary" disabled>{t.disabled}</Button>

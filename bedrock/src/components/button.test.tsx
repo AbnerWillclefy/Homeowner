@@ -1,4 +1,5 @@
 import { cleanup, render, screen } from "@testing-library/react";
+import { Check } from "lucide-react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Button } from "./button";
@@ -20,6 +21,15 @@ describe("Button", () => {
     expect(b.getAttribute("aria-busy")).toBe("true");
     await userEvent.click(b);
     expect(submit).not.toHaveBeenCalled();
+  });
+
+  it("a loading button shows the spinner in place of its icon", () => {
+    const { container } = render(
+      <Button icon={Check} loading>
+        Salvar
+      </Button>,
+    );
+    expect(container.querySelectorAll("svg")).toHaveLength(1);
   });
 
   it("asChild renders the child instead of a button", () => {

@@ -1,5 +1,5 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle, type LucideIcon } from "lucide-react";
 import { Slot } from "radix-ui";
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "../lib/cn";
@@ -30,7 +30,12 @@ type ButtonProps = Omit<ComponentProps<"button">, "children"> &
   VariantProps<typeof buttonVariants> & {
     /** Required: a Button without text is a type error. */
     children: ReactNode;
-    /** Disables the button, sets aria-busy and shows a spinner; the text stays so the width holds. */
+    /** A leading icon; while loading, the spinner takes its place. */
+    icon?: LucideIcon;
+    /**
+     * Disables the button, sets aria-busy and shows a spinner in place of the icon, so a
+     * Button with an icon keeps its width; one without an icon grows by the spinner.
+     */
     loading?: boolean;
     /**
      * Renders the child element instead of a <button>. On an <a>, Space does not
@@ -39,8 +44,9 @@ type ButtonProps = Omit<ComponentProps<"button">, "children"> &
     asChild?: boolean;
   };
 
-export function Button({ variant, size, loading, asChild, type = "button", disabled, className, children, ...props }: ButtonProps) {
+export function Button({ variant, size, icon, loading, asChild, type = "button", disabled, className, children, ...props }: ButtonProps) {
   const classes = cn(buttonVariants({ variant, size }), className);
+  const Icon = loading ? LoaderCircle : icon;
   if (asChild) {
     return (
       <Slot.Root className={classes} {...props}>
@@ -50,7 +56,7 @@ export function Button({ variant, size, loading, asChild, type = "button", disab
   }
   return (
     <button type={type} className={classes} disabled={disabled || loading} aria-busy={loading || undefined} {...props}>
-      {loading && <LoaderCircle className="size-4 motion-safe:animate-spin" aria-hidden />}
+      {Icon && <Icon className={cn("size-4", loading && "motion-safe:animate-spin")} aria-hidden />}
       {children}
     </button>
   );
