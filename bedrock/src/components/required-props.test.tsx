@@ -1,5 +1,6 @@
 import { it } from "vitest";
 import { Badge } from "./badge";
+import { Banner } from "./banner";
 import { Button } from "./button";
 import { Switch } from "./switch";
 
@@ -9,6 +10,8 @@ export function requiredProps() {
   <Button />;
   // @ts-expect-error a Badge needs text
   <Badge />;
+  // @ts-expect-error a Banner needs a message
+  <Banner />;
   // @ts-expect-error a Switch needs a label
   <Switch />;
 }
