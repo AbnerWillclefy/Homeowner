@@ -62,7 +62,7 @@ func (s *Store) Income(ctx context.Context, userID string) (*int64, error) {
 // a later ticket adds its table to this list.
 var financeTables = []string{"finance_card_bills", "finance_transactions", "finance_sources", "finance_items", "finance_credentials",
 	"finance_merchant_categories", "finance_llm_calls", "finance_bill_reminders", "finance_bill_payments", "finance_bills", "finance_settings", "finance_category_budgets", "finance_bill_suggestion_dismissals",
-	"finance_investments", "finance_goals"}
+	"finance_investment_values", "finance_investments", "finance_goals"}
 
 // DeleteAll removes all of the User's finance data in one transaction. The
 // cascades would remove the children anyway; listing every table keeps the
