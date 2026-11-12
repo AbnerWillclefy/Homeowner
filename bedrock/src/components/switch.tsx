@@ -17,7 +17,7 @@ export function Switch({ label, className, ...props }: SwitchProps) {
       <SwitchPrimitive.Root
         id={id}
         className={cn(
-          "inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-full border border-border-strong bg-surface-sunken outline-none motion-safe:transition-colors duration-(--duration-base) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-(--opacity-disabled) data-[state=checked]:border-brand data-[state=checked]:bg-brand",
+          "touch-target inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-full border border-border-strong bg-surface-sunken outline-none motion-safe:transition-colors duration-(--duration-base) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-(--opacity-disabled) data-[state=checked]:border-brand data-[state=checked]:bg-brand",
           className,
         )}
         {...props}
