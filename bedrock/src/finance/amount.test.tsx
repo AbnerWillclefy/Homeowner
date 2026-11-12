@@ -28,6 +28,9 @@ it("compacts thousands to k and millions to mi", () => {
   expect(formatAmount(1250000, { precision: "compact" })).toBe(`R$${NBSP}12,5k`);
   expect(formatAmount(120000000, { precision: "compact" })).toBe(`R$${NBSP}1,2${NBSP}mi`);
   expect(formatAmount(49900, { precision: "compact" })).toBe(`R$${NBSP}499`);
+  expect(formatAmount(99_995_000, { precision: "compact" })).not.toMatch(/k$/);
+  expect(formatAmount(-800000, { precision: "compact" })).toBe(`-R$${NBSP}8k`);
+  expect(formatAmount(800000, { precision: "compact", income: true })).toBe(`+R$${NBSP}8k`);
 });
 
 it("shows R$ in English too", () => {

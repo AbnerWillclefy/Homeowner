@@ -31,7 +31,8 @@ export function formatAmount(
   if (precision === "whole" || abs < 1000) {
     return currencyFormat(locale, currency, { maximumFractionDigits: 0, signDisplay }).format(value);
   }
-  if (abs >= 1_000_000) {
+  // 999_950 is where one-decimal thousands would round up to "1000k".
+  if (abs >= 999_950) {
     return currencyFormat(locale, currency, { notation: "compact", maximumFractionDigits: 1, signDisplay }).format(value);
   }
   // Intl's compact notation gives "R$ 8 mil", not the spec's "R$ 8k", so thousands are built by hand.
