@@ -4,10 +4,10 @@ import { ChartTooltipContent } from "../components/chart";
 import { isOverPace, PaceChart } from "./pace-chart";
 
 it("is over pace only strictly above the line", () => {
-  // Day 10 of 30 with a 30000 limit: the pace is 10000.
-  expect(isOverPace({ day: 10, cents: 10000 }, 30000, 30)).toBe(false);
-  expect(isOverPace({ day: 10, cents: 10001 }, 30000, 30)).toBe(true);
-  expect(isOverPace({ day: 10, cents: 9999 }, 30000, 30)).toBe(false);
+  // Day 10 of 30 with a 30000 limit: the line, drawn from day 1, is at 9310.34.
+  expect(isOverPace({ day: 10, cents: 9310 }, 30000, 30)).toBe(false);
+  expect(isOverPace({ day: 10, cents: 9311 }, 30000, 30)).toBe(true);
+  expect(isOverPace({ day: 10, cents: 9000 }, 30000, 30)).toBe(false);
 });
 
 const chart = (axes = false) => (

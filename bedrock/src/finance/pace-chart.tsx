@@ -26,20 +26,21 @@ type PaceChartProps = {
 
 /** Over pace is strictly above the line: spending exactly on pace is not over. */
 export function isOverPace(last: Point, limitCents: number, days: number): boolean {
-  return last.cents > (limitCents * last.day) / days;
+  return last.cents > (limitCents * (last.day - 1)) / Math.max(days - 1, 1);
 }
 
 const MARKER_HEIGHT = 20;
 
 function Marker({ text, fill, viewBox }: { text: string; fill: string; viewBox?: { cx?: number; cy?: number } }) {
   const { cx = 0, cy = 0 } = viewBox ?? {};
-  // A solid Badge drawn in SVG, right-aligned to the point so it never clips at the edge. 6.5px per character is an estimate.
+  // A solid Badge drawn in SVG, right-aligned to the point and clamped to the left edge so it never clips. 6.5px per character is an estimate.
   const width = text.length * 6.5 + 16;
+  const x = Math.max(cx - width, 0);
   return (
     <g>
-      <rect x={cx - width} y={cy - MARKER_HEIGHT - 8} width={width} height={MARKER_HEIGHT} rx={MARKER_HEIGHT / 2} fill={fill} />
+      <rect x={x} y={cy - MARKER_HEIGHT - 8} width={width} height={MARKER_HEIGHT} rx={MARKER_HEIGHT / 2} fill={fill} />
       <text
-        x={cx - width / 2}
+        x={x + width / 2}
         y={cy - MARKER_HEIGHT / 2 - 8}
         textAnchor="middle"
         dominantBaseline="central"
