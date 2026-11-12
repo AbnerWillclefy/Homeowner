@@ -98,6 +98,10 @@ jobs:
           UI_FILES: ${{ steps.find.outputs.files }}
         run: |
           body=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq .body)
+          # Showcase shots from an earlier Bedrock-only commit do not show the web app's screens.
+          if grep -qv '^bedrock/' <<<"$UI_FILES"; then
+            body=$(grep -v "/screenshots/$HEAD_REF/auto-" <<<"$body" || true)
+          fi
           # Prints the text under a "### <locale>" heading, up to the next heading.
           section() { awk -v h="$1" '/^#/ { inside = ($0 ~ "^### *" h " *$"); next } inside' <<<"${body//$'\r'/}"; }
           has_image() { grep -qE '!\[[^]]*\]\([^)]+\)|<img[^>]+src=' <<<"$1"; }
