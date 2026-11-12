@@ -14,9 +14,9 @@ const strings = {
   en: { title: "Bedrock", theme: "Theme", dark: "Dark", light: "Light", locale: "Language", empty: "No components yet." },
 };
 
-const params = new URLSearchParams(window.location.search);
-const initialTheme: Theme = params.get("theme") === "light" ? "light" : "dark";
-const initialLocale: Locale = params.get("locale") === "en" ? "en" : "pt-BR";
+// Read per mount, so a test can pick the combination with history.replaceState.
+const initialTheme = (): Theme => (new URLSearchParams(window.location.search).get("theme") === "light" ? "light" : "dark");
+const initialLocale = (): Locale => (new URLSearchParams(window.location.search).get("locale") === "en" ? "en" : "pt-BR");
 
 export function App() {
   const [theme, setTheme] = useState<Theme>(initialTheme);
