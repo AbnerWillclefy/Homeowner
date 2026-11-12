@@ -9,6 +9,7 @@ export { SegmentedControl, type SegmentedControlProps } from "./components/segme
 export { ProgressBar, progressTone, type ProgressBarProps } from "./components/progress-bar";
 export { Card, CardHeader, CardLabel, CardContent, CardFooter, type CardProps } from "./components/card";
 export { EmptyState } from "./components/empty-state";
+export { Toast, ToastProvider, type ToastProps, type ToastProviderProps } from "./components/toast";
 export { Dialog, type DialogProps } from "./components/dialog";
 export { Sheet, type SheetProps } from "./components/sheet";
 export { Skeleton } from "./components/skeleton";
