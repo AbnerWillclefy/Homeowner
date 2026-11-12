@@ -13,18 +13,24 @@ const cardVariants = cva("relative flex flex-col gap-4 border text-text", {
       hero: "rounded-xl border-transparent bg-hero p-6 [--text-muted:var(--on-hero-muted)] [--text:var(--on-hero)]",
     },
     interactive: {
-      true: "cursor-pointer outline-none motion-safe:transition-colors duration-(--duration-fast) ease-standard hover:bg-surface-hover active:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+      true: "cursor-pointer outline-none motion-safe:transition-colors duration-(--duration-fast) ease-standard focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
       false: "",
     },
   },
+  // Hero keeps its --on-hero text, so a surface-hover background would wash it out.
+  compoundVariants: [
+    { interactive: true, variant: ["default", "compact"], className: "hover:bg-surface-hover active:bg-surface-hover" },
+    { interactive: true, variant: "hero", className: "hover:brightness-95 active:brightness-95" },
+  ],
   defaultVariants: { variant: "default", interactive: false },
 });
 
 type CardProps = ComponentProps<"div"> &
   Pick<VariantProps<typeof cardVariants>, "variant"> & {
     /**
-     * Makes the single child (a link or button) the card, with the arrow cue. An interactive
-     * card holds no buttons or links inside: nested interactive content is invalid.
+     * Makes the single child (an <a> or router Link) the card, with the arrow cue. An interactive
+     * card holds no buttons or links inside: nested interactive content is invalid. Not a
+     * <button>: the Card parts are divs, which a button cannot hold.
      */
     asChild?: boolean;
   };
