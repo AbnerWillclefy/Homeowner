@@ -18,3 +18,9 @@ it("marks the current page and names each group list", () => {
   expect(screen.getByRole("link", { name: "Settings" }).hasAttribute("aria-current")).toBe(false);
   expect(within(screen.getByRole("list", { name: "Main" })).getAllByRole("link")).toHaveLength(1);
 });
+
+it("shows the item label as a tooltip on focus", async () => {
+  render(<Sidebar label="Primary" groups={[{ label: "Main", items: [{ href: "/", label: "Overview", icon: Home }] }]} />);
+  screen.getByRole("link", { name: "Overview" }).focus();
+  expect((await screen.findByRole("tooltip")).textContent).toBe("Overview");
+});
