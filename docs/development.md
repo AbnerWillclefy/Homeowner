@@ -232,3 +232,19 @@ loudly. Each environment is its own build, and its own origin, so a session
 `{"local":"http://localhost:5174"}`); put the Cognito values in an untracked
 `admin/.env.local`. See `admin/.env.example`. The API must list
 `http://localhost:5174` in `CORS_ALLOWED_ORIGINS` (Compose already does).
+
+## Bedrock
+
+The shared design system package is in `bedrock/`, the only member of the root npm
+workspace (Node 22 from `bedrock/.nvmrc`). Run its commands from the repository root:
+
+```sh
+npm ci
+npm run dev -w @homeowner/bedrock             # the showcase, http://localhost:5175 (strict port)
+npm test -w @homeowner/bedrock
+npm run typecheck -w @homeowner/bedrock
+npm run build:showcase -w @homeowner/bedrock
+```
+
+How an app adopts it, and what `bedrock-check` runs, is in
+[`bedrock/README.md`](../bedrock/README.md).
