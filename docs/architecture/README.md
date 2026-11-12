@@ -13,6 +13,7 @@ These pages describe the system **as built**. Anything the spec calls for that d
 5. [Infrastructure and delivery](infrastructure.md): AWS, Terraform, CI/CD, cost.
 6. [The React PWA](web.md): its modules, localization, UI layer and data layer (query keys and cache writes).
 7. [The admin dashboard](admin.md): the maintainer's app per environment, its deploy, the super-admin guard and the `/admin/` routes.
+8. [Bedrock](bedrock.md): the shared design system package, its two entry points, the token flow, the showcase and its checks.
 
 ## Legend
 
@@ -47,6 +48,8 @@ In diagrams, solid boxes and lines are built; dashed boxes and lines are planned
 | [0018](../adr/0018-a-resident-can-re-date-a-completion-up-to-30-days-back.md) | A Resident can re-date a Completion up to 30 days back (amends 0014) |
 | [0019](../adr/0019-take-bank-data-from-pluggy-with-per-user-credentials-encrypted-by-the-app.md) | Take bank data from Pluggy with per-User credentials encrypted by the app |
 | [0020](../adr/0020-voice-commands-send-chore-titles-and-the-residents-words-behind-a-confirmation.md) | Voice commands send Chore titles and the Resident's words to the LLM, behind a confirmation |
+| [0021](../adr/0021-a-closed-card-bill-takes-the-banks-total.md) | A closed card bill takes the bank's total; the app computes only the open bill |
+| [0022](../adr/0022-a-shared-bedrock-design-system-amends-0007-and-0009-for-adopting-apps.md) | A shared Bedrock design system amends 0007 and 0009 for apps that adopt it |
 
 ## Keeping this current
 

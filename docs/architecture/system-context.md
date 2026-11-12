@@ -31,7 +31,7 @@ flowchart LR
 
 ## Containers
 
-A container here is a separately running piece. The PWA, the admin app, the API, the Allocation job, the finance sync job and Postgres run today; Cognito is an AWS-managed service.
+A container here is a separately running piece. The PWA, the admin app, the API, the Allocation job, the finance sync job and Postgres run today; Cognito is an AWS-managed service. [Bedrock](bedrock.md), in `bedrock/`, is a shared component library that no app uses yet, not a container: nothing runs or is deployed from it.
 
 ```mermaid
 flowchart LR
