@@ -52,7 +52,7 @@ func (r *Reminders) Run(ctx context.Context, now time.Time) error {
 	for _, c := range todo {
 		ids = append(ids, c.userID)
 	}
-	subs, err := r.subs.ListByUsers(ctx, ids)
+	subs, err := r.subs.ListByUsers(ctx, ids, push.AppHomeowner)
 	if err != nil {
 		return err
 	}
