@@ -53,7 +53,11 @@ it("names the viewport and close button from props, and the action is a button",
   expect(undo.onClick).toHaveBeenCalled();
 });
 
-it("shows an icon for positive and danger tones, none for neutral", () => {
-  setup({ tone: "danger", title: "Falhou" });
-  expect(screen.getByRole("listitem").querySelector("svg.text-danger")).not.toBeNull();
+it.each([
+  ["positive", "svg.text-positive", 1],
+  ["danger", "svg.text-danger", 1],
+  ["neutral", "svg.size-5", 0],
+] as const)("%s tone renders its icon: %i", (tone, selector, count) => {
+  setup({ tone });
+  expect(screen.getByRole("listitem").querySelectorAll(selector)).toHaveLength(count);
 });
