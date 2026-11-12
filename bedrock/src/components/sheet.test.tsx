@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -49,6 +49,31 @@ describe("Sheet", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
+  it("swaps panel for drawer when the viewport crosses the breakpoint, staying open", () => {
+    let matches = true;
+    let listener = () => {};
+    vi.stubGlobal("matchMedia", () => ({
+      get matches() {
+        return matches;
+      },
+      addEventListener: (_: string, l: () => void) => (listener = l),
+      removeEventListener() {},
+    }));
+    const onOpenChange = vi.fn();
+    render(
+      <Sheet open onOpenChange={onOpenChange} title="Filtros" closeLabel="Fechar">
+        corpo
+      </Sheet>,
+    );
+    expect(drawer()).toBeNull();
+    act(() => {
+      matches = false;
+      listener();
+    });
+    expect(drawer()).not.toBeNull();
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
   it("returns focus to the trigger from the side panel", async () => {
     stubViewport(true);
     function Harness() {
@@ -87,6 +112,7 @@ describe("Dialog", () => {
     expect(screen.getByRole("alertdialog", { name: "Excluir?" })).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Excluir" }));
     expect(onConfirm).toHaveBeenCalled();
+    onOpenChange.mockClear();
     await userEvent.keyboard("{Escape}");
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
