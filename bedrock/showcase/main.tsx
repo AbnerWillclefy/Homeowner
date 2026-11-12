@@ -1,7 +1,5 @@
 import { createRoot } from "react-dom/client";
+import { App } from "./App";
+import "./showcase.css";
 
-createRoot(document.getElementById("root")!).render(
-  <main>
-    <h1>Bedrock</h1>
-  </main>,
-);
+createRoot(document.getElementById("root")!).render(<App />);

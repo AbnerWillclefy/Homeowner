@@ -1,0 +1,385 @@
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "tw-animate-css";
+
+/* Bedrock tokens: the raw blocks are copied from docs/design/bedrock/tokens.css. Radius, ease and font-sans live in @theme static below. */
+:root, [data-theme="dark"] {
+  --bg: var(--neutral-5);
+  --surface: var(--neutral-9);
+  --surface-raised: var(--neutral-13);
+  --surface-sunken: var(--neutral-3);
+  --surface-hover: var(--neutral-16);
+  --border: var(--neutral-18);
+  --border-strong: var(--neutral-48);
+  --text: var(--neutral-95);
+  --text-muted: var(--neutral-70);
+  --brand: var(--green-73);
+  --brand-hover: var(--green-78);
+  --on-brand: var(--green-5);
+  --brand-soft: var(--green-20);
+  --hero: var(--green-38);
+  --on-hero: var(--green-98);
+  --on-hero-muted: var(--green-87);
+  --hero-line: var(--green-82);
+  --positive: var(--green-77);
+  --positive-soft: var(--green-21);
+  --warning: var(--amber-77);
+  --warning-soft: var(--amber-21);
+  --danger: var(--red-70);
+  --danger-soft: var(--red-20);
+  --on-danger: var(--red-6);
+  --focus: var(--blue-74);
+  --scrim: rgba(4, 6, 5, 0.64);
+  --chart-grid: var(--neutral-18);
+  --chart-bar: var(--neutral-48);
+  --cat-housing: #49ac7a;
+  --cat-housing-soft: #1e3129;
+  --cat-household-bills: #c88f12;
+  --cat-household-bills-soft: #322d18;
+  --cat-groceries: #de8146;
+  --cat-groceries-soft: #362a20;
+  --cat-eating-out: #d18288;
+  --cat-eating-out-soft: #342b2b;
+  --cat-transport: #629dd4;
+  --cat-transport-soft: #222f37;
+  --cat-health: #cc80a9;
+  --cat-health-soft: #332a30;
+  --cat-education: #8793e1;
+  --cat-education-soft: #282d39;
+  --cat-leisure: #29a9ba;
+  --cat-leisure-soft: #193133;
+  --cat-shopping: #c08c6a;
+  --cat-shopping-soft: #312c26;
+  --cat-subscriptions: #998fd3;
+  --cat-subscriptions-soft: #2b2d37;
+  --cat-pets: #b78ac4;
+  --cat-pets-soft: #302c34;
+  --cat-taxes-fees: #8b9ba3;
+  --cat-taxes-fees-soft: #292f2f;
+  --cat-other: #8d9b94;
+  --cat-other-soft: #292f2d;
+  --shadow-card: none;
+  --shadow-overlay: 0 16px 48px rgba(0, 0, 0, 0.56);
+  color-scheme: dark;
+}
+/* After the dark block: both selectors match <html data-theme="light">, so source order decides. */
+[data-theme="light"] {
+  --bg: var(--neutral-97);
+  --surface: var(--neutral-100);
+  --surface-raised: var(--neutral-100);
+  --surface-sunken: var(--neutral-94);
+  --surface-hover: var(--neutral-96);
+  --border: var(--neutral-91);
+  --border-strong: var(--neutral-61);
+  --text: var(--neutral-7);
+  --text-muted: var(--neutral-40);
+  --brand: var(--green-42);
+  --brand-hover: var(--green-35);
+  --on-brand: var(--neutral-100);
+  --brand-soft: var(--green-93);
+  --hero: var(--green-40);
+  --on-hero: var(--neutral-100);
+  --on-hero-muted: var(--green-91);
+  --hero-line: var(--green-89);
+  --positive: var(--green-45);
+  --positive-soft: var(--green-94);
+  --warning: var(--amber-42);
+  --warning-soft: var(--amber-93);
+  --danger: var(--red-40);
+  --danger-soft: var(--red-92);
+  --on-danger: var(--neutral-100);
+  --focus: var(--blue-41);
+  --scrim: rgba(18, 23, 21, 0.40);
+  --chart-grid: var(--neutral-92);
+  --chart-bar: var(--neutral-61);
+  --cat-housing: #2f6f4f;
+  --cat-housing-soft: #e0e9e5;
+  --cat-household-bills: #9a6e0e;
+  --cat-household-bills-soft: #f1eadb;
+  --cat-groceries: #b85b21;
+  --cat-groceries-soft: #f6e7de;
+  --cat-eating-out: #b5424b;
+  --cat-eating-out-soft: #f4e3e4;
+  --cat-transport: #2d6aa3;
+  --cat-transport-soft: #e0e9f1;
+  --cat-health: #a8437a;
+  --cat-health-soft: #f2e3eb;
+  --cat-education: #5a6ad6;
+  --cat-education-soft: #e6e9f9;
+  --cat-leisure: #1f7f8c;
+  --cat-leisure-soft: #ddecee;
+  --cat-shopping: #8a5a3a;
+  --cat-shopping-soft: #ede6e1;
+  --cat-subscriptions: #4a3d9c;
+  --cat-subscriptions-soft: #e4e2f0;
+  --cat-pets: #8c4f9e;
+  --cat-pets-soft: #eee5f0;
+  --cat-taxes-fees: #56656d;
+  --cat-taxes-fees-soft: #e6e8e9;
+  --cat-other: #6b7a73;
+  --cat-other-soft: #e9ebea;
+  --shadow-card: 0 1px 2px rgba(18, 23, 21, 0.06);
+  --shadow-overlay: 0 16px 48px rgba(18, 23, 21, 0.16);
+  color-scheme: light;
+}
+:root {
+  --neutral-3: #0b0d0c;
+  --neutral-5: #0e1110;
+  --neutral-7: #121715;
+  --neutral-9: #161a19;
+  --neutral-13: #1d2321;
+  --neutral-16: #222927;
+  --neutral-18: #262d2a;
+  --neutral-40: #56625d;
+  --neutral-48: #68756f;
+  --neutral-61: #8a9690;
+  --neutral-70: #a3aea9;
+  --neutral-91: #e1e5e3;
+  --neutral-92: #e6eae8;
+  --neutral-94: #eceeed;
+  --neutral-95: #eef2f0;
+  --neutral-96: #f0f3f1;
+  --neutral-97: #f4f6f5;
+  --neutral-100: #ffffff;
+  --green-5: #04140b;
+  --green-20: #1f362b;
+  --green-21: #22382d;
+  --green-35: #275d42;
+  --green-38: #1e6644;
+  --green-40: #2a6b4a;
+  --green-42: #2f6f4f;
+  --green-45: #1f7a4a;
+  --green-73: #4cc98a;
+  --green-77: #5fd394;
+  --green-78: #66d69c;
+  --green-82: #7fe0ad;
+  --green-87: #c2e3d0;
+  --green-89: #a8f0c8;
+  --green-91: #d3eadc;
+  --green-93: #e6eeea;
+  --green-94: #e4efe9;
+  --green-98: #f2fbf6;
+  --amber-21: #393221;
+  --amber-42: #8a5a00;
+  --amber-77: #f0b24a;
+  --amber-93: #f1ebe0;
+  --red-6: #2a0705;
+  --red-20: #3b2c29;
+  --red-40: #b3261e;
+  --red-70: #ff8a80;
+  --red-92: #f6e5e4;
+  --blue-41: #1a5fb4;
+  --blue-74: #8ab8ff;
+  --space-0: 0px;
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-16: 16px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+  --space-48: 48px;
+  --space-64: 64px;
+  --control-sm: 32px;
+  --control-md: 40px;
+  --control-lg: 48px;
+  --sidebar-width: 256px;
+  --sidebar-collapsed: 72px;
+  --panel-width: 440px;
+  --content-max: 1440px;
+  --bp-tablet: 768px;
+  --bp-desktop: 1024px;
+  --bp-wide: 1280px;
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --duration-slow: 250ms;
+  --z-sticky: 10;
+  --z-overlay: 20;
+  --z-popover: 30;
+  --z-toast: 40;
+  --z-tooltip: 50;
+  --opacity-disabled: 0.48;
+}
+
+/* Only semantic colours are exposed: no primitive (--green-73) becomes a utility. */
+@theme inline {
+  --color-*: initial;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-on-brand: var(--on-brand);
+  --color-brand-soft: var(--brand-soft);
+  --color-hero: var(--hero);
+  --color-on-hero: var(--on-hero);
+  --color-on-hero-muted: var(--on-hero-muted);
+  --color-hero-line: var(--hero-line);
+  --color-positive: var(--positive);
+  --color-positive-soft: var(--positive-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-on-danger: var(--on-danger);
+  --color-focus: var(--focus);
+  --color-scrim: var(--scrim);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-bar: var(--chart-bar);
+  --color-cat-housing: var(--cat-housing);
+  --color-cat-housing-soft: var(--cat-housing-soft);
+  --color-cat-household-bills: var(--cat-household-bills);
+  --color-cat-household-bills-soft: var(--cat-household-bills-soft);
+  --color-cat-groceries: var(--cat-groceries);
+  --color-cat-groceries-soft: var(--cat-groceries-soft);
+  --color-cat-eating-out: var(--cat-eating-out);
+  --color-cat-eating-out-soft: var(--cat-eating-out-soft);
+  --color-cat-transport: var(--cat-transport);
+  --color-cat-transport-soft: var(--cat-transport-soft);
+  --color-cat-health: var(--cat-health);
+  --color-cat-health-soft: var(--cat-health-soft);
+  --color-cat-education: var(--cat-education);
+  --color-cat-education-soft: var(--cat-education-soft);
+  --color-cat-leisure: var(--cat-leisure);
+  --color-cat-leisure-soft: var(--cat-leisure-soft);
+  --color-cat-shopping: var(--cat-shopping);
+  --color-cat-shopping-soft: var(--cat-shopping-soft);
+  --color-cat-subscriptions: var(--cat-subscriptions);
+  --color-cat-subscriptions-soft: var(--cat-subscriptions-soft);
+  --color-cat-pets: var(--cat-pets);
+  --color-cat-pets-soft: var(--cat-pets-soft);
+  --color-cat-taxes-fees: var(--cat-taxes-fees);
+  --color-cat-taxes-fees-soft: var(--cat-taxes-fees-soft);
+  --color-cat-other: var(--cat-other);
+  --color-cat-other-soft: var(--cat-other-soft);
+
+  --spacing: var(--space-4);
+  --spacing-control-sm: var(--control-sm);
+  --spacing-control-md: var(--control-md);
+  --spacing-control-lg: var(--control-lg);
+  --spacing-sidebar: var(--sidebar-width);
+  --spacing-sidebar-collapsed: var(--sidebar-collapsed);
+  --spacing-panel: var(--panel-width);
+  --container-content: var(--content-max);
+}
+
+/* Static, so Tailwind always emits these variables under the spec names. */
+@theme static {
+  --radius-*: initial;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+  --ease-*: initial;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --font-sans: Inter, "SF Pro Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Literals: media queries cannot read var(). */
+@theme {
+  --breakpoint-*: initial;
+  --breakpoint-tablet: 768px;
+  --breakpoint-desktop: 1024px;
+  --breakpoint-wide: 1280px;
+}
+
+@utility page-title {
+  font-family: var(--font-sans);
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+@utility section-title {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+}
+@utility card-label {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+@utility value-hero {
+  font-family: var(--font-sans);
+  font-size: 40px;
+  line-height: 48px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+@utility value-lg {
+  font-family: var(--font-sans);
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+@utility value-md {
+  font-family: var(--font-sans);
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+@utility value-sm {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+@utility body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+@utility body-strong {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+@utility caption {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+}
+@utility label {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+}
+@utility overline {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+/* A centred ::after gives every control a 48px hit area without changing its visual size. */
+@utility touch-target {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: var(--control-lg);
+    min-height: var(--control-lg);
+  }
+}
