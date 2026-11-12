@@ -31,11 +31,15 @@ type Handler struct {
 	publicKey string
 	clock     clock.Clock
 	log       *slog.Logger
+	// allowsRevenue reports whether an email may hold a Revenue subscription
+	// (the Finances allowlist).
+	allowsRevenue func(email string) bool
 }
 
-// NewHandler returns a Handler over store that sends through sender.
-func NewHandler(store *Store, sender Sender, publicKey string, clk clock.Clock, log *slog.Logger) *Handler {
-	return &Handler{store: store, sender: sender, publicKey: publicKey, clock: clk, log: log}
+// NewHandler returns a Handler over store that sends through sender. allowsRevenue
+// gates Revenue subscriptions.
+func NewHandler(store *Store, sender Sender, publicKey string, allowsRevenue func(email string) bool, clk clock.Clock, log *slog.Logger) *Handler {
+	return &Handler{store: store, sender: sender, publicKey: publicKey, allowsRevenue: allowsRevenue, clock: clk, log: log}
 }
 
 // RequireConfigured wraps a push handler so it answers 503 when push is not
@@ -58,7 +62,9 @@ func (h *Handler) PublicKey(w http.ResponseWriter, _ *http.Request) {
 type subscriptionBody struct {
 	Endpoint  string `json:"endpoint"`
 	UserAgent string `json:"userAgent"`
-	Keys      struct {
+	// App is the app the subscription was made in; empty means homeowner.
+	App  string `json:"app"`
+	Keys struct {
 		P256dh string `json:"p256dh"`
 		Auth   string `json:"auth"`
 	} `json:"keys"`
@@ -91,6 +97,19 @@ func (h *Handler) PutSubscription(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "keys.p256dh and keys.auth must be base64url")
 		return
 	}
+	app := body.App
+	if app == "" {
+		app = AppHomeowner
+	}
+	user := identity.CurrentUser(r.Context())
+	switch {
+	case app != AppHomeowner && app != AppRevenue:
+		httpx.WriteError(w, http.StatusBadRequest, "app must be homeowner or revenue")
+		return
+	case app == AppRevenue && !h.allowsRevenue(user.Email):
+		httpx.WriteError(w, http.StatusForbidden, "forbidden")
+		return
+	}
 	ua := body.UserAgent
 	if len(ua) > maxUserAgentLen {
 		ua = ua[:maxUserAgentLen]
@@ -100,8 +119,28 @@ func (h *Handler) PutSubscription(w http.ResponseWriter, r *http.Request) {
 		P256dh:   strings.TrimRight(body.Keys.P256dh, "="),
 		Auth:     strings.TrimRight(body.Keys.Auth, "="),
 	}
-	if err := h.store.Upsert(r.Context(), identity.CurrentUser(r.Context()).ID, sub, ua, h.clock.Now()); err != nil {
+	if err := h.store.Upsert(r.Context(), user.ID, sub, app, ua, h.clock.Now()); err != nil {
 		httpx.InternalError(w, h.log, "store push subscription", err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// DeleteSubscription answers DELETE /push/subscription. It removes only the
+// caller's row and answers 204 even when nothing matched.
+func (h *Handler) DeleteSubscription(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Endpoint string `json:"endpoint"`
+	}
+	if !httpx.DecodeBody(w, r, &body, maxPushBody, false) {
+		return
+	}
+	if body.Endpoint == "" {
+		httpx.WriteError(w, http.StatusBadRequest, "endpoint is required")
+		return
+	}
+	if err := h.store.DeleteOwn(r.Context(), identity.CurrentUser(r.Context()).ID, body.Endpoint); err != nil {
+		httpx.InternalError(w, h.log, "delete push subscription", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

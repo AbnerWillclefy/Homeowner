@@ -77,6 +77,25 @@ func pair(t *testing.T, app *apitest.App) (a, b *apitest.Client) {
 	return a, b
 }
 
+func TestTheReminderSkipsRevenueDevices(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t, apitest.WithPush("k"), apitest.WithFinance(apitest.FinanceTestKey(), "a@example.com"))
+	a := newHome(t, app, "a@example.com", "America/Sao_Paulo", "07:00")
+	subscribe(t, a, "home")
+	r := a.Put("/push/subscription", map[string]any{
+		"endpoint": endpoint("revenue"), "app": "revenue",
+		"keys": map[string]string{"p256dh": testP256dh, "auth": testAuth},
+	})
+	if r.Status >= 300 {
+		t.Fatalf("PUT /push/subscription = %d %s", r.Status, r.Raw)
+	}
+
+	app.Clock.Set(utc(4, 9, 15))
+	app.RunAllocation(t)
+
+	wantPushes(t, app, reminder+":home")
+}
+
 func TestTheReminderGoesOnlyToResidentsWithoutACheckInAnHourBefore(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t, apitest.WithPush("k"))

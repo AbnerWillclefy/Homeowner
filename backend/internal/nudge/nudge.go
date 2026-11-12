@@ -187,7 +187,7 @@ func (n *Nudger) deliver(ctx context.Context, targets []target, kind string, pay
 	for _, t := range targets {
 		userIDs = append(userIDs, t.userID)
 	}
-	subs, err := n.subs.ListByUsers(ctx, userIDs)
+	subs, err := n.subs.ListByUsers(ctx, userIDs, push.AppHomeowner)
 	if err != nil {
 		n.log.Error("nudge: list subscriptions failed", "kind", kind, "error", err.Error())
 		return

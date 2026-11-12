@@ -99,6 +99,18 @@ func TestReminderKindsFollowTheDueDate(t *testing.T) {
 	}
 }
 
+func TestBillRemindersSkipRevenueDevices(t *testing.T) {
+	t.Parallel()
+	app, ana := remindersApp(t, afterFixtures)
+	if _, err := app.DB.Exec(context.Background(), `UPDATE push_subscriptions SET app = 'revenue'`); err != nil {
+		t.Fatal(err)
+	}
+	addBill(t, ana, "Aluguel", 8)
+	if got := runKinds(t, app); len(got) != 0 {
+		t.Errorf("sent %v to a Revenue device, want nothing", got)
+	}
+}
+
 func TestABillDueLaterSendsNothing(t *testing.T) {
 	t.Parallel()
 	app, ana := remindersApp(t, afterFixtures)
