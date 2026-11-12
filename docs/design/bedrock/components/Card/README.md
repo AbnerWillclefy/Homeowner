@@ -7,5 +7,6 @@ A container for one subject, with a label on top and an arrow that opens that su
 - The whole card is clickable (`interactive`) when it leads to a screen; the ↗ arrow in the corner is the visual cue.
 - **hero**: the only saturated card on the screen, in `hero`. One per screen, for the number the screen exists to show.
 - Do not nest cards. Inside a card, separate with `border` dividers or with space.
+- States: loading, empty and error follow Data states in the README: a `Skeleton` in this shape, an `EmptyState`, or a `Banner` inside.
 
 Implementation: shadcn/ui `Card` with the variants above.

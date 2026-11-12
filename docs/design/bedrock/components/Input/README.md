@@ -6,5 +6,6 @@ A text or amount field, always with a visible label above.
 - **MoneyInput** (`br-input--money`): `R$` prefix, tabular numbers, 48px, numeric keyboard on phones. Accepts "1.234,56" and "1234.56"; always displays in the pt-BR format.
 - Background `surface-sunken`, border `border-strong` (3:1). Focus: the `focus` ring.
 - Validate on leaving the field, not on every keystroke.
+- Text is 16px on touch screens, because iOS Safari zooms into smaller fields on focus.
 
 The consumer provides `label`, `value`, `onChange`, `hint` and `error`. Implementation: shadcn/ui `Input` + `Label` + `Form`.

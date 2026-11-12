@@ -6,5 +6,6 @@ The month's cumulative spending against the ideal pace up to the limit: the hero
 - A marker beside the point: a `solid` Badge with the distance from pace ("R$ 200 under"); over pace, the marker turns `warning`.
 - No axes on the hero card; on the Categories screen it gets day and amount axes.
 - On `hero`: the `--hero` variant (line `hero-line`, reference `on-hero-muted`).
+- States: loading, empty and error follow Data states in the README: a `Skeleton` in this shape, an `EmptyState`, or a `Banner` inside.
 
 Implementation: shadcn/ui `ChartContainer` (Recharts) with `LineChart`, reading colours from the tokens.
