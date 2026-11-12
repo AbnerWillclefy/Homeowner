@@ -57,8 +57,11 @@ export function App() {
       </header>
       <main className="mx-auto flex max-w-content flex-col gap-8 p-4">
         {sections.length === 0 && <p className="body text-text-muted">{t.empty}</p>}
+        {/* data-section lets the ui-screenshots check find a section by its file name */}
         {sections.map(([path, { default: Section }]) => (
-          <Section key={path} locale={locale} />
+          <div key={path} data-section={path.slice("./sections/".length, -".tsx".length)}>
+            <Section locale={locale} />
+          </div>
         ))}
       </main>
     </>
