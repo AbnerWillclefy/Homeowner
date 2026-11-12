@@ -5,3 +5,4 @@ export { CategoryIcon, CategoryTag, type SpendingCategoryId } from "./category-t
 export { Amount, formatAmount } from "./amount";
 export { StatCard } from "./stat-card";
 export { ListRow } from "./list-row";
+export { AlertCard } from "./alert-card";
