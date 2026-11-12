@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from "react";
 import { NavLink, type NavItem } from "./nav-link";
+import { Tooltip } from "./tooltip";
 
 type Props = {
   /** The nav landmark's accessible name. Unique on the page. */
@@ -11,8 +12,8 @@ type Props = {
   onNavigate?: (href: string) => void;
 };
 
-// shortcut: no tooltip on collapsed items, add a Radix Tooltip if users miss labels
-// Below the wide breakpoint labels and group names are sr-only, so the accessible name stays.
+// Below the wide breakpoint labels and group names are sr-only, so the accessible name stays;
+// the Tooltip then shows the label visually, and wide:hidden drops it from the full Sidebar.
 const hideCollapsed = "sr-only wide:not-sr-only";
 
 function Items({ items, labelledBy, onNavigate }: { items: NavItem[]; labelledBy?: string; onNavigate?: (href: string) => void }) {
@@ -20,14 +21,16 @@ function Items({ items, labelledBy, onNavigate }: { items: NavItem[]; labelledBy
     <ul aria-labelledby={labelledBy} className="flex flex-col gap-1">
       {items.map((item) => (
         <li key={item.href}>
-          <NavLink
-            item={item}
-            onNavigate={onNavigate}
-            className="body-strong flex h-control-md aria-[current=page]:bg-brand-soft items-center justify-center gap-2 px-2 pointer-coarse:h-control-lg wide:justify-start"
-          >
-            <item.icon aria-hidden className="size-4 shrink-0" />
-            <span className={`min-w-0 truncate ${hideCollapsed}`}>{item.label}</span>
-          </NavLink>
+          <Tooltip label={item.label} className="wide:hidden">
+            <NavLink
+              item={item}
+              onNavigate={onNavigate}
+              className="body-strong flex h-control-md aria-[current=page]:bg-brand-soft items-center justify-center gap-2 px-2 pointer-coarse:h-control-lg wide:justify-start"
+            >
+              <item.icon aria-hidden className="size-4 shrink-0" />
+              <span className={`min-w-0 truncate ${hideCollapsed}`}>{item.label}</span>
+            </NavLink>
+          </Tooltip>
         </li>
       ))}
     </ul>
