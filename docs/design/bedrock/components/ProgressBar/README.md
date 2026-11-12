@@ -7,6 +7,6 @@ How much of a target is reached: a goal, a category limit, a reserve.
 - **Meta row**: the current amount in `text` on the left, the target and due date in `text-muted` on the right.
 - **States**: not interactive. Loading, empty and error belong to the component that holds it.
 - **Content**: money wording never presses: "R$ 200 over" says what is, not what to do.
-- **Accessibility**: a progress bar that exposes its value, minimum and maximum, with a name. Its spoken value is text the app writes ("R$ 1,640 of R$ 2,000"). Past the target the bar is full while the text states the overage, and colour is never the only cue.
+- **Accessibility**: a progress bar that exposes its value, minimum and maximum, with a name. Its spoken value is text the app writes ("R$ 1.640 of R$ 2.000"). Past the target the bar is full while the text states the overage, and colour is never the only cue.
 
 The consumer provides the value, the maximum (above 0), the name, the spoken value and the two meta elements, normally `Amount`. Implementation: shadcn/ui `Progress` (Radix).
