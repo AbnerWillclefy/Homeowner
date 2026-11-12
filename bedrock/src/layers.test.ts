@@ -10,13 +10,19 @@ function sources(dir: string): string[] {
   );
 }
 
+const importsFinance = (src: string) =>
+  [...src.matchAll(/(?:from|import)\s*\(?\s*["']([^"']+)["']/g)].some((m) => m[1].includes("finance"));
+
+it("the matcher sees finance imports", () => {
+  expect(importsFinance('import { A } from "../finance";')).toBe(true);
+  expect(importsFinance('export { A } from "../../finance/Amount";')).toBe(true);
+  expect(importsFinance('const m = import("../finance");')).toBe(true);
+  expect(importsFinance('import { B } from "./Button";')).toBe(false);
+});
+
 it("core never imports finance", () => {
   const offenders = ["components", "lib"]
     .flatMap((d) => sources(join(import.meta.dirname, d)))
-    .filter((f) =>
-      [...readFileSync(f, "utf8").matchAll(/(?:from|import)\s*\(?\s*["']([^"']+)["']/g)].some((m) =>
-        m[1].includes("finance"),
-      ),
-    );
+    .filter((f) => importsFinance(readFileSync(f, "utf8")));
   expect(offenders).toEqual([]);
 });
