@@ -2,7 +2,8 @@
 export { Input, type InputProps } from "./components/input";
 export { SearchField } from "./components/search-field";
 export { Badge, type BadgeProps } from "./components/badge";
-export { Button, type ButtonProps } from "./components/button";
+export { Banner, type BannerProps } from "./components/banner";
+export { Button,type ButtonProps } from "./components/button";
 export { Switch, type SwitchProps } from "./components/switch";
 export { SegmentedControl, type SegmentedControlProps } from "./components/segmented-control";
 export { ProgressBar, progressTone, type ProgressBarProps } from "./components/progress-bar";
