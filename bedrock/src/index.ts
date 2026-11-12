@@ -13,6 +13,7 @@ export { Toast, ToastProvider, type ToastProps, type ToastProviderProps } from "
 export { Dialog, type DialogProps } from "./components/dialog";
 export { Sheet, type SheetProps } from "./components/sheet";
 export { Skeleton } from "./components/skeleton";
+export { Table, TableCaption, TableHeader, TableBody, TableRow, TableHead, TableCell } from "./components/table";
 export { ChartContainer, ChartTooltipContent, type ChartContainerProps, type ChartTooltipContentProps } from "./components/chart";
 export { Tooltip, type TooltipProps } from "./components/tooltip";
 export { Menu, menuContentClass, menuItemClass, type MenuItem, type MenuProps } from "./components/menu";
