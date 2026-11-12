@@ -83,3 +83,23 @@ it("hides the currency prefix from assistive technology", () => {
   render(<Harness spy={() => {}} />);
   expect(screen.getByText("R$").getAttribute("aria-hidden")).toBe("true");
 });
+
+it("a parent that clears the value on submit empties the focused field", async () => {
+  function Form() {
+    const [value, setValue] = useState<number | null>(null);
+    return (
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          setValue(null);
+        }}
+      >
+        <MoneyInput label="Amount" value={value} onValueChange={setValue} />
+      </form>
+    );
+  }
+  const user = userEvent.setup();
+  render(<Form />);
+  await user.type(field(), "12,50{Enter}");
+  expect(field().value).toBe("");
+});
