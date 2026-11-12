@@ -5,8 +5,8 @@
  */
 export function parseCents(text: string): number | null {
   // Letters and currency symbols are noise only at the ends; one inside the number means it is not one amount.
-  const s = text.replace(/^[\s\p{L}\p{Sc}]+|[\s\p{L}\p{Sc}]+$/gu, "").replace(/\s/g, ""); // \s covers U+00A0, U+202F
-  if (!/^[\d.,]+$/.test(s)) return null; // empty, minus signs and anything else
+  const s = text.replace(/^[\s\p{L}\p{Sc}]+|[\s\p{L}\p{Sc}]+$/gu, "").replace(/\s/g, " "); // \s covers U+00A0, U+202F; an inner space is a grouping separator
+  if (!/^[\d., ]+$/.test(s)) return null; // empty, minus signs and anything else
 
   const count = (c: string) => s.split(c).length - 1;
 
@@ -28,7 +28,7 @@ export function parseCents(text: string): number | null {
     if (fraction.length > 2) return null;
   }
 
-  const groups = whole.split(/[.,]/);
+  const groups = whole.split(/[., ]/);
   if (groups.length > 1) {
     const mixed = new Set(whole.replace(/\d/g, "")).size > 1; // e.g. 1,2.3,4
     if (mixed || !groups[0] || groups[0].length > 3 || groups[0].startsWith("0") || groups.slice(1).some((g) => g.length !== 3)) return null;
