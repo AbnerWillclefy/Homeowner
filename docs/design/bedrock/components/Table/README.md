@@ -2,7 +2,7 @@
 
 Rows and columns to compare on desktop: transactions, a budget by category, an account statement.
 
-- **When to use**: three or more columns the person compares or sorts. **When not**: on phones (below `bp-tablet` use a list of `ListRow`s), or for a single column (use `ListRow`).
+- **When to use**: three or more columns the person compares or sorts. **When not**: on phones (below `bp-tablet` the app shows the rows as a list; a money app uses `ListRow`), or for a single column (a list).
 - **Header**: `label` in `text-muted`, aligned like its column. A sortable column has a button with an arrow; the sorted column is in `text` and carries `aria-sort`.
 - **Rows**: 48px, `body`, a `border` divider, hover in `surface-hover`. A row that opens a detail is clickable as a whole and opens the `Sheet`.
 - **Numbers**: right-aligned, tabular, in the same column as their header. A cell's content comes from the app (a money app renders `Amount` in it), so Table stays in Core.

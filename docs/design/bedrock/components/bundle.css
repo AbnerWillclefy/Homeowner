@@ -212,6 +212,9 @@
 .br-chiptip strong { font: 600 14px/20px var(--font-sans); }
 .br-flag { display: inline-flex; align-items: center; height: 24px; padding: 0 var(--space-8); border-radius: var(--radius-sm); background: var(--positive); color: var(--on-brand); font: 600 12px/16px var(--font-sans); font-variant-numeric: tabular-nums; }
 
+/* all: unset drops the outline, so controls reset with it get the focus ring back */
+.br-seg button:focus-visible, .br-table__sort:focus-visible, .br-input:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+
 /* Banner: a persistent message inside a card or at the top of a screen */
 .br-banner { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-8) var(--space-16); align-items: center; padding: var(--space-8) var(--space-8) var(--space-8) var(--space-16); min-height: var(--control-lg); border-radius: var(--radius-md); background: var(--surface-hover); color: var(--text); }
 .br-banner--danger { background: var(--danger-soft); }

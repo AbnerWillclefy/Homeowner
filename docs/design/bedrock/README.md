@@ -126,7 +126,7 @@ Charts are part of the visual system, not a style of their own:
 - Detail and actions open in the `Sheet`: a right side panel (`panel-width`) on desktop, a bottom sheet on phones. `Dialog` only to confirm something destructive.
 - Rare actions sit in a `Menu` or mode, not on every row.
 - Layering, from low to high: `z-sticky` (top and bottom bars), `z-overlay` (Sheet, Dialog), `z-popover` (Menu, Select, which can open inside a Sheet), `z-toast`, `z-tooltip`. Never a literal z-index.
-- Tables are for desktop. Below `bp-tablet` a `Table` becomes a list of `ListRow`s, or the app shows fewer columns.
+- Tables are for desktop. Below `bp-tablet` the app shows the rows as a list (a money app uses `ListRow`), or fewer columns.
 
 ## Content and voice
 
