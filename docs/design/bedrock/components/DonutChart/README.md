@@ -6,5 +6,6 @@ Spending distribution by category.
 - At most 7 slices; the rest becomes "Other".
 - The legend always sits beside it (desktop) or below (phone), with CategoryTag and percentage, in slice order: colour is never the only cue.
 - Hovering a slice highlights its legend row and vice versa.
+- States: loading, empty and error follow Data states in the README: a `Skeleton` in this shape, an `EmptyState`, or a `Banner` inside.
 
 Implementation: shadcn/ui `ChartContainer` + `PieChart` (Recharts).
