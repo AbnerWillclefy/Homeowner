@@ -40,7 +40,7 @@ a migration (expand-only, so it stays), Terraform resources, data written in the
 - [ ] 
 
 <!--
-UI changes only: a screenshot under each heading, pt-BR first (the ui-screenshots check needs both).
+UI changes only: a screenshot under each heading, pt-BR first (the ui-screenshots check needs both; it adds them itself when only bedrock/ changes).
 
 ### pt-BR
 
