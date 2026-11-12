@@ -23,5 +23,7 @@ jobs:
         run: VERBOSE=1 .github/scripts/merge-by-risk.test.sh
       - name: Test review-outcomes.sh
         run: .github/scripts/review-outcomes.test.sh
+      - name: Test resolve-answered-threads.sh
+        run: .github/scripts/resolve-answered-threads.test.sh
       - name: Test bedrock-screenshots.mjs
         run: node --test .github/scripts/bedrock-screenshots.test.mjs
