@@ -34,7 +34,7 @@ export function MoneyInput({
 
   // Sync from outside only when the Resident is not typing, so the caret never jumps.
   useEffect(() => {
-    if (!focused.current && value !== parseCents(text)) setText(format(value, locale));
+    if (!focused.current) setText(format(value, locale));
   }, [value, locale]);
   const symbol =
     new Intl.NumberFormat(locale, { style: "currency", currency }).formatToParts(0).find((p) => p.type === "currency")

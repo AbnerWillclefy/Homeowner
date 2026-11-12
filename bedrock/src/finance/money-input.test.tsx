@@ -72,6 +72,13 @@ it("an error is tied to the field and announced", () => {
   expect(screen.getByRole("alert").textContent).toContain("Enter an amount above zero.");
 });
 
+it("reformats the shown amount when the locale changes", () => {
+  const { rerender } = render(<MoneyInput label="Amount" value={123456} locale="pt-BR" onValueChange={() => {}} />);
+  expect(field().value).toBe("1.234,56");
+  rerender(<MoneyInput label="Amount" value={123456} locale="en" onValueChange={() => {}} />);
+  expect(field().value).toBe("1,234.56");
+});
+
 it("hides the currency prefix from assistive technology", () => {
   render(<Harness spy={() => {}} />);
   expect(screen.getByText("R$").getAttribute("aria-hidden")).toBe("true");
