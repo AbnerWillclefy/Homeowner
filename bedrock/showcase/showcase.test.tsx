@@ -52,12 +52,13 @@ describe("showcase accessibility", () => {
     mount("dark", "en");
     const user = userEvent.setup();
     // Each overlay is modal, so open one, check, close, then the next.
-    for (const [opener, closer] of [
-      ["Open filters", "Close"],
-      ["Delete account", "Cancel"],
-      ["More actions", null],
+    for (const [opener, closer, role] of [
+      ["Open filters", "Close", "dialog"],
+      ["Delete account", "Cancel", "alertdialog"],
+      ["More actions", null, wide ? "menu" : "dialog"],
     ] as const) {
       await user.click(screen.getByRole("button", { name: opener }));
+      expect(screen.getByRole(role)).toBeTruthy();
       await expectNoViolations(true);
       if (closer) await user.click(screen.getAllByRole("button", { name: closer }).at(-1)!);
       else await user.keyboard("{Escape}");
@@ -67,6 +68,7 @@ describe("showcase accessibility", () => {
     }
     await expectNoViolations(true);
     await user.click(screen.getAllByRole("combobox", { name: "Account" })[0]);
+    expect(screen.getByRole("listbox")).toBeTruthy();
     await expectNoViolations(true);
   }, 30_000);
 });
