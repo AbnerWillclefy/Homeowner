@@ -131,7 +131,7 @@ func New(deps Deps) http.Handler {
 	streaks := streak.NewHandler(streakStore, clk, log)
 	residentsH := residents.NewHandler(residents.NewStore(db), streakStore, planner, photoURL, clk, log)
 	voiceH := voice.NewHandler(deps.Voice, voice.NewStore(db), deps.VoiceModel, clk, log)
-	pushes := push.NewHandler(push.NewStore(db), deps.Push, deps.VAPIDPublicKey, clk, log)
+	pushes := push.NewHandler(push.NewStore(db), deps.Push, deps.VAPIDPublicKey, financeAllow.Allows, clk, log)
 
 	user, resident := s.requireUser, s.requireResident
 	mux := http.NewServeMux()
@@ -189,6 +189,7 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("DELETE /me/restrictions/{demand}", user(prof.RemoveRestriction))
 	mux.HandleFunc("GET /push/vapid-public-key", pushes.RequireConfigured(pushes.PublicKey))
 	mux.HandleFunc("PUT /push/subscription", pushes.RequireConfigured(user(pushes.PutSubscription)))
+	mux.HandleFunc("DELETE /push/subscription", pushes.RequireConfigured(user(pushes.DeleteSubscription)))
 	mux.HandleFunc("POST /push/test", pushes.RequireConfigured(user(pushes.SendTest)))
 	// Every /admin/ path, known or not, goes through the guard first.
 	mux.Handle("/admin/", s.requireSuperAdmin(s.adminMux()))

@@ -47,6 +47,10 @@ func TestPushVAPIDPublicKeyIsServed(t *testing.T) {
 	if res.Status != http.StatusOK || res.Body["key"] != "public-key-123" {
 		t.Fatalf("got %d %s, want 200 with the key", res.Status, res.Raw)
 	}
+	// One key pair serves both apps, so the route takes no app.
+	if again := app.Get("/push/vapid-public-key?app=revenue"); again.Body["key"] != "public-key-123" {
+		t.Fatalf("revenue key = %s, want the same key", again.Raw)
+	}
 }
 
 func TestPushWriteRoutesRequireASignedInUser(t *testing.T) {
@@ -392,5 +396,115 @@ func TestPushRoutesAnswer503WhenNotConfigured(t *testing.T) {
 	}
 	if res := app.Get("/healthz"); res.Status != http.StatusOK {
 		t.Fatalf("healthz = %d, want 200", res.Status)
+	}
+}
+
+func appOf(t *testing.T, app *apitest.App, endpoint string) (string, bool) {
+	t.Helper()
+	var got string
+	err := app.DB.QueryRow(context.Background(), "SELECT app FROM push_subscriptions WHERE endpoint = $1", endpoint).Scan(&got)
+	return got, err == nil
+}
+
+func TestRegisteringNamesTheApp(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name       string
+		email      string
+		app        any
+		wantStatus int
+		wantApp    string // empty: nothing stored
+	}{
+		{"no app is Homeowner", "a@example.com", nil, http.StatusNoContent, "homeowner"},
+		{"homeowner", "a@example.com", "homeowner", http.StatusNoContent, "homeowner"},
+		{"revenue by an allowlisted User", "fin@example.com", "revenue", http.StatusNoContent, "revenue"},
+		{"revenue by a User off the allowlist", "a@example.com", "revenue", http.StatusForbidden, ""},
+		{"an unknown app", "fin@example.com", "x", http.StatusBadRequest, ""},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			app := apitest.Start(t, apitest.WithPush("k"), apitest.WithFinance(apitest.FinanceTestKey(), "fin@example.com"))
+			body := subscription(endpointA, p256dhA, authA)
+			if tc.app != nil {
+				body["app"] = tc.app
+			}
+
+			res := app.SignInAs(tc.email).Put("/push/subscription", body)
+
+			if res.Status != tc.wantStatus {
+				t.Fatalf("status = %d %s, want %d", res.Status, res.Raw, tc.wantStatus)
+			}
+			got, stored := appOf(t, app, endpointA)
+			if tc.wantApp == "" && stored || tc.wantApp != "" && got != tc.wantApp {
+				t.Fatalf("stored = %v app = %q, want %q", stored, got, tc.wantApp)
+			}
+		})
+	}
+}
+
+func TestOneUserKeepsAHomeownerAndARevenueSubscription(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t, apitest.WithPush("k"), apitest.WithFinance(apitest.FinanceTestKey(), "fin@example.com"))
+	me := app.SignInAs("fin@example.com")
+	me.Put("/push/subscription", subscription(endpointA, p256dhA, authA))
+	revenue := subscription(endpointB, p256dhB, authB)
+	revenue["app"] = "revenue"
+	me.Put("/push/subscription", revenue)
+
+	store := push.NewStore(app.DB)
+	var id string
+	if err := app.DB.QueryRow(context.Background(), "SELECT id FROM users WHERE email = 'fin@example.com'").Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	for appName, want := range map[string]string{"homeowner": endpointA, "revenue": endpointB} {
+		got, err := store.ListByUsers(context.Background(), []string{id}, appName)
+		if err != nil || len(got[id]) != 1 || got[id][0].Endpoint != want {
+			t.Errorf("%s list = %v, %v, want only %s", appName, got, err, want)
+		}
+	}
+}
+
+func TestUnsubscribeRemovesOnlyTheCallersRow(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t, apitest.WithPush("k"))
+	a := app.SignInAs("a@example.com")
+	b := app.SignInAs("b@example.com")
+	a.Put("/push/subscription", subscription(endpointA, p256dhA, authA))
+	b.Put("/push/subscription", subscription(endpointB, p256dhB, authB))
+
+	own := a.Do(http.MethodDelete, "/push/subscription", map[string]string{"endpoint": endpointA}, nil)
+	again := a.Do(http.MethodDelete, "/push/subscription", map[string]string{"endpoint": endpointA}, nil)
+	others := a.Do(http.MethodDelete, "/push/subscription", map[string]string{"endpoint": endpointB}, nil)
+
+	for name, res := range map[string]apitest.Response{"own": own, "again": again, "others": others} {
+		if res.Status != http.StatusNoContent {
+			t.Errorf("%s: status = %d %s, want 204", name, res.Status, res.Raw)
+		}
+	}
+	if _, ok := appOf(t, app, endpointA); ok {
+		t.Error("own row still stored")
+	}
+	if _, ok := appOf(t, app, endpointB); !ok {
+		t.Error("another User's row was removed")
+	}
+}
+
+func TestUnsubscribeNeedsASignedInUserAnEndpointAndPushConfigured(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t, apitest.WithPush("k"))
+	del := func(c *apitest.Client, body any) apitest.Response {
+		return c.Do(http.MethodDelete, "/push/subscription", body, nil)
+	}
+
+	if res := del(app.SignInAs("a@example.com"), map[string]string{}); res.Status != http.StatusBadRequest {
+		t.Errorf("no endpoint: status = %d, want 400", res.Status)
+	}
+	if res := app.SendRaw(http.MethodDelete, "/push/subscription", []byte(`{"endpoint":"`+endpointA+`"}`)); res.Status != http.StatusUnauthorized {
+		t.Errorf("signed out: status = %d, want 401", res.Status)
+	}
+	off := apitest.Start(t)
+	if res := del(off.SignInAs("a@example.com"), map[string]string{"endpoint": endpointA}); res.Status != http.StatusServiceUnavailable {
+		t.Errorf("push off: status = %d, want 503", res.Status)
 	}
 }
