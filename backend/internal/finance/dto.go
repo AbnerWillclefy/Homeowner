@@ -152,7 +152,8 @@ type DailyResponse struct {
 // table: that one is unrelated.
 //
 // Installments are the parts of plans still to come; the rest is the outlook
-// worked out by Outlook.
+// worked out by Outlook, plus the Daily allowance and the Pace worked out from
+// its Leftover.
 type MonthCommitment struct {
 	Month        string            `json:"month"`
 	Installments []InstallmentLine `json:"installments"`
@@ -176,6 +177,21 @@ type MonthCommitment struct {
 	// LeftoverCents is the Monthly income minus TotalCents, negative when the
 	// month takes more; absent, not null, when no income is set.
 	LeftoverCents *int64 `json:"leftoverCents,omitempty"`
+	// DailyAllowanceCents is the Leftover over the days left in the month, today
+	// included; present only on the current month (São Paulo) with a Monthly
+	// income, negative when the Leftover is.
+	DailyAllowanceCents *int64 `json:"dailyAllowanceCents,omitempty"`
+	// Pace is the spending so far against the straight line to the month's end;
+	// absent with no Monthly income and on future months, whole on past ones.
+	Pace *PaceDTO `json:"pace,omitempty"`
+}
+
+// PaceDTO is the Pace of a month. SpentCents is the cumulative spend at the end
+// of each day to date; LineEndCents is the straight line's value on the last
+// day, the Monthly income minus the Leftover.
+type PaceDTO struct {
+	SpentCents   []int64 `json:"spentCents"`
+	LineEndCents int64   `json:"lineEndCents"`
 }
 
 // CardBillLine is one credit card's bill in a month: the bank's total when it

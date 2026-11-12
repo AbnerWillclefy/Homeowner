@@ -318,3 +318,127 @@ func TestCommitmentsKeepAPlanOnAnotherSourceAsItsOwnAmount(t *testing.T) {
 		t.Errorf("april = %+v, want the Sofa 2 of 3 in otherInstallmentsCents and total, not on the card", a)
 	}
 }
+
+type paceMonth struct {
+	Month               string
+	LeftoverCents       *int64
+	DailyAllowanceCents *int64
+	Pace                *struct {
+		SpentCents   []int64
+		LineEndCents int64
+	}
+}
+
+// readPace reads the outlook from 2027-03 with the clock at `now`, both the typed
+// months and the raw ones (to check a key is absent, not zero).
+func readPace(t *testing.T, app *apitest.App, c *apitest.Client, now time.Time) ([]paceMonth, []map[string]any) {
+	t.Helper()
+	app.Clock.Set(now)
+	res := c.Get("/me/finance/commitments?from=2027-03")
+	apitest.ExpectStatus(t, res, http.StatusOK)
+	var typed struct{ Months []paceMonth }
+	var raw struct{ Months []map[string]any }
+	if err := json.Unmarshal(res.Raw, &typed); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(res.Raw, &raw); err != nil {
+		t.Fatal(err)
+	}
+	return typed.Months, raw.Months
+}
+
+func TestCommitmentsDailyAllowanceAndPaceOfTheCurrentMonth(t *testing.T) {
+	t.Parallel()
+	app, ana := seedMonth(t)
+	seedRow(t, app, "ana@example.com", "2027-03-02", "expense", -1000)
+	seedRow(t, app, "ana@example.com", "2027-03-03", "expense", -500)
+	seedRow(t, app, "ana@example.com", "2027-03-03", "saving", -7000)   // left out of the spent line
+	seedRow(t, app, "ana@example.com", "2027-03-03", "transfer", -7000) // so is a transfer
+	apitest.ExpectStatus(t, putIncome(ana, 1_000_000), http.StatusNoContent)
+
+	months, raw := readPace(t, app, ana, time.Date(2027, time.March, 3, 12, 0, 0, 0, time.UTC))
+	m := months[0]
+	if m.LeftoverCents == nil || m.DailyAllowanceCents == nil || m.Pace == nil {
+		t.Fatalf("march = %+v, want the leftover, the daily allowance and the pace", m)
+	}
+	// March 3 leaves 29 days, today included.
+	if want := (*m.LeftoverCents + 14) / 29; *m.DailyAllowanceCents < want-1 || *m.DailyAllowanceCents > want+1 {
+		t.Errorf("dailyAllowanceCents = %d, want the leftover %d over 29 days", *m.DailyAllowanceCents, *m.LeftoverCents)
+	}
+	if got := m.Pace.SpentCents; len(got) != 3 || got[0] != 0 || got[1] != 1000 || got[2] != 1500 {
+		t.Errorf("pace spentCents = %v, want [0 1000 1500]", got)
+	}
+	if want := 1_000_000 - *m.LeftoverCents; m.Pace.LineEndCents != want {
+		t.Errorf("pace lineEndCents = %d, want income minus leftover %d", m.Pace.LineEndCents, want)
+	}
+	if raw[0]["totalCents"] != float64(m.Pace.LineEndCents) {
+		t.Errorf("pace lineEndCents = %d, want the month's totalCents %v", m.Pace.LineEndCents, raw[0]["totalCents"])
+	}
+	for _, key := range []string{"month", "installments", "cards", "otherBills", "planned", "plannedCents", "savingCents", "totalCents", "leftoverCents"} {
+		if _, has := raw[0][key]; !has {
+			t.Errorf("march lost its %s key: %v", key, raw[0])
+		}
+	}
+	for _, later := range months[1:] {
+		if later.DailyAllowanceCents != nil || later.Pace != nil {
+			t.Errorf("%s = %+v, want neither a daily allowance nor a pace in a future month", later.Month, later)
+		}
+	}
+}
+
+func TestCommitmentsWithoutIncomeHaveNoDailyAllowanceNorPace(t *testing.T) {
+	t.Parallel()
+	app, ana := seedMonth(t)
+	seedRow(t, app, "ana@example.com", "2027-03-02", "expense", -1000)
+	_, raw := readPace(t, app, ana, time.Date(2027, time.March, 3, 12, 0, 0, 0, time.UTC))
+	for _, m := range raw {
+		for _, key := range []string{"dailyAllowanceCents", "pace"} {
+			if _, has := m[key]; has {
+				t.Errorf("%v has %s with no income", m["month"], key)
+			}
+		}
+	}
+}
+
+func TestCommitmentsDailyAllowanceIsTheWholeLeftoverOnTheLastSaoPauloDay(t *testing.T) {
+	t.Parallel()
+	app, ana := seedMonth(t)
+	apitest.ExpectStatus(t, putIncome(ana, 1_000_000), http.StatusNoContent)
+
+	// 01:00 UTC on April 1 is still March 31 in São Paulo (UTC-3).
+	months, _ := readPace(t, app, ana, time.Date(2027, time.April, 1, 1, 0, 0, 0, time.UTC))
+	m := months[0]
+	if m.DailyAllowanceCents == nil || *m.DailyAllowanceCents != *m.LeftoverCents {
+		t.Errorf("march = %+v, want the full leftover as the daily allowance", m)
+	}
+	if m.Pace == nil || len(m.Pace.SpentCents) != 31 {
+		t.Errorf("march pace = %+v, want all 31 days", m.Pace)
+	}
+	if a := months[1]; a.DailyAllowanceCents != nil || a.Pace != nil {
+		t.Errorf("april = %+v, want nothing before it starts", a)
+	}
+}
+
+func TestCommitmentsPastMonthHasPaceButNoDailyAllowance(t *testing.T) {
+	t.Parallel()
+	app, ana := seedMonth(t)
+	apitest.ExpectStatus(t, putIncome(ana, 1_000_000), http.StatusNoContent)
+	months, _ := readPace(t, app, ana, time.Date(2027, time.April, 10, 12, 0, 0, 0, time.UTC))
+	if m := months[0]; m.DailyAllowanceCents != nil || m.Pace == nil || len(m.Pace.SpentCents) != 31 {
+		t.Errorf("march = %+v, want the whole month's pace and no daily allowance", m)
+	}
+	if a := months[1]; a.DailyAllowanceCents == nil || a.Pace == nil || len(a.Pace.SpentCents) != 10 {
+		t.Errorf("april = %+v, want both, the pace up to April 10", a)
+	}
+}
+
+func TestCommitmentsNegativeLeftoverGivesANegativeDailyAllowance(t *testing.T) {
+	t.Parallel()
+	app, ana := seedMonth(t)
+	apitest.ExpectStatus(t, putIncome(ana, 1), http.StatusNoContent)
+	seedRow(t, app, "ana@example.com", "2027-03-02", "expense", -5000)
+	months, _ := readPace(t, app, ana, time.Date(2027, time.March, 31, 12, 0, 0, 0, time.UTC))
+	if m := months[0]; m.LeftoverCents == nil || *m.LeftoverCents >= 0 || m.DailyAllowanceCents == nil || *m.DailyAllowanceCents != *m.LeftoverCents {
+		t.Errorf("march = %+v, want a negative daily allowance as it is", m)
+	}
+}

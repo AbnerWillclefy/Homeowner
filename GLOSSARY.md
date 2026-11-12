@@ -144,6 +144,14 @@ _Avoid_: Salary, Revenue, Earnings
 What remains of the Monthly income after everything a month takes: Monthly income − (card bills due in the month + other Bills to pay + installments off the card + Planned spending + money already spent off the card this month + the larger of the month's Saving and the Monthly contribution). It can be negative, and is absent when no Monthly income is set.
 _Avoid_: Balance, Surplus, Savings
 
+**Daily allowance**:
+The Leftover divided by the days left in the month, today included (São Paulo calendar). It is negative when the Leftover is, and absent when no Monthly income is set or the month is not the current one.
+_Avoid_: Daily budget, Daily limit
+
+**Pace**:
+The money spent so far this month, day by day (cumulative), against a straight line from 0 on the first day to (Monthly income − Leftover) on the last. Absent when no Monthly income is set; a past month holds all its days. It is not the usual pace, the average of the previous months' spending.
+_Avoid_: Average, Trend
+
 **Planned spending**:
 What each Spending Category is still expected to take in a month, which lowers that month's Leftover. A category with a Spending limit plans its limit; one without plans the average of what it spent in the 3 months before the current one (months before the User's first data left out; a negative average counts as 0). Both subtract what already counts for the category in the month, never going below zero.
 _Avoid_: Budget, Forecast, Reserve
