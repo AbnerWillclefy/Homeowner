@@ -6,7 +6,7 @@ import { cn } from "../lib/cn";
  * Plain HTML table (no Radix). `.br-table` marks it; the look is Tailwind utilities on the parts.
  *
  * Clickable rows: never put `onClick` on a `<tr>`, it cannot take focus. Put a real button or link
- * in the row's first cell and stretch it over the row: `relative` on the TableRow, and
+ * in the row's first cell and stretch it over the row (TableRow is already `relative`): put
  * `after:absolute after:inset-0` on the control. A click anywhere on the row hits the control, and
  * the keyboard reaches it with Tab. Keep other buttons in the row `relative z-10` so they stay above it.
  */
@@ -32,7 +32,7 @@ export function TableBody(props: ComponentProps<"tbody">) {
 }
 
 export function TableRow({ className, ...props }: ComponentProps<"tr">) {
-  return <tr className={cn("relative hover:bg-surface-hover", className)} {...props} />;
+  return <tr className={cn("relative hover:bg-surface-hover [thead_&]:hover:bg-transparent", className)} {...props} />;
 }
 
 type Align = { align?: "start" | "end" };

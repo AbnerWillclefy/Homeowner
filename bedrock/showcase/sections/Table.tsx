@@ -76,7 +76,7 @@ export default function TableSection({ locale }: { locale: Locale }) {
         {head}
         <TableBody>
           {[0, 1, 2].map((i) => (
-            <TableRow key={i}>
+            <TableRow key={i} className="hover:bg-transparent">
               {[0, 1, 2].map((j) => (
                 <TableCell key={j}>
                   <Skeleton className="h-4 w-2/3" />
