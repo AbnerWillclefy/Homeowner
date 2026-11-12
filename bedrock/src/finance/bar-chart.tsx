@@ -38,7 +38,7 @@ export function BarChart({ data, targetCents, label, legend, locale, alternative
             animationDuration={250}
           />
           <Line dataKey="average" type="monotone" stroke="var(--warning)" strokeWidth={2} dot={false} activeDot={false} isAnimationActive={!reduced} animationDuration={250} />
-          {targetCents !== undefined && <ReferenceLine y={targetCents} stroke="var(--text-muted)" strokeDasharray="4 4" />}
+          {targetCents !== undefined && <ReferenceLine y={targetCents} ifOverflow="extendDomain" stroke="var(--text-muted)" strokeDasharray="4 4" />}
           <Tooltip cursor={false} content={<ChartTooltipContent formatValue={(c) => formatAmount(c, { locale })} />} />
         </ComposedChart>
       </ChartContainer>

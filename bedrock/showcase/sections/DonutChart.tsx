@@ -12,6 +12,8 @@ const strings = {
     other: "Outros",
     label: "Moradia leva 41% dos gastos",
     emptyLabel: "Nada gasto neste mês",
+    fewLabel: "Moradia leva 46% dos gastos",
+    few: "Cinco categorias",
     many: "Nove categorias: as seis maiores e Outros",
     none: "Sem gastos",
     names: { housing: "Moradia", groceries: "Mercado", transport: "Transporte", "eating-out": "Restaurantes", health: "Saúde", leisure: "Lazer", shopping: "Compras", pets: "Pets", education: "Educação" },
@@ -24,6 +26,8 @@ const strings = {
     other: "Other",
     label: "Housing takes 41% of spending",
     emptyLabel: "Nothing spent this month",
+    fewLabel: "Housing takes 46% of spending",
+    few: "Five categories",
     many: "Nine categories: the top six and Other",
     none: "Nothing spent",
     names: { housing: "Housing", groceries: "Groceries", transport: "Transport", "eating-out": "Eating out", health: "Health", leisure: "Leisure", shopping: "Shopping", pets: "Pets", education: "Education" },
@@ -73,8 +77,8 @@ export default function DonutChartSection({ locale }: { locale: Locale }) {
         <DonutChart slices={[]} otherLabel={t.other} label={t.emptyLabel} locale={locale} alternative={<Table locale={locale} rows={[]} />} />
       </Card>
       <Card>
-        <CardLabel>5</CardLabel>
-        <DonutChart slices={few} otherLabel={t.other} label={t.label} totalLabel={t.total} locale={locale} alternative={<Table locale={locale} rows={few} />} />
+        <CardLabel>{t.few}</CardLabel>
+        <DonutChart slices={few} otherLabel={t.other} label={t.fewLabel} totalLabel={t.total} locale={locale} alternative={<Table locale={locale} rows={few} />} />
       </Card>
     </Section>
   );
