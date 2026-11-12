@@ -2,13 +2,15 @@ name: ui-screenshots
 
 # A pull request that changes the UI shows it in both locales: its description
 # has a "### pt-BR" and an "### English" heading, each followed by an image.
+# When only Bedrock changes, this takes them itself from the showcase: the implement
+# runner has no browser, so agent pull requests on Bedrock arrived without them.
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
 
 permissions:
-  contents: read
-  pull-requests: read
+  contents: write # pushes screenshots/<head branch>, deleted by ui-screenshots-cleanup.yml
+  pull-requests: write # puts the Bedrock screenshots in the description
 
 concurrency:
   group: ui-screenshots-${{ github.event.pull_request.number }}
@@ -18,23 +20,86 @@ jobs:
   ui-screenshots:
     name: ui-screenshots
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ github.event.pull_request.number }}
+      HEAD_REF: ${{ github.event.pull_request.head.ref }}
     steps:
-      - name: Check the description has screenshots in both locales
+      - name: Find the UI change
+        id: find
         env:
-          GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.pull_request.number }}
-          BODY: ${{ github.event.pull_request.body }}
+          ACTION: ${{ github.event.action }}
         run: |
           ui_files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename' \
             | grep -E '^web/(src|public)/|^web/index\.html$|^bedrock/(src|showcase)/' \
             | grep -vE '\.test\.tsx?$|^web/src/sw' || true)
-          if [[ -z "$ui_files" ]]; then
-            echo "No UI change."
-            exit 0
+          { echo "files<<EOF"; echo "$ui_files"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+          [[ -z "$ui_files" ]] && exit 0
+          grep -qv '^bedrock/' <<<"$ui_files" && exit 0 # the web app's screens need its e2e fakes; the engineer takes those
+
+          body=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq .body)
+          section() { awk -v h="$1" '/^#/ { inside = ($0 ~ "^### *" h " *$"); next } inside' <<<"${body//$'\r'/}"; }
+          has_image() { grep -qE '!\[[^]]*\]\([^)]+\)|<img[^>]+src=' <<<"$1"; }
+          # Take them when an image is missing, and again on a new commit if this check took them before.
+          if ! has_image "$(section 'pt-BR')" || ! has_image "$(section 'English')" \
+            || { [[ "$ACTION" != edited ]] && grep -q "/screenshots/$HEAD_REF/auto-" <<<"$body"; }; then
+            echo "shoot=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - uses: actions/checkout@v4
+        if: steps.find.outputs.shoot
+      - uses: actions/setup-node@v4
+        if: steps.find.outputs.shoot
+        with:
+          node-version-file: bedrock/.nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Screenshot the changed Bedrock sections
+        if: steps.find.outputs.shoot
+        env:
+          CHANGED: ${{ steps.find.outputs.files }}
+          BASE_URL: http://localhost:4175
+          PLAYWRIGHT_DIR: ${{ runner.temp }}/pw/node_modules
+        run: |
+          npm ci
+          npm run build:showcase -w @homeowner/bedrock
+          (cd bedrock && npx vite preview --port 4175 --strictPort &)
+
+          # The same Playwright as web-e2e; no --with-deps, see web-e2e.yml.
+          version=$(jq -r '.packages["node_modules/@playwright/test"].version' web/package-lock.json)
+          npm install --silent --prefix "$RUNNER_TEMP/pw" "playwright@$version"
+          "$PLAYWRIGHT_DIR/.bin/playwright" install chromium
+
+          shots="$RUNNER_TEMP/shots"
+          if git fetch -q --depth 1 origin "refs/heads/screenshots/$HEAD_REF"; then
+            git worktree add -q --detach "$shots" FETCH_HEAD
+          else
+            git worktree add -q --orphan -b shots "$shots"
+          fi
+          rm -f "$shots"/auto-*
+
+          for _ in $(seq 30); do curl -sf "$BASE_URL" >/dev/null && break; sleep 1; done
+          prefix="https://raw.githubusercontent.com/$GITHUB_REPOSITORY/screenshots/$HEAD_REF/"
+          BODY=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq .body) \
+            node .github/scripts/bedrock-screenshots.mjs "$shots" "$prefix" > "$RUNNER_TEMP/body.md"
+
+          git -C "$shots" add -A
+          git -C "$shots" -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "chore: bedrock screenshots" || true
+          git -C "$shots" push -q origin "HEAD:refs/heads/screenshots/$HEAD_REF"
+          # Edits with this token start no new run, so the check below reads the description again.
+          gh api -X PATCH "repos/$GITHUB_REPOSITORY/pulls/$PR" -F "body=@$RUNNER_TEMP/body.md" >/dev/null
+
+      - name: Check the description has screenshots in both locales
+        if: steps.find.outputs.files != ''
+        env:
+          UI_FILES: ${{ steps.find.outputs.files }}
+        run: |
+          body=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq .body)
           # Prints the text under a "### <locale>" heading, up to the next heading.
-          section() { awk -v h="$1" '/^#/ { inside = ($0 ~ "^### *" h " *$"); next } inside' <<<"${BODY//$'\r'/}"; }
+          section() { awk -v h="$1" '/^#/ { inside = ($0 ~ "^### *" h " *$"); next } inside' <<<"${body//$'\r'/}"; }
           has_image() { grep -qE '!\[[^]]*\]\([^)]+\)|<img[^>]+src=' <<<"$1"; }
 
           missing=()
@@ -42,7 +107,7 @@ jobs:
           has_image "$(section 'English')" || missing+=("English")
           if (( ${#missing[@]} )); then
             echo "::error::This pull request changes the UI:"
-            echo "$ui_files"
+            echo "$UI_FILES"
             echo "::error::Add a screenshot under each heading in the description: ${missing[*]}"
             exit 1
           fi

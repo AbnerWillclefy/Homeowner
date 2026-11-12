@@ -41,6 +41,8 @@ A pull request that changes the UI shows each changed screen in both locales; th
 
 The branch is deleted when the pull request closes, so the images are temporary.
 
+A pull request that changes only `bedrock/` needs none of this: the `ui-screenshots` check screenshots the changed showcase sections in both locales and adds them under the two headings. Leave those headings empty.
+
 Onboarding should feel useful rather than quick: explain why each step matters.
 
 Report back: what changed, the typecheck result, and the manual steps to verify it.
