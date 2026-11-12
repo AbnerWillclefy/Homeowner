@@ -11,4 +11,7 @@ web/blob-report
 admin/node_modules
 admin/dist
 admin/.env*.local
+/node_modules
+bedrock/node_modules
+bedrock/dist-showcase
 *.tsbuildinfo

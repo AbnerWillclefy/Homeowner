@@ -60,7 +60,7 @@ floor_for() {
                          printf 'medium\t%s changes the allocator or its referee (ADR 0004)\n' "$file" ;;
     backend/cmd/*|backend/internal/platform/*|backend/internal/server/*|backend/Dockerfile|docker-compose.yml)
                          printf 'medium\t%s changes how the API starts or is wired\n' "$file" ;;
-    */go.mod|*/go.sum|*/package.json|*/package-lock.json)
+    package.json|package-lock.json|*/go.mod|*/go.sum|*/package.json|*/package-lock.json)
                          printf 'medium\t%s changes dependencies\n' "$file" ;;
     web/src/sw.ts|web/src/sw/*|web/vite.config.ts)
                          printf 'medium\t%s changes the service worker or build, which stay cached on phones\n' "$file" ;;
