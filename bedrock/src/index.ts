@@ -1,2 +1,3 @@
 // The exports of this file are Bedrock's public interface: named and side-effect free.
-export {};
+export { Input, type InputProps } from "./components/input";
+export { SearchField } from "./components/search-field";
