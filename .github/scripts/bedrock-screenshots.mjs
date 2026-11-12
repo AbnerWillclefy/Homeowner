@@ -14,10 +14,12 @@ const locales = [
 // "alert-card.tsx" and "AlertCard.tsx" both name the AlertCard section.
 const key = (file) => file.replace(/^.*\//, "").replace(/\.tsx?$/, "").replace(/[^a-z0-9]/gi, "").toLowerCase();
 
-/** The sections whose own file, or whose component's file, changed. */
+/** The sections whose own file, or whose component's file, changed; none when a shared file changed too. */
 export function changedSections(sections, changedFiles) {
-  const changed = new Set(changedFiles.map(key));
-  return sections.filter((s) => changed.has(key(s)));
+  const owned = new Set(sections.map(key));
+  // index.ts only lists the exports, so exporting a new component changes no other section.
+  const changed = changedFiles.filter((f) => !f.endsWith("/index.ts")).map(key);
+  return changed.every((f) => owned.has(f)) ? sections.filter((s) => changed.includes(key(s))) : [];
 }
 
 /** The description with this script's earlier images replaced by `images` ({ "pt-BR": [md], English: [md] }). */

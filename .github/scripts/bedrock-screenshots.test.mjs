@@ -6,8 +6,13 @@ const prefix = "https://raw.githubusercontent.com/o/r/screenshots/b/";
 const images = { "pt-BR": [`![Toast pt-BR](${prefix}auto-Toast-pt-BR.png)`], English: [`![Toast English](${prefix}auto-Toast-en.png)`] };
 
 test("matches sections by their showcase file or their component file", () => {
-  const changed = ["bedrock/src/finance/alert-card.tsx", "bedrock/showcase/sections/Toast.tsx", "bedrock/src/tokens.css"];
+  const changed = ["bedrock/src/finance/alert-card.tsx", "bedrock/showcase/sections/Toast.tsx", "bedrock/src/index.ts"];
   assert.deepEqual(changedSections(["AlertCard", "Button", "Toast"], changed), ["AlertCard", "Toast"]);
+});
+
+test("picks no section when a shared file changed too, so the whole page is shot", () => {
+  const changed = ["bedrock/src/components/button.tsx", "bedrock/src/tokens.css"];
+  assert.deepEqual(changedSections(["Button", "Toast"], changed), []);
 });
 
 test("puts the images under existing headings, keeping the text there", () => {
