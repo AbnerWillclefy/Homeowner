@@ -2,9 +2,9 @@ import { CircleAlert } from "lucide-react";
 import { useId, type ReactNode } from "react";
 import { cn } from "../lib/cn";
 
-type ControlProps = { id: string; "aria-describedby"?: string; "aria-invalid"?: true };
+type ControlProps = { id: string; "aria-labelledby": string;"aria-describedby"?: string; "aria-invalid"?: true };
 
-/** Shared by Input, MoneyInput and (later) Select: label above, hint below, an error that replaces the hint. */
+/** Shared by Input, MoneyInput and Select: label above, hint below, an error that replaces the hint. */
 export function Field({
   label,
   hint,
@@ -22,10 +22,10 @@ export function Field({
   const describedBy = error ? errorId : hint ? hintId : undefined;
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={uid} className="label text-text-muted">
+      <label id={`${uid}-label`} htmlFor={uid} className="label text-text-muted">
         {label}
       </label>
-      {children({ id: uid, "aria-describedby": describedBy, "aria-invalid": error ? true : undefined })}
+      {children({ id: uid, "aria-labelledby": `${uid}-label`, "aria-describedby": describedBy, "aria-invalid": error ? true : undefined })}
       {error ? (
         <p id={errorId} role="alert" className="caption flex items-start gap-1 text-danger">
           <CircleAlert aria-hidden className="size-4 shrink-0" />
