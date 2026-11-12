@@ -56,6 +56,10 @@ type SourceResponse struct {
 	// always null on any other kind.
 	CloseDay *int `json:"closeDay"`
 	DueDay   *int `json:"dueDay"`
+	// BalanceCents and BalanceOn are the latest balance the bank reported and
+	// its day (YYYY-MM-DD); absent on a card and on a Source never synced.
+	BalanceCents *int64  `json:"balanceCents,omitempty"`
+	BalanceOn    *string `json:"balanceOn,omitempty"`
 }
 
 // BillDaysRequest is the body of PUT /me/finance/sources/{id}/bill-days: both

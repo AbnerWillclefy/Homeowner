@@ -61,6 +61,8 @@ type Account struct {
 	// Owner and TaxNumber are the account holder's name and CPF; both are
 	// empty on a card.
 	Owner, TaxNumber string
+	// BalanceCents is the balance the bank reports. Nil means absent or unreadable.
+	BalanceCents *int64
 }
 
 // Party is the other side of a Transaction. It lives in memory only: the sync
