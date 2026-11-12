@@ -1,0 +1,32 @@
+name: bedrock-check
+
+on:
+  pull_request:
+    paths:
+      - "bedrock/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/bedrock-check.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bedrock-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  bedrock-check:
+    name: bedrock-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: bedrock/.nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run typecheck -w @homeowner/bedrock
+      - run: npm test -w @homeowner/bedrock
+      - run: npm run build:showcase -w @homeowner/bedrock

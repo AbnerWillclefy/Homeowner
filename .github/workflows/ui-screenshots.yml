@@ -26,7 +26,7 @@ jobs:
           BODY: ${{ github.event.pull_request.body }}
         run: |
           ui_files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename' \
-            | grep -E '^web/(src|public)/|^web/index\.html$' \
+            | grep -E '^web/(src|public)/|^web/index\.html$|^bedrock/(src|showcase)/' \
             | grep -vE '\.test\.tsx?$|^web/src/sw' || true)
           if [[ -z "$ui_files" ]]; then
             echo "No UI change."

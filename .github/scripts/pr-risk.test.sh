@@ -91,6 +91,12 @@ for f in web/CLAUDE.md backend/CLAUDE.md REVIEW.md AGENTS.md; do
     "floor=high"
 done
 
+for f in package.json package-lock.json bedrock/package.json; do
+  run_case "a dependency change in $f is medium" \
+    "$(files "$(file "$f" modified)")" "$(complete_body medium)" \
+    "floor=medium" "!problem="
+done
+
 run_case "the API's authentication middleware is high" \
   "$(files "$(file backend/internal/server/auth.go modified)")" "$(complete_body high)" \
   "floor=high"

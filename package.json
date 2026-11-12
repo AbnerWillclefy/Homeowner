@@ -1,0 +1,6 @@
+{
+  "name": "homeowner",
+  "private": true,
+  "engines": { "node": ">=22" },
+  "workspaces": ["bedrock"]
+}
