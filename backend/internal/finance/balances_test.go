@@ -144,3 +144,17 @@ func TestBalanceHistoryReadsRangePlusLastBeforeAndNeverAnotherUsers(t *testing.T
 		t.Errorf("read = %v, want only %s: %v", got, id, want)
 	}
 }
+
+func TestNonBRLSourceStoresNoBalance(t *testing.T) {
+	t.Parallel()
+	app, _ := startSync(t, []string{"ana@example.com"})
+	app.RunFinanceSync(t)
+	if _, err := app.DB.Exec(context.Background(), `UPDATE finance_sources SET currency = 'USD'; DELETE FROM finance_source_balances`); err != nil {
+		t.Fatal(err)
+	}
+	dueAgain(t, app)
+	app.RunFinanceSync(t)
+	if n := balanceRows(t, app); n != 0 {
+		t.Errorf("rows = %d, want 0 for a USD Source", n)
+	}
+}
