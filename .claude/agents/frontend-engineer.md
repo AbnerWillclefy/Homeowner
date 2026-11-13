@@ -43,7 +43,7 @@ The branch is deleted when the pull request closes, so the images are temporary.
 
 A pull request that changes only `bedrock/` needs none of this: the `ui-screenshots` check screenshots the changed showcase sections in both locales and adds them under the two headings. Leave those headings empty.
 
-A pull request that changes `revenue/` shows the whole screen in pt-BR and dark theme instead: at 390px wide under `### Mobile` and at 1440px wide under `### Desktop`, taken the same way as steps 1 to 3.
+A pull request that changes `revenue/` shows the whole screen in pt-BR and dark theme instead: at 390px wide under `### Mobile` and at 1440px wide under `### Desktop`. Unless it also changes `web/`, the `ui-screenshots` check takes them itself, of each screen whose `revenue/src/domains/<screen>/` folder changed, against the fake API in `.github/scripts/revenue-fake-api.mjs`. Leave both headings empty. A screen that reads a new endpoint adds its answer to that fake, or the check fails naming the request.
 
 Onboarding should feel useful rather than quick: explain why each step matters.
 
