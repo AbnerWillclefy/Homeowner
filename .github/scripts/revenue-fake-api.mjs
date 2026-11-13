@@ -32,6 +32,10 @@ function transactions(month, today) {
     id: "t11", postedOn: on[0], countsOn: on[0], description: "Magazine Luiza Geladeira Frost Free", sourceName: "Nubank",
     amountCents: -32_490, currency: "BRL", type: "expense", spendingCategory: "shopping", installment: { number: 3, total: 10 },
   });
+  rows.push({
+    id: "t12", postedOn: on[1], countsOn: on[1], description: "PIX Pagamento 8841", sourceName: "Itaú",
+    amountCents: -4_500, currency: "BRL", type: "expense", spendingCategory: "other", categorySetBy: "fallback", installment: null,
+  });
   rows.sort((a, b) => b.postedOn.localeCompare(a.postedOn));
   const expenses = rows.filter((t) => t.type === "expense");
   const byCategory = {};
@@ -40,6 +44,7 @@ function transactions(month, today) {
     month,
     spentCents: expenses.reduce((sum, t) => sum - t.amountCents, 0),
     categories: Object.entries(byCategory).map(([category, spentCents]) => ({ category, spentCents })),
+    limits: { groceries: 40_000, eating_out: 5_000 },
     transactions: rows,
   };
 }
@@ -75,12 +80,27 @@ function bills(month) {
   ];
 }
 
+/** The six months ending at `to`, each with a little less spent in groceries the further back it goes. */
+function history(to, months) {
+  const [y, m] = to.split("-").map(Number);
+  return {
+    to,
+    months: Array.from({ length: months }, (_, i) => {
+      const index = y * 12 + (m - 1) - (months - 1 - i);
+      const month = `${Math.floor(index / 12)}-${pad((index % 12) + 1)}`;
+      const groceries = 28_740 + (i - months + 1) * 3_000;
+      return { month, spentCents: groceries + 8_990, categories: [{ category: "groceries", spentCents: groceries }, { category: "eating_out", spentCents: 8_990 }] };
+    }),
+  };
+}
+
 /** The answer to a request, or null when there is no fake for it. `today` is `YYYY-MM-DD`. */
 export function answer(method, url, today) {
   const params = url.searchParams;
   const route = `${method} ${url.pathname}`;
   if (route === "GET /me/finance") return { status: 200, body: {} };
   if (route === "GET /me/finance/transactions") return { status: 200, body: transactions(params.get("month"), today) };
+  if (route === "GET /me/finance/history") return { status: 200, body: history(params.get("to"), Number(params.get("months"))) };
   if (route === "GET /me/finance/commitments") return { status: 200, body: commitments(params.get("from"), today) };
   if (route === "GET /me/finance/bills") return { status: 200, body: bills(params.get("month")) };
   if (route === "GET /me/finance/bill-suggestions") return { status: 200, body: [{ merchantKey: "enel", name: "Conta de luz Enel", amountCents: 21_480, dueDay: 10 }] };
