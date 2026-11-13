@@ -62,21 +62,70 @@ func (s *Store) CreateInvestment(ctx context.Context, userID string, i Investmen
 	return out, tx.Commit(ctx)
 }
 
+// investmentCols and scanInvestment read an InvestmentResponse from finance_investments.
+const investmentCols = `id, name, value_cents, serves, pluggy_investment_id IS NOT NULL, bank_reported, bank_value_cents, value_set_by`
+
+func scanInvestment(row pgx.Row) (i InvestmentResponse, err error) {
+	var bank bool
+	var setBy string
+	if err = row.Scan(&i.ID, &i.Name, &i.ValueCents, &i.Serves, &bank, &i.ReportedByBank, &i.BankValueCents, &setBy); err != nil {
+		return
+	}
+	if i.Source = "hand"; bank {
+		i.Source, i.Edited = "pluggy", setBy == "user"
+	} else {
+		i.BankValueCents = nil
+	}
+	return
+}
+
 // UpdateInvestment replaces the User's Investment; found is false when it is not theirs.
+// On a bank Investment a value other than the stored one marks it edited, so
+// the sync stops overwriting it; the same value, with a new name or pick, does not.
 func (s *Store) UpdateInvestment(ctx context.Context, userID, id string, i InvestmentRequest, now time.Time) (InvestmentResponse, bool, error) {
-	out := InvestmentResponse{ID: id, Name: i.Name, ValueCents: i.ValueCents, Serves: &i.Serves, Source: "hand"}
+	return s.writeInvestment(ctx, userID, id, now, `
+		UPDATE finance_investments SET name = $3, serves = $5, updated_at = $6,
+			value_set_by = CASE WHEN value_cents <> $4 THEN 'user' ELSE value_set_by END, value_cents = $4
+		WHERE id = $1 AND user_id = $2 RETURNING `+investmentCols, id, userID, i.Name, i.ValueCents, i.Serves, now)
+}
+
+// UseBankValue gives the User's bank Investment the bank's value back, so the
+// sync follows the bank again. found is false when it is not theirs; ErrNotBank
+// when it is theirs but hand-typed.
+func (s *Store) UseBankValue(ctx context.Context, userID, id string, now time.Time) (InvestmentResponse, bool, error) {
+	i, found, err := s.writeInvestment(ctx, userID, id, now, `
+		UPDATE finance_investments SET value_cents = bank_value_cents, value_set_by = 'bank', updated_at = $3
+		WHERE id = $1 AND user_id = $2 AND pluggy_investment_id IS NOT NULL RETURNING `+investmentCols, id, userID, now)
+	if err == nil && !found {
+		var hand bool
+		switch e := s.db.QueryRow(ctx, `SELECT true FROM finance_investments WHERE id = $1 AND user_id = $2`, id, userID).Scan(&hand); {
+		case e == nil:
+			err = ErrNotBank
+		case !errors.Is(e, pgx.ErrNoRows):
+			err = e
+		}
+	}
+	return i, found, err
+}
+
+// ErrNotBank is UseBankValue on a hand-typed Investment.
+var ErrNotBank = errors.New("not a bank investment")
+
+// writeInvestment runs an UPDATE ... RETURNING of one Investment and writes its value to today's history.
+func (s *Store) writeInvestment(ctx context.Context, userID, id string, now time.Time, query string, args ...any) (InvestmentResponse, bool, error) {
 	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return InvestmentResponse{}, false, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // a no-op after Commit
+	out, err := scanInvestment(tx.QueryRow(ctx, query, args...))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return out, false, nil
+	}
 	if err != nil {
 		return out, false, err
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck // a no-op after Commit
-	tag, err := tx.Exec(ctx, `
-		UPDATE finance_investments SET name = $3, value_cents = $4, serves = $5, updated_at = $6
-		WHERE id = $1 AND user_id = $2 AND pluggy_investment_id IS NULL`, id, userID, i.Name, i.ValueCents, i.Serves, now)
-	if err != nil || tag.RowsAffected() != 1 {
-		return out, false, err
-	}
-	if err := RecordInvestmentValue(ctx, tx, userID, id, i.ValueCents, now); err != nil {
+	if err := RecordInvestmentValue(ctx, tx, userID, id, out.ValueCents, now); err != nil {
 		return out, false, err
 	}
 	return out, true, tx.Commit(ctx)
@@ -149,22 +198,16 @@ func (s *Store) UpsertBankInvestments(ctx context.Context, userID, itemID string
 
 // Investments lists the User's Investments by name, then id.
 func (s *Store) Investments(ctx context.Context, userID string) ([]InvestmentResponse, error) {
-	rows, err := s.db.Query(ctx, `
-		SELECT id, name, value_cents, serves, pluggy_investment_id IS NOT NULL, bank_reported FROM finance_investments
-		WHERE user_id = $1 ORDER BY name, id`, userID)
+	rows, err := s.db.Query(ctx, `SELECT `+investmentCols+` FROM finance_investments WHERE user_id = $1 ORDER BY name, id`, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	out := []InvestmentResponse{}
 	for rows.Next() {
-		var i InvestmentResponse
-		var bank bool
-		if err := rows.Scan(&i.ID, &i.Name, &i.ValueCents, &i.Serves, &bank, &i.ReportedByBank); err != nil {
+		i, err := scanInvestment(rows)
+		if err != nil {
 			return nil, err
-		}
-		if i.Source = "hand"; bank {
-			i.Source = "pluggy"
 		}
 		out = append(out, i)
 	}

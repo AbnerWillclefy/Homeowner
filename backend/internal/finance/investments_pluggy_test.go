@@ -196,16 +196,95 @@ func TestABankInvestmentCannotBeDeleted(t *testing.T) {
 	}
 }
 
-func TestABankInvestmentCannotBeHandEdited(t *testing.T) {
+func setSQL(t *testing.T, app *apitest.App, id, set string) {
+	t.Helper()
+	if _, err := app.DB.Exec(context.Background(), "UPDATE finance_investments SET "+set+" WHERE id = $1", id); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestEditedBankInvestmentWinsUntilTheBankValueIsTaken(t *testing.T) {
 	t.Parallel()
 	app, users := startSync(t, []string{"ana@example.com"})
 	ana := users["ana@example.com"]
 	app.RunFinanceSync(t)
-	id := investmentNamed(t, ana, largestName)["id"].(string)
-	apitest.ExpectStatus(t, ana.Put("/me/finance/investments/"+id, investmentBody("x", 1, "goals")), http.StatusNotFound)
-	if i := investmentNamed(t, ana, largestName); i["serves"] != nil || i["valueCents"] != float64(largestCents) {
-		t.Errorf("after a refused PUT = %v, want serves null and the bank value", i)
+	i := investmentNamed(t, ana, largestName)
+	id := i["id"].(string)
+	if i["edited"] != false || i["bankValueCents"] != float64(largestCents) {
+		t.Fatalf("never edited = %v, want edited false and the bank value", i)
 	}
+
+	// A rename alone does not mark it edited.
+	apitest.ExpectStatus(t, ana.Put("/me/finance/investments/"+id, investmentBody("Renamed", largestCents, "goals")), http.StatusOK)
+	if i := investmentNamed(t, ana, "Renamed"); i["edited"] != false || i["serves"] != "goals" {
+		t.Errorf("after a rename = %v, want not edited", i)
+	}
+
+	app.Clock.Advance(25 * time.Hour)
+	res := ana.Put("/me/finance/investments/"+id, investmentBody("Renamed", 5000, "goals"))
+	apitest.ExpectStatus(t, res, http.StatusOK)
+	if res.Body["edited"] != true || res.Body["valueCents"] != float64(5000) || res.Body["bankValueCents"] != float64(largestCents) {
+		t.Errorf("PUT = %s, want edited at 5000 beside the bank value", res.Raw)
+	}
+
+	// The bank moves, the sync keeps the User's figure and shows the bank's.
+	setSQL(t, app, id, "bank_value_cents = 1")
+	app.Clock.Advance(25 * time.Hour)
+	app.RunFinanceSync(t)
+	if i := investmentNamed(t, ana, "Renamed"); i["valueCents"] != float64(5000) || i["edited"] != true || i["bankValueCents"] != float64(largestCents) {
+		t.Errorf("after sync = %v, want 5000 edited, bank value %d", i, largestCents)
+	}
+
+	app.Clock.Advance(25 * time.Hour)
+	res = ana.Post("/me/finance/investments/"+id+"/use-bank-value", nil)
+	apitest.ExpectStatus(t, res, http.StatusOK)
+	if res.Body["valueCents"] != float64(largestCents) || res.Body["edited"] != false {
+		t.Errorf("use-bank-value = %s, want the bank value, not edited", res.Raw)
+	}
+
+	// The sync follows the bank again.
+	setSQL(t, app, id, "value_cents = 1")
+	app.Clock.Advance(25 * time.Hour)
+	app.RunFinanceSync(t)
+	if i := investmentNamed(t, ana, "Renamed"); i["valueCents"] != float64(largestCents) || i["edited"] != false {
+		t.Errorf("after following sync = %v, want %d", i, largestCents)
+	}
+
+	got := history(t, app, "ana@example.com", id)
+	var values []int64
+	for _, p := range got {
+		values = append(values, p.Value)
+	}
+	want := []int64{largestCents, 5000, 5000, largestCents, largestCents}
+	if len(values) != len(want) {
+		t.Fatalf("history = %v, want %v", values, want)
+	}
+	for n := range want {
+		if values[n] != want[n] {
+			t.Fatalf("history = %v, want %v", values, want)
+		}
+	}
+}
+
+func TestUseBankValueRefusals(t *testing.T) {
+	t.Parallel()
+	app, users := startSync(t, []string{"ana@example.com", "bia@example.com"})
+	ana, bia := users["ana@example.com"], users["bia@example.com"]
+	app.RunFinanceSync(t)
+	id := investmentNamed(t, ana, largestName)["id"].(string)
+	hand := newInvestment(t, ana, "CDB", 1000, "reserve")
+
+	apitest.ExpectStatus(t, bia.Post("/me/finance/investments/"+id+"/use-bank-value", nil), http.StatusNotFound)
+	apitest.ExpectStatus(t, ana.Post("/me/finance/investments/nope/use-bank-value", nil), http.StatusNotFound)
+	res := ana.Post("/me/finance/investments/"+hand+"/use-bank-value", nil)
+	if res.Status != http.StatusConflict || res.Body["error"] != "not a bank investment" {
+		t.Errorf("hand-typed = %d %s, want 409", res.Status, res.Raw)
+	}
+	i := investmentNamed(t, ana, "CDB")
+	if _, has := i["bankValueCents"]; has || i["edited"] != false {
+		t.Errorf("hand-typed = %v, want no bankValueCents and not edited", i)
+	}
+	apitest.ExpectStatus(t, app.SignInAs("bob@example.com").Post("/me/finance/investments/"+id+"/use-bank-value", nil), http.StatusForbidden)
 }
 
 func TestSyncLeavesOutInvestmentsNotInReais(t *testing.T) {

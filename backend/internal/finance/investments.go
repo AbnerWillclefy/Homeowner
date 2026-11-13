@@ -1,6 +1,7 @@
 package finance
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"unicode"
@@ -32,6 +33,10 @@ type InvestmentResponse struct {
 	Serves         *string `json:"serves"`
 	Source         string  `json:"source"`
 	ReportedByBank *bool   `json:"reportedByBank,omitempty"`
+	// Edited is true on a bank Investment whose value the User set; BankValueCents
+	// is then what the bank reports, and is omitted on a hand-typed one.
+	Edited         bool   `json:"edited"`
+	BankValueCents *int64 `json:"bankValueCents,omitempty"`
 }
 
 // CreateInvestment answers POST /me/finance/investments.
@@ -48,8 +53,8 @@ func (h *Handler) CreateInvestment(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusCreated, i)
 }
 
-// UpdateInvestment answers PUT /me/finance/investments/{id}. A malformed id,
-// another User's Investment and a bank Investment (see PutInvestmentServes) all answer 404.
+// UpdateInvestment answers PUT /me/finance/investments/{id}. A malformed id and
+// another User's Investment answer 404. A new value on a bank Investment is kept over the sync's.
 func (h *Handler) UpdateInvestment(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if !chores.ValidID(id) {
@@ -62,6 +67,23 @@ func (h *Handler) UpdateInvestment(w http.ResponseWriter, r *http.Request) {
 	}
 	i, found, err := h.store.UpdateInvestment(r.Context(), identity.CurrentUser(r.Context()).ID, id, req, h.clk.Now())
 	h.answer(w, found, err, "update investment", func() { httpx.WriteJSON(w, http.StatusOK, i) })
+}
+
+// UseBankValue answers POST /me/finance/investments/{id}/use-bank-value: the
+// bank's value replaces the User's and the sync follows the bank again. A
+// malformed id and another User's Investment answer 404; a hand-typed one 409.
+func (h *Handler) UseBankValue(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if !chores.ValidID(id) {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return
+	}
+	i, found, err := h.store.UseBankValue(r.Context(), identity.CurrentUser(r.Context()).ID, id, h.clk.Now())
+	if errors.Is(err, ErrNotBank) {
+		httpx.WriteError(w, http.StatusConflict, err.Error())
+		return
+	}
+	h.answer(w, found, err, "use bank value", func() { httpx.WriteJSON(w, http.StatusOK, i) })
 }
 
 // DeleteInvestment answers DELETE /me/finance/investments/{id}. A bank
