@@ -258,7 +258,7 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 		o := outlook[i]
 		m.Cards, m.OtherBills = []CardBillLine{}, []OtherBillLine{}
 		for _, c := range o.Cards {
-			m.Cards = append(m.Cards, CardBillLine(c))
+			m.Cards = append(m.Cards, CardBillLine{c.SourceID, c.Name, c.AmountCents, c.BillDaysKnown, c.FromBank, dateOrNil(c.DueOn), dateOrNil(c.ClosesOn)})
 		}
 		for _, b := range o.OtherBills {
 			m.OtherBills = append(m.OtherBills, OtherBillLine(b))
@@ -646,4 +646,13 @@ func credentialProblem(v string) string {
 		return "must not contain control characters"
 	}
 	return ""
+}
+
+// dateOrNil formats a day as YYYY-MM-DD, nil when unknown.
+func dateOrNil(t *time.Time) *string {
+	if t == nil {
+		return nil
+	}
+	d := t.Format(time.DateOnly)
+	return &d
 }

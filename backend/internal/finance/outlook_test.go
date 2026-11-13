@@ -28,6 +28,11 @@ func TestOutlook(t *testing.T) {
 		return MonthBill{BillResponse: BillResponse{ID: id, Name: id, ExpectedCents: cents}, Paid: paid, CardPaid: byCard}
 	}
 	one := func(card string, known bool) []Card { return []Card{{ID: card, Name: card, BillDaysKnown: known}} }
+	// fromBank is a card bill the bank reported, due on the given day and closed on 2026-11-03.
+	fromBank := func(id string, cents int64, due string) CardBill {
+		dd, cl := d(due), d("2026-11-03")
+		return CardBill{id, id, cents, true, true, &dd, &cl}
+	}
 	type want struct {
 		cards    []CardBill // month 0
 		next     []CardBill // month 1, checked when set
@@ -48,110 +53,110 @@ func TestOutlook(t *testing.T) {
 		"charges land in the month they count on": {
 			rows:  []Txn{spend("a", "2026-11-03", 1000), spend("a", "2026-12-03", 400)},
 			cards: one("a", true),
-			want:  want{cards: []CardBill{{"a", "a", 1000, true}}, next: []CardBill{{"a", "a", 400, true}}, total: 1000},
+			want:  want{cards: []CardBill{{"a", "a", 1000, true, false, nil, nil}}, next: []CardBill{{"a", "a", 400, true, false, nil, nil}}, total: 1000},
 		},
 		"a refund lowers the bill": {
 			rows:  []Txn{spend("a", "2026-11-03", 1000), {SourceID: "a", PostedOn: d("2026-11-04"), AmountCents: 300, Type: "expense"}},
 			cards: one("a", true),
-			want:  want{cards: []CardBill{{"a", "a", 700, true}}, total: 700},
+			want:  want{cards: []CardBill{{"a", "a", 700, true, false, nil, nil}}, total: 700},
 		},
 		"a bill payment transfer never counts": {
 			rows:  []Txn{spend("a", "2026-11-03", 1000), {SourceID: "a", PostedOn: d("2026-11-05"), AmountCents: 1000, Type: "transfer"}},
 			cards: one("a", true),
-			want:  want{cards: []CardBill{{"a", "a", 1000, true}}, total: 1000},
+			want:  want{cards: []CardBill{{"a", "a", 1000, true, false, nil, nil}}, total: 1000},
 		},
 		"a refund heavy month is negative": {
 			rows:  []Txn{{SourceID: "a", PostedOn: d("2026-11-04"), AmountCents: 300, Type: "expense"}},
 			cards: one("a", true),
-			want:  want{cards: []CardBill{{"a", "a", -300, true}}, total: -300},
+			want:  want{cards: []CardBill{{"a", "a", -300, true, false, nil, nil}}, total: -300},
 		},
 		"a card with nothing has a zero bill": {
 			cards: one("a", true),
-			want:  want{cards: []CardBill{{"a", "a", 0, true}}},
+			want:  want{cards: []CardBill{{"a", "a", 0, true, false, nil, nil}}},
 		},
 		"two cards each get their own bill and other sources are not cards": {
 			rows:  []Txn{spend("a", "2026-11-03", 100), spend("b", "2026-11-03", 200), spend("checking", "2026-11-03", 999)},
 			cards: []Card{{ID: "a", Name: "a", BillDaysKnown: true}, {ID: "b", Name: "b", BillDaysKnown: true}},
-			want:  want{cards: []CardBill{{"a", "a", 100, true}, {"b", "b", 200, true}}, total: 300},
+			want:  want{cards: []CardBill{{"a", "a", 100, true, false, nil, nil}, {"b", "b", 200, true, false, nil, nil}}, total: 300},
 		},
 		"a bill due in the month replaces the computed sum and the owed installments": {
 			rows:  []Txn{spend("a", "2026-11-03", 1000)},
 			cards: withBills("a", stored("2026-11-03", "2026-11-10", 5000)),
 			plans: []Plan{{Name: "TV", Number: 3, Total: 10, AmountCents: 2500, Month: d("2026-10-01"), SourceID: "a", Card: true}},
-			want:  want{cards: []CardBill{{"a", "a", 5000, true}}, total: 5000},
+			want:  want{cards: []CardBill{fromBank("a", 5000, "2026-11-10")}, total: 5000},
 		},
 		"a credit balance bill lowers the month as the bank says": {
 			cards: withBills("a", stored("2026-11-03", "2026-11-10", -700)),
-			want:  want{cards: []CardBill{{"a", "a", -700, true}}, total: -700},
+			want:  want{cards: []CardBill{fromBank("a", -700, "2026-11-10")}, total: -700},
 		},
 		"the open month counts only charges posted on or after the latest closing, plus installments": {
 			rows: []Txn{counted("a", "2026-10-02", "2026-11-10", 700), counted("a", "2026-10-03", "2026-11-10", 800),
 				counted("a", "2026-10-05", "2026-11-10", 300)},
 			cards: withBills("a", stored("2026-09-03", "2026-09-10", 1), stored("2026-10-03", "2026-10-10", 9999)),
 			plans: []Plan{{Name: "TV", Number: 3, Total: 10, AmountCents: 250, Month: d("2026-10-01"), SourceID: "a", Card: true}},
-			want:  want{cards: []CardBill{{"a", "a", 1350, true}}, total: 1350},
+			want:  want{cards: []CardBill{{"a", "a", 1350, true, false, nil, nil}}, total: 1350},
 		},
 		"a bill due in a later month does not cut the open month": {
 			rows:  []Txn{counted("a", "2026-10-02", "2026-11-10", 700)},
 			cards: withBills("a", stored("2026-11-03", "2026-12-10", 9999)),
-			want:  want{cards: []CardBill{{"a", "a", 700, true}}, next: []CardBill{{"a", "a", 9999, true}}, total: 700},
+			want:  want{cards: []CardBill{{"a", "a", 700, true, false, nil, nil}}, next: []CardBill{fromBank("a", 9999, "2026-12-10")}, total: 700},
 		},
 		"the month after a bill counts only what posted after its closing": {
 			rows:  []Txn{counted("a", "2026-11-02", "2026-12-10", 700), counted("a", "2026-11-05", "2026-12-10", 300)},
 			cards: withBills("a", stored("2026-11-03", "2026-11-10", 5000)),
-			want:  want{cards: []CardBill{{"a", "a", 5000, true}}, next: []CardBill{{"a", "a", 300, true}}, total: 5000},
+			want:  want{cards: []CardBill{fromBank("a", 5000, "2026-11-10")}, next: []CardBill{{"a", "a", 300, true, false, nil, nil}}, total: 5000},
 		},
 		"a card with bills and a card without each keep their own rule": {
 			rows: []Txn{spend("a", "2026-11-03", 100), spend("b", "2026-11-03", 200)},
 			cards: []Card{{ID: "a", Name: "a", BillDaysKnown: true, Bills: []StoredBill{stored("2026-11-03", "2026-11-10", 5000)}},
 				{ID: "b", Name: "b", BillDaysKnown: true}},
-			want: want{cards: []CardBill{{"a", "a", 5000, true}, {"b", "b", 200, true}}, total: 5200},
+			want: want{cards: []CardBill{fromBank("a", 5000, "2026-11-10"), {"b", "b", 200, true, false, nil, nil}}, total: 5200},
 		},
 		"a card without bill days is flagged": {
 			rows:  []Txn{spend("a", "2026-11-03", 100)},
 			cards: one("a", false),
-			want:  want{cards: []CardBill{{"a", "a", 100, false}}, total: 100},
+			want:  want{cards: []CardBill{{"a", "a", 100, false, false, nil, nil}}, total: 100},
 		},
 		"a charged installment counts once and later ones are projected": {
 			rows:  []Txn{spend("a", "2026-11-05", 2500)},
 			cards: one("a", true),
 			plans: []Plan{{Name: "TV", Number: 3, Total: 10, AmountCents: 2500, Month: nov, SourceID: "a", Card: true}},
-			want:  want{cards: []CardBill{{"a", "a", 2500, true}}, next: []CardBill{{"a", "a", 2500, true}}, total: 2500},
+			want:  want{cards: []CardBill{{"a", "a", 2500, true, false, nil, nil}}, next: []CardBill{{"a", "a", 2500, true, false, nil, nil}}, total: 2500},
 		},
 		"a charge on a bill not yet due is not projected again": {
 			rows:  []Txn{spend("a", "2026-12-05", 2500)},
 			cards: one("a", true),
 			plans: []Plan{{Name: "TV", Number: 3, Total: 3, AmountCents: 2500, Month: d("2026-12-01"), SourceID: "a", Card: true}},
-			want:  want{cards: []CardBill{{"a", "a", 0, true}}, next: []CardBill{{"a", "a", 2500, true}}},
+			want:  want{cards: []CardBill{{"a", "a", 0, true, false, nil, nil}}, next: []CardBill{{"a", "a", 2500, true, false, nil, nil}}},
 		},
 		"a plan whose latest charge is months old still owes from the asked month on": {
 			cards: one("a", true),
 			plans: []Plan{{Name: "TV", Number: 1, Total: 4, AmountCents: 100, Month: d("2026-09-01"), SourceID: "a", Card: true}},
-			want:  want{cards: []CardBill{{"a", "a", 100, true}}, next: []CardBill{{"a", "a", 100, true}}, total: 100},
+			want:  want{cards: []CardBill{{"a", "a", 100, true, false, nil, nil}}, next: []CardBill{{"a", "a", 100, true, false, nil, nil}}, total: 100},
 		},
 		"other bills: a paid one at its snapshot and a card paid one left out": {
 			cards: one("a", true),
 			bills: []MonthBill{bill("rent", 5000, true, false), bill("gym", 300, false, false), bill("netflix", 50, true, true)},
-			want: want{cards: []CardBill{{"a", "a", 0, true}}, next: []CardBill{{"a", "a", 0, true}},
+			want: want{cards: []CardBill{{"a", "a", 0, true, false, nil, nil}}, next: []CardBill{{"a", "a", 0, true, false, nil, nil}},
 				other: []OtherBill{{"rent", "rent", 5000, true}, {"gym", "gym", 300, false}}, total: 5300},
 		},
 		"a card paid bill is dropped only for its own month": {
 			cards:     one("a", true),
 			bills:     []MonthBill{bill("netflix", 50, true, true)},
 			nextBills: []MonthBill{bill("netflix", 50, false, false)},
-			want:      want{cards: []CardBill{{"a", "a", 0, true}}},
+			want:      want{cards: []CardBill{{"a", "a", 0, true, false, nil, nil}}},
 		},
 		"no income leaves the leftover absent": {
 			rows: []Txn{spend("a", "2026-11-03", 100)}, cards: one("a", true),
-			want: want{cards: []CardBill{{"a", "a", 100, true}}, total: 100},
+			want: want{cards: []CardBill{{"a", "a", 100, true, false, nil, nil}}, total: 100},
 		},
 		"income above the total leaves the rest": {
 			rows: []Txn{spend("a", "2026-11-03", 400)}, cards: one("a", true), income: i64(1000),
-			want: want{cards: []CardBill{{"a", "a", 400, true}}, total: 400, leftover: i64(600)},
+			want: want{cards: []CardBill{{"a", "a", 400, true, false, nil, nil}}, total: 400, leftover: i64(600)},
 		},
 		"a total above the income is a negative leftover": {
 			rows: []Txn{spend("a", "2026-11-03", 1500)}, cards: one("a", true), income: i64(1000),
-			want: want{cards: []CardBill{{"a", "a", 1500, true}}, total: 1500, leftover: i64(-500)},
+			want: want{cards: []CardBill{{"a", "a", 1500, true, false, nil, nil}}, total: 1500, leftover: i64(-500)},
 		},
 	} {
 		got := Outlook(c.rows, c.cards, c.plans, [][]MonthBill{c.bills, c.nextBills}, c.income, nil, nil, 0, time.Time{}, nov, 2)
