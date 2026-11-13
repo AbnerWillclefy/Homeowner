@@ -329,6 +329,7 @@ func TestCommitmentsKeepAPlanOnAnotherSourceAsItsOwnAmount(t *testing.T) {
 type paceMonth struct {
 	Month               string
 	LeftoverCents       *int64
+	PlannedCents        int64
 	DailyAllowanceCents *int64
 	Pace                *struct {
 		SpentCents   []int64
@@ -362,15 +363,20 @@ func TestCommitmentsDailyAllowanceAndPaceOfTheCurrentMonth(t *testing.T) {
 	seedRow(t, app, "ana@example.com", "2027-03-03", "saving", -7000)   // left out of the spent line
 	seedRow(t, app, "ana@example.com", "2027-03-03", "transfer", -7000) // so is a transfer
 	apitest.ExpectStatus(t, putIncome(ana, 1_000_000), http.StatusNoContent)
+	apitest.ExpectStatus(t, putLimit(ana, "groceries", map[string]any{"limitCents": 290_000}), http.StatusNoContent)
 
 	months, raw := readPace(t, app, ana, time.Date(2027, time.March, 3, 12, 0, 0, 0, time.UTC))
 	m := months[0]
 	if m.LeftoverCents == nil || m.DailyAllowanceCents == nil || m.Pace == nil {
 		t.Fatalf("march = %+v, want the leftover, the daily allowance and the pace", m)
 	}
-	// March 3 leaves 29 days, today included.
-	if want := (*m.LeftoverCents + 14) / 29; *m.DailyAllowanceCents < want-1 || *m.DailyAllowanceCents > want+1 {
-		t.Errorf("dailyAllowanceCents = %d, want the leftover %d over 29 days", *m.DailyAllowanceCents, *m.LeftoverCents)
+	if m.PlannedCents <= 0 {
+		t.Fatalf("march plannedCents = %d, want some planned spending to tell the two leftovers apart", m.PlannedCents)
+	}
+	// March 3 leaves 29 days, today included. The planned spending is what those days are for, so it is not taken out twice.
+	today := *m.LeftoverCents + m.PlannedCents
+	if want := (today + 14) / 29; *m.DailyAllowanceCents < want-1 || *m.DailyAllowanceCents > want+1 {
+		t.Errorf("dailyAllowanceCents = %d, want today's leftover %d over 29 days", *m.DailyAllowanceCents, today)
 	}
 	if got := m.Pace.SpentCents; len(got) != 3 || got[0] != 0 || got[1] != 1000 || got[2] != 1500 {
 		t.Errorf("pace spentCents = %v, want [0 1000 1500]", got)

@@ -7,9 +7,10 @@ func sameMonth(a, b time.Time) bool {
 	return a.Year() == b.Year() && a.Month() == b.Month()
 }
 
-// DailyAllowance is the Leftover split over the days left in `month`, today
-// included, in cents, rounded half up (a negative Leftover gives a negative
-// allowance). Nil when there is no Leftover (no Monthly income) or `month` is
+// DailyAllowance is `leftover` (the Leftover plus the Planned spending) split
+// over the days left in `month`, today included, in cents, rounded half up (a
+// negative leftover gives a negative allowance). Nil when there is no leftover
+// (no Monthly income) or `month` is
 // not today's month (São Paulo day, see postedOn). The days left are at least
 // 1, so it never divides by zero.
 func DailyAllowance(leftover *int64, today, month time.Time) *int64 {

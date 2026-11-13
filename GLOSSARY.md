@@ -149,7 +149,7 @@ What remains of the Monthly income after everything a month takes: Monthly incom
 _Avoid_: Balance, Surplus, Savings
 
 **Daily allowance**:
-The Leftover divided by the days left in the month, today included (São Paulo calendar). It is negative when the Leftover is, and absent when no Monthly income is set or the month is not the current one.
+The Leftover with the Planned spending added back, divided by the days left in the month, today included (São Paulo calendar): the Planned spending is what those days are for, so it is not taken out twice. It is negative when that sum is, and absent when no Monthly income is set or the month is not the current one.
 _Avoid_: Daily budget, Daily limit
 
 **Pace**:
