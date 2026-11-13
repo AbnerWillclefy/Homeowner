@@ -321,15 +321,18 @@ func digits(s string) string {
 	}, s)
 }
 
-// toRows picks what to store: pending rows are left out (they come back as
-// posted), and so are rows that are not BRL, which are counted. On a card
+// toRows picks what to store: an account's pending rows are left out (they come
+// back as posted), and so are rows that are not BRL, which are counted. A card
+// keeps them: its charges stay pending until the bill closes, and Pluggy keeps
+// the id when they post. On a card
 // Pluggy sends a purchase positive and a bill payment negative, so its sign is
 // flipped to the Source's point of view. A row's counterpart is reduced to
 // OwnCounterpart here and goes no further. A card row never has one: its payer
 // or receiver was picked from Pluggy's raw sign, which the flip inverts.
 func toRows(txs []pluggy.Transaction, card bool, owner pluggy.Party) (rows []Row, skippedCurrency int) {
 	for _, tx := range txs {
-		if tx.Status == "PENDING" {
+		// shortcut: a pending charge Pluggy deletes and re-creates (its date or amount changed) stays stored twice, delete rows a re-read no longer returns if bills come out high.
+		if tx.Status == "PENDING" && !card {
 			continue
 		}
 		if tx.Currency != "BRL" {
