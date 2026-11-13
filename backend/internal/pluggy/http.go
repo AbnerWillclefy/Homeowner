@@ -99,13 +99,14 @@ func (h *HTTP) GetItem(ctx context.Context, apiKey, itemID string) (Item, error)
 func (h *HTTP) ListAccounts(ctx context.Context, apiKey, itemID string) ([]Account, error) {
 	var out struct {
 		Results []struct {
-			ID       string `json:"id"`
-			Type     string `json:"type"`
-			Subtype  string `json:"subtype"`
-			Name     string `json:"name"`
-			Currency string `json:"currencyCode"`
-			Owner    string `json:"owner"`
-			TaxNo    string `json:"taxNumber"`
+			ID       string      `json:"id"`
+			Type     string      `json:"type"`
+			Subtype  string      `json:"subtype"`
+			Name     string      `json:"name"`
+			Currency string      `json:"currencyCode"`
+			Owner    string      `json:"owner"`
+			TaxNo    string      `json:"taxNumber"`
+			Balance  json.Number `json:"balance"`
 			Credit   *struct {
 				CloseDate string `json:"balanceCloseDate"`
 				DueDate   string `json:"balanceDueDate"`
@@ -119,6 +120,10 @@ func (h *HTTP) ListAccounts(ctx context.Context, apiKey, itemID string) ([]Accou
 	accts := make([]Account, len(out.Results))
 	for i, r := range out.Results {
 		accts[i] = Account{ID: r.ID, Type: r.Type, Subtype: r.Subtype, Name: r.Name, Currency: r.Currency, Owner: r.Owner, TaxNumber: r.TaxNo}
+		// A bad balance gives nil, never an error: failing here would fail the whole Item.
+		if c, err := parseCents(r.Balance.String()); err == nil && r.Balance != "" {
+			accts[i].BalanceCents = &c
+		}
 		if r.Credit != nil {
 			accts[i].CloseDay, accts[i].DueDay = dayOf(r.Credit.CloseDate), dayOf(r.Credit.DueDate)
 			if accts[i].CloseDay == 0 || accts[i].DueDay == 0 {

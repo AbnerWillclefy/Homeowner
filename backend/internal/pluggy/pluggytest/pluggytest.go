@@ -44,6 +44,8 @@ type Server struct {
 	*httptest.Server
 	mu    sync.Mutex
 	fails map[string]int
+	// nullBalances serves accounts.json with every balance null.
+	nullBalances bool
 }
 
 // NewServer starts the fake and stops it when the test ends.
@@ -52,6 +54,13 @@ func NewServer(t testing.TB) *Server {
 	s.Server = httptest.NewServer(http.HandlerFunc(s.serve))
 	t.Cleanup(s.Close)
 	return s
+}
+
+// NullBalances makes the accounts answer with a null balance, as a bank that cannot read one does.
+func (s *Server) NullBalances() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.nullBalances = true
 }
 
 // Fail makes every request to path (without its query) answer status with FailBody.
@@ -98,6 +107,21 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		if q.Get("itemId") != ItemID {
 			serveFixture(w, 404, "item_404.json")
+			return
+		}
+		s.mu.Lock()
+		null := s.nullBalances
+		s.mu.Unlock()
+		if null {
+			var out struct {
+				Results []map[string]any `json:"results"`
+			}
+			_ = json.Unmarshal(fixture("accounts.json"), &out)
+			for _, a := range out.Results {
+				a["balance"] = nil
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(out)
 			return
 		}
 		serveFixture(w, 200, "accounts.json")

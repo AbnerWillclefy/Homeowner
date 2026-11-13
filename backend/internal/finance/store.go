@@ -60,7 +60,7 @@ func (s *Store) Income(ctx context.Context, userID string) (*int64, error) {
 // financeTables is every finance table, children first. Each has user_id, and
 // a test fails if the schema has a finance_* table that is not listed here, so
 // a later ticket adds its table to this list.
-var financeTables = []string{"finance_card_bills", "finance_transactions", "finance_sources", "finance_items", "finance_credentials",
+var financeTables = []string{"finance_source_balances", "finance_card_bills", "finance_transactions", "finance_sources", "finance_items", "finance_credentials",
 	"finance_merchant_categories", "finance_llm_calls", "finance_bill_reminders", "finance_bill_payments", "finance_bills", "finance_settings", "finance_category_budgets", "finance_bill_suggestion_dismissals",
 	"finance_investment_values", "finance_investments", "finance_goals"}
 
@@ -142,14 +142,18 @@ func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, no
 // Overview reads the whole status body: Sources, import state and credentials flag.
 func (s *Store) Overview(ctx context.Context, userID string) (StatusResponse, error) {
 	out := StatusResponse{Sources: []SourceResponse{}}
-	rows, err := s.db.Query(ctx, `SELECT id, COALESCE(display_name, name) AS shown, name, kind, currency, bill_close_day, bill_due_day FROM finance_sources WHERE user_id = $1 ORDER BY shown, id`, userID)
+	rows, err := s.db.Query(ctx, `SELECT s.id, COALESCE(s.display_name, s.name) AS shown, s.name, s.kind, s.currency, s.bill_close_day, s.bill_due_day,
+			b.balance_cents, to_char(b.day, 'YYYY-MM-DD')
+		FROM finance_sources s
+		LEFT JOIN LATERAL (SELECT day, balance_cents FROM finance_source_balances WHERE source_id = s.id ORDER BY day DESC LIMIT 1) b ON true
+		WHERE s.user_id = $1 ORDER BY shown, s.id`, userID)
 	if err != nil {
 		return out, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var src SourceResponse
-		if err := rows.Scan(&src.ID, &src.Name, &src.BankName, &src.Kind, &src.Currency, &src.CloseDay, &src.DueDay); err != nil {
+		if err := rows.Scan(&src.ID, &src.Name, &src.BankName, &src.Kind, &src.Currency, &src.CloseDay, &src.DueDay, &src.BalanceCents, &src.BalanceOn); err != nil {
 			return out, err
 		}
 		out.Sources = append(out.Sources, src)
