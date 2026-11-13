@@ -579,7 +579,7 @@ export function parseSavings(body: unknown): Savings | null {
     nullableNum(reserve.monthCents) &&
     nullableMonth(reserve.expectedMonth) &&
     body.investments.every(
-      (i) => isObject(i) && typeof i.id === "string" && typeof i.name === "string" && typeof i.valueCents === "number" && (i.serves === "reserve" || i.serves === "goals"),
+      (i) => isObject(i) && typeof i.id === "string" && typeof i.name === "string" && typeof i.valueCents === "number" && (i.serves === null || i.serves === "reserve" || i.serves === "goals"),
     ) &&
     body.goals.every(
       (g) =>
@@ -605,7 +605,8 @@ export function parseSavings(body: unknown): Savings | null {
     reserveTargetCents,
     contributionBaseCents,
     reserveSharePercent,
-    investments: investments.map(({ id, name, valueCents, serves }) => ({ id, name, valueCents, serves })),
+    // Finances never picks what a bank Investment serves, so unpicked ones are not shown.
+    investments: investments.flatMap(({ id, name, valueCents, serves }) => (serves === null ? [] : [{ id, name, valueCents, serves }])),
     reserve: { targetCents: r.targetCents, savedCents: r.savedCents, monthCents: r.monthCents, expectedMonth: r.expectedMonth },
     goals: goals.map(({ id, name, targetCents, targetMonth, savedCents, monthCents, expectedMonth, late }) => ({ id, name, targetCents, targetMonth, savedCents, monthCents, expectedMonth, late })),
     unassignedCents,
