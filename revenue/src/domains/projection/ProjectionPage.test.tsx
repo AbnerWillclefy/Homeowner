@@ -67,12 +67,14 @@ describe("the months", () => {
 
   it("on a desktop width is one table of twelve months against the groups, Total and Leftover", async () => {
     width(true);
+    vi.mocked(api.getCommitments).mockResolvedValue({ ...DATA, months: [month(1, { spentOffCardCents: 10000 }), ...MONTHS.slice(1)] });
     open();
     const table = await screen.findByRole("table", { name: "Coming months" });
     expect(within(table).getAllByRole("columnheader")).toHaveLength(13);
     for (const label of ["Card bills", "Other bills", "Planned spending", "Put aside", "Total", "Leftover"]) {
       expect(within(table).getByRole("rowheader", { name: label })).toBeTruthy();
     }
+    expect(within(table).getAllByText("Nothing this month")).toHaveLength(11);
     expect(screen.queryByRole("group")).toBeNull();
   });
 });

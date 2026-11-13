@@ -42,7 +42,7 @@ export function MonthsTable({ months, from, income }: { months: CommitmentMonth[
               const cents = r.groups.find((g) => g.id === id)?.cents;
               return (
                 <TableCell key={months[i]!.month} align="end">
-                  {cents === undefined ? <span aria-label={t("projection.none")}>–</span> : money(cents)}
+                  {cents === undefined ? <><span aria-hidden>–</span><span className="sr-only">{t("projection.none")}</span></> : money(cents)}
                 </TableCell>
               );
             })}

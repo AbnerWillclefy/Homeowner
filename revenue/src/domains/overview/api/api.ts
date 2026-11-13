@@ -36,7 +36,7 @@ export interface Pace {
 
 export interface CommitmentMonth {
   month: string;
-  /** The Installment plans' parts due this month on a credit card; an off-card plan is in `otherInstallmentsCents`. */
+  /** Every Installment plan's part due this month, on a card or not; the off-card ones are also summed in `otherInstallmentsCents`. */
   installments: { name: string; number: number; total: number; amountCents: number }[];
   cards: { sourceId: string; name: string; amountCents: number; billDaysKnown: boolean }[];
   otherBills: { id: string; name: string; cents: number; paid: boolean }[];
