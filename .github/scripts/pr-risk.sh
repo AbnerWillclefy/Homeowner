@@ -62,7 +62,7 @@ floor_for() {
                          printf 'medium\t%s changes how the API starts or is wired\n' "$file" ;;
     package.json|package-lock.json|*/go.mod|*/go.sum|*/package.json|*/package-lock.json)
                          printf 'medium\t%s changes dependencies\n' "$file" ;;
-    web/src/sw.ts|web/src/sw/*|web/vite.config.ts)
+    web/src/sw.ts|web/src/sw/*|web/vite.config.ts|revenue/src/sw.ts|revenue/src/sw/*|revenue/vite.config.ts)
                          printf 'medium\t%s changes the service worker or build, which stay cached on phones\n' "$file" ;;
   esac
 }

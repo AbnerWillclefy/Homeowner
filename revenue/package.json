@@ -11,7 +11,7 @@
     "build": "npm run typecheck && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.sw.json"
   },
   "dependencies": {
     "@homeowner/bedrock": "*",
@@ -23,7 +23,11 @@
     "react-dom": "^19.3.0",
     "react-router": "^7.18.4",
     "recharts": "^3.10.0",
-    "vaul": "~1.1.2"
+    "vaul": "~1.1.2",
+    "vite-plugin-pwa": "^2.0.0",
+    "workbox-core": "^7.4.1",
+    "workbox-precaching": "^7.4.1",
+    "workbox-routing": "^7.4.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.0",
