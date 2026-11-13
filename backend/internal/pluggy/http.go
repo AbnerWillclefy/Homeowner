@@ -153,6 +153,7 @@ func (h *HTTP) ListTransactions(ctx context.Context, apiKey, accountID string, f
 			Description string      `json:"description"`
 			Amount      json.Number `json:"amount"`
 			Currency    string      `json:"currencyCode"`
+			InAccount   json.Number `json:"amountInAccountCurrency"`
 			Type        string      `json:"type"`
 			Status      string      `json:"status"`
 			Category    *string     `json:"category"`
@@ -188,6 +189,13 @@ func (h *HTTP) ListTransactions(ctx context.Context, apiKey, accountID string, f
 		}
 		tx := Transaction{ID: r.ID, ProviderID: r.ProviderID, Date: r.Date, Description: r.Description,
 			AmountCents: cents, Currency: r.Currency, Type: r.Type, Status: r.Status, Category: r.Category}
+		if r.InAccount != "" {
+			inAccount, err := parseCents(r.InAccount.String())
+			if err != nil {
+				return TransactionsPage{}, errors.New("pluggy: list transactions: unreadable amount")
+			}
+			tx.AccountAmountCents = &inAccount
+		}
 		if r.Payment != nil {
 			p := r.Payment.Receiver
 			if cents > 0 {

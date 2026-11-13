@@ -234,3 +234,23 @@ func TestListInvestmentsReadsTheCapture(t *testing.T) {
 		t.Errorf("wrong key err = %v, want ErrUnauthorized", err)
 	}
 }
+
+func TestListTransactionsReadsTheAmountInAccountCurrency(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, `{"results":[`+
+			`{"id":"usd","date":"2026-11-07T16:36:17.000Z","amount":5.19,"currencyCode":"USD","amountInAccountCurrency":29.98},`+
+			`{"id":"brl","date":"2026-11-07T16:36:17.000Z","amount":10,"currencyCode":"BRL","amountInAccountCurrency":null}],"next":null}`)
+	}))
+	t.Cleanup(srv.Close)
+	page, err := pluggy.NewHTTP(srv.URL).ListTransactions(context.Background(), "key", "a", time.Time{}, time.Time{}, "")
+	if err != nil || len(page.Transactions) != 2 {
+		t.Fatalf("page = %+v, %v", page, err)
+	}
+	if got := page.Transactions[0].AccountAmountCents; got == nil || *got != 2998 {
+		t.Errorf("usd AccountAmountCents = %v, want 2998", got)
+	}
+	if got := page.Transactions[1].AccountAmountCents; got != nil {
+		t.Errorf("brl AccountAmountCents = %v, want nil", *got)
+	}
+}
