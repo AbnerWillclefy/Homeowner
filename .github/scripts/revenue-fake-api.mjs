@@ -90,6 +90,23 @@ function bills(month) {
   ];
 }
 
+function savings(today) {
+  const month = (n) => {
+    const d = new Date(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 1 + n, 1);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+  };
+  return {
+    reserveTargetCents: 3_000_000, contributionBaseCents: 150_000, reserveSharePercent: 40,
+    investments: [{ id: "i1", name: "Tesouro Selic", valueCents: 1_200_000, serves: "reserve", source: "manual", edited: false }],
+    reserve: { targetCents: 3_000_000, savedCents: 1_200_000, monthCents: 60_000, expectedMonth: month(30) },
+    goals: [
+      { id: "g1", name: "Viagem para a Europa", targetCents: 1_800_000, targetMonth: month(14), savedCents: 450_000, monthCents: 90_000, expectedMonth: month(15), late: true },
+      { id: "g2", name: "Reforma da cozinha", targetCents: 2_500_000, targetMonth: null, savedCents: 300_000, monthCents: 0, expectedMonth: month(60), late: false },
+    ],
+    unassignedCents: 0,
+  };
+}
+
 /** The six months ending at `to`, each with a little less spent in groceries the further back it goes. */
 function history(to, months) {
   const [y, m] = to.split("-").map(Number);
@@ -114,5 +131,6 @@ export function answer(method, url, today) {
   if (route === "GET /me/finance/commitments") return { status: 200, body: commitments(params.get("from"), today) };
   if (route === "GET /me/finance/bills") return { status: 200, body: bills(params.get("month")) };
   if (route === "GET /me/finance/bill-suggestions") return { status: 200, body: [{ merchantKey: "enel", name: "Conta de luz Enel", amountCents: 21_480, dueDay: 10 }] };
+  if (route === "GET /me/finance/savings") return { status: 200, body: savings(today) };
   return null;
 }

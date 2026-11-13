@@ -1,5 +1,8 @@
-import type { AxiosInstance, AxiosResponse } from "axios";
+import type { AxiosInstance } from "axios";
 import { apiClient } from "../../api/client";
+import { saveRow, send, writeResult, type SaveResult, type WriteResult } from "../../api/write";
+
+export type { FieldCodes, SaveResult, WriteResult } from "../../api/write";
 
 /** One Bill in one month, as `GET /me/finance/bills` lists it. Never a card bill. */
 export interface Bill {
@@ -38,13 +41,6 @@ export interface CardBill {
   /** False when the card has no closing or due day yet. */
   billDaysKnown: boolean;
 }
-
-/** Field name to the API's stable machine code, for example `{ dueDay: "invalid" }`. */
-export type FieldCodes = Record<string, string>;
-
-/** 404 is another User's or a missing row. */
-export type WriteResult = { kind: "ok" } | { kind: "not-found" } | { kind: "error" };
-export type SaveResult = WriteResult | { kind: "fields"; fields: FieldCodes };
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
 const isInt = (v: unknown): v is number => Number.isInteger(v);
@@ -101,33 +97,8 @@ export const getCardBills = (month: string, client: AxiosInstance = apiClient) =
     return isRecord(first) ? first.cards : null;
   }, parseCard);
 
-/** A 400 body's `{ fields: { name: code } }`, or null when it has none. */
-function fieldsOf(response: AxiosResponse): FieldCodes | null {
-  const body: unknown = response.data;
-  if (!isRecord(body) || !isRecord(body.fields)) return null;
-  const entries = Object.entries(body.fields).filter((e): e is [string, string] => typeof e[1] === "string");
-  return entries.length > 0 ? Object.fromEntries(entries) : null;
-}
-
-async function send(client: AxiosInstance, method: string, url: string, ok: number, data?: unknown): Promise<AxiosResponse | null> {
-  try {
-    const response = await client.request({ method, url, data });
-    return response.status === ok || response.status === 404 || response.status === 400 ? response : null;
-  } catch {
-    return null;
-  }
-}
-
-const writeResult = (response: AxiosResponse | null, ok: number): WriteResult =>
-  response?.status === ok ? { kind: "ok" } : response?.status === 404 ? { kind: "not-found" } : { kind: "error" };
-
 /** `POST /me/finance/bills`, or `PUT /me/finance/bills/{id}` when `id` is given; a 400 with field codes goes back to the form. */
-export async function saveBill(id: string | null, input: BillInput, client: AxiosInstance = apiClient): Promise<SaveResult> {
-  const ok = id ? 200 : 201;
-  const response = await send(client, id ? "PUT" : "POST", id ? `/me/finance/bills/${encodeURIComponent(id)}` : "/me/finance/bills", ok, input);
-  const fields = response?.status === 400 ? fieldsOf(response) : null;
-  return fields ? { kind: "fields", fields } : writeResult(response, ok);
-}
+export const saveBill = (id: string | null, input: BillInput, client: AxiosInstance = apiClient): Promise<SaveResult> => saveRow(client, "/me/finance/bills", id, input);
 
 /** `DELETE /me/finance/bills/{id}`; its payments go with it. */
 export const deleteBill = async (id: string, client: AxiosInstance = apiClient): Promise<WriteResult> =>
