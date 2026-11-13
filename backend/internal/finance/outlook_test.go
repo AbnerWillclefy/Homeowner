@@ -421,6 +421,14 @@ func TestOutlookCurrentCardBill(t *testing.T) {
 			today: "2026-11-13", rows: []Txn{charge("2026-10-19", 100), charge("2026-10-25", 200), charge("2026-11-10", 300)},
 			cards: card(20, 28, octBill), want: open(500), next: open(0),
 		},
+		"a charge dated after today but before the next closing is in the open bill": {
+			today: "2026-11-13", rows: []Txn{charge("2026-11-08", 300), charge("2026-11-15", 50)},
+			cards: card(20, 28, octBill), want: open(350), next: open(0),
+		},
+		"an installment sent ahead past the next closing stays out of the open bill and counts in its month": {
+			today: "2026-11-13", rows: []Txn{charge("2026-11-08", 300), charge("2026-12-08", 50)},
+			cards: card(20, 28, octBill), want: open(300), next: open(50),
+		},
 		"the open bill adds the installments still to be charged": {
 			today: "2026-11-13", rows: []Txn{charge("2026-11-10", 300)}, cards: card(20, 28, octBill),
 			plans: []Plan{{Name: "TV", Number: 2, Total: 4, AmountCents: 50, Month: d("2026-10-01"), SourceID: "a", Card: true}},
@@ -517,9 +525,9 @@ func TestOutlookCurrentBillCycle(t *testing.T) {
 		want  BillCycle
 	}{
 		"open after a bank closing, days from the typed ones": {"2026-11-13", Card{ID: "a", CloseDay: 20, DueDay: 28, Bills: []StoredBill{octBill}},
-			BillCycle{HeldFrom: p("2026-10-20"), ClosesOn: p("2026-11-20"), DueOn: p("2026-11-28")}},
-		"open without typed days has no closing to tell": {"2026-11-13", Card{ID: "a", Bills: []StoredBill{octBill}},
-			BillCycle{HeldFrom: p("2026-10-20")}},
+			BillCycle{HeldFrom: p("2026-10-20"), HeldTo: p("2026-11-20"), ClosesOn: p("2026-11-20"), DueOn: p("2026-11-28")}},
+		"open without typed days has no closing to tell, and holds up to today": {"2026-11-13", Card{ID: "a", Bills: []StoredBill{octBill}},
+			BillCycle{HeldFrom: p("2026-10-20"), HeldTo: p("2026-11-14")}},
 		"a bank bill closed and unpaid": {"2026-11-23", Card{ID: "a", CloseDay: 20, DueDay: 28, Bills: []StoredBill{octBill, novBill}},
 			BillCycle{HeldFrom: p("2026-10-20"), HeldTo: p("2026-11-20"), ClosesOn: p("2026-11-20"), DueOn: p("2026-11-28"), Closed: true}},
 		"a typed bill closed until its due day": {"2026-11-30", Card{ID: "a", CloseDay: 28, DueDay: 5},

@@ -16,7 +16,7 @@ export interface CardBill {
   closesOn: string | null;
   /** In the current month: the bill still to pay has closed. */
   closed: boolean;
-  /** In the current month: the posted days `[heldFrom, heldTo)` of the charges the bill holds, `heldTo` null while open; both null on a card counted by month. */
+  /** In the current month: the posted days `[heldFrom, heldTo)` of the charges the bill holds, `heldTo` the next closing while open (the day after today without typed days); both null on a card counted by month. */
   heldFrom: string | null;
   heldTo: string | null;
 }

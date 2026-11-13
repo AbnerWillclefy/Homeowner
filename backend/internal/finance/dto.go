@@ -207,7 +207,7 @@ type PaceDTO struct {
 // DueOn and ClosesOn (YYYY-MM-DD) are that bill's days, or in the current month
 // those of the bill still to pay when known, null otherwise. In the current
 // month Closed says that bill has closed, and HeldFrom and HeldTo bound the
-// posted days [from, to) of the charges it holds (HeldTo null while open); all
+// posted days [from, to) of the charges it holds (while open, HeldTo is the next closing, or the day after today without typed days); all
 // three are absent-as-null and false on a card counted by month.
 type CardBillLine struct {
 	SourceID      string  `json:"sourceId"`

@@ -135,8 +135,8 @@ func TestCurrentMonthTakesAClosedBillUntilItIsPaid(t *testing.T) {
 		t.Fatalf("after a different amount and a card row = %+v, want still the bank's bill", c)
 	}
 	payment(-123400, "checking")
-	if c := card(); c.FromBank || c.Closed || c.HeldFrom == nil || *c.HeldFrom != "2026-11-03" || c.HeldTo != nil {
-		t.Errorf("paid = %+v, want the open bill, holding the charges since the closing", c)
+	if c := card(); c.FromBank || c.Closed || c.HeldFrom == nil || *c.HeldFrom != "2026-11-03" || c.HeldTo == nil || *c.HeldTo != "2026-12-07" {
+		t.Errorf("paid = %+v, want the open bill, holding the charges from the closing to the next typed one", c)
 	}
 }
 

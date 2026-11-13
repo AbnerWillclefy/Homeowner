@@ -591,7 +591,8 @@ func ptr(s string) *string { return &s }
 
 // InstallmentPlans returns the latest seen charge of each of the User's
 // Installment plans, a plan being the same Source, merchant, total and start
-// month (the month the charge counts in, CountsOn, minus n-1 months). Grouping
+// month (the month the charge counts in, CountsOn, minus n-1 months, or one
+// month off with the same amount within a centavo). Grouping
 // keeps the repeated charges of a plan from counting twice, and a centavo of
 // rounding between them keeps it one plan. It is done here, not in SQL, because
 // the bill month needs CountsOn: card charges post on different days, so the
@@ -612,7 +613,7 @@ func (s *Store) InstallmentPlans(ctx context.Context, userID string) ([]Plan, er
 		source, merchant string
 		total, start     int
 	}
-	seen := map[planKey]bool{}
+	seen := map[planKey]int64{} // a plan's installment amount
 	var out []Plan
 	for rows.Next() {
 		var p Plan
@@ -626,10 +627,17 @@ func (s *Store) InstallmentPlans(ctx context.Context, userID string) ([]Plan, er
 		// A card installment is projected from the month its bill is due, as spending counts it.
 		on := CountsOn(posted, kind, closeDay, dueDay)
 		k := planKey{p.SourceID, key, p.Total, monthIndex(on) - (p.Number - 1)}
-		if seen[k] { // rows come highest number first, so the first of a plan is its latest
+		// Rows come highest number first, so the first of a plan is its latest. A part posted on
+		// the closing day and the next a day before the following one start a month apart.
+		if slices.ContainsFunc([]int{0, -1, 1}, func(d int) bool {
+			n := k
+			n.start += d
+			amount, ok := seen[n]
+			return ok && (d == 0 || abs(amount-p.AmountCents) <= 1)
+		}) {
 			continue
 		}
-		seen[k] = true
+		seen[k] = p.AmountCents
 		p.Name = PlanName(desc, key, p.Number, p.Total)
 		p.Card = kind == "credit_card"
 		p.Month = time.Date(on.Year(), on.Month(), 1, 0, 0, 0, 0, time.UTC)

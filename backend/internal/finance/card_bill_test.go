@@ -107,3 +107,21 @@ func TestCardInstallmentsProjectFromTheirBillMonth(t *testing.T) {
 		t.Errorf("march from january = %+v, want TV Loja 4 of 10", m)
 	}
 }
+
+// A bank posts each part on a slightly different day: part 11 on a closing day
+// and part 12 a day before the next closing land on the same bill month, and
+// must stay one plan, so the last part is not owed again.
+func TestCardInstallmentsPostedAroundTheClosingStayOnePlan(t *testing.T) {
+	t.Parallel()
+	app, users := startSync(t, []string{"ana@example.com"})
+	app.RunFinanceSync(t)
+	insertPlan(t, app, "ana@example.com", "fee11", "ANUIDADE PARC 11/12", "ANUIDADE", "2028-01-07", -4375, 11, 12)
+	insertPlan(t, app, "ana@example.com", "fee12", "ANUIDADE PARC 12/12", "ANUIDADE", "2028-02-06", -4375, 12, 12)
+
+	b := readCommitments(t, users["ana@example.com"], "2028-03")
+	for _, m := range b.Months {
+		if len(m.Installments) != 0 {
+			t.Errorf("%s = %+v, want nothing: part 12 of 12 is already charged", m.Month, m.Installments)
+		}
+	}
+}
