@@ -4,7 +4,6 @@ import { monthRows } from "./monthRows";
 
 const month = (change: Partial<CommitmentMonth> = {}): CommitmentMonth => ({
   month: "2026-12",
-  installments: [],
   cards: [],
   otherBills: [],
   otherInstallmentsCents: 0,

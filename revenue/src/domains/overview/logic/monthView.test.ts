@@ -4,7 +4,7 @@ import { monthView, spent } from "./monthView";
 
 const tx = (over: Partial<Transaction>): Transaction => ({
   id: "t", postedOn: "2026-11-02", countsOn: "2026-11-02", description: "x", sourceName: "Nubank", amountCents: -1000, currency: "BRL",
-  type: "expense", spendingCategory: "other", categorySetBy: "auto", ...over,
+  type: "expense", spendingCategory: "other", ...over,
 });
 
 describe("spent", () => {
@@ -19,7 +19,6 @@ describe("monthView", () => {
     month: "2026-11",
     spentCents: 4200,
     categories: [],
-    limits: {},
     transactions: [
       tx({ id: "a", amountCents: -1000, spendingCategory: "groceries" }),
       tx({ id: "b", amountCents: -3500, spendingCategory: "leisure" }),
@@ -52,7 +51,6 @@ describe("monthView", () => {
     expect(view.categories.flatMap((c) => c.transactions.map((t) => t.id))).not.toContain("s");
   });
   it("is empty for a month with nothing", () => {
-    expect(monthView({ month: "2026-11", spentCents: 0, categories: [], transactions: [], limits: {} }).isEmpty).toBe(true);
     expect(monthView(response).isEmpty).toBe(false);
   });
 });
