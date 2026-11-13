@@ -276,7 +276,10 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 		m.PlannedCents, m.SpentOffCardCents, m.SavingCents = o.PlannedCents, o.SpentOffCardCents, o.SavingCents
 		m.OtherInstallmentsCents, m.TotalCents, m.LeftoverCents = o.OtherInstallmentsCents, o.TotalCents, o.LeftoverCents
 		month := from.AddDate(0, i, 0)
-		m.DailyAllowanceCents = DailyAllowance(o.LeftoverCents, today, month)
+		if o.LeftoverCents != nil {
+			// the planned spending is what the days left are for, so it is not taken out of them twice
+			m.DailyAllowanceCents = DailyAllowance(new(*o.LeftoverCents+o.PlannedCents), today, month)
+		}
 		if p := Pace(byMonth[month], income, o.LeftoverCents, today, month); p != nil {
 			m.Pace = &PaceDTO{SpentCents: p.SpentCents, LineEndCents: p.LineEndCents}
 		}

@@ -183,9 +183,9 @@ type MonthCommitment struct {
 	// LeftoverCents is the Monthly income minus TotalCents, negative when the
 	// month takes more; absent, not null, when no income is set.
 	LeftoverCents *int64 `json:"leftoverCents,omitempty"`
-	// DailyAllowanceCents is the Leftover over the days left in the month, today
-	// included; present only on the current month (São Paulo) with a Monthly
-	// income, negative when the Leftover is.
+	// DailyAllowanceCents is the Leftover plus PlannedCents over the days left in
+	// the month, today included; present only on the current month (São Paulo)
+	// with a Monthly income, negative when that sum is.
 	DailyAllowanceCents *int64 `json:"dailyAllowanceCents,omitempty"`
 	// Pace is the spending so far against the straight line to the month's end;
 	// absent with no Monthly income and on future months, whole on past ones.
