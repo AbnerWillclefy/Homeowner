@@ -141,7 +141,7 @@ describe("Overview", () => {
     page();
     expect(await screen.findByText("O mês já tem mais que a renda.")).toBeTruthy();
     expect(screen.getByText(/O mês já tem R\$\s200,00 além da renda/)).toBeTruthy();
-    expect(screen.getByText(/Gastando como a média, faltam R\$\s500,00/)).toBeTruthy();
+    expect(screen.getByText(/Com o gasto previsto, faltam R\$\s500,00/)).toBeTruthy();
     expect((await axe.run(document.body, { rules: { "color-contrast": { enabled: false }, region: { enabled: false } } })).violations).toEqual([]);
   });
 

@@ -11,7 +11,7 @@ const GROUP: Record<string, MessageKey> = {
 };
 
 /**
- * The month's Leftover with today's values, the one spending as usual (the API's, with the planned spending) when it
+ * The month's Leftover with today's values, the API's one with the planned spending (each Category's limit, or its average) when it
  * differs, and what makes up the Total. Neutral: a total above the income is one muted sentence, never a danger colour.
  */
 export function Leftover({ data, income }: { data: CommitmentMonth; income: number | null }) {
