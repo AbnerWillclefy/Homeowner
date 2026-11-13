@@ -7,7 +7,7 @@ Agreed Brazilian Portuguese equivalents for the terms in [GLOSSARY.md](../GLOSSA
 - Informal "você", not "tu".
 - Domain terms are lower case in running pt-BR text, because Portuguese does not capitalise common nouns. The table keeps the English capitalised term as the key.
 - The "avoid" lists in GLOSSARY.md are English words. Their closest pt-BR calques are avoided too, for example "residência" and "domicílio" for Home. "Casa" is the literal sibling of the avoided English "House".
-- Keep "Homeowner" as is: it is the product's name.
+- Keep "Homeowner" as is: it is the product's name. "Revenue", the name of the app that holds Finances, stays as is too.
 
 ## Terms
 
@@ -82,6 +82,7 @@ Finances is open only to Users on an allowlist. "Category" stays with Chores, so
 
 | GLOSSARY.md term | pt-BR | pt-BR words to avoid | Note |
 |---|---|---|---|
+| Revenue | Revenue | receita, app de finanças | The app's name, never translated and never a money term. Money coming in is "renda mensal". |
 | Transaction | lançamento | transação, movimentação | One movement of money on a Source. Plural "lançamentos". Pending native-speaker review. |
 | Source | fonte | conta, banco, conexão | Where Transactions come from (a bank account or card). Avoid "conta": it also means a bill and a User account. The User can rename one ("Renomear"); the bank's name stays beside it as "Banco: {bank}" and "Usar nome do banco" goes back to it. Used in `finances.sourceName.*`. |
 | Spending Category | categoria de gasto | categoria (alone), tag, etiqueta | Always "categoria de gasto" so it never reads as a Chore's category. |
