@@ -2,26 +2,18 @@ package finance
 
 import "time"
 
-// SourceBalance is a Source's latest balance; Card marks a credit card Source,
-// whose balance Net worth never counts (its bill is subtracted instead).
-type SourceBalance struct {
-	Card  bool
-	Cents int64
-}
-
 // NetWorthParts is today's Net worth with its three parts, so they always add up.
 type NetWorthParts struct {
 	TotalCents, BalancesCents, InvestmentsCents, CardBillsCents int64
 }
 
 // NetWorth is Source balances + Investments - card bills not yet paid. Card
-// Sources' own balances are left out so nothing is subtracted twice.
-func NetWorth(balances []SourceBalance, investments, cardBills []int64) NetWorthParts {
+// Sources' own balances are never stored (UpsertBalances skips them), so
+// nothing is subtracted twice.
+func NetWorth(balances, investments, cardBills []int64) NetWorthParts {
 	var n NetWorthParts
-	for _, b := range balances {
-		if !b.Card {
-			n.BalancesCents += b.Cents
-		}
+	for _, v := range balances {
+		n.BalancesCents += v
 	}
 	for _, v := range investments {
 		n.InvestmentsCents += v

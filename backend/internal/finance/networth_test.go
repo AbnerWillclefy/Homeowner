@@ -10,15 +10,14 @@ func TestNetWorth(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name        string
-		balances    []SourceBalance
+		balances    []int64
 		investments []int64
 		cardBills   []int64
 		want        NetWorthParts
 	}{
-		{"two sources, a hand and a bank investment, a card", []SourceBalance{{Cents: 100000}, {Cents: 50000}}, []int64{20000, 7000}, []int64{30000, 5000},
+		{"two sources, a hand and a bank investment, a card", []int64{100000, 50000}, []int64{20000, 7000}, []int64{30000, 5000},
 			NetWorthParts{TotalCents: 142000, BalancesCents: 150000, InvestmentsCents: 27000, CardBillsCents: 35000}},
-		{"a credit balance adds", []SourceBalance{{Cents: 1000}}, nil, []int64{-400}, NetWorthParts{TotalCents: 1400, BalancesCents: 1000, CardBillsCents: -400}},
-		{"a card source balance is ignored", []SourceBalance{{Cents: 1000}, {Card: true, Cents: -999}}, nil, nil, NetWorthParts{TotalCents: 1000, BalancesCents: 1000}},
+		{"a credit balance adds", []int64{1000}, nil, []int64{-400}, NetWorthParts{TotalCents: 1400, BalancesCents: 1000, CardBillsCents: -400}},
 		{"nothing owned and a bill goes negative", nil, nil, []int64{500}, NetWorthParts{TotalCents: -500, CardBillsCents: 500}},
 	}
 	for _, tc := range tests {
@@ -62,6 +61,17 @@ func TestUnpaidCardBills(t *testing.T) {
 				t.Errorf("UnpaidCardBills = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestUnpaidCardBillsDueBeforeClose(t *testing.T) {
+	t.Parallel()
+	d := func(s string) time.Time { v, _ := time.Parse(time.DateOnly, s); return v }
+	// A card closing on the 28th and due on the 5th: the open bill is due two months on.
+	outlook := []MonthOutlook{{Cards: []CardBill{{SourceID: "a", AmountCents: 1}}}, {Cards: []CardBill{{SourceID: "a", AmountCents: 2}}}, {Cards: []CardBill{{SourceID: "a", AmountCents: 4}}}}
+	got := UnpaidCardBills([]Card{{ID: "a", DueDay: 5}}, outlook, d("2026-11-01"), d("2026-11-30"))
+	if want := []int64{2, 4}; !reflect.DeepEqual(got, want) {
+		t.Errorf("UnpaidCardBills = %v, want %v", got, want)
 	}
 }
 

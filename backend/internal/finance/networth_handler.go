@@ -14,7 +14,7 @@ var netWorthRanges = map[string]int{"30d": 30, "90d": 90, "1y": 365}
 // NetWorth answers GET /me/finance/net-worth?range=30d|90d|1y (default 30d; any
 // other value is 400): today's Net worth with its parts and a daily series of
 // balances plus Investments. The card bills come from the month outlook of the
-// current and next month, those not yet past their due date (UnpaidCardBills).
+// current and next two months (a bill closing late can fall due two months on), those not yet past their due date (UnpaidCardBills).
 func (h *Handler) NetWorth(w http.ResponseWriter, r *http.Request) {
 	rng := r.URL.Query().Get("range")
 	if rng == "" {
@@ -51,14 +51,14 @@ func (h *Handler) NetWorth(w http.ResponseWriter, r *http.Request) {
 		fail(err)
 		return
 	}
-	in, err := h.loadOutlook(ctx, uid, month, 2)
+	in, err := h.loadOutlook(ctx, uid, month, 3)
 	if err != nil {
 		fail(err)
 		return
 	}
-	var latest []SourceBalance
+	var latest []int64
 	for _, pts := range balances {
-		latest = append(latest, SourceBalance{Cents: pts[len(pts)-1].Value})
+		latest = append(latest, pts[len(pts)-1].Value)
 	}
 	var held []int64
 	for _, i := range investments {
