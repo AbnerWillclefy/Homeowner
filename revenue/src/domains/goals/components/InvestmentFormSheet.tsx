@@ -30,7 +30,8 @@ export function InvestmentFormSheet({ investment, save, onClose }: Props) {
       subtitle={bank ? investment.name : undefined}
       onClose={onClose}
       submit={async () => {
-        const result = investmentInputOf({ name, cents, serves });
+        // shortcut: the backend caps names at 60 and the sync doesn't, so a long bank name is saved cut short; upgrade with a value-only endpoint.
+        const result = investmentInputOf({ name: bank ? [...name].slice(0, 60).join("") : name, cents, serves });
         return result.ok ? save(result.input) : { kind: "fields", fields: result.errors };
       }}
     >

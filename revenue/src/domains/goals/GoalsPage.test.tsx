@@ -503,6 +503,17 @@ describe("Investments", () => {
     expect(api.saveInvestment).toHaveBeenCalledWith("i4", { name: "LCI Antiga", valueCents: 7000, serves: "reserve" });
   });
 
+  it("saves a bank Investment whose name is over 60 characters, cut to the backend's cap", async () => {
+    const long = "CDB BANCO XYZ S.A. PRE 12,50% A.A. VENC 15/03/2028 LIQUIDEZ DIARIA";
+    serve({ ...SAVINGS, investments: [{ ...BANK_GONE, name: long }] });
+    vi.mocked(api.saveInvestment).mockResolvedValue(ok);
+    open();
+    await userEvent.click(within(await row(long)).getByRole("button", { name: `More actions for ${long}` }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Edit" }));
+    await userEvent.click((await sheet()).getByRole("button", { name: "Save" }));
+    expect(api.saveInvestment).toHaveBeenCalledWith("i4", { name: long.slice(0, 60).trim(), valueCents: 5000, serves: "reserve" });
+  });
+
   it("asks before deleting a hand-typed Investment, then deletes", async () => {
     serve({ ...SAVINGS, ...WITH_INVESTMENTS });
     vi.mocked(api.deleteInvestment).mockResolvedValue({ kind: "ok" });
