@@ -39,6 +39,7 @@ describe("parseStatus", () => {
     ["a fractional balance", status([{ ...bank, balanceCents: 1.5, balanceOn: "2026-11-08" }])],
     ["a balance day that is not text", status([{ ...bank, balanceCents: 5, balanceOn: 8 }])],
     ["a close day that is text", status([{ ...bank, closeDay: "8" }])],
+    ["a Source without a currency", status([{ ...bank, currency: undefined }])],
   ])("refuses %s", (_, body) => {
     expect(parseStatus(body)).toBeNull();
   });
