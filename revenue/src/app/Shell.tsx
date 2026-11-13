@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { useI18n } from "../shared/i18n/I18nProvider";
 import { useMediaQuery } from "../shared/useMediaQuery";
+import { useSyncOnLaunch } from "../domains/settings/hooks/useNotifications";
 import { MORE, NAV_FOOTER, NAV_GROUPS, TABS, type Screen } from "./screens";
 
 // Duplicates --bp-desktop in Bedrock's tokens.css: matchMedia cannot read custom properties.
@@ -17,6 +18,7 @@ export function Shell() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [moreOpen, setMoreOpen] = useState(false);
+  useSyncOnLaunch();
 
   const item = (s: Screen): NavItem => ({ href: s.path, label: t(s.label), icon: s.icon, current: s.path === pathname });
   const onNavigate = (href: string) => {
