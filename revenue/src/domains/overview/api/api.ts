@@ -36,6 +36,8 @@ export interface Pace {
 
 export interface CommitmentMonth {
   month: string;
+  /** Every Installment plan's part due this month, on a card or not; the off-card ones are also summed in `otherInstallmentsCents`. */
+  installments: { name: string; number: number; total: number; amountCents: number }[];
   cards: { sourceId: string; name: string; amountCents: number; billDaysKnown: boolean }[];
   otherBills: { id: string; name: string; cents: number; paid: boolean }[];
   otherInstallmentsCents: number;
@@ -91,6 +93,7 @@ function parseCommitments(body: unknown): Commitments | null {
     (m) =>
       isObject(m) &&
       typeof m.month === "string" &&
+      list(m.installments, (i) => typeof i.name === "string" && isNum(i.number) && isNum(i.total) && isNum(i.amountCents)) &&
       list(m.cards, (c) => typeof c.sourceId === "string" && typeof c.name === "string" && isNum(c.amountCents) && typeof c.billDaysKnown === "boolean") &&
       list(m.otherBills, (b) => typeof b.id === "string" && typeof b.name === "string" && isNum(b.cents) && typeof b.paid === "boolean") &&
       isNum(m.otherInstallmentsCents) &&
