@@ -247,6 +247,24 @@ Note `admin/` calls the API URL `VITE_API_URL`, where the PWA calls it
 `VITE_API_BASE_URL`. Variables are explained in
 [docs/development.md](docs/development.md#admin).
 
+### 8. Revenue app (optional)
+
+Revenue, the app that holds Finances, lives in `revenue/` and runs on port 5175
+against the Compose API. It is part of the root npm workspace, so install from the
+repository root. Put your email in `FINANCE_ALLOWLIST` and a key in
+`FINANCE_ENCRYPTION_KEY` in the root `.env` (see `.env.example`), then run
+`docker compose up -d` again: without them `/me/finance` answers 403 or 503 and
+Revenue shows "Sem acesso" or an error.
+
+```sh
+npm ci                                   # at the repository root
+cp revenue/.env.example revenue/.env.local   # fill in the Cognito values and VITE_PASSWORD_POLICY (same as web/.env.local)
+npm run dev -w @homeowner/revenue        # http://localhost:5175
+```
+
+Bedrock's showcase uses port 5175 too, so run one at a time. Variables are
+explained in [docs/development.md](docs/development.md#revenue).
+
 ## The super admin role
 
 The API's `/admin/` routes are for the maintainer only ([ADR 0017](docs/adr/0017-operate-through-a-separate-admin-app-per-environment.md)).

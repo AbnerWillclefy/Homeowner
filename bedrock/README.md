@@ -2,7 +2,7 @@
 
 Homeowner's shared design system as a package: the tokens and the React components specified in
 [`docs/design/bedrock/`](../docs/design/bedrock/README.md) ([ADR 0022](../docs/adr/0022-a-shared-bedrock-design-system-amends-0007-and-0009-for-adopting-apps.md)).
-It ships TypeScript source, with no build step, and is not published to npm. No app uses it yet:
+It ships TypeScript source, with no build step, and is not published to npm. Revenue (`revenue/`) is the first app to use it:
 `web/` and `admin/` keep their own styles until their migration epics.
 
 ## Entry points
@@ -20,8 +20,8 @@ Core never imports Finance. `src/layers.test.ts` fails if any file under `src/co
 
 ## Workspace layout
 
-The root `package.json` lists only `bedrock` in `workspaces`, and the root `package-lock.json`
-is Bedrock's lockfile. `web/` and `admin/` keep their own lockfiles and CI, so a Bedrock
+The root `package.json` lists `bedrock` and `revenue` in `workspaces`, and the root `package-lock.json`
+is their shared lockfile. `web/` and `admin/` keep their own lockfiles and CI, so a Bedrock
 dependency bump cannot break their installs.
 
 ## Using it in an app
