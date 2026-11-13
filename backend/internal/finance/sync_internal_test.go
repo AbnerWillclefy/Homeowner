@@ -37,6 +37,17 @@ func TestToRowsFilters(t *testing.T) {
 	}
 }
 
+// A card charge stays PENDING until its bill closes, so the open bill is only pending rows.
+func TestToRowsKeepsPendingCardCharges(t *testing.T) {
+	d := time.Date(2026, 11, 7, 15, 0, 0, 0, time.UTC)
+	rows, _ := toRows([]pluggy.Transaction{
+		{ID: "open", Date: d, Description: "x", AmountCents: 1000, Currency: "BRL", Status: "PENDING"},
+	}, true, pluggy.Party{})
+	if len(rows) != 1 {
+		t.Fatalf("rows = %d, want the pending card charge", len(rows))
+	}
+}
+
 func TestToRowsFlipsCardSign(t *testing.T) {
 	d := time.Date(2026, 11, 7, 15, 0, 0, 0, time.UTC)
 	rows, _ := toRows([]pluggy.Transaction{
