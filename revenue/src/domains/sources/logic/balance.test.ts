@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Source } from "../api";
 import { balanceLine, formatBalanceDay } from "./balance";
 
-const source = (over: Partial<Source>): Source => ({ id: "s", name: "Itaú", bankName: "Itaú", kind: "checking", closeDay: null, dueDay: null, ...over });
+const source = (over: Partial<Source>): Source => ({ id: "s", name: "Itaú", bankName: "Itaú", kind: "checking", currency: "BRL", closeDay: null, dueDay: null, ...over });
 
 describe("balanceLine", () => {
   it("shows the amount and the day it was read", () => {
@@ -17,6 +17,12 @@ describe("balanceLine", () => {
   it("shows nothing for a card, even with a stray balance", () => {
     expect(balanceLine(source({ kind: "credit_card" }), "pt-BR")).toEqual({ kind: "none" });
     expect(balanceLine(source({ kind: "credit_card", balanceCents: 5, balanceOn: "2026-11-08" }), "pt-BR")).toEqual({ kind: "none" });
+  });
+});
+
+describe("balanceLine, non-BRL", () => {
+  it("shows nothing for a USD account, since no balance ever comes", () => {
+    expect(balanceLine(source({ currency: "USD" }), "pt-BR")).toEqual({ kind: "none" });
   });
 });
 

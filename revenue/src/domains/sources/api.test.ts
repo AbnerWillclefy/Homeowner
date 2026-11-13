@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiClient, NotSignedIn } from "../../api/client";
 import { createConnectToken, getSources, parseStatus, putSourceName, registerItem } from "./api";
 
-const bank = { id: "s1", name: "Itaú", bankName: "Itaú", kind: "checking", closeDay: null, dueDay: null };
+const bank = { id: "s1", name: "Itaú", bankName: "Itaú", kind: "checking", currency: "BRL", closeDay: null, dueDay: null };
 const status = (sources: unknown[] = [bank]) => ({ configured: true, importing: false, lastSyncedAt: "2026-11-08T13:05:00Z", sources });
 
 describe("parseStatus", () => {
@@ -18,8 +18,8 @@ describe("parseStatus", () => {
   });
 
   it("stands in for a missing bank name and idle sync keys", () => {
-    expect(parseStatus({ sources: [{ id: "s1", name: "Nu", kind: "credit_card" }] })).toEqual({
-      sources: [{ id: "s1", name: "Nu", bankName: "Nu", kind: "credit_card", closeDay: null, dueDay: null }],
+    expect(parseStatus({ sources: [{ id: "s1", name: "Nu", kind: "credit_card", currency: "BRL" }] })).toEqual({
+      sources: [{ id: "s1", name: "Nu", bankName: "Nu", kind: "credit_card", currency: "BRL", closeDay: null, dueDay: null }],
       importing: false,
       lastSyncedAt: null,
     });

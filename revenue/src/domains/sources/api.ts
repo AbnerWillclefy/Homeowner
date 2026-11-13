@@ -2,13 +2,14 @@ import type { AxiosResponse } from "axios";
 import { apiClient, NotSignedIn } from "../../api/client";
 import { fieldsOf, type FieldCodes } from "../../api/write";
 
-/** One bank account or card. `balanceCents` and `balanceOn` are both absent for a card and for a bank account never synced. */
+/** One bank account or card. `balanceCents` and `balanceOn` are both absent for a card, for a non-BRL account (the API reads no balance for it) and for a bank account never synced. */
 export interface Source {
   id: string;
   /** The display name, or the bank's when none is set. */
   name: string;
   bankName: string;
   kind: string;
+  currency: string;
   closeDay: number | null;
   dueDay: number | null;
   balanceCents?: number;
@@ -42,12 +43,12 @@ export function parseStatus(body: unknown): SourcesStatus | null {
   if (typeof importing !== "boolean" || (lastSyncedAt !== null && typeof lastSyncedAt !== "string")) return null;
   const sources: Source[] = [];
   for (const s of body.sources) {
-    if (!isRecord(s) || typeof s.id !== "string" || typeof s.name !== "string" || typeof s.kind !== "string") return null;
+    if (!isRecord(s) || typeof s.id !== "string" || typeof s.name !== "string" || typeof s.kind !== "string" || typeof s.currency !== "string") return null;
     const { closeDay = null, dueDay = null, balanceCents, balanceOn } = s;
     if (!day(closeDay) || !day(dueDay) || (balanceCents === undefined) !== (balanceOn === undefined)) return null;
     if (balanceCents !== undefined && (!Number.isInteger(balanceCents) || typeof balanceOn !== "string")) return null;
     sources.push({
-      id: s.id, name: s.name, bankName: typeof s.bankName === "string" ? s.bankName : s.name, kind: s.kind,
+      id: s.id, name: s.name, bankName: typeof s.bankName === "string" ? s.bankName : s.name, kind: s.kind, currency: s.currency,
       closeDay, dueDay,
       ...(balanceCents !== undefined && { balanceCents: balanceCents as number, balanceOn: balanceOn as string }),
     });

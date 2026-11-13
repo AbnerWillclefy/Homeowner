@@ -14,7 +14,7 @@ let widget: PluggyOptions;
 vi.mock("./logic/pluggyConnect", () => ({ openPluggyConnect: vi.fn(async (o: PluggyOptions) => void (widget = o)) }));
 
 const AXE = { rules: { "color-contrast": { enabled: false }, region: { enabled: false } } };
-const base = { bankName: "Itaú", closeDay: null, dueDay: null };
+const base = { bankName: "Itaú", currency: "BRL", closeDay: null, dueDay: null };
 const CHECKING: Source = { ...base, id: "s1", name: "Itaú", kind: "checking", balanceCents: 123_456, balanceOn: "2026-11-08" };
 const NEVER: Source = { ...base, id: "s2", name: "Poupança Itaú", kind: "savings" };
 const CARD: Source = { ...base, id: "s3", name: "Nubank", bankName: "Nubank", kind: "credit_card", closeDay: 8, dueDay: 15 };
