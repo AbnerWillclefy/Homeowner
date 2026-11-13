@@ -23,8 +23,9 @@ export function Gate({ children }: { children: ReactNode }) {
 
   if (me.isPending) return <p role="status" className="p-6 body text-text-muted">{t("gate.checking")}</p>;
 
-  // 503 ("finance not configured") and network failures: not "no access", so offer a retry.
-  if (me.isError) {
+  // No answer yet because the request failed (503 "finance not configured", network): offer a retry. A failed
+  // refetch after an answer keeps that answer, so one blip does not unmount the app.
+  if (me.data === undefined) {
     return (
       <CenteredCard title={t("gate.error.title")}>
         <Banner tone="danger">{t("gate.error.message")}</Banner>

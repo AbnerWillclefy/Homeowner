@@ -63,7 +63,7 @@ export function ForgotPassword({ onBack }: { onBack: () => void }) {
       <CenteredCard title={t("forgot.title")}>
         {/* Always the same words: nothing here says whether the email has a login. */}
         <Banner tone="neutral">{t("forgot.sent")}</Banner>
-        <form onSubmit={confirm} className="flex flex-col gap-4">
+        <form key="code" onSubmit={confirm} className="flex flex-col gap-4">
           {error}
           <Input label={t("forgot.code")} hint={t("forgot.codeHint")} name="code" inputMode="numeric" autoComplete="one-time-code" required />
           <Input
@@ -101,7 +101,7 @@ export function ForgotPassword({ onBack }: { onBack: () => void }) {
   return (
     <CenteredCard title={t("forgot.title")}>
       <p className="body text-text-muted">{t("forgot.intro")}</p>
-      <form onSubmit={sendCode} className="flex flex-col gap-4">
+      <form key="email" onSubmit={sendCode} className="flex flex-col gap-4">
         {error}
         <Input label={t("forgot.email")} name="email" type="email" autoComplete="username" required />
         <Button type="submit" size="lg" loading={pending}>

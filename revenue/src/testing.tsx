@@ -27,5 +27,5 @@ export function renderApp(node: ReactNode, options: { locale?: Locale; theme?: "
       </I18nProvider>
     </QueryClientProvider>,
   );
-  return { ...view, auth };
+  return { ...view, auth, client };
 }

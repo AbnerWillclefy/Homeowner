@@ -69,6 +69,18 @@ describe("Gate", () => {
     expect(await screen.findByText("the app")).toBeTruthy();
   });
 
+  it("keeps the app mounted when a later refetch fails", async () => {
+    const { client } = gate(async () => ({ status: 200 }));
+    expect(await screen.findByText("the app")).toBeTruthy();
+    get.mockImplementation(async () => {
+      throw new Error("Network Error");
+    });
+    await client.refetchQueries();
+    expect(get).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("the app")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+
   it("shows only a status while the answer is pending", () => {
     gate(() => new Promise(() => {}));
     expect(screen.getByRole("status").textContent).toBe("Checking your access…");

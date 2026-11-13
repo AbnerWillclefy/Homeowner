@@ -1,12 +1,12 @@
 import type { AxiosAdapter, AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import { describe, expect, it, vi } from "vitest";
 import type { AuthResult } from "../auth/cognito";
-import { createSessionStore, type Session } from "../auth/session";
+import { createSessionStore, type Session, type SessionStore } from "../auth/session";
 import { createApiClient, NotSignedIn, RefreshUnavailable } from "./client";
 
 const NOW = 1_000_000;
 
-function setup(options: { statuses: number[]; refresh?: AuthResult; session?: Session | null }) {
+function setup(options: { statuses: number[]; refresh?: AuthResult; session?: Session | null; onSend?: (n: number) => void }) {
   const store = createSessionStore({ getItem: () => null, setItem: () => {}, removeItem: () => {} });
   if (options.session !== null) {
     store.save(options.session ?? { idToken: "old", refreshToken: "r", expiresAt: NOW + 3_600_000 });
@@ -15,6 +15,7 @@ function setup(options: { statuses: number[]; refresh?: AuthResult; session?: Se
   const statuses = [...options.statuses];
   const adapter: AxiosAdapter = async (config: InternalAxiosRequestConfig) => {
     sent.push(String(config.headers.get("Authorization")));
+    options.onSend?.(sent.length);
     return {
       data: {},
       status: statuses.shift() ?? 200,
@@ -80,5 +81,28 @@ describe("api client", () => {
     const { client, store } = setup({ statuses: [401], refresh: { kind: "network" } });
     await expect(client.get("/me/finance")).rejects.toBeInstanceOf(RefreshUnavailable);
     expect(store.load()).not.toBeNull();
+  });
+
+  it("shares one refresh between concurrent 401s", async () => {
+    const { client, sent, refresh } = setup({
+      statuses: [401, 401, 200, 200],
+      refresh: { kind: "ok", tokens: { idToken: "new", expiresInSeconds: 3600 } },
+    });
+    const responses = await Promise.all([client.get("/a"), client.get("/b")]);
+    expect(responses.map((r) => r.status)).toEqual([200, 200]);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(sent).toEqual(["Bearer old", "Bearer old", "Bearer new", "Bearer new"]);
+  });
+
+  it("retries a 401 without refreshing when another request already replaced the token", async () => {
+    // Another request replaces the token while this one is in flight.
+    const swap = (n: number) => n === 1 && holder.store?.save({ idToken: "newer", refreshToken: "r", expiresAt: NOW + 3_600_000 });
+    const holder: { store?: SessionStore } = {};
+    const { client, store, sent, refresh } = setup({ statuses: [401, 200], onSend: swap });
+    holder.store = store;
+    const response = await client.get("/a");
+    expect(response.status).toBe(200);
+    expect(refresh).not.toHaveBeenCalled();
+    expect(sent).toEqual(["Bearer old", "Bearer newer"]);
   });
 });
