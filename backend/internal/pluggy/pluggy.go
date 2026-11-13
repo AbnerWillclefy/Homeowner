@@ -29,6 +29,15 @@ type Client interface {
 	ListTransactions(ctx context.Context, apiKey, accountID string, from, to time.Time, cursor string) (TransactionsPage, error)
 	// ListBills reads a credit card account's bills, closed and open.
 	ListBills(ctx context.Context, apiKey, accountID string) ([]Bill, error)
+	// ListInvestments reads the Investments an Item holds.
+	ListInvestments(ctx context.Context, apiKey, itemID string) ([]Investment, error)
+}
+
+// Investment is one holding as the bank reports it. ValueCents is Pluggy's
+// balance; Type and Status are Pluggy's own words (MUTUAL_FUND, ACTIVE).
+type Investment struct {
+	ID, Name, Type, Currency, Status string
+	ValueCents                       int64
 }
 
 // Bill is one bill of a credit card as the bank reports it. The dates are
