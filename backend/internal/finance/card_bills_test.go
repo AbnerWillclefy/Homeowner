@@ -77,7 +77,14 @@ func TestOutlookTakesAStoredBillsTotal(t *testing.T) {
 	}
 
 	b, _ := readOutlook(t, ana)
-	if cards := b.Months[0].Cards; len(cards) != 1 || cards[0].AmountCents != 253090 {
-		t.Errorf("march cards = %+v, want the bank's 253090", cards)
+	cards := b.Months[0].Cards
+	if len(cards) != 1 || cards[0].AmountCents != 253090 {
+		t.Fatalf("march cards = %+v, want the bank's 253090", cards)
+	}
+	if c := cards[0]; !c.FromBank || c.DueOn == nil || *c.DueOn != "2027-03-10" || c.ClosesOn == nil || *c.ClosesOn != "2027-03-03" {
+		t.Errorf("march card = %+v, want fromBank with due 2027-03-10 and closes 2027-03-03", c)
+	}
+	if c := b.Months[1].Cards[0]; c.FromBank || c.DueOn != nil || c.ClosesOn != nil {
+		t.Errorf("april card = %+v, want no bank bill", c)
 	}
 }

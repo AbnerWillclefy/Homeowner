@@ -2,9 +2,9 @@
 
 Bedrock follows semver; before 1.0.0 a minor may break ([spec](../docs/design/bedrock/README.md)).
 
-## Unreleased
+## 0.2.0
 
-- ProgressBar takes `tone="brand"`, a fill that stays calm near full, for progress toward a goal.
+- ProgressBar: optional `tone` fixes the fill colour, so a bar that must not alarm stays `brand` past its target.
 
 ## 0.1.0
 
