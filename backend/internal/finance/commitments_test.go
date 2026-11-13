@@ -193,9 +193,11 @@ type outlookBody struct {
 }
 
 type outlookCard struct {
-	SourceID, Name string
-	AmountCents    int64
-	BillDaysKnown  bool
+	SourceID, Name  string
+	AmountCents     int64
+	BillDaysKnown   bool
+	FromBank        bool
+	DueOn, ClosesOn *string
 }
 
 // readOutlook also returns the raw months, to check a key is absent. It reads
@@ -241,6 +243,9 @@ func TestCommitmentsCardBillAndLeftover(t *testing.T) {
 	}
 	if a := b.Months[1]; len(a.Cards) != 1 || a.Cards[0].AmountCents != 2500 || a.TotalCents != 2500+fixturePlanned {
 		t.Errorf("april = %+v, want installment 4 as the card bill", a)
+	}
+	if c := m.Cards[0]; c.FromBank || c.DueOn != nil || c.ClosesOn != nil {
+		t.Errorf("march card = %+v, want no bank bill", c)
 	}
 	if z := b.Months[2]; z.Cards[0].AmountCents != 2500 {
 		t.Errorf("may card = %+v, want installment 5", z.Cards)

@@ -106,9 +106,9 @@ func seedMonth(t *testing.T) (*apitest.App, *apitest.Client) {
 }
 
 type txnBody struct {
-	ID, SourceName, Type, Description, TypeSetBy string
-	AmountCents                                  int64
-	SpendingCategory, CategorySetBy              *string
+	ID, SourceID, SourceName, Type, Description, TypeSetBy string
+	AmountCents                                            int64
+	SpendingCategory, CategorySetBy                        *string
 }
 
 type catBody struct {
@@ -354,6 +354,11 @@ func TestMonthListsTransactionsAndTotalsPerCategory(t *testing.T) {
 	}
 	if f := txns[0]; f.Description != "Pagamento de boleto" || f.AmountCents != -10000 || f.SourceName == "" || f.Type != "expense" {
 		t.Errorf("newest = %+v, want the boleto expense of -10000", f)
+	}
+	for _, x := range txns {
+		if x.SourceID == "" {
+			t.Errorf("transaction %s has no sourceId", x.ID)
+		}
 	}
 	if res := ana.Get("/me/finance/transactions?month=2026-11"); !strings.Contains(string(res.Raw), `"currency":"BRL"`) || !strings.Contains(string(res.Raw), `"installment":null`) {
 		t.Errorf("body lacks currency or installment: %s", res.Raw)

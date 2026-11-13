@@ -87,6 +87,7 @@ type CredentialsRequest struct {
 // income, expense, transfer or saving; only an Expense has a SpendingCategory.
 type TransactionResponse struct {
 	ID               string               `json:"id"`
+	SourceID         string               `json:"sourceId"` // the Source (account or card) it belongs to
 	PostedOn         string               `json:"postedOn"`
 	Description      string               `json:"description"`
 	SourceName       string               `json:"sourceName"`
@@ -202,12 +203,17 @@ type PaceDTO struct {
 // CardBillLine is one credit card's bill in a month: the bank's total when it
 // reported a bill due in the month, else the app's own sum (ADR 0021).
 // BillDaysKnown is false when the card has no closing or due day, so charges
-// count on the day made.
+// count on the day made. FromBank is true when AmountCents is the bank's total
+// of a bill due in the month; DueOn and ClosesOn (YYYY-MM-DD) are that bill's
+// days, null otherwise.
 type CardBillLine struct {
-	SourceID      string `json:"sourceId"`
-	Name          string `json:"name"`
-	AmountCents   int64  `json:"amountCents"`
-	BillDaysKnown bool   `json:"billDaysKnown"`
+	SourceID      string  `json:"sourceId"`
+	Name          string  `json:"name"`
+	AmountCents   int64   `json:"amountCents"`
+	BillDaysKnown bool    `json:"billDaysKnown"`
+	FromBank      bool    `json:"fromBank"`
+	DueOn         *string `json:"dueOn"`
+	ClosesOn      *string `json:"closesOn"`
 }
 
 // PlannedLineDTO is the rest of one Spending Category's limit in a month.

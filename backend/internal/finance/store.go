@@ -434,7 +434,7 @@ func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string,
 
 // transactionColumns reads a Transaction as TransactionResponse, with its
 // Source's name, then what CountsOn needs.
-const transactionColumns = `t.id, t.posted_on::text, t.description, COALESCE(s.display_name, s.name), t.amount_cents, t.currency, t.type,
+const transactionColumns = `t.id, t.source_id, t.posted_on::text, t.description, COALESCE(s.display_name, s.name), t.amount_cents, t.currency, t.type,
 	t.spending_category, t.type_set_by, t.category_set_by, t.installment_number, t.total_installments,
 	t.posted_on, s.kind, COALESCE(s.bill_close_day, 0), COALESCE(s.bill_due_day, 0)`
 
@@ -445,7 +445,7 @@ func scanTransaction(r pgx.Row) (TransactionResponse, time.Time, error) {
 	var posted time.Time
 	var kind Kind
 	var closeDay, dueDay int
-	err := r.Scan(&t.ID, &t.PostedOn, &t.Description, &t.SourceName, &t.AmountCents, &t.Currency, &t.Type,
+	err := r.Scan(&t.ID, &t.SourceID, &t.PostedOn, &t.Description, &t.SourceName, &t.AmountCents, &t.Currency, &t.Type,
 		&t.SpendingCategory, &t.TypeSetBy, &t.CategorySetBy, &n, &total, &posted, &kind, &closeDay, &dueDay)
 	if n != nil && total != nil {
 		t.Installment = &InstallmentResponse{Number: *n, Total: *total}

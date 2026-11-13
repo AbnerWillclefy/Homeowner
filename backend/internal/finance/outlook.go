@@ -19,11 +19,15 @@ type StoredBill struct {
 	TotalCents      int64
 }
 
-// CardBill is what one card's bill takes from a month.
+// CardBill is what one card's bill takes from a month. FromBank is true when
+// AmountCents is the bank's total for a bill due in the month; DueOn and
+// ClosesOn are that bill's days, nil otherwise.
 type CardBill struct {
-	SourceID, Name string
-	AmountCents    int64
-	BillDaysKnown  bool
+	SourceID, Name  string
+	AmountCents     int64
+	BillDaysKnown   bool
+	FromBank        bool
+	DueOn, ClosesOn *time.Time
 }
 
 // OtherBill is a Bill to pay that is not a card bill; Cents is the snapshot
@@ -155,8 +159,9 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 				}
 			}
 			var amount int64
+			var due, closes *time.Time
 			if closed != nil {
-				amount = closed.TotalCents
+				amount, due, closes = closed.TotalCents, &closed.DueOn, &closed.ClosesOn
 			} else {
 				var inMonth []Txn
 				for _, t := range byCard[c.ID] {
@@ -169,7 +174,7 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 					amount += owed[c.ID][i]
 				}
 			}
-			o.Cards = append(o.Cards, CardBill{c.ID, c.Name, amount, c.BillDaysKnown})
+			o.Cards = append(o.Cards, CardBill{c.ID, c.Name, amount, c.BillDaysKnown, closed != nil, due, closes})
 			o.TotalCents += amount
 		}
 		if i < len(bills) {

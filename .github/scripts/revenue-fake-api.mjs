@@ -14,6 +14,13 @@ const DESCRIPTIONS = [
   ["Petz Pet Shop", -12_990, "expense", "pets", "Nubank"],
 ];
 
+const SOURCES = [
+  { id: "s1", name: "Nubank", bankName: "Nubank", kind: "credit_card", currency: "BRL", closeDay: 8, dueDay: 15 },
+  { id: "s3", name: "Itaú Visa", bankName: "Itaú", kind: "credit_card", currency: "BRL", closeDay: null, dueDay: null },
+  { id: "s2", name: "Itaú", bankName: "Itaú", kind: "checking", currency: "BRL", closeDay: null, dueDay: null },
+];
+const SOURCE_ID = { Nubank: "s1", Itaú: "s2" };
+
 const pad = (n) => String(n).padStart(2, "0");
 
 /** The days of `month` the rows fall on: up to today in the current month, so nothing is dated in the future. */
@@ -25,11 +32,11 @@ function days(month, today) {
 function transactions(month, today) {
   const on = days(month, today);
   const rows = DESCRIPTIONS.map(([description, amountCents, type, spendingCategory, sourceName], i) => ({
-    id: `t${i + 1}`, postedOn: on[i], countsOn: on[i], description, sourceName, amountCents, currency: "BRL", type, spendingCategory,
+    id: `t${i + 1}`, sourceId: SOURCE_ID[sourceName], postedOn: on[i], countsOn: on[i], description, sourceName, amountCents, currency: "BRL", type, spendingCategory,
     installment: null,
   }));
   rows.push({
-    id: "t11", postedOn: on[0], countsOn: on[0], description: "Magazine Luiza Geladeira Frost Free", sourceName: "Nubank",
+    id: "t11", sourceId: "s1", postedOn: on[0], countsOn: on[0], description: "Magazine Luiza Geladeira Frost Free", sourceName: "Nubank",
     amountCents: -32_490, currency: "BRL", type: "expense", spendingCategory: "shopping", installment: { number: 3, total: 10 },
   });
   rows.push({
@@ -56,7 +63,10 @@ function commitments(from, today) {
     monthlyIncomeCents: 1_250_000,
     months: [{
       month: from,
-      cards: [{ sourceId: "s1", name: "Nubank", amountCents: 284_300, billDaysKnown: true }],
+      cards: [
+        { sourceId: "s1", name: "Nubank", amountCents: 284_300, billDaysKnown: true, fromBank: true, dueOn: `${from}-15`, closesOn: `${from}-08` },
+        { sourceId: "s3", name: "Itaú Visa", amountCents: 50_000, billDaysKnown: false, fromBank: false, dueOn: null, closesOn: null },
+      ],
       otherBills: [
         { id: "b1", name: "Aluguel", cents: 320_000, paid: true },
         { id: "b2", name: "Internet Vivo Fibra", cents: 12_990, paid: false },
@@ -98,7 +108,7 @@ function history(to, months) {
 export function answer(method, url, today) {
   const params = url.searchParams;
   const route = `${method} ${url.pathname}`;
-  if (route === "GET /me/finance") return { status: 200, body: {} };
+  if (route === "GET /me/finance") return { status: 200, body: { sources: SOURCES } };
   if (route === "GET /me/finance/transactions") return { status: 200, body: transactions(params.get("month"), today) };
   if (route === "GET /me/finance/history") return { status: 200, body: history(params.get("to"), Number(params.get("months"))) };
   if (route === "GET /me/finance/commitments") return { status: 200, body: commitments(params.get("from"), today) };
