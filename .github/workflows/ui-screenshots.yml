@@ -106,10 +106,15 @@ jobs:
           section() { awk -v h="$1" '/^#/ { inside = ($0 ~ "^### *" h " *$"); next } inside' <<<"${body//$'\r'/}"; }
           has_image() { grep -qE '!\[[^]]*\]\([^)]+\)|<img[^>]+src=' <<<"$1"; }
 
-          # Revenue shows pt-BR in dark mode at both widths; the other apps show both locales.
+          # Revenue shows pt-BR in dark mode at both widths, which also shows a Bedrock change it carries;
+          # the web app, and Bedrock on its own, show both locales.
           headings=()
-          grep -qv '^revenue/' <<<"$UI_FILES" && headings+=(pt-BR English)
-          grep -q '^revenue/' <<<"$UI_FILES" && headings+=(Mobile Desktop)
+          if grep -q '^revenue/' <<<"$UI_FILES"; then
+            headings+=(Mobile Desktop)
+            grep -q '^web/' <<<"$UI_FILES" && headings+=(pt-BR English)
+          else
+            headings+=(pt-BR English)
+          fi
           missing=()
           for h in "${headings[@]}"; do has_image "$(section "$h")" || missing+=("$h"); done
           if (( ${#missing[@]} )); then
