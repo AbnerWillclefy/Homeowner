@@ -22,10 +22,10 @@ export function changedSections(sections, changedFiles) {
   return changed.every((f) => owned.has(f)) ? sections.filter((s) => changed.includes(key(s))) : [];
 }
 
-/** The description with this script's earlier images replaced by `images` ({ "pt-BR": [md], English: [md] }). */
+/** The description with the earlier auto- images replaced by `images`, one heading per key ({ "pt-BR": [md], English: [md] }). */
 export function withScreenshots(body, prefix, images) {
   let lines = body.replace(/\r/g, "").split("\n").filter((l) => !l.includes(`${prefix}auto-`));
-  for (const { heading } of locales) {
+  for (const heading of Object.keys(images)) {
     // The template's headings sit in an HTML comment; images there would not show.
     let comment = false;
     const at = lines.findIndex((l) => {

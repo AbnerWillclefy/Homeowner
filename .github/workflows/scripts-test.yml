@@ -25,5 +25,5 @@ jobs:
         run: .github/scripts/review-outcomes.test.sh
       - name: Test resolve-answered-threads.sh
         run: .github/scripts/resolve-answered-threads.test.sh
-      - name: Test bedrock-screenshots.mjs
-        run: node --test .github/scripts/bedrock-screenshots.test.mjs
+      - name: Test bedrock-screenshots.mjs and revenue-screenshots.mjs
+        run: node --test .github/scripts/bedrock-screenshots.test.mjs .github/scripts/revenue-screenshots.test.mjs
