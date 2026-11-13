@@ -92,7 +92,7 @@ jobs:
           # Edits with this token start no new run, so the check below reads the description again.
           gh api -X PATCH "repos/$GITHUB_REPOSITORY/pulls/$PR" -F "body=@$RUNNER_TEMP/body.md" >/dev/null
 
-      - name: Check the description has screenshots in both locales
+      - name: Check the description has the screenshots it needs
         if: steps.find.outputs.files != ''
         env:
           UI_FILES: ${{ steps.find.outputs.files }}
@@ -102,13 +102,21 @@ jobs:
           if grep -qv '^bedrock/' <<<"$UI_FILES"; then
             body=$(grep -v "/screenshots/$HEAD_REF/auto-" <<<"$body" || true)
           fi
-          # Prints the text under a "### <locale>" heading, up to the next heading.
+          # Prints the text under a "### <name>" heading, up to the next heading.
           section() { awk -v h="$1" '/^#/ { inside = ($0 ~ "^### *" h " *$"); next } inside' <<<"${body//$'\r'/}"; }
           has_image() { grep -qE '!\[[^]]*\]\([^)]+\)|<img[^>]+src=' <<<"$1"; }
 
+          # Revenue shows pt-BR in dark mode at both widths, which also shows a Bedrock change it carries;
+          # the web app, and Bedrock on its own, show both locales.
+          headings=()
+          if grep -q '^revenue/' <<<"$UI_FILES"; then
+            headings+=(Mobile Desktop)
+            grep -q '^web/' <<<"$UI_FILES" && headings+=(pt-BR English)
+          else
+            headings+=(pt-BR English)
+          fi
           missing=()
-          has_image "$(section 'pt-BR')" || missing+=("pt-BR")
-          has_image "$(section 'English')" || missing+=("English")
+          for h in "${headings[@]}"; do has_image "$(section "$h")" || missing+=("$h"); done
           if (( ${#missing[@]} )); then
             echo "::error::This pull request changes the UI:"
             echo "$UI_FILES"

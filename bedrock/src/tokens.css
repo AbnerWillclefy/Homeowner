@@ -368,6 +368,8 @@
   line-height: 16px;
   font-weight: 600;
   letter-spacing: 0.06em;
+  /* Tailwind's own `overline` utility draws a line above the text and comes later in the CSS. */
+  text-decoration-line: none !important;
 }
 
 /* A centred ::after gives every control a 48px hit area without changing its visual size. */
