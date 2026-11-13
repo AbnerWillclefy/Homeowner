@@ -41,7 +41,7 @@ describe("setting and removing the Spending limit", () => {
     expect(api.putBudget).toHaveBeenCalledWith("groceries", 150000);
     expect(await screen.findByText(nb("R$300.00 over the limit"))).toBeTruthy();
     expect(screen.getByRole("status").textContent).toContain("saved");
-    await waitFor(() => expect(invalidate.mock.calls.map((c) => c[0]?.queryKey)).toEqual([["finance", "transactions"], ["finance", "commitments"], ["finance", "savings"]]));
+    await waitFor(() => expect(invalidate.mock.calls.map((c) => c[0]?.queryKey)).toEqual([["finance", "transactions"], ["finance", "commitments"]]));
   });
 
   it("removes it with null and drops the bar", async () => {

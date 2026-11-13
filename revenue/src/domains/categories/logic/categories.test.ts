@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { History, Spending } from "../api";
 import { categoryHistory } from "./history";
 import { isValidLimit, limitText, withLimit } from "./limit";
+import { addMonths, monthFromParam, saoPauloDay } from "./month";
 import { categoryOf } from "./route";
 import { categoryRows } from "./rows";
 import { ofCategory, uncategorised } from "./uncategorised";
@@ -58,5 +59,16 @@ describe("categoryHistory", () => {
   it("gives zero for a month without the category, and says when all are zero", () => {
     expect(categoryHistory(history, "pets")).toEqual({ months: [{ month: "2029-12", cents: 5 }, { month: "2030-01", cents: 0 }], allZero: false });
     expect(categoryHistory(history, "health").allZero).toBe(true);
+  });
+});
+
+describe("month", () => {
+  it("counts today in São Paulo and keeps the month in range", () => {
+    expect(saoPauloDay(new Date("2030-01-01T02:30:00Z"))).toBe("2029-12-31");
+    expect(addMonths("2030-01", -1)).toBe("2029-12");
+    expect(addMonths("2029-12", 1)).toBe("2030-01");
+    expect(monthFromParam("2030-03", "2030-02")).toBe("2030-02");
+    expect(monthFromParam("junk", "2030-02")).toBe("2030-02");
+    expect(monthFromParam("2029-11", "2030-02")).toBe("2029-11");
   });
 });

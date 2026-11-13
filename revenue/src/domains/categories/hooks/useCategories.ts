@@ -22,7 +22,7 @@ export function useHistory(to: string) {
 
 /**
  * Sets or removes a Spending limit. The bar changes at once; a failed write puts the previous limit back. A limit
- * holds for every month and changes Planned spending, so the Leftover moves: transactions, commitments and savings are read again.
+ * holds for every month and changes Planned spending, so the Leftover moves: transactions and commitments are read again.
  */
 export function useLimit(month: string) {
   const client = useQueryClient();
@@ -36,7 +36,7 @@ export function useLimit(month: string) {
       set(cents);
       const result = await putBudget(category, cents);
       if (result.kind !== "ok") set(before);
-      for (const name of ["transactions", "commitments", "savings"]) void client.invalidateQueries({ queryKey: ["finance", name] });
+      for (const name of ["transactions", "commitments"]) void client.invalidateQueries({ queryKey: ["finance", name] });
       return result.kind === "ok" ? "saved" : "failed";
     },
     [client, month],
