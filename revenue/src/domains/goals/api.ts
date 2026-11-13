@@ -30,6 +30,31 @@ export interface ReserveProgress {
   expectedMonth: string | null;
 }
 
+/** What an Investment counts toward. */
+export type Serves = "reserve" | "goals";
+
+export interface InvestmentInput {
+  name: string;
+  valueCents: number;
+  serves: Serves;
+}
+
+/**
+ * An Investment as the savings read gives it. `serves` is null for a bank Investment nothing is picked for, which
+ * counts toward neither. `bankValueCents` is only on a bank one; `edited` means the User's value wins over it.
+ */
+export interface Investment {
+  id: string;
+  name: string;
+  valueCents: number;
+  serves: Serves | null;
+  source: "hand" | "pluggy";
+  /** False when the bank stopped returning it; always true on a hand-typed one. */
+  reportedByBank: boolean;
+  edited: boolean;
+  bankValueCents: number | null;
+}
+
 /** `GET /me/finance/savings`: the settings (null while unset) and the progress, Goals in the User's order. */
 export interface Savings {
   reserveTargetCents: number | null;
@@ -37,6 +62,7 @@ export interface Savings {
   reserveSharePercent: number | null;
   reserve: ReserveProgress;
   goals: SavingsGoal[];
+  investments: Investment[];
   /** Money no Goal takes. */
   unassignedCents: number;
 }
@@ -49,9 +75,20 @@ const nullableNum = (v: unknown) => v === null || typeof v === "number";
 const nullableStr = (v: unknown) => v === null || typeof v === "string";
 
 /**
- * Reads what this screen uses and ignores the rest. Investments are not read at all, so an Investment with
- * `serves: null` or fields added later (`source`, `edited`, `bankValueCents`, `reportedByBank`) cannot drop the screen.
+ * Reads what this screen uses and ignores the rest. A body without `investments` reads as none; an Investment
+ * with a field of the wrong type refuses the whole body, as a Goal does.
  */
+const parseInvestment = (v: unknown): Investment | null => {
+  if (!isRecord(v) || typeof v.id !== "string" || typeof v.name !== "string" || typeof v.valueCents !== "number" || typeof v.edited !== "boolean") return null;
+  if (v.serves !== null && v.serves !== "reserve" && v.serves !== "goals") return null;
+  if (v.source !== "hand" && v.source !== "pluggy") return null;
+  return {
+    id: v.id, name: v.name, valueCents: v.valueCents, serves: v.serves, source: v.source, edited: v.edited,
+    reportedByBank: v.reportedByBank !== false,
+    bankValueCents: typeof v.bankValueCents === "number" ? v.bankValueCents : null,
+  };
+};
+
 export function parseSavings(body: unknown): Savings | null {
   if (!isRecord(body) || !Array.isArray(body.goals) || !isRecord(body.reserve) || typeof body.unassignedCents !== "number") return null;
   const { reserve } = body;
@@ -76,6 +113,9 @@ export function parseSavings(body: unknown): Savings | null {
         typeof g.late === "boolean",
     );
   if (!valid) return null;
+  const rows = body.investments === undefined ? [] : Array.isArray(body.investments) ? body.investments.map(parseInvestment) : null;
+  const investments = rows?.every((i) => i !== null) ? rows : null;
+  if (!investments) return null;
   const { reserveTargetCents, contributionBaseCents, reserveSharePercent, unassignedCents } = body as unknown as Savings;
   const r = reserve as unknown as ReserveProgress;
   return {
@@ -84,6 +124,7 @@ export function parseSavings(body: unknown): Savings | null {
     reserveSharePercent,
     reserve: { targetCents: r.targetCents, savedCents: r.savedCents, monthCents: r.monthCents, expectedMonth: r.expectedMonth },
     goals: (body.goals as SavingsGoal[]).map(({ id, name, targetCents, targetMonth, savedCents, monthCents, expectedMonth, late }) => ({ id, name, targetCents, targetMonth, savedCents, monthCents, expectedMonth, late })),
+    investments,
     unassignedCents,
   };
 }
@@ -116,3 +157,18 @@ export const putReserve = async (targetCents: number | null, client: AxiosInstan
 /** `PUT /me/finance/contribution`; null clears both fields together, as the API wants. */
 export const putContribution = async (contribution: { baseCents: number; reserveSharePercent: number } | null, client: AxiosInstance = apiClient): Promise<WriteResult> =>
   writeResult(await send(client, "PUT", "/me/finance/contribution", 204, contribution ?? { baseCents: null, reserveSharePercent: null }), 204);
+
+/** `POST /me/finance/investments`, or `PUT .../{id}` when `id` is given (also how a bank value is corrected). */
+export const saveInvestment = (id: string | null, input: InvestmentInput, client: AxiosInstance = apiClient): Promise<SaveResult> => saveRow(client, "/me/finance/investments", id, input);
+
+/** A bank Investment answers 409: the next sync would bring it back, so the screen offers no delete there. */
+export const deleteInvestment = async (id: string, client: AxiosInstance = apiClient): Promise<WriteResult> =>
+  writeResult(await send(client, "DELETE", `/me/finance/investments/${encodeURIComponent(id)}`, 204), 204);
+
+/** `PUT /me/finance/investments/{id}/serves`: the pick of a bank Investment, changeable later. */
+export const putInvestmentServes = async (id: string, serves: Serves, client: AxiosInstance = apiClient): Promise<WriteResult> =>
+  writeResult(await send(client, "PUT", `/me/finance/investments/${encodeURIComponent(id)}/serves`, 204, { serves }), 204);
+
+/** `POST /me/finance/investments/{id}/use-bank-value`: the bank's value replaces the User's. */
+export const restoreBankValue = async (id: string, client: AxiosInstance = apiClient): Promise<WriteResult> =>
+  writeResult(await send(client, "POST", `/me/finance/investments/${encodeURIComponent(id)}/use-bank-value`, 200), 200);
