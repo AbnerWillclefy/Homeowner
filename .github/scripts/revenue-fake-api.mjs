@@ -107,6 +107,21 @@ function savings(today) {
   };
 }
 
+/** Balances plus Investments for the range, ending today; the 1y range starts mid-way so the "history starts" note shows. */
+function netWorth(today, range) {
+  const days = { "30d": 30, "90d": 90, "1y": 200 }[range] ?? 30;
+  const end = Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 1, Number(today.slice(8, 10)));
+  return {
+    hasData: true,
+    today: { totalCents: 1_850_000, balancesCents: 650_000, investmentsCents: 1_350_000, cardBillsCents: 150_000 },
+    series: Array.from({ length: days }, (_, i) => ({
+      day: new Date(end - (days - 1 - i) * 86_400_000).toISOString().slice(0, 10),
+      cents: 1_700_000 + i * (300_000 / days) + (i % 7) * 12_000,
+    })).map((p) => ({ ...p, cents: Math.round(p.cents) })),
+    seriesExcludesCardBills: true,
+  };
+}
+
 /** The six months ending at `to`, each with a little less spent in groceries the further back it goes. */
 function history(to, months) {
   const [y, m] = to.split("-").map(Number);
@@ -131,6 +146,7 @@ export function answer(method, url, today) {
   if (route === "GET /me/finance/commitments") return { status: 200, body: commitments(params.get("from"), today) };
   if (route === "GET /me/finance/bills") return { status: 200, body: bills(params.get("month")) };
   if (route === "GET /me/finance/bill-suggestions") return { status: 200, body: [{ merchantKey: "enel", name: "Conta de luz Enel", amountCents: 21_480, dueDay: 10 }] };
+  if (route === "GET /me/finance/net-worth") return { status: 200, body: netWorth(today, params.get("range")) };
   if (route === "GET /me/finance/savings") return { status: 200, body: savings(today) };
   return null;
 }
