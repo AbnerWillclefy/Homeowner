@@ -83,5 +83,6 @@ export function answer(method, url, today) {
   if (route === "GET /me/finance/transactions") return { status: 200, body: transactions(params.get("month"), today) };
   if (route === "GET /me/finance/commitments") return { status: 200, body: commitments(params.get("from"), today) };
   if (route === "GET /me/finance/bills") return { status: 200, body: bills(params.get("month")) };
+  if (route === "GET /me/finance/bill-suggestions") return { status: 200, body: [{ merchantKey: "enel", name: "Conta de luz Enel", amountCents: 21_480, dueDay: 10 }] };
   return null;
 }
