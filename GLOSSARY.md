@@ -165,7 +165,7 @@ The most a User wants to spend in one Spending Category in a month. It is set on
 _Avoid_: Budget (in copy), Cap, Quota
 
 **Investment**:
-Money a User has put away, with a name, a current value and what it serves: the Emergency reserve or the Goals.
+Money a User has put away, with a name, a current value and what it serves: the Emergency reserve or the Goals. An Investment can be typed by hand or come from the bank; one from the bank starts with nothing picked and counts toward neither until the User picks.
 _Avoid_: Asset, Account, Portfolio
 
 **Emergency reserve**:

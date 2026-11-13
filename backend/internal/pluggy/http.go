@@ -230,6 +230,34 @@ func (h *HTTP) ListBills(ctx context.Context, apiKey, accountID string) ([]Bill,
 	return bills, nil
 }
 
+// ListInvestments implements Client against GET /investments.
+// shortcut: one page of 500, an Item holds a handful of Investments; follow totalPages if one ever has more.
+func (h *HTTP) ListInvestments(ctx context.Context, apiKey, itemID string) ([]Investment, error) {
+	var out struct {
+		Results []struct {
+			ID       string      `json:"id"`
+			Name     string      `json:"name"`
+			Type     string      `json:"type"`
+			Balance  json.Number `json:"balance"`
+			Currency string      `json:"currencyCode"`
+			Status   string      `json:"status"`
+		} `json:"results"`
+	}
+	q := url.Values{"itemId": {itemID}, "pageSize": {"500"}}
+	if err := h.do(ctx, "list investments", http.MethodGet, "/investments?"+q.Encode(), apiKey, nil, &out); err != nil {
+		return nil, err
+	}
+	invs := make([]Investment, len(out.Results))
+	for i, r := range out.Results {
+		cents, err := parseCents(r.Balance.String())
+		if err != nil {
+			return nil, errors.New("pluggy: list investments: unreadable balance")
+		}
+		invs[i] = Investment{ID: r.ID, Name: r.Name, Type: r.Type, ValueCents: cents, Currency: r.Currency, Status: r.Status}
+	}
+	return invs, nil
+}
+
 // dayOf is the day of month of a YYYY-MM-DD date (a timestamp's date part too), or 0.
 func dayOf(s string) int {
 	d, err := time.Parse(time.DateOnly, s[:min(len(s), len(time.DateOnly))])

@@ -578,6 +578,11 @@ describe("getSavings", () => {
     }
   });
 
+  it("drops a bank Investment that serves nothing yet", async () => {
+    stubFetch(Response.json({ ...SAVINGS, investments: [...SAVINGS.investments, { id: "i2", name: "Bank", valueCents: 5, serves: null }] }));
+    expect(await getSavings()).toEqual({ kind: "ok", savings: SAVINGS });
+  });
+
   it("is an error for a body it cannot read", async () => {
     const goal = SAVINGS.goals[0]!;
     const bodies = [

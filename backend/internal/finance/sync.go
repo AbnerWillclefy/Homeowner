@@ -171,6 +171,7 @@ func (s *Syncer) syncItem(ctx context.Context, it DueItem, apiKey string, now, t
 			s.log.Error("finance sync failed", "user", it.UserID, "step", "card bills", "error", safeErr(err))
 		}
 	}
+	s.syncInvestments(ctx, it, apiKey, now)
 	var owner pluggy.Party
 	for _, a := range accounts {
 		if a.TaxNumber != "" || a.Owner != "" {
@@ -211,6 +212,31 @@ func (s *Syncer) syncItem(ctx context.Context, it DueItem, apiKey string, now, t
 			return true, s.store.FinishSync(ctx, it.ID, now)
 		}
 	}
+}
+
+// syncInvestments stores the Investments the bank holds. An Item with none is
+// not a failure, and a failed call only logs: the Transactions import goes on.
+// Rows that are not BRL are left out and counted in the log.
+func (s *Syncer) syncInvestments(ctx context.Context, it DueItem, apiKey string, now time.Time) {
+	invs, err := s.pluggy.ListInvestments(ctx, apiKey, it.PluggyItemID)
+	if err == nil {
+		var rows []BankInvestment
+		skipped := 0
+		for _, inv := range invs {
+			if inv.Currency != "BRL" {
+				skipped++
+				continue
+			}
+			rows = append(rows, BankInvestment{PluggyID: inv.ID, Name: inv.Name, ValueCents: inv.ValueCents})
+		}
+		if err = s.store.UpsertBankInvestments(ctx, it.UserID, it.ID, rows, now); err == nil {
+			if skipped > 0 {
+				s.log.Info("finance sync skipped investments", "user", it.UserID, "skipped_currency", skipped)
+			}
+			return
+		}
+	}
+	s.log.Error("finance sync failed", "user", it.UserID, "step", "investments", "error", safeErr(err))
 }
 
 // syncWindow stores every page of one Source's window, then moves its cursor.

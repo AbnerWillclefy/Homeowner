@@ -197,3 +197,25 @@ func TestFailuresCarryNoBody(t *testing.T) {
 		t.Errorf("err = %v", err)
 	}
 }
+
+func TestListInvestmentsReadsTheCapture(t *testing.T) {
+	t.Parallel()
+	srv := pluggytest.NewServer(t)
+	c := pluggy.NewHTTP(srv.URL)
+
+	invs, err := c.ListInvestments(context.Background(), pluggytest.APIKey, pluggytest.ItemID)
+	if err != nil || len(invs) != 8 {
+		t.Fatalf("ListInvestments = %+v, %v", invs, err)
+	}
+	if got := invs[0]; got.ID != "00000000-0000-4000-8000-000000000d01" || got.Name != "Fondo de Investimento Premium" ||
+		got.ValueCents != 135939 || got.Currency != "BRL" || got.Type != "MUTUAL_FUND" || got.Status != "ACTIVE" {
+		t.Errorf("first = %+v", got)
+	}
+	none, err := c.ListInvestments(context.Background(), pluggytest.APIKey, pluggytest.EmptyItemID)
+	if err != nil || len(none) != 0 {
+		t.Errorf("empty Item = %+v, %v, want none", none, err)
+	}
+	if _, err := c.ListInvestments(context.Background(), "wrong", pluggytest.ItemID); !errors.Is(err, pluggy.ErrUnauthorized) {
+		t.Errorf("wrong key err = %v, want ErrUnauthorized", err)
+	}
+}
