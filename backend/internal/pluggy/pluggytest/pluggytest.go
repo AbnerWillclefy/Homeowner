@@ -44,6 +44,7 @@ type Server struct {
 	*httptest.Server
 	mu    sync.Mutex
 	fails map[string]int
+	usd   bool
 }
 
 // NewServer starts the fake and stops it when the test ends.
@@ -61,9 +62,17 @@ func (s *Server) Fail(path string, status int) {
 	s.fails[path] = status
 }
 
+// AddUSDInvestment makes the fixture Item hold one more Investment, in USD.
+func (s *Server) AddUSDInvestment() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.usd = true
+}
+
 func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	status, failed := s.fails[r.URL.Path]
+	usd := s.usd
 	s.mu.Unlock()
 	if failed {
 		http.Error(w, FailBody, status)
@@ -113,6 +122,11 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"results":[]}`))
 	case "GET /investments":
 		if !authorized(w, r) {
+			return
+		}
+		if q.Get("itemId") == ItemID && usd {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"results":[{"id":"usd-1","name":"Treasury USD","currencyCode":"USD","balance":100,"value":100}]}`))
 			return
 		}
 		if q.Get("itemId") == ItemID {

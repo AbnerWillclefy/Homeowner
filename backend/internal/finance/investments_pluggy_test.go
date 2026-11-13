@@ -195,3 +195,28 @@ func TestABankInvestmentCannotBeDeleted(t *testing.T) {
 		t.Error("the bank Investment was deleted")
 	}
 }
+
+func TestABankInvestmentCannotBeHandEdited(t *testing.T) {
+	t.Parallel()
+	app, users := startSync(t, []string{"ana@example.com"})
+	ana := users["ana@example.com"]
+	app.RunFinanceSync(t)
+	id := investmentNamed(t, ana, largestName)["id"].(string)
+	apitest.ExpectStatus(t, ana.Put("/me/finance/investments/"+id, investmentBody("x", 1, "goals")), http.StatusNotFound)
+	if i := investmentNamed(t, ana, largestName); i["serves"] != nil || i["valueCents"] != float64(largestCents) {
+		t.Errorf("after a refused PUT = %v, want serves null and the bank value", i)
+	}
+}
+
+func TestSyncLeavesOutInvestmentsNotInReais(t *testing.T) {
+	t.Parallel()
+	app, users := startSync(t, []string{"ana@example.com"})
+	app.Pluggy.AddUSDInvestment()
+	app.RunFinanceSync(t)
+	if got := savedInvestments(t, users["ana@example.com"]); len(got) != 0 {
+		t.Errorf("Investments = %v, want the USD one left out", got)
+	}
+	if !app.Logs.Contains("skipped_currency") {
+		t.Error("the skip should be logged")
+	}
+}
