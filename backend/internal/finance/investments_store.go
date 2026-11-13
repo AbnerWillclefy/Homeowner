@@ -98,8 +98,11 @@ func (s *Store) UseBankValue(ctx context.Context, userID, id string, now time.Ti
 		WHERE id = $1 AND user_id = $2 AND pluggy_investment_id IS NOT NULL RETURNING `+investmentCols, id, userID, now)
 	if err == nil && !found {
 		var hand bool
-		if e := s.db.QueryRow(ctx, `SELECT true FROM finance_investments WHERE id = $1 AND user_id = $2`, id, userID).Scan(&hand); e == nil {
+		switch e := s.db.QueryRow(ctx, `SELECT true FROM finance_investments WHERE id = $1 AND user_id = $2`, id, userID).Scan(&hand); {
+		case e == nil:
 			err = ErrNotBank
+		case !errors.Is(e, pgx.ErrNoRows):
+			err = e
 		}
 	}
 	return i, found, err
