@@ -2,7 +2,7 @@ package finance
 
 import "time"
 
-// Card is a credit card Source, with whether both its bill days are set and
+// Card is a credit card Source, with whether both its bill days are set, its due day and
 // the bills its bank reported.
 type Card struct {
 	ID, Name      string

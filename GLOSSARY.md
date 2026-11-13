@@ -168,6 +168,10 @@ _Avoid_: Budget (in copy), Cap, Quota
 Money a User has put away, with a name, a current value and what it serves: the Emergency reserve or the Goals. An Investment can be typed by hand or come from the bank; one from the bank starts with nothing picked and counts toward neither until the User picks.
 _Avoid_: Asset, Account, Portfolio
 
+**Net worth**:
+Source balances + Investments − card bills not yet paid. Every Investment counts, picked or not. Card Sources' own balances are never counted, and Bills to pay that are not on a card are left out. A card bill is not yet paid until its due date passes: the closed bill and the open bill both count while their due date (the one the bank reported, else the card's due day) is today or later, because nothing records a bill as paid and, after the due date, the payment has already left a checking balance. A card with neither a reported bill nor a due day counts only its current month. Its daily series is Source balances + Investments only, since past days' card bills are not stored.
+_Avoid_: Wealth, Total balance
+
 **Emergency reserve**:
 The amount a User wants set aside for the unexpected. It has a target; the Investments that serve it count toward it.
 _Avoid_: Rainy-day fund, Safety net, Savings (alone)
