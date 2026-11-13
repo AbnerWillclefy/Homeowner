@@ -339,7 +339,48 @@ func TestPlannedBaseline(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := plannedBaseline(tt.rows, cur); !reflect.DeepEqual(got, tt.want) {
+			if got := plannedBaseline(tt.rows, nil, nil, cur); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// A registered Bill is already in the other Bills, so each month of the
+// baseline leaves out the payment off the cards nearest its expected amount.
+func TestPlannedBaselineLeavesOutRegisteredBills(t *testing.T) {
+	t.Parallel()
+	cur := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	at := func(source string, month time.Month, day int, cents int64, category string) Txn {
+		return Txn{SourceID: source, PostedOn: time.Date(2026, month, day, 0, 0, 0, 0, time.UTC), AmountCents: -cents, Type: "expense", Category: category}
+	}
+	cards := []Card{{ID: "card"}}
+	mortgage := Bill{ID: "m", Name: "Financiamento", ExpectedCents: 697600}
+	power := Bill{ID: "p", Name: "Luz", ExpectedCents: 23856}
+	tests := []struct {
+		name  string
+		rows  []Txn
+		bills []Bill
+		want  map[string]int64
+	}{
+		{"the nearest payment each month is the Bill's", []Txn{
+			at("acc", 8, 31, 698137, "housing"), at("acc", 9, 29, 697769, "housing"), at("acc", 10, 29, 697542, "housing"), at("card", 8, 5, 7205, "housing"),
+		}, []Bill{mortgage}, map[string]int64{"housing": 2402}},
+		{"a payment more than a tenth away from the Bill stays", []Txn{
+			at("acc", 8, 27, 26241, "household_bills"), at("acc", 9, 25, 26242, "household_bills"), at("acc", 10, 23, 21471, "household_bills"),
+		}, []Bill{power}, map[string]int64{"household_bills": 8747}},
+		{"a card charge never pays a Bill", []Txn{at("card", 10, 5, 23856, "household_bills")}, []Bill{power}, map[string]int64{"household_bills": 23856}},
+		{"one payment per Bill and month, the nearest", []Txn{
+			at("acc", 10, 5, 22000, "household_bills"), at("acc", 10, 6, 23000, "household_bills"),
+		}, []Bill{power}, map[string]int64{"household_bills": 22000}},
+		{"a Linked payment is already out and takes no other", []Txn{
+			{SourceID: "acc", PostedOn: time.Date(2026, 10, 5, 0, 0, 0, 0, time.UTC), AmountCents: -23856, Type: "expense", Category: "household_bills", Linked: true},
+			at("acc", 10, 6, 23000, "household_bills"),
+		}, []Bill{power}, map[string]int64{"household_bills": 23000}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := plannedBaseline(tt.rows, cards, tt.bills, cur); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("got %v, want %v", got, tt.want)
 			}
 		})
@@ -422,5 +463,30 @@ func TestOutlookCurrentCardBill(t *testing.T) {
 		if !reflect.DeepEqual(got[1].Cards, []CardBill{c.next}) {
 			t.Errorf("%s: next month = %+v, want %+v", name, got[1].Cards, c.next)
 		}
+	}
+}
+
+// In the current month the planned rest of a category subtracts what the card
+// bills shown already hold, even charges that count on a later due day.
+func TestOutlookCurrentPlannedSubtractsTheShownBills(t *testing.T) {
+	t.Parallel()
+	d := func(s string) time.Time { v, _ := time.Parse(time.DateOnly, s); return v }
+	nov := d("2026-11-01")
+	buy := func(card string, closeDay, dueDay int, posted string, cents int64) Txn {
+		p := d(posted)
+		return Txn{SourceID: card, PostedOn: CountsOn(p, "credit_card", closeDay, dueDay), Posted: p, AmountCents: -cents, Type: "expense", Category: "groceries"}
+	}
+	cards := []Card{
+		{ID: "inter", Name: "inter", CloseDay: 20, DueDay: 28, BillDaysKnown: true},
+		{ID: "nubank", Name: "nubank", CloseDay: 28, DueDay: 5, BillDaysKnown: true},
+	}
+	rows := []Txn{
+		buy("inter", 20, 28, "2026-10-25", 300),
+		buy("nubank", 28, 5, "2026-11-10", 200), // counts on 2026-12-05, inside Nubank's open bill
+		{SourceID: "checking", PostedOn: d("2026-11-03"), Posted: d("2026-11-03"), AmountCents: -100, Type: "expense", Category: "groceries"},
+	}
+	got := Outlook(rows, cards, nil, [][]MonthBill{nil}, nil, map[string]int64{"groceries": 1000}, nil, 0, d("2026-11-13"), nov, 1)[0]
+	if want := []PlannedLine{{"groceries", 400}}; !reflect.DeepEqual(got.Planned, want) {
+		t.Errorf("planned = %v, want %v: the limit less the bills' 500 and the 100 off the card", got.Planned, want)
 	}
 }

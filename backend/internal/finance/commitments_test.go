@@ -301,10 +301,12 @@ func TestCommitmentsListEveryBillAndLeaveOutThoseOnACard(t *testing.T) {
 		m.OtherBills[1].Name != "Internet" || m.OtherBills[1].Paid || m.OtherBills[1].Cents != 12000 {
 		t.Errorf("march otherBills = %+v, want Rent paid and Internet unpaid, no Netflix", m.OtherBills)
 	}
-	if m.Cards[0].AmountCents != 5000 || m.TotalCents != 5000+150000+12000+fixturePlanned {
+	// The fixture pays VIVO 120.00 every month: the Internet Bill, so it leaves the planned average.
+	planned := int64(fixturePlanned - 12000)
+	if m.Cards[0].AmountCents != 5000 || m.TotalCents != 5000+150000+12000+planned {
 		t.Errorf("march = %+v, want the Netflix charge in the card bill once", m)
 	}
-	if a := b.Months[1]; len(a.OtherBills) != 3 || a.TotalCents != 150000+12000+5000+fixturePlanned {
+	if a := b.Months[1]; len(a.OtherBills) != 3 || a.TotalCents != 150000+12000+5000+planned {
 		t.Errorf("april = %+v, want all three Bills: only the paid month of Netflix is left out", a)
 	}
 }

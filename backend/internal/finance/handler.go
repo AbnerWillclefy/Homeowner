@@ -354,7 +354,15 @@ func (h *Handler) loadOutlook(ctx context.Context, uid string, from time.Time, m
 	if err != nil {
 		return in, err
 	}
-	in.outlook = Outlook(wide, cards, in.plans, bills, in.income, in.limits, plannedBaseline(prev, current), contribution, now, from, months)
+	registered, err := h.store.MonthBills(ctx, uid, current)
+	if err != nil {
+		return in, err
+	}
+	known := make([]Bill, len(registered))
+	for i, b := range registered {
+		known[i] = Bill{ID: b.ID, Name: b.Name, ExpectedCents: b.ExpectedCents}
+	}
+	in.outlook = Outlook(wide, cards, in.plans, bills, in.income, in.limits, plannedBaseline(prev, cards, known, current), contribution, now, from, months)
 	return in, nil
 }
 

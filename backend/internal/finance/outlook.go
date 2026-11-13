@@ -72,8 +72,9 @@ type PlannedLine struct {
 // Planned for a category is its limit, or without a limit its baseline (the
 // average of its spend in the 3 months before current, see plannedBaseline, the
 // same for every month of the horizon; a negative one plans 0), minus what already counts for it in the
-// month (every row, card or not, plus the installments still to come), the
-// counted amount clamped at zero and the result too.
+// month (every row, card or not, plus the installments still to come; in the
+// current month the rows the shown card bills hold and those off the cards),
+// the counted amount clamped at zero and the result too.
 //
 // contribution is the Monthly contribution (0 when none). Each month puts aside
 // the larger of its actual saving (never below 0) and the contribution, so the
@@ -156,11 +157,17 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 				offCard = append(offCard, t)
 			}
 		}
+		var held []Txn // in the current month: the rows the shown card bills hold, and the month's off the cards
 		for _, c := range cards {
 			var bill CardBill
 			var span billSpan
 			if isCurrent(m) {
 				bill, span = currentCardBill(c, byCard[c.ID], today)
+				for _, t := range byCard[c.ID] {
+					if span.from.IsZero() && monthIndex(t.PostedOn) == monthIndex(m) || !span.from.IsZero() && span.holds(t.Posted) {
+						held = append(held, t)
+					}
+				}
 				if !span.from.IsZero() {
 					taken[c.ID] = span
 				}
@@ -188,6 +195,14 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 		}
 		o.TotalCents += o.OtherInstallmentsCents
 		counted := MonthTotals(monthRows).ByCategory
+		if isCurrent(m) {
+			for _, t := range monthRows {
+				if !isCard[t.SourceID] {
+					held = append(held, t)
+				}
+			}
+			counted = MonthTotals(held).ByCategory
+		}
 		for _, c := range SpendingCategories {
 			plan, ok := limits[c]
 			if !ok {
@@ -225,26 +240,77 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 // spend in the category is a 0 and months before the User's first data are not
 // divided by. The sum leaves Linked rows out: the paid Bill is already in the
 // other Bills. current is the real current month, not the month asked for.
-func plannedBaseline(rows []Txn, current time.Time) map[string]int64 {
+//
+// A registered Bill is in the other Bills too, but the bank rarely names it, so
+// in each month every Bill also leaves out the Expense off the cards nearest
+// its expected amount, within a tenth of it either way (billPaymentRows). A Linked
+// row can be that nearest one, and then nothing more is left out.
+//
+// shortcut: a Bill is matched by amount alone, so a Bill varying more than a tenth (power) still counts twice and one can take an unrelated payment of the same size; upgrade when a Bill can name its Spending Category.
+func plannedBaseline(rows []Txn, cards []Card, bills []Bill, current time.Time) map[string]int64 {
 	first := monthIndex(current) - paceMonths
 	counted := map[int]bool{}
-	var spent []Txn
+	var window []Txn
 	for _, t := range rows {
 		if m := monthIndex(t.PostedOn); m >= first && m < monthIndex(current) {
 			counted[m] = true
-			if !t.Linked {
-				spent = append(spent, t)
-			}
+			window = append(window, t)
 		}
 	}
 	out := map[string]int64{}
 	if len(counted) == 0 {
 		return out
 	}
+	paid := billPaymentRows(window, cards, bills)
+	var spent []Txn
+	for i, t := range window {
+		if !t.Linked && !paid[i] {
+			spent = append(spent, t)
+		}
+	}
 	for c, sum := range MonthTotals(spent).ByCategory {
 		out[c] = halfUp(sum, int64(len(counted)))
 	}
 	return out
+}
+
+// billPaymentRows marks, by index in rows, the Expense off the cards each Bill
+// takes in each month: the nearest to its expected amount within a tenth of it,
+// the earliest on a tie. A row pays one Bill, the first to take it.
+func billPaymentRows(rows []Txn, cards []Card, bills []Bill) map[int]bool {
+	isCard := map[string]bool{}
+	for _, c := range cards {
+		isCard[c.ID] = true
+	}
+	taken := map[int]bool{}
+	months := map[int]bool{}
+	for _, t := range rows {
+		months[monthIndex(t.PostedOn)] = true
+	}
+	for _, b := range bills {
+		for m := range months {
+			best, gap := -1, b.ExpectedCents/10+1
+			for i, t := range rows {
+				if taken[i] || t.Type != "expense" || isCard[t.SourceID] || monthIndex(t.PostedOn) != m {
+					continue
+				}
+				if g := abs(-t.AmountCents - b.ExpectedCents); g < gap || g == gap && best >= 0 && t.PostedOn.Before(rows[best].PostedOn) {
+					best, gap = i, g
+				}
+			}
+			if best >= 0 {
+				taken[best] = true
+			}
+		}
+	}
+	return taken
+}
+
+func abs(v int64) int64 {
+	if v < 0 {
+		return -v
+	}
+	return v
 }
 
 // closingDrift is how many days a bank's closing may differ from the typed day.
@@ -263,7 +329,8 @@ func (s billSpan) holds(posted time.Time) bool {
 // be charged are the caller's). The closing days are the bank's, or the typed
 // ones without bank bills or when the bank has not reported the latest closing; a closed bill from typed days is its charges, with
 // no total to tell it paid, so only its due day ends it. A card with neither
-// keeps dueCardBill. span is the charges the bill holds, zero for a bank total.
+// keeps dueCardBill. span is the charges the bill holds (for a bank total, those
+// since the closing before, or a month), zero when dueCardBill decided.
 func currentCardBill(c Card, rows []Txn, today time.Time) (CardBill, billSpan) {
 	out := CardBill{SourceID: c.ID, Name: c.Name, BillDaysKnown: c.BillDaysKnown}
 	var last *StoredBill // the latest bank bill closed on or before today
@@ -286,6 +353,12 @@ func currentCardBill(c Card, rows []Txn, today time.Time) (CardBill, billSpan) {
 	switch {
 	case last != nil && !last.Paid && !today.After(last.DueOn):
 		out.AmountCents, out.FromBank, out.DueOn, out.ClosesOn = last.TotalCents, true, &last.DueOn, &last.ClosesOn
+		span = billSpan{last.ClosesOn.AddDate(0, -1, 0), last.ClosesOn}
+		for _, b := range c.Bills {
+			if b.ClosesOn.Before(last.ClosesOn) && b.ClosesOn.After(span.from) {
+				span.from = b.ClosesOn
+			}
+		}
 		return out, span
 	case last != nil:
 		span.from = last.ClosesOn
