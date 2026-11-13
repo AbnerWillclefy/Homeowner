@@ -181,6 +181,21 @@ func TestListBillsFailures(t *testing.T) {
 	}
 }
 
+func TestListBillsRoundsAThirdDecimalAndSkipsABillWithoutTotal(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, `{"results":[`+
+			`{"id":"up","dueDate":"2026-01-10T03:00:00.000Z","billClosingDate":"2026-01-03T03:00:00.000Z","totalAmount":2056.885,"totalAmountCurrencyCode":"BRL"},`+
+			`{"id":"down","dueDate":"2026-02-10T03:00:00.000Z","billClosingDate":"2026-02-03T03:00:00.000Z","totalAmount":-117.8349999,"totalAmountCurrencyCode":"BRL"},`+
+			`{"id":"none","dueDate":"2026-03-10T03:00:00.000Z","billClosingDate":"2026-03-03T03:00:00.000Z","totalAmount":null,"totalAmountCurrencyCode":"BRL"}]}`)
+	}))
+	t.Cleanup(srv.Close)
+	bills, err := pluggy.NewHTTP(srv.URL).ListBills(context.Background(), "key", "a")
+	if err != nil || len(bills) != 2 || bills[0].TotalCents != 205689 || bills[1].TotalCents != -11783 {
+		t.Errorf("ListBills = %+v, %v; want 205689 and -11783, the bill without a total left out", bills, err)
+	}
+}
+
 func TestFailuresCarryNoBody(t *testing.T) {
 	t.Parallel()
 	srv := pluggytest.NewServer(t)

@@ -219,13 +219,16 @@ func (h *HTTP) ListBills(ctx context.Context, apiKey, accountID string) ([]Bill,
 	if err := h.do(ctx, "list bills", http.MethodGet, "/bills?"+q.Encode(), apiKey, nil, &out); err != nil {
 		return nil, err
 	}
-	bills := make([]Bill, len(out.Results))
-	for i, r := range out.Results {
-		cents, err := parseCents(r.Total.String())
+	bills := []Bill{}
+	for _, r := range out.Results {
+		if r.Total == "" { // a bill the bank sent without a total cannot be counted
+			continue
+		}
+		cents, err := roundCents(r.Total.String())
 		if err != nil {
 			return nil, errors.New("pluggy: list bills: unreadable amount")
 		}
-		bills[i] = Bill{ID: r.ID, DueDate: r.DueDate, ClosingDate: r.ClosingDate, TotalCents: cents, Currency: r.Currency}
+		bills = append(bills, Bill{ID: r.ID, DueDate: r.DueDate, ClosingDate: r.ClosingDate, TotalCents: cents, Currency: r.Currency})
 	}
 	return bills, nil
 }
@@ -265,6 +268,28 @@ func dayOf(s string) int {
 		return 0
 	}
 	return d.Day()
+}
+
+// roundCents is parseCents for an amount with float noise past the cents, such
+// as a bill total of 2056.885: it rounds half away from zero on the third decimal.
+func roundCents(s string) (int64, error) {
+	whole, frac, _ := strings.Cut(s, ".")
+	if len(frac) <= 2 {
+		return parseCents(s)
+	}
+	for _, r := range frac[2:] {
+		if r < '0' || r > '9' {
+			return 0, errors.New("bad amount")
+		}
+	}
+	cents, err := parseCents(whole + "." + frac[:2])
+	if err != nil || frac[2] < '5' {
+		return cents, err
+	}
+	if strings.HasPrefix(s, "-") {
+		return cents - 1, nil
+	}
+	return cents + 1, nil
 }
 
 // parseCents reads a decimal string of at most two decimals into centavos
