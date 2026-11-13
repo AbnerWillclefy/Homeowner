@@ -1,6 +1,6 @@
 import type { AxiosInstance } from "axios";
 import { apiClient } from "../../api/client";
-import { fieldsOf, send, writeResult, type SaveResult, type WriteResult } from "../../api/write";
+import { saveRow, send, writeResult, type SaveResult, type WriteResult } from "../../api/write";
 
 export type { FieldCodes, SaveResult, WriteResult } from "../../api/write";
 
@@ -98,12 +98,7 @@ export const getCardBills = (month: string, client: AxiosInstance = apiClient) =
   }, parseCard);
 
 /** `POST /me/finance/bills`, or `PUT /me/finance/bills/{id}` when `id` is given; a 400 with field codes goes back to the form. */
-export async function saveBill(id: string | null, input: BillInput, client: AxiosInstance = apiClient): Promise<SaveResult> {
-  const ok = id ? 200 : 201;
-  const response = await send(client, id ? "PUT" : "POST", id ? `/me/finance/bills/${encodeURIComponent(id)}` : "/me/finance/bills", ok, input);
-  const fields = response?.status === 400 ? fieldsOf(response) : null;
-  return fields ? { kind: "fields", fields } : writeResult(response, ok);
-}
+export const saveBill = (id: string | null, input: BillInput, client: AxiosInstance = apiClient): Promise<SaveResult> => saveRow(client, "/me/finance/bills", id, input);
 
 /** `DELETE /me/finance/bills/{id}`; its payments go with it. */
 export const deleteBill = async (id: string, client: AxiosInstance = apiClient): Promise<WriteResult> =>

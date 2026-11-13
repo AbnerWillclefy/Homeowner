@@ -29,3 +29,11 @@ export async function send(client: AxiosInstance, method: string, url: string, o
 export const writeResult = (response: AxiosResponse | null, ok: number): WriteResult =>
   response?.status === ok ? { kind: "ok" } : response?.status === 404 ? { kind: "not-found" } : { kind: "error" };
 
+
+/** `POST <base>`, or `PUT <base>/{id}` when `id` is given; a 400 with field codes goes back to the form. */
+export async function saveRow(client: AxiosInstance, base: string, id: string | null, input: object): Promise<SaveResult> {
+  const ok = id ? 200 : 201;
+  const response = await send(client, id ? "PUT" : "POST", id ? `${base}/${encodeURIComponent(id)}` : base, ok, input);
+  const fields = response?.status === 400 ? fieldsOf(response) : null;
+  return fields ? { kind: "fields", fields } : writeResult(response, ok);
+}
