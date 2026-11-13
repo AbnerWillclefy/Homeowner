@@ -161,7 +161,7 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"results":[]}`))
 	case "GET /v2/transactions":
 		if authorized(w, r) {
-			s.transactions(w, q.Get("accountId"), q.Get("after"), q.Get("dateFrom") != "" && q.Get("dateTo") != "" || q.Get("after") != "")
+			s.transactions(&dateFilter{ResponseWriter: w, from: q.Get("dateFrom"), to: q.Get("dateTo")}, q.Get("accountId"), q.Get("after"), q.Get("dateFrom") != "" && q.Get("dateTo") != "" || q.Get("after") != "")
 		}
 	default:
 		// Includes GET /items/<other> and the removed v1 GET /transactions.
@@ -211,4 +211,42 @@ func serveFixture(w http.ResponseWriter, status int, name string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_, _ = w.Write(fixture(name))
+}
+
+// dateFilter drops the rows of a 200 transactions page dated outside
+// [from, to] (YYYY-MM-DD, compared on the date's day), as Pluggy does; a page
+// read by cursor carries no dates and passes whole.
+type dateFilter struct {
+	http.ResponseWriter
+	from, to string
+	status   int
+}
+
+func (f *dateFilter) WriteHeader(status int) {
+	f.status = status
+	f.ResponseWriter.WriteHeader(status)
+}
+
+func (f *dateFilter) Write(b []byte) (int, error) {
+	if f.from == "" || f.status != 0 && f.status != http.StatusOK {
+		return f.ResponseWriter.Write(b)
+	}
+	var page map[string]json.RawMessage
+	var rows []map[string]json.RawMessage
+	if json.Unmarshal(b, &page) != nil || json.Unmarshal(page["results"], &rows) != nil {
+		return f.ResponseWriter.Write(b)
+	}
+	kept := []map[string]json.RawMessage{}
+	for _, r := range rows {
+		var date string
+		if json.Unmarshal(r["date"], &date) == nil && len(date) >= 10 && date[:10] >= f.from && date[:10] <= f.to {
+			kept = append(kept, r)
+		}
+	}
+	page["results"], _ = json.Marshal(kept)
+	out, _ := json.Marshal(page)
+	if _, err := f.ResponseWriter.Write(out); err != nil {
+		return 0, err
+	}
+	return len(b), nil
 }

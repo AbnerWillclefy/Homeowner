@@ -658,7 +658,12 @@ func (s *Store) CardSources(ctx context.Context, userID string) ([]Card, error) 
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	bills, err := s.db.Query(ctx, `SELECT source_id, closes_on, due_on, total_cents FROM finance_card_bills WHERE user_id = $1`, userID)
+	// Paid: a debit off the cards of exactly the total, from the closing to a few days past the due day (Classify's bill payment rule).
+	bills, err := s.db.Query(ctx, `SELECT b.source_id, b.closes_on, b.due_on, b.total_cents,
+			EXISTS (SELECT 1 FROM finance_transactions t JOIN finance_sources s ON s.id = t.source_id
+				WHERE b.total_cents > 0 AND t.user_id = b.user_id AND s.kind <> 'credit_card' AND t.currency = 'BRL' AND t.amount_cents = -b.total_cents
+				  AND t.posted_on BETWEEN b.closes_on AND b.due_on + $2::int)
+		FROM finance_card_bills b WHERE b.user_id = $1`, userID, transferWindowDays)
 	if err != nil {
 		return nil, err
 	}
@@ -666,7 +671,7 @@ func (s *Store) CardSources(ctx context.Context, userID string) ([]Card, error) 
 	for bills.Next() {
 		var id string
 		var b StoredBill
-		if err := bills.Scan(&id, &b.ClosesOn, &b.DueOn, &b.TotalCents); err != nil {
+		if err := bills.Scan(&id, &b.ClosesOn, &b.DueOn, &b.TotalCents, &b.Paid); err != nil {
 			return nil, err
 		}
 		if i := slices.IndexFunc(out, func(c Card) bool { return c.ID == id }); i >= 0 {

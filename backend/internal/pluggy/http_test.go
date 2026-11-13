@@ -126,7 +126,7 @@ func TestListTransactionsFollowsNext(t *testing.T) {
 func TestListTransactionsCardKeepsPluggySign(t *testing.T) {
 	t.Parallel()
 	c := pluggy.NewHTTP(pluggytest.NewServer(t).URL)
-	page, err := c.ListTransactions(context.Background(), pluggytest.APIKey, pluggytest.CardAccountID, time.Now(), time.Now(), "")
+	page, err := c.ListTransactions(context.Background(), pluggytest.APIKey, pluggytest.CardAccountID, time.Date(2025, 11, 7, 0, 0, 0, 0, time.UTC), time.Date(2026, 11, 7, 0, 0, 0, 0, time.UTC), "")
 	if err != nil || len(page.Transactions) != 17 || page.Next != "" {
 		t.Fatalf("card page: %d rows, next %q, err %v", len(page.Transactions), page.Next, err)
 	}
@@ -181,6 +181,21 @@ func TestListBillsFailures(t *testing.T) {
 	}
 }
 
+func TestListBillsRoundsAThirdDecimalAndSkipsABillWithoutTotal(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, `{"results":[`+
+			`{"id":"up","dueDate":"2026-01-10T03:00:00.000Z","billClosingDate":"2026-01-03T03:00:00.000Z","totalAmount":2056.885,"totalAmountCurrencyCode":"BRL"},`+
+			`{"id":"down","dueDate":"2026-02-10T03:00:00.000Z","billClosingDate":"2026-02-03T03:00:00.000Z","totalAmount":-117.8349999,"totalAmountCurrencyCode":"BRL"},`+
+			`{"id":"none","dueDate":"2026-03-10T03:00:00.000Z","billClosingDate":"2026-03-03T03:00:00.000Z","totalAmount":null,"totalAmountCurrencyCode":"BRL"}]}`)
+	}))
+	t.Cleanup(srv.Close)
+	bills, err := pluggy.NewHTTP(srv.URL).ListBills(context.Background(), "key", "a")
+	if err != nil || len(bills) != 2 || bills[0].TotalCents != 205689 || bills[1].TotalCents != -11783 {
+		t.Errorf("ListBills = %+v, %v; want 205689 and -11783, the bill without a total left out", bills, err)
+	}
+}
+
 func TestFailuresCarryNoBody(t *testing.T) {
 	t.Parallel()
 	srv := pluggytest.NewServer(t)
@@ -192,7 +207,7 @@ func TestFailuresCarryNoBody(t *testing.T) {
 	if err == nil || err.Error() != "pluggy: list accounts: status 500" {
 		t.Errorf("err = %v", err)
 	}
-	_, err = c.ListTransactions(context.Background(), pluggytest.APIKey, pluggytest.CardAccountID, time.Now(), time.Now(), "")
+	_, err = c.ListTransactions(context.Background(), pluggytest.APIKey, pluggytest.CardAccountID, time.Date(2025, 11, 7, 0, 0, 0, 0, time.UTC), time.Date(2026, 11, 7, 0, 0, 0, 0, time.UTC), "")
 	if err == nil || err.Error() != "pluggy: list transactions: status 502" || strings.Contains(err.Error(), pluggytest.FailBody) {
 		t.Errorf("err = %v", err)
 	}

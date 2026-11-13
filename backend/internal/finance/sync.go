@@ -21,8 +21,9 @@ const (
 	reserve = 10 * time.Second
 	// staleAfter is how old a sync gets before the next one is due.
 	staleAfter = 24 * time.Hour
-	// refreshDays is how far back a daily sync re-reads, because rows post late.
-	refreshDays = 10
+	// refreshDays is how far back a daily sync re-reads, because rows post late:
+	// a whole open bill and some, since a card charge can reach the feed weeks after it posted.
+	refreshDays = 45
 )
 
 // Summary is what one run did, in counts only.
@@ -139,7 +140,7 @@ func (s *Syncer) authenticate(ctx context.Context, it DueItem) (string, error) {
 // cursor on, until every Source has reached today or the budget runs low. It
 // reports whether the Item finished. During the import a window is a month
 // from the day after the cursor (at most 12 months back); once imported, one
-// window re-reads the last refreshDays. A window cut off mid-way is simply read
+// window re-reads the last refreshDays up to today. A window cut off mid-way is simply read
 // again next run: the upsert makes that harmless.
 func (s *Syncer) syncItem(ctx context.Context, it DueItem, apiKey string, now, today time.Time, deadline time.Time, sum *Summary) (bool, error) {
 	// Fills the bill days of a card that has none, such as a Source connected before they were kept; days the User typed stay.
@@ -199,7 +200,7 @@ func (s *Syncer) syncItem(ctx context.Context, it DueItem, apiKey string, now, t
 				continue
 			}
 			to := from.AddDate(0, 1, -1)
-			if to.After(today) {
+			if to.After(today) || it.ImportComplete { // a re-read is one window up to today
 				to = today
 			}
 			if err := s.syncWindow(ctx, it.UserID, apiKey, *src, owner, from, to, now, sum); err != nil {

@@ -11,9 +11,14 @@ export interface CardBill {
   amountCents: number;
   billDaysKnown: boolean;
   fromBank: boolean;
-  /** `YYYY-MM-DD` of the bank's bill when `fromBank`, else null. */
+  /** `YYYY-MM-DD` of the bill's days when known, else null. */
   dueOn: string | null;
   closesOn: string | null;
+  /** In the current month: the bill still to pay has closed. */
+  closed: boolean;
+  /** In the current month: the posted days `[heldFrom, heldTo)` of the charges the bill holds, `heldTo` null while open; both null on a card counted by month. */
+  heldFrom: string | null;
+  heldTo: string | null;
 }
 
 /** A card Source with its closing and due days (1 to 31), null while not set. */
@@ -44,10 +49,11 @@ const isNullableDay = (v: unknown): v is string | null => v === null || (typeof 
 
 function parseCard(v: unknown): CardBill | null {
   if (!isRecord(v)) return null;
-  const { sourceId, name, amountCents, billDaysKnown, fromBank, dueOn = null, closesOn = null } = v;
+  const { sourceId, name, amountCents, billDaysKnown, fromBank, dueOn = null, closesOn = null, closed = false, heldFrom = null, heldTo = null } = v;
   if (typeof sourceId !== "string" || typeof name !== "string" || !isInt(amountCents)) return null;
   if (typeof billDaysKnown !== "boolean" || typeof fromBank !== "boolean" || !isNullableDay(dueOn) || !isNullableDay(closesOn)) return null;
-  return { sourceId, name, amountCents, billDaysKnown, fromBank, dueOn, closesOn };
+  if (typeof closed !== "boolean" || !isNullableDay(heldFrom) || !isNullableDay(heldTo)) return null;
+  return { sourceId, name, amountCents, billDaysKnown, fromBank, dueOn, closesOn, closed, heldFrom, heldTo };
 }
 
 function parseSource(v: unknown): CardSource | null {

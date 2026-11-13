@@ -59,7 +59,7 @@ export function CardBillsPage() {
               key={bill.sourceId}
               bill={bill}
               source={sources.find((s) => s.id === bill.sourceId)}
-              rows={billRows(transactions, bill.sourceId, month)}
+              rows={billRows(transactions, bill, month)}
               rowsFailed={rowsFailed}
               monthName={label}
               desktop={desktop}

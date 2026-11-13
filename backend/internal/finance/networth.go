@@ -26,9 +26,10 @@ func NetWorth(balances, investments, cardBills []int64) NetWorthParts {
 }
 
 // UnpaidCardBills lists the card bill amounts of the Outlook months (the first
-// starting at `from`) that count as not yet paid on `today`. Nothing records a
-// card bill as paid, so a bill counts until its due date passes: the due date
-// of the bill the bank reported for the month, else the card's due day. A paid
+// starting at `from`) that count as not yet paid on `today`. The month today is
+// in always counts: Outlook gives it the bill still to pay. A later month's
+// bill counts until its due date passes: the due date of the bill the bank
+// reported for the month, else the card's due day. A paid
 // bill leaves a checking balance, so counting it after that would subtract it twice.
 //
 // A bill that has not opened yet holds only future installments, so with both
@@ -42,6 +43,10 @@ func UnpaidCardBills(cards []Card, outlook []MonthOutlook, from, today time.Time
 		for _, cb := range m.Cards {
 			for _, c := range cards {
 				if c.ID != cb.SourceID {
+					continue
+				}
+				if monthIndex(month) == monthIndex(today) { // Outlook's current bill is the one still to pay
+					out = append(out, cb.AmountCents)
 					continue
 				}
 				if c.CloseDay > 0 && c.DueDay > 0 && monthIndex(month) > monthIndex(CountsOn(today, "credit_card", c.CloseDay, c.DueDay)) {

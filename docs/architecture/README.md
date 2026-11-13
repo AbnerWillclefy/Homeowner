@@ -50,6 +50,7 @@ In diagrams, solid boxes and lines are built; dashed boxes and lines are planned
 | [0020](../adr/0020-voice-commands-send-chore-titles-and-the-residents-words-behind-a-confirmation.md) | Voice commands send Chore titles and the Resident's words to the LLM, behind a confirmation |
 | [0021](../adr/0021-a-closed-card-bill-takes-the-banks-total.md) | A closed card bill takes the bank's total; the app computes only the open bill |
 | [0022](../adr/0022-a-shared-bedrock-design-system-amends-0007-and-0009-for-adopting-apps.md) | A shared Bedrock design system amends 0007 and 0009 for apps that adopt it |
+| [0024](../adr/0024-the-current-month-counts-the-card-bill-still-to-pay.md) | The current month counts the card bill still to pay: the closed one until paid, then the open one |
 
 ## Keeping this current
 

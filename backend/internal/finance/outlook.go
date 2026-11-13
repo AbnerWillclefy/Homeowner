@@ -17,6 +17,7 @@ type Card struct {
 type StoredBill struct {
 	ClosesOn, DueOn time.Time
 	TotalCents      int64
+	Paid            bool // a debit off the cards matched its total
 }
 
 // CardBill is what one card's bill takes from a month. FromBank is true when
@@ -54,6 +55,17 @@ type MonthOutlook struct {
 	TotalCents  int64
 	// LeftoverCents is income minus total; nil when no income is set.
 	LeftoverCents *int64
+	// Cycles is each card's bill cycle by Source id, only in the current month
+	// and only for a card whose bill is a cycle (not a count by month).
+	Cycles map[string]BillCycle
+}
+
+// BillCycle is the bill a card counts in the current month: the posted days
+// [HeldFrom, HeldTo) of the charges it holds (HeldTo nil while open), its
+// closing and due days (nil when unknown) and whether it has closed.
+type BillCycle struct {
+	HeldFrom, HeldTo, ClosesOn, DueOn *time.Time
+	Closed                            bool
 }
 
 // PlannedLine is what is still planned for one Spending Category.
@@ -66,13 +78,14 @@ type PlannedLine struct {
 // are the counted Txns (PostedOn is the CountsOn day), plans the Installment
 // plans and bills[i] every Bill of month i, paid or not.
 //
-// limits are the Spending limits by category; current is the first of the month
-// "now" is in (zero when unknown), the only month with SpentOffCardCents.
+// limits are the Spending limits by category; today is the real day (zero when
+// unknown), and its month is the only one with SpentOffCardCents.
 // Planned for a category is its limit, or without a limit its baseline (the
 // average of its spend in the 3 months before current, see plannedBaseline, the
 // same for every month of the horizon; a negative one plans 0), minus what already counts for it in the
-// month (every row, card or not, plus the installments still to come), the
-// counted amount clamped at zero and the result too.
+// month (every row, card or not, plus the installments still to come; in the
+// current month the rows the shown card bills hold and those off the cards),
+// the counted amount clamped at zero and the result too.
 //
 // contribution is the Monthly contribution (0 when none). Each month puts aside
 // the larger of its actual saving (never below 0) and the contribution, so the
@@ -82,7 +95,9 @@ type PlannedLine struct {
 //
 // shortcut: a Bill in a category with a limit counts in both in future months, upgrade when a Bill can name its Spending Category.
 //
-// A card's bill is, when the bank reported a bill due in the month, that bill's
+// In the month today is in, a card's bill is the one still to pay
+// (currentCardBill, ADR 0024), and later months leave out the charges it holds.
+// In any other month it is, when the bank reported a bill due in the month, that bill's
 // total (ADR 0021), the owed installments not added because the total holds
 // them. Otherwise it is the card's Expenses counting in the month plus the
 // installments of its plans numbered above Plan.Number due in it; for a card
@@ -95,7 +110,7 @@ type PlannedLine struct {
 // Transaction is left out: that money is in a card bill.
 //
 // shortcut: a card-paid Bill counts twice in the current month until its charge posts (last month's charge is in this month's card bill, this month's is still expected), upgrade when the PWA shows it.
-func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income *int64, limits, baseline map[string]int64, contribution int64, current, from time.Time, months int) []MonthOutlook {
+func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income *int64, limits, baseline map[string]int64, contribution int64, today, from time.Time, months int) []MonthOutlook {
 	byCard := map[string][]Txn{}
 	for _, t := range rows {
 		byCard[t.SourceID] = append(byCard[t.SourceID], t)
@@ -129,6 +144,12 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 			}
 		}
 	}
+	current := today
+	if !today.IsZero() {
+		current = time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC)
+	}
+	isCurrent := func(m time.Time) bool { return !today.IsZero() && monthIndex(m) == monthIndex(current) }
+	taken := map[string]billSpan{} // card id -> the charges the current month's bill holds
 	isCard := map[string]bool{}
 	for _, c := range cards {
 		isCard[c.ID] = true
@@ -147,35 +168,33 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 				offCard = append(offCard, t)
 			}
 		}
+		var held []Txn // in the current month: the rows the shown card bills hold, and the month's off the cards
 		for _, c := range cards {
-			var closed *StoredBill // a bill due in the month
-			var cutoff time.Time   // the latest closing of a bill due before the month
-			for _, b := range c.Bills {
-				switch {
-				case monthIndex(b.DueOn) == monthIndex(m):
-					closed = &b
-				case monthIndex(b.DueOn) < monthIndex(m) && b.ClosesOn.After(cutoff):
-					cutoff = b.ClosesOn
-				}
-			}
-			var amount int64
-			var due, closes *time.Time
-			if closed != nil {
-				amount, due, closes = closed.TotalCents, &closed.DueOn, &closed.ClosesOn
-			} else {
-				var inMonth []Txn
+			var bill CardBill
+			var span billSpan
+			if isCurrent(m) {
+				bill, span = currentCardBill(c, byCard[c.ID], today)
 				for _, t := range byCard[c.ID] {
-					if monthIndex(t.PostedOn) == monthIndex(m) && (cutoff.IsZero() || !t.Posted.Before(cutoff)) {
-						inMonth = append(inMonth, t)
+					if span.from.IsZero() && monthIndex(t.PostedOn) == monthIndex(m) || !span.from.IsZero() && span.holds(t.Posted) {
+						held = append(held, t)
 					}
 				}
-				amount = MonthTotals(inMonth).Spend
-				if owed[c.ID] != nil {
-					amount += owed[c.ID][i]
+				if !span.from.IsZero() {
+					taken[c.ID] = span
+					if o.Cycles == nil {
+						o.Cycles = map[string]BillCycle{}
+					}
+					o.Cycles[c.ID] = cycleOf(c, bill, span, today)
 				}
+			} else {
+				bill = dueCardBill(c, byCard[c.ID], taken[c.ID], m)
 			}
-			o.Cards = append(o.Cards, CardBill{c.ID, c.Name, amount, c.BillDaysKnown, closed != nil, due, closes})
-			o.TotalCents += amount
+			// A closed bill holds no installment still to be charged: those go to the open one.
+			if !bill.FromBank && span.to.IsZero() && owed[c.ID] != nil {
+				bill.AmountCents += owed[c.ID][i]
+			}
+			o.Cards = append(o.Cards, bill)
+			o.TotalCents += bill.AmountCents
 		}
 		if i < len(bills) {
 			for _, b := range bills[i] {
@@ -191,6 +210,14 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 		}
 		o.TotalCents += o.OtherInstallmentsCents
 		counted := MonthTotals(monthRows).ByCategory
+		if isCurrent(m) {
+			for _, t := range monthRows {
+				if !isCard[t.SourceID] {
+					held = append(held, t)
+				}
+			}
+			counted = MonthTotals(held).ByCategory
+		}
 		for _, c := range SpendingCategories {
 			plan, ok := limits[c]
 			if !ok {
@@ -204,7 +231,7 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 			o.PlannedCents += left
 		}
 		o.TotalCents += o.PlannedCents
-		if monthIndex(m) == monthIndex(current) {
+		if isCurrent(m) {
 			spent := MonthTotals(offCard).Spend
 			o.SpentOffCardCents = &spent
 			o.TotalCents += spent
@@ -228,24 +255,196 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 // spend in the category is a 0 and months before the User's first data are not
 // divided by. The sum leaves Linked rows out: the paid Bill is already in the
 // other Bills. current is the real current month, not the month asked for.
-func plannedBaseline(rows []Txn, current time.Time) map[string]int64 {
+//
+// A registered Bill is in the other Bills too, but the bank rarely names it, so
+// in each month every Bill also leaves out the Expense off the cards nearest
+// its expected amount, within a tenth of it either way (billPaymentRows). A Linked
+// row can be that nearest one, and then nothing more is left out.
+//
+// shortcut: a Bill is matched by amount alone, so a Bill varying more than a tenth (power) still counts twice and one can take an unrelated payment of the same size; upgrade when a Bill can name its Spending Category.
+func plannedBaseline(rows []Txn, cards []Card, bills []Bill, current time.Time) map[string]int64 {
 	first := monthIndex(current) - paceMonths
 	counted := map[int]bool{}
-	var spent []Txn
+	var window []Txn
 	for _, t := range rows {
 		if m := monthIndex(t.PostedOn); m >= first && m < monthIndex(current) {
 			counted[m] = true
-			if !t.Linked {
-				spent = append(spent, t)
-			}
+			window = append(window, t)
 		}
 	}
 	out := map[string]int64{}
 	if len(counted) == 0 {
 		return out
 	}
+	paid := billPaymentRows(window, cards, bills)
+	var spent []Txn
+	for i, t := range window {
+		if !t.Linked && !paid[i] {
+			spent = append(spent, t)
+		}
+	}
 	for c, sum := range MonthTotals(spent).ByCategory {
 		out[c] = halfUp(sum, int64(len(counted)))
 	}
+	return out
+}
+
+// billPaymentRows marks, by index in rows, the Expense off the cards each Bill
+// takes in each month: the nearest to its expected amount within a tenth of it,
+// the earliest on a tie. A row pays one Bill, the first to take it.
+func billPaymentRows(rows []Txn, cards []Card, bills []Bill) map[int]bool {
+	isCard := map[string]bool{}
+	for _, c := range cards {
+		isCard[c.ID] = true
+	}
+	taken := map[int]bool{}
+	months := map[int]bool{}
+	for _, t := range rows {
+		months[monthIndex(t.PostedOn)] = true
+	}
+	for _, b := range bills {
+		for m := range months {
+			best, gap := -1, b.ExpectedCents/10+1
+			for i, t := range rows {
+				if taken[i] || t.Type != "expense" || isCard[t.SourceID] || monthIndex(t.PostedOn) != m {
+					continue
+				}
+				if g := abs(-t.AmountCents - b.ExpectedCents); g < gap || g == gap && best >= 0 && t.PostedOn.Before(rows[best].PostedOn) {
+					best, gap = i, g
+				}
+			}
+			if best >= 0 {
+				taken[best] = true
+			}
+		}
+	}
+	return taken
+}
+
+func abs(v int64) int64 {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
+// closingDrift is how many days a bank's closing may differ from the typed day.
+const closingDrift = 7
+
+// billSpan is the posted days [from, to) of a card's charges one bill holds; a zero to is open-ended.
+type billSpan struct{ from, to time.Time }
+
+func (s billSpan) holds(posted time.Time) bool {
+	return !posted.Before(s.from) && (s.to.IsZero() || posted.Before(s.to))
+}
+
+// currentCardBill is the bill a card takes from the month today is in: the
+// latest bill closed on or before today until it is paid or past due, then the
+// open one, the charges posted on or after that closing (installments still to
+// be charged are the caller's). The closing days are the bank's, or the typed
+// ones without bank bills or when the bank has not reported the latest closing; a closed bill from typed days is its charges, with
+// no total to tell it paid, so only its due day ends it. A card with neither
+// keeps dueCardBill. span is the charges the bill holds (for a bank total, those
+// since the closing before, or a month), zero when dueCardBill decided.
+func currentCardBill(c Card, rows []Txn, today time.Time) (CardBill, billSpan) {
+	out := CardBill{SourceID: c.ID, Name: c.Name, BillDaysKnown: c.BillDaysKnown}
+	var last *StoredBill // the latest bank bill closed on or before today
+	for _, b := range c.Bills {
+		if !b.ClosesOn.After(today) && (last == nil || b.ClosesOn.After(last.ClosesOn)) {
+			last = &b
+		}
+	}
+	var closes time.Time // the latest typed closing on or before today
+	if c.CloseDay > 0 && c.DueDay > 0 {
+		if closes = DueDate(today.Year(), today.Month(), c.CloseDay); closes.After(today) {
+			closes = DueDate(today.Year(), today.Month()-1, c.CloseDay)
+		}
+	}
+	// Banks move a closing by a few days; a typed one a week past the bank's latest is a bill not reported yet.
+	if last != nil && closes.After(last.ClosesOn.AddDate(0, 0, closingDrift)) {
+		last = nil
+	}
+	var span billSpan
+	switch {
+	case last != nil && !last.Paid && !today.After(last.DueOn):
+		out.AmountCents, out.FromBank, out.DueOn, out.ClosesOn = last.TotalCents, true, &last.DueOn, &last.ClosesOn
+		span = billSpan{last.ClosesOn.AddDate(0, -1, 0), last.ClosesOn}
+		for _, b := range c.Bills {
+			if b.ClosesOn.Before(last.ClosesOn) && b.ClosesOn.After(span.from) {
+				span.from = b.ClosesOn
+			}
+		}
+		return out, span
+	case last != nil:
+		span.from = last.ClosesOn
+	case !closes.IsZero():
+		span.from = closes
+		if due := CountsOn(closes.AddDate(0, 0, -1), "credit_card", c.CloseDay, c.DueDay); !today.After(due) {
+			span = billSpan{DueDate(closes.Year(), closes.Month()-1, c.CloseDay), closes}
+		}
+	default:
+		return dueCardBill(c, rows, billSpan{}, time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC)), span
+	}
+	var held []Txn
+	for _, t := range rows {
+		if span.holds(t.Posted) {
+			held = append(held, t)
+		}
+	}
+	out.AmountCents = MonthTotals(held).Spend
+	return out, span
+}
+
+// cycleOf describes the current bill of card c that currentCardBill gave with
+// span: a closed bill's days are the bank's or follow its typed closing, an
+// open bill's follow the typed days, and are unknown without them.
+func cycleOf(c Card, bill CardBill, span billSpan, today time.Time) BillCycle {
+	day := func(t time.Time) *time.Time { return &t }
+	cy := BillCycle{HeldFrom: day(span.from)}
+	typed := c.CloseDay > 0 && c.DueDay > 0
+	switch {
+	case bill.FromBank:
+		cy.HeldTo, cy.Closed, cy.ClosesOn, cy.DueOn = day(span.to), true, bill.ClosesOn, bill.DueOn
+	case !span.to.IsZero():
+		cy.HeldTo, cy.Closed, cy.ClosesOn = day(span.to), true, day(span.to)
+		cy.DueOn = day(CountsOn(span.to.AddDate(0, 0, -1), "credit_card", c.CloseDay, c.DueDay))
+	case typed:
+		closes := DueDate(today.Year(), today.Month(), c.CloseDay)
+		if !closes.After(today) {
+			closes = DueDate(today.Year(), today.Month()+1, c.CloseDay)
+		}
+		cy.ClosesOn, cy.DueOn = day(closes), day(CountsOn(today, "credit_card", c.CloseDay, c.DueDay))
+	}
+	return cy
+}
+
+// dueCardBill is a card's bill due in month m (a first-of-month): the bank's
+// total when it reported one (ADR 0021), else the charges counting in m, only
+// those posted on or after the closing of the latest bank bill due before m or
+// already decided by the current month's bill, and none that bill holds (taken).
+func dueCardBill(c Card, rows []Txn, taken billSpan, m time.Time) CardBill {
+	out := CardBill{SourceID: c.ID, Name: c.Name, BillDaysKnown: c.BillDaysKnown}
+	var cutoff time.Time
+	for _, b := range c.Bills {
+		// A bill the current month already counted, or moved past once paid: its charges stay out too.
+		decided := !taken.from.IsZero() && (!b.ClosesOn.After(taken.from) || !taken.to.IsZero() && !b.ClosesOn.After(taken.to))
+		switch {
+		case decided && b.ClosesOn.After(cutoff):
+			cutoff = b.ClosesOn
+		case decided:
+		case monthIndex(b.DueOn) == monthIndex(m):
+			out.AmountCents, out.FromBank, out.DueOn, out.ClosesOn = b.TotalCents, true, &b.DueOn, &b.ClosesOn
+			return out
+		case monthIndex(b.DueOn) < monthIndex(m) && b.ClosesOn.After(cutoff):
+			cutoff = b.ClosesOn
+		}
+	}
+	var inMonth []Txn
+	for _, t := range rows {
+		if monthIndex(t.PostedOn) == monthIndex(m) && !t.Posted.Before(cutoff) && (taken.from.IsZero() || !taken.holds(t.Posted)) {
+			inMonth = append(inMonth, t)
+		}
+	}
+	out.AmountCents = MonthTotals(inMonth).Spend
 	return out
 }
