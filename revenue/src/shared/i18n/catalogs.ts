@@ -81,6 +81,11 @@ export const ptBR = {
   "gate.error.title": "Não foi possível verificar o acesso",
   "gate.error.message": "O servidor não respondeu. Tente de novo em instantes.",
   "gate.error.retry": "Tentar de novo",
+
+  "install.message": "Instale o Revenue para abri-lo como um app.",
+  "install.ios": "Para instalar, toque em Compartilhar e depois em Adicionar à Tela de Início.",
+  "install.action": "Instalar",
+  "install.dismiss": "Agora não",
 } as const;
 
 export type MessageKey = keyof typeof ptBR;
@@ -165,4 +170,9 @@ export const en: Record<MessageKey, string> = {
   "gate.error.title": "Could not check your access",
   "gate.error.message": "The server did not answer. Try again in a moment.",
   "gate.error.retry": "Try again",
+
+  "install.message": "Install Revenue to open it like an app.",
+  "install.ios": "To install, tap Share, then Add to Home Screen.",
+  "install.action": "Install",
+  "install.dismiss": "Not now",
 };
