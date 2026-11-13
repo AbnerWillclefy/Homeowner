@@ -10,3 +10,13 @@ it("keeps aria-valuenow, capped at max, when the value is over max", () => {
   expect(bar.getAttribute("aria-valuenow")).toBe("2000");
   expect(bar.getAttribute("aria-valuemax")).toBe("2000");
 });
+
+it("draws the fill in the brand colour at any ratio when the tone is brand", () => {
+  const fill = (tone?: "brand") => {
+    const { container } = render(<ProgressBar label="L" value={90} max={100} tone={tone} />);
+    return container.querySelector("[data-state]:not([role])")?.className ?? "";
+  };
+  expect(fill()).toContain("bg-warning");
+  cleanup();
+  expect(fill("brand")).toContain("bg-brand");
+});
