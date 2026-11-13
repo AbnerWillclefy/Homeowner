@@ -26,6 +26,9 @@ jobs:
       admin_url: ${{ steps.out.outputs.admin_url }}
       admin_bucket_name: ${{ steps.out.outputs.admin_bucket_name }}
       admin_distribution_id: ${{ steps.out.outputs.admin_distribution_id }}
+      revenue_url: ${{ steps.out.outputs.revenue_url }}
+      revenue_bucket_name: ${{ steps.out.outputs.revenue_bucket_name }}
+      revenue_distribution_id: ${{ steps.out.outputs.revenue_distribution_id }}
       cognito_client_id: ${{ steps.out.outputs.cognito_client_id }}
       cognito_region: ${{ steps.out.outputs.cognito_region }}
       cognito_password_policy: ${{ steps.out.outputs.cognito_password_policy }}
@@ -146,6 +149,9 @@ jobs:
             echo "admin_url=$(terraform output -raw admin_url)"
             echo "admin_bucket_name=$(terraform output -raw admin_bucket_name)"
             echo "admin_distribution_id=$(terraform output -raw admin_distribution_id)"
+            echo "revenue_url=$(terraform output -raw revenue_url)"
+            echo "revenue_bucket_name=$(terraform output -raw revenue_bucket_name)"
+            echo "revenue_distribution_id=$(terraform output -raw revenue_distribution_id)"
             echo "cognito_client_id=$(terraform output -raw cognito_client_id)"
             echo "cognito_region=$(terraform output -raw cognito_region)"
             echo "cognito_password_policy=$(terraform output -raw cognito_password_policy)"
@@ -175,6 +181,10 @@ jobs:
             echo "### Staging admin"
             echo ""
             echo "URL: ${{ steps.out.outputs.admin_url }}"
+            echo ""
+            echo "### Staging Revenue"
+            echo ""
+            echo "URL: ${{ steps.out.outputs.revenue_url }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
   # Builds the PWA against the API URL the apply just produced (it is baked
@@ -319,3 +329,20 @@ jobs:
       distribution_id: ${{ needs.api.outputs.admin_distribution_id }}
       cognito_client_id: ${{ needs.api.outputs.cognito_client_id }}
       cognito_region: ${{ needs.api.outputs.cognito_region }}
+
+  # Builds the Revenue app against the API URL the apply just produced and
+  # publishes it to this environment's own Revenue bucket, with this
+  # workflow's own deploy role.
+  revenue:
+    needs: api
+    uses: ./.github/workflows/deploy-revenue.yml
+    with:
+      environment: staging
+      role_to_assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+      revenue_url: ${{ needs.api.outputs.revenue_url }}
+      api_url: ${{ needs.api.outputs.api_url }}
+      bucket: ${{ needs.api.outputs.revenue_bucket_name }}
+      distribution_id: ${{ needs.api.outputs.revenue_distribution_id }}
+      cognito_client_id: ${{ needs.api.outputs.cognito_client_id }}
+      cognito_region: ${{ needs.api.outputs.cognito_region }}
+      cognito_password_policy: ${{ needs.api.outputs.cognito_password_policy }}

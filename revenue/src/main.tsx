@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import { App } from "./app/App";
+import { InstallBanner } from "./app/InstallBanner";
 import { AuthProvider } from "./auth/AuthContext";
 import { I18nProvider } from "./shared/i18n/I18nProvider";
 import { ThemeProvider } from "./shared/theme/ThemeProvider";
@@ -16,6 +17,7 @@ createRoot(document.getElementById("root")!).render(
       <I18nProvider>
         <ThemeProvider>
           <AuthProvider>
+            <InstallBanner />
             <BrowserRouter>
               <App />
             </BrowserRouter>

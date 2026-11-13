@@ -136,6 +136,10 @@ export const ptBR = {
   "overview.retry": "Tentar de novo",
   "overview.empty.title": "Nada por aqui neste mês",
   "overview.empty.message": "Os lançamentos do mês aparecem aqui.",
+  "install.message": "Instale o Revenue para abri-lo como um app.",
+  "install.ios": "Para instalar, toque em Compartilhar e depois em Adicionar à Tela de Início.",
+  "install.action": "Instalar",
+  "install.dismiss": "Agora não",
 } as const;
 
 export type MessageKey = keyof typeof ptBR;
@@ -275,4 +279,8 @@ export const en: Record<MessageKey, string> = {
   "overview.retry": "Try again",
   "overview.empty.title": "Nothing here this month",
   "overview.empty.message": "The month's transactions show up here.",
+  "install.message": "Install Revenue to open it like an app.",
+  "install.ios": "To install, tap Share, then Add to Home Screen.",
+  "install.action": "Install",
+  "install.dismiss": "Not now",
 };

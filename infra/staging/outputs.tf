@@ -61,3 +61,18 @@ output "migrate_database_url_param" {
   description = "SSM parameter the deploy workflow reads to run migrations."
   value       = module.database.migrate_database_url_param
 }
+
+output "revenue_url" {
+  description = "The Revenue app's CloudFront URL; the deploy job reads it."
+  value       = module.revenue_web.url
+}
+
+output "revenue_bucket_name" {
+  description = "The Revenue app's private bucket; the deploy job syncs the build to it."
+  value       = module.revenue_web.bucket_name
+}
+
+output "revenue_distribution_id" {
+  description = "The Revenue app's CloudFront distribution; the deploy job invalidates it."
+  value       = module.revenue_web.distribution_id
+}
