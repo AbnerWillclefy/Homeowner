@@ -51,6 +51,13 @@ func TestItemAndAccounts(t *testing.T) {
 		t.Fatalf("ListAccounts = %+v, %v", accts, err)
 	}
 	want := pluggy.Account{ID: pluggytest.CheckingAccountID, Type: "BANK", Subtype: "CHECKING_ACCOUNT", Name: "Conta Corrente", Currency: "BRL", Owner: "John Doe", TaxNumber: "416.799.495-00"}
+	if b := accts[0].BalanceCents; b == nil || *b != 4370143 {
+		t.Errorf("checking balance = %v, want 4370143", b)
+	}
+	if b := accts[1].BalanceCents; b == nil || *b != -91630 {
+		t.Errorf("card balance = %v, want -91630", b)
+	}
+	accts[0].BalanceCents = nil
 	if accts[0] != want {
 		t.Errorf("first account = %+v, want %+v", accts[0], want)
 	}
