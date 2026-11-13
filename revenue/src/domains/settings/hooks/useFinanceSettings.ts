@@ -32,7 +32,7 @@ export function useCredentials() {
     if (result.kind === "ok") await refresh();
     return result.kind === "ok";
   };
-  return { saved: query.data, loading: query.isPending, save, remove };
+  return { saved: query.data, failed: query.isError, loading: query.isPending, save, remove };
 }
 
 /** Deletes every finance table, marks every finance query stale and sends the User to the first-run flow. */

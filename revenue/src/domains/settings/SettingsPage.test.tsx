@@ -93,6 +93,16 @@ describe("monthly income", () => {
     expect(api.putIncome).not.toHaveBeenCalled();
   });
 
+  it("keeps the typed amount when saving fails", async () => {
+    vi.mocked(api.putIncome).mockResolvedValue({ kind: "error" } as never);
+    open();
+    const field = await screen.findByLabelText("How much comes in each month");
+    await userEvent.type(field, "6000");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("We could not save. Try again in a moment.")).toBeTruthy();
+    expect((screen.getByLabelText("How much comes in each month") as HTMLInputElement).value).toBe("6,000.00");
+  });
+
   it("clears the income", async () => {
     vi.mocked(api.getMonthlyIncome).mockResolvedValue(500000);
     open();
@@ -129,6 +139,13 @@ describe("credentials", () => {
     await userEvent.type(screen.getByLabelText("Client Secret"), "secret");
     await userEvent.click(screen.getByRole("button", { name: "Save credentials" }));
     await waitFor(() => expect(api.putCredentials).toHaveBeenCalledWith("id", "secret"));
+  });
+
+  it("says so when reading them fails, not that none are saved", async () => {
+    vi.mocked(api.getCredentialsSaved).mockRejectedValue(new Error("503"));
+    open();
+    expect(await screen.findByText("Could not read your credentials. Reload the page.")).toBeTruthy();
+    expect(screen.queryByText(/None saved/)).toBeNull();
   });
 
   it("says when Pluggy refuses them", async () => {

@@ -20,7 +20,7 @@ export function IncomeCard() {
     setSaving(true);
     const ok = await save(next);
     setSaving(false);
-    setEdit(null);
+    if (ok) setEdit(null);
     setMessage(ok ? { tone: "neutral", text: t(done) } : { tone: "danger", text: t("settings.income.failed") });
   }
 

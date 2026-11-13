@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { browserRemindersDeps } from "../logic/browserDeps";
-import { isIOS, readPlatformEnv, reminderAvailability, type ReminderAvailability } from "../logic/platform";
+import { readPlatformEnv, reminderAvailability, type ReminderAvailability } from "../logic/platform";
 import type { RemindersProblem } from "../logic/problemText";
 import { currentEndpoint, disableReminders, enableReminders, syncOnLaunch } from "../logic/reminders";
 
@@ -47,5 +47,5 @@ export function useNotifications() {
     }
   }, []);
 
-  return { availability, ios: isIOS(env), state, turn };
+  return { availability, state, turn };
 }

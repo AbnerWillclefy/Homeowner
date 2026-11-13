@@ -16,7 +16,7 @@ const FAILURE: Record<"invalid" | "rejected" | "error", MessageKey> = {
  */
 export function CredentialsCard() {
   const { t } = useI18n();
-  const { saved, loading, save, remove } = useCredentials();
+  const { saved, loading, failed, save, remove } = useCredentials();
   const [editing, setEditing] = useState(false);
   const [failure, setFailure] = useState<MessageKey | null>(null);
   const [saving, setSaving] = useState(false);
@@ -40,8 +40,10 @@ export function CredentialsCard() {
   return (
     <Card className="gap-4">
       <h2 className="section-title">{t("settings.creds.title")}</h2>
-      {!loading && (
-        <p className="body text-text-muted">{t(saved ? "settings.creds.saved" : "settings.creds.none")}</p>
+      {failed ? (
+        <Banner tone="danger">{t("settings.creds.loadFailed")}</Banner>
+      ) : (
+        !loading && <p className="body text-text-muted">{t(saved ? "settings.creds.saved" : "settings.creds.none")}</p>
       )}
       {showForm && !loading && (
         <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-4">
