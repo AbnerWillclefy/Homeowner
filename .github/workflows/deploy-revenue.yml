@@ -1,0 +1,142 @@
+name: Deploy Revenue
+
+# Called by deploy-staging.yml and deploy-production.yml. Builds the Revenue app
+# against the API URL the caller's apply just produced and publishes it to that
+# environment's own Revenue bucket.
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: staging or production
+        required: true
+        type: string
+      role_to_assume:
+        description: The environment's deploy role (vars are not read from the caller's job context)
+        required: true
+        type: string
+      revenue_url:
+        required: true
+        type: string
+      api_url:
+        required: true
+        type: string
+      bucket:
+        required: true
+        type: string
+      distribution_id:
+        required: true
+        type: string
+      cognito_client_id:
+        required: true
+        type: string
+      cognito_region:
+        required: true
+        type: string
+      cognito_password_policy:
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  revenue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      REVENUE_URL: ${{ inputs.revenue_url }}
+      API_URL: ${{ inputs.api_url }}
+      BUCKET: ${{ inputs.bucket }}
+      DISTRIBUTION_ID: ${{ inputs.distribution_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ inputs.role_to_assume }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: revenue/.nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      # Revenue is in the root npm workspace, so install and build from the root.
+      - run: npm ci
+
+      - name: Build
+        run: npm run build -w @homeowner/revenue
+        env:
+          VITE_API_URL: ${{ inputs.api_url }}
+          # Public identifiers of the Cognito app client, not secrets.
+          VITE_COGNITO_CLIENT_ID: ${{ inputs.cognito_client_id }}
+          VITE_COGNITO_REGION: ${{ inputs.cognito_region }}
+          VITE_PASSWORD_POLICY: ${{ inputs.cognito_password_policy }}
+
+      # Fingerprinted assets are immutable and index.html goes last, so no
+      # visitor gets an index that refers to assets not uploaded yet.
+      - name: Upload fingerprinted assets
+        run: |
+          aws s3 sync revenue/dist/assets "s3://${BUCKET}/assets" \
+            --cache-control "public,max-age=31536000,immutable"
+
+      - name: Upload other static files
+        run: |
+          aws s3 sync revenue/dist "s3://${BUCKET}" \
+            --exclude "assets/*" --exclude "index.html" --exclude "sw.js" \
+            --exclude "registerSW.js" --exclude "manifest.webmanifest" \
+            --exclude "workbox-*.js" --exclude ".vite/*" \
+            --cache-control "public,max-age=3600"
+
+      # The service worker and manifest arrive with #635; [ -f ] keeps this
+      # working until then.
+      - name: Upload app shell and service worker
+        run: |
+          cd revenue/dist
+          for f in sw.js registerSW.js workbox-*.js; do
+            [ -f "$f" ] || continue
+            aws s3 cp "$f" "s3://${BUCKET}/$f" \
+              --cache-control "no-cache" --content-type "text/javascript"
+          done
+          if [ -f manifest.webmanifest ]; then
+            aws s3 cp manifest.webmanifest "s3://${BUCKET}/manifest.webmanifest" \
+              --cache-control "no-cache" --content-type "application/manifest+json"
+          fi
+          aws s3 cp index.html "s3://${BUCKET}/index.html" \
+            --cache-control "no-cache" --content-type "text/html"
+
+      - name: Delete stale objects
+        # Everything is already uploaded with its headers, so --size-only
+        # makes this sync a pure delete. assets/ is excluded so a tab on the
+        # previous version can still load its old hashed files.
+        run: aws s3 sync revenue/dist "s3://${BUCKET}" --delete --size-only --exclude "assets/*" --exclude ".vite/*"
+
+      - name: Invalidate CloudFront
+        run: |
+          id=$(aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" \
+            --paths "/*" --query Invalidation.Id --output text)
+          aws cloudfront wait invalidation-completed --distribution-id "$DISTRIBUTION_ID" --id "$id"
+
+      - name: Smoke test
+        run: |
+          curl_ok() { curl --silent --show-error --fail --retry 6 --retry-delay 5 --retry-all-errors "$@"; }
+
+          curl_ok "${REVENUE_URL}/" | grep -q 'id="root"'
+
+          ct=$(curl_ok -o /dev/null -w '%{content_type}' "${REVENUE_URL}/bills")
+          echo "deep link content-type: $ct"
+          case "$ct" in text/html*) ;; *) echo "::error::Deep link did not return the app"; exit 1 ;; esac
+
+          # The API must trust the Revenue origin (the CORS change reached it).
+          acao=$(curl_ok -D - -o /dev/null -H "Origin: ${REVENUE_URL}" "${API_URL}/healthz" \
+            | tr -d '\r' | awk -F': ' 'tolower($1)=="access-control-allow-origin" {print $2}')
+          echo "access-control-allow-origin: $acao"
+          [ "$acao" = "${REVENUE_URL}" ]
+
+          # The finance guard is deployed: no token, no access.
+          code=$(curl --silent --show-error --retry 6 --retry-delay 5 --retry-all-errors \
+            -o /dev/null -w '%{http_code}' "${API_URL}/me/finance")
+          echo "GET /me/finance without a token: $code"
+          [ "$code" = "401" ]
