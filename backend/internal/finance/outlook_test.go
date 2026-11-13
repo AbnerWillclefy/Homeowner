@@ -451,6 +451,17 @@ func TestOutlookCurrentCardBill(t *testing.T) {
 			today: "2026-11-23", rows: []Txn{charge("2026-10-25", 200), charge("2026-11-21", 50)}, cards: card(20, 28, octBill),
 			want: open(200), next: open(50),
 		},
+		"a bank bill due next month counts once, in the current month, while unpaid": {
+			today: "2026-11-30", rows: []Txn{nubank("2026-11-10", 300), nubank("2026-11-29", 40)},
+			cards: card(28, 5, StoredBill{ClosesOn: d("2026-11-28"), DueOn: d("2026-12-05"), TotalCents: 1000}),
+			want: func() CardBill { due, cl := d("2026-12-05"), d("2026-11-28"); return CardBill{"a", "a", 1000, true, true, &due, &cl} }(),
+			next: open(0),
+		},
+		"a paid bank bill due next month is not counted again there": {
+			today: "2026-11-30", rows: []Txn{nubank("2026-11-10", 300), nubank("2026-11-29", 40)},
+			cards: card(28, 5, StoredBill{ClosesOn: d("2026-11-28"), DueOn: d("2026-12-05"), TotalCents: 1000, Paid: true}),
+			want: open(40), next: open(0),
+		},
 		"no bank bills and no days: what counts in the month": {
 			today: "2026-11-13", rows: []Txn{{SourceID: "a", PostedOn: d("2026-11-03"), Posted: d("2026-11-03"), AmountCents: -70, Type: "expense"}},
 			cards: card(0, 0), want: CardBill{"a", "a", 70, false, false, nil, nil}, next: CardBill{"a", "a", 0, false, false, nil, nil},

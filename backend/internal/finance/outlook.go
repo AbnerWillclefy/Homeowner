@@ -420,13 +420,18 @@ func cycleOf(c Card, bill CardBill, span billSpan, today time.Time) BillCycle {
 
 // dueCardBill is a card's bill due in month m (a first-of-month): the bank's
 // total when it reported one (ADR 0021), else the charges counting in m, only
-// those posted on or after the closing of the latest bank bill due before m,
-// and none the current month's bill already holds (taken).
+// those posted on or after the closing of the latest bank bill due before m or
+// already decided by the current month's bill, and none that bill holds (taken).
 func dueCardBill(c Card, rows []Txn, taken billSpan, m time.Time) CardBill {
 	out := CardBill{SourceID: c.ID, Name: c.Name, BillDaysKnown: c.BillDaysKnown}
 	var cutoff time.Time
 	for _, b := range c.Bills {
+		// A bill the current month already counted, or moved past once paid: its charges stay out too.
+		decided := !taken.from.IsZero() && (!b.ClosesOn.After(taken.from) || !taken.to.IsZero() && !b.ClosesOn.After(taken.to))
 		switch {
+		case decided && b.ClosesOn.After(cutoff):
+			cutoff = b.ClosesOn
+		case decided:
 		case monthIndex(b.DueOn) == monthIndex(m):
 			out.AmountCents, out.FromBank, out.DueOn, out.ClosesOn = b.TotalCents, true, &b.DueOn, &b.ClosesOn
 			return out
