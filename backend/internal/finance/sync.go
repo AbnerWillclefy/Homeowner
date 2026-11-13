@@ -323,27 +323,35 @@ func digits(s string) string {
 
 // toRows picks what to store: an account's pending rows are left out (they come
 // back as posted), and so are rows that are not BRL, which are counted. A card
-// keeps them: its charges stay pending until the bill closes, and Pluggy keeps
-// the id when they post. On a card
+// keeps its pending rows (its charges stay pending until the bill closes, and
+// Pluggy keeps the id when they post) and a foreign charge Pluggy converted to
+// reais, and moves installments sent together to their months (moveInstallment). On a card
 // Pluggy sends a purchase positive and a bill payment negative, so its sign is
 // flipped to the Source's point of view. A row's counterpart is reduced to
 // OwnCounterpart here and goes no further. A card row never has one: its payer
 // or receiver was picked from Pluggy's raw sign, which the flip inverts.
 func toRows(txs []pluggy.Transaction, card bool, owner pluggy.Party) (rows []Row, skippedCurrency int) {
+	lowest := map[installmentGroup]int{}
+	if card {
+		lowest = lowestInstallments(txs)
+	}
 	for _, tx := range txs {
 		// shortcut: a pending charge Pluggy deletes and re-creates (its date or amount changed) stays stored twice, delete rows a re-read no longer returns if bills come out high.
 		if tx.Status == "PENDING" && !card {
 			continue
 		}
-		if tx.Currency != "BRL" {
-			skippedCurrency++
-			continue
-		}
 		amount := tx.AmountCents
+		if tx.Currency != "BRL" {
+			if !card || tx.AccountAmountCents == nil {
+				skippedCurrency++
+				continue
+			}
+			amount = *tx.AccountAmountCents // the card bill charges it in reais
+		}
 		if card {
 			amount = -amount
 		}
-		r := Row{ProviderID: tx.ID, PostedOn: postedOn(tx.Date), AmountCents: amount,
+		r := Row{ProviderID: tx.ID, PostedOn: moveInstallment(tx, lowest), AmountCents: amount,
 			Description: tx.Description, MerchantKey: MerchantKey(tx.Description), Type: "income"}
 		r.OwnCounterpart = !card && tx.Counterpart != nil && sameParty(owner, *tx.Counterpart)
 		if amount < 0 {
@@ -362,6 +370,46 @@ func toRows(txs []pluggy.Transaction, card bool, owner pluggy.Party) (rows []Row
 		rows = append(rows, r)
 	}
 	return rows, skippedCurrency
+}
+
+// installmentGroup is the installments of one purchase a bank sent on the same day.
+type installmentGroup struct {
+	merchant string
+	total    int
+	day      time.Time
+}
+
+func groupOf(tx pluggy.Transaction) (installmentGroup, int, bool) {
+	m := tx.CreditCardMetadata
+	if m == nil || m.TotalInstallments < 2 || m.InstallmentNumber < 1 {
+		return installmentGroup{}, 0, false
+	}
+	return installmentGroup{MerchantKey(tx.Description), m.TotalInstallments, postedOn(tx.Date)}, m.InstallmentNumber, true
+}
+
+// lowestInstallments is the lowest installment number of each group in txs.
+// shortcut: a group split across two pages is not seen whole, read a whole window first if a bill comes out high.
+func lowestInstallments(txs []pluggy.Transaction) map[installmentGroup]int {
+	out := map[installmentGroup]int{}
+	for _, tx := range txs {
+		if g, n, ok := groupOf(tx); ok && (out[g] == 0 || n < out[g]) {
+			out[g] = n
+		}
+	}
+	return out
+}
+
+// moveInstallment is the day a card charge counts: some banks send every
+// installment of a new purchase on its date (Pluggy's "Pattern A", left
+// undated by MeuPluggy), so one numbered above the lowest of its group moves
+// on by the difference in months.
+func moveInstallment(tx pluggy.Transaction, lowest map[installmentGroup]int) time.Time {
+	day := postedOn(tx.Date)
+	g, n, ok := groupOf(tx)
+	if !ok || n <= lowest[g] {
+		return day
+	}
+	return DueDate(day.Year(), day.Month()+time.Month(n-lowest[g]), day.Day())
 }
 
 // safeErr is an error text fit for the logs: the adapter's errors hold the

@@ -48,6 +48,38 @@ func TestToRowsKeepsPendingCardCharges(t *testing.T) {
 	}
 }
 
+// A foreign card charge counts in reais when Pluggy converted it; otherwise it is left out and counted.
+func TestToRowsTakesTheCardChargeInReais(t *testing.T) {
+	d := time.Date(2026, 11, 7, 15, 0, 0, 0, time.UTC)
+	brl := int64(2998)
+	rows, skipped := toRows([]pluggy.Transaction{
+		{ID: "converted", Date: d, Description: "x", AmountCents: 519, Currency: "USD", Status: "PENDING", AccountAmountCents: &brl},
+		{ID: "unconverted", Date: d, Description: "x", AmountCents: 519, Currency: "USD", Status: "PENDING"},
+	}, true, pluggy.Party{})
+	if skipped != 1 || len(rows) != 1 || rows[0].AmountCents != -2998 {
+		t.Errorf("rows = %+v, skipped %d; want the converted charge at -2998 and one skipped", rows, skipped)
+	}
+}
+
+// Some banks send every installment of a new purchase on its date: each one after the lowest counts in its own later month.
+func TestToRowsMovesInstallmentsSentTogetherToTheirMonths(t *testing.T) {
+	d := time.Date(2026, 11, 8, 15, 0, 0, 0, time.UTC)
+	inst := func(id string, n, m int, on time.Time) pluggy.Transaction {
+		return pluggy.Transaction{ID: id, Date: on, Description: "AMAZONMKTPLC E-PETMARK", AmountCents: 8757, Currency: "BRL", Status: "PENDING",
+			CreditCardMetadata: &pluggy.CreditCardMetadata{InstallmentNumber: n, TotalInstallments: m}}
+	}
+	rows, _ := toRows([]pluggy.Transaction{
+		inst("p1", 1, 6, d), inst("p2", 2, 6, d), inst("p6", 6, 6, d),
+		inst("old", 4, 4, time.Date(2026, 10, 22, 15, 0, 0, 0, time.UTC)),
+	}, true, pluggy.Party{})
+	want := map[string]string{"p1": "2026-11-08", "p2": "2026-12-08", "p6": "2027-04-08", "old": "2026-10-22"}
+	for _, r := range rows {
+		if got := r.PostedOn.Format(time.DateOnly); got != want[r.ProviderID] {
+			t.Errorf("%s PostedOn = %s, want %s", r.ProviderID, got, want[r.ProviderID])
+		}
+	}
+}
+
 func TestToRowsFlipsCardSign(t *testing.T) {
 	d := time.Date(2026, 11, 7, 15, 0, 0, 0, time.UTC)
 	rows, _ := toRows([]pluggy.Transaction{

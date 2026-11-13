@@ -91,12 +91,14 @@ type TransactionsPage struct {
 // money out; on a credit card a purchase is positive and a bill payment
 // negative. Type is never read. ProviderID is often missing, so key on ID.
 type Transaction struct {
-	ID                 string
-	ProviderID         *string
-	Date               time.Time // an instant; convert to a São Paulo date before using it as a day
-	Description        string
-	AmountCents        int64
-	Currency           string
+	ID          string
+	ProviderID  *string
+	Date        time.Time // an instant; convert to a São Paulo date before using it as a day
+	Description string
+	AmountCents int64
+	Currency    string
+	// AccountAmountCents is the amount in the account's currency (reais) of a foreign row, signed as AmountCents; nil when Pluggy sent none.
+	AccountAmountCents *int64
 	Type               string // DEBIT or CREDIT
 	Status             string
 	Category           *string // Pluggy's category, null on some rows

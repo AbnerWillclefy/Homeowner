@@ -17,6 +17,8 @@ export interface MonthRows {
   totalCents: number;
   /** Null when no Monthly income is set. Negative when the month takes more than the income. */
   leftoverCents: number | null;
+  /** The leftover with today's values: the API's leftover without the planned spending. Null with no income. */
+  todayLeftoverCents: number | null;
   /** By how much the total passes the income; 0 otherwise. */
   overCents: number;
 }
@@ -41,5 +43,6 @@ export function monthRows(m: CommitmentMonth): MonthRows {
   if (m.savingCents !== undefined) groups.push({ id: "saving", cents: m.savingCents, items: [] });
 
   const leftoverCents = m.leftoverCents ?? null;
-  return { groups, totalCents: m.totalCents, leftoverCents, overCents: leftoverCents !== null && leftoverCents < 0 ? -leftoverCents : 0 };
+  const todayLeftoverCents = leftoverCents === null ? null : leftoverCents + m.plannedCents;
+  return { groups, totalCents: m.totalCents, leftoverCents, todayLeftoverCents, overCents: leftoverCents !== null && leftoverCents < 0 ? -leftoverCents : 0 };
 }

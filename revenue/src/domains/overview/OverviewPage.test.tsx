@@ -140,7 +140,8 @@ describe("Overview", () => {
     api({ commitments: { status: 200, data: { monthlyIncomeCents: 400000, months: [{ ...withIncome, leftoverCents: -50000, dailyAllowanceCents: -2941 }] } } });
     page();
     expect(await screen.findByText("O mês já tem mais que a renda.")).toBeTruthy();
-    expect(screen.getByText(/O mês já tem R\$\s500,00 além da renda/)).toBeTruthy();
+    expect(screen.getByText(/O mês já tem R\$\s200,00 além da renda/)).toBeTruthy();
+    expect(screen.getByText(/Com o gasto previsto, faltam R\$\s500,00/)).toBeTruthy();
     expect((await axe.run(document.body, { rules: { "color-contrast": { enabled: false }, region: { enabled: false } } })).violations).toEqual([]);
   });
 
