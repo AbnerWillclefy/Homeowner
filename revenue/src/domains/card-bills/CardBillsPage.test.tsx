@@ -21,6 +21,7 @@ const ROWS = [
   tx({ id: "t2", description: "Geladeira Frost Free", postedOn: "2029-12-22", amountCents: -3249, installment: { number: 3, total: 10 } }),
   tx({ id: "t3", description: "Outro cartão", sourceId: "s2" }),
   tx({ id: "t4", description: "Fatura de fevereiro", countsOn: "2030-02-15" }),
+  tx({ id: "t5", description: "Fatura de março", postedOn: "2029-12-30", countsOn: "2030-03-15" }),
 ];
 const AXE = { rules: { "color-contrast": { enabled: false }, region: { enabled: false } } };
 
@@ -102,17 +103,18 @@ describe("rows", () => {
     expect(screen.getAllByText("Outro cartão")).toHaveLength(1);
   });
 
-  it("lists a cycle's rows by posted day, those counting next month too", async () => {
+  it("lists a cycle's rows by posted day, those counting up to two months on too", async () => {
     width(false);
     serve([{ ...CLOSED, fromBank: false, closed: false, heldFrom: "2029-12-20", heldTo: null }]);
     open();
     const list = await screen.findByRole("list", { name: "Transactions of Nubank in January 2030" });
     expect(within(list).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+      expect.stringContaining("Fatura de março"),
       expect.stringContaining("Geladeira Frost Free"),
       expect.stringContaining("Mercado Central"),
       expect.stringContaining("Fatura de fevereiro"),
     ]);
-    expect(vi.mocked(api.getMonthTransactions).mock.calls.map(([m]) => m)).toEqual(["2030-01", "2030-02"]);
+    expect(vi.mocked(api.getMonthTransactions).mock.calls.map(([m]) => m)).toEqual(["2030-01", "2030-02", "2030-03"]);
   });
 
   it("is a table on a desktop width", async () => {

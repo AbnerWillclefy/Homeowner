@@ -4,15 +4,16 @@ import { addMonths } from "../../bills/logic/month";
 import { getCardBills, getCardSources, getMonthTransactions, putBillDays, type BillDaysResult } from "../api";
 
 /**
- * The month's card bills, the card Sources (for their days) and the Transactions counting in the month and the next,
- * each read on its own: the current month's open bill holds charges that count on a later due day.
+ * The month's card bills, the card Sources (for their days) and the Transactions counting in the month and the next
+ * two, each read on its own: the current month's open bill holds charges that count up to two due days later (the
+ * API's billLead).
  */
 export function useCardBills(month: string) {
   const bills = useQuery({ queryKey: ["finance", "commitments", month, "card-bills"], queryFn: () => getCardBills(month) });
   const sources = useQuery({ queryKey: ["finance", "status", "card-sources"], queryFn: () => getCardSources() });
   const transactions = useQuery({
     queryKey: ["finance", "transactions", month, "card-rows"],
-    queryFn: async () => (await Promise.all([month, addMonths(month, 1)].map((m) => getMonthTransactions(m)))).flat(),
+    queryFn: async () => (await Promise.all([0, 1, 2].map((n) => getMonthTransactions(addMonths(month, n))))).flat(),
   });
   return {
     bills: bills.data,
