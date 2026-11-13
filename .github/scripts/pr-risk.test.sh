@@ -101,6 +101,14 @@ run_case "the API's authentication middleware is high" \
   "$(files "$(file backend/internal/server/auth.go modified)")" "$(complete_body high)" \
   "floor=high"
 
+run_case "Revenue's sign-in code is high" \
+  "$(files "$(file revenue/src/auth/cognito.ts modified)")" "$(complete_body high)" \
+  "floor=high"
+
+run_case "Revenue's sign-in tests stay below the protected paths: still high" \
+  "$(files "$(file revenue/src/auth/cognito.test.ts modified)")" "$(complete_body high)" \
+  "floor=high"
+
 run_case "the CORS policy is high" \
   "$(files "$(file backend/internal/server/cors.go modified)")" "$(complete_body high)" \
   "floor=high"

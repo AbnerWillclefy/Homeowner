@@ -39,7 +39,7 @@ floor_for() {
     infra/*)             printf 'high\t%s changes AWS infrastructure\n' "$file" ;;
     scripts/*)           printf 'high\t%s changes an operations script\n' "$file" ;;
     backend/internal/platform/auth/*|backend/internal/identity/*|backend/internal/users/*|backend/internal/invites/*|\
-    backend/internal/server/auth.go|backend/internal/server/cors.go|web/src/domains/auth/*|\
+    backend/internal/server/auth.go|backend/internal/server/cors.go|web/src/domains/auth/*|revenue/src/auth/*|\
     web/src/app/components/AuthProvider.tsx|web/src/app/components/SessionProvider.tsx|web/src/shared/api/http.ts)
                          printf 'high\t%s changes sign-in, accounts, invites or who may do what\n' "$file" ;;
     # Tests change no behaviour a Resident sees; below the protected paths, which have no exemption

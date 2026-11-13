@@ -116,6 +116,10 @@ _Avoid_: Combo, Chain
 
 Finances is open only to Users on an allowlist of emails. These terms are about money; "Category" stays with Chores.
 
+**Revenue**:
+The name of the app that holds Finances; never a money term. Money coming in is Monthly income.
+_Avoid_: Finance app, Money app
+
 **Transaction**:
 One movement of money on a Source, such as a purchase or a payment, with a date, an amount and a description.
 _Avoid_: Entry, Expense, Payment

@@ -233,10 +233,50 @@ loudly. Each environment is its own build, and its own origin, so a session
 `admin/.env.local`. See `admin/.env.example`. The API must list
 `http://localhost:5174` in `CORS_ALLOWED_ORIGINS` (Compose already does).
 
+## Revenue
+
+The app that holds Finances is in `revenue/` (Vite, React, TypeScript; Node 22
+from `revenue/.nvmrc`), built on Bedrock ([ADR 0023](adr/0023-move-finances-into-a-second-installable-app-named-revenue.md)).
+It is a member of the root npm workspace, so run its commands from the
+repository root. It has the same sign-in as the PWA (sign-in and forgot password,
+no sign-up), then asks `GET /me/finance`: a User on the finance allowlist reaches
+the app, anyone else sees "Sem acesso" / "No access".
+
+```sh
+docker compose up -d                          # the API, at localhost:8080
+cp revenue/.env.example revenue/.env.local    # fill in the Cognito values and VITE_PASSWORD_POLICY
+npm ci
+npm run dev -w @homeowner/revenue             # http://localhost:5175 (strict port)
+npm run typecheck -w @homeowner/revenue
+npm test -w @homeowner/revenue                # vitest, jsdom, axe
+npm run build -w @homeowner/revenue           # typecheck, then a production build
+```
+
+For the gate to open locally, set `FINANCE_ALLOWLIST` (your email) and
+`FINANCE_ENCRYPTION_KEY` in the root `.env`; Compose passes both to the API and
+allows `http://localhost:5175` in `CORS_ALLOWED_ORIGINS`. CI (`revenue-check.yml`)
+runs `npm ci`, typecheck, tests and build when a pull request touches `revenue/`
+or `bedrock/`.
+
+### Configuration
+
+Read at build time and validated on load. The session lives in `localStorage`
+under `revenue.session`, the language under `revenue.locale` and the theme under
+`revenue.theme`, none of them shared with Homeowner.
+
+| Variable | Meaning |
+|---|---|
+| `VITE_API_URL` | Base URL of the API. |
+| `VITE_COGNITO_REGION`, `VITE_COGNITO_CLIENT_ID` | The same pool and app client as the PWA. |
+| `VITE_PASSWORD_POLICY` | The JSON of Terraform's `cognito_password_policy` output, the same value as the PWA's. The new-password step of "Esqueci a senha" lists the rules from it. |
+
+`npm run dev` reads `revenue/.env.development` (the local API); put the rest in an
+untracked `revenue/.env.local`. See `revenue/.env.example`.
+
 ## Bedrock
 
-The shared design system package is in `bedrock/`, the only member of the root npm
-workspace (Node 22 from `bedrock/.nvmrc`). Run its commands from the repository root:
+The shared design system package is in `bedrock/`, a member of the root npm
+workspace with Revenue (Node 22 from `bedrock/.nvmrc`). Run its commands from the repository root:
 
 ```sh
 npm ci
