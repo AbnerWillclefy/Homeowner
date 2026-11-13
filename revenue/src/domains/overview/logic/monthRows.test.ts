@@ -80,6 +80,11 @@ describe("monthRows", () => {
     expect(rows.groups.reduce((a, g) => a + g.cents, 0)).toBe(rows.totalCents);
   });
 
+  it("gives the leftover with today's values, without the planned spending, next to the API's average one", () => {
+    expect(monthRows(month({ plannedCents: 30000, totalCents: 150000, leftoverCents: -50000 }))).toMatchObject({ leftoverCents: -50000, todayLeftoverCents: -20000 });
+    expect(monthRows(month({ plannedCents: 30000, totalCents: 1000 })).todayLeftoverCents).toBeNull();
+  });
+
   it("has no leftover without income, and says by how much a total passes it", () => {
     expect(monthRows(month({ totalCents: 1000 }))).toMatchObject({ leftoverCents: null, overCents: 0 });
     expect(monthRows(month({ totalCents: 150000, leftoverCents: -50000 }))).toMatchObject({ leftoverCents: -50000, overCents: 50000 });

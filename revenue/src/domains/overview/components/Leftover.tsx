@@ -10,7 +10,10 @@ const GROUP: Record<string, MessageKey> = {
   cards: "overview.group.cards", bills: "overview.group.bills", planned: "overview.group.planned", spent: "overview.group.spent", saving: "overview.group.saving",
 };
 
-/** The month's Leftover and what makes up the Total. Neutral: a total above the income is one muted sentence, never a danger colour. */
+/**
+ * The month's Leftover with today's values, the one spending as usual (the API's, with the planned spending) when it
+ * differs, and what makes up the Total. Neutral: a total above the income is one muted sentence, never a danger colour.
+ */
 export function Leftover({ data, income }: { data: CommitmentMonth; income: number | null }) {
   const { t, locale } = useI18n();
   const rows = monthRows(data);
@@ -18,12 +21,21 @@ export function Leftover({ data, income }: { data: CommitmentMonth; income: numb
   return (
     <Card>
       <h2 className="section-title">{rows.leftoverCents === null ? monthName(data.month, locale) : t("overview.leftover.heading", { month: monthName(data.month, locale) })}</h2>
-      {rows.leftoverCents !== null && (
+      {rows.leftoverCents !== null && rows.todayLeftoverCents !== null && (
         <>
-          <Amount cents={rows.leftoverCents} size="lg" locale={locale} />
+          <Amount cents={rows.todayLeftoverCents} size="lg" locale={locale} />
           <p className="text-text-muted">
-            {rows.overCents > 0 ? t("overview.leftover.over", { amount: money(rows.overCents) }) : t("overview.leftover.sentence", { amount: money(rows.leftoverCents) })}
+            {rows.todayLeftoverCents < 0
+              ? t("overview.leftover.over", { amount: money(-rows.todayLeftoverCents) })
+              : t("overview.leftover.sentence", { amount: money(rows.todayLeftoverCents) })}
           </p>
+          {data.plannedCents > 0 && (
+            <p className="text-text-muted">
+              {rows.overCents > 0
+                ? t("overview.leftover.averageOver", { amount: money(rows.overCents) })
+                : t("overview.leftover.average", { amount: money(rows.leftoverCents) })}
+            </p>
+          )}
         </>
       )}
       <dl className="flex flex-col gap-2 border-t border-border pt-3">
