@@ -181,6 +181,23 @@ describe("mark paid and undo", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  it("keeps each row's buttons disabled while its own write is pending", async () => {
+    width(true);
+    serve([PENDING, LONG]);
+    const answers: ((r: WriteResult) => void)[] = [];
+    paid.mockImplementation(() => new Promise((resolve) => answers.push(resolve)));
+    open();
+    await screen.findByText("Internet");
+    const buttons = screen.getAllByRole("button", { name: /Mark paid/ });
+    await userEvent.click(buttons[0]);
+    await userEvent.click(buttons[1]);
+    const undo = () => screen.getAllByRole("button", { name: /Undo/ });
+    await waitFor(() => expect(undo()).toHaveLength(2));
+    expect(undo().every((b) => b.hasAttribute("disabled"))).toBe(true);
+    answers[0]({ kind: "ok" });
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /Mark paid|Undo/ }).filter((b) => b.hasAttribute("disabled"))).toHaveLength(1));
+  });
+
   it("rolls the row back and says so when the API refuses", async () => {
     width(true);
     serve([PENDING]);

@@ -35,7 +35,7 @@ export function BillsPage() {
   const [form, setForm] = useState<Open>(null);
   const [deleting, setDeleting] = useState<Bill | null>(null);
   const [dismissFailed, setDismissFailed] = useState<string | null>(null); // the month the dismissal failed in
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
 
   const step = (n: number) => setParams({ month: addMonths(month, n) });
   const label = monthLabel(month, locale);
@@ -81,7 +81,7 @@ export function BillsPage() {
           ) : (
             <>
               <BillSummary {...summarise(rows)} />
-              <List rows={rows} caption={t("bills.caption", { month: label })} today={current ? today : null} busy={busy} onPaid={(b, paid) => { setBusy(b.id); setDismissFailed(null); void setPaid(b, paid).finally(() => setBusy(null)); }} onEdit={(bill) => setForm({ bill })} onDelete={setDeleting} />
+              <List rows={rows} caption={t("bills.caption", { month: label })} today={current ? today : null} busy={busy} onPaid={(b, paid) => { setBusy((s) => new Set(s).add(b.id)); setDismissFailed(null); void setPaid(b, paid).finally(() => setBusy((s) => { const n = new Set(s); n.delete(b.id); return n; })); }} onEdit={(bill) => setForm({ bill })} onDelete={setDeleting} />
             </>
           )}
           {current && (

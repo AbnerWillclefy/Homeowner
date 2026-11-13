@@ -13,7 +13,7 @@ interface RowsProps {
   /** `YYYY-MM-DD` in São Paulo; null for a past month, which is read-only. */
   today: string | null;
   /** Id of the Bill whose paid mark is being written; its button waits. */
-  busy: string | null;
+  busy: ReadonlySet<string>;
   onPaid(bill: Bill, paid: boolean): void;
   onEdit(bill: Bill): void;
   onDelete(bill: Bill): void;
@@ -39,11 +39,11 @@ function Actions({ bill, state, today, busy, onPaid, onEdit, onDelete }: Omit<Ro
   return (
     <div className="flex flex-wrap items-center justify-end gap-1">
       {state === "paid-hand" ? (
-        <Button variant="secondary" size="sm" icon={Undo2} loading={busy === bill.id} onClick={() => onPaid(bill, false)}>
+        <Button variant="secondary" size="sm" icon={Undo2} loading={busy.has(bill.id)} onClick={() => onPaid(bill, false)}>
           {t("bills.undo")}<span className="sr-only">: {bill.name}</span>
         </Button>
       ) : state === "paid-bank" ? null : (
-        <Button variant={state === "overdue" ? "primary" : "secondary"} size="sm" icon={Check} loading={busy === bill.id} onClick={() => onPaid(bill, true)}>
+        <Button variant={state === "overdue" ? "primary" : "secondary"} size="sm" icon={Check} loading={busy.has(bill.id)} onClick={() => onPaid(bill, true)}>
           {t("bills.markPaid")}<span className="sr-only">: {bill.name}</span>
         </Button>
       )}
