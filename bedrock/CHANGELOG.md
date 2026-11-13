@@ -2,6 +2,10 @@
 
 Bedrock follows semver; before 1.0.0 a minor may break ([spec](../docs/design/bedrock/README.md)).
 
+## 0.2.0
+
+- ProgressBar: optional `tone` fixes the fill colour, so a bar that must not alarm stays `brand` past its target.
+
 ## 0.1.0
 
 The first release: the tokens and the 30 components of the spec's Inventory, all `stable`.

@@ -21,9 +21,11 @@ export type ProgressBarProps = {
   /** Meta row left and right; the app passes Amount, so money is never formatted here. */
   start?: ReactNode;
   end?: ReactNode;
+  /** Fixes the colour. Without it the bar warns near the end and turns danger past it; a bar that must never alarm passes "brand". */
+  tone?: "brand" | "warning" | "danger";
 };
 
-export function ProgressBar({ value, max, label, valueText, start, end }: ProgressBarProps) {
+export function ProgressBar({ value, max, label, valueText, start, end, tone }: ProgressBarProps) {
   // Radix treats value > max as invalid and drops aria-valuenow, so it gets the capped value.
   const shown = Math.min(value, max);
   return (
@@ -38,7 +40,7 @@ export function ProgressBar({ value, max, label, valueText, start, end }: Progre
         <Progress.Indicator
           className={cn(
             "size-full motion-safe:transition-transform duration-(--duration-slow) ease-standard",
-            toneClass[progressTone(value, max)],
+            toneClass[tone ?? progressTone(value, max)],
           )}
           style={{ transform: `translateX(-${100 - (shown / max) * 100}%)` }}
         />
