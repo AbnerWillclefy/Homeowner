@@ -32,7 +32,6 @@ export interface TransactionEdit {
 
 export type PatchResult =
   | { kind: "ok"; transaction: Transaction }
-  | { kind: "fields"; fields: Record<string, string> }
   | { kind: "not-found" }
   | { kind: "error" };
 
@@ -68,11 +67,6 @@ export async function patchTransaction(id: string, edit: TransactionEdit, client
   try {
     const response = await client.patch(`/me/finance/transactions/${encodeURIComponent(id)}`, edit);
     if (response.status === 404) return { kind: "not-found" };
-    if (response.status === 400) {
-      const fields: unknown = isRecord(response.data) ? response.data.fields : null;
-      if (!isRecord(fields)) return { kind: "error" };
-      return { kind: "fields", fields: Object.fromEntries(Object.entries(fields).filter((e): e is [string, string] => typeof e[1] === "string")) };
-    }
     const transaction = response.status === 200 ? parseTransaction(response.data) : null;
     return transaction ? { kind: "ok", transaction } : { kind: "error" };
   } catch {

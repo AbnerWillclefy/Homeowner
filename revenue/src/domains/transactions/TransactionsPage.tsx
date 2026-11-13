@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { useI18n } from "../../shared/i18n/I18nProvider";
 import { useMediaQuery } from "../../shared/useMediaQuery";
-import type { Transaction } from "./api";
+import { TYPES, type Transaction } from "./api";
 import { EditSheet } from "./components/EditSheet";
 import { TransactionsList, TransactionsTable } from "./components/TransactionRows";
 import { useTransactions } from "./hooks/useTransactions";
@@ -15,7 +15,6 @@ import { addMonths, currentMonth, monthFromParam, monthLabel } from "./logic/mon
 // Duplicates --bp-desktop in Bedrock's tokens.css: matchMedia cannot read custom properties.
 const DESKTOP = "(min-width: 1024px)";
 const ALL: Filter = { type: "all", category: "all" };
-const TYPES = ["income", "expense", "transfer", "saving"] as const;
 
 export function TransactionsPage() {
   const { t, locale } = useI18n();

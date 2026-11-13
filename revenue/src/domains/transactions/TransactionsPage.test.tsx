@@ -151,6 +151,18 @@ describe("editing", () => {
     expect(within(row).queryByText("Transfer")).toBeNull();
   });
 
+  it("says the row is gone and reads the month again when the API cannot find it", async () => {
+    width(true);
+    month([MERCADO]);
+    patch.mockResolvedValue({ kind: "not-found" });
+    open();
+    const dialog = await editRow("Mercado");
+    await userEvent.click(within(dialog).getByRole("radio", { name: "Transfer" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("no longer here");
+    await waitFor(() => expect(vi.mocked(getMonth)).toHaveBeenCalledTimes(2));
+  });
+
   it("reads the month again after a save", async () => {
     width(true);
     month([MERCADO]);

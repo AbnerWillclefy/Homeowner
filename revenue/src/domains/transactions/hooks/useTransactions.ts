@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { getMonth, patchTransaction, type MonthResponse, type Transaction, type TransactionEdit } from "../api";
 import { applyEdit } from "../logic/edit";
 
-export const monthKey = (month: string) => ["finance", "transactions", month] as const;
+export const monthKey = (month: string) => ["finance", "transactions", month, "rows"] as const;
 
 type Notice = { month: string; kind: "failed" | "gone" };
 

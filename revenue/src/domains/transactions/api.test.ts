@@ -47,16 +47,11 @@ describe("patchTransaction", () => {
     expect(JSON.parse(String(sent[0]!.data))).toEqual({ type: "transfer" });
   });
 
-  it("returns the field codes of a 400", async () => {
-    const { client } = setup(400, { error: "invalid", fields: { spendingCategory: "needs_expense" } });
-    expect(await patchTransaction("t1", { spendingCategory: "pets" }, client)).toEqual({ kind: "fields", fields: { spendingCategory: "needs_expense" } });
-  });
-
   it("names a missing row", async () => {
     expect(await patchTransaction("t1", { type: "income" }, setup(404, {}).client)).toEqual({ kind: "not-found" });
   });
 
-  it("is an error for another status, a 400 without fields, and a malformed 200", async () => {
+  it("is an error for another status, a 400, and a malformed 200", async () => {
     expect(await patchTransaction("t1", { type: "income" }, setup(500, {}).client)).toEqual({ kind: "error" });
     expect(await patchTransaction("t1", { type: "income" }, setup(400, "nope").client)).toEqual({ kind: "error" });
     expect(await patchTransaction("t1", { type: "income" }, setup(200, { id: 5 }).client)).toEqual({ kind: "error" });
