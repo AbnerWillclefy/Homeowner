@@ -15,5 +15,8 @@ export function withLimit(limits: Limits, category: SpendingCategory, cents: num
   return cents === null ? rest : { ...rest, [category]: cents };
 }
 
-/** A limit to save: whole cents above zero. Zero or empty is not a limit; removing one is a separate action. */
-export const isValidLimit = (cents: number | null): cents is number => cents !== null && Number.isInteger(cents) && cents > 0;
+const MAX_CENTS = 1_000_000_000_000; // backend maxBillCents, enforced by PutBudget
+
+/** A limit to save: whole cents above zero, up to the backend maximum. Zero or empty is not a limit; removing one is a separate action. */
+export const isValidLimit = (cents: number | null): cents is number =>
+  cents !== null && Number.isInteger(cents) && cents > 0 && cents <= MAX_CENTS;

@@ -25,7 +25,7 @@ describe("limits", () => {
     expect(withLimit({ groceries: 1, pets: 5 }, "pets", null)).toEqual({ groceries: 1 });
   });
   it("takes only whole cents above zero", () => {
-    expect([null, 0, -5, 10.5, 1].map(isValidLimit)).toEqual([false, false, false, false, true]);
+    expect([null, 0, -5, 10.5, 1, 1_000_000_000_000, 1_000_000_000_001].map(isValidLimit)).toEqual([false, false, false, false, true, true, false]);
   });
 });
 
