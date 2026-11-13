@@ -345,3 +345,82 @@ func TestPlannedBaseline(t *testing.T) {
 		})
 	}
 }
+
+// TestOutlookCurrentCardBill is the bill the Resident still has to pay in the
+// month today is in: the latest closed one until it is paid or past due, then
+// the open one. Card "a" closes on the 20th and is due on the 28th.
+func TestOutlookCurrentCardBill(t *testing.T) {
+	t.Parallel()
+	d := func(s string) time.Time { v, _ := time.Parse(time.DateOnly, s); return v }
+	nov := d("2026-11-01")
+	charge := func(posted string, cents int64) Txn {
+		p := d(posted)
+		return Txn{SourceID: "a", PostedOn: CountsOn(p, "credit_card", 20, 28), Posted: p, AmountCents: -cents, Type: "expense"}
+	}
+	nubank := func(posted string, cents int64) Txn { // closes on the 28th, due on the 5th
+		p := d(posted)
+		return Txn{SourceID: "a", PostedOn: CountsOn(p, "credit_card", 28, 5), Posted: p, AmountCents: -cents, Type: "expense"}
+	}
+	card := func(closeDay, dueDay int, bills ...StoredBill) []Card {
+		return []Card{{ID: "a", Name: "a", CloseDay: closeDay, DueDay: dueDay, BillDaysKnown: closeDay > 0, Bills: bills}}
+	}
+	octBill := StoredBill{ClosesOn: d("2026-10-20"), DueOn: d("2026-10-27"), TotalCents: 475871}
+	novBill := StoredBill{ClosesOn: d("2026-11-20"), DueOn: d("2026-11-28"), TotalCents: 273363}
+	paidNov := novBill
+	paidNov.Paid = true
+	open := func(cents int64) CardBill { return CardBill{"a", "a", cents, true, false, nil, nil} }
+	for name, c := range map[string]struct {
+		today      string
+		rows       []Txn
+		cards      []Card
+		plans      []Plan
+		want, next CardBill
+	}{
+		"after a past due bill, the open one: charges since its closing": {
+			today: "2026-11-13", rows: []Txn{charge("2026-10-19", 100), charge("2026-10-25", 200), charge("2026-11-10", 300)},
+			cards: card(20, 28, octBill), want: open(500), next: open(0),
+		},
+		"the open bill adds the installments still to be charged": {
+			today: "2026-11-13", rows: []Txn{charge("2026-11-10", 300)}, cards: card(20, 28, octBill),
+			plans: []Plan{{Name: "TV", Number: 2, Total: 4, AmountCents: 50, Month: d("2026-10-01"), SourceID: "a", Card: true}},
+			want:  open(350), next: open(50),
+		},
+		"a closed bill not yet paid counts the bank's total": {
+			today: "2026-11-23", rows: []Txn{charge("2026-11-10", 300), charge("2026-11-21", 50)}, cards: card(20, 28, octBill, novBill),
+			want: func() CardBill {
+				due, cl := d("2026-11-28"), d("2026-11-20")
+				return CardBill{"a", "a", 273363, true, true, &due, &cl}
+			}(),
+			next: open(50),
+		},
+		"a paid closed bill gives way to the open one": {
+			today: "2026-11-23", rows: []Txn{charge("2026-11-10", 300), charge("2026-11-21", 50)}, cards: card(20, 28, octBill, paidNov),
+			want: open(50), next: open(0),
+		},
+		"no bank bills: the open bill from the typed closing day": {
+			today: "2026-11-13", rows: []Txn{nubank("2026-10-27", 100), nubank("2026-10-30", 200), nubank("2026-11-10", 300)},
+			cards: card(28, 5), want: open(500), next: open(0),
+		},
+		"no bank bills: the closed bill until its typed due day, its installments already charged": {
+			today: "2026-11-30", rows: []Txn{nubank("2026-10-27", 100), nubank("2026-10-30", 200), nubank("2026-11-29", 40)},
+			plans: []Plan{{Name: "TV", Number: 2, Total: 3, AmountCents: 50, Month: d("2026-10-01"), SourceID: "a", Card: true}},
+			cards: card(28, 5), want: open(200), next: open(0),
+		},
+		"a bank that has not reported the latest closing: the typed days": {
+			today: "2026-11-23", rows: []Txn{charge("2026-10-25", 200), charge("2026-11-21", 50)}, cards: card(20, 28, octBill),
+			want: open(200), next: open(50),
+		},
+		"no bank bills and no days: what counts in the month": {
+			today: "2026-11-13", rows: []Txn{{SourceID: "a", PostedOn: d("2026-11-03"), Posted: d("2026-11-03"), AmountCents: -70, Type: "expense"}},
+			cards: card(0, 0), want: CardBill{"a", "a", 70, false, false, nil, nil}, next: CardBill{"a", "a", 0, false, false, nil, nil},
+		},
+	} {
+		got := Outlook(c.rows, c.cards, c.plans, [][]MonthBill{nil, nil}, nil, nil, nil, 0, d(c.today), nov, 2)
+		if !reflect.DeepEqual(got[0].Cards, []CardBill{c.want}) || got[0].TotalCents != c.want.AmountCents {
+			t.Errorf("%s: current = %+v total %d, want %+v", name, got[0].Cards, got[0].TotalCents, c.want)
+		}
+		if !reflect.DeepEqual(got[1].Cards, []CardBill{c.next}) {
+			t.Errorf("%s: next month = %+v, want %+v", name, got[1].Cards, c.next)
+		}
+	}
+}

@@ -312,8 +312,21 @@ func (h *Handler) loadOutlook(ctx context.Context, uid string, from time.Time, m
 	if in.income, err = h.store.Income(ctx, uid); err != nil {
 		return in, err
 	}
-	if in.rows, err = h.store.SpendRows(ctx, uid, from, from.AddDate(0, months, 0)); err != nil {
+	now := postedOn(h.clk.Now())
+	current := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	// The current month's open bill holds charges counting up to billLead months later, past a short horizon.
+	end := from.AddDate(0, months, 0)
+	if lead := current.AddDate(0, billLead+1, 0); lead.After(end) {
+		end = lead
+	}
+	wide, err := h.store.SpendRows(ctx, uid, from, end)
+	if err != nil {
 		return in, err
+	}
+	for _, t := range wide {
+		if t.PostedOn.Before(from.AddDate(0, months, 0)) { // the rows of the asked months only
+			in.rows = append(in.rows, t)
+		}
 	}
 	cards, err := h.store.CardSources(ctx, uid)
 	in.cards = cards
@@ -337,13 +350,11 @@ func (h *Handler) loadOutlook(ctx context.Context, uid string, from time.Time, m
 	if base != nil {
 		contribution = *base
 	}
-	now := postedOn(h.clk.Now())
-	current := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	prev, err := h.store.SpendRows(ctx, uid, current.AddDate(0, -paceMonths, 0), current)
 	if err != nil {
 		return in, err
 	}
-	in.outlook = Outlook(in.rows, cards, in.plans, bills, in.income, in.limits, plannedBaseline(prev, current), contribution, current, from, months)
+	in.outlook = Outlook(wide, cards, in.plans, bills, in.income, in.limits, plannedBaseline(prev, current), contribution, now, from, months)
 	return in, nil
 }
 

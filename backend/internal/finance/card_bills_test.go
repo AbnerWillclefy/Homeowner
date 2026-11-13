@@ -2,7 +2,12 @@ package finance_test
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
 	"testing"
+
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/pluggy/pluggytest"
 )
@@ -86,5 +91,84 @@ func TestOutlookTakesAStoredBillsTotal(t *testing.T) {
 	}
 	if c := b.Months[1].Cards[0]; c.FromBank || c.DueOn != nil || c.ClosesOn != nil {
 		t.Errorf("april card = %+v, want no bank bill", c)
+	}
+}
+
+// In the current month a closed bill counts the bank's total until a debit off
+// the cards pays exactly that total; then the open bill counts instead.
+func TestCurrentMonthTakesAClosedBillUntilItIsPaid(t *testing.T) {
+	t.Parallel()
+	app, users := startSync(t, []string{"ana@example.com"})
+	app.RunFinanceSync(t)
+	ana := users["ana@example.com"]
+	exec := func(q string) {
+		t.Helper()
+		if _, err := app.DB.Exec(context.Background(), q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	exec(`INSERT INTO finance_card_bills (user_id, source_id, provider_id, closes_on, due_on, total_cents)
+		SELECT user_id, id, 'nov', '2026-11-03', '2026-11-12', 123400 FROM finance_sources WHERE kind = 'credit_card'`)
+	card := func() outlookCard {
+		t.Helper()
+		res := ana.Get("/me/finance/commitments?from=2026-11")
+		apitest.ExpectStatus(t, res, http.StatusOK)
+		var b outlookBody
+		if err := json.Unmarshal(res.Raw, &b); err != nil || len(b.Months[0].Cards) != 1 {
+			t.Fatalf("commitments = %s, %v", res.Raw, err)
+		}
+		return b.Months[0].Cards[0]
+	}
+	if c := card(); !c.FromBank || c.AmountCents != 123400 {
+		t.Fatalf("unpaid = %+v, want the bank's 123400", c)
+	}
+	payment := func(cents int64, kind string) {
+		t.Helper()
+		exec(fmt.Sprintf(`INSERT INTO finance_transactions (user_id, source_id, provider_id, posted_on, amount_cents, currency, description,
+			merchant_key, type, type_set_by, created_at, updated_at)
+			SELECT user_id, id, gen_random_uuid()::text, '2026-11-07', %d, 'BRL', 'pagamento', 'PAGAMENTO', 'transfer', 'auto', now(), now()
+			FROM finance_sources WHERE kind = '%s' LIMIT 1`, cents, kind))
+	}
+	payment(-123300, "checking") // another amount
+	payment(-123400, "credit_card")
+	if c := card(); !c.FromBank {
+		t.Fatalf("after a different amount and a card row = %+v, want still the bank's bill", c)
+	}
+	payment(-123400, "checking")
+	if c := card(); c.FromBank {
+		t.Errorf("paid = %+v, want the open bill", c)
+	}
+}
+
+// The month's numbers read one month of outlook, Resumo twelve: both must hold
+// the open bill's charges that count on a later due day.
+func TestMonthCommittedHoldsTheOpenBillLikeTheCommitments(t *testing.T) {
+	t.Parallel()
+	app, users := startSync(t, []string{"ana@example.com"})
+	app.RunFinanceSync(t)
+	ana := users["ana@example.com"]
+	if _, err := app.DB.Exec(context.Background(), `DELETE FROM finance_card_bills;
+		UPDATE finance_sources SET bill_close_day = 28, bill_due_day = 5 WHERE kind = 'credit_card'`); err != nil {
+		t.Fatal(err)
+	}
+	seedRow(t, app, "ana@example.com", "2026-11-05", "expense", -777) // closes 2026-11-28, due 2026-12-05
+
+	res := ana.Get("/me/finance/commitments?from=2026-11")
+	apitest.ExpectStatus(t, res, http.StatusOK)
+	var b struct {
+		Months []struct {
+			Cards             []outlookCard
+			SpentOffCardCents int64
+		}
+	}
+	if err := json.Unmarshal(res.Raw, &b); err != nil {
+		t.Fatal(err)
+	}
+	want := b.Months[0].SpentOffCardCents
+	for _, c := range b.Months[0].Cards {
+		want += c.AmountCents
+	}
+	if committed, _ := readMonthNumbers(t, ana, "2026-11"); committed != want || b.Months[0].Cards[0].AmountCents < 777 {
+		t.Errorf("committed = %d, want %d: the cards %+v with the open bill's 777", committed, want, b.Months[0].Cards)
 	}
 }

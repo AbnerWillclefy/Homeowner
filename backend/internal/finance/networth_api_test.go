@@ -40,7 +40,7 @@ func exec(t *testing.T, app *apitest.App, q string, args ...any) {
 
 // netWorthFixture: the fixture checking account (43701.43), a second Source with
 // 1000.00, the bank's Investments plus one typed by hand (500.00), and the
-// card's bill of 1000.00 due on 20 November 2026 (today is the 8th).
+// card's bill of 1000.00 closed on 3 November 2026 and due on the 20th (today is the 8th).
 func netWorthFixture(t *testing.T) (*apitest.App, *apitest.Client) {
 	t.Helper()
 	app, users := startSync(t, []string{"ana@example.com"})
@@ -52,7 +52,7 @@ func netWorthFixture(t *testing.T) (*apitest.App, *apitest.Client) {
 		SELECT user_id, id, '2026-11-08', 100000 FROM finance_sources WHERE pluggy_account_id = 'extra'`)
 	newInvestment(t, ana, "CDB", 50000, "reserve")
 	exec(t, app, `INSERT INTO finance_card_bills (user_id, source_id, provider_id, closes_on, due_on, total_cents)
-		SELECT user_id, id, 'nov', '2026-11-13', '2026-11-20', 100000 FROM finance_sources WHERE kind = 'credit_card'`)
+		SELECT user_id, id, 'nov', '2026-11-03', '2026-11-20', 100000 FROM finance_sources WHERE kind = 'credit_card'`)
 	return app, ana
 }
 
