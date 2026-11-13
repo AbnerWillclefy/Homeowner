@@ -332,15 +332,16 @@ func abs(v int64) int64 {
 const closingDrift = 7
 
 // billSpan is the posted days [from, to) of a card's charges one bill holds; a zero to is open-ended.
-type billSpan struct{ from, to time.Time }
+// An open bill holds nothing posted after upto (today): an installment sent ahead is dated in its own month.
+type billSpan struct{ from, to, upto time.Time }
 
 func (s billSpan) holds(posted time.Time) bool {
-	return !posted.Before(s.from) && (s.to.IsZero() || posted.Before(s.to))
+	return !posted.Before(s.from) && (s.to.IsZero() || posted.Before(s.to)) && (s.upto.IsZero() || !posted.After(s.upto))
 }
 
 // currentCardBill is the bill a card takes from the month today is in: the
 // latest bill closed on or before today until it is paid or past due, then the
-// open one, the charges posted on or after that closing (installments still to
+// open one, the charges posted from that closing up to today (installments still to
 // be charged are the caller's). The closing days are the bank's, or the typed
 // ones without bank bills or when the bank has not reported the latest closing; a closed bill from typed days is its charges, with
 // no total to tell it paid, so only its due day ends it. A card with neither
@@ -368,7 +369,7 @@ func currentCardBill(c Card, rows []Txn, today time.Time) (CardBill, billSpan) {
 	switch {
 	case last != nil && !last.Paid && !today.After(last.DueOn):
 		out.AmountCents, out.FromBank, out.DueOn, out.ClosesOn = last.TotalCents, true, &last.DueOn, &last.ClosesOn
-		span = billSpan{last.ClosesOn.AddDate(0, -1, 0), last.ClosesOn}
+		span = billSpan{from: last.ClosesOn.AddDate(0, -1, 0), to: last.ClosesOn}
 		for _, b := range c.Bills {
 			if b.ClosesOn.Before(last.ClosesOn) && b.ClosesOn.After(span.from) {
 				span.from = b.ClosesOn
@@ -380,10 +381,13 @@ func currentCardBill(c Card, rows []Txn, today time.Time) (CardBill, billSpan) {
 	case !closes.IsZero():
 		span.from = closes
 		if due := CountsOn(closes.AddDate(0, 0, -1), "credit_card", c.CloseDay, c.DueDay); !today.After(due) {
-			span = billSpan{DueDate(closes.Year(), closes.Month()-1, c.CloseDay), closes}
+			span = billSpan{from: DueDate(closes.Year(), closes.Month()-1, c.CloseDay), to: closes}
 		}
 	default:
 		return dueCardBill(c, rows, billSpan{}, time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC)), span
+	}
+	if span.to.IsZero() {
+		span.upto = today
 	}
 	var held []Txn
 	for _, t := range rows {

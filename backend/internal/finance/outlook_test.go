@@ -421,6 +421,10 @@ func TestOutlookCurrentCardBill(t *testing.T) {
 			today: "2026-11-13", rows: []Txn{charge("2026-10-19", 100), charge("2026-10-25", 200), charge("2026-11-10", 300)},
 			cards: card(20, 28, octBill), want: open(500), next: open(0),
 		},
+		"an installment sent ahead with a later date stays out of the open bill and counts in its month": {
+			today: "2026-11-13", rows: []Txn{charge("2026-11-08", 300), charge("2026-12-08", 50)},
+			cards: card(20, 28, octBill), want: open(300), next: open(50),
+		},
 		"the open bill adds the installments still to be charged": {
 			today: "2026-11-13", rows: []Txn{charge("2026-11-10", 300)}, cards: card(20, 28, octBill),
 			plans: []Plan{{Name: "TV", Number: 2, Total: 4, AmountCents: 50, Month: d("2026-10-01"), SourceID: "a", Card: true}},
