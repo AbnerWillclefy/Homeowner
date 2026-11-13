@@ -1,0 +1,33 @@
+name: revenue-check
+
+on:
+  pull_request:
+    paths:
+      - "revenue/**"
+      - "bedrock/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/revenue-check.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: revenue-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  revenue-check:
+    name: revenue-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: revenue/.nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run typecheck -w @homeowner/revenue
+      - run: npm test -w @homeowner/revenue
+      - run: npm run build -w @homeowner/revenue

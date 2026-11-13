@@ -32,7 +32,7 @@ jobs:
           ACTION: ${{ github.event.action }}
         run: |
           ui_files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename' \
-            | grep -E '^web/(src|public)/|^web/index\.html$|^bedrock/(src|showcase)/' \
+            | grep -E '^web/(src|public)/|^web/index\.html$|^bedrock/(src|showcase)/|^revenue/(src|public)/|^revenue/index\.html$' \
             | grep -vE '\.test\.tsx?$|^web/src/sw' || true)
           { echo "files<<EOF"; echo "$ui_files"; echo "EOF"; } >> "$GITHUB_OUTPUT"
           [[ -z "$ui_files" ]] && exit 0

@@ -26,7 +26,10 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-homeowner}?sslmode=disable
       MIGRATE_ON_START: "true"
       ENVIRONMENT: local
-      CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:5174
+      CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:5174,http://localhost:5175
+      # Finances (#422): from the root .env. Without them every /me/finance call answers 403 or 503 and Revenue's gate never opens.
+      FINANCE_ALLOWLIST: ${FINANCE_ALLOWLIST:-}
+      FINANCE_ENCRYPTION_KEY: ${FINANCE_ENCRYPTION_KEY:-}
       # Optional, from the root .env (see .env.example). Empty means sign-in or push is off.
       COGNITO_ISSUER: ${COGNITO_ISSUER:-}
       COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-}
