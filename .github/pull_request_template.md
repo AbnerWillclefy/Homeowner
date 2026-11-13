@@ -41,8 +41,13 @@ a migration (expand-only, so it stays), Terraform resources, data written in the
 
 <!--
 UI changes only: a screenshot under each heading, pt-BR first (the ui-screenshots check needs both; it adds them itself when only bedrock/ changes).
+A revenue/ change instead shows the whole screen in pt-BR and dark mode under "### Mobile" and "### Desktop".
 
 ### pt-BR
 
 ### English
+
+### Mobile
+
+### Desktop
 -->
