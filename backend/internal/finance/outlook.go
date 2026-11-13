@@ -61,7 +61,7 @@ type MonthOutlook struct {
 }
 
 // BillCycle is the bill a card counts in the current month: the posted days
-// [HeldFrom, HeldTo) of the charges it holds (HeldTo nil while open), its
+// [HeldFrom, HeldTo) of the charges it holds (while open, HeldTo is the next closing, or the day after today without typed days), its
 // closing and due days (nil when unknown) and whether it has closed.
 type BillCycle struct {
 	HeldFrom, HeldTo, ClosesOn, DueOn *time.Time
@@ -331,17 +331,29 @@ func abs(v int64) int64 {
 // closingDrift is how many days a bank's closing may differ from the typed day.
 const closingDrift = 7
 
-// billSpan is the posted days [from, to) of a card's charges one bill holds; a zero to is open-ended.
-// An open bill holds nothing posted after upto (today): an installment sent ahead is dated in its own month.
-type billSpan struct{ from, to, upto time.Time }
+// billSpan is the posted days [from, to) of a card's charges one bill holds; a zero to is an open bill,
+// which holds them until its next closing (until, exclusive): an installment sent ahead past it is dated in its own month.
+type billSpan struct{ from, to, until time.Time }
 
 func (s billSpan) holds(posted time.Time) bool {
-	return !posted.Before(s.from) && (s.to.IsZero() || posted.Before(s.to)) && (s.upto.IsZero() || !posted.After(s.upto))
+	return !posted.Before(s.from) && (s.to.IsZero() || posted.Before(s.to)) && (s.until.IsZero() || posted.Before(s.until))
+}
+
+// nextClosing is the typed closing after today, or the day after today without typed days.
+func nextClosing(c Card, today time.Time) time.Time {
+	if c.CloseDay == 0 || c.DueDay == 0 {
+		return today.AddDate(0, 0, 1)
+	}
+	closes := DueDate(today.Year(), today.Month(), c.CloseDay)
+	if !closes.After(today) {
+		closes = DueDate(today.Year(), today.Month()+1, c.CloseDay)
+	}
+	return closes
 }
 
 // currentCardBill is the bill a card takes from the month today is in: the
 // latest bill closed on or before today until it is paid or past due, then the
-// open one, the charges posted from that closing up to today (installments still to
+// open one, the charges posted from that closing until the next (installments still to
 // be charged are the caller's). The closing days are the bank's, or the typed
 // ones without bank bills or when the bank has not reported the latest closing; a closed bill from typed days is its charges, with
 // no total to tell it paid, so only its due day ends it. A card with neither
@@ -387,7 +399,7 @@ func currentCardBill(c Card, rows []Txn, today time.Time) (CardBill, billSpan) {
 		return dueCardBill(c, rows, billSpan{}, time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC)), span
 	}
 	if span.to.IsZero() {
-		span.upto = today
+		span.until = nextClosing(c, today)
 	}
 	var held []Txn
 	for _, t := range rows {
@@ -413,11 +425,9 @@ func cycleOf(c Card, bill CardBill, span billSpan, today time.Time) BillCycle {
 		cy.HeldTo, cy.Closed, cy.ClosesOn = day(span.to), true, day(span.to)
 		cy.DueOn = day(CountsOn(span.to.AddDate(0, 0, -1), "credit_card", c.CloseDay, c.DueDay))
 	case typed:
-		closes := DueDate(today.Year(), today.Month(), c.CloseDay)
-		if !closes.After(today) {
-			closes = DueDate(today.Year(), today.Month()+1, c.CloseDay)
-		}
-		cy.ClosesOn, cy.DueOn = day(closes), day(CountsOn(today, "credit_card", c.CloseDay, c.DueDay))
+		cy.HeldTo, cy.ClosesOn, cy.DueOn = day(span.until), day(span.until), day(CountsOn(today, "credit_card", c.CloseDay, c.DueDay))
+	default:
+		cy.HeldTo = day(span.until)
 	}
 	return cy
 }
