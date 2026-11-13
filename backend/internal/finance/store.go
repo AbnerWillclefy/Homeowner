@@ -639,9 +639,9 @@ func (s *Store) InstallmentPlans(ctx context.Context, userID string) ([]Plan, er
 }
 
 // CardSources lists the User's credit card Sources, with whether both bill days
-// are set and the bills the bank reported for each.
+// are set, its bill close and due days (0 when unset) and the bills the bank reported for each.
 func (s *Store) CardSources(ctx context.Context, userID string) ([]Card, error) {
-	rows, err := s.db.Query(ctx, `SELECT id, COALESCE(display_name, name) AS shown, bill_close_day IS NOT NULL AND bill_due_day IS NOT NULL
+	rows, err := s.db.Query(ctx, `SELECT id, COALESCE(display_name, name) AS shown, bill_close_day IS NOT NULL AND bill_due_day IS NOT NULL, COALESCE(bill_close_day, 0), COALESCE(bill_due_day, 0)
 		FROM finance_sources WHERE user_id = $1 AND kind = 'credit_card' ORDER BY shown, id`, userID)
 	if err != nil {
 		return nil, err
@@ -650,7 +650,7 @@ func (s *Store) CardSources(ctx context.Context, userID string) ([]Card, error) 
 	var out []Card
 	for rows.Next() {
 		var c Card
-		if err := rows.Scan(&c.ID, &c.Name, &c.BillDaysKnown); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.BillDaysKnown, &c.CloseDay, &c.DueDay); err != nil {
 			return nil, err
 		}
 		out = append(out, c)

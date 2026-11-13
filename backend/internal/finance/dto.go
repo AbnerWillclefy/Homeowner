@@ -282,3 +282,29 @@ type ConnectTokenResponse struct {
 	// IncludeSandbox tells the PWA to offer Pluggy's sandbox connectors.
 	IncludeSandbox bool `json:"includeSandbox"`
 }
+
+// NetWorthResponse is the answer of GET /me/finance/net-worth. HasData is false
+// until a Source balance has been stored; Today is then null and Series empty.
+// Series is balances plus Investments only: past days' card bills are not stored,
+// so SeriesExcludesCardBills is always true and the client must not show its last
+// point as the Net worth.
+type NetWorthResponse struct {
+	HasData                 bool            `json:"hasData"`
+	Today                   *NetWorthToday  `json:"today"`
+	Series                  []NetWorthPoint `json:"series"`
+	SeriesExcludesCardBills bool            `json:"seriesExcludesCardBills"`
+}
+
+// NetWorthToday is today's Net worth with its parts: TotalCents = BalancesCents + InvestmentsCents - CardBillsCents.
+type NetWorthToday struct {
+	TotalCents       int64 `json:"totalCents"`
+	BalancesCents    int64 `json:"balancesCents"`
+	InvestmentsCents int64 `json:"investmentsCents"`
+	CardBillsCents   int64 `json:"cardBillsCents"`
+}
+
+// NetWorthPoint is one day of the series.
+type NetWorthPoint struct {
+	Day   string `json:"day"`
+	Cents int64  `json:"cents"`
+}

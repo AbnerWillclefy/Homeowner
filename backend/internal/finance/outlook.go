@@ -2,10 +2,12 @@ package finance
 
 import "time"
 
-// Card is a credit card Source, with whether both its bill days are set and
+// Card is a credit card Source, with whether both its bill days are set, its due day and
 // the bills its bank reported.
 type Card struct {
 	ID, Name      string
+	CloseDay      int // the bill close day, 0 when unknown
+	DueDay        int // the bill due day, 0 when unknown
 	BillDaysKnown bool
 	Bills         []StoredBill
 }
