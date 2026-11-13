@@ -56,30 +56,41 @@ function transactions(month, today) {
   };
 }
 
+/** `from` plus `n` months, as `YYYY-MM`. */
+function addMonths(from, n) {
+  const index = Number(from.slice(0, 4)) * 12 + Number(from.slice(5, 7)) - 1 + n;
+  return `${Math.floor(index / 12)}-${pad((index % 12) + 1)}`;
+}
+
+/** Twelve months from `from`; the 3rd takes more than the income, and the Geladeira plan runs on from the 1st. */
 function commitments(from, today) {
   const current = from === today.slice(0, 7);
   const day = current ? Number(today.slice(8)) : 30;
-  return {
-    monthlyIncomeCents: 1_250_000,
-    months: [{
-      month: from,
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const month = addMonths(from, i);
+    const over = i === 2;
+    return {
+      month,
+      installments: [{ name: "Geladeira Frost Free", number: 3 + i, total: 10, amountCents: 32_490 }].filter((p) => p.number <= p.total),
       cards: [
-        { sourceId: "s1", name: "Nubank", amountCents: 284_300, billDaysKnown: true, fromBank: true, dueOn: `${from}-15`, closesOn: `${from}-08` },
+        { sourceId: "s1", name: "Nubank", amountCents: 284_300 + i * 4_000, billDaysKnown: true, fromBank: true, dueOn: `${month}-15`, closesOn: `${month}-08` },
         { sourceId: "s3", name: "Itaú Visa", amountCents: 50_000, billDaysKnown: false, fromBank: false, dueOn: null, closesOn: null },
       ],
       otherBills: [
-        { id: "b1", name: "Aluguel", cents: 320_000, paid: true },
+        { id: "b1", name: "Aluguel", cents: 320_000, paid: i === 0 },
         { id: "b2", name: "Internet Vivo Fibra", cents: 12_990, paid: false },
       ],
       otherInstallmentsCents: 32_490,
       planned: [{ category: "groceries", cents: 120_000 }],
       plannedCents: 120_000,
-      totalCents: 769_780,
-      leftoverCents: 300_000,
-      ...(current && { spentOffCardCents: 41_200, savingCents: 50_000, dailyAllowanceCents: 9_500 }),
-      pace: { spentCents: Array.from({ length: day }, (_, i) => (i + 1) * 21_000), lineEndCents: 950_000 },
-    }],
-  };
+      savingCents: 50_000,
+      totalCents: over ? 1_310_000 : 769_780 + i * 4_000,
+      leftoverCents: over ? -60_000 : 480_220 - i * 4_000,
+      ...(i === 0 && current && { spentOffCardCents: 41_200, dailyAllowanceCents: 9_500 }),
+      ...(i === 0 && { pace: { spentCents: Array.from({ length: day }, (_, d) => (d + 1) * 21_000), lineEndCents: 950_000 } }),
+    };
+  });
+  return { monthlyIncomeCents: 1_250_000, months };
 }
 
 function bills(month) {

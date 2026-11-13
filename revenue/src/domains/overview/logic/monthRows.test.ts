@@ -6,6 +6,7 @@ const month = (change: Partial<CommitmentMonth> = {}): CommitmentMonth => ({
   month: "2026-12",
   cards: [],
   otherBills: [],
+  installments: [],
   otherInstallmentsCents: 0,
   planned: [],
   plannedCents: 0,

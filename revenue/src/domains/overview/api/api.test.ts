@@ -29,6 +29,15 @@ describe("getCommitments", () => {
     get.mockResolvedValue({ status: 200, data: { monthlyIncomeCents: 1, months: [{ ...month, pace: { spentCents: "x", lineEndCents: 1 } }] } });
     await expect(getCommitments("2026-11")).rejects.toThrow();
   });
+  it("keeps the installments of each month", async () => {
+    const installments = [{ name: "Geladeira", number: 2, total: 4, amountCents: 30000 }];
+    get.mockResolvedValue({ status: 200, data: { monthlyIncomeCents: 1500, months: [{ ...month, installments }] } });
+    expect((await getCommitments("2026-11")).months[0]!.installments).toEqual(installments);
+  });
+  it.each([["no installments", undefined], ["a part without its total", [{ name: "x", number: 1, amountCents: 1 }]]])("rejects %s", async (_, installments) => {
+    get.mockResolvedValue({ status: 200, data: { monthlyIncomeCents: 1, months: [{ ...month, installments }] } });
+    await expect(getCommitments("2026-11")).rejects.toThrow();
+  });
   it("rejects a failed status", async () => {
     get.mockResolvedValue({ status: 500 });
     await expect(getCommitments("2026-11")).rejects.toThrow();
