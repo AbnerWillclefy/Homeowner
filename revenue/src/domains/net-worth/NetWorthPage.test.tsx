@@ -61,6 +61,7 @@ describe("the screen", () => {
     expect(within(group).getByRole("radio", { name: "30 days" }).getAttribute("aria-checked")).toBe("true");
     await userEvent.click(within(group).getByRole("radio", { name: "1 year" }));
     await waitFor(() => expect(api.getNetWorth).toHaveBeenLastCalledWith("1y"));
+    expect(document.activeElement).toBe(screen.getByRole("radio", { name: "1 year" }));
   });
 
   it("keeps the range in the URL", async () => {

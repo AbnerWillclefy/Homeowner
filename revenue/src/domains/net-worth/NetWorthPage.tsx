@@ -22,6 +22,14 @@ export function NetWorthPage() {
       <h1 className="page-title">{t("nav.netWorth")}</h1>
       <p className="text-text-muted">{t("netWorth.intro")}</p>
 
+        <SegmentedControl
+          label={t("netWorth.range")}
+          block
+          value={range}
+          onValueChange={(next) => setParams(next === "30d" ? {} : { range: next }, { replace: true })}
+          options={RANGES.map((r) => ({ value: r, label: t(`netWorth.range.${r}`) }))}
+        />
+
       {loading ? (
         <div role="status" className="flex flex-col gap-4">
           <span className="sr-only">{t("netWorth.loading")}</span>
@@ -56,13 +64,6 @@ export function NetWorthPage() {
 
           <section aria-labelledby="net-worth-line" className="flex flex-col gap-3">
             <h2 id="net-worth-line" className="section-title">{t("netWorth.line")}</h2>
-            <SegmentedControl
-              label={t("netWorth.range")}
-              block
-              value={range}
-              onValueChange={(next) => setParams(next === "30d" ? {} : { range: next }, { replace: true })}
-              options={RANGES.map((r) => ({ value: r, label: t(`netWorth.range.${r}`) }))}
-            />
             {hasLine ? (
               <>
                 <NetWorthLine series={data.series} />
