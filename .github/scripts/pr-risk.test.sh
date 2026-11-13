@@ -77,6 +77,12 @@ run_case "test-only change sets no floor" \
   "$(files "$(file backend/internal/platform/db/db_test.go modified)" "$(file web/e2e/today.spec.ts added)" "$(file web/src/sw/payload.test.ts modified)")" "$(complete_body low)" \
   "floor=low" "!problem="
 
+for f in revenue/src/sw.ts revenue/src/sw/payload.ts revenue/vite.config.ts; do
+  run_case "the Revenue service worker file $f is medium" \
+    "$(files "$(file "$f" modified)")" "$(complete_body low)" \
+    "floor=medium" "problem="
+done
+
 run_case "a test file under a protected path is still high" \
   "$(files "$(file .github/x.test.ts added)")" "$(complete_body high)" \
   "floor=high"
