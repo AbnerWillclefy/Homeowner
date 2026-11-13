@@ -175,7 +175,7 @@ describe("mark paid and undo", () => {
     await userEvent.click(screen.getByRole("button", { name: /Mark paid/ }));
     expect(paid).toHaveBeenCalledWith("b2", "2030-01", true);
     await waitFor(() => expect(within(row("Internet")).getByText("Paid")).toBeTruthy());
-    expect(within(row("Internet")).getByRole("button", { name: /Undo/ })).toBeTruthy();
+    expect(within(row("Internet")).getByRole("button", { name: /Undo/ }).hasAttribute("disabled")).toBe(true);
     answer({ kind: "ok" });
     await waitFor(() => expect(invalidate.mock.calls.map((c) => c[0]?.queryKey)).toEqual([["finance", "bills"], ["finance", "commitments"], ["finance", "transactions"]]));
     expect(screen.queryByRole("alert")).toBeNull();
@@ -358,7 +358,7 @@ describe("suggestions", () => {
     open();
     await userEvent.click(await screen.findByRole("button", { name: /^Dismiss: Enel/ }));
     expect(api.dismissBillSuggestion).toHaveBeenCalledWith("enel");
-    expect((await screen.findByRole("alert")).textContent).toContain("We could not save");
+    expect((await screen.findByRole("alert")).textContent).toContain("Could not dismiss");
     expect(screen.getByText("Enel")).toBeTruthy();
   });
 

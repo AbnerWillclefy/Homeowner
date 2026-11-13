@@ -34,7 +34,8 @@ export function BillsPage() {
   const { suggestions, dismiss } = useBillSuggestions();
   const [form, setForm] = useState<Open>(null);
   const [deleting, setDeleting] = useState<Bill | null>(null);
-  const [dismissFailed, setDismissFailed] = useState(false);
+  const [dismissFailed, setDismissFailed] = useState<string | null>(null); // the month the dismissal failed in
+  const [busy, setBusy] = useState<string | null>(null);
 
   const step = (n: number) => setParams({ month: addMonths(month, n) });
   const label = monthLabel(month, locale);
@@ -55,7 +56,9 @@ export function BillsPage() {
         </Button>
       </div>
 
-      {(notice || dismissFailed) && <Banner tone="danger">{t(notice === "gone" ? "bills.gone" : "bills.failed")}</Banner>}
+      {(notice || dismissFailed === month) && (
+        <Banner tone="danger">{t(notice === "gone" ? "bills.gone" : notice ? "bills.failed" : "bills.suggestions.dismissFailed")}</Banner>
+      )}
 
       {loading ? (
         <div role="status" className="flex flex-col gap-4">
@@ -70,7 +73,7 @@ export function BillsPage() {
             <BillSuggestions
               suggestions={suggestions}
               onAdd={(s) => setForm({ bill: null, initial: { name: s.name, expectedCents: s.amountCents, dueDay: s.dueDay }, merchantKey: s.merchantKey })}
-              onDismiss={(s) => void dismiss(s).then((ok) => setDismissFailed(!ok))}
+              onDismiss={(s) => void dismiss(s).then((ok) => setDismissFailed(ok ? null : month))}
             />
           )}
           {rows.length === 0 ? (
@@ -78,7 +81,7 @@ export function BillsPage() {
           ) : (
             <>
               <BillSummary {...summarise(rows)} />
-              <List rows={rows} caption={t("bills.caption", { month: label })} today={current ? today : null} onPaid={(b, paid) => void setPaid(b, paid)} onEdit={(bill) => setForm({ bill })} onDelete={setDeleting} />
+              <List rows={rows} caption={t("bills.caption", { month: label })} today={current ? today : null} busy={busy} onPaid={(b, paid) => { setBusy(b.id); setDismissFailed(null); void setPaid(b, paid).finally(() => setBusy(null)); }} onEdit={(bill) => setForm({ bill })} onDelete={setDeleting} />
             </>
           )}
           {current && (
