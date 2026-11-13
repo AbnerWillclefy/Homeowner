@@ -4,13 +4,14 @@ import axe from "axe-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderApp } from "../../testing";
 import * as api from "./api";
-import type { Savings, SavingsGoal, WriteResult } from "./api";
+import type { Investment, Savings, SavingsGoal, WriteResult } from "./api";
 import { GoalsPage } from "./GoalsPage";
 import { savingsKey } from "./hooks/useSavings";
 
 vi.mock("./api", async (original) => ({
   ...(await original<typeof import("./api")>()),
   getSavings: vi.fn(), saveGoal: vi.fn(), deleteGoal: vi.fn(), putGoalOrder: vi.fn(), putReserve: vi.fn(), putContribution: vi.fn(),
+  saveInvestment: vi.fn(), deleteInvestment: vi.fn(), putInvestmentServes: vi.fn(), restoreBankValue: vi.fn(),
 }));
 
 const goal = (over: Partial<SavingsGoal>): SavingsGoal => ({
@@ -20,10 +21,18 @@ const REFORMA = goal({});
 const VIAGEM = goal({ id: "g2", name: "Viagem", targetCents: 800000, targetMonth: "2027-07", savedCents: 0, monthCents: 10000, expectedMonth: "2029-03", late: true });
 const CARRO = goal({ id: "g3", name: "Carro", targetCents: 3000000, savedCents: 3000000, monthCents: 0, expectedMonth: null });
 const LONG = goal({ id: "g4", name: "Troca de todos os móveis da casa inteira por modelos novos e muito caros ".repeat(2).trim() });
+const investment = (over: Partial<Investment>): Investment => ({
+  id: "i1", name: "Tesouro Selic", valueCents: 250000, serves: "reserve", source: "hand", reportedByBank: true, edited: false, bankValueCents: null, ...over,
+});
+const HAND = investment({});
+const BANK_NEW = investment({ id: "i2", name: "CDB Banco", valueCents: 80000, serves: null, source: "pluggy", bankValueCents: 80000 });
+const BANK_EDITED = investment({ id: "i3", name: "Fundo", valueCents: 120000, serves: "goals", source: "pluggy", edited: true, bankValueCents: 100000 });
+const BANK_GONE = investment({ id: "i4", name: "LCI Antiga", valueCents: 5000, serves: "reserve", source: "pluggy", reportedByBank: false, bankValueCents: 5000 });
+const WITH_INVESTMENTS = { investments: [HAND, BANK_NEW, BANK_EDITED, BANK_GONE] };
 const SAVINGS: Savings = {
   reserveTargetCents: 900000, contributionBaseCents: 100000, reserveSharePercent: 30,
   reserve: { targetCents: 900000, savedCents: 300000, monthCents: 30000, expectedMonth: "2029-04" },
-  goals: [REFORMA, VIAGEM, CARRO], unassignedCents: 0,
+  goals: [REFORMA, VIAGEM, CARRO], investments: [], unassignedCents: 0,
 };
 // jsdom has no layout, so it cannot check contrast (Bedrock's tokens.test.ts does); the page is not a whole document, so no landmarks.
 const AXE = { rules: { "color-contrast": { enabled: false }, region: { enabled: false } } };
@@ -39,7 +48,7 @@ const ok: WriteResult = { kind: "ok" };
 beforeEach(() => {
   vi.stubGlobal("matchMedia", () => ({ matches: true, addEventListener() {}, removeEventListener() {} }));
   localStorage.clear();
-  for (const fn of [api.getSavings, api.saveGoal, api.deleteGoal, api.putGoalOrder, api.putReserve, api.putContribution]) vi.mocked(fn).mockReset();
+  for (const fn of [api.getSavings, api.saveGoal, api.deleteGoal, api.putGoalOrder, api.putReserve, api.putContribution, api.saveInvestment, api.deleteInvestment, api.putInvestmentServes, api.restoreBankValue]) vi.mocked(fn).mockReset();
 });
 
 describe("the screen", () => {
@@ -339,6 +348,182 @@ describe("the Monthly contribution", () => {
   });
 });
 
+describe("Investments", () => {
+  const row = async (name: string) => (await screen.findByText(name)).closest("li")!;
+  const sheet = async () => within(await screen.findByRole("dialog"));
+
+  it("says a bank Investment with nothing picked is waiting, and that it counts toward neither", async () => {
+    serve({ ...SAVINGS, ...WITH_INVESTMENTS });
+    open();
+    const r = within(await row("CDB Banco"));
+    expect(r.getByText("From the bank")).toBeTruthy();
+    expect(r.getByText("Choose what it is for")).toBeTruthy();
+    expect(r.getByText(/counts toward neither the reserve nor your goals/)).toBeTruthy();
+    expect(r.queryByRole("button", { name: /More actions/ })).toBeNull();
+  });
+
+  it("says it in Portuguese with the approved wording", async () => {
+    serve({ ...SAVINGS, ...WITH_INVESTMENTS });
+    open({ locale: "pt-BR" });
+    expect(within(await row("CDB Banco")).getByText("Escolha para quê serve")).toBeTruthy();
+  });
+
+  it("sends the pick, then reads the savings again so the reserve and Goals follow the API", async () => {
+    serve({ ...SAVINGS, ...WITH_INVESTMENTS });
+    vi.mocked(api.putInvestmentServes).mockResolvedValue({ kind: "ok" });
+    open();
+    const r = within(await row("CDB Banco"));
+    await userEvent.click(r.getByRole("radio", { name: "Goals" }));
+    expect(api.putInvestmentServes).toHaveBeenCalledWith("i2", "goals");
+    await waitFor(() => expect(api.getSavings).toHaveBeenCalledTimes(2));
+  });
+
+  it("shows the reserve the API answers after a pick, without working it out itself", async () => {
+    serve({ ...SAVINGS, ...WITH_INVESTMENTS });
+    vi.mocked(api.putInvestmentServes).mockImplementation(async () => {
+      serve({ ...SAVINGS, reserve: { ...SAVINGS.reserve, savedCents: 380000 }, investments: [HAND, { ...BANK_NEW, serves: "reserve" }] });
+      return ok;
+    });
+    open();
+    await userEvent.click(within(await row("CDB Banco")).getByRole("radio", { name: "Reserve" }));
+    await waitFor(() => expect(screen.getByRole("progressbar", { name: "Emergency reserve progress" }).getAttribute("aria-valuenow")).toBe("380000"));
+    expect(within(await row("CDB Banco")).queryByText("Choose what it is for")).toBeNull();
+  });
+
+  it("lets the User change a pick later", async () => {
+    serve({ ...SAVINGS, ...WITH_INVESTMENTS });
+    vi.mocked(api.putInvestmentServes).mockResolvedValue(ok);
+    open();
+    const r = within(await row("Fundo"));
+    expect(r.getByRole("radio", { name: "Goals" }).getAttribute("aria-checked")).toBe("true");
+    await userEvent.click(r.getByRole("radio", { name: "Reserve" }));
+    expect(api.putInvestmentServes).toHaveBeenCalledWith("i3", "reserve");
+  });
+
+  it("says a failed pick and changes nothing", async () => {
+    serve({ ...SAVINGS, ...WITH_INVESTMENTS });
+    vi.mocked(api.putInvestmentServes).mockResolvedValue({ kind: "error" });
+    open();
+    await userEvent.click(within(await row("CDB Banco")).getByRole("radio", { name: "Goals" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("We could not save");
+    expect(api.getSavings).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks an edited bank value with the bank's value and takes the bank's back", async () => {
+    serve({ ...SAVINGS, ...WITH_INVESTMENTS });
+    vi.mocked(api.restoreBankValue).mockImplementation(async () => {
+      serve({ ...SAVINGS, investments: [HAND, BANK_NEW, { ...BANK_EDITED, valueCents: 100000, edited: false }, BANK_GONE] });
+      return ok;
+    });
+    open();
+    const r = within(await row("Fundo"));
+    expect(r.getByText("edited")).toBeTruthy();
+    expect(r.getByText("bank: R$1,000.00")).toBeTruthy();
+    await userEvent.click(r.getByRole("button", { name: "Use the bank's value for Fundo" }));
+    expect(api.restoreBankValue).toHaveBeenCalledWith("i3");
+    await waitFor(() => expect(within(screen.getByText("Fundo").closest("li")!).queryByText("edited")).toBeNull());
+    expect(within(screen.getByText("Fundo").closest("li")!).queryByText(/bank: /)).toBeNull();
+  });
+
+  it("shows no edited label on a bank value the User did not change", async () => {
+    serve({ ...SAVINGS, ...WITH_INVESTMENTS });
+    open();
+    const r = within(await row("LCI Antiga"));
+    expect(r.queryByText("edited")).toBeNull();
+    expect(r.queryByRole("button", { name: /Use the bank/ })).toBeNull();
+  });
+
+  it("keeps a row the bank no longer reports, with a calm note", async () => {
+    serve({ ...SAVINGS, ...WITH_INVESTMENTS });
+    open();
+    expect(within(await row("LCI Antiga")).getByText("The bank no longer reports this.")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("gives a hand-typed row edit and delete, and a bank row edit without delete", async () => {
+    serve({ ...SAVINGS, ...WITH_INVESTMENTS });
+    open();
+    await userEvent.click(within(await row("Tesouro Selic")).getByRole("button", { name: "More actions for Tesouro Selic" }));
+    expect(await screen.findByRole("menuitem", { name: "Edit" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Delete" })).toBeTruthy();
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(within(await row("Fundo")).getByRole("button", { name: "More actions for Fundo" }));
+    expect(await screen.findByRole("menuitem", { name: "Edit" })).toBeTruthy();
+    expect(screen.queryByRole("menuitem", { name: "Delete" })).toBeNull();
+  });
+
+  it("adds a hand-typed Investment, serving the reserve unless told otherwise", async () => {
+    serve({ ...SAVINGS, ...WITH_INVESTMENTS });
+    vi.mocked(api.saveInvestment).mockResolvedValue(ok);
+    open();
+    await userEvent.click(await screen.findByRole("button", { name: "Add investment" }));
+    const form = await sheet();
+    await userEvent.type(form.getByRole("textbox", { name: "Name" }), " Poupança ");
+    await userEvent.type(form.getByRole("textbox", { name: "Value" }), "0");
+    await userEvent.click(form.getByRole("radio", { name: "Goals" }));
+    await userEvent.click(form.getByRole("button", { name: "Save" }));
+    expect(api.saveInvestment).toHaveBeenCalledWith(null, { name: "Poupança", valueCents: 0, serves: "goals" });
+    await waitFor(() => expect(api.getSavings).toHaveBeenCalledTimes(2));
+  });
+
+  it("shows what is wrong beside the fields and sends nothing", async () => {
+    serve({ ...SAVINGS, ...WITH_INVESTMENTS });
+    open();
+    await userEvent.click(await screen.findByRole("button", { name: "Add investment" }));
+    await userEvent.click((await sheet()).getByRole("button", { name: "Save" }));
+    expect(api.saveInvestment).not.toHaveBeenCalled();
+    expect((await sheet()).getByText("Enter a name.")).toBeTruthy();
+    expect((await sheet()).getByText("Enter a value; zero is fine.")).toBeTruthy();
+  });
+
+  it("edits a hand-typed Investment", async () => {
+    serve({ ...SAVINGS, ...WITH_INVESTMENTS });
+    vi.mocked(api.saveInvestment).mockResolvedValue(ok);
+    open();
+    await userEvent.click(within(await row("Tesouro Selic")).getByRole("button", { name: "More actions for Tesouro Selic" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Edit" }));
+    const form = await sheet();
+    expect((form.getByRole("textbox", { name: "Name" }) as HTMLInputElement).value).toBe("Tesouro Selic");
+    await userEvent.click(form.getByRole("button", { name: "Save" }));
+    expect(api.saveInvestment).toHaveBeenCalledWith("i1", { name: "Tesouro Selic", valueCents: 250000, serves: "reserve" });
+  });
+
+  it("corrects only the value of a bank Investment, keeping its name and pick", async () => {
+    serve({ ...SAVINGS, ...WITH_INVESTMENTS });
+    vi.mocked(api.saveInvestment).mockResolvedValue(ok);
+    open();
+    await userEvent.click(within(await row("LCI Antiga")).getByRole("button", { name: "More actions for LCI Antiga" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Edit" }));
+    const form = await sheet();
+    expect(form.queryByRole("textbox", { name: "Name" })).toBeNull();
+    const value = form.getByRole("textbox", { name: "Value" });
+    await userEvent.clear(value);
+    await userEvent.type(value, "70");
+    await userEvent.click(form.getByRole("button", { name: "Save" }));
+    expect(api.saveInvestment).toHaveBeenCalledWith("i4", { name: "LCI Antiga", valueCents: 7000, serves: "reserve" });
+  });
+
+  it("asks before deleting a hand-typed Investment, then deletes", async () => {
+    serve({ ...SAVINGS, ...WITH_INVESTMENTS });
+    vi.mocked(api.deleteInvestment).mockResolvedValue({ kind: "ok" });
+    open();
+    await userEvent.click(within(await row("Tesouro Selic")).getByRole("button", { name: "More actions for Tesouro Selic" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(api.deleteInvestment).not.toHaveBeenCalled();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+    expect(api.deleteInvestment).toHaveBeenCalledWith("i1");
+    await waitFor(() => expect(api.getSavings).toHaveBeenCalledTimes(2));
+  });
+
+  it("invites the first Investment calmly", async () => {
+    serve();
+    open();
+    expect(await screen.findByText("No investments yet.")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
 describe("accessibility", () => {
   const COMBOS = [["dark", "pt-BR"], ["light", "pt-BR"], ["dark", "en"], ["light", "en"]] as const;
   const violations = async () =>
@@ -349,6 +534,20 @@ describe("accessibility", () => {
       serve({ ...SAVINGS, goals: [...SAVINGS.goals, LONG] });
       open({ theme, locale });
       await screen.findByText("Carro");
+      expect(await violations()).toEqual([]);
+    });
+    it("screen with Investments from both origins", async () => {
+      serve({ ...SAVINGS, ...WITH_INVESTMENTS });
+      open({ theme, locale });
+      await screen.findByText("CDB Banco");
+      expect(await violations()).toEqual([]);
+    });
+    it("bank Investment form", async () => {
+      serve({ ...SAVINGS, ...WITH_INVESTMENTS });
+      open({ theme, locale });
+      await userEvent.click(await screen.findByRole("button", { name: en ? "More actions for Fundo" : "Mais ações de Fundo" }));
+      await userEvent.click(await screen.findByRole("menuitem", { name: en ? "Edit" : "Editar" }));
+      await screen.findByRole("dialog");
       expect(await violations()).toEqual([]);
     });
     it("empty screen", async () => {

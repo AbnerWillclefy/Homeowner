@@ -87,6 +87,8 @@ const FIELD_ERROR_KEY: Record<string, MessageKey> = {
   "baseCents.invalid": "goals.field.money.invalid",
   "targetMonth.invalid": "goals.field.month.invalid",
   "reserveSharePercent.invalid": "goals.field.share.invalid",
+  "valueCents.invalid": "investments.field.value.invalid",
+  "serves.invalid": "investments.field.serves.invalid",
 };
 
 /** The message for a field's error code. A code this app does not know still gets a message. */
