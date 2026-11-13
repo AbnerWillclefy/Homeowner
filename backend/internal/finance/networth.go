@@ -31,6 +31,9 @@ func NetWorth(balances, investments, cardBills []int64) NetWorthParts {
 // of the bill the bank reported for the month, else the card's due day. A paid
 // bill leaves a checking balance, so counting it after that would subtract it twice.
 //
+// A bill that has not opened yet holds only future installments, so with both
+// bill days known a month after the open bill's due month is skipped.
+//
 // shortcut: a card with neither a reported bill nor a due day counts only its first month, upgrade when a bill payment can be matched to its card.
 func UnpaidCardBills(cards []Card, outlook []MonthOutlook, from, today time.Time) []int64 {
 	var out []int64
@@ -39,6 +42,9 @@ func UnpaidCardBills(cards []Card, outlook []MonthOutlook, from, today time.Time
 		for _, cb := range m.Cards {
 			for _, c := range cards {
 				if c.ID != cb.SourceID {
+					continue
+				}
+				if c.CloseDay > 0 && c.DueDay > 0 && monthIndex(month) > monthIndex(CountsOn(today, "credit_card", c.CloseDay, c.DueDay)) {
 					continue
 				}
 				due, known := cardDue(c, month)

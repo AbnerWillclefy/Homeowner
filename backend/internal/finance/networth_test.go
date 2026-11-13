@@ -53,6 +53,7 @@ func TestUnpaidCardBills(t *testing.T) {
 		{"a reported due date wins over the due day", []Card{{ID: "a", DueDay: 10, Bills: []StoredBill{{DueOn: d("2026-11-20"), TotalCents: 100}}}}, "2026-11-15", []int64{100, 200}},
 		{"no due day and no bill counts only the current month", []Card{{ID: "a"}}, "2026-11-30", []int64{100}},
 		{"each card on its own", []Card{{ID: "a", DueDay: 10}, {ID: "b", DueDay: 3}}, "2026-11-05", []int64{100, 200, 9}},
+		{"a bill that has not opened yet is skipped", []Card{{ID: "a", CloseDay: 3, DueDay: 10}}, "2026-11-15", []int64{200}},
 		{"a card the outlook lacks adds nothing", []Card{{ID: "z", DueDay: 10}}, "2026-11-05", nil},
 	}
 	for _, tc := range tests {
@@ -69,7 +70,7 @@ func TestUnpaidCardBillsDueBeforeClose(t *testing.T) {
 	d := func(s string) time.Time { v, _ := time.Parse(time.DateOnly, s); return v }
 	// A card closing on the 28th and due on the 5th: the open bill is due two months on.
 	outlook := []MonthOutlook{{Cards: []CardBill{{SourceID: "a", AmountCents: 1}}}, {Cards: []CardBill{{SourceID: "a", AmountCents: 2}}}, {Cards: []CardBill{{SourceID: "a", AmountCents: 4}}}}
-	got := UnpaidCardBills([]Card{{ID: "a", DueDay: 5}}, outlook, d("2026-11-01"), d("2026-11-30"))
+	got := UnpaidCardBills([]Card{{ID: "a", CloseDay: 28, DueDay: 5}}, outlook, d("2026-11-01"), d("2026-11-30"))
 	if want := []int64{2, 4}; !reflect.DeepEqual(got, want) {
 		t.Errorf("UnpaidCardBills = %v, want %v", got, want)
 	}

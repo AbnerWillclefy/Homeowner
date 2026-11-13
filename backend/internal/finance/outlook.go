@@ -6,6 +6,7 @@ import "time"
 // the bills its bank reported.
 type Card struct {
 	ID, Name      string
+	CloseDay      int // the bill close day, 0 when unknown
 	DueDay        int // the bill due day, 0 when unknown
 	BillDaysKnown bool
 	Bills         []StoredBill
