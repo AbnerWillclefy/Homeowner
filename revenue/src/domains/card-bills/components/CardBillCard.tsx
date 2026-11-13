@@ -40,7 +40,8 @@ export function CardBillCard({ bill, source, rows, rowsFailed, monthName, deskto
         </div>
         <Amount cents={bill.amountCents} size="lg" locale={locale} />
         <p className="caption text-text-muted">{t(bill.fromBank ? "cardBills.source.bank" : "cardBills.source.app")}</p>
-        {dates.length > 0 ? <p className="caption text-text-muted">{dates.join(" · ")}</p> : <p className="caption text-text-muted">{t("cardBills.noDays")}</p>}
+        {dates.length > 0 && <p className="caption text-text-muted">{dates.join(" · ")}</p>}
+        {!bill.billDaysKnown && <p className="caption text-text-muted">{t("cardBills.noDays")}</p>}
       </CardHeader>
       <CardContent>
         <h3 className="body-strong">{t("cardBills.rows.heading")}</h3>

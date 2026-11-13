@@ -11,7 +11,7 @@ export interface CardBill {
   amountCents: number;
   billDaysKnown: boolean;
   fromBank: boolean;
-  /** `YYYY-MM-DD`, or null when neither the bank nor the card's days say. */
+  /** `YYYY-MM-DD` of the bank's bill when `fromBank`, else null. */
   dueOn: string | null;
   closesOn: string | null;
 }

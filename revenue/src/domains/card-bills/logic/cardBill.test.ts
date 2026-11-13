@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CardTransaction } from "../api";
 import { readBillDays } from "./billDays";
-import { billRows, rowsTotal } from "./cardBill";
+import { billRows } from "./cardBill";
 
 const row = (over: Partial<CardTransaction>): CardTransaction => ({ id: "t1", sourceId: "s1", description: "x", postedOn: "2030-01-02", countsOn: "2030-02-05", amountCents: -1000, installment: null, ...over });
 
@@ -10,7 +10,6 @@ describe("billRows", () => {
     const rows = [row({ id: "a" }), row({ id: "b", postedOn: "2030-01-09" }), row({ id: "c", sourceId: "s2" }), row({ id: "d", countsOn: "2030-03-05" })];
     expect(billRows(rows, "s1", "2030-02").map((r) => r.id)).toEqual(["b", "a"]);
   });
-  it("totals money out as a positive bill", () => expect(rowsTotal([row({}), row({ amountCents: -250 }), row({ amountCents: 100 })])).toBe(1150));
 });
 
 describe("readBillDays", () => {

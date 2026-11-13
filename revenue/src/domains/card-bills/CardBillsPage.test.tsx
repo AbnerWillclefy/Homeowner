@@ -59,6 +59,14 @@ describe("labels per bill kind", () => {
     expect(within(opened).getByText("No closing and due days yet")).toBeTruthy();
   });
 
+  it("does not say days are missing on an open bill whose days are set", async () => {
+    width(false);
+    serve([{ ...OPEN, billDaysKnown: true }]);
+    open();
+    await screen.findByRole("heading", { name: "Itaú Visa" });
+    expect(screen.queryByText("No closing and due days yet")).toBeNull();
+  });
+
   it("says it in Portuguese first", async () => {
     width(false);
     serve();
