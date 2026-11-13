@@ -13,5 +13,8 @@ admin/dist
 admin/.env*.local
 /node_modules
 bedrock/node_modules
+revenue/node_modules
+revenue/dist
+revenue/.env*.local
 bedrock/dist-showcase
 *.tsbuildinfo
