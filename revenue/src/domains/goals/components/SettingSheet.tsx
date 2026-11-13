@@ -11,14 +11,12 @@ interface Props {
   submit(): Promise<SaveOutcome>;
   /** Clears the setting; shows Clear next to Save. */
   clear?(): Promise<SaveOutcome>;
-  /** Under the fields: a destructive action that stands alone. */
-  below?: ReactNode;
   onClose(): void;
   children(error: (field: string) => string | undefined, saving: boolean): ReactNode;
 }
 
 /** A form in a Sheet for one Goal or setting. Field problems show beside their fields; a failed write stays open to try again. */
-export function SettingSheet({ title, subtitle, submit, clear, below, onClose, children }: Props) {
+export function SettingSheet({ title, subtitle, submit, clear, onClose, children }: Props) {
   const { t } = useI18n();
   const formId = useId();
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -64,7 +62,6 @@ export function SettingSheet({ title, subtitle, submit, clear, below, onClose, c
     >
       <form id={formId} onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         {children(error, busy !== null)}
-        {below}
         {failed && <Banner tone="danger">{t("goals.failed")}</Banner>}
       </form>
     </Sheet>
