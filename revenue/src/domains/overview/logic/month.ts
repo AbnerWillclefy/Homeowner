@@ -3,12 +3,6 @@ export type Month = string;
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-/** The month on the device's clock. */
-export const currentMonth = (now: Date): Month => `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
-
-/** The calendar day on the device's clock, `YYYY-MM-DD`. */
-export const currentDay = (now: Date): string => `${currentMonth(now)}-${pad(now.getDate())}`;
-
 export function daysInMonth(month: Month): number {
   const [y, m] = month.split("-").map(Number) as [number, number];
   return new Date(y, m, 0).getDate();

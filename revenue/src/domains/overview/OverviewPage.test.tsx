@@ -126,6 +126,24 @@ describe("Overview", () => {
     expect(screen.getByText("desc pay")).toBeTruthy();
   });
 
+  it("calls a past-due unpaid bill overdue in this month only", async () => {
+    api({ bills: { status: 200, data: [{ ...bill, dueDate: "2026-11-05", dueDay: 5 }] } });
+    page();
+    expect(await screen.findByText(/Venceu em/)).toBeTruthy();
+    api({ bills: { status: 200, data: [{ ...bill, dueDate: "2026-10-05", dueDay: 5 }] } });
+    page("/?month=2026-10");
+    expect((await screen.findAllByText(/Vence /)).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Venceu/)).toHaveLength(1);
+  });
+
+  it("stays neutral when the month passes the income", async () => {
+    api({ commitments: { status: 200, data: { monthlyIncomeCents: 400000, months: [{ ...withIncome, leftoverCents: -50000, dailyAllowanceCents: -2941 }] } } });
+    page();
+    expect(await screen.findByText("O mês já tem mais que a renda.")).toBeTruthy();
+    expect(screen.getByText(/O mês já tem R\$\s500,00 além da renda/)).toBeTruthy();
+    expect((await axe.run(document.body, { rules: { "color-contrast": { enabled: false }, region: { enabled: false } } })).violations).toEqual([]);
+  });
+
   it("says when the month has nothing", async () => {
     api({ transactions: { status: 200, data: { month: "2026-11", spentCents: 0, categories: [], transactions: [] } }, bills: { status: 200, data: [] } });
     page();

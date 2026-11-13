@@ -1,16 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { addMonths, currentDay, currentMonth, formatDay, monthFromParam, monthLabel, monthName } from "./month";
+import { addMonths, formatDay, monthFromParam, monthLabel, monthName } from "./month";
 
 describe("monthName", () => {
   it("is the month alone, in the locale", () => {
     expect(monthName("2026-10", "pt-BR")).toBe("Outubro");
     expect(monthName("2026-10", "en-US")).toBe("October");
-  });
-});
-
-describe("currentDay", () => {
-  it("is the device's calendar day, padded", () => {
-    expect(currentDay(new Date(2026, 10, 8))).toBe("2026-11-08");
   });
 });
 
@@ -24,10 +18,6 @@ describe("formatDay", () => {
 });
 
 describe("month", () => {
-  it("takes the current month from device time", () => {
-    expect(currentMonth(new Date(2026, 10, 30, 23, 59))).toBe("2026-11");
-    expect(currentMonth(new Date(2026, 0, 1, 0, 0))).toBe("2026-01");
-  });
   it("adds months across years", () => {
     expect(addMonths("2026-12", 1)).toBe("2027-01");
     expect(addMonths("2026-01", -1)).toBe("2025-12");
