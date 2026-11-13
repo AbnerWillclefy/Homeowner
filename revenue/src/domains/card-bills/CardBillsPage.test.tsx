@@ -12,8 +12,8 @@ vi.mock("./api", async (original) => ({
   getCardBills: vi.fn(), getCardSources: vi.fn(), getMonthTransactions: vi.fn(), putBillDays: vi.fn(),
 }));
 
-const CLOSED: CardBill = { sourceId: "s1", name: "Nubank", amountCents: 284300, billDaysKnown: true, fromBank: true, dueOn: "2030-01-15", closesOn: "2030-01-08" };
-const OPEN: CardBill = { sourceId: "s2", name: "Itaú Visa", amountCents: 50000, billDaysKnown: false, fromBank: false, dueOn: null, closesOn: null };
+const CLOSED: CardBill = { sourceId: "s1", name: "Nubank", amountCents: 284300, billDaysKnown: true, fromBank: true, dueOn: "2030-01-15", closesOn: "2030-01-08", closed: false, heldFrom: null, heldTo: null };
+const OPEN: CardBill = { sourceId: "s2", name: "Itaú Visa", amountCents: 50000, billDaysKnown: false, fromBank: false, dueOn: null, closesOn: null, closed: false, heldFrom: null, heldTo: null };
 const SOURCES: CardSource[] = [{ id: "s1", name: "Nubank", closeDay: 8, dueDay: 15 }, { id: "s2", name: "Itaú Visa", closeDay: null, dueDay: null }];
 const tx = (over: Partial<CardTransaction>): CardTransaction => ({ id: "t1", sourceId: "s1", description: "Mercado Central", postedOn: "2029-12-20", countsOn: "2030-01-15", amountCents: -28430, installment: null, ...over });
 const ROWS = [
@@ -28,7 +28,7 @@ const width = (desktop: boolean) => vi.stubGlobal("matchMedia", () => ({ matches
 const serve = (cards: CardBill[] = [CLOSED, OPEN]) => {
   vi.mocked(api.getCardBills).mockResolvedValue(cards);
   vi.mocked(api.getCardSources).mockResolvedValue(SOURCES);
-  vi.mocked(api.getMonthTransactions).mockResolvedValue(ROWS);
+  vi.mocked(api.getMonthTransactions).mockImplementation(async (month: string) => ROWS.filter((r) => r.countsOn.startsWith(month)));
 };
 const open = (options: Parameters<typeof renderApp>[1] = {}) => renderApp(<CardBillsPage />, { path: "/card-bills", locale: "en", ...options });
 
@@ -57,6 +57,16 @@ describe("labels per bill kind", () => {
     expect(within(opened).getByText("Open")).toBeTruthy();
     expect(within(opened).getByText(/^App's sum/)).toBeTruthy();
     expect(within(opened).getByText("No closing and due days yet")).toBeTruthy();
+  });
+
+  it("calls a bill closed by the typed days closed, still the app's sum", async () => {
+    width(false);
+    serve([{ ...OPEN, billDaysKnown: true, closed: true, heldFrom: "2029-12-08", heldTo: "2030-01-08", closesOn: "2030-01-08", dueOn: "2030-01-15" }]);
+    open();
+    const card = (await screen.findByRole("heading", { name: "Itaú Visa" })).closest("div[class*=border]") as HTMLElement;
+    expect(within(card).getByText("Closed")).toBeTruthy();
+    expect(within(card).getByText(/^App's sum/)).toBeTruthy();
+    expect(card.textContent).toContain("Closes");
   });
 
   it("does not say days are missing on an open bill whose days are set", async () => {
@@ -90,6 +100,19 @@ describe("rows", () => {
     expect(within(list).queryByText("Outro cartão")).toBeNull();
     expect(screen.queryByText("Fatura de fevereiro")).toBeNull();
     expect(screen.getAllByText("Outro cartão")).toHaveLength(1);
+  });
+
+  it("lists a cycle's rows by posted day, those counting next month too", async () => {
+    width(false);
+    serve([{ ...CLOSED, fromBank: false, closed: false, heldFrom: "2029-12-20", heldTo: null }]);
+    open();
+    const list = await screen.findByRole("list", { name: "Transactions of Nubank in January 2030" });
+    expect(within(list).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+      expect.stringContaining("Geladeira Frost Free"),
+      expect.stringContaining("Mercado Central"),
+      expect.stringContaining("Fatura de fevereiro"),
+    ]);
+    expect(vi.mocked(api.getMonthTransactions).mock.calls.map(([m]) => m)).toEqual(["2030-01", "2030-02"]);
   });
 
   it("is a table on a desktop width", async () => {

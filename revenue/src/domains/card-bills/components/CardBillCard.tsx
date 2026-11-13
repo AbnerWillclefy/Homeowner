@@ -19,8 +19,8 @@ interface Props {
 }
 
 /**
- * One card's bill. A closed bill is the bank's total, an open one is the app's sum of the card's charges plus the
- * known installments; the badge and the line under the amount say which, so the number is never bare.
+ * One card's bill: the bank's total or the app's sum of the card's charges plus the known installments, closed or
+ * open; the badge says which state and the line under the amount which source, so the number is never bare.
  */
 export function CardBillCard({ bill, source, rows, rowsFailed, monthName, desktop, onEditDays }: Props) {
   const { t, locale } = useI18n();
@@ -36,7 +36,7 @@ export function CardBillCard({ bill, source, rows, rowsFailed, monthName, deskto
             <CreditCard className="size-4 shrink-0" aria-hidden />
             <h2 id={`card-${bill.sourceId}`} className="section-title [overflow-wrap:anywhere]">{bill.name}</h2>
           </CardLabel>
-          <Badge icon={bill.fromBank ? Landmark : Sigma} tone="neutral">{t(bill.fromBank ? "cardBills.kind.closed" : "cardBills.kind.open")}</Badge>
+          <Badge icon={bill.fromBank ? Landmark : Sigma} tone="neutral">{t(bill.fromBank || bill.closed ? "cardBills.kind.closed" : "cardBills.kind.open")}</Badge>
         </div>
         <Amount cents={bill.amountCents} size="lg" locale={locale} />
         <p className="caption text-text-muted">{t(bill.fromBank ? "cardBills.source.bank" : "cardBills.source.app")}</p>

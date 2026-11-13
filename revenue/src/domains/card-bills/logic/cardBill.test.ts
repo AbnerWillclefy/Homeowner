@@ -8,7 +8,12 @@ const row = (over: Partial<CardTransaction>): CardTransaction => ({ id: "t1", so
 describe("billRows", () => {
   it("keeps the card's rows counted in the month, newest first, by source id and not name", () => {
     const rows = [row({ id: "a" }), row({ id: "b", postedOn: "2030-01-09" }), row({ id: "c", sourceId: "s2" }), row({ id: "d", countsOn: "2030-03-05" })];
-    expect(billRows(rows, "s1", "2030-02").map((r) => r.id)).toEqual(["b", "a"]);
+    expect(billRows(rows, { sourceId: "s1", heldFrom: null, heldTo: null }, "2030-02").map((r) => r.id)).toEqual(["b", "a"]);
+  });
+  it("keeps a cycle's rows by posted day from its start, before its end when closed, whatever month they count in", () => {
+    const rows = [row({ id: "before", postedOn: "2030-01-19" }), row({ id: "start", postedOn: "2030-01-20" }), row({ id: "later", postedOn: "2030-02-10", countsOn: "2030-03-05" }), row({ id: "end", postedOn: "2030-02-20" })];
+    expect(billRows(rows, { sourceId: "s1", heldFrom: "2030-01-20", heldTo: null }, "2030-02").map((r) => r.id)).toEqual(["end", "later", "start"]);
+    expect(billRows(rows, { sourceId: "s1", heldFrom: "2030-01-20", heldTo: "2030-02-20" }, "2030-02").map((r) => r.id)).toEqual(["later", "start"]);
   });
 });
 

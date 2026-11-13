@@ -1,12 +1,19 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
+import { addMonths } from "../../bills/logic/month";
 import { getCardBills, getCardSources, getMonthTransactions, putBillDays, type BillDaysResult } from "../api";
 
-/** The month's card bills, the card Sources (for their days) and the month's Transactions, each read on its own. */
+/**
+ * The month's card bills, the card Sources (for their days) and the Transactions counting in the month and the next,
+ * each read on its own: the current month's open bill holds charges that count on a later due day.
+ */
 export function useCardBills(month: string) {
   const bills = useQuery({ queryKey: ["finance", "commitments", month, "card-bills"], queryFn: () => getCardBills(month) });
   const sources = useQuery({ queryKey: ["finance", "status", "card-sources"], queryFn: () => getCardSources() });
-  const transactions = useQuery({ queryKey: ["finance", "transactions", month, "card-rows"], queryFn: () => getMonthTransactions(month) });
+  const transactions = useQuery({
+    queryKey: ["finance", "transactions", month, "card-rows"],
+    queryFn: async () => (await Promise.all([month, addMonths(month, 1)].map((m) => getMonthTransactions(m)))).flat(),
+  });
   return {
     bills: bills.data,
     sources: sources.data ?? [],

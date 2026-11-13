@@ -23,11 +23,19 @@ describe("getCardBills", () => {
     const { client, sent } = setup(200, { months: [{ month: "2030-01", cards: [CARD, { ...CARD, sourceId: "s2", fromBank: false, dueOn: null, closesOn: null }] }] });
     const cards = await getCardBills("2030-01", client);
     expect(cards.map((c) => [c.fromBank, c.dueOn])).toEqual([[true, "2030-01-10"], [false, null]]);
+    expect(cards.map((c) => [c.closed, c.heldFrom, c.heldTo])).toEqual([[false, null, null], [false, null, null]]);
     expect(sent[0]!.params).toEqual({ from: "2030-01" });
+  });
+  it("reads the current bill's cycle", async () => {
+    const cycle = { ...CARD, closed: true, heldFrom: "2029-12-03", heldTo: "2030-01-03" };
+    const [card] = await getCardBills("2030-01", setup(200, { months: [{ month: "2030-01", cards: [cycle] }] }).client);
+    expect([card!.closed, card!.heldFrom, card!.heldTo]).toEqual([true, "2029-12-03", "2030-01-03"]);
   });
   it("throws on a failure and on a malformed card", async () => {
     await expect(getCardBills("2030-01", setup(503, {}).client)).rejects.toThrow();
     await expect(getCardBills("2030-01", setup(200, { months: [{ month: "2030-01", cards: [{ ...CARD, fromBank: "yes" }] }] }).client)).rejects.toThrow();
+    await expect(getCardBills("2030-01", setup(200, { months: [{ month: "2030-01", cards: [{ ...CARD, heldFrom: 3 }] }] }).client)).rejects.toThrow();
+    await expect(getCardBills("2030-01", setup(200, { months: [{ month: "2030-01", cards: [{ ...CARD, closed: "no" }] }] }).client)).rejects.toThrow();
   });
 });
 
