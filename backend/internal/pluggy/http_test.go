@@ -126,7 +126,7 @@ func TestListTransactionsFollowsNext(t *testing.T) {
 func TestListTransactionsCardKeepsPluggySign(t *testing.T) {
 	t.Parallel()
 	c := pluggy.NewHTTP(pluggytest.NewServer(t).URL)
-	page, err := c.ListTransactions(context.Background(), pluggytest.APIKey, pluggytest.CardAccountID, time.Now(), time.Now(), "")
+	page, err := c.ListTransactions(context.Background(), pluggytest.APIKey, pluggytest.CardAccountID, time.Date(2025, 11, 7, 0, 0, 0, 0, time.UTC), time.Date(2026, 11, 7, 0, 0, 0, 0, time.UTC), "")
 	if err != nil || len(page.Transactions) != 17 || page.Next != "" {
 		t.Fatalf("card page: %d rows, next %q, err %v", len(page.Transactions), page.Next, err)
 	}
@@ -207,7 +207,7 @@ func TestFailuresCarryNoBody(t *testing.T) {
 	if err == nil || err.Error() != "pluggy: list accounts: status 500" {
 		t.Errorf("err = %v", err)
 	}
-	_, err = c.ListTransactions(context.Background(), pluggytest.APIKey, pluggytest.CardAccountID, time.Now(), time.Now(), "")
+	_, err = c.ListTransactions(context.Background(), pluggytest.APIKey, pluggytest.CardAccountID, time.Date(2025, 11, 7, 0, 0, 0, 0, time.UTC), time.Date(2026, 11, 7, 0, 0, 0, 0, time.UTC), "")
 	if err == nil || err.Error() != "pluggy: list transactions: status 502" || strings.Contains(err.Error(), pluggytest.FailBody) {
 		t.Errorf("err = %v", err)
 	}

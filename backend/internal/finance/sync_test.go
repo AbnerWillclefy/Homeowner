@@ -363,3 +363,22 @@ func TestEventsHandlerRunsOnlyOnAScheduledEvent(t *testing.T) {
 		t.Errorf("GET /healthz = %v %v, want 200", res, err)
 	}
 }
+
+// A daily sync re-reads the whole open bill: a card charge can reach the bank's
+// feed weeks after it posted, and a shorter window would never import it.
+func TestDailySyncRereadsAnOpenBillsCharges(t *testing.T) {
+	t.Parallel()
+	app, _ := startSync(t, []string{"ana@example.com"})
+	app.RunFinanceSync(t)
+	// The fixture's card charge of 2026-10-10, 29 days before the clock, as if it had arrived late.
+	tag, err := app.DB.Exec(context.Background(), `DELETE FROM finance_transactions t USING finance_sources s
+		WHERE s.id = t.source_id AND s.kind = 'credit_card' AND t.posted_on = '2026-10-10'`)
+	if err != nil || tag.RowsAffected() == 0 {
+		t.Fatalf("delete the 2026-10-10 charge: %v (rows %d)", err, tag.RowsAffected())
+	}
+	app.Clock.Advance(25 * time.Hour)
+	app.RunFinanceSync(t)
+	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions`); n != fixtureRows {
+		t.Errorf("rows = %d, want %d: the late charge imported", n, fixtureRows)
+	}
+}
