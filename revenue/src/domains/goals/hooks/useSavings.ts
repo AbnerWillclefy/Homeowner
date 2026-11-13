@@ -1,8 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
-  deleteGoal, getSavings, putContribution, putGoalOrder, putReserve, saveGoal,
-  type FieldCodes, type GoalInput, type Savings,
+  deleteGoal, deleteInvestment, getSavings, putContribution, putGoalOrder, putInvestmentServes, putReserve, restoreBankValue, saveGoal, saveInvestment,
+  type FieldCodes, type GoalInput, type InvestmentInput, type Savings, type Serves,
 } from "../api";
 
 export const savingsKey = ["finance", "savings"] as const;
@@ -69,6 +69,17 @@ export function useSavings() {
       [settle],
     ),
     removeGoal: useCallback(async (id: string) => settle((await deleteGoal(id)).kind), [settle]),
+    saveInvestment: useCallback(
+      async (id: string | null, input: InvestmentInput): Promise<SaveOutcome> => {
+        const result = await saveInvestment(id, input);
+        return result.kind === "fields" ? result : settle(result.kind);
+      },
+      [settle],
+    ),
+    removeInvestment: useCallback(async (id: string) => settle((await deleteInvestment(id)).kind), [settle]),
+    /** The pick of a bank Investment. The reserve and Goals progress come from the read that follows, not from here. */
+    pickServes: useCallback(async (id: string, serves: Serves) => settle((await putInvestmentServes(id, serves)).kind), [settle]),
+    takeBankValue: useCallback(async (id: string) => settle((await restoreBankValue(id)).kind), [settle]),
     reorder,
   };
 }

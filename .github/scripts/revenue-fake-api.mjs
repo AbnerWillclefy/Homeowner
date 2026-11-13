@@ -97,7 +97,12 @@ function savings(today) {
   };
   return {
     reserveTargetCents: 3_000_000, contributionBaseCents: 150_000, reserveSharePercent: 40,
-    investments: [{ id: "i1", name: "Tesouro Selic", valueCents: 1_200_000, serves: "reserve", source: "manual", edited: false }],
+    // One of each: typed by hand, from the bank with nothing picked, and from the bank with the User's value over it.
+    investments: [
+      { id: "i1", name: "Tesouro Selic", valueCents: 1_200_000, serves: "reserve", source: "hand", edited: false },
+      { id: "i2", name: "CDB Banco Azul", valueCents: 800_000, serves: null, source: "pluggy", reportedByBank: true, edited: false, bankValueCents: 800_000 },
+      { id: "i3", name: "Fundo Imobiliário", valueCents: 350_000, serves: "goals", source: "pluggy", reportedByBank: true, edited: true, bankValueCents: 330_000 },
+    ],
     reserve: { targetCents: 3_000_000, savedCents: 1_200_000, monthCents: 60_000, expectedMonth: month(30) },
     goals: [
       { id: "g1", name: "Viagem para a Europa", targetCents: 1_800_000, targetMonth: month(14), savedCents: 450_000, monthCents: 90_000, expectedMonth: month(15), late: true },
