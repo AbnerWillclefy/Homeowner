@@ -258,7 +258,13 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 		o := outlook[i]
 		m.Cards, m.OtherBills = []CardBillLine{}, []OtherBillLine{}
 		for _, c := range o.Cards {
-			m.Cards = append(m.Cards, CardBillLine{c.SourceID, c.Name, c.AmountCents, c.BillDaysKnown, c.FromBank, dateOrNil(c.DueOn), dateOrNil(c.ClosesOn)})
+			line := CardBillLine{SourceID: c.SourceID, Name: c.Name, AmountCents: c.AmountCents, BillDaysKnown: c.BillDaysKnown, FromBank: c.FromBank,
+				DueOn: dateOrNil(c.DueOn), ClosesOn: dateOrNil(c.ClosesOn)}
+			if cy, ok := o.Cycles[c.SourceID]; ok {
+				line.DueOn, line.ClosesOn, line.Closed = dateOrNil(cy.DueOn), dateOrNil(cy.ClosesOn), cy.Closed
+				line.HeldFrom, line.HeldTo = dateOrNil(cy.HeldFrom), dateOrNil(cy.HeldTo)
+			}
+			m.Cards = append(m.Cards, line)
 		}
 		for _, b := range o.OtherBills {
 			m.OtherBills = append(m.OtherBills, OtherBillLine(b))

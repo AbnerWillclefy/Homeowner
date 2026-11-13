@@ -203,9 +203,12 @@ type PaceDTO struct {
 // CardBillLine is one credit card's bill in a month: the bank's total when it
 // reported a bill due in the month, else the app's own sum (ADR 0021).
 // BillDaysKnown is false when the card has no closing or due day, so charges
-// count on the day made. FromBank is true when AmountCents is the bank's total
-// of a bill due in the month; DueOn and ClosesOn (YYYY-MM-DD) are that bill's
-// days, null otherwise.
+// count on the day made. FromBank is true when AmountCents is the bank's total;
+// DueOn and ClosesOn (YYYY-MM-DD) are that bill's days, or in the current month
+// those of the bill still to pay when known, null otherwise. In the current
+// month Closed says that bill has closed, and HeldFrom and HeldTo bound the
+// posted days [from, to) of the charges it holds (HeldTo null while open); all
+// three are absent-as-null and false on a card counted by month.
 type CardBillLine struct {
 	SourceID      string  `json:"sourceId"`
 	Name          string  `json:"name"`
@@ -214,6 +217,9 @@ type CardBillLine struct {
 	FromBank      bool    `json:"fromBank"`
 	DueOn         *string `json:"dueOn"`
 	ClosesOn      *string `json:"closesOn"`
+	Closed        bool    `json:"closed"`
+	HeldFrom      *string `json:"heldFrom"`
+	HeldTo        *string `json:"heldTo"`
 }
 
 // PlannedLineDTO is the rest of one Spending Category's limit in a month.

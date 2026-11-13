@@ -490,3 +490,44 @@ func TestOutlookCurrentPlannedSubtractsTheShownBills(t *testing.T) {
 		t.Errorf("planned = %v, want %v: the limit less the bills' 500 and the 100 off the card", got.Planned, want)
 	}
 }
+
+// The current month tells each card's bill cycle: the charges it holds, its
+// closing and due days, and whether it has closed.
+func TestOutlookCurrentBillCycle(t *testing.T) {
+	t.Parallel()
+	d := func(s string) time.Time { v, _ := time.Parse(time.DateOnly, s); return v }
+	p := func(s string) *time.Time { v := d(s); return &v }
+	nov := d("2026-11-01")
+	octBill := StoredBill{ClosesOn: d("2026-10-20"), DueOn: d("2026-10-27"), TotalCents: 1}
+	novBill := StoredBill{ClosesOn: d("2026-11-20"), DueOn: d("2026-11-28"), TotalCents: 2}
+	for name, c := range map[string]struct {
+		today string
+		card  Card
+		want  BillCycle
+	}{
+		"open after a bank closing, days from the typed ones": {"2026-11-13", Card{ID: "a", CloseDay: 20, DueDay: 28, Bills: []StoredBill{octBill}},
+			BillCycle{HeldFrom: p("2026-10-20"), ClosesOn: p("2026-11-20"), DueOn: p("2026-11-28")}},
+		"open without typed days has no closing to tell": {"2026-11-13", Card{ID: "a", Bills: []StoredBill{octBill}},
+			BillCycle{HeldFrom: p("2026-10-20")}},
+		"a bank bill closed and unpaid": {"2026-11-23", Card{ID: "a", CloseDay: 20, DueDay: 28, Bills: []StoredBill{octBill, novBill}},
+			BillCycle{HeldFrom: p("2026-10-20"), HeldTo: p("2026-11-20"), ClosesOn: p("2026-11-20"), DueOn: p("2026-11-28"), Closed: true}},
+		"a typed bill closed until its due day": {"2026-11-30", Card{ID: "a", CloseDay: 28, DueDay: 5},
+			BillCycle{HeldFrom: p("2026-10-28"), HeldTo: p("2026-11-28"), ClosesOn: p("2026-11-28"), DueOn: p("2026-12-05"), Closed: true}},
+		"no days and no bills: the month's charges, no cycle": {"2026-11-13", Card{ID: "a"}, BillCycle{}},
+	} {
+		got := Outlook(nil, []Card{c.card}, nil, [][]MonthBill{nil}, nil, nil, nil, 0, d(c.today), nov, 1)[0]
+		if !reflect.DeepEqual(got.Cycles["a"], c.want) {
+			t.Errorf("%s: cycle = %s, want %s", name, cycleString(got.Cycles["a"]), cycleString(c.want))
+		}
+	}
+}
+
+func cycleString(c BillCycle) string {
+	f := func(t *time.Time) string {
+		if t == nil {
+			return "-"
+		}
+		return t.Format(time.DateOnly)
+	}
+	return f(c.HeldFrom) + ".." + f(c.HeldTo) + " closes " + f(c.ClosesOn) + " due " + f(c.DueOn) + map[bool]string{true: " closed", false: ""}[c.Closed]
+}

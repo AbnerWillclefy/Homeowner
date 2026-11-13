@@ -193,11 +193,11 @@ type outlookBody struct {
 }
 
 type outlookCard struct {
-	SourceID, Name  string
-	AmountCents     int64
-	BillDaysKnown   bool
-	FromBank        bool
-	DueOn, ClosesOn *string
+	SourceID, Name                    string
+	AmountCents                       int64
+	BillDaysKnown                     bool
+	FromBank, Closed                  bool
+	DueOn, ClosesOn, HeldFrom, HeldTo *string
 }
 
 // readOutlook also returns the raw months, to check a key is absent. It reads

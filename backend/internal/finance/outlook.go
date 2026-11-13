@@ -55,6 +55,17 @@ type MonthOutlook struct {
 	TotalCents  int64
 	// LeftoverCents is income minus total; nil when no income is set.
 	LeftoverCents *int64
+	// Cycles is each card's bill cycle by Source id, only in the current month
+	// and only for a card whose bill is a cycle (not a count by month).
+	Cycles map[string]BillCycle
+}
+
+// BillCycle is the bill a card counts in the current month: the posted days
+// [HeldFrom, HeldTo) of the charges it holds (HeldTo nil while open), its
+// closing and due days (nil when unknown) and whether it has closed.
+type BillCycle struct {
+	HeldFrom, HeldTo, ClosesOn, DueOn *time.Time
+	Closed                            bool
 }
 
 // PlannedLine is what is still planned for one Spending Category.
@@ -170,6 +181,10 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 				}
 				if !span.from.IsZero() {
 					taken[c.ID] = span
+					if o.Cycles == nil {
+						o.Cycles = map[string]BillCycle{}
+					}
+					o.Cycles[c.ID] = cycleOf(c, bill, span, today)
 				}
 			} else {
 				bill = dueCardBill(c, byCard[c.ID], taken[c.ID], m)
@@ -378,6 +393,29 @@ func currentCardBill(c Card, rows []Txn, today time.Time) (CardBill, billSpan) {
 	}
 	out.AmountCents = MonthTotals(held).Spend
 	return out, span
+}
+
+// cycleOf describes the current bill of card c that currentCardBill gave with
+// span: a closed bill's days are the bank's or follow its typed closing, an
+// open bill's follow the typed days, and are unknown without them.
+func cycleOf(c Card, bill CardBill, span billSpan, today time.Time) BillCycle {
+	day := func(t time.Time) *time.Time { return &t }
+	cy := BillCycle{HeldFrom: day(span.from)}
+	typed := c.CloseDay > 0 && c.DueDay > 0
+	switch {
+	case bill.FromBank:
+		cy.HeldTo, cy.Closed, cy.ClosesOn, cy.DueOn = day(span.to), true, bill.ClosesOn, bill.DueOn
+	case !span.to.IsZero():
+		cy.HeldTo, cy.Closed, cy.ClosesOn = day(span.to), true, day(span.to)
+		cy.DueOn = day(CountsOn(span.to.AddDate(0, 0, -1), "credit_card", c.CloseDay, c.DueDay))
+	case typed:
+		closes := DueDate(today.Year(), today.Month(), c.CloseDay)
+		if !closes.After(today) {
+			closes = DueDate(today.Year(), today.Month()+1, c.CloseDay)
+		}
+		cy.ClosesOn, cy.DueOn = day(closes), day(CountsOn(today, "credit_card", c.CloseDay, c.DueDay))
+	}
+	return cy
 }
 
 // dueCardBill is a card's bill due in month m (a first-of-month): the bank's
