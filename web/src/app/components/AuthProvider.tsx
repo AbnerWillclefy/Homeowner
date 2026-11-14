@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../domains/auth/hooks/useAuth";
+import { boot } from "../logic/boot";
 import { nextCacheClear } from "../logic/cacheClear";
 
 type Auth = ReturnType<typeof useAuth>;
@@ -29,7 +30,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const step = nextCacheClear(hadSession.current, auth.state.kind);
     hadSession.current = step.hadSession;
-    if (step.clear) queryClient.clear();
+    if (step.clear) {
+      queryClient.clear();
+      boot.clear();
+    }
   }, [auth.state.kind, queryClient]);
 
   // A later session expiry is not on purpose.

@@ -15,17 +15,28 @@ import (
 // learns nothing about the configuration.
 func (s *server) requireFinance(allow finance.Allowlist, next http.Handler) http.Handler {
 	return s.requireUser(func(w http.ResponseWriter, r *http.Request) {
-		if !allow.Allows(identity.CurrentUser(r.Context()).Email) {
+		switch status := s.financeGate(allow, identity.CurrentUser(r.Context()).Email); status {
+		case http.StatusForbidden:
 			s.deps.Logger.Info("finance access refused", "path", r.URL.Path)
-			httpx.WriteError(w, http.StatusForbidden, "forbidden")
-			return
+			httpx.WriteError(w, status, "forbidden")
+		case http.StatusServiceUnavailable:
+			httpx.WriteError(w, status, "finance not configured")
+		default:
+			next.ServeHTTP(w, r)
 		}
-		if s.deps.FinanceKey == nil {
-			httpx.WriteError(w, http.StatusServiceUnavailable, "finance not configured")
-			return
-		}
-		next.ServeHTTP(w, r)
 	})
+}
+
+// financeGate is the guard's decision: 403 off the allowlist, then 503 with
+// no encryption key, else 0. requireFinance and GET /boot share it.
+func (s *server) financeGate(allow finance.Allowlist, email string) int {
+	if !allow.Allows(email) {
+		return http.StatusForbidden
+	}
+	if s.deps.FinanceKey == nil {
+		return http.StatusServiceUnavailable
+	}
+	return 0
 }
 
 // financeMux holds the /me/finance routes. The guard wraps it once, so every

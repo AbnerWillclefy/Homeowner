@@ -4,6 +4,7 @@ import { signedInHandlers } from "../mocks/handlers/signedIn";
 import { hold } from "../mocks/hold";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
+import { withoutBoot } from "../mocks/handlers/boot";
 import { launchApp } from "../pages/launch";
 import { shell } from "../pages/shell";
 
@@ -88,7 +89,8 @@ for (const l of LOCALES) {
         test.describe(size.name, () => {
           test.use({ viewport: size.viewport });
 
-          test(`the bar keeps its box while the Streak loads (${size.name})`, async ({ page, baseURL }) => {
+          test(`the bar keeps its box while the Streak loads (${size.name})`, async ({ page, baseURL, fakeApi }) => {
+            withoutBoot(fakeApi);
             if (size.scale) await scaleText(page);
             const streakRead = hold(page, /\/home\/streak$/);
             await launchApp(page, baseURL!);

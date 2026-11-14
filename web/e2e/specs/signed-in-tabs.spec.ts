@@ -116,11 +116,11 @@ test("a day with no Tasks says so", async ({ page, baseURL, fakeApi }) => {
   for (const name of TASKS) await expect(tabs.today.task(page, name)).toHaveCount(0);
 });
 
-test("launching asks for the User once: the Shell reads the entry sign-in already cached", async ({ page, baseURL, fakeApi }) => {
+test("launching asks for the User once, inside the boot: the Shell reads the entry sign-in already cached", async ({ page, baseURL, fakeApi }) => {
   await launchApp(page, baseURL!);
   await expect(tabs.today.mine(page)).toBeVisible();
 
-  expect(fakeApi.requests.filter((r) => r.method === "GET" && r.path === "/me")).toHaveLength(1);
+  expect(fakeApi.requests.filter((r) => r.method === "GET" && ["/boot", "/me"].includes(r.path)).map((r) => r.path)).toEqual(["/boot"]);
 });
 
 test.describe("a refresh with the Home on screen", () => {
@@ -150,7 +150,7 @@ test.describe("a refresh with the Home on screen", () => {
 
     fakeApi.override("GET /home", json(500, { error: "internal error" }), { once: true });
     await regainFocus(page);
-    await expect.poll(() => fakeApi.requests.filter((r) => r.method === "GET" && r.path === "/home").length).toBe(2);
+    await expect.poll(() => fakeApi.requests.filter((r) => r.method === "GET" && r.path === "/home").length).toBe(1);
 
     await expect(tabs.home.timezone(page)).toHaveValue("America/Sao_Paulo");
     await expect(page.getByRole("alert")).toHaveCount(0);
