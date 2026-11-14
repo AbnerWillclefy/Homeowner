@@ -98,7 +98,7 @@ func runSections(r *http.Request, secs []section, log *slog.Logger) map[string]b
 	for _, sec := range secs {
 		wg.Go(func() {
 			ans := serve(r, sec, log)
-			if ans.Status >= http.StatusBadRequest {
+			if ans.Status >= http.StatusInternalServerError {
 				log.Error("boot section failed", "section", sec.key, "status", ans.Status)
 			}
 			mu.Lock()
