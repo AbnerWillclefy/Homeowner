@@ -2,7 +2,6 @@ import { meQuery } from "../../domains/auth/api/queries";
 import { checkInQuery } from "../../domains/checkin/api/queries";
 import { dayPlanQuery } from "../../domains/dayplan/api/queries";
 import { homeQuery } from "../../domains/home/api/queries";
-import { billsQuery, billSuggestionsQuery, commitmentsQuery, financeStatusQuery, savingsQuery } from "../../domains/finance/api/queries";
 import { onboardingQuery } from "../../domains/onboarding/api/queries";
 import { demandsQuery } from "../../domains/profile/api/queries";
 import { residentsQuery } from "../../domains/residents/api/queries";
@@ -34,9 +33,11 @@ export function launchReads(pathname: string, hasStoredSession: boolean): typeof
 
 /**
  * The finance reads whose section the boot carries, in the same shape the Finances tab asks for them, so the cache is
- * seeded and opening Finances asks nothing. A section that failed is left to the tab's own read.
+ * seeded and opening Finances asks nothing. A section that failed is left to the tab's own read. Imported lazily so
+ * the finance queries stay out of the first-load bundle.
  */
-export function financeLaunchReads(sections: BootSections, month: string) {
+export async function financeLaunchReads(sections: BootSections, month: string) {
+  const { billsQuery, billSuggestionsQuery, commitmentsQuery, financeStatusQuery, savingsQuery } = await import("../../domains/finance/api/queries");
   const reads = [
     ["/me/finance", financeStatusQuery],
     [`/me/finance/bills?month=${month}`, billsQuery(month)],

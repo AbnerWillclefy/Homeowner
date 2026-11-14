@@ -37,9 +37,9 @@ if (reads.length > 0) {
   // One /boot request answers them all; the reads below are served from it, or go to their own endpoint when
   // their section is missing or failed. The finance reads follow once it answers, so Finances opens from the cache.
   const month = currentMonth(new Date());
-  void boot.start(() => getBoot(month)).then((sections) => {
+  void boot.start(() => getBoot(month)).then(async (sections) => {
     if (sections === null) return;
-    for (const read of financeLaunchReads(sections, month)) void queryClient.prefetchQuery(read as FetchQueryOptions);
+    for (const read of await financeLaunchReads(sections, month)) void queryClient.prefetchQuery(read as FetchQueryOptions);
   });
 }
 for (const read of reads) {
