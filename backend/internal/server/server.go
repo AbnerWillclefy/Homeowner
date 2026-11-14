@@ -132,10 +132,20 @@ func New(deps Deps) http.Handler {
 	residentsH := residents.NewHandler(residents.NewStore(db), streakStore, planner, photoURL, clk, log)
 	voiceH := voice.NewHandler(deps.Voice, voice.NewStore(db), deps.VoiceModel, clk, log)
 	pushes := push.NewHandler(push.NewStore(db), deps.Push, deps.VAPIDPublicKey, financeAllow.Allows, clk, log)
+	fin := finance.NewHandler(finance.NewStore(db), deps.FinanceKey, deps.Pluggy, deps.Environment, clk, log)
 
 	user, resident := s.requireUser, s.requireResident
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.healthz)
+	mux.HandleFunc("GET /boot", user(s.boot(financeAllow, []bootRead{
+		{"/me", me.Me, gateUser, ""}, {"/me/onboarding", me.Onboarding, gateUser, ""}, {"/demands", vocab.ServeDemands, gateUser, ""},
+		{"/home", home.Get, gateResident, ""}, {"/home/day-plan", dayPlan.Get, gateResident, ""},
+		{"/home/check-in", dayPlan.GetCheckIn, gateResident, ""}, {"/home/streak", streaks.Get, gateResident, ""},
+		{"/home/residents", residentsH.List, gateResident, ""},
+		{"/me/finance", fin.Status, gateFinance, ""}, {"/me/finance/bills", fin.ListBills, gateFinance, "month"},
+		{"/me/finance/commitments", fin.Commitments, gateFinance, "from"},
+		{"/me/finance/savings", fin.Savings, gateFinance, ""}, {"/me/finance/bill-suggestions", fin.BillSuggestions, gateFinance, ""},
+	})))
 	mux.HandleFunc("GET /me", user(me.Me))
 	mux.HandleFunc("PUT /me/name", user(me.SetName))
 	mux.HandleFunc("POST /me/photo/uploads", photosH.RequireConfigured(user(photosH.Presign)))
@@ -194,7 +204,7 @@ func New(deps Deps) http.Handler {
 	// Every /admin/ path, known or not, goes through the guard first.
 	mux.Handle("/admin/", s.requireSuperAdmin(s.adminMux()))
 	// Every /me/finance path, known or not, meets the allowlist first.
-	guarded := s.requireFinance(financeAllow, financeMux(finance.NewHandler(finance.NewStore(db), deps.FinanceKey, deps.Pluggy, deps.Environment, clk, log)))
+	guarded := s.requireFinance(financeAllow, financeMux(fin))
 	mux.Handle("/me/finance", guarded)
 	mux.Handle("/me/finance/", guarded)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

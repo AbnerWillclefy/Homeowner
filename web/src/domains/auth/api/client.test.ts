@@ -210,3 +210,17 @@ describe("errorCode", () => {
     expect(errorCode(body({ error: 3 }))).toBeNull();
   });
 });
+
+describe("authedRequest and the boot", () => {
+  it("answers from the boot without sending, and sends when the boot has nothing", async () => {
+    const { client, calls } = setup(fresh, { accepted: ["id-1"] });
+    const answer = { status: 200, statusText: "", data: { from: "boot" }, headers: {}, config: {} } as AxiosResponse;
+    const take = vi.fn(async (request: { url?: string }) => (request.url === "/home" ? answer : null));
+    const authedRequest = createAuthedRequest(client, { take });
+
+    expect(await authedRequest({ url: "/home" })).toEqual({ kind: "response", response: answer });
+    expect(calls).toHaveLength(0);
+    expect((await authedRequest({ url: "/me" })).kind).toBe("response");
+    expect(calls.map((c) => c.url)).toEqual(["/me"]);
+  });
+});

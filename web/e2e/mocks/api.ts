@@ -217,6 +217,8 @@ export interface FakeApi extends Fake {
   state: FakeState;
   /** Every request the fake received, in order, /healthz included. */
   requests: RecordedRequest[];
+  /** Answers a request from the registered handlers without recording it: what `GET /boot` composes its sections from. Null when none matches. */
+  dispatch(request: FakeRequest): FakeReply | null;
   /** Registers the handler for a "METHOD /path" key, replacing any earlier one. */
   on(key: string, handler: Handler): void;
   /** Registers a group of handlers, for example `fakeApi.use(onboardingHandlers)`. */
@@ -264,6 +266,9 @@ export function createFakeApi(options: { baseUrl: string; state?: FakeState }): 
     matches: (url) => url.origin === origin,
     handle(request) {
       requests.push({ method: request.method, path: request.path, body: request.body, authorization: request.authorization, at: performance.now() });
+      return api.dispatch(request);
+    },
+    dispatch(request) {
       for (const route of routes.values()) {
         if (route.method !== request.method) continue;
         const match = route.pattern.exec(request.path);
@@ -317,6 +322,7 @@ const rank = (step: string | null): number => (step === null ? -1 : step === "do
 
 /** The handlers the app needs on every load: health, who am I, onboarding progress and the Home. */
 export function coreHandlers(api: FakeApi): void {
+  api.on("GET /boot", signedIn((request, state) => bootReply(api, request, state)));
   api.on("GET /healthz", () => json(200, { status: "ok" }));
   api.on(
     "GET /me",
@@ -359,4 +365,27 @@ export function coreHandlers(api: FakeApi): void {
     "GET /home",
     signedIn((_, state) => (state.home === null ? json(404, { error: "no home" }) : json(200, state.home))),
   );
+}
+
+/** The launch reads GET /boot answers, as backend/internal/server/boot.go keys them. */
+const BOOT_READS = ["/me", "/me/onboarding", "/demands", "/home", "/home/day-plan", "/home/check-in", "/home/streak", "/home/residents"];
+const BOOT_FINANCE_READS = ["/me/finance", "/me/finance/bills?month=", "/me/finance/commitments?from=", "/me/finance/savings", "/me/finance/bill-suggestions"];
+
+/**
+ * Each section is what the fake's own handler for that path answers, so the two cannot drift. A path no handler is
+ * registered for is left out, which the PWA reads as a section to ask for itself. Finance sections only for a finance User.
+ */
+function bootReply(api: FakeApi, request: ApiRequest, state: FakeState): FakeReply {
+  const month = request.url.searchParams.get("month");
+  const keys = [...BOOT_READS, ...(state.user.finance ? BOOT_FINANCE_READS : [])].flatMap((key) => {
+    if (!key.endsWith("=")) return [key];
+    return month === null ? [] : [key + month];
+  });
+  const sections: Record<string, { status: number; body: unknown }> = {};
+  for (const key of keys) {
+    const url = new URL(key, request.url);
+    const reply = api.dispatch({ ...request, method: "GET", url, path: url.pathname, body: null });
+    if (reply !== null) sections[key] = { status: reply.status, body: reply.body ?? null };
+  }
+  return json(200, { sections });
 }

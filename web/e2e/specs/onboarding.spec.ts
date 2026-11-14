@@ -159,11 +159,12 @@ test("a new User walks onboarding, creates the Home and lands on Today", async (
   expect(fakeApi.state.onboardingStored).toBe("done");
 
   // A reload keeps the User in the app: the server says done, so there is no way back to onboarding.
-  const readsBefore = bodiesOf(fakeApi, "GET", "/me/onboarding").length;
+  // The launch asks for it inside the boot.
+  const readsBefore = bodiesOf(fakeApi, "GET", "/boot").length;
   await page.reload();
   await shell.expectOnToday(page);
   await expect(onboarding.startChoiceDialog(page)).toHaveCount(0);
-  expect(bodiesOf(fakeApi, "GET", "/me/onboarding").length).toBeGreaterThan(readsBefore);
+  expect(bodiesOf(fakeApi, "GET", "/boot").length).toBeGreaterThan(readsBefore);
   expect(fakeApi.state.onboardingStored).toBe("done");
 });
 

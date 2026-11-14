@@ -6,6 +6,7 @@ import { hold } from "../mocks/hold";
 import { RESIDENT_EMAIL, SECOND_RESIDENT_EMAIL, secondResident, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { GOOD_PASSWORD } from "../mocks/users";
+import { withoutBoot } from "../mocks/handlers/boot";
 import { launchApp } from "../pages/launch";
 
 // What this covers: the data layer end to end, in pt-BR. Coming back to Today shows the cached plan at
@@ -41,6 +42,7 @@ for (const l of LOCALES) {
 
     test.beforeEach(async ({ page, fakeApi }) => {
       fakeApi.use(signedInHandlers);
+      withoutBoot(fakeApi);
       fakeApi.state.user.displayName = FIRST_NAME;
       fakeApi.state.residents![0]!.name = FIRST_NAME;
       await seedSession(page, { email: RESIDENT_EMAIL });

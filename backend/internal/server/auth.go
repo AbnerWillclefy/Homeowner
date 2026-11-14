@@ -100,16 +100,27 @@ func (s *server) requireSuperAdmin(next http.Handler) http.Handler {
 // access to another Home" are one code path.
 func (s *server) requireResident(next http.HandlerFunc) http.HandlerFunc {
 	return s.requireUser(func(w http.ResponseWriter, r *http.Request) {
-		m, err := s.homes.ForUser(r.Context(), identity.CurrentUser(r.Context()).ID)
-		if errors.Is(err, homes.ErrNoHome) {
-			httpx.WriteError(w, http.StatusNotFound, "no home")
+		r, status, msg := s.residentScope(r)
+		if status != 0 {
+			httpx.WriteError(w, status, msg)
 			return
 		}
-		if err != nil {
-			s.deps.Logger.Error("load home", "error", err.Error())
-			httpx.WriteError(w, http.StatusInternalServerError, "internal error")
-			return
-		}
-		next(w, r.WithContext(identity.WithMembership(r.Context(), m)))
+		next(w, r)
 	})
+}
+
+// residentScope looks the signed-in User's Home up and returns the request
+// with the Membership in its context. A non-zero status (404 no home, 500)
+// and its message are what the caller answers instead. requireResident and
+// GET /boot share it, so "no Home" is one code path.
+func (s *server) residentScope(r *http.Request) (*http.Request, int, string) {
+	m, err := s.homes.ForUser(r.Context(), identity.CurrentUser(r.Context()).ID)
+	if errors.Is(err, homes.ErrNoHome) {
+		return r, http.StatusNotFound, "no home"
+	}
+	if err != nil {
+		s.deps.Logger.Error("load home", "error", err.Error())
+		return r, http.StatusInternalServerError, "internal error"
+	}
+	return r.WithContext(identity.WithMembership(r.Context(), m)), 0, ""
 }
