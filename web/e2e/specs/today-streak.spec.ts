@@ -5,6 +5,7 @@ import { signedInHandlers } from "../mocks/handlers/signedIn";
 import { hold } from "../mocks/hold";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
+import { withoutBoot } from "../mocks/handlers/boot";
 import { launchApp } from "../pages/launch";
 import { shell } from "../pages/shell";
 
@@ -129,7 +130,8 @@ for (const l of LOCALES) {
       });
     });
 
-    test("while the Streak is held Today shows without it, and the flame arrives in the bar's reserved slot", async ({ page, baseURL }) => {
+    test("while the Streak is held Today shows without it, and the flame arrives in the bar's reserved slot", async ({ page, baseURL, fakeApi }) => {
+      withoutBoot(fakeApi);
       const streak = hold(page, /\/home\/streak$/);
       await launchApp(page, baseURL!);
       // Today does not wait for the Streak: the title shows, the bar holds the flame's place.

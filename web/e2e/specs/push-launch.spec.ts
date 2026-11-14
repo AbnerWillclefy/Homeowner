@@ -10,6 +10,7 @@ import { signedInHandlers } from "../mocks/handlers/signedIn";
 import { todayHandlers } from "../mocks/handlers/today";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
+import { withoutBoot } from "../mocks/handlers/boot";
 import { launchApp } from "../pages/launch";
 
 // What this covers: the launch re-subscribe to push reminders on a device that already granted permission and has
@@ -54,6 +55,7 @@ test.describe("permission granted, subscription exists", () => {
 
     test("starts after Today's first load settles, not before", async ({ page, baseURL, fakeApi }) => {
       fakeApi.use(signedInHandlers);
+      withoutBoot(fakeApi);
       const dayPlan = hold(page, /\/home\/day-plan$/);
       await launchApp(page, baseURL!);
 

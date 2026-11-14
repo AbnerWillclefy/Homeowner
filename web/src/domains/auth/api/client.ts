@@ -11,6 +11,7 @@ import type { TokenKeeper } from "../logic/tokenKeeper";
 import { config } from "../../../shared/config";
 import { createBaseClient } from "../../../shared/api/http";
 import { refuseAbsoluteUrl } from "../../../shared/api/absoluteUrl";
+import { boot } from "../../../app/logic/boot";
 
 export type AuthedResult =
   | { kind: "response"; response: AxiosResponse }
@@ -81,10 +82,15 @@ export function createApiClient(deps: ApiClientDeps): AxiosInstance {
   return client;
 }
 
-/** Sends a request through the client. Only "no usable session" becomes a result; every other error throws. */
-export function createAuthedRequest(client: AxiosInstance) {
+/**
+ * Sends a request through the client. Only "no usable session" becomes a result; every other error throws.
+ * A launch read the boot already answered is served from it instead (`take`, ADR 0016); everything else is sent.
+ */
+export function createAuthedRequest(client: AxiosInstance, served: Pick<typeof boot, "take"> = boot) {
   return async function authedRequest(request: AxiosRequestConfig): Promise<AuthedResult> {
     try {
+      const fromBoot = await served.take(request);
+      if (fromBoot !== null) return { kind: "response", response: fromBoot };
       return { kind: "response", response: await client.request(request) };
     } catch (error) {
       if (error instanceof NotSignedIn) return { kind: "not-signed-in" };
