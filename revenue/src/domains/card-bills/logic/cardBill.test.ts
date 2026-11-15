@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { CardTransaction } from "../api";
 import { readBillDays } from "./billDays";
-import { billRows } from "./cardBill";
+import { billRows, billSplit, pickCard } from "./cardBill";
 
-const row = (over: Partial<CardTransaction>): CardTransaction => ({ id: "t1", sourceId: "s1", description: "x", postedOn: "2030-01-02", countsOn: "2030-02-05", amountCents: -1000, installment: null, ...over });
+const row = (over: Partial<CardTransaction>): CardTransaction => ({ id: "t1", sourceId: "s1", description: "x", postedOn: "2030-01-02", countsOn: "2030-02-05", amountCents: -1000, installment: null, spendingCategory: null, ...over });
 
 describe("billRows", () => {
   it("keeps the card's rows counted in the month, newest first, by source id and not name", () => {
@@ -26,5 +26,30 @@ describe("readBillDays", () => {
     expect(readBillDays("3", "")).toEqual({ ok: false, errors: { dueDay: "required" } });
     expect(readBillDays("0", "32")).toEqual({ ok: false, errors: { closeDay: "invalid", dueDay: "invalid" } });
     expect(readBillDays("1.5", "x")).toEqual({ ok: false, errors: { closeDay: "invalid", dueDay: "invalid" } });
+  });
+});
+
+describe("billSplit", () => {
+  it("sorts the rows into installments, subscriptions and purchases, and adds up to the rows", () => {
+    const rows = [
+      row({ id: "a", amountCents: -1000 }),
+      row({ id: "b", amountCents: -2500, installment: { number: 1, total: 3 } }),
+      row({ id: "c", amountCents: -400, spendingCategory: "subscriptions" }),
+      row({ id: "d", amountCents: -900, spendingCategory: "subscriptions", installment: { number: 2, total: 2 } }),
+      row({ id: "e", amountCents: 200 }),
+    ];
+    const split = billSplit(rows);
+    expect(split).toEqual({ purchasesCents: 800, installmentsCents: 3400, subscriptionsCents: 400 });
+    expect(split.purchasesCents + split.installmentsCents + split.subscriptionsCents).toBe(-rows.reduce((n, r) => n + r.amountCents, 0));
+  });
+});
+
+describe("pickCard", () => {
+  const cards = [{ sourceId: "a" }, { sourceId: "b" }];
+  it("takes the named card, else the first", () => {
+    expect(pickCard(cards, "b")).toBe(cards[1]);
+    expect(pickCard(cards, "gone")).toBe(cards[0]);
+    expect(pickCard(cards, null)).toBe(cards[0]);
+    expect(pickCard([], "a")).toBeUndefined();
   });
 });

@@ -27,6 +27,21 @@ export interface CardSource {
   name: string;
   closeDay: number | null;
   dueDay: number | null;
+  /** The limit the bank reports, null when it gives none. */
+  creditLimitCents: number | null;
+}
+
+/** One closed bill of a card: the month it closes in and the bank's total. */
+export interface PastBill {
+  closesOn: string;
+  dueOn: string;
+  totalCents: number;
+}
+
+/** A card's closed bills, oldest first, with their average (null when there are none). */
+export interface PastBills {
+  bills: PastBill[];
+  averageCents: number | null;
 }
 
 /** One Transaction of a card. `amountCents` is signed: negative is money out. */
@@ -39,6 +54,8 @@ export interface CardTransaction {
   countsOn: string;
   amountCents: number;
   installment: { number: number; total: number } | null;
+  /** The API's Spending Category id, null while none is set. */
+  spendingCategory: string | null;
 }
 
 export type BillDaysResult = { kind: "ok" } | { kind: "fields"; fields: Record<string, string> } | { kind: "not-found" } | { kind: "error" };
@@ -58,18 +75,22 @@ function parseCard(v: unknown): CardBill | null {
 
 function parseSource(v: unknown): CardSource | null {
   if (!isRecord(v)) return null;
-  const { id, name, closeDay, dueDay } = v;
+  const { id, name, closeDay, dueDay, creditLimitCents } = v;
   if (typeof id !== "string" || typeof name !== "string") return null;
-  const day = (d: unknown) => (isInt(d) ? d : null);
-  return { id, name, closeDay: day(closeDay), dueDay: day(dueDay) };
+  const int = (d: unknown) => (isInt(d) ? d : null);
+  return { id, name, closeDay: int(closeDay), dueDay: int(dueDay), creditLimitCents: int(creditLimitCents) };
 }
 
 function parseTransaction(v: unknown): CardTransaction | null {
   if (!isRecord(v)) return null;
-  const { id, sourceId, description, postedOn, countsOn, amountCents, installment } = v;
+  const { id, sourceId, description, postedOn, countsOn, amountCents, installment, spendingCategory = null } = v;
   if (![id, sourceId, description, postedOn, countsOn].every((s) => typeof s === "string") || !isInt(amountCents)) return null;
   const parts = isRecord(installment) && isInt(installment.number) && isInt(installment.total);
-  return { id, sourceId, description, postedOn, countsOn, amountCents, installment: parts ? { number: installment.number, total: installment.total } : null } as CardTransaction;
+  return {
+    id, sourceId, description, postedOn, countsOn, amountCents,
+    installment: parts ? { number: installment.number, total: installment.total } : null,
+    spendingCategory: typeof spendingCategory === "string" ? spendingCategory : null,
+  } as CardTransaction;
 }
 
 async function readRows<T>(client: AxiosInstance, url: string, params: Record<string, string> | undefined, pick: (body: unknown) => unknown, parse: (v: unknown) => T | null): Promise<T[]> {
@@ -97,6 +118,25 @@ export const getCardSources = (client: AxiosInstance = apiClient) =>
 /** `GET /me/finance/transactions?month=`: the rows whose `countsOn` is in `month`. */
 export const getMonthTransactions = (month: string, client: AxiosInstance = apiClient) =>
   readRows(client, "/me/finance/transactions", { month }, (b) => (isRecord(b) ? b.transactions : null), parseTransaction);
+
+function parsePastBill(v: unknown): PastBill | null {
+  if (!isRecord(v)) return null;
+  const { closesOn, dueOn, totalCents } = v;
+  if (typeof closesOn !== "string" || typeof dueOn !== "string" || !isInt(totalCents)) return null;
+  return { closesOn, dueOn, totalCents };
+}
+
+/** `GET /me/finance/card-bills?source=&months=`: the card's closed bills, oldest first, and their average. Throws on any failure. */
+export async function getPastBills(sourceId: string, months = 6, client: AxiosInstance = apiClient): Promise<PastBills> {
+  const url = "/me/finance/card-bills";
+  const response = await client.get(url, { params: { source: sourceId, months: String(months) } });
+  if (response.status !== 200) throw new Error(`GET ${url} answered ${response.status}`);
+  const body: unknown = response.data;
+  const bills = isRecord(body) && Array.isArray(body.bills) ? body.bills.map(parsePastBill) : null;
+  const average = isRecord(body) ? body.averageCents : undefined;
+  if (!bills || bills.some((b) => b === null) || (average !== null && !isInt(average))) throw new Error(`GET ${url} answered a malformed body`);
+  return { bills: bills as PastBill[], averageCents: average };
+}
 
 /** `PUT /me/finance/sources/{id}/bill-days`: both days, or both null to clear. A 400 carries the API's field codes. */
 export async function putBillDays(sourceId: string, closeDay: number | null, dueDay: number | null, client: AxiosInstance = apiClient): Promise<BillDaysResult> {
