@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -90,6 +91,66 @@ func TestListAccountsKeepsABillDayOnlyWithItsPair(t *testing.T) {
 				t.Errorf("ListAccounts = %+v, %v, want close %d due %d", accts, err, tc.close, tc.due)
 			}
 		})
+	}
+}
+
+// The limit is a card's, in reais: absent, null, unreadable or non-BRL gives nil, never an error.
+func TestListAccountsReadsACardsCreditLimit(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, account string
+		want          int64 // -1: nil
+	}{
+		{"whole reais", `"currencyCode":"BRL","creditData":{"creditLimit":5067}`, 506700},
+		{"decimal reais", `"currencyCode":"BRL","creditData":{"creditLimit":1234.56}`, 123456},
+		{"null", `"currencyCode":"BRL","creditData":{"creditLimit":null}`, -1},
+		{"no creditData", `"currencyCode":"BRL"`, -1},
+		{"unreadable", `"currencyCode":"BRL","creditData":{"creditLimit":"lots"}`, -1},
+		{"not BRL", `"currencyCode":"USD","creditData":{"creditLimit":5067}`, -1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				fmt.Fprintf(w, `{"results":[{"id":"a","type":"CREDIT","subtype":"CREDIT_CARD","name":"Card",%s}]}`, tc.account)
+			}))
+			t.Cleanup(srv.Close)
+			accts, err := pluggy.NewHTTP(srv.URL).ListAccounts(context.Background(), "key", "item")
+			if err != nil || len(accts) != 1 {
+				t.Fatalf("ListAccounts = %+v, %v", accts, err)
+			}
+			if got := accts[0].CreditLimitCents; (tc.want < 0) != (got == nil) || got != nil && *got != tc.want {
+				t.Errorf("limit = %v, want %d", got, tc.want)
+			}
+		})
+	}
+}
+
+// Both committed captures carry the limit: the sandbox card and a real card read through MeuPluggy.
+func TestFixtureCardsCarryACreditLimit(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		dir  string
+		want int64
+	}{{"sandbox", 30000000}, {"meupluggy", 506700}} {
+		body, err := os.ReadFile("pluggytest/testdata/" + tc.dir + "/accounts.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(body) }))
+		t.Cleanup(srv.Close)
+		accts, err := pluggy.NewHTTP(srv.URL).ListAccounts(context.Background(), "key", "item")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var limits []int64
+		for _, a := range accts {
+			if a.CreditLimitCents != nil {
+				limits = append(limits, *a.CreditLimitCents)
+			}
+		}
+		if len(limits) != 1 || limits[0] != tc.want {
+			t.Errorf("%s limits = %v, want [%d] (the card only)", tc.dir, limits, tc.want)
+		}
 	}
 }
 

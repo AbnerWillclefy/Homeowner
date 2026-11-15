@@ -61,6 +61,9 @@ type SourceResponse struct {
 	// with no balance read yet.
 	BalanceCents *int64  `json:"balanceCents,omitempty"`
 	BalanceOn    *string `json:"balanceOn,omitempty"`
+	// CreditLimitCents is a card's credit limit as its bank reports it; absent
+	// on any other kind and on a card whose connector gives none.
+	CreditLimitCents *int64 `json:"creditLimitCents,omitempty"`
 }
 
 // BillDaysRequest is the body of PUT /me/finance/sources/{id}/bill-days: both
@@ -348,4 +351,20 @@ type NetWorthToday struct {
 type NetWorthPoint struct {
 	Day   string `json:"day"`
 	Cents int64  `json:"cents"`
+}
+
+// PastBill is one closed card bill of GET /me/finance/card-bills.
+type PastBill struct {
+	ClosesOn   string `json:"closesOn"` // YYYY-MM-DD
+	DueOn      string `json:"dueOn"`
+	TotalCents int64  `json:"totalCents"`
+}
+
+// PastCardBillsResponse is the answer of GET /me/finance/card-bills: the closed
+// bills, oldest first, never null. AverageCents is over the bills returned (fewer
+// than asked for when the bank sent fewer), null when there are none.
+type PastCardBillsResponse struct {
+	SourceID     string     `json:"sourceId"`
+	Bills        []PastBill `json:"bills"`
+	AverageCents *int64     `json:"averageCents"`
 }
