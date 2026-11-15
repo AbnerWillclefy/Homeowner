@@ -20,3 +20,10 @@ const MAX_CENTS = 1_000_000_000_000; // backend maxBillCents, enforced by PutBud
 /** A limit to save: whole cents above zero, up to the backend maximum. Zero or empty is not a limit; removing one is a separate action. */
 export const isValidLimit = (cents: number | null): cents is number =>
   cents !== null && Number.isInteger(cents) && cents > 0 && cents <= MAX_CENTS;
+
+/** What a batch edit must write: the drafts that differ from `before`. A null draft removes a limit, so it only counts where one is set. */
+export function changedLimits(before: Limits, drafts: Partial<Record<SpendingCategory, number | null>>): { category: SpendingCategory; cents: number | null }[] {
+  return (Object.entries(drafts) as [SpendingCategory, number | null][])
+    .filter(([category, cents]) => (before[category] ?? null) !== cents)
+    .map(([category, cents]) => ({ category, cents }));
+}

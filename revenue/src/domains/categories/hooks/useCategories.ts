@@ -1,5 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
+import { getBills } from "../../bills/api";
+import { billsKey } from "../../bills/hooks/useBills";
 import { getHistory, getSpending, putBudget, type Spending } from "../api";
 import type { SpendingCategory } from "../logic/categories";
 import { withLimit } from "../logic/limit";
@@ -14,10 +16,15 @@ export function useSpending(month: string) {
   return { data: query.data, loading: query.isPending, failed: query.isError && !query.data, reload: () => void query.refetch() };
 }
 
-/** The months ending at `to`. Its own query, so a failed read hides only the history. */
-export function useHistory(to: string) {
-  const query = useQuery({ queryKey: ["finance", "history", to, HISTORY_MONTHS], queryFn: () => getHistory(to, HISTORY_MONTHS) });
+/** The `months` ending at `to`. Its own query, so a failed read hides only the history. */
+export function useHistory(to: string, months = HISTORY_MONTHS) {
+  const query = useQuery({ queryKey: ["finance", "history", to, months], queryFn: () => getHistory(to, months) });
   return { data: query.data, failed: query.isError && !query.data, reload: () => void query.refetch() };
+}
+
+/** The month's Bills, for the card that says where they went. The same query as the Bills screen; a failed read leaves the card out. */
+export function useMonthBills(month: string) {
+  return useQuery({ queryKey: billsKey(month), queryFn: () => getBills(month) }).data ?? [];
 }
 
 /**

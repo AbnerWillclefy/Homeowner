@@ -14,6 +14,8 @@ export interface Transaction {
   /** `YYYY-MM-DD`. */
   postedOn: string;
   description: string;
+  /** The Source the row came from; empty when the API sent none. */
+  sourceName: string;
   amountCents: number;
   type: string;
   spendingCategory: SpendingCategory | null;
@@ -47,7 +49,7 @@ function parseTransaction(v: unknown): Transaction | null {
   if (![id, postedOn, description, type].every((s) => typeof s === "string") || !Number.isInteger(amountCents)) return null;
   if (spendingCategory !== null && !isCategory(spendingCategory)) return null;
   const setBy = categorySetBy === "auto" || categorySetBy === "user" || categorySetBy === "fallback" ? categorySetBy : null;
-  return { id, postedOn, description, amountCents, type, spendingCategory, categorySetBy: setBy } as Transaction;
+  return { id, postedOn, description, sourceName: typeof v.sourceName === "string" ? v.sourceName : "", amountCents, type, spendingCategory, categorySetBy: setBy } as Transaction;
 }
 
 /** Every row of `rows` through `parse`; throws when `rows` is no array or a row is malformed. */
