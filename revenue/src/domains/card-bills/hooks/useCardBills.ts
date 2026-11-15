@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { addMonths } from "../../bills/logic/month";
+import { addMonths } from "../../../shared/month/month";
 import { getCardBills, getCardSources, getMonthTransactions, putBillDays, type BillDaysResult } from "../api";
 
 /**

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { useI18n } from "../../shared/i18n/I18nProvider";
 import { useMediaQuery } from "../../shared/useMediaQuery";
-import { addMonths, monthFromParam, monthLabel, saoPauloDay } from "../bills/logic/month";
+import { addMonths, monthFromParam, monthLabel, saoPauloDay } from "../../shared/month/month";
 import { BillDaysSheet } from "./components/BillDaysSheet";
 import { CardBillCard } from "./components/CardBillCard";
 import { useCardBills, useSaveBillDays } from "./hooks/useCardBills";

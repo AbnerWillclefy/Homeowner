@@ -19,11 +19,22 @@ export function monthFromParam(value: string | null, thisMonth: Month): Month {
   return value !== null && /^\d{4}-(0[1-9]|1[0-2])$/.test(value) && value <= thisMonth ? value : thisMonth;
 }
 
+/** Formats a date with the month's first letter capitalised: pt-BR writes "janeiro". */
+function format(date: Date, locale: string, options: Intl.DateTimeFormatOptions): string {
+  return new Intl.DateTimeFormat(locale, options)
+    .formatToParts(date)
+    .map((p) => (p.type === "month" ? p.value.charAt(0).toLocaleUpperCase(locale) + p.value.slice(1) : p.value))
+    .join("");
+}
+
 /** The month's name with its first letter capitalised (pt-BR writes "janeiro") and the year: "Novembro de 2026". */
 export function monthLabel(month: Month, locale: string): string {
   const [y, m] = month.split("-").map(Number) as [number, number];
-  return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" })
-    .formatToParts(new Date(y, m - 1, 1))
-    .map((p) => (p.type === "month" ? p.value.charAt(0).toLocaleUpperCase(locale) + p.value.slice(1) : p.value))
-    .join("");
+  return format(new Date(y, m - 1, 1), locale, { month: "long", year: "numeric" });
+}
+
+/** A due date (`YYYY-MM-DD`) as day and month, read as a calendar date so no time zone moves it. */
+export function formatDay(date: string, locale: string): string {
+  const [y, m, d] = date.split("-").map(Number) as [number, number, number];
+  return format(new Date(y, m - 1, d), locale, { day: "numeric", month: "short" });
 }

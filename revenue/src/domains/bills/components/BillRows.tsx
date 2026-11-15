@@ -1,10 +1,11 @@
-import { Button, Menu, Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@homeowner/bedrock";
-import { Amount, formatAmount } from "@homeowner/bedrock/finance";
+import { Badge, Button, Menu } from "@homeowner/bedrock";
+import { Amount, CategoryIcon, formatAmount, ListRow } from "@homeowner/bedrock/finance";
 import { Check, Pencil, Trash2, Undo2 } from "lucide-react";
+import { useHiddenProps, useHideValues } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
+import { formatDay } from "../../../shared/month/month";
 import type { Bill } from "../api";
 import { billState, type BillState } from "../logic/billState";
-import { formatDay } from "../logic/month";
 import { BillStatus } from "./BillStatus";
 
 interface RowsProps {
@@ -19,12 +20,13 @@ interface RowsProps {
   onDelete(bill: Bill): void;
 }
 
-/** Both amounts when what was paid differs from what was expected, said plainly. */
+/** Both amounts when what was paid differs from what was expected, said plainly (left out while values are hidden: it is a string). */
 function useNote() {
   const { t, locale } = useI18n();
+  const { hidden } = useHideValues();
   return (bill: Bill, state: BillState) => {
     if (state === "overdue") return t("bills.overdueOn", { date: formatDay(bill.dueDate, locale) });
-    if (bill.paid && bill.paidCents !== null && bill.paidCents !== bill.expectedCents) {
+    if (!hidden && bill.paid && bill.paidCents !== null && bill.paidCents !== bill.expectedCents) {
       return t("bills.expectedPaid", { expected: formatAmount(bill.expectedCents, { locale }), paid: formatAmount(bill.paidCents, { locale }) });
     }
     if (state === "paid-bank") return t("bills.paidByBank");
@@ -33,11 +35,10 @@ function useNote() {
 }
 
 /** Mark paid or Undo, and the menu with Edit and Delete. A Bill paid by the bank has no Undo; a past month has no actions. */
-function Actions({ bill, state, today, busy, onPaid, onEdit, onDelete }: Omit<RowsProps, "rows" | "caption"> & { bill: Bill; state: BillState }) {
+function Actions({ bill, state, busy, onPaid, onEdit, onDelete }: Pick<RowsProps, "busy" | "onPaid" | "onEdit" | "onDelete"> & { bill: Bill; state: BillState }) {
   const { t } = useI18n();
-  if (today === null) return null;
   return (
-    <div className="flex flex-wrap items-center justify-end gap-1">
+    <div className="ml-auto flex items-center gap-1">
       {state === "paid-hand" ? (
         <Button variant="secondary" size="sm" icon={Undo2} loading={busy.has(bill.id)} onClick={() => onPaid(bill, false)}>
           {t("bills.undo")}<span className="sr-only">: {bill.name}</span>
@@ -59,76 +60,48 @@ function Actions({ bill, state, today, busy, onPaid, onEdit, onDelete }: Omit<Ro
   );
 }
 
-/** Desktop width: a table by due date. */
-export function BillsTable({ rows, caption, today, ...actions }: RowsProps) {
-  const { t, locale } = useI18n();
-  const note = useNote();
-  return (
-    <Table>
-      <TableCaption className="sr-only">{caption}</TableCaption>
-      <TableHeader>
-        <TableRow>
-          <TableHead>{t("bills.col.due")}</TableHead>
-          <TableHead>{t("bills.col.name")}</TableHead>
-          <TableHead>{t("bills.col.status")}</TableHead>
-          <TableHead align="end">{t("bills.col.amount")}</TableHead>
-          {today !== null && <TableHead align="end">{t("bills.col.actions")}</TableHead>}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.map((bill) => {
-          const state = billState(bill, today);
-          return (
-            <TableRow key={bill.id}>
-              <TableCell className="whitespace-nowrap text-text-muted">{formatDay(bill.dueDate, locale)}</TableCell>
-              <TableCell>
-                <span className="body-strong [overflow-wrap:anywhere]">{bill.name}</span>
-                {note(bill, state) && <p className="caption text-text-muted [overflow-wrap:anywhere]">{note(bill, state)}</p>}
-              </TableCell>
-              <TableCell>
-                <BillStatus state={state} />
-              </TableCell>
-              <TableCell align="end">
-                <Amount cents={bill.expectedCents} size="sm" locale={locale} />
-              </TableCell>
-              {today !== null && (
-                <TableCell align="end">
-                  <Actions bill={bill} state={state} today={today} {...actions} />
-                </TableCell>
-              )}
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
-  );
-}
-
-/** Phone width: a list. The actions wrap under the name at the largest text instead of squeezing it. */
-export function BillsList({ rows, caption, today, ...actions }: RowsProps) {
-  const { t, locale } = useI18n();
+/** One row per Bill, by due date. The actions wrap under the row at the largest text instead of squeezing it. */
+export function BillRows({ rows, caption, today, ...actions }: RowsProps) {
+  const { locale, t } = useI18n();
+  const hidden = useHiddenProps();
   const note = useNote();
   return (
     <ul aria-label={caption} className="divide-y divide-border">
       {rows.map((bill) => {
         const state = billState(bill, today);
-        const detail = [t("bills.dueOn", { date: formatDay(bill.dueDate, locale) }), note(bill, state)].filter(Boolean).join(" · ");
+        const subtitle = [t("bills.dueOn", { date: formatDay(bill.dueDate, locale) }), note(bill, state)].filter(Boolean).join(" · ");
         return (
-          <li key={bill.id} className="flex flex-col gap-2 py-3">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex min-w-0 flex-col gap-1">
+          <li key={bill.id} className="flex flex-wrap items-center gap-x-2">
+            <div className="flex min-w-0 flex-1 basis-56 items-center gap-4 py-2">
+              <CategoryIcon category="other" />
+              <span className="flex min-w-0 flex-1 flex-col">
                 <span className="body-strong [overflow-wrap:anywhere]">{bill.name}</span>
-                <span className="caption text-text-muted [overflow-wrap:anywhere]">{detail}</span>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <Amount cents={bill.expectedCents} size="sm" locale={locale} />
-                <BillStatus state={state} />
-              </div>
+                <span className="caption text-text-muted [overflow-wrap:anywhere]">{subtitle}</span>
+              </span>
+              <span className="flex shrink-0 flex-col items-end whitespace-nowrap">
+                <Amount cents={bill.expectedCents} size="sm" locale={locale} {...hidden} />
+                <span className="caption text-text-muted"><BillStatus state={state} /></span>
+              </span>
             </div>
-            <Actions bill={bill} state={state} today={today} {...actions} />
+            {today !== null && <Actions bill={bill} state={state} {...actions} />}
           </li>
         );
       })}
+    </ul>
+  );
+}
+
+/** Next month's Bills, read-only: name, due date and amount. */
+export function NextMonthRows({ rows, caption }: { rows: Bill[]; caption: string }) {
+  const { locale } = useI18n();
+  const hidden = useHiddenProps();
+  return (
+    <ul aria-label={caption} className="divide-y divide-border">
+      {rows.map((bill) => (
+        <li key={bill.id}>
+          <ListRow leading={<CategoryIcon category="other" />} title={bill.name} cents={bill.expectedCents} end={<Badge>{formatDay(bill.dueDate, locale)}</Badge>} locale={locale} {...hidden} />
+        </li>
+      ))}
     </ul>
   );
 }

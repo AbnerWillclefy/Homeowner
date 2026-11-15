@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Bill } from "../api";
 import { billInputOf, billFieldErrorKey, readDay } from "./billForm";
-import { billState, summarise, withPaid } from "./billState";
-import { addMonths, formatDay, monthFromParam, saoPauloDay } from "./month";
+import { billState, filterBills, summarise, withPaid } from "./billState";
 
 const bill = (over: Partial<Bill> = {}): Bill => ({
   id: "b1", name: "Aluguel", expectedCents: 100000, dueDay: 5, dueDate: "2030-01-05", paid: false, paidBy: null, paidCents: null, ...over,
@@ -47,13 +46,12 @@ describe("billInputOf", () => {
   });
 });
 
-describe("month", () => {
-  it("counts today in São Paulo, not on the device", () => expect(saoPauloDay(new Date("2030-01-01T02:30:00Z"))).toBe("2029-12-31"));
-  it("steps and clamps months", () => {
-    expect(addMonths("2030-01", -1)).toBe("2029-12");
-    expect(monthFromParam("2030-03", "2030-02")).toBe("2030-02");
-    expect(monthFromParam("junk", "2030-02")).toBe("2030-02");
-    expect(monthFromParam("2029-11", "2030-02")).toBe("2029-11");
+describe("filterBills", () => {
+  const rows = [bill({ id: "a" }), bill({ id: "b", paid: true, paidBy: "hand" }), bill({ id: "c", paid: true, paidBy: "bank" }), bill({ id: "d", dueDate: "2030-01-30" })];
+  const ids = (f: "all" | "pending" | "paid") => filterBills(rows, f, "2030-01-10").map((b) => b.id);
+  it("keeps all, the unpaid, or the paid by hand or bank", () => {
+    expect(ids("all")).toEqual(["a", "b", "c", "d"]);
+    expect(ids("pending")).toEqual(["a", "d"]);
+    expect(ids("paid")).toEqual(["b", "c"]);
   });
-  it("writes a due date as day and month", () => expect(formatDay("2030-01-05", "en")).toBe("Jan 5"));
 });
