@@ -43,6 +43,7 @@ export interface HistoryMonth {
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
 const isNum = (v: unknown) => typeof v === "number" && Number.isFinite(v);
+const optStr = (v: unknown) => v === undefined || v === null || typeof v === "string";
 const optNum = (v: unknown) => v === undefined || isNum(v);
 const list = (v: unknown, line: (x: Record<string, unknown>) => boolean) => Array.isArray(v) && v.every((x) => isObject(x) && line(x));
 
@@ -63,7 +64,7 @@ function parseCommitments(body: unknown): Commitments | null {
       isObject(m) &&
       typeof m.month === "string" &&
       list(m.installments, (i) => typeof i.name === "string" && isNum(i.number) && isNum(i.total) && isNum(i.amountCents)) &&
-      list(m.cards, (c) => typeof c.sourceId === "string" && typeof c.name === "string" && isNum(c.amountCents) && typeof c.billDaysKnown === "boolean") &&
+      list(m.cards, (c) => typeof c.sourceId === "string" && typeof c.name === "string" && isNum(c.amountCents) && typeof c.billDaysKnown === "boolean" && optStr(c.dueOn) && optStr(c.closesOn)) &&
       list(m.otherBills, (b) => typeof b.id === "string" && typeof b.name === "string" && isNum(b.cents) && typeof b.paid === "boolean") &&
       isNum(m.otherInstallmentsCents) &&
       list(m.planned, (p) => typeof p.category === "string" && isNum(p.cents)) &&

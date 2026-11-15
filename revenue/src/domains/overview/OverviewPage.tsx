@@ -50,7 +50,7 @@ export function OverviewPage() {
             {({ month: data, monthlyIncomeCents }) => <HeroCard data={data} income={monthlyIncomeCents} month={month} />}
           </Block>
           <Block label={t("nav.bills")} failed={t("overview.failed.bills")} state={bills}>
-            {(list) => <BillsAlert bills={list} today={current ? today : null} setPaid={bills.setPaid} notice={bills.notice} />}
+            {(list) => <BillsAlert key={month} bills={list} today={current ? today : null} setPaid={bills.setPaid} notice={bills.notice} />}
           </Block>
           <Block label={t("overview.result.heading")} failed={t("overview.failed.result")} state={history}>
             {(months) => <ResultCard history={months} month={month} current={current} />}

@@ -29,6 +29,11 @@ describe("getCommitments", () => {
     get.mockResolvedValue({ status: 200, data: { monthlyIncomeCents: 1, months: [{ ...month, pace: { spentCents: "x", lineEndCents: 1 } }] } });
     await expect(getCommitments("2026-11")).rejects.toThrow();
   });
+  it("rejects a card whose dueOn is not a string", async () => {
+    const card = { sourceId: "s", name: "Nubank", amountCents: 1, billDaysKnown: true, dueOn: 5 };
+    get.mockResolvedValue({ status: 200, data: { monthlyIncomeCents: 1, months: [{ ...month, cards: [card] }] } });
+    await expect(getCommitments("2026-11")).rejects.toThrow();
+  });
   it("keeps the installments of each month", async () => {
     const installments = [{ name: "Geladeira", number: 2, total: 4, amountCents: 30000 }];
     get.mockResolvedValue({ status: 200, data: { monthlyIncomeCents: 1500, months: [{ ...month, installments }] } });
