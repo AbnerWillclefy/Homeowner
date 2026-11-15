@@ -37,11 +37,24 @@ type GoalResponse struct {
 type StatusResponse struct {
 	Configured bool             `json:"configured"`
 	Sources    []SourceResponse `json:"sources"`
+	// Items is one entry per connected bank, never null.
+	Items []ItemResponse `json:"items"`
 	// Importing is true while any Item has not finished its first import.
 	Importing bool `json:"importing"`
 	// LastSyncedAt is the oldest sync across the Items, null while any has
 	// never synced.
 	LastSyncedAt *time.Time `json:"lastSyncedAt"`
+}
+
+// ItemResponse is one bank connection and whether it works.
+type ItemResponse struct {
+	ID string `json:"id"`
+	// BankName is the institution's name, null until the first sync or connect after the column existed.
+	BankName *string `json:"bankName"`
+	// Status is "ok" or "reconnect" (ItemWireStatus).
+	Status string `json:"status"`
+	// Products is the number of the Item's Sources.
+	Products int `json:"products"`
 }
 
 // SourceResponse is one bank account or card the User connected.

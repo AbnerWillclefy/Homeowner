@@ -633,7 +633,7 @@ func (h *Handler) ConnectItem(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusUnprocessableEntity, "no supported accounts")
 		return
 	}
-	if err := h.store.ConnectItem(r.Context(), identity.CurrentUser(r.Context()).ID, req.ItemID, h.clk.Now(), sources); err != nil {
+	if err := h.store.ConnectItem(r.Context(), identity.CurrentUser(r.Context()).ID, req.ItemID, h.clk.Now(), item, sources); err != nil {
 		httpx.InternalError(w, h.log, "finance: connect item", err)
 		return
 	}

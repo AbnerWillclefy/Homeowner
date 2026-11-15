@@ -106,10 +106,10 @@ type NewSource struct {
 }
 
 // ConnectItem stores the User's Item and its Sources in one transaction.
-// Calling it again changes no row count: the Item is kept as it was and each
+// Calling it again changes no row count: the Item keeps its row (its status and name are refreshed) and each
 // Source is refreshed in place, except a card's bill days, which Pluggy fills
 // only while the card has none, and a card's credit limit, kept when Pluggy sends none.
-func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, now time.Time, sources []NewSource) error {
+func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, now time.Time, item pluggy.Item, sources []NewSource) error {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
@@ -118,9 +118,9 @@ func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, no
 	var itemID string
 	// DO UPDATE with the same value, so RETURNING gives the id on a repeat too.
 	err = tx.QueryRow(ctx, `
-		INSERT INTO finance_items (user_id, pluggy_item_id, connected_at) VALUES ($1, $2, $3)
-		ON CONFLICT (user_id, pluggy_item_id) DO UPDATE SET pluggy_item_id = EXCLUDED.pluggy_item_id
-		RETURNING id`, userID, pluggyItemID, now).Scan(&itemID)
+		INSERT INTO finance_items (user_id, pluggy_item_id, connected_at, status, execution_status, connector_name) VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (user_id, pluggy_item_id) DO UPDATE SET status = EXCLUDED.status, execution_status = EXCLUDED.execution_status, connector_name = EXCLUDED.connector_name
+		RETURNING id`, userID, pluggyItemID, now, item.Status, item.ExecutionStatus, item.ConnectorName).Scan(&itemID)
 	if err != nil {
 		return err
 	}
@@ -142,9 +142,16 @@ func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, no
 	return tx.Commit(ctx)
 }
 
+// SetItemStatus stores what Pluggy last said about the Item and its institution's name.
+func (s *Store) SetItemStatus(ctx context.Context, itemID string, item pluggy.Item) error {
+	_, err := s.db.Exec(ctx, `UPDATE finance_items SET status = $2, execution_status = $3, connector_name = $4 WHERE id = $1`,
+		itemID, item.Status, item.ExecutionStatus, item.ConnectorName)
+	return err
+}
+
 // Overview reads the whole status body: Sources, import state and credentials flag.
 func (s *Store) Overview(ctx context.Context, userID string) (StatusResponse, error) {
-	out := StatusResponse{Sources: []SourceResponse{}}
+	out := StatusResponse{Sources: []SourceResponse{}, Items: []ItemResponse{}}
 	rows, err := s.db.Query(ctx, `SELECT s.id, COALESCE(s.display_name, s.name) AS shown, s.name, s.kind, s.currency, s.bill_close_day, s.bill_due_day,
 			b.balance_cents, to_char(b.day, 'YYYY-MM-DD'), s.credit_limit_cents
 		FROM finance_sources s
@@ -162,6 +169,26 @@ func (s *Store) Overview(ctx context.Context, userID string) (StatusResponse, er
 		out.Sources = append(out.Sources, src)
 	}
 	if err := rows.Err(); err != nil {
+		return out, err
+	}
+	// One row per Item with its Source count; a null status (not read since the columns existed) is "ok".
+	irows, err := s.db.Query(ctx, `SELECT i.id, i.connector_name, COALESCE(i.status, ''), COALESCE(i.execution_status, ''), count(s.id)
+		FROM finance_items i LEFT JOIN finance_sources s ON s.item_id = i.id
+		WHERE i.user_id = $1 GROUP BY i.id ORDER BY i.connected_at, i.id`, userID)
+	if err != nil {
+		return out, err
+	}
+	defer irows.Close()
+	for irows.Next() {
+		var it ItemResponse
+		var status, exec string
+		if err := irows.Scan(&it.ID, &it.BankName, &status, &exec, &it.Products); err != nil {
+			return out, err
+		}
+		it.Status = ItemWireStatus(status, exec)
+		out.Items = append(out.Items, it)
+	}
+	if err := irows.Err(); err != nil {
 		return out, err
 	}
 	// The oldest sync, or null while any Item has never synced.

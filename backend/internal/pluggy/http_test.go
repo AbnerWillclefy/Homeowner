@@ -41,7 +41,7 @@ func TestItemAndAccounts(t *testing.T) {
 	ctx := context.Background()
 
 	item, err := c.GetItem(ctx, pluggytest.APIKey, pluggytest.ItemID)
-	if err != nil || item.ID != pluggytest.ItemID || item.Status != "UPDATED" {
+	if err != nil || item.ID != pluggytest.ItemID || item.Status != "UPDATED" || item.ConnectorName != "Pluggy Bank" || item.ExecutionStatus != "SUCCESS" {
 		t.Fatalf("GetItem = %+v, %v", item, err)
 	}
 	if _, err := c.GetItem(ctx, pluggytest.APIKey, pluggytest.UnknownItemID); !errors.Is(err, pluggy.ErrNotFound) {
