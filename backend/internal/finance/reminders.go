@@ -19,8 +19,8 @@ const (
 
 // Reminders sends the push reminders for Bills to pay. It follows
 // nudge.Nudger: a ledger row is claimed first, so a repeated run sends nothing
-// twice, and delivery is at most once. A User has notifications off exactly
-// when they have no push subscription.
+// twice, and delivery is at most once. A User has Bill reminders off exactly
+// when they have no Revenue push subscription.
 type Reminders struct {
 	store  *Store
 	subs   *push.Store
