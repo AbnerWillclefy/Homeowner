@@ -1,33 +1,35 @@
 import { Button, Card, CardContent, CardHeader, CardLabel, ProgressBar } from "@homeowner/bedrock";
-import { Amount, formatAmount, MoneyInput } from "@homeowner/bedrock/finance";
+import { Amount, MoneyInput } from "@homeowner/bedrock/finance";
 import { Pencil } from "lucide-react";
 import { useState } from "react";
+import { useHiddenProps } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
 import type { Savings } from "../api";
+import { useMoney } from "../hooks/useMoney";
 import type { SaveOutcome } from "../hooks/useSavings";
 import { progressPercent, reserveTargetOf, whenOf } from "../logic/savings";
-import { MonthLine } from "./MonthLine";
+import { GoalFacts } from "./GoalFacts";
 import { SettingSheet } from "./SettingSheet";
 
 type Write = (cents: number | null) => Promise<SaveOutcome>;
 
 /** Reserva de emergência: the target, and how much of it the Investments marked for the reserve already cover. */
-export function ReserveCard({ savings, save }: { savings: Savings; save: Write }) {
+export function ReserveCard({ savings, save, where, className }: { savings: Savings; save: Write; where: string[]; className?: string }) {
   const { t, locale } = useI18n();
   const [open, setOpen] = useState(false);
   const target = savings.reserveTargetCents;
   const { savedCents: saved, monthCents } = savings.reserve;
-  const money = (cents: number) => formatAmount(cents, { locale });
+  const money = useMoney();
+  const hide = useHiddenProps();
   return (
-    <Card className="gap-3">
+    <Card className={className}>
       <CardHeader>
         <CardLabel>{t("goals.reserve.title")}</CardLabel>
       </CardHeader>
       {target !== null ? (
         <>
           <p className="flex flex-wrap items-baseline gap-x-2">
-            <Amount cents={saved} size="lg" locale={locale} />
-            <span className="caption text-text-muted">{t("goals.reserve.of", { amount: money(target) })}</span>
+            <Amount cents={saved} size="md" reference={target} locale={locale} {...hide} />
           </p>
           <ProgressBar
             tone="brand"
@@ -35,10 +37,9 @@ export function ReserveCard({ savings, save }: { savings: Savings; save: Write }
             max={target}
             label={t("goals.reserve.progress")}
             valueText={t("goals.saved", { saved: money(saved), target: money(target) })}
-            start={t("goals.saved", { saved: money(saved), target: money(target) })}
-            end={t("goals.percent", { percent: progressPercent(saved, target) })}
+            start={<strong>{t("goals.percent", { percent: progressPercent(saved, target) })}</strong>}
           />
-          <MonthLine monthCents={monthCents} when={whenOf({ ...savings.reserve, targetCents: target })} />
+          <GoalFacts monthCents={monthCents} when={whenOf({ ...savings.reserve, targetCents: target })} where={where} />
           <Button variant="secondary" icon={Pencil} className="self-start" onClick={() => setOpen(true)}>
             {t("goals.reserve.change")}
           </Button>

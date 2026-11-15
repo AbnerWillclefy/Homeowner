@@ -1,43 +1,73 @@
-import { Button, Card, CardContent, CardHeader, CardLabel, Input } from "@homeowner/bedrock";
+import { Button, Card, CardContent, CardHeader, CardLabel, Input, SegmentedControl } from "@homeowner/bedrock";
 import { Amount, formatAmount, MoneyInput } from "@homeowner/bedrock/finance";
 import { Pencil } from "lucide-react";
 import { useState } from "react";
+import { useHiddenProps } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
+import { useMonthParam } from "../../../shared/month/useMonthParam";
 import type { Savings } from "../api";
 import type { SaveOutcome } from "../hooks/useSavings";
-import { contributionOf, splitContribution } from "../logic/savings";
+import { contributionOf, shareOptions, splitContribution, splitParts } from "../logic/savings";
 import { SettingSheet } from "./SettingSheet";
 
 type Write = (value: { baseCents: number; reserveSharePercent: number } | null) => Promise<SaveOutcome>;
 
-/** Aporte mensal: how much is saved each month and the reserve's share of it. Set and changed in a sheet. */
-export function ContributionCard({ savings, save }: { savings: Savings; save: Write }) {
+/** Aporte do mês: how much is saved each month, the reserve's share of it (pick one, or change it in the sheet) and where it goes. */
+export function ContributionCard({ savings, save, className }: { savings: Savings; save: Write; className?: string }) {
   const { t, locale } = useI18n();
+  const { thisMonth } = useMonthParam();
+  const hide = useHiddenProps();
   const [open, setOpen] = useState(false);
+  const [failed, setFailed] = useState(false);
   const { contributionBaseCents: base, reserveSharePercent: share } = savings;
-  const split = base !== null && share !== null ? splitContribution(base, share) : null;
+  const month = new Intl.DateTimeFormat(locale, { month: "long" }).format(new Date(`${thisMonth}-01T12:00:00`));
+  const parts = splitParts({ name: t("goals.reserve.title"), cents: savings.reserve.monthCents }, savings.goals);
+  const total = parts.reduce((sum, p) => sum + p.cents, 0);
+  // Percentages, not money, so the spoken split does not give away hidden amounts.
+  const splitLabel = `${t("goals.contribution.split")}: ${parts.map((p) => `${p.name} ${Math.round((p.cents / total) * 100)}%`).join(", ")}`;
   return (
-    <Card className="gap-3">
-      <CardHeader>
-        <CardLabel>{t("goals.contribution.title")}</CardLabel>
+    <Card className={className}>
+      <CardHeader className="flex-row flex-wrap items-center justify-between gap-2">
+        <CardLabel>{base !== null && share !== null ? t("goals.contribution.month", { month }) : t("goals.contribution.title")}</CardLabel>
+        {base !== null && share !== null && (
+          <div className="flex items-center gap-2">
+            <span className="body text-text-muted">{t("goals.contribution.reserveTakes")}</span>
+            <SegmentedControl
+              label={t("goals.contribution.share")}
+              value={String(share)}
+              options={shareOptions(share).map((v) => ({ value: String(v), label: `${v}%` }))}
+              onValueChange={(v) => void save({ baseCents: base, reserveSharePercent: Number(v) }).then((r) => setFailed(r.kind !== "ok"))}
+            />
+          </div>
+        )}
       </CardHeader>
-      {split && base !== null && share !== null ? (
+      {base !== null && share !== null ? (
         <>
+          {failed && <p role="alert" className="caption text-danger">{t("goals.failed")}</p>}
           <p className="flex flex-wrap items-baseline gap-x-2">
-            <Amount cents={base} size="lg" locale={locale} />
+            <Amount cents={base} size="lg" locale={locale} {...hide} />
             <span className="caption text-text-muted">{t("goals.contribution.perMonth")}</span>
           </p>
-          <ul className="divide-y divide-border">
-            {[
-              [t("goals.contribution.reserveRow", { percent: share }), split.reserveCents],
-              [t("goals.contribution.goalsRow"), split.goalsCents],
-            ].map(([label, cents]) => (
-              <li key={label} className="flex flex-wrap items-center justify-between gap-x-3 py-2">
-                <span className="body [overflow-wrap:anywhere]">{label}</span>
-                <Amount cents={cents as number} size="sm" locale={locale} />
-              </li>
-            ))}
-          </ul>
+          {total > 0 && (
+            <>
+              <div role="img" aria-label={splitLabel} className="flex h-4 gap-1">
+                {parts.map((p) => (
+                  <div key={p.id} className="rounded-xs" style={{ width: `${(p.cents / total) * 100}%`, background: p.color }} />
+                ))}
+              </div>
+              <ul className="flex flex-col gap-2">
+                {parts.map((p) => (
+                  <li key={p.id} className="flex flex-wrap items-center justify-between gap-x-3">
+                    <span className="body flex min-w-0 items-center gap-2 text-text-muted">
+                      <i aria-hidden className="size-2.5 shrink-0 rounded-xs" style={{ background: p.color }} />
+                      <span className="[overflow-wrap:anywhere]">{p.name}</span>
+                    </span>
+                    <Amount cents={p.cents} size="sm" locale={locale} {...hide} />
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
           <Button variant="secondary" icon={Pencil} className="self-start" onClick={() => setOpen(true)}>
             {t("goals.contribution.change")}
           </Button>

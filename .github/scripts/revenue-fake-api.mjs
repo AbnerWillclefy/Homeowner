@@ -124,6 +124,7 @@ function savings(today) {
       { id: "g2", name: "Reforma da cozinha", targetCents: 2_500_000, targetMonth: null, savedCents: 300_000, monthCents: 0, expectedMonth: month(60), late: false },
     ],
     unassignedCents: 0,
+    leftover: { leftoverCents: 151_700, extraCents: 50_000, monthsSooner: 2 },
   };
 }
 
