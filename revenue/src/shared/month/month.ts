@@ -27,3 +27,9 @@ export function monthLabel(month: Month, locale: string): string {
     .map((p) => (p.type === "month" ? p.value.charAt(0).toLocaleUpperCase(locale) + p.value.slice(1) : p.value))
     .join("");
 }
+
+/** A posting date (`YYYY-MM-DD`) as day and short month ("5 de jan."), read as a calendar date so no time zone moves it. */
+export function formatDay(postedOn: string, locale: string): string {
+  const [y, m, d] = postedOn.split("-").map(Number) as [number, number, number];
+  return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(new Date(y, m - 1, d));
+}

@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { Transaction } from "../api";
 import { tagOf } from "./categories";
 import { editFor } from "./edit";
-import { filterRows } from "./filter";
-import { addMonths, monthFromParam, monthLabel } from "./month";
+import { filterRows, isFiltered, matchesQuery, NO_FILTER } from "./filter";
+import { groupByDay, sourceCount, totalsOf } from "./totals";
 
 const tx = (over: Partial<Transaction> = {}): Transaction => ({
   id: "t", postedOn: "2030-01-05", countsOn: "2030-01-05", description: "x", sourceName: "Nu", amountCents: -100,
@@ -28,26 +28,61 @@ describe("editFor", () => {
 describe("filterRows", () => {
   const rows = [tx({ id: "a" }), tx({ id: "b", spendingCategory: "pets" }), tx({ id: "c", type: "income", spendingCategory: null }), tx({ id: "d", spendingCategory: null })];
   const ids = (r: Transaction[]) => r.map((t) => t.id);
-  it("keeps everything with no filter", () => expect(ids(filterRows(rows, { type: "all", category: "all" }))).toEqual(["a", "b", "c", "d"]));
-  it("filters by type", () => expect(ids(filterRows(rows, { type: "income", category: "all" }))).toEqual(["c"]));
+  it("keeps everything with no filter", () => expect(ids(filterRows(rows, NO_FILTER))).toEqual(["a", "b", "c", "d"]));
+  it("filters by type", () => expect(ids(filterRows(rows, { ...NO_FILTER, type: "income" }))).toEqual(["c"]));
   it("filters by category, an uncategorised expense being Other", () => {
-    expect(ids(filterRows(rows, { type: "all", category: "pets" }))).toEqual(["b"]);
-    expect(ids(filterRows(rows, { type: "all", category: "other" }))).toEqual(["d"]);
+    expect(ids(filterRows(rows, { ...NO_FILTER, category: "pets" }))).toEqual(["b"]);
+    expect(ids(filterRows(rows, { ...NO_FILTER, category: "other" }))).toEqual(["d"]);
+  });
+  it("keeps only uncategorised Expenses for Revisar, not Income", () => {
+    expect(ids(filterRows(rows, { ...NO_FILTER, uncategorised: true }))).toEqual(["d"]);
+  });
+  it("says whether any filter is on", () => {
+    expect(isFiltered(NO_FILTER)).toBe(false);
+    expect(isFiltered({ ...NO_FILTER, query: "  " })).toBe(false);
+    expect(isFiltered({ ...NO_FILTER, query: "a" })).toBe(true);
+    expect(isFiltered({ ...NO_FILTER, uncategorised: true })).toBe(true);
   });
 });
 
-describe("month", () => {
-  it("moves across a year", () => {
-    expect(addMonths("2030-01", -1)).toBe("2029-12");
-    expect(addMonths("2029-12", 1)).toBe("2030-01");
+describe("matchesQuery", () => {
+  const cafe = tx({ description: "Café Pelé", sourceName: "Nubank crédito", amountCents: -123456 });
+  it("ignores case and accents, both ways", () => {
+    expect(matchesQuery(cafe, "cafe")).toBe(true);
+    expect(matchesQuery(cafe, "PELÉ")).toBe(true);
+    expect(matchesQuery(tx({ description: "Cafe" }), "café")).toBe(true);
   });
-  it("takes a real month up to this one, else this one", () => {
-    expect(monthFromParam("2030-01", "2030-03")).toBe("2030-01");
-    expect(monthFromParam("2030-04", "2030-03")).toBe("2030-03");
-    expect(monthFromParam("2030-13", "2030-03")).toBe("2030-03");
-    expect(monthFromParam(null, "2030-03")).toBe("2030-03");
+  it("finds the Source name", () => expect(matchesQuery(cafe, "nubank")).toBe(true));
+  it("reads an amount typed with or without separators", () => {
+    for (const typed of ["1.234,56", "1234,56", "1234.56", "123456"]) expect(matchesQuery(cafe, typed)).toBe(true);
+    expect(matchesQuery(cafe, "1.234,57")).toBe(false);
   });
-  it("capitalises the label", () => expect(monthLabel("2030-01", "pt-BR")).toBe("Janeiro de 2030"));
+  it("matches an income's amount by its size, not its sign", () => expect(matchesQuery(tx({ amountCents: 500000 }), "5.000")).toBe(true));
+  it("does not read digits inside words as an amount", () => expect(matchesQuery(cafe, "loja 99")).toBe(false));
+  it("keeps everything for an empty query", () => expect(matchesQuery(cafe, "  ")).toBe(true));
+});
+
+describe("totalsOf", () => {
+  const rows = [
+    tx({ id: "a", amountCents: -10000 }),
+    tx({ id: "refund", amountCents: 2000 }),
+    tx({ id: "u", amountCents: -500, spendingCategory: null }),
+    tx({ id: "i", type: "income", amountCents: 900000, spendingCategory: null }),
+    tx({ id: "s", type: "saving", amountCents: -60000, spendingCategory: null }),
+  ];
+  it("sums Expenses as what they cost, a refund coming off", () => expect(totalsOf(rows).spentCents).toBe(8500));
+  it("sums Income and counts uncategorised Expenses only", () => {
+    expect(totalsOf(rows).incomeCents).toBe(900000);
+    expect(totalsOf(rows).uncategorised).toBe(1);
+  });
+});
+
+describe("groupByDay", () => {
+  it("groups by posting day, newest first", () => {
+    const groups = groupByDay([tx({ id: "a", postedOn: "2030-01-05" }), tx({ id: "b", postedOn: "2030-01-07" }), tx({ id: "c", postedOn: "2030-01-05" })]);
+    expect(groups.map((g) => [g.day, g.rows.map((r) => r.id)])).toEqual([["2030-01-07", ["b"]], ["2030-01-05", ["a", "c"]]]);
+  });
+  it("counts Sources", () => expect(sourceCount([tx({ sourceName: "A" }), tx({ sourceName: "A" }), tx({ sourceName: "B" })])).toBe(2));
 });
 
 describe("tagOf", () => {

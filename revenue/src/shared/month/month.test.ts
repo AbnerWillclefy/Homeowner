@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMonths, monthFromParam, monthLabel, saoPauloDay } from "./month";
+import { addMonths, formatDay, monthFromParam, monthLabel, saoPauloDay } from "./month";
 
 describe("month helpers", () => {
   it("reads the day in São Paulo, not the device's", () => {
@@ -16,5 +16,9 @@ describe("month helpers", () => {
   it("capitalises the month name", () => {
     expect(monthLabel("2026-11", "pt-BR")).toBe("Novembro de 2026");
     expect(monthLabel("2026-11", "en")).toBe("November 2026");
+  });
+  it("writes a posting date as day and short month", () => {
+    expect(formatDay("2026-11-05", "en")).toBe("Nov 5");
+    expect(formatDay("2026-11-05", "pt-BR")).toBe("5 de nov.");
   });
 });
