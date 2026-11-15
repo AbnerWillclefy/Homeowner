@@ -66,7 +66,7 @@ export function GoalsPage() {
             {data.leftover && <LeftoverCard leftover={data.leftover} className="desktop:col-span-4" />}
             <ReserveCard savings={data} save={saveReserve} where={serving("reserve")} className="desktop:col-span-4" />
             <GoalsList goals={data.goals} where={serving("goals")} reorder={reorder} onEdit={(goal) => setForm({ goal })} onDelete={(goal) => { setDeleteFailed(false); setDeleting(goal); }} />
-            {data.goals.length === 0 && <EmptyState icon={Target} title={t("goals.empty.title")} message={t("goals.empty.message")} />}
+            {data.goals.length === 0 && <div className="desktop:col-span-8"><EmptyState icon={Target} title={t("goals.empty.title")} message={t("goals.empty.message")} /></div>}
           </div>
           <InvestmentsSection
             investments={data.investments}

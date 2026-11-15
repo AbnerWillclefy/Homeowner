@@ -290,6 +290,26 @@ describe("Left this month", () => {
     expect(within(card).queryByRole("button")).toBeNull();
   });
 
+  it("uses the singular for one month and drops the missing parts", async () => {
+    serve({ ...SAVINGS, leftover: { ...LEFTOVER, monthsSooner: 1 } });
+    open();
+    expect(await screen.findByText(/That brings the next goal 1 month closer\./)).toBeTruthy();
+  });
+
+  it("leaves the sooner sentence out without months, and the paragraph out without an extra", async () => {
+    serve({ ...SAVINGS, leftover: { ...LEFTOVER, monthsSooner: null } });
+    open();
+    expect(await screen.findByText(/You could contribute R\$500 more this month\./)).toBeTruthy();
+    expect(screen.queryByText(/closer/)).toBeNull();
+  });
+
+  it("hides the extra paragraph when there is no extra", async () => {
+    serve({ ...SAVINGS, leftover: { ...LEFTOVER, extraCents: 0 } });
+    open();
+    expect(await screen.findByText("Left this month")).toBeTruthy();
+    expect(screen.queryByText(/You could contribute/)).toBeNull();
+  });
+
   it("is absent when the API sends no leftover", async () => {
     serve();
     open();
