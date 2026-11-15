@@ -143,6 +143,15 @@ func (s *Syncer) authenticate(ctx context.Context, it DueItem) (string, error) {
 // window re-reads the last refreshDays up to today. A window cut off mid-way is simply read
 // again next run: the upsert makes that harmless.
 func (s *Syncer) syncItem(ctx context.Context, it DueItem, apiKey string, now, today time.Time, deadline time.Time, sum *Summary) (bool, error) {
+	// Recorded first, so a broken Item still says why; a failure only logs, like the balances below.
+	if item, err := s.pluggy.GetItem(ctx, apiKey, it.PluggyItemID); err == nil {
+		err = s.store.SetItemStatus(ctx, it.ID, item)
+		if err != nil {
+			s.log.Error("finance sync failed", "user", it.UserID, "step", "item status", "error", safeErr(err))
+		}
+	} else {
+		s.log.Error("finance sync failed", "user", it.UserID, "step", "item status", "error", safeErr(err))
+	}
 	// Fills the bill days of a card that has none, such as a Source connected before they were kept; days the User typed stay.
 	accounts, err := s.pluggy.ListAccounts(ctx, apiKey, it.PluggyItemID)
 	if err != nil {
