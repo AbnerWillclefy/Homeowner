@@ -49,3 +49,9 @@ func RefreshStatementTimeout(ctx context.Context, db *pgxpool.Pool, homeID strin
 func ReserveLLMCall(ctx context.Context, q querier, homeID string, date allocation.Date, limit int) (bool, error) {
 	return reserveLLMCall(ctx, q, homeID, date, limit)
 }
+
+// WithTickBudgetContext replaces how RunDue makes its LLM budget context, so a
+// test spends the budget itself instead of waiting on a timer.
+func WithTickBudgetContext(f func(context.Context, time.Duration) (context.Context, context.CancelFunc)) Option {
+	return func(p *Planner) { p.tickBudgetCtx = f }
+}

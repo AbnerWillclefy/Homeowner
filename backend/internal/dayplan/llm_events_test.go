@@ -172,9 +172,12 @@ func TestASpentBudgetIsRecordedAsSkippedBudgetButStillFallsBackAsTimeout(t *test
 	app.Clock.Set(apitest.MondayAt(7))
 	fake := llmalloc.NewFakeClient()
 	fake.Block()
-	p := dayplan.New(app.DB, allocation.Baseline{}, slog.New(slog.NewJSONHandler(app.Logs, nil)),
-		dayplan.WithLLM(dayplan.LLMConfig{Proposer: llmalloc.New(fake), DailyCap: 3, CallTimeout: 5 * time.Second,
-			TickBudget: 100 * time.Millisecond, Model: "claude-haiku-5-5"}))
+	// The test spends the budget from inside the first call, so no timer
+	// decides which Home calls.
+	opt, spend := spendableBudget()
+	p := dayplan.New(app.DB, allocation.Baseline{}, slog.New(slog.NewJSONHandler(app.Logs, nil)), opt,
+		dayplan.WithLLM(dayplan.LLMConfig{Proposer: peek{llmalloc.New(fake), spend}, DailyCap: 3, CallTimeout: 5 * time.Second,
+			Model: "claude-haiku-5-5"}))
 
 	if _, err := p.RunDue(context.Background(), app.Clock.Now()); err != nil {
 		t.Fatal(err)

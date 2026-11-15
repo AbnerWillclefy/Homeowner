@@ -332,6 +332,17 @@ func (p peek) Propose(ctx context.Context, st allocation.State) (llmalloc.Propos
 	return p.Allocator.Propose(ctx, st)
 }
 
+// spendableBudget returns an Option that makes the tick's LLM budget a plain
+// cancelable context, and the func that spends it.
+func spendableBudget() (dayplan.Option, func()) {
+	var cancel context.CancelFunc
+	opt := dayplan.WithTickBudgetContext(func(ctx context.Context, _ time.Duration) (context.Context, context.CancelFunc) {
+		ctx, cancel = context.WithCancel(ctx)
+		return ctx, cancel
+	})
+	return opt, func() { cancel() }
+}
+
 func TestWithTheLLMOffTheBaselinePlansAndNothingIsAFallback(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
@@ -366,7 +377,8 @@ func TestNothingToPlanSpendsNoCall(t *testing.T) {
 
 // The LLM has one time budget per tick, so slow calls cannot push the tick past
 // the Lambda's timeout: once it is spent, the remaining Homes are not asked and
-// fall back as a timeout, without spending their cap.
+// fall back as a timeout, without spending their cap. The test spends the
+// budget from inside the first call, so no timer decides which Home calls.
 func TestATickStopsAskingTheLLMWhenItsBudgetIsSpent(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
@@ -379,8 +391,9 @@ func TestATickStopsAskingTheLLMWhenItsBudgetIsSpent(t *testing.T) {
 	app.Clock.Set(apitest.MondayAt(7))
 	fake := llmalloc.NewFakeClient()
 	fake.Block()
-	p := dayplan.New(app.DB, allocation.Baseline{}, slog.New(slog.NewJSONHandler(app.Logs, nil)),
-		dayplan.WithLLM(dayplan.LLMConfig{Proposer: llmalloc.New(fake), DailyCap: 3, CallTimeout: 5 * time.Second, TickBudget: 100 * time.Millisecond}))
+	opt, spend := spendableBudget()
+	p := dayplan.New(app.DB, allocation.Baseline{}, slog.New(slog.NewJSONHandler(app.Logs, nil)), opt,
+		dayplan.WithLLM(dayplan.LLMConfig{Proposer: peek{llmalloc.New(fake), spend}, DailyCap: 3, CallTimeout: 5 * time.Second}))
 
 	start := time.Now()
 	sum, err := p.RunDue(context.Background(), app.Clock.Now())
