@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMonths, monthFromParam, monthLabel, saoPauloDay } from "./month";
+import { addMonths, formatDay, monthFromParam, monthLabel, saoPauloDay } from "./month";
 
 describe("month helpers", () => {
   it("reads the day in São Paulo, not the device's", () => {
@@ -17,4 +17,5 @@ describe("month helpers", () => {
     expect(monthLabel("2026-11", "pt-BR")).toBe("Novembro de 2026");
     expect(monthLabel("2026-11", "en")).toBe("November 2026");
   });
+  it("writes a due date as day and month", () => expect(formatDay("2030-01-05", "en")).toBe("Jan 5"));
 });
