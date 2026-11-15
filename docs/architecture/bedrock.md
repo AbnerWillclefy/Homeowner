@@ -2,12 +2,12 @@
 
 Related: [ADR 0022](../adr/0022-a-shared-bedrock-design-system-amends-0007-and-0009-for-adopting-apps.md), [ADR 0007](../adr/0007-tailwind-and-radix-for-an-accessible-calm-ui.md), [ADR 0009](../adr/0009-navigate-with-a-bottom-tab-router-and-amend-the-look.md). Spec: [`docs/design/bedrock/`](../design/bedrock/README.md). Adoption guide: [`bedrock/README.md`](../../bedrock/README.md).
 
-Bedrock is built: a package of tokens and React components in `bedrock/`, with a showcase app to see them. No app adopts it yet (planned: the migration epics of `web/` and `admin/`, and Revenue). Until one does, nothing changes for a Resident, the backend, the database, Terraform or the cost: Bedrock is a library, not a deployed container, and its showcase is built only in CI.
+Bedrock is built: a package of tokens and React components in `bedrock/`, with a showcase app to see them. [Revenue](revenue.md) is the one app built on it; `web/` and `admin/` do not use it yet (planned: their migration epics). Bedrock is a library, not a deployed container: it ships inside Revenue's build, and its showcase is built only in CI.
 
 ## The package
 
 - **`@homeowner/bedrock`**, version 0.1.0, `private`: TypeScript and CSS source with no build step, never published. An app's own Vite build compiles it.
-- **One npm workspace.** The root `package.json` lists only `bedrock` in `workspaces`, and the root `package-lock.json` is its lockfile. `web/` and `admin/` keep their own lockfiles and CI, so a Bedrock dependency bump cannot break their installs.
+- **One npm workspace.** The root `package.json` lists `bedrock` and `revenue` in `workspaces`, and the root `package-lock.json` is their lockfile, so Revenue imports `@homeowner/bedrock` from source. `web/` and `admin/` keep their own lockfiles and CI, so a Bedrock dependency bump cannot break their installs.
 - **Peers:** `react`, `react-dom`, `radix-ui`, `vaul` (the phone form of `Sheet`) and `recharts` (charts). The app provides them, so there is one React.
 - **Its own dependencies:** `@fontsource/inter`, `class-variance-authority`, `clsx`, `tailwind-merge`, `lucide-react` (icons) and `tw-animate-css`.
 
@@ -17,11 +17,13 @@ Three exports in `bedrock/package.json`, two layers. Core never imports Finance:
 
 | Export | File | Exports |
 |---|---|---|
-| `@homeowner/bedrock` (Core) | `src/index.ts` | `Input`, `SearchField`, `Select`, `Badge`, `Banner`, `Button`, `Switch`, `SegmentedControl`, `ProgressBar` and `progressTone`, `Card` (with `CardHeader`, `CardLabel`, `CardContent`, `CardFooter`), `EmptyState`, `Toast` and `ToastProvider`, `Dialog`, `Sheet`, `Skeleton`, `Table` (with `TableCaption`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`), `ChartContainer` and `ChartTooltipContent`, `Tooltip`, `Menu` (with `menuContentClass`, `menuItemClass`), `Sidebar`, `BottomBar`, the type `NavItem`, and the components' props types |
+| `@homeowner/bedrock` (Core) | `src/index.ts` | `Input`, `SearchField`, `Select`, `Badge`, `Banner`, `Button`, `Switch`, `SegmentedControl`, `ProgressBar` and `progressTone`, `Card` (with `CardHeader`, `CardLabel`, `CardContent`, `CardFooter`), `EmptyState`, `Toast` and `ToastProvider`, `Dialog`, `Sheet`, `Skeleton`, `Table` (with `TableCaption`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`), `ChartContainer` and `ChartTooltipContent`, `Tooltip`, `Menu` (with `menuContentClass`, `menuItemClass`), `Sidebar` and `SidebarBrand`, `BottomBar`, the type `NavItem`, and the components' props types |
 | `@homeowner/bedrock/finance` (Finance) | `src/finance/index.ts` | `MoneyInput` and `parseCents`, `CategoryTag`, `CategoryIcon` and the type `SpendingCategoryId`, `Amount` and `formatAmount`, `StatCard`, `ListRow`, `AlertCard`, `PaceChart`, `DonutChart`, `BarChart`, and the charts' props types |
 | `@homeowner/bedrock/tokens.css` | `src/tokens.css` | The tokens, the Tailwind theme, the type utilities and `touch-target` |
 
 That is the 30 components of the spec's Inventory: 21 in Core, 9 in Finance. Every export is named and `"sideEffects": ["*.css"]` is declared, so an app's production bundle drops what it does not import, Recharts included.
+
+**Navigation.** A `NavItem` is `{href, label, icon, current?, badge?}`. `badge` is `{count, label}`: `Sidebar` and `BottomBar` show the count (capped at "9+", nothing at 0 or less), and `label` is its screen-reader wording, so the link reads "Contas a pagar, 3 contas em aberto". `Sidebar` also takes `brand` (a node above the groups; `SidebarBrand` is the mark and the app name, the name dropping out of the icon-only rail) and `note` (a line above the footer, shown only in the wide layout, such as Revenue's "Atualizado há"). The Revenue Shell is the one user of all three (#707).
 
 ## Token flow
 
@@ -38,12 +40,12 @@ flowchart LR
     UTIL["Tailwind utilities<br/>bg-surface, text-text, page-title..."]
     COMP["Components, src/components and src/finance"]
     SHOW["Showcase, bedrock/showcase"]
-    APP["Adopting apps (planned)"]
+    APP["Revenue (web and admin planned)"]
     SPEC -->|"copied by hand,<br/>checked by tokens.test.ts"| RAW
     SW -->|"picks the dark or light block"| RAW
     TW --> UTIL --> COMP
     COMP --> SHOW
-    COMP -.-> APP
+    COMP --> APP
 ```
 
 - **Two tiers of colour.** Primitives (`--green-73`) hold raw values; semantic tokens (`--surface`) point to one primitive per theme. Only semantic colours become utilities: `@theme inline` resets `--color-*` and maps each semantic token, so a utility reads the variable at run time and follows the theme.
