@@ -2,6 +2,11 @@
 
 Bedrock follows semver; before 1.0.0 a minor may break ([spec](../docs/design/bedrock/README.md)).
 
+## 0.3.0
+
+- NavItem: optional `badge` (`{ count, label }`) shows a warning count on the Sidebar (beside the label, or on the icon in the rail) and on the BottomBar tab; `label` joins the link's accessible name. A count of 0 shows nothing.
+- Sidebar: optional `note` above the footer (hidden in the rail), and the exported `SidebarBrand` (mark plus name).
+
 ## 0.2.0
 
 - ProgressBar: optional `tone` fixes the fill colour, so a bar that must not alarm stays `brand` past its target.

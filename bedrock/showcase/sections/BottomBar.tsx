@@ -12,6 +12,7 @@ const strings = {
     transactions: "Transações",
     planning: "Planejamento financeiro",
     more: "Mais",
+    badge: "3 contas em aberto",
     hint: "Moldura de 390px. O terceiro rótulo é longo de propósito e é cortado.",
   },
   en: {
@@ -21,6 +22,7 @@ const strings = {
     transactions: "Transactions",
     planning: "Long-term financial planning",
     more: "More",
+    badge: "3 bills open",
     hint: "390px frame. The third label is long on purpose and gets truncated.",
   },
 };
@@ -37,7 +39,7 @@ export default function BottomBarSection({ locale }: { locale: Locale }) {
           label={t.nav}
           items={[
             tab("#overview", t.overview, LayoutDashboard),
-            tab("#transactions", t.transactions, Receipt),
+            { ...tab("#transactions", t.transactions, Receipt), badge: { count: 3, label: t.badge } },
             tab("#planning", t.planning, PiggyBank),
             tab("#more", t.more, Ellipsis),
           ]}
