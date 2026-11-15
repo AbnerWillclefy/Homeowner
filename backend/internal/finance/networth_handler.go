@@ -15,6 +15,8 @@ var netWorthRanges = map[string]int{"30d": 30, "90d": 90, "1y": 365}
 // other value is 400): today's Net worth with its parts and a daily series of
 // balances plus Investments. The card bills come from the month outlook of the
 // current and next two months (a bill closing late can fall due two months on), those not yet past their due date (UnpaidCardBills).
+// MonthStart and MonthChange (see NetWorthResponse) come from the same history, read from the earlier of the range start and the month start.
+// Today's Investments come from each Investment's current value and the start from its history; they agree because every value change writes history.
 func (h *Handler) NetWorth(w http.ResponseWriter, r *http.Request) {
 	rng := r.URL.Query().Get("range")
 	if rng == "" {
@@ -29,9 +31,14 @@ func (h *Handler) NetWorth(w http.ResponseWriter, r *http.Request) {
 	today := postedOn(h.clk.Now())
 	from := today.AddDate(0, 0, 1-days)
 	month := time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC)
+	startDay := month.AddDate(0, 0, -1)
+	read := from
+	if startDay.Before(read) {
+		read = startDay
+	}
 	fail := func(err error) { httpx.InternalError(w, h.log, "finance: read net worth", err) }
 
-	balances, err := h.store.BalanceHistory(ctx, uid, from, today)
+	balances, err := h.store.BalanceHistory(ctx, uid, read, today)
 	if err != nil {
 		fail(err)
 		return
@@ -41,7 +48,7 @@ func (h *Handler) NetWorth(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteJSON(w, http.StatusOK, res)
 		return
 	}
-	values, err := h.store.InvestmentValues(ctx, uid, from, today)
+	values, err := h.store.InvestmentValues(ctx, uid, read, today)
 	if err != nil {
 		fail(err)
 		return
@@ -68,6 +75,11 @@ func (h *Handler) NetWorth(w http.ResponseWriter, r *http.Request) {
 	res.HasData, res.Today = true, (*NetWorthToday)(&n)
 	for _, p := range NetWorthSeries(balances, values, from, today) {
 		res.Series = append(res.Series, NetWorthPoint{Day: p.Day.Format(time.DateOnly), Cents: p.Cents})
+	}
+	if s := MonthStart(balances, values, startDay); s != nil {
+		res.MonthStart = &NetWorthStart{startDay.Format(time.DateOnly), s.BalancesCents, s.InvestmentsCents}
+		b, i := n.BalancesCents-s.BalancesCents, n.InvestmentsCents-s.InvestmentsCents
+		res.MonthChange = &NetWorthChange{b, i, b + i}
 	}
 	httpx.WriteJSON(w, http.StatusOK, res)
 }

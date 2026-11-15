@@ -101,12 +101,14 @@ type NewSource struct {
 	PluggyAccountID, Kind, Name, Currency string
 	// CloseDay and DueDay are a card's bill days; 0 stores null.
 	CloseDay, DueDay int
+	// CreditLimitCents is a card's limit; nil keeps the stored one.
+	CreditLimitCents *int64
 }
 
 // ConnectItem stores the User's Item and its Sources in one transaction.
 // Calling it again changes no row count: the Item keeps its row (its status and name are refreshed) and each
 // Source is refreshed in place, except a card's bill days, which Pluggy fills
-// only while the card has none.
+// only while the card has none, and a card's credit limit, kept when Pluggy sends none.
 func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, now time.Time, item pluggy.Item, sources []NewSource) error {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
@@ -124,14 +126,15 @@ func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, no
 	}
 	for _, src := range sources {
 		_, err = tx.Exec(ctx, `
-			INSERT INTO finance_sources (user_id, item_id, pluggy_account_id, kind, name, currency, bill_close_day, bill_due_day)
-			VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, 0), NULLIF($8, 0))
+			INSERT INTO finance_sources (user_id, item_id, pluggy_account_id, kind, name, currency, bill_close_day, bill_due_day, credit_limit_cents)
+			VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, 0), NULLIF($8, 0), CASE WHEN $4 = 'credit_card' THEN $9::bigint END)
 			ON CONFLICT (item_id, pluggy_account_id) DO UPDATE SET kind = $4, name = $5, currency = $6,
+				credit_limit_cents = CASE WHEN $4 = 'credit_card' THEN COALESCE($9::bigint, finance_sources.credit_limit_cents) END,
 				bill_close_day = CASE WHEN finance_sources.bill_close_day IS NULL AND finance_sources.bill_due_day IS NULL
 					THEN NULLIF($7, 0) ELSE finance_sources.bill_close_day END,
 				bill_due_day = CASE WHEN finance_sources.bill_close_day IS NULL AND finance_sources.bill_due_day IS NULL
 					THEN NULLIF($8, 0) ELSE finance_sources.bill_due_day END`,
-			userID, itemID, src.PluggyAccountID, src.Kind, src.Name, src.Currency, src.CloseDay, src.DueDay)
+			userID, itemID, src.PluggyAccountID, src.Kind, src.Name, src.Currency, src.CloseDay, src.DueDay, src.CreditLimitCents)
 		if err != nil {
 			return err
 		}
@@ -150,7 +153,7 @@ func (s *Store) SetItemStatus(ctx context.Context, itemID string, item pluggy.It
 func (s *Store) Overview(ctx context.Context, userID string) (StatusResponse, error) {
 	out := StatusResponse{Sources: []SourceResponse{}, Items: []ItemResponse{}}
 	rows, err := s.db.Query(ctx, `SELECT s.id, COALESCE(s.display_name, s.name) AS shown, s.name, s.kind, s.currency, s.bill_close_day, s.bill_due_day,
-			b.balance_cents, to_char(b.day, 'YYYY-MM-DD')
+			b.balance_cents, to_char(b.day, 'YYYY-MM-DD'), s.credit_limit_cents
 		FROM finance_sources s
 		LEFT JOIN LATERAL (SELECT day, balance_cents FROM finance_source_balances WHERE source_id = s.id ORDER BY day DESC LIMIT 1) b ON true
 		WHERE s.user_id = $1 ORDER BY shown, s.id`, userID)
@@ -160,7 +163,7 @@ func (s *Store) Overview(ctx context.Context, userID string) (StatusResponse, er
 	defer rows.Close()
 	for rows.Next() {
 		var src SourceResponse
-		if err := rows.Scan(&src.ID, &src.Name, &src.BankName, &src.Kind, &src.Currency, &src.CloseDay, &src.DueDay, &src.BalanceCents, &src.BalanceOn); err != nil {
+		if err := rows.Scan(&src.ID, &src.Name, &src.BankName, &src.Kind, &src.Currency, &src.CloseDay, &src.DueDay, &src.BalanceCents, &src.BalanceOn, &src.CreditLimitCents); err != nil {
 			return out, err
 		}
 		out.Sources = append(out.Sources, src)
@@ -278,6 +281,23 @@ func (s *Store) SetBillDays(ctx context.Context, itemID string, accounts []plugg
 	return nil
 }
 
+// SetCreditLimits stores the limits Pluggy reports on the Item's card Sources.
+// The bank always wins, but an account with no limit keeps the stored one, so a
+// flaky connector does not blank it; an account the Item does not hold is ignored.
+func (s *Store) SetCreditLimits(ctx context.Context, itemID string, accounts []pluggy.Account) error {
+	for _, a := range accounts {
+		if a.CreditLimitCents == nil {
+			continue
+		}
+		_, err := s.db.Exec(ctx, `UPDATE finance_sources SET credit_limit_cents = $3
+			WHERE item_id = $1 AND pluggy_account_id = $2 AND kind = 'credit_card'`, itemID, a.ID, *a.CreditLimitCents)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // SetBillDaysByHand stores the days a User typed on one of their card Sources,
 // or clears both with nil. found is false for another User's Source and for any
 // Source that is not a credit card.
@@ -333,6 +353,32 @@ func (s *Store) CardBillsDue(ctx context.Context, userID string, from, to time.T
 		out = append(out, b)
 	}
 	return out, rows.Err()
+}
+
+// PastCardBills returns the latest n bills of the User's card Source that closed
+// on or before today, oldest first. found is false for another User's Source, an
+// unknown one and a Source that is not a card.
+func (s *Store) PastCardBills(ctx context.Context, userID, sourceID string, today time.Time, n int) (bills []StoredBill, found bool, err error) {
+	if err := s.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM finance_sources WHERE user_id = $1 AND id = $2 AND kind = 'credit_card')`,
+		userID, sourceID).Scan(&found); err != nil || !found {
+		return nil, false, err
+	}
+	rows, err := s.db.Query(ctx, `SELECT closes_on, due_on, total_cents FROM (
+			SELECT closes_on, due_on, total_cents FROM finance_card_bills
+			WHERE user_id = $1 AND source_id = $2 AND closes_on <= $3 ORDER BY due_on DESC LIMIT $4) latest
+		ORDER BY due_on`, userID, sourceID, today, n)
+	if err != nil {
+		return nil, true, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var b StoredBill
+		if err := rows.Scan(&b.ClosesOn, &b.DueOn, &b.TotalCents); err != nil {
+			return nil, true, err
+		}
+		bills = append(bills, b)
+	}
+	return bills, true, rows.Err()
 }
 
 // FinishSync marks the Item imported and synced at now.

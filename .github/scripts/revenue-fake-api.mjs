@@ -15,7 +15,7 @@ const DESCRIPTIONS = [
 ];
 
 const SOURCES = [
-  { id: "s1", name: "Nubank", bankName: "Nubank", kind: "credit_card", currency: "BRL", closeDay: 8, dueDay: 15 },
+  { id: "s1", name: "Nubank", bankName: "Nubank", kind: "credit_card", currency: "BRL", closeDay: 8, dueDay: 15, creditLimitCents: 1_200_000 },
   { id: "s3", name: "Itaú Visa", bankName: "Itaú", kind: "credit_card", currency: "BRL", closeDay: null, dueDay: null },
   { id: "s2", name: "Itaú", bankName: "Itaú", kind: "checking", currency: "BRL", closeDay: null, dueDay: null },
 ];
@@ -139,10 +139,12 @@ function netWorth(today, range) {
       cents: 1_700_000 + i * (300_000 / days) + (i % 7) * 12_000,
     })).map((p) => ({ ...p, cents: Math.round(p.cents) })),
     seriesExcludesCardBills: true,
+    monthStart: { day: new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 1, 0)).toISOString().slice(0, 10), balancesCents: 600_000, investmentsCents: 1_250_000 },
+    monthChange: { balancesCents: 50_000, investmentsCents: 100_000, totalCents: 150_000 },
   };
 }
 
-/** The six months ending at `to`, each with a little less spent in groceries the further back it goes. */
+/** The six months ending at `to`, each with a little less spent in groceries the further back it goes, and the same income and saved. */
 function history(to, months) {
   const [y, m] = to.split("-").map(Number);
   return {
@@ -151,9 +153,22 @@ function history(to, months) {
       const index = y * 12 + (m - 1) - (months - 1 - i);
       const month = `${Math.floor(index / 12)}-${pad((index % 12) + 1)}`;
       const groceries = 28_740 + (i - months + 1) * 3_000;
-      return { month, spentCents: groceries + 8_990, categories: [{ category: "groceries", spentCents: groceries }, { category: "eating_out", spentCents: 8_990 }] };
+      // Income and saved are fixed, spent grows by month, so the result changes against the month before.
+      return { month, incomeCents: 980_000, spentCents: groceries + 8_990, savedCents: 120_000, categories: [{ category: "groceries", spentCents: groceries }, { category: "eating_out", spentCents: 8_990 }] };
     }),
   };
+}
+
+/** Six closed bills of s1, oldest first, and none for the card the bank sends no bills for. */
+function pastCardBills(sourceId, today) {
+  if (sourceId !== "s1") return { sourceId, bills: [], averageCents: null };
+  const [y, m] = today.split("-").map(Number);
+  const bills = Array.from({ length: 6 }, (_, i) => {
+    const index = y * 12 + (m - 1) - (6 - i);
+    const month = `${Math.floor(index / 12)}-${pad((index % 12) + 1)}`;
+    return { closesOn: `${month}-08`, dueOn: `${month}-15`, totalCents: 240_000 + i * 8_000 };
+  });
+  return { sourceId, bills, averageCents: bills.reduce((sum, b) => sum + b.totalCents, 0) / bills.length };
 }
 
 /** The answer to a request, or null when there is no fake for it. `today` is `YYYY-MM-DD`. */
@@ -164,6 +179,7 @@ export function answer(method, url, today) {
   if (route === "GET /me/finance/transactions") return { status: 200, body: transactions(params.get("month"), today) };
   if (route === "GET /me/finance/history") return { status: 200, body: history(params.get("to"), Number(params.get("months"))) };
   if (route === "GET /me/finance/commitments") return { status: 200, body: commitments(params.get("from"), today) };
+  if (route === "GET /me/finance/card-bills") return { status: 200, body: pastCardBills(params.get("source"), today) };
   if (route === "GET /me/finance/bills") return { status: 200, body: bills(params.get("month")) };
   if (route === "GET /me/finance/bill-suggestions") return { status: 200, body: [{ merchantKey: "enel", name: "Conta de luz Enel", amountCents: 21_480, dueDay: 10 }] };
   if (route === "GET /me/finance/net-worth") return { status: 200, body: netWorth(today, params.get("range")) };

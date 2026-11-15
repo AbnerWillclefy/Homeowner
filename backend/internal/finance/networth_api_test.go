@@ -18,6 +18,11 @@ type netWorthBody struct {
 		Cents int64
 	}
 	SeriesExcludesCardBills bool
+	MonthStart              *struct {
+		Day                             string
+		BalancesCents, InvestmentsCents int64
+	}
+	MonthChange *struct{ BalancesCents, InvestmentsCents, TotalCents int64 }
 }
 
 func readNetWorth(t *testing.T, c *apitest.Client, query string) netWorthBody {
@@ -122,7 +127,7 @@ func TestNetWorthWithoutASyncedBalanceSaysThereIsNothingToShow(t *testing.T) {
 	newInvestment(t, ana, "CDB", 50000, "reserve")
 	res := ana.Get("/me/finance/net-worth")
 	apitest.ExpectStatus(t, res, http.StatusOK)
-	if res.Body["hasData"] != false || res.Body["today"] != nil {
+	if res.Body["hasData"] != false || res.Body["today"] != nil || res.Body["monthStart"] != nil || res.Body["monthChange"] != nil {
 		t.Errorf("body = %s, want hasData false and today null", res.Raw)
 	}
 	if s, ok := res.Body["series"].([]any); !ok || len(s) != 0 {
@@ -135,4 +140,84 @@ func TestNetWorthRefusesAnUnknownRangeAndAUserOffTheAllowlist(t *testing.T) {
 	app, ana, _ := twoUsers(t)
 	apitest.ExpectStatus(t, ana.Get("/me/finance/net-worth?range=7d"), http.StatusBadRequest)
 	apitest.ExpectStatus(t, app.SignInAs("eve@example.com").Get("/me/finance/net-worth"), http.StatusForbidden)
+}
+
+// balanceOn stores a balance for the fixture's checking account (today 43701.43; the second Source holds 1000.00).
+func balanceOn(t *testing.T, app *apitest.App, day string, cents int64) {
+	t.Helper()
+	exec(t, app, `INSERT INTO finance_source_balances (user_id, source_id, day, balance_cents)
+		SELECT user_id, id, $1, $2 FROM finance_sources WHERE kind = 'checking'`, day, cents)
+}
+
+func TestNetWorthChangeSinceTheMonthStart(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name        string
+		now         time.Time
+		seed        func(t *testing.T, app *apitest.App)
+		query       string
+		start       string
+		balances    int64 // start balances
+		investments int64 // start Investments, as a change from today's
+		wantBalChg  int64
+		wantInvChg  int64
+	}{
+		{name: "values before the month start: the last one counts", seed: func(t *testing.T, app *apitest.App) {
+			balanceOn(t, app, "2026-10-25", 1)
+			balanceOn(t, app, "2026-10-30", 4000000)
+			balanceOn(t, app, "2026-11-03", 4200000)
+		}, start: "2026-10-31", balances: 4000000 + 100000, wantBalChg: 4470143 - 4100000},
+		{name: "a value exactly on the start day", seed: func(t *testing.T, app *apitest.App) {
+			balanceOn(t, app, "2026-10-31", 4300000)
+		}, start: "2026-10-31", balances: 4300000 + 100000, wantBalChg: 4470143 - 4400000},
+		{name: "no value before the month start: the first of the month, change 0", seed: func(t *testing.T, app *apitest.App) {},
+			start: "2026-10-31", balances: 4470143},
+		{name: "an Investment created this month starts at its first value", seed: func(t *testing.T, app *apitest.App) {
+			exec(t, app, `INSERT INTO finance_investment_values (investment_id, user_id, day, value_cents)
+				SELECT id, user_id, '2026-11-02', 20000 FROM finance_investments WHERE name = 'CDB'`)
+		}, start: "2026-10-31", balances: 4470143, wantInvChg: 30000},
+		{name: "on the 1st the start is the previous month's last day", now: time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC), seed: func(t *testing.T, app *apitest.App) {
+			balanceOn(t, app, "2026-11-30", 4000000)
+			balanceOn(t, app, "2026-12-01", 4370143)
+		}, start: "2026-11-30", balances: 4000000 + 100000, wantBalChg: 4470143 - 4100000},
+		{name: "range=30d on the 31st does not reach the start day", now: time.Date(2026, 12, 31, 12, 0, 0, 0, time.UTC), query: "?range=30d", seed: func(t *testing.T, app *apitest.App) {
+			balanceOn(t, app, "2026-11-30", 4000000)
+			balanceOn(t, app, "2026-12-01", 4200000)
+			balanceOn(t, app, "2026-12-31", 4370143)
+		}, start: "2026-11-30", balances: 4000000 + 100000, wantBalChg: 4470143 - 4100000},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			app, ana := netWorthFixture(t)
+			if !tc.now.IsZero() {
+				app.Clock.Set(tc.now)
+			}
+			tc.seed(t, app)
+			got := readNetWorth(t, ana, tc.query)
+			if got.MonthStart == nil || got.MonthChange == nil {
+				t.Fatalf("net worth = %+v, want a month start", got)
+			}
+			invNow := got.Today.InvestmentsCents
+			if got.MonthStart.Day != tc.start || got.MonthStart.BalancesCents != tc.balances || got.MonthStart.InvestmentsCents != invNow-tc.wantInvChg {
+				t.Errorf("monthStart = %+v, want day %s balances %d investments %d", *got.MonthStart, tc.start, tc.balances, invNow-tc.wantInvChg)
+			}
+			want := struct{ BalancesCents, InvestmentsCents, TotalCents int64 }{tc.wantBalChg, tc.wantInvChg, tc.wantBalChg + tc.wantInvChg}
+			if *got.MonthChange != want {
+				t.Errorf("monthChange = %+v, want %+v", *got.MonthChange, want)
+			}
+		})
+	}
+}
+
+func TestNetWorthChangeNeverCountsAnotherUsersValues(t *testing.T) {
+	t.Parallel()
+	app, users := startSync(t, []string{"ana@example.com", "bia@example.com"})
+	app.RunFinanceSync(t)
+	exec(t, app, `INSERT INTO finance_source_balances (user_id, source_id, day, balance_cents)
+		SELECT s.user_id, s.id, '2026-10-31', 99999999 FROM finance_sources s JOIN users u ON u.id = s.user_id WHERE u.email = 'bia@example.com' AND s.kind = 'checking'`)
+	got := readNetWorth(t, users["ana@example.com"], "")
+	if got.MonthChange == nil || got.MonthChange.BalancesCents != 0 {
+		t.Errorf("monthChange = %+v, want 0 from ana's own values", got.MonthChange)
+	}
 }

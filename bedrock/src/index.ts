@@ -18,6 +18,6 @@ export { Table, TableCaption, TableHeader, TableBody, TableRow, TableHead, Table
 export { ChartContainer, ChartTooltipContent, type ChartContainerProps, type ChartTooltipContentProps } from "./components/chart";
 export { Tooltip, type TooltipProps } from "./components/tooltip";
 export { Menu, menuContentClass, menuItemClass, type MenuItem, type MenuProps } from "./components/menu";
-export { Sidebar } from "./components/sidebar";
+export { Sidebar, SidebarBrand } from "./components/sidebar";
 export { BottomBar } from "./components/bottom-bar";
 export type { NavItem } from "./components/nav-link";

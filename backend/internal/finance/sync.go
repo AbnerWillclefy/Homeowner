@@ -160,6 +160,9 @@ func (s *Syncer) syncItem(ctx context.Context, it DueItem, apiKey string, now, t
 	if err := s.store.SetBillDays(ctx, it.ID, accounts); err != nil {
 		return false, err
 	}
+	if err := s.store.SetCreditLimits(ctx, it.ID, accounts); err != nil {
+		return false, err
+	}
 	// A balance never fails the Transactions import: log and go on.
 	if err := s.store.UpsertBalances(ctx, it.ID, accounts, today); err != nil {
 		s.log.Error("finance sync failed", "user", it.UserID, "step", "balances", "error", safeErr(err))

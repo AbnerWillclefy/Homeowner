@@ -74,6 +74,9 @@ type SourceResponse struct {
 	// with no balance read yet.
 	BalanceCents *int64  `json:"balanceCents,omitempty"`
 	BalanceOn    *string `json:"balanceOn,omitempty"`
+	// CreditLimitCents is a card's credit limit as its bank reports it; absent
+	// on any other kind and on a card whose connector gives none.
+	CreditLimitCents *int64 `json:"creditLimitCents,omitempty"`
 }
 
 // BillDaysRequest is the body of PUT /me/finance/sources/{id}/bill-days: both
@@ -140,11 +143,17 @@ type MonthResponse struct {
 	SpentSinceFirstCents int64 `json:"spentSinceFirstCents"`
 }
 
-// HistoryMonth is one month of GET /me/finance/history: all 13 categories, in order.
+// HistoryMonth is one month of GET /me/finance/history: all 13 categories, in
+// order. IncomeCents is what arrived (Income Transactions), SpentCents the
+// Expenses net of refunds, SavedCents the net Saving (negative when the User
+// took money back). Transfers are in none of them, so the month's result is
+// IncomeCents - SpentCents - SavedCents.
 type HistoryMonth struct {
-	Month      string          `json:"month"`
-	SpentCents int64           `json:"spentCents"`
-	Categories []CategoryTotal `json:"categories"`
+	Month       string          `json:"month"`
+	IncomeCents int64           `json:"incomeCents"`
+	SpentCents  int64           `json:"spentCents"`
+	SavedCents  int64           `json:"savedCents"`
+	Categories  []CategoryTotal `json:"categories"`
 }
 
 // HistoryResponse is the answer of GET /me/finance/history, oldest month first.
@@ -313,11 +322,34 @@ type ConnectTokenResponse struct {
 // Series is balances plus Investments only: past days' card bills are not stored,
 // so SeriesExcludesCardBills is always true and the client must not show its last
 // point as the Net worth.
+//
+// MonthStart is null without data. It holds the balances and Investments on the
+// last day of the previous month (São Paulo), so a change on the 1st counts in
+// this month; a Source or Investment with no value by then starts at its first
+// value of the month. MonthChange is today's balances and Investments less those,
+// and its TotalCents is balances plus Investments only, never Today.TotalCents'
+// change: card bills are left out because past days' bills are not stored.
 type NetWorthResponse struct {
 	HasData                 bool            `json:"hasData"`
 	Today                   *NetWorthToday  `json:"today"`
 	Series                  []NetWorthPoint `json:"series"`
 	SeriesExcludesCardBills bool            `json:"seriesExcludesCardBills"`
+	MonthStart              *NetWorthStart  `json:"monthStart"`
+	MonthChange             *NetWorthChange `json:"monthChange"`
+}
+
+// NetWorthStart is the balances and Investments on Day (YYYY-MM-DD).
+type NetWorthStart struct {
+	Day              string `json:"day"`
+	BalancesCents    int64  `json:"balancesCents"`
+	InvestmentsCents int64  `json:"investmentsCents"`
+}
+
+// NetWorthChange is what changed since MonthStart; TotalCents = BalancesCents + InvestmentsCents.
+type NetWorthChange struct {
+	BalancesCents    int64 `json:"balancesCents"`
+	InvestmentsCents int64 `json:"investmentsCents"`
+	TotalCents       int64 `json:"totalCents"`
 }
 
 // NetWorthToday is today's Net worth with its parts: TotalCents = BalancesCents + InvestmentsCents - CardBillsCents.
@@ -332,4 +364,20 @@ type NetWorthToday struct {
 type NetWorthPoint struct {
 	Day   string `json:"day"`
 	Cents int64  `json:"cents"`
+}
+
+// PastBill is one closed card bill of GET /me/finance/card-bills.
+type PastBill struct {
+	ClosesOn   string `json:"closesOn"` // YYYY-MM-DD
+	DueOn      string `json:"dueOn"`
+	TotalCents int64  `json:"totalCents"`
+}
+
+// PastCardBillsResponse is the answer of GET /me/finance/card-bills: the closed
+// bills, oldest first, never null. AverageCents is over the bills returned (fewer
+// than asked for when the bank sent fewer), null when there are none.
+type PastCardBillsResponse struct {
+	SourceID     string     `json:"sourceId"`
+	Bills        []PastBill `json:"bills"`
+	AverageCents *int64     `json:"averageCents"`
 }

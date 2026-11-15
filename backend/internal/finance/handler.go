@@ -128,7 +128,8 @@ const (
 
 // History answers GET /me/finance/history?to=YYYY-MM&months=N: the N months
 // ending at `to`, oldest first, from one read and MonthTotals on each month, so
-// it agrees with Month. `to` defaults to the current São Paulo month.
+// it agrees with Month. Each month carries income, spent and saved, so a client
+// gets the change against last month by asking for two months. `to` defaults to the current São Paulo month.
 func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	to := q.Get("to")
@@ -166,13 +167,48 @@ func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, HistoryResponse{To: to, Months: months})
 }
 
+// PastCardBills answers GET /me/finance/card-bills?source=ID&months=N: the
+// latest N (default 6, 1 to 12) closed bills of the User's card, oldest first,
+// with their average. A card whose connector sends no bills gets an empty list.
+// A malformed source or months is 400; another User's, an unknown and a
+// non-card Source are all 404, so the answer never says which.
+func (h *Handler) PastCardBills(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	n := historyMonths
+	if q.Has("months") {
+		var err error
+		if n, err = strconv.Atoi(q.Get("months")); err != nil || n < 1 || n > historyMaxMonths {
+			httpx.WriteError(w, http.StatusBadRequest, "invalid months")
+			return
+		}
+	}
+	id := q.Get("source")
+	if !chores.ValidID(id) {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid source")
+		return
+	}
+	bills, found, err := h.store.PastCardBills(r.Context(), identity.CurrentUser(r.Context()).ID, id, postedOn(h.clk.Now()), n)
+	h.answer(w, found, err, "read past card bills", func() {
+		out := PastCardBillsResponse{SourceID: id, Bills: []PastBill{}}
+		var sum int64
+		for _, b := range bills {
+			out.Bills = append(out.Bills, PastBill{ClosesOn: b.ClosesOn.Format(time.DateOnly), DueOn: b.DueOn.Format(time.DateOnly), TotalCents: b.TotalCents})
+			sum += b.TotalCents
+		}
+		if len(bills) > 0 {
+			out.AverageCents = new(halfUp(sum, int64(len(bills))))
+		}
+		httpx.WriteJSON(w, http.StatusOK, out)
+	})
+}
+
 func historyMonth(month string, rows []TransactionResponse) HistoryMonth {
 	totals := MonthTotals(toTxns(rows))
 	cats := make([]CategoryTotal, len(SpendingCategories))
 	for i, c := range SpendingCategories {
 		cats[i] = CategoryTotal{Category: c, SpentCents: totals.ByCategory[c]}
 	}
-	return HistoryMonth{Month: month, SpentCents: totals.Spend, Categories: cats}
+	return HistoryMonth{Month: month, IncomeCents: totals.Income, SpentCents: totals.Spend, SavedCents: totals.Saving, Categories: cats}
 }
 
 // paceMonths is how many months before the asked one the usual pace averages.
@@ -590,7 +626,7 @@ func (h *Handler) ConnectItem(w http.ResponseWriter, r *http.Request) {
 	var sources []NewSource
 	for _, a := range accounts {
 		if kind := sourceKind(a); kind != "" {
-			sources = append(sources, NewSource{PluggyAccountID: a.ID, Kind: kind, Name: a.Name, Currency: a.Currency, CloseDay: a.CloseDay, DueDay: a.DueDay})
+			sources = append(sources, NewSource{PluggyAccountID: a.ID, Kind: kind, Name: a.Name, Currency: a.Currency, CloseDay: a.CloseDay, DueDay: a.DueDay, CreditLimitCents: a.CreditLimitCents})
 		}
 	}
 	if len(sources) == 0 {
