@@ -166,6 +166,41 @@ func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, HistoryResponse{To: to, Months: months})
 }
 
+// PastCardBills answers GET /me/finance/card-bills?source=ID&months=N: the
+// latest N (default 6, 1 to 12) closed bills of the User's card, oldest first,
+// with their average. A card whose connector sends no bills gets an empty list.
+// A malformed source or months is 400; another User's, an unknown and a
+// non-card Source are all 404, so the answer never says which.
+func (h *Handler) PastCardBills(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	n := historyMonths
+	if q.Has("months") {
+		var err error
+		if n, err = strconv.Atoi(q.Get("months")); err != nil || n < 1 || n > historyMaxMonths {
+			httpx.WriteError(w, http.StatusBadRequest, "invalid months")
+			return
+		}
+	}
+	id := q.Get("source")
+	if !chores.ValidID(id) {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid source")
+		return
+	}
+	bills, found, err := h.store.PastCardBills(r.Context(), identity.CurrentUser(r.Context()).ID, id, postedOn(h.clk.Now()), n)
+	h.answer(w, found, err, "read past card bills", func() {
+		out := PastCardBillsResponse{SourceID: id, Bills: []PastBill{}}
+		var sum int64
+		for _, b := range bills {
+			out.Bills = append(out.Bills, PastBill{ClosesOn: b.ClosesOn.Format(time.DateOnly), DueOn: b.DueOn.Format(time.DateOnly), TotalCents: b.TotalCents})
+			sum += b.TotalCents
+		}
+		if len(bills) > 0 {
+			out.AverageCents = new(halfUp(sum, int64(len(bills))))
+		}
+		httpx.WriteJSON(w, http.StatusOK, out)
+	})
+}
+
 func historyMonth(month string, rows []TransactionResponse) HistoryMonth {
 	totals := MonthTotals(toTxns(rows))
 	cats := make([]CategoryTotal, len(SpendingCategories))

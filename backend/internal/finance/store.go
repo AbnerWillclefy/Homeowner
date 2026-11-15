@@ -108,7 +108,7 @@ type NewSource struct {
 // ConnectItem stores the User's Item and its Sources in one transaction.
 // Calling it again changes no row count: the Item is kept as it was and each
 // Source is refreshed in place, except a card's bill days, which Pluggy fills
-// only while the card has none.
+// only while the card has none, and a card's credit limit, kept when Pluggy sends none.
 func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, now time.Time, sources []NewSource) error {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
@@ -326,6 +326,32 @@ func (s *Store) CardBillsDue(ctx context.Context, userID string, from, to time.T
 		out = append(out, b)
 	}
 	return out, rows.Err()
+}
+
+// PastCardBills returns the latest n bills of the User's card Source that closed
+// before today, oldest first. found is false for another User's Source, an
+// unknown one and a Source that is not a card.
+func (s *Store) PastCardBills(ctx context.Context, userID, sourceID string, today time.Time, n int) (bills []StoredBill, found bool, err error) {
+	if err := s.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM finance_sources WHERE user_id = $1 AND id = $2 AND kind = 'credit_card')`,
+		userID, sourceID).Scan(&found); err != nil || !found {
+		return nil, false, err
+	}
+	rows, err := s.db.Query(ctx, `SELECT closes_on, due_on, total_cents FROM (
+			SELECT closes_on, due_on, total_cents FROM finance_card_bills
+			WHERE user_id = $1 AND source_id = $2 AND closes_on < $3 ORDER BY due_on DESC LIMIT $4) latest
+		ORDER BY due_on`, userID, sourceID, today, n)
+	if err != nil {
+		return nil, true, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var b StoredBill
+		if err := rows.Scan(&b.ClosesOn, &b.DueOn, &b.TotalCents); err != nil {
+			return nil, true, err
+		}
+		bills = append(bills, b)
+	}
+	return bills, true, rows.Err()
 }
 
 // FinishSync marks the Item imported and synced at now.

@@ -323,3 +323,19 @@ type NetWorthPoint struct {
 	Day   string `json:"day"`
 	Cents int64  `json:"cents"`
 }
+
+// PastBill is one closed card bill of GET /me/finance/card-bills.
+type PastBill struct {
+	ClosesOn   string `json:"closesOn"` // YYYY-MM-DD
+	DueOn      string `json:"dueOn"`
+	TotalCents int64  `json:"totalCents"`
+}
+
+// PastCardBillsResponse is the answer of GET /me/finance/card-bills: the closed
+// bills, oldest first, never null. AverageCents is over the bills returned (fewer
+// than asked for when the bank sent fewer), null when there are none.
+type PastCardBillsResponse struct {
+	SourceID     string     `json:"sourceId"`
+	Bills        []PastBill `json:"bills"`
+	AverageCents *int64     `json:"averageCents"`
+}
