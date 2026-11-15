@@ -182,6 +182,7 @@ func TestNetWorthChangeSinceTheMonthStart(t *testing.T) {
 		}, start: "2026-11-30", balances: 4000000 + 100000, wantBalChg: 4470143 - 4100000},
 		{name: "range=30d on the 31st does not reach the start day", now: time.Date(2026, 12, 31, 12, 0, 0, 0, time.UTC), query: "?range=30d", seed: func(t *testing.T, app *apitest.App) {
 			balanceOn(t, app, "2026-11-30", 4000000)
+			balanceOn(t, app, "2026-12-01", 4200000)
 			balanceOn(t, app, "2026-12-31", 4370143)
 		}, start: "2026-11-30", balances: 4000000 + 100000, wantBalChg: 4470143 - 4100000},
 	}
