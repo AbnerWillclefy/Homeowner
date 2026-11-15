@@ -1,47 +1,66 @@
-import { Button, EmptyState, Skeleton } from "@homeowner/bedrock";
-import { ChevronLeft, ChevronRight, CreditCard } from "lucide-react";
-import { useState } from "react";
+import { EmptyState, SegmentedControl, Skeleton } from "@homeowner/bedrock";
+import { formatAmount } from "@homeowner/bedrock/finance";
+import { CreditCard } from "lucide-react";
 import { useSearchParams } from "react-router";
+import { HideValuesToggle, useHideValues } from "../../shared/HideValues";
 import { useI18n } from "../../shared/i18n/I18nProvider";
+import { monthLabel } from "../../shared/month/month";
+import { MonthSelect } from "../../shared/month/MonthSelect";
+import { useMonthParam } from "../../shared/month/useMonthParam";
+import { PageHeader } from "../../shared/PageHeader";
 import { useMediaQuery } from "../../shared/useMediaQuery";
-import { addMonths, monthFromParam, monthLabel, saoPauloDay } from "../../shared/month/month";
-import { BillDaysSheet } from "./components/BillDaysSheet";
+import { BillDaysCard } from "./components/BillDaysCard";
+import { BillHistory } from "./components/BillHistory";
 import { CardBillCard } from "./components/CardBillCard";
-import { useCardBills, useSaveBillDays } from "./hooks/useCardBills";
-import { billRows } from "./logic/cardBill";
+import { CardRows } from "./components/CardRows";
+import { useCardBills, usePastBills, useSaveBillDays } from "./hooks/useCardBills";
+import { billRows, pickCard } from "./logic/cardBill";
 
 // Duplicates --bp-desktop in Bedrock's tokens.css: matchMedia cannot read custom properties.
 const DESKTOP = "(min-width: 1024px)";
 
-/** "Faturas" at `/card-bills` (`?month=YYYY-MM` picks the month): each card's bill, labelled by where its amount comes from, and the rows in it. */
+/** "Faturas" at `/card-bills`: one card's bill at a time (`?card=<sourceId>`, the first by default; `?month=YYYY-MM` picks the month). */
 export function CardBillsPage() {
   const { t, locale } = useI18n();
   const desktop = useMediaQuery(DESKTOP);
+  const { hidden } = useHideValues();
   const [params, setParams] = useSearchParams();
-  const [now] = useState(() => new Date());
-  const thisMonth = saoPauloDay(now).slice(0, 7);
-  const month = monthFromParam(params.get("month"), thisMonth);
+  const { month } = useMonthParam();
   const { bills, sources, transactions, loading, failed, rowsFailed, reload } = useCardBills(month);
   const saveDays = useSaveBillDays();
-  const [editing, setEditing] = useState<string | null>(null); // a card's sourceId
-  const label = monthLabel(month, locale);
-  const step = (n: number) => setParams({ month: addMonths(month, n) });
-  const editingSource = sources.find((s) => s.id === editing);
+  const bill = pickCard(bills ?? [], params.get("card"));
+  const source = sources.find((s) => s.id === bill?.sourceId);
+  const rows = bill && !rowsFailed ? billRows(transactions, bill, month) : null;
+  const history = usePastBills(bill?.sourceId);
+
+  const open = (bills ?? []).filter((b) => !b.fromBank && !b.closed);
+  const count = bills?.length ?? 0;
+  const subtitle = bills && bills.length > 0
+    ? [
+        t(count === 1 ? "cardBills.subtitle.one" : "cardBills.subtitle.many", { count }),
+        // The total is money in a string, so a hidden one leaves it out.
+        ...(hidden || open.length === 0 ? [] : [t("cardBills.subtitle.open", { total: formatAmount(open.reduce((n, b) => n + b.amountCents, 0), { locale }) })]),
+      ].join(" · ")
+    : undefined;
+  const pick = (sourceId: string) => setParams((old) => { const next = new URLSearchParams(old); next.set("card", sourceId); return next; }, { replace: true });
+  const cards = bills && bills.length > 1 && bill && (
+    <SegmentedControl label={t("cardBills.card.group")} options={bills.map((b) => ({ value: b.sourceId, label: b.name }))} value={bill.sourceId} onValueChange={pick} />
+  );
 
   return (
     <section className="flex flex-col gap-6">
-      <h1 className="page-title">{t("nav.cardBills")}</h1>
-      <p className="text-text-muted">{t("cardBills.intro")}</p>
-
-      <div role="group" aria-label={t("bills.month.group")} className="flex items-center justify-between gap-2">
-        <Button variant="secondary" icon={ChevronLeft} onClick={() => step(-1)}>
-          <span className="sr-only">{t("bills.month.prev")}</span>
-        </Button>
-        <p className="body-strong text-center" aria-live="polite">{label}</p>
-        <Button variant="secondary" icon={ChevronRight} disabled={month === thisMonth} onClick={() => step(1)}>
-          <span className="sr-only">{t("bills.month.next")}</span>
-        </Button>
-      </div>
+      <PageHeader
+        title={t("nav.cardBills")}
+        subtitle={subtitle}
+        tools={
+          <>
+            {desktop && cards}
+            <MonthSelect />
+            <HideValuesToggle />
+          </>
+        }
+      />
+      {!desktop && cards}
 
       {loading ? (
         <div role="status" className="flex flex-col gap-4">
@@ -50,27 +69,19 @@ export function CardBillsPage() {
         </div>
       ) : failed || !bills ? (
         <EmptyState icon={CreditCard} kind="no-results" title={t("cardBills.error.title")} message={t("cardBills.error.message")} action={{ label: t("bills.error.retry"), onClick: reload }} />
-      ) : bills.length === 0 ? (
+      ) : !bill ? (
         <EmptyState icon={CreditCard} title={t("cardBills.empty.title")} message={t("cardBills.empty.message")} />
       ) : (
-        <div className="flex flex-col gap-4">
-          {bills.map((bill) => (
-            <CardBillCard
-              key={bill.sourceId}
-              bill={bill}
-              source={sources.find((s) => s.id === bill.sourceId)}
-              rows={billRows(transactions, bill, month)}
-              rowsFailed={rowsFailed}
-              monthName={label}
-              desktop={desktop}
-              onEditDays={() => setEditing(bill.sourceId)}
-            />
-          ))}
+        <div className="grid gap-6 desktop:grid-cols-12">
+          <div className="flex flex-col gap-6 desktop:col-span-8">
+            <CardBillCard bill={bill} source={source} rows={rows} />
+            <CardRows rows={rows} caption={t("cardBills.rows.caption", { name: bill.name, month: monthLabel(month, locale) })} />
+          </div>
+          <div className="flex flex-col gap-6 desktop:col-span-4">
+            <BillHistory {...history} />
+            {source && <BillDaysCard key={`${source.id}-${source.closeDay}-${source.dueDay}`} card={source} save={(c, d) => saveDays(source.id, c, d)} />}
+          </div>
         </div>
-      )}
-
-      {editingSource && (
-        <BillDaysSheet key={editingSource.id} card={editingSource} save={(c, d) => saveDays(editingSource.id, c, d)} onClose={() => setEditing(null)} />
       )}
     </section>
   );

@@ -1,51 +1,47 @@
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@homeowner/bedrock";
-import { Amount, ListRow } from "@homeowner/bedrock/finance";
+import { Badge, Card } from "@homeowner/bedrock";
+import { CategoryIcon, ListRow } from "@homeowner/bedrock/finance";
+import { useHiddenProps } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
 import { formatDay } from "../../../shared/month/month";
+import { SPENDING_CATEGORIES, spendingKey, tagOf, type SpendingCategory } from "../../transactions/logic/categories";
 import type { CardTransaction } from "../api";
 
-const subtitle = (r: CardTransaction, t: ReturnType<typeof useI18n>["t"], locale: string) =>
-  [formatDay(r.postedOn, locale), r.installment && t("cardBills.installment", { number: r.installment.number, total: r.installment.total })].filter(Boolean).join(" · ");
+const categoryOf = (id: string | null): SpendingCategory | null => SPENDING_CATEGORIES.find((c) => c === id) ?? null;
 
-/** The Transactions that make up a card's bill. Desktop width: a table. */
-export function CardRowsTable({ rows, caption }: { rows: CardTransaction[]; caption: string }) {
+/** "Nesta fatura": the Transactions that make up the bill, one row each; an installment carries its "3/10" tag. */
+export function CardRows({ rows, caption }: { rows: CardTransaction[] | null; caption: string }) {
   const { t, locale } = useI18n();
+  const hiddenProps = useHiddenProps();
   return (
-    <Table>
-      <TableCaption className="sr-only">{caption}</TableCaption>
-      <TableHeader>
-        <TableRow>
-          <TableHead>{t("cardBills.col.date")}</TableHead>
-          <TableHead>{t("cardBills.col.description")}</TableHead>
-          <TableHead align="end">{t("cardBills.col.amount")}</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.map((r) => (
-          <TableRow key={r.id}>
-            <TableCell className="whitespace-nowrap text-text-muted">{formatDay(r.postedOn, locale)}</TableCell>
-            <TableCell>
-              <span className="[overflow-wrap:anywhere]">{r.description}</span>
-              {r.installment && <p className="caption text-text-muted">{t("cardBills.installment", { number: r.installment.number, total: r.installment.total })}</p>}
-            </TableCell>
-            <TableCell align="end"><Amount cents={r.amountCents} size="sm" locale={locale} /></TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
-}
-
-/** Phone width: a list of rows. */
-export function CardRowsList({ rows, caption }: { rows: CardTransaction[]; caption: string }) {
-  const { t, locale } = useI18n();
-  return (
-    <ul aria-label={caption} className="divide-y divide-border">
-      {rows.map((r) => (
-        <li key={r.id}>
-          <ListRow title={r.description} subtitle={subtitle(r, t, locale)} cents={r.amountCents} locale={locale} />
-        </li>
-      ))}
-    </ul>
+    <Card>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="card-label text-text-muted">{t("cardBills.rows.title")}</h2>
+        {rows && <span className="text-text-muted">{t(rows.length === 1 ? "cardBills.rows.count.one" : "cardBills.rows.count.many", { count: rows.length })}</span>}
+      </div>
+      {rows === null ? (
+        <p className="caption text-text-muted">{t("cardBills.rows.failed")}</p>
+      ) : rows.length === 0 ? (
+        <p className="caption text-text-muted">{t("cardBills.rows.none")}</p>
+      ) : (
+        <ul aria-label={caption} className="divide-y divide-border">
+          {rows.map((r) => {
+            const category = categoryOf(r.spendingCategory);
+            return (
+              <li key={r.id}>
+                <ListRow
+                  leading={<CategoryIcon category={tagOf(category)} />}
+                  title={r.description}
+                  subtitle={[t(spendingKey(category ?? "other")), formatDay(r.postedOn, locale)].join(" · ")}
+                  cents={r.amountCents}
+                  end={r.installment && <Badge tone="neutral">{r.installment.number}/{r.installment.total}</Badge>}
+                  locale={locale}
+                  {...hiddenProps}
+                />
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Card>
   );
 }
