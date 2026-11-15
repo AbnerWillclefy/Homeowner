@@ -2,7 +2,7 @@ import type { AxiosAdapter, InternalAxiosRequestConfig } from "axios";
 import { describe, expect, it } from "vitest";
 import { createApiClient } from "../../api/client";
 import { createSessionStore } from "../../auth/session";
-import { deleteBill, dismissBillSuggestion, getBills, getBillSuggestions, getCardBills, saveBill, setBillPaid } from "./api";
+import { deleteBill, dismissBillSuggestion, getBills, getBillSuggestions, saveBill, setBillPaid } from "./api";
 
 const BILL = { id: "b1", name: "Aluguel", expectedCents: 320000, dueDay: 5, dueDate: "2030-01-05", paid: false, paidBy: null, paidCents: null };
 
@@ -117,17 +117,3 @@ describe("suggestions", () => {
   });
 });
 
-describe("getCardBills", () => {
-  const CARD = { sourceId: "s1", name: "Nubank", amountCents: 284300, billDaysKnown: true };
-  it("reads the cards of the month asked for", async () => {
-    const body = { months: [{ month: "2030-01", cards: [{ ...CARD, extra: 1 }] }, { month: "2030-02", cards: [] }] };
-    const { client, sent } = setup(200, body);
-    expect(await getCardBills("2030-01", client)).toEqual([CARD]);
-    expect(sent[0]!.params).toEqual({ from: "2030-01" });
-  });
-  it("throws when the month is missing or a card is malformed", async () => {
-    await expect(getCardBills("2030-01", setup(200, { months: [] }).client)).rejects.toThrow();
-    await expect(getCardBills("2030-01", setup(200, { months: [{ month: "2030-01", cards: [{ name: 1 }] }] }).client)).rejects.toThrow();
-    await expect(getCardBills("2030-01", setup(500, {}).client)).rejects.toThrow();
-  });
-});

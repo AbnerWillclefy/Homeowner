@@ -33,15 +33,6 @@ export interface BillSuggestion {
   dueDay: number;
 }
 
-/** A credit card's bill for the month, from the commitments. The User never enters one. */
-export interface CardBill {
-  sourceId: string;
-  name: string;
-  amountCents: number;
-  /** False when the card has no closing or due day yet. */
-  billDaysKnown: boolean;
-}
-
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
 const isInt = (v: unknown): v is number => Number.isInteger(v);
 
@@ -63,13 +54,6 @@ function parseSuggestion(v: unknown): BillSuggestion | null {
   return { merchantKey, name, amountCents, dueDay } as BillSuggestion;
 }
 
-function parseCard(v: unknown): CardBill | null {
-  if (!isRecord(v)) return null;
-  const { sourceId, name, amountCents, billDaysKnown } = v;
-  if (typeof sourceId !== "string" || typeof name !== "string" || !isInt(amountCents) || typeof billDaysKnown !== "boolean") return null;
-  return { sourceId, name, amountCents, billDaysKnown };
-}
-
 /** GET `url` and parse every row of the array `pick` takes from the body. Throws on any failure, so a query shows its error state. */
 async function readList<T>(client: AxiosInstance, url: string, params: Record<string, string> | undefined, pick: (body: unknown) => unknown, parse: (v: unknown) => T | null): Promise<T[]> {
   const response = await client.get(url, { params });
@@ -88,14 +72,6 @@ export const getBills = (month: string, client: AxiosInstance = apiClient) =>
 /** `GET /me/finance/bill-suggestions`. */
 export const getBillSuggestions = (client: AxiosInstance = apiClient) =>
   readList(client, "/me/finance/bill-suggestions", undefined, (b) => b, parseSuggestion);
-
-/** `GET /me/finance/commitments?from=`: the month's card bills, which are listed and never written. */
-export const getCardBills = (month: string, client: AxiosInstance = apiClient) =>
-  readList(client, "/me/finance/commitments", { from: month }, (b) => {
-    const months = isRecord(b) ? b.months : null;
-    const first = Array.isArray(months) ? months.find((m) => isRecord(m) && m.month === month) : null;
-    return isRecord(first) ? first.cards : null;
-  }, parseCard);
 
 /** `POST /me/finance/bills`, or `PUT /me/finance/bills/{id}` when `id` is given; a 400 with field codes goes back to the form. */
 export const saveBill = (id: string | null, input: BillInput, client: AxiosInstance = apiClient): Promise<SaveResult> => saveRow(client, "/me/finance/bills", id, input);

@@ -1,5 +1,5 @@
 import { Badge, Button, Menu } from "@homeowner/bedrock";
-import { CategoryIcon, formatAmount, ListRow } from "@homeowner/bedrock/finance";
+import { Amount, CategoryIcon, formatAmount, ListRow } from "@homeowner/bedrock/finance";
 import { Check, Pencil, Trash2, Undo2 } from "lucide-react";
 import { useHiddenProps, useHideValues } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
@@ -72,16 +72,17 @@ export function BillRows({ rows, caption, today, ...actions }: RowsProps) {
         const subtitle = [t("bills.dueOn", { date: formatDay(bill.dueDate, locale) }), note(bill, state)].filter(Boolean).join(" · ");
         return (
           <li key={bill.id} className="flex flex-wrap items-center gap-x-2">
-            <ListRow
-              className="w-auto min-w-0 flex-1 basis-56"
-              leading={<CategoryIcon category="other" />}
-              title={bill.name}
-              subtitle={subtitle}
-              cents={bill.expectedCents}
-              end={<BillStatus state={state} />}
-              locale={locale}
-              {...hidden}
-            />
+            <div className="flex min-w-0 flex-1 basis-56 items-center gap-4 py-2">
+              <CategoryIcon category="other" />
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="body-strong [overflow-wrap:anywhere]">{bill.name}</span>
+                <span className="caption text-text-muted [overflow-wrap:anywhere]">{subtitle}</span>
+              </span>
+              <span className="flex shrink-0 flex-col items-end whitespace-nowrap">
+                <Amount cents={bill.expectedCents} size="sm" locale={locale} {...hidden} />
+                <span className="caption text-text-muted"><BillStatus state={state} /></span>
+              </span>
+            </div>
             {today !== null && <Actions bill={bill} state={state} {...actions} />}
           </li>
         );

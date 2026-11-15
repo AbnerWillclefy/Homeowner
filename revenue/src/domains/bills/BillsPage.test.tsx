@@ -53,7 +53,8 @@ describe("layout and states", () => {
     serve([PENDING, LONG, OVERDUE]);
     open();
     const list = await screen.findByRole("list", { name: "Bills to pay of January 2030" });
-    expect(within(list).getByText(LONG.name)).toBeTruthy();
+    expect(within(list).getByText(LONG.name).className).not.toContain("truncate");
+    for (const el of list.querySelectorAll(".body-strong, .caption")) expect(el.className).not.toContain("truncate");
     const names = within(list).getAllByRole("listitem").map((r) => r.querySelector(".body-strong")!.textContent);
     expect(names[0]).toBe("Aluguel");
     expect(names[2]).toBe("Internet");
