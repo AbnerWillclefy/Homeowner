@@ -43,9 +43,8 @@ export const SETTINGS = screen("/settings", "nav.settings", Settings, <SettingsP
 export const ONBOARDING = screen("/onboarding", "page.onboarding", LayoutDashboard, <OnboardingPage />);
 
 export const NAV_GROUPS: { label: MessageKey; screens: Screen[] }[] = [
-  { label: "nav.group.main", screens: [OVERVIEW, TRANSACTIONS] },
-  { label: "nav.group.planning", screens: [BILLS, CARD_BILLS, CATEGORIES, GOALS, NET_WORTH, PROJECTION] },
-  { label: "nav.group.accounts", screens: [SOURCES] },
+  { label: "nav.group.main", screens: [OVERVIEW, TRANSACTIONS, BILLS, CARD_BILLS, CATEGORIES] },
+  { label: "nav.group.planning", screens: [GOALS, NET_WORTH, PROJECTION, SOURCES] },
 ];
 /** Pinned to the bottom of the Sidebar. */
 export const NAV_FOOTER: Screen[] = [SETTINGS];
