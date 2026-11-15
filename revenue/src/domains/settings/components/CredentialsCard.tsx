@@ -1,4 +1,4 @@
-import { Banner, Button, Card, Dialog, Input } from "@homeowner/bedrock";
+import { Banner, Button, Card, Dialog, Input, Sheet } from "@homeowner/bedrock";
 import { useState, type FormEvent } from "react";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
 import type { MessageKey } from "../../../shared/i18n/catalogs";
@@ -36,49 +36,65 @@ export function CredentialsCard() {
     }
   }
 
-  const showForm = editing || saved === false;
+  const form = (
+    <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-4">
+      <Input label={t("settings.creds.clientId")} name="clientId" type="text" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} required />
+      <Input label={t("settings.creds.clientSecret")} name="clientSecret" type="password" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} required />
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" loading={saving}>
+          {t("settings.creds.save")}
+        </Button>
+        {editing && (
+          <Button variant="secondary" disabled={saving} onClick={() => setEditing(false)}>
+            {t("settings.creds.cancel")}
+          </Button>
+        )}
+      </div>
+      {failure && <Banner tone="danger">{t(failure)}</Banner>}
+    </form>
+  );
   return (
     <Card className="gap-4">
       <h2 className="section-title">{t("settings.creds.title")}</h2>
       {failed ? (
         <Banner tone="danger">{t("settings.creds.loadFailed")}</Banner>
       ) : (
-        !loading && <p className="body text-text-muted">{t(saved ? "settings.creds.saved" : "settings.creds.none")}</p>
-      )}
-      {showForm && !loading && (
-        <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-4">
-          <Input label={t("settings.creds.clientId")} name="clientId" type="text" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} required />
-          <Input label={t("settings.creds.clientSecret")} name="clientSecret" type="password" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} required />
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" loading={saving}>
-              {t("settings.creds.save")}
-            </Button>
-            {editing && (
-              <Button variant="secondary" disabled={saving} onClick={() => setEditing(false)}>
-                {t("settings.creds.cancel")}
-              </Button>
+        !loading && (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-col">
+              <span className="body">{t(saved ? "settings.creds.savedTitle" : "settings.creds.none")}</span>
+              {saved && <span className="caption text-text-muted">{t("settings.creds.encrypted")}</span>}
+            </div>
+            {saved && (
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="secondary" onClick={() => {
+                    setFailure(null);
+                    setEditing(true);
+                  }}>
+                  {t("settings.creds.replace")}
+                </Button>
+                <Dialog
+                  open={confirming}
+                  onOpenChange={setConfirming}
+                  trigger={<Button size="sm" variant="secondary">{t("settings.creds.remove")}</Button>}
+                  title={t("settings.creds.removeTitle")}
+                  description={t("settings.creds.removeBody")}
+                  cancelLabel={t("settings.creds.cancel")}
+                  confirmLabel={t("settings.creds.removeConfirm")}
+                  onConfirm={() => void remove().then((ok) => setFailure(ok ? null : "settings.creds.failed"))}
+                />
+              </div>
             )}
           </div>
-        </form>
+        )
       )}
-      {saved && !editing && (
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => setEditing(true)}>
-            {t("settings.creds.replace")}
-          </Button>
-          <Dialog
-            open={confirming}
-            onOpenChange={setConfirming}
-            trigger={<Button variant="secondary">{t("settings.creds.remove")}</Button>}
-            title={t("settings.creds.removeTitle")}
-            description={t("settings.creds.removeBody")}
-            cancelLabel={t("settings.creds.cancel")}
-            confirmLabel={t("settings.creds.removeConfirm")}
-            onConfirm={() => void remove().then((ok) => setFailure(ok ? null : "settings.creds.failed"))}
-          />
-        </div>
+      {!loading && saved === false && form}
+      {saved && (
+        <Sheet open={editing} onOpenChange={setEditing} title={t("settings.creds.title")} closeLabel={t("app.close")}>
+          {form}
+        </Sheet>
       )}
-      {failure && <Banner tone="danger">{t(failure)}</Banner>}
+      {failure && saved && !editing && <Banner tone="danger">{t(failure)}</Banner>}
     </Card>
   );
 }

@@ -1,10 +1,11 @@
 import { Badge, Banner, Button, Card, Menu, SegmentedControl, type MenuItem } from "@homeowner/bedrock";
-import { Amount, formatAmount } from "@homeowner/bedrock/finance";
+import { Amount } from "@homeowner/bedrock/finance";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useHiddenProps } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
 import type { Investment, Serves } from "../api";
+import { useMoney } from "../hooks/useMoney";
 import type { SaveOutcome } from "../hooks/useSavings";
 import { groupInvestments } from "../logic/investments";
 
@@ -23,6 +24,7 @@ interface Props {
  */
 export function InvestmentsSection({ investments, pick, takeBankValue, onAdd, onEdit, onDelete }: Props) {
   const { t, locale } = useI18n();
+  const money = useMoney();
   const hidden = useHiddenProps();
   const [failed, setFailed] = useState(false);
   const run = async (write: Promise<SaveOutcome>) => setFailed((await write).kind === "failed");
@@ -59,7 +61,7 @@ export function InvestmentsSection({ investments, pick, takeBankValue, onAdd, on
                     <div className="flex flex-col items-end">
                       <Amount cents={inv.valueCents} size="sm" locale={locale} {...hidden} />
                       {inv.edited && inv.bankValueCents !== null && (
-                        <span className="caption text-text-muted">{t("investments.bankValue", { amount: hidden.hidden ? hidden.hiddenLabel : formatAmount(inv.bankValueCents, { locale }) })}</span>
+                        <span className="caption text-text-muted">{t("investments.bankValue", { amount: hidden.hidden ? hidden.hiddenLabel : money(inv.bankValueCents) })}</span>
                       )}
                     </div>
                   </div>

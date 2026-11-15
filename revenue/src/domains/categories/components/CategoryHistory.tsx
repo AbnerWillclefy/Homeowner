@@ -4,7 +4,7 @@ import { useI18n } from "../../../shared/i18n/I18nProvider";
 import type { History } from "../api";
 import type { SpendingCategory } from "../logic/categories";
 import { categoryHistory } from "../logic/history";
-import { monthLabel } from "../logic/month";
+import { monthLabel } from "../../../shared/month/month";
 
 /** The months of one category on one scale: a bar and the amount in words for each. One category is not a split, so no category colour. */
 export function CategoryHistory({ history, category }: { history: History; category: SpendingCategory }) {

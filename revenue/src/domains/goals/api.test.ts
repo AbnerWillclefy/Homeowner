@@ -45,6 +45,14 @@ describe("parseSavings", () => {
     ]);
   });
 
+  it("reads the leftover when given, and drops it when absent or malformed without refusing the body", () => {
+    const leftover = { leftoverCents: 151700, extraCents: 50000, monthsSooner: 2 };
+    expect(parseSavings({ ...SAVINGS, leftover })?.leftover).toEqual(leftover);
+    expect(parseSavings({ ...SAVINGS, leftover: { ...leftover, monthsSooner: null } })?.leftover?.monthsSooner).toBeNull();
+    expect(parseSavings(SAVINGS)?.leftover).toBeUndefined();
+    expect(parseSavings({ ...SAVINGS, leftover: { leftoverCents: "1" } })?.leftover).toBeUndefined();
+  });
+
   it("reads no Investments as an empty list", () => {
     expect(parseSavings({ ...SAVINGS, investments: undefined })?.investments).toEqual([]);
   });

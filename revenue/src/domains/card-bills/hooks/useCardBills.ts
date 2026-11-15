@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { addMonths } from "../../../shared/month/month";
-import { getCardBills, getCardSources, getMonthTransactions, putBillDays, type BillDaysResult } from "../api";
+import { getCardBills, getCardSources, getMonthTransactions, getPastBills, putBillDays, type BillDaysResult } from "../api";
 
 /**
  * The month's card bills, the card Sources (for their days) and the Transactions counting in the month and the next
@@ -25,6 +25,12 @@ export function useCardBills(month: string) {
     rowsFailed: transactions.isError,
     reload: () => void Promise.all([bills.refetch(), sources.refetch(), transactions.refetch()]),
   };
+}
+
+/** The card's last six closed bills, read on their own so a failure shows in the history card and not the page. */
+export function usePastBills(sourceId: string | undefined) {
+  const query = useQuery({ queryKey: ["finance", "card-bills", sourceId], queryFn: () => getPastBills(sourceId!), enabled: !!sourceId });
+  return { history: query.data, loading: query.isPending, failed: query.isError, reload: () => void query.refetch() };
 }
 
 /** Writes one card's days (both null clears), then reads status, commitments and transactions again: `countsOn` moves. */

@@ -55,6 +55,13 @@ export interface Investment {
   bankValueCents: number | null;
 }
 
+/** What the month's leftover could add: only given when it is above zero. `monthsSooner` is null when nothing is left to fill. */
+export interface Leftover {
+  leftoverCents: number;
+  extraCents: number;
+  monthsSooner: number | null;
+}
+
 /** `GET /me/finance/savings`: the settings (null while unset) and the progress, Goals in the User's order. */
 export interface Savings {
   reserveTargetCents: number | null;
@@ -65,6 +72,8 @@ export interface Savings {
   investments: Investment[];
   /** Money no Goal takes. */
   unassignedCents: number;
+  /** Absent when the month has no leftover (or the API sent one this screen cannot read: it is optional, so it is dropped, not refused). */
+  leftover?: Leftover;
 }
 
 /** 400 on the order means the list changed under the User. */
@@ -88,6 +97,11 @@ const parseInvestment = (v: unknown): Investment | null => {
     bankValueCents: typeof v.bankValueCents === "number" ? v.bankValueCents : null,
   };
 };
+
+const parseLeftover = (v: unknown): Leftover | undefined =>
+  isRecord(v) && typeof v.leftoverCents === "number" && typeof v.extraCents === "number" && (v.monthsSooner === null || typeof v.monthsSooner === "number")
+    ? { leftoverCents: v.leftoverCents, extraCents: v.extraCents, monthsSooner: v.monthsSooner }
+    : undefined;
 
 export function parseSavings(body: unknown): Savings | null {
   if (!isRecord(body) || !Array.isArray(body.goals) || !isRecord(body.reserve) || typeof body.unassignedCents !== "number") return null;
@@ -126,6 +140,7 @@ export function parseSavings(body: unknown): Savings | null {
     goals: (body.goals as SavingsGoal[]).map(({ id, name, targetCents, targetMonth, savedCents, monthCents, expectedMonth, late }) => ({ id, name, targetCents, targetMonth, savedCents, monthCents, expectedMonth, late })),
     investments,
     unassignedCents,
+    leftover: parseLeftover(body.leftover),
   };
 }
 

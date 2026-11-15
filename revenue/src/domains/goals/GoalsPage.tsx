@@ -1,27 +1,50 @@
 import { Banner, Button, Dialog, EmptyState, Skeleton } from "@homeowner/bedrock";
 import { Plus, Target } from "lucide-react";
 import { useState } from "react";
+import { HideValuesToggle } from "../../shared/HideValues";
 import { useI18n } from "../../shared/i18n/I18nProvider";
-import type { SavingsGoal } from "./api";
+import { PageHeader } from "../../shared/PageHeader";
+import { useMediaQuery } from "../../shared/useMediaQuery";
+import type { Investment, SavingsGoal } from "./api";
 import { ContributionCard } from "./components/ContributionCard";
 import { GoalFormSheet } from "./components/GoalFormSheet";
 import { GoalsList } from "./components/GoalsList";
+import { LeftoverCard } from "./components/LeftoverCard";
 import { ReserveCard } from "./components/ReserveCard";
+import { useMoney } from "./hooks/useMoney";
 import { useSavings } from "./hooks/useSavings";
+
+// Duplicates --bp-desktop in Bedrock's tokens.css: matchMedia cannot read custom properties.
+const DESKTOP = "(min-width: 1024px)";
 
 type Open = { goal: SavingsGoal | null } | null;
 
-/** "Objetivos" at `/goals`: the Monthly contribution, the Emergency reserve target, and the Goals (whose order decides who is served first). The Investments that fill them are on Fontes. */
+/** "Objetivos" at `/goals`: the Monthly contribution and its leftover, the Emergency reserve target and the Goals (whose order decides who is served first) as cards. The Investments that fill them are on Fontes. */
 export function GoalsPage() {
   const { t } = useI18n();
+  const desktop = useMediaQuery(DESKTOP);
+  const money = useMoney();
   const { data, loading, failed, reload, saveReserve, saveContribution, saveGoal, removeGoal, reorder } = useSavings();
   const [form, setForm] = useState<Open>(null);
   const [deleting, setDeleting] = useState<SavingsGoal | null>(null);
   const [deleteFailed, setDeleteFailed] = useState(false);
 
+  const serving = (serves: Investment["serves"]) => data?.investments.filter((i) => i.serves === serves).map((i) => i.name) ?? [];
+
   return (
     <section className="flex flex-col gap-6">
-      <h1 className="page-title">{t("nav.goals")}</h1>
+      <PageHeader
+        title={t("nav.goals")}
+        subtitle={data?.contributionBaseCents ? t("goals.subtitle", { amount: money(data.contributionBaseCents) }) : undefined}
+        tools={
+          <>
+            <Button icon={Plus} onClick={() => setForm({ goal: null })}>
+              <span className={desktop ? undefined : "sr-only"}>{t("goals.form.addTitle")}</span>
+            </Button>
+            <HideValuesToggle />
+          </>
+        }
+      />
 
       {deleteFailed && <Banner tone="danger">{t("goals.failed")}</Banner>}
 
@@ -34,24 +57,13 @@ export function GoalsPage() {
         <EmptyState icon={Target} kind="no-results" title={t("goals.error.title")} message={t("goals.error.message")} action={{ label: t("goals.error.retry"), onClick: reload }} />
       ) : (
         <>
-          <div className="grid gap-4 desktop:grid-cols-2">
-            <ContributionCard savings={data} save={saveContribution} />
-            <ReserveCard savings={data} save={saveReserve} />
+          <div className="grid gap-6 desktop:grid-cols-12">
+            <ContributionCard savings={data} save={saveContribution} className={data.leftover ? "desktop:col-span-8" : "desktop:col-span-12"} />
+            {data.leftover && <LeftoverCard leftover={data.leftover} className="desktop:col-span-4" />}
+            <ReserveCard savings={data} save={saveReserve} where={serving("reserve")} className="desktop:col-span-4" />
+            <GoalsList goals={data.goals} where={serving("goals")} reorder={reorder} onEdit={(goal) => setForm({ goal })} onDelete={(goal) => { setDeleteFailed(false); setDeleting(goal); }} />
+            {data.goals.length === 0 && <div className="desktop:col-span-8"><EmptyState icon={Target} title={t("goals.empty.title")} message={t("goals.empty.message")} /></div>}
           </div>
-          <section aria-labelledby="goals-title" className="flex flex-col gap-3">
-            <h2 id="goals-title" className="section-title">{t("goals.title")}</h2>
-            {data.goals.length === 0 ? (
-              <EmptyState icon={Target} title={t("goals.empty.title")} message={t("goals.empty.message")} />
-            ) : (
-              <>
-                <p className="caption text-text-muted">{t("goals.hint")}</p>
-                <GoalsList goals={data.goals} reorder={reorder} onEdit={(goal) => setForm({ goal })} onDelete={(goal) => { setDeleteFailed(false); setDeleting(goal); }} />
-              </>
-            )}
-            <Button variant="secondary" icon={Plus} className="self-start" onClick={() => setForm({ goal: null })}>
-              {t("goals.add")}
-            </Button>
-          </section>
         </>
       )}
 

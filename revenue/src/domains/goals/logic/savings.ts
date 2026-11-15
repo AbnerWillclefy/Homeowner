@@ -93,3 +93,26 @@ const FIELD_ERROR_KEY: Record<string, MessageKey> = {
 
 /** The message for a field's error code. A code this app does not know still gets a message. */
 export const goalFieldErrorKey = (field: string, code: string): MessageKey => FIELD_ERROR_KEY[`${field}.${code}`] ?? "goals.field.unknown";
+
+/** The reserve's share options on the Aporte card; a share saved from the sheet that is not one of them is added so it still shows selected. */
+export const shareOptions = (current: number | null): number[] =>
+  [...new Set([30, 50, 70, ...(current === null ? [] : [current])])].sort((a, b) => a - b);
+
+// Bedrock's category tokens, one per Goal in the User's order; the reserve is always the brand colour.
+const GOAL_TONES = ["transport", "shopping", "leisure", "education", "health", "pets"];
+export const RESERVE_TONE = { color: "var(--brand)", soft: "var(--brand-soft)" };
+export const goalTone = (index: number) => {
+  const tone = GOAL_TONES[index % GOAL_TONES.length]!;
+  return { color: `var(--cat-${tone})`, soft: `var(--cat-${tone}-soft)` };
+};
+
+export interface SplitPart { id: string; name: string; cents: number; color: string }
+
+/** Where the month's contribution goes, from the amounts the API gave each one: the reserve first, then the Goals in order. Parts of zero are left out. */
+export function splitParts(reserve: { name: string; cents: number | null }, goals: { id: string; name: string; monthCents: number | null }[]): SplitPart[] {
+  const parts: SplitPart[] = [
+    { id: "reserve", name: reserve.name, cents: reserve.cents ?? 0, color: RESERVE_TONE.color },
+    ...goals.map((g, i) => ({ id: g.id, name: g.name, cents: g.monthCents ?? 0, color: goalTone(i).color })),
+  ];
+  return parts.filter((p) => p.cents > 0);
+}

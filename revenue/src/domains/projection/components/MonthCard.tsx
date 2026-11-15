@@ -1,10 +1,12 @@
 import { Card } from "@homeowner/bedrock";
-import { Amount, formatAmount } from "@homeowner/bedrock/finance";
+import { Amount } from "@homeowner/bedrock/finance";
 import { ChevronDown } from "lucide-react";
+import { useHiddenProps } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
+import { monthLabel } from "../../../shared/month/month";
 import type { CommitmentMonth } from "../../overview/api/api";
-import { monthLabel } from "../../overview/logic/month";
 import { monthRows } from "../../overview/logic/monthRows";
+import { useMoney } from "../hooks/useMoney";
 import { groupLabel, itemName } from "../logic/labels";
 
 /**
@@ -14,7 +16,8 @@ import { groupLabel, itemName } from "../logic/labels";
  */
 export function MonthCard({ data, current, income }: { data: CommitmentMonth; current: boolean; income: number | null }) {
   const { t, locale } = useI18n();
-  const money = (cents: number) => formatAmount(cents, { locale });
+  const money = useMoney();
+  const hidden = useHiddenProps();
   const rows = monthRows(data);
 
   return (
@@ -35,7 +38,7 @@ export function MonthCard({ data, current, income }: { data: CommitmentMonth; cu
             {rows.leftoverCents !== null && (
               <span className="flex flex-wrap items-baseline gap-x-2">
                 <span className="text-text-muted">{t("projection.leftover")}</span>
-                <Amount cents={rows.leftoverCents} size="md" locale={locale} />
+                <Amount cents={rows.leftoverCents} size="md" locale={locale} {...hidden} />
               </span>
             )}
           </span>
