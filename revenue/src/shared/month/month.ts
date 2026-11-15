@@ -38,3 +38,9 @@ export function formatDay(date: string, locale: string): string {
   const [y, m, d] = date.split("-").map(Number) as [number, number, number];
   return format(new Date(y, m - 1, d), locale, { day: "numeric", month: "short" });
 }
+
+/** The month's short name with its first letter capitalised, for a chart axis: "Jun". */
+export function monthShort(month: Month, locale: string): string {
+  const [y, m] = month.split("-").map(Number) as [number, number];
+  return format(new Date(y, m - 1, 1), locale, { month: "short" }).replace(/\.$/, "");
+}

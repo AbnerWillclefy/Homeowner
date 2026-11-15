@@ -2,7 +2,7 @@ import type { AxiosAdapter, InternalAxiosRequestConfig } from "axios";
 import { describe, expect, it } from "vitest";
 import { createApiClient } from "../../api/client";
 import { createSessionStore } from "../../auth/session";
-import { getCardBills, getCardSources, getMonthTransactions, putBillDays } from "./api";
+import { getCardBills, getCardSources, getMonthTransactions, getPastBills, putBillDays } from "./api";
 
 function setup(status: number, data: unknown, fail = false) {
   const store = createSessionStore({ getItem: () => null, setItem: () => {}, removeItem: () => {} });
@@ -41,8 +41,8 @@ describe("getCardBills", () => {
 
 describe("getCardSources", () => {
   it("keeps the credit cards with their days", async () => {
-    const { client } = setup(200, { sources: [{ id: "s1", name: "Nubank", kind: "credit_card", closeDay: 3, dueDay: null }, { id: "s2", name: "Itaú", kind: "checking", closeDay: null, dueDay: null }] });
-    expect(await getCardSources(client)).toEqual([{ id: "s1", name: "Nubank", closeDay: 3, dueDay: null }]);
+    const { client } = setup(200, { sources: [{ id: "s1", name: "Nubank", kind: "credit_card", closeDay: 3, dueDay: null, creditLimitCents: 1_200_000 }, { id: "s2", name: "Itaú", kind: "checking", closeDay: null, dueDay: null }] });
+    expect(await getCardSources(client)).toEqual([{ id: "s1", name: "Nubank", closeDay: 3, dueDay: null, creditLimitCents: 1_200_000 }]);
   });
 });
 
@@ -50,9 +50,26 @@ describe("getMonthTransactions", () => {
   it("reads rows with their source id", async () => {
     const row = { id: "t1", sourceId: "s1", description: "Mercado", postedOn: "2030-01-02", countsOn: "2030-02-10", amountCents: -500, installment: { number: 1, total: 3 } };
     const { client, sent } = setup(200, { transactions: [row] });
-    expect(await getMonthTransactions("2030-02", client)).toEqual([row]);
+    expect(await getMonthTransactions("2030-02", client)).toEqual([{ ...row, spendingCategory: null }]);
     expect(sent[0]!.params).toEqual({ month: "2030-02" });
     await expect(getMonthTransactions("2030-02", setup(200, { transactions: [{ ...row, sourceId: undefined }] }).client)).rejects.toThrow();
+  });
+});
+
+describe("getPastBills", () => {
+  const bill = { closesOn: "2030-01-08", dueOn: "2030-01-15", totalCents: 1000 };
+  it("reads the closed bills and their average for the card", async () => {
+    const { client, sent } = setup(200, { sourceId: "s1", bills: [bill], averageCents: 1000 });
+    expect(await getPastBills("s1", 6, client)).toEqual({ bills: [bill], averageCents: 1000 });
+    expect(sent[0]!.params).toEqual({ source: "s1", months: "6" });
+  });
+  it("reads no bills with a null average", async () => {
+    expect(await getPastBills("s1", 6, setup(200, { sourceId: "s1", bills: [], averageCents: null }).client)).toEqual({ bills: [], averageCents: null });
+  });
+  it("throws on a failure and on a malformed body", async () => {
+    await expect(getPastBills("s1", 6, setup(503, {}).client)).rejects.toThrow();
+    await expect(getPastBills("s1", 6, setup(200, { bills: [{ ...bill, totalCents: "x" }], averageCents: null }).client)).rejects.toThrow();
+    await expect(getPastBills("s1", 6, setup(200, { bills: [] }).client)).rejects.toThrow();
   });
 });
 
