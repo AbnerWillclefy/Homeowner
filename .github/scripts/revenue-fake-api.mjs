@@ -135,6 +135,8 @@ function netWorth(today, range) {
       cents: 1_700_000 + i * (300_000 / days) + (i % 7) * 12_000,
     })).map((p) => ({ ...p, cents: Math.round(p.cents) })),
     seriesExcludesCardBills: true,
+    monthStart: { day: new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 1, 0)).toISOString().slice(0, 10), balancesCents: 600_000, investmentsCents: 1_250_000 },
+    monthChange: { balancesCents: 50_000, investmentsCents: 100_000, totalCents: 150_000 },
   };
 }
 
