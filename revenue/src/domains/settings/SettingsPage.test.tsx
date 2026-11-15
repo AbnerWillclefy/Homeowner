@@ -144,6 +144,17 @@ describe("planning", () => {
     await waitFor(() => expect(goals.putReserve).toHaveBeenCalledWith(4000000));
   });
 
+  it("asks for the contribution first, then saves it with the default share", async () => {
+    vi.mocked(goals.getSavings).mockResolvedValue({ ...SAVINGS, contributionBaseCents: null, reserveSharePercent: null });
+    open();
+    await userEvent.click(await screen.findByRole("radio", { name: "70%" }));
+    expect(await screen.findByText("Set the monthly contribution first.")).toBeTruthy();
+    expect(goals.putContribution).not.toHaveBeenCalled();
+    await userEvent.type(screen.getByLabelText("How much to save each month"), "1500");
+    await userEvent.click(screen.getAllByRole("button", { name: "Save" })[1]!);
+    await waitFor(() => expect(goals.putContribution).toHaveBeenCalledWith({ baseCents: 150000, reserveSharePercent: 50 }));
+  });
+
   it("saves a preset share, and Other takes 0 and 100 but not 101", async () => {
     open();
     await userEvent.click(await screen.findByRole("radio", { name: "70%" }));
