@@ -51,6 +51,8 @@ type Planner struct {
 	llm   LLMConfig
 	// nudgeTimeout is the one deadline for all the nudging of a tick.
 	nudgeTimeout time.Duration
+	// tickBudgetCtx makes the LLM budget context of RunDue; a test seam, always context.WithTimeout in production.
+	tickBudgetCtx func(context.Context, time.Duration) (context.Context, context.CancelFunc)
 }
 
 // defaultNudgeTimeout bounds both nudge calls of a tick together, well inside
@@ -143,7 +145,7 @@ const defaultExplainBudget = 15 * time.Second
 
 // New returns a Planner that asks alloc for every proposal.
 func New(db *pgxpool.Pool, alloc allocation.Allocator, log *slog.Logger, opts ...Option) *Planner {
-	p := &Planner{db: db, tasks: tasks.NewStore(db), alloc: alloc, log: log, nudgeTimeout: defaultNudgeTimeout}
+	p := &Planner{db: db, tasks: tasks.NewStore(db), alloc: alloc, log: log, nudgeTimeout: defaultNudgeTimeout, tickBudgetCtx: context.WithTimeout}
 	for _, opt := range opts {
 		opt(p)
 	}
@@ -168,7 +170,7 @@ func (p *Planner) RunDue(ctx context.Context, now time.Time) (Summary, error) {
 	var planned []HomeDay
 	// One LLM budget for the whole tick: once it is spent, the remaining Homes
 	// fall back to the baseline without asking.
-	llmCtx, cancel := context.WithTimeout(ctx, p.llm.TickBudget)
+	llmCtx, cancel := p.tickBudgetCtx(ctx, p.llm.TickBudget)
 	defer cancel()
 	for _, h := range due {
 		outcome, err := p.planHome(ctx, llmCtx, h.ID, now)
