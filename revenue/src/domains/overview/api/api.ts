@@ -1,31 +1,4 @@
 import { apiClient } from "../../../api/client";
-import type { SpendingCategory } from "../logic/spendingCategories";
-
-export type TransactionType = "income" | "expense" | "transfer" | "saving";
-
-/** One Transaction of `GET /me/finance/transactions`. `amountCents` is signed: negative is money out. */
-export interface Transaction {
-  id: string;
-  /** `YYYY-MM-DD`. */
-  postedOn: string;
-  /** `YYYY-MM-DD`, the day it counts as spent. */
-  countsOn: string;
-  description: string;
-  sourceName: string;
-  amountCents: number;
-  currency: string;
-  type: TransactionType;
-  spendingCategory: SpendingCategory | null;
-}
-
-export interface MonthResponse {
-  month: string;
-  spentCents: number;
-  categories: { category: SpendingCategory; spentCents: number }[];
-  transactions: Transaction[];
-  committedCents?: number;
-  spentSinceFirstCents?: number;
-}
 
 export interface Pace {
   /** Cumulative spend at the end of each day, from day 1 to today (the whole month once it is past). */
@@ -38,7 +11,7 @@ export interface CommitmentMonth {
   month: string;
   /** Every Installment plan's part due this month, on a card or not; the off-card ones are also summed in `otherInstallmentsCents`. */
   installments: { name: string; number: number; total: number; amountCents: number }[];
-  cards: { sourceId: string; name: string; amountCents: number; billDaysKnown: boolean }[];
+  cards: { sourceId: string; name: string; amountCents: number; billDaysKnown: boolean; /** `YYYY-MM-DD`, null or absent when the card's days are not known. */ dueOn?: string | null; closesOn?: string | null }[];
   otherBills: { id: string; name: string; cents: number; paid: boolean }[];
   otherInstallmentsCents: number;
   planned: { category: string; cents: number }[];
@@ -60,16 +33,12 @@ export interface Commitments {
   months: CommitmentMonth[];
 }
 
-export interface Bill {
-  id: string;
-  name: string;
-  expectedCents: number;
-  dueDay: number;
-  /** `YYYY-MM-DD`. */
-  dueDate: string;
-  paid: boolean;
-  paidBy?: "hand" | "bank" | null;
-  paidCents: number | null;
+/** One month of `GET /me/finance/history`: the month's result is `incomeCents - spentCents - savedCents`. */
+export interface HistoryMonth {
+  month: string;
+  incomeCents: number;
+  spentCents: number;
+  savedCents: number;
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
@@ -112,40 +81,11 @@ function parseCommitments(body: unknown): Commitments | null {
 /** `GET /me/finance/commitments?from=YYYY-MM`: `months[0]` is `from`. */
 export const getCommitments = (from: string) => read("/me/finance/commitments", { from }, parseCommitments);
 
-function parseBills(body: unknown): Bill[] | null {
-  if (!Array.isArray(body)) return null;
-  const valid = body.every(
-    (b) =>
-      isObject(b) &&
-      typeof b.id === "string" &&
-      typeof b.name === "string" &&
-      isNum(b.expectedCents) &&
-      isNum(b.dueDay) &&
-      typeof b.dueDate === "string" &&
-      typeof b.paid === "boolean" &&
-      (b.paidCents === undefined || b.paidCents === null || isNum(b.paidCents)),
-  );
-  return valid ? (body as Bill[]).map((b) => ({ ...b, paidCents: b.paidCents ?? null })) : null;
+function parseHistory(body: unknown): HistoryMonth[] | null {
+  if (!isObject(body) || !Array.isArray(body.months)) return null;
+  const valid = body.months.every((m) => isObject(m) && typeof m.month === "string" && isNum(m.incomeCents) && isNum(m.spentCents) && isNum(m.savedCents));
+  return valid ? (body.months as HistoryMonth[]).map(({ month, incomeCents, spentCents, savedCents }) => ({ month, incomeCents, spentCents, savedCents })) : null;
 }
 
-/** `GET /me/finance/bills?month=YYYY-MM`. */
-export const getBills = (month: string) => read("/me/finance/bills", { month }, parseBills);
-
-const TYPES = ["income", "expense", "transfer", "saving"];
-
-function parseMonth(body: unknown): MonthResponse | null {
-  if (!isObject(body) || typeof body.month !== "string" || !isNum(body.spentCents)) return null;
-  if (!Array.isArray(body.categories) || !Array.isArray(body.transactions)) return null;
-  const valid = list(
-    body.transactions,
-    (t) =>
-      typeof t.id === "string" && typeof t.postedOn === "string" && typeof t.description === "string" && typeof t.sourceName === "string" &&
-      isNum(t.amountCents) && TYPES.includes(t.type as string) && (t.spendingCategory === null || typeof t.spendingCategory === "string"),
-  );
-  if (!valid || !optNum(body.committedCents) || !optNum(body.spentSinceFirstCents)) return null;
-  const transactions = (body.transactions as Record<string, unknown>[]).map((t) => ({ ...t, countsOn: typeof t.countsOn === "string" ? t.countsOn : t.postedOn }));
-  return { ...(body as unknown as MonthResponse), transactions: transactions as unknown as Transaction[] };
-}
-
-/** `GET /me/finance/transactions?month=YYYY-MM`. */
-export const getMonthTransactions = (month: string) => read("/me/finance/transactions", { month }, parseMonth);
+/** `GET /me/finance/history?to=YYYY-MM&months=N`, oldest month first. */
+export const getHistory = (to: string, months: number) => read("/me/finance/history", { to, months: String(months) }, parseHistory);

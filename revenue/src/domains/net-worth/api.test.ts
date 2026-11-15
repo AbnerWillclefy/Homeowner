@@ -32,6 +32,12 @@ describe("parseNetWorth", () => {
     const empty = { hasData: false, today: null, series: [], seriesExcludesCardBills: true };
     expect(parseNetWorth(empty)).toEqual(empty);
   });
+  it("reads the month's start and change when the API sends them, and refuses a malformed one", () => {
+    const month = { monthStart: { day: "2026-10-31", balancesCents: 1, investmentsCents: 2 }, monthChange: { balancesCents: 3, investmentsCents: 4, totalCents: 7 } };
+    expect(parseNetWorth({ ...BODY, ...month })).toEqual({ ...BODY, ...month });
+    expect(parseNetWorth({ ...BODY, monthChange: null, monthStart: null })).toMatchObject({ monthChange: null, monthStart: null });
+    expect(parseNetWorth({ ...BODY, monthChange: { totalCents: "7" } })).toBeNull();
+  });
   it("ignores fields it does not know", () => {
     expect(parseNetWorth({ ...BODY, brandNew: 1, series: [{ day: "2026-11-13", cents: 5, extra: true }] })?.series).toEqual([{ day: "2026-11-13", cents: 5 }]);
   });

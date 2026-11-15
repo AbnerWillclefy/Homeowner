@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getBills, getCommitments, getMonthTransactions } from "./api";
+import { getCommitments, getHistory } from "./api";
 
 const get = vi.fn<(url: string, config?: { params?: unknown }) => Promise<{ status: number; data?: unknown }>>();
 vi.mock("../../../api/client", () => ({ apiClient: { get: (url: string, config?: { params?: unknown }) => get(url, config) } }));
@@ -44,31 +44,19 @@ describe("getCommitments", () => {
   });
 });
 
-describe("getBills", () => {
-  const bill = { id: "b", name: "Luz", expectedCents: 100, dueDay: 5, dueDate: "2026-11-05", paid: false };
-  it("asks for the month and fills a missing paidCents", async () => {
-    get.mockResolvedValue({ status: 200, data: [bill] });
-    const bills = await getBills("2026-11");
-    expect(get).toHaveBeenCalledWith("/me/finance/bills", { params: { month: "2026-11" } });
-    expect(bills[0]!.paidCents).toBeNull();
+describe("getHistory", () => {
+  const row = { month: "2026-11", incomeCents: 980000, spentCents: 500000, savedCents: 120000, categories: [] };
+  it("asks for the months ending at `to` and keeps income, spent and saved", async () => {
+    get.mockResolvedValue({ status: 200, data: { to: "2026-11", months: [row] } });
+    expect(await getHistory("2026-11", 2)).toEqual([{ month: "2026-11", incomeCents: 980000, spentCents: 500000, savedCents: 120000 }]);
+    expect(get).toHaveBeenCalledWith("/me/finance/history", { params: { to: "2026-11", months: "2" } });
   });
-  it("rejects a malformed body", async () => {
-    get.mockResolvedValue({ status: 200, data: [{ ...bill, dueDate: 5 }] });
-    await expect(getBills("2026-11")).rejects.toThrow();
+  it("rejects a month without its income", async () => {
+    get.mockResolvedValue({ status: 200, data: { months: [{ ...row, incomeCents: undefined }] } });
+    await expect(getHistory("2026-11", 2)).rejects.toThrow();
   });
-});
-
-describe("getMonthTransactions", () => {
-  const tx = { id: "t", postedOn: "2026-11-02", description: "Salário", sourceName: "Banco", amountCents: 100, type: "income", spendingCategory: null };
-  const body = { month: "2026-11", spentCents: 0, categories: [], transactions: [tx] };
-  it("asks for the month and defaults countsOn to postedOn", async () => {
-    get.mockResolvedValue({ status: 200, data: body });
-    const result = await getMonthTransactions("2026-11");
-    expect(get).toHaveBeenCalledWith("/me/finance/transactions", { params: { month: "2026-11" } });
-    expect(result.transactions[0]!.countsOn).toBe("2026-11-02");
-  });
-  it("rejects a malformed body", async () => {
-    get.mockResolvedValue({ status: 200, data: { ...body, transactions: [{ ...tx, type: "gift" }] } });
-    await expect(getMonthTransactions("2026-11")).rejects.toThrow();
+  it("rejects a failed status", async () => {
+    get.mockResolvedValue({ status: 500 });
+    await expect(getHistory("2026-11", 2)).rejects.toThrow();
   });
 });
