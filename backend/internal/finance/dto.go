@@ -306,11 +306,34 @@ type ConnectTokenResponse struct {
 // Series is balances plus Investments only: past days' card bills are not stored,
 // so SeriesExcludesCardBills is always true and the client must not show its last
 // point as the Net worth.
+//
+// MonthStart is null without data. It holds the balances and Investments on the
+// last day of the previous month (São Paulo), so a change on the 1st counts in
+// this month; a Source or Investment with no value by then starts at its first
+// value of the month. MonthChange is today's balances and Investments less those,
+// and its TotalCents is balances plus Investments only, never Today.TotalCents'
+// change: card bills are left out because past days' bills are not stored.
 type NetWorthResponse struct {
 	HasData                 bool            `json:"hasData"`
 	Today                   *NetWorthToday  `json:"today"`
 	Series                  []NetWorthPoint `json:"series"`
 	SeriesExcludesCardBills bool            `json:"seriesExcludesCardBills"`
+	MonthStart              *NetWorthStart  `json:"monthStart"`
+	MonthChange             *NetWorthChange `json:"monthChange"`
+}
+
+// NetWorthStart is the balances and Investments on Day (YYYY-MM-DD).
+type NetWorthStart struct {
+	Day              string `json:"day"`
+	BalancesCents    int64  `json:"balancesCents"`
+	InvestmentsCents int64  `json:"investmentsCents"`
+}
+
+// NetWorthChange is what changed since MonthStart; TotalCents = BalancesCents + InvestmentsCents.
+type NetWorthChange struct {
+	BalancesCents    int64 `json:"balancesCents"`
+	InvestmentsCents int64 `json:"investmentsCents"`
+	TotalCents       int64 `json:"totalCents"`
 }
 
 // NetWorthToday is today's Net worth with its parts: TotalCents = BalancesCents + InvestmentsCents - CardBillsCents.

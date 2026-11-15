@@ -107,3 +107,28 @@ func TestNetWorthSeries(t *testing.T) {
 		})
 	}
 }
+
+func TestMonthStart(t *testing.T) {
+	t.Parallel()
+	d := func(s string) time.Time { v, _ := time.Parse(time.DateOnly, s); return v }
+	p := func(day string, v int64) Point[int64] { return Point[int64]{Day: d(day), Value: v} }
+	type m = map[string][]Point[int64]
+	tests := []struct {
+		name                  string
+		balances, investments m
+		want                  *MonthStartParts
+	}{
+		{"the last value on or before the start day", m{"s": {p("2026-10-01", 5), p("2026-10-31", 100), p("2026-11-04", 900)}}, nil, &MonthStartParts{100, 0}},
+		{"a value exactly on the start day", m{"s": {p("2026-10-31", 70)}}, m{"i": {p("2026-10-31", 30)}}, &MonthStartParts{70, 30}},
+		{"a Source first seen this month starts at its first value", m{"a": {p("2026-10-20", 100)}, "b": {p("2026-11-05", 400), p("2026-11-07", 450)}}, nil, &MonthStartParts{500, 0}},
+		{"an Investment created this month starts at its first value", m{"s": {p("2026-10-31", 10)}}, m{"i": {p("2026-11-02", 60), p("2026-11-06", 80)}}, &MonthStartParts{10, 60}},
+		{"no values at all", nil, nil, nil},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := MonthStart(tc.balances, tc.investments, d("2026-10-31")); !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("MonthStart = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
