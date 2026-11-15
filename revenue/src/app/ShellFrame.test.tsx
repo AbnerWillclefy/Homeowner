@@ -53,6 +53,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("sidebar", () => {
@@ -88,6 +89,13 @@ describe("sidebar", () => {
     open();
     expect(await screen.findByText("Atualizado há 2 h")).toBeTruthy();
   });
+
+  it("says the banks are being read while importing", async () => {
+    vi.mocked(sourcesApi.getSources).mockResolvedValue({ ...status("2030-01-10T13:00:00Z"), importing: true });
+    open();
+    expect(await screen.findByText("Importando seus lançamentos…")).toBeTruthy();
+    expect(screen.queryByText(/Atualizado/)).toBeNull();
+  });
 });
 
 describe("hide values", () => {
@@ -100,6 +108,25 @@ describe("hide values", () => {
     expect(screen.getByRole("button", { name: "Mostrar valores" }).getAttribute("aria-pressed")).toBe("true");
     first.unmount();
     open();
+    expect(screen.getByText("valor escondido")).toBeTruthy();
+  });
+
+  it("still renders and toggles when storage is blocked", async () => {
+    const get = Storage.prototype.getItem;
+    const set = Storage.prototype.setItem;
+    const blocked = (key: string) => {
+      if (key === HIDE_VALUES_STORAGE_KEY) throw new Error("blocked");
+    };
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(function (this: Storage, k) {
+      blocked(k);
+      return get.call(this, k);
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, k, v) {
+      blocked(k);
+      set.call(this, k, v);
+    });
+    open();
+    await userEvent.click(screen.getByRole("button", { name: "Esconder valores" }));
     expect(screen.getByText("valor escondido")).toBeTruthy();
   });
 });

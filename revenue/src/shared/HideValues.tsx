@@ -17,12 +17,22 @@ export const useHideValues = () => useContext(HideValuesContext);
 
 /** Whether to hide money on this device. Device-wide, kept across sign-out, never sent to the API. */
 export function HideValuesProvider({ children }: { children: ReactNode }) {
-  const [hidden, setHidden] = useState(() => localStorage.getItem(HIDE_VALUES_STORAGE_KEY) === "1");
+  const [hidden, setHidden] = useState(() => {
+    try {
+      return localStorage.getItem(HIDE_VALUES_STORAGE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
   const value = useMemo(
     () => ({
       hidden,
       toggle: () => {
-        localStorage.setItem(HIDE_VALUES_STORAGE_KEY, hidden ? "0" : "1");
+        try {
+          localStorage.setItem(HIDE_VALUES_STORAGE_KEY, hidden ? "0" : "1");
+        } catch {
+          /* not persisted; applies for this session */
+        }
         setHidden(!hidden);
       },
     }),

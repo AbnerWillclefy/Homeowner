@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { getBills } from "../domains/bills/api";
 import { billsKey } from "../domains/bills/hooks/useBills";
-import { billState } from "../domains/bills/logic/billState";
+import { summarise } from "../domains/bills/logic/billState";
 import { useSources } from "../domains/sources/hooks/useSources";
 import { HideValuesProvider } from "../shared/HideValues";
 import { useI18n } from "../shared/i18n/I18nProvider";
@@ -34,7 +34,7 @@ function useOpenBills(now: Date) {
   const today = saoPauloDay(now);
   const { data } = useQuery({ queryKey: billsKey(today.slice(0, 7)), queryFn: () => getBills(today.slice(0, 7)) });
   // Card bills from commitments are not counted: the badge counts the Bills to pay rows, as the Bills artboard does.
-  return data?.filter((b) => billState(b, today) === "due" || billState(b, today) === "overdue").length;
+  return data && summarise(data).toPayCount;
 }
 
 /** The frame of every signed-in screen: Sidebar from 1024px up, BottomBar below, with the screen in between. */
