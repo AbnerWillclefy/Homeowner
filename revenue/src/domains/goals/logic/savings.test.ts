@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contributionOf, goalFieldErrorKey, goalInputOf, moveId, monthOf, progressPercent, reserveTargetOf, splitContribution, whenOf } from "./savings";
+import { contributionOf, goalFieldErrorKey, goalInputOf, moveId, monthOf, progressPercent, reserveTargetOf, shareOptions, splitContribution, splitParts, whenOf } from "./savings";
 
 describe("goalInputOf", () => {
   it("trims the name and reads the month", () =>
@@ -66,4 +66,19 @@ describe("whenOf", () => {
 it("gives an unknown code a message", () => {
   expect(goalFieldErrorKey("name", "required")).toBe("goals.field.name.required");
   expect(goalFieldErrorKey("name", "weird")).toBe("goals.field.unknown");
+});
+
+describe("shareOptions", () => {
+  it("offers 30, 50 and 70", () => expect(shareOptions(50)).toEqual([30, 50, 70]));
+  it("adds a saved share that is not one of them, in order", () => expect(shareOptions(40)).toEqual([30, 40, 50, 70]));
+  it("offers just the three when no share is set", () => expect(shareOptions(null)).toEqual([30, 50, 70]));
+});
+
+describe("splitParts", () => {
+  it("lists the reserve and each Goal with money, keeping a Goal's colour when another is left out", () => {
+    const parts = splitParts({ name: "Reserva", cents: 600 }, [{ id: "a", name: "A", monthCents: 0 }, { id: "b", name: "B", monthCents: 300 }, { id: "c", name: "C", monthCents: null }]);
+    expect(parts.map((p) => [p.id, p.cents])).toEqual([["reserve", 600], ["b", 300]]);
+    expect(parts[1]!.color).toBe("var(--cat-shopping)");
+  });
+  it("leaves the reserve out when it takes nothing", () => expect(splitParts({ name: "R", cents: null }, []).length).toBe(0));
 });
