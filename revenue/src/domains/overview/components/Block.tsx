@@ -1,31 +1,32 @@
-import { Banner, Button, Skeleton } from "@homeowner/bedrock";
-import type { UseQueryResult } from "@tanstack/react-query";
+import { Banner, Button, Card, Skeleton } from "@homeowner/bedrock";
 import type { ReactNode } from "react";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
 
+/** What every read of this screen hands a Block. */
+export interface BlockState<T> {
+  data: T | undefined;
+  /** The read failed and there is nothing to show. */
+  failed: boolean;
+  reload(): void;
+}
+
 /**
- * A block's read: a skeleton while it loads, its own alert with Retry when it fails, the content once it is here.
- * A failure never reaches the blocks that read something else.
+ * A card's read: a skeleton while it loads, its own alert with Retry when it fails, the card once the data is here.
+ * A failure never reaches the cards that read something else.
  */
-export function Block<T>({ heading, failed, query, children }: { heading?: string; failed: string; query: UseQueryResult<T>; children(data: T): ReactNode }) {
+export function Block<T>({ label, failed, state, children }: { label: string; failed: string; state: BlockState<T>; children(data: T): ReactNode }) {
   const { t } = useI18n();
-  if (query.isError) {
-    return (
-      <section className="flex flex-col gap-3">
-        {heading && <h2 className="section-title">{heading}</h2>}
-        <Banner tone="danger" action={<Button variant="ghost" size="sm" onClick={() => void query.refetch()}>{t("overview.retry")}</Button>}>
+  if (state.data !== undefined) return <>{children(state.data)}</>;
+  return (
+    <Card aria-busy={!state.failed || undefined}>
+      <h2 className="card-label text-text-muted">{label}</h2>
+      {state.failed ? (
+        <Banner tone="danger" action={<Button variant="ghost" size="sm" onClick={state.reload}>{t("overview.retry")}</Button>}>
           {failed}
         </Banner>
-      </section>
-    );
-  }
-  if (query.data === undefined) {
-    return (
-      <section aria-busy="true" className="flex flex-col gap-3">
-        {heading && <h2 className="section-title">{heading}</h2>}
+      ) : (
         <Skeleton className="h-24 w-full" />
-      </section>
-    );
-  }
-  return <>{children(query.data)}</>;
+      )}
+    </Card>
+  );
 }
