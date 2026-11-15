@@ -7,6 +7,13 @@ export function useMonthParam() {
   const today = saoPauloDay(new Date());
   const thisMonth = today.slice(0, 7);
   const month = monthFromParam(params.get("month"), thisMonth);
-  const setMonth = (next: Month) => setParams(next >= thisMonth ? {} : { month: next }, { replace: true });
+  // Other params (a screen's `?card=`) survive a change of month.
+  const setMonth = (next: Month) =>
+    setParams((old) => {
+      const params = new URLSearchParams(old);
+      if (next >= thisMonth) params.delete("month");
+      else params.set("month", next);
+      return params;
+    }, { replace: true });
   return { month, thisMonth, today, setMonth };
 }
