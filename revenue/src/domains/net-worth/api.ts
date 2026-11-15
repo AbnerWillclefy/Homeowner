@@ -24,6 +24,10 @@ export interface NetWorth {
   series: NetWorthPoint[];
   /** Past days' card bills are not kept, so the series is never the Net worth. */
   seriesExcludesCardBills: boolean;
+  /** Balances plus Investments on the last day of the previous month; absent or null without data. */
+  monthStart?: { day: string; balancesCents: number; investmentsCents: number } | null;
+  /** What changed since `monthStart`; `totalCents` is balances plus Investments, never today's total's change. */
+  monthChange?: { balancesCents: number; investmentsCents: number; totalCents: number } | null;
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
@@ -36,11 +40,18 @@ export function parseNetWorth(body: unknown): NetWorth | null {
   if (body.hasData ? !isRecord(today) || !num(today.totalCents) || !num(today.balancesCents) || !num(today.investmentsCents) || !num(today.cardBillsCents) : today !== null) return null;
   if (!body.series.every((p) => isRecord(p) && typeof p.day === "string" && num(p.cents))) return null;
   const t = today as unknown as NetWorthToday | null;
+  const start = body.monthStart ?? null;
+  const change = body.monthChange ?? null;
+  if (start !== null && (!isRecord(start) || typeof start.day !== "string" || !num(start.balancesCents) || !num(start.investmentsCents))) return null;
+  if (change !== null && (!isRecord(change) || !num(change.balancesCents) || !num(change.investmentsCents) || !num(change.totalCents))) return null;
   return {
     hasData: body.hasData,
     today: t && { totalCents: t.totalCents, balancesCents: t.balancesCents, investmentsCents: t.investmentsCents, cardBillsCents: t.cardBillsCents },
     series: (body.series as NetWorthPoint[]).map(({ day, cents }) => ({ day, cents })),
     seriesExcludesCardBills: body.seriesExcludesCardBills,
+    // Absent stays absent, so an older answer without the month's change parses as before.
+    ...(body.monthStart !== undefined && { monthStart: start as NetWorth["monthStart"] }),
+    ...(body.monthChange !== undefined && { monthChange: change as NetWorth["monthChange"] }),
   };
 }
 

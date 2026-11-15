@@ -2,7 +2,7 @@ import { Badge, Button, Card, CardContent, CardHeader, CardLabel } from "@homeow
 import { Amount } from "@homeowner/bedrock/finance";
 import { CalendarCog, CreditCard, Landmark, Sigma } from "lucide-react";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
-import { formatDay } from "../../bills/logic/month";
+import { formatDay } from "../../../shared/month/month";
 import type { CardBill, CardSource, CardTransaction } from "../api";
 import { CardRowsList, CardRowsTable } from "./CardRows";
 

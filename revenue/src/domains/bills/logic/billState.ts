@@ -11,6 +11,13 @@ export function billState(bill: Pick<Bill, "paid" | "paidBy" | "dueDate">, today
 
 export const isPaid = (state: BillState) => state === "paid-bank" || state === "paid-hand";
 
+export type StatusFilter = "all" | "pending" | "paid";
+
+/** The Bills the status segment shows: pending is due or overdue, paid is paid by hand or by the bank. */
+export function filterBills(bills: Bill[], filter: StatusFilter, today: string | null): Bill[] {
+  return filter === "all" ? bills : bills.filter((b) => isPaid(billState(b, today)) === (filter === "paid"));
+}
+
 export interface BillSummary {
   paidCents: number;
   toPayCents: number;

@@ -1,5 +1,6 @@
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@homeowner/bedrock";
 import { Amount, DonutChart } from "@homeowner/bedrock/finance";
+import { useHiddenProps } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
 import type { CategoryRow } from "../logic/rows";
 import { spendingKey, tagOf } from "../logic/categories";
@@ -7,6 +8,7 @@ import { spendingKey, tagOf } from "../logic/categories";
 /** The month split by Spending Category: the one place the category colours appear. The table below is its text alternative. */
 export function SpendingDonut({ rows }: { rows: CategoryRow[] }) {
   const { t, locale } = useI18n();
+  const hidden = useHiddenProps();
   const spent = rows.filter((r) => r.spentCents > 0);
   const total = spent.reduce((n, r) => n + r.spentCents, 0);
   if (total === 0) return null;
@@ -32,7 +34,7 @@ export function SpendingDonut({ rows }: { rows: CategoryRow[] }) {
             {spent.map((r) => (
               <TableRow key={r.category}>
                 <TableCell>{t(spendingKey(r.category))}</TableCell>
-                <TableCell align="end"><Amount cents={r.spentCents} size="sm" locale={locale} /></TableCell>
+                <TableCell align="end"><Amount cents={r.spentCents} size="sm" locale={locale} {...hidden} /></TableCell>
               </TableRow>
             ))}
           </TableBody>

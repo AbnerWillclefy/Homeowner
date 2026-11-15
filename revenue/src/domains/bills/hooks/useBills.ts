@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import {
-  deleteBill, dismissBillSuggestion, getBills, getBillSuggestions, getCardBills, saveBill, setBillPaid,
+  deleteBill, dismissBillSuggestion, getBills, getBillSuggestions, saveBill, setBillPaid,
   type Bill, type BillInput, type BillSuggestion, type FieldCodes,
 } from "../api";
 import { withPaid } from "../logic/billState";
@@ -12,9 +12,9 @@ const suggestionsKey = ["finance", "bills", "suggestions"] as const;
 export type SaveOutcome = { kind: "ok" } | { kind: "fields"; fields: FieldCodes } | { kind: "failed" };
 type Notice = { month: string; kind: "failed" | "gone" };
 
-/** The card bills of the month: listed read-only, so a failed read only hides the list. */
-export function useCardBills(month: string) {
-  return useQuery({ queryKey: ["finance", "commitments", month, "cards"], queryFn: () => getCardBills(month) }).data ?? [];
+/** The month after, read-only, for the sub-section under this month. Off for a past month; a failed read leaves it empty. */
+export function useNextMonthBills(month: string, enabled: boolean) {
+  return useQuery({ queryKey: billsKey(month), queryFn: () => getBills(month), enabled }).data ?? [];
 }
 
 /** The suggested Bills (none while loading or when the read failed: the card is only an offer) and the dismissal. */

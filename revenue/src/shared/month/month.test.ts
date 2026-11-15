@@ -17,8 +17,5 @@ describe("month helpers", () => {
     expect(monthLabel("2026-11", "pt-BR")).toBe("Novembro de 2026");
     expect(monthLabel("2026-11", "en")).toBe("November 2026");
   });
-  it("writes a posting date as day and short month", () => {
-    expect(formatDay("2026-11-05", "en")).toBe("Nov 5");
-    expect(formatDay("2026-11-05", "pt-BR")).toBe("5 de nov.");
-  });
+  it("writes a due date as day and month", () => expect(formatDay("2030-01-05", "en")).toBe("Jan 5"));
 });

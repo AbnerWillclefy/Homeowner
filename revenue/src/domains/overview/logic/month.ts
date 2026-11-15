@@ -38,8 +38,3 @@ export function monthLabel(month: Month, locale: string): string {
   const [y, m] = month.split("-").map(Number) as [number, number];
   return formatCapitalisedMonth(new Date(y, m - 1, 1), locale, { month: "long", year: "numeric" });
 }
-
-/** The `?month=` of a Finances view, when it is a real `YYYY-MM` no later than `thisMonth`; anything else is `thisMonth`. */
-export function monthFromParam(value: string | null, thisMonth: Month): Month {
-  return value !== null && /^\d{4}-(0[1-9]|1[0-2])$/.test(value) && value <= thisMonth ? value : thisMonth;
-}

@@ -1,21 +1,25 @@
-import { Banner, Button, Dialog, EmptyState, Skeleton } from "@homeowner/bedrock";
-import { CalendarCheck, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Banner, Button, Card, Dialog, EmptyState, Skeleton, SegmentedControl } from "@homeowner/bedrock";
+import { formatAmount } from "@homeowner/bedrock/finance";
+import { CalendarCheck, Plus } from "lucide-react";
 import { useState } from "react";
-import { useSearchParams } from "react-router";
+import { HideValuesToggle, useHideValues } from "../../shared/HideValues";
 import { useI18n } from "../../shared/i18n/I18nProvider";
+import { addMonths, monthLabel } from "../../shared/month/month";
+import { MonthSelect } from "../../shared/month/MonthSelect";
+import { useMonthParam } from "../../shared/month/useMonthParam";
+import { PageHeader } from "../../shared/PageHeader";
 import { useMediaQuery } from "../../shared/useMediaQuery";
 import type { Bill, BillInput } from "./api";
 import { BillFormSheet } from "./components/BillFormSheet";
-import { BillsList, BillsTable } from "./components/BillRows";
+import { BillRows, NextMonthRows } from "./components/BillRows";
 import { BillSuggestions } from "./components/BillSuggestions";
 import { BillSummary } from "./components/BillSummary";
-import { CardBills } from "./components/CardBills";
-import { useBills, useBillSuggestions, useCardBills } from "./hooks/useBills";
-import { summarise } from "./logic/billState";
-import { addMonths, monthFromParam, monthLabel, saoPauloDay } from "./logic/month";
+import { useBills, useBillSuggestions, useNextMonthBills } from "./hooks/useBills";
+import { filterBills, summarise, type StatusFilter } from "./logic/billState";
 
 // Duplicates --bp-desktop in Bedrock's tokens.css: matchMedia cannot read custom properties.
 const DESKTOP = "(min-width: 1024px)";
+const FILTERS = ["all", "pending", "paid"] as const;
 
 type Open = { bill: Bill | null; initial?: BillInput; merchantKey?: string } | null;
 
@@ -23,38 +27,50 @@ type Open = { bill: Bill | null; initial?: BillInput; merchantKey?: string } | n
 export function BillsPage() {
   const { t, locale } = useI18n();
   const desktop = useMediaQuery(DESKTOP);
-  const [params, setParams] = useSearchParams();
-  const [now] = useState(() => new Date());
-  const today = saoPauloDay(now);
-  const thisMonth = today.slice(0, 7);
-  const month = monthFromParam(params.get("month"), thisMonth);
+  const { hidden } = useHideValues();
+  const { month, thisMonth, today: day } = useMonthParam();
   const current = month === thisMonth;
+  const today = current ? day : null;
   const { data, loading, failed, reload, notice, setPaid, save, remove } = useBills(month);
-  const cards = useCardBills(month);
+  const next = addMonths(month, 1);
+  const nextRows = useNextMonthBills(next, current);
   const { suggestions, dismiss } = useBillSuggestions();
   const [form, setForm] = useState<Open>(null);
   const [deleting, setDeleting] = useState<Bill | null>(null);
+  const [filter, setFilter] = useState<StatusFilter>("all");
   const [dismissFailed, setDismissFailed] = useState<string | null>(null); // the month the dismissal failed in
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
 
-  const step = (n: number) => setParams({ month: addMonths(month, n) });
   const label = monthLabel(month, locale);
   const rows = data ? [...data].sort((a, b) => a.dueDate.localeCompare(b.dueDate)) : [];
-  const List = desktop ? BillsTable : BillsList;
+  const summary = summarise(rows);
+  const shown = filterBills(rows, filter, today);
+  const count = t(rows.length === 1 ? "bills.count.one" : "bills.count.many", { count: rows.length });
+  // The total is money in a string, so a hidden one leaves it out.
+  const subtitle = data && [label, count, ...(hidden || rows.length === 0 ? [] : [formatAmount(summary.paidCents + summary.toPayCents, { locale })])].join(" · ");
+  const onPaid = (b: Bill, paid: boolean) => {
+    setBusy((s) => new Set(s).add(b.id));
+    setDismissFailed(null);
+    void setPaid(b, paid).finally(() => setBusy((s) => { const n = new Set(s); n.delete(b.id); return n; }));
+  };
 
   return (
     <section className="flex flex-col gap-6">
-      <h1 className="page-title">{t("nav.bills")}</h1>
-
-      <div role="group" aria-label={t("bills.month.group")} className="flex items-center justify-between gap-2">
-        <Button variant="secondary" icon={ChevronLeft} onClick={() => step(-1)}>
-          <span className="sr-only">{t("bills.month.prev")}</span>
-        </Button>
-        <p className="body-strong text-center" aria-live="polite">{label}</p>
-        <Button variant="secondary" icon={ChevronRight} disabled={current} onClick={() => step(1)}>
-          <span className="sr-only">{t("bills.month.next")}</span>
-        </Button>
-      </div>
+      <PageHeader
+        title={t("nav.bills")}
+        subtitle={subtitle}
+        tools={
+          <>
+            <MonthSelect />
+            {current && (
+              <Button icon={Plus} onClick={() => setForm({ bill: null })}>
+                <span className={desktop ? undefined : "sr-only"}>{t("bills.add")}</span>
+              </Button>
+            )}
+            <HideValuesToggle />
+          </>
+        }
+      />
 
       {(notice || dismissFailed === month) && (
         <Banner tone="danger">{t(notice === "gone" ? "bills.gone" : notice ? "bills.failed" : "bills.suggestions.dismissFailed")}</Banner>
@@ -68,29 +84,41 @@ export function BillsPage() {
       ) : failed || !data ? (
         <EmptyState icon={CalendarCheck} kind="no-results" title={t("bills.error.title")} message={t("bills.error.message")} action={{ label: t("bills.error.retry"), onClick: reload }} />
       ) : (
-        <>
-          {current && (
-            <BillSuggestions
-              suggestions={suggestions}
-              onAdd={(s) => setForm({ bill: null, initial: { name: s.name, expectedCents: s.amountCents, dueDay: s.dueDay }, merchantKey: s.merchantKey })}
-              onDismiss={(s) => void dismiss(s).then((ok) => setDismissFailed(ok ? null : month))}
-            />
-          )}
-          {rows.length === 0 ? (
-            <EmptyState icon={CalendarCheck} title={t("bills.empty.title")} message={t(current ? "bills.empty.message" : "bills.empty.past")} />
-          ) : (
-            <>
-              <BillSummary {...summarise(rows)} />
-              <List rows={rows} caption={t("bills.caption", { month: label })} today={current ? today : null} busy={busy} onPaid={(b, paid) => { setBusy((s) => new Set(s).add(b.id)); setDismissFailed(null); void setPaid(b, paid).finally(() => setBusy((s) => { const n = new Set(s); n.delete(b.id); return n; })); }} onEdit={(bill) => setForm({ bill })} onDelete={setDeleting} />
-            </>
-          )}
-          {current && (
-            <Button variant="secondary" icon={Plus} onClick={() => setForm({ bill: null })}>
-              {t("bills.add")}
-            </Button>
-          )}
-          <CardBills cards={cards} />
-        </>
+        <div className="grid gap-6 desktop:grid-cols-12">
+          <Card className="desktop:col-span-8">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="section-title">{current ? t("bills.thisMonth") : label}</h2>
+              {rows.length > 0 && (
+                <SegmentedControl label={t("bills.filter.label")} options={FILTERS.map((f) => ({ value: f, label: t(`bills.filter.${f}`) }))} value={filter} onValueChange={(v) => setFilter(v as StatusFilter)} />
+              )}
+            </div>
+            {rows.length === 0 ? (
+              <EmptyState icon={CalendarCheck} title={t("bills.empty.title")} message={t(current ? "bills.empty.message" : "bills.empty.past")} />
+            ) : shown.length === 0 ? (
+              <p className="body text-text-muted">{t(filter === "paid" ? "bills.filter.emptyPaid" : "bills.filter.emptyPending")}</p>
+            ) : (
+              <BillRows rows={shown} caption={t("bills.caption", { month: label })} today={today} busy={busy} onPaid={onPaid} onEdit={(bill) => setForm({ bill })} onDelete={setDeleting} />
+            )}
+            {nextRows.length > 0 && (
+              <>
+                <hr className="border-border" />
+                <h3 className="body-strong">{monthLabel(next, locale)}</h3>
+                <NextMonthRows rows={[...nextRows].sort((a, b) => a.dueDate.localeCompare(b.dueDate))} caption={t("bills.caption", { month: monthLabel(next, locale) })} />
+              </>
+            )}
+          </Card>
+
+          <div className="flex flex-col gap-6 desktop:col-span-4">
+            {rows.length > 0 && <BillSummary {...summary} month={label} />}
+            {current && (
+              <BillSuggestions
+                suggestions={suggestions}
+                onAdd={(s) => setForm({ bill: null, initial: { name: s.name, expectedCents: s.amountCents, dueDay: s.dueDay }, merchantKey: s.merchantKey })}
+                onDismiss={(s) => void dismiss(s).then((ok) => setDismissFailed(ok ? null : month))}
+              />
+            )}
+          </div>
+        </div>
       )}
 
       {form && (

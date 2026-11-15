@@ -2,7 +2,7 @@ import { ChartContainer, ChartTooltipContent, Table, TableBody, TableCaption, Ta
 import { formatAmount } from "@homeowner/bedrock/finance";
 import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from "recharts";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
-import { formatDay } from "../../bills/logic/month";
+import { formatDay } from "../../../shared/month/month";
 import type { NetWorthPoint } from "../api";
 
 /** Balances plus Investments per day. Draws only the points it is given, so days before the first sync stay empty; the table holds every value. */

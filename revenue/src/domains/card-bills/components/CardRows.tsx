@@ -1,7 +1,7 @@
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@homeowner/bedrock";
 import { Amount, ListRow } from "@homeowner/bedrock/finance";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
-import { formatDay } from "../../bills/logic/month";
+import { formatDay } from "../../../shared/month/month";
 import type { CardTransaction } from "../api";
 
 const subtitle = (r: CardTransaction, t: ReturnType<typeof useI18n>["t"], locale: string) =>

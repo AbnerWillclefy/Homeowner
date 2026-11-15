@@ -1,16 +1,21 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
+import { Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HideValuesProvider } from "../../shared/HideValues";
 import { renderApp } from "../../testing";
 import * as api from "./api";
-import type { Bill, BillSuggestion, CardBill, WriteResult } from "./api";
+import * as sourcesApi from "../sources/api";
+import { Shell } from "../../app/Shell";
+import type { Bill, BillSuggestion, WriteResult } from "./api";
 import { BillsPage } from "./BillsPage";
 
 vi.mock("./api", async (original) => ({
   ...(await original<typeof import("./api")>()),
-  getBills: vi.fn(), getBillSuggestions: vi.fn(), getCardBills: vi.fn(), saveBill: vi.fn(), deleteBill: vi.fn(), setBillPaid: vi.fn(), dismissBillSuggestion: vi.fn(),
+  getBills: vi.fn(), getBillSuggestions: vi.fn(), saveBill: vi.fn(), deleteBill: vi.fn(), setBillPaid: vi.fn(), dismissBillSuggestion: vi.fn(),
 }));
+vi.mock("../sources/api", async (original) => ({ ...(await original<typeof import("../sources/api")>()), getSources: vi.fn() }));
 
 const bill = (over: Partial<Bill>): Bill => ({ id: "b1", name: "Aluguel", expectedCents: 320000, dueDay: 5, dueDate: "2030-01-05", paid: false, paidBy: null, paidCents: null, ...over });
 const OVERDUE = bill({});
@@ -18,15 +23,14 @@ const PENDING = bill({ id: "b2", name: "Internet", expectedCents: 12990, dueDay:
 const PAID = bill({ id: "b3", name: "Condomínio", expectedCents: 85000, dueDay: 12, dueDate: "2030-01-12", paid: true, paidBy: "hand", paidCents: 85000 });
 const BANK = bill({ id: "b4", name: "Luz", expectedCents: 21000, dueDay: 14, dueDate: "2030-01-14", paid: true, paidBy: "bank", paidCents: 21000 });
 const LONG = bill({ id: "b5", name: "ASSINATURA ANUAL DO CLUBE DE BENEFÍCIOS COM NOME EXTREMAMENTE LONGO ".repeat(2).trim(), dueDay: 20, dueDate: "2030-01-20" });
-const CARD: CardBill = { sourceId: "s1", name: "Nubank", amountCents: 284300, billDaysKnown: true };
 const SUGGESTION: BillSuggestion = { merchantKey: "enel", name: "Enel", amountCents: 21480, dueDay: 10 };
 // jsdom has no layout, so it cannot check contrast (Bedrock's tokens.test.ts does); the page is not a whole document, so no landmarks.
 const AXE = { rules: { "color-contrast": { enabled: false }, region: { enabled: false } } };
 
 const width = (desktop: boolean) => vi.stubGlobal("matchMedia", () => ({ matches: desktop, addEventListener() {}, removeEventListener() {} }));
-const serve = (bills: Bill[], extra: { cards?: CardBill[]; suggestions?: BillSuggestion[] } = {}) => {
-  vi.mocked(api.getBills).mockResolvedValue(bills);
-  vi.mocked(api.getCardBills).mockResolvedValue(extra.cards ?? []);
+const NEXT = bill({ id: "n1", name: "Seguro", expectedCents: 45000, dueDay: 3, dueDate: "2030-02-03" });
+const serve = (bills: Bill[], extra: { suggestions?: BillSuggestion[] } = {}) => {
+  vi.mocked(api.getBills).mockImplementation(async (month) => (month === "2030-02" ? [NEXT] : bills));
   vi.mocked(api.getBillSuggestions).mockResolvedValue(extra.suggestions ?? []);
 };
 const open = (options: Parameters<typeof renderApp>[1] = {}) => renderApp(<BillsPage />, { path: "/bills", locale: "en", ...options });
@@ -35,7 +39,8 @@ const paid = vi.mocked(api.setBillPaid);
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"], now: new Date("2030-01-10T15:00:00Z") });
   localStorage.clear();
-  for (const fn of [api.getBills, api.getBillSuggestions, api.getCardBills, api.saveBill, api.deleteBill, api.setBillPaid, api.dismissBillSuggestion]) vi.mocked(fn).mockReset();
+  vi.mocked(sourcesApi.getSources).mockReset().mockResolvedValue({ sources: [], importing: false, lastSyncedAt: null });
+  for (const fn of [api.getBills, api.getBillSuggestions, api.saveBill, api.deleteBill, api.setBillPaid, api.dismissBillSuggestion]) vi.mocked(fn).mockReset();
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -43,23 +48,39 @@ afterEach(() => {
 });
 
 describe("layout and states", () => {
-  it("is a table by due date on a desktop width, with the whole long name", async () => {
+  it("is a list by due date, with the whole long name", async () => {
     width(true);
     serve([PENDING, LONG, OVERDUE]);
     open();
-    const table = await screen.findByRole("table", { name: "Bills to pay of January 2030" });
-    expect(within(table).getByText(LONG.name)).toBeTruthy();
-    const names = within(table).getAllByRole("row").slice(1).map((r) => within(r).getAllByRole("cell")[1]!.textContent);
-    expect(names[0]).toContain("Aluguel");
-    expect(names[2]).toContain("Internet");
+    const list = await screen.findByRole("list", { name: "Bills to pay of January 2030" });
+    expect(within(list).getByText(LONG.name).className).not.toContain("truncate");
+    for (const el of list.querySelectorAll(".body-strong, .caption")) expect(el.className).not.toContain("truncate");
+    const names = within(list).getAllByRole("listitem").map((r) => r.querySelector(".body-strong")!.textContent);
+    expect(names[0]).toBe("Aluguel");
+    expect(names[2]).toBe("Internet");
   });
 
-  it("is a list on a phone width", async () => {
-    width(false);
-    serve([OVERDUE, PENDING]);
+  it("puts the list on eight columns and the summary and suggestions on four, in one grid", async () => {
+    width(true);
+    serve([PENDING], { suggestions: [SUGGESTION] });
     open();
-    expect(within(await screen.findByRole("list", { name: "Bills to pay of January 2030" })).getAllByRole("listitem")).toHaveLength(2);
-    expect(screen.queryByRole("table")).toBeNull();
+    await screen.findByText("Internet");
+    const grid = document.querySelector(".desktop\\:grid-cols-12")!;
+    expect(grid.children[0]!.className).toContain("desktop:col-span-8");
+    expect(grid.children[1]!.className).toContain("desktop:col-span-4");
+    expect(within(grid.children[1] as HTMLElement).getByText("Left to pay in January 2030")).toBeTruthy();
+    expect(within(grid.children[1] as HTMLElement).getByText("This looks like it repeats")).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: "Bills to pay" })).toBeTruthy();
+    expect(screen.getByText(/^January 2030 · 1 bill · R\$129\.90$/)).toBeTruthy();
+  });
+
+  it("is the current month with no query", async () => {
+    width(false);
+    serve([OVERDUE]);
+    open();
+    await screen.findByText("Aluguel");
+    expect(api.getBills).toHaveBeenCalledWith("2030-01");
+    expect(screen.getByRole("button", { name: "New bill" })).toBeTruthy();
   });
 
   it("opens on the month in the address and reads it", async () => {
@@ -68,7 +89,8 @@ describe("layout and states", () => {
     open({ path: "/bills?month=2029-12" });
     await screen.findByText("Aluguel");
     expect(api.getBills).toHaveBeenCalledWith("2029-12");
-    expect(screen.getByText("December 2029")).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 2, name: "December 2029" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Month" }).textContent).toContain("December 2029");
   });
 
   it("says an empty month calmly", async () => {
@@ -87,13 +109,106 @@ describe("layout and states", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Try again" }));
     expect(await screen.findByText("Aluguel")).toBeTruthy();
   });
+});
 
-  it("totals what is paid against what is left", async () => {
-    width(false);
+describe("the status segment", () => {
+  it("filters to pending and to paid, and says when none match", async () => {
+    width(true);
     serve([OVERDUE, PENDING, PAID]);
     open();
-    expect(await screen.findByText(/paid of/)).toBeTruthy();
+    await screen.findByText("Condomínio");
+    await userEvent.click(screen.getByRole("radio", { name: "Pending" }));
+    expect(screen.queryByText("Condomínio")).toBeNull();
+    expect(screen.getByText("Aluguel")).toBeTruthy();
+    expect(screen.getByText("Internet")).toBeTruthy();
+    await userEvent.click(screen.getByRole("radio", { name: "Paid" }));
+    expect(screen.getByText("Condomínio")).toBeTruthy();
+    expect(screen.queryByText("Internet")).toBeNull();
+    await userEvent.click(screen.getByRole("radio", { name: "All" }));
+    expect(within(screen.getByRole("list", { name: "Bills to pay of January 2030" })).getAllByRole("listitem")).toHaveLength(3);
+  });
+
+  it("says so when no Bill is pending", async () => {
+    width(true);
+    serve([PAID]);
+    open();
+    await screen.findByText("Condomínio");
+    await userEvent.click(screen.getByRole("radio", { name: "Pending" }));
+    expect(screen.getByText("No pending bills")).toBeTruthy();
+  });
+});
+
+describe("the summary", () => {
+  it("totals what is paid against what is left", async () => {
+    width(true);
+    serve([OVERDUE, PENDING, PAID]);
+    open();
+    expect(await screen.findByText("Left to pay in January 2030")).toBeTruthy();
     expect(screen.getByText(/2 bills left/)).toBeTruthy();
+    expect(screen.getByRole("progressbar").getAttribute("aria-valuetext")).toMatch(/R\$850\.00 paid of R\$4,179\.90/);
+  });
+
+  it("marking a Bill paid moves the card and the sidebar badge at once (the badge counts the current month; a past month would leave it unchanged)", async () => {
+    width(true);
+    serve([OVERDUE, PENDING]);
+    paid.mockReturnValue(new Promise(() => {}));
+    renderApp(
+      <Routes>
+        <Route element={<Shell />}>
+          <Route path="/bills" element={<BillsPage />} />
+        </Route>
+      </Routes>,
+      { path: "/bills", locale: "en" },
+    );
+    expect(await screen.findByRole("link", { name: /Bills to pay, 2 to pay/ })).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: /Mark paid: Aluguel/ }));
+    await waitFor(() => expect(screen.getByRole("link", { name: /Bills to pay, 1 to pay/ })).toBeTruthy());
+    expect(screen.getByRole("progressbar").getAttribute("aria-valuetext")).toMatch(/R\$3,200\.00 paid of/);
+    expect(screen.getByText(/1 bill left/)).toBeTruthy();
+  });
+});
+
+describe("next month", () => {
+  it("lists next month's Bills, read-only, on the current month", async () => {
+    width(true);
+    serve([PENDING]);
+    open();
+    const list = await screen.findByRole("list", { name: "Bills to pay of February 2030" });
+    expect(within(list).getByText("Seguro")).toBeTruthy();
+    expect(within(list).queryAllByRole("button")).toHaveLength(0);
+    expect(api.getBills).toHaveBeenCalledWith("2030-02");
+  });
+
+  it("is left out on a past month, without reading it", async () => {
+    width(true);
+    serve([PENDING]);
+    open({ path: "/bills?month=2029-12" });
+    await screen.findByText("Internet");
+    expect(screen.queryByText("Seguro")).toBeNull();
+    expect(api.getBills).not.toHaveBeenCalledWith("2030-01");
+  });
+
+  it("is hidden alone when its read fails", async () => {
+    width(true);
+    serve([PENDING]);
+    vi.mocked(api.getBills).mockImplementation(async (month) => { if (month === "2030-02") throw new Error("down"); return [PENDING]; });
+    open();
+    expect(await screen.findByText("Internet")).toBeTruthy();
+    expect(screen.queryByText("Seguro")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
+describe("hide values", () => {
+  it("masks the rows, the summary, the next month and the suggestions", async () => {
+    width(true);
+    localStorage.setItem("revenue.hideValues", "1");
+    serve([PENDING, PAID], { suggestions: [SUGGESTION] });
+    const { container } = renderApp(<HideValuesProvider><BillsPage /></HideValuesProvider>, { path: "/bills", locale: "en" });
+    await screen.findByText("Seguro");
+    expect(container.textContent).not.toMatch(/\d,\d\d/);
+    expect(screen.getAllByText("hidden value").length).toBeGreaterThan(4);
+    expect(screen.getByText("January 2030 · 2 bills")).toBeTruthy();
   });
 });
 
@@ -102,13 +217,13 @@ describe("statuses", () => {
     width(true);
     serve([OVERDUE, PENDING, PAID, BANK]);
     const { container } = open({ locale });
-    await screen.findByRole("table");
-    for (const word of words) expect(screen.getAllByText(word).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(words[2]!)).toHaveLength(2);
+    const list = within(await screen.findByRole("list", { name: /Janu|Janei/ }));
+    for (const word of words) expect(list.getAllByText(word).length).toBeGreaterThan(0);
+    expect(list.getAllByText(words[2]!)).toHaveLength(2);
     expect(container.textContent).not.toContain("!");
     expect(container.querySelector(".text-danger, .bg-danger, .bg-danger-soft")).toBeNull();
     // Each badge has an icon as well as its word.
-    expect(screen.getByText(words[0]!).querySelector("svg")).toBeTruthy();
+    expect(list.getByText(words[0]!).querySelector("svg")).toBeTruthy();
   });
 
   it("names the day an overdue Bill was due", async () => {
@@ -123,29 +238,9 @@ describe("statuses", () => {
     width(false);
     serve([bill({ dueDate: "2030-01-10", dueDay: 10 })]);
     open();
-    expect(await screen.findByText("Pending")).toBeTruthy();
-    expect(screen.queryByText("Overdue")).toBeNull();
-  });
-});
-
-describe("card bills", () => {
-  it("are listed with no edit, delete or pay action", async () => {
-    width(true);
-    serve([PENDING], { cards: [CARD] });
-    open();
-    const section = (await screen.findByRole("heading", { name: "Card bills" })).closest("section")!;
-    expect(within(section).getByText("Nubank")).toBeTruthy();
-    expect(within(section).queryAllByRole("button")).toHaveLength(0);
-    expect(within(section).queryAllByRole("link")).toHaveLength(0);
-    expect(api.saveBill).not.toHaveBeenCalled();
-  });
-
-  it("are left out when there are none", async () => {
-    width(true);
-    serve([PENDING]);
-    open();
-    await screen.findByText("Internet");
-    expect(screen.queryByRole("heading", { name: "Card bills" })).toBeNull();
+    const list = within(await screen.findByRole("list", { name: "Bills to pay of January 2030" }));
+    expect(list.getByText("Pending")).toBeTruthy();
+    expect(list.queryByText("Overdue")).toBeNull();
   });
 });
 
@@ -156,13 +251,14 @@ describe("a past month", () => {
     open({ path: "/bills?month=2029-12" });
     await screen.findByText("Aluguel");
     expect(screen.queryByRole("button", { name: /Mark paid|Undo|More actions/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Add bill" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "New bill" })).toBeNull();
     expect(screen.queryByText("Overdue")).toBeNull();
+    expect(screen.queryByText("Seguro")).toBeNull();
   });
 });
 
 describe("mark paid and undo", () => {
-  const row = (name: string) => screen.getByText(name).closest("tr")!;
+  const row = (name: string) => screen.getByText(name).closest("li")!;
 
   it("shows Paid before the API answers, then reads the finance views again", async () => {
     width(true);
@@ -230,7 +326,7 @@ describe("mark paid and undo", () => {
     await screen.findByText("Internet");
     await userEvent.click(screen.getByRole("button", { name: /Mark paid/ }));
     expect((await screen.findByRole("alert")).textContent).toContain("no longer here");
-    await waitFor(() => expect(api.getBills).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(vi.mocked(api.getBills).mock.calls.filter(([m]) => m === "2030-01")).toHaveLength(2));
   });
 
   it("gives a Bill paid by the bank no Undo", async () => {
@@ -239,13 +335,13 @@ describe("mark paid and undo", () => {
     open();
     await screen.findByText("Luz");
     expect(within(row("Luz")).queryByRole("button", { name: /Undo|Mark paid/ })).toBeNull();
-    expect(within(row("Luz")).getByText("paid by the bank")).toBeTruthy();
+    expect(within(row("Luz")).getByText(/paid by the bank/)).toBeTruthy();
   });
 });
 
 describe("the form", () => {
   const openAdd = async () => {
-    await userEvent.click(await screen.findByRole("button", { name: "Add bill" }));
+    await userEvent.click(await screen.findByRole("button", { name: "New bill" }));
     return screen.findByRole("dialog");
   };
 
@@ -395,7 +491,7 @@ describe("accessibility", () => {
   describe.each(COMBOS)("%s %s", (theme, locale) => {
     it.each([true, false])("screen, desktop %s", async (desktop) => {
       width(desktop);
-      serve([OVERDUE, PENDING, PAID, BANK, LONG], { cards: [CARD], suggestions: [SUGGESTION] });
+      serve([OVERDUE, PENDING, PAID, BANK, LONG], { suggestions: [SUGGESTION] });
       open({ theme, locale });
       await screen.findByText("Condomínio");
       expect(await violations()).toEqual([]);
@@ -404,7 +500,7 @@ describe("accessibility", () => {
       width(false);
       serve([PENDING]);
       open({ theme, locale });
-      await userEvent.click(await screen.findByRole("button", { name: locale === "en" ? "Add bill" : "Adicionar conta" }));
+      await userEvent.click(await screen.findByRole("button", { name: locale === "en" ? "New bill" : "Nova conta" }));
       await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: locale === "en" ? "Save" : "Salvar" }));
       expect(await violations()).toEqual([]);
     });
