@@ -4,6 +4,8 @@ import axe from "axe-core";
 import { Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderApp } from "../../testing";
+import * as goals from "../goals/api";
+import type { Savings } from "../goals/api";
 import * as api from "./api";
 import { browserRemindersDeps } from "./logic/browserDeps";
 import type { ReminderAvailability } from "./logic/platform";
@@ -14,6 +16,7 @@ vi.mock("./api", async (original) => ({
   ...(await original<typeof import("./api")>()),
   getMonthlyIncome: vi.fn(), getCredentialsSaved: vi.fn(), putIncome: vi.fn(), putCredentials: vi.fn(), deleteCredentials: vi.fn(), deleteFinanceData: vi.fn(),
 }));
+vi.mock("../goals/api", async (original) => ({ ...(await original<typeof import("../goals/api")>()), getSavings: vi.fn(), putContribution: vi.fn(), putReserve: vi.fn() }));
 vi.mock("./logic/browserDeps", () => ({ browserRemindersDeps: vi.fn() }));
 let availability: ReminderAvailability = { kind: "available" };
 vi.mock("./logic/platform", async (original) => ({ ...(await original<typeof import("./logic/platform")>()), reminderAvailability: () => availability }));
@@ -21,6 +24,10 @@ vi.mock("./logic/platform", async (original) => ({ ...(await original<typeof imp
 // jsdom has no layout, so it cannot check contrast (Bedrock's tokens.test.ts does); the page is not a whole document, so no landmarks.
 const AXE = { rules: { "color-contrast": { enabled: false }, region: { enabled: false } } };
 const ok = { kind: "ok" } as const;
+const SAVINGS: Savings = {
+  reserveTargetCents: 3000000, contributionBaseCents: 120000, reserveSharePercent: 50,
+  reserve: { targetCents: 3000000, savedCents: 0, monthCents: null, expectedMonth: null }, goals: [], investments: [], unassignedCents: 0,
+};
 
 let subscription: { endpoint: string; unsubscribe: ReturnType<typeof vi.fn> } | null;
 let permission: NotificationPermission;
@@ -34,6 +41,9 @@ beforeEach(() => {
   vi.mocked(api.getMonthlyIncome).mockResolvedValue(null);
   vi.mocked(api.getCredentialsSaved).mockResolvedValue(false);
   vi.mocked(api.putIncome).mockResolvedValue(ok);
+  vi.mocked(goals.getSavings).mockResolvedValue(SAVINGS);
+  vi.mocked(goals.putContribution).mockResolvedValue(ok);
+  vi.mocked(goals.putReserve).mockResolvedValue(ok);
   vi.mocked(api.deleteFinanceData).mockResolvedValue(ok);
   subscription = null;
   permission = "default";
@@ -77,14 +87,14 @@ describe("monthly income", () => {
     expect((field as HTMLInputElement).value).toBe("5,000.00");
     await userEvent.clear(field);
     await userEvent.type(field, "6000");
-    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Save" })[0]!);
     await waitFor(() => expect(api.putIncome).toHaveBeenCalledWith(600000));
-    expect(await screen.findByText("Income saved.")).toBeTruthy();
+    expect(await screen.findByText("Saved.")).toBeTruthy();
   });
 
   it("refuses an empty field and zero without calling the API", async () => {
     open({ locale: "pt-BR" });
-    const save = await screen.findByRole("button", { name: "Salvar" });
+    const save = (await screen.findAllByRole("button", { name: "Salvar" }))[0]!;
     await userEvent.click(save);
     expect(await screen.findByText("Digite sua renda mensal, por exemplo 5.000,00.")).toBeTruthy();
     await userEvent.type(screen.getByLabelText("Quanto entra por mês"), "0");
@@ -98,8 +108,8 @@ describe("monthly income", () => {
     open();
     const field = await screen.findByLabelText("How much comes in each month");
     await userEvent.type(field, "6000");
-    await userEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(await screen.findByText("We could not save. Try again in a moment.")).toBeTruthy();
+    await userEvent.click(screen.getAllByRole("button", { name: "Save" })[0]!);
+    expect((await screen.findAllByText("We could not save. Try again in a moment.")).length).toBe(1);
     expect((screen.getByLabelText("How much comes in each month") as HTMLInputElement).value).toBe("6,000.00");
   });
 
@@ -108,6 +118,61 @@ describe("monthly income", () => {
     open();
     await userEvent.click(await screen.findByRole("button", { name: "Clear" }));
     await waitFor(() => expect(api.putIncome).toHaveBeenCalledWith(null));
+  });
+});
+
+describe("planning", () => {
+  it("renders the cards in the artboard's order", async () => {
+    open({ locale: "pt-BR" });
+    await screen.findByLabelText("Quanto entra por mês");
+    const headings = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+    expect(headings).toEqual(["Planejamento", "Aparência", "Avisos", "Conexão com o Pluggy", "Apagar dados"]);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Configurações");
+  });
+
+  it("saves the contribution and the reserve target through the Goals writes", async () => {
+    open();
+    const contribution = await screen.findByLabelText("How much to save each month");
+    await userEvent.clear(contribution);
+    await userEvent.type(contribution, "1500");
+    await userEvent.click(screen.getAllByRole("button", { name: "Save" })[1]!);
+    await waitFor(() => expect(goals.putContribution).toHaveBeenCalledWith({ baseCents: 150000, reserveSharePercent: 50 }));
+    const target = screen.getByLabelText("Emergency reserve target");
+    await userEvent.clear(target);
+    await userEvent.type(target, "40000");
+    await userEvent.click(screen.getAllByRole("button", { name: "Save" })[2]!);
+    await waitFor(() => expect(goals.putReserve).toHaveBeenCalledWith(4000000));
+  });
+
+  it("saves a preset share, and Other takes 0 and 100 but not 101", async () => {
+    open();
+    await userEvent.click(await screen.findByRole("radio", { name: "70%" }));
+    await waitFor(() => expect(goals.putContribution).toHaveBeenCalledWith({ baseCents: 120000, reserveSharePercent: 70 }));
+    await userEvent.click(screen.getByRole("radio", { name: "Other" }));
+    const field = screen.getByRole("textbox", { name: "Share for the reserve (%)" });
+    const save = () => screen.getAllByRole("button", { name: "Save" }).at(-1)!;
+    for (const [text, called] of [["101", false], ["0", true], ["100", true]] as const) {
+      vi.mocked(goals.putContribution).mockClear();
+      await userEvent.clear(field);
+      await userEvent.type(field, text);
+      await userEvent.click(save());
+      if (called) await waitFor(() => expect(goals.putContribution).toHaveBeenCalledWith({ baseCents: 120000, reserveSharePercent: Number(text) }));
+      else {
+        expect(await screen.findByText("Use a whole number from 0 to 100.")).toBeTruthy();
+        expect(goals.putContribution).not.toHaveBeenCalled();
+      }
+    }
+  });
+
+  it("keeps the typed value and says so when the contribution fails", async () => {
+    vi.mocked(goals.putContribution).mockResolvedValue({ kind: "error" } as never);
+    open();
+    const field = await screen.findByLabelText("How much to save each month");
+    await userEvent.clear(field);
+    await userEvent.type(field, "1500");
+    await userEvent.click(screen.getAllByRole("button", { name: "Save" })[1]!);
+    expect(await screen.findByText("We could not save. Try again in a moment.")).toBeTruthy();
+    expect((screen.getByLabelText("How much to save each month") as HTMLInputElement).value).toBe("1,500.00");
   });
 });
 
@@ -148,6 +213,15 @@ describe("credentials", () => {
     expect(screen.queryByText(/None saved/)).toBeNull();
   });
 
+  it("shows saved credentials without any part of the Client ID, and Replace opens the form", async () => {
+    vi.mocked(api.getCredentialsSaved).mockResolvedValue(true);
+    open();
+    expect(await screen.findByText("Credentials saved")).toBeTruthy();
+    expect(screen.queryByLabelText("Client ID")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Replace" }));
+    expect(await screen.findByLabelText("Client ID")).toBeTruthy();
+  });
+
   it("says when Pluggy refuses them", async () => {
     vi.mocked(api.putCredentials).mockResolvedValue({ kind: "rejected" });
     open();
@@ -174,6 +248,7 @@ describe("notifications", () => {
     expect(toggle.getAttribute("aria-checked")).toBe("false");
     expect(requestPermission).not.toHaveBeenCalled();
     expect(screen.getByText(/Homeowner will stop sending them/)).toBeTruthy();
+    expect(screen.getAllByRole("switch")).toHaveLength(1);
   });
 
   it("asks only when turned on, then registers; turning it off unsubscribes and deletes", async () => {

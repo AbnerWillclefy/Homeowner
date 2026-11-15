@@ -9,7 +9,7 @@ export function DeleteDataCard() {
   const [open, setOpen] = useState(false);
   const deletion = useDeleteFinanceData();
   return (
-    <Card className="gap-4">
+    <Card className="gap-4 border-danger-soft">
       <h2 className="section-title">{t("settings.delete.title")}</h2>
       <p className="body text-text-muted">{t("settings.delete.hint")}</p>
       <div>

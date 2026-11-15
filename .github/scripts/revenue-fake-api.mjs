@@ -175,7 +175,7 @@ function pastCardBills(sourceId, today) {
 export function answer(method, url, today) {
   const params = url.searchParams;
   const route = `${method} ${url.pathname}`;
-  if (route === "GET /me/finance") return { status: 200, body: { sources: SOURCES, items: ITEMS, lastSyncedAt: new Date(Date.parse(`${today}T12:00:00Z`) - 3 * 3_600_000).toISOString() } };
+  if (route === "GET /me/finance") return { status: 200, body: { configured: true, sources: SOURCES, items: ITEMS, lastSyncedAt: new Date(Date.parse(`${today}T12:00:00Z`) - 3 * 3_600_000).toISOString() } };
   if (route === "GET /me/finance/transactions") return { status: 200, body: transactions(params.get("month"), today) };
   if (route === "GET /me/finance/history") return { status: 200, body: history(params.get("to"), Number(params.get("months"))) };
   if (route === "GET /me/finance/commitments") return { status: 200, body: commitments(params.get("from"), today) };
