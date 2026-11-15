@@ -2,6 +2,8 @@
 
 The approved design for Revenue (epic #623), copied from the design canvas so the agents building it can read it. Each `.dc.html` file is one artboard: its markup is the layout to build, its `<script>` holds the sample data and interactions. They render only inside the canvas (they load its `support.js` runtime), so read them as source.
 
+This copy is what screens are built and reviewed against (`revenue/CLAUDE.md`, `REVIEW.md`). A design change made in the canvas comes here in a pull request before any ticket builds on it.
+
 Classes map to the code like this:
 
 - `br-*` are Bedrock components (`docs/design/bedrock/components/`, built in `bedrock/src/`).

@@ -50,4 +50,8 @@ A revenue/ change instead shows the whole screen in pt-BR and dark mode under "#
 ### Mobile
 
 ### Desktop
+
+A Revenue screen change also lists, one line each with the reason, what differs from its artboard in docs/design/revenue/:
+
+### Differs from the design
 -->

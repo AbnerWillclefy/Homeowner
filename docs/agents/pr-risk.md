@@ -22,6 +22,8 @@ Some changes are risky whatever the description says, so the changed paths set a
 - **medium**: a new migration, the allocator and its referee (ADR 0004), how the API starts or is wired, dependencies, and the service worker.
 - Anything else has no floor. A renamed file counts under its old and new paths, and a migration GitHub returns no diff for counts as high.
 
+Until #703 (Revenue screens match the approved design) closes, a pull request that changes how a Revenue screen looks is at least `medium`, so the maintainer compares it with its artboard before it merges. It is a rule for the engineer, not a floor in `pr-risk.sh`; drop this paragraph when #703 closes.
+
 A path with no floor can still be medium or high: the engineer judges it against the tiers above. Change `floor_for` and `.github/scripts/pr-risk.test.sh` together.
 
 ## The description
