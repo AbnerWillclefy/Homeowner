@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { Route, Routes } from "react-router";
@@ -229,6 +229,18 @@ describe("credentials", () => {
     await userEvent.type(screen.getByLabelText("Client Secret"), "secret");
     await userEvent.click(screen.getByRole("button", { name: "Save credentials" }));
     expect(await screen.findByText("Pluggy refused these credentials. Check them and try again.")).toBeTruthy();
+  });
+
+  it("shows a refusal inside the open sheet when replacing", async () => {
+    vi.mocked(api.getCredentialsSaved).mockResolvedValue(true);
+    vi.mocked(api.putCredentials).mockResolvedValue({ kind: "rejected" });
+    open();
+    await userEvent.click(await screen.findByRole("button", { name: "Replace" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText("Client ID"), "id");
+    await userEvent.type(within(dialog).getByLabelText("Client Secret"), "secret");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save credentials" }));
+    expect(await within(screen.getByRole("dialog")).findByText("Pluggy refused these credentials. Check them and try again.")).toBeTruthy();
   });
 
   it("removes saved credentials after a confirmation", async () => {

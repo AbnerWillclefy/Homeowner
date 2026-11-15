@@ -50,6 +50,7 @@ export function CredentialsCard() {
           </Button>
         )}
       </div>
+      {failure && <Banner tone="danger">{t(failure)}</Banner>}
     </form>
   );
   return (
@@ -66,7 +67,10 @@ export function CredentialsCard() {
             </div>
             {saved && (
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="secondary" onClick={() => setEditing(true)}>
+                <Button size="sm" variant="secondary" onClick={() => {
+                    setFailure(null);
+                    setEditing(true);
+                  }}>
                   {t("settings.creds.replace")}
                 </Button>
                 <Dialog
@@ -90,7 +94,7 @@ export function CredentialsCard() {
           {form}
         </Sheet>
       )}
-      {failure && <Banner tone="danger">{t(failure)}</Banner>}
+      {failure && saved && !editing && <Banner tone="danger">{t(failure)}</Banner>}
     </Card>
   );
 }
