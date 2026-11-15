@@ -15,7 +15,7 @@ const DESCRIPTIONS = [
 ];
 
 const SOURCES = [
-  { id: "s1", name: "Nubank", bankName: "Nubank", kind: "credit_card", currency: "BRL", closeDay: 8, dueDay: 15 },
+  { id: "s1", name: "Nubank", bankName: "Nubank", kind: "credit_card", currency: "BRL", closeDay: 8, dueDay: 15, creditLimitCents: 1_200_000 },
   { id: "s3", name: "Itaú Visa", bankName: "Itaú", kind: "credit_card", currency: "BRL", closeDay: null, dueDay: null },
   { id: "s2", name: "Itaú", bankName: "Itaú", kind: "checking", currency: "BRL", closeDay: null, dueDay: null },
 ];

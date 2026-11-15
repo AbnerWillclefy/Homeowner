@@ -108,8 +108,9 @@ func (h *HTTP) ListAccounts(ctx context.Context, apiKey, itemID string) ([]Accou
 			TaxNo    string      `json:"taxNumber"`
 			Balance  json.Number `json:"balance"`
 			Credit   *struct {
-				CloseDate string `json:"balanceCloseDate"`
-				DueDate   string `json:"balanceDueDate"`
+				CloseDate string          `json:"balanceCloseDate"`
+				DueDate   string          `json:"balanceDueDate"`
+				Limit     json.RawMessage `json:"creditLimit"` // raw: a quoted or null limit must not fail the Item
 			} `json:"creditData"`
 		} `json:"results"`
 	}
@@ -125,6 +126,10 @@ func (h *HTTP) ListAccounts(ctx context.Context, apiKey, itemID string) ([]Accou
 			accts[i].BalanceCents = &c
 		}
 		if r.Credit != nil {
+			// Like the balance: a bad limit gives nil. A limit in another currency is no BRL amount.
+			if c, err := parseCents(string(r.Credit.Limit)); err == nil && c >= 0 && r.Currency == "BRL" {
+				accts[i].CreditLimitCents = &c
+			}
 			accts[i].CloseDay, accts[i].DueDay = dayOf(r.Credit.CloseDate), dayOf(r.Credit.DueDate)
 			if accts[i].CloseDay == 0 || accts[i].DueDay == 0 {
 				accts[i].CloseDay, accts[i].DueDay = 0, 0

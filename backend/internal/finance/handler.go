@@ -590,7 +590,7 @@ func (h *Handler) ConnectItem(w http.ResponseWriter, r *http.Request) {
 	var sources []NewSource
 	for _, a := range accounts {
 		if kind := sourceKind(a); kind != "" {
-			sources = append(sources, NewSource{PluggyAccountID: a.ID, Kind: kind, Name: a.Name, Currency: a.Currency, CloseDay: a.CloseDay, DueDay: a.DueDay})
+			sources = append(sources, NewSource{PluggyAccountID: a.ID, Kind: kind, Name: a.Name, Currency: a.Currency, CloseDay: a.CloseDay, DueDay: a.DueDay, CreditLimitCents: a.CreditLimitCents})
 		}
 	}
 	if len(sources) == 0 {

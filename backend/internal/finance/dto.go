@@ -61,6 +61,9 @@ type SourceResponse struct {
 	// with no balance read yet.
 	BalanceCents *int64  `json:"balanceCents,omitempty"`
 	BalanceOn    *string `json:"balanceOn,omitempty"`
+	// CreditLimitCents is a card's credit limit as its bank reports it; absent
+	// on any other kind and on a card whose connector gives none.
+	CreditLimitCents *int64 `json:"creditLimitCents,omitempty"`
 }
 
 // BillDaysRequest is the body of PUT /me/finance/sources/{id}/bill-days: both

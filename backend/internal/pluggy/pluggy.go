@@ -72,6 +72,8 @@ type Account struct {
 	Owner, TaxNumber string
 	// BalanceCents is the balance the bank reports. Nil means absent or unreadable.
 	BalanceCents *int64
+	// CreditLimitCents is a BRL card's credit limit. Nil means absent, unreadable or not BRL.
+	CreditLimitCents *int64
 }
 
 // Party is the other side of a Transaction. It lives in memory only: the sync

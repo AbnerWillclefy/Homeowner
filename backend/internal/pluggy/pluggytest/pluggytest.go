@@ -47,6 +47,8 @@ type Server struct {
 	usd   bool
 	// nullBalances serves accounts.json with every balance null.
 	nullBalances bool
+	// nullLimits serves accounts.json with every credit limit null.
+	nullLimits bool
 }
 
 // NewServer starts the fake and stops it when the test ends.
@@ -62,6 +64,13 @@ func (s *Server) NullBalances() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.nullBalances = true
+}
+
+// NullCreditLimits makes the accounts answer with a null credit limit, as a connector that gives none.
+func (s *Server) NullCreditLimits() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.nullLimits = true
 }
 
 // Fail makes every request to path (without its query) answer status with FailBody.
@@ -119,15 +128,20 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.mu.Lock()
-		null := s.nullBalances
+		null, nullLimit := s.nullBalances, s.nullLimits
 		s.mu.Unlock()
-		if null {
+		if null || nullLimit {
 			var out struct {
 				Results []map[string]any `json:"results"`
 			}
 			_ = json.Unmarshal(fixture("accounts.json"), &out)
 			for _, a := range out.Results {
-				a["balance"] = nil
+				if null {
+					a["balance"] = nil
+				}
+				if c, ok := a["creditData"].(map[string]any); ok && nullLimit {
+					c["creditLimit"] = nil
+				}
 			}
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(out)
