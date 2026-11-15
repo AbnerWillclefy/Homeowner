@@ -114,6 +114,15 @@ describe("totals", () => {
     expect(screen.getByText("1 of 3 transactions")).toBeTruthy();
   });
 
+  it("drops Review when the desktop type segment is picked", async () => {
+    width(true);
+    month([MERCADO, SALARIO, NOCAT]);
+    open();
+    await userEvent.click(await screen.findByRole("button", { name: "Review" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Income" }));
+    expect(screen.getByRole("button", { name: "Salário" })).toBeTruthy();
+  });
+
   it("filters to them from the phone's chip", async () => {
     width(false);
     month([MERCADO, NOCAT]);

@@ -34,13 +34,13 @@ function FiltersButton({ filter, onChange }: Pick<ToolbarProps, "filter" | "onCh
         <Select
           label={t("tx.filter.type")}
           value={filter.type}
-          onValueChange={(v) => onChange({ ...filter, type: v as Filter["type"] })}
+          onValueChange={(v) => onChange({ ...filter, type: v as Filter["type"], uncategorised: false })}
           options={[{ value: "all", label: t("tx.filters.allTypes") }, ...TYPES.map((v) => ({ value: v, label: t(`tx.type.${v}`) }))]}
         />
         <Select
           label={t("tx.filter.category")}
           value={filter.category}
-          onValueChange={(v) => onChange({ ...filter, category: v as Filter["category"] })}
+          onValueChange={(v) => onChange({ ...filter, category: v as Filter["category"], uncategorised: false })}
           options={[{ value: "all", label: t("tx.filter.allCategories") }, ...SPENDING_CATEGORIES.map((id) => ({ value: id, label: t(spendingKey(id)) }))]}
         />
       </div>
@@ -74,7 +74,7 @@ export function Toolbar({ filter, onChange, desktop, uncategorised }: ToolbarPro
     return (
       <div className="flex flex-wrap items-center justify-between gap-4">
         {search}
-        <SegmentedControl label={t("tx.filter.type")} options={types} value={filter.type} onValueChange={(type) => onChange({ ...filter, type: type as Filter["type"] })} />
+        <SegmentedControl label={t("tx.filter.type")} options={types} value={filter.type} onValueChange={(type) => onChange({ ...filter, type: type as Filter["type"], uncategorised: false })} />
       </div>
     );
   }
