@@ -46,7 +46,7 @@ export function TransactionsPage() {
 
       <div className="grid gap-6 desktop:grid-cols-12">
         {desktop && data && all.length > 0 && (
-          <TotalsRow totals={totals} reviewing={filter.uncategorised} onReview={() => setFilter({ ...filter, uncategorised: !filter.uncategorised })} />
+          <TotalsRow totals={totals} reviewing={filter.uncategorised} onReview={() => setFilter({ ...filter, ...(filter.uncategorised ? { uncategorised: false } : { uncategorised: true, type: "all", category: "all" }) })} />
         )}
         <Wrap className="desktop:col-span-12 flex flex-col gap-4">
           {loading ? (

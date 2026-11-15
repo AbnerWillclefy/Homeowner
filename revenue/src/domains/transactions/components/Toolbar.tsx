@@ -80,7 +80,7 @@ export function Toolbar({ filter, onChange, desktop, uncategorised }: ToolbarPro
   }
   const chips = [
     ...types.map((o) => ({ ...o, pressed: !filter.uncategorised && filter.type === o.value, set: { type: o.value as Filter["type"], uncategorised: false } })),
-    { value: "uncategorised", label: t("tx.chip.uncategorised", { n: uncategorised }), pressed: filter.uncategorised, set: { uncategorised: !filter.uncategorised } },
+    { value: "uncategorised", label: t("tx.chip.uncategorised", { n: uncategorised }), pressed: filter.uncategorised, set: filter.uncategorised ? { uncategorised: false } : { uncategorised: true, type: "all" as const, category: "all" as const } },
   ];
   return (
     <div className="flex flex-col gap-2">

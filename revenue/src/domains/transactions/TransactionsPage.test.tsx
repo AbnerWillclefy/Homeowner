@@ -122,6 +122,15 @@ describe("totals", () => {
     expect(screen.queryByText("Mercado Boa Compra")).toBeNull();
     expect(screen.getByText("PIX misterioso")).toBeTruthy();
   });
+
+  it("drops a type filter when the phone's chip turns on", async () => {
+    width(false);
+    month([MERCADO, SALARIO, NOCAT]);
+    open();
+    await userEvent.click(await screen.findByRole("button", { name: "Income" }));
+    await userEvent.click(screen.getByRole("button", { name: "No category · 1" }));
+    expect(screen.getByText("PIX misterioso")).toBeTruthy();
+  });
 });
 
 describe("hide values", () => {

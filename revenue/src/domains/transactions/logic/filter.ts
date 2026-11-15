@@ -25,7 +25,8 @@ export function matchesQuery(tx: Transaction, query: string): boolean {
   const text = plain(query.trim());
   if (text === "") return true;
   if (plain(`${tx.description} ${tx.sourceName}`).includes(text)) return true;
-  return /^[\d.,\s]+$/.test(text) && String(Math.abs(tx.amountCents)).includes(text.replace(/\D/g, ""));
+  const digits = text.replace(/\D/g, "");
+  return digits !== "" && /^[\d.,\s]+$/.test(text) && String(Math.abs(tx.amountCents)).includes(digits);
 }
 
 /** Client-side, over the month's rows. An Expense with no category yet counts as Other, as in Finances. */

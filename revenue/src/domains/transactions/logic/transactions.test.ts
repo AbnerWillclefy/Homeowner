@@ -58,6 +58,9 @@ describe("matchesQuery", () => {
     expect(matchesQuery(cafe, "1.234,57")).toBe(false);
   });
   it("matches an income's amount by its size, not its sign", () => expect(matchesQuery(tx({ amountCents: 500000 }), "5.000")).toBe(true));
+  it("does not match every row on a lone separator", () => {
+    for (const typed of [",", ".", ",,"]) expect(matchesQuery(cafe, typed)).toBe(false);
+  });
   it("does not read digits inside words as an amount", () => expect(matchesQuery(cafe, "loja 99")).toBe(false));
   it("keeps everything for an empty query", () => expect(matchesQuery(cafe, "  ")).toBe(true));
 });
