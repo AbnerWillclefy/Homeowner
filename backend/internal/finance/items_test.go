@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/pluggy/pluggytest"
 )
 
 // items reads items[] of GET /me/finance.
@@ -118,5 +119,21 @@ func TestSyncFinishesWhenGetItemFails(t *testing.T) {
 	}
 	if n := scalar(t, app, `SELECT count(*) FROM finance_items WHERE status IS NULL`); n != 1 {
 		t.Errorf("status stayed null for %d items, want 1", n)
+	}
+}
+
+func TestConnectStoresAndRefreshesItemStatus(t *testing.T) {
+	t.Parallel()
+	app, users := startSync(t, []string{"ana@example.com"})
+	ana := users["ana@example.com"]
+	if got := items(t, ana); len(got) != 1 || got[0]["bankName"] != "Pluggy Bank" || got[0]["status"] != "ok" {
+		t.Fatalf("items = %v, want the connected bank as ok before any sync", got)
+	}
+	app.Pluggy.SetItemStatus("OUTDATED", "ACCOUNT_LOCKED")
+	if res := ana.Post("/me/finance/items", map[string]any{"itemId": pluggytest.ItemID}); res.Status != http.StatusOK {
+		t.Fatalf("reconnect = %d %s", res.Status, res.Raw)
+	}
+	if got := items(t, ana); len(got) != 1 || got[0]["status"] != "reconnect" {
+		t.Fatalf("items = %v, want reconnect after connecting again", got)
 	}
 }
