@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Transações</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="rv-app" data-theme="{{theme}}" style="position: relative">
+<div class="rv-side"><dc-import name="Sidebar" active="transactions" theme="{{theme}}" hint-size="256px,1240px"></dc-import></div>
+<main class="rv-main">
+<header class="rv-head">
+<div class="rv-head__text"><h1 class="rv-title">Transações</h1><span class="rv-sub">Novembro de 2026 · 64 transações de 3 contas</span></div>
+<div class="rv-tools">
+<button class="br-btn br-btn--secondary"><i class="ri ri-calendar" aria-hidden="true"></i>Novembro<i class="ri ri-chevron-down" aria-hidden="true"></i></button>
+<button class="br-iconbtn" aria-label="Esconder valores"><i class="ri ri-eye" aria-hidden="true"></i></button>
+</div>
+</header>
+
+<div class="rv-grid">
+<section class="br-card br-card--compact s4"><span class="br-card__label">Saídas</span><span class="br-amount br-amount--md"><span class="br-amount__value">R$ 5.127,41</span></span></section>
+<section class="br-card br-card--compact s4"><span class="br-card__label">Entradas</span><span class="br-amount br-amount--md br-amount--in"><span class="br-amount__value">+R$ 9.800,00</span></span></section>
+<section class="br-card br-card--compact s4"><span class="br-card__label">Sem categoria</span><div class="rv-row"><span class="br-amount br-amount--md"><span class="br-amount__value">2</span></span><span class="br-badge br-badge--warning">Revisar</span></div></section>
+</div>
+
+<section class="br-card" style="gap: 16px">
+<div class="rv-row" style="gap: 16px; justify-content: space-between">
+<div class="br-search" style="flex: 1 1 360px; min-width: 0">
+<label class="br-search__box"><i class="ri ri-search" aria-hidden="true"></i><span class="br-token"><b>conta:</b> Nubank, Itaú</span><input aria-label="Buscar transações" placeholder="Buscar por descrição ou valor" style="all: unset; flex: 1; min-width: 0; color: var(--text)"></label>
+<span style="position: relative"><button class="br-iconbtn" aria-label="Filtros, 1 ativo"><i class="ri ri-sliders" aria-hidden="true"></i></button><span class="br-count">1</span></span>
+</div>
+<div class="br-seg" role="group" aria-label="Tipo">
+<button aria-pressed="{{seg.all}}" onClick="{{showAll}}">Todas</button>
+<button aria-pressed="{{seg.out}}" onClick="{{showOut}}">Saídas</button>
+<button aria-pressed="{{seg.in}}" onClick="{{showIn}}">Entradas</button>
+</div>
+</div>
+<div class="rv-row"><span class="br-filterchip">Conta é <strong>Nubank, Itaú</strong><button class="br-iconbtn br-iconbtn--sm" aria-label="Remover filtro de conta" style="border: 0; width: 24px; height: 24px"><i class="ri ri-x" aria-hidden="true"></i></button></span></div>
+<div class="br-resultbar"><span><strong>{{count}}</strong> de 64 transações</span><button class="br-link">Limpar tudo</button></div>
+
+<div class="rv-tablebox">
+<div class="rv-tx rv-tx--head"><span></span><span>Descrição</span><span>Categoria</span><span>Conta</span><span class="rv-right">Valor</span></div>
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="4">
+<div class="rv-tx rv-tx--day">{{g.day}}</div>
+<sc-for list="{{g.rows}}" as="r" hint-placeholder-count="2">
+<div class="rv-tx rv-tx--row" onClick="{{r.open}}">
+<span class="br-cat__icon" style="background: var(--{{r.tone}}-soft); color: var(--{{r.tone}})"><i class="ri {{r.icon}}" aria-hidden="true"></i></span>
+<span class="br-listrow__main"><span class="br-listrow__title">{{r.title}}</span><span class="br-listrow__meta">{{r.meta}}</span></span>
+<span class="br-cat" style="font-weight: 400">{{r.category}}</span>
+<span class="br-muted">{{r.account}}</span>
+<span class="rv-right br-amount br-amount--sm {{r.amountClass}}"><span class="br-amount__value">{{r.amount}}</span></span>
+</div>
+</sc-for>
+</sc-for>
+</div>
+</section>
+</main>
+
+<sc-if value="{{open}}" hint-placeholder-val="{{ false }}">
+<div class="rv-scrim" onClick="{{close}}"></div>
+<aside class="rv-panel" role="dialog" aria-label="Detalhe da transação">
+<div class="br-sheet__head"><div class="rv-stack" style="gap: 0"><span class="br-sheet__title">{{sel.title}}</span><span class="br-muted">{{sel.account}} · {{sel.when}}</span></div><button class="br-iconbtn br-iconbtn--sm" aria-label="Fechar" onClick="{{close}}"><i class="ri ri-x" aria-hidden="true"></i></button></div>
+<span class="br-amount br-amount--lg {{sel.amountClass}}"><span class="br-amount__value">{{sel.amount}}</span></span>
+<div class="br-field"><span class="br-field__label">Tipo</span>
+<div class="br-seg br-seg--block" role="group" aria-label="Tipo"><button aria-pressed="true">Gasto</button><button aria-pressed="false">Transferência</button><button aria-pressed="false">Economia</button></div>
+<span class="br-field__hint">Transferência e Economia ficam fora dos gastos do mês.</span></div>
+<label class="br-field"><span class="br-field__label">Categoria</span>
+<span class="br-input"><span class="br-cat__icon br-cat__icon--sm" style="background: var(--{{sel.tone}}-soft); color: var(--{{sel.tone}})"><i class="ri ri-sm {{sel.icon}}" aria-hidden="true"></i></span><span style="flex: 1">{{sel.category}}</span><i class="ri ri-chevron-down" aria-hidden="true"></i></span></label>
+<button class="br-switch" role="switch" aria-checked="true" style="all: unset; display: flex; justify-content: space-between; align-items: center; gap: 16px; cursor: pointer"><span>Usar nas próximas compras de {{sel.title}}</span><span class="br-switch__track"></span></button>
+<hr class="rv-divider">
+<div class="rv-stack">
+<div class="rv-between"><span class="br-muted">Conta</span><span>{{sel.account}}</span></div>
+<div class="rv-between"><span class="br-muted">Data</span><span>{{sel.when}}</span></div>
+<div class="rv-between"><span class="br-muted">Descrição no banco</span><span>{{sel.raw}}</span></div>
+</div>
+<span class="br-muted" style="margin-top: auto">Mudanças aqui valem na hora. Um aviso com Desfazer aparece embaixo.</span>
+</aside>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { kind: 'all', selected: null }; }
+  renderVals() {
+    const data = [
+      { day: 'Hoje · 11 nov', rows: [
+        { id: 1, title: 'Pão de Açúcar', meta: 'Compra no crédito', category: 'Mercado', tone: 'cat-groceries', icon: 'ri-cart', account: 'Nubank crédito', amount: 'R$ 187,32', kind: 'out', raw: 'PAO DE ACUCAR 1293', when: '11/11, 18:42' },
+        { id: 2, title: 'Uber', meta: 'Viagem', category: 'Transporte', tone: 'cat-transport', icon: 'ri-car', account: 'Nubank crédito', amount: 'R$ 23,40', kind: 'out', raw: 'UBER *TRIP', when: '11/11, 08:15' } ] },
+      { day: 'Ontem · 10 nov', rows: [
+        { id: 3, title: 'iFood', meta: 'Pedido', category: 'Restaurantes', tone: 'cat-eating-out', icon: 'ri-utensils', account: 'Nubank crédito', amount: 'R$ 64,90', kind: 'out', raw: 'IFD*IFOOD', when: '10/11, 20:31' },
+        { id: 4, title: 'Drogasil', meta: 'Farmácia', category: 'Saúde', tone: 'cat-health', icon: 'ri-heart', account: 'Itaú crédito', amount: 'R$ 98,00', kind: 'out', raw: 'DROGASIL 0451', when: '10/11, 12:02' } ] },
+      { day: '9 nov', rows: [
+        { id: 5, title: 'Netflix', meta: 'Recorrente', category: 'Assinaturas', tone: 'cat-subscriptions', icon: 'ri-repeat', account: 'Itaú crédito', amount: 'R$ 44,90', kind: 'out', raw: 'NETFLIX.COM', when: '09/11' } ] },
+      { day: '8 nov', rows: [
+        { id: 6, title: 'Acme Design', meta: 'Pix recebido', category: 'Entrada', tone: 'brand', icon: 'ri-in', account: 'Nubank conta', amount: '+R$ 1.500,00', kind: 'in', raw: 'PIX ACME DESIGN LTDA', when: '08/11, 10:20' },
+        { id: 7, title: 'Outback', meta: 'Compra no crédito', category: 'Restaurantes', tone: 'cat-eating-out', icon: 'ri-utensils', account: 'Nubank crédito', amount: 'R$ 212,50', kind: 'out', raw: 'OUTBACK MORUMBI', when: '08/11, 21:47' } ] },
+      { day: '7 nov', rows: [
+        { id: 8, title: 'Shell', meta: 'Combustível', category: 'Transporte', tone: 'cat-transport', icon: 'ri-car', account: 'Itaú débito', amount: 'R$ 180,00', kind: 'out', raw: 'SHELL BOX', when: '07/11, 09:10' } ] },
+      { day: '5 nov', rows: [
+        { id: 9, title: 'Salário', meta: 'Pix recebido', category: 'Entrada', tone: 'brand', icon: 'ri-in', account: 'Nubank conta', amount: '+R$ 8.300,00', kind: 'in', raw: 'PIX EMPRESA X SA', when: '05/11, 07:02' },
+        { id: 10, title: 'Aluguel novembro', meta: 'Conta paga', category: 'Moradia', tone: 'cat-housing', icon: 'ri-house', account: 'Nubank conta', amount: 'R$ 3.500,00', kind: 'out', raw: 'PIX IMOBILIARIA SOL', when: '05/11, 09:30' },
+        { id: 11, title: 'Aporte reserva', meta: 'Economia, fora dos gastos', category: 'Economia', tone: 'brand', icon: 'ri-shield', account: 'Nubank conta', amount: 'R$ 600,00', kind: 'save', raw: 'APLICACAO CDB', when: '05/11, 09:31' } ] },
+    ];
+    const kind = this.state.kind;
+    const keep = (r) => kind === 'all' || (kind === 'in' ? r.kind === 'in' : r.kind !== 'in');
+    let count = 0;
+    const groups = data.map((g) => ({ day: g.day, rows: g.rows.filter(keep).map((r) => { count++; return { ...r, amountClass: r.kind === 'in' ? 'br-amount--in' : '', open: () => this.setState({ selected: r.id }) }; }) })).filter((g) => g.rows.length);
+    const all = data.flatMap((g) => g.rows);
+    const found = all.find((r) => r.id === this.state.selected) || all[0];
+    return {
+      theme: this.props.theme ?? 'dark',
+      groups, count,
+      seg: { all: kind === 'all' ? 'true' : 'false', out: kind === 'out' ? 'true' : 'false', in: kind === 'in' ? 'true' : 'false' },
+      showAll: () => this.setState({ kind: 'all' }),
+      showOut: () => this.setState({ kind: 'out' }),
+      showIn: () => this.setState({ kind: 'in' }),
+      open: this.state.selected !== null,
+      sel: { ...found, amountClass: found.kind === 'in' ? 'br-amount--in' : '' },
+      close: () => this.setState({ selected: null }),
+    };
+  }
+}
+</script>
+</body>
+</html>
