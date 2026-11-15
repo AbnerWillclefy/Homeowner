@@ -1,20 +1,22 @@
 import { Button, Select, Sheet } from "@homeowner/bedrock";
-import { formatAmount } from "@homeowner/bedrock/finance";
 import { useId, useState, type FormEvent } from "react";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
+import { formatDay } from "../../../shared/month/month";
 import { TYPES, type Transaction, type TransactionEdit, type TransactionType } from "../api";
 import { SPENDING_CATEGORIES, spendingKey, type SpendingCategory } from "../logic/categories";
 import { editFor } from "../logic/edit";
+import { Money } from "./Money";
 
 /**
- * Changes a Transaction's type and, for an Expense, its Spending Category. Saving closes the sheet at once: the row
- * updates on the screen and says so if the API refuses.
+ * The Transaction's detail, in the side panel: its amount, and its type and, for an Expense, its Spending Category to
+ * change. Saving closes the sheet at once: the row updates on the screen and says so if the API refuses.
  */
 export function EditSheet({ tx, onSave, onClose }: { tx: Transaction; onSave(edit: TransactionEdit): void; onClose(): void }) {
   const { t, locale } = useI18n();
   const formId = useId();
   const [type, setType] = useState<TransactionType>(tx.type);
   const [category, setCategory] = useState<SpendingCategory>(tx.spendingCategory ?? "other");
+  const date = formatDay(tx.postedOn, locale);
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -27,8 +29,8 @@ export function EditSheet({ tx, onSave, onClose }: { tx: Transaction; onSave(edi
     <Sheet
       open
       onOpenChange={(open) => !open && onClose()}
-      title={t("tx.edit.title")}
-      subtitle={`${tx.description} · ${formatAmount(tx.amountCents, { locale })}`}
+      title={tx.description}
+      subtitle={`${tx.sourceName} · ${date}`}
       closeLabel={t("app.close")}
       footer={
         <Button type="submit" form={formId}>
@@ -37,6 +39,7 @@ export function EditSheet({ tx, onSave, onClose }: { tx: Transaction; onSave(edi
       }
     >
       <form id={formId} onSubmit={submit} className="flex flex-col gap-6">
+        <Money tx={tx} size="lg" />
         <fieldset className="flex flex-col gap-1">
           <legend className="label pb-2 text-text-muted">{t("tx.edit.type")}</legend>
           {TYPES.map((option) => (
@@ -54,6 +57,17 @@ export function EditSheet({ tx, onSave, onClose }: { tx: Transaction; onSave(edi
             options={SPENDING_CATEGORIES.map((id) => ({ value: id, label: t(spendingKey(id)) }))}
           />
         )}
+        <dl className="body flex flex-col gap-2 border-t border-border pt-4">
+          <div className="flex justify-between gap-4">
+            <dt className="text-text-muted">{t("tx.edit.source")}</dt>
+            <dd className="text-right [overflow-wrap:anywhere]">{tx.sourceName}</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-text-muted">{t("tx.edit.date")}</dt>
+            <dd className="text-right">{date}</dd>
+          </div>
+        </dl>
+        <p className="caption text-text-muted">{t("tx.edit.note")}</p>
       </form>
     </Sheet>
   );
