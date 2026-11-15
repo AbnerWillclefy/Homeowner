@@ -261,8 +261,8 @@ or `bedrock/`.
 ### Configuration
 
 Read at build time and validated on load. The session lives in `localStorage`
-under `revenue.session`, the language under `revenue.locale` and the theme under
-`revenue.theme`, none of them shared with Homeowner.
+under `revenue.session`, the language under `revenue.locale`, the theme under
+`revenue.theme` and the hide-values choice under `revenue.hideValues`, none of them shared with Homeowner.
 
 | Variable | Meaning |
 |---|---|
