@@ -110,3 +110,39 @@ func NetWorthSeries(balances, investments map[string][]Point[int64], from, to ti
 		}
 	}
 }
+
+// MonthStartParts is the balances and Investments the month started with.
+type MonthStartParts struct{ BalancesCents, InvestmentsCents int64 }
+
+// MonthStart sums each Source's and Investment's value on `day` (the last day of
+// the previous month): the last value on or before it. One with no value by then
+// (a bank connected, an Investment created this month) counts its first stored
+// value, so connecting it does not show as growth. It is nil when nothing has a
+// value. Card bills are not part of it: past days' bills are not stored.
+func MonthStart(balances, investments map[string][]Point[int64], day time.Time) *MonthStartParts {
+	var out MonthStartParts
+	seen := false
+	for _, g := range []struct {
+		pts map[string][]Point[int64]
+		sum *int64
+	}{{balances, &out.BalancesCents}, {investments, &out.InvestmentsCents}} {
+		for _, pts := range g.pts {
+			if len(pts) == 0 {
+				continue
+			}
+			seen = true
+			v := pts[0].Value
+			for _, p := range pts {
+				if p.Day.After(day) {
+					break
+				}
+				v = p.Value
+			}
+			*g.sum += v
+		}
+	}
+	if !seen {
+		return nil
+	}
+	return &out
+}
