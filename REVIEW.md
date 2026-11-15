@@ -27,6 +27,10 @@ Domain terms are in `GLOSSARY.md`, decisions in `docs/adr/`.
 
 - UI is checked in pt-BR first (`DESIGN.md`, The Portuguese First Rule). Flag a fixed width, a truncation or an
   ellipsis that would cut the longer pt-BR text, and a user-facing string added in one locale only.
+- A pull request that changes a Revenue screen matches its artboard in `docs/design/revenue/` (`revenue/CLAUDE.md`).
+  Open the artboard and flag a part it has that the screen lacks or arranges differently (the header's tools, a
+  card, the grid columns it spans, the side panel), unless the description lists it under `### Differs from the
+  design`.
 
 ## Out of scope
 

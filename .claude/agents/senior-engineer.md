@@ -15,6 +15,7 @@ Refining a ticket means appending a `## Technical notes` section to its body tha
 - edge cases and failure modes the acceptance criteria imply but do not spell out
 - which engineer owns it (backend, frontend, or backend then frontend)
 - anything in the ticket that looks wrong or too big; split proposals go in a comment, not silently into the notes
+- for a ticket that builds or changes a Revenue screen, the artboard it follows in `docs/design/revenue/` (its `README.md` maps screens to files), and an acceptance criterion per part of that artboard a screenshot can confirm: the header's tools, each card and the grid columns it spans, the side panel. "Follows the approved screen" alone cannot be checked, and screens built against it drifted from the design (#703)
 
 Describe behaviour and interfaces rather than pasting code; code goes stale.
 
