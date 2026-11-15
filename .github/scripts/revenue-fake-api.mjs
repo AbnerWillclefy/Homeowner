@@ -19,6 +19,10 @@ const SOURCES = [
   { id: "s3", name: "Itaú Visa", bankName: "Itaú", kind: "credit_card", currency: "BRL", closeDay: null, dueDay: null },
   { id: "s2", name: "Itaú", bankName: "Itaú", kind: "checking", currency: "BRL", closeDay: null, dueDay: null },
 ];
+const ITEMS = [
+  { id: "i1", bankName: "Nubank", status: "ok", products: 1 },
+  { id: "i2", bankName: "Itaú", status: "reconnect", products: 2 },
+];
 const SOURCE_ID = { Nubank: "s1", Itaú: "s2" };
 
 const pad = (n) => String(n).padStart(2, "0");
@@ -156,7 +160,7 @@ function history(to, months) {
 export function answer(method, url, today) {
   const params = url.searchParams;
   const route = `${method} ${url.pathname}`;
-  if (route === "GET /me/finance") return { status: 200, body: { sources: SOURCES } };
+  if (route === "GET /me/finance") return { status: 200, body: { sources: SOURCES, items: ITEMS, lastSyncedAt: new Date(Date.parse(`${today}T12:00:00Z`) - 3 * 3_600_000).toISOString() } };
   if (route === "GET /me/finance/transactions") return { status: 200, body: transactions(params.get("month"), today) };
   if (route === "GET /me/finance/history") return { status: 200, body: history(params.get("to"), Number(params.get("months"))) };
   if (route === "GET /me/finance/commitments") return { status: 200, body: commitments(params.get("from"), today) };
