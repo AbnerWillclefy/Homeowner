@@ -372,15 +372,15 @@ func DueReminders(bills []ReminderBill, local time.Time) []BillReminder {
 	return out
 }
 
-// Totals is the spend of a set of Transactions, in centavos, and the money put
-// aside (Saving).
+// Totals is the spend of a set of Transactions, in centavos, the money put
+// aside (Saving) and the money that came in (Income).
 type Totals struct {
-	Spend, Saving int64
-	ByCategory    map[string]int64
+	Spend, Saving, Income int64
+	ByCategory            map[string]int64
 }
 
-// MonthTotals sums the Expenses by Spending Category. Transfers and Income are
-// ignored; a refund (a negative spend) offsets its category. A category can end
+// MonthTotals sums the Expenses by Spending Category. Transfers are ignored and
+// Income is summed as it came in (+AmountCents); a refund (a negative spend) offsets its category. A category can end
 // negative in a refund-heavy month: it is returned as is, not clamped. Saving is
 // the net put aside (-AmountCents over saving rows, so a Resgate lowers it); it
 // is not clamped at zero either, the Leftover work does that.
@@ -393,6 +393,8 @@ func MonthTotals(txns []Txn) Totals {
 			out.ByCategory[t.Category] -= t.AmountCents
 		case "saving":
 			out.Saving -= t.AmountCents
+		case "income":
+			out.Income += t.AmountCents
 		}
 	}
 	return out

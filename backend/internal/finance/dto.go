@@ -127,11 +127,17 @@ type MonthResponse struct {
 	SpentSinceFirstCents int64 `json:"spentSinceFirstCents"`
 }
 
-// HistoryMonth is one month of GET /me/finance/history: all 13 categories, in order.
+// HistoryMonth is one month of GET /me/finance/history: all 13 categories, in
+// order. IncomeCents is what arrived (Income Transactions), SpentCents the
+// Expenses net of refunds, SavedCents the net Saving (negative when the User
+// took money back). Transfers are in none of them, so the month's result is
+// IncomeCents - SpentCents - SavedCents.
 type HistoryMonth struct {
-	Month      string          `json:"month"`
-	SpentCents int64           `json:"spentCents"`
-	Categories []CategoryTotal `json:"categories"`
+	Month       string          `json:"month"`
+	IncomeCents int64           `json:"incomeCents"`
+	SpentCents  int64           `json:"spentCents"`
+	SavedCents  int64           `json:"savedCents"`
+	Categories  []CategoryTotal `json:"categories"`
 }
 
 // HistoryResponse is the answer of GET /me/finance/history, oldest month first.

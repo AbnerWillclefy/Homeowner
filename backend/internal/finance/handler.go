@@ -128,7 +128,8 @@ const (
 
 // History answers GET /me/finance/history?to=YYYY-MM&months=N: the N months
 // ending at `to`, oldest first, from one read and MonthTotals on each month, so
-// it agrees with Month. `to` defaults to the current São Paulo month.
+// it agrees with Month. Each month carries income, spent and saved, so a client
+// gets the change against last month by asking for two months. `to` defaults to the current São Paulo month.
 func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	to := q.Get("to")
@@ -172,7 +173,7 @@ func historyMonth(month string, rows []TransactionResponse) HistoryMonth {
 	for i, c := range SpendingCategories {
 		cats[i] = CategoryTotal{Category: c, SpentCents: totals.ByCategory[c]}
 	}
-	return HistoryMonth{Month: month, SpentCents: totals.Spend, Categories: cats}
+	return HistoryMonth{Month: month, IncomeCents: totals.Income, SpentCents: totals.Spend, SavedCents: totals.Saving, Categories: cats}
 }
 
 // paceMonths is how many months before the asked one the usual pace averages.
