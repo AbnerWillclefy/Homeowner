@@ -138,7 +138,7 @@ function netWorth(today, range) {
   };
 }
 
-/** The six months ending at `to`, each with a little less spent in groceries the further back it goes. */
+/** The six months ending at `to`, each with a little less spent in groceries the further back it goes, and the same income and saved. */
 function history(to, months) {
   const [y, m] = to.split("-").map(Number);
   return {
@@ -147,7 +147,8 @@ function history(to, months) {
       const index = y * 12 + (m - 1) - (months - 1 - i);
       const month = `${Math.floor(index / 12)}-${pad((index % 12) + 1)}`;
       const groceries = 28_740 + (i - months + 1) * 3_000;
-      return { month, spentCents: groceries + 8_990, categories: [{ category: "groceries", spentCents: groceries }, { category: "eating_out", spentCents: 8_990 }] };
+      // Income and saved are fixed, spent grows by month, so the result changes against the month before.
+      return { month, incomeCents: 980_000, spentCents: groceries + 8_990, savedCents: 120_000, categories: [{ category: "groceries", spentCents: groceries }, { category: "eating_out", spentCents: 8_990 }] };
     }),
   };
 }

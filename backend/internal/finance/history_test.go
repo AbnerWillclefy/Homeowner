@@ -11,9 +11,11 @@ import (
 )
 
 type historyMonth struct {
-	Month      string
-	SpentCents int64
-	Categories []catBody
+	Month       string
+	IncomeCents int64
+	SpentCents  int64
+	SavedCents  int64
+	Categories  []catBody
 }
 
 func (m historyMonth) cents(category string) int64 {
@@ -162,5 +164,69 @@ func TestReportIsGone(t *testing.T) {
 	_, ana := seedMonth(t)
 	if res := ana.Get("/me/finance/report?month=2026-11"); res.Status != http.StatusNotFound {
 		t.Errorf("GET report = %d, want 404", res.Status)
+	}
+}
+
+// insertChecking adds a row of Ana's checking Source; amount is signed as on the wire.
+func insertChecking(t *testing.T, app *apitest.App, id, day, typ string, cents int64) {
+	t.Helper()
+	if _, err := app.DB.Exec(context.Background(), `
+		INSERT INTO finance_transactions (user_id, source_id, provider_id, posted_on, amount_cents, currency, description,
+			merchant_key, type, type_set_by, spending_category, category_set_by, created_at, updated_at)
+		SELECT user_id, id, $1, $2::date, $3, 'BRL', $1, $1, $4, 'auto',
+			CASE WHEN $4 = 'expense' THEN 'groceries' END, 'user', now(), now()
+		FROM finance_sources WHERE kind = 'checking' AND user_id = (SELECT id FROM users WHERE email = 'ana@example.com') LIMIT 1`,
+		id, day, cents, typ); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestHistoryCarriesIncomeAndSavedPerMonth(t *testing.T) {
+	t.Parallel()
+	app, ana := seedMonth(t)
+	type row struct {
+		typ   string
+		cents int64
+	}
+	// One month per branch, all before the fixture's data.
+	rows := map[string][]row{
+		"2025-01": {{"income", 500000}},
+		"2025-02": {{"expense", -30000}, {"expense", 5000}}, // a refund lowers it
+		"2025-03": {{"saving", -120000}},
+		"2025-04": {{"saving", -120000}, {"saving", 20000}}, // a withdrawal lowers it
+		"2025-06": {{"transfer", -9000}, {"transfer", 9000}},
+		"2025-07": {{"income", 980000}, {"expense", -512741}, {"saving", -120000}},
+	}
+	for month, rs := range rows {
+		for i, r := range rs {
+			insertChecking(t, app, month+r.typ+string(rune('a'+i)), month+"-10", r.typ, r.cents)
+		}
+	}
+	want := map[string][3]int64{ // income, spent, saved
+		"2025-01": {500000, 0, 0},
+		"2025-02": {0, 25000, 0},
+		"2025-03": {0, 0, 120000},
+		"2025-04": {0, 0, 100000},
+		"2025-05": {0, 0, 0}, // no data, still listed
+		"2025-06": {0, 0, 0},
+		"2025-07": {980000, 512741, 120000},
+	}
+	_, ms := readHistory(t, ana, "?to=2025-07&months=7")
+	for _, m := range ms {
+		if got := [3]int64{m.IncomeCents, m.SpentCents, m.SavedCents}; got != want[m.Month] {
+			t.Errorf("%s = %v, want %v", m.Month, got, want[m.Month])
+		}
+	}
+	// Income of another User never counts.
+	if _, err := app.DB.Exec(context.Background(), `DELETE FROM finance_transactions WHERE user_id = (SELECT id FROM users WHERE email = 'bob@example.com')`); err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range func() []historyMonth {
+		_, ms := readHistory(t, app.SignInAs("bob@example.com"), "?to=2025-07&months=7")
+		return ms
+	}() {
+		if m.IncomeCents != 0 || m.SavedCents != 0 {
+			t.Errorf("bob sees %+v, want zeros", m)
+		}
 	}
 }
