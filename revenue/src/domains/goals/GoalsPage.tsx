@@ -8,8 +8,6 @@ import { useMediaQuery } from "../../shared/useMediaQuery";
 import type { Investment, SavingsGoal } from "./api";
 import { ContributionCard } from "./components/ContributionCard";
 import { GoalFormSheet } from "./components/GoalFormSheet";
-import { InvestmentFormSheet } from "./components/InvestmentFormSheet";
-import { InvestmentsSection } from "./components/InvestmentsSection";
 import { GoalsList } from "./components/GoalsList";
 import { LeftoverCard } from "./components/LeftoverCard";
 import { ReserveCard } from "./components/ReserveCard";
@@ -21,16 +19,14 @@ const DESKTOP = "(min-width: 1024px)";
 
 type Open = { goal: SavingsGoal | null } | null;
 
-/** "Objetivos" at `/goals`: the Monthly contribution and its leftover, the Emergency reserve target and the Goals (whose order decides who is served first) as cards, then the Investments that fill them. */
+/** "Objetivos" at `/goals`: the Monthly contribution and its leftover, the Emergency reserve target and the Goals (whose order decides who is served first) as cards. The Investments that fill them are on Fontes. */
 export function GoalsPage() {
   const { t } = useI18n();
   const desktop = useMediaQuery(DESKTOP);
   const money = useMoney();
-  const { data, loading, failed, reload, saveReserve, saveContribution, saveGoal, removeGoal, reorder, saveInvestment, removeInvestment, pickServes, takeBankValue } = useSavings();
+  const { data, loading, failed, reload, saveReserve, saveContribution, saveGoal, removeGoal, reorder } = useSavings();
   const [form, setForm] = useState<Open>(null);
   const [deleting, setDeleting] = useState<SavingsGoal | null>(null);
-  const [investmentForm, setInvestmentForm] = useState<{ investment: Investment | null } | null>(null);
-  const [deletingInvestment, setDeletingInvestment] = useState<Investment | null>(null);
   const [deleteFailed, setDeleteFailed] = useState(false);
 
   const serving = (serves: Investment["serves"]) => data?.investments.filter((i) => i.serves === serves).map((i) => i.name) ?? [];
@@ -68,32 +64,10 @@ export function GoalsPage() {
             <GoalsList goals={data.goals} where={serving("goals")} reorder={reorder} onEdit={(goal) => setForm({ goal })} onDelete={(goal) => { setDeleteFailed(false); setDeleting(goal); }} />
             {data.goals.length === 0 && <div className="desktop:col-span-8"><EmptyState icon={Target} title={t("goals.empty.title")} message={t("goals.empty.message")} /></div>}
           </div>
-          <InvestmentsSection
-            investments={data.investments}
-            pick={pickServes}
-            takeBankValue={takeBankValue}
-            onAdd={() => setInvestmentForm({ investment: null })}
-            onEdit={(investment) => setInvestmentForm({ investment })}
-            onDelete={(investment) => { setDeleteFailed(false); setDeletingInvestment(investment); }}
-          />
         </>
       )}
 
       {form && <GoalFormSheet key={form.goal?.id ?? "new"} goal={form.goal} save={(input) => saveGoal(form.goal?.id ?? null, input)} onClose={() => setForm(null)} />}
-      {investmentForm && (
-        <InvestmentFormSheet key={investmentForm.investment?.id ?? "new"} investment={investmentForm.investment} save={(input) => saveInvestment(investmentForm.investment?.id ?? null, input)} onClose={() => setInvestmentForm(null)} />
-      )}
-      {deletingInvestment && (
-        <Dialog
-          open
-          onOpenChange={(open) => !open && setDeletingInvestment(null)}
-          title={t("investments.delete.title")}
-          description={t("investments.delete.body", { name: deletingInvestment.name })}
-          cancelLabel={t("goals.form.cancel")}
-          confirmLabel={t("goals.delete")}
-          onConfirm={() => void removeInvestment(deletingInvestment.id).then((r) => setDeleteFailed(r.kind === "failed"))}
-        />
-      )}
       {deleting && (
         <Dialog
           open

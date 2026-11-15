@@ -33,7 +33,7 @@ export function SourceNameForm({ source, onDone }: { source: Source; onDone(): v
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-3">
-      {/* The Rename button is gone once the form opens, so focus moves to the field. */}
+      {/* Opens in a Sheet: focus starts in the field, and the Sheet returns it to the Rename icon on close. */}
       <Input label={t("sources.name.label")} name="name" type="text" maxLength={60} autoComplete="off" autoFocus defaultValue={source.name} error={message ? t(message) : undefined} />
       <div className="flex flex-wrap justify-end gap-2">
         <Button variant="ghost" disabled={busy !== null} onClick={onDone}>

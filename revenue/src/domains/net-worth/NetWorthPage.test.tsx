@@ -28,7 +28,7 @@ const full = (n: number) => Array.from({ length: n }, (_, i) => ({ day: `2030-01
 
 const SAVINGS = { investments: [{ name: "Tesouro Selic" }, { name: "CDB Azul" }] } as unknown as goalsApi.Savings;
 const src = (name: string, kind: string) => ({ id: name, name, bankName: name, kind, currency: "BRL", closeDay: null, dueDay: null });
-const SOURCES: sourcesApi.SourcesStatus = { sources: [src("Itaú", "checking"), src("Nubank", "checking"), src("Nubank Card", "credit_card")], importing: false, lastSyncedAt: null };
+const SOURCES: sourcesApi.SourcesStatus = { sources: [src("Itaú", "checking"), src("Nubank", "checking"), src("Nubank Card", "credit_card")], items: [], importing: false, lastSyncedAt: null };
 
 const open = (options: Parameters<typeof renderApp>[1] = {}) =>
   renderApp(<HideValuesProvider><NetWorthPage /></HideValuesProvider>, { path: "/net-worth", locale: "en", ...options });

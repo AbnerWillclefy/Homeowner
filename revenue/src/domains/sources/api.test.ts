@@ -20,9 +20,28 @@ describe("parseStatus", () => {
   it("stands in for a missing bank name and idle sync keys", () => {
     expect(parseStatus({ sources: [{ id: "s1", name: "Nu", kind: "credit_card", currency: "BRL" }] })).toEqual({
       sources: [{ id: "s1", name: "Nu", bankName: "Nu", kind: "credit_card", currency: "BRL", closeDay: null, dueDay: null }],
+      items: [],
       importing: false,
       lastSyncedAt: null,
     });
+  });
+
+  it("reads a card's credit limit when the bank gives one", () => {
+    const parsed = parseStatus(status([{ ...bank, kind: "credit_card", creditLimitCents: 1_200_000 }, { ...bank, id: "s2", kind: "credit_card" }]));
+    expect(parsed?.sources[0]?.creditLimitCents).toBe(1_200_000);
+    expect(parsed?.sources[1]).not.toHaveProperty("creditLimitCents");
+  });
+
+  it("reads the connected banks with their status and product count", () => {
+    const items = [{ id: "i1", bankName: "Nubank", status: "ok", products: 3 }, { id: "i2", bankName: null, status: "reconnect", products: 0 }];
+    expect(parseStatus({ ...status(), items })?.items).toEqual([
+      { id: "i1", bankName: "Nubank", status: "ok", products: 3 },
+      { id: "i2", bankName: null, status: "reconnect", products: 0 },
+    ]);
+  });
+
+  it("reads a missing items list as empty, as an older API sends it", () => {
+    expect(parseStatus(status())?.items).toEqual([]);
   });
 
   it.each([
@@ -40,6 +59,10 @@ describe("parseStatus", () => {
     ["a balance day that is not text", status([{ ...bank, balanceCents: 5, balanceOn: 8 }])],
     ["a close day that is text", status([{ ...bank, closeDay: "8" }])],
     ["a Source without a currency", status([{ ...bank, currency: undefined }])],
+    ["a credit limit that is text", status([{ ...bank, creditLimitCents: "12" }])],
+    ["items not a list", { ...status(), items: {} }],
+    ["an item with an unknown status", { ...status(), items: [{ id: "i1", bankName: "X", status: "lost", products: 1 }] }],
+    ["an item without a product count", { ...status(), items: [{ id: "i1", bankName: "X", status: "ok" }] }],
   ])("refuses %s", (_, body) => {
     expect(parseStatus(body)).toBeNull();
   });

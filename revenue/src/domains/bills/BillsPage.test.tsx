@@ -39,7 +39,7 @@ const paid = vi.mocked(api.setBillPaid);
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"], now: new Date("2030-01-10T15:00:00Z") });
   localStorage.clear();
-  vi.mocked(sourcesApi.getSources).mockReset().mockResolvedValue({ sources: [], importing: false, lastSyncedAt: null });
+  vi.mocked(sourcesApi.getSources).mockReset().mockResolvedValue({ sources: [], items: [], importing: false, lastSyncedAt: null });
   for (const fn of [api.getBills, api.getBillSuggestions, api.saveBill, api.deleteBill, api.setBillPaid, api.dismissBillSuggestion]) vi.mocked(fn).mockReset();
 });
 afterEach(() => {
