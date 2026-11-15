@@ -87,11 +87,15 @@ func (h *HTTP) CreateConnectToken(ctx context.Context, apiKey string) (string, e
 // GetItem implements Client.
 func (h *HTTP) GetItem(ctx context.Context, apiKey, itemID string) (Item, error) {
 	var out struct {
-		ID     string `json:"id"`
-		Status string `json:"status"`
+		ID              string `json:"id"`
+		Status          string `json:"status"`
+		ExecutionStatus string `json:"executionStatus"`
+		Connector       struct {
+			Name string `json:"name"`
+		} `json:"connector"`
 	}
 	err := h.do(ctx, "get item", http.MethodGet, "/items/"+url.PathEscape(itemID), apiKey, nil, &out)
-	return Item{ID: out.ID, Status: out.Status}, err
+	return Item{ID: out.ID, Status: out.Status, ExecutionStatus: out.ExecutionStatus, ConnectorName: out.Connector.Name}, err
 }
 
 // ListAccounts implements Client.

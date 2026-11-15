@@ -49,10 +49,14 @@ type Bill struct {
 	Currency             string
 }
 
-// Item is a connection to one institution.
+// Item is a connection to one institution. Status and ExecutionStatus are
+// Pluggy's own words (UPDATED, LOGIN_ERROR; SUCCESS, INVALID_CREDENTIALS).
 type Item struct {
-	ID     string
-	Status string
+	ID              string
+	Status          string
+	ExecutionStatus string
+	// ConnectorName is the institution's name, such as "Pluggy Bank".
+	ConnectorName string
 }
 
 // Account is one account of an Item. Type and Subtype are Pluggy's own words
