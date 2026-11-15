@@ -212,6 +212,9 @@ func TestHistoryCarriesIncomeAndSavedPerMonth(t *testing.T) {
 		"2025-07": {980000, 512741, 120000},
 	}
 	_, ms := readHistory(t, ana, "?to=2025-07&months=7")
+	if len(ms) != len(want) {
+		t.Fatalf("got %d months, want %d", len(ms), len(want))
+	}
 	for _, m := range ms {
 		if got := [3]int64{m.IncomeCents, m.SpentCents, m.SavedCents}; got != want[m.Month] {
 			t.Errorf("%s = %v, want %v", m.Month, got, want[m.Month])
@@ -221,10 +224,11 @@ func TestHistoryCarriesIncomeAndSavedPerMonth(t *testing.T) {
 	if _, err := app.DB.Exec(context.Background(), `DELETE FROM finance_transactions WHERE user_id = (SELECT id FROM users WHERE email = 'bob@example.com')`); err != nil {
 		t.Fatal(err)
 	}
-	for _, m := range func() []historyMonth {
-		_, ms := readHistory(t, app.SignInAs("bob@example.com"), "?to=2025-07&months=7")
-		return ms
-	}() {
+	_, bms := readHistory(t, app.SignInAs("bob@example.com"), "?to=2025-07&months=7")
+	if len(bms) != len(want) {
+		t.Fatalf("bob got %d months, want %d", len(bms), len(want))
+	}
+	for _, m := range bms {
 		if m.IncomeCents != 0 || m.SavedCents != 0 {
 			t.Errorf("bob sees %+v, want zeros", m)
 		}
