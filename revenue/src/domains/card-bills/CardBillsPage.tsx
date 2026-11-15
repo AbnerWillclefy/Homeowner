@@ -79,7 +79,7 @@ export function CardBillsPage() {
           </div>
           <div className="flex flex-col gap-6 desktop:col-span-4">
             <BillHistory {...history} />
-            {source && <BillDaysCard key={`${source.id}-${source.closeDay}-${source.dueDay}`} card={source} save={(c, d) => saveDays(source.id, c, d)} />}
+            {source && <BillDaysCard key={source.id} card={source} save={(c, d) => saveDays(source.id, c, d)} />}
           </div>
         </div>
       )}

@@ -336,6 +336,7 @@ describe("bill days", () => {
     const invalidate = vi.spyOn(client, "invalidateQueries");
     await userEvent.type(await screen.findByRole("textbox", { name: "Closing day" }), "5");
     await userEvent.type(screen.getByRole("textbox", { name: "Due day" }), "12");
+    vi.mocked(api.getCardSources).mockResolvedValue([SOURCES[0], { ...SOURCES[1], closeDay: 5, dueDay: 12 }]);
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(api.putBillDays).toHaveBeenCalledWith("s2", 5, 12);
     expect(await screen.findByText("Dates saved.")).toBeTruthy();
