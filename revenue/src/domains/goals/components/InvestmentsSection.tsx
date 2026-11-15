@@ -1,7 +1,8 @@
-import { Badge, Banner, Button, Menu, SegmentedControl, type MenuItem } from "@homeowner/bedrock";
+import { Badge, Banner, Button, Card, Menu, SegmentedControl, type MenuItem } from "@homeowner/bedrock";
 import { Amount, formatAmount } from "@homeowner/bedrock/finance";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { useHiddenProps } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
 import type { Investment, Serves } from "../api";
 import type { SaveOutcome } from "../hooks/useSavings";
@@ -22,11 +23,15 @@ interface Props {
  */
 export function InvestmentsSection({ investments, pick, takeBankValue, onAdd, onEdit, onDelete }: Props) {
   const { t, locale } = useI18n();
+  const hidden = useHiddenProps();
   const [failed, setFailed] = useState(false);
   const run = async (write: Promise<SaveOutcome>) => setFailed((await write).kind === "failed");
   return (
-    <section aria-labelledby="investments-title" className="flex flex-col gap-3">
-      <h2 id="investments-title" className="section-title">{t("investments.title")}</h2>
+    <Card role="group" aria-labelledby="investments-title">
+      <div className="flex items-center justify-between gap-2">
+        <h2 id="investments-title" className="card-label text-text-muted">{t("investments.title")}</h2>
+        <Amount cents={investments.reduce((n, i) => n + i.valueCents, 0)} size="md" locale={locale} {...hidden} />
+      </div>
       <p className="caption text-text-muted">{t("investments.hint")}</p>
       {failed && <Banner tone="danger">{t("investments.failed")}</Banner>}
       {investments.length === 0 && <p className="body text-text-muted">{t("investments.empty")}</p>}
@@ -52,9 +57,9 @@ export function InvestmentsSection({ investments, pick, takeBankValue, onAdd, on
                       )}
                     </div>
                     <div className="flex flex-col items-end">
-                      <Amount cents={inv.valueCents} size="sm" locale={locale} />
+                      <Amount cents={inv.valueCents} size="sm" locale={locale} {...hidden} />
                       {inv.edited && inv.bankValueCents !== null && (
-                        <span className="caption text-text-muted">{t("investments.bankValue", { amount: formatAmount(inv.bankValueCents, { locale }) })}</span>
+                        <span className="caption text-text-muted">{t("investments.bankValue", { amount: hidden.hidden ? hidden.hiddenLabel : formatAmount(inv.bankValueCents, { locale }) })}</span>
                       )}
                     </div>
                   </div>
@@ -92,9 +97,9 @@ export function InvestmentsSection({ investments, pick, takeBankValue, onAdd, on
           </ul>
         </div>
       ))}
-      <Button variant="secondary" icon={Plus} className="self-start" onClick={onAdd}>
+      <Button variant="ghost" icon={Plus} className="self-start" onClick={onAdd}>
         {t("investments.add")}
       </Button>
-    </section>
+    </Card>
   );
 }

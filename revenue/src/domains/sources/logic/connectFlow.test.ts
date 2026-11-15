@@ -4,7 +4,7 @@ import { connectBanks } from "./connectFlow";
 import { FAILURE_KEY } from "./failureMessages";
 import type { PluggyOptions } from "./pluggyConnect";
 
-const STATUS: SourcesStatus = { sources: [], importing: true, lastSyncedAt: null };
+const STATUS: SourcesStatus = { sources: [], items: [], importing: true, lastSyncedAt: null };
 
 function setup(over: { token?: Awaited<ReturnType<Parameters<typeof connectBanks>[0]["createToken"]>>; open?: (o: PluggyOptions) => Promise<void>; register?: Parameters<typeof connectBanks>[0]["register"] } = {}) {
   let options!: PluggyOptions;

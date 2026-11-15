@@ -15,11 +15,23 @@ export interface Source {
   balanceCents?: number;
   /** `YYYY-MM-DD`: the day the balance was read. */
   balanceOn?: string;
+  /** A card's limit as its bank reports it; absent on any other kind and on a card whose bank gives none. */
+  creditLimitCents?: number;
+}
+
+/** One bank connection: `reconnect` means the bank asked for a new authorization. `bankName` is null until its first read. */
+export interface BankItem {
+  id: string;
+  bankName: string | null;
+  status: "ok" | "reconnect";
+  /** How many Sources the connection holds. */
+  products: number;
 }
 
 /** `GET /me/finance`, the parts this screen uses. Never carries the credentials. */
 export interface SourcesStatus {
   sources: Source[];
+  items: BankItem[];
   /** True while any bank has not finished its first import. */
   importing: boolean;
   /** RFC 3339, or null while any bank has never synced. */
@@ -41,19 +53,29 @@ export function parseStatus(body: unknown): SourcesStatus | null {
   // shortcut: an absent `importing` or `lastSyncedAt` reads as idle and never synced, so the screenshot fake (no such keys) still renders; drop when it sends them.
   const { importing = false, lastSyncedAt = null } = body;
   if (typeof importing !== "boolean" || (lastSyncedAt !== null && typeof lastSyncedAt !== "string")) return null;
+  // An older API during a deploy sends no `items`: an empty list hides the card.
+  const { items: rawItems = [] } = body;
+  if (!Array.isArray(rawItems)) return null;
+  const items: BankItem[] = [];
+  for (const i of rawItems) {
+    if (!isRecord(i) || typeof i.id !== "string" || (i.status !== "ok" && i.status !== "reconnect") || !Number.isInteger(i.products)) return null;
+    items.push({ id: i.id, bankName: typeof i.bankName === "string" ? i.bankName : null, status: i.status, products: i.products as number });
+  }
   const sources: Source[] = [];
   for (const s of body.sources) {
     if (!isRecord(s) || typeof s.id !== "string" || typeof s.name !== "string" || typeof s.kind !== "string" || typeof s.currency !== "string") return null;
-    const { closeDay = null, dueDay = null, balanceCents, balanceOn } = s;
+    const { closeDay = null, dueDay = null, balanceCents, balanceOn, creditLimitCents } = s;
+    if (creditLimitCents !== undefined && !Number.isInteger(creditLimitCents)) return null;
     if (!day(closeDay) || !day(dueDay) || (balanceCents === undefined) !== (balanceOn === undefined)) return null;
     if (balanceCents !== undefined && (!Number.isInteger(balanceCents) || typeof balanceOn !== "string")) return null;
     sources.push({
       id: s.id, name: s.name, bankName: typeof s.bankName === "string" ? s.bankName : s.name, kind: s.kind, currency: s.currency,
       closeDay, dueDay,
       ...(balanceCents !== undefined && { balanceCents: balanceCents as number, balanceOn: balanceOn as string }),
+      ...(creditLimitCents !== undefined && { creditLimitCents: creditLimitCents as number }),
     });
   }
-  return { sources, importing, lastSyncedAt };
+  return { sources, items, importing, lastSyncedAt };
 }
 
 /** `GET /me/finance`. Throws on any failure, so a query shows its error state. */

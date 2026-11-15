@@ -16,7 +16,7 @@ vi.mock("../domains/bills/api", async (original) => ({ ...(await original<typeof
 vi.mock("../domains/sources/api", async (original) => ({ ...(await original<typeof import("../domains/sources/api")>()), getSources: vi.fn() }));
 
 const bill = (over: Partial<Bill>): Bill => ({ id: "b1", name: "Aluguel", expectedCents: 320000, dueDay: 5, dueDate: "2030-01-05", paid: false, paidBy: null, paidCents: null, ...over });
-const status = (lastSyncedAt: string | null) => ({ sources: [], importing: false, lastSyncedAt });
+const status = (lastSyncedAt: string | null) => ({ sources: [], items: [], importing: false, lastSyncedAt });
 
 // Mid-January 2030 in São Paulo.
 const NOW = new Date("2030-01-10T15:00:00Z");
