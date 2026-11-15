@@ -1,4 +1,4 @@
-import { NavLink, type NavItem } from "./nav-link";
+import { NavBadge, NavLink, type NavItem } from "./nav-link";
 
 type Props = {
   /** The nav landmark's accessible name. Unique on the page. */
@@ -21,11 +21,12 @@ export function BottomBar({ label, items, onNavigate }: Props) {
             <NavLink
               item={item}
               onNavigate={onNavigate}
-              className="flex min-h-control-lg flex-col items-center justify-center gap-1 px-1"
+              className="relative flex min-h-control-lg flex-col items-center justify-center gap-1 px-1"
             >
               <item.icon aria-hidden className="size-5" />
               {/* 11/16 weight 500 is the spec's bottom-bar label size, which has no token. */}
               <span className="max-w-full truncate px-1 text-[11px]/4 font-medium">{item.label}</span>
+              <NavBadge badge={item.badge} className="absolute top-1 right-1/4 h-4 px-1" />
             </NavLink>
           </li>
         ))}

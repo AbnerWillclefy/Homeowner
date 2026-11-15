@@ -1,6 +1,6 @@
 import { Banknote, LayoutDashboard, PiggyBank, Receipt, Settings } from "lucide-react";
 import { useState } from "react";
-import { Sidebar } from "../../src";
+import { Sidebar, SidebarBrand } from "../../src";
 import { Section } from "../Section";
 import type { Locale } from "../App";
 
@@ -15,6 +15,8 @@ const strings = {
     planningItem: "Planejamento",
     bills: "Contas a pagar",
     settings: "Configurações",
+    note: "Atualizado há 2 h",
+    billsBadge: "3 contas em aberto",
     hint: "Abaixo de 1280px a barra mostra só os ícones.",
   },
   en: {
@@ -27,6 +29,8 @@ const strings = {
     planningItem: "Planning",
     bills: "Bills to pay",
     settings: "Settings",
+    note: "Updated 2 h ago",
+    billsBadge: "3 bills open",
     hint: "Below 1280px the sidebar shows icons only.",
   },
 };
@@ -41,7 +45,8 @@ export default function SidebarSection({ locale }: { locale: Locale }) {
       <div className="h-[28rem]">
         <Sidebar
           label={t.nav}
-          brand={<p className="px-2 py-2 label text-brand">Homeowner</p>}
+          brand={<SidebarBrand name="Homeowner" />}
+          note={t.note}
           groups={[
             {
               label: t.main,
@@ -49,7 +54,7 @@ export default function SidebarSection({ locale }: { locale: Locale }) {
             },
             {
               label: t.planning,
-              items: [mark("#planning", t.planningItem, PiggyBank), mark("#bills", t.bills, Banknote)],
+              items: [mark("#planning", t.planningItem, PiggyBank), { ...mark("#bills", t.bills, Banknote), badge: { count: 3, label: t.billsBadge } }],
             },
           ]}
           footer={[mark("#settings", t.settings, Settings)]}

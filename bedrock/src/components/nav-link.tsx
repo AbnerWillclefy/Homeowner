@@ -1,9 +1,24 @@
 import type { LucideIcon } from "lucide-react";
 import type { ComponentProps, MouseEvent } from "react";
 import { cn } from "../lib/cn";
+import { Badge } from "./badge";
 
-/** A destination. The package never knows the router: `current` comes from the app. */
-export type NavItem = { href: string; label: string; icon: LucideIcon; current?: boolean };
+/** A destination. The package never knows the router: `current` comes from the app.
+ * `badge.label` is the screen-reader wording for the count ("3 bills open"); a count of 0 or less shows nothing. */
+export type NavItem = { href: string; label: string; icon: LucideIcon; current?: boolean; badge?: { count: number; label: string } };
+
+/** The count, capped at "9+", with its wording sr-only so the link name is "Label, badge-label". `className` places it. */
+export function NavBadge({ badge, className }: { badge: NavItem["badge"]; className?: string }) {
+  if (!badge || badge.count <= 0) return null;
+  return (
+    <>
+      <Badge tone="warning" aria-hidden className={cn("shrink-0", className)}>
+        {badge.count > 9 ? "9+" : badge.count}
+      </Badge>
+      <span className="sr-only">, {badge.label}</span>
+    </>
+  );
+}
 
 type Props = Omit<ComponentProps<"a">, "href"> & {
   item: NavItem;
