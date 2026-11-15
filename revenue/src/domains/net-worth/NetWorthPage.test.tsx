@@ -173,6 +173,16 @@ describe("the screen", () => {
     expect(screen.queryByText(/history starts/i)).toBeNull();
   });
 
+  it("while a longer range loads, does not call the old series short", async () => {
+    vi.mocked(api.getNetWorth).mockResolvedValueOnce({ ...DATA, series: full(30) });
+    open();
+    await screen.findByRole("img", { name: /Balances/ });
+    vi.mocked(api.getNetWorth).mockReturnValue(new Promise(() => {}));
+    await userEvent.click(screen.getByRole("radio", { name: "1 year" }));
+    await waitFor(() => expect(api.getNetWorth).toHaveBeenLastCalledWith("1y"));
+    expect(screen.queryByText(/history starts/i)).toBeNull();
+  });
+
   it("offers a retry when the read fails", async () => {
     vi.mocked(api.getNetWorth).mockRejectedValueOnce(new Error("x"));
     open();

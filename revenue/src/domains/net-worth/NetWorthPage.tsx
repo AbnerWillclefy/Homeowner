@@ -20,7 +20,7 @@ export function NetWorthPage() {
   const hiddenProps = useHiddenProps();
   const [params, setParams] = useSearchParams();
   const range = rangeFromParam(params.get("range"));
-  const { data, loading, failed, reload } = useNetWorth(range);
+  const { data, loading, placeholder, failed, reload } = useNetWorth(range);
   const names = useRowNames();
   const today = data?.today;
   const money = (cents: number, income = false) => (hidden ? t("hide.label") : formatAmount(cents, { locale, income }));
@@ -63,7 +63,7 @@ export function NetWorthPage() {
                 <div className="flex flex-col gap-1">
                   <CardLabel>{t("netWorth.today")}</CardLabel>
                   <Amount cents={today.totalCents} size="hero" locale={locale} {...hiddenProps} />
-                  <span className="body text-text-muted">{startsLate(data.series, range) ? t("netWorth.startsAt") : t(`netWorth.note.${range}`)}</span>
+                  <span className="body text-text-muted">{!placeholder && startsLate(data.series, range) ? t("netWorth.startsAt") : t(`netWorth.note.${range}`)}</span>
                 </div>
                 <SegmentedControl
                   label={t("netWorth.range")}
