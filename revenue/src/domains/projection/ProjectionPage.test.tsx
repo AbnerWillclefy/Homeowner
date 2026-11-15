@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { HideValuesProvider } from "../../shared/HideValues";
 import { renderApp } from "../../testing";
 import * as api from "../overview/api/api";
 import type { CommitmentMonth, Commitments } from "../overview/api/api";
@@ -65,28 +66,75 @@ describe("the months", () => {
     }
   });
 
-  it("on a desktop width is one table of twelve months against the groups, Total and Leftover", async () => {
+  it("on a desktop width is a table with a row per month and a column per group, scrolling sideways in its box", async () => {
+    width(true);
+    open();
+    const table = await screen.findByRole("table", { name: "Coming months" });
+    expect(within(table).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Month", "Monthly income", "Card bills", "Other bills", "Planned spending", "Put aside", "Leftover"]);
+    expect(within(table).getAllByRole("rowheader")).toHaveLength(12);
+    expect(table.parentElement!.className).toContain("overflow-x-auto");
+    expect(table.className).toContain("min-w-[760px]");
+    expect(screen.queryByRole("group")).toBeNull();
+  });
+
+  it("adds a column for what was spent off the card when the current month has it", async () => {
     width(true);
     vi.mocked(api.getCommitments).mockResolvedValue({ ...DATA, months: [month(1, { spentOffCardCents: 10000 }), ...MONTHS.slice(1)] });
     open();
-    const table = await screen.findByRole("table", { name: "Coming months" });
-    expect(within(table).getAllByRole("columnheader")).toHaveLength(13);
-    for (const label of ["Card bills", "Other bills", "Planned spending", "Put aside", "Total", "Leftover"]) {
-      expect(within(table).getByRole("rowheader", { name: label })).toBeTruthy();
-    }
+    const table = await screen.findByRole("table");
+    expect(within(table).getByRole("columnheader", { name: "Spent off the card" })).toBeTruthy();
     expect(within(table).getAllByText("Nothing this month")).toHaveLength(11);
-    expect(screen.queryByRole("group")).toBeNull();
+  });
+});
+
+describe("the chosen month", () => {
+  const detail = () => screen.getByText("January 2030", { selector: "div" }).closest("div.relative") as HTMLElement;
+
+  it("is this month at first, with a sum that adds up to its Leftover", async () => {
+    width(true);
+    open();
+    await screen.findByRole("table");
+    const card = detail().textContent!;
+    for (const text of ["January 2030", "R$1,200.00", "R$5,000.00", "R$1,000.00", "R$2,000.00", "R$300.00", "R$500.00"]) expect(card).toContain(text);
+    expect(1200_00).toBe(5000_00 - 1000_00 - 2000_00 - 300_00 - 500_00);
+  });
+
+  it("changes with a click on a row, and with the keyboard", async () => {
+    width(true);
+    vi.mocked(api.getCommitments).mockResolvedValue({ ...DATA, months: [...MONTHS.slice(0, 2), month(3, { cards: [{ sourceId: "s1", name: "Nubank", amountCents: 300000, billDaysKnown: true }], leftoverCents: -20000 }), ...MONTHS.slice(3)] });
+    open();
+    const table = await screen.findByRole("table");
+    await userEvent.click(within(table).getByRole("button", { name: "March 2030" }));
+    expect(screen.getByText("R$3,000.00", { selector: "dd *" })).toBeTruthy();
+    expect(screen.getByText("R$200.00 short")).toBeTruthy();
+    const feb = within(table).getByRole("button", { name: "February 2030" });
+    feb.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(feb.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByText(/short/)).toBeNull();
   });
 });
 
 describe("a negative Leftover", () => {
-  it.each([false, true])("has a minus sign and words, never alarm styling (desktop %s)", async (desktop) => {
-    width(desktop);
+  it("on a phone has a minus sign and words, never alarm styling", async () => {
     vi.mocked(api.getCommitments).mockResolvedValue(OVER);
     const view = open();
     expect(await screen.findByText("R$500.00 short")).toBeTruthy();
     expect(view.container.textContent).toContain("-R$500.00");
     expect(view.container.innerHTML).not.toMatch(/danger|alert|negative/);
+  });
+
+  it("on a desktop has a minus sign, the words and a danger bar once chosen", async () => {
+    width(true);
+    vi.mocked(api.getCommitments).mockResolvedValue(OVER);
+    const view = open();
+    const table = await screen.findByRole("table");
+    expect(table.textContent).toContain("-R$500.00");
+    expect(view.container.querySelectorAll("rect.fill-danger")).toHaveLength(1);
+    await userEvent.click(within(table).getByRole("button", { name: "March 2030" }));
+    expect(screen.getByText("R$500.00 short")).toBeTruthy();
+    expect(view.container.querySelectorAll("rect.fill-danger")).toHaveLength(0); // the chosen bar takes the text colour
+    expect(view.container.querySelectorAll("rect.fill-text")).toHaveLength(1);
   });
 
   it("says nothing of shortage when no month is over", async () => {
@@ -105,10 +153,32 @@ describe("income", () => {
     expect(screen.queryByText(/Leftover/)).toBeNull();
   });
 
+  it("without income the desktop table has no Leftover or income column", async () => {
+    width(true);
+    vi.mocked(api.getCommitments).mockResolvedValue(NO_INCOME);
+    open();
+    const table = await screen.findByRole("table");
+    expect(within(table).queryByRole("columnheader", { name: "Leftover" })).toBeNull();
+    expect(within(table).queryByRole("columnheader", { name: "Monthly income" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Set monthly income" })).toBeTruthy();
+  });
+
   it("with income there is no such link", async () => {
     open();
     await screen.findByText("January 2030");
     expect(screen.queryByRole("link", { name: "Set monthly income" })).toBeNull();
+  });
+});
+
+describe("hide values", () => {
+  it.each([true, false])("masks the table, the detail, the chart axis and the phone cards (desktop %s)", async (desktop) => {
+    width(desktop);
+    localStorage.setItem("revenue.hideValues", "1");
+    vi.mocked(api.getCommitments).mockResolvedValue({ ...OVER, months: [...OVER.months.slice(0, 2), ...OVER.months.slice(2)] });
+    const { container } = renderApp(<HideValuesProvider><ProjectionPage /></HideValuesProvider>, { path: "/projection", locale: "en" });
+    await screen.findByText(desktop ? "Coming months" : "January 2030");
+    expect(container.textContent).not.toMatch(/\d,\d\d|\dk/);
+    expect(screen.getAllByText("hidden value").length).toBeGreaterThan(4);
   });
 });
 
@@ -152,7 +222,7 @@ describe("accessibility", () => {
       width(desktop);
       vi.mocked(api.getCommitments).mockResolvedValue({ ...OVER, months: [PLANS.months[0]!, ...OVER.months.slice(1)] });
       open({ theme, locale });
-      await screen.findByText(/short|Faltam/);
+      await screen.findAllByRole(desktop ? "table" : "group");
       expect(await violations()).toEqual([]);
     });
     it("screen without income", async () => {
