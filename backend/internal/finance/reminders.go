@@ -52,7 +52,7 @@ func (r *Reminders) Run(ctx context.Context, now time.Time) error {
 	for _, c := range todo {
 		ids = append(ids, c.userID)
 	}
-	subs, err := r.subs.ListByUsers(ctx, ids, push.AppHomeowner)
+	subs, err := r.subs.ListByUsers(ctx, ids, push.AppRevenue)
 	if err != nil {
 		return err
 	}
@@ -224,7 +224,8 @@ func (r *Reminders) record(ctx context.Context, c claim, outcome string) {
 }
 
 // reminderPayload is the generic English text; the worker words the Notice for
-// the device language. It names no Bill and no amount.
+// the device language. It names no Bill and no amount. URL is Revenue's Bills
+// to pay route, resolved by its service worker against its own origin.
 func reminderPayload(notice string) push.Payload {
 	kind, body := push.KindBillOverdue, "A bill to pay is still open."
 	switch notice {
@@ -233,5 +234,5 @@ func reminderPayload(notice string) push.Payload {
 	case noticeDueSoon:
 		kind, body = push.KindBillDueSoon, "A bill to pay is due tomorrow."
 	}
-	return push.Payload{Title: "Bill to pay", Body: body, URL: "/finances", Kind: kind}
+	return push.Payload{Title: "Bill to pay", Body: body, URL: "/bills", Kind: kind}
 }
