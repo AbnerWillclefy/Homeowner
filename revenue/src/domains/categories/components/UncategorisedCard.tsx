@@ -17,7 +17,10 @@ export function UncategorisedCard({ rows, month }: { rows: Transaction[]; month:
     <Card>
       <div className="flex items-center justify-between gap-2">
         <h2 className="section-title">{t("categories.uncategorised.label")}</h2>
-        <Badge tone="warning" aria-label={t("categories.uncategorised.count", { count: rows.length })}>{rows.length}</Badge>
+        <Badge tone="warning">
+          <span aria-hidden>{rows.length}</span>
+          <span className="sr-only">{t("categories.uncategorised.count", { count: rows.length })}</span>
+        </Badge>
       </div>
       <ul className="divide-y divide-border">
         {rows.slice(0, SHOWN).map((tx) => (
