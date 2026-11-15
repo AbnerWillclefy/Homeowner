@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Contas a pagar</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="rv-app" data-theme="{{theme}}">
+<div class="rv-side"><dc-import name="Sidebar" active="bills" theme="{{theme}}" hint-size="256px,1240px"></dc-import></div>
+<main class="rv-main">
+<header class="rv-head">
+<div class="rv-head__text"><h1 class="rv-title">Contas a pagar</h1><span class="rv-sub">Novembro · 4 contas · R$ 3.975,85</span></div>
+<div class="rv-tools"><button class="br-btn br-btn--primary"><i class="ri ri-plus" aria-hidden="true"></i>Nova conta</button></div>
+</header>
+
+<div class="rv-grid">
+<section class="br-card s8">
+<div class="rv-between" style="flex-wrap: wrap">
+<span class="rv-section">Este mês</span>
+<div class="br-seg" role="group" aria-label="Status"><button aria-pressed="true">Todas</button><button aria-pressed="false">Pendentes</button><button aria-pressed="false">Pagas</button></div>
+</div>
+<div class="br-list">
+<sc-for list="{{bills}}" as="b" hint-placeholder-count="4">
+<div class="br-listrow" style="cursor: default">
+<span class="br-cat__icon" style="background: var(--{{b.tone}}-soft); color: var(--{{b.tone}})"><i class="ri {{b.icon}}" aria-hidden="true"></i></span>
+<div class="br-listrow__main"><span class="br-listrow__title">{{b.title}}</span><span class="br-listrow__meta">{{b.meta}}</span></div>
+<div class="rv-row" style="gap: 16px; flex-wrap: nowrap">
+<div class="br-listrow__end"><span class="br-amount br-amount--sm"><span class="br-amount__value">{{b.amount}}</span></span>
+<sc-if value="{{b.paid}}" hint-placeholder-val="{{ false }}"><span class="br-badge br-badge--positive"><i class="ri ri-sm ri-check" aria-hidden="true"></i>{{b.paidLabel}}</span></sc-if>
+<sc-if value="{{b.open}}" hint-placeholder-val="{{ true }}"><span class="br-badge {{b.badgeClass}}">{{b.due}}</span></sc-if></div>
+<sc-if value="{{b.open}}" hint-placeholder-val="{{ true }}"><button class="br-btn br-btn--secondary br-btn--sm" onClick="{{b.toggle}}"><i class="ri ri-check" aria-hidden="true"></i>Paga</button></sc-if>
+<sc-if value="{{b.paid}}" hint-placeholder-val="{{ false }}"><button class="br-btn br-btn--ghost br-btn--sm" onClick="{{b.toggle}}">Desfazer</button></sc-if>
+<button class="br-iconbtn br-iconbtn--sm" style="border: 0" aria-label="Mais ações de {{b.title}}"><i class="ri ri-more" aria-hidden="true"></i></button>
+</div>
+</div>
+</sc-for>
+</div>
+<hr class="rv-divider">
+<span class="rv-section" style="font-size: 14px; line-height: 20px">Dezembro</span>
+<div class="br-list">
+<div class="br-listrow" style="cursor: default"><span class="br-cat__icon" style="background: var(--cat-housing-soft); color: var(--cat-housing)"><i class="ri ri-house" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Aluguel</span><span class="br-listrow__meta">Moradia · todo dia 5 · lembrete 3 dias antes</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 3.500,00</span></span><span class="br-badge br-badge--neutral">05/12</span></div></div>
+</div>
+</section>
+
+<div class="s4 rv-stack-16" style="gap: 24px">
+<section class="br-card">
+<span class="br-card__label">Falta pagar em novembro</span>
+<span class="br-amount br-amount--lg"><span class="br-amount__value">{{left}}</span></span>
+<div class="br-progress"><div class="br-progress__track"><div class="br-progress__fill" style="width: {{pct}}"></div></div><div class="br-progress__meta"><strong>{{paidTotal}} pagos</strong><span>de R$ 3.975,85</span></div></div>
+<span class="br-muted">Contas pagas saem da sobra do mês na Visão geral.</span>
+</section>
+<section class="br-card">
+<div class="rv-stack" style="gap: 4px"><span class="br-card__label">Parecem contas fixas</span><span class="br-muted" style="font-size: 12px; line-height: 16px">Repetiram nos últimos 3 meses, no mesmo valor.</span></div>
+<div class="br-list">
+<div class="br-listrow" style="cursor: default"><span class="br-cat__icon" style="background: var(--cat-subscriptions-soft); color: var(--cat-subscriptions)"><i class="ri ri-repeat" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Spotify</span><span class="br-listrow__meta">R$ 21,90 · todo dia 6</span></div><div class="rv-row" style="flex-wrap: nowrap"><button class="br-btn br-btn--secondary br-btn--sm">Adicionar</button><button class="br-iconbtn br-iconbtn--sm" style="border: 0" aria-label="Ignorar Spotify"><i class="ri ri-x" aria-hidden="true"></i></button></div></div>
+<div class="br-listrow" style="cursor: default"><span class="br-cat__icon" style="background: var(--cat-subscriptions-soft); color: var(--cat-subscriptions)"><i class="ri ri-repeat" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Netflix</span><span class="br-listrow__meta">R$ 44,90 · todo dia 9</span></div><div class="rv-row" style="flex-wrap: nowrap"><button class="br-btn br-btn--secondary br-btn--sm">Adicionar</button><button class="br-iconbtn br-iconbtn--sm" style="border: 0" aria-label="Ignorar Netflix"><i class="ri ri-x" aria-hidden="true"></i></button></div></div>
+</div>
+</section>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { paid: { rent: true } }; }
+  renderVals() {
+    const list = [
+      { id: 'enel', title: 'Enel', meta: 'Contas da casa · todo dia 13', tone: 'cat-household-bills', icon: 'ri-zap', cents: 21440, amount: 'R$ 214,40', due: 'Vence em 2 dias', badgeClass: 'br-badge--warning' },
+      { id: 'vivo', title: 'Vivo Fibra', meta: 'Assinaturas · todo dia 15', tone: 'cat-subscriptions', icon: 'ri-repeat', cents: 11990, amount: 'R$ 119,90', due: 'Em 4 dias', badgeClass: 'br-badge--neutral' },
+      { id: 'sabesp', title: 'Sabesp', meta: 'Contas da casa · todo dia 18', tone: 'cat-household-bills', icon: 'ri-house', cents: 14155, amount: 'R$ 141,55', due: 'Em 7 dias', badgeClass: 'br-badge--neutral' },
+      { id: 'rent', title: 'Aluguel novembro', meta: 'Moradia · todo dia 5', tone: 'cat-housing', icon: 'ri-house', cents: 350000, amount: 'R$ 3.500,00', due: '05/11', badgeClass: 'br-badge--neutral', paidLabel: 'Paga em 05/11' },
+    ];
+    const brl = (c) => 'R$ ' + (c / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    let paidCents = 0;
+    const bills = list.map((b) => {
+      const isPaid = !!this.state.paid[b.id];
+      if (isPaid) paidCents += b.cents;
+      return { ...b, paid: isPaid, open: !isPaid, paidLabel: b.paidLabel || 'Paga hoje', toggle: () => this.setState({ paid: { ...this.state.paid, [b.id]: !isPaid } }) };
+    });
+    return {
+      theme: this.props.theme ?? 'dark',
+      bills,
+      left: brl(397585 - paidCents),
+      paidTotal: brl(paidCents),
+      pct: Math.round(paidCents / 397585 * 100) + '%',
+    };
+  }
+}
+</script>
+</body>
+</html>

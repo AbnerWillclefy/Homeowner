@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Configurações</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="rv-app" data-theme="{{theme}}" style="position: relative">
+<div class="rv-side"><dc-import name="Sidebar" active="settings" theme="{{theme}}" hint-size="256px,1240px"></dc-import></div>
+<main class="rv-main" style="max-width: 880px">
+<header class="rv-head"><div class="rv-head__text"><h1 class="rv-title">Configurações</h1><span class="rv-sub">Valores que alimentam a sobra, as metas e a projeção</span></div></header>
+
+<section class="br-card">
+<span class="rv-section">Planejamento</span>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px">
+<label class="br-field"><span class="br-field__label">Renda mensal</span><span class="br-input br-input--money"><span class="br-input__prefix">R$</span><input value="9.800,00" inputmode="decimal"></span><span class="br-field__hint">Usada na sobra e na projeção.</span></label>
+<label class="br-field"><span class="br-field__label">Aporte mensal</span><span class="br-input br-input--money"><span class="br-input__prefix">R$</span><input value="1.200,00" inputmode="decimal"></span><span class="br-field__hint">Dividido entre a reserva e as metas.</span></label>
+<label class="br-field"><span class="br-field__label">Alvo da reserva de emergência</span><span class="br-input br-input--money"><span class="br-input__prefix">R$</span><input value="30.000,00" inputmode="decimal"></span><span class="br-field__hint">Uns 6 meses do seu custo fixo.</span></label>
+<div class="br-field"><span class="br-field__label">Parte do aporte para a reserva</span><div class="br-seg br-seg--block" role="group" aria-label="Parte do aporte para a reserva"><button aria-pressed="false">30%</button><button aria-pressed="true">50%</button><button aria-pressed="false">70%</button><button aria-pressed="false">Outro</button></div></div>
+</div>
+</section>
+
+<section class="br-card">
+<span class="rv-section">Aparência</span>
+<div class="rv-between" style="flex-wrap: wrap"><span>Tema</span><div class="br-seg" role="group" aria-label="Tema"><button aria-pressed="{{t.system}}" onClick="{{setSystem}}">Sistema</button><button aria-pressed="{{t.dark}}" onClick="{{setDark}}">Escuro</button><button aria-pressed="{{t.light}}" onClick="{{setLight}}">Claro</button></div></div>
+<hr class="rv-divider">
+<div class="rv-between" style="flex-wrap: wrap"><span>Idioma</span><div class="br-seg" role="group" aria-label="Idioma"><button aria-pressed="true">Português</button><button aria-pressed="false">English</button></div></div>
+</section>
+
+<section class="br-card">
+<span class="rv-section">Avisos</span>
+<button class="br-switch" role="switch" aria-checked="true" style="all: unset; display: flex; justify-content: space-between; align-items: center; gap: 16px; cursor: pointer"><span class="rv-stack" style="gap: 0"><span>Contas perto do vencimento</span><span class="br-muted" style="font-size: 12px; line-height: 16px">3 dias antes, às 9h</span></span><span class="br-switch__track"></span></button>
+<hr class="rv-divider">
+<button class="br-switch" role="switch" aria-checked="true" style="all: unset; display: flex; justify-content: space-between; align-items: center; gap: 16px; cursor: pointer"><span class="rv-stack" style="gap: 0"><span>Categoria perto do limite</span><span class="br-muted" style="font-size: 12px; line-height: 16px">Ao passar de 85%</span></span><span class="br-switch__track"></span></button>
+<hr class="rv-divider">
+<button class="br-switch" role="switch" aria-checked="false" style="all: unset; display: flex; justify-content: space-between; align-items: center; gap: 16px; cursor: pointer"><span class="rv-stack" style="gap: 0"><span>Banco pediu nova autorização</span><span class="br-muted" style="font-size: 12px; line-height: 16px">Quando um banco para de sincronizar</span></span><span class="br-switch__track"></span></button>
+</section>
+
+<section class="br-card">
+<span class="rv-section">Conexão com o Pluggy</span>
+<div class="rv-between" style="flex-wrap: wrap"><div class="rv-stack" style="gap: 0"><span>Credenciais salvas</span><span class="br-muted br-num">Client ID ••••••••3f9a · guardado criptografado</span></div><div class="rv-row"><button class="br-btn br-btn--secondary br-btn--sm">Trocar</button></div></div>
+</section>
+
+<section class="br-card" style="border-color: var(--danger-soft)">
+<span class="rv-section">Apagar dados</span>
+<div class="rv-between" style="flex-wrap: wrap"><span class="br-muted" style="max-width: 480px">Apaga transações, contas, metas e credenciais. As conexões com os bancos são desfeitas. Não dá para desfazer.</span><button class="br-btn br-btn--secondary" style="color: var(--danger)" onClick="{{ask}}">Apagar dados financeiros</button></div>
+</section>
+</main>
+
+<sc-if value="{{asking}}" hint-placeholder-val="{{ false }}">
+<div class="rv-scrim" style="display: grid; place-items: start center; padding-top: 160px">
+<div class="br-dialog" role="alertdialog" aria-label="Apagar todos os dados financeiros?">
+<span class="br-sheet__title">Apagar todos os dados financeiros?</span>
+<span class="br-muted">Somem 64 transações de novembro e todo o histórico, 3 metas, saldos e as credenciais do Pluggy. Os bancos ficam desconectados. Isso não tem volta.</span>
+<div class="br-dialog__actions"><button class="br-btn br-btn--secondary" onClick="{{cancel}}">Cancelar</button><button class="br-btn br-btn--danger" onClick="{{cancel}}">Apagar tudo</button></div>
+</div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { choice: 'system', asking: false }; }
+  renderVals() {
+    const c = this.state.choice;
+    const theme = c === 'system' ? (this.props.theme ?? 'dark') : c;
+    return {
+      theme,
+      t: { system: c === 'system' ? 'true' : 'false', dark: c === 'dark' ? 'true' : 'false', light: c === 'light' ? 'true' : 'false' },
+      setSystem: () => this.setState({ choice: 'system' }),
+      setDark: () => this.setState({ choice: 'dark' }),
+      setLight: () => this.setState({ choice: 'light' }),
+      asking: this.state.asking,
+      ask: () => this.setState({ asking: true }),
+      cancel: () => this.setState({ asking: false }),
+    };
+  }
+}
+</script>
+</body>
+</html>

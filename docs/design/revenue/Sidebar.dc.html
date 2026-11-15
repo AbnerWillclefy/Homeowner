@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Sidebar</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<nav class="br-sidebar" aria-label="Principal" data-theme="{{theme}}" style="width: 100%; min-height: 100%; height: 100%; color: var(--text); font-family: var(--font-sans); box-sizing: border-box">
+<a href="Main.dc.html" class="br-sidebar__brand" style="color: var(--text); text-decoration: none"><span class="br-sidebar__mark"></span>Revenue</a>
+<div class="br-sidebar__group">
+<span class="br-sidebar__overline">Principal</span>
+<a href="Main.dc.html" class="br-navitem" aria-current="{{cur.overview}}"><i class="ri ri-dashboard" aria-hidden="true"></i>Visão geral</a>
+<a href="Transactions.dc.html" class="br-navitem" aria-current="{{cur.transactions}}"><i class="ri ri-arrows" aria-hidden="true"></i>Transações</a>
+<a href="Bills.dc.html" class="br-navitem" aria-current="{{cur.bills}}"><i class="ri ri-calendar" aria-hidden="true"></i>Contas a pagar<span class="br-badge br-badge--warning" style="margin-left: auto">3</span></a>
+<a href="CardBills.dc.html" class="br-navitem" aria-current="{{cur.cards}}"><i class="ri ri-card" aria-hidden="true"></i>Faturas</a>
+<a href="Categories.dc.html" class="br-navitem" aria-current="{{cur.categories}}"><i class="ri ri-pie" aria-hidden="true"></i>Categorias</a>
+</div>
+<div class="br-sidebar__group">
+<span class="br-sidebar__overline">Planejamento</span>
+<a href="Goals.dc.html" class="br-navitem" aria-current="{{cur.goals}}"><i class="ri ri-target" aria-hidden="true"></i>Metas</a>
+<a href="NetWorth.dc.html" class="br-navitem" aria-current="{{cur.networth}}"><i class="ri ri-trending" aria-hidden="true"></i>Patrimônio</a>
+<a href="Projection.dc.html" class="br-navitem" aria-current="{{cur.projection}}"><i class="ri ri-chartline" aria-hidden="true"></i>Projeção</a>
+<a href="Accounts.dc.html" class="br-navitem" aria-current="{{cur.accounts}}"><i class="ri ri-landmark" aria-hidden="true"></i>Contas</a>
+</div>
+<div class="br-sidebar__group" style="margin-top: auto">
+<span class="br-muted" style="font-size: 12px; line-height: 16px; padding: 0 8px 8px; display: flex; gap: 8px; align-items: center"><i class="ri ri-sm ri-refresh" aria-hidden="true"></i>Atualizado há 2 h</span>
+<a href="Settings.dc.html" class="br-navitem" aria-current="{{cur.settings}}"><i class="ri ri-settings" aria-hidden="true"></i>Configurações</a>
+</div>
+</nav>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"active":{"editor":"enum","options":["overview","transactions","bills","cards","categories","goals","networth","projection","accounts","settings"],"default":"overview"},"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":256,"height":1240}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const active = this.props.active ?? 'overview';
+    const keys = ['overview','transactions','bills','cards','categories','goals','networth','projection','accounts','settings'];
+    const cur = {};
+    keys.forEach((k) => { cur[k] = k === active ? 'page' : null; });
+    return { cur, theme: this.props.theme ?? 'dark' };
+  }
+}
+</script>
+</body>
+</html>

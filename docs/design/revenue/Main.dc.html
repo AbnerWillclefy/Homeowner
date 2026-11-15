@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Visão geral</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="rv-app" data-theme="{{theme}}" style="position: relative">
+<div class="rv-side"><dc-import name="Sidebar" active="overview" theme="{{theme}}" hint-size="256px,1240px"></dc-import></div>
+<main class="rv-main">
+<header class="rv-head">
+<div class="rv-head__text"><h1 class="rv-title">Visão geral</h1><span class="rv-sub">Novembro de 2026 · hoje, 11 nov</span></div>
+<div class="rv-tools">
+<button class="br-btn br-btn--secondary"><i class="ri ri-calendar" aria-hidden="true"></i>Novembro<i class="ri ri-chevron-down" aria-hidden="true"></i></button>
+<button class="br-iconbtn" aria-label="Esconder valores"><i class="ri ri-eye" aria-hidden="true"></i></button>
+<button class="br-iconbtn" aria-label="Notificações, 1 nova"><i class="ri ri-bell" aria-hidden="true"></i><span class="br-dot"></span></button>
+</div>
+</header>
+
+<div class="rv-grid">
+<div class="s5 rv-stack-16" style="gap: 24px">
+
+<section class="br-card br-card--hero" aria-label="Quanto ainda pode gastar">
+<div class="br-card__head"><span class="br-card__label">Você ainda pode gastar</span><span class="br-badge br-badge--solid"><i class="ri ri-sm ri-check" aria-hidden="true"></i>No ritmo</span></div>
+<div class="rv-stack" style="gap: 4px">
+<span class="br-amount br-amount--hero"><span class="br-amount__value">R$ 1.517,25</span></span>
+<span class="br-muted">R$ 75 por dia até 30/11</span>
+</div>
+<div style="position: relative">
+<svg class="br-chart br-chart--hero" viewBox="0 0 440 140" role="img" aria-label="Gasto acumulado de novembro: R$ 1.627 até o dia 11, R$ 200 abaixo do ritmo planejado">
+<line class="ref" x1="0" y1="132" x2="440" y2="8"></line>
+<path class="area" d="M0 132 C30 130 50 124 72 116 S120 100 140 96 S155 93 161 91.5 L161 132 Z"></path>
+<path class="line" d="M0 132 C30 130 50 124 72 116 S120 100 140 96 S155 93 161 91.5"></path>
+<circle class="end" cx="161" cy="91.5" r="6"></circle>
+</svg>
+<span class="br-flag" style="position: absolute; left: 41%; top: 44%">R$ 200 abaixo</span>
+</div>
+<div class="rv-between" style="font-variant-numeric: tabular-nums"><span class="br-muted">Gastos do mês</span><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 1.627,41</span><span class="br-amount__ref">/ R$ 4.983</span></span></div>
+</section>
+
+<button class="br-alert" onClick="{{openPanel}}" style="width: 100%; text-align: left; font: inherit; color: inherit">
+<span class="br-alert__icons"><span class="br-cat__icon" style="background: var(--cat-household-bills-soft); color: var(--cat-household-bills)"><i class="ri ri-zap" aria-hidden="true"></i></span><span class="br-cat__icon" style="background: var(--cat-subscriptions-soft); color: var(--cat-subscriptions)"><i class="ri ri-repeat" aria-hidden="true"></i></span><span class="br-cat__icon" style="background: var(--cat-household-bills-soft); color: var(--cat-household-bills)"><i class="ri ri-house" aria-hidden="true"></i></span></span>
+<sc-if value="{{paid}}" hint-placeholder-val="{{ false }}"><span class="rv-stack" style="gap: 0"><span class="br-alert__title">Contas da semana pagas</span><span class="br-alert__meta">R$ 475,85 · próxima: aluguel em 05/12</span></span></sc-if>
+<sc-if value="{{unpaid}}" hint-placeholder-val="{{ true }}"><span class="rv-stack" style="gap: 0"><span class="br-alert__title">3 contas a pagar</span><span class="br-alert__meta br-alert__meta--warning">R$ 475,85 · a primeira vence em 2 dias</span></span></sc-if>
+<i class="ri ri-chevron-right" aria-hidden="true"></i>
+</button>
+
+<section class="br-card">
+<div class="br-card__head"><span class="br-card__label">Resultado do mês</span><a href="Projection.dc.html" class="br-card__open" aria-label="Abrir Projeção"><i class="ri ri-open" aria-hidden="true"></i></a></div>
+<div class="rv-row" style="gap: 16px"><span class="br-amount br-amount--lg"><span class="br-amount__value">R$ 3.472,59</span></span><span class="br-muted">até hoje</span><span class="br-badge br-badge--positive"><i class="ri ri-sm ri-trending" aria-hidden="true"></i>+4% vs out</span></div>
+<div class="rv-split">
+<div class="rv-kv"><span class="rv-kv__k"><i class="sw" style="background: var(--positive)"></i>Entradas</span><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 9.800,00</span></span></div>
+<div class="rv-kv"><span class="rv-kv__k"><i class="sw" style="background: var(--danger)"></i>Saídas</span><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 5.127,41</span></span></div>
+<div class="rv-kv"><span class="rv-kv__k"><i class="sw" style="background: var(--brand)"></i>Investido</span><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 1.200,00</span></span></div>
+</div>
+</section>
+</div>
+
+<div class="s7 rv-stack-16" style="gap: 24px">
+<section class="br-card">
+<div class="br-card__head"><span class="br-card__label">Distribuição dos gastos · novembro</span><a href="Categories.dc.html" class="br-card__open" aria-label="Abrir Categorias"><i class="ri ri-open" aria-hidden="true"></i></a></div>
+<div class="rv-row" style="gap: 32px; align-items: center; flex-wrap: wrap">
+<svg viewBox="0 0 160 160" width="176" height="176" role="img" aria-label="Moradia é 68% dos gastos de novembro, de R$ 5.127 no total">
+<circle cx="80" cy="80" r="64" fill="none" stroke-width="16" style="stroke: var(--cat-housing)" stroke-dasharray="272.6 402.12" stroke-dashoffset="0" transform="rotate(-90 80 80)"></circle>
+<circle cx="80" cy="80" r="64" fill="none" stroke-width="16" style="stroke: var(--cat-groceries)" stroke-dasharray="45.9 402.12" stroke-dashoffset="-274.6" transform="rotate(-90 80 80)"></circle>
+<circle cx="80" cy="80" r="64" fill="none" stroke-width="16" style="stroke: var(--cat-eating-out)" stroke-dasharray="28.2 402.12" stroke-dashoffset="-322.5" transform="rotate(-90 80 80)"></circle>
+<circle cx="80" cy="80" r="64" fill="none" stroke-width="16" style="stroke: var(--cat-transport)" stroke-dasharray="15.3 402.12" stroke-dashoffset="-352.7" transform="rotate(-90 80 80)"></circle>
+<circle cx="80" cy="80" r="64" fill="none" stroke-width="16" style="stroke: var(--cat-subscriptions)" stroke-dasharray="9.7 402.12" stroke-dashoffset="-370" transform="rotate(-90 80 80)"></circle>
+<circle cx="80" cy="80" r="64" fill="none" stroke-width="16" style="stroke: var(--cat-health)" stroke-dasharray="5.6 402.12" stroke-dashoffset="-381.6" transform="rotate(-90 80 80)"></circle>
+<circle cx="80" cy="80" r="64" fill="none" stroke-width="16" style="stroke: var(--cat-leisure)" stroke-dasharray="4.8 402.12" stroke-dashoffset="-389.3" transform="rotate(-90 80 80)"></circle>
+<circle cx="80" cy="80" r="64" fill="none" stroke-width="16" style="stroke: var(--cat-other)" stroke-dasharray="4 402.12" stroke-dashoffset="-396.1" transform="rotate(-90 80 80)"></circle>
+<text x="80" y="74" text-anchor="middle" style="font: 400 11px var(--font-sans); fill: var(--text-muted)">Gasto no mês</text>
+<text x="80" y="94" text-anchor="middle" style="font: 600 16px var(--font-sans); fill: var(--text)">R$ 5.127</text>
+</svg>
+<div style="flex: 1; min-width: 280px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px">
+<span class="br-cat"><span class="br-cat__icon br-cat__icon--sm" style="background: var(--cat-housing-soft); color: var(--cat-housing)"><i class="ri ri-sm ri-house" aria-hidden="true"></i></span>Moradia<span class="br-cat__share">68%</span></span>
+<span class="br-cat"><span class="br-cat__icon br-cat__icon--sm" style="background: var(--cat-groceries-soft); color: var(--cat-groceries)"><i class="ri ri-sm ri-cart" aria-hidden="true"></i></span>Mercado<span class="br-cat__share">12%</span></span>
+<span class="br-cat"><span class="br-cat__icon br-cat__icon--sm" style="background: var(--cat-eating-out-soft); color: var(--cat-eating-out)"><i class="ri ri-sm ri-utensils" aria-hidden="true"></i></span>Restaurantes<span class="br-cat__share">7,5%</span></span>
+<span class="br-cat"><span class="br-cat__icon br-cat__icon--sm" style="background: var(--cat-transport-soft); color: var(--cat-transport)"><i class="ri ri-sm ri-car" aria-hidden="true"></i></span>Transporte<span class="br-cat__share">4,3%</span></span>
+<span class="br-cat"><span class="br-cat__icon br-cat__icon--sm" style="background: var(--cat-subscriptions-soft); color: var(--cat-subscriptions)"><i class="ri ri-sm ri-repeat" aria-hidden="true"></i></span>Assinaturas<span class="br-cat__share">2,9%</span></span>
+<span class="br-cat"><span class="br-cat__icon br-cat__icon--sm" style="background: var(--cat-health-soft); color: var(--cat-health)"><i class="ri ri-sm ri-heart" aria-hidden="true"></i></span>Saúde<span class="br-cat__share">1,9%</span></span>
+<span class="br-cat"><span class="br-cat__icon br-cat__icon--sm" style="background: var(--cat-leisure-soft); color: var(--cat-leisure)"><i class="ri ri-sm ri-ticket" aria-hidden="true"></i></span>Lazer<span class="br-cat__share">1,7%</span></span>
+<span class="br-cat"><span class="br-cat__icon br-cat__icon--sm" style="background: var(--cat-other-soft); color: var(--cat-other)"><i class="ri ri-sm ri-circle-more" aria-hidden="true"></i></span>Outros<span class="br-cat__share">1,5%</span></span>
+</div>
+</div>
+</section>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px">
+<section class="br-card">
+<div class="br-card__head"><span class="br-card__label">Patrimônio</span><a href="NetWorth.dc.html" class="br-card__open" aria-label="Abrir Patrimônio"><i class="ri ri-open" aria-hidden="true"></i></a></div>
+<div class="rv-row" style="gap: 16px"><span class="br-amount br-amount--md"><span class="br-amount__value">R$ 48.312,70</span></span><span class="br-badge br-badge--positive"><i class="ri ri-sm ri-trending" aria-hidden="true"></i>+2,5%</span></div>
+<svg class="br-chart" viewBox="0 0 280 72" role="img" aria-label="Patrimônio subiu R$ 1.193 em novembro">
+<path class="area" d="M0 60 L40 56 L80 58 L120 46 L160 44 L200 36 L240 30 L280 20 L280 72 L0 72 Z"></path>
+<path class="line" d="M0 60 L40 56 L80 58 L120 46 L160 44 L200 36 L240 30 L280 20"></path>
+</svg>
+<span class="br-muted">+R$ 1.193 em novembro</span>
+</section>
+<section class="br-card">
+<div class="br-card__head"><span class="br-card__label">Faturas abertas</span><a href="CardBills.dc.html" class="br-card__open" aria-label="Abrir Faturas"><i class="ri ri-open" aria-hidden="true"></i></a></div>
+<span class="br-amount br-amount--md"><span class="br-amount__value">R$ 3.359,88</span></span>
+<div class="br-list">
+<div class="br-listrow" style="cursor: default"><span class="rv-logo rv-logo--nu">Nu</span><div class="br-listrow__main"><span class="br-listrow__title">Nubank</span><span class="br-listrow__meta">fecha 03/12 · vence 10/12</span></div><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 2.418,22</span></span></div>
+<div class="br-listrow" style="cursor: default"><span class="rv-logo rv-logo--itau">Itaú</span><div class="br-listrow__main"><span class="br-listrow__title">Itaú Click</span><span class="br-listrow__meta">fecha 28/11 · vence 06/12</span></div><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 941,66</span></span></div>
+</div>
+</section>
+</div>
+
+<section class="br-card">
+<div class="br-card__head"><span class="br-card__label">Metas · aporte de R$ 1.200 por mês</span><a href="Goals.dc.html" class="br-card__open" aria-label="Abrir Metas"><i class="ri ri-open" aria-hidden="true"></i></a></div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px">
+<div class="br-progress"><div class="rv-between"><span class="br-cat"><span class="br-cat__icon br-cat__icon--sm" style="background: var(--brand-soft); color: var(--brand)"><i class="ri ri-sm ri-shield" aria-hidden="true"></i></span>Reserva de emergência</span><span class="br-badge br-badge--positive">82%</span></div><div class="br-progress__track"><div class="br-progress__fill" style="width: 82%"></div></div><div class="br-progress__meta"><strong>R$ 24.500</strong><span>de R$ 30.000 · mar/27</span></div></div>
+<div class="br-progress"><div class="rv-between"><span class="br-cat"><span class="br-cat__icon br-cat__icon--sm" style="background: var(--cat-transport-soft); color: var(--cat-transport)"><i class="ri ri-sm ri-target" aria-hidden="true"></i></span>Viagem para o Chile</span><span class="br-badge br-badge--positive">50%</span></div><div class="br-progress__track"><div class="br-progress__fill" style="width: 50%"></div></div><div class="br-progress__meta"><strong>R$ 3.000</strong><span>de R$ 6.000 · jun/27</span></div></div>
+</div>
+</section>
+</div>
+</div>
+</main>
+
+<sc-if value="{{panelOpen}}" hint-placeholder-val="{{ false }}">
+<div class="rv-scrim" onClick="{{closePanel}}"></div>
+<aside class="rv-panel" role="dialog" aria-label="Contas a pagar">
+<div class="br-sheet__head"><div class="rv-stack" style="gap: 0"><span class="br-sheet__title">3 contas a pagar</span><span class="br-muted">R$ 475,85 · até 18/11</span></div><button class="br-iconbtn br-iconbtn--sm" aria-label="Fechar" onClick="{{closePanel}}"><i class="ri ri-x" aria-hidden="true"></i></button></div>
+<div class="br-list">
+<div class="br-listrow"><span class="br-cat__icon" style="background: var(--cat-household-bills-soft); color: var(--cat-household-bills)"><i class="ri ri-zap" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Enel</span><span class="br-listrow__meta">Contas da casa · vence 13/11</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 214,40</span></span><sc-if value="{{paid}}" hint-placeholder-val="{{ false }}"><span class="br-badge br-badge--positive"><i class="ri ri-sm ri-check" aria-hidden="true"></i>Paga</span></sc-if><sc-if value="{{unpaid}}" hint-placeholder-val="{{ true }}"><span class="br-badge br-badge--warning"><i class="ri ri-sm ri-clock" aria-hidden="true"></i>Em 2 dias</span></sc-if></div></div>
+<div class="br-listrow"><span class="br-cat__icon" style="background: var(--cat-subscriptions-soft); color: var(--cat-subscriptions)"><i class="ri ri-repeat" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Vivo Fibra</span><span class="br-listrow__meta">Assinaturas · vence 15/11</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 119,90</span></span><sc-if value="{{paid}}" hint-placeholder-val="{{ false }}"><span class="br-badge br-badge--positive"><i class="ri ri-sm ri-check" aria-hidden="true"></i>Paga</span></sc-if><sc-if value="{{unpaid}}" hint-placeholder-val="{{ true }}"><span class="br-badge br-badge--neutral">Em 4 dias</span></sc-if></div></div>
+<div class="br-listrow"><span class="br-cat__icon" style="background: var(--cat-household-bills-soft); color: var(--cat-household-bills)"><i class="ri ri-house" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Sabesp</span><span class="br-listrow__meta">Contas da casa · vence 18/11</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 141,55</span></span><sc-if value="{{paid}}" hint-placeholder-val="{{ false }}"><span class="br-badge br-badge--positive"><i class="ri ri-sm ri-check" aria-hidden="true"></i>Paga</span></sc-if><sc-if value="{{unpaid}}" hint-placeholder-val="{{ true }}"><span class="br-badge br-badge--neutral">Em 7 dias</span></sc-if></div></div>
+</div>
+<span class="br-muted">Marcar como paga não mexe no banco: só tira a conta da lista e da sobra do mês.</span>
+<div style="margin-top: auto" class="rv-stack">
+<sc-if value="{{unpaid}}" hint-placeholder-val="{{ true }}"><button class="br-btn br-btn--primary br-btn--lg br-btn--block" onClick="{{pay}}"><i class="ri ri-check" aria-hidden="true"></i>Marcar as 3 como pagas</button></sc-if>
+<sc-if value="{{paid}}" hint-placeholder-val="{{ false }}"><button class="br-btn br-btn--success br-btn--lg br-btn--block" onClick="{{undo}}"><i class="ri ri-check" aria-hidden="true"></i>3 contas pagas · Desfazer</button></sc-if>
+<a href="Bills.dc.html" class="br-btn br-btn--ghost br-btn--block">Ver todas as contas</a>
+</div>
+</aside>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { panelOpen: false, paid: false }; }
+  renderVals() {
+    return {
+      theme: this.props.theme ?? 'dark',
+      panelOpen: this.state.panelOpen,
+      paid: this.state.paid,
+      unpaid: !this.state.paid,
+      openPanel: () => this.setState({ panelOpen: true }),
+      closePanel: () => this.setState({ panelOpen: false }),
+      pay: () => this.setState({ paid: true }),
+      undo: () => this.setState({ paid: false }),
+    };
+  }
+}
+</script>
+</body>
+</html>
