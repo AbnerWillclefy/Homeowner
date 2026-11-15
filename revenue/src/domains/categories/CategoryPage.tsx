@@ -4,14 +4,15 @@ import { ChevronLeft, Tags } from "lucide-react";
 import { Link, useLocation, useParams } from "react-router";
 import { ScreenPlaceholder } from "../../shared/ScreenPlaceholder";
 import { useI18n } from "../../shared/i18n/I18nProvider";
+import { formatDay } from "../../shared/month/month";
+import { MonthSelect } from "../../shared/month/MonthSelect";
+import { useMonthParam } from "../../shared/month/useMonthParam";
+import { PageHeader } from "../../shared/PageHeader";
 import { CategoryHistory } from "./components/CategoryHistory";
 import { LimitBar } from "./components/LimitBar";
 import { LimitForm } from "./components/LimitForm";
-import { MonthNav } from "./components/MonthNav";
 import { useHistory, useLimit, useSpending } from "./hooks/useCategories";
-import { useMonthParam } from "./hooks/useMonthParam";
 import { spendingKey, type SpendingCategory } from "./logic/categories";
-import { formatDay } from "./logic/month";
 import { categoryOf } from "./logic/route";
 import { ofCategory } from "./logic/uncategorised";
 
@@ -25,7 +26,7 @@ export function CategoryPage() {
 function Detail({ category }: { category: SpendingCategory }) {
   const { t, locale } = useI18n();
   const { search } = useLocation();
-  const { month, thisMonth, step } = useMonthParam();
+  const { month } = useMonthParam();
   const spending = useSpending(month);
   const history = useHistory(month);
   const setLimit = useLimit(month);
@@ -40,8 +41,7 @@ function Detail({ category }: { category: SpendingCategory }) {
         <ChevronLeft aria-hidden className="size-4 rtl:rotate-180" />
         {t("categories.back")}
       </Link>
-      <h1 className="page-title">{name}</h1>
-      <MonthNav month={month} thisMonth={thisMonth} step={step} />
+      <PageHeader title={name} tools={<MonthSelect />} />
 
       {spending.loading ? (
         <div role="status" className="flex flex-col gap-4">
