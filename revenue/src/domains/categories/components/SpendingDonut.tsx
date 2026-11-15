@@ -1,6 +1,6 @@
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@homeowner/bedrock";
 import { Amount, DonutChart } from "@homeowner/bedrock/finance";
-import { useHiddenProps } from "../../../shared/HideValues";
+import { useHideValues, useHiddenProps } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
 import type { CategoryRow } from "../logic/rows";
 import { spendingKey, tagOf } from "../logic/categories";
@@ -9,21 +9,16 @@ import { spendingKey, tagOf } from "../logic/categories";
 export function SpendingDonut({ rows }: { rows: CategoryRow[] }) {
   const { t, locale } = useI18n();
   const hidden = useHiddenProps();
+  const { hidden: isHidden } = useHideValues();
   const spent = rows.filter((r) => r.spentCents > 0);
   const total = spent.reduce((n, r) => n + r.spentCents, 0);
   if (total === 0) return null;
   const top = spent[0]!;
   const percent = new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 0 }).format(top.spentCents / total);
-  return (
-    <DonutChart
-      slices={spent.map((r) => ({ category: tagOf(r.category), label: t(spendingKey(r.category)), cents: r.spentCents }))}
-      otherLabel={t("spending.other")}
-      label={t("categories.donut.label", { name: t(spendingKey(top.category)), percent })}
-      totalLabel={t("categories.donut.total")}
-      locale={locale}
-      alternative={
+  const label = t("categories.donut.label", { name: t(spendingKey(top.category)), percent });
+  const table = (
         <Table>
-          <TableCaption>{t("categories.donut.label", { name: t(spendingKey(top.category)), percent })}</TableCaption>
+          <TableCaption>{label}</TableCaption>
           <TableHeader>
             <TableRow>
               <TableHead>{t("categories.col.category")}</TableHead>
@@ -39,7 +34,17 @@ export function SpendingDonut({ rows }: { rows: CategoryRow[] }) {
             ))}
           </TableBody>
         </Table>
-      }
+  );
+  // The chart prints the total in its centre and cannot hide it, so a hidden screen shows only the table.
+  if (isHidden) return table;
+  return (
+    <DonutChart
+      slices={spent.map((r) => ({ category: tagOf(r.category), label: t(spendingKey(r.category)), cents: r.spentCents }))}
+      otherLabel={t("spending.other")}
+      label={label}
+      totalLabel={t("categories.donut.total")}
+      locale={locale}
+      alternative={table}
     />
   );
 }

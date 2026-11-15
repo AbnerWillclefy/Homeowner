@@ -1,5 +1,6 @@
 import { ProgressBar } from "@homeowner/bedrock";
 import { formatAmount } from "@homeowner/bedrock/finance";
+import { useHideValues } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
 import { limitText } from "../logic/limit";
 
@@ -9,11 +10,15 @@ import { limitText } from "../logic/limit";
  */
 export function LimitBar({ label, spent, limit }: { label: string; spent: number; limit: number }) {
   const { t, locale } = useI18n();
+  const { hidden } = useHideValues();
   const money = (cents: number) => formatAmount(cents, { locale });
   const standing = limitText(spent, limit);
   const of = t("categories.limit.of", { spent: money(spent), limit: money(limit) });
   const words = t(`categories.limit.${standing.key}`, { amount: money(standing.amount), limit: money(limit) });
-  return (
+  // The words carry money, so a hidden one says only that it is hidden; the bar's fill stays.
+  return hidden ? (
+    <ProgressBar value={Math.max(spent, 0)} max={limit} tone="brand" label={label} valueText={t("hide.label")} />
+  ) : (
     <ProgressBar value={Math.max(spent, 0)} max={limit} tone="brand" label={label} valueText={`${of}. ${words}`} start={of} end={words} />
   );
 }
