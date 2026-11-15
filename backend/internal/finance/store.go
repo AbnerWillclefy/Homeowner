@@ -329,7 +329,7 @@ func (s *Store) CardBillsDue(ctx context.Context, userID string, from, to time.T
 }
 
 // PastCardBills returns the latest n bills of the User's card Source that closed
-// before today, oldest first. found is false for another User's Source, an
+// on or before today, oldest first. found is false for another User's Source, an
 // unknown one and a Source that is not a card.
 func (s *Store) PastCardBills(ctx context.Context, userID, sourceID string, today time.Time, n int) (bills []StoredBill, found bool, err error) {
 	if err := s.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM finance_sources WHERE user_id = $1 AND id = $2 AND kind = 'credit_card')`,
@@ -338,7 +338,7 @@ func (s *Store) PastCardBills(ctx context.Context, userID, sourceID string, toda
 	}
 	rows, err := s.db.Query(ctx, `SELECT closes_on, due_on, total_cents FROM (
 			SELECT closes_on, due_on, total_cents FROM finance_card_bills
-			WHERE user_id = $1 AND source_id = $2 AND closes_on < $3 ORDER BY due_on DESC LIMIT $4) latest
+			WHERE user_id = $1 AND source_id = $2 AND closes_on <= $3 ORDER BY due_on DESC LIMIT $4) latest
 		ORDER BY due_on`, userID, sourceID, today, n)
 	if err != nil {
 		return nil, true, err

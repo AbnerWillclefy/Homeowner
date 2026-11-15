@@ -32,28 +32,34 @@ func TestPastCardBills(t *testing.T) {
 		seed    func()
 		query   string
 		status  int
-		firstTo string // first closesOn, last closesOn
+		firstTo string // the oldest closesOn
+		lastTo  string // the latest closesOn
 		count   int
 		average any
 	}{
-		{"no bills", func() {}, "source=" + card, 200, "", 0, nil},
-		{"fewer than six", func() { seed(2) }, "source=" + card, 200, "2026-09-01", 2, float64(205000)},
-		{"more than six, the latest six oldest first", func() { seed(8) }, "source=" + card, 200, "2026-05-01", 6, float64(185000)},
+		{"no bills", func() {}, "source=" + card, 200, "", "", 0, nil},
+		{"fewer than six", func() { seed(2) }, "source=" + card, 200, "2026-09-01", "2026-10-01", 2, float64(205000)},
+		{"more than six, the latest six oldest first", func() { seed(8) }, "source=" + card, 200, "2026-05-01", "2026-10-01", 6, float64(185000)},
 		{"the open bill is left out", func() {
 			seed(1)
 			exec(t, app, `INSERT INTO finance_card_bills (user_id, source_id, provider_id, closes_on, due_on, total_cents)
 				SELECT user_id, id, 'open', '2026-11-20', '2026-11-30', 999999 FROM finance_sources WHERE id = $1`, card)
-		}, "source=" + card, 200, "2026-10-01", 1, float64(210000)},
-		{"months narrows it", func() { seed(8) }, "source=" + card + "&months=2", 200, "2026-09-01", 2, float64(205000)},
-		{"months 12", func() { seed(8) }, "source=" + card + "&months=12", 200, "2026-03-01", 8, float64(175000)},
-		{"months 0", func() {}, "source=" + card + "&months=0", 400, "", 0, nil},
-		{"months 13", func() {}, "source=" + card + "&months=13", 400, "", 0, nil},
-		{"months abc", func() {}, "source=" + card + "&months=abc", 400, "", 0, nil},
-		{"no source", func() {}, "", 400, "", 0, nil},
-		{"malformed source", func() {}, "source=nope", 400, "", 0, nil},
-		{"unknown source", func() {}, "source=00000000-0000-4000-8000-000000000001", 404, "", 0, nil},
-		{"another User's source", func() {}, "source=" + biasCard, 404, "", 0, nil},
-		{"a checking source", func() {}, "source=" + checking, 404, "", 0, nil},
+		}, "source=" + card, 200, "2026-10-01", "2026-10-01", 1, float64(210000)},
+		{"a bill closing today is included", func() {
+			seed(1)
+			exec(t, app, `INSERT INTO finance_card_bills (user_id, source_id, provider_id, closes_on, due_on, total_cents)
+				SELECT user_id, id, 'today', '2026-11-08', '2026-11-18', 100000 FROM finance_sources WHERE id = $1`, card)
+		}, "source=" + card, 200, "2026-10-01", "2026-11-08", 2, float64(155000)},
+		{"months narrows it", func() { seed(8) }, "source=" + card + "&months=2", 200, "2026-09-01", "2026-10-01", 2, float64(205000)},
+		{"months 12", func() { seed(8) }, "source=" + card + "&months=12", 200, "2026-03-01", "2026-10-01", 8, float64(175000)},
+		{"months 0", func() {}, "source=" + card + "&months=0", 400, "", "", 0, nil},
+		{"months 13", func() {}, "source=" + card + "&months=13", 400, "", "", 0, nil},
+		{"months abc", func() {}, "source=" + card + "&months=abc", 400, "", "", 0, nil},
+		{"no source", func() {}, "", 400, "", "", 0, nil},
+		{"malformed source", func() {}, "source=nope", 400, "", "", 0, nil},
+		{"unknown source", func() {}, "source=00000000-0000-4000-8000-000000000001", 404, "", "", 0, nil},
+		{"another User's source", func() {}, "source=" + biasCard, 404, "", "", 0, nil},
+		{"a checking source", func() {}, "source=" + checking, 404, "", "", 0, nil},
 	} {
 		exec(t, app, `DELETE FROM finance_card_bills`)
 		tc.seed()
@@ -73,7 +79,7 @@ func TestPastCardBills(t *testing.T) {
 		if err := json.Unmarshal(res.Raw, &b); err != nil {
 			t.Fatal(err)
 		}
-		if b.SourceID != card || len(b.Bills) != tc.count || b.AverageCents != tc.average || (tc.count > 0 && b.Bills[0].ClosesOn != tc.firstTo) {
+		if b.SourceID != card || len(b.Bills) != tc.count || b.AverageCents != tc.average || (tc.count > 0 && (b.Bills[0].ClosesOn != tc.firstTo || b.Bills[len(b.Bills)-1].ClosesOn != tc.lastTo)) {
 			t.Errorf("%s: body = %s, want %d bills from %q averaging %v", tc.name, res.Raw, tc.count, tc.firstTo, tc.average)
 		}
 		if tc.name == "no bills" && fmt.Sprint(res.Body["bills"]) != "[]" {
