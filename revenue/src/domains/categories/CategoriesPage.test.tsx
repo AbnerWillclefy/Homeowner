@@ -86,8 +86,8 @@ describe("the list", () => {
 
   it("groups the expenses nothing could categorise, with the way to pick one", async () => {
     list();
+    expect(await screen.findByRole("heading", { name: "Without a category" })).toBeTruthy();
     expect(screen.getByText("1 without a category")).toBeTruthy();
-    expect(screen.getByLabelText("1 without a category").textContent).toBe("1");
     expect(screen.getByText("Pix 8841")).toBeTruthy();
     expect(screen.getByText("Nubank · Jan 5")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Categorise" }).getAttribute("href")).toBe("/transactions?month=2030-01");
