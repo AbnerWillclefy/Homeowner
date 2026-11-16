@@ -1,7 +1,9 @@
-import { Card, EmptyState, Skeleton } from "@homeowner/bedrock";
+import { Button, Card, EmptyState, Sheet, Skeleton } from "@homeowner/bedrock";
 import { Amount } from "@homeowner/bedrock/finance";
-import { ChevronLeft, Tags } from "lucide-react";
+import { ChevronLeft, Pencil, Tags } from "lucide-react";
+import { useState } from "react";
 import { Link, useLocation, useParams } from "react-router";
+import { HideValuesToggle, useHiddenProps } from "../../shared/HideValues";
 import { ScreenPlaceholder } from "../../shared/ScreenPlaceholder";
 import { useI18n } from "../../shared/i18n/I18nProvider";
 import { formatDay } from "../../shared/month/month";
@@ -22,10 +24,15 @@ export function CategoryPage() {
   return category === null ? <ScreenPlaceholder titleKey="page.notFound" /> : <Detail category={category} />;
 }
 
-/** One Spending Category: what it took, its limit, the months before and its Transactions. History is its own read, so it can fail alone. */
+/**
+ * One Spending Category: what it took against its limit and its Transactions, with the months before beside them.
+ * The limit is set in a sheet from the header, as it changes rarely. History is its own read, so it can fail alone.
+ */
 function Detail({ category }: { category: SpendingCategory }) {
   const { t, locale } = useI18n();
+  const hidden = useHiddenProps();
   const { search } = useLocation();
+  const [editing, setEditing] = useState(false);
   const { month } = useMonthParam();
   const spending = useSpending(month);
   const history = useHistory(month);
@@ -41,7 +48,20 @@ function Detail({ category }: { category: SpendingCategory }) {
         <ChevronLeft aria-hidden className="size-4 rtl:rotate-180" />
         {t("categories.back")}
       </Link>
-      <PageHeader title={name} tools={<MonthSelect />} />
+      <PageHeader
+        title={name}
+        tools={
+          <>
+            <MonthSelect />
+            {spending.data && (
+              <Button variant="secondary" icon={Pencil} onClick={() => setEditing(true)}>
+                {t("categories.editOne")}
+              </Button>
+            )}
+            <HideValuesToggle />
+          </>
+        }
+      />
 
       {spending.loading ? (
         <div role="status" className="flex flex-col gap-4">
@@ -51,42 +71,48 @@ function Detail({ category }: { category: SpendingCategory }) {
       ) : spending.failed || !spending.data ? (
         <EmptyState icon={Tags} kind="no-results" title={t("categories.error.title")} message={t("categories.error.message")} action={{ label: t("categories.error.retry"), onClick: spending.reload }} />
       ) : (
-        <>
-          <Card>
-            <h2 className="section-title">{t("categories.spent.heading")}</h2>
-            <p><Amount cents={spent} size="lg" locale={locale} /></p>
-            {limit !== undefined && <LimitBar label={t("categories.limit.label", { name })} spent={spent} limit={limit} />}
-            <LimitForm limit={limit} onSave={(cents) => setLimit(category, cents)} />
-          </Card>
-          <Card>
+        <div className="grid items-start gap-6 desktop:grid-cols-12">
+          <div className="flex flex-col gap-6 desktop:col-span-8">
+            <Card>
+              <h2 className="section-title">{t("categories.spent.heading")}</h2>
+              <p><Amount cents={spent} size="lg" locale={locale} {...hidden} /></p>
+              {limit !== undefined && <LimitBar label={t("categories.limit.label", { name })} spent={spent} limit={limit} />}
+            </Card>
+            <Card>
+              <h2 className="section-title">{t("categories.transactions.heading")}</h2>
+              {rows.length === 0 ? (
+                <p className="text-text-muted">{t("categories.transactions.empty")}</p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {rows.map((tx) => (
+                    <li key={tx.id} className="flex items-center justify-between gap-4 py-2">
+                      <span className="flex min-w-0 flex-col">
+                        <span className="body-strong [overflow-wrap:anywhere]">{tx.description}</span>
+                        <span className="caption text-text-muted">{formatDay(tx.postedOn, locale)}</span>
+                      </span>
+                      <Amount cents={-tx.amountCents} size="sm" locale={locale} {...hidden} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          </div>
+          <Card className="desktop:col-span-4">
             <h2 className="section-title">{t("categories.history.heading")}</h2>
             {history.data ? (
               <CategoryHistory history={history.data} category={category} />
             ) : history.failed ? (
               <EmptyState icon={Tags} kind="no-results" title={t("categories.history.error")} message={t("categories.error.message")} action={{ label: t("categories.error.retry"), onClick: history.reload }} />
             ) : (
-              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-40 w-full" />
             )}
           </Card>
-          <Card>
-            <h2 className="section-title">{t("categories.transactions.heading")}</h2>
-            {rows.length === 0 ? (
-              <p className="text-text-muted">{t("categories.transactions.empty")}</p>
-            ) : (
-              <ul className="divide-y divide-border">
-                {rows.map((tx) => (
-                  <li key={tx.id} className="flex items-center justify-between gap-4 py-2">
-                    <span className="flex min-w-0 flex-col">
-                      <span className="body-strong [overflow-wrap:anywhere]">{tx.description}</span>
-                      <span className="caption text-text-muted">{formatDay(tx.postedOn, locale)}</span>
-                    </span>
-                    <Amount cents={-tx.amountCents} size="sm" locale={locale} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-        </>
+        </div>
+      )}
+      {editing && (
+        <Sheet open onOpenChange={setEditing} title={t("categories.edit.field", { name })} closeLabel={t("app.close")}>
+          <LimitForm limit={limit} onSave={(cents) => setLimit(category, cents)} />
+        </Sheet>
       )}
     </section>
   );

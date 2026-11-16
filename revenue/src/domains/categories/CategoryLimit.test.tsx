@@ -13,7 +13,14 @@ vi.mock("./api", async (original) => ({ ...(await original<typeof import("./api"
 
 const SPENDING: Spending = { categories: [{ category: "groceries", spentCents: 180000 }], limits: { groceries: 200000 }, transactions: [] };
 const nb = (s: string) => (node: string) => node.replace(/\u00a0/g, " ") === s;
-const open = () => renderApp(<Routes><Route path="/categories/:category" element={<CategoryPage />} /></Routes>, { path: "/categories/groceries", locale: "en" });
+const render = () => renderApp(<Routes><Route path="/categories/:category" element={<CategoryPage />} /></Routes>, { path: "/categories/groceries", locale: "en" });
+
+// The limit lives in a sheet behind the header's "Edit limit".
+async function open() {
+  const app = render();
+  await userEvent.click(await screen.findByRole("button", { name: "Edit limit" }));
+  return app;
+}
 
 // A server that keeps what is saved, so the read after a save sees it.
 let limits: Spending["limits"];
@@ -32,7 +39,7 @@ beforeEach(() => {
 describe("setting and removing the Spending limit", () => {
   it("saves a new limit, updates the bar at once and reads the finance views again", async () => {
     vi.mocked(api.putBudget).mockImplementation(stored("ok"));
-    const { client } = open();
+    const { client } = await open();
     const field = await screen.findByRole("textbox");
     const invalidate = vi.spyOn(client, "invalidateQueries");
     await userEvent.clear(field);
@@ -46,7 +53,7 @@ describe("setting and removing the Spending limit", () => {
 
   it("removes it with null and drops the bar", async () => {
     vi.mocked(api.putBudget).mockImplementation(stored("ok"));
-    open();
+    await open();
     await screen.findByText(nb("R$200.00 under the limit"));
     await userEvent.click(screen.getByRole("button", { name: "Remove limit" }));
     expect(api.putBudget).toHaveBeenCalledWith("groceries", null);
@@ -56,7 +63,7 @@ describe("setting and removing the Spending limit", () => {
 
   it("puts the old limit back and says so when the write fails", async () => {
     vi.mocked(api.putBudget).mockImplementation(stored("error"));
-    open();
+    await open();
     await screen.findByText(nb("R$200.00 under the limit"));
     await userEvent.click(screen.getByRole("button", { name: "Remove limit" }));
     expect(await screen.findByText(/went back as it was/)).toBeTruthy();
@@ -64,7 +71,7 @@ describe("setting and removing the Spending limit", () => {
   });
 
   it("refuses zero and empty without calling the API", async () => {
-    open();
+    await open();
     const field = await screen.findByRole("textbox");
     await userEvent.clear(field);
     await userEvent.click(screen.getByRole("button", { name: "Save limit" }));

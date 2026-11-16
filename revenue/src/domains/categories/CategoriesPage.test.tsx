@@ -256,7 +256,7 @@ describe("accessibility", () => {
     expect((await axe.run(view.container, AXE)).violations).toEqual([]);
     view.unmount();
     const drill = detail("groceries", { locale, theme });
-    await screen.findByRole("textbox");
+    await screen.findByRole("img", { name: /Recent months|Últimos meses/ });
     await screen.findAllByRole("progressbar");
     expect((await axe.run(drill.container, AXE)).violations).toEqual([]);
   });
@@ -273,7 +273,7 @@ describe("the drill-down", () => {
     detail("groceries");
     expect(await screen.findByRole("heading", { name: "Groceries" })).toBeTruthy();
     expect(await screen.findByText(nb("R$200.00 under the limit"))).toBeTruthy();
-    expect(await screen.findByRole("list", { name: "Recent months" })).toBeTruthy();
+    expect(await screen.findByRole("img", { name: "Recent months" })).toBeTruthy();
     expect(api.getHistory).toHaveBeenCalledWith("2030-01", 6);
     expect(screen.getByText("Mercado Central")).toBeTruthy();
     expect(screen.queryByText("Pix 8841")).toBeNull();
@@ -284,7 +284,7 @@ describe("the drill-down", () => {
     detail("groceries");
     expect(await screen.findByText("We could not load the history")).toBeTruthy();
     expect(screen.getByText(nb("R$200.00 under the limit"))).toBeTruthy();
-    expect(screen.getByRole("textbox")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Edit limit" })).toBeTruthy();
     expect(screen.getByText("Mercado Central")).toBeTruthy();
   });
 });
