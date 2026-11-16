@@ -15,6 +15,7 @@ export function MonthSelect() {
   return (
     <Select
       label={t("month.select")}
+      hideLabel
       value={month}
       onValueChange={setMonth}
       options={months.map((m) => ({ value: m, label: monthLabel(m, locale) }))}
