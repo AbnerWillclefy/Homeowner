@@ -68,29 +68,29 @@ export function CategoriesPage() {
       ) : rows.length === 0 && unsorted.length === 0 ? (
         <EmptyState icon={Tags} title={t("categories.empty.title")} message={t("categories.empty.message")} />
       ) : (
-        <>
-          <Card>
-            <span className="label text-text-muted">{t("categories.total.label", { month: label })}</span>
-            <div className="flex flex-wrap items-center gap-4">
-              <Amount cents={total} size="lg" locale={locale} {...hidden} />
-              {totalChange != null && <ChangeBadge percent={totalChange} />}
-            </div>
-            <SpendingDonut rows={rows} />
-          </Card>
-          <div className="grid items-start gap-6 desktop:grid-cols-12">
-            <Card className="desktop:col-span-8">
+        <div className="grid items-start gap-6 desktop:grid-cols-12">
+          <div className="flex flex-col gap-6 desktop:col-span-8">
+            <Card>
+              <span className="label text-text-muted">{t("categories.total.label", { month: label })}</span>
+              <div className="flex flex-wrap items-center gap-4">
+                <Amount cents={total} size="lg" locale={locale} {...hidden} />
+                {totalChange != null && <ChangeBadge percent={totalChange} />}
+              </div>
+              <SpendingDonut rows={rows} />
+            </Card>
+            <Card>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 className="section-title">{t("categories.byMonth", { month: label })}</h2>
                 {progress && <span className="caption text-text-muted">{t("categories.progress", { ...progress, percent: `${progress.percent}%` })}</span>}
               </div>
               <CategoryRows rows={rows} search={search} previous={previous} />
             </Card>
-            <div className="flex flex-col gap-6 desktop:col-span-4">
-              <UncategorisedCard rows={unsorted} month={month} />
-              <FixedBillsCard bills={bills} search={search} />
-            </div>
           </div>
-        </>
+          <div className="flex flex-col gap-6 desktop:col-span-4">
+            <UncategorisedCard rows={unsorted} month={month} />
+            <FixedBillsCard bills={bills} search={search} />
+          </div>
+        </div>
       )}
       {editing && data && <LimitsSheet limits={data.limits} save={setLimit} onClose={() => setEditing(false)} />}
     </section>

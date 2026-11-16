@@ -109,7 +109,7 @@ describe("the list", () => {
 });
 
 describe("the layout", () => {
-  it("puts the header tools, the total card and the 8 and 4 column grid in order", async () => {
+  it("puts the header tools, then the total card and the categories in 8 columns beside 4", async () => {
     const { container } = list();
     await screen.findByRole("link", { name: "Groceries" });
     expect(screen.getByRole("heading", { level: 1, name: "Spending Categories" })).toBeTruthy();
@@ -119,11 +119,12 @@ describe("the layout", () => {
     const grid = container.querySelector(".desktop\\:grid-cols-12")!;
     expect(grid.children[0]!.className).toContain("desktop:col-span-8");
     expect(grid.children[1]!.className).toContain("desktop:col-span-4");
+    expect(within(grid.children[0] as HTMLElement).getByText("Spent in January 2030")).toBeTruthy();
     expect(within(grid.children[0] as HTMLElement).getByRole("heading", { name: "January 2030 by category" })).toBeTruthy();
     expect(within(grid.children[1] as HTMLElement).getByRole("heading", { name: "Without a category" })).toBeTruthy();
   });
 
-  it("shows the month total and its change against the previous month, above the grid", async () => {
+  it("shows the month total and its change against the previous month", async () => {
     list();
     await screen.findByRole("link", { name: "Groceries" });
     expect(screen.getByText("Spent in January 2030")).toBeTruthy();
