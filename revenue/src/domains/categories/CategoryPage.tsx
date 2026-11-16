@@ -55,7 +55,7 @@ function Detail({ category }: { category: SpendingCategory }) {
             <MonthSelect />
             {spending.data && (
               <Button variant="secondary" icon={Pencil} onClick={() => setEditing(true)}>
-                {t("categories.editOne")}
+                <span className="sr-only desktop:not-sr-only">{t("categories.editOne")}</span>
               </Button>
             )}
             <HideValuesToggle />

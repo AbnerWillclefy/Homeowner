@@ -50,7 +50,7 @@ export function CategoriesPage() {
             <MonthSelect />
             {data && (
               <Button variant="secondary" icon={Pencil} onClick={() => setEditing(true)}>
-                {t("categories.edit")}
+                <span className="sr-only desktop:not-sr-only">{t("categories.edit")}</span>
               </Button>
             )}
             <HideValuesToggle />
