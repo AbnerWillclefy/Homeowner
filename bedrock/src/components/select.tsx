@@ -6,6 +6,7 @@ import { menuContentClass, menuItemClass } from "./menu";
 
 export type SelectProps = {
   label: string;
+  hideLabel?: boolean;
   options: { value: string; label: string }[];
   value?: string;
   onValueChange?: (value: string) => void;
@@ -15,9 +16,9 @@ export type SelectProps = {
   disabled?: boolean;
 };
 
-export function Select({ label, options, value, onValueChange, placeholder, hint, error, disabled }: SelectProps) {
+export function Select({ label, hideLabel, options, value, onValueChange, placeholder, hint, error, disabled }: SelectProps) {
   return (
-    <Field label={label} hint={hint} error={error}>
+    <Field label={label} hideLabel={hideLabel} hint={hint} error={error}>
       {(control) => (
         <RadixSelect.Root value={value} onValueChange={onValueChange} disabled={disabled}>
           {/* A Radix trigger is a button, so the label names it through aria-labelledby. */}

@@ -23,3 +23,9 @@ it("shows the placeholder until a value is chosen, and can be disabled", () => {
   expect(trigger.textContent).toContain("Choose");
   expect((trigger as HTMLButtonElement).disabled).toBe(true);
 });
+
+it("hides the label visually but keeps it as the trigger's name", () => {
+  render(<Select label="Month" hideLabel options={options} />);
+  expect(screen.getByRole("combobox", { name: "Month" })).toBeTruthy();
+  expect(screen.getByText("Month").className).toContain("sr-only");
+});

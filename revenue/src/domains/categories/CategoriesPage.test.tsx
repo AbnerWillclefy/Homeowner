@@ -109,7 +109,7 @@ describe("the list", () => {
 });
 
 describe("the layout", () => {
-  it("puts the header tools, the total card and the 8 and 4 column grid in order", async () => {
+  it("puts the header tools, then the total card and the categories in 8 columns beside 4", async () => {
     const { container } = list();
     await screen.findByRole("link", { name: "Groceries" });
     expect(screen.getByRole("heading", { level: 1, name: "Spending Categories" })).toBeTruthy();
@@ -119,11 +119,12 @@ describe("the layout", () => {
     const grid = container.querySelector(".desktop\\:grid-cols-12")!;
     expect(grid.children[0]!.className).toContain("desktop:col-span-8");
     expect(grid.children[1]!.className).toContain("desktop:col-span-4");
+    expect(within(grid.children[0] as HTMLElement).getByText("Spent in January 2030")).toBeTruthy();
     expect(within(grid.children[0] as HTMLElement).getByRole("heading", { name: "January 2030 by category" })).toBeTruthy();
     expect(within(grid.children[1] as HTMLElement).getByRole("heading", { name: "Without a category" })).toBeTruthy();
   });
 
-  it("shows the month total and its change against the previous month, above the grid", async () => {
+  it("shows the month total and its change against the previous month", async () => {
     list();
     await screen.findByRole("link", { name: "Groceries" });
     expect(screen.getByText("Spent in January 2030")).toBeTruthy();
@@ -256,7 +257,7 @@ describe("accessibility", () => {
     expect((await axe.run(view.container, AXE)).violations).toEqual([]);
     view.unmount();
     const drill = detail("groceries", { locale, theme });
-    await screen.findByRole("textbox");
+    await screen.findByRole("img", { name: /Recent months|Últimos meses/ });
     await screen.findAllByRole("progressbar");
     expect((await axe.run(drill.container, AXE)).violations).toEqual([]);
   });
@@ -273,7 +274,7 @@ describe("the drill-down", () => {
     detail("groceries");
     expect(await screen.findByRole("heading", { name: "Groceries" })).toBeTruthy();
     expect(await screen.findByText(nb("R$200.00 under the limit"))).toBeTruthy();
-    expect(await screen.findByRole("list", { name: "Recent months" })).toBeTruthy();
+    expect(await screen.findByRole("img", { name: "Recent months" })).toBeTruthy();
     expect(api.getHistory).toHaveBeenCalledWith("2030-01", 6);
     expect(screen.getByText("Mercado Central")).toBeTruthy();
     expect(screen.queryByText("Pix 8841")).toBeNull();
@@ -284,7 +285,7 @@ describe("the drill-down", () => {
     detail("groceries");
     expect(await screen.findByText("We could not load the history")).toBeTruthy();
     expect(screen.getByText(nb("R$200.00 under the limit"))).toBeTruthy();
-    expect(screen.getByRole("textbox")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Edit limit" })).toBeTruthy();
     expect(screen.getByText("Mercado Central")).toBeTruthy();
   });
 });

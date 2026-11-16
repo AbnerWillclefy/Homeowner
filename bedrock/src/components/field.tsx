@@ -7,11 +7,14 @@ type ControlProps = { id: string; "aria-labelledby": string;"aria-describedby"?:
 /** Shared by Input, MoneyInput and Select: label above, hint below, an error that replaces the hint. */
 export function Field({
   label,
+  hideLabel,
   hint,
   error,
   children,
 }: {
   label: string;
+  /** Keeps the label for screen readers only, for a field whose value already says what it is. */
+  hideLabel?: boolean;
   hint?: string;
   error?: string;
   children: (control: ControlProps) => ReactNode;
@@ -22,7 +25,7 @@ export function Field({
   const describedBy = error ? errorId : hint ? hintId : undefined;
   return (
     <div className="flex flex-col gap-1">
-      <label id={`${uid}-label`} htmlFor={uid} className="label text-text-muted">
+      <label id={`${uid}-label`} htmlFor={uid} className={cn("label text-text-muted", hideLabel && "sr-only")}>
         {label}
       </label>
       {children({ id: uid, "aria-labelledby": `${uid}-label`, "aria-describedby": describedBy, "aria-invalid": error ? true : undefined })}

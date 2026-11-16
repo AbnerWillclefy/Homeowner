@@ -2,6 +2,10 @@
 
 Bedrock follows semver; before 1.0.0 a minor may break ([spec](../docs/design/bedrock/README.md)).
 
+## 0.4.0
+
+- Select: optional `hideLabel` keeps the label for screen readers only, for a field whose value already names it (a month).
+
 ## 0.3.0
 
 - NavItem: optional `badge` (`{ count, label }`) shows a warning count on the Sidebar (beside the label, or on the icon in the rail) and on the BottomBar tab; `label` joins the link's accessible name. A count of 0 shows nothing.
