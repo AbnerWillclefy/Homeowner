@@ -158,12 +158,35 @@ func (s *Store) SetPreference(ctx context.Context, userID, category, preference 
 	return nil
 }
 
-// AddRestriction adds a Restriction on demand; adding it twice is fine.
+// AddRestriction adds a Restriction on demand; adding it twice is fine. It
+// also sets to Nobody the responsibility of the User's Resident on every Chore
+// that has the Demand, so a Task never waits for someone who cannot do it.
+// A User is a Resident of one Home at most, so only that Home's Chores change.
 func (s *Store) AddRestriction(ctx context.Context, userID, demand string) error {
-	_, err := s.db.Exec(ctx, `
-		INSERT INTO user_demand_restrictions (user_id, demand) VALUES ($1, $2)
-		ON CONFLICT DO NOTHING`, userID, demand)
+	tx, err := s.db.Begin(ctx)
 	if err != nil {
+		return fmt.Errorf("add restriction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	// Lock the Home's Chores first so a concurrent SetResponsible or Chore edit
+	// serialises with this clear.
+	if _, err := tx.Exec(ctx, `
+		SELECT c.id FROM chores c JOIN residents r ON r.home_id = c.home_id
+		WHERE r.user_id = $1 ORDER BY c.id FOR UPDATE OF c`, userID); err != nil {
+		return fmt.Errorf("add restriction: lock chores: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO user_demand_restrictions (user_id, demand) VALUES ($1, $2)
+		ON CONFLICT DO NOTHING`, userID, demand); err != nil {
+		return fmt.Errorf("add restriction: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE chores SET responsible_resident_id = NULL
+		WHERE responsible_resident_id IN (SELECT id FROM residents WHERE user_id = $1)
+		  AND $2 = ANY(demands)`, userID, demand); err != nil {
+		return fmt.Errorf("add restriction: clear responsibility: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("add restriction: %w", err)
 	}
 	return nil

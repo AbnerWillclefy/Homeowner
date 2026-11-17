@@ -232,3 +232,42 @@ func TestChoreRoutesNeedAHome(t *testing.T) {
 		t.Errorf("anonymous GET = %d, want 401", r.Status)
 	}
 }
+
+func TestEditingAChoreKeepsItsResponsibleResidentAndRefusesARestrictedDemand(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	aID := apitest.ResidentID(t, a)
+	created := a.Post("/home/chores", apitest.WithField(apitest.ValidChore(), "demands", []string{}))
+	apitest.ExpectStatus(t, created, http.StatusCreated)
+	if v, present := created.Body["responsibleResidentId"]; !present || v != nil {
+		t.Fatalf("POST responsibleResidentId = %v (present %v), want null", v, present)
+	}
+	id := created.Body["id"].(string)
+	apitest.ExpectStatus(t, a.Put("/home/chores/"+id+"/responsible", map[string]any{"residentId": aID}), http.StatusNoContent)
+	apitest.ExpectStatus(t, a.Put("/me/restrictions/heights", nil), http.StatusNoContent)
+
+	// A full PUT of other fields keeps the responsibility.
+	edit := apitest.WithField(apitest.WithField(apitest.ValidChore(), "name", "Renamed"), "demands", []string{"bending"})
+	r := a.Put("/home/chores/"+id, edit)
+	apitest.ExpectStatus(t, r, http.StatusOK)
+	if r.Body["responsibleResidentId"] != aID || apitest.ChoreByID(t, a, id)["responsibleResidentId"] != aID {
+		t.Errorf("edit changed responsibility: %s", r.Raw)
+	}
+
+	// Adding a Demand the responsible Resident is restricted on is refused,
+	// and the Chore is unchanged.
+	bad := apitest.WithField(apitest.WithField(apitest.ValidChore(), "name", "Nope"), "demands", []string{"bending", "heights"})
+	r = a.Put("/home/chores/"+id, bad)
+	if r.Status != http.StatusUnprocessableEntity || r.Body["error"] != "responsible_restricted" ||
+		r.Body["residentId"] != aID || !reflect.DeepEqual(r.Body["restrictedBy"], []any{"heights"}) ||
+		r.Body["restrictedByChore"] != false {
+		t.Fatalf("PUT = %d %s, want 422 responsible_restricted", r.Status, r.Raw)
+	}
+	if got := apitest.ChoreByID(t, a, id); got["name"] != "Renamed" || got["responsibleResidentId"] != aID {
+		t.Errorf("chore after refusal = %v", got)
+	}
+	// With Nobody responsible the same edit is fine.
+	apitest.ExpectStatus(t, a.Delete("/home/chores/"+id+"/responsible"), http.StatusNoContent)
+	apitest.ExpectStatus(t, a.Put("/home/chores/"+id, bad), http.StatusOK)
+}

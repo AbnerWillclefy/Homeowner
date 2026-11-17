@@ -350,3 +350,31 @@ func CheckIn(t *testing.T, c *Client, level string, restrictions ...string) Resp
 	}
 	return r
 }
+
+// ResidentID is the caller's own Resident id, from the Residents list.
+func ResidentID(t *testing.T, c *Client) string {
+	t.Helper()
+	r := c.Get("/home/residents")
+	if r.Status != http.StatusOK {
+		t.Fatalf("GET /home/residents = %d %s", r.Status, r.Raw)
+	}
+	for _, v := range r.Body["residents"].([]any) {
+		if m := v.(map[string]any); m["you"] == true {
+			return m["id"].(string)
+		}
+	}
+	t.Fatalf("no resident marked you: %s", r.Raw)
+	return ""
+}
+
+// ChoreByID is the Chore with that id from GET /home/chores.
+func ChoreByID(t *testing.T, c *Client, id string) map[string]any {
+	t.Helper()
+	for _, v := range ListChores(t, c) {
+		if m := v.(map[string]any); m["id"] == id {
+			return m
+		}
+	}
+	t.Fatalf("chore %s not in the list", id)
+	return nil
+}

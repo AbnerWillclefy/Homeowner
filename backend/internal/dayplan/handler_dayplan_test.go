@@ -347,3 +347,26 @@ func TestEveryRunIsRecordedWithItsAllocatorAndReasons(t *testing.T) {
 		t.Fatalf("run = %s %s %s assigned=%d pooled=%d", allocator, outcome, date, assigned, pooled)
 	}
 }
+
+func TestThePoolTasksOfTheDayPlanCarryTheResponsibleResident(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	meID := apitest.ResidentID(t, me)
+	owned := apitest.CreateChore(t, me, apitest.Recurring("Owned", 7, 2, false))
+	apitest.CreateChore(t, me, apitest.Recurring("Free", 7, 2, false))
+	apitest.ExpectStatus(t, me.Put("/home/chores/"+owned+"/responsible", map[string]any{"residentId": meID}), http.StatusNoContent)
+
+	apitest.Pool(t, me) // the lazy refresh opens the Tasks
+	got := map[any]any{}
+	for _, task := range apitest.TaskList(t, apitest.DayPlan(t, me).Body["pool"]) {
+		v, present := task["responsibleResidentId"]
+		if !present {
+			t.Fatalf("pool task has no responsibleResidentId: %v", task)
+		}
+		got[task["choreName"]] = v
+	}
+	if len(got) != 2 || got["Owned"] != meID || got["Free"] != nil {
+		t.Errorf("responsibleResidentId by chore = %v", got)
+	}
+}
