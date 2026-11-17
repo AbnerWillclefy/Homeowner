@@ -218,9 +218,9 @@ func readOutlook(t *testing.T, c *apitest.Client) (outlookBody, []map[string]any
 }
 
 // fixturePlanned is what the sync fixture's August, September and October spend
-// (the 3 months before the fake clock, averaged per category: 53333 + 30500 + 5993
-// + 5187) plans in every month from 2027-03, where no counted row has a category.
-const fixturePlanned = 95013
+// (the 3 months before the fake clock, the median per category: 80000 + 30500 + 8990
+// + 7780) plans in every month from 2027-03, where no counted row has a category.
+const fixturePlanned = 127270
 
 func TestCommitmentsCardBillAndLeftover(t *testing.T) {
 	t.Parallel()
@@ -301,7 +301,7 @@ func TestCommitmentsListEveryBillAndLeaveOutThoseOnACard(t *testing.T) {
 		m.OtherBills[1].Name != "Internet" || m.OtherBills[1].Paid || m.OtherBills[1].Cents != 12000 {
 		t.Errorf("march otherBills = %+v, want Rent paid and Internet unpaid, no Netflix", m.OtherBills)
 	}
-	// The fixture pays VIVO 120.00 every month: the Internet Bill, so it leaves the planned average.
+	// The fixture pays VIVO 120.00 every month: the Internet Bill, so it leaves the Usual spending.
 	planned := int64(fixturePlanned - 12000)
 	if m.Cards[0].AmountCents != 5000 || m.TotalCents != 5000+150000+12000+planned {
 		t.Errorf("march = %+v, want the Netflix charge in the card bill once", m)
