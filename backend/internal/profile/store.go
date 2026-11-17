@@ -168,6 +168,13 @@ func (s *Store) AddRestriction(ctx context.Context, userID, demand string) error
 		return fmt.Errorf("add restriction: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	// Lock the Home's Chores first so a concurrent SetResponsible or Chore edit
+	// serialises with this clear.
+	if _, err := tx.Exec(ctx, `
+		SELECT c.id FROM chores c JOIN residents r ON r.home_id = c.home_id
+		WHERE r.user_id = $1 ORDER BY c.id FOR UPDATE OF c`, userID); err != nil {
+		return fmt.Errorf("add restriction: lock chores: %w", err)
+	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO user_demand_restrictions (user_id, demand) VALUES ($1, $2)
 		ON CONFLICT DO NOTHING`, userID, demand); err != nil {

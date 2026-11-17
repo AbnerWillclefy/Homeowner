@@ -125,6 +125,11 @@ func (s *Store) AddRestriction(ctx context.Context, homeID, residentID, choreID 
 		return fmt.Errorf("add restriction: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	// Lock the Chore first so a concurrent SetResponsible either sees this
+	// Restriction or is cleared by it; the INSERT's written check still 404s.
+	if _, err := tx.Exec(ctx, `SELECT 1 FROM chores WHERE id = $1 AND home_id = $2 FOR UPDATE`, choreID, homeID); err != nil {
+		return fmt.Errorf("add restriction: lock chore: %w", err)
+	}
 	// DO UPDATE with a no-op, not DO NOTHING, so an existing row still counts
 	// as written.
 	tag, err := tx.Exec(ctx, `
