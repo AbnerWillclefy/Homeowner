@@ -1,6 +1,9 @@
 package finance
 
-import "time"
+import (
+	"slices"
+	"time"
+)
 
 // Card is a credit card Source, with whether both its bill days are set, its due day and
 // the bills its bank reported.
@@ -247,13 +250,14 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 	return out
 }
 
-// plannedBaseline is what each category plans without a Spending limit: its
-// spend averaged over the 3 months before current (a UTC first-of-month), rounded
-// half up, signed so a refund offsets another month's purchase (Outlook clamps at
+// plannedBaseline is each category's Usual spending: the median of its monthly
+// spend over the 3 months before current (a UTC first-of-month), so one big month
+// does not move it. The median of two months is their mean, rounded half up. It is
+// signed so a refund offsets another month's purchase (Outlook clamps at
 // 0). rows are SpendRows, PostedOn being the CountsOn day. A month counts when it
 // has any row, a Bill payment (Linked) or a Transfer included, so a month with no
-// spend in the category is a 0 and months before the User's first data are not
-// divided by. The sum leaves Linked rows out: the paid Bill is already in the
+// spend in the category is a 0 and months before the User's first data are left
+// out. The sum leaves Linked rows out: the paid Bill is already in the
 // other Bills. current is the real current month, not the month asked for.
 //
 // A registered Bill is in the other Bills too, but the bank rarely names it, so
@@ -283,8 +287,26 @@ func plannedBaseline(rows []Txn, cards []Card, bills []Bill, current time.Time) 
 			spent = append(spent, t)
 		}
 	}
-	for c, sum := range MonthTotals(spent).ByCategory {
-		out[c] = halfUp(sum, int64(len(counted)))
+	byMonth := map[int][]Txn{}
+	for _, t := range spent {
+		byMonth[monthIndex(t.PostedOn)] = append(byMonth[monthIndex(t.PostedOn)], t)
+	}
+	values := map[string][]int64{}
+	for m := range counted {
+		for c, sum := range MonthTotals(byMonth[m]).ByCategory {
+			values[c] = append(values[c], sum)
+		}
+	}
+	for c, v := range values {
+		for len(v) < len(counted) { // a counted month without the category is a 0
+			v = append(v, 0)
+		}
+		slices.Sort(v)
+		if n := len(v); n%2 == 1 {
+			out[c] = v[n/2]
+		} else {
+			out[c] = halfUp(v[n/2-1]+v[n/2], 2)
+		}
 	}
 	return out
 }

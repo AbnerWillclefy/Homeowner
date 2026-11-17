@@ -328,10 +328,14 @@ func TestPlannedBaseline(t *testing.T) {
 		want map[string]int64
 	}{
 		{"no rows", nil, map[string]int64{}},
-		{"a month without the category divides as 0", []Txn{at(8, 300, "Food", false), at(9, 300, "Food", false), at(10, 100, "Fun", false)}, map[string]int64{"Food": 200, "Fun": 33}},
+		{"a month without the category is a 0 in the median", []Txn{at(8, 300, "Food", false), at(9, 300, "Food", false), at(10, 100, "Fun", false)}, map[string]int64{"Food": 300, "Fun": 0}},
+		{"one big month in three", []Txn{at(8, 100, "Food", false), at(9, 100, "Food", false), at(10, 5000, "Food", false)}, map[string]int64{"Food": 100}},
+		{"three months are sorted before the middle is taken", []Txn{at(8, 900, "Food", false), at(9, 100, "Food", false), at(10, 300, "Food", false)}, map[string]int64{"Food": 300}},
+		// Cannot fail against the mean: with two months the median is their mean. It guards against taking the lower or upper value.
+		{"two months take their mean", []Txn{at(9, 200, "Food", false), at(10, 600, "Food", false)}, map[string]int64{"Food": 400}},
 		{"one month of history", []Txn{at(10, 500, "Food", false)}, map[string]int64{"Food": 500}},
 		{"two months of history", []Txn{at(9, 500, "Food", false), at(10, 500, "Food", false)}, map[string]int64{"Food": 500}},
-		{"a Linked-only month counts in the divisor, not the sum", []Txn{at(8, 600, "Food", false), at(9, 900, "Food", true)}, map[string]int64{"Food": 300}},
+		{"a Linked-only month counts as a 0, not its sum", []Txn{at(8, 600, "Food", false), at(9, 900, "Food", true)}, map[string]int64{"Food": 300}},
 		{"current and older rows are ignored", []Txn{at(11, 900, "Food", false), at(7, 900, "Food", false), at(10, 300, "Food", false)}, map[string]int64{"Food": 300}},
 		{"net negative stays negative", []Txn{at(10, -600, "Food", false)}, map[string]int64{"Food": -600}},
 		{"half rounds up", []Txn{at(9, 5, "Food", false), at(10, 0, "Other", false)}, map[string]int64{"Food": 3, "Other": 0}},
@@ -365,10 +369,10 @@ func TestPlannedBaselineLeavesOutRegisteredBills(t *testing.T) {
 	}{
 		{"the nearest payment each month is the Bill's", []Txn{
 			at("acc", 8, 31, 698137, "housing"), at("acc", 9, 29, 697769, "housing"), at("acc", 10, 29, 697542, "housing"), at("card", 8, 5, 7205, "housing"),
-		}, []Bill{mortgage}, map[string]int64{"housing": 2402}},
+		}, []Bill{mortgage}, map[string]int64{"housing": 0}}, // [7205, 0, 0]; unmatched, the median would be 697769
 		{"a payment more than a tenth away from the Bill stays", []Txn{
-			at("acc", 8, 27, 26241, "household_bills"), at("acc", 9, 25, 26242, "household_bills"), at("acc", 10, 23, 21471, "household_bills"),
-		}, []Bill{power}, map[string]int64{"household_bills": 8747}},
+			at("acc", 8, 27, 26242, "household_bills"), at("acc", 9, 25, 26243, "household_bills"), at("acc", 10, 23, 21471, "household_bills"),
+		}, []Bill{power}, map[string]int64{"household_bills": 26242}}, // two far payments stay, the near one of October goes: [26242, 26243, 0]
 		{"a card charge never pays a Bill", []Txn{at("card", 10, 5, 23856, "household_bills")}, []Bill{power}, map[string]int64{"household_bills": 23856}},
 		{"one payment per Bill and month, the nearest", []Txn{
 			at("acc", 10, 5, 22000, "household_bills"), at("acc", 10, 6, 23000, "household_bills"),
