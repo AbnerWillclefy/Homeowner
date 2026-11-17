@@ -3,6 +3,7 @@ import { Amount } from "@homeowner/bedrock/finance";
 import { useHiddenProps } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
 import { monthLabel } from "../../../shared/month/month";
+import { CategoryCuts } from "./CategoryCuts";
 import { useMoney } from "../hooks/useMoney";
 import type { ProjectionRow } from "../logic/projectionRow";
 
@@ -36,10 +37,17 @@ export function MonthDetail({ row, income }: { row: ProjectionRow; income: numbe
           </div>
         ))}
         <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
-          <dt className="body-strong">{t("projection.leftover")}</dt>
+          <dt className="body-strong">{t("projection.leftoverPlan")}</dt>
           <dd><Amount cents={leftover} size="sm" locale={locale} {...hidden} /></dd>
         </div>
+        {row.paceLeftoverCents !== null && (
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="body-strong">{t("projection.paceLeftover")}</dt>
+            <dd><Amount cents={row.paceLeftoverCents} size="sm" locale={locale} {...hidden} /></dd>
+          </div>
+        )}
       </dl>
+      <CategoryCuts cuts={row.cuts} />
     </Card>
   );
 }

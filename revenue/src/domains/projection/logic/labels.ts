@@ -10,9 +10,12 @@ const GROUP: Record<RowGroup["id"], MessageKey> = {
 /** The current month's Planned spending is what is left of the limits, so it says so. */
 export const groupLabel = (t: Translate, id: RowGroup["id"], current: boolean) => t(id === "planned" && current ? "projection.plannedCurrent" : GROUP[id]);
 
-/** A line's name: its own for a card or Bill, the category's for Planned spending (an unknown one as the API wrote it). */
+/** A category's name; an unknown one as the API wrote it. */
+export const categoryName = (t: Translate, category: string) => ((SPENDING_CATEGORIES as readonly string[]).includes(category) ? t(`spending.${category}` as MessageKey) : category);
+
+/** A line's name: its own for a card or Bill, the category's for Planned spending. */
 export function itemName(t: Translate, item: RowItem): string {
   if (item.kind === "offCardInstallments") return t("projection.offCardInstallments");
-  if (item.kind === "planned") return (SPENDING_CATEGORIES as readonly string[]).includes(item.category) ? t(`spending.${item.category}` as MessageKey) : item.category;
+  if (item.kind === "planned") return categoryName(t, item.category);
   return item.name;
 }

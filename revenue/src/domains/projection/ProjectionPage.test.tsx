@@ -24,7 +24,7 @@ const month = (n: number, change: Partial<CommitmentMonth> = {}): CommitmentMont
 const MONTHS = Array.from({ length: 12 }, (_, i) => month(i + 1));
 const DATA: Commitments = { monthlyIncomeCents: 500000, months: MONTHS };
 const OVER: Commitments = { ...DATA, months: MONTHS.map((m, i) => (i === 2 ? { ...m, totalCents: 550000, leftoverCents: -50000 } : m)) };
-const NO_INCOME: Commitments = { monthlyIncomeCents: null, months: MONTHS.map(({ leftoverCents, ...m }) => m) };
+const NO_INCOME: Commitments = { monthlyIncomeCents: null, months: MONTHS.map(({ leftoverCents, paceLeftoverCents, pacePlannedCents, ...m }) => m) };
 const PLANS: Commitments = { ...DATA, months: [month(1, { installments: [{ name: "Geladeira", number: 2, total: 4, amountCents: 30000 }] }), ...MONTHS.slice(1)] };
 // jsdom has no layout, so it cannot check contrast (Bedrock's tokens.test.ts does); the page is not a whole document, so no landmarks.
 const AXE = { rules: { "color-contrast": { enabled: false }, region: { enabled: false } } };
@@ -74,10 +74,10 @@ describe("the months", () => {
     width(true);
     open();
     const table = await screen.findByRole("table", { name: "Coming months" });
-    expect(within(table).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Month", "Monthly income", "Card bills", "Other bills", "Planned spending", "Put aside", "Leftover"]);
+    expect(within(table).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Month", "Monthly income", "Card bills", "Other bills", "Planned spending", "Put aside", "Leftover by plan", "Leftover at current pace"]);
     expect(within(table).getAllByRole("rowheader")).toHaveLength(12);
     expect(table.parentElement!.className).toContain("overflow-x-auto");
-    expect(table.className).toContain("min-w-[760px]");
+    expect(table.className).toContain("min-w-[900px]");
     expect(screen.queryByRole("group")).toBeNull();
   });
 
@@ -116,6 +116,73 @@ describe("the chosen month", () => {
     await userEvent.keyboard("{Enter}");
     expect(feb.getAttribute("aria-pressed")).toBe("true");
     expect(screen.queryByText(/short/)).toBeNull();
+  });
+});
+
+describe("the Leftover at the current pace and the cut", () => {
+  const flat = (el: Element) => el.textContent!.replace(/\s/g, " ");
+  const cuts = () => screen.getAllByRole("list", { name: /Categorias com limite|Categories with a limit/ });
+
+  it("pt-BR phone: the open card shows both Leftovers and the cut of a limited category", async () => {
+    open({ locale: "pt-BR" });
+    const card = (await screen.findByText("Janeiro de 2030")).closest("details")!;
+    expect(card.textContent).toContain("Sobra pelo plano");
+    expect(card.textContent).toContain("Sobra no ritmo atual");
+    const [list] = within(card).getAllByRole("list", { name: "Categorias com limite" });
+    expect(list!.textContent).toContain("Restaurantes");
+    for (const text of ["plano R$ 1.000,00", "ritmo R$ 2.200,00", "cortar R$ 1.200,00"]) expect(flat(list!)).toContain(text);
+    expect(list!.textContent).not.toContain("Mercado");
+  });
+
+  it("pt-BR desktop: the detail card and the table column show them", async () => {
+    width(true);
+    open({ locale: "pt-BR" });
+    const table = await screen.findByRole("table", { name: "Próximos meses" });
+    expect(within(table).getByRole("columnheader", { name: "Sobra no ritmo atual" })).toBeTruthy();
+    expect(within(table).getAllByRole("rowheader")).toHaveLength(12);
+    const [list] = cuts();
+    expect(flat(list!)).toContain("cortar R$ 1.200,00");
+    const detail = list!.closest("div.relative")!;
+    expect(detail.textContent).toContain("Sobra no ritmo atual");
+    const jan = within(table).getAllByRole("row")[1]!;
+    expect(flat(jan.lastElementChild!)).toBe(" R$ 0,00 ".trim());
+  });
+
+  it("shows no cut when the pace is at or under the plan, and no list when no category has a limit", async () => {
+    vi.mocked(api.getCommitments).mockResolvedValue({
+      ...DATA,
+      months: [month(1, { planned: [{ category: "pets", cents: 50000, paceCents: 20000, limited: true }] }), month(2, { planned: [{ category: "groceries", cents: 1, paceCents: 90000, limited: false }] }), ...MONTHS.slice(2)],
+    });
+    open();
+    await userEvent.click(await screen.findByText("February 2030"));
+    const [pets] = cuts();
+    expect(pets!.textContent).toContain("Pets");
+    expect(pets!.textContent).toContain("plan R$500.00");
+    expect(pets!.textContent).toContain("pace R$200.00");
+    expect(pets!.textContent).not.toContain("cut");
+    const feb = screen.getByText("February 2030").closest("details")!;
+    expect(within(feb).queryByRole("list", { name: "Categories with a limit" })).toBeNull();
+  });
+
+  it("is plain ink on the phone card and in the desktop detail", async () => {
+    const view = open();
+    await screen.findByText("January 2030");
+    expect(view.container.innerHTML).not.toMatch(/danger|alert|negative/);
+    view.unmount();
+    width(true);
+    open();
+    await screen.findByRole("table");
+    const [list] = cuts();
+    expect(list!.innerHTML).not.toMatch(/danger|alert|negative|warning/);
+    expect(list!.closest("div.relative")!.querySelector("dl")!.innerHTML).not.toMatch(/danger|alert|negative|warning/);
+  });
+
+  it.each([true, false])("without income shows neither Leftover nor column (desktop %s)", async (desktop) => {
+    width(desktop);
+    vi.mocked(api.getCommitments).mockResolvedValue(NO_INCOME);
+    const view = open();
+    await screen.findByRole("link", { name: "Set monthly income" });
+    expect(view.container.textContent).not.toMatch(/current pace/);
   });
 });
 

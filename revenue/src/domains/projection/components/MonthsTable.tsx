@@ -25,7 +25,7 @@ export function MonthsTable({ rows, from, income, selected, onSelect }: { rows: 
 
   return (
     <Card className="min-w-0 gap-3 desktop:col-span-12">
-      <Table className="min-w-[760px]">
+      <Table className="min-w-[900px]">
         <TableCaption>{t("projection.heading")}</TableCaption>
         <TableHeader>
           <TableRow>
@@ -36,7 +36,8 @@ export function MonthsTable({ rows, from, income, selected, onSelect }: { rows: 
             <TableHead align="end">{t("overview.group.planned")}</TableHead>
             {hasSpent && <TableHead align="end">{t("overview.group.spent")}</TableHead>}
             <TableHead align="end">{t("overview.group.saving")}</TableHead>
-            {hasLeftover && <TableHead align="end">{t("projection.leftover")}</TableHead>}
+            {hasLeftover && <TableHead align="end">{t("projection.leftoverPlan")}</TableHead>}
+            {hasLeftover && <TableHead align="end">{t("projection.paceLeftover")}</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -55,6 +56,7 @@ export function MonthsTable({ rows, from, income, selected, onSelect }: { rows: 
               {hasSpent && cell(r.spentCents)}
               {cell(r.savingCents)}
               {hasLeftover && cell(r.leftoverCents ?? undefined)}
+              {hasLeftover && cell(r.paceLeftoverCents ?? undefined)}
             </TableRow>
           ))}
         </TableBody>
