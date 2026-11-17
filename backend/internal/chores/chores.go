@@ -25,4 +25,19 @@ type Fields struct {
 type Chore struct {
 	ID string `json:"id"`
 	Fields
+	// ResponsibleResidentID is the Resident the Chore is theirs, or nil for
+	// Nobody. It is not in Fields: the PUT body never carries it, so editing a
+	// Chore cannot change it (see choresettings.Store.SetResponsible).
+	ResponsibleResidentID *string `json:"responsibleResidentId"`
+}
+
+// ErrResponsibleRestricted means an edit would add a Demand the Chore's
+// responsible Resident is Restricted on.
+type ErrResponsibleRestricted struct {
+	ResidentID string
+	Demands    []string
+}
+
+func (e ErrResponsibleRestricted) Error() string {
+	return "responsible resident is restricted on a demand of the chore"
 }

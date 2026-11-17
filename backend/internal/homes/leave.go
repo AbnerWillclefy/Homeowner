@@ -26,7 +26,8 @@ func (s *Store) Leave(ctx context.Context, residentID, homeID string) error {
 
 // LeaveTx removes a Resident from their Home inside tx, and deletes the Home
 // if nobody lives there any more. Deleting the residents row clears the
-// Resident's specific Preferences and Restrictions (cascade); deleting the Home
+// Resident's specific Preferences and Restrictions and their responsibility for
+// Chores (set to Nobody), by cascade; deleting the Home
 // clears its Chores, Tasks and Invites. It is a helper over a caller's
 // transaction so joining another Home can leave and join atomically; the leave
 // endpoint reuses it.
