@@ -14,8 +14,12 @@ export interface CommitmentMonth {
   cards: { sourceId: string; name: string; amountCents: number; billDaysKnown: boolean; /** `YYYY-MM-DD`, null or absent when the card's days are not known. */ dueOn?: string | null; closesOn?: string | null }[];
   otherBills: { id: string; name: string; cents: number; paid: boolean }[];
   otherInstallmentsCents: number;
-  planned: { category: string; cents: number }[];
+  /** `cents` is the plan from the usual spending (median) and the limit; `paceCents` the plan at the current pace; `limited` says the category has a Spending limit. */
+  planned: { category: string; cents: number; paceCents: number; limited: boolean }[];
   plannedCents: number;
+  /** Absent with no Monthly income, like `leftoverCents`. */
+  pacePlannedCents?: number;
+  paceLeftoverCents?: number;
   /** Present only on the current month. */
   spentOffCardCents?: number;
   savingCents?: number;
@@ -67,8 +71,10 @@ function parseCommitments(body: unknown): Commitments | null {
       list(m.cards, (c) => typeof c.sourceId === "string" && typeof c.name === "string" && isNum(c.amountCents) && typeof c.billDaysKnown === "boolean" && optStr(c.dueOn) && optStr(c.closesOn)) &&
       list(m.otherBills, (b) => typeof b.id === "string" && typeof b.name === "string" && isNum(b.cents) && typeof b.paid === "boolean") &&
       isNum(m.otherInstallmentsCents) &&
-      list(m.planned, (p) => typeof p.category === "string" && isNum(p.cents)) &&
+      list(m.planned, (p) => typeof p.category === "string" && isNum(p.cents) && isNum(p.paceCents) && typeof p.limited === "boolean") &&
       isNum(m.plannedCents) &&
+      optNum(m.pacePlannedCents) &&
+      optNum(m.paceLeftoverCents) &&
       isNum(m.totalCents) &&
       optNum(m.spentOffCardCents) &&
       optNum(m.savingCents) &&

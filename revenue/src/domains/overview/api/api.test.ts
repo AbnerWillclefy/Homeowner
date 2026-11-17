@@ -43,6 +43,23 @@ describe("getCommitments", () => {
     get.mockResolvedValue({ status: 200, data: { monthlyIncomeCents: 1, months: [{ ...month, installments }] } });
     await expect(getCommitments("2026-11")).rejects.toThrow();
   });
+  it("keeps the pace plan, its Leftover and each line's pace and limit", async () => {
+    const planned = [{ category: "eating_out", cents: 100000, paceCents: 220000, limited: true }];
+    get.mockResolvedValue({ status: 200, data: { monthlyIncomeCents: 1500, months: [{ ...month, planned, pacePlannedCents: 220000, paceLeftoverCents: -700 }] } });
+    expect((await getCommitments("2026-11")).months[0]).toMatchObject({ planned, pacePlannedCents: 220000, paceLeftoverCents: -700 });
+  });
+  const line = { category: "eating_out", cents: 1, paceCents: 2, limited: true };
+  it.each([
+    ["a line with a text paceCents", { planned: [{ ...line, paceCents: "1" }] }],
+    ["a line without paceCents", { planned: [{ category: "eating_out", cents: 1, limited: true }] }],
+    ["a line with a text limited", { planned: [{ ...line, limited: "yes" }] }],
+    ["a line without limited", { planned: [{ category: "eating_out", cents: 1, paceCents: 2 }] }],
+    ["a null paceLeftoverCents", { paceLeftoverCents: null }],
+    ["a text pacePlannedCents", { pacePlannedCents: "1" }],
+  ])("rejects %s", async (_, change) => {
+    get.mockResolvedValue({ status: 200, data: { monthlyIncomeCents: 1, months: [{ ...month, ...change }] } });
+    await expect(getCommitments("2026-11")).rejects.toThrow();
+  });
   it("rejects a failed status", async () => {
     get.mockResolvedValue({ status: 500 });
     await expect(getCommitments("2026-11")).rejects.toThrow();

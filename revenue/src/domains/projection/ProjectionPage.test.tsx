@@ -14,8 +14,12 @@ const month = (n: number, change: Partial<CommitmentMonth> = {}): CommitmentMont
   month: `2030-${String(n).padStart(2, "0")}`,
   installments: [], cards: [{ sourceId: "s1", name: "Nubank", amountCents: 100000, billDaysKnown: true }],
   otherBills: [{ id: "b1", name: "Aluguel", cents: 200000, paid: false }], otherInstallmentsCents: 0,
-  planned: [{ category: "groceries", cents: 30000 }], plannedCents: 30000, savingCents: 50000,
-  totalCents: 380000, leftoverCents: 120000, ...change,
+  planned: [
+    { category: "eating_out", cents: 100000, paceCents: 220000, limited: true },
+    { category: "groceries", cents: 30000, paceCents: 30000, limited: false },
+  ],
+  plannedCents: 30000, pacePlannedCents: 150000, savingCents: 50000,
+  totalCents: 380000, leftoverCents: 120000, paceLeftoverCents: 0, ...change,
 });
 const MONTHS = Array.from({ length: 12 }, (_, i) => month(i + 1));
 const DATA: Commitments = { monthlyIncomeCents: 500000, months: MONTHS };

@@ -26,7 +26,7 @@ describe("monthRows", () => {
           { id: "1", name: "Aluguel", cents: 200000, paid: true },
           { id: "2", name: "Luz", cents: 15000, paid: false },
         ],
-        planned: [{ category: "groceries", cents: 80000 }],
+        planned: [{ category: "groceries", cents: 80000, paceCents: 80000, limited: false }],
         plannedCents: 80000,
         totalCents: 445000,
         leftoverCents: 55000,
@@ -68,7 +68,7 @@ describe("monthRows", () => {
       month({
         cards: [{ sourceId: "a", name: "Nubank", amountCents: 100000, billDaysKnown: true }],
         otherBills: [{ id: "1", name: "Luz", cents: 20000, paid: false }],
-        planned: [{ category: "groceries", cents: 30000 }],
+        planned: [{ category: "groceries", cents: 30000, paceCents: 30000, limited: false }],
         plannedCents: 30000,
         spentOffCardCents: 40000,
         savingCents: 50000,

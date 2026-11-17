@@ -12,6 +12,10 @@ export interface ProjectionRow {
   savingCents: number | undefined;
   /** Null when no Monthly income is set. */
   leftoverCents: number | null;
+  /** The Leftover if spending goes on at the current pace; null when no Monthly income is set. */
+  paceLeftoverCents: number | null;
+  /** Each category with a Spending limit: the cut is how far the pace is over the plan, never negative. */
+  cuts: { category: string; planCents: number; paceCents: number; cutCents: number }[];
 }
 
 export function projectionRow(m: CommitmentMonth): ProjectionRow {
@@ -20,5 +24,7 @@ export function projectionRow(m: CommitmentMonth): ProjectionRow {
   return {
     month: m.month, cardsCents: cents("cards") ?? 0, billsCents: cents("bills") ?? 0, plannedCents: cents("planned") ?? 0,
     spentCents: cents("spent"), savingCents: cents("saving"), leftoverCents,
+    paceLeftoverCents: m.paceLeftoverCents ?? null,
+    cuts: m.planned.filter((p) => p.limited).map((p) => ({ category: p.category, planCents: p.cents, paceCents: p.paceCents, cutCents: Math.max(0, p.paceCents - p.cents) })),
   };
 }
