@@ -21,6 +21,9 @@ func TestEligible(t *testing.T) {
 		"weekday not allowed":       {resident("r", 3), task("a", 1, onlyOn(other)), false},
 		"weekday allowed":           {resident("r", 3), task("a", 1, onlyOn(weekday)), true},
 		"zero energy is still fine": {resident("r", 0), task("a", 1), true},
+		"not the responsible one":   {resident("r", 3), task("a", 1, responsible("x")), false},
+		"the responsible one":       {resident("r", 3), task("a", 1, responsible("r")), true},
+		"two-person, not the one":   {resident("r", 3), task("a", 1, people(2), responsible("x")), true},
 		"restricted and wrong day":  {resident("r", 3).cannotDoChore(choreOf("a")), task("a", 1, onlyOn(other)), false},
 	} {
 		if got := Eligible(tc.r, tc.t, today); got != tc.want {
@@ -48,19 +51,32 @@ func TestEligibleAgreesWithCheck(t *testing.T) {
 		task("a", 1, onlyOn(other)),
 		task("a", 1, onlyOn(weekday), demands("heights", "lifting")),
 		task("a", 1, onlyOn(other), demands("heights")),
+		task("a", 1, responsible("free")),
+		task("a", 1, responsible("nodemand")),
+		task("a", 1, responsible("nodemand"), demands("heights")),
 	}
+	// Two-person Tasks stay out of this loop: a one-row plan for one reports
+	// NotResponsible for the pair, while Eligible judges one Resident.
+	checked, notResponsible := 0, 0
 	for _, tk := range tasks {
 		for _, r := range residents {
 			s := State{Today: today, Residents: []Resident{r}, Tasks: []Task{tk}}
 			clean := true
 			for _, v := range Check(DayPlan{Assignments: []Assignment{{TaskID: tk.ID, ResidentID: r.ID}}}, s) {
-				if v.Kind == BrokenRestriction || v.Kind == WeekdayNotAllowed {
+				if v.Kind == BrokenRestriction || v.Kind == WeekdayNotAllowed || v.Kind == NotResponsible {
 					clean = false
+				}
+				if v.Kind == NotResponsible {
+					notResponsible++
 				}
 			}
 			if got := Eligible(r, tk, today); got != clean {
 				t.Errorf("resident %s, task %+v: Eligible = %v, Check clean = %v", r.ID, tk, got, clean)
 			}
+			checked++
 		}
+	}
+	if checked != len(tasks)*len(residents) || notResponsible == 0 {
+		t.Fatalf("checked %d pairs, %d not responsible: the loop did not cover responsibility", checked, notResponsible)
 	}
 }

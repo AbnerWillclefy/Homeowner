@@ -200,6 +200,30 @@ func TestCheckTwoPersonTasks(t *testing.T) {
 	})
 }
 
+func TestCheckResponsibility(t *testing.T) {
+	two := people(2)
+	abc := rs(resident("a", 5), resident("b", 5), resident("c", 5))
+	runCheckCases(t, []checkCase{
+		{"one-person given to someone else",
+			state(abc, task("t", 1, responsible("a"))), plan(give("t", "b", ReasonFitsEnergy)),
+			[]key{{NotResponsible, "t", "b", ""}}},
+		{"one-person given to the responsible one",
+			state(abc, task("t", 1, responsible("a"))), plan(give("t", "a", ReasonFitsEnergy)), nil},
+		{"two-person where neither partner is responsible",
+			state(abc, task("t", 1, two, responsible("a"))),
+			plan(give("t", "b", ReasonFitsEnergy), give("t", "c", ReasonFitsEnergy)),
+			[]key{{NotResponsible, "t", "", ""}}},
+		{"two-person including the responsible one",
+			state(abc, task("t", 1, two, responsible("c"))),
+			plan(give("t", "b", ReasonFitsEnergy), give("t", "c", ReasonFitsEnergy)), nil},
+		{"two-person given to one non-responsible resident reports both",
+			state(abc, task("t", 1, two, responsible("a"))), plan(give("t", "b", ReasonFitsEnergy)),
+			[]key{{NotResponsible, "t", "", ""}, {WrongResidentCount, "t", "", ""}}},
+		{"nobody responsible",
+			state(abc, task("t", 1)), plan(give("t", "b", ReasonFitsEnergy)), nil},
+	})
+}
+
 func runCheckCases(t *testing.T, cases []checkCase) {
 	t.Helper()
 	for _, c := range cases {

@@ -18,6 +18,10 @@ import (
 // WrongResidentCount unless exactly two distinct Residents are named (known or
 // not), and a DuplicateTask if one of those pairs repeats. A Task absent from
 // the plan is in the pool, never a violation.
+//
+// A one-person Task given to anyone but its responsible Resident is a
+// NotResponsible for that assignment; a two-person Task whose pair does not
+// include them is one NotResponsible for the Task (docs/adr/0025).
 func Check(p DayPlan, s State) []Violation {
 	residents := make(map[string]Resident)
 	for _, r := range uniqueResidents(s.Residents) {
@@ -58,6 +62,10 @@ func Check(p DayPlan, s State) []Violation {
 			counted[k] = true
 			used[r.ID] += t.Effort
 		}
+		if !responsibleAllows(r, t) {
+			out = append(out, Violation{Kind: NotResponsible, TaskID: t.ID, ResidentID: r.ID,
+				Detail: fmt.Sprintf("resident %q is not responsible for chore %q", r.ID, t.ChoreID)})
+		}
 		if !WeekdayAllowed(t, s.Today) {
 			out = append(out, Violation{Kind: WeekdayNotAllowed, TaskID: t.ID, ResidentID: r.ID,
 				Detail: fmt.Sprintf("chore %q may not be done on weekday %d", t.ChoreID, s.Today.Weekday())})
@@ -77,6 +85,10 @@ func Check(p DayPlan, s State) []Violation {
 		need := 1
 		if t, known := tasks[id]; known {
 			need = PeopleNeeded(t)
+			if need > 1 && t.Responsible != "" && !named[id][t.Responsible] {
+				out = append(out, Violation{Kind: NotResponsible, TaskID: id,
+					Detail: fmt.Sprintf("neither resident is responsible for chore %q", t.ChoreID)})
+			}
 		}
 		if v, broken := countViolation(id, need, len(named[id]), n); broken {
 			out = append(out, v)
