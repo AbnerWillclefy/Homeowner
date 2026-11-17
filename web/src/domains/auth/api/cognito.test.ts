@@ -218,6 +218,7 @@ describe("confirmForgotPassword", () => {
     ["InvalidPasswordException", "invalid-password"],
     ["LimitExceededException", "rate-limited"],
     ["UserNotFoundException", "wrong-code"],
+    ["UserNotConfirmedException", "wrong-code"],
     ["NotAuthorizedException", "wrong-code"],
   ])("maps %s to %s", async (type, kind) => {
     stubFetch(cognitoError(type));

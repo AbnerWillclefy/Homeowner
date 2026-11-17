@@ -119,11 +119,13 @@ export async function forgotPassword(email: string): Promise<CognitoResult> {
   return result.failure.kind === "rate-limited" || result.failure.kind === "network" ? result.failure : { kind: "ok" };
 }
 
+const HIDDEN_RESET_ERRORS = new Set(["UserNotFoundException", "NotAuthorizedException", "UserNotConfirmedException"]);
+
 /** Sets the new password with the emailed code. An unknown or unconfirmed email reads as a wrong code, never as itself. */
 export async function confirmForgotPassword(email: string, code: string, newPassword: string): Promise<CognitoResult> {
   const result = await call("ConfirmForgotPassword", { Username: email, ConfirmationCode: code, Password: newPassword });
   if (result.ok) return { kind: "ok" };
-  return result.type === "UserNotFoundException" || result.type === "NotAuthorizedException" ? { kind: "wrong-code" } : result.failure;
+  return result.type && HIDDEN_RESET_ERRORS.has(result.type) ? { kind: "wrong-code" } : result.failure;
 }
 
 function authResult(body: Record<string, unknown>): Record<string, unknown> | null {
