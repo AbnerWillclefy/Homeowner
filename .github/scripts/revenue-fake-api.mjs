@@ -85,11 +85,18 @@ function commitments(from, today) {
         { id: "b2", name: "Internet Vivo Fibra", cents: 12_990, paid: false },
       ],
       otherInstallmentsCents: 32_490,
-      planned: [{ category: "groceries", cents: 120_000 }],
-      plannedCents: 120_000,
+      // Eating out is over its plan at the current pace, so the screens show a cut; groceries is at its plan.
+      planned: [
+        { category: "groceries", cents: 120_000, paceCents: 120_000, limited: true },
+        { category: "eating_out", cents: 100_000, paceCents: 220_000, limited: true },
+      ],
+      plannedCents: 220_000,
+      pacePlannedCents: 340_000,
       savingCents: 50_000,
-      totalCents: over ? 1_310_000 : 769_780 + i * 4_000,
-      leftoverCents: over ? -60_000 : 480_220 - i * 4_000,
+      totalCents: over ? 1_410_000 : 869_780 + i * 4_000,
+      leftoverCents: over ? -160_000 : 380_220 - i * 4_000,
+      // The Leftover plus the plan, less the pace plan, as the API computes it.
+      paceLeftoverCents: (over ? -160_000 : 380_220 - i * 4_000) + 220_000 - 340_000,
       ...(i === 0 && current && { spentOffCardCents: 41_200, dailyAllowanceCents: 9_500 }),
       ...(i === 0 && { pace: { spentCents: Array.from({ length: day }, (_, d) => (d + 1) * 21_000), lineEndCents: 950_000 } }),
     };
