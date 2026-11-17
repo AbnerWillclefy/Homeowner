@@ -3,6 +3,8 @@ import { makeIdToken } from "./tokens";
 
 /** The one confirmation code the fake accepts. */
 export const CONFIRMATION_CODE = "123456";
+/** A code the fake treats as expired, for the reset screen. */
+export const EXPIRED_CODE = "999999";
 
 const TARGET_PREFIX = "AWSCognitoIdentityProviderService.";
 const ACTIONS = new Set(["SignUp", "ConfirmSignUp", "ResendConfirmationCode", "ForgotPassword", "ConfirmForgotPassword", "InitiateAuth"]);
@@ -109,6 +111,7 @@ export function createFakeCognito(options: { region: string; clientId: string; p
 
   function confirmForgotPassword(username: string, body: Record<string, unknown>): FakeReply {
     const user = users.get(username);
+    if (body["ConfirmationCode"] === EXPIRED_CODE) return failure("ExpiredCodeException");
     // An unknown user and a wrong code look the same, as in the real pool.
     if (!user || body["ConfirmationCode"] !== CONFIRMATION_CODE) return failure("CodeMismatchException");
     const password = typeof body["Password"] === "string" ? body["Password"] : "";

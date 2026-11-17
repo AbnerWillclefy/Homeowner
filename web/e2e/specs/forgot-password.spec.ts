@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures";
-import { CONFIRMATION_CODE } from "../mocks/cognito";
+import { CONFIRMATION_CODE, EXPIRED_CODE } from "../mocks/cognito";
 import { GOOD_PASSWORD, uniqueEmail } from "../mocks/users";
 import { storedSession } from "../mocks/session";
 import { forgotPassword } from "../pages/forgotPassword";
@@ -45,6 +45,19 @@ test.describe("forgot password", () => {
     await expect(page).toHaveURL(/\/forgot-password$/);
     await expect(forgotPassword.code(page)).toHaveAttribute("aria-invalid", "true");
     expect(await storedSession(page)).toBeNull();
+  });
+
+  test("an expired code points at Start again", async ({ page, baseURL, fakeCognito }, info) => {
+    const email = uniqueEmail(info);
+    fakeCognito.addUser({ email, password: GOOD_PASSWORD, confirmed: true });
+
+    await launchApp(page, baseURL!);
+    await signIn.openForgotPassword(page);
+    await forgotPassword.requestCode(page, email);
+    await forgotPassword.reset(page, EXPIRED_CODE, NEW_PASSWORD);
+
+    await signIn.expectError(page, "That code has expired. Choose Start again to get a new one.");
+    await expect(page).toHaveURL(/\/forgot-password$/);
   });
 
   test("an email with no login reaches the same code step", async ({ page, baseURL, fakeCognito }, info) => {

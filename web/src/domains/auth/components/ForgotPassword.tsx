@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { config } from "../../../shared/config";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
@@ -11,9 +11,12 @@ import { EMAIL_MARKER, splitAtEmail } from "../logic/emailMarker";
 import { failureMessage, fieldError } from "../logic/failureText";
 import { createStepSubmitter } from "../logic/authSubmit";
 import { evaluate } from "../logic/passwordPolicy";
+import { ruleChange, type RuleChange } from "../logic/ruleAnnouncement";
+import { announcementText } from "../logic/ruleText";
 import { PasswordField } from "./PasswordField";
 import { PasswordRules } from "./PasswordRules";
 
+const ANNOUNCE_DELAY_MS = 600;
 const FORM = "forgot";
 
 type Step = { step: "email" } | { step: "code"; email: string };
@@ -34,6 +37,19 @@ export function ForgotPassword({ request, reset, onReset, onBack }: Props) {
   // The failure, not its words, so a language switch re-words it.
   const [problem, setProblem] = useState<CognitoFailure | null>(null);
   const [password, setPassword] = useState("");
+  const [announcement, setAnnouncement] = useState<RuleChange | null>(null);
+
+  // Announce what changed once typing pauses, against the rules as last announced.
+  const announced = useRef(evaluate(config.passwordPolicy, ""));
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const now = evaluate(config.passwordPolicy, password);
+      const next = ruleChange(announced.current, now, password);
+      announced.current = now;
+      if (next) setAnnouncement(next);
+    }, ANNOUNCE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [password]);
 
   const stable = useStableHandlers({ request, reset, onReset });
   const ask = useMemo(
@@ -66,6 +82,7 @@ export function ForgotPassword({ request, reset, onReset, onBack }: Props) {
   function startAgain() {
     setProblem(null);
     setPassword("");
+    setAnnouncement(null);
     setAt({ step: "email" });
   }
 
@@ -146,6 +163,9 @@ export function ForgotPassword({ request, reset, onReset, onBack }: Props) {
             {...fieldError(problem, "password", FORM, "forgot-password-rules")}
           />
           <PasswordRules id="forgot-password-rules" rules={evaluate(config.passwordPolicy, password)} />
+          <div role="status" aria-atomic="true" className="sr-only">
+            {announcementText(t, announcement)}
+          </div>
           <FormError form={FORM}>{message}</FormError>
           <Button type="submit" fullWidth className="mt-4" pending={busy}>
             {t("forgot.submit")}
