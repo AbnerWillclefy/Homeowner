@@ -209,7 +209,8 @@ func collectKeys(v any, into map[string]bool) {
 }
 
 // Every Reason the allocation package declares is offered to the model,
-// except invalid_effort, which only the code may give. Parsing the source
+// except invalid_effort and waiting_for_responsible, which only the code may
+// give (the reason never depends on the model). Parsing the source
 // catches a new Reason added there and forgotten here.
 func TestTheSchemaOffersEveryAllocationReason(t *testing.T) {
 	file, err := parser.ParseFile(token.NewFileSet(), "../allocation/types.go", nil, 0)
@@ -227,7 +228,9 @@ func TestTheSchemaOffersEveryAllocationReason(t *testing.T) {
 		}
 		return true
 	})
-	declared = slices.DeleteFunc(declared, func(r string) bool { return r == string(allocation.ReasonInvalidEffort) })
+	declared = slices.DeleteFunc(declared, func(r string) bool {
+		return r == string(allocation.ReasonInvalidEffort) || r == string(allocation.ReasonWaitingForResponsible)
+	})
 
 	var offered []string
 	for _, r := range slices.Concat(llmalloc.AssignmentReasons, llmalloc.PoolReasons) {
