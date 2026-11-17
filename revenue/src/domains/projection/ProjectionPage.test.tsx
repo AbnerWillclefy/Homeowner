@@ -229,7 +229,7 @@ describe("income", () => {
     vi.mocked(api.getCommitments).mockResolvedValue(NO_INCOME);
     open();
     const table = await screen.findByRole("table");
-    expect(within(table).queryByRole("columnheader", { name: "Leftover" })).toBeNull();
+    expect(within(table).queryByRole("columnheader", { name: /Leftover/ })).toBeNull();
     expect(within(table).queryByRole("columnheader", { name: "Monthly income" })).toBeNull();
     expect(screen.getByRole("link", { name: "Set monthly income" })).toBeTruthy();
   });
