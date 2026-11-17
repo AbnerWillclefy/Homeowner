@@ -273,5 +273,8 @@ func TestPlanResponsibility(t *testing.T) {
 		{"two-person skips a restricted partner",
 			state(rs(resident("a", 5), resident("b", 5).cannotDoChore("chore-t"), resident("c", 2)), task("t", 1, two, responsible("a"))),
 			[]Assignment{give("t", "a", ReasonFitsEnergy), give("t", "c", ReasonFitsEnergy)}, nil},
+		{"two-person is deferred when every possible partner is restricted",
+			state(rs(resident("a", 5), resident("b", 5).cannotDoChore("chore-t")), task("t", 1, two, responsible("a"))),
+			nil, []PoolEntry{pool("t", ReasonTwoPersonDeferred)}},
 	})
 }
