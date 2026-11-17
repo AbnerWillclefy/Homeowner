@@ -953,6 +953,8 @@ export const ptBR: Messages = {
   "signIn.heading": "Entrar",
   "signIn.hint": "Veja o que é seu para fazer hoje.",
   "signIn.confirmedNotice": "Seu e-mail foi confirmado. Entre para começar.",
+  "signIn.forgotPassword": "Esqueceu a senha?",
+  "signIn.passwordChangedNotice": "Senha alterada. Entre com a nova senha.",
   "signIn.emailLabel": "E-mail",
   "signIn.passwordLabel": "Senha",
   "signIn.submit": "Entrar",
@@ -967,6 +969,17 @@ export const ptBR: Messages = {
   "confirm.resend": "Enviar um novo código",
   "confirm.useOtherEmail": "Usar outro e-mail",
   "confirm.resent": "Um novo código está a caminho. Use o e-mail mais recente.",
+
+  // Redefinir senha
+  "forgot.heading": "Redefinir senha",
+  "forgot.intro": "Informe o e-mail do seu login e enviaremos um código.",
+  "forgot.send": "Enviar código",
+  "forgot.sent": "Se {email} tiver um login, enviamos um código para ele. Pode levar alguns minutos; veja também o spam.",
+  "forgot.newPasswordLabel": "Nova senha",
+  "forgot.submit": "Trocar senha",
+  "forgot.startAgain": "Começar de novo",
+  "forgot.back": "Voltar para entrar",
+  "forgot.failure.expiredCode": "Esse código expirou. Toque em Começar de novo para receber outro.",
 
   // Conectado
   "signedIn.heading": "Você está conectado",

@@ -2,13 +2,13 @@ import { Navigate, Route, Routes } from "react-router";
 import { ChoresPageSkeleton, HomeSkeleton } from "../../domains/home/components/HomeSkeleton";
 import { lazyNamed } from "../lazyWithReload";
 import { AuthLayout } from "./AuthLayout";
-import { ConfirmPage, SignInPage, SignUpPage } from "./AuthPages";
+import { ConfirmPage, ForgotPasswordPage, SignInPage, SignUpPage } from "./AuthPages";
 import { Guard } from "./Guard";
 import { LazyPage } from "./LazyPage";
 import { FinancesFallback, MeEditFallback, MeFallback, ResidentFallback } from "./lazyFallbacks";
 import { FinanceRoute } from "./pages/FinanceRoute";
 import { TodayPage } from "./pages";
-import { CHORES_PATH, CONFIRM_PATH, FINANCES_BILLS_PATH, FINANCES_CATEGORY_PATH, FINANCES_PATH, FINANCES_SAVINGS_PATH, FINANCES_SETTINGS_PATH, FINANCES_SPENDING_PATH, HOME_PATH, ME_EDIT_PATH, ME_PATH, RESIDENT_PATH, SIGN_IN_PATH, SIGN_UP_PATH, TODAY_PATH, WELCOME_PREFIX } from "../logic/routes";
+import { CHORES_PATH, CONFIRM_PATH, FINANCES_BILLS_PATH, FINANCES_CATEGORY_PATH, FORGOT_PASSWORD_PATH, FINANCES_PATH, FINANCES_SAVINGS_PATH, FINANCES_SETTINGS_PATH, FINANCES_SPENDING_PATH, HOME_PATH, ME_EDIT_PATH, ME_PATH, RESIDENT_PATH, SIGN_IN_PATH, SIGN_UP_PATH, TODAY_PATH, WELCOME_PREFIX } from "../logic/routes";
 import { Shell } from "./Shell";
 import { WelcomeLayout } from "./WelcomeLayout";
 
@@ -38,6 +38,7 @@ export function AppRoutes() {
           <Route path={SIGN_IN_PATH} element={<SignInPage />} />
           <Route path={SIGN_UP_PATH} element={<SignUpPage />} />
           <Route path={CONFIRM_PATH} element={<ConfirmPage />} />
+          <Route path={FORGOT_PASSWORD_PATH} element={<ForgotPasswordPage />} />
         </Route>
         <Route path={`${WELCOME_PREFIX}/*`} element={<WelcomeLayout />} />
         <Route element={<Shell />}>
