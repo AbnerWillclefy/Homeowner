@@ -79,9 +79,10 @@ export function ForgotPassword({ request, reset, onReset, onBack }: Props) {
     </p>
   );
 
+  // The keys stop React reusing the email input as the code input, which would carry the typed email into it.
   if (at.step === "email") {
     return (
-      <section aria-labelledby="forgot-heading">
+      <section key="email" aria-labelledby="forgot-heading">
         <PageHeader id="forgot-heading" title={t("forgot.heading")}>
           {t("forgot.intro")}
         </PageHeader>
@@ -112,7 +113,7 @@ export function ForgotPassword({ request, reset, onReset, onBack }: Props) {
 
   const [before, after] = splitAtEmail(t("forgot.sent", { email: EMAIL_MARKER }));
   return (
-    <section aria-labelledby="forgot-heading">
+    <section key="code" aria-labelledby="forgot-heading">
       <PageHeader id="forgot-heading" title={t("forgot.heading")}>
         {before}
         <strong className="text-text [overflow-wrap:anywhere]">{at.email}</strong>

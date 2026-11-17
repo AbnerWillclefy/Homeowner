@@ -20,6 +20,7 @@ test.describe("forgot password", () => {
     await signIn.openForgotPassword(page);
     await forgotPassword.requestCode(page, email);
     await forgotPassword.expectCodeStepFor(page, email);
+    await expect(forgotPassword.code(page)).toHaveValue("");
 
     await forgotPassword.reset(page, CONFIRMATION_CODE, NEW_PASSWORD);
     await expect(page).toHaveURL(/\/signin$/);
