@@ -119,7 +119,7 @@ func loadState(ctx context.Context, q pgx.Tx, homeID string, today allocation.Da
 func loadTasks(ctx context.Context, q pgx.Tx, homeID string) ([]allocation.Task, error) {
 	rows, err := q.Query(ctx, `
 		SELECT t.id, c.id, t.current_effort, c.importance, c.people, c.demands, c.allowed_weekdays,
-		       t.window_start, t.window_end
+		       t.window_start, t.window_end, c.responsible_resident_id
 		FROM tasks t JOIN chores c ON c.id = t.chore_id
 		WHERE c.home_id = $1 AND t.status = 'open'
 		ORDER BY t.window_start, c.created_at, t.id`, homeID)
@@ -133,12 +133,16 @@ func loadTasks(ctx context.Context, q pgx.Tx, homeID string) ([]allocation.Task,
 			demands        []string
 			weekdays       []int16
 			ws, we         time.Time
+			responsible    *string
 		)
-		if err := r.Scan(&t.ID, &t.ChoreID, &effort, &importance, &people, &demands, &weekdays, &ws, &we); err != nil {
+		if err := r.Scan(&t.ID, &t.ChoreID, &effort, &importance, &people, &demands, &weekdays, &ws, &we, &responsible); err != nil {
 			return t, err
 		}
 		t.Effort, t.People, t.Importance = int(effort), int(people), allocation.Importance(importance)
 		t.WindowStart, t.WindowEnd = allocation.DateOf(ws), allocation.DateOf(we)
+		if responsible != nil {
+			t.Responsible = *responsible
+		}
 		for _, d := range demands {
 			t.Demands = append(t.Demands, allocation.Demand(d))
 		}

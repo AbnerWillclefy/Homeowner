@@ -144,3 +144,29 @@ func TestLoadStateGivesResolvedPreferencesAndLastCompletions(t *testing.T) {
 		t.Errorf("LastDone on Mar 2 = %v, want Tub on %d", got, mar2)
 	}
 }
+
+func TestLoadStateGivesATasksResponsibleResidentOrNobody(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	a := newHome(t, app, "a@example.com", "UTC", "07:00")
+	app.Clock.Set(utc(2, 6, 0))
+	owned := newChore(t, a, "Owned", "kitchen", 1)
+	newChore(t, a, "Free", "kitchen", 1)
+	aID := residentID(t, app, "a@example.com")
+	put(t, a, "/home/chores/"+owned+"/responsible", map[string]any{"residentId": aID})
+	apitest.Pool(t, a) // the lazy refresh opens the Tasks
+
+	s := loadStateAt(t, app, homeIDOf(t, a), allocation.NewDate(2026, 3, 2))
+	got := map[string]string{}
+	for _, tk := range s.Tasks {
+		got[tk.ChoreID] = tk.Responsible
+	}
+	if len(s.Tasks) != 2 || got[owned] != aID {
+		t.Fatalf("Responsible by chore = %v", got)
+	}
+	for id, who := range got {
+		if id != owned && who != "" {
+			t.Errorf("a Chore with Nobody responsible has Responsible %q", who)
+		}
+	}
+}
