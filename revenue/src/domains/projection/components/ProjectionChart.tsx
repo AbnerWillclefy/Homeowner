@@ -22,7 +22,7 @@ export function ProjectionChart({ months, leftovers, selected, onSelect }: { mon
   return (
     <Card className="min-w-0 desktop:col-span-8">
       <CardHeader>
-        <CardLabel>{t("projection.leftover")}</CardLabel>
+        <CardLabel>{t("projection.leftoverPlan")}</CardLabel>
       </CardHeader>
       <svg viewBox={`0 0 ${WIDTH + AXIS} ${PLOT_TOP + PLOT_HEIGHT + 32}`} aria-hidden className="w-full text-[11px]">
         <line x1={0} x2={WIDTH} y1={baseline} y2={baseline} className="stroke-border-strong" />

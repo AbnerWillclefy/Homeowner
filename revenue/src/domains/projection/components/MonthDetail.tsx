@@ -22,7 +22,7 @@ export function MonthDetail({ row, income }: { row: ProjectionRow; income: numbe
     <Card className="min-w-0 desktop:col-span-4">
       <CardHeader>
         <CardLabel>{monthLabel(row.month, locale)}</CardLabel>
-        <Badge tone={leftover < 0 ? "danger" : "positive"}>{leftover < 0 ? t("projection.short", { amount: money(-leftover) }) : t("projection.leftover")}</Badge>
+        <Badge tone={leftover < 0 ? "danger" : "positive"}>{leftover < 0 ? t("projection.short", { amount: money(-leftover) }) : t("projection.leftoverPlan")}</Badge>
       </CardHeader>
       <Amount cents={leftover} size="lg" locale={locale} {...hidden} />
       <dl className="flex flex-col gap-2">

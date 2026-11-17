@@ -14,7 +14,7 @@ export interface CommitmentMonth {
   cards: { sourceId: string; name: string; amountCents: number; billDaysKnown: boolean; /** `YYYY-MM-DD`, null or absent when the card's days are not known. */ dueOn?: string | null; closesOn?: string | null }[];
   otherBills: { id: string; name: string; cents: number; paid: boolean }[];
   otherInstallmentsCents: number;
-  /** `cents` is the plan from the usual spending (median) and the limit; `paceCents` the plan at the current pace; `limited` says the category has a Spending limit. */
+  /** `cents` is what is left of the plan (the Spending limit, or the Usual spending without one); `paceCents` what is left of the Usual spending, limit or not; `limited` says the category has a Spending limit. */
   planned: { category: string; cents: number; paceCents: number; limited: boolean }[];
   plannedCents: number;
   /** Absent with no Monthly income, like `leftoverCents`. */
