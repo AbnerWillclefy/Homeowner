@@ -6,6 +6,8 @@ import { useI18n } from "../../../shared/i18n/I18nProvider";
 import { monthLabel } from "../../../shared/month/month";
 import type { CommitmentMonth } from "../../overview/api/api";
 import { monthRows } from "../../overview/logic/monthRows";
+import { projectionRow } from "../logic/projectionRow";
+import { CategoryCuts } from "./CategoryCuts";
 import { useMoney } from "../hooks/useMoney";
 import { groupLabel, itemName } from "../logic/labels";
 
@@ -19,6 +21,7 @@ export function MonthCard({ data, current, income }: { data: CommitmentMonth; cu
   const money = useMoney();
   const hidden = useHiddenProps();
   const rows = monthRows(data);
+  const { paceLeftoverCents, cuts } = projectionRow(data);
 
   return (
     <Card variant="compact" className="gap-0">
@@ -37,11 +40,17 @@ export function MonthCard({ data, current, income }: { data: CommitmentMonth; cu
             </span>
             {rows.leftoverCents !== null && (
               <span className="flex flex-wrap items-baseline gap-x-2">
-                <span className="text-text-muted">{t("projection.leftover")}</span>
+                <span className="text-text-muted">{t("projection.leftoverPlan")}</span>
                 <Amount cents={rows.leftoverCents} size="md" locale={locale} {...hidden} />
               </span>
             )}
           </span>
+          {paceLeftoverCents !== null && (
+            <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+              <span className="text-text-muted">{t("projection.paceLeftover")}</span>
+              <Amount cents={paceLeftoverCents} size="md" locale={locale} {...hidden} />
+            </span>
+          )}
           {rows.overCents > 0 && <span className="caption text-text-muted">{t("projection.short", { amount: money(rows.overCents) })}</span>}
         </summary>
         <ul className="mt-3 flex list-none flex-col gap-3 border-t border-border p-0 pt-3">
@@ -69,6 +78,7 @@ export function MonthCard({ data, current, income }: { data: CommitmentMonth; cu
             </li>
           ))}
         </ul>
+        {cuts.length > 0 && <div className="mt-3 border-t border-border pt-3"><CategoryCuts cuts={cuts} /></div>}
         {income !== null && (
           <p className="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 border-t border-border pt-3 text-text-muted">
             <span>{t("overview.leftover.income")}</span>
