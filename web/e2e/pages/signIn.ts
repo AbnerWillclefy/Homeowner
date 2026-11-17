@@ -32,10 +32,20 @@ export const signIn = {
     await page.getByRole("button", { name: "Sign up", exact: true }).click();
   },
 
+  /** The link-styled button under the password field that opens the reset flow. */
+  async openForgotPassword(page: Page): Promise<void> {
+    await page.getByRole("button", { name: "Forgot password?", exact: true }).click();
+  },
+
   expectError: expectFormError,
 
   /** The success notice shown after email confirmation (a toast, so assert it right after the redirect). */
   async expectConfirmedNotice(page: Page): Promise<void> {
     await expect(page.getByText("Your email is confirmed. Sign in to start.", { exact: true })).toBeVisible();
+  },
+
+  /** The success notice shown after a password reset (a toast, so assert it right after the redirect). */
+  async expectPasswordChangedNotice(page: Page): Promise<void> {
+    await expect(page.getByText("Password changed. Sign in with your new password.", { exact: true })).toBeVisible();
   },
 };

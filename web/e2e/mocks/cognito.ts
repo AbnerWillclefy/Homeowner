@@ -5,7 +5,7 @@ import { makeIdToken } from "./tokens";
 export const CONFIRMATION_CODE = "123456";
 
 const TARGET_PREFIX = "AWSCognitoIdentityProviderService.";
-const ACTIONS = new Set(["SignUp", "ConfirmSignUp", "ResendConfirmationCode", "InitiateAuth"]);
+const ACTIONS = new Set(["SignUp", "ConfirmSignUp", "ResendConfirmationCode", "ForgotPassword", "ConfirmForgotPassword", "InitiateAuth"]);
 const CONTENT_TYPE = "application/x-amz-json-1.1";
 
 interface Policy {
@@ -102,6 +102,21 @@ export function createFakeCognito(options: { region: string; clientId: string; p
       : failure("UserNotFoundException");
   }
 
+  /** Always answers 200, like the real pool with existence errors prevented: the caller cannot tell who has a login. */
+  function forgotPassword(): FakeReply {
+    return success({ CodeDeliveryDetails: { Destination: "e***@e***", DeliveryMedium: "EMAIL", AttributeName: "email" } });
+  }
+
+  function confirmForgotPassword(username: string, body: Record<string, unknown>): FakeReply {
+    const user = users.get(username);
+    // An unknown user and a wrong code look the same, as in the real pool.
+    if (!user || body["ConfirmationCode"] !== CONFIRMATION_CODE) return failure("CodeMismatchException");
+    const password = typeof body["Password"] === "string" ? body["Password"] : "";
+    if (!meetsPolicy(password, policy)) return failure("InvalidPasswordException");
+    user.password = password;
+    return success({});
+  }
+
   function signIn(username: string, password: unknown): FakeReply {
     const user = users.get(username);
     // Cognito does not tell an unknown user from a wrong password, and neither does the fake.
@@ -155,6 +170,10 @@ export function createFakeCognito(options: { region: string; clientId: string; p
           return confirmSignUp(username, body);
         case "ResendConfirmationCode":
           return resend(username);
+        case "ForgotPassword":
+          return forgotPassword();
+        case "ConfirmForgotPassword":
+          return confirmForgotPassword(username, body);
         default:
           return signIn(username, params["PASSWORD"]);
       }
