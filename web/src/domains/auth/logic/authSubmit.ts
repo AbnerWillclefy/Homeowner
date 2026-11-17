@@ -55,6 +55,16 @@ async function attempt(
   else onProblem(result);
 }
 
+interface StepDeps<Args extends unknown[]> extends Common {
+  task(...args: Args): Promise<CognitoResult>;
+  onOk(...args: Args): void;
+}
+
+/** One guarded step of a flow: runs `task`, then `onOk` with the same arguments, or hands the failure to `onProblem`. */
+export function createStepSubmitter<Args extends unknown[]>({ task, onOk, onBusy, onProblem }: StepDeps<Args>) {
+  return guardOnce((...args: Args) => attempt(onProblem, () => task(...args), () => onOk(...args)), onBusy);
+}
+
 /** Which of the code screen's two buttons is running. */
 export type ConfirmAction = "submit" | "resend";
 
