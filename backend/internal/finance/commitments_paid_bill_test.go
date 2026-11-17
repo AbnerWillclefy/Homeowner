@@ -13,16 +13,18 @@ func TestCommitmentsDoNotPlanLastMonthsPaidBill(t *testing.T) {
 	app, ana := seedMonth(t)
 	apitest.ExpectStatus(t, ana.Put("/me/finance/income", map[string]int64{"monthlyIncomeCents": 5000000}), http.StatusNoContent)
 	before := readPlanned(t, ana).Months[1].PlannedCents
-	if _, err := app.DB.Exec(context.Background(), `
-		INSERT INTO finance_transactions (user_id, source_id, provider_id, posted_on, amount_cents, currency, description,
-			merchant_key, type, type_set_by, spending_category, category_set_by, created_at, updated_at)
-		SELECT user_id, id, 'rent', '2026-10-05', -150000, 'BRL', 'rent', 'rent', 'expense', 'auto', 'housing', 'user', now(), now()
-		FROM finance_sources WHERE kind = 'checking' AND user_id = (SELECT id FROM users WHERE email = 'ana@example.com') LIMIT 1`); err != nil {
-		t.Fatal(err)
+	// Rent in September and October (housing is 0, 80000, 80000 in the fixture): the median moves from 80000 to 230000, +150000.
+	for _, r := range []struct{ id, day string }{{"rent9", "2026-09-05"}, {"rent", "2026-10-05"}} {
+		if _, err := app.DB.Exec(context.Background(), `
+			INSERT INTO finance_transactions (user_id, source_id, provider_id, posted_on, amount_cents, currency, description,
+				merchant_key, type, type_set_by, spending_category, category_set_by, created_at, updated_at)
+			SELECT user_id, id, $1, $2::date, -150000, 'BRL', $1, $1, 'expense', 'auto', 'housing', 'user', now(), now()
+			FROM finance_sources WHERE kind = 'checking' AND user_id = (SELECT id FROM users WHERE email = 'ana@example.com') LIMIT 1`, r.id, r.day); err != nil {
+			t.Fatal(err)
+		}
 	}
-	// The fixture has rows in Aug, Sep and Oct, so 3 months are averaged and the 150000 adds 150000/3.
-	if got := readPlanned(t, ana).Months[1].PlannedCents; got != before+50000 {
-		t.Fatalf("unpaid rent expense planned = %d, want %d", got, before+50000)
+	if got := readPlanned(t, ana).Months[1].PlannedCents; got != before+150000 {
+		t.Fatalf("unpaid rent expense planned = %d, want %d", got, before+150000)
 	}
 	bill := newBill(t, ana, "Aluguel", 150000, 10)
 	if _, err := app.DB.Exec(context.Background(), `

@@ -153,12 +153,20 @@ The Leftover with the Planned spending added back, divided by the days left in t
 _Avoid_: Daily budget, Daily limit
 
 **Pace**:
-The money spent so far this month, day by day (cumulative), against a straight line from 0 on the first day to (Monthly income − Leftover) on the last. Absent when no Monthly income is set; a past month holds all its days. It is not the usual pace, the average of the previous months' spending.
+The money spent so far this month, day by day (cumulative), against a straight line from 0 on the first day to (Monthly income − Leftover) on the last. Absent when no Monthly income is set; a past month holds all its days. It is not the usual pace, the average of the previous months' spending, nor the Leftover at current pace.
 _Avoid_: Average, Trend
 
 **Planned spending**:
-What each Spending Category is still expected to take in a month, which lowers that month's Leftover. A category with a Spending limit plans its limit; one without plans the average of what it spent in the 3 months before the current one (months before the User's first data left out; a negative average counts as 0). Both subtract what already counts for the category in the month, never going below zero.
+What each Spending Category is still expected to take in a month, which lowers that month's Leftover. A category with a Spending limit plans its limit; one without plans its Usual spending. Both subtract what already counts for the category in the month, never going below zero.
 _Avoid_: Budget, Forecast, Reserve
+
+**Usual spending**:
+What a Spending Category normally takes in a month: the median of its monthly spending over the 3 months before the current one, so a one-off purchase does not move it. Months before the User's first data are left out; with two months it is their mean; a negative value counts as 0. In pt-BR, "Gasto habitual".
+_Avoid_: Average spending, Pace (the month's cumulative chart)
+
+**Leftover at current pace**:
+The same sum as the Leftover, with every Spending Category planning its Usual spending instead of its Spending limit. Compared with the Leftover it shows what the month would leave if the Resident spent as usual. Absent when no Monthly income is set. In pt-BR, "Sobra no ritmo atual".
+_Avoid_: Pace (the month's cumulative chart), Projected leftover
 
 **Saving**:
 Money a User puts aside, such as money moved into an investment, net of what they take back. It is neither spending nor a Transfer: it is left out of spending totals and lowers the Leftover. The Transaction type is `saving`.

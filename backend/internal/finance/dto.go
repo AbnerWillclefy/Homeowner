@@ -191,7 +191,8 @@ type MonthCommitment struct {
 	// OtherInstallmentsCents is what plans on a Source that is not a credit card owe.
 	OtherInstallmentsCents int64 `json:"otherInstallmentsCents"`
 	// Planned is the rest of what each Spending Category plans (its limit, else
-	// the average of the last 3 months' spend), PlannedCents their sum.
+	// its Usual spending: the median of the last 3 months' spend), PlannedCents
+	// the sum of their Cents. A category is listed when either plan is above 0.
 	Planned      []PlannedLineDTO `json:"planned"`
 	PlannedCents int64            `json:"plannedCents"`
 	// SpentOffCardCents is present only on the current month: what was spent off
@@ -205,6 +206,12 @@ type MonthCommitment struct {
 	// LeftoverCents is the Monthly income minus TotalCents, negative when the
 	// month takes more; absent, not null, when no income is set.
 	LeftoverCents *int64 `json:"leftoverCents,omitempty"`
+	// PacePlannedCents is the sum of the planned lines' PaceCents and
+	// PaceLeftoverCents the Leftover at current pace: the Leftover with every
+	// category planning its Usual spending instead of its limit. Both are
+	// absent, not null, when no Monthly income is set.
+	PacePlannedCents  *int64 `json:"pacePlannedCents,omitempty"`
+	PaceLeftoverCents *int64 `json:"paceLeftoverCents,omitempty"`
 	// DailyAllowanceCents is the Leftover plus PlannedCents over the days left in
 	// the month, today included; present only on the current month (São Paulo)
 	// with a Monthly income, negative when that sum is.
@@ -244,10 +251,17 @@ type CardBillLine struct {
 	HeldTo        *string `json:"heldTo"`
 }
 
-// PlannedLineDTO is the rest of one Spending Category's limit in a month.
+// PlannedLineDTO is the rest of one Spending Category's plan in a month. Cents
+// is the rest by plan (its limit, else its Usual spending) and PaceCents the
+// rest at current pace (always its Usual spending, the median of the last 3
+// months); both subtract what already counts and never go below 0. Limited is
+// true when the category has a Spending limit: only then is PaceCents-Cents a
+// gap worth showing.
 type PlannedLineDTO struct {
-	Category string `json:"category"`
-	Cents    int64  `json:"cents"`
+	Category  string `json:"category"`
+	Cents     int64  `json:"cents"`
+	PaceCents int64  `json:"paceCents"`
+	Limited   bool   `json:"limited"`
 }
 
 // OtherBillLine is a Bill to pay that is not a card bill, paid or not; Cents is

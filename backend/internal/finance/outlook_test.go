@@ -192,7 +192,7 @@ func TestOutlookPlannedSpending(t *testing.T) {
 		return Txn{SourceID: src, PostedOn: d(day), AmountCents: -cents, Type: typ, Category: cat, Linked: linked}
 	}
 	card := []Card{{ID: "a", Name: "a", BillDaysKnown: true}}
-	g := func(cents int64) []PlannedLine { return []PlannedLine{{"groceries", cents}} }
+	g := func(cents int64) []PlannedLine { return []PlannedLine{{"groceries", cents, 0, true}} }
 	i64 := func(v int64) *int64 { return &v }
 	type month struct {
 		planned  []PlannedLine
@@ -289,6 +289,8 @@ func TestOutlookSavingAndBaselinePlan(t *testing.T) {
 		planned      []PlannedLine
 		total        int64
 		leftover     *int64
+		pace         int64
+		paceLeftover *int64
 	}{
 		"actual saving above the contribution counts the actual":       {rows: []Txn{saving(900)}, contribution: 500, saving: 900, planned: none, total: 900},
 		"actual saving below the contribution counts the contribution": {rows: []Txn{saving(200)}, contribution: 500, saving: 500, planned: none, total: 500},
@@ -297,22 +299,34 @@ func TestOutlookSavingAndBaselinePlan(t *testing.T) {
 			rows: []Txn{saving(100), {SourceID: "checking", PostedOn: d("2026-11-05"), AmountCents: 400, Type: "saving"}}, planned: none,
 		},
 		"a category without a limit plans its baseline": {
-			last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 700}}, total: 700,
+			last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 700, 700, false}}, total: 700, pace: 700,
 		},
 		"a limit beats the baseline": {
-			limits: map[string]int64{"pets": 500}, last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 500}}, total: 500,
+			limits: map[string]int64{"pets": 500}, last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 500, 700, true}}, total: 500, pace: 700,
+		},
+		"a limit plans the limit by plan and the baseline at pace": {
+			limits: map[string]int64{"pets": 500}, last: map[string]int64{"pets": 700}, income: i64(10000),
+			planned: []PlannedLine{{"pets", 500, 700, true}}, total: 500, leftover: i64(9500), pace: 700, paceLeftover: i64(9300),
+		},
+		"a limit of 0 with a baseline is listed": {
+			limits: map[string]int64{"pets": 0}, last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 0, 700, true}}, pace: 700,
+		},
+		"both plans subtract the counted spend, clamped": {
+			rows: []Txn{cardBuy}, limits: map[string]int64{"pets": 250}, last: map[string]int64{"pets": 200}, income: i64(1000),
+			planned: []PlannedLine{{"pets", 0, 0, true}}, total: 300, leftover: i64(700), paceLeftover: i64(700),
 		},
 		"a negative baseline plans nothing": {last: map[string]int64{"pets": -50}, planned: none},
 		"a card purchase counts once: in the bill, and out of the plan": {
-			rows: []Txn{cardBuy}, last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 400}}, total: 700,
+			rows: []Txn{cardBuy}, last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 400, 400, false}}, total: 700, pace: 400,
 		},
 		"the leftover subtracts the saving, and is negative when the month takes more": {
-			rows: []Txn{saving(900)}, income: i64(600), saving: 900, planned: none, total: 900, leftover: i64(-300),
+			rows: []Txn{saving(900)}, income: i64(600), saving: 900, planned: none, total: 900, leftover: i64(-300), paceLeftover: i64(-300),
 		},
 	} {
 		got := Outlook(c.rows, card, nil, [][]MonthBill{nil}, c.income, c.limits, c.last, c.contribution, nov, nov, 1)[0]
-		if got.SavingCents != c.saving || got.TotalCents != c.total || !reflect.DeepEqual(got.Planned, c.planned) || !reflect.DeepEqual(got.LeftoverCents, c.leftover) {
-			t.Errorf("%s: saving %d total %d planned %v leftover %v", name, got.SavingCents, got.TotalCents, got.Planned, got.LeftoverCents)
+		if got.SavingCents != c.saving || got.TotalCents != c.total || !reflect.DeepEqual(got.Planned, c.planned) || !reflect.DeepEqual(got.LeftoverCents, c.leftover) ||
+			got.PacePlannedCents != c.pace || !reflect.DeepEqual(got.PaceLeftoverCents, c.paceLeftover) {
+			t.Errorf("%s: saving %d total %d planned %v leftover %v pace %d paceLeftover %v", name, got.SavingCents, got.TotalCents, got.Planned, got.LeftoverCents, got.PacePlannedCents, got.PaceLeftoverCents)
 		}
 	}
 }
@@ -328,10 +342,14 @@ func TestPlannedBaseline(t *testing.T) {
 		want map[string]int64
 	}{
 		{"no rows", nil, map[string]int64{}},
-		{"a month without the category divides as 0", []Txn{at(8, 300, "Food", false), at(9, 300, "Food", false), at(10, 100, "Fun", false)}, map[string]int64{"Food": 200, "Fun": 33}},
+		{"a month without the category is a 0 in the median", []Txn{at(8, 300, "Food", false), at(9, 300, "Food", false), at(10, 100, "Fun", false)}, map[string]int64{"Food": 300, "Fun": 0}},
+		{"one big month in three", []Txn{at(8, 100, "Food", false), at(9, 100, "Food", false), at(10, 5000, "Food", false)}, map[string]int64{"Food": 100}},
+		{"three months are sorted before the middle is taken", []Txn{at(8, 900, "Food", false), at(9, 100, "Food", false), at(10, 300, "Food", false)}, map[string]int64{"Food": 300}},
+		// Cannot fail against the mean: with two months the median is their mean. It guards against taking the lower or upper value.
+		{"two months take their mean", []Txn{at(9, 200, "Food", false), at(10, 600, "Food", false)}, map[string]int64{"Food": 400}},
 		{"one month of history", []Txn{at(10, 500, "Food", false)}, map[string]int64{"Food": 500}},
 		{"two months of history", []Txn{at(9, 500, "Food", false), at(10, 500, "Food", false)}, map[string]int64{"Food": 500}},
-		{"a Linked-only month counts in the divisor, not the sum", []Txn{at(8, 600, "Food", false), at(9, 900, "Food", true)}, map[string]int64{"Food": 300}},
+		{"a Linked-only month counts as a 0, not its sum", []Txn{at(8, 600, "Food", false), at(9, 900, "Food", true)}, map[string]int64{"Food": 300}},
 		{"current and older rows are ignored", []Txn{at(11, 900, "Food", false), at(7, 900, "Food", false), at(10, 300, "Food", false)}, map[string]int64{"Food": 300}},
 		{"net negative stays negative", []Txn{at(10, -600, "Food", false)}, map[string]int64{"Food": -600}},
 		{"half rounds up", []Txn{at(9, 5, "Food", false), at(10, 0, "Other", false)}, map[string]int64{"Food": 3, "Other": 0}},
@@ -365,10 +383,10 @@ func TestPlannedBaselineLeavesOutRegisteredBills(t *testing.T) {
 	}{
 		{"the nearest payment each month is the Bill's", []Txn{
 			at("acc", 8, 31, 698137, "housing"), at("acc", 9, 29, 697769, "housing"), at("acc", 10, 29, 697542, "housing"), at("card", 8, 5, 7205, "housing"),
-		}, []Bill{mortgage}, map[string]int64{"housing": 2402}},
+		}, []Bill{mortgage}, map[string]int64{"housing": 0}}, // [7205, 0, 0]; unmatched, the median would be 697769
 		{"a payment more than a tenth away from the Bill stays", []Txn{
-			at("acc", 8, 27, 26241, "household_bills"), at("acc", 9, 25, 26242, "household_bills"), at("acc", 10, 23, 21471, "household_bills"),
-		}, []Bill{power}, map[string]int64{"household_bills": 8747}},
+			at("acc", 8, 27, 26242, "household_bills"), at("acc", 9, 25, 26243, "household_bills"), at("acc", 10, 23, 21471, "household_bills"),
+		}, []Bill{power}, map[string]int64{"household_bills": 26242}}, // two far payments stay, the near one of October goes: [26242, 26243, 0]
 		{"a card charge never pays a Bill", []Txn{at("card", 10, 5, 23856, "household_bills")}, []Bill{power}, map[string]int64{"household_bills": 23856}},
 		{"one payment per Bill and month, the nearest", []Txn{
 			at("acc", 10, 5, 22000, "household_bills"), at("acc", 10, 6, 23000, "household_bills"),
@@ -462,13 +480,16 @@ func TestOutlookCurrentCardBill(t *testing.T) {
 		"a bank bill due next month counts once, in the current month, while unpaid": {
 			today: "2026-11-30", rows: []Txn{nubank("2026-11-10", 300), nubank("2026-11-29", 40)},
 			cards: card(28, 5, StoredBill{ClosesOn: d("2026-11-28"), DueOn: d("2026-12-05"), TotalCents: 1000}),
-			want: func() CardBill { due, cl := d("2026-12-05"), d("2026-11-28"); return CardBill{"a", "a", 1000, true, true, &due, &cl} }(),
+			want: func() CardBill {
+				due, cl := d("2026-12-05"), d("2026-11-28")
+				return CardBill{"a", "a", 1000, true, true, &due, &cl}
+			}(),
 			next: open(0),
 		},
 		"a paid bank bill due next month is not counted again there": {
 			today: "2026-11-30", rows: []Txn{nubank("2026-11-10", 300), nubank("2026-11-29", 40)},
 			cards: card(28, 5, StoredBill{ClosesOn: d("2026-11-28"), DueOn: d("2026-12-05"), TotalCents: 1000, Paid: true}),
-			want: open(40), next: open(0),
+			want:  open(40), next: open(0),
 		},
 		"no bank bills and no days: what counts in the month": {
 			today: "2026-11-13", rows: []Txn{{SourceID: "a", PostedOn: d("2026-11-03"), Posted: d("2026-11-03"), AmountCents: -70, Type: "expense"}},
@@ -505,7 +526,7 @@ func TestOutlookCurrentPlannedSubtractsTheShownBills(t *testing.T) {
 		{SourceID: "checking", PostedOn: d("2026-11-03"), Posted: d("2026-11-03"), AmountCents: -100, Type: "expense", Category: "groceries"},
 	}
 	got := Outlook(rows, cards, nil, [][]MonthBill{nil}, nil, map[string]int64{"groceries": 1000}, nil, 0, d("2026-11-13"), nov, 1)[0]
-	if want := []PlannedLine{{"groceries", 400}}; !reflect.DeepEqual(got.Planned, want) {
+	if want := []PlannedLine{{"groceries", 400, 0, true}}; !reflect.DeepEqual(got.Planned, want) {
 		t.Errorf("planned = %v, want %v: the limit less the bills' 500 and the 100 off the card", got.Planned, want)
 	}
 }
