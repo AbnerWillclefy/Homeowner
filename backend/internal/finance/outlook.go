@@ -48,9 +48,13 @@ type MonthOutlook struct {
 	OtherBills             []OtherBill
 	OtherInstallmentsCents int64
 	// Planned is the rest of what each Spending Category plans, in
-	// SpendingCategories order, only for those planning more than 0.
+	// SpendingCategories order, only for those with either plan above 0.
+	// PlannedCents sums the by-plan Cents.
 	Planned      []PlannedLine
 	PlannedCents int64
+	// PacePlannedCents sums the lines' PaceCents: the rest of every category's
+	// Usual spending, limits ignored.
+	PacePlannedCents int64
 	// SpentOffCardCents is set only on the current month.
 	SpentOffCardCents *int64
 	// SavingCents is the larger of the month's actual saving and the Monthly contribution.
@@ -58,6 +62,9 @@ type MonthOutlook struct {
 	TotalCents  int64
 	// LeftoverCents is income minus total; nil when no income is set.
 	LeftoverCents *int64
+	// PaceLeftoverCents is the Leftover at current pace: income minus the total
+	// with PacePlannedCents in place of PlannedCents; nil when no income is set.
+	PaceLeftoverCents *int64
 	// Cycles is each card's bill cycle by Source id, only in the current month
 	// and only for a card whose bill is a cycle (not a count by month).
 	Cycles map[string]BillCycle
@@ -71,10 +78,15 @@ type BillCycle struct {
 	Closed                            bool
 }
 
-// PlannedLine is what is still planned for one Spending Category.
+// PlannedLine is what is still planned for one Spending Category: Cents by plan
+// (its limit, else its Usual spending, minus what already counts) and PaceCents
+// at current pace (always its Usual spending, minus what already counts), both
+// clamped at 0. Limited is true when the category has a Spending limit.
 type PlannedLine struct {
-	Category string
-	Cents    int64
+	Category  string
+	Cents     int64
+	PaceCents int64
+	Limited   bool
 }
 
 // Outlook works out `months` months from `from` (a UTC first-of-month). rows
@@ -83,12 +95,17 @@ type PlannedLine struct {
 //
 // limits are the Spending limits by category; today is the real day (zero when
 // unknown), and its month is the only one with SpentOffCardCents.
-// Planned for a category is its limit, or without a limit its baseline (the
-// average of its spend in the 3 months before current, see plannedBaseline, the
-// same for every month of the horizon; a negative one plans 0), minus what already counts for it in the
-// month (every row, card or not, plus the installments still to come; in the
-// current month the rows the shown card bills hold and those off the cards),
-// the counted amount clamped at zero and the result too.
+// Two plans are worked out for each category. Planned by plan is its limit, or
+// without a limit its baseline (the Usual spending: the median of its spend in the
+// 3 months before current, see plannedBaseline, the same for every month of the
+// horizon; a negative one plans 0). Planned at current pace is always the
+// baseline, limits ignored. Each subtracts what already counts for the category
+// in the month (every row, card or not, plus the installments still to come; in
+// the current month the rows the shown card bills hold and those off the cards),
+// the counted amount clamped at zero and the result too. A category is listed
+// when either plan is above 0. LeftoverCents is the Leftover by plan;
+// PaceLeftoverCents is the Leftover at current pace, the same sum with the pace plan
+// (both nil without income).
 //
 // contribution is the Monthly contribution (0 when none). Each month puts aside
 // the larger of its actual saving (never below 0) and the contribution, so the
@@ -96,7 +113,7 @@ type PlannedLine struct {
 // month's Expenses on Sources that are not cards, without those a Bill payment
 // points to: the paid Bill is already in the other Bills.
 //
-// shortcut: a Bill in a category with a limit counts in both in future months, upgrade when a Bill can name its Spending Category.
+// shortcut: a Bill in a category with a limit counts in both plans (by plan and at pace) in future months, upgrade when a Bill can name its Spending Category.
 //
 // In the month today is in, a card's bill is the one still to pay
 // (currentCardBill, ADR 0024), and later months leave out the charges it holds.
@@ -222,16 +239,19 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 			counted = MonthTotals(held).ByCategory
 		}
 		for _, c := range SpendingCategories {
-			plan, ok := limits[c]
-			if !ok {
-				plan = max(0, baseline[c])
+			plan, limited := limits[c]
+			pace := max(0, baseline[c])
+			if !limited {
+				plan = pace
 			}
-			if plan <= 0 {
+			if plan <= 0 && pace <= 0 {
 				continue
 			}
-			left := max(0, plan-max(0, counted[c]+toCome[i][c]))
-			o.Planned = append(o.Planned, PlannedLine{c, left})
+			spent := max(0, counted[c]+toCome[i][c])
+			left, paceLeft := max(0, plan-spent), max(0, pace-spent)
+			o.Planned = append(o.Planned, PlannedLine{Category: c, Cents: left, PaceCents: paceLeft, Limited: limited})
 			o.PlannedCents += left
+			o.PacePlannedCents += paceLeft
 		}
 		o.TotalCents += o.PlannedCents
 		if isCurrent(m) {
@@ -244,6 +264,8 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 		if income != nil { // income <= maxIncomeCents, so the subtraction cannot overflow
 			left := *income - o.TotalCents
 			o.LeftoverCents = &left
+			paceLeft := *income - (o.TotalCents - o.PlannedCents + o.PacePlannedCents)
+			o.PaceLeftoverCents = &paceLeft
 		}
 		out[i] = o
 	}

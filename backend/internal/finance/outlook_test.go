@@ -192,7 +192,7 @@ func TestOutlookPlannedSpending(t *testing.T) {
 		return Txn{SourceID: src, PostedOn: d(day), AmountCents: -cents, Type: typ, Category: cat, Linked: linked}
 	}
 	card := []Card{{ID: "a", Name: "a", BillDaysKnown: true}}
-	g := func(cents int64) []PlannedLine { return []PlannedLine{{"groceries", cents}} }
+	g := func(cents int64) []PlannedLine { return []PlannedLine{{"groceries", cents, 0, true}} }
 	i64 := func(v int64) *int64 { return &v }
 	type month struct {
 		planned  []PlannedLine
@@ -289,6 +289,8 @@ func TestOutlookSavingAndBaselinePlan(t *testing.T) {
 		planned      []PlannedLine
 		total        int64
 		leftover     *int64
+		pace         int64
+		paceLeftover *int64
 	}{
 		"actual saving above the contribution counts the actual":       {rows: []Txn{saving(900)}, contribution: 500, saving: 900, planned: none, total: 900},
 		"actual saving below the contribution counts the contribution": {rows: []Txn{saving(200)}, contribution: 500, saving: 500, planned: none, total: 500},
@@ -297,22 +299,34 @@ func TestOutlookSavingAndBaselinePlan(t *testing.T) {
 			rows: []Txn{saving(100), {SourceID: "checking", PostedOn: d("2026-11-05"), AmountCents: 400, Type: "saving"}}, planned: none,
 		},
 		"a category without a limit plans its baseline": {
-			last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 700}}, total: 700,
+			last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 700, 700, false}}, total: 700, pace: 700,
 		},
 		"a limit beats the baseline": {
-			limits: map[string]int64{"pets": 500}, last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 500}}, total: 500,
+			limits: map[string]int64{"pets": 500}, last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 500, 700, true}}, total: 500, pace: 700,
+		},
+		"a limit plans the limit by plan and the baseline at pace": {
+			limits: map[string]int64{"pets": 500}, last: map[string]int64{"pets": 700}, income: i64(10000),
+			planned: []PlannedLine{{"pets", 500, 700, true}}, total: 500, leftover: i64(9500), pace: 700, paceLeftover: i64(9300),
+		},
+		"a limit of 0 with a baseline is listed": {
+			limits: map[string]int64{"pets": 0}, last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 0, 700, true}}, pace: 700,
+		},
+		"both plans subtract the counted spend, clamped": {
+			rows: []Txn{cardBuy}, limits: map[string]int64{"pets": 250}, last: map[string]int64{"pets": 200}, income: i64(1000),
+			planned: []PlannedLine{{"pets", 0, 0, true}}, total: 300, leftover: i64(700), paceLeftover: i64(700),
 		},
 		"a negative baseline plans nothing": {last: map[string]int64{"pets": -50}, planned: none},
 		"a card purchase counts once: in the bill, and out of the plan": {
-			rows: []Txn{cardBuy}, last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 400}}, total: 700,
+			rows: []Txn{cardBuy}, last: map[string]int64{"pets": 700}, planned: []PlannedLine{{"pets", 400, 400, false}}, total: 700, pace: 400,
 		},
 		"the leftover subtracts the saving, and is negative when the month takes more": {
-			rows: []Txn{saving(900)}, income: i64(600), saving: 900, planned: none, total: 900, leftover: i64(-300),
+			rows: []Txn{saving(900)}, income: i64(600), saving: 900, planned: none, total: 900, leftover: i64(-300), paceLeftover: i64(-300),
 		},
 	} {
 		got := Outlook(c.rows, card, nil, [][]MonthBill{nil}, c.income, c.limits, c.last, c.contribution, nov, nov, 1)[0]
-		if got.SavingCents != c.saving || got.TotalCents != c.total || !reflect.DeepEqual(got.Planned, c.planned) || !reflect.DeepEqual(got.LeftoverCents, c.leftover) {
-			t.Errorf("%s: saving %d total %d planned %v leftover %v", name, got.SavingCents, got.TotalCents, got.Planned, got.LeftoverCents)
+		if got.SavingCents != c.saving || got.TotalCents != c.total || !reflect.DeepEqual(got.Planned, c.planned) || !reflect.DeepEqual(got.LeftoverCents, c.leftover) ||
+			got.PacePlannedCents != c.pace || !reflect.DeepEqual(got.PaceLeftoverCents, c.paceLeftover) {
+			t.Errorf("%s: saving %d total %d planned %v leftover %v pace %d paceLeftover %v", name, got.SavingCents, got.TotalCents, got.Planned, got.LeftoverCents, got.PacePlannedCents, got.PaceLeftoverCents)
 		}
 	}
 }
@@ -466,13 +480,16 @@ func TestOutlookCurrentCardBill(t *testing.T) {
 		"a bank bill due next month counts once, in the current month, while unpaid": {
 			today: "2026-11-30", rows: []Txn{nubank("2026-11-10", 300), nubank("2026-11-29", 40)},
 			cards: card(28, 5, StoredBill{ClosesOn: d("2026-11-28"), DueOn: d("2026-12-05"), TotalCents: 1000}),
-			want: func() CardBill { due, cl := d("2026-12-05"), d("2026-11-28"); return CardBill{"a", "a", 1000, true, true, &due, &cl} }(),
+			want: func() CardBill {
+				due, cl := d("2026-12-05"), d("2026-11-28")
+				return CardBill{"a", "a", 1000, true, true, &due, &cl}
+			}(),
 			next: open(0),
 		},
 		"a paid bank bill due next month is not counted again there": {
 			today: "2026-11-30", rows: []Txn{nubank("2026-11-10", 300), nubank("2026-11-29", 40)},
 			cards: card(28, 5, StoredBill{ClosesOn: d("2026-11-28"), DueOn: d("2026-12-05"), TotalCents: 1000, Paid: true}),
-			want: open(40), next: open(0),
+			want:  open(40), next: open(0),
 		},
 		"no bank bills and no days: what counts in the month": {
 			today: "2026-11-13", rows: []Txn{{SourceID: "a", PostedOn: d("2026-11-03"), Posted: d("2026-11-03"), AmountCents: -70, Type: "expense"}},
@@ -509,7 +526,7 @@ func TestOutlookCurrentPlannedSubtractsTheShownBills(t *testing.T) {
 		{SourceID: "checking", PostedOn: d("2026-11-03"), Posted: d("2026-11-03"), AmountCents: -100, Type: "expense", Category: "groceries"},
 	}
 	got := Outlook(rows, cards, nil, [][]MonthBill{nil}, nil, map[string]int64{"groceries": 1000}, nil, 0, d("2026-11-13"), nov, 1)[0]
-	if want := []PlannedLine{{"groceries", 400}}; !reflect.DeepEqual(got.Planned, want) {
+	if want := []PlannedLine{{"groceries", 400, 0, true}}; !reflect.DeepEqual(got.Planned, want) {
 		t.Errorf("planned = %v, want %v: the limit less the bills' 500 and the 100 off the card", got.Planned, want)
 	}
 }

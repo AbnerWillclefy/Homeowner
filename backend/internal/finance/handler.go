@@ -311,6 +311,9 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 		}
 		m.PlannedCents, m.SpentOffCardCents, m.SavingCents = o.PlannedCents, o.SpentOffCardCents, o.SavingCents
 		m.OtherInstallmentsCents, m.TotalCents, m.LeftoverCents = o.OtherInstallmentsCents, o.TotalCents, o.LeftoverCents
+		if o.PaceLeftoverCents != nil {
+			m.PacePlannedCents, m.PaceLeftoverCents = &o.PacePlannedCents, o.PaceLeftoverCents
+		}
 		month := from.AddDate(0, i, 0)
 		if o.LeftoverCents != nil {
 			// the planned spending is what the days left are for, so it is not taken out of them twice
