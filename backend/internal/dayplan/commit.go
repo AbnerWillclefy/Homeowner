@@ -308,6 +308,8 @@ func mayDoIn(st loaded, residentID, taskID, reason string) error {
 	for _, v := range allocation.Check(plan, sub) {
 		switch v.Kind {
 		case allocation.OverEnergy:
+		case allocation.NotResponsible:
+			// Responsibility binds Allocation, not Residents (docs/adr/0025).
 		case allocation.WrongResidentCount:
 			// Only a re-plan asks about a two-person Task, one half at a time.
 		case allocation.BrokenRestriction, allocation.WeekdayNotAllowed:
