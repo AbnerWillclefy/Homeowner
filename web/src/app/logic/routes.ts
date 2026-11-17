@@ -24,6 +24,7 @@ export const residentPath = (id: string): string => `${RESIDENTS_PREFIX}/${encod
 export const SIGN_IN_PATH = "/signin";
 export const SIGN_UP_PATH = "/signup";
 export const CONFIRM_PATH = "/confirm";
+export const FORGOT_PASSWORD_PATH = "/forgot-password";
 export const WELCOME_PREFIX = "/welcome";
 
 /** The tabs, in nav order. Finances is the fifth, shown in the bar only with the `finance` flag (see financeAccess). */
@@ -37,7 +38,7 @@ export const SHELL_PATHS = [TODAY_PATH, CHORES_PATH, HOME_PATH, ME_PATH, FINANCE
 export const SHELL_SUBPATHS = [ME_EDIT_PATH, FINANCES_SPENDING_PATH, FINANCES_BILLS_PATH, FINANCES_SETTINGS_PATH, FINANCES_SAVINGS_PATH] as const;
 
 /** The full-screen signed-out screens. */
-export const AUTH_PATHS = [SIGN_IN_PATH, SIGN_UP_PATH, CONFIRM_PATH] as const;
+export const AUTH_PATHS = [SIGN_IN_PATH, SIGN_UP_PATH, CONFIRM_PATH, FORGOT_PASSWORD_PATH] as const;
 
 /** Drops the search, the hash and a trailing slash, so `/chores/?x=1#y` is `/chores`. */
 export function normalizePath(path: string): string {
@@ -107,7 +108,7 @@ export function safeWantedPath(value: unknown): string | null {
   return p;
 }
 
-/** What the three auth screens carry in router state between hops. */
+/** What the four auth screens carry in router state between hops. */
 export interface AuthRouteState {
   /** Where the person was headed before they were sent to sign in. */
   from?: string;

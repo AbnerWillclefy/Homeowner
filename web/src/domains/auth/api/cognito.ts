@@ -46,7 +46,8 @@ const FAILURE_BY_TYPE: Record<string, CognitoFailure["kind"]> = {
   TooManyFailedAttemptsException: "rate-limited",
 };
 
-type Called = { ok: true; body: Record<string, unknown> } | { ok: false; failure: CognitoFailure };
+/** `type` is Cognito's error name, for the few calls that fold some of them into other answers. Never shown. */
+type Called = { ok: true; body: Record<string, unknown> } | { ok: false; failure: CognitoFailure; type?: string };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -80,7 +81,7 @@ async function call(target: string, payload: Record<string, unknown>): Promise<C
 
   if (!res.ok) {
     const type = typeof body.__type === "string" ? body.__type.split("#").pop()! : "";
-    return { ok: false, failure: { kind: FAILURE_BY_TYPE[type] ?? "error" } };
+    return { ok: false, failure: { kind: FAILURE_BY_TYPE[type] ?? "error" }, type };
   }
   return { ok: true, body };
 }
@@ -104,6 +105,27 @@ export function confirmSignUp(email: string, code: string): Promise<CognitoResul
 
 export function resendCode(email: string): Promise<CognitoResult> {
   return simple("ResendConfirmationCode", { Username: email });
+}
+
+/**
+ * Asks Cognito to email a reset code. Only a rate limit or a lost connection is reported: every other answer is
+ * "ok", so the screen reads the same whether or not the email has a login. An unknown email already gets a 200
+ * (`prevent_user_existence_errors`), but an unconfirmed sign-up gets `InvalidParameterException`, and showing
+ * that would reveal it.
+ */
+export async function forgotPassword(email: string): Promise<CognitoResult> {
+  const result = await call("ForgotPassword", { Username: email });
+  if (result.ok) return { kind: "ok" };
+  return result.failure.kind === "rate-limited" || result.failure.kind === "network" ? result.failure : { kind: "ok" };
+}
+
+const HIDDEN_RESET_ERRORS = new Set(["UserNotFoundException", "NotAuthorizedException", "UserNotConfirmedException"]);
+
+/** Sets the new password with the emailed code. An unknown or unconfirmed email reads as a wrong code, never as itself. */
+export async function confirmForgotPassword(email: string, code: string, newPassword: string): Promise<CognitoResult> {
+  const result = await call("ConfirmForgotPassword", { Username: email, ConfirmationCode: code, Password: newPassword });
+  if (result.ok) return { kind: "ok" };
+  return result.type && HIDDEN_RESET_ERRORS.has(result.type) ? { kind: "wrong-code" } : result.failure;
 }
 
 function authResult(body: Record<string, unknown>): Record<string, unknown> | null {

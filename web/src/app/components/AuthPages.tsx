@@ -1,10 +1,11 @@
 import { Navigate, useLocation, useNavigate } from "react-router";
 import { Confirm } from "../../domains/auth/components/Confirm";
+import { ForgotPassword } from "../../domains/auth/components/ForgotPassword";
 import { SignIn } from "../../domains/auth/components/SignIn";
 import { SignUp } from "../../domains/auth/components/SignUp";
 import { useToast } from "../../shared/ui/useToast";
 import { useAppAuth } from "./AuthProvider";
-import { CONFIRM_PATH, SIGN_IN_PATH, SIGN_UP_PATH, authState, confirmNeedsEmail, type AuthRouteState } from "../logic/routes";
+import { CONFIRM_PATH, FORGOT_PASSWORD_PATH, SIGN_IN_PATH, SIGN_UP_PATH, authState, confirmNeedsEmail, type AuthRouteState } from "../logic/routes";
 
 /** The state of the screen we are on; every hop forwards `from` (see authState). */
 function useAuthNav() {
@@ -23,6 +24,7 @@ export function SignInPage() {
       logIn={auth.logIn}
       onNeedsConfirm={(email) => go(CONFIRM_PATH, { email })}
       onNeedsSignUp={() => go(SIGN_UP_PATH)}
+      onForgotPassword={() => go(FORGOT_PASSWORD_PATH)}
     />
   );
 }
@@ -53,6 +55,24 @@ export function ConfirmPage() {
         go(SIGN_IN_PATH, { email });
       }}
       onBack={() => go(SIGN_UP_PATH)}
+    />
+  );
+}
+
+export function ForgotPasswordPage() {
+  const auth = useAppAuth();
+  const toast = useToast();
+  const { go } = useAuthNav();
+  return (
+    <ForgotPassword
+      request={auth.requestReset}
+      reset={auth.confirmReset}
+      onReset={(email) => {
+        // A toast outlives this screen, so it is still there on the sign-in screen.
+        toast.show({ messageKey: "signIn.passwordChangedNotice", tone: "success" });
+        go(SIGN_IN_PATH, { email });
+      }}
+      onBack={() => go(SIGN_IN_PATH)}
     />
   );
 }

@@ -18,11 +18,12 @@ interface Props {
   /** The email was never confirmed: go to the code screen, where a new code can be sent. */
   onNeedsConfirm(email: string): void;
   onNeedsSignUp(): void;
+  onForgotPassword(): void;
 }
 
 const FORM = "signin";
 
-export function SignIn({ initialEmail, logIn, onNeedsConfirm, onNeedsSignUp }: Props) {
+export function SignIn({ initialEmail, logIn, onNeedsConfirm, onNeedsSignUp, onForgotPassword }: Props) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   // The failure, not its words, so a language switch re-words it.
@@ -66,6 +67,11 @@ export function SignIn({ initialEmail, logIn, onNeedsConfirm, onNeedsSignUp }: P
             required
             {...fieldError(problem, "password", FORM)}
           />
+          <p className="mt-1">
+            <Button variant="link" onClick={onForgotPassword}>
+              {t("signIn.forgotPassword")}
+            </Button>
+          </p>
           <FormError form={FORM}>{problem && failureMessage(t, problem, config.passwordPolicy)}</FormError>
           <Button type="submit" fullWidth className="mt-4" pending={busy}>
             {t("signIn.submit")}

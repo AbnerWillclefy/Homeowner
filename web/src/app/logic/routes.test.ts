@@ -70,6 +70,7 @@ describe("safeWantedPath", () => {
     ["a backslash trick", "/\\evil.test"],
     ["an auth path", "/signin"],
     ["the confirm path", "/confirm/"],
+    ["the forgot-password path", "/forgot-password"],
     ["an onboarding path", "/welcome/home"],
     ["the welcome root", "/welcome"],
     ["a relative path", "chores"],

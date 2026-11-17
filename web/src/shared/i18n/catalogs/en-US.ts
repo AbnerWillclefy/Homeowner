@@ -943,6 +943,8 @@ export const enUS = {
   "signIn.heading": "Sign in",
   "signIn.hint": "See what is yours to do today.",
   "signIn.confirmedNotice": "Your email is confirmed. Sign in to start.",
+  "signIn.forgotPassword": "Forgot password?",
+  "signIn.passwordChangedNotice": "Password changed. Sign in with your new password.",
   "signIn.emailLabel": "Email",
   "signIn.passwordLabel": "Password",
   "signIn.submit": "Sign in",
@@ -957,6 +959,17 @@ export const enUS = {
   "confirm.resend": "Send a new code",
   "confirm.useOtherEmail": "Use a different email",
   "confirm.resent": "A new code is on its way. Use the latest email.",
+
+  // Reset password
+  "forgot.heading": "Reset your password",
+  "forgot.intro": "Enter the email you sign in with and we will send you a code.",
+  "forgot.send": "Send code",
+  "forgot.sent": "If {email} has a login, we sent a code to it. It can take a few minutes; check your spam folder too.",
+  "forgot.newPasswordLabel": "New password",
+  "forgot.submit": "Change password",
+  "forgot.startAgain": "Start again",
+  "forgot.back": "Back to sign in",
+  "forgot.failure.expiredCode": "That code has expired. Choose Start again to get a new one.",
 
   // Signed in
   "signedIn.heading": "You are signed in",
