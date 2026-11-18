@@ -27,6 +27,8 @@ describe("editFor", () => {
 
 describe("editFor with a Note", () => {
   it("sends a changed Note, trimmed", () => expect(editFor(tx(), "expense", "groceries", "  Fone ")).toEqual({ note: "Fone" }));
+  it("turns a pasted tab into a space, so the server never sees a control character", () =>
+    expect(editFor(tx(), "expense", "groceries", "Fone\tBluetooth")).toEqual({ note: "Fone Bluetooth" }));
   it("sends \"\" to clear it", () => expect(editFor(tx({ note: "Fone" }), "expense", "groceries", "")).toEqual({ note: "" }));
   it("sends nothing when only whitespace changed", () => {
     expect(editFor(tx({ note: "Fone" }), "expense", "groceries", " Fone  ")).toBeNull();

@@ -3,15 +3,18 @@ import type { SpendingCategory } from "./categories";
 
 export const NOTE_MAX = 200;
 
+/** The Note as sent: control characters (a pasted tab) become spaces, since the server refuses them. */
+const clean = (text: string) => text.replace(/\p{Cc}/gu, " ").trim();
+
 /** Whether the Note is over the server's limit. It counts code points, as the server does, not UTF-16 units. */
-export const noteTooLong = (text: string) => [...text.trim()].length > NOTE_MAX;
+export const noteTooLong = (text: string) => [...clean(text)].length > NOTE_MAX;
 
 /** The PATCH body for what the sheet holds, or null when nothing changed. A category goes only with an Expense; the API refuses it otherwise. */
 export function editFor(tx: Transaction, type: TransactionType, category: SpendingCategory, note: string): TransactionEdit | null {
   const edit: TransactionEdit = {};
   if (type !== tx.type) edit.type = type;
   if (type === "expense" && (type !== tx.type || category !== (tx.spendingCategory ?? "other"))) edit.spendingCategory = category;
-  if (note.trim() !== (tx.note ?? "")) edit.note = note.trim();
+  if (clean(note) !== (tx.note ?? "")) edit.note = clean(note);
   return Object.keys(edit).length > 0 ? edit : null;
 }
 

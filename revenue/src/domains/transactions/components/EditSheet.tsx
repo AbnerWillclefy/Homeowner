@@ -39,7 +39,7 @@ export function EditSheet({ tx, onSave, onClose }: { tx: Transaction; onSave(edi
   return (
     <Sheet
       open
-      onOpenChange={(open) => !open && onClose()}
+      onOpenChange={(open) => !open && !saving && onClose()}
       title={tx.description}
       subtitle={`${tx.sourceName} · ${date}`}
       closeLabel={t("app.close")}

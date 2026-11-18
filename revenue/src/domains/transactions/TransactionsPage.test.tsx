@@ -308,6 +308,21 @@ describe("editing", () => {
     expect(within(row).queryByText("Transfer")).toBeNull();
   });
 
+  it("ignores Close while the save is pending, then shows the failure inside the sheet", async () => {
+    width(true);
+    month([MERCADO]);
+    let answer: (r: { kind: "error" }) => void = () => {};
+    patch.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    open();
+    const dialog = await editRow("Mercado");
+    await userEvent.click(within(dialog).getByRole("radio", { name: "Transfer" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    answer({ kind: "error" });
+    expect((await within(screen.getByRole("dialog")).findByRole("alert")).textContent).toContain("We could not save");
+  });
+
   it("says the row is gone and reads the month again when the API cannot find it", async () => {
     width(true);
     month([MERCADO]);
