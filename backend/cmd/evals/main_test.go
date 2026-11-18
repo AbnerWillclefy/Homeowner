@@ -48,13 +48,13 @@ func TestRunsTheModelOncePerDayAndRun(t *testing.T) {
 	if err := run(context.Background(), []string{days, "-runs=2"}, e, &out, &errOut, newClient); err != nil {
 		t.Fatal(err)
 	}
-	if fake.Calls() != 20 {
-		t.Errorf("calls = %d, want 10 days x 2 runs", fake.Calls())
+	if fake.Calls() != 22 {
+		t.Errorf("calls = %d, want 11 days x 2 runs", fake.Calls())
 	}
 	if gotKey != "sk-secret" || gotModel != "some-model" {
 		t.Errorf("client built with %q, %q", gotKey, gotModel)
 	}
-	if !strings.Contains(errOut.String(), "20 model calls") {
+	if !strings.Contains(errOut.String(), "22 model calls") {
 		t.Errorf("the call count must be printed before starting:\n%s", errOut.String())
 	}
 	if !strings.Contains(out.String(), "model: some-model") {
@@ -79,7 +79,7 @@ func TestRefusesTooManyCallsWithoutYes(t *testing.T) {
 	if err := run(context.Background(), []string{days, "-runs=11", "-yes"}, e, &out, &errOut, newClient); err != nil {
 		t.Errorf("-yes should allow it: %v", err)
 	}
-	if fake.Calls() != 110 {
-		t.Errorf("calls = %d, want 110", fake.Calls())
+	if fake.Calls() != 121 {
+		t.Errorf("calls = %d, want 121", fake.Calls())
 	}
 }

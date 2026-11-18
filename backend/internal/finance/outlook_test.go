@@ -471,7 +471,7 @@ func TestOutlookCurrentCardBill(t *testing.T) {
 		"no bank bills: the closed bill until its typed due day, its installments already charged": {
 			today: "2026-11-30", rows: []Txn{nubank("2026-10-27", 100), nubank("2026-10-30", 200), nubank("2026-11-29", 40)},
 			plans: []Plan{{Name: "TV", Number: 2, Total: 3, AmountCents: 50, Month: d("2026-10-01"), SourceID: "a", Card: true}},
-			cards: card(28, 5), want: open(200), next: open(0),
+			cards: card(28, 5), want: open(200), next: open(40), // the 29 November charge is on the bill due 5 January
 		},
 		"a bank that has not reported the latest closing: the typed days": {
 			today: "2026-11-23", rows: []Txn{charge("2026-10-25", 200), charge("2026-11-21", 50)}, cards: card(20, 28, octBill),
@@ -484,7 +484,7 @@ func TestOutlookCurrentCardBill(t *testing.T) {
 				due, cl := d("2026-12-05"), d("2026-11-28")
 				return CardBill{"a", "a", 1000, true, true, &due, &cl, false}
 			}(),
-			next: open(0),
+			next: open(40), // December counts the bill after it, holding the 29 November charge
 		},
 		"a paid bank bill due next month is not counted again there": {
 			today: "2026-11-30", rows: []Txn{nubank("2026-11-10", 300), nubank("2026-11-29", 40)},
@@ -570,4 +570,118 @@ func cycleString(c BillCycle) string {
 		return t.Format(time.DateOnly)
 	}
 	return f(c.HeldFrom) + ".." + f(c.HeldTo) + " closes " + f(c.ClosesOn) + " due " + f(c.DueOn) + map[bool]string{true: " closed", false: ""}[c.Closed]
+}
+
+// Each month after the current one counts the next bill after the one the current month counts, so
+// no month of the horizon is left without a bill and no charge counts twice. Card "a" closes on the
+// 28th and is due on the 5th (Nubank); the cases are checked over every month of the horizon.
+func TestOutlookLaterMonthsFollowTheBillTheCurrentMonthCounts(t *testing.T) {
+	t.Parallel()
+	d := func(s string) time.Time { v, _ := time.Parse(time.DateOnly, s); return v }
+	buy := func(card string, closeDay, dueDay int, posted string, cents int64) Txn {
+		p := d(posted)
+		return Txn{SourceID: card, PostedOn: CountsOn(p, "credit_card", closeDay, dueDay), Posted: p, AmountCents: -cents, Type: "expense"}
+	}
+	nubank := func(posted string, cents int64) Txn { return buy("a", 28, 5, posted, cents) }
+	nu := func(bills ...StoredBill) []Card {
+		return []Card{{ID: "a", Name: "a", CloseDay: 28, DueDay: 5, BillDaysKnown: true, Bills: bills}}
+	}
+	plan := func(card, month string, number, total int) Plan {
+		return Plan{Name: "TV", Number: number, Total: total, AmountCents: 50, Month: d(month), SourceID: card, Card: true}
+	}
+	paidOct := StoredBill{ClosesOn: d("2026-10-28"), DueOn: d("2026-11-05"), TotalCents: 999, Paid: true}
+	paidNov := StoredBill{ClosesOn: d("2026-11-28"), DueOn: d("2026-12-05"), TotalCents: 1000, Paid: true}
+	closedNov := paidNov
+	closedNov.Paid = false
+	paidNovOct := paidOct
+	for name, c := range map[string]struct {
+		today, from string
+		rows        []Txn
+		cards       []Card
+		plans       []Plan
+		want        map[string][]int64 // card id -> its bill in each month
+		sweep       bool               // the bills over the horizon add up to the charges
+	}{
+		"the open bill is due next month: December counts the bill closing 28 December": {
+			today: "2026-11-17", from: "2026-11-01", cards: nu(paidNovOct),
+			rows: []Txn{nubank("2026-11-10", 100), nubank("2026-11-20", 200), nubank("2026-11-28", 1600), nubank("2026-11-29", 400), nubank("2026-12-10", 800)},
+			want: map[string][]int64{"a": {300, 2800, 0}}, sweep: true,
+		},
+		"installments follow the bill: each one is counted in exactly one month": {
+			today: "2026-11-17", from: "2026-11-01", cards: nu(paidNovOct),
+			plans: []Plan{plan("a", "2026-11-01", 1, 3)},
+			want:  map[string][]int64{"a": {50, 50, 0}},
+		},
+		"a closed bill due this month keeps the next month's own bill": {
+			today: "2026-11-23", from: "2026-11-01",
+			cards: []Card{{ID: "a", Name: "a", CloseDay: 20, DueDay: 28, BillDaysKnown: true, Bills: []StoredBill{{ClosesOn: d("2026-11-20"), DueOn: d("2026-11-28"), TotalCents: 273363}}}},
+			rows:  []Txn{buy("a", 20, 28, "2026-11-21", 50), buy("a", 20, 28, "2026-12-05", 70)},
+			plans: []Plan{plan("a", "2026-11-01", 1, 2)},
+			want:  map[string][]int64{"a": {273363, 170, 0}},
+		},
+		"a closed bill due next month: December counts the bill after it": {
+			today: "2026-11-30", from: "2026-11-01", cards: nu(closedNov),
+			rows: []Txn{nubank("2026-11-10", 1000), nubank("2026-11-28", 60), nubank("2026-11-29", 40)},
+			want: map[string][]int64{"a": {1000, 100, 0}}, sweep: true,
+		},
+		"a bank due date past the bill lead is clamped, not read out of range": {
+			today: "2026-11-30", from: "2026-11-01",
+			cards: nu(StoredBill{ClosesOn: d("2026-11-28"), DueOn: d("2027-03-05"), TotalCents: 1000}),
+			plans: []Plan{plan("a", "2026-11-01", 1, 6)},
+			want:  map[string][]int64{"a": {1000, 50, 50}},
+		},
+		"a paid bill with the open one due in two months": {
+			today: "2026-11-30", from: "2026-11-01", cards: nu(paidNov),
+			rows: []Txn{nubank("2026-11-29", 40), nubank("2026-12-10", 80), nubank("2026-12-28", 500), nubank("2027-01-10", 700), nubank("2027-01-28", 900)},
+			want: map[string][]int64{"a": {120, 1200, 900}}, sweep: true,
+		},
+		"no typed days and bank bills: no shift": {
+			today: "2026-11-13", from: "2026-11-01",
+			cards: []Card{{ID: "a", Name: "a", Bills: []StoredBill{{ClosesOn: d("2026-11-03"), DueOn: d("2026-11-10"), TotalCents: 7}}}},
+			rows:  []Txn{buy("a", 0, 0, "2026-11-05", 100), buy("a", 0, 0, "2026-12-03", 200), buy("a", 0, 0, "2027-01-04", 300)},
+			want:  map[string][]int64{"a": {100, 200, 300}},
+		},
+		"no typed days and no bank bills: no shift": {
+			today: "2026-11-13", from: "2026-11-01", cards: []Card{{ID: "a", Name: "a"}},
+			rows: []Txn{buy("a", 0, 0, "2026-11-05", 100), buy("a", 0, 0, "2026-12-03", 200), buy("a", 0, 0, "2027-01-04", 300)},
+			want: map[string][]int64{"a": {100, 200, 300}},
+		},
+		"two cards shift on their own": {
+			today: "2026-11-17", from: "2026-11-01",
+			cards: []Card{nu(paidNovOct)[0], {ID: "b", Name: "b", CloseDay: 20, DueDay: 28, BillDaysKnown: true}},
+			rows: []Txn{nubank("2026-11-10", 100), nubank("2026-11-29", 400),
+				buy("b", 20, 28, "2026-11-10", 10), buy("b", 20, 28, "2026-11-25", 20), buy("b", 20, 28, "2026-12-25", 30)},
+			want: map[string][]int64{"a": {100, 400, 0}, "b": {10, 20, 30}},
+		},
+		"across the year boundary": {
+			today: "2026-12-17", from: "2026-12-01", cards: nu(paidNov),
+			rows: []Txn{nubank("2026-12-10", 100), nubank("2026-12-29", 200), nubank("2027-01-10", 300), nubank("2027-01-28", 400)},
+			want: map[string][]int64{"a": {100, 500, 400}}, sweep: true,
+		},
+	} {
+		got := Outlook(c.rows, c.cards, nil, c.plans, [][]MonthBill{nil, nil, nil}, nil, nil, nil, 0, d(c.today), d(c.from), 3)
+		if len(got) != 3 {
+			t.Errorf("%s: %d months, want 3", name, len(got))
+			continue
+		}
+		var sum, charged int64
+		for i, m := range got {
+			if len(m.Cards) != len(c.cards) {
+				t.Errorf("%s: month %d has %d cards, want %d", name, i, len(m.Cards), len(c.cards))
+				continue
+			}
+			for _, cb := range m.Cards {
+				sum += cb.AmountCents
+				if w := c.want[cb.SourceID][i]; cb.AmountCents != w {
+					t.Errorf("%s: card %s month %d = %d, want %d", name, cb.SourceID, i, cb.AmountCents, w)
+				}
+			}
+		}
+		for _, r := range c.rows {
+			charged -= r.AmountCents
+		}
+		if c.sweep && sum != charged {
+			t.Errorf("%s: bills add up to %d, the charges to %d", name, sum, charged)
+		}
+	}
 }

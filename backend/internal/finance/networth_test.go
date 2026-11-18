@@ -65,14 +65,30 @@ func TestUnpaidCardBills(t *testing.T) {
 	}
 }
 
-func TestUnpaidCardBillsDueBeforeClose(t *testing.T) {
+// A card closing on the 28th and due on the 5th has its current month's bill due next month, so each
+// later month holds the bill due one month after its own.
+func TestUnpaidCardBillsShiftedMonths(t *testing.T) {
 	t.Parallel()
 	d := func(s string) time.Time { v, _ := time.Parse(time.DateOnly, s); return v }
-	// A card closing on the 28th and due on the 5th: the open bill is due two months on, and the current month's always counts.
-	outlook := []MonthOutlook{{Cards: []CardBill{{SourceID: "a", AmountCents: 1}}}, {Cards: []CardBill{{SourceID: "a", AmountCents: 2}}}, {Cards: []CardBill{{SourceID: "a", AmountCents: 4}}}}
-	got := UnpaidCardBills([]Card{{ID: "a", CloseDay: 28, DueDay: 5}}, outlook, d("2026-11-01"), d("2026-11-30"))
-	if want := []int64{1, 2, 4}; !reflect.DeepEqual(got, want) {
-		t.Errorf("UnpaidCardBills = %v, want %v", got, want)
+	due := d("2026-12-05")
+	outlook := []MonthOutlook{
+		{Cards: []CardBill{{SourceID: "a", AmountCents: 1}}, Cycles: map[string]BillCycle{"a": {DueOn: &due}}},
+		{Cards: []CardBill{{SourceID: "a", AmountCents: 2}}},
+		{Cards: []CardBill{{SourceID: "a", AmountCents: 4}}},
+	}
+	cards := []Card{{ID: "a", CloseDay: 28, DueDay: 5}}
+	for name, c := range map[string]struct {
+		today string
+		want  []int64
+	}{
+		// The December slot holds the bill due 5 January, which has not opened: only installments.
+		"the open bill is due next month: the bill after it is skipped": {"2026-11-17", []int64{1}},
+		// On the 30th the closed bill is due 5 December and the open one 5 January, which still counts.
+		"a closed bill due next month: the open one after it counts": {"2026-11-30", []int64{1, 2}},
+	} {
+		if got := UnpaidCardBills(cards, outlook, d("2026-11-01"), d(c.today)); !reflect.DeepEqual(got, c.want) {
+			t.Errorf("%s: UnpaidCardBills = %v, want %v", name, got, c.want)
+		}
 	}
 }
 
