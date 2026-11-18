@@ -12,8 +12,7 @@ import { QueryClientProvider, type FetchQueryOptions } from "@tanstack/react-que
 import { createQueryClient } from "./shared/query/queryClient";
 import { getBoot } from "./app/api/bootApi";
 import { boot } from "./app/logic/boot";
-import { financeLaunchReads, launchReads } from "./app/logic/launchReads";
-import { currentMonth } from "./domains/finance/logic/month";
+import { launchReads } from "./app/logic/launchReads";
 import { browserSession } from "./domains/auth/logic/browserSession";
 // Only the latin subset and the weights in use; the bare package would pull every subset.
 import "@fontsource/nunito/latin-400.css";
@@ -35,12 +34,8 @@ const queryClient = createQueryClient();
 const reads = launchReads(window.location.pathname, browserSession.load() !== null);
 if (reads.length > 0) {
   // One /boot request answers them all; the reads below are served from it, or go to their own endpoint when
-  // their section is missing or failed. The finance reads follow once it answers, so Finances opens from the cache.
-  const month = currentMonth(new Date());
-  void boot.start(() => getBoot(month)).then(async (sections) => {
-    if (sections === null) return;
-    for (const read of await financeLaunchReads(sections, month)) void queryClient.prefetchQuery(read as FetchQueryOptions);
-  });
+  // their section is missing or failed.
+  void boot.start(() => getBoot());
 }
 for (const read of reads) {
   // Each member of the union is valid on its own; TypeScript cannot pick one overload for the union.

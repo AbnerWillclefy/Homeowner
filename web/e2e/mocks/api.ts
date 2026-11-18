@@ -15,7 +15,7 @@ type Equal<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
 export const stepsMatchApp: Equal<typeof STEPS, typeof ONBOARDING_STEPS> = true;
 
 export interface FakeState {
-  user: { id: string; email: string; displayName?: string; photoUrl?: string; finance?: boolean };
+  user: { id: string; email: string; displayName?: string; photoUrl?: string };
   /** The last step completed, not the step to show. Null when onboarding has not started. */
   onboardingStored: string | null;
   home: Home | null;
@@ -44,99 +44,6 @@ export interface FakeState {
   streak?: number;
   /** Whether `GET /home/streak` says today already grew the Streak. Absent means false. */
   streakTodayGrew?: boolean;
-  /** What `GET /me/finance` answers. Absent means no credentials, no Sources. */
-  finance?: {
-    configured: boolean;
-    /** `name` is the shown name; `bankName` is the bank's, absent until the first rename (the status sends `name` then). */
-    sources: { id: string; name: string; bankName?: string; kind: string; currency: string; closeDay?: number | null; dueDay?: number | null }[];
-    importing: boolean;
-    lastSyncedAt: string | null;
-    /**
-     * What `GET /me/finance/bills` lists. `paid` maps `YYYY-MM` to who paid that month. Absent means none. `paidCents`
-     * maps a month to what was paid (absent: the expected amount); `createdMonth` hides the Bill from earlier months.
-     */
-    bills?: {
-      id: string;
-      name: string;
-      expectedCents: number;
-      dueDay: number;
-      paid: Record<string, "hand" | "bank">;
-      paidCents?: Record<string, number>;
-      createdMonth?: string;
-    }[];
-    /** What `GET /me/finance/bill-suggestions` proposes, less the keys in `dismissedSuggestions`. Absent means none. */
-    billSuggestions?: { merchantKey: string; name: string; amountCents: number; dueDay: number }[];
-    /** The merchant keys `POST /me/finance/bill-suggestions/dismissals` stored. */
-    dismissedSuggestions?: string[];
-    /** The day (`YYYY-MM-DD`) `GET /me/finance/daily` stops the running month at, as the server stops at its own today. Absent means the real one. */
-    today?: string;
-    /** The Spending limits (category to cents), the same for every month; `PUT /me/finance/budgets/{category}` sets them. Absent means none. */
-    limits?: Record<string, number>;
-    /** Monthly income, which `PUT /me/finance/income` sets. Absent means none. */
-    monthlyIncomeCents?: number | null;
-    /** The months `GET /me/finance/commitments` lists; the fake adds `leftoverCents` (income minus `totalCents`) while an income is set. Absent means none. */
-    commitments?: {
-      month: string;
-      installments: { name: string; number: number; total: number; amountCents: number }[];
-      cards: { sourceId: string; name: string; amountCents: number; billDaysKnown: boolean }[];
-      otherBills: { id: string; name: string; cents: number; paid: boolean }[];
-      otherInstallmentsCents: number;
-      planned: { category: string; cents: number }[];
-      plannedCents: number;
-      /** Only the current month has it. */
-      spentOffCardCents?: number;
-      /** The larger of the month's saving and the Monthly contribution, counted in `totalCents`. */
-      savingCents?: number;
-      totalCents: number;
-    }[];
-    /** What `GET /me/finance/savings` answers and the savings writes change. Absent means nothing set and no rows. */
-    savings?: {
-      reserveTargetCents: number | null;
-      contributionBaseCents: number | null;
-      reserveSharePercent: number | null;
-      investments: { id: string; name: string; valueCents: number; serves: "reserve" | "goals" }[];
-      /**
-       * In the User's order. `targetMonth` is `YYYY-MM` or null. The progress fields default to nothing saved, no
-       * monthly amount, no expected month and not late, as a User with no Monthly contribution reads.
-       */
-      goals: {
-        id: string;
-        name: string;
-        targetCents: number;
-        targetMonth: string | null;
-        savedCents?: number;
-        monthCents?: number | null;
-        expectedMonth?: string | null;
-        late?: boolean;
-      }[];
-      /**
-       * What the server works out for the month and the fake does not: the reserve's `monthCents` and `expectedMonth`
-       * (its target and saved amount come from the rows above), money no Goal takes, and how the month's leftover
-       * compares with the contribution. Absent means none of it.
-       */
-      suggestion?: {
-        reserve?: { monthCents?: number | null; expectedMonth?: string | null };
-        unassignedCents?: number;
-        leftover?: { leftoverCents: number; extraCents: number; monthsSooner: number | null };
-        overLimit?: { category: string; overCents: number }[];
-      };
-    };
-    /** What `GET /me/finance/transactions` reads, any month; the PATCH edits these. Absent means none. */
-    transactions?: {
-      id: string;
-      postedOn: string;
-      /** The day it counts on (a card charge: its bill's due day); postedOn when absent. */
-      countsOn?: string;
-      description: string;
-      sourceName: string;
-      amountCents: number;
-      currency: string;
-      type: "income" | "expense" | "transfer" | "saving";
-      spendingCategory: string | null;
-      /** `fallback` is a Transaction nothing could categorise; the PATCH sets `user`. Absent reads as null. */
-      categorySetBy?: "auto" | "user" | "fallback" | null;
-    }[];
-  };
 }
 
 export function initialState(): FakeState {
@@ -324,14 +231,14 @@ const rank = (step: string | null): number => (step === null ? -1 : step === "do
 
 /** The handlers the app needs on every load: health, who am I, onboarding progress and the Home. */
 export function coreHandlers(api: FakeApi): void {
-  api.on("GET /boot", signedIn((request, state) => bootReply(api, request, state)));
+  api.on("GET /boot", signedIn((request) => bootReply(api, request)));
   api.on("GET /healthz", () => json(200, { status: "ok" }));
   api.on(
     "GET /me",
     signedIn((_, state) => {
       const { id, email, displayName, photoUrl } = state.user;
       const name = shownName({ email, displayName });
-      return json(200, { id, email, displayName: displayName ?? null, name, photoUrl: photoUrl ?? null, ...avatarFor(name), finance: state.user.finance ?? false });
+      return json(200, { id, email, displayName: displayName ?? null, name, photoUrl: photoUrl ?? null, ...avatarFor(name) });
     }),
   );
   // Mirrors NormalizeName in backend/internal/users/name.go for the cases a spec needs: trim, a blank name clears,
@@ -348,7 +255,7 @@ export function coreHandlers(api: FakeApi): void {
       const shown = shownName({ email, displayName });
       const mine = state.residents?.find((resident) => resident.you);
       if (mine) mine.name = shown;
-      return json(200, { id, email, displayName: displayName ?? null, name: shown, photoUrl: photoUrl ?? null, ...avatarFor(shown), finance: state.user.finance ?? false });
+      return json(200, { id, email, displayName: displayName ?? null, name: shown, photoUrl: photoUrl ?? null, ...avatarFor(shown) });
     }),
   );
   api.on("GET /me/onboarding", signedIn((_, state) => json(200, { step: nextStep(state.onboardingStored) })));
@@ -371,20 +278,14 @@ export function coreHandlers(api: FakeApi): void {
 
 /** The launch reads GET /boot answers, as backend/internal/server/boot.go keys them. */
 const BOOT_READS = ["/me", "/me/onboarding", "/demands", "/home", "/home/day-plan", "/home/check-in", "/home/streak", "/home/residents"];
-const BOOT_FINANCE_READS = ["/me/finance", "/me/finance/bills?month=", "/me/finance/commitments?from=", "/me/finance/savings", "/me/finance/bill-suggestions"];
 
 /**
  * Each section is what the fake's own handler for that path answers, so the two cannot drift. A path no handler is
- * registered for is left out, which the PWA reads as a section to ask for itself. Finance sections only for a finance User.
+ * registered for is left out, which the PWA reads as a section to ask for itself.
  */
-function bootReply(api: FakeApi, request: ApiRequest, state: FakeState): FakeReply {
-  const month = request.url.searchParams.get("month");
-  const keys = [...BOOT_READS, ...(state.user.finance ? BOOT_FINANCE_READS : [])].flatMap((key) => {
-    if (!key.endsWith("=")) return [key];
-    return month === null ? [] : [key + month];
-  });
+function bootReply(api: FakeApi, request: ApiRequest): FakeReply {
   const sections: Record<string, { status: number; body: unknown }> = {};
-  for (const key of keys) {
+  for (const key of BOOT_READS) {
     const url = new URL(key, request.url);
     const reply = api.dispatch({ ...request, method: "GET", url, path: url.pathname, body: null });
     if (reply !== null) sections[key] = { status: reply.status, body: reply.body ?? null };

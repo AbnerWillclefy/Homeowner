@@ -5,10 +5,9 @@ import { AuthLayout } from "./AuthLayout";
 import { ConfirmPage, ForgotPasswordPage, SignInPage, SignUpPage } from "./AuthPages";
 import { Guard } from "./Guard";
 import { LazyPage } from "./LazyPage";
-import { FinancesFallback, MeEditFallback, MeFallback, ResidentFallback } from "./lazyFallbacks";
-import { FinanceRoute } from "./pages/FinanceRoute";
+import { MeEditFallback, MeFallback, ResidentFallback } from "./lazyFallbacks";
 import { TodayPage } from "./pages";
-import { CHORES_PATH, CONFIRM_PATH, FINANCES_BILLS_PATH, FINANCES_CATEGORY_PATH, FORGOT_PASSWORD_PATH, FINANCES_PATH, FINANCES_SAVINGS_PATH, FINANCES_SETTINGS_PATH, FINANCES_SPENDING_PATH, HOME_PATH, ME_EDIT_PATH, ME_PATH, RESIDENT_PATH, SIGN_IN_PATH, SIGN_UP_PATH, TODAY_PATH, WELCOME_PREFIX } from "../logic/routes";
+import { CHORES_PATH, CONFIRM_PATH, FORGOT_PASSWORD_PATH, HOME_PATH, ME_EDIT_PATH, ME_PATH, RESIDENT_PATH, SIGN_IN_PATH, SIGN_UP_PATH, TODAY_PATH, WELCOME_PREFIX } from "../logic/routes";
 import { Shell } from "./Shell";
 import { WelcomeLayout } from "./WelcomeLayout";
 
@@ -18,9 +17,6 @@ const ChoresPage = lazyNamed(() => import("./pages/ChoresPage"), "ChoresPage");
 const HomePage = lazyNamed(() => import("./pages/HomePage"), "HomePage");
 const ResidentRoute = lazyNamed(() => import("./pages/ResidentRoute"), "ResidentRoute");
 const MePage = lazyNamed(() => import("./pages/MePage"), "MePage");
-const FinancesTab = lazyNamed(() => import("../../domains/finance/components/FinancesTab"), "FinancesTab");
-const SpendingCategoryScreen = lazyNamed(() => import("../../domains/finance/components/SpendingCategoryScreen"), "SpendingCategoryScreen");
-const FinanceSettings = lazyNamed(() => import("../../domains/finance/components/FinanceSettings"), "FinanceSettings");
 const MeEdit =lazyNamed(() => import("../../domains/profile/components/MeEdit"), "MeEdit");
 
 /**
@@ -73,39 +69,6 @@ export function AppRoutes() {
               <LazyPage key="me" message="profile.loading" skeleton={<MeFallback />}>
                 <MePage />
               </LazyPage>
-            }
-          />
-          {([[FINANCES_PATH, "summary"], [FINANCES_SPENDING_PATH, "spending"], [FINANCES_BILLS_PATH, "bills"], [FINANCES_SAVINGS_PATH, "savings"]] as const).map(([path, view]) => (
-            <Route
-              key={path}
-              path={path}
-              element={
-                <FinanceRoute>
-                  <LazyPage key="finances" message="finances.loading" skeleton={<FinancesFallback />}>
-                    <FinancesTab view={view} />
-                  </LazyPage>
-                </FinanceRoute>
-              }
-            />
-          ))}
-          <Route
-            path={FINANCES_CATEGORY_PATH}
-            element={
-              <FinanceRoute>
-                <LazyPage key="finances-category" message="finances.loading" skeleton={<FinancesFallback />}>
-                  <SpendingCategoryScreen />
-                </LazyPage>
-              </FinanceRoute>
-            }
-          />
-          <Route
-            path={FINANCES_SETTINGS_PATH}
-            element={
-              <FinanceRoute>
-                <LazyPage key="finances-settings" message="finances.loading" skeleton={<FinancesFallback />}>
-                  <FinanceSettings />
-                </LazyPage>
-              </FinanceRoute>
             }
           />
           <Route

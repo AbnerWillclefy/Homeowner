@@ -11,7 +11,6 @@ const pt: Record<string, Message> = ptBR;
 // Keys built at runtime. Keep entries narrow: a broad prefix hides dead keys.
 // An entry ending in "." is a prefix, any other entry is an exact key.
 const runtimeKeys = [
-  { key: "spending.", reason: "spendingKey(id) builds it from the category id" },
   { key: "effort.level.", reason: "effortLevelKey(level)" },
   { key: "chores.interval.", reason: "built from the preset ids, including custom" },
   { key: "voice.field.", reason: "built from the edited field name" },
@@ -19,18 +18,6 @@ const runtimeKeys = [
   { key: "voice.action.take", reason: "`voice.action.${action.kind}`" },
   { key: "voice.action.refuse", reason: "`voice.action.${action.kind}`" },
   { key: "voice.action.complete", reason: "`voice.action.${action.kind}`" },
-  { key: "finances.view.", reason: "FinanceNav builds it from the view id" },
-  { key: "finances.report.", reason: "Spending builds it from diff.key" },
-  { key: "finances.summary.pace.more", reason: "paceSentence builds it from gap.key" },
-  { key: "finances.summary.pace.less", reason: "paceSentence builds it from gap.key" },
-  { key: "finances.summary.pace.same", reason: "paceSentence builds it from gap.key" },
-  { key: "finances.summary.pace.avg.", reason: "paceSentence builds it from usual.key" },
-  { key: "finances.limit.under", reason: "CategoryBar builds it from standing.key" },
-  { key: "finances.limit.over", reason: "CategoryBar builds it from standing.key" },
-  { key: "finances.limit.at", reason: "CategoryBar builds it from standing.key" },
-  { key: "finances.bills.group.overdue", reason: "BillsSection builds it from the group id" },
-  { key: "finances.bills.group.due", reason: "BillsSection builds it from the group id" },
-  { key: "finances.bills.group.paid", reason: "BillsSection builds it from the group id" },
   { key: "catalog.collection.trash", reason: "Questionnaire builds it from stream" },
   { key: "catalog.collection.recycling", reason: "Questionnaire builds it from stream" },
 ];

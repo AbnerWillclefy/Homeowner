@@ -9,7 +9,7 @@ vi.mock("./meApi", () => ({ getMe: () => getMe() }));
 
 const { meKey, meQuery } = await import("./queries");
 
-const ME = { id: "u1", email: "a@b.c", displayName: null, name: "A", photoUrl: null, initials: "A", avatarTone: "kitchen", finance: false };
+const ME = { id: "u1", email: "a@b.c", displayName: null, name: "A", photoUrl: null, initials: "A", avatarTone: "kitchen" };
 
 describe("meQuery", () => {
   beforeEach(() => getMe.mockReset());

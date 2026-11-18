@@ -3,7 +3,7 @@ import { BOOT_WINDOW_MS, createBoot, type BootSections } from "./boot";
 
 const SECTIONS: BootSections = {
   "/home": { status: 200, body: { id: "h1" } },
-  "/me/finance/bills?month=2030-01": { status: 200, body: [] },
+  "/home/day-plan?day=2030-01": { status: 200, body: [] },
   "/home/streak": { status: 503, body: { error: "down" } },
   "/demands": { status: 404, body: { error: "no home" } },
 };
@@ -44,8 +44,8 @@ describe("boot.take", () => {
 
   it("serves the section a request with params names", async () => {
     const { boot } = setup();
-    expect(await boot.take({ url: "/me/finance/bills", params: { month: "2030-01" } })).toMatchObject({ status: 200 });
-    expect(await boot.take({ url: "/me/finance/bills", params: { month: "2030-02" } })).toBeNull();
+    expect(await boot.take({ url: "/home/day-plan", params: { day: "2030-01" } })).toMatchObject({ status: 200 });
+    expect(await boot.take({ url: "/home/day-plan", params: { day: "2030-02" } })).toBeNull();
   });
 
   it("falls through for a 5xx section and a section that is absent", async () => {
@@ -88,7 +88,7 @@ describe("boot.take", () => {
 
   it("start resolves to the sections that can be served, or null", async () => {
     const { started } = setup();
-    expect(Object.keys((await started)!).sort()).toEqual(["/demands", "/home", "/me/finance/bills?month=2030-01"]);
+    expect(Object.keys((await started)!).sort()).toEqual(["/demands", "/home", "/home/day-plan?day=2030-01"]);
     expect(await setup(null).started).toBeNull();
   });
 });
