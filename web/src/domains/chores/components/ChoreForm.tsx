@@ -185,8 +185,8 @@ export function ChoreForm({
   // and a placeholder for an id while the list is not ready, so a current value is never lost or invented.
   const residents = responsible?.residents ?? null;
   const known = residents?.some((resident) => resident.id === values.responsible) ?? false;
-  // Drop an id the loaded list lacks, so what is submitted is what the select shows. It keeps the refusal message.
-  const departed = residents !== null && values.responsible !== "" && !known;
+  // After the server refused an id as gone, drop it so what is submitted is what the select shows. Before that a stale list must not clear a real Resident.
+  const departed = status.kind === "unknown-resident" && residents !== null && values.responsible !== "" && !known;
   useEffect(() => {
     if (departed) form.change({ responsible: "" });
   }, [departed]); // eslint-disable-line react-hooks/exhaustive-deps -- form.change is a fresh closure each render

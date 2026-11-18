@@ -108,6 +108,21 @@ describe("ChoreForm Responsible field", () => {
     expect(p.onSaved.mock.calls[0]![0].responsibleResidentId).toBe("r2");
   });
 
+  it("keeps a responsible Resident the stale list lacks when an edit does not touch the field", async () => {
+    const existing = { ...chore("c1", "Lavar a louça"), responsibleResidentId: "r9" };
+    const p = props({
+      mode: "edit",
+      initial: { ...emptyForm(), name: "Lavar a louça", responsible: "r9" },
+      save: vi.fn(() => Promise.resolve({ kind: "ok" as const, chore: existing })),
+      responsible: { ...props().responsible, existing },
+    });
+    render(createElement(ChoreForm, p));
+    await submit();
+    expect(api.clearResponsible).not.toHaveBeenCalled();
+    expect(api.setResponsible).not.toHaveBeenCalled();
+    expect(p.onSaved).toHaveBeenCalledTimes(1);
+  });
+
   it("explains a refusal naming the Resident, ties it to the field and keeps what was typed", async () => {
     api.setResponsible.mockResolvedValue({ kind: "restricted", residentId: "r2", restrictedBy: ["heavy_lifting"], restrictedByChore: false });
     const p = props();
