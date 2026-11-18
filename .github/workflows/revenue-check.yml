@@ -2,12 +2,6 @@ name: revenue-check
 
 on:
   pull_request:
-    paths:
-      - "revenue/**"
-      - "bedrock/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/revenue-check.yml"
 
 permissions:
   contents: read
@@ -17,8 +11,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  revenue-check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.apps.outputs.revenue }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: apps
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: .github/scripts/changed-apps.sh "$BASE" >> "$GITHUB_OUTPUT"
+
   revenue-check:
     name: revenue-check
+    needs: revenue-check-changes
+    # Runs when the changes job failed too, so a broken one cannot read as a skip
+    if: ${{ !cancelled() && (needs.revenue-check-changes.result != 'success' || needs.revenue-check-changes.outputs.run == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
