@@ -1,6 +1,6 @@
 import type { AxiosResponse } from "axios";
 import { apiClient, NotSignedIn } from "../../api/client";
-import { fieldsOf, type FieldCodes } from "../../api/write";
+import { fieldsOf, saveRow, send, writeResult, type FieldCodes, type SaveResult, type WriteResult } from "../../api/write";
 
 /** One bank account or card. `balanceCents` and `balanceOn` are both absent for a card, for a non-BRL account (the API reads no balance for it) and for a bank account never synced. */
 export interface Source {
@@ -131,4 +131,48 @@ export async function putSourceName(sourceId: string, name: string | null): Prom
   } catch (error) {
     return { kind: error instanceof NotSignedIn ? "not-signed-in" : "offline" };
   }
+}
+
+/** A card with no bank connection: the User types its bill for each of the next 12 months. */
+export interface ManualCard {
+  id: string;
+  name: string;
+  /** 1 to 31. */
+  dueDay: number;
+  /** The name a Pix to this card's bill carries, as on the receipt; null when none. */
+  pixRecipient: string | null;
+  /** Every typed month: `YYYY-MM` to cents. A month not here repeats the latest typed one before it. */
+  bills: Record<string, number>;
+}
+
+/** The body of a write. A month set to null is cleared; a month left out is kept. */
+export interface ManualCardInput {
+  name: string;
+  dueDay: number;
+  pixRecipient: string | null;
+  bills: Record<string, number | null>;
+}
+
+function parseManualCard(v: unknown): ManualCard | null {
+  if (!isRecord(v) || typeof v.id !== "string" || typeof v.name !== "string" || !Number.isInteger(v.dueDay)) return null;
+  if ((v.pixRecipient !== null && typeof v.pixRecipient !== "string") || !isRecord(v.bills)) return null;
+  const months = Object.entries(v.bills);
+  if (months.some(([month, cents]) => !/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || !Number.isInteger(cents))) return null;
+  return { id: v.id, name: v.name, dueDay: v.dueDay as number, pixRecipient: v.pixRecipient, bills: v.bills as Record<string, number> };
+}
+
+/** `GET /me/finance/manual-cards`, ordered by name. Throws on any failure, so a query shows its error state. */
+export async function getManualCards(): Promise<ManualCard[]> {
+  const response = await apiClient.get("/me/finance/manual-cards");
+  const rows = response.status === 200 && isRecord(response.data) && Array.isArray(response.data.cards) ? response.data.cards.map(parseManualCard) : null;
+  if (!rows || rows.some((c) => c === null)) throw new Error(`GET /me/finance/manual-cards answered ${response.status}`);
+  return rows as ManualCard[];
+}
+
+/** `POST /me/finance/manual-cards`, or `PUT .../{id}` with an id. A 400 carries field codes (`bills` is `invalid_month` or `invalid`). */
+export const saveManualCard = (id: string | null, input: ManualCardInput): Promise<SaveResult> => saveRow(apiClient, "/me/finance/manual-cards", id, input);
+
+/** `DELETE /me/finance/manual-cards/{id}`; its typed bills go with it. */
+export async function deleteManualCard(id: string): Promise<WriteResult> {
+  return writeResult(await send(apiClient, "DELETE", `/me/finance/manual-cards/${encodeURIComponent(id)}`, 204), 204);
 }
