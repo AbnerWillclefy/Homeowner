@@ -212,3 +212,19 @@ func TestAnInstallmentImportedLaterTakesTheLatestEditedSibling(t *testing.T) {
 		t.Errorf("re-imported 2/6 in household_bills/user = %d, want 1 (the sibling edited last)", n)
 	}
 }
+
+func TestASyncDoesNotRefreshWhenAUserSetPartWasEdited(t *testing.T) {
+	t.Parallel()
+	app, _ := seedMonth(t)
+	if _, err := app.DB.Exec(context.Background(), `UPDATE finance_transactions SET category_set_by = 'user', updated_at = '2020-01-01' WHERE installment_number = 2 AND total_installments = 6`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.DB.Exec(context.Background(), `UPDATE finance_sources SET import_cursor = NULL; UPDATE finance_items SET import_complete = false`); err != nil {
+		t.Fatal(err)
+	}
+	app.Clock.Advance(25 * time.Hour)
+	app.RunFinanceSync(t)
+	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE installment_number = 2 AND total_installments = 6 AND updated_at <> '2020-01-01'`); n != 0 {
+		t.Errorf("user-set 2/6 rows whose edit time a re-sync moved = %d, want 0 (the sync must not move the User's last edit)", n)
+	}
+}

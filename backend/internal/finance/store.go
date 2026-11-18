@@ -514,7 +514,9 @@ func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string,
 			posted_on = EXCLUDED.posted_on, amount_cents = EXCLUDED.amount_cents, description = EXCLUDED.description,
 			merchant_key = EXCLUDED.merchant_key, own_counterpart = EXCLUDED.own_counterpart,
 			installment_number = COALESCE(finance_transactions.installment_number, EXCLUDED.installment_number),
-			total_installments = COALESCE(finance_transactions.total_installments, EXCLUDED.total_installments), updated_at = EXCLUDED.updated_at,
+			total_installments = COALESCE(finance_transactions.total_installments, EXCLUDED.total_installments),
+			-- a user-set part keeps its updated_at: the sibling lookup reads it as the User's last edit
+			updated_at = CASE WHEN finance_transactions.category_set_by = 'user' THEN finance_transactions.updated_at ELSE EXCLUDED.updated_at END,
 			type = finance_transactions.type,
 			spending_category = CASE WHEN finance_transactions.category_set_by = 'fallback' AND finance_transactions.type_set_by = 'auto'
 				AND EXCLUDED.type = 'expense' THEN EXCLUDED.spending_category ELSE finance_transactions.spending_category END,
