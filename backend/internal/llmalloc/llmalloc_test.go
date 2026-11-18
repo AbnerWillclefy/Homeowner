@@ -194,6 +194,29 @@ func TestThePromptHoldsOnlyIDsAndNumbers(t *testing.T) {
 	}
 }
 
+// A two-person responsible Task adds one key, with, and it holds an id.
+func TestAResponsibleTwoPersonTaskAddsOnlyTheWithKey(t *testing.T) {
+	st := state()
+	st.Tasks[1].Responsible = "r2"
+	fake := llmalloc.NewFakeClient()
+	if _, err := llmalloc.New(fake).Propose(context.Background(), st); err != nil {
+		t.Fatal(err)
+	}
+	var input any
+	if err := json.Unmarshal([]byte(fake.LastRequest().User), &input); err != nil {
+		t.Fatal(err)
+	}
+	keys := map[string]bool{}
+	collectKeys(input, keys)
+	if !keys["with"] || strings.Contains(fake.LastRequest().User, "responsible") {
+		t.Fatalf("keys = %v, want with and no responsible", keys)
+	}
+	delete(keys, "with")
+	if len(keys) != 17 {
+		t.Fatalf("other keys = %d, want the same 17 as the plain prompt", len(keys))
+	}
+}
+
 func collectKeys(v any, into map[string]bool) {
 	switch v := v.(type) {
 	case map[string]any:

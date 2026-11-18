@@ -305,3 +305,128 @@ func TestMaxTokensLeavesRoomToThinkAndIsCapped(t *testing.T) {
 		t.Errorf("one Task = %d, want 4224", one)
 	}
 }
+
+// responsibleState is state() with t3 (one person) and t2 (two people)
+// given a responsible Resident, and a third Resident a0 with the Energy.
+func responsibleState(oneBy, twoBy string) allocation.State {
+	st := state()
+	st.Residents = append(st.Residents, allocation.Resident{ID: "a0", Energy: 5})
+	st.Tasks[2].Responsible = oneBy
+	st.Tasks[1].Responsible = twoBy
+	return st
+}
+
+func TestAResponsibleOneTaskIsSentWithOnlyThatResidentEligible(t *testing.T) {
+	st := responsibleState("r2", "")
+	fake := emptyAnswer()
+	if _, err := llmalloc.New(fake).Propose(context.Background(), st); err != nil {
+		t.Fatal(err)
+	}
+	if got := idsOf(sent(t, fake)["t3"]["eligible"]); !slices.Equal(got, []string{"r2"}) {
+		t.Fatalf("t3 eligible = %v, want [r2]", got)
+	}
+}
+
+func TestAResponsibleTaskWhoseResidentIsNotEligibleIsPooledAndNotSent(t *testing.T) {
+	absent := responsibleState("ghost", "")
+	restricted := responsibleState("r1", "") // r1 is restricted from chore c3 in state()
+	for name, st := range map[string]allocation.State{"absent": absent, "restricted": restricted} {
+		t.Run(name, func(t *testing.T) {
+			fake := emptyAnswer()
+			prop, err := llmalloc.New(fake).Propose(context.Background(), st)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, in := sent(t, fake)["t3"]; in {
+				t.Fatal("t3 must not be sent")
+			}
+			want := allocation.PoolEntry{TaskID: "t3", Reason: allocation.ReasonWaitingForResponsible}
+			if !slices.Contains(prop.Result.Pool, want) {
+				t.Fatalf("pool = %+v, want %+v", prop.Result.Pool, want)
+			}
+		})
+	}
+}
+
+func TestWhenEveryTaskWaitsForItsResponsibleResidentTheModelIsNotCalled(t *testing.T) {
+	st := responsibleState("ghost", "")
+	st.Tasks = st.Tasks[2:]
+	fake := emptyAnswer()
+	prop, err := llmalloc.New(fake).Propose(context.Background(), st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if prop.Called || fake.Calls() != 0 {
+		t.Fatalf("Called = %v, calls = %d, want none", prop.Called, fake.Calls())
+	}
+	if want := (allocation.PoolEntry{TaskID: "t3", Reason: allocation.ReasonWaitingForResponsible}); !slices.Equal(prop.Result.Pool, []allocation.PoolEntry{want}) {
+		t.Fatalf("pool = %+v", prop.Result.Pool)
+	}
+}
+
+func TestATwoPersonResponsibleTaskTellsTheModelWhoMustBeIncluded(t *testing.T) {
+	st := responsibleState("", "a0")
+	fake := emptyAnswer()
+	if _, err := llmalloc.New(fake).Propose(context.Background(), st); err != nil {
+		t.Fatal(err)
+	}
+	got := sent(t, fake)
+	if got["t2"]["with"] != "a0" {
+		t.Errorf("t2 with = %v, want a0", got["t2"]["with"])
+	}
+	if got["t2"]["eligible"] == nil || len(idsOf(got["t2"]["eligible"])) != 3 {
+		t.Errorf("t2 eligible = %v, want all three", got["t2"]["eligible"])
+	}
+	if _, has := got["t1"]["with"]; has {
+		t.Error("a Task without a responsible Resident has no with")
+	}
+	if !strings.Contains(fake.LastRequest().System, `A Task with "with" goes to that Resident and one other eligible Resident.`) {
+		t.Error("the system prompt lacks the with rule")
+	}
+}
+
+func TestAPooledResponsibleTaskAlwaysWaitsForItsResident(t *testing.T) {
+	st := responsibleState("r2", "")
+	st.Tasks[0].Responsible = "r1"
+	st.Tasks[0].AllowedWeekdays = []int{(st.Today.Weekday() + 1) % 7}
+	st.Tasks[1].Responsible = "a0"
+	fake := llmalloc.NewFakeClient()
+	fake.Answer(`{"assignments": [], "pool": [{"task_id": "t2", "reason": "no_energy_left"}, {"task_id": "t3", "reason": "restricted_for_all"}]}`)
+	prop, err := llmalloc.New(fake).Propose(context.Background(), st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []allocation.PoolEntry{
+		{TaskID: "t1", Reason: allocation.ReasonWeekdayNotAllowed}, // still wins
+		{TaskID: "t2", Reason: allocation.ReasonWaitingForResponsible},
+		{TaskID: "t3", Reason: allocation.ReasonWaitingForResponsible},
+	}
+	if !slices.Equal(prop.Result.Pool, want) {
+		t.Fatalf("pool = %+v, want %+v", prop.Result.Pool, want)
+	}
+}
+
+// A model that gives a responsible Task to someone else is not stopped here:
+// the referee reports it.
+func TestAnAnswerIgnoringTheResponsibleResidentIsReportedByCheck(t *testing.T) {
+	st := responsibleState("r2", "a0")
+	fake := llmalloc.NewFakeClient()
+	fake.Answer(`{"assignments": [
+		{"task_id": "t3", "resident_id": "a0", "reason": "liked"},
+		{"task_id": "t2", "resident_id": "r1", "reason": "importance"},
+		{"task_id": "t2", "resident_id": "r2", "reason": "importance"}], "pool": []}`)
+	prop, err := llmalloc.New(fake).Propose(context.Background(), st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var tasks []string
+	for _, v := range allocation.Check(prop.Result.DayPlan, st) {
+		if v.Kind == allocation.NotResponsible {
+			tasks = append(tasks, v.TaskID)
+		}
+	}
+	slices.Sort(tasks)
+	if !slices.Equal(tasks, []string{"t2", "t3"}) {
+		t.Fatalf("not_responsible on %v, want [t2 t3]", tasks)
+	}
+}
