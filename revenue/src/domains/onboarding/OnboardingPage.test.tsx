@@ -215,6 +215,17 @@ describe("OnboardingPage", () => {
       expect(screen.getByText("Credentials and income live in Settings; banks live in Sources.")).toBeTruthy();
     });
 
+    it("says nothing about an import when none is running", async () => {
+      vi.mocked(sources.getSources).mockResolvedValue({ ...WITH_BANK, importing: false });
+      open();
+      await heading("Connect your Pluggy account");
+      await skip();
+      await skip();
+      await skip();
+      expect(await screen.findByText("1 bank connected.")).toBeTruthy();
+      expect(screen.queryByText(/runs every hour/)).toBeNull();
+    });
+
     it("uses the plural for two banks", async () => {
       vi.mocked(sources.getSources).mockResolvedValue({ ...WITH_BANK, items: [...WITH_BANK.items, { id: "i2", bankName: "Itaú", status: "ok", products: 2 }] });
       open({ locale: "pt-BR" });

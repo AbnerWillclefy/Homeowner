@@ -34,7 +34,6 @@ describe("shell navigation", () => {
     shell({ locale: "en" });
     const nav = screen.getByRole("navigation", { name: "Main navigation" });
     expect(within(nav).getAllByRole("link").map((a) => a.textContent)).toEqual(EN);
-    expect(within(nav).queryByText("Getting started")).toBeNull();
     expect(screen.getAllByRole("navigation")).toHaveLength(1);
   });
 

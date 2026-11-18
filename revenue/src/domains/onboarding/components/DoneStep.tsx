@@ -18,7 +18,7 @@ export function DoneStep({ onBack, onFinish }: { onBack(): void; onFinish(): voi
         </span>
         <h1 data-step-heading tabIndex={-1} className="page-title outline-none">{t("onboarding.done.title")}</h1>
         <p className="body">{banks > 0 ? t(banks === 1 ? "onboarding.done.banks.one" : "onboarding.done.banks.other", { n: banks }) : t("onboarding.done.noBanks")}</p>
-        {banks > 0 && <p role="status" className="body text-text-muted">{t("onboarding.done.importing")}</p>}
+        {data?.importing && <p role="status" className="body text-text-muted">{t("onboarding.done.importing")}</p>}
         <p className="body text-text-muted">{t("onboarding.done.later")}</p>
       </div>
       <StepActions back={<Button variant="ghost" icon={ChevronLeft} onClick={onBack}>{t("onboarding.back")}</Button>}>
