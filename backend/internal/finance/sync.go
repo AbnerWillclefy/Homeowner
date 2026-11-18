@@ -196,10 +196,21 @@ func (s *Syncer) syncItem(ctx context.Context, it DueItem, apiKey string, now, t
 	if err != nil {
 		return false, err
 	}
+	// A recipient saved during the run restarted the import, but the run's cursor writes and
+	// FinishSync overwrite that; so each exit checks and restarts again.
+	recipientsChanged := func() (bool, error) {
+		again, err := s.store.ManualRecipients(ctx, it.UserID)
+		slices.Sort(again)
+		slices.Sort(recipients)
+		return !slices.Equal(again, recipients), err
+	}
 	floor := today.AddDate(-1, 0, 0)
 	for round := 0; ; round++ {
 		// The first round always runs, so every run makes progress.
 		if round > 0 && time.Until(deadline) < reserve {
+			if c, err := recipientsChanged(); err != nil || c {
+				return false, errors.Join(err, s.restartIf(ctx, it.UserID, err == nil))
+			}
 			return false, nil
 		}
 		pending := false
@@ -226,15 +237,8 @@ func (s *Syncer) syncItem(ctx context.Context, it DueItem, apiKey string, now, t
 			pending = pending || to.Before(today)
 		}
 		if !pending {
-			// A recipient saved during this run restarted the import, and FinishSync would overwrite that.
-			again, err := s.store.ManualRecipients(ctx, it.UserID)
-			if err != nil {
-				return false, err
-			}
-			slices.Sort(again)
-			slices.Sort(recipients)
-			if !slices.Equal(again, recipients) {
-				return true, s.store.RestartImport(ctx, it.UserID)
+			if c, err := recipientsChanged(); err != nil || c {
+				return true, errors.Join(err, s.restartIf(ctx, it.UserID, err == nil))
 			}
 			return true, s.store.FinishSync(ctx, it.ID, now)
 		}
@@ -449,4 +453,12 @@ func safeErr(err error) string {
 		return "database error " + pg.Code
 	}
 	return err.Error()
+}
+
+// restartIf restarts the User's import when do is true.
+func (s *Syncer) restartIf(ctx context.Context, userID string, do bool) error {
+	if !do {
+		return nil
+	}
+	return s.store.RestartImport(ctx, userID)
 }

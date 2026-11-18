@@ -185,3 +185,25 @@ func TestAHandSetTypeSurvivesMarkingTheRecipient(t *testing.T) {
 		t.Errorf("hand-set rows kept = %d, want 1", n)
 	}
 }
+
+// A recipient saved while a sync runs restarts the import; the run must not finish over it.
+func TestARecipientSavedDuringASyncKeepsTheImportRestarted(t *testing.T) {
+	t.Parallel()
+	app, users := startSync(t, []string{"ana@example.com"})
+	ana := users["ana@example.com"]
+	app.Pluggy.OnFirstTransactions(func() {
+		apitest.ExpectStatus(t, ana.Post("/me/finance/manual-cards", map[string]any{"name": "Fatura Naiara", "dueDay": 10, "pixRecipient": "parceira SINTÉTICA"}), http.StatusCreated)
+	})
+	app.RunFinanceSync(t)
+	if n := importComplete(t, app); n != 0 {
+		t.Errorf("complete imports after a recipient saved mid-run = %d, want 0", n)
+	}
+	if n := scalar(t, app, `SELECT count(*) FROM finance_sources WHERE import_cursor IS NOT NULL`); n != 0 {
+		t.Errorf("sources with a cursor = %d, want the restart kept", n)
+	}
+	app.Clock.Advance(25 * time.Hour)
+	app.RunFinanceSync(t)
+	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE description = $1 AND type = 'transfer'`, partnerPix); n != 1 {
+		t.Errorf("partner Pix transfers after the next run = %d, want 1", n)
+	}
+}
