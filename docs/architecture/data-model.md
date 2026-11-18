@@ -56,6 +56,7 @@ Migrations live in `backend/migrations/` as `NNNN_description.sql` files, applie
 | `0046_finance_pluggy_investments.sql` | Investments can come from the bank: `finance_investments` gains `item_id` (references `finance_items`, cascade), `pluggy_investment_id`, `bank_value_cents`, `value_set_by` (`user` or `bank`, default `user`) and `bank_reported`, unique `(item_id, pluggy_investment_id)`; `serves` becomes nullable, but a hand-typed row must still have it (`CHECK`). Down deletes the bank's rows. |
 | `0047_finance_source_credit_limit.sql` | `finance_sources.credit_limit_cents` (`bigint`, null, `CHECK >= 0`): a card's credit limit as its bank reports it (Pluggy's `creditData.creditLimit`). Expand only, no backfill. |
 | `0048_finance_item_status.sql` | `finance_items.status`, `execution_status` and `connector_name` (all nullable text): what Pluggy last said about the Item and its institution, filled on connect and on each sync; null reads as `ok`. Expand only; Down drops the three. |
+| `0049_chore_responsible.sql` | `chores.responsible_resident_id` (uuid, null means Nobody), references `residents` with `ON DELETE SET NULL`, so a Resident who leaves the Home (or a Home deleted with its last Resident) leaves the Chore with Nobody, and indexed (`chores_responsible_resident_idx`) for that cascade and for the updates that clear it when a Restriction is added. The foreign key cannot say the Resident lives in the Chore's Home, so `choresettings.SetResponsible` proves it in Go, in the same transaction that locks the Chore. Expand only, no backfill: every existing Chore stays with Nobody. Down drops the index and the column. |
 | `0050_finance_manual_cards.sql` | `finance_manual_cards` (`id`, `user_id` cascade, `name`, `due_day` `CHECK 1..31`, `pix_recipient` text null, timestamps) and `finance_manual_card_bills` (`card_id` cascade, `user_id` cascade, `month` `CHECK` first of a month, `total_cents` `CHECK >= 0`, primary key `(card_id, month)`): a credit card kept by hand with one typed bill per month; a month with no row is "not typed", distinct from a typed 0. Expand only; Down drops both. |
 | `0051_finance_transaction_note.sql` | `finance_transactions.note` text null, `CHECK char_length(note) BETWEEN 1 AND 200`: the User's Note on a Transaction; no Note is NULL, never `''`; no index, the search runs in the browser. Expand only; Down drops the column. |
 
@@ -173,6 +174,7 @@ erDiagram
     homes ||--|{ residents : "has"
     homes ||--o{ invites : "issues"
     homes ||--o{ chores : "owns"
+    residents |o--o{ chores : "responsible for"
     residents ||--o{ resident_chore_preferences : "sets"
     residents ||--o{ resident_chore_restrictions : "sets"
     chores ||--o{ resident_chore_preferences : "about"
@@ -205,7 +207,7 @@ erDiagram
 | Table | Holds |
 |---|---|
 | `users`, `homes`, `residents`, `invites` (built) | Accounts, Homes, membership (a User is a Resident of at most one Home), single-use 7-day Invites (claimed with one conditional `UPDATE`, so two simultaneous accepts have one winner) |
-| `chores` (built) | Category, Demands, base Effort, Importance, people needed, build-up flag, interval in days, allowed weekdays |
+| `chores` (built) | Category, Demands, base Effort, Importance, people needed, build-up flag, interval in days, allowed weekdays, the responsible Resident (null for Nobody; cleared when they leave or get a lasting Restriction on it, [ADR 0025](../adr/0025-responsibility-binds-allocation-not-residents.md)) |
 | (no table) | The Catalog of common Chores is Go code in `internal/catalog`. A Chore made from it is an ordinary `chores` row with no `catalog_id`, so adding an entry twice gives two Chores. |
 | `tasks` (built) | Window, current Effort, status and `closed_on`; at most one open per Chore |
 | `task_residents` (built) | A Resident's Commitment to a Task on a local day: `committed_on`, `committed_at`. Rows are history for the Streak and never deleted, with one exception: an accepted Swap deletes the old holders' rows for that Task and day and inserts the new holders' (`swap_offers` is the record) |
