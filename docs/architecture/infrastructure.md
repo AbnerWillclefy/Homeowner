@@ -4,11 +4,11 @@ Related: [ADR 0002](../adr/0002-mirror-the-work-stack.md), [ADR 0005](../adr/000
 
 ## What is built
 
-Built: the local stack, pull request checks, staging and production environments on AWS defined in Terraform under `infra/`, a deploy pipeline that runs on every merge to `main`, and a production deploy that runs when `main` is promoted to the `production` branch. Staging has the API (Lambda behind API Gateway), a Neon database branch, an account-wide budget alert, the web app (S3 behind CloudFront), and the maintainer's admin app (its own S3 bucket behind its own CloudFront, see [The admin dashboard](admin.md)). Web Push sending is built in the API and in the Allocation job (both need the VAPID keys above). Sign-in is built: a Cognito user pool per environment, verified by the API. The daily Allocation job is built: an EventBridge rule every 15 minutes invokes a second Lambda from the API image ([ADR 0008](../adr/0008-scheduled-jobs-run-as-a-second-lambda-from-the-api-image.md)). A third, the hourly finance sync, imports and refreshes Transactions the same way.
+Built: the local stack, pull request checks, staging and production environments on AWS defined in Terraform under `infra/`, a deploy pipeline that runs on every merge to `main`, and a production deploy that runs when `main` is promoted to the `production` branch. Staging has the API (Lambda behind API Gateway), a Neon database branch, an account-wide budget alert, the web app (S3 behind CloudFront), the maintainer's admin app (its own S3 bucket behind its own CloudFront, see [The admin dashboard](admin.md)), and the Revenue finance app (a third S3 bucket behind a third CloudFront, see [Revenue](revenue.md)). Web Push sending is built in the API and in the Allocation job (both need the VAPID keys above). Sign-in is built: a Cognito user pool per environment, verified by the API. The daily Allocation job is built: an EventBridge rule every 15 minutes invokes a second Lambda from the API image ([ADR 0008](../adr/0008-scheduled-jobs-run-as-a-second-lambda-from-the-api-image.md)). A third, the hourly finance sync, imports and refreshes Transactions, balances, card bills and Investments the same way, and sends the Bill reminders to Revenue's devices.
 
 ## Local (built)
 
-`docker compose up` starts Postgres 16 and the API (built from `backend/Dockerfile`: a Go build stage, then a minimal distroless image). The API migrates on start (`MIGRATE_ON_START=true`, Compose only). The web app runs with `npm run dev` on port 5173.
+`docker compose up` starts Postgres 16 and the API (built from `backend/Dockerfile`: a Go build stage, then a minimal distroless image). The API migrates on start (`MIGRATE_ON_START=true`, Compose only). The web app runs with `npm run dev` on port 5173, the admin app on 5174 and Revenue on 5175 (`strictPort`, because Compose's `CORS_ALLOWED_ORIGINS` lists exactly these three).
 
 ## Staging and production (built)
 
@@ -20,10 +20,10 @@ flowchart TB
       tf[("S3 bucket for Terraform state<br/>staging/ and production/ keys")]
       oidc["GitHub OIDC provider"]
       subgraph stg["staging, prefix homeowner-staging"]
-        stgset["Web and admin CloudFront + S3, API Gateway, API and Allocation Lambdas, ECR, Cognito pool, SSM /homeowner/staging/*"]
+        stgset["Web, admin and Revenue CloudFront + S3, API Gateway, API, Allocation and finance Lambdas, ECR, Cognito pool, SSM /homeowner/staging/*"]
       end
       subgraph prod["production, prefix homeowner-production"]
-        prodset["Web and admin CloudFront + S3, API Gateway, API and Allocation Lambdas, ECR, Cognito pool, SSM /homeowner/production/*"]
+        prodset["Web, admin and Revenue CloudFront + S3, API Gateway, API, Allocation and finance Lambdas, ECR, Cognito pool, SSM /homeowner/production/*"]
       end
       rstg["role homeowner-github-deploy-staging"]
       rprod["role homeowner-github-deploy-production"]
@@ -59,6 +59,8 @@ flowchart TB
         cog["Cognito user pool + app client, super-admin group"]
         acf["Admin CloudFront, default HTTPS domain"]
         as3[("S3 admin bucket, private")]
+        rcf["Revenue CloudFront, default HTTPS domain"]
+        rs3[("S3 Revenue bucket, private")]
       end
       bud["AWS Budget, monthly email alert"]
       tf[("S3 bucket for Terraform state")]
@@ -92,6 +94,12 @@ flowchart TB
     fn -- "Web Push, VAPID" --> push(["Browser push services"])
     fn -- "fetch signing keys (JWKS)" --> cog
     user -- "sign up, sign in" --> cog
+    rev(["Revenue User's browser"]) --> rcf
+    rcf -- "Origin Access Control" --> rs3
+    rev -- "/me/finance/* and /push/*, CORS" --> apigw
+    rev -- "sign in, forgot password" --> cog
+    fin -- "Pluggy API" --> pluggy(["Pluggy"])
+    fin -- "Web Push, Bill reminders" --> push
 ```
 
 - **Lambda** runs code on demand and bills per use; the Go code is packaged as a container image in ECR. **Neon** is hosted Postgres reached over the normal Postgres protocol, so there is no VPC or NAT Gateway.
@@ -102,6 +110,7 @@ flowchart TB
   - **Gotcha: a missing avatar answers 200 with HTML.** The distribution's 403 and 404 to `/index.html` with status 200 (the SPA fallback) applies to every behaviour. CloudFront's own role (the bucket policy) has no `ListBucket`, so S3 answers 403 to it for a missing key, and CloudFront serves `index.html` as `text/html` with status 200. An `<img>` cannot decode it and fires `onerror`; the Avatar must fall back on `onerror`, not on the status. Scoping the mapping to one behaviour needs Lambda@Edge or a CloudFront Function, which is not worth the cost.
   - Removal is eventually consistent: a deleted photo can be served from cache for up to a day (no invalidations).
 - **Admin hosting** ([The admin dashboard](admin.md)): each environment also has `module "admin_web"`, the same `infra/modules/web` with no `photos_origin_domain`: its own private bucket `homeowner-<environment>-web-admin-<account id>` and its own distribution (Origin Access Control, default HTTPS domain, the same SPA fallback to `/index.html`, and no `/avatars/*` behaviour). The bucket name falls under the deploy role's existing `homeowner-<environment>-web-*` grant, so `infra/bootstrap` needs no re-apply. Each API's `CORS_ALLOWED_ORIGINS` gains only its own environment's admin origin, so the staging admin cannot read the production API from a browser, and the reverse. Each API also gets `ENVIRONMENT` (`staging` or `production`; Compose sets `local`), which `GET /admin/me` returns so the app can check it was built for the API it reaches; the Allocation job does not get it. The admin bundle is public static code; access control is the API's 403 for anyone outside the `super-admin` Cognito group ([ADR 0017](../adr/0017-operate-through-a-separate-admin-app-per-environment.md)), so there is no IP allow-list or basic auth. CORS only tells browsers which origins may read responses; it is not access control. The outputs `admin_url`, `admin_bucket_name` and `admin_distribution_id` feed the `admin` deploy job (see [CI/CD](#cicd)). After the first apply a human sets the repository variables `ADMIN_URL_STAGING` and `ADMIN_URL_PRODUCTION` to the two `admin_url` outputs, so each app's environment switch can link to the other; until then the switch says "not configured".
+- **Revenue hosting** ([Revenue](revenue.md), [ADR 0023](../adr/0023-move-finances-into-a-second-installable-app-named-revenue.md)): each environment also has `module "revenue_web"` in `infra/staging` and `infra/production`, the same `infra/modules/web` again with no `photos_origin_domain`: a private bucket `homeowner-<environment>-web-revenue-<account id>` and its own distribution (Origin Access Control, default HTTPS domain, the SPA fallback to `/index.html`). The bucket name falls under the deploy role's `homeowner-<environment>-web-*` grant, as the admin's does. Each API's `CORS_ALLOWED_ORIGINS` is the PWA, admin and Revenue origins of its own environment (plus `cors_allowed_origins`), so staging's Revenue cannot read the production API from a browser. The outputs `revenue_url`, `revenue_bucket_name` and `revenue_distribution_id` feed the `revenue` deploy job (see [CI/CD](#cicd)), and the `api` job prints `revenue_url` in the run summary. Revenue signs in with the same Cognito pool and app client, so it adds no auth resource. Access is the API's `403` for anyone off the finance allowlist, not the origin list.
 - **Finance sync job** (`module "finance_job"` in both roots, the `scheduled-job` module): a Lambda `homeowner-<environment>-finance` from the API image with the command `finance-events`, and an EventBridge rule `rate(1 hour)`. Timeout 90 seconds (the sync works at most 60 and starts no window with 10 left), `DB_MAX_CONNS=2`, `AWS_LWA_READINESS_CHECK_PATH=/healthz`. Its role may read exactly `database-url`, `finance-encryption-key`, `finance-allowlist` and `anthropic-api-key` under the SSM prefix; when `llm_allocator_enabled` is true it also gets `ANTHROPIC_API_KEY_SSM_PARAM` for the Categorizer (#427; worst case about $0.25 a month per User, see `infra/README.md`); the Allocation job still cannot read the key, so only this job and the API can. The deploy role's `homeowner-<environment>-*` patterns for functions, rules, roles and log groups already cover the new names. Cost: 24 invocations a day, almost all of which find nobody due and end in milliseconds, so it stays inside the free tier and adds nothing that bills while idle.
 - **Finance allowlist**: an `aws_ssm_parameter` `finance_allowlist` (`StringList`, standard tier) at `/homeowner/<env>/finance-allowlist` in `infra/staging` and `infra/production`, with the placeholder value `none` and `ignore_changes = [value]` so a human's `aws ssm put-parameter --overwrite` survives the next apply. The API gets `FINANCE_ALLOWLIST_SSM_PARAM` pointing at the resource, so Terraform creates the parameter before the function starts; its role already reads `/homeowner/<env>/*`, so IAM is unchanged. The API reads it once per cold start. A standard parameter bills nothing.
 - **Finance encryption key**: a `SecureString` at `/homeowner/<env>/finance-encryption-key` (base64 of 32 random bytes), created by a human with `aws ssm put-parameter` and deliberately not in Terraform, so the value never enters state. Both roots only pass `FINANCE_ENCRYPTION_KEY_SSM_PARAM` (a plain string) to the API, which reads it once per cold start and treats it as optional: without it the finance routes answer 503 and the rest of the API runs. Only the API role may read it. The API role reads `/homeowner/<env>/*`; the Allocation job's role no longer does: the `scheduled-job` module's `ssm_parameter_names` variable (default empty, meaning the whole prefix) lists exactly the parameters it may read, and both roots pass `database-url`, `vapid-private-key` and `anthropic-api-key`. The Finances job (#425) reuses the variable. Never overwrite a key in use: saved credentials become unreadable and Users paste them again. A standard parameter bills nothing.
@@ -133,6 +142,7 @@ flowchart LR
     PR --> AT["admin-typecheck: typecheck, Vitest, build"]
     PR --> IC["infra-check"]
     PR --> BC["bedrock-check: npm ci, typecheck, Vitest, showcase build"]
+    PR --> RC["revenue-check: npm ci, typecheck, Vitest, build"]
     PR --> CR["Claude review"]
     BT --> M["Merge to main, by risk tier"]
     WT --> M
@@ -140,14 +150,17 @@ flowchart LR
     AT --> M
     IC --> M
     BC --> M
+    RC --> M
     M --> DS
     subgraph DS["Deploy staging: one workflow, AWS access through OIDC"]
       direction LR
       api["api job: terraform apply, build image, migrate, push, apply, smoke test /healthz"]
       web["web job: build the PWA, sync to S3, invalidate CloudFront, smoke test"]
       adm["admin job, deploy-admin.yml: build the admin app, sync to its S3, invalidate, smoke test"]
+      rev["revenue job, deploy-revenue.yml: build Revenue, sync to its S3, invalidate, smoke test"]
       api --> web
       api --> adm
+      api --> rev
     end
     DS --> V["Human verifies staging, merges a promotion pull request from main into production"]
     V --> DP
@@ -155,10 +168,11 @@ flowchart LR
       direction LR
       papi["api job"] --> pweb["web job"]
       papi --> padm["admin job"]
+      papi --> prev["revenue job"]
     end
 ```
 
-Built: `backend-test.yml`, `web-typecheck.yml`, `web-e2e.yml`, `admin-typecheck.yml`, `infra-check.yml` and `bedrock-check.yml` on pull requests. `bedrock-check` checks the shared design system package when a pull request touches `bedrock/` or the root package files; nothing deploys it ([Bedrock](bedrock.md)). After the build, `web-typecheck` runs the bundle budget (`npm run check:bundle`, `web/scripts/check-bundle-budget.mjs`). The build emits `dist/.vite/manifest.json` (`build.manifest`); the script walks from the entry through static `imports` only (lazy screens are not counted), gzips each JS file at level 9 and sums them. CSS is outside the budget. The check fails when the sum is more than 10% above `RECORDED_GZIP_BYTES`, a constant at the top of the script measured with the `env` of `web-typecheck.yml`. When growth is intended, set the constant to the measured size in the same pull request and say why; lower it after a size win. A missing manifest or entry also fails. The deploy workflows exclude `.vite/*` from the S3 sync, so the manifest is not served. `web-e2e` has no path filter, needs no secrets (it builds with the public dummy values in `web/.env.e2e`), caches the Chromium download, and uploads the Playwright report only when it fails. `deploy-staging.yml`, named exactly `Deploy staging`, runs on every push to `main`. Its `api` job applies Terraform, builds the image, runs migrations before the new code goes live, and smoke tests `/healthz`. The `web` job runs after `api` (`needs: api`), so it can read the API URL and the bucket and distribution from Terraform. The `admin` job also runs after `api`, in parallel with `web`: it calls the reusable workflow `deploy-admin.yml` with the environment name, the caller's deploy role and the `api` job's outputs (API URL, Cognito ids, `admin_url`, `admin_bucket_name`, `admin_distribution_id`), so each environment's admin is built against its own API and published with its own role. It builds `VITE_ADMIN_URLS` from `ADMIN_URL_STAGING` and `ADMIN_URL_PRODUCTION` (this environment's own URL from Terraform), uploads like the web job, keeps old `assets/`, invalidates the distribution and smoke tests the root, a deep link, the API's CORS answer for the admin origin and a `401` from `GET /admin/me` without a token. `admin-typecheck.yml` checks `admin/` on pull requests that touch it or `web/src/tokens.css`. The `agent-*.yml`, `claude*.yml`, `project-sync.yml`, `notify-ready-to-merge.yml`, `pr-risk.yml`, `merge-by-risk.yml` and `scripts-test.yml` workflows run the team pipeline described in `CLAUDE.md`; the last two label each pull request into `main` with a risk tier and merge the agents' low-risk ones, and medium-risk ones the maintainer approved ([ADR 0015](../adr/0015-merge-agent-pull-requests-by-risk-tier.md), [risk tiers](../agents/pr-risk.md)). `deploy-production.yml`, named `Deploy production`, runs on every push to the `production` branch with the same three jobs against `infra/production`, under the role only that branch can assume. A ruleset on `production` requires the maintainer's approval, so agents that can deploy staging cannot deploy production.
+Built: `backend-test.yml`, `web-typecheck.yml`, `web-e2e.yml`, `admin-typecheck.yml`, `infra-check.yml`, `bedrock-check.yml` and `revenue-check.yml` on pull requests. `revenue-check` runs Revenue's typecheck, Vitest tests and build (from the root npm workspace, `-w @homeowner/revenue`) when a pull request touches `revenue/`, `bedrock/` or the root package files. `bedrock-check` checks the shared design system package when a pull request touches `bedrock/` or the root package files; nothing deploys it ([Bedrock](bedrock.md)). After the build, `web-typecheck` runs the bundle budget (`npm run check:bundle`, `web/scripts/check-bundle-budget.mjs`). The build emits `dist/.vite/manifest.json` (`build.manifest`); the script walks from the entry through static `imports` only (lazy screens are not counted), gzips each JS file at level 9 and sums them. CSS is outside the budget. The check fails when the sum is more than 10% above `RECORDED_GZIP_BYTES`, a constant at the top of the script measured with the `env` of `web-typecheck.yml`. When growth is intended, set the constant to the measured size in the same pull request and say why; lower it after a size win. A missing manifest or entry also fails. The deploy workflows exclude `.vite/*` from the S3 sync, so the manifest is not served. `web-e2e` has no path filter, needs no secrets (it builds with the public dummy values in `web/.env.e2e`), caches the Chromium download, and uploads the Playwright report only when it fails. `deploy-staging.yml`, named exactly `Deploy staging`, runs on every push to `main`. Its `api` job applies Terraform, builds the image, runs migrations before the new code goes live, and smoke tests `/healthz`. The `web` job runs after `api` (`needs: api`), so it can read the API URL and the bucket and distribution from Terraform. The `admin` job also runs after `api`, in parallel with `web`: it calls the reusable workflow `deploy-admin.yml` with the environment name, the caller's deploy role and the `api` job's outputs (API URL, Cognito ids, `admin_url`, `admin_bucket_name`, `admin_distribution_id`), so each environment's admin is built against its own API and published with its own role. It builds `VITE_ADMIN_URLS` from `ADMIN_URL_STAGING` and `ADMIN_URL_PRODUCTION` (this environment's own URL from Terraform), uploads like the web job, keeps old `assets/`, invalidates the distribution and smoke tests the root, a deep link, the API's CORS answer for the admin origin and a `401` from `GET /admin/me` without a token. The `revenue` job also runs after `api`, beside `web` and `admin`: it calls the reusable workflow `deploy-revenue.yml` with the environment, the deploy role and the `api` job's outputs (API URL, Cognito ids and password policy, `revenue_url`, `revenue_bucket_name`, `revenue_distribution_id`). It runs `npm ci` and `npm run build -w @homeowner/revenue` from the root (Revenue is a workspace member, beside `bedrock`), uploads hashed `assets/` as immutable and `sw.js`, `registerSW.js`, `workbox-*.js`, the manifest and `index.html` with `no-cache`, deletes stale objects except `assets/`, invalidates the distribution, and smoke tests the root, the deep link `/bills`, the API's CORS answer for the Revenue origin and a `401` from `GET /me/finance` without a token. `admin-typecheck.yml` checks `admin/` on pull requests that touch it or `web/src/tokens.css`. The `agent-*.yml`, `claude*.yml`, `project-sync.yml`, `notify-ready-to-merge.yml`, `pr-risk.yml`, `merge-by-risk.yml` and `scripts-test.yml` workflows run the team pipeline described in `CLAUDE.md`; the last two label each pull request into `main` with a risk tier and merge the agents' low-risk ones, and medium-risk ones the maintainer approved ([ADR 0015](../adr/0015-merge-agent-pull-requests-by-risk-tier.md), [risk tiers](../agents/pr-risk.md)). `deploy-production.yml`, named `Deploy production`, runs on every push to the `production` branch with the same four jobs against `infra/production`, under the role only that branch can assume. A ruleset on `production` requires the maintainer's approval, so agents that can deploy staging cannot deploy production.
 
 ## Cost against $20 a month (estimate)
 
@@ -169,6 +183,7 @@ Both environments together. Production doubles the storage-type items (ECR image
 | Lambda, API Gateway, EventBridge | cents | Pay per request; nothing bills while idle |
 | S3 and CloudFront | cents | Small static app |
 | Admin app (S3 and CloudFront, per environment) | under 10 cents each | A few MB and a handful of maintainer requests a month, on top of the free tier |
+| Revenue app (S3 and CloudFront, per environment) | under 10 cents each | One more bucket and distribution of a few MB, used by the few Users on the finance allowlist; nothing bills while idle |
 | S3 photo bucket | fractions of a cent | A few hundred objects of about 100 KB; requests and transfer fit the free tier; pending uploads expire after a day |
 | Cognito | free tier | Few users |
 | Neon | free tier | One project per environment, scales to zero |
