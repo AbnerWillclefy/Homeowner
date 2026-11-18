@@ -5,17 +5,18 @@ import { Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderApp } from "../../testing";
 import * as api from "./api";
-import type { BankItem, Source, SourcesStatus } from "./api";
+import type { BankItem, ManualCard, Source, SourcesStatus } from "./api";
 import * as goalsApi from "../goals/api";
 import type { Investment, Savings } from "../goals/api";
 import * as overviewApi from "../overview/api/api";
 import { HIDE_VALUES_STORAGE_KEY, HideValuesProvider } from "../../shared/HideValues";
+import { addMonths, monthLabel, saoPauloDay } from "../../shared/month/month";
 import type { PluggyOptions } from "./logic/pluggyConnect";
 import { SourcesPage } from "./SourcesPage";
 
 vi.mock("../goals/api", async (original) => ({ ...(await original<typeof import("../goals/api")>()), getSavings: vi.fn(), saveInvestment: vi.fn(), deleteInvestment: vi.fn(), putInvestmentServes: vi.fn(), restoreBankValue: vi.fn() }));
 vi.mock("../overview/api/api", async (original) => ({ ...(await original<typeof import("../overview/api/api")>()), getCommitments: vi.fn() }));
-vi.mock("./api", async (original) => ({ ...(await original<typeof import("./api")>()), getSources: vi.fn(), createConnectToken: vi.fn(), registerItem: vi.fn(), putSourceName: vi.fn() }));
+vi.mock("./api", async (original) => ({ ...(await original<typeof import("./api")>()), getSources: vi.fn(), getManualCards: vi.fn(), saveManualCard: vi.fn(), deleteManualCard: vi.fn(), createConnectToken: vi.fn(), registerItem: vi.fn(), putSourceName: vi.fn() }));
 let widget: PluggyOptions;
 vi.mock("./logic/pluggyConnect", () => ({ openPluggyConnect: vi.fn(async (o: PluggyOptions) => void (widget = o)) }));
 
@@ -37,16 +38,20 @@ const savings = (investments: Investment[] = []): Savings => ({
   reserve: { targetCents: null, savedCents: 0, monthCents: null, expectedMonth: null }, goals: [], investments, unassignedCents: 0,
 });
 const ok = { kind: "ok" } as const;
+const THIS_MONTH = saoPauloDay(new Date()).slice(0, 7);
+const NEXT_MONTH = addMonths(THIS_MONTH, 1);
+const MANUAL: ManualCard = { id: "m1", name: "Fatura Naiara", dueDay: 10, pixRecipient: "Naiara Souza", bills: { [THIS_MONTH]: 110_900 } };
 
 beforeEach(() => {
   // A wide screen, where Menu is a dropdown and not a Sheet.
   vi.stubGlobal("matchMedia", () => ({ matches: true, addEventListener() {}, removeEventListener() {} }));
   localStorage.clear();
-  for (const fn of [goalsApi.saveInvestment, goalsApi.deleteInvestment, goalsApi.putInvestmentServes, goalsApi.restoreBankValue, api.registerItem, api.putSourceName]) vi.mocked(fn).mockReset();
+  for (const fn of [goalsApi.saveInvestment, goalsApi.deleteInvestment, goalsApi.putInvestmentServes, goalsApi.restoreBankValue, api.registerItem, api.putSourceName, api.getManualCards, api.saveManualCard, api.deleteManualCard]) vi.mocked(fn).mockReset();
+  vi.mocked(api.getManualCards).mockResolvedValue([]);
   vi.mocked(goalsApi.getSavings).mockResolvedValue(savings([HAND, BANK_NEW, BANK_EDITED]));
   vi.mocked(overviewApi.getCommitments).mockImplementation(async (from) => ({
     monthlyIncomeCents: 0,
-    months: [{ month: from, cards: [{ sourceId: "s3", name: "Nubank", amountCents: 241_822, billDaysKnown: true }] }],
+    months: [{ month: from, cards: [{ sourceId: "s3", name: "Nubank", amountCents: 241_822, billDaysKnown: true }, { sourceId: "m1", name: "Fatura Naiara", amountCents: 110_900, billDaysKnown: true, manual: true }] }],
   } as never));
   vi.mocked(api.getSources).mockResolvedValue(status([CHECKING, NEVER, CARD, NO_LIMIT], { items: ITEMS }));
   vi.mocked(api.createConnectToken).mockResolvedValue({ kind: "ok", connectToken: "tok", includeSandbox: false });
@@ -107,6 +112,156 @@ describe("the three cards", () => {
     expect(screen.getByRole("group", { name: "Cartões de crédito" })).toBeTruthy();
     expect(within(await row("Cartões de crédito", "Nubank")).getByText("Limite R$ 12.000 · fecha dia 8")).toBeTruthy();
     expect(screen.getByText("sem saldo ainda")).toBeTruthy();
+  });
+});
+
+describe("manual cards", () => {
+  const field = (form: ReturnType<typeof within>, month: string) => form.getByRole("textbox", { name: monthLabel(month, "en") });
+
+  it("offers to add one when there are no cards at all", async () => {
+    vi.mocked(api.getSources).mockResolvedValue(status([CHECKING]));
+    open();
+    const cards = await card("Credit cards");
+    expect(cards.getByRole("button", { name: "Add a card by hand" })).toBeTruthy();
+    expect(cards.queryByRole("listitem")).toBeNull();
+  });
+
+  it("lists them after the connected cards with the month's bill and no link to Card bills", async () => {
+    vi.mocked(api.getManualCards).mockResolvedValue([MANUAL, { ...MANUAL, id: "m2", name: "Cartão da Ana", dueDay: 3 }]);
+    open();
+    const r = within(await row("Credit cards", "Fatura Naiara"));
+    expect(r.getByText("Typed bill · due on day 10")).toBeTruthy();
+    expect(r.getByText("R$1,109.00")).toBeTruthy();
+    expect(r.getByText("this month's bill")).toBeTruthy();
+    expect(r.queryByRole("link")).toBeNull();
+    const names = (await card("Credit cards")).getAllByRole("listitem").map((li) => li.querySelector(".body-strong")?.textContent);
+    expect(names).toEqual(["Nubank", "Itaú Visa", "Fatura Naiara", "Cartão da Ana"]);
+  });
+
+  it("counts a manual card in the group's total", async () => {
+    vi.mocked(api.getManualCards).mockResolvedValue([MANUAL]);
+    open();
+    expect((await card("Credit cards")).getAllByText("R$3,527.22")).toHaveLength(1); // 2,418.22 + 1,109.00
+  });
+
+  it("hides the row's amount with the toggle", async () => {
+    localStorage.setItem(HIDE_VALUES_STORAGE_KEY, "1");
+    vi.mocked(api.getManualCards).mockResolvedValue([MANUAL]);
+    open();
+    const r = await row("Credit cards", "Fatura Naiara");
+    await waitFor(() => expect(r.textContent).not.toMatch(/\d,\d{2}/));
+    expect(r.textContent).toContain("hidden value");
+  });
+
+  it("says a failed read, with Retry, and still offers to add", async () => {
+    vi.mocked(api.getManualCards).mockRejectedValueOnce(new Error("x")).mockResolvedValue([MANUAL]);
+    open();
+    const cards = await card("Credit cards");
+    expect(await cards.findByText(/Could not load the hand-typed cards/)).toBeTruthy();
+    expect(cards.getByRole("button", { name: "Add a card by hand" })).toBeTruthy();
+    await userEvent.click(cards.getByRole("button", { name: "Try again" }));
+    expect(await cards.findByText("Typed bill · due on day 10")).toBeTruthy();
+  });
+
+  it("writes it in Portuguese", async () => {
+    vi.mocked(api.getManualCards).mockResolvedValue([MANUAL]);
+    open({ locale: "pt-BR" });
+    const r = within(await row("Cartões de crédito", "Fatura Naiara"));
+    expect(r.getByText("Fatura digitada · vence dia 10")).toBeTruthy();
+    expect((await card("Cartões de crédito")).getByRole("button", { name: "Adicionar cartão à mão" })).toBeTruthy();
+  });
+
+  it("saves a new card, an empty month going as null", async () => {
+    vi.mocked(api.saveManualCard).mockResolvedValue(ok);
+    open();
+    await userEvent.click(await screen.findByRole("button", { name: "Add a card by hand" }));
+    const form = within(await screen.findByRole("dialog"));
+    await userEvent.type(form.getByRole("textbox", { name: "Name" }), "Fatura Naiara");
+    await userEvent.type(form.getByRole("spinbutton", { name: /Due day/ }), "10");
+    await userEvent.type(field(form, THIS_MONTH), "1190");
+    await userEvent.type(form.getByRole("textbox", { name: /Pix to/ }), "Naiara Souza");
+    await userEvent.click(form.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(api.saveManualCard).toHaveBeenCalledTimes(1));
+    const [id, input] = vi.mocked(api.saveManualCard).mock.calls[0]!;
+    expect(id).toBeNull();
+    expect(input).toMatchObject({ name: "Fatura Naiara", dueDay: 10, pixRecipient: "Naiara Souza" });
+    expect(input.bills[THIS_MONTH]).toBe(119_000);
+    expect(input.bills[NEXT_MONTH]).toBeNull();
+    expect(Object.keys(input.bills)).toHaveLength(12);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("edits a card from its row and sends the typed months it had", async () => {
+    vi.mocked(api.getManualCards).mockResolvedValue([MANUAL]);
+    vi.mocked(api.saveManualCard).mockResolvedValue(ok);
+    open();
+    await userEvent.click(within(await row("Credit cards", "Fatura Naiara")).getByRole("button", { name: "Edit Fatura Naiara" }));
+    const form = within(await screen.findByRole("dialog"));
+    expect((form.getByRole("textbox", { name: "Name" }) as HTMLInputElement).value).toBe("Fatura Naiara");
+    expect((field(form, THIS_MONTH) as HTMLInputElement).value).toBe("1,109.00");
+    expect(field(form, THIS_MONTH).closest("fieldset")!.querySelectorAll("input")).toHaveLength(12);
+    await userEvent.click(form.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(api.saveManualCard).toHaveBeenCalledWith("m1", expect.objectContaining({ pixRecipient: "Naiara Souza", bills: expect.objectContaining({ [THIS_MONTH]: 110_900 }) })));
+  });
+
+  it("keeps what was typed and says so when the save fails", async () => {
+    vi.mocked(api.saveManualCard).mockResolvedValue({ kind: "error" });
+    open();
+    await userEvent.click(await screen.findByRole("button", { name: "Add a card by hand" }));
+    const form = within(await screen.findByRole("dialog"));
+    await userEvent.type(form.getByRole("textbox", { name: "Name" }), "Fatura Naiara");
+    await userEvent.type(form.getByRole("spinbutton", { name: /Due day/ }), "10");
+    await userEvent.click(form.getByRole("button", { name: "Save" }));
+    expect(await form.findByText(/We could not save/)).toBeTruthy();
+    expect((form.getByRole("textbox", { name: "Name" }) as HTMLInputElement).value).toBe("Fatura Naiara");
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("shows the API's refusal beside the field and stays open", async () => {
+    vi.mocked(api.saveManualCard).mockResolvedValue({ kind: "fields", fields: { name: "invalid" } });
+    open();
+    await userEvent.click(await screen.findByRole("button", { name: "Add a card by hand" }));
+    const form = within(await screen.findByRole("dialog"));
+    await userEvent.type(form.getByRole("textbox", { name: "Name" }), "Fatura");
+    await userEvent.type(form.getByRole("spinbutton", { name: /Due day/ }), "10");
+    await userEvent.click(form.getByRole("button", { name: "Save" }));
+    expect(await form.findByText("That name will not do. Try another.")).toBeTruthy();
+  });
+
+  it("checks the name and the day before sending", async () => {
+    open();
+    await userEvent.click(await screen.findByRole("button", { name: "Add a card by hand" }));
+    const form = within(await screen.findByRole("dialog"));
+    await userEvent.click(form.getByRole("button", { name: "Save" }));
+    expect(form.getByText("Give the bill a name.")).toBeTruthy();
+    expect(form.getByText("Enter a day from 1 to 31.")).toBeTruthy();
+    expect(api.saveManualCard).not.toHaveBeenCalled();
+  });
+
+  it("asks twice before deleting, then deletes", async () => {
+    vi.mocked(api.getManualCards).mockResolvedValue([MANUAL]);
+    vi.mocked(api.deleteManualCard).mockResolvedValue({ kind: "ok" });
+    open();
+    await userEvent.click(within(await row("Credit cards", "Fatura Naiara")).getByRole("button", { name: "Edit Fatura Naiara" }));
+    const form = within(await screen.findByRole("dialog"));
+    await userEvent.click(form.getByRole("button", { name: "Delete card" }));
+    expect(api.deleteManualCard).not.toHaveBeenCalled();
+    await userEvent.click(form.getByRole("button", { name: "Confirm delete" }));
+    await waitFor(() => expect(api.deleteManualCard).toHaveBeenCalledWith("m1"));
+  });
+
+  it("has no Delete button on a new card", async () => {
+    open();
+    await userEvent.click(await screen.findByRole("button", { name: "Add a card by hand" }));
+    expect(within(await screen.findByRole("dialog")).queryByRole("button", { name: "Delete card" })).toBeNull();
+  });
+
+  it("has no accessibility violations with the sheet open", async () => {
+    vi.mocked(api.getManualCards).mockResolvedValue([MANUAL]);
+    open({ locale: "pt-BR" });
+    await userEvent.click(within(await row("Cartões de crédito", "Fatura Naiara")).getByRole("button", { name: "Editar Fatura Naiara" }));
+    const dialog = await screen.findByRole("dialog");
+    expect((await axe.run(dialog, AXE)).violations).toEqual([]);
   });
 });
 
