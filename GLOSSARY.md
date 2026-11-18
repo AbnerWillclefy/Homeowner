@@ -81,8 +81,12 @@ A like, neutral or dislike, either general (a User's, about a Category) or speci
 _Avoid_: Favourite, Taste
 
 **Restriction**:
-Work a User cannot do, which the system never gives them: either general (a User's, about a Demand) or specific (a Resident's, about one Chore of their Home). Lasting, or for one day when set at a Check-in.
+Work a User cannot do, which the system never gives them: either general (a User's, about a Demand) or specific (a Resident's, about one Chore of their Home). Lasting, or for one day when set at a Check-in. A lasting Restriction clears a Resident's responsibility for the Chores it covers (see Responsible).
 _Avoid_: Limitation, Exclusion
+
+**Responsible**:
+The one Resident Allocation proposes a Chore's Tasks to (one of the two for a two-person Chore), set by any Resident of the Home. Nobody by default, meaning anyone can be proposed it. When the responsible Resident cannot do it that day, its Tasks wait in the pool for them instead of going to someone else. It binds Allocation only: any Resident can still Take, Complete or Swap those Tasks. Cleared when they leave the Home or get a lasting Restriction on the Chore.
+_Avoid_: Owner, Assignee, In charge
 
 ### Planning
 
