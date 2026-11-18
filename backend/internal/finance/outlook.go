@@ -116,8 +116,12 @@ type PlannedLine struct {
 // shortcut: a Bill in a category with a limit counts in both plans (by plan and at pace) in future months, upgrade when a Bill can name its Spending Category.
 //
 // In the month today is in, a card's bill is the one still to pay
-// (currentCardBill, ADR 0024), and later months leave out the charges it holds.
-// In any other month it is, when the bank reported a bill due in the month, that bill's
+// (currentCardBill, ADR 0024). Each month after it counts the next bill after that one:
+// the bill due in the month plus the card's shift, the months from the current month to the
+// due month of the bill it counts (0 when that bill is due in the current month, or its due
+// day is unknown), so no month is left without a bill (ADR 0024, amended). Months before the
+// current one and horizons without it use the bill due in the month. A month's bill is,
+// when the bank reported a bill due in it, that bill's
 // total (ADR 0021), the owed installments not added because the total holds
 // them. Otherwise it is the card's Expenses counting in the month plus the
 // installments of its plans numbered above Plan.Number due in it; for a card
@@ -147,12 +151,14 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 			continue
 		}
 		if owed[p.SourceID] == nil {
-			owed[p.SourceID] = make([]int64, months)
+			owed[p.SourceID] = make([]int64, months+billLead) // a shifted month reads up to billLead months on
 		}
 		for k := p.Number + 1; k <= p.Total; k++ {
-			if i := monthIndex(p.Month.AddDate(0, k-p.Number, 0)) - monthIndex(from); i >= 0 && i < months {
+			if i := monthIndex(p.Month.AddDate(0, k-p.Number, 0)) - monthIndex(from); i >= 0 && i < months+billLead {
 				owed[p.SourceID][i] += p.AmountCents
-				toCome[i][p.Category] += p.AmountCents
+				if i < months {
+					toCome[i][p.Category] += p.AmountCents
+				}
 			}
 		}
 	}
@@ -170,6 +176,7 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 	}
 	isCurrent := func(m time.Time) bool { return !today.IsZero() && monthIndex(m) == monthIndex(current) }
 	taken := map[string]billSpan{} // card id -> the charges the current month's bill holds
+	shift := map[string]int{}      // card id -> months from the current month to the due month of the bill it counts
 	isCard := map[string]bool{}
 	for _, c := range cards {
 		isCard[c.ID] = true
@@ -205,13 +212,16 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 						o.Cycles = map[string]BillCycle{}
 					}
 					o.Cycles[c.ID] = cycleOf(c, bill, span, today)
+					if due := o.Cycles[c.ID].DueOn; due != nil {
+						shift[c.ID] = max(0, monthIndex(*due)-monthIndex(m))
+					}
 				}
 			} else {
-				bill = dueCardBill(c, byCard[c.ID], taken[c.ID], m)
+				bill = dueCardBill(c, byCard[c.ID], taken[c.ID], m.AddDate(0, shift[c.ID], 0))
 			}
 			// A closed bill holds no installment still to be charged: those go to the open one.
 			if !bill.FromBank && span.to.IsZero() && owed[c.ID] != nil {
-				bill.AmountCents += owed[c.ID][i]
+				bill.AmountCents += owed[c.ID][i+shift[c.ID]]
 			}
 			o.Cards = append(o.Cards, bill)
 			o.TotalCents += bill.AmountCents
@@ -476,7 +486,8 @@ func cycleOf(c Card, bill CardBill, span billSpan, today time.Time) BillCycle {
 	return cy
 }
 
-// dueCardBill is a card's bill due in month m (a first-of-month): the bank's
+// dueCardBill is a card's bill due in month m (a first-of-month, already moved by the
+// card's shift in the months after the current one): the bank's
 // total when it reported one (ADR 0021), else the charges counting in m, only
 // those posted on or after the closing of the latest bank bill due before m or
 // already decided by the current month's bill, and none that bill holds (taken).

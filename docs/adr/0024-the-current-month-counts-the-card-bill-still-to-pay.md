@@ -20,3 +20,7 @@ A bill is paid when a debit off the cards of exactly its total posts between its
 
 - Between a closing and the payment, charges after the closing count in no bill until the payment matches.
 - Net worth always subtracts the current month's bill.
+
+## Amendment
+
+"Every other month keeps ADR 0021" holds only for months before the current one and horizons without it. Each month after the current one counts the next bill after the one the current month counts (the bill due in the month plus the months from the current month to that bill's due month, 0 when it is due in the current month), so a bill is never counted in two months and no month is left without one (#755).

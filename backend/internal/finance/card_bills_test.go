@@ -172,3 +172,35 @@ func TestMonthCommittedHoldsTheOpenBillLikeTheCommitments(t *testing.T) {
 		t.Errorf("committed = %d, want %d: the cards %+v with the open bill's 777", committed, want, b.Months[0].Cards)
 	}
 }
+
+// With the open bill due next month in the current month, December counts the bill after it:
+// a charge dated 29 November (bill closing 28 December) shows in December, read end to end
+// through loadOutlook's window.
+func TestCommitmentsLaterMonthCountsTheBillAfterTheOpenOne(t *testing.T) {
+	t.Parallel()
+	app, users := startSync(t, []string{"ana@example.com"})
+	app.RunFinanceSync(t)
+	ana := users["ana@example.com"]
+	if _, err := app.DB.Exec(context.Background(), `DELETE FROM finance_card_bills;
+		UPDATE finance_sources SET bill_close_day = 28, bill_due_day = 5 WHERE kind = 'credit_card'`); err != nil {
+		t.Fatal(err)
+	}
+	seedRow(t, app, "ana@example.com", "2026-11-29", "expense", -500) // counts on 2027-01-05
+	seedRow(t, app, "ana@example.com", "2027-10-10", "expense", -700) // counts on 2027-11-05, past the 12 months asked
+
+	res := ana.Get("/me/finance/commitments?from=2026-11&months=12")
+	apitest.ExpectStatus(t, res, http.StatusOK)
+	var b outlookBody
+	if err := json.Unmarshal(res.Raw, &b); err != nil {
+		t.Fatal(err)
+	}
+	if len(b.Months) != 12 || len(b.Months[1].Cards) != 1 {
+		t.Fatalf("commitments = %s, want 12 months of one card", res.Raw)
+	}
+	if got := b.Months[1].Cards[0].AmountCents; got != 500 {
+		t.Errorf("december card = %d, want the 500 of the bill closing 28 December", got)
+	}
+	if got := b.Months[11].Cards[0].AmountCents; got != 700 {
+		t.Errorf("last month card = %d, want the 700 of a bill due past the asked months", got)
+	}
+}

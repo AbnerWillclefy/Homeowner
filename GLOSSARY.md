@@ -145,7 +145,7 @@ The money a User expects to receive each month, which Finances compares with wha
 _Avoid_: Salary, Revenue, Earnings
 
 **Leftover**:
-What remains of the Monthly income after everything a month takes: Monthly income − (card bills due in the month + other Bills to pay + installments off the card + Planned spending + money already spent off the card this month + the larger of the month's Saving and the Monthly contribution). It can be negative, and is absent when no Monthly income is set.
+What remains of the Monthly income after everything a month takes: Monthly income − (the card bill each month counts: in the current month the bill still to pay, in later months the next bill after it + other Bills to pay + installments off the card + Planned spending + money already spent off the card this month + the larger of the month's Saving and the Monthly contribution). It can be negative, and is absent when no Monthly income is set.
 _Avoid_: Balance, Surplus, Savings
 
 **Daily allowance**:
