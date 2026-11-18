@@ -1,28 +1,39 @@
-import { Button, Select, Sheet } from "@homeowner/bedrock";
+import { Banner, Button, Input, Select, Sheet } from "@homeowner/bedrock";
 import { useId, useState, type FormEvent } from "react";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
 import { formatDay } from "../../../shared/month/month";
 import { TYPES, type Transaction, type TransactionEdit, type TransactionType } from "../api";
+import type { EditOutcome } from "../hooks/useTransactions";
 import { SPENDING_CATEGORIES, spendingKey, type SpendingCategory } from "../logic/categories";
-import { editFor } from "../logic/edit";
+import { editFor, noteTooLong } from "../logic/edit";
 import { Money } from "./Money";
 
 /**
  * The Transaction's detail, in the side panel: its amount, and its type and, for an Expense, its Spending Category to
- * change. Saving closes the sheet at once: the row updates on the screen and says so if the API refuses.
+ * change, and its Note. The sheet stays open until the save answers; a refusal shows inside it, with what was typed kept.
  */
-export function EditSheet({ tx, onSave, onClose }: { tx: Transaction; onSave(edit: TransactionEdit): void; onClose(): void }) {
+export function EditSheet({ tx, onSave, onClose }: { tx: Transaction; onSave(edit: TransactionEdit): Promise<EditOutcome>; onClose(): void }) {
   const { t, locale } = useI18n();
   const formId = useId();
   const [type, setType] = useState<TransactionType>(tx.type);
   const [category, setCategory] = useState<SpendingCategory>(tx.spendingCategory ?? "other");
+  const [note, setNote] = useState(tx.note ?? "");
+  const [saving, setSaving] = useState(false);
+  const [refused, setRefused] = useState<EditOutcome | null>(null);
+  const tooLong = noteTooLong(note) || refused === "note-too-long";
   const date = formatDay(tx.postedOn, locale);
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
-    const edit = editFor(tx, type, category);
-    if (edit) onSave(edit);
-    onClose();
+    if (saving || noteTooLong(note)) return;
+    const edit = editFor(tx, type, category, note);
+    if (!edit) return onClose();
+    setSaving(true);
+    setRefused(null);
+    const outcome = await onSave(edit);
+    setSaving(false);
+    if (outcome === "ok" || outcome === "gone") onClose();
+    else setRefused(outcome);
   }
 
   return (
@@ -33,7 +44,7 @@ export function EditSheet({ tx, onSave, onClose }: { tx: Transaction; onSave(edi
       subtitle={`${tx.sourceName} · ${date}`}
       closeLabel={t("app.close")}
       footer={
-        <Button type="submit" form={formId}>
+        <Button type="submit" form={formId} disabled={saving}>
           {t("tx.edit.save")}
         </Button>
       }
@@ -57,6 +68,13 @@ export function EditSheet({ tx, onSave, onClose }: { tx: Transaction; onSave(edi
             options={SPENDING_CATEGORIES.map((id) => ({ value: id, label: t(spendingKey(id)) }))}
           />
         )}
+        <Input
+          label={t("tx.edit.noteLabel")}
+          value={note}
+          onChange={(e) => { setNote(e.target.value); setRefused(null); }}
+          hint={tx.installment ? t("tx.edit.noteAllParts") : undefined}
+          error={tooLong ? t("tx.edit.noteTooLong") : undefined}
+        />
         <dl className="body flex flex-col gap-2 border-t border-border pt-4">
           <div className="flex justify-between gap-4">
             <dt className="text-text-muted">{t("tx.edit.source")}</dt>
@@ -67,7 +85,7 @@ export function EditSheet({ tx, onSave, onClose }: { tx: Transaction; onSave(edi
             <dd className="text-right">{date}</dd>
           </div>
         </dl>
-        <p className="caption text-text-muted">{t("tx.edit.note")}</p>
+        {refused === "failed" && <Banner tone="danger">{t("tx.edit.failed")}</Banner>}
       </form>
     </Sheet>
   );

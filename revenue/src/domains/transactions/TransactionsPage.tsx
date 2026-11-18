@@ -42,7 +42,7 @@ export function TransactionsPage() {
     <section className="flex flex-col gap-6">
       <PageHeader title={t("nav.transactions")} subtitle={subtitle} tools={<><MonthSelect /><HideValuesToggle /></>} />
 
-      {notice && <Banner tone="danger">{t(notice === "gone" ? "tx.edit.gone" : "tx.edit.failed")}</Banner>}
+      {notice && <Banner tone="danger">{t("tx.edit.gone")}</Banner>}
 
       <div className="grid gap-6 desktop:grid-cols-12">
         {desktop && data && all.length > 0 && (
@@ -81,7 +81,7 @@ export function TransactionsPage() {
         </Wrap>
       </div>
 
-      {editing && <EditSheet key={editing.id} tx={editing} onSave={(body) => void edit(editing, body)} onClose={() => setEditing(null)} />}
+      {editing && <EditSheet key={editing.id} tx={editing} onSave={(body) => edit(editing, body)} onClose={() => setEditing(null)} />}
     </section>
   );
 }

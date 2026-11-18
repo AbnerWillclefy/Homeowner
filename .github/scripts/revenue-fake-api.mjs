@@ -42,15 +42,15 @@ function transactions(month, today) {
   const on = days(month, today);
   const rows = DESCRIPTIONS.map(([description, amountCents, type, spendingCategory, sourceName], i) => ({
     id: `t${i + 1}`, sourceId: SOURCE_ID[sourceName], postedOn: on[i], countsOn: on[i], description, sourceName, amountCents, currency: "BRL", type, spendingCategory,
-    installment: null,
+    installment: null, note: i === 3 ? "Ida ao aeroporto" : null,
   }));
   rows.push({
     id: "t11", sourceId: "s1", postedOn: on[0], countsOn: on[0], description: "Magazine Luiza Geladeira Frost Free", sourceName: "Nubank",
-    amountCents: -32_490, currency: "BRL", type: "expense", spendingCategory: "shopping", installment: { number: 3, total: 10 },
+    amountCents: -32_490, currency: "BRL", type: "expense", spendingCategory: "shopping", installment: { number: 3, total: 10 }, note: null,
   });
   rows.push({
     id: "t12", postedOn: on[1], countsOn: on[1], description: "PIX Pagamento 8841", sourceName: "Itaú",
-    amountCents: -4_500, currency: "BRL", type: "expense", spendingCategory: "other", categorySetBy: "fallback", installment: null,
+    amountCents: -4_500, currency: "BRL", type: "expense", spendingCategory: "other", categorySetBy: "fallback", installment: null, note: null,
   });
   rows.sort((a, b) => b.postedOn.localeCompare(a.postedOn));
   const expenses = rows.filter((t) => t.type === "expense");

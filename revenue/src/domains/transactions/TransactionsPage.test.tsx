@@ -12,7 +12,7 @@ vi.mock("./api", async (original) => ({ ...(await original<typeof import("./api"
 
 const tx = (over: Partial<Transaction>): Transaction => ({
   id: "t1", postedOn: "2026-01-05", countsOn: "2026-01-05", description: "Mercado Boa Compra", sourceName: "Nubank", amountCents: -15000,
-  type: "expense", spendingCategory: "groceries", installment: null, ...over,
+  type: "expense", spendingCategory: "groceries", installment: null, note: null, ...over,
 });
 const MERCADO = tx({});
 const SALARIO = tx({ id: "t2", description: "Salário", amountCents: 500000, type: "income", spendingCategory: null });
@@ -244,7 +244,6 @@ describe("editing", () => {
     const dialog = await editRow("Mercado");
     expect(within(dialog).getByText("Nubank · Jan 5")).toBeTruthy();
     expect(within(dialog).getByText(/150\.00/)).toBeTruthy();
-    expect(within(dialog).getByText("Changes here apply at once.")).toBeTruthy();
     expect(within(dialog).queryByRole("switch")).toBeNull();
   });
 
@@ -262,7 +261,7 @@ describe("editing", () => {
     expect(within(dialog).queryByRole("combobox")).toBeNull();
   });
 
-  it("updates the row before the API answers, then keeps the server's row", async () => {
+  it("updates the row behind the open sheet before the API answers, then keeps the server's row", async () => {
     width(true);
     month([MERCADO]);
     let answer!: (r: PatchResult) => void;
@@ -272,7 +271,7 @@ describe("editing", () => {
     await userEvent.click(within(dialog).getByRole("radio", { name: "Saving" }));
     await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
     expect(patch).toHaveBeenCalledWith("t1", { type: "saving" });
-    const row = (await screen.findByRole("button", { name: "Mercado Boa Compra" })).closest("tr")!;
+    const row = (await screen.findByRole("button", { name: "Mercado Boa Compra", hidden: true })).closest("tr")!;
     await waitFor(() => expect(within(row).getByText("Saving")).toBeTruthy());
     answer({ kind: "ok", transaction: { ...MERCADO, type: "saving", spendingCategory: null } });
     await waitFor(() => expect(within(row).getByText("Saving")).toBeTruthy());
@@ -293,16 +292,18 @@ describe("editing", () => {
     expect(await screen.findByText("Pets")).toBeTruthy();
   });
 
-  it("rolls the row back and says so when the API refuses", async () => {
+  it("rolls the row back and says so inside the sheet, which stays open with the typed Note, when the API refuses", async () => {
     width(true);
     month([MERCADO]);
     patch.mockResolvedValue({ kind: "error" });
     open();
     const dialog = await editRow("Mercado");
     await userEvent.click(within(dialog).getByRole("radio", { name: "Transfer" }));
+    await userEvent.type(within(dialog).getByRole("textbox", { name: "Note" }), "Fone");
     await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
-    expect((await screen.findByRole("alert")).textContent).toContain("We could not save");
-    const row = screen.getByRole("button", { name: "Mercado Boa Compra" }).closest("tr")!;
+    expect((await within(dialog).findByRole("alert")).textContent).toContain("We could not save");
+    expect((within(dialog).getByRole("textbox", { name: "Note" }) as HTMLInputElement).value).toBe("Fone");
+    const row = screen.getByRole("button", { name: "Mercado Boa Compra", hidden: true }).closest("tr")!;
     expect(within(row).getByText("Expense")).toBeTruthy();
     expect(within(row).queryByText("Transfer")).toBeNull();
   });
@@ -330,6 +331,89 @@ describe("editing", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
     await waitFor(() => expect(invalidate).toHaveBeenCalledTimes(3));
     expect(invalidate.mock.calls.map((c) => c[0]?.queryKey)).toEqual([["finance", "transactions"], ["finance", "history"], ["finance", "commitments"]]);
+  });
+});
+
+describe("Note", () => {
+  const WITH_NOTE = tx({ note: "Fone Bluetooth" });
+  const editRow = async (name: string) => {
+    await userEvent.click(await screen.findByRole("button", { name: new RegExp(name) }));
+    return screen.findByRole("dialog");
+  };
+
+  it.each([true, false])("shows the Note under the description, and no line when there is none, desktop %s", async (desktop) => {
+    width(desktop);
+    month([WITH_NOTE, SALARIO]);
+    open();
+    expect(await screen.findByText("Fone Bluetooth")).toBeTruthy();
+    expect(screen.getAllByText("Fone Bluetooth")).toHaveLength(1);
+  });
+
+  it("finds a row by its Note", async () => {
+    width(true);
+    month([WITH_NOTE, SALARIO]);
+    open();
+    await userEvent.type(await screen.findByRole("searchbox"), "fone");
+    expect(screen.queryByRole("button", { name: "Salário" })).toBeNull();
+    expect(screen.getByText("Fone Bluetooth")).toBeTruthy();
+  });
+
+  it("saves a Note, trimmed", async () => {
+    width(true);
+    month([MERCADO]);
+    patch.mockResolvedValue({ kind: "ok", transaction: { ...MERCADO, note: "Fone" } });
+    open();
+    let dialog = await editRow("Mercado");
+    await userEvent.type(within(dialog).getByRole("textbox", { name: "Note" }), "  Fone ");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(patch).toHaveBeenCalledWith("t1", { note: "Fone" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("sends an empty text to clear a Note", async () => {
+    width(true);
+    month([WITH_NOTE]);
+    patch.mockResolvedValue({ kind: "ok", transaction: MERCADO });
+    open();
+    const dialog = await editRow("Mercado");
+    await userEvent.clear(within(dialog).getByRole("textbox", { name: "Note" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(patch).toHaveBeenCalledWith("t1", { note: "" });
+  });
+
+  it("shows the too-long error inside the sheet without sending the request", async () => {
+    width(true);
+    month([MERCADO]);
+    open();
+    const dialog = await editRow("Mercado");
+    await userEvent.click(within(dialog).getByRole("textbox", { name: "Note" }));
+    await userEvent.paste("x".repeat(201));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect((await within(dialog).findByRole("alert")).textContent).toContain("at most 200");
+    expect(patch).not.toHaveBeenCalled();
+  });
+
+  it("shows the server's too-long answer as the field error", async () => {
+    width(true);
+    month([MERCADO]);
+    patch.mockResolvedValue({ kind: "note-too-long" });
+    open();
+    const dialog = await editRow("Mercado");
+    await userEvent.type(within(dialog).getByRole("textbox", { name: "Note" }), "Fone");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect((await within(dialog).findByRole("alert")).textContent).toContain("at most 200");
+  });
+
+  it("says the Note applies to every installment, only on an installment", async () => {
+    width(true);
+    month([MERCADO, tx({ id: "t5", description: "Geladeira", installment: { number: 5, total: 12 } })]);
+    open();
+    let dialog = await editRow("Mercado");
+    expect(within(dialog).queryByText("Applies to every installment.")).toBeNull();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    dialog = await editRow("Geladeira");
+    expect(within(dialog).getByText("Applies to every installment.")).toBeTruthy();
   });
 });
 

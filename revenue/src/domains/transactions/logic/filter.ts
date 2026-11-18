@@ -18,13 +18,13 @@ export const isFiltered = (f: Filter) => f.type !== "all" || f.category !== "all
 const plain = (text: string) => text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
 
 /**
- * Whether `query` finds the row: in its description or Source name, or, when the query is only a number, in its amount.
+ * Whether `query` finds the row: in its description, Note or Source name, or, when the query is only a number, in its amount.
  * "1.234,56", "1234,56" and "1234.56" all mean 123456 cents, so only the digits are compared.
  */
 export function matchesQuery(tx: Transaction, query: string): boolean {
   const text = plain(query.trim());
   if (text === "") return true;
-  if (plain(`${tx.description} ${tx.sourceName}`).includes(text)) return true;
+  if (plain(`${tx.description} ${tx.note ?? ""} ${tx.sourceName}`).includes(text)) return true;
   const digits = text.replace(/\D/g, "");
   return digits !== "" && /^[\d.,\s]+$/.test(text) && String(Math.abs(tx.amountCents)).includes(digits);
 }
