@@ -9,7 +9,6 @@ import { CategoriesPage } from "../domains/categories/CategoriesPage";
 import { CategoryPage } from "../domains/categories/CategoryPage";
 import { GoalsPage } from "../domains/goals/GoalsPage";
 import { NetWorthPage } from "../domains/net-worth/NetWorthPage";
-import { OnboardingPage } from "../domains/onboarding/OnboardingPage";
 import { OverviewPage } from "../domains/overview/OverviewPage";
 import { ProjectionPage } from "../domains/projection/ProjectionPage";
 import { SettingsPage } from "../domains/settings/SettingsPage";
@@ -39,8 +38,6 @@ export const NET_WORTH = screen("/net-worth", "nav.netWorth", PiggyBank, <NetWor
 export const PROJECTION = screen("/projection", "nav.projection", LineChart, <ProjectionPage />);
 export const SOURCES = screen("/sources", "nav.sources", Landmark, <SourcesPage />);
 export const SETTINGS = screen("/settings", "nav.settings", Settings, <SettingsPage />);
-/** The first-run flow: a route, not a navigation item. */
-export const ONBOARDING = screen("/onboarding", "page.onboarding", LayoutDashboard, <OnboardingPage />);
 
 export const NAV_GROUPS: { label: MessageKey; screens: Screen[] }[] = [
   { label: "nav.group.main", screens: [OVERVIEW, TRANSACTIONS, BILLS, CARD_BILLS, CATEGORIES] },
@@ -50,5 +47,5 @@ export const NAV_GROUPS: { label: MessageKey; screens: Screen[] }[] = [
 export const NAV_FOOTER: Screen[] = [SETTINGS];
 /** On a phone, four tabs and "More" with everything else. */
 export const TABS: Screen[] = [OVERVIEW, TRANSACTIONS, BILLS, GOALS];
-export const ROUTES: Screen[] = [...NAV_GROUPS.flatMap((g) => g.screens), ...NAV_FOOTER, CATEGORY, ONBOARDING];
+export const ROUTES: Screen[] = [...NAV_GROUPS.flatMap((g) => g.screens), ...NAV_FOOTER, CATEGORY];
 export const MORE: Screen[] = [...NAV_GROUPS.flatMap((g) => g.screens), ...NAV_FOOTER].filter((s) => !TABS.includes(s));

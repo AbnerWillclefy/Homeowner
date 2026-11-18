@@ -1,7 +1,11 @@
 import { Banner, Button } from "@homeowner/bedrock";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, type ReactNode } from "react";
+import { Navigate, useLocation } from "react-router";
 import { useFinanceMe } from "../api/financeMe";
 import { useAuth } from "../auth/AuthContext";
+import { getMonthlyIncome } from "../domains/settings/api";
+import { onboardingDone } from "../domains/onboarding/logic/onboardingDone";
 import { CenteredCard } from "../shared/CenteredCard";
 import { useI18n } from "../shared/i18n/I18nProvider";
 
@@ -51,6 +55,25 @@ export function Gate({ children }: { children: ReactNode }) {
     case "unauthorized":
       return null;
     case "ok":
-      return <>{children}</>;
+      return <FirstRun hasSources={me.data.hasSources}>{children}</FirstRun>;
   }
+}
+
+/**
+ * Sends a first-time User from the Overview to Onboarding: no Sources, no Monthly income, and not finished or skipped on this device.
+ * shortcut: "finished" lives in localStorage, so a User who skipped on another device and has neither sees it once here; add a server flag only if that is ever unwanted.
+ */
+function FirstRun({ hasSources, children }: { hasSources: boolean; children: ReactNode }) {
+  const { pathname } = useLocation();
+  if (pathname !== "/" || hasSources || onboardingDone()) return <>{children}</>;
+  return <IncomeCheck>{children}</IncomeCheck>;
+}
+
+function IncomeCheck({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
+  // Same key as Settings' income read, so the answer is shared.
+  const income = useQuery({ queryKey: ["finance", "commitments", "income"], queryFn: getMonthlyIncome });
+  if (income.isPending) return <p role="status" className="p-6 body text-text-muted">{t("gate.checking")}</p>;
+  // A failed read is not a reason to send anyone through setup: show the app.
+  return income.data === null ? <Navigate to="/onboarding" replace /> : <>{children}</>;
 }

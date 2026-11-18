@@ -4,6 +4,7 @@ import { ScreenPlaceholder } from "../shared/ScreenPlaceholder";
 import { ForgotPassword } from "../auth/ForgotPassword";
 import { SignIn } from "../auth/SignIn";
 import { useAuth } from "../auth/AuthContext";
+import { OnboardingPage } from "../domains/onboarding/OnboardingPage";
 import { Gate } from "./Gate";
 import { ROUTES } from "./screens";
 import { Shell } from "./Shell";
@@ -16,6 +17,8 @@ export function App() {
   return (
     <Gate>
       <Routes>
+        {/* The first-run flow has its own frame and is not in the navigation. */}
+        <Route path="/onboarding" element={<OnboardingPage />} />
         <Route element={<Shell />}>
           {ROUTES.map(({ path, element }) => (path === "/" ? <Route key={path} index element={element} /> : <Route key={path} path={path} element={element} />))}
           <Route path="*" element={<ScreenPlaceholder titleKey="page.notFound" />} />

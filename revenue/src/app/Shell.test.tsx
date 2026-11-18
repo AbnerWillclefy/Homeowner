@@ -34,7 +34,6 @@ describe("shell navigation", () => {
     shell({ locale: "en" });
     const nav = screen.getByRole("navigation", { name: "Main navigation" });
     expect(within(nav).getAllByRole("link").map((a) => a.textContent)).toEqual(EN);
-    expect(within(nav).queryByText("Getting started")).toBeNull();
     expect(screen.getAllByRole("navigation")).toHaveLength(1);
   });
 
@@ -60,12 +59,6 @@ describe("shell navigation", () => {
     expect(screen.getByRole("link", { name: "Bills to pay" }).getAttribute("aria-current")).toBe("page");
     await userEvent.click(screen.getByRole("link", { name: "Goals" }));
     expect(screen.getByRole("heading", { level: 1, name: "Goals" })).toBeTruthy();
-  });
-
-  it("reaches Onboarding by its route", () => {
-    width(true);
-    shell({ locale: "en", path: "/onboarding" });
-    expect(screen.getByRole("heading", { level: 1, name: "Getting started" })).toBeTruthy();
   });
 });
 
