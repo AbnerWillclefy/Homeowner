@@ -16,7 +16,7 @@ const validDay = `{
   ],
   "tasks": [
     {"id": "t1", "chore_id": "c1", "effort": 2, "importance": "essential", "demands": ["bending"],
-     "people": 1, "window_start": "2026-03-01", "window_end": "2026-03-02", "allowed_weekdays": [1, 2]}
+     "people": 1, "window_start": "2026-03-01", "window_end": "2026-03-02", "allowed_weekdays": [1, 2], "responsible": "r1"}
   ]
 }`
 
@@ -36,7 +36,7 @@ func TestParseBuildsState(t *testing.T) {
 	}
 	tk := day.State.Tasks[0]
 	if tk.Importance != allocation.Essential || tk.People != 1 || tk.WindowEnd != allocation.NewDate(2026, 3, 2) ||
-		len(tk.AllowedWeekdays) != 2 || tk.Demands[0] != "bending" {
+		len(tk.AllowedWeekdays) != 2 || tk.Demands[0] != "bending" || tk.Responsible != "r1" {
 		t.Errorf("task = %+v", tk)
 	}
 }
@@ -87,6 +87,27 @@ func TestShippedDaysLoad(t *testing.T) {
 		if n := len(d.State.Tasks); n < 4 || n > 10 {
 			t.Errorf("%s: %d tasks, want 4 to 10", d.Name, n)
 		}
+	}
+}
+
+// One shipped day has responsibility, and the baseline waits on a Resident
+// who is drained or absent.
+func TestAShippedDayUsesResponsibility(t *testing.T) {
+	days, err := LoadDir(shippedDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	waiting := 0
+	for _, d := range days {
+		res, _ := allocation.Baseline{}.Plan(d.State)
+		for _, p := range res.Pool {
+			if p.Reason == allocation.ReasonWaitingForResponsible {
+				waiting++
+			}
+		}
+	}
+	if waiting == 0 {
+		t.Fatal("no shipped day pools a Task as waiting_for_responsible")
 	}
 }
 

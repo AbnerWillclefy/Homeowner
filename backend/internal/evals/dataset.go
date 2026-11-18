@@ -50,6 +50,9 @@ type taskFile struct {
 	WindowStart     string   `json:"window_start"`
 	WindowEnd       string   `json:"window_end"`
 	AllowedWeekdays []int    `json:"allowed_weekdays"`
+	// Responsible is the responsible Resident's id; empty means Nobody. It
+	// need not name a Resident of the day: "absent" is a real case.
+	Responsible string `json:"responsible,omitempty"`
 }
 
 // LoadDir reads every *.json file of dir, in file name order, as a Day.
@@ -206,7 +209,7 @@ func parseTask(t taskFile) (allocation.Task, error) {
 		}
 	}
 	task := allocation.Task{ID: t.ID, ChoreID: t.ChoreID, Effort: t.Effort, Importance: allocation.Importance(t.Importance),
-		People: t.People, WindowStart: start, WindowEnd: end, AllowedWeekdays: t.AllowedWeekdays}
+		People: t.People, WindowStart: start, WindowEnd: end, AllowedWeekdays: t.AllowedWeekdays, Responsible: t.Responsible}
 	for _, d := range t.Demands {
 		if !vocab.IsDemand(d) {
 			return allocation.Task{}, fmt.Errorf("task %s: unknown demand %q", t.ID, d)
