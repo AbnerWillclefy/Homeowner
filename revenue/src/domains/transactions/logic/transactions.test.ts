@@ -1,28 +1,49 @@
 import { describe, expect, it } from "vitest";
 import type { Transaction } from "../api";
 import { tagOf } from "./categories";
-import { editFor } from "./edit";
+import { editFor, noteTooLong } from "./edit";
 import { filterRows, isFiltered, matchesQuery, NO_FILTER } from "./filter";
 import { groupByDay, sourceCount, totalsOf } from "./totals";
 
 const tx = (over: Partial<Transaction> = {}): Transaction => ({
   id: "t", postedOn: "2030-01-05", countsOn: "2030-01-05", description: "x", sourceName: "Nu", amountCents: -100,
-  type: "expense", spendingCategory: "groceries", installment: null, ...over,
+  type: "expense", spendingCategory: "groceries", installment: null, note: null, ...over,
 });
 
 describe("editFor", () => {
   it("is null when nothing changed", () => {
-    expect(editFor(tx(), "expense", "groceries")).toBeNull();
+    expect(editFor(tx(), "expense", "groceries", "")).toBeNull();
   });
   it("sends the category alone when only it changed", () => {
-    expect(editFor(tx(), "expense", "pets")).toEqual({ spendingCategory: "pets" });
+    expect(editFor(tx(), "expense", "pets", "")).toEqual({ spendingCategory: "pets" });
   });
   it("sends the type, and no category, for a non-expense", () => {
-    expect(editFor(tx(), "saving", "pets")).toEqual({ type: "saving" });
+    expect(editFor(tx(), "saving", "pets", "")).toEqual({ type: "saving" });
   });
   it("sends a category with the type when becoming an expense", () => {
-    expect(editFor(tx({ type: "income", spendingCategory: null }), "expense", "other")).toEqual({ type: "expense", spendingCategory: "other" });
+    expect(editFor(tx({ type: "income", spendingCategory: null }), "expense", "other", "")).toEqual({ type: "expense", spendingCategory: "other" });
   });
+});
+
+describe("editFor with a Note", () => {
+  it("sends a changed Note, trimmed", () => expect(editFor(tx(), "expense", "groceries", "  Fone ")).toEqual({ note: "Fone" }));
+  it("turns a pasted tab into a space, so the server never sees a control character", () =>
+    expect(editFor(tx(), "expense", "groceries", "Fone\tBluetooth")).toEqual({ note: "Fone Bluetooth" }));
+  it("sends \"\" to clear it", () => expect(editFor(tx({ note: "Fone" }), "expense", "groceries", "")).toEqual({ note: "" }));
+  it("sends nothing when only whitespace changed", () => {
+    expect(editFor(tx({ note: "Fone" }), "expense", "groceries", " Fone  ")).toBeNull();
+    expect(editFor(tx(), "expense", "groceries", "   ")).toBeNull();
+  });
+  it("sends a Note-only edit on a non-Expense, with no category", () =>
+    expect(editFor(tx({ type: "income", spendingCategory: null }), "income", "other", "Bônus")).toEqual({ note: "Bônus" }));
+});
+
+describe("noteTooLong", () => {
+  it("counts code points: 200 emoji pass and 201 fail", () => {
+    expect(noteTooLong("😀".repeat(200))).toBe(false);
+    expect(noteTooLong("😀".repeat(201))).toBe(true);
+  });
+  it("ignores surrounding whitespace", () => expect(noteTooLong(` ${"x".repeat(200)} `)).toBe(false));
 });
 
 describe("filterRows", () => {
@@ -51,6 +72,10 @@ describe("matchesQuery", () => {
     expect(matchesQuery(cafe, "cafe")).toBe(true);
     expect(matchesQuery(cafe, "PELÉ")).toBe(true);
     expect(matchesQuery(tx({ description: "Cafe" }), "café")).toBe(true);
+  });
+  it("finds the Note ignoring accents, and a null Note does not throw", () => {
+    expect(matchesQuery(tx({ description: "AMAZON", note: "Fône" }), "fone")).toBe(true);
+    expect(matchesQuery(tx({ description: "AMAZON", note: null }), "fone")).toBe(false);
   });
   it("finds the Source name", () => expect(matchesQuery(cafe, "nubank")).toBe(true));
   it("reads an amount typed with or without separators", () => {

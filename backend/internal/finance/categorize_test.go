@@ -261,3 +261,23 @@ func TestMoreThanOneBatchMapsEachAnswerToItsOwnKeyAndTransfersNeverLeave(t *test
 		t.Errorf("held back = %s/%s, want other/fallback", c, by)
 	}
 }
+
+func TestANoteNeverReachesTheCategorizer(t *testing.T) {
+	t.Parallel()
+	app, fake := startCategorizing(t, allBoth)
+	app.RunFinanceSync(t)
+	if _, err := app.DB.Exec(context.Background(), `UPDATE finance_transactions SET note = 'Fone Bluetooth secreto', spending_category = 'other', category_set_by = 'fallback'
+		WHERE merchant_key = 'PAGAMENTO DE BOLETO'`); err != nil {
+		t.Fatal(err)
+	}
+	fake.Answer(`{"items":[{"i":0,"c":"taxes_fees"}]}`)
+	app.Clock.Advance(25 * time.Hour)
+	app.RunFinanceSync(t)
+
+	if c, by := categoryOf(t, app, "PAGAMENTO DE BOLETO"); c != "taxes_fees" || by != "auto" {
+		t.Errorf("category = %s/%s, want taxes_fees/auto even with a note", c, by)
+	}
+	if user := fake.LastRequest().User; !strings.Contains(user, "PAGAMENTO") || strings.Contains(user, "Fone") {
+		t.Errorf("request = %s, want the merchant and never the note", user)
+	}
+}

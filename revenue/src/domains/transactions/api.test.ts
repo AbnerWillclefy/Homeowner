@@ -6,7 +6,7 @@ import { getMonth, patchTransaction } from "./api";
 
 const TX = {
   id: "t1", postedOn: "2030-01-05", countsOn: "2030-01-05", description: "Mercado", sourceName: "Nubank", amountCents: -1500,
-  currency: "BRL", type: "expense", spendingCategory: "groceries", typeSetBy: "auto", categorySetBy: "auto", installment: null,
+  currency: "BRL", type: "expense", spendingCategory: "groceries", typeSetBy: "auto", categorySetBy: "auto", installment: null, note: null,
 };
 
 function setup(status: number, data: unknown) {
@@ -28,6 +28,14 @@ describe("getMonth", () => {
     expect((await getMonth("2030-01", client)).transactions).toMatchObject([{ id: "t1", description: "Mercado", spendingCategory: "groceries", installment: null }]);
     expect(sent[0]!.url).toBe("/me/finance/transactions");
     expect(sent[0]!.params).toEqual({ month: "2030-01" });
+  });
+
+  it("reads a Note as a string or null, and refuses any other value", async () => {
+    const read = (note: unknown) => getMonth("2030-01", setup(200, { transactions: [{ ...TX, note }] }).client);
+    expect((await read("Fone")).transactions[0]!.note).toBe("Fone");
+    expect((await read(null)).transactions[0]!.note).toBeNull();
+    await expect(read(5)).rejects.toThrow();
+    await expect(read(undefined)).rejects.toThrow();
   });
 
   it("throws on a failure status and on a malformed body", async () => {
@@ -52,6 +60,7 @@ describe("patchTransaction", () => {
   });
 
   it("is an error for another status, a 400, and a malformed 200", async () => {
+    expect(await patchTransaction("t1", { note: "x" }, setup(400, { error: "note too long" }).client)).toEqual({ kind: "note-too-long" });
     expect(await patchTransaction("t1", { type: "income" }, setup(500, {}).client)).toEqual({ kind: "error" });
     expect(await patchTransaction("t1", { type: "income" }, setup(400, "nope").client)).toEqual({ kind: "error" });
     expect(await patchTransaction("t1", { type: "income" }, setup(200, { id: 5 }).client)).toEqual({ kind: "error" });

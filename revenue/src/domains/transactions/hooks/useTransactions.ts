@@ -5,16 +5,19 @@ import { applyEdit } from "../logic/edit";
 
 export const monthKey = (month: string) => ["finance", "transactions", month, "rows"] as const;
 
-type Notice = { month: string; kind: "failed" | "gone" };
+type Notice = { month: string; kind: "gone" };
 
-/** One month of Transactions, and an edit that shows at once and rolls back when the API refuses it. */
+/** What a save came to. A failure is shown inside the sheet, which stays open with what the User typed. */
+export type EditOutcome = "ok" | "failed" | "gone" | "note-too-long";
+
+/** One month of Transactions, and an edit that shows at once and rolls back when the API refuses it, answering how it ended. */
 export function useTransactions(month: string) {
   const client = useQueryClient();
   const query = useQuery({ queryKey: monthKey(month), queryFn: () => getMonth(month) });
   const [notice, setNotice] = useState<Notice | null>(null);
 
   const edit = useCallback(
-    async (tx: Transaction, body: TransactionEdit) => {
+    async (tx: Transaction, body: TransactionEdit): Promise<EditOutcome> => {
       const key = monthKey(month);
       const replace = (row: Transaction) =>
         client.setQueryData<MonthResponse>(key, (old) => old && { ...old, transactions: old.transactions.map((r) => (r.id === row.id ? row : r)) });
@@ -29,11 +32,15 @@ export function useTransactions(month: string) {
         void client.invalidateQueries({ queryKey: ["finance", "transactions"] });
         void client.invalidateQueries({ queryKey: ["finance", "history"] });
         void client.invalidateQueries({ queryKey: ["finance", "commitments"] });
-        return;
+        return "ok";
       }
       replace(tx);
-      setNotice({ month, kind: result.kind === "not-found" ? "gone" : "failed" });
-      if (result.kind === "not-found") void client.invalidateQueries({ queryKey: key });
+      if (result.kind === "not-found") {
+        setNotice({ month, kind: "gone" });
+        void client.invalidateQueries({ queryKey: key });
+        return "gone";
+      }
+      return result.kind === "note-too-long" ? "note-too-long" : "failed";
     },
     [client, month],
   );

@@ -60,6 +60,7 @@ export function TransactionsTable({ rows, caption, onEdit }: RowsProps) {
                     <button type="button" aria-haspopup="dialog" onClick={() => onEdit(tx)} className={rowButton}>
                       {tx.description}
                     </button>
+                    {tx.note && <p className="caption text-text-muted [overflow-wrap:anywhere]">{tx.note}</p>}
                     <p className="caption text-text-muted [overflow-wrap:anywhere]">{meta(tx)}</p>
                   </div>
                 </div>
@@ -100,6 +101,7 @@ export function TransactionsList({ rows, caption, onEdit }: RowsProps) {
                     <span className="flex">{tx.type === "expense" && <CategoryIcon category={tagOf(tx.spendingCategory)} />}</span>
                     <span className="flex min-w-0 flex-col">
                       <span className="body-strong [overflow-wrap:anywhere]">{tx.description}</span>
+                      {tx.note && <span className="caption text-text-muted [overflow-wrap:anywhere]">{tx.note}</span>}
                       <span className="caption text-text-muted [overflow-wrap:anywhere]">
                         {[tx.type === "expense" && t(spendingKey(tx.spendingCategory ?? "other")), tx.sourceName, meta(tx)].filter(Boolean).join(" · ")}
                       </span>

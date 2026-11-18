@@ -18,6 +18,8 @@ export interface Transaction {
   /** Only an Expense has one. */
   spendingCategory: SpendingCategory | null;
   installment: { number: number; total: number } | null;
+  /** The text the User wrote on it, or null. The sync never changes it; on an installment every part shares one. */
+  note: string | null;
 }
 
 export interface MonthResponse {
@@ -28,11 +30,14 @@ export interface MonthResponse {
 export interface TransactionEdit {
   type?: TransactionType;
   spendingCategory?: SpendingCategory;
+  /** The trimmed text, or "" to clear it. An absent field leaves the Note as it is. */
+  note?: string;
 }
 
 export type PatchResult =
   | { kind: "ok"; transaction: Transaction }
   | { kind: "not-found" }
+  | { kind: "note-too-long" }
   | { kind: "error" };
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
@@ -40,14 +45,16 @@ const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "obj
 /** The Transaction in `value`, or null when a field the screen reads is missing or of the wrong type. */
 function parseTransaction(value: unknown): Transaction | null {
   if (!isRecord(value)) return null;
-  const { id, postedOn, countsOn, description, sourceName, amountCents, type, spendingCategory, installment } = value;
+  const { id, postedOn, countsOn, description, sourceName, amountCents, type, spendingCategory, installment, note } = value;
   if (![id, postedOn, countsOn, description, sourceName].every((s) => typeof s === "string")) return null;
   if (!Number.isInteger(amountCents) || !TYPES.includes(type as TransactionType)) return null;
   if (spendingCategory !== null && typeof spendingCategory !== "string") return null;
+  if (note !== null && typeof note !== "string") return null;
   const parts = isRecord(installment) && Number.isInteger(installment.number) && Number.isInteger(installment.total);
   return {
     id, postedOn, countsOn, description, sourceName, amountCents, type, spendingCategory,
     installment: parts ? { number: installment.number, total: installment.total } : null,
+    note,
   } as Transaction;
 }
 
@@ -62,11 +69,12 @@ export async function getMonth(month: string, client: AxiosInstance = apiClient)
   return { month, transactions: transactions as Transaction[] };
 }
 
-/** `PATCH /me/finance/transactions/{id}`; an absent field stays as it is. 404 is another User's or a missing row. */
+/** `PATCH /me/finance/transactions/{id}`; an absent field stays as it is. 404 is another User's or a missing row; a 400 `note too long` is its own result. */
 export async function patchTransaction(id: string, edit: TransactionEdit, client: AxiosInstance = apiClient): Promise<PatchResult> {
   try {
     const response = await client.patch(`/me/finance/transactions/${encodeURIComponent(id)}`, edit);
     if (response.status === 404) return { kind: "not-found" };
+    if (response.status === 400 && isRecord(response.data) && response.data.error === "note too long") return { kind: "note-too-long" };
     const transaction = response.status === 200 ? parseTransaction(response.data) : null;
     return transaction ? { kind: "ok", transaction } : { kind: "error" };
   } catch {

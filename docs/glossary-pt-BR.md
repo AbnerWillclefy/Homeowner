@@ -88,6 +88,7 @@ Finances is open only to Users on an allowlist. "Category" stays with Chores, so
 | Spending Category | categoria de gasto | categoria (alone), tag, etiqueta | Always "categoria de gasto" so it never reads as a Chore's category. |
 | Bill to pay | conta a pagar | fatura, boleto, dívida | Plural "contas a pagar". Money owed on a date. A credit card Source's bill ("fatura do cartão") is never entered: a closed one takes the bank's total, the open one is the app's sum of charges since the last closing plus known installments, and a card the bank sends no bills for keeps the app's sum. |
 | Manual card | cartão à mão | cartão falso, cartão offline, cartão manual | A credit card with no bank connection whose fatura the User types for each of the next 12 months; a month left blank repeats the one before. "Fatura digitada" is its meta line and "Pix para" names the person whose Pix is a transferência. Used in `manualCard.*` and `sources.card.manual*`. Pending native-speaker review. |
+| Note | nota | observação, comentário | Free text the User writes on a Transaction ("Nota" on the edit sheet); the sync never changes it, and every parcela of a parcelamento shares one. |
 | Installment plan | parcelamento | financiamento, empréstimo | A purchase paid in parts; each part is a "parcela". |
 | Summary (Finances view) | resumo | visão geral | The first Finances view. en-US "Summary". |
 | Monthly income | renda mensal | salário, receita, ganhos | What a User expects to receive each month. |
