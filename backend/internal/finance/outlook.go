@@ -24,7 +24,7 @@ type StoredBill struct {
 }
 
 // CardBill is what one card's bill takes from a month. FromBank is true when
-// AmountCents is the bank's total for a bill due in the month; DueOn and
+// AmountCents is the bank's total for the bill the month counts (due in the month, or in later months the next bill after the current month's, ADR 0024 amendment); DueOn and
 // ClosesOn are that bill's days, nil otherwise.
 type CardBill struct {
 	SourceID, Name  string
@@ -213,7 +213,7 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 					}
 					o.Cycles[c.ID] = cycleOf(c, bill, span, today)
 					if due := o.Cycles[c.ID].DueOn; due != nil {
-						shift[c.ID] = max(0, monthIndex(*due)-monthIndex(m))
+						shift[c.ID] = min(billLead, max(0, monthIndex(*due)-monthIndex(m)))
 					}
 				}
 			} else {

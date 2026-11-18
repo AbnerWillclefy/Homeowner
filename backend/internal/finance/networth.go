@@ -58,7 +58,7 @@ func UnpaidCardBills(cards []Card, outlook []MonthOutlook, from, today time.Time
 				}
 				dueMonth := month
 				if on := cycles[c.ID].DueOn; on != nil {
-					dueMonth = month.AddDate(0, max(0, monthIndex(*on)-monthIndex(today)), 0)
+					dueMonth = month.AddDate(0, min(billLead, max(0, monthIndex(*on)-monthIndex(today))), 0)
 				}
 				if c.CloseDay > 0 && c.DueDay > 0 && monthIndex(dueMonth) > monthIndex(CountsOn(today, "credit_card", c.CloseDay, c.DueDay)) {
 					continue

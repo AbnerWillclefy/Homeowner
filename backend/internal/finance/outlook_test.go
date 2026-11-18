@@ -624,6 +624,12 @@ func TestOutlookLaterMonthsFollowTheBillTheCurrentMonthCounts(t *testing.T) {
 			rows: []Txn{nubank("2026-11-10", 1000), nubank("2026-11-28", 60), nubank("2026-11-29", 40)},
 			want: map[string][]int64{"a": {1000, 100, 0}}, sweep: true,
 		},
+		"a bank due date past the bill lead is clamped, not read out of range": {
+			today: "2026-11-30", from: "2026-11-01",
+			cards: nu(StoredBill{ClosesOn: d("2026-11-28"), DueOn: d("2027-03-05"), TotalCents: 1000}),
+			plans: []Plan{plan("a", "2026-11-01", 1, 6)},
+			want:  map[string][]int64{"a": {1000, 50, 50}},
+		},
 		"a paid bill with the open one due in two months": {
 			today: "2026-11-30", from: "2026-11-01", cards: nu(paidNov),
 			rows: []Txn{nubank("2026-11-29", 40), nubank("2026-12-10", 80), nubank("2026-12-28", 500), nubank("2027-01-10", 700), nubank("2027-01-28", 900)},
