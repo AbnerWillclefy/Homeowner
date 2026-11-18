@@ -673,6 +673,18 @@ export const ptBR: Messages = {
   "chores.form.name.label": "Nome",
   "chores.form.category.label": "Categoria",
   "chores.form.category.placeholder": "Escolha uma categoria",
+  "chores.form.responsible.label": "Responsável",
+  "chores.form.responsible.nobody": "Ninguém",
+  "chores.form.responsible.someone": "Alguém",
+  "chores.form.responsible.hint":
+    "Só esse morador recebe no plano dele. Ninguém: qualquer um pode.",
+  "chores.form.responsible.restricted.demands":
+    "{name} tem restrição em: {demands}. Escolha outro morador ou Ninguém.",
+  "chores.form.responsible.restricted.chore":
+    "{name} tem restrição neste afazer. Escolha outro morador ou Ninguém.",
+  "chores.form.responsible.unknown":
+    "Esse morador não mora mais no lar. A lista foi atualizada; escolha outro morador.",
+  "chores.item.responsible": "Responsável: {name}",
   "chores.form.demands.legend": "Exigências",
   "chores.form.baseEffort.legend": "Esforço",
   "chores.form.importance.legend": "Importância",
@@ -779,6 +791,9 @@ export const ptBR: Messages = {
   "dayplan.mine.empty.drained":
     "Você fez check-in como esgotado, então nenhuma tarefa hoje. Descanse.",
   "dayplan.pool.reason.refused": "Foi recusada, então voltou para as tarefas em aberto.",
+  "dayplan.pool.reason.waiting_for_responsible": "Aguardando {name}.",
+  "dayplan.pool.reason.waiting_for_responsible.you": "Aguardando você.",
+  "dayplan.pool.reason.waiting_for_responsible.unknown": "Aguardando o morador responsável.",
   "dayplan.assigned.reason.taken": "Você pegou esta tarefa das em aberto.",
   "dayplan.assigned.reason.liked": "Você gosta desta.",
   "dayplan.assigned.reason.spared_dislike": "Poupado de uma tarefa de que você não gosta.",

@@ -667,6 +667,18 @@ export const enUS = {
   "chores.form.name.label": "Name",
   "chores.form.category.label": "Category",
   "chores.form.category.placeholder": "Choose a Category",
+  "chores.form.responsible.label": "Responsible",
+  "chores.form.responsible.nobody": "Nobody",
+  "chores.form.responsible.someone": "Someone",
+  "chores.form.responsible.hint":
+    "Only this Resident gets it on their plan. Nobody means anyone can.",
+  "chores.form.responsible.restricted.demands":
+    "{name} has a Restriction on: {demands}. Pick someone else, or Nobody.",
+  "chores.form.responsible.restricted.chore":
+    "{name} has a Restriction on this Chore. Pick someone else, or Nobody.",
+  "chores.form.responsible.unknown":
+    "That Resident is no longer in the Home. The list is updated; pick someone else.",
+  "chores.item.responsible": "Responsible: {name}",
   "chores.form.demands.legend": "Demands",
   "chores.form.baseEffort.legend": "Effort",
   "chores.form.importance.legend": "Importance",
@@ -769,6 +781,9 @@ export const enUS = {
   "dayplan.mine.empty.drained":
     "You checked in as Drained, so no Tasks today. Rest up.",
   "dayplan.pool.reason.refused": "It was refused, so it is back in the pool.",
+  "dayplan.pool.reason.waiting_for_responsible": "Waiting for {name}.",
+  "dayplan.pool.reason.waiting_for_responsible.you": "Waiting for you.",
+  "dayplan.pool.reason.waiting_for_responsible.unknown": "Waiting for the responsible person.",
   "dayplan.assigned.reason.taken": "You took it from the pool.",
   "dayplan.assigned.reason.liked": "You like this one.",
   "dayplan.assigned.reason.spared_dislike": "Spared a Chore you dislike.",
