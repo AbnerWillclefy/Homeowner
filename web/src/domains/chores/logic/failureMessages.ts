@@ -1,5 +1,5 @@
-import type { Failure } from "../api/api";
-import type { MessageKey } from "../../../shared/i18n";
+import type { Failure, RestrictedRefusal } from "../api/api";
+import type { MessageKey, Translate } from "../../../shared/i18n";
 
 type Reason = Failure["kind"];
 
@@ -24,3 +24,19 @@ export const DELETE_FAILURE_KEY: Record<Reason, MessageKey> = {
   error: "chores.delete.error",
   "not-signed-in": "chores.delete.notSignedIn",
 };
+
+/**
+ * Why the server will not make a Resident responsible: the Demands they have a Restriction on, or the Chore itself.
+ * It advises ("pick someone else") and names the Resident. A Restriction on the Chore wins over its Demands.
+ */
+export function restrictedMessage(
+  t: Translate,
+  name: string,
+  refusal: Pick<RestrictedRefusal, "restrictedBy" | "restrictedByChore">,
+  demandName: (id: string) => string,
+): string {
+  if (refusal.restrictedByChore || refusal.restrictedBy.length === 0) {
+    return t("chores.form.responsible.restricted.chore", { name });
+  }
+  return t("chores.form.responsible.restricted.demands", { name, demands: refusal.restrictedBy.map(demandName).join(", ") });
+}

@@ -2,7 +2,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import type { Chore, ChoreWire, SaveChoreResult } from "../api/api";
 import type { FieldCodes } from "../../home/api/api";
 import { useStableHandlers } from "../../../shared/ui/useStableHandlers";
-import { createChoreSubmitter, type ChoreFormStatus } from "../logic/choreSubmit";
+import { createChoreSubmitter, type ChoreFormStatus, type Responsibility } from "../logic/choreSubmit";
 import type { ChoreFormState } from "../logic/form";
 
 export type { ChoreFormStatus } from "../logic/choreSubmit";
@@ -17,6 +17,11 @@ export function useChoreForm(
   onSaved: (chore: Chore, values: ChoreFormState) => void,
   /** Errors to show from the start, for a form opened to fix what the API refused. */
   initialErrors: FieldCodes = {},
+  /** Present where the form has the Responsible field. */
+  responsibility?: Responsibility,
+  // Keep `responsibility` the same object between renders: the submitter holds what it has saved.
+  /** Gets a Chore that is stored although the form did not finish, so the list can show it. */
+  onStored?: (chore: Chore) => void,
 ) {
   const [values, setValues] = useState<ChoreFormState>(initial);
   const [status, setStatus] = useState<ChoreFormStatus>(() =>
@@ -34,8 +39,8 @@ export function useChoreForm(
   }
 
   // The guard lives in the submitter, so a second Enter in the same tick is ignored, not only a disabled button.
-  const stable = useStableHandlers({ save, onSaved, getValues: () => values });
-  const submitter = useMemo(() => createChoreSubmitter({ ...stable, onStatus: setStatus }), [stable]);
+  const stable = useStableHandlers({ save, onSaved, onStored: onStored ?? (() => {}), getValues: () => values });
+  const submitter = useMemo(() => createChoreSubmitter({ ...stable, responsibility, onStatus: setStatus }), [stable, responsibility]);
 
   function submit(event: FormEvent) {
     event.preventDefault();
