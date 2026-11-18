@@ -294,7 +294,7 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 		o := outlook[i]
 		m.Cards, m.OtherBills = []CardBillLine{}, []OtherBillLine{}
 		for _, c := range o.Cards {
-			line := CardBillLine{SourceID: c.SourceID, Name: c.Name, AmountCents: c.AmountCents, BillDaysKnown: c.BillDaysKnown, FromBank: c.FromBank,
+			line := CardBillLine{SourceID: c.SourceID, Name: c.Name, AmountCents: c.AmountCents, BillDaysKnown: c.BillDaysKnown, FromBank: c.FromBank, Manual: c.Manual,
 				DueOn: dateOrNil(c.DueOn), ClosesOn: dateOrNil(c.ClosesOn)}
 			if cy, ok := o.Cycles[c.SourceID]; ok {
 				line.DueOn, line.ClosesOn, line.Closed = dateOrNil(cy.DueOn), dateOrNil(cy.ClosesOn), cy.Closed
@@ -334,6 +334,7 @@ type outlookInputs struct {
 	income  *int64
 	limits  map[string]int64
 	cards   []Card
+	manual  []ManualCard
 	outlook []MonthOutlook
 }
 
@@ -381,6 +382,9 @@ func (h *Handler) loadOutlook(ctx context.Context, uid string, from time.Time, m
 	if err != nil {
 		return in, err
 	}
+	if in.manual, err = h.store.ManualCards(ctx, uid); err != nil {
+		return in, err
+	}
 	bills := make([][]MonthBill, months)
 	for i := range bills {
 		if bills[i], err = h.store.MonthBills(ctx, uid, from.AddDate(0, i, 0)); err != nil {
@@ -410,7 +414,7 @@ func (h *Handler) loadOutlook(ctx context.Context, uid string, from time.Time, m
 	for i, b := range registered {
 		known[i] = Bill{ID: b.ID, Name: b.Name, ExpectedCents: b.ExpectedCents}
 	}
-	in.outlook = Outlook(wide, cards, in.plans, bills, in.income, in.limits, plannedBaseline(prev, cards, known, current), contribution, now, from, months)
+	in.outlook = Outlook(wide, cards, in.manual, in.plans, bills, in.income, in.limits, plannedBaseline(prev, cards, known, current), contribution, now, from, months)
 	return in, nil
 }
 

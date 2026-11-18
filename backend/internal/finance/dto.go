@@ -233,7 +233,7 @@ type PaceDTO struct {
 // reported a bill due in the month, else the app's own sum (ADR 0021).
 // BillDaysKnown is false when the card has no closing or due day, so charges
 // count on the day made. FromBank is true when AmountCents is the bank's total;
-// DueOn and ClosesOn (YYYY-MM-DD) are that bill's days, or in the current month
+// Manual is true for a manual card: its AmountCents is typed (or carried forward from the latest typed month), it has no closing day and no bank bill. DueOn and ClosesOn (YYYY-MM-DD) are that bill's days, or in the current month
 // those of the bill still to pay when known, null otherwise. In the current
 // month Closed says that bill has closed, and HeldFrom and HeldTo bound the
 // posted days [from, to) of the charges it holds (while open, HeldTo is the next closing, or the day after today without typed days); all
@@ -244,6 +244,7 @@ type CardBillLine struct {
 	AmountCents   int64   `json:"amountCents"`
 	BillDaysKnown bool    `json:"billDaysKnown"`
 	FromBank      bool    `json:"fromBank"`
+	Manual        bool    `json:"manual"`
 	DueOn         *string `json:"dueOn"`
 	ClosesOn      *string `json:"closesOn"`
 	Closed        bool    `json:"closed"`
