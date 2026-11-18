@@ -134,6 +134,33 @@ describe("ChoreForm Responsible field", () => {
     expect(container().querySelector("#chore-form-t-responsible-error")!.textContent).toContain("no longer in the Home");
     expect(p.responsible.reloadResidents).toHaveBeenCalledTimes(1);
   });
+
+  it("submits Nobody once the reloaded list no longer holds the departed Resident", async () => {
+    api.setResponsible.mockResolvedValue({ kind: "unknown-resident" });
+    api.updateChore.mockResolvedValue({ kind: "ok", chore: chore("c1", "Lavar a louça") });
+    const p = props();
+    render(createElement(ChoreForm, p));
+    await choose("r2");
+    await submit();
+    expect(api.setResponsible).toHaveBeenCalledTimes(1);
+    await render(createElement(ChoreForm, { ...p, responsible: { ...p.responsible, residents: [RESIDENTS[0]!] } }));
+    expect(select().value).toBe("");
+    expect(container().querySelector("#chore-form-t-responsible-error")).not.toBeNull();
+    await submit();
+    expect(api.setResponsible).toHaveBeenCalledTimes(1);
+    expect(p.onSaved).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops the refusal when another Resident or Nobody is chosen", async () => {
+    api.setResponsible.mockResolvedValue({ kind: "restricted", residentId: "r2", restrictedBy: ["heavy_lifting"], restrictedByChore: false });
+    render(createElement(ChoreForm, props()));
+    await choose("r2");
+    await submit();
+    expect(container().querySelector("#chore-form-t-responsible-error")).not.toBeNull();
+    await choose("");
+    expect(container().querySelector("#chore-form-t-responsible-error")).toBeNull();
+    expect(select().getAttribute("aria-invalid")).not.toBe("true");
+  });
 });
 
 describe("ChoreForm Responsible field in pt-BR", () => {

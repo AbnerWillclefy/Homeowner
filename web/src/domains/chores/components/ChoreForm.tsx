@@ -185,7 +185,12 @@ export function ChoreForm({
   // and a placeholder for an id while the list is not ready, so a current value is never lost or invented.
   const residents = responsible?.residents ?? null;
   const known = residents?.some((resident) => resident.id === values.responsible) ?? false;
-  const responsibleValue = residents === null || known ? values.responsible : "";
+  // Drop an id the loaded list lacks, so what is submitted is what the select shows. It keeps the refusal message.
+  const departed = residents !== null && values.responsible !== "" && !known;
+  useEffect(() => {
+    if (departed) form.change({ responsible: "" });
+  }, [departed]); // eslint-disable-line react-hooks/exhaustive-deps -- form.change is a fresh closure each render
+
   const responsibleOptions =
     residents !== null
       ? residents.map(({ id, name }) => ({ id, name }))
@@ -288,11 +293,11 @@ export function ChoreForm({
             <label htmlFor={`${idPrefix}-responsible`}>{t("chores.form.responsible.label")}</label>
             <select
               id={`${idPrefix}-responsible`}
-              value={responsibleValue}
+              value={values.responsible}
               disabled={saving || responsible.residents === null}
               aria-describedby={responsibleNotes.describedBy}
               aria-invalid={responsibleNotes.message ? true : undefined}
-              onChange={(event) => form.change({ responsible: event.target.value })}
+              onChange={(event) => form.change({ responsible: event.target.value }, "responsible")}
             >
               <option value="">{t("chores.form.responsible.nobody")}</option>
               {responsibleOptions.map(({ id, name }) => (

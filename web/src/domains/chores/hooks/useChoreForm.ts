@@ -32,6 +32,8 @@ export function useChoreForm(
   function change(patch: Partial<ChoreFormState>, ...fields: string[]) {
     setValues((current) => ({ ...current, ...patch }));
     setStatus((current) => {
+      // Editing the Responsible field undoes the choice a refusal described.
+      if (fields.includes("responsible") && (current.kind === "restricted" || current.kind === "unknown-resident")) return { kind: "idle" };
       if (current.kind !== "invalid") return current;
       const rest = Object.fromEntries(Object.entries(current.fields).filter(([field]) => !fields.includes(field)));
       return Object.keys(rest).length > 0 ? { kind: "invalid", fields: rest } : { kind: "idle" };
