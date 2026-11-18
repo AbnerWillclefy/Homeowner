@@ -226,6 +226,16 @@ func (s *Syncer) syncItem(ctx context.Context, it DueItem, apiKey string, now, t
 			pending = pending || to.Before(today)
 		}
 		if !pending {
+			// A recipient saved during this run restarted the import, and FinishSync would overwrite that.
+			again, err := s.store.ManualRecipients(ctx, it.UserID)
+			if err != nil {
+				return false, err
+			}
+			slices.Sort(again)
+			slices.Sort(recipients)
+			if !slices.Equal(again, recipients) {
+				return true, s.store.RestartImport(ctx, it.UserID)
+			}
 			return true, s.store.FinishSync(ctx, it.ID, now)
 		}
 	}

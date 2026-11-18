@@ -48,7 +48,11 @@ func (s *Store) ManualCards(ctx context.Context, userID string) ([]ManualCard, e
 		if err := bills.Scan(&id, &b.Month, &b.TotalCents); err != nil {
 			return nil, err
 		}
-		out[at[id]].Bills = append(out[at[id]].Bills, b)
+		i, ok := at[id]
+		if !ok {
+			continue // the card was created after the first read
+		}
+		out[i].Bills = append(out[i].Bills, b)
 	}
 	return out, bills.Err()
 }
@@ -161,4 +165,17 @@ func restartImport(ctx context.Context, tx pgx.Tx, userID string) error {
 	}
 	_, err := tx.Exec(ctx, `UPDATE finance_items SET import_complete = false WHERE user_id = $1`, userID)
 	return err
+}
+
+// RestartImport makes the User's next sync re-read the whole 12 months.
+func (s *Store) RestartImport(ctx context.Context, userID string) error {
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if err := restartImport(ctx, tx, userID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
