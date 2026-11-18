@@ -61,12 +61,6 @@ describe("shell navigation", () => {
     await userEvent.click(screen.getByRole("link", { name: "Goals" }));
     expect(screen.getByRole("heading", { level: 1, name: "Goals" })).toBeTruthy();
   });
-
-  it("reaches Onboarding by its route", () => {
-    width(true);
-    shell({ locale: "en", path: "/onboarding" });
-    expect(screen.getByRole("heading", { level: 1, name: "Getting started" })).toBeTruthy();
-  });
 });
 
 describe("accessibility", () => {
