@@ -15,10 +15,10 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/pluggy/pluggytest"
 )
 
-// Fixture facts: the capture plus the synthetic page is 52 rows, newest 2026-11-07, summing to 4275062 centavos.
+// Fixture facts: the capture plus the synthetic page is 53 rows, newest 2026-11-07, summing to 4266174 centavos.
 const (
-	fixtureRows  = 52
-	fixtureCents = 4275062
+	fixtureRows  = 53
+	fixtureCents = 4266174
 )
 
 var afterFixtures = time.Date(2026, 11, 8, 12, 0, 0, 0, time.UTC)

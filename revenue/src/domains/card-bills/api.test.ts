@@ -31,7 +31,12 @@ describe("getCardBills", () => {
     const [card] = await getCardBills("2030-01", setup(200, { months: [{ month: "2030-01", cards: [cycle] }] }).client);
     expect([card!.closed, card!.heldFrom, card!.heldTo]).toEqual([true, "2029-12-03", "2030-01-03"]);
   });
+  it("reads manual, false when the API sends none", async () => {
+    const cards = await getCardBills("2030-01", setup(200, { months: [{ month: "2030-01", cards: [CARD, { ...CARD, sourceId: "m1", manual: true }] }] }).client);
+    expect(cards.map((c) => c.manual)).toEqual([false, true]);
+  });
   it("throws on a failure and on a malformed card", async () => {
+    await expect(getCardBills("2030-01", setup(200, { months: [{ month: "2030-01", cards: [{ ...CARD, manual: "yes" }] }] }).client)).rejects.toThrow();
     await expect(getCardBills("2030-01", setup(503, {}).client)).rejects.toThrow();
     await expect(getCardBills("2030-01", setup(200, { months: [{ month: "2030-01", cards: [{ ...CARD, fromBank: "yes" }] }] }).client)).rejects.toThrow();
     await expect(getCardBills("2030-01", setup(200, { months: [{ month: "2030-01", cards: [{ ...CARD, heldFrom: 3 }] }] }).client)).rejects.toThrow();

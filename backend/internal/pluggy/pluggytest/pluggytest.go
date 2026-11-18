@@ -51,6 +51,16 @@ type Server struct {
 	item *[2]string
 	// nullLimits serves accounts.json with every credit limit null.
 	nullLimits bool
+	// onTransactions runs once, on the first transactions request.
+	onTransactions func()
+}
+
+// OnFirstTransactions runs f on the first transactions request, to change the
+// app's state while a sync is running.
+func (s *Server) OnFirstTransactions(f func()) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.onTransactions = f
 }
 
 // NewServer starts the fake and stops it when the test ends.
@@ -193,6 +203,13 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"results":[]}`))
 	case "GET /v2/transactions":
 		if authorized(w, r) {
+			s.mu.Lock()
+			hook := s.onTransactions
+			s.onTransactions = nil
+			s.mu.Unlock()
+			if hook != nil {
+				hook()
+			}
 			s.transactions(&dateFilter{ResponseWriter: w, from: q.Get("dateFrom"), to: q.Get("dateTo")}, q.Get("accountId"), q.Get("after"), q.Get("dateFrom") != "" && q.Get("dateTo") != "" || q.Get("after") != "")
 		}
 	default:

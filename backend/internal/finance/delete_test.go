@@ -57,6 +57,7 @@ func twoSynced(t *testing.T) (app *apitest.App, ana, bia *apitest.Client, anaID,
 			id, bill.Body["id"]); err != nil {
 			t.Fatal(err)
 		}
+		apitest.ExpectStatus(t, c.Post("/me/finance/manual-cards", map[string]any{"name": "Fatura", "dueDay": 10, "bills": map[string]any{"2026-11": 100000}}), http.StatusCreated)
 		apitest.ExpectStatus(t, c.Put("/me/finance/budgets/groceries", map[string]any{"limitCents": 40000}), http.StatusNoContent)
 		apitest.ExpectStatus(t, c.Put("/me/finance/income", map[string]any{"monthlyIncomeCents": 500000}), http.StatusNoContent)
 		newInvestment(t, c, "CDB", 100000, "reserve")

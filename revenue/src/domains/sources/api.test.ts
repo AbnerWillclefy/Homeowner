@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { apiClient, NotSignedIn } from "../../api/client";
-import { createConnectToken, getSources, parseStatus, putSourceName, registerItem } from "./api";
+import { createConnectToken, deleteManualCard, getManualCards, getSources, parseStatus, putSourceName, registerItem, saveManualCard } from "./api";
 
 const bank = { id: "s1", name: "Itaú", bankName: "Itaú", kind: "checking", currency: "BRL", closeDay: null, dueDay: null };
 const status = (sources: unknown[] = [bank]) => ({ configured: true, importing: false, lastSyncedAt: "2026-11-08T13:05:00Z", sources });
@@ -154,5 +154,61 @@ describe("putSourceName", () => {
   it("reports a lost connection", async () => {
     vi.spyOn(apiClient, "put").mockRejectedValue(new Error("network"));
     expect(await putSourceName("s1", "x")).toEqual({ kind: "offline" });
+  });
+});
+
+const CARD = { id: "m1", name: "Fatura Naiara", dueDay: 10, pixRecipient: "Naiara Souza", bills: { "2026-11": 119_000, "2027-05": 0 } };
+
+describe("getManualCards", () => {
+  it("reads a card with its typed months and a null recipient", async () => {
+    vi.spyOn(apiClient, "get").mockResolvedValue(reply(200, { cards: [CARD, { ...CARD, id: "m2", pixRecipient: null, bills: {} }] }));
+    expect(await getManualCards()).toEqual([CARD, { ...CARD, id: "m2", pixRecipient: null, bills: {} }]);
+  });
+  it.each([
+    ["a failure", reply(500, { cards: [] })],
+    ["no cards list", reply(200, {})],
+    ["a card that is not an object", reply(200, { cards: ["x"] })],
+    ["an id that is a number", reply(200, { cards: [{ ...CARD, id: 1 }] })],
+    ["a name that is a number", reply(200, { cards: [{ ...CARD, name: 3 }] })],
+    ["a fractional due day", reply(200, { cards: [{ ...CARD, dueDay: 1.5 }] })],
+    ["a recipient that is a number", reply(200, { cards: [{ ...CARD, pixRecipient: 3 }] })],
+    ["a recipient left out", reply(200, { cards: [{ ...CARD, pixRecipient: undefined }] })],
+    ["bills null", reply(200, { cards: [{ ...CARD, bills: null }] })],
+    ["a bill month that is not YYYY-MM", reply(200, { cards: [{ ...CARD, bills: { "2026-13": 1 } }] })],
+    ["a bill that is text", reply(200, { cards: [{ ...CARD, bills: { "2026-11": "1" } }] })],
+  ])("throws on %s", async (_, response) => {
+    vi.spyOn(apiClient, "get").mockResolvedValue(response);
+    await expect(getManualCards()).rejects.toThrow();
+  });
+});
+
+describe("saveManualCard and deleteManualCard", () => {
+  const input = { name: "Fatura Naiara", dueDay: 10, pixRecipient: null, bills: { "2026-11": null } };
+  it("POSTs a new card and PUTs an existing one", async () => {
+    answer(reply(201, CARD));
+    expect(await saveManualCard(null, input)).toEqual({ kind: "ok" });
+    expect(request).toHaveBeenLastCalledWith(expect.objectContaining({ method: "POST", url: "/me/finance/manual-cards", data: input }));
+    answer(reply(200, CARD));
+    expect(await saveManualCard("m1", input)).toEqual({ kind: "ok" });
+    expect(request).toHaveBeenLastCalledWith(expect.objectContaining({ method: "PUT", url: "/me/finance/manual-cards/m1" }));
+  });
+  it("hands back the field codes of a 400, a missing card and other failures", async () => {
+    answer(reply(400, { error: "invalid manual card", fields: { bills: "invalid_month" } }));
+    expect(await saveManualCard(null, input)).toEqual({ kind: "fields", fields: { bills: "invalid_month" } });
+    answer(reply(404));
+    expect(await saveManualCard("m1", input)).toEqual({ kind: "not-found" });
+    answer(reply(500));
+    expect(await saveManualCard("m1", input)).toEqual({ kind: "error" });
+    refuse(new Error("offline"));
+    expect(await saveManualCard("m1", input)).toEqual({ kind: "error" });
+  });
+  it("DELETEs and expects 204", async () => {
+    answer(reply(204));
+    expect(await deleteManualCard("m1")).toEqual({ kind: "ok" });
+    expect(request).toHaveBeenLastCalledWith(expect.objectContaining({ method: "DELETE", url: "/me/finance/manual-cards/m1" }));
+    answer(reply(404));
+    expect(await deleteManualCard("m1")).toEqual({ kind: "not-found" });
+    answer(reply(500));
+    expect(await deleteManualCard("m1")).toEqual({ kind: "error" });
   });
 });

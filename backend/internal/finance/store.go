@@ -62,7 +62,7 @@ func (s *Store) Income(ctx context.Context, userID string) (*int64, error) {
 // a later ticket adds its table to this list.
 var financeTables = []string{"finance_source_balances", "finance_card_bills", "finance_transactions", "finance_sources", "finance_items", "finance_credentials",
 	"finance_merchant_categories", "finance_llm_calls", "finance_bill_reminders", "finance_bill_payments", "finance_bills", "finance_settings", "finance_category_budgets", "finance_bill_suggestion_dismissals",
-	"finance_investment_values", "finance_investments", "finance_goals"}
+	"finance_investment_values", "finance_investments", "finance_goals", "finance_manual_card_bills", "finance_manual_cards"}
 
 // DeleteAll removes all of the User's finance data in one transaction. The
 // cascades would remove the children anyway; listing every table keeps the
@@ -455,7 +455,8 @@ type Row struct {
 	InstallmentNumber, TotalInstallments int32
 	// Category is the Spending Category Pluggy's own category maps to, "" if none.
 	Category string
-	// OwnCounterpart: the other side of the payment is the User.
+	// OwnCounterpart: the other side of the payment is the User, or a debit went to the
+	// Pix recipient of a manual card.
 	OwnCounterpart bool
 }
 

@@ -136,6 +136,10 @@ _Avoid_: Category, Tag, Label
 Money owed that is due on a date, such as the credit card bill, rent or a utility. It is not a Transaction until it is paid. A credit card Source's bill is never entered by the User: a closed bill takes the total the bank reports; the open bill is the app's sum of the card's charges since the last closing plus the known installments; a card the bank sends no bills for keeps the app's computed bill.
 _Avoid_: Invoice, Debt, Due
 
+**Manual card**:
+A credit card with no bank connection, such as a partner's, that the User types by hand: a name, a due day and the card bill total for each of the next 12 months. It is not a Source. A month with no typed total repeats the latest typed one before it, and a card with none counts 0. It shows with the card bills in the Projection and the Overview, and a Pix to the person named on it is a Transfer, never an Expense.
+_Avoid_: Fake card, Offline card, Custom card
+
 **Installment plan**:
 A purchase paid in several equal parts over several months. Each part is a Transaction, and all its parts share one Spending Category: setting it on one sets it on the rest, and parts imported later take it.
 _Avoid_: Financing, Loan, Subscription

@@ -16,11 +16,14 @@ import { useCommitments } from "../overview/hooks/useOverviewData";
 import { AccountsCard } from "./components/AccountsCard";
 import { BanksCard } from "./components/BanksCard";
 import { CardsCard } from "./components/CardsCard";
+import { ManualCardSheet } from "./components/ManualCardSheet";
+import { useManualCards } from "./hooks/useManualCards";
+import type { ManualCard } from "./api";
 import { useConnectBanks, useSources } from "./hooks/useSources";
 import { FAILURE_KEY } from "./logic/failureMessages";
 
 /**
- * "Fontes" at `/sources` on the 12-column grid: the accounts, the Investments and the credit cards on the left; the connected
+ * "Fontes" at `/sources` on the 12-column grid: the accounts, the Investments and the credit cards (connected, then typed by hand) on the left; the connected
  * banks and the read-only note on the right. Connect banks through Pluggy Connect; the saved credentials live in Settings.
  */
 export function SourcesPage() {
@@ -34,6 +37,8 @@ export function SourcesPage() {
   const [form, setForm] = useState<{ investment: Investment | null } | null>(null);
   const [deleting, setDeleting] = useState<Investment | null>(null);
   const [deleteFailed, setDeleteFailed] = useState(false);
+  const manual = useManualCards();
+  const [manualForm, setManualForm] = useState<{ card: ManualCard | null } | null>(null);
 
   // The same read the overview's card bills use, so the cache is shared; a card without a bill there simply shows none.
   const openBills = useMemo(() => new Map((commitments.data?.month.cards ?? []).map((c) => [c.sourceId, c.amountCents])), [commitments.data]);
@@ -98,7 +103,15 @@ export function SourcesPage() {
                 />
               )}
             </Block>
-            {cards.length > 0 && <CardsCard sources={cards} openBills={openBills} />}
+            <CardsCard
+              sources={cards}
+              manualCards={manual.cards}
+              manualFailed={manual.failed}
+              openBills={openBills}
+              onAddManual={() => setManualForm({ card: null })}
+              onEditManual={(card) => setManualForm({ card })}
+              onRetryManual={manual.reload}
+            />
           </div>
           <div className="flex flex-col gap-6 desktop:col-span-4">
             {data.items.length > 0 && <BanksCard items={data.items} />}
@@ -113,6 +126,16 @@ export function SourcesPage() {
       )}
 
       {form && <InvestmentFormSheet key={form.investment?.id ?? "new"} investment={form.investment} save={(input) => savings.saveInvestment(form.investment?.id ?? null, input)} onClose={() => setForm(null)} />}
+      {manualForm && (
+        <ManualCardSheet
+          key={manualForm.card?.id ?? "new"}
+          card={manualForm.card}
+          thisMonth={thisMonth}
+          save={(input) => manual.save(manualForm.card?.id ?? null, input)}
+          remove={() => manual.remove(manualForm.card!.id)}
+          onClose={() => setManualForm(null)}
+        />
+      )}
       {deleting && (
         <Dialog
           open

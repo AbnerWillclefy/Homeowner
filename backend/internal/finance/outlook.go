@@ -25,13 +25,45 @@ type StoredBill struct {
 
 // CardBill is what one card's bill takes from a month. FromBank is true when
 // AmountCents is the bank's total for the bill the month counts (due in the month, or in later months the next bill after the current month's, ADR 0024 amendment); DueOn and
-// ClosesOn are that bill's days, nil otherwise.
+// ClosesOn are that bill's days, nil otherwise. Manual marks a manual card's
+// line: its amount is typed, its days are known and it has no closing day.
 type CardBill struct {
 	SourceID, Name  string
 	AmountCents     int64
 	BillDaysKnown   bool
 	FromBank        bool
 	DueOn, ClosesOn *time.Time
+	Manual          bool
+}
+
+// ManualCard is a credit card the User keeps by hand, with no bank connection: its
+// bill of a month is the total typed for it, never read from a bank.
+type ManualCard struct {
+	ID, Name string
+	DueDay   int
+	// PixRecipient is the name whose Pix pays the card's bill, nil when none.
+	PixRecipient *string
+	Bills        []ManualBill // the typed months, earliest first
+}
+
+// ManualBill is the total the User typed for the bill of one month (a UTC first-of-month).
+type ManualBill struct {
+	Month      time.Time
+	TotalCents int64
+}
+
+// ManualBillIn is the manual card's bill in the month: the latest typed month at or
+// before it, or 0 when none. bills are sorted by month, earliest first. A typed 0 is a
+// value, so it carries forward too.
+func ManualBillIn(bills []ManualBill, month time.Time) int64 {
+	var cents int64
+	for _, b := range bills {
+		if monthIndex(b.Month) > monthIndex(month) {
+			break
+		}
+		cents = b.TotalCents
+	}
+	return cents
 }
 
 // OtherBill is a Bill to pay that is not a card bill; Cents is the snapshot
@@ -90,7 +122,9 @@ type PlannedLine struct {
 }
 
 // Outlook works out `months` months from `from` (a UTC first-of-month). rows
-// are the counted Txns (PostedOn is the CountsOn day), plans the Installment
+// are the counted Txns (PostedOn is the CountsOn day), manual the manual cards
+// (each adds a Manual card bill to every month, ManualBillIn, after the connected cards;
+// never paid-detected, as with Bills), plans the Installment
 // plans and bills[i] every Bill of month i, paid or not.
 //
 // limits are the Spending limits by category; today is the real day (zero when
@@ -134,7 +168,7 @@ type PlannedLine struct {
 // Transaction is left out: that money is in a card bill.
 //
 // shortcut: a card-paid Bill counts twice in the current month until its charge posts (last month's charge is in this month's card bill, this month's is still expected), upgrade when the PWA shows it.
-func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income *int64, limits, baseline map[string]int64, contribution int64, today, from time.Time, months int) []MonthOutlook {
+func Outlook(rows []Txn, cards []Card, manual []ManualCard, plans []Plan, bills [][]MonthBill, income *int64, limits, baseline map[string]int64, contribution int64, today, from time.Time, months int) []MonthOutlook {
 	byCard := map[string][]Txn{}
 	for _, t := range rows {
 		byCard[t.SourceID] = append(byCard[t.SourceID], t)
@@ -223,6 +257,12 @@ func Outlook(rows []Txn, cards []Card, plans []Plan, bills [][]MonthBill, income
 			if !bill.FromBank && span.to.IsZero() && owed[c.ID] != nil {
 				bill.AmountCents += owed[c.ID][i+shift[c.ID]]
 			}
+			o.Cards = append(o.Cards, bill)
+			o.TotalCents += bill.AmountCents
+		}
+		for _, c := range manual {
+			due := DueDate(m.Year(), m.Month(), c.DueDay)
+			bill := CardBill{SourceID: c.ID, Name: c.Name, AmountCents: ManualBillIn(c.Bills, m), BillDaysKnown: true, Manual: true, DueOn: &due}
 			o.Cards = append(o.Cards, bill)
 			o.TotalCents += bill.AmountCents
 		}

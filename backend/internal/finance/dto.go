@@ -233,7 +233,7 @@ type PaceDTO struct {
 // reported the bill the month counts (due in the month, or in later months the next bill after the current month's, ADR 0024 amendment), else the app's own sum (ADR 0021).
 // BillDaysKnown is false when the card has no closing or due day, so charges
 // count on the day made. FromBank is true when AmountCents is the bank's total;
-// DueOn and ClosesOn (YYYY-MM-DD) are that bill's days, or in the current month
+// Manual is true for a manual card: its AmountCents is typed (or carried forward from the latest typed month), it has no closing day and no bank bill. DueOn and ClosesOn (YYYY-MM-DD) are that bill's days, or in the current month
 // those of the bill still to pay when known, null otherwise. In the current
 // month Closed says that bill has closed, and HeldFrom and HeldTo bound the
 // posted days [from, to) of the charges it holds (while open, HeldTo is the next closing, or the day after today without typed days); all
@@ -244,6 +244,7 @@ type CardBillLine struct {
 	AmountCents   int64   `json:"amountCents"`
 	BillDaysKnown bool    `json:"billDaysKnown"`
 	FromBank      bool    `json:"fromBank"`
+	Manual        bool    `json:"manual"`
 	DueOn         *string `json:"dueOn"`
 	ClosesOn      *string `json:"closesOn"`
 	Closed        bool    `json:"closed"`
@@ -394,4 +395,24 @@ type PastCardBillsResponse struct {
 	SourceID     string     `json:"sourceId"`
 	Bills        []PastBill `json:"bills"`
 	AverageCents *int64     `json:"averageCents"`
+}
+
+// ManualCardRequest is the body of POST /me/finance/manual-cards and PUT /me/finance/manual-cards/{id}.
+// PixRecipient is the name as it appears on the Pix receipt; empty or absent clears it. Bills maps
+// YYYY-MM to a total in cents: null deletes that month, an absent month is kept.
+type ManualCardRequest struct {
+	Name         string            `json:"name"`
+	DueDay       int               `json:"dueDay"`
+	PixRecipient *string           `json:"pixRecipient"`
+	Bills        map[string]*int64 `json:"bills"`
+}
+
+// ManualCardResponse is a manual card with every typed month. PixRecipient is null when none;
+// Bills is never null.
+type ManualCardResponse struct {
+	ID           string           `json:"id"`
+	Name         string           `json:"name"`
+	DueDay       int              `json:"dueDay"`
+	PixRecipient *string          `json:"pixRecipient"`
+	Bills        map[string]int64 `json:"bills"`
 }

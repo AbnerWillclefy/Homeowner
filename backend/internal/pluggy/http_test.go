@@ -165,8 +165,8 @@ func TestListTransactionsFollowsNext(t *testing.T) {
 		t.Fatalf("page 1: %d rows, next %q, err %v; want 31 rows and a cursor", len(page1.Transactions), page1.Next, err)
 	}
 	page2, err := c.ListTransactions(ctx, pluggytest.APIKey, pluggytest.CheckingAccountID, from, to, page1.Next)
-	if err != nil || len(page2.Transactions) != 4 || page2.Next != "" {
-		t.Fatalf("page 2: %d rows, next %q, err %v; want 4 rows and no cursor", len(page2.Transactions), page2.Next, err)
+	if err != nil || len(page2.Transactions) != 5 || page2.Next != "" {
+		t.Fatalf("page 2: %d rows, next %q, err %v; want 5 rows and no cursor", len(page2.Transactions), page2.Next, err)
 	}
 	debit := page2.Transactions[0]
 	if debit.AmountCents != -1234 || debit.Type != "DEBIT" || debit.Category != nil || debit.ProviderID != nil ||
