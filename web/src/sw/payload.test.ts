@@ -97,6 +97,11 @@ describe("notificationFromPush", () => {
     expect(notificationFromPush(JSON.stringify(sent), "pt-BR")).toEqual({ title: "Hi", body: "B", url: "/" });
   });
 
+  it.each(["bill_due_today", "bill_due_soon", "bill_overdue"])("passes the removed kind %s through", (kind) => {
+    const sent = { kind, title: "Hi", body: "B" };
+    expect(notificationFromPush(JSON.stringify(sent), "pt-BR")).toEqual({ title: "Hi", body: "B", url: "/" });
+  });
+
   it("falls back for an unknown kind without a title", () => {
     expect(notificationFromPush(JSON.stringify({ kind: "something_new" }), "en-US")).toEqual({
       ...FALLBACK["en-US"],
