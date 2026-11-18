@@ -4,8 +4,8 @@
 // the caller referees every proposal with allocation.Check and falls back to
 // the baseline when it fails.
 //
-// The Allocator and the Explainer show the model opaque ids, numbers and fixed
-// vocabulary only, never names, emails, Chore titles or any text a User typed.
+// The Allocator and the Explainer show the model opaque ids (a Task's
+// responsible Resident included), numbers and fixed vocabulary only, never names, emails, Chore titles or any text a User typed.
 // This keeps personal data out of a third party and leaves nothing to inject a
 // prompt through.
 //
@@ -185,6 +185,7 @@ The user message is JSON: today's date and weekday (0 = Sunday), the Residents a
 Assign Tasks to Residents and leave the rest in the pool. Hard rules, never break them:
 - The total effort of a Resident's Tasks must not exceed their energy.
 - Give a Task only to a Resident listed in its eligible. Tasks not in the input are already decided.
+- A Task with "with" goes to that Resident and one other eligible Resident.
 - A Task with people 2 goes to exactly two different Residents, each paying its full effort, and appears once per Resident. Otherwise it stays in the pool.
 - Give each Task to at most one Resident (two for people 2). Use only ids from the input.
 
@@ -252,13 +253,19 @@ type taskInput struct {
 	WindowStart string                `json:"window_start"`
 	WindowEnd   string                `json:"window_end"`
 	Eligible    []string              `json:"eligible"`
+	// With is the responsible Resident of a two-person Task, who must be one
+	// of its two.
+	With string `json:"with,omitempty"`
 }
 
 // screen decides in Go what the model must not. It returns the Tasks the model
 // may place, each with its eligible Residents, and the entries it pooled
-// itself, in the baseline's order of checks: weekday not allowed, then too few
-// eligible Residents (counted over all Residents, not only those with
-// Energy). A Task with Effort below 1 still goes to the model, as before.
+// itself, in the baseline's order of checks: weekday not allowed, then a
+// responsible Resident who is absent or not eligible (waiting_for_responsible),
+// then too few eligible Residents (counted over all Residents, not only those
+// with Energy). A one-person Task with a responsible Resident is offered to
+// them alone (Eligible does that); a two-person one carries them as With. A
+// Task with Effort below 1 still goes to the model, as before.
 // Energy is not filtered here: over_energy is the model's job and the
 // referee's.
 func screen(st allocation.State) (open []taskInput, pooled []allocation.PoolEntry) {
@@ -266,6 +273,13 @@ func screen(st allocation.State) (open []taskInput, pooled []allocation.PoolEntr
 		if !allocation.WeekdayAllowed(t, st.Today) {
 			pooled = append(pooled, allocation.PoolEntry{TaskID: t.ID, Reason: allocation.ReasonWeekdayNotAllowed})
 			continue
+		}
+		if t.Responsible != "" {
+			i := slices.IndexFunc(st.Residents, func(r allocation.Resident) bool { return r.ID == t.Responsible })
+			if i < 0 || !allocation.Eligible(st.Residents[i], t, st.Today) {
+				pooled = append(pooled, allocation.PoolEntry{TaskID: t.ID, Reason: allocation.ReasonWaitingForResponsible})
+				continue
+			}
 		}
 		var eligible []string
 		for _, r := range st.Residents {
@@ -278,8 +292,12 @@ func screen(st allocation.State) (open []taskInput, pooled []allocation.PoolEntr
 			continue
 		}
 		slices.Sort(eligible)
-		open = append(open, taskInput{ID: t.ID, ChoreID: t.ChoreID, Effort: t.Effort, Importance: t.Importance,
-			People: t.People, WindowStart: day(t.WindowStart), WindowEnd: day(t.WindowEnd), Eligible: eligible})
+		in := taskInput{ID: t.ID, ChoreID: t.ChoreID, Effort: t.Effort, Importance: t.Importance,
+			People: t.People, WindowStart: day(t.WindowStart), WindowEnd: day(t.WindowEnd), Eligible: eligible}
+		if allocation.PeopleNeeded(t) > 1 {
+			in.With = t.Responsible
+		}
+		open = append(open, in)
 	}
 	return open, pooled
 }
@@ -370,7 +388,10 @@ func decode(raw json.RawMessage, st allocation.State, goPooled []allocation.Pool
 
 // build makes the complete Result: the assignments as given, and every Task of
 // st that is not assigned in the pool, in st's order. A pooled Task takes the
-// reason Go gave it, else the model's, else no_energy_left.
+// reason Go gave it, else the model's, else no_energy_left; except that one
+// with a responsible Resident is always waiting_for_responsible, whatever the
+// model said, unless it is weekday_not_allowed, which wins as in
+// allocation.Plan.
 func build(assignments []allocation.Assignment, reasons map[string]allocation.Reason, st allocation.State, goPooled []allocation.PoolEntry) allocation.Result {
 	if assignments == nil {
 		assignments = []allocation.Assignment{} // the JSON stays []
@@ -393,6 +414,9 @@ func build(assignments []allocation.Assignment, reasons map[string]allocation.Re
 		reason, ok := reasons[t.ID]
 		if !ok {
 			reason = allocation.ReasonNoEnergyLeft
+		}
+		if t.Responsible != "" && reason != allocation.ReasonWeekdayNotAllowed {
+			reason = allocation.ReasonWaitingForResponsible
 		}
 		res.Pool = append(res.Pool, allocation.PoolEntry{TaskID: t.ID, Reason: reason})
 	}
