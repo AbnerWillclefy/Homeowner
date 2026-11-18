@@ -137,7 +137,7 @@ Money owed that is due on a date, such as the credit card bill, rent or a utilit
 _Avoid_: Invoice, Debt, Due
 
 **Installment plan**:
-A purchase paid in several equal parts over several months. Each part is a Transaction.
+A purchase paid in several equal parts over several months. Each part is a Transaction, and all its parts share one Spending Category: setting it on one sets it on the rest, and parts imported later take it.
 _Avoid_: Financing, Loan, Subscription
 
 **Monthly income**:
