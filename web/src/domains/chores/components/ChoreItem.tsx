@@ -8,6 +8,7 @@ import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { DELETE_FAILURE_KEY } from "../logic/failureMessages";
 import { ChoreFacts } from "./ChoreFacts";
+import { ResponsibleFact } from "./ResponsibleFact";
 
 type DeleteState =
   | { kind: "idle" }
@@ -75,7 +76,9 @@ export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
           )}
         </div>
 
-<ChoreFacts chore={chore} />
+<ChoreFacts chore={chore}>
+          <ResponsibleFact residentId={chore.responsibleResidentId} />
+        </ChoreFacts>
 
         {confirming && (
           <div

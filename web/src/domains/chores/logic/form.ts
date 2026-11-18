@@ -13,6 +13,8 @@ export interface ChoreFormState {
   /** 0 to 6 with 0 = Sunday, as on the wire. */
   allowedWeekdays: number[];
   buildsUp: boolean;
+  /** A Resident id, or "" for Nobody. Not part of the Chore's request body: it is saved by its own call. */
+  responsible: string;
 }
 
 /** The form for a new Chore: nothing chosen that the Resident has not decided. */
@@ -27,10 +29,12 @@ export function emptyForm(): ChoreFormState {
     intervalDays: "",
     allowedWeekdays: [],
     buildsUp: false,
+    responsible: "",
   };
 }
 
-export function formFromChore(chore: Chore): ChoreFormState {
+/** A Catalog entry has no one responsible, so `responsibleResidentId` may be absent. */
+export function formFromChore(chore: Omit<Chore, "responsibleResidentId"> & { responsibleResidentId?: string | null }): ChoreFormState {
   return {
     name: chore.name,
     category: chore.category,
@@ -41,6 +45,7 @@ export function formFromChore(chore: Chore): ChoreFormState {
     intervalDays: chore.intervalDays === null ? "" : String(chore.intervalDays),
     allowedWeekdays: [...chore.allowedWeekdays],
     buildsUp: chore.buildsUp,
+    responsible: chore.responsibleResidentId ?? "",
   };
 }
 

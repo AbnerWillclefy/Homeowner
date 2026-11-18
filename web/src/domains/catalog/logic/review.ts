@@ -107,7 +107,7 @@ export function splitSaveErrors(fields: FieldCodes, items: readonly ReviewItem[]
  */
 export function keepLocally(key: string, input: ChoreWire): SaveChoreResult {
   if (typeof input.intervalDays === "string") return { kind: "invalid", fields: { intervalDays: "invalid" } };
-  return { kind: "ok", chore: { id: key, ...input, intervalDays: input.intervalDays } };
+  return { kind: "ok", chore: { id: key, ...input, intervalDays: input.intervalDays, responsibleResidentId: null } };
 }
 
 /** The Chore form for a Catalog entry added to an existing Home: pre-filled, in the app's language, editable. */

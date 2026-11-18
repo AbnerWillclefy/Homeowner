@@ -14,6 +14,7 @@ const FORM: ChoreFormState = {
   intervalDays: "3",
   allowedWeekdays: [3, 1],
   buildsUp: true,
+  responsible: "",
 };
 
 describe("toChoreInput", () => {
@@ -56,8 +57,24 @@ describe("toChoreInput", () => {
   });
 });
 
+describe("responsible", () => {
+  const chore: Chore = { ...toChoreInput(FORM), id: "c1", intervalDays: null, responsibleResidentId: "r1" };
+
+  it("opens the form on the Chore's Resident, and Nobody on an empty form or a null", () => {
+    expect(formFromChore(chore).responsible).toBe("r1");
+    expect(formFromChore({ ...chore, responsibleResidentId: null }).responsible).toBe("");
+    expect(emptyForm().responsible).toBe("");
+  });
+
+  it("never puts the Resident in the request body, which the API refuses", () => {
+    const body = toChoreInput({ ...formFromChore(chore), responsible: "r2" });
+    expect(Object.keys(body)).not.toContain("responsible");
+    expect(Object.keys(body)).not.toContain("responsibleResidentId");
+  });
+});
+
 describe("formFromChore", () => {
-  const chore: Chore = { ...toChoreInput(FORM), id: "c1", intervalDays: null };
+  const chore: Chore = { ...toChoreInput(FORM), id: "c1", intervalDays: null, responsibleResidentId: null };
 
   it("shows a one-off Chore with a blank interval", () => {
     expect(formFromChore(chore).intervalDays).toBe("");
@@ -69,7 +86,7 @@ describe("formFromChore", () => {
 
   it("round-trips back to the same request", () => {
     const stored: Chore = { ...chore, intervalDays: 3, allowedWeekdays: [1, 3] };
-    const { id: _id, ...input } = stored;
+    const { id: _id, responsibleResidentId: _responsible, ...input } = stored;
     expect(toChoreInput(formFromChore(stored))).toEqual(input);
   });
 });

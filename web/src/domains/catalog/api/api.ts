@@ -3,7 +3,7 @@ import type { FieldCodes } from "../../home/api/api";
 import { authedRequest } from "../../auth/api/client";
 
 /** One Catalog Chore. `id` is the Catalog id (for example `clean_bathroom`), not a stored Chore's id. */
-export interface CatalogEntry extends Chore {
+export interface CatalogEntry extends Omit<Chore, "responsibleResidentId"> {
   /** Whether the entry repeats once per room. */
   perRoom: boolean;
 }

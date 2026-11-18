@@ -141,6 +141,7 @@ export function homeHandlers(api: FakeApi): void {
         intervalDays: typeof chore.intervalDays === "number" ? chore.intervalDays : null,
         allowedWeekdays: [...new Set(chore.allowedWeekdays)].sort((a, b) => a - b),
         buildsUp: chore.buildsUp,
+        responsibleResidentId: null,
       }));
       // Creating the Home completes the last onboarding step on the server.
       state.onboardingStored = "done";

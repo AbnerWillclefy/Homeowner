@@ -36,6 +36,8 @@ export interface FakeState {
   dayPlan?: DayPlan;
   /** The Home's Residents as `GET /home/residents` lists them. Absent means only the caller. */
   residents?: FakeResident[];
+  /** Lasting Restrictions that refuse a Resident as responsible, keyed `residentId:choreId`. Absent means none. */
+  restrictions?: Record<string, { restrictedBy: string[]; restrictedByChore: boolean }>;
   /** What the caller completed, for the default caller row used when `residents` is absent. */
   callerCompletions?: FakeCompletion[];
   /** The current Streak `GET /home/streak` answers. Absent means 0. */

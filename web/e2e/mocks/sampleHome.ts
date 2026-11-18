@@ -8,9 +8,9 @@ export const RESIDENT_EMAIL = "resident@example.test";
 export const SECOND_RESIDENT_EMAIL = "beto@example.test";
 
 const CHORES: Chore[] = [
-  { id: "chore-1", name: "Wash the dishes", category: "kitchen", demands: [], baseEffort: 2, importance: "normal", people: 1, intervalDays: 1, allowedWeekdays: [], buildsUp: false },
-  { id: "chore-2", name: "Mop the floors", category: "floors", demands: ["bending"], baseEffort: 3, importance: "normal", people: 1, intervalDays: 7, allowedWeekdays: [], buildsUp: true },
-  { id: "chore-3", name: "Take out the trash", category: "trash", demands: [], baseEffort: 1, importance: "essential", people: 1, intervalDays: 3, allowedWeekdays: [], buildsUp: false },
+  { id: "chore-1", name: "Wash the dishes", category: "kitchen", demands: [], baseEffort: 2, importance: "normal", people: 1, intervalDays: 1, allowedWeekdays: [], buildsUp: false, responsibleResidentId: null },
+  { id: "chore-2", name: "Mop the floors", category: "floors", demands: ["bending"], baseEffort: 3, importance: "normal", people: 1, intervalDays: 7, allowedWeekdays: [], buildsUp: true, responsibleResidentId: null },
+  { id: "chore-3", name: "Take out the trash", category: "trash", demands: [], baseEffort: 1, importance: "essential", people: 1, intervalDays: 3, allowedWeekdays: [], buildsUp: false, responsibleResidentId: null },
 ];
 
 const task = (id: string, chore: Chore, reason: string): PlanTask => ({

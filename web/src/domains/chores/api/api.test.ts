@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SESSION_KEY } from "../../auth/logic/session";
-import { createChore, deleteChore, listChores, updateChore, type ChoreInput } from "./api";
+import { clearResponsible, createChore, deleteChore, listChores, setResponsible, updateChore, type ChoreInput } from "./api";
 
 function stubStorage(signedIn: boolean) {
   const data = new Map<string, string>();
@@ -34,6 +34,7 @@ const CHORE = {
   intervalDays: 1,
   allowedWeekdays: [1, 3],
   buildsUp: true,
+  responsibleResidentId: null,
 };
 
 const INPUT: ChoreInput = {
@@ -89,6 +90,26 @@ describe("listChores", () => {
   });
 });
 
+describe("responsibleResidentId", () => {
+  it("is read from a Chore", async () => {
+    stubFetch(Response.json({ chores: [{ ...CHORE, responsibleResidentId: "r1" }] }));
+    const result = await listChores();
+    expect(result.kind === "ok" && result.chores[0]!.responsibleResidentId).toBe("r1");
+  });
+
+  it("reads as Nobody when the API does not send it", async () => {
+    const { responsibleResidentId: _unused, ...older } = CHORE;
+    stubFetch(Response.json({ chores: [older] }));
+    const result = await listChores();
+    expect(result.kind === "ok" && result.chores[0]!.responsibleResidentId).toBeNull();
+  });
+
+  it("rejects a Chore whose value is the wrong type", async () => {
+    stubFetch(Response.json({ chores: [{ ...CHORE, responsibleResidentId: 7 }] }));
+    expect(await listChores()).toEqual({ kind: "error" });
+  });
+});
+
 describe("createChore", () => {
   it("posts the Chore and returns the stored one on 201", async () => {
     const fetch = stubFetch(Response.json(CHORE, { status: 201 }));
@@ -139,6 +160,120 @@ describe("updateChore", () => {
   it("is invalid with the field codes on a 400", async () => {
     stubFetch(Response.json({ fields: { people: "out_of_range" } }, { status: 400 }));
     expect(await updateChore("c1", INPUT)).toEqual({ kind: "invalid", fields: { people: "out_of_range" } });
+  });
+});
+
+describe("updateChore refusing a Resident", () => {
+  it("reads responsible_restricted, with a missing list as empty", async () => {
+    stubFetch(
+      Response.json(
+        { error: "responsible_restricted", residentId: "r1", restrictedBy: ["lifting"], restrictedByChore: false },
+        { status: 422 },
+      ),
+    );
+    expect(await updateChore("c1", INPUT)).toEqual({
+      kind: "restricted",
+      residentId: "r1",
+      restrictedBy: ["lifting"],
+      restrictedByChore: false,
+    });
+    stubFetch(Response.json({ error: "responsible_restricted", residentId: "r1" }, { status: 422 }));
+    expect(await updateChore("c1", INPUT)).toEqual({
+      kind: "restricted",
+      residentId: "r1",
+      restrictedBy: [],
+      restrictedByChore: false,
+    });
+  });
+
+  it("is an error for a 422 it cannot read", async () => {
+    stubFetch(Response.json({ error: "responsible_restricted" }, { status: 422 }));
+    expect(await updateChore("c1", INPUT)).toEqual({ kind: "error" });
+  });
+});
+
+describe("setResponsible", () => {
+  it("puts the Resident to the Chore's responsible path and is ok on 204", async () => {
+    const fetch = stubFetch(new Response(null, { status: 204 }));
+    expect(await setResponsible("c 1", "r1")).toEqual({ kind: "ok" });
+    const [url, init] = fetch.mock.calls[0]!;
+    expect(url).toBe("http://api.test/home/chores/c%201/responsible");
+    expect(init?.method).toBe("PUT");
+    expect(JSON.parse(init?.body as string)).toEqual({ residentId: "r1" });
+  });
+
+  it("is none on a 404", async () => {
+    stubFetch(Response.json({ error: "chore not found" }, { status: 404 }));
+    expect(await setResponsible("c1", "r1")).toEqual({ kind: "none" });
+  });
+
+  it("is unknown-resident on 422 unknown_resident", async () => {
+    stubFetch(Response.json({ error: "unknown_resident" }, { status: 422 }));
+    expect(await setResponsible("c1", "r1")).toEqual({ kind: "unknown-resident" });
+  });
+
+  it("is restricted on 422 responsible_restricted, with the Demands and the Chore flag", async () => {
+    stubFetch(
+      Response.json(
+        { error: "responsible_restricted", residentId: "r1", restrictedBy: ["lifting", "bending"], restrictedByChore: true },
+        { status: 422 },
+      ),
+    );
+    expect(await setResponsible("c1", "r1")).toEqual({
+      kind: "restricted",
+      residentId: "r1",
+      restrictedBy: ["lifting", "bending"],
+      restrictedByChore: true,
+    });
+  });
+
+  it("reads a restricted body with no lists as empty ones", async () => {
+    stubFetch(Response.json({ error: "responsible_restricted", residentId: "r1" }, { status: 422 }));
+    expect(await setResponsible("c1", "r1")).toEqual({
+      kind: "restricted",
+      residentId: "r1",
+      restrictedBy: [],
+      restrictedByChore: false,
+    });
+  });
+
+  it("is an error for a malformed or unknown 422 body and for a server failure", async () => {
+    stubFetch(Response.json({ error: "responsible_restricted", residentId: 5 }, { status: 422 }));
+    expect(await setResponsible("c1", "r1")).toEqual({ kind: "error" });
+    stubFetch(Response.json("nope", { status: 422 }));
+    expect(await setResponsible("c1", "r1")).toEqual({ kind: "error" });
+    stubFetch(Response.json({ error: "internal error" }, { status: 500 }));
+    expect(await setResponsible("c1", "r1")).toEqual({ kind: "error" });
+  });
+
+  it("is offline when unreachable and not signed in without a session", async () => {
+    stubFetch(new TypeError("Failed to fetch"));
+    expect(await setResponsible("c1", "r1")).toEqual({ kind: "offline" });
+    stubStorage(false);
+    stubFetch(new Response(null, { status: 204 }));
+    expect(await setResponsible("c1", "r1")).toEqual({ kind: "not-signed-in" });
+  });
+});
+
+describe("clearResponsible", () => {
+  it("sends DELETE to the responsible path and is ok on 204", async () => {
+    const fetch = stubFetch(new Response(null, { status: 204 }));
+    expect(await clearResponsible("c1")).toEqual({ kind: "ok" });
+    const [url, init] = fetch.mock.calls[0]!;
+    expect(url).toBe("http://api.test/home/chores/c1/responsible");
+    expect(init?.method).toBe("DELETE");
+    expect(init?.body).toBeUndefined();
+  });
+
+  it("is none on a 404, an error for anything else, and offline when unreachable", async () => {
+    stubFetch(Response.json({ error: "chore not found" }, { status: 404 }));
+    expect(await clearResponsible("c1")).toEqual({ kind: "none" });
+    stubFetch(Response.json({ error: "internal error" }, { status: 500 }));
+    expect(await clearResponsible("c1")).toEqual({ kind: "error" });
+    stubFetch(new Response("{}", { status: 200 }));
+    expect(await clearResponsible("c1")).toEqual({ kind: "error" });
+    stubFetch(new TypeError("Failed to fetch"));
+    expect(await clearResponsible("c1")).toEqual({ kind: "offline" });
   });
 });
 
