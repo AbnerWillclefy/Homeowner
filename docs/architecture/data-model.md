@@ -77,6 +77,9 @@ erDiagram
     finance_items ||--o{ finance_sources : "accounts"
     finance_sources ||--o{ finance_transactions : "imported"
     finance_sources ||--o{ finance_card_bills : "bank's bills, cards only"
+    finance_sources ||--o{ finance_source_balances : "daily balances, accounts only"
+    finance_items |o--o{ finance_investments : "read from the bank"
+    finance_investments ||--o{ finance_investment_values : "value history"
     users ||--o{ finance_merchant_categories : "category corrections"
     users ||--o{ finance_llm_calls : "Categorizer calls counted"
     users ||--o{ finance_bills : "Bills"
@@ -137,8 +140,23 @@ erDiagram
         uuid id
         uuid user_id
         text name
+        bigint value_cents ">= 0, the shown value"
+        text serves "reserve or goals; null = not picked, bank rows only"
+        uuid item_id "null = typed by hand"
+        text pluggy_investment_id "unique per Item"
+        bigint bank_value_cents "the bank's last value"
+        text value_set_by "user or bank"
+        bool bank_reported "false once the bank stops returning it"
+    }
+    finance_investment_values {
+        uuid investment_id
+        date day "primary key with investment_id"
         bigint value_cents ">= 0"
-        text serves "reserve or goals"
+    }
+    finance_source_balances {
+        uuid source_id
+        date day "primary key with source_id"
+        bigint balance_cents "may be negative"
     }
     finance_goals {
         uuid id
@@ -154,14 +172,15 @@ erDiagram
 - **The paid-month snapshot** (`finance_bill_payments.expected_cents`, `0034`). Paying a month, by hand or by the bank matcher, copies the Bill's `expected_cents` into the payment row, so editing the Bill later changes only unpaid months. `GET /me/finance/bills` reads `COALESCE(payment, bill)` for `expectedCents`, and `paidCents` is the linked Transaction's amount for a bank payment, else the snapshot. The limit before it shipped: a payment made before `0034` has `NULL` and reads at the Bill's current amount, and an unpaid past month always shows the current amount. A Bill is listed, and paid by the bank, only from its created month (São Paulo), so there is no history before it.
 - **Dismissed suggestions** (`finance_bill_suggestion_dismissals`, `0035`). A merchant key the Resident dismissed is never suggested again; accepting a suggestion creates an ordinary `finance_bills` row, which then covers the merchant.
 - **The savings settings** (`finance_settings`, `0037`). The Emergency reserve target and the Monthly contribution are settings, not entities: nullable columns on the same per-User row as the Monthly income, each written by its own route without touching the others. The reserve's share is a whole percent of the base, so it keeps its meaning when the base changes; the base and the share are set and cleared together (a `CHECK`).
-- **Investments** (`finance_investments`, `0037`, `0043`, `0046`). A name, the current value (zero allowed, for an Investment emptied but kept) and what it serves, the Emergency reserve or the Goals. Typed by hand, or read from the bank by the sync (`0046`): a bank row keeps the bank's value beside the shown one, and `value_set_by` says whether the User's edit or the bank's value is shown. Every value change also writes `finance_investment_values` (`0043`), the history Net worth reads.
+- **Investments** (`finance_investments`, `0037`, `0043`, `0046`). A name, the current value (zero allowed, for an Investment emptied but kept) and what it serves, the Emergency reserve or the Goals. Typed by hand, or read from the bank by the sync (`0046`, `UpsertBankInvestments`), keyed on `(item_id, pluggy_investment_id)`. A bank row keeps the bank's value in `bank_value_cents` beside the shown `value_cents`, and `value_set_by` says which is shown: `bank` until the User edits the value, then `user` until `POST .../use-bank-value` puts the bank's back. A bank row arrives with `serves` null (nothing picked yet; `PUT .../serves` picks it) and counts toward neither the reserve nor the Goals until then; a hand-typed row must have one (`CHECK`). `bank_reported` is true while the bank still returns the holding and turns false when a sync no longer sees it: the row is kept, never deleted, and a bank row cannot be deleted by the User (`409`), because the next sync would bring it back. Every value change, by hand or by the sync, also writes `finance_investment_values` (`0043`), the history Net worth reads.
 - **Goals** (`finance_goals`, `0037`). A name, a target, a position in the User's order and an optional month (stored as its first day). A new Goal takes the next position after the highest; a delete leaves a gap, closed by the next reorder, which rewrites positions 1 to n in one transaction (the unique constraint is checked at commit).
 - **The bank's card bills** (`finance_card_bills`, `0039`). Written only by the sync, one row per bill Pluggy reports for a card, closed and open, updated in place when the bank corrects one. Read by `CardSources` (every bill of each card, for the month outlook) and `CardBillsDue` (the bills due in a window, for classification). A closed bill's total is that month's card bill ([ADR 0021](../adr/0021-a-closed-card-bill-takes-the-banks-total.md), [backend](backend.md#the-month-outlook-and-the-leftover)).
 - **Saving** (`type = 'saving'`, `0040`). Money put aside: neither an Expense nor a Transfer, with no Spending Category. Set by the sync's classification or by the User (`PATCH`).
 - **The Source's display name** (`finance_sources.display_name`, `0041`). The User's own name for a Source, set by `PUT /me/finance/sources/{id}/name`. Every read that shows a Source name (the status, a Transaction's `sourceName`, the card lines of the outlook) shows `COALESCE(display_name, name)` and orders by it.
 - **Manual cards** (`finance_manual_cards`, `finance_manual_card_bills`, `0050`). A card the bank cannot connect (a partner's), not a Source: `finance_sources.item_id` is `NOT NULL` and every Source read assumes Pluggy. Each typed month is one row; `Outlook` gives a month with no row the latest typed value before it, or 0 (`ManualBillIn`). Past months stay, because they are still the carry-forward. `pix_recipient` is a third party's name the User types, as it appears on the Pix receipt; it is the one name the finance tables store, it is deleted with the card and by `DELETE /me/finance`, and it is never logged. Changing it (or deleting a card that had one) restarts the import in the same transaction (`import_cursor` null, `import_complete` false), because the counterpart of a Pix is never stored and only a re-read of the 12 months reclassifies the old ones.
 - **Own counterpart** (`finance_transactions.own_counterpart`, `0042`). Set by the sync from Pluggy's `paymentData` and refreshed on every upsert; always false on a card. It is true when the other side is the User, or when a debit went to a `pix_recipient` of the User's manual cards (an exact folded-name match, since no document is typed). The name and document it was decided from live in memory only.
-- **Source balances** (`finance_source_balances`, `0045`). Written by the sync, one row per account Source per day it ran. `GET /me/finance` serves the latest as `balanceCents`; `GET /me/finance/net-worth` reads the history.
+- **Source balances** (`finance_source_balances`, `0045`). Written by the sync (`UpsertBalances`), one row per account Source per day it ran; a card's balance is never stored. `GET /me/finance` serves the latest as `balanceCents`; `GET /me/finance/net-worth` reads the history.
+- **Reading the two histories: carry forward.** `finance_source_balances` and `finance_investment_values` hold a row only for a day a value was written, not one per calendar day. A reader asking for a day takes the row of that day, else the last one before it (`CarryForward` in `finance/carryforward.go`); a day before the first row has no value. Net worth's series and its month start read both histories this way ([backend](backend.md#net-worth)), so a sync that skipped a day, or an Investment nobody edited for months, still has a value on every day.
 - **A card's credit limit** (`finance_sources.credit_limit_cents`, `0047`). Written on connect (`POST /me/finance/items`, `ConnectItem`) and by every sync (`SetCreditLimits`). The bank always wins, but a read with no limit keeps the stored one, so a flaky connector does not blank it; a value that is unreadable, negative or not in reais is stored as none. Null on every other kind, and on a card until a sync or connect sends one. Served as `creditLimitCents`; the Card bills screen shows the limit used.
 - **The bank connection status** (`finance_items.status`, `execution_status`, `connector_name`, `0048`). Pluggy's own words, written on connect and at the start of each sync for the Item (`SetItemStatus`; a failed read only logs). Null until the next sync or connect, and a null reads as `ok`. The API never sends them as they are: `ItemWireStatus` maps them to `ok` or `reconnect` for `items[]` of `GET /me/finance`.
 - **Progress is never stored.** The reserve's saved amount (the sum of the Investments that serve it), each Goal's saved amount, this month's amounts and the expected months are worked out on every `GET /me/finance/savings` by the contribution split ([backend](backend.md#the-contribution-split)). With no history there is nothing to keep in sync: an Investment the User spends just gets a lower value, and a Goal that is done gets deleted.
@@ -223,4 +242,4 @@ erDiagram
 | `llm_call_events` (built) | One row per LLM attempt, `service` being `allocator`, `explainer`, `categorizer` or `voice` (accepted, rejected, invalid, timed out, errored, skipped by cap or budget) with model, latency, tokens and estimated cost, and for the explainer the Residents asked and kept; no text. Best effort, outside the planning transaction |
 | `day_plan_explanations` (built) | A Resident's LLM-written Day Plan summary in `en-US` and `pt-BR` (a headline in `headline_*` and a detail in `text_*`) with the fingerprint of the plan, Energy and Check-in level it describes; absent, or without a headline, means the view computes the template |
 | `nudges` (built) | Which push nudge (Check-in reminder, Day Plan ready) a Resident already got on a local date, and the push service's answer (`outcome`); the claim that keeps the 15-minute tick from repeating it |
-| `push_subscriptions` | One per device, owned by the User who last registered it. Built. |
+| `push_subscriptions` | One per device, owned by the User who last registered it, with the `app` it was made in (`homeowner` or `revenue`): the Allocation job's nudges go to `homeowner` rows, Bill reminders to `revenue` rows. Built. |

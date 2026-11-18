@@ -1,6 +1,6 @@
 # Architecture
 
-Homeowner helps the people who look after their own home share the housework fairly. Each day it proposes which open **Tasks** each **Resident** does without exceeding anyone's **Energy** (see [GLOSSARY.md](../../GLOSSARY.md) for the domain terms, in bold here). The full v1 spec is issue #1.
+Homeowner helps the people who look after their own home share the housework fairly. Each day it proposes which open **Tasks** each **Resident** does without exceeding anyone's **Energy** (see [GLOSSARY.md](../../GLOSSARY.md) for the domain terms, in bold here). The full v1 spec is issue #1. A second app, Revenue, shows a User on the finance allowlist their own money, on the same backend.
 
 These pages describe the system **as built**. Anything the spec calls for that does not exist yet is marked planned.
 
@@ -14,7 +14,7 @@ These pages describe the system **as built**. Anything the spec calls for that d
 6. [The React PWA](web.md): its modules, localization, UI layer and data layer (query keys and cache writes).
 7. [The admin dashboard](admin.md): the maintainer's app per environment, its deploy, the super-admin guard and the `/admin/` routes.
 8. [Bedrock](bedrock.md): the shared design system package, its two entry points, the token flow, the showcase and its checks.
-9. [Revenue](revenue.md): the finance app on Bedrock, its frame (sidebar, header, month, hide values), its screens and the endpoints each calls.
+9. [Revenue](revenue.md): the finance app on Bedrock, how it is built and deployed, sign-in and the `GET /me/finance` gate, Onboarding, language and theme, install and notifications (Bill reminders), its frame, its screens and the endpoints each calls.
 
 ## Legend
 
