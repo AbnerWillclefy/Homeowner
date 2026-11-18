@@ -13,8 +13,8 @@ vi.mock("./api", async (original) => ({
   getCardBills: vi.fn(), getCardSources: vi.fn(), getMonthTransactions: vi.fn(), getPastBills: vi.fn(), putBillDays: vi.fn(),
 }));
 
-const CLOSED: CardBill = { sourceId: "s1", name: "Nubank", amountCents: 284300, billDaysKnown: true, fromBank: true, dueOn: "2030-01-15", closesOn: "2030-01-08", closed: false, heldFrom: null, heldTo: null };
-const OPEN: CardBill = { sourceId: "s2", name: "Itaú Visa", amountCents: 50000, billDaysKnown: false, fromBank: false, dueOn: null, closesOn: null, closed: false, heldFrom: null, heldTo: null };
+const CLOSED: CardBill = { sourceId: "s1", name: "Nubank", amountCents: 284300, billDaysKnown: true, fromBank: true, dueOn: "2030-01-15", closesOn: "2030-01-08", closed: false, heldFrom: null, heldTo: null, manual: false };
+const OPEN: CardBill = { sourceId: "s2", name: "Itaú Visa", amountCents: 50000, billDaysKnown: false, fromBank: false, dueOn: null, closesOn: null, closed: false, heldFrom: null, heldTo: null, manual: false };
 const SOURCES: CardSource[] = [{ id: "s1", name: "Nubank", closeDay: 8, dueDay: 15, creditLimitCents: 1_000_000 }, { id: "s2", name: "Itaú Visa", closeDay: null, dueDay: null, creditLimitCents: null }];
 const tx = (over: Partial<CardTransaction>): CardTransaction => ({ id: "t1", sourceId: "s1", description: "Mercado Central", postedOn: "2029-12-20", countsOn: "2030-01-15", amountCents: -28430, installment: null, spendingCategory: null, ...over });
 const ROWS = [
@@ -61,6 +61,16 @@ describe("layout", () => {
     const group = screen.getByRole("radiogroup", { name: "Card" });
     expect(within(group).getAllByRole("radio").map((r) => r.textContent)).toEqual(["Nubank", "Itaú Visa"]);
     expect(screen.getByRole("combobox", { name: "Month" })).toBeTruthy();
+  });
+
+  it("leaves a manual card out: it has no rows or closed bills to show", async () => {
+    width(true);
+    serve([CLOSED, OPEN, { ...OPEN, sourceId: "m1", name: "Fatura Naiara", amountCents: 110_900, manual: true }]);
+    open();
+    expect(await screen.findByText("Closed bill · Nubank")).toBeTruthy();
+    const group = screen.getByRole("radiogroup", { name: "Card" });
+    expect(within(group).getAllByRole("radio").map((r) => r.textContent)).toEqual(["Nubank", "Itaú Visa"]);
+    expect(screen.getByText(/^2 cards · R\$\s?500\.00 in open bills$/)).toBeTruthy();
   });
 
   it("puts the bill on the left of the 12-column grid and history and days on the right", async () => {

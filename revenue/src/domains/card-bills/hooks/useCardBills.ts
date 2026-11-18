@@ -9,7 +9,7 @@ import { getCardBills, getCardSources, getMonthTransactions, getPastBills, putBi
  * API's billLead).
  */
 export function useCardBills(month: string) {
-  const bills = useQuery({ queryKey: ["finance", "commitments", month, "card-bills"], queryFn: () => getCardBills(month) });
+  const bills = useQuery({ queryKey: ["finance", "commitments", month, "card-bills"], queryFn: async () => (await getCardBills(month)).filter((b) => !b.manual) });
   const sources = useQuery({ queryKey: ["finance", "status", "card-sources"], queryFn: () => getCardSources() });
   const transactions = useQuery({
     queryKey: ["finance", "transactions", month, "card-rows"],
