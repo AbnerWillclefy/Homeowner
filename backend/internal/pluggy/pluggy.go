@@ -81,7 +81,7 @@ type Account struct {
 }
 
 // Party is the other side of a Transaction. It lives in memory only: the sync
-// reduces it to a boolean and never stores or logs it.
+// reduces it to a boolean (the User, or a manual card's Pix recipient) and never stores or logs it.
 type Party struct {
 	Name, Document string
 }

@@ -192,6 +192,10 @@ func (s *Syncer) syncItem(ctx context.Context, it DueItem, apiKey string, now, t
 			break
 		}
 	}
+	recipients, err := s.store.ManualRecipients(ctx, it.UserID)
+	if err != nil {
+		return false, err
+	}
 	floor := today.AddDate(-1, 0, 0)
 	for round := 0; ; round++ {
 		// The first round always runs, so every run makes progress.
@@ -215,7 +219,7 @@ func (s *Syncer) syncItem(ctx context.Context, it DueItem, apiKey string, now, t
 			if to.After(today) || it.ImportComplete { // a re-read is one window up to today
 				to = today
 			}
-			if err := s.syncWindow(ctx, it.UserID, apiKey, *src, owner, from, to, now, sum); err != nil {
+			if err := s.syncWindow(ctx, it.UserID, apiKey, *src, owner, recipients, from, to, now, sum); err != nil {
 				return false, err
 			}
 			src.ImportCursor = &to
@@ -253,14 +257,14 @@ func (s *Syncer) syncInvestments(ctx context.Context, it DueItem, apiKey string,
 }
 
 // syncWindow stores every page of one Source's window, then moves its cursor.
-func (s *Syncer) syncWindow(ctx context.Context, userID, apiKey string, src SyncSource, owner pluggy.Party, from, to, now time.Time, sum *Summary) error {
+func (s *Syncer) syncWindow(ctx context.Context, userID, apiKey string, src SyncSource, owner pluggy.Party, recipients []string, from, to, now time.Time, sum *Summary) error {
 	cursor := ""
 	for {
 		page, err := s.pluggy.ListTransactions(ctx, apiKey, src.PluggyAccountID, from, to, cursor)
 		if err != nil {
 			return err
 		}
-		rows, skipped := toRows(page.Transactions, src.Card, owner)
+		rows, skipped := toRows(page.Transactions, src.Card, owner, recipients)
 		if len(rows) > 0 {
 			if err := s.store.UpsertTransactions(ctx, userID, src.ID, rows, now); err != nil {
 				return err
@@ -340,9 +344,10 @@ func digits(s string) string {
 // reais, and moves installments sent together to their months (moveInstallment). On a card
 // Pluggy sends a purchase positive and a bill payment negative, so its sign is
 // flipped to the Source's point of view. A row's counterpart is reduced to
-// OwnCounterpart here and goes no further. A card row never has one: its payer
+// OwnCounterpart here and goes no further: true when it is the owner, or when a debit
+// goes to one of the recipients (the Pix recipients typed on the User's manual cards). A card row never has one: its payer
 // or receiver was picked from Pluggy's raw sign, which the flip inverts.
-func toRows(txs []pluggy.Transaction, card bool, owner pluggy.Party) (rows []Row, skippedCurrency int) {
+func toRows(txs []pluggy.Transaction, card bool, owner pluggy.Party, recipients []string) (rows []Row, skippedCurrency int) {
 	lowest := map[installmentGroup]int{}
 	if card {
 		lowest = lowestInstallments(txs)
@@ -365,7 +370,8 @@ func toRows(txs []pluggy.Transaction, card bool, owner pluggy.Party) (rows []Row
 		}
 		r := Row{ProviderID: tx.ID, PostedOn: moveInstallment(tx, lowest), AmountCents: amount,
 			Description: tx.Description, MerchantKey: MerchantKey(tx.Description), Type: "income"}
-		r.OwnCounterpart = !card && tx.Counterpart != nil && sameParty(owner, *tx.Counterpart)
+		r.OwnCounterpart = !card && tx.Counterpart != nil && (sameParty(owner, *tx.Counterpart) ||
+			amount < 0 && slices.ContainsFunc(recipients, func(name string) bool { return sameParty(pluggy.Party{Name: name}, *tx.Counterpart) }))
 		if amount < 0 {
 			r.Type = "expense"
 		}

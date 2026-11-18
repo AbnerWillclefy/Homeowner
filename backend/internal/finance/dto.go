@@ -396,3 +396,23 @@ type PastCardBillsResponse struct {
 	Bills        []PastBill `json:"bills"`
 	AverageCents *int64     `json:"averageCents"`
 }
+
+// ManualCardRequest is the body of POST /me/finance/manual-cards and PUT /me/finance/manual-cards/{id}.
+// PixRecipient is the name as it appears on the Pix receipt; empty or absent clears it. Bills maps
+// YYYY-MM to a total in cents: null deletes that month, an absent month is kept.
+type ManualCardRequest struct {
+	Name         string            `json:"name"`
+	DueDay       int               `json:"dueDay"`
+	PixRecipient *string           `json:"pixRecipient"`
+	Bills        map[string]*int64 `json:"bills"`
+}
+
+// ManualCardResponse is a manual card with every typed month. PixRecipient is null when none;
+// Bills is never null.
+type ManualCardResponse struct {
+	ID           string           `json:"id"`
+	Name         string           `json:"name"`
+	DueDay       int              `json:"dueDay"`
+	PixRecipient *string          `json:"pixRecipient"`
+	Bills        map[string]int64 `json:"bills"`
+}

@@ -196,7 +196,7 @@ type outlookCard struct {
 	SourceID, Name                    string
 	AmountCents                       int64
 	BillDaysKnown                     bool
-	FromBank, Closed                  bool
+	FromBank, Closed, Manual          bool
 	DueOn, ClosesOn, HeldFrom, HeldTo *string
 }
 

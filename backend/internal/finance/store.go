@@ -455,7 +455,8 @@ type Row struct {
 	InstallmentNumber, TotalInstallments int32
 	// Category is the Spending Category Pluggy's own category maps to, "" if none.
 	Category string
-	// OwnCounterpart: the other side of the payment is the User.
+	// OwnCounterpart: the other side of the payment is the User, or a debit went to the
+	// Pix recipient of a manual card.
 	OwnCounterpart bool
 }
 

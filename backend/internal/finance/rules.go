@@ -96,7 +96,8 @@ type Txn struct {
 	// Linked (a Bill payment, not undone, points at it) is read by SuggestBills
 	// and Outlook; Installment (a PARC nn/mm charge) only by SuggestBills.
 	Linked, Installment bool
-	// OwnCounterpart: the other side of the money is the User (see sameParty).
+	// OwnCounterpart: the other side of the money is the User (see sameParty), or a debit
+	// went to the Pix recipient of a manual card (toRows).
 	OwnCounterpart bool
 }
 
@@ -105,7 +106,7 @@ type Txn struct {
 //
 // Rules, in order: an "Aplicação" (any sign) or a positive "Resgate" is a
 // saving, left out of the pairing below; a row whose other side is the User
-// (OwnCounterpart), with or without a partner, is a Transfer; a bill payment is a Transfer, by its words or, on a Source
+// or the Pix recipient of a manual card (OwnCounterpart), with or without a partner, is a Transfer; a bill payment is a Transfer, by its words or, on a Source
 // that is not a credit card, by a debit equal to a stored closed bill's total
 // posted within transferWindowDays of its due date; a debit and a credit of the
 // same amount and currency on two Sources within transferWindowDays are both

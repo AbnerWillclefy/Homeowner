@@ -48,7 +48,35 @@ func TestToRowsMarksOwnCounterpart(t *testing.T) {
 		"no payment data":                         {-100, nil, owner, false, false},
 		"owner without document and name":         {-100, p("John Doe", ""), pluggy.Party{}, false, false},
 	} {
-		rows, _ := toRows([]pluggy.Transaction{{ID: "a", Date: d, Description: "x", AmountCents: tc.cents, Currency: "BRL", Status: "POSTED", Counterpart: tc.cp}}, tc.card, tc.owner)
+		rows, _ := toRows([]pluggy.Transaction{{ID: "a", Date: d, Description: "x", AmountCents: tc.cents, Currency: "BRL", Status: "POSTED", Counterpart: tc.cp}}, tc.card, tc.owner, nil)
+		if rows[0].OwnCounterpart != tc.want {
+			t.Errorf("%s: OwnCounterpart = %v, want %v", name, rows[0].OwnCounterpart, tc.want)
+		}
+	}
+}
+
+func TestToRowsMarksAPixToAManualCardRecipient(t *testing.T) {
+	d := time.Date(2026, 11, 7, 15, 0, 0, 0, time.UTC)
+	owner := pluggy.Party{Name: "John Doe", Document: "416.799.495-00"}
+	partner := pluggy.Party{Name: "Naiara Souza", Document: "999.999.999-99"}
+	for name, tc := range map[string]struct {
+		cents      int64
+		cp         pluggy.Party
+		recipients []string
+		card       bool
+		want       bool
+	}{
+		"a debit to the recipient":                {-100, partner, []string{"Naiara Souza"}, false, true},
+		"case and accents differ":                 {-100, pluggy.Party{Name: "NAIARA  souza"}, []string{"Náiara Souza"}, false, true},
+		"one of several recipients":               {-100, partner, []string{"Maria", "Naiara Souza"}, false, true},
+		"a credit from the recipient":             {100, partner, []string{"Naiara Souza"}, false, false},
+		"a card row":                              {100, partner, []string{"Naiara Souza"}, true, false},
+		"a different name":                        {-100, pluggy.Party{Name: "Naiara Silva"}, []string{"Naiara Souza"}, false, false},
+		"no recipients":                           {-100, partner, nil, false, false},
+		"the owner still counts with a recipient": {-100, owner, []string{"Naiara Souza"}, false, true},
+	} {
+		cp := tc.cp
+		rows, _ := toRows([]pluggy.Transaction{{ID: "a", Date: d, Description: "x", AmountCents: tc.cents, Currency: "BRL", Status: "POSTED", Counterpart: &cp}}, tc.card, owner, tc.recipients)
 		if rows[0].OwnCounterpart != tc.want {
 			t.Errorf("%s: OwnCounterpart = %v, want %v", name, rows[0].OwnCounterpart, tc.want)
 		}
