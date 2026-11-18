@@ -124,6 +124,10 @@ _Avoid_: Finance app, Money app
 One movement of money on a Source, such as a purchase or a payment, with a date, an amount and a description.
 _Avoid_: Entry, Expense, Payment
 
+**Note**:
+Free text a User writes on a Transaction; the sync never changes it. On an Installment plan, every part shares one Note.
+_Avoid_: Memo, Comment, Description
+
 **Source**:
 A place Transactions come from, such as a bank account or a credit card, connected to the app. A credit card's Transactions count as spent in the month their card bill is due, not the day they were made. The User can give a Source a display name of their own; the bank's name is kept beside it.
 _Avoid_: Account, Bank, Connection
@@ -141,7 +145,7 @@ A credit card with no bank connection, such as a partner's, that the User types 
 _Avoid_: Fake card, Offline card, Custom card
 
 **Installment plan**:
-A purchase paid in several equal parts over several months. Each part is a Transaction, and all its parts share one Spending Category: setting it on one sets it on the rest, and parts imported later take it.
+A purchase paid in several equal parts over several months. Each part is a Transaction, and all its parts share one Spending Category: setting it on one sets it on the rest, and parts imported later take it. Its parts also share one Note.
 _Avoid_: Financing, Loan, Subscription
 
 **Monthly income**:

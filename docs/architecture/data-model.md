@@ -56,6 +56,7 @@ Migrations live in `backend/migrations/` as `NNNN_description.sql` files, applie
 | `0046_finance_pluggy_investments.sql` | Investments can come from the bank: `finance_investments` gains `item_id` (references `finance_items`, cascade), `pluggy_investment_id`, `bank_value_cents`, `value_set_by` (`user` or `bank`, default `user`) and `bank_reported`, unique `(item_id, pluggy_investment_id)`; `serves` becomes nullable, but a hand-typed row must still have it (`CHECK`). Down deletes the bank's rows. |
 | `0047_finance_source_credit_limit.sql` | `finance_sources.credit_limit_cents` (`bigint`, null, `CHECK >= 0`): a card's credit limit as its bank reports it (Pluggy's `creditData.creditLimit`). Expand only, no backfill. |
 | `0048_finance_item_status.sql` | `finance_items.status`, `execution_status` and `connector_name` (all nullable text): what Pluggy last said about the Item and its institution, filled on connect and on each sync; null reads as `ok`. Expand only; Down drops the three. |
+| `0051_finance_transaction_note.sql` | `finance_transactions.note` text null, `CHECK char_length(note) BETWEEN 1 AND 200`: the User's Note on a Transaction; no Note is NULL, never `''`; no index, the search runs in the browser. Expand only; Down drops the column. |
 | `0050_finance_manual_cards.sql` | `finance_manual_cards` (`id`, `user_id` cascade, `name`, `due_day` `CHECK 1..31`, `pix_recipient` text null, timestamps) and `finance_manual_card_bills` (`card_id` cascade, `user_id` cascade, `month` `CHECK` first of a month, `total_cents` `CHECK >= 0`, primary key `(card_id, month)`): a credit card kept by hand with one typed bill per month; a month with no row is "not typed", distinct from a typed 0. Expand only; Down drops both. |
 
 A Home is created by one transaction that inserts the `homes` row and the creator's `residents` row; if the `residents` insert hits the unique violation the transaction rolls back and no Home is left behind.
@@ -101,6 +102,7 @@ erDiagram
     finance_transactions {
         text type "income, expense, transfer or saving"
         bool own_counterpart "the other side is the User or a manual card's Pix recipient"
+        text note "null = none; the User's Note, 1 to 200 characters, never written by the sync"
     }
     finance_manual_cards {
         uuid id
