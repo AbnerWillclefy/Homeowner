@@ -62,8 +62,9 @@ func TestACategoryOnOneInstallmentReachesTheWholePurchase(t *testing.T) {
 	// Outside the purchase, same merchant: another amount, a plan starting 2 months later, a charge that is no installment.
 	insertPlan(t, app, "ana@example.com", "dearer", "SOLAR 1/12", "SOLAR", "2026-06-10", -9500, 1, 12)
 	insertPlan(t, app, "ana@example.com", "late", "SOLAR 1/12", "SOLAR", "2026-08-10", -9000, 1, 12)
+	insertPlan(t, app, "ana@example.com", "twocent", "SOLAR 1/12", "SOLAR", "2026-06-10", -9002, 1, 12)
 	insertTxn(t, app, "SOLAR", "2026-10-02", -1234, "leisure")
-	setCategory(t, app, "shopping", "user", map[int]string{0: "cent", 1: "close", 2: "dearer"})
+	setCategory(t, app, "shopping", "user", map[int]string{0: "cent", 1: "close", 2: "dearer", 3: "twocent"})
 	setCategory(t, app, "leisure", "user", map[int]string{0: "late"})
 
 	if res := patch(ana, rowID(t, app, parts[5]), map[string]string{"spendingCategory": "household_bills"}); res.Status != http.StatusOK {
@@ -73,7 +74,7 @@ func TestACategoryOnOneInstallmentReachesTheWholePurchase(t *testing.T) {
 		AND spending_category = 'household_bills' AND category_set_by = 'user'`); n != 7 {
 		t.Errorf("parts of the purchase in household_bills/user = %d, want 7", n)
 	}
-	for id, want := range map[string]string{"dearer": "shopping/user", "late": "leisure/user", "SOLAR": "leisure/user"} {
+	for id, want := range map[string]string{"dearer": "shopping/user", "twocent": "shopping/user", "late": "leisure/user", "SOLAR": "leisure/user"} {
 		if got := categoryAndBy(t, app, id); got != want {
 			t.Errorf("%s = %s, outside the purchase, want %s", id, got, want)
 		}
@@ -156,5 +157,58 @@ func TestPlannedSpendingLeavesTheOldCategoryWhenAPurchaseMoves(t *testing.T) {
 	}
 	if got := planned(1, "household_bills"); got != household {
 		t.Errorf("december's household_bills planned = %d, want %d: the parts still to come offset its average", got, household)
+	}
+}
+
+// reimportPartTwo stores part 1/6 of the fixture's card purchase once per sibling, deletes the fixture's 2/6
+// part, sets a merchant correction to leisure and makes the next sync re-import 2/6.
+func reimportPartTwo(t *testing.T, app *apitest.App, siblings ...[3]string) {
+	t.Helper()
+	ctx := context.Background()
+	for _, s := range siblings { // provider id, category, set by
+		if _, err := app.DB.Exec(ctx, `
+			INSERT INTO finance_transactions (user_id, source_id, provider_id, posted_on, amount_cents, currency, description, merchant_key, type, type_set_by,
+				spending_category, category_set_by, installment_number, total_installments, created_at, updated_at)
+			SELECT user_id, source_id, $1, posted_on - interval '1 month', amount_cents, currency, description, merchant_key, type, type_set_by,
+				$2, $3, 1, total_installments, now(), now()
+			FROM finance_transactions WHERE installment_number = 2 AND total_installments = 6
+				AND user_id = (SELECT id FROM users WHERE email = 'ana@example.com')`, s[0], s[1], s[2]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := app.DB.Exec(ctx, `
+		INSERT INTO finance_merchant_categories (user_id, merchant_key, spending_category, updated_at)
+		SELECT user_id, merchant_key, 'leisure', now() FROM finance_transactions WHERE provider_id = $1
+		ON CONFLICT (user_id, merchant_key) DO UPDATE SET spending_category = 'leisure'`, siblings[0][0]); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.DB.Exec(ctx, `DELETE FROM finance_transactions WHERE installment_number = 2 AND total_installments = 6
+			AND user_id = (SELECT id FROM users WHERE email = 'ana@example.com')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.DB.Exec(ctx, `UPDATE finance_sources SET import_cursor = NULL; UPDATE finance_items SET import_complete = false`); err != nil {
+		t.Fatal(err)
+	}
+	app.Clock.Advance(25 * time.Hour)
+	app.RunFinanceSync(t)
+}
+
+func TestAnInstallmentImportedLaterIgnoresAnAutoSibling(t *testing.T) {
+	t.Parallel()
+	app, _ := seedMonth(t)
+	reimportPartTwo(t, app, [3]string{"sib1", "groceries", "auto"})
+	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE installment_number = 2 AND total_installments = 6
+		AND spending_category = 'leisure' AND category_set_by = 'auto'`); n != 1 {
+		t.Errorf("re-imported 2/6 in leisure/auto = %d, want 1 (only a User's choice spreads)", n)
+	}
+}
+
+func TestAnInstallmentImportedLaterTakesTheLatestEditedSibling(t *testing.T) {
+	t.Parallel()
+	app, _ := seedMonth(t)
+	reimportPartTwo(t, app, [3]string{"sib1", "shopping", "user"}, [3]string{"sib2", "household_bills", "user"})
+	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE installment_number = 2 AND total_installments = 6
+		AND spending_category = 'household_bills' AND category_set_by = 'user'`); n != 1 {
+		t.Errorf("re-imported 2/6 in household_bills/user = %d, want 1 (the sibling edited last)", n)
 	}
 }

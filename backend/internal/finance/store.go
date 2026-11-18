@@ -507,7 +507,9 @@ func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string,
 			SELECT a.spending_category FROM finance_transactions a
 			JOIN (SELECT $1::uuid AS user_id, $2::uuid AS source_id, p.merchant_key, NULLIF(p.total, 0) AS total_installments,
 				NULLIF(p.inst, 0) AS installment_number, p.amount_cents, p.posted_on) b ON `+samePurchase+`
-			WHERE a.type = 'expense' AND a.category_set_by = 'user' AND p.type = 'expense' LIMIT 1) sib ON true
+			WHERE a.type = 'expense' AND a.category_set_by = 'user' AND p.type = 'expense'
+				AND a.posted_on BETWEEN p.posted_on - make_interval(months => p.total + 1) AND p.posted_on + make_interval(months => p.total + 1)
+			ORDER BY a.updated_at DESC LIMIT 1) sib ON true
 		ON CONFLICT (source_id, provider_id) DO UPDATE SET
 			posted_on = EXCLUDED.posted_on, amount_cents = EXCLUDED.amount_cents, description = EXCLUDED.description,
 			merchant_key = EXCLUDED.merchant_key, own_counterpart = EXCLUDED.own_counterpart,
