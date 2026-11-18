@@ -390,8 +390,8 @@ func decode(raw json.RawMessage, st allocation.State, goPooled []allocation.Pool
 // st that is not assigned in the pool, in st's order. A pooled Task takes the
 // reason Go gave it, else the model's, else no_energy_left; except that one
 // with a responsible Resident is always waiting_for_responsible, whatever the
-// model said, unless it is weekday_not_allowed or invalid_effort, which win as
-// in allocation.Plan.
+// model said, unless it is weekday_not_allowed, which wins as in
+// allocation.Plan.
 func build(assignments []allocation.Assignment, reasons map[string]allocation.Reason, st allocation.State, goPooled []allocation.PoolEntry) allocation.Result {
 	if assignments == nil {
 		assignments = []allocation.Assignment{} // the JSON stays []
@@ -415,7 +415,7 @@ func build(assignments []allocation.Assignment, reasons map[string]allocation.Re
 		if !ok {
 			reason = allocation.ReasonNoEnergyLeft
 		}
-		if t.Responsible != "" && reason != allocation.ReasonWeekdayNotAllowed && reason != allocation.ReasonInvalidEffort {
+		if t.Responsible != "" && reason != allocation.ReasonWeekdayNotAllowed {
 			reason = allocation.ReasonWaitingForResponsible
 		}
 		res.Pool = append(res.Pool, allocation.PoolEntry{TaskID: t.ID, Reason: reason})

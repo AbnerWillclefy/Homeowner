@@ -348,6 +348,19 @@ func TestAResponsibleTaskWhoseResidentIsNotEligibleIsPooledAndNotSent(t *testing
 	}
 }
 
+func TestAResponsibleTaskWithEffortZeroLeftOutByTheModelWaitsForItsResident(t *testing.T) {
+	st := responsibleState("r2", "")
+	st.Tasks[2].Effort = 0
+	prop, err := llmalloc.New(emptyAnswer()).Propose(context.Background(), st)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := allocation.PoolEntry{TaskID: "t3", Reason: allocation.ReasonWaitingForResponsible}
+	if !slices.Contains(prop.Result.Pool, want) {
+		t.Fatalf("pool = %+v, want %+v", prop.Result.Pool, want)
+	}
+}
+
 func TestWhenEveryTaskWaitsForItsResponsibleResidentTheModelIsNotCalled(t *testing.T) {
 	st := responsibleState("ghost", "")
 	st.Tasks = st.Tasks[2:]
