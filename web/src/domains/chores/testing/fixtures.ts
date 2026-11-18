@@ -13,5 +13,6 @@ export function chore(id: string, name: string): Chore {
     intervalDays: 7,
     allowedWeekdays: [],
     buildsUp: false,
+    responsibleResidentId: null,
   };
 }

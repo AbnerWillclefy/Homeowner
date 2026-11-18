@@ -3,7 +3,7 @@ import { empty, fieldErrors, json, signedIn, type FakeApi, type FakeState } from
 import { choreErrors } from "./home";
 
 /** The stored Chore for a valid body, as `POST /home` stores one. */
-function stored(id: string, chore: ChoreWire): Chore {
+function stored(id: string, chore: ChoreWire, responsibleResidentId: string | null = null): Chore {
   return {
     id,
     name: chore.name.trim(),
@@ -15,6 +15,7 @@ function stored(id: string, chore: ChoreWire): Chore {
     intervalDays: typeof chore.intervalDays === "number" ? chore.intervalDays : null,
     allowedWeekdays: [...new Set(chore.allowedWeekdays)].sort((a, b) => a - b),
     buildsUp: chore.buildsUp,
+    responsibleResidentId,
   };
 }
 
@@ -44,9 +45,35 @@ export function choresHandlers(api: FakeApi): void {
       if (noHome(state) || index < 0) return json(404, { error: "no chore" });
       const fields = choreErrors(request.body, state);
       if (Object.keys(fields).length > 0) return fieldErrors(fields);
-      const chore = stored(state.chores[index]!.id, request.body as ChoreWire);
+      const chore = stored(state.chores[index]!.id, request.body as ChoreWire, state.chores[index]!.responsibleResidentId);
       state.chores[index] = chore;
       return json(200, chore);
+    }),
+  );
+
+  // The Chore body never carries the Resident: it has its own sub-resource, as in the API.
+  api.on(
+    "PUT /home/chores/{id}/responsible",
+    signedIn((request, state) => {
+      const chore = state.chores.find((c) => c.id === request.params["id"]);
+      if (noHome(state) || !chore) return json(404, { error: "no chore" });
+      const residentId = (request.body as { residentId?: string } | null)?.residentId;
+      const residents = state.residents ?? [];
+      if (!residents.some((resident) => resident.id === residentId)) return json(422, { error: "unknown_resident" });
+      const restriction = state.restrictions?.[`${residentId}:${chore.id}`];
+      if (restriction) return json(422, { error: "responsible_restricted", residentId, ...restriction });
+      chore.responsibleResidentId = residentId ?? null;
+      return empty(204);
+    }),
+  );
+
+  api.on(
+    "DELETE /home/chores/{id}/responsible",
+    signedIn((request, state) => {
+      const chore = state.chores.find((c) => c.id === request.params["id"]);
+      if (noHome(state) || !chore) return json(404, { error: "no chore" });
+      chore.responsibleResidentId = null;
+      return empty(204);
     }),
   );
 

@@ -14,6 +14,7 @@ function chore(id: string, name: string, baseEffort: number, importance = "norma
     intervalDays: 1,
     allowedWeekdays: [],
     buildsUp: false,
+    responsibleResidentId: null,
   };
 }
 

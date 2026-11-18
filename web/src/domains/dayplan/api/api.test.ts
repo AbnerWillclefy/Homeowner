@@ -242,6 +242,28 @@ describe("committed and doneToday", () => {
   });
 });
 
+describe("a Task's responsibleResidentId", () => {
+  const planWith = (extra: object) => Response.json({ ...PLAN, pool: [{ ...TASK, ...extra }] });
+  const poolTask = async () => {
+    const result = await getDayPlan();
+    return result.kind === "ok" ? result.plan.pool[0] : undefined;
+  };
+
+  it("keeps a Resident id", async () => {
+    stubFetch(planWith({ responsibleResidentId: "r1" }));
+    expect((await poolTask())?.responsibleResidentId).toBe("r1");
+  });
+
+  it("leaves it out for null, absent or a wrong type, without failing the plan", async () => {
+    for (const extra of [{ responsibleResidentId: null }, {}, { responsibleResidentId: 4 }]) {
+      stubFetch(planWith(extra));
+      const task = await poolTask();
+      expect(task?.choreName).toBe("Wash dishes");
+      expect(task?.responsibleResidentId).toBeUndefined();
+    }
+  });
+});
+
 describe("doneToday with and category", () => {
   const read = async (entry: unknown) => {
     stubFetch(Response.json({ ...PLAN, doneToday: [entry] }));

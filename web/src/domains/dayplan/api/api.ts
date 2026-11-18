@@ -30,6 +30,11 @@ export interface PlanTask {
   suggestTwoPerson?: boolean;
   /** The other Residents' ids the Task is also given to (a two-person Task). Absent means none. */
   with?: string[];
+  /**
+   * The Resident the Chore is reserved for, when the Task is waiting in the pool for them. Null or absent: nobody
+   * (an older API omits it). Read leniently, like `with`.
+   */
+  responsibleResidentId?: string | null;
 }
 
 /** A Task the signed-in Resident completed today. */
@@ -143,6 +148,7 @@ function parseTask(body: unknown): PlanTask | null {
     const partners = body.with.filter((id): id is string => typeof id === "string");
     if (partners.length > 0) task.with = partners;
   }
+  if (typeof body.responsibleResidentId === "string") task.responsibleResidentId = body.responsibleResidentId;
   return reason === undefined ? task : { ...task, reason };
 }
 
