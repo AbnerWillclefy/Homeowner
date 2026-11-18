@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"slices"
 	"strings"
 	"testing"
@@ -185,6 +186,31 @@ func TestAProposalTheCheckerRefusesFallsBackToTheBaseline(t *testing.T) {
 				t.Fatalf("assignments = %v, want the baseline's %v", r.assignments, want)
 			}
 		})
+	}
+}
+
+// The model is not trusted to honour a Chore's responsible Resident either:
+// an answer giving that Task to someone else is refused by Check and the Home
+// gets the baseline's plan, which gives it to the responsible Resident.
+func TestAnAnswerIgnoringTheResponsibleResidentFallsBackToTheBaseline(t *testing.T) {
+	t.Parallel()
+	app, a, fake, st := llmHome(t)
+	ra, rb := st.Residents[0], st.Residents[1]
+	owned := task(st, 1, 0)
+	apitest.ExpectStatus(t, a.Put("/home/chores/"+owned.ChoreID+"/responsible", map[string]any{"residentId": rb.ID}), http.StatusNoContent)
+	st = loadStateAt(t, app, homeIDOf(t, a), allocation.DateOf(apitest.MondayAt(7)))
+	fake.Answer(answer(give(owned, ra)))
+
+	if sum := app.RunAllocation(t); sum.Planned != 1 {
+		t.Fatalf("summary = %+v", sum)
+	}
+	r := theRun(t, app)
+	if r.allocator != "baseline" || r.fallback == nil || *r.fallback != "llm_rejected_by_checker" || r.llmViolations == 0 {
+		t.Fatalf("run = %+v", r)
+	}
+	want := baselinePairs(t, st)
+	if !slices.Equal(r.assignments, want) || !slices.Contains(want, owned.ID+":"+rb.ID) {
+		t.Fatalf("assignments = %v, want the baseline's %v with the Task on its responsible Resident", r.assignments, want)
 	}
 }
 

@@ -12,6 +12,7 @@ export const VIOLATION_GLOSSES: Record<string, string> = {
   wrong_resident_count: "a Task got the wrong number of Residents",
   unknown_resident: "the plan named a Resident that does not exist",
   weekday_not_allowed: "a Task was planned on a weekday it does not allow",
+  not_responsible: "a Task went to someone other than its responsible Resident",
 };
 
 /** Fallback reasons of the day plan (backend/internal/dayplan/planner.go): why the baseline planned the day. */
