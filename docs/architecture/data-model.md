@@ -56,6 +56,7 @@ Migrations live in `backend/migrations/` as `NNNN_description.sql` files, applie
 | `0046_finance_pluggy_investments.sql` | Investments can come from the bank: `finance_investments` gains `item_id` (references `finance_items`, cascade), `pluggy_investment_id`, `bank_value_cents`, `value_set_by` (`user` or `bank`, default `user`) and `bank_reported`, unique `(item_id, pluggy_investment_id)`; `serves` becomes nullable, but a hand-typed row must still have it (`CHECK`). Down deletes the bank's rows. |
 | `0047_finance_source_credit_limit.sql` | `finance_sources.credit_limit_cents` (`bigint`, null, `CHECK >= 0`): a card's credit limit as its bank reports it (Pluggy's `creditData.creditLimit`). Expand only, no backfill. |
 | `0048_finance_item_status.sql` | `finance_items.status`, `execution_status` and `connector_name` (all nullable text): what Pluggy last said about the Item and its institution, filled on connect and on each sync; null reads as `ok`. Expand only; Down drops the three. |
+| `0050_finance_manual_cards.sql` | `finance_manual_cards` (`id`, `user_id` cascade, `name`, `due_day` `CHECK 1..31`, `pix_recipient` text null, timestamps) and `finance_manual_card_bills` (`card_id` cascade, `user_id` cascade, `month` `CHECK` first of a month, `total_cents` `CHECK >= 0`, primary key `(card_id, month)`): a credit card kept by hand with one typed bill per month; a month with no row is "not typed", distinct from a typed 0. Expand only; Down drops both. |
 
 A Home is created by one transaction that inserts the `homes` row and the creator's `residents` row; if the `residents` insert hits the unique violation the transaction rolls back and no Home is left behind.
 
@@ -63,9 +64,9 @@ A User is created by the first authenticated request, with one `INSERT ... ON CO
 
 **"Recurring", the product definition (`SuggestBills`, `finance/rules.go`).** A merchant (grouped by `MerchantKey`) is suggested as a Bill when it has an Expense in each of the last 3 complete São Paulo calendar months; taking each month's largest Expense, the three amounts are each within 10% of their median (integer arithmetic) and the three days of the month are each within 5 days of the median day (clamped to the month's length, no wrap-around: the 30th and the 2nd are far apart). Ignored: income, Transfers, refunds, Transactions already linked to a Bill payment, and installment charges (a `PARC nn/mm` plan repeats monthly but is an Installment, not a Bill). Not suggested when a Bill already covers the merchant (`MatchBills`' name test without the amount: the folded Bill name, at least 3 characters, is contained in a folded description) or the Resident dismissed it. The proposed name is the longest prefix of the key's words contained, folded, in all three descriptions (so `NETFLIX.COM` gives `NETFLIX`) and at least 3 characters, so `MatchBills` can pay the accepted Bill later; the amount is the latest month's and the due day the median day. Known limit: if the amount varies, the accepted Bill matches the bank only on an exact amount, so it is paid by hand.
 
-**Finance data rules.** Every finance table is named `finance_*` and carries `user_id` referencing `users` with `ON DELETE CASCADE`, never a Home, so leaving or changing Home deletes nothing and a future account deletion cascades. `DELETE /me/finance` runs `DELETE ... WHERE user_id = $1` over the `financeTables` list in `internal/finance/store.go` in one transaction (the Pluggy Item is left alone: it lives in the User's own Pluggy account). A catalog test reads `pg_catalog` for every `finance\_%` table and fails if one lacks the `user_id` cascade or is missing from `financeTables`, so a later finance table must be named `finance_*` and added to the list. Today the list has seventeen tables, children first: `finance_source_balances`, `finance_card_bills`, `finance_transactions`, `finance_sources`, `finance_items`, `finance_credentials`, `finance_merchant_categories`, `finance_llm_calls`, `finance_bill_reminders`, `finance_bill_payments`, `finance_bills`, `finance_settings`, `finance_category_budgets`, `finance_bill_suggestion_dismissals`, `finance_investment_values`, `finance_investments` and `finance_goals`.
+**Finance data rules.** Every finance table is named `finance_*` and carries `user_id` referencing `users` with `ON DELETE CASCADE`, never a Home, so leaving or changing Home deletes nothing and a future account deletion cascades. `DELETE /me/finance` runs `DELETE ... WHERE user_id = $1` over the `financeTables` list in `internal/finance/store.go` in one transaction (the Pluggy Item is left alone: it lives in the User's own Pluggy account). A catalog test reads `pg_catalog` for every `finance\_%` table and fails if one lacks the `user_id` cascade or is missing from `financeTables`, so a later finance table must be named `finance_*` and added to the list. Today the list has nineteen tables, children first: `finance_source_balances`, `finance_card_bills`, `finance_transactions`, `finance_sources`, `finance_items`, `finance_credentials`, `finance_merchant_categories`, `finance_llm_calls`, `finance_bill_reminders`, `finance_bill_payments`, `finance_bills`, `finance_settings`, `finance_category_budgets`, `finance_bill_suggestion_dismissals`, `finance_investment_values`, `finance_investments`, `finance_goals`, `finance_manual_card_bills` and `finance_manual_cards`.
 
-**Finance tables.** Every one hangs on `users`; none touches a Home. The Finances redesign added `finance_category_budgets` (Spending limits), `finance_bill_payments.expected_cents` (the snapshot of a paid month) and `finance_bill_suggestion_dismissals`. Savings (`0037`) added `finance_investments`, `finance_goals` and three settings on `finance_settings`. The real leftover (`0039` to `0042`) added `finance_card_bills`, the `saving` type, `finance_sources.display_name` and `finance_transactions.own_counterpart`. Revenue's screens (#703) added `finance_sources.credit_limit_cents` and the Item status columns. The diagram shows the columns of the tables those added or changed.
+**Finance tables.** Every one hangs on `users`; none touches a Home. The Finances redesign added `finance_category_budgets` (Spending limits), `finance_bill_payments.expected_cents` (the snapshot of a paid month) and `finance_bill_suggestion_dismissals`. Savings (`0037`) added `finance_investments`, `finance_goals` and three settings on `finance_settings`. The real leftover (`0039` to `0042`) added `finance_card_bills`, the `saving` type, `finance_sources.display_name` and `finance_transactions.own_counterpart`. Manual cards (`0050`) added `finance_manual_cards` and `finance_manual_card_bills`. Revenue's screens (#703) added `finance_sources.credit_limit_cents` and the Item status columns. The diagram shows the columns of the tables those added or changed.
 
 ```mermaid
 erDiagram
@@ -85,6 +86,8 @@ erDiagram
     users ||--o{ finance_bill_suggestion_dismissals : "dismissed suggestions"
     users ||--o{ finance_investments : "Investments"
     users ||--o{ finance_goals : "Goals"
+    users ||--o{ finance_manual_cards : "manual cards"
+    finance_manual_cards ||--o{ finance_manual_card_bills : "typed bills"
     finance_items {
         text status "Pluggy's, null until read"
         text execution_status "null until read"
@@ -97,7 +100,20 @@ erDiagram
     }
     finance_transactions {
         text type "income, expense, transfer or saving"
-        bool own_counterpart "the other side is the User"
+        bool own_counterpart "the other side is the User or a manual card's Pix recipient"
+    }
+    finance_manual_cards {
+        uuid id
+        uuid user_id
+        text name
+        smallint due_day "1 to 31"
+        text pix_recipient "null = none; a name the User types"
+    }
+    finance_manual_card_bills {
+        uuid card_id
+        uuid user_id
+        date month "first of the month; primary key with card_id"
+        bigint total_cents ">= 0"
     }
     finance_card_bills {
         uuid id
@@ -140,7 +156,8 @@ erDiagram
 - **The bank's card bills** (`finance_card_bills`, `0039`). Written only by the sync, one row per bill Pluggy reports for a card, closed and open, updated in place when the bank corrects one. Read by `CardSources` (every bill of each card, for the month outlook) and `CardBillsDue` (the bills due in a window, for classification). A closed bill's total is that month's card bill ([ADR 0021](../adr/0021-a-closed-card-bill-takes-the-banks-total.md), [backend](backend.md#the-month-outlook-and-the-leftover)).
 - **Saving** (`type = 'saving'`, `0040`). Money put aside: neither an Expense nor a Transfer, with no Spending Category. Set by the sync's classification or by the User (`PATCH`).
 - **The Source's display name** (`finance_sources.display_name`, `0041`). The User's own name for a Source, set by `PUT /me/finance/sources/{id}/name`. Every read that shows a Source name (the status, a Transaction's `sourceName`, the card lines of the outlook) shows `COALESCE(display_name, name)` and orders by it.
-- **Own counterpart** (`finance_transactions.own_counterpart`, `0042`). Set by the sync from Pluggy's `paymentData` and refreshed on every upsert; always false on a card. The name and document it was decided from live in memory only.
+- **Manual cards** (`finance_manual_cards`, `finance_manual_card_bills`, `0050`). A card the bank cannot connect (a partner's), not a Source: `finance_sources.item_id` is `NOT NULL` and every Source read assumes Pluggy. Each typed month is one row; `Outlook` gives a month with no row the latest typed value before it, or 0 (`ManualBillIn`). Past months stay, because they are still the carry-forward. `pix_recipient` is a third party's name the User types, as it appears on the Pix receipt; it is the one name the finance tables store, it is deleted with the card and by `DELETE /me/finance`, and it is never logged. Changing it (or deleting a card that had one) restarts the import in the same transaction (`import_cursor` null, `import_complete` false), because the counterpart of a Pix is never stored and only a re-read of the 12 months reclassifies the old ones.
+- **Own counterpart** (`finance_transactions.own_counterpart`, `0042`). Set by the sync from Pluggy's `paymentData` and refreshed on every upsert; always false on a card. It is true when the other side is the User, or when a debit went to a `pix_recipient` of the User's manual cards (an exact folded-name match, since no document is typed). The name and document it was decided from live in memory only.
 - **Source balances** (`finance_source_balances`, `0045`). Written by the sync, one row per account Source per day it ran. `GET /me/finance` serves the latest as `balanceCents`; `GET /me/finance/net-worth` reads the history.
 - **A card's credit limit** (`finance_sources.credit_limit_cents`, `0047`). Written on connect (`POST /me/finance/items`, `ConnectItem`) and by every sync (`SetCreditLimits`). The bank always wins, but a read with no limit keeps the stored one, so a flaky connector does not blank it; a value that is unreadable, negative or not in reais is stored as none. Null on every other kind, and on a card until a sync or connect sends one. Served as `creditLimitCents`; the Card bills screen shows the limit used.
 - **The bank connection status** (`finance_items.status`, `execution_status`, `connector_name`, `0048`). Pluggy's own words, written on connect and at the start of each sync for the Item (`SetItemStatus`; a failed read only logs). Null until the next sync or connect, and a null reads as `ok`. The API never sends them as they are: `ItemWireStatus` maps them to `ok` or `reconnect` for `items[]` of `GET /me/finance`.

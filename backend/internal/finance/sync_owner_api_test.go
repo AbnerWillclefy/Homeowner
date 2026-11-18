@@ -108,7 +108,7 @@ func TestMarkingAPixRecipientTurnsItsPixIntoATransferOnTheNextSync(t *testing.T)
 	if isType("expense") != 1 {
 		t.Fatal("setup: the partner Pix is not an expense without a recipient")
 	}
-	// The baseline reads the 3 months before the clock; January's rows are in it from April.
+	// The baseline reads the 3 months before the clock; January and March are in it in April.
 	app.Clock.Set(time.Date(2026, 4, 15, 12, 0, 0, 0, time.UTC))
 	withExpense := otherPlanned(t, ana)
 
@@ -125,8 +125,8 @@ func TestMarkingAPixRecipientTurnsItsPixIntoATransferOnTheNextSync(t *testing.T)
 	if isType("transfer") != 1 {
 		t.Errorf("partner Pix transfers = %d, want 1", isType("transfer"))
 	}
-	if after := otherPlanned(t, ana); withExpense-after != 8888 {
-		t.Errorf("planned for other: %d -> %d, want a drop of the 8888 Pix", withExpense, after)
+	if after := otherPlanned(t, ana); withExpense != 5061 || after != 617 {
+		t.Errorf("planned for other: %d -> %d, want 5061 -> 617: the median of January 1234 and March 8888 (the Pix) becomes that of 1234 and 0", withExpense, after)
 	}
 	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions t WHERE t::text ILIKE '%parceira%'`); n != 0 {
 		t.Errorf("the recipient's name is stored in %d transaction rows", n)
