@@ -19,6 +19,11 @@ const SOURCES = [
   { id: "s3", name: "Itaú Visa", bankName: "Itaú", kind: "credit_card", currency: "BRL", closeDay: null, dueDay: null },
   { id: "s2", name: "Itaú", bankName: "Itaú", kind: "checking", currency: "BRL", closeDay: null, dueDay: null },
 ];
+/** One manual card, "Fatura Naiara": typed for this month and 2 months on, so the months between repeat the first. */
+function manualCards(today) {
+  const month = today.slice(0, 7);
+  return [{ id: "m1", name: "Fatura Naiara", dueDay: 10, pixRecipient: "Naiara Souza", bills: { [month]: 119_000, [addMonths(month, 2)]: 74_000 } }];
+}
 const ITEMS = [
   { id: "i1", bankName: "Nubank", status: "ok", products: 1 },
   { id: "i2", bankName: "Itaú", status: "reconnect", products: 2 },
@@ -79,6 +84,8 @@ function commitments(from, today) {
       cards: [
         { sourceId: "s1", name: "Nubank", amountCents: 284_300 + i * 4_000, billDaysKnown: true, fromBank: true, dueOn: `${month}-15`, closesOn: `${month}-08` },
         { sourceId: "s3", name: "Itaú Visa", amountCents: 50_000, billDaysKnown: false, fromBank: false, dueOn: null, closesOn: null },
+        // Typed for month 0, repeated in month 1, retyped lower from month 2.
+        { sourceId: "m1", name: "Fatura Naiara", amountCents: i < 2 ? 119_000 : 74_000, billDaysKnown: true, fromBank: false, dueOn: `${month}-10`, closesOn: null, manual: true },
       ],
       otherBills: [
         { id: "b1", name: "Aluguel", cents: 320_000, paid: i === 0 },
@@ -93,10 +100,10 @@ function commitments(from, today) {
       plannedCents: 220_000,
       pacePlannedCents: 340_000,
       savingCents: 50_000,
-      totalCents: over ? 1_410_000 : 869_780 + i * 4_000,
-      leftoverCents: over ? -160_000 : 380_220 - i * 4_000,
+      totalCents: over ? 1_410_000 : 869_780 + 119_000 + i * 4_000,
+      leftoverCents: over ? -160_000 : 380_220 - 119_000 - i * 4_000,
       // The Leftover plus the plan, less the pace plan, as the API computes it.
-      paceLeftoverCents: (over ? -160_000 : 380_220 - i * 4_000) + 220_000 - 340_000,
+      paceLeftoverCents: (over ? -160_000 : 380_220 - 119_000 - i * 4_000) + 220_000 - 340_000,
       ...(i === 0 && current && { spentOffCardCents: 41_200, dailyAllowanceCents: 9_500 }),
       ...(i === 0 && { pace: { spentCents: Array.from({ length: day }, (_, d) => (d + 1) * 21_000), lineEndCents: 950_000 } }),
     };
@@ -184,6 +191,7 @@ export function answer(method, url, today) {
   const params = url.searchParams;
   const route = `${method} ${url.pathname}`;
   if (route === "GET /me/finance") return { status: 200, body: { configured: true, sources: SOURCES, items: ITEMS, lastSyncedAt: new Date(Date.parse(`${today}T12:00:00Z`) - 3 * 3_600_000).toISOString() } };
+  if (route === "GET /me/finance/manual-cards") return { status: 200, body: { cards: manualCards(today) } };
   if (route === "GET /me/finance/transactions") return { status: 200, body: transactions(params.get("month"), today) };
   if (route === "GET /me/finance/history") return { status: 200, body: history(params.get("to"), Number(params.get("months"))) };
   if (route === "GET /me/finance/commitments") return { status: 200, body: commitments(params.get("from"), today) };
