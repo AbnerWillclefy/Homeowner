@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import type { Chore, ChoreWire, SaveChoreResult } from "../api/api";
+import { clearResponsible, setResponsible, updateChore, type Chore, type ChoreWire, type SaveChoreResult } from "../api/api";
+import type { Resident } from "../../residents/api/api";
 import type { FieldCodes } from "../../home/api/api";
 import { WEEKDAYS } from "../../profile/api/api";
 import { AppDialog } from "../../../shared/ui/AppDialog";
@@ -16,6 +17,8 @@ import { toggled, type ChoreFormState } from "../logic/form";
 import { INTERVAL_PRESETS, intervalForPreset, presetForText, type IntervalPreset } from "../logic/intervalPresets";
 import { suggestTwoPerson } from "../logic/suggestion";
 import { useChoreForm } from "../hooks/useChoreForm";
+import type { Responsibility } from "../logic/choreSubmit";
+import { restrictedMessage } from "../logic/failureMessages";
 
 const IMPORTANCES = ["essential", "normal", "nice_to_have"];
 const CHECK = "size-5 w-5 min-h-0 mt-0 shrink-0 accent-accent";
@@ -24,6 +27,18 @@ const CHOICE = "flex items-center gap-3 min-h-11 mt-0 font-normal";
 interface RadioOption<V> {
   value: V;
   label: string;
+}
+
+/** What the Responsible field needs. Pass it only where there is a Home with Residents: onboarding has neither. */
+export interface ResponsibleProps {
+  /** The Home's Residents from the shared list; null while it loads or after it failed. */
+  residents: readonly Resident[] | null;
+  /** Reads the list again, for a Resident who left. */
+  reloadResidents(): void;
+  /** Gets a Chore that is stored although the form did not finish, so the list shows it. */
+  onStored(chore: Chore): void;
+  /** The Chore being edited as stored; null when creating one. */
+  existing: Chore | null;
 }
 
 interface Props {
@@ -38,6 +53,8 @@ interface Props {
   /** Errors to show from the start, keyed by field, for a form opened to fix what the API refused. */
   initialErrors?: FieldCodes;
   save(input: ChoreWire): Promise<SaveChoreResult>;
+  /** Shows the Responsible field, which saves with its own calls after (create) or before (edit) `save`. */
+  responsible?: ResponsibleProps;
   /** Gets the saved Chore and the form values it was saved from. */
   onSaved(chore: Chore, values: ChoreFormState): void;
   /** Also called by Escape and a tap outside when the form is in a dialog. */
@@ -55,12 +72,17 @@ export function ChoreForm({
   demands,
   initialErrors,
   save,
+  responsible,
   onSaved,
   onCancel,
   inDialog = false,
 }: Props) {
   const { t, locale } = useI18n();
-  const form = useChoreForm(initial, save, onSaved, initialErrors);
+  // One object for the life of the form: the submitter remembers which Resident the server holds.
+  const [responsibility] = useState<Responsibility | undefined>(() =>
+    responsible && { existing: responsible.existing, set: setResponsible, clear: clearResponsible, update: updateChore },
+  );
+  const form = useChoreForm(initial, save, onSaved, initialErrors, responsibility, responsible?.onStored);
   const { values, status } = form;
   const saving = status.kind === "saving";
   const fieldErrors = status.kind === "invalid" ? status.fields : {};
@@ -71,6 +93,13 @@ export function ChoreForm({
   const [preset, setPreset] = useState<IntervalPreset>(initialPreset);
   // The days typed under Custom, kept while a named preset is chosen.
   const customText = useRef(initialPreset === "custom" ? initial.intervalDays : "");
+
+  // A Resident who left: the list shown may be old, so read it again.
+  const reloadResidents = responsible?.reloadResidents;
+  const unknownResident = status.kind === "unknown-resident";
+  useEffect(() => {
+    if (unknownResident) reloadResidents?.();
+  }, [unknownResident, reloadResidents]);
 
   // Inline, the form appears in place of a button, so move the reader to it. A dialog focuses its own title.
   useEffect(() => {
@@ -152,6 +181,38 @@ export function ChoreForm({
     );
   }
 
+  // The Responsible field. Its value shows Nobody for an id the loaded list no longer holds (a Resident who left),
+  // and a placeholder for an id while the list is not ready, so a current value is never lost or invented.
+  const residents = responsible?.residents ?? null;
+  const known = residents?.some((resident) => resident.id === values.responsible) ?? false;
+  const responsibleValue = residents === null || known ? values.responsible : "";
+  const responsibleOptions =
+    residents !== null
+      ? residents.map(({ id, name }) => ({ id, name }))
+      : values.responsible
+        ? [{ id: values.responsible, name: t("chores.form.responsible.someone") }]
+        : [];
+  const refusalName = (id: string) => residents?.find((resident) => resident.id === id)?.name ?? t("chores.form.responsible.someone");
+  const refusal =
+    status.kind === "restricted"
+      ? restrictedMessage(t, refusalName(status.residentId), status, (id) => text(demandLabel(id)))
+      : status.kind === "unknown-resident"
+        ? t("chores.form.responsible.unknown")
+        : null;
+  const responsibleNotes = {
+    describedBy: `${idPrefix}-responsible-hint${refusal ? ` ${idPrefix}-responsible-error` : ""}`,
+    hint: (
+      <p id={`${idPrefix}-responsible-hint`} className="text-muted">
+        {t("chores.form.responsible.hint")}
+      </p>
+    ),
+    message: refusal && (
+      <p id={`${idPrefix}-responsible-error`} role="alert" className="text-danger">
+        {refusal}
+      </p>
+    ),
+  };
+
   const name = field("name");
   const category = field("category");
   const interval = field("intervalDays", "chores.form.intervalDays.hint");
@@ -222,6 +283,29 @@ export function ChoreForm({
           {category.notes}
         </div>
   
+        {responsible && (
+          <div>
+            <label htmlFor={`${idPrefix}-responsible`}>{t("chores.form.responsible.label")}</label>
+            <select
+              id={`${idPrefix}-responsible`}
+              value={responsibleValue}
+              disabled={saving || responsible.residents === null}
+              aria-describedby={responsibleNotes.describedBy}
+              aria-invalid={responsibleNotes.message ? true : undefined}
+              onChange={(event) => form.change({ responsible: event.target.value })}
+            >
+              <option value="">{t("chores.form.responsible.nobody")}</option>
+              {responsibleOptions.map(({ id, name }) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            {responsibleNotes.hint}
+            {responsibleNotes.message}
+          </div>
+        )}
+
         {group(
           "demands",
           "chores.form.demands.legend",
