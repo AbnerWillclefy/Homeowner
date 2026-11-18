@@ -114,6 +114,8 @@ type TransactionResponse struct {
 	TypeSetBy        string               `json:"typeSetBy"`
 	CategorySetBy    *string              `json:"categorySetBy"`
 	Installment      *InstallmentResponse `json:"installment"`
+	// Note is the text the User wrote on it, null when there is none. On an installment every part of the purchase shares it.
+	Note *string `json:"note"`
 	// CountsOn (YYYY-MM-DD) is the day it counts as spent: PostedOn, or a card bill's due date (see CountsOn).
 	CountsOn string `json:"countsOn"`
 }
@@ -288,9 +290,11 @@ type CommitmentsResponse struct {
 
 // PatchTransactionRequest is the body of PATCH /me/finance/transactions/{id}:
 // an absent field is left as it is. Type is income, expense, transfer or saving.
+// Note is trimmed and at most 200 characters on one line; "" (or only spaces) clears it.
 type PatchTransactionRequest struct {
 	Type             *string `json:"type"`
 	SpendingCategory *string `json:"spendingCategory"`
+	Note             *string `json:"note"`
 }
 
 // BillRequest is the body of POST /me/finance/bills and PUT /me/finance/bills/{id}.

@@ -480,7 +480,8 @@ const samePurchase = `a.user_id = b.user_id AND a.source_id = b.source_id AND a.
 // every auto row of the page right after, and taking either from the sign-based
 // insert values would break the type/category CHECK on a transfer or a card
 // refund. Only a 'fallback' category on a row that is still an expense takes a
-// category Pluggy now gives. A new expense is Other because nothing has decided yet ('fallback').
+// category Pluggy now gives. A stored row keeps its Note (note stays out of the DO UPDATE list);
+// a new part takes the Note of its purchase. A new expense is Other because nothing has decided yet ('fallback').
 // shortcut: a sign flip on a stored row is ignored; Pluggy does not flip the
 // sign of a posted row.
 func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string, rows []Row, now time.Time) error {
@@ -494,13 +495,13 @@ func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string,
 	}
 	_, err := s.db.Exec(ctx, `
 		INSERT INTO finance_transactions (user_id, source_id, provider_id, posted_on, amount_cents, currency, description,
-			merchant_key, type, type_set_by, spending_category, category_set_by, installment_number, total_installments, own_counterpart, created_at, updated_at)
+			merchant_key, type, type_set_by, spending_category, category_set_by, installment_number, total_installments, own_counterpart, note, created_at, updated_at)
 		SELECT $1, $2, p.provider_id, p.posted_on, p.amount_cents, 'BRL', p.description, p.merchant_key, p.type, 'auto',
 			CASE WHEN p.type = 'expense' THEN COALESCE(sib.spending_category, mc.spending_category, NULLIF(p.category, ''), 'other') END,
 			CASE WHEN p.type = 'expense' THEN
 				CASE WHEN sib.spending_category IS NOT NULL THEN 'user'
 					WHEN mc.spending_category IS NOT NULL OR p.category <> '' THEN 'auto' ELSE 'fallback' END END,
-			NULLIF(p.inst, 0), NULLIF(p.total, 0), p.own, $3, $3
+			NULLIF(p.inst, 0), NULLIF(p.total, 0), p.own, nsib.note, $3, $3
 		FROM unnest($4::text[], $5::date[], $6::bigint[], $7::text[], $8::text[], $9::text[], $10::int[], $11::int[], $12::text[], $13::bool[])
 			AS p (provider_id, posted_on, amount_cents, description, merchant_key, type, inst, total, category, own)
 		LEFT JOIN finance_merchant_categories mc ON mc.user_id = $1 AND mc.merchant_key = p.merchant_key
@@ -511,6 +512,13 @@ func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string,
 			WHERE a.type = 'expense' AND a.category_set_by = 'user' AND p.type = 'expense'
 				AND a.posted_on BETWEEN p.posted_on - make_interval(months => p.total + 1) AND p.posted_on + make_interval(months => p.total + 1)
 			ORDER BY a.updated_at DESC LIMIT 1) sib ON true
+		LEFT JOIN LATERAL (
+			SELECT a.note FROM finance_transactions a
+			JOIN (SELECT $1::uuid AS user_id, $2::uuid AS source_id, p.merchant_key, NULLIF(p.total, 0) AS total_installments,
+				NULLIF(p.inst, 0) AS installment_number, p.amount_cents, p.posted_on) b ON `+samePurchase+`
+			WHERE a.note IS NOT NULL
+				AND a.posted_on BETWEEN p.posted_on - make_interval(months => p.total + 1) AND p.posted_on + make_interval(months => p.total + 1)
+			LIMIT 1) nsib ON true
 		ON CONFLICT (source_id, provider_id) DO UPDATE SET
 			posted_on = EXCLUDED.posted_on, amount_cents = EXCLUDED.amount_cents, description = EXCLUDED.description,
 			merchant_key = EXCLUDED.merchant_key, own_counterpart = EXCLUDED.own_counterpart,
@@ -530,7 +538,7 @@ func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string,
 // transactionColumns reads a Transaction as TransactionResponse, with its
 // Source's name, then what CountsOn needs.
 const transactionColumns = `t.id, t.source_id, t.posted_on::text, t.description, COALESCE(s.display_name, s.name), t.amount_cents, t.currency, t.type,
-	t.spending_category, t.type_set_by, t.category_set_by, t.installment_number, t.total_installments,
+	t.spending_category, t.type_set_by, t.category_set_by, t.installment_number, t.total_installments, t.note,
 	t.posted_on, s.kind, COALESCE(s.bill_close_day, 0), COALESCE(s.bill_due_day, 0)`
 
 // scanTransaction reads transactionColumns and sets CountsOn.
@@ -541,7 +549,7 @@ func scanTransaction(r pgx.Row) (TransactionResponse, time.Time, error) {
 	var kind Kind
 	var closeDay, dueDay int
 	err := r.Scan(&t.ID, &t.SourceID, &t.PostedOn, &t.Description, &t.SourceName, &t.AmountCents, &t.Currency, &t.Type,
-		&t.SpendingCategory, &t.TypeSetBy, &t.CategorySetBy, &n, &total, &posted, &kind, &closeDay, &dueDay)
+		&t.SpendingCategory, &t.TypeSetBy, &t.CategorySetBy, &n, &total, &t.Note, &posted, &kind, &closeDay, &dueDay)
 	if n != nil && total != nil {
 		t.Installment = &InstallmentResponse{Number: *n, Total: *total}
 	}
@@ -619,13 +627,15 @@ func (s *Store) SpendRows(ctx context.Context, userID string, from, to time.Time
 var ErrCategoryNeedsExpense = errors.New("category needs expense")
 
 // UpdateTransaction applies the User's edit in one database transaction. found
-// is false when the row is not the User's. typ and category are nil when absent.
+// is false when the row is not the User's. typ, category and note are nil when absent; a note is already
+// trimmed and "" clears it (stored as NULL). A note given on an installment is also set on every part of
+// the same purchase (samePurchase), whatever their type; it never touches a category.
 //
 // Setting a category on a merchant saves the correction and files the User's
 // other Expenses of that merchant, except those the User set, under it as 'auto'.
 // Setting it on an installment also sets it, as the User's, on every Expense
 // part of the same purchase (samePurchase), those the User set included.
-func (s *Store) UpdateTransaction(ctx context.Context, userID, id string, typ, category *string, now time.Time) (out TransactionResponse, found bool, err error) {
+func (s *Store) UpdateTransaction(ctx context.Context, userID, id string, typ, category, note *string, now time.Time) (out TransactionResponse, found bool, err error) {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return out, false, err
@@ -659,9 +669,18 @@ func (s *Store) UpdateTransaction(ctx context.Context, userID, id string, typ, c
 	}
 	if _, err = tx.Exec(ctx, `
 		UPDATE finance_transactions SET type = $3, type_set_by = CASE WHEN $4 THEN 'user' ELSE type_set_by END,
-			spending_category = $5, category_set_by = $6, updated_at = $7
-		WHERE id = $1 AND user_id = $2`, id, userID, newType, typ != nil, newCat, by, now); err != nil {
+			spending_category = $5, category_set_by = $6, updated_at = $7,
+			note = CASE WHEN $8 THEN NULLIF($9, '') ELSE note END
+		WHERE id = $1 AND user_id = $2`, id, userID, newType, typ != nil, newCat, by, now, note != nil, note); err != nil {
 		return out, true, err
+	}
+	if note != nil && instNumber != nil {
+		if _, err = tx.Exec(ctx, `
+			UPDATE finance_transactions b SET note = NULLIF($3, '')
+			FROM finance_transactions a WHERE b.user_id = $1 AND a.id = $2 AND b.id <> a.id AND `+samePurchase,
+			userID, id, *note); err != nil {
+			return out, true, err
+		}
 	}
 	if category != nil && merchant != "" {
 		if _, err = tx.Exec(ctx, `

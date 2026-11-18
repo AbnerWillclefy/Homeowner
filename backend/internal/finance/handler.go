@@ -501,10 +501,19 @@ func (h *Handler) PutSourceName(w http.ResponseWriter, r *http.Request) {
 // and another User's row both answer 404, so ids cannot be probed.
 func (h *Handler) PatchTransaction(w http.ResponseWriter, r *http.Request) {
 	var req PatchTransactionRequest
-	if !httpx.DecodeBody(w, r, &req, 1<<10, true) {
+	if !httpx.DecodeBody(w, r, &req, 4<<10, true) { // 200 astral characters as \u escapes are 2,400 bytes
 		return
 	}
-	if (req.Type == nil && req.SpendingCategory == nil) ||
+	if req.Note != nil {
+		n := strings.TrimSpace(*req.Note)
+		req.Note = &n
+		if utf8.RuneCountInString(n) > 200 {
+			httpx.WriteError(w, http.StatusBadRequest, "note too long")
+			return
+		}
+	}
+	if (req.Type == nil && req.SpendingCategory == nil && req.Note == nil) ||
+		(req.Note != nil && strings.IndexFunc(*req.Note, unicode.IsControl) >= 0) ||
 		(req.Type != nil && !slices.Contains([]string{"income", "expense", "transfer", "saving"}, *req.Type)) ||
 		(req.SpendingCategory != nil && !slices.Contains(llmalloc.SpendingCategories, *req.SpendingCategory)) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid transaction edit")
@@ -515,7 +524,7 @@ func (h *Handler) PatchTransaction(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not found")
 		return
 	}
-	t, found, err := h.store.UpdateTransaction(r.Context(), identity.CurrentUser(r.Context()).ID, id, req.Type, req.SpendingCategory, h.clk.Now())
+	t, found, err := h.store.UpdateTransaction(r.Context(), identity.CurrentUser(r.Context()).ID, id, req.Type, req.SpendingCategory, req.Note, h.clk.Now())
 	switch {
 	case errors.Is(err, ErrCategoryNeedsExpense):
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())

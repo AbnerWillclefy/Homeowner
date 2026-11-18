@@ -108,7 +108,7 @@ func seedMonth(t *testing.T) (*apitest.App, *apitest.Client) {
 type txnBody struct {
 	ID, SourceID, SourceName, Type, Description, TypeSetBy string
 	AmountCents                                            int64
-	SpendingCategory, CategorySetBy                        *string
+	SpendingCategory, CategorySetBy, Note                  *string
 }
 
 type catBody struct {
