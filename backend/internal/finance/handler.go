@@ -362,8 +362,9 @@ func (h *Handler) loadOutlook(ctx context.Context, uid string, from time.Time, m
 	}
 	now := postedOn(h.clk.Now())
 	current := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
-	// The current month's open bill holds charges counting up to billLead months later, past a short horizon.
-	end := from.AddDate(0, months, 0)
+	// The current month's open bill holds charges counting up to billLead months later, past a short horizon,
+	// and a later month shifted by its card's bill counts up to billLead months past the last asked month.
+	end := from.AddDate(0, months+billLead, 0)
 	if lead := current.AddDate(0, billLead+1, 0); lead.After(end) {
 		end = lead
 	}

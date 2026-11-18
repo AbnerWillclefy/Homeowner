@@ -230,7 +230,7 @@ type PaceDTO struct {
 }
 
 // CardBillLine is one credit card's bill in a month: the bank's total when it
-// reported a bill due in the month, else the app's own sum (ADR 0021).
+// reported the bill the month counts (due in the month, or in later months the next bill after the current month's, ADR 0024 amendment), else the app's own sum (ADR 0021).
 // BillDaysKnown is false when the card has no closing or due day, so charges
 // count on the day made. FromBank is true when AmountCents is the bank's total;
 // DueOn and ClosesOn (YYYY-MM-DD) are that bill's days, or in the current month
