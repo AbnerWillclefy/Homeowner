@@ -459,6 +459,17 @@ type Row struct {
 	OwnCounterpart bool
 }
 
+// samePurchase holds when installment rows a and b are parts of one purchase: the same
+// Source, merchant and total, an amount within a centavo and a start month (posted month
+// minus n-1) at most one apart. It is stricter than InstallmentPlans (amount at every
+// distance) because a wrong match here rewrites a category the User set.
+// shortcut: purchase identity is inferred from merchant, total, amount and start month; store a purchase key when this misgroups.
+const samePurchase = `a.user_id = b.user_id AND a.source_id = b.source_id AND a.merchant_key = b.merchant_key
+	AND a.total_installments = b.total_installments AND a.installment_number IS NOT NULL AND b.installment_number IS NOT NULL
+	AND abs(a.amount_cents - b.amount_cents) <= 1
+	AND abs((extract(year FROM a.posted_on) * 12 + extract(month FROM a.posted_on) - a.installment_number)
+		- (extract(year FROM b.posted_on) * 12 + extract(month FROM b.posted_on) - b.installment_number)) <= 1`
+
 // UpsertTransactions writes one page with a single statement. A Transaction
 // seen again is refreshed, never duplicated; a type or category the User set
 // stays. It inserts by source only, so a Source deleted meanwhile fails the
@@ -484,13 +495,19 @@ func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string,
 		INSERT INTO finance_transactions (user_id, source_id, provider_id, posted_on, amount_cents, currency, description,
 			merchant_key, type, type_set_by, spending_category, category_set_by, installment_number, total_installments, own_counterpart, created_at, updated_at)
 		SELECT $1, $2, p.provider_id, p.posted_on, p.amount_cents, 'BRL', p.description, p.merchant_key, p.type, 'auto',
-			CASE WHEN p.type = 'expense' THEN COALESCE(mc.spending_category, NULLIF(p.category, ''), 'other') END,
+			CASE WHEN p.type = 'expense' THEN COALESCE(sib.spending_category, mc.spending_category, NULLIF(p.category, ''), 'other') END,
 			CASE WHEN p.type = 'expense' THEN
-				CASE WHEN mc.spending_category IS NOT NULL OR p.category <> '' THEN 'auto' ELSE 'fallback' END END,
+				CASE WHEN sib.spending_category IS NOT NULL THEN 'user'
+					WHEN mc.spending_category IS NOT NULL OR p.category <> '' THEN 'auto' ELSE 'fallback' END END,
 			NULLIF(p.inst, 0), NULLIF(p.total, 0), p.own, $3, $3
 		FROM unnest($4::text[], $5::date[], $6::bigint[], $7::text[], $8::text[], $9::text[], $10::int[], $11::int[], $12::text[], $13::bool[])
 			AS p (provider_id, posted_on, amount_cents, description, merchant_key, type, inst, total, category, own)
 		LEFT JOIN finance_merchant_categories mc ON mc.user_id = $1 AND mc.merchant_key = p.merchant_key
+		LEFT JOIN LATERAL (
+			SELECT a.spending_category FROM finance_transactions a
+			JOIN (SELECT $1::uuid AS user_id, $2::uuid AS source_id, p.merchant_key, NULLIF(p.total, 0) AS total_installments,
+				NULLIF(p.inst, 0) AS installment_number, p.amount_cents, p.posted_on) b ON `+samePurchase+`
+			WHERE a.type = 'expense' AND a.category_set_by = 'user' AND p.type = 'expense' LIMIT 1) sib ON true
 		ON CONFLICT (source_id, provider_id) DO UPDATE SET
 			posted_on = EXCLUDED.posted_on, amount_cents = EXCLUDED.amount_cents, description = EXCLUDED.description,
 			merchant_key = EXCLUDED.merchant_key, own_counterpart = EXCLUDED.own_counterpart,
@@ -601,6 +618,8 @@ var ErrCategoryNeedsExpense = errors.New("category needs expense")
 //
 // Setting a category on a merchant saves the correction and files the User's
 // other Expenses of that merchant, except those the User set, under it as 'auto'.
+// Setting it on an installment also sets it, as the User's, on every Expense
+// part of the same purchase (samePurchase), those the User set included.
 func (s *Store) UpdateTransaction(ctx context.Context, userID, id string, typ, category *string, now time.Time) (out TransactionResponse, found bool, err error) {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
@@ -609,8 +628,9 @@ func (s *Store) UpdateTransaction(ctx context.Context, userID, id string, typ, c
 	defer tx.Rollback(ctx) //nolint:errcheck // a no-op after Commit
 	var curType, merchant string
 	var curCat, curBy *string
-	err = tx.QueryRow(ctx, `SELECT type, spending_category, category_set_by, merchant_key FROM finance_transactions
-		WHERE id = $1 AND user_id = $2 FOR UPDATE`, id, userID).Scan(&curType, &curCat, &curBy, &merchant)
+	var instNumber *int32
+	err = tx.QueryRow(ctx, `SELECT type, spending_category, category_set_by, merchant_key, installment_number FROM finance_transactions
+		WHERE id = $1 AND user_id = $2 FOR UPDATE`, id, userID).Scan(&curType, &curCat, &curBy, &merchant, &instNumber)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return out, false, nil
 	} else if err != nil {
@@ -649,6 +669,14 @@ func (s *Store) UpdateTransaction(ctx context.Context, userID, id string, typ, c
 			UPDATE finance_transactions SET spending_category = $3, category_set_by = 'auto', updated_at = $4
 			WHERE user_id = $1 AND merchant_key = $2 AND type = 'expense' AND id <> $5 AND category_set_by IS DISTINCT FROM 'user'`,
 			userID, merchant, *category, now, id); err != nil {
+			return out, true, err
+		}
+	}
+	if category != nil && instNumber != nil && newType == "expense" {
+		if _, err = tx.Exec(ctx, `
+			UPDATE finance_transactions b SET spending_category = $3, category_set_by = 'user', updated_at = $4
+			FROM finance_transactions a WHERE b.user_id = $1 AND a.id = $2 AND b.id <> a.id AND b.type = 'expense' AND `+samePurchase,
+			userID, id, *category, now); err != nil {
 			return out, true, err
 		}
 	}
