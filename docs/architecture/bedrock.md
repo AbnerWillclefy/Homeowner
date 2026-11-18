@@ -68,7 +68,7 @@ Vitest on jsdom (`vitest.config.ts`), over `src/` and `showcase/`:
 
 ## CI and pipeline
 
-- **`bedrock-check`** (`.github/workflows/bedrock-check.yml`) runs on pull requests touching `bedrock/**`, the root `package.json`, `package-lock.json` or the workflow itself: `npm ci`, typecheck, tests and the showcase build, on the Node version in `bedrock/.nvmrc`.
+- **`bedrock-check`** (`.github/workflows/bedrock-check.yml`) runs its job on pull requests that change `bedrock/**`, the root `package.json`, `package-lock.json`, or any workflow or script under `.github/` (and is skipped otherwise): `npm ci`, typecheck, tests and the showcase build, on the Node version in `bedrock/.nvmrc`.
 - **`ui-screenshots`** counts `bedrock/src/` and `bedrock/showcase/` as UI (test files excepted). When those are the only UI files changed and the description lacks screenshots, it builds the showcase, screenshots the changed sections (or the whole page for a shared file) in pt-BR and English on a light phone viewport (`.github/scripts/bedrock-screenshots.mjs`), and writes them into the description.
 - **`pr-risk.sh`** gives the root `package.json` and `package-lock.json` a `medium` floor, like every other package and lock file.
-- **`merge-by-risk.yml`** wakes on a finished `bedrock-check`. It is not in `required_checks` of `merge-by-risk.sh`, because it is path-filtered and absent from most pull requests; when it does run, it must pass, like every check that ran.
+- **`merge-by-risk.yml`** wakes on a finished `bedrock-check`, which is in `required_checks` of `merge-by-risk.sh`. It runs on every pull request through a `bedrock-check-changes` job and shows as skipped when `bedrock/` and the root package files did not change; a skipped required check counts as passed.

@@ -213,7 +213,7 @@ npm run build               # typecheck, then a production build
 ```
 
 CI (`admin-typecheck.yml`) runs `npm ci`, typecheck, tests and build when a pull
-request touches `admin/` or `web/src/tokens.css`.
+request changes `admin/` or `web/src/tokens.css` (or anything under `.github/workflows/` or `.github/scripts/`), and is skipped otherwise.
 
 ### Configuration
 
@@ -255,8 +255,9 @@ npm run build -w @homeowner/revenue           # typecheck, then a production bui
 For the gate to open locally, set `FINANCE_ALLOWLIST` (your email) and
 `FINANCE_ENCRYPTION_KEY` in the root `.env`; Compose passes both to the API and
 allows `http://localhost:5175` in `CORS_ALLOWED_ORIGINS`. CI (`revenue-check.yml`)
-runs `npm ci`, typecheck, tests and build when a pull request touches `revenue/`
-or `bedrock/`.
+runs `npm ci`, typecheck, tests and build when a pull request changes `revenue/`,
+`bedrock/`, the root package files, or anything under `.github/workflows/` or
+`.github/scripts/`, and is skipped otherwise.
 
 ### Configuration
 
