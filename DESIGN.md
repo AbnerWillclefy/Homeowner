@@ -184,7 +184,7 @@ A muted, sage-tinted neutral world with one deep teal voice and six soft pastels
 - **Chart muted** (`chart-muted`): the second series, drawn as dashes or hatch lines. Dark: `#8f9d96`.
 - **Chart track** (`chart-track`): the empty bar behind a value. Dark: `#2b3631`.
 
-They exist only for Finances charts (bars, markers, cumulative lines). Each is checked at 3:1 (WCAG 1.4.11) against the card, and ink against its own track.
+They are for charts (bars, markers, cumulative lines); no screen draws one at present. Each is checked at 3:1 (WCAG 1.4.11) against the card, and ink against its own track.
 
 ### Category pastels
 Each is a fill with a paired ink. Kitchen peach, bathroom mint, bedroom and living room lavender, laundry and floors blue, trash and outdoor yellow, pets salmon. "Other" and anything unknown is the neutral card. The pastel fills the whole card only for your own Tasks; elsewhere it lives on the icon tile and the chip.
@@ -241,7 +241,7 @@ Each Spending Category has a fixed colour (ring part, bar fill, icon stroke) and
 
 One centred column, `max-width: 32rem`, with 1.5rem side padding plus the device's safe-area insets, and 2rem top and bottom. Cards stack with a 1rem gap; groups of cards are separated by a group heading and 2rem of space. Inside a card the rhythm is 0.75rem between rows, 1rem padding. Lists are real lists with no bullets.
 
-The bottom tab bar holds four equal tabs, or five with Finances for a User on the allowlist, in the same 32rem column, keeps the bottom safe-area inset, and sits after the content, sticky, so it covers nothing once the page is scrolled to the end but does cover what lies at the fold while scrolling: keep a control that must be tappable on load high on the page.
+The bottom tab bar holds four equal tabs in the same 32rem column, keeps the bottom safe-area inset, and sits after the content, sticky, so it covers nothing once the page is scrolled to the end but does cover what lies at the fold while scrolling: keep a control that must be tappable on load high on the page.
 
 ### Thumb reach
 Actions live where a right thumb lands. A card's actions are on their own row at the bottom of the card.
@@ -296,7 +296,7 @@ Icon and Category name on the Category pastel, a pill with a hairline edge, 0.87
   - The icon tile is decorative unless it carries meaning. When it does, it has a text description and the open body repeats it as a visible caption, never a tooltip. A state that is not an error (a fallback text, say) uses the neutral tile (muted tint, muted ink), not a warning icon.
 
 ### Charts
-Finances only, hand-drawn in SVG and CSS (no chart library), Series and bars use the `chart-*` tokens. A chart split by Spending Category (the Gastos donut and its category list) uses the Spending Category colours instead. Colour never carries meaning alone: every part is also named in text with its amount and share.
+Hand-drawn in SVG and CSS (no chart library); no screen draws one at present. Series and bars use the `chart-*` tokens. A chart split by Spending Category (a donut and its category list) uses the Spending Category colours instead. Colour never carries meaning alone: every part is also named in text with its amount and share.
 - **Bar:** the label, the amount as text on its own line under it, then a 0.75rem rounded track (`chart-track`) with the fill on it. The label wraps and is never cut. The fill keeps a 1px edge so it shows in forced-colors mode.
 - **Second series:** hatched (diagonal lines in `chart-muted`) on a bar, dashed on a line. A reference value, such as last month's same-days value, is a tick in `chart-ink` on the bar's scale, with its value written in the text beside the bar.
 - **Donut:** one ring, a part per Spending Category above zero, in its colour, split by a 2px gap and drawn largest first, clockwise from the top. Tapping a part thickens it, fades the others to 35% and puts its icon, name, share and amount in the centre; tapping it again brings back the month's total. The category list under it is the legend and the keyboard and screen-reader path: each row carries the same icon tile and colour.
@@ -328,7 +328,7 @@ The Streak is an icon with a short value, in the top bar's right-hand slot.
 Full width, 2.75rem minimum, card fill, 1px Hedge Line edge, 0.75rem radius, 1rem text. Focus is the global 2px Focus Blue outline. Labels sit above in 600.
 
 ### Navigation
-Four, or five with Finances, tabs, icon over label, equal width. Active tab: 4px Advisor Teal top edge, teal 600 label. Inactive: muted. Labels wrap at large text.
+Four tabs, icon over label, equal width. Active tab: 4px Advisor Teal top edge, teal 600 label. Inactive: muted. Labels wrap at large text.
 
 ### Task card (signature)
 The Category tile and name, the Chore as card title, then a wrapping line of facts (Effort dots and words, when it is due, Importance and people when unusual), then one reason line after a hairline divider with a lightbulb. Actions on the last row follow the Right Thumb Rule. Your own Tasks wear their Category pastel; others' and the pool's stay neutral with the pastel on the tile.

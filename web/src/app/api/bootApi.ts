@@ -2,13 +2,13 @@ import { authedRequest } from "../../domains/auth/api/client";
 import type { BootSections } from "../logic/boot";
 
 /**
- * `GET /boot?month=`: the launch reads in one answer, `{ sections: { "<path>": { status, body } } }`. Null when the
+ * `GET /boot`: the launch reads in one answer, `{ sections: { "<path>": { status, body } } }`. Null when the
  * boot failed in any way (no session, not 200, offline, a body of another shape); every read then goes to its own
  * endpoint.
  */
-export async function getBoot(month: string): Promise<BootSections | null> {
+export async function getBoot(): Promise<BootSections | null> {
   try {
-    const result = await authedRequest({ url: "/boot", params: { month } });
+    const result = await authedRequest({ url: "/boot" });
     if (result.kind !== "response" || result.response.status !== 200) return null;
     return parseBoot(result.response.data);
   } catch {

@@ -6,7 +6,7 @@ export interface BootSection {
   body: unknown;
 }
 
-/** Keyed by the path the PWA requests, query included (`/me/finance/bills?month=2030-01`). */
+/** Keyed by the path the PWA requests, query included (`/home/day-plan?day=2030-01`). */
 export type BootSections = Record<string, BootSection>;
 
 /** shortcut: one fixed window, upgrade if slow phones miss it. */

@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { SPENDING_CATEGORIES } from "../../domains/finance/logic/spendingCategories";
 import { ONBOARDING_STEPS } from "../../domains/onboarding/api/api";
 import {
   authState,
-  categoryFromPath,
   confirmNeedsEmail,
   isShellPath,
   isWelcomePath,
@@ -11,7 +9,6 @@ import {
   residentIdFromPath,
   residentPath,
   safeWantedPath,
-  spendingCategoryPath,
   stepFromPath,
   stepPath,
 } from "./routes";
@@ -110,29 +107,7 @@ describe("confirmNeedsEmail", () => {
   });
 });
 
-describe("categoryFromPath", () => {
-  it.each(SPENDING_CATEGORIES)("round-trips %s", (id) => {
-    expect(categoryFromPath(spendingCategoryPath(id))).toBe(id);
-  });
-
-  it.each(["/finances/gastos", "/finances/gastos/", "/finances/gastos/nope", "/finances/gastos/groceries/x", "/finances/contas/groceries", "/home/residents/groceries"])(
-    "gives null for %s",
-    (path) => {
-      expect(categoryFromPath(path)).toBeNull();
-    },
-  );
-
-  it("ignores a trailing slash, search and hash", () => {
-    expect(categoryFromPath("/finances/gastos/groceries/?month=2026-11#x")).toBe("groceries");
-  });
-});
-
 describe("isShellPath", () => {
-  it("accepts a Spending Category screen and rejects an unknown one", () => {
-    expect(isShellPath("/finances/gastos/groceries")).toBe(true);
-    expect(isShellPath("/finances/gastos/nope")).toBe(false);
-  });
-
   it.each(["/", "/chores", "/home", "/me", "/me/", "/me?x=1"])("accepts the tab %s", (path) => {
     expect(isShellPath(path)).toBe(true);
   });
@@ -140,16 +115,9 @@ describe("isShellPath", () => {
   it("accepts the edit screen under Me, with a trailing slash, search or hash", () => {
     expect(isShellPath("/me/edit")).toBe(true);
     expect(isShellPath("/me/edit/?a=1#b")).toBe(true);
-    expect(isShellPath("/finances/ajustes")).toBe(true);
-    expect(isShellPath("/finances/economias")).toBe(true);
-    expect(isShellPath("/finances/ajustes/")).toBe(true);
   });
 
-  it.each(["/finances/gastos", "/finances/contas?month=2026-10"])("accepts the Finances view %s", (path) => {
-    expect(isShellPath(path)).toBe(true);
-  });
-
-  it.each(["/me/other", "/finances/other", "/me/edit/more", "/chores/edit", "/signin", "/welcome/home", "/nope", "/mex"])("rejects %s", (path) => {
+  it.each(["/me/other", "/finances", "/finances/gastos", "/me/edit/more", "/chores/edit", "/signin", "/welcome/home", "/nope", "/mex"])("rejects %s", (path) => {
     expect(isShellPath(path)).toBe(false);
   });
 });
