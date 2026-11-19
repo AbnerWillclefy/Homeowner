@@ -7,10 +7,15 @@ const price = (issuedOn: string, unitPriceCents: number, storeName = "Bom Preço
 const detail = (over: Partial<ItemDetail>): ItemDetail => ({ item: ITEM, avgDurationDays: null, prices: [], ...over });
 
 describe("chartPoints", () => {
-  it("puts the oldest purchase first, whatever order the API sent", () => {
+  it("puts the oldest purchase first by reversing the API's newest-first list", () => {
     const newestFirst = [price("2030-01-02", 2790), price("2029-12-01", 2400), price("2029-06-10", 2600)];
     expect(chartPoints(newestFirst).map((p) => p.day)).toEqual(["2029-06-10", "2029-12-01", "2030-01-02"]);
-    expect(chartPoints([...newestFirst].reverse()).map((p) => p.day)).toEqual(["2029-06-10", "2029-12-01", "2030-01-02"]);
+  });
+
+  it("keeps the last point equal to the API's first price when two purchases share a day", () => {
+    const prices = [price("2030-01-02", 2790), price("2030-01-02", 2400)];
+    const view = detailView(detail({ prices }));
+    expect(view.kind === "ready" && view.last.cents).toBe(2790);
   });
 
   it("keeps each point's price and store", () => {

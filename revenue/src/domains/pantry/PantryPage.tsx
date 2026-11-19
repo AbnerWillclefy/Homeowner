@@ -119,6 +119,7 @@ export function PantryPage() {
           <ItemDetailSheet
             key={viewing.id}
             item={viewing}
+            busy={busy.has(viewing.id)}
             onRanOut={(i) => { setViewingId(null); void ranOut(i); }}
             onClose={() => setViewingId(null)}
             onGone={closeGone}

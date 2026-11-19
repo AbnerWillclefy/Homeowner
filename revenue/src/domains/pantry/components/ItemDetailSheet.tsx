@@ -12,6 +12,8 @@ import { daysCopy, detailView, type PricePoint } from "../logic/itemDetail";
 
 interface Props {
   item: PantryItem;
+  /** The item's run-out or undo write is still pending. */
+  busy: boolean;
   onRanOut(item: PantryItem): void;
   onClose(): void;
   /** The item is gone (404): the Pantry reads again. */
@@ -23,7 +25,7 @@ interface Props {
  * The head comes from the Pantry row, so it shows at once; the rest is read when the Sheet opens.
  * A forecast has no data behind it yet, so its place holds static copy.
  */
-export function ItemDetailSheet({ item, onRanOut, onClose, onGone }: Props) {
+export function ItemDetailSheet({ item, busy, onRanOut, onClose, onGone }: Props) {
   const { t, locale } = useI18n();
   const { hidden } = useHideValues();
   const hiddenProps = useHiddenProps();
@@ -63,7 +65,7 @@ export function ItemDetailSheet({ item, onRanOut, onClose, onGone }: Props) {
       title={item.name}
       subtitle={item.preferredBrand ?? undefined}
       closeLabel={t("app.close")}
-      footer={item.state === "in_stock" && view?.kind === "ready" ? <Button variant="secondary" size="lg" onClick={() => onRanOut(item)}>{t("pantry.ranOut")}</Button> : undefined}
+      footer={item.state === "in_stock" && view?.kind === "ready" ? <Button variant="secondary" size="lg" loading={busy} onClick={() => onRanOut(item)}>{t("pantry.ranOut")}</Button> : undefined}
     >
       <div className="flex flex-col gap-4">
         {item.fixed && <Badge tone="brand" icon={Repeat} className="self-start">{t("pantry.always")}</Badge>}

@@ -6,9 +6,9 @@ export interface PricePoint {
   store: string;
 }
 
-/** The chart's points, oldest first: the API sends the newest purchase first. */
+/** The chart's points, oldest first: the API sends the newest purchase first, same-day ones in the order the backend picks the last price from. */
 export const chartPoints = (prices: ItemPrice[]): PricePoint[] =>
-  prices.map((p) => ({ day: p.issuedOn, cents: p.unitPriceCents, store: p.storeName })).sort((a, b) => a.day.localeCompare(b.day));
+  prices.map((p) => ({ day: p.issuedOn, cents: p.unitPriceCents, store: p.storeName })).reverse();
 
 /** The cheapest purchase; on a tie the latest, which is what is true today. */
 export const lowestPoint = (points: PricePoint[]): PricePoint | undefined =>

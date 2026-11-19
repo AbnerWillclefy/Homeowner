@@ -11,7 +11,7 @@ import { PantryPage } from "../PantryPage";
 Element.prototype.hasPointerCapture ??= () => false;
 globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} };
 
-vi.mock("../api", async (original) => ({ ...(await original<typeof import("../api")>()), getPantry: vi.fn(), getItem: vi.fn(), markRanOut: vi.fn() }));
+vi.mock("../api", async (original) => ({ ...(await original<typeof import("../api")>()), getPantry: vi.fn(), getItem: vi.fn(), markRanOut: vi.fn(), undoRanOut: vi.fn() }));
 vi.mock("../../bills/api", async (original) => ({ ...(await original<typeof import("../../bills/api")>()), getBills: vi.fn().mockResolvedValue([]) }));
 vi.mock("../../sources/api", async (original) => ({ ...(await original<typeof import("../../sources/api")>()), getSources: vi.fn().mockResolvedValue({ sources: [], items: [], importing: false, lastSyncedAt: null }) }));
 
@@ -36,6 +36,7 @@ beforeEach(() => {
   vi.mocked(api.getPantry).mockReset().mockResolvedValue([RICE, BEANS]);
   vi.mocked(api.getItem).mockReset();
   vi.mocked(api.markRanOut).mockReset().mockResolvedValue({ kind: "ok" });
+  vi.mocked(api.undoRanOut).mockReset();
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -92,6 +93,20 @@ describe("an item with purchases", () => {
     await userEvent.click(await within(sheet).findByRole("button", { name: "Ran out" }));
     await waitFor(() => expect(api.markRanOut).toHaveBeenCalledWith("p1"));
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+describe("a write still pending", () => {
+  it("cannot be asked Ran out again while its undo is in flight", async () => {
+    serve(detail());
+    vi.mocked(api.undoRanOut).mockReturnValue(new Promise(() => {}));
+    open();
+    await userEvent.click(await screen.findByRole("button", { name: "Ran out: Arroz" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Undo" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Arroz" }));
+    const button = await within(await screen.findByRole("dialog")).findByRole("button", { name: "Ran out" });
+    expect(button.hasAttribute("disabled") || button.getAttribute("aria-disabled") === "true").toBe(true);
+    expect(api.markRanOut).toHaveBeenCalledTimes(1);
   });
 });
 
