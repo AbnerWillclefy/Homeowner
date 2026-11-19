@@ -119,6 +119,22 @@ function bills(month) {
   ];
 }
 
+/** Two items that ran out, one with a brand, and four in stock, one always bought: both states, both marks. */
+function pantry(today) {
+  const ago = (days) => new Date(Date.parse(`${today}T00:00:00Z`) - days * 86_400_000).toISOString().slice(0, 10);
+  const item = (id, name, over = {}) => ({ id, name, preferredBrand: null, fixed: false, state: "in_stock", ...over });
+  return {
+    items: [
+      item("p1", "Leite", { preferredBrand: "Piracanjuba", state: "ran_out", ranOutOn: ago(2) }),
+      item("p2", "Café", { state: "ran_out", ranOutOn: ago(5) }),
+      item("p3", "Arroz", { preferredBrand: "Tio João", fixed: true }),
+      item("p4", "Feijão"),
+      item("p5", "Azeite"),
+      item("p6", "Queijo minas"),
+    ],
+  };
+}
+
 function savings(today) {
   const month = (n) => {
     const d = new Date(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 1 + n, 1);
@@ -198,6 +214,7 @@ export function answer(method, url, today) {
   if (route === "GET /me/finance/card-bills") return { status: 200, body: pastCardBills(params.get("source"), today) };
   if (route === "GET /me/finance/bills") return { status: 200, body: bills(params.get("month")) };
   if (route === "GET /me/finance/bill-suggestions") return { status: 200, body: [{ merchantKey: "enel", name: "Conta de luz Enel", amountCents: 21_480, dueDay: 10 }] };
+  if (route === "GET /me/finance/pantry") return { status: 200, body: pantry(today) };
   if (route === "GET /me/finance/net-worth") return { status: 200, body: netWorth(today, params.get("range")) };
   if (route === "GET /me/finance/savings") return { status: 200, body: savings(today) };
   return null;

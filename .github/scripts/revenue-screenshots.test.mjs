@@ -21,3 +21,14 @@ test("dates no transaction after today in the current month", () => {
 test("answers nothing for a request it has no fake for", () => {
   assert.equal(answer("GET", new URL("http://api/me/finance/goals"), "2026-11-03"), null);
 });
+
+test("serves the Pantry with items in both states, one with a brand and one always bought", () => {
+  const { body } = answer("GET", new URL("http://api/me/finance/pantry"), "2026-11-03");
+  assert.deepEqual([...new Set(body.items.map((i) => i.state))].sort(), ["in_stock", "ran_out"]);
+  assert.ok(body.items.some((i) => i.fixed) && body.items.some((i) => i.preferredBrand));
+  assert.ok(body.items.filter((i) => i.state === "ran_out").every((i) => i.ranOutOn <= "2026-11-03"));
+});
+
+test("shoots the Pantry by its route", () => {
+  assert.deepEqual(changedScreens(["revenue/src/domains/pantry/PantryPage.tsx"]), ["/pantry"]);
+});
