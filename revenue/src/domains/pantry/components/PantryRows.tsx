@@ -13,6 +13,7 @@ interface RowsProps {
   /** Ids of the items whose write is pending; their button waits and their menu is off. */
   busy: ReadonlySet<string>;
   onRanOut(item: PantryItem): void;
+  onOpen(item: PantryItem): void;
   onEdit(item: PantryItem): void;
   onDelete(item: PantryItem): void;
 }
@@ -29,8 +30,8 @@ function useMeta() {
   };
 }
 
-/** One row per item. "Acabou" is a button on an item in stock, a badge on one that ran out; the menu has Edit and Delete. */
-export function PantryRows({ rows, caption, today, busy, onRanOut, onEdit, onDelete }: RowsProps) {
+/** One row per item; its name opens the detail. "Acabou" is a button on an item in stock, a badge on one that ran out; the menu has Edit and Delete. */
+export function PantryRows({ rows, caption, today, busy, onRanOut, onOpen, onEdit, onDelete }: RowsProps) {
   const { t } = useI18n();
   const meta = useMeta();
   return (
@@ -42,7 +43,15 @@ export function PantryRows({ rows, caption, today, busy, onRanOut, onEdit, onDel
             <div className="flex min-w-0 flex-1 basis-56 items-center gap-4 py-2">
               <CategoryIcon category="groceries" />
               <span className="flex min-w-0 flex-1 flex-col">
-                <span className="body-strong [overflow-wrap:anywhere]">{item.name}</span>
+                <button
+                  type="button"
+                  aria-haspopup="dialog"
+                  data-open
+                  onClick={() => onOpen(item)}
+                  className="body-strong min-h-11 rounded-sm text-left outline-none [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                >
+                  {item.name}
+                </button>
                 {line && <span className="caption text-text-muted [overflow-wrap:anywhere]">{line}</span>}
               </span>
               {item.fixed && (

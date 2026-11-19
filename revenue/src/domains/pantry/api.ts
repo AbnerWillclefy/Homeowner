@@ -17,6 +17,24 @@ export interface PantryItem {
   state: PantryState;
   /** `YYYY-MM-DD` in São Paulo; set only while `state` is `ran_out`. */
   ranOutOn: string | null;
+  /** The newest purchase's unit price; absent for an item never bought. */
+  lastPriceCents?: number;
+  /** Days from a purchase to its run-out, averaged; absent until one cycle is complete. */
+  avgDurationDays?: number;
+}
+
+/** One purchase of an item, as `GET pantry/items/{id}` lists it (newest first). */
+export interface ItemPrice {
+  /** `YYYY-MM-DD`. */
+  issuedOn: string;
+  unitPriceCents: number;
+  storeName: string;
+}
+
+export interface ItemDetail {
+  item: PantryItem;
+  avgDurationDays: number | null;
+  prices: ItemPrice[];
 }
 
 /** What `PATCH` takes: a missing key is left alone and a null brand clears it. */
@@ -30,6 +48,9 @@ export interface PantryPatch {
 export type PantrySave = WriteResult | { kind: "fields"; fields: FieldCodes };
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
+const isInt = (v: unknown): v is number => Number.isSafeInteger(v);
+
+const itemUrl = (id: string) => `/me/finance/pantry/items/${encodeURIComponent(id)}`;
 
 function parseItem(v: unknown): PantryItem | null {
   if (!isRecord(v)) return null;
@@ -38,7 +59,36 @@ function parseItem(v: unknown): PantryItem | null {
   if (state !== "in_stock" && state !== "ran_out") return null;
   if (preferredBrand !== undefined && preferredBrand !== null && typeof preferredBrand !== "string") return null;
   if (ranOutOn !== undefined && ranOutOn !== null && typeof ranOutOn !== "string") return null;
-  return { id, name, preferredBrand: preferredBrand ?? null, fixed, state, ranOutOn: ranOutOn ?? null };
+  const { lastPriceCents, avgDurationDays } = v;
+  if (lastPriceCents !== undefined && !isInt(lastPriceCents)) return null;
+  if (avgDurationDays !== undefined && !isInt(avgDurationDays)) return null;
+  return {
+    id, name, preferredBrand: preferredBrand ?? null, fixed, state, ranOutOn: ranOutOn ?? null,
+    ...(lastPriceCents === undefined ? {} : { lastPriceCents }),
+    ...(avgDurationDays === undefined ? {} : { avgDurationDays }),
+  };
+}
+
+function parsePrice(v: unknown): ItemPrice | null {
+  if (!isRecord(v)) return null;
+  const { issuedOn, unitPriceCents, storeName } = v;
+  return typeof issuedOn === "string" && isInt(unitPriceCents) && typeof storeName === "string" ? { issuedOn, unitPriceCents, storeName } : null;
+}
+
+/** An item read: its detail, or a 404 (deleted on another device). Anything else throws, so a query shows its error state. */
+export type ItemRead = { kind: "ok"; detail: ItemDetail } | { kind: "not-found" };
+
+/** `GET /me/finance/pantry/items/{id}`. */
+export async function getItem(id: string, client: AxiosInstance = apiClient): Promise<ItemRead> {
+  const url = itemUrl(id);
+  const { status, data } = await client.get(url);
+  if (status === 404) return { kind: "not-found" };
+  if (status !== 200) throw new Error(`GET ${url} answered ${status}`);
+  const item = isRecord(data) ? parseItem(data.item) : null;
+  const avg = isRecord(data) ? data.avgDurationDays : undefined;
+  const prices = isRecord(data) && Array.isArray(data.prices) ? data.prices.map(parsePrice) : null;
+  if (!item || !prices || prices.some((p) => p === null) || (avg !== undefined && avg !== null && !isInt(avg))) throw new Error(`GET ${url} answered a malformed body`);
+  return { kind: "ok", detail: { item, avgDurationDays: avg ?? null, prices: prices as ItemPrice[] } };
 }
 
 /** `GET /me/finance/pantry`. Throws on any failure, so a query shows its error state. */
@@ -52,8 +102,6 @@ async function save(client: AxiosInstance, method: string, url: string, ok: numb
   const response = await send(client, method, url, ok, body);
   return conflict(response, "name_taken") ? { kind: "fields", fields: { name: "taken" } } : writeResult(response, ok);
 }
-
-const itemUrl = (id: string) => `/me/finance/pantry/items/${encodeURIComponent(id)}`;
 
 /** `POST /me/finance/pantry/items`. */
 export const addItem = (name: string, preferredBrand: string | null = null, client: AxiosInstance = apiClient) =>
@@ -116,8 +164,6 @@ export type MatchChoice = { itemId: string } | { newItem: { name: string; brand:
 
 /** A match: the receipt as it is now, a refused name (409 `name_taken` is `{ name: "taken" }`), a receipt or line that is gone, or a failure. */
 export type MatchResult = { kind: "ok"; receipt: Receipt } | { kind: "fields"; fields: FieldCodes } | { kind: "not-found" } | { kind: "error" };
-
-const isInt = (v: unknown): v is number => Number.isSafeInteger(v);
 
 function parseLine(v: unknown): ReceiptLine | null {
   if (!isRecord(v)) return null;

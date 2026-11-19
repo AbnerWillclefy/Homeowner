@@ -1,12 +1,13 @@
 import { Badge, Banner, Button, Card, Dialog, EmptyState, Skeleton, Toast, ToastProvider } from "@homeowner/bedrock";
 import { Package, RefreshCw } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "../../shared/i18n/I18nProvider";
 import { saoPauloDay } from "../../shared/month/month";
 import { PageHeader } from "../../shared/PageHeader";
 import type { PantryItem } from "./api";
 import { AddItemForm } from "./components/AddItemForm";
 import { AddReceiptSheet } from "./components/AddReceiptSheet";
+import { ItemDetailSheet } from "./components/ItemDetailSheet";
 import { ItemSheet } from "./components/ItemSheet";
 import { PantryRows } from "./components/PantryRows";
 import { usePantry } from "./hooks/usePantry";
@@ -18,20 +19,26 @@ import { groupItems } from "./logic/pantry";
  */
 export function PantryPage() {
   const { t } = useI18n();
-  const { data, loading, failed, reload, notice, busy, setRanOut, add, update, remove } = usePantry();
+  const { data, loading, failed, reload, refresh, notice, busy, setRanOut, add, update, remove } = usePantry();
   const [editing, setEditing] = useState<PantryItem | null>(null);
   const [deleting, setDeleting] = useState<PantryItem | null>(null);
   const [toast, setToast] = useState<PantryItem | null>(null);
-  const opener = useRef<string | null>(null);
+  const [viewingId, setViewingId] = useState<string | null>(null);
+  // The row a Sheet opened from, and the button in it to hand focus back to: the menu for the edit Sheet, the name for the detail.
+  const opener = useRef<{ id: string; button: string } | null>(null);
 
-  // A closed Sheet hands focus back to the row that opened it (its menu button is the row's last button).
   useEffect(() => {
-    if (editing || !opener.current) return;
-    document.querySelector<HTMLElement>(`[data-item="${CSS.escape(opener.current)}"] button:last-of-type`)?.focus();
+    if (editing || viewingId || !opener.current) return;
+    const { id, button } = opener.current;
+    document.querySelector<HTMLElement>(`[data-item="${CSS.escape(id)}"] ${button}`)?.focus();
     opener.current = null;
-  }, [editing]);
+  }, [editing, viewingId]);
+
+  // A deleted item takes its Sheet with it; one deleted on another device is gone too, and the Pantry is read again.
+  const closeGone = useCallback(() => { setViewingId(null); refresh(); }, [refresh]);
 
   const items = data ?? [];
+  const viewing = items.find((i) => i.id === viewingId);
   const { out, stock } = groupItems(items);
   const today = saoPauloDay(new Date());
   const subtitle =
@@ -51,7 +58,8 @@ export function PantryPage() {
       today={today}
       busy={busy}
       onRanOut={(i) => void ranOut(i)}
-      onEdit={(i) => { opener.current = i.id; setEditing(i); }}
+      onOpen={(i) => { opener.current = { id: i.id, button: "[data-open]" }; setViewingId(i.id); }}
+      onEdit={(i) => { opener.current = { id: i.id, button: ".ml-auto button:last-of-type" }; setEditing(i); }}
       onDelete={setDeleting}
     />
   );
@@ -107,6 +115,15 @@ export function PantryPage() {
           )}
         </div>
 
+        {viewing && (
+          <ItemDetailSheet
+            key={viewing.id}
+            item={viewing}
+            onRanOut={(i) => { setViewingId(null); void ranOut(i); }}
+            onClose={() => setViewingId(null)}
+            onGone={closeGone}
+          />
+        )}
         {editing && <ItemSheet key={editing.id} item={editing} save={(patch) => update(editing.id, patch)} onClose={() => setEditing(null)} />}
         {deleting && (
           <Dialog
