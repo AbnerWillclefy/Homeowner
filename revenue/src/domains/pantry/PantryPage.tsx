@@ -27,18 +27,19 @@ export function PantryPage() {
   // The row a Sheet opened from, and the button in it to hand focus back to: the menu for the edit Sheet, the name for the detail.
   const opener = useRef<{ id: string; button: string } | null>(null);
 
+  const viewing = (data ?? []).find((i) => i.id === viewingId);
+
   useEffect(() => {
-    if (editing || viewingId || !opener.current) return;
+    if (editing || viewing || !opener.current) return;
     const { id, button } = opener.current;
     document.querySelector<HTMLElement>(`[data-item="${CSS.escape(id)}"] ${button}`)?.focus();
     opener.current = null;
-  }, [editing, viewingId]);
+  }, [editing, viewing]);
 
   // A deleted item takes its Sheet with it; one deleted on another device is gone too, and the Pantry is read again.
   const closeGone = useCallback(() => { setViewingId(null); refresh(); }, [refresh]);
 
   const items = data ?? [];
-  const viewing = items.find((i) => i.id === viewingId);
   const { out, stock } = groupItems(items);
   const today = saoPauloDay(new Date());
   const subtitle =

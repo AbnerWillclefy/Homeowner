@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -163,6 +163,21 @@ describe("closing", () => {
     await userEvent.click(within(sheet).getByRole("button", { name: "Close" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Arroz" })));
+  });
+
+  it("still returns focus after an Edit sheet when the item's sheet vanished because the list changed", async () => {
+    serve(detail());
+    vi.stubGlobal("matchMedia", () => ({ matches: true, addEventListener() {}, removeEventListener() {} }));
+    vi.mocked(api.getPantry).mockResolvedValueOnce([RICE, BEANS]).mockResolvedValue([BEANS]);
+    await openRice();
+    // Behind the open sheet: a refresh that no longer lists Arroz takes its sheet with it.
+    fireEvent.click(within(screen.getByText("Feijão").closest("li")!).getByRole("button", { name: /Ran out/, hidden: true }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await userEvent.click(await screen.findByRole("button", { name: "More actions for Feijão" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Edit" }));
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "More actions for Feijão" })));
   });
 
   it("has no axe violations in pt-BR and English", async () => {

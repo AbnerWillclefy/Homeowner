@@ -39,3 +39,11 @@ test("serves a receipt with unmatched lines, and answers a match with it", () =>
   assert.ok(created.body.lines.filter((l) => l.itemId === null && !l.ignored).length >= 2);
   assert.equal(answer("PUT", new URL("http://api/me/finance/pantry/receipts/r1/lines/2"), "2026-11-03").status, 200);
 });
+
+test("serves an item's price history newest first, and 404 for an unknown item", () => {
+  const id = answer("GET", new URL("http://api/me/finance/pantry"), "2026-11-03").body.items[0].id;
+  const { status, body } = answer("GET", new URL(`http://api/me/finance/pantry/items/${id}`), "2026-11-03");
+  assert.equal(status, 200);
+  assert.ok(body.prices.length >= 2 && body.prices.every((p, i, a) => i === 0 || a[i - 1].issuedOn >= p.issuedOn));
+  assert.equal(answer("GET", new URL("http://api/me/finance/pantry/items/nope"), "2026-11-03").status, 404);
+});
