@@ -5,6 +5,7 @@ import (
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/finance"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/identity"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/pantry"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
 )
 
@@ -41,7 +42,7 @@ func (s *server) financeGate(allow finance.Allowlist, email string) int {
 
 // financeMux holds the /me/finance routes. The guard wraps it once, so every
 // path under the prefix, known or not, meets the allowlist first.
-func financeMux(h *finance.Handler) http.Handler {
+func financeMux(h *finance.Handler, p *pantry.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /me/finance", h.Status)
 	mux.HandleFunc("DELETE /me/finance", h.DeleteAll)
@@ -84,6 +85,12 @@ func financeMux(h *finance.Handler) http.Handler {
 	mux.HandleFunc("POST /me/finance/items", h.ConnectItem)
 	mux.HandleFunc("PUT /me/finance/credentials", h.PutCredentials)
 	mux.HandleFunc("DELETE /me/finance/credentials", h.DeleteCredentials)
+	mux.HandleFunc("GET /me/finance/pantry", p.List)
+	mux.HandleFunc("POST /me/finance/pantry/items", p.Create)
+	mux.HandleFunc("PATCH /me/finance/pantry/items/{id}", p.Update)
+	mux.HandleFunc("DELETE /me/finance/pantry/items/{id}", p.Delete)
+	mux.HandleFunc("POST /me/finance/pantry/items/{id}/run-outs", p.RunOut)
+	mux.HandleFunc("DELETE /me/finance/pantry/items/{id}/run-outs/latest", p.UndoRunOut)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not found")
 	})
