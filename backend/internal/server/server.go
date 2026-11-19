@@ -21,6 +21,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/invites"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/pantry"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/photos"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
@@ -133,6 +134,7 @@ func New(deps Deps) http.Handler {
 	voiceH := voice.NewHandler(deps.Voice, voice.NewStore(db), deps.VoiceModel, clk, log)
 	pushes := push.NewHandler(push.NewStore(db), deps.Push, deps.VAPIDPublicKey, financeAllow.Allows, clk, log)
 	fin := finance.NewHandler(finance.NewStore(db), deps.FinanceKey, deps.Pluggy, deps.Environment, clk, log)
+	pantryH := pantry.NewHandler(pantry.NewStore(db), clk, log)
 
 	user, resident := s.requireUser, s.requireResident
 	mux := http.NewServeMux()
@@ -206,7 +208,7 @@ func New(deps Deps) http.Handler {
 	// Every /admin/ path, known or not, goes through the guard first.
 	mux.Handle("/admin/", s.requireSuperAdmin(s.adminMux()))
 	// Every /me/finance path, known or not, meets the allowlist first.
-	guarded := s.requireFinance(financeAllow, financeMux(fin))
+	guarded := s.requireFinance(financeAllow, financeMux(fin, pantryH))
 	mux.Handle("/me/finance", guarded)
 	mux.Handle("/me/finance/", guarded)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

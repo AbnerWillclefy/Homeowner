@@ -62,6 +62,9 @@ func twoSynced(t *testing.T) (app *apitest.App, ana, bia *apitest.Client, anaID,
 		apitest.ExpectStatus(t, c.Put("/me/finance/income", map[string]any{"monthlyIncomeCents": 500000}), http.StatusNoContent)
 		newInvestment(t, c, "CDB", 100000, "reserve")
 		apitest.ExpectStatus(t, putReserve(c, 600000), http.StatusNoContent)
+		item := c.Post("/me/finance/pantry/items", map[string]any{"name": "Café"})
+		apitest.ExpectStatus(t, item, http.StatusCreated)
+		apitest.ExpectStatus(t, c.Post("/me/finance/pantry/items/"+item.Body["id"].(string)+"/run-outs", nil), http.StatusNoContent)
 		apitest.ExpectStatus(t, putContribution(c, 100000, 40), http.StatusNoContent)
 		for i, n := range rowsOf(t, app, id) {
 			if n == 0 {
