@@ -164,6 +164,8 @@ Charts are part of the visual system, not a style of their own:
 | Select | Core | stable |
 | SegmentedControl | Core | stable |
 | Switch | Core | stable |
+| Checkbox | Core | stable |
+| Stepper | Core | stable |
 | Card | Core | stable |
 | Badge | Core | stable |
 | ProgressBar | Core | stable |

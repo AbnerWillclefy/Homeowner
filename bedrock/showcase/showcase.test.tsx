@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 
 const NAMES = [
-  "Button", "Input", "SearchField", "SegmentedControl", "Switch", "Card", "StatCard", "Amount", "Badge",
+  "Button", "Input", "SearchField", "SegmentedControl", "Switch", "Checkbox", "Stepper", "Card", "StatCard", "Amount", "Badge",
   "CategoryTag", "ListRow", "ProgressBar", "AlertCard", "Toast", "EmptyState", "Skeleton", "Sheet", "Dialog",
   "Sidebar", "BottomBar", "PaceChart", "DonutChart", "BarChart", "Banner", "Tooltip", "Menu", "Select", "Table",
 ];

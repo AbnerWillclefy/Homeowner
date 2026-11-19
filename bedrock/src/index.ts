@@ -6,6 +6,8 @@ export { Badge, type BadgeProps } from "./components/badge";
 export { Banner, type BannerProps } from "./components/banner";
 export { Button,type ButtonProps } from "./components/button";
 export { Switch, type SwitchProps } from "./components/switch";
+export { Checkbox, type CheckboxProps } from "./components/checkbox";
+export { Stepper, type StepperProps } from "./components/stepper";
 export { SegmentedControl, type SegmentedControlProps } from "./components/segmented-control";
 export { ProgressBar, progressTone, type ProgressBarProps } from "./components/progress-bar";
 export { Card, CardHeader, CardLabel, CardContent, CardFooter, type CardProps } from "./components/card";
