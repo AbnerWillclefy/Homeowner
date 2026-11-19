@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -81,12 +82,15 @@ func itemID(w http.ResponseWriter, r *http.Request) string {
 	return id
 }
 
-func validName(s string) bool { n := utf8.RuneCountInString(s); return n >= 1 && n <= maxLen }
+func validName(s string) bool {
+	n := utf8.RuneCountInString(s)
+	return n >= 1 && n <= maxLen && strings.IndexFunc(s, unicode.IsControl) < 0
+}
 
 // brand trims s; empty means none.
 func brand(s string) (*string, bool) {
 	s = strings.TrimSpace(s)
-	if utf8.RuneCountInString(s) > maxLen {
+	if utf8.RuneCountInString(s) > maxLen || strings.IndexFunc(s, unicode.IsControl) >= 0 {
 		return nil, false
 	}
 	if s == "" {

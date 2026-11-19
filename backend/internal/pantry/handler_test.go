@@ -59,12 +59,14 @@ func TestAddValidation(t *testing.T) {
 	add(t, ana, map[string]any{"name": "a", "preferredBrand": ""})
 	add(t, ana, map[string]any{"name": strings.Repeat("é", 60), "preferredBrand": strings.Repeat("é", 60)})
 	for name, body := range map[string]any{
-		"empty name":   map[string]any{"name": " "},
-		"long name":    map[string]any{"name": strings.Repeat("é", 61)},
-		"long brand":   map[string]any{"name": "x", "preferredBrand": strings.Repeat("é", 61)},
-		"extra key":    map[string]any{"name": "x", "price": 1},
-		"wrong type":   map[string]any{"name": 5},
-		"missing name": map[string]any{},
+		"empty name":         map[string]any{"name": " "},
+		"long name":          map[string]any{"name": strings.Repeat("é", 61)},
+		"long brand":         map[string]any{"name": "x", "preferredBrand": strings.Repeat("é", 61)},
+		"extra key":          map[string]any{"name": "x", "price": 1},
+		"wrong type":         map[string]any{"name": 5},
+		"missing name":       map[string]any{},
+		"control char":       map[string]any{"name": "a\x00b"},
+		"brand control char": map[string]any{"name": "x", "preferredBrand": "a\nb"},
 	} {
 		if r := ana.Post("/me/finance/pantry/items", body); r.Status != http.StatusBadRequest {
 			t.Errorf("%s: status %d, want 400", name, r.Status)
@@ -151,13 +153,16 @@ func TestRenameBrandAndFixed(t *testing.T) {
 		t.Errorf("set brand = %s", r.Raw)
 	}
 	for name, body := range map[string]any{
-		"empty":      map[string]any{},
-		"extra key":  map[string]any{"state": "ran_out"},
-		"empty name": map[string]any{"name": ""},
-		"long name":  map[string]any{"name": strings.Repeat("x", 61)},
-		"long brand": map[string]any{"preferredBrand": strings.Repeat("x", 61)},
-		"null name":  map[string]any{"name": nil},
-		"fixed type": map[string]any{"fixed": "yes"},
+		"empty":              map[string]any{},
+		"extra key":          map[string]any{"state": "ran_out"},
+		"empty name":         map[string]any{"name": ""},
+		"long name":          map[string]any{"name": strings.Repeat("x", 61)},
+		"long brand":         map[string]any{"preferredBrand": strings.Repeat("x", 61)},
+		"null name":          map[string]any{"name": nil},
+		"fixed type":         map[string]any{"fixed": "yes"},
+		"brand type":         map[string]any{"preferredBrand": 5},
+		"control char":       map[string]any{"name": "a\x00b"},
+		"brand control char": map[string]any{"preferredBrand": "a\tb"},
 	} {
 		if r := patch(ana, id, body); r.Status != http.StatusBadRequest {
 			t.Errorf("%s: status %d, want 400", name, r.Status)
