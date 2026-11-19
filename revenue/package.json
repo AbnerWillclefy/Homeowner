@@ -17,6 +17,7 @@
     "@homeowner/bedrock": "*",
     "@tanstack/react-query": "^5.104.5",
     "axios": "^1.20.0",
+    "jsqr": "^1.4.0",
     "lucide-react": "^1.55.0",
     "radix-ui": "^1.4.3",
     "react": "^19.3.0",
