@@ -42,7 +42,10 @@ export function MatchLine({ step, match, onBusy }: { step: Matching; match(recei
     setErrors({});
     setFailed(false);
   }, [line?.n]);
-  useEffect(() => onBusy(saving), [saving, onBusy]);
+  useEffect(() => {
+    onBusy(saving);
+    return () => onBusy(false);
+  }, [saving, onBusy]);
 
   if (!line) return null;
   const position = step.total - step.queue.length + 1;

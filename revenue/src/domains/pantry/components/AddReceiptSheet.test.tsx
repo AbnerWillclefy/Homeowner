@@ -109,6 +109,8 @@ describe("the end of a receipt", () => {
     await paste();
     expect(await screen.findByText("All recognised")).toBeTruthy();
     expect(screen.getByText("2 items updated.")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByText("All recognised")).toBeNull());
   });
 
   it("shows a repeated receipt with nothing left as already added, not as an error", async () => {

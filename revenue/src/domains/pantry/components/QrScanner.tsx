@@ -38,7 +38,14 @@ export function QrScanner({ onCode, onDenied }: { onCode(text: string): void; on
       if (!el) return stop();
       el.srcObject = stream;
       await el.play().catch(() => {});
-      const { default: decode } = await import("jsqr");
+      let decode: typeof import("jsqr").default;
+      try {
+        ({ default: decode } = await import("jsqr"));
+      } catch {
+        // Offline, or a deploy replaced the chunk: same as an unusable camera.
+        stop();
+        return callbacks.current.onDenied();
+      }
       const canvas = document.createElement("canvas");
       const tick = () => {
         if (stopped) return;
