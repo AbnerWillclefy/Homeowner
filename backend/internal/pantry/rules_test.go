@@ -29,3 +29,19 @@ func TestStateOf(t *testing.T) {
 		}
 	}
 }
+
+func TestLineKey(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"Leite  Integral 1L", "LEITE INTEGRAL 1L"},
+		{"  Açúcar   Refinado ", "ACUCAR REFINADO"},
+		{"LEITE 1L", "LEITE 1L"},
+		{"LEITE 5L", "LEITE 5L"},
+		{"pão de açaí", "PAO DE ACAI"},
+		{"MARG.PRIMOR C/S", "MARG.PRIMOR C/S"},
+	}
+	for _, c := range cases {
+		if got := LineKey(c.in); got != c.want {
+			t.Errorf("LineKey(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
