@@ -1,5 +1,5 @@
 import {
-  Banknote, CreditCard, Landmark, LayoutDashboard, LineChart, PiggyBank, Receipt, Settings, Tags, Target,
+  Banknote, CreditCard, Landmark, LayoutDashboard, LineChart, PiggyBank, Receipt, Settings, ShoppingBasket, Tags, Target,
   type LucideIcon,
 } from "lucide-react";
 import type { ReactElement } from "react";
@@ -10,6 +10,7 @@ import { CategoryPage } from "../domains/categories/CategoryPage";
 import { GoalsPage } from "../domains/goals/GoalsPage";
 import { NetWorthPage } from "../domains/net-worth/NetWorthPage";
 import { OverviewPage } from "../domains/overview/OverviewPage";
+import { PantryPage } from "../domains/pantry/PantryPage";
 import { ProjectionPage } from "../domains/projection/ProjectionPage";
 import { SettingsPage } from "../domains/settings/SettingsPage";
 import { SourcesPage } from "../domains/sources/SourcesPage";
@@ -33,6 +34,7 @@ export const CARD_BILLS = screen("/card-bills", "nav.cardBills", CreditCard, <Ca
 export const CATEGORIES = screen("/categories", "nav.categories", Tags, <CategoriesPage />);
 /** The drill-down into one Spending Category: a route, not a navigation item. */
 export const CATEGORY = screen("/categories/:category", "nav.categories", Tags, <CategoryPage />);
+export const PANTRY = screen("/pantry", "nav.pantry", ShoppingBasket, <PantryPage />);
 export const GOALS = screen("/goals", "nav.goals", Target, <GoalsPage />);
 export const NET_WORTH = screen("/net-worth", "nav.netWorth", PiggyBank, <NetWorthPage />);
 export const PROJECTION = screen("/projection", "nav.projection", LineChart, <ProjectionPage />);
@@ -40,7 +42,7 @@ export const SOURCES = screen("/sources", "nav.sources", Landmark, <SourcesPage 
 export const SETTINGS = screen("/settings", "nav.settings", Settings, <SettingsPage />);
 
 export const NAV_GROUPS: { label: MessageKey; screens: Screen[] }[] = [
-  { label: "nav.group.main", screens: [OVERVIEW, TRANSACTIONS, BILLS, CARD_BILLS, CATEGORIES] },
+  { label: "nav.group.main", screens: [OVERVIEW, TRANSACTIONS, BILLS, CARD_BILLS, CATEGORIES, PANTRY] },
   { label: "nav.group.planning", screens: [GOALS, NET_WORTH, PROJECTION, SOURCES] },
 ];
 /** Pinned to the bottom of the Sidebar. */

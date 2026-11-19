@@ -25,11 +25,11 @@ const shell = (options: Parameters<typeof renderApp>[1] = {}) =>
 beforeEach(() => localStorage.clear());
 afterEach(() => vi.unstubAllGlobals());
 
-const EN = ["Overview", "Transactions", "Bills to pay", "Card bills", "Spending Categories", "Goals", "Net worth", "Projection", "Sources", "Settings"];
-const PT = ["Visão geral", "Lançamentos", "Contas a pagar", "Faturas", "Categorias de gasto", "Objetivos", "Patrimônio", "Projeção", "Fontes", "Configurações"];
+const EN = ["Overview", "Transactions", "Bills to pay", "Card bills", "Spending Categories", "Pantry", "Goals", "Net worth", "Projection", "Sources", "Settings"];
+const PT = ["Visão geral", "Lançamentos", "Contas a pagar", "Faturas", "Categorias de gasto", "Despensa", "Objetivos", "Patrimônio", "Projeção", "Fontes", "Configurações"];
 
 describe("shell navigation", () => {
-  it("shows the Sidebar on a desktop width, with the 10 items and no Onboarding", () => {
+  it("shows the Sidebar on a desktop width, with the 11 items and no Onboarding", () => {
     width(true);
     shell({ locale: "en" });
     const nav = screen.getByRole("navigation", { name: "Main navigation" });
@@ -44,7 +44,7 @@ describe("shell navigation", () => {
     expect(within(nav).getAllByRole("link").map((a) => a.textContent)).toEqual(["Overview", "Transactions", "Bills to pay", "Goals", "More"]);
     await userEvent.click(within(nav).getByRole("link", { name: "More" }));
     const sheet = await screen.findByRole("dialog");
-    expect(within(sheet).getAllByRole("link").map((a) => a.textContent)).toEqual(["Card bills", "Spending Categories", "Net worth", "Projection", "Sources", "Settings"]);
+    expect(within(sheet).getAllByRole("link").map((a) => a.textContent)).toEqual(["Card bills", "Spending Categories", "Pantry", "Net worth", "Projection", "Sources", "Settings"]);
   });
 
   it("names every screen in pt-BR", () => {
