@@ -3,7 +3,8 @@ package pantry
 import "encoding/json"
 
 // Item is one Pantry item as the API returns it. RanOutOn is set only while
-// the item is ran out.
+// the item is ran out; LastPriceCents and AvgDurationDays only once it has a
+// purchase, or a completed purchase-to-run-out cycle.
 type Item struct {
 	ID             string  `json:"id"`
 	Name           string  `json:"name"`
@@ -11,6 +12,9 @@ type Item struct {
 	Fixed          bool    `json:"fixed"`
 	State          string  `json:"state"`
 	RanOutOn       *string `json:"ranOutOn,omitempty"`
+
+	LastPriceCents  *int64 `json:"lastPriceCents,omitempty"`
+	AvgDurationDays *int   `json:"avgDurationDays,omitempty"`
 }
 
 // Patch is a decoded PATCH body: nil fields are left alone; BrandSet with a
@@ -79,4 +83,44 @@ type Match struct {
 	NewBrand *string
 	NewItem  bool
 	Ignore   bool
+}
+
+// ListRow is one line of the next shopping list. UnitPriceCents and PriceCents
+// are absent for an item never bought.
+type ListRow struct {
+	ItemID         string  `json:"itemId"`
+	Name           string  `json:"name"`
+	PreferredBrand *string `json:"preferredBrand"`
+	Fixed          bool    `json:"fixed"`
+	QuantityMilli  int64   `json:"quantityMilli"`
+	Unit           string  `json:"unit"`
+	UnitPriceCents *int64  `json:"unitPriceCents,omitempty"`
+	PriceCents     *int64  `json:"priceCents,omitempty"`
+}
+
+// ShoppingList is the answer of GET pantry/list. GroceriesLeftCents is absent
+// with no groceries limit and negative when the User went over it.
+type ShoppingList struct {
+	Items              []ListRow `json:"items"`
+	ExpectedTotalCents int64     `json:"expectedTotalCents"`
+	GroceriesLeftCents *int64    `json:"groceriesLeftCents,omitempty"`
+}
+
+// Price is one purchase of an item: the unit price paid at a store on a day.
+type Price struct {
+	IssuedOn       string `json:"issuedOn"`
+	UnitPriceCents int64  `json:"unitPriceCents"`
+	StoreName      string `json:"storeName"`
+}
+
+// ItemDetail is the answer of GET pantry/items/{id}; Prices run newest first.
+type ItemDetail struct {
+	Item            Item    `json:"item"`
+	AvgDurationDays *int    `json:"avgDurationDays,omitempty"`
+	Prices          []Price `json:"prices"`
+}
+
+type listEditRequest struct {
+	QuantityMilli *int64 `json:"quantityMilli"`
+	Removed       *bool  `json:"removed"`
 }
