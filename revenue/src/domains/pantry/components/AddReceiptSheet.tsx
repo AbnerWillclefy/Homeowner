@@ -1,9 +1,10 @@
 import { Banner, Button, EmptyState, Input, Sheet, Skeleton } from "@homeowner/bedrock";
-import { Camera, ClipboardPaste, CloudOff, QrCode, Receipt as ReceiptIcon, RefreshCw, ScanLine } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { Camera, ClipboardPaste, Clock, CloudOff, QrCode, Receipt as ReceiptIcon, RefreshCw, ScanLine } from "lucide-react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
 import { useAddReceipt } from "../hooks/useAddReceipt";
 import { MatchLine } from "./MatchLine";
+import { PhotoDraft } from "./PhotoDraft";
 import { QrScanner } from "./QrScanner";
 
 /** "Adicionar nota": its button, and the Sheet it opens. Closing returns focus to the button; a write in flight keeps the Sheet open. */
@@ -11,31 +12,45 @@ export function AddReceiptSheet() {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [drafting, setDrafting] = useState(false);
+  // The photo read cost a model call, so closing on the draft asks first.
+  const close = () => !busy && (!drafting || window.confirm(t("receipt.discard")));
   return (
     <Sheet
       open={open}
-      onOpenChange={(next) => (next || !busy) && setOpen(next)}
+      onOpenChange={(next) => (next || close()) && setOpen(next)}
       trigger={<Button variant="secondary" icon={ReceiptIcon}>{t("receipt.open")}</Button>}
       title={t("receipt.title")}
       closeLabel={t("app.close")}
     >
       {/* Mounted only while open, so each opening starts at "choose". */}
-      <Flow onBusy={setBusy} onClose={() => setOpen(false)} />
+      <Flow onBusy={setBusy} onDrafting={setDrafting} onClose={() => setOpen(false)} />
     </Sheet>
   );
 }
 
-function Flow({ onBusy, onClose }: { onBusy(busy: boolean): void; onClose(): void }) {
+function Flow({ onBusy, onDrafting, onClose }: { onBusy(busy: boolean): void; onDrafting(drafting: boolean): void; onClose(): void }) {
   const { t } = useI18n();
-  const { step, dispatch, submit, match } = useAddReceipt();
+  const { step, dispatch, submit, match, readFile, confirm } = useAddReceipt();
+  const picker = useRef<HTMLInputElement>(null);
   // Kept here, not in the paste step, so a scanned code survives a failed read.
   const [code, setCode] = useState("");
   const [matching, setMatching] = useState(false);
-  const busy = step.kind === "saving" || matching;
+  const busy = step.kind === "saving" || step.kind === "reading" || (step.kind === "draft" && step.saving) || matching;
   useEffect(() => {
     onBusy(busy);
     return () => onBusy(false);
   }, [busy, onBusy]);
+  useEffect(() => {
+    onDrafting(step.kind === "draft");
+    return () => onDrafting(false);
+  }, [step.kind, onDrafting]);
+  const takePhoto = () => picker.current?.click();
+  const onPhoto = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = ""; // so choosing the same photo again still fires
+    if (file) void readFile(file);
+  };
   const read = (text: string) => {
     setCode(text);
     void submit(text.trim());
@@ -47,13 +62,13 @@ function Flow({ onBusy, onClose }: { onBusy(busy: boolean): void; onClose(): voi
 
   return (
     <div className="flex flex-col gap-4 pb-4">
+      <input ref={picker} type="file" accept="image/*" capture="environment" hidden onChange={onPhoto} />
       {step.kind === "choose" && (
         <>
           <p className="body text-text-muted">{t("receipt.chooseText")}</p>
           <Button size="lg" icon={QrCode} onClick={() => dispatch({ type: "scan" })}>{t("receipt.scan")}</Button>
           <Button size="lg" variant="secondary" icon={ClipboardPaste} onClick={() => dispatch({ type: "paste" })}>{t("receipt.paste")}</Button>
-          {/* The photo path is its own ticket; until it lands the option is drawn but cannot be chosen. */}
-          <Button size="lg" variant="secondary" icon={Camera} disabled>{t("receipt.photo")} · {t("receipt.photoSoon")}</Button>
+          <Button size="lg" variant="secondary" icon={Camera} onClick={takePhoto}>{t("receipt.photo")}</Button>
         </>
       )}
 
@@ -91,6 +106,27 @@ function Flow({ onBusy, onClose }: { onBusy(busy: boolean): void; onClose(): voi
         </div>
       )}
 
+      {step.kind === "reading" && (
+        <div aria-busy="true" aria-label={t("receipt.reading")} className="flex flex-col gap-4">
+          <p className="body text-text-muted">{t("receipt.reading")}</p>
+          <p className="caption text-text-muted">{t("receipt.readingHint")}</p>
+          {[0, 1, 2].map((i) => <Skeleton key={i} className="h-14 w-full" />)}
+        </div>
+      )}
+
+      {step.kind === "photoFailed" && (
+        <>
+          <Banner tone={step.reason === "cap" ? "warning" : "danger"} icon={step.reason === "cap" ? Clock : undefined}>
+            {t(step.reason === "cap" ? "receipt.cap" : step.reason === "unreadable" ? "receipt.unreadable" : "receipt.photoFailed")}
+          </Banner>
+          {step.reason !== "cap" && <Button size="lg" icon={Camera} onClick={takePhoto}>{t("receipt.photoAgain")}</Button>}
+          <Button size="lg" variant={step.reason === "cap" ? "primary" : "secondary"} icon={ClipboardPaste} onClick={() => dispatch({ type: "paste" })}>{t("receipt.paste")}</Button>
+          {step.reason === "cap" && <Button size="lg" variant="secondary" icon={QrCode} onClick={() => dispatch({ type: "scan" })}>{t("receipt.scan")}</Button>}
+        </>
+      )}
+
+      {step.kind === "draft" && <PhotoDraft step={step} onSave={(draft) => void confirm(draft)} />}
+
       {step.kind === "matching" && <MatchLine step={step} match={match} onBusy={setMatching} />}
 
       {step.kind === "done" && (
@@ -108,8 +144,7 @@ function Flow({ onBusy, onClose }: { onBusy(busy: boolean): void; onClose(): voi
       {step.kind === "unavailable" && (
         <>
           <Banner tone="warning" icon={CloudOff}>{t("receipt.sefaz")}</Banner>
-          {/* Until the photo ticket wires its step, the photo option only returns to "choose". */}
-          <Button size="lg" icon={Camera} onClick={() => dispatch({ type: "choose" })}>{t("receipt.photo")}</Button>
+          <Button size="lg" icon={Camera} onClick={takePhoto}>{t("receipt.photo")}</Button>
           <Button size="lg" variant="secondary" icon={RefreshCw} onClick={() => dispatch({ type: "paste" })}>{t("receipt.again")}</Button>
         </>
       )}
