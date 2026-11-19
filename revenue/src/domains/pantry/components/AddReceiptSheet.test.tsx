@@ -109,8 +109,6 @@ describe("the end of a receipt", () => {
     await paste();
     expect(await screen.findByText("All recognised")).toBeTruthy();
     expect(screen.getByText("2 items updated.")).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "Close" }));
-    await waitFor(() => expect(screen.queryByText("All recognised")).toBeNull());
   });
 
   it("shows a repeated receipt with nothing left as already added, not as an error", async () => {
@@ -201,6 +199,8 @@ describe("matching a line", () => {
     expect(match).toHaveBeenLastCalledWith("r1", 3, { itemId: "p1" });
     expect(await screen.findByText("All recognised")).toBeTruthy();
     expect(screen.getByText("2 items updated.")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByText("All recognised")).toBeNull());
   });
 
   it("stays on the line with an error inside the Sheet when the write fails", async () => {
