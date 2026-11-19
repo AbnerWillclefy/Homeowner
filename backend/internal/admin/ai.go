@@ -20,7 +20,7 @@ const (
 	serviceCategorizer = "categorizer"
 	// serviceVoice rows come from the voice interpret endpoint (migration 0032).
 	serviceVoice = "voice"
-	// serviceReceipt rows come from the Pantry's receipt photo reads (migration 0054).
+	// serviceReceipt rows come from the Pantry's receipt photo reads (migration 0055).
 	serviceReceipt = "receipt"
 	// outcomePlanned is the allocation_runs.outcome of a run that made a Day
 	// Plan (dayplan.Planned).

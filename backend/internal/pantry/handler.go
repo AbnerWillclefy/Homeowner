@@ -53,20 +53,31 @@ func mustLoad(name string) *time.Location {
 	return loc
 }
 
-// Handler serves the Pantry routes, which sit behind the finance allowlist.
-type Handler struct {
-	store  *Store
-	nfce   nfce.Client             // nil: reading a receipt by its code answers 503
-	reader *llmalloc.ReceiptReader // nil: reading a photo answers 503
-	model  string                  // recorded on an event row when a call reported no Usage
-	clk    clock.Clock
-	log    *slog.Logger
+// Groceries is the finance figure Pantry shows next to the list. Nil means the
+// User set no groceries limit; it can be negative. Month is YYYY-MM.
+type Groceries interface {
+	GroceriesLeft(ctx context.Context, userID, month string) (*int64, error)
 }
 
-// NewHandler returns a Handler over store; nfce reads receipts from SEFAZ and
-// photos, when not nil, reads them from a photo through the model.
-func NewHandler(store *Store, client nfce.Client, photos llmalloc.Client, model string, clk clock.Clock, log *slog.Logger) *Handler {
-	h := &Handler{store: store, nfce: client, model: model, clk: clk, log: log}
+// maxQuantityMilli caps a list quantity at 1 000 units.
+const maxQuantityMilli = 1_000_000
+
+// Handler serves the Pantry routes, which sit behind the finance allowlist.
+type Handler struct {
+	store     *Store
+	groceries Groceries
+	nfce      nfce.Client             // nil: reading a receipt by its code answers 503
+	reader    *llmalloc.ReceiptReader // nil: reading a photo answers 503
+	model     string                  // recorded on an event row when a call reported no Usage
+	clk       clock.Clock
+	log       *slog.Logger
+}
+
+// NewHandler returns a Handler over store; groceries gives the groceries
+// figure, nfce reads receipts from SEFAZ and photos, when not nil, reads them
+// from a photo through the model.
+func NewHandler(store *Store, groceries Groceries, client nfce.Client, photos llmalloc.Client, model string, clk clock.Clock, log *slog.Logger) *Handler {
+	h := &Handler{store: store, groceries: groceries, nfce: client, model: model, clk: clk, log: log}
 	if photos != nil {
 		h.reader = llmalloc.NewReceiptReader(photos)
 	}
@@ -451,4 +462,63 @@ func (h *Handler) MatchLine(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, rec)
+}
+
+// ShoppingList answers GET /me/finance/pantry/list.
+func (h *Handler) ShoppingList(w http.ResponseWriter, r *http.Request) {
+	userID := identity.CurrentUser(r.Context()).ID
+	rows, total, err := h.store.ShoppingList(r.Context(), userID)
+	if err != nil {
+		h.fail(w, "pantry: shopping list", err)
+		return
+	}
+	left, err := h.groceries.GroceriesLeft(r.Context(), userID, h.clk.Now().In(saoPaulo).Format("2006-01"))
+	if err != nil {
+		h.fail(w, "pantry: groceries left", err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, ShoppingList{Items: rows, ExpectedTotalCents: total, GroceriesLeftCents: left})
+}
+
+// EditList answers PUT /me/finance/pantry/list/{id} with exactly one of a
+// quantity or removed true.
+func (h *Handler) EditList(w http.ResponseWriter, r *http.Request) {
+	id := itemID(w, r)
+	if id == "" {
+		return
+	}
+	var req listEditRequest
+	if !httpx.DecodeBody(w, r, &req, maxBodyBytes, true) {
+		return
+	}
+	qtyOK := req.QuantityMilli != nil && req.Removed == nil && *req.QuantityMilli > 0 && *req.QuantityMilli <= maxQuantityMilli
+	removedOK := req.Removed != nil && *req.Removed && req.QuantityMilli == nil
+	if !qtyOK && !removedOK {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid edit")
+		return
+	}
+	if err := h.store.EditList(r.Context(), identity.CurrentUser(r.Context()).ID, id, req.QuantityMilli, removedOK, h.clk.Now()); err != nil {
+		h.fail(w, "pantry: edit list", err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// Detail answers GET /me/finance/pantry/items/{id}: the item, its average
+// duration and its price history, newest first.
+func (h *Handler) Detail(w http.ResponseWriter, r *http.Request) {
+	id := itemID(w, r)
+	if id == "" {
+		return
+	}
+	f, err := h.store.detail(r.Context(), identity.CurrentUser(r.Context()).ID, id)
+	if err != nil {
+		h.fail(w, "pantry: item detail", err)
+		return
+	}
+	out := ItemDetail{Item: f.Item, AvgDurationDays: f.AvgDurationDays, Prices: make([]Price, len(f.purchases))}
+	for i, p := range f.purchases {
+		out.Prices[i] = Price{IssuedOn: p.issuedOn.Format(time.DateOnly), UnitPriceCents: p.unitPriceCents, StoreName: p.storeName}
+	}
+	httpx.WriteJSON(w, http.StatusOK, out)
 }

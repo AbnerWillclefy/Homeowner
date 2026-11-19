@@ -54,30 +54,191 @@ func scanItem(row pgx.Row) (Item, error) {
 	return it, nil
 }
 
-// List returns the User's items ordered by name.
-func (s *Store) List(ctx context.Context, userID string) ([]Item, error) {
-	rows, err := s.db.Query(ctx, selectItem+` ORDER BY lower(i.name), i.id`, userID)
+// purchase is one receipt line matched to an item.
+type purchase struct {
+	issuedOn       time.Time
+	quantityMilli  int64
+	unit           string
+	unitPriceCents int64
+	storeName      string
+}
+
+// facts is an item with what its purchases and run-outs say about it. The
+// purchases run newest first, ties by receipt then line number.
+type facts struct {
+	Item
+	purchases []purchase
+	runOuts   []time.Time
+}
+
+// loadFacts reads the User's items (or the one in only, when set) in three
+// queries, however many items there are.
+func (s *Store) loadFacts(ctx context.Context, userID string, only *string) ([]facts, error) {
+	rows, err := s.db.Query(ctx, selectItem+` AND ($2::uuid IS NULL OR i.id = $2::uuid) ORDER BY lower(i.name), i.id`, userID, only)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	out := []Item{}
+	var out []facts
+	at := map[string]int{}
 	for rows.Next() {
 		it, err := scanItem(rows)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, it)
+		at[it.ID] = len(out)
+		out = append(out, facts{Item: it})
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	rows.Close()
+	prows, err := s.db.Query(ctx, `
+		SELECT l.item_id, rc.issued_on, l.quantity_milli, l.unit, l.unit_price_cents, rc.store_name
+		FROM finance_pantry_receipt_lines l JOIN finance_pantry_receipts rc ON rc.id = l.receipt_id
+		WHERE l.user_id = $1 AND l.item_id IS NOT NULL AND ($2::uuid IS NULL OR l.item_id = $2::uuid)
+		ORDER BY rc.issued_on DESC, rc.id, l.line_no`, userID, only)
+	if err != nil {
+		return nil, err
+	}
+	defer prows.Close()
+	for prows.Next() {
+		var id string
+		var p purchase
+		if err := prows.Scan(&id, &p.issuedOn, &p.quantityMilli, &p.unit, &p.unitPriceCents, &p.storeName); err != nil {
+			return nil, err
+		}
+		i, ok := at[id]
+		if !ok {
+			continue // created after the items were read
+		}
+		out[i].purchases = append(out[i].purchases, p)
+	}
+	if err := prows.Err(); err != nil {
+		return nil, err
+	}
+	rrows, err := s.db.Query(ctx, `SELECT item_id, ran_out_on FROM finance_pantry_run_outs
+		WHERE user_id = $1 AND ($2::uuid IS NULL OR item_id = $2::uuid)`, userID, only)
+	if err != nil {
+		return nil, err
+	}
+	defer rrows.Close()
+	for rrows.Next() {
+		var id string
+		var d time.Time
+		if err := rrows.Scan(&id, &d); err != nil {
+			return nil, err
+		}
+		i, ok := at[id]
+		if !ok {
+			continue // created after the items were read
+		}
+		out[i].runOuts = append(out[i].runOuts, d)
+	}
+	if err := rrows.Err(); err != nil {
+		return nil, err
+	}
+	for i := range out {
+		f := &out[i]
+		dates := make([]time.Time, len(f.purchases))
+		for j, p := range f.purchases {
+			dates[j] = p.issuedOn
+		}
+		f.AvgDurationDays = AvgDuration(dates, f.runOuts)
+		if len(f.purchases) > 0 {
+			f.LastPriceCents = &f.purchases[0].unitPriceCents
+		}
+	}
+	return out, nil
+}
+
+// List returns the User's items ordered by name.
+func (s *Store) List(ctx context.Context, userID string) ([]Item, error) {
+	fs, err := s.loadFacts(ctx, userID, nil)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Item, len(fs))
+	for i, f := range fs {
+		out[i] = f.Item
+	}
+	return out, nil
 }
 
 func (s *Store) get(ctx context.Context, userID, id string) (Item, error) {
-	it, err := scanItem(s.db.QueryRow(ctx, selectItem+` AND i.id = $2`, userID, id))
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Item{}, errNotFound
+	f, err := s.detail(ctx, userID, id)
+	return f.Item, err
+}
+
+func (s *Store) detail(ctx context.Context, userID, id string) (facts, error) {
+	fs, err := s.loadFacts(ctx, userID, &id)
+	if err != nil {
+		return facts{}, err
 	}
-	return it, err
+	if len(fs) == 0 {
+		return facts{}, errNotFound
+	}
+	return fs[0], nil
+}
+
+// ShoppingList builds the next list from the items and the User's edits of it.
+func (s *Store) ShoppingList(ctx context.Context, userID string) ([]ListRow, int64, error) {
+	fs, err := s.loadFacts(ctx, userID, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	type edit struct {
+		qty     *int64
+		removed bool
+	}
+	edits := map[string]edit{}
+	rows, err := s.db.Query(ctx, `SELECT item_id, quantity_milli, removed FROM finance_pantry_list_edits WHERE user_id = $1`, userID)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var e edit
+		if err := rows.Scan(&id, &e.qty, &e.removed); err != nil {
+			return nil, 0, err
+		}
+		edits[id] = e
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	in := make([]ListInput, len(fs))
+	for i, f := range fs {
+		e := edits[f.ID]
+		in[i] = ListInput{ItemID: f.ID, Name: f.Name, PreferredBrand: f.PreferredBrand, Fixed: f.Fixed, State: f.State, EditQuantityMilli: e.qty, Removed: e.removed}
+		if len(f.purchases) > 0 {
+			p := f.purchases[0]
+			in[i].Unit, in[i].LastQuantityMilli, in[i].LastUnitPriceCents = p.unit, &p.quantityMilli, &p.unitPriceCents
+		}
+	}
+	list, total := BuildList(in)
+	return list, total, nil
+}
+
+// EditList records a change to the item's list row: a quantity, or removal.
+// It lasts until a receipt line matches the item. errNotFound for another
+// User's item.
+func (s *Store) EditList(ctx context.Context, userID, id string, qty *int64, removed bool, now time.Time) error {
+	tag, err := s.db.Exec(ctx, `
+		INSERT INTO finance_pantry_list_edits (user_id, item_id, quantity_milli, removed, updated_at)
+		SELECT $1, i.id, $3::bigint, $4::boolean, $5 FROM finance_pantry_items i WHERE i.id = $2 AND i.user_id = $1
+		ON CONFLICT (user_id, item_id) DO UPDATE SET
+			quantity_milli = COALESCE($3::bigint, finance_pantry_list_edits.quantity_milli),
+			removed = finance_pantry_list_edits.removed OR $4::boolean, updated_at = $5`,
+		userID, id, qty, removed, now)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return errNotFound
+	}
+	return nil
 }
 
 func nameTaken(err error) error {
@@ -288,6 +449,9 @@ func (s *Store) AddReceipt(ctx context.Context, userID, key string, rc nfce.Rece
 		WHERE l.receipt_id = $1 AND m.user_id = $2 AND m.line_key = l.line_key`, id, userID); err != nil {
 		return Receipt{}, false, err
 	}
+	if err := clearEdits(ctx, tx, userID, id); err != nil {
+		return Receipt{}, false, err
+	}
 	r, err = s.receiptQ(ctx, tx, userID, "id = $2", id)
 	if err != nil {
 		return Receipt{}, false, err
@@ -357,6 +521,14 @@ func (s *Store) recordPhotoEvent(ctx context.Context, log *slog.Logger, model st
 	}
 }
 
+// clearEdits deletes the list edits of every item the receipt's lines match:
+// the item was just bought, so its edit has run its course.
+func clearEdits(ctx context.Context, tx pgx.Tx, userID, receiptID string) error {
+	_, err := tx.Exec(ctx, `DELETE FROM finance_pantry_list_edits WHERE user_id = $1 AND item_id IN
+		(SELECT item_id FROM finance_pantry_receipt_lines WHERE receipt_id = $2 AND item_id IS NOT NULL)`, userID, receiptID)
+	return err
+}
+
 // MatchLine saves the User's choice for line n of the receipt, creating the
 // item when asked, and applies it to every line of this receipt with the same
 // key. A receipt, line or item that is not the User's is errNotFound.
@@ -406,6 +578,11 @@ func (s *Store) MatchLine(ctx context.Context, userID, receiptID string, n int, 
 	if _, err := tx.Exec(ctx, `UPDATE finance_pantry_receipt_lines SET item_id = $4, ignored = $5
 		WHERE user_id = $1 AND receipt_id = $2 AND line_key = $3`, userID, receiptID, key, item, m.Ignore); err != nil {
 		return Receipt{}, err
+	}
+	if item != nil { // only the item just bought; other items keep their edits
+		if _, err := tx.Exec(ctx, `DELETE FROM finance_pantry_list_edits WHERE user_id = $1 AND item_id = $2`, userID, *item); err != nil {
+			return Receipt{}, err
+		}
 	}
 	r, err := s.receiptQ(ctx, tx, userID, "id = $2", receiptID)
 	if err != nil {

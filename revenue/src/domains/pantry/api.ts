@@ -75,3 +75,90 @@ export const undoRanOut = async (id: string, client: AxiosInstance = apiClient):
   const response = await send(client, "DELETE", `${itemUrl(id)}/run-outs/latest`, 204);
   return conflict(response, "not_ran_out") ? { kind: "ok" } : writeResult(response, 204);
 };
+
+/** One line of a receipt. `itemId` is set once it is matched to an item; `ignored` once it is marked "not a pantry item". */
+export interface ReceiptLine {
+  /** 1-based position; the path of `matchLine`. */
+  n: number;
+  description: string;
+  /** Thousandths of `unit`: 1500 is 1,5 kg. */
+  quantityMilli: number;
+  unit: string;
+  unitPriceCents: number;
+  totalCents: number;
+  itemId: string | null;
+  ignored: boolean;
+}
+
+/** A receipt as `POST pantry/receipts` and `PUT .../lines/{n}` answer it. */
+export interface Receipt {
+  id: string;
+  storeName: string;
+  /** `YYYY-MM-DD`. */
+  issuedOn: string;
+  totalCents: number;
+  readBy: string;
+  lines: ReceiptLine[];
+}
+
+/**
+ * Adding a receipt: read now (201), already saved (200), the code refused (400 `invalid_code`), SEFAZ or the User's
+ * state cannot be read (502 `sefaz_unavailable`, 422 `unsupported_state`: both offer the photo), or anything else.
+ */
+export type AddReceiptResult =
+  | { kind: "created" | "duplicate"; receipt: Receipt }
+  | { kind: "invalid" }
+  | { kind: "unavailable" }
+  | { kind: "error" };
+
+/** How one line is matched: to an item, to a new item, or "not a pantry item". */
+export type MatchChoice = { itemId: string } | { newItem: { name: string; brand: string | null } } | { ignore: true };
+
+/** A match: the receipt as it is now, a refused name (409 `name_taken` is `{ name: "taken" }`), a receipt or line that is gone, or a failure. */
+export type MatchResult = { kind: "ok"; receipt: Receipt } | { kind: "fields"; fields: FieldCodes } | { kind: "not-found" } | { kind: "error" };
+
+const isInt = (v: unknown): v is number => Number.isSafeInteger(v);
+
+function parseLine(v: unknown): ReceiptLine | null {
+  if (!isRecord(v)) return null;
+  const { n, description, quantityMilli, unit, unitPriceCents, totalCents, itemId, ignored } = v;
+  if (!isInt(n) || n < 1 || typeof description !== "string" || !isInt(quantityMilli) || typeof unit !== "string") return null;
+  if (!isInt(unitPriceCents) || !isInt(totalCents) || typeof ignored !== "boolean") return null;
+  if (itemId !== undefined && itemId !== null && typeof itemId !== "string") return null;
+  return { n, description, quantityMilli, unit, unitPriceCents, totalCents, itemId: itemId ?? null, ignored };
+}
+
+function parseReceipt(v: unknown): Receipt | null {
+  if (!isRecord(v)) return null;
+  const { id, storeName, issuedOn, totalCents, readBy, lines } = v;
+  if (typeof id !== "string" || typeof storeName !== "string" || typeof issuedOn !== "string" || !isInt(totalCents) || typeof readBy !== "string") return null;
+  if (!Array.isArray(lines)) return null;
+  const parsed = lines.map(parseLine);
+  return parsed.every((l) => l !== null) ? { id, storeName, issuedOn, totalCents, readBy, lines: parsed } : null;
+}
+
+const errorCode = (data: unknown) => (isRecord(data) && typeof data.error === "string" ? data.error : null);
+
+/** `POST /me/finance/pantry/receipts` with the pasted or scanned text; the server reads the key out of it. */
+export async function addReceipt(code: string, client: AxiosInstance = apiClient): Promise<AddReceiptResult> {
+  let response;
+  try {
+    response = await client.request({ method: "POST", url: "/me/finance/pantry/receipts", data: { code } });
+  } catch {
+    return { kind: "error" };
+  }
+  const { status, data } = response;
+  if (status === 400 && errorCode(data) === "invalid_code") return { kind: "invalid" };
+  if (status === 502 || status === 422) return { kind: "unavailable" };
+  const receipt = status === 200 || status === 201 ? parseReceipt(data) : null;
+  return receipt ? { kind: status === 201 ? "created" : "duplicate", receipt } : { kind: "error" };
+}
+
+/** `PUT /me/finance/pantry/receipts/{id}/lines/{n}`: written as soon as it is chosen, so nothing is lost if the Sheet closes. */
+export async function matchLine(receiptId: string, n: number, choice: MatchChoice, client: AxiosInstance = apiClient): Promise<MatchResult> {
+  const response = await send(client, "PUT", `/me/finance/pantry/receipts/${encodeURIComponent(receiptId)}/lines/${n}`, 200, choice);
+  if (conflict(response, "name_taken")) return { kind: "fields", fields: { name: "taken" } };
+  if (response?.status === 404) return { kind: "not-found" };
+  const receipt = response?.status === 200 ? parseReceipt(response.data) : null;
+  return receipt ? { kind: "ok", receipt } : { kind: "error" };
+}
