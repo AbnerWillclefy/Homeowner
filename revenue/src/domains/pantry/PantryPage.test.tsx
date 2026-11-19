@@ -219,6 +219,21 @@ describe("concurrent writes", () => {
     expect(within(screen.getByRole("list", { name: "Items that ran out" })).getByText("Feijão")).toBeTruthy();
   });
 
+  it("keeps a pending run-out when an add answers and the list is not read again", async () => {
+    serve([RICE]);
+    ranOut.mockReturnValue(new Promise(() => {}));
+    vi.mocked(api.addItem).mockResolvedValue(ok);
+    open();
+    await userEvent.click(await screen.findByRole("button", { name: "Ran out: Arroz" }));
+    vi.mocked(api.getPantry).mockClear();
+    await userEvent.type(screen.getByRole("textbox", { name: "New item" }), "Café");
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await waitFor(() => expect(api.addItem).toHaveBeenCalledWith("Café"));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(api.getPantry).not.toHaveBeenCalled();
+    expect(within(screen.getByRole("list", { name: "Items that ran out" })).getByText("Arroz")).toBeTruthy();
+  });
+
   it("disables a row's menu entries while its run-out is pending", async () => {
     serve([RICE]);
     ranOut.mockReturnValue(new Promise(() => {}));

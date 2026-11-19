@@ -37,14 +37,13 @@ export function usePantry() {
       const result = await (ranOut ? markRanOut : undoRanOut)(item.id);
       pending.current -= 1;
       setBusyId(item.id, false);
-      if (result.kind === "ok") {
-        if (pending.current === 0) refresh();
-        return true;
+      if (result.kind !== "ok") {
+        replace(before);
+        setNotice(result.kind === "not-found" ? "gone" : "failed");
       }
-      replace(before);
-      setNotice(result.kind === "not-found" ? "gone" : "failed");
-      if (result.kind === "not-found" && pending.current === 0) refresh();
-      return false;
+      // Also covers a read `settle` skipped while this run-out was pending.
+      if (pending.current === 0) refresh();
+      return result.kind === "ok";
     },
     [client, refresh, setBusyId],
   );
@@ -53,7 +52,7 @@ export function usePantry() {
   const settle = useCallback(
     (kind: string): SaveOutcome => {
       if (kind !== "ok" && kind !== "not-found") return { kind: "failed" };
-      refresh();
+      if (pending.current === 0) refresh();
       return { kind: "ok" };
     },
     [refresh],
