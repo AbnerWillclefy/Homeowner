@@ -2,7 +2,7 @@ import type { AxiosAdapter, InternalAxiosRequestConfig } from "axios";
 import { describe, expect, it } from "vitest";
 import { createApiClient } from "../../api/client";
 import { createSessionStore } from "../../auth/session";
-import { addItem, addReceipt, deleteItem, getItem, getPantry, markRanOut, matchLine, undoRanOut, updateItem } from "./api";
+import { addItem, addReceipt, deleteItem, getItem, getPantry, markRanOut, matchLine, readPhoto, saveDraft, undoRanOut, updateItem } from "./api";
 
 const ITEM = { id: "p1", name: "Arroz", preferredBrand: "Tio João", fixed: true, state: "in_stock", ranOutOn: null };
 
@@ -185,5 +185,57 @@ describe("getItem", () => {
     ["issuedOn", 20300102], ["unitPriceCents", "27,90"], ["unitPriceCents", 1.5], ["storeName", null],
   ])("refuses a price with a bad %s", async (field, value) => {
     await expect(getItem("p1", setup(200, { ...DETAIL, prices: [{ ...PRICE, [field]: value }] }).client)).rejects.toThrow();
+  });
+});
+
+describe("photo receipts", () => {
+  const DRAFT = { storeName: "Bom Preço", issuedOn: "2030-01-02", totalCents: 2790, lines: [{ description: "Arroz", quantityMilli: 1000, unit: "UN", unitPriceCents: 2790, totalCents: 2790 }] };
+  const RECEIPT = { id: "r1", storeName: "Bom Preço", issuedOn: "2030-01-02", totalCents: 2790, readBy: "photo", lines: [{ n: 1, ...DRAFT.lines[0], itemId: null, ignored: false }] };
+
+  it("sends the photo as the raw JPEG body and reads the draft, defaulting the optional fields", async () => {
+    const photo = new Blob(["x"], { type: "image/jpeg" });
+    const { client, sent } = setup(200, { draft: DRAFT });
+    expect(await readPhoto(photo, client)).toEqual({ kind: "draft", draft: { ...DRAFT, storeCnpj: "", accessKey: "" } });
+    expect(sent[0]!.url).toBe("/me/finance/pantry/receipts/photo");
+    expect(sent[0]!.data).toBe(photo);
+    expect(sent[0]!.headers.get("Content-Type")).toBe("image/jpeg");
+  });
+
+  it.each([
+    [429, { error: "photo_cap" }, "cap"],
+    [502, { error: "photo_unreadable" }, "unreadable"],
+    [413, { error: "too_large" }, "error"],
+    [415, { error: "unsupported_media_type" }, "error"],
+    [503, {}, "error"],
+  ])("maps %d to %s", async (status, body, kind) => {
+    expect((await readPhoto(new Blob(["x"]), setup(status, body).client)).kind).toBe(kind);
+  });
+
+  it("is an error when the request fails", async () => {
+    expect((await readPhoto(new Blob(["x"]), setup(200, {}, true).client)).kind).toBe("error");
+  });
+
+  it.each([
+    ["storeName", 5], ["issuedOn", null], ["totalCents", "10"], ["lines", {}], ["storeCnpj", 1], ["accessKey", 1],
+    ["lines", [{ ...DRAFT.lines[0], quantityMilli: 1.5 }]], ["lines", [{ ...DRAFT.lines[0], description: 1 }]], ["lines", [{ ...DRAFT.lines[0], unit: null }]],
+    ["lines", [{ ...DRAFT.lines[0], unitPriceCents: "1" }]], ["lines", [{ ...DRAFT.lines[0], totalCents: undefined }]], ["lines", [null]],
+  ])("refuses a draft with a bad %s", async (field, value) => {
+    expect((await readPhoto(new Blob(["x"]), setup(200, { draft: { ...DRAFT, [field]: value } }).client)).kind).toBe("error");
+  });
+
+  it("saves a draft as { draft } and tells created from duplicate", async () => {
+    const created = setup(201, RECEIPT);
+    expect(await saveDraft({ ...DRAFT, storeCnpj: "", accessKey: "" }, created.client)).toMatchObject({ kind: "created", receipt: { readBy: "photo" } });
+    expect(created.sent[0]!.url).toBe("/me/finance/pantry/receipts");
+    expect(JSON.parse(String(created.sent[0]!.data))).toEqual({ draft: { ...DRAFT, storeCnpj: "", accessKey: "" } });
+    expect((await saveDraft({ ...DRAFT, storeCnpj: "", accessKey: "" }, setup(200, RECEIPT).client)).kind).toBe("duplicate");
+  });
+
+  it("returns the fields a 400 invalid_draft names, and an error for anything else", async () => {
+    const d = { ...DRAFT, storeCnpj: "", accessKey: "" };
+    expect(await saveDraft(d, setup(400, { error: "invalid_draft", fields: ["totalCents", "lines.2.description", 7] }).client)).toEqual({ kind: "rejected", fields: ["totalCents", "lines.2.description"] });
+    expect((await saveDraft(d, setup(400, { error: "other" }).client)).kind).toBe("error");
+    expect((await saveDraft(d, setup(201, { id: "r1" }).client)).kind).toBe("error");
+    expect((await saveDraft(d, setup(500, {}).client)).kind).toBe("error");
   });
 });

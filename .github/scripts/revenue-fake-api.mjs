@@ -248,6 +248,11 @@ export function answer(method, url, today) {
     return body ? { status: 200, body } : { status: 404, body: { error: "not_found" } };
   }
   if (route === "POST /me/finance/pantry/receipts") return { status: 201, body: receipt(today) };
+  if (route === "POST /me/finance/pantry/receipts/photo") {
+    const { storeName, issuedOn, totalCents, lines } = receipt(today);
+    const draftLines = lines.map(({ description, quantityMilli, unit, unitPriceCents, totalCents: lineTotal }) => ({ description, quantityMilli, unit, unitPriceCents, totalCents: lineTotal }));
+    return { status: 200, body: { draft: { storeName, storeCnpj: "", accessKey: "", issuedOn, totalCents, lines: draftLines } } };
+  }
   if (/^PUT \/me\/finance\/pantry\/receipts\/r1\/lines\/\d+$/.test(route)) return { status: 200, body: receipt(today) };
   if (route === "GET /me/finance/net-worth") return { status: 200, body: netWorth(today, params.get("range")) };
   if (route === "GET /me/finance/savings") return { status: 200, body: savings(today) };

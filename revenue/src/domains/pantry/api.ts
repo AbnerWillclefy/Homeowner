@@ -208,3 +208,79 @@ export async function matchLine(receiptId: string, n: number, choice: MatchChoic
   const receipt = response?.status === 200 ? parseReceipt(response.data) : null;
   return receipt ? { kind: "ok", receipt } : { kind: "error" };
 }
+
+/** One line of a draft read from a photo, before the User has checked it. */
+export interface ReceiptDraftLine {
+  description: string;
+  quantityMilli: number;
+  unit: string;
+  unitPriceCents: number;
+  totalCents: number;
+}
+
+/** What the model read from a photo (`POST pantry/receipts/photo`). Untrusted until the User confirms it and `saveDraft` stores it. */
+export interface ReceiptDraft {
+  storeName: string;
+  /** Digits only, or empty. Sent back unchanged. */
+  storeCnpj: string;
+  /** A valid NFC-e access key, or empty. Sent back unchanged. */
+  accessKey: string;
+  /** `YYYY-MM-DD`; the model may get it wrong, so it can be anything until validated. */
+  issuedOn: string;
+  totalCents: number;
+  lines: ReceiptDraftLine[];
+}
+
+/** A photo read: a draft (nothing saved), the daily cap (429), a photo the model could not read (502), or a failure. */
+export type ReadPhotoResult = { kind: "draft"; draft: ReceiptDraft } | { kind: "cap" } | { kind: "unreadable" } | { kind: "error" };
+
+/** Saving a draft: like `AddReceiptResult`, or refused (400 `invalid_draft`) with the field codes, such as `lines.2.totalCents`. */
+export type SaveDraftResult = { kind: "created" | "duplicate"; receipt: Receipt } | { kind: "rejected"; fields: string[] } | { kind: "error" };
+
+function parseDraftLine(v: unknown): ReceiptDraftLine | null {
+  if (!isRecord(v)) return null;
+  const { description, quantityMilli, unit, unitPriceCents, totalCents } = v;
+  if (typeof description !== "string" || !isInt(quantityMilli) || typeof unit !== "string" || !isInt(unitPriceCents) || !isInt(totalCents)) return null;
+  return { description, quantityMilli, unit, unitPriceCents, totalCents };
+}
+
+function parseDraft(v: unknown): ReceiptDraft | null {
+  if (!isRecord(v)) return null;
+  const { storeName, storeCnpj, accessKey, issuedOn, totalCents, lines } = v;
+  if (typeof storeName !== "string" || typeof issuedOn !== "string" || !isInt(totalCents) || !Array.isArray(lines)) return null;
+  // The two optional ones may be missing; anything else than text is refused.
+  if ((storeCnpj !== undefined && typeof storeCnpj !== "string") || (accessKey !== undefined && typeof accessKey !== "string")) return null;
+  const parsed = lines.map(parseDraftLine);
+  return parsed.every((l) => l !== null) ? { storeName, storeCnpj: storeCnpj ?? "", accessKey: accessKey ?? "", issuedOn, totalCents, lines: parsed } : null;
+}
+
+/** `POST /me/finance/pantry/receipts/photo`: the downsized JPEG as the raw body. The model can take up to 20 s; the client sets no shorter timeout. */
+export async function readPhoto(photo: Blob, client: AxiosInstance = apiClient): Promise<ReadPhotoResult> {
+  let response;
+  try {
+    response = await client.request({ method: "POST", url: "/me/finance/pantry/receipts/photo", data: photo, headers: { "Content-Type": "image/jpeg" } });
+  } catch {
+    return { kind: "error" };
+  }
+  const { status, data } = response;
+  if (status === 429 && errorCode(data) === "photo_cap") return { kind: "cap" };
+  if (status === 502 && errorCode(data) === "photo_unreadable") return { kind: "unreadable" };
+  const draft = status === 200 && isRecord(data) ? parseDraft(data.draft) : null;
+  return draft ? { kind: "draft", draft } : { kind: "error" };
+}
+
+/** `POST /me/finance/pantry/receipts` with `{ draft }`: the draft the User confirmed. A 200 is a receipt saved before. */
+export async function saveDraft(draft: ReceiptDraft, client: AxiosInstance = apiClient): Promise<SaveDraftResult> {
+  let response;
+  try {
+    response = await client.request({ method: "POST", url: "/me/finance/pantry/receipts", data: { draft } });
+  } catch {
+    return { kind: "error" };
+  }
+  const { status, data } = response;
+  if (status === 400 && errorCode(data) === "invalid_draft" && isRecord(data) && Array.isArray(data.fields)) {
+    return { kind: "rejected", fields: data.fields.filter((f): f is string => typeof f === "string") };
+  }
+  const receipt = status === 200 || status === 201 ? parseReceipt(data) : null;
+  return receipt ? { kind: status === 201 ? "created" : "duplicate", receipt } : { kind: "error" };
+}
