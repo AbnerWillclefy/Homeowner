@@ -101,6 +101,12 @@ describe("the summary", () => {
     expect(screen.queryByText(/Over the groceries limit/)).toBeNull();
   });
 
+  it("counts several lines with no price in the plural, in pt-BR", async () => {
+    serve(list({ items: [SALT, line({ itemId: "p5", name: "Açúcar" })], expectedTotalCents: 0 }));
+    open("pt-BR");
+    expect(await screen.findByText("2 itens sem preço")).toBeTruthy();
+  });
+
   it("says how much over the limit it is, and blocks nothing", async () => {
     serve(list({ groceriesLeftCents: 5000 }));
     open();
