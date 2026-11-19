@@ -59,16 +59,20 @@ Migrations live in `backend/migrations/` as `NNNN_description.sql` files, applie
 | `0049_chore_responsible.sql` | `chores.responsible_resident_id` (uuid, null means Nobody), references `residents` with `ON DELETE SET NULL`, so a Resident who leaves the Home (or a Home deleted with its last Resident) leaves the Chore with Nobody, and indexed (`chores_responsible_resident_idx`) for that cascade and for the updates that clear it when a Restriction is added. The foreign key cannot say the Resident lives in the Chore's Home, so `choresettings.SetResponsible` proves it in Go, in the same transaction that locks the Chore. Expand only, no backfill: every existing Chore stays with Nobody. Down drops the index and the column. |
 | `0050_finance_manual_cards.sql` | `finance_manual_cards` (`id`, `user_id` cascade, `name`, `due_day` `CHECK 1..31`, `pix_recipient` text null, timestamps) and `finance_manual_card_bills` (`card_id` cascade, `user_id` cascade, `month` `CHECK` first of a month, `total_cents` `CHECK >= 0`, primary key `(card_id, month)`): a credit card kept by hand with one typed bill per month; a month with no row is "not typed", distinct from a typed 0. Expand only; Down drops both. |
 | `0051_finance_transaction_note.sql` | `finance_transactions.note` text null, `CHECK char_length(note) BETWEEN 1 AND 200`: the User's Note on a Transaction; no Note is NULL, never `''`; no index, the search runs in the browser. Expand only; Down drops the column. |
+| `0052_finance_pantry.sql` | The Pantry. `finance_pantry_items` (`id`, `user_id` cascade, `name`, `preferred_brand` text null, `fixed` boolean default false, timestamps) with a unique index on `(user_id, lower(name))`, so receipt matching cannot create a second "Café". `finance_pantry_run_outs` (`id`, `user_id` cascade, `item_id` cascade, `ran_out_on` date, `created_at`), indexed on `(item_id, ran_out_on)`. No state column: an item's state is derived from its run-outs and purchases. Expand only; Down drops both. |
+| `0053_finance_pantry_receipts.sql` | `finance_pantry_receipts` (`id`, `user_id` cascade, `access_key` char(44) null, `store_name`, `store_cnpj` char(14) null, `issued_on` date, `total_cents`, `read_by` `sefaz` or `photo`, `created_at`; `UNIQUE (user_id, access_key)`, where NULLs stay distinct). `finance_pantry_receipt_lines` (`user_id` cascade, `receipt_id` cascade, `line_no`, `description`, `product_code` null, `quantity_milli` `CHECK > 0`, `unit`, `unit_price_cents`, `total_cents`, `line_key`, `item_id` null with `ON DELETE SET NULL`, `ignored`; primary key `(receipt_id, line_no)`, a line is never both matched and ignored), indexed on `item_id`. `finance_pantry_line_matches` (`user_id` cascade, `line_key`, `item_id` null with `ON DELETE CASCADE`, `ignored`, `updated_at`; primary key `(user_id, line_key)`, exactly one of an item and ignored). There is no column for the consumer's CPF, on purpose. Expand only; Down drops all three. |
+| `0054_finance_pantry_list_edits.sql` | `finance_pantry_list_edits` (`user_id` cascade, `item_id` cascade, `quantity_milli` null `CHECK > 0`, `removed` default false, `updated_at`; primary key `(user_id, item_id)`): the User's change to the next Shopping list, deleted when a receipt line next matches the item. Expand only; Down drops it. |
+| `0055_finance_pantry_photo.sql` | `finance_pantry_photo_calls` (`user_id` cascade, `call_date` the São Paulo date, `calls` `CHECK >= 0`; primary key `(user_id, call_date)`): the daily cap on receipt photo reads, counts only. `llm_call_events_service_check` is dropped and re-added with a fifth service, `receipt` (widened: every old row still passes; Down deletes the `receipt` rows first). A partial unique index `finance_pantry_receipts_photo_dup_idx` on `(user_id, lower(store_name), issued_on, total_cents) WHERE access_key IS NULL` makes a second photo of the same receipt a duplicate. Expand only. |
 
 A Home is created by one transaction that inserts the `homes` row and the creator's `residents` row; if the `residents` insert hits the unique violation the transaction rolls back and no Home is left behind.
 
-A User is created by the first authenticated request, with one `INSERT ... ON CONFLICT (cognito_sub) DO UPDATE ... RETURNING` statement, so two simultaneous first requests create one row. `users`, `push_subscriptions`, the three profile tables, `homes`, `residents`, `chores`, `tasks`, the two specific-setting tables, `allocation_runs`, `day_plan_assignments`, `invites`, `checkins`, `checkin_demand_restrictions`, `nudges`, `task_residents`, `completions`, `completion_residents`, `swap_offers`, `llm_calls`, `day_plan_explanations`, `llm_call_events`, `finance_credentials`, `finance_items`, `finance_sources`, `finance_transactions`, `finance_merchant_categories`, `finance_llm_calls`, `finance_bills`, `finance_bill_payments`, `finance_bill_reminders`, `finance_settings`, `finance_category_budgets`, `finance_bill_suggestion_dismissals`, `finance_investments`, `finance_investment_values`, `finance_goals`, `finance_card_bills`, `finance_source_balances` and `voice_calls` are the tables built. Everything else below is the planned schema from issue #1.
+A User is created by the first authenticated request, with one `INSERT ... ON CONFLICT (cognito_sub) DO UPDATE ... RETURNING` statement, so two simultaneous first requests create one row. `users`, `push_subscriptions`, the three profile tables, `homes`, `residents`, `chores`, `tasks`, the two specific-setting tables, `allocation_runs`, `day_plan_assignments`, `invites`, `checkins`, `checkin_demand_restrictions`, `nudges`, `task_residents`, `completions`, `completion_residents`, `swap_offers`, `llm_calls`, `day_plan_explanations`, `llm_call_events`, `finance_credentials`, `finance_items`, `finance_sources`, `finance_transactions`, `finance_merchant_categories`, `finance_llm_calls`, `finance_bills`, `finance_bill_payments`, `finance_bill_reminders`, `finance_settings`, `finance_category_budgets`, `finance_bill_suggestion_dismissals`, `finance_investments`, `finance_investment_values`, `finance_goals`, `finance_card_bills`, `finance_source_balances`, `finance_manual_cards`, `finance_manual_card_bills`, the seven Pantry tables (`finance_pantry_items`, `finance_pantry_run_outs`, `finance_pantry_receipts`, `finance_pantry_receipt_lines`, `finance_pantry_line_matches`, `finance_pantry_list_edits`, `finance_pantry_photo_calls`) and `voice_calls` are the tables built. Everything else below is the planned schema from issue #1.
 
 **"Recurring", the product definition (`SuggestBills`, `finance/rules.go`).** A merchant (grouped by `MerchantKey`) is suggested as a Bill when it has an Expense in each of the last 3 complete São Paulo calendar months; taking each month's largest Expense, the three amounts are each within 10% of their median (integer arithmetic) and the three days of the month are each within 5 days of the median day (clamped to the month's length, no wrap-around: the 30th and the 2nd are far apart). Ignored: income, Transfers, refunds, Transactions already linked to a Bill payment, and installment charges (a `PARC nn/mm` plan repeats monthly but is an Installment, not a Bill). Not suggested when a Bill already covers the merchant (`MatchBills`' name test without the amount: the folded Bill name, at least 3 characters, is contained in a folded description) or the Resident dismissed it. The proposed name is the longest prefix of the key's words contained, folded, in all three descriptions (so `NETFLIX.COM` gives `NETFLIX`) and at least 3 characters, so `MatchBills` can pay the accepted Bill later; the amount is the latest month's and the due day the median day. Known limit: if the amount varies, the accepted Bill matches the bank only on an exact amount, so it is paid by hand.
 
-**Finance data rules.** Every finance table is named `finance_*` and carries `user_id` referencing `users` with `ON DELETE CASCADE`, never a Home, so leaving or changing Home deletes nothing and a future account deletion cascades. `DELETE /me/finance` runs `DELETE ... WHERE user_id = $1` over the `financeTables` list in `internal/finance/store.go` in one transaction (the Pluggy Item is left alone: it lives in the User's own Pluggy account). A catalog test reads `pg_catalog` for every `finance\_%` table and fails if one lacks the `user_id` cascade or is missing from `financeTables`, so a later finance table must be named `finance_*` and added to the list. Today the list has nineteen tables, children first: `finance_source_balances`, `finance_card_bills`, `finance_transactions`, `finance_sources`, `finance_items`, `finance_credentials`, `finance_merchant_categories`, `finance_llm_calls`, `finance_bill_reminders`, `finance_bill_payments`, `finance_bills`, `finance_settings`, `finance_category_budgets`, `finance_bill_suggestion_dismissals`, `finance_investment_values`, `finance_investments`, `finance_goals`, `finance_manual_card_bills` and `finance_manual_cards`.
+**Finance data rules.** Every finance table is named `finance_*` and carries `user_id` referencing `users` with `ON DELETE CASCADE`, never a Home, so leaving or changing Home deletes nothing and a future account deletion cascades. `DELETE /me/finance` runs `DELETE ... WHERE user_id = $1` over the `financeTables` list in `internal/finance/store.go` in one transaction (the Pluggy Item is left alone: it lives in the User's own Pluggy account). A catalog test reads `pg_catalog` for every `finance\_%` table and fails if one lacks the `user_id` cascade or is missing from `financeTables`, so a later finance table must be named `finance_*` and added to the list. Today the list has twenty-six tables, children first: `finance_source_balances`, `finance_card_bills`, `finance_transactions`, `finance_sources`, `finance_items`, `finance_credentials`, `finance_merchant_categories`, `finance_llm_calls`, `finance_bill_reminders`, `finance_bill_payments`, `finance_bills`, `finance_settings`, `finance_category_budgets`, `finance_bill_suggestion_dismissals`, `finance_investment_values`, `finance_investments`, `finance_goals`, `finance_manual_card_bills`, `finance_manual_cards`, `finance_pantry_photo_calls`, `finance_pantry_line_matches`, `finance_pantry_receipt_lines`, `finance_pantry_receipts`, `finance_pantry_run_outs`, `finance_pantry_list_edits` and `finance_pantry_items`.
 
-**Finance tables.** Every one hangs on `users`; none touches a Home. The Finances redesign added `finance_category_budgets` (Spending limits), `finance_bill_payments.expected_cents` (the snapshot of a paid month) and `finance_bill_suggestion_dismissals`. Savings (`0037`) added `finance_investments`, `finance_goals` and three settings on `finance_settings`. The real leftover (`0039` to `0042`) added `finance_card_bills`, the `saving` type, `finance_sources.display_name` and `finance_transactions.own_counterpart`. Manual cards (`0050`) added `finance_manual_cards` and `finance_manual_card_bills`. Revenue's screens (#703) added `finance_sources.credit_limit_cents` and the Item status columns. The diagram shows the columns of the tables those added or changed.
+**Finance tables.** Every one hangs on `users`; none touches a Home. The Finances redesign added `finance_category_budgets` (Spending limits), `finance_bill_payments.expected_cents` (the snapshot of a paid month) and `finance_bill_suggestion_dismissals`. Savings (`0037`) added `finance_investments`, `finance_goals` and three settings on `finance_settings`. The real leftover (`0039` to `0042`) added `finance_card_bills`, the `saving` type, `finance_sources.display_name` and `finance_transactions.own_counterpart`. Manual cards (`0050`) added `finance_manual_cards` and `finance_manual_card_bills`. Revenue's screens (#703) added `finance_sources.credit_limit_cents` and the Item status columns. The Pantry (`0052` to `0055`) added the seven `finance_pantry_*` tables. The diagram shows the columns of the tables those added or changed.
 
 ```mermaid
 erDiagram
@@ -93,6 +97,15 @@ erDiagram
     users ||--o{ finance_goals : "Goals"
     users ||--o{ finance_manual_cards : "manual cards"
     finance_manual_cards ||--o{ finance_manual_card_bills : "typed bills"
+    users ||--o{ finance_pantry_items : "Pantry items"
+    finance_pantry_items ||--o{ finance_pantry_run_outs : "ran out on"
+    users ||--o{ finance_pantry_receipts : "grocery receipts"
+    finance_pantry_receipts ||--|{ finance_pantry_receipt_lines : "lines"
+    finance_pantry_items |o--o{ finance_pantry_receipt_lines : "bought as, set null on delete"
+    users ||--o{ finance_pantry_line_matches : "answers per line key"
+    finance_pantry_items |o--o{ finance_pantry_line_matches : "matched to, cascade"
+    finance_pantry_items ||--o| finance_pantry_list_edits : "Shopping list edit"
+    users ||--o{ finance_pantry_photo_calls : "photo reads counted"
     finance_items {
         text status "Pluggy's, null until read"
         text execution_status "null until read"
@@ -166,6 +179,52 @@ erDiagram
         int position "unique per User, deferred"
         date target_month "null = no date"
     }
+    finance_pantry_items {
+        uuid id
+        uuid user_id
+        text name "unique per User, any case"
+        text preferred_brand "null = none"
+        bool fixed "always buy"
+    }
+    finance_pantry_run_outs {
+        uuid item_id
+        date ran_out_on
+    }
+    finance_pantry_receipts {
+        uuid id
+        char access_key "44 digits; null = a photo with no key"
+        text store_name
+        char store_cnpj "null = not read"
+        date issued_on "the purchase date"
+        bigint total_cents
+        text read_by "sefaz or photo"
+    }
+    finance_pantry_receipt_lines {
+        uuid receipt_id
+        int line_no "primary key with receipt_id"
+        text description
+        bigint quantity_milli "> 0, thousandths"
+        bigint unit_price_cents
+        text line_key "LineKey(description)"
+        uuid item_id "null = unmatched"
+        bool ignored "not a pantry item"
+    }
+    finance_pantry_line_matches {
+        uuid user_id
+        text line_key "primary key with user_id"
+        uuid item_id "null exactly when ignored"
+        bool ignored
+    }
+    finance_pantry_list_edits {
+        uuid item_id
+        bigint quantity_milli "null = keep the derived quantity"
+        bool removed
+    }
+    finance_pantry_photo_calls {
+        uuid user_id
+        date call_date "São Paulo"
+        int calls
+    }
 ```
 
 - **Spending limits** (`finance_category_budgets`, `0033`). One row per category with a limit; no row is no limit. A limit holds for every month: there is no month column and no history, so changing it changes past months too. `GET /me/finance/transactions` returns them as `limits`.
@@ -183,6 +242,7 @@ erDiagram
 - **Reading the two histories: carry forward.** `finance_source_balances` and `finance_investment_values` hold a row only for a day a value was written, not one per calendar day. A reader asking for a day takes the row of that day, else the last one before it (`CarryForward` in `finance/carryforward.go`); a day before the first row has no value. Net worth's series and its month start read both histories this way ([backend](backend.md#net-worth)), so a sync that skipped a day, or an Investment nobody edited for months, still has a value on every day.
 - **A card's credit limit** (`finance_sources.credit_limit_cents`, `0047`). Written on connect (`POST /me/finance/items`, `ConnectItem`) and by every sync (`SetCreditLimits`). The bank always wins, but a read with no limit keeps the stored one, so a flaky connector does not blank it; a value that is unreadable, negative or not in reais is stored as none. Null on every other kind, and on a card until a sync or connect sends one. Served as `creditLimitCents`; the Card bills screen shows the limit used.
 - **The bank connection status** (`finance_items.status`, `execution_status`, `connector_name`, `0048`). Pluggy's own words, written on connect and at the start of each sync for the Item (`SetItemStatus`; a failed read only logs). Null until the next sync or connect, and a null reads as `ok`. The API never sends them as they are: `ItemWireStatus` maps them to `ok` or `reconnect` for `items[]` of `GET /me/finance`.
+- **The Pantry** (`finance_pantry_*`, `0052` to `0055`; [backend](backend.md#the-pantry)). Items, run-outs, receipts and their lines; an item's state, last price, average duration and Shopping list row are computed on read, never stored. A matched receipt line is a purchase, dated by the receipt's `issued_on`. Deleting an item keeps its receipts (their lines go back to unmatched, `SET NULL`) but deletes its saved line matches (`CASCADE`), so the next receipt asks about those lines again. Receipts are idempotent through two unique keys: `(user_id, access_key)` for one read from SEFAZ or a photo that showed a key, and the partial `(user_id, lower(store_name), issued_on, total_cents) WHERE access_key IS NULL` for a photo without one. Nothing links a Pantry receipt to a Transaction.
 - **Progress is never stored.** The reserve's saved amount (the sum of the Investments that serve it), each Goal's saved amount, this month's amounts and the expected months are worked out on every `GET /me/finance/savings` by the contribution split ([backend](backend.md#the-contribution-split)). With no history there is nothing to keep in sync: an Investment the User spends just gets a lower value, and a Goal that is done gets deleted.
 
 ## Planned tables

@@ -106,4 +106,18 @@ Finances is open only to Users on an allowlist. "Category" stays with Chores, so
 | Goal | objetivo | meta, sonho | Something saved toward, with a target amount. Not "meta": that reads as a Spending limit. |
 | Monthly contribution | aporte mensal | depósito, poupança mensal | What a User puts into savings each month. Sharing it among Goals is the "divisão do aporte", never "alocação". |
 
+## Pantry terms
+
+The Pantry is in Revenue, so these words come from `revenue/src/shared/i18n/catalogs.ts` (`nav.pantry`, `pantry.*`, `list.*`, `receipt.*`). Pending native-speaker review.
+
+| GLOSSARY.md term | pt-BR | pt-BR words to avoid | Note |
+|---|---|---|---|
+| Pantry | despensa ("Despensa" as the screen's name) | estoque, inventário, geladeira | The in-stock group is "Na despensa"; a deleted item "sai da despensa". |
+| Pantry item | item (plural "itens") | produto, mercadoria | "Novo item", "Editar item", "Excluir este item?". Its brand is "Marca preferida". |
+| Fixed item | sempre comprar ("Sempre comprar" as the checkbox, "sempre comprar" as the row badge) | item fixo, favorito, recorrente | Described by what it does, not named as a noun. |
+| Ran out | acabou (plural "acabaram") | esgotado, em falta, sem estoque | The button is "Acabou", the group "Acabaram", the row "acabou há {count} dias". Not "esgotado": that is the Drained Check-in level. |
+| Shopping list | lista de compras | lista de mercado, carrinho | The groceries Spending limit beside it is "limite de mercado" ("Sobra no limite de mercado"). |
+| Receipt | nota (short for "nota fiscal") | cupom, recibo, fatura | "Adicionar nota", "Ler QR da nota", "Nota já adicionada". The same word as a Transaction's Note; the two never share a screen, but the native speaker should confirm the overlap is acceptable. "Mercado" names the store ("receipt.store"). |
+| Access key | chave de acesso | código, número da nota | "Chave de acesso ou link", "Colar a chave"; "44 números, abaixo do QR". |
+
 Apple and Android labels must match what the device shows in pt-BR. They are not yet verified on a pt-BR device.

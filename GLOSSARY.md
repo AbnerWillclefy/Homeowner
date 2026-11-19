@@ -207,3 +207,35 @@ _Avoid_: Objective, Dream, Target (alone)
 **Monthly contribution**:
 The amount a User puts into savings each month, and the share of it that goes to the Emergency reserve; the rest goes to the Goals. Sharing it among the Goals is the "contribution split", never "allocation": Allocation is the Chores module.
 _Avoid_: Deposit, Savings rate
+
+### Pantry
+
+The Pantry lives in Revenue, behind the same allowlist as Finances. It belongs to one User, not to a Home, and its receipts are not Transactions.
+
+**Pantry**:
+A User's list of the groceries they keep at home, each a Pantry item marked in stock or Ran out. In pt-BR, "Despensa".
+_Avoid_: Inventory, Stock, Fridge
+
+**Pantry item**:
+One generic thing kept at home, such as rice or coffee, never a brand or a pack size: "Arroz", not the receipt's "ARROZ T1 5KG". It has a name unique for the User (ignoring case), an optional preferred brand, and may be a Fixed item. Receipt lines are matched to it, and each matched line is a purchase that gives it a last price.
+_Avoid_: Product, SKU, Ingredient
+
+**Fixed item**:
+A Pantry item the User always buys, so it is on every Shopping list whether or not it Ran out. The control reads "Sempre comprar" (en "Always buy").
+_Avoid_: Staple, Favourite, Recurring item
+
+**Ran out**:
+The state of a Pantry item the User marked as finished ("Acabou") after its latest purchase. It is never stored: it holds while the latest run-out is later than the latest purchase, so a purchase on a later day puts the item back in stock, and a run-out on the purchase day does not count. There is no "running low". From the run-outs and purchases the app derives how many days an item usually lasts.
+_Avoid_: Out of stock, Empty, Finished, Running low
+
+**Shopping list**:
+The next shopping trip's list, built by the app: every Pantry item that Ran out and every Fixed item, with a quantity (the User's, else the last bought, else one unit), the last price paid and the expected total. The User can change a quantity or remove an item until it is next bought. Ticking items off in the store stays on that device.
+_Avoid_: Grocery list, Cart, Order
+
+**Receipt**:
+A grocery store's NFC-e, the electronic consumer receipt, added to the Pantry by its QR code, its Access key or a photo. Its lines are matched to Pantry items or marked "not a pantry item". A receipt is added once: adding it again shows the one saved.
+_Avoid_: Invoice, Bill, Note (that is the User's text on a Transaction)
+
+**Access key**:
+The 44 digits that identify an NFC-e, printed under its QR code and carried in the QR link. Only the key is read from what the User scans or types; the app finds the state's consultation page from its first two digits.
+_Avoid_: Code, Receipt number, Barcode
