@@ -1,6 +1,6 @@
 # The finance chat sends a User's own Finances to the model through read-only tools
 
-[ADR 0019](0019-take-bank-data-from-pluggy-with-per-user-credentials-encrypted-by-the-app.md) sends Anthropic only an Expense's `merchant_key`. [ADR 0020](0020-voice-commands-send-chore-titles-and-the-residents-words-behind-a-confirmation.md) sends Chore titles and a transcript, and says a tool that reads data needs a new ADR. The finance chat (#791) answers questions such as "Can I travel in March?", which cannot be answered without amounts, dates and descriptions, so this ADR makes a third exception and records its limits. It amends neither ADR 0019 nor ADR 0020: both stay as written, and this one adds a bounded exception to the rule they share. The budget is still under $20 a month with nothing billing while idle ([ADR 0002](0002-mirror-the-work-stack.md)).
+[ADR 0019](0019-take-bank-data-from-pluggy-with-per-user-credentials-encrypted-by-the-app.md) sends Anthropic only an Expense's `merchant_key`. [ADR 0020](0020-voice-commands-send-chore-titles-and-the-residents-words-behind-a-confirmation.md) sends Chore titles and a transcript, [ADR 0026](0026-read-grocery-receipts-from-sefaz-with-an-ai-read-photo-as-a-confirmed-fallback.md) sends a receipt photo, and ADR 0020 says a tool that reads data needs a new ADR. The finance chat (#791) answers questions such as "Can I travel in March?", which cannot be answered without amounts, dates and descriptions, so this ADR makes a fourth exception and records its limits. It amends neither ADR 0019 nor ADR 0020: both stay as written, and this one adds a bounded exception to the rule they share. The budget is still under $20 a month with nothing billing while idle ([ADR 0002](0002-mirror-the-work-stack.md)).
 
 ## Decision
 
@@ -12,7 +12,7 @@
   - today's date in São Paulo, which the system prompt carries so the model can resolve "this month";
   - the screen key, the locale and the conversation.
 - **Never sent:**
-  - A description holding a transfer word (PIX, TED, DOC, TRANSF…) goes as a fixed label such as "Pix sent", "Pix received" or "TED sent", whatever the Transaction's type, because a Pix paid to a person can be an Expense. The check runs after the same normalisation the Categorizer uses (`finance.MerchantKey`, then `llmalloc.Sendable`). `Sendable` alone matches whole uppercase words only, so "Pix enviado - Maria" or "PIX*MARIA" would pass without it.
+  - A description holding a transfer word (PIX, TED, DOC, TRANSF…) goes as a fixed label such as "Pix sent", "Pix received" or "TED sent" in place of both its description and its merchant, whatever the Transaction's type, because a Pix paid to a person can be an Expense. The check runs after the same normalisation the Categorizer uses (`finance.MerchantKey`, then `llmalloc.Sendable`). `Sendable` alone matches whole uppercase words only, so "Pix enviado - Maria" or "PIX*MARIA" would pass without it.
   - A Manual card goes as "Manual card N", without its Pix recipient.
   - No credential, no Pluggy id, no Items or connection status and no bill suggestions.
   - No Pantry data, nothing from another User and nothing from any Home.
@@ -36,6 +36,6 @@
 ## Consequences
 
 - Descriptions, amounts, dates, Notes and the names of Sources, Goals, Bills and Investments now reach Anthropic for Users who use the chat. Nothing else does.
-- The chat shares the Anthropic monthly spend limit with the allocator; the per-User limit bounds it and `/admin/ai` shows its share.
+- The chat shares the Anthropic monthly spend limit with the allocator, voice, the Categorizer and receipt photos; the per-User limit bounds it and `/admin/ai` shows its share.
 - Every change to the tool table, the prompt or `redact` is reviewed against the "Never sent" list.
 - A tool that writes, or that reads outside the caller's Finances, needs a new ADR.
