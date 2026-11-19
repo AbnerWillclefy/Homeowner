@@ -284,3 +284,55 @@ export async function saveDraft(draft: ReceiptDraft, client: AxiosInstance = api
   const receipt = status === 200 || status === 201 ? parseReceipt(data) : null;
   return receipt ? { kind: status === 201 ? "created" : "duplicate", receipt } : { kind: "error" };
 }
+
+/** One line of the next shopping list, as `GET pantry/list` serves it. */
+export interface ShoppingListItem {
+  itemId: string;
+  name: string;
+  preferredBrand: string | null;
+  fixed: boolean;
+  /** Thousandths of `unit`: 1500 is 1,5 kg. */
+  quantityMilli: number;
+  /** `UN` or `KG`. */
+  unit: string;
+  /** Absent for an item never bought; so is `priceCents`, the whole line. */
+  unitPriceCents?: number;
+  priceCents?: number;
+}
+
+export interface ShoppingList {
+  items: ShoppingListItem[];
+  /** The priced lines added up; unpriced ones are left out. */
+  expectedTotalCents: number;
+  /** What is left of this month's groceries limit; negative once over it, absent with no limit. */
+  groceriesLeftCents?: number;
+}
+
+function parseListItem(v: unknown): ShoppingListItem | null {
+  if (!isRecord(v)) return null;
+  const { itemId, name, preferredBrand, fixed, quantityMilli, unit, unitPriceCents, priceCents } = v;
+  if (typeof itemId !== "string" || typeof name !== "string" || typeof fixed !== "boolean" || !isInt(quantityMilli) || quantityMilli < 1 || typeof unit !== "string") return null;
+  if (preferredBrand !== undefined && preferredBrand !== null && typeof preferredBrand !== "string") return null;
+  if ((unitPriceCents !== undefined && !isInt(unitPriceCents)) || (priceCents !== undefined && !isInt(priceCents))) return null;
+  return {
+    itemId, name, preferredBrand: preferredBrand ?? null, fixed, quantityMilli, unit,
+    ...(unitPriceCents === undefined ? {} : { unitPriceCents }),
+    ...(priceCents === undefined ? {} : { priceCents }),
+  };
+}
+
+/** `GET /me/finance/pantry/list`. Throws on any failure, so a query shows its error state. */
+export async function getList(client: AxiosInstance = apiClient): Promise<ShoppingList> {
+  const url = "/me/finance/pantry/list";
+  const { status, data } = await client.get(url);
+  if (status !== 200) throw new Error(`GET ${url} answered ${status}`);
+  const items = isRecord(data) && Array.isArray(data.items) ? data.items.map(parseListItem) : null;
+  const total = isRecord(data) ? data.expectedTotalCents : undefined;
+  const left = isRecord(data) ? data.groceriesLeftCents : undefined;
+  if (!items || items.some((i) => i === null) || !isInt(total) || (left !== undefined && !isInt(left))) throw new Error(`GET ${url} answered a malformed body`);
+  return { items: items as ShoppingListItem[], expectedTotalCents: total, ...(left === undefined ? {} : { groceriesLeftCents: left }) };
+}
+
+/** `PUT /me/finance/pantry/list/{itemId}`: a new quantity, or `removed` (it comes back only once bought again). */
+export const editListItem = async (itemId: string, edit: { quantityMilli: number } | { removed: true }, client: AxiosInstance = apiClient): Promise<WriteResult> =>
+  writeResult(await send(client, "PUT", `/me/finance/pantry/list/${encodeURIComponent(itemId)}`, 204, edit), 204);

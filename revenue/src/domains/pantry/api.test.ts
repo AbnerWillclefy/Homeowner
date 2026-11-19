@@ -2,7 +2,7 @@ import type { AxiosAdapter, InternalAxiosRequestConfig } from "axios";
 import { describe, expect, it } from "vitest";
 import { createApiClient } from "../../api/client";
 import { createSessionStore } from "../../auth/session";
-import { addItem, addReceipt, deleteItem, getItem, getPantry, markRanOut, matchLine, readPhoto, saveDraft, undoRanOut, updateItem } from "./api";
+import { addItem, addReceipt, deleteItem, editListItem, getItem, getList, getPantry, markRanOut, matchLine, readPhoto, saveDraft, undoRanOut, updateItem } from "./api";
 
 const ITEM = { id: "p1", name: "Arroz", preferredBrand: "Tio João", fixed: true, state: "in_stock", ranOutOn: null };
 
@@ -237,5 +237,56 @@ describe("photo receipts", () => {
     expect((await saveDraft(d, setup(400, { error: "other" }).client)).kind).toBe("error");
     expect((await saveDraft(d, setup(201, { id: "r1" }).client)).kind).toBe("error");
     expect((await saveDraft(d, setup(500, {}).client)).kind).toBe("error");
+  });
+});
+
+const LIST_LINE = { itemId: "p1", name: "Arroz", preferredBrand: null, fixed: true, quantityMilli: 2000, unit: "UN", unitPriceCents: 2790, priceCents: 5580 };
+
+describe("getList", () => {
+  it("reads priced and unpriced lines, the total and the groceries left", async () => {
+    const unpriced = { itemId: "p2", name: "Sal", preferredBrand: "Cisne", fixed: false, quantityMilli: 1000, unit: "UN" };
+    const { client, sent } = setup(200, { items: [LIST_LINE, unpriced], expectedTotalCents: 5580, groceriesLeftCents: -200 });
+    expect(await getList(client)).toEqual({ items: [LIST_LINE, unpriced], expectedTotalCents: 5580, groceriesLeftCents: -200 });
+    expect(sent[0]!.url).toBe("/me/finance/pantry/list");
+  });
+
+  it("leaves the groceries left out with no limit, and reads a null brand as none", async () => {
+    const { client } = setup(200, { items: [{ ...LIST_LINE, preferredBrand: undefined }], expectedTotalCents: 5580 });
+    const list = await getList(client);
+    expect("groceriesLeftCents" in list).toBe(false);
+    expect(list.items[0]!.preferredBrand).toBeNull();
+  });
+
+  it("throws on a failure status and on a malformed body", async () => {
+    await expect(getList(setup(503, {}).client)).rejects.toThrow();
+    await expect(getList(setup(200, []).client)).rejects.toThrow();
+  });
+
+  it.each([
+    ["itemId", 1], ["name", null], ["fixed", "yes"], ["quantityMilli", 1.5], ["quantityMilli", 0], ["unit", 1], ["preferredBrand", 5], ["unitPriceCents", "1"], ["priceCents", 1.5],
+  ])("refuses a bad line %s", async (field, value) => {
+    await expect(getList(setup(200, { items: [{ ...LIST_LINE, [field]: value }], expectedTotalCents: 0 }).client)).rejects.toThrow();
+  });
+
+  it.each([["expectedTotalCents", "1"], ["groceriesLeftCents", 1.5], ["items", null]])("refuses a bad %s", async (field, value) => {
+    await expect(getList(setup(200, { items: [LIST_LINE], expectedTotalCents: 5580, [field]: value }).client)).rejects.toThrow();
+  });
+});
+
+describe("editListItem", () => {
+  it("puts a quantity or a removal and answers ok on a 204", async () => {
+    const { client, sent } = setup(204, "");
+    expect(await editListItem("p 1", { quantityMilli: 3000 }, client)).toEqual({ kind: "ok" });
+    expect(await editListItem("p1", { removed: true }, client)).toEqual({ kind: "ok" });
+    expect(sent.map((r) => [r.method, r.url, r.data])).toEqual([
+      ["put", "/me/finance/pantry/list/p%201", '{"quantityMilli":3000}'],
+      ["put", "/me/finance/pantry/list/p1", '{"removed":true}'],
+    ]);
+  });
+
+  it("tells a missing item and a failure apart", async () => {
+    expect(await editListItem("p1", { removed: true }, setup(404, {}).client)).toEqual({ kind: "not-found" });
+    expect(await editListItem("p1", { removed: true }, setup(500, {}).client)).toEqual({ kind: "error" });
+    expect(await editListItem("p1", { removed: true }, setup(204, "", true).client)).toEqual({ kind: "error" });
   });
 });
