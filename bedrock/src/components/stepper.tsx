@@ -9,7 +9,7 @@ type StepperProps = {
   incrementLabel: string;
   value: number;
   onValueChange: (value: number) => void;
-  /** The smallest value; the minus button is disabled there. Default: one step. */
+  /** The smallest value; the minus button is aria-disabled there (it keeps focus). Default: one step. */
   min?: number;
   max?: number;
   /** Default 1. Use 0.001 for kilograms. */
@@ -21,10 +21,10 @@ type StepperProps = {
 };
 
 // Rounds away float noise so 1.1 + 0.1 shows 1.2, not 1.2000000000000002.
-const round = (n: number, step: number) => Number(n.toFixed(Math.max(0, -Math.floor(Math.log10(step)))));
+const round = (n: number) => Number(n.toFixed(10));
 
 const button =
-  "touch-target inline-grid size-control-md shrink-0 cursor-pointer place-items-center rounded-full border border-border bg-surface text-text outline-none motion-safe:transition-colors duration-(--duration-fast) hover:bg-surface-hover active:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-(--opacity-disabled)";
+  "touch-target inline-grid size-control-md shrink-0 cursor-pointer place-items-center rounded-full border border-border bg-surface text-text outline-none motion-safe:transition-colors duration-(--duration-fast) hover:bg-surface-hover active:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-(--opacity-disabled) aria-disabled:cursor-not-allowed aria-disabled:opacity-(--opacity-disabled)";
 
 export function Stepper({ label, decrementLabel, incrementLabel, value, onValueChange, min, max, step = 1, format, disabled, className }: StepperProps) {
   const id = useId();
@@ -36,14 +36,14 @@ export function Stepper({ label, decrementLabel, incrementLabel, value, onValueC
       <span id={id} className="sr-only">
         {label}
       </span>
-      <button type="button" className={button} aria-label={decrementLabel} disabled={disabled || atMin} onClick={() => onValueChange(round(value - step, step))}>
+      <button type="button" className={button} aria-label={decrementLabel} disabled={disabled} aria-disabled={atMin || undefined} onClick={() => !atMin && onValueChange(round(value - step))}>
         <Minus className="size-4" aria-hidden="true" />
       </button>
       {/* role=status announces the new value after each press */}
       <output role="status" className="body-strong min-w-12 text-center tabular-nums">
         {format ? format(value) : value}
       </output>
-      <button type="button" className={button} aria-label={incrementLabel} disabled={disabled || atMax} onClick={() => onValueChange(round(value + step, step))}>
+      <button type="button" className={button} aria-label={incrementLabel} disabled={disabled} aria-disabled={atMax || undefined} onClick={() => !atMax && onValueChange(round(value + step))}>
         <Plus className="size-4" aria-hidden="true" />
       </button>
     </div>
