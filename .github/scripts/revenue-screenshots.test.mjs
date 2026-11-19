@@ -29,8 +29,18 @@ test("serves the Pantry with items in both states, one with a brand and one alwa
   assert.ok(body.items.filter((i) => i.state === "ran_out").every((i) => i.ranOutOn <= "2026-11-03"));
 });
 
-test("shoots the Pantry by its route", () => {
-  assert.deepEqual(changedScreens(["revenue/src/domains/pantry/PantryPage.tsx"]), ["/pantry"]);
+test("shoots the Pantry and its shopping list when the pantry folder changed", () => {
+  assert.deepEqual(changedScreens(["revenue/src/domains/pantry/PantryPage.tsx"]), ["/pantry", "/pantry/list"]);
+  assert.deepEqual(changedScreens(["revenue/src/domains/pantry/ShoppingListPage.tsx", "revenue/src/domains/bills/api.ts"]), ["/bills", "/pantry", "/pantry/list"]);
+});
+
+test("serves a shopping list with priced, unpriced and kg lines and a groceries left below the total", () => {
+  const { status, body } = answer("GET", new URL("http://api/me/finance/pantry/list"), "2026-11-03");
+  assert.equal(status, 200);
+  assert.ok(body.items.some((i) => i.priceCents === undefined) && body.items.some((i) => i.unit === "KG" && i.priceCents !== undefined));
+  assert.equal(body.expectedTotalCents, body.items.reduce((sum, i) => sum + (i.priceCents ?? 0), 0));
+  assert.ok(body.groceriesLeftCents < body.expectedTotalCents);
+  assert.equal(answer("PUT", new URL("http://api/me/finance/pantry/list/p1"), "2026-11-03").status, 204);
 });
 
 test("serves a receipt with unmatched lines, and answers a match with it", () => {
