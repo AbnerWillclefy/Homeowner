@@ -135,6 +135,20 @@ function pantry(today) {
   };
 }
 
+/** A receipt read now, with three unmatched lines and one already matched (so the matching step shows "1 de 3"). */
+function receipt(today) {
+  const line = (n, description, quantityMilli, unit, unitPriceCents, over = {}) => ({
+    n, description, quantityMilli, unit, unitPriceCents, totalCents: Math.round((quantityMilli * unitPriceCents) / 1000), itemId: null, ignored: false, ...over,
+  });
+  const lines = [
+    line(1, "ARROZ TIO JOAO T1 5KG", 1000, "UN", 2790),
+    line(2, "QJO MINAS FRESCAL KG", 450, "KG", 6490),
+    line(3, "LEITE PIRACANJUBA INTEGRAL 1L", 6000, "UN", 549),
+    line(4, "FEIJAO CARIOCA 1KG", 1000, "UN", 819, { itemId: "p4" }),
+  ];
+  return { id: "r1", storeName: "Mercado Bom Preço", issuedOn: today, totalCents: lines.reduce((sum, l) => sum + l.totalCents, 0), readBy: "sefaz", lines };
+}
+
 function savings(today) {
   const month = (n) => {
     const d = new Date(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 1 + n, 1);
@@ -215,6 +229,8 @@ export function answer(method, url, today) {
   if (route === "GET /me/finance/bills") return { status: 200, body: bills(params.get("month")) };
   if (route === "GET /me/finance/bill-suggestions") return { status: 200, body: [{ merchantKey: "enel", name: "Conta de luz Enel", amountCents: 21_480, dueDay: 10 }] };
   if (route === "GET /me/finance/pantry") return { status: 200, body: pantry(today) };
+  if (route === "POST /me/finance/pantry/receipts") return { status: 201, body: receipt(today) };
+  if (/^PUT \/me\/finance\/pantry\/receipts\/r1\/lines\/\d+$/.test(route)) return { status: 200, body: receipt(today) };
   if (route === "GET /me/finance/net-worth") return { status: 200, body: netWorth(today, params.get("range")) };
   if (route === "GET /me/finance/savings") return { status: 200, body: savings(today) };
   return null;

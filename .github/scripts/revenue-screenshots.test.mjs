@@ -32,3 +32,10 @@ test("serves the Pantry with items in both states, one with a brand and one alwa
 test("shoots the Pantry by its route", () => {
   assert.deepEqual(changedScreens(["revenue/src/domains/pantry/PantryPage.tsx"]), ["/pantry"]);
 });
+
+test("serves a receipt with unmatched lines, and answers a match with it", () => {
+  const created = answer("POST", new URL("http://api/me/finance/pantry/receipts"), "2026-11-03");
+  assert.equal(created.status, 201);
+  assert.ok(created.body.lines.filter((l) => l.itemId === null && !l.ignored).length >= 2);
+  assert.equal(answer("PUT", new URL("http://api/me/finance/pantry/receipts/r1/lines/2"), "2026-11-03").status, 200);
+});
