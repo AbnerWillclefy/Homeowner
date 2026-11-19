@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Item da despensa, sheet</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<!-- On desktop this is the rv-panel side panel of Pantry.dc.html (prop panel). -->
+<div class="rv-phone" data-theme="{{theme}}">
+<div class="rv-phone__top"><div class="rv-head__text"><h1 class="rv-title">{{t.pantry}}</h1></div></div>
+<div class="rv-phone__scroll"><section class="br-card br-card--compact"><div class="br-skel" style="height: 48px"></div><div class="br-skel" style="height: 48px"></div></section></div>
+<nav class="br-bottombar" aria-label="{{t.nav}}">
+<a href="MobileOverview.dc.html" class="br-tab"><i class="ri ri-lg ri-dashboard" aria-hidden="true"></i>{{t.tabHome}}</a>
+<a href="MobileTransactions.dc.html" class="br-tab"><i class="ri ri-lg ri-arrows" aria-hidden="true"></i>{{t.tabTx}}</a>
+<a href="Goals.dc.html" class="br-tab"><i class="ri ri-lg ri-target" aria-hidden="true"></i>{{t.tabPlan}}</a>
+<a href="Settings.dc.html" class="br-tab" aria-current="page"><i class="ri ri-lg ri-more" aria-hidden="true"></i>{{t.tabMore}}</a>
+</nav>
+
+<div class="rv-overlay">
+<div style="flex: 1"></div>
+<div class="br-sheet br-sheet--bottom" role="dialog" aria-label="{{t.title}}" style="padding-bottom: 32px; max-height: 92%; overflow-y: auto">
+<span class="br-sheet__grab"></span>
+<div class="br-sheet__head"><div class="rv-stack" style="gap: 0"><span class="br-sheet__title">{{t.title}}</span><span class="br-muted">{{t.brand}}</span></div><button class="br-iconbtn br-iconbtn--sm" aria-label="{{t.close}}"><i class="ri ri-x" aria-hidden="true"></i></button></div>
+
+<sc-if value="{{isLoading}}" hint-placeholder-val="{{ false }}">
+<div class="rv-stack-16" aria-busy="true" aria-label="{{t.loading}}"><div class="br-skel" style="height: 56px"></div><div class="br-skel" style="height: 56px"></div><div class="br-skel" style="height: 120px"></div></div>
+</sc-if>
+
+<sc-if value="{{isError}}" hint-placeholder-val="{{ false }}">
+<div class="br-banner br-banner--danger" role="alert"><i class="ri ri-alert br-icon" aria-hidden="true"></i><span class="br-banner__text">{{t.error}}</span><button class="br-btn br-btn--ghost br-btn--sm"><i class="ri ri-refresh" aria-hidden="true"></i>{{t.retry}}</button></div>
+</sc-if>
+
+<sc-if value="{{isEmpty}}" hint-placeholder-val="{{ false }}">
+<div class="br-empty" style="padding: 8px 0"><span class="br-empty__icon"><i class="ri ri-lg ri-receipt" aria-hidden="true"></i></span><span class="br-empty__title">{{t.emptyTitle}}</span><span class="br-empty__text">{{t.emptyText}}</span><button class="br-btn br-btn--primary br-btn--lg br-btn--block"><i class="ri ri-receipt" aria-hidden="true"></i>{{t.addReceipt}}</button></div>
+</sc-if>
+
+<sc-if value="{{isReady}}" hint-placeholder-val="{{ true }}">
+<span class="br-badge br-badge--brand" style="align-self: flex-start"><i class="ri ri-sm ri-repeat" aria-hidden="true"></i>{{t.always}}</span>
+<div class="rv-split" style="grid-template-columns: 1fr 1fr">
+<div class="rv-kv"><span class="rv-kv__k">{{t.avg}}</span><sc-if value="{{cycle}}" hint-placeholder-val="{{ true }}"><span class="br-amount br-amount--md"><span class="br-amount__value">{{t.avgVal}}</span></span></sc-if><sc-if value="{{noCycle}}" hint-placeholder-val="{{ false }}"><span class="br-muted">{{t.noCycle}}</span></sc-if></div>
+<div class="rv-kv"><span class="rv-kv__k">{{t.lastPrice}}</span><span class="br-amount br-amount--md"><span class="br-amount__value">R$ 27,90</span></span><span class="br-muted" style="font-size: 12px; line-height: 16px">{{t.lastWhere}}</span></div>
+</div>
+<span class="br-card__label">{{t.history}}</span>
+<svg class="br-chart" viewBox="0 0 300 120" role="img" aria-label="{{t.historyLabel}}"><line class="grid" x1="0" x2="300" y1="20" y2="20"/><line class="grid" x1="0" x2="300" y1="60" y2="60"/><line class="grid" x1="0" x2="300" y1="100" y2="100"/><path class="area" d="M10 80 L80 60 L150 70 L220 40 L290 30 L290 100 L10 100Z"/><path class="line" d="M10 80 L80 60 L150 70 L220 40 L290 30"/><circle class="end" cx="290" cy="30" r="4"/><text x="10" y="116">jun</text><text x="145" y="116">set</text><text x="265" y="116">nov</text></svg>
+<div class="br-banner"><i class="ri ri-clock br-icon" aria-hidden="true"></i><span class="br-banner__text"><strong>{{t.forecast}}</strong> · {{t.soon}}</span></div>
+<button class="br-btn br-btn--secondary br-btn--lg br-btn--block">{{t.ranOut}}</button>
+</sc-if>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"locale":{"editor":"enum","options":["pt-BR","en"],"default":"pt-BR"},"view":{"editor":"enum","options":["ready","empty","loading","error"],"default":"ready"},"cycle":{"editor":"boolean","default":true},"$preview":{"width":390,"height":844}}'>
+// Item sheet. view=empty is an item never bought; cycle=false is bought but never finished.
+const COPY = {
+  'pt-BR': { pantry: 'Despensa', title: 'Arroz', brand: 'Tio João', close: 'Fechar', always: 'Sempre comprar', avg: 'Dura em média', avgVal: '22 dias', noCycle: 'Marque "Acabou" uma vez para calcular.', lastPrice: 'Último preço', lastWhere: 'Bom Preço · 02/11', history: 'Preço ao longo do tempo', historyLabel: 'Preço do arroz, de R$ 24 a R$ 27,90', forecast: 'Previsão', soon: 'em breve', ranOut: 'Acabou', loading: 'Carregando o item', error: 'Não deu para carregar o item.', retry: 'Tentar', emptyTitle: 'Nunca comprado', emptyText: 'Adicione uma nota com este item para ver preço e duração.', addReceipt: 'Adicionar nota', nav: 'Principal', tabHome: 'Visão geral', tabTx: 'Transações', tabPlan: 'Planejamento', tabMore: 'Mais' },
+  en: { pantry: 'Pantry', title: 'Rice', brand: 'Tio João', close: 'Close', always: 'Always buy', avg: 'Lasts on average', avgVal: '22 days', noCycle: 'Mark "Ran out" once to work it out.', lastPrice: 'Last price', lastWhere: 'Bom Preço · 11/02', history: 'Price over time', historyLabel: 'Price of rice, from R$ 24 to R$ 27.90', forecast: 'Forecast', soon: 'coming soon', ranOut: 'Ran out', loading: 'Loading the item', error: "Couldn't load the item.", retry: 'Retry', emptyTitle: 'Never bought', emptyText: 'Add a receipt with this item to see its price and how long it lasts.', addReceipt: 'Add receipt', nav: 'Main', tabHome: 'Overview', tabTx: 'Transactions', tabPlan: 'Planning', tabMore: 'More' },
+};
+class Component extends DCLogic {
+  renderVals() {
+    const view = this.props.view ?? 'ready';
+    const cycle = this.props.cycle !== false;
+    return {
+      theme: this.props.theme ?? 'dark',
+      t: COPY[this.props.locale ?? 'pt-BR'],
+      isReady: view === 'ready', isEmpty: view === 'empty', isLoading: view === 'loading', isError: view === 'error',
+      cycle, noCycle: !cycle,
+    };
+  }
+}
+</script>
+</body>
+</html>

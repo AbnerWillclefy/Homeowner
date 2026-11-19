@@ -85,7 +85,7 @@
 .br-stepper { display: inline-flex; align-items: center; gap: var(--space-8); }
 .br-stepper__btn { display: inline-grid; place-items: center; width: var(--control-md); height: var(--control-md); border-radius: var(--radius-full); background: var(--surface); color: var(--text); border: 1px solid var(--border); cursor: pointer; }
 .br-stepper__btn:hover, .br-stepper__btn:active { background: var(--surface-hover); }
-.br-stepper__btn[disabled] { opacity: var(--opacity-disabled); cursor: not-allowed; }
+.br-stepper__btn[disabled], .br-stepper__btn[aria-disabled="true"] { opacity: var(--opacity-disabled); cursor: not-allowed; }
 .br-stepper__value { min-width: 48px; text-align: center; font: 500 14px/20px var(--font-sans); font-variant-numeric: tabular-nums; }
 
 /* Card */
