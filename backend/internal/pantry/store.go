@@ -3,8 +3,10 @@ package pantry
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/nfce"
 
 	"github.com/jackc/pgx/v5"
@@ -389,23 +391,45 @@ func (s *Store) ReceiptByKey(ctx context.Context, userID, key string) (Receipt, 
 	return s.receiptQ(ctx, s.db, userID, "access_key = $2", key)
 }
 
+// ReadBy says how a receipt was read.
+const (
+	readBySEFAZ = "sefaz"
+	readByPhoto = "photo"
+)
+
 // AddReceipt saves the receipt with its lines, matching each line to the
-// User's saved matches. A receipt already saved under key (two taps racing)
+// User's saved matches. key is its access key, or "" for a receipt read from a
+// photo that showed none. A receipt already saved under the key (two taps
+// racing), or for a keyless one with the same store (any case), date and total,
 // is returned with created false and nothing written.
-func (s *Store) AddReceipt(ctx context.Context, userID, key string, rc nfce.Receipt, now time.Time) (r Receipt, created bool, err error) {
+func (s *Store) AddReceipt(ctx context.Context, userID, key string, rc nfce.Receipt, readBy string, now time.Time) (r Receipt, created bool, err error) {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return Receipt{}, false, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	conflict := `ON CONFLICT (user_id, access_key) DO NOTHING`
+	if key == "" {
+		conflict = `ON CONFLICT (user_id, lower(store_name), issued_on, total_cents) WHERE access_key IS NULL DO NOTHING`
+	}
 	var id string
 	err = tx.QueryRow(ctx, `
 		INSERT INTO finance_pantry_receipts (id, user_id, access_key, store_name, store_cnpj, issued_on, total_cents, read_by, created_at)
-		VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, 'sefaz', $7)
-		ON CONFLICT (user_id, access_key) DO NOTHING RETURNING id`,
-		userID, key, rc.StoreName, rc.CNPJ, rc.IssuedOn, rc.TotalCents, now).Scan(&id)
+		VALUES (gen_random_uuid(), $1, nullif($2, ''), $3, nullif($4, ''), $5, $6, $7, $8)
+		`+conflict+` RETURNING id`,
+		userID, key, rc.StoreName, rc.CNPJ, rc.IssuedOn, rc.TotalCents, readBy, now).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
-		r, err = s.receiptQ(ctx, tx, userID, "access_key = $2", key)
+		if key != "" {
+			r, err = s.receiptQ(ctx, tx, userID, "access_key = $2", key)
+		} else {
+			err = tx.QueryRow(ctx, `
+				SELECT id FROM finance_pantry_receipts WHERE user_id = $1 AND access_key IS NULL
+				AND lower(store_name) = lower($2) AND issued_on = $3 AND total_cents = $4`,
+				userID, rc.StoreName, rc.IssuedOn, rc.TotalCents).Scan(&id)
+			if err == nil {
+				r, err = s.receiptQ(ctx, tx, userID, "id = $2", id)
+			}
+		}
 		return r, false, err
 	}
 	if err != nil {
@@ -433,6 +457,68 @@ func (s *Store) AddReceipt(ctx context.Context, userID, key string, rc nfce.Rece
 		return Receipt{}, false, err
 	}
 	return r, true, tx.Commit(ctx)
+}
+
+// ReservePhotoCall takes one of the User's limit photo reads for date, the São
+// Paulo date, and reports whether it got one. One statement inserts or
+// increments, and the WHERE on the conflict update refuses at the limit, so
+// concurrent requests can never pass it. Run on the pool, never in a
+// transaction: a rollback must not give back a call that was paid for.
+func (s *Store) ReservePhotoCall(ctx context.Context, userID string, date time.Time, limit int) (bool, error) {
+	var calls int
+	err := s.db.QueryRow(ctx, `
+		INSERT INTO finance_pantry_photo_calls (user_id, call_date, calls) VALUES ($1, $2, 1)
+		ON CONFLICT (user_id, call_date) DO UPDATE SET calls = finance_pantry_photo_calls.calls + 1
+		WHERE finance_pantry_photo_calls.calls < $3
+		RETURNING calls`, userID, date, limit).Scan(&calls)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return err == nil, err
+}
+
+// photoEvent is one llm_call_events row of a photo read: counts and cost only,
+// never the store, a description or an amount.
+type photoEvent struct {
+	now, day time.Time
+	outcome  string
+	usage    *llmalloc.Usage
+	latency  time.Duration
+	called   bool
+	lines    int
+}
+
+const eventInsertTimeout = 5 * time.Second
+
+// recordPhotoEvent writes the row, best effort, as voice.Store.record does. It
+// holds no User and no Home, and a failure logs the outcome, never the error.
+func (s *Store) recordPhotoEvent(ctx context.Context, log *slog.Logger, model string, e photoEvent) {
+	var in, out, cost, latency, accepted *int64
+	if u := e.usage; u != nil {
+		model = u.Model
+		in, out = &u.InputTokens, &u.OutputTokens
+		if c, ok := llmalloc.Prices.Estimate(u); ok {
+			cost = &c
+		}
+	}
+	if e.called {
+		ms := e.latency.Milliseconds()
+		latency = &ms
+	}
+	if e.outcome == "accepted" {
+		n := int64(e.lines)
+		accepted = &n
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), eventInsertTimeout)
+	defer cancel()
+	_, err := s.db.Exec(ctx, `
+		INSERT INTO llm_call_events (created_at, local_date, service, model, outcome, latency_ms,
+		                             input_tokens, output_tokens, est_cost_micros, items_sent, items_accepted)
+		VALUES ($1, $2, 'receipt', $3, $4, $5, $6, $7, $8, 1, $9)`,
+		e.now, e.day, model, e.outcome, latency, in, out, cost, accepted)
+	if err != nil {
+		log.Warn("llm call event not recorded", "service", "receipt", "outcome", e.outcome)
+	}
 }
 
 // clearEdits deletes the list edits of every item the receipt's lines match:

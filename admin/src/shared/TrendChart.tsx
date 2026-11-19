@@ -10,6 +10,7 @@ const STYLES = [
   { stroke: "var(--color-accent)", dash: undefined, swatch: "border-solid border-accent" },
   { stroke: "var(--color-text)", dash: "6 4", swatch: "border-dashed border-text" },
   { stroke: "var(--color-muted)", dash: "2 3", swatch: "border-dotted border-muted" },
+  { stroke: "var(--color-accent)", dash: "10 3 2 3", swatch: "border-dashed border-accent" },
 ];
 
 /** The chart's text alternative: each series' total and its highest day. */

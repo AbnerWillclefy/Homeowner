@@ -121,13 +121,15 @@ type AIDay struct {
 	Services AIServices `json:"services"`
 }
 
-// AIServices holds the LLM services: the Allocation job's two and the
-// Finances Categorizer, whose rows are counts and cost only.
+// AIServices holds the LLM services: the Allocation job's two, voice, the
+// Finances Categorizer and the Pantry's receipt photo reader, whose rows are
+// counts and cost only.
 type AIServices struct {
 	Allocator   ServiceDay `json:"allocator"`
 	Explainer   ServiceDay `json:"explainer"`
 	Categorizer ServiceDay `json:"categorizer"`
 	Voice       ServiceDay `json:"voice"`
+	Receipt     ServiceDay `json:"receipt"`
 }
 
 // ServiceDay is one service's llm_call_events on one local date.

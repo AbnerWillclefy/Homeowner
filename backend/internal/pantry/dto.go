@@ -1,6 +1,10 @@
 package pantry
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
+)
 
 // Item is one Pantry item as the API returns it. RanOutOn is set only while
 // the item is ran out; LastPriceCents and AvgDurationDays only once it has a
@@ -60,8 +64,11 @@ type ReceiptLine struct {
 	Ignored        bool    `json:"ignored"`
 }
 
+// receiptRequest holds exactly one of its two fields: a SEFAZ code, or a draft
+// read from a photo and confirmed by the User.
 type receiptRequest struct {
-	Code *string `json:"code"`
+	Code  *string                `json:"code"`
+	Draft *llmalloc.ReceiptDraft `json:"draft"`
 }
 
 type newItemRequest struct {

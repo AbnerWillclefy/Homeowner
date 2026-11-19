@@ -55,6 +55,9 @@ type App struct {
 	Photos *photos.Fake
 	// Voice is the fake model behind voice; nil unless started WithVoice.
 	Voice *llmalloc.FakeClient
+	// ReceiptReader is the fake model behind receipt photos; nil unless started
+	// WithReceiptReader.
+	ReceiptReader *llmalloc.FakeClient
 	// NFCe is the fake SEFAZ server; nil unless started WithNFCe.
 	NFCe *nfcetest.Server
 	// Pluggy is the fake Pluggy server; nil unless started WithPluggy.
@@ -140,6 +143,15 @@ func WithVoice() Option {
 	return func(d *server.Deps) {
 		d.Voice = llmalloc.NewFakeClient()
 		d.VoiceModel = config.DefaultLLMModel
+	}
+}
+
+// WithReceiptReader turns receipt photo reading on with a fake model, exposed
+// as App.ReceiptReader.
+func WithReceiptReader() Option {
+	return func(d *server.Deps) {
+		d.ReceiptReader = llmalloc.NewFakeClient()
+		d.ReceiptModel = config.DefaultLLMModel
 	}
 }
 
@@ -245,6 +257,7 @@ func Start(t testing.TB, opts ...Option) *App {
 	app.Push, _ = deps.Push.(*push.Fake)
 	app.Photos, _ = deps.Photos.(*photos.Fake)
 	app.Voice, _ = deps.Voice.(*llmalloc.FakeClient)
+	app.ReceiptReader, _ = deps.ReceiptReader.(*llmalloc.FakeClient)
 	if app.Push != nil {
 		// The job nudges through the same fake the server sends with.
 		app.nudger = nudge.New(pool, app.Push, slog.New(slog.NewJSONHandler(logs, nil)))
@@ -425,6 +438,13 @@ func (c *Client) SendRaw(method, path string, body []byte) Response {
 	return c.app.sendRaw(method, path, body, c.header)
 }
 
+// SendBytes posts a raw body of the given content type as this User.
+func (c *Client) SendBytes(path, contentType string, body []byte) Response {
+	h := c.header.Clone()
+	h.Set("Content-Type", contentType)
+	return c.app.sendRaw(http.MethodPost, path, body, h)
+}
+
 // Do sends method path as this User, with an optional JSON body and extra
 // request headers.
 func (c *Client) Do(method, path string, body any, extra http.Header) Response {
@@ -457,6 +477,9 @@ func (a *App) sendRaw(method, path string, body []byte, header http.Header) Resp
 		panic(err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if header.Get("Content-Type") != "" {
+		req.Header.Del("Content-Type")
+	}
 	for k, vs := range header {
 		for _, v := range vs {
 			req.Header.Add(k, v)

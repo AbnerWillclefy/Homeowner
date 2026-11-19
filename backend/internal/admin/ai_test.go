@@ -230,6 +230,26 @@ func TestAIAnswersWithAVoiceRow(t *testing.T) {
 	}
 }
 
+func TestAIAnswersWithAReceiptRow(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	if _, err := app.DB.Exec(context.Background(), `
+		INSERT INTO llm_call_events (created_at, local_date, service, model, outcome, latency_ms, input_tokens, output_tokens, est_cost_micros, items_sent, items_accepted)
+		VALUES ($1, '2026-03-04', 'receipt', 'claude-haiku-5-5', 'accepted', 900, 3000, 600, 4000, 1, 12)`,
+		app.Clock.Now()); err != nil {
+		t.Fatal(err)
+	}
+	got := aiAt(t, app.SignInAsSuperAdmin("admin@example.com"), "7d")
+
+	today := got.Days[len(got.Days)-1].Services
+	if today.Receipt.Outcomes.Accepted != 1 || today.Receipt.EstCostMicros != 4000 {
+		t.Errorf("receipt = %+v, want one accepted call of 4000 micro-USD", today.Receipt)
+	}
+	if today.Voice != (admin.ServiceDay{}) {
+		t.Errorf("voice = %+v, want zero", today.Voice)
+	}
+}
+
 func TestAIAnswersWithACategorizerRowAndCountsItsCost(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
@@ -400,7 +420,7 @@ func TestAILeaksNoPersonalDataAndHasAKnownKeySet(t *testing.T) {
 	// The whole key set is known, so a new field must be added here on purpose.
 	keys := map[string]bool{}
 	walk(decoded, func(k string) { keys[k] = true }, func(string) {})
-	for _, k := range []string{"range", "from", "to", "costIsEstimate", "days", "date", "services", "allocator", "explainer", "categorizer", "voice",
+	for _, k := range []string{"range", "from", "to", "costIsEstimate", "days", "date", "services", "allocator", "explainer", "categorizer", "voice", "receipt",
 		"outcomes", "accepted", "rejected_by_referee", "invalid_response", "timeout", "error", "skipped_cap", "skipped_budget",
 		"latencyP50Ms", "latencyMaxMs", "inputTokens", "outputTokens", "estCostMicros", "uncostedCalls",
 		"monthToDate", "month", "limitMicros", "dailyCapPerHome",

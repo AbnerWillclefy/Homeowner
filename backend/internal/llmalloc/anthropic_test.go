@@ -382,3 +382,36 @@ func TestAToolCallLogsTokenCountsButNotItsInput(t *testing.T) {
 		}
 	}
 }
+
+func TestAnImageGoesBeforeTheTextAsABase64JPEGBlock(t *testing.T) {
+	client, _, got, _ := fakeAPI(t, http.StatusOK, message("end_turn", `{}`), 0)
+	req := request
+	req.Image = []byte{0xFF, 0xD8, 0xFF, 'x'}
+	if _, _, err := client.Complete(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	msgs, _ := (*got)["messages"].([]any)
+	content, _ := msgs[0].(map[string]any)["content"].([]any)
+	if len(content) != 2 {
+		t.Fatalf("content = %v, want an image block then a text block", content)
+	}
+	img, _ := content[0].(map[string]any)
+	src, _ := img["source"].(map[string]any)
+	if img["type"] != "image" || src["type"] != "base64" || src["media_type"] != "image/jpeg" || src["data"] != "/9j/eA==" {
+		t.Errorf("image block = %v", img)
+	}
+	if text, _ := content[1].(map[string]any); text["type"] != "text" || text["text"] != request.User {
+		t.Errorf("text block = %v", text)
+	}
+}
+
+func TestARequestWithoutAnImageSendsOnlyText(t *testing.T) {
+	client, _, got, _ := fakeAPI(t, http.StatusOK, message("end_turn", `{}`), 0)
+	if _, _, err := client.Complete(context.Background(), request); err != nil {
+		t.Fatal(err)
+	}
+	msgs, _ := (*got)["messages"].([]any)
+	if content, _ := msgs[0].(map[string]any)["content"].([]any); len(content) != 1 {
+		t.Errorf("content = %v, want the text block only", content)
+	}
+}

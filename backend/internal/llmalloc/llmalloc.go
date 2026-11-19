@@ -19,7 +19,10 @@
 // writes text back.
 //
 // Voice commands (package voice) send Chore titles and the Resident's words,
-// behind a confirmation: see ADR 0020.
+// behind a confirmation: see ADR 0020. The ReceiptReader (receipt.go) sends a
+// photo of a grocery receipt, which the User takes and then checks and corrects
+// before anything is saved: see ADR 0026. Nothing in the photo is stored or
+// logged, and the answer is validated in Go like every other.
 package llmalloc
 
 import (
@@ -58,6 +61,9 @@ type Request struct {
 	// Tools, when set, makes the model answer with tool calls instead of
 	// Schema: Complete then returns a JSON array of ToolCall. Not with Thinking.
 	Tools []Tool
+	// Image, when set, is a JPEG sent before User as an image block. Only the
+	// ReceiptReader uses it.
+	Image []byte
 }
 
 // Tool is one action the model may propose. InputSchema is a strict JSON
