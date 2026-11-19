@@ -48,14 +48,15 @@ export function useShoppingList() {
   );
 
   const setQuantity = useCallback(
-    (id: string, quantityMilli: number) => {
+    async (id: string, quantityMilli: number) => {
       const current = client.getQueryData<ShoppingList>(listKey)?.items.find((i) => i.itemId === id);
       if (!current) return;
       setNotice(null);
+      // Awaited so a cancelled refetch cannot revert the optimistic edit below.
+      await client.cancelQueries({ queryKey: listKey });
       const before = waiting.current.get(id);
       clearTimeout(before?.timer);
       const base = before?.base ?? current.quantityMilli;
-      void client.cancelQueries({ queryKey: listKey });
       edit((l) => withQuantity(l, id, quantityMilli));
       const timer = setTimeout(() => {
         waiting.current.delete(id);
