@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { saoPauloDay } from "../../../shared/month/month";
 import { addItem, deleteItem, getPantry, markRanOut, undoRanOut, updateItem, type FieldCodes, type PantryItem, type PantryPatch } from "../api";
 import { withRanOut } from "../logic/pantry";
@@ -17,30 +17,36 @@ export function usePantry() {
   // Per item, so a second tap on another row neither waits for nor frees the first.
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
 
+  // Run-out writes in flight: a read while one is pending would put its row back as it was.
+  const pending = useRef(0);
+  const setBusyId = useCallback((id: string, on: boolean) => setBusy((s) => { const n = new Set(s); if (on) n.add(id); else n.delete(id); return n; }), []);
+
   const refresh = useCallback(() => void client.invalidateQueries({ queryKey: pantryKey }), [client]);
 
   const setRanOut = useCallback(
     async (item: PantryItem, ranOut: boolean): Promise<boolean> => {
       const replace = (row: PantryItem) => client.setQueryData<PantryItem[]>(pantryKey, (old) => old?.map((i) => (i.id === row.id ? row : i)));
       setNotice(null);
-      setBusy((s) => new Set(s).add(item.id));
+      setBusyId(item.id, true);
+      pending.current += 1;
       // A read in flight would put the old row back over the mark.
       await client.cancelQueries({ queryKey: pantryKey });
       // Roll back to the row as the list shows it now: an undo's `item` is the row from before the run-out.
       const before = client.getQueryData<PantryItem[]>(pantryKey)?.find((i) => i.id === item.id) ?? item;
       replace(withRanOut(item, ranOut, saoPauloDay(new Date())));
       const result = await (ranOut ? markRanOut : undoRanOut)(item.id);
-      setBusy((s) => { const n = new Set(s); n.delete(item.id); return n; });
+      pending.current -= 1;
+      setBusyId(item.id, false);
       if (result.kind === "ok") {
-        refresh();
+        if (pending.current === 0) refresh();
         return true;
       }
       replace(before);
       setNotice(result.kind === "not-found" ? "gone" : "failed");
-      if (result.kind === "not-found") refresh();
+      if (result.kind === "not-found" && pending.current === 0) refresh();
       return false;
     },
-    [client, refresh],
+    [client, refresh, setBusyId],
   );
 
   // A missing item (404) is read again too: it is gone, and the list says so.
@@ -69,9 +75,12 @@ export function usePantry() {
   const remove = useCallback(
     async (id: string) => {
       setNotice(null);
-      if (settle((await deleteItem(id)).kind).kind === "failed") setNotice("failed");
+      setBusyId(id, true);
+      const result = await deleteItem(id);
+      setBusyId(id, false);
+      if (settle(result.kind).kind === "failed") setNotice("failed");
     },
-    [settle],
+    [settle, setBusyId],
   );
 
   return {

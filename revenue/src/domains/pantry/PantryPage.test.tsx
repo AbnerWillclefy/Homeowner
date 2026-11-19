@@ -202,6 +202,34 @@ describe("ran out and undo", () => {
   });
 });
 
+describe("concurrent writes", () => {
+  it("keeps a pending run-out when another item's write answers and the list is read again", async () => {
+    serve([RICE, BEANS]);
+    let answerRice!: (r: WriteResult) => void;
+    ranOut.mockReturnValueOnce(new Promise((r) => { answerRice = r; })).mockReturnValueOnce(new Promise(() => {}));
+    open();
+    await screen.findByText("Arroz");
+    await userEvent.click(screen.getByRole("button", { name: "Ran out: Arroz" }));
+    await userEvent.click(screen.getByRole("button", { name: "Ran out: Feijão" }));
+    vi.mocked(api.getPantry).mockClear();
+    answerRice(ok);
+    await waitFor(() => expect(within(screen.getByRole("list", { name: "Items that ran out" })).getByText("Arroz")).toBeTruthy());
+    await new Promise((r) => setTimeout(r, 20));
+    expect(api.getPantry).not.toHaveBeenCalled();
+    expect(within(screen.getByRole("list", { name: "Items that ran out" })).getByText("Feijão")).toBeTruthy();
+  });
+
+  it("disables a row's menu entries while its run-out is pending", async () => {
+    serve([RICE]);
+    ranOut.mockReturnValue(new Promise(() => {}));
+    open();
+    await userEvent.click(await screen.findByRole("button", { name: "Ran out: Arroz" }));
+    await userEvent.click(screen.getByRole("button", { name: "More actions for Arroz" }));
+    const del = await screen.findByRole("menuitem", { name: "Delete" });
+    expect(del.hasAttribute("data-disabled") || del.getAttribute("aria-disabled") === "true").toBe(true);
+  });
+});
+
 describe("add, edit and delete", () => {
   it("adds an item by name only, and clears the field", async () => {
     serve([RICE]);

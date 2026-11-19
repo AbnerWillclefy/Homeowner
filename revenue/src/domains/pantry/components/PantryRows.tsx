@@ -10,7 +10,7 @@ interface RowsProps {
   caption: string;
   /** `YYYY-MM-DD` in São Paulo, for "ran out 2 days ago". */
   today: string;
-  /** Ids of the items whose write is pending; their button waits. */
+  /** Ids of the items whose write is pending; their button waits and their menu is off. */
   busy: ReadonlySet<string>;
   onRanOut(item: PantryItem): void;
   onEdit(item: PantryItem): void;
@@ -61,8 +61,8 @@ export function PantryRows({ rows, caption, today, busy, onRanOut, onEdit, onDel
                 label={t("pantry.menu", { name: item.name })}
                 closeLabel={t("app.close")}
                 items={[
-                  { label: t("pantry.edit"), icon: Pencil, onSelect: () => onEdit(item) },
-                  { label: t("pantry.delete"), icon: Trash2, danger: true, onSelect: () => onDelete(item) },
+                  { label: t("pantry.edit"), icon: Pencil, disabled: busy.has(item.id), onSelect: () => onEdit(item) },
+                  { label: t("pantry.delete"), icon: Trash2, danger: true, disabled: busy.has(item.id), onSelect: () => onDelete(item) },
                 ]}
               />
             </div>
