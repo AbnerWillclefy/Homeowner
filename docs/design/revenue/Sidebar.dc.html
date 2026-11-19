@@ -23,6 +23,7 @@
 <a href="Bills.dc.html" class="br-navitem" aria-current="{{cur.bills}}"><i class="ri ri-calendar" aria-hidden="true"></i>Contas a pagar<span class="br-badge br-badge--warning" style="margin-left: auto">3</span></a>
 <a href="CardBills.dc.html" class="br-navitem" aria-current="{{cur.cards}}"><i class="ri ri-card" aria-hidden="true"></i>Faturas</a>
 <a href="Categories.dc.html" class="br-navitem" aria-current="{{cur.categories}}"><i class="ri ri-pie" aria-hidden="true"></i>Categorias</a>
+<a href="Pantry.dc.html" class="br-navitem" aria-current="{{cur.pantry}}"><i class="ri ri-package" aria-hidden="true"></i>Despensa</a>
 </div>
 <div class="br-sidebar__group">
 <span class="br-sidebar__overline">Planejamento</span>
@@ -37,11 +38,11 @@
 </div>
 </nav>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"active":{"editor":"enum","options":["overview","transactions","bills","cards","categories","goals","networth","projection","accounts","settings"],"default":"overview"},"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":256,"height":1240}}'>
+<script type="text/x-dc" data-dc-script data-props='{"active":{"editor":"enum","options":["overview","transactions","bills","cards","categories","goals","networth","projection","accounts","pantry","settings"],"default":"overview"},"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":256,"height":1240}}'>
 class Component extends DCLogic {
   renderVals() {
     const active = this.props.active ?? 'overview';
-    const keys = ['overview','transactions','bills','cards','categories','goals','networth','projection','accounts','settings'];
+    const keys = ['overview','transactions','bills','cards','categories','goals','networth','projection','accounts','pantry','settings'];
     const cur = {};
     keys.forEach((k) => { cur[k] = k === active ? 'page' : null; });
     return { cur, theme: this.props.theme ?? 'dark' };

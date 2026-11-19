@@ -2,6 +2,10 @@
 
 Bedrock follows semver; before 1.0.0 a minor may break ([spec](../docs/design/bedrock/README.md)).
 
+## 0.5.0
+
+- Checkbox and Stepper (Core): a labelled check box for ticking items off a list, and a minus and plus quantity control with a minimum, a step (0,001 for kilograms) and a disabled state. They are Core because `web/` needs the same form primitives.
+
 ## 0.4.0
 
 - Select: optional `hideLabel` keeps the label for screen readers only, for a field whose value already names it (a month).

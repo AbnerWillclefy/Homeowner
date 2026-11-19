@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Adicionar nota, sheet</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<!--
+Add receipt is a sheet opened from the Pantry's "Adicionar nota" button: a bottom sheet on the phone, the rv-panel side panel on desktop.
+The prop "step" switches the step; every step keeps its primary action in the lower half of the sheet, for one hand.
+-->
+<div class="rv-phone" data-theme="{{theme}}">
+<div class="rv-phone__top"><div class="rv-head__text"><h1 class="rv-title">{{t.pantry}}</h1></div></div>
+<div class="rv-phone__scroll"><section class="br-card br-card--compact"><div class="br-skel" style="height: 48px"></div><div class="br-skel" style="height: 48px"></div></section></div>
+<nav class="br-bottombar" aria-label="{{t.nav}}">
+<a href="MobileOverview.dc.html" class="br-tab"><i class="ri ri-lg ri-dashboard" aria-hidden="true"></i>{{t.tabHome}}</a>
+<a href="MobileTransactions.dc.html" class="br-tab"><i class="ri ri-lg ri-arrows" aria-hidden="true"></i>{{t.tabTx}}</a>
+<a href="Goals.dc.html" class="br-tab"><i class="ri ri-lg ri-target" aria-hidden="true"></i>{{t.tabPlan}}</a>
+<a href="Settings.dc.html" class="br-tab" aria-current="page"><i class="ri ri-lg ri-more" aria-hidden="true"></i>{{t.tabMore}}</a>
+</nav>
+
+<div class="rv-overlay">
+<div style="flex: 1"></div>
+<div class="br-sheet br-sheet--bottom" role="dialog" aria-label="{{t.title}}" style="padding-bottom: 32px; max-height: 94%; overflow-y: auto">
+<span class="br-sheet__grab"></span>
+<div class="br-sheet__head"><span class="br-sheet__title">{{title}}</span><button class="br-iconbtn br-iconbtn--sm" aria-label="{{t.close}}"><i class="ri ri-x" aria-hidden="true"></i></button></div>
+
+<!-- Choose how to add -->
+<sc-if value="{{on.choose}}" hint-placeholder-val="{{ true }}">
+<span class="br-muted">{{t.chooseText}}</span>
+<button class="br-btn br-btn--primary br-btn--lg br-btn--block"><i class="ri ri-qr" aria-hidden="true"></i>{{t.scan}}</button>
+<button class="br-btn br-btn--secondary br-btn--lg br-btn--block"><i class="ri ri-clipboard" aria-hidden="true"></i>{{t.paste}}</button>
+<button class="br-btn br-btn--secondary br-btn--lg br-btn--block"><i class="ri ri-camera" aria-hidden="true"></i>{{t.photo}}</button>
+</sc-if>
+
+<!-- Camera -->
+<sc-if value="{{on.camera}}" hint-placeholder-val="{{ false }}">
+<div class="rv-camera"><div class="rv-camera__frame"><i class="ri ri-lg ri-qr" aria-hidden="true"></i></div></div>
+<span class="br-muted" style="text-align: center">{{t.aim}}</span>
+<button class="br-btn br-btn--secondary br-btn--lg br-btn--block"><i class="ri ri-clipboard" aria-hidden="true"></i>{{t.paste}}</button>
+</sc-if>
+
+<!-- Camera denied: paste is right here, no scrolling -->
+<sc-if value="{{on.denied}}" hint-placeholder-val="{{ false }}">
+<div class="br-banner br-banner--warning" role="status"><i class="ri ri-alert br-icon" aria-hidden="true"></i><span class="br-banner__text">{{t.denied}}</span></div>
+<label class="br-field"><span class="br-field__label">{{t.keyLabel}}</span><span class="br-input"><input inputmode="numeric" placeholder="0000 0000 0000 …"></span><span class="br-field__hint">{{t.keyHint}}</span></label>
+<button class="br-btn br-btn--primary br-btn--lg br-btn--block">{{t.fetch}}</button>
+</sc-if>
+
+<!-- Paste the key -->
+<sc-if value="{{on.paste}}" hint-placeholder-val="{{ false }}">
+<label class="br-field"><span class="br-field__label">{{t.keyLabel}}</span><span class="br-input"><input inputmode="numeric" value="3524 1112 3456 7800 0123 …"></span><span class="br-field__hint">{{t.keyHint}}</span></label>
+<button class="br-btn br-btn--primary br-btn--lg br-btn--block">{{t.fetch}}</button>
+<button class="br-btn br-btn--ghost br-btn--block"><i class="ri ri-qr" aria-hidden="true"></i>{{t.scan}}</button>
+</sc-if>
+
+<!-- Loading -->
+<sc-if value="{{on.loading}}" hint-placeholder-val="{{ false }}">
+<div class="rv-stack-16" aria-busy="true" aria-label="{{t.loading}}"><span class="br-muted">{{t.loading}}</span><div class="br-skel" style="height: 56px"></div><div class="br-skel" style="height: 56px"></div><div class="br-skel" style="height: 56px"></div></div>
+</sc-if>
+
+<!-- Error -->
+<sc-if value="{{on.error}}" hint-placeholder-val="{{ false }}">
+<div class="br-banner br-banner--danger" role="alert"><i class="ri ri-alert br-icon" aria-hidden="true"></i><span class="br-banner__text">{{t.error}}</span><button class="br-btn br-btn--ghost br-btn--sm"><i class="ri ri-refresh" aria-hidden="true"></i>{{t.retry}}</button></div>
+</sc-if>
+
+<!-- Matching one line -->
+<sc-if value="{{on.match}}" hint-placeholder-val="{{ false }}">
+<div class="br-progress"><div class="br-progress__track"><div class="br-progress__fill" style="width: 25%"></div></div><div class="br-progress__meta"><strong>{{t.lineOf}}</strong><span>Bom Preço · 02/11</span></div></div>
+<div class="br-card br-card--compact" style="background: var(--surface-sunken)"><span class="br-listrow__title">ARROZ TIO JOAO T1 5KG</span><span class="br-listrow__meta">1 un · R$ 27,90</span></div>
+<span class="br-card__label">{{t.pick}}</span>
+<div class="br-list">
+<button class="br-listrow" style="all: unset; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center; min-height: 48px; cursor: pointer; padding: 8px"><span class="br-listrow__main"><span class="br-listrow__title">Arroz</span><span class="br-listrow__meta">Tio João</span></span><i class="ri ri-chevron-right" aria-hidden="true"></i></button>
+<button class="br-listrow" style="all: unset; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center; min-height: 48px; cursor: pointer; padding: 8px"><span class="br-listrow__main"><span class="br-listrow__title">Arroz integral</span><span class="br-listrow__meta">Camil</span></span><i class="ri ri-chevron-right" aria-hidden="true"></i></button>
+</div>
+<button class="br-btn br-btn--primary br-btn--lg br-btn--block"><i class="ri ri-plus" aria-hidden="true"></i>{{t.createNew}}</button>
+<button class="br-btn br-btn--secondary br-btn--lg br-btn--block">{{t.notPantry}}</button>
+</sc-if>
+
+<!-- Empty: every line already matched -->
+<sc-if value="{{on.allMatched}}" hint-placeholder-val="{{ false }}">
+<div class="br-empty" style="padding: 8px 0"><span class="br-empty__icon"><i class="ri ri-lg ri-check" aria-hidden="true"></i></span><span class="br-empty__title">{{t.allTitle}}</span><span class="br-empty__text">{{t.allText}}</span></div>
+<button class="br-btn br-btn--primary br-btn--lg br-btn--block">{{t.done}}</button>
+</sc-if>
+
+<!-- Duplicate -->
+<sc-if value="{{on.duplicate}}" hint-placeholder-val="{{ false }}">
+<div class="br-empty" style="padding: 8px 0"><span class="br-empty__icon"><i class="ri ri-lg ri-receipt" aria-hidden="true"></i></span><span class="br-empty__title">{{t.dupTitle}}</span><span class="br-empty__text">{{t.dupText}}</span></div>
+<button class="br-btn br-btn--primary br-btn--lg br-btn--block">{{t.done}}</button>
+</sc-if>
+
+<!-- SEFAZ unavailable: offer the photo -->
+<sc-if value="{{on.sefaz}}" hint-placeholder-val="{{ false }}">
+<div class="br-banner br-banner--warning" role="status"><i class="ri ri-cloud-off br-icon" aria-hidden="true"></i><span class="br-banner__text">{{t.sefaz}}</span></div>
+<button class="br-btn br-btn--primary br-btn--lg br-btn--block"><i class="ri ri-camera" aria-hidden="true"></i>{{t.photo}}</button>
+<button class="br-btn br-btn--secondary br-btn--lg br-btn--block"><i class="ri ri-refresh" aria-hidden="true"></i>{{t.again}}</button>
+</sc-if>
+
+<!-- Photo draft: check and edit before saving -->
+<sc-if value="{{on.draft}}" hint-placeholder-val="{{ false }}">
+<span class="br-muted">{{t.draftText}}</span>
+<label class="br-field"><span class="br-field__label">{{t.store}}</span><span class="br-input"><input value="Mercado Bom Preço"></span></label>
+<div class="rv-row" style="flex-wrap: nowrap"><label class="br-field" style="flex: 1"><span class="br-field__label">{{t.date}}</span><span class="br-input"><input value="02/11/2026" inputmode="numeric"></span></label><label class="br-field" style="flex: 1"><span class="br-field__label">{{t.total}}</span><span class="br-input"><input value="R$ 112,40" inputmode="decimal"></span></label></div>
+<span class="br-card__label">{{t.lines}}</span>
+<div class="br-list">
+<div class="br-listrow" style="grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; cursor: default"><span class="br-listrow__main"><span class="br-listrow__title">Arroz 5 kg</span><span class="br-listrow__meta">1 un</span></span><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 27,90</span></span><button class="br-iconbtn br-iconbtn--sm" style="border: 0" aria-label="{{t.edit}} Arroz 5 kg"><i class="ri ri-pencil" aria-hidden="true"></i></button></div>
+<div class="br-listrow" style="grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; cursor: default"><span class="br-listrow__main"><span class="br-listrow__title">Queijo minas</span><span class="br-listrow__meta">0,450 kg</span></span><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 29,21</span></span><button class="br-iconbtn br-iconbtn--sm" style="border: 0" aria-label="{{t.edit}} Queijo minas"><i class="ri ri-pencil" aria-hidden="true"></i></button></div>
+</div>
+<button class="br-btn br-btn--primary br-btn--lg br-btn--block">{{t.save}}</button>
+</sc-if>
+
+<!-- Photo rejected -->
+<sc-if value="{{on.rejected}}" hint-placeholder-val="{{ false }}">
+<div class="br-banner br-banner--danger" role="alert"><i class="ri ri-alert br-icon" aria-hidden="true"></i><span class="br-banner__text">{{t.rejected}}</span></div>
+<button class="br-btn br-btn--primary br-btn--lg br-btn--block"><i class="ri ri-camera" aria-hidden="true"></i>{{t.photoAgain}}</button>
+<button class="br-btn br-btn--secondary br-btn--lg br-btn--block"><i class="ri ri-clipboard" aria-hidden="true"></i>{{t.paste}}</button>
+</sc-if>
+
+<!-- Daily photo cap -->
+<sc-if value="{{on.cap}}" hint-placeholder-val="{{ false }}">
+<div class="br-banner br-banner--warning" role="status"><i class="ri ri-clock br-icon" aria-hidden="true"></i><span class="br-banner__text">{{t.cap}}</span></div>
+<button class="br-btn br-btn--primary br-btn--lg br-btn--block"><i class="ri ri-clipboard" aria-hidden="true"></i>{{t.paste}}</button>
+</sc-if>
+
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"locale":{"editor":"enum","options":["pt-BR","en"],"default":"pt-BR"},"step":{"editor":"enum","options":["choose","camera","denied","paste","loading","error","match","allMatched","duplicate","sefaz","draft","rejected","cap"],"default":"choose"},"$preview":{"width":390,"height":844}}'>
+// Add receipt. step=loading is reading the note, error is any other failure, allMatched is the empty state of the matching step.
+const COPY = {
+  'pt-BR': { pantry: 'Despensa', title: 'Adicionar nota', close: 'Fechar', chooseText: 'Como quer trazer a nota?', scan: 'Ler QR da nota', paste: 'Colar a chave', photo: 'Tirar foto', aim: 'Aponte para o QR da nota.', denied: 'Sem acesso à câmera. Cole a chave aqui.', keyLabel: 'Chave de acesso', keyHint: '44 números, abaixo do QR.', fetch: 'Buscar nota', loading: 'Lendo a nota na SEFAZ', error: 'Não deu para ler a nota.', retry: 'Tentar', lineOf: '3 de 12', pick: 'É qual item?', createNew: 'Criar item "Arroz Tio João"', notPantry: 'Não é da despensa', allTitle: 'Tudo reconhecido', allText: 'Todas as linhas já são itens da despensa.', done: 'Concluir', dupTitle: 'Nota já adicionada', dupText: 'Você incluiu esta nota em 02/11.', sefaz: 'Não deu para ler na SEFAZ. Tire uma foto da nota.', again: 'Tentar de novo', draftText: 'Confira os dados antes de salvar.', store: 'Mercado', date: 'Data', total: 'Total', lines: 'Itens', edit: 'Editar', save: 'Salvar nota', rejected: 'Isso não parece uma nota fiscal. Tire outra foto.', photoAgain: 'Tirar outra foto', cap: 'Limite de 10 fotos por dia. Cole a chave ou volte amanhã.', nav: 'Principal', tabHome: 'Visão geral', tabTx: 'Transações', tabPlan: 'Planejamento', tabMore: 'Mais' },
+  en: { pantry: 'Pantry', title: 'Add receipt', close: 'Close', chooseText: 'How do you want to bring the receipt?', scan: 'Scan receipt QR', paste: 'Paste the key', photo: 'Take photo', aim: 'Point at the receipt QR code.', denied: 'No camera access. Paste the key here.', keyLabel: 'Access key', keyHint: '44 digits, under the QR code.', fetch: 'Get receipt', loading: 'Reading the receipt from SEFAZ', error: "Couldn't read the receipt.", retry: 'Retry', lineOf: '3 of 12', pick: 'Which item is it?', createNew: 'Create "Tio João rice"', notPantry: 'Not a pantry item', allTitle: 'All recognised', allText: 'Every line is already a pantry item.', done: 'Done', dupTitle: 'Receipt already added', dupText: 'You added this receipt on 11/02.', sefaz: "Couldn't read it from SEFAZ. Take a photo of the receipt.", again: 'Try again', draftText: 'Check the details before saving.', store: 'Store', date: 'Date', total: 'Total', lines: 'Items', edit: 'Edit', save: 'Save receipt', rejected: "This doesn't look like a receipt. Take another photo.", photoAgain: 'Take another photo', cap: 'Limit of 10 photos a day. Paste the key or come back tomorrow.', nav: 'Main', tabHome: 'Overview', tabTx: 'Transactions', tabPlan: 'Planning', tabMore: 'More' },
+};
+class Component extends DCLogic {
+  renderVals() {
+    const t = COPY[this.props.locale ?? 'pt-BR'];
+    const step = this.props.step ?? 'choose';
+    const names = ['choose', 'camera', 'denied', 'paste', 'loading', 'error', 'match', 'allMatched', 'duplicate', 'sefaz', 'draft', 'rejected', 'cap'];
+    return {
+      theme: this.props.theme ?? 'dark',
+      t, title: t.title,
+      on: Object.fromEntries(names.map((n) => [n, n === step])),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -24,7 +24,13 @@ Wording in the artboards is illustrative. The i18n catalogs and `docs/glossary-p
 | Net worth | `/net-worth` | [NetWorth](NetWorth.dc.html) | |
 | Projection | `/projection` | [Projection](Projection.dc.html) | |
 | Sources | `/sources` | [Accounts](Accounts.dc.html) | |
+| Pantry | `/pantry` | [Pantry](Pantry.dc.html) (with the item sheet as its side panel) | [MobilePantry](MobilePantry.dc.html) (under Mais, not in the bottom bar) |
+| Pantry item sheet | `/pantry` (row) | [Pantry](Pantry.dc.html), prop `panel` | [MobilePantryItem](MobilePantryItem.dc.html) |
+| Shopping list | `/pantry/list` | [ShoppingList](ShoppingList.dc.html) | [MobileShoppingList](MobileShoppingList.dc.html) |
+| Add receipt | `/pantry` (sheet) | the same sheet as an `rv-panel` | [MobileAddReceipt](MobileAddReceipt.dc.html) (steps switched by the prop `step`) |
 | Settings | `/settings` | [Settings](Settings.dc.html) | |
 | Onboarding | `/onboarding` | [Onboarding](Onboarding.dc.html) | |
 
 Screens with no mobile artboard follow Bedrock's adaptation rules: the 12-column grid becomes one column, the side panel becomes a bottom sheet and the sidebar becomes the bottom bar.
+
+Pantry artboards take the props `locale` (`pt-BR` or `en`, the English check) and `view` (`ready`, `empty`, `loading`, `error`); the shopping list adds `limit` (`ok`, `over`, `none`) and Add receipt switches by `step`. The Pantry sits in "Mais" on the phone and in the Sidebar on desktop.
