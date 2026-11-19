@@ -281,11 +281,11 @@ func (h *Handler) AddReceipt(w http.ResponseWriter, r *http.Request) {
 // MatchLine answers PUT /me/finance/pantry/receipts/{id}/lines/{n}.
 func (h *Handler) MatchLine(w http.ResponseWriter, r *http.Request) {
 	id := itemID(w, r)
-	n, nerr := strconv.Atoi(r.PathValue("n"))
+	n, nerr := strconv.ParseInt(r.PathValue("n"), 10, 32)
 	if id == "" {
 		return
 	}
-	if nerr != nil {
+	if nerr != nil || n < 1 {
 		httpx.WriteError(w, http.StatusNotFound, "not found")
 		return
 	}
@@ -320,7 +320,7 @@ func (h *Handler) MatchLine(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid match")
 		return
 	}
-	rec, err := h.store.MatchLine(r.Context(), identity.CurrentUser(r.Context()).ID, id, n, m, h.clk.Now())
+	rec, err := h.store.MatchLine(r.Context(), identity.CurrentUser(r.Context()).ID, id, int(n), m, h.clk.Now())
 	if err != nil {
 		h.fail(w, "pantry: match line", err)
 		return

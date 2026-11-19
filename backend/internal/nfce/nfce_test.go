@@ -106,3 +106,14 @@ func TestParseCode(t *testing.T) {
 		}
 	}
 }
+
+func TestSlowSefazHitsTheClientTimeout(t *testing.T) {
+	t.Parallel()
+	s := nfcetest.NewServer(t)
+	s.Delay(300 * time.Millisecond)
+	c := nfce.NewHTTP(map[string]string{"23": s.URL + nfcetest.Path})
+	c.SetTimeout(50 * time.Millisecond)
+	if _, err := c.Fetch(context.Background(), nfcetest.Key); err != nfce.ErrUnavailable {
+		t.Errorf("err = %v, want ErrUnavailable", err)
+	}
+}

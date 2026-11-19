@@ -18,8 +18,9 @@ var (
 	errNotRanOut = errors.New("pantry: item not ran out")
 )
 
-// Store keeps the Pantry in finance_pantry_items and finance_pantry_run_outs.
-// Every query is filtered by user_id.
+// Store keeps the Pantry: items, run-outs, receipts with their lines, and saved
+// line matches. Every query is scoped to the User, by user_id or by an id
+// already read under it.
 type Store struct {
 	db *pgxpool.Pool
 }
@@ -225,11 +226,6 @@ func (s *Store) receiptQ(ctx context.Context, q interface {
 // ReceiptByKey returns the User's receipt with this access key, or errNotFound.
 func (s *Store) ReceiptByKey(ctx context.Context, userID, key string) (Receipt, error) {
 	return s.receiptQ(ctx, s.db, userID, "access_key = $2", key)
-}
-
-// GetReceipt returns the User's receipt, or errNotFound.
-func (s *Store) GetReceipt(ctx context.Context, userID, id string) (Receipt, error) {
-	return s.receiptQ(ctx, s.db, userID, "id = $2", id)
 }
 
 // AddReceipt saves the receipt with its lines, matching each line to the

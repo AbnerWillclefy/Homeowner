@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AbnerWillclefy/Homeowner/backend/internal/nfce"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/nfce/nfcetest"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/apitest"
 )
@@ -215,6 +214,9 @@ func TestMatchValidation(t *testing.T) {
 	if r := putLine(ana, id, 0, map[string]any{"ignore": true}); r.Status != 404 {
 		t.Errorf("line 0: %d", r.Status)
 	}
+	if r := putLine(ana, id, 99999999999, map[string]any{"ignore": true}); r.Status != 404 {
+		t.Errorf("line 99999999999: %d", r.Status)
+	}
 }
 
 func TestPostValidation(t *testing.T) {
@@ -283,18 +285,6 @@ func TestARedirectToAnotherHostIsRefused(t *testing.T) {
 	r := post(t, ana, nfcetest.Key, http.StatusBadGateway)
 	if r.Body["error"] != "sefaz_unavailable" || foreign.Load() != 0 || app.NFCe.Hits() != 1 {
 		t.Errorf("body = %s, foreign hits = %d, hits = %d", r.Raw, foreign.Load(), app.NFCe.Hits())
-	}
-}
-
-func TestSlowSefazTimesOut(t *testing.T) {
-	t.Parallel()
-	s := nfcetest.NewServer(t)
-	s.Delay(300 * time.Millisecond)
-	c := nfce.NewHTTP(map[string]string{"23": s.URL + nfcetest.Path})
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
-	defer cancel()
-	if _, err := c.Fetch(ctx, nfcetest.Key); err != nfce.ErrUnavailable {
-		t.Errorf("err = %v, want ErrUnavailable", err)
 	}
 }
 
