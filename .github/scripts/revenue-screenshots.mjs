@@ -14,10 +14,13 @@ const widths = [
 ];
 const TIMEZONE = "America/Sao_Paulo";
 
-/** The routes whose domain folder changed (named after the route, see src/app/screens.tsx); the Overview when only shared code did. */
+/** Screens that live in a domain folder besides its own route: a change to the folder shoots them too. */
+const EXTRA_ROUTES = { pantry: ["/pantry/list"] };
+
+/** The routes whose domain folder changed (named after the route, see src/app/screens.tsx) and the extra ones of that folder; the Overview when only shared code did. */
 export function changedScreens(changedFiles) {
   const domains = new Set(changedFiles.map((f) => f.match(/^revenue\/src\/domains\/([^/]+)\//)?.[1]).filter(Boolean));
-  const routes = [...domains].sort().map((d) => (d === "overview" ? "/" : `/${d}`));
+  const routes = [...domains].sort().flatMap((d) => [d === "overview" ? "/" : `/${d}`, ...(EXTRA_ROUTES[d] ?? [])]);
   return routes.length ? routes : ["/"];
 }
 

@@ -61,6 +61,12 @@ describe("layout and states", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Pantry" })).toBeTruthy();
   });
 
+  it("links to the shopping list", async () => {
+    serve([RICE]);
+    open();
+    expect((await screen.findByRole("link", { name: "Shopping list" })).getAttribute("href")).toBe("/pantry/list");
+  });
+
   it("says how long ago an item ran out, its brand, and the always-buy mark", async () => {
     serve([RICE, MILK]);
     open();

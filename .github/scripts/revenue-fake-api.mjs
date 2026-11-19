@@ -135,6 +135,26 @@ function pantry(today) {
   };
 }
 
+/**
+ * The next shopping list: priced and unpriced lines, a kg line, and a groceries left below the total, so the
+ * screenshot shows the over-limit warning. Lines match the Pantry's ran-out and always-bought items.
+ */
+function shoppingList() {
+  const line = (itemId, name, quantityMilli, unit, unitPriceCents, over = {}) => ({
+    itemId, name, preferredBrand: null, fixed: false, quantityMilli, unit,
+    ...(unitPriceCents === undefined ? {} : { unitPriceCents, priceCents: Math.round((unitPriceCents * quantityMilli) / 1000) }),
+    ...over,
+  });
+  const items = [
+    line("p1", "Leite", 2000, "UN", 549, { preferredBrand: "Piracanjuba" }),
+    line("p2", "Café", 1000, "UN", 1890),
+    line("p3", "Arroz", 1000, "UN", 2790, { preferredBrand: "Tio João", fixed: true }),
+    line("p6", "Queijo minas", 450, "KG", 6490),
+    line("p7", "Sal", 1000, "UN"),
+  ];
+  return { items, expectedTotalCents: items.reduce((sum, i) => sum + (i.priceCents ?? 0), 0), groceriesLeftCents: 5_000 };
+}
+
 /** One item's detail: six purchases at two stores, newest first, and a completed cycle. Prices are per unit. */
 function pantryItem(id, today) {
   const ago = (days) => new Date(Date.parse(`${today}T00:00:00Z`) - days * 86_400_000).toISOString().slice(0, 10);
@@ -242,6 +262,8 @@ export function answer(method, url, today) {
   if (route === "GET /me/finance/bills") return { status: 200, body: bills(params.get("month")) };
   if (route === "GET /me/finance/bill-suggestions") return { status: 200, body: [{ merchantKey: "enel", name: "Conta de luz Enel", amountCents: 21_480, dueDay: 10 }] };
   if (route === "GET /me/finance/pantry") return { status: 200, body: pantry(today) };
+  if (route === "GET /me/finance/pantry/list") return { status: 200, body: shoppingList() };
+  if (/^PUT \/me\/finance\/pantry\/list\/[^/]+$/.test(route)) return { status: 204, body: {} };
   const itemRead = /^GET \/me\/finance\/pantry\/items\/([^/]+)$/.exec(route);
   if (itemRead) {
     const body = pantryItem(decodeURIComponent(itemRead[1]), today);
