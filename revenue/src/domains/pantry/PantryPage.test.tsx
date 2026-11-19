@@ -304,7 +304,7 @@ describe("add, edit and delete", () => {
     await userEvent.click(sheet.getByRole("button", { name: "Save" }));
     expect(api.updateItem).toHaveBeenCalledWith("p2", { name: "Feijão preto", preferredBrand: "Camil", fixed: true });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    await waitFor(() => expect(document.activeElement).toBe(row("Feijão").querySelector("button:last-of-type")));
+    await waitFor(() => expect(document.activeElement).toBe(row("Feijão").querySelector(".ml-auto button:last-of-type")));
   });
 
   it("clears the always-buy mark and the brand", async () => {

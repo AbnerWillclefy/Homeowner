@@ -2,7 +2,7 @@ import type { AxiosAdapter, InternalAxiosRequestConfig } from "axios";
 import { describe, expect, it } from "vitest";
 import { createApiClient } from "../../api/client";
 import { createSessionStore } from "../../auth/session";
-import { addItem, addReceipt, deleteItem, getPantry, markRanOut, matchLine, readPhoto, saveDraft, undoRanOut, updateItem } from "./api";
+import { addItem, addReceipt, deleteItem, getItem, getPantry, markRanOut, matchLine, readPhoto, saveDraft, undoRanOut, updateItem } from "./api";
 
 const ITEM = { id: "p1", name: "Arroz", preferredBrand: "Tio João", fixed: true, state: "in_stock", ranOutOn: null };
 
@@ -140,6 +140,51 @@ describe("matchLine", () => {
     expect(await matchLine("r1", 1, { ignore: true }, setup(404, {}).client)).toEqual({ kind: "not-found" });
     expect(await matchLine("r1", 1, { ignore: true }, setup(500, {}).client)).toEqual({ kind: "error" });
     expect(await matchLine("r1", 1, { ignore: true }, setup(200, { nope: 1 }).client)).toEqual({ kind: "error" });
+  });
+});
+
+describe("the Pantry read's price and duration", () => {
+  it("passes lastPriceCents and avgDurationDays through when the API sends them", async () => {
+    const rich = { ...ITEM, lastPriceCents: 2790, avgDurationDays: 22 };
+    expect(await getPantry(setup(200, { items: [rich] }).client)).toEqual([rich]);
+  });
+
+  it.each([["lastPriceCents", "27,90"], ["lastPriceCents", 27.9], ["avgDurationDays", null], ["avgDurationDays", "22"]])("refuses a row with a bad %s (%j)", async (field, value) => {
+    await expect(getPantry(setup(200, { items: [{ ...ITEM, [field]: value }] }).client)).rejects.toThrow();
+  });
+});
+
+const PRICE = { issuedOn: "2030-01-02", unitPriceCents: 2790, storeName: "Bom Preço" };
+const DETAIL = { item: ITEM, avgDurationDays: 22, prices: [PRICE, { ...PRICE, issuedOn: "2029-12-01", unitPriceCents: 2400 }] };
+
+describe("getItem", () => {
+  it("GETs the encoded item and reads its average and prices as sent", async () => {
+    const { client, sent } = setup(200, DETAIL);
+    expect(await getItem("a/b", client)).toEqual({ kind: "ok", detail: DETAIL });
+    expect(sent[0]!.url).toBe("/me/finance/pantry/items/a%2Fb");
+  });
+
+  it("reads a missing average as null, and no purchases as an empty list", async () => {
+    const { avgDurationDays: _, ...bare } = DETAIL;
+    expect(await getItem("p1", setup(200, { ...bare, prices: [] }).client)).toEqual({ kind: "ok", detail: { item: ITEM, avgDurationDays: null, prices: [] } });
+  });
+
+  it("answers not-found for 404 and throws for any other failure", async () => {
+    expect(await getItem("p1", setup(404, {}).client)).toEqual({ kind: "not-found" });
+    await expect(getItem("p1", setup(500, {}).client)).rejects.toThrow();
+    await expect(getItem("p1", setup(200, DETAIL, true).client)).rejects.toThrow();
+  });
+
+  it.each([
+    ["item", "p1"], ["avgDurationDays", "22"], ["avgDurationDays", 2.5], ["prices", "none"], ["prices", [null]],
+  ])("refuses a body with a bad %s", async (field, value) => {
+    await expect(getItem("p1", setup(200, { ...DETAIL, [field]: value }).client)).rejects.toThrow();
+  });
+
+  it.each([
+    ["issuedOn", 20300102], ["unitPriceCents", "27,90"], ["unitPriceCents", 1.5], ["storeName", null],
+  ])("refuses a price with a bad %s", async (field, value) => {
+    await expect(getItem("p1", setup(200, { ...DETAIL, prices: [{ ...PRICE, [field]: value }] }).client)).rejects.toThrow();
   });
 });
 

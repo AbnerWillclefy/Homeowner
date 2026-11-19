@@ -135,6 +135,19 @@ function pantry(today) {
   };
 }
 
+/** One item's detail: six purchases at two stores, newest first, and a completed cycle. Prices are per unit. */
+function pantryItem(id, today) {
+  const ago = (days) => new Date(Date.parse(`${today}T00:00:00Z`) - days * 86_400_000).toISOString().slice(0, 10);
+  const row = pantry(today).items.find((i) => i.id === id);
+  if (!row) return null;
+  const buys = [[8, 2790, "Bom Preço"], [40, 2490, "Atacadão"], [68, 2650, "Bom Preço"], [95, 2400, "Atacadão"], [130, 2590, "Bom Preço"], [160, 2790, "Bom Preço"]];
+  return {
+    item: { ...row, lastPriceCents: 2790, avgDurationDays: 22 },
+    avgDurationDays: 22,
+    prices: buys.map(([days, unitPriceCents, storeName]) => ({ issuedOn: ago(days), unitPriceCents, storeName })),
+  };
+}
+
 /** A receipt read now, with three unmatched lines and one already matched (so the matching step shows "1 de 3"). */
 function receipt(today) {
   const line = (n, description, quantityMilli, unit, unitPriceCents, over = {}) => ({
@@ -229,6 +242,11 @@ export function answer(method, url, today) {
   if (route === "GET /me/finance/bills") return { status: 200, body: bills(params.get("month")) };
   if (route === "GET /me/finance/bill-suggestions") return { status: 200, body: [{ merchantKey: "enel", name: "Conta de luz Enel", amountCents: 21_480, dueDay: 10 }] };
   if (route === "GET /me/finance/pantry") return { status: 200, body: pantry(today) };
+  const itemRead = /^GET \/me\/finance\/pantry\/items\/([^/]+)$/.exec(route);
+  if (itemRead) {
+    const body = pantryItem(decodeURIComponent(itemRead[1]), today);
+    return body ? { status: 200, body } : { status: 404, body: { error: "not_found" } };
+  }
   if (route === "POST /me/finance/pantry/receipts") return { status: 201, body: receipt(today) };
   if (route === "POST /me/finance/pantry/receipts/photo") {
     const { storeName, issuedOn, totalCents, lines } = receipt(today);

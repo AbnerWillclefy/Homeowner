@@ -87,6 +87,7 @@ export function usePantry() {
     loading: query.isPending,
     failed: query.isError && !query.data,
     reload: () => void query.refetch(),
+    refresh,
     notice,
     busy,
     setRanOut,
