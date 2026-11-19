@@ -182,6 +182,8 @@ func TestListEditsPersistAndClearOnPurchase(t *testing.T) {
 		}
 	}
 
+	apitest.ExpectStatus(t, ana.Put(listPath+"/"+c, map[string]any{"quantityMilli": 2000}), http.StatusNoContent)
+
 	// Buying A (a saved match) and B (a manual match) clears their edits; they were bought after running out, so they leave the list.
 	rec := post(t, ana, nfcetest.Key, http.StatusCreated)
 	id := rec.Body["id"].(string)
@@ -190,9 +192,9 @@ func TestListEditsPersistAndClearOnPurchase(t *testing.T) {
 	if n := count(t, app, `SELECT count(*) FROM finance_pantry_list_edits WHERE item_id IN ($1, $2)`, a, b); n != 0 {
 		t.Errorf("edits left after matching = %d, want 0", n)
 	}
-	if n := count(t, app, `SELECT count(*) FROM finance_pantry_list_edits WHERE item_id = $1`, c); n != 0 {
-		// C was never bought: its edit-free state is untouched, so this must stay at the 0 it had.
-		t.Errorf("unexpected edit for café = %d", n)
+	if n := count(t, app, `SELECT count(*) FROM finance_pantry_list_edits WHERE item_id = $1`, c); n != 1 {
+		// C was never bought: matching other lines must not clear its edit.
+		t.Errorf("edits for café = %d, want 1", n)
 	}
 
 	// B runs out again on a later day: it is back on the list, no longer removed.

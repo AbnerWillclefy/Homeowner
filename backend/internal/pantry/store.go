@@ -106,7 +106,11 @@ func (s *Store) loadFacts(ctx context.Context, userID string, only *string) ([]f
 		if err := prows.Scan(&id, &p.issuedOn, &p.quantityMilli, &p.unit, &p.unitPriceCents, &p.storeName); err != nil {
 			return nil, err
 		}
-		out[at[id]].purchases = append(out[at[id]].purchases, p)
+		i, ok := at[id]
+		if !ok {
+			continue // created after the items were read
+		}
+		out[i].purchases = append(out[i].purchases, p)
 	}
 	if err := prows.Err(); err != nil {
 		return nil, err
@@ -123,7 +127,11 @@ func (s *Store) loadFacts(ctx context.Context, userID string, only *string) ([]f
 		if err := rrows.Scan(&id, &d); err != nil {
 			return nil, err
 		}
-		out[at[id]].runOuts = append(out[at[id]].runOuts, d)
+		i, ok := at[id]
+		if !ok {
+			continue // created after the items were read
+		}
+		out[i].runOuts = append(out[i].runOuts, d)
 	}
 	if err := rrows.Err(); err != nil {
 		return nil, err
@@ -485,8 +493,10 @@ func (s *Store) MatchLine(ctx context.Context, userID, receiptID string, n int, 
 		WHERE user_id = $1 AND receipt_id = $2 AND line_key = $3`, userID, receiptID, key, item, m.Ignore); err != nil {
 		return Receipt{}, err
 	}
-	if err := clearEdits(ctx, tx, userID, receiptID); err != nil {
-		return Receipt{}, err
+	if item != nil { // only the item just bought; other items keep their edits
+		if _, err := tx.Exec(ctx, `DELETE FROM finance_pantry_list_edits WHERE user_id = $1 AND item_id = $2`, userID, *item); err != nil {
+			return Receipt{}, err
+		}
 	}
 	r, err := s.receiptQ(ctx, tx, userID, "id = $2", receiptID)
 	if err != nil {
