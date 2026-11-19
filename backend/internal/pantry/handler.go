@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -14,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/identity"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/nfce"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
 )
@@ -39,13 +41,14 @@ func mustLoad(name string) *time.Location {
 // Handler serves the Pantry routes, which sit behind the finance allowlist.
 type Handler struct {
 	store *Store
+	nfce  nfce.Client // nil: the receipt route answers 503
 	clk   clock.Clock
 	log   *slog.Logger
 }
 
-// NewHandler returns a Handler over store.
-func NewHandler(store *Store, clk clock.Clock, log *slog.Logger) *Handler {
-	return &Handler{store: store, clk: clk, log: log}
+// NewHandler returns a Handler over store; nfce reads receipts from SEFAZ.
+func NewHandler(store *Store, client nfce.Client, clk clock.Clock, log *slog.Logger) *Handler {
+	return &Handler{store: store, nfce: client, clk: clk, log: log}
 }
 
 // fail answers a store error: 404 for a missing or foreign item, 409 for a
@@ -218,4 +221,109 @@ func (h *Handler) UndoRunOut(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// AddReceipt answers POST /me/finance/pantry/receipts: 201 with the receipt
+// just read, or 200 with the one already saved under the same key, which is
+// then never fetched again.
+func (h *Handler) AddReceipt(w http.ResponseWriter, r *http.Request) {
+	if h.nfce == nil {
+		httpx.WriteError(w, http.StatusServiceUnavailable, "receipts unavailable")
+		return
+	}
+	var req receiptRequest
+	if !httpx.DecodeBody(w, r, &req, maxBodyBytes, true) {
+		return
+	}
+	var key string
+	var err error
+	if req.Code != nil {
+		key, err = nfce.ParseCode(*req.Code)
+	}
+	if req.Code == nil || err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_code")
+		return
+	}
+	userID := identity.CurrentUser(r.Context()).ID
+	saved, err := h.store.ReceiptByKey(r.Context(), userID, key)
+	if err == nil {
+		httpx.WriteJSON(w, http.StatusOK, saved)
+		return
+	}
+	if !errors.Is(err, errNotFound) {
+		h.fail(w, "pantry: receipt by key", err)
+		return
+	}
+	// Outside any transaction: SEFAZ can take its whole timeout.
+	rc, err := h.nfce.Fetch(r.Context(), key)
+	switch {
+	case errors.Is(err, nfce.ErrUnsupportedState):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, "unsupported_state")
+		return
+	case err != nil:
+		// The state and the kind of failure, never the page.
+		h.log.Warn("pantry: sefaz unavailable", "state", key[:2], "error", err.Error())
+		httpx.WriteError(w, http.StatusBadGateway, "sefaz_unavailable")
+		return
+	}
+	rec, created, err := h.store.AddReceipt(r.Context(), userID, key, rc, h.clk.Now())
+	if err != nil {
+		h.fail(w, "pantry: add receipt", err)
+		return
+	}
+	status := http.StatusOK
+	if created {
+		status = http.StatusCreated
+	}
+	httpx.WriteJSON(w, status, rec)
+}
+
+// MatchLine answers PUT /me/finance/pantry/receipts/{id}/lines/{n}.
+func (h *Handler) MatchLine(w http.ResponseWriter, r *http.Request) {
+	id := itemID(w, r)
+	n, nerr := strconv.ParseInt(r.PathValue("n"), 10, 32)
+	if id == "" {
+		return
+	}
+	if nerr != nil || n < 1 {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return
+	}
+	var req matchRequest
+	if !httpx.DecodeBody(w, r, &req, maxBodyBytes, true) {
+		return
+	}
+	var m Match
+	chosen := 0
+	if req.ItemID != nil {
+		chosen++
+		m.ItemID = *req.ItemID
+	}
+	if req.Ignore != nil {
+		chosen++
+		m.Ignore = *req.Ignore
+	}
+	if req.NewItem != nil {
+		chosen++
+		m.NewItem = true
+		if req.NewItem.Name != nil {
+			m.NewName = strings.TrimSpace(*req.NewItem.Name)
+		}
+		if req.NewItem.Brand != nil {
+			var ok bool
+			if m.NewBrand, ok = brand(*req.NewItem.Brand); !ok {
+				chosen = 0
+			}
+		}
+	}
+	if chosen != 1 || (req.Ignore != nil && !*req.Ignore) || (m.NewItem && !validName(m.NewName)) || (req.ItemID != nil && !uuidRe.MatchString(m.ItemID)) {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid match")
+		return
+	}
+	rec, err := h.store.MatchLine(r.Context(), identity.CurrentUser(r.Context()).ID, id, int(n), m, h.clk.Now())
+	if err != nil {
+		h.fail(w, "pantry: match line", err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, rec)
 }

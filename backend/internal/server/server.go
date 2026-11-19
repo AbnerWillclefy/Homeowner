@@ -21,6 +21,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/invites"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/nfce"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/pantry"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/photos"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
@@ -88,6 +89,9 @@ type Deps struct {
 	// Pluggy reads the User's banks; nil means the routes that call Pluggy
 	// answer 503.
 	Pluggy pluggy.Client
+	// NFCe reads grocery receipts from SEFAZ; nil means the receipt route
+	// answers 503.
+	NFCe nfce.Client
 	// FinanceSyncBudget is the time budget of the sync that apitest runs; the
 	// server never reads it (the finance Lambda is another command).
 	FinanceSyncBudget time.Duration
@@ -134,7 +138,7 @@ func New(deps Deps) http.Handler {
 	voiceH := voice.NewHandler(deps.Voice, voice.NewStore(db), deps.VoiceModel, clk, log)
 	pushes := push.NewHandler(push.NewStore(db), deps.Push, deps.VAPIDPublicKey, financeAllow.Allows, clk, log)
 	fin := finance.NewHandler(finance.NewStore(db), deps.FinanceKey, deps.Pluggy, deps.Environment, clk, log)
-	pantryH := pantry.NewHandler(pantry.NewStore(db), clk, log)
+	pantryH := pantry.NewHandler(pantry.NewStore(db), deps.NFCe, clk, log)
 
 	user, resident := s.requireUser, s.requireResident
 	mux := http.NewServeMux()

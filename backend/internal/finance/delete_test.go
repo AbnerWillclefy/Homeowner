@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/finance"
@@ -65,6 +66,21 @@ func twoSynced(t *testing.T) (app *apitest.App, ana, bia *apitest.Client, anaID,
 		item := c.Post("/me/finance/pantry/items", map[string]any{"name": "Café"})
 		apitest.ExpectStatus(t, item, http.StatusCreated)
 		apitest.ExpectStatus(t, c.Post("/me/finance/pantry/items/"+item.Body["id"].(string)+"/run-outs", nil), http.StatusNoContent)
+		for _, q := range []string{
+			`INSERT INTO finance_pantry_receipts (id, user_id, access_key, store_name, issued_on, total_cents, read_by, created_at)
+			 VALUES (gen_random_uuid(), $1, '23261175315333015807655140000123451111111115', 'Mercado', '2026-11-18', 599, 'sefaz', now())`,
+			`INSERT INTO finance_pantry_receipt_lines (user_id, receipt_id, line_no, description, quantity_milli, unit, unit_price_cents, total_cents, line_key, item_id)
+			 SELECT $1, id, 1, 'CAFE', 1000, 'UN', 599, 599, 'CAFE', $2 FROM finance_pantry_receipts WHERE user_id = $1`,
+			`INSERT INTO finance_pantry_line_matches (user_id, line_key, item_id, ignored, updated_at) VALUES ($1, 'CAFE', $2, false, now())`,
+		} {
+			args := []any{id}
+			if strings.Contains(q, "$2") {
+				args = append(args, item.Body["id"])
+			}
+			if _, err := app.DB.Exec(context.Background(), q, args...); err != nil {
+				t.Fatal(err)
+			}
+		}
 		apitest.ExpectStatus(t, putContribution(c, 100000, 40), http.StatusNoContent)
 		for i, n := range rowsOf(t, app, id) {
 			if n == 0 {

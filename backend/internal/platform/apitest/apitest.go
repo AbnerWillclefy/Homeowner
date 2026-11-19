@@ -26,6 +26,8 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/finance"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/nfce"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/nfce/nfcetest"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/nudge"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/photos"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
@@ -53,6 +55,8 @@ type App struct {
 	Photos *photos.Fake
 	// Voice is the fake model behind voice; nil unless started WithVoice.
 	Voice *llmalloc.FakeClient
+	// NFCe is the fake SEFAZ server; nil unless started WithNFCe.
+	NFCe *nfcetest.Server
 	// Pluggy is the fake Pluggy server; nil unless started WithPluggy.
 	Pluggy *pluggytest.Server
 	// Auth is the fake token verifier; nil when started WithoutAuth.
@@ -185,6 +189,15 @@ func WithPluggy() Option {
 	return func(d *server.Deps) { d.Pluggy = pending }
 }
 
+// pendingNFCe marks Deps.NFCe until Start has a *testing.TB to start the fake with.
+var pendingNFCe = nfce.NewHTTP(nil)
+
+// WithNFCe points the Pantry receipts at the fake SEFAZ replaying the Ceará
+// fixture. The real adapter runs against it; the fake is exposed as App.NFCe.
+func WithNFCe() Option {
+	return func(d *server.Deps) { d.NFCe = pendingNFCe }
+}
+
 // Start boots the API on a fresh database cloned from the migrated template.
 func Start(t testing.TB, opts ...Option) *App {
 	t.Helper()
@@ -220,10 +233,15 @@ func Start(t testing.TB, opts ...Option) *App {
 		fakePluggy = pluggytest.NewServer(t)
 		deps.Pluggy = pluggy.NewHTTP(fakePluggy.URL)
 	}
+	var fakeNFCe *nfcetest.Server
+	if deps.NFCe == pendingNFCe {
+		fakeNFCe = nfcetest.NewServer(t)
+		deps.NFCe = nfce.NewHTTP(map[string]string{"23": fakeNFCe.URL + nfcetest.Path})
+	}
 	srv := httptest.NewServer(server.New(deps))
 	t.Cleanup(srv.Close)
 
-	app := &App{URL: srv.URL, Clock: fake, DB: pool, Logs: logs, Pluggy: fakePluggy, alloc: swappable, queries: counter}
+	app := &App{URL: srv.URL, Clock: fake, DB: pool, Logs: logs, Pluggy: fakePluggy, NFCe: fakeNFCe, alloc: swappable, queries: counter}
 	app.Push, _ = deps.Push.(*push.Fake)
 	app.Photos, _ = deps.Photos.(*photos.Fake)
 	app.Voice, _ = deps.Voice.(*llmalloc.FakeClient)
