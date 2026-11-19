@@ -39,3 +39,11 @@ test("serves a receipt with unmatched lines, and answers a match with it", () =>
   assert.ok(created.body.lines.filter((l) => l.itemId === null && !l.ignored).length >= 2);
   assert.equal(answer("PUT", new URL("http://api/me/finance/pantry/receipts/r1/lines/2"), "2026-11-03").status, 200);
 });
+
+test("serves a photo draft with lines that add up to its total", () => {
+  const { status, body } = answer("POST", new URL("http://api/me/finance/pantry/receipts/photo"), "2026-11-03");
+  assert.equal(status, 200);
+  assert.equal(body.draft.issuedOn, "2026-11-03");
+  assert.ok(body.draft.lines.length >= 2);
+  assert.equal(body.draft.lines.reduce((sum, l) => sum + l.totalCents, 0), body.draft.totalCents);
+});
