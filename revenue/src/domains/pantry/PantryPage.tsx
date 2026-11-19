@@ -1,6 +1,7 @@
 import { Badge, Banner, Button, Card, Dialog, EmptyState, Skeleton, Toast, ToastProvider } from "@homeowner/bedrock";
-import { Package, RefreshCw } from "lucide-react";
+import { Package, RefreshCw, ShoppingCart } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 import { useI18n } from "../../shared/i18n/I18nProvider";
 import { saoPauloDay } from "../../shared/month/month";
 import { PageHeader } from "../../shared/PageHeader";
@@ -15,7 +16,7 @@ import { groupItems } from "./logic/pantry";
 
 /**
  * "Despensa" at `/pantry`: what is at home and what ran out. One tap on "Acabou" moves the item at once and offers "Desfazer".
- * "Adicionar nota" opens the receipt Sheet; "Lista de compras" (an artboard tool) comes with the shopping list screen.
+ * "Adicionar nota" opens the receipt Sheet; "Lista de compras" links to the shopping list.
  */
 export function PantryPage() {
   const { t } = useI18n();
@@ -68,7 +69,14 @@ export function PantryPage() {
   return (
     <ToastProvider label={t("pantry.toast.region")}>
       <section className="flex flex-col gap-6">
-        <PageHeader title={t("nav.pantry")} subtitle={subtitle} tools={<AddReceiptSheet />} />
+        <PageHeader title={t("nav.pantry")} subtitle={subtitle} tools={
+            <>
+              <Button asChild variant="secondary">
+                <Link to="/pantry/list"><ShoppingCart className="size-4" aria-hidden />{t("pantry.list")}</Link>
+              </Button>
+              <AddReceiptSheet />
+            </>
+          } />
 
         {notice && <Banner tone="danger">{t(notice === "gone" ? "pantry.gone" : "pantry.failed")}</Banner>}
 

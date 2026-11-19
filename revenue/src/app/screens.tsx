@@ -11,6 +11,7 @@ import { GoalsPage } from "../domains/goals/GoalsPage";
 import { NetWorthPage } from "../domains/net-worth/NetWorthPage";
 import { OverviewPage } from "../domains/overview/OverviewPage";
 import { PantryPage } from "../domains/pantry/PantryPage";
+import { ShoppingListPage } from "../domains/pantry/ShoppingListPage";
 import { ProjectionPage } from "../domains/projection/ProjectionPage";
 import { SettingsPage } from "../domains/settings/SettingsPage";
 import { SourcesPage } from "../domains/sources/SourcesPage";
@@ -35,6 +36,8 @@ export const CATEGORIES = screen("/categories", "nav.categories", Tags, <Categor
 /** The drill-down into one Spending Category: a route, not a navigation item. */
 export const CATEGORY = screen("/categories/:category", "nav.categories", Tags, <CategoryPage />);
 export const PANTRY = screen("/pantry", "nav.pantry", ShoppingBasket, <PantryPage />);
+/** The next shopping list, reached from the Pantry: a route, not a navigation item. */
+export const PANTRY_LIST = screen("/pantry/list", "pantry.list", ShoppingBasket, <ShoppingListPage />);
 export const GOALS = screen("/goals", "nav.goals", Target, <GoalsPage />);
 export const NET_WORTH = screen("/net-worth", "nav.netWorth", PiggyBank, <NetWorthPage />);
 export const PROJECTION = screen("/projection", "nav.projection", LineChart, <ProjectionPage />);
@@ -49,5 +52,5 @@ export const NAV_GROUPS: { label: MessageKey; screens: Screen[] }[] = [
 export const NAV_FOOTER: Screen[] = [SETTINGS];
 /** On a phone, four tabs and "More" with everything else. */
 export const TABS: Screen[] = [OVERVIEW, TRANSACTIONS, BILLS, GOALS];
-export const ROUTES: Screen[] = [...NAV_GROUPS.flatMap((g) => g.screens), ...NAV_FOOTER, CATEGORY];
+export const ROUTES: Screen[] = [...NAV_GROUPS.flatMap((g) => g.screens), ...NAV_FOOTER, CATEGORY, PANTRY_LIST];
 export const MORE: Screen[] = [...NAV_GROUPS.flatMap((g) => g.screens), ...NAV_FOOTER].filter((s) => !TABS.includes(s));
