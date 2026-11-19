@@ -63,7 +63,7 @@ func (s *Store) Income(ctx context.Context, userID string) (*int64, error) {
 var financeTables = []string{"finance_source_balances", "finance_card_bills", "finance_transactions", "finance_sources", "finance_items", "finance_credentials",
 	"finance_merchant_categories", "finance_llm_calls", "finance_bill_reminders", "finance_bill_payments", "finance_bills", "finance_settings", "finance_category_budgets", "finance_bill_suggestion_dismissals",
 	"finance_investment_values", "finance_investments", "finance_goals", "finance_manual_card_bills", "finance_manual_cards",
-	"finance_pantry_line_matches", "finance_pantry_receipt_lines", "finance_pantry_receipts",
+	"finance_pantry_photo_calls", "finance_pantry_line_matches", "finance_pantry_receipt_lines", "finance_pantry_receipts",
 	"finance_pantry_run_outs", "finance_pantry_items"}
 
 // DeleteAll removes all of the User's finance data in one transaction. The

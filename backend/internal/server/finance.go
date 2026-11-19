@@ -92,6 +92,7 @@ func financeMux(h *finance.Handler, p *pantry.Handler) http.Handler {
 	mux.HandleFunc("POST /me/finance/pantry/items/{id}/run-outs", p.RunOut)
 	mux.HandleFunc("DELETE /me/finance/pantry/items/{id}/run-outs/latest", p.UndoRunOut)
 	mux.HandleFunc("POST /me/finance/pantry/receipts", p.AddReceipt)
+	mux.HandleFunc("POST /me/finance/pantry/receipts/photo", p.ReadPhoto)
 	mux.HandleFunc("PUT /me/finance/pantry/receipts/{id}/lines/{n}", p.MatchLine)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not found")

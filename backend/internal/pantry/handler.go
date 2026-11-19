@@ -1,9 +1,13 @@
 package pantry
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
+	"mime"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -15,15 +19,26 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/identity"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/nfce"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
 )
 
 const (
-	maxBodyBytes = 4 << 10
-	maxLen       = 60 // the Revenue form checks the same limit
+	maxBodyBytes      = 4 << 10
+	maxDraftBodyBytes = 64 << 10 // 200 lines of a draft
+	maxPhotoBytes     = 3 << 19  // 1.5 MB: the PWA downsizes the photo before it sends it
+	maxLen            = 60       // the Revenue form checks the same limit
+	// photoDailyCap is how many photo reads one User may cause a day (São
+	// Paulo). Change the constant to change the cap.
+	photoDailyCap = 10
+	// photoTimeout bounds one model call: the API Lambda's own timeout is 25 s.
+	photoTimeout = 20 * time.Second
 )
+
+// jpegMagic starts every JPEG file.
+var jpegMagic = []byte{0xFF, 0xD8, 0xFF}
 
 var (
 	saoPaulo = mustLoad("America/Sao_Paulo")
@@ -40,15 +55,22 @@ func mustLoad(name string) *time.Location {
 
 // Handler serves the Pantry routes, which sit behind the finance allowlist.
 type Handler struct {
-	store *Store
-	nfce  nfce.Client // nil: the receipt route answers 503
-	clk   clock.Clock
-	log   *slog.Logger
+	store  *Store
+	nfce   nfce.Client             // nil: reading a receipt by its code answers 503
+	reader *llmalloc.ReceiptReader // nil: reading a photo answers 503
+	model  string                  // recorded on an event row when a call reported no Usage
+	clk    clock.Clock
+	log    *slog.Logger
 }
 
-// NewHandler returns a Handler over store; nfce reads receipts from SEFAZ.
-func NewHandler(store *Store, client nfce.Client, clk clock.Clock, log *slog.Logger) *Handler {
-	return &Handler{store: store, nfce: client, clk: clk, log: log}
+// NewHandler returns a Handler over store; nfce reads receipts from SEFAZ and
+// photos, when not nil, reads them from a photo through the model.
+func NewHandler(store *Store, client nfce.Client, photos llmalloc.Client, model string, clk clock.Clock, log *slog.Logger) *Handler {
+	h := &Handler{store: store, nfce: client, model: model, clk: clk, log: log}
+	if photos != nil {
+		h.reader = llmalloc.NewReceiptReader(photos)
+	}
+	return h
 }
 
 // fail answers a store error: 404 for a missing or foreign item, 409 for a
@@ -223,24 +245,32 @@ func (h *Handler) UndoRunOut(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// AddReceipt answers POST /me/finance/pantry/receipts: 201 with the receipt
-// just read, or 200 with the one already saved under the same key, which is
-// then never fetched again.
+// AddReceipt answers POST /me/finance/pantry/receipts, whose body holds exactly
+// one of "code" (read from SEFAZ) and "draft" (read from a photo, confirmed by
+// the User): 201 with the receipt just saved, or 200 with the one already
+// saved, which is then never fetched or written again.
 func (h *Handler) AddReceipt(w http.ResponseWriter, r *http.Request) {
+	var req receiptRequest
+	if !httpx.DecodeBody(w, r, &req, maxDraftBodyBytes, true) {
+		return
+	}
+	switch {
+	case req.Code != nil && req.Draft == nil:
+		h.addByCode(w, r, *req.Code)
+	case req.Draft != nil && req.Code == nil:
+		h.addByDraft(w, r, *req.Draft)
+	default:
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_code")
+	}
+}
+
+func (h *Handler) addByCode(w http.ResponseWriter, r *http.Request, code string) {
 	if h.nfce == nil {
 		httpx.WriteError(w, http.StatusServiceUnavailable, "receipts unavailable")
 		return
 	}
-	var req receiptRequest
-	if !httpx.DecodeBody(w, r, &req, maxBodyBytes, true) {
-		return
-	}
-	var key string
-	var err error
-	if req.Code != nil {
-		key, err = nfce.ParseCode(*req.Code)
-	}
-	if req.Code == nil || err != nil {
+	key, err := nfce.ParseCode(code)
+	if err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_code")
 		return
 	}
@@ -266,7 +296,29 @@ func (h *Handler) AddReceipt(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadGateway, "sefaz_unavailable")
 		return
 	}
-	rec, created, err := h.store.AddReceipt(r.Context(), userID, key, rc, h.clk.Now())
+	h.save(w, r, userID, key, rc, readBySEFAZ)
+}
+
+// addByDraft saves a draft the User confirmed. The model's answer is never
+// trusted, and neither is a client that skipped the check: the draft is
+// validated again here.
+func (h *Handler) addByDraft(w http.ResponseWriter, r *http.Request, draft llmalloc.ReceiptDraft) {
+	draft, bad := ValidateDraft(draft, h.today())
+	if len(bad) > 0 {
+		httpx.WriteJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid_draft", "fields": bad})
+		return
+	}
+	issued, _ := time.Parse(time.DateOnly, draft.IssuedOn) // checked by ValidateDraft
+	rc := nfce.Receipt{StoreName: draft.StoreName, CNPJ: draft.StoreCNPJ, IssuedOn: issued, TotalCents: draft.TotalCents}
+	for _, l := range draft.Lines {
+		rc.Lines = append(rc.Lines, nfce.Line{Description: l.Description, QuantityMilli: l.QuantityMilli, Unit: l.Unit,
+			UnitPriceCents: l.UnitPriceCents, TotalCents: l.TotalCents})
+	}
+	h.save(w, r, identity.CurrentUser(r.Context()).ID, draft.AccessKey, rc, readByPhoto)
+}
+
+func (h *Handler) save(w http.ResponseWriter, r *http.Request, userID, key string, rc nfce.Receipt, readBy string) {
+	rec, created, err := h.store.AddReceipt(r.Context(), userID, key, rc, readBy, h.clk.Now())
 	if err != nil {
 		h.fail(w, "pantry: add receipt", err)
 		return
@@ -276,6 +328,79 @@ func (h *Handler) AddReceipt(w http.ResponseWriter, r *http.Request) {
 		status = http.StatusCreated
 	}
 	httpx.WriteJSON(w, status, rec)
+}
+
+// today is the date in São Paulo, at midnight UTC.
+func (h *Handler) today() time.Time {
+	y, m, d := h.clk.Now().In(saoPaulo).Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+}
+
+// ReadPhoto answers POST /me/finance/pantry/receipts/photo: the body is one
+// JPEG, the answer is the draft the model read, and nothing is saved. The photo
+// is held in memory for the call and never stored or logged.
+func (h *Handler) ReadPhoto(w http.ResponseWriter, r *http.Request) {
+	if h.reader == nil {
+		httpx.WriteError(w, http.StatusServiceUnavailable, "photo reading unavailable")
+		return
+	}
+	if mt, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type")); mt != "image/jpeg" {
+		httpx.WriteError(w, http.StatusUnsupportedMediaType, "not_jpeg")
+		return
+	}
+	photo, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxPhotoBytes))
+	var tooBig *http.MaxBytesError
+	switch {
+	case errors.As(err, &tooBig):
+		httpx.WriteError(w, http.StatusRequestEntityTooLarge, "photo_too_large")
+		return
+	case err != nil:
+		httpx.WriteError(w, http.StatusBadRequest, "invalid body")
+		return
+	case !bytes.HasPrefix(photo, jpegMagic):
+		httpx.WriteError(w, http.StatusUnsupportedMediaType, "not_jpeg")
+		return
+	}
+
+	ctx := r.Context()
+	now := h.clk.Now()
+	day := h.today()
+	// Reserved right before the call: a call that fails still counts.
+	ok, err := h.store.ReservePhotoCall(ctx, identity.CurrentUser(ctx).ID, day, photoDailyCap)
+	if err != nil {
+		h.fail(w, "pantry: reserve photo call", err)
+		return
+	}
+	if !ok {
+		h.store.recordPhotoEvent(ctx, h.log, h.model, photoEvent{now: now, day: day, outcome: "skipped_cap"})
+		httpx.WriteError(w, http.StatusTooManyRequests, "photo_cap")
+		return
+	}
+
+	callCtx, cancel := context.WithTimeout(ctx, photoTimeout)
+	start := time.Now()
+	draft, usage, err := h.reader.Read(callCtx, photo)
+	cancel()
+	ev := photoEvent{now: now, day: day, usage: usage, latency: time.Since(start), called: true}
+	if err != nil {
+		switch {
+		case errors.Is(err, context.DeadlineExceeded):
+			ev.outcome = "timeout"
+		case errors.Is(err, llmalloc.ErrInvalidResponse):
+			ev.outcome = "invalid_response"
+		default:
+			ev.outcome = "error"
+		}
+		h.store.recordPhotoEvent(ctx, h.log, h.model, ev)
+		h.log.Warn("pantry: photo read failed", "outcome", ev.outcome) // never the error: it can quote the answer
+		httpx.WriteError(w, http.StatusBadGateway, "photo_unreadable")
+		return
+	}
+	ev.outcome, ev.lines = "accepted", len(draft.Lines)
+	h.store.recordPhotoEvent(ctx, h.log, h.model, ev)
+	// Answered even when it fails the check: the User is about to correct it.
+	draft, _ = ValidateDraft(draft, day)
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"draft": draft})
 }
 
 // MatchLine answers PUT /me/finance/pantry/receipts/{id}/lines/{n}.

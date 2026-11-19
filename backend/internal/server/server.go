@@ -92,6 +92,11 @@ type Deps struct {
 	// NFCe reads grocery receipts from SEFAZ; nil means the receipt route
 	// answers 503.
 	NFCe nfce.Client
+	// ReceiptReader is the model behind POST /me/finance/pantry/receipts/photo;
+	// nil means the route answers 503. ReceiptModel is what an event row records
+	// when a call reported no Usage.
+	ReceiptReader llmalloc.Client
+	ReceiptModel  string
 	// FinanceSyncBudget is the time budget of the sync that apitest runs; the
 	// server never reads it (the finance Lambda is another command).
 	FinanceSyncBudget time.Duration
@@ -138,7 +143,7 @@ func New(deps Deps) http.Handler {
 	voiceH := voice.NewHandler(deps.Voice, voice.NewStore(db), deps.VoiceModel, clk, log)
 	pushes := push.NewHandler(push.NewStore(db), deps.Push, deps.VAPIDPublicKey, financeAllow.Allows, clk, log)
 	fin := finance.NewHandler(finance.NewStore(db), deps.FinanceKey, deps.Pluggy, deps.Environment, clk, log)
-	pantryH := pantry.NewHandler(pantry.NewStore(db), deps.NFCe, clk, log)
+	pantryH := pantry.NewHandler(pantry.NewStore(db), deps.NFCe, deps.ReceiptReader, deps.ReceiptModel, clk, log)
 
 	user, resident := s.requireUser, s.requireResident
 	mux := http.NewServeMux()

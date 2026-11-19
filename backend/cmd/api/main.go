@@ -131,6 +131,14 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		log.Warn("voice disabled")
 	}
 
+	// Reading a receipt photo is not behind VOICE_ENABLED: the model key is what it needs.
+	if cfg.AnthropicAPIKey != "" {
+		deps.ReceiptReader = llmalloc.NewAnthropic(cfg.AnthropicAPIKey, cfg.LLMModel)
+		deps.ReceiptModel = cfg.LLMModel
+	} else {
+		log.Warn("receipt photos disabled: no Anthropic key")
+	}
+
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           server.New(deps),
