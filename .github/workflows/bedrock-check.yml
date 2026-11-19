@@ -2,11 +2,6 @@ name: bedrock-check
 
 on:
   pull_request:
-    paths:
-      - "bedrock/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/bedrock-check.yml"
 
 permissions:
   contents: read
@@ -16,8 +11,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  bedrock-check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.apps.outputs.bedrock }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: apps
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: .github/scripts/changed-apps.sh "$BASE" >> "$GITHUB_OUTPUT"
+
   bedrock-check:
     name: bedrock-check
+    needs: bedrock-check-changes
+    # Runs when the changes job failed too, so a broken one cannot read as a skip
+    if: ${{ !cancelled() && (needs.bedrock-check-changes.result != 'success' || needs.bedrock-check-changes.outputs.run == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

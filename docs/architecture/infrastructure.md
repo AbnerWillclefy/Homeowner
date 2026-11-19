@@ -121,7 +121,7 @@ flowchart TB
   flowchart LR
       pool["user pool<br/>password_policy block"] --> mod["module.auth output<br/>password_policy"]
       mod --> stg["infra/staging output<br/>cognito_password_policy"]
-      stg --> api["deploy-staging.yml<br/>api job output"]
+      stg --> api["deploy-staging.yml<br/>outputs job"]
       api --> env["web job build env<br/>VITE_PASSWORD_POLICY"]
       env --> bundle["web bundle<br/>read by passwordPolicy.ts"]
   ```
@@ -136,43 +136,56 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-    PR["Pull request"] --> BT["backend-test: go vet, go test -race, Postgres 16 service"]
-    PR --> WT["web-typecheck: npm ci, typecheck, build, bundle budget"]
-    PR --> E2E["web-e2e: build with dummy config, Playwright on Chromium"]
-    PR --> AT["admin-typecheck: typecheck, Vitest, build"]
-    PR --> IC["infra-check"]
-    PR --> BC["bedrock-check: npm ci, typecheck, Vitest, showcase build"]
-    PR --> RC["revenue-check: npm ci, typecheck, Vitest, build"]
+    PR["Pull request"] --> CH["a changes job per check: changed-apps.sh maps the diff to apps"]
+    CH --> BT["backend-test: go vet, go test -race, Postgres 16 service"]
+    CH --> WT["web-typecheck: npm ci, typecheck, build, bundle budget"]
+    CH --> E2E["web-e2e: build with dummy config, Playwright on Chromium"]
+    CH --> AT["admin-typecheck: typecheck, Vitest, build"]
+    CH --> IC["infra-check"]
+    CH --> BC["bedrock-check: npm ci, typecheck, Vitest, showcase build"]
+    CH --> RC["revenue-check: npm ci, typecheck, Vitest, build"]
     PR --> CR["Claude review"]
-    BT --> M["Merge to main, by risk tier"]
+    BT --> M["Merge to main, by risk tier: a skipped check counts as passed"]
     WT --> M
     E2E --> M
     AT --> M
     IC --> M
     BC --> M
     RC --> M
+    CR --> M
     M --> DS
     subgraph DS["Deploy staging: one workflow, AWS access through OIDC"]
       direction LR
-      api["api job: terraform apply, build image, migrate, push, apply, smoke test /healthz"]
-      web["web job: build the PWA, sync to S3, invalidate CloudFront, smoke test"]
-      adm["admin job, deploy-admin.yml: build the admin app, sync to its S3, invalidate, smoke test"]
-      rev["revenue job, deploy-revenue.yml: build Revenue, sync to its S3, invalidate, smoke test"]
-      api --> web
-      api --> adm
-      api --> rev
+      chg["changes job: diff against the last successful run"]
+      api["api job, if backend/ or infra/ changed: terraform apply, build image, migrate, push, apply, smoke test /healthz"]
+      out["outputs job, if any frontend deploys: read-only terraform output"]
+      web["web job, if web/ or infra/ changed: build the PWA, sync to S3, invalidate CloudFront, smoke test"]
+      adm["admin job, deploy-admin.yml, if admin/ or infra/ changed"]
+      rev["revenue job, deploy-revenue.yml, if revenue/, bedrock/ or infra/ changed"]
+      chg --> api
+      chg --> out
+      api --> out
+      out --> web
+      out --> adm
+      out --> rev
     end
     DS --> V["Human verifies staging, merges a promotion pull request from main into production"]
     V --> DP
     subgraph DP["Deploy production: same jobs, production role, homeowner-production-*"]
       direction LR
-      papi["api job"] --> pweb["web job"]
-      papi --> padm["admin job"]
-      papi --> prev["revenue job"]
+      pchg["changes job"] --> papi["api job"]
+      papi --> pout["outputs job"]
+      pout --> pweb["web job"]
+      pout --> padm["admin job"]
+      pout --> prev["revenue job"]
     end
 ```
 
-Built: `backend-test.yml`, `web-typecheck.yml`, `web-e2e.yml`, `admin-typecheck.yml`, `infra-check.yml`, `bedrock-check.yml` and `revenue-check.yml` on pull requests. `revenue-check` runs Revenue's typecheck, Vitest tests and build (from the root npm workspace, `-w @homeowner/revenue`) when a pull request touches `revenue/`, `bedrock/` or the root package files. `bedrock-check` checks the shared design system package when a pull request touches `bedrock/` or the root package files; nothing deploys it ([Bedrock](bedrock.md)). After the build, `web-typecheck` runs the bundle budget (`npm run check:bundle`, `web/scripts/check-bundle-budget.mjs`). The build emits `dist/.vite/manifest.json` (`build.manifest`); the script walks from the entry through static `imports` only (lazy screens are not counted), gzips each JS file at level 9 and sums them. CSS is outside the budget. The check fails when the sum is more than 10% above `RECORDED_GZIP_BYTES`, a constant at the top of the script measured with the `env` of `web-typecheck.yml`. When growth is intended, set the constant to the measured size in the same pull request and say why; lower it after a size win. A missing manifest or entry also fails. The deploy workflows exclude `.vite/*` from the S3 sync, so the manifest is not served. `web-e2e` has no path filter, needs no secrets (it builds with the public dummy values in `web/.env.e2e`), caches the Chromium download, and uploads the Playwright report only when it fails. `deploy-staging.yml`, named exactly `Deploy staging`, runs on every push to `main`. Its `api` job applies Terraform, builds the image, runs migrations before the new code goes live, and smoke tests `/healthz`. The `web` job runs after `api` (`needs: api`), so it can read the API URL and the bucket and distribution from Terraform. The `admin` job also runs after `api`, in parallel with `web`: it calls the reusable workflow `deploy-admin.yml` with the environment name, the caller's deploy role and the `api` job's outputs (API URL, Cognito ids, `admin_url`, `admin_bucket_name`, `admin_distribution_id`), so each environment's admin is built against its own API and published with its own role. It builds `VITE_ADMIN_URLS` from `ADMIN_URL_STAGING` and `ADMIN_URL_PRODUCTION` (this environment's own URL from Terraform), uploads like the web job, keeps old `assets/`, invalidates the distribution and smoke tests the root, a deep link, the API's CORS answer for the admin origin and a `401` from `GET /admin/me` without a token. The `revenue` job also runs after `api`, beside `web` and `admin`: it calls the reusable workflow `deploy-revenue.yml` with the environment, the deploy role and the `api` job's outputs (API URL, Cognito ids and password policy, `revenue_url`, `revenue_bucket_name`, `revenue_distribution_id`). It runs `npm ci` and `npm run build -w @homeowner/revenue` from the root (Revenue is a workspace member, beside `bedrock`), uploads hashed `assets/` as immutable and `sw.js`, `registerSW.js`, `workbox-*.js`, the manifest and `index.html` with `no-cache`, deletes stale objects except `assets/`, invalidates the distribution, and smoke tests the root, the deep link `/bills`, the API's CORS answer for the Revenue origin and a `401` from `GET /me/finance` without a token. `admin-typecheck.yml` checks `admin/` on pull requests that touch it or `web/src/tokens.css`. The `agent-*.yml`, `claude*.yml`, `project-sync.yml`, `notify-ready-to-merge.yml`, `pr-risk.yml`, `merge-by-risk.yml` and `scripts-test.yml` workflows run the team pipeline described in `CLAUDE.md`; the last two label each pull request into `main` with a risk tier and merge the agents' low-risk ones, and medium-risk ones the maintainer approved ([ADR 0015](../adr/0015-merge-agent-pull-requests-by-risk-tier.md), [risk tiers](../agents/pr-risk.md)). `deploy-production.yml`, named `Deploy production`, runs on every push to the `production` branch with the same four jobs against `infra/production`, under the role only that branch can assume. A ruleset on `production` requires the maintainer's approval, so agents that can deploy staging cannot deploy production.
+Which checks run: every check workflow starts on every pull request, with a first job named `<check>-changes` that runs `.github/scripts/changed-apps.sh` (the one table mapping paths to apps: `backend/`, `web/`, `admin/`, `infra/`, `revenue/`, `bedrock/` with the root package files, `web/src/tokens.css` for admin as well, and any change under `.github/workflows/` or `.github/scripts/` for everything). The check job runs when its app changed, or when the changes job did not succeed, so a broken one cannot read as a skip. A skipped job reports `skipped`, which branch protection and `merge-by-risk.sh` count as passed, so all seven checks are in `required_checks`; a workflow-level `paths:` filter would report nothing and a required check would wait forever. Without a usable base (an unknown commit, a rewritten branch) the script reports every app as changed.
+
+Which deploys run: the deploy workflows start with a `changes` job that runs the same script against the last successful run of the same workflow on the same branch (`gh run list --status success`), and with no base on `workflow_dispatch` or when no run is found, so everything deploys. `api` runs when `backend/` or `infra/` changed; each frontend runs when its own app or `infra/` changed (Terraform outputs are baked into the bundles); `outputs` runs when any frontend does. The last-success base, not the push's `before` commit, means a dropped or failed run's changes deploy next time. A docs-only change runs only `changes`. Repository variables that feed Terraform apply only on a deploy that runs `api`, so after changing one, run the deploy by hand.
+
+Built: `backend-test.yml`, `web-typecheck.yml`, `web-e2e.yml`, `admin-typecheck.yml`, `infra-check.yml`, `bedrock-check.yml` and `revenue-check.yml` on pull requests. `revenue-check` runs Revenue's typecheck, Vitest tests and build (from the root npm workspace, `-w @homeowner/revenue`) when a pull request touches `revenue/`, `bedrock/` or the root package files. `bedrock-check` checks the shared design system package when a pull request touches `bedrock/` or the root package files; nothing deploys it ([Bedrock](bedrock.md)). After the build, `web-typecheck` runs the bundle budget (`npm run check:bundle`, `web/scripts/check-bundle-budget.mjs`). The build emits `dist/.vite/manifest.json` (`build.manifest`); the script walks from the entry through static `imports` only (lazy screens are not counted), gzips each JS file at level 9 and sums them. CSS is outside the budget. The check fails when the sum is more than 10% above `RECORDED_GZIP_BYTES`, a constant at the top of the script measured with the `env` of `web-typecheck.yml`. When growth is intended, set the constant to the measured size in the same pull request and say why; lower it after a size win. A missing manifest or entry also fails. The deploy workflows exclude `.vite/*` from the S3 sync, so the manifest is not served. `web-e2e` has no path filter (every check workflow runs on every pull request; see below), needs no secrets (it builds with the public dummy values in `web/.env.e2e`), caches the Chromium download, and uploads the Playwright report only when it fails. `deploy-staging.yml`, named exactly `Deploy staging`, runs on every push to `main`. Its `changes` job picks the jobs to run (see below). Its `api` job applies Terraform, builds the image, runs migrations before the new code goes live, and smoke tests `/healthz`. The `outputs` job (read-only: assume the role, `terraform init`, `terraform output`; no apply and no Neon key) runs after `api`, or alone when `api` is skipped, and exposes the API URL, buckets, distribution ids and Cognito values from the last applied state. The `web` job runs after it (`needs: [changes, outputs]`), so a frontend-only merge builds against the API already live. The `admin` job also runs after `outputs`, in parallel with `web`: it calls the reusable workflow `deploy-admin.yml` with the environment name, the caller's deploy role and the `outputs` job's outputs (API URL, Cognito ids, `admin_url`, `admin_bucket_name`, `admin_distribution_id`), so each environment's admin is built against its own API and published with its own role. It builds `VITE_ADMIN_URLS` from `ADMIN_URL_STAGING` and `ADMIN_URL_PRODUCTION` (this environment's own URL from Terraform), uploads like the web job, keeps old `assets/`, invalidates the distribution and smoke tests the root, a deep link, the API's CORS answer for the admin origin and a `401` from `GET /admin/me` without a token. The `revenue` job also runs after `outputs`, beside `web` and `admin`: it calls the reusable workflow `deploy-revenue.yml` with the environment, the deploy role and the `outputs` job's outputs (API URL, Cognito ids and password policy, `revenue_url`, `revenue_bucket_name`, `revenue_distribution_id`). It runs `npm ci` and `npm run build -w @homeowner/revenue` from the root (Revenue is a workspace member, beside `bedrock`), uploads hashed `assets/` as immutable and `sw.js`, `registerSW.js`, `workbox-*.js`, the manifest and `index.html` with `no-cache`, deletes stale objects except `assets/`, invalidates the distribution, and smoke tests the root, the deep link `/bills`, the API's CORS answer for the Revenue origin and a `401` from `GET /me/finance` without a token. `admin-typecheck.yml` checks `admin/` and `web/src/tokens.css`. The `agent-*.yml`, `claude*.yml`, `project-sync.yml`, `notify-ready-to-merge.yml`, `pr-risk.yml`, `merge-by-risk.yml` and `scripts-test.yml` workflows run the team pipeline described in `CLAUDE.md`; the last two label each pull request into `main` with a risk tier and merge the agents' low-risk ones, and medium-risk ones the maintainer approved ([ADR 0015](../adr/0015-merge-agent-pull-requests-by-risk-tier.md), [risk tiers](../agents/pr-risk.md)). `deploy-production.yml`, named `Deploy production`, runs on every push to the `production` branch with the same six jobs against `infra/production`, under the role only that branch can assume. A ruleset on `production` requires the maintainer's approval, so agents that can deploy staging cannot deploy production.
 
 ## Cost against $20 a month (estimate)
 

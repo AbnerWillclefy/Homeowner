@@ -1,6 +1,7 @@
 name: web-e2e
 
 # No paths or branches filter on purpose: a required check that never runs would stay pending.
+# A web-e2e-changes job skips the check instead, and a skipped required check counts as passed.
 on:
   pull_request:
 
@@ -12,8 +13,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  web-e2e-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.apps.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: apps
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: .github/scripts/changed-apps.sh "$BASE" >> "$GITHUB_OUTPUT"
+
   web-e2e:
     name: web-e2e
+    needs: web-e2e-changes
+    # Runs when the changes job failed too, so a broken one cannot read as a skip
+    if: ${{ !cancelled() && (needs.web-e2e-changes.result != 'success' || needs.web-e2e-changes.outputs.run == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:

@@ -19,6 +19,8 @@ jobs:
         run: for f in .github/scripts/*.sh; do bash -n "$f"; done
       - name: Test pr-risk.sh
         run: .github/scripts/pr-risk.test.sh
+      - name: Test changed-apps.sh
+        run: .github/scripts/changed-apps.test.sh
       - name: Test merge-by-risk.sh
         run: VERBOSE=1 .github/scripts/merge-by-risk.test.sh
       - name: Test review-outcomes.sh

@@ -47,7 +47,7 @@ Settings are read at build time from `VITE_*` variables (`src/config.ts`). A mis
 | `VITE_COGNITO_REGION`, `VITE_COGNITO_CLIENT_ID` | The pool's region and the PWA's app client id. Public identifiers, not secrets. |
 | `VITE_ADMIN_URLS` | Optional JSON from environment name to admin origin, for the switch. Empty is valid. |
 
-The deploy is the reusable workflow `deploy-admin.yml`, called as the `admin` job by `deploy-staging.yml` and by `deploy-production.yml`. It runs after the `api` job (`needs: api`), alongside the `web` job, and receives from the `api` job's Terraform outputs the API URL, the Cognito ids, and `admin_url`, `admin_bucket_name` and `admin_distribution_id`. It uses the caller's own deploy role, so the staging run cannot touch production. The job:
+The deploy is the reusable workflow `deploy-admin.yml`, called as the `admin` job by `deploy-staging.yml` and by `deploy-production.yml`. It runs after the `outputs` job (`needs: [changes, outputs]`), alongside the `web` job, only when `admin/` or `infra/` changed (or on `workflow_dispatch`), and receives from the `outputs` job's Terraform outputs the API URL, the Cognito ids, and `admin_url`, `admin_bucket_name` and `admin_distribution_id`. It uses the caller's own deploy role, so the staging run cannot touch production. The job:
 
 1. Builds `VITE_ADMIN_URLS` from the repository variables `ADMIN_URL_STAGING` and `ADMIN_URL_PRODUCTION`, with this environment's own URL taken from Terraform. A variable not set yet is left out, and the switch then says "not configured".
 2. Runs `npm run build`, then uploads hashed `assets/` as immutable, other files for an hour, and `index.html` last with `no-cache`.

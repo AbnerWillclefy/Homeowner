@@ -5,9 +5,6 @@ name: infra-check
 
 on:
   pull_request:
-    paths:
-      - "infra/**"
-      - ".github/workflows/infra-check.yml"
 
 permissions:
   contents: read
@@ -17,7 +14,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  infra-check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.apps.outputs.infra }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: apps
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: .github/scripts/changed-apps.sh "$BASE" >> "$GITHUB_OUTPUT"
+
   terraform:
+    name: infra-check
+    needs: infra-check-changes
+    # Runs when the changes job failed too, so a broken one cannot read as a skip
+    if: ${{ !cancelled() && (needs.infra-check-changes.result != 'success' || needs.infra-check-changes.outputs.run == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
