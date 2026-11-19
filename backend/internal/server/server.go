@@ -138,7 +138,7 @@ func New(deps Deps) http.Handler {
 	voiceH := voice.NewHandler(deps.Voice, voice.NewStore(db), deps.VoiceModel, clk, log)
 	pushes := push.NewHandler(push.NewStore(db), deps.Push, deps.VAPIDPublicKey, financeAllow.Allows, clk, log)
 	fin := finance.NewHandler(finance.NewStore(db), deps.FinanceKey, deps.Pluggy, deps.Environment, clk, log)
-	pantryH := pantry.NewHandler(pantry.NewStore(db), deps.NFCe, clk, log)
+	pantryH := pantry.NewHandler(pantry.NewStore(db), finance.NewStore(db), deps.NFCe, clk, log)
 
 	user, resident := s.requireUser, s.requireResident
 	mux := http.NewServeMux()

@@ -72,6 +72,7 @@ func twoSynced(t *testing.T) (app *apitest.App, ana, bia *apitest.Client, anaID,
 			`INSERT INTO finance_pantry_receipt_lines (user_id, receipt_id, line_no, description, quantity_milli, unit, unit_price_cents, total_cents, line_key, item_id)
 			 SELECT $1, id, 1, 'CAFE', 1000, 'UN', 599, 599, 'CAFE', $2 FROM finance_pantry_receipts WHERE user_id = $1`,
 			`INSERT INTO finance_pantry_line_matches (user_id, line_key, item_id, ignored, updated_at) VALUES ($1, 'CAFE', $2, false, now())`,
+			`INSERT INTO finance_pantry_list_edits (user_id, item_id, quantity_milli, updated_at) VALUES ($1, $2, 2000, now())`,
 		} {
 			args := []any{id}
 			if strings.Contains(q, "$2") {
