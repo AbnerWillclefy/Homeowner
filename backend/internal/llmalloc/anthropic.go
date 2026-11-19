@@ -2,10 +2,12 @@ package llmalloc
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -48,11 +50,15 @@ func (a *Anthropic) Complete(ctx context.Context, req Request) (json.RawMessage,
 		thinking = anthropic.ThinkingConfigParamUnion{OfAdaptive: &anthropic.ThinkingConfigAdaptiveParam{
 			Display: anthropic.ThinkingConfigAdaptiveDisplayOmitted}}
 	}
+	user := []anthropic.ContentBlockParamUnion{anthropic.NewTextBlock(req.User)}
+	if len(req.Image) > 0 {
+		user = slices.Insert(user, 0, anthropic.NewImageBlockBase64("image/jpeg", base64.StdEncoding.EncodeToString(req.Image)))
+	}
 	params := anthropic.MessageNewParams{
 		Model:        anthropic.Model(a.model),
 		MaxTokens:    int64(req.MaxTokens),
 		System:       []anthropic.TextBlockParam{{Text: req.System}},
-		Messages:     []anthropic.MessageParam{anthropic.NewUserMessage(anthropic.NewTextBlock(req.User))},
+		Messages:     []anthropic.MessageParam{anthropic.NewUserMessage(user...)},
 		Thinking:     thinking,
 		OutputConfig: anthropic.OutputConfigParam{Effort: anthropic.OutputConfigEffortLow},
 	}
