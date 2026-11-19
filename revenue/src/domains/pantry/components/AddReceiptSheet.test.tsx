@@ -1,9 +1,10 @@
-import { act, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderApp } from "../../../testing";
 import * as api from "../api";
 import type { PantryItem, Receipt, ReceiptLine } from "../api";
+import { decodeFile, downsize } from "../logic/downsize";
 import { CHECKED_KEY, writeChecked } from "../logic/checked";
 import { HIDE_VALUES_STORAGE_KEY, HideValuesProvider } from "../../../shared/HideValues";
 import { AddReceiptSheet } from "./AddReceiptSheet";
@@ -12,7 +13,9 @@ import { AddReceiptSheet } from "./AddReceiptSheet";
 globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} };
 
 vi.mock("jsqr", () => ({ default: vi.fn() }));
-vi.mock("../api", async (original) => ({ ...(await original<typeof import("../api")>()), getPantry: vi.fn(), addReceipt: vi.fn(), matchLine: vi.fn() }));
+vi.mock("../api", async (original) => ({ ...(await original<typeof import("../api")>()), getPantry: vi.fn(), addReceipt: vi.fn(), matchLine: vi.fn(), readPhoto: vi.fn(), saveDraft: vi.fn() }));
+// jsdom cannot decode an image; a photo "downsizes" to a small blob.
+vi.mock("../logic/downsize", () => ({ decodeFile: vi.fn(async () => ({ width: 1, height: 1, encode: async () => null })), downsize: vi.fn(async () => new Blob(["jpeg"], { type: "image/jpeg" })) }));
 
 const { default: jsQR } = await import("jsqr");
 
@@ -27,6 +30,8 @@ const KEY = "35241112345678000123650010000012341000012345";
 const add = vi.mocked(api.addReceipt);
 const match = vi.mocked(api.matchLine);
 const pantry = vi.mocked(api.getPantry);
+const read = vi.mocked(api.readPhoto);
+const save = vi.mocked(api.saveDraft);
 
 /** Opens the Sheet on the wide layout (a Radix dialog), in English unless told otherwise. */
 async function open(options: Parameters<typeof renderApp>[1] = {}) {
@@ -49,7 +54,7 @@ const onMatching = async (r = TWO) => {
 beforeEach(() => {
   localStorage.clear();
   vi.stubGlobal("matchMedia", () => ({ matches: true, addEventListener() {}, removeEventListener() {} }));
-  for (const fn of [add, match, pantry, vi.mocked(jsQR)]) fn.mockReset();
+  for (const fn of [add, match, pantry, read, save, vi.mocked(jsQR)]) fn.mockReset();
   pantry.mockResolvedValue([RICE, COFFEE]);
 });
 afterEach(() => {
@@ -57,11 +62,11 @@ afterEach(() => {
 });
 
 describe("choose and paste", () => {
-  it("offers scan and paste, and the photo option as coming soon", async () => {
+  it("offers scan, paste and photo", async () => {
     await open();
     expect(screen.getByRole("button", { name: "Scan receipt QR" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Paste the key" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Take photo/ }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByRole("button", { name: "Take photo" }).hasAttribute("disabled")).toBe(false);
   });
 
   it("saves a pasted code trimmed and lists only the unmatched lines, with progress", async () => {
@@ -339,5 +344,211 @@ describe("closing", () => {
     await waitFor(() => expect(document.activeElement).toBe(opener));
     await userEvent.click(opener);
     expect(within(screen.getByRole("dialog")).getByRole("button", { name: "Scan receipt QR" })).toBeTruthy();
+  });
+});
+
+
+describe("photo draft", () => {
+  const DRAFT: api.ReceiptDraft = {
+    storeName: "Mercado Bom Preço",
+    storeCnpj: "",
+    accessKey: "",
+    issuedOn: "2020-11-02",
+    totalCents: 5700,
+    lines: [
+      { description: "Arroz 5 kg", quantityMilli: 1000, unit: "UN", unitPriceCents: 2790, totalCents: 2790 },
+      { description: "Queijo minas", quantityMilli: 450, unit: "KG", unitPriceCents: 6467, totalCents: 2910 },
+    ],
+  };
+  const SAVED = receipt([line(1, { description: "Arroz 5 kg" }), line(2, { description: "Queijo minas" })]);
+  const FILE = new File(["raw"], "nota.heic", { type: "image/heic" });
+
+  /** Chooses the photo through the hidden file input, as the camera does. */
+  async function takePhoto() {
+    await userEvent.click(screen.getByRole("button", { name: "Take photo" }));
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    expect(input.getAttribute("accept")).toBe("image/*");
+    expect(input.getAttribute("capture")).toBe("environment");
+    await userEvent.upload(input, FILE);
+  }
+  const onDraft = async () => {
+    read.mockResolvedValue({ kind: "draft", draft: DRAFT });
+    await open();
+    await takePhoto();
+    await screen.findByRole("button", { name: "Save receipt" });
+  };
+
+  it("sends the downsized photo and shows the reading state while it waits", async () => {
+    let finish!: (r: api.ReadPhotoResult) => void;
+    read.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    await open();
+    await takePhoto();
+    expect(await screen.findByText("Reading the receipt photo")).toBeTruthy();
+    expect(screen.getByText("This can take up to 20 seconds.")).toBeTruthy();
+    expect(read).toHaveBeenCalledOnce();
+    expect(read.mock.calls[0]![0]).toBeInstanceOf(Blob);
+    expect((read.mock.calls[0]![0] as Blob).type).toBe("image/jpeg");
+    finish({ kind: "draft", draft: DRAFT });
+    expect(await screen.findByDisplayValue("Mercado Bom Preço")).toBeTruthy();
+  });
+
+  it("shows the draft as editable fields and saves nothing until confirmed", async () => {
+    await onDraft();
+    expect(screen.getByLabelText("Store")).toHaveProperty("value", "Mercado Bom Preço");
+    expect(screen.getByLabelText("Date")).toHaveProperty("value", "2020-11-02");
+    expect(screen.getByDisplayValue("Arroz 5 kg")).toBeTruthy();
+    expect(screen.getByDisplayValue("0.45")).toBeTruthy();
+    expect(screen.getByText("Item 2")).toBeTruthy();
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("saves the corrected values, then goes on to the unmatched lines", async () => {
+    await onDraft();
+    save.mockResolvedValue({ kind: "created", receipt: SAVED });
+    const store = screen.getByLabelText("Store");
+    await userEvent.clear(store);
+    await userEvent.type(store, "Bom Preço");
+    const desc = screen.getByDisplayValue("Queijo minas");
+    await userEvent.clear(desc);
+    await userEvent.type(desc, "Queijo coalho");
+    const total = screen.getAllByLabelText("Item total")[1]!;
+    await userEvent.clear(total);
+    await userEvent.type(total, "29,40");
+    const sum = screen.getAllByLabelText("Total")[0]!;
+    await userEvent.clear(sum);
+    await userEvent.type(sum, "57,30");
+    await userEvent.click(screen.getByRole("button", { name: "Save receipt" }));
+    await waitFor(() => expect(save).toHaveBeenCalledOnce());
+    expect(save.mock.calls[0]![0]).toEqual({
+      ...DRAFT,
+      storeName: "Bom Preço",
+      totalCents: 5730,
+      lines: [DRAFT.lines[0], { ...DRAFT.lines[1], description: "Queijo coalho", totalCents: 2940 }],
+    });
+    expect(await screen.findByText("1 of 2")).toBeTruthy();
+    expect(screen.getByText("Arroz 5 kg")).toBeTruthy();
+  });
+
+  it("adds and removes lines", async () => {
+    await onDraft();
+    await userEvent.click(screen.getByRole("button", { name: "Remove item 1" }));
+    expect(screen.queryByDisplayValue("Arroz 5 kg")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Add item" }));
+    expect(screen.getAllByText(/^Item \d$/)).toHaveLength(2);
+    // The new line is empty, so the draft is not sent.
+    await userEvent.click(screen.getByRole("button", { name: "Save receipt" }));
+    expect(save).not.toHaveBeenCalled();
+    expect(screen.getByText("Describe the item, up to 120 characters.")).toBeTruthy();
+    expect(screen.getAllByText("Enter an amount.").length).toBeGreaterThan(0);
+  });
+
+  it("checks the sum, the date and the quantity before sending", async () => {
+    await onDraft();
+    const sum = screen.getAllByLabelText("Total")[0]!;
+    await userEvent.clear(sum);
+    await userEvent.type(sum, "90");
+    fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2999-01-01" } });
+    const quantity = screen.getAllByLabelText("Quantity")[0]!;
+    await userEvent.clear(quantity);
+    await userEvent.type(quantity, "0");
+    await userEvent.click(screen.getByRole("button", { name: "Save receipt" }));
+    expect(save).not.toHaveBeenCalled();
+    expect(screen.getByText("The total must match the items, within R$ 0.05.")).toBeTruthy();
+    expect(screen.getByText("Use today's date or earlier.")).toBeTruthy();
+    expect(screen.getByText("Use a quantity above zero.")).toBeTruthy();
+    expect(screen.getByText("Check the marked fields.")).toBeTruthy();
+  });
+
+  it("keeps every edit and marks the fields a rejected draft names", async () => {
+    await onDraft();
+    save.mockResolvedValue({ kind: "rejected", fields: ["storeName", "lines.2.description"] });
+    const store = screen.getByLabelText("Store");
+    await userEvent.type(store, " Centro");
+    await userEvent.click(screen.getByRole("button", { name: "Save receipt" }));
+    expect(await screen.findByText("Enter the store, up to 120 characters.")).toBeTruthy();
+    expect(screen.getByText("Describe the item, up to 120 characters.")).toBeTruthy();
+    expect(screen.getByLabelText("Store")).toHaveProperty("value", "Mercado Bom Preço Centro");
+    expect(screen.getByRole("button", { name: "Save receipt" }).hasAttribute("disabled")).toBe(false);
+  });
+
+  it("keeps the edits when the save fails", async () => {
+    await onDraft();
+    save.mockResolvedValue({ kind: "error" });
+    await userEvent.type(screen.getByLabelText("Store"), " Centro");
+    await userEvent.click(screen.getByRole("button", { name: "Save receipt" }));
+    expect(await screen.findByText("We couldn't save the receipt. Your changes are still here.")).toBeTruthy();
+    expect(screen.getByLabelText("Store")).toHaveProperty("value", "Mercado Bom Preço Centro");
+  });
+
+  it("says the daily cap is reached and offers paste and scan", async () => {
+    read.mockResolvedValue({ kind: "cap" });
+    await open();
+    await takePhoto();
+    expect(await screen.findByText("Limit of 10 photos a day. Scan the QR, paste the key or come back tomorrow.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Paste the key" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Scan receipt QR" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Take another photo" })).toBeNull();
+  });
+
+  it.each([
+    ["unreadable", "This doesn't look like a receipt. Take another photo."],
+    ["error", "Couldn't read the photo. Try again."],
+  ] as const)("says a %s photo and offers another", async (kind, message) => {
+    read.mockResolvedValue({ kind });
+    await open();
+    await takePhoto();
+    expect(await screen.findByText(message)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Take another photo" })).toBeTruthy();
+  });
+
+  it.each([
+    ["will not fit", () => vi.mocked(downsize).mockResolvedValueOnce(null)],
+    ["cannot be decoded", () => vi.mocked(decodeFile).mockRejectedValueOnce(new Error("not an image"))],
+  ] as const)("fails a photo that %s without calling the API", async (_name, arrange) => {
+    arrange();
+    await open();
+    await takePhoto();
+    expect(await screen.findByText("Couldn't read the photo. Try again.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Take another photo" })).toBeTruthy();
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it("offers the photo on the SEFAZ-unavailable message", async () => {
+    add.mockResolvedValue({ kind: "unavailable" });
+    read.mockResolvedValue({ kind: "draft", draft: DRAFT });
+    await open();
+    await paste();
+    await takePhoto();
+    expect(await screen.findByDisplayValue("Mercado Bom Preço")).toBeTruthy();
+  });
+
+  it("asks before throwing a draft away, and keeps it when the User says no", async () => {
+    await onDraft();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(confirm).toHaveBeenCalledWith("Discard the photo reading?");
+    expect(screen.getByLabelText("Store")).toBeTruthy();
+    confirm.mockReturnValue(true);
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByLabelText("Store")).toBeNull());
+    confirm.mockRestore();
+  });
+
+  it("reads in pt-BR, with the date as a day not after today", async () => {
+    read.mockResolvedValue({ kind: "draft", draft: DRAFT });
+    await open({ locale: "pt-BR" });
+    await userEvent.click(screen.getByRole("button", { name: "Tirar foto" }));
+    await userEvent.upload(document.querySelector<HTMLInputElement>('input[type="file"]')!, FILE);
+    expect(await screen.findByRole("button", { name: "Salvar nota" })).toBeTruthy();
+    expect(screen.getByDisplayValue("0,45")).toBeTruthy();
+    expect(screen.getByText(/Soma dos itens/)).toBeTruthy();
+    expect(screen.getByText("Item 1")).toBeTruthy();
+  });
+
+  it("hides the sum when values are hidden", async () => {
+    localStorage.setItem(HIDE_VALUES_STORAGE_KEY, "1");
+    await onDraft();
+    expect(screen.getByText(/Items add up to/)).toBeTruthy();
+    expect(screen.queryByText(/57\.00/)).toBeNull();
   });
 });

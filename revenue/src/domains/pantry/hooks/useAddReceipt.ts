@@ -1,14 +1,15 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useReducer } from "react";
-import { addReceipt, matchLine, type FieldCodes, type MatchChoice } from "../api";
+import { addReceipt, matchLine, readPhoto, saveDraft, type FieldCodes, type MatchChoice, type ReadPhotoResult, type ReceiptDraft } from "../api";
 import { clearChecked } from "../logic/checked";
 import { reduce, START } from "../logic/addReceipt";
+import { decodeFile, downsize } from "../logic/downsize";
 import { pantryKey } from "./usePantry";
 
 export type MatchOutcome = { kind: "ok" } | { kind: "fields"; fields: FieldCodes } | { kind: "failed" };
 
 /**
- * The add-receipt flow: its step, and the two writes. Both refresh the Pantry (bought items come back in stock, and the
+ * The add-receipt flow: its step, and its writes (a pasted code, a photo draft, a line match). The saves refresh the Pantry (bought items come back in stock, and the
  * shopping list reads the same key); a new receipt also clears this device's check-offs, a repeated one does not.
  */
 export function useAddReceipt() {
@@ -27,6 +28,30 @@ export function useAddReceipt() {
     [refresh],
   );
 
+  // The reading state shows from the moment the file is chosen: decoding a 12 MP photo takes seconds on a slow phone.
+  const readFile = useCallback(async (file: File) => {
+    dispatch({ type: "photo" });
+    let result: ReadPhotoResult = { kind: "error" };
+    try {
+      const photo = await downsize(await decodeFile(file));
+      if (photo) result = await readPhoto(photo);
+    } catch {
+      // Not an image the browser can decode: the same message as any failed read.
+    }
+    dispatch({ type: "read", result });
+  }, []);
+
+  const confirm = useCallback(
+    async (draft: ReceiptDraft) => {
+      dispatch({ type: "saveDraft" });
+      const result = await saveDraft(draft);
+      if (result.kind === "created") clearChecked();
+      if (result.kind === "created" || result.kind === "duplicate") refresh();
+      dispatch({ type: "drafted", result });
+    },
+    [refresh],
+  );
+
   const match = useCallback(
     async (receiptId: string, n: number, choice: MatchChoice): Promise<MatchOutcome> => {
       const result = await matchLine(receiptId, n, choice);
@@ -39,5 +64,5 @@ export function useAddReceipt() {
     [refresh],
   );
 
-  return { step, dispatch, submit, match };
+  return { step, dispatch, submit, match, readFile, confirm };
 }

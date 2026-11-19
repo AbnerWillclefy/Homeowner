@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AddReceiptResult, Receipt, ReceiptLine } from "../api";
+import type { AddReceiptResult, Receipt, ReceiptDraft, ReceiptLine } from "../api";
 import { currentLine, quantityText, reduce, START, type Step } from "./addReceipt";
 
 const line = (n: number, over: Partial<ReceiptLine> = {}): ReceiptLine => ({ n, description: `L${n}`, quantityMilli: 1000, unit: "UN", unitPriceCents: 100, totalCents: 100, itemId: null, ignored: false, ...over });
@@ -77,5 +77,33 @@ describe("quantityText", () => {
     expect(quantityText(line(1, { quantityMilli: 1500, unit: "KG" }), "pt-BR")).toBe("1,5 kg");
     expect(quantityText(line(1, { quantityMilli: 1500, unit: "KG" }), "en")).toBe("1.5 kg");
     expect(quantityText(line(1), "pt-BR")).toBe("1 un");
+  });
+});
+
+describe("the photo steps", () => {
+  const draft: ReceiptDraft = { storeName: "Bom Preço", storeCnpj: "", accessKey: "", issuedOn: "2030-01-02", totalCents: 100, lines: [] };
+  const onDraft = (over = {}): Step => ({ kind: "draft", draft, saving: false, fields: [], failed: false, ...over });
+
+  it("reads once a photo is chosen, then shows the draft, or why there is none", () => {
+    const reading = reduce(START, { type: "photo" });
+    expect(reading).toEqual({ kind: "reading" });
+    expect(reduce(reading, { type: "read", result: { kind: "draft", draft } })).toEqual(onDraft());
+    for (const kind of ["cap", "unreadable", "error"] as const) expect(reduce(reading, { type: "read", result: { kind } })).toEqual({ kind: "photoFailed", reason: kind });
+    expect(reduce(START, { type: "read", result: { kind: "cap" } })).toEqual(START);
+  });
+
+  it("keeps the draft while it saves, and marks the fields a refusal names or a failure", () => {
+    const saving = reduce(onDraft({ fields: ["totalCents"], failed: true }), { type: "saveDraft" });
+    expect(saving).toEqual(onDraft({ saving: true }));
+    expect(reduce(saving, { type: "drafted", result: { kind: "rejected", fields: ["totalCents"] } })).toEqual(onDraft({ fields: ["totalCents"] }));
+    expect(reduce(saving, { type: "drafted", result: { kind: "error" } })).toEqual(onDraft({ failed: true }));
+  });
+
+  it("continues to matching, or to done for a duplicate with nothing left, after the save", () => {
+    const r = receipt([line(1, { itemId: "p1" }), line(2)]);
+    expect(reduce(onDraft({ saving: true }), { type: "drafted", result: { kind: "created", receipt: r } })).toEqual({ kind: "matching", receipt: r, queue: [2], total: 1 });
+    const done = receipt([line(1, { itemId: "p1" })]);
+    expect(reduce(onDraft({ saving: true }), { type: "drafted", result: { kind: "duplicate", receipt: done } })).toEqual({ kind: "done", updated: 1, already: true });
+    expect(reduce(START, { type: "drafted", result: { kind: "created", receipt: r } })).toEqual(START);
   });
 });
