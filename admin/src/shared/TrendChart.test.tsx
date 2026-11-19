@@ -38,7 +38,7 @@ describe("TrendChart", () => {
   });
 
   it("refuses more series than it has line styles, with an error that says so", async () => {
-    const four = ["A", "B", "C", "D"].map((label) => ({ label, values: [1, 2, 3] }));
-    await expect(render(<TrendChart title="Too many" dates={dates} series={four} />)).rejects.toThrow("at most 3 series");
+    const four = ["A", "B", "C", "D", "E"].map((label) => ({ label, values: [1, 2, 3] }));
+    await expect(render(<TrendChart title="Too many" dates={dates} series={four} />)).rejects.toThrow("at most 4 series");
   });
 });

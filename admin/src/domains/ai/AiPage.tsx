@@ -11,7 +11,7 @@ import { callsOf } from "./headline";
 import { formatLatency, formatMicros, formatPercent, formatTokens } from "../../shared/format";
 import { FALLBACK_GLOSSES, TEMPLATE_REASON_LABELS, VIOLATION_GLOSSES } from "./glosses";
 
-type Service = "allocator" | "explainer" | "voice";
+type Service = "allocator" | "explainer" | "voice" | "receipt";
 
 const SECTION = "mb-3 text-base font-semibold";
 
@@ -52,6 +52,7 @@ const SERVICES: { service: Service; title: string }[] = [
   { service: "allocator", title: "Allocator (plans the day)" },
   { service: "explainer", title: "Explainer (writes the explanations)" },
   { service: "voice", title: "Voice (interprets spoken commands)" },
+  { service: "receipt", title: "Receipt (reads a photographed receipt)" },
 ];
 
 function hasCalls(days: AiDay[]): boolean {
