@@ -55,7 +55,7 @@ function parseSuggestion(v: unknown): BillSuggestion | null {
 }
 
 /** GET `url` and parse every row of the array `pick` takes from the body. Throws on any failure, so a query shows its error state. */
-async function readList<T>(client: AxiosInstance, url: string, params: Record<string, string> | undefined, pick: (body: unknown) => unknown, parse: (v: unknown) => T | null): Promise<T[]> {
+export async function readList<T>(client: AxiosInstance, url: string, params: Record<string, string> | undefined, pick: (body: unknown) => unknown, parse: (v: unknown) => T | null): Promise<T[]> {
   const response = await client.get(url, { params });
   if (response.status !== 200) throw new Error(`GET ${url} answered ${response.status}`);
   const rows = pick(response.data);

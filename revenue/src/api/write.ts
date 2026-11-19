@@ -17,10 +17,11 @@ export function fieldsOf(response: AxiosResponse): FieldCodes | null {
   return entries.length > 0 ? Object.fromEntries(entries) : null;
 }
 
+/** 409 comes back too, so a caller can read its code; `writeResult` and `saveRow` still count it as an error. */
 export async function send(client: AxiosInstance, method: string, url: string, ok: number, data?: unknown): Promise<AxiosResponse | null> {
   try {
     const response = await client.request({ method, url, data });
-    return response.status === ok || response.status === 404 || response.status === 400 ? response : null;
+    return response.status === ok || response.status === 404 || response.status === 400 || response.status === 409 ? response : null;
   } catch {
     return null;
   }
