@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderApp } from "../../../testing";
 import * as api from "../api";
 import type { PantryItem, Receipt, ReceiptLine } from "../api";
+import { decodeFile, downsize } from "../logic/downsize";
 import { CHECKED_KEY, writeChecked } from "../logic/checked";
 import { HIDE_VALUES_STORAGE_KEY, HideValuesProvider } from "../../../shared/HideValues";
 import { AddReceiptSheet } from "./AddReceiptSheet";
@@ -498,6 +499,18 @@ describe("photo draft", () => {
     await takePhoto();
     expect(await screen.findByText(message)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Take another photo" })).toBeTruthy();
+  });
+
+  it.each([
+    ["will not fit", () => vi.mocked(downsize).mockResolvedValueOnce(null)],
+    ["cannot be decoded", () => vi.mocked(decodeFile).mockRejectedValueOnce(new Error("not an image"))],
+  ] as const)("fails a photo that %s without calling the API", async (_name, arrange) => {
+    arrange();
+    await open();
+    await takePhoto();
+    expect(await screen.findByText("Couldn't read the photo. Try again.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Take another photo" })).toBeTruthy();
+    expect(read).not.toHaveBeenCalled();
   });
 
   it("offers the photo on the SEFAZ-unavailable message", async () => {
