@@ -2,7 +2,7 @@ import type { AxiosAdapter, InternalAxiosRequestConfig } from "axios";
 import { describe, expect, it } from "vitest";
 import { createApiClient } from "../../api/client";
 import { createSessionStore } from "../../auth/session";
-import { addItem, deleteItem, getPantry, markRanOut, undoRanOut, updateItem } from "./api";
+import { addItem, addReceipt, deleteItem, getPantry, markRanOut, matchLine, undoRanOut, updateItem } from "./api";
 
 const ITEM = { id: "p1", name: "Arroz", preferredBrand: "Tio João", fixed: true, state: "in_stock", ranOutOn: null };
 
@@ -85,5 +85,60 @@ describe("writes", () => {
   it("counts a 409 not_ran_out on undo as done", async () => {
     expect(await undoRanOut("p1", setup(409, { error: "not_ran_out" }).client)).toEqual({ kind: "ok" });
     expect(await undoRanOut("p1", setup(409, { error: "other" }).client)).toEqual({ kind: "error" });
+  });
+});
+
+const LINE = { n: 1, description: "ARROZ", quantityMilli: 1000, unit: "UN", unitPriceCents: 2790, totalCents: 2790, itemId: null, ignored: false };
+const RECEIPT = { id: "r1", storeName: "Bom Preço", issuedOn: "2030-01-02", totalCents: 2790, readBy: "sefaz", lines: [LINE] };
+
+describe("addReceipt", () => {
+  it("POSTs the code and reads 201 as created and 200 as a duplicate", async () => {
+    const { client, sent } = setup(201, RECEIPT);
+    expect(await addReceipt("3524", client)).toEqual({ kind: "created", receipt: RECEIPT });
+    expect(sent[0]!.url).toBe("/me/finance/pantry/receipts");
+    expect(JSON.parse(String(sent[0]!.data))).toEqual({ code: "3524" });
+    expect(await addReceipt("3524", setup(200, RECEIPT).client)).toEqual({ kind: "duplicate", receipt: RECEIPT });
+  });
+
+  it("answers invalid for 400 invalid_code, and unavailable for 502 and 422", async () => {
+    expect(await addReceipt("x", setup(400, { error: "invalid_code" }).client)).toEqual({ kind: "invalid" });
+    expect(await addReceipt("x", setup(502, { error: "sefaz_unavailable" }).client)).toEqual({ kind: "unavailable" });
+    expect(await addReceipt("x", setup(422, { error: "unsupported_state" }).client)).toEqual({ kind: "unavailable" });
+  });
+
+  it("answers error for any other status, a network failure and a malformed receipt", async () => {
+    expect(await addReceipt("x", setup(400, { error: "other" }).client)).toEqual({ kind: "error" });
+    expect(await addReceipt("x", setup(503, {}).client)).toEqual({ kind: "error" });
+    expect(await addReceipt("x", setup(201, RECEIPT, true).client)).toEqual({ kind: "error" });
+    expect(await addReceipt("x", setup(201, { ...RECEIPT, lines: "none" }).client)).toEqual({ kind: "error" });
+  });
+
+  it.each([
+    ["id", 1], ["storeName", null], ["issuedOn", 20300102], ["totalCents", "1"], ["readBy", null],
+  ])("refuses a receipt with a bad %s", async (field, value) => {
+    expect(await addReceipt("x", setup(201, { ...RECEIPT, [field]: value }).client)).toEqual({ kind: "error" });
+  });
+
+  it.each([
+    ["n", 0], ["description", 5], ["quantityMilli", 1.5], ["unit", null], ["unitPriceCents", "9"], ["totalCents", null], ["itemId", 7], ["ignored", "no"],
+  ])("refuses a line with a bad %s", async (field, value) => {
+    expect(await addReceipt("x", setup(201, { ...RECEIPT, lines: [{ ...LINE, [field]: value }] }).client)).toEqual({ kind: "error" });
+  });
+});
+
+describe("matchLine", () => {
+  it("PUTs the choice to the encoded receipt and line, and returns the receipt", async () => {
+    const { client, sent } = setup(200, RECEIPT);
+    expect(await matchLine("r/1", 3, { newItem: { name: "Arroz", brand: null } }, client)).toEqual({ kind: "ok", receipt: RECEIPT });
+    expect(sent[0]!.method).toBe("put");
+    expect(sent[0]!.url).toBe("/me/finance/pantry/receipts/r%2F1/lines/3");
+    expect(JSON.parse(String(sent[0]!.data))).toEqual({ newItem: { name: "Arroz", brand: null } });
+  });
+
+  it("turns 409 name_taken into a name field error, 404 into not-found, anything else into an error", async () => {
+    expect(await matchLine("r1", 1, { ignore: true }, setup(409, { error: "name_taken" }).client)).toEqual({ kind: "fields", fields: { name: "taken" } });
+    expect(await matchLine("r1", 1, { ignore: true }, setup(404, {}).client)).toEqual({ kind: "not-found" });
+    expect(await matchLine("r1", 1, { ignore: true }, setup(500, {}).client)).toEqual({ kind: "error" });
+    expect(await matchLine("r1", 1, { ignore: true }, setup(200, { nope: 1 }).client)).toEqual({ kind: "error" });
   });
 });

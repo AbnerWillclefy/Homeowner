@@ -6,6 +6,7 @@ import { saoPauloDay } from "../../shared/month/month";
 import { PageHeader } from "../../shared/PageHeader";
 import type { PantryItem } from "./api";
 import { AddItemForm } from "./components/AddItemForm";
+import { AddReceiptSheet } from "./components/AddReceiptSheet";
 import { ItemSheet } from "./components/ItemSheet";
 import { PantryRows } from "./components/PantryRows";
 import { usePantry } from "./hooks/usePantry";
@@ -13,7 +14,7 @@ import { groupItems } from "./logic/pantry";
 
 /**
  * "Despensa" at `/pantry`: what is at home and what ran out. One tap on "Acabou" moves the item at once and offers "Desfazer".
- * "Adicionar nota" and "Lista de compras" (artboard tools) come with the receipt and shopping list screens.
+ * "Adicionar nota" opens the receipt Sheet; "Lista de compras" (an artboard tool) comes with the shopping list screen.
  */
 export function PantryPage() {
   const { t } = useI18n();
@@ -58,7 +59,7 @@ export function PantryPage() {
   return (
     <ToastProvider label={t("pantry.toast.region")}>
       <section className="flex flex-col gap-6">
-        <PageHeader title={t("nav.pantry")} subtitle={subtitle} />
+        <PageHeader title={t("nav.pantry")} subtitle={subtitle} tools={<AddReceiptSheet />} />
 
         {notice && <Banner tone="danger">{t(notice === "gone" ? "pantry.gone" : "pantry.failed")}</Banner>}
 
