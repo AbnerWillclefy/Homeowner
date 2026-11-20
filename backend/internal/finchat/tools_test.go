@@ -57,6 +57,11 @@ func seedFinances(t *testing.T, app *apitest.App, ana *apitest.Client) {
 			merchant_key, type, type_set_by, spending_category, category_set_by, installment_number, total_installments, created_at, updated_at)
 		SELECT user_id, id, 'plan1', '2026-10-03', -10000, 'BRL', 'Geladeira Fast 2/6', 'GELADEIRA', 'expense', 'auto', 'other', 'fallback', 2, 6, now(), now()
 		FROM finance_sources WHERE kind = 'credit_card' AND user_id = (SELECT id FROM users WHERE email = 'ana@example.com') LIMIT 1`)
+	exec(t, app, `
+		INSERT INTO finance_transactions (user_id, source_id, provider_id, posted_on, amount_cents, currency, description,
+			merchant_key, type, type_set_by, spending_category, category_set_by, installment_number, total_installments, created_at, updated_at)
+		SELECT user_id, id, 'plan2', '2026-10-04', -5000, 'BRL', 'PIX ANA SOUZA 1/3', 'PIX ANA SOUZA', 'expense', 'auto', 'other', 'fallback', 1, 3, now(), now()
+		FROM finance_sources WHERE kind = 'credit_card' AND user_id = (SELECT id FROM users WHERE email = 'ana@example.com') LIMIT 1`)
 	exec(t, app, `INSERT INTO finance_card_bills (user_id, source_id, provider_id, closes_on, due_on, total_cents)
 		SELECT user_id, id, 'b' || i, date '2026-10-07' - make_interval(months => i), date '2026-10-12' - make_interval(months => i), 100000 + 5000 * i
 		FROM finance_sources, generate_series(0, 2) i WHERE kind = 'credit_card' AND user_id = (SELECT id FROM users WHERE email = 'ana@example.com')`)
@@ -159,7 +164,7 @@ func TestEachToolReturnsWhatItsRouteReturns(t *testing.T) {
 				_ = json.Unmarshal([]byte(raw), &c)
 				c["months"] = c["months"].([]any)[:2]
 				b, _ := json.Marshal(c)
-				return strings.ReplaceAll(string(b), `Cartão da Ana`, `Manual card 1`)
+				return strings.NewReplacer(`Cartão da Ana`, `Manual card 1`, `PIX ANA SOUZA`, `Pix sent`).Replace(string(b))
 			},
 			func(t *testing.T, got any) {
 				listAt(t, got, 2, "months")
@@ -268,6 +273,9 @@ func TestAManualCardNeverReachesTheModelByNameOrPixRecipient(t *testing.T) {
 	commitments := app.Chat.Requests()[1].Messages[2].ToolResults[3].Content
 	if !strings.Contains(commitments, "Manual card 1") || !strings.Contains(commitments, "Geladeira") || !strings.Contains(commitments, "123456") {
 		t.Errorf("commitments = %.600s, want the Manual card as Manual card 1 with its typed total, and the plan", commitments)
+	}
+	if !strings.Contains(commitments, "Pix sent") || strings.Contains(commitments, "PIX ANA") {
+		t.Errorf("commitments = %.600s, want the installment named for the Manual card redacted", commitments)
 	}
 }
 
