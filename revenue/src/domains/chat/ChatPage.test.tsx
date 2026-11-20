@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { Link, Route, Routes } from "react-router";
@@ -6,8 +6,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderApp } from "../../testing";
 import * as api from "./api";
 import type { AskResult } from "./api";
+import * as goalsApi from "../goals/api";
+import { savingsKey } from "../goals/hooks/useSavings";
+import { en, ptBR } from "../../shared/i18n/catalogs";
+import { SCREEN_KEYS } from "./logic/screenKeys";
+import { suggestionsFor } from "./logic/suggestions";
 import { ChatPage } from "./ChatPage";
 
+vi.mock("../goals/api", async (original) => ({ ...(await original<typeof import("../goals/api")>()), getSavings: vi.fn() }));
 vi.mock("./api", async (original) => ({ ...(await original<typeof import("./api")>()), ask: vi.fn() }));
 
 const ask = vi.mocked(api.ask);
@@ -315,5 +321,68 @@ describe("remaining", () => {
     await screen.findByText("5 questions left today");
     await say("Q2");
     expect(screen.queryByText(/left today/)).toBeNull();
+  });
+});
+
+const suggestionButtons = () => within(screen.getByRole("group", { name: "Suggestions" })).getAllByRole("button");
+const SAVINGS = { goals: [{ id: "g1", name: "Viagem Japão" }, { id: "g2", name: "Carro" }] } as unknown as import("../goals/api").Savings;
+
+describe("suggestions", () => {
+  it("shows 2 or 3 suggestions from the catalog for every screen key", () => {
+    expect(SCREEN_KEYS).toHaveLength(11);
+    for (const key of SCREEN_KEYS) {
+      const { unmount } = open({ path: `/chat?from=${key}` });
+      const expected = suggestionsFor(key, undefined).map((s) => en[s.key]);
+      expect(expected.length).toBeGreaterThanOrEqual(2);
+      expect(suggestionButtons().map((b) => b.textContent), key).toEqual(expected);
+      unmount();
+    }
+  });
+
+  it("names the first Goal when the savings are cached", () => {
+    open({ path: "/chat?from=goals", seed: (c) => c.setQueryData(savingsKey, SAVINGS) });
+    expect(suggestionButtons()[0]!.textContent).toBe("When do I reach Viagem Japão?");
+    expect(goalsApi.getSavings).not.toHaveBeenCalled();
+  });
+
+  it("asks a generic Goal question, and fetches nothing, without the cache", () => {
+    open({ path: "/chat?from=goals" });
+    expect(suggestionButtons()[0]!.textContent).toBe(en["chat.suggest.goals.1"]);
+    expect(goalsApi.getSavings).not.toHaveBeenCalled();
+  });
+
+  it("asks a generic Goal question when the cache has no Goals", () => {
+    open({ path: "/chat?from=goals", seed: (c) => c.setQueryData(savingsKey, { goals: [] }) });
+    expect(suggestionButtons()[0]!.textContent).toBe(en["chat.suggest.goals.1"]);
+  });
+
+  it("shows the generic set for an unknown or missing from", () => {
+    const generic = suggestionsFor("other", undefined).map((s) => en[s.key]);
+    for (const path of ["/chat?from=pantry", "/chat"]) {
+      const { unmount } = open({ path });
+      expect(suggestionButtons().map((b) => b.textContent)).toEqual(generic);
+      unmount();
+    }
+  });
+
+  it("speaks pt-BR first", () => {
+    open({ locale: "pt-BR", path: "/chat?from=bills" });
+    const group = screen.getByRole("group", { name: "Sugestões" });
+    expect(within(group).getAllByRole("button").map((b) => b.textContent)).toEqual([ptBR["chat.suggest.bills.1"], ptBR["chat.suggest.bills.2"]]);
+  });
+
+  it("sends the same request as typing the text, then hides the suggestions", async () => {
+    ask.mockResolvedValue(answer("A"));
+    open({ path: "/chat?from=bills" });
+    const text = en["chat.suggest.bills.2"];
+    await userEvent.click(screen.getByRole("button", { name: text }));
+    await screen.findByText("A");
+    expect(screen.queryByRole("group", { name: "Suggestions" })).toBeNull();
+    cleanup();
+    open({ path: "/chat?from=bills" });
+    await say(text);
+    await waitFor(() => expect(ask).toHaveBeenCalledTimes(2));
+    expect(ask.mock.calls[0]![0]).toEqual(ask.mock.calls[1]![0]);
+    expect(ask.mock.calls[0]![0].messages).toEqual([{ role: "user", text }]);
   });
 });
