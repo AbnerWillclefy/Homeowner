@@ -13,7 +13,8 @@ import { saoPauloDay } from "../shared/month/month";
 import { timeAgo } from "../shared/timeAgo";
 import { useMediaQuery } from "../shared/useMediaQuery";
 import { useSyncOnLaunch } from "../domains/settings/hooks/useNotifications";
-import { BILLS, MORE, NAV_FOOTER, NAV_GROUPS, TABS, type Screen } from "./screens";
+import { screenKeyOf } from "../domains/chat/logic/screenKeys";
+import { BILLS, CHAT, MORE, NAV_FOOTER, NAV_GROUPS, TABS, type Screen } from "./screens";
 
 // Duplicates --bp-desktop in Bedrock's tokens.css: matchMedia cannot read custom properties.
 const DESKTOP = "(min-width: 1024px)";
@@ -52,13 +53,14 @@ function Frame() {
   const openBills = useOpenBills(now);
   const sources = useSources().data;
   const desktop = useMediaQuery(DESKTOP);
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const navigate = useNavigate();
   const [moreOpen, setMoreOpen] = useState(false);
   useSyncOnLaunch();
 
   const item = (s: Screen): NavItem => ({
-    href: s.path,
+    // The chat remembers the screen it was opened from; on the chat itself the link keeps its own `from`.
+    href: s === CHAT ? `${s.path}${pathname === s.path ? search : `?from=${screenKeyOf(pathname)}`}` : s.path,
     label: t(s.label),
     icon: s.icon,
     current: s.path === pathname,
@@ -92,7 +94,7 @@ function Frame() {
         <main id="main" tabIndex={-1} className="mx-auto flex w-full max-w-content flex-1 flex-col gap-6 px-4 pt-6 pb-10 outline-none desktop:px-10 desktop:pt-8 desktop:pb-12">
           <Outlet />
         </main>
-        {!desktop && (
+        {!desktop && pathname !== CHAT.path && (
           <div className="sticky bottom-0 z-(--z-sticky)">
             <BottomBar
               label={t("nav.label")}

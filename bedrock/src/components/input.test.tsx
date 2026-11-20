@@ -21,3 +21,9 @@ it("the error replaces the hint, is announced and tied to the field", () => {
   expect(screen.getByRole("alert").textContent).toBe("Enter your name.");
   expect(screen.queryByText("As on your ID")).toBeNull();
 });
+
+it("hideLabel keeps the label for screen readers only", () => {
+  render(<Input label="Question" hideLabel />);
+  expect(screen.getByText("Question").className).toContain("sr-only");
+  expect(screen.getByRole("textbox", { name: "Question" })).toBeTruthy();
+});

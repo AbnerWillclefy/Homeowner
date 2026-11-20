@@ -61,7 +61,7 @@ describe("sidebar", () => {
     open();
     const nav = screen.getByRole("navigation");
     const names = (g: string) => within(within(nav).getByRole("list", { name: g })).getAllByRole("link").map((a) => a.textContent);
-    expect(names("Principal")).toEqual(["Visão geral", "Lançamentos", "Contas a pagar", "Faturas", "Categorias de gasto", "Despensa"]);
+    expect(names("Principal")).toEqual(["Visão geral", "Lançamentos", "Contas a pagar", "Faturas", "Categorias de gasto", "Despensa", "Perguntar"]);
     expect(names("Planejamento")).toEqual(["Objetivos", "Patrimônio", "Projeção", "Fontes"]);
     expect(within(nav).getAllByRole("list")).toHaveLength(3);
   });
