@@ -97,6 +97,10 @@ type Usage struct {
 // The *Usage is nil when the API sent none (a timeout, a transport or HTTP
 // error), and non-nil whenever a response came back, even with an error such
 // as ErrInvalidResponse: the tokens were spent. nil is not zero tokens.
+//
+// Client covers single-shot calls only. The multi-turn tool conversation the
+// chat uses is Anthropic.Converse, which is not part of this interface: its
+// consumer declares the one method it needs (ScriptedClient is its fake).
 type Client interface {
 	Complete(ctx context.Context, req Request) (json.RawMessage, *Usage, error)
 }
