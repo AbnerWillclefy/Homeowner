@@ -140,7 +140,7 @@
 .ri-send { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 7-7 7 7'/%3E%3Cpath d='M12 19V5'/%3E%3C/svg%3E"); }
 /* Floating button: 48px pill. Phone: 16px from the right, 16px above the bottom bar (56px + 24px safe area), so bottom 96px. Desktop: bottom right of the content, 32px in, fixed so it never sits over the Sidebar. Layers above a list, below a Toast (the Toast sits 64px higher while it shows). */
 .rv-fab { position: absolute; right: 16px; bottom: 96px; z-index: 5; height: 48px; padding: 0 20px; border-radius: 9999px; box-shadow: var(--shadow-lg, 0 8px 24px rgba(0,0,0,.35)); }
-.rv-app .rv-fab { right: 32px; bottom: 32px; }
+.rv-app .rv-fab { position: fixed; right: 32px; bottom: 32px; }
 .rv-phone__scroll--fab { padding-bottom: 96px; } /* the last row scrolls clear above the button: 48px button + 16px gap + 32px air */
 .rv-phone .rv-toastwrap--fab { bottom: 160px; }
 .rv-chat { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 720px; margin: 0 auto; flex: 1; }
