@@ -25,16 +25,40 @@ const shell = (options: Parameters<typeof renderApp>[1] = {}) =>
 beforeEach(() => localStorage.clear());
 afterEach(() => vi.unstubAllGlobals());
 
-const EN = ["Overview", "Transactions", "Bills to pay", "Card bills", "Spending Categories", "Pantry", "Goals", "Net worth", "Projection", "Sources", "Settings"];
-const PT = ["Visão geral", "Lançamentos", "Contas a pagar", "Faturas", "Categorias de gasto", "Despensa", "Objetivos", "Patrimônio", "Projeção", "Fontes", "Configurações"];
+const EN = ["Overview", "Transactions", "Bills to pay", "Card bills", "Spending Categories", "Pantry", "Ask", "Goals", "Net worth", "Projection", "Sources", "Settings"];
+const PT = ["Visão geral", "Lançamentos", "Contas a pagar", "Faturas", "Categorias de gasto", "Despensa", "Perguntar", "Objetivos", "Patrimônio", "Projeção", "Fontes", "Configurações"];
 
 describe("shell navigation", () => {
-  it("shows the Sidebar on a desktop width, with the 11 items and no Onboarding", () => {
+  it("shows the Sidebar on a desktop width, with its 11 items plus Ask, and no Onboarding", () => {
     width(true);
     shell({ locale: "en" });
     const nav = screen.getByRole("navigation", { name: "Main navigation" });
     expect(within(nav).getAllByRole("link").map((a) => a.textContent)).toEqual(EN);
     expect(screen.getAllByRole("navigation")).toHaveLength(1);
+  });
+
+  it("puts Ask last in Main, current on /chat and carrying the screen it was opened from", () => {
+    width(true);
+    shell({ locale: "en", path: "/bills" });
+    const nav = screen.getByRole("navigation", { name: "Main navigation" });
+    expect(within(nav).getAllByRole("link")).toHaveLength(11 + 1);
+    expect(within(nav).getAllByRole("link")[6]!.textContent).toBe("Ask");
+    expect(screen.getByRole("link", { name: "Ask" }).getAttribute("href")).toBe("/chat?from=bills");
+  });
+
+  it("marks Ask current on /chat and keeps its own from", () => {
+    width(true);
+    shell({ locale: "en", path: "/chat?from=goals" });
+    const ask = screen.getByRole("link", { name: "Ask" });
+    expect(ask.getAttribute("aria-current")).toBe("page");
+    expect(ask.getAttribute("href")).toBe("/chat?from=goals");
+  });
+
+  it("leaves Ask out of More and hides the BottomBar on the chat on a phone", () => {
+    width(false);
+    shell({ locale: "en", path: "/chat" });
+    expect(screen.queryByRole("navigation")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Ask" })).toBeTruthy();
   });
 
   it("shows the BottomBar on a phone width, with the other screens under More", async () => {
