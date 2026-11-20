@@ -55,6 +55,8 @@ type App struct {
 	Photos *photos.Fake
 	// Voice is the fake model behind voice; nil unless started WithVoice.
 	Voice *llmalloc.FakeClient
+	// Chat is the scripted model behind the finance chat; nil unless started WithChat.
+	Chat *llmalloc.ScriptedClient
 	// ReceiptReader is the fake model behind receipt photos; nil unless started
 	// WithReceiptReader.
 	ReceiptReader *llmalloc.FakeClient
@@ -143,6 +145,14 @@ func WithVoice() Option {
 	return func(d *server.Deps) {
 		d.Voice = llmalloc.NewFakeClient()
 		d.VoiceModel = config.DefaultLLMModel
+	}
+}
+
+// WithChat turns the finance chat on with a scripted model, exposed as App.Chat.
+func WithChat() Option {
+	return func(d *server.Deps) {
+		d.Chat = llmalloc.NewScriptedClient()
+		d.ChatModel = config.DefaultLLMModel
 	}
 }
 
@@ -257,6 +267,7 @@ func Start(t testing.TB, opts ...Option) *App {
 	app.Push, _ = deps.Push.(*push.Fake)
 	app.Photos, _ = deps.Photos.(*photos.Fake)
 	app.Voice, _ = deps.Voice.(*llmalloc.FakeClient)
+	app.Chat, _ = deps.Chat.(*llmalloc.ScriptedClient)
 	app.ReceiptReader, _ = deps.ReceiptReader.(*llmalloc.FakeClient)
 	if app.Push != nil {
 		// The job nudges through the same fake the server sends with.

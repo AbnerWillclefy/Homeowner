@@ -22,6 +22,8 @@ const (
 	serviceVoice = "voice"
 	// serviceReceipt rows come from the Pantry's receipt photo reads (migration 0055).
 	serviceReceipt = "receipt"
+	// serviceChat rows come from the finance chat (migration 0056).
+	serviceChat = "chat"
 	// outcomePlanned is the allocation_runs.outcome of a run that made a Day
 	// Plan (dayplan.Planned).
 	outcomePlanned = "planned"
@@ -191,6 +193,8 @@ func (s *AIServices) set(service string, d ServiceDay) error {
 		s.Voice = d
 	case serviceReceipt:
 		s.Receipt = d
+	case serviceChat:
+		s.Chat = d
 	default:
 		return fmt.Errorf("unknown service %q", service)
 	}
