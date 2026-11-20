@@ -55,6 +55,7 @@ In diagrams, solid boxes and lines are built; dashed boxes and lines are planned
 | [0024](../adr/0024-the-current-month-counts-the-card-bill-still-to-pay.md) | The current month counts the card bill still to pay: the closed one until paid, then the open one |
 | [0025](../adr/0025-responsibility-binds-allocation-not-residents.md) | Responsibility binds Allocation, not Residents |
 | [0026](../adr/0026-read-grocery-receipts-from-sefaz-with-an-ai-read-photo-as-a-confirmed-fallback.md) | Read grocery receipts from SEFAZ, with an AI-read photo as a confirmed fallback |
+| [0027](../adr/0027-the-finance-chat-sends-a-users-own-finances-to-the-model-through-read-only-tools.md) | The finance chat sends a User's own Finances to the model through read-only tools |
 
 ## Keeping this current
 
