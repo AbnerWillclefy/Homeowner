@@ -1,6 +1,8 @@
 package finance
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -111,36 +113,37 @@ func (h *Handler) PutContribution(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Savings answers GET /me/finance/savings: the settings, the Investments and the
+// Savings answers GET /me/finance/savings from SavingsView.
+func (h *Handler) Savings(w http.ResponseWriter, r *http.Request) {
+	res, err := h.SavingsView(r.Context(), identity.CurrentUser(r.Context()).ID)
+	h.writeView(w, res, err)
+}
+
+// SavingsView is userID's savings: the settings, the Investments and the
 // Goals, with this month's suggestion. A User with no settings row gets nulls, never a 404.
 // The reserve's saved amount is the sum of the Investments that serve it, the Goals' pot
 // the sum of those that serve Goals; one with nothing picked counts toward neither. With no Monthly contribution the saved amounts are
 // still given, with no monthly amounts or expected months. The leftover is the current
 // month's of loadOutlook, the one Commitments gives; above zero it gives the extra,
 // below it the Spending Categories over their limit, and with no income or no Base neither.
-func (h *Handler) Savings(w http.ResponseWriter, r *http.Request) {
-	uid := identity.CurrentUser(r.Context()).ID
-	reserve, base, share, err := h.store.SavingsSettings(r.Context(), uid)
+func (h *Handler) SavingsView(ctx context.Context, uid string) (SavingsResponse, error) {
+	reserve, base, share, err := h.store.SavingsSettings(ctx, uid)
 	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read savings", err)
-		return
+		return SavingsResponse{}, fmt.Errorf("read savings: %w", err)
 	}
-	investments, err := h.store.Investments(r.Context(), uid)
+	investments, err := h.store.Investments(ctx, uid)
 	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read investments", err)
-		return
+		return SavingsResponse{}, fmt.Errorf("read investments: %w", err)
 	}
-	goals, err := h.store.Goals(r.Context(), uid)
+	goals, err := h.store.Goals(ctx, uid)
 	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read goals", err)
-		return
+		return SavingsResponse{}, fmt.Errorf("read goals: %w", err)
 	}
 	today := postedOn(h.clk.Now())
 	month := time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC)
-	in, err := h.loadOutlook(r.Context(), uid, month, 1)
+	in, err := h.loadOutlook(ctx, uid, month, 1)
 	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read savings outlook", err)
-		return
+		return SavingsResponse{}, fmt.Errorf("read savings outlook: %w", err)
 	}
 	var reserveSaved, goalsPot int64
 	for _, i := range investments {
@@ -162,8 +165,7 @@ func (h *Handler) Savings(w http.ResponseWriter, r *http.Request) {
 		if g.TargetMonth != nil {
 			due, err := time.Parse("2006-01", *g.TargetMonth)
 			if err != nil {
-				httpx.InternalError(w, h.log, "finance: read goal month", err)
-				return
+				return SavingsResponse{}, fmt.Errorf("read goal month: %w", err)
 			}
 			cg.Due = &due
 		}
@@ -196,5 +198,5 @@ func (h *Handler) Savings(w http.ResponseWriter, r *http.Request) {
 			resp.OverLimit = &over
 		}
 	}
-	httpx.WriteJSON(w, http.StatusOK, resp)
+	return resp, nil
 }

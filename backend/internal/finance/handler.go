@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"regexp"
@@ -58,38 +59,71 @@ func (h *Handler) Status(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, st)
 }
 
-// Month answers GET /me/finance/transactions?month=YYYY-MM. The totals come from
+// BadParam is a request parameter a view method refuses; its text is the 400
+// message the route answers with.
+type BadParam string
+
+func (e BadParam) Error() string { return string(e) }
+
+const (
+	errInvalidMonth  = BadParam("invalid month")
+	errInvalidMonths = BadParam("invalid months")
+	errInvalidSource = BadParam("invalid source")
+	errInvalidRange  = BadParam("invalid range")
+)
+
+// viewFailed answers a view method's error: a BadParam as 400 with its text,
+// anything else as the fixed 500 after logging it.
+func (h *Handler) viewFailed(w http.ResponseWriter, err error) {
+	if bad, ok := errors.AsType[BadParam](err); ok {
+		httpx.WriteError(w, http.StatusBadRequest, string(bad))
+		return
+	}
+	httpx.InternalError(w, h.log, "finance: view", err)
+}
+
+// writeView answers a view method's result as 200 JSON, or its error.
+func (h *Handler) writeView(w http.ResponseWriter, v any, err error) {
+	if err != nil {
+		h.viewFailed(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, v)
+}
+
+// Month answers GET /me/finance/transactions?month=YYYY-MM from MonthView.
+func (h *Handler) Month(w http.ResponseWriter, r *http.Request) {
+	res, err := h.MonthView(r.Context(), identity.CurrentUser(r.Context()).ID, r.URL.Query().Get("month"))
+	h.writeView(w, res, err)
+}
+
+// MonthView is the month `month` (YYYY-MM) of userID. The totals come from
 // MonthTotals over the rows just read, so every endpoint that shows money agrees.
 // Committed is Outlook's card bills for the month plus the non-card Expenses
-// counted in it; Spent since the 1st is every Expense by posted day.
-func (h *Handler) Month(w http.ResponseWriter, r *http.Request) {
-	month := r.URL.Query().Get("month")
+// counted in it; Spent since the 1st is every Expense by posted day. The caller
+// names the User, so a chat tool never reads the id from the context.
+func (h *Handler) MonthView(ctx context.Context, userID, month string) (MonthResponse, error) {
 	from, to, ok := parseMonth(month)
 	if !ok {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid month")
-		return
+		return MonthResponse{}, errInvalidMonth
 	}
-	txns, err := h.store.MonthTransactions(r.Context(), identity.CurrentUser(r.Context()).ID, from, to)
+	txns, err := h.store.MonthTransactions(ctx, userID, from, to)
 	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read month", err)
-		return
+		return MonthResponse{}, fmt.Errorf("read month: %w", err)
 	}
-	limits, err := h.store.Budgets(r.Context(), identity.CurrentUser(r.Context()).ID)
+	limits, err := h.store.Budgets(ctx, userID)
 	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read budgets", err)
-		return
+		return MonthResponse{}, fmt.Errorf("read budgets: %w", err)
 	}
 	totals := MonthTotals(toTxns(txns))
 	// Committed needs Outlook's card bills, so Month costs one loadOutlook more; no cache (one User).
-	in, err := h.loadOutlook(r.Context(), identity.CurrentUser(r.Context()).ID, from, 1)
+	in, err := h.loadOutlook(ctx, userID, from, 1)
 	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read month outlook", err)
-		return
+		return MonthResponse{}, fmt.Errorf("read month outlook: %w", err)
 	}
-	spentSince, err := h.store.SpentByPosted(r.Context(), identity.CurrentUser(r.Context()).ID, from, to)
+	spentSince, err := h.store.SpentByPosted(ctx, userID, from, to)
 	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read spent since the 1st", err)
-		return
+		return MonthResponse{}, fmt.Errorf("read spent since the 1st: %w", err)
 	}
 	committed := MonthTotals(in.offCardRows()).Spend
 	for _, c := range in.outlook[0].Cards {
@@ -104,7 +138,7 @@ func (h *Handler) Month(w http.ResponseWriter, r *http.Request) {
 	slices.SortFunc(cats, func(a, b CategoryTotal) int {
 		return cmp.Or(cmp.Compare(b.SpentCents, a.SpentCents), cmp.Compare(a.Category, b.Category))
 	})
-	httpx.WriteJSON(w, http.StatusOK, MonthResponse{Month: month, SpentCents: totals.Spend, Categories: cats, Transactions: txns, Limits: limits, CommittedCents: committed, SpentSinceFirstCents: spentSince})
+	return MonthResponse{Month: month, SpentCents: totals.Spend, Categories: cats, Transactions: txns, Limits: limits, CommittedCents: committed, SpentSinceFirstCents: spentSince}, nil
 }
 
 // SpendingCategories is the fixed, ordered list of Spending Category ids.
@@ -126,34 +160,41 @@ const (
 	historyMaxMonths = 12 // matches commitmentMonths
 )
 
-// History answers GET /me/finance/history?to=YYYY-MM&months=N: the N months
-// ending at `to`, oldest first, from one read and MonthTotals on each month, so
-// it agrees with Month. Each month carries income, spent and saved, so a client
-// gets the change against last month by asking for two months. `to` defaults to the current São Paulo month.
+// History answers GET /me/finance/history?to=YYYY-MM&months=N from HistoryView.
+// `to` defaults to the current São Paulo month; an empty `to=` is a 400.
 func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	to := q.Get("to")
 	if !q.Has("to") {
 		to = postedOn(h.clk.Now()).Format("2006-01")
 	}
-	last, end, ok := parseMonth(to)
-	if !ok {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid month")
-		return
-	}
 	n := historyMonths
 	if q.Has("months") {
 		var err error
-		if n, err = strconv.Atoi(q.Get("months")); err != nil || n < 1 || n > historyMaxMonths {
-			httpx.WriteError(w, http.StatusBadRequest, "invalid months")
-			return
+		if n, err = strconv.Atoi(q.Get("months")); err != nil {
+			n = 0 // HistoryView refuses it as invalid months
 		}
 	}
+	res, err := h.HistoryView(r.Context(), identity.CurrentUser(r.Context()).ID, to, n)
+	h.writeView(w, res, err)
+}
+
+// HistoryView is the n months (1 to 12) of userID ending at `to` (YYYY-MM),
+// oldest first, from one read and MonthTotals on each month, so it agrees with
+// Month. Each month carries income, spent and saved, so a client gets the change
+// against last month by asking for two months.
+func (h *Handler) HistoryView(ctx context.Context, userID, to string, n int) (HistoryResponse, error) {
+	last, end, ok := parseMonth(to)
+	if !ok {
+		return HistoryResponse{}, errInvalidMonth
+	}
+	if n < 1 || n > historyMaxMonths {
+		return HistoryResponse{}, errInvalidMonths
+	}
 	first := last.AddDate(0, -(n - 1), 0)
-	txns, err := h.store.MonthTransactions(r.Context(), identity.CurrentUser(r.Context()).ID, first, end)
+	txns, err := h.store.MonthTransactions(ctx, userID, first, end)
 	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read history", err)
-		return
+		return HistoryResponse{}, fmt.Errorf("read history: %w", err)
 	}
 	byMonth := map[string][]TransactionResponse{}
 	for _, t := range txns {
@@ -164,42 +205,56 @@ func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
 		m := first.AddDate(0, i, 0).Format("2006-01")
 		months[i] = historyMonth(m, byMonth[m])
 	}
-	httpx.WriteJSON(w, http.StatusOK, HistoryResponse{To: to, Months: months})
+	return HistoryResponse{To: to, Months: months}, nil
 }
 
-// PastCardBills answers GET /me/finance/card-bills?source=ID&months=N: the
-// latest N (default 6, 1 to 12) closed bills of the User's card, oldest first,
-// with their average. A card whose connector sends no bills gets an empty list.
-// A malformed source or months is 400; another User's, an unknown and a
-// non-card Source are all 404, so the answer never says which.
+// PastCardBills answers GET /me/finance/card-bills?source=ID&months=N from
+// PastCardBillsView; a Source it does not find is 404, so the answer never says which.
 func (h *Handler) PastCardBills(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	n := historyMonths
 	if q.Has("months") {
 		var err error
-		if n, err = strconv.Atoi(q.Get("months")); err != nil || n < 1 || n > historyMaxMonths {
-			httpx.WriteError(w, http.StatusBadRequest, "invalid months")
-			return
+		if n, err = strconv.Atoi(q.Get("months")); err != nil {
+			n = 0 // PastCardBillsView refuses it as invalid months
 		}
 	}
-	id := q.Get("source")
-	if !chores.ValidID(id) {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid source")
+	out, found, err := h.PastCardBillsView(r.Context(), identity.CurrentUser(r.Context()).ID, q.Get("source"), n)
+	if err == nil && !found {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
 		return
 	}
-	bills, found, err := h.store.PastCardBills(r.Context(), identity.CurrentUser(r.Context()).ID, id, postedOn(h.clk.Now()), n)
-	h.answer(w, found, err, "read past card bills", func() {
-		out := PastCardBillsResponse{SourceID: id, Bills: []PastBill{}}
-		var sum int64
-		for _, b := range bills {
-			out.Bills = append(out.Bills, PastBill{ClosesOn: b.ClosesOn.Format(time.DateOnly), DueOn: b.DueOn.Format(time.DateOnly), TotalCents: b.TotalCents})
-			sum += b.TotalCents
-		}
-		if len(bills) > 0 {
-			out.AverageCents = new(halfUp(sum, int64(len(bills))))
-		}
-		httpx.WriteJSON(w, http.StatusOK, out)
-	})
+	h.writeView(w, out, err)
+}
+
+// PastCardBillsView is the latest n (1 to 12) closed bills of userID's card
+// `source`, oldest first, with their average. A card whose connector sends no
+// bills gets an empty list. A malformed n or source is a BadParam (n is checked
+// first); another User's, an unknown and a non-card Source are all found=false.
+func (h *Handler) PastCardBillsView(ctx context.Context, userID, source string, n int) (PastCardBillsResponse, bool, error) {
+	if n < 1 || n > historyMaxMonths {
+		return PastCardBillsResponse{}, false, errInvalidMonths
+	}
+	if !chores.ValidID(source) {
+		return PastCardBillsResponse{}, false, errInvalidSource
+	}
+	bills, found, err := h.store.PastCardBills(ctx, userID, source, postedOn(h.clk.Now()), n)
+	if err != nil {
+		return PastCardBillsResponse{}, false, fmt.Errorf("read past card bills: %w", err)
+	}
+	if !found {
+		return PastCardBillsResponse{}, false, nil
+	}
+	out := PastCardBillsResponse{SourceID: source, Bills: []PastBill{}}
+	var sum int64
+	for _, b := range bills {
+		out.Bills = append(out.Bills, PastBill{ClosesOn: b.ClosesOn.Format(time.DateOnly), DueOn: b.DueOn.Format(time.DateOnly), TotalCents: b.TotalCents})
+		sum += b.TotalCents
+	}
+	if len(bills) > 0 {
+		out.AverageCents = new(halfUp(sum, int64(len(bills))))
+	}
+	return out, true, nil
 }
 
 func historyMonth(month string, rows []TransactionResponse) HistoryMonth {
@@ -214,21 +269,24 @@ func historyMonth(month string, rows []TransactionResponse) HistoryMonth {
 // paceMonths is how many months before the asked one the usual pace averages.
 const paceMonths = 3
 
-// Daily answers GET /me/finance/daily?month=YYYY-MM from one read of the three
+// Daily answers GET /me/finance/daily?month=YYYY-MM from DailyView.
+func (h *Handler) Daily(w http.ResponseWriter, r *http.Request) {
+	res, err := h.DailyView(r.Context(), identity.CurrentUser(r.Context()).ID, r.URL.Query().Get("month"))
+	h.writeView(w, res, err)
+}
+
+// DailyView is the daily pace of userID in `month` (YYYY-MM), from one read of the three
 // months before it and the month itself. A previous month has history when it
 // has at least one Transaction of any type, so a month of only Transfers counts
 // as a real zero and a month before the first import does not count.
-func (h *Handler) Daily(w http.ResponseWriter, r *http.Request) {
-	month := r.URL.Query().Get("month")
+func (h *Handler) DailyView(ctx context.Context, userID, month string) (DailyResponse, error) {
 	from, to, ok := parseMonth(month)
 	if !ok {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid month")
-		return
+		return DailyResponse{}, errInvalidMonth
 	}
-	rows, err := h.store.SpendRows(r.Context(), identity.CurrentUser(r.Context()).ID, from.AddDate(0, -paceMonths, 0), to)
+	rows, err := h.store.SpendRows(ctx, userID, from.AddDate(0, -paceMonths, 0), to)
 	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read daily", err)
-		return
+		return DailyResponse{}, fmt.Errorf("read daily: %w", err)
 	}
 	byMonth := map[time.Time][]Txn{}
 	for _, t := range rows {
@@ -252,17 +310,22 @@ func (h *Handler) Daily(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	prev := from.AddDate(0, -1, 0)
-	httpx.WriteJSON(w, http.StatusOK, DailyResponse{
+	return DailyResponse{
 		Month: month, Days: days, Current: current,
 		Previous: CumulativeDaily(byMonth[prev], prev), Average: UsualPace(history, days), AverageMonths: len(history),
-	})
+	}, nil
 }
 
 // commitmentMonths is the horizon of GET /me/finance/commitments.
 const commitmentMonths = 12
 
-// Commitments answers GET /me/finance/commitments?from=YYYY-MM: 12 months from
-// `from`, each with the installments its plans still owe.
+// Commitments answers GET /me/finance/commitments?from=YYYY-MM from CommitmentsView.
+func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
+	res, err := h.CommitmentsView(r.Context(), identity.CurrentUser(r.Context()).ID, r.URL.Query().Get("from"))
+	h.writeView(w, res, err)
+}
+
+// CommitmentsView is 12 months of userID from `from` (YYYY-MM), each with the installments its plans still owe.
 // Each month carries the outlook Outlook works out on each read from the counted
 // Transactions, the card Sources, the plans and every Bill: one bill per credit
 // card, the other Bills paid or not, the rest of each Spending limit as planned
@@ -270,16 +333,14 @@ const commitmentMonths = 12
 // and the leftover of the income. With a Monthly income, the current month (São
 // Paulo) also carries the Daily allowance and every month up to it the Pace; both
 // are absent without income (see DailyAllowance and Pace).
-func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
-	from, _, ok := parseMonth(r.URL.Query().Get("from"))
+func (h *Handler) CommitmentsView(ctx context.Context, userID, fromMonth string) (CommitmentsResponse, error) {
+	from, _, ok := parseMonth(fromMonth)
 	if !ok {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid month")
-		return
+		return CommitmentsResponse{}, errInvalidMonth
 	}
-	in, err := h.loadOutlook(r.Context(), identity.CurrentUser(r.Context()).ID, from, commitmentMonths)
+	in, err := h.loadOutlook(ctx, userID, from, commitmentMonths)
 	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read commitments", err)
-		return
+		return CommitmentsResponse{}, fmt.Errorf("read commitments: %w", err)
 	}
 	plans, income, outlook := in.plans, in.income, in.outlook
 	today := postedOn(h.clk.Now())
@@ -324,7 +385,7 @@ func (h *Handler) Commitments(w http.ResponseWriter, r *http.Request) {
 		}
 		months[i] = m
 	}
-	httpx.WriteJSON(w, http.StatusOK, CommitmentsResponse{From: from.Format("2006-01"), MonthlyIncomeCents: income, Months: months})
+	return CommitmentsResponse{From: from.Format("2006-01"), MonthlyIncomeCents: income, Months: months}, nil
 }
 
 // outlookInputs is what loadOutlook read, with the Outlook it worked out.

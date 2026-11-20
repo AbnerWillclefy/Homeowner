@@ -2,6 +2,7 @@ package finance
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -59,23 +60,27 @@ func (h *Handler) DeleteBill(w http.ResponseWriter, r *http.Request) {
 	h.answer(w, found, err, "delete bill", func() { w.WriteHeader(http.StatusNoContent) })
 }
 
-// ListBills answers GET /me/finance/bills?month=YYYY-MM: every Bill with its
-// due date in that month and whether the month is paid.
+// ListBills answers GET /me/finance/bills?month=YYYY-MM from BillsView.
 func (h *Handler) ListBills(w http.ResponseWriter, r *http.Request) {
-	from, _, ok := parseMonth(r.URL.Query().Get("month"))
+	bills, err := h.BillsView(r.Context(), identity.CurrentUser(r.Context()).ID, r.URL.Query().Get("month"))
+	h.writeView(w, bills, err)
+}
+
+// BillsView is every Bill of userID with its due date in `month` (YYYY-MM) and
+// whether the month is paid.
+func (h *Handler) BillsView(ctx context.Context, userID, month string) ([]MonthBill, error) {
+	from, _, ok := parseMonth(month)
 	if !ok {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid month")
-		return
+		return nil, errInvalidMonth
 	}
-	bills, err := h.store.MonthBills(r.Context(), identity.CurrentUser(r.Context()).ID, from)
+	bills, err := h.store.MonthBills(ctx, userID, from)
 	if err != nil {
-		httpx.InternalError(w, h.log, "finance: list bills", err)
-		return
+		return nil, fmt.Errorf("list bills: %w", err)
 	}
 	for i := range bills {
 		bills[i].DueDate = DueDate(from.Year(), from.Month(), bills[i].DueDay).Format(time.DateOnly)
 	}
-	httpx.WriteJSON(w, http.StatusOK, bills)
+	return bills, nil
 }
 
 // PayBill answers PUT /me/finance/bills/{id}/payments/{month}: paid by hand.
