@@ -27,6 +27,7 @@ Wording in the artboards is illustrative. The i18n catalogs and `docs/glossary-p
 | Pantry | `/pantry` | [Pantry](Pantry.dc.html) (with the item sheet as its side panel) | [MobilePantry](MobilePantry.dc.html) (under Mais, not in the bottom bar) |
 | Pantry item sheet | `/pantry` (row) | [Pantry](Pantry.dc.html), prop `panel` | [MobilePantryItem](MobilePantryItem.dc.html) |
 | Shopping list | `/pantry/list` | [ShoppingList](ShoppingList.dc.html) | [MobileShoppingList](MobileShoppingList.dc.html) |
+| Chat | `/chat` | [Chat](Chat.dc.html) | [MobileChat](MobileChat.dc.html) (full screen, no bottom bar) |
 | Add receipt | `/pantry` (sheet) | the same sheet as an `rv-panel` | [MobileAddReceipt](MobileAddReceipt.dc.html) (steps switched by the prop `step`) |
 | Settings | `/settings` | [Settings](Settings.dc.html) | |
 | Onboarding | `/onboarding` | [Onboarding](Onboarding.dc.html) | |
@@ -34,3 +35,21 @@ Wording in the artboards is illustrative. The i18n catalogs and `docs/glossary-p
 Screens with no mobile artboard follow Bedrock's adaptation rules: the 12-column grid becomes one column, the side panel becomes a bottom sheet and the sidebar becomes the bottom bar.
 
 Pantry artboards take the props `locale` (`pt-BR` or `en`, the English check) and `view` (`ready`, `empty`, `loading`, `error`); the shopping list adds `limit` (`ok`, `over`, `none`) and Add receipt switches by `step`. The Pantry sits in "Mais" on the phone and in the Sidebar on desktop.
+
+The chat artboards take `locale` and `view` (`empty` with suggestions, `working`, `answer`, `error`, `limit`, plus `near` and `full` for the 500-character counter). The floating button is the prop `ask` (on by default) of [Transactions](Transactions.dc.html) and [MobileTransactions](MobileTransactions.dc.html).
+
+## Chat decisions
+
+The screen tickets (#798, #799) copy these into their acceptance criteria.
+
+- **Sidebar item.** "Perguntar" (Lucide `message-circle`) is the last item of the "Principal" group, after Despensa. It is not in "Mais" on the phone: the floating button is the phone's way in, so the screen code leaves it out of `MORE`.
+- **Floating button.** A 48 px pill built from Bedrock's `Button` (primary), Lucide `message-circle` and "Perguntar" always visible. On the phone: 16 px from the right and 16 px above the bottom bar (`bottom: 96px`, which clears the 24 px safe area). On desktop: bottom right of the content, 32 px in, fixed, never over the Sidebar. Shown on every screen inside the frame except Onboarding and the chat. A list gets `96px` of bottom padding so its last row scrolls clear. A Toast sits 64 px higher while it shows (`rv-toastwrap--fab`).
+- **Chat layout.** Title "Perguntar", subtitle "Pergunte sobre seu dinheiro", no tools. Desktop: one column, max-width 720 px, centered in the main area, no grid and no cards. The input is pinned to the bottom of the column. Phone: full screen, no bottom bar, a back button at the left of the title. One `/chat` route for both.
+- **Input.** A single-line Bedrock `Input` (questions are short, so no `Textarea`) and a 48 px icon send button (Lucide `arrow-up`, accessible name "Enviar"), `maxlength` 500. The counter ("482/500") shows from 450 characters; at 500 the field takes the error state ("Limite de 500 caracteres") and send is disabled.
+- **Working.** The question shows at once, with a pending reply of two `Skeleton` lines and "Pensando…" in a `role="status"` bubble; send is disabled.
+- **Remaining count.** Only after an answer, as muted text under it: "Restam 17 perguntas hoje", singular "Resta 1 pergunta hoje" (en "17 questions left today", "1 question left today").
+- **Limit.** A plain card with a clock icon and "Você usou suas 20 perguntas de hoje. Volte amanhã.", not drawn as a reply bubble. The input and send are disabled.
+- **Error.** A danger `Banner` below the question, which stays visible, with "Tentar de novo". The note "Tentar de novo conta como uma pergunta." is drawn because a retry counts against the day's 20 (#796).
+- **Answers are plain text.** The bubble keeps line breaks (`white-space: pre-wrap`) and draws no bold, link, list or image.
+- **Hide values.** The chat ignores the hide-values toggle: the answer is model text and cannot be masked. #798 lists it under "Differs from the design".
+- **Notice.** One line under the input, "Pode errar. Não é conselho financeiro." (ADR: advisory only). Drawn pending the product manager's agreement.

@@ -134,3 +134,22 @@
 .rv-camera__frame { width: 62%; aspect-ratio: 1; border: 2px dashed var(--border-strong); border-radius: 16px; display: grid; place-items: center; }
 .rv-qty { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .rv-phone .br-listrow > .br-checkbox { margin-left: -8px; }
+
+/* Chat (#793). Lucide message-circle and arrow-up. */
+.ri-chat { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7.9 20A9 9 0 1 0 4 16.1L2 22Z'/%3E%3C/svg%3E"); }
+.ri-send { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 7-7 7 7'/%3E%3Cpath d='M12 19V5'/%3E%3C/svg%3E"); }
+/* Floating button: 48px pill. Phone: 16px from the right, 16px above the bottom bar (56px + 24px safe area), so bottom 96px. Desktop: bottom right of the content, 32px in, fixed so it never sits over the Sidebar. Layers above a list, below a Toast (the Toast sits 64px higher while it shows). */
+.rv-fab { position: absolute; right: 16px; bottom: 96px; z-index: 5; height: 48px; padding: 0 20px; border-radius: 9999px; box-shadow: var(--shadow-lg, 0 8px 24px rgba(0,0,0,.35)); }
+.rv-app .rv-fab { right: 32px; bottom: 32px; }
+.rv-phone__scroll--fab { padding-bottom: 96px; } /* the last row scrolls clear above the button: 48px button + 16px gap + 32px air */
+.rv-phone .rv-toastwrap--fab { bottom: 160px; }
+.rv-chat { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 720px; margin: 0 auto; flex: 1; }
+.rv-chat__log { display: flex; flex-direction: column; gap: 16px; flex: 1; }
+.rv-msg { max-width: 85%; padding: 12px 16px; border-radius: 16px; white-space: pre-wrap; overflow-wrap: anywhere; } /* plain text: line breaks kept, no Markdown, link or image */
+.rv-msg--me { align-self: flex-end; background: var(--brand); color: var(--on-brand, #fff); border-bottom-right-radius: 4px; }
+.rv-msg--bot { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+.rv-suggest { display: flex; flex-wrap: wrap; gap: 8px; }
+.rv-suggest .rv-chip { height: auto; min-height: 40px; padding: 8px 16px; text-align: left; }
+.rv-composer { display: flex; flex-direction: column; gap: 8px; position: sticky; bottom: 0; background: var(--bg); padding-top: 8px; }
+.rv-composer__row { display: flex; gap: 8px; align-items: flex-start; }
+.rv-composer .br-field { flex: 1; }

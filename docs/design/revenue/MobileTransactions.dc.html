@@ -19,7 +19,7 @@
 <div class="rv-head__text"><h1 class="rv-title">Transações</h1><span class="rv-sub">Novembro · 64</span></div>
 <button class="br-iconbtn" aria-label="Escolher mês"><i class="ri ri-calendar" aria-hidden="true"></i></button>
 </div>
-<div class="rv-phone__scroll" style="gap: 8px">
+<div class="rv-phone__scroll {{ask.scroll}}" style="gap: 8px">
 <div class="br-search">
 <label class="br-search__box"><i class="ri ri-search" aria-hidden="true"></i><input aria-label="Buscar transações" placeholder="Buscar" style="all: unset; flex: 1; min-width: 0; color: var(--text)"></label>
 <span style="position: relative"><button class="br-iconbtn" aria-label="Filtros"><i class="ri ri-sliders" aria-hidden="true"></i></button></span>
@@ -43,6 +43,10 @@
 </sc-for>
 </div>
 </div>
+<sc-if value="{{ask.on}}" hint-placeholder-val="{{ true }}">
+<!-- Floating button: 48px pill, "Perguntar" always visible, 16px from the right and 16px above the bottom bar. Shown on every screen inside the frame except Onboarding and the chat. A Toast sits above it. -->
+<a href="MobileChat.dc.html" class="br-btn br-btn--primary rv-fab" aria-label="{{ask.label}}"><i class="ri ri-chat" aria-hidden="true"></i>{{ask.label}}</a>
+</sc-if>
 <nav class="br-bottombar" aria-label="Principal">
 <a href="MobileOverview.dc.html" class="br-tab"><i class="ri ri-lg ri-dashboard" aria-hidden="true"></i>Visão geral</a>
 <a href="MobileTransactions.dc.html" class="br-tab" aria-current="page"><i class="ri ri-lg ri-arrows" aria-hidden="true"></i>Transações</a>
@@ -65,7 +69,7 @@
 </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"ask":{"editor":"enum","options":["on","off"],"default":"on"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) { super(props); this.state = { kind: 'all', selected: null }; }
   renderVals() {
@@ -89,6 +93,7 @@ class Component extends DCLogic {
     const found = all.find((r) => r.id === this.state.selected) || all[0];
     return {
       theme: this.props.theme ?? 'dark',
+      ask: { on: (this.props.ask ?? 'on') === 'on', scroll: (this.props.ask ?? 'on') === 'on' ? 'rv-phone__scroll--fab' : '', label: 'Perguntar' },
       groups,
       seg: { all: kind === 'all' ? 'true' : 'false', out: kind === 'out' ? 'true' : 'false', in: kind === 'in' ? 'true' : 'false' },
       showAll: () => this.setState({ kind: 'all' }),

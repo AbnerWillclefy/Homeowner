@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Perguntar, celular</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<!-- Full screen on the phone: the bottom bar and the floating button are hidden, a back button returns to the previous screen. The input is pinned to the bottom and clears the safe area. -->
+<div class="rv-phone" data-theme="{{theme}}">
+<div class="rv-phone__top">
+<button class="br-iconbtn" aria-label="{{t.back}}"><i class="ri ri-chevron-left" aria-hidden="true"></i></button>
+<div class="rv-head__text" style="flex: 1"><h1 class="rv-title">{{t.title}}</h1></div>
+</div>
+<div class="rv-phone__scroll" style="padding-bottom: 24px">
+<div class="rv-chat">
+<div class="rv-chat__log" aria-live="polite">
+<sc-if value="{{isEmpty}}" hint-placeholder-val="{{ false }}">
+<div class="br-empty" style="padding: 32px 0 0"><span class="br-empty__icon"><i class="ri ri-lg ri-chat" aria-hidden="true"></i></span><span class="br-empty__title">{{t.emptyTitle}}</span><span class="br-empty__text">{{t.emptyText}}</span></div>
+<div class="rv-suggest" role="group" aria-label="{{t.suggest}}"><sc-for list="{{suggestions}}" as="s" hint-placeholder-count="3"><button class="rv-chip">{{s}}</button></sc-for></div>
+</sc-if>
+<sc-if value="{{hasQuestion}}" hint-placeholder-val="{{ true }}">
+<div class="rv-msg rv-msg--me">{{t.q}}</div>
+</sc-if>
+<sc-if value="{{isWorking}}" hint-placeholder-val="{{ false }}">
+<div class="rv-msg rv-msg--bot" role="status" aria-label="{{t.working}}" style="display: flex; flex-direction: column; gap: 8px; width: 70%"><div class="br-skel" style="height: 12px"></div><div class="br-skel" style="height: 12px; width: 80%"></div><span class="br-muted" style="font-size: 12px">{{t.working}}</span></div>
+</sc-if>
+<sc-if value="{{isAnswer}}" hint-placeholder-val="{{ false }}">
+<div class="rv-msg rv-msg--bot">{{t.a}}</div>
+<span class="br-muted" style="font-size: 12px">{{t.left}}</span>
+</sc-if>
+<sc-if value="{{isError}}" hint-placeholder-val="{{ false }}">
+<div class="br-banner br-banner--danger" role="alert"><i class="ri ri-alert br-icon" aria-hidden="true"></i><span class="br-banner__text">{{t.error}}<br><span class="br-muted" style="font-size: 12px">{{t.errorNote}}</span></span><button class="br-btn br-btn--ghost br-btn--sm"><i class="ri ri-refresh" aria-hidden="true"></i>{{t.retry}}</button></div>
+</sc-if>
+<sc-if value="{{isLimit}}" hint-placeholder-val="{{ false }}">
+<div class="br-card br-card--compact" role="status" style="flex-direction: row; align-items: center; gap: 12px"><i class="ri ri-clock br-icon" aria-hidden="true"></i><span>{{t.limit}}</span></div>
+</sc-if>
+</div>
+<div class="rv-composer">
+<form class="rv-composer__row" aria-label="{{t.title}}">
+<label class="br-field"><span class="br-field__label" style="position: absolute; width: 1px; height: 1px; overflow: hidden">{{t.label}}</span><span class="br-input {{inputClass}}"><input placeholder="{{t.ph}}" maxlength="500" disabled="{{inputOff}}"></span>
+<sc-if value="{{isNear}}" hint-placeholder-val="{{ false }}"><span class="br-field__hint">{{t.counter}}</span></sc-if>
+<sc-if value="{{isFull}}" hint-placeholder-val="{{ false }}"><span class="br-field__error"><i class="ri ri-sm ri-alert" aria-hidden="true"></i>{{t.max}}</span></sc-if>
+</label>
+<button class="br-btn br-btn--primary" style="width: 48px; height: 48px; padding: 0" type="submit" disabled="{{sendOff}}" aria-label="{{t.send}}"><i class="ri ri-send" aria-hidden="true"></i></button>
+</form>
+<span class="br-muted" style="font-size: 12px; text-align: center">{{t.disclaimer}}</span>
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"locale":{"editor":"enum","options":["pt-BR","en"],"default":"pt-BR"},"view":{"editor":"enum","options":["empty","working","answer","error","limit","near","full"],"default":"empty"},"$preview":{"width":390,"height":844}}'>
+// Chat. The pt-BR column is the source; the en column is the parity check. Answers are plain text: no Markdown, link or image.
+const COPY = {
+  'pt-BR': { title: 'Perguntar', sub: 'Pergunte sobre seu dinheiro', back: 'Voltar', emptyTitle: 'Pergunte sobre seu dinheiro', emptyText: 'Respondo com base nos seus lançamentos, objetivos e despensa.', suggest: 'Sugestões', label: 'Sua pergunta', ph: 'Digite sua pergunta', send: 'Enviar', q: 'Onde gastei mais este mês?', working: 'Pensando…', a: 'Em novembro você gastou R$ 5.127,41.\n\nMercado: R$ 1.284,60\nMoradia: R$ 3.500,00 (aluguel)\nRestaurantes: R$ 277,40\n\nSem o aluguel, o Mercado foi o que mais pesou.', left: 'Restam 17 perguntas hoje', leftOne: 'Resta 1 pergunta hoje', error: 'Não foi possível responder agora', errorNote: 'Tentar de novo conta como uma pergunta.', retry: 'Tentar de novo', limit: 'Você usou suas 20 perguntas de hoje. Volte amanhã.', limitPh: 'Volte amanhã', counter: '482/500', max: 'Limite de 500 caracteres', disclaimer: 'Pode errar. Não é conselho financeiro.', s1: 'Onde gastei mais este mês?', s2: 'Quando chego na Viagem Japão?', s3: 'O que está acabando na despensa?', ask: 'Perguntar', nav: 'Principal' },
+  en: { title: 'Ask', sub: 'Ask about your money', back: 'Back', emptyTitle: 'Ask about your money', emptyText: 'I answer from your transactions, goals and pantry.', suggest: 'Suggestions', label: 'Your question', ph: 'Type your question', send: 'Send', q: 'Where did I spend the most this month?', working: 'Thinking…', a: 'In November you spent R$ 5,127.41.\n\nGroceries: R$ 1,284.60\nHousing: R$ 3,500.00 (rent)\nEating out: R$ 277.40\n\nWithout rent, Groceries weighed the most.', left: '17 questions left today', leftOne: '1 question left today', error: "Couldn't answer right now", errorNote: 'Retrying counts as a question.', retry: 'Try again', limit: "You've used your 20 questions today. Come back tomorrow.", limitPh: 'Come back tomorrow', counter: '482/500', max: '500 character limit', disclaimer: 'May be wrong. Not financial advice.', s1: 'Where did I spend the most this month?', s2: 'When do I reach the Japan Trip?', s3: "What's running out in the pantry?", ask: 'Ask', nav: 'Main' },
+};
+class Component extends DCLogic {
+  renderVals() {
+    const t = COPY[this.props.locale ?? 'pt-BR'];
+    const view = this.props.view ?? 'empty';
+    const is = (...v) => v.includes(view);
+    return {
+      theme: this.props.theme ?? 'dark',
+      t,
+      suggestions: [t.s1, t.s2, t.s3],
+      isEmpty: is('empty'), isWorking: is('working'), isAnswer: is('answer'), isError: is('error'), isLimit: is('limit'),
+      hasQuestion: !is('empty', 'limit'),
+      isNear: is('near'), isFull: is('full'),
+      inputClass: is('full') ? 'br-input--invalid' : '',
+      inputOff: is('limit'), sendOff: is('limit', 'working', 'full'),
+    };
+  }
+}
+</script>
+</body>
+</html>
