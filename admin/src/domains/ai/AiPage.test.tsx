@@ -199,7 +199,16 @@ describe("AiPage", () => {
     expect(container().querySelector("#calls ~ div table, #calls table")).toBeNull();
   });
 
-  it("shows the chat table with zeros while another service has calls, and its figures from a fixture", async () => {
+  it("shows the chat table with zeros while voice has calls", async () => {
+    const voice = service({ outcomes: { ...service().outcomes, accepted: 1 } });
+    get.mockResolvedValue({ status: 200, data: usage(week().map((d) => ({ ...d, services: { ...d.services, voice } }))) });
+    await render(page());
+    expect(text()).not.toContain("No model calls in this range");
+    const chat = [...container().querySelectorAll("table")].find((t) => t.querySelector("caption")?.textContent?.startsWith("Chat"));
+    expect(chat).toBeDefined();
+  });
+
+  it("shows the chat table with its figures from a fixture", async () => {
     const chat = service({ outcomes: { ...service().outcomes, accepted: 2, timeout: 1 }, inputTokens: 1500, outputTokens: 300, estCostMicros: 20_000 });
     const days = week().map((d) => ({ ...d, services: { ...d.services, chat } }));
     get.mockResolvedValue({ status: 200, data: usage(days) });
