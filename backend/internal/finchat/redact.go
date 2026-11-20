@@ -125,3 +125,260 @@ func redactMonth(m finance.MonthResponse, c finance.MonthCommitment, cards []fin
 	}
 	return out
 }
+
+// What the model sees of the other tools, by the same rule: only the fields
+// listed here are sent, never an id, a Pix recipient or a bank connection.
+type (
+	historyResult struct {
+		Months []historyMonthView `json:"months"`
+	}
+	historyMonthView struct {
+		Month       string         `json:"month"`
+		IncomeCents int64          `json:"incomeCents"`
+		SpentCents  int64          `json:"spentCents"`
+		SavedCents  int64          `json:"savedCents"`
+		Categories  []categoryView `json:"categories"`
+	}
+	dailyResult struct {
+		Month         string  `json:"month"`
+		Days          int     `json:"days"`
+		Current       []int64 `json:"current"`
+		Previous      []int64 `json:"previous"`
+		Average       []int64 `json:"average"`
+		AverageMonths int     `json:"averageMonths"`
+	}
+	commitmentsResult struct {
+		MonthlyIncomeCents *int64                `json:"monthlyIncomeCents,omitempty"`
+		Months             []commitmentMonthView `json:"months"`
+	}
+	commitmentMonthView struct {
+		Month               string            `json:"month"`
+		Cards               []cardLineView    `json:"cards"`
+		OtherBills          []otherBillView   `json:"otherBills"`
+		Installments        []installmentView `json:"installments"`
+		Planned             []plannedView     `json:"planned"`
+		PlannedCents        int64             `json:"plannedCents"`
+		SavingCents         int64             `json:"savingCents"`
+		TotalCents          int64             `json:"totalCents"`
+		LeftoverCents       *int64            `json:"leftoverCents,omitempty"`
+		PaceLeftoverCents   *int64            `json:"paceLeftoverCents,omitempty"`
+		DailyAllowanceCents *int64            `json:"dailyAllowanceCents,omitempty"`
+	}
+	cardLineView struct {
+		Name        string  `json:"name"`
+		AmountCents int64   `json:"amountCents"`
+		DueOn       *string `json:"dueOn"`
+		ClosesOn    *string `json:"closesOn"`
+		Closed      bool    `json:"closed"`
+		Manual      bool    `json:"manual"`
+	}
+	otherBillView struct {
+		Name  string `json:"name"`
+		Cents int64  `json:"cents"`
+		Paid  bool   `json:"paid"`
+	}
+	installmentView struct {
+		Name        string `json:"name"`
+		Number      int    `json:"number"`
+		Total       int    `json:"total"`
+		AmountCents int64  `json:"amountCents"`
+	}
+	billsResult struct {
+		Bills []billView `json:"bills"`
+	}
+	billView struct {
+		Name          string  `json:"name"`
+		ExpectedCents int64   `json:"expectedCents"`
+		DueDate       string  `json:"dueDate"`
+		Paid          bool    `json:"paid"`
+		PaidBy        *string `json:"paidBy"`
+		PaidCents     *int64  `json:"paidCents"`
+	}
+	cardBillsResult struct {
+		Cards []cardBillsView `json:"cards"`
+	}
+	cardBillsView struct {
+		Name         string         `json:"name"`
+		Bills        []pastBillView `json:"bills"`
+		AverageCents *int64         `json:"averageCents"`
+	}
+	pastBillView struct {
+		ClosesOn   string `json:"closesOn"`
+		DueOn      string `json:"dueOn"`
+		TotalCents int64  `json:"totalCents"`
+	}
+	savingsResult struct {
+		ContributionBaseCents *int64           `json:"contributionBaseCents"`
+		ReserveSharePercent   *int16           `json:"reserveSharePercent"`
+		Reserve               reserveView      `json:"reserve"`
+		Goals                 []goalView       `json:"goals"`
+		Investments           []investmentView `json:"investments"`
+		UnassignedCents       int64            `json:"unassignedCents"`
+		Leftover              *leftoverView    `json:"leftover,omitempty"`
+		OverLimit             *[]overLimitView `json:"overLimit,omitempty"`
+	}
+	reserveView struct {
+		TargetCents   *int64  `json:"targetCents"`
+		SavedCents    int64   `json:"savedCents"`
+		MonthCents    *int64  `json:"monthCents"`
+		ExpectedMonth *string `json:"expectedMonth"`
+	}
+	goalView struct {
+		Name          string  `json:"name"`
+		TargetCents   int64   `json:"targetCents"`
+		TargetMonth   *string `json:"targetMonth"`
+		SavedCents    int64   `json:"savedCents"`
+		MonthCents    *int64  `json:"monthCents"`
+		ExpectedMonth *string `json:"expectedMonth"`
+		Late          bool    `json:"late"`
+	}
+	investmentView struct {
+		Name       string  `json:"name"`
+		ValueCents int64   `json:"valueCents"`
+		Serves     *string `json:"serves"`
+		Source     string  `json:"source"` // "bank" or "hand"
+	}
+	leftoverView struct {
+		LeftoverCents int64 `json:"leftoverCents"`
+		ExtraCents    int64 `json:"extraCents"`
+		MonthsSooner  *int  `json:"monthsSooner"`
+	}
+	overLimitView struct {
+		Category  string `json:"category"`
+		OverCents int64  `json:"overCents"`
+	}
+	netWorthResult struct {
+		Today       *netWorthToday  `json:"today"`
+		MonthStart  *netWorthStart  `json:"monthStart"`
+		MonthChange *netWorthChange `json:"monthChange"`
+	}
+	netWorthToday struct {
+		TotalCents       int64 `json:"totalCents"`
+		BalancesCents    int64 `json:"balancesCents"`
+		InvestmentsCents int64 `json:"investmentsCents"`
+		CardBillsCents   int64 `json:"cardBillsCents"`
+	}
+	netWorthStart struct {
+		Day              string `json:"day"`
+		BalancesCents    int64  `json:"balancesCents"`
+		InvestmentsCents int64  `json:"investmentsCents"`
+	}
+	netWorthChange struct {
+		BalancesCents    int64 `json:"balancesCents"`
+		InvestmentsCents int64 `json:"investmentsCents"`
+		TotalCents       int64 `json:"totalCents"`
+	}
+)
+
+func redactHistory(h finance.HistoryResponse) historyResult {
+	out := historyResult{Months: []historyMonthView{}}
+	for _, m := range h.Months {
+		v := historyMonthView{Month: m.Month, IncomeCents: m.IncomeCents, SpentCents: m.SpentCents, SavedCents: m.SavedCents, Categories: []categoryView{}}
+		for _, c := range m.Categories {
+			v.Categories = append(v.Categories, categoryView{c.Category, c.SpentCents})
+		}
+		out.Months = append(out.Months, v)
+	}
+	return out
+}
+
+func redactDaily(d finance.DailyResponse) dailyResult {
+	return dailyResult{d.Month, d.Days, d.Current, d.Previous, d.Average, d.AverageMonths}
+}
+
+// redactCommitments keeps the first months entries. A Manual card's name
+// becomes "Manual card N" and a plan's name goes through redactDescription,
+// since it is a card Transaction's description.
+func redactCommitments(c finance.CommitmentsResponse, months int, cards []finance.ManualCard) commitmentsResult {
+	out := commitmentsResult{MonthlyIncomeCents: c.MonthlyIncomeCents, Months: []commitmentMonthView{}}
+	for _, m := range c.Months[:min(months, len(c.Months))] {
+		v := commitmentMonthView{Month: m.Month, Cards: []cardLineView{}, OtherBills: []otherBillView{}, Installments: []installmentView{},
+			Planned: []plannedView{}, PlannedCents: m.PlannedCents, SavingCents: m.SavingCents, TotalCents: m.TotalCents,
+			LeftoverCents: m.LeftoverCents, PaceLeftoverCents: m.PaceLeftoverCents, DailyAllowanceCents: m.DailyAllowanceCents}
+		for _, l := range m.Cards {
+			name := l.Name
+			if l.Manual {
+				name = manualCardName(cards, l.SourceID)
+			}
+			v.Cards = append(v.Cards, cardLineView{name, l.AmountCents, l.DueOn, l.ClosesOn, l.Closed, l.Manual})
+		}
+		for _, b := range m.OtherBills {
+			v.OtherBills = append(v.OtherBills, otherBillView{b.Name, b.Cents, b.Paid})
+		}
+		for _, i := range m.Installments {
+			v.Installments = append(v.Installments, installmentView{redactDescription(i.Name, -i.AmountCents, cards), i.Number, i.Total, i.AmountCents})
+		}
+		for _, p := range m.Planned {
+			v.Planned = append(v.Planned, plannedView{p.Category, p.Cents})
+		}
+		out.Months = append(out.Months, v)
+	}
+	return out
+}
+
+// manualCardName is "Manual card N", N being the card's place in cards; a card
+// not found there is still never sent by its name.
+func manualCardName(cards []finance.ManualCard, id string) string {
+	for i, c := range cards {
+		if c.ID == id {
+			return "Manual card " + strconv.Itoa(i+1)
+		}
+	}
+	return "Manual card"
+}
+
+func redactBills(bills []finance.MonthBill) billsResult {
+	out := billsResult{Bills: []billView{}}
+	for _, b := range bills {
+		out.Bills = append(out.Bills, billView{b.Name, b.ExpectedCents, b.DueDate, b.Paid, b.PaidBy, b.PaidCents})
+	}
+	return out
+}
+
+func redactPastBills(name string, r finance.PastCardBillsResponse) cardBillsView {
+	v := cardBillsView{Name: name, Bills: []pastBillView{}, AverageCents: r.AverageCents}
+	for _, b := range r.Bills {
+		v.Bills = append(v.Bills, pastBillView{b.ClosesOn, b.DueOn, b.TotalCents})
+	}
+	return v
+}
+
+func redactSavings(s finance.SavingsResponse) savingsResult {
+	out := savingsResult{ContributionBaseCents: s.ContributionBaseCents, ReserveSharePercent: s.ReserveSharePercent,
+		Reserve: reserveView(s.Reserve), Goals: []goalView{}, Investments: []investmentView{}, UnassignedCents: s.UnassignedCents}
+	for _, g := range s.Goals {
+		out.Goals = append(out.Goals, goalView{g.Name, g.TargetCents, g.TargetMonth, g.SavedCents, g.MonthCents, g.ExpectedMonth, g.Late})
+	}
+	for _, i := range s.Investments {
+		out.Investments = append(out.Investments, investmentView{i.Name, i.ValueCents, i.Serves, i.Source})
+	}
+	if l := s.Leftover; l != nil {
+		out.Leftover = &leftoverView{l.LeftoverCents, l.ExtraCents, l.MonthsSooner}
+	}
+	if o := s.OverLimit; o != nil {
+		lines := []overLimitView{}
+		for _, l := range *o {
+			lines = append(lines, overLimitView{l.Category, l.OverCents})
+		}
+		out.OverLimit = &lines
+	}
+	return out
+}
+
+// redactNetWorth drops the daily series: it is the largest part and the
+// questions are about today and the month's change.
+func redactNetWorth(n finance.NetWorthResponse) netWorthResult {
+	var out netWorthResult
+	if t := n.Today; t != nil {
+		v := netWorthToday(*t)
+		out.Today = &v
+	}
+	if s := n.MonthStart; s != nil {
+		out.MonthStart = &netWorthStart{s.Day, s.BalancesCents, s.InvestmentsCents}
+	}
+	if c := n.MonthChange; c != nil {
+		v := netWorthChange(*c)
+		out.MonthChange = &v
+	}
+	return out
+}
