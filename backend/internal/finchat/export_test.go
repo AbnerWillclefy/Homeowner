@@ -8,3 +8,12 @@ func SetQuestionTimeout(d time.Duration) (restore func()) {
 	questionTimeout = d
 	return func() { questionTimeout = old }
 }
+
+// ToolResults is each tool's name with a zero value of its allowlist struct.
+func ToolResults() map[string]any {
+	out := map[string]any{}
+	for _, t := range tools {
+		out[t.name] = t.result
+	}
+	return out
+}

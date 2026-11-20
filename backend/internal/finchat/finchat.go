@@ -4,10 +4,12 @@
 // finance allowlist.
 //
 // Sent: Transaction descriptions, amounts, dates, Spending Categories, Source
-// display names, Notes, today's São Paulo date, the screen key, the locale and
-// the conversation. Never sent: a description with a transfer word (PIX, TED,
-// DOC, TRANSF...), which becomes a fixed label such as "Pix sent"; a Manual
-// card's name or Pix recipient; row ids; credentials; another User's data. The
+// display names, the names of Bills, Goals and Investments as typed, Notes,
+// today's São Paulo date, the screen key, the locale and the conversation.
+// Never sent: a description with a transfer word (PIX, TED, DOC, TRANSF...),
+// which becomes a fixed label such as "Pix sent"; a Manual card's name (it
+// becomes "Manual card N") or Pix recipient; row ids; bank connections and
+// their status; Bill suggestions; Pantry; credentials; another User's data. The
 // User id comes from the token, never from the model. The conversation lives
 // in the browser: nothing the User asked, the model answered or a tool
 // returned is stored or logged. finance_chat_calls holds counts only, and chat
