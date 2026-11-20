@@ -10,12 +10,13 @@ import { ThemeProvider } from "./shared/theme/ThemeProvider";
 import { THEME_STORAGE_KEY } from "./shared/theme/theme";
 
 /** Renders a screen the way main.tsx does, in a locale and theme. Returns the auth spies. */
-export function renderApp(node: ReactNode, options: { locale?: Locale; theme?: "light" | "dark"; path?: string; signedIn?: boolean } = {}) {
-  const { locale = "pt-BR", theme = "dark", path = "/", signedIn = true } = options;
+export function renderApp(node: ReactNode, options: { locale?: Locale; theme?: "light" | "dark"; path?: string; signedIn?: boolean; seed?: (client: QueryClient) => void } = {}) {
+  const { locale = "pt-BR", theme = "dark", path = "/", signedIn = true, seed } = options;
   localStorage.setItem(LOCALE_STORAGE_KEY, locale);
   localStorage.setItem(THEME_STORAGE_KEY, theme);
   const auth: Auth = { signedIn, signIn: vi.fn(async () => null), signOut: vi.fn() };
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  seed?.(client);
   const view = render(
     <QueryClientProvider client={client}>
       <I18nProvider>

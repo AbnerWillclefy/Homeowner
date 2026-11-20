@@ -20,5 +20,6 @@ describe("App", () => {
     renderApp(<App />, { locale: "en", path: "/onboarding" });
     expect(await screen.findByRole("heading", { level: 1, name: "Connect your Pluggy account" })).toBeTruthy();
     expect(screen.queryByRole("navigation", { name: "Main navigation" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Ask" })).toBeNull();
   });
 });

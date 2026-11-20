@@ -1,8 +1,8 @@
-import { BottomBar, Sheet, Sidebar, SidebarBrand, type NavItem } from "@homeowner/bedrock";
+import { BottomBar, Button, Sheet, Sidebar, SidebarBrand, type NavItem } from "@homeowner/bedrock";
 import { useQuery } from "@tanstack/react-query";
-import { Ellipsis } from "lucide-react";
+import { Ellipsis, MessageCircle } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router";
+import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { getBills } from "../domains/bills/api";
 import { billsKey } from "../domains/bills/hooks/useBills";
 import { summarise } from "../domains/bills/logic/billState";
@@ -19,6 +19,10 @@ import { BILLS, CHAT, MORE, NAV_FOOTER, NAV_GROUPS, TABS, type Screen } from "./
 // Duplicates --bp-desktop in Bedrock's tokens.css: matchMedia cannot read custom properties.
 const DESKTOP = "(min-width: 1024px)";
 const MORE_HREF = "#more";
+// The Ask button is 48px (control-lg), fixed: 16px from the right, 16px above the BottomBar (its 48px row, 1px border and 16px padding, plus the safe area) on the phone, 32px from the corner on desktop.
+const ASK_ABOVE_BAR = "bottom-[calc(5.0625rem+env(safe-area-inset-bottom))]";
+// Room for it under the last row, owned here so no screen needs its own: button 48px + gap + air (the artboards' 96px phone, 112px desktop).
+const ASK_ROOM = "pb-24 desktop:pb-28";
 
 /** A clock that moves every minute, so "Atualizado há 2 min" and the São Paulo month never go stale. */
 function useNow() {
@@ -72,6 +76,7 @@ function Frame() {
     else void navigate(href);
   };
   const moreItems = MORE.map(item);
+  const ask = pathname !== CHAT.path;
 
   return (
     <div className="flex min-h-dvh desktop:items-start">
@@ -91,8 +96,16 @@ function Frame() {
         </div>
       )}
       <div className="flex min-h-dvh min-w-0 flex-1 flex-col">
-        <main id="main" tabIndex={-1} className="mx-auto flex w-full max-w-content flex-1 flex-col gap-6 px-4 pt-6 pb-10 outline-none desktop:px-10 desktop:pt-8 desktop:pb-12">
+        <main id="main" tabIndex={-1} className={`mx-auto flex w-full max-w-content flex-1 flex-col gap-6 px-4 pt-6 outline-none desktop:px-10 desktop:pt-8 ${ask ? ASK_ROOM : "pb-10 desktop:pb-12"}`}>
           <Outlet />
+          {ask && (
+            <Button asChild size="lg" className={`fixed right-4 z-(--z-sticky) rounded-full px-5 shadow-lg ${ASK_ABOVE_BAR} desktop:right-8 desktop:bottom-8`}>
+              <Link to={`${CHAT.path}?from=${screenKeyOf(pathname)}`}>
+                <MessageCircle aria-hidden className="size-4" />
+                {t("nav.ask")}
+              </Link>
+            </Button>
+          )}
         </main>
         {!desktop && pathname !== CHAT.path && (
           <div className="sticky bottom-0 z-(--z-sticky)">

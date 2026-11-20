@@ -43,13 +43,13 @@ describe("shell navigation", () => {
     const nav = screen.getByRole("navigation", { name: "Main navigation" });
     expect(within(nav).getAllByRole("link")).toHaveLength(11 + 1);
     expect(within(nav).getAllByRole("link")[6]!.textContent).toBe("Ask");
-    expect(screen.getByRole("link", { name: "Ask" }).getAttribute("href")).toBe("/chat?from=bills");
+    expect(within(nav).getByRole("link", { name: "Ask" }).getAttribute("href")).toBe("/chat?from=bills");
   });
 
   it("marks Ask current on /chat and keeps its own from", () => {
     width(true);
     shell({ locale: "en", path: "/chat?from=goals" });
-    const ask = screen.getByRole("link", { name: "Ask" });
+    const ask = within(screen.getByRole("navigation")).getByRole("link", { name: "Ask" });
     expect(ask.getAttribute("aria-current")).toBe("page");
     expect(ask.getAttribute("href")).toBe("/chat?from=goals");
   });

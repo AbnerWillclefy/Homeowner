@@ -1,13 +1,17 @@
 import { Banner, Button, Card, EmptyState, Input, Skeleton } from "@homeowner/bedrock";
 import { ArrowUp, ChevronLeft, Clock, MessageCircle, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router";
+import type { Savings } from "../goals/api";
+import { savingsKey } from "../goals/hooks/useSavings";
 import { useI18n } from "../../shared/i18n/I18nProvider";
 import { PageHeader } from "../../shared/PageHeader";
 import { useMediaQuery } from "../../shared/useMediaQuery";
 import { useAsk } from "./hooks/useAsk";
 import { MAX_QUESTION, questionLength, requestMessages, type Turn } from "./logic/conversation";
 import { parseFrom, pathOfScreenKey, type ScreenKey } from "./logic/screenKeys";
+import { suggestionsFor } from "./logic/suggestions";
 
 const DESKTOP = "(min-width: 1024px)";
 /** The counter shows from here, as the artboard draws it. */
@@ -69,14 +73,20 @@ function Conversation({ from }: { from: ScreenKey }) {
   const tooLong = length > MAX_QUESTION;
   const blocked = status === "working" || status === "limit";
 
+  // A question that failed and was not retried is replaced, so the turns keep alternating.
+  const sendQuestion = (text: string) => {
+    setDraft("");
+    send([...(status === "error" ? turns.slice(0, -1) : turns), { role: "user", text }]);
+  };
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (blocked || question === "" || tooLong) return;
-    // A question that failed and was not retried is replaced, so the turns keep alternating.
-    const kept = status === "error" ? turns.slice(0, -1) : turns;
-    setDraft("");
-    send([...kept, { role: "user", text: question }]);
+    sendQuestion(question);
   };
+
+  // Read, never fetched: a Goal name only shows when the Goals screen already loaded the savings.
+  const goal = useQueryClient().getQueryData<Savings>(savingsKey)?.goals[0]?.name;
+  const suggestions = suggestionsFor(from, goal);
 
   return (
     <>
@@ -97,6 +107,23 @@ function Conversation({ from }: { from: ScreenKey }) {
       <div className="mx-auto flex w-full max-w-[45rem] flex-1 flex-col gap-4">
         <div role="group" aria-label={t("chat.log")} aria-live="polite" className="flex flex-1 flex-col gap-4">
           {turns.length === 0 && status !== "limit" && <EmptyState icon={MessageCircle} title={t("chat.empty.title")} message={t("chat.empty.text")} />}
+          {turns.length === 0 && status === "idle" && (
+            <div role="group" aria-label={t("chat.suggest")} className="flex flex-wrap gap-2">
+              {suggestions.map((s) => {
+                const text = t(s.key, s.vars);
+                return (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onClick={() => sendQuestion(text)}
+                    className="body min-h-control-lg rounded-full border border-border bg-surface px-4 py-2 text-left text-text-muted outline-none hover:bg-surface-hover hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                  >
+                    {text}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {turns.map((turn, i) => (
             <p key={i} className={`${bubble} ${turn.role === "user" ? "self-end rounded-br-sm bg-brand text-on-brand" : "self-start rounded-bl-sm border border-border bg-surface"}`}>
               {turn.text}
