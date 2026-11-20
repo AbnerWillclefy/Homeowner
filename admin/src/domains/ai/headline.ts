@@ -106,7 +106,7 @@ export interface CostHeadline {
 
 export interface AiHeadline {
   calls: CountHeadline;
-  /** Allocator, explainer, voice and receipt, over all attempts. Neutral: no badge. */
+  /** Allocator, explainer, voice, receipt and chat, over all attempts. Neutral: no badge. */
   failure: RateHeadline;
   /** Allocator only, over its calls. */
   referee: RateHeadline & { status: Status };
@@ -115,7 +115,7 @@ export interface AiHeadline {
 
 /** The five key numbers of the AI usage page, from the daily rows and the optional `previous` block. */
 export function aiHeadline(usage: AiUsage): AiHeadline {
-  const forService = (service: "allocator" | "explainer" | "voice" | "receipt") => {
+  const forService = (service: "allocator" | "explainer" | "voice" | "receipt" | "chat") => {
     const days = usage.days.map((d) => d.services[service]);
     const previous = usage.previous?.services[service];
     return {
@@ -128,10 +128,11 @@ export function aiHeadline(usage: AiUsage): AiHeadline {
   const explainer = forService("explainer");
   const voice = forService("voice");
   const receipt = forService("receipt");
+  const chat = forService("chat");
 
-  const perDay = allocator.perDay.map((a, i) => sum(sum(sum(a, explainer.perDay[i]!), voice.perDay[i]!), receipt.perDay[i]!));
-  const total = sum(sum(sum(allocator.total, explainer.total), voice.total), receipt.total);
-  const prev = allocator.prev && explainer.prev && voice.prev && receipt.prev && sum(sum(sum(allocator.prev, explainer.prev), voice.prev), receipt.prev);
+  const perDay = allocator.perDay.map((a, i) => sum(sum(sum(sum(a, explainer.perDay[i]!), voice.perDay[i]!), receipt.perDay[i]!), chat.perDay[i]!));
+  const total = sum(sum(sum(sum(allocator.total, explainer.total), voice.total), receipt.total), chat.total);
+  const prev = allocator.prev && explainer.prev && voice.prev && receipt.prev && chat.prev && sum(sum(sum(sum(allocator.prev, explainer.prev), voice.prev), receipt.prev), chat.prev);
 
   const failureSeries = perDay.map((f) => percentOf(f.failures, f.attempts));
   const refereeSeries = allocator.perDay.map((f) => percentOf(f.rejected, f.calls));

@@ -26,7 +26,7 @@ function service(over: Partial<ServiceDay> = {}): ServiceDay {
 }
 
 function day(n: number, allocator: Partial<ServiceDay> = {}, explainer: Partial<ServiceDay> = {}): AiDay {
-  return { date: `2026-10-${String(n).padStart(2, "0")}`, services: { allocator: service(allocator), explainer: service(explainer), voice: service(), receipt: service() } };
+  return { date: `2026-10-${String(n).padStart(2, "0")}`, services: { allocator: service(allocator), explainer: service(explainer), voice: service(), receipt: service(), chat: service() } };
 }
 
 function usage(days: AiDay[], over: Partial<AiUsage> = {}): AiUsage {
@@ -199,11 +199,31 @@ describe("AiPage", () => {
     expect(container().querySelector("#calls ~ div table, #calls table")).toBeNull();
   });
 
+  it("shows the chat table with zeros while voice has calls", async () => {
+    const voice = service({ outcomes: { ...service().outcomes, accepted: 1 } });
+    get.mockResolvedValue({ status: 200, data: usage(week().map((d) => ({ ...d, services: { ...d.services, voice } }))) });
+    await render(page());
+    expect(text()).not.toContain("No model calls in this range");
+    const chat = [...container().querySelectorAll("table")].find((t) => t.querySelector("caption")?.textContent?.startsWith("Chat"));
+    expect(chat).toBeDefined();
+  });
+
+  it("shows the chat table with its figures from a fixture", async () => {
+    const chat = service({ outcomes: { ...service().outcomes, accepted: 2, timeout: 1 }, inputTokens: 1500, outputTokens: 300, estCostMicros: 20_000 });
+    const days = week().map((d) => ({ ...d, services: { ...d.services, chat } }));
+    get.mockResolvedValue({ status: 200, data: usage(days) });
+    await render(page());
+    expect(text()).toContain("Chat (answers questions about Finances)");
+    expect(text()).not.toContain("No model calls in this range");
+    expect(container().querySelectorAll("[data-collapsible-region] table")).toHaveLength(5);
+    expect(text()).toContain("$0.02");
+  });
+
   it("shows a skeleton while loading", async () => {
     get.mockReturnValue(new Promise(() => {}));
     await render(page());
     expect(container().querySelector('[role="status"]')).not.toBeNull();
-    expect(container().querySelectorAll("tbody tr")).toHaveLength(28);
+    expect(container().querySelectorAll("tbody tr")).toHaveLength(35);
   });
 
   it("shows an error with a Retry that refetches", async () => {
@@ -234,7 +254,7 @@ describe("AiPage headline", () => {
   const previous = (): AiUsage["previous"] => ({
     from: "2026-09-24",
     to: "2026-09-30",
-    services: { allocator: service({ outcomes: { ...service().outcomes, accepted: 70 } }), explainer: service(), voice: service(), receipt: service() },
+    services: { allocator: service({ outcomes: { ...service().outcomes, accepted: 70 } }), explainer: service(), voice: service(), receipt: service(), chat: service() },
     allocatorShare: { llm: 0, baseline: 0 },
     explanationShare: { llm: 0, template: 0, templateReasons: { rejected_by_referee: 0, invalid_response: 0, timeout: 0, error: 0, skipped_cap: 0, skipped_budget: 0, partial: 0, notAsked: 0 } },
   });
@@ -323,7 +343,7 @@ describe("AiPage headline", () => {
     const button = [...container().querySelectorAll("button")].find((b) => b.getAttribute("aria-expanded") !== null)!;
     expect(button.getAttribute("aria-expanded")).toBe("false");
     expect(container().querySelector("[data-collapsible-region]")!.hasAttribute("hidden")).toBe(true);
-    expect(container().querySelectorAll("[data-collapsible-region] table")).toHaveLength(4);
+    expect(container().querySelectorAll("[data-collapsible-region] table")).toHaveLength(5);
   });
 
   it("updates the figures when the range changes", async () => {
