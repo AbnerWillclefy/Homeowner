@@ -20,7 +20,7 @@ function service(over: Part = {}): ServiceDay {
 
 const day = (n: number, allocator: Part = {}, explainer: Part = {}): AiDay => ({
   date: `2026-10-${String(n).padStart(2, "0")}`,
-  services: { allocator: service(allocator), explainer: service(explainer), voice: service(), receipt: service() },
+  services: { allocator: service(allocator), explainer: service(explainer), voice: service(), receipt: service(), chat: service() },
 });
 
 const shares = {
@@ -46,7 +46,7 @@ const usage = (days: AiDay[], previous?: { allocator?: Part; explainer?: Part })
   previous: previous && {
     from: "2026-09-24",
     to: "2026-09-30",
-    services: { allocator: service(previous.allocator), explainer: service(previous.explainer), voice: service(), receipt: service() },
+    services: { allocator: service(previous.allocator), explainer: service(previous.explainer), voice: service(), receipt: service(), chat: service() },
     ...shares,
   },
 });
@@ -76,6 +76,13 @@ describe("aiHeadline", () => {
     const h = aiHeadline(usage(withVoice));
     expect(h.calls.value).toBe(24 + 4);
     expect(h.failure.part).toBe(aiHeadline(usage(days)).failure.part + 2);
+  });
+
+  it("counts chat calls when chat is the only service with calls", () => {
+    const onlyChat = [day(1), day(2)].map((d) => ({ ...d, services: { ...d.services, chat: service({ outcomes: { accepted: 2, timeout: 1 } }) } }));
+    const h = aiHeadline(usage(onlyChat, {}));
+    expect(h.calls.value).toBe(6);
+    expect(h.calls.series).toEqual([3, 3]);
   });
 
   it("shares failures (timeout, error, cap skip) over all attempts of both services", () => {
