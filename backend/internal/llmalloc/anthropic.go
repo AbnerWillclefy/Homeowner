@@ -16,7 +16,9 @@ import (
 // Anthropic is the production Client: one call to the Anthropic Messages API
 // with structured output (output_config.format), so the answer is JSON that
 // follows Request.Schema; with Request.Tools it forces a tool call instead and
-// the answer is a JSON array of ToolCall.
+// the answer is a JSON array of ToolCall. Converse is its multi-turn method for
+// the chat: messages with tool uses and results, and the model may answer in
+// text instead of calling a tool.
 type Anthropic struct {
 	client anthropic.Client
 	model  string
