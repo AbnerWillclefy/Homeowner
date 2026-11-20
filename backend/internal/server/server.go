@@ -18,6 +18,7 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/choresettings"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/finance"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/finchat"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/invites"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
@@ -66,6 +67,11 @@ type Deps struct {
 	// when a call reported no Usage.
 	Voice      llmalloc.Client
 	VoiceModel string
+	// Chat is the model behind POST /me/finance/chat; nil means the route
+	// answers 503 chat_unavailable. ChatModel is what an event row records when
+	// a call reported no Usage.
+	Chat      finchat.Model
+	ChatModel string
 	// Photos is the private photo bucket; nil means photos are not configured
 	// and the /me/photo routes answer 503.
 	Photos photos.ObjectStore
@@ -143,6 +149,7 @@ func New(deps Deps) http.Handler {
 	voiceH := voice.NewHandler(deps.Voice, voice.NewStore(db), deps.VoiceModel, clk, log)
 	pushes := push.NewHandler(push.NewStore(db), deps.Push, deps.VAPIDPublicKey, financeAllow.Allows, clk, log)
 	fin := finance.NewHandler(finance.NewStore(db), deps.FinanceKey, deps.Pluggy, deps.Environment, clk, log)
+	chatH := finchat.NewHandler(deps.Chat, fin, finchat.NewStore(db), deps.ChatModel, clk, log)
 	pantryH := pantry.NewHandler(pantry.NewStore(db), finance.NewStore(db), deps.NFCe, deps.ReceiptReader, deps.ReceiptModel, clk, log)
 
 	user, resident := s.requireUser, s.requireResident
@@ -217,7 +224,7 @@ func New(deps Deps) http.Handler {
 	// Every /admin/ path, known or not, goes through the guard first.
 	mux.Handle("/admin/", s.requireSuperAdmin(s.adminMux()))
 	// Every /me/finance path, known or not, meets the allowlist first.
-	guarded := s.requireFinance(financeAllow, financeMux(fin, pantryH))
+	guarded := s.requireFinance(financeAllow, financeMux(fin, pantryH, chatH))
 	mux.Handle("/me/finance", guarded)
 	mux.Handle("/me/finance/", guarded)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

@@ -23,6 +23,11 @@
 // photo of a grocery receipt, which the User takes and then checks and corrects
 // before anything is saved: see ADR 0026. Nothing in the photo is stored or
 // logged, and the answer is validated in Go like every other.
+//
+// The finance chat (package finchat) is the last exception: it sends a User's
+// own amounts, dates and descriptions through read-only tools, with transfers
+// and Manual cards redacted in Go, and stores and logs nothing of the
+// conversation: see ADR 0027.
 package llmalloc
 
 import (

@@ -139,6 +139,14 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		log.Warn("receipt photos disabled: no Anthropic key")
 	}
 
+	// The finance allowlist is the chat's gate; the model key is what it needs.
+	if cfg.AnthropicAPIKey != "" {
+		deps.Chat = llmalloc.NewAnthropic(cfg.AnthropicAPIKey, cfg.LLMModel)
+		deps.ChatModel = cfg.LLMModel
+	} else {
+		log.Warn("chat disabled")
+	}
+
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           server.New(deps),

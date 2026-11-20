@@ -230,6 +230,23 @@ func TestAIAnswersWithAVoiceRow(t *testing.T) {
 	}
 }
 
+func TestAIAnswersWithAChatRow(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	if _, err := app.DB.Exec(context.Background(), `
+		INSERT INTO llm_call_events (created_at, local_date, service, model, outcome, latency_ms, input_tokens, output_tokens, est_cost_micros)
+		VALUES ($1, '2026-03-04', 'chat', 'claude-haiku-5-5', 'accepted', 90, 300, 40, 70)`,
+		app.Clock.Now()); err != nil {
+		t.Fatal(err)
+	}
+	got := aiAt(t, app.SignInAsSuperAdmin("admin@example.com"), "7d")
+
+	today := got.Days[len(got.Days)-1].Services
+	if today.Chat.Outcomes.Accepted != 1 || today.Chat.EstCostMicros != 70 {
+		t.Errorf("chat = %+v, want one accepted call of 70 micro-USD", today.Chat)
+	}
+}
+
 func TestAIAnswersWithAReceiptRow(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
@@ -420,7 +437,7 @@ func TestAILeaksNoPersonalDataAndHasAKnownKeySet(t *testing.T) {
 	// The whole key set is known, so a new field must be added here on purpose.
 	keys := map[string]bool{}
 	walk(decoded, func(k string) { keys[k] = true }, func(string) {})
-	for _, k := range []string{"range", "from", "to", "costIsEstimate", "days", "date", "services", "allocator", "explainer", "categorizer", "voice", "receipt",
+	for _, k := range []string{"range", "from", "to", "costIsEstimate", "days", "date", "services", "allocator", "explainer", "categorizer", "voice", "receipt", "chat",
 		"outcomes", "accepted", "rejected_by_referee", "invalid_response", "timeout", "error", "skipped_cap", "skipped_budget",
 		"latencyP50Ms", "latencyMaxMs", "inputTokens", "outputTokens", "estCostMicros", "uncostedCalls",
 		"monthToDate", "month", "limitMicros", "dailyCapPerHome",

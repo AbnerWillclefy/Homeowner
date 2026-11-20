@@ -638,3 +638,6 @@ func coveredBy(bills []Bill, descs []string) bool {
 	}
 	return false
 }
+
+// Today is the São Paulo calendar day of now, as a UTC midnight.
+func Today(now time.Time) time.Time { return postedOn(now) }
