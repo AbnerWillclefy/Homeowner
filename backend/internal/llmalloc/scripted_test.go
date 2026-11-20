@@ -98,3 +98,11 @@ func TestTheScriptedClientFailsAndBlocksAsScripted(t *testing.T) {
 		t.Fatalf("Block: err = %v, usage = %+v", err, usage)
 	}
 }
+
+func TestAnEmptyScriptedStepFailsWithoutUsage(t *testing.T) {
+	fake := llmalloc.NewScriptedClient()
+	fake.Answer("")
+	if _, usage, err := fake.Converse(context.Background(), chat); err == nil || usage != nil {
+		t.Fatalf("err = %v, usage = %+v", err, usage)
+	}
+}

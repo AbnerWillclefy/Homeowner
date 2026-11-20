@@ -136,6 +136,7 @@ func TestAnUnusableTurnIsInvalidButStillReportsItsUsage(t *testing.T) {
 		"pause_turn":       toolMessage("pause_turn"),
 		"end_turn no text": toolMessage("end_turn", map[string]any{"type": "thinking", "thinking": "", "signature": "s"}),
 		"end_turn empty":   toolMessage("end_turn", map[string]any{"type": "text", "text": ""}),
+		"tool_use no uses": toolMessage("tool_use", map[string]any{"type": "text", "text": "let me look"}),
 	} {
 		client, _, _, _ := fakeAPI(t, http.StatusOK, body, 0)
 		_, usage, err := client.Converse(context.Background(), chat)
