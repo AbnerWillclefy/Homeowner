@@ -29,3 +29,8 @@ it("hides the label visually but keeps it as the trigger's name", () => {
   expect(screen.getByRole("combobox", { name: "Month" })).toBeTruthy();
   expect(screen.getByText("Month").className).toContain("sr-only");
 });
+
+it("draws the trigger at control-lg on a phone", () => {
+  render(<Select label="Account" options={options} />);
+  expect(screen.getByRole("combobox").className).toContain("max-tablet:h-control-lg");
+});

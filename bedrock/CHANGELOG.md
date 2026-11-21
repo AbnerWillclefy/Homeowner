@@ -4,6 +4,7 @@ Bedrock follows semver; before 1.0.0 a minor may break ([spec](../docs/design/be
 
 ## Unreleased
 
+- Phone controls: below 768px (and on touch screens) Button `sm` and `md`, every field and the Select trigger are drawn at 48px, and SegmentedControl is 48px overall, so a field beside a button match. Desktop heights are unchanged. BottomBar labels no longer truncate.
 - Spec only (from the Revenue phone audit): PageHeader and DescriptionList (Core, draft); BottomBar takes four tabs whose labels never truncate; ListRow gets one row action and a one-line caption; controls side by side share one height and are 48px on phones; no screen scrolls sideways; every screen has a phone artboard before it is built.
 
 ## 0.5.0

@@ -32,7 +32,7 @@ export function SegmentedControl({ label, options, value, onValueChange, block }
           value={o.value}
           // shortcut: active pill fades instead of sliding, add a measured sliding indicator if design asks
           className={cn(
-            "touch-target label h-control-sm rounded-full px-4 text-text-muted outline-none",
+            "touch-target label h-control-sm max-tablet:h-10 rounded-full px-4 text-text-muted outline-none",
             "motion-safe:transition-colors duration-(--duration-base) ease-standard",
             "hover:bg-surface-hover active:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus",
             "data-[state=on]:bg-surface-raised data-[state=on]:text-text data-[state=on]:shadow-[0_0_0_1px_var(--border)]",

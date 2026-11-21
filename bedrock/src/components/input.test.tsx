@@ -27,3 +27,10 @@ it("hideLabel keeps the label for screen readers only", () => {
   expect(screen.getByText("Question").className).toContain("sr-only");
   expect(screen.getByRole("textbox", { name: "Question" })).toBeTruthy();
 });
+
+it("is drawn at control-lg on a phone, and control-md above it", () => {
+  render(<Input label="Name" />);
+  const cls = screen.getByRole("textbox").className;
+  expect(cls).toContain("max-tablet:h-control-lg");
+  expect(cls).toContain("h-control-md");
+});

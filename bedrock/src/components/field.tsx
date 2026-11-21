@@ -47,7 +47,7 @@ export function Field({
 export const fieldClass = (invalid: boolean) =>
   cn(
     "body w-full rounded-md border bg-surface-sunken px-3 text-text placeholder:text-text-muted",
-    "h-control-md pointer-coarse:h-control-lg pointer-coarse:text-base",
+    "h-control-md pointer-coarse:h-control-lg pointer-coarse:text-base max-tablet:h-control-lg max-tablet:text-base",
     "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
     "disabled:opacity-(--opacity-disabled)",
     invalid ? "border-danger" : "border-border-strong",

@@ -52,3 +52,17 @@ describe("Switch", () => {
     expect(onChange).toHaveBeenCalledWith(true);
   });
 });
+
+describe("Button phone height", () => {
+  // jsdom computes no heights: the showcase screenshot is the visual proof.
+  it.each([
+    ["sm", true],
+    ["md", true],
+    ["lg", false],
+  ] as const)("size %s is drawn at control-lg on a phone: %s", (size, grows) => {
+    render(<Button size={size}>Salvar</Button>);
+    const cls = screen.getByRole("button").className;
+    expect(cls.includes("max-tablet:h-control-lg")).toBe(grows);
+    expect(cls.includes("pointer-coarse:h-control-lg")).toBe(grows);
+  });
+});

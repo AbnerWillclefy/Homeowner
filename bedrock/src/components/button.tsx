@@ -15,10 +15,10 @@ const buttonVariants = cva(
         danger: "bg-danger text-on-danger",
         success: "bg-positive text-on-brand",
       },
-      // sm and md keep their look and get a 48px hit area from touch-target.
+      // sm and md keep their look and get a 48px hit area from touch-target; on a phone or touch screen they are drawn at 48 too, so a button beside a field matches it.
       size: {
-        sm: "h-control-sm px-2 touch-target",
-        md: "h-control-md touch-target",
+        sm: "h-control-sm px-2 touch-target max-tablet:h-control-lg pointer-coarse:h-control-lg",
+        md: "h-control-md touch-target max-tablet:h-control-lg pointer-coarse:h-control-lg",
         lg: "h-control-lg px-6",
       },
     },
