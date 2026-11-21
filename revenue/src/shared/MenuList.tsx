@@ -36,7 +36,7 @@ export function MenuRow({ to, icon: Icon, title, caption, end, tone = "brand" }:
           <span className="body-strong truncate">{title}</span>
           {caption && <span className="body truncate text-text-muted">{caption}</span>}
         </span>
-        {end}
+        {end && <span className="shrink-0">{end}</span>}
         <ChevronRight aria-hidden className="size-5 shrink-0 text-text-muted" />
       </Link>
     </li>

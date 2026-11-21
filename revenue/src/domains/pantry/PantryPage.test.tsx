@@ -394,3 +394,13 @@ describe("Mais", () => {
     expect(within(nav).getByRole("link", { name: "Mais" }).getAttribute("aria-current")).toBe("page");
   });
 });
+
+describe("accessibility", () => {
+  it.each(["pt-BR", "en"] as const)("has no axe violations in %s", async (locale) => {
+    serve([RICE, BEANS, MILK]);
+    open({ locale });
+    await screen.findByText("Arroz");
+    const { violations } = await axe.run(document.body, AXE);
+    expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+  });
+});
