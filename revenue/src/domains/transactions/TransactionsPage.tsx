@@ -1,9 +1,7 @@
 import { Banner, Card, EmptyState, Skeleton } from "@homeowner/bedrock";
 import { Receipt, SearchX } from "lucide-react";
 import { useState } from "react";
-import { HideValuesToggle } from "../../shared/HideValues";
 import { useI18n } from "../../shared/i18n/I18nProvider";
-import { MonthSelect } from "../../shared/month/MonthSelect";
 import { monthLabel } from "../../shared/month/month";
 import { useMonthParam } from "../../shared/month/useMonthParam";
 import { PageHeader } from "../../shared/PageHeader";
@@ -40,7 +38,7 @@ export function TransactionsPage() {
 
   return (
     <section className="flex flex-col gap-6">
-      <PageHeader title={t("nav.transactions")} subtitle={subtitle} tools={<><MonthSelect /><HideValuesToggle /></>} />
+      <PageHeader title={t("nav.transactions")} subtitle={subtitle} month hideValues />
 
       {notice && <Banner tone="danger">{t("tx.edit.gone")}</Banner>}
 

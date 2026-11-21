@@ -3,11 +3,10 @@ import { Amount } from "@homeowner/bedrock/finance";
 import { ChevronLeft, Pencil, Tags } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation, useParams } from "react-router";
-import { HideValuesToggle, useHiddenProps } from "../../shared/HideValues";
+import { useHiddenProps } from "../../shared/HideValues";
 import { ScreenPlaceholder } from "../../shared/ScreenPlaceholder";
 import { useI18n } from "../../shared/i18n/I18nProvider";
 import { formatDay } from "../../shared/month/month";
-import { MonthSelect } from "../../shared/month/MonthSelect";
 import { useMonthParam } from "../../shared/month/useMonthParam";
 import { PageHeader } from "../../shared/PageHeader";
 import { CategoryHistory } from "./components/CategoryHistory";
@@ -50,15 +49,15 @@ function Detail({ category }: { category: SpendingCategory }) {
       </Link>
       <PageHeader
         title={name}
+        month
+        hideValues
         tools={
           <>
-            <MonthSelect />
             {spending.data && (
               <Button variant="secondary" icon={Pencil} onClick={() => setEditing(true)}>
                 <span className="sr-only desktop:not-sr-only">{t("categories.editOne")}</span>
               </Button>
             )}
-            <HideValuesToggle />
           </>
         }
       />

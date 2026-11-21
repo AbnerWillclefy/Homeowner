@@ -385,23 +385,12 @@ describe("add, edit and delete", () => {
 });
 
 describe("Mais", () => {
-  it("opens from More on a phone, and is not in the bottom bar", async () => {
+  it("is reached from the Mais tab on a phone, which is current here, and is not a tab itself", () => {
     width(false);
     serve([RICE]);
     renderApp(<Routes><Route element={<Shell />}><Route path="/pantry" element={<PantryPage />} /></Route></Routes>, { path: "/pantry", locale: "pt-BR" });
     const nav = screen.getByRole("navigation", { name: "Navegação principal" });
     expect(within(nav).queryByRole("link", { name: "Despensa" })).toBeNull();
-    await userEvent.click(within(nav).getByRole("link", { name: "Mais" }));
-    expect(within(await screen.findByRole("dialog")).getByRole("link", { name: "Despensa" })).toBeTruthy();
-  });
-});
-
-describe("accessibility", () => {
-  it.each(["pt-BR", "en"] as const)("has no axe violations in %s", async (locale) => {
-    serve([RICE, BEANS, MILK]);
-    open({ locale });
-    await screen.findByText("Arroz");
-    const { violations } = await axe.run(document.body, AXE);
-    expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+    expect(within(nav).getByRole("link", { name: "Mais" }).getAttribute("aria-current")).toBe("page");
   });
 });

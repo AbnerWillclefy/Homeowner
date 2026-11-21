@@ -2,7 +2,6 @@ import { Button, EmptyState, Skeleton } from "@homeowner/bedrock";
 import { LineChart } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
-import { HideValuesToggle } from "../../shared/HideValues";
 import { useI18n } from "../../shared/i18n/I18nProvider";
 import { PageHeader } from "../../shared/PageHeader";
 import { useMediaQuery } from "../../shared/useMediaQuery";
@@ -37,7 +36,7 @@ export function ProjectionPage() {
 
   return (
     <section className="flex flex-col gap-6">
-      <PageHeader title={t("nav.projection")} subtitle={t("projection.intro")} tools={<HideValuesToggle />} />
+      <PageHeader title={t("nav.projection")} subtitle={t("projection.intro")} hideValues />
 
       {loading ? (
         <div role="status" className="flex flex-col gap-4">

@@ -2,10 +2,9 @@ import { EmptyState, SegmentedControl, Skeleton } from "@homeowner/bedrock";
 import { formatAmount } from "@homeowner/bedrock/finance";
 import { CreditCard } from "lucide-react";
 import { useSearchParams } from "react-router";
-import { HideValuesToggle, useHideValues } from "../../shared/HideValues";
+import { useHideValues } from "../../shared/HideValues";
 import { useI18n } from "../../shared/i18n/I18nProvider";
 import { monthLabel } from "../../shared/month/month";
-import { MonthSelect } from "../../shared/month/MonthSelect";
 import { useMonthParam } from "../../shared/month/useMonthParam";
 import { PageHeader } from "../../shared/PageHeader";
 import { useMediaQuery } from "../../shared/useMediaQuery";
@@ -52,13 +51,9 @@ export function CardBillsPage() {
       <PageHeader
         title={t("nav.cardBills")}
         subtitle={subtitle}
-        tools={
-          <>
-            {desktop && cards}
-            <MonthSelect />
-            <HideValuesToggle />
-          </>
-        }
+        month
+        hideValues
+        tools={desktop && cards}
       />
       {!desktop && cards}
 

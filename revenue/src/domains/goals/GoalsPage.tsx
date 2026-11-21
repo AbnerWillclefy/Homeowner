@@ -1,7 +1,6 @@
 import { Banner, Button, Dialog, EmptyState, Skeleton } from "@homeowner/bedrock";
 import { Plus, Target } from "lucide-react";
 import { useState } from "react";
-import { HideValuesToggle } from "../../shared/HideValues";
 import { useI18n } from "../../shared/i18n/I18nProvider";
 import { PageHeader } from "../../shared/PageHeader";
 import { useMediaQuery } from "../../shared/useMediaQuery";
@@ -36,13 +35,11 @@ export function GoalsPage() {
       <PageHeader
         title={t("nav.goals")}
         subtitle={data?.contributionBaseCents ? t("goals.subtitle", { amount: money(data.contributionBaseCents) }) : undefined}
+        hideValues
         tools={
-          <>
-            <Button icon={Plus} onClick={() => setForm({ goal: null })}>
-              <span className={desktop ? undefined : "sr-only"}>{t("goals.form.addTitle")}</span>
-            </Button>
-            <HideValuesToggle />
-          </>
+          <Button icon={Plus} onClick={() => setForm({ goal: null })}>
+            <span className={desktop ? undefined : "sr-only"}>{t("goals.form.addTitle")}</span>
+          </Button>
         }
       />
 

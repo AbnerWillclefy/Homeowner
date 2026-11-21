@@ -1,4 +1,5 @@
 import { Amount } from "@homeowner/bedrock/finance";
+import { Plus } from "lucide-react";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes, useLocation } from "react-router";
@@ -6,8 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as billsApi from "../domains/bills/api";
 import type { Bill } from "../domains/bills/api";
 import * as sourcesApi from "../domains/sources/api";
-import { HideValuesToggle, HIDE_VALUES_STORAGE_KEY, useHiddenProps } from "../shared/HideValues";
-import { MonthSelect } from "../shared/month/MonthSelect";
+import { HIDE_VALUES_STORAGE_KEY, useHiddenProps } from "../shared/HideValues";
 import { PageHeader } from "../shared/PageHeader";
 import { renderApp } from "../testing";
 import { Shell } from "./Shell";
@@ -26,7 +26,7 @@ function Screen() {
   const hidden = useHiddenProps();
   return (
     <>
-      <PageHeader title="Tela" subtitle="Sub" tools={<><MonthSelect /><HideValuesToggle /></>} />
+      <PageHeader title="Tela" subtitle="Sub" month tools={<button type="button">Filtro</button>} action={{ label: "Nova conta", icon: Plus, onClick: () => {} }} hideValues />
       <Amount cents={12345} size="md" {...hidden} />
       <output data-testid="search">{search}</output>
     </>
@@ -98,6 +98,23 @@ describe("sidebar", () => {
   });
 });
 
+describe("page header", () => {
+  it("has one month select and keeps the order month, tools, primary action, eye", () => {
+    open();
+    expect(screen.getAllByRole("combobox")).toHaveLength(1);
+    const header = screen.getByRole("banner");
+    const controls = [...header.querySelectorAll("button, [role=combobox]")];
+    expect(controls.map((c) => c.textContent)).toEqual(["Janeiro de 2030", "Filtro", "Nova conta", "Esconder valores"]);
+    expect(within(header).getByRole("button", { name: "Nova conta" })).toBeTruthy();
+  });
+
+  it("names the heading and shows the subtitle", () => {
+    open();
+    expect(screen.getByRole("heading", { level: 1, name: "Tela" })).toBeTruthy();
+    expect(screen.getByText("Sub")).toBeTruthy();
+  });
+});
+
 describe("hide values", () => {
   it("hides every Amount, saves the choice and keeps it on the next visit", async () => {
     const first = open();
@@ -150,5 +167,31 @@ describe("month in the URL", () => {
   it("keeps a month older than the list", () => {
     open({ path: "/?month=2020-03" });
     expect(screen.getByRole("combobox", { name: "Mês" }).textContent).toContain("Março de 2020");
+  });
+});
+
+describe("Mais tab badge", () => {
+  const phone = () => {
+    vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
+    open();
+  };
+
+  it("counts the unpaid Bills of the month on the Mais tab, and the Bills row is not a tab", async () => {
+    vi.mocked(billsApi.getBills).mockResolvedValue([bill({}), bill({ id: "b2" }), bill({ id: "b3", paid: true, paidBy: "hand" })]);
+    phone();
+    expect(await screen.findByRole("link", { name: "Mais, 2 para pagar" })).toBeTruthy();
+    expect(billsApi.getBills).toHaveBeenCalledWith("2030-01");
+  });
+
+  it("is gone once the answer is that nothing is left to pay, and absent while loading", async () => {
+    let answer: (b: Bill[]) => void = () => {};
+    vi.mocked(billsApi.getBills).mockReturnValue(new Promise((r) => (answer = r)));
+    phone();
+    expect(screen.getByRole("link", { name: "Mais" })).toBeTruthy();
+    answer([bill({ paid: true, paidBy: "hand" })]);
+    await waitFor(() => expect(billsApi.getBills).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r));
+    expect(screen.getByRole("link", { name: "Mais" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /para pagar/ })).toBeNull();
   });
 });
