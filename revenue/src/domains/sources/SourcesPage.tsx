@@ -2,7 +2,6 @@ import { Banner, Button, Card, Dialog, EmptyState, Skeleton } from "@homeowner/b
 import { Landmark, Lock } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { HideValuesToggle } from "../../shared/HideValues";
 import { useI18n } from "../../shared/i18n/I18nProvider";
 import { useMonthParam } from "../../shared/month/useMonthParam";
 import { PageHeader } from "../../shared/PageHeader";
@@ -56,12 +55,8 @@ export function SourcesPage() {
       <PageHeader
         title={t("nav.sources")}
         subtitle={subtitle}
-        tools={
-          <>
-            <HideValuesToggle />
-            <Button loading={connecting} onClick={() => void connect()}>{t("sources.connect")}</Button>
-          </>
-        }
+        hideValues
+        tools={<Button loading={connecting} onClick={() => void connect()}>{t("sources.connect")}</Button>}
       />
 
       {/* Always in the page, so a screen reader hears it appear. */}

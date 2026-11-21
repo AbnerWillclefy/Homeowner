@@ -3,10 +3,9 @@ import { Amount } from "@homeowner/bedrock/finance";
 import { Pencil, Tags } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "react-router";
-import { HideValuesToggle, useHiddenProps } from "../../shared/HideValues";
+import { useHiddenProps } from "../../shared/HideValues";
 import { useI18n } from "../../shared/i18n/I18nProvider";
 import { monthLabel } from "../../shared/month/month";
-import { MonthSelect } from "../../shared/month/MonthSelect";
 import { useMonthParam } from "../../shared/month/useMonthParam";
 import { PageHeader } from "../../shared/PageHeader";
 import { CategoryRows } from "./components/CategoryRows";
@@ -45,15 +44,15 @@ export function CategoriesPage() {
       <PageHeader
         title={t("nav.categories")}
         subtitle={t("categories.subtitle")}
+        month
+        hideValues
         tools={
           <>
-            <MonthSelect />
             {data && (
               <Button variant="secondary" icon={Pencil} onClick={() => setEditing(true)}>
                 <span className="sr-only desktop:not-sr-only">{t("categories.edit")}</span>
               </Button>
             )}
-            <HideValuesToggle />
           </>
         }
       />

@@ -6,7 +6,7 @@ describe("screenKeyOf", () => {
   it("names every route the chat is offered from, and the rest `other`", () => {
     const expected: Record<string, string> = {
       "/": "overview", "/transactions": "transactions", "/bills": "bills", "/card-bills": "card_bills", "/categories": "categories",
-      "/categories/:category": "categories", "/pantry": "other", "/pantry/list": "other", "/chat": "other", "/goals": "goals",
+      "/categories/:category": "categories", "/pantry": "other", "/pantry/list": "other", "/plan": "other", "/more": "other", "/chat": "other", "/goals": "goals",
       "/net-worth": "net_worth", "/projection": "projection", "/sources": "sources", "/settings": "settings",
     };
     expect(ROUTES.length).toBeGreaterThan(10);

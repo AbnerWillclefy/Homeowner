@@ -3,7 +3,7 @@ import { Amount, formatAmount, ListRow } from "@homeowner/bedrock/finance";
 import { CreditCard, Landmark, TrendingDown, TrendingUp } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
-import { HideValuesToggle, useHiddenProps, useHideValues } from "../../shared/HideValues";
+import { useHiddenProps, useHideValues } from "../../shared/HideValues";
 import { useI18n } from "../../shared/i18n/I18nProvider";
 import { PageHeader } from "../../shared/PageHeader";
 import { percentText } from "../overview/logic/format";
@@ -44,7 +44,7 @@ export function NetWorthPage() {
 
   return (
     <section className="flex flex-col gap-6">
-      <PageHeader title={t("nav.netWorth")} subtitle={t("netWorth.intro")} tools={<HideValuesToggle />} />
+      <PageHeader title={t("nav.netWorth")} subtitle={t("netWorth.intro")} hideValues />
 
       {loading ? (
         <div role="status" className="flex flex-col gap-4">

@@ -35,6 +35,7 @@ describe("shell navigation", () => {
     const nav = screen.getByRole("navigation", { name: "Main navigation" });
     expect(within(nav).getAllByRole("link").map((a) => a.textContent)).toEqual(EN);
     expect(screen.getAllByRole("navigation")).toHaveLength(1);
+    expect(within(nav).queryByRole("link", { name: /^(Plan|More)$/ })).toBeNull();
   });
 
   it("puts Ask last in Main, current on /chat and carrying the screen it was opened from", () => {
@@ -54,21 +55,58 @@ describe("shell navigation", () => {
     expect(ask.getAttribute("href")).toBe("/chat?from=goals");
   });
 
-  it("leaves Ask out of More and hides the BottomBar on the chat on a phone", () => {
+  it("leaves Ask out of the tabs and hides the BottomBar on the chat on a phone", () => {
     width(false);
     shell({ locale: "en", path: "/chat" });
     expect(screen.queryByRole("navigation")).toBeNull();
     expect(screen.getByRole("heading", { name: "Ask" })).toBeTruthy();
   });
 
-  it("shows the BottomBar on a phone width, with the other screens under More", async () => {
+  it("shows four tabs on a phone width, in order, and the Sidebar has neither Plan nor More", () => {
     width(false);
     shell({ locale: "en" });
-    const nav = screen.getByRole("navigation", { name: "Main navigation" });
-    expect(within(nav).getAllByRole("link").map((a) => a.textContent)).toEqual(["Overview", "Transactions", "Bills to pay", "Goals", "More"]);
-    await userEvent.click(within(nav).getByRole("link", { name: "More" }));
-    const sheet = await screen.findByRole("dialog");
-    expect(within(sheet).getAllByRole("link").map((a) => a.textContent)).toEqual(["Card bills", "Spending Categories", "Pantry", "Net worth", "Projection", "Sources", "Settings"]);
+    const tabs = within(screen.getByRole("navigation", { name: "Main navigation" })).getAllByRole("link");
+    expect(tabs).toHaveLength(4);
+    expect(tabs.map((a) => a.textContent)).toEqual(["Home", "Transactions", "Plan", "More"]);
+    expect(tabs[0]!.getAttribute("aria-current")).toBe("page");
+    expect(tabs.slice(1).map((a) => a.getAttribute("aria-current"))).toEqual([null, null, null]);
+  });
+
+  it("names the tabs Início, Lançamentos, Planejar and Mais in pt-BR", () => {
+    width(false);
+    shell({ locale: "pt-BR" });
+    expect(within(screen.getByRole("navigation")).getAllByRole("link").map((a) => a.textContent)).toEqual(["Início", "Lançamentos", "Planejar", "Mais"]);
+  });
+
+  it.each([
+    ["/plan", "Plan"],
+    ["/goals", "Plan"],
+    ["/net-worth", "Plan"],
+    ["/projection", "Plan"],
+    ["/sources", "Plan"],
+    ["/more", "More"],
+    ["/bills", "More"],
+    ["/card-bills", "More"],
+    ["/categories", "More"],
+    ["/categories/groceries", "More"],
+    ["/pantry", "More"],
+    ["/pantry/list", "More"],
+    ["/settings", "More"],
+    ["/transactions", "Transactions"],
+    ["/", "Home"],
+  ])("marks only the %s tab current on %s", (path, tab) => {
+    width(false);
+    shell({ locale: "en", path });
+    const current = within(screen.getByRole("navigation")).getAllByRole("link").filter((a) => a.getAttribute("aria-current") === "page");
+    expect(current.map((a) => a.textContent)).toEqual([tab]);
+  });
+
+  it("opens the More screen from its tab, with no dialog", async () => {
+    width(false);
+    shell({ locale: "en" });
+    await userEvent.click(within(screen.getByRole("navigation")).getByRole("link", { name: "More" }));
+    expect(screen.getByRole("heading", { level: 1, name: "More" })).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("names every screen in pt-BR", () => {

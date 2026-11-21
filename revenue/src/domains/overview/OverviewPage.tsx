@@ -1,8 +1,6 @@
 import { EmptyState } from "@homeowner/bedrock";
 import { Inbox } from "lucide-react";
-import { HideValuesToggle } from "../../shared/HideValues";
 import { useI18n } from "../../shared/i18n/I18nProvider";
-import { MonthSelect } from "../../shared/month/MonthSelect";
 import { monthLabel } from "../../shared/month/month";
 import { useMonthParam } from "../../shared/month/useMonthParam";
 import { PageHeader } from "../../shared/PageHeader";
@@ -42,7 +40,8 @@ export function OverviewPage() {
       <PageHeader
         title={t("nav.overview")}
         subtitle={current ? t("overview.subtitle.today", { month: label, day: formatDay(today, locale) }) : label}
-        tools={<><MonthSelect /><HideValuesToggle /></>}
+        month
+        hideValues
       />
       <div className="grid gap-6 desktop:grid-cols-12">
         <div className="flex flex-col gap-6 desktop:col-span-5">

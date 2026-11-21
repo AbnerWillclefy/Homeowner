@@ -2,10 +2,9 @@ import { Banner, Button, Card, Dialog, EmptyState, Skeleton, SegmentedControl } 
 import { formatAmount } from "@homeowner/bedrock/finance";
 import { CalendarCheck, Plus } from "lucide-react";
 import { useState } from "react";
-import { HideValuesToggle, useHideValues } from "../../shared/HideValues";
+import { useHideValues } from "../../shared/HideValues";
 import { useI18n } from "../../shared/i18n/I18nProvider";
 import { addMonths, monthLabel } from "../../shared/month/month";
-import { MonthSelect } from "../../shared/month/MonthSelect";
 import { useMonthParam } from "../../shared/month/useMonthParam";
 import { PageHeader } from "../../shared/PageHeader";
 import { useMediaQuery } from "../../shared/useMediaQuery";
@@ -59,15 +58,15 @@ export function BillsPage() {
       <PageHeader
         title={t("nav.bills")}
         subtitle={subtitle}
+        month
+        hideValues
         tools={
           <>
-            <MonthSelect />
             {current && (
               <Button icon={Plus} onClick={() => setForm({ bill: null })}>
                 <span className={desktop ? undefined : "sr-only"}>{t("bills.add")}</span>
               </Button>
             )}
-            <HideValuesToggle />
           </>
         }
       />

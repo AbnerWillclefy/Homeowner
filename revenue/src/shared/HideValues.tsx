@@ -52,7 +52,13 @@ export function HideValuesToggle() {
   const { hidden, toggle } = useHideValues();
   const { t } = useI18n();
   return (
-    <Button variant="ghost" icon={hidden ? EyeOff : Eye} aria-pressed={hidden} onClick={toggle}>
+    <Button
+      variant="ghost"
+      icon={hidden ? EyeOff : Eye}
+      aria-pressed={hidden}
+      onClick={toggle}
+      className="max-desktop:size-control-lg max-desktop:rounded-full max-desktop:border-border max-desktop:px-0"
+    >
       <span className="sr-only">{t(hidden ? "hide.show" : "hide.hide")}</span>
     </Button>
   );

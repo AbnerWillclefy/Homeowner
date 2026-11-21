@@ -385,14 +385,13 @@ describe("add, edit and delete", () => {
 });
 
 describe("Mais", () => {
-  it("opens from More on a phone, and is not in the bottom bar", async () => {
+  it("is reached from the Mais tab on a phone, which is current here, and is not a tab itself", () => {
     width(false);
     serve([RICE]);
     renderApp(<Routes><Route element={<Shell />}><Route path="/pantry" element={<PantryPage />} /></Route></Routes>, { path: "/pantry", locale: "pt-BR" });
     const nav = screen.getByRole("navigation", { name: "Navegação principal" });
     expect(within(nav).queryByRole("link", { name: "Despensa" })).toBeNull();
-    await userEvent.click(within(nav).getByRole("link", { name: "Mais" }));
-    expect(within(await screen.findByRole("dialog")).getByRole("link", { name: "Despensa" })).toBeTruthy();
+    expect(within(nav).getByRole("link", { name: "Mais" }).getAttribute("aria-current")).toBe("page");
   });
 });
 
