@@ -11,90 +11,85 @@
 <body>
 <x-dc>
 <helmet>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
 <style>body{margin:0}</style>
 </helmet>
 <div class="rv-app" data-theme="{{theme}}">
 <div class="rv-side"><dc-import name="Sidebar" active="projection" theme="{{theme}}" hint-size="256px,1240px"></dc-import></div>
 <main class="rv-main">
 <header class="rv-head">
-<div class="rv-head__text"><h1 class="rv-title">Projeção</h1><span class="rv-sub">O que sobra da renda de R$ 9.800 nos próximos meses</span></div>
+<div class="rv-head__text"><h1 class="rv-title">Projeção</h1><span class="rv-sub">O que sobra da renda de R$ 12.500 nos próximos 12 meses</span></div>
+<div class="rv-tools"><button class="br-iconbtn" aria-label="Esconder valores"><i class="ri ri-eye" aria-hidden="true"></i></button></div>
 </header>
-
 <div class="rv-grid">
 <section class="br-card s8">
-<div class="br-card__head"><span class="br-card__label">Sobra por mês</span><span class="br-muted">Clique num mês para ver a conta</span></div>
-<svg class="br-chart" viewBox="0 0 720 260" role="img" aria-label="Sobra prevista de novembro a abril. Janeiro fica negativo em R$ 346 por causa do IPVA.">
-<line class="grid" x1="0" y1="40" x2="660" y2="40"></line><line class="grid" x1="0" y1="120" x2="660" y2="120"></line>
-<line x1="0" y1="200" x2="660" y2="200" style="stroke: var(--border-strong); stroke-width: 1"></line>
-<text x="668" y="44">R$ 2k</text><text x="668" y="124">R$ 1k</text><text x="668" y="204">R$ 0</text>
-<sc-for list="{{months}}" as="m" hint-placeholder-count="6">
-<rect x="{{m.x}}" y="{{m.y}}" width="64" height="{{m.h}}" rx="4" style="fill: {{m.fill}}; cursor: pointer" onClick="{{m.pick}}"></rect>
-<text x="{{m.cx}}" y="{{m.labelY}}" text-anchor="middle" style="fill: var(--text); font-weight: 500">{{m.short}}</text>
-<text x="{{m.cx}}" y="256" text-anchor="middle">{{m.name}}</text>
-</sc-for>
-</svg>
-<div class="br-legend"><span><i style="background: var(--brand); height: 8px; width: 8px"></i>Sobra</span><span><i style="background: var(--danger); height: 8px; width: 8px"></i>Falta</span><span><i style="background: var(--text); height: 8px; width: 8px"></i>Mês escolhido</span></div>
-</section>
-
-<section class="br-card s4">
-<div class="br-card__head"><span class="br-card__label">{{sel.title}}</span><span class="br-badge {{sel.badge}}">{{sel.status}}</span></div>
-<span class="br-amount br-amount--lg"><span class="br-amount__value" style="color: {{sel.color}}">{{sel.leftover}}</span></span>
-<div class="rv-stack">
-<div class="rv-between"><span>Entradas</span><span class="br-num">R$ 9.800,00</span></div>
-<div class="rv-between"><span class="br-muted">− Faturas dos cartões</span><span class="br-num">{{sel.cards}}</span></div>
-<div class="rv-between"><span class="br-muted">− Contas a pagar</span><span class="br-num">{{sel.bills}}</span></div>
-<div class="rv-between"><span class="br-muted">− Gastos planejados</span><span class="br-num">{{sel.planned}}</span></div>
-<div class="rv-between"><span class="br-muted">− Aporte</span><span class="br-num">R$ 1.200,00</span></div>
-<hr class="rv-divider">
-<div class="rv-between"><strong>Sobra</strong><strong class="br-num">{{sel.leftover}}</strong></div>
+<div class="br-card__head"><span class="br-card__label">Sobra por mês</span><div style="width: 280px"><div class="br-seg br-seg--block" role="group" aria-label="Como calcular a sobra"><button aria-pressed="{{seg.plan}}" onClick="{{showPlan}}">Pelo plano</button><button aria-pressed="{{seg.pace}}" onClick="{{showPace}}">No ritmo atual</button></div></div></div>
+<div style="display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; height: 240px">
+<sc-for list="{{bars}}" as="b" hint-placeholder-count="12"><button class="rv-barcol" aria-label="{{b.name}}" onClick="{{b.pick}}"><span><span class="{{b.cls}}" style="height: {{b.up}}"></span></span><span><span class="{{b.negCls}}" style="height: {{b.down}}"></span></span></button></sc-for>
 </div>
-<sc-if value="{{sel.hasNote}}" hint-placeholder-val="{{ false }}"><div class="rv-row" style="align-items: flex-start; flex-wrap: nowrap; color: var(--warning)"><i class="ri ri-alert" aria-hidden="true" style="margin-top: 2px"></i><span>{{sel.note}}</span></div></sc-if>
+<div class="rv-axis" aria-hidden="true"><sc-for list="{{bars}}" as="b" hint-placeholder-count="12"><span>{{b.label}}</span></sc-for></div>
+<span class="br-muted" style="font-size: 12px; line-height: 16px">Clique num mês para ver a conta ao lado.</span>
 </section>
-
+<section class="br-card s4"><div class="br-card__head"><span class="br-card__label">{{sel.name}}</span><sc-if value="{{sel.neg}}" hint-placeholder-val="{{ false }}"><span class="br-badge br-badge--danger"><i class="ri ri-sm ri-alert" aria-hidden="true"></i>Falta</span></sc-if></div>
+<div class="rv-stack" style="gap: 4px"><span class="br-amount br-amount--lg {{sel.heroCls}}"><span class="br-amount__value">{{sel.hero}}</span></span><span class="br-muted">{{modeLabel}}</span></div>
+<dl class="rv-dl">
+<dt>Renda mensal</dt><dd>{{sel.income}}</dd>
+<dt>− Faturas dos cartões</dt><dd>{{sel.cards}}</dd>
+<dt>− Outras contas</dt><dd>{{sel.bills}}</dd>
+<dt>− Gasto previsto</dt><dd>{{sel.planned}}</dd>
+<dt>− Guardado</dt><dd>{{sel.saved}}</dd>
+<dt class="rv-dl__total">Sobra pelo plano</dt><dd class="rv-dl__total">{{sel.plan}}</dd>
+<dt>− Restaurantes acima do plano</dt><dd>R$ 1.200,00</dd>
+<dt class="rv-dl__total">Sobra no ritmo atual</dt><dd class="rv-dl__total">{{sel.pace}}</dd>
+</dl>
+<sc-if value="{{sel.hasNote}}" hint-placeholder-val="{{ false }}"><div class="br-banner br-banner--warning" role="status"><i class="ri ri-alert" aria-hidden="true"></i><span class="br-banner__text">{{sel.note}} Faltam {{sel.short}}: tire da sobra de dezembro ou reduza o aporte.</span></div></sc-if></section>
 <section class="br-card s12">
-<span class="rv-section">Mês a mês</span>
-<div class="rv-tablebox">
-<div class="rv-month rv-month--head"><span>Mês</span><span class="rv-right">Entradas</span><span class="rv-right">Cartões</span><span class="rv-right">Contas</span><span class="rv-right">Planejado</span><span class="rv-right">Aporte</span><span class="rv-right">Sobra</span></div>
-<sc-for list="{{months}}" as="m" hint-placeholder-count="6">
-<div class="rv-month" style="background: {{m.rowBg}}; border-radius: 8px; cursor: pointer" onClick="{{m.pick}}"><strong>{{m.full}}</strong><span class="rv-right">R$ 9.800,00</span><span class="rv-right">{{m.cards}}</span><span class="rv-right">{{m.bills}}</span><span class="rv-right">{{m.planned}}</span><span class="rv-right">R$ 1.200,00</span><span class="rv-right" style="color: {{m.color}}; font-weight: 600">{{m.leftover}}</span></div>
-</sc-for>
-</div>
-<span class="br-muted">Parcelas no cartão estão dentro das faturas. Planejado é o limite das categorias menos o que já foi gasto no cartão.</span>
+<span class="rv-section">Próximos meses</span>
+<div class="rv-tablebox"><table class="br-table">
+<thead><tr><th>Mês</th><th class="br-num">Contas e faturas</th><th class="br-num">Gasto previsto</th><th class="br-num">Guardado</th><th class="br-num">Sobra pelo plano</th><th class="br-num">Sobra no ritmo</th></tr></thead>
+<tbody><sc-for list="{{rows}}" as="r" hint-placeholder-count="12"><tr class="{{r.rowCls}}" onClick="{{r.pick}}" style="cursor: pointer"><td style="white-space: nowrap; font-weight: 500">{{r.name}}</td><td class="br-num">{{r.commit}}</td><td class="br-num">{{r.planned}}</td><td class="br-num">{{r.saved}}</td><td class="br-num {{r.planCls}}" style="font-weight: 500">{{r.plan}}</td><td class="br-num {{r.paceCls}}">{{r.pace}}</td></tr></sc-for></tbody>
+</table></div>
+<span class="br-muted" style="font-size: 12px; line-height: 16px">Depois deste mês, a fatura conta só as parcelas já conhecidas. O resto do cartão entra em Gasto previsto, nas categorias com limite.</span>
 </section>
+<section class="br-card s6"><span class="br-card__label">Parcelas em andamento</span><div class="br-list">
+<div class="br-listrow "><span class="br-cat__icon" style="background: var(--cat-shopping-soft); color: var(--cat-shopping)"><i class="ri ri-card" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Geladeira Frost Free</span><span class="br-listrow__meta">próxima 3 de 10 · última em jun/27</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 324,90</span></span></div></div>
+<div class="br-listrow "><span class="br-cat__icon" style="background: var(--cat-shopping-soft); color: var(--cat-shopping)"><i class="ri ri-card" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Mercado Livre</span><span class="br-listrow__meta">próxima 6 de 10 · última em abr/27</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 233,43</span></span></div></div>
+<div class="br-listrow "><span class="br-cat__icon" style="background: var(--cat-household-bills-soft); color: var(--cat-household-bills)"><i class="ri ri-zap" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Canadian Solar</span><span class="br-listrow__meta">próxima 5 de 12 · última em jul/27</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 1.623,09</span></span></div></div>
+</div></section>
 </div>
 </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1240}}'>
+<script type="text/x-dc" data-dc-script data-props='{"theme": {"editor": "enum", "options": ["dark", "light"], "default": "dark"}, "$preview": {"width": 1440, "height": 1240}}'>
 class Component extends DCLogic {
-  constructor(props) { super(props); this.state = { sel: 2 }; }
+  constructor(props) { super(props); this.state = { mode: 'plan', sel: 2 }; }
   renderVals() {
-    const fmt = (v) => (v < 0 ? '−' : '') + 'R$ ' + Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const raw = [
-      ['nov', 'Novembro', 2106.90, 3975.85, 1000, ''],
-      ['dez', 'Dezembro', 3359.88, 3975.85, 900, 'As duas faturas abertas hoje vencem em dezembro.'],
-      ['jan', 'Janeiro', 2650.00, 5395.85, 900, 'IPVA de R$ 1.420 vence em janeiro. Falta R$ 346: tire da folga de novembro ou reduza o aporte.'],
-      ['fev', 'Fevereiro', 2450.00, 3975.85, 900, ''],
-      ['mar', 'Março', 2300.00, 3975.85, 900, ''],
-      ['abr', 'Abril', 1850.00, 3975.85, 900, 'A última parcela do notebook sai em março.'],
-    ];
-    const scale = 80 / 1000;
-    const months = raw.map(([short, full, cards, bills, planned, note], i) => {
-      const left = Math.round((9800 - cards - bills - planned - 1200) * 100) / 100;
-      const h = Math.max(4, Math.abs(left) * scale);
-      const y = left >= 0 ? 200 - h : 200;
-      const on = this.state.sel === i;
-      return { short: (left < 0 ? '−' : '') + 'R$ ' + Math.round(Math.abs(left)).toLocaleString('pt-BR'), name: short, full, x: 24 + i * 108, cx: 56 + i * 108, y: y.toFixed(1), h: h.toFixed(1), labelY: left >= 0 ? (y - 8).toFixed(1) : (y + h + 16).toFixed(1),
-        fill: on ? 'var(--text)' : left < 0 ? 'var(--danger)' : 'var(--brand)', rowBg: on ? 'var(--surface-hover)' : 'transparent', color: left < 0 ? 'var(--danger)' : 'var(--text)',
-        cards: fmt(cards), bills: fmt(bills), planned: fmt(planned), leftover: fmt(left), left, note, pick: () => this.setState({ sel: i }) };
-    });
-    const s = months[this.state.sel];
+    const brl = (c) => (c < 0 ? '-' : '') + 'R$ ' + Math.abs(c).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     return {
       theme: this.props.theme ?? 'dark',
-      months,
-      sel: { title: s.full + ' de ' + (this.state.sel < 2 ? '2026' : '2027'), leftover: s.leftover, cards: s.cards, bills: s.bills, planned: s.planned, note: s.note, hasNote: !!s.note,
-        status: s.left < 0 ? 'Falta' : s.left < 500 ? 'Apertado' : 'Sobra', badge: s.left < 0 ? 'br-badge--danger' : s.left < 500 ? 'br-badge--warning' : 'br-badge--positive', color: s.left < 0 ? 'var(--danger)' : 'var(--text)' },
+      ...(() => {
+    const names = ['Novembro de 2026','Dezembro de 2026','Janeiro de 2027','Fevereiro de 2027','Março de 2027','Abril de 2027','Maio de 2027','Junho de 2027','Julho de 2027','Agosto de 2027','Setembro de 2027','Outubro de 2027'];
+    const short = ['nov','dez','jan','fev','mar','abr','mai','jun','jul','ago','set','out'];
+    const months = names.map((name, i) => {
+      const income = 1250000, cards = i === 2 ? 416300 : 453300 + 4000 * i, bills = i === 2 ? 723700 : 365480, planned = i === 0 ? 120000 : 220000, saved = 50000;
+      const plan = income - cards - bills - planned - saved;
+      return { name, short: short[i], income, cards, bills, planned, saved, plan, pace: plan - 120000, note: i === 2 ? 'IPVA de R$ 3.582,20 vence em janeiro.' : '' };
+    });
+    const mode = this.state.mode, sel = this.state.sel;
+    const value = (m) => mode === 'plan' ? m.plan : m.pace;
+    const max = Math.max(...months.map((m) => Math.abs(value(m))));
+    const m = months[sel];
+    const cents = (c) => brl(c / 100);
+
+        return {
+          seg: { plan: String(mode === 'plan'), pace: String(mode === 'pace') },
+          showPlan: () => this.setState({ mode: 'plan' }), showPace: () => this.setState({ mode: 'pace' }),
+          bars: months.map((x, i) => ({ up: value(x) >= 0 ? Math.round(value(x) / max * 100) + '%' : '0%', down: value(x) < 0 ? Math.round(-value(x) / max * 100) + '%' : '0%', cls: i === sel ? 'rv-bar rv-bar--sel' : 'rv-bar', negCls: i === sel ? 'rv-bar rv-bar--neg rv-bar--sel' : 'rv-bar rv-bar--neg', label: x.short, name: x.name + ': sobra ' + cents(value(x)), pick: () => this.setState({ sel: i }) })),
+          rows: months.map((x, i) => ({ name: x.name, short: x.short, commit: cents(x.cards + x.bills), planned: cents(x.planned), saved: cents(x.saved), plan: cents(x.plan), pace: cents(x.pace), value: cents(value(x)), neg: value(x) < 0, pos: value(x) >= 0, planCls: x.plan < 0 ? 'rv-neg' : '', paceCls: x.pace < 0 ? 'rv-neg' : '', rowCls: i === sel ? 'rv-sel' : '', meta: 'Contas e faturas ' + cents(x.cards + x.bills), pick: () => this.setState({ sel: i }) })),
+          sel: { name: m.name, hero: cents(value(m)), neg: value(m) < 0, pos: value(m) >= 0, heroCls: value(m) < 0 ? "rv-neg" : '', income: cents(m.income), cards: cents(m.cards), bills: cents(m.bills), planned: cents(m.planned), saved: cents(m.saved), plan: cents(m.plan), pace: cents(m.pace), note: m.note, hasNote: !!m.note, short: cents(-value(m)) },
+          modeLabel: mode === 'plan' ? 'Sobra pelo plano' : 'Sobra no ritmo atual',
+        };
+      })(),
     };
   }
 }
