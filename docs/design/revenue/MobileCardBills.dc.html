@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Faturas, celular</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="rv-phone" data-theme="{{theme}}">
+<header class="rv-phone__head"><div class="rv-phone__headrow"><div class="rv-row" style="gap: 8px; flex-wrap: nowrap; min-width: 0; align-items: flex-start"><div class="rv-head__text"><h1 class="rv-title">Faturas</h1><span class="rv-sub">3 cartões · R$ 4.533,00 em aberto</span></div></div><div class="rv-row" style="gap: 8px"><button class="br-iconbtn" aria-label="Esconder valores"><i class="ri ri-eye" aria-hidden="true"></i></button></div></div><button class="br-btn br-btn--secondary br-btn--lg br-btn--block rv-period" aria-label="Mês: Novembro de 2026"><span class="rv-row" style="gap: 8px; flex-wrap: nowrap"><i class="ri ri-calendar" aria-hidden="true"></i>Novembro de 2026</span><i class="ri ri-chevron-down" aria-hidden="true"></i></button></header>
+<div class="rv-phone__scroll rv-phone__scroll--fab">
+<div class="br-seg br-seg--block" role="group" aria-label="Cartão"><button aria-pressed="true">Nubank</button><button aria-pressed="false">Itaú Visa</button><button aria-pressed="false">Naiara</button></div>
+<section class="br-card br-card--compact">
+<div class="br-card__head"><span class="br-card__label">Fatura fechada · Nubank</span><span class="br-badge br-badge--neutral">Fecha 8 de nov.</span></div>
+<div class="rv-stack" style="gap: 4px"><span class="br-amount br-amount--lg "><span class="br-amount__value">R$ 2.843,00</span></span><span class="br-muted">Vence 15 de nov. · total informado pelo banco</span></div>
+<dl class="rv-dl"><dt>Compras do mês</dt><dd><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 1.966,10</span></span></dd><dt>Parcelas</dt><dd><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 821,00</span></span></dd><dt>Assinaturas</dt><dd><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 55,90</span></span></dd></dl>
+<div class="br-progress"><div class="br-progress__track"><div class="br-progress__fill" style="width: 24%"></div></div><div class="br-progress__meta"><strong>Limite usado</strong><span>R$ 2.843 de R$ 12.000</span></div></div>
+</section>
+<section class="br-card br-card--compact">
+<div class="rv-between"><span class="br-card__label">Nesta fatura</span><span class="br-muted" style="font-size: 12px">38 lançamentos</span></div>
+<div class="br-list"><div class="br-listrow "><span class="br-cat__icon" style="background: var(--cat-groceries-soft); color: var(--cat-groceries)"><i class="ri ri-cart" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Supermercado Pão de Açúcar</span><span class="br-listrow__meta">Mercado · 3 de nov.</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 287,40</span></span></div></div><div class="br-listrow "><span class="br-cat__icon" style="background: var(--cat-shopping-soft); color: var(--cat-shopping)"><i class="ri ri-card" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Magazine Luiza Geladeira</span><span class="br-listrow__meta">Compras · parcela 3 de 10</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 324,90</span></span><span class="br-badge br-badge--neutral">3/10</span></div></div><div class="br-listrow "><span class="br-cat__icon" style="background: var(--cat-eating-out-soft); color: var(--cat-eating-out)"><i class="ri ri-utensils" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">iFood Restaurante Japonês</span><span class="br-listrow__meta">Restaurantes · 18 de nov.</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 89,90</span></span></div></div><div class="br-listrow "><span class="br-cat__icon" style="background: var(--cat-subscriptions-soft); color: var(--cat-subscriptions)"><i class="ri ri-repeat" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Netflix.com</span><span class="br-listrow__meta">Assinaturas · 13 de nov.</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 55,90</span></span></div></div><div class="br-listrow "><span class="br-cat__icon" style="background: var(--cat-transport-soft); color: var(--cat-transport)"><i class="ri ri-car" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Uber Trip</span><span class="br-listrow__meta">Transporte · 17 de nov.</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 23,50</span></span></div></div></div>
+<a href="MobileTransactions.dc.html" class="br-btn br-btn--ghost br-btn--block">Ver os 38 em Lançamentos</a>
+</section>
+<section class="br-card br-card--compact">
+<span class="br-card__label">Últimas faturas</span>
+<div class="rv-bars"><span class="rv-bar rv-bar--neutral" style="height: 85%"></span><span class="rv-bar rv-bar--neutral" style="height: 87%"></span><span class="rv-bar rv-bar--neutral" style="height: 89%"></span><span class="rv-bar rv-bar--neutral" style="height: 90%"></span><span class="rv-bar rv-bar--neutral" style="height: 91%"></span><span class="rv-bar rv-bar--sel" style="height: 100%"></span></div><div class="rv-axis" aria-hidden="true"><span>jun</span><span>jul</span><span>ago</span><span>set</span><span>out</span><span>nov</span></div>
+<dl class="rv-dl"><dt>Média de 6 meses</dt><dd><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 2.568,83</span></span></dd></dl>
+</section>
+<section class="br-card br-card--compact">
+<span class="br-card__label">Datas do cartão</span>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+<label class="br-field"><span class="br-field__label">Fecha no dia</span><span class="br-input"><input value="8" inputmode="numeric"></span></label>
+<label class="br-field"><span class="br-field__label">Vence no dia</span><span class="br-input"><input value="15" inputmode="numeric"></span></label>
+</div>
+<span class="br-field__hint">Vem do banco. Mude só se o banco informar errado.</span>
+<button class="br-btn br-btn--secondary br-btn--lg br-btn--block">Salvar datas</button>
+</section>
+</div>
+<a href="MobileChat.dc.html" class="br-btn br-btn--primary rv-fab" aria-label="Perguntar"><i class="ri ri-chat" aria-hidden="true"></i>Perguntar</a>
+<nav class="br-bottombar" aria-label="Principal"><a href="MobileOverview.dc.html" class="br-tab"><i class="ri ri-lg ri-dashboard" aria-hidden="true"></i>Início</a><a href="MobileTransactions.dc.html" class="br-tab"><i class="ri ri-lg ri-receipt" aria-hidden="true"></i>Lançamentos</a><a href="MobilePlan.dc.html" class="br-tab"><i class="ri ri-lg ri-target" aria-hidden="true"></i>Planejar</a><a href="MobileMore.dc.html" class="br-tab" aria-current="page"><span class="rv-tabwrap"><i class="ri ri-lg ri-more" aria-hidden="true"></i><span class="br-count" aria-hidden="true">2</span></span>Mais<span style="position: absolute; width: 1px; height: 1px; overflow: hidden">, 2 contas a pagar</span></a></nav>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme": {"editor": "enum", "options": ["dark", "light"], "default": "dark"}, "$preview": {"width": 390, "height": 844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const brl = (c) => (c < 0 ? '-' : '') + 'R$ ' + Math.abs(c).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return {
+      theme: this.props.theme ?? 'dark',
+
+    };
+  }
+}
+</script>
+</body>
+</html>

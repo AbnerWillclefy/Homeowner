@@ -15,10 +15,7 @@
 <style>body{margin:0}</style>
 </helmet>
 <div class="rv-phone" data-theme="{{theme}}">
-<div class="rv-phone__top">
-<div class="rv-head__text"><h1 class="rv-title">Transações</h1><span class="rv-sub">Novembro · 64</span></div>
-<button class="br-iconbtn" aria-label="Escolher mês"><i class="ri ri-calendar" aria-hidden="true"></i></button>
-</div>
+<header class="rv-phone__head"><div class="rv-phone__headrow"><div class="rv-row" style="gap: 8px; flex-wrap: nowrap; min-width: 0; align-items: flex-start"><div class="rv-head__text"><h1 class="rv-title">Lançamentos</h1><span class="rv-sub">64 lançamentos de 3 fontes</span></div></div><div class="rv-row" style="gap: 8px"><button class="br-iconbtn" aria-label="Esconder valores"><i class="ri ri-eye" aria-hidden="true"></i></button></div></div><button class="br-btn br-btn--secondary br-btn--lg br-btn--block rv-period" aria-label="Mês: Novembro de 2026"><span class="rv-row" style="gap: 8px; flex-wrap: nowrap"><i class="ri ri-calendar" aria-hidden="true"></i>Novembro de 2026</span><i class="ri ri-chevron-down" aria-hidden="true"></i></button></header>
 <div class="rv-phone__scroll {{ask.scroll}}" style="gap: 8px">
 <div class="br-search">
 <label class="br-search__box"><i class="ri ri-search" aria-hidden="true"></i><input aria-label="Buscar transações" placeholder="Buscar" style="all: unset; flex: 1; min-width: 0; color: var(--text)"></label>
@@ -47,12 +44,7 @@
 <!-- Floating button: 48px pill, "Perguntar" always visible, 16px from the right and 16px above the bottom bar. Shown on every screen inside the frame except Onboarding and the chat. A Toast sits above it. -->
 <a href="MobileChat.dc.html" class="br-btn br-btn--primary rv-fab" aria-label="{{ask.label}}"><i class="ri ri-chat" aria-hidden="true"></i>{{ask.label}}</a>
 </sc-if>
-<nav class="br-bottombar" aria-label="Principal">
-<a href="MobileOverview.dc.html" class="br-tab"><i class="ri ri-lg ri-dashboard" aria-hidden="true"></i>Visão geral</a>
-<a href="MobileTransactions.dc.html" class="br-tab" aria-current="page"><i class="ri ri-lg ri-arrows" aria-hidden="true"></i>Transações</a>
-<a href="Goals.dc.html" class="br-tab"><i class="ri ri-lg ri-target" aria-hidden="true"></i>Planejamento</a>
-<a href="Settings.dc.html" class="br-tab"><i class="ri ri-lg ri-more" aria-hidden="true"></i>Mais</a>
-</nav>
+<nav class="br-bottombar" aria-label="Principal"><a href="MobileOverview.dc.html" class="br-tab"><i class="ri ri-lg ri-dashboard" aria-hidden="true"></i>Início</a><a href="MobileTransactions.dc.html" class="br-tab" aria-current="page"><i class="ri ri-lg ri-receipt" aria-hidden="true"></i>Lançamentos</a><a href="MobilePlan.dc.html" class="br-tab"><i class="ri ri-lg ri-target" aria-hidden="true"></i>Planejar</a><a href="MobileMore.dc.html" class="br-tab"><span class="rv-tabwrap"><i class="ri ri-lg ri-more" aria-hidden="true"></i><span class="br-count" aria-hidden="true">2</span></span>Mais<span style="position: absolute; width: 1px; height: 1px; overflow: hidden">, 2 contas a pagar</span></a></nav>
 
 <sc-if value="{{open}}" hint-placeholder-val="{{ false }}">
 <div class="rv-overlay">
