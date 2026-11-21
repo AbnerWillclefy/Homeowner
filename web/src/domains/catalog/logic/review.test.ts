@@ -126,7 +126,7 @@ describe("keepLocally", () => {
   const input: ChoreWire = { name: "Wash up", ...FIELDS, intervalDays: 3 };
 
   it("accepts an edit, handing back the Chore as typed", () => {
-    expect(keepLocally("k1", input)).toEqual({ kind: "ok", chore: { id: "k1", ...input } });
+    expect(keepLocally("k1", input)).toEqual({ kind: "ok", chore: { id: "k1", ...input, responsibleResidentId: null } });
     expect(keepLocally("k1", { ...input, intervalDays: null })).toMatchObject({ kind: "ok" });
   });
 
@@ -152,6 +152,7 @@ describe("formFromEntry", () => {
       intervalDays: "90",
       allowedWeekdays: [],
       buildsUp: false,
+      responsible: "",
     });
   });
 

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Configurações, celular</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="rv-phone" data-theme="{{theme}}">
+<header class="rv-phone__head"><div class="rv-phone__headrow"><div class="rv-row" style="gap: 8px; flex-wrap: nowrap; min-width: 0; align-items: flex-start"><a href="MobileMore.dc.html" class="br-iconbtn" aria-label="Voltar" style="flex: none"><i class="ri ri-chevron-left" aria-hidden="true"></i></a><div class="rv-head__text"><h1 class="rv-title">Configurações</h1><span class="rv-sub">Valores que alimentam a sobra e a projeção</span></div></div><div class="rv-row" style="gap: 8px"></div></div></header>
+<div class="rv-phone__scroll rv-phone__scroll--fab">
+<section class="br-card br-card--compact">
+<span class="rv-section" style="font-size: 16px">Planejamento</span>
+<label class="br-field"><span class="br-field__label">Quanto entra por mês</span><span class="br-input br-input--money"><span class="br-input__prefix" aria-hidden="true">R$</span><input value="12.500,00" inputmode="decimal"></span><span class="br-field__hint">Usada na sobra e na projeção.</span></label>
+<label class="br-field"><span class="br-field__label">Quanto guardar por mês</span><span class="br-input br-input--money"><span class="br-input__prefix" aria-hidden="true">R$</span><input value="1.500,00" inputmode="decimal"></span><span class="br-field__hint">Dividido entre a reserva e os objetivos.</span></label>
+<label class="br-field"><span class="br-field__label">Alvo da reserva de emergência</span><span class="br-input br-input--money"><span class="br-input__prefix" aria-hidden="true">R$</span><input value="30.000,00" inputmode="decimal"></span><span class="br-field__hint">Uns 6 meses do seu custo fixo.</span></label>
+<div class="br-field"><span class="br-field__label">Parte do aporte para a reserva</span><div class="br-seg br-seg--block" role="group" aria-label="Parte do aporte para a reserva"><button aria-pressed="false">30%</button><button aria-pressed="true">40%</button><button aria-pressed="false">50%</button><button aria-pressed="false">70%</button></div></div>
+<span class="br-muted" style="font-size: 12px; line-height: 16px">Cada valor salva ao sair do campo, com Desfazer no aviso.</span>
+</section>
+<section class="br-card br-card--compact">
+<span class="rv-section" style="font-size: 16px">Aparência</span>
+<div class="br-field"><span class="br-field__label">Tema</span><div class="br-seg br-seg--block" role="group" aria-label="Tema"><button aria-pressed="false">Sistema</button><button aria-pressed="false">Claro</button><button aria-pressed="true">Escuro</button></div></div>
+<div class="br-field"><span class="br-field__label">Idioma</span><div class="br-seg br-seg--block" role="group" aria-label="Idioma"><button aria-pressed="true">Português</button><button aria-pressed="false">English</button></div></div>
+</section>
+<section class="br-card br-card--compact">
+<span class="rv-section" style="font-size: 16px">Avisos</span>
+<button class="br-switch" role="switch" aria-checked="false" style="all: unset; display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 48px; cursor: pointer"><span class="rv-stack" style="gap: 0"><span>Lembretes de contas</span><span class="br-muted" style="font-size: 12px; line-height: 16px">3 dias antes, às 9h. Vêm do Revenue, não mais do Homeowner.</span></span><span class="br-switch__track"></span></button>
+</section>
+<section class="br-card br-card--compact">
+<span class="rv-section" style="font-size: 16px">Conexão com o Pluggy</span>
+<div class="br-listrow rv-row--action "><span class="br-cat__icon" style="background: var(--brand-soft); color: var(--brand)"><i class="ri ri-lock" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Credenciais salvas</span><span class="br-listrow__meta">guardado criptografado</span></div><div class="br-listrow__end"></div><button class="br-iconbtn" aria-label="Trocar ou remover as credenciais"><i class="ri ri-more" aria-hidden="true"></i></button></div>
+</section>
+<section class="br-card br-card--compact">
+<span class="rv-section" style="font-size: 16px">Apagar dados</span>
+<span class="br-muted">Apaga tudo o que o Revenue guarda das suas finanças. Os bancos continuam conectados no MeuPluggy.</span>
+<button class="br-btn br-btn--secondary br-btn--lg br-btn--block" style="color: var(--danger)">Apagar tudo…</button>
+</section>
+<button class="br-btn br-btn--ghost br-btn--lg br-btn--block">Sair</button>
+</div>
+<a href="MobileChat.dc.html" class="br-btn br-btn--primary rv-fab" aria-label="Perguntar"><i class="ri ri-chat" aria-hidden="true"></i>Perguntar</a>
+<nav class="br-bottombar" aria-label="Principal"><a href="MobileOverview.dc.html" class="br-tab"><i class="ri ri-lg ri-dashboard" aria-hidden="true"></i>Início</a><a href="MobileTransactions.dc.html" class="br-tab"><i class="ri ri-lg ri-receipt" aria-hidden="true"></i>Lançamentos</a><a href="MobilePlan.dc.html" class="br-tab"><i class="ri ri-lg ri-target" aria-hidden="true"></i>Planejar</a><a href="MobileMore.dc.html" class="br-tab" aria-current="page"><span class="rv-tabwrap"><i class="ri ri-lg ri-more" aria-hidden="true"></i><span class="br-count" aria-hidden="true">2</span></span>Mais<span style="position: absolute; width: 1px; height: 1px; overflow: hidden">, 2 contas a pagar</span></a></nav>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme": {"editor": "enum", "options": ["dark", "light"], "default": "dark"}, "$preview": {"width": 390, "height": 844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const brl = (c) => (c < 0 ? '-' : '') + 'R$ ' + Math.abs(c).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return {
+      theme: this.props.theme ?? 'dark',
+
+    };
+  }
+}
+</script>
+</body>
+</html>

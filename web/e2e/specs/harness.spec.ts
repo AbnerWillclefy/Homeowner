@@ -19,7 +19,7 @@ test.describe("seeded session", () => {
 
     // Level 2 is the form heading; the app title above it is the only level 1.
     await expect(page.getByRole("heading", { name: "Create your Home", level: 2 })).toBeVisible();
-    expect(fakeApi.requests.some((r) => r.path === "/me" && r.authorization?.startsWith("Bearer "))).toBe(true);
+    expect(fakeApi.requests.some((r) => r.path === "/boot" && r.authorization?.startsWith("Bearer "))).toBe(true);
 
     await page.reload();
     await expect(page.getByRole("heading", { name: "Create your Home", level: 2 })).toBeVisible();

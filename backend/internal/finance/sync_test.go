@@ -15,10 +15,10 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/pluggy/pluggytest"
 )
 
-// Fixture facts: the capture is 50 rows, newest 2026-11-07, summing to 4277284 centavos.
+// Fixture facts: the capture plus the synthetic page is 53 rows, newest 2026-11-07, summing to 4266174 centavos.
 const (
-	fixtureRows  = 50
-	fixtureCents = 4277284
+	fixtureRows  = 53
+	fixtureCents = 4266174
 )
 
 var afterFixtures = time.Date(2026, 11, 8, 12, 0, 0, 0, time.UTC)
@@ -154,6 +154,8 @@ func TestSyncKeepsWhatTheUserSet(t *testing.T) {
 	if _, err := app.DB.Exec(context.Background(), `
 		UPDATE finance_transactions SET type = 'transfer', type_set_by = 'user', spending_category = NULL, category_set_by = NULL
 		WHERE description = 'NETFLIX.COM';
+		UPDATE finance_transactions SET type = 'saving', type_set_by = 'user', spending_category = NULL, category_set_by = NULL
+		WHERE description = 'SALARIO EMPRESA XYZ LTDA';
 		UPDATE finance_transactions SET spending_category = 'leisure', category_set_by = 'user' WHERE description = 'SPOTIFY AB'`); err != nil {
 		t.Fatal(err)
 	}
@@ -163,6 +165,9 @@ func TestSyncKeepsWhatTheUserSet(t *testing.T) {
 
 	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE description = 'NETFLIX.COM' AND type = 'transfer' AND type_set_by = 'user' AND spending_category IS NULL`); n != 6 {
 		t.Errorf("user-typed rows = %d, want 6 untouched", n)
+	}
+	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE description = 'SALARIO EMPRESA XYZ LTDA' AND type = 'saving' AND type_set_by = 'user'`); n == 0 {
+		t.Error("user-set saving row was reclassified")
 	}
 	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions WHERE description = 'SPOTIFY AB' AND spending_category = 'leisure' AND category_set_by = 'user'`); n != 6 {
 		t.Errorf("user-categorised rows = %d, want 6 untouched", n)
@@ -304,7 +309,8 @@ func TestSyncLogsNoSensitiveData(t *testing.T) {
 	if !strings.Contains(logs, "finance sync") {
 		t.Fatalf("no sync log line in %s", logs)
 	}
-	secrets := []string{"123.45", "12345", pluggytest.ClientID, pluggytest.ClientSecret, pluggytest.APIKey, pluggytest.FailBody}
+	secrets := []string{"123.45", "12345", pluggytest.ClientID, pluggytest.ClientSecret, pluggytest.APIKey, pluggytest.FailBody,
+		"Receiver Secret Name", "Payer Secret Name", "416.799.495-00", "41679949500"}
 	rows, err := app.DB.Query(context.Background(), `SELECT DISTINCT description FROM finance_transactions UNION SELECT provider_id FROM finance_transactions`)
 	if err != nil {
 		t.Fatal(err)
@@ -355,5 +361,24 @@ func TestEventsHandlerRunsOnlyOnAScheduledEvent(t *testing.T) {
 	res, err := http.Get(srv.URL + "/healthz")
 	if err != nil || res.StatusCode != http.StatusOK {
 		t.Errorf("GET /healthz = %v %v, want 200", res, err)
+	}
+}
+
+// A daily sync re-reads the whole open bill: a card charge can reach the bank's
+// feed weeks after it posted, and a shorter window would never import it.
+func TestDailySyncRereadsAnOpenBillsCharges(t *testing.T) {
+	t.Parallel()
+	app, _ := startSync(t, []string{"ana@example.com"})
+	app.RunFinanceSync(t)
+	// The fixture's card charge of 2026-10-10, 29 days before the clock, as if it had arrived late.
+	tag, err := app.DB.Exec(context.Background(), `DELETE FROM finance_transactions t USING finance_sources s
+		WHERE s.id = t.source_id AND s.kind = 'credit_card' AND t.posted_on = '2026-10-10'`)
+	if err != nil || tag.RowsAffected() == 0 {
+		t.Fatalf("delete the 2026-10-10 charge: %v (rows %d)", err, tag.RowsAffected())
+	}
+	app.Clock.Advance(25 * time.Hour)
+	app.RunFinanceSync(t)
+	if n := scalar(t, app, `SELECT count(*) FROM finance_transactions`); n != fixtureRows {
+		t.Errorf("rows = %d, want %d: the late charge imported", n, fixtureRows)
 	}
 }

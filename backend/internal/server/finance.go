@@ -4,7 +4,9 @@ import (
 	"net/http"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/finance"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/finchat"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/identity"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/pantry"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/httpx"
 )
 
@@ -15,36 +17,52 @@ import (
 // learns nothing about the configuration.
 func (s *server) requireFinance(allow finance.Allowlist, next http.Handler) http.Handler {
 	return s.requireUser(func(w http.ResponseWriter, r *http.Request) {
-		if !allow.Allows(identity.CurrentUser(r.Context()).Email) {
+		switch status := s.financeGate(allow, identity.CurrentUser(r.Context()).Email); status {
+		case http.StatusForbidden:
 			s.deps.Logger.Info("finance access refused", "path", r.URL.Path)
-			httpx.WriteError(w, http.StatusForbidden, "forbidden")
-			return
+			httpx.WriteError(w, status, "forbidden")
+		case http.StatusServiceUnavailable:
+			httpx.WriteError(w, status, "finance not configured")
+		default:
+			next.ServeHTTP(w, r)
 		}
-		if s.deps.FinanceKey == nil {
-			httpx.WriteError(w, http.StatusServiceUnavailable, "finance not configured")
-			return
-		}
-		next.ServeHTTP(w, r)
 	})
+}
+
+// financeGate is the guard's decision: 403 off the allowlist, then 503 with
+// no encryption key, else 0. requireFinance and GET /boot share it.
+func (s *server) financeGate(allow finance.Allowlist, email string) int {
+	if !allow.Allows(email) {
+		return http.StatusForbidden
+	}
+	if s.deps.FinanceKey == nil {
+		return http.StatusServiceUnavailable
+	}
+	return 0
 }
 
 // financeMux holds the /me/finance routes. The guard wraps it once, so every
 // path under the prefix, known or not, meets the allowlist first.
-func financeMux(h *finance.Handler) http.Handler {
+func financeMux(h *finance.Handler, p *pantry.Handler, c *finchat.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /me/finance", h.Status)
 	mux.HandleFunc("DELETE /me/finance", h.DeleteAll)
 	mux.HandleFunc("GET /me/finance/transactions", h.Month)
 	mux.HandleFunc("GET /me/finance/history", h.History)
+	mux.HandleFunc("GET /me/finance/card-bills", h.PastCardBills)
 	mux.HandleFunc("GET /me/finance/daily", h.Daily)
 	mux.HandleFunc("GET /me/finance/commitments", h.Commitments)
 	mux.HandleFunc("PUT /me/finance/income", h.PutIncome)
 	mux.HandleFunc("PUT /me/finance/sources/{id}/bill-days", h.PutBillDays)
+	mux.HandleFunc("PUT /me/finance/sources/{id}/name", h.PutSourceName)
 	mux.HandleFunc("PUT /me/finance/reserve", h.PutReserve)
 	mux.HandleFunc("PUT /me/finance/contribution", h.PutContribution)
+	mux.HandleFunc("GET /me/finance/net-worth", h.NetWorth)
 	mux.HandleFunc("GET /me/finance/savings", h.Savings)
 	mux.HandleFunc("POST /me/finance/investments", h.CreateInvestment)
 	mux.HandleFunc("PUT /me/finance/investments/{id}", h.UpdateInvestment)
+	mux.HandleFunc("PUT /me/finance/investments/{id}/serves", h.PutInvestmentServes)
+	mux.HandleFunc("POST /me/finance/investments/{id}/use-bank-value", h.UseBankValue)
 	mux.HandleFunc("DELETE /me/finance/investments/{id}", h.DeleteInvestment)
 	mux.HandleFunc("POST /me/finance/goals", h.CreateGoal)
 	mux.HandleFunc("PUT /me/finance/goals/order", h.ReorderGoals)
@@ -52,6 +70,10 @@ func financeMux(h *finance.Handler) http.Handler {
 	mux.HandleFunc("DELETE /me/finance/goals/{id}", h.DeleteGoal)
 	mux.HandleFunc("PUT /me/finance/budgets/{category}", h.PutBudget)
 	mux.HandleFunc("PATCH /me/finance/transactions/{id}", h.PatchTransaction)
+	mux.HandleFunc("GET /me/finance/manual-cards", h.ListManualCards)
+	mux.HandleFunc("POST /me/finance/manual-cards", h.CreateManualCard)
+	mux.HandleFunc("PUT /me/finance/manual-cards/{id}", h.UpdateManualCard)
+	mux.HandleFunc("DELETE /me/finance/manual-cards/{id}", h.DeleteManualCard)
 	mux.HandleFunc("POST /me/finance/bills", h.CreateBill)
 	mux.HandleFunc("GET /me/finance/bills", h.ListBills)
 	mux.HandleFunc("GET /me/finance/bill-suggestions", h.BillSuggestions)
@@ -64,6 +86,19 @@ func financeMux(h *finance.Handler) http.Handler {
 	mux.HandleFunc("POST /me/finance/items", h.ConnectItem)
 	mux.HandleFunc("PUT /me/finance/credentials", h.PutCredentials)
 	mux.HandleFunc("DELETE /me/finance/credentials", h.DeleteCredentials)
+	mux.HandleFunc("POST /me/finance/chat", c.RequireConfigured(c.Ask))
+	mux.HandleFunc("GET /me/finance/pantry", p.List)
+	mux.HandleFunc("GET /me/finance/pantry/list", p.ShoppingList)
+	mux.HandleFunc("PUT /me/finance/pantry/list/{id}", p.EditList)
+	mux.HandleFunc("POST /me/finance/pantry/items", p.Create)
+	mux.HandleFunc("GET /me/finance/pantry/items/{id}", p.Detail)
+	mux.HandleFunc("PATCH /me/finance/pantry/items/{id}", p.Update)
+	mux.HandleFunc("DELETE /me/finance/pantry/items/{id}", p.Delete)
+	mux.HandleFunc("POST /me/finance/pantry/items/{id}/run-outs", p.RunOut)
+	mux.HandleFunc("DELETE /me/finance/pantry/items/{id}/run-outs/latest", p.UndoRunOut)
+	mux.HandleFunc("POST /me/finance/pantry/receipts", p.AddReceipt)
+	mux.HandleFunc("POST /me/finance/pantry/receipts/photo", p.ReadPhoto)
+	mux.HandleFunc("PUT /me/finance/pantry/receipts/{id}/lines/{n}", p.MatchLine)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not found")
 	})

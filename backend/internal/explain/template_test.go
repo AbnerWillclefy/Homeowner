@@ -173,7 +173,7 @@ func TestTemplateOfAnUnknownReasonIsGenericNeverEmpty(t *testing.T) {
 var allReasons = []string{
 	"deadline_today", "importance", "lateness", "turn_taking", "liked", "spared_dislike", "fits_energy", "taken", "swapped",
 	"no_energy_left", "restricted_for_all", "two_person_deferred", "weekday_not_allowed", "invalid_effort", "refused", "added_after_plan",
-	"brand_new",
+	"waiting_for_responsible", "brand_new",
 }
 
 // situationFacts has one Facts per situation, with the Task reason, the pool
@@ -314,7 +314,7 @@ func TestEveryRecordedReasonIsHandled(t *testing.T) {
 	// Task can fall back to the generic clause.
 	pool := map[string]bool{
 		"no_energy_left": true, "restricted_for_all": true, "two_person_deferred": true, "weekday_not_allowed": true,
-		"invalid_effort": true, "refused": true, "added_after_plan": true,
+		"invalid_effort": true, "refused": true, "added_after_plan": true, "waiting_for_responsible": true,
 	}
 	for _, r := range reasons {
 		if pool[r] {

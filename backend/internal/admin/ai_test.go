@@ -230,6 +230,87 @@ func TestAIAnswersWithAVoiceRow(t *testing.T) {
 	}
 }
 
+func TestAIAnswersWithAChatRow(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	if _, err := app.DB.Exec(context.Background(), `
+		INSERT INTO llm_call_events (created_at, local_date, service, model, outcome, latency_ms, input_tokens, output_tokens, est_cost_micros)
+		VALUES ($1, '2026-03-04', 'chat', 'claude-haiku-5-5', 'accepted', 90, 300, 40, 70)`,
+		app.Clock.Now()); err != nil {
+		t.Fatal(err)
+	}
+	got := aiAt(t, app.SignInAsSuperAdmin("admin@example.com"), "7d")
+
+	today := got.Days[len(got.Days)-1].Services
+	if today.Chat.Outcomes.Accepted != 1 || today.Chat.EstCostMicros != 70 {
+		t.Errorf("chat = %+v, want one accepted call of 70 micro-USD", today.Chat)
+	}
+}
+
+func TestAIChatRowsReachThePageWithoutTheUserAndLeaveOtherServicesAlone(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t, apitest.WithFinance(apitest.FinanceTestKey(), "ana@example.com"))
+	ctx := context.Background()
+	var id string
+	// A User who asked questions: a join from llm_call_events to them would leak.
+	if err := app.DB.QueryRow(ctx, `INSERT INTO users (cognito_sub, email, created_at, updated_at) VALUES ('sub-ana', 'ana@example.com', now(), now()) RETURNING id`).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.DB.Exec(ctx, `INSERT INTO finance_chat_calls (user_id, call_date, questions) VALUES ($1, '2026-03-04', 3)`, id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.DB.Exec(ctx, `
+		INSERT INTO llm_call_events (created_at, local_date, service, model, outcome, latency_ms, input_tokens, output_tokens, est_cost_micros)
+		VALUES ($1, '2026-03-04', 'chat', 'claude-haiku-5-5', 'accepted', 100, 300, 40, 70),
+		       ($1, '2026-03-04', 'chat', 'claude-haiku-5-5', 'accepted', 200, 100, 20, 30),
+		       ($1, '2026-03-04', 'chat', 'claude-haiku-5-5', 'timeout', NULL, NULL, NULL, NULL),
+		       ($1, '2026-03-04', 'chat', 'claude-haiku-5-5', 'skipped_cap', NULL, NULL, NULL, NULL),
+		       ($1, '2026-03-04', 'voice', 'claude-haiku-5-5', 'accepted', 90, 300, 40, 120)`,
+		app.Clock.Now()); err != nil {
+		t.Fatal(err)
+	}
+	super := app.SignInAsSuperAdmin("admin@example.com")
+	res := super.Get("/admin/ai?range=7d")
+	if res.Status != http.StatusOK {
+		t.Fatalf("status = %d %s", res.Status, res.Raw)
+	}
+	for _, leak := range []string{id, "ana@example.com"} {
+		if strings.Contains(string(res.Raw), leak) {
+			t.Errorf("the response contains %q, a User", leak)
+		}
+	}
+
+	got := aiAt(t, super, "7d")
+	today := got.Days[len(got.Days)-1].Services
+	c := today.Chat
+	if c.Outcomes.Accepted != 2 || c.Outcomes.Timeout != 1 || c.Outcomes.SkippedCap != 1 || c.InputTokens != 400 || c.OutputTokens != 60 || c.EstCostMicros != 100 {
+		t.Errorf("chat = %+v, want 2 accepted, 1 timeout, 1 skipped_cap, 400/60 tokens, 100 micro-USD", c)
+	}
+	if today.Voice.Outcomes.Accepted != 1 || today.Voice.EstCostMicros != 120 || today.Categorizer != (admin.ServiceDay{}) {
+		t.Errorf("voice = %+v, categorizer = %+v, want the voice call alone", today.Voice, today.Categorizer)
+	}
+}
+
+func TestAIAnswersWithAReceiptRow(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	if _, err := app.DB.Exec(context.Background(), `
+		INSERT INTO llm_call_events (created_at, local_date, service, model, outcome, latency_ms, input_tokens, output_tokens, est_cost_micros, items_sent, items_accepted)
+		VALUES ($1, '2026-03-04', 'receipt', 'claude-haiku-5-5', 'accepted', 900, 3000, 600, 4000, 1, 12)`,
+		app.Clock.Now()); err != nil {
+		t.Fatal(err)
+	}
+	got := aiAt(t, app.SignInAsSuperAdmin("admin@example.com"), "7d")
+
+	today := got.Days[len(got.Days)-1].Services
+	if today.Receipt.Outcomes.Accepted != 1 || today.Receipt.EstCostMicros != 4000 {
+		t.Errorf("receipt = %+v, want one accepted call of 4000 micro-USD", today.Receipt)
+	}
+	if today.Voice != (admin.ServiceDay{}) {
+		t.Errorf("voice = %+v, want zero", today.Voice)
+	}
+}
+
 func TestAIAnswersWithACategorizerRowAndCountsItsCost(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
@@ -400,7 +481,7 @@ func TestAILeaksNoPersonalDataAndHasAKnownKeySet(t *testing.T) {
 	// The whole key set is known, so a new field must be added here on purpose.
 	keys := map[string]bool{}
 	walk(decoded, func(k string) { keys[k] = true }, func(string) {})
-	for _, k := range []string{"range", "from", "to", "costIsEstimate", "days", "date", "services", "allocator", "explainer", "categorizer", "voice",
+	for _, k := range []string{"range", "from", "to", "costIsEstimate", "days", "date", "services", "allocator", "explainer", "categorizer", "voice", "receipt", "chat",
 		"outcomes", "accepted", "rejected_by_referee", "invalid_response", "timeout", "error", "skipped_cap", "skipped_budget",
 		"latencyP50Ms", "latencyMaxMs", "inputTokens", "outputTokens", "estCostMicros", "uncostedCalls",
 		"monthToDate", "month", "limitMicros", "dailyCapPerHome",

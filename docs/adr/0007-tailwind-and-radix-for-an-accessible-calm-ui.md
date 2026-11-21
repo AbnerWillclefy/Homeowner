@@ -1,5 +1,7 @@
 # Tailwind and Radix for an accessible, calm UI
 
+> Amended by [ADR 0022](0022-a-shared-bedrock-design-system-amends-0007-and-0009-for-adopting-apps.md) for apps that adopt Bedrock; `web/` keeps this decision until its migration epic.
+
 The PWA's UI is built with Tailwind CSS v4 over semantic design tokens, native HTML elements first, and Radix Primitives only for widgets native HTML cannot make accessible. The target is WCAG 2.2 AA across the app, in a look that is calm and native-feeling, because Residents open it on low-Energy days and the product advises and never commands.
 
 ## Decision

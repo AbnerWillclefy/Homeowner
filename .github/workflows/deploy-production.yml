@@ -8,6 +8,7 @@ on:
 permissions:
   id-token: write
   contents: read
+  actions: read # the changes job reads the last successful run
 
 # Promotions never interleave migrations and applies.
 concurrency:
@@ -15,22 +16,51 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Decides which jobs below run. The base is the last successful run of this workflow
+  # on production, not the push's "before" commit: a dropped or failed run's changes must still
+  # deploy next time. No base (a manual run, no earlier success, a rewritten branch) deploys everything.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.apps.outputs.api }}
+      web: ${{ steps.apps.outputs.web }}
+      admin: ${{ steps.apps.outputs.admin }}
+      revenue: ${{ steps.apps.outputs.revenue }}
+      frontends: ${{ steps.apps.outputs.frontends }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: apps
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          base=""
+          if [ "$EVENT" = push ]; then
+            base=$(gh run list --workflow deploy-production.yml --branch production --status success \
+              --limit 1 --json headSha --jq '.[0].headSha // empty') || base=""
+          fi
+          echo "Diffing against: ${base:-nothing, so deploying everything}"
+          keys=$(.github/scripts/changed-apps.sh "$base")
+          any() { local k; for k in "$@"; do grep -qx "$k=true" <<<"$keys" && { echo true; return; }; done; echo false; }
+          # infra/ fans out: Terraform outputs (API URL, Cognito values) are baked into every bundle
+          {
+            echo "api=$(any backend infra)"
+            echo "web=$(any web infra)"
+            echo "admin=$(any admin infra)"
+            echo "revenue=$(any revenue infra)"
+            echo "frontends=$(any web admin infra revenue)"
+          } | tee -a "$GITHUB_OUTPUT"
+
   api:
+    needs: changes
+    if: ${{ needs.changes.outputs.api == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Holds the production-only NEON_API_KEY, restricted to the production branch.
     environment: production
-    outputs:
-      api_url: ${{ steps.out.outputs.api_url }}
-      web_url: ${{ steps.out.outputs.web_url }}
-      web_bucket_name: ${{ steps.out.outputs.web_bucket_name }}
-      web_distribution_id: ${{ steps.out.outputs.web_distribution_id }}
-      admin_url: ${{ steps.out.outputs.admin_url }}
-      admin_bucket_name: ${{ steps.out.outputs.admin_bucket_name }}
-      admin_distribution_id: ${{ steps.out.outputs.admin_distribution_id }}
-      cognito_client_id: ${{ steps.out.outputs.cognito_client_id }}
-      cognito_region: ${{ steps.out.outputs.cognito_region }}
-      cognito_password_policy: ${{ steps.out.outputs.cognito_password_policy }}
     env:
       AWS_REGION: ${{ vars.AWS_REGION }}
       NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
@@ -148,6 +178,9 @@ jobs:
             echo "admin_url=$(terraform output -raw admin_url)"
             echo "admin_bucket_name=$(terraform output -raw admin_bucket_name)"
             echo "admin_distribution_id=$(terraform output -raw admin_distribution_id)"
+            echo "revenue_url=$(terraform output -raw revenue_url)"
+            echo "revenue_bucket_name=$(terraform output -raw revenue_bucket_name)"
+            echo "revenue_distribution_id=$(terraform output -raw revenue_distribution_id)"
             echo "cognito_client_id=$(terraform output -raw cognito_client_id)"
             echo "cognito_region=$(terraform output -raw cognito_region)"
             echo "cognito_password_policy=$(terraform output -raw cognito_password_policy)"
@@ -177,19 +210,90 @@ jobs:
             echo "### Production admin"
             echo ""
             echo "URL: ${{ steps.out.outputs.admin_url }}"
+            echo ""
+            echo "### Production Revenue"
+            echo ""
+            echo "URL: ${{ steps.out.outputs.revenue_url }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # Builds the PWA against the API URL the apply just produced (it is baked
-  # into the bundle, hence a second job) and publishes it.
+  # Reads the URLs and ids from the last applied state, so a frontend-only change builds against
+  # the API already live. Read-only: no apply and no Neon key.
+  outputs:
+    needs: [changes, api]
+    if: ${{ !cancelled() && needs.changes.outputs.frontends == 'true' && contains(fromJSON('["success","skipped"]'), needs.api.result) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      api_url: ${{ steps.out.outputs.api_url }}
+      web_url: ${{ steps.out.outputs.web_url }}
+      web_bucket_name: ${{ steps.out.outputs.web_bucket_name }}
+      web_distribution_id: ${{ steps.out.outputs.web_distribution_id }}
+      admin_url: ${{ steps.out.outputs.admin_url }}
+      admin_bucket_name: ${{ steps.out.outputs.admin_bucket_name }}
+      admin_distribution_id: ${{ steps.out.outputs.admin_distribution_id }}
+      revenue_url: ${{ steps.out.outputs.revenue_url }}
+      revenue_bucket_name: ${{ steps.out.outputs.revenue_bucket_name }}
+      revenue_distribution_id: ${{ steps.out.outputs.revenue_distribution_id }}
+      cognito_client_id: ${{ steps.out.outputs.cognito_client_id }}
+      cognito_region: ${{ steps.out.outputs.cognito_region }}
+      cognito_password_policy: ${{ steps.out.outputs.cognito_password_policy }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      TF_IN_AUTOMATION: "true"
+    defaults:
+      run:
+        working-directory: infra/production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.PRODUCTION_AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.10.5"
+          terraform_wrapper: false
+
+      - name: Terraform init
+        run: |
+          account_id=$(aws sts get-caller-identity --query Account --output text)
+          terraform init -input=false \
+            -backend-config="bucket=homeowner-tfstate-${account_id}" \
+            -backend-config="region=${AWS_REGION}"
+
+      - name: Read Terraform outputs
+        id: out
+        run: |
+          {
+            echo "api_url=$(terraform output -raw api_url)"
+            echo "web_url=$(terraform output -raw web_url)"
+            echo "web_bucket_name=$(terraform output -raw web_bucket_name)"
+            echo "web_distribution_id=$(terraform output -raw web_distribution_id)"
+            echo "admin_url=$(terraform output -raw admin_url)"
+            echo "admin_bucket_name=$(terraform output -raw admin_bucket_name)"
+            echo "admin_distribution_id=$(terraform output -raw admin_distribution_id)"
+            echo "revenue_url=$(terraform output -raw revenue_url)"
+            echo "revenue_bucket_name=$(terraform output -raw revenue_bucket_name)"
+            echo "revenue_distribution_id=$(terraform output -raw revenue_distribution_id)"
+            echo "cognito_client_id=$(terraform output -raw cognito_client_id)"
+            echo "cognito_region=$(terraform output -raw cognito_region)"
+            echo "cognito_password_policy=$(terraform output -raw cognito_password_policy)"
+          } >> "$GITHUB_OUTPUT"
+
+  # Builds the PWA against the API URL in the Terraform outputs (it is baked
+  # into the bundle, hence a separate job) and publishes it.
   web:
-    needs: api
+    needs: [changes, outputs]
+    if: ${{ !cancelled() && needs.outputs.result == 'success' && needs.changes.outputs.web == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      WEB_URL: ${{ needs.api.outputs.web_url }}
-      API_URL: ${{ needs.api.outputs.api_url }}
-      BUCKET: ${{ needs.api.outputs.web_bucket_name }}
-      DISTRIBUTION_ID: ${{ needs.api.outputs.web_distribution_id }}
+      WEB_URL: ${{ needs.outputs.outputs.web_url }}
+      API_URL: ${{ needs.outputs.outputs.api_url }}
+      BUCKET: ${{ needs.outputs.outputs.web_bucket_name }}
+      DISTRIBUTION_ID: ${{ needs.outputs.outputs.web_distribution_id }}
     defaults:
       run:
         working-directory: web
@@ -214,7 +318,7 @@ jobs:
       # the five keys of the web contract.
       - name: Check the password policy
         env:
-          VITE_PASSWORD_POLICY: ${{ needs.api.outputs.cognito_password_policy }}
+          VITE_PASSWORD_POLICY: ${{ needs.outputs.outputs.cognito_password_policy }}
         run: |
           echo "VITE_PASSWORD_POLICY=${VITE_PASSWORD_POLICY}"
           printf '%s' "$VITE_PASSWORD_POLICY" | jq -e '
@@ -230,9 +334,9 @@ jobs:
         env:
           VITE_API_BASE_URL: ${{ env.API_URL }}
           # Public identifiers of the Cognito app client, not secrets.
-          VITE_COGNITO_CLIENT_ID: ${{ needs.api.outputs.cognito_client_id }}
-          VITE_COGNITO_REGION: ${{ needs.api.outputs.cognito_region }}
-          VITE_PASSWORD_POLICY: ${{ needs.api.outputs.cognito_password_policy }}
+          VITE_COGNITO_CLIENT_ID: ${{ needs.outputs.outputs.cognito_client_id }}
+          VITE_COGNITO_REGION: ${{ needs.outputs.outputs.cognito_region }}
+          VITE_PASSWORD_POLICY: ${{ needs.outputs.outputs.cognito_password_policy }}
 
       # Cache headers differ per file kind, so upload in passes:
       # fingerprinted assets are immutable, the app shell and service worker
@@ -306,18 +410,37 @@ jobs:
           echo "access-control-allow-origin: $acao"
           [ "$acao" = "${WEB_URL}" ]
 
-  # Builds the admin app against the API URL the apply just produced and
+  # Builds the admin app against the API URL in the Terraform outputs and
   # publishes it to this environment's own admin bucket, with this
   # workflow's own deploy role. The other environment is only a URL here.
   admin:
-    needs: api
+    needs: [changes, outputs]
+    if: ${{ !cancelled() && needs.outputs.result == 'success' && needs.changes.outputs.admin == 'true' }}
     uses: ./.github/workflows/deploy-admin.yml
     with:
       environment: production
       role_to_assume: ${{ vars.PRODUCTION_AWS_DEPLOY_ROLE_ARN }}
-      admin_url: ${{ needs.api.outputs.admin_url }}
-      api_url: ${{ needs.api.outputs.api_url }}
-      bucket: ${{ needs.api.outputs.admin_bucket_name }}
-      distribution_id: ${{ needs.api.outputs.admin_distribution_id }}
-      cognito_client_id: ${{ needs.api.outputs.cognito_client_id }}
-      cognito_region: ${{ needs.api.outputs.cognito_region }}
+      admin_url: ${{ needs.outputs.outputs.admin_url }}
+      api_url: ${{ needs.outputs.outputs.api_url }}
+      bucket: ${{ needs.outputs.outputs.admin_bucket_name }}
+      distribution_id: ${{ needs.outputs.outputs.admin_distribution_id }}
+      cognito_client_id: ${{ needs.outputs.outputs.cognito_client_id }}
+      cognito_region: ${{ needs.outputs.outputs.cognito_region }}
+
+  # Builds the Revenue app against the API URL in the Terraform outputs and
+  # publishes it to this environment's own Revenue bucket, with this
+  # workflow's own deploy role.
+  revenue:
+    needs: [changes, outputs]
+    if: ${{ !cancelled() && needs.outputs.result == 'success' && needs.changes.outputs.revenue == 'true' }}
+    uses: ./.github/workflows/deploy-revenue.yml
+    with:
+      environment: production
+      role_to_assume: ${{ vars.PRODUCTION_AWS_DEPLOY_ROLE_ARN }}
+      revenue_url: ${{ needs.outputs.outputs.revenue_url }}
+      api_url: ${{ needs.outputs.outputs.api_url }}
+      bucket: ${{ needs.outputs.outputs.revenue_bucket_name }}
+      distribution_id: ${{ needs.outputs.outputs.revenue_distribution_id }}
+      cognito_client_id: ${{ needs.outputs.outputs.cognito_client_id }}
+      cognito_region: ${{ needs.outputs.outputs.cognito_region }}
+      cognito_password_policy: ${{ needs.outputs.outputs.cognito_password_policy }}

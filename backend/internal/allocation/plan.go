@@ -43,12 +43,20 @@ func PeopleNeeded(t Task) int {
 	return 1
 }
 
+// responsibleAllows is the one-person responsibility rule: true when Nobody is
+// responsible, when the Task is two-person (that rule is about the pair, see
+// Plan and Check), or when the Resident is the responsible one.
+func responsibleAllows(r Resident, t Task) bool {
+	return t.Responsible == "" || PeopleNeeded(t) > 1 || r.ID == t.Responsible
+}
+
 // Eligible reports whether the Resident may be given the Task on the day by
-// the hard rules that do not depend on Energy: the Task's weekday and the
-// Resident's Restrictions. It reuses the helpers Plan and Check use, so the
-// three cannot disagree.
+// the hard rules that do not depend on Energy: the Task's weekday, the
+// Resident's Restrictions and, for a one-person Task, its responsible
+// Resident. It reuses the helpers Plan and Check use, so the three cannot
+// disagree.
 func Eligible(r Resident, t Task, day Date) bool {
-	return WeekdayAllowed(t, day) && !restricted(r, t)
+	return WeekdayAllowed(t, day) && !restricted(r, t) && responsibleAllows(r, t)
 }
 
 func restricted(r Resident, t Task) bool {
@@ -102,6 +110,12 @@ func lateness(t Task, today Date) int { return max(int(today-t.WindowStart), 0) 
 // A plan for a single Resident (a re-plan after a Check-in, or "get my tasks
 // right away") has one candidate per Task, so Preference does not reorder their
 // Tasks and no Preference reason appears.
+//
+// A Task with a responsible Resident is the exception to "best fitting": a
+// one-person Task goes to them, a two-person Task to them plus the best other
+// fitting Resident. When they do not fit (absent, restricted, too little
+// Energy) it waits with ReasonWaitingForResponsible; a two-person Task whose
+// responsible Resident fits but has no partner is ReasonTwoPersonDeferred.
 func Plan(s State) (Result, error) {
 	residents := uniqueResidents(s.Residents)
 	slices.SortFunc(residents, func(a, b Resident) int { return cmp.Compare(a.ID, b.ID) })
@@ -132,11 +146,22 @@ func Plan(s State) (Result, error) {
 			res.Pool = append(res.Pool, PoolEntry{t.ID, ReasonWeekdayNotAllowed})
 			continue
 		}
+		ri := -1
+		if t.Responsible != "" {
+			ri = slices.IndexFunc(residents, func(r Resident) bool { return r.ID == t.Responsible })
+			if ri < 0 || restricted(residents[ri], t) || left[ri] < t.Effort {
+				res.Pool = append(res.Pool, PoolEntry{t.ID, ReasonWaitingForResponsible})
+				continue
+			}
+		}
 		// The fitting Residents, most Energy left first, ties by Resident ID
 		// (residents is sorted by ID and the sort is stable).
 		var fits []int
 		allRestricted := len(residents) > 0
 		for i, r := range residents {
+			if i == ri {
+				continue // already placed; the others are only its partner.
+			}
 			if restricted(r, t) {
 				continue
 			}
@@ -147,12 +172,15 @@ func Plan(s State) (Result, error) {
 		}
 		slices.SortStableFunc(fits, func(a, b int) int { return compareCandidates(residents[a], residents[b], left[a], left[b], t) })
 		need := PeopleNeeded(t)
+		if ri >= 0 {
+			need-- // the responsible Resident is already one of the people.
+		}
 		if len(fits) < need {
 			why := ReasonNoEnergyLeft
 			switch {
-			case allRestricted:
+			case allRestricted && ri < 0:
 				why = ReasonRestrictedForAll
-			case need > 1:
+			case PeopleNeeded(t) > 1:
 				why = ReasonTwoPersonDeferred
 			}
 			res.Pool = append(res.Pool, PoolEntry{t.ID, why})
@@ -162,7 +190,11 @@ func Plan(s State) (Result, error) {
 		if r, ok := decidingReason(residents, left, fits[:need], fits[need:], t); ok {
 			why = r
 		}
-		for _, i := range fits[:need] {
+		chosen := fits[:need]
+		if ri >= 0 {
+			chosen = append([]int{ri}, chosen...)
+		}
+		for _, i := range chosen {
 			left[i] -= t.Effort
 			res.DayPlan.Assignments = append(res.DayPlan.Assignments,
 				Assignment{t.ID, residents[i].ID, why})

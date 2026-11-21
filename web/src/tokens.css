@@ -28,6 +28,35 @@
   --color-chart-muted: #6b7a73;
   --color-chart-track: #e3e8e4;
 
+  /* Spending Category colours (DESIGN.md): a colour for the ring part, bar fill and icon stroke, and a tint for
+     the icon tile. Only for charts split by Spending Category. */
+  --color-spend-housing: #2f6f4f;
+  --color-spend-housing-tint: #dcebe3;
+  --color-spend-household-bills: #a3740f;
+  --color-spend-household-bills-tint: #f5ead0;
+  --color-spend-groceries: #c05f22;
+  --color-spend-groceries-tint: #f8e2d3;
+  --color-spend-eating-out: #b5424b;
+  --color-spend-eating-out-tint: #f5dadc;
+  --color-spend-transport: #2d6aa3;
+  --color-spend-transport-tint: #dae6f2;
+  --color-spend-health: #a8437a;
+  --color-spend-health-tint: #f3dbe8;
+  --color-spend-education: #5a6ad6;
+  --color-spend-education-tint: #e1e3f6;
+  --color-spend-leisure: #1f7f8c;
+  --color-spend-leisure-tint: #d5ebee;
+  --color-spend-shopping: #8a5a3a;
+  --color-spend-shopping-tint: #ece0d7;
+  --color-spend-subscriptions: #4a3d9c;
+  --color-spend-subscriptions-tint: #e5e2f5;
+  --color-spend-pets: #8c4f9e;
+  --color-spend-pets-tint: #efe0f3;
+  --color-spend-taxes-fees: #56656d;
+  --color-spend-taxes-fees-tint: #e2e6e8;
+  --color-spend-other: #6b7a73;
+  --color-spend-other-tint: #e8ebe9;
+
   /* A toast fades in; used behind motion-safe: only. Its keyframes are in index.css. */
   --animate-toast-in: toast-in 150ms ease-out;
 
@@ -75,6 +104,32 @@
   --color-chart-ink: #cdd6d1;
   --color-chart-muted: #8f9d96;
   --color-chart-track: #2b3631;
+  --color-spend-housing: #6fcf9f;
+  --color-spend-housing-tint: #24382e;
+  --color-spend-household-bills: #e0b24a;
+  --color-spend-household-bills-tint: #3d331a;
+  --color-spend-groceries: #f0995e;
+  --color-spend-groceries-tint: #43301f;
+  --color-spend-eating-out: #f08a92;
+  --color-spend-eating-out-tint: #452628;
+  --color-spend-transport: #7fb2e6;
+  --color-spend-transport-tint: #22344a;
+  --color-spend-health: #e88fbf;
+  --color-spend-health-tint: #44263a;
+  --color-spend-education: #8ea0f5;
+  --color-spend-education-tint: #2b2f4d;
+  --color-spend-leisure: #6cc3cf;
+  --color-spend-leisure-tint: #1d3a3e;
+  --color-spend-shopping: #cfa585;
+  --color-spend-shopping-tint: #3a2e25;
+  --color-spend-subscriptions: #c3b0f2;
+  --color-spend-subscriptions-tint: #2f2b4a;
+  --color-spend-pets: #cf9be0;
+  --color-spend-pets-tint: #3a2a40;
+  --color-spend-taxes-fees: #a9b8c0;
+  --color-spend-taxes-fees-tint: #2b3236;
+  --color-spend-other: #8f9d96;
+  --color-spend-other-tint: #2b3631;
   --color-welcome-from: #17251e;
   --color-welcome-to: #1d1b2e;
 

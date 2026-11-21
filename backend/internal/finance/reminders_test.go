@@ -28,14 +28,15 @@ func remindersApp(t *testing.T, at time.Time) (*apitest.App, *apitest.Client) {
 	app := apitest.Start(t, apitest.WithFinance(apitest.FinanceTestKey(), "ana@example.com"), apitest.WithPush("pub"))
 	app.Clock.Set(at)
 	ana := app.SignInAs("ana@example.com")
-	subscribeDevice(t, ana)
+	subscribeDevice(t, ana, "revenue", deviceURL)
 	return app, ana
 }
 
-func subscribeDevice(t *testing.T, c *apitest.Client) {
+func subscribeDevice(t *testing.T, c *apitest.Client, appName, endpoint string) {
 	t.Helper()
 	r := c.Put("/push/subscription", map[string]any{
-		"endpoint": deviceURL,
+		"app":      appName,
+		"endpoint": endpoint,
 		"keys":     map[string]string{"p256dh": testP256dh, "auth": testAuth},
 	})
 	if r.Status >= 300 {
@@ -89,7 +90,7 @@ func TestReminderKindsFollowTheDueDate(t *testing.T) {
 			addBill(t, ana, "Aluguel", c.dueDay)
 			oneKind(t, runKinds(t, app), c.want)
 			p := app.Push.Sent()[0].Payload
-			if p.URL != "/finances" || p.Title == "" || p.Body == "" {
+			if p.URL != "/bills" || p.Title == "" || p.Body == "" {
 				t.Errorf("payload = %+v", p)
 			}
 			if text := p.Title + p.Body; strings.Contains(text, "Aluguel") || strings.Contains(text, "1234") {
@@ -97,6 +98,35 @@ func TestReminderKindsFollowTheDueDate(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBillRemindersReachOnlyRevenueDevices(t *testing.T) {
+	t.Parallel()
+	app, ana := remindersApp(t, afterFixtures)
+	const homeownerURL = "https://push.example.com/send/home"
+	subscribeDevice(t, ana, "homeowner", homeownerURL)
+	addBill(t, ana, "Aluguel", 8)
+	oneKind(t, runKinds(t, app), "bill_due_today")
+	if got := app.Push.Sent()[0].Subscription.Endpoint; got != deviceURL {
+		t.Errorf("sent to %s, want the Revenue device", got)
+	}
+}
+
+func TestAUserWithOnlyHomeownerDevicesGetsNoBillReminderAndNoClaim(t *testing.T) {
+	t.Parallel()
+	app, ana := remindersApp(t, afterFixtures)
+	if _, err := app.DB.Exec(context.Background(), `UPDATE push_subscriptions SET app = 'homeowner'`); err != nil {
+		t.Fatal(err)
+	}
+	addBill(t, ana, "Aluguel", 8)
+	if got := runKinds(t, app); len(got) != 0 {
+		t.Errorf("sent %v to a Homeowner device, want nothing", got)
+	}
+	if n := scalar(t, app, `SELECT count(*) FROM finance_bill_reminders`); n != 0 {
+		t.Errorf("ledger rows = %d, want 0", n)
+	}
+	subscribeDevice(t, ana, "revenue", "https://push.example.com/send/rev")
+	oneKind(t, runKinds(t, app), "bill_due_today")
 }
 
 func TestABillDueLaterSendsNothing(t *testing.T) {
@@ -162,7 +192,7 @@ func TestNoDeviceMeansNoReminderAndNoClaim(t *testing.T) {
 	if n := scalar(t, app, `SELECT count(*) FROM finance_bill_reminders`); n != 0 {
 		t.Errorf("ledger rows = %d, want 0", n)
 	}
-	subscribeDevice(t, ana)
+	subscribeDevice(t, ana, "revenue", deviceURL)
 	oneKind(t, runKinds(t, app), "bill_due_soon")
 }
 

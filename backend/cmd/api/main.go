@@ -21,6 +21,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/nfce"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/photos"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
@@ -96,7 +97,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	}
 	defer pool.Close()
 
-	deps := server.Deps{DB: pool, Clock: clock.System{}, Logger: log, CORSAllowedOrigins: cfg.CORSAllowedOrigins, Environment: cfg.Environment, FinanceAllowlist: cfg.FinanceAllowlist, FinanceKey: cfg.FinanceKey, Pluggy: pluggy.NewHTTP(cfg.PluggyBaseURL),
+	deps := server.Deps{DB: pool, Clock: clock.System{}, Logger: log, CORSAllowedOrigins: cfg.CORSAllowedOrigins, Environment: cfg.Environment, FinanceAllowlist: cfg.FinanceAllowlist, FinanceKey: cfg.FinanceKey, Pluggy: pluggy.NewHTTP(cfg.PluggyBaseURL), NFCe: nfce.NewHTTP(nfce.Hosts),
 		LLMDailyCapPerHome: cfg.LLMDailyCapPerHome, LLMMonthlySpendLimitMicros: cfg.LLMMonthlySpendLimitMicros}
 	if cfg.VAPIDEnabled() {
 		deps.Push = push.NewWebPushSender(cfg.VAPIDPublicKey, cfg.VAPIDPrivateKey, cfg.VAPIDSubject)
@@ -128,6 +129,22 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		deps.VoiceModel = cfg.LLMModel
 	} else {
 		log.Warn("voice disabled")
+	}
+
+	// Reading a receipt photo is not behind VOICE_ENABLED: the model key is what it needs.
+	if cfg.AnthropicAPIKey != "" {
+		deps.ReceiptReader = llmalloc.NewAnthropic(cfg.AnthropicAPIKey, cfg.LLMModel)
+		deps.ReceiptModel = cfg.LLMModel
+	} else {
+		log.Warn("receipt photos disabled: no Anthropic key")
+	}
+
+	// The finance allowlist is the chat's gate; the model key is what it needs.
+	if cfg.AnthropicAPIKey != "" {
+		deps.Chat = llmalloc.NewAnthropic(cfg.AnthropicAPIKey, cfg.LLMModel)
+		deps.ChatModel = cfg.LLMModel
+	} else {
+		log.Warn("chat disabled")
 	}
 
 	srv := &http.Server{

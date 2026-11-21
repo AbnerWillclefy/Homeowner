@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Despensa</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="rv-phone" data-theme="{{theme}}">
+<header class="rv-phone__head"><div class="rv-phone__headrow"><div class="rv-head__text"><h1 class="rv-title">{{t.title}}</h1><span class="rv-sub">{{t.sub}}</span></div><div class="rv-row" style="gap: 8px; flex-wrap: nowrap"><a href="MobileShoppingList.dc.html" class="br-iconbtn" aria-label="{{t.list}}"><i class="ri ri-cart" aria-hidden="true"></i></a><a href="MobileAddReceipt.dc.html" class="br-iconbtn rv-iconbtn--primary" aria-label="{{t.addReceipt}}"><i class="ri ri-plus" aria-hidden="true"></i></a></div></div></header>
+<div class="rv-phone__scroll rv-phone__scroll--fab">
+
+<sc-if value="{{isError}}" hint-placeholder-val="{{ false }}">
+<div class="br-banner br-banner--danger" role="alert"><i class="ri ri-alert br-icon" aria-hidden="true"></i><span class="br-banner__text">{{t.error}}</span><button class="br-btn br-btn--ghost br-btn--sm"><i class="ri ri-refresh" aria-hidden="true"></i>{{t.retry}}</button></div>
+</sc-if>
+
+<sc-if value="{{isLoading}}" hint-placeholder-val="{{ false }}">
+<section class="br-card br-card--compact" aria-busy="true" aria-label="{{t.loading}}">
+<div class="br-skel" style="height: 20px; width: 40%"></div>
+<div class="br-skel" style="height: 48px"></div><div class="br-skel" style="height: 48px"></div><div class="br-skel" style="height: 48px"></div><div class="br-skel" style="height: 48px"></div>
+</section>
+</sc-if>
+
+<sc-if value="{{isEmpty}}" hint-placeholder-val="{{ false }}">
+<div class="br-empty" style="padding: 32px 0 0"><span class="br-empty__icon"><i class="ri ri-lg ri-package" aria-hidden="true"></i></span><span class="br-empty__title">{{t.emptyTitle}}</span><span class="br-empty__text">{{t.emptyText}}</span></div>
+</sc-if>
+
+<sc-if value="{{isReady}}" hint-placeholder-val="{{ true }}">
+<section class="br-card br-card--compact">
+<div class="br-card__head"><span class="br-card__label">{{t.outHead}}</span><span class="br-badge br-badge--danger">3</span></div>
+<div class="br-list">
+<sc-for list="{{out}}" as="i" hint-placeholder-count="3">
+<div class="br-listrow" style="cursor: default; grid-template-columns: minmax(0, 1fr)"><div class="br-listrow__main"><span class="br-listrow__title">{{i.name}}</span><span class="br-listrow__meta">{{i.meta}}</span></div></div>
+</sc-for>
+</div>
+</section>
+<section class="br-card br-card--compact">
+<div class="br-card__head"><span class="br-card__label">{{t.inHead}}</span><span class="br-badge br-badge--neutral">21</span></div>
+<div class="br-list">
+<sc-for list="{{stock}}" as="i" hint-placeholder-count="4">
+<div class="br-listrow" style="grid-template-columns: minmax(0, 1fr) auto; gap: 8px">
+<a href="MobilePantryItem.dc.html" class="br-listrow__main"><span class="br-listrow__title">{{i.name}}</span><span class="br-listrow__meta">{{i.meta}}</span></a>
+<button class="br-iconbtn" aria-label="{{t.ranOutOf}} {{i.name}}"><i class="ri ri-package-x" aria-hidden="true"></i></button>
+</div>
+</sc-for>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{hasField}}" hint-placeholder-val="{{ true }}">
+<form class="rv-row" style="flex-wrap: nowrap" aria-label="{{t.addItem}}"><label class="br-field" style="flex: 1"><span class="br-field__label">{{t.addItem}}</span><span class="br-input"><input placeholder="{{t.addPh}}"></span></label><button class="br-btn br-btn--secondary br-btn--lg" style="align-self: flex-end" type="submit"><i class="ri ri-plus" aria-hidden="true"></i>{{t.add}}</button></form>
+</sc-if>
+</div>
+
+<sc-if value="{{toast}}" hint-placeholder-val="{{ false }}"><div class="rv-toastwrap rv-toastwrap--fab"><div class="br-toast" role="status"><i class="ri ri-check br-toast__icon--positive" aria-hidden="true"></i><span class="br-toast__text">{{t.toast}}</span><button class="br-btn br-btn--ghost br-btn--sm">{{t.undo}}</button></div></div></sc-if>
+
+<a href="MobileChat.dc.html" class="br-btn br-btn--primary rv-fab" aria-label="Perguntar"><i class="ri ri-chat" aria-hidden="true"></i>Perguntar</a>
+<nav class="br-bottombar" aria-label="{{t.nav}}">
+<a href="MobileOverview.dc.html" class="br-tab"><i class="ri ri-lg ri-dashboard" aria-hidden="true"></i>{{t.tabHome}}</a>
+<a href="MobileTransactions.dc.html" class="br-tab"><i class="ri ri-lg ri-receipt" aria-hidden="true"></i>{{t.tabTx}}</a>
+<a href="MobilePlan.dc.html" class="br-tab"><i class="ri ri-lg ri-target" aria-hidden="true"></i>{{t.tabPlan}}</a>
+<a href="MobileMore.dc.html" class="br-tab" aria-current="page"><i class="ri ri-lg ri-more" aria-hidden="true"></i>{{t.tabMore}}</a>
+</nav>
+
+<sc-if value="{{menu}}" hint-placeholder-val="{{ false }}">
+<div class="rv-overlay"><div style="flex: 1"></div>
+<div class="br-sheet br-sheet--bottom" role="dialog" aria-label="{{t.moreOf}} Arroz" style="padding-bottom: 32px"><span class="br-sheet__grab"></span>
+<div class="br-sheet__head"><span class="br-sheet__title">Arroz</span><button class="br-iconbtn br-iconbtn--sm" aria-label="{{t.close}}"><i class="ri ri-x" aria-hidden="true"></i></button></div>
+<div class="br-menu" role="menu" style="box-shadow: none; border: 0; padding: 0">
+<button class="br-menu__item" role="menuitem"><i class="ri ri-pencil" aria-hidden="true"></i>{{t.rename}}</button>
+<button class="br-menu__item" role="menuitemcheckbox" aria-checked="true"><i class="ri ri-repeat" aria-hidden="true"></i>{{t.always}}<i class="ri ri-check br-menu__check" aria-hidden="true"></i></button>
+<div class="br-menu__sep"></div>
+<button class="br-menu__item br-menu__item--danger" role="menuitem"><i class="ri ri-trash" aria-hidden="true"></i>{{t.delete}}</button>
+</div></div></div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"locale":{"editor":"enum","options":["pt-BR","en"],"default":"pt-BR"},"view":{"editor":"enum","options":["ready","empty","loading","error"],"default":"ready"},"overlay":{"editor":"enum","options":["none","toast","menu"],"default":"none"},"$preview":{"width":390,"height":844}}'>
+// Pantry, phone. Wording: the pt-BR column is the source; the en column is the parity check.
+const COPY = {
+  'pt-BR': { title: 'Despensa', sub: '24 itens · 3 acabaram', subEmpty: '0 itens', outHead: 'Acabaram', inHead: 'Na despensa', out: 'Acabou', ranOut: 'Acabou', ranOutOf: 'Marcar como acabou:', always: 'Sempre comprar', rename: 'Renomear', delete: 'Excluir', moreOf: 'Mais ações de', close: 'Fechar', addItem: 'Novo item', addPh: 'Ex.: arroz', add: 'Incluir', addReceipt: 'Adicionar nota', list: 'Lista de compras', undo: 'Desfazer', toast: 'Arroz acabou', loading: 'Carregando a despensa', error: 'Não deu para carregar a despensa.', retry: 'Tentar', emptyTitle: 'Despensa vazia', emptyText: 'Inclua um item ou adicione uma nota para ela se encher sozinha.', nav: 'Principal', tabHome: 'Início', tabTx: 'Lançamentos', tabPlan: 'Planejar', tabMore: 'Mais', fixed: 'sempre comprar', lasts: 'dura ~{n} dias', lastsNone: 'ainda sem média', outAgo: 'acabou há {n} dias' },
+  en: { title: 'Pantry', sub: '24 items · 3 ran out', subEmpty: '0 items', outHead: 'Ran out', inHead: 'In the pantry', out: 'Ran out', ranOut: 'Ran out', ranOutOf: 'Mark as ran out:', always: 'Always buy', rename: 'Rename', delete: 'Delete', moreOf: 'More actions for', close: 'Close', addItem: 'New item', addPh: 'E.g. rice', add: 'Add', addReceipt: 'Add receipt', list: 'Shopping list', undo: 'Undo', toast: 'Rice ran out', loading: 'Loading the pantry', error: "Couldn't load the pantry.", retry: 'Retry', emptyTitle: 'Pantry is empty', emptyText: 'Add an item, or add a receipt and it fills itself.', nav: 'Main', tabHome: 'Home', tabTx: 'Transactions', tabPlan: 'Plan', tabMore: 'More', fixed: 'always buy', lasts: 'lasts ~{n} days', lastsNone: 'no average yet', outAgo: 'ran out {n} days ago' },
+};
+class Component extends DCLogic {
+  renderVals() {
+    const t = COPY[this.props.locale ?? 'pt-BR'];
+    const view = this.props.view ?? 'ready';
+    const overlay = this.props.overlay ?? 'none';
+    const n = (s, v) => s.replace('{n}', v);
+    return {
+      theme: this.props.theme ?? 'dark',
+      t: { ...t, sub: view === 'ready' ? t.sub : view === 'empty' ? t.subEmpty : '' },
+      isReady: view === 'ready', isEmpty: view === 'empty', isLoading: view === 'loading', isError: view === 'error',
+      hasField: view !== 'loading',
+      toast: overlay === 'toast', menu: overlay === 'menu',
+      out: [
+        { name: 'Leite', meta: n(t.outAgo, 2) },
+        { name: 'Café', meta: n(t.outAgo, 5) },
+        { name: 'Sabão em pó', meta: n(t.outAgo, 9) },
+      ],
+      stock: [
+        { name: 'Arroz', meta: n(t.lasts, 22) + ' · ' + t.fixed },
+        { name: 'Feijão', meta: n(t.lasts, 18) },
+        { name: 'Azeite', meta: t.lastsNone },
+        { name: 'Queijo minas', meta: n(t.lasts, 9) },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

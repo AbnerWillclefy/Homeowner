@@ -7,7 +7,7 @@ Agreed Brazilian Portuguese equivalents for the terms in [GLOSSARY.md](../GLOSSA
 - Informal "você", not "tu".
 - Domain terms are lower case in running pt-BR text, because Portuguese does not capitalise common nouns. The table keeps the English capitalised term as the key.
 - The "avoid" lists in GLOSSARY.md are English words. Their closest pt-BR calques are avoided too, for example "residência" and "domicílio" for Home. "Casa" is the literal sibling of the avoided English "House".
-- Keep "Homeowner" as is: it is the product's name.
+- Keep "Homeowner" as is: it is the product's name. "Revenue", the name of the app that holds Finances, stays as is too.
 
 ## Terms
 
@@ -37,6 +37,7 @@ Agreed Brazilian Portuguese equivalents for the terms in [GLOSSARY.md](../GLOSSA
 | Chore | afazer | atividade, trabalho, tarefa (a Task is "tarefa") | Plural "afazeres". Used in `profile.*` and the `chores.*` Chores screen. |
 | Preference | preferência | gosto | Like, neutral, dislike are "Gosto", "Neutro", "Não gosto". |
 | Restriction | restrição | limitação, requisito | Used in `profile.restrictions.*`. |
+| Responsible | responsável ("Responsável" as the Chore form field and in "Responsável: {name}" on the Chores list); Nobody is "Ninguém" | dono, encarregado, atribuído | The one morador Allocation proposes a Chore's Tasks to (one of the two for a two-person Chore); Ninguém by default; any morador can still take, complete or swap them; cleared when they leave the lar or get a lasting restrição on the Chore. "Dono" is avoided like the English "Owner", and like it already is for Resident. A pooled Task waiting for them reads "Aguardando {name}.", "Aguardando você." for the caller, "Aguardando o morador responsável." when the name is unknown. Used in `chores.form.responsible.*`, `chores.item.responsible` and `dayplan.pool.reason.waiting_for_responsible*`. |
 | Catalog | catálogo | modelos, biblioteca, padrões, predefinições | The fixed list of common Chores built into the app. Capitalised ("Catálogo") when it names the feature, as in "Adicionar do Catálogo". Used in `chores.catalog.*`, `chores.addFromCatalog` and `catalog.*`. The Catalog's Chore names are `catalog.<id>` and follow the Chore wording ("afazer", "cômodo" for a room). |
 | Category | categoria | tipo, área, etiqueta | The ten names are `category.*`; the Chore form label is `chores.form.category.label`. |
 | Demand | exigência | requisito, etiqueta, dificuldade | The four names are `demand.*`; the section heading is "Restrições" and the items name the Demand. On the Chore form the group is "Exigências" (`chores.form.demands.legend`). |
@@ -82,19 +83,41 @@ Finances is open only to Users on an allowlist. "Category" stays with Chores, so
 
 | GLOSSARY.md term | pt-BR | pt-BR words to avoid | Note |
 |---|---|---|---|
+| Revenue | Revenue | receita, app de finanças | The app's name, never translated and never a money term. Money coming in is "renda mensal". |
 | Transaction | lançamento | transação, movimentação | One movement of money on a Source. Plural "lançamentos". Pending native-speaker review. |
-| Source | fonte | conta, banco, conexão | Where Transactions come from (a bank account or card). Avoid "conta": it also means a bill and a User account. |
+| Source | fonte | conta, banco, conexão | Where Transactions come from (a bank account or card). Avoid "conta": it also means a bill and a User account. The User can rename one ("Renomear"); the bank's name stays beside it as "Banco: {bank}" and "Usar nome do banco" goes back to it. Used in `finances.sourceName.*`. |
 | Spending Category | categoria de gasto | categoria (alone), tag, etiqueta | Always "categoria de gasto" so it never reads as a Chore's category. |
-| Bill to pay | conta a pagar | fatura, boleto, dívida | Plural "contas a pagar". Money owed on a date. A credit card Source's bill is worked out by the app, not entered. |
+| Bill to pay | conta a pagar | fatura, boleto, dívida | Plural "contas a pagar". Money owed on a date. A credit card Source's bill ("fatura do cartão") is never entered: a closed one takes the bank's total, the open one is the app's sum of charges since the last closing plus known installments, and a card the bank sends no bills for keeps the app's sum. |
+| Manual card | cartão à mão | cartão falso, cartão offline, cartão manual | A credit card with no bank connection whose fatura the User types for each of the next 12 months; a month left blank repeats the one before. "Fatura digitada" is its meta line and "Pix para" names the person whose Pix is a transferência. Used in `manualCard.*` and `sources.card.manual*`. Pending native-speaker review. |
+| Note | nota | observação, comentário | Free text the User writes on a Transaction ("Nota" on the edit sheet); the sync never changes it, and every parcela of a parcelamento shares one. |
 | Installment plan | parcelamento | financiamento, empréstimo | A purchase paid in parts; each part is a "parcela". |
 | Summary (Finances view) | resumo | visão geral | The first Finances view. en-US "Summary". |
 | Monthly income | renda mensal | salário, receita, ganhos | What a User expects to receive each month. |
-| Leftover | sobra | saldo, resto, economia | What remains of the Monthly income after a month's commitments; can be negative. |
-| Planned spending | gasto previsto | orçamento, reserva, previsão | Spending a User sets aside for a coming month; lowers the Leftover. |
+| Leftover | sobra | saldo, resto, economia | The renda mensal minus card bills, other contas a pagar, installments off the card, gasto previsto, what was already spent off the card this month and the larger of the month's guardado and the aporte mensal; can be negative. Used in `finances.suggestion.*` ("A sobra de {month}"). On the Projeção it reads "Sobra pelo plano" beside "Sobra no ritmo atual". |
+| Daily allowance | pode gastar por dia | limite diário, orçamento diário, média diária | The sobra plus the gasto planejado, divided by the days left in the month, today included; absent without renda mensal. |
+| Pace | ritmo | média, ritmo habitual | Spending so far this month against a straight line from 0 to (renda mensal − sobra) on the last day. Not the "ritmo habitual" average of earlier months (`/daily`'s `average`). "Sobra no ritmo atual" is the Leftover at current pace, not this chart. |
+| Planned spending | gasto previsto | orçamento, reserva, previsão | What each categoria de gasto is still expected to take: its limite, or its gasto habitual when it has none, less what already counts in the month. Lowers the sobra. Used in `finances.commit.group.planned` and `plannedCurrent` ("Gasto previsto (o que falta dos limites)"). |
+| Usual spending | gasto habitual | média, gasto médio, ritmo | The median of a categoria de gasto's monthly spending over the 3 months before the current one. Plans the categorias sem limite. |
+| Leftover at current pace | sobra no ritmo atual | sobra projetada, ritmo (alone) | The sobra if every categoria de gasto planned its gasto habitual instead of its limite. Shown beside "Sobra pelo plano" on the Projeção, with how much to cut ("cortar") per categoria com limite. Not the Pace chart. |
+| Saving | guardado | investimento, economias, poupança, transferência | Money put aside, net of what is taken back; neither a gasto nor a transferência. The Transaction type, the Gastos group and the Leftover line all say "Guardado" (`finances.type.saving`, `finances.month.saving`, `finances.commit.group.saving`). "Economias" is the Savings tab, not this. |
 | Spending limit | limite | orçamento, teto, meta | A User's monthly cap for one Spending Category; en-US "limit". |
 | Investment | investimento | ativo, aplicação | Money put away, with a value and what it serves (reserve or Goals). |
 | Emergency reserve | reserva de emergência | poupança, fundo | The amount set aside for the unexpected; it has a target. |
 | Goal | objetivo | meta, sonho | Something saved toward, with a target amount. Not "meta": that reads as a Spending limit. |
 | Monthly contribution | aporte mensal | depósito, poupança mensal | What a User puts into savings each month. Sharing it among Goals is the "divisão do aporte", never "alocação". |
+
+## Pantry terms
+
+The Pantry is in Revenue, so these words come from `revenue/src/shared/i18n/catalogs.ts` (`nav.pantry`, `pantry.*`, `list.*`, `receipt.*`). Pending native-speaker review.
+
+| GLOSSARY.md term | pt-BR | pt-BR words to avoid | Note |
+|---|---|---|---|
+| Pantry | despensa ("Despensa" as the screen's name) | estoque, inventário, geladeira | The in-stock group is "Na despensa"; a deleted item "sai da despensa". |
+| Pantry item | item (plural "itens") | produto, mercadoria | "Novo item", "Editar item", "Excluir este item?". Its brand is "Marca preferida". |
+| Fixed item | sempre comprar ("Sempre comprar" as the checkbox, "sempre comprar" as the row badge) | item fixo, favorito, recorrente | Described by what it does, not named as a noun. |
+| Ran out | acabou (plural "acabaram") | esgotado, em falta, sem estoque | The button is "Acabou", the group "Acabaram", the row "acabou há {count} dias". Not "esgotado": that is the Drained Check-in level. |
+| Shopping list | lista de compras | lista de mercado, carrinho | The groceries Spending limit beside it is "limite de mercado" ("Sobra no limite de mercado"). |
+| Receipt | nota (short for "nota fiscal") | cupom, recibo, fatura | "Adicionar nota", "Ler QR da nota", "Nota já adicionada". The same word as a Transaction's Note; the two never share a screen, but the native speaker should confirm the overlap is acceptable. "Mercado" names the store ("receipt.store"). |
+| Access key | chave de acesso | código, número da nota | "Chave de acesso ou link", "Colar a chave"; "44 números, abaixo do QR". |
 
 Apple and Android labels must match what the device shows in pt-BR. They are not yet verified on a pt-BR device.

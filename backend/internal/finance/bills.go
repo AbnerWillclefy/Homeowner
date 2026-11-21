@@ -2,6 +2,7 @@ package finance
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -14,7 +15,7 @@ import (
 )
 
 const (
-	maxBillName  = 60
+	maxNameRunes = 60
 	maxBillCents = 1_000_000_000_000
 )
 
@@ -59,23 +60,27 @@ func (h *Handler) DeleteBill(w http.ResponseWriter, r *http.Request) {
 	h.answer(w, found, err, "delete bill", func() { w.WriteHeader(http.StatusNoContent) })
 }
 
-// ListBills answers GET /me/finance/bills?month=YYYY-MM: every Bill with its
-// due date in that month and whether the month is paid.
+// ListBills answers GET /me/finance/bills?month=YYYY-MM from BillsView.
 func (h *Handler) ListBills(w http.ResponseWriter, r *http.Request) {
-	from, _, ok := parseMonth(r.URL.Query().Get("month"))
+	bills, err := h.BillsView(r.Context(), identity.CurrentUser(r.Context()).ID, r.URL.Query().Get("month"))
+	h.writeView(w, bills, err)
+}
+
+// BillsView is every Bill of userID with its due date in `month` (YYYY-MM) and
+// whether the month is paid.
+func (h *Handler) BillsView(ctx context.Context, userID, month string) ([]MonthBill, error) {
+	from, _, ok := parseMonth(month)
 	if !ok {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid month")
-		return
+		return nil, errInvalidMonth
 	}
-	bills, err := h.store.MonthBills(r.Context(), identity.CurrentUser(r.Context()).ID, from)
+	bills, err := h.store.MonthBills(ctx, userID, from)
 	if err != nil {
-		httpx.InternalError(w, h.log, "finance: list bills", err)
-		return
+		return nil, fmt.Errorf("list bills: %w", err)
 	}
 	for i := range bills {
 		bills[i].DueDate = DueDate(from.Year(), from.Month(), bills[i].DueDay).Format(time.DateOnly)
 	}
-	httpx.WriteJSON(w, http.StatusOK, bills)
+	return bills, nil
 }
 
 // PayBill answers PUT /me/finance/bills/{id}/payments/{month}: paid by hand.
@@ -115,21 +120,31 @@ func (h *Handler) answer(w http.ResponseWriter, found bool, err error, what stri
 	}
 }
 
+// nameField trims a User-typed name and returns it with its fields.name error code, "" when valid.
+func nameField(raw string) (string, string) {
+	name := strings.TrimSpace(raw)
+	switch n := utf8.RuneCountInString(name); {
+	case n == 0:
+		return name, "required"
+	case n > maxNameRunes:
+		return name, "too_long"
+	case strings.IndexFunc(name, unicode.IsControl) >= 0:
+		return name, "invalid"
+	}
+	return name, ""
+}
+
 // billBody decodes and validates a Bill body; on failure it has answered.
 func (h *Handler) billBody(w http.ResponseWriter, r *http.Request) (BillRequest, bool) {
 	var req BillRequest
 	if !httpx.DecodeBody(w, r, &req, maxBodyBytes, true) {
 		return req, false
 	}
-	req.Name = strings.TrimSpace(req.Name)
 	fields := map[string]string{}
-	switch n := utf8.RuneCountInString(req.Name); {
-	case n == 0:
-		fields["name"] = "required"
-	case n > maxBillName:
-		fields["name"] = "too_long"
-	case strings.IndexFunc(req.Name, unicode.IsControl) >= 0:
-		fields["name"] = "invalid"
+	var code string
+	req.Name, code = nameField(req.Name)
+	if code != "" {
+		fields["name"] = code
 	}
 	if req.ExpectedCents < 1 || req.ExpectedCents > maxBillCents {
 		fields["expectedCents"] = "invalid"

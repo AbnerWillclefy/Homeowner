@@ -1,6 +1,6 @@
 # Architecture
 
-Homeowner helps the people who look after their own home share the housework fairly. Each day it proposes which open **Tasks** each **Resident** does without exceeding anyone's **Energy** (see [GLOSSARY.md](../../GLOSSARY.md) for the domain terms, in bold here). The full v1 spec is issue #1.
+Homeowner helps the people who look after their own home share the housework fairly. Each day it proposes which open **Tasks** each **Resident** does without exceeding anyone's **Energy** (see [GLOSSARY.md](../../GLOSSARY.md) for the domain terms, in bold here). The full v1 spec is issue #1. A second app, Revenue, shows a User on the finance allowlist their own money and keeps their Pantry, on the same backend.
 
 These pages describe the system **as built**. Anything the spec calls for that does not exist yet is marked planned.
 
@@ -13,6 +13,8 @@ These pages describe the system **as built**. Anything the spec calls for that d
 5. [Infrastructure and delivery](infrastructure.md): AWS, Terraform, CI/CD, cost.
 6. [The React PWA](web.md): its modules, localization, UI layer and data layer (query keys and cache writes).
 7. [The admin dashboard](admin.md): the maintainer's app per environment, its deploy, the super-admin guard and the `/admin/` routes.
+8. [Bedrock](bedrock.md): the shared design system package, its two entry points, the token flow, the showcase and its checks.
+9. [Revenue](revenue.md): the finance app on Bedrock, how it is built and deployed, sign-in and the `GET /me/finance` gate, Onboarding, language and theme, install and notifications (Bill reminders), its frame, its screens and the endpoints each calls, and the Pantry.
 
 ## Legend
 
@@ -47,6 +49,13 @@ In diagrams, solid boxes and lines are built; dashed boxes and lines are planned
 | [0018](../adr/0018-a-resident-can-re-date-a-completion-up-to-30-days-back.md) | A Resident can re-date a Completion up to 30 days back (amends 0014) |
 | [0019](../adr/0019-take-bank-data-from-pluggy-with-per-user-credentials-encrypted-by-the-app.md) | Take bank data from Pluggy with per-User credentials encrypted by the app |
 | [0020](../adr/0020-voice-commands-send-chore-titles-and-the-residents-words-behind-a-confirmation.md) | Voice commands send Chore titles and the Resident's words to the LLM, behind a confirmation |
+| [0021](../adr/0021-a-closed-card-bill-takes-the-banks-total.md) | A closed card bill takes the bank's total; the app computes only the open bill |
+| [0022](../adr/0022-a-shared-bedrock-design-system-amends-0007-and-0009-for-adopting-apps.md) | A shared Bedrock design system amends 0007 and 0009 for apps that adopt it |
+| [0023](../adr/0023-move-finances-into-a-second-installable-app-named-revenue.md) | Move Finances into a second installable app named Revenue |
+| [0024](../adr/0024-the-current-month-counts-the-card-bill-still-to-pay.md) | The current month counts the card bill still to pay: the closed one until paid, then the open one |
+| [0025](../adr/0025-responsibility-binds-allocation-not-residents.md) | Responsibility binds Allocation, not Residents |
+| [0026](../adr/0026-read-grocery-receipts-from-sefaz-with-an-ai-read-photo-as-a-confirmed-fallback.md) | Read grocery receipts from SEFAZ, with an AI-read photo as a confirmed fallback |
+| [0027](../adr/0027-the-finance-chat-sends-a-users-own-finances-to-the-model-through-read-only-tools.md) | The finance chat sends a User's own Finances to the model through read-only tools |
 
 ## Keeping this current
 

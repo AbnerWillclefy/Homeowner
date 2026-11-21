@@ -81,8 +81,12 @@ A like, neutral or dislike, either general (a User's, about a Category) or speci
 _Avoid_: Favourite, Taste
 
 **Restriction**:
-Work a User cannot do, which the system never gives them: either general (a User's, about a Demand) or specific (a Resident's, about one Chore of their Home). Lasting, or for one day when set at a Check-in.
+Work a User cannot do, which the system never gives them: either general (a User's, about a Demand) or specific (a Resident's, about one Chore of their Home). Lasting, or for one day when set at a Check-in. A lasting Restriction clears a Resident's responsibility for the Chores it covers (see Responsible).
 _Avoid_: Limitation, Exclusion
+
+**Responsible**:
+The one Resident Allocation proposes a Chore's Tasks to (one of the two for a two-person Chore), set by any Resident of the Home. Nobody by default, meaning anyone can be proposed it. When the responsible Resident cannot do it that day, its Tasks wait in the pool for them instead of going to someone else. It binds Allocation only: any Resident can still Take, Complete or Swap those Tasks. Cleared when they leave the Home or get a lasting Restriction on the Chore.
+_Avoid_: Owner, Assignee, In charge
 
 ### Planning
 
@@ -116,12 +120,20 @@ _Avoid_: Combo, Chain
 
 Finances is open only to Users on an allowlist of emails. These terms are about money; "Category" stays with Chores.
 
+**Revenue**:
+The name of the app that holds Finances; never a money term. Money coming in is Monthly income.
+_Avoid_: Finance app, Money app
+
 **Transaction**:
 One movement of money on a Source, such as a purchase or a payment, with a date, an amount and a description.
 _Avoid_: Entry, Expense, Payment
 
+**Note**:
+Free text a User writes on a Transaction; the sync never changes it. On an Installment plan, every part shares one Note.
+_Avoid_: Memo, Comment, Description
+
 **Source**:
-A place Transactions come from, such as a bank account or a credit card, connected to the app. A credit card's Transactions count as spent in the month their card bill is due, not the day they were made.
+A place Transactions come from, such as a bank account or a credit card, connected to the app. A credit card's Transactions count as spent in the month their card bill is due, not the day they were made. The User can give a Source a display name of their own; the bank's name is kept beside it.
 _Avoid_: Account, Bank, Connection
 
 **Spending Category**:
@@ -129,11 +141,15 @@ What a Transaction was spent on, such as groceries, transport or rent. Every Tra
 _Avoid_: Category, Tag, Label
 
 **Bill to pay**:
-Money owed that is due on a date, such as the credit card bill, rent or a utility. It is not a Transaction until it is paid. A credit card Source's bill is worked out by the app from the card's Expenses and known installments, never entered by the User.
+Money owed that is due on a date, such as the credit card bill, rent or a utility. It is not a Transaction until it is paid. A credit card Source's bill is never entered by the User: a closed bill takes the total the bank reports; the open bill is the app's sum of the card's charges since the last closing plus the known installments; a card the bank sends no bills for keeps the app's computed bill.
 _Avoid_: Invoice, Debt, Due
 
+**Manual card**:
+A credit card with no bank connection, such as a partner's, that the User types by hand: a name, a due day and the card bill total for each of the next 12 months. It is not a Source. A month with no typed total repeats the latest typed one before it, and a card with none counts 0. It shows with the card bills in the Projection and the Overview, and a Pix to the person named on it is a Transfer, never an Expense.
+_Avoid_: Fake card, Offline card, Custom card
+
 **Installment plan**:
-A purchase paid in several equal parts over several months. Each part is a Transaction.
+A purchase paid in several equal parts over several months. Each part is a Transaction, and all its parts share one Spending Category: setting it on one sets it on the rest, and parts imported later take it. Its parts also share one Note.
 _Avoid_: Financing, Loan, Subscription
 
 **Monthly income**:
@@ -141,20 +157,44 @@ The money a User expects to receive each month, which Finances compares with wha
 _Avoid_: Salary, Revenue, Earnings
 
 **Leftover**:
-What remains of the Monthly income after a month's card bills, Bills to pay and installments. It can be negative, and is absent when no Monthly income is set.
+What remains of the Monthly income after everything a month takes: Monthly income − (the card bill each month counts: in the current month the bill still to pay, in later months the next bill after it + other Bills to pay + installments off the card + Planned spending + money already spent off the card this month + the larger of the month's Saving and the Monthly contribution). It can be negative, and is absent when no Monthly income is set.
 _Avoid_: Balance, Surplus, Savings
 
+**Daily allowance**:
+The Leftover with the Planned spending added back, divided by the days left in the month, today included (São Paulo calendar): the Planned spending is what those days are for, so it is not taken out twice. It is negative when that sum is, and absent when no Monthly income is set or the month is not the current one.
+_Avoid_: Daily budget, Daily limit
+
+**Pace**:
+The money spent so far this month, day by day (cumulative), against a straight line from 0 on the first day to (Monthly income − Leftover) on the last. Absent when no Monthly income is set; a past month holds all its days. It is not the usual pace, the average of the previous months' spending, nor the Leftover at current pace.
+_Avoid_: Average, Trend
+
 **Planned spending**:
-An amount a User sets aside for a coming month for spending they expect but that is not yet a Bill to pay or a Transaction, which lowers that month's Leftover.
+What each Spending Category is still expected to take in a month, which lowers that month's Leftover. A category with a Spending limit plans its limit; one without plans its Usual spending. Both subtract what already counts for the category in the month, never going below zero.
 _Avoid_: Budget, Forecast, Reserve
+
+**Usual spending**:
+What a Spending Category normally takes in a month: the median of its monthly spending over the 3 months before the current one, so a one-off purchase does not move it. Months before the User's first data are left out; with two months it is their mean; a negative value counts as 0. In pt-BR, "Gasto habitual".
+_Avoid_: Average spending, Pace (the month's cumulative chart)
+
+**Leftover at current pace**:
+The same sum as the Leftover, with every Spending Category planning its Usual spending instead of its Spending limit. Compared with the Leftover it shows what the month would leave if the Resident spent as usual. Absent when no Monthly income is set. In pt-BR, "Sobra no ritmo atual".
+_Avoid_: Pace (the month's cumulative chart), Projected leftover
+
+**Saving**:
+Money a User puts aside, such as money moved into an investment, net of what they take back. It is neither spending nor a Transfer: it is left out of spending totals and lowers the Leftover. The Transaction type is `saving`.
+_Avoid_: Investment (that is the asset), Savings (the Savings tab and the Goals and Emergency reserve), Transfer
 
 **Spending limit**:
 The most a User wants to spend in one Spending Category in a month. It is set once and holds for every month; a category with no limit has none.
 _Avoid_: Budget (in copy), Cap, Quota
 
 **Investment**:
-Money a User has put away, with a name, a current value and what it serves: the Emergency reserve or the Goals.
+Money a User has put away, with a name, a current value and what it serves: the Emergency reserve or the Goals. An Investment can be typed by hand or come from the bank; one from the bank starts with nothing picked and counts toward neither until the User picks.
 _Avoid_: Asset, Account, Portfolio
+
+**Net worth**:
+Source balances + Investments − card bills not yet paid. Every Investment counts, picked or not. Card Sources' own balances are never counted, and Bills to pay that are not on a card are left out. A card bill is not yet paid until its due date passes: the closed bill and the open bill both count while their due date (the one the bank reported, else the card's due day) is today or later, because nothing records a bill as paid and, after the due date, the payment has already left a checking balance. A bill that has not opened yet (its charges are only future installments) is left out. A card with neither a reported bill nor a due day counts only its current month. Its daily series is Source balances + Investments only, since past days' card bills are not stored.
+_Avoid_: Wealth, Total balance
 
 **Emergency reserve**:
 The amount a User wants set aside for the unexpected. It has a target; the Investments that serve it count toward it.
@@ -167,3 +207,35 @@ _Avoid_: Objective, Dream, Target (alone)
 **Monthly contribution**:
 The amount a User puts into savings each month, and the share of it that goes to the Emergency reserve; the rest goes to the Goals. Sharing it among the Goals is the "contribution split", never "allocation": Allocation is the Chores module.
 _Avoid_: Deposit, Savings rate
+
+### Pantry
+
+The Pantry lives in Revenue, behind the same allowlist as Finances. It belongs to one User, not to a Home, and its receipts are not Transactions.
+
+**Pantry**:
+A User's list of the groceries they keep at home, each a Pantry item marked in stock or Ran out. In pt-BR, "Despensa".
+_Avoid_: Inventory, Stock, Fridge
+
+**Pantry item**:
+One generic thing kept at home, such as rice or coffee, never a brand or a pack size: "Arroz", not the receipt's "ARROZ T1 5KG". It has a name unique for the User (ignoring case), an optional preferred brand, and may be a Fixed item. Receipt lines are matched to it, and each matched line is a purchase that gives it a last price.
+_Avoid_: Product, SKU, Ingredient
+
+**Fixed item**:
+A Pantry item the User always buys, so it is on every Shopping list whether or not it Ran out. The control reads "Sempre comprar" (en "Always buy").
+_Avoid_: Staple, Favourite, Recurring item
+
+**Ran out**:
+The state of a Pantry item the User marked as finished ("Acabou") after its latest purchase. It is never stored: it holds while the latest run-out is later than the latest purchase, so a purchase on a later day puts the item back in stock, and a run-out on the purchase day does not count. There is no "running low". From the run-outs and purchases the app derives how many days an item usually lasts.
+_Avoid_: Out of stock, Empty, Finished, Running low
+
+**Shopping list**:
+The next shopping trip's list, built by the app: every Pantry item that Ran out and every Fixed item, with a quantity (the User's, else the last bought, else one unit), the last price paid and the expected total. The User can change a quantity or remove an item until it is next bought. Ticking items off in the store stays on that device.
+_Avoid_: Grocery list, Cart, Order
+
+**Receipt**:
+A grocery store's NFC-e, the electronic consumer receipt, added to the Pantry by its QR code, its Access key or a photo. Its lines are matched to Pantry items or marked "not a pantry item". A receipt is added once: adding it again shows the one saved.
+_Avoid_: Invoice, Bill, Note (that is the User's text on a Transaction)
+
+**Access key**:
+The 44 digits that identify an NFC-e, printed under its QR code and carried in the QR link. Only the key is read from what the User scans or types; the app finds the state's consultation page from its first two digits.
+_Avoid_: Code, Receipt number, Barcode

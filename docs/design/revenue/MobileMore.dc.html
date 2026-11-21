@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Mais, celular</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="rv-phone" data-theme="{{theme}}">
+<header class="rv-phone__head"><div class="rv-phone__headrow"><div class="rv-row" style="gap: 8px; flex-wrap: nowrap; min-width: 0; align-items: flex-start"><div class="rv-head__text"><h1 class="rv-title">Mais</h1></div></div><div class="rv-row" style="gap: 8px"><button class="br-iconbtn" aria-label="Esconder valores"><i class="ri ri-eye" aria-hidden="true"></i></button></div></div></header>
+<div class="rv-phone__scroll rv-phone__scroll--fab">
+<section class="br-card br-card--compact"><div class="br-list rv-menu-list"><a href="MobileBillsList.dc.html" class="br-listrow"><span class="br-cat__icon" style="background: var(--warning-soft); color: var(--warning)"><i class="ri ri-calendar" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Contas a pagar</span><span class="br-listrow__meta">R$ 979,90 até 29 de nov.</span></div><div class="br-listrow__end" style="flex-direction: row; align-items: center; gap: 8px"><span class="br-badge br-badge--warning">2 pendentes</span><i class="ri ri-chevron-right" aria-hidden="true" style="color: var(--text-muted)"></i></div></a><a href="MobileCardBills.dc.html" class="br-listrow"><span class="br-cat__icon" style="background: var(--brand-soft); color: var(--brand)"><i class="ri ri-card" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Faturas</span><span class="br-listrow__meta">R$ 4.533,00 em faturas abertas</span></div><div class="br-listrow__end" style="flex-direction: row; align-items: center; gap: 8px"><i class="ri ri-chevron-right" aria-hidden="true" style="color: var(--text-muted)"></i></div></a><a href="MobileCategories.dc.html" class="br-listrow"><span class="br-cat__icon" style="background: var(--cat-groceries-soft); color: var(--cat-groceries)"><i class="ri ri-pie" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Categorias de gasto</span><span class="br-listrow__meta">1 sem categoria</span></div><div class="br-listrow__end" style="flex-direction: row; align-items: center; gap: 8px"><span class="br-badge br-badge--warning">1</span><i class="ri ri-chevron-right" aria-hidden="true" style="color: var(--text-muted)"></i></div></a><a href="MobilePantry.dc.html" class="br-listrow"><span class="br-cat__icon" style="background: var(--cat-groceries-soft); color: var(--cat-groceries)"><i class="ri ri-package" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Despensa</span><span class="br-listrow__meta">3 itens acabando</span></div><div class="br-listrow__end" style="flex-direction: row; align-items: center; gap: 8px"><i class="ri ri-chevron-right" aria-hidden="true" style="color: var(--text-muted)"></i></div></a></div></section><section class="br-card br-card--compact"><div class="br-list rv-menu-list"><a href="MobileSettings.dc.html" class="br-listrow"><span class="br-cat__icon" style="background: var(--brand-soft); color: var(--brand)"><i class="ri ri-settings" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Configurações</span><span class="br-listrow__meta">Renda, aporte, tema e avisos</span></div><div class="br-listrow__end" style="flex-direction: row; align-items: center; gap: 8px"><i class="ri ri-chevron-right" aria-hidden="true" style="color: var(--text-muted)"></i></div></a></div></section><span class="br-muted" style="font-size: 12px; line-height: 16px; text-align: center">Atualizado há 15 h</span>
+</div>
+<a href="MobileChat.dc.html" class="br-btn br-btn--primary rv-fab" aria-label="Perguntar"><i class="ri ri-chat" aria-hidden="true"></i>Perguntar</a>
+<nav class="br-bottombar" aria-label="Principal"><a href="MobileOverview.dc.html" class="br-tab"><i class="ri ri-lg ri-dashboard" aria-hidden="true"></i>Início</a><a href="MobileTransactions.dc.html" class="br-tab"><i class="ri ri-lg ri-receipt" aria-hidden="true"></i>Lançamentos</a><a href="MobilePlan.dc.html" class="br-tab"><i class="ri ri-lg ri-target" aria-hidden="true"></i>Planejar</a><a href="MobileMore.dc.html" class="br-tab" aria-current="page"><span class="rv-tabwrap"><i class="ri ri-lg ri-more" aria-hidden="true"></i><span class="br-count" aria-hidden="true">2</span></span>Mais<span style="position: absolute; width: 1px; height: 1px; overflow: hidden">, 2 contas a pagar</span></a></nav>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme": {"editor": "enum", "options": ["dark", "light"], "default": "dark"}, "$preview": {"width": 390, "height": 844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const brl = (c) => (c < 0 ? '-' : '') + 'R$ ' + Math.abs(c).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return {
+      theme: this.props.theme ?? 'dark',
+
+    };
+  }
+}
+</script>
+</body>
+</html>

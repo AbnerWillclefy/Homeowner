@@ -1,3 +1,5 @@
+import type { Translate } from "../../../shared/i18n";
+import type { Resident } from "../../residents/api/api";
 import type { MessageKey } from "../../../shared/i18n";
 import type { Label } from "../../profile/logic/labels";
 
@@ -10,6 +12,7 @@ const POOL_REASON_KEYS = {
   invalid_effort: "dayplan.pool.reason.invalid_effort",
   added_after_plan: "dayplan.pool.reason.added_after_plan",
   refused: "dayplan.pool.reason.refused",
+  waiting_for_responsible: "dayplan.pool.reason.waiting_for_responsible",
 } as const satisfies Record<string, MessageKey>;
 
 const ASSIGNMENT_REASON_KEYS = {
@@ -35,3 +38,16 @@ export const poolReasonLabel = (id: string | undefined): Label | null => reasonL
 /** Why a Task was given to a Resident. */
 export const assignmentReasonLabel = (id: string | undefined): Label | null =>
   reasonLabel(ASSIGNMENT_REASON_KEYS, id);
+
+/** The pool reason id for a Task its responsible Resident has not yet been given. Its words carry a name. */
+export const WAITING_FOR_RESPONSIBLE = "waiting_for_responsible";
+
+/**
+ * "Waiting for {name}". The caller reads "you"; a Resident the list does not hold (loading, failed, or they left
+ * after the plan was made, which keeps its reason) reads as the responsible person.
+ */
+export function waitingForText(t: Translate, resident: Resident | undefined): string {
+  if (!resident) return t("dayplan.pool.reason.waiting_for_responsible.unknown");
+  if (resident.you) return t("dayplan.pool.reason.waiting_for_responsible.you");
+  return t("dayplan.pool.reason.waiting_for_responsible", { name: resident.name });
+}

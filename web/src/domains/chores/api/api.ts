@@ -1,5 +1,6 @@
 import { parseFields, type FieldCodes } from "../../../shared/api/fieldErrors";
-import { authedRequest } from "../../auth/api/client";
+import type { AxiosResponse } from "axios";
+import { authedRequest, errorCode } from "../../auth/api/client";
 
 /** What a Resident edits about a Chore, as the API takes it. Weekdays are 0 to 6 with 0 = Sunday. */
 export interface ChoreInput {
@@ -21,6 +22,11 @@ export interface ChoreInput {
 /** A stored Chore, as the API returns it. */
 export interface Chore extends ChoreInput {
   id: string;
+  /**
+   * The Resident the Chore is reserved for (a Resident id), or null for Nobody. Deliberately not on `ChoreInput`:
+   * the API refuses it in the Chore body and changes it only through `setResponsible` and `clearResponsible`.
+   */
+  responsibleResidentId: string | null;
 }
 
 /** A ChoreInput as sent. The interval may be the text typed, so the API can reject what was written. */
@@ -35,7 +41,30 @@ export type SaveChoreResult =
   | { kind: "invalid"; fields: FieldCodes }
   /** 404: the Chore is already gone. Only an update can have it. */
   | { kind: "none" }
+  | RestrictedRefusal
   | Failure;
+
+/**
+ * 422 `responsible_restricted`: the Resident has a lasting Restriction that rules them out. `restrictedBy` are the
+ * Demand ids of the Chore they cannot do; `restrictedByChore` is a Restriction on this very Chore.
+ */
+export interface RestrictedRefusal {
+  kind: "restricted";
+  residentId: string;
+  restrictedBy: string[];
+  restrictedByChore: boolean;
+}
+
+export type SetResponsibleResult =
+  | { kind: "ok" }
+  /** 404: the Chore is already gone. */
+  | { kind: "none" }
+  /** 422 `unknown_resident`: no Resident of this Home has that id, for instance one who just left. */
+  | { kind: "unknown-resident" }
+  | RestrictedRefusal
+  | Failure;
+
+export type ClearResponsibleResult = { kind: "ok" } | { kind: "none" } | Failure;
 
 export type DeleteChoreResult = { kind: "ok" } | { kind: "none" } | Failure;
 
@@ -68,7 +97,35 @@ function parseChore(body: unknown): Chore | null {
   ) {
     return null;
   }
-  return { id, name, category, demands, baseEffort, importance, people, intervalDays, allowedWeekdays, buildsUp };
+  // Lenient: an API that does not send it yet reads as Nobody. A value of the wrong type is a bad body.
+  const responsible = body.responsibleResidentId ?? null;
+  if (typeof responsible !== "string" && responsible !== null) return null;
+  return {
+    id,
+    name,
+    category,
+    demands,
+    baseEffort,
+    importance,
+    people,
+    intervalDays,
+    allowedWeekdays,
+    buildsUp,
+    responsibleResidentId: responsible,
+  };
+}
+
+/** The 422 body of `responsible_restricted`, read leniently: a missing list reads as empty. */
+function parseRestricted(response: AxiosResponse): RestrictedRefusal | null {
+  const body: unknown = response.data;
+  if (response.status !== 422 || errorCode(response) !== "responsible_restricted" || !isRecord(body)) return null;
+  if (typeof body.residentId !== "string") return null;
+  return {
+    kind: "restricted",
+    residentId: body.residentId,
+    restrictedBy: isStringList(body.restrictedBy) ? body.restrictedBy : [],
+    restrictedByChore: body.restrictedByChore === true,
+  };
 }
 
 export async function listChores(): Promise<ListChoresResult> {
@@ -91,6 +148,8 @@ async function save(path: string, method: "POST" | "PUT", input: ChoreWire, okSt
     if (result.kind === "not-signed-in") return result;
     const { response } = result;
     if (response.status === 404) return { kind: "none" };
+    const restricted = parseRestricted(response);
+    if (restricted) return restricted;
     if (response.status === 400) {
       const fields = parseFields(response);
       return fields ? { kind: "invalid", fields } : { kind: "error" };
@@ -115,6 +174,35 @@ export function updateChore(id: string, input: ChoreWire): Promise<SaveChoreResu
 export async function deleteChore(id: string): Promise<DeleteChoreResult> {
   try {
     const result = await authedRequest({ url: `/home/chores/${encodeURIComponent(id)}`, method: "DELETE" });
+    if (result.kind === "not-signed-in") return result;
+    if (result.response.status === 404) return { kind: "none" };
+    return result.response.status === 204 ? { kind: "ok" } : { kind: "error" };
+  } catch {
+    return { kind: "offline" };
+  }
+}
+
+const responsiblePath = (choreId: string) => `/home/chores/${encodeURIComponent(choreId)}/responsible`;
+
+/** Reserves the Chore for a Resident. The Resident has to be in the Home and free of a Restriction on it. */
+export async function setResponsible(choreId: string, residentId: string): Promise<SetResponsibleResult> {
+  try {
+    const result = await authedRequest({ url: responsiblePath(choreId), method: "PUT", data: { residentId } });
+    if (result.kind === "not-signed-in") return result;
+    const { response } = result;
+    if (response.status === 204) return { kind: "ok" };
+    if (response.status === 404) return { kind: "none" };
+    if (response.status === 422 && errorCode(response) === "unknown_resident") return { kind: "unknown-resident" };
+    return parseRestricted(response) ?? { kind: "error" };
+  } catch {
+    return { kind: "offline" };
+  }
+}
+
+/** Makes the Chore Nobody's again. Safe to repeat. */
+export async function clearResponsible(choreId: string): Promise<ClearResponsibleResult> {
+  try {
+    const result = await authedRequest({ url: responsiblePath(choreId), method: "DELETE" });
     if (result.kind === "not-signed-in") return result;
     if (result.response.status === 404) return { kind: "none" };
     return result.response.status === 204 ? { kind: "ok" } : { kind: "error" };

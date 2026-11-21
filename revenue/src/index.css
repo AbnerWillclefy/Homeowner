@@ -1,0 +1,10 @@
+@import "tailwindcss";
+@import "@homeowner/bedrock/tokens.css";
+/* Tailwind must see the classes Bedrock's components use (ADR 0022, Consequences). */
+@source "../../bedrock/src";
+
+html {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+}

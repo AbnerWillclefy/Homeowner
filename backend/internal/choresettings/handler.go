@@ -59,6 +59,18 @@ func (h *Handler) failed(w http.ResponseWriter, err error) {
 		httpx.WriteError(w, http.StatusNotFound, "chore not found")
 		return
 	}
+	if errors.Is(err, ErrUnknownResident) {
+		httpx.WriteError(w, http.StatusUnprocessableEntity, "unknown_resident")
+		return
+	}
+	var rr ErrResponsibleRestricted
+	if errors.As(err, &rr) {
+		httpx.WriteJSON(w, http.StatusUnprocessableEntity, map[string]any{
+			"error": "responsible_restricted", "residentId": rr.ResidentID,
+			"restrictedBy": rr.RestrictedBy, "restrictedByChore": rr.RestrictedByChore,
+		})
+		return
+	}
 	httpx.InternalError(w, h.log, "chores", err)
 }
 
@@ -92,6 +104,48 @@ func (h *Handler) AddRestriction(w http.ResponseWriter, r *http.Request) {
 // RemoveRestriction answers DELETE /home/chores/{id}/restriction.
 func (h *Handler) RemoveRestriction(w http.ResponseWriter, r *http.Request) {
 	h.change(w, r, h.store.RemoveRestriction)
+}
+
+// SetResponsible answers PUT /home/chores/{id}/responsible. Unlike the other
+// writes it names the Resident in the body: any Resident may set it for any.
+func (h *Handler) SetResponsible(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		ResidentID string `json:"residentId"`
+	}
+	if !httpx.DecodeBody(w, r, &body, maxPreferenceBody, true) {
+		return
+	}
+	if body.ResidentID == "" {
+		httpx.WriteError(w, http.StatusBadRequest, "residentId is required")
+		return
+	}
+	id, ok := choreFromPath(w, r)
+	if !ok {
+		return
+	}
+	// A malformed id cannot name a Resident; pgx would fail the uuid cast.
+	if !chores.ValidID(body.ResidentID) {
+		httpx.WriteError(w, http.StatusUnprocessableEntity, "unknown_resident")
+		return
+	}
+	if err := h.store.SetResponsible(r.Context(), identity.CurrentMembership(r.Context()).Home.ID, id, body.ResidentID); err != nil {
+		h.failed(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ClearResponsible answers DELETE /home/chores/{id}/responsible.
+func (h *Handler) ClearResponsible(w http.ResponseWriter, r *http.Request) {
+	id, ok := choreFromPath(w, r)
+	if !ok {
+		return
+	}
+	if err := h.store.ClearResponsible(r.Context(), identity.CurrentMembership(r.Context()).Home.ID, id); err != nil {
+		h.failed(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // Get returns every Resident's effective Preference and Restrictions per Chore

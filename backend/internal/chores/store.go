@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/profile"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -21,12 +23,12 @@ type Store struct {
 func NewStore(db *pgxpool.Pool) *Store { return &Store{db: db} }
 
 const columns = `id, name, category, demands, base_effort, importance, people,
-	interval_days, allowed_weekdays, builds_up`
+	interval_days, allowed_weekdays, builds_up, responsible_resident_id`
 
 func scan(row pgx.Row) (Chore, error) {
 	var c Chore
 	err := row.Scan(&c.ID, &c.Name, &c.Category, &c.Demands, &c.BaseEffort, &c.Importance, &c.People,
-		&c.IntervalDays, &c.AllowedWeekdays, &c.BuildsUp)
+		&c.IntervalDays, &c.AllowedWeekdays, &c.BuildsUp, &c.ResponsibleResidentID)
 	return c, err
 }
 
@@ -96,23 +98,67 @@ func InsertAll(ctx context.Context, ex Execer, homeID string, fs []Fields, now t
 	return nil
 }
 
-// Update replaces every field of the Chore, or returns ErrNotFound. id must
-// satisfy ValidID.
+// Update replaces every field of the Chore, or returns ErrNotFound. It never
+// touches the responsible Resident, but refuses with ErrResponsibleRestricted
+// when f adds a Demand that Resident is Restricted on. id must satisfy ValidID.
 func (s *Store) Update(ctx context.Context, homeID, id string, f Fields, now time.Time) (Chore, error) {
-	c, err := scan(s.db.QueryRow(ctx, `
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return Chore{}, fmt.Errorf("update chore: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var responsible *string
+	err = tx.QueryRow(ctx, `SELECT responsible_resident_id FROM chores WHERE id = $2 AND home_id = $1 FOR UPDATE`,
+		homeID, id).Scan(&responsible)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Chore{}, ErrNotFound
+	}
+	if err != nil {
+		return Chore{}, fmt.Errorf("update chore: lock: %w", err)
+	}
+	if responsible != nil {
+		if err := checkDemands(ctx, tx, *responsible, f.Demands); err != nil {
+			return Chore{}, err
+		}
+	}
+	c, err := scan(tx.QueryRow(ctx, `
 		UPDATE chores SET name = $3, category = $4, demands = $5, base_effort = $6, importance = $7,
 			people = $8, interval_days = $9, allowed_weekdays = $10, builds_up = $11, updated_at = $12
 		WHERE id = $2 AND home_id = $1
 		RETURNING `+columns,
 		homeID, id, f.Name, f.Category, f.Demands, f.BaseEffort, f.Importance, f.People,
 		f.IntervalDays, f.AllowedWeekdays, f.BuildsUp, now))
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Chore{}, ErrNotFound
-	}
 	if err != nil {
 		return Chore{}, fmt.Errorf("update chore: %w", err)
 	}
+	if err := tx.Commit(ctx); err != nil {
+		return Chore{}, fmt.Errorf("update chore: %w", err)
+	}
 	return c, nil
+}
+
+// checkDemands returns ErrResponsibleRestricted when the Resident's User is
+// generally Restricted on any of demands.
+func checkDemands(ctx context.Context, tx pgx.Tx, residentID string, demands []string) error {
+	var userID string
+	if err := tx.QueryRow(ctx, `SELECT user_id FROM residents WHERE id = $1`, residentID).Scan(&userID); err != nil {
+		return fmt.Errorf("update chore: find responsible: %w", err)
+	}
+	ps, err := profile.LoadMany(ctx, tx, []string{userID})
+	if err != nil {
+		return fmt.Errorf("update chore: %w", err)
+	}
+	hit := []string{}
+	for _, d := range demands {
+		if slices.Contains(ps[userID].Restrictions, d) {
+			hit = append(hit, d)
+		}
+	}
+	if len(hit) > 0 {
+		return ErrResponsibleRestricted{ResidentID: residentID, Demands: hit}
+	}
+	return nil
 }
 
 // Delete removes the Chore, or returns ErrNotFound. id must satisfy ValidID.

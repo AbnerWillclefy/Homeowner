@@ -64,6 +64,15 @@ pairs.push(
   { label: "chart-muted on chart-track", fg: "chart-muted", bg: "chart-track", min: 3 },
 );
 
+// Spending Category colours (1.4.11): the ring part and bar fill on the card, the icon stroke on its own tint.
+const SPENDING = ["housing", "household-bills", "groceries", "eating-out", "transport", "health", "education", "leisure", "shopping", "subscriptions", "pets", "taxes-fees", "other"];
+for (const id of SPENDING) {
+  pairs.push(
+    { label: `spend-${id} on surface-raised`, fg: `spend-${id}`, bg: "surface-raised", min: 3 },
+    { label: `spend-${id} on spend-${id}-tint`, fg: `spend-${id}`, bg: `spend-${id}-tint`, min: 3 },
+  );
+}
+
 for (const [name, theme] of [
   ["light", light],
   ["dark", dark],

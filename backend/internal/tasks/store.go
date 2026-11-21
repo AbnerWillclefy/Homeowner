@@ -37,6 +37,8 @@ type Open struct {
 	// app suggests making the Chore two-person. Derived on every read and never
 	// stored: it goes once the Chore is two-person or the Task is done.
 	SuggestTwoPerson bool `json:"suggestTwoPerson"`
+	// ResponsibleResidentID is the Chore's responsible Resident, nil for Nobody.
+	ResponsibleResidentID *string `json:"responsibleResidentId"`
 }
 
 // Store reads and writes the tasks table.
@@ -242,7 +244,7 @@ func apply(ctx context.Context, tx pgx.Tx, r choreRow, dec schedule.Decision, no
 func (s *Store) ListOpen(ctx context.Context, homeID string) ([]Open, error) {
 	rows, err := s.db.Query(ctx, `
 		SELECT t.id, c.id, c.name, c.category, t.window_start, t.window_end, t.current_effort, c.base_effort, c.people, c.importance,
-		       c.builds_up, c.interval_days
+		       c.builds_up, c.interval_days, c.responsible_resident_id
 		FROM tasks t JOIN chores c ON c.id = t.chore_id
 		WHERE c.home_id = $1 AND t.status = 'open'
 		ORDER BY t.window_start, c.created_at, t.id`, homeID)
@@ -259,7 +261,7 @@ func (s *Store) ListOpen(ctx context.Context, homeID string) ([]Open, error) {
 			interval *int32
 		)
 		if err := rows.Scan(&o.ID, &o.ChoreID, &o.ChoreName, &o.Category, &ws, &we,
-			&o.CurrentEffort, &o.BaseEffort, &o.People, &o.Importance, &buildsUp, &interval); err != nil {
+			&o.CurrentEffort, &o.BaseEffort, &o.People, &o.Importance, &buildsUp, &interval, &o.ResponsibleResidentID); err != nil {
 			return nil, fmt.Errorf("list open tasks: %w", err)
 		}
 		o.SuggestTwoPerson = schedule.SuggestsTwoPerson(

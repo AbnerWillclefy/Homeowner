@@ -1,6 +1,7 @@
 package finance
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -26,10 +27,34 @@ func TestClassify(t *testing.T) {
 	categorised := tx("cat", "chk", 0, -500)
 	categorised.Type, categorised.Category, categorised.CategorySetBy = "expense", "groceries", "auto"
 
-	for name, tc := range map[string]struct {
+	named := func(id, src string, days int, cents int64, desc string) Txn {
+		t := tx(id, src, days, cents)
+		t.MerchantKey = MerchantKey(desc)
+		return t
+	}
+	aplicacao := named("ap", "chk", 0, -50000, "Aplicação - Cdb Pos Di Liq. Banco Inter")
+	savingSet := named("ap", "chk", 0, -50000, "Aplicação - Cdb")
+	savingSet.TypeSetBy = "user"
+	aplicacaoCategorised := named("ap", "chk", 0, -50000, "Aplicação - Cdb")
+	aplicacaoCategorised.Type, aplicacaoCategorised.Category, aplicacaoCategorised.CategorySetBy = "expense", "other", "fallback"
+
+	own := func(id, src string, cents int64) Txn {
+		t := tx(id, src, 0, cents)
+		t.OwnCounterpart = true
+		return t
+	}
+	ownUser := own("o", "chk", -1000)
+	ownUser.TypeSetBy = "user"
+	ownSaving := named("ap", "chk", 0, -50000, "Aplicação - Cdb")
+	ownSaving.OwnCounterpart = true
+	tests := map[string]struct {
 		in   []Txn
 		want map[string]string // id -> type of every row that changes
 	}{
+		"own-name debit, no partner":      {[]Txn{own("o", "chk", -1000)}, map[string]string{"o": "transfer"}},
+		"own-name credit, no partner":     {[]Txn{own("o", "chk", 1000)}, map[string]string{"o": "transfer"}},
+		"own-name row set by user":        {[]Txn{ownUser}, map[string]string{}},
+		"own-name aplicacao stays saving": {[]Txn{ownSaving}, map[string]string{"ap": "saving"}},
 		"bill payment, accents and case":  {[]Txn{bill}, map[string]string{"bill": "transfer"}},
 		"bill payment, Santander wording": {[]Txn{santander}, map[string]string{"sbill": "transfer"}},
 		"exact pair across Sources":       {[]Txn{tx("d", "chk", 0, -10000), tx("c", "sav", 1, 10000)}, map[string]string{"d": "transfer", "c": "transfer"}},
@@ -40,13 +65,30 @@ func TestClassify(t *testing.T) {
 		"closest candidate wins": {
 			[]Txn{tx("d", "chk", 0, -10000), tx("far", "sav", 3, 10000), tx("near", "sav", 1, 10000)},
 			map[string]string{"d": "transfer", "near": "transfer", "far": "income"}},
-		"user-set row is no partner": {[]Txn{tx("d", "chk", 0, -10000), userSet}, map[string]string{"d": "expense"}},
-		"card credit is a refund":    {[]Txn{tx("r", "card", 0, 2500)}, map[string]string{"r": "expense"}},
-		"checking credit is income":  {[]Txn{tx("i", "chk", 0, 2500)}, map[string]string{"i": "income"}},
-		"category is kept":           {[]Txn{categorised}, map[string]string{}},
-	} {
+		"user-set row is no partner":   {[]Txn{tx("d", "chk", 0, -10000), userSet}, map[string]string{"d": "expense"}},
+		"card credit is a refund":      {[]Txn{tx("r", "card", 0, 2500)}, map[string]string{"r": "expense"}},
+		"checking credit is income":    {[]Txn{tx("i", "chk", 0, 2500)}, map[string]string{"i": "income"}},
+		"aplicacao debit is saving":    {[]Txn{aplicacao}, map[string]string{"ap": "saving"}},
+		"aplicacao credit is saving":   {[]Txn{named("ap", "chk", 0, 50000, "Aplicacao Cdb")}, map[string]string{"ap": "saving"}},
+		"positive resgate is saving":   {[]Txn{named("rs", "chk", 0, 50000, "Resgate Cdb Pos Di")}, map[string]string{"rs": "saving"}},
+		"negative resgate is normal":   {[]Txn{named("rs", "chk", 0, -50000, "Resgate Cdb Pos Di")}, map[string]string{"rs": "expense"}},
+		"aplicacao is not paired away": {[]Txn{aplicacao, tx("c", "sav", 1, 50000)}, map[string]string{"ap": "saving", "c": "income"}},
+		"saving set by user is kept":   {[]Txn{savingSet}, map[string]string{}},
+		"aplicacao drops its category": {[]Txn{aplicacaoCategorised}, map[string]string{"ap": "saving"}},
+		"category is kept":             {[]Txn{categorised}, map[string]string{}},
+	}
+	for i, desc := range []string{"Pagamento efetuado - Pagamento Fatura", "Pagamento on line", "PAGAMENTO ONLINE", "Pagamento recebido", "Pagamento de fatura"} {
+		for _, src := range []string{"chk", "card"} {
+			id := fmt.Sprintf("p%d%s", i, src)
+			tests["bill phrase "+desc+" on "+src] = struct {
+				in   []Txn
+				want map[string]string
+			}{[]Txn{named(id, src, 0, -700, desc)}, map[string]string{id: "transfer"}}
+		}
+	}
+	for name, tc := range tests {
 		got := map[string]string{}
-		for _, c := range Classify(tc.in, kinds) {
+		for _, c := range Classify(tc.in, kinds, nil) {
 			got[c.ID] = c.Type
 			if (c.Type == "expense") != (c.Category != "") {
 				t.Errorf("%s: %s is %s with category %q", name, c.ID, c.Type, c.Category)
@@ -64,21 +106,66 @@ func TestClassify(t *testing.T) {
 	}
 }
 
+// A debit that equals a stored closed bill's total near its due date is a card
+// payment, whatever the bank calls it.
+func TestClassifyTakesTheAmountOfAStoredBill(t *testing.T) {
+	t.Parallel()
+	kinds := map[string]Kind{"chk": "checking", "card": "credit_card"}
+	bills := []StoredBill{{ClosesOn: day0.AddDate(0, 0, -7), DueOn: day0, TotalCents: 253090}}
+	userSet := tx("p", "chk", 0, -253090)
+	userSet.TypeSetBy = "user"
+	for name, tc := range map[string]struct {
+		in   Txn
+		want string // "" when the row stays as it is
+	}{
+		"on the due date":           {tx("p", "chk", 0, -253090), "transfer"},
+		"3 days after, inside":      {tx("p", "chk", 3, -253090), "transfer"},
+		"3 days before, inside":     {tx("p", "chk", -3, -253090), "transfer"},
+		"4 days after, outside":     {tx("p", "chk", 4, -253090), "expense"},
+		"4 days before, outside":    {tx("p", "chk", -4, -253090), "expense"},
+		"one centavo off":           {tx("p", "chk", 0, -253091), "expense"},
+		"on a card Source":          {tx("p", "card", 0, -253090), "expense"},
+		"a credit of that amount":   {tx("p", "chk", 0, 253090), "income"},
+		"a row the User classified": {userSet, ""},
+		"in another currency":       {Txn{ID: "p", SourceID: "chk", Currency: "USD", MerchantKey: "X", PostedOn: day0, AmountCents: -253090, TypeSetBy: "auto"}, "expense"},
+	} {
+		got := ""
+		for _, c := range Classify([]Txn{tc.in}, kinds, bills) {
+			got = c.Type
+		}
+		if got != tc.want {
+			t.Errorf("%s: type = %q, want %q", name, got, tc.want)
+		}
+	}
+	// A credit-balance bill must not turn a matching credit into a Transfer.
+	credit := []StoredBill{{ClosesOn: day0.AddDate(0, 0, -7), DueOn: day0, TotalCents: -253090}}
+	for _, c := range Classify([]Txn{tx("p", "chk", 0, 253090)}, kinds, credit) {
+		if c.Type != "income" {
+			t.Errorf("credit vs negative bill: type = %q, want income", c.Type)
+		}
+	}
+}
+
 func TestMonthTotals(t *testing.T) {
 	t.Parallel()
+	sav := func(cents int64) Txn { return Txn{Type: "saving", AmountCents: cents} }
 	exp := func(cat string, cents int64) Txn { return Txn{Type: "expense", Category: cat, AmountCents: cents} }
 	for name, tc := range map[string]struct {
 		in    []Txn
 		spend int64
 		food  int64
+		saved int64
 	}{
-		"refund offsets its category":  {[]Txn{exp("groceries", -10000), exp("groceries", 2500)}, 7500, 7500},
-		"transfer and income ignored":  {[]Txn{exp("groceries", -1000), {Type: "transfer", AmountCents: -9000}, {Type: "income", AmountCents: 9000}}, 1000, 1000},
-		"refund beyond purchases goes": {[]Txn{exp("groceries", -1000), exp("groceries", 4000)}, -3000, -3000},
+		"refund offsets its category":    {[]Txn{exp("groceries", -10000), exp("groceries", 2500)}, 7500, 7500, 0},
+		"transfer and income ignored":    {[]Txn{exp("groceries", -1000), {Type: "transfer", AmountCents: -9000}, {Type: "income", AmountCents: 9000}}, 1000, 1000, 0},
+		"refund beyond purchases goes":   {[]Txn{exp("groceries", -1000), exp("groceries", 4000)}, -3000, -3000, 0},
+		"saving is not spending":         {[]Txn{exp("groceries", -1000), sav(-50000)}, 1000, 1000, 50000},
+		"resgate nets against aplicacao": {[]Txn{sav(-50000), sav(20000)}, 0, 0, 30000},
+		"saving is not clamped":          {[]Txn{sav(20000)}, 0, 0, -20000},
 	} {
 		got := MonthTotals(tc.in)
-		if got.Spend != tc.spend || got.ByCategory["groceries"] != tc.food {
-			t.Errorf("%s: %+v, want spend %d groceries %d", name, got, tc.spend, tc.food)
+		if got.Spend != tc.spend || got.ByCategory["groceries"] != tc.food || got.Saving != tc.saved || len(got.ByCategory) > 1 {
+			t.Errorf("%s: %+v, want spend %d groceries %d saved %d", name, got, tc.spend, tc.food, tc.saved)
 		}
 	}
 }

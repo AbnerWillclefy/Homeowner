@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Metas</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="rv-app" data-theme="{{theme}}">
+<div class="rv-side"><dc-import name="Sidebar" active="goals" theme="{{theme}}" hint-size="256px,1240px"></dc-import></div>
+<main class="rv-main">
+<header class="rv-head">
+<div class="rv-head__text"><h1 class="rv-title">Metas</h1><span class="rv-sub">Aporte de R$ 1.200 por mês, dividido entre a reserva e as metas</span></div>
+<div class="rv-tools"><button class="br-btn br-btn--primary"><i class="ri ri-plus" aria-hidden="true"></i>Nova meta</button></div>
+</header>
+
+<div class="rv-grid">
+<section class="br-card s8">
+<div class="br-card__head" style="flex-wrap: wrap"><span class="br-card__label">Aporte de novembro</span>
+<div class="rv-row"><span class="br-muted">Reserva leva</span><div class="br-seg" role="group" aria-label="Parte da reserva"><sc-for list="{{shares}}" as="s" hint-placeholder-count="3"><button aria-pressed="{{s.on}}" onClick="{{s.pick}}">{{s.label}}</button></sc-for></div></div></div>
+<span class="br-amount br-amount--lg"><span class="br-amount__value">R$ 1.200,00</span><span class="br-amount__ref">por mês</span></span>
+<div class="br-progress__track" style="height: 16px; gap: 4px; background: transparent" role="img" aria-label="{{splitAria}}">
+<sc-for list="{{split}}" as="p" hint-placeholder-count="3"><div class="br-progress__fill" style="width: {{p.pct}}; background: {{p.color}}; border-radius: 4px"></div></sc-for>
+</div>
+<div class="rv-split">
+<sc-for list="{{split}}" as="p" hint-placeholder-count="3"><div class="rv-kv"><span class="rv-kv__k"><i class="sw" style="background: {{p.color}}"></i>{{p.name}}</span><span class="br-amount br-amount--sm"><span class="br-amount__value">{{p.amount}}</span></span></div></sc-for>
+</div>
+</section>
+<section class="br-card s4">
+<div class="br-card__head"><span class="br-card__label">Sobrou neste mês</span><span class="br-badge br-badge--positive"><i class="ri ri-sm ri-trending" aria-hidden="true"></i>R$ 1.517</span></div>
+<span>Dá para aportar mais <strong>R$ 500</strong> e ainda manter R$ 1.017 de folga até o fim do mês. Janeiro deve faltar R$ 346: essa folga cobre.</span>
+<div class="rv-row"><button class="br-btn br-btn--primary">Aportar R$ 500 a mais</button><button class="br-btn br-btn--ghost">Agora não</button></div>
+</section>
+
+<sc-for list="{{goals}}" as="g" hint-placeholder-count="3">
+<section class="br-card s4">
+<div class="br-card__head"><span class="br-cat"><span class="br-cat__icon" style="background: {{g.soft}}; color: {{g.color}}"><i class="ri {{g.icon}}" aria-hidden="true"></i></span>{{g.name}}</span><button class="br-iconbtn br-iconbtn--sm" style="border: 0" aria-label="Mais ações de {{g.name}}"><i class="ri ri-more" aria-hidden="true"></i></button></div>
+<div class="rv-row" style="gap: 16px"><span class="br-amount br-amount--md"><span class="br-amount__value">{{g.saved}}</span><span class="br-amount__ref">/ {{g.target}}</span></span></div>
+<div class="br-progress"><div class="br-progress__track"><div class="br-progress__fill" style="width: {{g.pct}}"></div></div><div class="br-progress__meta"><strong>{{g.pct}}</strong><span>{{g.deadline}}</span></div></div>
+<hr class="rv-divider">
+<div class="rv-stack">
+<div class="rv-between"><span class="br-muted">Este mês</span><span class="br-num">{{g.month}}</span></div>
+<div class="rv-between"><span class="br-muted">Chega em</span><span class="rv-row"><span class="br-num">{{g.eta}}</span><span class="br-badge {{g.badge}}">{{g.status}}</span></span></div>
+<div class="rv-between"><span class="br-muted">Guardado em</span><span>{{g.where}}</span></div>
+</div>
+</section>
+</sc-for>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { share: 50 }; }
+  renderVals() {
+    const base = 1200, share = this.state.share;
+    const brl = (v) => 'R$ ' + Math.round(v).toLocaleString('pt-BR');
+    const months = ['nov/26', 'dez/26', 'jan/27', 'fev/27', 'mar/27', 'abr/27', 'mai/27', 'jun/27', 'jul/27', 'ago/27', 'set/27', 'out/27', 'nov/27', 'dez/27', 'jan/28', 'fev/28', 'mar/28', 'abr/28', 'mai/28', 'jun/28'];
+    const reserve = Math.round(base * share / 100);
+    const pot = base - reserve;
+    const chile = Math.min(pot, 400 * pot / 600 > 0 ? Math.round(pot * 2 / 3) : 0);
+    const note = pot - chile;
+    const eta = (missing, perMonth) => perMonth <= 0 ? 'sem previsão' : (months[Math.ceil(missing / perMonth) - 1] || 'depois de jun/28');
+    const etaIdx = (missing, perMonth) => perMonth <= 0 ? 99 : Math.ceil(missing / perMonth) - 1;
+    const goals = [
+      { name: 'Reserva de emergência', icon: 'ri-shield', color: 'var(--brand)', soft: 'var(--brand-soft)', savedN: 24500, targetN: 30000, per: reserve, dueIdx: null, deadline: 'sem prazo', where: 'CDB Nubank' },
+      { name: 'Viagem para o Chile', icon: 'ri-target', color: 'var(--cat-transport)', soft: 'var(--cat-transport-soft)', savedN: 3000, targetN: 6000, per: chile, dueIdx: 7, deadline: 'até jun/27', where: 'Tesouro Selic' },
+      { name: 'Notebook novo', icon: 'ri-card', color: 'var(--cat-shopping)', soft: 'var(--cat-shopping-soft)', savedN: 2000, targetN: 9000, per: note, dueIdx: 10, deadline: 'até set/27', where: 'Fundo XP Trend' },
+    ].map((g) => {
+      const idx = etaIdx(g.targetN - g.savedN, g.per);
+      const late = g.dueIdx !== null && idx > g.dueIdx;
+      return { ...g, saved: brl(g.savedN), target: brl(g.targetN), pct: Math.round(g.savedN / g.targetN * 100) + '%', month: brl(g.per), eta: eta(g.targetN - g.savedN, g.per),
+        status: late ? 'Atrasada' : 'No prazo', badge: late ? 'br-badge--danger' : 'br-badge--positive' };
+    });
+    const split = [
+      { name: 'Reserva de emergência', n: reserve, color: 'var(--brand)' },
+      { name: 'Viagem para o Chile', n: chile, color: 'var(--cat-transport)' },
+      { name: 'Notebook novo', n: note, color: 'var(--cat-shopping)' },
+    ].map((p) => ({ ...p, amount: brl(p.n), pct: (p.n / base * 100).toFixed(1) + '%' }));
+    return {
+      theme: this.props.theme ?? 'dark',
+      shares: [30, 50, 70].map((v) => ({ label: v + '%', on: share === v ? 'true' : 'false', pick: () => this.setState({ share: v }) })),
+      split, goals,
+      splitAria: split.map((p) => p.name + ' ' + p.amount).join(', '),
+    };
+  }
+}
+</script>
+</body>
+</html>

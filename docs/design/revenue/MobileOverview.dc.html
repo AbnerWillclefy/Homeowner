@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Visão geral, celular</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="rv-phone" data-theme="{{theme}}">
+<header class="rv-phone__head"><div class="rv-phone__headrow"><div class="rv-row" style="gap: 8px; flex-wrap: nowrap; min-width: 0; align-items: flex-start"><div class="rv-head__text"><h1 class="rv-title">Visão geral</h1><span class="rv-sub">Novembro de 2026 · hoje, 20 de nov.</span></div></div><div class="rv-row" style="gap: 8px"><button class="br-iconbtn" aria-label="Esconder valores"><i class="ri ri-eye" aria-hidden="true"></i></button></div></div><button class="br-btn br-btn--secondary br-btn--lg br-btn--block rv-period" aria-label="Mês: Novembro de 2026"><span class="rv-row" style="gap: 8px; flex-wrap: nowrap"><i class="ri ri-calendar" aria-hidden="true"></i>Novembro de 2026</span><i class="ri ri-chevron-down" aria-hidden="true"></i></button></header>
+<div class="rv-phone__scroll">
+<section class="br-card br-card--hero br-card--compact">
+<div class="br-card__head"><span class="br-card__label">Você ainda pode gastar</span><span class="br-badge br-badge--solid"><i class="ri ri-sm ri-check" aria-hidden="true"></i>No ritmo</span></div>
+<div class="rv-stack" style="gap: 4px"><span class="br-amount br-amount--lg"><span class="br-amount__value">R$ 1.517,25</span></span><span class="br-muted">R$ 75 por dia até 30/11</span></div>
+<div style="position: relative">
+<svg class="br-chart br-chart--hero" viewBox="0 0 320 104" role="img" aria-label="Gasto acumulado de novembro, R$ 200 abaixo do ritmo">
+<line class="ref" x1="0" y1="96" x2="320" y2="8"></line>
+<path class="area" d="M0 96 C24 95 40 90 56 84 S88 72 104 70 S114 67 117 66 L117 96 Z"></path>
+<path class="line" d="M0 96 C24 95 40 90 56 84 S88 72 104 70 S114 67 117 66"></path>
+<circle class="end" cx="117" cy="66" r="5"></circle>
+</svg>
+<span class="br-flag" style="position: absolute; left: 40%; top: 38%">R$ 200 abaixo</span>
+</div>
+<div class="rv-between"><span class="br-muted">Gastos do mês</span><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 1.627,41</span><span class="br-amount__ref">/ R$ 4.983</span></span></div>
+</section>
+
+<a href="MobileBills.dc.html" class="br-alert">
+<span class="br-alert__icons"><span class="br-cat__icon" style="background: var(--cat-household-bills-soft); color: var(--cat-household-bills)"><i class="ri ri-zap" aria-hidden="true"></i></span><span class="br-cat__icon" style="background: var(--cat-subscriptions-soft); color: var(--cat-subscriptions)"><i class="ri ri-repeat" aria-hidden="true"></i></span></span>
+<span class="rv-stack" style="gap: 0"><span class="br-alert__title">3 contas a pagar</span><span class="br-alert__meta br-alert__meta--warning">R$ 475,85 · em 2 dias</span></span>
+<i class="ri ri-chevron-right" aria-hidden="true"></i>
+</a>
+
+<div class="br-seg br-seg--block" role="group" aria-label="Resumo"><button aria-pressed="{{tab.result}}" onClick="{{showResult}}">Resultado</button><button aria-pressed="{{tab.cats}}" onClick="{{showCats}}">Categorias</button><button aria-pressed="{{tab.worth}}" onClick="{{showWorth}}">Patrimônio</button></div>
+
+<sc-if value="{{is.result}}" hint-placeholder-val="{{ true }}">
+<section class="br-card br-card--compact">
+<span class="br-card__label">Resultado até hoje</span>
+<div class="rv-row"><span class="br-amount br-amount--md"><span class="br-amount__value">R$ 3.472,59</span></span><span class="br-badge br-badge--positive">+4% vs out</span></div>
+<div class="br-list">
+<div class="rv-between" style="padding: 8px 0"><span class="rv-kv__k"><i class="sw" style="background: var(--positive)"></i>Entradas</span><span class="br-num">R$ 9.800,00</span></div>
+<div class="rv-between" style="padding: 8px 0; border-top: 1px solid var(--border)"><span class="rv-kv__k"><i class="sw" style="background: var(--danger)"></i>Saídas</span><span class="br-num">R$ 5.127,41</span></div>
+<div class="rv-between" style="padding: 8px 0; border-top: 1px solid var(--border)"><span class="rv-kv__k"><i class="sw" style="background: var(--brand)"></i>Investido</span><span class="br-num">R$ 1.200,00</span></div>
+</div>
+</section>
+</sc-if>
+<sc-if value="{{is.cats}}" hint-placeholder-val="{{ false }}">
+<section class="br-card br-card--compact">
+<span class="br-card__label">Gastos por categoria</span>
+<div class="br-progress__track" style="height: 12px; gap: 4px; background: transparent" role="img" aria-label="Moradia 68%, Mercado 12%, Restaurantes 7,5%, resto 12,5%"><div class="br-progress__fill" style="width: 68%; background: var(--cat-housing); border-radius: 4px"></div><div class="br-progress__fill" style="width: 12%; background: var(--cat-groceries); border-radius: 4px"></div><div class="br-progress__fill" style="width: 7.5%; background: var(--cat-eating-out); border-radius: 4px"></div><div class="br-progress__fill" style="width: 12.5%; background: var(--cat-other); border-radius: 4px"></div></div>
+<div class="rv-stack">
+<div class="rv-between"><span class="br-cat"><span class="br-cat__icon br-cat__icon--sm" style="background: var(--cat-housing-soft); color: var(--cat-housing)"><i class="ri ri-sm ri-house" aria-hidden="true"></i></span>Moradia</span><span class="br-num">R$ 3.500,00</span></div>
+<div class="rv-between"><span class="br-cat"><span class="br-cat__icon br-cat__icon--sm" style="background: var(--cat-groceries-soft); color: var(--cat-groceries)"><i class="ri ri-sm ri-cart" aria-hidden="true"></i></span>Mercado</span><span class="br-num">R$ 612,30</span></div>
+<div class="rv-between"><span class="br-cat"><span class="br-cat__icon br-cat__icon--sm" style="background: var(--cat-eating-out-soft); color: var(--cat-eating-out)"><i class="ri ri-sm ri-utensils" aria-hidden="true"></i></span>Restaurantes</span><span class="br-num">R$ 384,90</span></div>
+</div>
+</section>
+</sc-if>
+<sc-if value="{{is.worth}}" hint-placeholder-val="{{ false }}">
+<section class="br-card br-card--compact">
+<span class="br-card__label">Patrimônio</span>
+<div class="rv-row"><span class="br-amount br-amount--md"><span class="br-amount__value">R$ 48.312,70</span></span><span class="br-badge br-badge--positive">+2,5%</span></div>
+<svg class="br-chart" viewBox="0 0 280 64" role="img" aria-label="Patrimônio subiu R$ 1.193 em novembro"><path class="area" d="M0 54 L40 50 L80 52 L120 40 L160 38 L200 30 L240 26 L280 16 L280 64 L0 64 Z"></path><path class="line" d="M0 54 L40 50 L80 52 L120 40 L160 38 L200 30 L240 26 L280 16"></path></svg>
+<span class="br-muted">+R$ 1.193 em novembro</span>
+</section>
+</sc-if>
+</div>
+<nav class="br-bottombar" aria-label="Principal"><a href="MobileOverview.dc.html" class="br-tab" aria-current="page"><i class="ri ri-lg ri-dashboard" aria-hidden="true"></i>Início</a><a href="MobileTransactions.dc.html" class="br-tab"><i class="ri ri-lg ri-receipt" aria-hidden="true"></i>Lançamentos</a><a href="MobilePlan.dc.html" class="br-tab"><i class="ri ri-lg ri-target" aria-hidden="true"></i>Planejar</a><a href="MobileMore.dc.html" class="br-tab"><span class="rv-tabwrap"><i class="ri ri-lg ri-more" aria-hidden="true"></i><span class="br-count" aria-hidden="true">2</span></span>Mais<span style="position: absolute; width: 1px; height: 1px; overflow: hidden">, 2 contas a pagar</span></a></nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { tab: 'result' }; }
+  renderVals() {
+    const t = this.state.tab;
+    return {
+      theme: this.props.theme ?? 'dark',
+      tab: { result: t === 'result' ? 'true' : 'false', cats: t === 'cats' ? 'true' : 'false', worth: t === 'worth' ? 'true' : 'false' },
+      is: { result: t === 'result', cats: t === 'cats', worth: t === 'worth' },
+      showResult: () => this.setState({ tab: 'result' }),
+      showCats: () => this.setState({ tab: 'cats' }),
+      showWorth: () => this.setState({ tab: 'worth' }),
+    };
+  }
+}
+</script>
+</body>
+</html>

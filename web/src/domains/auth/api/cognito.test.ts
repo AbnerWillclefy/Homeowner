@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { confirmSignUp, refreshSession, resendCode, signIn, signUp } from "./cognito";
+import { confirmForgotPassword, confirmSignUp, forgotPassword, refreshSession, resendCode, signIn, signUp } from "./cognito";
 
 function stubFetch(response: Response | Error) {
   const fn = vi.fn(async (_url: string, _init?: RequestInit) => {
@@ -162,5 +162,76 @@ describe("refreshSession", () => {
   it("reports a network failure as network", async () => {
     stubFetch(new TypeError("offline"));
     expect(await refreshSession("rt1")).toEqual({ kind: "network" });
+  });
+});
+
+describe("forgotPassword", () => {
+  it("posts ForgotPassword with the email", async () => {
+    const fetch = stubFetch(Response.json({ CodeDeliveryDetails: {} }));
+    expect(await forgotPassword("a@example.com")).toEqual({ kind: "ok" });
+    const headers = fetch.mock.calls[0]![1]?.headers as Record<string, string>;
+    expect(headers["X-Amz-Target"]).toBe("AWSCognitoIdentityProviderService.ForgotPassword");
+    expect(sentBody(fetch)).toEqual({ ClientId: "testclientid", Username: "a@example.com" });
+  });
+
+  it.each(["UserNotFoundException", "InvalidParameterException", "NotAuthorizedException", "SomethingNew"])(
+    "says ok for %s, so the screen never reveals whether the account exists or is confirmed",
+    async (type) => {
+      stubFetch(cognitoError(type));
+      expect(await forgotPassword("a@example.com")).toEqual({ kind: "ok" });
+    },
+  );
+
+  it("says ok for an unreadable error body", async () => {
+    stubFetch(new Response("<html>", { status: 502 }));
+    expect(await forgotPassword("a@example.com")).toEqual({ kind: "ok" });
+  });
+
+  it.each(["LimitExceededException", "TooManyRequestsException"])("reports %s as rate-limited", async (type) => {
+    stubFetch(cognitoError(type));
+    expect(await forgotPassword("a@example.com")).toEqual({ kind: "rate-limited" });
+  });
+
+  it("reports a network failure", async () => {
+    stubFetch(new TypeError("offline"));
+    expect(await forgotPassword("a@example.com")).toEqual({ kind: "network" });
+  });
+});
+
+describe("confirmForgotPassword", () => {
+  it("posts ConfirmForgotPassword with the code and the new password", async () => {
+    const fetch = stubFetch(Response.json({}));
+    expect(await confirmForgotPassword("a@example.com", "123456", "NewPassw0rd")).toEqual({ kind: "ok" });
+    const headers = fetch.mock.calls[0]![1]?.headers as Record<string, string>;
+    expect(headers["X-Amz-Target"]).toBe("AWSCognitoIdentityProviderService.ConfirmForgotPassword");
+    expect(sentBody(fetch)).toEqual({
+      ClientId: "testclientid",
+      Username: "a@example.com",
+      ConfirmationCode: "123456",
+      Password: "NewPassw0rd",
+    });
+  });
+
+  it.each([
+    ["CodeMismatchException", "wrong-code"],
+    ["ExpiredCodeException", "expired-code"],
+    ["InvalidPasswordException", "invalid-password"],
+    ["LimitExceededException", "rate-limited"],
+    ["UserNotFoundException", "wrong-code"],
+    ["UserNotConfirmedException", "wrong-code"],
+    ["NotAuthorizedException", "wrong-code"],
+  ])("maps %s to %s", async (type, kind) => {
+    stubFetch(cognitoError(type));
+    expect(await confirmForgotPassword("a@example.com", "1", "x")).toEqual({ kind });
+  });
+
+  it("reports a network failure", async () => {
+    stubFetch(new TypeError("offline"));
+    expect(await confirmForgotPassword("a@example.com", "1", "x")).toEqual({ kind: "network" });
+  });
+
+  it("keeps UserNotFoundException unmapped for resendCode", async () => {
+    stubFetch(cognitoError("UserNotFoundException"));
+    expect(await resendCode("a@example.com")).toEqual({ kind: "error" });
   });
 });

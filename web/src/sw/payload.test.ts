@@ -66,7 +66,7 @@ describe("notificationFromPush", () => {
   });
 
   describe.each(LOCALES)("a known kind in %s", (locale) => {
-    it.each(["checkin_reminder", "day_plan_ready", "bill_due_today", "bill_due_soon", "bill_overdue"] as const)("shows the device-language text for %s", (kind) => {
+    it.each(["checkin_reminder", "day_plan_ready"] as const)("shows the device-language text for %s", (kind) => {
       const text = JSON.stringify({ kind, title: "Server title", body: "Server body", url: "/" });
       expect(notificationFromPush(text, locale)).toEqual({ ...KIND_TEXT[kind][locale], url: "/" });
     });
@@ -94,6 +94,11 @@ describe("notificationFromPush", () => {
     ["an unknown kind", { kind: "something_new", title: "Hi", body: "B" }],
     ["a non-string kind", { kind: 3, title: "Hi", body: "B" }],
   ])("passes %s through", (_name, sent) => {
+    expect(notificationFromPush(JSON.stringify(sent), "pt-BR")).toEqual({ title: "Hi", body: "B", url: "/" });
+  });
+
+  it.each(["bill_due_today", "bill_due_soon", "bill_overdue"])("passes the removed kind %s through", (kind) => {
+    const sent = { kind, title: "Hi", body: "B" };
     expect(notificationFromPush(JSON.stringify(sent), "pt-BR")).toEqual({ title: "Hi", body: "B", url: "/" });
   });
 

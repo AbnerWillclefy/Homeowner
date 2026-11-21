@@ -1,0 +1,43 @@
+name: bedrock-check
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bedrock-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  bedrock-check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.apps.outputs.bedrock }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: apps
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: .github/scripts/changed-apps.sh "$BASE" >> "$GITHUB_OUTPUT"
+
+  bedrock-check:
+    name: bedrock-check
+    needs: bedrock-check-changes
+    # Runs when the changes job failed too, so a broken one cannot read as a skip
+    if: ${{ !cancelled() && (needs.bedrock-check-changes.result != 'success' || needs.bedrock-check-changes.outputs.run == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: bedrock/.nvmrc
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run typecheck -w @homeowner/bedrock
+      - run: npm test -w @homeowner/bedrock
+      - run: npm run build:showcase -w @homeowner/bedrock

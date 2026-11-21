@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Lista de compras</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="rv-phone" data-theme="{{theme}}">
+<header class="rv-phone__head"><div class="rv-phone__headrow"><div class="rv-row" style="gap: 8px; flex-wrap: nowrap; min-width: 0; align-items: flex-start"><a href="MobilePantry.dc.html" class="br-iconbtn" style="flex: none" aria-label="{{t.back}}"><i class="ri ri-chevron-left" aria-hidden="true"></i></a><div class="rv-head__text"><h1 class="rv-title">{{t.title}}</h1><span class="rv-sub">{{sub}}</span></div></div></div></header>
+<div class="rv-phone__scroll">
+<sc-if value="{{isError}}" hint-placeholder-val="{{ false }}">
+<div class="br-banner br-banner--danger" role="alert"><i class="ri ri-alert br-icon" aria-hidden="true"></i><span class="br-banner__text">{{t.error}}</span><button class="br-btn br-btn--ghost br-btn--sm"><i class="ri ri-refresh" aria-hidden="true"></i>{{t.retry}}</button></div>
+</sc-if>
+<sc-if value="{{isLoading}}" hint-placeholder-val="{{ false }}">
+<section class="br-card br-card--compact" aria-busy="true" aria-label="{{t.loading}}"><div class="br-skel" style="height: 64px"></div><div class="br-skel" style="height: 64px"></div><div class="br-skel" style="height: 64px"></div></section>
+</sc-if>
+<sc-if value="{{isEmpty}}" hint-placeholder-val="{{ false }}">
+<div class="br-empty" style="padding: 32px 0 0"><span class="br-empty__icon"><i class="ri ri-lg ri-cart" aria-hidden="true"></i></span><span class="br-empty__title">{{t.emptyTitle}}</span><span class="br-empty__text">{{t.emptyText}}</span></div>
+</sc-if>
+<sc-if value="{{isOver}}" hint-placeholder-val="{{ false }}"><div class="br-banner br-banner--warning" role="status"><i class="ri ri-alert br-icon" aria-hidden="true"></i><span class="br-banner__text">{{overText}}</span></div></sc-if>
+<sc-if value="{{isReady}}" hint-placeholder-val="{{ true }}">
+<section class="br-card br-card--compact">
+<div class="br-list">
+<sc-for list="{{rows}}" as="i" hint-placeholder-count="6">
+<div class="br-listrow" style="grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; cursor: default">
+<span class="br-checkbox" role="checkbox" aria-checked="{{i.checked}}" aria-label="{{t.check}} {{i.name}}" tabindex="0"><span class="br-checkbox__box"><sc-if value="{{i.isChecked}}" hint-placeholder-val="{{ false }}"><i class="ri ri-sm ri-check" aria-hidden="true"></i></sc-if></span></span>
+<button class="br-listrow__main" style="all: unset; display: flex; flex-direction: column; min-width: 0; min-height: 48px; justify-content: center; cursor: pointer" aria-label="{{t.editQty}} {{i.name}}"><span class="br-listrow__title" style="text-decoration: {{i.deco}}; color: {{i.color}}">{{i.name}}</span><span class="br-listrow__meta">{{i.phoneMeta}}</span></button>
+<span class="br-amount br-amount--sm"><span class="br-amount__value" style="color: {{i.color}}">{{i.price}}</span></span>
+</div>
+</sc-for>
+</div>
+</section>
+</sc-if>
+<sc-if value="{{hasField}}" hint-placeholder-val="{{ true }}"><form class="rv-row" style="flex-wrap: nowrap" aria-label="{{t.addItem}}"><label class="br-field" style="flex: 1"><span class="br-field__label">{{t.addItem}}</span><span class="br-input"><input placeholder="{{t.addPh}}"></span></label><button class="br-btn br-btn--secondary br-btn--lg" style="align-self: flex-end" type="submit"><i class="ri ri-plus" aria-hidden="true"></i>{{t.add}}</button></form></sc-if>
+</div>
+<sc-if value="{{isReady}}" hint-placeholder-val="{{ true }}">
+<div class="rv-phone__dock" style="justify-content: space-between; padding-block: 12px">
+<span class="rv-kv"><span class="rv-kv__k">{{t.total}}</span><span class="br-amount br-amount--md"><span class="br-amount__value">{{total}}</span></span></span>
+<sc-if value="{{hasLimit}}" hint-placeholder-val="{{ true }}"><span class="rv-kv" style="text-align: right"><span class="rv-kv__k" style="justify-content: flex-end">{{t.left}}</span><span class="br-amount br-amount--md"><span class="br-amount__value" style="color: {{leftColor}}">{{leftVal}}</span></span></span></sc-if>
+<sc-if value="{{noLimitNote}}" hint-placeholder-val="{{ false }}"><span class="br-muted" style="text-align: right">{{t.noLimit}} <a class="br-link" href="Settings.dc.html">{{t.setLimit}}</a></span></sc-if>
+</div>
+</sc-if>
+<sc-if value="{{qtySheet}}" hint-placeholder-val="{{ false }}">
+<div class="rv-overlay" style="z-index: 20"><div style="flex: 1"></div>
+<div class="br-sheet br-sheet--bottom" role="dialog" aria-label="{{t.qtyOf}} Feijão" style="padding-bottom: 32px"><span class="br-sheet__grab"></span>
+<div class="br-sheet__head"><div class="rv-stack" style="gap: 0"><span class="br-sheet__title">Feijão</span><span class="br-muted">R$ 8,19 {{t.unitEach}}</span></div><button class="br-iconbtn" aria-label="{{t.close}}"><i class="ri ri-x" aria-hidden="true"></i></button></div>
+<div class="rv-between"><span class="br-field__label">{{t.qty}}</span><span class="br-stepper" role="group" aria-label="{{t.qtyOf}} Feijão"><button class="br-stepper__btn" style="width: 48px; height: 48px" aria-label="{{t.less}}"><i class="ri ri-minus" aria-hidden="true"></i></button><output class="br-stepper__value">2</output><button class="br-stepper__btn" style="width: 48px; height: 48px" aria-label="{{t.more}}"><i class="ri ri-plus" aria-hidden="true"></i></button></span></div>
+<dl class="rv-dl"><dt class="rv-dl__total">{{t.lineTotal}}</dt><dd class="rv-dl__total">R$ 16,38</dd></dl>
+<button class="br-btn br-btn--ghost br-btn--lg br-btn--block"><i class="ri ri-trash" aria-hidden="true"></i>{{t.removeFromList}}</button>
+</div></div>
+</sc-if>
+<nav class="br-bottombar" aria-label="{{t.nav}}">
+<a href="MobileOverview.dc.html" class="br-tab"><i class="ri ri-lg ri-dashboard" aria-hidden="true"></i>{{t.tabHome}}</a>
+<a href="MobileTransactions.dc.html" class="br-tab"><i class="ri ri-lg ri-receipt" aria-hidden="true"></i>{{t.tabTx}}</a>
+<a href="MobilePlan.dc.html" class="br-tab"><i class="ri ri-lg ri-target" aria-hidden="true"></i>{{t.tabPlan}}</a>
+<a href="MobileMore.dc.html" class="br-tab" aria-current="page"><i class="ri ri-lg ri-more" aria-hidden="true"></i>{{t.tabMore}}</a>
+</nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"locale":{"editor":"enum","options":["pt-BR","en"],"default":"pt-BR"},"view":{"editor":"enum","options":["ready","empty","loading","error"],"default":"ready"},"limit":{"editor":"enum","options":["ok","over","none"],"default":"ok"},"qtySheet":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+// Shopping list, phone. A row is check, name with quantity × price, and the line total; tapping it opens the quantity sheet (prop qtySheet). The expected total and what is left of the groceries limit stay in the dock, in thumb reach.
+const COPY = {
+  'pt-BR': { title: 'Lista de compras', subOf: '{a} itens · {b} marcados', pantry: 'Despensa', check: 'Marcar', qtyOf: 'Quantidade de', less: 'Menos', more: 'Mais', remove: 'Remover', back: 'Voltar para a despensa', editQty: 'Mudar quantidade de', qty: 'Quantidade', unitEach: 'cada', lineTotal: 'Total do item', removeFromList: 'Tirar da lista', close: 'Fechar', total: 'Total previsto', left: 'Sobra no limite de mercado', over: 'Passou do limite de mercado em {v}. Dá para comprar mesmo assim.', noLimit: 'Sem limite de mercado.', setLimit: 'Definir', noPrice: 'sem preço ainda', each: '{v} cada', addItem: 'Novo item', addPh: 'Ex.: sal', add: 'Incluir', loading: 'Carregando a lista', error: 'Não deu para carregar a lista.', retry: 'Tentar', emptyTitle: 'Lista vazia', emptyText: 'O que acabar na despensa entra aqui sozinho.', itemsHead: 'Itens', summaryHead: 'Resumo', nav: 'Principal', tabHome: 'Início', tabTx: 'Lançamentos', tabPlan: 'Planejar', tabMore: 'Mais' },
+  en: { title: 'Shopping list', subOf: '{a} items · {b} checked', pantry: 'Pantry', check: 'Check', qtyOf: 'Quantity of', less: 'Less', more: 'More', remove: 'Remove', back: 'Back to the pantry', editQty: 'Change quantity of', qty: 'Quantity', unitEach: 'each', lineTotal: 'Item total', removeFromList: 'Take off the list', close: 'Close', total: 'Expected total', left: 'Left of groceries limit', over: 'Over the groceries limit by {v}. You can still buy.', noLimit: 'No groceries limit.', setLimit: 'Set', noPrice: 'no price yet', each: '{v} each', addItem: 'New item', addPh: 'E.g. salt', add: 'Add', loading: 'Loading the list', error: "Couldn't load the list.", retry: 'Retry', emptyTitle: 'List is empty', emptyText: 'What runs out in the pantry lands here by itself.', itemsHead: 'Items', summaryHead: 'Summary', nav: 'Main', tabHome: 'Home', tabTx: 'Transactions', tabPlan: 'Plan', tabMore: 'More' },
+};
+// Sample list. kg quantities carry three decimals; cents are the price of the whole line.
+const ITEMS = [
+  { name: 'Arroz', unit: 2790, q: 1, step: 1, checked: true },
+  { name: 'Feijão', unit: 819, q: 2, step: 1, checked: false },
+  { name: 'Queijo minas', unit: 6490, q: 0.45, step: 0.001, kg: true, checked: false },
+  { name: 'Café', unit: 1890, q: 1, step: 1, checked: false },
+  { name: 'Sal', unit: null, q: 1, step: 1, checked: false },
+  { name: 'Peito de frango', unit: 2190, q: 1.234, step: 0.001, kg: true, checked: false },
+];
+const brl = (c) => 'R$ ' + (c / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const shape = (t, locale, view, limit) => {
+  const num = (v, d) => v.toLocaleString(locale, { minimumFractionDigits: d, maximumFractionDigits: d });
+  const rows = ITEMS.map((i) => {
+    const cents = i.unit == null ? null : Math.round(i.unit * i.q);
+    return {
+      name: i.name, checked: String(i.checked), isChecked: i.checked, atMin: i.q <= i.step,
+      deco: i.checked ? 'line-through' : 'none', color: i.checked ? 'var(--text-muted)' : 'var(--text)',
+      qty: i.kg ? num(i.q, 3) + ' kg' : String(i.q),
+      meta: i.unit == null ? t.noPrice : t.each.replace('{v}', brl(i.unit) + (i.kg ? '/kg' : '')),
+      price: cents == null ? '—' : brl(cents),
+      phoneMeta: (i.kg ? num(i.q, 3) + ' kg' : i.q) + ' × ' + (i.unit == null ? t.noPrice : brl(i.unit) + (i.kg ? '/kg' : '')),
+    };
+  });
+  const total = ITEMS.filter((i) => !i.checked && i.unit != null).reduce((s, i) => s + Math.round(i.unit * i.q), 0);
+  const cap = limit === 'over' ? 8000 : 25000;
+  const left = cap - total;
+  const none = limit === 'none';
+  return {
+    rows, total: brl(total), hasLimit: !none,
+    isOver: limit === 'over', leftVal: brl(Math.max(left, 0)), leftColor: limit === 'over' ? 'var(--warning)' : 'var(--text)',
+    overText: t.over.replace('{v}', brl(total - cap)),
+    sub: t.subOf.replace('{a}', 6).replace('{b}', 1),
+    pct: Math.min(100, Math.round(total / cap * 100)) + '%',
+    isReady: view === 'ready', isEmpty: view === 'empty', isLoading: view === 'loading', isError: view === 'error',
+  };
+};
+class Component extends DCLogic {
+  renderVals() {
+    const locale = this.props.locale ?? 'pt-BR';
+    const t = COPY[locale];
+    const s = shape(t, locale === 'en' ? 'en-US' : 'pt-BR', this.props.view ?? 'ready', this.props.limit ?? 'ok');
+    return { theme: this.props.theme ?? 'dark', t, ...s, hasField: !s.isLoading, qtySheet: !!this.props.qtySheet && s.isReady, noLimitNote: !s.hasLimit };
+  }
+}
+</script>
+</body>
+</html>

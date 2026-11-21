@@ -47,7 +47,7 @@ reset() {
   jq -n --arg b "$(body low)" --arg sha "$head" \
     '{state: "OPEN", author: {login: "homeowner-agents"}, baseRefName: "main", isDraft: false,
       labels: [{name: "review-addressed"}], headRefOid: $sha, mergeable: "MERGEABLE", title: "t", url: "u", body: $b}' >"$fix/pr.json"
-  jq -n '[("backend-test", "web-typecheck", "web-e2e", "ui-screenshots", "claude-review")
+  jq -n '[("backend-test", "web-typecheck", "web-e2e", "admin-typecheck", "infra-check", "bedrock-check", "revenue-check", "ui-screenshots", "claude-review")
           | {name: ., bucket: "pass", startedAt: "2026-01-01T10:00:00Z"}]
         + [{name: "pr-risk", bucket: "cancel", startedAt: "2026-01-01T10:00:00Z"},
            {name: "pr-risk", bucket: "pass", startedAt: "2026-01-01T10:05:00Z"}]' >"$fix/checks.json"
@@ -105,6 +105,18 @@ reset; echo '[{"filename":".github/workflows/x.yml","status":"modified"}]' >"$fi
 reset; jq '.author.login = "maintainer"' "$fix/pr.json" >"$fix/t" && mv "$fix/t" "$fix/pr.json"; expect kept "the maintainer's own pull request"
 reset; jq '.labels += [{name: "needs-human"}]' "$fix/pr.json" >"$fix/t" && mv "$fix/t" "$fix/pr.json"; expect kept "labelled needs-human"
 
+# A required check whose paths did not change reports as skipped, which counts as passed
+setb() { # setb <check> <bucket>: change one check's bucket
+  jq --arg n "$1" --arg b "$2" 'map(if .name == $n then .bucket = $b else . end)' "$fix/checks.json" >"$fix/t" && mv "$fix/t" "$fix/checks.json"
+}
+reset; setb backend-test skipping; expect merged "a required check skipped counts as passed"
+reset; for c in backend-test web-typecheck web-e2e admin-typecheck infra-check bedrock-check revenue-check; do setb "$c" skipping; done; expect merged "every path-gated required check skipped"
+reset; setb backend-test skipping; setb web-e2e fail; expect kept "a skipped required check beside a failed one"
+reset; setb backend-test skipping; setb web-e2e pending; expect kept "a skipped required check beside a pending one"
+reset; setb backend-test skipping; jq '. + [{name: "backend-test-changes", bucket: "fail", startedAt: "2026-01-01T10:00:00Z"}]' "$fix/checks.json" >"$fix/t" && mv "$fix/t" "$fix/checks.json"
+expect kept "its changes job failed while the check shows skipped"
+reset; jq 'map(select(.name != "revenue-check"))' "$fix/checks.json" >"$fix/t" && mv "$fix/t" "$fix/checks.json"; expect kept "a required check that never reported"
+
 reset; echo 'not json' >"$fix/runs.json"; expect kept "an API error skips the pull request instead of stopping"
 reset; echo 'not json' >"$fix/runs.json"
 if "$here/merge-by-risk.sh" 7 7 >"$fix/out" 2>&1; then
@@ -130,6 +142,19 @@ while read -r wf; do
   if grep -qxF "name: $wf" "$workflows"/*.yml; then echo "ok   trigger workflow \"$wf\" exists"
   else echo "FAIL merge-by-risk.yml waits on a workflow named \"$wf\" that does not exist"; failures=$((failures + 1)); fi
 done <<<"$triggers"
+
+# A required check behind a workflow-level path filter never reports on a pull request that misses
+# its paths, so it would wait forever: required checks skip with a changes job instead
+visited=0
+for name in $(sed -n 's/^required_checks=(\(.*\))$/\1/p' "$here/merge-by-risk.sh"); do
+  file=$(grep -lE "^  $name:\$|^    name: $name\$" "$workflows"/*.yml | head -n 1 || true)
+  [[ -n "$file" ]] || continue
+  visited=$((visited + 1))
+  if sed -n '/^on:/,/^[a-z]/p' "$file" | grep -qE '^ +paths(-ignore)?:'; then
+    echo "FAIL required check $name is behind a paths filter in $(basename "$file")"; failures=$((failures + 1))
+  else echo "ok   required check $name has no paths filter"; fi
+done
+if (( visited < 7 )); then echo "FAIL the paths-filter loop visited only $visited workflows"; failures=$((failures + 1)); fi
 
 if (( failures )); then echo "$failures failed"; exit 1; fi
 echo "all passed"

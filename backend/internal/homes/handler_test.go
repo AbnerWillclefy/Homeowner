@@ -642,3 +642,24 @@ func TestTwoResidentsLeavingAtOnceDeleteTheHomeOnce(t *testing.T) {
 		t.Errorf("rows left = %d, want the Home, its Residents and Chores gone", n)
 	}
 }
+
+func TestLeavingClearsTheResponsibilityAndChangesNothingElseAboutTheChore(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	b := apitest.ExtraResident(t, app, a, "b@example.com")
+	id := apitest.ChoreIn(t, a, "kitchen", []string{"bending"})
+	apitest.ExpectStatus(t, a.Put("/home/chores/"+id+"/responsible", map[string]any{"residentId": apitest.ResidentID(t, b)}), http.StatusNoContent)
+	before := apitest.ChoreByID(t, a, id)
+
+	apitest.ExpectStatus(t, apitest.LeaveHome(b), http.StatusNoContent)
+
+	after := apitest.ChoreByID(t, a, id)
+	if after["responsibleResidentId"] != nil {
+		t.Fatalf("responsible = %v, want null", after["responsibleResidentId"])
+	}
+	before["responsibleResidentId"] = nil
+	if !reflect.DeepEqual(before, after) {
+		t.Errorf("chore changed beyond responsibility: before %v after %v", before, after)
+	}
+}

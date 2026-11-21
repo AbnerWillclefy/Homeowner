@@ -15,6 +15,8 @@ The PWA outgrew one scrolling home screen. [ADR 0007](0007-tailwind-and-radix-fo
 
 **Look (amends ADR 0007's Look)**
 
+> Amended by [ADR 0022](0022-a-shared-bedrock-design-system-amends-0007-and-0009-for-adopting-apps.md) for apps that adopt Bedrock; `web/` keeps this decision until its migration epic.
+
 - **Nunito** is the app font, self-hosted (latin subset, weights 400, 600 and 700 only), with the system stack as fallback. ADR 0007's "system font stack, no web font" no longer holds.
 - **Per-Category pastels:** six semantic fills (peach, mint, lavender, blue, yellow, salmon) each with a paired ink, in light and dark. Kitchen is peach; bathroom mint; bedroom and living room lavender; laundry and floors blue; trash and outdoor yellow; pets salmon; other and anything unknown is neutral. The Category name always stays as text, so meaning never rests on colour.
 - **The teal accent is kept** for primary actions; pastels mark Categories, not actions.

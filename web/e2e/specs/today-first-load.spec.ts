@@ -6,6 +6,7 @@ import { todayHandlers } from "../mocks/handlers/today";
 import { hold } from "../mocks/hold";
 import { RESIDENT_EMAIL, signedInResident, withExplanation } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
+import { withoutBoot } from "../mocks/handlers/boot";
 import { launchApp } from "../pages/launch";
 
 // What this covers: Today's first load shows its skeleton until the Check-in and the Day Plan have each
@@ -79,6 +80,7 @@ for (const l of LOCALES) {
 
     test.beforeEach(async ({ page, fakeApi }) => {
       fakeApi.use(signedInHandlers);
+      withoutBoot(fakeApi);
       fakeApi.state.streak = 5;
       await seedSession(page, { email: RESIDENT_EMAIL });
     });

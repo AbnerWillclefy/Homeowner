@@ -77,6 +77,12 @@ run_case "test-only change sets no floor" \
   "$(files "$(file backend/internal/platform/db/db_test.go modified)" "$(file web/e2e/today.spec.ts added)" "$(file web/src/sw/payload.test.ts modified)")" "$(complete_body low)" \
   "floor=low" "!problem="
 
+for f in revenue/src/sw.ts revenue/src/sw/payload.ts revenue/vite.config.ts; do
+  run_case "the Revenue service worker file $f is medium" \
+    "$(files "$(file "$f" modified)")" "$(complete_body low)" \
+    "floor=medium" "problem="
+done
+
 run_case "a test file under a protected path is still high" \
   "$(files "$(file .github/x.test.ts added)")" "$(complete_body high)" \
   "floor=high"
@@ -91,8 +97,22 @@ for f in web/CLAUDE.md backend/CLAUDE.md REVIEW.md AGENTS.md; do
     "floor=high"
 done
 
+for f in package.json package-lock.json bedrock/package.json; do
+  run_case "a dependency change in $f is medium" \
+    "$(files "$(file "$f" modified)")" "$(complete_body medium)" \
+    "floor=medium" "!problem="
+done
+
 run_case "the API's authentication middleware is high" \
   "$(files "$(file backend/internal/server/auth.go modified)")" "$(complete_body high)" \
+  "floor=high"
+
+run_case "Revenue's sign-in code is high" \
+  "$(files "$(file revenue/src/auth/cognito.ts modified)")" "$(complete_body high)" \
+  "floor=high"
+
+run_case "Revenue's sign-in tests stay below the protected paths: still high" \
+  "$(files "$(file revenue/src/auth/cognito.test.ts modified)")" "$(complete_body high)" \
   "floor=high"
 
 run_case "the CORS policy is high" \

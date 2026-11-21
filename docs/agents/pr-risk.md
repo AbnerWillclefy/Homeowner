@@ -8,7 +8,7 @@ The change sets the tier, not who wrote it. The engineer who opens the pull requ
 
 | Tier | Typical changes | Who merges |
 |---|---|---|
-| `low` | Docs, copy and translations, tests, styling, refactors with no change in behaviour, a small fix with a test that shows it, new behaviour behind a flag that is off | `merge-by-risk.yml`, once every check is green, Claude's latest review of the head commit raised nothing, and every Claude review thread is resolved |
+| `low` | Docs, copy and translations, tests, styling, refactors with no change in behaviour, a small fix with a test that shows it, new behaviour behind a flag that is off | `merge-by-risk.yml`, once every check has passed or been skipped (its paths did not change), Claude's latest review of the head commit raised nothing, and every Claude review thread is resolved |
 | `medium` | Ordinary product changes: a new screen or endpoint, a changed rule a Resident sees, an additive migration, dependency updates, the API's wiring, the service worker | `merge-by-risk.yml`, under the same conditions plus the maintainer's approval of the head commit |
 | `high` | CI and deploy workflows, the agents' instructions, Terraform, sign-in, operations scripts, a migration that drops, renames or rewrites data or edits an old migration, anything that could lose a Resident's data or lock them out | The maintainer, by hand |
 
@@ -21,6 +21,8 @@ Some changes are risky whatever the description says, so the changed paths set a
 - **high**: CI and the pipeline (`.github/`, `.claude/`), the agents' instructions (any `CLAUDE.md`, `AGENTS.md`, `REVIEW.md`), Terraform (`infra/`), operations scripts, sign-in, accounts and invites, the API's authentication middleware and CORS policy, a non-SQL file in `backend/migrations/`, and a migration that edits an old one or drops, renames or rewrites data. Test files there count too.
 - **medium**: a new migration, the allocator and its referee (ADR 0004), how the API starts or is wired, dependencies, and the service worker.
 - Anything else has no floor. A renamed file counts under its old and new paths, and a migration GitHub returns no diff for counts as high.
+
+Until #703 (Revenue screens match the approved design) closes, a pull request that changes how a Revenue screen looks is at least `medium`, so the maintainer compares it with its artboard before it merges. It is a rule for the engineer, not a floor in `pr-risk.sh`; drop this paragraph when #703 closes.
 
 A path with no floor can still be medium or high: the engineer judges it against the tiers above. Change `floor_for` and `.github/scripts/pr-risk.test.sh` together.
 
@@ -43,7 +45,7 @@ To run it by hand: Actions, **Merge by risk**, Run workflow, optionally with a p
 
 What counts as a Claude finding is defined twice: in `.github/scripts/claude-findings.sh` and in the gate of `agent-review-fix.yml`, which only a human may edit. Keep the two the same; when that workflow is next edited, it should call the script instead.
 
-A new CI workflow on pull requests must be registered in two places, or low-risk pull requests either merge without it or wait for another wake-up: its workflow name in the `workflows:` list of `merge-by-risk.yml`, and, if it runs on every pull request, its check name in `required_checks` in `merge-by-risk.sh`.
+A new CI workflow on pull requests must be registered in two places, or low-risk pull requests either merge without it or wait for another wake-up: its workflow name in the `workflows:` list of `merge-by-risk.yml`, and its check name in `required_checks` in `merge-by-risk.sh`. Every pull request workflow runs on every pull request and has no workflow-level `paths:` (a filtered workflow reports no check at all, so a required one would wait forever). A first job `<check>-changes` runs `.github/scripts/changed-apps.sh` and the check job runs only when its app changed, so a check whose paths did not change shows as skipped. A skipped required check counts as passed; a failed or pending one, or one that never reported, blocks. Name the changes job `<check>-changes`, never just `changes`: `merge-by-risk.sh` keeps only the latest check per name, and a shared name would let one workflow's passing job hide another's failed one. `merge-by-risk.test.sh` fails when a required check's workflow has a `paths:` filter.
 
 ## Reverting
 

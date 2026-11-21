@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Patrimônio</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="rv-app" data-theme="{{theme}}">
+<div class="rv-side"><dc-import name="Sidebar" active="networth" theme="{{theme}}" hint-size="256px,1240px"></dc-import></div>
+<main class="rv-main">
+<header class="rv-head">
+<div class="rv-head__text"><h1 class="rv-title">Patrimônio</h1><span class="rv-sub">Saldos das contas e investimentos, menos as faturas abertas</span></div>
+<div class="rv-tools"><button class="br-iconbtn" aria-label="Esconder valores"><i class="ri ri-eye" aria-hidden="true"></i></button></div>
+</header>
+
+<section class="br-card">
+<div class="br-card__head" style="align-items: flex-start; flex-wrap: wrap">
+<div class="rv-stack" style="gap: 4px"><span class="br-card__label">Patrimônio hoje</span>
+<div class="rv-row" style="gap: 16px"><span class="br-amount br-amount--hero"><span class="br-amount__value">R$ 48.312,70</span></span><span class="br-badge br-badge--positive"><i class="ri ri-sm ri-trending" aria-hidden="true"></i>{{p.delta}}</span></div>
+<span class="br-muted">{{p.note}}</span></div>
+<div class="br-seg" role="group" aria-label="Período"><sc-for list="{{periods}}" as="per" hint-placeholder-count="4"><button aria-pressed="{{per.on}}" onClick="{{per.pick}}">{{per.label}}</button></sc-for></div>
+</div>
+<svg class="br-chart" viewBox="0 0 960 240" role="img" aria-label="{{p.aria}}">
+<line class="grid" x1="0" y1="216" x2="900" y2="216"></line><line class="grid" x1="0" y1="116" x2="900" y2="116"></line><line class="grid" x1="0" y1="16" x2="900" y2="16"></line>
+<text x="908" y="220">{{p.lo}}</text><text x="908" y="120">{{p.midL}}</text><text x="908" y="20">{{p.hi}}</text>
+<path class="area" d="{{p.area}}"></path>
+<path class="line" d="{{p.line}}"></path>
+<circle class="end" cx="900" cy="{{p.endY}}" r="6"></circle>
+<text x="0" y="236">{{p.from}}</text><text x="860" y="236">hoje</text>
+</svg>
+</section>
+
+<div class="rv-grid">
+<section class="br-card s8">
+<span class="rv-section">De onde vem</span>
+<div class="br-progress__track" style="height: 16px; gap: 4px; background: transparent" role="img" aria-label="Investimentos R$ 43.500, contas R$ 8.173, faturas abertas menos R$ 3.360">
+<div class="br-progress__fill" style="width: 79%; background: var(--brand); border-radius: 4px"></div>
+<div class="br-progress__fill" style="width: 15%; background: var(--cat-transport); border-radius: 4px"></div>
+<div class="br-progress__fill" style="width: 6%; background: var(--danger); border-radius: 4px"></div>
+</div>
+<div class="br-list">
+<a href="Accounts.dc.html" class="br-listrow"><span class="br-cat__icon" style="background: var(--brand-soft); color: var(--brand)"><i class="ri ri-trending" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Investimentos</span><span class="br-listrow__meta">3 aplicações · CDB, Tesouro Selic, fundo</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 43.500,00</span></span><span class="br-badge br-badge--positive">+R$ 812 no mês</span></div></a>
+<a href="Accounts.dc.html" class="br-listrow"><span class="br-cat__icon" style="background: var(--cat-transport-soft); color: var(--cat-transport)"><i class="ri ri-landmark" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Contas</span><span class="br-listrow__meta">Nubank e Itaú, conta corrente</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 8.172,58</span></span><span class="br-badge br-badge--positive">+R$ 1.022 no mês</span></div></a>
+<a href="CardBills.dc.html" class="br-listrow"><span class="br-cat__icon" style="background: var(--danger-soft); color: var(--danger)"><i class="ri ri-card" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Faturas abertas</span><span class="br-listrow__meta">Nubank e Itaú Click</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm"><span class="br-amount__value">−R$ 3.359,88</span></span><span class="br-badge br-badge--neutral">−R$ 641 no mês</span></div></a>
+</div>
+</section>
+<section class="br-card s4">
+<span class="br-card__label">Como o número é feito</span>
+<div class="rv-stack">
+<div class="rv-between"><span>Saldo das contas</span><span class="br-num">R$ 8.172,58</span></div>
+<div class="rv-between"><span>+ Investimentos</span><span class="br-num">R$ 43.500,00</span></div>
+<div class="rv-between"><span>− Faturas abertas</span><span class="br-num">R$ 3.359,88</span></div>
+<hr class="rv-divider">
+<div class="rv-between"><strong>Patrimônio</strong><strong class="br-num">R$ 48.312,70</strong></div>
+</div>
+<span class="br-muted">Parcelas futuras ficam fora: elas aparecem na Projeção. O histórico começa em 12/09, quando o primeiro saldo foi salvo.</span>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { period: '30d' }; }
+  renderVals() {
+    const brl = (v) => 'R$ ' + Math.round(v).toLocaleString('pt-BR');
+    const P = {
+      '7d': { from: '4 nov', delta: '+R$ 402 · +0,8%', note: 'Últimos 7 dias', vals: [47910, 47850, 48120, 47980, 48050, 48260, 48312.7] },
+      '30d': { from: '12 out', delta: '+R$ 1.193 · +2,5%', note: 'Últimos 30 dias', vals: [47120, 47180, 46900, 46950, 47010, 46420, 46480, 46610, 46700, 46820, 46760, 46900, 46980, 47100, 47050, 47200, 47260, 47340, 47410, 47380, 47490, 47560, 47640, 47910, 47850, 48120, 47980, 48050, 48260, 48312.7] },
+      '90d': { from: '12 set', delta: '+R$ 3.412 · +7,6%', note: 'Desde o primeiro saldo salvo', vals: [44900, 45120, 45300, 45210, 45680, 45900, 46050, 46200, 46380, 46420, 46700, 46900, 47120, 47380, 47640, 48050, 48312.7] },
+      'all': { from: '12 set', delta: '+R$ 3.412 · +7,6%', note: 'Desde o primeiro saldo salvo', vals: [44900, 45120, 45300, 45210, 45680, 45900, 46050, 46200, 46380, 46420, 46700, 46900, 47120, 47380, 47640, 48050, 48312.7] },
+    };
+    const p = P[this.state.period];
+    const lo = Math.floor(Math.min(...p.vals) / 500) * 500, hi = Math.ceil(Math.max(...p.vals) / 500) * 500;
+    const y = (v) => 216 - (v - lo) / (hi - lo) * 200;
+    const pts = p.vals.map((v, i) => [(i / (p.vals.length - 1) * 900).toFixed(1), y(v).toFixed(1)]);
+    const line = 'M' + pts.map((q) => q.join(' ')).join(' L');
+    return {
+      theme: this.props.theme ?? 'dark',
+      periods: [['7d', '7D'], ['30d', '30D'], ['90d', '90D'], ['all', 'Tudo']].map(([id, label]) => ({ label, on: this.state.period === id ? 'true' : 'false', pick: () => this.setState({ period: id }) })),
+      p: { ...p, line, area: line + ' L900 216 L0 216 Z', endY: y(p.vals[p.vals.length - 1]).toFixed(1), lo: brl(lo), hi: brl(hi), midL: brl((lo + hi) / 2), aria: 'Patrimônio de ' + p.note.toLowerCase() + ': ' + p.delta },
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CognitoFailure, CognitoResult, SignInResult } from "../api/cognito";
-import { createConfirmSubmitter, type ConfirmAction, createSignInSubmitter, createSignUpSubmitter } from "./authSubmit";
+import { createConfirmSubmitter, type ConfirmAction, createSignInSubmitter, createSignUpSubmitter, createStepSubmitter } from "./authSubmit";
 
 const tokens = { idToken: "i", refreshToken: "r", expiresInSeconds: 3600 };
 
@@ -116,5 +116,38 @@ describe("confirm submit", () => {
     expect(w.problems.at(-1)).toEqual({ kind: "wrong-code" });
     await form.submit("a@b.c", "111111");
     expect(confirm).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("step submit", () => {
+  function setup(result: CognitoResult) {
+    const task = vi.fn((_a: string, _b: string) => Promise.resolve(result));
+    const onOk = vi.fn();
+    const w = watch();
+    return { task, onOk, w, submit: createStepSubmitter({ task, onOk, ...w }) };
+  }
+
+  it("sends once for a double submit in the same tick", async () => {
+    const { task, onOk, submit } = setup({ kind: "ok" });
+    await Promise.all([submit("a@b.c", "1"), submit("a@b.c", "1")]);
+    expect(task).toHaveBeenCalledTimes(1);
+    expect(onOk).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls onOk with the arguments on success", async () => {
+    const { onOk, w, submit } = setup({ kind: "ok" });
+    await submit("a@b.c", "123");
+    expect(onOk).toHaveBeenCalledWith("a@b.c", "123");
+    expect(w.problems).toEqual([null]);
+  });
+
+  it("clears, then reports the failure, and re-arms the guard", async () => {
+    const { task, onOk, w, submit } = setup({ kind: "wrong-code" });
+    await submit("a@b.c", "1");
+    expect(w.problems).toEqual([null, { kind: "wrong-code" }]);
+    expect(onOk).not.toHaveBeenCalled();
+    await submit("a@b.c", "1");
+    expect(task).toHaveBeenCalledTimes(2);
+    expect(w.busy).toEqual([true, false, true, false]);
   });
 });

@@ -1,0 +1,24 @@
+# Revenue rules
+
+- Build a screen from its artboard in `docs/design/revenue/` (its `README.md` maps screens to files). Read the artboard and `docs/design/revenue/revenue.css` before writing code: the layout comes from the artboard (the header and its tools, the 12-column grid spans, the cards, the side panel), the data from the API, the words from the i18n catalogs and `docs/glossary-pt-BR.md`. Why: screens built from the old Finances code instead of the design came out as one column of cards (#703).
+- Anything the screen does differently from its artboard goes in the pull request description under `### Differs from the design`, one line each with the reason (data the API does not serve, a glossary word, an accessibility fix). A difference not listed there is a defect.
+- The design changes through a pull request to `docs/design/revenue/`, never only in the canvas: the repo copy is what screens are built and reviewed against.
+- Every screen starts with `PageHeader` (`src/shared/PageHeader.tsx`: title, subtitle, a `tools` slot for `MonthSelect` and `HideValuesToggle`). Lay the body on a 12-column grid: `grid gap-6 desktop:grid-cols-12`, cells `desktop:col-span-{3,4,5,6,7,8,12}`, one column below 1024px with no class. Every direct child of the grid gets a span, the empty state, the loading state and an alert included: a child without one fills one column of twelve. Do not import `revenue.css`. Why: ten screens were built in parallel and each needs the same frame (#703), and unspanned cards came out one column wide (#734, #738).
+- Money follows the hide-values toggle: spread `useHiddenProps()` (`src/shared/HideValues.tsx`) on every Bedrock `Amount`, `StatCard` and `ListRow`. Chart axes and tooltips, `DonutChart`'s centre total and amounts formatted into a plain string do not read it; hide those in the screen.
+- A screen reads its month with `useMonthParam()` from `src/shared/month/`, never its own copy. Why: it counts the month in São Paulo, not on the device.
+
+## From review findings
+
+These rules come from findings the reviewer raised in more than one pull request (`.claude/skills/review-lessons/`).
+
+- When the month or range changes, clear the screen's notices, marked batches and failed-write banners, and keep the last data on screen (`placeholderData: keepPreviousData`) instead of an empty-state message while the new one loads. Why: notices from one month showed on the next, and a loading range read as "no history" (#683, #732, #735).
+- A Sheet that saves stays open until its write answers, shows the write's error inside itself, and keeps what the User typed when the write fails. A success notice outlives the re-render the save causes. Why: errors showed behind the Sheet or vanished with it, a failed save threw the typed amount away, and "Dates saved." disappeared (#690, #733, #739, #741).
+- Track a row action's busy state per item (a set of ids, not one id) and disable the row's buttons until its write answers. Why: a quick second tap landed on Desfazer, and marking a second Bill re-enabled the first's Desfazer mid-write (#683, and `web/` #558).
+- Check in the form every limit the backend enforces (the amount ceiling, 60-character names) and show it as a field error. Why: values the server refuses were sent and shown as a failed save (#684, #688).
+- A failed read shows its own error with Retry, never the empty state ("None saved"), and a failed background refetch keeps the data already on screen. Why: a failed read looked like no data, and one failed refetch tore down the app (#678, #690).
+- Give a non-interactive element its accessible name as `sr-only` text, not `aria-label` on a `<span>` or `<td>` with no role. Why: screen readers skipped those labels (#689, #736).
+- Keep a control mounted while the data it chose loads, and return focus to the opener when a Sheet or form closes. Why: keyboard focus fell to the page body (#687, and `web/` #503, #562).
+- A query key is `["finance", <endpoint>, ...params]`, ending in a name for its shape when the screen parses the response its own way (`"card-bills"`, `"months"`), and every key you invalidate prefixes one a query uses. Why: two shapes shared one key, and an invalidation matched no query (#682, #684).
+- A response parser checks every field its type declares, and its test has a case that refuses a bad value for each new field. Why: typed fields went unchecked or untested (#692, #732).
+- Reuse what `revenue/` already has (a domain's API call, a type list from `api.ts`, `summarise`) and copy nothing from `web/` that the screen does not call. Why: copied files and second versions of a rule were left unused or drifted (#681, #682, #729, #731).
+- Test each branch a screen adds: singular and plural copy, the empty state, the over-limit or overdue state, a User with no data yet, and that hide values hides the screen's amounts. Why: these branches shipped untested in most Revenue pull requests (#681, #682, #733, #738, #741).

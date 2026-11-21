@@ -3,7 +3,7 @@ import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { ApiFailure } from "../../../shared/query/ApiFailure";
 import { meQuery } from "../api/queries";
 import { browserSession } from "../logic/browserSession";
-import { confirmSignUp, resendCode, signIn, signUp, type CognitoResult, type SignInResult } from "../api/cognito";
+import { confirmForgotPassword, confirmSignUp, forgotPassword, resendCode, signIn, signUp, type CognitoResult, type SignInResult } from "../api/cognito";
 import { emailFromIdToken } from "../logic/session";
 
 export type AuthState =
@@ -52,6 +52,11 @@ export function useAuth() {
   const register = useCallback((email: string, password: string): Promise<CognitoResult> => signUp(email, password), []);
   const confirm = useCallback((email: string, code: string): Promise<CognitoResult> => confirmSignUp(email, code), []);
   const resend = useCallback((email: string): Promise<CognitoResult> => resendCode(email), []);
+  const requestReset = useCallback((email: string): Promise<CognitoResult> => forgotPassword(email), []);
+  const confirmReset = useCallback(
+    (email: string, code: string, password: string): Promise<CognitoResult> => confirmForgotPassword(email, code, password),
+    [],
+  );
 
   const logIn = useCallback(async (email: string, password: string): Promise<SignInResult> => {
     const result = await signIn(email, password);
@@ -71,5 +76,5 @@ export function useAuth() {
     setState({ kind: "signed-out" });
   }, []);
 
-  return { state, register, confirm, resend, logIn, signOut };
+  return { state, register, confirm, resend, requestReset, confirmReset, logIn, signOut };
 }

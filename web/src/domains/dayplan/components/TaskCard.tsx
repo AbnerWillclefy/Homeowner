@@ -1,5 +1,6 @@
 import { CalendarDays, CircleCheck, Flag, Lightbulb, Users } from "lucide-react";
 import { Link } from "react-router";
+import { useShell } from "../../../app/components/ShellContext";
 import { CHORES_PATH } from "../../../app/logic/routes";
 import { EDIT_PARAM } from "../../chores/components/ChoresSection";
 import type { PlanTask } from "../api/api";
@@ -13,7 +14,7 @@ import { ButtonRow } from "../../../shared/ui/ButtonRow";
 import { actionsFor, variantFor, type ActionSlot, type CardAction, type TaskAction, type TaskRole } from "../logic/actions";
 import { categoryLabel, importanceLabel, labelText, type Label } from "../../profile/logic/labels";
 import { dueWhen, formatDay } from "../logic/format";
-import { assignmentReasonLabel, poolReasonLabel } from "../logic/reasons";
+import { assignmentReasonLabel, poolReasonLabel, waitingForText, WAITING_FOR_RESPONSIBLE } from "../logic/reasons";
 import { taskEffortText } from "../logic/taskEffort";
 
 interface Props {
@@ -77,6 +78,14 @@ export function TaskCard({ task, role, today, busy, pending, onAction, onSwap }:
 
   const style = categoryStyle(task.category);
   const reason = (role === "pool" ? poolReasonLabel : assignmentReasonLabel)(task.reason);
+  // Its words carry the responsible Resident's name, which only the shared Residents list knows.
+  const { residents } = useShell();
+  const waiting = role === "pool" && task.reason === WAITING_FOR_RESPONSIBLE;
+  const reasonText = !reason
+    ? null
+    : waiting
+      ? waitingForText(t, task.responsibleResidentId ? residents.byResidentId(task.responsibleResidentId) : undefined)
+      : text(reason);
   const date = formatDay(task.windowEnd, locale);
   const due = {
     past: t("dayplan.task.duePast", { date }),
@@ -116,10 +125,10 @@ export function TaskCard({ task, role, today, busy, pending, onAction, onSwap }:
           </ul>
         )}
 
-        {reason && (
+        {reasonText && (
           <p className="my-0 flex gap-2 border-t border-current/20 pt-3 text-sm">
             <Lightbulb aria-hidden="true" size={16} className="mt-0.5 shrink-0" />
-            <span>{t("dayplan.task.reason", { reason: text(reason) })}</span>
+            <span>{t("dayplan.task.reason", { reason: reasonText })}</span>
           </p>
         )}
 

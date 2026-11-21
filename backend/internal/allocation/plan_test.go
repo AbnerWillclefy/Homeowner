@@ -228,3 +228,53 @@ func TestBaselineImplementsAllocator(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// Responsibility is a hard rule (docs/adr/0025): a Task with a responsible
+// Resident goes to them or waits.
+func TestPlanResponsibility(t *testing.T) {
+	two := people(2)
+	runPlanCases(t, []planCase{
+		{"one-person goes to the responsible one though another likes it and has more energy",
+			state(rs(resident("a", 2), resident("b", 5).likes("t")), task("t", 1, responsible("a"))),
+			[]Assignment{give("t", "a", ReasonFitsEnergy)}, nil},
+		{"waits when energy is below the effort",
+			state(rs(resident("a", 1), resident("b", 5)), task("t", 2, responsible("a"))),
+			nil, []PoolEntry{pool("t", ReasonWaitingForResponsible)}},
+		{"waits when drained",
+			state(rs(resident("a", 0), resident("b", 5)), task("t", 1, responsible("a"))),
+			nil, []PoolEntry{pool("t", ReasonWaitingForResponsible)}},
+		{"waits on a day-only demand restriction",
+			state(rs(resident("a", 5).cannotDo("lifting"), resident("b", 5)), task("t", 1, responsible("a"), demands("lifting"))),
+			nil, []PoolEntry{pool("t", ReasonWaitingForResponsible)}},
+		{"waits when absent from the plan",
+			state(rs(resident("b", 5)), task("t", 1, responsible("a"))),
+			nil, []PoolEntry{pool("t", ReasonWaitingForResponsible)}},
+		{"weekday not allowed wins over waiting",
+			state(rs(resident("a", 0)), task("t", 1, responsible("a"), onlyOn((today.Weekday()+1)%7))),
+			nil, []PoolEntry{pool("t", ReasonWeekdayNotAllowed)}},
+		{"nobody responsible plans as before",
+			state(rs(resident("a", 2), resident("b", 5)), task("t", 1)),
+			[]Assignment{give("t", "b", ReasonFitsEnergy)}, nil},
+		{"the earlier task spends the responsible one's energy, so the next waits",
+			state(rs(resident("a", 1), resident("b", 5)), task("t1", 1, importance(Essential), responsible("a")), task("t2", 1, responsible("a"))),
+			[]Assignment{give("t1", "a", ReasonImportance)}, []PoolEntry{pool("t2", ReasonWaitingForResponsible)}},
+		{"two-person: the responsible one plus the best other by preference, not by energy",
+			state(rs(resident("a", 3), resident("b", 5), resident("c", 3).likes("t")), task("t", 1, two, responsible("a"))),
+			[]Assignment{give("t", "a", ReasonLiked), give("t", "c", ReasonLiked)}, nil},
+		{"two-person: the responsible one is in the pair even when others have more energy",
+			state(rs(resident("a", 1), resident("b", 5), resident("c", 4)), task("t", 1, two, responsible("a"))),
+			[]Assignment{give("t", "a", ReasonFitsEnergy), give("t", "b", ReasonFitsEnergy)}, nil},
+		{"two-person waits when the responsible one does not fit",
+			state(rs(resident("a", 0), resident("b", 5), resident("c", 5)), task("t", 1, two, responsible("a"))),
+			nil, []PoolEntry{pool("t", ReasonWaitingForResponsible)}},
+		{"two-person is deferred when nobody else fits",
+			state(rs(resident("a", 5), resident("b", 0)), task("t", 1, two, responsible("a"))),
+			nil, []PoolEntry{pool("t", ReasonTwoPersonDeferred)}},
+		{"two-person skips a restricted partner",
+			state(rs(resident("a", 5), resident("b", 5).cannotDoChore("chore-t"), resident("c", 2)), task("t", 1, two, responsible("a"))),
+			[]Assignment{give("t", "a", ReasonFitsEnergy), give("t", "c", ReasonFitsEnergy)}, nil},
+		{"two-person is deferred when every possible partner is restricted",
+			state(rs(resident("a", 5), resident("b", 5).cannotDoChore("chore-t")), task("t", 1, two, responsible("a"))),
+			nil, []PoolEntry{pool("t", ReasonTwoPersonDeferred)}},
+	})
+}

@@ -6,6 +6,9 @@
 // HTTP or clock dependency; the caller supplies "today" in State. This is
 // enforced by purity_test.go.
 //
+// Hard rules, enforced by Check: Energy, Restrictions, the Chore's allowed
+// weekdays and the Chore's responsible Resident (docs/adr/0025).
+//
 // Preferences and Completion history enter as plain data on each Resident.
 // They are soft rules: Plan uses them only to choose among Residents who pass
 // the hard rules, and Check ignores them.
@@ -120,6 +123,12 @@ type Task struct {
 	// from the Chore. Empty means every day. An overdue Task is still bound by
 	// it, so it waits in the pool for an allowed day.
 	AllowedWeekdays []int
+	// Responsible is the ID of the Chore's responsible Resident; empty means
+	// Nobody. It is a hard rule for Allocation (docs/adr/0025): Plan gives the
+	// Task only to them (as one of the two on a two-person Task) or leaves it
+	// waiting, and Check reports NotResponsible otherwise. It does not bind
+	// Residents' own Take, Complete or Swap.
+	Responsible string
 }
 
 // State is everything Allocation knows. Tasks are open Tasks only.
@@ -151,6 +160,9 @@ const (
 	ReasonTwoPersonDeferred Reason = "two_person_deferred"
 	ReasonInvalidEffort     Reason = "invalid_effort"
 	ReasonWeekdayNotAllowed Reason = "weekday_not_allowed"
+	// ReasonWaitingForResponsible: the Task's responsible Resident does not fit
+	// today (Energy, Restriction or absent), so it waits for them.
+	ReasonWaitingForResponsible Reason = "waiting_for_responsible"
 )
 
 // Assignment gives a Task to a Resident.
@@ -201,6 +213,9 @@ const (
 	// WeekdayNotAllowed: the Task's Chore may not be done on State.Today's
 	// weekday.
 	WeekdayNotAllowed ViolationKind = "weekday_not_allowed"
+	// NotResponsible: a one-person Task is given to someone other than its
+	// responsible Resident, or a two-person Task to a pair without them.
+	NotResponsible ViolationKind = "not_responsible"
 )
 
 // RestrictionLevel says which kind of Restriction was broken.

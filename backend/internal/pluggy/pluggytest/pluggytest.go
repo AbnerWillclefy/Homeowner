@@ -44,6 +44,23 @@ type Server struct {
 	*httptest.Server
 	mu    sync.Mutex
 	fails map[string]int
+	usd   bool
+	// nullBalances serves accounts.json with every balance null.
+	nullBalances bool
+	// item overrides the fixture Item's status and executionStatus when set.
+	item *[2]string
+	// nullLimits serves accounts.json with every credit limit null.
+	nullLimits bool
+	// onTransactions runs once, on the first transactions request.
+	onTransactions func()
+}
+
+// OnFirstTransactions runs f on the first transactions request, to change the
+// app's state while a sync is running.
+func (s *Server) OnFirstTransactions(f func()) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.onTransactions = f
 }
 
 // NewServer starts the fake and stops it when the test ends.
@@ -54,6 +71,27 @@ func NewServer(t testing.TB) *Server {
 	return s
 }
 
+// NullBalances makes the accounts answer with a null balance, as a bank that cannot read one does.
+func (s *Server) NullBalances() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.nullBalances = true
+}
+
+// SetItemStatus makes the fixture Item answer with this status and executionStatus.
+func (s *Server) SetItemStatus(status, executionStatus string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.item = &[2]string{status, executionStatus}
+}
+
+// NullCreditLimits makes the accounts answer with a null credit limit, as a connector that gives none.
+func (s *Server) NullCreditLimits() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.nullLimits = true
+}
+
 // Fail makes every request to path (without its query) answer status with FailBody.
 func (s *Server) Fail(path string, status int) {
 	s.mu.Lock()
@@ -61,9 +99,17 @@ func (s *Server) Fail(path string, status int) {
 	s.fails[path] = status
 }
 
+// AddUSDInvestment makes the fixture Item hold one more Investment, in USD.
+func (s *Server) AddUSDInvestment() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.usd = true
+}
+
 func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	status, failed := s.fails[r.URL.Path]
+	usd, item := s.usd, s.item
 	s.mu.Unlock()
 	if failed {
 		http.Error(w, FailBody, status)
@@ -84,9 +130,18 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 			serveFixture(w, 200, "connect_token.json")
 		}
 	case "GET /items/" + EmptyItemID, "GET /items/" + ItemID:
-		if authorized(w, r) {
-			serveFixture(w, 200, "item.json")
+		if !authorized(w, r) {
+			return
 		}
+		if item == nil {
+			serveFixture(w, 200, "item.json")
+			return
+		}
+		var body map[string]any
+		_ = json.Unmarshal(fixture("item.json"), &body)
+		body["status"], body["executionStatus"] = item[0], item[1]
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(body)
 	case "GET /accounts":
 		if !authorized(w, r) {
 			return
@@ -100,10 +155,62 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 			serveFixture(w, 404, "item_404.json")
 			return
 		}
+		s.mu.Lock()
+		null, nullLimit := s.nullBalances, s.nullLimits
+		s.mu.Unlock()
+		if null || nullLimit {
+			var out struct {
+				Results []map[string]any `json:"results"`
+			}
+			_ = json.Unmarshal(fixture("accounts.json"), &out)
+			for _, a := range out.Results {
+				if null {
+					a["balance"] = nil
+				}
+				if c, ok := a["creditData"].(map[string]any); ok && nullLimit {
+					c["creditLimit"] = nil
+				}
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(out)
+			return
+		}
 		serveFixture(w, 200, "accounts.json")
+	case "GET /bills":
+		if !authorized(w, r) {
+			return
+		}
+		if q.Get("accountId") == CardAccountID {
+			serveFixture(w, 200, "bills.json")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"results":[]}`))
+	case "GET /investments":
+		if !authorized(w, r) {
+			return
+		}
+		if q.Get("itemId") == ItemID && usd {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"results":[{"id":"usd-1","name":"Treasury USD","currencyCode":"USD","balance":100,"value":100}]}`))
+			return
+		}
+		if q.Get("itemId") == ItemID {
+			serveFixture(w, 200, "investments.json")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"results":[]}`))
 	case "GET /v2/transactions":
 		if authorized(w, r) {
-			s.transactions(w, q.Get("accountId"), q.Get("after"), q.Get("dateFrom") != "" && q.Get("dateTo") != "" || q.Get("after") != "")
+			s.mu.Lock()
+			hook := s.onTransactions
+			s.onTransactions = nil
+			s.mu.Unlock()
+			if hook != nil {
+				hook()
+			}
+			s.transactions(&dateFilter{ResponseWriter: w, from: q.Get("dateFrom"), to: q.Get("dateTo")}, q.Get("accountId"), q.Get("after"), q.Get("dateFrom") != "" && q.Get("dateTo") != "" || q.Get("after") != "")
 		}
 	default:
 		// Includes GET /items/<other> and the removed v1 GET /transactions.
@@ -153,4 +260,42 @@ func serveFixture(w http.ResponseWriter, status int, name string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_, _ = w.Write(fixture(name))
+}
+
+// dateFilter drops the rows of a 200 transactions page dated outside
+// [from, to] (YYYY-MM-DD, compared on the date's day), as Pluggy does; a page
+// read by cursor carries no dates and passes whole.
+type dateFilter struct {
+	http.ResponseWriter
+	from, to string
+	status   int
+}
+
+func (f *dateFilter) WriteHeader(status int) {
+	f.status = status
+	f.ResponseWriter.WriteHeader(status)
+}
+
+func (f *dateFilter) Write(b []byte) (int, error) {
+	if f.from == "" || f.status != 0 && f.status != http.StatusOK {
+		return f.ResponseWriter.Write(b)
+	}
+	var page map[string]json.RawMessage
+	var rows []map[string]json.RawMessage
+	if json.Unmarshal(b, &page) != nil || json.Unmarshal(page["results"], &rows) != nil {
+		return f.ResponseWriter.Write(b)
+	}
+	kept := []map[string]json.RawMessage{}
+	for _, r := range rows {
+		var date string
+		if json.Unmarshal(r["date"], &date) == nil && len(date) >= 10 && date[:10] >= f.from && date[:10] <= f.to {
+			kept = append(kept, r)
+		}
+	}
+	page["results"], _ = json.Marshal(kept)
+	out, _ := json.Marshal(page)
+	if _, err := f.ResponseWriter.Write(out); err != nil {
+		return 0, err
+	}
+	return len(b), nil
 }

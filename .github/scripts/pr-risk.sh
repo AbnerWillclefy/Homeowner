@@ -39,7 +39,7 @@ floor_for() {
     infra/*)             printf 'high\t%s changes AWS infrastructure\n' "$file" ;;
     scripts/*)           printf 'high\t%s changes an operations script\n' "$file" ;;
     backend/internal/platform/auth/*|backend/internal/identity/*|backend/internal/users/*|backend/internal/invites/*|\
-    backend/internal/server/auth.go|backend/internal/server/cors.go|web/src/domains/auth/*|\
+    backend/internal/server/auth.go|backend/internal/server/cors.go|web/src/domains/auth/*|revenue/src/auth/*|\
     web/src/app/components/AuthProvider.tsx|web/src/app/components/SessionProvider.tsx|web/src/shared/api/http.ts)
                          printf 'high\t%s changes sign-in, accounts, invites or who may do what\n' "$file" ;;
     # Tests change no behaviour a Resident sees; below the protected paths, which have no exemption
@@ -60,9 +60,9 @@ floor_for() {
                          printf 'medium\t%s changes the allocator or its referee (ADR 0004)\n' "$file" ;;
     backend/cmd/*|backend/internal/platform/*|backend/internal/server/*|backend/Dockerfile|docker-compose.yml)
                          printf 'medium\t%s changes how the API starts or is wired\n' "$file" ;;
-    */go.mod|*/go.sum|*/package.json|*/package-lock.json)
+    package.json|package-lock.json|*/go.mod|*/go.sum|*/package.json|*/package-lock.json)
                          printf 'medium\t%s changes dependencies\n' "$file" ;;
-    web/src/sw.ts|web/src/sw/*|web/vite.config.ts)
+    web/src/sw.ts|web/src/sw/*|web/vite.config.ts|revenue/src/sw.ts|revenue/src/sw/*|revenue/vite.config.ts)
                          printf 'medium\t%s changes the service worker or build, which stay cached on phones\n' "$file" ;;
   esac
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -40,7 +41,7 @@ func TestItemAndAccounts(t *testing.T) {
 	ctx := context.Background()
 
 	item, err := c.GetItem(ctx, pluggytest.APIKey, pluggytest.ItemID)
-	if err != nil || item.ID != pluggytest.ItemID || item.Status != "UPDATED" {
+	if err != nil || item.ID != pluggytest.ItemID || item.Status != "UPDATED" || item.ConnectorName != "Pluggy Bank" || item.ExecutionStatus != "SUCCESS" {
 		t.Fatalf("GetItem = %+v, %v", item, err)
 	}
 	if _, err := c.GetItem(ctx, pluggytest.APIKey, pluggytest.UnknownItemID); !errors.Is(err, pluggy.ErrNotFound) {
@@ -50,7 +51,14 @@ func TestItemAndAccounts(t *testing.T) {
 	if err != nil || len(accts) != 2 {
 		t.Fatalf("ListAccounts = %+v, %v", accts, err)
 	}
-	want := pluggy.Account{ID: pluggytest.CheckingAccountID, Type: "BANK", Subtype: "CHECKING_ACCOUNT", Name: "Conta Corrente", Currency: "BRL"}
+	want := pluggy.Account{ID: pluggytest.CheckingAccountID, Type: "BANK", Subtype: "CHECKING_ACCOUNT", Name: "Conta Corrente", Currency: "BRL", Owner: "John Doe", TaxNumber: "416.799.495-00"}
+	if b := accts[0].BalanceCents; b == nil || *b != 4370143 {
+		t.Errorf("checking balance = %v, want 4370143", b)
+	}
+	if b := accts[1].BalanceCents; b == nil || *b != -91630 {
+		t.Errorf("card balance = %v, want -91630", b)
+	}
+	accts[0].BalanceCents = nil
 	if accts[0] != want {
 		t.Errorf("first account = %+v, want %+v", accts[0], want)
 	}
@@ -86,6 +94,66 @@ func TestListAccountsKeepsABillDayOnlyWithItsPair(t *testing.T) {
 	}
 }
 
+// The limit is a card's, in reais: absent, null, unreadable or non-BRL gives nil, never an error.
+func TestListAccountsReadsACardsCreditLimit(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, account string
+		want          int64 // -1: nil
+	}{
+		{"whole reais", `"currencyCode":"BRL","creditData":{"creditLimit":5067}`, 506700},
+		{"decimal reais", `"currencyCode":"BRL","creditData":{"creditLimit":1234.56}`, 123456},
+		{"null", `"currencyCode":"BRL","creditData":{"creditLimit":null}`, -1},
+		{"no creditData", `"currencyCode":"BRL"`, -1},
+		{"unreadable", `"currencyCode":"BRL","creditData":{"creditLimit":"lots"}`, -1},
+		{"not BRL", `"currencyCode":"USD","creditData":{"creditLimit":5067}`, -1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				fmt.Fprintf(w, `{"results":[{"id":"a","type":"CREDIT","subtype":"CREDIT_CARD","name":"Card",%s}]}`, tc.account)
+			}))
+			t.Cleanup(srv.Close)
+			accts, err := pluggy.NewHTTP(srv.URL).ListAccounts(context.Background(), "key", "item")
+			if err != nil || len(accts) != 1 {
+				t.Fatalf("ListAccounts = %+v, %v", accts, err)
+			}
+			if got := accts[0].CreditLimitCents; (tc.want < 0) != (got == nil) || got != nil && *got != tc.want {
+				t.Errorf("limit = %v, want %d", got, tc.want)
+			}
+		})
+	}
+}
+
+// Both committed captures carry the limit: the sandbox card and a real card read through MeuPluggy.
+func TestFixtureCardsCarryACreditLimit(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		dir  string
+		want int64
+	}{{"sandbox", 30000000}, {"meupluggy", 506700}} {
+		body, err := os.ReadFile("pluggytest/testdata/" + tc.dir + "/accounts.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(body) }))
+		t.Cleanup(srv.Close)
+		accts, err := pluggy.NewHTTP(srv.URL).ListAccounts(context.Background(), "key", "item")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var limits []int64
+		for _, a := range accts {
+			if a.CreditLimitCents != nil {
+				limits = append(limits, *a.CreditLimitCents)
+			}
+		}
+		if len(limits) != 1 || limits[0] != tc.want {
+			t.Errorf("%s limits = %v, want [%d] (the card only)", tc.dir, limits, tc.want)
+		}
+	}
+}
+
 func TestListTransactionsFollowsNext(t *testing.T) {
 	t.Parallel()
 	c := pluggy.NewHTTP(pluggytest.NewServer(t).URL)
@@ -97,8 +165,8 @@ func TestListTransactionsFollowsNext(t *testing.T) {
 		t.Fatalf("page 1: %d rows, next %q, err %v; want 31 rows and a cursor", len(page1.Transactions), page1.Next, err)
 	}
 	page2, err := c.ListTransactions(ctx, pluggytest.APIKey, pluggytest.CheckingAccountID, from, to, page1.Next)
-	if err != nil || len(page2.Transactions) != 2 || page2.Next != "" {
-		t.Fatalf("page 2: %d rows, next %q, err %v; want 2 rows and no cursor", len(page2.Transactions), page2.Next, err)
+	if err != nil || len(page2.Transactions) != 5 || page2.Next != "" {
+		t.Fatalf("page 2: %d rows, next %q, err %v; want 5 rows and no cursor", len(page2.Transactions), page2.Next, err)
 	}
 	debit := page2.Transactions[0]
 	if debit.AmountCents != -1234 || debit.Type != "DEBIT" || debit.Category != nil || debit.ProviderID != nil ||
@@ -108,12 +176,18 @@ func TestListTransactionsFollowsNext(t *testing.T) {
 	if page2.Transactions[1].AmountCents != 10005 || *page2.Transactions[1].Category != "Transfers" {
 		t.Errorf("synthetic credit = %+v", page2.Transactions[1])
 	}
+	if cp := page2.Transactions[2].Counterpart; cp == nil || cp.Document != "416.799.495-00" || cp.Name != "Receiver Secret Name" || page2.Transactions[0].Counterpart != nil {
+		t.Errorf("counterpart of the own-name debit = %+v, want the receiver; none on the others", cp)
+	}
+	if cp := page2.Transactions[3].Counterpart; cp == nil || cp.Document != "416.799.495-00" || cp.Name != "Payer Secret Name" {
+		t.Errorf("counterpart of the own-name credit = %+v, want the payer", cp)
+	}
 }
 
 func TestListTransactionsCardKeepsPluggySign(t *testing.T) {
 	t.Parallel()
 	c := pluggy.NewHTTP(pluggytest.NewServer(t).URL)
-	page, err := c.ListTransactions(context.Background(), pluggytest.APIKey, pluggytest.CardAccountID, time.Now(), time.Now(), "")
+	page, err := c.ListTransactions(context.Background(), pluggytest.APIKey, pluggytest.CardAccountID, time.Date(2025, 11, 7, 0, 0, 0, 0, time.UTC), time.Date(2026, 11, 7, 0, 0, 0, 0, time.UTC), "")
 	if err != nil || len(page.Transactions) != 17 || page.Next != "" {
 		t.Fatalf("card page: %d rows, next %q, err %v", len(page.Transactions), page.Next, err)
 	}
@@ -132,6 +206,57 @@ func TestListTransactionsCardKeepsPluggySign(t *testing.T) {
 	}
 }
 
+func TestListBillsReadsTheCapture(t *testing.T) {
+	t.Parallel()
+	srv := pluggytest.NewServer(t)
+	c := pluggy.NewHTTP(srv.URL)
+
+	bills, err := c.ListBills(context.Background(), pluggytest.APIKey, pluggytest.CardAccountID)
+	if err != nil || len(bills) != 2 {
+		t.Fatalf("ListBills = %+v, %v", bills, err)
+	}
+	got := bills[0]
+	if got.ID != "0d474e08-cc45-4cc4-ada1-578a0646c6ce" || got.TotalCents != 500000 || got.Currency != "BRL" ||
+		!got.DueDate.Equal(time.Date(2023, 7, 31, 3, 0, 0, 0, time.UTC)) ||
+		!got.ClosingDate.Equal(time.Date(2023, 7, 24, 3, 0, 0, 0, time.UTC)) || bills[1].TotalCents != 300000 {
+		t.Errorf("bills = %+v", bills)
+	}
+	none, err := c.ListBills(context.Background(), pluggytest.APIKey, pluggytest.CheckingAccountID)
+	if err != nil || len(none) != 0 {
+		t.Errorf("checking account bills = %+v, %v, want none", none, err)
+	}
+}
+
+func TestListBillsFailures(t *testing.T) {
+	t.Parallel()
+	srv := pluggytest.NewServer(t)
+	if _, err := pluggy.NewHTTP(srv.URL).ListBills(context.Background(), "wrong", pluggytest.CardAccountID); !errors.Is(err, pluggy.ErrUnauthorized) {
+		t.Errorf("wrong key err = %v, want ErrUnauthorized", err)
+	}
+	bad := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, `{"results":[{"id":"b","dueDate":"2026-01-10T03:00:00.000Z","billClosingDate":"2026-01-03T03:00:00.000Z","totalAmount":1e3,"totalAmountCurrencyCode":"BRL"}]}`)
+	}))
+	t.Cleanup(bad.Close)
+	if _, err := pluggy.NewHTTP(bad.URL).ListBills(context.Background(), "key", "a"); err == nil || err.Error() != "pluggy: list bills: unreadable amount" {
+		t.Errorf("err = %v", err)
+	}
+}
+
+func TestListBillsRoundsAThirdDecimalAndSkipsABillWithoutTotal(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, `{"results":[`+
+			`{"id":"up","dueDate":"2026-01-10T03:00:00.000Z","billClosingDate":"2026-01-03T03:00:00.000Z","totalAmount":2056.885,"totalAmountCurrencyCode":"BRL"},`+
+			`{"id":"down","dueDate":"2026-02-10T03:00:00.000Z","billClosingDate":"2026-02-03T03:00:00.000Z","totalAmount":-117.8349999,"totalAmountCurrencyCode":"BRL"},`+
+			`{"id":"none","dueDate":"2026-03-10T03:00:00.000Z","billClosingDate":"2026-03-03T03:00:00.000Z","totalAmount":null,"totalAmountCurrencyCode":"BRL"}]}`)
+	}))
+	t.Cleanup(srv.Close)
+	bills, err := pluggy.NewHTTP(srv.URL).ListBills(context.Background(), "key", "a")
+	if err != nil || len(bills) != 2 || bills[0].TotalCents != 205689 || bills[1].TotalCents != -11783 {
+		t.Errorf("ListBills = %+v, %v; want 205689 and -11783, the bill without a total left out", bills, err)
+	}
+}
+
 func TestFailuresCarryNoBody(t *testing.T) {
 	t.Parallel()
 	srv := pluggytest.NewServer(t)
@@ -143,8 +268,50 @@ func TestFailuresCarryNoBody(t *testing.T) {
 	if err == nil || err.Error() != "pluggy: list accounts: status 500" {
 		t.Errorf("err = %v", err)
 	}
-	_, err = c.ListTransactions(context.Background(), pluggytest.APIKey, pluggytest.CardAccountID, time.Now(), time.Now(), "")
+	_, err = c.ListTransactions(context.Background(), pluggytest.APIKey, pluggytest.CardAccountID, time.Date(2025, 11, 7, 0, 0, 0, 0, time.UTC), time.Date(2026, 11, 7, 0, 0, 0, 0, time.UTC), "")
 	if err == nil || err.Error() != "pluggy: list transactions: status 502" || strings.Contains(err.Error(), pluggytest.FailBody) {
 		t.Errorf("err = %v", err)
+	}
+}
+
+func TestListInvestmentsReadsTheCapture(t *testing.T) {
+	t.Parallel()
+	srv := pluggytest.NewServer(t)
+	c := pluggy.NewHTTP(srv.URL)
+
+	invs, err := c.ListInvestments(context.Background(), pluggytest.APIKey, pluggytest.ItemID)
+	if err != nil || len(invs) != 8 {
+		t.Fatalf("ListInvestments = %+v, %v", invs, err)
+	}
+	if got := invs[0]; got.ID != "00000000-0000-4000-8000-000000000d01" || got.Name != "Fondo de Investimento Premium" ||
+		got.ValueCents != 135939 || got.Currency != "BRL" || got.Type != "MUTUAL_FUND" || got.Status != "ACTIVE" {
+		t.Errorf("first = %+v", got)
+	}
+	none, err := c.ListInvestments(context.Background(), pluggytest.APIKey, pluggytest.EmptyItemID)
+	if err != nil || len(none) != 0 {
+		t.Errorf("empty Item = %+v, %v, want none", none, err)
+	}
+	if _, err := c.ListInvestments(context.Background(), "wrong", pluggytest.ItemID); !errors.Is(err, pluggy.ErrUnauthorized) {
+		t.Errorf("wrong key err = %v, want ErrUnauthorized", err)
+	}
+}
+
+func TestListTransactionsReadsTheAmountInAccountCurrency(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, `{"results":[`+
+			`{"id":"usd","date":"2026-11-07T16:36:17.000Z","amount":5.19,"currencyCode":"USD","amountInAccountCurrency":29.98},`+
+			`{"id":"brl","date":"2026-11-07T16:36:17.000Z","amount":10,"currencyCode":"BRL","amountInAccountCurrency":null}],"next":null}`)
+	}))
+	t.Cleanup(srv.Close)
+	page, err := pluggy.NewHTTP(srv.URL).ListTransactions(context.Background(), "key", "a", time.Time{}, time.Time{}, "")
+	if err != nil || len(page.Transactions) != 2 {
+		t.Fatalf("page = %+v, %v", page, err)
+	}
+	if got := page.Transactions[0].AccountAmountCents; got == nil || *got != 2998 {
+		t.Errorf("usd AccountAmountCents = %v, want 2998", got)
+	}
+	if got := page.Transactions[1].AccountAmountCents; got != nil {
+		t.Errorf("brl AccountAmountCents = %v, want nil", *got)
 	}
 }

@@ -105,7 +105,7 @@ func TestSavingsSuggestionEndToEnd(t *testing.T) {
 	insertTxn(t, app, "g1", "2026-11-03", -30000, "groceries") // a card charge
 	apitest.ExpectStatus(t, putLimit(ana, "groceries", map[string]int64{"limitCents": 100000}), http.StatusNoContent)
 	newBill(t, ana, "Aluguel", 50000, 10)
-	setLeftover(t, ana, 250000) // 150000 above the base
+	setLeftover(t, ana, 150000) // after the base: all of it is extra
 
 	b := savingsBody(t, ana)
 	wantFields(t, "reserve", asMap(t, b["reserve"]), map[string]any{
@@ -123,8 +123,8 @@ func TestSavingsSuggestionEndToEnd(t *testing.T) {
 	}
 	// 250000 a month, 40% = 100000 to the reserve: full in 4 months (offset 3), 6 sooner than offset 9.
 	wantFields(t, "leftover", asMap(t, b["leftover"]), map[string]any{
-		"leftoverCents": float64(250000), "extraCents": float64(150000), "monthsSooner": float64(6)})
-	wantAbsent(t, "above the base", b, "overLimit")
+		"leftoverCents": float64(150000), "extraCents": float64(150000), "monthsSooner": float64(6)})
+	wantAbsent(t, "above zero", b, "overLimit")
 	if got := leftoverNow(t, ana); asMap(t, b["leftover"])["leftoverCents"] != got {
 		t.Errorf("savings leftover differs from commitments %v", got)
 	}
@@ -158,28 +158,33 @@ func TestSavingsLeftoverBelowEqualAndAbove(t *testing.T) {
 	apitest.ExpectStatus(t, putLimit(ana, "groceries", map[string]int64{"limitCents": groceries - 7000}), http.StatusNoContent)
 	apitest.ExpectStatus(t, putLimit(ana, "transport", map[string]int64{"limitCents": transport + 1}), http.StatusNoContent)
 
-	setLeftover(t, ana, 99999) // one under the base: groceries is over, transport is not
+	setLeftover(t, ana, -1) // one under zero: groceries is over, transport is not
 	b := savingsBody(t, ana)
-	wantAbsent(t, "below the base", b, "leftover")
+	wantAbsent(t, "below zero", b, "leftover")
 	over, _ := b["overLimit"].([]any)
 	if len(over) != 1 || asMap(t, over[0])["category"] != "groceries" || asMap(t, over[0])["overCents"] != float64(7000) {
 		t.Errorf("overLimit = %v, want only groceries 7000", b["overLimit"])
 	}
 
-	setLeftover(t, ana, -5000) // negative is below the base too
+	setLeftover(t, ana, -5000)
 	if over, _ := savingsBody(t, ana)["overLimit"].([]any); len(over) != 1 {
 		t.Errorf("negative leftover: overLimit = %v, want groceries", over)
 	}
 
 	apitest.ExpectStatus(t, putLimit(ana, "groceries", map[string]int64{"limitCents": groceries}), http.StatusNoContent)
-	setLeftover(t, ana, 99999)
+	setLeftover(t, ana, -1)
 	b = savingsBody(t, ana)
 	if over, ok := b["overLimit"].([]any); !ok || len(over) != 0 {
 		t.Errorf("overLimit = %v, want [] when nothing is over", b["overLimit"])
 	}
 
-	setLeftover(t, ana, 100000)
-	wantAbsent(t, "at the base", savingsBody(t, ana), "leftover", "overLimit")
+	setLeftover(t, ana, 0)
+	wantAbsent(t, "at zero", savingsBody(t, ana), "leftover", "overLimit")
+
+	setLeftover(t, ana, 1)
+	b = savingsBody(t, ana)
+	wantFields(t, "leftover", asMap(t, b["leftover"]), map[string]any{"leftoverCents": float64(1), "extraCents": float64(1)})
+	wantAbsent(t, "above zero", b, "overLimit")
 }
 
 func TestSavingsWithoutIncomeHasNeitherLeftoverNorOverLimit(t *testing.T) {

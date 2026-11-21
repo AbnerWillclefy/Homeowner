@@ -5,6 +5,26 @@ import (
 	"time"
 )
 
+func TestPlanName(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		desc, key string
+		n, m      int
+		want      string
+	}{
+		{"Canadian Solar Ecommer 1/12", "CANADIAN SOLAR ECOMMER", 1, 12, "Canadian Solar Ecommer"},
+		{"Loja 01/12", "LOJA", 1, 12, "Loja"},
+		{"LOJA PARC 03/10", "LOJA", 3, 10, "LOJA"},
+		{"Loja 10/11 PARC 03/10", "LOJA", 3, 10, "Loja 10/11"},
+		{"Loja 10/11", "LOJA", 3, 10, "Loja 10/11"},
+		{"1/12", "KEY", 1, 12, "KEY"},
+	} {
+		if got := PlanName(c.desc, c.key, c.n, c.m); got != c.want {
+			t.Errorf("PlanName(%q, %d, %d) = %q, want %q", c.desc, c.n, c.m, got, c.want)
+		}
+	}
+}
+
 func TestParseInstallment(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {

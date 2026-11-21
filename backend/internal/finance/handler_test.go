@@ -96,6 +96,7 @@ func TestNoTokenIs401NotForbidden(t *testing.T) {
 func seedMonth(t *testing.T) (*apitest.App, *apitest.Client) {
 	t.Helper()
 	app, users := startSync(t, []string{"ana@example.com", "bob@example.com"})
+	app.Pluggy.Fail("/investments", http.StatusInternalServerError) // these tests are about Transactions; investments_pluggy_test.go covers the bank's Investments
 	app.RunFinanceSync(t)
 	// These tests count every row on the day it posted; card_bill_test.go covers the bill days.
 	if _, err := app.DB.Exec(context.Background(), `UPDATE finance_sources SET bill_close_day = NULL, bill_due_day = NULL`); err != nil {
@@ -105,9 +106,9 @@ func seedMonth(t *testing.T) (*apitest.App, *apitest.Client) {
 }
 
 type txnBody struct {
-	ID, SourceName, Type, Description, TypeSetBy string
-	AmountCents                                  int64
-	SpendingCategory, CategorySetBy              *string
+	ID, SourceID, SourceName, Type, Description, TypeSetBy string
+	AmountCents                                            int64
+	SpendingCategory, CategorySetBy, Note                  *string
 }
 
 type catBody struct {
@@ -167,6 +168,23 @@ func TestChangingToTransferTakesTheRowOutOfTheTotals(t *testing.T) {
 	}
 	if spent, cats, _ := readMonth(t, ana, "2026-11"); spent != 87780 || cats["other"] != 0 {
 		t.Errorf("spent %d cats %v, want 87780 without the transfer", spent, cats)
+	}
+}
+
+func TestChangingToSavingTakesTheRowOutOfTheTotals(t *testing.T) {
+	t.Parallel()
+	_, ana := seedMonth(t)
+	boleto := find(t, ana, "2026-11", "Pagamento de boleto")
+
+	res := patch(ana, boleto.ID, map[string]string{"type": "saving"})
+	if res.Status != http.StatusOK || res.Body["type"] != "saving" || res.Body["typeSetBy"] != "user" || res.Body["spendingCategory"] != nil {
+		t.Fatalf("PATCH = %d %s, want a user saving without category", res.Status, res.Raw)
+	}
+	if spent, cats, _ := readMonth(t, ana, "2026-11"); spent != 87780 || cats["other"] != 0 {
+		t.Errorf("spent %d cats %v, want 87780 without the saving", spent, cats)
+	}
+	if res := patch(ana, boleto.ID, map[string]string{"type": "saving", "spendingCategory": "other"}); res.Status != http.StatusBadRequest || res.Body["error"] != "category needs expense" {
+		t.Errorf("saving with a category = %d %s, want 400 category needs expense", res.Status, res.Raw)
 	}
 }
 
@@ -336,6 +354,11 @@ func TestMonthListsTransactionsAndTotalsPerCategory(t *testing.T) {
 	}
 	if f := txns[0]; f.Description != "Pagamento de boleto" || f.AmountCents != -10000 || f.SourceName == "" || f.Type != "expense" {
 		t.Errorf("newest = %+v, want the boleto expense of -10000", f)
+	}
+	for _, x := range txns {
+		if x.SourceID == "" {
+			t.Errorf("transaction %s has no sourceId", x.ID)
+		}
 	}
 	if res := ana.Get("/me/finance/transactions?month=2026-11"); !strings.Contains(string(res.Raw), `"currency":"BRL"`) || !strings.Contains(string(res.Raw), `"installment":null`) {
 		t.Errorf("body lacks currency or installment: %s", res.Raw)

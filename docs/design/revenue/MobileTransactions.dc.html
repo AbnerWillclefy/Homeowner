@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Transações, celular</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="rv-phone" data-theme="{{theme}}">
+<header class="rv-phone__head"><div class="rv-phone__headrow"><div class="rv-row" style="gap: 8px; flex-wrap: nowrap; min-width: 0; align-items: flex-start"><div class="rv-head__text"><h1 class="rv-title">Lançamentos</h1><span class="rv-sub">64 lançamentos de 3 fontes</span></div></div><div class="rv-row" style="gap: 8px"><button class="br-iconbtn" aria-label="Esconder valores"><i class="ri ri-eye" aria-hidden="true"></i></button></div></div><button class="br-btn br-btn--secondary br-btn--lg br-btn--block rv-period" aria-label="Mês: Novembro de 2026"><span class="rv-row" style="gap: 8px; flex-wrap: nowrap"><i class="ri ri-calendar" aria-hidden="true"></i>Novembro de 2026</span><i class="ri ri-chevron-down" aria-hidden="true"></i></button></header>
+<div class="rv-phone__scroll {{ask.scroll}}" style="gap: 8px">
+<div class="br-search">
+<label class="br-search__box"><i class="ri ri-search" aria-hidden="true"></i><input aria-label="Buscar transações" placeholder="Buscar" style="all: unset; flex: 1; min-width: 0; color: var(--text)"></label>
+<span style="position: relative"><button class="br-iconbtn" aria-label="Filtros"><i class="ri ri-sliders" aria-hidden="true"></i></button></span>
+</div>
+<div class="rv-chips" role="group" aria-label="Tipo">
+<button class="rv-chip" aria-pressed="{{seg.all}}" onClick="{{showAll}}">Todas</button>
+<button class="rv-chip" aria-pressed="{{seg.out}}" onClick="{{showOut}}">Saídas</button>
+<button class="rv-chip" aria-pressed="{{seg.in}}" onClick="{{showIn}}">Entradas</button>
+<button class="rv-chip" aria-pressed="false">Sem categoria · 2</button>
+</div>
+<div class="br-list">
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+<span class="br-sidebar__overline" style="padding: 16px 0 8px">{{g.day}}</span>
+<sc-for list="{{g.rows}}" as="r" hint-placeholder-count="2">
+<button class="br-listrow" onClick="{{r.open}}" style="width: 100%; border-left: 0; border-right: 0; border-bottom: 0; background: transparent; color: inherit; font: inherit; text-align: left; margin: 0">
+<span class="br-cat__icon" style="background: var(--{{r.tone}}-soft); color: var(--{{r.tone}})"><i class="ri {{r.icon}}" aria-hidden="true"></i></span>
+<span class="br-listrow__main"><span class="br-listrow__title">{{r.title}}</span><span class="br-listrow__meta">{{r.category}} · {{r.account}}</span></span>
+<span class="br-amount br-amount--sm {{r.amountClass}}"><span class="br-amount__value">{{r.amount}}</span></span>
+</button>
+</sc-for>
+</sc-for>
+</div>
+</div>
+<sc-if value="{{ask.on}}" hint-placeholder-val="{{ true }}">
+<!-- Floating button: 48px pill, "Perguntar" always visible, 16px from the right and 16px above the bottom bar. Shown on every screen inside the frame except Onboarding and the chat. A Toast sits above it. -->
+<a href="MobileChat.dc.html" class="br-btn br-btn--primary rv-fab" aria-label="{{ask.label}}"><i class="ri ri-chat" aria-hidden="true"></i>{{ask.label}}</a>
+</sc-if>
+<nav class="br-bottombar" aria-label="Principal"><a href="MobileOverview.dc.html" class="br-tab"><i class="ri ri-lg ri-dashboard" aria-hidden="true"></i>Início</a><a href="MobileTransactions.dc.html" class="br-tab" aria-current="page"><i class="ri ri-lg ri-receipt" aria-hidden="true"></i>Lançamentos</a><a href="MobilePlan.dc.html" class="br-tab"><i class="ri ri-lg ri-target" aria-hidden="true"></i>Planejar</a><a href="MobileMore.dc.html" class="br-tab"><span class="rv-tabwrap"><i class="ri ri-lg ri-more" aria-hidden="true"></i><span class="br-count" aria-hidden="true">2</span></span>Mais<span style="position: absolute; width: 1px; height: 1px; overflow: hidden">, 2 contas a pagar</span></a></nav>
+
+<sc-if value="{{open}}" hint-placeholder-val="{{ false }}">
+<div class="rv-overlay">
+<div style="flex: 1" onClick="{{close}}"></div>
+<div class="br-sheet br-sheet--bottom" role="dialog" aria-label="Detalhe da transação" style="padding-bottom: 32px">
+<span class="br-sheet__grab"></span>
+<div class="br-sheet__head"><div class="rv-stack" style="gap: 0"><span class="br-sheet__title">{{sel.title}}</span><span class="br-muted">{{sel.account}} · {{sel.when}}</span></div><button class="br-iconbtn br-iconbtn--sm" aria-label="Fechar" onClick="{{close}}"><i class="ri ri-x" aria-hidden="true"></i></button></div>
+<span class="br-amount br-amount--lg {{sel.amountClass}}"><span class="br-amount__value">{{sel.amount}}</span></span>
+<label class="br-field"><span class="br-field__label">Categoria</span><span class="br-input" style="height: 48px"><span class="br-cat__icon br-cat__icon--sm" style="background: var(--{{sel.tone}}-soft); color: var(--{{sel.tone}})"><i class="ri ri-sm {{sel.icon}}" aria-hidden="true"></i></span><span style="flex: 1">{{sel.category}}</span><i class="ri ri-chevron-down" aria-hidden="true"></i></span></label>
+<div class="br-field"><span class="br-field__label">Tipo</span><div class="br-seg br-seg--block" role="group" aria-label="Tipo"><button aria-pressed="true">Gasto</button><button aria-pressed="false">Transferência</button><button aria-pressed="false">Economia</button></div></div>
+<button class="br-switch" role="switch" aria-checked="true" style="all: unset; display: flex; justify-content: space-between; align-items: center; gap: 16px; cursor: pointer; min-height: 48px"><span>Usar nas próximas de {{sel.title}}</span><span class="br-switch__track"></span></button>
+</div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"ask":{"editor":"enum","options":["on","off"],"default":"on"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { kind: 'all', selected: null }; }
+  renderVals() {
+    const data = [
+      { day: 'Hoje · 11 nov', rows: [
+        { id: 1, title: 'Pão de Açúcar', category: 'Mercado', tone: 'cat-groceries', icon: 'ri-cart', account: 'Nubank', amount: 'R$ 187,32', kind: 'out', when: '11/11, 18:42' },
+        { id: 2, title: 'Uber', category: 'Transporte', tone: 'cat-transport', icon: 'ri-car', account: 'Nubank', amount: 'R$ 23,40', kind: 'out', when: '11/11, 08:15' } ] },
+      { day: 'Ontem · 10 nov', rows: [
+        { id: 3, title: 'iFood', category: 'Restaurantes', tone: 'cat-eating-out', icon: 'ri-utensils', account: 'Nubank', amount: 'R$ 64,90', kind: 'out', when: '10/11, 20:31' },
+        { id: 4, title: 'Drogasil', category: 'Saúde', tone: 'cat-health', icon: 'ri-heart', account: 'Itaú', amount: 'R$ 98,00', kind: 'out', when: '10/11, 12:02' } ] },
+      { day: '9 nov', rows: [
+        { id: 5, title: 'Netflix', category: 'Assinaturas', tone: 'cat-subscriptions', icon: 'ri-repeat', account: 'Itaú', amount: 'R$ 44,90', kind: 'out', when: '09/11' } ] },
+      { day: '8 nov', rows: [
+        { id: 6, title: 'Acme Design', category: 'Entrada', tone: 'brand', icon: 'ri-in', account: 'Nubank', amount: '+R$ 1.500,00', kind: 'in', when: '08/11, 10:20' },
+        { id: 7, title: 'Outback', category: 'Restaurantes', tone: 'cat-eating-out', icon: 'ri-utensils', account: 'Nubank', amount: 'R$ 212,50', kind: 'out', when: '08/11, 21:47' } ] },
+    ];
+    const kind = this.state.kind;
+    const keep = (r) => kind === 'all' || (kind === 'in' ? r.kind === 'in' : r.kind !== 'in');
+    const groups = data.map((g) => ({ day: g.day, rows: g.rows.filter(keep).map((r) => ({ ...r, amountClass: r.kind === 'in' ? 'br-amount--in' : '', open: () => this.setState({ selected: r.id }) })) })).filter((g) => g.rows.length);
+    const all = data.flatMap((g) => g.rows);
+    const found = all.find((r) => r.id === this.state.selected) || all[0];
+    return {
+      theme: this.props.theme ?? 'dark',
+      ask: { on: (this.props.ask ?? 'on') === 'on', scroll: (this.props.ask ?? 'on') === 'on' ? 'rv-phone__scroll--fab' : '', label: 'Perguntar' },
+      groups,
+      seg: { all: kind === 'all' ? 'true' : 'false', out: kind === 'out' ? 'true' : 'false', in: kind === 'in' ? 'true' : 'false' },
+      showAll: () => this.setState({ kind: 'all' }),
+      showOut: () => this.setState({ kind: 'out' }),
+      showIn: () => this.setState({ kind: 'in' }),
+      open: this.state.selected !== null,
+      sel: { ...found, amountClass: found.kind === 'in' ? 'br-amount--in' : '' },
+      close: () => this.setState({ selected: null }),
+    };
+  }
+}
+</script>
+</body>
+</html>

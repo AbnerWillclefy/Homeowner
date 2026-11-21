@@ -3,6 +3,7 @@ package finance
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -59,9 +60,11 @@ func (s *Store) Income(ctx context.Context, userID string) (*int64, error) {
 // financeTables is every finance table, children first. Each has user_id, and
 // a test fails if the schema has a finance_* table that is not listed here, so
 // a later ticket adds its table to this list.
-var financeTables = []string{"finance_transactions", "finance_sources", "finance_items", "finance_credentials",
+var financeTables = []string{"finance_source_balances", "finance_card_bills", "finance_transactions", "finance_sources", "finance_items", "finance_credentials",
 	"finance_merchant_categories", "finance_llm_calls", "finance_bill_reminders", "finance_bill_payments", "finance_bills", "finance_settings", "finance_category_budgets", "finance_bill_suggestion_dismissals",
-	"finance_investments", "finance_goals"}
+	"finance_investment_values", "finance_investments", "finance_goals", "finance_manual_card_bills", "finance_manual_cards",
+	"finance_pantry_photo_calls", "finance_pantry_line_matches", "finance_pantry_receipt_lines", "finance_pantry_receipts",
+	"finance_pantry_run_outs", "finance_pantry_list_edits", "finance_pantry_items", "finance_chat_calls"}
 
 // DeleteAll removes all of the User's finance data in one transaction. The
 // cascades would remove the children anyway; listing every table keeps the
@@ -100,13 +103,15 @@ type NewSource struct {
 	PluggyAccountID, Kind, Name, Currency string
 	// CloseDay and DueDay are a card's bill days; 0 stores null.
 	CloseDay, DueDay int
+	// CreditLimitCents is a card's limit; nil keeps the stored one.
+	CreditLimitCents *int64
 }
 
 // ConnectItem stores the User's Item and its Sources in one transaction.
-// Calling it again changes no row count: the Item is kept as it was and each
+// Calling it again changes no row count: the Item keeps its row (its status and name are refreshed) and each
 // Source is refreshed in place, except a card's bill days, which Pluggy fills
-// only while the card has none.
-func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, now time.Time, sources []NewSource) error {
+// only while the card has none, and a card's credit limit, kept when Pluggy sends none.
+func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, now time.Time, item pluggy.Item, sources []NewSource) error {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return err
@@ -115,22 +120,23 @@ func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, no
 	var itemID string
 	// DO UPDATE with the same value, so RETURNING gives the id on a repeat too.
 	err = tx.QueryRow(ctx, `
-		INSERT INTO finance_items (user_id, pluggy_item_id, connected_at) VALUES ($1, $2, $3)
-		ON CONFLICT (user_id, pluggy_item_id) DO UPDATE SET pluggy_item_id = EXCLUDED.pluggy_item_id
-		RETURNING id`, userID, pluggyItemID, now).Scan(&itemID)
+		INSERT INTO finance_items (user_id, pluggy_item_id, connected_at, status, execution_status, connector_name) VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (user_id, pluggy_item_id) DO UPDATE SET status = EXCLUDED.status, execution_status = EXCLUDED.execution_status, connector_name = EXCLUDED.connector_name
+		RETURNING id`, userID, pluggyItemID, now, item.Status, item.ExecutionStatus, item.ConnectorName).Scan(&itemID)
 	if err != nil {
 		return err
 	}
 	for _, src := range sources {
 		_, err = tx.Exec(ctx, `
-			INSERT INTO finance_sources (user_id, item_id, pluggy_account_id, kind, name, currency, bill_close_day, bill_due_day)
-			VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, 0), NULLIF($8, 0))
+			INSERT INTO finance_sources (user_id, item_id, pluggy_account_id, kind, name, currency, bill_close_day, bill_due_day, credit_limit_cents)
+			VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, 0), NULLIF($8, 0), CASE WHEN $4 = 'credit_card' THEN $9::bigint END)
 			ON CONFLICT (item_id, pluggy_account_id) DO UPDATE SET kind = $4, name = $5, currency = $6,
+				credit_limit_cents = CASE WHEN $4 = 'credit_card' THEN COALESCE($9::bigint, finance_sources.credit_limit_cents) END,
 				bill_close_day = CASE WHEN finance_sources.bill_close_day IS NULL AND finance_sources.bill_due_day IS NULL
 					THEN NULLIF($7, 0) ELSE finance_sources.bill_close_day END,
 				bill_due_day = CASE WHEN finance_sources.bill_close_day IS NULL AND finance_sources.bill_due_day IS NULL
 					THEN NULLIF($8, 0) ELSE finance_sources.bill_due_day END`,
-			userID, itemID, src.PluggyAccountID, src.Kind, src.Name, src.Currency, src.CloseDay, src.DueDay)
+			userID, itemID, src.PluggyAccountID, src.Kind, src.Name, src.Currency, src.CloseDay, src.DueDay, src.CreditLimitCents)
 		if err != nil {
 			return err
 		}
@@ -138,22 +144,53 @@ func (s *Store) ConnectItem(ctx context.Context, userID, pluggyItemID string, no
 	return tx.Commit(ctx)
 }
 
+// SetItemStatus stores what Pluggy last said about the Item and its institution's name.
+func (s *Store) SetItemStatus(ctx context.Context, itemID string, item pluggy.Item) error {
+	_, err := s.db.Exec(ctx, `UPDATE finance_items SET status = $2, execution_status = $3, connector_name = $4 WHERE id = $1`,
+		itemID, item.Status, item.ExecutionStatus, item.ConnectorName)
+	return err
+}
+
 // Overview reads the whole status body: Sources, import state and credentials flag.
 func (s *Store) Overview(ctx context.Context, userID string) (StatusResponse, error) {
-	out := StatusResponse{Sources: []SourceResponse{}}
-	rows, err := s.db.Query(ctx, `SELECT id, name, kind, currency, bill_close_day, bill_due_day FROM finance_sources WHERE user_id = $1 ORDER BY name, id`, userID)
+	out := StatusResponse{Sources: []SourceResponse{}, Items: []ItemResponse{}}
+	rows, err := s.db.Query(ctx, `SELECT s.id, COALESCE(s.display_name, s.name) AS shown, s.name, s.kind, s.currency, s.bill_close_day, s.bill_due_day,
+			b.balance_cents, to_char(b.day, 'YYYY-MM-DD'), s.credit_limit_cents
+		FROM finance_sources s
+		LEFT JOIN LATERAL (SELECT day, balance_cents FROM finance_source_balances WHERE source_id = s.id ORDER BY day DESC LIMIT 1) b ON true
+		WHERE s.user_id = $1 ORDER BY shown, s.id`, userID)
 	if err != nil {
 		return out, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var src SourceResponse
-		if err := rows.Scan(&src.ID, &src.Name, &src.Kind, &src.Currency, &src.CloseDay, &src.DueDay); err != nil {
+		if err := rows.Scan(&src.ID, &src.Name, &src.BankName, &src.Kind, &src.Currency, &src.CloseDay, &src.DueDay, &src.BalanceCents, &src.BalanceOn, &src.CreditLimitCents); err != nil {
 			return out, err
 		}
 		out.Sources = append(out.Sources, src)
 	}
 	if err := rows.Err(); err != nil {
+		return out, err
+	}
+	// One row per Item with its Source count; a null status (not read since the columns existed) is "ok".
+	irows, err := s.db.Query(ctx, `SELECT i.id, i.connector_name, COALESCE(i.status, ''), COALESCE(i.execution_status, ''), count(s.id)
+		FROM finance_items i LEFT JOIN finance_sources s ON s.item_id = i.id
+		WHERE i.user_id = $1 GROUP BY i.id ORDER BY i.connected_at, i.id`, userID)
+	if err != nil {
+		return out, err
+	}
+	defer irows.Close()
+	for irows.Next() {
+		var it ItemResponse
+		var status, exec string
+		if err := irows.Scan(&it.ID, &it.BankName, &status, &exec, &it.Products); err != nil {
+			return out, err
+		}
+		it.Status = ItemWireStatus(status, exec)
+		out.Items = append(out.Items, it)
+	}
+	if err := irows.Err(); err != nil {
 		return out, err
 	}
 	// The oldest sync, or null while any Item has never synced.
@@ -246,6 +283,23 @@ func (s *Store) SetBillDays(ctx context.Context, itemID string, accounts []plugg
 	return nil
 }
 
+// SetCreditLimits stores the limits Pluggy reports on the Item's card Sources.
+// The bank always wins, but an account with no limit keeps the stored one, so a
+// flaky connector does not blank it; an account the Item does not hold is ignored.
+func (s *Store) SetCreditLimits(ctx context.Context, itemID string, accounts []pluggy.Account) error {
+	for _, a := range accounts {
+		if a.CreditLimitCents == nil {
+			continue
+		}
+		_, err := s.db.Exec(ctx, `UPDATE finance_sources SET credit_limit_cents = $3
+			WHERE item_id = $1 AND pluggy_account_id = $2 AND kind = 'credit_card'`, itemID, a.ID, *a.CreditLimitCents)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // SetBillDaysByHand stores the days a User typed on one of their card Sources,
 // or clears both with nil. found is false for another User's Source and for any
 // Source that is not a credit card.
@@ -253,6 +307,80 @@ func (s *Store) SetBillDaysByHand(ctx context.Context, userID, sourceID string, 
 	tag, err := s.db.Exec(ctx, `UPDATE finance_sources SET bill_close_day = $3, bill_due_day = $4
 		WHERE id = $1 AND user_id = $2 AND kind = 'credit_card'`, sourceID, userID, closeDay, dueDay)
 	return tag.RowsAffected() == 1, err
+}
+
+// SetDisplayName stores the name a User gave one of their Sources, or clears it
+// with nil. found is false for another User's Source. A sync never writes it.
+func (s *Store) SetDisplayName(ctx context.Context, userID, sourceID string, name *string) (found bool, err error) {
+	tag, err := s.db.Exec(ctx, `UPDATE finance_sources SET display_name = $3 WHERE id = $1 AND user_id = $2`, sourceID, userID, name)
+	return tag.RowsAffected() == 1, err
+}
+
+// UpsertCardBills stores the bank's bills of one card Source, so a bill the
+// bank corrects is updated. A bill that is not BRL is left out.
+func (s *Store) UpsertCardBills(ctx context.Context, userID, sourceID string, bills []pluggy.Bill) error {
+	var ids []string
+	var closes, dues []time.Time
+	var totals []int64
+	for _, b := range bills {
+		if b.Currency != "BRL" {
+			continue
+		}
+		ids, closes, dues, totals = append(ids, b.ID), append(closes, postedOn(b.ClosingDate)), append(dues, postedOn(b.DueDate)), append(totals, b.TotalCents)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	_, err := s.db.Exec(ctx, `INSERT INTO finance_card_bills (user_id, source_id, provider_id, closes_on, due_on, total_cents)
+		SELECT $1, $2, * FROM unnest($3::text[], $4::date[], $5::date[], $6::bigint[])
+		ON CONFLICT (source_id, provider_id) DO UPDATE SET closes_on = EXCLUDED.closes_on, due_on = EXCLUDED.due_on, total_cents = EXCLUDED.total_cents`,
+		userID, sourceID, ids, closes, dues, totals)
+	return err
+}
+
+// CardBillsDue returns the User's stored card bills due in [from, to].
+func (s *Store) CardBillsDue(ctx context.Context, userID string, from, to time.Time) ([]StoredBill, error) {
+	rows, err := s.db.Query(ctx, `SELECT closes_on, due_on, total_cents FROM finance_card_bills
+		WHERE user_id = $1 AND due_on BETWEEN $2 AND $3`, userID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []StoredBill
+	for rows.Next() {
+		var b StoredBill
+		if err := rows.Scan(&b.ClosesOn, &b.DueOn, &b.TotalCents); err != nil {
+			return nil, err
+		}
+		out = append(out, b)
+	}
+	return out, rows.Err()
+}
+
+// PastCardBills returns the latest n bills of the User's card Source that closed
+// on or before today, oldest first. found is false for another User's Source, an
+// unknown one and a Source that is not a card.
+func (s *Store) PastCardBills(ctx context.Context, userID, sourceID string, today time.Time, n int) (bills []StoredBill, found bool, err error) {
+	if err := s.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM finance_sources WHERE user_id = $1 AND id = $2 AND kind = 'credit_card')`,
+		userID, sourceID).Scan(&found); err != nil || !found {
+		return nil, false, err
+	}
+	rows, err := s.db.Query(ctx, `SELECT closes_on, due_on, total_cents FROM (
+			SELECT closes_on, due_on, total_cents FROM finance_card_bills
+			WHERE user_id = $1 AND source_id = $2 AND closes_on <= $3 ORDER BY due_on DESC LIMIT $4) latest
+		ORDER BY due_on`, userID, sourceID, today, n)
+	if err != nil {
+		return nil, true, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var b StoredBill
+		if err := rows.Scan(&b.ClosesOn, &b.DueOn, &b.TotalCents); err != nil {
+			return nil, true, err
+		}
+		bills = append(bills, b)
+	}
+	return bills, true, rows.Err()
 }
 
 // FinishSync marks the Item imported and synced at now.
@@ -283,7 +411,7 @@ func (s *Store) ClassifyInput(ctx context.Context, userID string, from, to time.
 	}
 	rows, err := s.db.Query(ctx, `
 		SELECT id, source_id, currency, merchant_key, posted_on, amount_cents, type, type_set_by,
-		       COALESCE(spending_category, ''), COALESCE(category_set_by, '')
+		       COALESCE(spending_category, ''), COALESCE(category_set_by, ''), own_counterpart
 		FROM finance_transactions
 		WHERE user_id = $1 AND type_set_by = 'auto' AND posted_on BETWEEN $2 AND $3`, userID, from, to)
 	if err != nil {
@@ -293,7 +421,7 @@ func (s *Store) ClassifyInput(ctx context.Context, userID string, from, to time.
 	var out []Txn
 	for rows.Next() {
 		var t Txn
-		if err := rows.Scan(&t.ID, &t.SourceID, &t.Currency, &t.MerchantKey, &t.PostedOn, &t.AmountCents, &t.Type, &t.TypeSetBy, &t.Category, &t.CategorySetBy); err != nil {
+		if err := rows.Scan(&t.ID, &t.SourceID, &t.Currency, &t.MerchantKey, &t.PostedOn, &t.AmountCents, &t.Type, &t.TypeSetBy, &t.Category, &t.CategorySetBy, &t.OwnCounterpart); err != nil {
 			return nil, nil, err
 		}
 		out = append(out, t)
@@ -329,7 +457,21 @@ type Row struct {
 	InstallmentNumber, TotalInstallments int32
 	// Category is the Spending Category Pluggy's own category maps to, "" if none.
 	Category string
+	// OwnCounterpart: the other side of the payment is the User, or a debit went to the
+	// Pix recipient of a manual card.
+	OwnCounterpart bool
 }
+
+// samePurchase holds when installment rows a and b are parts of one purchase: the same
+// Source, merchant and total, an amount within a centavo and a start month (posted month
+// minus n-1) at most one apart. It is stricter than InstallmentPlans (amount at every
+// distance) because a wrong match here rewrites a category the User set.
+// shortcut: purchase identity is inferred from merchant, total, amount and start month; store a purchase key when this misgroups.
+const samePurchase = `a.user_id = b.user_id AND a.source_id = b.source_id AND a.merchant_key = b.merchant_key
+	AND a.total_installments = b.total_installments AND a.installment_number IS NOT NULL AND b.installment_number IS NOT NULL
+	AND abs(a.amount_cents - b.amount_cents) <= 1
+	AND abs((extract(year FROM a.posted_on) * 12 + extract(month FROM a.posted_on) - a.installment_number)
+		- (extract(year FROM b.posted_on) * 12 + extract(month FROM b.posted_on) - b.installment_number)) <= 1`
 
 // UpsertTransactions writes one page with a single statement. A Transaction
 // seen again is refreshed, never duplicated; a type or category the User set
@@ -340,47 +482,65 @@ type Row struct {
 // every auto row of the page right after, and taking either from the sign-based
 // insert values would break the type/category CHECK on a transfer or a card
 // refund. Only a 'fallback' category on a row that is still an expense takes a
-// category Pluggy now gives. A new expense is Other because nothing has decided yet ('fallback').
+// category Pluggy now gives. A stored row keeps its Note (note stays out of the DO UPDATE list);
+// a new part takes the Note of its purchase. A new expense is Other because nothing has decided yet ('fallback').
 // shortcut: a sign flip on a stored row is ignored; Pluggy does not flip the
 // sign of a posted row.
 func (s *Store) UpsertTransactions(ctx context.Context, userID, sourceID string, rows []Row, now time.Time) error {
 	n := len(rows)
 	ids, days, cents, descs, keys, types := make([]string, n), make([]time.Time, n), make([]int64, n), make([]string, n), make([]string, n), make([]string, n)
-	inst, total, cats := make([]int32, n), make([]int32, n), make([]string, n)
+	inst, total, cats, own := make([]int32, n), make([]int32, n), make([]string, n), make([]bool, n)
 	for i, r := range rows {
-		cats[i] = r.Category
+		cats[i], own[i] = r.Category, r.OwnCounterpart
 		ids[i], days[i], cents[i], descs[i], keys[i], types[i] = r.ProviderID, r.PostedOn, r.AmountCents, r.Description, r.MerchantKey, r.Type
 		inst[i], total[i] = r.InstallmentNumber, r.TotalInstallments
 	}
 	_, err := s.db.Exec(ctx, `
 		INSERT INTO finance_transactions (user_id, source_id, provider_id, posted_on, amount_cents, currency, description,
-			merchant_key, type, type_set_by, spending_category, category_set_by, installment_number, total_installments, created_at, updated_at)
+			merchant_key, type, type_set_by, spending_category, category_set_by, installment_number, total_installments, own_counterpart, note, created_at, updated_at)
 		SELECT $1, $2, p.provider_id, p.posted_on, p.amount_cents, 'BRL', p.description, p.merchant_key, p.type, 'auto',
-			CASE WHEN p.type = 'expense' THEN COALESCE(mc.spending_category, NULLIF(p.category, ''), 'other') END,
+			CASE WHEN p.type = 'expense' THEN COALESCE(sib.spending_category, mc.spending_category, NULLIF(p.category, ''), 'other') END,
 			CASE WHEN p.type = 'expense' THEN
-				CASE WHEN mc.spending_category IS NOT NULL OR p.category <> '' THEN 'auto' ELSE 'fallback' END END,
-			NULLIF(p.inst, 0), NULLIF(p.total, 0), $3, $3
-		FROM unnest($4::text[], $5::date[], $6::bigint[], $7::text[], $8::text[], $9::text[], $10::int[], $11::int[], $12::text[])
-			AS p (provider_id, posted_on, amount_cents, description, merchant_key, type, inst, total, category)
+				CASE WHEN sib.spending_category IS NOT NULL THEN 'user'
+					WHEN mc.spending_category IS NOT NULL OR p.category <> '' THEN 'auto' ELSE 'fallback' END END,
+			NULLIF(p.inst, 0), NULLIF(p.total, 0), p.own, nsib.note, $3, $3
+		FROM unnest($4::text[], $5::date[], $6::bigint[], $7::text[], $8::text[], $9::text[], $10::int[], $11::int[], $12::text[], $13::bool[])
+			AS p (provider_id, posted_on, amount_cents, description, merchant_key, type, inst, total, category, own)
 		LEFT JOIN finance_merchant_categories mc ON mc.user_id = $1 AND mc.merchant_key = p.merchant_key
+		LEFT JOIN LATERAL (
+			SELECT a.spending_category FROM finance_transactions a
+			JOIN (SELECT $1::uuid AS user_id, $2::uuid AS source_id, p.merchant_key, NULLIF(p.total, 0) AS total_installments,
+				NULLIF(p.inst, 0) AS installment_number, p.amount_cents, p.posted_on) b ON `+samePurchase+`
+			WHERE a.type = 'expense' AND a.category_set_by = 'user' AND p.type = 'expense'
+				AND a.posted_on BETWEEN p.posted_on - make_interval(months => p.total + 1) AND p.posted_on + make_interval(months => p.total + 1)
+			ORDER BY a.updated_at DESC LIMIT 1) sib ON true
+		LEFT JOIN LATERAL (
+			SELECT a.note FROM finance_transactions a
+			JOIN (SELECT $1::uuid AS user_id, $2::uuid AS source_id, p.merchant_key, NULLIF(p.total, 0) AS total_installments,
+				NULLIF(p.inst, 0) AS installment_number, p.amount_cents, p.posted_on) b ON `+samePurchase+`
+			WHERE a.note IS NOT NULL
+				AND a.posted_on BETWEEN p.posted_on - make_interval(months => p.total + 1) AND p.posted_on + make_interval(months => p.total + 1)
+			LIMIT 1) nsib ON true
 		ON CONFLICT (source_id, provider_id) DO UPDATE SET
 			posted_on = EXCLUDED.posted_on, amount_cents = EXCLUDED.amount_cents, description = EXCLUDED.description,
-			merchant_key = EXCLUDED.merchant_key,
+			merchant_key = EXCLUDED.merchant_key, own_counterpart = EXCLUDED.own_counterpart,
 			installment_number = COALESCE(finance_transactions.installment_number, EXCLUDED.installment_number),
-			total_installments = COALESCE(finance_transactions.total_installments, EXCLUDED.total_installments), updated_at = EXCLUDED.updated_at,
+			total_installments = COALESCE(finance_transactions.total_installments, EXCLUDED.total_installments),
+			-- a user-set part keeps its updated_at: the sibling lookup reads it as the User's last edit
+			updated_at = CASE WHEN finance_transactions.category_set_by = 'user' THEN finance_transactions.updated_at ELSE EXCLUDED.updated_at END,
 			type = finance_transactions.type,
 			spending_category = CASE WHEN finance_transactions.category_set_by = 'fallback' AND finance_transactions.type_set_by = 'auto'
 				AND EXCLUDED.type = 'expense' THEN EXCLUDED.spending_category ELSE finance_transactions.spending_category END,
 			category_set_by = CASE WHEN finance_transactions.category_set_by = 'fallback' AND finance_transactions.type_set_by = 'auto'
 				AND EXCLUDED.type = 'expense' THEN EXCLUDED.category_set_by ELSE finance_transactions.category_set_by END`,
-		userID, sourceID, now, ids, days, cents, descs, keys, types, inst, total, cats)
+		userID, sourceID, now, ids, days, cents, descs, keys, types, inst, total, cats, own)
 	return err
 }
 
 // transactionColumns reads a Transaction as TransactionResponse, with its
 // Source's name, then what CountsOn needs.
-const transactionColumns = `t.id, t.posted_on::text, t.description, s.name, t.amount_cents, t.currency, t.type,
-	t.spending_category, t.type_set_by, t.category_set_by, t.installment_number, t.total_installments,
+const transactionColumns = `t.id, t.source_id, t.posted_on::text, t.description, COALESCE(s.display_name, s.name), t.amount_cents, t.currency, t.type,
+	t.spending_category, t.type_set_by, t.category_set_by, t.installment_number, t.total_installments, t.note,
 	t.posted_on, s.kind, COALESCE(s.bill_close_day, 0), COALESCE(s.bill_due_day, 0)`
 
 // scanTransaction reads transactionColumns and sets CountsOn.
@@ -390,8 +550,8 @@ func scanTransaction(r pgx.Row) (TransactionResponse, time.Time, error) {
 	var posted time.Time
 	var kind Kind
 	var closeDay, dueDay int
-	err := r.Scan(&t.ID, &t.PostedOn, &t.Description, &t.SourceName, &t.AmountCents, &t.Currency, &t.Type,
-		&t.SpendingCategory, &t.TypeSetBy, &t.CategorySetBy, &n, &total, &posted, &kind, &closeDay, &dueDay)
+	err := r.Scan(&t.ID, &t.SourceID, &t.PostedOn, &t.Description, &t.SourceName, &t.AmountCents, &t.Currency, &t.Type,
+		&t.SpendingCategory, &t.TypeSetBy, &t.CategorySetBy, &n, &total, &t.Note, &posted, &kind, &closeDay, &dueDay)
 	if n != nil && total != nil {
 		t.Installment = &InstallmentResponse{Number: *n, Total: *total}
 	}
@@ -431,7 +591,7 @@ func (s *Store) MonthTransactions(ctx context.Context, userID string, from, to t
 
 // SpendRows returns what the daily pace, the commitments outlook and the savings suggestion read of the
 // User's Transactions that count in [from, to): Source, signed amount, type and
-// category, with PostedOn set to the CountsOn day and Linked set when a Bill
+// category, with PostedOn set to the CountsOn day (Posted keeps the posted day) and Linked set when a Bill
 // payment (not undone) points at it.
 func (s *Store) SpendRows(ctx context.Context, userID string, from, to time.Time) ([]Txn, error) {
 	rows, err := s.db.Query(ctx, `SELECT t.posted_on, t.amount_cents, t.type, t.spending_category, t.source_id,
@@ -452,6 +612,7 @@ func (s *Store) SpendRows(ctx context.Context, userID string, from, to time.Time
 		if err := rows.Scan(&t.PostedOn, &t.AmountCents, &t.Type, &category, &t.SourceID, &kind, &closeDay, &dueDay, &t.Linked); err != nil {
 			return nil, err
 		}
+		t.Posted = t.PostedOn
 		if t.PostedOn = CountsOn(t.PostedOn, kind, closeDay, dueDay); t.PostedOn.Before(from) || !t.PostedOn.Before(to) {
 			continue
 		}
@@ -468,11 +629,15 @@ func (s *Store) SpendRows(ctx context.Context, userID string, from, to time.Time
 var ErrCategoryNeedsExpense = errors.New("category needs expense")
 
 // UpdateTransaction applies the User's edit in one database transaction. found
-// is false when the row is not the User's. typ and category are nil when absent.
+// is false when the row is not the User's. typ, category and note are nil when absent; a note is already
+// trimmed and "" clears it (stored as NULL). A note given on an installment is also set on every part of
+// the same purchase (samePurchase), whatever their type; it never touches a category.
 //
 // Setting a category on a merchant saves the correction and files the User's
 // other Expenses of that merchant, except those the User set, under it as 'auto'.
-func (s *Store) UpdateTransaction(ctx context.Context, userID, id string, typ, category *string, now time.Time) (out TransactionResponse, found bool, err error) {
+// Setting it on an installment also sets it, as the User's, on every Expense
+// part of the same purchase (samePurchase), those the User set included.
+func (s *Store) UpdateTransaction(ctx context.Context, userID, id string, typ, category, note *string, now time.Time) (out TransactionResponse, found bool, err error) {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return out, false, err
@@ -480,8 +645,9 @@ func (s *Store) UpdateTransaction(ctx context.Context, userID, id string, typ, c
 	defer tx.Rollback(ctx) //nolint:errcheck // a no-op after Commit
 	var curType, merchant string
 	var curCat, curBy *string
-	err = tx.QueryRow(ctx, `SELECT type, spending_category, category_set_by, merchant_key FROM finance_transactions
-		WHERE id = $1 AND user_id = $2 FOR UPDATE`, id, userID).Scan(&curType, &curCat, &curBy, &merchant)
+	var instNumber *int32
+	err = tx.QueryRow(ctx, `SELECT type, spending_category, category_set_by, merchant_key, installment_number FROM finance_transactions
+		WHERE id = $1 AND user_id = $2 FOR UPDATE`, id, userID).Scan(&curType, &curCat, &curBy, &merchant, &instNumber)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return out, false, nil
 	} else if err != nil {
@@ -505,9 +671,18 @@ func (s *Store) UpdateTransaction(ctx context.Context, userID, id string, typ, c
 	}
 	if _, err = tx.Exec(ctx, `
 		UPDATE finance_transactions SET type = $3, type_set_by = CASE WHEN $4 THEN 'user' ELSE type_set_by END,
-			spending_category = $5, category_set_by = $6, updated_at = $7
-		WHERE id = $1 AND user_id = $2`, id, userID, newType, typ != nil, newCat, by, now); err != nil {
+			spending_category = $5, category_set_by = $6, updated_at = $7,
+			note = CASE WHEN $8 THEN NULLIF($9, '') ELSE note END
+		WHERE id = $1 AND user_id = $2`, id, userID, newType, typ != nil, newCat, by, now, note != nil, note); err != nil {
 		return out, true, err
+	}
+	if note != nil && instNumber != nil {
+		if _, err = tx.Exec(ctx, `
+			UPDATE finance_transactions b SET note = NULLIF($3, '')
+			FROM finance_transactions a WHERE b.user_id = $1 AND a.id = $2 AND b.id <> a.id AND `+samePurchase,
+			userID, id, *note); err != nil {
+			return out, true, err
+		}
 	}
 	if category != nil && merchant != "" {
 		if _, err = tx.Exec(ctx, `
@@ -523,6 +698,14 @@ func (s *Store) UpdateTransaction(ctx context.Context, userID, id string, typ, c
 			return out, true, err
 		}
 	}
+	if category != nil && instNumber != nil && newType == "expense" {
+		if _, err = tx.Exec(ctx, `
+			UPDATE finance_transactions b SET spending_category = $3, category_set_by = 'user', updated_at = $4
+			FROM finance_transactions a WHERE b.user_id = $1 AND a.id = $2 AND b.id <> a.id AND b.type = 'expense' AND `+samePurchase,
+			userID, id, *category, now); err != nil {
+			return out, true, err
+		}
+	}
 	out, _, err = scanTransaction(tx.QueryRow(ctx, `SELECT `+transactionColumns+`
 		FROM finance_transactions t JOIN finance_sources s ON s.id = t.source_id WHERE t.id = $1`, id))
 	if err != nil {
@@ -535,22 +718,29 @@ func ptr(s string) *string { return &s }
 
 // InstallmentPlans returns the latest seen charge of each of the User's
 // Installment plans, a plan being the same Source, merchant, total and start
-// month (posted_on minus n-1 months). Grouping keeps the repeated charges of a
-// plan from counting twice, and a centavo of rounding between them keeps it one plan.
+// month (the month the charge counts in, CountsOn, minus n-1 months, or one
+// month off with the same amount within a centavo). Grouping
+// keeps the repeated charges of a plan from counting twice, and a centavo of
+// rounding between them keeps it one plan. It is done here, not in SQL, because
+// the bill month needs CountsOn: card charges post on different days, so the
+// posted month alone would split one plan in two. shortcut: a card without bill
+// days still counts on posted_on, so its drift remains, until the Resident sets them.
 func (s *Store) InstallmentPlans(ctx context.Context, userID string) ([]Plan, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT DISTINCT ON (t.source_id, t.merchant_key, t.total_installments,
-				date_trunc('month', t.posted_on) - (t.installment_number - 1) * interval '1 month')
-			t.description, t.merchant_key, t.installment_number, t.total_installments, -t.amount_cents, t.posted_on,
+		SELECT t.description, t.merchant_key, t.installment_number, t.total_installments, -t.amount_cents, t.posted_on,
 			t.source_id, s.kind, COALESCE(s.bill_close_day, 0), COALESCE(s.bill_due_day, 0), COALESCE(t.spending_category, '')
 		FROM finance_transactions t JOIN finance_sources s ON s.id = t.source_id
 		WHERE t.user_id = $1 AND t.type = 'expense' AND t.amount_cents < 0 AND t.installment_number IS NOT NULL
-		ORDER BY t.source_id, t.merchant_key, t.total_installments,
-			date_trunc('month', t.posted_on) - (t.installment_number - 1) * interval '1 month', t.installment_number DESC`, userID)
+		ORDER BY t.installment_number DESC, t.posted_on DESC, t.id`, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+	type planKey struct {
+		source, merchant string
+		total, start     int
+	}
+	seen := map[planKey]int64{} // a plan's installment amount
 	var out []Plan
 	for rows.Next() {
 		var p Plan
@@ -561,20 +751,33 @@ func (s *Store) InstallmentPlans(ctx context.Context, userID string) ([]Plan, er
 		if err := rows.Scan(&desc, &key, &p.Number, &p.Total, &p.AmountCents, &posted, &p.SourceID, &kind, &closeDay, &dueDay, &p.Category); err != nil {
 			return nil, err
 		}
-		p.Name = PlanName(desc, key)
-		p.Card = kind == "credit_card"
 		// A card installment is projected from the month its bill is due, as spending counts it.
 		on := CountsOn(posted, kind, closeDay, dueDay)
+		k := planKey{p.SourceID, key, p.Total, monthIndex(on) - (p.Number - 1)}
+		// Rows come highest number first, so the first of a plan is its latest. A part posted on
+		// the closing day and the next a day before the following one start a month apart.
+		if slices.ContainsFunc([]int{0, -1, 1}, func(d int) bool {
+			n := k
+			n.start += d
+			amount, ok := seen[n]
+			return ok && (d == 0 || abs(amount-p.AmountCents) <= 1)
+		}) {
+			continue
+		}
+		seen[k] = p.AmountCents
+		p.Name = PlanName(desc, key, p.Number, p.Total)
+		p.Card = kind == "credit_card"
 		p.Month = time.Date(on.Year(), on.Month(), 1, 0, 0, 0, 0, time.UTC)
 		out = append(out, p)
 	}
 	return out, rows.Err()
 }
 
-// CardSources lists the User's credit card Sources, with whether both bill days are set.
+// CardSources lists the User's credit card Sources, with whether both bill days
+// are set, its bill close and due days (0 when unset) and the bills the bank reported for each.
 func (s *Store) CardSources(ctx context.Context, userID string) ([]Card, error) {
-	rows, err := s.db.Query(ctx, `SELECT id, name, bill_close_day IS NOT NULL AND bill_due_day IS NOT NULL
-		FROM finance_sources WHERE user_id = $1 AND kind = 'credit_card' ORDER BY name, id`, userID)
+	rows, err := s.db.Query(ctx, `SELECT id, COALESCE(display_name, name) AS shown, bill_close_day IS NOT NULL AND bill_due_day IS NOT NULL, COALESCE(bill_close_day, 0), COALESCE(bill_due_day, 0)
+		FROM finance_sources WHERE user_id = $1 AND kind = 'credit_card' ORDER BY shown, id`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -582,12 +785,35 @@ func (s *Store) CardSources(ctx context.Context, userID string) ([]Card, error) 
 	var out []Card
 	for rows.Next() {
 		var c Card
-		if err := rows.Scan(&c.ID, &c.Name, &c.BillDaysKnown); err != nil {
+		if err := rows.Scan(&c.ID, &c.Name, &c.BillDaysKnown, &c.CloseDay, &c.DueDay); err != nil {
 			return nil, err
 		}
 		out = append(out, c)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// Paid: a debit off the cards of exactly the total, from the closing to a few days past the due day (Classify's bill payment rule).
+	bills, err := s.db.Query(ctx, `SELECT b.source_id, b.closes_on, b.due_on, b.total_cents,
+			EXISTS (SELECT 1 FROM finance_transactions t JOIN finance_sources s ON s.id = t.source_id
+				WHERE b.total_cents > 0 AND t.user_id = b.user_id AND s.kind <> 'credit_card' AND t.currency = 'BRL' AND t.amount_cents = -b.total_cents
+				  AND t.posted_on BETWEEN b.closes_on AND b.due_on + $2::int)
+		FROM finance_card_bills b WHERE b.user_id = $1`, userID, transferWindowDays)
+	if err != nil {
+		return nil, err
+	}
+	defer bills.Close()
+	for bills.Next() {
+		var id string
+		var b StoredBill
+		if err := bills.Scan(&id, &b.ClosesOn, &b.DueOn, &b.TotalCents, &b.Paid); err != nil {
+			return nil, err
+		}
+		if i := slices.IndexFunc(out, func(c Card) bool { return c.ID == id }); i >= 0 {
+			out[i].Bills = append(out[i].Bills, b)
+		}
+	}
+	return out, bills.Err()
 }
 
 // FallbackUser is a User with Expenses nothing has categorised yet.
@@ -674,4 +900,13 @@ func (s *Store) ReserveCategorizerCall(ctx context.Context, userID string, date 
 		return false, nil
 	}
 	return err == nil, err
+}
+
+// SpentByPosted is the net of the User's Expenses posted in [from, to), on every
+// Source: Month's Spent since the 1st, by posted day and not CountsOn.
+func (s *Store) SpentByPosted(ctx context.Context, userID string, from, to time.Time) (int64, error) {
+	var cents int64
+	err := s.db.QueryRow(ctx, `SELECT COALESCE(-SUM(amount_cents), 0)::bigint FROM finance_transactions
+		WHERE user_id = $1 AND type = 'expense' AND posted_on >= $2 AND posted_on < $3`, userID, from, to).Scan(&cents)
+	return cents, err
 }

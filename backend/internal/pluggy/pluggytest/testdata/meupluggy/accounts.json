@@ -1,0 +1,84 @@
+{
+  "total": 2,
+  "totalPages": 1,
+  "page": 1,
+  "results": [
+    {
+      "id": "00000000-0000-4000-8000-000000000b01",
+      "type": "BANK",
+      "subtype": "CHECKING_ACCOUNT",
+      "name": "BANCO INTER",
+      "balance": 1523.87,
+      "currencyCode": "BRL",
+      "itemId": "00000000-0000-4000-8000-000000000a01",
+      "number": "0001234-5",
+      "createdAt": "2026-04-12T06:47:00.058Z",
+      "updatedAt": "2026-04-15T14:39:06.359Z",
+      "marketingName": null,
+      "taxNumber": "123.456.789-09",
+      "owner": "John Doe",
+      "bankData": {
+        "transferNumber": "077/0001/0001234-5",
+        "closingBalance": 1523.87,
+        "automaticallyInvestedBalance": 1523.87,
+        "overdraftContractedLimit": 0,
+        "overdraftUsedLimit": 0,
+        "unarrangedOverdraftAmount": 0,
+        "hasReservedBalance": null,
+        "reservedBalances": null
+      },
+      "creditData": null
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000b02",
+      "type": "CREDIT",
+      "subtype": "CREDIT_CARD",
+      "name": "PLATINUM",
+      "balance": 2187.45,
+      "currencyCode": "BRL",
+      "itemId": "00000000-0000-4000-8000-000000000a01",
+      "number": "1234",
+      "createdAt": "2026-04-12T06:47:00.293Z",
+      "updatedAt": "2026-04-15T14:39:06.702Z",
+      "marketingName": null,
+      "taxNumber": null,
+      "owner": "John Doe",
+      "bankData": null,
+      "creditData": {
+        "level": "PLATINUM",
+        "brand": "MASTERCARD",
+        "brandAdditionalInfo": null,
+        "balanceCloseDate": null,
+        "balanceDueDate": "2026-03-31",
+        "availableCreditLimit": 2879.55,
+        "balanceForeignCurrency": null,
+        "minimumPayment": 266.2,
+        "creditLimit": 5067,
+        "isLimitFlexible": false,
+        "holderType": null,
+        "status": "ACTIVE",
+        "disaggregatedCreditLimits": [
+          {
+            "usedAmount": 2187.45,
+            "limitAmount": 5067,
+            "availableAmount": 2879.55,
+            "isLimitFlexible": false,
+            "consolidationType": "CONSOLIDADO",
+            "creditLineLimitType": "LIMITE_CREDITO_TOTAL",
+            "identificationNumber": "1234",
+            "customizedLimitAmount": 4173,
+            "usedAmountCurrencyCode": "BRL",
+            "limitAmountCurrencyCode": "BRL",
+            "availableAmountCurrencyCode": "BRL",
+            "customizedLimitAmountCurrencyCode": "BRL"
+          }
+        ],
+        "additionalCards": [
+          {
+            "number": "5678"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,6 +1,8 @@
 package finance
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -42,7 +44,7 @@ type SavingsGoal struct {
 	Late          bool    `json:"late"`
 }
 
-// LeftoverExtra is given when the month's leftover is above the Base: MonthsSooner
+// LeftoverExtra is given when the month's leftover, which already subtracts the Base, is above zero: MonthsSooner
 // is how many months sooner the reserve, or the first unfilled Goal, is reached.
 // MonthsSooner is null when nothing is left to fill or either date is beyond 120 months.
 type LeftoverExtra struct {
@@ -58,9 +60,9 @@ type OverLimitLine struct {
 }
 
 // SavingsResponse answers GET /me/finance/savings. Goals are in the User's order.
-// Leftover is set when the month's leftover is above the Base, OverLimit (an empty
+// Leftover is set when the month's leftover is above zero, OverLimit (an empty
 // list when no category is over) when it is below; neither is set with no income,
-// no Monthly contribution or a leftover equal to the Base.
+// no Monthly contribution or a leftover of zero.
 type SavingsResponse struct {
 	ReserveTargetCents    *int64               `json:"reserveTargetCents"`
 	ContributionBaseCents *int64               `json:"contributionBaseCents"`
@@ -111,42 +113,45 @@ func (h *Handler) PutContribution(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Savings answers GET /me/finance/savings: the settings, the Investments and the
+// Savings answers GET /me/finance/savings from SavingsView.
+func (h *Handler) Savings(w http.ResponseWriter, r *http.Request) {
+	res, err := h.SavingsView(r.Context(), identity.CurrentUser(r.Context()).ID)
+	h.writeView(w, res, err)
+}
+
+// SavingsView is userID's savings: the settings, the Investments and the
 // Goals, with this month's suggestion. A User with no settings row gets nulls, never a 404.
 // The reserve's saved amount is the sum of the Investments that serve it, the Goals' pot
-// the sum of those that serve Goals. With no Monthly contribution the saved amounts are
+// the sum of those that serve Goals; one with nothing picked counts toward neither. With no Monthly contribution the saved amounts are
 // still given, with no monthly amounts or expected months. The leftover is the current
-// month's of loadOutlook, the one Commitments gives; above the Base it gives the extra,
+// month's of loadOutlook, the one Commitments gives; above zero it gives the extra,
 // below it the Spending Categories over their limit, and with no income or no Base neither.
-func (h *Handler) Savings(w http.ResponseWriter, r *http.Request) {
-	uid := identity.CurrentUser(r.Context()).ID
-	reserve, base, share, err := h.store.SavingsSettings(r.Context(), uid)
+func (h *Handler) SavingsView(ctx context.Context, uid string) (SavingsResponse, error) {
+	reserve, base, share, err := h.store.SavingsSettings(ctx, uid)
 	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read savings", err)
-		return
+		return SavingsResponse{}, fmt.Errorf("read savings: %w", err)
 	}
-	investments, err := h.store.Investments(r.Context(), uid)
+	investments, err := h.store.Investments(ctx, uid)
 	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read investments", err)
-		return
+		return SavingsResponse{}, fmt.Errorf("read investments: %w", err)
 	}
-	goals, err := h.store.Goals(r.Context(), uid)
+	goals, err := h.store.Goals(ctx, uid)
 	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read goals", err)
-		return
+		return SavingsResponse{}, fmt.Errorf("read goals: %w", err)
 	}
 	today := postedOn(h.clk.Now())
 	month := time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, time.UTC)
-	in, err := h.loadOutlook(r.Context(), uid, month, 1)
+	in, err := h.loadOutlook(ctx, uid, month, 1)
 	if err != nil {
-		httpx.InternalError(w, h.log, "finance: read savings outlook", err)
-		return
+		return SavingsResponse{}, fmt.Errorf("read savings outlook: %w", err)
 	}
 	var reserveSaved, goalsPot int64
 	for _, i := range investments {
-		if i.Serves == "reserve" {
+		switch {
+		case i.Serves == nil: // not picked yet: counts toward neither
+		case *i.Serves == "reserve":
 			reserveSaved += i.ValueCents
-		} else {
+		case *i.Serves == "goals":
 			goalsPot += i.ValueCents
 		}
 	}
@@ -160,8 +165,7 @@ func (h *Handler) Savings(w http.ResponseWriter, r *http.Request) {
 		if g.TargetMonth != nil {
 			due, err := time.Parse("2006-01", *g.TargetMonth)
 			if err != nil {
-				httpx.InternalError(w, h.log, "finance: read goal month", err)
-				return
+				return SavingsResponse{}, fmt.Errorf("read goal month: %w", err)
 			}
 			cg.Due = &due
 		}
@@ -186,7 +190,7 @@ func (h *Handler) Savings(w http.ResponseWriter, r *http.Request) {
 	if left := in.outlook[0].LeftoverCents; left != nil && planned {
 		if extra, ok := Extra(cin, *left); ok {
 			resp.Leftover = &LeftoverExtra{*left, extra.Extra, extra.MonthsSooner}
-		} else if *left < *base {
+		} else if *left < 0 {
 			over := []OverLimitLine{}
 			for _, c := range OverLimit(MonthTotals(in.rows).ByCategory, in.limits) {
 				over = append(over, OverLimitLine(c))
@@ -194,5 +198,5 @@ func (h *Handler) Savings(w http.ResponseWriter, r *http.Request) {
 			resp.OverLimit = &over
 		}
 	}
-	httpx.WriteJSON(w, http.StatusOK, resp)
+	return resp, nil
 }

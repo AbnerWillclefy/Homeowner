@@ -1,6 +1,5 @@
 import type { FakeApi } from "../api";
 import { choresHandlers } from "./chores";
-import { financeHandlers } from "./finance";
 import { homeHandlers } from "./home";
 import { onboardingHandlers } from "./onboarding";
 import { photosHandlers } from "./photos";
@@ -15,5 +14,4 @@ export function signedInHandlers(api: FakeApi): void {
   todayHandlers(api);
   residentsHandlers(api);
   photosHandlers(api);
-  financeHandlers(api);
 }

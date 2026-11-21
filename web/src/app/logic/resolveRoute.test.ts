@@ -104,8 +104,12 @@ const rows: Row[] = [
   // A screen under a tab (the edit screen under Me) is part of the shell, not an unknown path
   { name: "signed out on /me/edit goes to sign-in", input: input({ auth: "signed-out", pathname: "/me/edit" }), expected: to("/signin") },
   { name: "done on /me/edit renders", input: input({ pathname: "/me/edit" }), expected: render },
-  { name: "done on /finances/ajustes renders", input: input({ pathname: "/finances/ajustes" }), expected: render },
-  { name: "done on /finances/economias renders", input: input({ pathname: "/finances/economias" }), expected: render },
+  // The old Finances address is an unknown path now, so a stale link lands on Today.
+  ...["/finances", "/finances/gastos", "/finances/gastos/groceries", "/finances/ajustes"].map((pathname) => ({
+    name: `done on ${pathname} goes to Today`,
+    input: input({ pathname }),
+    expected: to("/"),
+  })),
   { name: "done on /me/edit/ renders", input: input({ pathname: "/me/edit/" }), expected: render },
   { name: "done on /me/nope goes to Today", input: input({ pathname: "/me/nope" }), expected: to("/") },
   { name: "unfinished on /me/edit goes to the step", input: input({ pathname: "/me/edit", onboarding: ready("baseline") }), expected: to("/welcome/baseline") },

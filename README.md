@@ -105,7 +105,7 @@ flowchart TD
 
 6. **Learn** (`review-lessons.yml`). Every Monday the senior engineer reads the last 30 days of review outcomes and opens a pull request that turns recurring findings into rules in each area's `CLAUDE.md`, and recurring rejected findings into suppressions in `REVIEW.md`, so each pull request draws fewer findings. Mistakes a linter or test can stop become `Enforce:` tickets instead.
 
-Around those stages, deterministic workflows keep things moving: CI for the Go tests, typecheck, end-to-end tests and Terraform checks; a `ui-screenshots` check that every UI pull request shows the change in pt-BR and English; an agent that resolves merge conflicts after `main` moves; a notification when a pull request is ready to merge; and a sync that moves each issue across the project board.
+Around those stages, deterministic workflows keep things moving: CI for the Go tests, typecheck, end-to-end tests and Terraform checks; a `ui-screenshots` check that every UI pull request shows the change in pt-BR and English, taking them itself from the showcase when only Bedrock changes; an agent that resolves merge conflicts after `main` moves; a notification when a pull request is ready to merge; and a sync that moves each issue across the project board.
 
 The maintainer is also using Homeowner to learn Go, AWS and system design. Besides labelling a ticket `implement`, they can build it locally with Claude using `/ticket <n>` ([skill](.claude/skills/ticket/SKILL.md)), which writes the code while teaching each concept the ticket's "Learning focus" names. The agents' standing instructions live in [CLAUDE.md](CLAUDE.md), and every agent writes code by the [Ponytail](https://github.com/DietrichGebert/ponytail) ruleset in [AGENTS.md](AGENTS.md): the smallest complete change, no code nobody asked for.
 
@@ -246,6 +246,24 @@ npm run dev                    # http://localhost:5174
 Note `admin/` calls the API URL `VITE_API_URL`, where the PWA calls it
 `VITE_API_BASE_URL`. Variables are explained in
 [docs/development.md](docs/development.md#admin).
+
+### 8. Revenue app (optional)
+
+Revenue, the app that holds Finances, lives in `revenue/` and runs on port 5175
+against the Compose API. It is part of the root npm workspace, so install from the
+repository root. Put your email in `FINANCE_ALLOWLIST` and a key in
+`FINANCE_ENCRYPTION_KEY` in the root `.env` (see `.env.example`), then run
+`docker compose up -d` again: without them `/me/finance` answers 403 or 503 and
+Revenue shows "Sem acesso" or an error.
+
+```sh
+npm ci                                   # at the repository root
+cp revenue/.env.example revenue/.env.local   # fill in the Cognito values and VITE_PASSWORD_POLICY (same as web/.env.local)
+npm run dev -w @homeowner/revenue        # http://localhost:5175
+```
+
+Bedrock's showcase uses port 5175 too, so run one at a time. Variables are
+explained in [docs/development.md](docs/development.md#revenue).
 
 ## The super admin role
 

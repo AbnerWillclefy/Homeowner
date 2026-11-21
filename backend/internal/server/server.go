@@ -18,9 +18,12 @@ import (
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/choresettings"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/finance"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/finchat"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/homes"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/invites"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/nfce"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/pantry"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/photos"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/auth"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
@@ -64,6 +67,11 @@ type Deps struct {
 	// when a call reported no Usage.
 	Voice      llmalloc.Client
 	VoiceModel string
+	// Chat is the model behind POST /me/finance/chat; nil means the route
+	// answers 503 chat_unavailable. ChatModel is what an event row records when
+	// a call reported no Usage.
+	Chat      finchat.Model
+	ChatModel string
 	// Photos is the private photo bucket; nil means photos are not configured
 	// and the /me/photo routes answer 503.
 	Photos photos.ObjectStore
@@ -87,6 +95,14 @@ type Deps struct {
 	// Pluggy reads the User's banks; nil means the routes that call Pluggy
 	// answer 503.
 	Pluggy pluggy.Client
+	// NFCe reads grocery receipts from SEFAZ; nil means the receipt route
+	// answers 503.
+	NFCe nfce.Client
+	// ReceiptReader is the model behind POST /me/finance/pantry/receipts/photo;
+	// nil means the route answers 503. ReceiptModel is what an event row records
+	// when a call reported no Usage.
+	ReceiptReader llmalloc.Client
+	ReceiptModel  string
 	// FinanceSyncBudget is the time budget of the sync that apitest runs; the
 	// server never reads it (the finance Lambda is another command).
 	FinanceSyncBudget time.Duration
@@ -131,11 +147,23 @@ func New(deps Deps) http.Handler {
 	streaks := streak.NewHandler(streakStore, clk, log)
 	residentsH := residents.NewHandler(residents.NewStore(db), streakStore, planner, photoURL, clk, log)
 	voiceH := voice.NewHandler(deps.Voice, voice.NewStore(db), deps.VoiceModel, clk, log)
-	pushes := push.NewHandler(push.NewStore(db), deps.Push, deps.VAPIDPublicKey, clk, log)
+	pushes := push.NewHandler(push.NewStore(db), deps.Push, deps.VAPIDPublicKey, financeAllow.Allows, clk, log)
+	fin := finance.NewHandler(finance.NewStore(db), deps.FinanceKey, deps.Pluggy, deps.Environment, clk, log)
+	chatH := finchat.NewHandler(deps.Chat, fin, finchat.NewStore(db), deps.ChatModel, clk, log)
+	pantryH := pantry.NewHandler(pantry.NewStore(db), finance.NewStore(db), deps.NFCe, deps.ReceiptReader, deps.ReceiptModel, clk, log)
 
 	user, resident := s.requireUser, s.requireResident
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.healthz)
+	mux.HandleFunc("GET /boot", user(s.boot(financeAllow, []bootRead{
+		{"/me", me.Me, gateUser, ""}, {"/me/onboarding", me.Onboarding, gateUser, ""}, {"/demands", vocab.ServeDemands, gateUser, ""},
+		{"/home", home.Get, gateResident, ""}, {"/home/day-plan", dayPlan.Get, gateResident, ""},
+		{"/home/check-in", dayPlan.GetCheckIn, gateResident, ""}, {"/home/streak", streaks.Get, gateResident, ""},
+		{"/home/residents", residentsH.List, gateResident, ""},
+		{"/me/finance", fin.Status, gateFinance, ""}, {"/me/finance/bills", fin.ListBills, gateFinance, "month"},
+		{"/me/finance/commitments", fin.Commitments, gateFinance, "from"},
+		{"/me/finance/savings", fin.Savings, gateFinance, ""}, {"/me/finance/bill-suggestions", fin.BillSuggestions, gateFinance, ""},
+	})))
 	mux.HandleFunc("GET /me", user(me.Me))
 	mux.HandleFunc("PUT /me/name", user(me.SetName))
 	mux.HandleFunc("POST /me/photo/uploads", photosH.RequireConfigured(user(photosH.Presign)))
@@ -159,6 +187,8 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("DELETE /home/chores/{id}/preference", resident(choreSettings.ClearPreference))
 	mux.HandleFunc("PUT /home/chores/{id}/restriction", resident(choreSettings.AddRestriction))
 	mux.HandleFunc("DELETE /home/chores/{id}/restriction", resident(choreSettings.RemoveRestriction))
+	mux.HandleFunc("PUT /home/chores/{id}/responsible", resident(choreSettings.SetResponsible))
+	mux.HandleFunc("DELETE /home/chores/{id}/responsible", resident(choreSettings.ClearResponsible))
 	mux.HandleFunc("POST /home/voice/interpret", voiceH.RequireConfigured(resident(voiceH.Interpret)))
 	mux.HandleFunc("POST /home/invites", resident(invite.Create))
 	mux.HandleFunc("GET /invites/{token}", invite.Lookup)
@@ -189,11 +219,12 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("DELETE /me/restrictions/{demand}", user(prof.RemoveRestriction))
 	mux.HandleFunc("GET /push/vapid-public-key", pushes.RequireConfigured(pushes.PublicKey))
 	mux.HandleFunc("PUT /push/subscription", pushes.RequireConfigured(user(pushes.PutSubscription)))
+	mux.HandleFunc("DELETE /push/subscription", pushes.RequireConfigured(user(pushes.DeleteSubscription)))
 	mux.HandleFunc("POST /push/test", pushes.RequireConfigured(user(pushes.SendTest)))
 	// Every /admin/ path, known or not, goes through the guard first.
 	mux.Handle("/admin/", s.requireSuperAdmin(s.adminMux()))
 	// Every /me/finance path, known or not, meets the allowlist first.
-	guarded := s.requireFinance(financeAllow, financeMux(finance.NewHandler(finance.NewStore(db), deps.FinanceKey, deps.Pluggy, deps.Environment, clk, log)))
+	guarded := s.requireFinance(financeAllow, financeMux(fin, pantryH, chatH))
 	mux.Handle("/me/finance", guarded)
 	mux.Handle("/me/finance/", guarded)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Contas</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="rv-app" data-theme="{{theme}}">
+<div class="rv-side"><dc-import name="Sidebar" active="accounts" theme="{{theme}}" hint-size="256px,1240px"></dc-import></div>
+<main class="rv-main">
+<header class="rv-head">
+<div class="rv-head__text"><h1 class="rv-title">Contas</h1><span class="rv-sub">3 bancos conectados pelo Open Finance · atualizado há 2 h</span></div>
+<div class="rv-tools"><button class="br-btn br-btn--secondary"><i class="ri ri-refresh" aria-hidden="true"></i>Atualizar agora</button><button class="br-btn br-btn--primary"><i class="ri ri-plus" aria-hidden="true"></i>Conectar banco</button></div>
+</header>
+
+<div class="rv-grid">
+<div class="s8 rv-stack-16" style="gap: 24px">
+<section class="br-card">
+<div class="rv-between"><span class="rv-section">Contas correntes</span><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 8.172,58</span></span></div>
+<div class="br-list">
+<div class="br-listrow" style="cursor: default"><span class="rv-logo rv-logo--nu">Nu</span><div class="br-listrow__main"><span class="br-listrow__title">Nubank</span><span class="br-listrow__meta">Conta corrente · ag 0001</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 6.240,18</span></span><span class="br-listrow__meta">saldo disponível</span></div></div>
+<div class="br-listrow" style="cursor: default"><span class="rv-logo rv-logo--itau">Itaú</span><div class="br-listrow__main"><span class="br-listrow__title">Itaú</span><span class="br-listrow__meta">Conta corrente · ag 4412</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 1.932,40</span></span><span class="br-listrow__meta">saldo disponível</span></div></div>
+</div>
+</section>
+
+<section class="br-card">
+<div class="rv-between"><span class="rv-section">Investimentos</span><span class="br-amount br-amount--sm"><span class="br-amount__value">{{investTotal}}</span></span></div>
+<div class="br-list">
+<sc-for list="{{invest}}" as="v" hint-placeholder-count="3">
+<div class="br-listrow" style="cursor: default; grid-template-columns: auto minmax(0, 1fr) auto">
+<span class="rv-logo {{v.logo}}">{{v.mark}}</span>
+<div class="br-listrow__main"><span class="br-listrow__title">{{v.name}}</span><span class="br-listrow__meta">{{v.meta}}</span></div>
+<div class="rv-row" style="flex-wrap: nowrap; gap: 16px">
+<div class="br-listrow__end"><span class="br-amount br-amount--sm"><span class="br-amount__value">{{v.value}}</span></span>
+<sc-if value="{{v.edited}}" hint-placeholder-val="{{ false }}"><span class="br-badge br-badge--neutral"><i class="ri ri-sm ri-pencil" aria-hidden="true"></i>Editado · banco diz {{v.bank}}</span></sc-if>
+<sc-if value="{{v.fromBank}}" hint-placeholder-val="{{ true }}"><span class="br-listrow__meta">{{v.serves}}</span></sc-if></div>
+<sc-if value="{{v.edited}}" hint-placeholder-val="{{ false }}"><button class="br-btn br-btn--secondary br-btn--sm" onClick="{{v.toggle}}">Usar valor do banco</button></sc-if>
+<sc-if value="{{v.fromBank}}" hint-placeholder-val="{{ true }}"><button class="br-iconbtn br-iconbtn--sm" style="border: 0" aria-label="Editar {{v.name}}" onClick="{{v.toggle}}"><i class="ri ri-pencil" aria-hidden="true"></i></button></sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+<button class="br-btn br-btn--ghost" style="align-self: flex-start"><i class="ri ri-plus" aria-hidden="true"></i>Adicionar investimento à mão</button>
+</section>
+
+<section class="br-card">
+<div class="rv-between"><span class="rv-section">Cartões de crédito</span><span class="br-amount br-amount--sm"><span class="br-amount__value">−R$ 3.359,88</span></span></div>
+<div class="br-list">
+<a href="CardBills.dc.html" class="br-listrow"><span class="rv-logo rv-logo--nu">Nu</span><div class="br-listrow__main"><span class="br-listrow__title">Nubank Ultravioleta</span><span class="br-listrow__meta">Limite R$ 12.000 · fecha dia 3</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 2.418,22</span></span><span class="br-listrow__meta">fatura aberta</span></div></a>
+<a href="CardBills.dc.html" class="br-listrow"><span class="rv-logo rv-logo--itau">Itaú</span><div class="br-listrow__main"><span class="br-listrow__title">Itaú Click</span><span class="br-listrow__meta">Limite R$ 6.000 · fecha dia 28</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 941,66</span></span><span class="br-listrow__meta">fatura aberta</span></div></a>
+</div>
+</section>
+</div>
+
+<div class="s4 rv-stack-16" style="gap: 24px">
+<section class="br-card">
+<span class="br-card__label">Bancos conectados</span>
+<div class="br-list">
+<div class="br-listrow" style="cursor: default"><span class="rv-logo rv-logo--nu">Nu</span><div class="br-listrow__main"><span class="br-listrow__title">Nubank</span><span class="br-listrow__meta">há 2 h · 3 produtos</span></div><span class="br-badge br-badge--positive"><i class="ri ri-sm ri-check" aria-hidden="true"></i>Ok</span></div>
+<div class="br-listrow" style="cursor: default"><span class="rv-logo rv-logo--itau">Itaú</span><div class="br-listrow__main"><span class="br-listrow__title">Itaú</span><span class="br-listrow__meta">há 2 h · 2 produtos</span></div><span class="br-badge br-badge--positive"><i class="ri ri-sm ri-check" aria-hidden="true"></i>Ok</span></div>
+<div class="br-listrow" style="cursor: default"><span class="rv-logo rv-logo--xp">XP</span><div class="br-listrow__main"><span class="br-listrow__title">XP Investimentos</span><span class="br-listrow__meta">há 3 dias</span></div><span class="br-badge br-badge--warning"><i class="ri ri-sm ri-alert" aria-hidden="true"></i>Reconectar</span></div>
+</div>
+<span class="br-muted">A XP pediu nova autorização. Até lá, o valor do fundo é o último que chegou.</span>
+<button class="br-btn br-btn--secondary br-btn--block">Reconectar XP</button>
+</section>
+<section class="br-card">
+<div class="rv-row" style="flex-wrap: nowrap; align-items: flex-start"><i class="ri ri-lock" aria-hidden="true" style="margin-top: 2px; color: var(--text-muted)"></i><span class="br-muted">O app só lê. Ele não movimenta dinheiro, e a autorização acontece direto no banco.</span></div>
+</section>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { edited: { selic: true } }; }
+  renderVals() {
+    const fmt = (v) => 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const list = [
+      { id: 'cdb', name: 'CDB Nubank Reserva', meta: 'Nubank · 102% do CDI', logo: 'rv-logo--nu', mark: 'Nu', bankN: 24500, mine: 24500, serves: 'Reserva de emergência' },
+      { id: 'selic', name: 'Tesouro Selic 2029', meta: 'Itaú · resgate a qualquer momento', logo: 'rv-logo--td', mark: 'TD', bankN: 14652.33, mine: 14800, serves: 'Viagem para o Chile' },
+      { id: 'xp', name: 'Fundo XP Trend', meta: 'XP · multimercado', logo: 'rv-logo--xp', mark: 'XP', bankN: 4200, mine: 4200, serves: 'Notebook novo' },
+    ];
+    let total = 0;
+    const invest = list.map((v) => {
+      const edited = !!this.state.edited[v.id];
+      const val = edited ? v.mine : v.bankN;
+      total += val;
+      return { ...v, edited, fromBank: !edited, value: fmt(val), bank: fmt(v.bankN), toggle: () => this.setState({ edited: { ...this.state.edited, [v.id]: !edited } }) };
+    });
+    return { theme: this.props.theme ?? 'dark', invest, investTotal: fmt(total) };
+  }
+}
+</script>
+</body>
+</html>

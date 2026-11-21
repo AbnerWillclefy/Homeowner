@@ -4,8 +4,8 @@
 // the caller referees every proposal with allocation.Check and falls back to
 // the baseline when it fails.
 //
-// The Allocator and the Explainer show the model opaque ids, numbers and fixed
-// vocabulary only, never names, emails, Chore titles or any text a User typed.
+// The Allocator and the Explainer show the model opaque ids (a Task's
+// responsible Resident included), numbers and fixed vocabulary only, never names, emails, Chore titles or any text a User typed.
 // This keeps personal data out of a third party and leaves nothing to inject a
 // prompt through.
 //
@@ -19,7 +19,15 @@
 // writes text back.
 //
 // Voice commands (package voice) send Chore titles and the Resident's words,
-// behind a confirmation: see ADR 0020.
+// behind a confirmation: see ADR 0020. The ReceiptReader (receipt.go) sends a
+// photo of a grocery receipt, which the User takes and then checks and corrects
+// before anything is saved: see ADR 0026. Nothing in the photo is stored or
+// logged, and the answer is validated in Go like every other.
+//
+// The finance chat (package finchat) is the last exception: it sends a User's
+// own amounts, dates and descriptions through read-only tools, with transfers
+// and Manual cards redacted in Go, and stores and logs nothing of the
+// conversation: see ADR 0027.
 package llmalloc
 
 import (
@@ -58,6 +66,9 @@ type Request struct {
 	// Tools, when set, makes the model answer with tool calls instead of
 	// Schema: Complete then returns a JSON array of ToolCall. Not with Thinking.
 	Tools []Tool
+	// Image, when set, is a JPEG sent before User as an image block. Only the
+	// ReceiptReader uses it.
+	Image []byte
 }
 
 // Tool is one action the model may propose. InputSchema is a strict JSON
@@ -91,6 +102,10 @@ type Usage struct {
 // The *Usage is nil when the API sent none (a timeout, a transport or HTTP
 // error), and non-nil whenever a response came back, even with an error such
 // as ErrInvalidResponse: the tokens were spent. nil is not zero tokens.
+//
+// Client covers single-shot calls only. The multi-turn tool conversation the
+// chat uses is Anthropic.Converse, which is not part of this interface: its
+// consumer declares the one method it needs (ScriptedClient is its fake).
 type Client interface {
 	Complete(ctx context.Context, req Request) (json.RawMessage, *Usage, error)
 }
@@ -185,6 +200,7 @@ The user message is JSON: today's date and weekday (0 = Sunday), the Residents a
 Assign Tasks to Residents and leave the rest in the pool. Hard rules, never break them:
 - The total effort of a Resident's Tasks must not exceed their energy.
 - Give a Task only to a Resident listed in its eligible. Tasks not in the input are already decided.
+- A Task with "with" goes to that Resident and one other eligible Resident.
 - A Task with people 2 goes to exactly two different Residents, each paying its full effort, and appears once per Resident. Otherwise it stays in the pool.
 - Give each Task to at most one Resident (two for people 2). Use only ids from the input.
 
@@ -252,13 +268,19 @@ type taskInput struct {
 	WindowStart string                `json:"window_start"`
 	WindowEnd   string                `json:"window_end"`
 	Eligible    []string              `json:"eligible"`
+	// With is the responsible Resident of a two-person Task, who must be one
+	// of its two.
+	With string `json:"with,omitempty"`
 }
 
 // screen decides in Go what the model must not. It returns the Tasks the model
 // may place, each with its eligible Residents, and the entries it pooled
-// itself, in the baseline's order of checks: weekday not allowed, then too few
-// eligible Residents (counted over all Residents, not only those with
-// Energy). A Task with Effort below 1 still goes to the model, as before.
+// itself, in the baseline's order of checks: weekday not allowed, then a
+// responsible Resident who is absent or not eligible (waiting_for_responsible),
+// then too few eligible Residents (counted over all Residents, not only those
+// with Energy). A one-person Task with a responsible Resident is offered to
+// them alone (Eligible does that); a two-person one carries them as With. A
+// Task with Effort below 1 still goes to the model, as before.
 // Energy is not filtered here: over_energy is the model's job and the
 // referee's.
 func screen(st allocation.State) (open []taskInput, pooled []allocation.PoolEntry) {
@@ -266,6 +288,13 @@ func screen(st allocation.State) (open []taskInput, pooled []allocation.PoolEntr
 		if !allocation.WeekdayAllowed(t, st.Today) {
 			pooled = append(pooled, allocation.PoolEntry{TaskID: t.ID, Reason: allocation.ReasonWeekdayNotAllowed})
 			continue
+		}
+		if t.Responsible != "" {
+			i := slices.IndexFunc(st.Residents, func(r allocation.Resident) bool { return r.ID == t.Responsible })
+			if i < 0 || !allocation.Eligible(st.Residents[i], t, st.Today) {
+				pooled = append(pooled, allocation.PoolEntry{TaskID: t.ID, Reason: allocation.ReasonWaitingForResponsible})
+				continue
+			}
 		}
 		var eligible []string
 		for _, r := range st.Residents {
@@ -278,8 +307,12 @@ func screen(st allocation.State) (open []taskInput, pooled []allocation.PoolEntr
 			continue
 		}
 		slices.Sort(eligible)
-		open = append(open, taskInput{ID: t.ID, ChoreID: t.ChoreID, Effort: t.Effort, Importance: t.Importance,
-			People: t.People, WindowStart: day(t.WindowStart), WindowEnd: day(t.WindowEnd), Eligible: eligible})
+		in := taskInput{ID: t.ID, ChoreID: t.ChoreID, Effort: t.Effort, Importance: t.Importance,
+			People: t.People, WindowStart: day(t.WindowStart), WindowEnd: day(t.WindowEnd), Eligible: eligible}
+		if allocation.PeopleNeeded(t) > 1 {
+			in.With = t.Responsible
+		}
+		open = append(open, in)
 	}
 	return open, pooled
 }
@@ -370,7 +403,10 @@ func decode(raw json.RawMessage, st allocation.State, goPooled []allocation.Pool
 
 // build makes the complete Result: the assignments as given, and every Task of
 // st that is not assigned in the pool, in st's order. A pooled Task takes the
-// reason Go gave it, else the model's, else no_energy_left.
+// reason Go gave it, else the model's, else no_energy_left; except that one
+// with a responsible Resident is always waiting_for_responsible, whatever the
+// model said, unless it is weekday_not_allowed, which wins as in
+// allocation.Plan.
 func build(assignments []allocation.Assignment, reasons map[string]allocation.Reason, st allocation.State, goPooled []allocation.PoolEntry) allocation.Result {
 	if assignments == nil {
 		assignments = []allocation.Assignment{} // the JSON stays []
@@ -393,6 +429,9 @@ func build(assignments []allocation.Assignment, reasons map[string]allocation.Re
 		reason, ok := reasons[t.ID]
 		if !ok {
 			reason = allocation.ReasonNoEnergyLeft
+		}
+		if t.Responsible != "" && reason != allocation.ReasonWeekdayNotAllowed {
+			reason = allocation.ReasonWaitingForResponsible
 		}
 		res.Pool = append(res.Pool, allocation.PoolEntry{TaskID: t.ID, Reason: reason})
 	}

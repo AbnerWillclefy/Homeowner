@@ -15,7 +15,8 @@ import { categoryLabel, labelText } from "../../profile/logic/labels";
 import { CategoryTile } from "./FactList";
 import { groupByCategory } from "../logic/groups";
 import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
-import { ChoreForm } from "./ChoreForm";
+import { useShell } from "../../../app/components/ShellContext";
+import { ChoreForm, type ResponsibleProps } from "./ChoreForm";
 import { ChoresSkeleton } from "./ChoresSkeleton";
 import { ChoreItem } from "./ChoreItem";
 import { LOAD_FAILURE_KEY } from "../logic/failureMessages";
@@ -43,6 +44,7 @@ type Editing =
 export function ChoresSection() {
   const { t } = useI18n();
   const toast = useToast();
+  const { residents } = useShell();
   const { state, refreshing, reload, upsert, remove } = useChores();
   // The page's one status announces the wait; the skeleton shows after 300ms. Only the first load and a Retry load.
   const showSkeleton = useReportFirstLoad(state.kind === "loading");
@@ -76,6 +78,14 @@ export function ChoresSection() {
   function open(next: Editing) {
     setEditing(next);
   }
+
+  // The Responsible field needs the shared Residents list, which is not ready while it loads or after it failed.
+  const responsibleFor = (existing: Chore | null): ResponsibleProps => ({
+    residents: residents.state.kind === "ready" ? residents.state.residents : null,
+    reloadResidents: residents.reload,
+    onStored: upsert,
+    existing,
+  });
 
   const editedChore =
     state.kind === "ready" && editing.kind === "edit"
@@ -121,6 +131,7 @@ export function ChoresSection() {
               categories={state.categories}
               demands={state.demands}
               save={createChore}
+              responsible={responsibleFor(null)}
               onSaved={onSaved}
               onCancel={close}
             />
@@ -139,6 +150,7 @@ export function ChoresSection() {
               categories={state.categories}
               demands={state.demands}
               save={createChore}
+              responsible={responsibleFor(null)}
               onSaved={onSaved}
               onCancel={() => open({ kind: "catalog" })}
             />
@@ -153,6 +165,7 @@ export function ChoresSection() {
               categories={state.categories}
               demands={state.demands}
               save={(input) => updateChore(editedChore.id, input)}
+              responsible={responsibleFor(editedChore)}
               onSaved={onSaved}
               onCancel={close}
             />

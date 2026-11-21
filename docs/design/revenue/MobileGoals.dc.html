@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Objetivos, celular</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="rv-phone" data-theme="{{theme}}">
+<header class="rv-phone__head"><div class="rv-phone__headrow"><div class="rv-row" style="gap: 8px; flex-wrap: nowrap; min-width: 0; align-items: flex-start"><div class="rv-head__text"><h1 class="rv-title">Objetivos</h1><span class="rv-sub">Aporte de R$ 1.500 por mês</span></div></div><div class="rv-row" style="gap: 8px"><button class="br-iconbtn rv-iconbtn--primary" aria-label="Novo objetivo"><i class="ri ri-plus" aria-hidden="true"></i></button><button class="br-iconbtn" aria-label="Esconder valores"><i class="ri ri-eye" aria-hidden="true"></i></button></div></div></header>
+<div class="rv-phone__scroll rv-phone__scroll--fab">
+<section class="br-card br-card--compact">
+<span class="br-card__label">Aporte de novembro</span>
+<div class="rv-row" style="gap: 8px; align-items: baseline"><span class="br-amount br-amount--lg "><span class="br-amount__value">R$ 1.500,00</span></span><span class="br-muted">por mês</span></div>
+<div class="br-field"><span class="br-field__label">Reserva leva</span>
+<div class="br-seg br-seg--block" role="group" aria-label="Parte do aporte para a reserva"><button aria-pressed="false">30%</button><button aria-pressed="true">40%</button><button aria-pressed="false">50%</button><button aria-pressed="false">70%</button></div></div>
+<div class="br-progress__track" style="display: flex; gap: 4px; background: transparent" role="img" aria-label="Reserva de emergência 40%, Viagem para a Europa 60%"><div class="br-progress__fill" style="width: 40%; border-radius: 4px"></div><div class="br-progress__fill" style="width: 60%; background: var(--cat-transport); border-radius: 4px"></div></div>
+<dl class="rv-dl"><dt><i class="sw" style="display: inline-block; width: 8px; height: 8px; border-radius: 9999px; background: var(--brand); margin-right: 8px"></i>Reserva de emergência</dt><dd><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 600,00</span></span></dd><dt><i class="sw" style="display: inline-block; width: 8px; height: 8px; border-radius: 9999px; background: var(--cat-transport); margin-right: 8px"></i>Viagem para a Europa</dt><dd><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 900,00</span></span></dd></dl>
+</section>
+<section class="br-card br-card--compact">
+<div class="br-card__head"><span class="br-card__label">Sobrou neste mês</span><span class="br-badge br-badge--positive"><i class="ri ri-sm ri-trending" aria-hidden="true"></i>R$ 1.517</span></div>
+<span>Dá para aportar mais <strong>R$ 500</strong> neste mês. Isso adianta a Viagem para a Europa em 2 meses.</span>
+<button class="br-btn br-btn--primary br-btn--lg br-btn--block">Aportar R$ 500 a mais</button>
+<button class="br-btn br-btn--ghost br-btn--block">Agora não</button>
+</section>
+<section class="br-card br-card--compact">
+<div class="br-card__head"><span class="br-cat"><span class="br-cat__icon br-cat__icon--sm" style="background: var(--brand-soft); color: var(--brand)"><i class="ri ri-sm ri-shield" aria-hidden="true"></i></span>Reserva de emergência</span><button class="br-iconbtn" aria-label="Mais ações de Reserva de emergência"><i class="ri ri-more" aria-hidden="true"></i></button></div>
+<span class="br-amount br-amount--md"><span class="br-amount__value">R$ 12.000</span><span class="br-amount__ref">/ R$ 30.000</span></span>
+<div class="br-progress"><div class="br-progress__track"><div class="br-progress__fill" style="width: 40%"></div></div><div class="br-progress__meta"><strong>40%</strong><span>sem prazo</span></div></div>
+<dl class="rv-dl"><dt>Este mês</dt><dd><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 600,00</span></span></dd><dt>Chega em</dt><dd>mai/29</dd><dt>Guardado em</dt><dd>Tesouro Selic</dd></dl>
+</section>
+<section class="br-card br-card--compact">
+<div class="br-card__head"><span class="br-cat"><span class="br-cat__icon br-cat__icon--sm" style="background: var(--cat-transport-soft); color: var(--cat-transport)"><i class="ri ri-sm ri-target" aria-hidden="true"></i></span>Viagem para a Europa</span><button class="br-iconbtn" aria-label="Mais ações de Viagem para a Europa"><i class="ri ri-more" aria-hidden="true"></i></button></div>
+<span class="br-amount br-amount--md"><span class="br-amount__value">R$ 4.500</span><span class="br-amount__ref">/ R$ 18.000</span></span>
+<div class="br-progress"><div class="br-progress__track"><div class="br-progress__fill" style="width: 25%"></div></div><div class="br-progress__meta"><strong>25%</strong><span>até jan/28</span></div></div>
+<dl class="rv-dl"><dt>Este mês</dt><dd><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 900,00</span></span></dd><dt>Chega em</dt><dd>fev/28 <span class="br-badge br-badge--warning">Atrasada</span></dd><dt>Guardado em</dt><dd>Fundo Imobiliário</dd></dl>
+</section>
+<section class="br-card br-card--compact">
+<div class="br-card__head"><span class="br-cat"><span class="br-cat__icon br-cat__icon--sm" style="background: var(--cat-housing-soft); color: var(--cat-housing)"><i class="ri ri-sm ri-house" aria-hidden="true"></i></span>Reforma da cozinha</span><button class="br-iconbtn" aria-label="Mais ações de Reforma da cozinha"><i class="ri ri-more" aria-hidden="true"></i></button></div>
+<span class="br-amount br-amount--md"><span class="br-amount__value">R$ 3.000</span><span class="br-amount__ref">/ R$ 25.000</span></span>
+<div class="br-progress"><div class="br-progress__track"><div class="br-progress__fill" style="width: 12%"></div></div><div class="br-progress__meta"><strong>12%</strong><span>sem prazo</span></div></div>
+<dl class="rv-dl"><dt>Este mês</dt><dd><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 0,00</span></span></dd><dt>Chega em</dt><dd>nov/31</dd><dt>Guardado em</dt><dd>Fundo Imobiliário</dd></dl>
+</section>
+</div>
+<a href="MobileChat.dc.html" class="br-btn br-btn--primary rv-fab" aria-label="Perguntar"><i class="ri ri-chat" aria-hidden="true"></i>Perguntar</a>
+<nav class="br-bottombar" aria-label="Principal"><a href="MobileOverview.dc.html" class="br-tab"><i class="ri ri-lg ri-dashboard" aria-hidden="true"></i>Início</a><a href="MobileTransactions.dc.html" class="br-tab"><i class="ri ri-lg ri-receipt" aria-hidden="true"></i>Lançamentos</a><a href="MobilePlan.dc.html" class="br-tab" aria-current="page"><i class="ri ri-lg ri-target" aria-hidden="true"></i>Planejar</a><a href="MobileMore.dc.html" class="br-tab"><span class="rv-tabwrap"><i class="ri ri-lg ri-more" aria-hidden="true"></i><span class="br-count" aria-hidden="true">2</span></span>Mais<span style="position: absolute; width: 1px; height: 1px; overflow: hidden">, 2 contas a pagar</span></a></nav>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme": {"editor": "enum", "options": ["dark", "light"], "default": "dark"}, "$preview": {"width": 390, "height": 844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const brl = (c) => (c < 0 ? '-' : '') + 'R$ ' + Math.abs(c).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return {
+      theme: this.props.theme ?? 'dark',
+
+    };
+  }
+}
+</script>
+</body>
+</html>

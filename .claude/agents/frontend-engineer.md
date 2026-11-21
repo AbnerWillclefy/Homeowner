@@ -14,7 +14,9 @@ Rules that come from real iOS behaviour:
 - Re-subscribe to push on every launch; treat push as a nudge, never something a flow depends on.
 - The app asks for today's Check-in whenever it opens and one is missing.
 
-UI rules (ADR 0007):
+Revenue (`revenue/`) is desktop first on Bedrock and follows `revenue/CLAUDE.md`, not the web rules below.
+
+UI rules for the web PWA, `web/` (ADR 0007):
 - Tailwind v4 with semantic tokens from `@theme` (`bg-surface text-text`); never raw palette classes like `bg-teal-600`.
 - Native HTML first. Radix Primitives only where native HTML cannot be made accessible (dialog, select, switch, menu, toast). Add a generic primitive to `web/src/shared/ui/` only when a screen needs it; a piece that names a domain concept goes in that domain's folder, `web/src/domains/<domain>/` split into `components/`, `hooks/`, `api/` and `logic/` (ADR 0010, ADR 0011). Use `shared/ui/Button` for every button. No shadcn/ui.
 - WCAG 2.2 AA. Touch targets at least 44px. Sizes in `rem` so Dynamic Type and Android font scaling work; layouts must hold at the largest text size.
@@ -40,6 +42,10 @@ A pull request that changes the UI shows each changed screen in both locales; th
 4. In the description, under `### pt-BR` and `### English`, link each image as `![<screen>](https://raw.githubusercontent.com/AbnerWillclefy/Homeowner/screenshots/<ticket branch>/<file>)`.
 
 The branch is deleted when the pull request closes, so the images are temporary.
+
+A pull request that changes only `bedrock/` needs none of this: the `ui-screenshots` check screenshots the changed showcase sections in both locales and adds them under the two headings. Leave those headings empty.
+
+A pull request that changes `revenue/` shows the whole screen in pt-BR and dark theme instead: at 375px wide under `### Mobile` and at 1440px wide under `### Desktop`. Unless it also changes `web/`, the `ui-screenshots` check takes them itself, of each screen whose `revenue/src/domains/<screen>/` folder changed (a change under `revenue/src/app/` also shoots `/plan` and `/more`), against the fake API in `.github/scripts/revenue-fake-api.mjs`. Leave both headings empty. At Mobile width the check fails when the page scrolls sideways and names the widest element; routes in `OVERFLOW_EXEMPT` only warn. A screen that reads a new endpoint adds its answer to that fake, or the check fails naming the request.
 
 Onboarding should feel useful rather than quick: explain why each step matters.
 

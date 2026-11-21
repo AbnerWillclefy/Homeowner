@@ -2,6 +2,7 @@ package finance
 
 import (
 	"context"
+	"errors"
 	"time"
 )
 
@@ -35,4 +36,28 @@ func (s *Store) Budgets(ctx context.Context, userID string) (map[string]int64, e
 		out[c] = n
 	}
 	return out, rows.Err()
+}
+
+// GroceriesLeft is the month's groceries limit minus what groceries took, the
+// figure Spending Categories shows (month is YYYY-MM). Nil when no groceries
+// limit is set; negative when the User went over it. Pantry reads it here
+// instead of recomputing it.
+func (s *Store) GroceriesLeft(ctx context.Context, userID, month string) (*int64, error) {
+	from, to, ok := parseMonth(month)
+	if !ok {
+		return nil, errors.New("finance: invalid month")
+	}
+	limits, err := s.Budgets(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	limit, ok := limits["groceries"]
+	if !ok {
+		return nil, nil
+	}
+	rows, err := s.MonthTransactions(ctx, userID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	return new(limit - MonthTotals(toTxns(rows)).ByCategory["groceries"]), nil
 }

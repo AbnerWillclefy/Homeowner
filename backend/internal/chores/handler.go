@@ -45,6 +45,14 @@ func (h *Handler) failed(w http.ResponseWriter, err error) {
 		httpx.WriteError(w, http.StatusNotFound, "chore not found")
 		return
 	}
+	var rr ErrResponsibleRestricted
+	if errors.As(err, &rr) {
+		httpx.WriteJSON(w, http.StatusUnprocessableEntity, map[string]any{
+			"error": "responsible_restricted", "residentId": rr.ResidentID,
+			"restrictedBy": rr.Demands, "restrictedByChore": false,
+		})
+		return
+	}
 	httpx.InternalError(w, h.log, "chores", err)
 }
 

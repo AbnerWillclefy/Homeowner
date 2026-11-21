@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Faturas</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="rv-app" data-theme="{{theme}}">
+<div class="rv-side"><dc-import name="Sidebar" active="cards" theme="{{theme}}" hint-size="256px,1240px"></dc-import></div>
+<main class="rv-main">
+<header class="rv-head">
+<div class="rv-head__text"><h1 class="rv-title">Faturas</h1><span class="rv-sub">2 cartões · R$ 3.359,88 em faturas abertas</span></div>
+<div class="br-seg" role="group" aria-label="Cartão">
+<button aria-pressed="{{tab.nu}}" onClick="{{pickNu}}">Nubank</button>
+<button aria-pressed="{{tab.itau}}" onClick="{{pickItau}}">Itaú Click</button>
+</div>
+</header>
+
+<div class="rv-grid">
+<div class="s8 rv-stack-16" style="gap: 24px">
+<section class="br-card">
+<div class="br-card__head"><span class="br-card__label">Fatura aberta · {{c.name}}</span><span class="br-badge br-badge--neutral">Fecha {{c.close}}</span></div>
+<div class="rv-row" style="gap: 16px; align-items: baseline"><span class="br-amount br-amount--hero"><span class="br-amount__value">{{c.total}}</span></span><span class="br-muted">vence {{c.due}}</span></div>
+<div class="rv-split">
+<div class="rv-kv"><span class="rv-kv__k">Compras do mês</span><span class="br-amount br-amount--sm"><span class="br-amount__value">{{c.purchases}}</span></span></div>
+<div class="rv-kv"><span class="rv-kv__k">Parcelas</span><span class="br-amount br-amount--sm"><span class="br-amount__value">{{c.installments}}</span></span></div>
+<div class="rv-kv"><span class="rv-kv__k">Assinaturas</span><span class="br-amount br-amount--sm"><span class="br-amount__value">{{c.subs}}</span></span></div>
+</div>
+<div class="br-progress"><div class="rv-between"><span class="br-muted">Limite usado</span><span class="br-muted br-num">{{c.limitText}}</span></div><div class="br-progress__track"><div class="br-progress__fill" style="width: {{c.limitPct}}"></div></div></div>
+</section>
+
+<section class="br-card">
+<div class="rv-between"><span class="rv-section">Nesta fatura</span><span class="br-muted">{{c.count}} lançamentos</span></div>
+<div class="br-list">
+<sc-for list="{{c.items}}" as="it" hint-placeholder-count="5">
+<div class="br-listrow"><span class="br-cat__icon" style="background: var(--{{it.tone}}-soft); color: var(--{{it.tone}})"><i class="ri {{it.icon}}" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">{{it.title}}</span><span class="br-listrow__meta">{{it.meta}}</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm"><span class="br-amount__value">{{it.amount}}</span></span><sc-if value="{{it.hasTag}}" hint-placeholder-val="{{ false }}"><span class="br-badge br-badge--neutral">{{it.tag}}</span></sc-if></div></div>
+</sc-for>
+</div>
+</section>
+</div>
+
+<div class="s4 rv-stack-16" style="gap: 24px">
+<section class="br-card">
+<span class="br-card__label">Últimas faturas</span>
+<svg class="br-chart" viewBox="0 0 300 136" role="img" aria-label="{{c.historyLabel}}">
+<line class="grid" x1="0" y1="112" x2="300" y2="112"></line><line class="grid" x1="0" y1="62" x2="300" y2="62"></line>
+<sc-for list="{{c.bars}}" as="bar" hint-placeholder-count="6"><rect class="{{bar.cls}}" x="{{bar.x}}" y="{{bar.y}}" width="32" height="{{bar.h}}" rx="4"></rect><text x="{{bar.tx}}" y="130" text-anchor="middle">{{bar.m}}</text></sc-for>
+</svg>
+<div class="rv-between"><span class="br-muted">Média de 6 meses</span><span class="br-amount br-amount--sm"><span class="br-amount__value">{{c.avg}}</span></span></div>
+</section>
+<section class="br-card">
+<span class="br-card__label">Datas do cartão</span>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+<label class="br-field"><span class="br-field__label">Fecha no dia</span><span class="br-input"><input value="{{c.closeDay}}" inputmode="numeric" aria-label="Dia de fechamento"></span></label>
+<label class="br-field"><span class="br-field__label">Vence no dia</span><span class="br-input"><input value="{{c.dueDay}}" inputmode="numeric" aria-label="Dia de vencimento"></span></label>
+</div>
+<span class="br-field__hint">Vem do banco. Mude só se o banco informar errado.</span>
+</section>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { card: 'nu' }; }
+  renderVals() {
+    const bars = (vals, months) => {
+      const max = Math.max(...vals);
+      return vals.map((v, i) => { const h = Math.round(v / max * 96); return { x: 8 + i * 50, tx: 24 + i * 50, y: 112 - h, h, m: months[i], cls: i === vals.length - 1 ? 'bar bar--active' : 'bar' }; });
+    };
+    const months = ['jun', 'jul', 'ago', 'set', 'out', 'nov'];
+    const cards = {
+      nu: { name: 'Nubank Ultravioleta', total: 'R$ 2.418,22', close: '03/12', due: '10/12', closeDay: '3', dueDay: '10', purchases: 'R$ 1.355,92', installments: 'R$ 950,00', subs: 'R$ 112,30', limitText: 'R$ 2.418 de R$ 12.000', limitPct: '20%', count: 38, avg: 'R$ 2.203,40', historyLabel: 'Faturas Nubank de junho a novembro, média de R$ 2.203',
+        bars: bars([2010, 2380, 1960, 2290, 2107, 2418], months),
+        items: [
+          { title: 'Pão de Açúcar', meta: 'Mercado · 11/11', tone: 'cat-groceries', icon: 'ri-cart', amount: 'R$ 187,32' },
+          { title: 'Notebook Dell', meta: 'Compras · parcela 3 de 10', tone: 'cat-shopping', icon: 'ri-card', amount: 'R$ 450,00', tag: '3/10' },
+          { title: 'Outback', meta: 'Restaurantes · 08/11', tone: 'cat-eating-out', icon: 'ri-utensils', amount: 'R$ 212,50' },
+          { title: 'Passagem LATAM', meta: 'Lazer · parcela 2 de 6', tone: 'cat-leisure', icon: 'ri-ticket', amount: 'R$ 500,00', tag: '2/6' },
+          { title: 'iFood', meta: 'Restaurantes · 10/11', tone: 'cat-eating-out', icon: 'ri-utensils', amount: 'R$ 64,90' },
+          { title: 'Uber', meta: 'Transporte · 11/11', tone: 'cat-transport', icon: 'ri-car', amount: 'R$ 23,40' } ] },
+      itau: { name: 'Itaú Click', total: 'R$ 941,66', close: '28/11', due: '06/12', closeDay: '28', dueDay: '6', purchases: 'R$ 896,76', installments: 'R$ 0,00', subs: 'R$ 44,90', limitText: 'R$ 942 de R$ 6.000', limitPct: '16%', count: 14, avg: 'R$ 1.020,15', historyLabel: 'Faturas Itaú de junho a novembro, média de R$ 1.020',
+        bars: bars([1180, 990, 1240, 870, 899, 942], months),
+        items: [
+          { title: 'Drogasil', meta: 'Saúde · 10/11', tone: 'cat-health', icon: 'ri-heart', amount: 'R$ 98,00' },
+          { title: 'Netflix', meta: 'Assinaturas · 09/11', tone: 'cat-subscriptions', icon: 'ri-repeat', amount: 'R$ 44,90', tag: 'Recorrente' },
+          { title: 'Amazon', meta: 'Compras · 03/11', tone: 'cat-shopping', icon: 'ri-card', amount: 'R$ 289,90' } ] },
+    };
+    const c = cards[this.state.card];
+    return {
+      theme: this.props.theme ?? 'dark',
+      c: { ...c, items: c.items.map((it) => ({ ...it, hasTag: !!it.tag })) },
+      tab: { nu: this.state.card === 'nu' ? 'true' : 'false', itau: this.state.card === 'itau' ? 'true' : 'false' },
+      pickNu: () => this.setState({ card: 'nu' }),
+      pickItau: () => this.setState({ card: 'itau' }),
+    };
+  }
+}
+</script>
+</body>
+</html>

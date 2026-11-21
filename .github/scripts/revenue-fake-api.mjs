@@ -1,0 +1,282 @@
+// The API answers Revenue's screenshots are taken against: one plausible household, dated in the month asked for.
+// A screen that reads a new endpoint adds its answer here, or revenue-screenshots.mjs fails naming the request.
+
+const DESCRIPTIONS = [
+  ["Supermercado Pão de Açúcar Vila Mariana", -28_740, "expense", "groceries", "Nubank"],
+  ["Salário", 1_250_000, "income", null, "Itaú"],
+  ["iFood *Restaurante Japonês Sushi Yassu Liberdade", -8_990, "expense", "eating_out", "Nubank"],
+  ["Uber *Trip", -2_350, "expense", "transport", "Nubank"],
+  ["Conta de luz Enel", -21_480, "expense", "household_bills", "Itaú"],
+  ["Farmácia Drogasil", -6_420, "expense", "health", "Nubank"],
+  ["Transferência para poupança", -50_000, "saving", null, "Itaú"],
+  ["Netflix.com", -5_590, "expense", "subscriptions", "Nubank"],
+  ["Pix recebido de Maria Silva", 15_000, "transfer", null, "Itaú"],
+  ["Petz Pet Shop", -12_990, "expense", "pets", "Nubank"],
+];
+
+const SOURCES = [
+  { id: "s1", name: "Nubank", bankName: "Nubank", kind: "credit_card", currency: "BRL", closeDay: 8, dueDay: 15, creditLimitCents: 1_200_000 },
+  { id: "s3", name: "Itaú Visa", bankName: "Itaú", kind: "credit_card", currency: "BRL", closeDay: null, dueDay: null },
+  { id: "s2", name: "Itaú", bankName: "Itaú", kind: "checking", currency: "BRL", closeDay: null, dueDay: null },
+];
+/** One manual card, "Fatura Naiara": typed for this month and 2 months on, so the months between repeat the first. */
+function manualCards(today) {
+  const month = today.slice(0, 7);
+  return [{ id: "m1", name: "Fatura Naiara", dueDay: 10, pixRecipient: "Naiara Souza", bills: { [month]: 119_000, [addMonths(month, 2)]: 74_000 } }];
+}
+const ITEMS = [
+  { id: "i1", bankName: "Nubank", status: "ok", products: 1 },
+  { id: "i2", bankName: "Itaú", status: "reconnect", products: 2 },
+];
+const SOURCE_ID = { Nubank: "s1", Itaú: "s2" };
+
+const pad = (n) => String(n).padStart(2, "0");
+
+/** The days of `month` the rows fall on: up to today in the current month, so nothing is dated in the future. */
+function days(month, today) {
+  const last = month === today.slice(0, 7) ? Number(today.slice(8)) : 28;
+  return DESCRIPTIONS.map((_, i) => `${month}-${pad(Math.max(1, last - i))}`);
+}
+
+function transactions(month, today) {
+  const on = days(month, today);
+  const rows = DESCRIPTIONS.map(([description, amountCents, type, spendingCategory, sourceName], i) => ({
+    id: `t${i + 1}`, sourceId: SOURCE_ID[sourceName], postedOn: on[i], countsOn: on[i], description, sourceName, amountCents, currency: "BRL", type, spendingCategory,
+    installment: null, note: i === 3 ? "Ida ao aeroporto" : null,
+  }));
+  rows.push({
+    id: "t11", sourceId: "s1", postedOn: on[0], countsOn: on[0], description: "Magazine Luiza Geladeira Frost Free", sourceName: "Nubank",
+    amountCents: -32_490, currency: "BRL", type: "expense", spendingCategory: "shopping", installment: { number: 3, total: 10 }, note: null,
+  });
+  rows.push({
+    id: "t12", postedOn: on[1], countsOn: on[1], description: "PIX Pagamento 8841", sourceName: "Itaú",
+    amountCents: -4_500, currency: "BRL", type: "expense", spendingCategory: "other", categorySetBy: "fallback", installment: null, note: null,
+  });
+  rows.sort((a, b) => b.postedOn.localeCompare(a.postedOn));
+  const expenses = rows.filter((t) => t.type === "expense");
+  const byCategory = {};
+  for (const t of expenses) byCategory[t.spendingCategory] = (byCategory[t.spendingCategory] ?? 0) - t.amountCents;
+  return {
+    month,
+    spentCents: expenses.reduce((sum, t) => sum - t.amountCents, 0),
+    categories: Object.entries(byCategory).map(([category, spentCents]) => ({ category, spentCents })),
+    limits: { groceries: 40_000, eating_out: 5_000 },
+    transactions: rows,
+  };
+}
+
+/** `from` plus `n` months, as `YYYY-MM`. */
+function addMonths(from, n) {
+  const index = Number(from.slice(0, 4)) * 12 + Number(from.slice(5, 7)) - 1 + n;
+  return `${Math.floor(index / 12)}-${pad((index % 12) + 1)}`;
+}
+
+/** Twelve months from `from`; the 3rd takes more than the income, and the Geladeira plan runs on from the 1st. */
+function commitments(from, today) {
+  const current = from === today.slice(0, 7);
+  const day = current ? Number(today.slice(8)) : 30;
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const month = addMonths(from, i);
+    const over = i === 2;
+    return {
+      month,
+      installments: [{ name: "Geladeira Frost Free", number: 3 + i, total: 10, amountCents: 32_490 }].filter((p) => p.number <= p.total),
+      cards: [
+        { sourceId: "s1", name: "Nubank", amountCents: 284_300 + i * 4_000, billDaysKnown: true, fromBank: true, dueOn: `${month}-15`, closesOn: `${month}-08` },
+        { sourceId: "s3", name: "Itaú Visa", amountCents: 50_000, billDaysKnown: false, fromBank: false, dueOn: null, closesOn: null },
+        // Typed for month 0, repeated in month 1, retyped lower from month 2.
+        { sourceId: "m1", name: "Fatura Naiara", amountCents: i < 2 ? 119_000 : 74_000, billDaysKnown: true, fromBank: false, dueOn: `${month}-10`, closesOn: null, manual: true },
+      ],
+      otherBills: [
+        { id: "b1", name: "Aluguel", cents: 320_000, paid: i === 0 },
+        { id: "b2", name: "Internet Vivo Fibra", cents: 12_990, paid: false },
+      ],
+      otherInstallmentsCents: 32_490,
+      // Eating out is over its plan at the current pace, so the screens show a cut; groceries is at its plan.
+      planned: [
+        { category: "groceries", cents: 120_000, paceCents: 120_000, limited: true },
+        { category: "eating_out", cents: 100_000, paceCents: 220_000, limited: true },
+      ],
+      plannedCents: 220_000,
+      pacePlannedCents: 340_000,
+      savingCents: 50_000,
+      totalCents: over ? 1_410_000 : 869_780 + 119_000 + i * 4_000,
+      leftoverCents: over ? -160_000 : 380_220 - 119_000 - i * 4_000,
+      // The Leftover plus the plan, less the pace plan, as the API computes it.
+      paceLeftoverCents: (over ? -160_000 : 380_220 - 119_000 - i * 4_000) + 220_000 - 340_000,
+      ...(i === 0 && current && { spentOffCardCents: 41_200, dailyAllowanceCents: 9_500 }),
+      ...(i === 0 && { pace: { spentCents: Array.from({ length: day }, (_, d) => (d + 1) * 21_000), lineEndCents: 950_000 } }),
+    };
+  });
+  return { monthlyIncomeCents: 1_250_000, months };
+}
+
+function bills(month) {
+  return [
+    { id: "b1", name: "Aluguel", expectedCents: 320_000, dueDay: 5, dueDate: `${month}-05`, paid: true, paidBy: "hand", paidCents: 320_000 },
+    { id: "b2", name: "Internet Vivo Fibra", expectedCents: 12_990, dueDay: 15, dueDate: `${month}-15`, paid: false, paidCents: null },
+    { id: "b3", name: "Condomínio", expectedCents: 85_000, dueDay: 25, dueDate: `${month}-25`, paid: false, paidCents: null },
+  ];
+}
+
+/** Two items that ran out, one with a brand, and four in stock, one always bought: both states, both marks. */
+function pantry(today) {
+  const ago = (days) => new Date(Date.parse(`${today}T00:00:00Z`) - days * 86_400_000).toISOString().slice(0, 10);
+  const item = (id, name, over = {}) => ({ id, name, preferredBrand: null, fixed: false, state: "in_stock", ...over });
+  return {
+    items: [
+      item("p1", "Leite", { preferredBrand: "Piracanjuba", state: "ran_out", ranOutOn: ago(2) }),
+      item("p2", "Café", { state: "ran_out", ranOutOn: ago(5) }),
+      item("p3", "Arroz", { preferredBrand: "Tio João", fixed: true }),
+      item("p4", "Feijão"),
+      item("p5", "Azeite"),
+      item("p6", "Queijo minas"),
+    ],
+  };
+}
+
+/**
+ * The next shopping list: priced and unpriced lines, a kg line, and a groceries left below the total, so the
+ * screenshot shows the over-limit warning. Lines match the Pantry's ran-out and always-bought items.
+ */
+function shoppingList() {
+  const line = (itemId, name, quantityMilli, unit, unitPriceCents, over = {}) => ({
+    itemId, name, preferredBrand: null, fixed: false, quantityMilli, unit,
+    ...(unitPriceCents === undefined ? {} : { unitPriceCents, priceCents: Math.round((unitPriceCents * quantityMilli) / 1000) }),
+    ...over,
+  });
+  const items = [
+    line("p1", "Leite", 2000, "UN", 549, { preferredBrand: "Piracanjuba" }),
+    line("p2", "Café", 1000, "UN", 1890),
+    line("p3", "Arroz", 1000, "UN", 2790, { preferredBrand: "Tio João", fixed: true }),
+    line("p6", "Queijo minas", 450, "KG", 6490),
+    line("p7", "Sal", 1000, "UN"),
+  ];
+  return { items, expectedTotalCents: items.reduce((sum, i) => sum + (i.priceCents ?? 0), 0), groceriesLeftCents: 5_000 };
+}
+
+/** One item's detail: six purchases at two stores, newest first, and a completed cycle. Prices are per unit. */
+function pantryItem(id, today) {
+  const ago = (days) => new Date(Date.parse(`${today}T00:00:00Z`) - days * 86_400_000).toISOString().slice(0, 10);
+  const row = pantry(today).items.find((i) => i.id === id);
+  if (!row) return null;
+  const buys = [[8, 2790, "Bom Preço"], [40, 2490, "Atacadão"], [68, 2650, "Bom Preço"], [95, 2400, "Atacadão"], [130, 2590, "Bom Preço"], [160, 2790, "Bom Preço"]];
+  return {
+    item: { ...row, lastPriceCents: 2790, avgDurationDays: 22 },
+    avgDurationDays: 22,
+    prices: buys.map(([days, unitPriceCents, storeName]) => ({ issuedOn: ago(days), unitPriceCents, storeName })),
+  };
+}
+
+/** A receipt read now, with three unmatched lines and one already matched (so the matching step shows "1 de 3"). */
+function receipt(today) {
+  const line = (n, description, quantityMilli, unit, unitPriceCents, over = {}) => ({
+    n, description, quantityMilli, unit, unitPriceCents, totalCents: Math.round((quantityMilli * unitPriceCents) / 1000), itemId: null, ignored: false, ...over,
+  });
+  const lines = [
+    line(1, "ARROZ TIO JOAO T1 5KG", 1000, "UN", 2790),
+    line(2, "QJO MINAS FRESCAL KG", 450, "KG", 6490),
+    line(3, "LEITE PIRACANJUBA INTEGRAL 1L", 6000, "UN", 549),
+    line(4, "FEIJAO CARIOCA 1KG", 1000, "UN", 819, { itemId: "p4" }),
+  ];
+  return { id: "r1", storeName: "Mercado Bom Preço", issuedOn: today, totalCents: lines.reduce((sum, l) => sum + l.totalCents, 0), readBy: "sefaz", lines };
+}
+
+function savings(today) {
+  const month = (n) => {
+    const d = new Date(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 1 + n, 1);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+  };
+  return {
+    reserveTargetCents: 3_000_000, contributionBaseCents: 150_000, reserveSharePercent: 40,
+    // One of each: typed by hand, from the bank with nothing picked, and from the bank with the User's value over it.
+    investments: [
+      { id: "i1", name: "Tesouro Selic", valueCents: 1_200_000, serves: "reserve", source: "hand", edited: false },
+      { id: "i2", name: "CDB Banco Azul", valueCents: 800_000, serves: null, source: "pluggy", reportedByBank: true, edited: false, bankValueCents: 800_000 },
+      { id: "i3", name: "Fundo Imobiliário", valueCents: 350_000, serves: "goals", source: "pluggy", reportedByBank: true, edited: true, bankValueCents: 330_000 },
+    ],
+    reserve: { targetCents: 3_000_000, savedCents: 1_200_000, monthCents: 60_000, expectedMonth: month(30) },
+    goals: [
+      { id: "g1", name: "Viagem para a Europa", targetCents: 1_800_000, targetMonth: month(14), savedCents: 450_000, monthCents: 90_000, expectedMonth: month(15), late: true },
+      { id: "g2", name: "Reforma da cozinha", targetCents: 2_500_000, targetMonth: null, savedCents: 300_000, monthCents: 0, expectedMonth: month(60), late: false },
+    ],
+    unassignedCents: 0,
+    leftover: { leftoverCents: 151_700, extraCents: 50_000, monthsSooner: 2 },
+  };
+}
+
+/** Balances plus Investments for the range, ending today; the 1y range starts mid-way so the "history starts" note shows. */
+function netWorth(today, range) {
+  const days = { "30d": 30, "90d": 90, "1y": 200 }[range] ?? 30;
+  const end = Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 1, Number(today.slice(8, 10)));
+  return {
+    hasData: true,
+    today: { totalCents: 1_850_000, balancesCents: 650_000, investmentsCents: 1_350_000, cardBillsCents: 150_000 },
+    series: Array.from({ length: days }, (_, i) => ({
+      day: new Date(end - (days - 1 - i) * 86_400_000).toISOString().slice(0, 10),
+      cents: 1_700_000 + i * (300_000 / days) + (i % 7) * 12_000,
+    })).map((p) => ({ ...p, cents: Math.round(p.cents) })),
+    seriesExcludesCardBills: true,
+    monthStart: { day: new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 1, 0)).toISOString().slice(0, 10), balancesCents: 600_000, investmentsCents: 1_250_000 },
+    monthChange: { balancesCents: 50_000, investmentsCents: 100_000, totalCents: 150_000 },
+  };
+}
+
+/** The six months ending at `to`, each with a little less spent in groceries the further back it goes, and the same income and saved. */
+function history(to, months) {
+  const [y, m] = to.split("-").map(Number);
+  return {
+    to,
+    months: Array.from({ length: months }, (_, i) => {
+      const index = y * 12 + (m - 1) - (months - 1 - i);
+      const month = `${Math.floor(index / 12)}-${pad((index % 12) + 1)}`;
+      const groceries = 28_740 + (i - months + 1) * 3_000;
+      // Income and saved are fixed, spent grows by month, so the result changes against the month before.
+      return { month, incomeCents: 980_000, spentCents: groceries + 8_990, savedCents: 120_000, categories: [{ category: "groceries", spentCents: groceries }, { category: "eating_out", spentCents: 8_990 }] };
+    }),
+  };
+}
+
+/** Six closed bills of s1, oldest first, and none for the card the bank sends no bills for. */
+function pastCardBills(sourceId, today) {
+  if (sourceId !== "s1") return { sourceId, bills: [], averageCents: null };
+  const [y, m] = today.split("-").map(Number);
+  const bills = Array.from({ length: 6 }, (_, i) => {
+    const index = y * 12 + (m - 1) - (6 - i);
+    const month = `${Math.floor(index / 12)}-${pad((index % 12) + 1)}`;
+    return { closesOn: `${month}-08`, dueOn: `${month}-15`, totalCents: 240_000 + i * 8_000 };
+  });
+  return { sourceId, bills, averageCents: bills.reduce((sum, b) => sum + b.totalCents, 0) / bills.length };
+}
+
+/** The answer to a request, or null when there is no fake for it. `today` is `YYYY-MM-DD`. */
+export function answer(method, url, today) {
+  const params = url.searchParams;
+  const route = `${method} ${url.pathname}`;
+  if (route === "GET /me/finance") return { status: 200, body: { configured: true, sources: SOURCES, items: ITEMS, lastSyncedAt: new Date(Date.parse(`${today}T12:00:00Z`) - 3 * 3_600_000).toISOString() } };
+  if (route === "GET /me/finance/manual-cards") return { status: 200, body: { cards: manualCards(today) } };
+  if (route === "GET /me/finance/transactions") return { status: 200, body: transactions(params.get("month"), today) };
+  if (route === "GET /me/finance/history") return { status: 200, body: history(params.get("to"), Number(params.get("months"))) };
+  if (route === "GET /me/finance/commitments") return { status: 200, body: commitments(params.get("from"), today) };
+  if (route === "GET /me/finance/card-bills") return { status: 200, body: pastCardBills(params.get("source"), today) };
+  if (route === "GET /me/finance/bills") return { status: 200, body: bills(params.get("month")) };
+  if (route === "GET /me/finance/bill-suggestions") return { status: 200, body: [{ merchantKey: "enel", name: "Conta de luz Enel", amountCents: 21_480, dueDay: 10 }] };
+  if (route === "GET /me/finance/pantry") return { status: 200, body: pantry(today) };
+  if (route === "GET /me/finance/pantry/list") return { status: 200, body: shoppingList() };
+  if (/^PUT \/me\/finance\/pantry\/list\/[^/]+$/.test(route)) return { status: 204, body: {} };
+  const itemRead = /^GET \/me\/finance\/pantry\/items\/([^/]+)$/.exec(route);
+  if (itemRead) {
+    const body = pantryItem(decodeURIComponent(itemRead[1]), today);
+    return body ? { status: 200, body } : { status: 404, body: { error: "not_found" } };
+  }
+  if (route === "POST /me/finance/pantry/receipts") return { status: 201, body: receipt(today) };
+  if (route === "POST /me/finance/pantry/receipts/photo") {
+    const { storeName, issuedOn, totalCents, lines } = receipt(today);
+    const draftLines = lines.map(({ description, quantityMilli, unit, unitPriceCents, totalCents: lineTotal }) => ({ description, quantityMilli, unit, unitPriceCents, totalCents: lineTotal }));
+    return { status: 200, body: { draft: { storeName, storeCnpj: "", accessKey: "", issuedOn, totalCents, lines: draftLines } } };
+  }
+  if (/^PUT \/me\/finance\/pantry\/receipts\/r1\/lines\/\d+$/.test(route)) return { status: 200, body: receipt(today) };
+  if (route === "GET /me/finance/net-worth") return { status: 200, body: netWorth(today, params.get("range")) };
+  if (route === "GET /me/finance/savings") return { status: 200, body: savings(today) };
+  return null;
+}

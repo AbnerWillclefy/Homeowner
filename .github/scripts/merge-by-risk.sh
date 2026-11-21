@@ -4,7 +4,7 @@
 # Needs GH_TOKEN (the agents' token, so the merge starts the staging deploy), GITHUB_REPOSITORY,
 # AGENT_LOGIN and MAINTAINER_LOGIN; SLACK_WEBHOOK_URL is optional.
 #
-#   low     merges when every check is green and Claude's latest review of the head commit is clean
+#   low     merges when every check has passed or been skipped (its paths did not change) and Claude's latest review of the head commit is clean
 #   medium  the same, plus the maintainer's approval of that exact commit
 #   high    never: the maintainer merges it
 # See docs/agents/pr-risk.md.
@@ -55,9 +55,9 @@ check_tier() {
   [[ "$tier" == low || "$tier" == medium ]] || failed "its tier could not be read"
 }
 
-# Checks that run on every pull request into main, so they must be present and green: GitHub
-# lists a check only once its run exists. Path-filtered ones (infra-check) count only when they run.
-required_checks=(pr-risk backend-test web-typecheck web-e2e ui-screenshots claude-review)
+# Checks that report on every pull request into main, so each must be present: GitHub lists a check
+# only once its run exists. A check whose paths did not change shows as skipped and counts as passed.
+required_checks=(pr-risk backend-test web-typecheck web-e2e admin-typecheck infra-check bedrock-check revenue-check ui-screenshots claude-review)
 
 # Any pending run blocks (a queued run has no real start time). Otherwise only the latest run of
 # each check counts, since a superseded run shows as cancelled. gh exits non-zero while any check
@@ -68,7 +68,7 @@ check_ci_green() {
     --jq 'if any(.[]; .bucket == "pending") then "-\tpending" else group_by(.name) | map(max_by(.startedAt)) | .[] | "\(.name)\t\(.bucket)" end') || true
   [ -n "$latest" ] && ! cut -f2 <<<"$latest" | grep -vxE 'pass|skipping' >/dev/null || blocked "not every check is green yet" || return
   for name in "${required_checks[@]}"; do
-    grep -qxF "$name"$'\t'pass <<<"$latest" || blocked "$name has not passed on this commit yet" || return
+    grep -qxE "$name"$'\t(pass|skipping)' <<<"$latest" || blocked "$name has not passed (or been skipped) on this commit yet" || return
   done
 }
 

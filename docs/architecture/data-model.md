@@ -29,7 +29,7 @@ Migrations live in `backend/migrations/` as `NNNN_description.sql` files, applie
 | `0019_day_plan_explanation_headlines.sql` | Adds `headline_en`, `headline_pt` (`text`, nullable, no default, no backfill) to `day_plan_explanations`, with a check that a row has both or neither. `text_en` and `text_pt` now hold the **detail**. A row written before this migration has NULL headlines and is treated as absent: the Day Plan view shows the template for that day and nothing is rewritten. Expand only, so it is safe to deploy before the code that uses it (the old binary's `INSERT` names its columns and its `SELECT` reads only `text_*` and `fingerprint`); Down drops the check and both columns. |
 | `0020_user_identity.sql` | `users.display_name` (nullable `text`, no default, no backfill; not unique, and it travels with the User between Homes) with `CHECK (char_length(display_name) BETWEEN 1 AND 40 AND display_name = btrim(display_name))`, and `users.photo_key` (nullable `text`, always null until the photo tickets land) with `CHECK (photo_key ~ '^avatars/[A-Za-z0-9_-]{22,}\.(webp\|jpg)$')`. Expand only. Go (`users.NormalizeName`) is the real validator: it trims Unicode whitespace and rejects control characters; the CHECKs are the last guard (`char_length` counts code points in a UTF-8 database, as Go does; `btrim` strips only ASCII spaces). The name shown for a User without a display name (the part of the email before the last `@`) is computed on read and never stored, so it follows email changes. Down drops both constraints and columns. |
 | `0021_nudge_outcome.sql` | What the push service answered for a nudge. `nudges.outcome`: nullable `text` with a `CHECK` in `delivered`, `failed`, `gone`, no default. A Resident's devices combine into one value: `delivered` if any device was accepted, else `failed` if any failed, else `gone` (every device answered gone and was pruned). `delivered` means the push service accepted the message (2xx), not that the phone showed it. Null means a row from before the migration, a crash between the claim and the send, or a claim whose send was dropped when the tick's nudge deadline ran out. The row goes when the Resident leaves the Home (`ON DELETE CASCADE`), so push history of former Residents disappears. Read by `GET /admin/overview` and `GET /admin/flow`, where a null counts as `unknown`. Expand only: one nullable column. |
-| `0022_llm_call_events.sql` | `llm_call_events`: one row each time the Planner would ask the allocator model, and one per Home the explainer is asked about (see [Daily Allocation](allocation.md)); read by `GET /admin/ai` and `GET /admin/flow` ([The admin dashboard](admin.md)). `id`, `created_at`, `local_date`, `home_id` and `run_id` (both nullable, `ON DELETE SET NULL`, so history outlives a deleted Home or a run `ReplanHome` deletes), `service` (`allocator` or `explainer`; `0027` adds `categorizer` and `0032` adds `voice`), `model`, `outcome` (`accepted`, `rejected_by_referee`, `invalid_response`, `timeout`, `error`, `skipped_cap`, `skipped_budget`; both columns CHECKed), `violation_kinds` (`text[]`), `latency_ms`, `input_tokens`, `output_tokens`, `est_cost_micros` (all nullable). Ids, numbers and fixed vocabulary only: never prompts, output, names or titles. Indexes on `(created_at)` and `(service, local_date)`. Best effort: written after the planning transaction commits, so a crash can lose a row; `llm_calls` stays the authoritative cap. About 2 rows per Home per day; pruning old rows is planned, not built. Expand only; Down drops it. |
+| `0022_llm_call_events.sql` | `llm_call_events`: one row each time the Planner would ask the allocator model, and one per Home the explainer is asked about (see [Daily Allocation](allocation.md)); read by `GET /admin/ai` and `GET /admin/flow` ([The admin dashboard](admin.md)). `id`, `created_at`, `local_date`, `home_id` and `run_id` (both nullable, `ON DELETE SET NULL`, so history outlives a deleted Home or a run `ReplanHome` deletes), `service` (`allocator` or `explainer`; `0027` adds `categorizer`, `0032` adds `voice`, `0055` adds `receipt` and `0056` adds `chat`), `model`, `outcome` (`accepted`, `rejected_by_referee`, `invalid_response`, `timeout`, `error`, `skipped_cap`, `skipped_budget`; both columns CHECKed), `violation_kinds` (`text[]`), `latency_ms`, `input_tokens`, `output_tokens`, `est_cost_micros` (all nullable). Ids, numbers and fixed vocabulary only: never prompts, output, names or titles. Indexes on `(created_at)` and `(service, local_date)`. Best effort: written after the planning transaction commits, so a crash can lose a row; `llm_calls` stays the authoritative cap. About 2 rows per Home per day; pruning old rows is planned, not built. Expand only; Down drops it. |
 | `0023_llm_call_event_items.sql` | `llm_call_events.items_sent` and `items_accepted` (nullable integers): for an explainer row, the Residents asked about and the summaries kept; null on allocator rows, and `items_accepted` is null when no call was made. Numbers only. Expand only; Down drops the columns. |
 | `0024_finance_credentials.sql` | `finance_credentials`: `user_id` (uuid, primary key, references `users`, `ON DELETE CASCADE`), `client_id_enc` and `client_secret_enc` (`bytea`, each `version \|\| nonce \|\| ciphertext+tag` from AES-256-GCM, never plaintext), `key_version` (`smallint`, the blob's version byte repeated so a key rotation can find old rows with SQL), `updated_at` (from the injected clock). One row per User, no Home reference. Expand only; Down drops the table. |
 | `0025_finance_items_sources.sql` | `finance_items`: `id` (uuid), `user_id` (references `users`, `ON DELETE CASCADE`), `pluggy_item_id` (text), `connected_at`, `last_synced_at` (null until a sync), `import_complete` (default false), unique `(user_id, pluggy_item_id)`. `finance_sources`: `id`, `user_id` (references `users`, `ON DELETE CASCADE`), `item_id` (references `finance_items`, `ON DELETE CASCADE`), `pluggy_account_id`, `kind` (`checking`, `savings` or `credit_card`), `name`, `currency` (`char(3)`), unique `(item_id, pluggy_account_id)`. Every finance table carries `user_id` with cascade, even where a parent implies it, so isolation is `WHERE user_id = $1`; neither references a Home. Expand only; Down drops both. |
@@ -46,16 +46,34 @@ Migrations live in `backend/migrations/` as `NNNN_description.sql` files, applie
 | `0036_finance_card_bill_days.sql` | `finance_sources.bill_close_day` and `bill_due_day` (`smallint`, null, `CHECK` 1 to 31): a credit card's closing and due day from Pluggy's `creditData` or typed by the User (`PUT /me/finance/sources/{id}/bill-days`); a sync or a reconnect fills them only while both are null, and never changes days already there. A card charge counts on the due date of its bill (`finance.CountsOn`); null (any other Source, or a card Pluggy gave no days for) counts on `posted_on`. Expand only; Down drops both. |
 | `0037_finance_savings.sql` | Three nullable columns on `finance_settings`: `reserve_target_cents` (`bigint`, `CHECK > 0`), `contribution_base_cents` (`bigint`, `CHECK > 0`) and `reserve_share_percent` (`smallint`, `CHECK` 0 to 100), with `finance_settings_contribution_pair` requiring the last two to be both set or both null. `finance_investments`: `id`, `user_id` (cascade, indexed), `name`, `value_cents` (`bigint`, `CHECK >= 0`), `serves` (`reserve` or `goals`, `CHECK`), `created_at`, `updated_at`. `finance_goals`: `id`, `user_id` (cascade), `name`, `target_cents` (`bigint`, `CHECK > 0`), `position` (`int`), `target_month` (`date`, null, `CHECK` it is the first day of a month), `created_at`, `updated_at`, with `UNIQUE (user_id, position) DEFERRABLE INITIALLY DEFERRED`, so a reorder can rewrite every position in one transaction. Expand only; Down drops both tables, the constraint and the three columns. |
 | `0038_finance_card_sign.sql` | Data only. Card rows had been stored with Pluggy's sign (a purchase positive), so every purchase read as a refund. Negates `amount_cents` on every `credit_card` Source's rows and restarts each Item's import (`import_cursor` null, `import_complete` false), so the sync re-reads 12 months and re-classifies them; since then the sync flips a card row's sign as it stores it. Down negates them back. |
+| `0039_finance_card_bills.sql` | `finance_card_bills`: `id`, `user_id` (cascade), `source_id` (references `finance_sources`, cascade), `provider_id` (Pluggy's bill id), `closes_on` and `due_on` (`date`, São Paulo), `total_cents` (`bigint`, may be negative: a credit balance), unique `(source_id, provider_id)` so a sync updates a bill the bank corrects, index `(user_id, due_on)`. The bank's own card bills, written by the sync only ([ADR 0021](../adr/0021-a-closed-card-bill-takes-the-banks-total.md)); BRL bills only. Expand only; Down drops the table. |
+| `0040_finance_saving_type.sql` | `finance_transactions_type_check` is dropped and re-added with a fourth type, `saving` (money put aside). The existing CHECK that only an `expense` has a `spending_category` already keeps a saving row without one. Down retypes every `saving` row as `transfer` (also category-free, so the row stays valid), then restores the three-value CHECK. |
+| `0041_finance_source_display_name.sql` | `finance_sources.display_name` (`text`, null): the name the User gave the Source. A sync never writes it, so the bank's `name` keeps refreshing beside it; reads show `COALESCE(display_name, name)`. No CHECK: `nameField` in Go (trimmed, 1 to 60 code points, no control characters) is the validator. Expand only; Down drops the column. |
+| `0042_finance_own_counterpart.sql` | `finance_transactions.own_counterpart` (`boolean NOT NULL DEFAULT false`): the other side of the payment is the User (a Pix or TED to themselves). Only the boolean is stored, never the other side's name or document. It also restarts every import (`finance_sources.import_cursor` null, `finance_items.import_complete` false), so the sync re-reads 12 months and sets the column on old rows; the upsert keeps each row's id, and classification leaves rows the User typed alone. Down drops the column (the reset is not undone). |
+| `0043_finance_investment_values.sql` | `finance_investment_values`: `user_id` (cascade), `investment_id` (references `finance_investments`, cascade), `day` (`date`), `value_cents` (`bigint`, `CHECK >= 0`), primary key `(investment_id, day)`: one value per day it was written; a day with none takes the last earlier value when read. Seeds each existing Investment with today's (São Paulo) value. Expand only. |
+| `0044_push_subscription_app.sql` | `push_subscriptions.app` (`text NOT NULL DEFAULT 'homeowner'`, `CHECK` `homeowner` or `revenue`): the app the subscription was made in, so Revenue's notifications go to Revenue's devices. Expand only. |
+| `0045_finance_source_balances.sql` | `finance_source_balances`: `user_id` (cascade), `source_id` (references `finance_sources`, cascade), `day`, `balance_cents` (`bigint`, no sign check: an overdraft is negative), primary key `(source_id, day)`: the balance the bank reported, one row per day of a sync. Expand only; history starts at the first sync after it shipped. |
+| `0046_finance_pluggy_investments.sql` | Investments can come from the bank: `finance_investments` gains `item_id` (references `finance_items`, cascade), `pluggy_investment_id`, `bank_value_cents`, `value_set_by` (`user` or `bank`, default `user`) and `bank_reported`, unique `(item_id, pluggy_investment_id)`; `serves` becomes nullable, but a hand-typed row must still have it (`CHECK`). Down deletes the bank's rows. |
+| `0047_finance_source_credit_limit.sql` | `finance_sources.credit_limit_cents` (`bigint`, null, `CHECK >= 0`): a card's credit limit as its bank reports it (Pluggy's `creditData.creditLimit`). Expand only, no backfill. |
+| `0048_finance_item_status.sql` | `finance_items.status`, `execution_status` and `connector_name` (all nullable text): what Pluggy last said about the Item and its institution, filled on connect and on each sync; null reads as `ok`. Expand only; Down drops the three. |
+| `0049_chore_responsible.sql` | `chores.responsible_resident_id` (uuid, null means Nobody), references `residents` with `ON DELETE SET NULL`, so a Resident who leaves the Home (or a Home deleted with its last Resident) leaves the Chore with Nobody, and indexed (`chores_responsible_resident_idx`) for that cascade and for the updates that clear it when a Restriction is added. The foreign key cannot say the Resident lives in the Chore's Home, so `choresettings.SetResponsible` proves it in Go, in the same transaction that locks the Chore. Expand only, no backfill: every existing Chore stays with Nobody. Down drops the index and the column. |
+| `0050_finance_manual_cards.sql` | `finance_manual_cards` (`id`, `user_id` cascade, `name`, `due_day` `CHECK 1..31`, `pix_recipient` text null, timestamps) and `finance_manual_card_bills` (`card_id` cascade, `user_id` cascade, `month` `CHECK` first of a month, `total_cents` `CHECK >= 0`, primary key `(card_id, month)`): a credit card kept by hand with one typed bill per month; a month with no row is "not typed", distinct from a typed 0. Expand only; Down drops both. |
+| `0051_finance_transaction_note.sql` | `finance_transactions.note` text null, `CHECK char_length(note) BETWEEN 1 AND 200`: the User's Note on a Transaction; no Note is NULL, never `''`; no index, the search runs in the browser. Expand only; Down drops the column. |
+| `0052_finance_pantry.sql` | The Pantry. `finance_pantry_items` (`id`, `user_id` cascade, `name`, `preferred_brand` text null, `fixed` boolean default false, timestamps) with a unique index on `(user_id, lower(name))`, so receipt matching cannot create a second "Café". `finance_pantry_run_outs` (`id`, `user_id` cascade, `item_id` cascade, `ran_out_on` date, `created_at`), indexed on `(item_id, ran_out_on)`. No state column: an item's state is derived from its run-outs and purchases. Expand only; Down drops both. |
+| `0053_finance_pantry_receipts.sql` | `finance_pantry_receipts` (`id`, `user_id` cascade, `access_key` char(44) null, `store_name`, `store_cnpj` char(14) null, `issued_on` date, `total_cents`, `read_by` `sefaz` or `photo`, `created_at`; `UNIQUE (user_id, access_key)`, where NULLs stay distinct). `finance_pantry_receipt_lines` (`user_id` cascade, `receipt_id` cascade, `line_no`, `description`, `product_code` null, `quantity_milli` `CHECK > 0`, `unit`, `unit_price_cents`, `total_cents`, `line_key`, `item_id` null with `ON DELETE SET NULL`, `ignored`; primary key `(receipt_id, line_no)`, a line is never both matched and ignored), indexed on `item_id`. `finance_pantry_line_matches` (`user_id` cascade, `line_key`, `item_id` null with `ON DELETE CASCADE`, `ignored`, `updated_at`; primary key `(user_id, line_key)`, exactly one of an item and ignored). There is no column for the consumer's CPF, on purpose. Expand only; Down drops all three. |
+| `0054_finance_pantry_list_edits.sql` | `finance_pantry_list_edits` (`user_id` cascade, `item_id` cascade, `quantity_milli` null `CHECK > 0`, `removed` default false, `updated_at`; primary key `(user_id, item_id)`): the User's change to the next Shopping list, deleted when a receipt line next matches the item. Expand only; Down drops it. |
+| `0055_finance_pantry_photo.sql` | `finance_pantry_photo_calls` (`user_id` cascade, `call_date` the São Paulo date, `calls` `CHECK >= 0`; primary key `(user_id, call_date)`): the daily cap on receipt photo reads, counts only. `llm_call_events_service_check` is dropped and re-added with a fifth service, `receipt` (widened: every old row still passes; Down deletes the `receipt` rows first). A partial unique index `finance_pantry_receipts_photo_dup_idx` on `(user_id, lower(store_name), issued_on, total_cents) WHERE access_key IS NULL` makes a second photo of the same receipt a duplicate. Expand only. |
+| `0056_finance_chat_calls.sql` | `finance_chat_calls` (`user_id` cascade, `call_date` the São Paulo date, `questions` `CHECK >= 0`; primary key `(user_id, call_date)`): the finance chat's daily count of questions, reserved before each question, counts only and never text ([backend](backend.md#the-finance-chat)). `llm_call_events_service_check` is dropped and re-added with a sixth service, `chat` (widened: every old row still passes; Down deletes the `chat` rows first). A `chat` row has no Home and holds numbers and fixed vocabulary only ([ADR 0027](../adr/0027-the-finance-chat-sends-a-users-own-finances-to-the-model-through-read-only-tools.md)). Expand only. |
 
 A Home is created by one transaction that inserts the `homes` row and the creator's `residents` row; if the `residents` insert hits the unique violation the transaction rolls back and no Home is left behind.
 
-A User is created by the first authenticated request, with one `INSERT ... ON CONFLICT (cognito_sub) DO UPDATE ... RETURNING` statement, so two simultaneous first requests create one row. `users`, `push_subscriptions`, the three profile tables, `homes`, `residents`, `chores`, `tasks`, the two specific-setting tables, `allocation_runs`, `day_plan_assignments`, `invites`, `checkins`, `checkin_demand_restrictions`, `nudges`, `task_residents`, `completions`, `completion_residents`, `swap_offers`, `llm_calls`, `day_plan_explanations`, `llm_call_events`, `finance_credentials`, `finance_items`, `finance_sources`, `finance_transactions`, `finance_merchant_categories`, `finance_llm_calls`, `finance_bills`, `finance_bill_payments`, `finance_bill_reminders`, `finance_settings`, `finance_category_budgets`, `finance_bill_suggestion_dismissals`, `finance_investments`, `finance_goals` and `voice_calls` are the tables built. Everything else below is the planned schema from issue #1.
+A User is created by the first authenticated request, with one `INSERT ... ON CONFLICT (cognito_sub) DO UPDATE ... RETURNING` statement, so two simultaneous first requests create one row. `users`, `push_subscriptions`, the three profile tables, `homes`, `residents`, `chores`, `tasks`, the two specific-setting tables, `allocation_runs`, `day_plan_assignments`, `invites`, `checkins`, `checkin_demand_restrictions`, `nudges`, `task_residents`, `completions`, `completion_residents`, `swap_offers`, `llm_calls`, `day_plan_explanations`, `llm_call_events`, `finance_credentials`, `finance_items`, `finance_sources`, `finance_transactions`, `finance_merchant_categories`, `finance_llm_calls`, `finance_bills`, `finance_bill_payments`, `finance_bill_reminders`, `finance_settings`, `finance_category_budgets`, `finance_bill_suggestion_dismissals`, `finance_investments`, `finance_investment_values`, `finance_goals`, `finance_card_bills`, `finance_source_balances`, `finance_manual_cards`, `finance_manual_card_bills`, the seven Pantry tables (`finance_pantry_items`, `finance_pantry_run_outs`, `finance_pantry_receipts`, `finance_pantry_receipt_lines`, `finance_pantry_line_matches`, `finance_pantry_list_edits`, `finance_pantry_photo_calls`), `finance_chat_calls` and `voice_calls` are the tables built. Everything else below is the planned schema from issue #1.
 
 **"Recurring", the product definition (`SuggestBills`, `finance/rules.go`).** A merchant (grouped by `MerchantKey`) is suggested as a Bill when it has an Expense in each of the last 3 complete São Paulo calendar months; taking each month's largest Expense, the three amounts are each within 10% of their median (integer arithmetic) and the three days of the month are each within 5 days of the median day (clamped to the month's length, no wrap-around: the 30th and the 2nd are far apart). Ignored: income, Transfers, refunds, Transactions already linked to a Bill payment, and installment charges (a `PARC nn/mm` plan repeats monthly but is an Installment, not a Bill). Not suggested when a Bill already covers the merchant (`MatchBills`' name test without the amount: the folded Bill name, at least 3 characters, is contained in a folded description) or the Resident dismissed it. The proposed name is the longest prefix of the key's words contained, folded, in all three descriptions (so `NETFLIX.COM` gives `NETFLIX`) and at least 3 characters, so `MatchBills` can pay the accepted Bill later; the amount is the latest month's and the due day the median day. Known limit: if the amount varies, the accepted Bill matches the bank only on an exact amount, so it is paid by hand.
 
-**Finance data rules.** Every finance table is named `finance_*` and carries `user_id` referencing `users` with `ON DELETE CASCADE`, never a Home, so leaving or changing Home deletes nothing and a future account deletion cascades. `DELETE /me/finance` runs `DELETE ... WHERE user_id = $1` over the `financeTables` list in `internal/finance/store.go` in one transaction (the Pluggy Item is left alone: it lives in the User's own Pluggy account). A catalog test reads `pg_catalog` for every `finance\_%` table and fails if one lacks the `user_id` cascade or is missing from `financeTables`, so a later finance table must be named `finance_*` and added to the list. Today the list has fourteen tables, children first: `finance_transactions`, `finance_sources`, `finance_items`, `finance_credentials`, `finance_merchant_categories`, `finance_llm_calls`, `finance_bill_reminders`, `finance_bill_payments`, `finance_bills`, `finance_settings`, `finance_category_budgets`, `finance_bill_suggestion_dismissals`, `finance_investments` and `finance_goals`.
+**Finance data rules.** Every finance table is named `finance_*` and carries `user_id` referencing `users` with `ON DELETE CASCADE`, never a Home, so leaving or changing Home deletes nothing and a future account deletion cascades. `DELETE /me/finance` runs `DELETE ... WHERE user_id = $1` over the `financeTables` list in `internal/finance/store.go` in one transaction (the Pluggy Item is left alone: it lives in the User's own Pluggy account). A catalog test reads `pg_catalog` for every `finance\_%` table and fails if one lacks the `user_id` cascade or is missing from `financeTables`, so a later finance table must be named `finance_*` and added to the list. Today the list has twenty-seven tables, children first: `finance_source_balances`, `finance_card_bills`, `finance_transactions`, `finance_sources`, `finance_items`, `finance_credentials`, `finance_merchant_categories`, `finance_llm_calls`, `finance_bill_reminders`, `finance_bill_payments`, `finance_bills`, `finance_settings`, `finance_category_budgets`, `finance_bill_suggestion_dismissals`, `finance_investment_values`, `finance_investments`, `finance_goals`, `finance_manual_card_bills`, `finance_manual_cards`, `finance_pantry_photo_calls`, `finance_pantry_line_matches`, `finance_pantry_receipt_lines`, `finance_pantry_receipts`, `finance_pantry_run_outs`, `finance_pantry_list_edits`, `finance_pantry_items` and `finance_chat_calls`.
 
-**Finance tables.** Every one hangs on `users`; none touches a Home. The Finances redesign added `finance_category_budgets` (Spending limits), `finance_bill_payments.expected_cents` (the snapshot of a paid month) and `finance_bill_suggestion_dismissals`. Savings (`0037`) added `finance_investments`, `finance_goals` and three settings on `finance_settings`; the diagram shows their columns.
+**Finance tables.** Every one hangs on `users`; none touches a Home. The Finances redesign added `finance_category_budgets` (Spending limits), `finance_bill_payments.expected_cents` (the snapshot of a paid month) and `finance_bill_suggestion_dismissals`. Savings (`0037`) added `finance_investments`, `finance_goals` and three settings on `finance_settings`. The real leftover (`0039` to `0042`) added `finance_card_bills`, the `saving` type, `finance_sources.display_name` and `finance_transactions.own_counterpart`. Manual cards (`0050`) added `finance_manual_cards` and `finance_manual_card_bills`. Revenue's screens (#703) added `finance_sources.credit_limit_cents` and the Item status columns. The Pantry (`0052` to `0055`) added the seven `finance_pantry_*` tables. The finance chat (`0056`) added `finance_chat_calls`. The diagram shows the columns of the tables those added or changed.
 
 ```mermaid
 erDiagram
@@ -63,6 +81,10 @@ erDiagram
     users ||--o{ finance_items : "connected banks"
     finance_items ||--o{ finance_sources : "accounts"
     finance_sources ||--o{ finance_transactions : "imported"
+    finance_sources ||--o{ finance_card_bills : "bank's bills, cards only"
+    finance_sources ||--o{ finance_source_balances : "daily balances, accounts only"
+    finance_items |o--o{ finance_investments : "read from the bank"
+    finance_investments ||--o{ finance_investment_values : "value history"
     users ||--o{ finance_merchant_categories : "category corrections"
     users ||--o{ finance_llm_calls : "Categorizer calls counted"
     users ||--o{ finance_bills : "Bills"
@@ -74,6 +96,55 @@ erDiagram
     users ||--o{ finance_bill_suggestion_dismissals : "dismissed suggestions"
     users ||--o{ finance_investments : "Investments"
     users ||--o{ finance_goals : "Goals"
+    users ||--o{ finance_manual_cards : "manual cards"
+    finance_manual_cards ||--o{ finance_manual_card_bills : "typed bills"
+    users ||--o{ finance_pantry_items : "Pantry items"
+    finance_pantry_items ||--o{ finance_pantry_run_outs : "ran out on"
+    users ||--o{ finance_pantry_receipts : "grocery receipts"
+    finance_pantry_receipts ||--|{ finance_pantry_receipt_lines : "lines"
+    finance_pantry_items |o--o{ finance_pantry_receipt_lines : "bought as, set null on delete"
+    users ||--o{ finance_pantry_line_matches : "answers per line key"
+    finance_pantry_items |o--o{ finance_pantry_line_matches : "matched to, cascade"
+    finance_pantry_items ||--o| finance_pantry_list_edits : "Shopping list edit"
+    users ||--o{ finance_pantry_photo_calls : "photo reads counted"
+    users ||--o{ finance_chat_calls : "chat questions counted"
+    finance_items {
+        text status "Pluggy's, null until read"
+        text execution_status "null until read"
+        text connector_name "the bank's name, null until read"
+    }
+    finance_sources {
+        text name "the bank's, refreshed by the sync"
+        text display_name "null = show the bank's name"
+        bigint credit_limit_cents "cards only, null until the bank sends one"
+    }
+    finance_transactions {
+        text type "income, expense, transfer or saving"
+        bool own_counterpart "the other side is the User or a manual card's Pix recipient"
+        text note "null = none; the User's Note, 1 to 200 characters, never written by the sync"
+    }
+    finance_manual_cards {
+        uuid id
+        uuid user_id
+        text name
+        smallint due_day "1 to 31"
+        text pix_recipient "null = none; a name the User types"
+    }
+    finance_manual_card_bills {
+        uuid card_id
+        uuid user_id
+        date month "first of the month; primary key with card_id"
+        bigint total_cents ">= 0"
+    }
+    finance_card_bills {
+        uuid id
+        uuid user_id
+        uuid source_id
+        text provider_id "unique per Source"
+        date closes_on
+        date due_on
+        bigint total_cents "the bank's total, may be negative"
+    }
     finance_settings {
         bigint monthly_income_cents "null = not set"
         bigint reserve_target_cents "null = no target"
@@ -84,8 +155,23 @@ erDiagram
         uuid id
         uuid user_id
         text name
+        bigint value_cents ">= 0, the shown value"
+        text serves "reserve or goals; null = not picked, bank rows only"
+        uuid item_id "null = typed by hand"
+        text pluggy_investment_id "unique per Item"
+        bigint bank_value_cents "the bank's last value"
+        text value_set_by "user or bank"
+        bool bank_reported "false once the bank stops returning it"
+    }
+    finance_investment_values {
+        uuid investment_id
+        date day "primary key with investment_id"
         bigint value_cents ">= 0"
-        text serves "reserve or goals"
+    }
+    finance_source_balances {
+        uuid source_id
+        date day "primary key with source_id"
+        bigint balance_cents "may be negative"
     }
     finance_goals {
         uuid id
@@ -95,14 +181,75 @@ erDiagram
         int position "unique per User, deferred"
         date target_month "null = no date"
     }
+    finance_pantry_items {
+        uuid id
+        uuid user_id
+        text name "unique per User, any case"
+        text preferred_brand "null = none"
+        bool fixed "always buy"
+    }
+    finance_pantry_run_outs {
+        uuid item_id
+        date ran_out_on
+    }
+    finance_pantry_receipts {
+        uuid id
+        char access_key "44 digits; null = a photo with no key"
+        text store_name
+        char store_cnpj "null = not read"
+        date issued_on "the purchase date"
+        bigint total_cents
+        text read_by "sefaz or photo"
+    }
+    finance_pantry_receipt_lines {
+        uuid receipt_id
+        int line_no "primary key with receipt_id"
+        text description
+        bigint quantity_milli "> 0, thousandths"
+        bigint unit_price_cents
+        text line_key "LineKey(description)"
+        uuid item_id "null = unmatched"
+        bool ignored "not a pantry item"
+    }
+    finance_pantry_line_matches {
+        uuid user_id
+        text line_key "primary key with user_id"
+        uuid item_id "null exactly when ignored"
+        bool ignored
+    }
+    finance_pantry_list_edits {
+        uuid item_id
+        bigint quantity_milli "null = keep the derived quantity"
+        bool removed
+    }
+    finance_pantry_photo_calls {
+        uuid user_id
+        date call_date "São Paulo"
+        int calls
+    }
+    finance_chat_calls {
+        uuid user_id
+        date call_date "São Paulo"
+        int questions
+    }
 ```
 
 - **Spending limits** (`finance_category_budgets`, `0033`). One row per category with a limit; no row is no limit. A limit holds for every month: there is no month column and no history, so changing it changes past months too. `GET /me/finance/transactions` returns them as `limits`.
 - **The paid-month snapshot** (`finance_bill_payments.expected_cents`, `0034`). Paying a month, by hand or by the bank matcher, copies the Bill's `expected_cents` into the payment row, so editing the Bill later changes only unpaid months. `GET /me/finance/bills` reads `COALESCE(payment, bill)` for `expectedCents`, and `paidCents` is the linked Transaction's amount for a bank payment, else the snapshot. The limit before it shipped: a payment made before `0034` has `NULL` and reads at the Bill's current amount, and an unpaid past month always shows the current amount. A Bill is listed, and paid by the bank, only from its created month (São Paulo), so there is no history before it.
 - **Dismissed suggestions** (`finance_bill_suggestion_dismissals`, `0035`). A merchant key the Resident dismissed is never suggested again; accepting a suggestion creates an ordinary `finance_bills` row, which then covers the merchant.
 - **The savings settings** (`finance_settings`, `0037`). The Emergency reserve target and the Monthly contribution are settings, not entities: nullable columns on the same per-User row as the Monthly income, each written by its own route without touching the others. The reserve's share is a whole percent of the base, so it keeps its meaning when the base changes; the base and the share are set and cleared together (a `CHECK`).
-- **Investments** (`finance_investments`, `0037`). Typed by hand: a name, the current value (zero allowed, for an Investment emptied but kept) and what it serves, the Emergency reserve or the Goals. The User keeps the value up to date; there is no history of values and nothing comes from Pluggy.
+- **Investments** (`finance_investments`, `0037`, `0043`, `0046`). A name, the current value (zero allowed, for an Investment emptied but kept) and what it serves, the Emergency reserve or the Goals. Typed by hand, or read from the bank by the sync (`0046`, `UpsertBankInvestments`), keyed on `(item_id, pluggy_investment_id)`. A bank row keeps the bank's value in `bank_value_cents` beside the shown `value_cents`, and `value_set_by` says which is shown: `bank` until the User edits the value, then `user` until `POST .../use-bank-value` puts the bank's back. A bank row arrives with `serves` null (nothing picked yet; `PUT .../serves` picks it) and counts toward neither the reserve nor the Goals until then; a hand-typed row must have one (`CHECK`). `bank_reported` is true while the bank still returns the holding and turns false when a sync no longer sees it: the row is kept, never deleted, and a bank row cannot be deleted by the User (`409`), because the next sync would bring it back. Every value change, by hand or by the sync, also writes `finance_investment_values` (`0043`), the history Net worth reads.
 - **Goals** (`finance_goals`, `0037`). A name, a target, a position in the User's order and an optional month (stored as its first day). A new Goal takes the next position after the highest; a delete leaves a gap, closed by the next reorder, which rewrites positions 1 to n in one transaction (the unique constraint is checked at commit).
+- **The bank's card bills** (`finance_card_bills`, `0039`). Written only by the sync, one row per bill Pluggy reports for a card, closed and open, updated in place when the bank corrects one. Read by `CardSources` (every bill of each card, for the month outlook) and `CardBillsDue` (the bills due in a window, for classification). A closed bill's total is that month's card bill ([ADR 0021](../adr/0021-a-closed-card-bill-takes-the-banks-total.md), [backend](backend.md#the-month-outlook-and-the-leftover)).
+- **Saving** (`type = 'saving'`, `0040`). Money put aside: neither an Expense nor a Transfer, with no Spending Category. Set by the sync's classification or by the User (`PATCH`).
+- **The Source's display name** (`finance_sources.display_name`, `0041`). The User's own name for a Source, set by `PUT /me/finance/sources/{id}/name`. Every read that shows a Source name (the status, a Transaction's `sourceName`, the card lines of the outlook) shows `COALESCE(display_name, name)` and orders by it.
+- **Manual cards** (`finance_manual_cards`, `finance_manual_card_bills`, `0050`). A card the bank cannot connect (a partner's), not a Source: `finance_sources.item_id` is `NOT NULL` and every Source read assumes Pluggy. Each typed month is one row; `Outlook` gives a month with no row the latest typed value before it, or 0 (`ManualBillIn`). Past months stay, because they are still the carry-forward. `pix_recipient` is a third party's name the User types, as it appears on the Pix receipt; it is the one name the finance tables store, it is deleted with the card and by `DELETE /me/finance`, and it is never logged. Changing it (or deleting a card that had one) restarts the import in the same transaction (`import_cursor` null, `import_complete` false), because the counterpart of a Pix is never stored and only a re-read of the 12 months reclassifies the old ones.
+- **Own counterpart** (`finance_transactions.own_counterpart`, `0042`). Set by the sync from Pluggy's `paymentData` and refreshed on every upsert; always false on a card. It is true when the other side is the User, or when a debit went to a `pix_recipient` of the User's manual cards (an exact folded-name match, since no document is typed). The name and document it was decided from live in memory only.
+- **Source balances** (`finance_source_balances`, `0045`). Written by the sync (`UpsertBalances`), one row per account Source per day it ran; a card's balance is never stored. `GET /me/finance` serves the latest as `balanceCents`; `GET /me/finance/net-worth` reads the history.
+- **Reading the two histories: carry forward.** `finance_source_balances` and `finance_investment_values` hold a row only for a day a value was written, not one per calendar day. A reader asking for a day takes the row of that day, else the last one before it (`CarryForward` in `finance/carryforward.go`); a day before the first row has no value. Net worth's series and its month start read both histories this way ([backend](backend.md#net-worth)), so a sync that skipped a day, or an Investment nobody edited for months, still has a value on every day.
+- **A card's credit limit** (`finance_sources.credit_limit_cents`, `0047`). Written on connect (`POST /me/finance/items`, `ConnectItem`) and by every sync (`SetCreditLimits`). The bank always wins, but a read with no limit keeps the stored one, so a flaky connector does not blank it; a value that is unreadable, negative or not in reais is stored as none. Null on every other kind, and on a card until a sync or connect sends one. Served as `creditLimitCents`; the Card bills screen shows the limit used.
+- **The bank connection status** (`finance_items.status`, `execution_status`, `connector_name`, `0048`). Pluggy's own words, written on connect and at the start of each sync for the Item (`SetItemStatus`; a failed read only logs). Null until the next sync or connect, and a null reads as `ok`. The API never sends them as they are: `ItemWireStatus` maps them to `ok` or `reconnect` for `items[]` of `GET /me/finance`.
+- **The Pantry** (`finance_pantry_*`, `0052` to `0055`; [backend](backend.md#the-pantry)). Items, run-outs, receipts and their lines; an item's state, last price, average duration and Shopping list row are computed on read, never stored. A matched receipt line is a purchase, dated by the receipt's `issued_on`. Deleting an item keeps its receipts (their lines go back to unmatched, `SET NULL`) but deletes its saved line matches (`CASCADE`), so the next receipt asks about those lines again. Receipts are idempotent through two unique keys: `(user_id, access_key)` for one read from SEFAZ or a photo that showed a key, and the partial `(user_id, lower(store_name), issued_on, total_cents) WHERE access_key IS NULL` for a photo without one. Nothing links a Pantry receipt to a Transaction.
 - **Progress is never stored.** The reserve's saved amount (the sum of the Investments that serve it), each Goal's saved amount, this month's amounts and the expected months are worked out on every `GET /me/finance/savings` by the contribution split ([backend](backend.md#the-contribution-split)). With no history there is nothing to keep in sync: an Investment the User spends just gets a lower value, and a Goal that is done gets deleted.
 
 ## Planned tables
@@ -113,6 +260,7 @@ erDiagram
     homes ||--|{ residents : "has"
     homes ||--o{ invites : "issues"
     homes ||--o{ chores : "owns"
+    residents |o--o{ chores : "responsible for"
     residents ||--o{ resident_chore_preferences : "sets"
     residents ||--o{ resident_chore_restrictions : "sets"
     chores ||--o{ resident_chore_preferences : "about"
@@ -145,7 +293,7 @@ erDiagram
 | Table | Holds |
 |---|---|
 | `users`, `homes`, `residents`, `invites` (built) | Accounts, Homes, membership (a User is a Resident of at most one Home), single-use 7-day Invites (claimed with one conditional `UPDATE`, so two simultaneous accepts have one winner) |
-| `chores` (built) | Category, Demands, base Effort, Importance, people needed, build-up flag, interval in days, allowed weekdays |
+| `chores` (built) | Category, Demands, base Effort, Importance, people needed, build-up flag, interval in days, allowed weekdays, the responsible Resident (null for Nobody; cleared when they leave or get a lasting Restriction on it, [ADR 0025](../adr/0025-responsibility-binds-allocation-not-residents.md)) |
 | (no table) | The Catalog of common Chores is Go code in `internal/catalog`. A Chore made from it is an ordinary `chores` row with no `catalog_id`, so adding an entry twice gives two Chores. |
 | `tasks` (built) | Window, current Effort, status and `closed_on`; at most one open per Chore |
 | `task_residents` (built) | A Resident's Commitment to a Task on a local day: `committed_on`, `committed_at`. Rows are history for the Streak and never deleted, with one exception: an accepted Swap deletes the old holders' rows for that Task and day and inserts the new holders' (`swap_offers` is the record) |
@@ -158,7 +306,8 @@ erDiagram
 | `day_plan_assignments` (built) | The Tasks a run proposed to each Resident, with the reason; a two-person Task has one row per Resident. A proposal, not `task_residents` (Committed) |
 | `llm_calls` (built) | How many LLM calls (allocator and explanation) a Home made on a local date; the daily cap |
 | `voice_calls` (built) | How many voice calls a User made on their Home's local date; the per-Resident daily limit, counts only |
-| `llm_call_events` (built) | One row per LLM attempt, `service` being `allocator`, `explainer`, `categorizer` or `voice` (accepted, rejected, invalid, timed out, errored, skipped by cap or budget) with model, latency, tokens and estimated cost, and for the explainer the Residents asked and kept; no text. Best effort, outside the planning transaction |
+| `finance_chat_calls` (built) | How many finance chat questions a User asked on a São Paulo date; the per-User daily limit, counts only. Cleared by `DELETE /me/finance` |
+| `llm_call_events` (built) | One row per LLM attempt, `service` being `allocator`, `explainer`, `categorizer`, `voice`, `receipt` (a Pantry receipt photo read, migration `0055`, with no Home) or `chat` (one finance chat model call, migration `0056`, with no Home) (accepted, rejected, invalid, timed out, errored, skipped by cap or budget) with model, latency, tokens and estimated cost, and for the explainer the Residents asked and kept; no text. Best effort, outside the planning transaction |
 | `day_plan_explanations` (built) | A Resident's LLM-written Day Plan summary in `en-US` and `pt-BR` (a headline in `headline_*` and a detail in `text_*`) with the fingerprint of the plan, Energy and Check-in level it describes; absent, or without a headline, means the view computes the template |
 | `nudges` (built) | Which push nudge (Check-in reminder, Day Plan ready) a Resident already got on a local date, and the push service's answer (`outcome`); the claim that keeps the 15-minute tick from repeating it |
-| `push_subscriptions` | One per device, owned by the User who last registered it. Built. |
+| `push_subscriptions` | One per device, owned by the User who last registered it, with the `app` it was made in (`homeowner` or `revenue`): the Allocation job's nudges go to `homeowner` rows, Bill reminders to `revenue` rows. Built. |

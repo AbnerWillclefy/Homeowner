@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -20,8 +21,9 @@ const (
 	reserve = 10 * time.Second
 	// staleAfter is how old a sync gets before the next one is due.
 	staleAfter = 24 * time.Hour
-	// refreshDays is how far back a daily sync re-reads, because rows post late.
-	refreshDays = 10
+	// refreshDays is how far back a daily sync re-reads, because rows post late:
+	// a whole open bill and some, since a card charge can reach the feed weeks after it posted.
+	refreshDays = 45
 )
 
 // Summary is what one run did, in counts only.
@@ -138,9 +140,18 @@ func (s *Syncer) authenticate(ctx context.Context, it DueItem) (string, error) {
 // cursor on, until every Source has reached today or the budget runs low. It
 // reports whether the Item finished. During the import a window is a month
 // from the day after the cursor (at most 12 months back); once imported, one
-// window re-reads the last refreshDays. A window cut off mid-way is simply read
+// window re-reads the last refreshDays up to today. A window cut off mid-way is simply read
 // again next run: the upsert makes that harmless.
 func (s *Syncer) syncItem(ctx context.Context, it DueItem, apiKey string, now, today time.Time, deadline time.Time, sum *Summary) (bool, error) {
+	// Recorded first, so a broken Item still says why; a failure only logs, like the balances below.
+	if item, err := s.pluggy.GetItem(ctx, apiKey, it.PluggyItemID); err == nil {
+		err = s.store.SetItemStatus(ctx, it.ID, item)
+		if err != nil {
+			s.log.Error("finance sync failed", "user", it.UserID, "step", "item status", "error", safeErr(err))
+		}
+	} else {
+		s.log.Error("finance sync failed", "user", it.UserID, "step", "item status", "error", safeErr(err))
+	}
 	// Fills the bill days of a card that has none, such as a Source connected before they were kept; days the User typed stay.
 	accounts, err := s.pluggy.ListAccounts(ctx, apiKey, it.PluggyItemID)
 	if err != nil {
@@ -149,14 +160,57 @@ func (s *Syncer) syncItem(ctx context.Context, it DueItem, apiKey string, now, t
 	if err := s.store.SetBillDays(ctx, it.ID, accounts); err != nil {
 		return false, err
 	}
+	if err := s.store.SetCreditLimits(ctx, it.ID, accounts); err != nil {
+		return false, err
+	}
+	// A balance never fails the Transactions import: log and go on.
+	if err := s.store.UpsertBalances(ctx, it.ID, accounts, today); err != nil {
+		s.log.Error("finance sync failed", "user", it.UserID, "step", "balances", "error", safeErr(err))
+	}
 	sources, err := s.store.SyncSources(ctx, it.ID)
 	if err != nil {
 		return false, err
+	}
+	// A connector may not support /bills: the card then keeps the computed rule (ADR 0021), so a failure only logs.
+	for _, src := range sources {
+		if !src.Card {
+			continue
+		}
+		bills, err := s.pluggy.ListBills(ctx, apiKey, src.PluggyAccountID)
+		if err == nil {
+			err = s.store.UpsertCardBills(ctx, it.UserID, src.ID, bills)
+		}
+		if err != nil {
+			s.log.Error("finance sync failed", "user", it.UserID, "step", "card bills", "error", safeErr(err))
+		}
+	}
+	s.syncInvestments(ctx, it, apiKey, now)
+	var owner pluggy.Party
+	for _, a := range accounts {
+		if a.TaxNumber != "" || a.Owner != "" {
+			owner = pluggy.Party{Name: a.Owner, Document: a.TaxNumber}
+			break
+		}
+	}
+	recipients, err := s.store.ManualRecipients(ctx, it.UserID)
+	if err != nil {
+		return false, err
+	}
+	// A recipient saved during the run restarted the import, but the run's cursor writes and
+	// FinishSync overwrite that; so each exit checks and restarts again.
+	recipientsChanged := func() (bool, error) {
+		again, err := s.store.ManualRecipients(ctx, it.UserID)
+		slices.Sort(again)
+		slices.Sort(recipients)
+		return !slices.Equal(again, recipients), err
 	}
 	floor := today.AddDate(-1, 0, 0)
 	for round := 0; ; round++ {
 		// The first round always runs, so every run makes progress.
 		if round > 0 && time.Until(deadline) < reserve {
+			if c, err := recipientsChanged(); err != nil || c {
+				return false, errors.Join(err, s.restartIf(ctx, it.UserID, err == nil))
+			}
 			return false, nil
 		}
 		pending := false
@@ -173,30 +227,58 @@ func (s *Syncer) syncItem(ctx context.Context, it DueItem, apiKey string, now, t
 				continue
 			}
 			to := from.AddDate(0, 1, -1)
-			if to.After(today) {
+			if to.After(today) || it.ImportComplete { // a re-read is one window up to today
 				to = today
 			}
-			if err := s.syncWindow(ctx, it.UserID, apiKey, *src, from, to, now, sum); err != nil {
+			if err := s.syncWindow(ctx, it.UserID, apiKey, *src, owner, recipients, from, to, now, sum); err != nil {
 				return false, err
 			}
 			src.ImportCursor = &to
 			pending = pending || to.Before(today)
 		}
 		if !pending {
+			if c, err := recipientsChanged(); err != nil || c {
+				return true, errors.Join(err, s.restartIf(ctx, it.UserID, err == nil))
+			}
 			return true, s.store.FinishSync(ctx, it.ID, now)
 		}
 	}
 }
 
+// syncInvestments stores the Investments the bank holds. An Item with none is
+// not a failure, and a failed call only logs: the Transactions import goes on.
+// Rows that are not BRL are left out and counted in the log.
+func (s *Syncer) syncInvestments(ctx context.Context, it DueItem, apiKey string, now time.Time) {
+	invs, err := s.pluggy.ListInvestments(ctx, apiKey, it.PluggyItemID)
+	if err == nil {
+		var rows []BankInvestment
+		skipped := 0
+		for _, inv := range invs {
+			if inv.Currency != "BRL" {
+				skipped++
+				continue
+			}
+			rows = append(rows, BankInvestment{PluggyID: inv.ID, Name: inv.Name, ValueCents: inv.ValueCents})
+		}
+		if err = s.store.UpsertBankInvestments(ctx, it.UserID, it.ID, rows, now); err == nil {
+			if skipped > 0 {
+				s.log.Info("finance sync skipped investments", "user", it.UserID, "skipped_currency", skipped)
+			}
+			return
+		}
+	}
+	s.log.Error("finance sync failed", "user", it.UserID, "step", "investments", "error", safeErr(err))
+}
+
 // syncWindow stores every page of one Source's window, then moves its cursor.
-func (s *Syncer) syncWindow(ctx context.Context, userID, apiKey string, src SyncSource, from, to, now time.Time, sum *Summary) error {
+func (s *Syncer) syncWindow(ctx context.Context, userID, apiKey string, src SyncSource, owner pluggy.Party, recipients []string, from, to, now time.Time, sum *Summary) error {
 	cursor := ""
 	for {
 		page, err := s.pluggy.ListTransactions(ctx, apiKey, src.PluggyAccountID, from, to, cursor)
 		if err != nil {
 			return err
 		}
-		rows, skipped := toRows(page.Transactions, src.Card)
+		rows, skipped := toRows(page.Transactions, src.Card, owner, recipients)
 		if len(rows) > 0 {
 			if err := s.store.UpsertTransactions(ctx, userID, src.ID, rows, now); err != nil {
 				return err
@@ -229,11 +311,16 @@ func (s *Syncer) classify(ctx context.Context, userID string, rows []Row, now ti
 	}
 	// Read twice the window so rows at its edge see their partners, but write
 	// only rows within one window of the page, so no Transfer is split.
-	txns, kinds, err := s.store.ClassifyInput(ctx, userID, from.AddDate(0, 0, -2*transferWindowDays), to.AddDate(0, 0, 2*transferWindowDays))
+	wideFrom, wideTo := from.AddDate(0, 0, -2*transferWindowDays), to.AddDate(0, 0, 2*transferWindowDays)
+	txns, kinds, err := s.store.ClassifyInput(ctx, userID, wideFrom, wideTo)
 	if err != nil {
 		return err
 	}
-	changed := slices.DeleteFunc(Classify(txns, kinds), func(t Txn) bool {
+	bills, err := s.store.CardBillsDue(ctx, userID, wideFrom, wideTo)
+	if err != nil {
+		return err
+	}
+	changed := slices.DeleteFunc(Classify(txns, kinds, bills), func(t Txn) bool {
 		return t.PostedOn.Before(from.AddDate(0, 0, -transferWindowDays)) || t.PostedOn.After(to.AddDate(0, 0, transferWindowDays))
 	})
 	if len(changed) == 0 {
@@ -242,25 +329,63 @@ func (s *Syncer) classify(ctx context.Context, userID string, rows []Row, now ti
 	return s.store.SetClassified(ctx, changed, now)
 }
 
-// toRows picks what to store: pending rows are left out (they come back as
-// posted), and so are rows that are not BRL, which are counted. On a card
-// Pluggy sends a purchase positive and a bill payment negative, so its sign is
-// flipped to the Source's point of view.
-func toRows(txs []pluggy.Transaction, card bool) (rows []Row, skippedCurrency int) {
-	for _, tx := range txs {
-		if tx.Status == "PENDING" {
-			continue
+// sameParty reports whether other is the owner. Documents decide when both
+// have the same number of digits (a masked one has fewer); otherwise folded
+// names are compared. Empty values never match.
+// shortcut: a masked document falls back to the name blindly; compare its
+// visible digits if false Transfers appear.
+func sameParty(owner, other pluggy.Party) bool {
+	o, p := digits(owner.Document), digits(other.Document)
+	if o != "" && len(o) == len(p) {
+		return o == p
+	}
+	return fold(owner.Name) != "" && fold(owner.Name) == fold(other.Name)
+}
+
+func digits(s string) string {
+	return strings.Map(func(r rune) rune {
+		if r >= '0' && r <= '9' {
+			return r
 		}
-		if tx.Currency != "BRL" {
-			skippedCurrency++
+		return -1
+	}, s)
+}
+
+// toRows picks what to store: an account's pending rows are left out (they come
+// back as posted), and so are rows that are not BRL, which are counted. A card
+// keeps its pending rows (its charges stay pending until the bill closes, and
+// Pluggy keeps the id when they post) and a foreign charge Pluggy converted to
+// reais, and moves installments sent together to their months (moveInstallment). On a card
+// Pluggy sends a purchase positive and a bill payment negative, so its sign is
+// flipped to the Source's point of view. A row's counterpart is reduced to
+// OwnCounterpart here and goes no further: true when it is the owner, or when a debit
+// goes to one of the recipients (the Pix recipients typed on the User's manual cards). A card row never has one: its payer
+// or receiver was picked from Pluggy's raw sign, which the flip inverts.
+func toRows(txs []pluggy.Transaction, card bool, owner pluggy.Party, recipients []string) (rows []Row, skippedCurrency int) {
+	lowest := map[installmentGroup]int{}
+	if card {
+		lowest = lowestInstallments(txs)
+	}
+	for _, tx := range txs {
+		// shortcut: a pending charge Pluggy deletes and re-creates (its date or amount changed) stays stored twice, delete rows a re-read no longer returns if bills come out high.
+		if tx.Status == "PENDING" && !card {
 			continue
 		}
 		amount := tx.AmountCents
+		if tx.Currency != "BRL" {
+			if !card || tx.AccountAmountCents == nil {
+				skippedCurrency++
+				continue
+			}
+			amount = *tx.AccountAmountCents // the card bill charges it in reais
+		}
 		if card {
 			amount = -amount
 		}
-		r := Row{ProviderID: tx.ID, PostedOn: postedOn(tx.Date), AmountCents: amount,
+		r := Row{ProviderID: tx.ID, PostedOn: moveInstallment(tx, lowest), AmountCents: amount,
 			Description: tx.Description, MerchantKey: MerchantKey(tx.Description), Type: "income"}
+		r.OwnCounterpart = !card && tx.Counterpart != nil && (sameParty(owner, *tx.Counterpart) ||
+			amount < 0 && slices.ContainsFunc(recipients, func(name string) bool { return sameParty(pluggy.Party{Name: name}, *tx.Counterpart) }))
 		if amount < 0 {
 			r.Type = "expense"
 		}
@@ -279,6 +404,46 @@ func toRows(txs []pluggy.Transaction, card bool) (rows []Row, skippedCurrency in
 	return rows, skippedCurrency
 }
 
+// installmentGroup is the installments of one purchase a bank sent on the same day.
+type installmentGroup struct {
+	merchant string
+	total    int
+	day      time.Time
+}
+
+func groupOf(tx pluggy.Transaction) (installmentGroup, int, bool) {
+	m := tx.CreditCardMetadata
+	if m == nil || m.TotalInstallments < 2 || m.InstallmentNumber < 1 {
+		return installmentGroup{}, 0, false
+	}
+	return installmentGroup{MerchantKey(tx.Description), m.TotalInstallments, postedOn(tx.Date)}, m.InstallmentNumber, true
+}
+
+// lowestInstallments is the lowest installment number of each group in txs.
+// shortcut: a group split across two pages is not seen whole, read a whole window first if a bill comes out high.
+func lowestInstallments(txs []pluggy.Transaction) map[installmentGroup]int {
+	out := map[installmentGroup]int{}
+	for _, tx := range txs {
+		if g, n, ok := groupOf(tx); ok && (out[g] == 0 || n < out[g]) {
+			out[g] = n
+		}
+	}
+	return out
+}
+
+// moveInstallment is the day a card charge counts: some banks send every
+// installment of a new purchase on its date (Pluggy's "Pattern A", left
+// undated by MeuPluggy), so one numbered above the lowest of its group moves
+// on by the difference in months.
+func moveInstallment(tx pluggy.Transaction, lowest map[installmentGroup]int) time.Time {
+	day := postedOn(tx.Date)
+	g, n, ok := groupOf(tx)
+	if !ok || n <= lowest[g] {
+		return day
+	}
+	return DueDate(day.Year(), day.Month()+time.Month(n-lowest[g]), day.Day())
+}
+
 // safeErr is an error text fit for the logs: the adapter's errors hold the
 // operation and status only, and a database error could quote a row, so only
 // its code is kept.
@@ -288,4 +453,12 @@ func safeErr(err error) string {
 		return "database error " + pg.Code
 	}
 	return err.Error()
+}
+
+// restartIf restarts the User's import when do is true.
+func (s *Syncer) restartIf(ctx context.Context, userID string, do bool) error {
+	if !do {
+		return nil
+	}
+	return s.store.RestartImport(ctx, userID)
 }

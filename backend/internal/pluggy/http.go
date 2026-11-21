@@ -87,11 +87,15 @@ func (h *HTTP) CreateConnectToken(ctx context.Context, apiKey string) (string, e
 // GetItem implements Client.
 func (h *HTTP) GetItem(ctx context.Context, apiKey, itemID string) (Item, error) {
 	var out struct {
-		ID     string `json:"id"`
-		Status string `json:"status"`
+		ID              string `json:"id"`
+		Status          string `json:"status"`
+		ExecutionStatus string `json:"executionStatus"`
+		Connector       struct {
+			Name string `json:"name"`
+		} `json:"connector"`
 	}
 	err := h.do(ctx, "get item", http.MethodGet, "/items/"+url.PathEscape(itemID), apiKey, nil, &out)
-	return Item{ID: out.ID, Status: out.Status}, err
+	return Item{ID: out.ID, Status: out.Status, ExecutionStatus: out.ExecutionStatus, ConnectorName: out.Connector.Name}, err
 }
 
 // ListAccounts implements Client.
@@ -99,14 +103,18 @@ func (h *HTTP) GetItem(ctx context.Context, apiKey, itemID string) (Item, error)
 func (h *HTTP) ListAccounts(ctx context.Context, apiKey, itemID string) ([]Account, error) {
 	var out struct {
 		Results []struct {
-			ID       string `json:"id"`
-			Type     string `json:"type"`
-			Subtype  string `json:"subtype"`
-			Name     string `json:"name"`
-			Currency string `json:"currencyCode"`
+			ID       string      `json:"id"`
+			Type     string      `json:"type"`
+			Subtype  string      `json:"subtype"`
+			Name     string      `json:"name"`
+			Currency string      `json:"currencyCode"`
+			Owner    string      `json:"owner"`
+			TaxNo    string      `json:"taxNumber"`
+			Balance  json.Number `json:"balance"`
 			Credit   *struct {
-				CloseDate string `json:"balanceCloseDate"`
-				DueDate   string `json:"balanceDueDate"`
+				CloseDate string          `json:"balanceCloseDate"`
+				DueDate   string          `json:"balanceDueDate"`
+				Limit     json.RawMessage `json:"creditLimit"` // raw: a quoted or null limit must not fail the Item
 			} `json:"creditData"`
 		} `json:"results"`
 	}
@@ -116,8 +124,16 @@ func (h *HTTP) ListAccounts(ctx context.Context, apiKey, itemID string) ([]Accou
 	}
 	accts := make([]Account, len(out.Results))
 	for i, r := range out.Results {
-		accts[i] = Account{ID: r.ID, Type: r.Type, Subtype: r.Subtype, Name: r.Name, Currency: r.Currency}
+		accts[i] = Account{ID: r.ID, Type: r.Type, Subtype: r.Subtype, Name: r.Name, Currency: r.Currency, Owner: r.Owner, TaxNumber: r.TaxNo}
+		// A bad balance gives nil, never an error: failing here would fail the whole Item.
+		if c, err := parseCents(r.Balance.String()); err == nil && r.Balance != "" {
+			accts[i].BalanceCents = &c
+		}
 		if r.Credit != nil {
+			// Like the balance: a bad limit gives nil. A limit in another currency is no BRL amount.
+			if c, err := parseCents(string(r.Credit.Limit)); err == nil && c >= 0 && r.Currency == "BRL" {
+				accts[i].CreditLimitCents = &c
+			}
 			accts[i].CloseDay, accts[i].DueDay = dayOf(r.Credit.CloseDate), dayOf(r.Credit.DueDate)
 			if accts[i].CloseDay == 0 || accts[i].DueDay == 0 {
 				accts[i].CloseDay, accts[i].DueDay = 0, 0
@@ -125,6 +141,14 @@ func (h *HTTP) ListAccounts(ctx context.Context, apiKey, itemID string) ([]Accou
 		}
 	}
 	return accts, nil
+}
+
+// httpParty is a paymentData payer or receiver; every field may be null.
+type httpParty struct {
+	Name     string `json:"name"`
+	Document struct {
+		Value string `json:"value"`
+	} `json:"documentNumber"`
 }
 
 // ListTransactions implements Client against GET /v2/transactions, which pages
@@ -138,10 +162,15 @@ func (h *HTTP) ListTransactions(ctx context.Context, apiKey, accountID string, f
 			Description string      `json:"description"`
 			Amount      json.Number `json:"amount"`
 			Currency    string      `json:"currencyCode"`
+			InAccount   json.Number `json:"amountInAccountCurrency"`
 			Type        string      `json:"type"`
 			Status      string      `json:"status"`
 			Category    *string     `json:"category"`
-			Card        *struct {
+			Payment     *struct {
+				Payer    httpParty `json:"payer"`
+				Receiver httpParty `json:"receiver"`
+			} `json:"paymentData"`
+			Card *struct {
 				InstallmentNumber int `json:"installmentNumber"`
 				TotalInstallments int `json:"totalInstallments"`
 			} `json:"creditCardMetadata"`
@@ -169,12 +198,84 @@ func (h *HTTP) ListTransactions(ctx context.Context, apiKey, accountID string, f
 		}
 		tx := Transaction{ID: r.ID, ProviderID: r.ProviderID, Date: r.Date, Description: r.Description,
 			AmountCents: cents, Currency: r.Currency, Type: r.Type, Status: r.Status, Category: r.Category}
+		if r.InAccount != "" {
+			inAccount, err := parseCents(r.InAccount.String())
+			if err != nil {
+				return TransactionsPage{}, errors.New("pluggy: list transactions: unreadable amount")
+			}
+			tx.AccountAmountCents = &inAccount
+		}
+		if r.Payment != nil {
+			p := r.Payment.Receiver
+			if cents > 0 {
+				p = r.Payment.Payer
+			}
+			tx.Counterpart = &Party{Name: p.Name, Document: p.Document.Value}
+		}
 		if r.Card != nil {
 			tx.CreditCardMetadata = &CreditCardMetadata{InstallmentNumber: r.Card.InstallmentNumber, TotalInstallments: r.Card.TotalInstallments}
 		}
 		page.Transactions[i] = tx
 	}
 	return page, nil
+}
+
+// ListBills implements Client against GET /bills; financeCharges and payments are ignored.
+// shortcut: one page of 500, ADR 0019 says /bills pages by page; follow totalPages if a card ever has more.
+func (h *HTTP) ListBills(ctx context.Context, apiKey, accountID string) ([]Bill, error) {
+	var out struct {
+		Results []struct {
+			ID          string      `json:"id"`
+			DueDate     time.Time   `json:"dueDate"`
+			ClosingDate time.Time   `json:"billClosingDate"`
+			Total       json.Number `json:"totalAmount"`
+			Currency    string      `json:"totalAmountCurrencyCode"`
+		} `json:"results"`
+	}
+	q := url.Values{"accountId": {accountID}, "pageSize": {"500"}}
+	if err := h.do(ctx, "list bills", http.MethodGet, "/bills?"+q.Encode(), apiKey, nil, &out); err != nil {
+		return nil, err
+	}
+	bills := []Bill{}
+	for _, r := range out.Results {
+		if r.Total == "" { // a bill the bank sent without a total cannot be counted
+			continue
+		}
+		cents, err := roundCents(r.Total.String())
+		if err != nil {
+			return nil, errors.New("pluggy: list bills: unreadable amount")
+		}
+		bills = append(bills, Bill{ID: r.ID, DueDate: r.DueDate, ClosingDate: r.ClosingDate, TotalCents: cents, Currency: r.Currency})
+	}
+	return bills, nil
+}
+
+// ListInvestments implements Client against GET /investments.
+// shortcut: one page of 500, an Item holds a handful of Investments; follow totalPages if one ever has more.
+func (h *HTTP) ListInvestments(ctx context.Context, apiKey, itemID string) ([]Investment, error) {
+	var out struct {
+		Results []struct {
+			ID       string      `json:"id"`
+			Name     string      `json:"name"`
+			Type     string      `json:"type"`
+			Balance  json.Number `json:"balance"`
+			Currency string      `json:"currencyCode"`
+			Status   string      `json:"status"`
+		} `json:"results"`
+	}
+	q := url.Values{"itemId": {itemID}, "pageSize": {"500"}}
+	if err := h.do(ctx, "list investments", http.MethodGet, "/investments?"+q.Encode(), apiKey, nil, &out); err != nil {
+		return nil, err
+	}
+	invs := make([]Investment, len(out.Results))
+	for i, r := range out.Results {
+		cents, err := parseCents(r.Balance.String())
+		if err != nil {
+			return nil, errors.New("pluggy: list investments: unreadable balance")
+		}
+		invs[i] = Investment{ID: r.ID, Name: r.Name, Type: r.Type, ValueCents: cents, Currency: r.Currency, Status: r.Status}
+	}
+	return invs, nil
 }
 
 // dayOf is the day of month of a YYYY-MM-DD date (a timestamp's date part too), or 0.
@@ -184,6 +285,28 @@ func dayOf(s string) int {
 		return 0
 	}
 	return d.Day()
+}
+
+// roundCents is parseCents for an amount with float noise past the cents, such
+// as a bill total of 2056.885: it rounds half away from zero on the third decimal.
+func roundCents(s string) (int64, error) {
+	whole, frac, _ := strings.Cut(s, ".")
+	if len(frac) <= 2 {
+		return parseCents(s)
+	}
+	for _, r := range frac[2:] {
+		if r < '0' || r > '9' {
+			return 0, errors.New("bad amount")
+		}
+	}
+	cents, err := parseCents(whole + "." + frac[:2])
+	if err != nil || frac[2] < '5' {
+		return cents, err
+	}
+	if strings.HasPrefix(s, "-") {
+		return cents - 1, nil
+	}
+	return cents + 1, nil
 }
 
 // parseCents reads a decimal string of at most two decimals into centavos

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Categorias</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="rv-app" data-theme="{{theme}}">
+<div class="rv-side"><dc-import name="Sidebar" active="categories" theme="{{theme}}" hint-size="256px,1240px"></dc-import></div>
+<main class="rv-main">
+<header class="rv-head">
+<div class="rv-head__text"><h1 class="rv-title">Categorias</h1><span class="rv-sub">Gastos do dia a dia, sem contas fixas</span></div>
+<div class="rv-tools"><button class="br-btn br-btn--secondary"><i class="ri ri-pencil" aria-hidden="true"></i>Editar limites</button></div>
+</header>
+
+<section class="br-card">
+<div class="br-card__head" style="align-items: flex-start; flex-wrap: wrap">
+<div class="rv-stack" style="gap: 4px"><span class="br-card__label">{{p.label}}</span>
+<div class="rv-row" style="gap: 16px"><span class="br-amount br-amount--lg"><span class="br-amount__value">{{p.total}}</span><span class="br-amount__ref">{{p.ref}}</span></span><span class="br-badge {{p.deltaClass}}">{{p.delta}}</span></div></div>
+<div class="br-seg" role="group" aria-label="Período">
+<sc-for list="{{periods}}" as="per" hint-placeholder-count="4"><button aria-pressed="{{per.on}}" onClick="{{per.pick}}">{{per.label}}</button></sc-for>
+</div>
+</div>
+<div style="position: relative">
+<svg class="br-chart" viewBox="0 0 960 220" role="img" aria-label="{{p.aria}}" onMouseLeave="{{unhover}}">
+<line class="grid" x1="0" y1="190" x2="904" y2="190"></line><line class="grid" x1="0" y1="130" x2="904" y2="130"></line><line class="grid" x1="0" y1="70" x2="904" y2="70"></line>
+<text x="912" y="194">R$ 0</text><text x="912" y="134">{{p.mid}}</text><text x="912" y="74">{{p.top}}</text>
+<line class="ref" x1="0" y1="{{p.limitY}}" x2="904" y2="{{p.limitY}}"></line>
+<sc-for list="{{bars}}" as="b" hint-placeholder-count="30"><rect class="{{b.cls}}" x="{{b.x}}" y="{{b.y}}" width="{{b.w}}" height="{{b.h}}" rx="4" onMouseEnter="{{b.hover}}"></rect></sc-for>
+<polyline class="avg" points="{{p.avg}}"></polyline>
+<sc-for list="{{ticks}}" as="t" hint-placeholder-count="4"><text x="{{t.x}}" y="212">{{t.label}}</text></sc-for>
+</svg>
+<sc-if value="{{tip.show}}" hint-placeholder-val="{{ false }}"><span class="br-chiptip" style="position: absolute; top: 0; left: {{tip.left}}; pointer-events: none"><span>{{tip.when}}</span><strong>{{tip.value}}</strong><span>{{tip.why}}</span></span></sc-if>
+</div>
+<div class="br-legend"><span><i style="background: var(--surface-hover); height: 8px; width: 8px"></i>{{p.unit}}</span><span><i style="background: var(--warning)"></i>{{p.avgLabel}}</span><span><i style="background: var(--text-muted)"></i>Ritmo do limite</span></div>
+</section>
+
+<div class="rv-grid">
+<section class="br-card s8">
+<div class="rv-between"><span class="rv-section">Novembro por categoria</span><span class="br-muted">Dia 11 de 30 · 37% do mês</span></div>
+<div class="rv-stack-16">
+<sc-for list="{{cats}}" as="c" hint-placeholder-count="7">
+<div style="display: grid; grid-template-columns: minmax(180px, 1.2fr) minmax(200px, 2fr) 112px; gap: 24px; align-items: center">
+<span class="br-cat"><span class="br-cat__icon" style="background: var(--cat-{{c.key}}-soft); color: var(--cat-{{c.key}})"><i class="ri {{c.icon}}" aria-hidden="true"></i></span>{{c.name}}</span>
+<div class="br-progress"><div class="br-progress__track"><div class="br-progress__fill {{c.fill}}" style="width: {{c.pct}}"></div></div><div class="br-progress__meta"><strong>{{c.spent}}</strong><span>{{c.limit}}</span></div></div>
+<span class="rv-right"><span class="br-badge {{c.badge}}">{{c.delta}}</span></span>
+</div>
+</sc-for>
+</div>
+</section>
+<div class="s4 rv-stack-16" style="gap: 24px">
+<section class="br-card">
+<div class="br-card__head"><span class="br-card__label">Sem categoria</span><span class="br-badge br-badge--warning">2</span></div>
+<div class="br-list">
+<div class="br-listrow"><span class="br-cat__icon" style="background: var(--cat-other-soft); color: var(--cat-other)"><i class="ri ri-circle-more" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">PAG*JoseDaSilva</span><span class="br-listrow__meta">Nubank crédito · 06/11</span></div><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 45,00</span></span></div>
+<div class="br-listrow"><span class="br-cat__icon" style="background: var(--cat-other-soft); color: var(--cat-other)"><i class="ri ri-circle-more" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">MP*LOJA2291</span><span class="br-listrow__meta">Itaú crédito · 02/11</span></div><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 32,91</span></span></div>
+</div>
+<a href="Transactions.dc.html" class="br-btn br-btn--secondary br-btn--block">Categorizar</a>
+</section>
+<section class="br-card">
+<span class="br-card__label">Contas fixas, fora deste gráfico</span>
+<div class="rv-between"><span class="br-cat"><span class="br-cat__icon" style="background: var(--cat-housing-soft); color: var(--cat-housing)"><i class="ri ri-house" aria-hidden="true"></i></span>Moradia</span><span class="br-amount br-amount--sm"><span class="br-amount__value">R$ 3.500,00</span></span></div>
+<a href="Bills.dc.html" class="br-link">Ver contas a pagar</a>
+</section>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { period: '30d', hovered: null }; }
+  renderVals() {
+    const brl = (v) => 'R$ ' + Math.round(v).toLocaleString('pt-BR');
+    const P = {
+      '7d': { label: 'Últimos 7 dias', vals: [64.9, 212.5, 0, 180, 21.9, 98, 210.72], names: ['5 nov', '6 nov', '7 nov', '8 nov', '9 nov', '10 nov', '11 nov'], unit: 'Diário', avgLabel: 'Média', ref: 'R$ 112 por dia', delta: '−6% vs semana anterior', deltaClass: 'br-badge--positive', limit: 166, ticks: [0, 3, 6] },
+      '30d': { label: 'Últimos 30 dias', vals: [42, 88, 120, 0, 64, 31, 210, 45, 97, 0, 55, 140, 72, 18, 66, 95, 0, 120, 47, 33, 160, 78, 0, 58, 112, 212.5, 180, 21.9, 162.9, 210.7], unit: 'Diário', avgLabel: 'Média de 7 dias', ref: 'R$ 81 por dia', delta: '−4% vs 30 dias antes', deltaClass: 'br-badge--positive', limit: 166, ticks: [0, 10, 20, 29] },
+      '90d': { label: 'Últimos 90 dias', vals: [520, 610, 488, 702, 590, 450, 630, 575, 498, 655, 540, 610, 482], unit: 'Semanal', avgLabel: 'Média de 4 semanas', ref: 'R$ 565 por semana', delta: '+3% vs 90 dias antes', deltaClass: 'br-badge--warning', limit: 1163, ticks: [0, 6, 12] },
+      '1a': { label: 'Últimos 12 meses', vals: [2310, 2480, 2190, 2620, 2405, 2550, 2380, 2701, 2290, 2460, 2512, 1627], unit: 'Mensal', avgLabel: 'Média de 3 meses', ref: 'R$ 2.418 por mês', delta: '−2% vs ano anterior', deltaClass: 'br-badge--positive', limit: 4983, ticks: [0, 5, 11] },
+    };
+    const monthNames = ['dez', 'jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov'];
+    const p = P[this.state.period];
+    const n = p.vals.length;
+    const max = Math.max(...p.vals, p.limit) * 1.1;
+    const step = 904 / n, w = Math.max(6, Math.min(48, step - 8));
+    const y = (v) => 190 - v / max * 180;
+    const label = (i) => this.state.period === '30d' ? (i + 13 > 31 ? (i - 18) + ' nov' : (i + 13) + ' out') : this.state.period === '7d' ? p.names[i] : this.state.period === '90d' ? 'semana ' + (i + 1) : monthNames[i];
+    const bars = p.vals.map((v, i) => ({
+      x: (i * step + (step - w) / 2).toFixed(1), w: w.toFixed(1), y: y(v).toFixed(1), h: (190 - y(v)).toFixed(1),
+      cls: this.state.hovered === i ? 'bar bar--active' : 'bar',
+      hover: () => this.setState({ hovered: i }),
+    }));
+    const win = this.state.period === '30d' ? 7 : this.state.period === '7d' ? 7 : this.state.period === '90d' ? 4 : 3;
+    const avg = p.vals.map((v, i) => { const s = p.vals.slice(Math.max(0, i - win + 1), i + 1); return ((i + 0.5) * step).toFixed(1) + ',' + y(s.reduce((a, b) => a + b, 0) / s.length).toFixed(1); }).join(' ');
+    const total = p.vals.reduce((a, b) => a + b, 0);
+    const h = this.state.hovered;
+    const periods = [['7d', '7D'], ['30d', '30D'], ['90d', '90D'], ['1a', '1A']].map(([id, lab]) => ({ label: lab, on: this.state.period === id ? 'true' : 'false', pick: () => this.setState({ period: id, hovered: null }) }));
+    const cats = [
+      ['groceries', 'ri-cart', 'Mercado', 612.3, 1500, '−8%'], ['eating-out', 'ri-utensils', 'Restaurantes', 384.9, 450, '+12%'], ['transport', 'ri-car', 'Transporte', 221.6, 600, '−3%'],
+      ['subscriptions', 'ri-repeat', 'Assinaturas', 147.7, 183, '0%'], ['health', 'ri-heart', 'Saúde', 98, 400, '+40%'], ['leisure', 'ri-ticket', 'Lazer', 85, 950, '−61%'], ['other', 'ri-circle-more', 'Outros', 77.91, 200, '+5%'], ['shopping', 'ri-card', 'Compras', 0, 700, '−100%'],
+    ].map(([key, icon, name, spent, lim, delta]) => {
+      const pct = spent / lim;
+      return { key, icon, name, spent: 'R$ ' + spent.toLocaleString('pt-BR', { minimumFractionDigits: 2 }), limit: 'de ' + brl(lim), pct: Math.min(100, Math.round(pct * 100)) + '%',
+        fill: pct >= 1 ? 'br-progress__fill--danger' : pct >= 0.85 ? 'br-progress__fill--warning' : '',
+        delta: delta + ' vs out', badge: delta.startsWith('+') ? 'br-badge--warning' : 'br-badge--neutral' };
+    });
+    return {
+      theme: this.props.theme ?? 'dark',
+      periods, bars,
+      ticks: p.ticks.map((i) => ({ x: (i * step + step / 2 - 12).toFixed(0), label: label(i) })),
+      p: { ...p, total: brl(total), avg, limitY: y(p.limit).toFixed(1), top: brl(max * 120 / 180 / 1), mid: brl(max * 60 / 180), aria: p.label + ': ' + brl(total) + ' gastos, ' + p.ref },
+      tip: { show: h !== null, left: h === null ? '0' : Math.min(80, (h + 0.5) / n * 94) + '%', when: h === null ? '' : label(h), value: h === null ? '' : 'R$ ' + (p.vals[h] || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }), why: h === null ? '' : (p.vals[h] > p.limit ? 'Acima do ritmo do limite' : 'Dentro do ritmo') },
+      unhover: () => this.setState({ hovered: null }),
+      cats,
+    };
+  }
+}
+</script>
+</body>
+</html>

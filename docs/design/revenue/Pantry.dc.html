@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Despensa</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<!--
+Layout the screen tickets check:
+  PageHeader: title "Despensa", subtitle "24 itens · 3 acabaram", tools "Adicionar nota" (primary, opens Add receipt) and "Lista de compras" (secondary link to /pantry/list).
+  Cards in rv-grid: "Acabaram" s5, "Na despensa" s7, "Novo item" field inside "Na despensa" (top of the card).
+  Side panel (rv-panel): the item sheet, opened by a row; rename, always buy and delete live in it, not in a menu on the row. Sidebar: Despensa under the "Mais" group.
+-->
+<div class="rv-app" data-theme="{{theme}}">
+<div class="rv-side"><dc-import name="Sidebar" active="pantry" theme="{{theme}}" hint-size="256px,1000px"></dc-import></div>
+<main class="rv-main rv-panelwrap">
+<header class="rv-head">
+<div class="rv-head__text"><h1 class="rv-title">{{t.title}}</h1><span class="rv-sub">{{t.sub}}</span></div>
+<div class="rv-tools"><a href="ShoppingList.dc.html" class="br-btn br-btn--secondary"><i class="ri ri-cart" aria-hidden="true"></i>{{t.list}}</a><button class="br-btn br-btn--primary"><i class="ri ri-receipt" aria-hidden="true"></i>{{t.addReceipt}}</button></div>
+</header>
+
+<sc-if value="{{isError}}" hint-placeholder-val="{{ false }}">
+<div class="br-banner br-banner--danger" role="alert"><i class="ri ri-alert br-icon" aria-hidden="true"></i><span class="br-banner__text">{{t.error}}</span><button class="br-btn br-btn--ghost br-btn--sm"><i class="ri ri-refresh" aria-hidden="true"></i>{{t.retry}}</button></div>
+</sc-if>
+
+<sc-if value="{{isLoading}}" hint-placeholder-val="{{ false }}">
+<div class="rv-grid" aria-busy="true" aria-label="{{t.loading}}">
+<section class="br-card s5"><div class="br-skel" style="height: 20px; width: 40%"></div><div class="br-skel" style="height: 48px"></div><div class="br-skel" style="height: 48px"></div></section>
+<section class="br-card s7"><div class="br-skel" style="height: 20px; width: 40%"></div><div class="br-skel" style="height: 48px"></div><div class="br-skel" style="height: 48px"></div><div class="br-skel" style="height: 48px"></div><div class="br-skel" style="height: 48px"></div></section>
+</div>
+</sc-if>
+
+<sc-if value="{{isEmpty}}" hint-placeholder-val="{{ false }}">
+<section class="br-card"><div class="br-empty"><span class="br-empty__icon"><i class="ri ri-lg ri-package" aria-hidden="true"></i></span><span class="br-empty__title">{{t.emptyTitle}}</span><span class="br-empty__text">{{t.emptyText}}</span><div class="rv-row" style="justify-content: center"><button class="br-btn br-btn--primary"><i class="ri ri-receipt" aria-hidden="true"></i>{{t.addReceipt}}</button></div></div>
+<form class="rv-row" style="flex-wrap: nowrap; max-width: 420px; margin: 0 auto; width: 100%" aria-label="{{t.addItem}}"><label class="br-field" style="flex: 1"><span class="br-field__label">{{t.addItem}}</span><span class="br-input"><input placeholder="{{t.addPh}}"></span></label><button class="br-btn br-btn--secondary" style="align-self: flex-end" type="submit"><i class="ri ri-plus" aria-hidden="true"></i>{{t.add}}</button></form></section>
+</sc-if>
+
+<sc-if value="{{isReady}}" hint-placeholder-val="{{ true }}">
+<div class="rv-grid">
+<section class="br-card s5">
+<div class="br-card__head"><span class="rv-section">{{t.outHead}}</span><span class="br-badge br-badge--danger">3</span></div>
+<div class="br-list">
+<sc-for list="{{out}}" as="i" hint-placeholder-count="3">
+<div class="br-listrow" style="grid-template-columns: minmax(0, 1fr)"><div class="br-listrow__main"><span class="br-listrow__title">{{i.name}}</span><span class="br-listrow__meta">{{i.meta}}</span></div></div>
+</sc-for>
+</div>
+</section>
+<section class="br-card s7">
+<div class="br-card__head"><span class="rv-section">{{t.inHead}}</span><span class="br-badge br-badge--neutral">21</span></div>
+<form class="rv-row" style="flex-wrap: nowrap" aria-label="{{t.addItem}}"><label class="br-field" style="flex: 1"><span class="br-field__label">{{t.addItem}}</span><span class="br-input"><input placeholder="{{t.addPh}}"></span></label><button class="br-btn br-btn--secondary" style="align-self: flex-end" type="submit"><i class="ri ri-plus" aria-hidden="true"></i>{{t.add}}</button></form>
+<div class="br-list">
+<sc-for list="{{stock}}" as="i" hint-placeholder-count="4">
+<div class="br-listrow" style="grid-template-columns: minmax(0, 1fr) auto; gap: 8px; cursor: pointer">
+<div class="br-listrow__main"><span class="br-listrow__title">{{i.name}}</span><span class="br-listrow__meta">{{i.meta}}</span></div>
+<button class="br-btn br-btn--secondary br-btn--sm" aria-label="{{t.ranOutOf}} {{i.name}}">{{t.ranOut}}</button>
+</div>
+</sc-for>
+</div>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{panel}}" hint-placeholder-val="{{ false }}">
+<div class="rv-scrim"></div>
+<aside class="rv-panel" role="dialog" aria-label="{{t.itemSheet}} Arroz">
+<div class="rv-between"><div class="rv-stack" style="gap: 0"><span class="rv-section">Arroz</span><span class="br-muted">Tio João · 5 kg</span></div><button class="br-iconbtn br-iconbtn--sm" aria-label="{{t.close}}"><i class="ri ri-x" aria-hidden="true"></i></button></div>
+<span class="br-badge br-badge--brand" style="align-self: flex-start"><i class="ri ri-sm ri-repeat" aria-hidden="true"></i>{{t.always}}</span>
+<div class="rv-split" style="grid-template-columns: 1fr 1fr"><div class="rv-kv"><span class="rv-kv__k">{{t.avg}}</span><span class="br-amount br-amount--md"><span class="br-amount__value">{{t.avgVal}}</span></span></div><div class="rv-kv"><span class="rv-kv__k">{{t.lastPrice}}</span><span class="br-amount br-amount--md"><span class="br-amount__value">R$ 27,90</span></span><span class="br-muted" style="font-size: 12px; line-height: 16px">{{t.lastWhere}}</span></div></div>
+<span class="br-card__label">{{t.history}}</span>
+<svg class="br-chart" viewBox="0 0 300 120" role="img" aria-label="{{t.historyLabel}}"><line class="grid" x1="0" x2="300" y1="20" y2="20"/><line class="grid" x1="0" x2="300" y2="60" y1="60"/><line class="grid" x1="0" x2="300" y1="100" y2="100"/><path class="area" d="M10 80 L80 60 L150 70 L220 40 L290 30 L290 100 L10 100Z"/><path class="line" d="M10 80 L80 60 L150 70 L220 40 L290 30"/><circle class="end" cx="290" cy="30" r="4"/><text x="10" y="116">jun</text><text x="145" y="116">set</text><text x="265" y="116">nov</text></svg>
+</aside>
+</sc-if>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"locale":{"editor":"enum","options":["pt-BR","en"],"default":"pt-BR"},"view":{"editor":"enum","options":["ready","empty","loading","error"],"default":"ready"},"panel":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":900}}'>
+const COPY = {
+  'pt-BR': { title: 'Despensa', sub: '24 itens · 3 acabaram', subEmpty: '0 itens', list: 'Lista de compras', addReceipt: 'Adicionar nota', outHead: 'Acabaram', inHead: 'Na despensa', out: 'Acabou', ranOut: 'Acabou', ranOutOf: 'Marcar como acabou:', always: 'Sempre comprar', moreOf: 'Mais ações de', close: 'Fechar', addItem: 'Novo item', addPh: 'Ex.: arroz', add: 'Incluir', loading: 'Carregando a despensa', error: 'Não deu para carregar a despensa.', retry: 'Tentar', emptyTitle: 'Despensa vazia', emptyText: 'Inclua um item ou adicione uma nota para ela se encher sozinha.', itemSheet: 'Item', avg: 'Dura em média', avgVal: '22 dias', lastPrice: 'Último preço', lastWhere: 'Mercado Bom Preço · 02/11', history: 'Preço ao longo do tempo', historyLabel: 'Preço do arroz, de R$ 24 a R$ 27,90', forecast: 'Previsão', soon: 'em breve', lasts: 'dura ~{n} dias', lastsNone: 'ainda sem média', outAgo: 'acabou há {n} dias', fixed: 'sempre comprar' },
+  en: { title: 'Pantry', sub: '24 items · 3 ran out', subEmpty: '0 items', list: 'Shopping list', addReceipt: 'Add receipt', outHead: 'Ran out', inHead: 'In the pantry', out: 'Ran out', ranOut: 'Ran out', ranOutOf: 'Mark as ran out:', always: 'Always buy', moreOf: 'More actions for', close: 'Close', addItem: 'New item', addPh: 'E.g. rice', add: 'Add', loading: 'Loading the pantry', error: "Couldn't load the pantry.", retry: 'Retry', emptyTitle: 'Pantry is empty', emptyText: 'Add an item, or add a receipt and it fills itself.', itemSheet: 'Item', avg: 'Lasts on average', avgVal: '22 days', lastPrice: 'Last price', lastWhere: 'Bom Preço market · 11/02', history: 'Price over time', historyLabel: 'Price of rice, from R$ 24 to R$ 27.90', forecast: 'Forecast', soon: 'coming soon', lasts: 'lasts ~{n} days', lastsNone: 'no average yet', outAgo: 'ran out {n} days ago', fixed: 'always buy' },
+};
+class Component extends DCLogic {
+  renderVals() {
+    const t = COPY[this.props.locale ?? 'pt-BR'];
+    const view = this.props.view ?? 'ready';
+    const n = (s, v) => s.replace('{n}', v);
+    return {
+      theme: this.props.theme ?? 'dark',
+      t: { ...t, sub: view === 'ready' ? t.sub : view === 'empty' ? t.subEmpty : '' },
+      isReady: view === 'ready', isEmpty: view === 'empty', isLoading: view === 'loading', isError: view === 'error',
+      panel: !!this.props.panel && view === 'ready',
+      out: [{ name: 'Leite', meta: n(t.outAgo, 2) }, { name: 'Café', meta: n(t.outAgo, 5) }, { name: 'Sabão em pó', meta: n(t.outAgo, 9) }],
+      stock: [{ name: 'Arroz', meta: n(t.lasts, 22) + ' · ' + t.fixed }, { name: 'Feijão', meta: n(t.lasts, 18) }, { name: 'Azeite', meta: t.lastsNone }, { name: 'Queijo minas', meta: n(t.lasts, 9) }],
+    };
+  }
+}
+</script>
+</body>
+</html>

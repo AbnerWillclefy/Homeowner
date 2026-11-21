@@ -308,3 +308,29 @@ func TestTheProfilePersistsAcrossSignIns(t *testing.T) {
 		t.Errorf("profile after signing in again = %s", res.Raw)
 	}
 }
+
+func TestAGeneralRestrictionClearsTheResponsibilityOnTheUsersChoresWithThatDemand(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	b := apitest.ExtraResident(t, app, a, "b@example.com")
+	aID, bID := apitest.ResidentID(t, a), apitest.ResidentID(t, b)
+	with := apitest.ChoreIn(t, a, "outdoor", []string{"heavy_lifting"})
+	without := apitest.ChoreIn(t, a, "kitchen", []string{"bending"})
+	others := apitest.ChoreIn(t, a, "outdoor", []string{"heavy_lifting"})
+	for id, who := range map[string]string{with: aID, without: aID, others: bID} {
+		body := map[string]any{"residentId": who}
+		apitest.ExpectStatus(t, a.Put("/home/chores/"+id+"/responsible", body), http.StatusNoContent)
+	}
+
+	apitest.ExpectStatus(t, a.Put("/me/restrictions/heavy_lifting", nil), http.StatusNoContent)
+
+	for id, want := range map[string]any{with: nil, without: aID, others: bID} {
+		if got := apitest.ChoreByID(t, a, id)["responsibleResidentId"]; got != want {
+			t.Errorf("chore %s responsible = %v, want %v", id, got, want)
+		}
+	}
+	if rs := a.Get("/me/profile").Body["restrictions"]; !reflect.DeepEqual(rs, []any{"heavy_lifting"}) {
+		t.Errorf("restrictions = %v, want the new one saved", rs)
+	}
+}

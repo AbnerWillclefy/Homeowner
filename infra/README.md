@@ -132,7 +132,10 @@ for now. Without the encryption key the job answers each event and logs
 ## How a deploy works
 
 `.github/workflows/deploy-staging.yml` (named exactly `Deploy staging`) runs on
-every push to `main`:
+every push to `main`. A first `changes` job runs `.github/scripts/changed-apps.sh`
+against the last successful run of this workflow on `main` and decides which jobs
+run (`workflow_dispatch`, or no earlier success, deploys everything). The `api` job
+below runs when `backend/` or `infra/` changed:
 
 1. assume the deploy role through OIDC (only `refs/heads/main` of this repository
    can; pull requests never get AWS credentials)
@@ -145,7 +148,7 @@ every push to `main`:
 5. smoke test `GET /healthz`, retrying for about 90 seconds (Lambda cold start
    plus Neon resume)
 
-A second job, `web` (`needs: api`), then builds the PWA with `VITE_API_BASE_URL`
+An `outputs` job then reads the URLs, buckets, distribution ids and Cognito values with a read-only `terraform output` (no apply, no Neon key), so a frontend-only merge builds against the API already live. It runs when any frontend deploys. The `web`, `admin` and `revenue` jobs (`needs: [changes, outputs]`) each run when their own app changed (`web/`, `admin/` or `web/src/tokens.css`, `revenue/` or `bedrock/` with the root package files) or `infra/` changed, because the Terraform outputs are baked into the bundles. A merge touching only `docs/` runs only `changes`. The `web` job builds the PWA with `VITE_API_BASE_URL`
 set to the API URL and `VITE_COGNITO_CLIENT_ID` / `VITE_COGNITO_REGION` set to
 the `cognito_client_id` and `cognito_region` Terraform outputs (public
 identifiers, not secrets), uploads it to the web bucket in passes (fingerprinted
@@ -158,12 +161,18 @@ distribution, which takes 3 to 10 minutes.
 
 The workflow never runs `terraform destroy`.
 
+Repository variables and secrets that feed Terraform (`LLM_ALLOCATOR_ENABLED`,
+`VAPID_PUBLIC_KEY`, `VAPID_SUBJECT`, `BUDGET_EMAIL`, `NEON_ORG_ID` and the
+`PRODUCTION_*` ones) now apply only on a deploy that runs `api`: a merge touching
+`backend/` or `infra/`, or a manual run. After changing one, run **Deploy staging**
+(or **Deploy production**) by hand with Run workflow, which deploys every app.
+
 ## Production
 
 Production is promoted, not deployed on merge. `main` deploys staging; a human
 opens a pull request from `main` into the `production` branch once staging is
 verified, and merging it runs `.github/workflows/deploy-production.yml`
-(`Deploy production`). It is `deploy-staging.yml` with production's names: the
+(`Deploy production`). It is `deploy-staging.yml` with production's names, except that its `changes` job diffs against the last successful production deploy (everything deploys when that diff is unavailable, for example after a force push): the
 `infra/production` root, `homeowner-production-api`, `/homeowner/production/*`
 and its own `deploy-production` concurrency group.
 

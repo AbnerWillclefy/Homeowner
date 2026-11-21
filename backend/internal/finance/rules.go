@@ -79,14 +79,16 @@ type Kind string
 const transferWindowDays = 3
 
 // billPayments are merchant keys that mark a card bill payment, on either side.
-var billPayments = []string{"PAGAMENTO FATURA", "PAGAMENTO DE FATURA", "PAGAMENTO RECEBIDO"}
+var billPayments = []string{"PAGAMENTO FATURA", "PAGAMENTO DE FATURA", "PAGAMENTO RECEBIDO", "PAGAMENTO ON LINE", "PAGAMENTO ONLINE"}
 
 // Txn is the part of a Transaction the rules read and decide.
 type Txn struct {
 	ID, SourceID, Currency, MerchantKey string
 	// Description is the raw text, read only by MatchBills.
-	Description     string
-	PostedOn        time.Time
+	Description string
+	PostedOn    time.Time
+	// Posted is the posted day; PostedOn may hold CountsOn.
+	Posted          time.Time
 	AmountCents     int64
 	Type, TypeSetBy string
 	// Category is the spending category, empty unless Type is expense.
@@ -94,32 +96,60 @@ type Txn struct {
 	// Linked (a Bill payment, not undone, points at it) is read by SuggestBills
 	// and Outlook; Installment (a PARC nn/mm charge) only by SuggestBills.
 	Linked, Installment bool
+	// OwnCounterpart: the other side of the money is the User (see sameParty), or a debit
+	// went to the Pix recipient of a manual card (toRows).
+	OwnCounterpart bool
 }
 
 // Classify sets the type of every auto Txn and returns those whose type or
 // category changed. A row the User set is neither changed nor used as a partner.
 //
-// Rules, in order: a bill payment is a Transfer; a debit and a credit of the
+// Rules, in order: an "Aplicação" (any sign) or a positive "Resgate" is a
+// saving, left out of the pairing below; a row whose other side is the User
+// or the Pix recipient of a manual card (OwnCounterpart), with or without a partner, is a Transfer; a bill payment is a Transfer, by its words or, on a Source
+// that is not a credit card, by a debit equal to a stored closed bill's total
+// posted within transferWindowDays of its due date; a debit and a credit of the
 // same amount and currency on two Sources within transferWindowDays are both
 // Transfers; any other credit on a credit_card Source is an Expense, a refund
 // (a negative spend); any other credit is Income, any other debit an Expense.
 //
 // Accepted: a Transfer has no category, so a row the User only categorised
 // loses that category when it pairs. An unrelated debit and credit that coincide are paired. The User
-// can correct it, and their choice is never overwritten. A row that drops out
+// can correct it, and their choice is never overwritten.
+// shortcut: the credit half of an Aplicação on a savings Source is Income, not a
+// Transfer; the User can correct it. A row that drops out
 // of a pair after a re-fetch goes back to its single-row rule, so callers pass
 // the whole window, not only the new rows.
-func Classify(txns []Txn, kinds map[string]Kind) []Txn {
+func Classify(txns []Txn, kinds map[string]Kind, bills []StoredBill) []Txn {
 	var auto []Txn
 	for _, t := range txns {
 		if t.TypeSetBy == "auto" {
 			auto = append(auto, t)
 		}
 	}
-	transfer := map[string]bool{}
+	saving := map[string]bool{}
+	var rest []Txn
 	for _, t := range auto {
+		if strings.HasPrefix(t.MerchantKey, "APLICACAO") || (strings.HasPrefix(t.MerchantKey, "RESGATE") && t.AmountCents > 0) {
+			saving[t.ID] = true
+		} else {
+			rest = append(rest, t)
+		}
+	}
+	transfer := map[string]bool{}
+	for _, t := range rest {
+		if t.OwnCounterpart {
+			transfer[t.ID] = true
+		}
 		for _, p := range billPayments {
 			if strings.Contains(t.MerchantKey, p) {
+				transfer[t.ID] = true
+			}
+		}
+	}
+	for _, t := range auto {
+		for _, b := range bills {
+			if t.AmountCents < 0 && kinds[t.SourceID] != "credit_card" && t.Currency == "BRL" && -t.AmountCents == b.TotalCents && math.Abs(t.PostedOn.Sub(b.DueOn).Hours()/24) <= transferWindowDays {
 				transfer[t.ID] = true
 			}
 		}
@@ -129,8 +159,8 @@ func Classify(txns []Txn, kinds map[string]Kind) []Txn {
 		gap           int
 	}
 	var pairs []pair
-	for _, d := range auto {
-		for _, c := range auto {
+	for _, d := range rest {
+		for _, c := range rest {
 			if d.AmountCents >= 0 || c.AmountCents != -d.AmountCents || d.SourceID == c.SourceID || d.Currency != c.Currency {
 				continue
 			}
@@ -154,6 +184,8 @@ func Classify(txns []Txn, kinds map[string]Kind) []Txn {
 	for _, t := range auto {
 		n := t
 		switch {
+		case saving[t.ID]:
+			n.Type = "saving"
 		case transfer[t.ID]:
 			n.Type = "transfer"
 		case t.AmountCents < 0, kinds[t.SourceID] == "credit_card":
@@ -211,9 +243,13 @@ type Plan struct {
 }
 
 // PlanName is the description without its installment token, or the merchant
-// key when nothing else is left.
-func PlanName(description, merchantKey string) string {
-	if name := strings.Join(strings.Fields(installmentText.ReplaceAllString(description, " ")), " "); name != "" {
+// key when nothing else is left. The token is "PARC nn/mm" or a bare "n/m"
+// equal to the row's own number and total (leading zeros allowed), so a
+// date-like "10/11" in the description survives.
+func PlanName(description, merchantKey string, number, total int) string {
+	bare := regexp.MustCompile(`(^|\s)0*` + strconv.Itoa(number) + `/0*` + strconv.Itoa(total) + `(\s|$)`)
+	description = installmentText.ReplaceAllString(description, " ")
+	if name := strings.Join(strings.Fields(bare.ReplaceAllString(description, " ")), " "); name != "" {
 		return name
 	}
 	return merchantKey
@@ -337,21 +373,29 @@ func DueReminders(bills []ReminderBill, local time.Time) []BillReminder {
 	return out
 }
 
-// Totals is the spend of a set of Transactions, in centavos.
+// Totals is the spend of a set of Transactions, in centavos, the money put
+// aside (Saving) and the money that came in (Income).
 type Totals struct {
-	Spend      int64
-	ByCategory map[string]int64
+	Spend, Saving, Income int64
+	ByCategory            map[string]int64
 }
 
-// MonthTotals sums the Expenses by Spending Category. Transfers and Income are
-// ignored; a refund (a negative spend) offsets its category. A category can end
-// negative in a refund-heavy month: it is returned as is, not clamped.
+// MonthTotals sums the Expenses by Spending Category. Transfers are ignored and
+// Income is summed as it came in (+AmountCents); a refund (a negative spend) offsets its category. A category can end
+// negative in a refund-heavy month: it is returned as is, not clamped. Saving is
+// the net put aside (-AmountCents over saving rows, so a Resgate lowers it); it
+// is not clamped at zero either, the Leftover work does that.
 func MonthTotals(txns []Txn) Totals {
 	out := Totals{ByCategory: map[string]int64{}}
 	for _, t := range txns {
-		if t.Type == "expense" {
+		switch t.Type {
+		case "expense":
 			out.Spend -= t.AmountCents
 			out.ByCategory[t.Category] -= t.AmountCents
+		case "saving":
+			out.Saving -= t.AmountCents
+		case "income":
+			out.Income += t.AmountCents
 		}
 	}
 	return out
@@ -374,6 +418,16 @@ func CumulativeDaily(txns []Txn, month time.Time) []int64 {
 	return out
 }
 
+// halfUp is sum/n rounded half up for both signs (n > 0); Go's / truncates toward zero.
+func halfUp(sum, n int64) int64 {
+	q := 2*sum + n
+	out := q / (2 * n)
+	if q%(2*n) < 0 {
+		out-- // floor for negatives
+	}
+	return out
+}
+
 // UsualPace averages cumulative month series by day of month, for a month of
 // `days` days. A day past a shorter month's end takes that month's final total.
 // No series gives an empty result. Rounds half up.
@@ -388,11 +442,7 @@ func UsualPace(months [][]int64, days int) []int64 {
 		for _, m := range months {
 			sum += m[min(d, len(m)-1)]
 		}
-		q := 2*sum + n
-		out[d] = q / (2 * n)
-		if q%(2*n) < 0 {
-			out[d]-- // floor for negatives, so half up holds for both signs
-		}
+		out[d] = halfUp(sum, n)
 	}
 	return out
 }
@@ -588,3 +638,6 @@ func coveredBy(bills []Bill, descs []string) bool {
 	}
 	return false
 }
+
+// Today is the São Paulo calendar day of now, as a UTC midnight.
+func Today(now time.Time) time.Time { return postedOn(now) }

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Contas a pagar, celular</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="rv-phone" data-theme="{{theme}}">
+<header class="rv-phone__head"><div class="rv-phone__headrow"><div class="rv-row" style="gap: 8px; flex-wrap: nowrap; min-width: 0; align-items: flex-start"><div class="rv-head__text"><h1 class="rv-title">Contas a pagar</h1><span class="rv-sub">3 pendentes · R$ 4.179,90 no mês</span></div></div><div class="rv-row" style="gap: 8px"><button class="br-iconbtn rv-iconbtn--primary" aria-label="Nova conta"><i class="ri ri-plus" aria-hidden="true"></i></button><button class="br-iconbtn" aria-label="Esconder valores"><i class="ri ri-eye" aria-hidden="true"></i></button></div></div><button class="br-btn br-btn--secondary br-btn--lg br-btn--block rv-period" aria-label="Mês: Novembro de 2026"><span class="rv-row" style="gap: 8px; flex-wrap: nowrap"><i class="ri ri-calendar" aria-hidden="true"></i>Novembro de 2026</span><i class="ri ri-chevron-down" aria-hidden="true"></i></button></header>
+<div class="rv-phone__scroll rv-phone__scroll--fab">
+<section class="br-card br-card--compact">
+<span class="br-card__label">Falta pagar em novembro</span>
+<span class="br-amount br-amount--lg "><span class="br-amount__value">{{left}}</span></span>
+<div class="br-progress"><div class="br-progress__track"><div class="br-progress__fill" style="width: {{pct}}"></div></div><div class="br-progress__meta"><strong>{{paidTotal}} pagos</strong><span>de R$ 4.179,90</span></div></div>
+</section>
+<section class="br-card br-card--compact">
+<div class="br-seg br-seg--block" role="group" aria-label="Situação"><button aria-pressed="{{f.all}}" onClick="{{fAll}}">Todas</button><button aria-pressed="{{f.open}}" onClick="{{fOpen}}">Pendentes</button><button aria-pressed="{{f.paid}}" onClick="{{fPaid}}">Pagas</button></div>
+<div class="br-list">
+<sc-if value="{{show.rent}}" hint-placeholder-val="{{ true }}"><div class="br-listrow rv-row--action "><span class="br-cat__icon" style="background: var(--cat-housing-soft); color: var(--cat-housing)"><i class="ri ri-house" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Aluguel</span><span class="br-listrow__meta">Venceu 05/11</span></div><div class="br-listrow__end"><sc-if value="{{paid.rent}}" hint-placeholder-val="{{ false }}"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 3.200,00</span></span><span class="br-badge br-badge--positive"><i class="ri ri-sm ri-check" aria-hidden="true"></i>Paga</span></sc-if><sc-if value="{{open.rent}}" hint-placeholder-val="{{ true }}"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 3.200,00</span></span><span class="br-badge br-badge--neutral"><i class="ri ri-sm ri-clock" aria-hidden="true"></i>Pendente</span></sc-if></div><sc-if value="{{paid.rent}}" hint-placeholder-val="{{ false }}"><button class="br-iconbtn" aria-label="Desfazer: Aluguel volta a pendente" onClick="{{toggle.rent}}"><i class="ri ri-refresh" aria-hidden="true"></i></button></sc-if><sc-if value="{{open.rent}}" hint-placeholder-val="{{ true }}"><button class="br-iconbtn" aria-label="Marcar Aluguel como paga" onClick="{{toggle.rent}}"><i class="ri ri-check" aria-hidden="true"></i></button></sc-if></div></sc-if>
+<sc-if value="{{show.net}}" hint-placeholder-val="{{ true }}"><div class="br-listrow rv-row--action "><span class="br-cat__icon" style="background: var(--cat-subscriptions-soft); color: var(--cat-subscriptions)"><i class="ri ri-repeat" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Internet Vivo Fibra</span><span class="br-listrow__meta">Venceu 15/11</span></div><div class="br-listrow__end"><sc-if value="{{paid.net}}" hint-placeholder-val="{{ false }}"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 129,90</span></span><span class="br-badge br-badge--positive"><i class="ri ri-sm ri-check" aria-hidden="true"></i>Paga</span></sc-if><sc-if value="{{open.net}}" hint-placeholder-val="{{ true }}"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 129,90</span></span><span class="br-badge br-badge--danger"><i class="ri ri-sm ri-alert" aria-hidden="true"></i>Atrasada</span></sc-if></div><sc-if value="{{paid.net}}" hint-placeholder-val="{{ false }}"><button class="br-iconbtn" aria-label="Desfazer: Internet Vivo Fibra volta a pendente" onClick="{{toggle.net}}"><i class="ri ri-refresh" aria-hidden="true"></i></button></sc-if><sc-if value="{{open.net}}" hint-placeholder-val="{{ true }}"><button class="br-iconbtn" aria-label="Marcar Internet Vivo Fibra como paga" onClick="{{toggle.net}}"><i class="ri ri-check" aria-hidden="true"></i></button></sc-if></div></sc-if>
+<sc-if value="{{show.light}}" hint-placeholder-val="{{ true }}"><div class="br-listrow rv-row--action "><span class="br-cat__icon" style="background: var(--cat-household-bills-soft); color: var(--cat-household-bills)"><i class="ri ri-zap" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Conta de Luz</span><span class="br-listrow__meta">Vence 25/11</span></div><div class="br-listrow__end"><sc-if value="{{paid.light}}" hint-placeholder-val="{{ false }}"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 240,00</span></span><span class="br-badge br-badge--positive"><i class="ri ri-sm ri-check" aria-hidden="true"></i>Paga</span></sc-if><sc-if value="{{open.light}}" hint-placeholder-val="{{ true }}"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 240,00</span></span><span class="br-badge br-badge--neutral"><i class="ri ri-sm ri-clock" aria-hidden="true"></i>Pendente</span></sc-if></div><sc-if value="{{paid.light}}" hint-placeholder-val="{{ false }}"><button class="br-iconbtn" aria-label="Desfazer: Conta de Luz volta a pendente" onClick="{{toggle.light}}"><i class="ri ri-refresh" aria-hidden="true"></i></button></sc-if><sc-if value="{{open.light}}" hint-placeholder-val="{{ true }}"><button class="br-iconbtn" aria-label="Marcar Conta de Luz como paga" onClick="{{toggle.light}}"><i class="ri ri-check" aria-hidden="true"></i></button></sc-if></div></sc-if>
+<sc-if value="{{show.condo}}" hint-placeholder-val="{{ true }}"><div class="br-listrow rv-row--action "><span class="br-cat__icon" style="background: var(--cat-housing-soft); color: var(--cat-housing)"><i class="ri ri-house" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Condomínio</span><span class="br-listrow__meta">Vence 29/11</span></div><div class="br-listrow__end"><sc-if value="{{paid.condo}}" hint-placeholder-val="{{ false }}"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 610,00</span></span><span class="br-badge br-badge--positive"><i class="ri ri-sm ri-check" aria-hidden="true"></i>Paga</span></sc-if><sc-if value="{{open.condo}}" hint-placeholder-val="{{ true }}"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 610,00</span></span><span class="br-badge br-badge--neutral"><i class="ri ri-sm ri-clock" aria-hidden="true"></i>Pendente</span></sc-if></div><sc-if value="{{paid.condo}}" hint-placeholder-val="{{ false }}"><button class="br-iconbtn" aria-label="Desfazer: Condomínio volta a pendente" onClick="{{toggle.condo}}"><i class="ri ri-refresh" aria-hidden="true"></i></button></sc-if><sc-if value="{{open.condo}}" hint-placeholder-val="{{ true }}"><button class="br-iconbtn" aria-label="Marcar Condomínio como paga" onClick="{{toggle.condo}}"><i class="ri ri-check" aria-hidden="true"></i></button></sc-if></div></sc-if>
+</div>
+<span class="br-muted" style="font-size: 12px; line-height: 16px">Toque numa conta para editar, mudar o vencimento ou apagar.</span>
+</section>
+<section class="br-card br-card--compact">
+<span class="br-card__label">Dezembro de 2026</span>
+<div class="br-list">
+<div class="br-listrow "><span class="br-cat__icon" style="background: var(--cat-housing-soft); color: var(--cat-housing)"><i class="ri ri-house" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Aluguel</span><span class="br-listrow__meta">Vence 05/12</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 3.200,00</span></span></div></div>
+<div class="br-listrow "><span class="br-cat__icon" style="background: var(--cat-subscriptions-soft); color: var(--cat-subscriptions)"><i class="ri ri-repeat" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Internet Vivo Fibra</span><span class="br-listrow__meta">Vence 15/12</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 129,90</span></span></div></div>
+<div class="br-listrow "><span class="br-cat__icon" style="background: var(--cat-household-bills-soft); color: var(--cat-household-bills)"><i class="ri ri-zap" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Conta de Luz</span><span class="br-listrow__meta">Vence 25/12</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 240,00</span></span></div></div>
+</div>
+</section>
+<section class="br-card br-card--compact">
+<div class="rv-stack" style="gap: 4px"><span class="br-card__label">Parece que se repete</span><span class="br-muted" style="font-size: 12px; line-height: 16px">Repetiu nos últimos 3 meses. Quer acompanhar como conta?</span></div>
+<div class="br-list">
+<div class="br-listrow rv-row--action "><span class="br-cat__icon" style="background: var(--cat-household-bills-soft); color: var(--cat-household-bills)"><i class="ri ri-zap" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Conta de luz Enel</span><span class="br-listrow__meta">dia 10 · R$ 214,80</span></div><div class="br-listrow__end"></div><button class="br-iconbtn" aria-label="Adicionar Conta de luz Enel como conta"><i class="ri ri-plus" aria-hidden="true"></i></button></div>
+</div>
+<button class="br-btn br-btn--ghost br-btn--block">Ignorar sugestões</button>
+</section>
+</div>
+<a href="MobileChat.dc.html" class="br-btn br-btn--primary rv-fab" aria-label="Perguntar"><i class="ri ri-chat" aria-hidden="true"></i>Perguntar</a>
+<nav class="br-bottombar" aria-label="Principal"><a href="MobileOverview.dc.html" class="br-tab"><i class="ri ri-lg ri-dashboard" aria-hidden="true"></i>Início</a><a href="MobileTransactions.dc.html" class="br-tab"><i class="ri ri-lg ri-receipt" aria-hidden="true"></i>Lançamentos</a><a href="MobilePlan.dc.html" class="br-tab"><i class="ri ri-lg ri-target" aria-hidden="true"></i>Planejar</a><a href="MobileMore.dc.html" class="br-tab" aria-current="page"><span class="rv-tabwrap"><i class="ri ri-lg ri-more" aria-hidden="true"></i><span class="br-count" aria-hidden="true">2</span></span>Mais<span style="position: absolute; width: 1px; height: 1px; overflow: hidden">, 2 contas a pagar</span></a></nav>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme": {"editor": "enum", "options": ["dark", "light"], "default": "dark"}, "$preview": {"width": 390, "height": 844}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { paid: { rent: true }, filter: 'all' }; }
+  renderVals() {
+    const brl = (c) => (c < 0 ? '-' : '') + 'R$ ' + Math.abs(c).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return {
+      theme: this.props.theme ?? 'dark',
+      ...(() => {
+        const cents = { rent: 320000, net: 12990, light: 24000, condo: 61000 };
+        const p = this.state.paid, f = this.state.filter;
+        const ids = Object.keys(cents);
+        const paidCents = ids.filter((k) => p[k]).reduce((s, k) => s + cents[k], 0);
+        const map = (fn) => Object.fromEntries(ids.map((k) => [k, fn(k)]));
+        return {
+          paid: map((k) => !!p[k]), open: map((k) => !p[k]),
+          show: map((k) => f === 'all' || (f === 'paid' ? !!p[k] : !p[k])),
+          toggle: map((k) => () => this.setState({ paid: { ...p, [k]: !p[k] } })),
+          left: brl((417990 - paidCents) / 100), paidTotal: brl(paidCents / 100), pct: Math.round(paidCents / 417990 * 100) + '%',
+          f: { all: String(f === 'all'), open: String(f === 'open'), paid: String(f === 'paid') },
+          fAll: () => this.setState({ filter: 'all' }), fOpen: () => this.setState({ filter: 'open' }), fPaid: () => this.setState({ filter: 'paid' }),
+        };
+      })(),
+    };
+  }
+}
+</script>
+</body>
+</html>

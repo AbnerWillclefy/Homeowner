@@ -373,3 +373,26 @@ func TestWindowsKeepWholeDaysAcrossDaylightSavingInTheHomesZone(t *testing.T) {
 		t.Fatalf("current effort = %v, want 2 (one window missed)", cur)
 	}
 }
+
+func TestOpenTasksCarryTheResponsibleResidentOrNull(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := apitest.HomeWithResident(t, app, "a@example.com")
+	meID := apitest.ResidentID(t, me)
+	apitest.AtDay(app, 10)
+	owned := apitest.CreateChore(t, me, apitest.Recurring("Owned", 3, 2, false))
+	apitest.CreateChore(t, me, apitest.Recurring("Free", 3, 2, false))
+	apitest.ExpectStatus(t, me.Put("/home/chores/"+owned+"/responsible", map[string]any{"residentId": meID}), http.StatusNoContent)
+
+	got := map[any]any{}
+	for _, task := range apitest.Pool(t, me) {
+		v, present := task["responsibleResidentId"]
+		if !present {
+			t.Fatalf("task has no responsibleResidentId: %v", task)
+		}
+		got[task["choreName"]] = v
+	}
+	if len(got) != 2 || got["Owned"] != meID || got["Free"] != nil {
+		t.Errorf("responsibleResidentId by chore = %v", got)
+	}
+}

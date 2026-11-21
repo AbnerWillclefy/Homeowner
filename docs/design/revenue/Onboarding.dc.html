@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Onboarding</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="rv-app" data-theme="{{theme}}" style="flex-direction: column">
+<header style="display: flex; justify-content: space-between; align-items: center; padding: 24px 40px">
+<span class="br-sidebar__brand" style="padding: 0"><span class="br-sidebar__mark"></span>Revenue</span>
+<span class="br-muted">Passo {{step}} de 4</span>
+</header>
+<div class="rv-onb">
+<div class="rv-onb__card rv-stack-16" style="gap: 24px">
+<div class="rv-steps" aria-hidden="true"><i class="{{s1}}"></i><i class="{{s2}}"></i><i class="{{s3}}"></i><i class="{{s4}}"></i></div>
+
+<sc-if value="{{is1}}" hint-placeholder-val="{{ true }}">
+<div class="rv-stack" style="gap: 8px"><h1 class="rv-title">Conecte sua conta do Pluggy</h1><span class="rv-sub">O Revenue lê seus bancos pelo Open Finance usando a sua própria conta gratuita do Pluggy. Copie o Client ID e o Client Secret do painel do Pluggy.</span></div>
+<section class="br-card">
+<label class="br-field"><span class="br-field__label">Client ID</span><span class="br-input"><input value="a51c2e7d-0b8f-4c3e-9d1a-7e2f5c813f9a" aria-label="Client ID"></span></label>
+<label class="br-field"><span class="br-field__label">Client Secret</span><span class="br-input"><input type="password" value="••••••••••••••••••••" aria-label="Client Secret"><i class="ri ri-eye" aria-hidden="true" style="color: var(--text-muted)"></i></span><span class="br-field__hint">Guardado criptografado. Só o servidor consegue ler.</span></label>
+</section>
+<div class="rv-between"><a href="https://dashboard.pluggy.ai" class="br-link">Onde encontro isso?</a><button class="br-btn br-btn--primary br-btn--lg" onClick="{{next}}">Continuar<i class="ri ri-chevron-right" aria-hidden="true"></i></button></div>
+</sc-if>
+
+<sc-if value="{{is2}}" hint-placeholder-val="{{ false }}">
+<div class="rv-stack" style="gap: 8px"><h1 class="rv-title">Conecte seus bancos</h1><span class="rv-sub">A autorização acontece no app do banco. O Revenue só lê: não movimenta dinheiro.</span></div>
+<section class="br-card">
+<div class="br-list">
+<div class="br-listrow" style="cursor: default"><span class="rv-logo rv-logo--nu">Nu</span><div class="br-listrow__main"><span class="br-listrow__title">Nubank</span><span class="br-listrow__meta">Conta, cartão e investimentos</span></div><span class="br-badge br-badge--positive"><i class="ri ri-sm ri-check" aria-hidden="true"></i>Conectado</span></div>
+<div class="br-listrow" style="cursor: default"><span class="rv-logo rv-logo--itau">Itaú</span><div class="br-listrow__main"><span class="br-listrow__title">Itaú</span><span class="br-listrow__meta">Importando 3 meses de transações…</span></div><span class="br-badge br-badge--neutral"><i class="ri ri-sm ri-refresh" aria-hidden="true"></i>Importando</span></div>
+</div>
+<button class="br-btn br-btn--secondary br-btn--block"><i class="ri ri-plus" aria-hidden="true"></i>Conectar outro banco</button>
+</section>
+<div class="rv-between"><button class="br-btn br-btn--ghost" onClick="{{back}}"><i class="ri ri-chevron-left" aria-hidden="true"></i>Voltar</button><button class="br-btn br-btn--primary br-btn--lg" onClick="{{next}}">Continuar<i class="ri ri-chevron-right" aria-hidden="true"></i></button></div>
+</sc-if>
+
+<sc-if value="{{is3}}" hint-placeholder-val="{{ false }}">
+<div class="rv-stack" style="gap: 8px"><h1 class="rv-title">Quanto entra e quanto guardar</h1><span class="rv-sub">Com isso o app calcula quanto ainda dá para gastar. Dá para mudar depois em Configurações.</span></div>
+<section class="br-card">
+<label class="br-field"><span class="br-field__label">Renda mensal</span><span class="br-input br-input--money"><span class="br-input__prefix">R$</span><input value="9.800,00" inputmode="decimal"></span><span class="br-field__hint">Salário e outras entradas que se repetem.</span></label>
+<label class="br-field"><span class="br-field__label">Quanto guardar por mês</span><span class="br-input br-input--money"><span class="br-input__prefix">R$</span><input value="1.200,00" inputmode="decimal"></span><span class="br-field__hint">Vai para a reserva de emergência e para as metas.</span></label>
+</section>
+<div class="rv-between"><button class="br-btn br-btn--ghost" onClick="{{back}}"><i class="ri ri-chevron-left" aria-hidden="true"></i>Voltar</button><div class="rv-row"><button class="br-btn br-btn--ghost" onClick="{{next}}">Pular</button><button class="br-btn br-btn--primary br-btn--lg" onClick="{{next}}">Continuar<i class="ri ri-chevron-right" aria-hidden="true"></i></button></div></div>
+</sc-if>
+
+<sc-if value="{{is4}}" hint-placeholder-val="{{ false }}">
+<div class="br-empty" style="padding: 24px 0 0"><span class="br-empty__icon"><i class="ri ri-lg ri-check" aria-hidden="true"></i></span><span class="br-empty__title" style="font-size: 24px; line-height: 32px">Tudo pronto</span><span class="br-empty__text">2 bancos conectados e 214 transações importadas. As categorias foram sugeridas: confira as 2 que ficaram sem.</span></div>
+<section class="br-card br-card--compact">
+<div class="rv-between"><span class="br-muted">Você pode gastar em novembro</span><span class="br-amount br-amount--md"><span class="br-amount__value">R$ 1.517,25</span></span></div>
+</section>
+<div class="rv-between"><button class="br-btn br-btn--ghost" onClick="{{back}}"><i class="ri ri-chevron-left" aria-hidden="true"></i>Voltar</button><a href="Main.dc.html" class="br-btn br-btn--primary br-btn--lg">Ir para a Visão geral</a></div>
+</sc-if>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { step: 1 }; }
+  renderVals() {
+    const s = this.state.step;
+    return {
+      theme: this.props.theme ?? 'dark',
+      step: s,
+      is1: s === 1, is2: s === 2, is3: s === 3, is4: s === 4,
+      s1: 'on', s2: s >= 2 ? 'on' : '', s3: s >= 3 ? 'on' : '', s4: s >= 4 ? 'on' : '',
+      next: () => this.setState({ step: Math.min(4, s + 1) }),
+      back: () => this.setState({ step: Math.max(1, s - 1) }),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -49,8 +49,8 @@ func TestCommitmentsLeftoverIsIncomeMinusTheMonth(t *testing.T) {
 		name         string
 		income, left int64
 	}{
-		{"income over the bill", 500000, 350000},
-		{"income under the bill", 120000, -30000},
+		{"income over the bill", 500000, 350000 - fixturePlanned},
+		{"income under the bill", 120000, -30000 - fixturePlanned},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

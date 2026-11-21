@@ -91,10 +91,20 @@ jobs:
 
             Acting as the engineer who owns the change (backend-engineer or frontend-engineer), apply each finding that is correct, keeping the tests green, and commit and push to the pull request's branch. For each finding you reject, reply to it with the reason.
 
+            Every finding ends with its thread resolved, or the pull request cannot merge. After pushing, resolve the thread of each finding you applied without replying to it, since a reply counts as a rejection. Resolve each rejected finding's thread after your reply. List the threads, where `databaseId` is the review comment's id, with:
+            `gh api graphql -f query='{ repository(owner: "${{ github.repository_owner }}", name: "${{ github.event.repository.name }}") { pullRequest(number: ${{ env.PR }}) { reviewThreads(first: 100) { nodes { id isResolved comments(first: 1) { nodes { databaseId } } } } } } }'`
+            and resolve one with:
+            `gh api graphql -f query='mutation { resolveReviewThread(input: {threadId: "<thread id>"}) { thread { isResolved } } }'`
+
             Then comment on the pull request with what you changed and what you rejected. Do not add or remove labels: the workflow does.
           claude_args: |
             --max-turns 60
             --model sonnet
             --allowedTools "Skill,Edit,Write,Bash(git *),Bash(go *),Bash(gofmt *),Bash(docker *),Bash(npm *),Bash(npx *),Bash(make *),Bash(gh pr *),Bash(gh api *)"
             --disallowedTools "Bash(git push --force *),Bash(git push -f *),Bash(gh pr merge *)"
+
+      # The agent sometimes answers a thread ("Fixed: ...") without resolving it, which blocks merge-by-risk
+      - if: always() && steps.gate.outputs.run == 'true'
+        name: Resolve the threads the agent answered
+        run: .github/scripts/resolve-answered-threads.sh "$PR"
 
