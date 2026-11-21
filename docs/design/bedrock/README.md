@@ -188,7 +188,7 @@ Charts are part of the visual system, not a style of their own:
 | Sidebar | Core | stable |
 | BottomBar | Core | stable |
 | PageHeader | Core | draft |
-| DescriptionList | Core | draft |
+| DescriptionList | Core | stable |
 | ChartContainer | Core | stable |
 | Amount | Finance | stable |
 | MoneyInput | Finance | stable |
