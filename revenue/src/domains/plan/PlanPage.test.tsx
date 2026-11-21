@@ -73,6 +73,12 @@ describe("Planejar", () => {
     expect(sources.textContent).toContain("Reconectar");
   });
 
+  it("names no bank when the one to reconnect has no name", async () => {
+    vi.mocked(sourcesApi.getSources).mockResolvedValue({ ...status(true), items: [{ id: "i1", bankName: null, status: "reconnect", products: 1 }] });
+    open();
+    await waitFor(() => expect(rows()[3]!.textContent).toContain("Um banco pediu nova autorização"));
+  });
+
   it("leaves a row with no badge when nothing is short and no bank asks to reconnect", async () => {
     vi.mocked(overviewApi.getCommitments).mockResolvedValue(months([100, undefined]));
     vi.mocked(sourcesApi.getSources).mockResolvedValue(status(false));

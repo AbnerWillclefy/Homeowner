@@ -19,5 +19,6 @@ describe("firstReconnect", () => {
   it("finds the first bank to reconnect", () => {
     expect(firstReconnect([{ id: "a", bankName: "Nubank", status: "ok", products: 1 }, { id: "b", bankName: "Itaú", status: "reconnect", products: 1 }])).toEqual({ bankName: "Itaú" });
   });
+  it("keeps a null name on a bank to reconnect", () => expect(firstReconnect([{ id: "a", bankName: null, status: "reconnect", products: 1 }])).toEqual({ bankName: null }));
   it("is null when all are ok", () => expect(firstReconnect([{ id: "a", bankName: null, status: "ok", products: 1 }])).toBeNull());
 });
