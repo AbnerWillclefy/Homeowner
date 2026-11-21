@@ -63,7 +63,7 @@ export function MoneyInput({
               const cents = parseCents(text);
               if (cents !== null) setText(format(cents, locale));
             }}
-            className={cn(fieldClass(!!error), "value-md h-control-lg pointer-coarse:text-xl tabular-nums pl-12")}
+            className={cn(fieldClass(!!error), "value-md h-control-lg pointer-coarse:text-xl max-tablet:text-xl tabular-nums pl-12")}
           />
         </div>
       )}
