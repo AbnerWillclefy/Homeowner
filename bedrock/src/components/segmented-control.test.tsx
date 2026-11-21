@@ -32,3 +32,8 @@ it("reports another option's value", () => {
   fireEvent.click(screen.getByRole("radio", { name: "B" }));
   expect(onValueChange).toHaveBeenCalledWith("b");
 });
+
+it("draws each item at 38px on a phone so the group is 48 with padding and border", () => {
+  setup();
+  expect(screen.getByRole("radio", { name: "A" }).className).toContain("max-tablet:h-[38px]");
+});

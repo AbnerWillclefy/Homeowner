@@ -103,3 +103,9 @@ it("a parent that clears the value on submit empties the focused field", async (
   await user.type(field(), "12,50{Enter}");
   expect(field().value).toBe("");
 });
+
+it("keeps the 20px amount below 768px instead of the field's text-base", () => {
+  render(<Harness spy={() => {}} />);
+  expect(field().className).toContain("max-tablet:text-xl");
+  expect(field().className).not.toContain("max-tablet:text-base");
+});

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Input } from "../../src";
+import { Send } from "lucide-react";
+import { Button, Input } from "../../src";
 import { MoneyInput } from "../../src/finance";
 import type { Locale } from "../App";
 import { Section } from "../Section";
@@ -14,6 +15,8 @@ const strings = {
     limit: "Limite mensal",
     limitError: "Informe um valor maior que zero.",
     disabled: "Desativado",
+    message: "Mensagem",
+    send: "Enviar",
   },
   en: {
     name: "Name",
@@ -24,6 +27,8 @@ const strings = {
     limit: "Monthly limit",
     limitError: "Enter an amount above zero.",
     disabled: "Disabled",
+    message: "Message",
+    send: "Send",
   },
 };
 
@@ -35,6 +40,15 @@ export default function InputSection({ locale }: { locale: Locale }) {
     <Section name="Input / MoneyInput">
       <Input label={t.name} hint={t.nameHint} autoComplete="off" />
       <Input label={t.name} defaultValue="" error={t.nameError} />
+      {/* A field and a button side by side share one height (48px on a phone). */}
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <Input label={t.message} hideLabel />
+        </div>
+        <Button icon={Send} className="px-0 w-control-lg">
+          <span className="sr-only">{t.send}</span>
+        </Button>
+      </div>
       <Input label={t.disabled} disabled defaultValue="..." />
       <MoneyInput label={t.amount} hint={t.amountHint} value={amount} onValueChange={setAmount} />
       {/* Zero is a valid amount: a field that cannot take it passes an error. */}

@@ -9,21 +9,21 @@ const strings = {
     name: "BottomBar",
     nav: "Navegação do celular",
     overview: "Início",
-    transactions: "Transações",
-    planning: "Planejamento financeiro",
+    transactions: "Lançamentos",
+    planning: "Planejar",
     more: "Mais",
     badge: "3 contas em aberto",
-    hint: "Moldura de 390px. O terceiro rótulo é longo de propósito e é cortado.",
+    hint: "Moldura de 320px, 80px por aba: cada rótulo aparece inteiro.",
   },
   en: {
     name: "BottomBar",
     nav: "Phone navigation",
     overview: "Home",
     transactions: "Transactions",
-    planning: "Long-term financial planning",
+    planning: "Plan",
     more: "More",
     badge: "3 bills open",
-    hint: "390px frame. The third label is long on purpose and gets truncated.",
+    hint: "320px frame, 80px a tab: every label shows whole.",
   },
 };
 
@@ -34,7 +34,7 @@ export default function BottomBarSection({ locale }: { locale: Locale }) {
   return (
     <Section name={t.name}>
       <p className="caption text-text-muted">{t.hint}</p>
-      <div className="max-w-[390px] overflow-hidden rounded-md border border-border">
+      <div className="w-[320px] overflow-hidden rounded-md border border-border">
         <BottomBar
           label={t.nav}
           items={[
