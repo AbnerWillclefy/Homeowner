@@ -15,10 +15,7 @@
 <style>body{margin:0}</style>
 </helmet>
 <div class="rv-phone" data-theme="{{theme}}">
-<div class="rv-phone__top">
-<div class="rv-head__text"><h1 class="rv-title">Visão geral</h1><span class="rv-sub">Hoje, 11 nov</span></div>
-<div class="rv-row" style="flex-wrap: nowrap"><button class="br-iconbtn" aria-label="Esconder valores"><i class="ri ri-eye" aria-hidden="true"></i></button><button class="br-iconbtn" aria-label="Notificações, 1 nova"><i class="ri ri-bell" aria-hidden="true"></i><span class="br-dot"></span></button></div>
-</div>
+<header class="rv-phone__head"><div class="rv-phone__headrow"><div class="rv-row" style="gap: 8px; flex-wrap: nowrap; min-width: 0; align-items: flex-start"><div class="rv-head__text"><h1 class="rv-title">Visão geral</h1><span class="rv-sub">Novembro de 2026 · hoje, 20 de nov.</span></div></div><div class="rv-row" style="gap: 8px"><button class="br-iconbtn" aria-label="Esconder valores"><i class="ri ri-eye" aria-hidden="true"></i></button></div></div><button class="br-btn br-btn--secondary br-btn--lg br-btn--block rv-period" aria-label="Mês: Novembro de 2026"><span class="rv-row" style="gap: 8px; flex-wrap: nowrap"><i class="ri ri-calendar" aria-hidden="true"></i>Novembro de 2026</span><i class="ri ri-chevron-down" aria-hidden="true"></i></button></header>
 <div class="rv-phone__scroll">
 <section class="br-card br-card--hero br-card--compact">
 <div class="br-card__head"><span class="br-card__label">Você ainda pode gastar</span><span class="br-badge br-badge--solid"><i class="ri ri-sm ri-check" aria-hidden="true"></i>No ritmo</span></div>
@@ -74,12 +71,7 @@
 </section>
 </sc-if>
 </div>
-<nav class="br-bottombar" aria-label="Principal">
-<a href="MobileOverview.dc.html" class="br-tab" aria-current="page"><i class="ri ri-lg ri-dashboard" aria-hidden="true"></i>Visão geral</a>
-<a href="MobileTransactions.dc.html" class="br-tab"><i class="ri ri-lg ri-arrows" aria-hidden="true"></i>Transações</a>
-<a href="Goals.dc.html" class="br-tab"><i class="ri ri-lg ri-target" aria-hidden="true"></i>Planejamento</a>
-<a href="Settings.dc.html" class="br-tab"><i class="ri ri-lg ri-more" aria-hidden="true"></i>Mais</a>
-</nav>
+<nav class="br-bottombar" aria-label="Principal"><a href="MobileOverview.dc.html" class="br-tab" aria-current="page"><i class="ri ri-lg ri-dashboard" aria-hidden="true"></i>Início</a><a href="MobileTransactions.dc.html" class="br-tab"><i class="ri ri-lg ri-receipt" aria-hidden="true"></i>Lançamentos</a><a href="MobilePlan.dc.html" class="br-tab"><i class="ri ri-lg ri-target" aria-hidden="true"></i>Planejar</a><a href="MobileMore.dc.html" class="br-tab"><span class="rv-tabwrap"><i class="ri ri-lg ri-more" aria-hidden="true"></i><span class="br-count" aria-hidden="true">2</span></span>Mais<span style="position: absolute; width: 1px; height: 1px; overflow: hidden">, 2 contas a pagar</span></a></nav>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>

@@ -36,6 +36,8 @@ Every screen and component follows Shneiderman's 8 golden rules of interface des
 - `space-4` is the half step, allowed only inside components: icon↔text, vertical padding of badges and tokens, gap between sidebar items.
 - Control heights: `control-sm` 32, `control-md` 40, `control-lg` 48. Text line heights in multiples of 4 (16, 20, 24, 32, 40, 48).
 - Every touch target is at least `control-lg` (48px). A control drawn at 32 or 40 extends its hit area to 48 without changing its look.
+- Controls side by side on one row share one drawn height: a field beside a button, a select beside a button. Never 40 beside 48.
+- On phones (< `bp-tablet`) every control is drawn at `control-lg` 48: field, button, select and segmented control. The extended hit area is only for icons inside dense rows.
 - Radii: `radius-sm` 4, `radius-md` 8, `radius-lg` 16, `radius-xl` 24, `radius-full`.
 - Icons at 16px (12px inside a badge, 20px in the bottom bar).
 - Values off the scale need a written reason in the code. Space comes from `gap` in flex and grid, never from a margin on each element.
@@ -126,6 +128,11 @@ Charts are part of the visual system, not a style of their own:
 - Detail and actions open in the `Sheet`: a right side panel (`panel-width`) on desktop, a bottom sheet on phones. `Dialog` only to confirm something destructive.
 - Rare actions sit in a `Menu` or mode, not on every row.
 - Layering, from low to high: `z-sticky` (top and bottom bars), `z-overlay` (Sheet, Dialog), `z-popover` (Menu, Select, which can open inside a Sheet), `z-toast`, `z-tooltip`. Never a literal z-index.
+- **No screen scrolls sideways**, from 320px up. What is wide (a table, a chart of many months, a segmented control with many options) scrolls inside its own box, or changes shape on the phone.
+- **Every screen starts with `PageHeader`**, which has its own phone form (see its guideline).
+- **Every screen has a desktop and a phone artboard before it is built.** "Follows the adaptation rules" is not a design: a screen with no phone artboard is not ready to build. A change to what a screen shows changes its artboard before the code.
+- **On a phone, a row is one row.** Title and caption truncate instead of wrapping; nothing that belongs to the row drops to a loose second line under it (see `ListRow`).
+- **Label and value** (summaries, "how the number is made", a month's detail) use `DescriptionList`: one text size, label left, value right.
 - Tables are for desktop. Below `bp-tablet` the app shows the rows as a list (a money app uses `ListRow`), or fewer columns.
 
 ## Content and voice
@@ -180,6 +187,8 @@ Charts are part of the visual system, not a style of their own:
 | Dialog | Core | stable |
 | Sidebar | Core | stable |
 | BottomBar | Core | stable |
+| PageHeader | Core | draft |
+| DescriptionList | Core | draft |
 | ChartContainer | Core | stable |
 | Amount | Finance | stable |
 | MoneyInput | Finance | stable |

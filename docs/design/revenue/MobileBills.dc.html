@@ -15,19 +15,12 @@
 <style>body{margin:0}</style>
 </helmet>
 <div class="rv-phone" data-theme="{{theme}}">
-<div class="rv-phone__top">
-<div class="rv-head__text"><span class="rv-title">Visão geral</span><span class="rv-sub">Hoje, 11 nov</span></div>
-</div>
+<header class="rv-phone__head"><div class="rv-phone__headrow"><div class="rv-row" style="gap: 8px; flex-wrap: nowrap; min-width: 0; align-items: flex-start"><div class="rv-head__text"><span class="rv-title">Visão geral</span><span class="rv-sub">Novembro de 2026 · hoje, 20 de nov.</span></div></div><div class="rv-row" style="gap: 8px"><button class="br-iconbtn" aria-label="Esconder valores"><i class="ri ri-eye" aria-hidden="true"></i></button></div></div><button class="br-btn br-btn--secondary br-btn--lg br-btn--block rv-period" aria-label="Mês: Novembro de 2026"><span class="rv-row" style="gap: 8px; flex-wrap: nowrap"><i class="ri ri-calendar" aria-hidden="true"></i>Novembro de 2026</span><i class="ri ri-chevron-down" aria-hidden="true"></i></button></header>
 <div class="rv-phone__scroll">
 <section class="br-card br-card--hero br-card--compact"><span class="br-card__label">Você ainda pode gastar</span><span class="br-amount br-amount--lg"><span class="br-amount__value">R$ 1.517,25</span></span><span class="br-muted">R$ 75 por dia até 30/11</span></section>
 <div class="br-alert"><span class="rv-stack" style="gap: 0; grid-column: 1 / 3"><span class="br-alert__title">{{alertTitle}}</span><span class="br-alert__meta {{alertClass}}">{{alertMeta}}</span></span><i class="ri ri-chevron-right" aria-hidden="true"></i></div>
 </div>
-<nav class="br-bottombar" aria-label="Principal">
-<a href="MobileOverview.dc.html" class="br-tab" aria-current="page"><i class="ri ri-lg ri-dashboard" aria-hidden="true"></i>Visão geral</a>
-<a href="MobileTransactions.dc.html" class="br-tab"><i class="ri ri-lg ri-arrows" aria-hidden="true"></i>Transações</a>
-<a href="Goals.dc.html" class="br-tab"><i class="ri ri-lg ri-target" aria-hidden="true"></i>Planejamento</a>
-<a href="Settings.dc.html" class="br-tab"><i class="ri ri-lg ri-more" aria-hidden="true"></i>Mais</a>
-</nav>
+<nav class="br-bottombar" aria-label="Principal"><a href="MobileOverview.dc.html" class="br-tab" aria-current="page"><i class="ri ri-lg ri-dashboard" aria-hidden="true"></i>Início</a><a href="MobileTransactions.dc.html" class="br-tab"><i class="ri ri-lg ri-receipt" aria-hidden="true"></i>Lançamentos</a><a href="MobilePlan.dc.html" class="br-tab"><i class="ri ri-lg ri-target" aria-hidden="true"></i>Planejar</a><a href="MobileMore.dc.html" class="br-tab"><span class="rv-tabwrap"><i class="ri ri-lg ri-more" aria-hidden="true"></i><span class="br-count" aria-hidden="true">2</span></span>Mais<span style="position: absolute; width: 1px; height: 1px; overflow: hidden">, 2 contas a pagar</span></a></nav>
 
 <sc-if value="{{open}}" hint-placeholder-val="{{ true }}">
 <div class="rv-overlay">

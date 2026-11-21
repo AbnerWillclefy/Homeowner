@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Patrimônio, celular</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="revenue.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="rv-phone" data-theme="{{theme}}">
+<header class="rv-phone__head"><div class="rv-phone__headrow"><div class="rv-row" style="gap: 8px; flex-wrap: nowrap; min-width: 0; align-items: flex-start"><div class="rv-head__text"><h1 class="rv-title">Patrimônio</h1><span class="rv-sub">Saldos e investimentos, menos faturas</span></div></div><div class="rv-row" style="gap: 8px"><button class="br-iconbtn" aria-label="Esconder valores"><i class="ri ri-eye" aria-hidden="true"></i></button></div></div></header>
+<div class="rv-phone__scroll rv-phone__scroll--fab">
+<section class="br-card br-card--compact">
+<span class="br-card__label">Patrimônio hoje</span>
+<span class="br-amount br-amount--lg "><span class="br-amount__value">R$ 18.500,00</span></span>
+<span class="br-badge br-badge--positive"><i class="ri ri-sm ri-trending" aria-hidden="true"></i>+R$ 3.020 · +17,8% em 30 dias</span>
+<div class="br-seg br-seg--block" role="group" aria-label="Período"><button aria-pressed="true">30 dias</button><button aria-pressed="false">90 dias</button><button aria-pressed="false">1 ano</button></div>
+<svg class="br-chart" viewBox="0 0 326 120" role="img" aria-label="Patrimônio subiu R$ 3.020 em 30 dias"><line class="grid" x1="0" y1="40" x2="326" y2="40"></line><line class="grid" x1="0" y1="80" x2="326" y2="80"></line><path class="area" d="M0 100 L40 92 L60 98 L100 84 L130 88 L170 70 L200 74 L240 56 L270 60 L300 40 L326 46 L326 120 L0 120 Z"></path><path class="line" d="M0 100 L40 92 L60 98 L100 84 L130 88 L170 70 L200 74 L240 56 L270 60 L300 40 L326 46"></path></svg>
+<div class="rv-between br-muted" style="font-size: 12px; line-height: 16px"><span>21 de out.</span><span>hoje</span></div>
+</section>
+<section class="br-card br-card--compact">
+<span class="br-card__label">De onde vem</span>
+<div class="br-progress__track" style="display: flex; gap: 4px; background: transparent" role="img" aria-label="Investimentos 63%, contas 30%, faturas menos 7%"><div class="br-progress__fill" style="width: 63%; border-radius: 4px"></div><div class="br-progress__fill" style="width: 30%; background: var(--cat-transport); border-radius: 4px"></div><div class="br-progress__fill" style="width: 7%; background: var(--danger); border-radius: 4px"></div></div>
+<div class="br-list">
+<div class="br-listrow "><span class="br-cat__icon" style="background: var(--brand-soft); color: var(--brand)"><i class="ri ri-trending" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Investimentos</span><span class="br-listrow__meta">3 investimentos</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 13.500,00</span></span><span class="br-badge br-badge--positive">+R$ 1.000 no mês</span></div></div>
+<div class="br-listrow "><span class="br-cat__icon" style="background: var(--cat-transport-soft); color: var(--cat-transport)"><i class="ri ri-landmark" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Contas</span><span class="br-listrow__meta">Itaú</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 6.500,00</span></span><span class="br-badge br-badge--positive">+R$ 500 no mês</span></div></div>
+<div class="br-listrow "><span class="br-cat__icon" style="background: var(--danger-soft); color: var(--danger)"><i class="ri ri-card" aria-hidden="true"></i></span><div class="br-listrow__main"><span class="br-listrow__title">Faturas em aberto</span><span class="br-listrow__meta">Nubank, Itaú Visa</span></div><div class="br-listrow__end"><span class="br-amount br-amount--sm "><span class="br-amount__value">−R$ 1.500,00</span></span></div></div>
+</div>
+</section>
+<section class="br-card br-card--compact">
+<span class="br-card__label">Como o número é feito</span>
+<dl class="rv-dl"><dt>Saldos das contas</dt><dd><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 6.500,00</span></span></dd><dt>+ Investimentos</dt><dd><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 13.500,00</span></span></dd><dt>− Faturas em aberto</dt><dd><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 1.500,00</span></span></dd><dt class="rv-dl__total">Patrimônio</dt><dd class="rv-dl__total"><span class="br-amount br-amount--sm "><span class="br-amount__value">R$ 18.500,00</span></span></dd></dl>
+<span class="br-muted" style="font-size: 12px; line-height: 16px">A linha do gráfico não desconta as faturas em aberto: por isso termina R$ 1.500 acima.</span>
+</section>
+</div>
+<a href="MobileChat.dc.html" class="br-btn br-btn--primary rv-fab" aria-label="Perguntar"><i class="ri ri-chat" aria-hidden="true"></i>Perguntar</a>
+<nav class="br-bottombar" aria-label="Principal"><a href="MobileOverview.dc.html" class="br-tab"><i class="ri ri-lg ri-dashboard" aria-hidden="true"></i>Início</a><a href="MobileTransactions.dc.html" class="br-tab"><i class="ri ri-lg ri-receipt" aria-hidden="true"></i>Lançamentos</a><a href="MobilePlan.dc.html" class="br-tab" aria-current="page"><i class="ri ri-lg ri-target" aria-hidden="true"></i>Planejar</a><a href="MobileMore.dc.html" class="br-tab"><span class="rv-tabwrap"><i class="ri ri-lg ri-more" aria-hidden="true"></i><span class="br-count" aria-hidden="true">2</span></span>Mais<span style="position: absolute; width: 1px; height: 1px; overflow: hidden">, 2 contas a pagar</span></a></nav>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme": {"editor": "enum", "options": ["dark", "light"], "default": "dark"}, "$preview": {"width": 390, "height": 844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const brl = (c) => (c < 0 ? '-' : '') + 'R$ ' + Math.abs(c).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return {
+      theme: this.props.theme ?? 'dark',
+
+    };
+  }
+}
+</script>
+</body>
+</html>

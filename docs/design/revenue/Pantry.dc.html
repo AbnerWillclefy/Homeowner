@@ -18,7 +18,7 @@
 Layout the screen tickets check:
   PageHeader: title "Despensa", subtitle "24 itens · 3 acabaram", tools "Adicionar nota" (primary, opens Add receipt) and "Lista de compras" (secondary link to /pantry/list).
   Cards in rv-grid: "Acabaram" s5, "Na despensa" s7, "Novo item" field inside "Na despensa" (top of the card).
-  Side panel (rv-panel): the item sheet, opened by a row. Sidebar: Despensa under the "Mais" group.
+  Side panel (rv-panel): the item sheet, opened by a row; rename, always buy and delete live in it, not in a menu on the row. Sidebar: Despensa under the "Mais" group.
 -->
 <div class="rv-app" data-theme="{{theme}}">
 <div class="rv-side"><dc-import name="Sidebar" active="pantry" theme="{{theme}}" hint-size="256px,1000px"></dc-import></div>
@@ -50,7 +50,7 @@ Layout the screen tickets check:
 <div class="br-card__head"><span class="rv-section">{{t.outHead}}</span><span class="br-badge br-badge--danger">3</span></div>
 <div class="br-list">
 <sc-for list="{{out}}" as="i" hint-placeholder-count="3">
-<div class="br-listrow" style="grid-template-columns: minmax(0, 1fr) auto"><div class="br-listrow__main"><span class="br-listrow__title">{{i.name}}</span><span class="br-listrow__meta">{{i.meta}}</span></div><span class="br-badge br-badge--danger">{{t.out}}</span></div>
+<div class="br-listrow" style="grid-template-columns: minmax(0, 1fr)"><div class="br-listrow__main"><span class="br-listrow__title">{{i.name}}</span><span class="br-listrow__meta">{{i.meta}}</span></div></div>
 </sc-for>
 </div>
 </section>
@@ -59,10 +59,9 @@ Layout the screen tickets check:
 <form class="rv-row" style="flex-wrap: nowrap" aria-label="{{t.addItem}}"><label class="br-field" style="flex: 1"><span class="br-field__label">{{t.addItem}}</span><span class="br-input"><input placeholder="{{t.addPh}}"></span></label><button class="br-btn br-btn--secondary" style="align-self: flex-end" type="submit"><i class="ri ri-plus" aria-hidden="true"></i>{{t.add}}</button></form>
 <div class="br-list">
 <sc-for list="{{stock}}" as="i" hint-placeholder-count="4">
-<div class="br-listrow" style="grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; cursor: pointer">
+<div class="br-listrow" style="grid-template-columns: minmax(0, 1fr) auto; gap: 8px; cursor: pointer">
 <div class="br-listrow__main"><span class="br-listrow__title">{{i.name}}</span><span class="br-listrow__meta">{{i.meta}}</span></div>
-<button class="br-btn br-btn--secondary br-btn--sm">{{t.ranOut}}</button>
-<button class="br-iconbtn br-iconbtn--sm" style="border: 0" aria-label="{{t.moreOf}} {{i.name}}"><i class="ri ri-more" aria-hidden="true"></i></button>
+<button class="br-btn br-btn--secondary br-btn--sm" aria-label="{{t.ranOutOf}} {{i.name}}">{{t.ranOut}}</button>
 </div>
 </sc-for>
 </div>
@@ -78,7 +77,6 @@ Layout the screen tickets check:
 <div class="rv-split" style="grid-template-columns: 1fr 1fr"><div class="rv-kv"><span class="rv-kv__k">{{t.avg}}</span><span class="br-amount br-amount--md"><span class="br-amount__value">{{t.avgVal}}</span></span></div><div class="rv-kv"><span class="rv-kv__k">{{t.lastPrice}}</span><span class="br-amount br-amount--md"><span class="br-amount__value">R$ 27,90</span></span><span class="br-muted" style="font-size: 12px; line-height: 16px">{{t.lastWhere}}</span></div></div>
 <span class="br-card__label">{{t.history}}</span>
 <svg class="br-chart" viewBox="0 0 300 120" role="img" aria-label="{{t.historyLabel}}"><line class="grid" x1="0" x2="300" y1="20" y2="20"/><line class="grid" x1="0" x2="300" y2="60" y1="60"/><line class="grid" x1="0" x2="300" y1="100" y2="100"/><path class="area" d="M10 80 L80 60 L150 70 L220 40 L290 30 L290 100 L10 100Z"/><path class="line" d="M10 80 L80 60 L150 70 L220 40 L290 30"/><circle class="end" cx="290" cy="30" r="4"/><text x="10" y="116">jun</text><text x="145" y="116">set</text><text x="265" y="116">nov</text></svg>
-<div class="br-banner"><i class="ri ri-clock br-icon" aria-hidden="true"></i><span class="br-banner__text"><strong>{{t.forecast}}</strong> · {{t.soon}}</span></div>
 </aside>
 </sc-if>
 </main>
@@ -86,8 +84,8 @@ Layout the screen tickets check:
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"locale":{"editor":"enum","options":["pt-BR","en"],"default":"pt-BR"},"view":{"editor":"enum","options":["ready","empty","loading","error"],"default":"ready"},"panel":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":900}}'>
 const COPY = {
-  'pt-BR': { title: 'Despensa', sub: '24 itens · 3 acabaram', subEmpty: '0 itens', list: 'Lista de compras', addReceipt: 'Adicionar nota', outHead: 'Acabaram', inHead: 'Na despensa', out: 'Acabou', ranOut: 'Acabou', always: 'Sempre comprar', moreOf: 'Mais ações de', close: 'Fechar', addItem: 'Novo item', addPh: 'Ex.: arroz', add: 'Incluir', loading: 'Carregando a despensa', error: 'Não deu para carregar a despensa.', retry: 'Tentar', emptyTitle: 'Despensa vazia', emptyText: 'Inclua um item ou adicione uma nota para ela se encher sozinha.', itemSheet: 'Item', avg: 'Dura em média', avgVal: '22 dias', lastPrice: 'Último preço', lastWhere: 'Mercado Bom Preço · 02/11', history: 'Preço ao longo do tempo', historyLabel: 'Preço do arroz, de R$ 24 a R$ 27,90', forecast: 'Previsão', soon: 'em breve', lasts: 'dura ~{n} dias', lastsNone: 'ainda sem média', outAgo: 'acabou há {n} dias', fixed: 'sempre comprar' },
-  en: { title: 'Pantry', sub: '24 items · 3 ran out', subEmpty: '0 items', list: 'Shopping list', addReceipt: 'Add receipt', outHead: 'Ran out', inHead: 'In the pantry', out: 'Ran out', ranOut: 'Ran out', always: 'Always buy', moreOf: 'More actions for', close: 'Close', addItem: 'New item', addPh: 'E.g. rice', add: 'Add', loading: 'Loading the pantry', error: "Couldn't load the pantry.", retry: 'Retry', emptyTitle: 'Pantry is empty', emptyText: 'Add an item, or add a receipt and it fills itself.', itemSheet: 'Item', avg: 'Lasts on average', avgVal: '22 days', lastPrice: 'Last price', lastWhere: 'Bom Preço market · 11/02', history: 'Price over time', historyLabel: 'Price of rice, from R$ 24 to R$ 27.90', forecast: 'Forecast', soon: 'coming soon', lasts: 'lasts ~{n} days', lastsNone: 'no average yet', outAgo: 'ran out {n} days ago', fixed: 'always buy' },
+  'pt-BR': { title: 'Despensa', sub: '24 itens · 3 acabaram', subEmpty: '0 itens', list: 'Lista de compras', addReceipt: 'Adicionar nota', outHead: 'Acabaram', inHead: 'Na despensa', out: 'Acabou', ranOut: 'Acabou', ranOutOf: 'Marcar como acabou:', always: 'Sempre comprar', moreOf: 'Mais ações de', close: 'Fechar', addItem: 'Novo item', addPh: 'Ex.: arroz', add: 'Incluir', loading: 'Carregando a despensa', error: 'Não deu para carregar a despensa.', retry: 'Tentar', emptyTitle: 'Despensa vazia', emptyText: 'Inclua um item ou adicione uma nota para ela se encher sozinha.', itemSheet: 'Item', avg: 'Dura em média', avgVal: '22 dias', lastPrice: 'Último preço', lastWhere: 'Mercado Bom Preço · 02/11', history: 'Preço ao longo do tempo', historyLabel: 'Preço do arroz, de R$ 24 a R$ 27,90', forecast: 'Previsão', soon: 'em breve', lasts: 'dura ~{n} dias', lastsNone: 'ainda sem média', outAgo: 'acabou há {n} dias', fixed: 'sempre comprar' },
+  en: { title: 'Pantry', sub: '24 items · 3 ran out', subEmpty: '0 items', list: 'Shopping list', addReceipt: 'Add receipt', outHead: 'Ran out', inHead: 'In the pantry', out: 'Ran out', ranOut: 'Ran out', ranOutOf: 'Mark as ran out:', always: 'Always buy', moreOf: 'More actions for', close: 'Close', addItem: 'New item', addPh: 'E.g. rice', add: 'Add', loading: 'Loading the pantry', error: "Couldn't load the pantry.", retry: 'Retry', emptyTitle: 'Pantry is empty', emptyText: 'Add an item, or add a receipt and it fills itself.', itemSheet: 'Item', avg: 'Lasts on average', avgVal: '22 days', lastPrice: 'Last price', lastWhere: 'Bom Preço market · 11/02', history: 'Price over time', historyLabel: 'Price of rice, from R$ 24 to R$ 27.90', forecast: 'Forecast', soon: 'coming soon', lasts: 'lasts ~{n} days', lastsNone: 'no average yet', outAgo: 'ran out {n} days ago', fixed: 'always buy' },
 };
 class Component extends DCLogic {
   renderVals() {

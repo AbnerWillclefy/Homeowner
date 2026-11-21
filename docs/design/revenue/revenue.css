@@ -153,3 +153,47 @@
 .rv-composer { display: flex; flex-direction: column; gap: 8px; position: sticky; bottom: 0; background: var(--bg); padding-top: 8px; }
 .rv-composer__row { display: flex; gap: 8px; align-items: flex-start; }
 .rv-composer .br-field { flex: 1; }
+
+/* Phone rules from the mobile audit (Bedrock: PageHeader, DescriptionList, ListRow, BottomBar; 20/11/2026) */
+/* PageHeader, phone form: title and icon actions on one row, the period full width below it */
+.rv-phone__head { padding: 24px 16px 8px; display: flex; flex-direction: column; gap: 16px; }
+.rv-phone__headrow { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.rv-phone__headrow .rv-head__text { min-width: 0; }
+.rv-phone__headrow .rv-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rv-phone__headrow .rv-row { flex-wrap: nowrap; }
+.rv-iconbtn--primary { background: var(--brand); color: var(--on-brand); border-color: transparent; }
+.rv-period { justify-content: space-between; }
+/* Every control is 48px on the phone; the segmented control too (40px buttons + 4px padding) */
+.rv-phone .br-input { height: var(--control-lg); font-size: 16px; }
+.rv-phone .br-iconbtn { width: var(--control-lg); height: var(--control-lg); }
+.rv-phone .br-seg button { height: 38px; line-height: 38px; }
+.rv-composer .br-input { height: var(--control-lg); }
+/* DescriptionList: one text size, label left, value right */
+.rv-dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; margin: 0; font: 400 14px/20px var(--font-sans); font-variant-numeric: tabular-nums; }
+.rv-dl dt { color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rv-dl dd { margin: 0; text-align: right; white-space: nowrap; display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+.rv-dl .rv-dl__total { font-weight: 600; color: var(--text); padding-top: 8px; border-top: 1px solid var(--border); }
+/* ListRow with one action at its end */
+.br-listrow.rv-row--action { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+.rv-tabwrap { position: relative; display: inline-grid; }
+.rv-tabwrap .br-count { top: -6px; right: -10px; }
+.rv-tabwrap .br-count--warning { background: var(--warning); }
+/* Bars of a chart in a card, drawn with divs so they stretch to the card */
+.rv-bars { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); grid-template-rows: 100%; gap: 4px; align-items: end; height: 120px; position: relative; border-bottom: 1px solid var(--chart-grid); }
+.rv-bars--zero { align-items: stretch; border-bottom: 0; }
+.rv-bar { border-radius: 4px 4px 0 0; background: var(--brand); min-height: 2px; }
+.rv-bar--neutral { background: var(--chart-bar); }
+.rv-bar--sel { background: var(--text); }
+.rv-bar--neg { background: var(--danger); border-radius: 0 0 4px 4px; }
+.rv-barcol { display: grid; grid-template-rows: 1fr 1fr; gap: 0; height: 100%; cursor: pointer; border: 0; background: none; padding: 0; }
+.rv-barcol > span { display: flex; flex-direction: column; justify-content: flex-end; }
+.rv-barcol > span + span { justify-content: flex-start; border-top: 1px solid var(--chart-grid); }
+.rv-axis { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; font: 400 11px/16px var(--font-sans); color: var(--text-muted); text-align: center; }
+.rv-menu-list .br-listrow { min-height: 56px; }
+.rv-barcol .rv-bar, .rv-bars .rv-bar { display: block; width: 100%; }
+.rv-neg { color: var(--danger); }
+.rv-sel { background: var(--surface-hover); }
+.br-table tr.rv-sel td { background: var(--surface-hover); }
+.rv-bar--neg.rv-bar--sel { background: var(--danger); outline: 2px solid var(--text); outline-offset: 1px; }
+.ri-package-x { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14'/%3E%3Cpath d='m7.5 4.27 9 5.15'/%3E%3Cpath d='M3.29 7 12 12l8.71-5'/%3E%3Cpath d='M12 22V12'/%3E%3Cpath d='m17 13 5 5m-5 0 5-5'/%3E%3C/svg%3E"); }
+.rv-tablebox .br-num { white-space: nowrap; }

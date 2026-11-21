@@ -16,23 +16,25 @@ Wording in the artboards is illustrative. The i18n catalogs and `docs/glossary-p
 |---|---|---|---|
 | Sidebar (shared by every desktop screen) | | [Sidebar](Sidebar.dc.html) | |
 | Overview | `/` | [Main](Main.dc.html) | [MobileOverview](MobileOverview.dc.html) |
+| More (phone tab) | | | [MobileMore](MobileMore.dc.html) |
+| Plan (phone tab) | | | [MobilePlan](MobilePlan.dc.html) |
 | Transactions | `/transactions` | [Transactions](Transactions.dc.html) | [MobileTransactions](MobileTransactions.dc.html) |
-| Bills to pay | `/bills` | [Bills](Bills.dc.html) | [MobileBills](MobileBills.dc.html) (the bills side panel as a bottom sheet) |
-| Card bills | `/card-bills` | [CardBills](CardBills.dc.html) | |
-| Spending Categories | `/categories` | [Categories](Categories.dc.html) | |
-| Goals | `/goals` | [Goals](Goals.dc.html) | |
-| Net worth | `/net-worth` | [NetWorth](NetWorth.dc.html) | |
-| Projection | `/projection` | [Projection](Projection.dc.html) | |
-| Sources | `/sources` | [Accounts](Accounts.dc.html) | |
+| Bills to pay | `/bills` | [Bills](Bills.dc.html) | [MobileBillsList](MobileBillsList.dc.html), and [MobileBills](MobileBills.dc.html) for the Overview's bills sheet |
+| Card bills | `/card-bills` | [CardBills](CardBills.dc.html) | [MobileCardBills](MobileCardBills.dc.html) |
+| Spending Categories | `/categories` | [Categories](Categories.dc.html) | [MobileCategories](MobileCategories.dc.html) |
+| Goals | `/goals` | [Goals](Goals.dc.html) | [MobileGoals](MobileGoals.dc.html) |
+| Net worth | `/net-worth` | [NetWorth](NetWorth.dc.html) | [MobileNetWorth](MobileNetWorth.dc.html) |
+| Projection | `/projection` | [Projection](Projection.dc.html) | [MobileProjection](MobileProjection.dc.html) |
+| Sources | `/sources` | [Accounts](Accounts.dc.html) | [MobileSources](MobileSources.dc.html) |
 | Pantry | `/pantry` | [Pantry](Pantry.dc.html) (with the item sheet as its side panel) | [MobilePantry](MobilePantry.dc.html) (under Mais, not in the bottom bar) |
 | Pantry item sheet | `/pantry` (row) | [Pantry](Pantry.dc.html), prop `panel` | [MobilePantryItem](MobilePantryItem.dc.html) |
 | Shopping list | `/pantry/list` | [ShoppingList](ShoppingList.dc.html) | [MobileShoppingList](MobileShoppingList.dc.html) |
 | Chat | `/chat` | [Chat](Chat.dc.html) | [MobileChat](MobileChat.dc.html) (full screen, no bottom bar) |
 | Add receipt | `/pantry` (sheet) | the same sheet as an `rv-panel` | [MobileAddReceipt](MobileAddReceipt.dc.html) (steps switched by the prop `step`) |
-| Settings | `/settings` | [Settings](Settings.dc.html) | |
+| Settings | `/settings` | [Settings](Settings.dc.html) | [MobileSettings](MobileSettings.dc.html) |
 | Onboarding | `/onboarding` | [Onboarding](Onboarding.dc.html) | |
 
-Screens with no mobile artboard follow Bedrock's adaptation rules: the 12-column grid becomes one column, the side panel becomes a bottom sheet and the sidebar becomes the bottom bar.
+Every screen has a phone artboard; a new screen gets one before it is built (Bedrock, Layout and responsiveness). On the phone: the `PageHeader` takes two rows (title and icon actions, then the month at full width), the bottom bar has four tabs (Início · Lançamentos · Planejar · Mais, with Bills to pay inside Mais and its count on the Mais tab), a row has at most one action drawn as a 48px icon button, and label and value pairs use `DescriptionList` (`rv-dl` in `revenue.css`). The Projection artboards (desktop and phone) were redrawn on 20/11/2026 with the data the screen shows today: one leftover series at a time (by the plan or at the current pace), a month's sum beside the chart, and a six-column table.
 
 Pantry artboards take the props `locale` (`pt-BR` or `en`, the English check) and `view` (`ready`, `empty`, `loading`, `error`); the shopping list adds `limit` (`ok`, `over`, `none`) and Add receipt switches by `step`. The Pantry sits in "Mais" on the phone and in the Sidebar on desktop.
 

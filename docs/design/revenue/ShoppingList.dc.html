@@ -17,7 +17,7 @@
 <!--
 Layout the screen tickets check:
   PageHeader: title "Lista de compras", subtitle "6 itens · 1 marcado", tool "Despensa" (secondary link back to /pantry).
-  Cards in rv-grid: "Itens" s8 (check-off rows with quantity stepper, price and remove, then the add-by-name field), "Resumo" s4 (expected total, what is left of the groceries limit with a ProgressBar, the over-limit warning, or the no-limit state).
+  Cards in rv-grid: "Itens" s8 (one line per item: check box, name and unit price, quantity Stepper, line total, remove; then the add-by-name field), "Resumo" s4 (expected total, what is left of the groceries limit with a ProgressBar, the over-limit warning, or the no-limit state).
   No side panel.
 -->
 <div class="rv-app" data-theme="{{theme}}">
@@ -39,11 +39,11 @@ Layout the screen tickets check:
 <span class="rv-section">{{t.itemsHead}}</span>
 <div class="br-list">
 <sc-for list="{{rows}}" as="i" hint-placeholder-count="6">
-<div class="br-listrow" style="grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: start; cursor: default">
+<div class="br-listrow" style="grid-template-columns: auto minmax(0, 1fr) auto 112px auto; gap: 16px; cursor: default">
 <span class="br-checkbox" role="checkbox" aria-checked="{{i.checked}}" aria-label="{{t.check}} {{i.name}}" tabindex="0"><span class="br-checkbox__box"><sc-if value="{{i.isChecked}}" hint-placeholder-val="{{ false }}"><i class="ri ri-sm ri-check" aria-hidden="true"></i></sc-if></span></span>
-<div class="br-listrow__main" style="gap: 8px; padding-block: 12px"><span class="br-listrow__title" style="text-decoration: {{i.deco}}; color: {{i.color}}">{{i.name}}</span><span class="br-listrow__meta">{{i.meta}}</span>
-<span class="br-stepper" role="group" aria-label="{{t.qtyOf}} {{i.name}}"><button class="br-stepper__btn" aria-label="{{t.less}}" aria-disabled="{{i.atMin}}"><i class="ri ri-minus" aria-hidden="true"></i></button><output class="br-stepper__value">{{i.qty}}</output><button class="br-stepper__btn" aria-label="{{t.more}}"><i class="ri ri-plus" aria-hidden="true"></i></button></span></div>
-<div class="br-listrow__end" style="padding-block: 12px"><span class="br-amount br-amount--sm"><span class="br-amount__value" style="color: {{i.color}}">{{i.price}}</span></span><button class="br-iconbtn br-iconbtn--sm" style="border: 0" aria-label="{{t.remove}} {{i.name}}"><i class="ri ri-trash" aria-hidden="true"></i></button></div>
+<div class="br-listrow__main"><span class="br-listrow__title" style="text-decoration: {{i.deco}}; color: {{i.color}}">{{i.name}}</span><span class="br-listrow__meta">{{i.meta}}</span></div>
+<span class="br-stepper" role="group" aria-label="{{t.qtyOf}} {{i.name}}"><button class="br-stepper__btn" aria-label="{{t.less}}" aria-disabled="{{i.atMin}}"><i class="ri ri-minus" aria-hidden="true"></i></button><output class="br-stepper__value">{{i.qty}}</output><button class="br-stepper__btn" aria-label="{{t.more}}"><i class="ri ri-plus" aria-hidden="true"></i></button></span>
+<span class="br-amount br-amount--sm" style="text-align: right"><span class="br-amount__value" style="color: {{i.color}}">{{i.price}}</span></span><button class="br-iconbtn br-iconbtn--sm" style="border: 0" aria-label="{{t.remove}} {{i.name}}"><i class="ri ri-trash" aria-hidden="true"></i></button>
 </div>
 </sc-for>
 </div>

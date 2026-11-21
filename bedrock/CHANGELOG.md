@@ -2,6 +2,10 @@
 
 Bedrock follows semver; before 1.0.0 a minor may break ([spec](../docs/design/bedrock/README.md)).
 
+## Unreleased
+
+- Spec only (from the Revenue phone audit): PageHeader and DescriptionList (Core, draft); BottomBar takes four tabs whose labels never truncate; ListRow gets one row action and a one-line caption; controls side by side share one height and are 48px on phones; no screen scrolls sideways; every screen has a phone artboard before it is built.
+
 ## 0.5.0
 
 - Checkbox and Stepper (Core): a labelled check box for ticking items off a list, and a minus and plus quantity control with a minimum, a step (0,001 for kilograms) and a disabled state. They are Core because `web/` needs the same form primitives.
