@@ -4,6 +4,8 @@ Bedrock follows semver; before 1.0.0 a minor may break ([spec](../docs/design/be
 
 ## Unreleased
 
+- ListRow: optional `action` (`{ label, icon, onClick, loading, disabled, variant }`), a sibling button after the row: a text Button from the tablet breakpoint up, a 48px icon button below it, the label as its accessible name. Rows without it render as before.
+
 - Spec only (from the Revenue phone audit): PageHeader and DescriptionList (Core, draft); BottomBar takes four tabs whose labels never truncate; ListRow gets one row action and a one-line caption; controls side by side share one height and are 48px on phones; no screen scrolls sideways; every screen has a phone artboard before it is built.
 
 ## 0.5.0
