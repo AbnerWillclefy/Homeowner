@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { answer } from "./revenue-fake-api.mjs";
-import { changedScreens } from "./revenue-screenshots.mjs";
+import { changedScreens, overflowOf } from "./revenue-screenshots.mjs";
 
 test("shoots the screen of each changed domain, ignoring shared files beside them", () => {
   const changed = ["revenue/src/domains/transactions/api.ts", "revenue/src/domains/card-bills/CardBillsPage.tsx", "revenue/src/shared/i18n/catalogs.ts"];
@@ -10,7 +10,30 @@ test("shoots the screen of each changed domain, ignoring shared files beside the
 
 test("names the Overview by its route, and shoots it when only shared code changed", () => {
   assert.deepEqual(changedScreens(["revenue/src/domains/overview/OverviewPage.tsx"]), ["/"]);
-  assert.deepEqual(changedScreens(["revenue/src/app/Shell.tsx"]), ["/"]);
+  assert.deepEqual(changedScreens(["revenue/src/shared/i18n/catalogs.ts"]), ["/"]);
+});
+
+test("shoots the Overview, Plan and More when the app frame changed", () => {
+  assert.deepEqual(changedScreens(["revenue/src/app/Shell.tsx"]), ["/", "/plan", "/more"]);
+  assert.deepEqual(changedScreens(["revenue/src/app/Shell.tsx", "revenue/src/domains/bills/api.ts"]), ["/", "/plan", "/more", "/bills"]);
+});
+
+test("passes a page that fits and names the widest element of one that overflows", () => {
+  assert.equal(overflowOf("/", { scrollWidth: 375, innerWidth: 375, offenders: [] }), null);
+  const message = overflowOf("/more", { scrollWidth: 412, innerWidth: 375, offenders: [{ description: "<td> small", right: 390 }, { description: "<table> wide", right: 412 }] });
+  assert.match(message, /\/more/);
+  assert.match(message, /412px wide in a 375px/);
+  assert.match(message, /<table> wide/);
+  assert.doesNotMatch(message, /small/);
+});
+
+test("serves every read the Mais and Planejar rows make", () => {
+  const reads = ["", "/bills?month=2026-11", "/commitments?from=2026-11-01", "/transactions?month=2026-11", "/savings", "/net-worth?range=30d", "/pantry"];
+  for (const read of reads) {
+    const found = answer("GET", new URL(`http://api/me/finance${read}`), "2026-11-03");
+    assert.equal(found?.status, 200, read);
+    assert.ok(found.body, read);
+  }
 });
 
 test("dates no transaction after today in the current month", () => {
