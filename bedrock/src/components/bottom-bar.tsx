@@ -3,7 +3,7 @@ import { NavBadge, NavLink, type NavItem } from "./nav-link";
 type Props = {
   /** The nav landmark's accessible name. Unique on the page. */
   label: string;
-  /** Three to five destinations. */
+  /** Four destinations. */
   items: NavItem[];
   onNavigate?: (href: string) => void;
 };
@@ -25,7 +25,7 @@ export function BottomBar({ label, items, onNavigate }: Props) {
             >
               <item.icon aria-hidden className="size-5" />
               {/* 11/16 weight 500 is the spec's bottom-bar label size, which has no token. */}
-              <span className="max-w-full truncate px-1 text-[11px]/4 font-medium">{item.label}</span>
+              <span className="max-w-full whitespace-nowrap text-[11px]/4 font-medium">{item.label}</span>
               <NavBadge badge={item.badge} className="absolute top-1 right-1/4 h-4 px-1" />
             </NavLink>
           </li>
