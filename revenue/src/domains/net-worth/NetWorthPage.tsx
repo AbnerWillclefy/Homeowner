@@ -1,10 +1,11 @@
-import { Badge, Card, CardContent, CardLabel, EmptyState, SegmentedControl, Skeleton } from "@homeowner/bedrock";
+import { Badge, Card, CardContent, CardLabel, DescriptionList, EmptyState, SegmentedControl, Skeleton } from "@homeowner/bedrock";
 import { Amount, formatAmount, ListRow } from "@homeowner/bedrock/finance";
 import { CreditCard, Landmark, TrendingDown, TrendingUp } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useHiddenProps, useHideValues } from "../../shared/HideValues";
 import { useI18n } from "../../shared/i18n/I18nProvider";
+import { useMediaQuery } from "../../shared/useMediaQuery";
 import { PageHeader } from "../../shared/PageHeader";
 import { percentText } from "../overview/logic/format";
 import { NetWorthLine } from "./components/NetWorthLine";
@@ -18,6 +19,7 @@ export function NetWorthPage() {
   const { t, locale } = useI18n();
   const { hidden } = useHideValues();
   const hiddenProps = useHiddenProps();
+  const desktop = useMediaQuery("(min-width: 1024px)");
   const [params, setParams] = useSearchParams();
   const range = rangeFromParam(params.get("range"));
   const { data, loading, placeholder, failed, reload } = useNetWorth(range);
@@ -59,13 +61,14 @@ export function NetWorthPage() {
         <div className="grid gap-6 desktop:grid-cols-12">
           <Card className="desktop:col-span-12">
             <CardContent className="gap-4">
-              <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex flex-wrap items-start justify-between gap-4 max-desktop:flex-col max-desktop:items-stretch">
                 <div className="flex flex-col gap-1">
                   <CardLabel>{t("netWorth.today")}</CardLabel>
                   <Amount cents={today.totalCents} size="hero" locale={locale} {...hiddenProps} />
                   <span className="body text-text-muted">{!placeholder && startsLate(data.series, range) ? t("netWorth.startsAt") : t(`netWorth.note.${range}`)}</span>
                 </div>
                 <SegmentedControl
+                  block={!desktop}
                   label={t("netWorth.range")}
                   value={range}
                   onValueChange={(next) => setParams(next === "30d" ? {} : { range: next }, { replace: true })}
@@ -106,21 +109,14 @@ export function NetWorthPage() {
           <Card className="desktop:col-span-4" role="region" aria-labelledby="net-worth-how">
             <CardContent className="gap-3">
               <CardLabel id="net-worth-how">{t("netWorth.how")}</CardLabel>
-              {([
-                ["netWorth.balances", today.balancesCents],
-                ["netWorth.plusInvestments", today.investmentsCents],
-                ["netWorth.cardBills", today.cardBillsCents],
-              ] as const).map(([key, cents]) => (
-                <div key={key} className="flex flex-wrap items-baseline justify-between gap-x-3">
-                  <span>{t(key)}</span>
-                  <Amount cents={cents} size="sm" locale={locale} {...hiddenProps} />
-                </div>
-              ))}
-              <hr className="border-border" />
-              <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                <strong>{t("netWorth.total")}</strong>
-                <Amount cents={today.totalCents} size="md" locale={locale} {...hiddenProps} />
-              </div>
+              <DescriptionList
+                items={[
+                  { label: t("netWorth.balances"), value: <Amount cents={today.balancesCents} size="sm" locale={locale} {...hiddenProps} /> },
+                  { label: t("netWorth.plusInvestments"), value: <Amount cents={today.investmentsCents} size="sm" locale={locale} {...hiddenProps} /> },
+                  { label: t("netWorth.cardBills"), value: <Amount cents={today.cardBillsCents} size="sm" locale={locale} {...hiddenProps} /> },
+                  { label: t("netWorth.total"), value: <Amount cents={today.totalCents} size="md" locale={locale} {...hiddenProps} />, total: true },
+                ]}
+              />
             </CardContent>
           </Card>
         </div>

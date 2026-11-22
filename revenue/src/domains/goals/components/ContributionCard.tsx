@@ -4,6 +4,7 @@ import { Pencil } from "lucide-react";
 import { useState } from "react";
 import { useHiddenProps } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
+import { useMediaQuery } from "../../../shared/useMediaQuery";
 import { useMonthParam } from "../../../shared/month/useMonthParam";
 import type { Savings } from "../api";
 import type { SaveOutcome } from "../hooks/useSavings";
@@ -17,6 +18,7 @@ export function ContributionCard({ savings, save, className }: { savings: Saving
   const { t, locale } = useI18n();
   const { thisMonth } = useMonthParam();
   const hide = useHiddenProps();
+  const desktop = useMediaQuery("(min-width: 1024px)");
   const [open, setOpen] = useState(false);
   const [failed, setFailed] = useState(false);
   const { contributionBaseCents: base, reserveSharePercent: share } = savings;
@@ -30,10 +32,11 @@ export function ContributionCard({ savings, save, className }: { savings: Saving
       <CardHeader className="flex-row flex-wrap items-center justify-between gap-2">
         <CardLabel>{base !== null && share !== null ? t("goals.contribution.month", { month }) : t("goals.contribution.title")}</CardLabel>
         {base !== null && share !== null && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 max-desktop:w-full max-desktop:flex-col max-desktop:items-stretch">
             <span className="body text-text-muted">{t("goals.contribution.reserveTakes")}</span>
             <SegmentedControl
               label={t("goals.contribution.share")}
+              block={!desktop}
               value={String(share)}
               options={shareOptions(share).map((v) => ({ value: String(v), label: `${v}%` }))}
               onValueChange={(v) => void save({ baseCents: base, reserveSharePercent: Number(v) }).then((r) => setFailed(r.kind !== "ok"))}

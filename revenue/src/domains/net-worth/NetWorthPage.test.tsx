@@ -64,6 +64,16 @@ describe("the screen", () => {
     expect(rows[2]!.textContent).toContain("-R$1,000.00");
   });
 
+  it("makes the number as a list of four term and detail pairs, the total last", async () => {
+    open();
+    const how = within(await screen.findByRole("region", { name: "How the number is made" }));
+    const dl = how.getAllByRole("term")[0]!.closest("dl")!;
+    expect([...dl.querySelectorAll("dt")].map((n) => n.textContent)).toEqual(["Account balances", "+ Investments", "− unpaid card bills", "Net worth"]);
+    expect(dl.querySelectorAll("dd")).toHaveLength(4);
+    expect(dl.querySelectorAll("dt")[3]!.textContent).toBe("Net worth");
+    expect(dl.querySelectorAll("dd")[3]!.textContent).toBe("R$10,000.00");
+  });
+
   it("gives Investments and Accounts a change this month, and card bills none", async () => {
     open();
     const [inv, acc, bills] = within(await screen.findByRole("region", { name: "Where it comes from" })).getAllByRole("link");
