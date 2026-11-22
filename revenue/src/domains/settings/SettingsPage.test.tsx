@@ -287,6 +287,17 @@ describe("credentials", () => {
     await userEvent.click(screen.getByRole("button", { name: "Remove credentials" }));
     await waitFor(() => expect(api.deleteCredentials).toHaveBeenCalledOnce());
   });
+
+  it("closes the phone sheet after removing, leaving no stray Cancel", async () => {
+    vi.mocked(api.getCredentialsSaved).mockResolvedValueOnce(true).mockResolvedValue(false);
+    vi.mocked(api.deleteCredentials).mockResolvedValue(ok);
+    open();
+    await userEvent.click(await screen.findByRole("button", { name: "Replace or remove the credentials" }));
+    await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Remove" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remove credentials" }));
+    expect(await screen.findByLabelText("Client ID")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
+  });
 });
 
 describe("notifications", () => {

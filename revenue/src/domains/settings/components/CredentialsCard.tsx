@@ -54,7 +54,11 @@ export function CredentialsCard() {
     }
   }
 
-  const removeSaved = () => void remove().then((ok) => setFailure(ok ? null : "settings.creds.failed"));
+  const removeSaved = () =>
+    void remove().then((ok) => {
+      setFailure(ok ? null : "settings.creds.failed");
+      if (ok) setEditing(false);
+    });
 
   const form = (
     <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-4">
