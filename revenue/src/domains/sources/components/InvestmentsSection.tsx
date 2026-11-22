@@ -1,6 +1,6 @@
-import { Badge, Banner, Button, Card, Menu, SegmentedControl, type MenuItem } from "@homeowner/bedrock";
+import { Badge, Banner, Button, Card, SegmentedControl } from "@homeowner/bedrock";
 import { Amount } from "@homeowner/bedrock/finance";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useHiddenProps } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
@@ -8,6 +8,8 @@ import type { Investment, Serves } from "../../goals/api";
 import { useMoney } from "../../goals/hooks/useMoney";
 import type { SaveOutcome } from "../../goals/hooks/useSavings";
 import { groupInvestments } from "../../goals/logic/investments";
+import { BankMark } from "./BankMark";
+import { SourceRow } from "./SourceRow";
 
 interface Props {
   investments: Investment[];
@@ -15,14 +17,14 @@ interface Props {
   takeBankValue(id: string): Promise<SaveOutcome>;
   onAdd(): void;
   onEdit(investment: Investment): void;
-  onDelete(investment: Investment): void;
 }
 
 /**
- * Investimentos, grouped by what they count toward. A bank one is marked, asks what it is for until picked (and
- * counts toward neither meanwhile), says "edited" with the bank's value beside it, and cannot be deleted.
+ * Investimentos, one single-line row each, ordered by what they count toward (reserve, goals, not picked). Tapping a row
+ * opens its form; a bank one has the "Escolher" badge and a pick control until picked (it counts toward neither
+ * meanwhile), says "edited" with the bank's value beside it, and cannot be deleted.
  */
-export function InvestmentsSection({ investments, pick, takeBankValue, onAdd, onEdit, onDelete }: Props) {
+export function InvestmentsSection({ investments, pick, takeBankValue, onAdd, onEdit }: Props) {
   const { t, locale } = useI18n();
   const money = useMoney();
   const hidden = useHiddenProps();
@@ -32,74 +34,50 @@ export function InvestmentsSection({ investments, pick, takeBankValue, onAdd, on
     <Card role="group" aria-labelledby="investments-title">
       <div className="flex items-center justify-between gap-2">
         <h2 id="investments-title" className="card-label text-text-muted">{t("investments.title")}</h2>
-        <Amount cents={investments.reduce((n, i) => n + i.valueCents, 0)} size="md" locale={locale} {...hidden} />
+        <Amount cents={investments.reduce((n, i) => n + i.valueCents, 0)} size="sm" locale={locale} {...hidden} />
       </div>
       <p className="caption text-text-muted">{t("investments.hint")}</p>
       {failed && <Banner tone="danger">{t("investments.failed")}</Banner>}
       {investments.length === 0 && <p className="body text-text-muted">{t("investments.empty")}</p>}
-      {groupInvestments(investments).map((group) => (
-        <div key={group.serves} className="flex flex-col">
-          <h3 className="body-strong">{t(group.serves === "none" ? "investments.group.none" : group.serves === "reserve" ? "goals.reserve.title" : "goals.title")}</h3>
-          <ul className="divide-y divide-border">
-            {group.items.map((inv) => {
-              const bank = inv.source === "pluggy";
-              const items: MenuItem[] = [];
-              if (!bank || inv.serves) items.push({ label: t("goals.edit"), icon: Pencil, onSelect: () => onEdit(inv) });
-              if (!bank) items.push({ label: t("goals.delete"), icon: Trash2, danger: true, onSelect: () => onDelete(inv) });
-              return (
-                <li key={inv.id} className="flex flex-col gap-2 py-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex min-w-0 flex-col items-start gap-1">
-                      <span className="body-strong [overflow-wrap:anywhere]">{inv.name}</span>
-                      {(bank || inv.edited) && (
-                        <span className="flex flex-wrap gap-1">
-                          {bank && <Badge>{t("investments.fromBank")}</Badge>}
-                          {inv.edited && <Badge tone="warning">{t("investments.edited")}</Badge>}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end">
-                      <Amount cents={inv.valueCents} size="sm" locale={locale} {...hidden} />
-                      {inv.edited && inv.bankValueCents !== null && (
-                        <span className="caption text-text-muted">{t("investments.bankValue", { amount: hidden.hidden ? hidden.hiddenLabel : money(inv.bankValueCents) })}</span>
-                      )}
-                    </div>
-                  </div>
-                  {bank && (
-                    <>
-                      {inv.serves === null && (
-                        <>
-                          <p className="body-strong">{t("investments.pick")}</p>
-                          <p className="caption text-text-muted">{t("investments.pickNote")}</p>
-                        </>
-                      )}
-                      <SegmentedControl
-                        block
-                        label={t("investments.servesLabel", { name: inv.name })}
-                        value={inv.serves ?? ""}
-                        onValueChange={(v) => void run(pick(inv.id, v as Serves))}
-                        options={[{ value: "reserve", label: t("investments.serves.reserve") }, { value: "goals", label: t("investments.serves.goals") }]}
-                      />
-                      {!inv.reportedByBank && <p className="caption text-text-muted">{t("investments.gone")}</p>}
-                    </>
+      <ul className="divide-y divide-border">
+        {groupInvestments(investments).flatMap((g) => g.items).map((inv) => {
+          const bank = inv.source === "pluggy";
+          const editable = !bank || inv.serves !== null;
+          const subtitle = [
+            t(inv.serves === null ? "sources.investment.none" : inv.serves === "reserve" ? "goals.reserve.title" : "goals.title"),
+            inv.edited && t("investments.edited"),
+          ].filter(Boolean).join(" · ");
+          const end = inv.serves === null
+            ? <Badge tone="warning">{t("sources.investment.choose")}</Badge>
+            : inv.edited && inv.bankValueCents !== null ? t("investments.bankValue", { amount: hidden.hidden ? hidden.hiddenLabel : money(inv.bankValueCents) }) : undefined;
+          return (
+            <li key={inv.id} className="flex flex-col">
+              <SourceRow leading={<BankMark name={inv.name} />} title={inv.name} subtitle={subtitle} cents={inv.valueCents} end={end}>
+                {editable ? <button type="button" aria-label={t("sources.investment.edit", { name: inv.name })} onClick={() => onEdit(inv)} /> : undefined}
+              </SourceRow>
+              {bank && (
+                <div className="flex flex-col gap-2 pb-3">
+                  {inv.serves === null && <p className="caption text-text-muted">{t("investments.pickNote")}</p>}
+                  <SegmentedControl
+                    block
+                    label={t("investments.servesLabel", { name: inv.name })}
+                    value={inv.serves ?? ""}
+                    onValueChange={(v) => void run(pick(inv.id, v as Serves))}
+                    options={[{ value: "reserve", label: t("investments.serves.reserve") }, { value: "goals", label: t("investments.serves.goals") }]}
+                  />
+                  {!inv.reportedByBank && <p className="caption text-text-muted">{t("investments.gone")}</p>}
+                  {inv.edited && (
+                    <Button variant="secondary" size="sm" className="self-end" aria-label={t("investments.useBank.row", { name: inv.name })} onClick={() => void run(takeBankValue(inv.id))}>
+                      {t("investments.useBank")}
+                    </Button>
                   )}
-                  {(inv.edited || items.length > 0) && (
-                    <div className="flex flex-wrap items-center justify-end gap-1">
-                      {inv.edited && (
-                        <Button variant="secondary" size="sm" aria-label={t("investments.useBank.row", { name: inv.name })} onClick={() => void run(takeBankValue(inv.id))}>
-                          {t("investments.useBank")}
-                        </Button>
-                      )}
-                      {items.length > 0 && <Menu label={t("goals.menu", { name: inv.name })} closeLabel={t("app.close")} items={items} />}
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
-      <Button variant="ghost" icon={Plus} className="self-start" onClick={onAdd}>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <Button variant="ghost" icon={Plus} className="w-full desktop:w-auto desktop:self-start" onClick={onAdd}>
         {t("investments.add")}
       </Button>
     </Card>

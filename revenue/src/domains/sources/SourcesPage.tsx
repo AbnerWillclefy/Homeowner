@@ -1,6 +1,6 @@
-import { Banner, Button, Card, Dialog, EmptyState, Skeleton } from "@homeowner/bedrock";
-import { Landmark, Lock } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Banner, Card, Dialog, EmptyState, Skeleton } from "@homeowner/bedrock";
+import { Landmark, Lock, Plus } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useI18n } from "../../shared/i18n/I18nProvider";
 import { useMonthParam } from "../../shared/month/useMonthParam";
@@ -38,6 +38,10 @@ export function SourcesPage() {
   const [deleteFailed, setDeleteFailed] = useState(false);
   const manual = useManualCards();
   const [manualForm, setManualForm] = useState<{ card: ManualCard | null } | null>(null);
+  // These Sheets open from state, with no trigger of their own, so the page hands focus back to what opened them.
+  const opener = useRef<HTMLElement | null>(null);
+  const remember = () => void (opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null);
+  const restore = () => void setTimeout(() => opener.current?.focus(), 0);
 
   // The same read the overview's card bills use, so the cache is shared; a card without a bill there simply shows none.
   const openBills = useMemo(() => new Map((commitments.data?.month.cards ?? []).map((c) => [c.sourceId, c.amountCents])), [commitments.data]);
@@ -56,7 +60,7 @@ export function SourcesPage() {
         title={t("nav.sources")}
         subtitle={subtitle}
         hideValues
-        tools={<Button loading={connecting} onClick={() => void connect()}>{t("sources.connect")}</Button>}
+        action={{ label: t("sources.connect"), icon: Plus, loading: connecting, onClick: () => void connect() }}
       />
 
       {/* Always in the page, so a screen reader hears it appear. */}
@@ -84,7 +88,7 @@ export function SourcesPage() {
       ) : (
         <div className="grid gap-6 desktop:grid-cols-12">
           <div className="flex flex-col gap-6 desktop:col-span-8">
-            {data.sources.length === 0 && <EmptyState icon={Landmark} title={t("nav.sources")} message={t("sources.none")} />}
+            {data.sources.length === 0 && <EmptyState icon={Landmark} title={t("nav.sources")} message={t("sources.none")} action={{ label: t("sources.connect"), onClick: () => void connect() }} />}
             {accounts.length > 0 && <AccountsCard sources={accounts} />}
             <Block label={t("investments.title")} failed={t("sources.failed.investments")} state={savings}>
               {(s) => (
@@ -92,9 +96,8 @@ export function SourcesPage() {
                   investments={s.investments}
                   pick={savings.pickServes}
                   takeBankValue={savings.takeBankValue}
-                  onAdd={() => setForm({ investment: null })}
-                  onEdit={(investment) => setForm({ investment })}
-                  onDelete={(investment) => { setDeleteFailed(false); setDeleting(investment); }}
+                  onAdd={() => { remember(); setForm({ investment: null }); }}
+                  onEdit={(investment) => { remember(); setForm({ investment }); }}
                 />
               )}
             </Block>
@@ -103,8 +106,8 @@ export function SourcesPage() {
               manualCards={manual.cards}
               manualFailed={manual.failed}
               openBills={openBills}
-              onAddManual={() => setManualForm({ card: null })}
-              onEditManual={(card) => setManualForm({ card })}
+              onAddManual={() => { remember(); setManualForm({ card: null }); }}
+              onEditManual={(card) => { remember(); setManualForm({ card }); }}
               onRetryManual={manual.reload}
             />
           </div>
@@ -120,7 +123,7 @@ export function SourcesPage() {
         </div>
       )}
 
-      {form && <InvestmentFormSheet key={form.investment?.id ?? "new"} investment={form.investment} save={(input) => savings.saveInvestment(form.investment?.id ?? null, input)} onClose={() => setForm(null)} />}
+      {form && <InvestmentFormSheet key={form.investment?.id ?? "new"} investment={form.investment} save={(input) => savings.saveInvestment(form.investment?.id ?? null, input)} onDelete={form.investment && form.investment.source !== "pluggy" ? () => { const investment = form.investment!; setForm(null); setDeleteFailed(false); setDeleting(investment); } : undefined} onClose={() => { setForm(null); restore(); }} />}
       {manualForm && (
         <ManualCardSheet
           key={manualForm.card?.id ?? "new"}
@@ -128,7 +131,7 @@ export function SourcesPage() {
           thisMonth={thisMonth}
           save={(input) => manual.save(manualForm.card?.id ?? null, input)}
           remove={() => manual.remove(manualForm.card!.id)}
-          onClose={() => setManualForm(null)}
+          onClose={() => { setManualForm(null); restore(); }}
         />
       )}
       {deleting && (

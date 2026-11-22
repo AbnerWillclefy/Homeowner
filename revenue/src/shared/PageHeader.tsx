@@ -30,7 +30,7 @@ export function PageHeader({
   /** Secondary actions, between the month and the primary action. */
   tools?: ReactNode;
   /** The primary action: a `Button` on desktop, a round brand "+" icon button on a phone. */
-  action?: { label: string; icon: LucideIcon; onClick: () => void };
+  action?: { label: string; icon: LucideIcon; onClick: () => void; /** Shows the spinner and disables the button while the action runs. */ loading?: boolean };
   /** Shows the hide-values eye, last. */
   hideValues?: boolean;
 }) {
@@ -51,7 +51,7 @@ export function PageHeader({
         <div className="col-start-2 row-start-1 flex flex-nowrap items-center gap-2 desktop:flex-wrap">
           {tools}
           {action && (
-            <Button icon={action.icon} onClick={action.onClick} className="max-desktop:size-control-lg max-desktop:rounded-full max-desktop:px-0">
+            <Button icon={action.icon} loading={action.loading} onClick={action.onClick} className="max-desktop:size-control-lg max-desktop:rounded-full max-desktop:px-0">
               <span className="max-desktop:sr-only">{action.label}</span>
             </Button>
           )}
