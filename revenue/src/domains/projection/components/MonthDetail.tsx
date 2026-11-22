@@ -1,53 +1,46 @@
-import { Badge, Card, CardHeader, CardLabel } from "@homeowner/bedrock";
+import { Badge, Card, CardHeader, CardLabel, DescriptionList, type DescriptionListItem } from "@homeowner/bedrock";
 import { Amount } from "@homeowner/bedrock/finance";
 import { useHiddenProps } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
 import { monthLabel } from "../../../shared/month/month";
-import { CategoryCuts } from "./CategoryCuts";
-import { useMoney } from "../hooks/useMoney";
-import type { ProjectionRow } from "../logic/projectionRow";
+import { categoryName } from "../logic/labels";
+import { type ProjectionRow, type Series, seriesCents } from "../logic/projectionRow";
 
-/** The chosen month's sum, line by line: the Monthly income less each group is its Leftover. A short month says how much, in words. */
-export function MonthDetail({ row, income }: { row: ProjectionRow; income: number }) {
+/**
+ * The chosen month's sum, line by line: the Monthly income less each group is its Leftover by the plan, less what each
+ * category's pace is over its plan is the Leftover at the current pace. The shown series is the big figure; a short
+ * month says "Falta" in words. "Gasto fora do cartão" is a line only when the month has it (the current one), so the
+ * lines always add up.
+ */
+export function MonthDetail({ row, income, series }: { row: ProjectionRow; income: number; series: Series }) {
   const { t, locale } = useI18n();
   const hidden = useHiddenProps();
-  const money = useMoney();
-  const leftover = row.leftoverCents ?? 0;
-  const lines = [
-    ["overview.group.cards", row.cardsCents], ["overview.group.bills", row.billsCents], ["overview.group.planned", row.plannedCents],
-    ["overview.group.spent", row.spentCents], ["overview.group.saving", row.savingCents],
-  ] as const;
+  const shown = seriesCents(row, series) ?? 0;
+  const amount = (cents: number) => <Amount cents={cents} size="sm" locale={locale} {...hidden} />;
+  const minus = (key: Parameters<typeof t>[0], cents: number | undefined): DescriptionListItem[] => (cents === undefined ? [] : [{ label: `− ${t(key)}`, value: amount(cents) }]);
+  const items: DescriptionListItem[] = [
+    { label: t("overview.leftover.income"), value: amount(income) },
+    ...minus("overview.group.cards", row.cardsCents),
+    ...minus("overview.group.bills", row.billsCents),
+    ...minus("overview.group.planned", row.plannedCents),
+    ...minus("overview.group.spent", row.spentCents),
+    ...minus("overview.group.saving", row.savingCents),
+    { label: t("projection.leftoverPlan"), value: amount(row.leftoverCents ?? 0), total: true },
+    ...row.cuts.filter((c) => c.cutCents > 0).map((c) => ({ label: `− ${t("projection.cutOver", { category: categoryName(t, c.category) })}`, value: amount(c.cutCents) })),
+    ...(row.paceLeftoverCents === null ? [] : [{ label: t("projection.paceLeftover"), value: amount(row.paceLeftoverCents), total: true }]),
+  ];
 
   return (
-    <Card className="min-w-0 desktop:col-span-4">
-      <CardHeader>
-        <CardLabel>{monthLabel(row.month, locale)}</CardLabel>
-        <Badge tone={leftover < 0 ? "danger" : "positive"}>{leftover < 0 ? t("projection.short", { amount: money(-leftover) }) : t("projection.leftoverPlan")}</Badge>
+    <Card variant="compact" role="region" aria-labelledby="projection-month" className="min-w-0 desktop:col-span-4 desktop:p-6">
+      <CardHeader className="flex-row items-center justify-between gap-2">
+        <CardLabel id="projection-month">{monthLabel(row.month, locale)}</CardLabel>
+        {shown < 0 && <Badge tone="danger">{t("plan.projection.badge")}</Badge>}
       </CardHeader>
-      <Amount cents={leftover} size="lg" locale={locale} {...hidden} />
-      <dl className="flex flex-col gap-2">
-        <div className="flex items-baseline justify-between gap-3">
-          <dt>{t("overview.leftover.income")}</dt>
-          <dd><Amount cents={income} size="sm" locale={locale} {...hidden} /></dd>
-        </div>
-        {lines.map(([key, cents]) => cents !== undefined && (
-          <div key={key} className="flex items-baseline justify-between gap-3 text-text-muted">
-            <dt>− {t(key)}</dt>
-            <dd><Amount cents={cents} size="sm" locale={locale} {...hidden} /></dd>
-          </div>
-        ))}
-        <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
-          <dt className="body-strong">{t("projection.leftoverPlan")}</dt>
-          <dd><Amount cents={leftover} size="sm" locale={locale} {...hidden} /></dd>
-        </div>
-        {row.paceLeftoverCents !== null && (
-          <div className="flex items-baseline justify-between gap-3">
-            <dt className="body-strong">{t("projection.paceLeftover")}</dt>
-            <dd><Amount cents={row.paceLeftoverCents} size="sm" locale={locale} {...hidden} /></dd>
-          </div>
-        )}
-      </dl>
-      <CategoryCuts cuts={row.cuts} />
+      <div className="flex flex-col gap-1">
+        <Amount cents={shown} size="lg" locale={locale} {...hidden} />
+        <span className="body text-text-muted">{series === "pace" ? t("projection.paceLeftover") : t("projection.leftoverPlan")}</span>
+      </div>
+      <DescriptionList items={items} />
     </Card>
   );
 }

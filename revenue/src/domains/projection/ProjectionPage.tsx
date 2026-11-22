@@ -2,33 +2,39 @@ import { Button, EmptyState, Skeleton } from "@homeowner/bedrock";
 import { LineChart } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
+import { useHideValues } from "../../shared/HideValues";
 import { useI18n } from "../../shared/i18n/I18nProvider";
 import { PageHeader } from "../../shared/PageHeader";
 import { useMediaQuery } from "../../shared/useMediaQuery";
-import { MonthCard } from "./components/MonthCard";
 import { MonthDetail } from "./components/MonthDetail";
+import { MonthsList } from "./components/MonthsList";
 import { MonthsTable } from "./components/MonthsTable";
 import { PlansInProgress } from "./components/PlansInProgress";
 import { ProjectionChart } from "./components/ProjectionChart";
+import { useMoney } from "./hooks/useMoney";
 import { useProjection } from "./hooks/useProjection";
 import { plansInProgress } from "./logic/plansInProgress";
-import { projectionRow } from "./logic/projectionRow";
+import { projectionRow, type Series, seriesCents } from "./logic/projectionRow";
 
 // Duplicates --bp-desktop in Bedrock's tokens.css: matchMedia cannot read custom properties.
 const DESKTOP = "(min-width: 1024px)";
 
 /**
  * "Projeção" at `/projection`: what each of the next twelve months already has to pay and what is left of the Monthly
- * income, then the Installment plans in progress. On a desktop: a chart of the Leftovers, the chosen month's sum and a
- * table of all twelve; on a phone, a card per month. It states a forecast and never commands: a month over the income
- * is a minus sign and words. The chosen month is local state (default this month), not `useMonthParam`, which refuses
- * a future month. Monthly income is edited in Settings.
+ * income, then the Installment plans in progress. A chart of the Leftovers (by the plan or at the current pace, one at a
+ * time) and the chosen month's sum, then all twelve months: a table on a desktop, a list on a phone. It states a
+ * forecast and never commands: a month over the income is a minus sign and "Falta". The chosen month and the series
+ * are local state (this month and by plan at first), not `useMonthParam`, which refuses a future month. Monthly income
+ * is edited in Settings.
  */
 export function ProjectionPage() {
   const { t } = useI18n();
   const desktop = useMediaQuery(DESKTOP);
   const { from, data, loading, failed, reload } = useProjection();
+  const { hidden } = useHideValues();
+  const money = useMoney();
   const [chosen, setChosen] = useState<string | null>(null);
+  const [series, setSeries] = useState<Series>("plan");
   const plans = data ? plansInProgress(data.months) : [];
   const rows = data ? data.months.map(projectionRow) : [];
   const income = data?.monthlyIncomeCents ?? null;
@@ -36,7 +42,7 @@ export function ProjectionPage() {
 
   return (
     <section className="flex flex-col gap-6">
-      <PageHeader title={t("nav.projection")} subtitle={t("projection.intro")} hideValues />
+      <PageHeader title={t("nav.projection")} subtitle={income !== null && !hidden ? t("projection.introIncome", { amount: money(income) }) : t("projection.intro")} hideValues />
 
       {loading ? (
         <div role="status" className="flex flex-col gap-4">
@@ -55,22 +61,15 @@ export function ProjectionPage() {
               </Button>
             </div>
           ) : (
-            desktop && (
-              <>
-                <ProjectionChart months={rows.map((r) => r.month)} leftovers={rows.map((r) => r.leftoverCents ?? 0)} selected={selected.month} onSelect={setChosen} />
-                <MonthDetail row={selected} income={income} />
-              </>
-            )
+            <>
+              <ProjectionChart months={rows.map((r) => r.month)} values={rows.map((r) => seriesCents(r, series) ?? 0)} series={series} onSeries={setSeries} selected={selected.month} onSelect={setChosen} desktop={desktop} />
+              <MonthDetail row={selected} income={income} series={series} />
+            </>
           )}
           {desktop ? (
-            <MonthsTable rows={rows} from={from} income={income} selected={selected.month} onSelect={setChosen} />
+            <MonthsTable rows={rows} from={from} selected={selected.month} onSelect={setChosen} />
           ) : (
-            <>
-              <div className="flex flex-col gap-3">
-                {data.months.map((m) => <MonthCard key={m.month} data={m} current={m.month === from} income={income} />)}
-              </div>
-              <p className="caption text-text-muted">{t("projection.footnote")}</p>
-            </>
+            <MonthsList rows={rows} from={from} series={series} selected={selected.month} onSelect={setChosen} />
           )}
           {plans.length > 0 && <PlansInProgress plans={plans} />}
         </div>

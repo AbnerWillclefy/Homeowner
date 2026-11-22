@@ -1,26 +1,26 @@
-export const BAR_WIDTH = 36;
-export const STRIDE = 52;
-export const PLOT_TOP = 16;
-export const PLOT_HEIGHT = 160;
-
-export interface Bar { x: number; y: number; h: number; negative: boolean }
-export interface ChartLayout { bars: Bar[]; baseline: number; top: number; bottom: number }
+/** One month's bar: `up` or `down` is the height as a percent of its half of the plot, null on the side the month is not on. */
+export interface Bar { up: number | null; down: number | null }
+export interface ChartLayout {
+  bars: Bar[];
+  /** CSS `grid-template-rows`: the part above the baseline and the part below it share the plot by their largest values. */
+  rows: string;
+  /** Every month is zero: the plot keeps its baseline and each bar is the 2px sliver. */
+  empty: boolean;
+}
 
 /**
- * Bars for the Leftover of each month: a positive one grows up from the baseline, a negative one down. The plot is a
- * fixed height, shared by the largest positive and the largest negative value. `top` and `bottom` are the values at the
- * plot's edges (`bottom` is 0 when no month is negative). A zero month still gets a 2px sliver so it can be seen.
+ * Bars for the Leftover of each month: a positive one grows up from the baseline, a negative one down. The plot is
+ * split at the baseline in proportion to the largest positive and the largest negative value, so one scale serves both.
  */
 export function chartLayout(values: number[]): ChartLayout {
   const top = Math.max(0, ...values);
-  const bottom = Math.min(0, ...values);
-  const scale = top - bottom === 0 ? 0 : PLOT_HEIGHT / (top - bottom);
-  const baseline = PLOT_TOP + top * scale;
-  const bars = values.map((v, i): Bar => {
-    const h = Math.max(2, Math.abs(v) * scale);
-    return { x: i * STRIDE + 8, y: v >= 0 ? baseline - h : baseline, h, negative: v < 0 };
-  });
-  return { bars, baseline, top, bottom };
+  const bottom = -Math.min(0, ...values);
+  const empty = top === 0 && bottom === 0;
+  return {
+    bars: values.map((v) => ({ up: v >= 0 ? (top ? (v / top) * 100 : 0) : null, down: v < 0 ? (-v / bottom) * 100 : null })),
+    rows: empty ? "1fr 0fr" : `${top}fr ${bottom}fr`,
+    empty,
+  };
 }
 
 /** "jan." / "Jan" for the axis. */
