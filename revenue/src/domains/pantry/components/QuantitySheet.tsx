@@ -1,21 +1,23 @@
-import { DescriptionList, Sheet, Stepper } from "@homeowner/bedrock";
+import { Banner, DescriptionList, Sheet, Stepper } from "@homeowner/bedrock";
 import { Amount, formatAmount } from "@homeowner/bedrock/finance";
 import { useHiddenProps, useHideValues } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
 import type { ShoppingListItem } from "../api";
+import type { ListNotice } from "../hooks/useShoppingList";
 import { quantityLabel, stepFor } from "../logic/list";
 import { RemoveButton } from "./ShoppingRows";
 
 interface Props {
   item: ShoppingListItem;
   busy: boolean;
+  notice: ListNotice | null;
   onQuantity(id: string, quantityMilli: number): void;
-  onRemove(id: string): void;
+  onRemove(id: string): Promise<boolean>;
   onClose(): void;
 }
 
 /** The phone's way to change a line: its quantity with the stepper, the line total it makes, and taking it off the list. */
-export function QuantitySheet({ item, busy, onQuantity, onRemove, onClose }: Props) {
+export function QuantitySheet({ item, busy, notice, onQuantity, onRemove, onClose }: Props) {
   const { t, locale } = useI18n();
   const { hidden } = useHideValues();
   const hiddenProps = useHiddenProps();
@@ -27,6 +29,7 @@ export function QuantitySheet({ item, busy, onQuantity, onRemove, onClose }: Pro
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()} title={item.name} subtitle={subtitle} closeLabel={t("app.close")}>
       <div className="flex flex-col gap-4 pb-4">
+        {notice && <Banner tone="danger">{t(notice === "gone" ? "list.gone" : "list.failed")}</Banner>}
         <div className="flex items-center justify-between gap-4">
           <span className="body-strong">{t("list.quantity")}</span>
           <Stepper
@@ -45,7 +48,7 @@ export function QuantitySheet({ item, busy, onQuantity, onRemove, onClose }: Pro
         <DescriptionList
           items={[{ label: t("list.lineTotal"), total: true, value: item.priceCents === undefined ? <span aria-hidden="true">—</span> : <Amount cents={item.priceCents} size="sm" locale={locale} {...hiddenProps} /> }]}
         />
-        <RemoveButton item={item} busy={busy} label={t("list.takeOff")} onRemove={(id) => { onClose(); onRemove(id); }} />
+        <RemoveButton item={item} busy={busy} label={t("list.takeOff")} onRemove={async (id) => { if (await onRemove(id)) onClose(); }} />
       </div>
     </Sheet>
   );

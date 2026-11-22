@@ -1,6 +1,7 @@
 import { Banner, Button, Card, EmptyState, Skeleton } from "@homeowner/bedrock";
 import { Package, RefreshCw, ShoppingCart } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import type { ShoppingListItem } from "./api";
 import { Link } from "react-router";
 import { useI18n } from "../../shared/i18n/I18nProvider";
 import { useMediaQuery } from "../../shared/useMediaQuery";
@@ -46,7 +47,10 @@ export function ShoppingListPage() {
   };
 
   const items = data?.items ?? [];
-  const editing = desktop ? undefined : items.find((i) => i.itemId === editingId);
+  // A removal takes the line out of the list at once; the Sheet keeps its last copy until the write answers.
+  const last = useRef<ShoppingListItem | undefined>(undefined);
+  const editing = desktop ? undefined : (items.find((i) => i.itemId === editingId) ?? (editingId && last.current?.itemId === editingId ? last.current : undefined));
+  if (editing) last.current = editing;
   const edit = (id: string) => { opener.current = document.activeElement as HTMLElement | null; setEditingId(id); };
   const closeEdit = () => { setEditingId(null); setTimeout(() => opener.current?.focus()); };
   const count = items.length;
@@ -98,7 +102,7 @@ export function ShoppingListPage() {
       </div>
 
       {!desktop && data && count > 0 && <ListDock list={data} />}
-      {editing && <QuantitySheet item={editing} busy={busy.has(editing.itemId)} onQuantity={setQuantity} onRemove={(id) => void remove(id)} onClose={closeEdit} />}
+      {editing && <QuantitySheet item={editing} busy={busy.has(editing.itemId)} notice={notice} onQuantity={setQuantity} onRemove={remove} onClose={closeEdit} />}
     </section>
   );
 }

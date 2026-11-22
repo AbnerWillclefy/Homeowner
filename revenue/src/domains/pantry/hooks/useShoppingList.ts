@@ -30,7 +30,7 @@ export function useShoppingList() {
     if (waiting.current.size === 0 && inFlight.current === 0) void client.invalidateQueries({ queryKey: listKey });
   }, [client]);
 
-  /** Writes one edit; on a refusal `undo` puts the screen back, and a 404 means the item is gone. */
+  /** Writes one edit and says whether it was saved; on a refusal `undo` puts the screen back, and a 404 means the item is gone. */
   const write = useCallback(
     async (id: string, body: Parameters<typeof editListItem>[1], undo: () => void) => {
       setBusyId(id, true);
@@ -43,6 +43,7 @@ export function useShoppingList() {
         setNotice(result.kind === "not-found" ? "gone" : "failed");
       }
       settled();
+      return result.kind === "ok";
     },
     [setBusyId, settled],
   );
@@ -70,13 +71,13 @@ export function useShoppingList() {
   const remove = useCallback(
     async (id: string) => {
       const before = client.getQueryData<ShoppingList>(listKey);
-      if (!before) return;
+      if (!before) return false;
       setNotice(null);
       clearTimeout(waiting.current.get(id)?.timer);
       waiting.current.delete(id);
       await client.cancelQueries({ queryKey: listKey });
       edit((l) => withoutItem(l, id));
-      await write(id, { removed: true }, () => client.setQueryData(listKey, before));
+      return write(id, { removed: true }, () => client.setQueryData(listKey, before));
     },
     [client, edit, write],
   );

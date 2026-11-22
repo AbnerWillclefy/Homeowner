@@ -33,7 +33,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("the Ask button", () => {
-  it.each([false, true])("is on every screen but the chat and the Shopping list, with its screen key (desktop: %s)", (desktop) => {
+  it.each([false, true])("is on every screen but the chat, and the phone's Shopping list, with its screen key (desktop: %s)", (desktop) => {
     width(desktop);
     expect(ROUTES.length).toBeGreaterThan(10);
     let checked = 0;
@@ -41,15 +41,15 @@ describe("the Ask button", () => {
       const path = r.path.replace(":category", "groceries");
       const { unmount } = shell(path);
       const ask = button();
-      // The Shopping list's dock sits where the button would.
-      if (path === "/chat" || path === PANTRY_LIST.path) expect(ask, path).toBeUndefined();
+      // The phone's Shopping list dock sits where the button would.
+      if (path === "/chat" || (!desktop && path === PANTRY_LIST.path)) expect(ask, path).toBeUndefined();
       else {
         expect(ask?.getAttribute("href"), path).toBe(`/chat?from=${screenKeyOf(path)}`);
         checked++;
       }
       unmount();
     }
-    expect(checked).toBe(ROUTES.length - 2);
+    expect(checked).toBe(ROUTES.length - (desktop ? 1 : 2));
   });
 
   it("is fixed below the sheets and toasts, and the content leaves room for it", () => {

@@ -321,6 +321,30 @@ describe("on a phone", () => {
     await waitFor(() => expect(api.editListItem).toHaveBeenCalledWith("p2", { removed: true }));
   });
 
+  it("shows a refused quantity inside the Sheet", async () => {
+    serve(list());
+    vi.mocked(api.editListItem).mockResolvedValue({ kind: "error" });
+    open();
+    await screen.findByText("Arroz");
+    await userEvent.click(within(row("Feijão")).getByRole("button", { name: "Edit quantity of Feijão" }));
+    const sheet = await screen.findByRole("dialog", { name: "Feijão" });
+    await userEvent.click(within(sheet).getByRole("button", { name: "More" }));
+    await waitFor(() => expect(within(sheet).getByRole("alert")).toBeTruthy(), { timeout: 3000 });
+  });
+
+  it("keeps the Sheet open with the error when a removal is refused", async () => {
+    serve(list());
+    vi.mocked(api.editListItem).mockResolvedValue({ kind: "error" });
+    open();
+    await screen.findByText("Arroz");
+    await userEvent.click(within(row("Feijão")).getByRole("button", { name: "Edit quantity of Feijão" }));
+    await userEvent.click(within(await screen.findByRole("dialog", { name: "Feijão" })).getByRole("button", { name: "Take off the list" }));
+    await userEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Remove" }));
+    await waitFor(() => expect(api.editListItem).toHaveBeenCalledWith("p2", { removed: true }));
+    const sheet = await screen.findByRole("dialog", { name: "Feijão" });
+    await waitFor(() => expect(within(sheet).getByRole("alert")).toBeTruthy());
+  });
+
   it("hides the prices, the item total and the dock's amounts when values are hidden", async () => {
     localStorage.setItem(HIDE_VALUES_STORAGE_KEY, "1");
     serve(list({ groceriesLeftCents: 5000 }));

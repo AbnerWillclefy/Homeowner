@@ -55,8 +55,8 @@ function Frame() {
     // The Bills badge moves to Mais, where its row is.
     ...(s === MORE && openBills ? { badge: { count: openBills, label: t("nav.bills.badge", { n: openBills }) } } : {}),
   });
-  // Not on the chat, nor on the Shopping list, whose dock sits where the button would.
-  const ask = pathname !== CHAT.path && pathname !== PANTRY_LIST.path;
+  // Not on the chat, nor on a phone's Shopping list, whose dock sits where the button would.
+  const ask = pathname !== CHAT.path && (desktop || pathname !== PANTRY_LIST.path);
 
   return (
     <div className="flex min-h-dvh desktop:items-start">
