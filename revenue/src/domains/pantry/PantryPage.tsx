@@ -124,7 +124,7 @@ export function PantryPage() {
             </Card>
           ) : (
             <>
-              <Card variant={desktop ? "default" : "compact"} className="desktop:col-span-5">
+              <Card variant={desktop ? "default" : "compact"} className="min-w-0 desktop:col-span-5">
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="section-title">{t("pantry.outHead")}</h2>
                   <Badge tone="danger">{out.length}</Badge>
@@ -136,7 +136,7 @@ export function PantryPage() {
                   <AddItemForm add={add} />
                 </Card>
               )}
-              <Card variant={desktop ? "default" : "compact"} className="desktop:col-span-7">
+              <Card variant={desktop ? "default" : "compact"} className="min-w-0 desktop:col-span-7">
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="section-title">{t("pantry.inHead")}</h2>
                   <Badge>{stock.length}</Badge>
