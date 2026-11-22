@@ -8,7 +8,7 @@ import { Amount } from "./amount";
 type RowAction = {
   /** The verb: short, since it is visible text from the tablet breakpoint up, and the accessible name unless `name` is set. */
   label: string;
-  /** The accessible name when the item's name is needed ("Mark Rent as paid"); keeps the visible label short. */
+  /** The accessible name when the item's name is needed ("Mark paid: Rent"); keeps the visible label short. */
   name?: string;
   icon: LucideIcon;
   onClick(): void;

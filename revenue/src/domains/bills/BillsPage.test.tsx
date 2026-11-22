@@ -161,7 +161,7 @@ describe("the summary", () => {
       { path: "/bills", locale: "en" },
     );
     expect(await screen.findByRole("link", { name: /Bills to pay, 2 to pay/ })).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "Mark Aluguel as paid" }));
+    await userEvent.click(screen.getByRole("button", { name: "Mark paid: Aluguel" }));
     await waitFor(() => expect(screen.getByRole("link", { name: /Bills to pay, 1 to pay/ })).toBeTruthy());
     expect(screen.getByRole("progressbar").getAttribute("aria-valuetext")).toMatch(/R\$3,200\.00 paid of/);
     expect(screen.getByText(/1 bill left/)).toBeTruthy();
@@ -175,7 +175,7 @@ describe("the row action", () => {
     open();
     const list = await screen.findByRole("list", { name: "Bills to pay of January 2030" });
     for (const name of ["Aluguel", "Internet"]) {
-      const actions = within(list).getAllByRole("button", { name: `Mark ${name} as paid` });
+      const actions = within(list).getAllByRole("button", { name: `Mark paid: ${name}` });
       expect(actions).toHaveLength(1);
       const rowButton = within(list).getByRole("button", { name: new RegExp(`^${name}`) });
       expect(rowButton.contains(actions[0]!)).toBe(false);
@@ -186,7 +186,7 @@ describe("the row action", () => {
     width(false);
     serve([OVERDUE]);
     open();
-    expect(await screen.findByRole("button", { name: "Mark Aluguel as paid" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Mark paid: Aluguel" })).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "More actions for Aluguel" }));
     expect(await within(await screen.findByRole("dialog")).findByRole("button", { name: "Delete" })).toBeTruthy(); // the phone's menu is a Sheet
   });
@@ -196,7 +196,7 @@ describe("the row action", () => {
     serve([PENDING]);
     paid.mockReturnValue(new Promise(() => {}));
     open();
-    await userEvent.click(await screen.findByRole("button", { name: "Mark Internet as paid" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Mark paid: Internet" }));
     expect(await screen.findByRole("button", { name: "Undo: Internet goes back to pending" })).toBeTruthy();
   });
 
@@ -213,7 +213,7 @@ describe("the row action", () => {
       { path: "/bills", locale: "pt-BR" },
     );
     expect(await screen.findByRole("link", { name: "Mais, 2 para pagar" })).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "Marcar Aluguel como paga" }));
+    await userEvent.click(screen.getByRole("button", { name: "Marcar paga: Aluguel" }));
     expect(await screen.findByRole("link", { name: "Mais, 1 para pagar" })).toBeTruthy();
   });
 });
@@ -300,7 +300,7 @@ describe("a past month", () => {
     serve([OVERDUE, PAID]);
     open({ path: "/bills?month=2029-12" });
     await screen.findByText("Aluguel");
-    expect(screen.queryByRole("button", { name: /^Mark .* as paid$|^Undo|More actions/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Mark paid: |^Undo|More actions/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "New bill" })).toBeNull();
     expect(screen.queryByText("Overdue")).toBeNull();
     expect(screen.queryByText("Seguro")).toBeNull();
@@ -318,7 +318,7 @@ describe("mark paid and undo", () => {
     const { client } = open();
     await screen.findByText("Internet");
     const invalidate = vi.spyOn(client, "invalidateQueries");
-    await userEvent.click(screen.getByRole("button", { name: /^Mark .* as paid$/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^Mark paid: / }));
     expect(paid).toHaveBeenCalledWith("b2", "2030-01", true);
     await waitFor(() => expect(within(row("Internet")).getByText("Paid")).toBeTruthy());
     expect(within(row("Internet")).getByRole("button", { name: /^Undo/ }).hasAttribute("disabled")).toBe(true);
@@ -334,14 +334,14 @@ describe("mark paid and undo", () => {
     paid.mockImplementation(() => new Promise((resolve) => answers.push(resolve)));
     open();
     await screen.findByText("Internet");
-    const buttons = screen.getAllByRole("button", { name: /^Mark .* as paid$/ });
+    const buttons = screen.getAllByRole("button", { name: /^Mark paid: / });
     await userEvent.click(buttons[0]);
     await userEvent.click(buttons[1]);
     const undo = () => screen.getAllByRole("button", { name: /^Undo/ });
     await waitFor(() => expect(undo()).toHaveLength(2));
     expect(undo().every((b) => b.hasAttribute("disabled"))).toBe(true);
     answers[0]({ kind: "ok" });
-    await waitFor(() => expect(screen.getAllByRole("button", { name: /^Mark .* as paid$|^Undo/ }).filter((b) => b.hasAttribute("disabled"))).toHaveLength(1));
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /^Mark paid: |^Undo/ }).filter((b) => b.hasAttribute("disabled"))).toHaveLength(1));
   });
 
   it("rolls the row back and says so when the API refuses", async () => {
@@ -350,10 +350,10 @@ describe("mark paid and undo", () => {
     paid.mockResolvedValue({ kind: "error" });
     open();
     await screen.findByText("Internet");
-    await userEvent.click(screen.getByRole("button", { name: /^Mark .* as paid$/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^Mark paid: / }));
     expect((await screen.findByRole("alert")).textContent).toContain("We could not save");
     expect(within(row("Internet")).getByText("Pending")).toBeTruthy();
-    expect(within(row("Internet")).getByRole("button", { name: /^Mark .* as paid$/ })).toBeTruthy();
+    expect(within(row("Internet")).getByRole("button", { name: /^Mark paid: / })).toBeTruthy();
   });
 
   it("undoes a paid mark, and rolls that back too", async () => {
@@ -374,7 +374,7 @@ describe("mark paid and undo", () => {
     paid.mockResolvedValue({ kind: "not-found" });
     open();
     await screen.findByText("Internet");
-    await userEvent.click(screen.getByRole("button", { name: /^Mark .* as paid$/ }));
+    await userEvent.click(screen.getByRole("button", { name: /^Mark paid: / }));
     expect((await screen.findByRole("alert")).textContent).toContain("no longer here");
     await waitFor(() => expect(vi.mocked(api.getBills).mock.calls.filter(([m]) => m === "2030-01")).toHaveLength(2));
   });
@@ -384,7 +384,7 @@ describe("mark paid and undo", () => {
     serve([BANK]);
     open();
     await screen.findByText("Luz");
-    expect(within(row("Luz")).queryByRole("button", { name: /^Undo|^Mark .* as paid$/ })).toBeNull();
+    expect(within(row("Luz")).queryByRole("button", { name: /^Undo|^Mark paid: / })).toBeNull();
     expect(within(row("Luz")).getByText(/paid by the bank/)).toBeTruthy();
   });
 });

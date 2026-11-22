@@ -60,8 +60,8 @@ it("shows loading as busy and disabled", () => {
 });
 
 it("names the action for assistive tech while the visible text stays short", () => {
-  render(<ListRow title="Aluguel" cents={-250000} action={action({ label: "Marcar paga", name: "Marcar Aluguel como paga" })} />);
-  const button = screen.getByRole("button", { name: "Marcar Aluguel como paga" });
+  render(<ListRow title="Aluguel" cents={-250000} action={action({ label: "Marcar paga", name: "Marcar paga: Aluguel" })} />);
+  const button = screen.getByRole("button", { name: "Marcar paga: Aluguel" });
   expect(button.textContent).toBe("Marcar paga");
 });
 
