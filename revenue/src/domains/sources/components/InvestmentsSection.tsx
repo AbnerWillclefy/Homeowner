@@ -4,10 +4,10 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useHiddenProps } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
-import type { Investment, Serves } from "../api";
-import { useMoney } from "../hooks/useMoney";
-import type { SaveOutcome } from "../hooks/useSavings";
-import { groupInvestments } from "../logic/investments";
+import type { Investment, Serves } from "../../goals/api";
+import { useMoney } from "../../goals/hooks/useMoney";
+import type { SaveOutcome } from "../../goals/hooks/useSavings";
+import { groupInvestments } from "../../goals/logic/investments";
 
 interface Props {
   investments: Investment[];

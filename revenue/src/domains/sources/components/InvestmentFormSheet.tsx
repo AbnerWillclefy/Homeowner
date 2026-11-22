@@ -2,10 +2,10 @@ import { Input, SegmentedControl } from "@homeowner/bedrock";
 import { MoneyInput } from "@homeowner/bedrock/finance";
 import { useState } from "react";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
-import type { Investment, InvestmentInput, Serves } from "../api";
-import type { SaveOutcome } from "../hooks/useSavings";
-import { investmentInputOf } from "../logic/investments";
-import { SettingSheet } from "./SettingSheet";
+import type { Investment, InvestmentInput, Serves } from "../../goals/api";
+import type { SaveOutcome } from "../../goals/hooks/useSavings";
+import { investmentInputOf } from "../../goals/logic/investments";
+import { SettingSheet } from "../../goals/components/SettingSheet";
 
 interface Props {
   /** null adds a hand-typed one. */
