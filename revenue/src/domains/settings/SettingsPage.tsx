@@ -15,18 +15,31 @@ export function SettingsPage() {
   return (
     <section className="flex flex-col gap-6">
       <PageHeader title={t("nav.settings")} subtitle={t("settings.subtitle")} />
-      <PlanningCard />
-      <Card className="gap-4">
-        <h2 className="section-title">{t("settings.appearance.title")}</h2>
-        <Preferences rows />
-      </Card>
-      <NotificationsCard />
-      <CredentialsCard />
-      <DeleteDataCard />
-      <div>
-        <Button variant="secondary" onClick={signOut}>
-          {t("prefs.signOut")}
-        </Button>
+      <div className="grid gap-6 desktop:grid-cols-12" data-testid="settings-grid">
+        {/* 8 of 12 columns is the artboard's 880px column; each card sits in its own spanned cell. */}
+        <div className="desktop:col-span-8">
+          <PlanningCard />
+        </div>
+        <div className="desktop:col-span-8">
+          <Card className="gap-4">
+            <h2 className="section-title">{t("settings.appearance.title")}</h2>
+            <Preferences rows />
+          </Card>
+        </div>
+        <div className="desktop:col-span-8">
+          <NotificationsCard />
+        </div>
+        <div className="desktop:col-span-8">
+          <CredentialsCard />
+        </div>
+        <div className="desktop:col-span-8">
+          <DeleteDataCard />
+        </div>
+        <div className="desktop:col-span-8">
+          <Button variant="secondary" size="lg" className="w-full desktop:w-auto" onClick={signOut}>
+            {t("prefs.signOut")}
+          </Button>
+        </div>
       </div>
     </section>
   );

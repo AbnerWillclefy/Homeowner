@@ -17,7 +17,7 @@ export function DeleteDataCard() {
           open={open}
           onOpenChange={setOpen}
           trigger={
-            <Button variant="danger" loading={deletion.isPending}>
+            <Button variant="secondary" size="lg" className="w-full text-danger desktop:w-auto" loading={deletion.isPending}>
               {t("settings.delete.open")}
             </Button>
           }

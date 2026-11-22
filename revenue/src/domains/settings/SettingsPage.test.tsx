@@ -130,6 +130,14 @@ describe("planning", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Configurações");
   });
 
+  it("puts every direct child of the grid in a desktop span", async () => {
+    open({ locale: "pt-BR" });
+    await screen.findByLabelText("Quanto entra por mês");
+    const cells = Array.from(screen.getByTestId("settings-grid").children);
+    expect(cells.length).toBeGreaterThan(0);
+    for (const cell of cells) expect(cell.className).toMatch(/desktop:col-span-\d+/);
+  });
+
   it("saves the contribution and the reserve target through the Goals writes", async () => {
     open();
     const contribution = await screen.findByLabelText("How much to save each month");
@@ -198,6 +206,15 @@ describe("delete my data", () => {
     expect(api.deleteFinanceData).toHaveBeenCalledOnce();
   });
 
+  it("returns focus to the opener when Cancel is pressed", async () => {
+    open();
+    const opener = await screen.findByRole("button", { name: "Delete everything" });
+    await userEvent.click(opener);
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(document.activeElement).toBe(opener));
+    expect(api.deleteFinanceData).not.toHaveBeenCalled();
+  });
+
   it("says so when it fails and stays here", async () => {
     vi.mocked(api.deleteFinanceData).mockResolvedValue({ kind: "error" });
     open();
@@ -254,6 +271,14 @@ describe("credentials", () => {
     expect(await within(screen.getByRole("dialog")).findByText("Pluggy refused these credentials. Check them and try again.")).toBeTruthy();
   });
 
+  it("names the phone button for both things it opens", async () => {
+    vi.mocked(api.getCredentialsSaved).mockResolvedValue(true);
+    open({ locale: "pt-BR" });
+    await userEvent.click(await screen.findByRole("button", { name: "Trocar ou remover as credenciais" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("button", { name: "Remover" })).toBeTruthy();
+  });
+
   it("removes saved credentials after a confirmation", async () => {
     vi.mocked(api.getCredentialsSaved).mockResolvedValue(true);
     vi.mocked(api.deleteCredentials).mockResolvedValue(ok);
@@ -261,6 +286,17 @@ describe("credentials", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Remove" }));
     await userEvent.click(screen.getByRole("button", { name: "Remove credentials" }));
     await waitFor(() => expect(api.deleteCredentials).toHaveBeenCalledOnce());
+  });
+
+  it("closes the phone sheet after removing, leaving no stray Cancel", async () => {
+    vi.mocked(api.getCredentialsSaved).mockResolvedValueOnce(true).mockResolvedValue(false);
+    vi.mocked(api.deleteCredentials).mockResolvedValue(ok);
+    open();
+    await userEvent.click(await screen.findByRole("button", { name: "Replace or remove the credentials" }));
+    await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Remove" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remove credentials" }));
+    expect(await screen.findByLabelText("Client ID")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
   });
 });
 
