@@ -143,7 +143,7 @@ describe("ran out and undo", () => {
     const { client } = open();
     await screen.findByText("Arroz");
     const invalidate = vi.spyOn(client, "invalidateQueries");
-    await userEvent.click(screen.getByRole("button", { name: "Ran out: Feijão" }));
+    await userEvent.click(screen.getByRole("button", { name: "Mark as ran out: Feijão" }));
     expect(ranOut).toHaveBeenCalledWith("p2");
     await waitFor(() => expect(within(screen.getByRole("list", { name: "Items that ran out" })).getByText("Feijão")).toBeTruthy());
     answer(ok);
@@ -157,7 +157,7 @@ describe("ran out and undo", () => {
     ranOut.mockResolvedValue(ok);
     undo.mockResolvedValue(ok);
     open();
-    await userEvent.click(await screen.findByRole("button", { name: "Ran out: Feijão" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Mark as ran out: Feijão" }));
     await userEvent.click(await screen.findByRole("button", { name: "Undo" }));
     expect(undo).toHaveBeenCalledWith("p2");
     await waitFor(() => expect(within(screen.getByRole("list", { name: "Items in the pantry" })).getByText("Feijão")).toBeTruthy());
@@ -168,7 +168,7 @@ describe("ran out and undo", () => {
     serve([BEANS]);
     ranOut.mockResolvedValue({ kind: "error" });
     open();
-    await userEvent.click(await screen.findByRole("button", { name: "Ran out: Feijão" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Mark as ran out: Feijão" }));
     expect((await screen.findByRole("alert")).textContent).toContain("We could not save");
     expect(within(screen.getByRole("list", { name: "Items in the pantry" })).getByText("Feijão")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
@@ -180,7 +180,7 @@ describe("ran out and undo", () => {
     ranOut.mockResolvedValue(ok);
     undo.mockResolvedValue({ kind: "error" });
     open();
-    await userEvent.click(await screen.findByRole("button", { name: "Ran out: Feijão" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Mark as ran out: Feijão" }));
     await userEvent.click(await screen.findByRole("button", { name: "Undo" }));
     expect((await screen.findByRole("alert")).textContent).toContain("We could not save");
     await waitFor(() => expect(within(screen.getByRole("list", { name: "Items that ran out" })).getByText("Feijão")).toBeTruthy());
@@ -190,7 +190,7 @@ describe("ran out and undo", () => {
     serve([BEANS]);
     ranOut.mockResolvedValue({ kind: "not-found" });
     open();
-    await userEvent.click(await screen.findByRole("button", { name: "Ran out: Feijão" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Mark as ran out: Feijão" }));
     expect((await screen.findByRole("alert")).textContent).toContain("no longer here");
   });
 
@@ -199,12 +199,65 @@ describe("ran out and undo", () => {
     ranOut.mockReturnValue(new Promise(() => {}));
     open();
     await screen.findByText("Arroz");
-    await userEvent.click(screen.getByRole("button", { name: "Ran out: Arroz" }));
-    await userEvent.click(screen.getByRole("button", { name: "Ran out: Feijão" }));
+    await userEvent.click(screen.getByRole("button", { name: "Mark as ran out: Arroz" }));
+    await userEvent.click(screen.getByRole("button", { name: "Mark as ran out: Feijão" }));
     expect(ranOut.mock.calls).toEqual([["p1"], ["p2"]]);
     const out = within(screen.getByRole("list", { name: "Items that ran out" }));
     expect(out.getByText("Arroz")).toBeTruthy();
     expect(out.getByText("Feijão")).toBeTruthy();
+  });
+});
+
+describe("rows and the header", () => {
+  it("gives each in-stock row exactly one action, beside its open button and never inside it", async () => {
+    serve([RICE, BEANS, MILK]);
+    open();
+    await screen.findByText("Arroz");
+    const actions = screen.getAllByRole("button", { name: /^Mark as ran out/ });
+    expect(actions.map((b) => b.getAttribute("aria-label"))).toEqual(["Mark as ran out: Arroz", "Mark as ran out: Feijão"]);
+    for (const action of actions) {
+      const li = action.closest("li")!;
+      expect(li.querySelector("[data-open]")!.contains(action)).toBe(false);
+      expect(within(li).getAllByRole("button", { name: /ran out/i })).toEqual([action]);
+    }
+    expect(within(row("Leite")).queryByRole("button", { name: /^Mark as ran out/ })).toBeNull();
+  });
+
+  it("disables the action of a row whose undo is still pending", async () => {
+    serve([BEANS]);
+    ranOut.mockResolvedValue(ok);
+    undo.mockReturnValue(new Promise(() => {}));
+    open();
+    await userEvent.click(await screen.findByRole("button", { name: "Mark as ran out: Feijão" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Undo" }));
+    const action = await screen.findByRole("button", { name: "Mark as ran out: Feijão" });
+    expect(action.hasAttribute("disabled")).toBe(true);
+    expect(action.getAttribute("aria-busy")).toBe("true");
+  });
+
+  it("opens Add receipt from the header's action and gives focus back to it on close", async () => {
+    serve([RICE]);
+    open();
+    await screen.findByText("Arroz");
+    const action = screen.getByRole("button", { name: "Add receipt" });
+    await userEvent.click(action);
+    const sheet = await screen.findByRole("dialog", { name: "Add receipt" });
+    expect(within(sheet).getByRole("button", { name: "Paste the key" })).toBeTruthy();
+    await userEvent.click(within(sheet).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(action));
+  });
+
+  it("puts the new-item form in a card of its own above the lists on a phone", async () => {
+    width(false);
+    serve([RICE, MILK]);
+    open();
+    await screen.findByText("Arroz");
+    const grid = document.querySelector(".desktop\\:grid-cols-12")!;
+    const form = screen.getByRole("textbox", { name: "New item" });
+    expect(grid.children[0]!.contains(form)).toBe(false);
+    expect([...grid.children].filter((c) => c.contains(form))).toHaveLength(1);
+    expect([...grid.children].find((c) => c.contains(form))!.className).toContain("order-first");
   });
 });
 
@@ -215,8 +268,8 @@ describe("concurrent writes", () => {
     ranOut.mockReturnValueOnce(new Promise((r) => { answerRice = r; })).mockReturnValueOnce(new Promise(() => {}));
     open();
     await screen.findByText("Arroz");
-    await userEvent.click(screen.getByRole("button", { name: "Ran out: Arroz" }));
-    await userEvent.click(screen.getByRole("button", { name: "Ran out: Feijão" }));
+    await userEvent.click(screen.getByRole("button", { name: "Mark as ran out: Arroz" }));
+    await userEvent.click(screen.getByRole("button", { name: "Mark as ran out: Feijão" }));
     vi.mocked(api.getPantry).mockClear();
     answerRice(ok);
     await waitFor(() => expect(within(screen.getByRole("list", { name: "Items that ran out" })).getByText("Arroz")).toBeTruthy());
@@ -230,7 +283,7 @@ describe("concurrent writes", () => {
     ranOut.mockReturnValue(new Promise(() => {}));
     vi.mocked(api.addItem).mockResolvedValue(ok);
     open();
-    await userEvent.click(await screen.findByRole("button", { name: "Ran out: Arroz" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Mark as ran out: Arroz" }));
     vi.mocked(api.getPantry).mockClear();
     await userEvent.type(screen.getByRole("textbox", { name: "New item" }), "Café");
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
@@ -244,7 +297,7 @@ describe("concurrent writes", () => {
     serve([RICE]);
     ranOut.mockReturnValue(new Promise(() => {}));
     open();
-    await userEvent.click(await screen.findByRole("button", { name: "Ran out: Arroz" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Mark as ran out: Arroz" }));
     await userEvent.click(screen.getByRole("button", { name: "More actions for Arroz" }));
     const del = await screen.findByRole("menuitem", { name: "Delete" });
     expect(del.hasAttribute("data-disabled") || del.getAttribute("aria-disabled") === "true").toBe(true);
@@ -310,7 +363,7 @@ describe("add, edit and delete", () => {
     await userEvent.click(sheet.getByRole("button", { name: "Save" }));
     expect(api.updateItem).toHaveBeenCalledWith("p2", { name: "Feijão preto", preferredBrand: "Camil", fixed: true });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    await waitFor(() => expect(document.activeElement).toBe(row("Feijão").querySelector(".ml-auto button:last-of-type")));
+    await waitFor(() => expect(document.activeElement).toBe(row("Feijão").querySelector("[data-menu] button")));
   });
 
   it("clears the always-buy mark and the brand", async () => {
