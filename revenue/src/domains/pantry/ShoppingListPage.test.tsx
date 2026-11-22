@@ -332,6 +332,21 @@ describe("on a phone", () => {
     await waitFor(() => expect(within(sheet).getByRole("alert")).toBeTruthy(), { timeout: 3000 });
   });
 
+  it("does not show an earlier write's error in another item's Sheet", async () => {
+    serve(list());
+    vi.mocked(api.editListItem).mockResolvedValue({ kind: "error" });
+    open();
+    await screen.findByText("Arroz");
+    await userEvent.click(within(row("Feijão")).getByRole("button", { name: "Edit quantity of Feijão" }));
+    const sheet = await screen.findByRole("dialog", { name: "Feijão" });
+    await userEvent.click(within(sheet).getByRole("button", { name: "More" }));
+    await waitFor(() => expect(within(sheet).getByRole("alert")).toBeTruthy(), { timeout: 3000 });
+    await userEvent.click(within(sheet).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await userEvent.click(within(row("Arroz")).getByRole("button", { name: "Edit quantity of Arroz" }));
+    expect(within(await screen.findByRole("dialog", { name: "Arroz" })).queryByRole("alert")).toBeNull();
+  });
+
   it("keeps the Sheet open with the error when a removal is refused", async () => {
     serve(list());
     vi.mocked(api.editListItem).mockResolvedValue({ kind: "error" });

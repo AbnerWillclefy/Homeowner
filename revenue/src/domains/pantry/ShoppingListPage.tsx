@@ -23,7 +23,7 @@ const DESKTOP = "(min-width: 1024px)";
  */
 export function ShoppingListPage() {
   const { t } = useI18n();
-  const { data, loading, failed, reload, notice, busy, setQuantity, remove } = useShoppingList();
+  const { data, loading, failed, reload, notice, clearNotice, busy, setQuantity, remove } = useShoppingList();
   const [ticks, setTicks] = useState(readChecked);
   const desktop = useMediaQuery(DESKTOP);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -51,7 +51,7 @@ export function ShoppingListPage() {
   const last = useRef<ShoppingListItem | undefined>(undefined);
   const editing = desktop ? undefined : (items.find((i) => i.itemId === editingId) ?? (editingId && last.current?.itemId === editingId ? last.current : undefined));
   if (editing) last.current = editing;
-  const edit = (id: string) => { opener.current = document.activeElement as HTMLElement | null; setEditingId(id); };
+  const edit = (id: string) => { opener.current = document.activeElement as HTMLElement | null; clearNotice(); setEditingId(id); };
   const closeEdit = () => { setEditingId(null); setTimeout(() => opener.current?.focus()); };
   const count = items.length;
   const done = items.filter((i) => ticks.includes(i.itemId)).length;

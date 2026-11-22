@@ -100,6 +100,7 @@ export function useShoppingList() {
     failed: query.isError && !query.data,
     reload: () => void query.refetch(),
     notice,
+    clearNotice: () => setNotice(null),
     busy,
     setQuantity,
     remove,
