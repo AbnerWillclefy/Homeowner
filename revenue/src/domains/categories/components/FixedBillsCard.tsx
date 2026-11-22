@@ -1,4 +1,4 @@
-import { Card } from "@homeowner/bedrock";
+import { Card, DescriptionList } from "@homeowner/bedrock";
 import { Amount } from "@homeowner/bedrock/finance";
 import { Link } from "react-router";
 import { useHiddenProps } from "../../../shared/HideValues";
@@ -13,14 +13,7 @@ export function FixedBillsCard({ bills, search }: { bills: Bill[]; search: strin
   return (
     <Card>
       <h2 className="section-title">{t("categories.fixed.title")}</h2>
-      <ul className="divide-y divide-border">
-        {bills.map((b) => (
-          <li key={b.id} className="flex items-center justify-between gap-4 py-2">
-            <span className="body [overflow-wrap:anywhere]">{b.name}</span>
-            <Amount cents={b.expectedCents} size="sm" locale={locale} {...hidden} />
-          </li>
-        ))}
-      </ul>
+      <DescriptionList items={bills.map((b) => ({ label: b.name, value: <Amount cents={b.expectedCents} size="sm" locale={locale} {...hidden} /> }))} />
       <Link to={{ pathname: "/bills", search }} className="body-strong inline-flex min-h-11 items-center rounded-sm underline outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
         {t("categories.fixed.open")}
       </Link>

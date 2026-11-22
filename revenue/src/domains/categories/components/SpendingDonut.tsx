@@ -5,7 +5,7 @@ import { useI18n } from "../../../shared/i18n/I18nProvider";
 import type { CategoryRow } from "../logic/rows";
 import { spendingKey, tagOf } from "../logic/categories";
 
-/** The month split by Spending Category: the one place the category colours appear. The table below is its text alternative. */
+/** The month split by Spending Category, used by the Overview: the one place the category colours appear. The table below is its text alternative. */
 export function SpendingDonut({ rows }: { rows: CategoryRow[] }) {
   const { t, locale } = useI18n();
   const hidden = useHiddenProps();
