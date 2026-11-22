@@ -1,23 +1,33 @@
 import { Banner, Button, Card, EmptyState, Skeleton } from "@homeowner/bedrock";
 import { Package, RefreshCw, ShoppingCart } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useI18n } from "../../shared/i18n/I18nProvider";
+import { useMediaQuery } from "../../shared/useMediaQuery";
 import { PageHeader } from "../../shared/PageHeader";
-import { ListSummary } from "./components/ListSummary";
+import { ListDock, ListSummary, OverWarning } from "./components/ListSummary";
+import { QuantitySheet } from "./components/QuantitySheet";
 import { ShoppingRows } from "./components/ShoppingRows";
 import { useShoppingList } from "./hooks/useShoppingList";
 import { readChecked, writeChecked } from "./logic/checked";
 import { pruneChecked } from "./logic/list";
 
+// Duplicates --bp-desktop in Bedrock's tokens.css: matchMedia cannot read custom properties.
+const DESKTOP = "(min-width: 1024px)";
+
 /**
  * "Lista de compras" at `/pantry/list`: what to buy next, with its expected total beside what is left of the groceries
- * limit. Quantities and removals are saved to the API; ticks stay on this device (`logic/checked.ts`) and never change the Pantry.
+ * limit: a card beside the items from 1024px, a dock above the BottomBar below it, where a button on each row opens the quantity Sheet.
+ * Quantities and removals are saved to the API; ticks stay on this device (`logic/checked.ts`) and never change the Pantry.
  */
 export function ShoppingListPage() {
   const { t } = useI18n();
   const { data, loading, failed, reload, notice, busy, setQuantity, remove } = useShoppingList();
   const [ticks, setTicks] = useState(readChecked);
+  const desktop = useMediaQuery(DESKTOP);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  // The row's button that opened the Sheet, to hand focus back to (the Sheet has no trigger of its own).
+  const opener = useRef<HTMLElement | null>(null);
 
   // A tick for an item that left the list is dropped, once no write is pending that could put the item back.
   useEffect(() => {
@@ -36,6 +46,9 @@ export function ShoppingListPage() {
   };
 
   const items = data?.items ?? [];
+  const editing = desktop ? undefined : items.find((i) => i.itemId === editingId);
+  const edit = (id: string) => { opener.current = document.activeElement as HTMLElement | null; setEditingId(id); };
+  const closeEdit = () => { setEditingId(null); setTimeout(() => opener.current?.focus()); };
   const count = items.length;
   const done = items.filter((i) => ticks.includes(i.itemId)).length;
   const subtitle =
@@ -48,8 +61,10 @@ export function ShoppingListPage() {
         title={t("pantry.list")}
         subtitle={subtitle}
         tools={
-          <Button asChild variant="secondary">
-            <Link to="/pantry"><Package className="size-4" aria-hidden />{t("nav.pantry")}</Link>
+          <Button asChild variant="secondary" className="max-desktop:size-control-lg max-desktop:rounded-full max-desktop:px-0">
+            <Link to="/pantry">
+              <Package className="size-4" aria-hidden /><span className="max-desktop:sr-only">{t("nav.pantry")}</span>
+            </Link>
           </Button>
         }
       />
@@ -73,15 +88,17 @@ export function ShoppingListPage() {
           </Card>
         ) : (
           <>
-            {/* First on a phone, where the total is what the shopper checks; the list stays on the left from 1024px. */}
-            <ListSummary list={data} className="desktop:order-2 desktop:col-span-4" />
-            <Card className="desktop:order-1 desktop:col-span-8">
-              <h2 className="section-title">{t("list.itemsHead")}</h2>
-              <ShoppingRows rows={items} checked={new Set(ticks)} busy={busy} onCheck={check} onQuantity={setQuantity} onRemove={(id) => void remove(id)} />
+            {desktop ? <ListSummary list={data} className="desktop:order-2 desktop:col-span-4" /> : <OverWarning list={data} />}
+            <Card variant={desktop ? "default" : "compact"} className="desktop:order-1 desktop:col-span-8">
+              {desktop && <h2 className="section-title">{t("list.itemsHead")}</h2>}
+              <ShoppingRows rows={items} checked={new Set(ticks)} busy={busy} desktop={desktop} onCheck={check} onEdit={edit} onQuantity={setQuantity} onRemove={(id) => void remove(id)} />
             </Card>
           </>
         )}
       </div>
+
+      {!desktop && data && count > 0 && <ListDock list={data} />}
+      {editing && <QuantitySheet item={editing} busy={busy.has(editing.itemId)} onQuantity={setQuantity} onRemove={(id) => void remove(id)} onClose={closeEdit} />}
     </section>
   );
 }

@@ -28,11 +28,17 @@ const open = (locale: "pt-BR" | "en" = "en") => renderApp(<HideValuesProvider><S
 const row = (name: string) => screen.getByText(name).closest("li")!;
 const MONEY = (cents: string) => new RegExp(cents.replace(".", "[,.]"));
 
+const width = (desktop: boolean) => vi.stubGlobal("matchMedia", () => ({ matches: desktop, addEventListener() {}, removeEventListener() {} }));
+
 beforeEach(() => {
   localStorage.clear();
+  width(true);
   vi.mocked(api.editListItem).mockReset().mockResolvedValue({ kind: "ok" });
 });
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe("the list", () => {
   it("shows ran-out and fixed lines with quantity and price, and no price for one never bought", async () => {
@@ -222,6 +228,118 @@ describe("editing", () => {
     await userEvent.click(within(row("Feijão")).getByRole("button", { name: "More" }));
     act(() => unmount());
     expect(api.editListItem).toHaveBeenCalledWith("p2", { quantityMilli: 3000 });
+  });
+});
+
+describe("the summary as a list of terms", () => {
+  it.each([true, false])("is a description list with the total and what is left (desktop: %s)", async (desktop) => {
+    width(desktop);
+    serve(list());
+    open();
+    await screen.findByText("Arroz");
+    const dl = document.querySelector("dl")!;
+    expect([...dl.querySelectorAll("dt")].map((d) => d.textContent)).toEqual(["Expected total", "Left of groceries limit"]);
+    expect(dl.querySelectorAll("dd")[0]!.textContent).toMatch(MONEY("63.49"));
+    expect(dl.querySelectorAll("dd")[1]!.querySelector(".text-danger")).toBeNull();
+  });
+
+  it.each([true, false])("puts the left line in danger when over the limit, and the warning says it can still be bought (desktop: %s)", async (desktop) => {
+    width(desktop);
+    serve(list({ groceriesLeftCents: 5000 }));
+    open();
+    await screen.findByText("Arroz");
+    const left = document.querySelectorAll("dl dd")[1]!;
+    expect(left.querySelector(".text-danger")).toBeTruthy();
+    expect(left.textContent).toMatch(MONEY("50"));
+    expect(screen.getByText(/You can still buy\./)).toBeTruthy();
+  });
+
+  it.each([true, false])("leaves the left line out with no limit (desktop: %s)", async (desktop) => {
+    width(desktop);
+    serve(list({ groceriesLeftCents: undefined }));
+    open();
+    await screen.findByText("Arroz");
+    expect(document.querySelectorAll("dl dt")).toHaveLength(1);
+    expect(screen.queryByText("Left of groceries limit")).toBeNull();
+  });
+
+  it("pins the summary above the BottomBar on a phone, and has no card for it on a desktop", async () => {
+    serve(list());
+    width(false);
+    const phone = open();
+    await screen.findByText("Arroz");
+    const dock = screen.getByRole("region", { name: "Summary" });
+    expect(dock.className).toContain("sticky");
+    expect(dock.className).not.toContain("fixed");
+    expect(dock.querySelector("dl")).toBeTruthy();
+    phone.unmount();
+    width(true);
+    open();
+    await screen.findByText("Arroz");
+    expect(screen.queryByRole("region", { name: "Summary" })).toBeNull();
+    expect(screen.getByRole("heading", { level: 2, name: "Summary" })).toBeTruthy();
+  });
+});
+
+describe("on a phone", () => {
+  beforeEach(() => width(false));
+
+  it("keeps each row to a check, the name with quantity times price, the price and one button, with no stepper", async () => {
+    serve(list());
+    open();
+    await screen.findByText("Arroz");
+    expect(row("Queijo minas").textContent).toContain("0.450 kg × ");
+    expect(row("Sal").textContent).toContain("1 × no price yet");
+    expect(within(row("Feijão")).queryByRole("group")).toBeNull();
+    expect(within(row("Feijão")).getAllByRole("button").map((b) => b.textContent)).toEqual(["Edit quantity of Feijão"]);
+  });
+
+  it("changes the quantity in a Sheet, sends one write, and shows the item total", async () => {
+    serve(list());
+    open();
+    await screen.findByText("Arroz");
+    await userEvent.click(within(row("Feijão")).getByRole("button", { name: "Edit quantity of Feijão" }));
+    const sheet = await screen.findByRole("dialog", { name: "Feijão" });
+    expect(sheet.querySelector("dl")!.textContent).toMatch(/Item total.*16[,.]38/);
+    await userEvent.click(within(sheet).getByRole("button", { name: "More" }));
+    expect(within(sheet).getByRole("status").textContent).toBe("3");
+    expect(sheet.querySelector("dl")!.textContent).toMatch(/24[,.]57/);
+    await waitFor(() => expect(api.editListItem).toHaveBeenCalledWith("p2", { quantityMilli: 3000 }), { timeout: 3000 });
+    await userEvent.click(within(sheet).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(within(row("Feijão")).getByRole("button", { name: "Edit quantity of Feijão" })));
+  });
+
+  it("takes an item off the list from the Sheet, after asking", async () => {
+    serve(list());
+    open();
+    await screen.findByText("Arroz");
+    await userEvent.click(within(row("Feijão")).getByRole("button", { name: "Edit quantity of Feijão" }));
+    await userEvent.click(within(await screen.findByRole("dialog", { name: "Feijão" })).getByRole("button", { name: "Take off the list" }));
+    expect(api.editListItem).not.toHaveBeenCalled();
+    await userEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Remove" }));
+    await waitFor(() => expect(api.editListItem).toHaveBeenCalledWith("p2", { removed: true }));
+  });
+
+  it("hides the prices, the item total and the dock's amounts when values are hidden", async () => {
+    localStorage.setItem(HIDE_VALUES_STORAGE_KEY, "1");
+    serve(list({ groceriesLeftCents: 5000 }));
+    const { container } = open();
+    await screen.findByText("Arroz");
+    await userEvent.click(within(row("Feijão")).getByRole("button", { name: "Edit quantity of Feijão" }));
+    await screen.findByRole("dialog", { name: "Feijão" });
+    expect(container.textContent).not.toMatch(/R\$\s?\d/);
+    expect(document.body.textContent).not.toMatch(/R\$\s?\d/);
+  });
+
+  it.each(["pt-BR", "en"] as const)("has no axe violations in %s, with the Sheet open", async (locale) => {
+    serve(list({ groceriesLeftCents: 5000 }));
+    open(locale);
+    await screen.findByText("Arroz");
+    expect((await axe.run(document.body, AXE)).violations.map((v) => v.id)).toEqual([]);
+    await userEvent.click(within(row("Feijão")).getByRole("button", { name: /Edit quantity of|Editar quantidade de/ }));
+    await screen.findByRole("dialog");
+    expect((await axe.run(document.body, AXE)).violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
   });
 });
 
