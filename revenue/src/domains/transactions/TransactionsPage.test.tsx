@@ -74,6 +74,7 @@ describe("layout", () => {
     const filters = screen.getByRole("button", { name: "Filters" });
     // Layout is not measurable in jsdom: both take their 48px phone height from Bedrock, and the button is square.
     expect(filters.className).toContain("max-tablet:w-control-lg");
+    expect(filters.className).toContain("pointer-coarse:w-control-lg");
     expect(search.closest("div")?.parentElement?.className).toContain("flex-1");
     const group = screen.getByRole("group", { name: "Type" });
     expect(group.className).toContain("overflow-x-auto");

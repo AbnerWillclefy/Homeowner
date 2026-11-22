@@ -25,7 +25,7 @@ function FiltersButton({ filter, onChange }: Pick<ToolbarProps, "filter" | "onCh
       title={t("tx.filters.title")}
       closeLabel={t("app.close")}
       trigger={
-        <Button variant={active ? "primary" : "secondary"} icon={SlidersHorizontal} className="w-control-md shrink-0 px-0 max-tablet:w-control-lg">
+        <Button variant={active ? "primary" : "secondary"} icon={SlidersHorizontal} className="w-control-md shrink-0 px-0 max-tablet:w-control-lg pointer-coarse:w-control-lg">
           <span className="sr-only">{t(active ? "tx.filters.openActive" : "tx.filters.open")}</span>
         </Button>
       }
@@ -85,7 +85,7 @@ export function Toolbar({ filter, onChange, desktop, uncategorised }: ToolbarPro
   return (
     <div className="flex flex-col gap-2">
       {search}
-      <div role="group" aria-label={t("tx.filter.type")} className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
+      <div role="group" aria-label={t("tx.filter.type")} className="-m-1 flex flex-nowrap gap-2 overflow-x-auto p-1">
         {chips.map((chip) => (
           <Button key={chip.value} size="sm" className="shrink-0" variant={chip.pressed ? "primary" : "secondary"} aria-pressed={chip.pressed} onClick={() => onChange({ ...filter, ...chip.set })}>
             {chip.label}
