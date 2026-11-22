@@ -45,6 +45,7 @@ const runtimeKeys = [
   { key: "netWorth.range.30d", reason: "built in net-worth/NetWorthPage.tsx" },
   { key: "netWorth.range.90d", reason: "built in net-worth/NetWorthPage.tsx" },
   { key: "netWorth.range.1y", reason: "built in net-worth/NetWorthPage.tsx" },
+  { key: "overview.tab.", reason: "`overview.tab.${v}` in overview/OverviewPage.tsx" },
   { key: "settings.income.empty", reason: "readIncome problems in settings/components/PlanningCard.tsx" },
   { key: "settings.income.zero", reason: "readIncome problems in settings/components/PlanningCard.tsx" },
   { key: "settings.income.junk", reason: "readIncome problems in settings/components/PlanningCard.tsx" },
