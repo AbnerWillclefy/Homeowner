@@ -1,24 +1,27 @@
-import { Input, SegmentedControl } from "@homeowner/bedrock";
+import { Button, Input, SegmentedControl } from "@homeowner/bedrock";
 import { MoneyInput } from "@homeowner/bedrock/finance";
 import { useState } from "react";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
-import type { Investment, InvestmentInput, Serves } from "../api";
-import type { SaveOutcome } from "../hooks/useSavings";
-import { investmentInputOf } from "../logic/investments";
-import { SettingSheet } from "./SettingSheet";
+import type { Investment, InvestmentInput, Serves } from "../../goals/api";
+import type { SaveOutcome } from "../../goals/hooks/useSavings";
+import { investmentInputOf } from "../../goals/logic/investments";
+import { SettingSheet } from "../../goals/components/SettingSheet";
 
 interface Props {
   /** null adds a hand-typed one. */
   investment: Investment | null;
   save(input: InvestmentInput): Promise<SaveOutcome>;
+  /** Offered on a hand-typed one being edited; the page asks before deleting. */
+  onDelete?(): void;
   onClose(): void;
 }
 
 /**
  * Adds a hand-typed Investment, or edits `investment`. A bank one only has its value corrected here: its name
  * comes from the bank and its pick is made on the row.
+ * A hand-typed one can be deleted from here.
  */
-export function InvestmentFormSheet({ investment, save, onClose }: Props) {
+export function InvestmentFormSheet({ investment, save, onDelete, onClose }: Props) {
   const { t, locale } = useI18n();
   const bank = investment?.source === "pluggy";
   const [name, setName] = useState(investment?.name ?? "");
@@ -48,6 +51,7 @@ export function InvestmentFormSheet({ investment, save, onClose }: Props) {
               options={[{ value: "reserve", label: t("investments.serves.reserve") }, { value: "goals", label: t("investments.serves.goals") }]}
             />
           )}
+          {investment && !bank && onDelete && <Button variant="ghost" className="self-start text-danger" disabled={saving} onClick={onDelete}>{t("goals.delete")}</Button>}
         </>
       )}
     </SettingSheet>

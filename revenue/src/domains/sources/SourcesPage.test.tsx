@@ -265,6 +265,55 @@ describe("manual cards", () => {
   });
 });
 
+describe("the header and the phone layout", () => {
+  it("has the connect action in the header and shows it busy while connecting", async () => {
+    let release!: (v: Awaited<ReturnType<typeof api.createConnectToken>>) => void;
+    vi.mocked(api.createConnectToken).mockReturnValue(new Promise((r) => (release = r)));
+    open();
+    const button = await screen.findByRole("button", { name: "Connect a bank" });
+    expect(within(screen.getByRole("banner")).getByRole("button", { name: "Connect a bank" })).toBe(button);
+    await userEvent.click(button);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Connect a bank" }).getAttribute("aria-busy")).toBe("true"));
+    release({ kind: "ok", connectToken: "tok", includeSandbox: false });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Connect a bank" }).getAttribute("aria-busy")).toBeNull());
+  });
+
+  it("stacks the four sections in the artboard's order", async () => {
+    open();
+    await screen.findByRole("group", { name: "Connected banks" });
+    const headings = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+    expect(headings).toEqual(["Checking accounts", "Investments", "Credit cards", "Connected banks"]);
+  });
+
+  it("has block ghost buttons to add a card and an investment by hand that open their Sheets and give focus back", async () => {
+    open();
+    for (const [name, group] of [["Add investment by hand", "Investments"], ["Add a card by hand", "Credit cards"]] as const) {
+      const button = (await card(group)).getByRole("button", { name });
+      await userEvent.click(button);
+      expect(await screen.findByRole("dialog")).toBeTruthy();
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      await waitFor(() => expect(button).toBe(document.activeElement));
+    }
+  });
+
+  it("offers to connect in the empty state, with no account or bank cards", async () => {
+    vi.mocked(api.getSources).mockResolvedValue(status([]));
+    open();
+    await screen.findByText("No Sources yet. Connect a bank to start.");
+    expect(screen.getAllByRole("button", { name: /Connect a bank/ })).toHaveLength(2);
+    expect(screen.queryByRole("group", { name: "Checking accounts" })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Connected banks" })).toBeNull();
+  });
+
+  it("keeps the cards and the live status line while importing", async () => {
+    vi.mocked(api.getSources).mockResolvedValue(status([CHECKING], { importing: true }));
+    open();
+    expect((await screen.findByRole("status")).textContent).toBe("Importing your transactions…");
+    expect(screen.getByRole("group", { name: "Checking accounts" })).toBeTruthy();
+  });
+});
+
 describe("connected banks", () => {
   it("shows Ok and Reconectar with the product count, and explains the one to reconnect", async () => {
     open();
@@ -303,7 +352,8 @@ describe("Investments", () => {
     const inv = await card("Investments");
     expect(inv.getByText("R$4,500.00")).toBeTruthy();
     expect(inv.getByText("Tesouro Selic")).toBeTruthy();
-    expect(within(await row("Investments", "CDB Banco")).getByText("From the bank")).toBeTruthy();
+    expect(within(await row("Investments", "Tesouro Selic")).getByText("Emergency reserve")).toBeTruthy();
+    expect(within(await row("Investments", "Fundo")).getByText("Goals · edited")).toBeTruthy();
   });
 
   it("takes the bank's value back for an edited one", async () => {
@@ -325,7 +375,7 @@ describe("Investments", () => {
   it("adds one by hand", async () => {
     vi.mocked(goalsApi.saveInvestment).mockResolvedValue(ok);
     open();
-    await userEvent.click(await screen.findByRole("button", { name: "Add investment" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Add investment by hand" }));
     const form = within(await screen.findByRole("dialog"));
     await userEvent.type(form.getByRole("textbox", { name: "Name" }), " Poupança ");
     await userEvent.type(form.getByRole("textbox", { name: "Value" }), "0");
@@ -333,11 +383,11 @@ describe("Investments", () => {
     expect(goalsApi.saveInvestment).toHaveBeenCalledWith(null, { name: "Poupança", valueCents: 0, serves: "reserve" });
   });
 
-  it("asks before deleting a hand-typed one, then deletes", async () => {
+  it("asks before deleting a hand-typed one from its form, then deletes", async () => {
     vi.mocked(goalsApi.deleteInvestment).mockResolvedValue({ kind: "ok" });
     open();
-    await userEvent.click(within(await row("Investments", "Tesouro Selic")).getByRole("button", { name: "More actions for Tesouro Selic" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    await userEvent.click(within(await row("Investments", "Tesouro Selic")).getByRole("button", { name: "Edit Tesouro Selic" }));
+    await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Delete" }));
     const dialog = await screen.findByRole("alertdialog");
     expect(goalsApi.deleteInvestment).not.toHaveBeenCalled();
     await userEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
@@ -347,14 +397,15 @@ describe("Investments", () => {
   it("says a bank Investment with nothing picked is waiting, and that it counts toward neither", async () => {
     open();
     const r = within(await row("Investments", "CDB Banco"));
-    expect(r.getByText("Choose what it is for")).toBeTruthy();
+    expect(r.getByText("Not counted yet")).toBeTruthy();
+    expect(r.getByText("Choose")).toBeTruthy();
     expect(r.getByText(/counts toward neither the reserve nor your goals/)).toBeTruthy();
-    expect(r.queryByRole("button", { name: /More actions/ })).toBeNull();
+    expect(r.queryByRole("button", { name: /Edit CDB/ })).toBeNull();
   });
 
   it("says it in Portuguese with the approved wording", async () => {
     open({ locale: "pt-BR" });
-    expect(within(await row("Investimentos", "CDB Banco")).getByText("Escolha para quê serve")).toBeTruthy();
+    expect(within(await row("Investimentos", "CDB Banco")).getByText("Escolher")).toBeTruthy();
   });
 
   it("keeps a row the bank no longer reports, with a calm note, and no edited label on an untouched bank value", async () => {
@@ -374,20 +425,20 @@ describe("Investments", () => {
     expect((await screen.findByRole("alert")).textContent).toContain("We could not save");
   });
 
-  it("gives a hand-typed row edit and delete, and a bank row edit without delete", async () => {
+  it("opens a hand-typed row's form with Delete, and a bank row's without it", async () => {
     open();
-    await userEvent.click(within(await row("Investments", "Tesouro Selic")).getByRole("button", { name: "More actions for Tesouro Selic" }));
-    expect(await screen.findByRole("menuitem", { name: "Edit" })).toBeTruthy();
-    expect(screen.getByRole("menuitem", { name: "Delete" })).toBeTruthy();
+    await userEvent.click(within(await row("Investments", "Tesouro Selic")).getByRole("button", { name: "Edit Tesouro Selic" }));
+    expect(within(await screen.findByRole("dialog")).getByRole("button", { name: "Delete" })).toBeTruthy();
     await userEvent.keyboard("{Escape}");
-    await userEvent.click(within(await row("Investments", "Fundo")).getByRole("button", { name: "More actions for Fundo" }));
-    expect(await screen.findByRole("menuitem", { name: "Edit" })).toBeTruthy();
-    expect(screen.queryByRole("menuitem", { name: "Delete" })).toBeNull();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await userEvent.click(within(await row("Investments", "Fundo")).getByRole("button", { name: "Edit Fundo" }));
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+    expect(within(screen.getByRole("dialog")).queryByRole("button", { name: "Delete" })).toBeNull();
   });
 
   it("shows what is wrong beside the fields and sends nothing", async () => {
     open();
-    await userEvent.click(await screen.findByRole("button", { name: "Add investment" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Add investment by hand" }));
     await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Save" }));
     expect(goalsApi.saveInvestment).not.toHaveBeenCalled();
     expect(within(await screen.findByRole("dialog")).getByText("Enter a name.")).toBeTruthy();
@@ -396,8 +447,7 @@ describe("Investments", () => {
   it("edits a hand-typed Investment", async () => {
     vi.mocked(goalsApi.saveInvestment).mockResolvedValue(ok);
     open();
-    await userEvent.click(within(await row("Investments", "Tesouro Selic")).getByRole("button", { name: "More actions for Tesouro Selic" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Edit" }));
+    await userEvent.click(within(await row("Investments", "Tesouro Selic")).getByRole("button", { name: "Edit Tesouro Selic" }));
     const form = within(await screen.findByRole("dialog"));
     expect((form.getByRole("textbox", { name: "Name" }) as HTMLInputElement).value).toBe("Tesouro Selic");
     await userEvent.click(form.getByRole("button", { name: "Save" }));
@@ -407,8 +457,7 @@ describe("Investments", () => {
   it("corrects only the value of a bank Investment, keeping its name and pick", async () => {
     vi.mocked(goalsApi.saveInvestment).mockResolvedValue(ok);
     open();
-    await userEvent.click(within(await row("Investments", "Fundo")).getByRole("button", { name: "More actions for Fundo" }));
-    await userEvent.click(await screen.findByRole("menuitem", { name: "Edit" }));
+    await userEvent.click(within(await row("Investments", "Fundo")).getByRole("button", { name: "Edit Fundo" }));
     const form = within(await screen.findByRole("dialog"));
     expect(form.queryByRole("textbox", { name: "Name" })).toBeNull();
     const value = form.getByRole("textbox", { name: "Value" });
@@ -470,7 +519,7 @@ describe("connecting", () => {
     open();
     // The refresh after registering reads what the API now holds.
     vi.mocked(api.getSources).mockResolvedValue(status([CHECKING]));
-    await userEvent.click(await screen.findByRole("button", { name: "Connect banks" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Connect a bank" }));
     await waitFor(() => expect(widget).toBeDefined());
     expect(widget).toMatchObject({ connectToken: "tok", includeSandbox: false });
     await widget.onSuccess({ item: { id: "item-1" } });
@@ -480,7 +529,7 @@ describe("connecting", () => {
 
   it("says nothing was connected when the widget is closed", async () => {
     open();
-    await userEvent.click(await screen.findByRole("button", { name: "Connect banks" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Connect a bank" }));
     await waitFor(() => expect(widget).toBeDefined());
     widget.onClose();
     expect(await screen.findByText(/Nothing was connected/)).toBeTruthy();
@@ -493,14 +542,14 @@ describe("connecting", () => {
   ] as const)("words the token failure %j", async (token, text) => {
     vi.mocked(api.createConnectToken).mockResolvedValue(token);
     open();
-    await userEvent.click(await screen.findByRole("button", { name: "Connect banks" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Connect a bank" }));
     expect(await screen.findByText(new RegExp(text.slice(0, 30)))).toBeTruthy();
   });
 
   it("links to Settings, which owns the credentials form, when none are saved", async () => {
     vi.mocked(api.createConnectToken).mockResolvedValue({ kind: "no-credentials" });
     open();
-    await userEvent.click(await screen.findByRole("button", { name: "Connect banks" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Connect a bank" }));
     await userEvent.click(await screen.findByRole("link", { name: "Open Settings" }));
     expect(screen.getByText("settings page")).toBeTruthy();
   });
@@ -508,7 +557,7 @@ describe("connecting", () => {
   it("words a refused Item", async () => {
     vi.mocked(api.registerItem).mockResolvedValue({ kind: "item-refused" });
     open();
-    await userEvent.click(await screen.findByRole("button", { name: "Connect banks" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Connect a bank" }));
     await waitFor(() => expect(widget).toBeDefined());
     await widget.onSuccess({ item: { id: "i" } });
     expect(await screen.findByText(/Pluggy could not connect that bank/)).toBeTruthy();
@@ -572,7 +621,7 @@ describe("accessibility", () => {
   it("has none in the failure and empty states", async () => {
     vi.mocked(api.createConnectToken).mockResolvedValue({ kind: "no-credentials" });
     const { container } = open();
-    await userEvent.click(await screen.findByRole("button", { name: "Connect banks" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Connect a bank" }));
     await screen.findByRole("link", { name: "Open Settings" });
     expect((await axe.run(container, AXE)).violations).toEqual([]);
   });
