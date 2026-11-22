@@ -1,4 +1,4 @@
-import { Badge, Card, CardLabel, ProgressBar } from "@homeowner/bedrock";
+import { Badge, Card, CardLabel, DescriptionList, ProgressBar } from "@homeowner/bedrock";
 import { Amount, formatAmount } from "@homeowner/bedrock/finance";
 import { useHiddenProps, useHideValues } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
@@ -41,14 +41,12 @@ export function CardBillCard({ bill, source, rows }: Props) {
       {!bill.billDaysKnown && <p className="caption text-text-muted">{t("cardBills.noDays")}</p>}
       {split && (
         <>
-          <dl className="grid grid-cols-3 gap-4">
-            {([["purchases", split.purchasesCents], ["installments", split.installmentsCents], ["subscriptions", split.subscriptionsCents]] as const).map(([key, cents]) => (
-              <div key={key} className="flex min-w-0 flex-col gap-1">
-                <dt className="caption text-text-muted">{t(`cardBills.split.${key}`)}</dt>
-                <dd><Amount cents={cents} size="sm" locale={locale} {...hiddenProps} /></dd>
-              </div>
-            ))}
-          </dl>
+          <DescriptionList
+            items={(["purchases", "installments", "subscriptions"] as const).map((key) => ({
+              label: t(`cardBills.split.${key}`),
+              value: <Amount cents={split[`${key}Cents`]} size="sm" locale={locale} {...hiddenProps} />,
+            }))}
+          />
           <p className="caption text-text-muted">{t("cardBills.split.note")}</p>
         </>
       )}

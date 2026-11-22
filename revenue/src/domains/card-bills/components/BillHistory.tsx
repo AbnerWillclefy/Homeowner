@@ -1,4 +1,4 @@
-import { Button, Card, CardLabel, ChartContainer, Skeleton } from "@homeowner/bedrock";
+import { Button, Card, CardLabel, ChartContainer, DescriptionList, Skeleton } from "@homeowner/bedrock";
 import { Amount, formatAmount } from "@homeowner/bedrock/finance";
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 import { useHiddenProps, useHideValues } from "../../../shared/HideValues";
@@ -60,10 +60,7 @@ export function BillHistory({ history, loading, failed, reload }: Props) {
             </BarChart>
           </ChartContainer>
           {average !== null && (
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-text-muted">{t("cardBills.history.average", { count: data.length })}</span>
-              <Amount cents={average} size="sm" locale={locale} {...hiddenProps} />
-            </div>
+            <DescriptionList items={[{ label: t("cardBills.history.average", { count: data.length }), value: <Amount cents={average} size="sm" locale={locale} {...hiddenProps} /> }]} />
           )}
         </>
       )}

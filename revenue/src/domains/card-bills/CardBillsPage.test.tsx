@@ -328,6 +328,21 @@ describe("hide values", () => {
   });
 });
 
+describe("the phone's lists", () => {
+  it("shows the split and the average as description lists, masked when values are hidden", async () => {
+    width(false);
+    serve([{ ...CLOSED, fromBank: false }]);
+    localStorage.setItem("revenue.hideValues", "1");
+    open();
+    const card = (await screen.findByText("Open bill · Nubank")).closest("div[class*=border]") as HTMLElement;
+    expect(within(card).getByText("Purchases").tagName).toBe("DT");
+    expect(within(card).getAllByText("hidden value").length).toBeGreaterThanOrEqual(4);
+    const average = (await screen.findByText("6-month average")).closest("dl")!;
+    expect(average.textContent).toContain("hidden value");
+    expect(document.body.textContent).not.toMatch(/R\$\s?[\d.,]+/);
+  });
+});
+
 describe("bill days", () => {
   it("starts from the card's saved days", async () => {
     width(true);
