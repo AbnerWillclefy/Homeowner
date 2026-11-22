@@ -36,8 +36,8 @@ export function CategoryRows({ rows, search, previous }: { rows: CategoryRow[]; 
               <Amount cents={spentCents} size="sm" locale={locale} {...hidden} />
             </div>
             {limit !== undefined && <LimitBar bare label={t("categories.limit.label", { name })} spent={spentCents} limit={limit} />}
-            <div className="flex items-center justify-between gap-4">
-              <span className="caption min-w-0 truncate text-text-muted">{caption}</span>
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+              <span className="caption min-w-0 text-text-muted">{caption}</span>
               {change != null && <span className="shrink-0"><ChangeBadge percent={change} /></span>}
             </div>
           </li>
