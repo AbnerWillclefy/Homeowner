@@ -134,7 +134,7 @@ describe("the series switch", () => {
 });
 
 describe("the chosen month", () => {
-  it.each([true, false])("is a sum that adds up to its Leftover, with the cut as a line (desktop %s)", async (desktop) => {
+  it.each([true, false])("is a sum that adds up to its Leftover, with the pace gap as a line (desktop %s)", async (desktop) => {
     width(desktop);
     open();
     const detail = await screen.findByRole("region", { name: "January 2030" });
@@ -142,9 +142,9 @@ describe("the chosen month", () => {
     const lines = [...dl.children].map(line);
     expect(lines).toEqual([
       "Monthly income R$5,000.00", "− Card bills R$1,000.00", "− Other bills R$2,000.00", "− Planned spending R$300.00", "− Put aside R$500.00",
-      "Leftover by plan R$1,201.00", "− Eating out above plan R$1,200.00", "Leftover at current pace R$10.00",
+      "Leftover by plan R$1,201.00", "− Difference at current pace R$1,191.00", "Leftover at current pace R$10.00",
     ]);
-    expect(1201_00 - 1200_00 + 9_00).toBe(10_00);
+    expect(1201_00 - 1191_00).toBe(10_00);
   });
 
   it("starts with this month and follows a click on a row", async () => {
@@ -172,11 +172,14 @@ describe("the chosen month", () => {
     expect(bars()[4]!.getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("lists no cut when the pace is at or under the plan, nor a spent line when the month has none", async () => {
-    vi.mocked(api.getCommitments).mockResolvedValue({ ...DATA, months: [month(1, { planned: [{ category: "pets", cents: 50000, paceCents: 20000, limited: true }] }), ...MONTHS.slice(1)] });
+  it("adds the gap back when the pace is under the plan, and has no spent line when the month has none", async () => {
+    const planned = [{ category: "pets", cents: 50000, paceCents: 20000, limited: true }];
+    vi.mocked(api.getCommitments).mockResolvedValue({ ...DATA, months: [month(1, { planned, leftoverCents: 100000, paceLeftoverCents: 100000 + 30000 }), ...MONTHS.slice(1)] });
     open();
     const dl = (await screen.findByRole("region", { name: "January 2030" })).querySelector("dl")!;
-    expect(dl.textContent).not.toContain("above plan");
+    const lines = [...dl.children].map(line);
+    expect(lines).toContain("+ Difference at current pace R$300.00");
+    expect(lines.at(-1)).toBe("Leftover at current pace R$1,300.00");
     expect(dl.textContent).not.toContain("Spent off the card");
   });
 

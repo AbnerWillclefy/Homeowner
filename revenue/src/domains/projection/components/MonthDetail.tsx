@@ -3,14 +3,14 @@ import { Amount } from "@homeowner/bedrock/finance";
 import { useHiddenProps } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
 import { monthLabel } from "../../../shared/month/month";
-import { categoryName } from "../logic/labels";
 import { type ProjectionRow, type Series, seriesCents } from "../logic/projectionRow";
 
 /**
  * The chosen month's sum, line by line: the Monthly income less each group is its Leftover by the plan, less what each
- * category's pace is over its plan is the Leftover at the current pace. The shown series is the big figure; a short
- * month says "Falta" in words. "Gasto fora do cartão" is a line only when the month has it (the current one), so the
- * lines always add up.
+ * the pace is over its plan (or plus what it is under) is the Leftover at the current pace. The shown series is the big figure; a short
+ * month says "Falta" in words. "Gasto fora do cartão" is a line only when the month has it (the current one). The pace
+ * gap is one signed line, the difference of the two Leftovers, because the API sums every planned line's gap, over or
+ * under, so the lines always add up.
  */
 export function MonthDetail({ row, income, series }: { row: ProjectionRow; income: number; series: Series }) {
   const { t, locale } = useI18n();
@@ -18,6 +18,7 @@ export function MonthDetail({ row, income, series }: { row: ProjectionRow; incom
   const shown = seriesCents(row, series) ?? 0;
   const amount = (cents: number) => <Amount cents={cents} size="sm" locale={locale} {...hidden} />;
   const minus = (key: Parameters<typeof t>[0], cents: number | undefined): DescriptionListItem[] => (cents === undefined ? [] : [{ label: `− ${t(key)}`, value: amount(cents) }]);
+  const paceGap = (gap: number): DescriptionListItem => ({ label: `${gap < 0 ? "+" : "−"} ${t("projection.paceGap")}`, value: amount(Math.abs(gap)) });
   const items: DescriptionListItem[] = [
     { label: t("overview.leftover.income"), value: amount(income) },
     ...minus("overview.group.cards", row.cardsCents),
@@ -26,7 +27,7 @@ export function MonthDetail({ row, income, series }: { row: ProjectionRow; incom
     ...minus("overview.group.spent", row.spentCents),
     ...minus("overview.group.saving", row.savingCents),
     { label: t("projection.leftoverPlan"), value: amount(row.leftoverCents ?? 0), total: true },
-    ...row.cuts.filter((c) => c.cutCents > 0).map((c) => ({ label: `− ${t("projection.cutOver", { category: categoryName(t, c.category) })}`, value: amount(c.cutCents) })),
+    ...(row.paceLeftoverCents === null || row.leftoverCents === null ? [] : [paceGap(row.leftoverCents - row.paceLeftoverCents)]),
     ...(row.paceLeftoverCents === null ? [] : [{ label: t("projection.paceLeftover"), value: amount(row.paceLeftoverCents), total: true }]),
   ];
 
