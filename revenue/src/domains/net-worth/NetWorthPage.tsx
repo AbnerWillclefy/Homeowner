@@ -14,12 +14,15 @@ import { useRowNames } from "./hooks/useRowNames";
 import { partWidths, seriesChange } from "./logic/parts";
 import { RANGES, rangeFromParam, startsLate } from "./logic/range";
 
+// Duplicates --bp-desktop in Bedrock's tokens.css: matchMedia cannot read custom properties.
+const DESKTOP = "(min-width: 1024px)";
+
 /** "Patrimônio" at `/net-worth` (`?range=30d|90d|1y`): today's Net worth, balances plus Investments over time (which leave out the card bills), where it comes from and how the number is made. */
 export function NetWorthPage() {
   const { t, locale } = useI18n();
   const { hidden } = useHideValues();
   const hiddenProps = useHiddenProps();
-  const desktop = useMediaQuery("(min-width: 1024px)");
+  const desktop = useMediaQuery(DESKTOP);
   const [params, setParams] = useSearchParams();
   const range = rangeFromParam(params.get("range"));
   const { data, loading, placeholder, failed, reload } = useNetWorth(range);

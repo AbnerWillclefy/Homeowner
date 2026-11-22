@@ -11,6 +11,9 @@ import type { SaveOutcome } from "../hooks/useSavings";
 import { contributionOf, shareOptions, splitContribution, splitParts } from "../logic/savings";
 import { SettingSheet } from "./SettingSheet";
 
+// Duplicates --bp-desktop in Bedrock's tokens.css: matchMedia cannot read custom properties.
+const DESKTOP = "(min-width: 1024px)";
+
 type Write = (value: { baseCents: number; reserveSharePercent: number } | null) => Promise<SaveOutcome>;
 
 /** Aporte do mês: how much is saved each month, the reserve's share of it (pick one, or change it in the sheet) and where it goes. */
@@ -18,7 +21,7 @@ export function ContributionCard({ savings, save, className }: { savings: Saving
   const { t, locale } = useI18n();
   const { thisMonth } = useMonthParam();
   const hide = useHiddenProps();
-  const desktop = useMediaQuery("(min-width: 1024px)");
+  const desktop = useMediaQuery(DESKTOP);
   const [open, setOpen] = useState(false);
   const [failed, setFailed] = useState(false);
   const { contributionBaseCents: base, reserveSharePercent: share } = savings;

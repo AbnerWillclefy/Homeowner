@@ -20,5 +20,5 @@ export function GoalFacts({ monthCents, when, badge, where }: { monthCents: numb
     { label: t("goals.card.eta"), value: <><span>{eta}</span>{badge}</> },
     { label: t("goals.card.where"), value: <span className="whitespace-normal [overflow-wrap:anywhere]">{where.length > 0 ? where.join(", ") : t("goals.card.whereNone")}</span> },
   ];
-  return <DescriptionList items={items} className="border-t border-border pt-4" />;
+  return <DescriptionList items={items} className="grid-cols-[auto_minmax(0,1fr)] border-t border-border pt-4" />;
 }
