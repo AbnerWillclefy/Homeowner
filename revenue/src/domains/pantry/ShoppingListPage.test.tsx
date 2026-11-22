@@ -319,6 +319,7 @@ describe("on a phone", () => {
     expect(api.editListItem).not.toHaveBeenCalled();
     await userEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Remove" }));
     await waitFor(() => expect(api.editListItem).toHaveBeenCalledWith("p2", { removed: true }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Feijão" })).toBeNull());
   });
 
   it("shows a refused quantity inside the Sheet", async () => {
