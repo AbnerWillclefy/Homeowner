@@ -6,11 +6,11 @@ import { monthLabel } from "../../../shared/month/month";
 import { type ProjectionRow, type Series, seriesCents } from "../logic/projectionRow";
 
 /**
- * The chosen month's sum, line by line: the Monthly income less each group is its Leftover by the plan, less what each
- * the pace is over its plan (or plus what it is under) is the Leftover at the current pace. The shown series is the big figure; a short
- * month says "Falta" in words. "Gasto fora do cartão" is a line only when the month has it (the current one). The pace
- * gap is one signed line, the difference of the two Leftovers, because the API sums every planned line's gap, over or
- * under, so the lines always add up.
+ * The chosen month's sum, line by line: the Monthly income less each group is its Leftover by the plan, and that less
+ * the pace gap is the Leftover at the current pace. The shown series is the big figure; a short month says "Falta" in
+ * words. "Gasto fora do cartão" is a line only when the month has it (the current one). The pace gap is one signed
+ * line, the difference of the two Leftovers, because the API sums every planned line's gap, over or under, so the
+ * lines always add up.
  */
 export function MonthDetail({ row, income, series }: { row: ProjectionRow; income: number; series: Series }) {
   const { t, locale } = useI18n();
