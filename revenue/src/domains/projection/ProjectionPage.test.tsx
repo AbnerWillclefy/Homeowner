@@ -21,9 +21,10 @@ const month = (n: number, change: Partial<CommitmentMonth> = {}): CommitmentMont
   plannedCents: 30000, pacePlannedCents: 150000, savingCents: 50000,
   totalCents: 380000, leftoverCents: 120000, paceLeftoverCents: 0, ...change,
 });
-const MONTHS = Array.from({ length: 12 }, (_, i) => month(i + 1));
+// The plan and the pace differ every month, so a chart that keeps plotting the plan fails the series tests.
+const MONTHS = Array.from({ length: 12 }, (_, i) => month(i + 1, { leftoverCents: 120000 + (i + 1) * 100, paceLeftoverCents: (i + 1) * 1000 }));
 const DATA: Commitments = { monthlyIncomeCents: 500000, months: MONTHS };
-const OVER: Commitments = { ...DATA, months: MONTHS.map((m, i) => (i === 2 ? { ...m, totalCents: 550000, leftoverCents: -50000 } : m)) };
+const OVER: Commitments = { ...DATA, months: MONTHS.map((m, i) => (i === 2 ? { ...m, totalCents: 550000, leftoverCents: -50000, paceLeftoverCents: -90000 } : m)) };
 const NO_INCOME: Commitments = { monthlyIncomeCents: null, months: MONTHS.map(({ leftoverCents, paceLeftoverCents, pacePlannedCents, ...m }) => m) };
 const PLANS: Commitments = { ...DATA, months: [month(1, { installments: [{ name: "Geladeira", number: 2, total: 4, amountCents: 30000 }] }), ...MONTHS.slice(1)] };
 // jsdom has no layout, so it cannot check contrast (Bedrock's tokens.test.ts does); the page is not a whole document, so no landmarks.
@@ -43,213 +44,215 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+const loaded = () => screen.findAllByText("January 2030");
+const bars = () => within(screen.getByRole("region", { name: /Leftover per month|Sobra por mês/ })).getAllByRole("button");
+const barNames = () => bars().map((b) => b.getAttribute("aria-label"));
+const flat = (el: Element) => el.textContent!.replace(/\s/g, " ");
+// A dl row as "label value".
+const line = (el: Element) => [...el.children].map((c) => c.textContent).join(" ");
+
 describe("the months", () => {
-  it("asks from this month in São Paulo", async () => {
+  it("asks from this month in São Paulo and names the income in the subtitle", async () => {
     open();
-    await screen.findByText("January 2030");
+    await loaded();
     expect(api.getCommitments).toHaveBeenCalledWith("2030-01");
+    expect(screen.getByText("What is left of your R$5,000.00 income over the next 12 months")).toBeTruthy();
   });
 
-  it("on a phone shows twelve month cards, the current one open, each with its Total and Leftover", async () => {
+  it("on a phone is a list of twelve month buttons and no table", async () => {
     open();
-    const cards = await screen.findAllByRole("group");
-    expect(cards).toHaveLength(12);
-    expect(screen.getByText("January 2030").closest("details")!.open).toBe(true);
-    expect(screen.getByText("February 2030").closest("details")!.open).toBe(false);
-    expect(cards[0]!.textContent).toContain("R$3,800.00");
-    expect(cards[0]!.textContent).toContain("R$1,200.00");
+    const list = await screen.findByRole("region", { name: "Coming months" });
+    const buttons = within(list).getAllByRole("button");
+    expect(buttons).toHaveLength(12);
+    expect(buttons[0]!.textContent).toContain("January 2030");
+    expect(buttons[0]!.textContent).toContain("Bills and card bills R$3,000.00");
+    expect(buttons[0]!.textContent).toContain("R$1,201.00");
+    expect(screen.queryByRole("table")).toBeNull();
   });
 
-  it("opens a month to list its groups and lines as the API gives them", async () => {
-    open();
-    await userEvent.click(await screen.findByText("March 2030"));
-    const card = screen.getByText("March 2030").closest("details")!;
-    expect(card.open).toBe(true);
-    for (const text of ["Card bills", "Nubank", "R$1,000.00", "Other bills", "Aluguel", "R$2,000.00", "Planned spending", "Groceries", "Put aside", "R$500.00", "Monthly income"]) {
-      expect(card.textContent).toContain(text);
-    }
-  });
-
-  it("on a desktop width is a table with a row per month and a column per group, scrolling sideways in its box", async () => {
+  it("on a desktop is a table of exactly six columns, scrolling sideways only inside its box", async () => {
     width(true);
     open();
     const table = await screen.findByRole("table", { name: "Coming months" });
-    expect(within(table).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Month", "Monthly income", "Card bills", "Other bills", "Planned spending", "Put aside", "Leftover by plan", "Leftover at current pace"]);
+    expect(within(table).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Month", "Bills and card bills", "Planned spending", "Put aside", "Leftover by plan", "Leftover at pace"]);
     expect(within(table).getAllByRole("rowheader")).toHaveLength(12);
     expect(table.parentElement!.className).toContain("overflow-x-auto");
-    expect(table.className).toContain("min-w-[900px]");
-    expect(screen.queryByRole("group")).toBeNull();
+    expect(table.className).not.toContain("min-w-");
+    const jan = within(table).getAllByRole("row")[1]!;
+    expect(within(jan).getAllByRole("cell").map(flat)).toEqual(["R$3,000.00", "R$300.00", "R$500.00", "R$1,201.00", "R$10.00"]);
   });
 
-  it("adds a column for what was spent off the card when the current month has it", async () => {
-    width(true);
-    vi.mocked(api.getCommitments).mockResolvedValue({ ...DATA, months: [month(1, { spentOffCardCents: 10000 }), ...MONTHS.slice(1)] });
-    open();
-    const table = await screen.findByRole("table");
-    expect(within(table).getByRole("columnheader", { name: "Spent off the card" })).toBeTruthy();
-    expect(within(table).getAllByText("Nothing this month")).toHaveLength(11);
-  });
-});
-
-describe("the chosen month", () => {
-  const detail = () => screen.getByText("January 2030", { selector: "div" }).closest("div.relative") as HTMLElement;
-
-  it("is this month at first, with a sum that adds up to its Leftover", async () => {
-    width(true);
-    open();
-    await screen.findByRole("table");
-    const card = detail().textContent!;
-    for (const text of ["January 2030", "R$1,200.00", "R$5,000.00", "R$1,000.00", "R$2,000.00", "R$300.00", "R$500.00"]) expect(card).toContain(text);
-    expect(1200_00).toBe(5000_00 - 1000_00 - 2000_00 - 300_00 - 500_00);
-  });
-
-  it("changes with a click on a row, and with the keyboard", async () => {
-    width(true);
-    vi.mocked(api.getCommitments).mockResolvedValue({ ...DATA, months: [...MONTHS.slice(0, 2), month(3, { cards: [{ sourceId: "s1", name: "Nubank", amountCents: 300000, billDaysKnown: true }], leftoverCents: -20000 }), ...MONTHS.slice(3)] });
-    open();
-    const table = await screen.findByRole("table");
-    await userEvent.click(within(table).getByRole("button", { name: "March 2030" }));
-    expect(screen.getByText("R$3,000.00", { selector: "dd *" })).toBeTruthy();
-    expect(screen.getByText("R$200.00 short")).toBeTruthy();
-    const feb = within(table).getByRole("button", { name: "February 2030" });
-    feb.focus();
-    await userEvent.keyboard("{Enter}");
-    expect(feb.getAttribute("aria-pressed")).toBe("true");
-    expect(screen.queryByText(/short/)).toBeNull();
-  });
-});
-
-describe("the Leftover at the current pace and the cut", () => {
-  const flat = (el: Element) => el.textContent!.replace(/\s/g, " ");
-  const cuts = () => screen.getAllByRole("list", { name: /Categorias com limite|Categories with a limit/ });
-
-  it("pt-BR phone: the open card shows both Leftovers and the cut of a limited category", async () => {
-    open({ locale: "pt-BR" });
-    const card = (await screen.findByText("Janeiro de 2030")).closest("details")!;
-    expect(card.textContent).toContain("Sobra pelo plano");
-    expect(card.textContent).toContain("Sobra no ritmo atual");
-    const [list] = within(card).getAllByRole("list", { name: "Categorias com limite" });
-    expect(list!.textContent).toContain("Restaurantes");
-    for (const text of ["plano R$ 1.000,00", "ritmo R$ 2.200,00", "cortar R$ 1.200,00"]) expect(flat(list!)).toContain(text);
-    expect(list!.textContent).not.toContain("Mercado");
-  });
-
-  it("pt-BR desktop: the detail card and the table column show them", async () => {
+  it("speaks pt-BR in the table headers", async () => {
     width(true);
     open({ locale: "pt-BR" });
     const table = await screen.findByRole("table", { name: "Próximos meses" });
-    expect(within(table).getByRole("columnheader", { name: "Sobra no ritmo atual" })).toBeTruthy();
-    expect(within(table).getAllByRole("rowheader")).toHaveLength(12);
-    const [list] = cuts();
-    expect(flat(list!)).toContain("cortar R$ 1.200,00");
-    const detail = list!.closest("div.relative")!;
-    expect(detail.textContent).toContain("Sobra no ritmo atual");
-    const jan = within(table).getAllByRole("row")[1]!;
-    expect(flat(jan.lastElementChild!)).toBe(" R$ 0,00 ".trim());
-  });
-
-  it("shows no cut when the pace is at or under the plan, and no list when no category has a limit", async () => {
-    vi.mocked(api.getCommitments).mockResolvedValue({
-      ...DATA,
-      months: [month(1, { planned: [{ category: "pets", cents: 50000, paceCents: 20000, limited: true }] }), month(2, { planned: [{ category: "groceries", cents: 1, paceCents: 90000, limited: false }] }), ...MONTHS.slice(2)],
-    });
-    open();
-    await userEvent.click(await screen.findByText("February 2030"));
-    const [pets] = cuts();
-    expect(pets!.textContent).toContain("Pets");
-    expect(pets!.textContent).toContain("plan R$500.00");
-    expect(pets!.textContent).toContain("pace R$200.00");
-    expect(pets!.textContent).not.toContain("cut");
-    const feb = screen.getByText("February 2030").closest("details")!;
-    expect(within(feb).queryByRole("list", { name: "Categories with a limit" })).toBeNull();
-  });
-
-  it("is plain ink on the phone card and in the desktop detail", async () => {
-    const view = open();
-    await screen.findByText("January 2030");
-    expect(view.container.innerHTML).not.toMatch(/danger|alert|negative/);
-    view.unmount();
-    width(true);
-    open();
-    await screen.findByRole("table");
-    const [list] = cuts();
-    expect(list!.innerHTML).not.toMatch(/danger|alert|negative|warning/);
-    expect(list!.closest("div.relative")!.querySelector("dl")!.innerHTML).not.toMatch(/danger|alert|negative|warning/);
-  });
-
-  it.each([true, false])("without income shows neither Leftover nor column (desktop %s)", async (desktop) => {
-    width(desktop);
-    vi.mocked(api.getCommitments).mockResolvedValue(NO_INCOME);
-    const view = open();
-    await screen.findByRole("link", { name: "Set monthly income" });
-    expect(view.container.textContent).not.toMatch(/current pace/);
+    expect(within(table).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Mês", "Contas e faturas", "Gasto previsto", "Guardado", "Sobra pelo plano", "Sobra no ritmo"]);
   });
 });
 
-describe("a negative Leftover", () => {
-  it("on a phone has a minus sign and words, never alarm styling", async () => {
-    vi.mocked(api.getCommitments).mockResolvedValue(OVER);
-    const view = open();
-    expect(await screen.findByText("R$500.00 short")).toBeTruthy();
-    expect(view.container.textContent).toContain("-R$500.00");
-    expect(view.container.innerHTML).not.toMatch(/danger|alert|negative/);
+describe("the series switch", () => {
+  it.each([true, false])("plots the plan at first and the pace once chosen (desktop %s)", async (desktop) => {
+    width(desktop);
+    open();
+    await loaded();
+    expect(screen.getByRole("radio", { name: "By plan" }).getAttribute("aria-checked")).toBe("true");
+    expect(barNames()).toHaveLength(12);
+    expect(barNames().map((n) => n!.split("leftover ")[1])).toEqual(MONTHS.map((m) => `R$${(m.leftoverCents! / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`));
+    await userEvent.click(screen.getByRole("radio", { name: "At current pace" }));
+    expect(barNames().map((n) => n!.split("leftover ")[1])).toEqual(MONTHS.map((m) => `R$${(m.paceLeftoverCents! / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`));
+    expect(barNames()[0]).toBe("January 2030: leftover R$10.00");
   });
 
-  it("on a desktop has a minus sign, the words and a danger bar once chosen", async () => {
-    width(true);
+  it("changes the big figure and its label with the series, and the phone list with it", async () => {
+    open();
+    const detail = await screen.findByRole("region", { name: "January 2030" });
+    expect(detail.textContent).toContain("R$1,201.00Leftover by plan");
+    await userEvent.click(screen.getByRole("radio", { name: "At current pace" }));
+    expect(detail.textContent).toContain("R$10.00Leftover at current pace");
+    const first = within(screen.getByRole("region", { name: "Coming months" })).getAllByRole("button")[0]!;
+    expect(first.textContent).toContain("R$10.00");
+    expect(first.textContent).not.toContain("R$1,201.00");
+  });
+
+  it("draws a negative bar in danger below the baseline and says Short", async () => {
     vi.mocked(api.getCommitments).mockResolvedValue(OVER);
     const view = open();
-    const table = await screen.findByRole("table");
-    expect(table.textContent).toContain("-R$500.00");
-    expect(view.container.querySelectorAll("rect.fill-danger")).toHaveLength(1);
-    await userEvent.click(within(table).getByRole("button", { name: "March 2030" }));
-    expect(screen.getByText("R$500.00 short")).toBeTruthy();
-    expect(view.container.querySelectorAll("rect.fill-danger")).toHaveLength(0); // the chosen bar takes the text colour
-    expect(view.container.querySelectorAll("rect.fill-text")).toHaveLength(1);
+    await loaded();
+    await userEvent.click(screen.getByRole("radio", { name: "At current pace" }));
+    expect(view.container.querySelectorAll("span.bg-danger")).toHaveLength(1);
+    expect(barNames()[2]).toBe("March 2030: leftover -R$900.00");
+    await userEvent.click(bars()[2]!);
+    expect(within(screen.getByRole("region", { name: "March 2030" })).getByText("Short")).toBeTruthy();
+    expect(view.container.querySelectorAll("span.bg-danger.outline-text")).toHaveLength(1);
   });
 
   it("says nothing of shortage when no month is over", async () => {
     open();
-    await screen.findByText("January 2030");
-    expect(screen.queryByText(/short/)).toBeNull();
+    await loaded();
+    expect(screen.queryByText("Short")).toBeNull();
+  });
+});
+
+describe("the chosen month", () => {
+  it.each([true, false])("is a sum that adds up to its Leftover, with the pace gap as a line (desktop %s)", async (desktop) => {
+    width(desktop);
+    // January's plan lines add up exactly: 5,000 − 1,000 − 2,000 − 300 − 500 = 1,200.
+    vi.mocked(api.getCommitments).mockResolvedValue({ ...DATA, months: [{ ...MONTHS[0]!, leftoverCents: 120000 }, ...MONTHS.slice(1)] });
+    open();
+    const detail = await screen.findByRole("region", { name: "January 2030" });
+    const dl = detail.querySelector("dl")!;
+    const lines = [...dl.children].map(line);
+    expect(lines).toEqual([
+      "Monthly income R$5,000.00", "− Card bills R$1,000.00", "− Other bills R$2,000.00", "− Planned spending R$300.00", "− Put aside R$500.00",
+      "Leftover by plan R$1,200.00", "− Difference at current pace R$1,190.00", "Leftover at current pace R$10.00",
+    ]);
+  });
+
+  it("starts with this month and follows a click on a row", async () => {
+    width(true);
+    open();
+    const table = await screen.findByRole("table");
+    expect(screen.getByRole("region", { name: "January 2030" })).toBeTruthy();
+    await userEvent.click(within(table).getByRole("button", { name: /March 2030/ }));
+    expect(screen.getByRole("region", { name: "March 2030" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "January 2030" })).toBeNull();
+    const feb = within(table).getByRole("button", { name: /February 2030/ });
+    feb.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(feb.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("region", { name: "February 2030" })).toBeTruthy();
+  });
+
+  it("follows a tap on a phone row and on a bar", async () => {
+    open();
+    const list = await screen.findByRole("region", { name: "Coming months" });
+    await userEvent.click(within(list).getByRole("button", { name: /March 2030/ }));
+    expect(screen.getByRole("region", { name: "March 2030" })).toBeTruthy();
+    await userEvent.click(bars()[4]!);
+    expect(screen.getByRole("region", { name: "May 2030" })).toBeTruthy();
+    expect(bars()[4]!.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("adds the gap back when the pace is under the plan, and has no spent line when the month has none", async () => {
+    const planned = [{ category: "pets", cents: 50000, paceCents: 20000, limited: true }];
+    vi.mocked(api.getCommitments).mockResolvedValue({ ...DATA, months: [month(1, { planned, leftoverCents: 100000, paceLeftoverCents: 100000 + 30000 }), ...MONTHS.slice(1)] });
+    open();
+    const dl = (await screen.findByRole("region", { name: "January 2030" })).querySelector("dl")!;
+    const lines = [...dl.children].map(line);
+    expect(lines).toContain("+ Difference at current pace R$300.00");
+    expect(lines.at(-1)).toBe("Leftover at current pace R$1,300.00");
+    expect(dl.textContent).not.toContain("Spent off the card");
+  });
+
+  it("adds a line for what was spent off the card when the current month has it", async () => {
+    vi.mocked(api.getCommitments).mockResolvedValue({ ...DATA, months: [month(1, { spentOffCardCents: 10000 }), ...MONTHS.slice(1)] });
+    open();
+    const dl = (await screen.findByRole("region", { name: "January 2030" })).querySelector("dl")!;
+    expect([...dl.children].map(line)).toContain("− Spent off the card R$100.00");
   });
 });
 
 describe("income", () => {
-  it("without income there is no Leftover and a link to Settings", async () => {
+  it.each([true, false])("without income there is a link to Settings and no Leftover chart or sum (desktop %s)", async (desktop) => {
+    width(desktop);
     vi.mocked(api.getCommitments).mockResolvedValue(NO_INCOME);
     open();
     const link = await screen.findByRole("link", { name: "Set monthly income" });
     expect(link.getAttribute("href")).toBe("/settings");
-    expect(screen.queryByText(/Leftover/)).toBeNull();
+    expect(screen.queryByRole("radio")).toBeNull();
+    expect(screen.queryByRole("region", { name: "January 2030" })).toBeNull();
+    expect(screen.getByText("What is left of your income over the next 12 months")).toBeTruthy();
   });
 
-  it("without income the desktop table has no Leftover or income column", async () => {
+  it("without income the table keeps six columns and shows a dash for both Leftovers", async () => {
     width(true);
     vi.mocked(api.getCommitments).mockResolvedValue(NO_INCOME);
     open();
     const table = await screen.findByRole("table");
-    expect(within(table).queryByRole("columnheader", { name: /Leftover/ })).toBeNull();
-    expect(within(table).queryByRole("columnheader", { name: "Monthly income" })).toBeNull();
-    expect(screen.getByRole("link", { name: "Set monthly income" })).toBeTruthy();
+    expect(within(table).getAllByRole("columnheader")).toHaveLength(6);
+    const jan = within(table).getAllByRole("row")[1]!;
+    const cells = within(jan).getAllByRole("cell");
+    expect(cells.slice(-2).map((c) => c.textContent)).toEqual(["—No value", "—No value"]);
+  });
+
+  it("without income the phone list shows a dash for the Leftover", async () => {
+    vi.mocked(api.getCommitments).mockResolvedValue(NO_INCOME);
+    open();
+    const list = await screen.findByRole("region", { name: "Coming months" });
+    expect(within(list).getAllByRole("button")).toHaveLength(12);
+    expect(within(list).getAllByText("—")).toHaveLength(12);
   });
 
   it("with income there is no such link", async () => {
     open();
-    await screen.findByText("January 2030");
+    await loaded();
     expect(screen.queryByRole("link", { name: "Set monthly income" })).toBeNull();
   });
 });
 
 describe("hide values", () => {
-  it.each([true, false])("masks the table, the detail, the chart axis and the phone cards (desktop %s)", async (desktop) => {
-    width(desktop);
+  const hiddenPage = () => {
     localStorage.setItem("revenue.hideValues", "1");
-    vi.mocked(api.getCommitments).mockResolvedValue({ ...OVER, months: [...OVER.months.slice(0, 2), ...OVER.months.slice(2)] });
-    const { container } = renderApp(<HideValuesProvider><ProjectionPage /></HideValuesProvider>, { path: "/projection", locale: "en" });
-    await screen.findByText(desktop ? "Coming months" : "January 2030");
-    expect(container.textContent).not.toMatch(/\d,\d\d|\dk/);
-    expect(screen.getAllByText("hidden value").length).toBeGreaterThan(4);
+    return renderApp(<HideValuesProvider><ProjectionPage /></HideValuesProvider>, { path: "/projection", locale: "en" });
+  };
+
+  it.each([true, false])("masks the table or list, the bars, the sum and the subtitle (desktop %s)", async (desktop) => {
+    width(desktop);
+    vi.mocked(api.getCommitments).mockResolvedValue(OVER);
+    const { container } = hiddenPage();
+    await loaded();
+    expect(container.textContent).not.toMatch(/\d[,.]\d\d/);
+    expect(barNames()[0]).toBe("January 2030: leftover hidden value");
+    expect(screen.getAllByText("hidden value").length).toBeGreaterThan(8);
+  });
+
+  it("masks every amount of the detail's sum and keeps its two total labels", async () => {
+    const { container } = hiddenPage();
+    const dl = (await screen.findByRole("region", { name: "January 2030" })).querySelector("dl")!;
+    expect(dl.textContent).not.toMatch(/\d/);
+    expect(dl.textContent).toContain("Leftover by plan");
+    expect(dl.textContent).toContain("Leftover at current pace");
+    expect(container.querySelectorAll("dl dd")).toHaveLength(8);
   });
 });
 
@@ -265,7 +268,7 @@ describe("installment plans in progress", () => {
 
   it("shows none without plans", async () => {
     open();
-    await screen.findByText("January 2030");
+    await loaded();
     expect(screen.queryByRole("region", { name: "Installments in progress" })).toBeNull();
   });
 });
@@ -275,12 +278,12 @@ describe("states", () => {
     vi.mocked(api.getCommitments).mockRejectedValueOnce(new Error("x"));
     open();
     await userEvent.click(await screen.findByRole("button", { name: "Try again" }));
-    expect(await screen.findByText("January 2030")).toBeTruthy();
+    await loaded();
   });
 
   it("speaks pt-BR", async () => {
     open({ locale: "pt-BR" });
-    await waitFor(() => expect(screen.getByText("Janeiro de 2030")).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText("Janeiro de 2030").length).toBeGreaterThan(0));
     expect(screen.getByRole("heading", { level: 1, name: "Projeção" })).toBeTruthy();
   });
 });
@@ -293,7 +296,7 @@ describe("accessibility", () => {
       width(desktop);
       vi.mocked(api.getCommitments).mockResolvedValue({ ...OVER, months: [PLANS.months[0]!, ...OVER.months.slice(1)] });
       open({ theme, locale });
-      await screen.findAllByRole(desktop ? "table" : "group");
+      await screen.findAllByRole(desktop ? "table" : "region", desktop ? {} : { name: /Coming months|Próximos meses/ });
       expect(await violations()).toEqual([]);
     });
     it("screen without income", async () => {

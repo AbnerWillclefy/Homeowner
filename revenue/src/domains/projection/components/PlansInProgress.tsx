@@ -9,7 +9,7 @@ export function PlansInProgress({ plans }: { plans: Plan[] }) {
   const { t, locale } = useI18n();
   const money = useMoney();
   return (
-    <section aria-labelledby="projection-plans" className="desktop:col-span-12">
+    <section aria-labelledby="projection-plans" className="desktop:col-span-6">
     <Card className="gap-3">
       <h2 id="projection-plans" className="section-title">{t("projection.plans")}</h2>
       <ul className="flex list-none flex-col gap-4 p-0">
