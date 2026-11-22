@@ -73,6 +73,20 @@ describe("layout and states", () => {
     expect(screen.queryByText("Ask about your money", { selector: "p.text-text-muted" })).toBeNull();
   });
 
+  it("makes the field and the send button both 48 high", () => {
+    open();
+    // twMerge does not drop the base h-control-md, so the important class is what makes the field 48 on desktop.
+    expect(input().className).toContain("!h-control-lg");
+    expect(send().className).toContain("h-control-lg");
+  });
+
+  it("keeps a long unbroken answer inside its bubble", async () => {
+    ask.mockResolvedValue(answer("x".repeat(200)));
+    open();
+    await say("Hi");
+    expect(screen.getByText("x".repeat(200)).className).toContain("[overflow-wrap:anywhere]");
+  });
+
   it("has no back link and shows the subtitle on desktop", () => {
     width(true);
     open();
