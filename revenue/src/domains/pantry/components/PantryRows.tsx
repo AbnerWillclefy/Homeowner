@@ -1,6 +1,6 @@
 import { Badge, Button, Menu } from "@homeowner/bedrock";
 import { CategoryIcon } from "@homeowner/bedrock/finance";
-import { Pencil, Repeat, Trash2 } from "lucide-react";
+import { PackageX, Pencil, Repeat, Trash2 } from "lucide-react";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
 import type { PantryItem } from "../api";
 import { daysBetween } from "../logic/pantry";
@@ -30,7 +30,11 @@ function useMeta() {
   };
 }
 
-/** One row per item; its name opens the detail. "Acabou" is a button on an item in stock, a badge on one that ran out; the menu has Edit and Delete. */
+/**
+ * One row per item; its name opens the detail. An item in stock has one action, "Acabou", drawn as Bedrock's `ListRow`
+ * action is (a text button from the tablet breakpoint, a round 48px icon button below it): `ListRow` itself needs an amount
+ * and these rows have none. The action is a sibling of the open button, never inside it. The menu has Edit and Delete.
+ */
 export function PantryRows({ rows, caption, today, busy, onRanOut, onOpen, onEdit, onDelete }: RowsProps) {
   const { t } = useI18n();
   const meta = useMeta();
@@ -39,33 +43,40 @@ export function PantryRows({ rows, caption, today, busy, onRanOut, onOpen, onEdi
       {rows.map((item) => {
         const line = meta(item, today);
         return (
-          <li key={item.id} data-item={item.id} className="flex flex-wrap items-center gap-x-2">
-            <div className="flex min-w-0 flex-1 basis-56 items-center gap-4 py-2">
-              <CategoryIcon category="groceries" />
-              <span className="flex min-w-0 flex-1 flex-col">
-                <button
-                  type="button"
-                  aria-haspopup="dialog"
-                  data-open
-                  onClick={() => onOpen(item)}
-                  className="body-strong min-h-11 rounded-sm text-left outline-none [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-                >
-                  {item.name}
-                </button>
-                {line && <span className="caption text-text-muted [overflow-wrap:anywhere]">{line}</span>}
-              </span>
-              {item.fixed && (
-                <Badge tone="brand" icon={Repeat}>{t("pantry.fixed")}</Badge>
-              )}
-            </div>
-            <div className="ml-auto flex items-center gap-1">
-              {item.state === "ran_out" ? (
-                <Badge tone="danger">{t("pantry.ranOut")}</Badge>
-              ) : (
-                <Button variant="secondary" size="sm" loading={busy.has(item.id)} onClick={() => onRanOut(item)}>
-                  {t("pantry.ranOut")}<span className="sr-only">: {item.name}</span>
-                </Button>
-              )}
+          <li key={item.id} data-item={item.id} className="relative flex items-center gap-4 py-1">
+            <CategoryIcon category="groceries" />
+            <span className="flex min-w-0 flex-1 flex-col">
+              {/* Its ::after covers the row, so the whole row opens the item while the button's name stays the item's name. */}
+              <button
+                type="button"
+                aria-haspopup="dialog"
+                data-open
+                onClick={() => onOpen(item)}
+                className="body-strong min-h-11 cursor-pointer truncate rounded-sm text-left outline-none after:absolute after:inset-0 after:content-[''] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              >
+                {item.name}
+              </button>
+              {line && <span className="caption truncate text-text-muted">{line}</span>}
+            </span>
+            {item.fixed && (
+              <Badge tone="brand" icon={Repeat} className="shrink-0 max-tablet:hidden">{t("pantry.fixed")}</Badge>
+            )}
+            {item.state === "ran_out" ? (
+              <Badge tone="danger" className="shrink-0">{t("pantry.ranOut")}</Badge>
+            ) : (
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={PackageX}
+                loading={busy.has(item.id)}
+                onClick={() => onRanOut(item)}
+                aria-label={t("pantry.ranOutNamed", { name: item.name })}
+                className="relative shrink-0 max-tablet:size-control-lg max-tablet:rounded-full max-tablet:px-0"
+              >
+                <span className="max-tablet:sr-only">{t("pantry.ranOut")}</span>
+              </Button>
+            )}
+            <div data-menu className="relative">
               <Menu
                 label={t("pantry.menu", { name: item.name })}
                 closeLabel={t("app.close")}

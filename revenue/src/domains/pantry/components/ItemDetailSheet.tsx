@@ -1,6 +1,6 @@
 import { Badge, Banner, Button, Card, CardContent, CardLabel, ChartContainer, ChartTooltipContent, EmptyState, Sheet, Skeleton } from "@homeowner/bedrock";
 import { formatAmount, StatCard } from "@homeowner/bedrock/finance";
-import { Clock, Receipt, RefreshCw, Repeat } from "lucide-react";
+import { Clock, PackageX, Receipt, RefreshCw, Repeat } from "lucide-react";
 import { useEffect } from "react";
 import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from "recharts";
 import { useHiddenProps, useHideValues } from "../../../shared/HideValues";
@@ -65,7 +65,7 @@ export function ItemDetailSheet({ item, busy, onRanOut, onClose, onGone }: Props
       title={item.name}
       subtitle={item.preferredBrand ?? undefined}
       closeLabel={t("app.close")}
-      footer={item.state === "in_stock" && view?.kind === "ready" ? <Button variant="secondary" size="lg" loading={busy} onClick={() => onRanOut(item)}>{t("pantry.ranOut")}</Button> : undefined}
+      footer={item.state === "in_stock" && view?.kind === "ready" ? <Button variant="secondary" size="lg" icon={PackageX} loading={busy} onClick={() => onRanOut(item)}>{t("pantry.ranOut")}</Button> : undefined}
     >
       <div className="flex flex-col gap-4">
         {item.fixed && <Badge tone="brand" icon={Repeat} className="self-start">{t("pantry.always")}</Badge>}
