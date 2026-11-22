@@ -15,6 +15,7 @@ type Props = Omit<ComponentProps<"div">, "title" | "children" | "hidden"> & {
   children?: ReactElement;
 };
 
+// shortcut: mirrors ListRow's private layout for rows with no amount; upgrade by making ListRow's cents optional.
 const grid = "grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 py-2 text-left text-text";
 const interactive =
   "min-h-control-lg cursor-pointer rounded-md outline-none motion-safe:transition-colors duration-(--duration-fast) ease-standard hover:bg-surface-hover active:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";

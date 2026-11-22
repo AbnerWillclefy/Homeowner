@@ -36,7 +36,6 @@ export function InvestmentsSection({ investments, pick, takeBankValue, onAdd, on
         <h2 id="investments-title" className="card-label text-text-muted">{t("investments.title")}</h2>
         <Amount cents={investments.reduce((n, i) => n + i.valueCents, 0)} size="sm" locale={locale} {...hidden} />
       </div>
-      <p className="caption text-text-muted">{t("investments.hint")}</p>
       {failed && <Banner tone="danger">{t("investments.failed")}</Banner>}
       {investments.length === 0 && <p className="body text-text-muted">{t("investments.empty")}</p>}
       <ul className="divide-y divide-border">
@@ -77,6 +76,7 @@ export function InvestmentsSection({ investments, pick, takeBankValue, onAdd, on
           );
         })}
       </ul>
+      <p className="caption text-text-muted">{t("investments.hint")}</p>
       <Button variant="ghost" icon={Plus} className="w-full desktop:w-auto desktop:self-start" onClick={onAdd}>
         {t("investments.add")}
       </Button>
