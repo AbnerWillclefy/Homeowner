@@ -31,7 +31,7 @@ export function BillSuggestions({ suggestions, onAdd, onDismiss }: { suggestions
                 subtitle={t("bills.suggestions.day", { day: s.dueDay })}
                 cents={s.amountCents}
                 locale={locale}
-                action={{ label: t("bills.suggestions.add", { name: s.name }), icon: Plus, onClick: () => onAdd(s) }}
+                action={{ label: t("bills.suggestions.add"), name: t("bills.suggestions.addNamed", { name: s.name }), icon: Plus, onClick: () => onAdd(s) }}
                 {...hidden}
               />
             </div>

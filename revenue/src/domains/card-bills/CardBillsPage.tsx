@@ -56,7 +56,7 @@ export function CardBillsPage() {
         tools={desktop && cards}
       />
       {/* Scrolls sideways rather than widening the page when the names do not fit at 375px. */}
-      {!desktop && cards && <div className="overflow-x-auto">{cards}</div>}
+      {!desktop && cards && <div className="overflow-x-auto"><div className="w-max min-w-full">{cards}</div></div>}
 
       {loading ? (
         <div role="status" className="flex flex-col gap-4">

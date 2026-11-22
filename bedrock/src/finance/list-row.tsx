@@ -6,8 +6,10 @@ import { cn } from "../lib/cn";
 import { Amount } from "./amount";
 
 type RowAction = {
-  /** The verb, and the accessible name on every width; callers add the item's name ("Mark Rent as paid"). */
+  /** The verb: short, since it is visible text from the tablet breakpoint up, and the accessible name unless `name` is set. */
   label: string;
+  /** The accessible name when the item's name is needed ("Mark Rent as paid"); keeps the visible label short. */
+  name?: string;
   icon: LucideIcon;
   onClick(): void;
   loading?: boolean;
@@ -80,6 +82,7 @@ export function ListRow({ leading, title, subtitle, cents, income, end, locale, 
         loading={action.loading}
         disabled={action.disabled}
         onClick={action.onClick}
+        aria-label={action.name}
         className="shrink-0 max-tablet:size-control-lg max-tablet:rounded-full max-tablet:px-0"
       >
         <span className="max-tablet:sr-only">{action.label}</span>

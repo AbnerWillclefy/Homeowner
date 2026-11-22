@@ -34,14 +34,15 @@ function useNote() {
   };
 }
 
-/** The one action a row has: mark paid, or Undo for a Bill paid by hand. A Bill paid by the bank has none. Named with the Bill, since it repeats down the list. */
+/** The one action a row has: mark paid, or Undo for a Bill paid by hand. A Bill paid by the bank has none. Its accessible name carries the Bill, since it repeats down the list; the visible label stays short. */
 function useAction(busy: ReadonlySet<string>, onPaid: RowsProps["onPaid"]) {
   const { t } = useI18n();
   return (bill: Bill, state: BillState) => {
     if (state === "paid-bank") return undefined;
     const undo = state === "paid-hand";
     return {
-      label: t(undo ? "bills.undo" : "bills.markPaid", { name: bill.name }),
+      label: t(undo ? "bills.undo" : "bills.markPaid"),
+      name: t(undo ? "bills.undoNamed" : "bills.markPaidNamed", { name: bill.name }),
       icon: undo ? Undo2 : Check,
       variant: state === "overdue" ? ("primary" as const) : ("secondary" as const),
       loading: busy.has(bill.id),

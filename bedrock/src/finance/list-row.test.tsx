@@ -59,6 +59,12 @@ it("shows loading as busy and disabled", () => {
   expect((button as HTMLButtonElement).disabled).toBe(true);
 });
 
+it("names the action for assistive tech while the visible text stays short", () => {
+  render(<ListRow title="Aluguel" cents={-250000} action={action({ label: "Marcar paga", name: "Marcar Aluguel como paga" })} />);
+  const button = screen.getByRole("button", { name: "Marcar Aluguel como paga" });
+  expect(button.textContent).toBe("Marcar paga");
+});
+
 it("renders a row without an action as its own root", () => {
   const { container } = render(
     <ListRow asChild title="Aluguel" cents={-250000}>
