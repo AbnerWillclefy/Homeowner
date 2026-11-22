@@ -50,22 +50,21 @@ afterEach(() => vi.useRealTimers());
 
 describe("the bar against the limit", () => {
   it.each([
-    ["en", "Groceries", "R$1,800.00 of R$2,000.00", "R$200.00 under the limit"],
-    ["en", "Pets", "R$100.00 of R$100.00", "At the limit of R$100.00"],
-    ["en", "Eating out", "R$220.00 of R$200.00", "R$20.00 over the limit"],
-    ["pt-BR", "Restaurantes", "R$ 220,00 de R$ 200,00", "R$ 20,00 acima do limite"],
-  ] as const)("says %s %s in words", async (locale, name, of, words) => {
+    ["en", "Groceries", "of R$2,000.00 · R$200.00 under", "R$1,800.00 of R$2,000.00", "R$200.00 under the limit"],
+    ["en", "Pets", "At the limit of R$100.00", "R$100.00 of R$100.00", "At the limit of R$100.00"],
+    ["en", "Eating out", "of R$200.00 · R$20.00 over", "R$220.00 of R$200.00", "R$20.00 over the limit"],
+    ["pt-BR", "Restaurantes", "de R$ 200,00 · R$ 20,00 acima", "R$ 220,00 de R$ 200,00", "R$ 20,00 acima do limite"],
+  ] as const)("says %s %s in words", async (locale, name, caption, of, words) => {
     list({ locale });
     const row = (await screen.findByRole("link", { name })).closest("li")!;
-    expect(within(row).getByText(nb(of))).toBeTruthy();
-    expect(within(row).getByText(nb(words))).toBeTruthy();
-    expect(text(within(row).getByRole("progressbar").getAttribute("aria-valuetext") ?? "")).toContain(words);
+    expect(within(row).getByText(nb(caption))).toBeTruthy();
+    expect(text(within(row).getByRole("progressbar").getAttribute("aria-valuetext") ?? "")).toBe(`${of}. ${words}`);
   });
 
   it("never turns an over-limit bar to an alarm colour or tone", async () => {
-    const { container } = list();
-    await screen.findByRole("link", { name: "Eating out" });
-    expect(container.querySelector(".bg-danger, .text-danger, .bg-warning")).toBeNull();
+    list();
+    const row = (await screen.findByRole("link", { name: "Eating out" })).closest("li")!;
+    expect(row.querySelector(".bg-danger, .text-danger, .bg-warning")).toBeNull();
   });
 
   it("says a category without a limit has none", async () => {
@@ -77,10 +76,15 @@ describe("the bar against the limit", () => {
 });
 
 describe("the list", () => {
-  it("splits the month in a chart with a table as its alternative, and links each category", async () => {
+  it("draws the month day by day with a table as its alternative, and links each category", async () => {
     list();
     await screen.findByRole("link", { name: "Groceries" });
-    expect(screen.getByRole("img", { name: /Groceries takes 85% of spending/ })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Daily spending in January 2030: day 5 was the biggest" })).toBeTruthy();
+    for (const legend of ["Daily", "7-day average", "Limit pace"]) expect(screen.getByText(legend)).toBeTruthy();
+    // One row per day up to today (the 10th), a quiet day as zero.
+    const table = screen.getByRole("table", { name: "Daily spending in January 2030: day 5 was the biggest" });
+    expect(within(table).getAllByRole("row").length).toBe(1 + 10);
+    expect(within(within(table).getAllByRole("row")[1]!).getByText(nb("R$0.00"))).toBeTruthy();
     expect(screen.getByRole("link", { name: "Groceries" }).getAttribute("href")).toBe("/categories/groceries");
   });
 
@@ -109,7 +113,7 @@ describe("the list", () => {
 });
 
 describe("the layout", () => {
-  it("puts the header tools, then the total card and the categories in 8 columns beside 4", async () => {
+  it("puts the header tools, then the total card across 12 and the categories in 8 columns beside 4", async () => {
     const { container } = list();
     await screen.findByRole("link", { name: "Groceries" });
     expect(screen.getByRole("heading", { level: 1, name: "Spending Categories" })).toBeTruthy();
@@ -117,19 +121,68 @@ describe("the layout", () => {
     expect(screen.getByRole("button", { name: "Edit limits" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "Month" })).toBeTruthy();
     const grid = container.querySelector(".desktop\\:grid-cols-12")!;
-    expect(grid.children[0]!.className).toContain("desktop:col-span-8");
-    expect(grid.children[1]!.className).toContain("desktop:col-span-4");
+    expect(grid.children.length).toBe(3);
+    expect(grid.children[0]!.className).toContain("desktop:col-span-12");
+    expect(grid.children[1]!.className).toContain("desktop:col-span-8");
+    expect(grid.children[2]!.className).toContain("desktop:col-span-4");
     expect(within(grid.children[0] as HTMLElement).getByText("Spent in January 2030")).toBeTruthy();
-    expect(within(grid.children[0] as HTMLElement).getByRole("heading", { name: "January 2030 by category" })).toBeTruthy();
-    expect(within(grid.children[1] as HTMLElement).getByRole("heading", { name: "Without a category" })).toBeTruthy();
+    expect(within(grid.children[1] as HTMLElement).getByRole("heading", { name: "January 2030 by category" })).toBeTruthy();
+    expect(within(grid.children[2] as HTMLElement).getByRole("heading", { name: "Without a category" })).toBeTruthy();
   });
 
   it("shows the month total and its change against the previous month", async () => {
     list();
     await screen.findByRole("link", { name: "Groceries" });
     expect(screen.getByText("Spent in January 2030")).toBeTruthy();
-    expect(screen.getAllByText(nb("R$2,120.00")).length).toBe(2);
+    expect(screen.getByText(nb("R$2,120.00"))).toBeTruthy();
+    expect(screen.getByText(nb("R$212.00 per day"))).toBeTruthy();
     expect(screen.getByText("+25% vs previous month")).toBeTruthy();
+  });
+});
+
+describe("the daily chart", () => {
+  it("covers every day of a past month", async () => {
+    vi.mocked(api.getSpending).mockResolvedValue({ ...SPENDING, transactions: [tx({ postedOn: "2029-12-31" })] });
+    list({ path: "/categories?month=2029-12" });
+    await screen.findByRole("link", { name: "Groceries" });
+    expect(within(screen.getByRole("table", { name: /day 31 was the biggest/ })).getAllByRole("row").length).toBe(1 + 31);
+    expect(screen.queryByText(/of the month/)).toBeNull();
+  });
+
+  it("says a month without expenses plainly, not as a flat chart", async () => {
+    vi.mocked(api.getSpending).mockResolvedValue({ categories: [], limits: { pets: 10000 }, transactions: [] });
+    list();
+    expect(await screen.findByText("No spending this month so far.")).toBeTruthy();
+    expect(screen.queryByRole("img", { name: /Daily spending/ })).toBeNull();
+  });
+
+  it("replaces the chart by its table, with no amount in its name, while values are hidden", async () => {
+    const { container } = list();
+    await screen.findByRole("link", { name: "Groceries" });
+    await userEvent.click(screen.getByRole("button", { name: "Hide values" }));
+    expect(screen.queryByRole("img", { name: /Daily spending/ })).toBeNull();
+    const table = screen.getByRole("table", { name: "Daily spending in January 2030: day 5 was the biggest" });
+    expect(within(table).getAllByText("hidden value").length).toBe(10);
+    expect(container.textContent).not.toMatch(/R\$\s?\d/);
+  });
+});
+
+describe("the category rows", () => {
+  it("give each row its amount, caption and change on the same lines", async () => {
+    list();
+    const row = (await screen.findByRole("link", { name: "Groceries" })).closest("li")!;
+    expect(within(row).getByText(nb("R$1,800.00"))).toBeTruthy();
+    expect(within(row).getByText(nb("of R$2,000.00 · R$200.00 under"))).toBeTruthy();
+    expect(within(row).getByText("+20% vs previous month")).toBeTruthy();
+    expect(within(row).getAllByRole("progressbar").length).toBe(1);
+  });
+
+  it("leave the caption empty, not the amounts, while values are hidden", async () => {
+    list();
+    const row = (await screen.findByRole("link", { name: "Groceries" })).closest("li")!;
+    await userEvent.click(screen.getByRole("button", { name: "Hide values" }));
+    expect(within(row).queryByText(/under/)).toBeNull();
+    expect(within(row).getByText("hidden value")).toBeTruthy();
   });
 });
 
@@ -186,8 +239,8 @@ describe("the fixed bills card", () => {
     list();
     const card = (await screen.findByRole("heading", { name: "Fixed bills, outside this chart" })).closest("section, div")!.parentElement!;
     expect(billsApi.getBills).toHaveBeenCalledWith("2030-01");
-    expect(within(card).getByText("Aluguel")).toBeTruthy();
-    expect(within(card).getByText(nb("R$3,500.00"))).toBeTruthy();
+    expect(card.querySelector("dt")!.textContent).toBe("Aluguel");
+    expect(text(card.querySelector("dd")!.textContent!)).toBe("R$3,500.00");
     expect(within(card).getByRole("link", { name: "See bills to pay" }).getAttribute("href")).toBe("/bills");
   });
 
@@ -238,7 +291,7 @@ describe("editing the limits", () => {
 });
 
 describe("hide values", () => {
-  it("masks the row amounts, the total, the bar's words, the fixed bills and the donut's centre", async () => {
+  it("masks the row amounts, the total, the bar's words, the fixed bills and the chart", async () => {
     list();
     await screen.findByRole("link", { name: "Groceries" });
     expect(screen.getAllByText(/2,120\.00/).length).toBeGreaterThan(0);

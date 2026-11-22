@@ -7,7 +7,7 @@ import { categoryRows } from "../../categories/logic/rows";
 import { monthName } from "../logic/month";
 import { CardHead } from "./CardHead";
 
-/** The month's spending by Category, drawn by the Categories screen's donut. */
+/** The month's spending by Category, drawn by `SpendingDonut` (kept in `categories/`; the Categories screen itself now draws the month day by day). */
 export function SpendingCard({ spending, month }: { spending: Spending; month: string }) {
   const { t, locale } = useI18n();
   const { hidden } = useHideValues();

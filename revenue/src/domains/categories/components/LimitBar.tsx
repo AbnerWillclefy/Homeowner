@@ -8,7 +8,7 @@ import { limitText } from "../logic/limit";
  * Spent against the Spending limit. Past the limit the bar is full and the words say by how much: no colour carries
  * it, so the tone is fixed and never alarms.
  */
-export function LimitBar({ label, spent, limit }: { label: string; spent: number; limit: number }) {
+export function LimitBar({ label, spent, limit, bare }: { label: string; spent: number; limit: number; /** Only the bar: the caller prints the words. */ bare?: boolean }) {
   const { t, locale } = useI18n();
   const { hidden } = useHideValues();
   const money = (cents: number) => formatAmount(cents, { locale });
@@ -16,8 +16,8 @@ export function LimitBar({ label, spent, limit }: { label: string; spent: number
   const of = t("categories.limit.of", { spent: money(spent), limit: money(limit) });
   const words = t(`categories.limit.${standing.key}`, { amount: money(standing.amount), limit: money(limit) });
   // The words carry money, so a hidden one says only that it is hidden; the bar's fill stays.
-  return hidden ? (
-    <ProgressBar value={Math.max(spent, 0)} max={limit} tone="brand" label={label} valueText={t("hide.label")} />
+  return hidden || bare ? (
+    <ProgressBar value={Math.max(spent, 0)} max={limit} tone="brand" label={label} valueText={hidden ? t("hide.label") : `${of}. ${words}`} />
   ) : (
     <ProgressBar value={Math.max(spent, 0)} max={limit} tone="brand" label={label} valueText={`${of}. ${words}`} start={of} end={words} />
   );
