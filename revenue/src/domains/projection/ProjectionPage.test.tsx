@@ -136,15 +136,16 @@ describe("the series switch", () => {
 describe("the chosen month", () => {
   it.each([true, false])("is a sum that adds up to its Leftover, with the pace gap as a line (desktop %s)", async (desktop) => {
     width(desktop);
+    // January's plan lines add up exactly: 5,000 − 1,000 − 2,000 − 300 − 500 = 1,200.
+    vi.mocked(api.getCommitments).mockResolvedValue({ ...DATA, months: [{ ...MONTHS[0]!, leftoverCents: 120000 }, ...MONTHS.slice(1)] });
     open();
     const detail = await screen.findByRole("region", { name: "January 2030" });
     const dl = detail.querySelector("dl")!;
     const lines = [...dl.children].map(line);
     expect(lines).toEqual([
       "Monthly income R$5,000.00", "− Card bills R$1,000.00", "− Other bills R$2,000.00", "− Planned spending R$300.00", "− Put aside R$500.00",
-      "Leftover by plan R$1,201.00", "− Difference at current pace R$1,191.00", "Leftover at current pace R$10.00",
+      "Leftover by plan R$1,200.00", "− Difference at current pace R$1,190.00", "Leftover at current pace R$10.00",
     ]);
-    expect(1201_00 - 1191_00).toBe(10_00);
   });
 
   it("starts with this month and follows a click on a row", async () => {
