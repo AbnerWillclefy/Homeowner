@@ -17,7 +17,7 @@ export function GoalFacts({ monthCents, when, badge, where }: { monthCents: numb
     : "—";
   const items = [
     ...(monthCents !== null && when.kind !== "reached" ? [{ label: t("goals.card.month"), value: <Amount cents={monthCents} size="sm" locale={locale} {...hide} /> }] : []),
-    { label: t("goals.card.eta"), value: <><span>{eta}</span>{badge}</> },
+    { label: t("goals.card.eta"), value: <span className="flex flex-wrap items-center justify-end gap-2 whitespace-normal"><span>{eta}</span>{badge}</span> },
     { label: t("goals.card.where"), value: <span className="whitespace-normal [overflow-wrap:anywhere]">{where.length > 0 ? where.join(", ") : t("goals.card.whereNone")}</span> },
   ];
   return <DescriptionList items={items} className="grid-cols-[auto_minmax(0,1fr)] border-t border-border pt-4" />;
