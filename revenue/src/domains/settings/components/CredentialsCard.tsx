@@ -1,8 +1,27 @@
 import { Banner, Button, Card, Dialog, Input, Sheet } from "@homeowner/bedrock";
+import { Ellipsis } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
 import type { MessageKey } from "../../../shared/i18n/catalogs";
 import { useCredentials } from "../hooks/useFinanceSettings";
+
+/** The remove confirmation, with its own open state so the phone Sheet and the desktop row can each hold one. */
+function RemoveButton({ remove }: { remove(): void }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={setOpen}
+      trigger={<Button size="sm" variant="secondary">{t("settings.creds.remove")}</Button>}
+      title={t("settings.creds.removeTitle")}
+      description={t("settings.creds.removeBody")}
+      cancelLabel={t("settings.creds.cancel")}
+      confirmLabel={t("settings.creds.removeConfirm")}
+      onConfirm={remove}
+    />
+  );
+}
 
 const FAILURE: Record<"invalid" | "rejected" | "error", MessageKey> = {
   invalid: "settings.creds.invalid",
@@ -20,7 +39,6 @@ export function CredentialsCard() {
   const [editing, setEditing] = useState(false);
   const [failure, setFailure] = useState<MessageKey | null>(null);
   const [saving, setSaving] = useState(false);
-  const [confirming, setConfirming] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,6 +53,8 @@ export function CredentialsCard() {
       setEditing(false);
     }
   }
+
+  const removeSaved = () => void remove().then((ok) => setFailure(ok ? null : "settings.creds.failed"));
 
   const form = (
     <form onSubmit={(e) => void submit(e)} className="flex flex-col gap-4">
@@ -66,24 +86,28 @@ export function CredentialsCard() {
               {saved && <span className="caption text-text-muted">{t("settings.creds.encrypted")}</span>}
             </div>
             {saved && (
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="secondary" onClick={() => {
+              <>
+                <Button
+                  icon={Ellipsis}
+                  variant="secondary"
+                  className="w-control-lg px-0 desktop:hidden"
+                  onClick={() => {
                     setFailure(null);
                     setEditing(true);
-                  }}>
-                  {t("settings.creds.replace")}
+                  }}
+                >
+                  <span className="sr-only">{t("settings.creds.manage")}</span>
                 </Button>
-                <Dialog
-                  open={confirming}
-                  onOpenChange={setConfirming}
-                  trigger={<Button size="sm" variant="secondary">{t("settings.creds.remove")}</Button>}
-                  title={t("settings.creds.removeTitle")}
-                  description={t("settings.creds.removeBody")}
-                  cancelLabel={t("settings.creds.cancel")}
-                  confirmLabel={t("settings.creds.removeConfirm")}
-                  onConfirm={() => void remove().then((ok) => setFailure(ok ? null : "settings.creds.failed"))}
-                />
-              </div>
+                <div className="hidden gap-2 desktop:flex">
+                  <Button size="sm" variant="secondary" onClick={() => {
+                      setFailure(null);
+                      setEditing(true);
+                    }}>
+                    {t("settings.creds.replace")}
+                  </Button>
+                  <RemoveButton remove={removeSaved} />
+                </div>
+              </>
             )}
           </div>
         )
@@ -92,6 +116,9 @@ export function CredentialsCard() {
       {saved && (
         <Sheet open={editing} onOpenChange={setEditing} title={t("settings.creds.title")} closeLabel={t("app.close")}>
           {form}
+          <div className="mt-4 desktop:hidden">
+            <RemoveButton remove={removeSaved} />
+          </div>
         </Sheet>
       )}
       {failure && saved && !editing && <Banner tone="danger">{t(failure)}</Banner>}
