@@ -1,5 +1,5 @@
-import { Badge, Button, Menu } from "@homeowner/bedrock";
-import { Amount, CategoryIcon, formatAmount, ListRow } from "@homeowner/bedrock/finance";
+import { Badge, Menu } from "@homeowner/bedrock";
+import { CategoryIcon, formatAmount, ListRow } from "@homeowner/bedrock/finance";
 import { Check, Pencil, Trash2, Undo2 } from "lucide-react";
 import { useHiddenProps, useHideValues } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
@@ -13,7 +13,7 @@ interface RowsProps {
   caption: string;
   /** `YYYY-MM-DD` in São Paulo; null for a past month, which is read-only. */
   today: string | null;
-  /** Id of the Bill whose paid mark is being written; its button waits. */
+  /** Ids of the Bills whose paid mark is being written; each one's action waits. */
   busy: ReadonlySet<string>;
   onPaid(bill: Bill, paid: boolean): void;
   onEdit(bill: Bill): void;
@@ -34,56 +34,63 @@ function useNote() {
   };
 }
 
-/** Mark paid or Undo, and the menu with Edit and Delete. A Bill paid by the bank has no Undo; a past month has no actions. */
-function Actions({ bill, state, busy, onPaid, onEdit, onDelete }: Pick<RowsProps, "busy" | "onPaid" | "onEdit" | "onDelete"> & { bill: Bill; state: BillState }) {
+/** The one action a row has: mark paid, or Undo for a Bill paid by hand. A Bill paid by the bank has none. Named with the Bill, since it repeats down the list. */
+function useAction(busy: ReadonlySet<string>, onPaid: RowsProps["onPaid"]) {
   const { t } = useI18n();
-  return (
-    <div className="ml-auto flex items-center gap-1">
-      {state === "paid-hand" ? (
-        <Button variant="secondary" size="sm" icon={Undo2} loading={busy.has(bill.id)} onClick={() => onPaid(bill, false)}>
-          {t("bills.undo")}<span className="sr-only">: {bill.name}</span>
-        </Button>
-      ) : state === "paid-bank" ? null : (
-        <Button variant={state === "overdue" ? "primary" : "secondary"} size="sm" icon={Check} loading={busy.has(bill.id)} onClick={() => onPaid(bill, true)}>
-          {t("bills.markPaid")}<span className="sr-only">: {bill.name}</span>
-        </Button>
-      )}
-      <Menu
-        label={t("bills.menu", { name: bill.name })}
-        closeLabel={t("app.close")}
-        items={[
-          { label: t("bills.edit"), icon: Pencil, onSelect: () => onEdit(bill) },
-          { label: t("bills.delete"), icon: Trash2, danger: true, onSelect: () => onDelete(bill) },
-        ]}
-      />
-    </div>
-  );
+  return (bill: Bill, state: BillState) => {
+    if (state === "paid-bank") return undefined;
+    const undo = state === "paid-hand";
+    return {
+      label: t(undo ? "bills.undo" : "bills.markPaid", { name: bill.name }),
+      icon: undo ? Undo2 : Check,
+      variant: state === "overdue" ? ("primary" as const) : ("secondary" as const),
+      loading: busy.has(bill.id),
+      onClick: () => onPaid(bill, !undo),
+    };
+  };
 }
 
-/** One row per Bill, by due date. The actions wrap under the row at the largest text instead of squeezing it. */
-export function BillRows({ rows, caption, today, ...actions }: RowsProps) {
+/** One row per Bill, by due date. The row opens the edit Sheet; the action and the menu with Edit and Delete sit beside it. A past month has neither. */
+export function BillRows({ rows, caption, today, busy, onPaid, onEdit, onDelete }: RowsProps) {
   const { locale, t } = useI18n();
   const hidden = useHiddenProps();
   const note = useNote();
+  const action = useAction(busy, onPaid);
   return (
     <ul aria-label={caption} className="divide-y divide-border">
       {rows.map((bill) => {
         const state = billState(bill, today);
         const subtitle = [t("bills.dueOn", { date: formatDay(bill.dueDate, locale) }), note(bill, state)].filter(Boolean).join(" · ");
+        const row = (
+          <ListRow
+            asChild={today !== null}
+            leading={<CategoryIcon category="other" />}
+            title={bill.name}
+            subtitle={subtitle}
+            cents={bill.expectedCents}
+            end={<BillStatus state={state} />}
+            locale={locale}
+            action={today === null ? undefined : action(bill, state)}
+            {...hidden}
+          >
+            {today !== null && <button type="button" onClick={() => onEdit(bill)} />}
+          </ListRow>
+        );
         return (
-          <li key={bill.id} className="flex flex-wrap items-center gap-x-2">
-            <div className="flex min-w-0 flex-1 basis-56 items-center gap-4 py-2">
-              <CategoryIcon category="other" />
-              <span className="flex min-w-0 flex-1 flex-col">
-                <span className="body-strong [overflow-wrap:anywhere]">{bill.name}</span>
-                <span className="caption text-text-muted [overflow-wrap:anywhere]">{subtitle}</span>
-              </span>
-              <span className="flex shrink-0 flex-col items-end whitespace-nowrap">
-                <Amount cents={bill.expectedCents} size="sm" locale={locale} {...hidden} />
-                <span className="caption text-text-muted"><BillStatus state={state} /></span>
-              </span>
-            </div>
-            {today !== null && <Actions bill={bill} state={state} {...actions} />}
+          <li key={bill.id}>
+            {today === null ? row : (
+              <div className="flex items-center gap-1">
+                <div className="min-w-0 flex-1">{row}</div>
+                <Menu
+                  label={t("bills.menu", { name: bill.name })}
+                  closeLabel={t("app.close")}
+                  items={[
+                    { label: t("bills.edit"), icon: Pencil, onSelect: () => onEdit(bill) },
+                    { label: t("bills.delete"), icon: Trash2, danger: true, onSelect: () => onDelete(bill) },
+                  ]}
+                />
+              </div>
+            )}
           </li>
         );
       })}

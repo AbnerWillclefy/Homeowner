@@ -1,4 +1,4 @@
-import { Banner, Button, Card, Dialog, EmptyState, Skeleton, SegmentedControl } from "@homeowner/bedrock";
+import { Banner, Card, Dialog, EmptyState, Skeleton, SegmentedControl } from "@homeowner/bedrock";
 import { formatAmount } from "@homeowner/bedrock/finance";
 import { CalendarCheck, Plus } from "lucide-react";
 import { useState } from "react";
@@ -7,7 +7,6 @@ import { useI18n } from "../../shared/i18n/I18nProvider";
 import { addMonths, monthLabel } from "../../shared/month/month";
 import { useMonthParam } from "../../shared/month/useMonthParam";
 import { PageHeader } from "../../shared/PageHeader";
-import { useMediaQuery } from "../../shared/useMediaQuery";
 import type { Bill, BillInput } from "./api";
 import { BillFormSheet } from "./components/BillFormSheet";
 import { BillRows, NextMonthRows } from "./components/BillRows";
@@ -16,8 +15,6 @@ import { BillSummary } from "./components/BillSummary";
 import { useBills, useBillSuggestions, useNextMonthBills } from "./hooks/useBills";
 import { filterBills, summarise, type StatusFilter } from "./logic/billState";
 
-// Duplicates --bp-desktop in Bedrock's tokens.css: matchMedia cannot read custom properties.
-const DESKTOP = "(min-width: 1024px)";
 const FILTERS = ["all", "pending", "paid"] as const;
 
 type Open = { bill: Bill | null; initial?: BillInput; merchantKey?: string } | null;
@@ -25,7 +22,6 @@ type Open = { bill: Bill | null; initial?: BillInput; merchantKey?: string } | n
 /** "Contas a pagar" at `/bills` (a reminder opens it; `?month=YYYY-MM` picks the month). A past month is history: read-only. */
 export function BillsPage() {
   const { t, locale } = useI18n();
-  const desktop = useMediaQuery(DESKTOP);
   const { hidden } = useHideValues();
   const { month, thisMonth, today: day } = useMonthParam();
   const current = month === thisMonth;
@@ -60,15 +56,7 @@ export function BillsPage() {
         subtitle={subtitle}
         month
         hideValues
-        tools={
-          <>
-            {current && (
-              <Button icon={Plus} onClick={() => setForm({ bill: null })}>
-                <span className={desktop ? undefined : "sr-only"}>{t("bills.add")}</span>
-              </Button>
-            )}
-          </>
-        }
+        action={current ? { label: t("bills.add"), icon: Plus, onClick: () => setForm({ bill: null }) } : undefined}
       />
 
       {(notice || dismissFailed === month) && (
@@ -107,8 +95,9 @@ export function BillsPage() {
             )}
           </Card>
 
-          <div className="flex flex-col gap-6 desktop:col-span-4">
-            {rows.length > 0 && <BillSummary {...summary} month={label} />}
+          {/* Below 1024px the column dissolves, so the summary leads the page and the suggestions close it. */}
+          <div className="max-desktop:contents desktop:col-span-4 desktop:flex desktop:flex-col desktop:gap-6">
+            {rows.length > 0 && <div className="max-desktop:order-first"><BillSummary {...summary} month={label} /></div>}
             {current && (
               <BillSuggestions
                 suggestions={suggestions}
