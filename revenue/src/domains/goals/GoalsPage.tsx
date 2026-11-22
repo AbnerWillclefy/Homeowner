@@ -1,9 +1,8 @@
-import { Banner, Button, Dialog, EmptyState, Skeleton } from "@homeowner/bedrock";
+import { Banner, Dialog, EmptyState, Skeleton } from "@homeowner/bedrock";
 import { Plus, Target } from "lucide-react";
 import { useState } from "react";
 import { useI18n } from "../../shared/i18n/I18nProvider";
 import { PageHeader } from "../../shared/PageHeader";
-import { useMediaQuery } from "../../shared/useMediaQuery";
 import type { Investment, SavingsGoal } from "./api";
 import { ContributionCard } from "./components/ContributionCard";
 import { GoalFormSheet } from "./components/GoalFormSheet";
@@ -13,15 +12,11 @@ import { ReserveCard } from "./components/ReserveCard";
 import { useMoney } from "./hooks/useMoney";
 import { useSavings } from "./hooks/useSavings";
 
-// Duplicates --bp-desktop in Bedrock's tokens.css: matchMedia cannot read custom properties.
-const DESKTOP = "(min-width: 1024px)";
-
 type Open = { goal: SavingsGoal | null } | null;
 
 /** "Objetivos" at `/goals`: the Monthly contribution and its leftover, the Emergency reserve target and the Goals (whose order decides who is served first) as cards. The Investments that fill them are on Fontes. */
 export function GoalsPage() {
   const { t } = useI18n();
-  const desktop = useMediaQuery(DESKTOP);
   const money = useMoney();
   const { data, loading, failed, reload, saveReserve, saveContribution, saveGoal, removeGoal, reorder } = useSavings();
   const [form, setForm] = useState<Open>(null);
@@ -36,11 +31,7 @@ export function GoalsPage() {
         title={t("nav.goals")}
         subtitle={data?.contributionBaseCents ? t("goals.subtitle", { amount: money(data.contributionBaseCents) }) : undefined}
         hideValues
-        tools={
-          <Button icon={Plus} onClick={() => setForm({ goal: null })}>
-            <span className={desktop ? undefined : "sr-only"}>{t("goals.form.addTitle")}</span>
-          </Button>
-        }
+        action={{ label: t("goals.form.addTitle"), icon: Plus, onClick: () => setForm({ goal: null }) }}
       />
 
       {deleteFailed && <Banner tone="danger">{t("goals.failed")}</Banner>}

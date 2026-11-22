@@ -1,3 +1,4 @@
+import { DescriptionList } from "@homeowner/bedrock";
 import { Amount } from "@homeowner/bedrock/finance";
 import type { ReactNode } from "react";
 import { useHiddenProps } from "../../../shared/HideValues";
@@ -14,31 +15,10 @@ export function GoalFacts({ monthCents, when, badge, where }: { monthCents: numb
     : when.kind === "beyond" ? t("goals.beyond")
     : when.kind === "expected" ? monthLabel(when.month, locale)
     : "—";
-  return (
-    <dl className="flex flex-col gap-2 border-t border-border pt-4">
-      {monthCents !== null && when.kind !== "reached" && (
-        <Fact label={t("goals.card.month")}>
-          <Amount cents={monthCents} size="sm" locale={locale} {...hide} />
-        </Fact>
-      )}
-      <Fact label={t("goals.card.eta")}>
-        <span className="flex flex-wrap items-center justify-end gap-2">
-          <span className="body">{eta}</span>
-          {badge}
-        </span>
-      </Fact>
-      <Fact label={t("goals.card.where")}>
-        <span className="body text-right [overflow-wrap:anywhere]">{where.length > 0 ? where.join(", ") : t("goals.card.whereNone")}</span>
-      </Fact>
-    </dl>
-  );
-}
-
-function Fact({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-      <dt className="body text-text-muted">{label}</dt>
-      <dd>{children}</dd>
-    </div>
-  );
+  const items = [
+    ...(monthCents !== null && when.kind !== "reached" ? [{ label: t("goals.card.month"), value: <Amount cents={monthCents} size="sm" locale={locale} {...hide} /> }] : []),
+    { label: t("goals.card.eta"), value: <span className="flex flex-wrap items-center justify-end gap-2 whitespace-normal"><span>{eta}</span>{badge}</span> },
+    { label: t("goals.card.where"), value: <span className="whitespace-normal [overflow-wrap:anywhere]">{where.length > 0 ? where.join(", ") : t("goals.card.whereNone")}</span> },
+  ];
+  return <DescriptionList items={items} className="grid-cols-[auto_minmax(0,1fr)] border-t border-border pt-4" />;
 }
