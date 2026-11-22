@@ -96,7 +96,7 @@ export function PhotoDraft({ step, onSave }: { step: Draft; onSave(draft: Receip
         })}
       </ul>
       <Button variant="secondary" icon={Plus} onClick={() => { edit({ lines: [...form.lines, blankLine(next)] }); setNext(next + 1); }}>{t("receipt.addLine")}</Button>
-      <Button type="submit" size="lg" loading={step.saving}>{t("receipt.save")}</Button>
+      <Button type="submit" loading={step.saving}>{t("receipt.save")}</Button>
     </form>
   );
 }
