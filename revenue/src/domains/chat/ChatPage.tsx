@@ -161,6 +161,8 @@ function Conversation({ from }: { from: ScreenKey }) {
                 ref={input}
                 label={t("chat.input.label")}
                 hideLabel
+                // Important: twMerge keeps both h-control-* (custom token), so h-control-md would win on desktop.
+                className="!h-control-lg"
                 placeholder={t("chat.input.placeholder")}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}

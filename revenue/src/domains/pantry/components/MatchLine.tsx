@@ -96,7 +96,7 @@ export function MatchLine({ step, match, onBusy }: { step: Matching; match(recei
         <form id={formId} onSubmit={(e) => void create(e)} noValidate className="flex flex-col gap-4">
           <Input label={t("receipt.newName")} value={name} onChange={(e) => setName(e.target.value)} error={fieldError("name")} autoComplete="off" disabled={saving} />
           <Input label={t("receipt.newBrand")} hint={t("pantry.form.brandHint")} value={brand} onChange={(e) => setBrand(e.target.value)} error={fieldError("preferredBrand")} autoComplete="off" disabled={saving} />
-          <Button type="submit" size="lg" loading={saving}>{t("receipt.newSave")}</Button>
+          <Button type="submit" loading={saving}>{t("receipt.newSave")}</Button>
           <Button variant="ghost" disabled={saving} onClick={() => setCreating(false)}>{t("receipt.back")}</Button>
         </form>
       ) : (
@@ -126,8 +126,8 @@ export function MatchLine({ step, match, onBusy }: { step: Matching; match(recei
               ))}
             </ul>
           )}
-          <Button size="lg" icon={Plus} disabled={saving} onClick={() => setCreating(true)}>{t("receipt.createNew")}</Button>
-          <Button size="lg" variant="secondary" disabled={saving} onClick={() => void choose({ ignore: true })}>{t("receipt.notPantry")}</Button>
+          <Button icon={Plus} disabled={saving} onClick={() => setCreating(true)}>{t("receipt.createNew")}</Button>
+          <Button variant="secondary" disabled={saving} onClick={() => void choose({ ignore: true })}>{t("receipt.notPantry")}</Button>
         </>
       )}
     </div>

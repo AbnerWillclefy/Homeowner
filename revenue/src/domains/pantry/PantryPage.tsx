@@ -1,7 +1,8 @@
 import { Badge, Banner, Button, Card, Dialog, EmptyState, Skeleton, Toast, ToastProvider } from "@homeowner/bedrock";
-import { Package, RefreshCw, ShoppingCart } from "lucide-react";
+import { Package, Plus, RefreshCw, ShoppingCart } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
+import { useMediaQuery } from "../../shared/useMediaQuery";
 import { useI18n } from "../../shared/i18n/I18nProvider";
 import { saoPauloDay } from "../../shared/month/month";
 import { PageHeader } from "../../shared/PageHeader";
@@ -14,9 +15,13 @@ import { PantryRows } from "./components/PantryRows";
 import { usePantry } from "./hooks/usePantry";
 import { groupItems } from "./logic/pantry";
 
+// Duplicates --bp-desktop in Bedrock's tokens.css: matchMedia cannot read custom properties.
+const DESKTOP = "(min-width: 1024px)";
+
 /**
  * "Despensa" at `/pantry`: what is at home and what ran out. One tap on "Acabou" moves the item at once and offers "Desfazer".
- * "Adicionar nota" opens the receipt Sheet; "Lista de compras" links to the shopping list.
+ * "Adicionar nota", the header's primary action, opens the receipt Sheet; "Lista de compras" links to the shopping list.
+ * The "Novo item" form sits in the "Na despensa" card from 1024px, in a card of its own above the lists below it.
  */
 export function PantryPage() {
   const { t } = useI18n();
@@ -25,6 +30,9 @@ export function PantryPage() {
   const [deleting, setDeleting] = useState<PantryItem | null>(null);
   const [toast, setToast] = useState<PantryItem | null>(null);
   const [viewingId, setViewingId] = useState<string | null>(null);
+  const [receipt, setReceipt] = useState(false);
+  const receiptOpener = useRef<HTMLElement | null>(null);
+  const desktop = useMediaQuery(DESKTOP);
   // The row a Sheet opened from, and the button in it to hand focus back to: the menu for the edit Sheet, the name for the detail.
   const opener = useRef<{ id: string; button: string } | null>(null);
 
@@ -36,6 +44,13 @@ export function PantryPage() {
     document.querySelector<HTMLElement>(`[data-item="${CSS.escape(id)}"] ${button}`)?.focus();
     opener.current = null;
   }, [editing, viewing]);
+
+  const openReceipt = () => { receiptOpener.current = document.activeElement as HTMLElement | null; setReceipt(true); };
+  // The Sheet has no trigger of its own, so focus goes back to the header action that opened it.
+  const changeReceipt = (next: boolean) => {
+    setReceipt(next);
+    if (!next) setTimeout(() => receiptOpener.current?.focus());
+  };
 
   // A deleted item takes its Sheet with it; one deleted on another device is gone too, and the Pantry is read again.
   const closeGone = useCallback(() => { setViewingId(null); refresh(); }, [refresh]);
@@ -61,7 +76,7 @@ export function PantryPage() {
       busy={busy}
       onRanOut={(i) => void ranOut(i)}
       onOpen={(i) => { opener.current = { id: i.id, button: "[data-open]" }; setViewingId(i.id); }}
-      onEdit={(i) => { opener.current = { id: i.id, button: ".ml-auto button:last-of-type" }; setEditing(i); }}
+      onEdit={(i) => { opener.current = { id: i.id, button: "[data-menu] button" }; setEditing(i); }}
       onDelete={setDeleting}
     />
   );
@@ -69,14 +84,18 @@ export function PantryPage() {
   return (
     <ToastProvider label={t("pantry.toast.region")}>
       <section className="flex flex-col gap-6">
-        <PageHeader title={t("nav.pantry")} subtitle={subtitle} tools={
-            <>
-              <Button asChild variant="secondary">
-                <Link to="/pantry/list"><ShoppingCart className="size-4" aria-hidden />{t("pantry.list")}</Link>
-              </Button>
-              <AddReceiptSheet />
-            </>
-          } />
+        <PageHeader
+          title={t("nav.pantry")}
+          subtitle={subtitle}
+          tools={
+            <Button asChild variant="secondary" className="max-desktop:size-control-lg max-desktop:rounded-full max-desktop:px-0">
+              <Link to="/pantry/list"><ShoppingCart className="size-4" aria-hidden /><span className="max-desktop:sr-only">{t("pantry.list")}</span></Link>
+            </Button>
+          }
+          action={{ label: t("receipt.open"), icon: Plus, onClick: openReceipt }}
+          hideValues
+        />
+        <AddReceiptSheet open={receipt} onOpenChange={changeReceipt} />
 
         {notice && <Banner tone="danger">{t(notice === "gone" ? "pantry.gone" : "pantry.failed")}</Banner>}
 
@@ -105,19 +124,24 @@ export function PantryPage() {
             </Card>
           ) : (
             <>
-              <Card className="desktop:col-span-5">
+              <Card variant={desktop ? "default" : "compact"} className="min-w-0 desktop:col-span-5">
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="section-title">{t("pantry.outHead")}</h2>
                   <Badge tone="danger">{out.length}</Badge>
                 </div>
                 {out.length === 0 ? <p className="body text-text-muted">{t("pantry.out.none")}</p> : rows(out, t("pantry.outCaption"))}
               </Card>
-              <Card className="desktop:col-span-7">
+              {!desktop && (
+                <Card variant="compact" className="order-first">
+                  <AddItemForm add={add} />
+                </Card>
+              )}
+              <Card variant={desktop ? "default" : "compact"} className="min-w-0 desktop:col-span-7">
                 <div className="flex items-center justify-between gap-2">
                   <h2 className="section-title">{t("pantry.inHead")}</h2>
                   <Badge>{stock.length}</Badge>
                 </div>
-                <AddItemForm add={add} />
+                {desktop && <AddItemForm add={add} />}
                 {stock.length === 0 ? <p className="body text-text-muted">{t("pantry.stock.none")}</p> : rows(stock, t("pantry.inCaption"))}
               </Card>
             </>

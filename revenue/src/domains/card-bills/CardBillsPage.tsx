@@ -43,7 +43,7 @@ export function CardBillsPage() {
     : undefined;
   const pick = (sourceId: string) => setParams((old) => { const next = new URLSearchParams(old); next.set("card", sourceId); return next; }, { replace: true });
   const cards = bills && bills.length > 1 && bill && (
-    <SegmentedControl label={t("cardBills.card.group")} options={bills.map((b) => ({ value: b.sourceId, label: b.name }))} value={bill.sourceId} onValueChange={pick} />
+    <SegmentedControl block={!desktop} label={t("cardBills.card.group")} options={bills.map((b) => ({ value: b.sourceId, label: b.name }))} value={bill.sourceId} onValueChange={pick} />
   );
 
   return (
@@ -55,7 +55,8 @@ export function CardBillsPage() {
         hideValues
         tools={desktop && cards}
       />
-      {!desktop && cards}
+      {/* Scrolls sideways rather than widening the page when the names do not fit at 375px. */}
+      {!desktop && cards && <div className="overflow-x-auto"><div className="w-max min-w-full">{cards}</div></div>}
 
       {loading ? (
         <div role="status" className="flex flex-col gap-4">

@@ -101,7 +101,7 @@ describe("a write still pending", () => {
     serve(detail());
     vi.mocked(api.undoRanOut).mockReturnValue(new Promise(() => {}));
     open();
-    await userEvent.click(await screen.findByRole("button", { name: "Ran out: Arroz" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Mark as ran out: Arroz" }));
     await userEvent.click(await screen.findByRole("button", { name: "Undo" }));
     await userEvent.click(await screen.findByRole("button", { name: "Arroz" }));
     const button = await within(await screen.findByRole("dialog")).findByRole("button", { name: "Ran out" });
@@ -171,7 +171,7 @@ describe("closing", () => {
     vi.mocked(api.getPantry).mockResolvedValueOnce([RICE, BEANS]).mockResolvedValue([BEANS]);
     await openRice();
     // Behind the open sheet: a refresh that no longer lists Arroz takes its sheet with it.
-    fireEvent.click(within(screen.getByText("Feijão").closest("li")!).getByRole("button", { name: /Ran out/, hidden: true }));
+    fireEvent.click(within(screen.getByText("Feijão").closest("li")!).getByRole("button", { name: /Mark as ran out/, hidden: true }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     await userEvent.click(await screen.findByRole("button", { name: "More actions for Feijão" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: "Edit" }));

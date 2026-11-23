@@ -6,12 +6,13 @@ import { isThemeChoice, THEME_CHOICES } from "./theme/theme";
 
 const LANGUAGE_NAME = { "pt-BR": "Português", en: "English" } as const;
 
-/** Language and appearance. Shown on the sign-in screens, side by side, and in Settings as two rows with the label on the left. */
+/** Language and appearance. Shown on the sign-in screens, side by side, and in Settings as two rows: the label on the left on desktop, above a full-width control on a phone. */
 export function Preferences({ rows }: { rows?: boolean }) {
   const { t, locale, setLocale } = useI18n();
   const { choice, setChoice } = useTheme();
   const language = (
     <SegmentedControl
+      block={rows}
       label={t("prefs.language")}
       value={locale}
       onValueChange={(v) => isLocale(v) && setLocale(v)}
@@ -20,6 +21,7 @@ export function Preferences({ rows }: { rows?: boolean }) {
   );
   const theme = (
     <SegmentedControl
+      block={rows}
       label={t("prefs.theme")}
       value={choice}
       onValueChange={(v) => isThemeChoice(v) && setChoice(v)}
@@ -35,14 +37,14 @@ export function Preferences({ rows }: { rows?: boolean }) {
     );
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-2 desktop:flex-row desktop:items-center desktop:justify-between">
         <span className="body">{t("prefs.theme")}</span>
-        {theme}
+        <div className="desktop:w-auto">{theme}</div>
       </div>
       <hr className="border-border" />
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-2 desktop:flex-row desktop:items-center desktop:justify-between">
         <span className="body">{t("prefs.language")}</span>
-        {language}
+        <div className="desktop:w-auto">{language}</div>
       </div>
     </div>
   );

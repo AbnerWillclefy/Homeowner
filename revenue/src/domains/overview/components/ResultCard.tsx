@@ -1,4 +1,4 @@
-import { Badge, Card } from "@homeowner/bedrock";
+import { Badge, Card, DescriptionList } from "@homeowner/bedrock";
 import { Amount } from "@homeowner/bedrock/finance";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { useHiddenProps } from "../../../shared/HideValues";
@@ -19,9 +19,9 @@ export function ResultCard({ history, month, current }: { history: HistoryMonth[
   const now = history.find((m) => m.month === month) ?? { month, ...EMPTY };
   const change = resultChange(now, history.find((m) => m.month === previousMonth));
   const parts = [
-    { key: "overview.result.income", cents: now.incomeCents, swatch: "bg-positive" },
-    { key: "overview.result.spent", cents: now.spentCents, swatch: "bg-danger" },
-    { key: "overview.result.saved", cents: now.savedCents, swatch: "bg-brand" },
+    { key: "overview.result.income", cents: now.incomeCents },
+    { key: "overview.result.spent", cents: now.spentCents },
+    { key: "overview.result.saved", cents: now.savedCents },
   ] as const;
   return (
     <Card>
@@ -35,17 +35,12 @@ export function ResultCard({ history, month, current }: { history: HistoryMonth[
           </Badge>
         )}
       </div>
-      <dl className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(7rem,1fr))]">
-        {parts.map((p) => (
-          <div key={p.key} className="flex flex-col gap-1">
-            <dt className="caption flex items-center gap-2 text-text-muted">
-              <span aria-hidden className={`size-2 shrink-0 rounded-full ${p.swatch}`} />
-              {t(p.key)}
-            </dt>
-            <dd><Amount cents={p.cents} size="sm" locale={locale} {...hidden} /></dd>
-          </div>
-        ))}
-      </dl>
+      <DescriptionList
+        items={parts.map((p) => ({
+          label: t(p.key),
+          value: <Amount cents={p.cents} size="sm" locale={locale} {...hidden} />,
+        }))}
+      />
     </Card>
   );
 }

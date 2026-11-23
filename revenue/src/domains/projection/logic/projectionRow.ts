@@ -1,7 +1,7 @@
 import type { CommitmentMonth } from "../../overview/api/api";
 import { monthRows } from "../../overview/logic/monthRows";
 
-/** A month as the table's columns. Off-card installments sit in `bills`, as in the month card. */
+/** A month as the table's columns. Off-card installments sit in `bills`. */
 export interface ProjectionRow {
   month: string;
   cardsCents: number;
@@ -14,8 +14,6 @@ export interface ProjectionRow {
   leftoverCents: number | null;
   /** The Leftover if spending goes on at the current pace; null when no Monthly income is set. */
   paceLeftoverCents: number | null;
-  /** Each category with a Spending limit: the cut is how far the pace is over the plan, never negative. */
-  cuts: { category: string; planCents: number; paceCents: number; cutCents: number }[];
 }
 
 export function projectionRow(m: CommitmentMonth): ProjectionRow {
@@ -25,6 +23,11 @@ export function projectionRow(m: CommitmentMonth): ProjectionRow {
     month: m.month, cardsCents: cents("cards") ?? 0, billsCents: cents("bills") ?? 0, plannedCents: cents("planned") ?? 0,
     spentCents: cents("spent"), savingCents: cents("saving"), leftoverCents,
     paceLeftoverCents: m.paceLeftoverCents ?? null,
-    cuts: m.planned.filter((p) => p.limited).map((p) => ({ category: p.category, planCents: p.cents, paceCents: p.paceCents, cutCents: Math.max(0, p.paceCents - p.cents) })),
   };
 }
+
+/** Which Leftover the chart, the list and the detail show: by the plan's limits or at the current pace. */
+export type Series = "plan" | "pace";
+
+/** The shown series' Leftover; null when no Monthly income is set. */
+export const seriesCents = (row: ProjectionRow, series: Series) => (series === "pace" ? row.paceLeftoverCents : row.leftoverCents);

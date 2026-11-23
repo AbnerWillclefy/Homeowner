@@ -66,6 +66,24 @@ describe("layout", () => {
     expect(screen.queryByRole("region", { name: "Totals of the month" })).toBeNull();
   });
 
+  it("keeps the phone's search and Filters button one height, and the chips in a strip that scrolls", async () => {
+    width(false);
+    month([MERCADO, SALARIO]);
+    open();
+    const search = await screen.findByRole("searchbox");
+    const filters = screen.getByRole("button", { name: "Filters" });
+    // Layout is not measurable in jsdom: both take their 48px phone height from Bedrock, and the button is square.
+    expect(filters.className).toContain("max-tablet:w-control-lg");
+    expect(filters.className).toContain("pointer-coarse:w-control-lg");
+    expect(search.closest("div")?.parentElement?.className).toContain("flex-1");
+    const group = screen.getByRole("group", { name: "Type" });
+    expect(group.className).toContain("overflow-x-auto");
+    expect(group.className).toContain("flex-nowrap");
+    const chips = within(group).getAllByRole("button");
+    expect(chips).toHaveLength(4);
+    chips.forEach((chip) => expect(chip.getAttribute("aria-pressed")).not.toBeNull());
+  });
+
   it("says the month, its Transactions and its Sources in the header", async () => {
     width(true);
     month([MERCADO, SALARIO]);

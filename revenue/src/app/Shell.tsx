@@ -9,7 +9,7 @@ import { useMediaQuery } from "../shared/useMediaQuery";
 import { useNow } from "../shared/useNow";
 import { useSyncOnLaunch } from "../domains/settings/hooks/useNotifications";
 import { screenKeyOf } from "../domains/chat/logic/screenKeys";
-import { BILLS, CHAT, MORE, MORE_ROWS, NAV_FOOTER, NAV_GROUPS, OVERVIEW, PLAN, PLAN_ROWS, TABS, type Screen } from "./screens";
+import { BILLS, CHAT, MORE, MORE_ROWS, NAV_FOOTER, NAV_GROUPS, OVERVIEW, PANTRY_LIST, PLAN, PLAN_ROWS, TABS, type Screen } from "./screens";
 
 // Duplicates --bp-desktop in Bedrock's tokens.css: matchMedia cannot read custom properties.
 const DESKTOP = "(min-width: 1024px)";
@@ -55,7 +55,8 @@ function Frame() {
     // The Bills badge moves to Mais, where its row is.
     ...(s === MORE && openBills ? { badge: { count: openBills, label: t("nav.bills.badge", { n: openBills }) } } : {}),
   });
-  const ask = pathname !== CHAT.path;
+  // Not on the chat, nor on a phone's Shopping list, whose dock sits where the button would.
+  const ask = pathname !== CHAT.path && (desktop || pathname !== PANTRY_LIST.path);
 
   return (
     <div className="flex min-h-dvh desktop:items-start">

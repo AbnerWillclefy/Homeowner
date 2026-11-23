@@ -1,5 +1,5 @@
 import { Badge, Button, Card } from "@homeowner/bedrock";
-import { Amount, CategoryIcon } from "@homeowner/bedrock/finance";
+import { CategoryIcon, ListRow } from "@homeowner/bedrock/finance";
 import { Link } from "react-router";
 import { useHiddenProps } from "../../../shared/HideValues";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
@@ -24,17 +24,12 @@ export function UncategorisedCard({ rows, month }: { rows: Transaction[]; month:
       </div>
       <ul className="divide-y divide-border">
         {rows.slice(0, SHOWN).map((tx) => (
-          <li key={tx.id} className="flex items-center gap-3 py-2">
-            <CategoryIcon category="other" />
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span className="body-strong [overflow-wrap:anywhere]">{tx.description}</span>
-              <span className="caption text-text-muted">{[tx.sourceName, formatDay(tx.postedOn, locale)].filter(Boolean).join(" · ")}</span>
-            </span>
-            <Amount cents={-tx.amountCents} size="sm" locale={locale} {...hidden} />
+          <li key={tx.id}>
+            <ListRow leading={<CategoryIcon category="other" />} title={tx.description} subtitle={[tx.sourceName, formatDay(tx.postedOn, locale)].filter(Boolean).join(" · ")} cents={-tx.amountCents} locale={locale} {...hidden} />
           </li>
         ))}
       </ul>
-      <Button asChild variant="secondary" className="w-full">
+      <Button asChild variant="secondary" size="lg" className="w-full">
         <Link to={{ pathname: "/transactions", search: `?month=${month}` }}>{t("categories.uncategorised.open")}</Link>
       </Button>
     </Card>

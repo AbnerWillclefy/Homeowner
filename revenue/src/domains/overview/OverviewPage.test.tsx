@@ -159,6 +159,7 @@ describe("Overview", () => {
   });
 
   it("shows the spending split, the net worth with this month's change, the open card bills and the goals", async () => {
+    matchMedia(true);
     api();
     page();
     expect(await heading("Distribuição dos gastos · novembro")).toBeTruthy();
@@ -259,6 +260,7 @@ describe("Overview", () => {
   });
 
   it("keeps the other cards when the net worth read fails, and retries only that one", async () => {
+    matchMedia(true);
     api({ netWorth: { status: 500 } });
     page();
     await heading("Você ainda pode gastar");
@@ -274,6 +276,7 @@ describe("Overview", () => {
   });
 
   it("shows the month's alert on the hero and the card bills when the commitments fail, and the rest stays", async () => {
+    matchMedia(true);
     api({ commitments: { status: 200, data: { months: "x" } } });
     page();
     expect(await screen.findByText("Não deu para carregar o mês.")).toBeTruthy();
@@ -283,12 +286,14 @@ describe("Overview", () => {
   });
 
   it("says when the month has nothing", async () => {
+    matchMedia(true);
     api({ transactions: { status: 200, data: { categories: [], limits: {}, transactions: [] } }, bills: { status: 200, data: [] } });
     page();
     expect(await screen.findByText("Nada por aqui neste mês")).toBeTruthy();
   });
 
   it("shows no amount while values are hidden", async () => {
+    matchMedia(true);
     localStorage.setItem(HIDE_VALUES_STORAGE_KEY, "1");
     api();
     const { container } = page();
@@ -306,19 +311,62 @@ describe("Overview", () => {
     expect(screen.getByRole("dialog").textContent).not.toMatch(/R\$\s?\d/);
   });
 
-  it("stacks on a phone: hero, bills alert, result, spending, net worth", async () => {
+  it("switches one card at a time on a phone, with no goals or card bills", async () => {
     matchMedia(false);
     api();
     page();
-    const hero = await heading("Você ainda pode gastar");
-    const alert = await screen.findByRole("button", { name: /2 contas a pagar/ });
-    const result = await heading("Resultado do mês");
-    const split = await heading(/^Distribuição dos gastos/);
-    const worth = await heading("Patrimônio");
-    const order = [hero, alert, result, split, worth];
-    for (let i = 1; i < order.length; i++) {
-      expect(order[i - 1]!.compareDocumentPosition(order[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    }
+    await heading("Você ainda pode gastar");
+    expect(screen.getByRole("button", { name: /2 contas a pagar/ })).toBeTruthy();
+    const group = screen.getByRole("radiogroup", { name: "Resumo" });
+    expect(within(group).getAllByRole("radio").map((r) => r.textContent)).toEqual(["Resultado", "Categorias", "Patrimônio"]);
+    expect(screen.getByRole("heading", { level: 2, name: "Resultado do mês" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { level: 2, name: /^Distribuição/ })).toBeNull();
+    await userEvent.click(within(group).getByRole("radio", { name: "Categorias" }));
+    expect(screen.queryByRole("heading", { level: 2, name: "Resultado do mês" })).toBeNull();
+    expect(screen.getByRole("heading", { level: 2, name: /^Distribuição dos gastos/ })).toBeTruthy();
+    await userEvent.click(within(group).getByRole("radio", { name: "Patrimônio" }));
+    expect(screen.getByRole("heading", { level: 2, name: "Patrimônio" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { level: 2, name: /^Objetivos/ })).toBeNull();
+    expect(screen.queryByRole("heading", { level: 2, name: "Faturas abertas" })).toBeNull();
+  });
+
+  it("keeps the chosen tab when the month changes, and shows a failed read inside the tab", async () => {
+    matchMedia(false);
+    api({ transactions: { status: 500 } });
+    page();
+    await heading("Você ainda pode gastar");
+    await userEvent.click(screen.getByRole("radio", { name: "Categorias" }));
+    expect(await screen.findByText("Não deu para carregar os lançamentos.")).toBeTruthy();
+    await userEvent.click(screen.getByRole("combobox", { name: "Mês" }));
+    await userEvent.click(await screen.findByRole("option", { name: "Outubro de 2026" }));
+    expect(screen.getByRole("radio", { name: "Categorias" }).getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("shows six cards on desktop", async () => {
+    matchMedia(true);
+    api();
+    page();
+    await heading("Você ainda pode gastar");
+    expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(6);
+  });
+
+  it("hides the result lines' amounts on a phone", async () => {
+    matchMedia(false);
+    localStorage.setItem(HIDE_VALUES_STORAGE_KEY, "1");
+    api();
+    page();
+    await heading("Resultado do mês");
+    const parts = screen.getByText("Entradas").closest("dl")!;
+    expect(parts.textContent).not.toMatch(/R\$\s?\d/);
+  });
+
+  it("has no axe violations on a phone", async () => {
+    matchMedia(false);
+    api();
+    page();
+    await heading("Resultado do mês");
+    const { violations } = await axe.run(document.body, { rules: { "color-contrast": { enabled: false }, region: { enabled: false } } });
+    expect(violations).toEqual([]);
   });
 
   it("speaks English", async () => {
@@ -344,6 +392,7 @@ describe("Overview", () => {
     ["en", "light"],
     ["en", "dark"],
   ] as const)("has no axe violations in %s, %s", async (locale, theme) => {
+    matchMedia(true);
     api();
     page("/", locale, theme);
     await screen.findByRole("img", { name: /ritmo|pace/ });

@@ -7,6 +7,7 @@ import { useI18n } from "../../../shared/i18n/I18nProvider";
 import type { ManualCard, Source } from "../api";
 import { BankMark } from "./BankMark";
 import { RenameSource } from "./RenameSource";
+import { SourceRow } from "./SourceRow";
 
 interface Props {
   sources: Source[];
@@ -20,7 +21,7 @@ interface Props {
   onRetryManual(): void;
 }
 
-/** The credit cards, each connected one a link to Faturas with its limit, closing day and open bill, then the manual cards with an edit button; the foot adds a manual card. */
+/** The credit cards, each connected one a link to Faturas with its limit, closing day and open bill, then the manual cards (the row opens their form); the foot adds a manual card. */
 export function CardsCard({ sources, manualCards, manualFailed, openBills, onAddManual, onEditManual, onRetryManual }: Props) {
   const { t, locale } = useI18n();
   const hidden = useHiddenProps();
@@ -29,7 +30,7 @@ export function CardsCard({ sources, manualCards, manualFailed, openBills, onAdd
     <Card role="group" aria-labelledby="sources-cards">
       <div className="flex items-center justify-between gap-2">
         <h2 id="sources-cards" className="card-label text-text-muted">{t("sources.group.cards")}</h2>
-        {openBills.size > 0 && <Amount cents={total} size="md" locale={locale} {...hidden} />}
+        {openBills.size > 0 && <Amount cents={total} size="sm" locale={locale} {...hidden} />}
       </div>
       <ul className="divide-y divide-border">
         {sources.map((source) => {
@@ -38,22 +39,11 @@ export function CardsCard({ sources, manualCards, manualFailed, openBills, onAdd
           const meta = [limit, source.closeDay !== null && t("sources.card.closes", { day: source.closeDay })].filter(Boolean).join(" · ");
           return (
             <li key={source.id} className="flex items-center gap-2">
-              <Link
-                to="/card-bills"
-                className="flex min-h-control-lg min-w-0 flex-1 items-center gap-3 rounded-md py-2 outline-none hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-              >
-                <BankMark name={source.bankName} />
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="body-strong [overflow-wrap:anywhere]">{source.name}</span>
-                  {meta && <span className="caption text-text-muted">{meta}</span>}
-                </span>
-                {bill !== undefined && (
-                  <span className="flex shrink-0 flex-col items-end">
-                    <Amount cents={bill} size="sm" locale={locale} {...hidden} />
-                    <span className="caption text-text-muted">{t("sources.card.openBill")}</span>
-                  </span>
-                )}
-              </Link>
+              <div className="min-w-0 flex-1">
+                <SourceRow leading={<BankMark name={source.bankName} />} title={source.name} subtitle={meta || undefined} cents={bill} end={bill === undefined ? undefined : t("sources.card.openBill")}>
+                  <Link to="/card-bills" />
+                </SourceRow>
+              </div>
               <RenameSource source={source} />
             </li>
           );
@@ -61,23 +51,16 @@ export function CardsCard({ sources, manualCards, manualFailed, openBills, onAdd
         {manualCards.map((card) => {
           const bill = openBills.get(card.id);
           return (
-            <li key={card.id} className="flex items-center gap-2">
-              <div className="flex min-h-control-lg min-w-0 flex-1 items-center gap-3 py-2">
-                <BankMark name={card.name} />
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="body-strong [overflow-wrap:anywhere]">{card.name}</span>
-                  <span className="caption text-text-muted">{t("sources.card.manualMeta", { day: card.dueDay })}</span>
-                </span>
-                {bill !== undefined && (
-                  <span className="flex shrink-0 flex-col items-end">
-                    <Amount cents={bill} size="sm" locale={locale} {...hidden} />
-                    <span className="caption text-text-muted">{t("sources.card.manualBill")}</span>
-                  </span>
-                )}
-              </div>
-              <Button variant="ghost" icon={Pencil} onClick={() => onEditManual(card)}>
-                <span className="sr-only">{t("sources.card.manualEdit", { name: card.name })}</span>
-              </Button>
+            <li key={card.id}>
+              <SourceRow
+                leading={<span aria-hidden className="inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-text-muted"><Pencil className="size-4" /></span>}
+                title={card.name}
+                subtitle={t("sources.card.manualMeta", { day: card.dueDay })}
+                cents={bill}
+                end={bill === undefined ? undefined : t("sources.card.manualBill")}
+              >
+                <button type="button" aria-label={t("sources.card.manualEdit", { name: card.name })} onClick={() => onEditManual(card)} />
+              </SourceRow>
             </li>
           );
         })}
@@ -88,7 +71,7 @@ export function CardsCard({ sources, manualCards, manualFailed, openBills, onAdd
           <button type="button" className="underline" onClick={onRetryManual}>{t("sources.loadFailed.retry")}</button>
         </Banner>
       )}
-      <Button variant="ghost" icon={Plus} className="self-start" onClick={onAddManual}>
+      <Button variant="ghost" icon={Plus} className="w-full desktop:w-auto desktop:self-start" onClick={onAddManual}>
         {t("manualCard.add")}
       </Button>
     </Card>

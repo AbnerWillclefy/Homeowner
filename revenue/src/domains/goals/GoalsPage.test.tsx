@@ -98,6 +98,18 @@ describe("the screen", () => {
     expect(within(card("Viagem")).getByText("by July 2027")).toBeTruthy();
   });
 
+  it("lists each Goal's facts as term and detail pairs, the reached one without 'This month'", async () => {
+    serve();
+    open();
+    await ready("Carro");
+    const pairs = (name: string) => {
+      const dl = card(name).querySelector("dl")!;
+      return { dt: [...dl.querySelectorAll("dt")].map((n) => n.textContent), dd: dl.querySelectorAll("dd").length };
+    };
+    expect(pairs("Reforma")).toEqual({ dt: ["This month", "Reached in", "Kept in"], dd: 3 });
+    expect(pairs("Carro")).toEqual({ dt: ["Reached in", "Kept in"], dd: 2 });
+  });
+
   it("says a Goal with no investment serving it so", async () => {
     serve();
     open();
@@ -323,6 +335,7 @@ describe("hiding values", () => {
     await ready("Reforma");
     expect(container.textContent!.match(/.{20}\d[.,]\d.{20}/)?.[0]).toBeUndefined();
     expect(container.textContent).not.toMatch(/R\$\s?\d/);
+    expect(within(card("Reforma")).queryByText("R$200.00")).toBeNull();
     expect(container.querySelector("[aria-valuetext]")?.getAttribute("aria-valuetext")).not.toMatch(/\d/);
   });
 });

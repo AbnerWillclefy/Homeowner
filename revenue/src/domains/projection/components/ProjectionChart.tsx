@@ -1,41 +1,48 @@
-import { Card, CardHeader, CardLabel } from "@homeowner/bedrock";
-import { useHideValues } from "../../../shared/HideValues";
+import { Card, CardLabel, SegmentedControl } from "@homeowner/bedrock";
 import { useI18n } from "../../../shared/i18n/I18nProvider";
+import { monthLabel } from "../../../shared/month/month";
 import { useMoney } from "../hooks/useMoney";
-import { BAR_WIDTH, chartLayout, PLOT_HEIGHT, PLOT_TOP, shortMonth, STRIDE } from "../logic/chart";
-
-const WIDTH = 12 * STRIDE;
-const AXIS = 76;
+import { chartLayout, shortMonth } from "../logic/chart";
+import type { Series } from "../logic/projectionRow";
 
 /**
- * The Leftover of each month as bars: brand when positive, danger when negative, the chosen month in the text colour.
- * A picture for the mouse only: it is `aria-hidden` and its bars are not focusable, because the table under it holds
- * every value and is the keyboard and screen reader way to choose a month.
+ * The shown Leftover of each month as bars, one series at a time: brand when positive, danger when negative, the
+ * chosen month in the text colour. Each bar is a button named with its month and amount (hidden while the toggle is
+ * on), so the keyboard and screen readers choose a month here as well as in the list or table.
  */
-export function ProjectionChart({ months, leftovers, selected, onSelect }: { months: string[]; leftovers: number[]; selected: string; onSelect: (month: string) => void }) {
+export function ProjectionChart({ months, values, series, onSeries, selected, onSelect, desktop }: { months: string[]; values: number[]; series: Series; onSeries: (s: Series) => void; selected: string; onSelect: (month: string) => void; desktop: boolean }) {
   const { t, locale } = useI18n();
-  const { hidden } = useHideValues();
-  const money = useMoney({ precision: "compact" });
-  const { bars, baseline, top, bottom } = chartLayout(leftovers);
-  const axisY = (v: number, y: number) => <text x={WIDTH + 8} y={y + 4} className="fill-text-muted">{hidden ? "•••" : money(v)}</text>;
+  const money = useMoney();
+  const { bars, rows, empty } = chartLayout(values);
+  const grid = "grid grid-flow-col auto-cols-[minmax(0,1fr)] gap-1";
 
   return (
-    <Card className="min-w-0 desktop:col-span-8">
-      <CardHeader>
-        <CardLabel>{t("projection.leftoverPlan")}</CardLabel>
-      </CardHeader>
-      <svg viewBox={`0 0 ${WIDTH + AXIS} ${PLOT_TOP + PLOT_HEIGHT + 32}`} aria-hidden className="w-full text-[11px]">
-        <line x1={0} x2={WIDTH} y1={baseline} y2={baseline} className="stroke-border-strong" />
-        {top > 0 && axisY(top, PLOT_TOP)}
-        {axisY(0, baseline)}
-        {bottom < 0 && axisY(bottom, PLOT_TOP + PLOT_HEIGHT)}
-        {bars.map((b, i) => (
-          <g key={months[i]} onClick={() => onSelect(months[i]!)} className="cursor-pointer">
-            <rect x={b.x} y={b.y} width={BAR_WIDTH} height={b.h} rx={4} className={months[i] === selected ? "fill-text" : b.negative ? "fill-danger" : "fill-brand"} />
-            <text x={b.x + BAR_WIDTH / 2} y={PLOT_TOP + PLOT_HEIGHT + 24} textAnchor="middle" className="fill-text-muted">{shortMonth(months[i]!, locale)}</text>
-          </g>
-        ))}
-      </svg>
+    <Card variant={desktop ? "default" : "compact"} role="region" aria-labelledby="projection-chart" className="min-w-0 desktop:col-span-8">
+      <div className="flex flex-col gap-3 desktop:flex-row desktop:items-center desktop:justify-between">
+        <CardLabel id="projection-chart">{t("projection.chart")}</CardLabel>
+        <div className="desktop:w-70">
+          <SegmentedControl block label={t("projection.mode")} value={series} onValueChange={(s) => onSeries(s as Series)} options={[{ value: "plan", label: t("projection.mode.plan") }, { value: "pace", label: t("projection.mode.pace") }]} />
+        </div>
+      </div>
+      <div className={`${grid} h-40 desktop:h-60`}>
+        {bars.map((b, i) => {
+          const chosen = months[i] === selected;
+          return (
+            <button key={months[i]} type="button" aria-pressed={chosen} aria-label={t("projection.barName", { month: monthLabel(months[i]!, locale), amount: money(values[i]!) })} onClick={() => onSelect(months[i]!)} className="grid cursor-pointer border-0 bg-transparent p-0 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus" style={{ gridTemplateRows: rows }}>
+              <span className="flex flex-col justify-end">
+                {b.up !== null && <span className={`block min-h-0.5 w-full rounded-t-sm ${chosen ? "bg-text" : "bg-brand"}`} style={{ height: `${b.up}%` }} />}
+              </span>
+              <span className={`flex flex-col justify-start ${empty ? "" : "border-t border-chart-grid"}`}>
+                {b.down !== null && <span className={`block min-h-0.5 w-full rounded-b-sm bg-danger ${chosen ? "outline-2 outline-offset-1 outline-text" : ""}`} style={{ height: `${b.down}%` }} />}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <div aria-hidden className={`${grid} text-center text-[0.6875rem] leading-4 text-text-muted`}>
+        {months.map((m) => <span key={m} className="truncate">{shortMonth(m, locale)}</span>)}
+      </div>
+      <span className="caption text-text-muted">{desktop ? t("projection.chartNote") : t("projection.chartNote.phone")}</span>
     </Card>
   );
 }

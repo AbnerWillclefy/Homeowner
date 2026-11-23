@@ -7,24 +7,20 @@ import { MatchLine } from "./MatchLine";
 import { PhotoDraft } from "./PhotoDraft";
 import { QrScanner } from "./QrScanner";
 
-/** "Adicionar nota": its button, and the Sheet it opens. Closing returns focus to the button; a write in flight keeps the Sheet open. */
-export function AddReceiptSheet() {
+/**
+ * The "Adicionar nota" Sheet, opened by a button elsewhere (the page header's action), so it is controlled. A Sheet with no
+ * trigger returns focus to nothing: the opener hands it back when `open` turns false. A write in flight keeps it open.
+ */
+export function AddReceiptSheet({ open, onOpenChange }: { open: boolean; onOpenChange(open: boolean): void }) {
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [drafting, setDrafting] = useState(false);
   // The photo read cost a model call, so closing on the draft asks first.
   const close = () => !busy && (!drafting || window.confirm(t("receipt.discard")));
   return (
-    <Sheet
-      open={open}
-      onOpenChange={(next) => (next || close()) && setOpen(next)}
-      trigger={<Button variant="secondary" icon={ReceiptIcon}>{t("receipt.open")}</Button>}
-      title={t("receipt.title")}
-      closeLabel={t("app.close")}
-    >
+    <Sheet open={open} onOpenChange={(next) => (next || close()) && onOpenChange(next)} title={t("receipt.title")} closeLabel={t("app.close")}>
       {/* Mounted only while open, so each opening starts at "choose". */}
-      <Flow onBusy={setBusy} onDrafting={setDrafting} onClose={() => setOpen(false)} />
+      <Flow onBusy={setBusy} onDrafting={setDrafting} onClose={() => onOpenChange(false)} />
     </Sheet>
   );
 }
@@ -66,9 +62,9 @@ function Flow({ onBusy, onDrafting, onClose }: { onBusy(busy: boolean): void; on
       {step.kind === "choose" && (
         <>
           <p className="body text-text-muted">{t("receipt.chooseText")}</p>
-          <Button size="lg" icon={QrCode} onClick={() => dispatch({ type: "scan" })}>{t("receipt.scan")}</Button>
-          <Button size="lg" variant="secondary" icon={ClipboardPaste} onClick={() => dispatch({ type: "paste" })}>{t("receipt.paste")}</Button>
-          <Button size="lg" variant="secondary" icon={Camera} onClick={takePhoto}>{t("receipt.photo")}</Button>
+          <Button icon={QrCode} onClick={() => dispatch({ type: "scan" })}>{t("receipt.scan")}</Button>
+          <Button variant="secondary" icon={ClipboardPaste} onClick={() => dispatch({ type: "paste" })}>{t("receipt.paste")}</Button>
+          <Button variant="secondary" icon={Camera} onClick={takePhoto}>{t("receipt.photo")}</Button>
         </>
       )}
 
@@ -76,7 +72,7 @@ function Flow({ onBusy, onDrafting, onClose }: { onBusy(busy: boolean): void; on
         <>
           <QrScanner onCode={read} onDenied={() => dispatch({ type: "denied" })} />
           <p className="body text-center text-text-muted">{t("receipt.aim")}</p>
-          <Button size="lg" variant="secondary" icon={ClipboardPaste} onClick={() => dispatch({ type: "paste" })}>{t("receipt.paste")}</Button>
+          <Button variant="secondary" icon={ClipboardPaste} onClick={() => dispatch({ type: "paste" })}>{t("receipt.paste")}</Button>
         </>
       )}
 
@@ -94,7 +90,7 @@ function Flow({ onBusy, onDrafting, onClose }: { onBusy(busy: boolean): void; on
             autoComplete="off"
             placeholder="0000 0000 0000 …"
           />
-          <Button type="submit" size="lg" disabled={code.trim() === ""}>{t("receipt.fetch")}</Button>
+          <Button type="submit" disabled={code.trim() === ""}>{t("receipt.fetch")}</Button>
           <Button variant="ghost" icon={ScanLine} onClick={() => dispatch({ type: "scan" })}>{t("receipt.scan")}</Button>
         </form>
       )}
@@ -119,9 +115,9 @@ function Flow({ onBusy, onDrafting, onClose }: { onBusy(busy: boolean): void; on
           <Banner tone={step.reason === "cap" ? "warning" : "danger"} icon={step.reason === "cap" ? Clock : undefined}>
             {t(step.reason === "cap" ? "receipt.cap" : step.reason === "unreadable" ? "receipt.unreadable" : "receipt.photoFailed")}
           </Banner>
-          {step.reason !== "cap" && <Button size="lg" icon={Camera} onClick={takePhoto}>{t("receipt.photoAgain")}</Button>}
-          <Button size="lg" variant={step.reason === "cap" ? "primary" : "secondary"} icon={ClipboardPaste} onClick={() => dispatch({ type: "paste" })}>{t("receipt.paste")}</Button>
-          {step.reason === "cap" && <Button size="lg" variant="secondary" icon={QrCode} onClick={() => dispatch({ type: "scan" })}>{t("receipt.scan")}</Button>}
+          {step.reason !== "cap" && <Button icon={Camera} onClick={takePhoto}>{t("receipt.photoAgain")}</Button>}
+          <Button variant={step.reason === "cap" ? "primary" : "secondary"} icon={ClipboardPaste} onClick={() => dispatch({ type: "paste" })}>{t("receipt.paste")}</Button>
+          {step.reason === "cap" && <Button variant="secondary" icon={QrCode} onClick={() => dispatch({ type: "scan" })}>{t("receipt.scan")}</Button>}
         </>
       )}
 
@@ -137,15 +133,15 @@ function Flow({ onBusy, onDrafting, onClose }: { onBusy(busy: boolean): void; on
             title={t(step.already ? "receipt.dupTitle" : "receipt.doneTitle")}
             message={step.already ? t("receipt.dupText") : t(step.updated === 1 ? "receipt.doneText.one" : "receipt.doneText.many", { count: step.updated })}
           />
-          <Button size="lg" onClick={onClose}>{t("receipt.done")}</Button>
+          <Button onClick={onClose}>{t("receipt.done")}</Button>
         </>
       )}
 
       {step.kind === "unavailable" && (
         <>
           <Banner tone="warning" icon={CloudOff}>{t("receipt.sefaz")}</Banner>
-          <Button size="lg" icon={Camera} onClick={takePhoto}>{t("receipt.photo")}</Button>
-          <Button size="lg" variant="secondary" icon={RefreshCw} onClick={() => dispatch({ type: "paste" })}>{t("receipt.again")}</Button>
+          <Button icon={Camera} onClick={takePhoto}>{t("receipt.photo")}</Button>
+          <Button variant="secondary" icon={RefreshCw} onClick={() => dispatch({ type: "paste" })}>{t("receipt.again")}</Button>
         </>
       )}
     </div>
