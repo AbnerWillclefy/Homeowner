@@ -189,12 +189,13 @@ Charts are part of the visual system, not a style of their own:
 | Dialog | Core | stable |
 | Sidebar | Core | stable |
 | BottomBar | Core | stable |
-| PageHeader | Core | draft |
+| PageHeader | Core | stable |
 | DescriptionList | Core | stable |
 | ChartContainer | Core | stable |
-| Avatar | Core | draft |
-| Counter | Core | draft (the canvas's name for the built `Stepper`, see `Counter/README.md`) |
-| StepIndicator | Core | draft (the canvas calls it `Stepper`, see `StepIndicator/README.md`) |
+| Avatar | Core | stable |
+| Counter | Core | stable (the canvas's name for the built `Stepper`, see `Counter/README.md`) |
+| ChoiceGroup | Core | stable |
+| StepIndicator | Core | stable (the canvas calls it `Stepper`, see `StepIndicator/README.md`) |
 | Amount | Finance | stable |
 | MoneyInput | Finance | stable |
 | CategoryTag | Finance | stable |

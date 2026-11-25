@@ -1,4 +1,5 @@
 import { Select } from "@homeowner/bedrock";
+import { CalendarDays } from "lucide-react";
 import { useI18n } from "../i18n/I18nProvider";
 import { addMonths, monthLabel } from "./month";
 import { useMonthParam } from "./useMonthParam";
@@ -16,6 +17,7 @@ export function MonthSelect() {
     <Select
       label={t("month.select")}
       hideLabel
+      icon={CalendarDays}
       value={month}
       onValueChange={setMonth}
       options={months.map((m) => ({ value: m, label: monthLabel(m, locale) }))}

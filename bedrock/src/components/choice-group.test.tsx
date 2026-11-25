@@ -42,3 +42,13 @@ it("refuses a Choice outside a group", () => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   expect(() => render(<Choice value="a" label="A" />)).toThrow();
 });
+
+it("draws the leading visual without adding it to the radio's name", () => {
+  render(
+    <ChoiceGroup label="Q" value={undefined} onValueChange={() => {}}>
+      <Choice value="a" label="Alta" leading={<svg data-testid="ico" />} />
+    </ChoiceGroup>,
+  );
+  expect(screen.getByTestId("ico")).toBeTruthy();
+  expect(screen.getByRole("radio", { name: "Alta" })).toBeTruthy();
+});

@@ -20,6 +20,8 @@ type ChoiceProps = {
   label: string;
   /** A second line in muted text. */
   hint?: string;
+  /** A visual before the text (an icon); decorative, so it stays out of the accessible name. */
+  leading?: ReactNode;
   disabled?: boolean;
 };
 
@@ -35,7 +37,7 @@ export function ChoiceGroup({ label, value, onValueChange, children, className }
   );
 }
 
-export function Choice({ value, label, hint, disabled }: ChoiceProps) {
+export function Choice({ value, label, hint, leading, disabled }: ChoiceProps) {
   const group = useContext(GroupContext);
   if (!group) throw new Error("Choice must be inside a ChoiceGroup");
   const checked = group.value === value;
@@ -51,6 +53,11 @@ export function Choice({ value, label, hint, disabled }: ChoiceProps) {
       )}
     >
       <input type="radio" className="sr-only" name={group.name} value={value} checked={checked} disabled={disabled} onChange={() => group.onValueChange(value)} />
+      {leading && (
+        <span aria-hidden="true" className="shrink-0">
+          {leading}
+        </span>
+      )}
       <span className="flex min-w-0 flex-1 flex-col">
         {label}
         {hint && <span className="caption text-text-muted">{hint}</span>}

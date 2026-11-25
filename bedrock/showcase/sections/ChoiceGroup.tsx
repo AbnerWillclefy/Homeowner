@@ -1,3 +1,4 @@
+import { BatteryLow } from "lucide-react";
 import { useState } from "react";
 import { Choice, ChoiceGroup } from "../../src";
 import type { Locale } from "../App";
@@ -14,7 +15,7 @@ export default function ChoiceGroupSection({ locale }: { locale: Locale }) {
   return (
     <Section name={t.name}>
       <ChoiceGroup label={t.question} value={value} onValueChange={setValue} className="max-w-sm">
-        <Choice value="low" label={t.low} hint={t.lowHint} />
+        <Choice value="low" label={t.low} hint={t.lowHint} leading={<BatteryLow className="size-6" />} />
         <Choice value="mid" label={t.mid} />
         <Choice value="high" label={t.high} />
         <Choice value="off" label={t.off} disabled />

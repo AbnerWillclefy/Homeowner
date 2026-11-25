@@ -4,7 +4,8 @@ import { StepIndicator } from "./step-indicator";
 
 it("writes the label and the step name as text", () => {
   render(<StepIndicator label="Passo 2 de 5" current={2} total={5} name="Energia base" />);
-  expect(screen.getByText("Passo 2 de 5").textContent).toContain("Energia base");
+  expect(screen.getByText("Passo 2 de 5")).toBeTruthy();
+  expect(screen.getByText("Energia base")).toBeTruthy();
 });
 
 it("draws one hidden segment per step, the done ones and the current in brand", () => {

@@ -5,7 +5,7 @@ type StepIndicatorProps = {
   label: string;
   current: number;
   total: number;
-  /** The step's name, shown after the label in muted text ("Energia base"). */
+  /** The step's name, shown at the end of the text row ("Energia base"). */
   name?: string;
   className?: string;
 };
@@ -14,15 +14,15 @@ type StepIndicatorProps = {
 export function StepIndicator({ label, current, total, name, className }: StepIndicatorProps) {
   return (
     <div className={cn("flex flex-col gap-2", className)}>
+      <p className="flex justify-between caption text-text-muted tabular-nums">
+        <span>{label}</span>
+        {name && <span>{name}</span>}
+      </p>
       <div aria-hidden="true" className="flex gap-1">
         {Array.from({ length: total }, (_, i) => (
           <span key={i} className={cn("h-1 flex-1 rounded-full", i < current ? "bg-brand" : "bg-surface-sunken")} />
         ))}
       </div>
-      <p className="label">
-        {label}
-        {name && <span className="text-text-muted">{` · ${name}`}</span>}
-      </p>
     </div>
   );
 }
