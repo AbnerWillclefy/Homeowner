@@ -66,9 +66,15 @@ jobs:
       # Revenue is in the root npm workspace, so install and build from the root.
       - run: npm ci
 
+      # Staging's CloudFront URL is random, so its icon, name and badge say which environment it is.
+      - name: Use the staging icons
+        if: inputs.environment == 'staging'
+        run: cp revenue/staging-icons/*.png revenue/public/
+
       - name: Build
         run: npm run build -w @homeowner/revenue
         env:
+          VITE_ENVIRONMENT: ${{ inputs.environment }}
           VITE_API_URL: ${{ inputs.api_url }}
           # Public identifiers of the Cognito app client, not secrets.
           VITE_COGNITO_CLIENT_ID: ${{ inputs.cognito_client_id }}

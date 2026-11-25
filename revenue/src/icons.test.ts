@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -37,6 +37,18 @@ describe("PWA icons", () => {
   it("differs from Homeowner's icons", () => {
     for (const name of ["icon-192.png", "icon-512.png", "icon-512-maskable.png", "apple-touch-icon.png"]) {
       expect(readFileSync(resolve(root, "public", name)).equals(readFileSync(resolve(root, "../web/public", name)))).toBe(false);
+    }
+  });
+
+  // The staging deploy copies staging-icons/ over public/, so each icon needs a same-size twin that looks different.
+  it("has an amber staging twin of every icon", () => {
+    const pngs = readdirSync(resolve(root, "public")).filter((name) => name.endsWith(".png"));
+    expect(pngs.length).toBeGreaterThan(0);
+    for (const name of pngs) {
+      const icon = readFileSync(resolve(root, "public", name));
+      const twin = readFileSync(resolve(root, "staging-icons", name));
+      expect(twin.subarray(16, 24).equals(icon.subarray(16, 24)), `${name} changes size`).toBe(true);
+      expect(twin.equals(icon), `${name} looks the same`).toBe(false);
     }
   });
 });

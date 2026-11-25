@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import { App } from "./app/App";
+import { EnvironmentBadge } from "./app/EnvironmentBadge";
 import { InstallBanner } from "./app/InstallBanner";
 import { AuthProvider } from "./auth/AuthContext";
 import { I18nProvider } from "./shared/i18n/I18nProvider";
@@ -13,6 +14,7 @@ const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1 } } 
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
+    <EnvironmentBadge environment={import.meta.env.VITE_ENVIRONMENT} />
     <QueryClientProvider client={queryClient}>
       <I18nProvider>
         <ThemeProvider>
