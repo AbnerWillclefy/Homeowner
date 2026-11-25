@@ -32,11 +32,11 @@ test("passes a page that fits and names the widest element of one that overflows
 
 // The reads each screen the check shoots makes on load, with the frozen month in the params (the URLs the app sends).
 const READS = {
-  "/": ["/me/finance", `/me/finance/history?to=${MONTH}&months=6`, `/me/finance/commitments?from=${MONTH}`, `/me/finance/transactions?month=${MONTH}`, `/me/finance/bills?month=${MONTH}`, "/me/finance/net-worth?range=30d", "/me/finance/savings"],
+  "/": ["/me/finance", `/me/finance/history?to=${MONTH}&months=2`, `/me/finance/commitments?from=${MONTH}`, `/me/finance/transactions?month=${MONTH}`, `/me/finance/bills?month=${MONTH}`, "/me/finance/net-worth?range=30d", "/me/finance/savings"],
   "/plan": [`/me/finance/commitments?from=${MONTH}`, "/me/finance/savings", `/me/finance/bills?month=${MONTH}`],
   "/more": ["/me/finance", `/me/finance/commitments?from=${MONTH}`],
   "/transactions": [`/me/finance/transactions?month=${MONTH}`],
-  "/categories": [`/me/finance/transactions?month=${MONTH}`, `/me/finance/history?to=${MONTH}&months=12`],
+  "/categories": [`/me/finance/transactions?month=${MONTH}`, `/me/finance/history?to=${MONTH}&months=2`],
   "/bills": [`/me/finance/bills?month=${MONTH}`, "/me/finance/bill-suggestions"],
   "/card-bills": ["/me/finance", `/me/finance/commitments?from=${MONTH}`, `/me/finance/transactions?month=${MONTH}`, "/me/finance/card-bills?source=s1&months=6", "/me/finance/card-bills?source=s3&months=6"],
   "/goals": ["/me/finance/savings", `/me/finance/commitments?from=${MONTH}`],
@@ -127,7 +127,8 @@ test("serves the artboards' household: Net worth, Categories", () => {
   const { limits, categories } = read(`/me/finance/transactions?month=${MONTH}`).body;
   assert.equal(Object.values(limits).reduce((a, b) => a + b, 0), 498_300);
   assert.equal(categories.find((c) => c.category === "groceries").spentCents, 61_230);
-  const history = read(`/me/finance/history?to=${MONTH}&months=12`).body.months;
+  const history = read(`/me/finance/history?to=${MONTH}&months=2`).body.months;
+  assert.equal(history.length, 2);
   assert.equal(history.at(-1).month, MONTH);
   assert.equal(history.at(-1).incomeCents - history.at(-1).spentCents - history.at(-1).savedCents, 347_259);
 });

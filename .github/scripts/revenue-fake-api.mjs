@@ -5,7 +5,7 @@
 /** The day every screenshot is taken on (the desktop artboards are drawn on 11 Nov), in São Paulo; revenue-screenshots.mjs freezes the browser clock to it. */
 export const TODAY = "2026-11-11";
 
-// [id, description, amountCents, type, spendingCategory, source name, day of the month, installment, note]; newest first, as the artboard lists them.
+// [description, amountCents, type, spendingCategory, source name, day of the month, installment?]; newest first, as the artboard lists them.
 const ROWS = [
   ["Pão de Açúcar", -18_732, "expense", "groceries", "Nubank Ultravioleta", 11],
   ["Uber", -2_340, "expense", "transport", "Nubank Ultravioleta", 11],
