@@ -28,8 +28,8 @@ Domain terms are in `GLOSSARY.md`, decisions in `docs/adr/`.
 - UI is checked in pt-BR first (`DESIGN.md`, The Portuguese First Rule). Flag a fixed width, a truncation or an
   ellipsis that would cut the longer pt-BR text, and a user-facing string added in one locale only.
 - Screenshot pairs. Skip this check when `.design-pairs/` is absent or empty. Otherwise, for each route and width,
-  Read `auto-revenue<route>-<mobile|desktop>-app.png` and its `-design.png` (the artboard), skipping a side that
-  says "no artboard". Raise **one inline finding per visible difference**: a missing or extra control in the
+  Read `auto-revenue<route>-<mobile|desktop>-app.png` and its `-design.png` (the artboard), skipping an `-app.png`
+  that has no `-design.png` (the route has no artboard). Raise **one inline finding per visible difference**: a missing or extra control in the
   header's tools, a card, the grid columns it spans, the side panel, the order, a tone or colour, a state. Each
   difference is its own finding even when several land on one page file; this overrides the skill's "one finding per
   root cause in a file". Never compare pixel by pixel, and ignore font rendering, anti-aliasing and sub-pixel
