@@ -9,6 +9,8 @@ interface ImportMetaEnv {
   readonly VITE_COGNITO_REGION: string;
   /** The pool's password rules, the Terraform `cognito_password_policy` JSON. */
   readonly VITE_PASSWORD_POLICY: string;
+  /** `staging` or `local` shows a badge and, for staging, the installed name says so. Unset or `production` shows nothing. */
+  readonly VITE_ENVIRONMENT?: string;
   /** E2E only: a stub for Pluggy Connect. Used only when both it and the integrity are set. */
   readonly VITE_PLUGGY_CONNECT_URL?: string;
   readonly VITE_PLUGGY_CONNECT_SRI?: string;

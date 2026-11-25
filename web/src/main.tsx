@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router";
 import App from "./App";
 import { chunkRecovery } from "./app/lazyWithReload";
 import { HealthProvider } from "./app/components/HealthProvider";
+import { EnvironmentBadge } from "./app/components/EnvironmentBadge";
 import { ToastProvider } from "./shared/ui/ToastProvider";
 import { I18nProvider } from "./shared/i18n";
 import { PendingInviteProvider } from "./domains/invite/components/PendingInviteProvider";
@@ -44,6 +45,7 @@ for (const read of reads) {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
+    <EnvironmentBadge environment={import.meta.env.VITE_ENVIRONMENT} />
     <ThemeProvider>
       <I18nProvider>
         {/* Before the router: capturing the Invite strips its #invite= fragment, and the router reads the

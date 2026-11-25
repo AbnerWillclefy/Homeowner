@@ -93,52 +93,69 @@ function preconnectApi(): Plugin {
   };
 }
 
-export default defineConfig({
-  // Writes dist/.vite/manifest.json, which scripts/check-bundle-budget.mjs reads.
-  build: { manifest: true },
-  plugins: [
-    requirePasswordPolicy(),
-    preloadFonts(),
-    preconnectApi(),
-    react(),
-    tailwindcss(),
-    VitePWA({
-      // A deploy replaces the app shell on next load instead of stranding users on an old one.
-      registerType: "autoUpdate",
-      // Same registerSW.js file name, but deferred so it does not block first paint.
-      injectRegister: "script-defer",
-      // A custom worker (src/sw.ts) holds the push handlers. It precaches the app shell only;
-      // no runtime caching, so API responses are never served stale.
-      strategies: "injectManifest",
-      srcDir: "src",
-      filename: "sw.ts",
-      injectManifest: {
-        globPatterns: ["**/*.{js,css,html,png,svg,ico,woff2}"],
-      },
-      includeAssets: ["apple-touch-icon.png"],
-      manifest: {
-        name: "Homeowner",
-        short_name: "Homeowner",
-        description: "Share the housework fairly.",
-        start_url: "/",
-        scope: "/",
-        display: "standalone",
-        // Static, so they cannot follow the in-app theme: a dark-mode launch shows a brief light splash.
-        background_color: "#f7f8f5",
-        theme_color: "#f7f8f5",
-        icons: [
-          { src: "icon-192.png", sizes: "192x192", type: "image/png" },
-          { src: "icon-512.png", sizes: "512x512", type: "image/png" },
-          {
-            src: "icon-512-maskable.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "maskable",
-          },
-        ],
-      },
-      // Service worker only in the production build.
-      devOptions: { enabled: false },
-    }),
-  ],
+/**
+ * The app's name in index.html (title, iOS home-screen name) and the manifest. A staging build's says so, because its
+ * CloudFront URL is random; its deploy also swaps in the amber icons from staging-icons/.
+ */
+function nameOf(app: string, mode: string): string {
+  return loadEnv(mode, process.cwd(), "VITE_").VITE_ENVIRONMENT === "staging" ? `${app} Staging` : app;
+}
+
+function htmlName(name: string): Plugin {
+  // pre: before Vite's own %ENV% replacement.
+  return { name: "html-name", transformIndexHtml: { order: "pre", handler: (html) => html.replaceAll("%APP_NAME%", name) } };
+}
+
+export default defineConfig(({ mode }) => {
+  const name = nameOf("Homeowner", mode);
+  return {
+    // Writes dist/.vite/manifest.json, which scripts/check-bundle-budget.mjs reads.
+    build: { manifest: true },
+    plugins: [
+      htmlName(name),
+      requirePasswordPolicy(),
+      preloadFonts(),
+      preconnectApi(),
+      react(),
+      tailwindcss(),
+      VitePWA({
+        // A deploy replaces the app shell on next load instead of stranding users on an old one.
+        registerType: "autoUpdate",
+        // Same registerSW.js file name, but deferred so it does not block first paint.
+        injectRegister: "script-defer",
+        // A custom worker (src/sw.ts) holds the push handlers. It precaches the app shell only;
+        // no runtime caching, so API responses are never served stale.
+        strategies: "injectManifest",
+        srcDir: "src",
+        filename: "sw.ts",
+        injectManifest: {
+          globPatterns: ["**/*.{js,css,html,png,svg,ico,woff2}"],
+        },
+        includeAssets: ["apple-touch-icon.png"],
+        manifest: {
+          name,
+          short_name: name,
+          description: "Share the housework fairly.",
+          start_url: "/",
+          scope: "/",
+          display: "standalone",
+          // Static, so they cannot follow the in-app theme: a dark-mode launch shows a brief light splash.
+          background_color: "#f7f8f5",
+          theme_color: "#f7f8f5",
+          icons: [
+            { src: "icon-192.png", sizes: "192x192", type: "image/png" },
+            { src: "icon-512.png", sizes: "512x512", type: "image/png" },
+            {
+              src: "icon-512-maskable.png",
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "maskable",
+            },
+          ],
+        },
+        // Service worker only in the production build.
+        devOptions: { enabled: false },
+      }),
+    ],
+  };
 });
