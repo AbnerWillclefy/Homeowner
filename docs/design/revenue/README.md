@@ -53,5 +53,5 @@ The screen tickets (#798, #799) copy these into their acceptance criteria.
 - **Limit.** A plain card with a clock icon and "Você usou suas 20 perguntas de hoje. Volte amanhã.", not drawn as a reply bubble. The input and send are disabled.
 - **Error.** A danger `Banner` below the question, which stays visible, with "Tentar de novo". The note "Tentar de novo conta como uma pergunta." is drawn because a retry counts against the day's 20 (#796).
 - **Answers are plain text.** The bubble keeps line breaks (`white-space: pre-wrap`) and draws no bold, link, list or image.
-- **Hide values.** The chat ignores the hide-values toggle: the answer is model text and cannot be masked. Neither the artboards nor the screen draw the toggle (the chat has no tools).
+- **Hide values.** The chat ignores the hide-values toggle: the answer is model text and cannot be masked. Neither the artboards nor the screen draw the toggle (the chat's `PageHeader` has no `tools` slot).
 - **Notice.** One line under the input, "Pode errar. Não é conselho financeiro." (ADR: advisory only). Drawn pending the product manager's agreement.
