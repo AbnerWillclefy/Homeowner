@@ -122,6 +122,9 @@
       }
       const { html, helmet } = renderSource(page, (name) => sources[name]);
       document.head.insertAdjacentHTML("beforeend", helmet);
+      // Wait for the helmet's stylesheets so document.fonts.ready sees their @font-face rules.
+      await Promise.all([...document.head.querySelectorAll("link[rel=stylesheet]")].filter((l) => !l.sheet)
+        .map((l) => new Promise((r) => { l.onload = l.onerror = r; })));
       document.body.innerHTML = html;
       root.dataset.dc = "done";
     } catch (error) {
