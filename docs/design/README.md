@@ -2,6 +2,8 @@
 
 Mocks for the post-v1 epics, built against [`DESIGN.md`](../../DESIGN.md). Each board is a static HTML page (open it in a browser; add `?lang=pt-BR` for Brazilian Portuguese) with a PNG render per locale for GitHub. `mocks-i18n.js` holds the pt-BR wording, taken from the shipped catalog where it exists. Copy in the mocks is illustrative; the i18n catalogs own the real wording.
 
+**Superseded.** The six `epic-*.html` boards, their PNGs, `mocks.css` and `mocks-i18n.js` describe the pre-Bedrock PWA. The PWA's design is now [`homeowner/`](homeowner/README.md) on [`bedrock/`](bedrock/README.md). These files stay until #897 deletes them; do not build from them.
+
 | Epic | en-US | pt-BR |
 |---|---|---|
 | 1. Day Plan explanation | [HTML](epic-1-day-explanation.html) · ![Epic 1](epic-1-day-explanation.png) | ![Epic 1 pt-BR](epic-1-day-explanation.pt-BR.png) |
@@ -11,4 +13,4 @@ Mocks for the post-v1 epics, built against [`DESIGN.md`](../../DESIGN.md). Each 
 | 5. Swap on Today | [HTML](epic-5-swap.html) · ![Epic 5](epic-5-swap.png) | ![Epic 5 pt-BR](epic-5-swap.pt-BR.png) |
 | 6. A leaner Today | [HTML](epic-6-lean-today.html) · ![Epic 6](epic-6-lean-today.png) | ![Epic 6 pt-BR](epic-6-lean-today.pt-BR.png) |
 
-`mocks.css` mirrors the tokens in `web/src/index.css`; it is not imported by the app.
+`mocks.css` mirrored the tokens in `web/src/index.css`, which is no longer the source of the PWA's tokens (Bedrock's `tokens.json` is); it is not imported by the app.

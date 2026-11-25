@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Hoje, sem conexão</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<header class="hm-head">
+<div class="hm-head__text"><h1 class="hm-title">Hoje</h1><span class="hm-sub">Terça, 25 de novembro</span></div>
+<div class="hm-tools">
+<a class="br-streak" href="StreakSheet.dc.html" aria-label="Sequência: 6 dias"><i class="ri ri-flame" aria-hidden="true"></i>6</a>
+</div>
+</header>
+<div class="hm-scroll">
+<div class="br-banner br-banner--warning" role="status"><i class="ri ri-offline" aria-hidden="true" style="color: var(--warning)"></i><span class="br-banner__text">Sem conexão. Mostrando o plano de 10:42.</span></div>
+<section class="br-card br-card--hero br-card--compact hm-hero" aria-label="Seu dia">
+<div class="hm-hero__top">
+<div class="hm-stack" style="gap: 0"><span class="br-card__label">Seu dia</span><span class="hm-hero__value">1 de 4 feitas</span></div>
+<span class="br-energy" aria-label="Energia: baixa"><span class="br-energy__bars"><i class="on"></i><i class="on"></i><i></i><i></i></span>Baixa</span>
+</div>
+<div class="br-progress"><div class="br-progress__track"><div class="br-progress__fill" style="width: 25%"></div></div></div>
+<span class="br-muted">Plano das 7:00, pensado para energia baixa.</span>
+</section>
+<h2 class="hm-section" style="padding-top: 8px">Suas tarefas</h2>
+<article class="br-task">
+<div class="br-task__head">
+<span class="br-chore__icon br-chore__icon--lg" style="background: var(--chore-kitchen-soft); color: var(--chore-kitchen)"><i class="ri ri-lg ri-kitchen" aria-hidden="true"></i></span>
+<div class="br-task__main"><span class="br-task__title">Lavar a louça</span><span class="br-task__meta">Cozinha · <span class="br-effort"><span class="br-effort__dots"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span>Leve</span></span></div>
+</div>
+<div class="br-task__why"><i class="ri ri-sparkles" aria-hidden="true" style="margin-top: 2px"></i><span>Leve, para um dia de energia baixa. Ninguém lava desde ontem.</span></div>
+<div class="br-task__actions"><button class="br-btn br-btn--secondary br-btn--lg" disabled>Recusar</button><button class="br-btn br-btn--primary br-btn--lg" disabled><i class="ri ri-check" aria-hidden="true"></i>Aceitar</button></div>
+<span class="hm-caption">Sem conexão, as ações voltam quando a internet voltar.</span>
+</article>
+<article class="br-task">
+<div class="br-task__head">
+<span class="br-chore__icon br-chore__icon--lg" style="background: var(--chore-laundry-soft); color: var(--chore-laundry)"><i class="ri ri-lg ri-laundry" aria-hidden="true"></i></span>
+<div class="br-task__main"><span class="br-task__title">Dobrar a roupa</span><span class="br-task__meta"><span class="br-badge br-badge--brand">Assumida</span>Roupas</span></div>
+</div>
+<div class="br-task__actions br-task__actions--one"><button class="br-btn br-btn--primary br-btn--lg" disabled><i class="ri ri-check" aria-hidden="true"></i>Concluir</button></div>
+</article>
+</div>
+<dc-import name="BottomBar" active="today" hint-size="390px,88px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() { return { theme: this.props.theme ?? 'dark' }; }
+}
+</script>
+</body>
+</html>

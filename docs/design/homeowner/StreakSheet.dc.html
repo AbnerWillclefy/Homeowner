@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Sequência</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<header class="hm-head"><div class="hm-head__text"><span class="hm-title">Hoje</span><span class="hm-sub">Terça, 25 de novembro</span></div></header>
+<div class="hm-scroll"><div class="br-skel" style="height: 152px; border-radius: 24px; animation: none"></div></div>
+<div class="hm-overlay">
+<section class="hm-sheet" role="dialog" aria-modal="true" aria-labelledby="st-title">
+<span class="hm-sheet__grab" aria-hidden="true"></span>
+<div class="hm-sheet__head"><h1 id="st-title" class="hm-sheet__title">Sua sequência</h1><a class="br-iconbtn br-iconbtn--sm" href="Main.dc.html" aria-label="Fechar"><i class="ri ri-x" aria-hidden="true"></i></a></div>
+<div class="hm-row" style="gap: 16px">
+<span class="hm-icotile" style="width: 56px; height: 56px; background: var(--warning-soft); color: var(--warning)"><i class="ri ri-xl ri-flame" aria-hidden="true"></i></span>
+<div class="hm-stack" style="gap: 0"><span class="hm-hero__value">6 dias</span><span class="hm-muted">Conclua uma tarefa hoje e vai para 7.</span></div>
+</div>
+<div class="hm-row" style="gap: 4px" aria-label="Últimos 7 dias: 6 com conclusão, hoje ainda aberto">
+<span class="br-badge br-badge--positive">qua</span><span class="br-badge br-badge--positive">qui</span><span class="br-badge br-badge--positive">sex</span><span class="br-badge br-badge--neutral"><i class="ri ri-sm ri-pause" aria-hidden="true"></i>sáb</span><span class="br-badge br-badge--positive">dom</span><span class="br-badge br-badge--positive">seg</span><span class="br-badge br-badge--brand">hoje</span>
+</div>
+<ul class="hm-stack" style="list-style: none; padding: 0; margin: 0; gap: 0">
+<li class="hm-check" style="cursor: default"><span class="hm-icotile hm-icotile--brand" style="width: 32px; height: 32px"><i class="ri ri-check" aria-hidden="true"></i></span><span>Concluir uma tarefa no dia aumenta a sequência.</span></li>
+<li class="hm-check" style="cursor: default"><span class="hm-icotile" style="width: 32px; height: 32px"><i class="ri ri-pause" aria-hidden="true"></i></span><span>Um dia sem tarefas assumidas, ou esgotado, pausa a sequência.</span></li>
+<li class="hm-check" style="cursor: default"><span class="hm-icotile" style="width: 32px; height: 32px"><i class="ri ri-circle-x" aria-hidden="true"></i></span><span>Assumir tarefas e não concluir nenhuma quebra a sequência.</span></li>
+<li class="hm-check" style="cursor: default"><span class="hm-icotile" style="width: 32px; height: 32px"><i class="ri ri-heart" aria-hidden="true"></i></span><span>Recusar ou ignorar uma tarefa proposta nunca quebra a sequência.</span></li>
+</ul>
+<div class="hm-sheet__foot"><a class="br-btn br-btn--secondary br-btn--lg br-btn--block" href="Main.dc.html">Fechar</a></div>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() { return { theme: this.props.theme ?? 'dark' }; }
+}
+</script>
+</body>
+</html>

@@ -8,12 +8,13 @@ Dark is the primary theme and comes first. Light is derived from it, with the sa
 
 ## Layers
 
-Bedrock has two layers, so a project that is not about money can use it too:
+Bedrock has three layers, so a project that is not about money can use it too:
 
-- **Core**: every token except `cat-*`, and every component that does not handle money. Any project uses it, and changes the brand by remapping the primitives (see Colour).
+- **Core**: every token except `cat-*` and `chore-*`, and every component that does not handle money. Any project uses it, and changes the brand by remapping the primitives (see Colour).
 - **Finance**: what only a money app needs: `Amount`, `MoneyInput`, `CategoryTag`, `StatCard`, `ListRow`, `AlertCard`, `PaceChart`, `DonutChart`, `BarChart` and the `cat-*` tokens.
+- **Home**: what only the chores app (the PWA) needs: `ChoreTag`, `Effort`, `Energy`, `Streak`, `TaskCard` and the `chore-*` tokens.
 
-Core never imports Finance. The layer of each component is in the Inventory at the end.
+Core never imports Finance or Home, and Finance and Home do not import each other. The layer of each component is in the Inventory at the end.
 
 ## Principles: the 8 golden rules
 
@@ -51,6 +52,7 @@ Every screen and component follows Shneiderman's 8 golden rules of interface des
 - **Hero**: `hero` is the only saturated block on a screen, reserved for the card that answers the screen's question ("how much can I still spend"). On it: text `on-hero` and `on-hero-muted`, chart line `hero-line`.
 - **State**: `positive`, `warning` and `danger`, each with its `-soft` for badge backgrounds. State always comes with a word or icon, never colour alone. Normal spending is not red: `danger` is only for late, over-limit and error.
 - **Categories**: 13 fixed colours (`cat-housing`, `cat-groceries`…), each with a `-soft`. They are the same in chart, icon, legend and filter, on every screen. All pass 4.5:1 on `surface`, so they also work as text colour. For an app that adopts Bedrock, these and the icons in `CategoryTag` replace `DESIGN.md`'s Spending Category table (`spend-*` becomes `cat-*`, Taxes and fees becomes `landmark`, Other becomes `circle-ellipsis`). The web PWA keeps `DESIGN.md` until it migrates.
+- **Chore categories** (Home layer): 10 fixed colours (`chore-kitchen`, `chore-bathroom`…), each with a `-soft`. They do not mix with the spending ones: they are another domain. Each passes 4.5:1 on `surface` and 3:1 on its own `-soft` in both themes. The category's name always shows as text (see `ChoreTag`).
 - **Focus**: a 2px solid `focus` ring with a 2px offset on every focusable element. It passes 3:1 on every surface.
 
 ## Typography
@@ -73,7 +75,7 @@ Every screen and component follows Shneiderman's 8 golden rules of interface des
 ## Icons
 
 - Lucide, 2px stroke, 16px, in the colour of the text beside it (`currentColor`).
-- Each category has a fixed icon (list in `CategoryTag`). Banks show the bank's logo, from Pluggy.
+- Each category has a fixed icon (list in `CategoryTag`; the chore ones in `ChoreTag`). Banks show the bank's logo, from Pluggy.
 - No emoji in the interface.
 
 ## Motion
@@ -130,7 +132,7 @@ Charts are part of the visual system, not a style of their own:
 - Layering, from low to high: `z-sticky` (top and bottom bars), `z-overlay` (Sheet, Dialog), `z-popover` (Menu, Select, which can open inside a Sheet), `z-toast`, `z-tooltip`. Never a literal z-index.
 - **No screen scrolls sideways**, from 320px up. What is wide (a table, a chart of many months, a segmented control with many options) scrolls inside its own box, or changes shape on the phone.
 - **Every screen starts with `PageHeader`**, which has its own phone form (see its guideline).
-- **Every screen has a desktop and a phone artboard before it is built.** "Follows the adaptation rules" is not a design: a screen with no phone artboard is not ready to build. A change to what a screen shows changes its artboard before the code.
+- **Every screen has a desktop and a phone artboard before it is built.** An app declared phone only (the Homeowner PWA, see `PRODUCT.md`) needs only the phone artboard; its English follows the pt-BR wording through the i18n catalogs, so there are no English artboards. "Follows the adaptation rules" is not a design: a screen with no phone artboard is not ready to build. A change to what a screen shows changes its artboard before the code.
 - **On a phone, a row is one row.** Title and caption truncate instead of wrapping; nothing that belongs to the row drops to a loose second line under it (see `ListRow`).
 - **Label and value** (summaries, "how the number is made", a month's detail) use `DescriptionList`: one text size, label left, value right.
 - Tables are for desktop. Below `bp-tablet` the app shows the rows as a list (a money app uses `ListRow`), or fewer columns.
@@ -144,7 +146,7 @@ Charts are part of the visual system, not a style of their own:
 
 ## Implementation
 
-- Package `@homeowner/bedrock` in `/bedrock`, in an npm workspace, used by Revenue first. web and admin migrate later.
+- Package `@homeowner/bedrock` in `/bedrock`, in an npm workspace, used by Revenue first. The web PWA migrates next, with the Home layer in `src/home/` exported from `@homeowner/bedrock/home`; the admin later.
 - Core lives in `src/components/` and is exported from `@homeowner/bedrock`. Finance lives in `src/finance/` and is exported from `@homeowner/bedrock/finance`. Core never imports Finance.
 - Base: **shadcn/ui** components (Radix + Tailwind 4) copied into the package and restyled with these tokens. Icons from `lucide-react`. The phone sheet uses `vaul`. Charts use Recharts through shadcn's `ChartContainer`.
 - Tokens become CSS custom properties with the same names (`--surface`, `--space-16`) and are exposed to Tailwind through `@theme`. No literal colour, spacing or z-index in a component.
@@ -190,6 +192,9 @@ Charts are part of the visual system, not a style of their own:
 | PageHeader | Core | draft |
 | DescriptionList | Core | stable |
 | ChartContainer | Core | stable |
+| Avatar | Core | draft |
+| Counter | Core | draft (the canvas's name for the built `Stepper`, see `Counter/README.md`) |
+| StepIndicator | Core | draft (the canvas calls it `Stepper`, see `StepIndicator/README.md`) |
 | Amount | Finance | stable |
 | MoneyInput | Finance | stable |
 | CategoryTag | Finance | stable |
@@ -199,3 +204,8 @@ Charts are part of the visual system, not a style of their own:
 | PaceChart | Finance | stable |
 | DonutChart | Finance | stable |
 | BarChart | Finance | stable |
+| ChoreTag | Home | draft |
+| Effort | Home | draft |
+| Energy | Home | draft |
+| Streak | Home | draft |
+| TaskCard | Home | draft |

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Catálogo, sugeridos</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<div class="hm-bar"><a class="hm-back" href="CatalogQuestions.dc.html"><i class="ri ri-chevron-left" aria-hidden="true"></i>Perguntas</a></div>
+<div class="hm-scroll" style="padding-top: 16px">
+<div class="hm-stack" style="gap: 4px"><h1 class="hm-lead">Afazeres sugeridos</h1><p class="hm-muted">Desmarque o que não serve. Tudo pode ser editado depois.</p></div>
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+<div class="hm-stack">
+<span class="hm-row hm-label"><span class="br-chore__icon br-chore__icon--sm" style="background: var(--chore-{{g.id}}-soft); color: var(--chore-{{g.id}})"><i class="ri ri-sm ri-{{g.id}}" aria-hidden="true"></i></span>{{g.name}}</span>
+<div class="hm-list" style="padding: 0 16px">
+<sc-for list="{{g.items}}" as="i" hint-placeholder-count="2">
+<button class="hm-check" role="checkbox" aria-checked="{{i.checked}}" onClick="{{i.toggle}}"><span class="hm-box {{i.box}}"><i class="ri ri-sm ri-check" aria-hidden="true"></i></span><span class="hm-item__main hm-fill"><span class="hm-item__title">{{i.name}}</span><span class="hm-item__meta">{{i.meta}}</span></span></button>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+<div style="padding: 16px 16px 32px; border-top: 1px solid var(--border); background: var(--surface)">
+<sc-if value="{{notSaved}}" hint-placeholder-val="{{ true }}"><button class="br-btn br-btn--primary br-btn--lg br-btn--block" onClick="{{save}}" disabled="{{none}}">Adicionar {{count}}</button></sc-if>
+<sc-if value="{{saved}}" hint-placeholder-val="{{ false }}"><a class="br-btn br-btn--success br-btn--lg br-btn--block" href="Chores.dc.html"><i class="ri ri-check" aria-hidden="true"></i>{{count}} adicionados. Ver lista</a></sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { off: ['Limpar o forno'], saved: false }; }
+renderVals() {
+const s = this.state;
+const G = [
+['kitchen', 'Cozinha', [['Lavar a louça', 'Todo dia · Leve'], ['Limpar o fogão', 'A cada 3 dias · Médio'], ['Limpar o forno', 'A cada 30 dias · Pesado']]],
+['bathroom', 'Banheiro', [['Limpar a pia do banheiro', 'A cada 7 dias · Leve'], ['Limpar o box', 'A cada 7 dias · Pesado']]],
+['bedroom', 'Quarto', [['Trocar a roupa de cama', 'A cada 7 dias · Médio · 2 quartos']]],
+['pets', 'Animais de estimação', [['Limpar a caixa de areia', 'A cada 2 dias · Leve']]]
+];
+let n = 0;
+const groups = G.map(([id, name, items]) => ({ id, name, items: items.map(([nm, meta]) => { const on = !s.off.includes(nm); if (on) n++; return { name: nm, meta, checked: on ? 'true' : 'false', box: on ? 'hm-box--on' : '', toggle: () => this.setState({ saved: false, off: on ? [...s.off, nm] : s.off.filter((x) => x !== nm) }) }; }) }));
+return { theme: this.props.theme ?? 'dark', groups, count: n === 1 ? '1 afazer' : n + ' afazeres', none: n === 0, saved: s.saved, notSaved: !s.saved, save: () => this.setState({ saved: true }) };
+}
+}
+</script>
+</body>
+</html>

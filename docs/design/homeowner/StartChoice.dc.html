@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Quando começar</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<header class="hm-head"><div class="hm-head__text"><span class="hm-title">Hoje</span><span class="hm-sub">Terça, 25 de novembro</span></div></header>
+<div class="hm-scroll"><div class="br-skel" style="height: 152px; border-radius: 24px; animation: none"></div></div>
+<div class="hm-overlay">
+<section class="hm-sheet" role="dialog" aria-modal="true" aria-labelledby="sc-title">
+<span class="hm-sheet__grab" aria-hidden="true"></span>
+<sc-if value="{{asking}}" hint-placeholder-val="{{ true }}">
+<div class="hm-stack" style="gap: 4px"><h1 id="sc-title" class="hm-sheet__title">Quando você quer as suas tarefas?</h1><p class="hm-muted">O plano de todo dia sai às 7:00. Você pode receber as de hoje agora.</p></div>
+<div class="hm-sheet__foot">
+<button class="br-btn br-btn--primary br-btn--lg br-btn--block" onClick="{{now}}">Receber minhas tarefas agora</button>
+<a class="br-btn br-btn--secondary br-btn--lg br-btn--block" href="TodayCheckIn.dc.html">Começar amanhã</a>
+</div>
+</sc-if>
+<sc-if value="{{planning}}" hint-placeholder-val="{{ false }}">
+<div class="hm-stack-16" style="align-items: center; padding: 24px 0" role="status" aria-busy="true">
+<span class="hm-icotile hm-icotile--brand" style="width: 56px; height: 56px"><i class="ri ri-xl ri-sparkles" aria-hidden="true"></i></span>
+<h1 class="hm-sheet__title">Planejando as suas tarefas...</h1>
+<button class="br-btn br-btn--ghost" onClick="{{finish}}">Ver resultado</button>
+</div>
+</sc-if>
+<sc-if value="{{done}}" hint-placeholder-val="{{ false }}">
+<div class="hm-stack-16" style="align-items: center; padding: 16px 0" role="status">
+<span class="hm-icotile hm-icotile--brand" style="width: 56px; height: 56px"><i class="ri ri-xl ri-circle-check" aria-hidden="true"></i></span>
+<h1 class="hm-sheet__title">As suas tarefas de hoje estão prontas.</h1>
+<p class="hm-muted hm-center">3 tarefas, pensadas para a sua energia base.</p>
+</div>
+<div class="hm-sheet__foot"><a class="br-btn br-btn--primary br-btn--lg br-btn--block" href="Main.dc.html">Entendi</a></div>
+</sc-if>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { phase: 'ask' }; }
+renderVals() {
+const p = this.state.phase;
+return {
+theme: this.props.theme ?? 'dark',
+asking: p === 'ask', planning: p === 'planning', done: p === 'done',
+now: () => this.setState({ phase: 'planning' }), finish: () => this.setState({ phase: 'done' })
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Comando de voz</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<header class="hm-head"><div class="hm-head__text"><span class="hm-title">Hoje</span><span class="hm-sub">Terça, 25 de novembro</span></div></header>
+<div class="hm-scroll"><div class="br-skel" style="height: 152px; border-radius: 24px; animation: none"></div></div>
+<div class="hm-overlay">
+<section class="hm-sheet" role="dialog" aria-modal="true" aria-labelledby="v-title">
+<span class="hm-sheet__grab" aria-hidden="true"></span>
+<div class="hm-sheet__head"><div class="hm-stack" style="gap: 0"><h1 id="v-title" class="hm-sheet__title">Comando de voz</h1><span class="hm-muted">Comandos de voz restantes hoje: 4</span></div><a class="br-iconbtn br-iconbtn--sm" href="Main.dc.html" aria-label="Fechar"><i class="ri ri-x" aria-hidden="true"></i></a></div>
+
+<sc-if value="{{listening}}" hint-placeholder-val="{{ true }}">
+<div class="hm-stack-16" style="align-items: center; padding: 16px 0">
+<button class="br-iconbtn" style="width: 72px; height: 72px; background: var(--brand); color: var(--on-brand); border-color: transparent" onClick="{{stop}}" aria-label="Parar de ouvir"><i class="ri ri-xl ri-mic" aria-hidden="true"></i></button>
+<p role="status">Ouvindo. Diga o que fazer.</p>
+<p class="hm-muted hm-center">“Dobrei a roupa e lavei a louça, e não vou tirar o lixo hoje.”</p>
+</div>
+</sc-if>
+
+<sc-if value="{{reviewing}}" hint-placeholder-val="{{ false }}">
+<p role="status">Está certo? Nada muda até você confirmar.</p>
+<div class="hm-list">
+<sc-for list="{{actions}}" as="a" hint-placeholder-count="3">
+<div class="hm-item"><span class="hm-icotile {{a.tile}}"><i class="ri {{a.icon}}" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">{{a.verb}}</span><span class="hm-item__meta">{{a.task}}</span></span><button class="br-iconbtn br-iconbtn--sm" onClick="{{a.remove}}" aria-label="Remover: {{a.verb}} {{a.task}}"><i class="ri ri-x" aria-hidden="true"></i></button></div>
+</sc-for>
+</div>
+<div class="hm-sheet__foot">
+<button class="br-btn br-btn--primary br-btn--lg br-btn--block" onClick="{{confirm}}" disabled="{{empty}}">Confirmar {{count}}</button>
+<button class="br-btn br-btn--ghost br-btn--lg br-btn--block" onClick="{{again}}"><i class="ri ri-mic" aria-hidden="true"></i>Falar de novo</button>
+</div>
+</sc-if>
+
+<sc-if value="{{applied}}" hint-placeholder-val="{{ false }}">
+<div class="hm-list">
+<sc-for list="{{actions}}" as="a" hint-placeholder-count="3">
+<div class="hm-item"><span class="hm-icotile hm-icotile--brand"><i class="ri ri-check" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">{{a.verb}}</span><span class="hm-item__meta">{{a.task}} · feito</span></span></div>
+</sc-for>
+</div>
+<div class="hm-sheet__foot"><a class="br-btn br-btn--secondary br-btn--lg br-btn--block" href="Main.dc.html">Fechar</a></div>
+</sc-if>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { phase: 'listening', removed: [] }; }
+renderVals() {
+const A = [
+{ id: 1, verb: 'Concluir', task: 'Dobrar a roupa', icon: 'ri-circle-check', tile: 'hm-icotile--brand' },
+{ id: 2, verb: 'Concluir', task: 'Lavar a louça', icon: 'ri-circle-check', tile: 'hm-icotile--brand' },
+{ id: 3, verb: 'Recusar', task: 'Tirar o lixo', icon: 'ri-circle-x', tile: '' }
+];
+const s = this.state;
+const actions = A.filter((a) => !s.removed.includes(a.id)).map((a) => ({ ...a, remove: () => this.setState({ removed: [...s.removed, a.id] }) }));
+return {
+theme: this.props.theme ?? 'dark',
+listening: s.phase === 'listening', reviewing: s.phase === 'review', applied: s.phase === 'applied',
+actions, empty: actions.length === 0, count: actions.length === 1 ? '1 ação' : actions.length + ' ações',
+stop: () => this.setState({ phase: 'review' }), confirm: () => this.setState({ phase: 'applied' }), again: () => this.setState({ phase: 'listening', removed: [] })
+};
+}
+}
+</script>
+</body>
+</html>

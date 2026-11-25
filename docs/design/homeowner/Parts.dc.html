@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>TaskCard e categorias</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}" style="height: 1240px">
+<div class="hm-scroll" style="padding-top: 24px; overflow: visible">
+<h1 class="hm-section">TaskCard</h1>
+<span class="hm-label">Proposta</span>
+<article class="br-task"><div class="br-task__head"><span class="br-chore__icon br-chore__icon--lg" style="background: var(--chore-kitchen-soft); color: var(--chore-kitchen)"><i class="ri ri-lg ri-kitchen" aria-hidden="true"></i></span><div class="br-task__main"><span class="br-task__title">Lavar a louça</span><span class="br-task__meta">Cozinha · <span class="br-effort"><span class="br-effort__dots"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span>Leve</span></span></div><button class="br-iconbtn br-iconbtn--sm" aria-label="Mais ações"><i class="ri ri-more" aria-hidden="true"></i></button></div><div class="br-task__why"><i class="ri ri-sparkles" aria-hidden="true" style="margin-top: 2px"></i><span>Leve, para um dia de energia baixa. Ninguém lava desde ontem.</span></div><div class="br-task__actions"><button class="br-btn br-btn--secondary br-btn--lg">Recusar</button><button class="br-btn br-btn--primary br-btn--lg"><i class="ri ri-check" aria-hidden="true"></i>Aceitar</button></div></article>
+<span class="hm-label">Assumida</span>
+<article class="br-task"><div class="br-task__head"><span class="br-chore__icon br-chore__icon--lg" style="background: var(--chore-laundry-soft); color: var(--chore-laundry)"><i class="ri ri-lg ri-laundry" aria-hidden="true"></i></span><div class="br-task__main"><span class="br-task__title">Dobrar a roupa</span><span class="br-task__meta"><span class="br-badge br-badge--brand">Assumida</span>Roupas</span></div><button class="br-iconbtn br-iconbtn--sm" aria-label="Mais ações"><i class="ri ri-more" aria-hidden="true"></i></button></div><div class="br-task__actions br-task__actions--one"><button class="br-btn br-btn--primary br-btn--lg"><i class="ri ri-check" aria-hidden="true"></i>Concluir</button></div></article>
+<span class="hm-label">Concluída</span>
+<div class="br-task br-task--done"><div class="br-task__head"><span class="br-chore__icon br-chore__icon--lg" style="background: var(--chore-bathroom-soft); color: var(--chore-bathroom)"><i class="ri ri-lg ri-bathroom" aria-hidden="true"></i></span><div class="br-task__main"><span class="br-task__title">Limpar a pia do banheiro</span><span class="br-task__meta"><i class="ri ri-circle-check" aria-hidden="true"></i>Concluída às 9:02</span></div><button class="br-btn br-btn--ghost br-btn--sm">Desfazer</button></div></div>
+<span class="hm-label">De outro morador e sobrando (linhas)</span>
+<div class="hm-list">
+<div class="hm-item"><span class="br-chore__icon" style="background: var(--chore-bedroom-soft); color: var(--chore-bedroom)"><i class="ri ri-bedroom" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Trocar a roupa de cama</span><span class="hm-item__meta">Quarto · Ana · assumida</span></span><span class="br-avatar br-avatar--sm">AS</span></div>
+<div class="hm-item"><span class="br-chore__icon" style="background: var(--chore-outdoor-soft); color: var(--chore-outdoor)"><i class="ri ri-outdoor" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Regar as plantas</span><span class="hm-item__meta">Área externa · Leve · vence hoje</span></span><button class="br-btn br-btn--secondary">Pegar</button></div>
+</div>
+<h2 class="hm-section" style="padding-top: 16px">Categorias de afazer</h2>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+<span class="br-chore" style="color: var(--text); font-size: 14px"><span class="br-chore__icon" style="background: var(--chore-kitchen-soft); color: var(--chore-kitchen)"><i class="ri ri-kitchen" aria-hidden="true"></i></span>Cozinha</span>
+<span class="br-chore" style="color: var(--text); font-size: 14px"><span class="br-chore__icon" style="background: var(--chore-bathroom-soft); color: var(--chore-bathroom)"><i class="ri ri-bathroom" aria-hidden="true"></i></span>Banheiro</span>
+<span class="br-chore" style="color: var(--text); font-size: 14px"><span class="br-chore__icon" style="background: var(--chore-bedroom-soft); color: var(--chore-bedroom)"><i class="ri ri-bedroom" aria-hidden="true"></i></span>Quarto</span>
+<span class="br-chore" style="color: var(--text); font-size: 14px"><span class="br-chore__icon" style="background: var(--chore-living-room-soft); color: var(--chore-living-room)"><i class="ri ri-living-room" aria-hidden="true"></i></span>Sala</span>
+<span class="br-chore" style="color: var(--text); font-size: 14px"><span class="br-chore__icon" style="background: var(--chore-laundry-soft); color: var(--chore-laundry)"><i class="ri ri-laundry" aria-hidden="true"></i></span>Roupas</span>
+<span class="br-chore" style="color: var(--text); font-size: 14px"><span class="br-chore__icon" style="background: var(--chore-floors-soft); color: var(--chore-floors)"><i class="ri ri-floors" aria-hidden="true"></i></span>Pisos</span>
+<span class="br-chore" style="color: var(--text); font-size: 14px"><span class="br-chore__icon" style="background: var(--chore-trash-soft); color: var(--chore-trash)"><i class="ri ri-trash" aria-hidden="true"></i></span>Lixo</span>
+<span class="br-chore" style="color: var(--text); font-size: 14px"><span class="br-chore__icon" style="background: var(--chore-outdoor-soft); color: var(--chore-outdoor)"><i class="ri ri-outdoor" aria-hidden="true"></i></span>Área externa</span>
+<span class="br-chore" style="color: var(--text); font-size: 14px"><span class="br-chore__icon" style="background: var(--chore-pets-soft); color: var(--chore-pets)"><i class="ri ri-pets" aria-hidden="true"></i></span>Animais de estimação</span>
+<span class="br-chore" style="color: var(--text); font-size: 14px"><span class="br-chore__icon" style="background: var(--chore-other-soft); color: var(--chore-other)"><i class="ri ri-other" aria-hidden="true"></i></span>Outros</span>
+</div>
+<h2 class="hm-section" style="padding-top: 16px">Energia, esforço e sequência</h2>
+<div class="hm-row" style="flex-wrap: wrap">
+<span class="br-energy"><span class="br-energy__bars"><i></i><i></i><i></i><i></i></span>Esgotado</span>
+<span class="br-energy"><span class="br-energy__bars"><i class="on"></i><i class="on"></i><i></i><i></i></span>Baixa</span>
+<span class="br-energy"><span class="br-energy__bars"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span>Normal</span>
+<span class="br-energy"><span class="br-energy__bars"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span>Energizado</span>
+</div>
+<div class="hm-row" style="flex-wrap: wrap; gap: 16px">
+<span class="br-effort"><span class="br-effort__dots"><i class="on"></i><i></i><i></i><i></i><i></i></span>Muito leve</span>
+<span class="br-effort"><span class="br-effort__dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span>Médio</span>
+<span class="br-effort"><span class="br-effort__dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span>Muito pesado</span>
+</div>
+<div class="hm-row"><span class="br-streak"><i class="ri ri-flame" aria-hidden="true"></i>6</span><span class="br-streak br-streak--paused"><i class="ri ri-pause" aria-hidden="true"></i>6</span></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":1240}}'>
+class Component extends DCLogic {
+renderVals() { return { theme: this.props.theme ?? 'dark' }; }
+}
+</script>
+</body>
+</html>

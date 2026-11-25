@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Barra inferior</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<nav class="br-bottombar" aria-label="Navegação" style="width: 390px; font-family: var(--font-sans); padding-bottom: 24px">
+<a class="br-tab" href="Main.dc.html" aria-current="{{today}}"><i class="ri ri-lg ri-today" aria-hidden="true"></i>Hoje</a>
+<a class="br-tab" href="Chores.dc.html" aria-current="{{chores}}"><i class="ri ri-lg ri-chores" aria-hidden="true"></i>Afazeres</a>
+<a class="br-tab" href="Home.dc.html" aria-current="{{home}}"><i class="ri ri-lg ri-home" aria-hidden="true"></i>Lar</a>
+<a class="br-tab" href="Me.dc.html" aria-current="{{me}}"><i class="ri ri-lg ri-me" aria-hidden="true"></i>Eu</a>
+</nav>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"active":{"editor":"enum","options":["today","chores","home","me"],"default":"today"},"$preview":{"width":390,"height":88}}'>
+class Component extends DCLogic {
+renderVals() {
+const a = this.props.active ?? 'today';
+const v = (k) => (a === k ? 'page' : 'false');
+return { today: v('today'), chores: v('chores'), home: v('home'), me: v('me') };
+}
+}
+</script>
+</body>
+</html>

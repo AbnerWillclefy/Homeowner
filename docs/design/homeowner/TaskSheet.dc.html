@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Tarefa, detalhe</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<header class="hm-head"><div class="hm-head__text"><span class="hm-title">Hoje</span><span class="hm-sub">Terça, 25 de novembro</span></div></header>
+<div class="hm-scroll"><div class="br-skel" style="height: 152px; border-radius: 24px; animation: none"></div></div>
+<div class="hm-overlay">
+<section class="hm-sheet" role="dialog" aria-modal="true" aria-labelledby="t-title" style="position: relative">
+<span class="hm-sheet__grab" aria-hidden="true"></span>
+<div class="hm-sheet__head">
+<div class="hm-row" style="gap: 16px; min-width: 0"><span class="br-chore__icon br-chore__icon--lg" style="background: var(--chore-kitchen-soft); color: var(--chore-kitchen)"><i class="ri ri-lg ri-kitchen" aria-hidden="true"></i></span><div class="hm-stack" style="gap: 0"><h1 id="t-title" class="hm-sheet__title">Lavar a louça</h1><span class="hm-muted">Cozinha · proposta para você</span></div></div>
+<div class="hm-row"><button class="br-iconbtn br-iconbtn--sm" aria-label="Mais ações" aria-expanded="{{menuOpen}}" onClick="{{toggleMenu}}"><i class="ri ri-more" aria-hidden="true"></i></button><a class="br-iconbtn br-iconbtn--sm" href="Main.dc.html" aria-label="Fechar"><i class="ri ri-x" aria-hidden="true"></i></a></div>
+</div>
+<sc-if value="{{showMenu}}" hint-placeholder-val="{{ false }}">
+<div class="br-menu" role="menu" style="position: absolute; right: 16px; top: 64px; z-index: 2">
+<a class="br-menu__item" role="menuitem" href="SwapSheet.dc.html"><i class="ri ri-swap" aria-hidden="true"></i>Oferecer troca</a>
+<a class="br-menu__item" role="menuitem" href="ChoreSheet.dc.html"><i class="ri ri-pencil" aria-hidden="true"></i>Editar o afazer</a>
+</div>
+</sc-if>
+<div class="br-card br-card--compact" style="background: var(--surface); gap: 8px">
+<span class="hm-row hm-label"><i class="ri ri-sparkles" aria-hidden="true"></i>Por que hoje, para você</span>
+<p>Leve, para um dia de energia baixa. Ninguém lava desde ontem, e a pia enche rápido. A Ana ficou com o fogão, então a cozinha fecha o dia limpa.</p>
+<span class="hm-caption">Escrito pelo assistente</span>
+</div>
+<dl class="hm-dl">
+<div><dt>Esforço</dt><dd><span class="br-effort" style="color: var(--text)"><span class="br-effort__dots"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></span>Leve</span></dd></div>
+<div><dt>Prazo</dt><dd>Hoje</dd></div>
+<div><dt>Importância</dt><dd>Essencial</dd></div>
+<div><dt>Última vez</dt><dd>Ontem, Ana</dd></div>
+<div><dt>Exigências</dt><dd>Nenhuma</dd></div>
+</dl>
+<div class="hm-sheet__foot">
+<sc-if value="{{proposed}}" hint-placeholder-val="{{ true }}">
+<div class="br-task__actions"><button class="br-btn br-btn--secondary br-btn--lg" onClick="{{refuse}}">Recusar</button><button class="br-btn br-btn--primary br-btn--lg" onClick="{{accept}}"><i class="ri ri-check" aria-hidden="true"></i>Aceitar</button></div>
+</sc-if>
+<sc-if value="{{committed}}" hint-placeholder-val="{{ false }}">
+<button class="br-btn br-btn--primary br-btn--lg br-btn--block" onClick="{{complete}}"><i class="ri ri-check" aria-hidden="true"></i>Concluir</button>
+</sc-if>
+<sc-if value="{{closed}}" hint-placeholder-val="{{ false }}">
+<div class="br-banner"><i class="ri ri-circle-check" aria-hidden="true" style="color: var(--positive)"></i><span class="br-banner__text">{{closedText}}</span><button class="br-btn br-btn--ghost br-btn--sm" onClick="{{undo}}">Desfazer</button></div>
+</sc-if>
+</div>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { status: 'proposed', menu: false }; }
+renderVals() {
+const s = this.state.status;
+return {
+theme: this.props.theme ?? 'dark',
+showMenu: this.state.menu, menuOpen: this.state.menu ? 'true' : 'false', toggleMenu: () => this.setState({ menu: !this.state.menu }),
+proposed: s === 'proposed', committed: s === 'committed', closed: s === 'refused' || s === 'done',
+closedText: s === 'done' ? 'Concluída às 10:24.' : 'Recusada. Volta para quem puder.',
+accept: () => this.setState({ status: 'committed' }), refuse: () => this.setState({ status: 'refused' }), complete: () => this.setState({ status: 'done' }),
+undo: () => this.setState({ status: s === 'done' ? 'committed' : 'proposed' })
+};
+}
+}
+</script>
+</body>
+</html>

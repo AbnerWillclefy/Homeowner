@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Preferências</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<div class="hm-scroll"></div>
+<div class="hm-overlay">
+<section class="hm-sheet hm-sheet--full" role="dialog" aria-modal="true" aria-labelledby="p-title">
+<span class="hm-sheet__grab" aria-hidden="true"></span>
+<div class="hm-sheet__head"><div class="hm-stack" style="gap: 0"><h1 id="p-title" class="hm-sheet__title">Preferências</h1><span class="hm-muted">Tarefas de que você gosta entram mais no seu plano. O essencial ainda vem primeiro.</span></div><a class="br-iconbtn br-iconbtn--sm" href="Me.dc.html" aria-label="Fechar"><i class="ri ri-x" aria-hidden="true"></i></a></div>
+<div class="hm-stack" style="gap: 0">
+<sc-for list="{{cats}}" as="c" hint-placeholder-count="10">
+<div class="hm-between" style="min-height: 64px; border-top: 1px solid var(--border)">
+<span class="hm-row" style="gap: 16px; min-width: 0"><span class="br-chore__icon" style="background: var(--chore-{{c.id}}-soft); color: var(--chore-{{c.id}})"><i class="ri ri-{{c.id}}" aria-hidden="true"></i></span><span class="hm-item__main"><span id="pc-{{c.id}}" class="hm-item__title">{{c.name}}</span><span class="hm-item__meta">{{c.value}}</span></span></span>
+<div class="hm-seg" role="radiogroup" aria-labelledby="pc-{{c.id}}" style="flex: none"><sc-for list="{{c.opts}}" as="o" hint-placeholder-count="3"><button role="radio" aria-pressed="{{o.on}}" aria-checked="{{o.on}}" aria-label="{{o.name}}" onClick="{{o.pick}}" style="flex: none; width: 44px; padding: 0; display: grid; place-items: center"><i class="ri {{o.icon}}" aria-hidden="true"></i></button></sc-for></div>
+</div>
+</sc-for>
+</div>
+</section>
+</div>
+<sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+<div class="hm-toast" role="status" style="bottom: 24px"><i class="ri ri-circle-check" aria-hidden="true" style="color: var(--positive)"></i><span class="hm-toast__text">{{toast}}</span><button class="br-btn br-btn--ghost br-btn--sm" onClick="{{undo}}">Desfazer</button></div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { v: { laundry: 'like', kitchen: 'like', bathroom: 'dislike' }, prev: null, toast: null }; }
+renderVals() {
+const s = this.state;
+const C = [['kitchen', 'Cozinha'], ['bathroom', 'Banheiro'], ['bedroom', 'Quarto'], ['living-room', 'Sala'], ['laundry', 'Roupas'], ['floors', 'Pisos'], ['trash', 'Lixo'], ['outdoor', 'Área externa'], ['pets', 'Animais de estimação'], ['other', 'Outros']];
+const O = [['like', 'Gosto', 'ri-like'], ['neutral', 'Neutro', 'ri-circle'], ['dislike', 'Não gosto', 'ri-dislike']];
+const name = (id) => O.find((o) => o[0] === id)[1];
+return {
+theme: this.props.theme ?? 'dark',
+cats: C.map(([id, n]) => { const cur = s.v[id] || 'neutral'; return { id, name: n, value: name(cur), opts: O.map(([oid, on, icon]) => ({ name: on, icon, on: cur === oid ? 'true' : 'false', pick: () => this.setState({ prev: s.v, v: { ...s.v, [id]: oid }, toast: n + ': ' + on.toLowerCase() + '. Salvo.' }) })) }; }),
+hasToast: !!s.toast, toast: s.toast, undo: () => this.setState({ v: s.prev || s.v, toast: null })
+};
+}
+}
+</script>
+</body>
+</html>

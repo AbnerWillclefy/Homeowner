@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Minhas conclusões</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<div class="hm-bar"><a class="hm-back" href="Me.dc.html"><i class="ri ri-chevron-left" aria-hidden="true"></i>Eu</a></div>
+<header class="hm-head" style="padding-top: 0"><div class="hm-head__text"><h1 class="hm-title">Minhas conclusões</h1><span class="hm-sub">23 nos últimos 30 dias</span></div></header>
+<div class="hm-scroll">
+<sc-for list="{{days}}" as="d" hint-placeholder-count="2">
+<div class="hm-stack">
+<span class="hm-label">{{d.name}}</span>
+<div class="hm-list">
+<sc-for list="{{d.items}}" as="i" hint-placeholder-count="2">
+<div class="hm-item"><span class="br-chore__icon" style="background: var(--chore-{{i.cat}}-soft); color: var(--chore-{{i.cat}})"><i class="ri ri-{{i.cat}}" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">{{i.name}}</span><span class="hm-item__meta">{{i.catName}} · {{i.time}}</span></span><button class="br-iconbtn br-iconbtn--sm" onClick="{{i.edit}}" aria-label="Mudar horário: {{i.name}}"><i class="ri ri-clock" aria-hidden="true"></i></button></div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+<sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+<div class="hm-toast" role="status"><i class="ri ri-circle-check" aria-hidden="true" style="color: var(--positive)"></i><span class="hm-toast__text">{{toast}}</span><button class="br-btn br-btn--ghost br-btn--sm" onClick="{{undo}}">Desfazer</button></div>
+</sc-if>
+<dc-import name="BottomBar" active="me" hint-size="390px,88px"></dc-import>
+<sc-if value="{{editing}}" hint-placeholder-val="{{ false }}">
+<div class="hm-overlay">
+<section class="hm-sheet" role="dialog" aria-modal="true" aria-labelledby="ct-title">
+<span class="hm-sheet__grab" aria-hidden="true"></span>
+<div class="hm-sheet__head"><div class="hm-stack" style="gap: 0"><h1 id="ct-title" class="hm-sheet__title">Mudar horário</h1><span class="hm-muted">{{editName}}</span></div><button class="br-iconbtn br-iconbtn--sm" onClick="{{close}}" aria-label="Fechar"><i class="ri ri-x" aria-hidden="true"></i></button></div>
+<label class="hm-field"><span class="hm-label">Concluída às</span><input class="hm-input" type="time" value="{{editTime}}" onInput="{{setTime}}"></label>
+<span class="hm-caption">Só o horário muda. O dia continua o mesmo.</span>
+<div class="hm-sheet__foot"><button class="br-btn br-btn--primary br-btn--lg br-btn--block" onClick="{{save}}">Salvar</button></div>
+</section>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = {
+items: [
+{ id: 1, day: 'Hoje', name: 'Limpar a pia do banheiro', cat: 'bathroom', catName: 'Banheiro', time: '09:02' },
+{ id: 2, day: 'Ontem', name: 'Lavar a roupa', cat: 'laundry', catName: 'Roupas', time: '18:30' },
+{ id: 3, day: 'Ontem', name: 'Tirar o lixo', cat: 'trash', catName: 'Lixo', time: '07:50' },
+{ id: 4, day: 'Domingo, 23', name: 'Regar as plantas', cat: 'outdoor', catName: 'Área externa', time: '10:15' },
+{ id: 5, day: 'Domingo, 23', name: 'Dobrar a roupa', cat: 'laundry', catName: 'Roupas', time: '16:40' }
+],
+editing: null, draft: '', prev: null, toast: null
+};
+}
+renderVals() {
+const s = this.state;
+const order = ['Hoje', 'Ontem', 'Domingo, 23'];
+const cur = s.items.find((i) => i.id === s.editing);
+return {
+theme: this.props.theme ?? 'dark',
+days: order.map((name) => ({ name, items: s.items.filter((i) => i.day === name).map((i) => ({ ...i, edit: () => this.setState({ editing: i.id, draft: i.time }) })) })),
+editing: !!cur, editName: cur ? cur.name + ' · ' + cur.day.toLowerCase() : '', editTime: s.draft,
+setTime: (e) => this.setState({ draft: e.target.value }),
+close: () => this.setState({ editing: null }),
+save: () => this.setState({ prev: s.items, items: s.items.map((i) => (i.id === s.editing ? { ...i, time: s.draft } : i)), editing: null, toast: 'Horário mudado para ' + s.draft + '.' }),
+hasToast: !!s.toast, toast: s.toast, undo: () => this.setState({ items: s.prev || s.items, toast: null })
+};
+}
+}
+</script>
+</body>
+</html>

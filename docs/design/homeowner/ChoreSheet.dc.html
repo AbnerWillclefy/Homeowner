@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Afazer, editar</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<header class="hm-head"><div class="hm-head__text"><span class="hm-title">Afazeres</span><span class="hm-sub">14 afazeres no seu lar</span></div></header>
+<div class="hm-scroll"></div>
+<div class="hm-overlay">
+<section class="hm-sheet hm-sheet--full" role="dialog" aria-modal="true" aria-labelledby="c-title" style="position: relative">
+<span class="hm-sheet__grab" aria-hidden="true"></span>
+<div class="hm-sheet__head"><h1 id="c-title" class="hm-sheet__title">Editar afazer</h1>
+<div class="hm-row"><button class="br-iconbtn br-iconbtn--sm" aria-label="Mais ações" aria-expanded="{{menuOpen}}" onClick="{{toggleMenu}}"><i class="ri ri-more" aria-hidden="true"></i></button><a class="br-iconbtn br-iconbtn--sm" href="Chores.dc.html" aria-label="Fechar"><i class="ri ri-x" aria-hidden="true"></i></a></div></div>
+<sc-if value="{{showMenu}}" hint-placeholder-val="{{ false }}">
+<div class="br-menu" role="menu" style="position: absolute; right: 16px; top: 56px; z-index: 2"><button class="br-menu__item br-menu__item--danger" role="menuitem" onClick="{{remove}}" style="border: 0; background: none; width: 100%"><i class="ri ri-trash" aria-hidden="true"></i>Excluir afazer</button></div>
+</sc-if>
+<sc-if value="{{deleted}}" hint-placeholder-val="{{ false }}">
+<div class="br-banner"><i class="ri ri-trash" aria-hidden="true"></i><span class="br-banner__text">Lavar a louça excluído. As tarefas de hoje saem do plano.</span><button class="br-btn br-btn--ghost br-btn--sm" onClick="{{restore}}">Desfazer</button></div>
+</sc-if>
+<sc-if value="{{editing}}" hint-placeholder-val="{{ true }}">
+<label class="hm-field"><span class="hm-label">Nome</span><input class="hm-input" value="Lavar a louça"></label>
+<div class="hm-field"><span class="hm-label">Categoria</span><button class="br-input br-select" style="height: 48px; font-size: 16px"><span class="hm-row"><span class="br-chore__icon br-chore__icon--sm" style="background: var(--chore-kitchen-soft); color: var(--chore-kitchen)"><i class="ri ri-sm ri-kitchen" aria-hidden="true"></i></span>Cozinha</span><i class="ri ri-chevron-down" aria-hidden="true"></i></button></div>
+<div class="hm-field"><span class="hm-label" id="eff">Esforço</span>
+<div class="hm-seg" role="radiogroup" aria-labelledby="eff"><sc-for list="{{efforts}}" as="e" hint-placeholder-count="5"><button role="radio" aria-pressed="{{e.on}}" aria-checked="{{e.on}}" onClick="{{e.pick}}" aria-label="{{e.name}}">{{e.n}}</button></sc-for></div>
+<span class="hm-caption">{{effortName}}</span></div>
+<div class="br-counter"><span>Repetir a cada (dias)</span><span class="br-counter__ctrl"><button class="br-iconbtn" aria-label="Menos dias" onClick="{{dec}}"><i class="ri ri-minus" aria-hidden="true"></i></button><span class="br-counter__value">{{days}}</span><button class="br-iconbtn" aria-label="Mais dias" onClick="{{inc}}"><i class="ri ri-plus" aria-hidden="true"></i></button></span></div>
+<div class="hm-field"><span class="hm-label" id="imp">Importância</span>
+<div class="hm-seg" role="radiogroup" aria-labelledby="imp"><sc-for list="{{imps}}" as="i" hint-placeholder-count="3"><button role="radio" aria-pressed="{{i.on}}" aria-checked="{{i.on}}" onClick="{{i.pick}}">{{i.name}}</button></sc-for></div></div>
+<div class="hm-field"><span class="hm-label">Responsável</span><button class="br-input br-select" style="height: 48px; font-size: 16px"><span>Ninguém</span><i class="ri ri-chevron-down" aria-hidden="true"></i></button><span class="hm-caption">Qualquer morador ainda pode pegar, concluir ou trocar.</span></div>
+<div class="hm-field"><span class="hm-label">Exigências</span>
+<div><sc-for list="{{demands}}" as="d" hint-placeholder-count="4"><button class="hm-check" role="checkbox" aria-checked="{{d.checked}}" onClick="{{d.toggle}}"><span class="hm-box {{d.box}}"><i class="ri ri-sm ri-check" aria-hidden="true"></i></span><span class="hm-fill">{{d.name}}</span></button></sc-for></div></div>
+<button class="hm-check" role="switch" aria-checked="{{builds}}" onClick="{{toggleBuilds}}"><span class="hm-fill">Acumula enquanto não é feito</span><span class="br-switch" aria-checked="{{builds}}"><span class="br-switch__track"></span></span></button>
+<div class="hm-sheet__foot"><button class="br-btn {{saveCls}} br-btn--lg br-btn--block" onClick="{{save}}"><i class="ri ri-check" aria-hidden="true"></i>{{saveLabel}}</button></div>
+</sc-if>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { effort: 2, days: 1, imp: 'essential', avoid: [], builds: true, saved: false, menu: false, deleted: false }; }
+renderVals() {
+const s = this.state;
+const E = ['Muito leve', 'Leve', 'Médio', 'Pesado', 'Muito pesado'];
+const I = [['essential', 'Essencial'], ['normal', 'Normal'], ['nice', 'Desejável']];
+const D = [['heavy_lifting', 'Carregar peso'], ['bending', 'Abaixar-se'], ['heights', 'Altura'], ['strong_chemicals', 'Produtos químicos fortes']];
+const ch = (o) => this.setState({ ...o, saved: false });
+return {
+theme: this.props.theme ?? 'dark',
+efforts: E.map((name, i) => ({ n: i + 1, name, on: s.effort === i + 1 ? 'true' : 'false', pick: () => ch({ effort: i + 1 }) })),
+effortName: E[s.effort - 1], days: s.days,
+dec: () => ch({ days: Math.max(1, s.days - 1) }), inc: () => ch({ days: Math.min(60, s.days + 1) }),
+imps: I.map(([id, name]) => ({ name, on: s.imp === id ? 'true' : 'false', pick: () => ch({ imp: id }) })),
+demands: D.map(([id, name]) => { const on = s.avoid.includes(id); return { name, checked: on ? 'true' : 'false', box: on ? 'hm-box--on' : '', toggle: () => ch({ avoid: on ? s.avoid.filter((x) => x !== id) : [...s.avoid, id] }) }; }),
+builds: s.builds ? 'true' : 'false', toggleBuilds: () => ch({ builds: !s.builds }),
+save: () => this.setState({ saved: true }), saveLabel: s.saved ? 'Salvo' : 'Salvar', saveCls: s.saved ? 'br-btn--success' : 'br-btn--primary',
+showMenu: s.menu, menuOpen: s.menu ? 'true' : 'false', toggleMenu: () => this.setState({ menu: !s.menu }),
+deleted: s.deleted, editing: !s.deleted,
+remove: () => this.setState({ deleted: true, menu: false }), restore: () => this.setState({ deleted: false })
+};
+}
+}
+</script>
+</body>
+</html>

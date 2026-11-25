@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Eu</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<div class="hm-scroll" style="padding-top: 24px">
+<a class="hm-row" href="NameEdit.dc.html" style="gap: 16px; padding-bottom: 8px" aria-label="Abner, abner@exemplo.com. Editar nome e foto">
+<span class="br-avatar br-avatar--lg">AM</span>
+<span class="hm-stack hm-fill" style="gap: 0; min-width: 0"><h1 class="hm-title">Abner</h1><span class="hm-sub">abner@exemplo.com</span></span>
+<span class="br-iconbtn br-iconbtn--sm" aria-hidden="true"><i class="ri ri-pencil" aria-hidden="true"></i></span>
+</a>
+<div class="hm-stack">
+<span class="hm-label">Como o plano te conhece</span>
+<div class="hm-list">
+<a class="hm-item" href="BaselineSheet.dc.html"><span class="hm-icotile"><i class="ri ri-battery" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Energia base</span><span class="hm-item__meta">Baixa às sextas e domingos</span></span><span class="hm-item__end"><i class="ri ri-chevron-right" aria-hidden="true"></i></span></a>
+<a class="hm-item" href="PreferencesSheet.dc.html"><span class="hm-icotile"><i class="ri ri-heart" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Preferências</span><span class="hm-item__meta">Gosta de Roupas e Cozinha</span></span><span class="hm-item__end"><i class="ri ri-chevron-right" aria-hidden="true"></i></span></a>
+<a class="hm-item" href="RestrictionsSheet.dc.html"><span class="hm-icotile"><i class="ri ri-shield" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Restrições</span><span class="hm-item__meta">Altura</span></span><span class="hm-item__end"><i class="ri ri-chevron-right" aria-hidden="true"></i></span></a>
+</div>
+</div>
+<div class="hm-stack">
+<span class="hm-label">Histórico</span>
+<div class="hm-list">
+<a class="hm-item" href="Completions.dc.html"><span class="hm-icotile"><i class="ri ri-history" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Minhas conclusões</span><span class="hm-item__meta">23 nos últimos 30 dias</span></span><span class="hm-item__end"><i class="ri ri-chevron-right" aria-hidden="true"></i></span></a>
+</div>
+</div>
+<div class="hm-stack">
+<span class="hm-label">App</span>
+<div class="hm-list">
+<a class="hm-item" href="AppearanceSheet.dc.html"><span class="hm-icotile"><i class="ri ri-theme" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Aparência e idioma</span><span class="hm-item__meta">Sistema · Português</span></span><span class="hm-item__end"><i class="ri ri-chevron-right" aria-hidden="true"></i></span></a>
+<a class="hm-item" href="OnboardReminders.dc.html"><span class="hm-icotile"><i class="ri ri-bell" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Lembretes</span><span class="hm-item__meta">Ligados, às 7:00</span></span><span class="hm-item__end"><i class="ri ri-chevron-right" aria-hidden="true"></i></span></a>
+<a class="hm-item" href="AccountSheet.dc.html"><span class="hm-icotile"><i class="ri ri-key" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Conta</span><span class="hm-item__meta">E-mail e sair</span></span><span class="hm-item__end"><i class="ri ri-chevron-right" aria-hidden="true"></i></span></a>
+</div>
+</div>
+</div>
+<dc-import name="BottomBar" active="me" hint-size="390px,88px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() { return { theme: this.props.theme ?? 'dark' }; }
+}
+</script>
+</body>
+</html>

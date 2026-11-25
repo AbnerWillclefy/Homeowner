@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Passo 1, lar</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<div class="hm-auth" style="padding-top: 24px">
+<div class="br-stepper" aria-label="Passo 1 de 5: seu lar"><div class="br-stepper__meta"><span>Passo 1 de 5</span><span>Seu lar</span></div><div class="br-stepper__track"><i class="br-stepper__seg br-stepper__seg--done"></i><i class="br-stepper__seg"></i><i class="br-stepper__seg"></i><i class="br-stepper__seg"></i><i class="br-stepper__seg"></i></div></div>
+<div class="hm-stack" style="gap: 4px"><h1 class="hm-lead">Onde você mora?</h1><p class="hm-muted">Os afazeres são divididos entre quem mora no mesmo lar.</p></div>
+<div class="br-choices" role="radiogroup" aria-label="Como começar">
+<button class="br-choice" role="radio" aria-checked="{{createOn}}" onClick="{{pickCreate}}"><span class="hm-icotile hm-icotile--brand"><i class="ri ri-home" aria-hidden="true"></i></span><span class="br-choice__body">Criar um lar<span class="br-choice__hint">Você convida os outros depois</span></span><i class="ri ri-lg {{createMark}} br-choice__mark" aria-hidden="true"></i></button>
+<button class="br-choice" role="radio" aria-checked="{{joinOn}}" onClick="{{pickJoin}}"><span class="hm-icotile"><i class="ri ri-user-plus" aria-hidden="true"></i></span><span class="br-choice__body">Tenho um convite<span class="br-choice__hint">Alguém do seu lar mandou um link</span></span><i class="ri ri-lg {{joinMark}} br-choice__mark" aria-hidden="true"></i></button>
+</div>
+<sc-if value="{{create}}" hint-placeholder-val="{{ true }}">
+<div class="hm-stack-16">
+<label class="hm-field"><span class="hm-label">Nome do lar</span><input class="hm-input" value="Nosso lar"></label>
+<div class="hm-field" style="position: relative"><span class="hm-label" id="tm">Horário do plano</span>
+<button class="br-input br-select" style="height: 48px; font-size: 16px" aria-labelledby="tm" aria-haspopup="listbox" aria-expanded="{{listOpen}}" onClick="{{toggleList}}"><span class="hm-row"><i class="ri ri-clock" aria-hidden="true"></i>{{time}}</span><i class="ri ri-chevron-down" aria-hidden="true"></i></button>
+<sc-if value="{{showList}}" hint-placeholder-val="{{ false }}">
+<div class="br-menu" role="listbox" aria-labelledby="tm" style="position: absolute; left: 0; right: 0; top: 80px; max-height: 240px; overflow-y: auto; z-index: 3">
+<sc-for list="{{times}}" as="t" hint-placeholder-count="6"><button class="br-menu__item" role="option" aria-selected="{{t.on}}" onClick="{{t.pick}}" style="border: 0; background: none; width: 100%; flex: none">{{t.label}}<sc-if value="{{t.sel}}" hint-placeholder-val="{{ false }}"><i class="ri ri-check br-menu__check" aria-hidden="true"></i></sc-if></button></sc-for>
+</div>
+</sc-if>
+<span class="hm-caption">Todo dia a essa hora, no fuso de São Paulo, o plano do dia fica pronto. A cada 15 minutos.</span></div>
+</div>
+</sc-if>
+<sc-if value="{{join}}" hint-placeholder-val="{{ false }}">
+<label class="hm-field"><span class="hm-label">Link do convite</span><input class="hm-input" placeholder="Cole o link aqui"><span class="hm-caption">O link vale por 7 dias e só para uma pessoa.</span></label>
+</sc-if>
+<div class="hm-foot"><a class="br-btn br-btn--primary br-btn--lg br-btn--block" href="{{next}}">Continuar</a></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { mode: 'create', time: '07:00', open: false }; }
+renderVals() {
+const c = this.state.mode === 'create';
+const s = this.state;
+return {
+time: s.time, listOpen: s.open ? 'true' : 'false', showList: s.open, toggleList: () => this.setState({ open: !s.open }),
+times: Array.from({ length: 96 }, (_, i) => String(Math.floor(i / 4)).padStart(2, '0') + ':' + String((i % 4) * 15).padStart(2, '0')).map((label) => ({ label, sel: s.time === label, on: s.time === label ? 'true' : 'false', pick: () => this.setState({ time: label, open: false }) })),
+theme: this.props.theme ?? 'dark', create: c, join: !c,
+createOn: c ? 'true' : 'false', joinOn: c ? 'false' : 'true', createMark: c ? 'ri-circle-check' : 'ri-circle', joinMark: c ? 'ri-circle' : 'ri-circle-check',
+pickCreate: () => this.setState({ mode: 'create' }), pickJoin: () => this.setState({ mode: 'join' }),
+next: c ? 'OnboardBaseline.dc.html' : 'InviteRating.dc.html'
+};
+}
+}
+</script>
+</body>
+</html>

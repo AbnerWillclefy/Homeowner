@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Morador</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<div class="hm-bar"><a class="hm-back" href="Home.dc.html"><i class="ri ri-chevron-left" aria-hidden="true"></i>Nosso lar</a></div>
+<div class="hm-scroll">
+<div class="hm-row" style="gap: 16px; padding: 8px 0">
+<span class="br-avatar br-avatar--lg">AS</span>
+<div class="hm-stack" style="gap: 0"><h1 class="hm-title">Ana</h1><span class="hm-muted">Moradora desde setembro</span></div>
+</div>
+<div class="br-card br-card--compact" style="flex-direction: row; gap: 0; padding: 0">
+<div class="hm-stack hm-fill" style="gap: 0; padding: 16px"><span class="hm-row hm-hero__value" style="font-size: 24px; line-height: 32px"><i class="ri ri-lg ri-flame" aria-hidden="true" style="color: var(--warning)"></i>11</span><span class="hm-caption">dias de sequência</span></div>
+<div class="hm-stack hm-fill" style="gap: 0; padding: 16px; border-left: 1px solid var(--border)"><span class="hm-hero__value" style="font-size: 24px; line-height: 32px">14</span><span class="hm-caption">concluídas em 7 dias</span></div>
+</div>
+<h2 class="hm-section" style="padding-top: 8px">Concluídas recentemente</h2>
+<div class="hm-stack">
+<span class="hm-label">Hoje</span>
+<div class="hm-list">
+<div class="hm-item"><span class="br-chore__icon" style="background: var(--chore-kitchen-soft); color: var(--chore-kitchen)"><i class="ri ri-kitchen" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Limpar o fogão</span><span class="hm-item__meta">Cozinha · 9:15</span></span></div>
+<div class="hm-item"><span class="br-chore__icon" style="background: var(--chore-floors-soft); color: var(--chore-floors)"><i class="ri ri-floors" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Aspirar a sala</span><span class="hm-item__meta">Pisos · 8:40</span></span></div>
+</div>
+</div>
+<div class="hm-stack">
+<span class="hm-label">Ontem</span>
+<div class="hm-list">
+<div class="hm-item"><span class="br-chore__icon" style="background: var(--chore-kitchen-soft); color: var(--chore-kitchen)"><i class="ri ri-kitchen" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Lavar a louça</span><span class="hm-item__meta">Cozinha · 20:10</span></span></div>
+<div class="hm-item"><span class="br-chore__icon" style="background: var(--chore-laundry-soft); color: var(--chore-laundry)"><i class="ri ri-laundry" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Lavar a roupa</span><span class="hm-item__meta">Roupas · 18:30, com Abner</span></span></div>
+<div class="hm-item"><span class="br-chore__icon" style="background: var(--chore-pets-soft); color: var(--chore-pets)"><i class="ri ri-pets" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Limpar a caixa de areia</span><span class="hm-item__meta">Animais de estimação · 8:05</span></span></div>
+</div>
+</div>
+<p class="hm-caption">Energia, preferências e restrições de cada morador ficam privadas.</p>
+</div>
+<dc-import name="BottomBar" active="home" hint-size="390px,88px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() { return { theme: this.props.theme ?? 'dark' }; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Convite, avaliar afazeres</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<div class="hm-bar"><span></span><a class="br-btn br-btn--ghost" href="OnboardBaseline.dc.html">Pular por enquanto</a></div>
+<div class="hm-scroll" style="padding-top: 8px">
+<div class="br-banner"><i class="ri ri-circle-check" aria-hidden="true" style="color: var(--positive)"></i><span class="br-banner__text">Você entrou em Nosso lar.</span></div>
+<div class="hm-stack" style="gap: 4px"><h1 class="hm-lead">Avalie os afazeres mais pesados</h1><p class="hm-muted">Assim o plano já começa sabendo o que te cansa. Cada resposta salva na hora.</p></div>
+<sc-for list="{{chores}}" as="c" hint-placeholder-count="3">
+<div class="br-card br-card--compact" style="gap: 8px">
+<div class="hm-between">
+<span class="hm-row" style="gap: 16px; min-width: 0"><span class="br-chore__icon" style="background: var(--chore-{{c.cat}}-soft); color: var(--chore-{{c.cat}})"><i class="ri ri-{{c.cat}}" aria-hidden="true"></i></span><span class="hm-item__main"><span id="rc-{{c.id}}" class="hm-item__title">{{c.name}}</span><span class="hm-item__meta">{{c.meta}}</span></span></span>
+<div class="hm-seg" role="radiogroup" aria-labelledby="rc-{{c.id}}" style="flex: none"><sc-for list="{{c.opts}}" as="o" hint-placeholder-count="3"><button role="radio" aria-pressed="{{o.on}}" aria-checked="{{o.on}}" aria-label="{{o.name}}" onClick="{{o.pick}}" disabled="{{c.blocked}}" style="flex: none; width: 44px; padding: 0; display: grid; place-items: center"><i class="ri {{o.icon}}" aria-hidden="true"></i></button></sc-for></div>
+</div>
+<button class="hm-check" role="checkbox" aria-checked="{{c.restricted}}" onClick="{{c.toggle}}" style="min-height: 48px"><span class="hm-box {{c.box}}"><i class="ri ri-sm ri-check" aria-hidden="true"></i></span><span class="hm-fill">Não consigo fazer este afazer</span></button>
+</div>
+</sc-for>
+<a class="br-btn br-btn--primary br-btn--lg br-btn--block" href="OnboardBaseline.dc.html">Concluir</a>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { v: {}, r: [] }; }
+renderVals() {
+const s = this.state;
+const C = [['box', 'Limpar o box', 'bathroom', 'Banheiro · Pesado'], ['pano', 'Passar pano no chão', 'floors', 'Pisos · Pesado'], ['cama', 'Trocar a roupa de cama', 'bedroom', 'Quarto · Médio']];
+const O = [['like', 'Gosto', 'ri-like'], ['neutral', 'Neutro', 'ri-circle'], ['dislike', 'Não gosto', 'ri-dislike']];
+return {
+theme: this.props.theme ?? 'dark',
+chores: C.map(([id, name, cat, meta]) => { const cur = s.v[id] || 'neutral'; const rs = s.r.includes(id); return { id, name, cat, meta, blocked: rs, restricted: rs ? 'true' : 'false', box: rs ? 'hm-box--on' : '', toggle: () => this.setState({ r: rs ? s.r.filter((x) => x !== id) : [...s.r, id] }), opts: O.map(([oid, on, icon]) => ({ name: on, icon, on: cur === oid ? 'true' : 'false', pick: () => this.setState({ v: { ...s.v, [id]: oid } }) })) }; })
+};
+}
+}
+</script>
+</body>
+</html>

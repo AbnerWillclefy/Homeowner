@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Convite, sem login</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<div class="hm-auth" style="padding-top: 48px">
+<span class="hm-mark"><i class="sq" aria-hidden="true"></i>Homeowner</span>
+<div class="br-card br-card--hero br-card--compact" style="gap: 16px">
+<div class="hm-row" style="gap: 16px"><span class="br-avatar br-avatar--lg" style="background: var(--on-hero); color: var(--hero)">AS</span><div class="hm-stack" style="gap: 0"><span class="br-card__label">Convite de Ana</span><span class="hm-section">Morar em Nosso lar</span></div></div>
+<p class="br-muted">Os afazeres são divididos pela energia de cada um. Você só assume o que aceitar.</p>
+</div>
+<p class="hm-muted">Para entrar no lar, crie um login ou entre no seu. O convite fica guardado.</p>
+<div class="hm-foot">
+<a class="br-btn br-btn--primary br-btn--lg br-btn--block" href="SignUp.dc.html">Criar conta</a>
+<a class="br-btn br-btn--secondary br-btn--lg br-btn--block" href="SignIn.dc.html">Já tenho login</a>
+<p class="hm-caption hm-center">Vale até 2 de dezembro, para uma pessoa.</p>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() { return { theme: this.props.theme ?? 'dark' }; }
+}
+</script>
+</body>
+</html>
