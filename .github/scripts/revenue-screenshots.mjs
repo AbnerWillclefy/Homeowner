@@ -4,7 +4,8 @@
 //        PLAYWRIGHT_DIR=<dir with playwright> node revenue-screenshots.mjs <out dir> <image url prefix>
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { pairsMarkdown, shootArtboard } from "./artboards.mjs";
 import { withScreenshots } from "./bedrock-screenshots.mjs";
 import { answer, TODAY } from "./revenue-fake-api.mjs";
 
@@ -15,6 +16,33 @@ const widths = [
 export const TIMEZONE = "America/Sao_Paulo";
 /** The instant every page runs at: midday in São Paulo on the fake's TODAY, so no zone puts it on another date. */
 export const FIXED_TIME = `${TODAY}T12:00:00-03:00`;
+
+const ARTBOARD_DIR = fileURLToPath(new URL("../../docs/design/revenue/", import.meta.url));
+
+// The phone artboards are a fixed 390 x 844 frame with an inner scroller. Opened at 375px that would cut 15px and everything below the fold, so the frame grows to the page (the files are not edited).
+const PHONE_CSS = ".rv-phone{width:auto;height:auto;min-height:100vh;overflow:visible}.rv-phone__scroll{overflow:visible;flex:none}";
+
+const dc = (mobile, desktop) => ({ Mobile: mobile && `${mobile}.dc.html`, Desktop: desktop && `${desktop}.dc.html` });
+/** The artboard file of each route and width, null when the design has none (docs/design/revenue/README.md). Every route of the app has an entry. */
+export const ARTBOARDS = {
+  "/": dc("MobileOverview", "Main"),
+  "/transactions": dc("MobileTransactions", "Transactions"),
+  "/bills": dc("MobileBillsList", "Bills"),
+  "/card-bills": dc("MobileCardBills", "CardBills"),
+  "/categories": dc("MobileCategories", "Categories"),
+  "/categories/:category": dc(null, null),
+  "/goals": dc("MobileGoals", "Goals"),
+  "/net-worth": dc("MobileNetWorth", "NetWorth"),
+  "/projection": dc("MobileProjection", "Projection"),
+  "/sources": dc("MobileSources", "Accounts"),
+  "/pantry": dc("MobilePantry", "Pantry"),
+  "/pantry/list": dc("MobileShoppingList", "ShoppingList"),
+  "/chat": dc("MobileChat", "Chat"),
+  "/settings": dc("MobileSettings", "Settings"),
+  "/plan": dc("MobilePlan", null),
+  "/more": dc("MobileMore", null),
+  "/onboarding": dc(null, "Onboarding"),
+};
 
 /** Screens that live in a domain folder besides its own route: a change to the folder shoots them too. */
 const EXTRA_ROUTES = { pantry: ["/pantry/list"] };
@@ -88,19 +116,26 @@ async function main([outDir, prefix]) {
         if (message && OVERFLOW_EXEMPT.has(route)) console.error(`warning (exempt): ${message}`);
         else if (message) overflowing.push(message);
       }
-      const file = `auto-revenue${route.replace(/\//g, "-").replace(/-$/, "")}-${heading.toLowerCase()}.png`;
+      const base = `auto-revenue${route.replace(/\//g, "-").replace(/-$/, "")}-${heading.toLowerCase()}`;
       // A viewport as tall as the page, not fullPage: fixed bars (the tab bar, the sidebar) stay where a person sees them.
       await page.setViewportSize({ ...viewport, height: await page.evaluate(() => document.documentElement.scrollHeight) });
-      await page.screenshot({ path: join(outDir, file) });
+      await page.screenshot({ path: join(outDir, `${base}-app.png`) });
       await page.setViewportSize(viewport);
-      images[heading].push(`![${route} ${heading}](${prefix}${file})`);
+      const artboard = ARTBOARDS[route]?.[heading];
+      if (artboard) {
+        // A second page of the same context, so the context's settings reach the artboard too.
+        const designPage = await context.newPage();
+        await shootArtboard(designPage, ARTBOARD_DIR, artboard, viewport, join(outDir, `${base}-design.png`), heading === "Mobile" ? PHONE_CSS : "");
+        await designPage.close();
+      }
+      images[heading].push({ route, app: `${prefix}${base}-app.png`, design: artboard ? `${prefix}${base}-design.png` : null });
     }
     await context.close();
   }
   await browser.close();
   if (unmocked.size) throw new Error(`No fake answer in .github/scripts/revenue-fake-api.mjs for:\n${[...unmocked].join("\n")}`);
   if (overflowing.length) throw new Error(`Horizontal overflow at ${widths[0].viewport.width}px:\n${overflowing.join("\n")}`);
-  process.stdout.write(withScreenshots(process.env.BODY, prefix, images));
+  process.stdout.write(withScreenshots(process.env.BODY, prefix, pairsMarkdown(images)));
 }
 
 const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "*" };

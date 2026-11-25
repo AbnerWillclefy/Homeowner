@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { answer, TODAY } from "./revenue-fake-api.mjs";
-import { changedScreens, FIXED_TIME, overflowOf, TIMEZONE } from "./revenue-screenshots.mjs";
+import { existsSync, readFileSync } from "node:fs";
+import { ARTBOARDS, changedScreens, FIXED_TIME, overflowOf, TIMEZONE } from "./revenue-screenshots.mjs";
 
 const MONTH = TODAY.slice(0, 7);
 const read = (path, today) => answer("GET", new URL(`http://api${path}`), today);
@@ -182,4 +183,17 @@ test("serves a photo draft with lines that add up to its total", () => {
   assert.equal(body.draft.issuedOn, TODAY);
   assert.ok(body.draft.lines.length >= 2);
   assert.equal(body.draft.lines.reduce((sum, l) => sum + l.totalCents, 0), body.draft.totalCents);
+});
+
+test("every route of the app has an artboard entry, and every named file exists", () => {
+  const app = (f) => readFileSync(new URL(`../../revenue/src/app/${f}`, import.meta.url), "utf8");
+  const routes = [
+    ...[...app("screens.tsx").matchAll(/screen\("([^"]+)"/g)].map((m) => m[1]),
+    ...[...app("App.tsx").matchAll(/<Route path="([^"]+)"/g)].map((m) => m[1]).filter((p) => p !== "*"),
+  ];
+  assert.ok(routes.length >= 17, `found only ${routes.length} routes`);
+  for (const route of routes) assert.ok(route in ARTBOARDS, `${route} has no ARTBOARDS entry`);
+  const files = Object.values(ARTBOARDS).flatMap((sides) => Object.values(sides)).filter(Boolean);
+  assert.ok(files.length >= 29, `found only ${files.length} artboard files`);
+  for (const file of files) assert.ok(existsSync(new URL(`../../docs/design/revenue/${file}`, import.meta.url)), `${file} does not exist`);
 });
