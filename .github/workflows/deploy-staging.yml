@@ -327,9 +327,14 @@ jobs:
             and (.require_symbols | type == "boolean")
             and (keys | length == 5)'
 
+      # Staging's CloudFront URL is random, so its icon, name and badge say which environment it is.
+      - name: Use the staging icons
+        run: cp staging-icons/*.png public/
+
       - name: Build
         run: npm run build
         env:
+          VITE_ENVIRONMENT: staging
           VITE_API_BASE_URL: ${{ env.API_URL }}
           # Public identifiers of the Cognito app client, not secrets.
           VITE_COGNITO_CLIENT_ID: ${{ needs.outputs.outputs.cognito_client_id }}
