@@ -4,8 +4,8 @@ import type { Locale } from "../App";
 import { Section } from "../Section";
 
 const strings = {
-  "pt-BR": { name: "Stepper", units: "Quantidade de arroz", kg: "Peso do queijo", less: "Menos", more: "Mais", off: "Quantidade desativada" },
-  en: { name: "Stepper", units: "Quantity of rice", kg: "Weight of cheese", less: "Less", more: "More", off: "Quantity disabled" },
+  "pt-BR": { name: "Stepper / Counter", units: "Quantidade de arroz", kg: "Peso do queijo", less: "Menos", more: "Mais", off: "Quantidade desativada" },
+  en: { name: "Stepper / Counter", units: "Quantity of rice", kg: "Weight of cheese", less: "Less", more: "More", off: "Quantity disabled" },
 };
 
 export default function StepperSection({ locale }: { locale: Locale }) {
