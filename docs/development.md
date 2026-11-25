@@ -180,9 +180,8 @@ allows `http://localhost:5173`).
 
 The maintainer's admin app is in `admin/` (Vite, React, TypeScript; Node 22 from
 `admin/.nvmrc`). It is desktop-first and English only, with no service worker,
-manifest or push. It shares only the design tokens with the PWA
-(`web/src/tokens.css`, imported by both apps' `index.css`); it imports nothing
-else from `web/`.
+manifest or push. It imports nothing from `web/`. Its design tokens are
+`admin/src/tokens.css`, a copy of `web/src/tokens.css`.
 
 ### Run locally
 
@@ -210,7 +209,7 @@ npm run build               # typecheck, then a production build
 ```
 
 CI (`admin-typecheck.yml`) runs `npm ci`, typecheck, tests and build when a pull
-request changes `admin/` or `web/src/tokens.css` (or anything under `.github/workflows/` or `.github/scripts/`), and is skipped otherwise.
+request changes `admin/` (or anything under `.github/workflows/` or `.github/scripts/`), and is skipped otherwise.
 
 ### Configuration
 

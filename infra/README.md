@@ -148,7 +148,7 @@ below runs when `backend/` or `infra/` changed:
 5. smoke test `GET /healthz`, retrying for about 90 seconds (Lambda cold start
    plus Neon resume)
 
-An `outputs` job then reads the URLs, buckets, distribution ids and Cognito values with a read-only `terraform output` (no apply, no Neon key), so a frontend-only merge builds against the API already live. It runs when any frontend deploys. The `web`, `admin` and `revenue` jobs (`needs: [changes, outputs]`) each run when their own app changed (`web/`, `admin/` or `web/src/tokens.css`, `revenue/` or `bedrock/` with the root package files) or `infra/` changed, because the Terraform outputs are baked into the bundles. A merge touching only `docs/` runs only `changes`. The `web` job builds the PWA with `VITE_API_BASE_URL`
+An `outputs` job then reads the URLs, buckets, distribution ids and Cognito values with a read-only `terraform output` (no apply, no Neon key), so a frontend-only merge builds against the API already live. It runs when any frontend deploys. The `web`, `admin` and `revenue` jobs (`needs: [changes, outputs]`) each run when their own app changed (`web/`, `bedrock/` or the root package files; `admin/`; `revenue/`, `bedrock/` or the root package files) or `infra/` changed, because the Terraform outputs are baked into the bundles. A merge touching only `docs/` runs only `changes`. The `web` job builds the PWA with `VITE_API_BASE_URL`
 set to the API URL and `VITE_COGNITO_CLIENT_ID` / `VITE_COGNITO_REGION` set to
 the `cognito_client_id` and `cognito_region` Terraform outputs (public
 identifiers, not secrets), uploads it to the web bucket in passes (fingerprinted
