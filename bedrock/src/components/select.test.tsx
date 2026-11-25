@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { expect, it } from "vitest";
 import { Select } from "./select";
+import { CalendarDays } from "lucide-react";
 
 const options = [{ value: "a", label: "Alpha" }];
 
@@ -33,4 +34,16 @@ it("hides the label visually but keeps it as the trigger's name", () => {
 it("draws the trigger at control-lg on a phone", () => {
   render(<Select label="Account" options={options} />);
   expect(screen.getByRole("combobox").className).toContain("max-tablet:h-control-lg");
+});
+
+it("draws a leading icon and the secondary look only when given an icon", () => {
+  const { unmount } = render(<Select label="Month" hideLabel options={options} icon={CalendarDays} />);
+  const withIcon = screen.getByRole("combobox", { name: "Month" });
+  expect(withIcon.querySelectorAll("svg")).toHaveLength(2);
+  expect(withIcon.className).toContain("bg-surface-raised");
+  unmount();
+  render(<Select label="Month" hideLabel options={options} />);
+  const plain = screen.getByRole("combobox", { name: "Month" });
+  expect(plain.querySelectorAll("svg")).toHaveLength(1);
+  expect(plain.className).not.toContain("bg-surface-raised");
 });

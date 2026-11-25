@@ -29,13 +29,13 @@ export function Select({ label, hideLabel, options, value, onValueChange, placeh
             className={cn(
               fieldClass(!!error),
               "flex items-center justify-between px-4 text-left data-[placeholder]:text-text-muted",
-              Icon && "w-auto gap-2 border-border bg-surface-raised body-strong hover:bg-surface-hover max-tablet:w-full max-tablet:justify-start",
+              Icon && "w-auto gap-2 border-border bg-surface-raised body-strong hover:bg-surface-hover max-desktop:w-full max-desktop:justify-start",
             )}
           >
             {Icon && <Icon aria-hidden className="size-4 shrink-0" />}
             <RadixSelect.Value placeholder={placeholder} />
             <RadixSelect.Icon asChild>
-              <ChevronDown aria-hidden className={cn("size-4 shrink-0 text-text-muted", Icon && "max-tablet:ml-auto")} />
+              <ChevronDown aria-hidden className={cn("size-4 shrink-0 text-text-muted", Icon && "max-desktop:ml-auto")} />
             </RadixSelect.Icon>
           </RadixSelect.Trigger>
           <RadixSelect.Portal>
