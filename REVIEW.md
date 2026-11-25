@@ -27,10 +27,23 @@ Domain terms are in `GLOSSARY.md`, decisions in `docs/adr/`.
 
 - UI is checked in pt-BR first (`DESIGN.md`, The Portuguese First Rule). Flag a fixed width, a truncation or an
   ellipsis that would cut the longer pt-BR text, and a user-facing string added in one locale only.
-- A pull request that changes a Revenue screen matches its artboard in `docs/design/revenue/` (`revenue/CLAUDE.md`).
-  Open the artboard and flag a part it has that the screen lacks or arranges differently (the header's tools, a
-  card, the grid columns it spans, the side panel), unless the description lists it under `### Differs from the
-  design`.
+- Screenshot pairs. Skip this check when `.design-pairs/` is absent or empty. Otherwise, for each route and width,
+  Read `auto-revenue<route>-<mobile|desktop>-app.png` and its `-design.png` (the artboard), skipping an `-app.png`
+  that has no `-design.png` (the route has no artboard). Raise **one inline finding per visible difference**: a missing or extra control in the
+  header's tools, a card, the grid columns it spans, the side panel, the order, a tone or colour, a state. Each
+  difference is its own finding even when several land on one page file; this overrides the skill's "one finding per
+  root cause in a file". Never compare pixel by pixel, and ignore font rendering, anti-aliasing and sub-pixel
+  offsets.
+  - Wording: text that differs where `docs/glossary-pt-BR.md` or the i18n catalogs own the word is intended (for
+    example Lançamentos, Objetivos, Categorias de gasto and Fontes versus the artboards' Transações, Metas,
+    Categorias and Contas). Do not raise it.
+  - Anchor: the comment goes on the route's page file, found through `revenue/src/app/screens.tsx` (`/goals` is
+    `revenue/src/domains/goals/GoalsPage.tsx`). If that file is not in the diff, use a changed line in the route's
+    domain folder, else the first changed `revenue/src/` line. Name the route, the width and the image pair in the
+    comment.
+  - Re-review rounds: the rule applies there too. A pair difference counts as a correctness defect for the
+    re-review filter, so raise it even though that round otherwise reports only correctness, security and
+    missing-test defects.
 
 ## Out of scope
 

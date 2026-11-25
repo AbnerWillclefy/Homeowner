@@ -26,6 +26,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       PR: ${{ github.event.pull_request.number }}
       HEAD_REF: ${{ github.event.pull_request.head.ref }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - name: Find the UI change
         id: find
@@ -101,7 +102,7 @@ jobs:
 
           git -C "$shots" add -A
           git -C "$shots" -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-            commit -q -m "chore: $APP screenshots" || true
+            commit -q --allow-empty -m "chore: $APP screenshots for $HEAD_SHA"
           git -C "$shots" push -q origin "HEAD:refs/heads/screenshots/$HEAD_REF"
           # Edits with this token start no new run, so the check below reads the description again.
           gh api -X PATCH "repos/$GITHUB_REPOSITORY/pulls/$PR" -F "body=@$RUNNER_TEMP/body.md" >/dev/null
