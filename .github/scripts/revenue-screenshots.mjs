@@ -6,13 +6,15 @@ import { createRequire } from "node:module";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { withScreenshots } from "./bedrock-screenshots.mjs";
-import { answer } from "./revenue-fake-api.mjs";
+import { answer, TODAY } from "./revenue-fake-api.mjs";
 
 const widths = [
   { heading: "Mobile", viewport: { width: 375, height: 844 } },
   { heading: "Desktop", viewport: { width: 1440, height: 900 } },
 ];
-const TIMEZONE = "America/Sao_Paulo";
+export const TIMEZONE = "America/Sao_Paulo";
+/** The instant every page runs at: midday in São Paulo on the fake's TODAY, so no zone puts it on another date. */
+export const FIXED_TIME = `${TODAY}T12:00:00-03:00`;
 
 /** Screens that live in a domain folder besides its own route: a change to the folder shoots them too. */
 const EXTRA_ROUTES = { pantry: ["/pantry/list"] };
@@ -53,8 +55,6 @@ async function main([outDir, prefix]) {
   const { chromium } = createRequire(join(process.env.PLAYWRIGHT_DIR, "noop.js"))("playwright");
   const routes = changedScreens(process.env.CHANGED.split("\n").filter(Boolean));
   const apiUrl = process.env.API_URL;
-  // The day in the zone the page runs in, so the fake's dates and the screen's "today" agree.
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: TIMEZONE }).format(new Date());
   const unmocked = new Set();
   const overflowing = [];
   const browser = await chromium.launch();
@@ -63,6 +63,8 @@ async function main([outDir, prefix]) {
     const context = await browser.newContext({
       locale: "pt-BR", timezoneId: TIMEZONE, colorScheme: "dark", viewport, reducedMotion: "reduce", serviceWorkers: "block",
     });
+    // Frozen on the context, so the app and any page opened in it show November 2026 on whatever day this runs; timers still run.
+    await context.clock.setFixedTime(FIXED_TIME);
     // Signed in with a token that never needs refreshing, so Cognito is never called.
     await context.addInitScript(() => {
       localStorage.setItem("revenue.session", JSON.stringify({ idToken: "fake", refreshToken: "fake", expiresAt: 4102444800000 }));
@@ -72,7 +74,7 @@ async function main([outDir, prefix]) {
     await context.route(`${apiUrl}/**`, (route) => {
       const request = route.request();
       if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
-      const found = answer(request.method(), new URL(request.url()), today);
+      const found = answer(request.method(), new URL(request.url()), TODAY);
       if (found === null) unmocked.add(`${request.method()} ${new URL(request.url()).pathname}`);
       return route.fulfill({ status: found?.status ?? 404, headers: cors, json: found?.body ?? {} });
     });
