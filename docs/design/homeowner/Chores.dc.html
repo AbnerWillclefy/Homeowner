@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Afazeres</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<header class="hm-head" style="position: relative">
+<div class="hm-head__text"><h1 class="hm-title">Afazeres</h1><span class="hm-sub">14 afazeres no seu lar</span></div>
+<div class="hm-tools"><button class="br-iconbtn" style="background: var(--brand); color: var(--on-brand); border-color: transparent" aria-label="Adicionar afazer" aria-expanded="{{menuOpen}}" onClick="{{toggleMenu}}"><i class="ri ri-plus" aria-hidden="true"></i></button></div>
+<sc-if value="{{showMenu}}" hint-placeholder-val="{{ false }}">
+<div class="br-menu" role="menu" style="position: absolute; right: 16px; top: 72px; z-index: 5">
+<a class="br-menu__item" role="menuitem" href="ChoreSheet.dc.html"><i class="ri ri-plus" aria-hidden="true"></i>Novo afazer</a>
+<a class="br-menu__item" role="menuitem" href="CatalogQuestions.dc.html"><i class="ri ri-catalog" aria-hidden="true"></i>Do catálogo</a>
+</div>
+</sc-if>
+</header>
+<div class="hm-scroll">
+<label class="br-search__box" style="height: 48px; color: var(--text-muted)"><i class="ri ri-search" aria-hidden="true"></i><input style="all: unset; flex: 1; color: var(--text); font: 400 16px/24px var(--font-sans)" placeholder="Buscar afazer" value="{{q}}" onInput="{{search}}" aria-label="Buscar afazer"></label>
+<div class="hm-chips" role="group" aria-label="Filtrar por categoria">
+<sc-for list="{{chips}}" as="c" hint-placeholder-count="5">
+<button class="hm-chip {{c.plain}}" aria-pressed="{{c.on}}" onClick="{{c.pick}}"><sc-if value="{{c.hasIcon}}" hint-placeholder-val="{{ true }}"><span class="br-chore__icon br-chore__icon--sm" style="background: var(--chore-{{c.id}}-soft); color: var(--chore-{{c.id}})"><i class="ri ri-sm ri-{{c.id}}" aria-hidden="true"></i></span></sc-if>{{c.name}}</button>
+</sc-for>
+</div>
+<sc-if value="{{none}}" hint-placeholder-val="{{ false }}">
+<div class="br-empty" style="padding: 32px 16px"><span class="br-empty__icon"><i class="ri ri-lg ri-search" aria-hidden="true"></i></span><h2 class="br-empty__title">Nenhum afazer com “{{q}}”</h2><button class="br-btn br-btn--secondary br-btn--lg" onClick="{{clear}}">Limpar filtros</button></div>
+</sc-if>
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+<div class="hm-stack">
+<span class="hm-label">{{g.name}} · {{g.count}}</span>
+<div class="hm-list">
+<sc-for list="{{g.items}}" as="i" hint-placeholder-count="2">
+<a class="hm-item" href="ChoreSheet.dc.html"><span class="br-chore__icon" style="background: var(--chore-{{g.id}}-soft); color: var(--chore-{{g.id}})"><i class="ri ri-{{g.id}}" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">{{i.name}}</span><span class="hm-item__meta">{{i.meta}}</span></span><span class="hm-item__end"><i class="ri ri-chevron-right" aria-hidden="true"></i></span></a>
+</sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+<dc-import name="BottomBar" active="chores" hint-size="390px,88px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { q: '', cat: 'all', menu: false }; }
+renderVals() {
+const C = [
+['kitchen', 'Cozinha', [['Lavar a louça', 'Todo dia · Leve'], ['Limpar o fogão', 'A cada 3 dias · Médio']]],
+['bathroom', 'Banheiro', [['Limpar a pia do banheiro', 'A cada 7 dias · Leve · Responsável: Abner'], ['Limpar o box', 'A cada 7 dias · Pesado · Produtos químicos fortes']]],
+['bedroom', 'Quarto', [['Trocar a roupa de cama', 'A cada 7 dias · Médio']]],
+['living-room', 'Sala', [['Tirar o pó da sala', 'A cada 7 dias · Leve']]],
+['laundry', 'Roupas', [['Lavar a roupa', 'A cada 3 dias · Médio'], ['Dobrar a roupa', 'A cada 3 dias · Leve']]],
+['floors', 'Pisos', [['Aspirar a sala', 'A cada 3 dias · Médio · Responsável: Ana'], ['Passar pano no chão', 'A cada 7 dias · Pesado · Abaixar-se']]],
+['trash', 'Lixo', [['Tirar o lixo', 'A cada 2 dias · Muito leve']]],
+['outdoor', 'Área externa', [['Regar as plantas', 'A cada 2 dias · Leve']]],
+['pets', 'Animais de estimação', [['Limpar a caixa de areia', 'A cada 2 dias · Leve']]],
+['other', 'Outros', [['Repor o papel higiênico', 'A cada 7 dias · Muito leve']]]
+];
+const s = this.state;
+const q = s.q.trim().toLowerCase();
+const groups = C.filter(([id]) => s.cat === 'all' || s.cat === id)
+.map(([id, name, items]) => ({ id, name, items: items.filter(([n]) => !q || n.toLowerCase().includes(q)).map(([n, m]) => ({ name: n, meta: m })) }))
+.filter((g) => g.items.length).map((g) => ({ ...g, count: g.items.length }));
+const chips = [{ id: 'all', name: 'Todas' }, ...C.map(([id, name]) => ({ id, name }))].map((c) => ({ ...c, hasIcon: c.id !== 'all', plain: c.id === 'all' ? 'hm-chip--plain' : '', on: s.cat === c.id ? 'true' : 'false', pick: () => this.setState({ cat: c.id }) }));
+return {
+theme: this.props.theme ?? 'dark', q: s.q, groups, chips, none: groups.length === 0,
+search: (e) => this.setState({ q: e.target.value }), clear: () => this.setState({ q: '', cat: 'all' }),
+showMenu: s.menu, menuOpen: s.menu ? 'true' : 'false', toggleMenu: () => this.setState({ menu: !s.menu })
+};
+}
+}
+</script>
+</body>
+</html>

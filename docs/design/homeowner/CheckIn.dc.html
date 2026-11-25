@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Check-in</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<header class="hm-head"><div class="hm-head__text"><span class="hm-title">Hoje</span><span class="hm-sub">Terça, 25 de novembro</span></div></header>
+<div class="hm-scroll"><div class="br-skel" style="height: 152px; border-radius: 24px; animation: none"></div></div>
+<div class="hm-overlay">
+<section class="hm-sheet hm-sheet--full" role="dialog" aria-modal="true" aria-labelledby="ci-title">
+<span class="hm-sheet__grab" aria-hidden="true"></span>
+<div class="hm-sheet__head"><div class="hm-stack" style="gap: 0"><h1 id="ci-title" class="hm-sheet__title">Check-in de hoje</h1><span class="hm-muted">Muda só o plano de hoje.</span></div><a class="br-iconbtn br-iconbtn--sm" href="Main.dc.html" aria-label="Fechar"><i class="ri ri-x" aria-hidden="true"></i></a></div>
+<fieldset class="hm-stack" style="border: 0; padding: 0; margin: 0">
+<legend class="hm-label" style="padding: 0 0 8px">Como está a sua energia hoje?</legend>
+<div class="br-choices" role="radiogroup">
+<sc-for list="{{levels}}" as="l" hint-placeholder-count="4">
+<button class="br-choice" role="radio" aria-checked="{{l.checked}}" onClick="{{l.pick}}"><span class="br-energy__bars"><sc-for list="{{l.bars}}" as="b" hint-placeholder-count="4"><i class="{{b}}"></i></sc-for></span><span class="br-choice__body">{{l.name}}<span class="br-choice__hint">{{l.hint}}</span></span><i class="ri ri-lg {{l.mark}} br-choice__mark" aria-hidden="true"></i></button>
+</sc-for>
+</div>
+</fieldset>
+<fieldset class="hm-stack" style="border: 0; padding: 0; margin: 0">
+<legend class="hm-label" style="padding: 0 0 8px">Só hoje, evitar</legend>
+<div>
+<sc-for list="{{demands}}" as="d" hint-placeholder-count="4">
+<button class="hm-check" role="checkbox" aria-checked="{{d.checked}}" onClick="{{d.toggle}}"><span class="hm-box {{d.box}}"><i class="ri ri-sm ri-check" aria-hidden="true"></i></span><span class="hm-fill">{{d.name}}</span></button>
+</sc-for>
+</div>
+<span class="hm-caption">Para sempre? Use Restrições, na aba Eu.</span>
+</fieldset>
+<div class="hm-sheet__foot">
+<sc-if value="{{saved}}" hint-placeholder-val="{{ false }}"><a class="br-btn br-btn--success br-btn--lg br-btn--block" href="Main.dc.html"><i class="ri ri-check" aria-hidden="true"></i>Salvo. Ver o plano</a></sc-if>
+<sc-if value="{{notSaved}}" hint-placeholder-val="{{ true }}"><button class="br-btn br-btn--primary br-btn--lg br-btn--block" onClick="{{save}}">Salvar check-in</button></sc-if>
+</div>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { picked: 'low', avoid: ['heavy_lifting'], saved: false }; }
+renderVals() {
+const L = [
+{ id: 'drained', name: 'Esgotado', hint: 'Sem tarefas hoje. A sequência pausa.', n: 0 },
+{ id: 'low', name: 'Baixa', hint: 'Metade da sua energia base', n: 2 },
+{ id: 'normal', name: 'Normal', hint: 'Sua energia base', n: 3 },
+{ id: 'energized', name: 'Energizado', hint: 'Um pouco mais que o normal', n: 4 }
+];
+const D = [{ id: 'heavy_lifting', name: 'Carregar peso' }, { id: 'bending', name: 'Abaixar-se' }, { id: 'heights', name: 'Altura' }, { id: 'strong_chemicals', name: 'Produtos químicos fortes' }];
+const s = this.state;
+return {
+theme: this.props.theme ?? 'dark',
+levels: L.map((l) => ({ ...l, checked: s.picked === l.id ? 'true' : 'false', mark: s.picked === l.id ? 'ri-circle-check' : 'ri-circle', bars: [0, 1, 2, 3].map((i) => (i < l.n ? 'on' : '')), pick: () => this.setState({ picked: l.id, saved: false }) })),
+demands: D.map((d) => { const on = s.avoid.includes(d.id); return { ...d, checked: on ? 'true' : 'false', box: on ? 'hm-box--on' : '', toggle: () => this.setState({ saved: false, avoid: on ? s.avoid.filter((x) => x !== d.id) : [...s.avoid, d.id] }) }; }),
+saved: s.saved, notSaved: !s.saved, save: () => this.setState({ saved: true })
+};
+}
+}
+</script>
+</body>
+</html>

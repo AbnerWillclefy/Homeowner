@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Hoje, tudo feito</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<header class="hm-head">
+<div class="hm-head__text"><h1 class="hm-title">Hoje</h1><span class="hm-sub">Terça, 25 de novembro</span></div>
+<div class="hm-tools">
+<a class="br-streak" href="StreakSheet.dc.html" aria-label="Sequência: 7 dias"><i class="ri ri-flame" aria-hidden="true"></i>7</a>
+<a class="br-iconbtn" href="VoiceSheet.dc.html" aria-label="Comando de voz"><i class="ri ri-mic" aria-hidden="true"></i></a>
+</div>
+</header>
+<div class="hm-scroll">
+<section class="br-card br-card--hero br-card--compact hm-hero" aria-label="Seu dia">
+<div class="hm-hero__top">
+<div class="hm-stack" style="gap: 0"><span class="br-card__label">Seu dia</span><span class="hm-hero__value">4 de 4 feitas</span></div>
+<a class="br-energy" href="CheckIn.dc.html" aria-label="Energia: baixa. Mudar"><span class="br-energy__bars"><i class="on"></i><i class="on"></i><i></i><i></i></span>Baixa</a>
+</div>
+<div class="br-progress"><div class="br-progress__track"><div class="br-progress__fill" style="width: 100%"></div></div></div>
+<span class="br-muted">Sua sequência foi para 7 dias.</span>
+</section>
+<div class="br-empty" style="padding: 24px 16px">
+<span class="br-empty__icon"><i class="ri ri-xl ri-circle-check" aria-hidden="true"></i></span>
+<h2 class="br-empty__title">Tudo feito por hoje</h2>
+<p class="br-empty__text">O resto fica para quem tiver energia, ou para amanhã. Descansar também conta.</p>
+</div>
+<div class="hm-stack">
+<span class="hm-label">Concluídas hoje</span>
+<div class="hm-list">
+<div class="hm-item"><span class="br-chore__icon" style="background: var(--chore-bathroom-soft); color: var(--chore-bathroom)"><i class="ri ri-bathroom" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Limpar a pia do banheiro</span><span class="hm-item__meta">Banheiro · 9:02</span></span><span class="hm-item__end"><i class="ri ri-circle-check" aria-hidden="true" style="color: var(--positive)"></i></span></div>
+<div class="hm-item"><span class="br-chore__icon" style="background: var(--chore-laundry-soft); color: var(--chore-laundry)"><i class="ri ri-laundry" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Dobrar a roupa</span><span class="hm-item__meta">Roupas · 10:24</span></span><span class="hm-item__end"><i class="ri ri-circle-check" aria-hidden="true" style="color: var(--positive)"></i></span></div>
+<div class="hm-item"><span class="br-chore__icon" style="background: var(--chore-kitchen-soft); color: var(--chore-kitchen)"><i class="ri ri-kitchen" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Lavar a louça</span><span class="hm-item__meta">Cozinha · 13:10</span></span><span class="hm-item__end"><i class="ri ri-circle-check" aria-hidden="true" style="color: var(--positive)"></i></span></div>
+<div class="hm-item"><span class="br-chore__icon" style="background: var(--chore-trash-soft); color: var(--chore-trash)"><i class="ri ri-trash" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Tirar o lixo</span><span class="hm-item__meta">Lixo · 19:45</span></span><span class="hm-item__end"><i class="ri ri-circle-check" aria-hidden="true" style="color: var(--positive)"></i></span></div>
+</div>
+</div>
+<div class="hm-sechead"><h2 class="hm-section">Ainda por fazer</h2><span class="hm-caption">Se sobrar energia</span></div>
+<div class="hm-list">
+<div class="hm-item"><span class="br-chore__icon" style="background: var(--chore-outdoor-soft); color: var(--chore-outdoor)"><i class="ri ri-outdoor" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Regar as plantas</span><span class="hm-item__meta">Área externa · Leve · vence hoje</span></span><button class="br-btn br-btn--secondary" aria-label="Pegar Regar as plantas">Pegar</button></div>
+</div>
+</div>
+<dc-import name="BottomBar" active="today" hint-size="390px,88px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() { return { theme: this.props.theme ?? 'dark' }; }
+}
+</script>
+</body>
+</html>

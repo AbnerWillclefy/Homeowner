@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Aparência e idioma</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{shown}}">
+<div class="hm-scroll"></div>
+<div class="hm-overlay">
+<section class="hm-sheet" role="dialog" aria-modal="true" aria-labelledby="a-title">
+<span class="hm-sheet__grab" aria-hidden="true"></span>
+<div class="hm-sheet__head"><h1 id="a-title" class="hm-sheet__title">Aparência e idioma</h1><a class="br-iconbtn br-iconbtn--sm" href="Me.dc.html" aria-label="Fechar"><i class="ri ri-x" aria-hidden="true"></i></a></div>
+<div class="hm-field"><span class="hm-label" id="ap">Aparência</span>
+<div class="hm-seg" role="radiogroup" aria-labelledby="ap"><sc-for list="{{modes}}" as="m" hint-placeholder-count="3"><button role="radio" aria-pressed="{{m.on}}" aria-checked="{{m.on}}" onClick="{{m.pick}}">{{m.name}}</button></sc-for></div>
+<span class="hm-caption">Sistema segue o seu celular.</span></div>
+<div class="hm-field"><span class="hm-label" id="lg">Idioma</span>
+<div class="hm-seg" role="radiogroup" aria-labelledby="lg"><sc-for list="{{langs}}" as="l" hint-placeholder-count="2"><button role="radio" aria-pressed="{{l.on}}" aria-checked="{{l.on}}" onClick="{{l.pick}}" lang="{{l.code}}">{{l.name}}</button></sc-for></div></div>
+<span class="hm-caption">Muda na hora, sem salvar.</span>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { mode: 'system', lang: 'pt-BR' }; }
+renderVals() {
+const s = this.state;
+const sys = this.props.theme ?? 'dark';
+return {
+shown: s.mode === 'system' ? sys : s.mode,
+modes: [['system', 'Sistema'], ['light', 'Claro'], ['dark', 'Escuro']].map(([id, name]) => ({ name, on: s.mode === id ? 'true' : 'false', pick: () => this.setState({ mode: id }) })),
+langs: [['pt-BR', 'Português'], ['en-US', 'English']].map(([code, name]) => ({ code, name, on: s.lang === code ? 'true' : 'false', pick: () => this.setState({ lang: code }) }))
+};
+}
+}
+</script>
+</body>
+</html>

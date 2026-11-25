@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Hoje, antes do check-in</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<header class="hm-head">
+<div class="hm-head__text"><h1 class="hm-title">Bom dia, Abner</h1><span class="hm-sub">Terça, 25 de novembro</span></div>
+<div class="hm-tools">
+<a class="br-streak" href="StreakSheet.dc.html" aria-label="Sequência: 6 dias"><i class="ri ri-flame" aria-hidden="true"></i>6</a>
+<a class="br-iconbtn" href="VoiceSheet.dc.html" aria-label="Comando de voz"><i class="ri ri-mic" aria-hidden="true"></i></a>
+</div>
+</header>
+<div class="hm-scroll">
+<section class="br-card br-card--hero br-card--compact hm-hero" aria-labelledby="q">
+<div class="hm-stack" style="gap: 4px"><h2 id="q" class="hm-section">Como está a sua energia hoje?</h2><span class="br-muted">Seu plano das 7:00 se ajusta à resposta.</span></div>
+<div class="br-choices" role="radiogroup" aria-labelledby="q">
+<sc-for list="{{levels}}" as="l" hint-placeholder-count="4">
+<button class="br-choice" role="radio" aria-checked="{{l.checked}}" onClick="{{l.pick}}"><span class="br-energy__bars"><sc-for list="{{l.bars}}" as="b" hint-placeholder-count="4"><i class="{{b}}"></i></sc-for></span><span class="br-choice__body">{{l.name}}<span class="br-choice__hint">{{l.hint}}</span></span><i class="ri ri-lg {{l.mark}} br-choice__mark" aria-hidden="true"></i></button>
+</sc-for>
+</div>
+<a class="br-link" href="CheckIn.dc.html" style="color: var(--on-hero); text-decoration: underline">Alguma restrição só hoje?</a>
+</section>
+<sc-if value="{{saved}}" hint-placeholder-val="{{ false }}">
+<div class="br-banner"><i class="ri ri-circle-check" aria-hidden="true" style="color: var(--positive)"></i><span class="br-banner__text">{{pickedMsg}}</span><a class="br-btn br-btn--ghost br-btn--sm" href="Main.dc.html">Ver plano</a></div>
+</sc-if>
+<div class="hm-stack">
+<span class="hm-label">Enquanto isso</span>
+<div class="hm-list">
+<a class="hm-item" href="Resident.dc.html"><span class="br-avatar">AS</span><span class="hm-item__main"><span class="hm-item__title">Ana já fez o check-in</span><span class="hm-item__meta">3 tarefas para hoje</span></span><span class="hm-item__end"><i class="ri ri-chevron-right" aria-hidden="true"></i></span></a>
+</div>
+</div>
+</div>
+<dc-import name="BottomBar" active="today" hint-size="390px,88px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { picked: null }; }
+renderVals() {
+const L = [
+{ id: 'drained', name: 'Esgotado', hint: 'Sem tarefas hoje. A sequência pausa.', n: 0 },
+{ id: 'low', name: 'Baixa', hint: 'Metade da sua energia base', n: 2 },
+{ id: 'normal', name: 'Normal', hint: 'Sua energia base', n: 3 },
+{ id: 'energized', name: 'Energizado', hint: 'Um pouco mais que o normal', n: 4 }
+];
+const p = this.state.picked;
+return {
+theme: this.props.theme ?? 'dark',
+levels: L.map((l) => ({ ...l, checked: p === l.id ? 'true' : 'false', mark: p === l.id ? 'ri-circle-check' : 'ri-circle', bars: [0, 1, 2, 3].map((i) => (i < l.n ? 'on' : '')), pick: () => this.setState({ picked: l.id }) })),
+saved: !!p, pickedMsg: p === 'drained' ? 'Salvo. Hoje é dia de descanso: nenhuma tarefa para você.' : 'Salvo. Seu plano foi ajustado à sua energia.'
+};
+}
+}
+</script>
+</body>
+</html>

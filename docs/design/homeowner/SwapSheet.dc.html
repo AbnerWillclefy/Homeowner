@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Oferecer troca</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<header class="hm-head"><div class="hm-head__text"><span class="hm-title">Hoje</span><span class="hm-sub">Terça, 25 de novembro</span></div></header>
+<div class="hm-scroll"><div class="br-skel" style="height: 152px; border-radius: 24px; animation: none"></div></div>
+<div class="hm-overlay">
+<section class="hm-sheet" role="dialog" aria-modal="true" aria-labelledby="s-title">
+<span class="hm-sheet__grab" aria-hidden="true"></span>
+<div class="hm-sheet__head"><div class="hm-stack" style="gap: 0"><h1 id="s-title" class="hm-sheet__title">Oferecer troca</h1><span class="hm-muted">A troca só acontece se a Ana aceitar.</span></div><a class="br-iconbtn br-iconbtn--sm" href="TaskSheet.dc.html" aria-label="Fechar"><i class="ri ri-x" aria-hidden="true"></i></a></div>
+<div class="hm-stack">
+<span class="hm-label">Você dá</span>
+<div class="hm-list"><div class="hm-item"><span class="br-chore__icon" style="background: var(--chore-kitchen-soft); color: var(--chore-kitchen)"><i class="ri ri-kitchen" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Lavar a louça</span><span class="hm-item__meta">Cozinha · Leve</span></span></div></div>
+</div>
+<div class="hm-stack">
+<span class="hm-label">Em troca de</span>
+<div class="br-choices" role="radiogroup" aria-label="Tarefa da Ana">
+<sc-for list="{{options}}" as="o" hint-placeholder-count="2">
+<button class="br-choice" role="radio" aria-checked="{{o.checked}}" onClick="{{o.pick}}"><span class="br-chore__icon" style="background: var(--chore-{{o.cat}}-soft); color: var(--chore-{{o.cat}})"><i class="ri ri-{{o.cat}}" aria-hidden="true"></i></span><span class="br-choice__body">{{o.name}}<span class="br-choice__hint">{{o.hint}}</span></span><i class="ri ri-lg {{o.mark}} br-choice__mark" aria-hidden="true"></i></button>
+</sc-for>
+</div>
+<span class="hm-caption">Só aparecem tarefas da Ana ainda não feitas.</span>
+</div>
+<div class="hm-sheet__foot">
+<sc-if value="{{sent}}" hint-placeholder-val="{{ false }}">
+<div class="br-banner"><i class="ri ri-circle-check" aria-hidden="true" style="color: var(--positive)"></i><span class="br-banner__text">Oferta enviada. A Ana vê no Hoje dela.</span><button class="br-btn br-btn--ghost br-btn--sm" onClick="{{cancel}}">Cancelar oferta</button></div>
+</sc-if>
+<sc-if value="{{notSent}}" hint-placeholder-val="{{ true }}">
+<button class="br-btn br-btn--primary br-btn--lg br-btn--block" onClick="{{send}}" disabled="{{noPick}}"><i class="ri ri-swap" aria-hidden="true"></i>Enviar oferta</button>
+</sc-if>
+</div>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { picked: null, sent: false }; }
+renderVals() {
+const O = [
+{ id: 'cama', name: 'Trocar a roupa de cama', cat: 'bedroom', hint: 'Quarto · Médio · assumida pela Ana' }
+];
+const s = this.state;
+return {
+theme: this.props.theme ?? 'dark',
+options: O.map((o) => ({ ...o, checked: s.picked === o.id ? 'true' : 'false', mark: s.picked === o.id ? 'ri-circle-check' : 'ri-circle', pick: () => this.setState({ picked: o.id, sent: false }) })),
+noPick: !s.picked, sent: s.sent, notSent: !s.sent,
+send: () => this.setState({ sent: true }), cancel: () => this.setState({ sent: false })
+};
+}
+}
+</script>
+</body>
+</html>

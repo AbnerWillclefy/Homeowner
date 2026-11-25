@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Passo 5, lembretes</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<div class="hm-bar"><a class="hm-back" href="OnboardPreferences.dc.html"><i class="ri ri-chevron-left" aria-hidden="true"></i>Voltar</a><a class="br-btn br-btn--ghost" href="StartChoice.dc.html">Pular</a></div>
+<div class="hm-auth" style="padding-top: 8px">
+<div class="br-stepper" aria-label="Passo 5 de 5: lembretes"><div class="br-stepper__meta"><span>Passo 5 de 5</span><span>Lembretes</span></div><div class="br-stepper__track"><i class="br-stepper__seg br-stepper__seg--done"></i><i class="br-stepper__seg br-stepper__seg--done"></i><i class="br-stepper__seg br-stepper__seg--done"></i><i class="br-stepper__seg br-stepper__seg--done"></i><i class="br-stepper__seg br-stepper__seg--done"></i></div></div>
+<div class="hm-stack" style="gap: 4px"><h1 class="hm-lead">Um lembrete pela manhã?</h1><p class="hm-muted">Às 7:00, quando o plano fica pronto. O app funciona igual sem ele.</p></div>
+<div class="br-card br-card--compact" style="gap: 16px">
+<span class="hm-row hm-label"><i class="ri ri-install" aria-hidden="true"></i>Primeiro, instale o app</span>
+<ol class="hm-stack" style="margin: 0; padding-left: 20px; gap: 8px">
+<li>No Safari, toque em Compartilhar.</li>
+<li>Toque em Adicionar à Tela de Início.</li>
+<li>Abra o Homeowner pela Tela de Início.</li>
+</ol>
+<span class="hm-caption">No iPhone, lembretes só funcionam com o app instalado.</span>
+</div>
+<div class="hm-foot">
+<a class="br-btn br-btn--primary br-btn--lg br-btn--block" href="StartChoice.dc.html"><i class="ri ri-bell" aria-hidden="true"></i>Ativar lembretes</a>
+<a class="br-btn br-btn--ghost br-btn--lg br-btn--block" href="StartChoice.dc.html">Agora não</a>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() { return { theme: this.props.theme ?? 'dark' }; }
+}
+</script>
+</body>
+</html>

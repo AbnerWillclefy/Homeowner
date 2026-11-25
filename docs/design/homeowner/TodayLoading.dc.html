@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Hoje, carregando</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}" aria-busy="true">
+<header class="hm-head">
+<div class="hm-head__text"><h1 class="hm-title">Hoje</h1><span class="hm-sub">Terça, 25 de novembro</span></div>
+<div class="hm-tools"><span class="br-skel" style="width: 64px; height: 40px; border-radius: 9999px"></span><span class="br-skel" style="width: 40px; height: 40px; border-radius: 9999px"></span></div>
+</header>
+<div class="hm-scroll" role="status" aria-label="Carregando o plano de hoje">
+<div class="br-skel" style="height: 152px; border-radius: 24px"></div>
+<div class="br-skel" style="width: 136px; height: 24px; margin-top: 8px"></div>
+<div class="br-card br-card--compact" style="gap: 16px">
+<div class="hm-row" style="gap: 16px"><span class="br-skel" style="width: 40px; height: 40px; border-radius: 8px"></span><div class="hm-stack hm-fill"><span class="br-skel" style="width: 60%; height: 16px"></span><span class="br-skel" style="width: 40%; height: 12px"></span></div></div>
+<span class="br-skel" style="width: 85%; height: 12px"></span>
+<div class="hm-row"><span class="br-skel hm-fill" style="height: 48px; border-radius: 8px"></span><span class="br-skel hm-fill" style="height: 48px; border-radius: 8px"></span></div>
+</div>
+<div class="br-card br-card--compact" style="gap: 16px">
+<div class="hm-row" style="gap: 16px"><span class="br-skel" style="width: 40px; height: 40px; border-radius: 8px"></span><div class="hm-stack hm-fill"><span class="br-skel" style="width: 50%; height: 16px"></span><span class="br-skel" style="width: 35%; height: 12px"></span></div></div>
+<span class="br-skel" style="width: 70%; height: 12px"></span>
+<span class="br-skel" style="height: 48px; border-radius: 8px"></span>
+</div>
+</div>
+<dc-import name="BottomBar" active="today" hint-size="390px,88px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() { return { theme: this.props.theme ?? 'dark' }; }
+}
+</script>
+</body>
+</html>

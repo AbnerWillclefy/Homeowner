@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Lar</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<header class="hm-head">
+<div class="hm-head__text"><h1 class="hm-title">Nosso lar</h1><span class="hm-sub">Plano todo dia às 7:00 · São Paulo</span></div>
+</header>
+<div class="hm-scroll">
+<div class="hm-stack">
+<span class="hm-label">Moradores · 2</span>
+<div class="hm-list">
+<a class="hm-item" href="Me.dc.html"><span class="br-avatar">AM</span><span class="hm-item__main"><span class="hm-item__title">Abner <span class="br-badge br-badge--neutral" style="height: 20px">Você</span></span><span class="hm-item__meta"><i class="ri ri-sm ri-flame" aria-hidden="true" style="color: var(--warning)"></i>6 dias · 1 de 4 feitas hoje</span></span><span class="hm-item__end"><i class="ri ri-chevron-right" aria-hidden="true"></i></span></a>
+<a class="hm-item" href="Resident.dc.html"><span class="br-avatar">AS</span><span class="hm-item__main"><span class="hm-item__title">Ana</span><span class="hm-item__meta"><i class="ri ri-sm ri-flame" aria-hidden="true" style="color: var(--warning)"></i>11 dias · 2 de 3 feitas hoje</span></span><span class="hm-item__end"><i class="ri ri-chevron-right" aria-hidden="true"></i></span></a>
+<a class="hm-item" href="InviteSheet.dc.html"><span class="hm-icotile hm-icotile--brand"><i class="ri ri-user-plus" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Convidar um morador</span><span class="hm-item__meta">Um link de uso único, vale 7 dias</span></span><span class="hm-item__end"><i class="ri ri-chevron-right" aria-hidden="true"></i></span></a>
+</div>
+</div>
+<div class="hm-stack">
+<span class="hm-label">Lar</span>
+<div class="hm-list">
+<a class="hm-item" href="HomeSettings.dc.html"><span class="hm-icotile"><i class="ri ri-settings" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Ajustes do lar</span><span class="hm-item__meta">Nome, horário do plano e fuso</span></span><span class="hm-item__end"><i class="ri ri-chevron-right" aria-hidden="true"></i></span></a>
+<a class="hm-item" href="Chores.dc.html"><span class="hm-icotile"><i class="ri ri-chores" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title">Afazeres</span><span class="hm-item__meta">14 afazeres</span></span><span class="hm-item__end"><i class="ri ri-chevron-right" aria-hidden="true"></i></span></a>
+</div>
+</div>
+<div class="hm-list">
+<a class="hm-item" href="LeaveDialog.dc.html"><span class="hm-icotile hm-icotile--danger"><i class="ri ri-log-out" aria-hidden="true"></i></span><span class="hm-item__main"><span class="hm-item__title" style="color: var(--danger)">Sair deste lar</span><span class="hm-item__meta">Você para de receber tarefas daqui</span></span><span class="hm-item__end"><i class="ri ri-chevron-right" aria-hidden="true"></i></span></a>
+</div>
+</div>
+<dc-import name="BottomBar" active="home" hint-size="390px,88px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() { return { theme: this.props.theme ?? 'dark' }; }
+}
+</script>
+</body>
+</html>

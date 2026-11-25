@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Energia base</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/bedrock/tokens.css">
+<link rel="stylesheet" href="ds/bedrock/components/bundle.css">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div class="hm-phone" data-theme="{{theme}}">
+<div class="hm-scroll"></div>
+<div class="hm-overlay">
+<section class="hm-sheet hm-sheet--full" role="dialog" aria-modal="true" aria-labelledby="b-title">
+<span class="hm-sheet__grab" aria-hidden="true"></span>
+<div class="hm-sheet__head"><div class="hm-stack" style="gap: 0"><h1 id="b-title" class="hm-sheet__title">Energia base</h1><span class="hm-muted">Quanto você costuma dar conta em cada dia. O check-in ajusta só o dia.</span></div><a class="br-iconbtn br-iconbtn--sm" href="Me.dc.html" aria-label="Fechar"><i class="ri ri-x" aria-hidden="true"></i></a></div>
+<div class="hm-stack" style="gap: 0">
+<sc-for list="{{days}}" as="d" hint-placeholder-count="7">
+<div class="hm-between" style="min-height: 56px; border-top: 1px solid var(--border)"><span id="{{d.id}}" style="width: 72px">{{d.name}}</span>
+<div class="hm-seg hm-fill" role="radiogroup" aria-labelledby="{{d.id}}"><sc-for list="{{d.opts}}" as="o" hint-placeholder-count="3"><button role="radio" aria-pressed="{{o.on}}" aria-checked="{{o.on}}" onClick="{{o.pick}}">{{o.name}}</button></sc-for></div>
+</div>
+</sc-for>
+</div>
+<span class="hm-caption">Cada escolha salva na hora.</span>
+</section>
+</div>
+<sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}">
+<div class="hm-toast" role="status" style="bottom: 24px"><i class="ri ri-circle-check" aria-hidden="true" style="color: var(--positive)"></i><span class="hm-toast__text">{{toast}}</span><button class="br-btn br-btn--ghost br-btn--sm" onClick="{{undo}}">Desfazer</button></div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { v: { seg: 'normal', ter: 'normal', qua: 'normal', qui: 'normal', sex: 'low', sab: 'normal', dom: 'low' }, prev: null, toast: null }; }
+renderVals() {
+const s = this.state;
+const D = [['seg', 'Segunda'], ['ter', 'Terça'], ['qua', 'Quarta'], ['qui', 'Quinta'], ['sex', 'Sexta'], ['sab', 'Sábado'], ['dom', 'Domingo']];
+const O = [['low', 'Baixa'], ['normal', 'Normal'], ['high', 'Alta']];
+return {
+theme: this.props.theme ?? 'dark',
+days: D.map(([id, name]) => ({ id: 'd-' + id, name, opts: O.map(([oid, oname]) => ({ name: oname, on: s.v[id] === oid ? 'true' : 'false', pick: () => this.setState({ prev: s.v, v: { ...s.v, [id]: oid }, toast: name + ': ' + oname.toLowerCase() + '. Salvo.' }) })) })),
+hasToast: !!s.toast, toast: s.toast, undo: () => this.setState({ v: s.prev || s.v, toast: null })
+};
+}
+}
+</script>
+</body>
+</html>
