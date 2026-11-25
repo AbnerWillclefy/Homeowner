@@ -335,7 +335,3 @@
 .br-task__actions--one { grid-template-columns: 1fr; }
 .br-task--done { background: transparent; border-style: dashed; }
 .br-task--done .br-task__title { color: var(--text-muted); text-decoration: line-through; }
-
-@media (prefers-reduced-motion: reduce) {
-  .br-canvas *, .br-canvas *::before, .br-canvas *::after { transition-duration: 0ms !important; animation: none !important; }
-}
