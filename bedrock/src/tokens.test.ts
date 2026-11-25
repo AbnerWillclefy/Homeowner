@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const css = readFileSync("src/tokens.css", "utf8");
 const spec = readFileSync("../docs/design/bedrock/tokens.css", "utf8");
 
-// Copied from web/src/shared/theme/contrast.ts: web/ is not a workspace member, so it cannot be imported.
+// Copied from web/src/shared/theme/contrast.ts: Bedrock must not import an app.
 function luminance(hex: string): number {
   const digits = hex.replace("#", "");
   const full = digits.length === 3 ? [...digits].map((c) => c + c).join("") : digits;

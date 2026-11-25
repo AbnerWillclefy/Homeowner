@@ -1,10 +1,10 @@
 @import "tailwindcss";
-@import "../../web/src/tokens.css";
+@import "./tokens.css";
 
 /*
  * The admin's own look (design-system/homeowner-admin/MASTER.md): slate neutrals, a status green, Fira Sans with
  * Fira Code for headings and figures, tight radii. It overrides the shared semantic tokens here only, so the PWA's
- * web/src/tokens.css is untouched. Dark danger and border are lighter than the ui-ux-pro-max palette, whose
+ * web/src/tokens.css is a separate copy. Dark danger and border are lighter than the ui-ux-pro-max palette, whose
  * #ef4444 (4.2:1) and #475569 (2.1:1) fail contrast on the dark card.
  *
  * warning is admin-only: the shared tokens have no amber, and the category pastels must not carry status (DESIGN.md).

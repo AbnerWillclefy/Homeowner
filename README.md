@@ -204,9 +204,8 @@ startup, so restart `npm run dev` after a change.
 
 ```sh
 docker compose up -d --build   # Postgres and the API at localhost:8080, migrated on start
-cd web
-npm ci
-npm run dev                    # http://localhost:5173
+npm ci                         # at the root: web is a workspace member
+npm run dev -w web             # http://localhost:5173
 ```
 
 Check the API logs with `docker compose logs api`. A `sign-in disabled` or

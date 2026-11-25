@@ -307,9 +307,11 @@ jobs:
         with:
           node-version-file: web/.nvmrc
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: package-lock.json
 
+      # Root install: web is a workspace member, so the lock file is the root one.
       - run: npm ci
+        working-directory: .
 
       # The build inlines the policy only once the web source reads it, so
       # check here that the deploy delivered it: public, one JSON object with

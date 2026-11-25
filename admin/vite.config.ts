@@ -8,7 +8,7 @@ export default defineConfig({
     port: 5174,
     // Fail instead of moving to another port: Compose's CORS setting allows only 5174.
     strictPort: true,
-    // The token stylesheet lives in web/src/tokens.css (DESIGN.md is the single source).
-    fs: { allow: [".", "../web/src"] },
+    // The token stylesheet is admin/src/tokens.css, a copy of web/src/tokens.css (DESIGN.md is the source).
+    fs: { allow: ["."] },
   },
 });

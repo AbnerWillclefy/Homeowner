@@ -42,15 +42,17 @@ jobs:
         with:
           node-version-file: web/.nvmrc
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: package-lock.json
+      # Root install: web is a workspace member, so the lock file is the root one.
       - run: npm ci
+        working-directory: .
       # The public dummy values come from web/.env.e2e; nothing here is a secret.
       - run: npm run build:e2e
       # The lock file pins Playwright, which pins the Chromium build, so it is the cache key.
       - uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('web/package-lock.json') }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       # Skips a browser already restored from the cache. No --with-deps: the runner image already has
       # Chromium's libraries, and the extra fonts it adds made the job fail whenever the Ubuntu mirrors were unreachable.
       - run: npx playwright install chromium
