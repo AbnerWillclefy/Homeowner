@@ -1,6 +1,6 @@
 # Revenue, the finance app
 
-Related: [ADR 0023](../adr/0023-move-finances-into-a-second-installable-app-named-revenue.md) (why Finances moves into its own app), [ADR 0022](../adr/0022-a-shared-bedrock-design-system-amends-0007-and-0009-for-adopting-apps.md) (Bedrock), [ADR 0019](../adr/0019-take-bank-data-from-pluggy-with-per-user-credentials-encrypted-by-the-app.md) (Pluggy). Design: [`docs/design/revenue/`](../design/revenue/README.md). Rules for changing it: [`revenue/CLAUDE.md`](../../revenue/CLAUDE.md). [ADR 0026](../adr/0026-read-grocery-receipts-from-sefaz-with-an-ai-read-photo-as-a-confirmed-fallback.md) (Pantry receipts). [ADR 0027](../adr/0027-the-finance-chat-sends-a-users-own-finances-to-the-model-through-read-only-tools.md) (the finance chat). Terms: **User**, **Source**, **Bill**, **Goal**, **Investment**, **Pantry**, **Pantry item**, **Fixed item**, **Ran out**, **Shopping list**, **Receipt** ([GLOSSARY.md](../../GLOSSARY.md)).
+Related: [ADR 0023](../adr/0023-move-finances-into-a-second-installable-app-named-revenue.md) (why Finances moves into its own app), [ADR 0022](../adr/0022-a-shared-bedrock-design-system-amends-0007-and-0009-for-adopting-apps.md) (Bedrock), [ADR 0019](../adr/0019-take-bank-data-from-pluggy-with-per-user-credentials-encrypted-by-the-app.md) (Pluggy). Design: [`docs/design/revenue/`](../design/revenue/README.md). Rules for changing it: [`revenue/CLAUDE.md`](../../revenue/CLAUDE.md). [ADR 0026](../adr/0026-read-grocery-receipts-from-sefaz-with-an-ai-read-photo-as-a-confirmed-fallback.md) (Pantry receipts). [ADR 0027](../adr/0027-the-finance-chat-sends-a-users-own-finances-to-the-model-through-read-only-tools.md) (the finance chat). [ADR 0028](../adr/0028-render-design-artboards-in-ci-with-a-stand-in-for-the-canvas-runtime.md) (artboards rendered in CI for the [design check](#design-check)). Terms: **User**, **Source**, **Bill**, **Goal**, **Investment**, **Pantry**, **Pantry item**, **Fixed item**, **Ran out**, **Shopping list**, **Receipt** ([GLOSSARY.md](../../GLOSSARY.md)).
 
 ## What is built
 
@@ -169,7 +169,7 @@ Each screen is a domain folder under `src/domains/<name>/` with the layers of [A
 | `/chat` Perguntar | `chat` | none (it reads the cached `savingsKey` for a Goal name, never fetches) | `POST chat` | none |
 | `/pantry/list` Shopping list | `pantry` | `pantry/list` (rows, expected total, what is left of the groceries limit) | `PUT pantry/list/{id}` (a quantity, or removed after a confirm) | none |
 
-Built differently from the artboards, on purpose: no notifications bell, no "Atualizar agora" (the API has no on-demand sync) and no "Reconectar" button on Sources (`POST connect-token` takes no Item id; the screen shows the badge and an explanation). The Card bills chart and average count closed bills only; Net worth offers no 7-day or "all" range and shows no card-bill change for the month (past bills are not stored). Spending Categories has no 7, 30, 90-day or 1-year toggle: the API serves one month of transactions, so the chart shows the chosen month. The month is Bedrock's `Select`, with no calendar icon. The Goals row on Planejar shows a percentage the artboard does not define: total saved over total target of all Goals, the reserve left out. Each screen's pull request lists the rest under "Differs from the design".
+Built differently from the artboards, as of the design check ([below](#design-check)), which now raises each of these until it is fixed in code or the artboard changes in the canvas first: no notifications bell, no "Atualizar agora" (the API has no on-demand sync) and no "Reconectar" button on Sources (`POST connect-token` takes no Item id; the screen shows the badge and an explanation). The Card bills chart and average count closed bills only; Net worth offers no 7-day or "all" range and shows no card-bill change for the month (past bills are not stored). Spending Categories has no 7, 30, 90-day or 1-year toggle: the API serves one month of transactions, so the chart shows the chosen month. The month is Bedrock's `Select`, with no calendar icon. The Goals row on Planejar shows a percentage the artboard does not define: total saved over total target of all Goals, the reserve left out.
 
 ## The Pantry
 
@@ -226,4 +226,50 @@ flowchart TB
 
 ## Tests and checks
 
-Vitest on jsdom with axe in `revenue/`: page tests per screen against a mocked API, unit tests of each `logic/` folder, the frame's tests (`Shell.test.tsx`, `ShellFrame.test.tsx`, `ShellAsk.test.tsx` for the floating button, `Gate.test.tsx`, `InstallBanner.test.tsx`), the tab screens' `PlanPage.test.tsx` and `MorePage.test.tsx`, the sign-in tests in `src/auth/`, the Onboarding page and the worker's `sw/payload.test.ts`. The `revenue-check` workflow runs typecheck, tests and the build on pull requests changing `revenue/`, `bedrock/` or the root package files. The `ui-screenshots` check screenshots a `revenue/` change in pt-BR and dark mode at phone (375px) and desktop (1440px) width against `.github/scripts/revenue-fake-api.mjs`, which must serve every field a screen reads (`.github/scripts/revenue-screenshots.mjs`). It shoots the screens whose domain folder changed; a change under `src/app/` also shoots `/`, `/plan` and `/more`. At 375px it fails when `document.documentElement.scrollWidth` exceeds the viewport, naming the widest element (`overflowOf`). `OVERFLOW_EXEMPT` lists the routes that only warn; it holds `/goals` today and only shrinks.
+Vitest on jsdom with axe in `revenue/`: page tests per screen against a mocked API, unit tests of each `logic/` folder, the frame's tests (`Shell.test.tsx`, `ShellFrame.test.tsx`, `ShellAsk.test.tsx` for the floating button, `Gate.test.tsx`, `InstallBanner.test.tsx`), the tab screens' `PlanPage.test.tsx` and `MorePage.test.tsx`, the sign-in tests in `src/auth/`, the Onboarding page and the worker's `sw/payload.test.ts`. The `revenue-check` workflow runs typecheck, tests and the build on pull requests changing `revenue/`, `bedrock/` or the root package files. The `ui-screenshots` check screenshots a `revenue/` change in pt-BR and dark mode at phone (375px) and desktop (1440px) width against `.github/scripts/revenue-fake-api.mjs`, which must serve every field a screen reads (`.github/scripts/revenue-screenshots.mjs`). It shoots the screens whose domain folder changed; a change under `src/app/` also shoots `/`, `/plan` and `/more`. Each screen is shot as a pair, the app and its artboard ([Design check](#design-check)). At 375px it fails when the app's `document.documentElement.scrollWidth` exceeds the viewport, naming the widest element (`overflowOf`); the artboard side is never checked for overflow. `OVERFLOW_EXEMPT` lists the routes that only warn; it holds `/goals` today and only shrinks. `scripts-test` runs the scripts' Node tests (`revenue-screenshots.test.mjs`, `artboards.test.mjs`, `dc-runtime.test.mjs`) when `.github/` changes.
+
+## Design check
+
+A pull request that changes a Revenue screen shows the screen beside its artboard, and the Claude review compares the two ([ADR 0028](../adr/0028-render-design-artboards-in-ci-with-a-stand-in-for-the-canvas-runtime.md)). Nothing here runs in AWS: it is GitHub Actions and Playwright only.
+
+```mermaid
+flowchart LR
+  PR["Pull request changes revenue/"] --> UI["ui-screenshots<br/>revenue-screenshots.mjs"]
+  UI -->|"app build, fake API, frozen clock"| A["auto-revenue…-app.png"]
+  UI -->|"artboard through dc-runtime.js<br/>(artboards.mjs, shootArtboard)"| D["auto-revenue…-design.png"]
+  A --> BR["branch screenshots/head-branch"]
+  D --> BR
+  BR --> DESC["Description: App / Design table<br/>under the Mobile and Desktop headings"]
+  BR -->|"design-pairs.sh waits for ui-screenshots<br/>and downloads to .design-pairs/"| REV["Claude Code Review<br/>(REVIEW.md, Screenshot pairs)"]
+  REV -->|"one inline finding per visible difference"| T["unresolved claude thread<br/>blocks merge-by-risk"]
+```
+
+- **The stand-in runtime.** The artboards in `docs/design/revenue/` load the canvas runtime `support.js`, which the repo does not have. `.github/scripts/dc-runtime.js` implements the subset they use (`{{path}}` holes, `sc-for`, `sc-if`, `helmet`, `dc-import`, `class Component extends DCLogic`) and renders each artboard once in its default props, expanding the template as text. `shootArtboard` in `.github/scripts/artboards.mjs` opens the file from a fake origin (`http://artboard.test`) and answers its requests: `support.js` with the stand-in, `ds/bedrock/*` from `docs/design/bedrock/`, the rest from `docs/design/revenue/`. It fails the check, naming the file, when the render throws, does not finish in 10 seconds, or leaves `{{`, `<sc-if` or `<sc-for` in the page. The artboard files are never edited.
+- **The phone frame.** The phone artboards draw a fixed 390 x 844 frame with an inner scroller. After the render, `PHONE_CSS` in `revenue-screenshots.mjs` lets the frame grow to the page, so the artboard is shot at the app's 375px and full height.
+- **Route to artboard** (`ARTBOARDS` in `revenue-screenshots.mjs`; "none" shows as "no artboard" in the table and no design image is shot):
+
+  | Route | Mobile | Desktop |
+  |---|---|---|
+  | `/` | `MobileOverview` | `Main` |
+  | `/transactions` | `MobileTransactions` | `Transactions` |
+  | `/bills` | `MobileBillsList` | `Bills` |
+  | `/card-bills` | `MobileCardBills` | `CardBills` |
+  | `/categories` | `MobileCategories` | `Categories` |
+  | `/categories/:category` | none | none |
+  | `/goals` | `MobileGoals` | `Goals` |
+  | `/net-worth` | `MobileNetWorth` | `NetWorth` |
+  | `/projection` | `MobileProjection` | `Projection` |
+  | `/sources` | `MobileSources` | `Accounts` |
+  | `/pantry` | `MobilePantry` | `Pantry` |
+  | `/pantry/list` | `MobileShoppingList` | `ShoppingList` |
+  | `/chat` | `MobileChat` | `Chat` |
+  | `/settings` | `MobileSettings` | `Settings` |
+  | `/plan` | `MobilePlan` | none |
+  | `/more` | `MobileMore` | none |
+  | `/onboarding` | none | `Onboarding` |
+
+  Each name is a `.dc.html` file in `docs/design/revenue/`. A `scripts-test` test checks that every route in `src/app/screens.tsx` and `App.tsx` has an entry and that every named file exists.
+- **The frozen date.** `TODAY = "2026-11-11"` in `.github/scripts/revenue-fake-api.mjs`, the day the desktop artboards are drawn on. The fake dates its answers from it, and `context.clock.setFixedTime` freezes the browser at midday São Paulo time on that day (`FIXED_TIME`, time zone `America/Sao_Paulo`). The clock is set on the browser context and the artboard opens in a second page of the same context, so both sides show November 2026 whatever day the check runs.
+- **The shared household.** The fake API serves the desktop artboards' sample data: the same names, amounts, Bills and Goals. Where a phone artboard's data differs, the desktop one wins. The fake's data is design data, so changing it means changing the artboards in the canvas first.
+- **The review.** `.github/scripts/design-pairs.sh`, a step of the Claude Code Review workflow, waits up to 10 minutes for the newest `ui-screenshots` run on the head commit. When it succeeded and the `screenshots/<head branch>` commit names that commit, it downloads the `auto-*-app.png` and `auto-*-design.png` files into `.design-pairs/`; otherwise it leaves none and the review skips the comparison. `REVIEW.md` has the reviewer raise one inline finding per visible difference, on the route's page file, in re-review rounds too; wording the glossary or the i18n catalogs own and font rendering are not differences. A difference is fixed in code, or the design changes in the canvas first and is copied to `docs/design/revenue/` before the screen's pull request ([`revenue/CLAUDE.md`](../../revenue/CLAUDE.md)).
+- **Not compared:** interactive states (only default props are shot), light mode and English.

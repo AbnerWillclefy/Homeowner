@@ -56,6 +56,7 @@ In diagrams, solid boxes and lines are built; dashed boxes and lines are planned
 | [0025](../adr/0025-responsibility-binds-allocation-not-residents.md) | Responsibility binds Allocation, not Residents |
 | [0026](../adr/0026-read-grocery-receipts-from-sefaz-with-an-ai-read-photo-as-a-confirmed-fallback.md) | Read grocery receipts from SEFAZ, with an AI-read photo as a confirmed fallback |
 | [0027](../adr/0027-the-finance-chat-sends-a-users-own-finances-to-the-model-through-read-only-tools.md) | The finance chat sends a User's own Finances to the model through read-only tools |
+| [0028](../adr/0028-render-design-artboards-in-ci-with-a-stand-in-for-the-canvas-runtime.md) | Render design artboards in CI with a stand-in for the canvas runtime |
 
 ## Keeping this current
 
