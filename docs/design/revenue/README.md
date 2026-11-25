@@ -1,8 +1,8 @@
 # Revenue screens
 
-The approved design for Revenue (epic #623), copied from the design canvas so the agents building it can read it. Each `.dc.html` file is one artboard: its markup is the layout to build, its `<script>` holds the sample data and interactions. They render only inside the canvas (they load its `support.js` runtime), so read them as source.
+The approved design for Revenue (epic #623), copied from the design canvas so the agents building it can read it. Each `.dc.html` file is one artboard: its markup is the layout to build, its `<script>` holds the sample data and interactions. They load the canvas runtime `support.js`, which the repo does not have. They render in the canvas, and in CI through the stand-in `.github/scripts/dc-runtime.js` ([ADR 0028](../../adr/0028-render-design-artboards-in-ci-with-a-stand-in-for-the-canvas-runtime.md)), which shoots the artboard mapped to each changed route (`ARTBOARDS` in `.github/scripts/revenue-screenshots.mjs`), in its default props, beside the app's screen in a Revenue pull request. Opened on their own they do not render, so read them as source.
 
-This copy is what screens are built and reviewed against (`revenue/CLAUDE.md`, `REVIEW.md`). A design change made in the canvas comes here in a pull request before any ticket builds on it.
+The canvas is the source; this copy, kept byte-identical to it, is what screens are built from and compared against (`revenue/CLAUDE.md`, `REVIEW.md`). A design change is made in the canvas first and comes here in a pull request before any screen builds on it. A screen that differs from its artboard is fixed in code, or the artboard changes this way first.
 
 Classes map to the code like this:
 
@@ -53,5 +53,5 @@ The screen tickets (#798, #799) copy these into their acceptance criteria.
 - **Limit.** A plain card with a clock icon and "Você usou suas 20 perguntas de hoje. Volte amanhã.", not drawn as a reply bubble. The input and send are disabled.
 - **Error.** A danger `Banner` below the question, which stays visible, with "Tentar de novo". The note "Tentar de novo conta como uma pergunta." is drawn because a retry counts against the day's 20 (#796).
 - **Answers are plain text.** The bubble keeps line breaks (`white-space: pre-wrap`) and draws no bold, link, list or image.
-- **Hide values.** The chat ignores the hide-values toggle: the answer is model text and cannot be masked. #798 lists it under "Differs from the design".
+- **Hide values.** The chat ignores the hide-values toggle: the answer is model text and cannot be masked. Neither the artboards nor the screen draw the toggle (the chat's `PageHeader` has no `tools` slot).
 - **Notice.** One line under the input, "Pode errar. Não é conselho financeiro." (ADR: advisory only). Drawn pending the product manager's agreement.
