@@ -18,7 +18,7 @@ Revenue (`revenue/`) is desktop first on Bedrock and follows `revenue/CLAUDE.md`
 
 UI rules for the web PWA, `web/` (ADR 0007):
 - Tailwind v4 with semantic tokens from `@theme` (`bg-surface text-text`); never raw palette classes like `bg-teal-600`.
-- Native HTML first. Radix Primitives only where native HTML cannot be made accessible (dialog, select, switch, menu, toast). Add a generic primitive to `web/src/shared/ui/` only when a screen needs it; a piece that names a domain concept goes in that domain's folder, `web/src/domains/<domain>/` split into `components/`, `hooks/`, `api/` and `logic/` (ADR 0010, ADR 0011). Use `shared/ui/Button` for every button. No shadcn/ui.
+- Native HTML first. Radix Primitives only where native HTML cannot be made accessible (dialog, select, switch, menu, toast). Add a generic primitive to `web/src/shared/ui/` only when a screen needs it; a piece that names a domain concept goes in that domain's folder, `web/src/domains/<domain>/` split into `components/`, `hooks/`, `api/` and `logic/` (ADR 0010, ADR 0011). `web/` is moving to Bedrock (ADR 0022, epic #882): once `web/package.json` depends on `@homeowner/bedrock` (#885), take buttons and other generic components from it instead of `shared/ui/`; until then keep `shared/ui/`. Where a rule here contradicts ADR 0022, ADR 0022 wins.
 - WCAG 2.2 AA. Touch targets at least 44px. Sizes in `rem` so Dynamic Type and Android font scaling work; layouts must hold at the largest text size.
 - System font stack, no web fonts. Icons from `lucide-react`, importing only what is used.
 - Theme is System, Light or Dark, stored in localStorage `homeowner.theme` and applied as `data-theme` on `<html>` by the inline script in `index.html`. Do not add `dark:` variants; swap tokens.
