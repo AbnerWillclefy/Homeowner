@@ -16,7 +16,7 @@ map_path() {
   case "$1" in
     .github/workflows/* | .github/scripts/*) mark "${areas[@]}" ;;
     backend/*) mark backend ;;
-    web/*) mark web ;;
+    web/* | docs/design/homeowner/*) mark web ;;
     admin/*) mark admin ;;
     infra/*) mark infra ;;
     bedrock/* | package.json | package-lock.json) mark bedrock revenue web ;;

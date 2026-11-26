@@ -3,7 +3,9 @@ import { join, resolve } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { withScreenshots } from "./bedrock-screenshots.mjs";
-import { artboardPath, leftoversIn, pairsMarkdown } from "./artboards.mjs";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { artboardPath, leftoversIn, overflowOf, pairsMarkdown, serveArtboard } from "./artboards.mjs";
 
 const prefix = "https://example.test/";
 const images = {
@@ -56,4 +58,43 @@ test("finds each marker of the template language, and passes clean markup", () =
   assert.equal(leftoversIn("<p>{{x}}</p>"), "{{");
   assert.equal(leftoversIn("<sc-if value='a'></sc-if>"), "<sc-if");
   assert.equal(leftoversIn("<sc-for list='a'></sc-for>"), "<sc-for");
+});
+
+test("passes a page that fits and names the widest element of one that overflows", () => {
+  assert.equal(overflowOf("/", { scrollWidth: 375, innerWidth: 375, offenders: [] }), null);
+  const message = overflowOf("/more", { scrollWidth: 412, innerWidth: 375, offenders: [{ description: "<td> small", right: 390 }, { description: "<table> wide", right: 412 }] });
+  assert.match(message, /\/more/);
+  assert.match(message, /412px wide in a 375px/);
+  assert.match(message, /<table> wide/);
+  assert.doesNotMatch(message, /small/);
+});
+
+// A route that answers like Playwright's: fulfilling a file that is not there rejects.
+function fakeRoute(url, resourceType) {
+  const answers = [];
+  return {
+    answers,
+    request: () => ({ url: () => url, resourceType: () => resourceType }),
+    fulfill: async (answer) => {
+      if (answer.path && !(await import("node:fs")).existsSync(answer.path)) throw new Error("ENOENT");
+      answers.push(answer.status);
+    },
+  };
+}
+
+test("a stylesheet that is not there is reported, a missing script or image is not", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "artboards-"));
+  writeFileSync(join(dir, "ok.css"), "a{}");
+  const missing = [];
+  const there = fakeRoute("http://artboard.test/ok.css", "stylesheet");
+  await serveArtboard(there, dir, missing);
+  assert.deepEqual([there.answers, missing], [[200], []]);
+  const gone = fakeRoute("http://artboard.test/home.css", "stylesheet");
+  await serveArtboard(gone, dir, missing);
+  assert.deepEqual([gone.answers, missing], [[404], ["/home.css"]]);
+  const outside = fakeRoute("http://artboard.test/..%2Fx.css", "stylesheet");
+  await serveArtboard(outside, dir, missing);
+  assert.deepEqual(missing, ["/home.css", "/..%2Fx.css"]);
+  await serveArtboard(fakeRoute("http://artboard.test/logo.png", "image"), dir, missing);
+  assert.equal(missing.length, 2);
 });

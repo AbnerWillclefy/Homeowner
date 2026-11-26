@@ -144,6 +144,23 @@ npm run preview -w web      # serve the build to test the manifest and install
 
 CI runs `npm ci`, `npm run typecheck` and `npm run build` on every pull request.
 
+### Design pairs
+
+A pull request that changes `web/` gets its screens shot by the `ui-screenshots` check: each screen at 390px, in pt-BR and dark
+theme, against the end-to-end fakes, next to its artboard in `docs/design/homeowner/`, as an App / Design table under `### pt-BR`.
+Nobody takes web screenshots by hand any more. `web/e2e/pairs/screens.ts` maps each artboard to a path, a fake-data setup and a state
+(`openers.ts` opens the Sheet or Dialog), or says why it has no screen yet. A screen at 390px that scrolls sideways fails the check
+and names the widest element, unless it is in `OVERFLOW_EXEMPT` (that list only shrinks; `screens.test.ts` bounds it).
+
+To shoot them yourself (all artboards with `PAIRS_ALL=1`, otherwise the files in `CHANGED`, one per line):
+
+```sh
+npm run build:e2e -w web
+PAIRS_ALL=1 npx -w web playwright test -c playwright.pairs.config.ts
+```
+
+The PNGs land in `web/pairs-out/` (`auto-web-<artboard>-mobile-app.png` and `-design.png`) and one JSON per artboard in `web/pairs-results/`. Both folders are ignored by git.
+
 ### README screenshots
 
 The screenshots in `docs/screenshots/` come from the built app running against the

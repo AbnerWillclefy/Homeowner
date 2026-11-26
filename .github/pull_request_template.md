@@ -40,8 +40,9 @@ a migration (expand-only, so it stays), Terraform resources, data written in the
 - [ ] 
 
 <!--
-UI changes only: a screenshot under each heading, pt-BR first (the ui-screenshots check needs both; it adds them itself when only bedrock/ changes).
-A revenue/ change instead shows the whole screen in pt-BR and dark mode under "### Mobile" and "### Desktop"; the check adds them itself, with each screen's artboard beside it, unless web/ changes too.
+UI changes only: leave the headings empty, the ui-screenshots check fills them in itself.
+A web/ change gets App / Design pairs (pt-BR, dark, 390px) under "### pt-BR"; a bedrock/-only change gets its showcase sections under "### pt-BR" and "### English".
+A revenue/ change shows the whole screen in pt-BR and dark mode under "### Mobile" and "### Desktop", with each screen's artboard beside it.
 
 ### pt-BR
 

@@ -23,15 +23,25 @@ export function leftoversIn(html) {
   return ["{{", "<sc-if", "<sc-for"].find((marker) => html.includes(marker)) ?? null;
 }
 
+/** Answers one request of the artboard origin from `dir`. A stylesheet that is not there is added to `missing`: the runtime resolves a failed stylesheet quietly, so only this keeps an unstyled artboard from passing. */
+export async function serveArtboard(route, dir, missing) {
+  const request = route.request();
+  const path = new URL(request.url()).pathname;
+  const found = artboardPath(dir, path);
+  const notFound = () => {
+    if (request.resourceType() === "stylesheet") missing.push(path);
+    return route.fulfill({ status: 404, body: "not found" });
+  };
+  if (!found) return notFound();
+  return route.fulfill({ path: found, status: 200 }).catch(notFound);
+}
+
 /** Shoots `file` of `dir` into `path` at `viewport`. `css` is added after the render, to reshape a fixed frame without editing the file. Throws "<file>: ..." when the artboard breaks. */
 export async function shootArtboard(page, dir, file, viewport, path, css = "") {
   const errors = [];
+  const missing = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.route(`${ORIGIN}/**`, async (route) => {
-    const found = artboardPath(dir, new URL(route.request().url()).pathname);
-    if (!found) return route.fulfill({ status: 404, body: "not found" });
-    return route.fulfill({ path: found, status: 200 }).catch(() => route.fulfill({ status: 404, body: "not found" }));
-  });
+  await page.route(`${ORIGIN}/**`, (route) => serveArtboard(route, dir, missing));
   await page.setViewportSize(viewport);
   await page.goto(`${ORIGIN}/${file}`, { waitUntil: "networkidle" });
   await page.waitForFunction(() => document.documentElement.dataset.dc, null, { timeout: 10000 }).catch(() => {
@@ -43,6 +53,7 @@ export async function shootArtboard(page, dir, file, viewport, path, css = "") {
     message: document.documentElement.dataset.dcError,
     html: document.body.innerHTML,
   }));
+  if (missing.length) throw new Error(`${file}: stylesheet not found: ${missing.join(", ")}`);
   if (errors.length) throw new Error(`${file}: page error: ${errors.join("; ")}`);
   if (state !== "done") throw new Error(`${file}: ${message}`);
   const left = leftoversIn(html);
@@ -51,6 +62,25 @@ export async function shootArtboard(page, dir, file, viewport, path, css = "") {
   // A viewport as tall as the page, like the app shot.
   await page.setViewportSize({ ...viewport, height: await page.evaluate(() => document.documentElement.scrollHeight) });
   await page.screenshot({ path });
+}
+
+/** The failure message when the page is wider than the viewport, naming the widest offender; null when it fits. `measured` is {scrollWidth, innerWidth, offenders: [{description, right}]}. */
+export function overflowOf(route, { scrollWidth, innerWidth, offenders }) {
+  if (scrollWidth <= innerWidth) return null;
+  const widest = offenders.reduce((a, b) => (b.right > a.right ? b : a), { description: "unknown", right: 0 });
+  return `${route} scrolls sideways: page is ${scrollWidth}px wide in a ${innerWidth}px viewport; widest element ${widest.description} ends at ${Math.round(widest.right)}px`;
+}
+
+/** Runs in the page: the widths and the elements that end past the viewport. */
+export function measureOverflow() {
+  const offenders = [...document.querySelectorAll("body *")]
+    .map((el) => ({ el, right: el.getBoundingClientRect().right }))
+    .filter(({ right }) => right > window.innerWidth)
+    .map(({ el, right }) => ({
+      description: `<${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ""}${[...el.classList].slice(0, 2).map((c) => `.${c}`).join("")}> "${(el.textContent ?? "").trim().slice(0, 30)}"`,
+      right,
+    }));
+  return { scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth, offenders };
 }
 
 /** One HTML table per heading with App and Design side by side. `images` is { Mobile: [{ route, app, design }] } with URLs; `design` is null without an artboard. One line per heading, so withScreenshots drops it whole on a re-run. */
