@@ -1,6 +1,6 @@
 # Homeowner PWA screens
 
-The approved design for the PWA on Bedrock (epic #882), copied from the design canvas so the agents building it can read it. Each `.dc.html` file is one artboard: its markup is the layout to build, its `<script>` holds the sample data and interactions. They load the canvas's `support.js` runtime, which is not copied, so they do not open in a plain browser; read them as source. The `ui-screenshots` check renders them outside the canvas with its stand-in, `.github/scripts/dc-runtime.js` (ADR 0028).
+The approved design for the PWA on Bedrock (epic #882), copied from the design canvas so the agents building it can read it. Each `.dc.html` file is one artboard: its markup is the layout to build, its `<script>` holds the sample data and interactions. They load the canvas's `support.js` runtime, which is not copied, so they do not open in a plain browser; read them as source. The `ui-screenshots` check renders them outside the canvas with its stand-in, `.github/scripts/dc-runtime.js` (ADR 0028), together with `home.css`, which is copied here and fails the check if it goes missing. `web/e2e/pairs/screens.ts` maps every artboard to a screen of the app or says why it has none; a test fails when a file here has no entry.
 
 This copy is what screens are built and reviewed against. A design change made in the canvas comes here in a pull request before any ticket builds on it.
 
