@@ -219,7 +219,7 @@ for (const l of LOCALES) {
 
     test("a row on the Home tab opens the page, and Back returns to /home", async ({ page }) => {
       await visit(page, "/home");
-      await page.getByRole("region", { name: l.residentsRegion, exact: true }).getByRole("link", { name: /Ana Souza/ }).click();
+      await page.getByRole("region", { name: new RegExp(`^${l.residentsRegion}`) }).getByRole("link", { name: /Ana Souza/ }).click();
       await expect(page).toHaveURL((url) => url.pathname === "/home/residents/resident-2");
       await expect(page.getByRole("heading", { name: "Ana Souza", level: 1 })).toBeFocused();
       await page.getByRole("link", { name: l.back }).click();

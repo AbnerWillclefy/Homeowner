@@ -18,3 +18,9 @@ export function formatAllocationTime(time: string, locale: string): string {
   const at = Date.UTC(1970, 0, 1, Number(match[1]), Number(match[2]));
   return new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(at);
 }
+
+/** The picker's options: every slot, labelled for the locale. A time outside the list (the API refuses one) is shown as it is. */
+export function allocationTimeOptions(locale: string, value: string): { value: string; label: string }[] {
+  const slots = ALLOCATION_TIMES.includes(value) ? ALLOCATION_TIMES : [value, ...ALLOCATION_TIMES];
+  return slots.map((time) => ({ value: time, label: formatAllocationTime(time, locale) }));
+}

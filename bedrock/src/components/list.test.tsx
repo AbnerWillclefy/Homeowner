@@ -50,3 +50,14 @@ it.each([
   expect(el.className).toContain("grid-cols-");
   expect(el.className).toContain("min-h-16");
 });
+
+it("draws the badge after a title that truncates, and a node as the caption", () => {
+  render(
+    <List>
+      <Row title={longTitle} badge={<b>Você</b>} caption={<i>6 dias</i>} />
+    </List>,
+  );
+  expect(screen.getByText(longTitle).className).toContain("truncate");
+  expect(screen.getByText(longTitle).nextElementSibling?.textContent).toBe("Você");
+  expect(screen.getByText("6 dias")).toBeTruthy();
+});

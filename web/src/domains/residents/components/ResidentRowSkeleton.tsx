@@ -1,29 +1,27 @@
 import { SkeletonBar } from "../../../shared/ui/Skeleton";
-import { META_LINE, NAME_LINE, ROW_PADDING } from "./rowLayout";
 
-/** The two placeholder rows that keep the Residents card the height of the common two-person Home. */
+/** The two placeholder rows (`li`, for inside the `List`) that keep the Residents list the height of the common two-person Home. */
 export function ResidentRowsSkeleton({ className = "" }: { className?: string }) {
   return (
-    <ul aria-hidden="true" className={`m-0 list-none p-0 ${className}`}>
-      <ResidentRowSkeleton />
-      <ResidentRowSkeleton />
-    </ul>
+    <>
+      <ResidentRowSkeleton className={className} />
+      <ResidentRowSkeleton className={className} />
+    </>
   );
 }
 
-/** A Residents card row while the list loads: a round Avatar and two lines, at the real row's height. */
-export function ResidentRowSkeleton() {
+/** A Residents row while the list loads: a round Avatar and two lines, at a real Row's height (4rem). */
+export function ResidentRowSkeleton({ className = "" }: { className?: string }) {
   return (
-    <li className={`flex items-center gap-3 border-t border-border/40 first:border-t-0 ${ROW_PADDING}`}>
-      <span className="block size-11 shrink-0 rounded-pill bg-muted/20 motion-safe:animate-pulse" />
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className={`flex items-center ${NAME_LINE}`}>
+    // The grid sits on a child, as a Row's does, so the List's divider adds to the li and not into its height.
+    <li aria-hidden="true" className={`my-0 ${className}`}>
+      <div className="flex min-h-16 items-center gap-4 px-4 py-2">
+        <span className="block size-11 shrink-0 rounded-pill bg-muted/20 motion-safe:animate-pulse" />
+        <span className="flex min-w-0 flex-1 flex-col gap-2">
           <SkeletonBar className="h-4 w-1/3" />
-        </span>
-        <span className={`flex items-center ${META_LINE}`}>
           <SkeletonBar className="h-3 w-1/2" />
         </span>
-      </span>
+      </div>
     </li>
   );
 }
