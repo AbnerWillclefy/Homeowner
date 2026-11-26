@@ -1,112 +1,36 @@
-import { Pencil, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { deleteChore, type Chore, type Failure } from "../api/api";
-import { ButtonRow } from "../../../shared/ui/ButtonRow";
-import { Card } from "../../../shared/ui/Card";
-import { useSubmitOnce } from "../../../shared/ui/useSubmitOnce";
+import { ChevronRight } from "lucide-react";
+import { ChoreTag } from "@homeowner/bedrock/home";
+import type { Chore } from "../api/api";
+import { useShell } from "../../../app/components/ShellContext";
 import { useI18n } from "../../../shared/i18n";
-import { Button } from "../../../shared/ui/Button";
-import { DELETE_FAILURE_KEY } from "../logic/failureMessages";
-import { ChoreFacts } from "./ChoreFacts";
-import { ResponsibleFact } from "./ResponsibleFact";
-
-type DeleteState =
-  | { kind: "idle" }
-  /** Step two: the Resident has asked to delete and has not yet confirmed. */
-  | { kind: "confirming"; failed?: Failure["kind"] }
-  | { kind: "deleting" };
-
-interface Props {
-  chore: Chore;
-  onEdit(): void;
-  onDeleted(id: string): void;
-}
+import { categoryLabel, labelText } from "../../profile/logic/labels";
+import { choreCategory } from "../logic/choreCategory";
+import { choreRowMeta } from "../logic/facts";
 
 /**
- * One Chore in its Category's group: the name with Edit and a two-step inline Delete (ask, then confirm), then
- * its facts.
+ * One Chore in the list: the Category as a tag (its name as text, in its `chore-*` colour), the name and a line of
+ * facts. A tap opens the Chore's Sheet, where it is edited or deleted. The Responsible Resident comes from the
+ * Shell's shared list and is left out for Nobody, for a Resident who left and while the list loads.
  */
-export function ChoreItem({ chore, onEdit, onDeleted }: Props) {
+export function ChoreItem({ chore, onOpen }: { chore: Chore; onOpen(): void }) {
   const { t } = useI18n();
-  const [remove, setRemove] = useState<DeleteState>({ kind: "idle" });
-  const deleteRef = useRef<HTMLButtonElement>(null);
-  const keepRef = useRef<HTMLButtonElement>(null);
-  const confirming = remove.kind !== "idle";
-
-  // Step two lands on the safe choice, and cancelling returns to the button that opened it.
-  useEffect(() => {
-    if (confirming) keepRef.current?.focus();
-  }, [confirming]);
-
-  // The guard ignores a second tap in the same tick, before `deleting` has rendered.
-  const { run: confirmDelete } = useSubmitOnce(async () => {
-    setRemove({ kind: "deleting" });
-    const result = await deleteChore(chore.id);
-    // A Chore that is already gone is the outcome the Resident asked for.
-    if (result.kind === "ok" || result.kind === "none") return onDeleted(chore.id);
-    setRemove({ kind: "confirming", failed: result.kind });
-  });
-
-  function cancel() {
-    setRemove({ kind: "idle" });
-    // The button is mounted again by the time the browser handles this.
-    requestAnimationFrame(() => deleteRef.current?.focus());
-  }
-
+  const { residents } = useShell();
+  const resident = chore.responsibleResidentId ? residents.byResidentId(chore.responsibleResidentId) : undefined;
+  const category = choreCategory(chore.category);
   return (
-    <li className="my-0 list-none">
-      <Card className="flex flex-col gap-3">
-        <div className="flex items-center gap-3">
-          <h4 className="my-0 min-w-0 flex-1 text-lg font-bold leading-snug [overflow-wrap:anywhere]">{chore.name}</h4>
-          {!confirming && (
-            <div className="flex shrink-0 gap-2">
-              <Button variant="secondary" icon aria-label={t("chores.item.edit.label", { name: chore.name })} onClick={onEdit}>
-                <Pencil size={20} aria-hidden="true" />
-              </Button>
-              <Button
-                ref={deleteRef}
-                variant="secondary"
-                icon
-                aria-label={t("chores.item.delete.label", { name: chore.name })}
-                onClick={() => setRemove({ kind: "confirming" })}
-              >
-                <Trash2 size={20} aria-hidden="true" />
-              </Button>
-            </div>
-          )}
-        </div>
-
-<ChoreFacts chore={chore}>
-          <ResponsibleFact residentId={chore.responsibleResidentId} />
-        </ChoreFacts>
-
-        {confirming && (
-          <div
-            role="group"
-            aria-label={t("chores.item.delete.label", { name: chore.name })}
-            className="flex flex-col gap-2 border-t border-border/40 pt-3"
-          >
-            <p className="my-0">{t("chores.delete.prompt", { name: chore.name })}</p>
-            {remove.kind === "confirming" && remove.failed && (
-              <p role="alert" className="my-0 font-semibold text-danger">
-                {t(DELETE_FAILURE_KEY[remove.failed])}
-              </p>
-            )}
-            <ButtonRow
-              start={
-                <Button ref={keepRef} variant="secondary" disabled={remove.kind === "deleting"} onClick={cancel}>
-                  {t("chores.delete.cancel")}
-                </Button>
-              }
-              end={
-                <Button variant="danger" pending={remove.kind === "deleting"} onClick={() => void confirmDelete()}>
-                  {t("chores.delete.confirm")}
-                </Button>
-              }
-            />
-          </div>
-        )}
-      </Card>
+    <li className="my-0 list-none border-t border-border/40 first:border-t-0">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="grid min-h-16 w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-0 bg-transparent px-4 py-3 text-left text-text hover:bg-surface-hover active:bg-surface-hover motion-safe:transition-colors motion-safe:duration-150"
+      >
+        <span className="flex min-w-0 flex-col gap-1 [overflow-wrap:anywhere]">
+          <span className="font-semibold">{chore.name}</span>
+          <ChoreTag size="sm" category={category} label={labelText(t, categoryLabel(category.id))} />
+          <span className="text-sm text-muted">{choreRowMeta(chore, t, resident ? (resident.you ? t("home.residents.you") : resident.name) : null)}</span>
+        </span>
+        <ChevronRight size={20} aria-hidden="true" className="text-muted" />
+      </button>
     </li>
   );
 }

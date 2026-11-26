@@ -1,7 +1,7 @@
 import type { ChoreInput } from "../api/api";
 import { WEEKDAYS } from "../../profile/api/api";
 import type { Locale, Translate } from "../../../shared/i18n";
-import { categoryLabel, importanceLabel, labelText, type Label } from "../../profile/logic/labels";
+import { categoryLabel, demandLabel, importanceLabel, labelText, type Label } from "../../profile/logic/labels";
 import { DISPLAY_WEEKDAYS, weekdayLabel } from "../../profile/logic/weekdays";
 import { effortName } from "./effortLevels";
 import { intervalText } from "./intervalPresets";
@@ -30,4 +30,17 @@ export function choreWeekdays(chore: Pick<ChoreInput, "allowedWeekdays">, locale
   return DISPLAY_WEEKDAYS.filter((day) => chore.allowedWeekdays.includes(WEEKDAYS.indexOf(day)))
     .map((day) => weekdayLabel(day, locale))
     .join(", ");
+}
+
+/**
+ * The line under a Chore's name in the list: its repeat, its Effort, the Demands it asks for, and who it is reserved
+ * for. `responsibleName` is null for Nobody, for a Resident the Home no longer holds, and while the list loads.
+ */
+export function choreRowMeta(chore: ChoreInput, t: Translate, responsibleName: string | null): string {
+  return [
+    intervalText(t, chore.intervalDays),
+    effortName(t, chore.baseEffort),
+    ...chore.demands.map((id) => labelText(t, demandLabel(id))),
+    ...(responsibleName ? [t("chores.item.responsible", { name: responsibleName })] : []),
+  ].join(" · ");
 }

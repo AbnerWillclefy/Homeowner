@@ -239,8 +239,23 @@ export const ptBR: Messages = {
     "Algo deu errado ao carregar os seus afazeres. Tente de novo daqui a pouco.",
   "chores.notSignedIn": "Seu login terminou. Entre de novo para continuar.",
   "chores.retry": "Tentar de novo",
-  "chores.empty": "Nenhum afazer ainda.",
   "chores.add": "Adicionar afazer",
+  "chores.menu.new": "Novo afazer",
+  "chores.menu.catalog": "Do Catálogo",
+  "chores.search.label": "Buscar afazer",
+  "chores.search.clear": "Limpar a busca",
+  "chores.filter.label": "Filtrar por categoria",
+  "chores.filter.all": "Todas",
+  "chores.empty.subtitle": "Nenhum afazer ainda",
+  "chores.empty.title": "O que precisa ser feito no seu lar?",
+  "chores.empty.message":
+    "Cada afazer vira tarefas no plano do dia, divididas pela energia de cada morador. Adicione o primeiro ou comece pelo Catálogo, no botão de mais.",
+  "chores.noResults.title": "Nenhum afazer encontrado",
+  "chores.noResults.message": "Tente outro nome ou outra categoria.",
+  "chores.noResults.clear": "Limpar filtros",
+  "chores.sheet.close": "Fechar",
+  "chores.form.delete": "Excluir afazer",
+  "chores.undo.delete": "{name} excluído. As tarefas de hoje saem do plano.",
   "effort.level.very_light": "Muito leve",
   "effort.level.light": "Leve",
   "effort.level.medium": "Médio",
@@ -260,10 +275,6 @@ export const ptBR: Messages = {
   "chores.item.weekdays": "Só em {days}",
   "chores.item.buildsUp": "Acumula enquanto não é feito",
   "chores.item.edit.label": "Editar {name}",
-  "chores.item.delete.label": "Excluir {name}",
-  "chores.delete.prompt": "Excluir {name}? Isso não pode ser desfeito.",
-  "chores.delete.confirm": "Sim, excluir",
-  "chores.delete.cancel": "Manter",
   "chores.delete.offline":
     "O afazer não foi excluído porque o Homeowner não consegue falar com o serviço. Confira a sua conexão e tente de novo.",
   "chores.delete.error":
@@ -822,7 +833,6 @@ export const ptBR: Messages = {
   "catalog.review.lists.loading": "Preparando a edição dos afazeres...",
   "catalog.review.lists.error":
     "Algo deu errado ao carregar as listas necessárias para editar afazeres. Tente de novo em instantes.",
-  "chores.addFromCatalog": "Adicionar do Catálogo",
   "chores.catalog.heading": "Adicionar do Catálogo",
   "chores.catalog.loading": "Carregando o Catálogo...",
   "chores.catalog.load.offline":

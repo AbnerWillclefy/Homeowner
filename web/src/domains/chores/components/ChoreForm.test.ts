@@ -189,3 +189,47 @@ describe("ChoreForm Responsible field in pt-BR", () => {
     expect(html).toMatch(/<option value="" selected="">Ninguém<\/option>|<option value="">Ninguém<\/option>/);
   });
 });
+
+describe("ChoreForm in a Sheet", () => {
+  const { render } = mountWithI18n();
+  const sheet = () => document.body.querySelector<HTMLElement>("[role=dialog]")!;
+  const button = (name: string) => [...sheet().querySelectorAll("button")].find((b) => b.textContent?.includes(name))!;
+  const closeButton = () => button("Close");
+  const open = (over: Record<string, unknown> = {}) => {
+    vi.stubGlobal("matchMedia", () => ({ matches: true, addEventListener() {}, removeEventListener() {} }));
+    render(createElement(ChoreForm, { ...props(over), inDialog: true }));
+  };
+
+  it("is a dialog named by the heading, with Save pinned outside the form and tied to it", () => {
+    open({ mode: "edit" });
+    expect(sheet().getAttribute("aria-labelledby")).toBeTruthy();
+    expect(sheet().textContent).toContain("Edit Chore");
+    const save = button("Save Chore");
+    expect(save.getAttribute("type")).toBe("submit");
+    expect(sheet().querySelector("form")!.id).toBe(save.getAttribute("form"));
+    expect(sheet().querySelector("form")!.contains(save)).toBe(false);
+  });
+
+  it("offers Delete only when the caller can delete", () => {
+    open();
+    expect(button("Delete Chore")).toBeUndefined();
+    const onDelete = vi.fn();
+    open({ onDelete });
+    act(() => button("Delete Chore").click());
+    expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes through its close button when idle, and stays open while the write is out", async () => {
+    const onCancel = vi.fn();
+    let answer!: (r: { kind: "ok"; chore: ReturnType<typeof chore> }) => void;
+    open({ onCancel, save: () => new Promise((resolve) => (answer = resolve)) });
+    act(() => closeButton().click());
+    expect(onCancel).toHaveBeenCalledTimes(1);
+
+    await act(async () => void sheet().querySelector("form")!.requestSubmit());
+    act(() => closeButton().click());
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(sheet()).not.toBeNull();
+    await act(async () => answer({ kind: "ok", chore: chore("c1", "Lavar a louça") }));
+  });
+});

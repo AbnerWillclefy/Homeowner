@@ -14,6 +14,10 @@ type MenuProps = {
   closeLabel: string;
   /** `danger` items are drawn last, after a separator. */
   items: MenuItem[];
+  /** The trigger's icon; the ellipsis when omitted. */
+  icon?: LucideIcon;
+  /** Draws the trigger as a screen's primary action: a round brand button, as `PageHeader`'s `action` does on a phone. */
+  primary?: boolean;
 };
 
 // Exported so other dropdowns (Select) look the same.
@@ -28,7 +32,7 @@ const rowClass =
  * Rare actions behind an icon button: a dropdown from the tablet breakpoint up,
  * the same items in the Sheet below it.
  */
-export function Menu({ label, closeLabel, items }: MenuProps) {
+export function Menu({ label, closeLabel, items, icon: TriggerIcon = Ellipsis, primary }: MenuProps) {
   // Duplicates --bp-tablet in tokens.css: matchMedia cannot read custom properties.
   const wide = useMediaQuery("(min-width: 768px)");
   const [open, setOpen] = useState(false);
@@ -37,8 +41,12 @@ export function Menu({ label, closeLabel, items }: MenuProps) {
   const separated = normal.length > 0 && danger.length > 0;
 
   const trigger = (
-    <Button variant="ghost" size="sm">
-      <Ellipsis className="size-4" aria-hidden />
+    <Button
+      variant={primary ? "primary" : "ghost"}
+      size={primary ? "lg" : "sm"}
+      className={primary ? "rounded-full px-0 size-control-lg" : undefined}
+    >
+      <TriggerIcon className="size-4" aria-hidden />
       <span className="sr-only">{label}</span>
     </Button>
   );

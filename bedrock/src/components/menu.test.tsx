@@ -56,4 +56,12 @@ describe("Menu", () => {
     expect(onEdit).toHaveBeenCalledOnce();
     expect(screen.queryByRole("dialog")).toBeNull();
   });
+
+  it("primary: the trigger is a round brand button with the icon given", () => {
+    stubViewport(true);
+    render(<Menu label="Adicionar" closeLabel="Fechar" icon={Pencil} primary items={[{ label: "Novo", onSelect: () => {} }]} />);
+    const trigger = screen.getByRole("button", { name: "Adicionar" });
+    expect(trigger.className).toContain("bg-brand");
+    expect(trigger.className).toContain("rounded-full");
+  });
 });
