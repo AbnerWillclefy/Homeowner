@@ -24,8 +24,15 @@ export const OPENERS: Record<State, (page: Page) => Promise<void>> = {
     await button(page, ptBR["checkin.cancel"]).click();
     await dialog(page).waitFor({ state: "hidden" });
   },
+  // The Task cards' name buttons are the h3's buttons; the first card is the first of your own Tasks.
+  task: async (page) => {
+    await page.locator("article h3 button").first().click();
+    await opened(page);
+  },
+  // Swap is in the ⋯ menu of another Resident's card, which comes before the pool's in the page.
   swap: async (page) => {
-    await button(page, new RegExp(`^${ptBR["dayplan.action.swap"]}`)).first().click();
+    await button(page, new RegExp(`^${ptBR["dayplan.task.menu"].replace(" {task}", " ")}`)).first().click();
+    await button(page, ptBR["dayplan.action.swap"]).click();
     await opened(page);
   },
   streak: async (page) => {

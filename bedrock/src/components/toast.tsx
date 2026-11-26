@@ -58,10 +58,11 @@ export function Toast({ open, onOpenChange, tone, title, description, closeLabel
       // or screen-reader Resident must be able to reach "Desfazer". It closes on the action,
       // the close button, Escape or a swipe. Radix pauses the 5s timer on hover and focus.
       duration={action ? Infinity : 5000}
-      className="br-toast flex min-h-control-lg items-start gap-2 rounded-md border border-border bg-surface-raised p-2 shadow-(--shadow-overlay) duration-(--duration-base) motion-safe:data-[state=closed]:animate-out motion-safe:data-[state=closed]:fade-out-0 motion-safe:data-[state=open]:animate-in motion-safe:data-[state=open]:fade-in-0 motion-safe:data-[state=open]:slide-in-from-bottom-2 motion-safe:data-[swipe=move]:translate-x-(--radix-toast-swipe-move-x)"
+      className="br-toast flex min-h-control-lg flex-wrap items-start gap-2 rounded-md border border-border bg-surface-raised p-2 shadow-(--shadow-overlay) duration-(--duration-base) motion-safe:data-[state=closed]:animate-out motion-safe:data-[state=closed]:fade-out-0 motion-safe:data-[state=open]:animate-in motion-safe:data-[state=open]:fade-in-0 motion-safe:data-[state=open]:slide-in-from-bottom-2 motion-safe:data-[swipe=move]:translate-x-(--radix-toast-swipe-move-x)"
     >
       {icons[tone]}
-      <div className="flex min-w-0 flex-1 flex-col self-center">
+      {/* min-w-36, not min-w-0: at the largest text size the buttons wrap under the words instead of squeezing them to nothing. */}
+      <div className="flex min-w-36 flex-1 flex-col self-center">
         <ToastPrimitive.Title className="body-strong text-text">{title}</ToastPrimitive.Title>
         {description && <ToastPrimitive.Description className="body text-text-muted">{description}</ToastPrimitive.Description>}
       </div>

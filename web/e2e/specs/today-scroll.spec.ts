@@ -24,7 +24,8 @@ const LOCALES = [
     refuse: (task: string) => `Recusar ${task}`,
     take: (task: string) => `Pegar ${task}`,
     done: (task: string) => `Concluir ${task}`,
-    swap: (task: string) => `Trocar ${task}`,
+    more: (task: string) => `Mais ações, ${task}`,
+    swapItem: "Trocar",
     acceptAll: /^Aceitar todas as \d+ tarefas$/,
     acceptSwap: "Aceitar troca",
     declineSwap: "Recusar troca",
@@ -35,6 +36,8 @@ const LOCALES = [
     submit: "Oferecer troca",
     dialogTitle: "O que você vai dar?",
     outgoing: "Suas ofertas de troca",
+    closeToast: "Dispensar mensagem",
+    alreadyDone: "Essa tarefa já foi concluída. Ela está em Concluídas hoje.",
   },
 ] as const;
 
@@ -192,17 +195,19 @@ for (const l of LOCALES) {
         { once: true },
       );
       await launchApp(page, baseURL!);
-      // The calm status line appears at the top of the section, above the screen. Chromium's scroll anchoring moves
-      // `scrollY` by its height to keep what the Resident is looking at still, so the exact check is that Mine 4,
-      // the card above the one that went, stays at the same place on screen.
+      // Concluir is sent when its toast closes, so the stale answer comes then and is said in an error toast.
+      // Mine 4, the card above the one that went, stays at the same place on screen all along.
       const mine4 = listItem(page, "Mine 4");
       const done = byName(page, l.done("Mine 5"));
       await done.evaluate((element) => element.scrollIntoView({ block: "center" }));
       const top = await topOf(mine4);
       await done.click();
       await expect(done).toHaveCount(0);
-      await expect(page.getByRole("status").filter({ hasText: /\S/ })).toBeVisible();
       await expect(page.locator("#today-heading")).toBeFocused();
+      expect(fakeApi.requests.filter((r) => r.path.endsWith("/complete"))).toHaveLength(0);
+      await page.getByRole("button", { name: l.closeToast }).click();
+      await expect(page.getByText(l.alreadyDone)).toBeVisible();
+      expect(fakeApi.requests.filter((r) => r.path.endsWith("/complete"))).toHaveLength(1);
       expect(await topOf(mine4)).toBe(top);
     });
 
@@ -228,32 +233,34 @@ for (const l of LOCALES) {
       // An offer already exists, so "Your offers" is in the page before and after: only its card count changes.
       withSwaps(fakeApi.state.dayPlan!, "outgoing", 1);
       await launchApp(page, baseURL!);
-      const before = await press(page, byName(page, l.swap("Theirs 3")));
+      const before = await press(page, byName(page, l.more("Theirs 3")));
+      await byName(page, l.swapItem).click();
       const dialog = page.getByRole("dialog", { name: l.dialogTitle });
       await expect(dialog).toBeVisible();
       await dialog.locator("label").filter({ hasText: "Mine 5" }).click();
       await dialog.getByRole("button", { name: l.submit }).click();
       await expect(dialog).toHaveCount(0);
       await expect(page.getByRole("heading", { level: 3, name: l.outgoing })).toBeVisible();
-      await expect(byName(page, l.swap("Theirs 3"))).toHaveCount(0);
+      await expect(byName(page, l.more("Theirs 3"))).toHaveCount(0);
       await expectStill(page, before);
     });
 
     test("focus that is still inside the section stays where it is", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
-      // Pool 3's link to its Chore is not a button, so it is not disabled while the action runs.
-      const link = listItem(page, "Pool 3").getByRole("link");
-      await link.evaluate((element) => element.scrollIntoView({ block: "center" }));
-      await link.focus();
-      const before = await scrollY(page);
-      expect(before).toBeGreaterThan(40);
+      // Pool 1's name button opens its Sheet, so it is not disabled while an action runs.
+      const opener = page.getByRole("button", { name: "Pool 1", exact: true });
+      await opener.evaluate((element) => element.scrollIntoView({ block: "center" }));
+      await opener.focus();
+      const pool1 = listItem(page, "Pool 1");
+      const top = await topOf(pool1);
       // A click from the page's own script, so the pointer does not move focus to the button.
-      // Pool 4 sits below the link, so nothing above it changes height (that would make Chromium re-anchor).
-      await byName(page, l.done("Pool 4")).evaluate((element) => (element as HTMLElement).click());
-      await expect(byName(page, l.done("Pool 4"))).toHaveCount(0);
-      await expect(page.getByRole("heading", { level: 3, name: new RegExp(l.doneHeading) })).toBeVisible();
-      await expect(link).toBeFocused();
-      expect(await scrollY(page)).toBe(before);
+      // Pool 2 sits below Pool 1, but taking it adds a card to Your Tasks, above the screen, which Chromium's scroll
+      // anchoring answers by moving `scrollY`: Pool 1 itself stays at the same place on screen.
+      await byName(page, l.take("Pool 2")).evaluate((element) => (element as HTMLElement).click());
+      await expect(byName(page, l.take("Pool 2"))).toHaveCount(0);
+      await expect(byName(page, l.done("Pool 2"))).toBeVisible();
+      await expect(opener).toBeFocused();
+      expect(Math.abs((await topOf(pool1)) - top)).toBeLessThan(1);
     });
   });
 }

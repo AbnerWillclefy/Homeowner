@@ -18,7 +18,8 @@ export type Data =
 export const STATES = [
   "check-in", // the Check-in dialog (it opens by itself on an unchecked day)
   "check-in-later", // the Check-in dialog closed with "Agora não", so the hero asks the question
-  "swap", // the dialog to offer a Swap
+  "task", // the Sheet of the first Task card
+  "swap", // the dialog to offer a Swap, from the menu of another Resident's Task
   "streak", // the Streak dialog
   "voice", // the voice panel
   "start-choice", // the start choice, after joining through an Invite
@@ -58,7 +59,7 @@ export const SCREENS: Record<string, Entry> = {
   TodayLoading: at("/", TODAY, { data: "loading" }),
   TodayOffline: at("/", TODAY, { data: "offline" }),
   CheckIn: at("/", ["checkin"], { data: "unchecked", state: "check-in" }),
-  TaskSheet: none("The Task opens a Sheet with the full why in #892."),
+  TaskSheet: at("/", TODAY, { state: "task" }),
   SwapSheet: at("/", TODAY, { state: "swap" }),
   StreakSheet: at("/", ["streak"], { state: "streak" }),
   VoiceSheet: at("/", ["voice"], { state: "voice" }),

@@ -16,16 +16,17 @@ export function refusedInPlan(plan: DayPlan, taskId: string): DayPlan {
 }
 
 /**
- * The plan as it looks once the caller completed one of their Tasks at `completedAt` (an instant): it leaves `mine`
- * and ends `doneToday`, without a `completionId` (the server has not made the Completion yet, so there is no
- * Change time on it). A Task that is not in `mine` leaves the plan as it is.
+ * The plan as it looks once the caller completed a Task at `completedAt` (an instant): from `mine`, or from the
+ * pool (the one-step Done), it ends `doneToday`, without a `completionId` (the server has not made the Completion
+ * yet, so there is no Change time on it). A Task that is in neither list leaves the plan as it is.
  */
 export function doneInPlan(plan: DayPlan, taskId: string, completedAt: string): DayPlan {
-  const task = plan.mine.find((t) => t.id === taskId);
+  const task = plan.mine.find((t) => t.id === taskId) ?? plan.pool.find((t) => t.id === taskId);
   if (!task) return plan;
   return {
     ...plan,
     mine: plan.mine.filter((t) => t.id !== taskId),
+    pool: plan.pool.filter((t) => t.id !== taskId),
     doneToday: [
       ...plan.doneToday,
       { id: task.id, choreName: task.choreName, completedAt, category: task.category, with: task.with ?? [] },

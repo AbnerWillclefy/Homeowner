@@ -57,8 +57,15 @@ describe("doneInPlan", () => {
     expect(next.doneToday.map((d) => d.id)).toEqual(["e", "a"]);
   });
 
-  it("returns the plan as it is for a Task that is not in mine", () => {
-    const plan = dayPlan({ pool: [task("p")] });
-    expect(doneInPlan(plan, "p", NOW)).toBe(plan);
+  it("moves a pool Task, done in one step, from the pool to doneToday", () => {
+    const next = doneInPlan(dayPlan({ mine: [task("a")], pool: [task("p"), task("q")] }), "p", NOW);
+    expect(next.pool.map((t) => t.id)).toEqual(["q"]);
+    expect(next.mine.map((t) => t.id)).toEqual(["a"]);
+    expect(next.doneToday.map((d) => d.id)).toEqual(["p"]);
+  });
+
+  it("returns the plan as it is for a Task that is in neither list", () => {
+    const plan = dayPlan({ others: [{ residentId: "r2", tasks: [task("o")] }] });
+    expect(doneInPlan(plan, "o", NOW)).toBe(plan);
   });
 });
