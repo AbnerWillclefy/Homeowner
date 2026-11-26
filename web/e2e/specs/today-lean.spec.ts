@@ -4,7 +4,7 @@ import { RESIDENT_EMAIL, signedInResident, withExplanation } from "../mocks/samp
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
 
-// What this covers: the lean Today. Under its page header ("Your Tasks", with the Energy pill, Streak and mic at its end) it opens with the day's summary
+// What this covers: the lean Today. Under its page header ("Today", with the Streak and mic at its end, then the hero card) it opens with the day's summary
 // as one muted line (plain text, not a control), then the Tasks. The summary names its source as visually hidden
 // text, shows nothing before planning or on a rejected run, and wraps at 320px with a long headline. The greeting,
 // the Energy card and the Check-in card are gone. Each test runs in pt-BR.
@@ -21,7 +21,7 @@ const LOCALES = [
     detail: "Duas tarefas pequenas, o resto pode esperar.",
     llm: "Escrito pelo assistente",
     template: "Resumo padrão dos motivos de hoje",
-    mine: "Suas tarefas",
+    mine: "Hoje",
     gone: [/Bom dia|Boa tarde|Boa noite/, "Como você está hoje?", "Mudar", /^Energia \d/],
   },
 ] as const;

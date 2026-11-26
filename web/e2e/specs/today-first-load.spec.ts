@@ -18,12 +18,13 @@ import { launchApp } from "../pages/launch";
 const LOCALES = [
   {
     locale: "pt-BR",
-    mine: "Suas tarefas",
+    mine: "Hoje",
     headline: "Um dia leve para você",
     streak: /^Sequência: /,
-    // Any state of the pill: the fake's day is checked in, so it shows the Energy ("Energia hoje: 8. Mudar check-in").
-    pill: /check-in/i,
-    unavailable: "Energia indisponível. Tentar de novo",
+    hero: "Seu dia",
+    // The fake's day is checked in, so the hero card shows the Energy chip ("Energia: normal. Mudar").
+    chip: /^Energia: /,
+    unavailable: "Energia indisponível.",
     retry: "Tentar de novo",
     today: "Hoje",
     chores: "Afazeres",
@@ -88,7 +89,8 @@ for (const l of LOCALES) {
     const mine = (page: Page) => page.getByRole("heading", { level: 1, name: l.mine });
     // The one muted summary line under the title: plain text, no longer a button.
     const summary = (page: Page) => page.getByText(l.headline);
-    const pill = (page: Page) => page.getByTestId("today-tools").getByRole("button", { name: l.pill });
+    const hero = (page: Page) => page.getByRole("region", { name: l.hero });
+    const chip = (page: Page) => hero(page).getByRole("button", { name: l.chip });
     const streak = (page: Page) => page.getByRole("button", { name: l.streak });
     const task = (page: Page) => page.getByText("Wash the dishes", { exact: true });
     const skeleton = (page: Page) => page.locator(SKELETON);
@@ -150,29 +152,26 @@ for (const l of LOCALES) {
           });
         }
 
-        test("the Check-in held: the pill reserves its box from the first frame and fills it without moving the header", async ({ page, baseURL }) => {
+        test("the Check-in held: the skeleton holds the hero card's box, and the card fills it without moving the Tasks", async ({ page, baseURL }) => {
           const checkIn = hold(page, /\/home\/check-in$/);
           await launchApp(page, baseURL!);
 
-          // The bar is up with the Streak while the Check-in is held; the pill's slot already has its final box.
+          // The header is up with the Streak while the Check-in is held; the skeleton already has the hero's box.
           await expect(streak(page)).toBeVisible();
           await page.waitForTimeout(400);
-          const slot = page.locator('[data-slot="energy"]');
-          const loading = (await slot.boundingBox())!;
+          const reserved = (await page.getByTestId("hero-skeleton").boundingBox())!;
           const barLoading = (await page.getByTestId("today-tools").boundingBox())!;
           const flame = (await streak(page).boundingBox())!;
-          expect(loading.width).toBeGreaterThanOrEqual(44);
-          expect(loading.height).toBeGreaterThanOrEqual(44);
-          await expect(page.getByTestId("today-tools").getByRole("button", { name: l.pill })).toHaveCount(0);
+          expect(reserved.height).toBeGreaterThanOrEqual(152);
+          await expect(hero(page)).toHaveCount(0);
 
           checkIn.release();
-          const pill = page.getByTestId("today-tools").getByRole("button", { name: l.pill });
-          await expect(pill).toBeVisible();
-          const loaded = (await slot.boundingBox())!;
-          const barLoaded = (await page.getByTestId("today-tools").boundingBox())!;
-          expect(loaded).toEqual(loading);
-          expect(barLoaded).toEqual(barLoading);
+          await expect(chip(page)).toBeVisible();
+          await expect(page.getByTestId("hero-skeleton")).toHaveCount(0);
+          expect((await page.getByTestId("today-tools").boundingBox())!).toEqual(barLoading);
           expect(await streak(page).boundingBox()).toEqual(flame);
+          // The card takes the box the skeleton held, so the Task cards below stay where they were.
+          expect((await hero(page).boundingBox())!.height).toBeGreaterThanOrEqual(reserved.height - 8);
           await page.waitForTimeout(500);
           expect(await cls(page)).toBeLessThan(0.1);
         });
@@ -223,18 +222,18 @@ for (const l of LOCALES) {
         await expect(skeleton(page)).toHaveCount(0);
       });
 
-      test("the Check-in: only the pill says it is unavailable, with the Tasks shown and nothing moving", async ({ page, baseURL, fakeApi }) => {
+      test("the Check-in: only the hero card says it is unavailable, with the Tasks shown and nothing moving", async ({ page, baseURL, fakeApi }) => {
         await observe(page);
         fakeApi.override("GET /home/check-in", json(500, { error: "boom" }));
         await launchApp(page, baseURL!);
 
         await expect(mine(page)).toBeVisible();
-        await expect(page.getByTestId("today-tools").getByRole("button", { name: l.unavailable })).toBeVisible();
+        await expect(hero(page).getByRole("alert")).toHaveText(l.unavailable);
         await expect(task(page)).toBeVisible();
         await expect(streak(page)).toBeVisible();
         await expect(skeleton(page)).toHaveCount(0);
-        // Not a region on Today: no alert on the page for the Check-in.
-        await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toHaveCount(0);
+        // The one alert on the page is the hero card's, and the Day Plan's section has none.
+        await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toHaveCount(1);
         await page.waitForTimeout(500);
         expect(await cls(page)).toBeLessThan(0.1);
       });
@@ -245,7 +244,7 @@ for (const l of LOCALES) {
 
         await expect(page.getByRole("alert").filter({ hasText: /\S/ })).toBeVisible();
         await expect(mine(page)).toBeVisible();
-        await expect(pill(page)).toBeVisible();
+        await expect(chip(page)).toBeVisible();
         await expect(streak(page)).toBeVisible();
         await expect(skeleton(page)).toHaveCount(0);
 
@@ -254,8 +253,8 @@ for (const l of LOCALES) {
         await page.getByRole("button", { name: l.retry }).click();
         await expect(mine(page)).toBeVisible();
         await expect(task(page)).toBeVisible();
-        // The pill and the flame stayed where they were.
-        await expect(pill(page)).toBeVisible();
+        // The chip and the flame stayed where they were.
+        await expect(chip(page)).toBeVisible();
         await expect(streak(page)).toBeVisible();
       });
     });

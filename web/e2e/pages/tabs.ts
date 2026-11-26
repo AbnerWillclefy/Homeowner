@@ -6,9 +6,9 @@ const h3 = (page: Page, name: string) => page.getByRole("heading", { name, level
 /** What each signed-in tab shows, by role, label and text only. */
 export const tabs = {
   today: {
-    // Today's title is "Your Tasks", the tab's h1.
-    heading: (page: Page) => h1(page, "Your Tasks"),
-    mine: (page: Page) => h1(page, "Your Tasks"),
+    // Today's title is "Today", the tab's h1.
+    heading: (page: Page) => h1(page, "Today"),
+    mine: (page: Page) => h1(page, "Today"),
     others: (page: Page) => h3(page, "Other Residents' Tasks"),
     pool: (page: Page) => h3(page, "Still to do"),
     task: (page: Page, name: string) => page.getByText(name, { exact: true }),

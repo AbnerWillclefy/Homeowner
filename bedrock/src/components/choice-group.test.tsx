@@ -52,3 +52,16 @@ it("draws the leading visual without adding it to the radio's name", () => {
   expect(screen.getByTestId("ico")).toBeTruthy();
   expect(screen.getByRole("radio", { name: "Alta" })).toBeTruthy();
 });
+
+it("trades the surface for the hero's dark wash on a hero card, and inverts the checked choice", () => {
+  const { container } = render(
+    <ChoiceGroup label="Q" value="b" onValueChange={() => {}} onHero>
+      <Choice value="a" label="A" />
+      <Choice value="b" label="B" />
+    </ChoiceGroup>,
+  );
+  const [open, picked] = container.querySelectorAll("label");
+  expect(open.className).toContain("bg-[rgb(0_0_0/0.24)]");
+  expect(open.className).not.toContain("bg-surface");
+  expect(picked.className).toContain("bg-on-hero");
+});

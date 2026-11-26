@@ -45,3 +45,12 @@ export function DayPlanSkeleton({ summary = false }: { summary?: boolean }) {
     </div>
   );
 }
+
+/** The checked-in hero card's box (9.5rem, as on the TodayLoading artboard) and the gap `TodayHero` leaves below it, so the card takes its place without moving the Task cards. */
+export function HeroSkeleton() {
+  return (
+    <div aria-hidden="true" data-testid="hero-skeleton" className="mb-8">
+      <SkeletonCard className="h-38 rounded-xl" />
+    </div>
+  );
+}

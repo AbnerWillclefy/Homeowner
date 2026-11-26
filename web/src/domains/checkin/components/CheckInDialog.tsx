@@ -41,8 +41,11 @@ export function CheckInDialog({
   save: saveCheckIn,
   onClose,
   returnFocusRef,
+  initialLevel = null,
 }: {
   checkIn: CheckIn;
+  /** A level the Resident already picked on Today's hero card: the form opens with it ticked, and still asks for Restrictions. */
+  initialLevel?: Level | null;
   demands: readonly string[];
   /** The planned Effort against today's Energy, or null when there is no figure to show (the Shell decides). */
   planned: { planned: number; energy: number } | null;
@@ -56,7 +59,7 @@ export function CheckInDialog({
   const toast = useToast();
   const formId = useId();
   const idPrefix = useId();
-  const [form, setForm] = useState<CheckInFormState>(() => formFrom(checkIn));
+  const [form, setForm] = useState<CheckInFormState>(() => formFrom(checkIn, initialLevel));
   const [levelMissing, setLevelMissing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveFailure, setSaveFailure] = useState<SaveFailure | null>(null);

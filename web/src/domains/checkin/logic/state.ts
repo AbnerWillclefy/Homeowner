@@ -34,8 +34,8 @@ export function checkInView(state: CheckInState): CheckInView {
 }
 
 /**
- * What the Energy chip on Today says, from the plan's Energy (null until there is a plan) and the Check-in:
- * - unset: no Check-in yet, so the chip invites one.
+ * What Today's Energy note says (it picks the empty list's reason; the hero card shows the level itself), from the plan's Energy (null until there is a plan) and the Check-in:
+ * - unset: no Check-in yet, so the hero card asks the Energy level.
  * - drained: the Resident checked in as Drained, which gives Energy 0, so this is checked before the value.
  * - energy: points to show.
  * - no-baseline: Energy 0 without Drained, so the Resident has no Baseline for the day.
@@ -43,7 +43,7 @@ export function checkInView(state: CheckInState): CheckInView {
  */
 export type EnergyNote = "unset" | "drained" | "energy" | "no-baseline" | "pending";
 
-/** What the chip and the empty state need to know of today's Check-in. */
+/** What the hero card and the empty state need to know of today's Check-in. */
 export type CheckInSummary = { checkedIn: boolean; level: Level | null };
 
 export function energyNote(energy: number | null, checkIn: CheckInSummary): EnergyNote {

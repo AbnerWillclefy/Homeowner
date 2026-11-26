@@ -6,10 +6,9 @@ import { uncheckedDay } from "../mocks/handlers/today";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { launchApp, visit } from "../pages/launch";
-import { shell } from "../pages/shell";
 
 // What this covers: the Check-in dialog opening by itself on Today when the day has no Check-in. It opens on a cold
-// start; "Agora não" / "Not now" and Escape close it, the pill keeps the muted "?", and it stays closed on
+// start; "Agora não" and Escape close it, the hero card keeps asking the Energy question and gets focus back, and it stays closed on
 // the same day (switching tabs, resuming) until the next launch; a new Home day opens it again; a saved Check-in
 // or any tab but Today never opens it; it waits behind the Invite, the rating step and the start choice. Each
 // test runs in pt-BR.
@@ -18,7 +17,9 @@ const LOCALES = [
   {
     locale: "pt-BR",
     wordmark: "Check-in",
-    unset: "Fazer check-in",
+    hero: "Seu dia",
+    question: "Como está a sua energia hoje?",
+    restrictions: "Alguma restrição só hoje?",
     notNow: "Agora não",
     save: "Salvar",
     chores: "Afazeres",
@@ -44,7 +45,8 @@ for (const l of LOCALES) {
     });
 
     const dialog = (page: Page) => page.getByRole("dialog", { name: l.wordmark });
-    const pill = (page: Page) => shell.todayTools(page).getByRole("button", { name: l.unset, exact: true });
+    const hero = (page: Page) => page.getByRole("region", { name: l.hero });
+    const question = (page: Page) => hero(page).getByRole("radiogroup", { name: l.question });
     const tab = (page: Page, name: string) => page.getByRole("navigation").getByRole("link", { name, exact: true });
     /** A resume of the app, sent until the Check-in read it triggers has gone out and answered. */
     async function resume(page: Page) {
@@ -62,28 +64,28 @@ for (const l of LOCALES) {
       await expect(page.getByRole("dialog")).toHaveCount(1);
     });
 
-    test("Not now closes it, the pill stays muted, and switching tabs does not bring it back", async ({ page, baseURL }) => {
+    test("Not now closes it, the hero card keeps the question and gets focus, and switching tabs does not bring it back", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
       await dialog(page).getByRole("button", { name: l.notNow, exact: true }).click();
       await expect(dialog(page)).toBeHidden();
-      await expect(pill(page)).toBeFocused();
-      await expect(pill(page)).toHaveText("?", { useInnerText: true });
+      await expect(hero(page)).toBeFocused();
+      await expect(question(page)).toBeVisible();
 
       await tab(page, l.chores).click();
       await expect(tab(page, l.chores)).toHaveAttribute("aria-current", "page");
       await tab(page, l.today).click();
       await expect(tab(page, l.today)).toHaveAttribute("aria-current", "page");
-      await expect(pill(page)).toBeVisible();
+      await expect(question(page)).toBeVisible();
       await expect(page.getByRole("dialog")).toHaveCount(0);
     });
 
-    test("Escape is the same as Not now, and focus ends on the pill", async ({ page, baseURL }) => {
+    test("Escape is the same as Not now, and focus ends on the hero card", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
       await expect(dialog(page)).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(dialog(page)).toBeHidden();
-      await expect(pill(page)).toBeFocused();
-      await expect(pill(page)).toHaveText("?", { useInnerText: true });
+      await expect(hero(page)).toBeFocused();
+      await expect(question(page)).toBeVisible();
     });
 
     test("a resume on the same day does not reopen it, and a reload does", async ({ page, baseURL }) => {
@@ -111,12 +113,12 @@ for (const l of LOCALES) {
       await expect(dialog(page)).toBeVisible();
     });
 
-    test("an auto-open after one from the pill returns focus to the pill", async ({ page, baseURL, fakeApi }) => {
+    test("an auto-open after one from the hero card returns focus to the hero card", async ({ page, baseURL, fakeApi }) => {
       await launchApp(page, baseURL!);
       await expect(dialog(page)).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(dialog(page)).toBeHidden();
-      await pill(page).click();
+      await hero(page).getByRole("button", { name: l.restrictions, exact: true }).click();
       await expect(dialog(page)).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(dialog(page)).toBeHidden();
@@ -126,21 +128,21 @@ for (const l of LOCALES) {
       await expect(dialog(page)).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(dialog(page)).toBeHidden();
-      await expect(pill(page)).toBeFocused();
+      await expect(hero(page)).toBeFocused();
     });
 
     test("a Check-in saved for today means no dialog on launch", async ({ page, baseURL, fakeApi }) => {
       fakeApi.state.checkIn = { date: "2030-01-15", checkedIn: true, level: "normal", restrictions: [] };
       await launchApp(page, baseURL!);
-      await expect(shell.todayTools(page).getByRole("button", { name: /^(Energia hoje|Energy today)/ })).toBeVisible();
+      await expect(hero(page).getByRole("button", { name: /^Energia: / })).toBeVisible();
       await expect(page.getByRole("dialog")).toHaveCount(0);
     });
 
     for (const path of ["/chores", "/home", "/me"]) {
-      test(`a cold start on ${path} does not open it, and has no pill to reopen it`, async ({ page, baseURL }) => {
+      test(`a cold start on ${path} does not open it, and has no hero card to reopen it`, async ({ page, baseURL }) => {
         await visit(page, new URL(path, baseURL!).toString());
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-        await expect(page.getByRole("button", { name: l.unset, exact: true })).toHaveCount(0);
+        await expect(hero(page)).toHaveCount(0);
         await expect(page.getByRole("dialog")).toHaveCount(0);
       });
     }
@@ -171,13 +173,13 @@ for (const l of LOCALES) {
       await expect(dialog(page)).toBeHidden();
       await resume(page);
       await expect(dialog(page)).toBeHidden();
-      await expect(pill(page)).toBeFocused();
+      await expect(hero(page)).toBeFocused();
     });
 
     test("a failed Check-in read opens nothing",async ({ page, baseURL, fakeApi }) => {
       fakeApi.override("GET /home/check-in", json(500, { error: "boom" }));
       await launchApp(page, baseURL!);
-      await expect(shell.todayTools(page).getByRole("button", { name: /^(Energia indisponível|Energy unavailable)/ })).toBeVisible();
+      await expect(hero(page).getByRole("alert")).toHaveText("Energia indisponível.");
       await expect(page.getByRole("dialog")).toHaveCount(0);
     });
 

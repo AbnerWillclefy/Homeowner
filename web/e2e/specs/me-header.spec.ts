@@ -101,7 +101,7 @@ for (const l of LOCALES) {
         await expect(page.getByText("Bia Costa", { exact: true })).toBeVisible();
         await expect(page.getByText("BC", { exact: true })).toBeVisible();
         await nav(page, l.today).click();
-        await expect(page.getByRole("heading", { level: 1, name: /Suas tarefas|Your Tasks/ })).toBeVisible();
+        await expect(page.getByRole("heading", { level: 1, name: /^Hoje$|^Today$/ })).toBeVisible();
         await expect(page.getByRole("heading", { level: 1, name: /, Bia Costa$/ })).toHaveCount(0);
         expect(await page.evaluate(() => (window as unknown as { __kept?: boolean }).__kept)).toBe(true);
       });

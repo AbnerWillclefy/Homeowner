@@ -1,7 +1,7 @@
 import { SkeletonBar,SkeletonCard, SkeletonPill, SkeletonTile } from "../../../shared/ui/Skeleton";
 import { SkeletonHeader } from "../../../shared/ui/SkeletonHeader";
 import { ChoresSkeleton } from "../../chores/components/ChoresSkeleton";
-import { DayPlanSkeleton } from "../../dayplan/components/DayPlanSkeleton";
+import { DayPlanSkeleton, HeroSkeleton } from "../../dayplan/components/DayPlanSkeleton";
 import { ResidentRowsSkeleton } from "../../residents/components/ResidentRowSkeleton";
 
 function TitledCardSkeleton({ lines }: { lines: number }) {
@@ -46,7 +46,7 @@ function TodayHeaderSkeleton() {
 }
 
 /**
- * Today's final layout, for the wait before the Home answers: the header (a title), the one-line summary and the
+ * Today's final layout, for the wait before the Home answers: the header (a title), the hero card's box, the one-line summary and the
  * Task cards. Once the Home is known `HomeDay` draws the real header and this skeleton's cards. Spaced as `HomeDay` spaces
  * them, by structure and `rem`, so pt-BR and the largest text size grow it as they grow the page.
  */
@@ -54,6 +54,7 @@ export function TodaySkeleton() {
   return (
     <div aria-hidden="true">
       <TodayHeaderSkeleton />
+      <HeroSkeleton />
       <DayPlanSkeleton summary />
     </div>
   );

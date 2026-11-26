@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dueWhen, formatDay, formatTime } from "./format";
+import { dueWhen, formatDay, formatDayTitle, formatTime } from "./format";
 
 describe("formatDay", () => {
   it("writes a calendar date the way the locale does, whatever the device's time zone", () => {
@@ -34,5 +34,16 @@ describe("dueWhen", () => {
     expect(dueWhen("2026-10-11", "2026-10-12")).toBe("past");
     expect(dueWhen("2026-10-12", "2026-10-12")).toBe("today");
     expect(dueWhen("2026-10-13", "2026-10-12")).toBe("later");
+  });
+});
+
+describe("formatDayTitle", () => {
+  it("writes the weekday and date in the locale, starting with a capital", () => {
+    expect(formatDayTitle("2026-11-25", "pt-BR")).toBe("Quarta-feira, 25 de novembro");
+    expect(formatDayTitle("2026-11-25", "en-US")).toBe("Wednesday, November 25");
+  });
+
+  it("returns text it cannot read as it came", () => {
+    expect(formatDayTitle("soon", "pt-BR")).toBe("soon");
   });
 });

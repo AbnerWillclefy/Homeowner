@@ -34,6 +34,13 @@ describe("StreakButton", () => {
     expect(container().querySelector("button")?.getAttribute("aria-label")).toBe("Streak: 3 days");
   });
 
+  it("names the Streak paused on a Drained day that has not grown, and not when a Completion grew it", () => {
+    render(createElement(StreakButton, { streak: { current: 4, todayGrew: false }, loading: false, paused: true }));
+    expect(container().querySelector("button")?.getAttribute("aria-label")).toBe("Streak paused: 4 days");
+    render(createElement(StreakButton, { streak: { current: 4, todayGrew: true }, loading: false, paused: true }));
+    expect(container().querySelector("button")?.getAttribute("aria-label")).toBe("Streak: 4 days");
+  });
+
   it("is absent when the Streak could not be read", () => {
     render(createElement(StreakButton, { streak: null, loading: false }));
     expect(container().firstElementChild).toBeNull();

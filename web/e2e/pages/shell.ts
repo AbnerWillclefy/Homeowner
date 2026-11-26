@@ -11,7 +11,7 @@ export const shell = {
   nav: (page: Page) => page.getByRole("navigation", { name: "Main" }),
   /** The logo, the one main heading of a signed-out screen. */
   logo: (page: Page) => page.getByRole("heading", { level: 1, name: "homeowner", exact: true }),
-  /** Today's tools in its page header: the Energy indicator, the Streak and the microphone. Only Today has them. */
+  /** Today's tools in its page header: the Streak and the microphone (the Energy is on the hero card). Only Today has them. */
   todayTools: (page: Page) => page.getByTestId("today-tools"),
   /** A tab's page header title: its one `h1`, where focus lands when the tab opens. */
   title: (page: Page, name: string | RegExp) => page.getByRole("heading", { level: 1, name }),
@@ -30,7 +30,7 @@ export const shell = {
 
   /** The signed-in app is open on Today: its heading, and the Main bar with all four tabs. */
   async expectOnToday(page: Page): Promise<void> {
-    await expect(page.getByRole("heading", { name: "Your Tasks", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Today", level: 1 })).toBeVisible();
     await expect(shell.nav(page)).toBeVisible();
     for (const name of TABS) await expect(shell.tab(page, name)).toBeVisible();
     await expect(shell.tab(page, "Today")).toHaveAttribute("aria-current", "page");

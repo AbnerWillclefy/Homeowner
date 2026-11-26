@@ -112,8 +112,8 @@
   margin-inline: auto;
   padding-block-start: calc(2rem + env(safe-area-inset-top));
   padding-block-end: calc(2rem + env(safe-area-inset-bottom));
-  padding-inline-start: calc(1.5rem + env(safe-area-inset-left));
-  padding-inline-end: calc(1.5rem + env(safe-area-inset-right));
+  padding-inline-start: calc(1rem + env(safe-area-inset-left));
+  padding-inline-end: calc(1rem + env(safe-area-inset-right));
 }
 
 /* Horizontal safe-area padding of the full-bleed onboarding screen: 1.5rem for content, 0.75rem for the top bar. */

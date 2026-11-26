@@ -15,7 +15,7 @@ export const FAKE_NOW = "2030-01-15T13:30:00Z";
  */
 const CHECKED_IN: CheckIn = { date: FAKE_TODAY, checkedIn: true, level: "normal", restrictions: [] };
 
-/** A day with no Check-in yet: the pill is dashed and the dialog opens on launch. */
+/** A day with no Check-in yet: the hero card asks the Energy question and the dialog opens on launch. */
 export function uncheckedDay(date: string = FAKE_TODAY): CheckIn {
   return { date, checkedIn: false, level: null, restrictions: [] };
 }
