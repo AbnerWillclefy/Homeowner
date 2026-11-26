@@ -20,7 +20,7 @@ describe("heroCounts", () => {
   });
 
   it("gives no total before the plan exists, so the card never reads 0 de 0", () => {
-    expect(heroCounts(dayPlan({ planned: false, mine: [] }))).toEqual({ done: 0, total: 0 });
+    expect(heroCounts({ ...withDone(["d1"]), planned: false, mine: [task("a")] })).toEqual({ done: 0, total: 0 });
   });
 
   it("gives no total on a rest day with nothing open and nothing done", () => {

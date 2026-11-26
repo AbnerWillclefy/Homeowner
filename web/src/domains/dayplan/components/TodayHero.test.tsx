@@ -100,7 +100,7 @@ describe.each(["pt-BR", "en-US"] as const)("TodayHero in %s", (locale) => {
   });
 
   it("shows no figure and no bar when there is nothing to count, never 0 of 0", () => {
-    show(locale, { kind: "ready", checkIn: LOW }, dayPlan({ planned: false }));
+    show(locale, { kind: "ready", checkIn: LOW }, { ...dayPlan({ planned: false, mine: [task("a")] }), doneToday: [done("d")] });
     expect(container.querySelector('[role="progressbar"]')).toBeNull();
     expect(container.textContent).not.toMatch(/0 (de|of) 0/);
     expect(byName("button", pt ? "Energia: baixa. Mudar" : "Energy: low. Change")).toBeDefined();
