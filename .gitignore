@@ -18,3 +18,5 @@ revenue/dist
 revenue/.env*.local
 bedrock/dist-showcase
 *.tsbuildinfo
+web/pairs-out
+web/pairs-results
