@@ -7,7 +7,16 @@ import { cn } from "../lib/cn";
 import { ChoreIcon, type ChoreCategory } from "./chore-tag";
 import { Effort, type EffortProps } from "./effort";
 
-type TaskAction = { label: string; onClick: () => void; variant?: ButtonProps["variant"]; icon?: LucideIcon; loading?: boolean };
+type TaskAction = {
+  label: string;
+  onClick: () => void;
+  variant?: ButtonProps["variant"];
+  icon?: LucideIcon;
+  loading?: boolean;
+  disabled?: boolean;
+  /** Names the Task too, such as "Aceitar Lavar a louça"; it starts with `label` so voice control finds the button. */
+  ariaLabel?: string;
+};
 
 type TaskCardProps = {
   /** The Category's tone and icon; `categoryLabel` is its name, always written in the caption. */
@@ -73,8 +82,8 @@ export function TaskCard({ category, categoryLabel, name, effort, caption, why, 
           {status && <Badge tone="brand" className="self-start">{status}</Badge>}
           {actions.length > 0 && (
             <div className={cn("grid gap-2", actions.length > 1 ? "grid-cols-2" : "grid-cols-1")}>
-              {actions.map(({ label, onClick, ...rest }) => (
-                <Button key={label} size="lg" onClick={onClick} {...rest}>
+              {actions.map(({ label, onClick, ariaLabel, ...rest }) => (
+                <Button key={label} size="lg" onClick={onClick} aria-label={ariaLabel} {...rest}>
                   {label}
                 </Button>
               ))}

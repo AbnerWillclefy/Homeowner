@@ -21,9 +21,19 @@ import {
 import { ACTION_FAILURE_KEY, conflictMessageKey, LOAD_FAILURE_KEY, type ConflictFamily } from "../logic/failureMessages";
 import { dayPlanQuery } from "../api/queries";
 import { dayPlanStateOf } from "../logic/dayPlanState";
+import { doneInPlan, refusedInPlan } from "../logic/planOverlay";
 import { writeAcceptedAnswer, writeActionAnswer } from "../logic/planCache";
 import { viewOf } from "../../../shared/query/view";
 import type { MessageKey } from "../../../shared/i18n";
+import type { SendResult } from "../../../shared/undo/pendingWrite";
+import { useUndoable, useUndoOverlay } from "../../../shared/undo/useUndoable";
+
+/** The overlay scope of the Day Plan: its held and sending writes (ADR 0029). */
+const SCOPE = "dayplan";
+
+/** The two Task actions that are held for Desfazer; accept and take are sent at once, with nothing to undo. */
+type HeldAction = Extract<TaskAction, "refuse" | "done">;
+const isHeld = (action: TaskAction): action is HeldAction => action === "refuse" || action === "done";
 
 type FailedReason = Failure["kind"] | "none";
 
@@ -91,9 +101,12 @@ export function outcome(
  * the plan on screen with no alert.
  *
  * `run` and `acceptAll` perform an action (accept, refuse, take, complete; accept everything) and show the
- * plan the server answers with. Nothing is optimistic: the plan on screen only changes from a server answer, which
- * is written straight into the cache, so an action sends no new read of the plan. One action runs at a time for
- * the whole section; `acting` says which (the Task and the action, or Accept all), so every button is disabled
+ * plan the server answers with, which is written straight into the cache, so an action sends no new read of the
+ * plan. Refuse and Done are the exception (ADR 0029): they show as done at once through an overlay on the cached
+ * plan and are sent when their Desfazer toast closes; the cache keeps the server's plan, so a refetch cannot undo
+ * them and Desfazer is dropping the overlay. One action runs at a time for
+ * the whole section (a held write is not running, so it disables nothing); `acting` says which (the Task and the
+ * action, or Accept all), so every button is disabled
  * and only the pressed one shows its spinner. After a 409 the screen was stale, so the plan is read once more,
  * in place, and a message says what happened. `changed` counts the actions that changed the plan, for moving
  * focus.
@@ -102,7 +115,11 @@ export function useDayPlan() {
   const queryClient = useQueryClient();
   const query = useQuery(dayPlanQuery);
   const { state: viewState, refreshing } = viewOf(query);
-  const state = dayPlanStateOf(viewState);
+  const cached = dayPlanStateOf(viewState);
+  const { undoable } = useUndoable();
+  // The cached plan with the held and sending writes applied: what the screen (and the hero's count) shows.
+  const shown = useUndoOverlay<DayPlan | null>(SCOPE, cached.kind === "ready" ? cached.plan : null);
+  const state: DayPlanState = cached.kind === "ready" && shown ? { kind: "ready", plan: shown } : cached;
   const { refetch } = query;
   const [acting, setActing] = useState<Acting>(null);
   const [notice, setNotice] = useState<ActionNotice | null>(null);
@@ -147,9 +164,38 @@ export function useDayPlan() {
     }
   }, [queryClient]);
 
+  /**
+   * Shows a refuse or a done at once and holds the call until its toast closes. The send is the same call and
+   * the same answer handling as `act`; a 409 at send time reads the plan again and says why in an error toast.
+   */
+  const hold = useCallback(
+    (action: HeldAction, task: PlanTask) => {
+      const completedAt = new Date().toISOString();
+      setNotice(null);
+      setChanged((n) => n + 1);
+      undoable({
+        scope: SCOPE,
+        titleKey: action === "done" ? "dayplan.undo.done" : "dayplan.undo.refuse",
+        apply: (data) =>
+          data ? (action === "done" ? doneInPlan(data as DayPlan, task.id, completedAt) : refusedInPlan(data as DayPlan, task.id)) : data,
+        failedKey: ACTION_FAILURE_KEY.error,
+        send: async (): Promise<SendResult> => {
+          const result = await CALLS[action](task.id);
+          const fresh = result.kind === "conflict" ? await getDayPlan() : undefined;
+          const { plan, notice } = outcome(result, fresh, "task");
+          if (plan) await (result.kind === "ok" ? writeAcceptedAnswer : writeActionAnswer)(queryClient, plan);
+          if (!notice) return { kind: "ok" };
+          return { kind: result.kind === "conflict" ? "conflict" : "failed", messageKey: notice.keys[0]! };
+        },
+      });
+    },
+    [undoable, queryClient],
+  );
+
   const run = useCallback(
-    (action: TaskAction, task: PlanTask) => void act({ taskId: task.id, action }),
-    [act],
+    (action: TaskAction, task: PlanTask) =>
+      isHeld(action) ? hold(action, task) : void act({ taskId: task.id, action }),
+    [act, hold],
   );
   const acceptAll = useCallback(() => void act({ taskId: null, action: "acceptAll" }), [act]);
 

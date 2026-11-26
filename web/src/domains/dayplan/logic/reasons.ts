@@ -1,7 +1,9 @@
 import type { Translate } from "../../../shared/i18n";
 import type { Resident } from "../../residents/api/api";
 import type { MessageKey } from "../../../shared/i18n";
-import type { Label } from "../../profile/logic/labels";
+import { labelText, type Label } from "../../profile/logic/labels";
+import type { PlanTask } from "../api/api";
+import type { TaskRole } from "./actions";
 
 // The reason ids the Allocation sends. A key that is not in the catalogs fails the typecheck.
 const POOL_REASON_KEYS = {
@@ -50,4 +52,20 @@ export function waitingForText(t: Translate, resident: Resident | undefined): st
   if (!resident) return t("dayplan.pool.reason.waiting_for_responsible.unknown");
   if (resident.you) return t("dayplan.pool.reason.waiting_for_responsible.you");
   return t("dayplan.pool.reason.waiting_for_responsible", { name: resident.name });
+}
+
+/**
+ * The one-line why of a Task, in words: why it was given to someone (`mine` and `other`) or why it is still in
+ * the pool. Null when there is no reason (before the day is planned). `responsible` is the Resident a pool Task
+ * waits for, which only the shared Residents list knows.
+ */
+export function taskReasonText(
+  t: Translate,
+  task: Pick<PlanTask, "reason">,
+  role: TaskRole,
+  responsible: Resident | undefined,
+): string | null {
+  const label = (role === "pool" ? poolReasonLabel : assignmentReasonLabel)(task.reason);
+  if (!label) return null;
+  return role === "pool" && task.reason === WAITING_FOR_RESPONSIBLE ? waitingForText(t, responsible) : labelText(t, label);
 }

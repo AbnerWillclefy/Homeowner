@@ -17,6 +17,7 @@ import { ChangeTimeAction } from "../../residents/components/ChangeTimeAction";
 import { DoneCard } from "./DoneCard";
 import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { DayPlanSkeleton } from "./DayPlanSkeleton";
+import { proposedCount, showAcceptAll } from "../logic/summaryCounts";
 import { canOfferFor, offerableTasks } from "../logic/swaps";
 import { OfferGroup } from "./SwapOffers";
 import { OfferSwapDialog } from "./OfferSwapDialog";
@@ -26,7 +27,8 @@ import type { ActionNotice, useDayPlan } from "../hooks/useDayPlan";
 const LIST = "m-0 flex list-none flex-col gap-3 p-0";
 
 type Day = ReturnType<typeof useDayPlan>;
-type SwapOffering = { task: PlanTask; holderId: string };
+/** `opener` is the ⋯ button of the card, where focus returns when the dialog closes. */
+type SwapOffering = { task: PlanTask; holderId: string; opener: HTMLElement | null };
 
 /**
  * Today's Day Plan: your Tasks, other Residents' Tasks and the pool that remains, and what you did today. A Day
@@ -183,7 +185,7 @@ function PlanView({
   const reason = note && noTasksReason(note);
   // Every button waits while anything runs; only the pressed one shows its spinner.
   const busy = acting !== null;
-  const proposed = plan.mine.filter((task) => !task.committed).length;
+  const proposed = proposedCount(plan);
   // Change time needs the Home's zone for its bounds; without it the Done cards stay plain records.
   const { home } = useShell();
   const timeZone = home.state.kind === "ready" ? home.state.home.timezone : null;
@@ -197,13 +199,15 @@ function PlanView({
       key={task.id}
       task={task}
       role={role}
+      holderId={holderId}
       today={plan.date}
+      explanation={plan.explanation}
       busy={busy}
       pending={pendingAction(acting, task.id)}
       onAction={onAction}
       onSwap={
         role === "other" && holderId !== undefined && canOfferFor(plan, task)
-          ? () => onOfferChange({ task, holderId })
+          ? (_task, opener) => onOfferChange({ task, holderId, opener })
           : undefined
       }
     />
@@ -233,7 +237,7 @@ function PlanView({
 
       {plan.planned && (
         <div>
-          {proposed > 0 && (
+          {showAcceptAll(plan) && (
             <Button
               fullWidth
               className="mb-3"
@@ -294,6 +298,7 @@ function PlanView({
           holderId={offer.holderId}
           options={offerableTasks(plan)}
           offer={onOffer}
+          returnFocusRef={{ current: offer.opener }}
           onClose={() => onOfferChange(null)}
         />
       )}
