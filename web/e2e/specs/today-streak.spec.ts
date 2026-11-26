@@ -9,7 +9,7 @@ import { withoutBoot } from "../mocks/handlers/boot";
 import { launchApp } from "../pages/launch";
 import { shell } from "../pages/shell";
 
-// What this covers: the Streak as a flame button in the top bar's Streak slot. It opens a centred dialog and
+// What this covers: the Streak as a flame button in the page header's Streak slot. It opens a centred dialog and
 // focus comes back to it on close (Close button and Escape), a Streak of 0 looks like any other number, a held
 // Streak does not hold Today (the flame arrives in its reserved slot), a Streak that could not be read leaves no button, a failed
 // refresh keeps the number, and the bar holds at 320px with three digits. No Streak card
@@ -33,8 +33,8 @@ const LOCALES = [
   },
 ] as const;
 
-// Today's title ("Your Tasks"): the tab's first h2.
-const heading = (page: Page) => page.getByRole("heading", { level: 2 }).first();
+// Today's title ("Your Tasks"): the tab's h1.
+const heading = (page: Page) => page.getByRole("heading", { level: 1 }).first();
 const regainFocus = (page: Page) => page.evaluate(() => document.dispatchEvent(new Event("visibilitychange", { bubbles: true })));
 
 for (const l of LOCALES) {
@@ -58,15 +58,15 @@ for (const l of LOCALES) {
 
     const flame = (page: Page, count: number) => page.getByRole("button", { name: l.name(count), exact: true });
 
-    test("the flame sits in the top bar after the logo, opens the dialog, and focus returns on Close and on Escape", async ({ page, baseURL }) => {
+    test("the flame sits in the page header after the title, opens the dialog, and focus returns on Close and on Escape", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
       const button = flame(page, 3);
       await expect(button).toBeVisible();
       await expect(button).toContainText("3");
-      await expect(shell.topBar(page).getByRole("button", { name: l.streakName })).toBeVisible();
-      const logo = await shell.logo(page).boundingBox();
+      await expect(shell.todayTools(page).getByRole("button", { name: l.streakName })).toBeVisible();
+      const title = await heading(page).boundingBox();
       const box = await button.boundingBox();
-      expect(box!.x).toBeGreaterThan(logo!.x + logo!.width - 1);
+      expect(box!.x).toBeGreaterThan(title!.x + title!.width - 1);
       expect(box!.width).toBeGreaterThanOrEqual(44);
       expect(box!.height).toBeGreaterThanOrEqual(44);
       await expect(button.locator("svg")).toHaveAttribute("aria-hidden", "true");
@@ -130,14 +130,14 @@ for (const l of LOCALES) {
       });
     });
 
-    test("while the Streak is held Today shows without it, and the flame arrives in the bar's reserved slot", async ({ page, baseURL, fakeApi }) => {
+    test("while the Streak is held Today shows without it, and the flame arrives in the header's reserved slot", async ({ page, baseURL, fakeApi }) => {
       withoutBoot(fakeApi);
       const streak = hold(page, /\/home\/streak$/);
       await launchApp(page, baseURL!);
-      // Today does not wait for the Streak: the title shows, the bar holds the flame's place.
+      // Today does not wait for the Streak: the title shows, the header holds the flame's place.
       await expect(heading(page)).toBeVisible();
       await expect(page.getByTestId("day-plan-skeleton")).toHaveCount(0);
-      await expect(shell.logo(page)).toBeVisible();
+      await expect(shell.todayTools(page).locator('[data-slot="streak"]')).toBeVisible();
       await expect(page.getByRole("button", { name: l.streakName })).toHaveCount(0);
 
       streak.release();
@@ -187,7 +187,7 @@ for (const l of LOCALES) {
         const box = await button.boundingBox();
         expect(box!.width).toBeGreaterThanOrEqual(44);
         expect(box!.height).toBeGreaterThanOrEqual(44);
-        const bar = await shell.topBar(page).boundingBox();
+        const bar = await shell.todayTools(page).boundingBox();
         expect(box!.y).toBeGreaterThanOrEqual(bar!.y - 1);
         expect(box!.y + box!.height).toBeLessThanOrEqual(bar!.y + bar!.height + 1);
         expect(box!.x + box!.width).toBeLessThanOrEqual(320);

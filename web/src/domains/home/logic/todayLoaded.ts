@@ -10,7 +10,7 @@ export interface TodayReads {
  * Whether Today's two reads (Check-in and Day Plan) have each answered, with data or a failure. A failure is
  * settled: its section shows its own alert in place. Today shows its skeleton until this is true, then everything
  * in one swap, so no section arrives after another and nothing is pushed down. The Streak is not part of it: it
- * lives in the top bar, which holds its box while the Streak loads.
+ * lives in Today's header tools, which holds its box while the Streak loads.
  */
 export function todayLoaded({ checkIn, dayPlan }: TodayReads): boolean {
   return checkIn.kind !== "loading" && dayPlan.kind !== "loading";

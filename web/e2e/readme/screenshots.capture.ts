@@ -67,7 +67,7 @@ for (const l of LOCALES) {
 
         for (const [tab, name] of [["chores", l.nav.chores], ["home", l.nav.home], ["me", l.nav.me]] as const) {
           await page.getByRole("link", { name, exact: true }).click();
-          await expect(page.getByRole("heading", { level: 2 }).first()).toBeVisible();
+          await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
           await page.waitForLoadState("networkidle");
           await page.screenshot({ path: `${OUT}/${tab}-${l.file}.png` });
         }

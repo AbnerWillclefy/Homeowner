@@ -26,29 +26,29 @@ test("a page visited before opens at once with the indicator while the read is h
   await visit(page, "/home");
   const ana = page.getByRole("region", { name: "Residents", exact: true }).getByRole("link", { name: /Ana Souza/ });
   await ana.click();
-  await expect(page.getByRole("heading", { name: "Ana Souza", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ana Souza", level: 1 })).toBeVisible();
   await page.getByRole("link", { name: "Your Home" }).click();
   await expect(ana).toBeVisible();
 
   const held = hold(page, /\/home\/residents\/resident-2$/);
   await ana.click();
 
-  await expect(page.getByRole("heading", { name: "Ana Souza", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ana Souza", level: 1 })).toBeVisible();
   await expect(page.getByTestId("resident-skeleton")).toHaveCount(0);
   await expect(page.getByRole("img", { name: "Refreshing" })).toBeVisible();
   held.release();
   await expect(page.getByRole("img", { name: "Refreshing" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Ana Souza", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ana Souza", level: 1 })).toBeVisible();
 });
 
 test("a failed refetch keeps the cached page and shows no alert", async ({ page, fakeApi }) => {
   await visit(page, "/home/residents/resident-2");
-  await expect(page.getByRole("heading", { name: "Ana Souza", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ana Souza", level: 1 })).toBeVisible();
   await page.getByRole("link", { name: "Your Home" }).click();
 
   fakeApi.override("GET /home/residents/{id}", { status: 500, body: { error: "internal error" } }, { once: true });
   await page.getByRole("region", { name: "Residents", exact: true }).getByRole("link", { name: /Ana Souza/ }).click();
   await expect.poll(() => fakeApi.requests.filter((r) => r.path === "/home/residents/resident-2").length).toBeGreaterThan(1);
-  await expect(page.getByRole("heading", { name: "Ana Souza", level: 2 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ana Souza", level: 1 })).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
 });

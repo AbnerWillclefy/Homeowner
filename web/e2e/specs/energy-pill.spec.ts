@@ -8,7 +8,7 @@ import { seedSession } from "../mocks/session";
 import { launchApp, visit } from "../pages/launch";
 import { shell } from "../pages/shell";
 
-// What this covers: the Energy indicator in the top bar, on all four tabs. Before a Check-in it is a muted Zap and "?"; a tap opens the one Check-in dialog (focus on its title, Escape closes it, focus is back on the
+// What this covers: the Energy indicator in Today's page header (the other tabs have none). Before a Check-in it is a muted Zap and "?"; a tap opens the one Check-in dialog (focus on its title, Escape closes it, focus is back on the
 // pill); saving updates the pill to the Energy number without a reload; a failed Check-in read gives an
 // unavailable pill while the Streak still shows; on Today the pill alone opens the one dialog, which shows the planned
 // Effort and the day's Restrictions; the targets are at
@@ -31,7 +31,7 @@ const LOCALES = [
   },
 ] as const;
 
-const PATHS = ["/", "/chores", "/home", "/me"] as const;
+const OTHER_PATHS = ["/chores", "/home", "/me"] as const;
 
 for (const l of LOCALES) {
   test.describe(l.locale, () => {
@@ -45,32 +45,42 @@ for (const l of LOCALES) {
       await seedSession(page, { email: RESIDENT_EMAIL });
     });
 
-    const pill = (page: Page, name: string) => shell.topBar(page).getByRole("button", { name, exact: true });
+    const pill = (page: Page, name: string) => shell.todayTools(page).getByRole("button", { name, exact: true });
     const dialog = (page: Page) => page.getByRole("dialog", { name: l.wordmark });
 
-    for (const path of PATHS) {
-      test(`before a Check-in the pill is a muted "?" on ${path}`, async ({ page, baseURL }) => {
+    /** Today after the dialog it opens by itself has been closed, so the bare pill shows. */
+    async function openToday(page: Page, baseURL: string) {
+      await launchApp(page, baseURL);
+      await expect(dialog(page)).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(dialog(page)).toBeHidden();
+    }
+
+    test('before a Check-in the pill is a muted "?" on Today', async ({ page, baseURL }) => {
+      // Today offers the Check-in by itself; "not now" leaves the pill.
+      await openToday(page, baseURL!);
+      const button = pill(page, l.unset);
+      await expect(button).toBeVisible();
+      await expect(button).toHaveText("?", { useInnerText: true });
+      expect(await button.evaluate((el) => getComputedStyle(el).borderStyle)).not.toBe("dashed");
+      const box = await button.boundingBox();
+      expect(box!.width).toBeGreaterThanOrEqual(44);
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+      const bar = await shell.todayTools(page).boundingBox();
+      expect(box!.x + box!.width).toBeLessThanOrEqual(bar!.x + bar!.width + 1);
+    });
+
+    for (const path of OTHER_PATHS) {
+      test(`${path} has no Energy pill, only Today does`, async ({ page, baseURL }) => {
         await visit(page, new URL(path, baseURL!).toString());
-        if (path === "/") {
-          // Today offers the Check-in by itself; "not now" leaves the dashed pill.
-          await expect(dialog(page)).toBeVisible();
-          await page.keyboard.press("Escape");
-          await expect(dialog(page)).toBeHidden();
-        }
-        const button = pill(page, l.unset);
-        await expect(button).toBeVisible();
-        await expect(button).toHaveText("?", { useInnerText: true });
-        expect(await button.evaluate((el) => getComputedStyle(el).borderStyle)).not.toBe("dashed");
-        const box = await button.boundingBox();
-        expect(box!.width).toBeGreaterThanOrEqual(44);
-        expect(box!.height).toBeGreaterThanOrEqual(44);
-        const bar = await shell.topBar(page).boundingBox();
-        expect(box!.x + box!.width).toBeLessThanOrEqual(bar!.x + bar!.width + 1);
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        await expect(page.getByRole("button", { name: l.unset, exact: true })).toHaveCount(0);
+        await expect(shell.todayTools(page)).toHaveCount(0);
       });
     }
 
-    test("a tap opens the dialog on Chores, Escape closes it and focus is back on the pill", async ({ page, baseURL }) => {
-      await visit(page, new URL("/chores", baseURL!).toString());
+    test("a tap opens the dialog, Escape closes it and focus is back on the pill", async ({ page, baseURL }) => {
+      await openToday(page, baseURL!);
       const button = pill(page, l.unset);
       await button.click();
       await expect(dialog(page)).toBeVisible();
@@ -81,8 +91,7 @@ for (const l of LOCALES) {
     });
 
     test("Not now also returns focus to the pill, and the keyboard opens it with Enter", async ({ page, baseURL }) => {
-      // On Chores, where nothing opens by itself.
-      await visit(page, new URL("/chores", baseURL!).toString());
+      await openToday(page, baseURL!);
       const button = pill(page, l.unset);
       await expect(button).toBeVisible();
       await button.focus();
@@ -94,7 +103,7 @@ for (const l of LOCALES) {
     });
 
     test("saving a Check-in turns the pill into the Energy number without a reload", async ({ page, baseURL }) => {
-      await visit(page, new URL("/me", baseURL!).toString());
+      await openToday(page, baseURL!);
       await pill(page, l.unset).click();
       await dialog(page).getByRole("radio", { name: l.normal }).check({ force: true });
       await dialog(page).getByRole("button", { name: l.save, exact: true }).click();
@@ -105,7 +114,7 @@ for (const l of LOCALES) {
       await expect(done).toHaveText("9", { useInnerText: true });
       await expect(done).toBeFocused();
       // The same page: nothing navigated.
-      await expect(page).toHaveURL(/\/me$/);
+      await expect(page).toHaveURL(/\/$/);
     });
 
     test("on Today only the pill reopens the one dialog; nothing else on the page does", async ({ page, baseURL }) => {
@@ -138,21 +147,22 @@ for (const l of LOCALES) {
 
     test("a Check-in read that failed gives the unavailable pill, and the Streak still shows", async ({ page, baseURL, fakeApi }) => {
       fakeApi.override("GET /home/check-in", json(500, { error: "boom" }));
-      await visit(page, new URL("/chores", baseURL!).toString());
+      await launchApp(page, baseURL!);
       const button = pill(page, l.unavailable);
       await expect(button).toBeVisible();
-      await expect(shell.topBar(page).getByRole("button", { name: l.streak })).toBeVisible();
+      await expect(shell.todayTools(page).getByRole("button", { name: l.streak })).toBeVisible();
 
       // A tap tries again; the server has recovered.
       fakeApi.override("GET /home/check-in", json(200, { date: "2030-01-15", checkedIn: false, level: null, restrictions: [] }));
       await button.click();
-      await expect(pill(page, l.unset)).toBeVisible();
+      // An unchecked day on Today: the dialog opens by itself once the read answers.
+      await expect(dialog(page)).toBeVisible();
     });
 
     test("checked in before the Allocation, the pill shows a check mark and a dash, and names the level", async ({ page, baseURL, fakeApi }) => {
       fakeApi.state.checkIn = { date: "2030-01-15", checkedIn: true, level: "low", restrictions: [] };
       fakeApi.state.dayPlan = { ...fakeApi.state.dayPlan!, planned: false, energy: null, mine: [], others: [], pool: [] };
-      await visit(page, new URL("/home", baseURL!).toString());
+      await launchApp(page, baseURL!);
       const level = l.locale === "pt-BR" ? "Baixa" : "Low";
       await expect(pill(page, l.pending(level))).toBeVisible();
       await expect(pill(page, l.pending(level))).toHaveText("–", { useInnerText: true });

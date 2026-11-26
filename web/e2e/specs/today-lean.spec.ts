@@ -4,7 +4,7 @@ import { RESIDENT_EMAIL, signedInResident, withExplanation } from "../mocks/samp
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
 
-// What this covers: the lean Today. Under the top bar it opens with "Your Tasks" and its count, then the day's summary
+// What this covers: the lean Today. Under its page header ("Your Tasks", with the Energy pill, Streak and mic at its end) it opens with the day's summary
 // as one muted line (plain text, not a control), then the Tasks. The summary names its source as visually hidden
 // text, shows nothing before planning or on a rejected run, and wraps at 320px with a long headline. The greeting,
 // the Energy card and the Check-in card are gone. Each test runs in pt-BR.
@@ -40,7 +40,7 @@ for (const l of LOCALES) {
     test("the title comes first, then the summary line, then the Tasks", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
       await expect(summary(page)).toBeVisible();
-      const heading = await page.getByRole("heading", { level: 2, name: new RegExp(l.mine) }).boundingBox();
+      const heading = await page.getByRole("heading", { level: 1, name: new RegExp(l.mine) }).boundingBox();
       const line = await summary(page).boundingBox();
       const task = await page.getByText("Wash the dishes", { exact: true }).boundingBox();
       expect(heading!.y).toBeLessThan(line!.y);
@@ -80,7 +80,7 @@ for (const l of LOCALES) {
 
       test("shows the title with no count and no summary", async ({ page, baseURL }) => {
         await launchApp(page, baseURL!);
-        await expect(page.getByRole("heading", { level: 2, name: l.mine, exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { level: 1, name: l.mine, exact: true })).toBeVisible();
         await expect(page.getByText(l.headline)).toHaveCount(0);
       });
     });
@@ -96,7 +96,7 @@ for (const l of LOCALES) {
 
       test("shows the title and no summary", async ({ page, baseURL }) => {
         await launchApp(page, baseURL!);
-        await expect(page.getByRole("heading", { level: 2, name: l.mine, exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { level: 1, name: l.mine, exact: true })).toBeVisible();
         await expect(page.getByText(l.headline)).toHaveCount(0);
       });
     });

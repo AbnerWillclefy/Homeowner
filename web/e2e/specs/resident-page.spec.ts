@@ -85,7 +85,7 @@ for (const l of LOCALES) {
 
     test("shows the name, Streak, the 30-day count and the days newest first with their headings", async ({ page }) => {
       await visit(page, "/home/residents/resident-2");
-      await expect(page.getByRole("heading", { name: "Ana Souza", level: 2 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Ana Souza", level: 1 })).toBeVisible();
       await expect(page.getByText(l.streak, { exact: true })).toBeVisible();
       await expect(page.getByText(l.done30, { exact: true })).toBeVisible();
       // The Streak is 11 and five Completions fall in the window (the old one is out).
@@ -112,7 +112,7 @@ for (const l of LOCALES) {
 
     test("lists the whole 30-day window: today-10 and today-29 show, today-30 does not", async ({ page }) => {
       await visit(page, "/home/residents/resident-5");
-      await expect(page.getByRole("heading", { name: "Carla Lima", level: 2 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Carla Lima", level: 1 })).toBeVisible();
       await expect(page.getByRole("heading", { level: 4 })).toHaveText([l.today, l.tenBack, l.twentyNineBack]);
       await expect(page.getByText(l.done30, { exact: true })).toBeVisible();
       await expect(page.getByText("3", { exact: true })).toBeVisible();
@@ -121,7 +121,7 @@ for (const l of LOCALES) {
 
     test("at the largest text size nothing is cut with an ellipsis and nothing overflows sideways", async ({ page }) => {
       await visit(page, "/home/residents/resident-5");
-      await expect(page.getByRole("heading", { name: "Carla Lima", level: 2 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Carla Lima", level: 1 })).toBeVisible();
       await page.evaluate(() => (document.documentElement.style.fontSize = "200%"));
       await expect(page.getByText(l.done30, { exact: true })).toBeVisible();
       await expect(page.getByRole("heading", { level: 4, name: l.twentyNineBack })).toBeVisible();
@@ -138,29 +138,23 @@ for (const l of LOCALES) {
 
     test("has no actions on a Completion and nothing private", async ({ page }) => {
       await visit(page, "/home/residents/resident-2");
-      await expect(page.getByRole("heading", { name: "Ana Souza", level: 2 })).toBeVisible();
-      // A Completion is a record: no button on the page (the top bar's Energy pill, Streak and voice microphone are the only three) and no link inside a card.
-      await expect(page.getByRole("button")).toHaveCount(3);
-      await expect(page.getByTestId("top-bar").getByRole("button")).toHaveCount(3);
+      await expect(page.getByRole("heading", { name: "Ana Souza", level: 1 })).toBeVisible();
+      // A Completion is a record: no button on the page (Today's Energy pill, Streak and microphone are not here) and no link inside a card.
+      await expect(page.getByRole("button")).toHaveCount(0);
       await expect(page.getByRole("listitem").filter({ hasText: " · " }).getByRole("link")).toHaveCount(0);
-      // The Resident's own Energy is in the top bar; nothing private about the other Resident is in the page.
-      const body = await page.locator("main").evaluate((main) => {
-        const copy = main.cloneNode(true) as HTMLElement;
-        copy.querySelector('[data-testid="top-bar"]')?.remove();
-        return copy.textContent ?? "";
-      });
+      // Nothing private about the other Resident is in the page.
+      const body = await page.locator("main").evaluate((main) => main.textContent ?? "");
       expect(body).not.toMatch(/Energy|Energia|Baseline|Check-in|Preference|Preferência|Restriction|Restrição/);
     });
 
     test("an empty week shows a neutral line, and the name and Streak still show", async ({ page }) => {
       await visit(page, "/home/residents/resident-4");
-      await expect(page.getByRole("heading", { name: "jrocha", level: 2 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "jrocha", level: 1 })).toBeVisible();
       await expect(page.getByText(l.empty)).toBeVisible();
       // Zero reads in the same voice as any number (pt-BR counts 0 as singular).
       await expect(page.getByText(/^(Tarefas? concluídas? em 30 dias|Tasks done in 30 days)$/)).toBeVisible();
-      // The page's two zeros, and the top bar's Streak button, which also reads 0 for this Home.
-      await expect(page.getByText("0", { exact: true })).toHaveCount(3);
-      await expect(page.getByTestId("top-bar").getByText("0", { exact: true })).toHaveCount(1);
+      // The page's two zeros: the Streak button is Today's, not here.
+      await expect(page.getByText("0", { exact: true })).toHaveCount(2);
       await expect(page.getByRole("heading", { level: 4 })).toHaveCount(0);
     });
 
@@ -177,7 +171,7 @@ for (const l of LOCALES) {
       await expect(page.getByRole("alert")).toHaveText(l.error);
       await expect(page.getByRole("link", { name: l.back })).toBeVisible();
       await page.getByRole("button", { name: l.retry }).click();
-      await expect(page.getByRole("heading", { name: "Ana Souza", level: 2 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Ana Souza", level: 1 })).toBeVisible();
       await expect(page.getByRole("alert")).toHaveCount(0);
     });
 
@@ -198,8 +192,8 @@ for (const l of LOCALES) {
       const backBefore = (await page.getByRole("link", { name: l.back }).boundingBox())!;
 
       release();
-      await expect(page.getByRole("heading", { name: "Ana Souza", level: 2 })).toBeVisible();
-      const header = (await page.getByRole("heading", { name: "Ana Souza", level: 2 }).boundingBox())!;
+      await expect(page.getByRole("heading", { name: "Ana Souza", level: 1 })).toBeVisible();
+      const header = (await page.getByRole("heading", { name: "Ana Souza", level: 1 }).boundingBox())!;
       const backAfter = (await page.getByRole("link", { name: l.back }).boundingBox())!;
       expect(backAfter.y).toBeCloseTo(backBefore.y, 0);
       // The name sits where the skeleton's name bar was: the header did not move.
@@ -209,11 +203,11 @@ for (const l of LOCALES) {
 
     test("a deep link and a reload stay on the page with the Home tab highlighted", async ({ page }) => {
       await visit(page, "/home/residents/resident-2");
-      await expect(page.getByRole("heading", { name: "Ana Souza", level: 2 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Ana Souza", level: 1 })).toBeVisible();
       const current = page.getByRole("navigation", { name: l.nav }).locator('a[aria-current="page"]');
       await expect(current).toHaveText(l.home);
       await page.reload();
-      await expect(page.getByRole("heading", { name: "Ana Souza", level: 2 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Ana Souza", level: 1 })).toBeVisible();
       await expect(page).toHaveURL((url) => url.pathname === "/home/residents/resident-2");
       await expect(current).toHaveText(l.home);
     });
@@ -227,7 +221,7 @@ for (const l of LOCALES) {
       await visit(page, "/home");
       await page.getByRole("region", { name: l.residentsRegion, exact: true }).getByRole("link", { name: /Ana Souza/ }).click();
       await expect(page).toHaveURL((url) => url.pathname === "/home/residents/resident-2");
-      await expect(page.getByRole("heading", { name: "Ana Souza", level: 2 })).toBeFocused();
+      await expect(page.getByRole("heading", { name: "Ana Souza", level: 1 })).toBeFocused();
       await page.getByRole("link", { name: l.back }).click();
       await expect(page).toHaveURL((url) => url.pathname === "/home");
     });

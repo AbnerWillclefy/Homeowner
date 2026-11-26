@@ -10,7 +10,7 @@ import { withoutBoot } from "../mocks/handlers/boot";
 import { launchApp } from "../pages/launch";
 
 // What this covers: Today's first load shows its skeleton until the Check-in and the Day Plan have each
-// answered, then everything in one swap (the Streak is in the top bar, which holds its box), and stays still (Cumulative Layout Shift under 0.1). In pt-BR first, then
+// answered, then everything in one swap (the Streak is in the page header, which holds its box), and stays still (Cumulative Layout Shift under 0.1). In pt-BR first, then
 // en-US, at a phone size and at 320px with 200% text, with the reads held long enough for the skeleton to show and
 // answered at once (the skeleton never flashes). A failed read shows its own alert in place; a refresh of what is on
 // screen keeps it.
@@ -85,10 +85,10 @@ for (const l of LOCALES) {
       await seedSession(page, { email: RESIDENT_EMAIL });
     });
 
-    const mine = (page: Page) => page.getByRole("heading", { level: 2, name: l.mine });
+    const mine = (page: Page) => page.getByRole("heading", { level: 1, name: l.mine });
     // The one muted summary line under the title: plain text, no longer a button.
     const summary = (page: Page) => page.getByText(l.headline);
-    const pill = (page: Page) => page.getByTestId("top-bar").getByRole("button", { name: l.pill });
+    const pill = (page: Page) => page.getByTestId("today-tools").getByRole("button", { name: l.pill });
     const streak = (page: Page) => page.getByRole("button", { name: l.streak });
     const task = (page: Page) => page.getByText("Wash the dishes", { exact: true });
     const skeleton = (page: Page) => page.locator(SKELETON);
@@ -107,7 +107,9 @@ for (const l of LOCALES) {
           await launchApp(page, baseURL!);
 
           await expect(skeleton(page)).toBeVisible();
-          await expect(mine(page)).toHaveCount(0);
+          // The header is there from the first frame; the plan under it is not.
+          await expect(mine(page)).toBeVisible();
+          await expect(task(page)).toHaveCount(0);
           await page.waitForTimeout(300);
 
           // Today's two reads, one at a time: Today shows nothing of them until the last has answered.
@@ -115,11 +117,11 @@ for (const l of LOCALES) {
           held.checkIn.release();
           await page.waitForTimeout(150);
           await expect(summary(page)).toHaveCount(0);
-          await expect(mine(page)).toHaveCount(0);
+          await expect(task(page)).toHaveCount(0);
           await expect(skeleton(page)).toBeVisible();
           held.plan.release();
 
-          await expect(mine(page)).toBeVisible();
+          await expect(task(page)).toBeVisible();
           // The same render brought everything, and took the skeleton away, while the flame still waits.
           await expect(summary(page)).toBeVisible({ timeout: 0 });
           await expect(task(page)).toBeVisible({ timeout: 0 });
@@ -148,7 +150,7 @@ for (const l of LOCALES) {
           });
         }
 
-        test("the Check-in held: the pill reserves its box from the first frame and fills it without moving the bar", async ({ page, baseURL }) => {
+        test("the Check-in held: the pill reserves its box from the first frame and fills it without moving the header", async ({ page, baseURL }) => {
           const checkIn = hold(page, /\/home\/check-in$/);
           await launchApp(page, baseURL!);
 
@@ -157,17 +159,17 @@ for (const l of LOCALES) {
           await page.waitForTimeout(400);
           const slot = page.locator('[data-slot="energy"]');
           const loading = (await slot.boundingBox())!;
-          const barLoading = (await page.getByTestId("top-bar").boundingBox())!;
+          const barLoading = (await page.getByTestId("today-tools").boundingBox())!;
           const flame = (await streak(page).boundingBox())!;
           expect(loading.width).toBeGreaterThanOrEqual(44);
           expect(loading.height).toBeGreaterThanOrEqual(44);
-          await expect(page.getByTestId("top-bar").getByRole("button", { name: l.pill })).toHaveCount(0);
+          await expect(page.getByTestId("today-tools").getByRole("button", { name: l.pill })).toHaveCount(0);
 
           checkIn.release();
-          const pill = page.getByTestId("top-bar").getByRole("button", { name: l.pill });
+          const pill = page.getByTestId("today-tools").getByRole("button", { name: l.pill });
           await expect(pill).toBeVisible();
           const loaded = (await slot.boundingBox())!;
-          const barLoaded = (await page.getByTestId("top-bar").boundingBox())!;
+          const barLoaded = (await page.getByTestId("today-tools").boundingBox())!;
           expect(loaded).toEqual(loading);
           expect(barLoaded).toEqual(barLoading);
           expect(await streak(page).boundingBox()).toEqual(flame);
@@ -227,7 +229,7 @@ for (const l of LOCALES) {
         await launchApp(page, baseURL!);
 
         await expect(mine(page)).toBeVisible();
-        await expect(page.getByTestId("top-bar").getByRole("button", { name: l.unavailable })).toBeVisible();
+        await expect(page.getByTestId("today-tools").getByRole("button", { name: l.unavailable })).toBeVisible();
         await expect(task(page)).toBeVisible();
         await expect(streak(page)).toBeVisible();
         await expect(skeleton(page)).toHaveCount(0);

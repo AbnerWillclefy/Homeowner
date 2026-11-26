@@ -9,7 +9,7 @@ import { launchApp } from "../pages/launch";
 import { shell, TABS } from "../pages/shell";
 import { tabs } from "../pages/tabs";
 
-// What this covers: the voice microphone in the top bar. It shows on all four tabs where the browser has speech
+// What this covers: the voice microphone in Today's page header. It shows on Today only, where the browser has speech
 // recognition and not where it does not; a tap opens the panel already listening in the app language; the actions
 // are reviewed, one is removed, and Confirm sends only the other, after which the Chores screen shows it; and the
 // only request that carries speech is the JSON transcript to /home/voice/interpret.
@@ -54,13 +54,14 @@ test.beforeEach(async ({ page, fakeApi }) => {
   await seedSession(page, { email: RESIDENT_EMAIL });
 });
 
-test("the mic shows in the top bar on all four tabs", async ({ page, baseURL }) => {
+test("the mic shows in Today's page header, and on no other tab", async ({ page, baseURL }) => {
   await fakeRecognition(page);
   await launchApp(page, baseURL!);
-  for (const name of TABS) {
+  await expect(shell.todayTools(page).locator('[data-slot="voice"]').getByRole("button", { name: "Voice command" })).toBeVisible();
+  for (const name of TABS.filter((tab) => tab !== "Today")) {
     await shell.openTab(page, name);
     await shell.expectOnTab(page, name);
-    await expect(shell.topBar(page).locator('[data-slot="voice"]').getByRole("button", { name: "Voice command" })).toBeVisible();
+    await expect(mic(page)).toHaveCount(0);
   }
 });
 
@@ -72,14 +73,12 @@ test("the mic is absent where the browser has no speech recognition", async ({ p
   await launchApp(page, baseURL!);
   await shell.expectOnToday(page);
   await expect(mic(page)).toHaveCount(0);
-  await expect(shell.topBar(page).locator('[data-slot="voice"]')).toHaveCount(0);
+  await expect(shell.todayTools(page).locator('[data-slot="voice"]')).toHaveCount(0);
 });
 
 test("tap, review, remove one, Confirm sends only the other and the Chores screen shows it", async ({ page, baseURL, fakeApi }) => {
   await fakeRecognition(page);
   await launchApp(page, baseURL!);
-  await shell.openTab(page, "Chores");
-  await expect(tabs.chores.chore(page, "Wash the dishes")).toBeVisible();
 
   await mic(page).click();
   const dialog = page.getByRole("dialog", { name: "Voice command" });
@@ -98,6 +97,7 @@ test("tap, review, remove one, Confirm sends only the other and the Chores scree
   expect(created.map((r) => (r.body as { name: string }).name)).toEqual(["Sweep the porch"]);
 
   await dialog.getByRole("button", { name: "Close" }).click();
+  await shell.openTab(page, "Chores");
   await expect(tabs.chores.chore(page, "Sweep the porch")).toBeVisible();
   await expect(tabs.chores.chore(page, "Water the plants")).toHaveCount(0);
 });

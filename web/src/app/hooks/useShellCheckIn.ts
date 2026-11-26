@@ -7,7 +7,7 @@ import { plannedEffort } from "../../domains/dayplan/logic/plannedEffort";
 import { useLaunchStaleTime } from "../../shared/query/useLaunchStaleTime";
 
 /**
- * What the Shell reads on every tab for the top bar's Energy pill and shares with Today: the Check-in, the Day
+ * What the Shell reads on every tab for Today's Energy pill and shares with Today: the Check-in, the Day
  * Plan's Energy, the Energy note from the single rule (`energyNote`), and the state of the one Check-in dialog. Today reads the same cache entries, so nothing is requested twice. The Day
  * Plan's actions stay in `useDayPlan`, on Today.
  */

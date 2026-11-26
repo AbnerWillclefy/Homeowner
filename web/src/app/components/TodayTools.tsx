@@ -11,7 +11,8 @@ import { useShell } from "./ShellContext";
  * button in a fixed slot, then the voice microphone in a 2.75rem slot (the touch target, no more) that exists only
  * where the browser has speech recognition. The data slots are reserved from the first frame, whatever the data, so
  * filling either moves nothing. Both fill their slots only once the Home is ready (see `useStreak`, `useCheckIn`);
- * until then the slots are empty. The indicator opens the Shell's one Check-in dialog.
+ * until then the slots are empty. The indicator opens the Shell's one Check-in dialog. The group is never wider than 45% of
+ * the screen and wraps, so at the largest text size the title keeps room beside it.
  */
 export function TodayTools() {
   const { streak, checkIn, note, energy, home, openCheckIn, pillRef } = useShell();
@@ -19,7 +20,7 @@ export function TodayTools() {
   const micHidden = useMicHidden();
   const input = pillInput({ checkInState: checkIn.state, note, energy, homeReady: home.state.kind === "ready" });
   return (
-    <div data-testid="today-tools" className="flex items-center">
+    <div data-testid="today-tools" className="flex max-w-[45vw] flex-wrap items-center justify-end">
       <div data-slot="energy" className="flex min-h-11 min-w-16 items-center justify-end">
         {input && <EnergyPill input={input} buttonRef={pillRef} onOpen={openCheckIn} onRetry={() => void checkIn.reload()} />}
       </div>

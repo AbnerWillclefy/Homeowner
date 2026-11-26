@@ -6,6 +6,9 @@
   `text-muted` stays "muted text" through `--color-muted`, which also creates `bg-muted`.
 */
 @theme inline {
+  /* Bedrock's spacing step is 4px; web's sizes are in rem so Dynamic Type and Android font scaling grow them (ADR 0007). */
+  --spacing: 0.25rem;
+
   --color-accent: var(--brand);
   --color-accent-contrast: var(--on-brand);
   --color-muted: var(--text-muted);

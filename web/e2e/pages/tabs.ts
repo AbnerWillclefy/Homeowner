@@ -1,15 +1,14 @@
 import { expect, type Page } from "@playwright/test";
 
-const h2 = (page: Page, name: string) => page.getByRole("heading", { name, level: 2, exact: true });
-// Group headings carry a count ("Your Tasks 2"), so the name is matched as a substring.
+const h1 = (page: Page, name: string) => page.getByRole("heading", { name, level: 1, exact: true });
 const h3 = (page: Page, name: string) => page.getByRole("heading", { name, level: 3 });
 
 /** What each signed-in tab shows, by role, label and text only. */
 export const tabs = {
   today: {
-    // Today's title is "Your Tasks", the tab's h2; it carries the count, so it is matched as a substring.
-    heading: (page: Page) => page.getByRole("heading", { name: "Your Tasks", level: 2 }),
-    mine: (page: Page) => page.getByRole("heading", { name: "Your Tasks", level: 2 }),
+    // Today's title is "Your Tasks", the tab's h1.
+    heading: (page: Page) => h1(page, "Your Tasks"),
+    mine: (page: Page) => h1(page, "Your Tasks"),
     others: (page: Page) => h3(page, "Other Residents' Tasks"),
     pool: (page: Page) => h3(page, "Still to do"),
     task: (page: Page, name: string) => page.getByText(name, { exact: true }),
@@ -18,18 +17,18 @@ export const tabs = {
     retry: (page: Page) => page.getByRole("button", { name: "Try again" }),
   },
   chores: {
-    heading: (page: Page) => h2(page, "Chores"),
+    heading: (page: Page) => h1(page, "Chores"),
     chore: (page: Page, name: string) => page.getByText(name, { exact: true }),
     empty: (page: Page) => page.getByText("No Chores yet."),
   },
   home: {
-    heading: (page: Page) => h2(page, "Your Home"),
+    heading: (page: Page) => h1(page, "Your Home"),
     timezone: (page: Page) => page.getByLabel("Timezone"),
     allocationTime: (page: Page) => page.getByLabel("Allocation time"),
     invite: (page: Page) => page.getByRole("heading", { name: "Invite a Resident", level: 3 }),
   },
   me: {
-    heading: (page: Page) => h2(page, "About you"),
+    heading: (page: Page) => h1(page, "About you"),
     /** The two parts of Me, each a region named by its h3; the cards inside are h4. */
     history: (page: Page) => page.getByRole("region", { name: "My Completions", exact: true }),
     settings: (page: Page) => page.getByRole("region", { name: "Your settings", exact: true }),

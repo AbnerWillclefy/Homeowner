@@ -4,7 +4,7 @@ import { MeProfile } from "../../../domains/profile/components/MeProfile";
 import { SettingsCard } from "../../../domains/settings/components/Settings";
 import { useI18n } from "../../../shared/i18n";
 import { HeadedSection } from "../../../shared/ui/HeadedSection";
-import { TabHeader } from "../TabHeader";
+import { PageHeader } from "@homeowner/bedrock";
 import { PageLoading } from "../../../shared/ui/PageLoading";
 import { MyCompletions } from "../../../domains/residents/components/MyCompletions";
 import { useAppAuth } from "../AuthProvider";
@@ -23,7 +23,10 @@ export function MePage() {
   if (auth.state.kind !== "signed-in") return null;
   return (
     <PageLoading message={t("profile.loading")}>
-      <TabHeader title={t("me.heading")} />
+      {/* No refresh slot here: MeHeader's name row carries the page's one indicator. */}
+      <div className="mb-6">
+        <PageHeader title={t("me.heading")} />
+      </div>
       <div className="flex flex-col gap-8">
         <MeHeader />
         {/* Only a Resident with a Home has a history; the section stands alone, so the cards below never wait on it. */}

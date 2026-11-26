@@ -11,7 +11,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 /** Gzipped first-load JS in the CI environment (the `env` of web-typecheck.yml). Update deliberately. */
-export const RECORDED_GZIP_BYTES = 233822;
+export const RECORDED_GZIP_BYTES = 233540;
 export const ALLOWED_GROWTH = 0.1;
 
 /** Files of the entry and its static imports, in the order reached. */

@@ -9,7 +9,7 @@ const box = () => container().firstElementChild as HTMLElement;
 const pill = () => box().querySelector("span");
 
 describe("StreakButton", () => {
-  it("works outside a PageLoading: it sits in the top bar, above every page", () => {
+  it("works outside a PageLoading: it sits in Today's header tools, above the plan", () => {
     expect(() => render(createElement(StreakButton, { streak: null, loading: true }))).not.toThrow();
   });
 

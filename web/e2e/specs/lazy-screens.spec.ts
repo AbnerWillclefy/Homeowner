@@ -57,7 +57,7 @@ const SCREENS: LazyScreen[] = [
     open: async (page) => {
       await visit(page, "/home/residents/resident-2");
     },
-    loaded: (page) => page.getByRole("heading", { name: "Bruna Souza", level: 2 }),
+    loaded: (page) => page.getByRole("heading", { name: "Bruna Souza", level: 1 }),
   },
   {
     name: "Me",
@@ -75,7 +75,7 @@ const SCREENS: LazyScreen[] = [
     open: async (page) => {
       await visit(page, "/me/edit");
     },
-    loaded: (page) => page.getByRole("heading", { name: "Your name", level: 2 }),
+    loaded: (page) => page.getByRole("heading", { name: "Your name", level: 1 }),
   },
 ];
 
