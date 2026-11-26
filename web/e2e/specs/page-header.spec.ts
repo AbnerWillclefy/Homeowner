@@ -59,6 +59,29 @@ test("only Today's header has the Streak and the microphone", async ({ page, bas
   }
 });
 
+test.describe("375px and 390px", () => {
+  for (const width of [375, 390]) {
+    test(`${width}px: Today's title stays on one line beside the Streak and the microphone`, async ({ page, baseURL, fakeApi }) => {
+      await page.setViewportSize({ width, height: 812 });
+      fakeApi.state.streak = 12;
+      await launchApp(page, baseURL!);
+      const buttons = shell.todayTools(page).getByRole("button");
+      await expect(buttons).toHaveCount(2);
+      await expect(shell.title(page, TITLES.Today)).toBeVisible();
+      const oneLine = await page
+        .getByRole("heading", { level: 1 })
+        .evaluate((h) => h.getBoundingClientRect().height <= parseFloat(getComputedStyle(h).lineHeight) + 1);
+      expect(oneLine).toBe(true);
+      for (const button of await buttons.all()) {
+        const box = (await button.boundingBox())!;
+        expect(box.x + box.width).toBeLessThanOrEqual(width);
+        expect(box.width).toBeGreaterThanOrEqual(44);
+        expect(box.height).toBeGreaterThanOrEqual(44);
+      }
+    });
+  }
+});
+
 test.describe("320px", () => {
   test.use({ viewport: { width: 320, height: 640 } });
 
@@ -74,6 +97,19 @@ test.describe("320px", () => {
       expect(box.height).toBeGreaterThanOrEqual(44);
     }
     await expect(shell.title(page, TITLES.Today)).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+
+  test("at 200% text nothing leaves the screen", async ({ page, baseURL }) => {
+    await launchApp(page, baseURL!);
+    await page.evaluate(() => (document.documentElement.style.fontSize = "200%"));
+    const buttons = shell.todayTools(page).getByRole("button");
+    await expect(buttons).toHaveCount(2);
+    for (const button of await buttons.all()) {
+      const box = (await button.boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(320);
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 });
