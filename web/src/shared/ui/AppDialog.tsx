@@ -34,7 +34,7 @@ interface Props {
 
 // Whole class strings, so Tailwind finds them. `dvh` follows the mobile browser chrome and on-screen keyboard.
 const CONTENT_BASE =
-  "fixed mx-auto flex max-w-[32rem] flex-col rounded-lg border border-border bg-surface-raised text-text";
+  "fixed z-(--z-overlay) mx-auto flex max-w-[32rem] flex-col rounded-lg border border-border bg-surface-raised text-text";
 const CONTENT_SIZE = {
   centered: "inset-x-4 top-1/2 max-h-[90dvh] -translate-y-1/2",
   sheet: "inset-x-2 top-[4dvh] h-[92dvh]",
@@ -68,7 +68,7 @@ export function AppDialog({
     <Dialog.Root open={open} onOpenChange={(next) => !next && onDismiss()}>
       {trigger !== undefined && <Dialog.Trigger asChild>{trigger}</Dialog.Trigger>}
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-text/50" />
+        <Dialog.Overlay className="fixed inset-0 z-(--z-overlay) bg-text/50" />
         <Dialog.Content
           className={`${CONTENT_BASE} ${CONTENT_SIZE[size]}`}
           {...(description === undefined ? { "aria-describedby": undefined } : {})}
