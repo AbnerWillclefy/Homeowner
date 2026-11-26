@@ -1,6 +1,6 @@
 import type { FieldCodes, HomeSettings } from "../api/api";
 import { useI18n } from "../../../shared/i18n";
-import { ALLOCATION_TIMES, formatAllocationTime } from "../logic/allocationTimes";
+import { AllocationTimePicker } from "./AllocationTimePicker";
 import { fieldErrorKey } from "../logic/fieldErrors";
 
 interface SelectFieldProps {
@@ -54,7 +54,7 @@ interface Props {
 
 /** The two fields of a Home, the same for creating and editing: timezone and Allocation time. */
 export function HomeFields({ idPrefix, values, timezones, fieldErrors, disabled, onChange }: Props) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
 
   function errorFor(field: keyof HomeSettings): string | undefined {
     const code = fieldErrors[field];
@@ -72,13 +72,11 @@ export function HomeFields({ idPrefix, values, timezones, fieldErrors, disabled,
         options={timezones.map((zone) => ({ value: zone, label: zone.replaceAll("_", " ") }))}
         onChange={(value) => onChange("timezone", value)}
       />
-      <SelectField
-        id={`${idPrefix}-allocationTime`}
+      <AllocationTimePicker
         label={t("home.allocationTime.label")}
         error={errorFor("allocationTime")}
         value={values.allocationTime}
         disabled={disabled}
-        options={ALLOCATION_TIMES.map((time) => ({ value: time, label: formatAllocationTime(time, locale) }))}
         onChange={(value) => onChange("allocationTime", value)}
       />
     </>

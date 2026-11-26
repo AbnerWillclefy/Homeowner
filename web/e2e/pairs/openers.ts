@@ -50,7 +50,15 @@ export const OPENERS: Record<State, (page: Page) => Promise<void>> = {
     await dialog(page).getByRole("heading", { name: ptBR["startChoice.heading"] }).waitFor();
   },
   leave: async (page) => {
-    await button(page, ptBR["home.leave.open"]).click();
+    await button(page, new RegExp(`^${ptBR["home.leave.open"]}`)).click();
+    await opened(page);
+  },
+  "invite-sheet": async (page) => {
+    await button(page, new RegExp(`^${ptBR["invite.share.heading"]}`)).click();
+    await opened(page);
+  },
+  "home-settings": async (page) => {
+    await button(page, new RegExp(`^${ptBR["home.settings.card.title"]}`)).click();
     await opened(page);
   },
   // The e-mail travels in the router's history state from the sign-up step; set it as the router would.

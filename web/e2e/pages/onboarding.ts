@@ -9,7 +9,7 @@ export type Day = (typeof WEEK)[number];
 export interface HomeSettingsInput {
   /** An IANA zone id, the option value. */
   timezone: string;
-  /** "HH:MM", the option value. */
+  /** "HH:MM". */
   allocationTime: string;
 }
 
@@ -81,7 +81,13 @@ export const onboarding = {
   },
 
   timezone: (page: Page) => page.getByLabel("Timezone", { exact: true }),
-  allocationTime: (page: Page) => page.getByLabel("Allocation time", { exact: true }),
+  allocationTime: (page: Page) => page.getByRole("combobox", { name: "Allocation time", exact: true }),
+  /** The picker's option for an "HH:MM", as en-US writes it ("07:30" is "7:30 AM"). */
+  async chooseAllocationTime(page: Page, time: string): Promise<void> {
+    const [hours, minutes] = time.split(":").map(Number) as [number, number];
+    await onboarding.allocationTime(page).click();
+    await page.getByRole("option", { name: `${hours % 12 || 12}:${String(minutes).padStart(2, "0")} ${hours < 12 ? "AM" : "PM"}`, exact: true }).click();
+  },
   bathrooms: (page: Page) => page.getByLabel("Bathrooms", { exact: true }),
 
   nextToQuestions: (page: Page) => page.getByRole("button", { name: "Next: about your Home", exact: true }).click(),
@@ -96,7 +102,7 @@ export const onboarding = {
   async completeHomeSettings(page: Page, settings: HomeSettingsInput): Promise<void> {
     await onboarding.expectOnStep(page, "Create your Home", 1, 5);
     await onboarding.timezone(page).selectOption(settings.timezone);
-    await onboarding.allocationTime(page).selectOption(settings.allocationTime);
+    await onboarding.chooseAllocationTime(page, settings.allocationTime);
     await onboarding.continueFromSettings(page);
   },
 

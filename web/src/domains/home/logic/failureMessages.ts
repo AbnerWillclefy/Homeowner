@@ -21,3 +21,10 @@ export const SAVE_FAILURE_KEY: Record<FailureReason, MessageKey> = {
   error: "home.save.error",
   "not-signed-in": "home.notSignedIn",
 };
+
+/** Said in a toast when a setting that was sent at once is refused or never arrives; the old value is back on screen. */
+export const SETTINGS_FAILURE_KEY: Record<FailureReason, MessageKey> = {
+  offline: "home.settings.offline",
+  error: "home.settings.error",
+  "not-signed-in": "home.notSignedIn",
+};

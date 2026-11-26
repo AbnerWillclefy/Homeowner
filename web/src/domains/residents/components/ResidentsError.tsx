@@ -1,7 +1,7 @@
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 
-/** The Residents card when the list failed to load: an inline message with Retry. */
+/** The Residents list when the list failed to load: an inline message with Retry. */
 export function ResidentsError({ onRetry }: { onRetry: () => void }) {
   const { t } = useI18n();
   return (

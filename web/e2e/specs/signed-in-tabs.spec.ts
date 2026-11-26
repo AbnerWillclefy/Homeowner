@@ -55,8 +55,11 @@ test("Home shows the Home's settings and invite", async ({ page, baseURL }) => {
 
   await shell.expectOnTab(page, "Home");
   await expect(tabs.home.heading(page)).toBeVisible();
-  await expect(tabs.home.timezone(page)).toHaveValue("America/Sao_Paulo");
-  await expect(tabs.home.allocationTime(page)).toHaveValue("07:00");
+  await expect(tabs.home.summary(page)).toHaveText("Plans are made at 7:00 AM, America/Sao Paulo time.");
+  await tabs.home.settingsRow(page).click();
+  await expect(tabs.home.timezone(page)).toHaveText("America/Sao Paulo");
+  await expect(tabs.home.allocationTime(page)).toHaveText("7:00 AM");
+  await page.keyboard.press("Escape");
   await expect(tabs.home.invite(page)).toBeVisible();
 });
 
@@ -139,7 +142,7 @@ test.describe("a refresh with the Home on screen", () => {
     await regainFocus(page);
 
     await expect(page.getByRole("img", { name: "Refreshing" })).toBeVisible();
-    await expect(tabs.home.timezone(page)).toHaveValue("America/Sao_Paulo");
+    await expect(tabs.home.summary(page)).toBeVisible();
     await expect(page.getByRole("img", { name: "Refreshing" })).toHaveCount(0);
   });
 
@@ -152,7 +155,7 @@ test.describe("a refresh with the Home on screen", () => {
     await regainFocus(page);
     await expect.poll(() => fakeApi.requests.filter((r) => r.method === "GET" && r.path === "/home").length).toBe(1);
 
-    await expect(tabs.home.timezone(page)).toHaveValue("America/Sao_Paulo");
+    await expect(tabs.home.summary(page)).toBeVisible();
     await expect(page.getByRole("alert")).toHaveCount(0);
   });
 });

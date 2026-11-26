@@ -1,10 +1,11 @@
-import { Share2, UserPlus } from "lucide-react";
-import { SectionCard } from "../../../shared/ui/SectionCard";
+import { Row, Sheet } from "@homeowner/bedrock";
+import { ChevronRight, Share2, UserPlus } from "lucide-react";
+import { useState } from "react";
+import { RowTile } from "../../../shared/ui/RowTile";
 import { useSubmitOnce } from "../../../shared/ui/useSubmitOnce";
 import { useToast } from "../../../shared/ui/useToast";
 import { createInvite } from "../api/api";
 import { useI18n, type MessageKey } from "../../../shared/i18n";
-import { ButtonRow } from "../../../shared/ui/ButtonRow";
 import { Button } from "../../../shared/ui/Button";
 import { inviteLink, shareInvite } from "../logic/share";
 
@@ -17,12 +18,13 @@ const CREATE_FAILURE_KEY = {
 } as const satisfies Record<string, MessageKey>;
 
 /**
- * In the Home section: make a single-use Invite and hand it to the phone's share sheet, or copy the link when
- * the browser has no share sheet. The link is built here from the token and the app's own address. The result
+ * A Row of the Residents list ("Convidar um morador") that opens a Sheet: make a single-use Invite and hand it to
+ * the phone's share sheet, or copy the link when the browser has no share sheet. The link is built here from the token and the app's own address. The result
  * is a toast: nothing is left to decide, and the button stays for another try.
  */
 export function InviteShare() {
   const { t } = useI18n();
+  const [open, setOpen] = useState(false);
   const toast = useToast();
 
   const { run: onClick, pending: working } = useSubmitOnce(async () => {
@@ -42,19 +44,31 @@ export function InviteShare() {
   });
 
   return (
-    <SectionCard id="invite-share-heading" icon={UserPlus} title={t("invite.share.heading")} hint={t("invite.share.hint")}>
-      <ButtonRow
-        end={
-          <Button
-            variant="primary"
-            pending={working}
-            leadingIcon={<Share2 aria-hidden="true" className="size-4" />}
-            onClick={() => void onClick()}
-          >
+    <>
+      <Row
+        asChild
+        className="my-0"
+        leading={<RowTile icon={UserPlus} tone="brand" />}
+        title={t("invite.share.heading")}
+        caption={t("invite.row.caption")}
+        trailing={<ChevronRight size={20} aria-hidden="true" className="text-muted" />}
+      >
+        <button type="button" aria-haspopup="dialog" onClick={() => setOpen(true)} />
+      </Row>
+      <Sheet
+        open={open}
+        onOpenChange={setOpen}
+        title={t("invite.share.heading")}
+        subtitle={t("invite.share.hint")}
+        closeLabel={t("home.settings.sheet.close")}
+        footer={
+          <Button pending={working} leadingIcon={<Share2 aria-hidden="true" className="size-4" />} onClick={() => void onClick()}>
             {t("invite.share.button")}
           </Button>
         }
-      />
-    </SectionCard>
+      >
+        {null}
+      </Sheet>
+    </>
   );
 }
