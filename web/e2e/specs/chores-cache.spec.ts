@@ -7,8 +7,8 @@ import { launchApp } from "../pages/launch";
 import { shell } from "../pages/shell";
 import { tabs } from "../pages/tabs";
 
-// What this covers: the Chores tab over the query cache. A create, an edit and a delete write the server's answer
-// into the cache, so none sends a new GET /home/chores. Going to another tab and back shows the cached list at once,
+// What this covers: the Chores tab over the query cache. A create, an edit and a delete (once its Undo Toast closes) write
+// the server's answer into the cache, so none sends a new GET /home/chores. Going to another tab and back shows the cached list at once,
 // with the quiet Refreshing indicator (not a skeleton) while the read behind it is held.
 
 test.use({ fakeState: signedInResident() });
@@ -28,6 +28,7 @@ test("a create, an edit and a delete update the list with no new GET /home/chore
   const readsBefore = reads();
 
   await page.getByRole("button", { name: "Add a Chore" }).click();
+  await page.getByRole("menuitem", { name: "New Chore" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Name").fill("Clean the windows");
   await dialog.getByLabel("Category").selectOption({ index: 1 });
@@ -36,16 +37,19 @@ test("a create, an edit and a delete update the list with no new GET /home/chore
   await expect(dialog).toHaveCount(0);
   expect(reads()).toBe(readsBefore);
 
-  await page.getByRole("button", { name: "Edit Clean the windows" }).click();
+  await tabs.chores.row(page, "Clean the windows").click();
   await page.getByRole("dialog").getByLabel("Name").fill("Clean every window");
   await page.getByRole("dialog").getByRole("button", { name: "Save Chore" }).click();
   await expect(tabs.chores.chore(page, "Clean every window")).toBeVisible();
   await expect(tabs.chores.chore(page, "Clean the windows")).toHaveCount(0);
   expect(reads()).toBe(readsBefore);
 
-  await page.getByRole("button", { name: "Delete Clean every window" }).click();
-  await page.getByRole("button", { name: "Yes, delete" }).click();
+  // The delete is held for Undo: the row is gone at once, and closing the Toast sends it with no read of the list.
+  await tabs.chores.row(page, "Clean every window").click();
+  await page.getByRole("dialog").getByRole("button", { name: "Delete Chore" }).click();
   await expect(tabs.chores.chore(page, "Clean every window")).toHaveCount(0);
+  await page.getByRole("listitem").filter({ hasText: "deleted." }).getByRole("button", { name: "Dismiss message" }).click();
+  await expect.poll(() => fakeApi.requests.filter((r) => r.method === "DELETE").length).toBe(1);
   for (const name of CHORES) await expect(tabs.chores.chore(page, name)).toBeVisible();
   expect(reads()).toBe(readsBefore);
 });
@@ -62,7 +66,7 @@ test("coming back to Chores shows the cached list at once and the indicator whil
   // Today's plan cards carry the same names, so wait for Chores to replace them before matching by text.
   await expect(tabs.chores.heading(page)).toBeVisible();
 
-  // The cached list and the add buttons are there while the read is held: a skeleton would have replaced them.
+  // The cached list and the add button are there while the read is held: a skeleton would have replaced them.
   for (const name of CHORES) await expect(tabs.chores.chore(page, name)).toBeVisible();
   await expect(page.getByRole("button", { name: "Add a Chore" })).toBeVisible();
   await expect(page.getByRole("img", { name: "Refreshing" })).toBeVisible();
