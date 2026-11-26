@@ -4,7 +4,8 @@ import { MeProfile } from "../../../domains/profile/components/MeProfile";
 import { SettingsCard } from "../../../domains/settings/components/Settings";
 import { useI18n } from "../../../shared/i18n";
 import { HeadedSection } from "../../../shared/ui/HeadedSection";
-import { PageHeader } from "@homeowner/bedrock";
+import { TabBody } from "../TabBody";
+import { TabHeader } from "../TabHeader";
 import { PageLoading } from "../../../shared/ui/PageLoading";
 import { MyCompletions } from "../../../domains/residents/components/MyCompletions";
 import { useAppAuth } from "../AuthProvider";
@@ -24,10 +25,8 @@ export function MePage() {
   return (
     <PageLoading message={t("profile.loading")}>
       {/* No refresh slot here: MeHeader's name row carries the page's one indicator. */}
-      <div className="mb-6">
-        <PageHeader title={t("me.heading")} />
-      </div>
-      <div className="flex flex-col gap-8">
+      <TabHeader title={t("me.heading")} refresh={false} />
+      <TabBody>
         <MeHeader />
         {/* Only a Resident with a Home has a history; the section stands alone, so the cards below never wait on it. */}
         {home.state.kind === "ready" && <MyCompletions timeZone={home.state.home.timezone} />}
@@ -37,7 +36,7 @@ export function MePage() {
           {/* Signing out is on purpose: the guard then sends the person to sign-in without remembering this tab. */}
           <SignedIn email={auth.state.email} offline={auth.state.offline} onSignOut={auth.signOut} />
         </HeadedSection>
-      </div>
+      </TabBody>
     </PageLoading>
   );
 }

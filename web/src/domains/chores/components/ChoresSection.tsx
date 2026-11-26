@@ -10,8 +10,12 @@ import { formFromEntry } from "../../catalog/logic/review";
 import { useToast } from "../../../shared/ui/useToast";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
-import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
+import {
+  useReportFetching,
+  useReportFirstLoad,
+} from "../../../shared/ui/PageLoading";
 import { categoryLabel, labelText } from "../../profile/logic/labels";
+import { TabBody } from "../../../app/components/TabBody";
 import { TabHeader } from "../../../app/components/TabHeader";
 import { useShell } from "../../../app/components/ShellContext";
 import { ChoreForm, type ResponsibleProps } from "./ChoreForm";
@@ -74,11 +78,18 @@ export function ChoresSection() {
 
   // A Sheet opened from "+" has no row to return to, so focus goes back to "+" by hand.
   function focusAdd() {
-    requestAnimationFrame(() => (addRef.current?.querySelector("button") ?? headingRef.current)?.focus());
+    requestAnimationFrame(() =>
+      (addRef.current?.querySelector("button") ?? headingRef.current)?.focus(),
+    );
   }
 
   const close = () => {
-    if (editing.kind === "new" || editing.kind === "catalog" || editing.kind === "fromCatalog") focusAdd();
+    if (
+      editing.kind === "new" ||
+      editing.kind === "catalog" ||
+      editing.kind === "fromCatalog"
+    )
+      focusAdd();
     setEditing({ kind: "none" });
     if (params.has(EDIT_PARAM)) setParams({}, { replace: true });
   };
@@ -91,23 +102,44 @@ export function ChoresSection() {
 
   // The Responsible field needs the shared Residents list, which is not ready while it loads or after it failed.
   const responsibleFor = (existing: Chore | null): ResponsibleProps => ({
-    residents: residents.state.kind === "ready" ? residents.state.residents : null,
+    residents:
+      residents.state.kind === "ready" ? residents.state.residents : null,
     reloadResidents: residents.reload,
     onStored: upsert,
     existing,
   });
 
   const ready = state.kind === "ready";
-  const editedChore = ready && editing.kind === "edit" ? state.chores.find((chore) => chore.id === editing.id) : undefined;
+  const editedChore =
+    ready && editing.kind === "edit"
+      ? state.chores.find((chore) => chore.id === editing.id)
+      : undefined;
   const clearFilters = () => {
     setQuery("");
     setChip(null);
   };
 
   // The chips: every Category the list offers, plus any a Chore is under, each resolved to an id the app knows.
-  const chipIds = ready ? [...new Set([...state.categories, ...state.chores.map((chore) => chore.category)].map((id) => choreCategory(id).id))] : [];
+  const chipIds = ready
+    ? [
+        ...new Set(
+          [
+            ...state.categories,
+            ...state.chores.map((chore) => chore.category),
+          ].map((id) => choreCategory(id).id),
+        ),
+      ]
+    : [];
   const groups = ready
-    ? groupByCategory(filterChores(state.chores, query, chip, (chore) => choreCategory(chore.category).id), state.categories)
+    ? groupByCategory(
+        filterChores(
+          state.chores,
+          query,
+          chip,
+          (chore) => choreCategory(chore.category).id,
+        ),
+        state.categories,
+      )
     : [];
 
   return (
@@ -116,7 +148,13 @@ export function ChoresSection() {
         id="chores-heading"
         headingRef={headingRef}
         title={t("chores.heading")}
-        subtitle={ready ? (state.chores.length > 0 ? t("chores.count", { count: state.chores.length }) : t("chores.empty.subtitle")) : undefined}
+        subtitle={
+          ready
+            ? state.chores.length > 0
+              ? t("chores.count", { count: state.chores.length })
+              : t("chores.empty.subtitle")
+            : undefined
+        }
         tools={
           ready &&
           state.chores.length > 0 && (
@@ -127,8 +165,16 @@ export function ChoresSection() {
                 label={t("chores.add")}
                 closeLabel={t("chores.sheet.close")}
                 items={[
-                  { label: t("chores.menu.new"), icon: Plus, onSelect: () => setEditing({ kind: "new" }) },
-                  { label: t("chores.menu.catalog"), icon: BookOpen, onSelect: () => setEditing({ kind: "catalog" }) },
+                  {
+                    label: t("chores.menu.new"),
+                    icon: Plus,
+                    onSelect: () => setEditing({ kind: "new" }),
+                  },
+                  {
+                    label: t("chores.menu.catalog"),
+                    icon: BookOpen,
+                    onSelect: () => setEditing({ kind: "catalog" }),
+                  },
                 ]}
               />
             </div>
@@ -136,138 +182,181 @@ export function ChoresSection() {
         }
       />
 
-      {showSkeleton && <ChoresSkeleton />}
+      <TabBody>
+        {showSkeleton && <ChoresSkeleton />}
 
-      {state.kind === "failed" && (
-        <>
-          <p role="alert" className="text-danger">
-            {t(LOAD_FAILURE_KEY[state.reason])}
-          </p>
-          {state.reason !== "not-signed-in" && (
-            <Button variant="secondary" onClick={reload}>
-              {t("chores.retry")}
-            </Button>
-          )}
-        </>
-      )}
-
-      {ready && (
-        <div className="flex flex-col gap-6">
-          {state.chores.length === 0 ? (
-            <div className="flex flex-col items-stretch gap-2">
-              <EmptyState
-                icon={ListChecks}
-                title={t("chores.empty.title")}
-                message={t("chores.empty.message")}
-                action={{ label: t("chores.menu.catalog"), onClick: () => setEditing({ kind: "catalog" }) }}
-              />
-              <Button variant="secondary" onClick={() => setEditing({ kind: "new" })}>
-                {t("chores.menu.new")}
+        {state.kind === "failed" && (
+          <>
+            <p role="alert" className="text-danger">
+              {t(LOAD_FAILURE_KEY[state.reason])}
+            </p>
+            {state.reason !== "not-signed-in" && (
+              <Button variant="secondary" onClick={reload}>
+                {t("chores.retry")}
               </Button>
-            </div>
-          ) : (
-            <>
-              <SearchField
-                label={t("chores.search.label")}
-                placeholder={t("chores.search.label")}
-                clearLabel={t("chores.search.clear")}
-                value={query}
-                onValueChange={setQuery}
-              />
-              {/* The strip scrolls sideways: pt-BR's long Category names do not fit one row. */}
-              <div role="group" aria-label={t("chores.filter.label")} className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-                <button type="button" aria-pressed={chip === null} onClick={() => setChip(null)} className={CHIP}>
-                  {t("chores.filter.all")}
-                </button>
-                {chipIds.map((id) => (
-                  <button key={id} type="button" aria-pressed={chip === id} onClick={() => setChip(chip === id ? null : id)} className={CHIP}>
-                    <ChoreIcon size="sm" category={choreCategory(id)} />
-                    {labelText(t, categoryLabel(id))}
-                  </button>
-                ))}
-              </div>
+            )}
+          </>
+        )}
 
-              {groups.length === 0 && (
+        {ready && (
+          <>
+            {state.chores.length === 0 ? (
+              <div className="flex flex-col items-stretch gap-2">
                 <EmptyState
-                  kind="no-results"
-                  icon={SearchX}
-                  title={t("chores.noResults.title")}
-                  message={t("chores.noResults.message")}
-                  action={{ label: t("chores.noResults.clear"), onClick: clearFilters }}
+                  icon={ListChecks}
+                  title={t("chores.empty.title")}
+                  message={t("chores.empty.message")}
+                  action={{
+                    label: t("chores.menu.catalog"),
+                    onClick: () => setEditing({ kind: "catalog" }),
+                  }}
                 />
-              )}
+                <Button
+                  variant="secondary"
+                  onClick={() => setEditing({ kind: "new" })}
+                >
+                  {t("chores.menu.new")}
+                </Button>
+              </div>
+            ) : (
+              <>
+                <SearchField
+                  label={t("chores.search.label")}
+                  placeholder={t("chores.search.label")}
+                  clearLabel={t("chores.search.clear")}
+                  value={query}
+                  onValueChange={setQuery}
+                />
+                {/* The strip scrolls sideways: pt-BR's long Category names do not fit one row. */}
+                <div
+                  role="group"
+                  aria-label={t("chores.filter.label")}
+                  className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]"
+                >
+                  <button
+                    type="button"
+                    aria-pressed={chip === null}
+                    onClick={() => setChip(null)}
+                    className={CHIP}
+                  >
+                    {t("chores.filter.all")}
+                  </button>
+                  {chipIds.map((id) => (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-pressed={chip === id}
+                      onClick={() => setChip(chip === id ? null : id)}
+                      className={CHIP}
+                    >
+                      <ChoreIcon size="sm" category={choreCategory(id)} />
+                      {labelText(t, categoryLabel(id))}
+                    </button>
+                  ))}
+                </div>
 
-              {groups.map((group) => (
-                <section key={group.category} aria-labelledby={`chores-${group.category}`} className="mt-0 flex flex-col gap-2">
-                  <h2 id={`chores-${group.category}`} className="my-0 text-sm font-medium text-muted">
-                    {labelText(t, categoryLabel(group.category))} · {group.chores.length}
-                  </h2>
-                  <ul className="m-0 flex list-none flex-col overflow-hidden rounded-lg border border-border/40 bg-surface p-0">
-                    {group.chores.map((chore: Chore) => (
-                      <ChoreItem key={chore.id} chore={chore} onOpen={() => setEditing({ kind: "edit", id: chore.id })} />
-                    ))}
-                  </ul>
-                </section>
-              ))}
-            </>
-          )}
+                {groups.length === 0 && (
+                  <EmptyState
+                    kind="no-results"
+                    icon={SearchX}
+                    title={t("chores.noResults.title")}
+                    message={t("chores.noResults.message")}
+                    action={{
+                      label: t("chores.noResults.clear"),
+                      onClick: clearFilters,
+                    }}
+                  />
+                )}
 
-          {editing.kind === "new" && (
-            <ChoreForm
-              inDialog
-              initial={emptyForm()}
-              mode="create"
-              idKey="new"
-              categories={state.categories}
-              demands={state.demands}
-              save={createChore}
-              responsible={responsibleFor(null)}
-              onSaved={onSaved}
-              onCancel={close}
-            />
-          )}
+                {groups.map((group) => (
+                  <section
+                    key={group.category}
+                    aria-labelledby={`chores-${group.category}`}
+                    className="mt-0 flex flex-col gap-2"
+                  >
+                    <h2
+                      id={`chores-${group.category}`}
+                      className="my-0 text-sm font-medium text-muted"
+                    >
+                      {labelText(t, categoryLabel(group.category))} ·{" "}
+                      {group.chores.length}
+                    </h2>
+                    <ul className="m-0 flex list-none flex-col overflow-hidden rounded-lg border border-border/40 bg-surface p-0">
+                      {group.chores.map((chore: Chore) => (
+                        <ChoreItem
+                          key={chore.id}
+                          chore={chore}
+                          onOpen={() =>
+                            setEditing({ kind: "edit", id: chore.id })
+                          }
+                        />
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </>
+            )}
 
-          {(editing.kind === "catalog" || editing.kind === "fromCatalog") && (
-            <CatalogPicker onPick={(entry) => setEditing({ kind: "fromCatalog", entry })} onClose={close} />
-          )}
+            {editing.kind === "new" && (
+              <ChoreForm
+                inDialog
+                initial={emptyForm()}
+                mode="create"
+                idKey="new"
+                categories={state.categories}
+                demands={state.demands}
+                save={createChore}
+                responsible={responsibleFor(null)}
+                onSaved={onSaved}
+                onCancel={close}
+              />
+            )}
 
-          {editing.kind === "fromCatalog" && (
-            <ChoreForm
-              inDialog
-              initial={formFromEntry(editing.entry, t)}
-              mode="create"
-              idKey={`catalog-${editing.entry.id}`}
-              categories={state.categories}
-              demands={state.demands}
-              save={createChore}
-              responsible={responsibleFor(null)}
-              onSaved={onSaved}
-              onCancel={() => setEditing({ kind: "catalog" })}
-            />
-          )}
+            {(editing.kind === "catalog" || editing.kind === "fromCatalog") && (
+              <CatalogPicker
+                onPick={(entry) => setEditing({ kind: "fromCatalog", entry })}
+                onClose={close}
+              />
+            )}
 
-          {editedChore && (
-            <ChoreForm
-              key={editedChore.id}
-              inDialog
-              initial={formFromChore(editedChore)}
-              mode="edit"
-              idKey={editedChore.id}
-              categories={state.categories}
-              demands={state.demands}
-              save={(input) => updateChore(editedChore.id, input)}
-              responsible={responsibleFor(editedChore)}
-              onSaved={onSaved}
-              onCancel={close}
-              onDelete={() => {
-                destroy(editedChore);
-                close();
-                focusHeading();
-              }}
-            />
-          )}
-        </div>
-      )}
+            {editing.kind === "fromCatalog" && (
+              <ChoreForm
+                inDialog
+                initial={formFromEntry(editing.entry, t)}
+                mode="create"
+                idKey={`catalog-${editing.entry.id}`}
+                categories={state.categories}
+                demands={state.demands}
+                save={createChore}
+                responsible={responsibleFor(null)}
+                onSaved={onSaved}
+                onCancel={() => setEditing({ kind: "catalog" })}
+              />
+            )}
+
+            {editedChore && (
+              <ChoreForm
+                key={editedChore.id}
+                inDialog
+                initial={formFromChore(editedChore)}
+                mode="edit"
+                idKey={editedChore.id}
+                categories={state.categories}
+                demands={state.demands}
+                save={(input) => updateChore(editedChore.id, input)}
+                responsible={responsibleFor(editedChore)}
+                onSaved={onSaved}
+                onCancel={close}
+                onDelete={() => {
+                  destroy(editedChore);
+                  close();
+                  focusHeading();
+                }}
+              />
+            )}
+          </>
+        )}
+      </TabBody>
     </section>
   );
 }

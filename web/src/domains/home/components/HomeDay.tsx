@@ -4,6 +4,7 @@ import { TodayHero } from "../../dayplan/components/TodayHero";
 import { TodaySection } from "../../dayplan/components/TodaySection";
 import { useDayPlan } from "../../dayplan/hooks/useDayPlan";
 import { useI18n } from "../../../shared/i18n";
+import { TabBody } from "../../../app/components/TabBody";
 import { TabHeader } from "../../../app/components/TabHeader";
 import { TodayTools } from "../../../app/components/TodayTools";
 import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
@@ -56,10 +57,12 @@ export function HomeDay() {
     return (
       <>
         {header}
-        <ReservedSkeleton show={showSkeleton}>
-          <HeroSkeleton />
-          <DayPlanSkeleton summary />
-        </ReservedSkeleton>
+        <TabBody>
+          <ReservedSkeleton show={showSkeleton}>
+            <HeroSkeleton />
+            <DayPlanSkeleton summary />
+          </ReservedSkeleton>
+        </TabBody>
       </>
     );
   }
@@ -67,8 +70,10 @@ export function HomeDay() {
   return (
     <>
       {header}
-      <TodayHero plan={state.kind === "ready" ? state.plan : null} />
-      <TodaySection day={day} note={note} headingId={HEADING_ID} headingRef={heading} />
+      <TabBody>
+        <TodayHero plan={state.kind === "ready" ? state.plan : null} />
+        <TodaySection day={day} note={note} headingId={HEADING_ID} headingRef={heading} />
+      </TabBody>
     </>
   );
 }

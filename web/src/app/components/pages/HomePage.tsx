@@ -10,6 +10,7 @@ import { ResidentsCard } from "../../../domains/residents/components/ResidentsCa
 import { useI18n } from "../../../shared/i18n";
 import { CollapsibleCard } from "../../../shared/ui/CollapsibleCard";
 import { PageLoading } from "../../../shared/ui/PageLoading";
+import { TabBody } from "../TabBody";
 import { TabHeader } from "../TabHeader";
 import { useSession } from "../SessionProvider";
 import { useShell } from "../ShellContext";
@@ -23,10 +24,11 @@ export function HomePage() {
     <PageLoading message={t("home.loading")}>
       <HomeGate skeleton={<HomeSkeleton />}>
         {(current: Home) => (
-          <div className="flex flex-col gap-4">
+          <>
             <TabHeader title={t("home.settings.heading")} />
+            <TabBody>
             {/* A paragraph, not the header's subtitle: the subtitle is one truncated line, and this holds the zone. */}
-            <p className="-mt-2 mb-0 text-muted">
+            <p className="my-0 text-muted">
               {t("home.summary", {
                 time: formatAllocationTime(current.allocationTime, locale),
                 zone: current.timezone.replaceAll("_", " "),
@@ -58,7 +60,8 @@ export function HomePage() {
                 void home.clearHome();
               }}
             />
-          </div>
+            </TabBody>
+          </>
         )}
       </HomeGate>
     </PageLoading>

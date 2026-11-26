@@ -4,7 +4,7 @@ import { useId, type ReactNode } from "react";
 export function HeadedSection({ title, children }: { title: ReactNode; children: ReactNode }) {
   const id = useId();
   return (
-    <section aria-labelledby={id} className="flex flex-col gap-4">
+    <section aria-labelledby={id} className="mt-0 flex flex-col gap-4">
       <h3 id={id} className="my-0 text-xl leading-snug font-bold [overflow-wrap:anywhere]">
         {title}
       </h3>

@@ -75,7 +75,7 @@ export function TodaySection({
   }, [changed, offer]);
 
   return (
-    <section ref={section} aria-labelledby={headingId}>
+    <section ref={section} aria-labelledby={headingId} className="mt-0">
       <Notice notice={notice} />
 
       {showSkeleton && <DayPlanSkeleton />}
@@ -214,7 +214,7 @@ function PlanView({
   );
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-4">
       {plan.planned && <DaySummary plan={plan} />}
       {!plan.planned && !plan.rejected && (
         <p role="status" className="my-0 flex items-center gap-2 font-semibold text-muted">
@@ -296,7 +296,7 @@ function PlanView({
       {plan.planned && plan.others.length > 0 && (
         <div>
           <GroupHeading>{t("dayplan.others.heading")}</GroupHeading>
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-4">
             {plan.others.map((other, index) => (
               <section key={other.residentId} aria-labelledby={`resident-${index}`} className="mt-0">
                 <h4 id={`resident-${index}`} className="mt-0 mb-2 text-base font-bold">

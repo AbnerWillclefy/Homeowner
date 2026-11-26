@@ -116,6 +116,17 @@
   padding-inline-end: calc(1rem + env(safe-area-inset-right));
 }
 
+/* A tab under the Shell: the page without block padding, because the tab's head (pt-6 pb-2) and body (pt-2 pb-6) set it. */
+@utility tab-page {
+  box-sizing: border-box;
+  max-width: 32rem;
+  margin-inline: auto;
+  padding-block-start: env(safe-area-inset-top);
+  padding-block-end: env(safe-area-inset-bottom);
+  padding-inline-start: calc(1rem + env(safe-area-inset-left));
+  padding-inline-end: calc(1rem + env(safe-area-inset-right));
+}
+
 /* Horizontal safe-area padding of the full-bleed onboarding screen: 1.5rem for content, 0.75rem for the top bar. */
 @utility onboarding-x {
   padding-inline-start: calc(1.5rem + env(safe-area-inset-left));

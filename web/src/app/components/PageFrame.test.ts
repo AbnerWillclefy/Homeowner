@@ -28,6 +28,8 @@ describe("PageFrame", () => {
     expect(count(markup, "h1")).toBe(1);
     expect(markup).not.toContain("homeowner");
     expect(markup).not.toContain("mb-6");
+    expect(markup).toContain("tab-page");
+    expect(markup).not.toMatch(/class="page /);
   });
 
   it("puts the given top in the logo's place, so there is still one h1", () => {
@@ -35,5 +37,6 @@ describe("PageFrame", () => {
     expect(count(markup, "h1")).toBe(1);
     expect(markup).toContain("bar");
     expect(markup).not.toContain("homeowner");
+    expect(markup).toMatch(/class="page /);
   });
 });
