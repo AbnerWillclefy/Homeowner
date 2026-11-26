@@ -66,8 +66,10 @@ for (const l of LOCALES) {
         await page.screenshot({ path: `${OUT}/today-${l.file}.png` });
 
         for (const [tab, name] of [["chores", l.nav.chores], ["home", l.nav.home], ["me", l.nav.me]] as const) {
+          const previous = await page.getByRole("heading", { level: 1 }).textContent();
           await page.getByRole("link", { name, exact: true }).click();
-          await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
+          // Each tab has its own h1, so wait for it to change rather than for any h1.
+          await expect(page.getByRole("heading", { level: 1 })).not.toHaveText(previous!);
           await page.waitForLoadState("networkidle");
           await page.screenshot({ path: `${OUT}/${tab}-${l.file}.png` });
         }
