@@ -27,6 +27,6 @@ Pairs reviewed by eye let a 12px padding pass against an 8px artboard (#918). AD
 - A role missing from the map is not measured.
 - Different row counts in the sample data show up as count mismatches instead of sizes: where the fake data differs from the artboard, the mismatch is itself the finding.
 - Bedrock markup carries attributes that exist only for this check.
-- Some roles have no Bedrock component in `web/` yet: the bottom bar is web's own `BottomNav`, not Bedrock's `BottomBar`, and most dialogs are web's `shared/ui/AppDialog`, not Bedrock's `Dialog`. They show as "1 in artboard, 0 in app" count mismatches until those screens move to Bedrock (ADR 0022).
+- Some roles are not rendered through Bedrock yet: web's list, row, field, segmented-control, dialog and bottom-bar (its own `Card`/`CardRow`, `BottomNav`, `AppDialog`), and Revenue's list and field. They show as count mismatches ("0 in app, N in artboard") until those screens move to Bedrock (ADR 0022).
 - Revenue rows are `ListRow`, so they match through `data-slot="list-row"`.
 - A drifted screen produces many findings. That is the backlog, to be worked through screen by screen.
