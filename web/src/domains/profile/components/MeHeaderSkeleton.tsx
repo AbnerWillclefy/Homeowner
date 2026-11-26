@@ -15,11 +15,11 @@ function Line({ height, width, show }: { height: string; width: string; show: bo
   return show ? <SkeletonBar className={`${height} ${width}`} /> : <span className={`block ${height}`} />;
 }
 
-/** The header's shape while `GET /me` loads: the Avatar circle and three lines, at the loaded sizes. */
+/** The header's shape while `GET /me` loads: the Avatar circle (Bedrock's 72px `lg`) and three lines, at the loaded sizes. */
 export function MeHeaderSkeleton({ showBars, hasHome }: { showBars: boolean; hasHome: boolean }) {
   return (
     <div aria-hidden="true" className={COLUMN}>
-      <span className={`block size-20 rounded-pill ${showBars ? "bg-muted/20 motion-safe:animate-pulse" : ""}`} />
+      <span className={`block size-18 rounded-pill ${showBars ? "bg-muted/20 motion-safe:animate-pulse" : ""}`} />
       <div className={`mt-1 flex w-full justify-center ${NAME_LINE}`}>
         <Line height={NAME_LINE} width="w-1/2" show={showBars} />
       </div>
