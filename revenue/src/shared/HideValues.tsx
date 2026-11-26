@@ -57,7 +57,7 @@ export function HideValuesToggle() {
       icon={hidden ? EyeOff : Eye}
       aria-pressed={hidden}
       onClick={toggle}
-      className="max-desktop:size-control-lg max-desktop:rounded-full max-desktop:border-border max-desktop:px-0"
+      className="size-control-lg rounded-full border-border px-0"
     >
       <span className="sr-only">{t(hidden ? "hide.show" : "hide.hide")}</span>
     </Button>

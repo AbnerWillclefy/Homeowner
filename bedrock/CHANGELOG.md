@@ -4,6 +4,8 @@ Bedrock follows semver; before 1.0.0 a minor may break ([spec](../docs/design/be
 
 ## Unreleased
 
+- Core: `Avatar` (photo, initials or icon; the fill and ink come as props, the image falls back to the initials on error), `StepIndicator` ("Passo N de M" as a prop string plus decorative segments), `ChoiceGroup` and `Choice` (large 48px tap choices on native radios, a check icon marks the selected one) and `PageHeader` (title, subtitle, `id`, `headingRef`, `period`, `tools`, `action`, `trailing`). `Stepper` is also exported as `Counter`, the canvas's name for it. `Choice` takes an optional `leading` visual; `Select` takes an optional `icon`, which draws its trigger as a secondary button.
+
 - Phone controls: below 768px (and on touch screens) Button `sm` and `md`, every field and the Select trigger are drawn at 48px, and SegmentedControl is 48px overall, so a field beside a button match. Desktop heights are unchanged. BottomBar labels no longer truncate.
 - ListRow: optional `action` (`{ label, icon, onClick, loading, disabled, variant }`), a sibling button after the row: a text Button from the tablet breakpoint up, a 48px icon button below it, the label as its accessible name. Rows without it render as before.
 - DescriptionList (Core): label and value pairs as a two-column `<dl>`, with an optional total line; values are nodes, so `Amount` follows hide values.

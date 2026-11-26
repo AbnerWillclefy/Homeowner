@@ -1,8 +1,12 @@
 import { it } from "vitest";
 import { Badge } from "./badge";
 import { Banner } from "./banner";
+import { Avatar } from "./avatar";
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";
+import { Choice, ChoiceGroup } from "./choice-group";
+import { PageHeader } from "./page-header";
+import { StepIndicator } from "./step-indicator";
 import { Stepper } from "./stepper";
 import { Switch } from "./switch";
 
@@ -20,6 +24,16 @@ export function requiredProps() {
   <Checkbox />;
   // @ts-expect-error a Stepper needs its labels and value
   <Stepper />;
+  // @ts-expect-error a StepIndicator needs its sentence and counts
+  <StepIndicator />;
+  // @ts-expect-error a PageHeader needs a title
+  <PageHeader />;
+  // @ts-expect-error a ChoiceGroup needs a label and a value
+  <ChoiceGroup />;
+  // @ts-expect-error a Choice needs a label and a value
+  <Choice />;
+  // Avatar has no words: it is decorative and the name is written beside it.
+  <Avatar />;
 }
 
 it("is checked by tsc, not at runtime", () => {});
