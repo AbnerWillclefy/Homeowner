@@ -40,12 +40,12 @@ describe("ChoreItem row", () => {
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
-  it("tags the Category with its name as text and its chore colour", () => {
-    expect(show({ category: "laundry" })).toContain("Roupas");
+  // The group heading names the Category; the row shows only its tile, as on the Chores artboard.
+  it("shows the Category as its chore-colour tile, without its name", () => {
+    expect(show({ category: "laundry" })).not.toContain("Roupas");
     expect(container().querySelector(".bg-chore-laundry-soft")).not.toBeNull();
-    // An unknown Category is Other, never the raw id.
-    expect(show({ category: "mystery" })).toContain("Outros");
-    expect(container().textContent).not.toContain("mystery");
+    // An unknown Category is Other.
+    expect(show({ category: "mystery" })).not.toContain("mystery");
     expect(container().querySelector(".bg-chore-other-soft")).not.toBeNull();
   });
 

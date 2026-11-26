@@ -2,7 +2,7 @@
 
 One Task of the Day Plan, with the actions that apply in its state. **Home** layer.
 
-- **When to use**: on Today, for the Resident's tasks, other Residents' tasks and the leftovers. **When not**: in the Chores list (use a list row with `ChoreTag`).
+- **When to use**: on Today, for the Resident's tasks, other Residents' tasks and the leftovers. **When not**: in the Chores list (use a list row with the bare `ChoreIcon`, under a heading that names the Category).
 - **Anatomy**: `ChoreTag` 40px · the chore's name (16/24, one line) · caption (category, `Effort`, due) · ⋯ (`Menu` with Trocar and Ver detalhes) · one line of the why, truncated · actions.
 - **States**:
   - **Proposed**: Recusar (`secondary`) and Aceitar (`primary`), side by side, 48px.

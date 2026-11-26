@@ -52,8 +52,10 @@ test("a Category chip keeps only that Category's group, and All shows them again
   await expect(tabs.chores.chore(page, "Wash the dishes")).toBeVisible();
 });
 
-test("a row names its Category as text", async ({ page }) => {
-  await expect(tabs.chores.row(page, "Wash the dishes")).toContainText("Kitchen");
+test("a row starts with the Chore's name, under the heading that names its Category", async ({ page }) => {
+  const kitchen = page.getByRole("region", { name: /^Kitchen · / });
+  await expect(kitchen.getByRole("button", { name: /^Wash the dishes/ })).toBeVisible();
+  await expect(kitchen.getByRole("button", { name: /^Wash the dishes/ })).not.toContainText("Kitchen");
 });
 
 test("the + menu offers a new Chore and the Catalog, and focus comes back to + when the Sheet closes", async ({ page }) => {
