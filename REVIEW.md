@@ -33,8 +33,15 @@ Domain terms are in `GLOSSARY.md`, decisions in `docs/adr/`.
   illustrative, so the catalogs and `docs/glossary-pt-BR.md` win (see Wording below). Raise **one inline finding per visible difference**: a missing or extra control in the
   header's tools, a card, the grid columns it spans, the side panel, the order, a tone or colour, a state. Each
   difference is its own finding even when several land on one page file; this overrides the skill's "one finding per
-  root cause in a file". Never compare pixel by pixel, and ignore font rendering, anti-aliasing and sub-pixel
-  offsets.
+  root cause in a file". Ignore font rendering, anti-aliasing and sub-pixel offsets.
+  - Measurements: the check also measures each pair's equivalent elements (list, row, page header, search field, Sheet, Dialog and
+    the rest, ADR 0030). Read `auto-<app>-<screen>-<mobile|desktop>-measure.json` (`{ app, design }`, the x, width, height and gap above of each
+    element by role) or the details table under the pair in the description, which lists only the differences. Raise **one finding per
+    difference over 4px** (role, property, app value, design value; a table of 20 rows is cut, the file has the rest). A count mismatch
+    ("3 rows in app, 5 in artboard") is a difference. A role that Bedrock does not render yet (web's own `BottomNav` and `AppDialog`) is
+    a count mismatch until the screen moves to Bedrock: raise it once, naming the cause. A difference inside a component with
+    `bedrock: true` (`ROLES` in `.github/scripts/artboards.mjs`) is anchored on, and fixed in, the Bedrock component under `bedrock/src/`, not
+    the screen. Do not raise the smaller ones.
   - Wording: text that differs where `docs/glossary-pt-BR.md` or the i18n catalogs own the word is intended (for
     example Lançamentos, Objetivos, Categorias de gasto and Fontes versus the artboards' Transações, Metas,
     Categorias and Contas). Do not raise it.

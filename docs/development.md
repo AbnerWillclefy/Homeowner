@@ -159,7 +159,11 @@ npm run build:e2e -w web
 PAIRS_ALL=1 npx -w web playwright test -c playwright.pairs.config.ts
 ```
 
-The PNGs land in `web/pairs-out/` (`auto-web-<artboard>-mobile-app.png` and `-design.png`) and one JSON per artboard in `web/pairs-results/`. Both folders are ignored by git.
+The PNGs land in `web/pairs-out/` (`auto-web-<artboard>-mobile-app.png` and `-design.png`, and `-measure.json` with the boxes of both sides) and one JSON per artboard in `web/pairs-results/`. Both folders are ignored by git.
+
+Each pair is also measured: `ROLES` in `.github/scripts/artboards.mjs` pairs a design selector with the `data-slot` Bedrock sets, the x, width,
+height and gap above of each element are compared by role and order, and the differences over 4px go in a collapsed table under the pair (20 rows,
+the measure file has the rest). The check never fails on a difference; it fails only if the measurement itself throws. See ADR 0030.
 
 ### Spacing grid
 

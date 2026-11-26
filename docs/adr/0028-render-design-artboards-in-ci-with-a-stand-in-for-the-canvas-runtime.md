@@ -1,5 +1,7 @@
 # Render design artboards in CI with a stand-in for the canvas runtime
 
+Amended by [ADR 0030](0030-measure-design-pairs-by-element-box-matched-through-bedrocks-data-slot.md): the pairs are also measured by element box, and an artboard copy may be edited to render as its own CSS declares.
+
 ## Context
 
 The design canvas (claude.ai) is the source of truth for Revenue's screens. Its artboards are copied unchanged into `docs/design/revenue/` (and Bedrock's into `docs/design/bedrock/`), but each one loads the canvas runtime `./support.js`, which the repo does not have and we do not control, so outside the canvas an artboard is only source to read. Screens built from that source drifted from the design (#703), and the fix was a pull request section listing each difference from the artboard, which the engineer filled in by hand and the maintainer checked by eye. Epic #860 replaces it: each pull request that changes a Revenue screen shows the screen next to its artboard, and the review compares the two.
