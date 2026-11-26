@@ -7,7 +7,7 @@ import { launchApp } from "../pages/launch";
 import type { FakeState } from "../mocks/api";
 import type { PlanTask } from "../../src/domains/dayplan/api/api";
 
-// The README screenshots: five screens per locale, a 390x844 phone, sample data only.
+// The README screenshots: five screens per locale, a 390x844 phone in the default dark theme, sample data only.
 // Run with `npx playwright test -c playwright.readme.config.ts` after `npm run build:e2e`.
 
 const OUT = "../docs/screenshots";
@@ -48,7 +48,7 @@ function sample(names: Record<string, string>, checkedIn: boolean): FakeState {
 
 for (const l of LOCALES) {
   test.describe(l.locale, () => {
-    test.use({ locale: l.locale, viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
+    test.use({ locale: l.locale, viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, colorScheme: "dark" });
 
     test.beforeEach(async ({ page, fakeApi }) => {
       fakeApi.use(signedInHandlers);
@@ -66,8 +66,10 @@ for (const l of LOCALES) {
         await page.screenshot({ path: `${OUT}/today-${l.file}.png` });
 
         for (const [tab, name] of [["chores", l.nav.chores], ["home", l.nav.home], ["me", l.nav.me]] as const) {
+          const previous = await page.getByRole("heading", { level: 1 }).textContent();
           await page.getByRole("link", { name, exact: true }).click();
-          await expect(page.getByRole("heading", { level: 2 }).first()).toBeVisible();
+          // Each tab has its own h1, so wait for it to change rather than for any h1.
+          await expect(page.getByRole("heading", { level: 1 })).not.toHaveText(previous!);
           await page.waitForLoadState("networkidle");
           await page.screenshot({ path: `${OUT}/${tab}-${l.file}.png` });
         }

@@ -22,7 +22,7 @@ function TitledCardSkeleton({ lines }: { lines: number }) {
 export function HomeSkeleton() {
   return (
     <div aria-hidden="true" className="flex flex-col gap-4">
-      <SkeletonHeader />
+      <SkeletonHeader withLine={false} />
       <SkeletonCard className="py-1">
         <ResidentRowsSkeleton />
       </SkeletonCard>
@@ -36,15 +36,24 @@ export function HomeSkeleton() {
   );
 }
 
+/** Today's header: a title bar in the row the tools' 2.75rem slots make, so the real header takes its place without moving. */
+function TodayHeaderSkeleton() {
+  return (
+    <div className="mb-6 flex min-h-11 items-center">
+      <SkeletonBar className="h-8 w-2/3" />
+    </div>
+  );
+}
+
 /**
- * Today's final layout, for the wait before its reads answer (the Home, then the Check-in and Day Plan):
- * the header (a title, no line under it), the one-line summary and the Task cards. Spaced as `HomeDay` spaces
+ * Today's final layout, for the wait before the Home answers: the header (a title), the one-line summary and the
+ * Task cards. Once the Home is known `HomeDay` draws the real header and this skeleton's cards. Spaced as `HomeDay` spaces
  * them, by structure and `rem`, so pt-BR and the largest text size grow it as they grow the page.
  */
 export function TodaySkeleton() {
   return (
     <div aria-hidden="true">
-      <SkeletonHeader withLine={false} tight />
+      <TodayHeaderSkeleton />
       <DayPlanSkeleton summary />
     </div>
   );

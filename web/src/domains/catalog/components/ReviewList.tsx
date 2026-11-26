@@ -25,6 +25,8 @@ interface Props {
   tooMany: boolean;
   onChange(items: ReviewItem[]): void;
   disabled: boolean;
+  /** The heading's level: h1 where no page header renders above it. */
+  headingLevel?: "h1" | "h2";
 }
 
 /**
@@ -32,7 +34,7 @@ interface Props {
  * with the normal Chore form or removed after a second tap. Edits are local until the parent saves the Home. An
  * empty list is allowed.
  */
-export function ReviewList({ items, errors, tooMany, onChange, disabled }: Props) {
+export function ReviewList({ items, errors, tooMany, onChange, disabled, headingLevel: Heading = "h2" }: Props) {
   const { t } = useI18n();
   const toast = useToast();
   const lists = useChoreLists();
@@ -60,9 +62,9 @@ export function ReviewList({ items, errors, tooMany, onChange, disabled }: Props
 
   return (
     <section aria-labelledby="review-heading">
-      <h2 id="review-heading" ref={headingRef} tabIndex={-1}>
+      <Heading id="review-heading" ref={headingRef} tabIndex={-1}>
         {t("catalog.review.heading")}
-      </h2>
+      </Heading>
       <p>{t("catalog.review.count", { count: items.length })}</p>
 
       {tooMany && (

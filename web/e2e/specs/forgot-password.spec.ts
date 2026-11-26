@@ -28,7 +28,7 @@ test.describe("forgot password", () => {
     await signIn.expectEmail(page, email);
 
     await signIn.signIn(page, email, NEW_PASSWORD);
-    await expect(page.getByRole("heading", { name: "Create your Home", level: 2 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Create your Home", level: 1 })).toBeVisible();
     expect(fakeCognito.requests.map((r) => r.action)).toEqual(["ForgotPassword", "ConfirmForgotPassword", "InitiateAuth"]);
   });
 

@@ -10,7 +10,7 @@ import { streakButtonLabel } from "../logic/streakButtonLabel";
 import { StreakDialog } from "./StreakDialog";
 
 /**
- * The Resident's current Streak as a small flame with its number, in the top bar's Streak slot. Tapping it opens a
+ * The Resident's current Streak as a small flame with its number, in Today's header Streak slot. Tapping it opens a
  * dialog that says how a Streak works. Calm at every number: neutral colours at 0 as at 100 (ADR 0003, DESIGN.md).
  * During the first load it holds an empty box of its own size (a pulsing pill after 300ms), so the bar does not
  * reflow when the number arrives; when the Streak could not be read it is absent, and the bar's slot keeps the

@@ -8,7 +8,7 @@ import { useVoice } from "../hooks/useVoice";
 // Only this button is in the first load; the panel comes with the first tap.
 const VoicePanel = lazyNamed(() => import("./VoicePanel"), "VoicePanel");
 
-/** The top bar's microphone. The caller shows it only where the browser has speech recognition. */
+/** Today's header microphone. The caller shows it only where the browser has speech recognition. */
 export function MicButton() {
   const { t } = useI18n();
   const voice = useVoice();

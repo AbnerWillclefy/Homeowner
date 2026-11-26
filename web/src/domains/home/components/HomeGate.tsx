@@ -50,7 +50,7 @@ export function HomeGate({
       if (state.kind !== "failed") return null;
       return (
         <section aria-labelledby="home-load-heading">
-          <h2 id="home-load-heading">{t("home.settings.heading")}</h2>
+          <h1 id="home-load-heading">{t("home.settings.heading")}</h1>
           <p role="alert" className="text-danger">
             {t(LOAD_FAILURE_KEY[state.reason])}
           </p>

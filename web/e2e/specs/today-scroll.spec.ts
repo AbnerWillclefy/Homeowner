@@ -107,10 +107,10 @@ async function press(page: Page, button: Locator): Promise<number> {
   await button.evaluate((element) => element.scrollIntoView({ block: "center" }));
   // A button right under the title (Accept all) cannot be centred without scrolling past the top: scroll a little
   // down instead, so it is still on screen but the page has a position to keep.
-  if ((await scrollY(page)) <= 100) await page.evaluate(() => window.scrollTo(0, 120));
+  if ((await scrollY(page)) <= 40) await page.evaluate(() => window.scrollTo(0, 60));
   const before = await scrollY(page);
   // A short screen and a tall plan: a position of 0 would prove nothing.
-  expect(before).toBeGreaterThan(100);
+  expect(before).toBeGreaterThan(40);
   await button.click();
   return before;
 }
@@ -246,7 +246,7 @@ for (const l of LOCALES) {
       await link.evaluate((element) => element.scrollIntoView({ block: "center" }));
       await link.focus();
       const before = await scrollY(page);
-      expect(before).toBeGreaterThan(100);
+      expect(before).toBeGreaterThan(40);
       // A click from the page's own script, so the pointer does not move focus to the button.
       // Pool 4 sits below the link, so nothing above it changes height (that would make Chromium re-anchor).
       await byName(page, l.done("Pool 4")).evaluate((element) => (element as HTMLElement).click());

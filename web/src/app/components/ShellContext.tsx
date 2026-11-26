@@ -12,7 +12,7 @@ interface ShellValue {
   residents: ReturnType<typeof useResidents>;
   /** The signed-in User's own name and photo from `GET /me`. */
   me: ReturnType<typeof useMe>;
-  /** The Streak, read once the Home is ready and shown in the top bar. */
+  /** The Streak, read once the Home is ready and shown in Today's header tools. */
   streak: ReturnType<typeof useStreak>;
   /** Today's Check-in and the Demand list, read once here for the pill, the dialog and Today. The one owner of `save`. */
   checkIn: ReturnType<typeof useCheckIn>;

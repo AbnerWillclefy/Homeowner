@@ -44,7 +44,7 @@ for (const l of LOCALES) {
     });
 
     const dialog = (page: Page) => page.getByRole("dialog", { name: l.wordmark });
-    const pill = (page: Page) => shell.topBar(page).getByRole("button", { name: l.unset, exact: true });
+    const pill = (page: Page) => shell.todayTools(page).getByRole("button", { name: l.unset, exact: true });
     const tab = (page: Page, name: string) => page.getByRole("navigation").getByRole("link", { name, exact: true });
     /** A resume of the app, sent until the Check-in read it triggers has gone out and answered. */
     async function resume(page: Page) {
@@ -132,14 +132,15 @@ for (const l of LOCALES) {
     test("a Check-in saved for today means no dialog on launch", async ({ page, baseURL, fakeApi }) => {
       fakeApi.state.checkIn = { date: "2030-01-15", checkedIn: true, level: "normal", restrictions: [] };
       await launchApp(page, baseURL!);
-      await expect(shell.topBar(page).getByRole("button", { name: /^(Energia hoje|Energy today)/ })).toBeVisible();
+      await expect(shell.todayTools(page).getByRole("button", { name: /^(Energia hoje|Energy today)/ })).toBeVisible();
       await expect(page.getByRole("dialog")).toHaveCount(0);
     });
 
     for (const path of ["/chores", "/home", "/me"]) {
-      test(`a cold start on ${path} does not open it`, async ({ page, baseURL }) => {
+      test(`a cold start on ${path} does not open it, and has no pill to reopen it`, async ({ page, baseURL }) => {
         await visit(page, new URL(path, baseURL!).toString());
-        await expect(pill(page)).toBeVisible();
+        await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+        await expect(page.getByRole("button", { name: l.unset, exact: true })).toHaveCount(0);
         await expect(page.getByRole("dialog")).toHaveCount(0);
       });
     }
@@ -176,7 +177,7 @@ for (const l of LOCALES) {
     test("a failed Check-in read opens nothing",async ({ page, baseURL, fakeApi }) => {
       fakeApi.override("GET /home/check-in", json(500, { error: "boom" }));
       await launchApp(page, baseURL!);
-      await expect(shell.topBar(page).getByRole("button", { name: /^(Energia indisponível|Energy unavailable)/ })).toBeVisible();
+      await expect(shell.todayTools(page).getByRole("button", { name: /^(Energia indisponível|Energy unavailable)/ })).toBeVisible();
       await expect(page.getByRole("dialog")).toHaveCount(0);
     });
 

@@ -1,6 +1,6 @@
 /**
- * The Homeowner logo: a house drawn in one line with a check as its door, then the lowercase wordmark in Nunito
- * 800. The drawing is decoration (`aria-hidden`), so the accessible name is the visible text, "homeowner", and an
+ * The Homeowner logo: a house drawn in one line with a check as its door, then the lowercase wordmark in Inter
+ * 700. The drawing is decoration (`aria-hidden`), so the accessible name is the visible text, "homeowner", and an
  * `aria-label` is never added. The house takes the text colour; the check takes the `accent` token, so both follow the
  * theme by token swap. This is the one place `accent` is decoration (DESIGN.md, The One Voice Rule). In
  * forced-colors mode both use the system text colour, so the logo never vanishes. The wordmark is a brand name and
@@ -10,7 +10,7 @@ export function Logo() {
   return (
     // The wordmark never breaks inside the word; where even it does not fit (the largest text on a narrow phone)
     // the drawing and the word wrap onto two lines instead.
-    <h1 className="m-0 inline-flex min-h-11 max-w-full flex-wrap items-center gap-x-2 text-xl leading-none font-extrabold text-text">
+    <h1 className="m-0 inline-flex min-h-11 max-w-full flex-wrap items-center gap-x-2 text-xl leading-none font-bold text-text">
       <svg
         aria-hidden="true"
         viewBox="0 0 32 32"

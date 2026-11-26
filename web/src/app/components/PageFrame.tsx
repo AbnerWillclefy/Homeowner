@@ -4,8 +4,8 @@ import { HealthBanner } from "./HealthBanner";
 
 /**
  * The one centred column every screen sits in: the top of the page, the health banner, then the screen. The top is
- * the logo alone (the page's `h1`) unless the caller passes its own, as the Shell passes the top bar, which holds
- * the logo as the `h1`. There is exactly one `h1` per screen.
+ * the logo alone (the page's `h1`) unless the caller passes its own, or `null` for none, as the Shell does: each of
+ * its screens then opens with its own page header, which holds the `h1`. There is exactly one `h1` per screen.
  */
 export function PageFrame({
   children,
@@ -14,14 +14,14 @@ export function PageFrame({
 }: {
   children: ReactNode;
   className?: string;
-  top?: ReactNode;
+  top?: ReactNode | null;
 }) {
   return (
     <main
       tabIndex={-1}
       className={`page w-full focus:outline-none ${className}`}
     >
-      <div className="mb-6">{top}</div>
+      {top !== null && <div className="mb-6">{top}</div>}
       <HealthBanner />
       {children}
     </main>

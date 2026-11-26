@@ -20,7 +20,7 @@ interface Props {
 }
 
 /**
- * Today's Energy in the top bar, looking like the Streak: a ghost icon button with a 20px icon and a short bold
+ * Today's Energy in the page header's tools, looking like the Streak: a ghost icon button with a 20px icon and a short bold
  * value, never a word, so the bar stays on one row. No Check-in today shows a muted Zap and "?". Tapping it opens
  * the Check-in dialog (or, when the read failed, tries it again). The `aria-label` says the whole state and what a
  * tap does; the glyphs only add to it. Neutral ink in every state, never the accent (The One Voice Rule). While the

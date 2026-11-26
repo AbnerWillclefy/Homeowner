@@ -34,6 +34,8 @@ const SUGGEST_FAILURE_KEY = {
  * Nothing is saved until the last step, which creates the Home and the reviewed Chores together.
  */
 export function CreateHome({ onSaved, onRecovered, showHeading = true }: Props) {
+  // On a Shell tab (showHeading) no page header renders without a Home, so this heading is the screen's one h1; onboarding has its own.
+  const Heading = showHeading ? "h1" : "h2";
   const { t } = useI18n();
   const zones = useMemo(() => browserTimezones(), []);
   const options = useMemo(() => timezoneOptions(zones), [zones]);
@@ -72,9 +74,9 @@ export function CreateHome({ onSaved, onRecovered, showHeading = true }: Props) 
     return (
       <section aria-labelledby="create-home-heading">
         {stepLine}
-        <h2 id="create-home-heading" className={showHeading ? undefined : "sr-only"}>
+        <Heading id="create-home-heading" className={showHeading ? undefined : "sr-only"}>
           {t("home.create.heading")}
-        </h2>
+        </Heading>
         <form onSubmit={onSubmit} noValidate className="flex flex-col">
           <HomeFields
             idPrefix="create-home"
@@ -107,7 +109,7 @@ export function CreateHome({ onSaved, onRecovered, showHeading = true }: Props) 
     return (
       <section aria-labelledby="create-questions-heading">
         {stepLine}
-        <h2 id="create-questions-heading">{t("catalog.questions.heading")}</h2>
+        <Heading id="create-questions-heading">{t("catalog.questions.heading")}</Heading>
         <form onSubmit={onSubmit} noValidate>
           <Questionnaire
             idPrefix="create-questions"
@@ -184,6 +186,7 @@ export function CreateHome({ onSaved, onRecovered, showHeading = true }: Props) 
         tooMany={flow.tooMany}
         onChange={flow.changeItems}
         disabled={saving}
+        headingLevel={Heading}
       />
       {flow.hasItemErrors && (
         <p role="alert" className="text-danger">

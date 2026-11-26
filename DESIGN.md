@@ -56,37 +56,37 @@ colors:
   cat-salmon-ink: "#6e1f1a"
 typography:
   page-title:
-    fontFamily: "Nunito, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
     fontSize: "1.875rem"
     fontWeight: 700
     lineHeight: 1.25
   group-heading:
-    fontFamily: "Nunito, system-ui, sans-serif"
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: "1.25rem"
     fontWeight: 700
     lineHeight: 1.3
   card-title:
-    fontFamily: "Nunito, system-ui, sans-serif"
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: "1.125rem"
     fontWeight: 700
     lineHeight: 1.375
   body:
-    fontFamily: "Nunito, system-ui, sans-serif"
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: "1rem"
     fontWeight: 400
     lineHeight: 1.5
   label:
-    fontFamily: "Nunito, system-ui, sans-serif"
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 600
     lineHeight: 1.5
   stat:
-    fontFamily: "Nunito, system-ui, sans-serif"
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: "1.875rem"
     fontWeight: 700
     lineHeight: 1.25
   wordmark:
-    fontFamily: "Nunito, system-ui, sans-serif"
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: "1.25rem"
     fontWeight: 800
     lineHeight: 1
@@ -159,8 +159,8 @@ It is light and dark by token swap, not by variant, and it holds at the largest 
 - Flat white cards with a 1px edge on a pale green-grey surface.
 - One teal accent for primary actions; pastels label Categories only.
 - Pills for buttons and chips, rounded squares for icon tiles, big rounded rectangles for cards.
-- Nunito at 400, 600 and 700, plus 800 for the wordmark only.
-- One quiet top bar on every tab: the logo on the left, the Energy pill and the Streak on the right.
+- Inter at 400, 500, 600 and 700, through Bedrock; 700 for the wordmark.
+- No top bar: every tab opens with a page header, its title as the page's one `h1` (ADR 0022). On Today the header's tools hold the Energy pill, the Streak and the microphone.
 - Thumb-reach: no primary action is stranded on the left.
 
 ## Colors
@@ -219,7 +219,7 @@ Each Spending Category has a fixed colour (ring part, bar fill, icon stroke) and
 
 ## Typography
 
-**Body Font:** Nunito (with system-ui, -apple-system, Segoe UI, Roboto, sans-serif). Self-hosted, latin subset, 400/600/700, and 800 for the wordmark only.
+**Body Font:** Inter (with system-ui, -apple-system, Segoe UI, Roboto, sans-serif). Self-hosted through Bedrock, 400/500/600/700; 700 for the wordmark.
 
 **Character:** One rounded humanist sans for everything. Friendly without being cute; hierarchy comes from weight and size, never from a second family.
 
@@ -230,7 +230,7 @@ Each Spending Category has a fixed colour (ring part, bar fill, icon stroke) and
 - **Body** (400, 1rem, 1.5): sentences. Never below 1rem in inputs (iOS zoom).
 - **Label** (600, 0.875rem, 1.5): the Category name above a Chore, facts, hints, chip text.
 - **Stat** (700, 1.875rem, 1.25): a number in a stat tile, over its label.
-- **Wordmark** (800, 1.25rem, 1): the lowercase "homeowner" in the logo. The only 800 in the app; it is preloaded with the other weights so it never swaps in. It is a brand name and is not translated.
+- **Wordmark** (700, 1.25rem, 1): the lowercase "homeowner" in the logo. It is a brand name and is not translated.
 
 ### Named Rules
 **The Portuguese First Rule.** Most Residents read the app in Brazilian Portuguese, which runs about a third longer than English. Every screen is designed and checked in pt-BR as well as en-US, at the largest text size. Where two pt-BR wordings are equally clear, pick the shorter one ("5 de 5 planejados", not "5 de 5 planejados para você"). A row that holds text and an action lets the action drop to its own end-aligned line rather than squeeze the text.
@@ -302,23 +302,14 @@ Hand-drawn in SVG and CSS (no chart library); no screen draws one at present. Se
 - **Donut:** one ring, a part per Spending Category above zero, in its colour, split by a 2px gap and drawn largest first, clockwise from the top. Tapping a part thickens it, fades the others to 35% and puts its icon, name, share and amount in the centre; tapping it again brings back the month's total. The category list under it is the legend and the keyboard and screen-reader path: each row carries the same icon tile and colour.
 - **Cumulative line:** one line per series on a shared scale (solid, dashed, dotted), each series' final amount as text under it, and a "Ver tabela" / "Ver gráfico" toggle that swaps the drawing for a table of the same numbers.
 
-### Top bar
-One quiet row above the content of every tab, in the same centred column, with no fill or edge of its own. On the left the logo; on the right two fixed slots, the Energy indicator and the Streak slot: two 4rem ghost icon buttons.
-- It reserves its whole height (at least 2.75rem) and both slots from the first frame, whatever the data, so nothing moves while the Check-in or the Streak loads. The bar stays on one row at 320px and the default text size, in both locales and in every state of the Energy indicator; the right group has no gap and a -0.5rem right margin (the buttons carry their own padding) so the logo and both 4rem slots fit the column. Only enlarged text may wrap it: the right group never shrinks, and then the indicator and the Streak drop under the logo, on the right, instead of leaving the screen.
-- It replaces the app name and the tagline: neither appears on any tab. On the pre-Home screens (sign-in, sign-up, the waiting and retry screens) the logo stands alone, without the slots; the onboarding walk has its own frame. While the Home loads inside the app the bar is there with its slots empty, so it never appears late.
-- The logo is the page's one `h1`. Each tab's own first `h2` still receives focus when the tab opens.
-
-### Energy indicator
-Today's Energy in the top bar, left of the Streak, shown on every tab. It takes the Streak's look: a ghost icon button (no border, no fill, at least 2.75rem high) with a 20px icon and a short bold value in tabular figures, in neutral ink, never the accent (The One Voice Rule). It never shows a word, so the bar stays on one row.
-- **States, each with an icon and a short value.** A Zap and the number once the day has Energy; a Moon and "0" when Drained; a Zap and "0" with no Baseline; a check mark and "–" when the Resident has checked in but the plan has no Energy yet (before the Allocation time); a **muted** (Lichen) Zap and "?" when there is no Check-in today; an alert icon and "–" when the Check-in could not be read, which tries again on a tap. No state has a dashed edge or an alarm colour. The accessible name says the whole state in words and what a tap does ("Energia hoje: 5. Mudar check-in"); the glyphs are never read aloud and no state relies on icon or colour alone. The wording is the single Energy rule (`energyNote`) mapped by `energyPill`, never a second rule.
-- **Reserved width.** A fixed `min-w-16` (4rem, the Streak's), the same at every text size because rem scales with it. Energy is at most two digits, so every value fits inside it. While the Check-in loads it is an empty 4rem by 2.75rem box (a pulse after 300ms), hidden from screen readers. Nothing moves when it fills.
-- **Tap.** It opens the app's one Check-in dialog (the Shell owns it), from any tab; closing it returns focus to the indicator. The indicator never blocks the Streak: a failed Check-in read leaves the Streak where it is.
+### Page header
+There is no top bar. Every tab opens with Bedrock's page header (`TabHeader`): its title is the screen's one `h1`, and focus lands on it when the tab opens. The header reserves its height from the first frame, so nothing moves while data loads. Today's header also holds the tools: the Energy pill, the Streak and the microphone. The logo shows only on the pre-Home screens (sign-in, sign-up, the waiting and retry screens); the onboarding walk has its own frame. Where a tab has no header yet (the create-Home form, a failed Home load, a Resident's error states), that screen's own heading is the `h1`.
 
 ### Logo
-A house drawn in one rounded line (stroke follows the ink colour) with a check as its door, then the lowercase wordmark "homeowner" in Nunito 800. The drawing is `aria-hidden`; the accessible name is the visible text, "homeowner", with no `aria-label` that could differ. The check is the one mint accent that is decoration (see The One Voice Rule); in forced-colours mode both the house and the check use the system text colour so the logo never vanishes. If the word does not fit beside the drawing at the largest text size, the drawing sits above it; the word is never broken or cut.
+A house drawn in one rounded line (stroke follows the ink colour) with a check as its door, then the lowercase wordmark "homeowner" in Inter 700. The drawing is `aria-hidden`; the accessible name is the visible text, "homeowner", with no `aria-label` that could differ. The check is the one mint accent that is decoration (see The One Voice Rule); in forced-colours mode both the house and the check use the system text colour so the logo never vanishes. If the word does not fit beside the drawing at the largest text size, the drawing sits above it; the word is never broken or cut.
 
 ### Streak slot (header icon button)
-The Streak is an icon with a short value, in the top bar's right-hand slot.
+The Streak is an icon with a short value, in Today's page header tools.
 - At least 2.75rem, never shrinking. Tabular figures, so a changing value does not move it.
 - Ink or muted at every value, 0 included (The Calm at Every Number Rule), never teal (The One Voice Rule).
 - It always has a text accessible name that includes the value, and opens a short centred dialog that returns focus to it on close.

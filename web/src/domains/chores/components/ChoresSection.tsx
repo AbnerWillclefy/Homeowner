@@ -10,7 +10,7 @@ import { useToast } from "../../../shared/ui/useToast";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { GroupHeading } from "../../../shared/ui/GroupHeading";
-import { PageHeader } from "../../../shared/ui/PageHeader";
+import { TabHeader } from "../../../app/components/TabHeader";
 import { categoryLabel, labelText } from "../../profile/logic/labels";
 import { CategoryTile } from "./FactList";
 import { groupByCategory } from "../logic/groups";
@@ -94,9 +94,12 @@ export function ChoresSection() {
 
   return (
     <section aria-labelledby="chores-heading" className="mt-0">
-      <PageHeader id="chores-heading" headingRef={headingRef} title={t("chores.heading")}>
-        {state.kind === "ready" && state.chores.length > 0 && t("chores.count", { count: state.chores.length })}
-      </PageHeader>
+      <TabHeader
+        id="chores-heading"
+        headingRef={headingRef}
+        title={t("chores.heading")}
+        subtitle={state.kind === "ready" && state.chores.length > 0 ? t("chores.count", { count: state.chores.length }) : undefined}
+      />
 
       {showSkeleton && <ChoresSkeleton />}
 

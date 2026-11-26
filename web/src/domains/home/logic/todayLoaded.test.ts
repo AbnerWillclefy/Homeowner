@@ -16,7 +16,7 @@ describe("todayLoaded", () => {
     expect(todayLoaded({ ...settled, dayPlan: { kind: "loading" } })).toBe(false);
   });
 
-  it("does not wait for the Streak: it lives in the top bar, not in Today", () => {
+  it("does not wait for the Streak: it lives in the header tools, not in the plan", () => {
     // A stray field (an old caller passing the Streak's loading flag) changes nothing.
     expect(todayLoaded({ ...settled, streakLoading: true } as TodayReads)).toBe(true);
   });

@@ -59,9 +59,9 @@ describe("applyTheme", () => {
     const { env, meta, root } = fakeEnv();
     applyTheme("dark", env);
     expect(root.dataset.theme).toBe("dark");
-    expect(meta.content).toBe("#121816");
+    expect(meta.content).toBe("#0e1110");
     applyTheme("light", env);
     expect(root.dataset.theme).toBe("light");
-    expect(meta.content).toBe("#f7f8f5");
+    expect(meta.content).toBe("#f4f6f5");
   });
 });

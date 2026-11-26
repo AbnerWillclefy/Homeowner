@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 import { CATEGORY_KEYS } from "../../profile/logic/labels";
 import { categoryStyle } from "./categoryStyle";
 
+// shortcut: this reads the old tokens.css, which no screen loads any more, so it checks colours nobody sees; repoint it at
+// the Bedrock chore tokens when the chore screens are migrated (#893), and delete it with tokens.css (#897).
 const css = readFileSync(resolve(import.meta.dirname, "../../../tokens.css"), "utf8");
 
 // The request's table, written out independently of the implementation.

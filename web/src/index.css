@@ -1,7 +1,15 @@
 @import "tailwindcss";
-@import "./tokens.css";
+@import "@homeowner/bedrock/tokens.css";
+/* Tailwind must see the classes Bedrock's components use (ADR 0022, Consequences). */
+@source "../../bedrock/src";
+@import "./aliases.css";
 
 @layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
   /*
     Dynamic Type: -apple-system-body makes rem follow the iOS text size. Browsers that
     do not know it drop that declaration, so the standard font-size and font-family come
@@ -9,19 +17,19 @@
   */
   html {
     font-size: 100%;
-    font-family: "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-family: var(--font-sans);
     font: -apple-system-body;
-    /* Nunito is self-hosted (imported in main.tsx); the shorthand above reset the family, so it is repeated. */
-    font-family: "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    /* Inter comes with Bedrock's tokens; the shorthand above reset the family, so it is repeated. */
+    font-family: var(--font-sans);
     /* The overscroll area on iOS shows the html background, so it is themed here. */
-    background-color: var(--color-surface);
+    background-color: var(--color-bg);
     color: var(--color-text);
     -webkit-text-size-adjust: 100%;
   }
 
   body {
     margin: 0;
-    background-color: var(--color-surface);
+    background-color: var(--color-bg);
     color: var(--color-text);
   }
 

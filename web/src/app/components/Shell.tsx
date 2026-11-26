@@ -18,7 +18,6 @@ import { dialogToShow } from "../logic/dialogToShow";
 import { PageFrame } from "./PageFrame";
 import { useSession } from "./SessionProvider";
 import { ShellContext } from "./ShellContext";
-import { TopBar } from "./TopBar";
 import { TODAY_PATH } from "../logic/routes";
 import { useFocusOnNavigate } from "../hooks/useFocusOnNavigate";
 import { useShellCheckIn } from "../hooks/useShellCheckIn";
@@ -86,7 +85,7 @@ export function Shell() {
   return (
     <ShellContext.Provider value={{ home, residents, me, streak, checkIn, note, energy, openCheckIn, pillRef }}>
       <div className="flex min-h-dvh flex-col">
-        <PageFrame className="flex-1" top={<TopBar />}>
+        <PageFrame className="flex-1" top={null}>
           <div ref={content}>
             <Outlet />
           </div>

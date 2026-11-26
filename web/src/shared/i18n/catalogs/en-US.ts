@@ -52,6 +52,7 @@ export const enUS = {
   "home.residents.streak": { one: "{count} day", other: "{count} days" },
   "home.residents.doneToday": { one: "{count} done today", other: "{count} done today" },
   "home.residents.error": "Something went wrong loading the Residents. Try again in a moment.",
+  "resident.heading": "Resident",
   "resident.loading": "Loading this Resident",
   "resident.back": "Your Home",
   "resident.streak": { one: "day Streak", other: "day Streak" },
@@ -349,6 +350,7 @@ export const enUS = {
   "dayplan.rejected":
     "Today's plan could not be used, so no Tasks were given today.",
   "dayplan.mine.heading": "Your Tasks",
+  "dayplan.mine.count": { one: "{count} Task", other: "{count} Tasks" },
   "dayplan.mine.empty": "Nothing for you today. Enjoy the day.",
   "dayplan.mine.empty.noBaseline":
     "No Baseline for today, so no Tasks for you.",

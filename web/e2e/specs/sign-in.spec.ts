@@ -18,7 +18,7 @@ test.describe("with onboarding done and no Home", () => {
     await signIn.expectVisible(page);
     await signIn.signIn(page, email, GOOD_PASSWORD);
 
-    await expect(page.getByRole("heading", { name: "Create your Home", level: 2 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Create your Home", level: 1 })).toBeVisible();
     await expect(page).not.toHaveURL(/\/signin/);
 
     const session = await storedSession(page);

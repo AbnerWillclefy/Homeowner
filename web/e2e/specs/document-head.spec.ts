@@ -1,7 +1,7 @@
 import { test, expect } from "../fixtures";
 
 // What this covers: the built index.html's head. The service worker registration script is deferred and keeps its
-// name, every latin Nunito woff2 has a preload that the server answers, the API origin has a preconnect with
+// name, every latin Inter woff2 has a preload that the server answers, the API origin has a preconnect with
 // crossorigin, and the charset meta stays within the first 1024 bytes. The document is fetched directly, so no app
 // or API mock is involved. The worker itself is blocked in these tests, so offline start is checked by hand.
 
@@ -24,8 +24,8 @@ test("registers the service worker with a deferred script of the same name", () 
   expect(scripts[0]).toMatch(/\bdefer\b/);
 });
 
-test("preloads every Nunito file by its hashed name, and the server answers for it", async ({ request }) => {
-  const preloads = tags(/<link\b[^>]*rel="preload"[^>]*>/g).filter((tag) => /nunito-latin-\d+-normal-/.test(tag));
+test("preloads every Inter file by its hashed name, and the server answers for it", async ({ request }) => {
+  const preloads = tags(/<link\b[^>]*rel="preload"[^>]*>/g).filter((tag) => /inter-latin-\d+-normal-/.test(tag));
   expect(preloads.length).toBeGreaterThan(0);
   for (const tag of preloads) {
     expect(tag).toMatch(/\bas="font"/);

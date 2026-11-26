@@ -1,0 +1,47 @@
+/*
+  shortcut: aliases until every screen is migrated, removed in the last ticket (#897).
+  Bedrock's @theme resets every colour and radius (`--color-*: initial`), so the names web used before it would compile
+  to nothing. Each old name maps to the closest Bedrock semantic token. Names Bedrock also has (text, focus,
+  danger, surface, surface-raised) need no alias, but `surface` now means a card: the page is `bg` (see index.css).
+  `text-muted` stays "muted text" through `--color-muted`, which also creates `bg-muted`.
+*/
+@theme inline {
+  /* Bedrock's spacing step is 4px; web's sizes are in rem so Dynamic Type and Android font scaling grow them (ADR 0007). */
+  --spacing: 0.25rem;
+
+  --color-accent: var(--brand);
+  --color-accent-contrast: var(--on-brand);
+  --color-muted: var(--text-muted);
+  /* Web draws control outlines with `border` and needs 3:1 (WCAG 1.4.11); Bedrock's `border` is a faint divider, so it takes `border-strong`. */
+  --color-border: var(--border-strong);
+
+  /* Onboarding's soft full-bleed gradient. */
+  --color-welcome-from: var(--bg);
+  --color-welcome-to: var(--surface);
+
+  /* Category pastels: a fill from Bedrock's chore tokens, and plain text as the ink (the chore colours themselves miss 4.5:1 on their soft fills in the light theme). */
+  --color-cat-peach: var(--chore-kitchen-soft);
+  --color-cat-peach-ink: var(--text);
+  --color-cat-mint: var(--chore-outdoor-soft);
+  --color-cat-mint-ink: var(--text);
+  --color-cat-lavender: var(--chore-living-room-soft);
+  --color-cat-lavender-ink: var(--text);
+  --color-cat-blue: var(--chore-laundry-soft);
+  --color-cat-blue-ink: var(--text);
+  --color-cat-yellow: var(--chore-trash-soft);
+  --color-cat-yellow-ink: var(--text);
+  --color-cat-salmon: var(--chore-pets-soft);
+  --color-cat-salmon-ink: var(--text);
+}
+
+/* Bedrock resets the radii; web's three names map to its scale. */
+@theme static {
+  --radius-pill: var(--radius-full);
+  --radius-card: var(--radius-lg);
+  --radius-control: var(--radius-md);
+}
+
+/* A toast fades in; used behind motion-safe: only. Its keyframes are in index.css. */
+@theme {
+  --animate-toast-in: toast-in 150ms ease-out;
+}
