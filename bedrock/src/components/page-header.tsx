@@ -29,10 +29,10 @@ export function PageHeader({ title, subtitle, id, headingRef, period, tools, act
   return (
     <header data-slot="page-header" className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-4 desktop:flex desktop:flex-wrap desktop:items-center desktop:justify-between desktop:gap-x-4">
       <div className="min-w-0 desktop:grow desktop:basis-48">
-        <h1 id={id} ref={headingRef} tabIndex={headingRef ? -1 : undefined} className="page-title">
+        <h1 id={id} ref={headingRef} tabIndex={headingRef ? -1 : undefined} className="page-title my-0">
           {title}
         </h1>
-        {subtitle && <p className="body truncate text-text-muted desktop:overflow-visible desktop:whitespace-normal">{subtitle}</p>}
+        {subtitle && <p className="body my-0 truncate text-text-muted desktop:overflow-visible desktop:whitespace-normal">{subtitle}</p>}
       </div>
       {/* After the title in the DOM, so a keyboard meets the period first on desktop, where it sits first. */}
       {period && <div className="order-last col-span-2 desktop:order-none desktop:col-span-1 desktop:min-w-44">{period}</div>}

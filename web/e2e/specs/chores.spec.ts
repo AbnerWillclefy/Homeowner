@@ -176,6 +176,7 @@ test.describe("pt-BR on a phone", () => {
     expect(await title.evaluate(cut)).toBe(true);
     expect(await title.locator("xpath=following-sibling::*").evaluate(cut)).toBe(true);
     expect((await tabs.chores.row(page, name).boundingBox())!.height).toBe(64);
+    expect((await tabs.chores.row(page, name).locator("xpath=..").boundingBox())!.height).toBe(64);
     await tabs.chores.row(page, name).click();
     await expect(page.getByRole("dialog").getByLabel("Nome")).toHaveValue(name);
   });

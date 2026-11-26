@@ -20,6 +20,7 @@ export function ChoreItem({ chore, onOpen }: { chore: Chore; onOpen(): void }) {
   return (
     <Row
       asChild
+      className="my-0"
       leading={<ChoreIcon size="md" category={category} />}
       title={chore.name}
       caption={choreRowMeta(chore, t, resident ? (resident.you ? t("home.residents.you") : resident.name) : null)}
