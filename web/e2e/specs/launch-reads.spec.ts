@@ -128,8 +128,11 @@ test.describe("still in onboarding", () => {
     await onboarding.completeHomeSettings(page, { timezone: "Europe/Lisbon", allocationTime: "07:30" });
     await onboarding.suggestChores(page);
     await onboarding.createHome(page);
-    await expect(page).toHaveURL(/\/welcome\/baseline$/);
-    await onboarding.walkProfile(page, PROFILE);
+    // The server kept `baseline` as done, so the walk goes on to the Restrictions.
+    await expect(page).toHaveURL(/\/welcome\/restrictions$/);
+    await onboarding.completeRestrictions(page, PROFILE.restrictions);
+    await onboarding.completePreferences(page, PROFILE.preferences);
+    await onboarding.completeReminders(page);
     await onboarding.dismissStartChoice(page);
     await shell.expectOnToday(page);
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { stepPath } from "../../../app/logic/routes";
-import type { OnboardingPosition, OnboardingStep } from "../api/api";
+import { getOnboarding, type OnboardingPosition, type OnboardingStep } from "../api/api";
 import { useSession } from "../../../app/components/SessionProvider";
 import type { Home } from "../../home/api/api";
 import { CreateHome } from "../../home/components/CreateHome";
@@ -15,7 +15,7 @@ import { InstallSteps } from "../../push/components/InstallSteps";
 import { Button } from "../../../shared/ui/Button";
 import { allBaselineDaysSet } from "../logic/baselineComplete";
 import { OnboardingLayout } from "./OnboardingLayout";
-import { nextStep, progress } from "../logic/steps";
+import { effectiveStep, nextStep, progress } from "../logic/steps";
 import type { OnboardingProblem } from "../logic/onboardingState";
 import { useWalk } from "../hooks/useWalk";
 
@@ -101,7 +101,10 @@ export function Onboarding({ position, onPosition }: Props) {
       await setCreatedHome(home);
     } finally {
       pendingNotice.current = notice;
-      const after = nextStep(steps, "home");
+      // The server keeps progress that is further on than `home` (POST /home is monotonic): take its position, and
+      // guess the next step only when it cannot be read.
+      const result = await getOnboarding();
+      const after = result.kind === "ok" ? effectiveStep(steps, result.step) : nextStep(steps, "home");
       moveTo(after);
       // Same tick as the position, like the walk's Next: the guard must see both together.
       if (after !== "done") navigate(stepPath(after));

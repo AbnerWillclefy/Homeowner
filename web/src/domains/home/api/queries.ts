@@ -1,6 +1,7 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { toQueryData } from "../../../shared/query/ApiFailure";
 import { refetchUnlessSucceeded } from "../../../shared/query/queryClient";
+import { onboardingKey } from "../../onboarding/api/queries";
 import { getHome, type Home } from "./api";
 
 /** `GET /home`. Home-scoped children go under it, so one partial key reaches them all (ADR 0013). */
@@ -54,5 +55,7 @@ export async function homeLeft(client: QueryClient): Promise<void> {
  */
 export async function homeJoined(client: QueryClient): Promise<void> {
   await client.resetQueries({ predicate: (query) => inHomeScope(query.queryKey) });
+  // A joiner's onboarding position was cached as `home` while they had no Home; the server now answers otherwise.
+  await client.resetQueries({ queryKey: onboardingKey, exact: true });
   await client.invalidateQueries({ queryKey: homeKey, exact: true });
 }

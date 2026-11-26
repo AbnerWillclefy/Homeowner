@@ -211,3 +211,17 @@ test("a refused Create Home shows a message, keeps what was entered, and the ret
   expect(fakeApi.state.home).not.toBeNull();
   expect(fakeApi.state.onboardingStored).toBe("home");
 });
+
+test.describe("a User whose server progress is past the Home step", () => {
+  test.use({ fakeState: { onboardingStored: "preferences" } });
+
+  test("creating the Home goes to the step the server kept, not back to the Baseline", async ({ page, fakeApi }) => {
+    await expect(page).toHaveURL(/\/welcome\/home$/);
+    await onboarding.walkToReview(page, WALK);
+    await onboarding.createHome(page);
+
+    // `install` is skipped off iOS, so the next step that applies is the reminders.
+    await expect(page).toHaveURL(/\/welcome\/reminders$/);
+    expect(fakeApi.state.onboardingStored).toBe("preferences");
+  });
+});
