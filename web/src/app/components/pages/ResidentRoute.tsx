@@ -17,8 +17,10 @@ export function ResidentRoute() {
   if (id === undefined) return null;
   return (
     <PageLoading message={t("resident.loading")}>
-      <BackToHome />
-      <HomeGate skeleton={<ResidentPageSkeleton />}>{(current: Home) => <ResidentPage id={id} timeZone={current.timezone} />}</HomeGate>
+      <div className="pt-6 pb-6">
+        <BackToHome />
+        <HomeGate skeleton={<ResidentPageSkeleton />}>{(current: Home) => <ResidentPage id={id} timeZone={current.timezone} />}</HomeGate>
+      </div>
     </PageLoading>
   );
 }

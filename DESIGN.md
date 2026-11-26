@@ -239,7 +239,7 @@ Each Spending Category has a fixed colour (ring part, bar fill, icon stroke) and
 
 ## Layout
 
-One centred column, `max-width: 32rem`, with 1rem side padding (the artboards' 16px) plus the device's safe-area insets, and 2rem top and bottom. Cards stack with a 1rem gap; groups of cards are separated by a group heading and 2rem of space. Inside a card the rhythm is 0.75rem between rows, 1rem padding. Lists are real lists with no bullets.
+One centred column, `max-width: 32rem`, with 1rem side padding (the artboards' 16px) plus the device's safe-area insets, and no block padding of its own: under the Shell each tab sets it once, 24px above the head, 8px each side of the head-to-body gap, 16px between blocks and 24px below the body (the pre-Home screens keep 2rem top and bottom). Cards stack with a 1rem gap; groups of cards are separated by a group heading. Inside a card the rhythm is 0.75rem between rows, 1rem padding. Lists are real lists with no bullets.
 
 The bottom tab bar holds four equal tabs in the same 32rem column, keeps the bottom safe-area inset, and sits after the content, sticky, so it covers nothing once the page is scrolled to the end but does cover what lies at the fold while scrolling: keep a control that must be tappable on load high on the page.
 

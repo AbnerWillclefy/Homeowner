@@ -2,7 +2,7 @@ import { test, expect } from "../fixtures";
 import { signedInHandlers } from "../mocks/handlers/signedIn";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
-import { launchApp } from "../pages/launch";
+import { launchApp, visit } from "../pages/launch";
 import { shell, TABS } from "../pages/shell";
 
 // What this covers: the frame applies the page spacing once (the design's hm-head, hm-scroll and hm-stack). At phone
@@ -48,4 +48,15 @@ test("each tab's head and body measure the frame's spacing", async ({ page, base
       if (i > 0) expect(box.y - (boxes[i - 1]!.y + boxes[i - 1]!.height), `${name} block ${i} gap`).toBe(16);
     }
   }
+});
+
+test("the edit screen, a Shell route outside the tabs, keeps the frame's top and bottom spacing", async ({ page }) => {
+  await visit(page, "/me/edit");
+  const back = page.getByRole("link", { name: /voltar/i });
+  await expect(back).toBeVisible();
+  const main = (await page.locator("main").boundingBox())!;
+  expect((await back.boundingBox())!.y - main.y, "back link top").toBeGreaterThanOrEqual(24);
+  const form = page.locator("main > div").last();
+  const box = (await form.boundingBox())!;
+  expect(main.y + main.height - (box.y + box.height), "bottom").toBeGreaterThanOrEqual(24);
 });

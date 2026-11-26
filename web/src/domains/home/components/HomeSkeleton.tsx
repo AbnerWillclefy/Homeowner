@@ -1,4 +1,5 @@
 import { SkeletonBar,SkeletonCard, SkeletonPill, SkeletonTile } from "../../../shared/ui/Skeleton";
+import { TabBody } from "../../../app/components/TabBody";
 import { SkeletonHeader } from "../../../shared/ui/SkeletonHeader";
 import { ChoresSkeleton } from "../../chores/components/ChoresSkeleton";
 import { DayPlanSkeleton, HeroSkeleton } from "../../dayplan/components/DayPlanSkeleton";
@@ -21,8 +22,9 @@ function TitledCardSkeleton({ lines }: { lines: number }) {
 /** The Home tab while its Home loads: the header, the Residents card, the Invite card, the folded settings card and the Leave card. */
 export function HomeSkeleton() {
   return (
-    <div aria-hidden="true" className="flex flex-col gap-4">
+    <div aria-hidden="true">
       <SkeletonHeader withLine={false} />
+      <TabBody>
       <SkeletonCard className="py-1">
         <ResidentRowsSkeleton />
       </SkeletonCard>
@@ -32,6 +34,7 @@ export function HomeSkeleton() {
         <SkeletonBar className="h-4 w-2/3" />
         <SkeletonPill className="w-32" />
       </SkeletonCard>
+      </TabBody>
     </div>
   );
 }
@@ -65,7 +68,9 @@ export function ChoresPageSkeleton() {
   return (
     <div aria-hidden="true">
       <SkeletonHeader withLine={false} />
-      <ChoresSkeleton />
+      <TabBody>
+        <ChoresSkeleton />
+      </TabBody>
     </div>
   );
 }

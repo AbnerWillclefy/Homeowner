@@ -63,7 +63,7 @@ export function MeEdit() {
   const { t } = useI18n();
   const { me } = useShell();
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 pt-6 pb-6">
       <div>
         <Button asChild variant="ghost" className="-ms-3">
           <Link to={ME_PATH}>
