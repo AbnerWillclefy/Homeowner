@@ -16,6 +16,11 @@ describe("check-in form", () => {
     expect(formFrom(LOW)).toEqual({ level: "low", restrictions: ["bending"] });
   });
 
+  it("starts with the level picked on the hero card, and keeps the saved Restrictions", () => {
+    expect(formFrom(MISSING, "normal")).toEqual({ level: "normal", restrictions: [] });
+    expect(formFrom(LOW, "energized")).toEqual({ level: "energized", restrictions: ["bending"] });
+  });
+
   it("cannot be submitted without a level", () => {
     expect(submission({ level: null, restrictions: ["bending"] }, DEMANDS)).toEqual({ ok: false, error: "level-required" });
   });

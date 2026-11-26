@@ -37,7 +37,7 @@ export function Shell() {
   const me = useMe();
   const hasHome = home.state.kind === "ready";
   const streak = useStreak(hasHome);
-  const { checkIn, note, energy, planned, openCheckIn, openFor, closeCheckIn, latchCheckIn, pillRef, returnFocusRef } = useShellCheckIn(hasHome);
+  const { checkIn, note, energy, planned, openCheckIn, openFor, closeCheckIn, latchCheckIn, heroRef, returnFocusRef, chosenLevel } = useShellCheckIn(hasHome);
   const queryClient = useQueryClient();
   const { pathname } = useLocation();
   const invite = useInvite();
@@ -77,13 +77,13 @@ export function Shell() {
   const dismissCheckIn = () => {
     const shownFor = checkIn.state.kind === "ready" ? checkIn.state.checkIn.date : openFor;
     if (shownFor !== null) session.dismissCheckIn(shownFor);
-    // The dialog opened by itself has no opener: focus goes back to the pill, the control that reopens it.
-    returnFocusRef.current ??= pillRef.current;
+    // The dialog opened by itself has no opener: focus goes back to the hero card, which holds the control that reopens it.
+    returnFocusRef.current ??= heroRef.current;
     closeCheckIn();
   };
 
   return (
-    <ShellContext.Provider value={{ home, residents, me, streak, checkIn, note, energy, openCheckIn, pillRef }}>
+    <ShellContext.Provider value={{ home, residents, me, streak, checkIn, note, energy, openCheckIn, heroRef }}>
       <div className="flex min-h-dvh flex-col">
         <PageFrame className="flex-1" top={null}>
           <div ref={content}>
@@ -103,13 +103,14 @@ export function Shell() {
         </LazyDialog>
       )}
       {dialog === "start-choice" && <StartChoice onDecided={session.decide} />}
-      {/* The one Check-in dialog, opened by the pill or by itself on launch. Never two. */}
+      {/* The one Check-in dialog, opened from the hero card or by itself on launch. Never two. */}
       <ShellCheckInDialog
         checkIn={checkIn}
         open={checkInShown}
         planned={planned}
         onClose={dismissCheckIn}
         returnFocusRef={returnFocusRef}
+        initialLevel={chosenLevel}
       />
     </ShellContext.Provider>
   );

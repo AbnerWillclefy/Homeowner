@@ -12,9 +12,11 @@ export type Submission =
 
 export const emptyForm = (): CheckInFormState => ({ level: null, restrictions: [] });
 
-/** A missing Check-in starts empty; changing one starts from what was saved. */
-export const formFrom = (checkIn: CheckIn): CheckInFormState =>
-  checkIn.checkedIn ? { level: checkIn.level, restrictions: [...checkIn.restrictions] } : emptyForm();
+/** A missing Check-in starts empty; changing one starts from what was saved. `chosen` is a level already picked on Today's hero card, and wins over the saved one. */
+export const formFrom = (checkIn: CheckIn, chosen: Level | null = null): CheckInFormState => {
+  const saved = checkIn.checkedIn ? { level: checkIn.level, restrictions: [...checkIn.restrictions] } : emptyForm();
+  return chosen === null ? saved : { ...saved, level: chosen };
+};
 
 export function toggledRestriction(restrictions: readonly string[], id: string): string[] {
   return restrictions.includes(id) ? restrictions.filter((r) => r !== id) : [...restrictions, id];

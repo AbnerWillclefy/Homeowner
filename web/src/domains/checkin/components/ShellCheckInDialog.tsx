@@ -1,4 +1,5 @@
 import type { RefObject } from "react";
+import type { Level } from "../api/api";
 import type { useCheckIn } from "../hooks/useCheckIn";
 import { CheckInDialog } from "./CheckInDialog";
 
@@ -9,13 +10,15 @@ interface Props {
   planned: { planned: number; energy: number } | null;
   onClose(): void;
   returnFocusRef: RefObject<HTMLElement | null>;
+  /** The level picked on the hero card, or null when the dialog opens from the Energy chip or by itself. */
+  initialLevel: Level | null;
 }
 
 /**
  * The Shell's one Check-in dialog, shown while it is open and the Check-in is ready. Mounted only then, so the form
  * starts again from the saved Check-in each time.
  */
-export function ShellCheckInDialog({ checkIn, open, planned, onClose, returnFocusRef }: Props) {
+export function ShellCheckInDialog({ checkIn, open, planned, onClose, returnFocusRef, initialLevel }: Props) {
   if (!open || checkIn.state.kind !== "ready") return null;
   return (
     <CheckInDialog
@@ -25,6 +28,7 @@ export function ShellCheckInDialog({ checkIn, open, planned, onClose, returnFocu
       save={checkIn.save}
       onClose={onClose}
       returnFocusRef={returnFocusRef}
+      initialLevel={initialLevel}
     />
   );
 }

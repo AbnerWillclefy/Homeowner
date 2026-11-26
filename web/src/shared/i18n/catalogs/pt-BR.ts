@@ -504,6 +504,10 @@ export const ptBR: Messages = {
     other: "Sequência: {count} dias",
   },
   "streak.button.zero": "Sequência: 0 dias",
+  "streak.button.paused": {
+    one: "Sequência pausada: {count} dia",
+    other: "Sequência pausada: {count} dias",
+  },
   "streak.stat": {
     one: "dia de sequência",
     other: "dias de sequência",
@@ -549,13 +553,15 @@ export const ptBR: Messages = {
   "checkin.summary.restrictions": "Não hoje: {demands}",
   "checkin.summary.restrictions.none": "Nenhuma restrição hoje",
   "checkin.planned": "{planned} de {energy} planejados",
-  "checkin.pill.name.unset": "Fazer check-in",
-  "checkin.pill.name.energy": "Energia hoje: {energy}. Mudar check-in",
-  "checkin.pill.name.drained": "Esgotado hoje. Mudar check-in",
-  "checkin.pill.name.noBaseline": "Sem energia base hoje. Mudar check-in",
-  "checkin.pill.name.pending": "Check-in feito: {level}. Mudar check-in",
-  "checkin.pill.name.done": "Check-in feito. Mudar check-in",
-  "checkin.pill.name.failed": "Energia indisponível. Tentar de novo",
+  // Today's hero card
+  "today.hero.label": "Seu dia",
+  "today.hero.progress": { one: "{done} de {total} feita", other: "{done} de {total} feitas" },
+  "today.hero.question": "Como está a sua energia hoje?",
+  "today.hero.hint": "Seu plano das {time} se ajusta à resposta.",
+  "today.hero.restrictions": "Alguma restrição só hoje?",
+  "today.hero.energy": "Energia: {level}. Mudar",
+  "today.hero.unavailable": "Energia indisponível.",
+  "today.hero.retry": "Tentar de novo",
 
   // Cadastro
   "signUp.heading": "Cadastrar-se",

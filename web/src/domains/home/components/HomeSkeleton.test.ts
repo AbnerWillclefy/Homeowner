@@ -18,6 +18,12 @@ describe("TodaySkeleton", () => {
     expect(markup.indexOf("data-skeleton=\"summary\"")).toBeLessThan(markup.indexOf('data-skeleton="task"'));
   });
 
+  it("reserves the hero card's box between the header and the summary, so the Task cards do not jump", () => {
+    const markup = render();
+    expect(markup.match(/data-testid="hero-skeleton"/g)).toHaveLength(1);
+    expect(markup.indexOf('data-testid="hero-skeleton"')).toBeLessThan(markup.indexOf('data-skeleton="summary"'));
+  });
+
   it("draws the page header once, with no line under the title", () => {
     const markup = render();
     expect(markup.match(/h-8 w-2\/3/g)).toHaveLength(1);

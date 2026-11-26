@@ -494,6 +494,10 @@ export const enUS = {
     other: "Streak: {count} days",
   },
   "streak.button.zero": "Streak: 0 days",
+  "streak.button.paused": {
+    one: "Streak paused: {count} day",
+    other: "Streak paused: {count} days",
+  },
   "streak.stat": {
     one: "day Streak",
     other: "day Streak",
@@ -539,13 +543,15 @@ export const enUS = {
   "checkin.summary.restrictions": "Not today: {demands}",
   "checkin.summary.restrictions.none": "No restrictions today",
   "checkin.planned": "{planned} of {energy} planned",
-  "checkin.pill.name.unset": "Check in",
-  "checkin.pill.name.energy": "Energy today: {energy}. Change Check-in",
-  "checkin.pill.name.drained": "Drained today. Change Check-in",
-  "checkin.pill.name.noBaseline": "No Baseline today. Change Check-in",
-  "checkin.pill.name.pending": "Checked in: {level}. Change Check-in",
-  "checkin.pill.name.done": "Checked in. Change Check-in",
-  "checkin.pill.name.failed": "Energy unavailable. Try again",
+  // Today's hero card
+  "today.hero.label": "Your day",
+  "today.hero.progress": { one: "{done} of {total} done", other: "{done} of {total} done" },
+  "today.hero.question": "How is your Energy today?",
+  "today.hero.hint": "Your {time} plan adjusts to your answer.",
+  "today.hero.restrictions": "Any Restriction just for today?",
+  "today.hero.energy": "Energy: {level}. Change",
+  "today.hero.unavailable": "Energy unavailable.",
+  "today.hero.retry": "Try again",
 
   // Sign up
   "signUp.heading": "Sign up",

@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import type { Level } from "../../domains/checkin/api/api";
 import { useCheckIn } from "../../domains/checkin/hooks/useCheckIn";
 import { energyNote } from "../../domains/checkin/logic/state";
 import { dayPlanQuery } from "../../domains/dayplan/api/queries";
@@ -7,7 +8,7 @@ import { plannedEffort } from "../../domains/dayplan/logic/plannedEffort";
 import { useLaunchStaleTime } from "../../shared/query/useLaunchStaleTime";
 
 /**
- * What the Shell reads on every tab for Today's Energy pill and shares with Today: the Check-in, the Day
+ * What the Shell reads on every tab for Today's hero card and shares with Today: the Check-in, the Day
  * Plan's Energy, the Energy note from the single rule (`energyNote`), and the state of the one Check-in dialog. Today reads the same cache entries, so nothing is requested twice. The Day
  * Plan's actions stay in `useDayPlan`, on Today.
  */
@@ -23,25 +24,31 @@ export function useShellCheckIn(hasHome: boolean) {
   // Shown in the dialog only when there is Energy to plan against.
   const planned = note === "energy" && energy !== null ? { planned: plannedEffort(plan), energy } : null;
 
-  // The date of the Check-in the dialog is open for, or null while closed. Opened by the pill, or latched by the Shell
+  // The date of the Check-in the dialog is open for, or null while closed. Opened from Today, or latched by the Shell
   // when the dialog shows by itself, so a refetch (saved on another device, midnight) cannot unmount the form.
   const [openFor, setOpenFor] = useState<string | null>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
-  const pillRef = useRef<HTMLButtonElement | null>(null);
+  const heroRef = useRef<HTMLElement | null>(null);
+  // The level picked on the hero card, which opens the dialog with it ticked. Cleared on close, so an automatic open never has one.
+  const [chosenLevel, setChosenLevel] = useState<Level | null>(null);
   const openCheckIn = useCallback(
-    (returnFocusTo?: HTMLElement) => {
+    (returnFocusTo?: HTMLElement, level?: Level) => {
       if (checkInToday === null) return;
       returnFocusRef.current = returnFocusTo ?? null;
+      setChosenLevel(level ?? null);
       setOpenFor(checkInToday.date);
     },
     [checkInToday],
   );
-  // Opening by itself has no opener, so drop one left from an earlier open: focus returns to the pill.
+  // Opening by itself has no opener, so drop one left from an earlier open: focus returns to the hero card.
   const latchCheckIn = useCallback((date: string) => {
-    returnFocusRef.current = pillRef.current;
+    returnFocusRef.current = heroRef.current;
     setOpenFor((current) => current ?? date);
   }, []);
-  const closeCheckIn = useCallback(() => setOpenFor(null), []);
+  const closeCheckIn = useCallback(() => {
+    setOpenFor(null);
+    setChosenLevel(null);
+  }, []);
 
-  return { checkIn, note, energy, planned, openCheckIn, openFor, closeCheckIn, latchCheckIn, pillRef, returnFocusRef };
+  return { checkIn, note, energy, planned, openCheckIn, openFor, closeCheckIn, latchCheckIn, heroRef, returnFocusRef, chosenLevel };
 }
