@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { answer, TODAY } from "./revenue-fake-api.mjs";
 import { existsSync, readFileSync } from "node:fs";
-import { ARTBOARDS, changedScreens, FIXED_TIME, overflowOf, TIMEZONE } from "./revenue-screenshots.mjs";
+import { ARTBOARDS, changedScreens, FIXED_TIME, TIMEZONE } from "./revenue-screenshots.mjs";
 
 const MONTH = TODAY.slice(0, 7);
 const read = (path, today) => answer("GET", new URL(`http://api${path}`), today);
@@ -20,15 +20,6 @@ test("names the Overview by its route, and shoots it when only shared code chang
 test("shoots the Overview, Plan and More when the app frame changed", () => {
   assert.deepEqual(changedScreens(["revenue/src/app/Shell.tsx"]), ["/", "/plan", "/more"]);
   assert.deepEqual(changedScreens(["revenue/src/app/Shell.tsx", "revenue/src/domains/bills/api.ts"]), ["/", "/plan", "/more", "/bills"]);
-});
-
-test("passes a page that fits and names the widest element of one that overflows", () => {
-  assert.equal(overflowOf("/", { scrollWidth: 375, innerWidth: 375, offenders: [] }), null);
-  const message = overflowOf("/more", { scrollWidth: 412, innerWidth: 375, offenders: [{ description: "<td> small", right: 390 }, { description: "<table> wide", right: 412 }] });
-  assert.match(message, /\/more/);
-  assert.match(message, /412px wide in a 375px/);
-  assert.match(message, /<table> wide/);
-  assert.doesNotMatch(message, /small/);
 });
 
 // The reads each screen the check shoots makes on load, with the frozen month in the params (the URLs the app sends).

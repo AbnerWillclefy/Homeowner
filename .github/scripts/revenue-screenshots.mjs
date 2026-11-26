@@ -5,7 +5,7 @@
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { pairsMarkdown, shootArtboard } from "./artboards.mjs";
+import { measureOverflow, overflowOf, pairsMarkdown, shootArtboard } from "./artboards.mjs";
 import { withScreenshots } from "./bedrock-screenshots.mjs";
 import { answer, TODAY } from "./revenue-fake-api.mjs";
 
@@ -58,25 +58,6 @@ export function changedScreens(changedFiles) {
   const routes = [...domains].sort().flatMap((d) => [d === "overview" ? "/" : `/${d}`, ...(EXTRA_ROUTES[d] ?? [])]);
   const all = frame ? [...new Set(["/", "/plan", "/more", ...routes])] : routes;
   return all.length ? all : ["/"];
-}
-
-/** The failure message when the page is wider than the viewport, naming the widest offender; null when it fits. `measured` is {scrollWidth, innerWidth, offenders: [{description, right}]}. */
-export function overflowOf(route, { scrollWidth, innerWidth, offenders }) {
-  if (scrollWidth <= innerWidth) return null;
-  const widest = offenders.reduce((a, b) => (b.right > a.right ? b : a), { description: "unknown", right: 0 });
-  return `${route} scrolls sideways: page is ${scrollWidth}px wide in a ${innerWidth}px viewport; widest element ${widest.description} ends at ${Math.round(widest.right)}px`;
-}
-
-/** Runs in the page: the widths and the elements that end past the viewport. */
-function measureOverflow() {
-  const offenders = [...document.querySelectorAll("body *")]
-    .map((el) => ({ el, right: el.getBoundingClientRect().right }))
-    .filter(({ right }) => right > window.innerWidth)
-    .map(({ el, right }) => ({
-      description: `<${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ""}${[...el.classList].slice(0, 2).map((c) => `.${c}`).join("")}> "${(el.textContent ?? "").trim().slice(0, 30)}"`,
-      right,
-    }));
-  return { scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth, offenders };
 }
 
 async function main([outDir, prefix]) {
