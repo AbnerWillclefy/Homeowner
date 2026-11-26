@@ -186,6 +186,7 @@ export function CreateHome({ onSaved, onRecovered, showHeading = true }: Props) 
         tooMany={flow.tooMany}
         onChange={flow.changeItems}
         disabled={saving}
+        headingLevel={Heading}
       />
       {flow.hasItemErrors && (
         <p role="alert" className="text-danger">
