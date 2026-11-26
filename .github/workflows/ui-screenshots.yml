@@ -83,7 +83,7 @@ jobs:
           (cd "$APP" && npx vite preview --port 4175 --strictPort &)
 
           # The same Playwright as web-e2e; no --with-deps, see web-e2e.yml.
-          version=$(jq -r '.packages["node_modules/@playwright/test"].version' web/package-lock.json)
+          version=$(jq -r '.packages["node_modules/@playwright/test"].version // .packages["web/node_modules/@playwright/test"].version' package-lock.json)
           npm install --silent --prefix "$RUNNER_TEMP/pw" "playwright@$version"
           "$PLAYWRIGHT_DIR/.bin/playwright" install chromium
 

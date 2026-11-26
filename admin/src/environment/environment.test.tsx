@@ -95,7 +95,7 @@ function tokens(css: string, selector: string): Record<string, string> {
 }
 
 describe("badge contrast (AA, 4.5:1)", () => {
-  const css = readFileSync(resolve(import.meta.dirname, "../../../web/src/tokens.css"), "utf8");
+  const css = readFileSync(resolve(import.meta.dirname, "../tokens.css"), "utf8");
   const light = tokens(css, "@theme");
   const dark = { ...light, ...tokens(css, '[data-theme="dark"]') };
 

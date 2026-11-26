@@ -130,18 +130,16 @@ The React PWA is in `web/` (Vite, TypeScript, `vite-plugin-pwa`). Node 22 (`web/
 
 ```sh
 docker compose up -d        # the API, at localhost:8080
-cd web
-npm ci
-npm run dev                 # http://localhost:5173 shows the API status
+npm ci                      # at the root: web is a workspace member
+npm run dev -w web          # http://localhost:5173 shows the API status
 ```
 
 ### Typecheck and build
 
 ```sh
-cd web
-npm run typecheck
-npm run build               # typecheck, then a production build with the service worker
-npm run preview             # serve the build to test the manifest and install
+npm run typecheck -w web
+npm run build -w web        # typecheck, then a production build with the service worker
+npm run preview -w web      # serve the build to test the manifest and install
 ```
 
 CI runs `npm ci`, `npm run typecheck` and `npm run build` on every pull request.
@@ -153,9 +151,8 @@ end-to-end fakes (sample data, a 390x844 phone, both locales). After a UI change
 capture them again:
 
 ```sh
-cd web
-npm run build:e2e
-npx playwright test -c playwright.readme.config.ts   # rewrites docs/screenshots/*.png
+npm run build:e2e -w web
+npm exec -w web -- playwright test -c playwright.readme.config.ts  # rewrites docs/screenshots/*.png
 ```
 
 The capture lives in `web/e2e/readme/`, outside the e2e suite, so CI never rewrites the images.
@@ -183,9 +180,8 @@ allows `http://localhost:5173`).
 
 The maintainer's admin app is in `admin/` (Vite, React, TypeScript; Node 22 from
 `admin/.nvmrc`). It is desktop-first and English only, with no service worker,
-manifest or push. It shares only the design tokens with the PWA
-(`web/src/tokens.css`, imported by both apps' `index.css`); it imports nothing
-else from `web/`.
+manifest or push. It imports nothing from `web/`. Its design tokens are
+`admin/src/tokens.css`, a copy of `web/src/tokens.css`.
 
 ### Run locally
 
@@ -213,7 +209,7 @@ npm run build               # typecheck, then a production build
 ```
 
 CI (`admin-typecheck.yml`) runs `npm ci`, typecheck, tests and build when a pull
-request changes `admin/` or `web/src/tokens.css` (or anything under `.github/workflows/` or `.github/scripts/`), and is skipped otherwise.
+request changes `admin/` (or anything under `.github/workflows/` or `.github/scripts/`), and is skipped otherwise.
 
 ### Configuration
 
