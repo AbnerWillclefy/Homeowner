@@ -4,6 +4,8 @@ Bedrock follows semver; before 1.0.0 a minor may break ([spec](../docs/design/be
 
 ## Unreleased
 
+- Home layer, exported as `@homeowner/bedrock/home`: `ChoreTag` (and the bare `ChoreIcon`), `Effort`, `Energy` (the chip, plus `EnergyBars` for a `Choice`'s `leading`), `Streak` and `TaskCard`. All are presentational: every string and Task fact is a prop, and `Effort`, `Energy` and `Streak` require their accessible name. `TaskCard` takes its actions and ⋯ menu from the caller. New `chore-*` tokens (10 Categories, each with a `-soft` pair, in both themes) sit beside `cat-*`; `tokens.test.ts` checks them against `docs/design/bedrock/tokens.json`, and `layers.test.ts` keeps Core and Home apart.
+
 - Core: `Avatar` (photo, initials or icon; the fill and ink come as props, the image falls back to the initials on error), `StepIndicator` ("Passo N de M" as a prop string plus decorative segments), `ChoiceGroup` and `Choice` (large 48px tap choices on native radios, a check icon marks the selected one) and `PageHeader` (title, subtitle, `id`, `headingRef`, `period`, `tools`, `action`, `trailing`). `Stepper` is also exported as `Counter`, the canvas's name for it. `Choice` takes an optional `leading` visual; `Select` takes an optional `icon`, which draws its trigger as a secondary button.
 
 - Phone controls: below 768px (and on touch screens) Button `sm` and `md`, every field and the Select trigger are drawn at 48px, and SegmentedControl is 48px overall, so a field beside a button match. Desktop heights are unchanged. BottomBar labels no longer truncate.

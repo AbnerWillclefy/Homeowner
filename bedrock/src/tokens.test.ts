@@ -4,6 +4,12 @@ import { describe, expect, it } from "vitest";
 // Paths are relative to bedrock/, the vitest root (import.meta.url is not a file URL under jsdom).
 const css = readFileSync("src/tokens.css", "utf8");
 const spec = readFileSync("../docs/design/bedrock/tokens.css", "utf8");
+// shortcut: chore-* checked from tokens.json, drop once the canvas generates them into tokens.css
+const json = JSON.parse(readFileSync("../docs/design/bedrock/tokens.json", "utf8")) as {
+  color: { tokens: { name: string; value: Record<"dark" | "light", string> }[] };
+};
+const choreSpec = json.color.tokens.filter((t) => t.name.startsWith("chore-"));
+const notChore = (o: Record<string, string>) => Object.fromEntries(Object.entries(o).filter(([n]) => !n.startsWith("chore-")));
 
 // Copied from web/src/shared/theme/contrast.ts: Bedrock must not import an app.
 function luminance(hex: string): number {
@@ -46,6 +52,7 @@ function theme(selector: string): Record<string, string> {
 
 const themes = { dark: theme('[data-theme="dark"]'), light: theme('[data-theme="light"]') };
 const cats = Object.keys(themes.dark).filter((n) => n.startsWith("cat-") && !n.endsWith("-soft"));
+const chores = Object.keys(themes.dark).filter((n) => n.startsWith("chore-") && !n.endsWith("-soft"));
 const surfaces = ["bg", "surface", "surface-raised", "surface-sunken", "surface-hover"];
 
 // [foreground, background, minimum ratio]
@@ -63,11 +70,13 @@ const pairs: [string, string, number][] = [
   ]),
   ["bg", "text", 4.5],
   ...cats.map((c): [string, string, number] => [c, "surface", 4.5]),
+  ...chores.map((c): [string, string, number] => [c, "surface", 4.5]),
   ...surfaces.map((bg): [string, string, number] => ["focus", bg, 3]),
   ["border-strong", "surface-sunken", 3],
   ["border-strong", "surface", 3],
   ["hero-line", "hero", 3],
   ...cats.map((c): [string, string, number] => [c, `${c}-soft`, 3]),
+  ...chores.map((c): [string, string, number] => [c, `${c}-soft`, 3]),
   ...["brand", "warning", "danger"].map((c): [string, string, number] => [c, "surface-sunken", 3]),
   ["chart-bar", "surface", 3],
   ["text", "chart-bar", 3],
@@ -82,7 +91,23 @@ describe("tokens.css", () => {
 
   // Values, not just names: a spec fix must be re-copied into src/tokens.css.
   it.each([':root, [data-theme="dark"]', '[data-theme="light"]'])("%s matches the spec", (sel) => {
-    expect(block(sel)).toEqual(block(sel, spec));
+    expect(notChore(block(sel))).toEqual(block(sel, spec));
+  });
+
+  describe("chore-*", () => {
+    it("the spec has 10 Categories, each with a -soft pair, and so do we", () => {
+      expect(choreSpec).toHaveLength(20);
+      expect(chores).toHaveLength(10);
+    });
+
+    it.each(["dark", "light"] as const)("every %s value in tokens.json is declared, and nothing else", (name) => {
+      const declared = Object.fromEntries(Object.entries(themes[name]).filter(([n]) => n.startsWith("chore-")));
+      expect(declared).toEqual(Object.fromEntries(choreSpec.map((t) => [t.name, t.value[name]])));
+    });
+
+    it("maps each one into Tailwind", () => {
+      for (const t of choreSpec) expect(css).toContain(`--color-${t.name}: var(--${t.name});`);
+    });
   });
 
   it("primitives match the spec, bar what moved to @theme static", () => {
