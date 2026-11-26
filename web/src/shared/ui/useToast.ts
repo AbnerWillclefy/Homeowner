@@ -2,8 +2,10 @@ import { createContext, useContext } from "react";
 import type { ToastRequest } from "./toastQueue";
 
 export interface Toasts {
-  /** Shows a toast. The same message shown twice in a row replaces the first instead of stacking. */
-  show(request: ToastRequest): void;
+  /** Shows a toast. The same message shown twice in a row replaces the first instead of stacking. Returns the toast's id. */
+  show(request: ToastRequest): number;
+  /** Closes a toast by the id `show` returned, without running its `onClose`. A toast already gone is ignored. */
+  dismiss(id: number): void;
 }
 
 export const ToastContext = createContext<Toasts | null>(null);

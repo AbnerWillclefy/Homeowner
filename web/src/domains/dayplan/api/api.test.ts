@@ -326,6 +326,19 @@ describe("two-person fields", () => {
 });
 
 describe.each([
+  ["refuseTask", (options?: { keepalive?: boolean }) => refuseTask("t1", options)],
+  ["completeTask", (options?: { keepalive?: boolean }) => completeTask("t1", options)],
+])("%s keepalive", (_name, call) => {
+  it("asks fetch to keep the request alive only when told to", async () => {
+    const fetch = stubFetch(Response.json(PLAN));
+    await call({ keepalive: true });
+    await call();
+    expect(fetch.mock.calls[0]![1]?.keepalive).toBe(true);
+    expect(fetch.mock.calls[1]![1]?.keepalive).toBeUndefined();
+  });
+});
+
+describe.each([
   ["acceptTask", () => acceptTask("t 1/x"), "/home/tasks/t%201%2Fx/accept"],
   ["refuseTask", () => refuseTask("t 1/x"), "/home/tasks/t%201%2Fx/refuse"],
   ["takeTask", () => takeTask("t 1/x"), "/home/tasks/t%201%2Fx/take"],

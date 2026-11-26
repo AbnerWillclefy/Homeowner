@@ -8,6 +8,10 @@ export interface ToastRequest {
   messageKey: MessageKey;
   params?: Params;
   tone: ToastTone;
+  /** A button on the toast (Desfazer). A toast with one never times out, so it closes only on the action, ✕, Escape or a swipe. */
+  action?: { labelKey: MessageKey; altTextKey: MessageKey; onClick: () => void };
+  /** Runs when the Resident dismisses the toast (not when it is replaced). The Radix action click also dismisses it, after `action.onClick`. */
+  onClose?: () => void;
 }
 
 export interface ToastItem extends ToastRequest {
@@ -16,22 +20,17 @@ export interface ToastItem extends ToastRequest {
 
 export interface ToastQueue {
   toasts: readonly ToastItem[];
-  nextId: number;
 }
 
-export type ToastAction = { type: "add"; request: ToastRequest } | { type: "dismiss"; id: number };
+export type ToastAction = { type: "add"; id: number; request: ToastRequest } | { type: "dismiss"; id: number };
 
 /** Most toasts on screen at once; the oldest goes first. */
 export const MAX_TOASTS = 3;
 
-const DURATION_MS: Record<ToastTone, number> = { success: 6000, error: 10000 };
-
-/** How long a toast stays before it dismisses itself. An error stays longer: it is the one to read. */
-export function toastDurationMs(tone: ToastTone): number {
-  return DURATION_MS[tone];
-}
-
 function sameRequest(a: ToastRequest, b: ToastRequest): boolean {
+  // One pending write at a time: a new undo toast replaces the old one, whatever its words.
+  if (a.action && b.action) return true;
+  if (a.action || b.action) return false;
   if (a.messageKey !== b.messageKey || a.tone !== b.tone) return false;
   const left = a.params ?? {};
   const right = b.params ?? {};
@@ -39,14 +38,17 @@ function sameRequest(a: ToastRequest, b: ToastRequest): boolean {
   return keys.length === Object.keys(right).length && keys.every((key) => left[key] === right[key]);
 }
 
-export const initialToastQueue: ToastQueue = { toasts: [], nextId: 1 };
+export const initialToastQueue: ToastQueue = { toasts: [] };
 
-/** The toast queue as a reducer: add (replacing an identical toast, capped), dismiss. */
+/** The toast queue as a reducer: add (with the caller's id, replacing an identical toast or the other undo toast, capped), dismiss. */
 export function toastQueue(state: ToastQueue, action: ToastAction): ToastQueue {
   if (action.type === "dismiss") {
     return { ...state, toasts: state.toasts.filter((toast) => toast.id !== action.id) };
   }
   const kept = state.toasts.filter((toast) => !sameRequest(toast, action.request));
-  const next: ToastItem = { ...action.request, id: state.nextId };
-  return { toasts: [...kept, next].slice(-MAX_TOASTS), nextId: state.nextId + 1 };
+  const next: ToastItem = { ...action.request, id: action.id };
+  const all = [...kept, next];
+  // Overflow drops the oldest toast, but never the one holding Desfazer: its write would have no toast to undo it.
+  while (all.length > MAX_TOASTS) all.splice(Math.max(0, all.findIndex((toast) => !toast.action)), 1);
+  return { toasts: all };
 }

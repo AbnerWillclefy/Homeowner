@@ -72,7 +72,7 @@ describe("CheckInDialog", () => {
           { value: i18n(locale) },
           createElement(
             ToastContext.Provider,
-            { value: { show: vi.fn() } },
+            { value: { show: vi.fn(), dismiss: vi.fn() } },
             createElement(CheckInDialog, {
               checkIn: { date: "2026-10-26", checkedIn: true, level: "normal", restrictions: ["bending"] },
               demands: ["heavy_lifting", "bending"],

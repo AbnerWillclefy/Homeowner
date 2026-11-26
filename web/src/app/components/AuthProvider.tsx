@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../domains/auth/hooks/useAuth";
 import { boot } from "../logic/boot";
+import { useUndoFlush } from "../../shared/undo/useUndoable";
 import { nextCacheClear } from "../logic/cacheClear";
 
 type Auth = ReturnType<typeof useAuth>;
@@ -19,10 +20,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [signedOutOnPurpose, setOnPurpose] = useState(false);
   const { signOut: rawSignOut } = auth;
+  const flushUndo = useUndoFlush();
   const signOut = useCallback(() => {
     setOnPurpose(true);
-    rawSignOut();
-  }, [rawSignOut]);
+    // A held undoable write needs the session to be sent (ADR 0029); signing out first would lose it.
+    const sending = flushUndo();
+    if (sending) void sending.then(rawSignOut);
+    else rawSignOut();
+  }, [rawSignOut, flushUndo]);
 
   // Nothing a Resident saw may show to the next person on this phone. This also catches a sign-out the API
   // client forces after a surviving 401, which only clears the session.

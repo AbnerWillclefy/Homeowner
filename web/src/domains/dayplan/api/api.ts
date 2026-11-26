@@ -292,7 +292,13 @@ export function planMyDay(): Promise<DayPlanResult> {
   return dayPlanCall("/home/day-plan/me", { method: "POST" });
 }
 
-const post = (path: string) => send(path, { method: "POST" });
+/** Lets a request outlive the page, for a write sent as the page is hidden (ADR 0029). */
+export interface KeepAlive {
+  keepalive?: boolean;
+}
+
+const post = (path: string, { keepalive }: KeepAlive = {}) =>
+  send(path, { method: "POST", ...(keepalive && { fetchOptions: { keepalive } }) });
 const taskPath = (id: string, action: string) => `/home/tasks/${encodeURIComponent(id)}/${action}`;
 
 /** Accepts one of the caller's Proposed Tasks: it becomes Committed. */
@@ -300,11 +306,11 @@ export const acceptTask = (id: string) => post(taskPath(id, "accept"));
 /** Accepts every Proposed Task of the caller at once. */
 export const acceptAll = () => post("/home/day-plan/accept-all");
 /** Refuses one of the caller's Proposed Tasks: it goes back to the pool. */
-export const refuseTask = (id: string) => post(taskPath(id, "refuse"));
+export const refuseTask = (id: string, options?: KeepAlive) => post(taskPath(id, "refuse"), options);
 /** Takes a Task from the pool. */
 export const takeTask = (id: string) => post(taskPath(id, "take"));
 /** Records the Completion of one of the caller's Tasks. */
-export const completeTask = (id: string) => post(taskPath(id, "complete"));
+export const completeTask = (id: string, options?: KeepAlive) => post(taskPath(id, "complete"), options);
 
 const swapPath = (id: string, action: string) => `/home/swaps/${encodeURIComponent(id)}/${action}`;
 

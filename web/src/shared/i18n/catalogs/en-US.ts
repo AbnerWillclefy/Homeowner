@@ -908,6 +908,8 @@ export const enUS = {
   // Toasts
   "toast.dismiss": "Dismiss message",
   "toast.region": "Messages",
+  "undo.action": "Undo",
+  "undo.altText": "Undo the action you just took",
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof enUS;

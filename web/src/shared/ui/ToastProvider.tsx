@@ -1,62 +1,62 @@
-import * as Toast from "@radix-ui/react-toast";
-import { CircleAlert, CircleCheck, X } from "lucide-react";
-import { useMemo, useReducer, type ReactNode } from "react";
+import { Toast, ToastProvider as BedrockToastProvider } from "@homeowner/bedrock";
+import { useMemo, useReducer, useRef, type ReactNode } from "react";
 import { useI18n } from "../i18n";
-import { initialToastQueue, toastDurationMs, toastQueue, type ToastRequest, type ToastTone } from "./toastQueue";
+import { initialToastQueue, toastQueue, type ToastRequest, type ToastTone } from "./toastQueue";
 import { ToastContext, type Toasts } from "./useToast";
 
-// Whole class strings, so Tailwind finds them. The icon and the words carry the tone, not the colour alone;
-// an error also has a thick edge.
-const TONES: Record<ToastTone, string> = {
-  success: "border-border",
-  error: "border-2 border-danger",
-};
+const TONES = { success: "positive", error: "danger" } as const satisfies Record<ToastTone, string>;
 
 /**
- * Mount once, inside I18nProvider and above the router, so a toast survives navigation. Radix's viewport is
- * the single polite live region (toasts are `type="background"`, never assertive); a toast never takes focus.
- * It sits at the top, below the device's top inset. Hovering pauses the timer; a tap or an upward swipe dismisses it.
+ * Mount once, inside I18nProvider and above the router, so a toast survives navigation. It renders Bedrock's
+ * `ToastProvider` and `Toast` (ADR 0022): one viewport, at the bottom above the BottomBar. A success toast
+ * closes after Bedrock's timer; one with an action (Desfazer) never times out and closes on the action, the
+ * close button, Escape or a swipe.
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const { t } = useI18n();
   const [queue, dispatch] = useReducer(toastQueue, initialToastQueue);
-  const api = useMemo<Toasts>(() => ({ show: (request: ToastRequest) => dispatch({ type: "add", request }) }), []);
+  const nextId = useRef(1);
+  const api = useMemo<Toasts>(
+    () => ({
+      show(request: ToastRequest) {
+        const id = nextId.current++;
+        dispatch({ type: "add", id, request });
+        return id;
+      },
+      dismiss: (id: number) => dispatch({ type: "dismiss", id }),
+    }),
+    [],
+  );
 
   return (
     <ToastContext.Provider value={api}>
-      <Toast.Provider swipeDirection="up">
+      <BedrockToastProvider
+        label={t("toast.region")}
+        viewportClassName="bottom-[calc(5.5rem+env(safe-area-inset-bottom))]"
+      >
         {children}
-        {queue.toasts.map((toast) => {
-          const Icon = toast.tone === "error" ? CircleAlert : CircleCheck;
-          return (
-            <Toast.Root
-              key={toast.id}
-              type="background"
-              duration={toastDurationMs(toast.tone)}
-              onOpenChange={(open) => {
-                if (!open) dispatch({ type: "dismiss", id: toast.id });
-              }}
-              onClick={() => dispatch({ type: "dismiss", id: toast.id })}
-              className={`box-border flex cursor-pointer items-start gap-3 rounded-card border bg-surface-raised p-4 text-text shadow-lg motion-safe:animate-toast-in ${TONES[toast.tone]}`}
-            >
-              <Icon aria-hidden="true" size={24} className="mt-0.5 shrink-0" />
-              <Toast.Description className="min-w-0 flex-1 font-semibold [overflow-wrap:anywhere]">
-                {t(toast.messageKey, toast.params)}
-              </Toast.Description>
-              <Toast.Close
-                aria-label={t("toast.dismiss")}
-                className="-m-2 flex size-11 shrink-0 items-center justify-center rounded-pill border-0 bg-transparent text-text"
-              >
-                <X aria-hidden="true" size={20} />
-              </Toast.Close>
-            </Toast.Root>
-          );
-        })}
-        <Toast.Viewport
-          label={t("toast.region")}
-          className="fixed inset-x-0 top-[env(safe-area-inset-top)] z-50 m-0 mx-auto flex max-w-[32rem] list-none flex-col gap-2 p-4 outline-none"
-        />
-      </Toast.Provider>
+        {queue.toasts.map((toast) => (
+          <Toast
+            key={toast.id}
+            open
+            onOpenChange={(open) => {
+              if (open) return;
+              dispatch({ type: "dismiss", id: toast.id });
+              toast.onClose?.();
+            }}
+            tone={TONES[toast.tone]}
+            title={t(toast.messageKey, toast.params)}
+            closeLabel={t("toast.dismiss")}
+            action={
+              toast.action && {
+                label: t(toast.action.labelKey),
+                altText: t(toast.action.altTextKey),
+                onClick: toast.action.onClick,
+              }
+            }
+          />
+        ))}
+      </BedrockToastProvider>
     </ToastContext.Provider>
   );
 }

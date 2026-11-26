@@ -171,9 +171,14 @@ export function updateChore(id: string, input: ChoreWire): Promise<SaveChoreResu
   return save(`/home/chores/${encodeURIComponent(id)}`, "PUT", input, 200);
 }
 
-export async function deleteChore(id: string): Promise<DeleteChoreResult> {
+/** `keepalive` lets the request outlive the page, for a delete sent as the page is hidden (ADR 0029). */
+export async function deleteChore(id: string, { keepalive }: { keepalive?: boolean } = {}): Promise<DeleteChoreResult> {
   try {
-    const result = await authedRequest({ url: `/home/chores/${encodeURIComponent(id)}`, method: "DELETE" });
+    const result = await authedRequest({
+      url: `/home/chores/${encodeURIComponent(id)}`,
+      method: "DELETE",
+      ...(keepalive && { fetchOptions: { keepalive } }),
+    });
     if (result.kind === "not-signed-in") return result;
     if (result.response.status === 404) return { kind: "none" };
     return result.response.status === 204 ? { kind: "ok" } : { kind: "error" };

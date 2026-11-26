@@ -286,6 +286,14 @@ describe("deleteChore", () => {
     expect(init?.method).toBe("DELETE");
   });
 
+  it("asks fetch to keep the request alive only when told to", async () => {
+    const fetch = stubFetch(new Response(null, { status: 204 }));
+    await deleteChore("c1", { keepalive: true });
+    await deleteChore("c1");
+    expect(fetch.mock.calls[0]![1]?.keepalive).toBe(true);
+    expect(fetch.mock.calls[1]![1]?.keepalive).toBeUndefined();
+  });
+
   it("is none on a 404, which leaves the Chore gone either way", async () => {
     stubFetch(Response.json({ error: "chore not found" }, { status: 404 }));
     expect(await deleteChore("c1")).toEqual({ kind: "none" });
