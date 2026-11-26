@@ -19,10 +19,10 @@ function TaskCardSkeleton() {
   );
 }
 
-/** The one muted line of `DaySummary`: one text line high (1.5rem), and the space `PlanView` leaves below it. */
+/** The one muted line of `DaySummary`: one text line high (1.5rem), and the 16px the tab body leaves below it. */
 function SummarySkeleton() {
   return (
-    <div data-skeleton="summary" className="mb-6">
+    <div data-skeleton="summary" className="mb-4">
       <SkeletonBar className="h-6 w-3/4" />
     </div>
   );
@@ -46,10 +46,10 @@ export function DayPlanSkeleton({ summary = false }: { summary?: boolean }) {
   );
 }
 
-/** The checked-in hero card's box (9.5rem, as on the TodayLoading artboard) and the gap `TodayHero` leaves below it, so the card takes its place without moving the Task cards. */
+/** The checked-in hero card's box (9.5rem, as on the TodayLoading artboard) and the 16px the tab body leaves below it, so the card takes its place without moving the Task cards. */
 export function HeroSkeleton() {
   return (
-    <div aria-hidden="true" data-testid="hero-skeleton" className="mb-8">
+    <div aria-hidden="true" data-testid="hero-skeleton" className="mb-4">
       <SkeletonCard className="h-38 rounded-xl" />
     </div>
   );

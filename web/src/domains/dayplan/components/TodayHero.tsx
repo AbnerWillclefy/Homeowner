@@ -33,7 +33,7 @@ export function TodayHero({ plan }: { plan: DayPlan | null }) {
   if (state.kind === "loading") return null;
 
   const section = (children: ReactNode) => (
-    <section ref={heroRef} tabIndex={-1} aria-label={t("today.hero.label")} className="mb-8 outline-none">
+    <section ref={heroRef} tabIndex={-1} aria-label={t("today.hero.label")} className="mt-0 outline-none">
       {children}
     </section>
   );

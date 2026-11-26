@@ -14,7 +14,7 @@ function ChoreRowSkeleton() {
 /** What the Chores list shows while its first load runs: the add buttons, a group heading and Chore cards. */
 export function ChoresSkeleton() {
   return (
-    <div aria-hidden="true" className="flex flex-col gap-8">
+    <div aria-hidden="true" className="flex flex-col gap-4">
       <div className="flex gap-3">
         <SkeletonPill className="flex-1" />
         <SkeletonPill className="flex-1" />

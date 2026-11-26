@@ -1,3 +1,4 @@
+import { PageHeader } from "@homeowner/bedrock";
 import { ArrowLeft } from "lucide-react";
 import type { FormEvent } from "react";
 import { Link } from "react-router";
@@ -7,7 +8,6 @@ import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { FormError } from "../../../shared/ui/FormError";
 import { formErrorId } from "../../../shared/ui/formErrorId";
-import { TabHeader } from "../../../app/components/TabHeader";
 import { useNameForm } from "../hooks/useNameForm";
 import type { Me } from "../../auth/api/meApi";
 import { MeLoadFailed } from "./MeLoadFailed";
@@ -63,7 +63,7 @@ export function MeEdit() {
   const { t } = useI18n();
   const { me } = useShell();
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 pt-6 pb-6">
       <div>
         <Button asChild variant="ghost" className="-ms-3">
           <Link to={ME_PATH}>
@@ -72,7 +72,7 @@ export function MeEdit() {
           </Link>
         </Button>
       </div>
-      <TabHeader title={t("me.edit.heading")} />
+      <PageHeader title={t("me.edit.heading")} />
       {me.state.kind === "ready" && <NameForm me={me.state.me} />}
       {me.state.kind === "loading" && <p role="status">{t("profile.loading")}</p>}
       {me.state.kind === "failed" && <MeLoadFailed className="items-start" />}

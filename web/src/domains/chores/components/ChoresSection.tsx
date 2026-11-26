@@ -12,6 +12,7 @@ import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { categoryLabel, labelText } from "../../profile/logic/labels";
+import { TabBody } from "../../../app/components/TabBody";
 import { TabHeader } from "../../../app/components/TabHeader";
 import { useShell } from "../../../app/components/ShellContext";
 import { ChoreForm, type ResponsibleProps } from "./ChoreForm";
@@ -136,15 +137,16 @@ export function ChoresSection() {
         }
       />
 
+      <TabBody>
       {showSkeleton && <ChoresSkeleton />}
 
       {state.kind === "failed" && (
         <>
-          <p role="alert" className="text-danger">
+          <p role="alert" className="my-0 text-danger">
             {t(LOAD_FAILURE_KEY[state.reason])}
           </p>
           {state.reason !== "not-signed-in" && (
-            <Button variant="secondary" onClick={reload}>
+            <Button variant="secondary" onClick={reload} className="self-start">
               {t("chores.retry")}
             </Button>
           )}
@@ -152,7 +154,7 @@ export function ChoresSection() {
       )}
 
       {ready && (
-        <div className="flex flex-col gap-6">
+        <>
           {state.chores.length === 0 ? (
             <div className="flex flex-col items-stretch gap-2">
               <EmptyState
@@ -266,8 +268,9 @@ export function ChoresSection() {
               }}
             />
           )}
-        </div>
+        </>
       )}
+      </TabBody>
     </section>
   );
 }

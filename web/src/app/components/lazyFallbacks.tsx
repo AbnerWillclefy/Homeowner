@@ -6,6 +6,7 @@ import { ResidentPageSkeleton } from "../../domains/residents/components/Residen
 import { useI18n } from "../../shared/i18n";
 import { SkeletonBar, SkeletonPill } from "../../shared/ui/Skeleton";
 import { SkeletonHeader } from "../../shared/ui/SkeletonHeader";
+import { TabBody } from "./TabBody";
 import { useShell } from "./ShellContext";
 
 // What shows while a screen without a skeleton of its own loads. They live here, in the main bundle, so they are
@@ -15,10 +16,12 @@ import { useShell } from "./ShellContext";
 export function MeFallback() {
   const { home } = useShell();
   return (
-    <div aria-hidden="true" className="flex flex-col gap-4">
+    <div aria-hidden="true">
       <SkeletonHeader withLine={false} />
-      <MeHeaderSkeleton showBars hasHome={home.state.kind === "ready"} />
-      <ProfileSkeleton />
+      <TabBody>
+        <MeHeaderSkeleton showBars hasHome={home.state.kind === "ready"} />
+        <ProfileSkeleton />
+      </TabBody>
     </div>
   );
 }
@@ -26,19 +29,19 @@ export function MeFallback() {
 /** A Resident's page: the back link, then the page's skeleton. ResidentRoute shows the same pair once loaded, so nothing jumps. */
 export function ResidentFallback() {
   return (
-    <>
+    <div className="pt-6 pb-6">
       <BackToHome />
       <ResidentPageSkeleton />
-    </>
+    </div>
   );
 }
 
 /** The edit screen: the Back link, the title, the photo and the name field, at roughly the loaded sizes. */
 export function MeEditFallback() {
   return (
-    <div aria-hidden="true" className="flex flex-col gap-4">
+    <div aria-hidden="true" className="flex flex-col gap-4 pt-6 pb-6">
       <SkeletonPill className="w-24" />
-      <SkeletonHeader withLine={false} />
+      <SkeletonBar className="h-[calc(1.875rem*1.25)] w-2/3" />
       <div className="flex flex-col items-center gap-3">
         <SkeletonBar className="h-5 w-12" />
         <span className="block size-20 rounded-pill bg-muted/20 motion-safe:animate-pulse" />

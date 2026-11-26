@@ -13,8 +13,9 @@ interface Props {
 
 function ChunkFailed({ frame: Frame }: { frame?: ComponentType<{ children: ReactNode }> }) {
   const { t } = useI18n();
+  // A frameless alert sits in the Shell, whose frame adds no block spacing.
   const alert = (
-    <div role="alert" className="flex flex-col items-start gap-3">
+    <div role="alert" className={`flex flex-col items-start gap-4${Frame ? "" : " pt-6 pb-6"}`}>
       <p className="my-0">{t("app.chunkFailed")}</p>
       <Button variant="secondary" onClick={() => window.location.reload()}>
         {t("app.chunkRetry")}

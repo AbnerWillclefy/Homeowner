@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, createElement, Component, type ReactNode } from "react";
+import { act, createElement, Component, type ComponentType, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../../shared/i18n";
@@ -39,13 +39,13 @@ class Outer extends Component<{ children: ReactNode }, { caught: Error | null }>
   }
 }
 
-function show(error: Error) {
+function show(error: Error, frame?: ComponentType<{ children: ReactNode }>) {
   act(() =>
     root.render(
       createElement(
         I18nProvider,
         null,
-        createElement(Outer, null, createElement(ChunkErrorBoundary, null, createElement(Boom, { error }))),
+        createElement(Outer, null, createElement(ChunkErrorBoundary, { frame, children: createElement(Boom, { error }) })),
       ),
     ),
   );
@@ -56,6 +56,15 @@ describe("ChunkErrorBoundary", () => {
     show(new TypeError("Failed to fetch dynamically imported module: https://x/assets/Me.js"));
     expect(container.querySelector('[role="alert"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="outer"]')).toBeNull();
+  });
+
+  it("pads the alert only when no frame wraps it, as in the Shell", () => {
+    const chunkError = () => new TypeError("Failed to fetch dynamically imported module: https://x/assets/Me.js");
+    show(chunkError());
+    expect(container.querySelector('[role="alert"]')!.className).toMatch(/\bpt-6 pb-6\b/);
+
+    show(chunkError(), ({ children }) => createElement("div", null, children));
+    expect(container.querySelector('[role="alert"]')!.className).not.toMatch(/\bpt-6\b/);
   });
 
   it("rethrows any other error to the boundary above instead of hiding it", () => {
