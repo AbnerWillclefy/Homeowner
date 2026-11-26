@@ -24,7 +24,7 @@ export function Field({
   const errorId = `${uid}-error`;
   const describedBy = error ? errorId : hint ? hintId : undefined;
   return (
-    <div className="flex flex-col gap-1">
+    <div data-slot="field" className="flex flex-col gap-1">
       <label id={`${uid}-label`} htmlFor={uid} className={cn("label text-text-muted", hideLabel && "sr-only")}>
         {label}
       </label>
@@ -46,7 +46,7 @@ export function Field({
 /** pointer-coarse:text-base is 16px on touch screens: iOS Safari zooms into fields under 16px on focus. */
 export const fieldClass = (invalid: boolean) =>
   cn(
-    "body w-full rounded-md border bg-surface-sunken px-3 text-text placeholder:text-text-muted",
+    "body w-full rounded-md border bg-surface-sunken px-4 text-text placeholder:text-text-muted",
     "h-control-md pointer-coarse:h-control-lg pointer-coarse:text-base max-tablet:h-control-lg max-tablet:text-base",
     "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
     "disabled:opacity-(--opacity-disabled)",

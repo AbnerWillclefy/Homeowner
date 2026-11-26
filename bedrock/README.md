@@ -3,16 +3,17 @@
 Homeowner's shared design system as a package: the tokens and the React components specified in
 [`docs/design/bedrock/`](../docs/design/bedrock/README.md) ([ADR 0022](../docs/adr/0022-a-shared-bedrock-design-system-amends-0007-and-0009-for-adopting-apps.md)).
 It ships TypeScript source, with no build step, and is not published to npm. Revenue (`revenue/`) is the first app to use it:
-`web/` and `admin/` keep their own styles until their migration epics.
+`web/` is migrating (epic #882) and `admin/` keeps its own styles until its migration epic.
 
 ## Entry points
 
-`package.json` `exports` has three:
+`package.json` `exports` has four:
 
 | Import | What it is |
 |---|---|
 | `@homeowner/bedrock` | Core (`src/index.ts`): the components every app can use, from `Button` to `ChartContainer`. |
 | `@homeowner/bedrock/finance` | Finance (`src/finance/index.ts`): what only a money app needs, such as `Amount`, `MoneyInput`, `CategoryTag` and the charts. |
+| `@homeowner/bedrock/home` | Home (`src/home/index.ts`): what only the Homeowner PWA needs. |
 | `@homeowner/bedrock/tokens.css` | The tokens, the Tailwind theme and the type utilities (`src/tokens.css`). |
 
 Core never imports Finance. `src/layers.test.ts` fails if any file under `src/components/` or
@@ -20,9 +21,9 @@ Core never imports Finance. `src/layers.test.ts` fails if any file under `src/co
 
 ## Workspace layout
 
-The root `package.json` lists `bedrock` and `revenue` in `workspaces`, and the root `package-lock.json`
-is their shared lockfile. `web/` and `admin/` keep their own lockfiles and CI, so a Bedrock
-dependency bump cannot break their installs.
+The root `package.json` lists `bedrock`, `revenue` and `web` in `workspaces`, and the root `package-lock.json`
+is their shared lockfile. `admin/` keeps its own lockfile and CI, so a Bedrock
+dependency bump cannot break its install.
 
 ## Using it in an app
 

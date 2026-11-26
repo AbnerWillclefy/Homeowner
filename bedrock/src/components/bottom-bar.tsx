@@ -12,6 +12,7 @@ type Props = {
 export function BottomBar({ label, items, onNavigate }: Props) {
   return (
     <nav
+      data-slot="bottom-bar"
       aria-label={label}
       className="border-t border-border bg-surface pb-[calc(var(--space-16)+env(safe-area-inset-bottom))]"
     >

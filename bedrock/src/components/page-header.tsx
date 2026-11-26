@@ -27,7 +27,7 @@ type PageHeaderProps = {
 export function PageHeader({ title, subtitle, id, headingRef, period, tools, action, trailing }: PageHeaderProps) {
   const icons = tools || action || trailing;
   return (
-    <header className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-3 desktop:flex desktop:flex-wrap desktop:items-center desktop:justify-between desktop:gap-x-4">
+    <header data-slot="page-header" className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-4 desktop:flex desktop:flex-wrap desktop:items-center desktop:justify-between desktop:gap-x-4">
       <div className="min-w-0 desktop:grow desktop:basis-48">
         <h1 id={id} ref={headingRef} tabIndex={headingRef ? -1 : undefined} className="page-title">
           {title}

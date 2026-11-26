@@ -42,14 +42,15 @@ type ToastProps = {
 };
 
 const icons = {
-  positive: <CircleCheck className="mt-0.5 size-5 shrink-0 text-positive" aria-hidden />,
-  danger: <CircleAlert className="mt-0.5 size-5 shrink-0 text-danger" aria-hidden />,
+  positive: <CircleCheck className="mt-1 size-5 shrink-0 text-positive" aria-hidden />,
+  danger: <CircleAlert className="mt-1 size-5 shrink-0 text-danger" aria-hidden />,
   neutral: null,
 };
 
 export function Toast({ open, onOpenChange, tone, title, description, closeLabel, action }: ToastProps) {
   return (
     <ToastPrimitive.Root
+      data-slot="toast"
       open={open}
       onOpenChange={onOpenChange}
       // Danger interrupts the screen reader (assertive); the others wait their turn (polite).
