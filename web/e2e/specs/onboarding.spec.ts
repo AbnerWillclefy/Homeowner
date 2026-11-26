@@ -8,7 +8,7 @@ import { onboardingHandlers } from "../mocks/handlers/onboarding";
 import { residentsHandlers } from "../mocks/handlers/residents";
 import { todayHandlers } from "../mocks/handlers/today";
 import { seedSession } from "../mocks/session";
-import { launchApp } from "../pages/launch";
+import { launchApp, visit } from "../pages/launch";
 import { onboarding, JOINER, WEEK, type Day, type Level, type WalkInput } from "../pages/onboarding";
 import { signedInResident } from "../mocks/sampleHome";
 import { shell } from "../pages/shell";
@@ -258,5 +258,21 @@ test.describe("a User who joined by Invite", () => {
       { step: "reminders" },
     ]);
     expect(fakeApi.state.onboardingStored).toBe("done");
+  });
+});
+
+test.describe("a User who joins by Invite after the first answer was `home`", () => {
+  test.use({ fakeState: { ...signedInResident(), home: null, onboardingStored: null } });
+
+  test("counts 4 screens: the Baseline is Step 1 of 4, not Step 2 of 5", async ({ page, baseURL, fakeApi }) => {
+    fakeApi.on("GET /invites/abc123", () => json(200, {}));
+    fakeApi.on("POST /invites/abc123/accept", (_, state) => {
+      state.home = { id: "home-2", timezone: "America/Sao_Paulo", allocationTime: "07:00" };
+      return json(200, state.home);
+    });
+    await visit(page, new URL("/#invite=abc123", baseURL!).toString());
+    await page.getByRole("button", { name: "Join this Home", exact: true }).click();
+    await expect(page).toHaveURL(/\/welcome\/baseline$/);
+    await onboarding.expectOnStep(page, "Your Baseline", 1, 4);
   });
 });

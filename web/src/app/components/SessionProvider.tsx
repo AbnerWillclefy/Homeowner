@@ -50,11 +50,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const onboarding = useOnboarding();
   const push = usePush();
   const invite = useInvite();
-  // A joiner is a User whose first onboarding answer was not `home`: the Invite gave them a Home. Fixed at that
-  // first answer, so creating the Home half-way through never changes the count.
+  // A joiner is a User whose first onboarding answer was not `home` (the Invite gave them a Home), or who joined in
+  // this session after a first answer of `home`. Creating the Home half-way through never changes the count.
   const [firstPosition, setFirstPosition] = useState<OnboardingPosition | null>(null);
   if (firstPosition === null && onboarding.state.kind === "ready") setFirstPosition(onboarding.state.position);
-  const joiner = firstPosition !== null && firstPosition !== "home";
+  const [joined, setJoined] = useState(false);
+  const joiner = joined || (firstPosition !== null && firstPosition !== "home");
   const steps = useMemo(() => stepsFor(joiner), [joiner]);
   const [after, setAfter] = useState<FlowNotice | null>(null);
   const [choosing, setChoosing] = useState(false);
@@ -65,6 +66,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const recordJoin = useCallback(
     (outcome: JoinOutcome) => {
       clearInvite();
+      if (outcome === "joined") setJoined(true);
       setAfter(outcome === "joined" ? "rating" : "already-here");
     },
     [clearInvite],

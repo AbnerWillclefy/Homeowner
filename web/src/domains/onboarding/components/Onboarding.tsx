@@ -34,6 +34,14 @@ const HEADING_KEY: Record<OnboardingScreen, MessageKey> = {
   home: "onboarding.home.heading",
 };
 
+const NAME_KEY: Record<OnboardingScreen, MessageKey> = {
+  finish: "onboarding.name.finish",
+  baseline: "onboarding.name.baseline",
+  restrictions: "onboarding.name.restrictions",
+  preferences: "onboarding.name.preferences",
+  home: "onboarding.name.home",
+};
+
 const ADVANCE_FAILED_KEY: Record<OnboardingProblem, MessageKey> = {
   offline: "onboarding.advance.offline",
   error: "onboarding.advance.error",
@@ -228,6 +236,7 @@ export function Onboarding({ position, onPosition }: Props) {
       step={step}
       total={total}
       heading={t(HEADING_KEY[current])}
+      stepName={t(NAME_KEY[current])}
       headingRef={headingRef}
       onBack={walk.canGoBack ? walk.back : undefined}
       onSkip={skippable ? goNext : undefined}

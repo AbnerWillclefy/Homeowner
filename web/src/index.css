@@ -127,10 +127,10 @@
   padding-inline-end: calc(1rem + env(safe-area-inset-right));
 }
 
-/* Horizontal safe-area padding of the full-bleed onboarding screen: 1.5rem for content, 0.75rem for the top bar. */
+/* Horizontal safe-area padding of the full-bleed onboarding screen: 1rem for content, 0.75rem for the top bar. */
 @utility onboarding-x {
-  padding-inline-start: calc(1.5rem + env(safe-area-inset-left));
-  padding-inline-end: calc(1.5rem + env(safe-area-inset-right));
+  padding-inline-start: calc(1rem + env(safe-area-inset-left));
+  padding-inline-end: calc(1rem + env(safe-area-inset-right));
 }
 @utility onboarding-x-bar {
   padding-inline-start: calc(0.75rem + env(safe-area-inset-left));

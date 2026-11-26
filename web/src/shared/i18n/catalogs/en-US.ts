@@ -878,6 +878,11 @@ export const enUS = {
 
   // Onboarding: the walk through the Home, profile, install and reminders for a new User
   "onboarding.progress": "Step {step} of {total}",
+  "onboarding.name.finish": "Reminders",
+  "onboarding.name.baseline": "Baseline",
+  "onboarding.name.restrictions": "Restrictions",
+  "onboarding.name.preferences": "Preferences",
+  "onboarding.name.home": "Your Home",
   "onboarding.skip": "Skip (optional)",
   "onboarding.loading": "Loading your setup...",
   "onboarding.load.offline":

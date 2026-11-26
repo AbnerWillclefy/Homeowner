@@ -48,7 +48,7 @@ function plan(done: boolean): DayPlan {
 }
 
 /** The FakeState a screen is shot with: the household above, shaped by what its `data` asks for. */
-export function pairsHome(data: Data = "default"): FakeState {
+export function pairsHome(data: Data = "default", stored?: string): FakeState {
   const state = signedInResident();
   state.user = { ...state.user, displayName: "Você" };
   state.residents = [
@@ -61,8 +61,9 @@ export function pairsHome(data: Data = "default"): FakeState {
   state.streakTodayGrew = true;
   if (data === "unchecked") state.checkIn = uncheckedDay();
   if (data === "onboarding") {
-    state.home = null;
-    state.onboardingStored = null;
+    // With `stored` the Home exists and that step is done; without it the Resident has no Home yet.
+    if (!stored) state.home = null;
+    state.onboardingStored = stored ?? null;
   }
   return state;
 }

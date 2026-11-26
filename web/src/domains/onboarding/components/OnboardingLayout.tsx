@@ -9,6 +9,8 @@ interface Props {
   /** This screen's place in the walk, shown as Bedrock's "Step n of m" and a row of segments. */
   step: number;
   total: number;
+  /** The step's short name, shown at the end of the indicator's text row. */
+  stepName: string;
   /** The step's question: the page heading, focused on step change. */
   heading: string;
   headingRef: RefObject<HTMLHeadingElement | null>;
@@ -33,6 +35,7 @@ interface Props {
 export function OnboardingLayout({
   step,
   total,
+  stepName,
   heading,
   headingRef,
   onBack,
@@ -69,7 +72,7 @@ export function OnboardingLayout({
         </div>
 
         <div className="onboarding-x flex flex-1 flex-col pt-6 pb-4">
-          <StepIndicator label={t("onboarding.progress", { step, total })} current={step} total={total} />
+          <StepIndicator label={t("onboarding.progress", { step, total })} current={step} total={total} name={stepName} />
           <h1
             id="onboarding-heading"
             ref={headingRef}

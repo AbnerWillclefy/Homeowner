@@ -41,7 +41,7 @@ for (const name of names) {
   const data = entry.data ?? "default";
 
   test.describe(name, () => {
-    test.use({ fakeState: pairsHome(data) });
+    test.use({ fakeState: pairsHome(data, entry.stored) });
 
     test("pair", async ({ page, baseURL, fakeApi, context }) => {
       // The fake plans 2030-01-15, so the app's clock reads that day too.

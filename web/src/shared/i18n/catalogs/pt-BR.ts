@@ -889,6 +889,11 @@ export const ptBR: Messages = {
 
   // Onboarding: o passo a passo de instalação, lembretes, perfil e lar para um novo login
   "onboarding.progress": "Passo {step} de {total}",
+  "onboarding.name.finish": "Lembretes",
+  "onboarding.name.baseline": "Energia base",
+  "onboarding.name.restrictions": "Restrições",
+  "onboarding.name.preferences": "Preferências",
+  "onboarding.name.home": "Seu lar",
   "onboarding.skip": "Pular (opcional)",
   "onboarding.loading": "Carregando a sua configuração...",
   "onboarding.load.offline":

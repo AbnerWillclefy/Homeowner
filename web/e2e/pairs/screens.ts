@@ -44,6 +44,8 @@ export interface Screen {
   path: string;
   data?: Data;
   state?: State;
+  /** For "onboarding" data: the step already walked, so the Home exists and this screen is reachable. Absent: no Home yet. */
+  stored?: string;
 }
 /** An artboard with nothing to shoot yet: why, and the ticket that removes the entry when it names one. */
 export interface NoScreen {
@@ -51,10 +53,11 @@ export interface NoScreen {
 }
 export type Entry = Screen | NoScreen;
 
-const at = (path: string, domains: string[], rest: Pick<Screen, "data" | "state"> = {}): Screen => ({ path, domains, ...rest });
+const at = (path: string, domains: string[], rest: Pick<Screen, "data" | "state" | "stored"> = {}): Screen => ({ path, domains, ...rest });
 const none = (reason: string): NoScreen => ({ none: reason });
 
-const onboard = (step: string, domains: string[]): Screen => at(`/welcome/${step}`, ["onboarding", ...domains], { data: "onboarding" });
+const onboard = (step: string, domains: string[], stored?: string): Screen =>
+  at(`/welcome/${step}`, ["onboarding", ...domains], { data: "onboarding", stored });
 const TODAY = ["dayplan"];
 
 /** One entry per file of docs/design/homeowner/, by artboard name. screens.test.ts fails when a file has none. */
@@ -98,10 +101,10 @@ export const SCREENS: Record<string, Entry> = {
   Confirm: at("/signup", ["auth"], { data: "signed-out", state: "confirm-email" }),
   ForgotPassword: at("/forgot-password", ["auth"], { data: "signed-out" }),
   OnboardHome: onboard("home", ["home", "catalog"]),
-  OnboardBaseline: onboard("baseline", ["profile"]),
-  OnboardRestrictions: onboard("restrictions", ["profile"]),
-  OnboardPreferences: onboard("preferences", ["profile"]),
-  OnboardReminders: onboard("finish", ["push"]),
+  OnboardBaseline: onboard("baseline", ["profile"], "home"),
+  OnboardRestrictions: onboard("restrictions", ["profile"], "baseline"),
+  OnboardPreferences: onboard("preferences", ["profile"], "restrictions"),
+  OnboardReminders: onboard("finish", ["push"], "preferences"),
   InviteSignedOut: at("/#invite=abc123", ["invite"], { data: "signed-out-invite" }),
   InviteRating: at("/#invite=abc123", ["invite"], { data: "invite", state: "invite-rating" }),
   // Partes
