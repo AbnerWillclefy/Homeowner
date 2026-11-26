@@ -6,7 +6,7 @@ import (
 )
 
 func TestStepsAreInTheTicketsOrder(t *testing.T) {
-	want := []string{"install", "reminders", "baseline", "restrictions", "preferences", "home"}
+	want := []string{"home", "baseline", "restrictions", "preferences", "install", "reminders"}
 	if got := Steps(); !slices.Equal(got, want) {
 		t.Errorf("Steps() = %v, want %v", got, want)
 	}
@@ -14,15 +14,15 @@ func TestStepsAreInTheTicketsOrder(t *testing.T) {
 
 func TestNextIsTheStepAfterTheStoredOne(t *testing.T) {
 	cases := []struct{ stored, want string }{
-		{"", "install"},
-		{"install", "reminders"},
-		{"reminders", "baseline"},
+		{"", "home"},
+		{"home", "baseline"},
 		{"baseline", "restrictions"},
 		{"restrictions", "preferences"},
-		{"preferences", "home"},
-		{"home", "done"},
+		{"preferences", "install"},
+		{"install", "reminders"},
+		{"reminders", "done"},
 		{"done", "done"},
-		{"from-a-newer-release", "install"},
+		{"from-a-newer-release", "home"},
 	}
 	for _, c := range cases {
 		if got := Next(c.stored); got != c.want {
@@ -31,7 +31,7 @@ func TestNextIsTheStepAfterTheStoredOne(t *testing.T) {
 	}
 }
 
-func TestOnlyTheFirstFiveStepsCanBeWrittenByHand(t *testing.T) {
+func TestOnlyTheStepsAfterHomeCanBeWrittenByHand(t *testing.T) {
 	cases := map[string]bool{
 		"install": true, "reminders": true, "baseline": true, "restrictions": true, "preferences": true,
 		"home": false, "done": false, "": false, "Install": false, "unknown": false,
@@ -48,10 +48,10 @@ func TestBeforeListsWhatAStepMayMoveForwardFrom(t *testing.T) {
 		step string
 		want []string
 	}{
-		{"install", []string{}},
-		{"reminders", []string{"install"}},
-		{"preferences", []string{"install", "reminders", "baseline", "restrictions"}},
-		{"done", []string{"install", "reminders", "baseline", "restrictions", "preferences", "home"}},
+		{"home", []string{}},
+		{"baseline", []string{"home"}},
+		{"reminders", []string{"home", "baseline", "restrictions", "preferences", "install"}},
+		{"done", []string{"home", "baseline", "restrictions", "preferences", "install", "reminders"}},
 		{"unknown", nil},
 	}
 	for _, c := range cases {

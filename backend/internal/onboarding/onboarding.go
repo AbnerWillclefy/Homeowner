@@ -12,21 +12,21 @@ import "slices"
 // client can write.
 const Done = "done"
 
-// HomeStep is the last step, completed by creating the Home.
+// HomeStep is the first step, completed by creating the Home (or joining one
+// by Invite). Only the server writes it.
 const HomeStep = "home"
 
 // steps are the ids in the order the User walks them.
-var steps = []string{"install", "reminders", "baseline", "restrictions", "preferences", HomeStep}
+var steps = []string{HomeStep, "baseline", "restrictions", "preferences", "install", "reminders"}
 
 // Steps returns the step ids in order. The caller owns the copy.
 func Steps() []string { return slices.Clone(steps) }
 
-// Valid reports whether step is one a client may record with PUT. The last
-// step, "home", is completed by creating the Home, and Done by finishing, so
-// neither can be written by hand.
+// Valid reports whether step is one a client may record with PUT. "home" is
+// written by creating the Home, and Done by finishing, so neither can be
+// written by hand.
 func Valid(step string) bool {
-	i := slices.Index(steps, step)
-	return i >= 0 && i < len(steps)-1
+	return step != HomeStep && slices.Contains(steps, step)
 }
 
 // Next is the step to show a User whose stored step is stored: the one after
