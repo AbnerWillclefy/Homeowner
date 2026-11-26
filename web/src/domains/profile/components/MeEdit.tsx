@@ -7,7 +7,7 @@ import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { FormError } from "../../../shared/ui/FormError";
 import { formErrorId } from "../../../shared/ui/formErrorId";
-import { PageHeader } from "../../../shared/ui/PageHeader";
+import { TabHeader } from "../../../app/components/TabHeader";
 import { useNameForm } from "../hooks/useNameForm";
 import type { Me } from "../../auth/api/meApi";
 import { MeLoadFailed } from "./MeLoadFailed";
@@ -72,7 +72,7 @@ export function MeEdit() {
           </Link>
         </Button>
       </div>
-      <PageHeader title={t("me.edit.heading")} />
+      <TabHeader title={t("me.edit.heading")} />
       {me.state.kind === "ready" && <NameForm me={me.state.me} />}
       {me.state.kind === "loading" && <p role="status">{t("profile.loading")}</p>}
       {me.state.kind === "failed" && <MeLoadFailed className="items-start" />}

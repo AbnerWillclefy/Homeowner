@@ -29,7 +29,7 @@ function requirePasswordPolicy(): Plugin {
 }
 
 /**
- * Preloads every latin Nunito woff2 in the bundle by its hashed name, so text does not wait for the CSS to name the
+ * Preloads every latin Inter woff2 in the bundle by its hashed name, so text does not wait for the CSS to name the
  * file and change weight after first paint. Fails `vite build` when none is emitted, e.g. the package renamed them.
  */
 function preloadFonts(): Plugin {
@@ -40,11 +40,11 @@ function preloadFonts(): Plugin {
       order: "post",
       handler(_html, ctx) {
         const fonts = Object.keys(ctx.bundle ?? {}).filter((name) =>
-          /(^|\/)nunito-latin-\d+-normal-[^/]*\.woff2$/.test(name),
+          /(^|\/)inter-latin-\d+-normal-[^/]*\.woff2$/.test(name),
         );
         if (fonts.length === 0) {
           throw new Error(
-            "preload-fonts: no built file matches nunito-latin-<weight>-normal-*.woff2. Import @fontsource/nunito/latin-<weight>.css in src/main.tsx.",
+            "preload-fonts: no built file matches inter-latin-<weight>-normal-*.woff2. Bedrock's tokens.css should import @fontsource/inter/<weight>.css.",
           );
         }
         return fonts.map((file): HtmlTagDescriptor => ({
@@ -130,6 +130,8 @@ export default defineConfig(({ mode }) => {
         filename: "sw.ts",
         injectManifest: {
           globPatterns: ["**/*.{js,css,html,png,svg,ico,woff2}"],
+          // Bedrock imports every Inter subset; only latin is precached, so the first install stays small.
+          globIgnores: ["**/inter-{cyrillic,greek,vietnamese,latin-ext}-*.woff2"],
         },
         includeAssets: ["apple-touch-icon.png"],
         manifest: {
@@ -139,9 +141,10 @@ export default defineConfig(({ mode }) => {
           start_url: "/",
           scope: "/",
           display: "standalone",
-          // Static, so they cannot follow the in-app theme: a dark-mode launch shows a brief light splash.
-          background_color: "#f7f8f5",
-          theme_color: "#f7f8f5",
+          // Static, so they cannot follow the in-app theme: they take Bedrock's dark `bg`, the default, so a light-theme
+          // launch shows a brief dark splash.
+          background_color: "#0e1110",
+          theme_color: "#0e1110",
           icons: [
             { src: "icon-192.png", sizes: "192x192", type: "image/png" },
             { src: "icon-512.png", sizes: "512x512", type: "image/png" },

@@ -10,19 +10,19 @@ export type AppliedTheme = "light" | "dark";
 
 export const THEME_STORAGE_KEY = "homeowner.theme";
 
-/** The `surface` token per theme, for the status bar (theme-color). Keep in step with tokens.css. */
-export const THEME_COLORS: Record<AppliedTheme, string> = { light: "#f7f8f5", dark: "#121816" };
+/** Bedrock's `bg` token per theme (the page colour), for the status bar (theme-color). Keep in step with bedrock/src/tokens.css. */
+export const THEME_COLORS: Record<AppliedTheme, string> = { light: "#f4f6f5", dark: "#0e1110" };
 
 export function isThemeChoice(value: unknown): value is ThemeChoice {
   return typeof value === "string" && (THEME_CHOICES as readonly string[]).includes(value);
 }
 
-/** A stored light or dark wins; anything else (nothing, "system", junk) is System. */
-export function resolveTheme(input: { stored: unknown; systemPrefersDark: boolean }): {
+/** A stored light or dark wins; anything else (nothing, "system", junk) is System: light only when the OS says so, else dark. */
+export function resolveTheme(input: { stored: unknown; systemPrefersLight: boolean }): {
   choice: ThemeChoice;
   applied: AppliedTheme;
 } {
-  const { stored, systemPrefersDark } = input;
+  const { stored, systemPrefersLight } = input;
   if (stored === "light" || stored === "dark") return { choice: stored, applied: stored };
-  return { choice: "system", applied: systemPrefersDark ? "dark" : "light" };
+  return { choice: "system", applied: systemPrefersLight ? "light" : "dark" };
 }

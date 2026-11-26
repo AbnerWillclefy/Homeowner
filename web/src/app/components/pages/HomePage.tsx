@@ -9,8 +9,8 @@ import { InviteShare } from "../../../domains/invite/components/InviteShare";
 import { ResidentsCard } from "../../../domains/residents/components/ResidentsCard";
 import { useI18n } from "../../../shared/i18n";
 import { CollapsibleCard } from "../../../shared/ui/CollapsibleCard";
-import { PageHeader } from "../../../shared/ui/PageHeader";
 import { PageLoading } from "../../../shared/ui/PageLoading";
+import { TabHeader } from "../TabHeader";
 import { useSession } from "../SessionProvider";
 import { useShell } from "../ShellContext";
 
@@ -24,12 +24,14 @@ export function HomePage() {
       <HomeGate skeleton={<HomeSkeleton />}>
         {(current: Home) => (
           <div className="flex flex-col gap-4">
-            <PageHeader title={t("home.settings.heading")}>
+            <TabHeader title={t("home.settings.heading")} />
+            {/* A paragraph, not the header's subtitle: the subtitle is one truncated line, and this holds the zone. */}
+            <p className="-mt-2 mb-0 text-muted">
               {t("home.summary", {
                 time: formatAllocationTime(current.allocationTime, locale),
                 zone: current.timezone.replaceAll("_", " "),
               })}
-            </PageHeader>
+            </p>
             {recovered !== "no" && (
               <p role="status">{t(recovered === "chores-dropped" ? "home.create.recovered.chores" : "home.create.recovered")}</p>
             )}

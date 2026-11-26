@@ -15,12 +15,6 @@ import { getBoot } from "./app/api/bootApi";
 import { boot } from "./app/logic/boot";
 import { launchReads } from "./app/logic/launchReads";
 import { browserSession } from "./domains/auth/logic/browserSession";
-// Only the latin subset and the weights in use; the bare package would pull every subset.
-import "@fontsource/nunito/latin-400.css";
-import "@fontsource/nunito/latin-600.css";
-import "@fontsource/nunito/latin-700.css";
-// 800 is for the wordmark only (DESIGN.md).
-import "@fontsource/nunito/latin-800.css";
 import "./index.css";
 
 // Vite fires this when a chunk or its CSS cannot be fetched (usually after a deploy). The first time, reload for the

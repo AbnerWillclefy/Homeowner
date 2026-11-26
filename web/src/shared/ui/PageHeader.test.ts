@@ -44,39 +44,6 @@ describe("PageHeader", () => {
     expect(container().querySelectorAll('[data-slot="fetching"]')).toHaveLength(1);
   });
 
-  it("puts an aside after the fetching slot, in the title row, in a wrapper that does not shrink", () => {
-    render(
-      createElement(PageLoading, {
-        message: "Loading",
-        children: createElement(PageHeader, { title: "Today", aside: createElement("button", { id: "aside" }, "7") }),
-      }),
-    );
-    const row = container().querySelector("h2")!.parentElement!;
-    const children = [...row.children];
-    expect(children.map((child) => child.tagName)).toEqual(["H2", "SPAN", "DIV"]);
-    expect(children[1]).toBe(slot());
-    expect(children[2]!.className).toContain("shrink-0");
-    expect(children[2]!.querySelector("#aside")?.textContent).toBe("7");
-  });
-
-  it("draws a count as a muted figure inside the title, and none when it is absent or zero", () => {
-    render(createElement(PageHeader, { title: "Your Tasks", count: 3 }));
-    const figure = container().querySelector("h2 span");
-    expect(figure?.textContent).toBe("3");
-    expect(figure?.className).toContain("text-muted");
-    expect(container().querySelector("h2")?.textContent).toBe("Your Tasks3");
-    render(createElement(PageHeader, { title: "Your Tasks", count: 0 }));
-    expect(container().querySelector("h2 span")).toBeNull();
-    render(createElement(PageHeader, { title: "Your Tasks" }));
-    expect(container().querySelector("h2 span")).toBeNull();
-  });
-
-  it("leaves the title row as it was without an aside", () => {
-    render(createElement(PageHeader, { title: "Today" }));
-    const row = container().querySelector("h2")!.parentElement!;
-    expect([...row.children].map((child) => child.tagName)).toEqual(["H2"]);
-  });
-
   it("shows one spinner however many sections fetch", () => {
     render(
       createElement(PageLoading, {

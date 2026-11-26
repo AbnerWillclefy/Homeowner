@@ -29,7 +29,7 @@ describe("Logo", () => {
     expect(html()).toContain("forced-colors:text-[CanvasText]");
   });
 
-  it("sets the wordmark in the extra-bold weight (Nunito 800)", () => {
-    expect(html()).toContain("font-extrabold");
+  it("sets the wordmark in the bold weight (Inter 700, the heaviest Bedrock loads)", () => {
+    expect(html()).toContain("font-bold");
   });
 });

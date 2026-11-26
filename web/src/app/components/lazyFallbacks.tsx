@@ -16,6 +16,7 @@ export function MeFallback() {
   const { home } = useShell();
   return (
     <div aria-hidden="true" className="flex flex-col gap-4">
+      <SkeletonHeader withLine={false} />
       <MeHeaderSkeleton showBars hasHome={home.state.kind === "ready"} />
       <ProfileSkeleton />
     </div>

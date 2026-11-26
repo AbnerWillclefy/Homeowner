@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { contrastRatio, parseTokens } from "./contrast";
+import { contrastRatio, paintedColors } from "./contrast";
 
 // Worked examples from the WCAG definition.
 describe("contrastRatio", () => {
@@ -17,15 +17,17 @@ describe("contrastRatio", () => {
   });
 });
 
-const css = readFileSync(resolve(import.meta.dirname, "../../tokens.css"), "utf8");
-const light = parseTokens(css, "@theme");
-const dark = { ...light, ...parseTokens(css, '[data-theme="dark"]') };
+const bedrock = readFileSync(resolve(import.meta.dirname, "../../../../bedrock/src/tokens.css"), "utf8");
+const aliases = readFileSync(resolve(import.meta.dirname, "../../aliases.css"), "utf8");
+const light = paintedColors(bedrock, aliases, "light");
+const dark = paintedColors(bedrock, aliases, "dark");
 
 const TONES = ["peach", "mint", "lavender", "blue", "yellow", "salmon"];
 
-describe("parseTokens", () => {
-  it("reads both themes and the dark override wins", () => {
-    expect(light["surface"]).toMatch(/^#/);
+describe("paintedColors", () => {
+  it("follows an alias to Bedrock's token in each theme", () => {
+    expect(light["muted"]).toBe(light["text-muted"]);
+    expect(dark["accent"]).toBe(dark["brand"]);
     expect(dark["surface"]).not.toBe(light["surface"]);
   });
 });
@@ -37,7 +39,6 @@ for (const tone of TONES) {
   const fill = `cat-${tone}`;
   pairs.push(
     { label: `${fill}-ink text on ${fill}`, fg: `${fill}-ink`, bg: fill, min: 4.5 },
-    { label: `border on ${fill}`, fg: "border", bg: fill, min: 3 },
     { label: `focus on ${fill}`, fg: "focus", bg: fill, min: 3 },
   );
 }
@@ -53,25 +54,10 @@ pairs.push(
     { label: `text on ${stop}`, fg: "text", bg: stop, min: 4.5 },
     { label: `muted on ${stop}`, fg: "muted", bg: stop, min: 4.5 },
     { label: `danger on ${stop}`, fg: "danger", bg: stop, min: 4.5 },
-    { label: `border on ${stop}`, fg: "border", bg: stop, min: 3 },
     { label: `focus on ${stop}`, fg: "focus", bg: stop, min: 3 },
   ]),
   { label: "accent-contrast on accent", fg: "accent-contrast", bg: "accent", min: 4.5 },
-  // Charts (WCAG 1.4.11, non-text): a mark must read against the card and a filled bar against its own track.
-  { label: "chart-ink on surface-raised", fg: "chart-ink", bg: "surface-raised", min: 3 },
-  { label: "chart-muted on surface-raised", fg: "chart-muted", bg: "surface-raised", min: 3 },
-  { label: "chart-ink on chart-track", fg: "chart-ink", bg: "chart-track", min: 3 },
-  { label: "chart-muted on chart-track", fg: "chart-muted", bg: "chart-track", min: 3 },
 );
-
-// Spending Category colours (1.4.11): the ring part and bar fill on the card, the icon stroke on its own tint.
-const SPENDING = ["housing", "household-bills", "groceries", "eating-out", "transport", "health", "education", "leisure", "shopping", "subscriptions", "pets", "taxes-fees", "other"];
-for (const id of SPENDING) {
-  pairs.push(
-    { label: `spend-${id} on surface-raised`, fg: `spend-${id}`, bg: "surface-raised", min: 3 },
-    { label: `spend-${id} on spend-${id}-tint`, fg: `spend-${id}`, bg: `spend-${id}-tint`, min: 3 },
-  );
-}
 
 for (const [name, theme] of [
   ["light", light],

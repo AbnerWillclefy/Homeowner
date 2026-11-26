@@ -3,26 +3,29 @@ import { isThemeChoice, resolveTheme, THEME_CHOICES, THEME_STORAGE_KEY } from ".
 
 describe("resolveTheme", () => {
   it("lets a stored dark choice beat a light system", () => {
-    expect(resolveTheme({ stored: "dark", systemPrefersDark: false })).toEqual({ choice: "dark", applied: "dark" });
+    expect(resolveTheme({ stored: "dark", systemPrefersLight: true })).toEqual({ choice: "dark", applied: "dark" });
   });
 
   it("lets a stored light choice beat a dark system", () => {
-    expect(resolveTheme({ stored: "light", systemPrefersDark: true })).toEqual({ choice: "light", applied: "light" });
+    expect(resolveTheme({ stored: "light", systemPrefersLight: false })).toEqual({ choice: "light", applied: "light" });
   });
 
-  it.each([null, undefined])("follows the system when nothing is stored (%j)", (stored) => {
-    expect(resolveTheme({ stored, systemPrefersDark: true })).toEqual({ choice: "system", applied: "dark" });
-    expect(resolveTheme({ stored, systemPrefersDark: false })).toEqual({ choice: "system", applied: "light" });
+  it.each([null, undefined])("is dark with no stored choice and no stated preference (%j)", (stored) => {
+    expect(resolveTheme({ stored, systemPrefersLight: false })).toEqual({ choice: "system", applied: "dark" });
+  });
+
+  it.each([null, undefined])("keeps light for a light OS with no stored choice (%j)", (stored) => {
+    expect(resolveTheme({ stored, systemPrefersLight: true })).toEqual({ choice: "system", applied: "light" });
   });
 
   it("treats a stored system choice as System", () => {
-    expect(resolveTheme({ stored: "system", systemPrefersDark: true })).toEqual({ choice: "system", applied: "dark" });
-    expect(resolveTheme({ stored: "system", systemPrefersDark: false })).toEqual({ choice: "system", applied: "light" });
+    expect(resolveTheme({ stored: "system", systemPrefersLight: false })).toEqual({ choice: "system", applied: "dark" });
+    expect(resolveTheme({ stored: "system", systemPrefersLight: true })).toEqual({ choice: "system", applied: "light" });
   });
 
   it.each(["Dark", "sepia", "", " dark ", "null", 42, {}])("ignores the invalid stored value %j", (stored) => {
-    expect(resolveTheme({ stored, systemPrefersDark: true })).toEqual({ choice: "system", applied: "dark" });
-    expect(resolveTheme({ stored, systemPrefersDark: false })).toEqual({ choice: "system", applied: "light" });
+    expect(resolveTheme({ stored, systemPrefersLight: false })).toEqual({ choice: "system", applied: "dark" });
+    expect(resolveTheme({ stored, systemPrefersLight: true })).toEqual({ choice: "system", applied: "light" });
   });
 });
 

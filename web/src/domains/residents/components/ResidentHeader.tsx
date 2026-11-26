@@ -8,7 +8,7 @@ import { HEADER_COLUMN, NAME_HEIGHT, STAT_GRID } from "./pageLayout";
 
 /**
  * Who this is and two plain numbers: their current Streak and how many Tasks they completed in the last 30 days.
- * The name is the page's h2, where focus lands. Zeros read in the same voice as any other number, and nothing
+ * The name is the page's h1, where focus lands. Zeros read in the same voice as any other number, and nothing
  * here compares one Resident with another.
  */
 export function ResidentHeader({ resident }: { resident: ResidentDetail }) {
@@ -29,13 +29,13 @@ export function ResidentHeader({ resident }: { resident: ResidentDetail }) {
             twin on the left of the same width keeps the name centred. */}
         <div className="flex w-full items-start gap-2">
           <span aria-hidden="true" className="w-4 shrink-0" />
-          <h2
+          <h1
             ref={heading}
             tabIndex={-1}
             className={`mt-1 mb-0 min-w-0 flex-1 text-3xl leading-tight font-bold [overflow-wrap:anywhere] ${NAME_HEIGHT}`}
           >
             {resident.name}
-          </h2>
+          </h1>
           <PageFetchingSlot />
         </div>
       </div>

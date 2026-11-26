@@ -66,12 +66,11 @@ function Loaded({ me, hasHome }: { me: Me; hasHome: boolean }) {
 /**
  * The top of Me: the person first. Their Avatar, name (the email's local part until they set one), email and
  * current Streak, with a link to the edit screen: "Add your name and photo" while nothing is set, otherwise a
- * pencil on the Avatar. The tab's h2 stays for screen readers and for focus after navigation; the name is the
+ * pencil on the Avatar. The tab's h1 is the page header's; the name is the
  * visible title. While `GET /me` loads there is a skeleton of the same size (after 300ms, like the other
  * sections), and when it fails an inline message with Retry; the cards below never wait on it.
  */
 export function MeHeader() {
-  const { t } = useI18n();
   const { me, home } = useShell();
   // Only a Resident with a Home has a Streak; reserving its line for anyone else would leave a gap.
   const hasHome = home.state.kind === "ready";
@@ -81,9 +80,6 @@ export function MeHeader() {
 
   return (
     <div>
-      <h2 className="sr-only">
-        {t("me.heading")}
-      </h2>
       {loading && <MeHeaderSkeleton showBars={showSkeleton} hasHome={hasHome} />}
       {me.state.kind === "ready" && <Loaded me={me.state.me} hasHome={hasHome} />}
       {me.state.kind === "failed" && <MeLoadFailed className="items-center pb-4 text-center" />}

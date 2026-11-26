@@ -23,6 +23,13 @@ describe("PageFrame", () => {
     expect(markup).not.toContain("Gerencie");
   });
 
+  it("shows no top at all for null, so the screen's own header is the only h1", () => {
+    const markup = renderToStaticMarkup(createElement(PageFrame, { top: null, children: createElement("h1", null, "Today") }));
+    expect(count(markup, "h1")).toBe(1);
+    expect(markup).not.toContain("homeowner");
+    expect(markup).not.toContain("mb-6");
+  });
+
   it("puts the given top in the logo's place, so there is still one h1", () => {
     const markup = frame(createElement("header", null, createElement("h1", null, "bar")));
     expect(count(markup, "h1")).toBe(1);

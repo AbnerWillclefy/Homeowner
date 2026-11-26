@@ -44,8 +44,8 @@ export function applyTheme(applied: AppliedTheme, env: ThemeEnv = browserEnv()):
   env.setThemeColor(THEME_COLORS[applied]);
 }
 
-export const DARK_QUERY = "(prefers-color-scheme: dark)";
+export const LIGHT_QUERY = "(prefers-color-scheme: light)";
 
-export function systemPrefersDark(): boolean {
-  return typeof matchMedia === "function" && matchMedia(DARK_QUERY).matches;
+export function systemPrefersLight(): boolean {
+  return typeof matchMedia === "function" && matchMedia(LIGHT_QUERY).matches;
 }

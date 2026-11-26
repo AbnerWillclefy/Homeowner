@@ -13,7 +13,7 @@ export function useFocusOnNavigate(container: RefObject<HTMLElement | null>, pat
     lastPath.current = pathname;
     const root = container.current;
     if (!root) return;
-    const heading = root.querySelector<HTMLElement>("h2");
+    const heading = root.querySelector<HTMLElement>("h1, h2");
     const target = heading ?? root;
     if (!heading) {
       root.setAttribute("role", "group");
