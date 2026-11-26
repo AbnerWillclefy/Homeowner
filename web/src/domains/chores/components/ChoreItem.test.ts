@@ -44,6 +44,8 @@ describe("ChoreItem row", () => {
   it("shows the Category as its chore-colour tile, without its name", () => {
     expect(show({ category: "laundry" })).not.toContain("Roupas");
     expect(container().querySelector(".bg-chore-laundry-soft")).not.toBeNull();
+    // The artboard's tile is 32px (`md`), not the 40px `lg`.
+    expect(container().querySelector(".bg-chore-laundry-soft")!.className).toContain("size-8");
     // An unknown Category is Other.
     expect(show({ category: "mystery" })).not.toContain("mystery");
     expect(container().querySelector(".bg-chore-other-soft")).not.toBeNull();

@@ -164,4 +164,19 @@ test.describe("pt-BR on a phone", () => {
     await page.waitForTimeout(300);
     expect(deletes(fakeApi.requests)).toBe(0);
   });
+
+  test("a very long name and caption stay on one line each, and the row still opens the Sheet with the full name", async ({ page, fakeApi }) => {
+    const name = "Limpar ".repeat(17).trim();
+    fakeApi.state.residents[1]!.name = "Maria Aparecida da Conceição Albuquerque de Souza Pereira";
+    fakeApi.state.chores.push({ ...fakeApi.state.chores[0]!, id: "long", name, responsibleResidentId: "resident-2" });
+    await page.reload();
+    const title = tabs.chores.chore(page, name);
+    await expect(title).toBeVisible();
+    const cut = (el: Element) => el.getBoundingClientRect().height <= parseFloat(getComputedStyle(el).lineHeight) + 1 && el.scrollWidth > el.clientWidth;
+    expect(await title.evaluate(cut)).toBe(true);
+    expect(await title.locator("xpath=following-sibling::*").evaluate(cut)).toBe(true);
+    expect((await tabs.chores.row(page, name).boundingBox())!.height).toBe(64);
+    await tabs.chores.row(page, name).click();
+    await expect(page.getByRole("dialog").getByLabel("Nome")).toHaveValue(name);
+  });
 });

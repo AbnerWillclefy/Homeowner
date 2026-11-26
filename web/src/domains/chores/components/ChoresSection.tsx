@@ -1,5 +1,5 @@
 import { ChoreIcon } from "@homeowner/bedrock/home";
-import { Menu, EmptyState, SearchField } from "@homeowner/bedrock";
+import { List, Menu, EmptyState, SearchField } from "@homeowner/bedrock";
 import { BookOpen, ListChecks, Plus, SearchX } from "lucide-react";
 import { useRef, useState } from "react";
 import { useSearchParams } from "react-router";
@@ -204,11 +204,11 @@ export function ChoresSection() {
                   <h2 id={`chores-${group.category}`} className="my-0 text-sm font-medium text-muted">
                     {labelText(t, categoryLabel(group.category))} · {group.chores.length}
                   </h2>
-                  <ul className="m-0 flex list-none flex-col overflow-hidden rounded-lg border border-border/40 bg-surface p-0">
+                  <List>
                     {group.chores.map((chore: Chore) => (
                       <ChoreItem key={chore.id} chore={chore} onOpen={() => setEditing({ kind: "edit", id: chore.id })} />
                     ))}
-                  </ul>
+                  </List>
                 </section>
               ))}
             </>
