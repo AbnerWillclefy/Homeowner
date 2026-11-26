@@ -5,6 +5,7 @@ import { signedInHandlers } from "../mocks/handlers/signedIn";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
+import { tabs } from "../pages/tabs";
 
 // What this covers, in pt-BR: the Me header (Avatar initials, name, email, Streak), the "Add your name and
 // photo" link and the edit pencil, the edit route (saving, clearing, the length message before and after the
@@ -198,8 +199,8 @@ for (const l of LOCALES) {
         });
         await openMe(page, baseURL);
         await expect(page.getByRole("alert").filter({ hasText: l.loadFailed })).toBeVisible();
-        await page.getByRole("button", { name: l.baseline, exact: true }).click();
-        await expect(page.getByRole("button", { name: l.baseline, exact: true })).toHaveAttribute("aria-expanded", "true");
+        await tabs.me.trigger(page, l.baseline).click();
+        await expect(tabs.me.trigger(page, l.baseline)).toHaveAttribute("aria-expanded", "true");
 
         broken = false;
         await page.getByRole("button", { name: l.retry }).click();
