@@ -237,22 +237,52 @@ function PlanView({
 
       {plan.planned && (
         <div>
-          {showAcceptAll(plan) && (
-            <Button
-              fullWidth
-              className="mb-3"
-              disabled={busy}
-              pending={acting?.action === "acceptAll"}
-              onClick={onAccept}
-            >
-              {t("dayplan.action.acceptAll", { count: proposed })}
-            </Button>
-          )}
+          <GroupHeading
+            action={
+              showAcceptAll(plan) && (
+                <Button
+                  variant="ghost"
+                  disabled={busy}
+                  pending={acting?.action === "acceptAll"}
+                  onClick={onAccept}
+                >
+                  {t("dayplan.action.acceptAll", { count: proposed })}
+                </Button>
+              )
+            }
+          >
+            {t("dayplan.mine.heading")}
+          </GroupHeading>
           {plan.mine.length > 0 ? (
             <ul className={LIST}>{plan.mine.map((task) => card(task, "mine"))}</ul>
           ) : (
             <EmptyMine reason={reason} />
           )}
+        </div>
+      )}
+
+      {plan.doneToday.length > 0 && (
+        <div>
+          <GroupHeading count={plan.doneToday.length}>{t("dayplan.done.heading")}</GroupHeading>
+          <ul className={LIST}>
+            {plan.doneToday.map((done) => (
+              <DoneCard
+                key={done.id}
+                done={done}
+                action={
+                  timeZone !== null && done.completionId !== undefined ? (
+                    <ChangeTimeAction
+                      completion={{ id: done.completionId, choreName: done.choreName, completedAt: done.completedAt }}
+                      today={plan.date}
+                      timeZone={timeZone}
+                      onMoved={() => setMovedId(done.id)}
+                    />
+                  ) : undefined
+                }
+                busy={refreshing && movedId === done.id}
+              />
+            ))}
+          </ul>
         </div>
       )}
 
@@ -301,31 +331,6 @@ function PlanView({
           returnFocusRef={{ current: offer.opener }}
           onClose={() => onOfferChange(null)}
         />
-      )}
-
-      {plan.doneToday.length > 0 && (
-        <div>
-          <GroupHeading count={plan.doneToday.length}>{t("dayplan.done.heading")}</GroupHeading>
-          <ul className={LIST}>
-            {plan.doneToday.map((done) => (
-              <DoneCard
-                key={done.id}
-                done={done}
-                action={
-                  timeZone !== null && done.completionId !== undefined ? (
-                    <ChangeTimeAction
-                      completion={{ id: done.completionId, choreName: done.choreName, completedAt: done.completedAt }}
-                      today={plan.date}
-                      timeZone={timeZone}
-                      onMoved={() => setMovedId(done.id)}
-                    />
-                  ) : undefined
-                }
-                busy={refreshing && movedId === done.id}
-              />
-            ))}
-          </ul>
-        </div>
       )}
     </div>
   );
