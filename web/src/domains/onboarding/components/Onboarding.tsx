@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { stepPath } from "../../../app/logic/routes";
-import { getOnboarding, type OnboardingPosition, type OnboardingStep } from "../api/api";
+import { getOnboarding, type OnboardingPosition } from "../api/api";
+import type { OnboardingScreen } from "../logic/screens";
 import { useSession } from "../../../app/components/SessionProvider";
 import type { Home } from "../../home/api/api";
 import { CreateHome } from "../../home/components/CreateHome";
@@ -12,10 +13,10 @@ import { BaselineFields, PreferenceFields, ProfileStatus, RestrictionFields } fr
 import { useProfile, type ProfileState } from "../../profile/hooks/useProfile";
 import { EnableReminders } from "../../push/components/EnableReminders";
 import { InstallSteps } from "../../push/components/InstallSteps";
-import { Button } from "../../../shared/ui/Button";
+import { Button } from "@homeowner/bedrock";
 import { allBaselineDaysSet } from "../logic/baselineComplete";
 import { OnboardingLayout } from "./OnboardingLayout";
-import { effectiveStep, nextStep, progress } from "../logic/steps";
+import { effectiveStep, progress } from "../logic/steps";
 import type { OnboardingProblem } from "../logic/onboardingState";
 import { useWalk } from "../hooks/useWalk";
 
@@ -25,9 +26,8 @@ interface Props {
   onPosition(position: OnboardingPosition): void;
 }
 
-const HEADING_KEY: Record<OnboardingStep, MessageKey> = {
-  install: "onboarding.install.heading",
-  reminders: "onboarding.reminders.heading",
+const HEADING_KEY: Record<OnboardingScreen, MessageKey> = {
+  finish: "onboarding.reminders.heading",
   baseline: "onboarding.baseline.heading",
   restrictions: "onboarding.restrictions.heading",
   preferences: "onboarding.preferences.heading",
@@ -49,15 +49,16 @@ interface NextSpec {
   disabled?: boolean;
 }
 
-/** What a step shows: its body, and the Next button when it has one. */
+/** What a screen shows: its body, the Next button when it has one, and whether the Resident may skip it. */
 interface StepView {
   body: ReactNode;
   next?: NextSpec;
+  skippable?: boolean;
 }
 
 /**
- * The walk a new User takes instead of the dashboard: the Home, Baseline, Restrictions, Preferences, then
- * install and reminders. Each step is a short heading and its fields. It shares the session's one push hook (so the launch
+ * The walk a new User takes instead of the dashboard: five screens, the Home (not for a joiner), Baseline,
+ * Restrictions, Preferences, then one that installs (iOS in a tab only) and asks for reminders. Each is a heading and its fields. It shares the session's one push hook (so the launch
  * re-subscribe runs once) and owns the one profile hook of the flow, so the profile lists are fetched once.
  */
 export function Onboarding({ position, onPosition }: Props) {
@@ -104,8 +105,9 @@ export function Onboarding({ position, onPosition }: Props) {
       // The server keeps progress that is further on than `home` (POST /home is monotonic): take its position, and
       // guess the next step only when it cannot be read.
       const result = await getOnboarding();
-      const after = result.kind === "ok" ? effectiveStep(steps, result.step) : nextStep(steps, "home");
-      moveTo(after);
+      const stored: OnboardingPosition = result.kind === "ok" ? result.step : "baseline";
+      const after = effectiveStep(steps, stored);
+      moveTo(stored);
       // Same tick as the position, like the walk's Next: the guard must see both together.
       if (after !== "done") navigate(stepPath(after));
     }
@@ -138,18 +140,26 @@ export function Onboarding({ position, onPosition }: Props) {
     };
   }
 
-  function remindersStep(): StepView {
+  // Install and reminders are one screen, so the one PUT {"step":"reminders"} moves past both.
+  function finishStep(): StepView {
     const { availability, reminders } = push;
     if (availability.kind === "unsupported") {
       return {
         body: <p>{t("onboarding.reminders.unsupported")}</p>,
         next: { label: "onboarding.reminders.continue", primary: true, onClick: goNext },
+        skippable: true,
       };
     }
     if (availability.kind === "needs-install") {
       return {
-        body: <p>{t("onboarding.reminders.needsInstall")}</p>,
+        body: (
+          <>
+            <InstallSteps showHeading={false} />
+            <p>{t("onboarding.reminders.needsInstall")}</p>
+          </>
+        ),
         next: { label: "onboarding.reminders.notNow", onClick: goNext },
+        skippable: true,
       };
     }
     const on = reminders.kind === "on";
@@ -162,16 +172,12 @@ export function Onboarding({ position, onPosition }: Props) {
         </>
       ),
       next: { label: on ? "onboarding.reminders.continue" : "onboarding.reminders.notNow", primary: on, onClick: goNext },
+      skippable: true,
     };
   }
 
-  const views: Record<OnboardingStep, () => StepView> = {
-    install: () => ({
-      body: <InstallSteps showHeading={false} />,
-      next: { label: "onboarding.install.done", onClick: goNext },
-    }),
-
-    reminders: remindersStep,
+  const views: Record<OnboardingScreen, () => StepView> = {
+    finish: finishStep,
 
     baseline: () =>
       profileStep(
@@ -194,10 +200,12 @@ export function Onboarding({ position, onPosition }: Props) {
         />
       )),
 
-    preferences: () =>
-      profileStep((loaded) => (
+    preferences: () => ({
+      ...profileStep((loaded) => (
         <PreferenceFields profile={loaded.profile} categories={loaded.categories} onChange={profile.setPreference} />
       )),
+      skippable: true,
+    }),
 
     // POST /home completes this step on the server, so there is no Next here.
     home: () => ({
@@ -211,7 +219,7 @@ export function Onboarding({ position, onPosition }: Props) {
     }),
   };
 
-  const { body, next } = views[current]();
+  const { body, next, skippable } = views[current]();
 
   const failed = walk.advance.kind === "failed" ? walk.advance : null;
 
@@ -222,6 +230,7 @@ export function Onboarding({ position, onPosition }: Props) {
       heading={t(HEADING_KEY[current])}
       headingRef={headingRef}
       onBack={walk.canGoBack ? walk.back : undefined}
+      onSkip={skippable ? goNext : undefined}
       disabled={saving}
       failure={
         failed
@@ -254,9 +263,10 @@ function NextButton({
   return (
     <Button
       variant={primary ? "primary" : "secondary"}
-      fullWidth
+      size="lg"
+      className="w-full"
       disabled={disabled}
-      pending={saving}
+      loading={saving}
       onClick={onClick}
     >
       {t(label)}

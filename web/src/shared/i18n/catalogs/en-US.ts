@@ -877,7 +877,8 @@ export const enUS = {
   "catalog.care_for_pet": "Care for the pet",
 
   // Onboarding: the walk through the Home, profile, install and reminders for a new User
-  "onboarding.progress": "Setting up: step {step} of {total}",
+  "onboarding.progress": "Step {step} of {total}",
+  "onboarding.skip": "Skip (optional)",
   "onboarding.loading": "Loading your setup...",
   "onboarding.load.offline":
     "Homeowner cannot reach the service, so we cannot tell where you left off. Check your connection and try again.",
@@ -894,8 +895,6 @@ export const enUS = {
     "Something went wrong saving your progress, so you are still on this step. Try again.",
   "onboarding.advance.notSignedIn":
     "Your sign-in has ended. Sign in again to carry on.",
-  "onboarding.install.heading": "Add Homeowner to your Home Screen",
-  "onboarding.install.done": "I have added it",
   "onboarding.reminders.heading": "Turn on reminders",
   "onboarding.reminders.intro":
     "A nudge on this device when your Check-in is due. The app also asks for it whenever you open it, so reminders are optional.",

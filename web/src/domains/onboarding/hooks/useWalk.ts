@@ -1,22 +1,23 @@
 import { useCallback, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { putOnboardingStep, type OnboardingPosition, type OnboardingStep } from "../api/api";
+import { putOnboardingStep, type OnboardingPosition } from "../api/api";
 import { useSubmitOnce } from "../../../shared/ui/useSubmitOnce";
 import { stepFromPath, stepPath } from "../../../app/logic/routes";
 import type { OnboardingProblem } from "../logic/onboardingState";
+import { reportedStep, type OnboardingScreen } from "../logic/screens";
 import { effectiveStep, pathAfterAdvance, previousStep } from "../logic/steps";
 
 export type AdvanceState = { kind: "idle" } | { kind: "saving" } | { kind: "failed"; problem: OnboardingProblem };
 
 /**
- * Which step is on screen: the one in the address (/welcome/<step>). The server's step is the furthest the User
+ * Which screen is on show: the one in the address (/welcome/<screen>). The server's step is the furthest the User
  * has reached; Back is a navigation to an earlier step and never lowers it. Next moves on only after the server
  * accepted the step, and on failure stays put. Writes are never queued. The guard keeps the address at or
  * before the saved step; the fallback to the saved step here is only a safety net.
  */
 export function useWalk(
   position: OnboardingPosition,
-  steps: readonly OnboardingStep[],
+  steps: readonly OnboardingScreen[],
   onPosition: (position: OnboardingPosition) => void,
 ) {
   const navigate = useNavigate();
@@ -25,13 +26,13 @@ export function useWalk(
 
   const frontier = effectiveStep(steps, position);
   const viewing = stepFromPath(pathname);
-  const current: OnboardingPosition = viewing !== null && steps.includes(viewing) ? viewing : frontier;
+  const current: OnboardingScreen | "done" = viewing !== null && steps.includes(viewing) ? viewing : frontier;
 
   // Guarded in the handler: a double tap on Next sends one request, and a failure re-arms it for Retry.
   const { run: next } = useSubmitOnce(async () => {
     if (current === "done" || current === "home") return;
     setAdvance({ kind: "saving" });
-    const result = await putOnboardingStep(current);
+    const result = await putOnboardingStep(reportedStep(current));
     if (result.kind !== "ok") return setAdvance({ kind: "failed", problem: result.kind });
     const path = pathAfterAdvance(steps, current, result.step);
     setAdvance({ kind: "idle" });

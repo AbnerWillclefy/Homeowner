@@ -1,4 +1,4 @@
-import { ONBOARDING_STEPS, type OnboardingStep } from "../../domains/onboarding/api/api";
+import { screenFromId, type OnboardingScreen } from "../../domains/onboarding/logic/screens";
 
 export const TODAY_PATH = "/";
 export const CHORES_PATH = "/chores";
@@ -67,14 +67,13 @@ export function isWelcomePath(path: string): boolean {
   return p === WELCOME_PREFIX || p.startsWith(`${WELCOME_PREFIX}/`);
 }
 
-export const stepPath = (step: OnboardingStep): string => `${WELCOME_PREFIX}/${step}`;
+export const stepPath = (step: OnboardingScreen): string => `${WELCOME_PREFIX}/${step}`;
 
-/** The onboarding step a path names, or null for anything else (including `/welcome` and unknown ids). */
-export function stepFromPath(path: string): OnboardingStep | null {
+/** The onboarding screen a path names, or null for anything else (including `/welcome` and unknown ids). */
+export function stepFromPath(path: string): OnboardingScreen | null {
   const p = normalizePath(path);
   if (!p.startsWith(`${WELCOME_PREFIX}/`)) return null;
-  const id = p.slice(WELCOME_PREFIX.length + 1);
-  return (ONBOARDING_STEPS as readonly string[]).includes(id) ? (id as OnboardingStep) : null;
+  return screenFromId(p.slice(WELCOME_PREFIX.length + 1));
 }
 
 /**

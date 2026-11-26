@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ONBOARDING_STEPS } from "../../domains/onboarding/api/api";
+import { ONBOARDING_SCREENS } from "../../domains/onboarding/logic/screens";
 import {
   authState,
   confirmNeedsEmail,
@@ -14,9 +14,13 @@ import {
 } from "./routes";
 
 describe("stepPath and stepFromPath", () => {
-  it.each(ONBOARDING_STEPS)("round-trips %s", (step) => {
+  it.each(ONBOARDING_SCREENS)("round-trips %s", (step) => {
     expect(stepPath(step)).toBe(`/welcome/${step}`);
     expect(stepFromPath(stepPath(step))).toBe(step);
+  });
+
+  it.each(["install", "reminders"])("reads the old /welcome/%s address as the finish screen", (id) => {
+    expect(stepFromPath(`/welcome/${id}`)).toBe("finish");
   });
 
   it.each(["/welcome", "/welcome/", "/welcome/nope", "/chores", "/", "/welcome/baseline/x"])(

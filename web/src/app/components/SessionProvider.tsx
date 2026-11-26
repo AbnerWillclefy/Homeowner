@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import type { RecoveredNotice } from "../../domains/home/logic/recovered";
 import { useInvite } from "../../domains/invite/components/PendingInviteProvider";
 import type { JoinOutcome } from "../../domains/invite/hooks/useJoinInvite";
+import type { OnboardingPosition } from "../../domains/onboarding/api/api";
 import { stepsFor } from "../../domains/onboarding/logic/steps";
 import { useOnboarding } from "../../domains/onboarding/hooks/useOnboarding";
 import { usePush } from "../../domains/push/hooks/usePush";
@@ -15,7 +16,7 @@ interface Session {
   onboarding: Onboarding;
   /** The one push hook: shared by onboarding, the Me tab and the launch re-subscribe (which runs once the first page load settles). */
   push: Push;
-  /** The onboarding steps that apply on this device. */
+  /** The onboarding screens this User walks (no Home screen for a joiner). */
   steps: ReturnType<typeof stepsFor>;
   /** What to show right after an Invite is dealt with. */
   after: FlowNotice | null;
@@ -49,9 +50,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const onboarding = useOnboarding();
   const push = usePush();
   const invite = useInvite();
-  const kind = push.availability.kind;
-  // Keyed on the kind: `availability` is a fresh object every render.
-  const steps = useMemo(() => stepsFor(push.availability), [kind]);
+  // A joiner is a User whose first onboarding answer was not `home`: the Invite gave them a Home. Fixed at that
+  // first answer, so creating the Home half-way through never changes the count.
+  const [firstPosition, setFirstPosition] = useState<OnboardingPosition | null>(null);
+  if (firstPosition === null && onboarding.state.kind === "ready") setFirstPosition(onboarding.state.position);
+  const joiner = firstPosition !== null && firstPosition !== "home";
+  const steps = useMemo(() => stepsFor(joiner), [joiner]);
   const [after, setAfter] = useState<FlowNotice | null>(null);
   const [choosing, setChoosing] = useState(false);
   const [checkInDismissedFor, setCheckInDismissedFor] = useState<string | null>(null);

@@ -3,10 +3,10 @@ import type { ReactNode, RefObject } from "react";
 import { HealthBanner } from "../../../app/components/HealthBanner";
 import { useI18n } from "../../../shared/i18n";
 import { Settings } from "../../settings/components/Settings";
-import { Button } from "../../../shared/ui/Button";
+import { Button, StepIndicator } from "@homeowner/bedrock";
 
 interface Props {
-  /** This step's place in the walk, shown as a quiet "Step n of m" and a row of segments. */
+  /** This screen's place in the walk, shown as Bedrock's "Step n of m" and a row of segments. */
   step: number;
   total: number;
   /** The step's question: the page heading, focused on step change. */
@@ -14,6 +14,8 @@ interface Props {
   headingRef: RefObject<HTMLHeadingElement | null>;
   /** Back in the top bar; absent where the step does not allow going back. */
   onBack?: () => void;
+  /** Top-bar Skip, on the screens the Resident may leave unanswered; its label says it is optional. */
+  onSkip?: () => void;
   /** The step's fields or action. */
   children: ReactNode;
   /** A failure message with its Try again action. */
@@ -24,7 +26,7 @@ interface Props {
 }
 
 /**
- * Full-bleed onboarding screen: a soft static gradient, no nav. A top bar with Back and the progress segments, a
+ * Full-bleed onboarding screen: a soft static gradient, no nav. A top bar with Back and, where optional, Skip, then the step indicator, a
  * scrolling body anchored to the top so the question sits in the same place on every step, Settings tucked at the
  * end of the body, and an action area stuck to the bottom so the buttons stay reachable at the largest text size.
  */
@@ -34,6 +36,7 @@ export function OnboardingLayout({
   heading,
   headingRef,
   onBack,
+  onSkip,
   children,
   failure,
   actions,
@@ -50,36 +53,28 @@ export function OnboardingLayout({
         className="mx-auto flex w-full max-w-lg flex-1 flex-col focus:outline-none"
         aria-labelledby="onboarding-heading"
       >
-        <div className="onboarding-x-bar flex min-h-14 items-center gap-2">
+        <div className="onboarding-x-bar flex min-h-14 items-center justify-between gap-2">
           {onBack ? (
-            <BarButton
-              label={t("onboarding.back")}
-              disabled={disabled}
-              onClick={onBack}
-            >
-              <ArrowLeft aria-hidden="true" />
-            </BarButton>
+            <Button variant="ghost" size="lg" icon={ArrowLeft} disabled={disabled} onClick={onBack}>
+              {t("onboarding.back")}
+            </Button>
           ) : (
-            <span aria-hidden="true" className="size-11 shrink-0" />
+            <span aria-hidden="true" />
           )}
-          <ol aria-hidden="true" className="m-0 flex flex-1 gap-1.5 p-0">
-            {Array.from({ length: total }, (_, index) => (
-              <li
-                key={index}
-                className={`m-0 h-1.5 flex-1 list-none rounded-pill ${index < step ? "bg-accent" : "bg-border/30"}`}
-              />
-            ))}
-          </ol>
-          <span aria-hidden="true" className="size-11 shrink-0" />
+          {onSkip && (
+            <Button variant="ghost" size="lg" disabled={disabled} onClick={onSkip}>
+              {t("onboarding.skip")}
+            </Button>
+          )}
         </div>
 
         <div className="onboarding-x flex flex-1 flex-col pt-6 pb-4">
-          <p className="m-0 text-sm text-muted">{t("onboarding.progress", { step, total })}</p>
+          <StepIndicator label={t("onboarding.progress", { step, total })} current={step} total={total} />
           <h1
             id="onboarding-heading"
             ref={headingRef}
             tabIndex={-1}
-            className="mt-1 text-balance focus:outline-none"
+            className="mt-4 text-balance focus:outline-none"
           >
             {heading}
           </h1>
@@ -90,11 +85,7 @@ export function OnboardingLayout({
               className="mt-4 flex flex-col items-center gap-2 text-center"
             >
               <p className="text-danger">{failure.message}</p>
-              <Button
-                variant="secondary"
-                disabled={disabled}
-                onClick={failure.onRetry}
-              >
+              <Button variant="secondary" size="lg" disabled={disabled} onClick={failure.onRetry}>
                 {t("onboarding.retry")}
               </Button>
             </div>
@@ -115,30 +106,5 @@ export function OnboardingLayout({
         )}
       </main>
     </div>
-  );
-}
-
-function BarButton({
-  label,
-  onClick,
-  disabled,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  disabled: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <Button
-      variant="ghost"
-      icon
-      aria-label={label}
-      title={label}
-      disabled={disabled}
-      onClick={onClick}
-    >
-      {children}
-    </Button>
   );
 }

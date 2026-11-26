@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { ONBOARDING_STEPS, type OnboardingPosition } from "../../domains/onboarding/api/api";
+import { ONBOARDING_SCREENS } from "../../domains/onboarding/logic/screens";
 import { stepsFor } from "../../domains/onboarding/logic/steps";
 import { onboardingInput, resolveRoute, type OnboardingInput, type RouteDecision, type RouteInput } from "./resolveRoute";
 import { AUTH_PATHS, SHELL_PATHS, stepPath } from "./routes";
 
-const ANDROID = stepsFor({ kind: "available" });
-const IOS_TAB = stepsFor({ kind: "needs-install" });
+const CREATOR = stepsFor(false);
+const JOINER = stepsFor(true);
 
 const ready = (position: OnboardingPosition): OnboardingInput => ({ kind: "ready", position });
 
@@ -15,7 +16,7 @@ function input(over: Partial<RouteInput> & { pathname: string }): RouteInput {
     onboarding: ready("done"),
     wanted: null,
     hasPendingInvite: false,
-    steps: ANDROID,
+    steps: CREATOR,
     ...over,
   };
 }
@@ -59,17 +60,18 @@ const rows: Row[] = [
   { name: "unfinished on the saved step renders", input: input({ pathname: "/welcome/baseline", onboarding: ready("baseline") }), expected: render },
   { name: "unfinished on an earlier step renders (going back)", input: input({ pathname: "/welcome/baseline", onboarding: ready("preferences") }), expected: render },
   { name: "unfinished on a later step goes to the saved step", input: input({ pathname: "/welcome/preferences", onboarding: ready("restrictions") }), expected: to("/welcome/restrictions") },
-  { name: "unfinished on a step after the saved install goes back to install", input: input({ pathname: "/welcome/reminders", onboarding: ready("install"), steps: IOS_TAB }), expected: to("/welcome/install") },
   { name: "unfinished on an unknown step goes to the saved step", input: input({ pathname: "/welcome/nope", onboarding: ready("baseline") }), expected: to("/welcome/baseline") },
   { name: "unfinished on /welcome goes to the saved step", input: input({ pathname: "/welcome", onboarding: ready("baseline") }), expected: to("/welcome/baseline") },
   { name: "unfinished on /welcome/ goes to the saved step", input: input({ pathname: "/welcome/", onboarding: ready("baseline") }), expected: to("/welcome/baseline") },
-  { name: "unfinished on install without install goes to reminders", input: input({ pathname: "/welcome/install", onboarding: ready("install") }), expected: to("/welcome/reminders") },
-  { name: "install stored, no install step: effective step", input: input({ pathname: "/", onboarding: ready("install") }), expected: to("/welcome/reminders") },
-  { name: "iOS tab at install renders install", input: input({ pathname: "/welcome/install", onboarding: ready("install"), steps: IOS_TAB }), expected: render },
-  { name: "iOS tab at install, on /", input: input({ pathname: "/", onboarding: ready("install"), steps: IOS_TAB }), expected: to("/welcome/install") },
-  { name: "iOS tab at reminders may revisit install", input: input({ pathname: "/welcome/install", onboarding: ready("reminders"), steps: IOS_TAB }), expected: render },
+  { name: "stored install shows the finish screen", input: input({ pathname: "/", onboarding: ready("install") }), expected: to("/welcome/finish") },
+  { name: "stored reminders shows the finish screen", input: input({ pathname: "/", onboarding: ready("reminders") }), expected: to("/welcome/finish") },
+  { name: "finish renders at install", input: input({ pathname: "/welcome/finish", onboarding: ready("install") }), expected: render },
+  { name: "an old /welcome/install address renders the finish screen", input: input({ pathname: "/welcome/install", onboarding: ready("install") }), expected: render },
+  { name: "an old /welcome/reminders address renders the finish screen", input: input({ pathname: "/welcome/reminders", onboarding: ready("reminders") }), expected: render },
+  { name: "finish may be revisited from nowhere ahead: Preferences stored, finish goes back", input: input({ pathname: "/welcome/finish", onboarding: ready("preferences") }), expected: to("/welcome/preferences") },
+  { name: "a joiner never gets the home screen", input: input({ pathname: "/welcome/home", onboarding: ready("baseline"), steps: JOINER }), expected: to("/welcome/baseline") },
+  { name: "no screens left counts as done", input: input({ pathname: "/welcome/finish", onboarding: ready("install"), steps: [] }), expected: to("/") },
   { name: "unfinished on /signin goes straight to the step", input: input({ pathname: "/signin", onboarding: ready("preferences"), wanted: "/chores" }), expected: to("/welcome/preferences") },
-  { name: "all remaining steps skipped counts as done", input: input({ pathname: "/welcome/install", onboarding: ready("install"), steps: [] }), expected: to("/") },
 
   // Onboarding unknown: never a guess
   ...["/", "/chores", "/welcome/home", "/signin"].map((pathname) => ({
@@ -161,7 +163,9 @@ describe("resolveRoute table", () => {
   it("never loops over every path, state and device", () => {
     const paths = [
       "/", "/chores", "/home", "/me", "/me/edit", "/home/residents/abc", "/home/residents", "/signin", "/signup", "/confirm", "/welcome", "/welcome/", "/nope", "/chores/",
-      ...ONBOARDING_STEPS.map(stepPath),
+      ...ONBOARDING_SCREENS.map(stepPath),
+      "/welcome/install",
+      "/welcome/reminders",
     ];
     const onboardings: OnboardingInput[] = [
       { kind: "loading" },
@@ -175,7 +179,7 @@ describe("resolveRoute table", () => {
       for (const pathname of paths) {
         for (const onboarding of onboardings) {
           for (const hasPendingInvite of [false, true]) {
-            for (const steps of [ANDROID, IOS_TAB]) {
+            for (const steps of [CREATOR, JOINER]) {
               for (const wanted of wanteds) {
                 const row = { auth, pathname, onboarding, hasPendingInvite, steps, wanted };
                 const decision = resolveRoute(row);

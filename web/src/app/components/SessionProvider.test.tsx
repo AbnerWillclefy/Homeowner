@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTestQueryClient, renderWithQueryClient, type Rendered } from "../../shared/query/testing";
 
 // The session's other state (onboarding, push, the Invite) is not under test here.
-vi.mock("../../domains/onboarding/hooks/useOnboarding", () => ({ useOnboarding: () => ({}) }));
+vi.mock("../../domains/onboarding/hooks/useOnboarding", () => ({ useOnboarding: () => ({ state: { kind: "loading" } }) }));
 vi.mock("../../domains/push/hooks/usePush", () => ({
   usePush: () => ({ availability: { kind: "unsupported" }, markPageSettled: () => {} }),
 }));
