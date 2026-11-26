@@ -56,7 +56,8 @@ test("the edit screen, a Shell route outside the tabs, keeps the frame's top and
   await expect(back).toBeVisible();
   const main = (await page.locator("main").boundingBox())!;
   expect((await back.boundingBox())!.y - main.y, "back link top").toBeGreaterThanOrEqual(24);
-  const form = page.locator("main > div").last();
-  const box = (await form.boundingBox())!;
-  expect(main.y + main.height - (box.y + box.height), "bottom").toBeGreaterThanOrEqual(24);
+  // The last block inside MeEdit's root against the Shell wrapper's bottom: exactly MeEdit's pb-6.
+  const wrapper = (await page.locator("main > div").last().boundingBox())!;
+  const last = (await page.locator("main > div").last().locator("> div > *").last().boundingBox())!;
+  expect(wrapper.y + wrapper.height - (last.y + last.height), "bottom").toBe(24);
 });

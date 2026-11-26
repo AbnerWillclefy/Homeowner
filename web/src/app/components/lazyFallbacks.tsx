@@ -41,7 +41,7 @@ export function MeEditFallback() {
   return (
     <div aria-hidden="true" className="flex flex-col gap-4 pt-6 pb-6">
       <SkeletonPill className="w-24" />
-      <SkeletonHeader withLine={false} />
+      <SkeletonBar className="h-[calc(1.875rem*1.25)] w-2/3" />
       <div className="flex flex-col items-center gap-3">
         <SkeletonBar className="h-5 w-12" />
         <span className="block size-20 rounded-pill bg-muted/20 motion-safe:animate-pulse" />
