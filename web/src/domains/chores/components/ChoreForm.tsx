@@ -3,7 +3,7 @@ import { clearResponsible, setResponsible, updateChore, type Chore, type ChoreWi
 import type { Resident } from "../../residents/api/api";
 import type { FieldCodes } from "../../home/api/api";
 import { WEEKDAYS } from "../../profile/api/api";
-import { AppDialog } from "../../../shared/ui/AppDialog";
+import { Button as BedrockButton, Sheet } from "@homeowner/bedrock";
 import { ButtonRow } from "../../../shared/ui/ButtonRow";
 import { Card } from "../../../shared/ui/Card";
 import { useI18n, type MessageKey } from "../../../shared/i18n";
@@ -57,10 +57,12 @@ interface Props {
   responsible?: ResponsibleProps;
   /** Gets the saved Chore and the form values it was saved from. */
   onSaved(chore: Chore, values: ChoreFormState): void;
-  /** Also called by Escape and a tap outside when the form is in a dialog. */
+  /** Also called by Escape, the Sheet's close button and a swipe down when the form is in a Sheet. */
   onCancel(): void;
-  /** Show the form in a near-full-height dialog with Cancel and Save pinned below it, instead of in a card. */
+  /** Show the form in a Sheet with Save pinned below it, instead of in a card. */
   inDialog?: boolean;
+  /** Offers Delete in the Sheet's footer. Only a form in a Sheet has one. */
+  onDelete?(): void;
 }
 
 /** The create and edit form for a Chore: every field, the API's field errors beside their controls. */
@@ -76,6 +78,7 @@ export function ChoreForm({
   onSaved,
   onCancel,
   inDialog = false,
+  onDelete,
 }: Props) {
   const { t, locale } = useI18n();
   // One object for the life of the form: the submitter remembers which Resident the server holds.
@@ -234,9 +237,9 @@ export function ChoreForm({
   const heading = t(mode === "edit" ? "chores.form.edit.heading" : "chores.form.create.heading");
   const formId = `${idPrefix}-form`;
   const submit = (
-    <Button type="submit" form={formId} pending={saving}>
+    <BedrockButton type="submit" form={formId} loading={saving} className={inDialog ? "w-full" : undefined}>
       {t(mode === "edit" ? "chores.form.submit.save" : "chores.form.submit.create")}
-    </Button>
+    </BedrockButton>
   );
   const cancel = (
     <Button variant="secondary" disabled={saving} onClick={onCancel}>
@@ -252,7 +255,16 @@ export function ChoreForm({
       headingRef={headingRef}
       saving={saving}
       onCancel={onCancel}
-      footer={<ButtonRow start={cancel} end={submit} />}
+      footer={
+        <div className="flex flex-col gap-2">
+          {submit}
+          {onDelete && (
+            <BedrockButton variant="secondary" disabled={saving} onClick={onDelete} className="w-full text-danger">
+              {t("chores.form.delete")}
+            </BedrockButton>
+          )}
+        </div>
+      }
     >
       <form id={formId} onSubmit={form.submit} noValidate aria-busy={saving}>
         <div>
@@ -288,45 +300,6 @@ export function ChoreForm({
           {category.notes}
         </div>
   
-        {responsible && (
-          <div>
-            <label htmlFor={`${idPrefix}-responsible`}>{t("chores.form.responsible.label")}</label>
-            <select
-              id={`${idPrefix}-responsible`}
-              value={values.responsible}
-              disabled={saving || responsible.residents === null}
-              aria-describedby={responsibleNotes.describedBy}
-              aria-invalid={responsibleNotes.message ? true : undefined}
-              onChange={(event) => form.change({ responsible: event.target.value }, "responsible")}
-            >
-              <option value="">{t("chores.form.responsible.nobody")}</option>
-              {responsibleOptions.map(({ id, name }) => (
-                <option key={id} value={id}>
-                  {name}
-                </option>
-              ))}
-            </select>
-            {responsibleNotes.hint}
-            {responsibleNotes.message}
-          </div>
-        )}
-
-        {group(
-          "demands",
-          "chores.form.demands.legend",
-          demands.map((id) => (
-            <label key={id} className={CHOICE}>
-              <input
-                type="checkbox"
-                className={CHECK}
-                checked={values.demands.includes(id)}
-                onChange={() => form.change({ demands: toggled(values.demands, id) }, "demands")}
-              />
-              {text(demandLabel(id))}
-            </label>
-          )),
-        )}
-  
         {group(
           "baseEffort",
           "chores.form.baseEffort.legend",
@@ -336,46 +309,6 @@ export function ChoreForm({
             values.baseEffort,
             (baseEffort) => form.change({ baseEffort }, "baseEffort"),
           ),
-        )}
-  
-        {group(
-          "importance",
-          "chores.form.importance.legend",
-          radios(
-            "importance",
-            IMPORTANCES.map((id) => ({ value: id, label: text(importanceLabel(id)) })),
-            values.importance,
-            (importance) => form.change({ importance }, "importance"),
-          ),
-        )}
-  
-        {group(
-          "people",
-          "chores.form.people.legend",
-          radios(
-            "people",
-            [
-              { value: 1, label: t("chores.form.people.one") },
-              { value: 2, label: t("chores.form.people.two") },
-            ],
-            values.people,
-            (people) => form.change({ people }, "people"),
-          ),
-        )}
-  
-        {/* The region is always present so a screen reader announces the suggestion when it appears. */}
-        <div role="status">{showSuggestion && <p>{t("chores.form.suggestion")}</p>}</div>
-        {showSuggestion && (
-          <Button
-            variant="secondary"
-            disabled={saving}
-            onClick={() => {
-              form.change({ people: 2 }, "people");
-              document.getElementById(radioId("people", 2))?.focus();
-            }}
-          >
-            {t("chores.form.suggestion.action")}
-          </Button>
         )}
   
         {group(
@@ -440,6 +373,85 @@ export function ChoreForm({
           {buildsUp.notes}
         </div>
   
+        {group(
+          "importance",
+          "chores.form.importance.legend",
+          radios(
+            "importance",
+            IMPORTANCES.map((id) => ({ value: id, label: text(importanceLabel(id)) })),
+            values.importance,
+            (importance) => form.change({ importance }, "importance"),
+          ),
+        )}
+  
+        {group(
+          "people",
+          "chores.form.people.legend",
+          radios(
+            "people",
+            [
+              { value: 1, label: t("chores.form.people.one") },
+              { value: 2, label: t("chores.form.people.two") },
+            ],
+            values.people,
+            (people) => form.change({ people }, "people"),
+          ),
+        )}
+  
+        {/* The region is always present so a screen reader announces the suggestion when it appears. */}
+        <div role="status">{showSuggestion && <p>{t("chores.form.suggestion")}</p>}</div>
+        {showSuggestion && (
+          <Button
+            variant="secondary"
+            disabled={saving}
+            onClick={() => {
+              form.change({ people: 2 }, "people");
+              document.getElementById(radioId("people", 2))?.focus();
+            }}
+          >
+            {t("chores.form.suggestion.action")}
+          </Button>
+        )}
+  
+        {responsible && (
+          <div>
+            <label htmlFor={`${idPrefix}-responsible`}>{t("chores.form.responsible.label")}</label>
+            <select
+              id={`${idPrefix}-responsible`}
+              value={values.responsible}
+              disabled={saving || responsible.residents === null}
+              aria-describedby={responsibleNotes.describedBy}
+              aria-invalid={responsibleNotes.message ? true : undefined}
+              onChange={(event) => form.change({ responsible: event.target.value }, "responsible")}
+            >
+              <option value="">{t("chores.form.responsible.nobody")}</option>
+              {responsibleOptions.map(({ id, name }) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            {responsibleNotes.hint}
+            {responsibleNotes.message}
+          </div>
+        )}
+
+        {group(
+          "demands",
+          "chores.form.demands.legend",
+          demands.map((id) => (
+            <label key={id} className={CHOICE}>
+              <input
+                type="checkbox"
+                className={CHECK}
+                checked={values.demands.includes(id)}
+                onChange={() => form.change({ demands: toggled(values.demands, id) }, "demands")}
+              />
+              {text(demandLabel(id))}
+            </label>
+          )),
+        )}
+  
         {status.kind === "invalid" && (
           <p role="alert" className="text-danger">
             {t("chores.form.invalid.summary")}
@@ -464,18 +476,19 @@ interface FrameProps {
   headingRef: RefObject<HTMLHeadingElement | null>;
   saving: boolean;
   onCancel(): void;
-  /** Pinned below the dialog's body. Inline, the form shows its own buttons instead. */
+  /** Pinned below the Sheet's body. Inline, the form shows its own buttons instead. */
   footer: ReactNode;
   children: ReactNode;
 }
 
-/** A near-full-height dialog that only closes when not saving, or a card with the heading. */
+/** A Sheet that stays open while the write is out, so its answer shows inside it, or a card with the heading. */
 function ChoreFormFrame({ inDialog, heading, headingId, headingRef, saving, onCancel, footer, children }: FrameProps) {
+  const { t } = useI18n();
   if (inDialog) {
     return (
-      <AppDialog size="sheet" title={heading} onDismiss={onCancel} dismissible={!saving} footer={footer}>
-        {children}
-      </AppDialog>
+      <Sheet open onOpenChange={(open) => !open && !saving && onCancel()} title={heading} closeLabel={t("chores.sheet.close")} footer={footer}>
+        <div className="pb-4">{children}</div>
+      </Sheet>
     );
   }
   return (

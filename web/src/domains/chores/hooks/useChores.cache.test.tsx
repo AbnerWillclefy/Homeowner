@@ -3,12 +3,15 @@ import { act, createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestQueryClient, renderWithQueryClient, type Rendered } from "../../../shared/query/testing";
 import { chore } from "../testing/fixtures";
-import type { ListChoresResult } from "../api/api";
+import type { DeleteChoreResult, ListChoresResult } from "../api/api";
+import { undoHarness } from "../../../shared/undo/testing";
 
 const listChores = vi.fn<() => Promise<ListChoresResult>>();
+const deleteChore = vi.fn<(id: string) => Promise<DeleteChoreResult>>();
 vi.mock("../api/api", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   listChores: () => listChores(),
+  deleteChore: (id: string) => deleteChore(id),
 }));
 const getCategories = vi.fn();
 const getDemands = vi.fn();
@@ -34,18 +37,21 @@ describe("useChores over the query cache", () => {
     hook = useChores();
     return null;
   };
+  let undo = undoHarness();
   const mount = (seed: boolean) => {
+    undo = undoHarness();
     const client = createTestQueryClient();
     if (seed) {
       client.setQueryData(choresKey, CACHED);
       client.setQueryData(categoriesKey, ["kitchen"]);
       client.setQueryData(demandsKey, ["heavy"]);
     }
-    rendered = renderWithQueryClient(createElement(Probe), client);
+    rendered = renderWithQueryClient(undo.wrap(createElement(Probe)), client);
     return client;
   };
   beforeEach(() => {
     listChores.mockReset();
+    deleteChore.mockReset().mockResolvedValue({ kind: "ok" });
     getCategories.mockReset().mockResolvedValue({ kind: "ok", ids: ["kitchen"] });
     getDemands.mockReset().mockResolvedValue({ kind: "ok", ids: ["heavy"] });
   });
@@ -86,16 +92,81 @@ describe("useChores over the query cache", () => {
     expect(hook.state).toEqual({ kind: "failed", reason: "error" });
   });
 
-  it("shows a saved and a removed Chore without reading the list again", async () => {
+  it("shows a saved Chore without reading the list again", async () => {
     listChores.mockResolvedValue({ kind: "ok", chores: CACHED });
     mount(false);
     await settle();
     await act(async () => hook.upsert(chore("b", "Trash")));
     await settle();
     expect(hook.state).toMatchObject({ kind: "ready", chores: FRESH });
-    await act(async () => hook.remove("a"));
-    await settle();
-    expect(hook.state).toMatchObject({ kind: "ready", chores: [chore("b", "Trash")] });
     expect(listChores).toHaveBeenCalledTimes(1);
+  });
+
+  describe("an undoable delete", () => {
+    const FRESH_AB = [chore("a", "Dishes"), chore("b", "Trash")];
+    const stateChores = () => (hook.state.kind === "ready" ? hook.state.chores.map((c) => c.id) : null);
+
+    it("hides the row at once, sends nothing while held, and survives a refetch", async () => {
+      listChores.mockResolvedValue({ kind: "ok", chores: FRESH_AB });
+      const client = mount(false);
+      await settle();
+      await act(async () => hook.destroy(FRESH_AB[0]!));
+      expect(stateChores()).toEqual(["b"]);
+      expect(undo.toasts[0]!.request).toMatchObject({ messageKey: "chores.undo.delete", params: { name: "Dishes" } });
+      expect(deleteChore).not.toHaveBeenCalled();
+      await act(async () => void (await client.refetchQueries({ queryKey: choresKey })));
+      await settle();
+      expect(listChores).toHaveBeenCalledTimes(2);
+      expect(stateChores()).toEqual(["b"]);
+      expect(deleteChore).not.toHaveBeenCalled();
+    });
+
+    it("brings the row back and sends nothing when Desfazer is tapped", async () => {
+      listChores.mockResolvedValue({ kind: "ok", chores: FRESH_AB });
+      mount(false);
+      await settle();
+      await act(async () => hook.destroy(FRESH_AB[0]!));
+      await act(async () => undo.undo(0));
+      await act(async () => undo.close(0));
+      await settle();
+      expect(stateChores()).toEqual(["a", "b"]);
+      expect(deleteChore).not.toHaveBeenCalled();
+    });
+
+    it("sends one DELETE when the Toast closes, then drops the Chore from the cache", async () => {
+      listChores.mockResolvedValue({ kind: "ok", chores: FRESH_AB });
+      mount(false);
+      await settle();
+      await act(async () => hook.destroy(FRESH_AB[0]!));
+      await act(async () => undo.close(0));
+      await settle();
+      expect(deleteChore).toHaveBeenCalledExactlyOnceWith("a");
+      expect(stateChores()).toEqual(["b"]);
+      expect(listChores).toHaveBeenCalledTimes(1);
+    });
+
+    it("treats a Chore already gone elsewhere as deleted", async () => {
+      deleteChore.mockResolvedValue({ kind: "none" });
+      listChores.mockResolvedValue({ kind: "ok", chores: FRESH_AB });
+      mount(false);
+      await settle();
+      await act(async () => hook.destroy(FRESH_AB[0]!));
+      await act(async () => undo.close(0));
+      await settle();
+      expect(stateChores()).toEqual(["b"]);
+      expect(undo.toasts.filter((toast) => toast.request.tone === "error")).toHaveLength(0);
+    });
+
+    it("shows the row again and an error Toast when the DELETE fails", async () => {
+      deleteChore.mockResolvedValue({ kind: "offline" });
+      listChores.mockResolvedValue({ kind: "ok", chores: FRESH_AB });
+      mount(false);
+      await settle();
+      await act(async () => hook.destroy(FRESH_AB[0]!));
+      await act(async () => undo.close(0));
+      await settle();
+      expect(stateChores()).toEqual(["a", "b"]);
+      expect(undo.toasts.at(-1)!.request).toMatchObject({ tone: "error", messageKey: "chores.delete.offline" });
+    });
   });
 });

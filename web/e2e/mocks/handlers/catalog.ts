@@ -92,8 +92,19 @@ export function propose(body: AnswersBody): Proposal[] {
   return proposals;
 }
 
-/** `POST /catalog/proposals`. `GET /catalog` is not here: onboarding never reads the whole Catalog. */
+/** `GET /catalog` and `POST /catalog/proposals`. The list is two entries: the Chores tab's picker only needs something to show. */
 export function catalogHandlers(api: FakeApi): void {
+  api.on(
+    "GET /catalog",
+    signedIn(() =>
+      json(200, {
+        entries: [
+          { id: "clean_kitchen", name: "Clean the kitchen", category: "kitchen", demands: [], baseEffort: 3, importance: "normal", people: 1, intervalDays: 7, allowedWeekdays: [], buildsUp: false, perRoom: true },
+        ],
+      }),
+    ),
+  );
+
   api.on(
     "POST /catalog/proposals",
     signedIn((request) => {

@@ -19,7 +19,9 @@ export const tabs = {
   chores: {
     heading: (page: Page) => h1(page, "Chores"),
     chore: (page: Page, name: string) => page.getByText(name, { exact: true }),
-    empty: (page: Page) => page.getByText("No Chores yet."),
+    empty: (page: Page) => page.getByText("What needs doing in your Home?"),
+    /** A Chore's row: the one button whose name starts with the Chore's name. */
+    row: (page: Page, name: string) => page.getByRole("button", { name: new RegExp(`^${name}`) }),
   },
   home: {
     heading: (page: Page) => h1(page, "Your Home"),

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Translate } from "../../../shared/i18n";
 import { enUS } from "../../../shared/i18n/catalogs/en-US";
-import { choreFacts, choreScheduleFacts } from "./facts";
+import { choreFacts, choreRowMeta, choreScheduleFacts } from "./facts";
 
 const t: Translate = (key, params) => {
   let text = String(enUS[key]);
@@ -87,5 +87,17 @@ describe("choreFacts", () => {
       "Builds up while undone",
     ]);
     expect(choreFacts({ ...CHORE, intervalDays: null, allowedWeekdays: [] }, t, "en-US")[4]).toBe("One-off");
+  });
+});
+
+describe("choreRowMeta", () => {
+  it("joins the repeat, the Effort, the Demands and the Responsible Resident", () => {
+    expect(choreRowMeta({ ...CHORE, demands: ["bending", "heavy_lifting"] }, t, "Ana")).toBe(
+      "Weekly · Very light · Bending · Heavy lifting · Responsible: Ana",
+    );
+  });
+
+  it("leaves the Responsible Resident out when there is none to name", () => {
+    expect(choreRowMeta({ ...CHORE, intervalDays: null }, t, null)).toBe("One-off · Very light");
   });
 });

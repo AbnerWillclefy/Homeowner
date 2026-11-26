@@ -233,8 +233,23 @@ export const enUS = {
     "Something went wrong loading your Chores. Try again in a moment.",
   "chores.notSignedIn": "Your sign-in has ended. Sign in again to continue.",
   "chores.retry": "Try again",
-  "chores.empty": "No Chores yet.",
   "chores.add": "Add a Chore",
+  "chores.menu.new": "New Chore",
+  "chores.menu.catalog": "From the Catalog",
+  "chores.search.label": "Search Chores",
+  "chores.search.clear": "Clear the search",
+  "chores.filter.label": "Filter by Category",
+  "chores.filter.all": "All",
+  "chores.empty.subtitle": "No Chores yet",
+  "chores.empty.title": "What needs doing in your Home?",
+  "chores.empty.message":
+    "Each Chore becomes Tasks in the day's plan, shared by each Resident's energy. Start from the Catalog or create your first one.",
+  "chores.noResults.title": "No Chores found",
+  "chores.noResults.message": "Try another name or another Category.",
+  "chores.noResults.clear": "Clear filters",
+  "chores.sheet.close": "Close",
+  "chores.form.delete": "Delete Chore",
+  "chores.undo.delete": "{name} deleted. Its Tasks leave today's plan.",
   "effort.level.very_light": "Very light",
   "effort.level.light": "Light",
   "effort.level.medium": "Medium",
@@ -254,10 +269,6 @@ export const enUS = {
   "chores.item.weekdays": "Only on {days}",
   "chores.item.buildsUp": "Builds up while undone",
   "chores.item.edit.label": "Edit {name}",
-  "chores.item.delete.label": "Delete {name}",
-  "chores.delete.prompt": "Delete {name}? This cannot be undone.",
-  "chores.delete.confirm": "Yes, delete",
-  "chores.delete.cancel": "Keep it",
   "chores.delete.offline":
     "The Chore was not deleted because Homeowner cannot reach the service. Check your connection and try again.",
   "chores.delete.error":
@@ -811,7 +822,6 @@ export const enUS = {
   "catalog.review.lists.loading": "Getting ready to edit Chores...",
   "catalog.review.lists.error":
     "Something went wrong loading the lists needed to edit Chores. Try again in a moment.",
-  "chores.addFromCatalog": "Add from the Catalog",
   "chores.catalog.heading": "Add from the Catalog",
   "chores.catalog.loading": "Loading the Catalog...",
   "chores.catalog.load.offline":
