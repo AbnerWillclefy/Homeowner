@@ -26,7 +26,7 @@ import { writeAcceptedAnswer, writeActionAnswer } from "../logic/planCache";
 import { viewOf } from "../../../shared/query/view";
 import type { MessageKey } from "../../../shared/i18n";
 import type { SendResult } from "../../../shared/undo/pendingWrite";
-import { useUndoable, useUndoOverlay } from "../../../shared/undo/useUndoable";
+import { useUndoable, useUndoFlush, useUndoOverlay } from "../../../shared/undo/useUndoable";
 
 /** The overlay scope of the Day Plan: its held and sending writes (ADR 0029). */
 const SCOPE = "dayplan";
@@ -117,6 +117,7 @@ export function useDayPlan() {
   const { state: viewState, refreshing } = viewOf(query);
   const cached = dayPlanStateOf(viewState);
   const { undoable } = useUndoable();
+  const flushHeld = useUndoFlush();
   // The cached plan with the held and sending writes applied: what the screen (and the hero's count) shows.
   const shown = useUndoOverlay<DayPlan | null>(SCOPE, cached.kind === "ready" ? cached.plan : null);
   const state: DayPlanState = cached.kind === "ready" && shown ? { kind: "ready", plan: shown } : cached;
@@ -147,6 +148,8 @@ export function useDayPlan() {
     setActing(running);
     setNotice(null);
     try {
+      // The server must see a held Recusar or Concluir first: Aceitar todas would commit it, and Pegar would find it not in the pool.
+      await flushHeld();
       const result = await callFor(running);
       // The screen was stale: take the server's current plan, in place so the lists and focus stay.
       const fresh = result.kind === "conflict" ? await getDayPlan() : undefined;
@@ -162,7 +165,7 @@ export function useDayPlan() {
       inFlight.current = false;
       if (mounted.current) setActing(null);
     }
-  }, [queryClient]);
+  }, [queryClient, flushHeld]);
 
   /**
    * Shows a refuse or a done at once and holds the call until its toast closes. The send is the same call and

@@ -8,12 +8,14 @@ import type { ActionResult, DayPlanResult } from "../api/api";
 
 const getDayPlan = vi.fn<() => Promise<DayPlanResult>>();
 const acceptTask = vi.fn<() => Promise<ActionResult>>();
+const acceptAllCall = vi.fn<() => Promise<ActionResult>>();
 const refuseTask = vi.fn<(id: string) => Promise<ActionResult>>();
 const completeTask = vi.fn<(id: string) => Promise<ActionResult>>();
 vi.mock("../api/api", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   getDayPlan: () => getDayPlan(),
   acceptTask: () => acceptTask(),
+  acceptAll: () => acceptAllCall(),
   refuseTask: (id: string) => refuseTask(id),
   completeTask: (id: string) => completeTask(id),
 }));
@@ -45,6 +47,7 @@ describe("useDayPlan over the query cache", () => {
     harness = undoHarness();
     getDayPlan.mockReset();
     acceptTask.mockReset();
+    acceptAllCall.mockReset();
     refuseTask.mockReset();
     completeTask.mockReset();
   });
@@ -228,6 +231,18 @@ describe("useDayPlan over the query cache", () => {
       await settle();
       expect(refuseTask).toHaveBeenCalledTimes(1);
       expect(completeTask).not.toHaveBeenCalled();
+    });
+
+    it("sends a held refuse before Accept all, which would otherwise commit the refused Task", async () => {
+      const order: string[] = [];
+      refuseTask.mockImplementation(async () => (order.push("refuse"), { kind: "ok", plan: FRESH }));
+      acceptAllCall.mockImplementation(async () => (order.push("acceptAll"), { kind: "ok", plan: FRESH }));
+      mount(WITH_A);
+      await settle();
+      await act(async () => day.run("refuse", A));
+      await act(async () => day.acceptAll());
+      await settle();
+      expect(order).toEqual(["refuse", "acceptAll"]);
     });
 
     it("does not hold an accept: it is sent at once", async () => {
