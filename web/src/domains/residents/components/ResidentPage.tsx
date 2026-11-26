@@ -26,10 +26,16 @@ export function ResidentPage({ id, timeZone }: { id: string; timeZone: string })
     case "loading":
       return <ResidentPageSkeleton className={showSkeleton ? "" : "invisible"} />;
     case "not-found":
-      return <p className="my-0">{t("resident.notFound")}</p>;
+      return (
+        <>
+          <h1 className="sr-only">{t("resident.heading")}</h1>
+          <p className="my-0">{t("resident.notFound")}</p>
+        </>
+      );
     case "failed":
       return (
         <div className="flex flex-col items-start gap-3">
+          <h1 className="sr-only">{t("resident.heading")}</h1>
           <p role="alert" className="my-0 text-danger">
             {t(state.reason === "offline" ? "resident.offline" : "resident.error")}
           </p>

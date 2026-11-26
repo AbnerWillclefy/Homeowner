@@ -77,3 +77,13 @@ test.describe("320px", () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 });
+
+test.describe("with no Home", () => {
+  test.use({ fakeState: { onboardingStored: "done" } });
+
+  test("Create your Home is the screen's one h1", async ({ page, baseURL }) => {
+    await launchApp(page, baseURL!);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/lar/i);
+  });
+});

@@ -39,6 +39,7 @@ for (const tone of TONES) {
   const fill = `cat-${tone}`;
   pairs.push(
     { label: `${fill}-ink text on ${fill}`, fg: `${fill}-ink`, bg: fill, min: 4.5 },
+    { label: `border on ${fill}`, fg: "border", bg: fill, min: 3 },
     { label: `focus on ${fill}`, fg: "focus", bg: fill, min: 3 },
   );
 }
@@ -54,21 +55,29 @@ pairs.push(
     { label: `text on ${stop}`, fg: "text", bg: stop, min: 4.5 },
     { label: `muted on ${stop}`, fg: "muted", bg: stop, min: 4.5 },
     { label: `danger on ${stop}`, fg: "danger", bg: stop, min: 4.5 },
+    { label: `border on ${stop}`, fg: "border", bg: stop, min: 3 },
     { label: `focus on ${stop}`, fg: "focus", bg: stop, min: 3 },
   ]),
   { label: "accent-contrast on accent", fg: "accent-contrast", bg: "accent", min: 4.5 },
 );
+
+// Dark welcome-from passes, so it is listed for light only.
+const KNOWN_BELOW_3 = { light: /^border on (cat-|welcome-from)/, dark: /^border on cat-/ };
 
 for (const [name, theme] of [
   ["light", light],
   ["dark", dark],
 ] as const) {
   describe(`${name} theme contrast`, () => {
-    it.each(pairs)("$label is at least $min", ({ label, fg, bg, min }) => {
-      expect(theme[fg], `${fg} is not declared`).toBeDefined();
-      expect(theme[bg], `${bg} is not declared`).toBeDefined();
-      const ratio = contrastRatio(theme[fg]!, theme[bg]!);
-      expect(ratio, `${label} (${name}) is ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(min);
-    });
+    for (const { label, fg, bg, min } of pairs) {
+      // shortcut: Bedrock's border-strong reaches only about 2.5 to 2.9 on these pastels; #893's restyle fixes it, then drop this list.
+      const run = KNOWN_BELOW_3[name].test(label) ? it.fails : it;
+      run(`${label} is at least ${min}`, () => {
+        expect(theme[fg], `${fg} is not declared`).toBeDefined();
+        expect(theme[bg], `${bg} is not declared`).toBeDefined();
+        const ratio = contrastRatio(theme[fg]!, theme[bg]!);
+        expect(ratio, `${label} (${name}) is ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(min);
+      });
+    }
   });
 }

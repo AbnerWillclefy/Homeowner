@@ -56,6 +56,7 @@ export const ptBR: Messages = {
   "home.residents.streak": { one: "{count} dia", other: "{count} dias" },
   "home.residents.doneToday": { one: "{count} concluída hoje", other: "{count} concluídas hoje" },
   "home.residents.error": "Algo deu errado ao carregar os moradores. Tente novamente em instantes.",
+  "resident.heading": "Morador",
   "resident.loading": "Carregando o morador",
   "resident.back": "Seu lar",
   "resident.streak": { one: "dia de sequência", other: "dias de sequência" },

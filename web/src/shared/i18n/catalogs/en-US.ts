@@ -52,6 +52,7 @@ export const enUS = {
   "home.residents.streak": { one: "{count} day", other: "{count} days" },
   "home.residents.doneToday": { one: "{count} done today", other: "{count} done today" },
   "home.residents.error": "Something went wrong loading the Residents. Try again in a moment.",
+  "resident.heading": "Resident",
   "resident.loading": "Loading this Resident",
   "resident.back": "Your Home",
   "resident.streak": { one: "day Streak", other: "day Streak" },
