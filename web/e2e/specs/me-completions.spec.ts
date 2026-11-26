@@ -33,8 +33,9 @@ const LOCALES = [
     restrictions: "Restrições",
     appearance: "Aparência",
     language: "Idioma",
-    signOut: "Sair",
-    settingsHeading: "Seus ajustes",
+    planHeading: "Como o plano te conhece",
+    appHeading: "App",
+    account: "Conta",
     change: /^Mudar hora/,
   },
 ] as const;
@@ -91,26 +92,23 @@ for (const l of LOCALES) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     });
 
-    test("keeps the history and the settings apart: history first, the h3s are the two group headings, the settings in order", async ({ page, baseURL }) => {
+    test("keeps the parts of Me apart, in the artboard's order: the profile rows, the history, then the App rows", async ({ page, baseURL }) => {
       await openMe(page, baseURL);
+      const plan = page.getByRole("region", { name: l.planHeading, exact: true });
       const history = page.getByRole("region", { name: l.heading, exact: true });
-      const settings = page.getByRole("region", { name: l.settingsHeading, exact: true });
-      await expect(history).toBeVisible();
-      await expect(settings).toBeVisible();
-      await expect(page.getByRole("heading", { level: 3 })).toHaveText([l.heading, l.settingsHeading]);
-
-      const [h, s] = [await history.boundingBox(), await settings.boundingBox()];
-      expect(h!.y + h!.height).toBeLessThan(s!.y);
+      const app = page.getByRole("region", { name: l.appHeading, exact: true });
+      await expect(page.getByRole("heading", { level: 3 })).toHaveText([l.planHeading, l.heading, l.appHeading]);
       await expect(history.getByRole("button", { name: l.baseline })).toHaveCount(0);
 
-      // Inside the settings part, in order: Baseline, Preferences, Restrictions, Appearance, Language, Sign out.
+      const row = (part: typeof plan, name: string) => part.getByRole("button", { name: new RegExp(`^${name}\\b`) });
       const order = [
-        settings.getByRole("button", { name: new RegExp(`^${l.baseline}\\b`) }),
-        settings.getByRole("button", { name: new RegExp(`^${l.preferences}\\b`) }),
-        settings.getByRole("button", { name: new RegExp(`^${l.restrictions}\\b`) }),
-        settings.getByLabel(l.appearance, { exact: true }),
-        settings.getByLabel(l.language, { exact: true }),
-        settings.getByRole("button", { name: l.signOut, exact: true }),
+        row(plan, l.baseline),
+        row(plan, l.preferences),
+        row(plan, l.restrictions),
+        history,
+        row(app, l.language),
+        row(app, l.appearance),
+        row(app, l.account),
       ];
       let previous = -1;
       for (const control of order) {
@@ -141,8 +139,9 @@ for (const l of LOCALES) {
       await expect(page.getByRole("heading", { name: l.heading, level: 3 })).toBeVisible();
       const baseline = page.getByRole("button", { name: l.baseline });
       await baseline.click();
-      await expect(baseline).toHaveAttribute("aria-expanded", "true");
+      await expect(page.getByRole("dialog", { name: l.baseline })).toBeVisible();
       await expect(page.getByText(l.empty)).toHaveCount(0);
+      await page.keyboard.press("Escape");
 
       held.release();
       await expect(page.getByRole("heading", { name: l.heading, level: 3 })).toBeVisible();
@@ -158,9 +157,10 @@ for (const l of LOCALES) {
       await expect(history.getByRole("button", { name: l.retry })).toBeVisible();
       const baseline = page.getByRole("button", { name: l.baseline });
       await expect(history.getByRole("button", { name: l.baseline })).toHaveCount(0);
-      await expect(page.getByRole("region", { name: l.settingsHeading, exact: true }).getByRole("button", { name: l.baseline })).toBeVisible();
+      await expect(page.getByRole("region", { name: l.planHeading, exact: true }).getByRole("button", { name: l.baseline })).toBeVisible();
       await baseline.click();
-      await expect(baseline).toHaveAttribute("aria-expanded", "true");
+      await expect(page.getByRole("dialog", { name: l.baseline })).toBeVisible();
+      await page.keyboard.press("Escape");
 
       await page.getByRole("button", { name: l.retry }).click();
       await expect(page.getByRole("heading", { name: l.heading, level: 3 })).toBeVisible();

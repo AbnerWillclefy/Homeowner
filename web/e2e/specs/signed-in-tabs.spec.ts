@@ -66,16 +66,17 @@ test("Me shows the Resident's Profile", async ({ page, baseURL }) => {
 
   await shell.expectOnTab(page, "Me");
   await expect(tabs.me.heading(page)).toBeVisible();
-  // The three cards start closed (see me-cards.spec.ts); open each to read what it holds.
-  await expect(tabs.me.baseline(page)).toBeVisible();
+  // Each row opens a Sheet (see me-cards.spec.ts); open each to read what it holds.
   await tabs.me.open(page, "Baseline");
-  await expect(tabs.me.day(page, "Monday").getByLabel("Normal")).toBeChecked();
-  await expect(tabs.me.preferences(page)).toBeVisible();
+  await expect(tabs.me.day(page, "Monday").getByRole("radio", { name: "Normal" })).toBeChecked();
+  await page.keyboard.press("Escape");
   await tabs.me.open(page, "Preferences");
   await expect(tabs.me.kitchenLike(page)).toBeChecked();
-  await expect(tabs.me.restrictions(page)).toBeVisible();
+  await page.keyboard.press("Escape");
   await tabs.me.open(page, "Restrictions");
   await expect(tabs.me.bending(page)).toBeChecked();
+  await page.keyboard.press("Escape");
+  await tabs.me.open(page, "Account");
   await expect(tabs.me.signedInAs(page, RESIDENT_EMAIL)).toBeVisible();
 });
 

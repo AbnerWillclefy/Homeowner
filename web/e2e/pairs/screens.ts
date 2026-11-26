@@ -26,6 +26,11 @@ export const STATES = [
   "invite-rating", // the rating step, after joining through an Invite
   "leave", // the Leave Home confirm
   "confirm-email", // the Confirm screen, which needs the e-mail from the sign-up step
+  "me-baseline", // the Baseline Sheet, from its row on Me
+  "me-preferences", // the Preferences Sheet
+  "me-restrictions", // the Restrictions Sheet
+  "me-appearance", // the Appearance Sheet (Language is a row of its own, which the artboard joins to it)
+  "me-account", // the Account Sheet, with Sign out
 ] as const;
 export type State = (typeof STATES)[number];
 
@@ -79,12 +84,12 @@ export const SCREENS: Record<string, Entry> = {
   // Eu
   Me: at("/me", ["profile", "settings"]),
   NameEdit: at("/me/edit", ["profile"]),
-  BaselineSheet: none("The Baseline opens a Sheet from a row of Me in #895."),
-  PreferencesSheet: none("The Preferences open a Sheet from a row of Me in #895."),
-  RestrictionsSheet: none("The Restrictions open a Sheet from a row of Me in #895."),
+  BaselineSheet: at("/me", ["profile"], { state: "me-baseline" }),
+  PreferencesSheet: at("/me", ["profile"], { state: "me-preferences" }),
+  RestrictionsSheet: at("/me", ["profile"], { state: "me-restrictions" }),
   Completions: at("/me", ["residents"]),
-  AppearanceSheet: none("Appearance and language open a Sheet from a row of Me in #895."),
-  AccountSheet: none("The account opens a Sheet from a row of Me in #895."),
+  AppearanceSheet: at("/me", ["settings"], { state: "me-appearance" }),
+  AccountSheet: at("/me", ["auth"], { state: "me-account" }),
   // Entrada
   SignIn: at("/signin", ["auth"], { data: "signed-out" }),
   SignUp: at("/signup", ["auth"], { data: "signed-out" }),

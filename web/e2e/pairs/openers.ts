@@ -18,6 +18,12 @@ async function join(page: Page): Promise<void> {
   await dialog(page).getByRole("heading", { name: ptBR["invite.rating.heading"] }).waitFor();
 }
 
+/** A row of Me: the button named by its title (a second line can follow), which opens its Sheet. */
+const row = (title: string) => async (page: Page) => {
+  await page.getByRole("button", { name: new RegExp(`^${title}\\b`) }).click();
+  await opened(page);
+};
+
 export const OPENERS: Record<State, (page: Page) => Promise<void>> = {
   "check-in": opened,
   "check-in-later": async (page) => {
@@ -53,6 +59,11 @@ export const OPENERS: Record<State, (page: Page) => Promise<void>> = {
     await button(page, ptBR["home.leave.open"]).click();
     await opened(page);
   },
+  "me-baseline": row(ptBR["profile.baseline.heading"]),
+  "me-preferences": row(ptBR["profile.preferences.heading"]),
+  "me-restrictions": row(ptBR["profile.restrictions.heading"]),
+  "me-appearance": row(ptBR["settings.appearance.label"]),
+  "me-account": row(ptBR["me.account.title"]),
   // The e-mail travels in the router's history state from the sign-up step; set it as the router would.
   "confirm-email": async (page) => {
     await page.evaluate(() => {

@@ -48,14 +48,13 @@ export const onboarding = {
     await page.getByRole("button", { name: "Not now", exact: true }).click();
   },
 
-  baselineDay: (page: Page, day: Day) => page.getByRole("group", { name: day, exact: true }),
+  baselineDay: (page: Page, day: Day) => page.getByRole("radiogroup", { name: day, exact: true }),
 
   /** Picks one day's level and checks the pick holds (it saves at once, so one pick is one request). */
   async setBaseline(page: Page, day: Day, level: Level): Promise<void> {
     const group = onboarding.baselineDay(page, day);
-    const radio = group.getByLabel(level, { exact: true });
-    // The radio is visually hidden inside its label, which is what a finger or mouse hits.
-    await group.getByText(level, { exact: true }).click();
+    const radio = group.getByRole("radio", { name: level, exact: true });
+    await radio.click();
     await expect(radio).toBeChecked();
   },
 
@@ -68,15 +67,15 @@ export const onboarding = {
   incompleteBaselineAlert: (page: Page) => page.getByRole("alert"),
 
   async toggleRestriction(page: Page, label: string): Promise<void> {
-    const box = page.getByRole("checkbox", { name: label, exact: true });
-    await box.check();
+    const box = page.getByRole("switch", { name: label, exact: true });
+    await box.click();
     await expect(box).toBeChecked();
   },
 
   async setPreference(page: Page, category: string, choice: PreferenceChoice): Promise<void> {
-    const group = page.getByRole("group", { name: category, exact: true });
-    const radio = group.getByLabel(choice, { exact: true });
-    await group.getByText(choice, { exact: true }).click();
+    const group = page.getByRole("radiogroup", { name: category, exact: true });
+    const radio = group.getByRole("radio", { name: choice, exact: true });
+    await radio.click();
     await expect(radio).toBeChecked();
   },
 

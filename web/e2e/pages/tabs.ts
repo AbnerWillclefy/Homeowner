@@ -31,23 +31,21 @@ export const tabs = {
   },
   me: {
     heading: (page: Page) => h1(page, "About you"),
-    /** The two parts of Me, each a region named by its h3; the cards inside are h4. */
+    /** The parts of Me, each a region named by its h3. */
     history: (page: Page) => page.getByRole("region", { name: "My Completions", exact: true }),
-    settings: (page: Page) => page.getByRole("region", { name: "Your settings", exact: true }),
-    baseline: (page: Page) => page.getByRole("heading", { name: "Baseline", level: 4 }),
-    preferences: (page: Page) => page.getByRole("heading", { name: "Preferences", level: 4 }),
-    restrictions: (page: Page) => page.getByRole("heading", { name: "Restrictions", level: 4 }),
-    /** The head row of a card: one native button (the heading wraps it) that opens and closes the card. */
-    trigger: (page: Page, name: string) => page.getByRole("button", { name: new RegExp(`^${name}\\b`) }),
-    /** Opens a card if it is closed. */
+    plan: (page: Page) => page.getByRole("region", { name: "How the plan knows you", exact: true }),
+    /** A row of Me: one native button that opens a Sheet, named by the row's title (and its current value). */
+    row: (page: Page, name: string) => page.getByRole("button", { name: new RegExp(`^${name}\\b`) }),
+    /** The Sheet a row opened. */
+    sheet: (page: Page, name: string) => page.getByRole("dialog", { name }),
+    /** Opens a row's Sheet. */
     async open(page: Page, name: string): Promise<void> {
-      const trigger = tabs.me.trigger(page, name);
-      if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
-      await expect(trigger).toHaveAttribute("aria-expanded", "true");
+      await tabs.me.row(page, name).click();
+      await expect(tabs.me.sheet(page, name)).toBeVisible();
     },
-    kitchenLike: (page: Page) => page.getByRole("group", { name: "Kitchen", exact: true }).getByRole("radio", { name: "Like", exact: true }),
-    bending: (page: Page) => page.getByRole("checkbox", { name: "Bending" }),
-    day: (page: Page, name: string) => page.getByRole("group", { name, exact: true }),
+    kitchenLike: (page: Page) => page.getByRole("radiogroup", { name: "Kitchen", exact: true }).getByRole("radio", { name: "Like", exact: true }),
+    bending: (page: Page) => page.getByRole("switch", { name: "Bending" }),
+    day: (page: Page, name: string) => page.getByRole("radiogroup", { name, exact: true }),
     signedInAs: (page: Page, email: string) => page.getByText(`Signed in as ${email}.`),
   },
 };

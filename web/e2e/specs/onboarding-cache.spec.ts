@@ -46,7 +46,7 @@ test("going Back to the Baseline shows it at once, with no loading line, while t
   await expect(page).toHaveURL(/\/welcome\/baseline$/);
   await expect(onboarding.baselineDay(page, "Monday")).toBeVisible();
   await expect(page.getByText("Loading your details")).toHaveCount(0);
-  await expect(onboarding.baselineDay(page, "Monday").getByLabel("Normal", { exact: true })).toBeChecked();
+  await expect(onboarding.baselineDay(page, "Monday").getByRole("radio", { name: "Normal", exact: true })).toBeChecked();
   held.release();
 
   // The saved step is still Restrictions: Next goes on from the Baseline to it without a new answer to wait for.
