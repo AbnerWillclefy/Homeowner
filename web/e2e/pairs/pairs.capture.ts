@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, resolve } from "node:path";
-import { measureOverflow, overflowOf, shootArtboard } from "../../../.github/scripts/artboards.mjs";
+import { compareBoxes, measureBoxes, measureOverflow, overflowOf, roleSelectors, shootArtboard } from "../../../.github/scripts/artboards.mjs";
 import { test } from "../fixtures";
 import { hold } from "../mocks/hold";
 import { json } from "../mocks/api";
@@ -82,6 +82,7 @@ for (const name of names) {
       await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
 
       const base = `auto-web-${kebab(name)}-mobile`;
+      const appBoxes = await page.evaluate(measureBoxes, roleSelectors("app"));
       const message = overflowOf(name, await page.evaluate(measureOverflow));
       // A Sheet or Dialog is fixed to the viewport, so it is shot at phone height, as its artboard is; a page is shot whole.
       if (!entry.state) await page.setViewportSize({ ...VIEWPORT, height: await page.evaluate(() => document.documentElement.scrollHeight) });
@@ -90,9 +91,12 @@ for (const name of names) {
 
       const designPage = await context.newPage();
       await shootArtboard(designPage, ARTBOARDS, `${name}.dc.html`, VIEWPORT, join(OUT, `${base}-design.png`), PHONE_CSS);
+      const designBoxes = await designPage.evaluate(measureBoxes, roleSelectors("design"));
       await designPage.close();
+      // The raw boxes land on the screenshots branch with the PNGs, for the reviewer (.github/scripts/design-pairs.sh).
+      writeFileSync(join(OUT, `${base}-measure.json`), JSON.stringify({ app: appBoxes, design: designBoxes }));
 
-      const row = { artboard: name, route: entry.path, app: `${base}-app.png`, design: `${base}-design.png`, overflow: message, exempt: message !== null && OVERFLOW_EXEMPT.has(name) };
+      const row = { artboard: name, route: entry.path, app: `${base}-app.png`, design: `${base}-design.png`, measure: compareBoxes(appBoxes, designBoxes), overflow: message, exempt: message !== null && OVERFLOW_EXEMPT.has(name) };
       writeFileSync(join(RESULTS, `${kebab(name)}.json`), JSON.stringify(row));
     });
   });
