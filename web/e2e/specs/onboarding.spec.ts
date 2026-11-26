@@ -13,7 +13,7 @@ import { onboarding, WEEK, type Day, type Level, type WalkInput } from "../pages
 import { shell } from "../pages/shell";
 
 // What this covers: a signed-in User with no Home, from the first onboarding screen to Today. The app shows five
-// steps on this device (reminders, Baseline, Restrictions, Preferences, Home). The server also has an `install`
+// steps on this device (Home, Baseline, Restrictions, Preferences, reminders). The server also has an `install`
 // step, but the app skips it except on iOS in a browser tab, so it is not shown here and is not covered: read
 // "every step" as these five.
 
@@ -82,11 +82,30 @@ test.beforeEach(async ({ page, baseURL, fakeApi }) => {
   await launchApp(page, baseURL!);
 });
 
-test("a new User walks onboarding, creates the Home and lands on Today", async ({ page, fakeApi }) => {
-  // Signed in, no Home: sent to the first step.
-  await expect(page).toHaveURL(/\/welcome\/reminders$/);
-  await onboarding.completeReminders(page);
-  expect(onboardingSteps(fakeApi)).toEqual([{ step: "reminders" }]);
+test("a new User walks onboarding, creates the Home first and lands on Today", async ({ page, fakeApi }) => {
+  // Signed in, no Home: sent to the Home step, whatever else is stored.
+  await expect(page).toHaveURL(/\/welcome\/home$/);
+  await onboarding.completeHomeSettings(page, WALK.home);
+  await expect(onboarding.bathrooms(page)).toHaveValue("1");
+
+  await onboarding.answerQuestions(page, WALK.answers);
+  await onboarding.suggestChores(page);
+  // What was typed is what the Catalog was asked about; the review shows what it proposed.
+  expect(bodiesOf(fakeApi, "POST", "/catalog/proposals")).toEqual([SENT_ANSWERS]);
+  await onboarding.reviewShows(page, REVIEW_NAMES);
+
+  await onboarding.createHome(page);
+
+  // Creating the Home does not end onboarding: it stores `home` and the walk goes on to the Baseline.
+  await expect(page).toHaveURL(/\/welcome\/baseline$/);
+  await expect(onboarding.startChoiceDialog(page)).toHaveCount(0);
+  expect(fakeApi.state.onboardingStored).toBe("home");
+  expect(onboardingSteps(fakeApi)).toEqual([]);
+  expect(bodiesOf(fakeApi, "POST", "/home")).toEqual([
+    { timezone: "Europe/Lisbon", allocationTime: "07:30", chores: expectedChores() },
+  ]);
+  expect(fakeApi.state.home).toEqual({ id: "home-1", timezone: "Europe/Lisbon", allocationTime: "07:30" });
+  expect(fakeApi.state.chores.map((chore) => chore.name)).toEqual(REVIEW_NAMES);
 
   // One day missing: Next says so and does not leave the step or tell the server it is done.
   await onboarding.expectOnStep(page, "Your Baseline", 2, 5);
@@ -94,7 +113,7 @@ test("a new User walks onboarding, creates the Home and lands on Today", async (
   await onboarding.next(page);
   await expect(onboarding.incompleteBaselineAlert(page)).toBeVisible();
   await expect(page).toHaveURL(/\/welcome\/baseline$/);
-  expect(onboardingSteps(fakeApi)).toEqual([{ step: "reminders" }]);
+  expect(onboardingSteps(fakeApi)).toEqual([]);
 
   // The six picks already made are no-ops here; the seventh completes the week.
   await onboarding.completeBaseline(page, WALK.baseline);
@@ -117,7 +136,7 @@ test("a new User walks onboarding, creates the Home and lands on Today", async (
     saturday: 14,
     sunday: 4,
   });
-  expect(onboardingSteps(fakeApi)).toEqual([{ step: "reminders" }, { step: "baseline" }]);
+  expect(onboardingSteps(fakeApi)).toEqual([{ step: "baseline" }]);
 
   await onboarding.completeRestrictions(page, WALK.restrictions);
   expect(fakeApi.requests.filter((r) => r.path.startsWith("/me/restrictions/")).map((r) => `${r.method} ${r.path}`)).toEqual([
@@ -131,31 +150,19 @@ test("a new User walks onboarding, creates the Home and lands on Today", async (
     ["PUT", "/me/preferences/kitchen", { preference: "like" }],
   ]);
   expect(fakeApi.state.profile.preferences).toEqual({ kitchen: "like" });
-  // The Home starts in the browser's zone, which the config pins.
-  await expect(onboarding.timezone(page)).toHaveValue("America/Sao_Paulo");
 
-  await onboarding.completeHomeSettings(page, WALK.home);
-  await expect(onboarding.bathrooms(page)).toHaveValue("1");
-
-  await onboarding.answerQuestions(page, WALK.answers);
-  await onboarding.suggestChores(page);
-  // What was typed is what the Catalog was asked about; the review shows what it proposed.
-  expect(bodiesOf(fakeApi, "POST", "/catalog/proposals")).toEqual([SENT_ANSWERS]);
-  await onboarding.reviewShows(page, REVIEW_NAMES);
-
-  await onboarding.createHome(page);
-
-  // Today, behind the start choice.
+  // Reminders is the last step: the start choice shows only now, then Today.
+  await expect(onboarding.startChoiceDialog(page)).toHaveCount(0);
+  await onboarding.completeReminders(page);
   await onboarding.dismissStartChoice(page);
   await shell.expectOnToday(page);
   await expect(page.getByText(/Today's plan is made at 7:30\sAM\./)).toBeVisible();
-
-  // The Home and its Chores were created from exactly what was entered.
-  expect(bodiesOf(fakeApi, "POST", "/home")).toEqual([
-    { timezone: "Europe/Lisbon", allocationTime: "07:30", chores: expectedChores() },
+  expect(onboardingSteps(fakeApi)).toEqual([
+    { step: "baseline" },
+    { step: "restrictions" },
+    { step: "preferences" },
+    { step: "reminders" },
   ]);
-  expect(fakeApi.state.home).toEqual({ id: "home-1", timezone: "Europe/Lisbon", allocationTime: "07:30" });
-  expect(fakeApi.state.chores.map((chore) => chore.name)).toEqual(REVIEW_NAMES);
   expect(fakeApi.state.onboardingStored).toBe("done");
 
   // A reload keeps the User in the app: the server says done, so there is no way back to onboarding.
@@ -180,7 +187,7 @@ test("a refused Create Home shows a message, keeps what was entered, and the ret
   await onboarding.reviewShows(page, REVIEW_NAMES);
   await expect(onboarding.createHomeButton(page)).toBeEnabled();
   expect(fakeApi.state.home).toBeNull();
-  expect(fakeApi.state.onboardingStored).toBe("preferences");
+  expect(fakeApi.state.onboardingStored).toBeNull();
 
   // Going back shows the answers and settings are still there, and coming forward asks the Catalog nothing new.
   await onboarding.back(page);
@@ -195,12 +202,26 @@ test("a refused Create Home shows a message, keeps what was entered, and the ret
   expect(bodiesOf(fakeApi, "POST", "/catalog/proposals")).toHaveLength(1);
 
   await onboarding.createHome(page);
-  await onboarding.dismissStartChoice(page);
-  await shell.expectOnToday(page);
+  await expect(page).toHaveURL(/\/welcome\/baseline$/);
 
   const sent = bodiesOf(fakeApi, "POST", "/home");
   expect(sent).toHaveLength(2);
   expect(sent[1]).toEqual(sent[0]);
   expect(sent[1]).toEqual({ timezone: "Europe/Lisbon", allocationTime: "07:30", chores: expectedChores() });
   expect(fakeApi.state.home).not.toBeNull();
+  expect(fakeApi.state.onboardingStored).toBe("home");
+});
+
+test.describe("a User whose server progress is past the Home step", () => {
+  test.use({ fakeState: { onboardingStored: "preferences" } });
+
+  test("creating the Home goes to the step the server kept, not back to the Baseline", async ({ page, fakeApi }) => {
+    await expect(page).toHaveURL(/\/welcome\/home$/);
+    await onboarding.walkToReview(page, WALK);
+    await onboarding.createHome(page);
+
+    // `install` is skipped off iOS, so the next step that applies is the reminders.
+    await expect(page).toHaveURL(/\/welcome\/reminders$/);
+    expect(fakeApi.state.onboardingStored).toBe("preferences");
+  });
 });

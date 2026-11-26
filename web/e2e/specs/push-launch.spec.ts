@@ -85,7 +85,8 @@ test.describe("permission granted, subscription exists", () => {
       fakeApi.use(residentsHandlers);
       const started = Date.now();
       await launchApp(page, baseURL!);
-      await expect(page).toHaveURL(/\/welcome\/reminders$/);
+      // No Home: the first step, Home.
+      await expect(page).toHaveURL(/\/welcome\/home$/);
 
       await page.waitForTimeout(2000);
       expect(pushRequests(fakeApi)).toEqual([]);

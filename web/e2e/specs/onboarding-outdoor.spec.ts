@@ -10,7 +10,7 @@ import { launchApp } from "../pages/launch";
 
 // What this covers: the outdoor areas in the Home questionnaire. A chip adds a counter row at 1 and hides itself,
 // stepping the row down to 0 removes it and brings the chip back, there is no "None", and two gardens become two
-// Chores in the review. Starts on the Home step (the earlier steps are done), in pt-BR first and then English.
+// Chores in the review. Starts on the Home step, the first one, in pt-BR first and then English.
 
 const LOCALES = [
   {
@@ -30,7 +30,8 @@ const LOCALES = [
 
 for (const l of LOCALES) {
   test.describe(l.locale, () => {
-    test.use({ locale: l.locale, fakeState: { onboardingStored: "preferences" } });
+    // Nothing stored and no Home: the Guard sends the User to the Home step.
+    test.use({ locale: l.locale });
 
     test.beforeEach(async ({ page, baseURL, fakeApi }) => {
       fakeApi.use(onboardingHandlers);

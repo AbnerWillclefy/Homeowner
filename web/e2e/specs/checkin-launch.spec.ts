@@ -205,5 +205,20 @@ for (const l of LOCALES) {
       await expect(dialog(page)).toBeVisible();
       await expect(page.getByRole("dialog")).toHaveCount(1);
     });
+
+    test.describe("a joiner with unfinished onboarding", () => {
+      test.use({ fakeState: { ...signedInResident(), home: null, onboardingStored: null } });
+
+      test("goes past the Home step, not to Create Home from a cached answer", async ({ page, baseURL, fakeApi }) => {
+        fakeApi.on("GET /invites/abc123", () => json(200, {}));
+        fakeApi.on("POST /invites/abc123/accept", (_, state) => {
+          state.home = { id: "home-2", timezone: "America/Sao_Paulo", allocationTime: "07:00" };
+          return json(200, state.home);
+        });
+        await visit(page, new URL("/#invite=abc123", baseURL!).toString());
+        await page.getByRole("button", { name: "Entrar neste lar", exact: true }).click();
+        await expect(page).toHaveURL(/\/welcome\/baseline$/);
+      });
+    });
   });
 }

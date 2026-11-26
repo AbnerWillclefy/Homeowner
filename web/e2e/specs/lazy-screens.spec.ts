@@ -156,11 +156,11 @@ test.describe("a signed-in Resident", () => {
 });
 
 test.describe("onboarding mid-walk", () => {
-  test.use({ fakeState: { ...signedInResident(), home: null, onboardingStored: "reminders" } });
+  // The Home exists and `home` is stored, so the walk is at the Baseline.
+  test.use({ fakeState: { ...signedInResident(), onboardingStored: "home" } });
 
   test.beforeEach(async ({ page, fakeApi }) => {
     fakeApi.use(onboardingHandlers);
-    // Launching on Today starts its reads at once; with no Home they answer "none" (ADR 0016).
     fakeApi.use(todayHandlers);
     fakeApi.use(residentsHandlers);
     await seedSession(page, { email: RESIDENT_EMAIL });

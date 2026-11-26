@@ -826,7 +826,7 @@ export const enUS = {
   "catalog.clean_bird_cage": "Clean the bird cage",
   "catalog.care_for_pet": "Care for the pet",
 
-  // Onboarding: the walk through install, reminders, profile and the Home for a new User
+  // Onboarding: the walk through the Home, profile, install and reminders for a new User
   "onboarding.progress": "Setting up: step {step} of {total}",
   "onboarding.loading": "Loading your setup...",
   "onboarding.load.offline":

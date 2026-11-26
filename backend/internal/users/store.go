@@ -3,11 +3,9 @@ package users
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -74,18 +72,14 @@ func (s *Store) OnboardingStep(ctx context.Context, userID string) (string, erro
 // before step (onboarding.Before) may be replaced. It returns the stored step
 // afterwards, which is the old one when nothing moved.
 func (s *Store) AdvanceOnboarding(ctx context.Context, userID, step string, now time.Time) (string, error) {
-	var stored string
-	err := s.db.QueryRow(ctx, `
-		UPDATE users SET onboarding_step = $2, updated_at = $4
-		WHERE id = $1 AND (onboarding_step IS NULL OR onboarding_step = ANY($3))
-		RETURNING onboarding_step`, userID, step, onboarding.Before(step), now).Scan(&stored)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return s.OnboardingStep(ctx, userID)
-	}
+	moved, err := AdvanceOnboardingIn(ctx, s.db, userID, step, now)
 	if err != nil {
-		return "", fmt.Errorf("advance onboarding: %w", err)
+		return "", err
 	}
-	return stored, nil
+	if moved {
+		return step, nil
+	}
+	return s.OnboardingStep(ctx, userID)
 }
 
 // Execer is what a pool or a transaction offers for writing.
@@ -119,12 +113,16 @@ func (s *Store) swapPhotoKey(ctx context.Context, userID string, key *string, no
 	return old, nil
 }
 
-// MarkOnboardingDone stores that the User finished onboarding, on ex so a
-// caller can do it in its own transaction.
-func MarkOnboardingDone(ctx context.Context, ex Execer, userID string, now time.Time) error {
-	if _, err := ex.Exec(ctx, `UPDATE users SET onboarding_step = $2, updated_at = $3 WHERE id = $1`,
-		userID, onboarding.Done, now); err != nil {
-		return fmt.Errorf("finish onboarding: %w", err)
+// AdvanceOnboardingIn is the conditional UPDATE behind AdvanceOnboarding, on
+// ex so a caller can do it in its own transaction. It reports whether progress
+// moved.
+func AdvanceOnboardingIn(ctx context.Context, ex Execer, userID, step string, now time.Time) (bool, error) {
+	tag, err := ex.Exec(ctx, `
+		UPDATE users SET onboarding_step = $2, updated_at = $4
+		WHERE id = $1 AND (onboarding_step IS NULL OR onboarding_step = ANY($3))`,
+		userID, step, onboarding.Before(step), now)
+	if err != nil {
+		return false, fmt.Errorf("advance onboarding: %w", err)
 	}
-	return nil
+	return tag.RowsAffected() == 1, nil
 }

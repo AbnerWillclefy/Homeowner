@@ -33,7 +33,7 @@ interface Session {
   recordJoin(outcome: JoinOutcome): void;
   closeRating(): void;
   decide(): void;
-  /** The Home step of onboarding ended, by creating the Home or finding one already made. */
+  /** The onboarding walk ended; `notice` is what the Home step recovered, if anything. */
   onHomeFinished(notice: RecoveredNotice | null): void;
 }
 
