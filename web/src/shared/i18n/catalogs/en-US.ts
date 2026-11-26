@@ -547,6 +547,7 @@ export const enUS = {
   "today.hero.label": "Your day",
   "today.hero.progress": { one: "{done} of {total} done", other: "{done} of {total} done" },
   "today.hero.question": "How is your Energy today?",
+  "today.hero.plan": "The {time} plan, fitted to your Energy.",
   "today.hero.hint": "Your {time} plan adjusts to your answer.",
   "today.hero.restrictions": "Any Restriction just for today?",
   "today.hero.energy": "Energy: {level}. Change",

@@ -160,7 +160,7 @@ It is light and dark by token swap, not by variant, and it holds at the largest 
 - One teal accent for primary actions; pastels label Categories only.
 - Pills for buttons and chips, rounded squares for icon tiles, big rounded rectangles for cards.
 - Inter at 400, 500, 600 and 700, through Bedrock; 700 for the wordmark.
-- No top bar: every tab opens with a page header, its title as the page's one `h1` (ADR 0022). On Today the header's tools hold the Energy pill, the Streak and the microphone.
+- No top bar: every tab opens with a page header, its title as the page's one `h1` (ADR 0022). On Today the header's tools hold the Streak and the microphone, and the hero card under it holds the Energy (ADR 0022, the Hoje artboards).
 - Thumb-reach: no primary action is stranded on the left.
 
 ## Colors
@@ -303,7 +303,7 @@ Hand-drawn in SVG and CSS (no chart library); no screen draws one at present. Se
 - **Cumulative line:** one line per series on a shared scale (solid, dashed, dotted), each series' final amount as text under it, and a "Ver tabela" / "Ver gráfico" toggle that swaps the drawing for a table of the same numbers.
 
 ### Page header
-There is no top bar. Every tab opens with Bedrock's page header (`TabHeader`): its title is the screen's one `h1`, and focus lands on it when the tab opens. The header reserves its height from the first frame, so nothing moves while data loads. Today's header also holds the tools: the Energy pill, the Streak and the microphone. The logo shows only on the pre-Home screens (sign-in, sign-up, the waiting and retry screens); the onboarding walk has its own frame. Where a tab has no header yet (the create-Home form, a failed Home load, a Resident's error states), that screen's own heading is the `h1`.
+There is no top bar. Every tab opens with Bedrock's page header (`TabHeader`): its title is the screen's one `h1`, and focus lands on it when the tab opens. The header reserves its height from the first frame, so nothing moves while data loads. Today's header also holds the tools: the Streak and the microphone; the Energy is on the hero card under it. The logo shows only on the pre-Home screens (sign-in, sign-up, the waiting and retry screens); the onboarding walk has its own frame. Where a tab has no header yet (the create-Home form, a failed Home load, a Resident's error states), that screen's own heading is the `h1`.
 
 ### Logo
 A house drawn in one rounded line (stroke follows the ink colour) with a check as its door, then the lowercase wordmark "homeowner" in Inter 700. The drawing is `aria-hidden`; the accessible name is the visible text, "homeowner", with no `aria-label` that could differ. The check is the one mint accent that is decoration (see The One Voice Rule); in forced-colours mode both the house and the check use the system text colour so the logo never vanishes. If the word does not fit beside the drawing at the largest text size, the drawing sits above it; the word is never broken or cut.

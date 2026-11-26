@@ -557,6 +557,7 @@ export const ptBR: Messages = {
   "today.hero.label": "Seu dia",
   "today.hero.progress": { one: "{done} de {total} feita", other: "{done} de {total} feitas" },
   "today.hero.question": "Como está a sua energia hoje?",
+  "today.hero.plan": "Plano das {time}, ajustado à sua energia.",
   "today.hero.hint": "Seu plano das {time} se ajusta à resposta.",
   "today.hero.restrictions": "Alguma restrição só hoje?",
   "today.hero.energy": "Energia: {level}. Mudar",

@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ShellContext } from "../../../app/components/ShellContext";
 import { enUS } from "../../../shared/i18n/catalogs/en-US";
 import { ptBR } from "../../../shared/i18n/catalogs/pt-BR";
-import { I18nContext } from "../../../shared/i18n/context";
+import { I18nContext, type I18n } from "../../../shared/i18n/context";
 import type { Locale } from "../../../shared/i18n/locales";
 import { createTranslate, type Catalogs } from "../../../shared/i18n/translate";
 import type { CheckIn } from "../../checkin/api/api";
@@ -40,7 +40,7 @@ function show(locale: Locale, state: Shell["checkIn"]["state"], plan = dayPlan()
   const save = vi.fn();
   const reload = vi.fn();
   const shell = { checkIn: { state, save, reload }, openCheckIn, heroRef: { current: null } } as unknown as Shell;
-  const i18n = { locale, setLocale: () => {}, t: (key: never, params: never) => translate(locale, key, params) };
+  const i18n: I18n = { locale, setLocale: () => {}, t: (key, params) => translate(locale, key, params) };
   act(() =>
     root.render(
       createElement(I18nContext.Provider, { value: i18n }, createElement(ShellContext.Provider, { value: shell }, createElement(TodayHero, { plan }))),

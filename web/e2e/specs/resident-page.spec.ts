@@ -139,7 +139,7 @@ for (const l of LOCALES) {
     test("has no actions on a Completion and nothing private", async ({ page }) => {
       await visit(page, "/home/residents/resident-2");
       await expect(page.getByRole("heading", { name: "Ana Souza", level: 1 })).toBeVisible();
-      // A Completion is a record: no button on the page (Today's Energy pill, Streak and microphone are not here) and no link inside a card.
+      // A Completion is a record: no button on the page (Today's hero card, Streak and microphone are not here) and no link inside a card.
       await expect(page.getByRole("button")).toHaveCount(0);
       await expect(page.getByRole("listitem").filter({ hasText: " · " }).getByRole("link")).toHaveCount(0);
       // Nothing private about the other Resident is in the page.

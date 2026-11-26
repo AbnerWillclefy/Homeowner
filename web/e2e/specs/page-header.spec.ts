@@ -6,9 +6,9 @@ import { launchApp } from "../pages/launch";
 import { shell, TABS } from "../pages/shell";
 
 // What this covers: the page header that replaced the top bar. Every tab opens with Bedrock's PageHeader, its one h1
-// (the logo is gone) and the place focus lands on when the tab opens; Today's header also holds the Energy pill,
-// the Streak and the voice microphone, which no other tab has, and at 320px in pt-BR none of them leaves the
-// screen. In pt-BR.
+// (the logo is gone) and the place focus lands on when the tab opens; Today's header also holds the Streak and the
+// voice microphone, which no other tab has (the Energy is on the hero card below it), and at 320px in pt-BR neither
+// leaves the screen. In pt-BR.
 
 const TITLES: Record<(typeof TABS)[number], string> = { Today: "Suas tarefas", Chores: "Afazeres", Home: "Seu lar", Me: "Sobre você" };
 const LABELS: Record<(typeof TABS)[number], string> = { Today: "Hoje", Chores: "Afazeres", Home: "Lar", Me: "Eu" };
@@ -45,7 +45,7 @@ test("focus lands on the tab's title when it opens", async ({ page, baseURL }) =
   }
 });
 
-test("only Today's header has the Energy pill, the Streak and the microphone", async ({ page, baseURL }) => {
+test("only Today's header has the Streak and the microphone", async ({ page, baseURL }) => {
   await launchApp(page, baseURL!);
   const tools = shell.todayTools(page);
   await expect(tools.getByRole("button", { name: /^Sequência: / })).toBeVisible();
@@ -65,7 +65,7 @@ test.describe("320px", () => {
   test("Today's tools stay on screen with no sideways scroll, each at least 44px", async ({ page, baseURL }) => {
     await launchApp(page, baseURL!);
     const buttons = shell.todayTools(page).getByRole("button");
-    await expect(buttons).toHaveCount(3);
+    await expect(buttons).toHaveCount(2);
     for (const button of await buttons.all()) {
       const box = (await button.boundingBox())!;
       expect(box.x).toBeGreaterThanOrEqual(0);
@@ -76,6 +76,32 @@ test.describe("320px", () => {
     await expect(shell.title(page, TITLES.Today)).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
+});
+
+test.describe("320px, hero card", () => {
+  test.use({ viewport: { width: 320, height: 640 } });
+
+  // The old top bar's one-row check, moved to where the Energy now is: the card holds its question and its chip inside the screen.
+  for (const [name, checkIn] of [
+    ["asking the question", { date: "2030-01-15", checkedIn: false, level: null, restrictions: [] }],
+    ["with the Energizado chip", { date: "2030-01-15", checkedIn: true, level: "energized", restrictions: [] }],
+  ] as const) {
+    test(`${name}: nothing scrolls sideways`, async ({ page, baseURL, fakeApi }) => {
+      fakeApi.state.checkIn = { ...checkIn, restrictions: [] };
+      await launchApp(page, baseURL!);
+      const hero = page.getByRole("region", { name: "Seu dia" });
+      // An unchecked day opens the dialog by itself; Not now leaves the card asking.
+      if (!checkIn.checkedIn) {
+        await expect(page.getByRole("dialog")).toBeVisible();
+        await page.keyboard.press("Escape");
+      }
+      await expect(hero).toBeVisible();
+      const box = (await hero.boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(320);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    });
+  }
 });
 
 test.describe("with no Home", () => {

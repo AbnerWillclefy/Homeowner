@@ -86,6 +86,8 @@ export function TodayHero({ plan }: { plan: DayPlan | null }) {
         </div>
         <Energy
           onHero
+          // Bedrock's chip paints a surface, and the hero recolours its text tokens to the hero's ink: without this it is white on white in the light theme.
+          className="border-on-hero-muted bg-transparent"
           level={LEVEL_BARS[today.level]}
           name={name}
           label={t("today.hero.energy", { level: name.toLocaleLowerCase(locale) })}
@@ -93,8 +95,12 @@ export function TodayHero({ plan }: { plan: DayPlan | null }) {
         />
       </div>
       {total > 0 && (
-        <ProgressBar value={done} max={total} tone="brand" label={t("today.hero.label")} valueText={t("today.hero.progress", { count: total, done, total })} />
+        // Bedrock's bar is drawn for a surface (brand on sunken); on the hero's green it needs the hero's ink for the fill and a faint ink for the track.
+        <div className="[--brand:var(--on-hero)] [--surface-sunken:color-mix(in_srgb,var(--on-hero)_25%,transparent)]">
+          <ProgressBar value={done} max={total} tone="brand" label={t("today.hero.label")} valueText={t("today.hero.progress", { count: total, done, total })} />
+        </div>
       )}
+      {plan && <span className="text-text-muted">{t("today.hero.plan", { time: formatAllocationTime(plan.allocationTime, locale) })}</span>}
     </Card>,
   );
 }

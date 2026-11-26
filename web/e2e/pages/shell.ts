@@ -11,7 +11,7 @@ export const shell = {
   nav: (page: Page) => page.getByRole("navigation", { name: "Main" }),
   /** The logo, the one main heading of a signed-out screen. */
   logo: (page: Page) => page.getByRole("heading", { level: 1, name: "homeowner", exact: true }),
-  /** Today's tools in its page header: the Energy indicator, the Streak and the microphone. Only Today has them. */
+  /** Today's tools in its page header: the Streak and the microphone (the Energy is on the hero card). Only Today has them. */
   todayTools: (page: Page) => page.getByTestId("today-tools"),
   /** A tab's page header title: its one `h1`, where focus lands when the tab opens. */
   title: (page: Page, name: string | RegExp) => page.getByRole("heading", { level: 1, name }),
