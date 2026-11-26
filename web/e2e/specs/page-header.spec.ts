@@ -10,7 +10,7 @@ import { shell, TABS } from "../pages/shell";
 // voice microphone, which no other tab has (the Energy is on the hero card below it), and at 320px in pt-BR neither
 // leaves the screen. In pt-BR.
 
-const TITLES: Record<(typeof TABS)[number], string> = { Today: "Suas tarefas", Chores: "Afazeres", Home: "Seu lar", Me: "Sobre você" };
+const TITLES: Record<(typeof TABS)[number], string> = { Today: "Hoje", Chores: "Afazeres", Home: "Seu lar", Me: "Sobre você" };
 const LABELS: Record<(typeof TABS)[number], string> = { Today: "Hoje", Chores: "Afazeres", Home: "Lar", Me: "Eu" };
 
 test.use({ locale: "pt-BR", fakeState: signedInResident() });

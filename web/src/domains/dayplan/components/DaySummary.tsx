@@ -3,7 +3,7 @@ import type { DayPlan } from "../api/api";
 import { EXPLANATION_SOURCES } from "../logic/explanationSource";
 
 /**
- * Why the Day Plan looks this way, as one muted line right under "Your Tasks": the headline, which wraps and is
+ * Why the Day Plan looks this way, as one muted line right under the hero card: the headline, which wraps and is
  * never cut. Who wrote it (the assistant or the standard template) is a small icon for sighted users and the same
  * words as visually hidden text for screen readers, so it is never colour- or icon-only. The headline is server data
  * in both languages, picked by Locale and never through the catalog. Nothing renders without an explanation.

@@ -22,7 +22,7 @@ const LOCALES = [
     locale: "pt-BR",
     incoming: "Trocas para você",
     outgoing: "Suas ofertas de troca",
-    mine: "Suas tarefas",
+    mine: "Hoje",
     accept: "Aceitar troca",
     decline: "Recusar troca",
     cancel: "Cancelar troca",

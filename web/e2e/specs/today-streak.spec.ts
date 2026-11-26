@@ -33,7 +33,7 @@ const LOCALES = [
   },
 ] as const;
 
-// Today's title ("Your Tasks"): the tab's h1.
+// Today's title ("Today"): the tab's h1.
 const heading = (page: Page) => page.getByRole("heading", { level: 1 }).first();
 const regainFocus = (page: Page) => page.evaluate(() => document.dispatchEvent(new Event("visibilitychange", { bubbles: true })));
 

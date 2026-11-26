@@ -72,7 +72,8 @@ for (const l of LOCALES) {
 
     const dialog = (page: Page) => page.getByRole("dialog", { name: l.wordmark });
     const hero = (page: Page) => page.getByRole("region", { name: l.label });
-    const choice = (page: Page, name: string) => hero(page).getByRole("radio", { name, exact: true });
+    // A choice is named by its level then its hint, so match the level at the start: "Normal" must not find "Energizado".
+    const choice = (page: Page, name: string) => hero(page).getByRole("radio", { name: new RegExp(`^${name} `) });
     const chip = (page: Page, name: string = l.chip) => hero(page).getByRole("button", { name, exact: true });
 
     /** Today after the dialog it opens by itself has been closed, so the bare hero card asks the question. */
@@ -108,7 +109,7 @@ for (const l of LOCALES) {
       await openToday(page, baseURL!);
       await choice(page, l.normal).click({ force: true });
       await expect(dialog(page)).toBeVisible();
-      await expect(dialog(page).getByRole("radio", { name: l.normal })).toBeChecked();
+      await expect(dialog(page).getByRole("radio", { name: new RegExp(`^${l.normal}`) })).toBeChecked();
       // The Restrictions step is still asked, and nothing was sent.
       await expect(dialog(page).getByText(l.noRestrictions, { exact: true })).toBeVisible();
       expect(fakeApi.requests.filter((r) => r.method === "PUT")).toHaveLength(0);

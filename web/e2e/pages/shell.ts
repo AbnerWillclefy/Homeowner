@@ -30,7 +30,7 @@ export const shell = {
 
   /** The signed-in app is open on Today: its heading, and the Main bar with all four tabs. */
   async expectOnToday(page: Page): Promise<void> {
-    await expect(page.getByRole("heading", { name: "Your Tasks", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Today", level: 1 })).toBeVisible();
     await expect(shell.nav(page)).toBeVisible();
     for (const name of TABS) await expect(shell.tab(page, name)).toBeVisible();
     await expect(shell.tab(page, "Today")).toHaveAttribute("aria-current", "page");

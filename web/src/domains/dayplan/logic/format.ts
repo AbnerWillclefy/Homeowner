@@ -21,3 +21,12 @@ export function dueWhen(windowEnd: string, today: string): "past" | "today" | "l
   if (windowEnd === today) return "today";
   return windowEnd < today ? "past" : "later";
 }
+
+/** "YYYY-MM-DD" as the title line of a day, for example "Terça-feira, 25 de novembro". It is a calendar date, so no zone shifts it. */
+export function formatDayTitle(day: string, locale: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (!match) return day;
+  const at = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  const text = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(at);
+  return text.charAt(0).toLocaleUpperCase(locale) + text.slice(1);
+}

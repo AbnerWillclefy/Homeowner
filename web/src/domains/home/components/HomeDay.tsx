@@ -10,19 +10,20 @@ import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLo
 import { ReservedSkeleton } from "../../../shared/ui/ReservedSkeleton";
 import { useTodayLoaded } from "../hooks/useTodayLoaded";
 import { DayPlanSkeleton, HeroSkeleton } from "../../dayplan/components/DayPlanSkeleton";
+import { formatDayTitle } from "../../dayplan/logic/format";
 
 // A stable id: it names the plan section, and the e2e specs look for focus on it.
 const HEADING_ID = "today-heading";
 
 /**
- * Today: "Your Tasks" with the Streak and mic as tools, the hero card (Energy, "N de M feitas", or the Energy question before the Check-in), the day's one-line summary, then the Task cards. The header is always
+ * Today: "Today" over the plan's date, with the Streak and mic as tools, the hero card (Energy, "N de M feitas", or the Energy question before the Check-in), the day's one-line summary, then the Task cards. The header is always
  * there; the summary and the cards arrive in one swap, after the two reads have answered (see `todayLoaded`); before that they are a skeleton. The Check-in is
  * read here only because the empty list's reason comes from its Energy note: the Check-in itself is the hero card's and the Shell's dialog. Whatever changes the plan (an action, a saved Check-in, the start choice,
  * a join) writes or invalidates the query cache, so nothing here tracks a version or polls. The page header
  * is the tab's first heading, so focus lands on it when the tab opens, and it names the plan section.
  */
 export function HomeDay() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   // The Shell owns the Check-in (and its dialog) and the Energy note; Today only reads them.
   const { checkIn, note } = useShell();
   const day = useDayPlan();
@@ -40,13 +41,13 @@ export function HomeDay() {
 
   // The header is there from the first frame, so the Streak and mic are in their slots while the reads are
   // out, and nothing in it moves when they answer.
-  const mine = state.kind === "ready" ? state.plan.mine.length : 0;
+  // The plan's date is today in the Home's zone, never the device's.
   const header = (
     <TabHeader
       id={HEADING_ID}
       headingRef={heading}
-      title={t("dayplan.mine.heading")}
-      subtitle={mine > 0 ? t("dayplan.mine.count", { count: mine }) : undefined}
+      title={t("nav.today")}
+      subtitle={state.kind === "ready" ? formatDayTitle(state.plan.date, locale) : undefined}
       tools={<TodayTools />}
     />
   );

@@ -14,7 +14,7 @@ export function MicButton() {
   const voice = useVoice();
   return (
     <>
-      <Button variant="ghost" icon aria-label={t("voice.mic")} onClick={voice.open}>
+      <Button variant="secondary" icon aria-label={t("voice.mic")} onClick={voice.open}>
         <Mic aria-hidden="true" size={20} />
       </Button>
       {voice.isOpen && (

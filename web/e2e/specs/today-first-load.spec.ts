@@ -18,7 +18,7 @@ import { launchApp } from "../pages/launch";
 const LOCALES = [
   {
     locale: "pt-BR",
-    mine: "Suas tarefas",
+    mine: "Hoje",
     headline: "Um dia leve para você",
     streak: /^Sequência: /,
     hero: "Seu dia",
