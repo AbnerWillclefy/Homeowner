@@ -147,7 +147,7 @@ CI runs `npm ci`, `npm run typecheck` and `npm run build` on every pull request.
 ### README screenshots
 
 The screenshots in `docs/screenshots/` come from the built app running against the
-end-to-end fakes (sample data, a 390x844 phone, both locales). After a UI change,
+end-to-end fakes (sample data, a 390x844 phone in the default dark theme, both locales). After a UI change,
 capture them again:
 
 ```sh
