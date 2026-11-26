@@ -9,11 +9,19 @@ import { EffortDots, Fact, FactIcon, FactList } from "../../chores/components/Fa
 import { choreCategory } from "../../chores/logic/choreCategory";
 import { categoryLabel, demandLabel, importanceLabel, labelText } from "../../profile/logic/labels";
 import { ResidentLabel } from "../../residents/components/ResidentLabel";
-import { useI18n } from "../../../shared/i18n";
+import { useI18n, type MessageKey } from "../../../shared/i18n";
 import type { Explanation, PlanTask } from "../api/api";
 import type { TaskRole } from "../logic/actions";
 import { EXPLANATION_SOURCES } from "../logic/explanationSource";
 import { taskEffortText } from "../logic/taskEffort";
+
+// What the Task's state says in the subtitle: yours Proposed or Committed, another Resident's, or still in the pool.
+const STATE_KEYS = {
+  mine: "dayplan.task.sheet.state.proposed",
+  committed: "dayplan.task.sheet.state.committed",
+  other: "dayplan.task.sheet.state.other",
+  pool: "dayplan.task.sheet.state.pool",
+} as const satisfies Record<string, MessageKey>;
 
 /**
  * The whole story of one Task, in a Sheet: why it is here (the full reason, and for your own Tasks the day's
@@ -51,7 +59,7 @@ export function TaskSheet({
       open
       onOpenChange={(open) => !open && onClose()}
       title={task.choreName}
-      subtitle={labelText(t, categoryLabel(category.id))}
+      subtitle={`${labelText(t, categoryLabel(category.id))} · ${t(STATE_KEYS[role === "mine" && task.committed ? "committed" : role])}`}
       closeLabel={t("dayplan.task.sheet.close")}
     >
       <div className="flex flex-col gap-6 pb-4 [overflow-wrap:anywhere]">

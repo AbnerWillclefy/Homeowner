@@ -352,6 +352,7 @@ export const enUS = {
   "dayplan.mine.empty.noBaseline":
     "No Baseline for today, so no Tasks for you.",
   "dayplan.mine.empty.noBaseline.link": "Set your Baseline",
+  "dayplan.mine.heading": "Your Tasks",
   "dayplan.others.heading": "Other Residents' Tasks",
   "dayplan.others.someone": "A housemate",
   "dayplan.summary.source.llm": "Written by the assistant",
@@ -413,6 +414,10 @@ export const enUS = {
   "dayplan.task.committed": "Committed",
   "dayplan.task.menu": "More actions, {task}",
   "dayplan.task.sheet.close": "Close",
+  "dayplan.task.sheet.state.proposed": "proposed for you",
+  "dayplan.task.sheet.state.committed": "taken by you",
+  "dayplan.task.sheet.state.other": "another Resident's",
+  "dayplan.task.sheet.state.pool": "still to do",
   "dayplan.task.sheet.why": "Why today",
   "dayplan.task.sheet.who": "Who",
   "dayplan.task.sheet.holder.you": "You",
