@@ -88,9 +88,9 @@ export function measureHeights() {
   const rules = [];
   const collect = (list) => {
     for (const rule of list) {
-      if (rule.cssRules) {
-        if (!rule.conditionText || matchMedia(rule.conditionText).matches) collect(rule.cssRules);
-      } else if (rule.selectorText && rule.style) rules.push(rule);
+      // Style rules also have a (nesting) cssRules in Chromium, so test for them first.
+      if (rule.selectorText && rule.style) rules.push(rule);
+      else if (rule.cssRules && (!rule.conditionText || matchMedia(rule.conditionText).matches)) collect(rule.cssRules);
     }
   };
   for (const sheet of document.styleSheets) {
