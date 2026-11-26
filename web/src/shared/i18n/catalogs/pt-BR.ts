@@ -249,7 +249,7 @@ export const ptBR: Messages = {
   "chores.empty.subtitle": "Nenhum afazer ainda",
   "chores.empty.title": "O que precisa ser feito no seu lar?",
   "chores.empty.message":
-    "Cada afazer vira tarefas no plano do dia, divididas pela energia de cada morador. Adicione o primeiro ou comece pelo Catálogo, no botão de mais.",
+    "Cada afazer vira tarefas no plano do dia, divididas pela energia de cada morador. Comece pelo Catálogo ou crie o primeiro.",
   "chores.noResults.title": "Nenhum afazer encontrado",
   "chores.noResults.message": "Tente outro nome ou outra categoria.",
   "chores.noResults.clear": "Limpar filtros",

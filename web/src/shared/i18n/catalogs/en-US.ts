@@ -243,7 +243,7 @@ export const enUS = {
   "chores.empty.subtitle": "No Chores yet",
   "chores.empty.title": "What needs doing in your Home?",
   "chores.empty.message":
-    "Each Chore becomes Tasks in the day's plan, shared by each Resident's energy. Add your first one, or start from the Catalog with the plus button.",
+    "Each Chore becomes Tasks in the day's plan, shared by each Resident's energy. Start from the Catalog or create your first one.",
   "chores.noResults.title": "No Chores found",
   "chores.noResults.message": "Try another name or another Category.",
   "chores.noResults.clear": "Clear filters",
