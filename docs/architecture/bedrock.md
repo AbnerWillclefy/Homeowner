@@ -56,7 +56,7 @@ flowchart LR
     end
     SW{{"data-theme on html,<br/>set by the app"}}
     UTIL["Tailwind utilities<br/>bg-surface, text-text, page-title..."]
-    COMP["Components, src/components and src/finance"]
+    COMP["Components, src/components, src/finance and src/home"]
     SHOW["Showcase, bedrock/showcase"]
     APP["Revenue and web (admin planned)"]
     SPEC -->|"copied by hand,<br/>checked by tokens.test.ts"| RAW
