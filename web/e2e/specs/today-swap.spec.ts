@@ -22,7 +22,7 @@ const LOCALES = [
     locale: "pt-BR",
     incoming: "Trocas para você",
     outgoing: "Suas ofertas de troca",
-    mine: "Hoje",
+    mine: "Suas tarefas",
     accept: "Aceitar troca",
     decline: "Recusar troca",
     cancel: "Cancelar troca",
@@ -53,8 +53,9 @@ for (const l of LOCALES) {
     /** The block under a group heading: the heading's parent. */
     const group = (page: import("@playwright/test").Page, name: string) =>
       page.getByRole("heading", { level: 3, name }).locator("..");
-    /** Your own Task cards: the list whose parent holds no group heading (the others have an h3 or sit under a Resident). */
-    const mineCards = (page: import("@playwright/test").Page) => page.locator("div:not(:has(> h3)) > ul");
+    /** Your own Task cards: the list in the "Your Tasks" block. Its heading sits in a row with "Aceitar todas" only while 2+ are Proposed. */
+    const mineCards = (page: import("@playwright/test").Page) =>
+      page.locator("div:has(> h3, > div > h3)").filter({ has: page.getByRole("heading", { level: 3, name: l.mine }) }).locator("> ul");
     const noAlertText =(page: import("@playwright/test").Page) =>
       expect(page.getByRole("alert").filter({ hasText: /\S/ })).toHaveCount(0);
 
