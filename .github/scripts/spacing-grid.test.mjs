@@ -16,12 +16,13 @@ test("offGrid passes even steps, step 1, 8-multiple px and non-steps", () => {
   for (const c of good) assert.deepEqual(offGrid(cls(c)), [], c);
 });
 
-const patch = ["@@ -1,3 +1,4 @@", " keep", '-  className="gap-3"', '+  className="gap-5"', " context", "\\ No newline at end of file", "@@ -20,2 +21,3 @@", " ctx", "+added", " end"].join("\n");
+const patch = ["@@ -1,3 +1,4 @@", " keep", '-  className="gap-3"', '+  className="gap-5"', " context", "\\ No newline at end of file", "@@ -20,2 +21,3 @@", " ctx", "+++i;", "+added", " end"].join("\n");
 
 test("addedLines numbers lines in the new file and skips removed and context lines", () => {
   assert.deepEqual(addedLines(patch), [
     { line: 2, text: '  className="gap-5"' },
-    { line: 22, text: "added" },
+    { line: 22, text: "++i;" },
+    { line: 23, text: "added" },
   ]);
 });
 

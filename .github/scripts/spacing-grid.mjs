@@ -10,7 +10,7 @@ export function addedLines(patch) {
   for (const text of patch.split("\n")) {
     const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)/.exec(text);
     if (hunk) n = Number(hunk[1]);
-    else if (text.startsWith("+") && !text.startsWith("+++")) added.push({ line: n++, text: text.slice(1) });
+    else if (text.startsWith("+")) added.push({ line: n++, text: text.slice(1) });
     else if (text.startsWith(" ")) n++;
   }
   return added;
