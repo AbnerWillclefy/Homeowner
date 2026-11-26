@@ -143,7 +143,6 @@ export const enUS = {
     "You are not signed in any more, so your change was undone. Sign in again.",
   "me.header.addLink": "Add your name and photo",
   "me.completions.heading": "My Completions",
-  "me.settings.heading": "Your settings",
   "me.completions.empty": "Nothing completed in the last 30 days.",
   "me.completions.error": "Could not load your Completions. Try again in a moment.",
   "completion.changeTime": "Change time",
@@ -201,6 +200,13 @@ export const enUS = {
   "profile.preference.dislike": "Dislike",
   "profile.restrictions.heading": "Restrictions",
   "profile.restrictions.hint": "Work you cannot do. You are never given it.",
+  "profile.restriction.added": "Restriction added. Responsibilities it removed do not come back.",
+  "me.group.plan": "How the plan knows you",
+  "me.group.app": "App",
+  "me.sheet.close": "Close",
+  "me.account.title": "Account",
+  "me.account.caption": "Email and sign out",
+  "me.restrictions.none": "None",
   "category.kitchen": "Kitchen",
   "category.bathroom": "Bathroom",
   "category.bedroom": "Bedroom",
@@ -627,7 +633,6 @@ export const enUS = {
   "forgot.failure.expiredCode": "That code has expired. Choose Start again to get a new one.",
 
   // Signed in
-  "signedIn.heading": "You are signed in",
   "signedIn.as": "Signed in as {email}.",
   "signedIn.emailFallback": "your email",
   "signedIn.offline":

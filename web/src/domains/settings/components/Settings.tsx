@@ -1,4 +1,8 @@
-import { Settings2 } from "lucide-react";
+import { SegmentedControl } from "@homeowner/bedrock";
+import { Languages, Palette, Settings2 } from "lucide-react";
+import { IconTile } from "../../../shared/ui/IconTile";
+import { SheetRow } from "../../../shared/ui/SheetRow";
+import { useUndoable } from "../../../shared/undo/useUndoable";
 import { SectionCard } from "../../../shared/ui/SectionCard";
 import { isLocale, LANGUAGE_NAME, LOCALES, useI18n, type MessageKey } from "../../../shared/i18n";
 import { THEME_CHOICES, isThemeChoice, useTheme, type ThemeChoice } from "../../../shared/theme";
@@ -113,5 +117,80 @@ export function SettingsCard({ headingLevel }: { headingLevel?: 3 | 4 }) {
         </div>
       </div>
     </SectionCard>
+  );
+}
+
+const LOCAL_OK = () => Promise.resolve({ kind: "ok" });
+const TILE = "bg-surface-sunken text-text-muted";
+
+/**
+ * Appearance as a row of Me that opens a Sheet. The choice applies at once and is local (`homeowner.theme`), and
+ * its toast's Desfazer writes the old choice back; there is no request, so nothing can fail.
+ */
+export function ThemeRow() {
+  const { t } = useI18n();
+  const { choice, setChoice } = useTheme();
+  const { undoableChange } = useUndoable();
+  function pick(next: string) {
+    if (!isThemeChoice(next) || next === choice) return;
+    const before = choice;
+    void undoableChange({
+      key: "setting:theme",
+      titleKey: "profile.saved",
+      failedKey: "profile.saveFailed",
+      apply: () => setChoice(next),
+      revert: () => setChoice(before),
+      send: LOCAL_OK,
+      sendRevert: LOCAL_OK,
+    });
+  }
+  return (
+    <SheetRow
+      icon={<IconTile icon={Palette} className={TILE} />}
+      title={t("settings.appearance.label")}
+      caption={t(CHOICE_KEY[choice])}
+    >
+      <SegmentedControl
+        block
+        label={t("settings.appearance.label")}
+        options={THEME_CHOICES.map((value) => ({ value, label: t(CHOICE_KEY[value]) }))}
+        value={choice}
+        onValueChange={pick}
+      />
+    </SheetRow>
+  );
+}
+
+/** Language as a row of Me that opens a Sheet; local like `ThemeRow`, and Desfazer writes the old language back. */
+export function LanguageRow() {
+  const { t, locale, setLocale } = useI18n();
+  const { undoableChange } = useUndoable();
+  function pick(next: string) {
+    if (!isLocale(next) || next === locale) return;
+    const before = locale;
+    void undoableChange({
+      key: "setting:language",
+      titleKey: "profile.saved",
+      failedKey: "profile.saveFailed",
+      apply: () => setLocale(next),
+      revert: () => setLocale(before),
+      send: LOCAL_OK,
+      sendRevert: LOCAL_OK,
+    });
+  }
+  return (
+    <SheetRow
+      icon={<IconTile icon={Languages} className={TILE} />}
+      title={t("settings.language.label")}
+      caption={LANGUAGE_NAME[locale]}
+    >
+      <SegmentedControl
+        block
+        label={t("settings.language.label")}
+        options={LOCALES.map((tag) => ({ value: tag, label: LANGUAGE_NAME[tag] }))}
+        value={locale}
+        onValueChange={pick}
+      />
+    </SheetRow>
   );
 }
