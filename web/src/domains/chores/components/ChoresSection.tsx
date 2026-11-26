@@ -142,7 +142,7 @@ export function ChoresSection() {
 
       {state.kind === "failed" && (
         <>
-          <p role="alert" className="text-danger">
+          <p role="alert" className="my-0 text-danger">
             {t(LOAD_FAILURE_KEY[state.reason])}
           </p>
           {state.reason !== "not-signed-in" && (
