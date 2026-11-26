@@ -45,8 +45,12 @@ describe("CollapsibleCard", () => {
     expect(html.indexOf("</h3>")).toBeLessThan(html.indexOf('id="c-icon"'));
   });
 
-  it("lists the hint id first, then the icon id", () => {
-    expect(render({ hint: "Hint", iconLabel: "Label" })).toContain('aria-describedby="c-hint c-icon"');
+  it("names the button by its content, title and hint, and describes it by the icon label", () => {
+    const html = render({ hint: "Hint", iconLabel: "Label" });
+    expect(html).not.toContain("c-title");
+    expect(html).toContain("aria-labelledby=\"c\"");
+    expect(html.match(/aria-labelledby/g)).toHaveLength(1);
+    expect(html).toContain('aria-describedby="c-icon"');
   });
 
   it("renders an h4 with headingLevel 4", () => {

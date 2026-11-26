@@ -12,7 +12,7 @@ import { seedSession } from "../mocks/session";
 import { RESIDENT_EMAIL } from "../mocks/sampleHome";
 import { pairsHome } from "./data";
 import { OPENERS } from "./openers";
-import { changedArtboards, OVERFLOW_EXEMPT, SCREENS } from "./screens";
+import { AXE_EXEMPT, changedArtboards, OVERFLOW_EXEMPT, SCREENS } from "./screens";
 
 // The design pairs: each selected artboard's screen in the app (pt-BR, dark, 390px, against the e2e fakes) beside the
 // artboard itself. Run by the ui-screenshots check (.github/scripts/web-screenshots.mjs reads what this writes), or by
@@ -87,6 +87,10 @@ for (const name of names) {
       // A Sheet or Dialog is fixed to the viewport, so it is shot at phone height, as its artboard is; a page is shot whole.
       if (!entry.state) await page.setViewportSize({ ...VIEWPORT, height: await page.evaluate(() => document.documentElement.scrollHeight) });
       await page.screenshot({ path: join(OUT, `${base}-app.png`) });
+      // After the opener, so an open Sheet or Dialog is scanned; after the shot, so the picture is unchanged.
+      await page.addScriptTag({ path: fileURLToPath(import.meta.resolve("axe-core/axe.min.js")) });
+      const axeResults = await page.evaluate(() => (window as unknown as { axe: { run(c: Document, o: object): Promise<{ violations: { id: string; impact: string | null; nodes: { target: unknown[] }[] }[] }> } }).axe.run(document, { resultTypes: ["violations"] }));
+      const axe = axeResults.violations.map((v) => ({ id: v.id, impact: v.impact, targets: v.nodes.map((n) => n.target.flat().join(" ")) }));
       held?.release();
 
       const designPage = await context.newPage();
@@ -96,7 +100,7 @@ for (const name of names) {
       // The raw boxes land on the screenshots branch with the PNGs, for the reviewer (.github/scripts/design-pairs.sh).
       writeFileSync(join(OUT, `${base}-measure.json`), JSON.stringify({ app: appBoxes, design: designBoxes }));
 
-      const row = { artboard: name, route: entry.path, app: `${base}-app.png`, design: `${base}-design.png`, measure: compareBoxes(appBoxes, designBoxes), overflow: message, exempt: message !== null && OVERFLOW_EXEMPT.has(name) };
+      const row = { artboard: name, route: entry.path, app: `${base}-app.png`, design: `${base}-design.png`, measure: compareBoxes(appBoxes, designBoxes), overflow: message, exempt: message !== null && OVERFLOW_EXEMPT.has(name), axe, axeExempt: AXE_EXEMPT.has(name) };
       writeFileSync(join(RESULTS, `${kebab(name)}.json`), JSON.stringify(row));
     });
   });
