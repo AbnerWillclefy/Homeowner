@@ -45,7 +45,7 @@ export function MoneyInput({
     <Field label={label} hint={hint} error={error}>
       {(control) => (
         <div className="relative">
-          <span aria-hidden className="value-md pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-text-muted">
+          <span aria-hidden className="value-md pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-text-muted">
             {symbol}
           </span>
           <input
