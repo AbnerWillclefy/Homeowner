@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Downloads the screenshot pairs the ui-screenshots check took for a pull request's head commit into
+# Downloads the screenshot pairs (PNGs and the -measure.json of each pair's element boxes) the ui-screenshots check took for a pull request's head commit into
 # ./.design-pairs/, for the reviewer to read (REVIEW.md, Interface). Exits 0 with no files when there are
 # none, when the check never finishes, or when it failed.
 # Usage: design-pairs.sh <pr-number>   (needs GH_TOKEN and GITHUB_REPOSITORY; run from the workspace root)
@@ -31,7 +31,7 @@ if [[ "$msg" != *"$sha"* ]]; then echo "screenshots are not from $sha; no pairs"
 
 names=$(gh api -X GET "$api/contents" -f "ref=screenshots/$ref" --jq '.[].name')
 # Names come from a branch: this pattern is the trust boundary and blocks path traversal
-names=$(grep -E '^auto-[a-z0-9-]+-(app|design)\.png$' <<<"$names" || true)
+names=$(grep -E '^auto-[a-z0-9-]+-((app|design)\.png|measure\.json)$' <<<"$names" || true)
 [[ -n "$names" ]] || { echo "no pairs on the screenshots branch"; exit 0; }
 
 mkdir -p .design-pairs

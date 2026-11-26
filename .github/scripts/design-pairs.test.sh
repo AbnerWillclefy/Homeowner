@@ -25,7 +25,7 @@ STUB
 chmod +x "$tmp/bin/gh"
 export PATH="$tmp/bin:$PATH" GITHUB_REPOSITORY=o/r DESIGN_PAIRS_INTERVAL=1 DESIGN_PAIRS_DEADLINE=2
 
-GOOD=$'auto-web-check-in-mobile-app.png\nauto-web-check-in-mobile-design.png\nauto-revenue-goals-mobile-app.png\nauto-revenue-goals-mobile-design.png\nauto-revenue-goals-mobile.png\nREADME.md\nauto-../../x-app.png'
+GOOD=$'auto-web-check-in-mobile-app.png\nauto-web-check-in-mobile-design.png\nauto-revenue-goals-mobile-app.png\nauto-revenue-goals-mobile-design.png\nauto-revenue-goals-mobile-measure.json\nauto-revenue-goals-mobile.png\nREADME.md\nauto-../../x-app.png\nauto-../x-measure.json\nauto-x-measure.json.exe'
 # run <name> <check> <branch> <message sha> <expected files>
 run() {
   local name=$1 want=$5 got
@@ -46,7 +46,7 @@ runs() {
   ((${#out[@]})) && printf '%s\n' "${out[@]}" | jq -s '{check_runs:.}' || echo '{"check_runs":[]}'
 }
 done_ok=$(runs "completed success")
-run "pairs land, nothing else" "$done_ok" ok abc123 "auto-revenue-goals-mobile-app.png auto-revenue-goals-mobile-design.png auto-web-check-in-mobile-app.png auto-web-check-in-mobile-design.png "
+run "pairs land, nothing else" "$done_ok" ok abc123 "auto-revenue-goals-mobile-app.png auto-revenue-goals-mobile-design.png auto-revenue-goals-mobile-measure.json auto-web-check-in-mobile-app.png auto-web-check-in-mobile-design.png "
 [[ "$(cat "$tmp/w/.design-pairs/auto-revenue-goals-mobile-app.png")" == png:auto-revenue-goals-mobile-app.png ]] \
   || { echo "FAIL: stub bytes not written"; exit 1; }
 run "check never appears" "$(runs)" ok abc123 ""
@@ -54,5 +54,5 @@ run "check failed" "$(runs "completed failure")" ok abc123 ""
 run "no screenshots branch" "$done_ok" missing abc123 ""
 run "pairs from another commit" "$done_ok" ok def456 ""
 # Listed out of order on purpose: only sort_by(.started_at) makes the newer failure win
-run "newest check run decides" "$(runs "completed failure" "completed success" | jq -c '.check_runs |= reverse')" ok abc123 "auto-revenue-goals-mobile-app.png auto-revenue-goals-mobile-design.png auto-web-check-in-mobile-app.png auto-web-check-in-mobile-design.png "
+run "newest check run decides" "$(runs "completed failure" "completed success" | jq -c '.check_runs |= reverse')" ok abc123 "auto-revenue-goals-mobile-app.png auto-revenue-goals-mobile-design.png auto-revenue-goals-mobile-measure.json auto-web-check-in-mobile-app.png auto-web-check-in-mobile-design.png "
 run "newest run failed, older passed" "$(runs "completed success" "completed failure" | jq -c '.check_runs |= reverse')" ok abc123 ""
