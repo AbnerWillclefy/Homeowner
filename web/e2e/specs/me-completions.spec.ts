@@ -105,9 +105,9 @@ for (const l of LOCALES) {
 
       // Inside the settings part, in order: Baseline, Preferences, Restrictions, Appearance, Language, Sign out.
       const order = [
-        settings.getByRole("button", { name: l.baseline, exact: true }),
-        settings.getByRole("button", { name: l.preferences, exact: true }),
-        settings.getByRole("button", { name: l.restrictions, exact: true }),
+        settings.getByRole("button", { name: new RegExp(`^${l.baseline}\\b`) }),
+        settings.getByRole("button", { name: new RegExp(`^${l.preferences}\\b`) }),
+        settings.getByRole("button", { name: new RegExp(`^${l.restrictions}\\b`) }),
         settings.getByLabel(l.appearance, { exact: true }),
         settings.getByLabel(l.language, { exact: true }),
         settings.getByRole("button", { name: l.signOut, exact: true }),

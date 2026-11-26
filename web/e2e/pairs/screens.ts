@@ -112,6 +112,13 @@ const TABS = ["Main", "Chores", "Home", "Me"];
 export const OVERFLOW_EXEMPT = new Set<string>([]);
 export const MAX_EXEMPT = 0;
 
+/**
+ * Artboards with a serious or critical axe violation that is not fixed yet: each entry needs a reason comment and a ticket.
+ * Lowering MAX_AXE_EXEMPT is how the fix proves it: the list only shrinks (screens.test.ts).
+ */
+export const AXE_EXEMPT = new Set<string>([]);
+export const MAX_AXE_EXEMPT = 0;
+
 /** The artboards a pull request's changed files select, sorted: the ones of each domain folder changed, the four tabs for the app frame, and `Main` when only shared code changed. */
 export function changedArtboards(changedFiles: string[]): string[] {
   const files = changedFiles.filter((f) => !/\.test\.tsx?$/.test(f) && !f.startsWith("web/src/sw"));

@@ -1,7 +1,7 @@
 import { existsSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { OPENERS } from "./openers";
-import { changedArtboards, MAX_EXEMPT, OVERFLOW_EXEMPT, SCREENS, STATES } from "./screens";
+import { AXE_EXEMPT, changedArtboards, MAX_AXE_EXEMPT, MAX_EXEMPT, OVERFLOW_EXEMPT, SCREENS, STATES } from "./screens";
 
 const ARTBOARD_DIR = new URL("../../../docs/design/homeowner/", import.meta.url);
 const DOMAINS_DIR = new URL("../../src/domains/", import.meta.url);
@@ -62,5 +62,12 @@ describe("the overflow exemptions", () => {
   it("only shrink: at most the recorded count, and each names an artboard", () => {
     expect(OVERFLOW_EXEMPT.size).toBeLessThanOrEqual(MAX_EXEMPT);
     for (const name of OVERFLOW_EXEMPT) expect(Object.keys(SCREENS)).toContain(name);
+  });
+});
+
+describe("the axe exemptions", () => {
+  it("only shrink: at most the recorded count, and each names an artboard", () => {
+    expect(AXE_EXEMPT.size).toBeLessThanOrEqual(MAX_AXE_EXEMPT);
+    for (const name of AXE_EXEMPT) expect(Object.keys(SCREENS)).toContain(name);
   });
 });

@@ -151,6 +151,9 @@ theme, against the end-to-end fakes, next to its artboard in `docs/design/homeow
 Nobody takes web screenshots by hand any more. `web/e2e/pairs/screens.ts` maps each artboard to a path, a fake-data setup and a state
 (`openers.ts` opens the Sheet or Dialog), or says why it has no screen yet. A screen at 390px that scrolls sideways fails the check
 and names the widest element, unless it is in `OVERFLOW_EXEMPT` (that list only shrinks; `screens.test.ts` bounds it).
+Each pair also runs axe-core on the page after its opener, so open Sheets and Dialogs are scanned: a serious or critical violation fails the
+check and names the screen, the rule and the first element, unless the screen is in `AXE_EXEMPT` (it only shrinks too, and a test fails when an
+exempt screen has none left). Moderate and minor violations do not fail it. Like the overflow check, axe runs only when the screenshots are retaken.
 
 To shoot them yourself (all artboards with `PAIRS_ALL=1`, otherwise the files in `CHANGED`, one per line):
 

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { pairsMarkdown } from "./artboards.mjs";
 import { withScreenshots } from "./bedrock-screenshots.mjs";
-import { rowsFrom } from "./web-screenshots.mjs";
+import { axeFailures, rowsFrom } from "./web-screenshots.mjs";
 
 const prefix = "https://example.test/";
 const row = (artboard, route, extra = {}) => ({ artboard, route, app: `auto-web-${artboard.toLowerCase()}-mobile-app.png`, design: `auto-web-${artboard.toLowerCase()}-mobile-design.png`, overflow: null, exempt: false, ...extra });
@@ -45,4 +45,17 @@ test("a pair with differences over 4px carries them into its row and does not fa
   assert.deepEqual(overflowing, []);
   assert.deepEqual(rows[0].measure, measure);
   assert.match(pairsMarkdown({ "pt-BR": rows })["pt-BR"][0], /1 difference over 4px, 2 smaller/);
+});
+
+const v = (impact) => ({ id: "color-contrast", impact, targets: [".muted", ".other"] });
+
+test("a serious or critical axe violation fails with the screen and the rule; moderate and minor do not", () => {
+  assert.deepEqual(axeFailures([row("Chores", "/chores", { axe: [v("serious")] })]), ["Chores: color-contrast (serious) at .muted"]);
+  assert.deepEqual(axeFailures([row("Chores", "/chores", { axe: [v("critical")] })]), ["Chores: color-contrast (critical) at .muted"]);
+  assert.deepEqual(axeFailures([row("Chores", "/chores", { axe: [v("moderate"), v("minor")] })]), []);
+});
+
+test("an exempt screen passes while it has a serious violation, and is told to leave the list when it has none", () => {
+  assert.deepEqual(axeFailures([row("Chores", "/chores", { axe: [v("serious")], axeExempt: true })]), []);
+  assert.deepEqual(axeFailures([row("Chores", "/chores", { axe: [v("minor")], axeExempt: true })]), ["remove Chores from AXE_EXEMPT"]);
 });

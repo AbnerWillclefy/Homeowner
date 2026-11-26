@@ -46,11 +46,9 @@ export function CollapsibleCard({
 }: Props) {
   const [open, setOpen] = useState(defaultOpen);
   const bodyId = `${id}-body`;
-  const titleId = `${id}-title`;
-  const hintId = `${id}-hint`;
   const iconId = `${id}-icon`;
   const Heading = `h${headingLevel}` as const;
-  const describedBy = [hint ? hintId : null, iconLabel ? iconId : null].filter(Boolean).join(" ") || undefined;
+  const describedBy = iconLabel ? iconId : undefined;
 
   return (
     <Card as="section" aria-labelledby={id} className={`mt-0 flex flex-col gap-3 ${className}`}>
@@ -59,18 +57,17 @@ export function CollapsibleCard({
           type="button"
           aria-expanded={open}
           aria-controls={bodyId}
-          aria-labelledby={titleId}
           aria-describedby={describedBy}
           onClick={() => setOpen((value) => !value)}
           className="flex min-h-11 w-full items-start gap-3 rounded-control bg-transparent p-0 text-start font-[inherit] text-inherit"
         >
           {icon && <IconTile icon={icon} className={TONES[tone]} />}
           <span className="flex min-w-0 flex-1 flex-col gap-1">
-            <span id={titleId} className="[overflow-wrap:anywhere]">
+            <span className="[overflow-wrap:anywhere]">
               {title}
             </span>
             {hint && (
-              <span id={hintId} className="text-sm font-normal text-muted [overflow-wrap:anywhere]">
+              <span className="text-sm font-normal text-muted [overflow-wrap:anywhere]">
                 {hint}
               </span>
             )}
