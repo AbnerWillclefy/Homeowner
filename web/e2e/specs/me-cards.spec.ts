@@ -26,6 +26,7 @@ const LOCALES = [
     normal: "Normal",
     bending: "Abaixar-se",
     heights: "Altura",
+    twoRestrictions: "2 restrições",
     saved: "Salvo.",
     undo: "Desfazer",
     added: "Restrição adicionada. As responsabilidades removidas não voltam.",
@@ -47,6 +48,7 @@ const LOCALES = [
     normal: "Normal",
     bending: "Bending",
     heights: "Heights",
+    twoRestrictions: "2 restrictions",
     saved: "Saved.",
     undo: "Undo",
     added: "Restriction added. Responsibilities it removed do not come back.",
@@ -116,6 +118,16 @@ for (const l of LOCALES) {
       await undoButton(page, l.undo).click();
       await expect(heights).not.toBeChecked();
       expect(requests(fakeApi, "DELETE", "/me/restrictions/heights")).toHaveLength(1);
+    });
+
+    test.describe("with two Restrictions", () => {
+      const state = signedInResident();
+      state.profile.restrictions = ["heights", "bending"];
+      test.use({ fakeState: state });
+
+      test("the Restrictions row shows a count, not a caption the row would cut", async ({ page }) => {
+        await expect(tabs.me.row(page, l.restrictions)).toContainText(l.twoRestrictions);
+      });
     });
 
     test.describe("with a Chore this Resident is Responsible for", () => {

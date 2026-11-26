@@ -213,6 +213,7 @@ export const ptBR: Messages = {
   "me.account.title": "Conta",
   "me.account.caption": "E-mail e sair",
   "me.restrictions.none": "Nenhuma",
+  "me.restrictions.count": { one: "{count} restrição", other: "{count} restrições" },
   "category.kitchen": "Cozinha",
   "category.bathroom": "Banheiro",
   "category.bedroom": "Quarto",

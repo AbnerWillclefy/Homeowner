@@ -55,9 +55,11 @@ export function MeProfile() {
             icon={<IconTile icon={Ban} className={TILE} />}
             title={t("profile.restrictions.heading")}
             caption={
-              state.profile.restrictions.length > 0
-                ? state.profile.restrictions.map((id) => labelText(t, demandLabel(id))).join(", ")
-                : t("me.restrictions.none")
+              state.profile.restrictions.length === 0
+                ? t("me.restrictions.none")
+                : state.profile.restrictions.length === 1
+                  ? labelText(t, demandLabel(state.profile.restrictions[0]))
+                  : t("me.restrictions.count", { count: state.profile.restrictions.length })
             }
             subtitle={t("profile.restrictions.hint")}
           >

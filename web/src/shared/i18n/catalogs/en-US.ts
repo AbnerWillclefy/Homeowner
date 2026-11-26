@@ -207,6 +207,7 @@ export const enUS = {
   "me.account.title": "Account",
   "me.account.caption": "Email and sign out",
   "me.restrictions.none": "None",
+  "me.restrictions.count": { one: "{count} restriction", other: "{count} restrictions" },
   "category.kitchen": "Kitchen",
   "category.bathroom": "Bathroom",
   "category.bedroom": "Bedroom",

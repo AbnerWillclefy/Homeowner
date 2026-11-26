@@ -83,8 +83,8 @@ export function LanguageSetting() {
 }
 
 /**
- * Both settings under one Settings heading, for the onboarding screens. The Me tab and the signed-out
- * screens use `SettingsCard` instead.
+ * Both settings under one Settings heading, for the onboarding screens. The signed-out screens use
+ * `SettingsCard` instead; the Me tab uses `LanguageRow` and `ThemeRow`.
  */
 export function Settings() {
   const { t } = useI18n();
@@ -97,7 +97,7 @@ export function Settings() {
   );
 }
 
-/** Appearance and Language on the Me tab and the signed-out screens: one titled card, a row each, the name on the left as its label. */
+/** Appearance and Language on the signed-out screens: one titled card, a row each, the name on the left as its label. */
 export function SettingsCard({ headingLevel }: { headingLevel?: 3 | 4 }) {
   const { t } = useI18n();
   return (
