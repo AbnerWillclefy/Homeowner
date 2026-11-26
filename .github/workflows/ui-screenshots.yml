@@ -1,10 +1,10 @@
 name: ui-screenshots
 
-# A pull request that changes the UI shows it in both locales: its description
-# has a "### pt-BR" and an "### English" heading, each followed by an image.
-# A Revenue change shows its screens in pt-BR and dark theme under "### Mobile" and "### Desktop".
-# Unless the web app changes, this takes them itself: Bedrock from the showcase, Revenue against
-# .github/scripts/revenue-fake-api.mjs. The implement runner has no browser, so agent pull requests arrived without them.
+# A pull request that changes the UI shows it in its description, under headings this check fills in itself:
+# the web app's screens in pt-BR and dark theme next to their artboards under "### pt-BR" (web/e2e/pairs, against the
+# e2e fakes), Revenue's under "### Mobile" and "### Desktop" (against .github/scripts/revenue-fake-api.mjs), and a
+# Bedrock-only change under "### pt-BR" and "### English" (from the showcase). The implement runner has no browser,
+# so agent pull requests arrived without them.
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
@@ -38,10 +38,12 @@ jobs:
             | grep -vE '\.test\.tsx?$|^web/src/sw|^revenue/src/sw' || true)
           { echo "files<<EOF"; echo "$ui_files"; echo "EOF"; } >> "$GITHUB_OUTPUT"
           [[ -z "$ui_files" ]] && exit 0
-          grep -q '^web/' <<<"$ui_files" && exit 0 # the web app's screens need its e2e fakes; the engineer takes those
-          # Revenue shots also show a Bedrock change they carry.
-          if grep -q '^revenue/' <<<"$ui_files"; then app=revenue headings=(Mobile Desktop); else app=bedrock headings=(pt-BR English); fi
-          echo "app=$app" >> "$GITHUB_OUTPUT"
+          # Each app the change touches is shot; a Bedrock change a web or Revenue pull request carries shows in their shots.
+          apps=() headings=()
+          if grep -q '^revenue/' <<<"$ui_files"; then apps+=(revenue); headings+=(Mobile Desktop); fi
+          if grep -q '^web/' <<<"$ui_files"; then apps+=(web); headings+=(pt-BR); fi
+          if (( ${#apps[@]} == 0 )); then apps=(bedrock); headings=(pt-BR English); fi
+          echo "apps=${apps[*]}" >> "$GITHUB_OUTPUT"
 
           body=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq .body)
           section() { awk -v h="$1" '/^#/ { inside = ($0 ~ "^### *" h " *$"); next } inside' <<<"${body//$'\r'/}"; }
@@ -62,30 +64,18 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Screenshot the changed Bedrock sections or Revenue screens
+      - name: Screenshot the changed Bedrock sections, Revenue screens or web screens
         if: steps.find.outputs.shoot
         env:
-          APP: ${{ steps.find.outputs.app }}
+          APPS: ${{ steps.find.outputs.apps }}
           CHANGED: ${{ steps.find.outputs.files }}
           BASE_URL: http://localhost:4175
           API_URL: http://127.0.0.1:8099
           PLAYWRIGHT_DIR: ${{ runner.temp }}/pw/node_modules
         run: |
           npm ci
-          if [[ "$APP" == revenue ]]; then
-            # Public dummy values: the fake answers every API call, and the stored session never asks Cognito.
-            VITE_API_URL="$API_URL" VITE_COGNITO_REGION=us-east-1 VITE_COGNITO_CLIENT_ID=screenshots \
-              VITE_PASSWORD_POLICY='{"minimum_length":10,"require_lowercase":true,"require_uppercase":true,"require_numbers":true,"require_symbols":false}' \
-              npm run build -w @homeowner/revenue
-          else
-            npm run build:showcase -w @homeowner/bedrock
-          fi
-          (cd "$APP" && npx vite preview --port 4175 --strictPort &)
-
-          # The same Playwright as web-e2e; no --with-deps, see web-e2e.yml.
-          version=$(jq -r '.packages["node_modules/@playwright/test"].version // .packages["web/node_modules/@playwright/test"].version' package-lock.json)
-          npm install --silent --prefix "$RUNNER_TEMP/pw" "playwright@$version"
-          "$PLAYWRIGHT_DIR/.bin/playwright" install chromium
+          case " $APPS " in *" revenue "*) revenue=true ;; *) revenue=false ;; esac
+          case " $APPS " in *" web "*) web=true ;; *) web=false ;; esac
 
           shots="$RUNNER_TEMP/shots"
           if git fetch -q --depth 1 origin "refs/heads/screenshots/$HEAD_REF"; then
@@ -94,15 +84,44 @@ jobs:
             git worktree add -q --orphan -b shots "$shots"
           fi
           rm -f "$shots"/auto-*
-
-          for _ in $(seq 30); do curl -sf "$BASE_URL" >/dev/null && break; sleep 1; done
           prefix="https://raw.githubusercontent.com/$GITHUB_REPOSITORY/screenshots/$HEAD_REF/"
-          BODY=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq .body) \
-            node ".github/scripts/$APP-screenshots.mjs" "$shots" "$prefix" > "$RUNNER_TEMP/body.md"
+          BODY=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq .body)
+
+          if [[ "$revenue" == true || "$APPS" == bedrock ]]; then
+            if $revenue; then
+              # Public dummy values: the fake answers every API call, and the stored session never asks Cognito.
+              VITE_API_URL="$API_URL" VITE_COGNITO_REGION=us-east-1 VITE_COGNITO_CLIENT_ID=screenshots \
+                VITE_PASSWORD_POLICY='{"minimum_length":10,"require_lowercase":true,"require_uppercase":true,"require_numbers":true,"require_symbols":false}' \
+                npm run build -w @homeowner/revenue
+              app=revenue
+            else
+              npm run build:showcase -w @homeowner/bedrock
+              app=bedrock
+            fi
+            (cd "$app" && npx vite preview --port 4175 --strictPort &)
+
+            # The same Playwright as web-e2e; no --with-deps, see web-e2e.yml.
+            version=$(jq -r '.packages["node_modules/@playwright/test"].version // .packages["web/node_modules/@playwright/test"].version' package-lock.json)
+            npm install --silent --prefix "$RUNNER_TEMP/pw" "playwright@$version"
+            "$PLAYWRIGHT_DIR/.bin/playwright" install chromium
+
+            for _ in $(seq 30); do curl -sf "$BASE_URL" >/dev/null && break; sleep 1; done
+            BODY="$BODY" node ".github/scripts/$app-screenshots.mjs" "$shots" "$prefix" > "$RUNNER_TEMP/body.md"
+            BODY=$(cat "$RUNNER_TEMP/body.md")
+          fi
+
+          if $web; then
+            # The capture serves dist-e2e itself (its config's webServer) and answers from the e2e fakes.
+            npm run build:e2e -w web
+            npx -w web playwright install chromium
+            rm -rf web/pairs-results
+            PAIRS_OUT="$shots" PAIRS_RESULTS="$PWD/web/pairs-results" npx -w web playwright test -c playwright.pairs.config.ts
+            BODY="$BODY" PAIRS_RESULTS="$PWD/web/pairs-results" node .github/scripts/web-screenshots.mjs "$prefix" > "$RUNNER_TEMP/body.md"
+          fi
 
           git -C "$shots" add -A
           git -C "$shots" -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-            commit -q --allow-empty -m "chore: $APP screenshots for $HEAD_SHA"
+            commit -q --allow-empty -m "chore: $APPS screenshots for $HEAD_SHA"
           git -C "$shots" push -q origin "HEAD:refs/heads/screenshots/$HEAD_REF"
           # Edits with this token start no new run, so the check below reads the description again.
           gh api -X PATCH "repos/$GITHUB_REPOSITORY/pulls/$PR" -F "body=@$RUNNER_TEMP/body.md" >/dev/null
@@ -113,23 +132,16 @@ jobs:
           UI_FILES: ${{ steps.find.outputs.files }}
         run: |
           body=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq .body)
-          # Shots this check took do not show the web app's screens.
-          if grep -q '^web/' <<<"$UI_FILES"; then
-            body=$(grep -v "/screenshots/$HEAD_REF/auto-" <<<"$body" || true)
-          fi
           # Prints the text under a "### <name>" heading, up to the next heading.
           section() { awk -v h="$1" '/^#/ { inside = ($0 ~ "^### *" h " *$"); next } inside' <<<"${body//$'\r'/}"; }
           has_image() { grep -qE '!\[[^]]*\]\([^)]+\)|<img[^>]+src=' <<<"$1"; }
 
-          # Revenue shows pt-BR in dark mode at both widths, which also shows a Bedrock change it carries;
-          # the web app, and Bedrock on its own, show both locales.
+          # Revenue shows pt-BR in dark mode at both widths and the web app pt-BR in dark mode, each of which also shows a
+          # Bedrock change it carries; Bedrock on its own shows both locales.
           headings=()
-          if grep -q '^revenue/' <<<"$UI_FILES"; then
-            headings+=(Mobile Desktop)
-            grep -q '^web/' <<<"$UI_FILES" && headings+=(pt-BR English)
-          else
-            headings+=(pt-BR English)
-          fi
+          grep -q '^revenue/' <<<"$UI_FILES" && headings+=(Mobile Desktop)
+          grep -q '^web/' <<<"$UI_FILES" && headings+=(pt-BR)
+          (( ${#headings[@]} )) || headings+=(pt-BR English)
           missing=()
           for h in "${headings[@]}"; do has_image "$(section "$h")" || missing+=("$h"); done
           if (( ${#missing[@]} )); then
