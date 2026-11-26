@@ -17,12 +17,18 @@ const { residentKey, residentsKey } = await import("../api/queries");
 const { useResident } = await import("./useResident");
 const { useResidents } = await import("./useResidents");
 
-const settle = () => act(() => new Promise<void>((resolve) => setTimeout(resolve, 5)));
 const ANA = residentDetail("r1", "Ana");
 const BRUNA = residentDetail("r2", "Bruna");
 
+let rendered: Rendered | undefined;
+// A fixed sleep lost the race to a slow CI runner: wait for the read to end, then for React Query's notify tick.
+const settle = () =>
+  act(async () => {
+    await vi.waitFor(() => expect(rendered!.client.isFetching()).toBe(0));
+    await new Promise<void>((resolve) => setTimeout(resolve, 5));
+  });
+
 describe("useResident over the query cache", () => {
-  let rendered: Rendered | undefined;
   let hook!: ReturnType<typeof useResident>;
   let setId!: (id: string | undefined) => void;
   const Probe = ({ first }: { first: string | undefined }) => {
@@ -127,7 +133,6 @@ describe("useResident over the query cache", () => {
 });
 
 describe("useResidents over the query cache", () => {
-  let rendered: Rendered | undefined;
   let hook!: ReturnType<typeof useResidents>;
   const LIST = [resident("r1", "Ana")];
   const mount = (hasHome: boolean, seed: boolean) => {

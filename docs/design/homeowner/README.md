@@ -2,7 +2,7 @@
 
 The approved design for the PWA on Bedrock (epic #882), copied from the design canvas so the agents building it can read it. Each `.dc.html` file is one artboard: its markup is the layout to build, its `<script>` holds the sample data and interactions. They load the canvas's `support.js` runtime, which is not copied, so they do not open in a plain browser; read them as source. The `ui-screenshots` check renders them outside the canvas with its stand-in, `.github/scripts/dc-runtime.js` (ADR 0028), together with `home.css`, which is copied here and fails the check if it goes missing. `web/e2e/pairs/screens.ts` maps every artboard to a screen of the app or says why it has none; a test fails when a file here has no entry.
 
-This copy is what screens are built and reviewed against. A design change made in the canvas comes here in a pull request before any ticket builds on it.
+This copy is what screens are built and reviewed against. It is edited only to make it render as its own CSS declares (the `ui-screenshots` check fails an element shorter than its declared px height), and the same fix is made in the canvas. A design change made in the canvas comes here in a pull request before any ticket builds on it.
 
 **Phone only.** There are no desktop artboards: the PWA is declared phone only (`PRODUCT.md`, Bedrock's Layout and responsiveness). There are no English artboards either: the English UI follows the pt-BR wording through the catalogs. Every artboard takes the prop `theme` (`dark` or `light`); `BottomBar` takes `active` instead.
 

@@ -20,6 +20,7 @@ const LOCALES = [
   {
     locale: "pt-BR",
     me: "Eu",
+    completions: "Minhas conclusões",
     home: "Lar",
     change: "Mudar hora",
     label: "Quando você fez?",
@@ -78,6 +79,8 @@ for (const l of LOCALES) {
     async function openMe(page: Page, baseURL: string | undefined) {
       await launchApp(page, baseURL!);
       await nav(page, l.me).click();
+      // Today stays on screen while Me's chunk loads, and its Done card has the same Change time button.
+      await expect(page.getByRole("region", { name: l.completions })).toBeVisible();
     }
     const card = (page: Page, chore: string) => page.getByRole("listitem").filter({ hasText: chore });
     const changeOf = (page: Page, chore: string) => card(page, chore).getByRole("button", { name: l.change });

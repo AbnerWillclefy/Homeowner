@@ -26,7 +26,7 @@
 </sc-if>
 </header>
 <div class="hm-scroll">
-<label class="br-search__box" style="height: 48px; color: var(--text-muted)"><i class="ri ri-search" aria-hidden="true"></i><input style="all: unset; flex: 1; color: var(--text); font: 400 16px/24px var(--font-sans)" placeholder="Buscar afazer" value="{{q}}" onInput="{{search}}" aria-label="Buscar afazer"></label>
+<div class="br-search"><label class="br-search__box" style="height: 48px; color: var(--text-muted)"><i class="ri ri-search" aria-hidden="true"></i><input style="all: unset; flex: 1; color: var(--text); font: 400 16px/24px var(--font-sans)" placeholder="Buscar afazer" value="{{q}}" onInput="{{search}}" aria-label="Buscar afazer"></label></div>
 <div class="hm-chips" role="group" aria-label="Filtrar por categoria">
 <sc-for list="{{chips}}" as="c" hint-placeholder-count="5">
 <button class="hm-chip {{c.plain}}" aria-pressed="{{c.on}}" onClick="{{c.pick}}"><sc-if value="{{c.hasIcon}}" hint-placeholder-val="{{ true }}"><span class="br-chore__icon br-chore__icon--sm" style="background: var(--chore-{{c.id}}-soft); color: var(--chore-{{c.id}})"><i class="ri ri-sm ri-{{c.id}}" aria-hidden="true"></i></span></sc-if>{{c.name}}</button>
