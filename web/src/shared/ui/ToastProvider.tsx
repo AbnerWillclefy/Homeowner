@@ -1,5 +1,5 @@
 import { Toast, ToastProvider as BedrockToastProvider } from "@homeowner/bedrock";
-import { useMemo, useReducer, type ReactNode } from "react";
+import { useMemo, useReducer, useRef, type ReactNode } from "react";
 import { useI18n } from "../i18n";
 import { initialToastQueue, toastQueue, type ToastRequest, type ToastTone } from "./toastQueue";
 import { ToastContext, type Toasts } from "./useToast";
@@ -15,11 +15,25 @@ const TONES = { success: "positive", error: "danger" } as const satisfies Record
 export function ToastProvider({ children }: { children: ReactNode }) {
   const { t } = useI18n();
   const [queue, dispatch] = useReducer(toastQueue, initialToastQueue);
-  const api = useMemo<Toasts>(() => ({ show: (request: ToastRequest) => dispatch({ type: "add", request }) }), []);
+  const nextId = useRef(1);
+  const api = useMemo<Toasts>(
+    () => ({
+      show(request: ToastRequest) {
+        const id = nextId.current++;
+        dispatch({ type: "add", id, request });
+        return id;
+      },
+      dismiss: (id: number) => dispatch({ type: "dismiss", id }),
+    }),
+    [],
+  );
 
   return (
     <ToastContext.Provider value={api}>
-      <BedrockToastProvider label={t("toast.region")}>
+      <BedrockToastProvider
+        label={t("toast.region")}
+        viewportClassName="bottom-[calc(5.5rem+env(safe-area-inset-bottom))]"
+      >
         {children}
         {queue.toasts.map((toast) => (
           <Toast

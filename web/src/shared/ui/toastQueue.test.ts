@@ -9,8 +9,9 @@ import {
 
 const saved: ToastRequest = { messageKey: "app.name", tone: "success" };
 
+let nextId = 1;
 function add(state: ToastQueue, request: ToastRequest) {
-  return toastQueue(state, { type: "add", request });
+  return toastQueue(state, { type: "add", id: nextId++, request });
 }
 
 describe("toastQueue", () => {

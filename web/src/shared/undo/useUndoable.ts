@@ -63,6 +63,8 @@ export function useUndoable() {
           change.revert();
           return fail();
         }
+        // A write held while the send was in flight would lose its toast to this one, so it is sent first.
+        another();
         toast.show({
           messageKey: change.titleKey,
           params: change.titleParams,

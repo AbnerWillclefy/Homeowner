@@ -16,6 +16,8 @@ export function UndoProvider({ children }: { children: ReactNode }) {
   const stateRef = useRef(state);
   const nextId = useRef(1);
   const sends = useRef(new Set<Promise<void>>());
+  // Write id -> its Desfazer toast, which goes away once the write is sent for any reason.
+  const toastOf = useRef(new Map<number, number>());
 
   const dispatch = useCallback(
     function dispatch(event: PendingEvent<HeldWrite>) {
@@ -24,7 +26,7 @@ export function UndoProvider({ children }: { children: ReactNode }) {
       setState(next.state);
       for (const effect of next.effects) run(effect);
     },
-    // `run` only reads `toast` and `dispatch`, both stable, so it is not a dependency.
+    // `run` only reads `toast`, `toastOf` and `dispatch`, both stable, so it is not a dependency.
     [],
   );
 
@@ -35,6 +37,9 @@ export function UndoProvider({ children }: { children: ReactNode }) {
       if (effect.result.kind === "conflict") action.refresh?.();
       return;
     }
+    const toastId = toastOf.current.get(action.id);
+    if (toastId !== undefined) toast.dismiss(toastId);
+    toastOf.current.delete(action.id);
     const promise = action
       .send({ keepalive: effect.keepalive })
       .catch((): SendResult => ({ kind: "failed", messageKey: action.failedKey }))
@@ -50,7 +55,7 @@ export function UndoProvider({ children }: { children: ReactNode }) {
     (write: UndoableWrite) => {
       const id = nextId.current++;
       dispatch({ type: "start", action: { ...write, id } });
-      toast.show({
+      const toastId = toast.show({
         messageKey: write.titleKey,
         params: write.titleParams,
         tone: "success",
@@ -58,6 +63,7 @@ export function UndoProvider({ children }: { children: ReactNode }) {
         action: { labelKey: "undo.action", altTextKey: "undo.altText", onClick: () => dispatch({ type: "undo", id }) },
         onClose: () => dispatch({ type: "close", id }),
       });
+      toastOf.current.set(id, toastId);
     },
     [dispatch, toast],
   );
