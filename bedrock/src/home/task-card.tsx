@@ -29,7 +29,7 @@ type TaskCardProps = {
   caption?: string;
   /** The one-line why. */
   why: string;
-  /** Such as "Assumida": a brand badge. */
+  /** Such as "Assumida": a brand badge at the start of the caption. */
   status?: string;
   /** Dashed, the name struck through. */
   done?: boolean;
@@ -66,6 +66,7 @@ export function TaskCard({ category, categoryLabel, name, effort, caption, why, 
             )}
           </h3>
           <p className="flex items-center gap-2 overflow-hidden whitespace-nowrap caption text-text-muted">
+            {status && <Badge tone="brand" className="shrink-0">{status}</Badge>}
             <span className="truncate">{categoryLabel}</span>
             <Effort {...effort} />
             {caption && <span className="truncate">{caption}</span>}
@@ -77,18 +78,13 @@ export function TaskCard({ category, categoryLabel, name, effort, caption, why, 
         <Sparkles aria-hidden className="mt-0.5 size-4 shrink-0" />
         <span className="line-clamp-1">{why}</span>
       </p>
-      {(status || actions.length > 0) && (
-        <div className="relative z-10 flex flex-col gap-2">
-          {status && <Badge tone="brand" className="self-start">{status}</Badge>}
-          {actions.length > 0 && (
-            <div className={cn("grid gap-2", actions.length > 1 ? "grid-cols-2" : "grid-cols-1")}>
-              {actions.map(({ label, onClick, ariaLabel, ...rest }) => (
-                <Button key={label} size="lg" onClick={onClick} aria-label={ariaLabel} {...rest}>
-                  {label}
-                </Button>
-              ))}
-            </div>
-          )}
+      {actions.length > 0 && (
+        <div className={cn("relative z-10 grid gap-2", actions.length > 1 ? "grid-cols-2" : "grid-cols-1")}>
+          {actions.map(({ label, onClick, ariaLabel, ...rest }) => (
+            <Button key={label} size="lg" onClick={onClick} aria-label={ariaLabel} {...rest}>
+              {label}
+            </Button>
+          ))}
         </div>
       )}
     </article>

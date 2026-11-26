@@ -60,3 +60,14 @@ it("TaskCard gives an action an accessible name that starts with its label, and 
   expect(button.textContent).toBe("Aceitar");
   expect(button.disabled).toBe(true);
 });
+
+it("TaskCard writes its status at the start of the caption row, not above the actions", () => {
+  render(
+    <TaskCard
+      category={kitchen} categoryLabel="Cozinha" name="Lavar a louça" why="Leve." status="Assumida"
+      effort={{ level: 2, name: "Leve", label: "Esforço: leve" }}
+      actions={[{ label: "Concluir", onClick: vi.fn() }]}
+    />,
+  );
+  expect(screen.getByText("Assumida").closest("p")?.textContent).toMatch(/^AssumidaCozinha/);
+});
