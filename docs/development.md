@@ -161,6 +161,18 @@ PAIRS_ALL=1 npx -w web playwright test -c playwright.pairs.config.ts
 
 The PNGs land in `web/pairs-out/` (`auto-web-<artboard>-mobile-app.png` and `-design.png`) and one JSON per artboard in `web/pairs-results/`. Both folders are ignored by git.
 
+### Spacing grid
+
+The `ui-screenshots` check fails a pull request that adds an off-grid spacing class under `web/`, `revenue/` or `bedrock/`
+(`.github/scripts/spacing-grid.mjs`). It reads only the lines the pull request adds, so existing off-grid classes do not block
+unrelated work. On padding, margin, gap, space between, inset and the four sides (negatives included) it fails odd steps other than
+`1` (`gap-3`, `p-5`), fractional steps (`mt-0.5`) and arbitrary px values other than 4 that are not a multiple of 8 (`px-[12px]`). Step `1`
+(4px) passes everywhere, because a static check cannot tell outer spacing from spacing inside a component. A file whose diff GitHub
+leaves out for size fails too, naming the file: split the change.
+
+To fix a failure, use the even step: the `--space-*` token, since `--spacing` is `var(--space-4)` (`bedrock/src/tokens.css`). See the
+8px grid rule in [`docs/design/bedrock/README.md`](design/bedrock/README.md). Run the tests with `node --test .github/scripts/spacing-grid.test.mjs`.
+
 ### README screenshots
 
 The screenshots in `docs/screenshots/` come from the built app running against the

@@ -55,6 +55,16 @@ jobs:
             echo "shoot=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # Not gated on shoot: a run started by an edit skips the shots but still guards the spacing.
+      - name: Check the added spacing classes are on the 8px grid
+        if: steps.find.outputs.files != ''
+        env:
+          UI_FILES: ${{ steps.find.outputs.files }}
+        run: |
+          git init -q && git fetch -q --depth 1 "https://x-access-token:$GH_TOKEN@github.com/$GITHUB_REPOSITORY" "$HEAD_SHA"
+          git checkout -q FETCH_HEAD -- .github/scripts/spacing-grid.mjs
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/pulls/$PR/files" | node .github/scripts/spacing-grid.mjs
+
       - uses: actions/checkout@v4
         if: steps.find.outputs.shoot
       - uses: actions/setup-node@v4
