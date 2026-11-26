@@ -245,7 +245,22 @@ for (const l of LOCALES) {
       await expectStill(page, before);
     });
 
-    test("focus that is still inside the section stays where it is", async ({ page, baseURL }) => {
+    // A card's action button and its menu sit on their own layer (z-10) so the card's stretched opener stays below
+    // them. Scrolled under the bottom bar, they must still be painted below it.
+    for (const button of [l.take("Pool 2"), l.more("Pool 2")]) {
+      test(`the bottom bar covers ${button} when it scrolls under it`, async ({ page, baseURL }) => {
+        await launchApp(page, baseURL!);
+        const target = byName(page, button);
+        await target.evaluate((element) => element.scrollIntoView({ block: "end" }));
+        const onTop = await target.evaluate((element) => {
+          const box = element.getBoundingClientRect();
+          return document.elementFromPoint(box.left + box.width / 2, box.bottom - 2)?.closest("nav")?.tagName ?? null;
+        });
+        expect(onTop).toBe("NAV");
+      });
+    }
+
+    test("focus that is still inside the section stays where it is",async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
       // Pool 1's name button opens its Sheet, so it is not disabled while an action runs.
       const opener = page.getByRole("button", { name: "Pool 1", exact: true });

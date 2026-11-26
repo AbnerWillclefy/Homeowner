@@ -48,7 +48,7 @@ export function TaskCard({ category, categoryLabel, name, effort, caption, why, 
   return (
     <article
       className={cn(
-        "relative flex flex-col gap-4 rounded-lg border p-4",
+        "relative isolate flex flex-col gap-4 rounded-lg border p-4",
         done ? "border-dashed border-border bg-transparent" : "border-border bg-surface motion-safe:transition-colors duration-(--duration-fast) hover:bg-surface-hover",
       )}
     >
