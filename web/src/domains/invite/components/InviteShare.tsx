@@ -1,6 +1,6 @@
 import { Row, Sheet } from "@homeowner/bedrock";
 import { ChevronRight, Share2, UserPlus } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { RowTile } from "../../../shared/ui/RowTile";
 import { useSubmitOnce } from "../../../shared/ui/useSubmitOnce";
 import { useToast } from "../../../shared/ui/useToast";
@@ -25,6 +25,7 @@ const CREATE_FAILURE_KEY = {
 export function InviteShare() {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const openerRef = useRef<HTMLButtonElement>(null);
   const toast = useToast();
 
   const { run: onClick, pending: working } = useSubmitOnce(async () => {
@@ -53,11 +54,12 @@ export function InviteShare() {
         caption={t("invite.row.caption")}
         trailing={<ChevronRight size={20} aria-hidden="true" className="text-muted" />}
       >
-        <button type="button" aria-haspopup="dialog" onClick={() => setOpen(true)} />
+        <button ref={openerRef} type="button" aria-haspopup="dialog" onClick={() => setOpen(true)} />
       </Row>
       <Sheet
         open={open}
         onOpenChange={setOpen}
+        returnFocusRef={openerRef}
         title={t("invite.share.heading")}
         subtitle={t("invite.share.hint")}
         closeLabel={t("home.settings.sheet.close")}

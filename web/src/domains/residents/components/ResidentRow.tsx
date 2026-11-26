@@ -1,5 +1,5 @@
 import { Row } from "@homeowner/bedrock";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Flame } from "lucide-react";
 import { Link } from "react-router";
 import { useI18n } from "../../../shared/i18n";
 import type { Resident } from "../api/api";
@@ -19,17 +19,20 @@ export function ResidentRow({ resident }: { resident: Resident }) {
       className="my-0"
       leading={<Avatar resident={resident} />}
       title={resident.name}
-      caption={`${t("home.residents.streak", { count: resident.streak })} · ${t("home.residents.doneToday", { count: resident.doneToday })}`}
-      trailing={
+      badge={
+        resident.you && (
+          <span className="inline-flex shrink-0 items-center rounded-pill border border-border px-2 text-xs font-bold text-muted">
+            {t("home.residents.you")}
+          </span>
+        )
+      }
+      caption={
         <>
-          {resident.you && (
-            <span className="me-2 inline-flex items-center rounded-pill border border-border px-2 text-xs font-bold text-muted">
-              {t("home.residents.you")}
-            </span>
-          )}
-          <ChevronRight size={20} aria-hidden="true" className="text-muted" />
+          <Flame aria-hidden="true" size={14} className="inline align-text-bottom" /> {t("home.residents.streak", { count: resident.streak })} ·{" "}
+          {t("home.residents.doneToday", { count: resident.doneToday })}
         </>
       }
+      trailing={<ChevronRight size={20} aria-hidden="true" className="text-muted" />}
     >
       <Link to={rowTarget(resident)} />
     </Row>

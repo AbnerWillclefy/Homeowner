@@ -18,8 +18,9 @@ interface Deps {
 
 /**
  * One change to a Home setting, sent at once, with Desfazer writing the old value back. `previous` is the whole Home as
- * it was when the change was made, so Desfazer sends both previous fields, never a merge into whatever is cached by
- * then (that would also undo a change to the other field made in between).
+ * it was when the change was made, so Desfazer sends both previous fields: `PUT /home` replaces the whole resource, so
+ * this restores exactly the state the Toast describes (and also any change to the other field made since; in practice
+ * the next change replaces this Toast).
  */
 export function settingsChange(previous: Home, field: keyof HomeSettings, value: string, { update, show }: Deps): UndoableChange {
   const next: Home = { ...previous, [field]: value };

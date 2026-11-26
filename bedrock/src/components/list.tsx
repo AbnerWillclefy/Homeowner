@@ -11,7 +11,10 @@ type RowProps = Omit<ComponentProps<"li">, "title"> & {
   /** A tile, an Avatar or an icon. A Row with one is 64px tall; without, 56px. */
   leading?: ReactNode;
   title: string;
-  caption?: string;
+  /** Drawn right after the title, which truncates first (a tag such as "You"). */
+  badge?: ReactNode;
+  /** A string, or a node with an icon; it stays on one line. */
+  caption?: ReactNode;
   trailing?: ReactNode;
   /**
    * Makes the single child (an <a>, a router Link or <button type="button">) the row's grid; pass it empty.
@@ -24,7 +27,7 @@ const interactive =
   "w-full cursor-pointer text-left outline-none motion-safe:transition-colors duration-(--duration-fast) ease-standard hover:bg-surface-hover active:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 
 /** One row (`hm-item`) of a List. Only valid inside a `List`: its root is an `<li>`. Title and caption stay on one line. */
-export function Row({ leading, title, caption, trailing, asChild, className, children, ...props }: RowProps) {
+export function Row({ leading, title, badge, caption, trailing, asChild, className, children, ...props }: RowProps) {
   const grid = cn(
     "grid items-center gap-4 px-4 py-2 text-text",
     leading ? "min-h-16 grid-cols-[auto_minmax(0,1fr)_auto]" : "min-h-14 grid-cols-[minmax(0,1fr)_auto]",
@@ -33,7 +36,14 @@ export function Row({ leading, title, caption, trailing, asChild, className, chi
     <>
       {leading && <span className="flex">{leading}</span>}
       <span className="flex min-w-0 flex-col">
-        <span className="body-strong truncate">{title}</span>
+        {badge ? (
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="body-strong truncate">{title}</span>
+            {badge}
+          </span>
+        ) : (
+          <span className="body-strong truncate">{title}</span>
+        )}
         {caption && <span className="caption truncate text-text-muted">{caption}</span>}
       </span>
       {trailing && <span className="flex shrink-0 items-center">{trailing}</span>}

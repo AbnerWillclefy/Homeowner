@@ -1,6 +1,6 @@
 import { Row, Select, Sheet } from "@homeowner/bedrock";
-import { ChevronRight, Settings } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ChevronRight, SlidersHorizontal } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 import { useI18n } from "../../../shared/i18n";
 import { RowTile } from "../../../shared/ui/RowTile";
 import { useUndoable } from "../../../shared/undo/useUndoable";
@@ -25,6 +25,7 @@ export function HomeSettingsRow({ home, onShow }: Props) {
   const { t } = useI18n();
   const { undoableChange } = useUndoable();
   const [open, setOpen] = useState(false);
+  const openerRef = useRef<HTMLButtonElement>(null);
   const zones = useMemo(() => timezoneOptions(browserTimezones(), home.timezone).map((zone) => ({ value: zone, label: zone.replaceAll("_", " ") })), [home.timezone]);
 
   const change = (field: keyof HomeSettings) => (value: string) => {
@@ -39,22 +40,22 @@ export function HomeSettingsRow({ home, onShow }: Props) {
       <Row
         asChild
         className="my-0"
-        leading={<RowTile icon={Settings} />}
+        leading={<RowTile icon={SlidersHorizontal} />}
         title={t("home.settings.card.title")}
         caption={t("home.settings.card.hint")}
         trailing={<ChevronRight size={20} aria-hidden="true" className="text-muted" />}
       >
-        <button type="button" aria-haspopup="dialog" onClick={() => setOpen(true)} />
+        <button ref={openerRef} type="button" aria-haspopup="dialog" onClick={() => setOpen(true)} />
       </Row>
       <Sheet
         open={open}
         onOpenChange={setOpen}
         title={t("home.settings.card.title")}
-        subtitle={t("home.settings.plan.hint")}
+        returnFocusRef={openerRef}
         closeLabel={t("home.settings.sheet.close")}
       >
         <div className="flex flex-col gap-4 pb-4">
-          <AllocationTimePicker label={t("home.allocationTime.label")} value={home.allocationTime} onChange={change("allocationTime")} />
+          <AllocationTimePicker label={t("home.allocationTime.label")} value={home.allocationTime} onChange={change("allocationTime")} hint={t("home.allocationTime.hint")} />
           <Select label={t("home.timezone.label")} options={zones} value={home.timezone} onValueChange={change("timezone")} />
         </div>
       </Sheet>

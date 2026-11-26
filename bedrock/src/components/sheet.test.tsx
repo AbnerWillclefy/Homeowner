@@ -1,6 +1,6 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Dialog } from "./dialog";
 import { Sheet } from "./sheet";
@@ -91,6 +91,28 @@ describe("Sheet", () => {
     await userEvent.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.activeElement).toBe(trigger);
+  });
+
+  it.each([true, false])("returns focus to returnFocusRef when opened without a trigger (wide: %s)", async (wide) => {
+    stubViewport(wide);
+    function Harness() {
+      const [open, setOpen] = useState(false);
+      const ref = useRef<HTMLButtonElement>(null);
+      return (
+        <>
+          <button ref={ref} onClick={() => setOpen(true)}>
+            Abrir
+          </button>
+          <Sheet open={open} onOpenChange={setOpen} title="Filtros" closeLabel="Fechar" returnFocusRef={ref}>
+            corpo
+          </Sheet>
+        </>
+      );
+    }
+    render(<Harness />);
+    await userEvent.click(screen.getByRole("button", { name: "Abrir" }));
+    await userEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Abrir" })));
   });
 });
 

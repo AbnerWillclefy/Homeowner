@@ -11,6 +11,7 @@ interface Props {
   /** The already-translated error, if there is one. */
   error?: string;
   disabled?: boolean;
+  hint?: string;
 }
 
 /**
@@ -18,8 +19,8 @@ interface Props {
  * creating a Home and editing one share it. A Bedrock `Select`: the list scrolls to the chosen time and typing
  * "07" jumps to it.
  */
-export function AllocationTimePicker({ value, onChange, label, error, disabled }: Props) {
+export function AllocationTimePicker({ value, onChange, label, error, disabled, hint }: Props) {
   const { locale } = useI18n();
   const options = useMemo(() => allocationTimeOptions(locale, value), [locale, value]);
-  return <Select label={label} options={options} value={value} onValueChange={onChange} error={error} disabled={disabled} />;
+  return <Select label={label} options={options} value={value} onValueChange={onChange} error={error} hint={hint} disabled={disabled} />;
 }

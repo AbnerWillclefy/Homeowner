@@ -45,7 +45,7 @@ export const ptBR: Messages = {
   "home.create.recovered":
     "Você já tem um lar, então o Homeowner o carregou. Confira os ajustes dele abaixo.",
   "home.settings.heading": "Seu lar",
-  "home.settings.plan.hint": "Quando o plano de cada dia é feito, no fuso horário do seu lar.",
+  "home.allocationTime.hint": "A cada 15 minutos. Vale a partir de amanhã; o plano de hoje não muda.",
   "home.summary": "Os planos são feitos às {time}, horário de {zone}.",
   "home.settings.undo.timezone": "Fuso horário alterado.",
   "home.settings.undo.allocationTime": "Horário da alocação alterado.",

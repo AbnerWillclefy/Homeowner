@@ -24,14 +24,15 @@ export function HomePage() {
       <HomeGate skeleton={<HomeSkeleton />}>
         {(current: Home) => (
           <>
-            <TabHeader
-              title={t("home.settings.heading")}
-              subtitle={t("home.summary", {
-                time: formatAllocationTime(current.allocationTime, locale),
-                zone: current.timezone.replaceAll("_", " "),
-              })}
-            />
+            <TabHeader title={t("home.settings.heading")} />
             <TabBody>
+              {/* A paragraph, not the header's subtitle: the subtitle is one truncated line, and this holds the zone. */}
+              <p className="my-0 text-muted">
+                {t("home.summary", {
+                  time: formatAllocationTime(current.allocationTime, locale),
+                  zone: current.timezone.replaceAll("_", " "),
+                })}
+              </p>
               {recovered !== "no" && (
                 <p role="status" className="my-0">
                   {t(recovered === "chores-dropped" ? "home.create.recovered.chores" : "home.create.recovered")}

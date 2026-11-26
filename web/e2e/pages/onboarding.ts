@@ -80,7 +80,11 @@ export const onboarding = {
     await expect(radio).toBeChecked();
   },
 
-  timezone: (page: Page) => page.getByLabel("Timezone", { exact: true }),
+  timezone: (page: Page) => page.getByRole("combobox", { name: "Timezone", exact: true }),
+  async chooseTimezone(page: Page, zone: string): Promise<void> {
+    await onboarding.timezone(page).click();
+    await page.getByRole("option", { name: zone.replaceAll("_", " "), exact: true }).click();
+  },
   allocationTime: (page: Page) => page.getByRole("combobox", { name: "Allocation time", exact: true }),
   /** The picker's option for an "HH:MM", as en-US writes it ("07:30" is "7:30 AM"). */
   async chooseAllocationTime(page: Page, time: string): Promise<void> {
@@ -101,7 +105,7 @@ export const onboarding = {
   /** The first Home step: the Home's zone and Allocation time, then on to the questions. */
   async completeHomeSettings(page: Page, settings: HomeSettingsInput): Promise<void> {
     await onboarding.expectOnStep(page, "Create your Home", 1, 5);
-    await onboarding.timezone(page).selectOption(settings.timezone);
+    await onboarding.chooseTimezone(page, settings.timezone);
     await onboarding.chooseAllocationTime(page, settings.allocationTime);
     await onboarding.continueFromSettings(page);
   },

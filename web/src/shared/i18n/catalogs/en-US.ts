@@ -41,7 +41,7 @@ export const enUS = {
   "home.create.recovered":
     "You already have a Home, so Homeowner loaded it instead. Check its settings below.",
   "home.settings.heading": "Your Home",
-  "home.settings.plan.hint": "When each day's plan is made, in your Home's timezone.",
+  "home.allocationTime.hint": "Every 15 minutes. Takes effect tomorrow; today's plan does not change.",
   "home.summary": "Plans are made at {time}, {zone} time.",
   "home.settings.undo.timezone": "Timezone changed.",
   "home.settings.undo.allocationTime": "Allocation time changed.",
