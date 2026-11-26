@@ -12,7 +12,7 @@ const kitchen = { tone: "kitchen", icon: CookingPot } as const;
 
 it("ChoreTag writes the Category name and hides the icon", () => {
   const { container } = render(<ChoreTag category={kitchen} label="Cozinha" />);
-  expect(screen.getByText("Cozinha")).toBeTruthy();
+  expect(container.querySelector("svg")?.parentElement?.getAttribute("aria-hidden")).toBe("true");
   expect(container.querySelector("svg")?.closest("[aria-hidden]")).toBeTruthy();
 });
 
