@@ -50,7 +50,7 @@ for (const l of LOCALES) {
       for (const locator of [
         residents,
         page.getByRole("heading", { name: l.invite, level: 3 }),
-        page.getByRole("button", { name: l.settings, exact: true }),
+        page.getByRole("button", { name: new RegExp(`^${l.settings}\\b`) }),
         page.getByRole("button", { name: l.leave, exact: true }),
       ]) {
         await expect(locator).toBeVisible();
@@ -83,7 +83,7 @@ for (const l of LOCALES) {
 
     test("Home settings starts closed and the whole head row opens it", async ({ page }) => {
       await visit(page, "/home");
-      const head = page.getByRole("button", { name: l.settings, exact: true });
+      const head = page.getByRole("button", { name: new RegExp(`^${l.settings}\\b`) });
       await expect(head).toHaveAttribute("aria-expanded", "false");
       await expect(head).toContainText(l.settingsHint);
       await expect(page.getByLabel(/^(Timezone|Fuso horário)$/)).toBeHidden();
@@ -115,7 +115,7 @@ for (const l of LOCALES) {
       await expect(skeleton.locator("li")).toHaveCount(2);
       // Everything else on the tab is there while the list is held.
       await expect(page.getByRole("heading", { name: l.invite, level: 3 })).toBeVisible();
-      await expect(page.getByRole("button", { name: l.settings, exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: new RegExp(`^${l.settings}\\b`) })).toBeVisible();
       await expect(page.getByRole("button", { name: l.leave, exact: true })).toBeVisible();
 
       const before = (await card.boundingBox())!;
@@ -134,7 +134,7 @@ for (const l of LOCALES) {
       const card = page.getByRole("region", { name: l.residents, exact: true });
       await expect(card.getByRole("alert")).toHaveText(l.error);
       await expect(page.getByRole("heading", { name: l.invite, level: 3 })).toBeVisible();
-      await expect(page.getByRole("button", { name: l.settings, exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: new RegExp(`^${l.settings}\\b`) })).toBeVisible();
 
       await card.getByRole("button", { name: l.retry }).click();
       await expect(card.getByRole("link")).toHaveCount(2);

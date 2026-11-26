@@ -38,7 +38,7 @@ export const tabs = {
     preferences: (page: Page) => page.getByRole("heading", { name: "Preferences", level: 4 }),
     restrictions: (page: Page) => page.getByRole("heading", { name: "Restrictions", level: 4 }),
     /** The head row of a card: one native button (the heading wraps it) that opens and closes the card. */
-    trigger: (page: Page, name: string) => page.getByRole("button", { name, exact: true }),
+    trigger: (page: Page, name: string) => page.getByRole("button", { name: new RegExp(`^${name}\\b`) }),
     /** Opens a card if it is closed. */
     async open(page: Page, name: string): Promise<void> {
       const trigger = tabs.me.trigger(page, name);

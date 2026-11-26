@@ -46,10 +46,9 @@ export function CollapsibleCard({
 }: Props) {
   const [open, setOpen] = useState(defaultOpen);
   const bodyId = `${id}-body`;
-  const hintId = `${id}-hint`;
   const iconId = `${id}-icon`;
   const Heading = `h${headingLevel}` as const;
-  const describedBy = [iconLabel ? iconId : null].filter(Boolean).join(" ") || undefined;
+  const describedBy = iconLabel ? iconId : undefined;
 
   return (
     <Card as="section" aria-labelledby={id} className={`mt-0 flex flex-col gap-3 ${className}`}>
@@ -68,7 +67,7 @@ export function CollapsibleCard({
               {title}
             </span>
             {hint && (
-              <span id={hintId} className="text-sm font-normal text-muted [overflow-wrap:anywhere]">
+              <span className="text-sm font-normal text-muted [overflow-wrap:anywhere]">
                 {hint}
               </span>
             )}
