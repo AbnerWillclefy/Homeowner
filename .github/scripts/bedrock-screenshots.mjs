@@ -22,9 +22,9 @@ export function changedSections(sections, changedFiles) {
   return changed.every((f) => owned.has(f)) ? sections.filter((s) => changed.includes(key(s))) : [];
 }
 
-/** The description with the earlier auto- images replaced by `images`, one heading per key ({ "pt-BR": [md], English: [md] }). */
-export function withScreenshots(body, prefix, images) {
-  let lines = body.replace(/\r/g, "").split("\n").filter((l) => !l.includes(`${prefix}auto-`));
+/** The description with the earlier auto- images replaced by `images` (only lines containing `stale` are dropped), one heading per key ({ "pt-BR": [md], English: [md] }). */
+export function withScreenshots(body, prefix, images, stale = `${prefix}auto-`) {
+  let lines = body.replace(/\r/g, "").split("\n").filter((l) => !l.includes(stale));
   for (const heading of Object.keys(images)) {
     // The template's headings sit in an HTML comment; images there would not show.
     let comment = false;

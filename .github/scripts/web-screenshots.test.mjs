@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { pairsMarkdown } from "./artboards.mjs";
+import { withScreenshots } from "./bedrock-screenshots.mjs";
 import { rowsFrom } from "./web-screenshots.mjs";
 
 const prefix = "https://example.test/";
@@ -26,4 +27,14 @@ test("the rows come out as one pt-BR table, labelled by route and artboard, with
   assert.match(md["pt-BR"][0], /<code>\/ · CheckIn<\/code>[\s\S]*<code>\/ · Main<\/code>/);
   assert.match(md["pt-BR"][0], /src="https:\/\/example\.test\/auto-web-main-mobile-design\.png"/);
   assert.doesNotMatch(md["pt-BR"][0], /no artboard/);
+});
+
+test("a Revenue table already in the description survives the web table, and an old web table is replaced", () => {
+  const rev = `![](${prefix}auto-revenue-home-mobile.png)`;
+  const old = `![](${prefix}auto-web-old.png)`;
+  const body = `### Mobile\n\n${rev}\n\n### pt-BR\n\n${old}\n`;
+  const out = withScreenshots(body, prefix, { "pt-BR": [`![](${prefix}auto-web-new.png)`] }, `${prefix}auto-web-`);
+  assert.ok(out.includes(rev));
+  assert.ok(!out.includes(old));
+  assert.ok(out.includes("auto-web-new.png"));
 });

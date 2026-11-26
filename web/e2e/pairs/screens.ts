@@ -65,7 +65,7 @@ export const SCREENS: Record<string, Entry> = {
   StartChoice: at("/#invite=abc123", ["startchoice", "invite"], { data: "invite", state: "start-choice" }),
   // Afazeres
   Chores: at("/chores", ["chores"]),
-  ChoreSheet: at("/chores?edit=chore-1", ["chores"]),
+  ChoreSheet: at("/chores?edit=louca", ["chores"]),
   ChoresEmpty: at("/chores", ["chores"], { data: "no-chores" }),
   CatalogQuestions: none("The Catalog's questions open from the Chores screen in #893; today it lists entries with no questions."),
   CatalogReview: none("The Catalog's suggestions open from the Chores screen in #893; today it lists entries with no review step."),

@@ -23,7 +23,7 @@ function main([prefix]) {
   if (!results.length) throw new Error(`The capture wrote no result in ${dir}`);
   const { rows, overflowing } = rowsFrom(results, prefix);
   if (overflowing.length) throw new Error(`Horizontal overflow at 390px:\n${overflowing.join("\n")}`);
-  process.stdout.write(withScreenshots(process.env.BODY, prefix, pairsMarkdown({ "pt-BR": rows })));
+  process.stdout.write(withScreenshots(process.env.BODY, prefix, pairsMarkdown({ "pt-BR": rows }), `${prefix}auto-web-`));
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) main(process.argv.slice(2));
