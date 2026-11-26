@@ -30,6 +30,8 @@ export function StreakButton({ streak, loading, paused = false }: { streak: Stre
     );
   }
   if (!streak) return null;
+  // ADR 0014 rule 1: a Completion grows the Streak even on a Drained day, so only a day that has not grown is paused.
+  const isPaused = paused && !streak.todayGrew;
 
   return (
     <AppDialog
@@ -40,8 +42,8 @@ export function StreakButton({ streak, loading, paused = false }: { streak: Stre
       trigger={
         <StreakChip
           days={streak.current}
-          paused={paused && streak.current > 0}
-          label={streakButtonLabel(t, streak.current, paused)}
+          paused={isPaused && streak.current > 0}
+          label={streakButtonLabel(t, streak.current, isPaused)}
           onClick={() => setOpen(true)}
         />
       }
