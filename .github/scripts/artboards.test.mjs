@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { withScreenshots } from "./bedrock-screenshots.mjs";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { artboardPath, heightFailures, leftoversIn, overflowOf, pairsMarkdown, serveArtboard, undersized } from "./artboards.mjs";
+import { artboardPath, compareBoxes, heightFailures, leftoversIn, overflowOf, MAX_TABLE_ROWS, pairsMarkdown, roleSelectors, ROLES, serveArtboard, undersized } from "./artboards.mjs";
 
 const prefix = "https://example.test/";
 const images = {
@@ -116,4 +116,90 @@ test("heightFailures names the file and the element, and keeps the exemption lis
   assert.deepEqual(heightFailures("homeowner/Chores.dc.html", found, exempt), []);
   assert.match(heightFailures("homeowner/Chores.dc.html", [], exempt)[0], /remove it from HEIGHT_EXEMPT/);
   assert.deepEqual(heightFailures("homeowner/Chores.dc.html", [], {}), []);
+});
+
+const box = (extra = {}) => ({ x: 16, width: 358, height: 64, gap: 0, ...extra });
+
+test("a row of 72px against 64px (12px against 8px padding) is one height difference", () => {
+  const { diffs, small } = compareBoxes({ row: [box({ height: 72 })] }, { row: [box()] });
+  assert.deepEqual(diffs, [{ role: "row", index: 0, prop: "height", app: 72, design: 64 }]);
+  assert.equal(small, 0);
+});
+
+test("a 3px difference is counted as small, 4px too, and 5px is a difference", () => {
+  const three = compareBoxes({ row: [box({ height: 67 })] }, { row: [box()] });
+  assert.deepEqual(three, { diffs: [], small: 1 });
+  assert.equal(compareBoxes({ row: [box({ height: 68 })] }, { row: [box()] }).diffs.length, 0);
+  assert.equal(compareBoxes({ row: [box({ height: 69 })] }, { row: [box()] }).diffs.length, 1);
+});
+
+test("x, width and the gap above are compared too, and a first element has no gap", () => {
+  const { diffs } = compareBoxes({ row: [box({ gap: null }), box({ x: 24, width: 342, gap: 16 })] }, { row: [box({ gap: null }), box({ gap: 0 })] });
+  assert.deepEqual(diffs.map((d) => d.prop), ["x", "width", "gap"]);
+  assert.ok(diffs.every((d) => d.index === 1));
+});
+
+test("three rows in the app against five in the artboard is a count difference, and the first three still compare", () => {
+  const { diffs } = compareBoxes({ row: [box(), box(), box({ height: 80 })] }, { row: [box(), box(), box(), box(), box()] });
+  assert.deepEqual(diffs, [
+    { role: "row", prop: "count", app: 3, design: 5 },
+    { role: "row", index: 2, prop: "height", app: 80, design: 64 },
+  ]);
+});
+
+test("a role missing on one side is a count difference, and a role on neither side is nothing", () => {
+  assert.deepEqual(compareBoxes({ "bottom-bar": [] }, { "bottom-bar": [box()] }).diffs, [{ role: "bottom-bar", prop: "count", app: 0, design: 1 }]);
+  assert.deepEqual(compareBoxes({ row: [] }, {}), { diffs: [], small: 0 });
+});
+
+test("roles stay separate: a list box never matches a row box", () => {
+  const { diffs } = compareBoxes({ list: [box({ height: 200 })], row: [box()] }, { list: [box({ height: 200 })], row: [box({ height: 200 })] });
+  assert.deepEqual(diffs, [{ role: "row", index: 0, prop: "height", app: 64, design: 200 }]);
+});
+
+test("each role maps a design selector to the data-slot Bedrock sets, and the selectors per side are keyed by role", () => {
+  assert.ok(ROLES.length >= 10);
+  assert.ok(ROLES.every(({ role, design, app, bedrock }) => role && design && /^\[data-slot=/.test(app) && typeof bedrock === "boolean"));
+  assert.equal(new Set(ROLES.map((r) => r.role)).size, ROLES.length);
+  assert.match(roleSelectors("design").row, /\.hm-item/);
+  assert.match(roleSelectors("design").row, /\.br-listrow/);
+  assert.match(roleSelectors("app").row, /\[data-slot=row\]/);
+  assert.match(roleSelectors("app").row, /\[data-slot=list-row\]/);
+});
+
+const measure = { diffs: [{ role: "row", index: 0, prop: "height", app: 72, design: 64 }, { role: "list", prop: "count", app: 1, design: 2 }], small: 5 };
+
+test("a pair's differences are one details block on the same line as its table, in a row after the images", () => {
+  const { Mobile } = pairsMarkdown({ Mobile: [{ ...images.Mobile[0], measure }] });
+  assert.equal(Mobile.length, 1);
+  assert.ok(!Mobile[0].includes("\n"));
+  assert.match(Mobile[0], /<\/tr><tr><td colspan="2"><details><summary>2 differences over 4px, 5 smaller<\/summary><table>/);
+  assert.match(Mobile[0], /<td>row #1<\/td><td>height<\/td><td>72<\/td><td>64<\/td>/);
+  assert.match(Mobile[0], /<td>list<\/td><td>count<\/td><td>1<\/td><td>2<\/td>/);
+});
+
+test("a pair with only small differences says how many, and one with none shows no details", () => {
+  const small = pairsMarkdown({ Mobile: [{ ...images.Mobile[0], measure: { diffs: [], small: 3 } }] }).Mobile[0];
+  assert.match(small, /0 differences over 4px, 3 smaller/);
+  assert.doesNotMatch(pairsMarkdown({ Mobile: [{ ...images.Mobile[0], measure: { diffs: [], small: 0 } }] }).Mobile[0], /details/);
+  assert.doesNotMatch(pairsMarkdown(images).Mobile[0], /details/);
+});
+
+test("a long table is cut at the cap and says how many are in the measure file", () => {
+  const diffs = Array.from({ length: MAX_TABLE_ROWS + 7 }, (_, i) => ({ role: "row", index: i, prop: "height", app: 80, design: 64 }));
+  const line = pairsMarkdown({ Mobile: [{ ...images.Mobile[0], measure: { diffs, small: 0 } }] }).Mobile[0];
+  assert.equal(line.match(/<td>row #/g).length, MAX_TABLE_ROWS);
+  assert.match(line, /7 more in the measure file/);
+  assert.match(line, new RegExp(`${MAX_TABLE_ROWS + 7} differences over 4px`));
+  const exact = pairsMarkdown({ Mobile: [{ ...images.Mobile[0], measure: { diffs: diffs.slice(0, MAX_TABLE_ROWS), small: 0 } }] }).Mobile[0];
+  assert.doesNotMatch(exact, /more in the measure file/);
+});
+
+test("shooting again with differences replaces the whole pair instead of piling up", () => {
+  const md = pairsMarkdown({ Mobile: images.Mobile.map((r) => ({ ...r, measure })), Desktop: [] });
+  const body = "Closes #1\n\n### Mobile\n\n### Desktop\n";
+  const once = withScreenshots(body, prefix, md);
+  assert.match(once, /<details>/);
+  assert.equal(withScreenshots(once, prefix, md), once);
+  assert.equal(once.match(/<details>/g).length, 2);
 });
