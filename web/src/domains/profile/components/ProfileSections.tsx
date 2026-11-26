@@ -123,7 +123,7 @@ function BaselineRow({
   // rollback shows the previous level again. Nothing is selected for an unset day (value "").
   const current = pointsToLevel(saved);
   return (
-    <div className="flex items-center gap-3 py-2">
+    <div className="flex items-center gap-2 py-2">
       <span aria-hidden="true" className="w-12 shrink-0 font-semibold first-letter:uppercase">
         {weekdayLabel(day, locale, "short")}
       </span>
@@ -153,7 +153,7 @@ function PreferenceChoice({
 }) {
   const { t } = useI18n();
   return (
-    <div className="flex flex-col gap-2 py-3">
+    <div className="flex flex-col gap-2 py-2">
       <span aria-hidden="true" className="flex items-center gap-3 font-semibold [overflow-wrap:anywhere]">
         <ChoreIcon category={choreCategory(id)} />
         {name}

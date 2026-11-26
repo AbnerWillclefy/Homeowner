@@ -21,7 +21,7 @@ export function AccountRow({ email, offline, onSignOut }: Props) {
       title={t("me.account.title")}
       caption={t("me.account.caption")}
     >
-      <div className="flex flex-col gap-3 pb-4">
+      <div className="flex flex-col gap-4 pb-4">
         <p className="my-0">
           {before}
           <strong>{email ?? t("signedIn.emailFallback")}</strong>
