@@ -24,3 +24,13 @@ export function summaryCounts(plan: DayPlan): SummaryCounts {
   }
   return { mine: plan.mine.length, others: otherIds.size, pool: plan.pool.length };
 }
+
+/** Your Tasks you have not accepted yet: Proposed means `role === "mine"` and not Committed. */
+export function proposedCount(plan: DayPlan): number {
+  return plan.mine.filter((task) => !task.committed).length;
+}
+
+/** "Aceitar todas" only makes sense with two or more Proposed Tasks; one has its own Aceitar. */
+export function showAcceptAll(plan: DayPlan): boolean {
+  return proposedCount(plan) >= 2;
+}

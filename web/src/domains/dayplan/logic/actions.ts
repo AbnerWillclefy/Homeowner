@@ -2,7 +2,6 @@ export type TaskRole = "mine" | "other" | "pool";
 export type TaskAction = "accept" | "refuse" | "done" | "take";
 /** A button on a card: a Task action, or Swap, which opens a dialog and calls nothing by itself. */
 export type CardAction = TaskAction | "swap";
-export type ActionSlot = "start" | "end";
 
 export type SwapAction = "acceptSwap" | "declineSwap" | "cancelSwap";
 
@@ -33,21 +32,22 @@ export type Acting =
   | null;
 
 /**
- * What the Resident can do with a Task in the Day Plan, as slots of the card's button row: `start` holds the
- * action that needs a moment of thought, `end` the one most likely taken (under the right thumb). `committed`
- * says whether to show the Committed mark, which the card puts first in the start slot.
+ * What the Resident can do with a Task in the Day Plan, as the Task card shows it: `primary` are the buttons
+ * under the card (one clear action, or Recusar and Aceitar for a Proposed Task, in that order), `menu` the items
+ * of its ⋯ menu. `committed` says whether the Task is Committed, which the card shows as a status.
  */
 export interface TaskActions {
-  start: CardAction[];
-  end: CardAction[];
+  primary: CardAction[];
+  menu: CardAction[];
   committed: boolean;
 }
 
 /**
- * The buttons a Task gets. `mine` is a Task assigned to the caller: Proposed until they accept it (Refuse,
- * Accept; Done only once it is Committed), then Committed. Pool Tasks can be taken, or done in one step (Done, secondary, at the start), except those that need two
- * people, which the API refuses for now. Other Residents' Tasks are theirs: nothing to do and nothing to say, except Swap
- * (alone, at the start, a deliberate secondary action) when `canSwap` says the plan allows an offer.
+ * The actions a Task gets. `mine` is a Task assigned to the caller: Proposed until they accept it (Refuse,
+ * Accept; Done only once it is Committed), then Committed (Done). A pool Task can be taken (Take), or done in one
+ * step, which sits in the menu so the card keeps one clear action; except those that need two people, which the
+ * API refuses for now. Other Residents' Tasks are theirs: nothing to do except Swap, in the menu, when `canSwap`
+ * says the plan allows an offer.
  */
 export function actionsFor(
   task: { people: number; committed?: boolean },
@@ -57,20 +57,15 @@ export function actionsFor(
   switch (role) {
     case "mine":
       return task.committed
-        ? { start: [], end: ["done"], committed: true }
-        : { start: ["refuse"], end: ["accept"], committed: false };
+        ? { primary: ["done"], menu: [], committed: true }
+        : { primary: ["refuse", "accept"], menu: [], committed: false };
     case "pool":
       return task.people === 2
-        ? { start: [], end: [], committed: false }
-        : { start: ["done"], end: ["take"], committed: false };
+        ? { primary: [], menu: [], committed: false }
+        : { primary: ["take"], menu: ["done"], committed: false };
     case "other":
-      return { start: canSwap ? ["swap"] : [], end: [], committed: false };
+      return { primary: [], menu: canSwap ? ["swap"] : [], committed: false };
   }
-}
-
-/** The variant follows the slot, not the action: the end is primary, the start secondary. */
-export function variantFor(slot: ActionSlot): "primary" | "secondary" {
-  return slot === "end" ? "primary" : "secondary";
 }
 
 /** The action of this card that is in flight, if any. Another card's action, Accept all or none give null. */

@@ -23,9 +23,9 @@ const chore = ([id, name, category, effort, intervalDays]: (typeof CHORES)[numbe
   id, name, category, demands: [], baseEffort: effort, importance: "normal", people: 1, intervalDays, allowedWeekdays: [], buildsUp: false, responsibleResidentId: null,
 });
 
-const task = (id: string, due: string, committed = false): PlanTask => {
+const task = (id: string, due: string, reason: string, committed = false): PlanTask => {
   const [, name, category, effort] = CHORES.find(([c]) => c === id)!;
-  return { id: `task-${id}`, choreId: id, choreName: name, windowStart: "2030-01-14", windowEnd: due, currentEffort: effort, baseEffort: effort, importance: "normal", people: 1, reason: "due", category, committed };
+  return { id: `task-${id}`, choreId: id, choreName: name, windowStart: "2030-01-14", windowEnd: due, currentEffort: effort, baseEffort: effort, importance: "normal", people: 1, reason, category, committed };
 };
 
 function plan(done: boolean): DayPlan {
@@ -36,9 +36,9 @@ function plan(done: boolean): DayPlan {
     rejected: false,
     allocator: "template",
     energy: 4,
-    mine: done ? [] : [task("louca", "2030-01-16"), task("lixo", "2030-01-16"), task("roupa", "2030-01-16", true)],
-    others: [{ residentId: "resident-2", tasks: [task("cama", "2030-01-16", true)] }],
-    pool: done ? [] : [task("plantas", "2030-01-15"), task("areia", "2030-01-16")],
+    mine: done ? [] : [task("louca", "2030-01-16", "fits_energy"), task("lixo", "2030-01-16", "liked"), task("roupa", "2030-01-16", "deadline_today", true)],
+    others: [{ residentId: "resident-2", tasks: [task("cama", "2030-01-16", "turn_taking", true)] }],
+    pool: done ? [] : [task("plantas", "2030-01-15", "no_energy_left"), task("areia", "2030-01-16", "no_energy_left")],
     doneToday: [
       { id: "task-pia", choreName: "Limpar a pia do banheiro", completedAt: "2030-01-15T12:02:00Z", category: "bathroom", with: [] },
       ...(done ? ["louca", "lixo", "roupa"].map((id, i) => ({ id: `task-${id}`, choreName: CHORES.find(([c]) => c === id)![1], completedAt: `2030-01-15T12:1${i}:00Z`, category: CHORES.find(([c]) => c === id)![2], with: [] })) : []),

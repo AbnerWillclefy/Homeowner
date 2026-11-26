@@ -22,7 +22,7 @@ const LOCALES = [
     locale: "pt-BR",
     incoming: "Trocas para você",
     outgoing: "Suas ofertas de troca",
-    mine: "Hoje",
+    mine: "Suas tarefas",
     accept: "Aceitar troca",
     decline: "Recusar troca",
     cancel: "Cancelar troca",
@@ -31,6 +31,7 @@ const LOCALES = [
     stale: "As tarefas mudaram, então essa troca não vale mais. Sua lista está atualizada.",
     hint: /conta para sua sequência/,
     swap: "Trocar",
+    more: "Mais ações, Take out the trash",
     title: "O que você vai dar?",
     submit: "Oferecer troca",
     dismiss: "Cancelar",
@@ -52,8 +53,9 @@ for (const l of LOCALES) {
     /** The block under a group heading: the heading's parent. */
     const group = (page: import("@playwright/test").Page, name: string) =>
       page.getByRole("heading", { level: 3, name }).locator("..");
-    /** Your own Task cards: the list whose parent holds no group heading (the others have an h3 or sit under a Resident). */
-    const mineCards = (page: import("@playwright/test").Page) => page.locator("div:not(:has(> h3)) > ul");
+    /** Your own Task cards: the list in the "Your Tasks" block. Its heading sits in a row with "Aceitar todas" only while 2+ are Proposed. */
+    const mineCards = (page: import("@playwright/test").Page) =>
+      page.locator("div:has(> h3, > div > h3)").filter({ has: page.getByRole("heading", { level: 3, name: l.mine }) }).locator("> ul");
     const noAlertText =(page: import("@playwright/test").Page) =>
       expect(page.getByRole("alert").filter({ hasText: /\S/ })).toHaveCount(0);
 
@@ -190,9 +192,13 @@ for (const l of LOCALES) {
       }
     });
 
-    // Offering a Swap: you start from the Task you want (Bruna's `task-3`), then pick what you give.
-    const swapButton = (page: import("@playwright/test").Page) =>
-      page.getByRole("button", { name: new RegExp(`^${l.swap} Take out the trash`) });
+    // Offering a Swap: you start from the Task you want (Bruna's `task-3`): its ⋯ menu holds Trocar. Then pick what you give.
+    // `swapButton` is that ⋯ button on Bruna's card (the pool holds a Task of the same name, with its own menu), which exists only while a Swap can be offered for the Task.
+    const swapButton = (page: import("@playwright/test").Page) => brunaCard(page).getByRole("button", { name: l.more });
+    const openSwap = async (page: import("@playwright/test").Page) => {
+      await swapButton(page).click();
+      await page.getByRole("button", { name: l.swap, exact: true }).click();
+    };
     const brunaCard = (page: import("@playwright/test").Page) =>
       page
         .locator('section[aria-labelledby^="resident-"]')
@@ -207,15 +213,21 @@ for (const l of LOCALES) {
     test("Swap is only on another Resident's one-person Task, and the dialog does not open by itself", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
       await expect(swapButton(page)).toHaveCount(1);
-      await expect(brunaCard(page).getByRole("button", { name: l.swap })).toBeVisible();
-      // Not on your own Tasks, nor in the pool.
-      await expect(mineCards(page).getByRole("button", { name: new RegExp(`^${l.swap}`) })).toHaveCount(0);
+      await expect(brunaCard(page).getByRole("button", { name: l.more })).toBeVisible();
+      // Swap is not a button on the card: it is in the menu, which holds nothing else.
+      await expect(page.getByRole("button", { name: l.swap, exact: true })).toHaveCount(0);
+      await swapButton(page).click();
+      await expect(page.getByRole("dialog", { name: l.more })).toBeVisible();
+      await expect(page.getByRole("dialog", { name: l.more }).getByRole("button", { name: l.swap, exact: true })).toBeVisible();
+      await page.keyboard.press("Escape");
+      // Not on your own Tasks, nor in the pool: no ⋯ menu, since Swap is all it would hold.
+      await expect(mineCards(page).getByRole("button", { name: /^Mais ações/ })).toHaveCount(0);
       await expect(page.getByRole("dialog")).toHaveCount(0);
     });
 
     test("offering opens a dialog of your one-person Tasks, sends the offer, and moves the offer under Your offers", async ({ page, baseURL, fakeApi }) => {
       await launchApp(page, baseURL!);
-      await swapButton(page).click();
+      await openSwap(page);
       const dialog = page.getByRole("dialog", { name: l.title });
       await expect(dialog).toBeVisible();
       await expect(dialog.getByText("Bruna Souza")).toBeVisible();
@@ -247,7 +259,7 @@ for (const l of LOCALES) {
 
     test("Cancel closes the dialog with no call and focus returns to the Swap button", async ({ page, baseURL, fakeApi }) => {
       await launchApp(page, baseURL!);
-      await swapButton(page).click();
+      await openSwap(page);
       await page.getByRole("dialog").getByRole("button", { name: l.dismiss }).click();
       await expect(page.getByRole("dialog")).toHaveCount(0);
       expect(swapRequests(fakeApi.requests)).toHaveLength(0);
@@ -256,7 +268,7 @@ for (const l of LOCALES) {
 
     test("submitting with nothing picked asks for a Task and sends nothing", async ({ page, baseURL, fakeApi }) => {
       await launchApp(page, baseURL!);
-      await swapButton(page).click();
+      await openSwap(page);
       const dialog = page.getByRole("dialog");
       await dialog.getByRole("button", { name: l.submit }).click();
       await expect(dialog.getByRole("alert").filter({ hasText: l.required })).toBeVisible();
@@ -266,7 +278,7 @@ for (const l of LOCALES) {
     test("a single Task of yours is preselected", async ({ page, baseURL, fakeApi }) => {
       fakeApi.state.dayPlan!.mine = [fakeApi.state.dayPlan!.mine[0]!];
       await launchApp(page, baseURL!);
-      await swapButton(page).click();
+      await openSwap(page);
       const dialog = page.getByRole("dialog");
       await expect(dialog.getByRole("radio")).toHaveCount(1);
       await expect(dialog.getByRole("radio", { checked: true })).toHaveCount(1);
@@ -280,7 +292,7 @@ for (const l of LOCALES) {
     test("a refusal closes the dialog and says so calmly, with no alert", async ({ page, baseURL, fakeApi }) => {
       fakeApi.override("POST /home/swaps", json(409, { error: "restricted" }), { once: true });
       await launchApp(page, baseURL!);
-      await swapButton(page).click();
+      await openSwap(page);
       await pick(page, "Mop the floors");
       await page.getByRole("dialog").getByRole("button", { name: l.submit }).click();
       await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -336,10 +348,11 @@ for (const l of LOCALES) {
       await page.setViewportSize({ width: 320, height: 800 });
       await launchApp(page, baseURL!);
       await page.evaluate(() => (document.documentElement.style.fontSize = "200%"));
-      const button = page.getByRole("button", { name: new RegExp(`^${l.swap} `) });
+      const button = page.getByRole("button", { name: new RegExp(`^Mais ações, ${LONG_CHORE}`) }).last();
       await button.scrollIntoViewIfNeeded();
       expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
       await button.click();
+      await page.getByRole("button", { name: l.swap, exact: true }).click();
       const dialog = page.getByRole("dialog");
       await expect(dialog.getByText(LONG_NAME)).toBeVisible();
       const box = (await dialog.boundingBox())!;

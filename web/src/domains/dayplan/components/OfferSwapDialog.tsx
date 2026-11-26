@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent, type RefObject } from "react";
 import type { PlanTask } from "../api/api";
 import { categoryStyle } from "../../chores/logic/categoryStyle";
 import { categoryLabel, labelText } from "../../profile/logic/labels";
@@ -23,6 +23,7 @@ export function OfferSwapDialog({
   holderId,
   options,
   offer,
+  returnFocusRef,
   onClose,
 }: {
   /** The Task wanted. */
@@ -33,6 +34,8 @@ export function OfferSwapDialog({
   options: PlanTask[];
   /** Resolves when the call has settled, whatever the answer. */
   offer(offeredTaskId: string, requestedTaskId: string): Promise<void>;
+  /** The card's ⋯ button, where focus returns: the menu that opened this closes first, so the body would catch it. */
+  returnFocusRef?: RefObject<HTMLElement | null>;
   onClose(): void;
 }) {
   const { t } = useI18n();
@@ -60,6 +63,7 @@ export function OfferSwapDialog({
       title={t("dayplan.swap.offer.title")}
       onDismiss={onClose}
       dismissible={!sending}
+      returnFocusRef={returnFocusRef}
       footer={
         <ButtonRow
           start={

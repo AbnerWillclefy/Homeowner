@@ -1,46 +1,47 @@
-import { CalendarDays, CircleCheck, Flag, Lightbulb, Users } from "lucide-react";
-import { Link } from "react-router";
+import { useRef, useState } from "react";
+import { TaskCard as HomeTaskCard, type TaskAction as HomeAction } from "@homeowner/bedrock/home";
+import type { MenuItem } from "@homeowner/bedrock";
+import { Check } from "lucide-react";
 import { useShell } from "../../../app/components/ShellContext";
-import { CHORES_PATH } from "../../../app/logic/routes";
-import { EDIT_PARAM } from "../../chores/components/ChoresSection";
-import type { PlanTask } from "../api/api";
-import { ResidentLabel } from "../../residents/components/ResidentLabel";
-import { categoryStyle } from "../../chores/logic/categoryStyle";
-import { CategoryTile, EffortDots, Fact, FactIcon, FactList } from "../../chores/components/FactList";
-import { Card } from "../../../shared/ui/Card";
+import type { Explanation, PlanTask } from "../api/api";
+import { choreCategory } from "../../chores/logic/choreCategory";
+import { effortName } from "../../chores/logic/effortLevels";
 import { useI18n, type MessageKey } from "../../../shared/i18n";
-import { Button } from "../../../shared/ui/Button";
-import { ButtonRow } from "../../../shared/ui/ButtonRow";
-import { actionsFor, variantFor, type ActionSlot, type CardAction, type TaskAction, type TaskRole } from "../logic/actions";
-import { categoryLabel, importanceLabel, labelText, type Label } from "../../profile/logic/labels";
+import { actionsFor, type CardAction, type TaskAction, type TaskRole } from "../logic/actions";
+import { categoryLabel, labelText } from "../../profile/logic/labels";
 import { dueWhen, formatDay } from "../logic/format";
-import { assignmentReasonLabel, poolReasonLabel, waitingForText, WAITING_FOR_RESPONSIBLE } from "../logic/reasons";
+import { taskReasonText } from "../logic/reasons";
 import { taskEffortText } from "../logic/taskEffort";
+import { TaskSheet } from "./TaskSheet";
 
 interface Props {
   task: PlanTask;
   /**
    * Where the Task sits: yours, another Resident's or the pool. It decides whether the reason says why it was
-   * given to someone or why it is still in the pool, which actions it has, and whether the card is filled with
-   * its Category's pastel (only your own are; the rest keep the colour to the icon).
+   * given to someone or why it is still in the pool, and which actions it has.
    */
   role: TaskRole;
+  /** The Resident who holds it, on another Resident's card. */
+  holderId?: string;
   /** The plan's day, "YYYY-MM-DD", to say whether the Task is due today. */
   today: string;
+  /** The day's explanation, which the Sheet shows on your own Tasks. */
+  explanation?: Explanation;
   /** An action is running somewhere in the plan, so every button is disabled. */
   busy: boolean;
   /** This card's own action in flight, which shows the spinner; null when it is another card's or none. */
   pending: TaskAction | null;
   onAction(action: TaskAction, task: PlanTask): void;
   /**
-   * Opens the dialog to offer a Swap for this Task. Pass it only when a Swap can be offered (`canOfferFor`) on
-   * another Resident's card; without it the card has no Swap button. Swap calls nothing, so `onAction` keeps its type.
+   * Opens the dialog to offer a Swap for this Task, given the card's ⋯ button, where focus returns. Pass it
+   * only when a Swap can be offered (`canOfferFor`) on another Resident's card; without it the menu has no Swap.
+   * Swap calls nothing, so `onAction` keeps its type.
    */
-  onSwap?(task: PlanTask): void;
+  onSwap?(task: PlanTask, opener: HTMLElement | null): void;
 }
 
 // Each action's visible label and its accessible name, which says which Task and starts with the visible
-// label so voice control ("tap Accept") finds it.
+// label so voice control ("tap Aceitar") finds it.
 const ACTION_LABELS: Record<CardAction, { label: MessageKey; named: MessageKey }> = {
   accept: { label: "dayplan.action.accept", named: "dayplan.action.accept.named" },
   refuse: { label: "dayplan.action.refuse", named: "dayplan.action.refuse.named" },
@@ -50,122 +51,87 @@ const ACTION_LABELS: Record<CardAction, { label: MessageKey; named: MessageKey }
 };
 
 /**
- * One Task in the Day Plan: its Category icon and name, the Chore, then its facts (Effort, when it is due,
- * Importance and people when they differ from the usual) and why it is here. The Category name, the Effort and
- * everything else is text, so nothing depends on colour, the icons or the Effort dots. A missing or unknown
- * Category is the neutral "Other" card, never the raw id.
+ * One Task in the Day Plan, in the Home layer's card: its Category (named in text), the Chore, its Effort and
+ * the one-line why, with only the buttons that make sense now (`actionsFor`) and the rest in its ⋯ menu.
+ * Tapping the card opens its Sheet with the whole story. This only feeds the presentational card; which
+ * actions a Task has is decided in `logic/actions.ts`.
  */
-export function TaskCard({ task, role, today, busy, pending, onAction, onSwap }: Props) {
+export function TaskCard({ task, role, holderId, today, explanation, busy, pending, onAction, onSwap }: Props) {
   const { t, locale } = useI18n();
-  const text = (label: Label) => labelText(t, label);
-  const own = role === "mine";
-  const { start, end, committed } = actionsFor(task, role, { canSwap: onSwap !== undefined });
-
-  // The slot picks the variant, and every action button reserves room for the spinner so the width holds.
-  // `pending` is never "swap": the dialog shows its own spinner.
-  const actionButton = (action: CardAction, slot: ActionSlot) => (
-    <Button
-      key={action}
-      variant={variantFor(slot)}
-      disabled={busy}
-      pending={pending === action}
-      aria-label={t(ACTION_LABELS[action].named, { task: task.choreName })}
-      onClick={() => (action === "swap" ? onSwap?.(task) : onAction(action, task))}
-    >
-      {t(ACTION_LABELS[action].label)}
-    </Button>
-  );
-
-  const style = categoryStyle(task.category);
-  const reason = (role === "pool" ? poolReasonLabel : assignmentReasonLabel)(task.reason);
-  // Its words carry the responsible Resident's name, which only the shared Residents list knows.
   const { residents } = useShell();
-  const waiting = role === "pool" && task.reason === WAITING_FOR_RESPONSIBLE;
-  const reasonText = !reason
-    ? null
-    : waiting
-      ? waitingForText(t, task.responsibleResidentId ? residents.byResidentId(task.responsibleResidentId) : undefined)
-      : text(reason);
+  const [open, setOpen] = useState(false);
+  const item = useRef<HTMLLIElement>(null);
+  const { primary, menu, committed } = actionsFor(task, role, { canSwap: onSwap !== undefined });
+
+  const category = choreCategory(task.category);
   const date = formatDay(task.windowEnd, locale);
   const due = {
     past: t("dayplan.task.duePast", { date }),
     today: t("dayplan.task.dueToday"),
     later: t("dayplan.task.due", { date }),
   }[dueWhen(task.windowEnd, today)];
+  const responsible = task.responsibleResidentId ? residents.byResidentId(task.responsibleResidentId) : undefined;
+  const reason = taskReasonText(t, task, role, responsible);
+  // The Effort component takes a level from 1 to 5; an Effort outside it (the API would refuse it) keeps its number in the name.
+  const effortLevel = Math.min(5, Math.max(1, Math.round(task.currentEffort))) as 1 | 2 | 3 | 4 | 5;
+
+  const named = (action: CardAction) => t(ACTION_LABELS[action].named, { task: task.choreName });
+  const button = (action: CardAction): HomeAction => ({
+    label: t(ACTION_LABELS[action].label),
+    ariaLabel: named(action),
+    icon: action === "accept" || action === "done" ? Check : undefined,
+    // Recusar is the quiet one beside Aceitar.
+    variant: action === "refuse" ? "secondary" : "primary",
+    disabled: busy,
+    loading: pending === action,
+    onClick: () => onAction(action as TaskAction, task),
+  });
+  const menuItem = (action: CardAction): MenuItem => ({
+    label: t(ACTION_LABELS[action].label),
+    disabled: busy,
+    onSelect: () =>
+      action === "swap"
+        ? onSwap?.(task, item.current?.querySelector<HTMLElement>("[aria-haspopup]") ?? null)
+        : onAction(action as TaskAction, task),
+  });
 
   return (
-    <li className="my-0 list-none">
-      <Card tint={own ? style : undefined} className="flex flex-col gap-3">
-        <div className="flex items-center gap-3">
-          <CategoryTile category={task.category} onTint={own} />
-          <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
-            <p className="my-0 text-sm font-semibold">{text(categoryLabel(style.id))}</p>
-            <h4 className="my-0 text-lg font-bold leading-snug">{task.choreName}</h4>
-          </div>
-        </div>
-
-        <FactList>
-          <Fact icon={<EffortDots effort={task.currentEffort} />}>
-            {taskEffortText(t, task.currentEffort, task.baseEffort)}
-          </Fact>
-          <Fact icon={<FactIcon icon={CalendarDays} />}>{due}</Fact>
-          {task.importance !== "normal" && (
-            <Fact icon={<FactIcon icon={Flag} />}>{text(importanceLabel(task.importance))}</Fact>
-          )}
-          {task.people === 2 && <Fact icon={<FactIcon icon={Users} />}>{t("chores.item.people.two")}</Fact>}
-        </FactList>
-
-        {task.with && task.with.length > 0 && (
-          <ul className="m-0 flex list-none flex-col gap-1 p-0 text-sm font-semibold">
-            {task.with.map((residentId) => (
-              <li key={residentId}>
-                <ResidentLabel residentId={residentId} withLine />
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {reasonText && (
-          <p className="my-0 flex gap-2 border-t border-current/20 pt-3 text-sm">
-            <Lightbulb aria-hidden="true" size={16} className="mt-0.5 shrink-0" />
-            <span>{t("dayplan.task.reason", { reason: reasonText })}</span>
-          </p>
-        )}
-
-        {task.suggestTwoPerson && task.people !== 2 && role !== "other" && (
-          <p className="my-0 flex flex-wrap items-center gap-x-2 text-sm">
-            <span>{t("dayplan.task.suggestTwoPerson")}</span>
-            <Link
-              to={`${CHORES_PATH}?${EDIT_PARAM}=${encodeURIComponent(task.choreId)}`}
-              aria-label={t("dayplan.task.suggestTwoPerson.action.named", { task: task.choreName })}
-              className="inline-flex min-h-11 items-center font-semibold underline underline-offset-[0.2em]"
-            >
-              {t("dayplan.task.suggestTwoPerson.action")}
-            </Link>
-          </p>
-        )}
-
-        {(committed || start.length > 0 || end.length > 0) && (
-          <ButtonRow
-            // An empty slot is undefined, not false, so ButtonRow renders no empty group for it.
-            start={
-              committed || start.length > 0 ? (
-                <>
-                  {committed && (
-                    <p className="my-0 flex items-center gap-1.5 font-semibold">
-                      <CircleCheck aria-hidden="true" size={18} className="shrink-0" />
-                      {t("dayplan.task.committed")}
-                    </p>
-                  )}
-                  {start.map((action) => actionButton(action, "start"))}
-                </>
-              ) : undefined
-            }
-            end={end.length > 0 ? end.map((action) => actionButton(action, "end")) : undefined}
-          />
-        )}
-      </Card>
+    <li ref={item} className="my-0 list-none">
+      <HomeTaskCard
+        category={category}
+        categoryLabel={labelText(t, categoryLabel(category.id))}
+        name={task.choreName}
+        effort={{
+          level: effortLevel,
+          name: effortName(t, task.currentEffort),
+          label: taskEffortText(t, task.currentEffort, task.baseEffort),
+        }}
+        why={reason ?? due}
+        status={committed ? t("dayplan.task.committed") : undefined}
+        onOpen={() => setOpen(true)}
+        menu={
+          menu.length > 0
+            ? {
+                label: t("dayplan.task.menu", { task: task.choreName }),
+                closeLabel: t("dayplan.task.sheet.close"),
+                items: menu.map(menuItem),
+              }
+            : undefined
+        }
+        actions={primary.map(button)}
+      />
+      {/* Mounted only while open: it reads the Chores for the Demands, which no closed card should. */}
+      {open && (
+        <TaskSheet
+          onClose={() => setOpen(false)}
+          task={task}
+          role={role}
+          holderId={holderId}
+          due={due}
+          reason={reason}
+          explanation={explanation}
+        />
+      )}
     </li>
   );
 }
-

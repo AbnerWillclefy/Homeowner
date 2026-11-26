@@ -2,6 +2,7 @@
 import { act, createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestQueryClient, renderWithQueryClient, type Rendered } from "../../../shared/query/testing";
+import { undoHarness } from "../../../shared/undo/testing";
 import { dayPlan } from "../../dayplan/testing/fixtures";
 import { resident } from "../../residents/testing/fixtures";
 import type { DayPlanResult } from "../../dayplan/api/api";
@@ -45,11 +46,13 @@ describe("joining a Home while the Shell's observers are mounted", () => {
     getDayPlan.mockResolvedValue({ kind: "ok", plan: dayPlan({ energy: 8 }) });
     getResidents.mockResolvedValue({ kind: "ok", date: "2030-01-15", residents: NEW_HOME });
     rendered = renderWithQueryClient(
-      createElement(() => {
-        day = useDayPlan();
-        residents = useResidents(true);
-        return null;
-      }),
+      undoHarness().wrap(
+        createElement(() => {
+          day = useDayPlan();
+          residents = useResidents(true);
+          return null;
+        }),
+      ),
       client,
     );
     await settle();

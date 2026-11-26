@@ -55,10 +55,22 @@ for (const l of LOCALES) {
       await expect(page.getByText("Water the plants")).toBeVisible();
     });
 
-    test("a two-person Task says who it is with", async ({ page, baseURL }) => {
+    test("a two-person Task says who it is with in its Sheet, not on the card", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
-      await expect(page.getByText(l.withAna, { exact: true })).toBeVisible();
-      await expect(page.getByText(l.withYou, { exact: true })).toBeVisible();
+      await expect(page.getByText(l.withAna, { exact: true })).toHaveCount(0);
+
+      // Your own Task, shared with Ana.
+      await page.getByRole("button", { name: "Mop the floors", exact: true }).click();
+      const mine = page.getByRole("dialog", { name: "Mop the floors" });
+      await expect(mine.getByText(l.withAna, { exact: true })).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(mine).toHaveCount(0);
+
+      // Ana's Task, shared with you: the Sheet names who holds it and says you are with her.
+      await page.getByRole("button", { name: "Water the plants", exact: true }).click();
+      const hers = page.getByRole("dialog", { name: "Water the plants" });
+      await expect(hers.getByText("Ana Souza", { exact: true })).toBeVisible();
+      await expect(hers.getByText(l.withYou, { exact: true })).toBeVisible();
     });
 
     test("a photo that answers text/html falls back to initials", async ({ page, baseURL }) => {

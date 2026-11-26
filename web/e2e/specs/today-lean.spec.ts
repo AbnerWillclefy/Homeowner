@@ -51,6 +51,17 @@ for (const l of LOCALES) {
       await expect(page.getByText(l.detail, { exact: true })).toHaveCount(0);
     });
 
+    test("a Task card is lean: Category, Chore, Effort and a one-line why, with its buttons and no facts list", async ({ page, baseURL }) => {
+      await launchApp(page, baseURL!);
+      const card = page.getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Wash the dishes" }) });
+      await expect(card.getByText("Cozinha", { exact: true })).toBeVisible();
+      await expect(card.getByText("Esforço: Leve", { exact: true })).toBeAttached();
+      // The why is clamped to one line; the facts (Importance, who) live in the Sheet.
+      await expect(card.locator(".line-clamp-1")).toHaveCount(1);
+      await expect(card.getByRole("button", { name: "Recusar Wash the dishes" })).toBeVisible();
+      await expect(card.getByRole("list")).toHaveCount(0);
+    });
+
     test("the greeting, the date, the Energy card and the Check-in card are gone", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
       await expect(summary(page)).toBeVisible();

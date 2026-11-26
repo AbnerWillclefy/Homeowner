@@ -47,3 +47,27 @@ it("TaskCard keeps its open button and its actions separate, and runs each", asy
   expect(open).toHaveBeenCalledTimes(1);
   expect(screen.getByRole("button", { name: "Lavar a louça" }).closest("article")?.querySelectorAll("article button button")).toHaveLength(0);
 });
+
+it("TaskCard gives an action an accessible name that starts with its label, and can disable it", () => {
+  render(
+    <TaskCard
+      category={kitchen} categoryLabel="Cozinha" name="Lavar a louça" why="Leve."
+      effort={{ level: 2, name: "Leve", label: "Esforço: leve" }}
+      actions={[{ label: "Aceitar", ariaLabel: "Aceitar Lavar a louça", onClick: vi.fn(), disabled: true }]}
+    />,
+  );
+  const button = screen.getByRole("button", { name: "Aceitar Lavar a louça" }) as HTMLButtonElement;
+  expect(button.textContent).toBe("Aceitar");
+  expect(button.disabled).toBe(true);
+});
+
+it("TaskCard writes its status at the start of the caption row, not above the actions", () => {
+  render(
+    <TaskCard
+      category={kitchen} categoryLabel="Cozinha" name="Lavar a louça" why="Leve." status="Assumida"
+      effort={{ level: 2, name: "Leve", label: "Esforço: leve" }}
+      actions={[{ label: "Concluir", onClick: vi.fn() }]}
+    />,
+  );
+  expect(screen.getByText("Assumida").closest("p")?.textContent).toMatch(/^AssumidaCozinha/);
+});

@@ -8,10 +8,12 @@ import { seedSession } from "../mocks/session";
 import { launchApp, visit } from "../pages/launch";
 
 // What this covers, in pt-BR and at the largest text size: the "Change time" action on Me's Completions and
-// on Today's Done cards. A Completion moves from today to yesterday and Today's Done list loses it; the server's
-// day wins when the device zone differs from the Home's; every error code shows its calm message and leaves the
-// dialog open (and a retry then works); a value outside the bounds is refused without a call; a double click sends
-// one PATCH; keyboard only, with focus back on the action; and no action on a housemate's page.
+// on Today's Done cards, which opens a Sheet. Saving closes it and sends at once, with Desfazer in a toast that
+// writes the old time back (and, refused, says why in an error toast); a Completion moves from today to
+// yesterday and Today's Done list loses it; the server's day wins when the device zone differs from the Home's;
+// every error code shows its calm message in a toast and leaves the Completion where it was; a value outside the
+// bounds is refused in the Sheet without a call; a double click sends one PATCH; keyboard only, with focus back
+// on the action; and no action on a housemate's page.
 // The app's clock is fixed at 10:30 on 2030-01-15 in the Home's zone (America/Sao_Paulo, which is also the device).
 
 const LOCALES = [
@@ -22,7 +24,8 @@ const LOCALES = [
     change: "Mudar hora",
     label: "Quando você fez?",
     save: "Salvar",
-    cancel: "Cancelar",
+    undo: "Desfazer",
+    changed: `Hora de ${"Deep clean the shower"} alterada.`,
     today: "Hoje",
     yesterday: "Ontem",
     errors: {
@@ -80,7 +83,11 @@ for (const l of LOCALES) {
     const changeOf = (page: Page, chore: string) => card(page, chore).getByRole("button", { name: l.change });
     const dialogOf = (page: Page) => page.getByRole("dialog", { name: l.change });
 
-    test("moves a Completion from today to yesterday, and Today's Done list loses it", async ({ page, baseURL, fakeApi }) => {
+    const undo = (page: Page) => page.getByRole("button", { name: l.undo });
+    // Radix also writes the toast into a visually hidden live region, so only the one on screen counts.
+    const toast = (page: Page, text: string) => page.getByText(text, { exact: true }).filter({ visible: true });
+
+    test("moves a Completion from today to yesterday at once with Desfazer, and Today's Done list loses it", async ({ page, baseURL, fakeApi }) => {
       await openMe(page, baseURL);
       await expect(dayList(page, l.today).getByRole("listitem")).toHaveCount(2);
       await changeOf(page, SHOWER).click();
@@ -90,14 +97,33 @@ for (const l of LOCALES) {
       await dialog.getByLabel(l.label).fill("2030-01-14T18:00");
       await dialog.getByRole("button", { name: l.save }).click();
 
+      // Sent at once, not when a toast closes: the Sheet is gone and the toast offers Desfazer.
       await expect(dialog).toHaveCount(0);
+      await expect(toast(page, l.changed)).toBeVisible();
+      await expect(undo(page)).toBeVisible();
       await expect(dayList(page, l.today).getByRole("listitem")).toHaveCount(1);
       await expect(dayList(page, l.yesterday).getByRole("listitem").filter({ hasText: SHOWER })).toHaveCount(1);
       expect(patches(fakeApi.requests).map((r) => r.body)).toEqual([{ completedAt: "2030-01-14T21:00:00.000Z" }]);
 
+      // Desfazer writes the old time back.
+      await undo(page).click();
+      await expect(dayList(page, l.today).getByRole("listitem")).toHaveCount(2);
+      await expect(dayList(page, l.yesterday).getByRole("listitem").filter({ hasText: SHOWER })).toHaveCount(0);
+      expect(patches(fakeApi.requests).map((r) => r.body)).toEqual([
+        { completedAt: "2030-01-14T21:00:00.000Z" },
+        { completedAt: "2030-01-15T12:02:00Z" },
+      ]);
+    });
+
+    test("moves a Completion and leaves Today's Done list without it", async ({ page, baseURL }) => {
+      await openMe(page, baseURL);
+      await changeOf(page, SHOWER).click();
+      await dialogOf(page).getByLabel(l.label).fill("2030-01-14T18:00");
+      await dialogOf(page).getByRole("button", { name: l.save }).click();
+      await expect(toast(page, l.changed)).toBeVisible();
       await nav(page, l.home).click();
       await expect(page.getByText("Vacuum the living room")).toHaveCount(0);
-      await expect(page.getByText(SHOWER)).toHaveCount(0);
+      await expect(page.getByText(SHOWER, { exact: true })).toHaveCount(0);
     });
 
     test("moves a Completion from Today's Done card, and Me shows it under its new day", async ({ page, baseURL }) => {
@@ -112,7 +138,7 @@ for (const l of LOCALES) {
       await dialogOf(page).getByLabel(l.label).fill("2030-01-14T18:00");
       await dialogOf(page).getByRole("button", { name: l.save }).click();
       await expect(dialogOf(page)).toHaveCount(0);
-      await expect(page.getByText(SHOWER)).toHaveCount(0);
+      await expect(page.getByText(SHOWER, { exact: true })).toHaveCount(0);
 
       await nav(page, l.me).click();
       await expect(dayList(page, l.yesterday).getByRole("listitem").filter({ hasText: SHOWER })).toHaveCount(1);
@@ -128,13 +154,13 @@ for (const l of LOCALES) {
         await dialogOf(page).getByLabel(l.label).fill("2030-01-15T10:00");
         await dialogOf(page).getByRole("button", { name: l.save }).click();
         await expect(dialogOf(page)).toHaveCount(0);
-        expect(patches(fakeApi.requests).map((r) => r.body)).toEqual([{ completedAt: "2030-01-15T01:00:00.000Z" }]);
         await expect(dayList(page, l.yesterday).getByRole("listitem").filter({ hasText: SHOWER })).toHaveCount(1);
+        expect(patches(fakeApi.requests).map((r) => r.body)).toEqual([{ completedAt: "2030-01-15T01:00:00.000Z" }]);
         await expect(dayList(page, l.today).getByRole("listitem").filter({ hasText: SHOWER })).toHaveCount(0);
       });
     });
 
-    test("refuses a time outside the window without calling the API", async ({ page, baseURL, fakeApi }) => {
+    test("refuses a time outside the window in the Sheet without calling the API", async ({ page, baseURL, fakeApi }) => {
       await openMe(page, baseURL);
       await changeOf(page, SHOWER).click();
       const dialog = dialogOf(page);
@@ -146,10 +172,11 @@ for (const l of LOCALES) {
       await expect(dialog.getByRole("alert")).toHaveText(l.errors.too_old);
       expect(patches(fakeApi.requests)).toHaveLength(0);
 
-      // Exactly now and exactly the first minute of the window are allowed.
+      // Exactly now is allowed.
       await dialog.getByLabel(l.label).fill("2030-01-15T10:30");
       await dialog.getByRole("button", { name: l.save }).click();
       await expect(dialog).toHaveCount(0);
+      expect(patches(fakeApi.requests)).toHaveLength(1);
     });
 
     for (const [name, status, body, message] of [
@@ -161,32 +188,47 @@ for (const l of LOCALES) {
       ["completion not found", 404, { error: "completion not found" }, l.errors.notFound],
       ["a server failure", 500, { error: "internal error" }, l.errors.error],
     ] as const) {
-      test(`shows a calm message for ${name} and keeps the dialog open for another try`, async ({ page, baseURL, fakeApi }) => {
+      test(`says ${name} calmly in a toast, with no Desfazer, and leaves the Completion where it was`, async ({ page, baseURL, fakeApi }) => {
         fakeApi.override("PATCH /home/completions/{id}", json(status, body), { once: true });
         await openMe(page, baseURL);
         await changeOf(page, SHOWER).click();
-        const dialog = dialogOf(page);
-        await dialog.getByRole("button", { name: l.save }).click();
+        await dialogOf(page).getByRole("button", { name: l.save }).click();
 
-        const alert = dialog.getByRole("alert");
-        await expect(alert).toHaveText(message);
+        await expect(toast(page, message)).toBeVisible();
         expect(message).not.toContain("!");
-        await expect(alert.locator("p")).not.toHaveClass(/danger/);
+        await expect(undo(page)).toHaveCount(0);
+        await expect(dialogOf(page)).toHaveCount(0);
         expect(await noOverflow(page)).toBe(true);
-        await expect(dialog.getByRole("button", { name: l.save })).toBeEnabled();
+        await expect(dayList(page, l.today).getByRole("listitem")).toHaveCount(2);
 
-        // The same dialog sends again, and this time the fake answers.
-        await dialog.getByRole("button", { name: l.save }).click();
-        await expect(dialog).toHaveCount(0);
+        // The same action sends again, and this time the fake answers.
+        await changeOf(page, SHOWER).click();
+        await dialogOf(page).getByRole("button", { name: l.save }).click();
+        await expect(toast(page, l.changed)).toBeVisible();
+        expect(patches(fakeApi.requests)).toHaveLength(2);
       });
     }
 
-    test("shows a calm message when the network fails, and the dialog stays open", async ({ page, baseURL }) => {
+    test("a Desfazer the server refuses (outside the 30 days) says why in the usual error toast", async ({ page, baseURL, fakeApi }) => {
+      await openMe(page, baseURL);
+      await changeOf(page, SHOWER).click();
+      await dialogOf(page).getByLabel(l.label).fill("2030-01-14T18:00");
+      await dialogOf(page).getByRole("button", { name: l.save }).click();
+      await expect(undo(page)).toBeVisible();
+      fakeApi.override("PATCH /home/completions/{id}", json(400, { error: "too_old" }), { once: true });
+      await undo(page).click();
+      await expect(toast(page, l.errors.too_old)).toBeVisible();
+      // Nothing was written back: the Completion is still where the move put it.
+      await expect(dayList(page, l.yesterday).getByRole("listitem").filter({ hasText: SHOWER })).toHaveCount(1);
+    });
+
+    test("says a network failure calmly in a toast", async ({ page, baseURL }) => {
       await page.route(/\/home\/completions\//, (route) => route.abort("failed"));
       await openMe(page, baseURL);
       await changeOf(page, SHOWER).click();
       await dialogOf(page).getByRole("button", { name: l.save }).click();
-      await expect(dialogOf(page).getByRole("alert")).toHaveText(l.errors.offline);
+      await expect(toast(page, l.errors.offline)).toBeVisible();
+      await expect(undo(page)).toHaveCount(0);
     });
 
     test("the server's before_task rule answers a move to before the Task started", async ({ page, baseURL }) => {
@@ -194,21 +236,19 @@ for (const l of LOCALES) {
       await changeOf(page, STOVE).click();
       await dialogOf(page).getByLabel(l.label).fill("2030-01-13T10:00");
       await dialogOf(page).getByRole("button", { name: l.save }).click();
-      await expect(dialogOf(page).getByRole("alert")).toHaveText(l.errors.before_task);
+      await expect(toast(page, l.errors.before_task)).toBeVisible();
     });
 
-    test("a double click on Save sends one PATCH and the action cannot be repeated while saving", async ({ page, baseURL, fakeApi }) => {
+    test("a double click on Save sends one PATCH", async ({ page, baseURL, fakeApi }) => {
       const held = hold(page, /\/home\/completions\//);
       await openMe(page, baseURL);
       await changeOf(page, SHOWER).click();
       const dialog = dialogOf(page);
       await dialog.getByLabel(l.label).fill("2030-01-14T18:00");
-      const save = dialog.getByRole("button", { name: l.save });
-      await save.dblclick();
-      await expect(save).toBeDisabled();
-      await expect(save).toHaveAttribute("aria-busy", "true");
-      held.release();
+      await dialog.getByRole("button", { name: l.save }).dblclick();
       await expect(dialog).toHaveCount(0);
+      held.release();
+      await expect(toast(page, l.changed)).toBeVisible();
       expect(patches(fakeApi.requests)).toHaveLength(1);
     });
 
@@ -219,9 +259,7 @@ for (const l of LOCALES) {
       await page.keyboard.press("Enter");
       const dialog = dialogOf(page);
       await expect(dialog).toBeVisible();
-      // Focus moved in: the title first, then the picker (labelled), then the buttons.
-      await page.keyboard.press("Tab");
-      await expect(dialog.getByLabel(l.label)).toBeFocused();
+      await dialog.getByLabel(l.label).focus();
       await dialog.getByLabel(l.label).fill("2030-01-15T09:30");
       await page.keyboard.press("Enter");
       await expect(dialog).toHaveCount(0);

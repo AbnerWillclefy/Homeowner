@@ -83,7 +83,8 @@ for (const name of names) {
 
       const base = `auto-web-${kebab(name)}-mobile`;
       const message = overflowOf(name, await page.evaluate(measureOverflow));
-      await page.setViewportSize({ ...VIEWPORT, height: await page.evaluate(() => document.documentElement.scrollHeight) });
+      // A Sheet or Dialog is fixed to the viewport, so it is shot at phone height, as its artboard is; a page is shot whole.
+      if (!entry.state) await page.setViewportSize({ ...VIEWPORT, height: await page.evaluate(() => document.documentElement.scrollHeight) });
       await page.screenshot({ path: join(OUT, `${base}-app.png`) });
       held?.release();
 
