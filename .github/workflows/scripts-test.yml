@@ -30,4 +30,4 @@ jobs:
       - name: Test design-pairs.sh
         run: .github/scripts/design-pairs.test.sh
       - name: Test the screenshot scripts
-        run: node --test .github/scripts/bedrock-screenshots.test.mjs .github/scripts/revenue-screenshots.test.mjs .github/scripts/artboards.test.mjs .github/scripts/dc-runtime.test.mjs .github/scripts/web-screenshots.test.mjs
+        run: node --test .github/scripts/bedrock-screenshots.test.mjs .github/scripts/revenue-screenshots.test.mjs .github/scripts/artboards.test.mjs .github/scripts/dc-runtime.test.mjs .github/scripts/web-screenshots.test.mjs .github/scripts/spacing-grid.test.mjs
