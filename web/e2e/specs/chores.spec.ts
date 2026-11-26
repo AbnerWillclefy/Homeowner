@@ -167,7 +167,7 @@ test.describe("pt-BR on a phone", () => {
 
   test("a very long name and caption stay on one line each, and the row still opens the Sheet with the full name", async ({ page, fakeApi }) => {
     const name = "Limpar ".repeat(17).trim();
-    fakeApi.state.residents[1]!.name = "Maria Aparecida da Conceição Albuquerque de Souza Pereira";
+    fakeApi.state.residents![1]!.name = "Maria Aparecida da Conceição Albuquerque de Souza Pereira";
     fakeApi.state.chores.push({ ...fakeApi.state.chores[0]!, id: "long", name, responsibleResidentId: "resident-2" });
     await page.reload();
     const title = tabs.chores.chore(page, name);
