@@ -68,8 +68,8 @@ export const SCREENS: Record<string, Entry> = {
   Chores: at("/chores", ["chores"]),
   ChoreSheet: at("/chores?edit=louca", ["chores"]),
   ChoresEmpty: at("/chores", ["chores"], { data: "no-chores" }),
-  CatalogQuestions: none("The Catalog's questions open from the Chores screen's "Do Catálogo" menu item; today it lists entries with no questions."),
-  CatalogReview: none("The Catalog's suggestions open from the Chores screen's "Do Catálogo" menu item; today it lists entries with no review step."),
+  CatalogQuestions: none("The Catalog's questions open from the Chores screen's Do Catálogo menu item; today it lists entries with no questions."),
+  CatalogReview: none("The Catalog's suggestions open from the Chores screen's Do Catálogo menu item; today it lists entries with no review step."),
   // Lar
   Home: at("/home", ["home", "residents"]),
   Resident: at("/home/residents/resident-2", ["residents"]),
