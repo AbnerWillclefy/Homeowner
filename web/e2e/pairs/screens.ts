@@ -101,7 +101,7 @@ export const SCREENS: Record<string, Entry> = {
   OnboardBaseline: onboard("baseline", ["profile"]),
   OnboardRestrictions: onboard("restrictions", ["profile"]),
   OnboardPreferences: onboard("preferences", ["profile"]),
-  OnboardReminders: onboard("reminders", ["push"]),
+  OnboardReminders: onboard("finish", ["push"]),
   InviteSignedOut: at("/#invite=abc123", ["invite"], { data: "signed-out-invite" }),
   InviteRating: at("/#invite=abc123", ["invite"], { data: "invite", state: "invite-rating" }),
   // Partes

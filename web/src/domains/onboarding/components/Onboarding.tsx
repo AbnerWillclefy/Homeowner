@@ -58,8 +58,8 @@ interface StepView {
 
 /**
  * The walk a new User takes instead of the dashboard: five screens, the Home (not for a joiner), Baseline,
- * Restrictions, Preferences, then one that installs (iOS in a tab only) and asks for reminders. Each is a heading and its fields. It shares the session's one push hook (so the launch
- * re-subscribe runs once) and owns the one profile hook of the flow, so the profile lists are fetched once.
+ * Restrictions, Preferences, then one that installs (iOS in a tab only) and asks for reminders. Each is a heading and its fields. It shares the session's one push hook
+ * (so the launch re-subscribe runs once) and owns the one profile hook of the flow, so the profile lists are fetched once.
  */
 export function Onboarding({ position, onPosition }: Props) {
   const { t } = useI18n();

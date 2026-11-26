@@ -9,13 +9,15 @@ import { residentsHandlers } from "../mocks/handlers/residents";
 import { todayHandlers } from "../mocks/handlers/today";
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
-import { onboarding, WEEK, type Day, type Level, type WalkInput } from "../pages/onboarding";
+import { onboarding, JOINER, WEEK, type Day, type Level, type WalkInput } from "../pages/onboarding";
+import { signedInResident } from "../mocks/sampleHome";
 import { shell } from "../pages/shell";
 
-// What this covers: a signed-in User with no Home, from the first onboarding screen to Today. The app shows five
-// steps on this device (Home, Baseline, Restrictions, Preferences, reminders). The server also has an `install`
-// step, but the app skips it except on iOS in a browser tab, so it is not shown here and is not covered: read
-// "every step" as these five.
+// What this covers: a signed-in User with no Home, from the first onboarding screen to Today, in five screens
+// (Home, Baseline, Restrictions, Preferences, finish) counted "Step n of 5". The server also has an `install` step,
+// but the app shows it on the finish screen, only on iOS in a browser tab, so it is not covered here: the finish
+// screen on this device is the reminders alone, and it sends the one step `reminders`. A User who joined by Invite
+// has a Home already, so skips the Home screen and counts "of 4".
 
 // The levels and the points they save (src/domains/profile/logic/baselineLevels.ts).
 const POINTS: Record<Level, number> = { Low: 4, Normal: 8, High: 14 };
@@ -220,8 +222,41 @@ test.describe("a User whose server progress is past the Home step", () => {
     await onboarding.walkToReview(page, WALK);
     await onboarding.createHome(page);
 
-    // `install` is skipped off iOS, so the next step that applies is the reminders.
-    await expect(page).toHaveURL(/\/welcome\/reminders$/);
+    // The server's next step is `install`, which shares the finish screen with the reminders.
+    await expect(page).toHaveURL(/\/welcome\/finish$/);
+    await onboarding.expectOnStep(page, "Turn on reminders", 5, 5);
     expect(fakeApi.state.onboardingStored).toBe("preferences");
+  });
+});
+
+test.describe("a User who joined by Invite", () => {
+  // The Home came with the Invite and the first answer is the Baseline, so there is no Home screen: 4 screens.
+  test.use({ fakeState: { ...signedInResident(), onboardingStored: "home" } });
+
+  test("counts 4 screens and sends one request for the finish screen, which says Skip is optional", async ({ page, fakeApi }) => {
+    await expect(page).toHaveURL(/\/welcome\/baseline$/);
+    // The Home exists, so there is nothing to go back to, and the count has no Home screen.
+    await expect(page.getByRole("button", { name: "Back", exact: true })).toHaveCount(0);
+    await onboarding.completeBaseline(page, WEEK_LEVELS, JOINER);
+    await onboarding.expectOnStep(page, "Your Restrictions", 2, 4);
+    // Restrictions is not skippable: no Skip until the optional screens.
+    await expect(page.getByRole("button", { name: "Skip (optional)", exact: true })).toHaveCount(0);
+    await onboarding.next(page);
+    await onboarding.expectOnStep(page, "Your Preferences", 3, 4);
+
+    // Skip is the same request as Next, on the optional screens only.
+    await onboarding.skip(page);
+    await onboarding.expectOnStep(page, "Turn on reminders", 4, 4);
+    await onboarding.skip(page);
+    await expect(onboarding.startChoiceDialog(page)).toBeVisible();
+
+    // One request for both the install and reminders steps: `reminders` moves the server past `install`.
+    expect(onboardingSteps(fakeApi)).toEqual([
+      { step: "baseline" },
+      { step: "restrictions" },
+      { step: "preferences" },
+      { step: "reminders" },
+    ]);
+    expect(fakeApi.state.onboardingStored).toBe("done");
   });
 });

@@ -65,11 +65,11 @@ The canvas calls the "Passo N de M" indicator **`Stepper`** and the +/- control 
 | Onboarding 2, Baseline | `stepPath("baseline")` | [OnboardBaseline](OnboardBaseline.dc.html) |
 | Onboarding 3, Restrictions | `stepPath("restrictions")` | [OnboardRestrictions](OnboardRestrictions.dc.html) |
 | Onboarding 4, Preferences | `stepPath("preferences")` | [OnboardPreferences](OnboardPreferences.dc.html) |
-| Onboarding 5, Reminders | `stepPath("reminders")` | [OnboardReminders](OnboardReminders.dc.html) |
+| Onboarding 5, Reminders | `stepPath("finish")` | [OnboardReminders](OnboardReminders.dc.html) |
 | Invite, signed out | invite link (join dialog) | [InviteSignedOut](InviteSignedOut.dc.html) |
 | Invite, rate the chores | invite link, after joining | [InviteRating](InviteRating.dc.html) |
 | **Partes** | | |
 | Bottom bar (shared by the four tabs) | | [BottomBar](BottomBar.dc.html) |
 | TaskCard states and chore categories | | [Parts](Parts.dc.html) |
 
-The onboarding order in the canvas (Home, Baseline, Restrictions, Preferences, Reminders, with no install step) differs from `ONBOARDING_STEPS` in `web/src/domains/onboarding/api/api.ts` (`install`, `reminders`, `baseline`, `restrictions`, `preferences`, `home`). The step ids are stored on the server, so changing the walk is the onboarding ticket's decision, not a rename.
+The canvas has five onboarding screens (Home, Baseline, Restrictions, Preferences, Reminders). The server stores six steps (`ONBOARDING_STEPS` in `web/src/domains/onboarding/api/api.ts`), and the app shows `install` and `reminders` together on the last screen, `/welcome/finish` (`web/src/domains/onboarding/logic/screens.ts`): the install card shows only on iOS in a browser tab, and Skip or the one `PUT {"step":"reminders"}` moves past both. A joiner by Invite has no Home screen, so counts "de 4". The canvas shows Baseline as one screen; the app keeps its seven days on that one screen, so the count does not change.

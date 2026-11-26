@@ -6,7 +6,7 @@ import { todayHandlers } from "../mocks/handlers/today";
 import { signedInResident, RESIDENT_EMAIL } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
-import { onboarding, type Day, type Level } from "../pages/onboarding";
+import { onboarding, JOINER, type Day, type Level } from "../pages/onboarding";
 
 // What this covers: onboarding over the query cache. Going Back to a profile step already seen shows its fields at
 // once, with no loading line, even while GET /me/profile is held, and the saved position stays where it was.
@@ -21,7 +21,8 @@ const WEEK_LEVELS: Record<Day, Level> = {
   Sunday: "Low",
 };
 
-// The Home exists and `home` is stored: the walk starts at the Baseline (the Home step is never shown again).
+// The Home exists and `home` is stored: the walk starts at the Baseline (the Home step is never shown again), and
+// this User counts as a joiner: the first answer was not `home`, so the walk is 4 screens.
 test.use({ fakeState: { ...signedInResident(), onboardingStored: "home" } });
 
 test.beforeEach(async ({ page, baseURL, fakeApi }) => {
@@ -37,8 +38,8 @@ test("going Back to the Baseline shows it at once, with no loading line, while t
   await expect(page).toHaveURL(/\/welcome\/baseline$/);
   // Nothing before the Baseline to go back to: the Home step would make a second Home.
   await expect(page.getByRole("button", { name: "Back", exact: true })).toHaveCount(0);
-  await onboarding.completeBaseline(page, WEEK_LEVELS);
-  await onboarding.expectOnStep(page, "Your Restrictions", 3, 5);
+  await onboarding.completeBaseline(page, WEEK_LEVELS, JOINER);
+  await onboarding.expectOnStep(page, "Your Restrictions", 2, 4);
 
   const held = hold(page, /\/me\/profile$/);
 
