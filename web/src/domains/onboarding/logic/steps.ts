@@ -18,9 +18,13 @@ export function nextStep(steps: readonly OnboardingStep[], step: OnboardingStep)
   return steps[steps.indexOf(step) + 1] ?? "done";
 }
 
-/** Going back is only local; it never lowers what the server has stored. */
+/**
+ * Going back is only local; it never lowers what the server has stored. It never returns to `home`: once the
+ * Home exists, CreateHome there would try to make a second one (409).
+ */
 export function previousStep(steps: readonly OnboardingStep[], step: OnboardingStep): OnboardingStep | null {
-  return steps[steps.indexOf(step) - 1] ?? null;
+  const previous = steps[steps.indexOf(step) - 1] ?? null;
+  return previous === "home" ? null : previous;
 }
 
 /**

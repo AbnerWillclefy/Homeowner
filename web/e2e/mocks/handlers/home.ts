@@ -143,8 +143,8 @@ export function homeHandlers(api: FakeApi): void {
         buildsUp: chore.buildsUp,
         responsibleResidentId: null,
       }));
-      // Creating the Home completes the last onboarding step on the server.
-      state.onboardingStored = "done";
+      // Creating the Home stores `home` as the last step completed, unless the User is already further on.
+      if (state.onboardingStored === null) state.onboardingStored = "home";
       return json(201, home);
     }),
   );

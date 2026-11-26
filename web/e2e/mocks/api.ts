@@ -8,7 +8,7 @@ import type { ONBOARDING_STEPS } from "../../src/domains/onboarding/api/api";
 import type { Fake, FakeReply, FakeRequest } from "./router";
 
 /** The onboarding steps, in order, as the server stores them. Duplicated on purpose: a runtime import would pull in config.ts. */
-const STEPS = ["install", "reminders", "baseline", "restrictions", "preferences", "home"] as const;
+const STEPS = ["home", "baseline", "restrictions", "preferences", "install", "reminders"] as const;
 
 type Equal<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
 /** Breaks `typecheck` when the app's step list changes and this copy does not. */
@@ -219,12 +219,19 @@ export const signedIn =
   (request, state) =>
     request.token === null ? unauthorized() : handler(request, state);
 
-/** Mirrors `Next` in backend/internal/onboarding/onboarding.go: the step to show after the stored one. */
-function nextStep(stored: string | null): string {
+/**
+ * Mirrors `writeNextStep` in backend/internal/users/handler.go over `Next` in backend/internal/onboarding/onboarding.go:
+ * stored `done` stays done; no Home means `home`; a Home with nothing stored (an Invite joiner) skips `home`.
+ */
+function nextStep(state: FakeState): string {
+  const stored = state.onboardingStored;
   if (stored === "done") return "done";
-  const index = STEPS.findIndex((step) => step === stored);
-  if (index < 0) return STEPS[0];
-  return STEPS[index + 1] ?? "done";
+  if (state.home === null) return "home";
+  if (stored === null) state.onboardingStored = "home";
+  const index = STEPS.findIndex((step) => step === state.onboardingStored);
+  const next: string = STEPS[index + 1] ?? "done";
+  if (next === "done") state.onboardingStored = "done";
+  return next;
 }
 
 const rank = (step: string | null): number => (step === null ? -1 : step === "done" ? STEPS.length : STEPS.findIndex((s) => s === step));
@@ -258,7 +265,7 @@ export function coreHandlers(api: FakeApi): void {
       return json(200, { id, email, displayName: displayName ?? null, name: shown, photoUrl: photoUrl ?? null, ...avatarFor(shown) });
     }),
   );
-  api.on("GET /me/onboarding", signedIn((_, state) => json(200, { step: nextStep(state.onboardingStored) })));
+  api.on("GET /me/onboarding", signedIn((_, state) => json(200, { step: nextStep(state) })));
   api.on(
     "PUT /me/onboarding",
     signedIn((request, state) => {
@@ -267,7 +274,7 @@ export function coreHandlers(api: FakeApi): void {
         return json(400, { error: "unknown step" });
       }
       if (rank(step) > rank(state.onboardingStored)) state.onboardingStored = step;
-      return json(200, { step: nextStep(state.onboardingStored) });
+      return json(200, { step: nextStep(state) });
     }),
   );
   api.on(

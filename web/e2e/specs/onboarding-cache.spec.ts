@@ -3,6 +3,7 @@ import { onboardingHandlers } from "../mocks/handlers/onboarding";
 import { hold } from "../mocks/hold";
 import { residentsHandlers } from "../mocks/handlers/residents";
 import { todayHandlers } from "../mocks/handlers/today";
+import { signedInResident, RESIDENT_EMAIL } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { launchApp } from "../pages/launch";
 import { onboarding, type Day, type Level } from "../pages/onboarding";
@@ -20,17 +21,22 @@ const WEEK_LEVELS: Record<Day, Level> = {
   Sunday: "Low",
 };
 
+// The Home exists and `home` is stored: the walk starts at the Baseline (the Home step is never shown again).
+test.use({ fakeState: { ...signedInResident(), onboardingStored: "home" } });
+
 test.beforeEach(async ({ page, baseURL, fakeApi }) => {
   fakeApi.use(onboardingHandlers);
   // Launching on Today starts its reads at once; with no Home they answer "none" (ADR 0016).
   fakeApi.use(todayHandlers);
   fakeApi.use(residentsHandlers);
-  await seedSession(page);
+  await seedSession(page, { email: RESIDENT_EMAIL });
   await launchApp(page, baseURL!);
 });
 
 test("going Back to the Baseline shows it at once, with no loading line, while the profile read is held", async ({ page }) => {
-  await onboarding.completeReminders(page);
+  await expect(page).toHaveURL(/\/welcome\/baseline$/);
+  // Nothing before the Baseline to go back to: the Home step would make a second Home.
+  await expect(page.getByRole("button", { name: "Back", exact: true })).toHaveCount(0);
   await onboarding.completeBaseline(page, WEEK_LEVELS);
   await onboarding.expectOnStep(page, "Your Restrictions", 3, 5);
 

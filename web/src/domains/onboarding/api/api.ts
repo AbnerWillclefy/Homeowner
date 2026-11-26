@@ -2,7 +2,7 @@ import type { AxiosRequestConfig } from "axios";
 import { authedRequest } from "../../auth/api/client";
 
 /** The ids are stored on the server, so they are permanent. Order matters: this is the walk. */
-export const ONBOARDING_STEPS = ["install", "reminders", "baseline", "restrictions", "preferences", "home"] as const;
+export const ONBOARDING_STEPS = ["home", "baseline", "restrictions", "preferences", "install", "reminders"] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 
 /** The step to show, or `done`. */

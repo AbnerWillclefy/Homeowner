@@ -94,7 +94,7 @@ export const onboarding = {
 
   /** The first Home step: the Home's zone and Allocation time, then on to the questions. */
   async completeHomeSettings(page: Page, settings: HomeSettingsInput): Promise<void> {
-    await onboarding.expectOnStep(page, "Create your Home", 5, 5);
+    await onboarding.expectOnStep(page, "Create your Home", 1, 5);
     await onboarding.timezone(page).selectOption(settings.timezone);
     await onboarding.allocationTime(page).selectOption(settings.allocationTime);
     await onboarding.continueFromSettings(page);
@@ -162,11 +162,11 @@ export const onboarding = {
     await expect(dialog).toBeHidden();
   },
 
-  /** Reminders: skipped, and waits for the Baseline step. */
+  /** Reminders, the last step: skipped, and waits for the walk to end (the start choice shows over Today). */
   async completeReminders(page: Page): Promise<void> {
-    await onboarding.expectOnStep(page, "Turn on reminders", 1, 5);
+    await onboarding.expectOnStep(page, "Turn on reminders", 5, 5);
     await onboarding.skipReminders(page);
-    await expect(page).toHaveURL(/\/welcome\/baseline$/);
+    await expect(onboarding.startChoiceDialog(page)).toBeVisible();
   },
 
   async completeBaseline(page: Page, week: Record<Day, Level>): Promise<void> {
@@ -187,17 +187,21 @@ export const onboarding = {
     await onboarding.expectOnStep(page, "Your Preferences", 4, 5);
     for (const { category, choice } of picks) await onboarding.setPreference(page, category, choice);
     await onboarding.next(page);
-    await expect(page).toHaveURL(/\/welcome\/home$/);
+    await expect(page).toHaveURL(/\/welcome\/reminders$/);
   },
 
-  /** The straight walk from the reminders step to the review of suggested Chores, with Create Home ready to press. */
+  /** The straight walk from the first step to the review of suggested Chores, with Create Home ready to press. */
   async walkToReview(page: Page, input: WalkInput): Promise<void> {
-    await onboarding.completeReminders(page);
-    await onboarding.completeBaseline(page, input.baseline);
-    await onboarding.completeRestrictions(page, input.restrictions);
-    await onboarding.completePreferences(page, input.preferences);
     await onboarding.completeHomeSettings(page, input.home);
     await onboarding.answerQuestions(page, input.answers);
     await onboarding.suggestChores(page);
+  },
+
+  /** The steps after the Home, up to the start choice. */
+  async walkProfile(page: Page, input: WalkInput): Promise<void> {
+    await onboarding.completeBaseline(page, input.baseline);
+    await onboarding.completeRestrictions(page, input.restrictions);
+    await onboarding.completePreferences(page, input.preferences);
+    await onboarding.completeReminders(page);
   },
 };

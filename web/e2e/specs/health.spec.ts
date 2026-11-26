@@ -1,5 +1,5 @@
 import type { FakeApi } from "../mocks/api";
-import { json } from "../mocks/api";
+import { initialState, json } from "../mocks/api";
 import { test, expect } from "../fixtures";
 import { signedInHandlers } from "../mocks/handlers/signedIn";
 import { homeHandlers } from "../mocks/handlers/home";
@@ -55,14 +55,13 @@ test.describe("signed in with a Home", () => {
 });
 
 test.describe("mid-onboarding", () => {
-  // Reminders is stored, so the Guard sends the User to the Baseline step.
-  test.use({ fakeState: { onboardingStored: "reminders" } });
+  // The Home exists and `home` is stored, so the Guard sends the User to the Baseline step.
+  test.use({ fakeState: { ...signedInResident(), onboardingStored: "home", profile: initialState().profile } });
 
   test.beforeEach(async ({ page, fakeApi }) => {
     fakeApi.use(onboardingHandlers);
     fakeApi.use(homeHandlers);
     fakeApi.use(catalogHandlers);
-    // Launching on Today starts its reads at once; with no Home they answer "none" (ADR 0016).
     fakeApi.use(todayHandlers);
     fakeApi.use(residentsHandlers);
     await seedSession(page);

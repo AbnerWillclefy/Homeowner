@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useNavigate } from "react-router";
+import { stepPath } from "../../../app/logic/routes";
 import type { OnboardingPosition, OnboardingStep } from "../api/api";
 import { useSession } from "../../../app/components/SessionProvider";
 import type { Home } from "../../home/api/api";
@@ -13,7 +15,7 @@ import { InstallSteps } from "../../push/components/InstallSteps";
 import { Button } from "../../../shared/ui/Button";
 import { allBaselineDaysSet } from "../logic/baselineComplete";
 import { OnboardingLayout } from "./OnboardingLayout";
-import { progress } from "../logic/steps";
+import { nextStep, progress } from "../logic/steps";
 import type { OnboardingProblem } from "../logic/onboardingState";
 import { useWalk } from "../hooks/useWalk";
 
@@ -54,16 +56,23 @@ interface StepView {
 }
 
 /**
- * The walk a new User takes instead of the dashboard: install, reminders, Baseline, Restrictions,
- * Preferences, then the Home. Each step is a short heading and its fields. It shares the session's one push hook (so the launch
+ * The walk a new User takes instead of the dashboard: the Home, Baseline, Restrictions, Preferences, then
+ * install and reminders. Each step is a short heading and its fields. It shares the session's one push hook (so the launch
  * re-subscribe runs once) and owns the one profile hook of the flow, so the profile lists are fetched once.
  */
 export function Onboarding({ position, onPosition }: Props) {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const setCreatedHome = useHomeCreated();
   const { push, steps, onHomeFinished } = useSession();
   const profile = useProfile();
-  const walk = useWalk(position, steps, onPosition);
+  // The Home's recovered notice waits here until the walk ends.
+  const pendingNotice = useRef<RecoveredNotice | null>(null);
+  const moveTo = (next: OnboardingPosition) => {
+    onPosition(next);
+    if (next === "done") onHomeFinished(pendingNotice.current);
+  };
+  const walk = useWalk(position, steps, moveTo);
   const [baselineIncomplete, setBaselineIncomplete] = useState(false);
 
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -84,14 +93,18 @@ export function Onboarding({ position, onPosition }: Props) {
 
   const goNext = () => void walk.next();
 
-  // The Home goes into the cache before the walk ends: the launch reads cached "none" for it and for everything
+  // The Home goes into the cache before the walk moves on: the launch reads cached "none" for it and for everything
   // under it, and the Shell would show that on mount (ADR 0016). The walk advances even if the cache update fails.
+  // The notice waits for the end of the walk, so the start choice does not show mid-onboarding.
   async function finishHome(home: Home, notice: RecoveredNotice | null) {
     try {
       await setCreatedHome(home);
     } finally {
-      onPosition("done");
-      onHomeFinished(notice);
+      pendingNotice.current = notice;
+      const after = nextStep(steps, "home");
+      moveTo(after);
+      // Same tick as the position, like the walk's Next: the guard must see both together.
+      if (after !== "done") navigate(stepPath(after));
     }
   }
 

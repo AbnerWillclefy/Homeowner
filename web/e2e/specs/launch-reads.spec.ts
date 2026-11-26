@@ -10,7 +10,7 @@ import { hold } from "../mocks/hold";
 import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { launchApp, visit } from "../pages/launch";
-import { onboarding } from "../pages/onboarding";
+import { onboarding, type WalkInput } from "../pages/onboarding";
 import { shell } from "../pages/shell";
 import { tabs } from "../pages/tabs";
 
@@ -18,6 +18,15 @@ import { tabs } from "../pages/tabs";
 // Day Plan, Check-in, Streak, Residents, Demands, onboarding, Me and Home reads together, and the hooks take their
 // answers from it. A boot that fails, or a section that fails, falls back to that read's own endpoint. Other paths
 // start none of it, and a person still in onboarding sees no error from the reads that answer "none".
+
+// What the steps after the Home need; the values are not under test here.
+const PROFILE: WalkInput = {
+  baseline: { Monday: "Normal", Tuesday: "Normal", Wednesday: "Normal", Thursday: "Normal", Friday: "Normal", Saturday: "Normal", Sunday: "Normal" },
+  restrictions: [],
+  preferences: [],
+  home: { timezone: "Europe/Lisbon", allocationTime: "07:30" },
+  answers: {},
+};
 
 const TODAY_READS = ["/me/onboarding", "/home/day-plan", "/home/check-in", "/home/streak", "/home/residents", "/demands"];
 
@@ -95,7 +104,7 @@ test.describe("signed in with a Home", () => {
 });
 
 test.describe("still in onboarding", () => {
-  test.use({ fakeState: { ...signedInResident(), home: null, onboardingStored: "preferences" } });
+  test.use({ fakeState: { ...signedInResident(), home: null, onboardingStored: "baseline" } });
 
   test.beforeEach(async ({ page, fakeApi }) => {
     fakeApi.use(onboardingHandlers);
@@ -110,7 +119,8 @@ test.describe("still in onboarding", () => {
     await launchApp(page, baseURL!);
 
     await expect(page).toHaveURL(/\/welcome\/home$/);
-    await onboarding.expectOnStep(page, "Create your Home", 5, 5);
+    // Whatever is stored, a User with no Home starts at the Home step.
+    await onboarding.expectOnStep(page, "Create your Home", 1, 5);
     // The launch reads ran inside the boot and were told there is no Home; the person sees none of that.
     expect(count(fakeApi, "/boot")).toBe(1);
     await expect(page.getByRole("alert")).toHaveCount(0);
@@ -118,6 +128,8 @@ test.describe("still in onboarding", () => {
     await onboarding.completeHomeSettings(page, { timezone: "Europe/Lisbon", allocationTime: "07:30" });
     await onboarding.suggestChores(page);
     await onboarding.createHome(page);
+    await expect(page).toHaveURL(/\/welcome\/baseline$/);
+    await onboarding.walkProfile(page, PROFILE);
     await onboarding.dismissStartChoice(page);
     await shell.expectOnToday(page);
 
