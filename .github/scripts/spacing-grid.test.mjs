@@ -39,3 +39,11 @@ test("errorsFor fails a file whose diff GitHub left out", () => {
   assert.equal(errors.length, 1);
   assert.match(errors[0], /web\/src\/big\.tsx/);
 });
+
+test("errorsFor skips binary, renamed and removed files", () => {
+  const files = [
+    { filename: "web/public/icon.png", status: "added", changes: 0 },
+    { filename: "web/src/gone.tsx", status: "removed", changes: 9000 },
+  ];
+  assert.deepEqual(errorsFor(files, files.map((f) => f.filename)), []);
+});

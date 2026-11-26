@@ -166,7 +166,7 @@ The PNGs land in `web/pairs-out/` (`auto-web-<artboard>-mobile-app.png` and `-de
 The `ui-screenshots` check fails a pull request that adds an off-grid spacing class under `web/`, `revenue/` or `bedrock/`
 (`.github/scripts/spacing-grid.mjs`). It reads only the lines the pull request adds, so existing off-grid classes do not block
 unrelated work. On padding, margin, gap, space between, inset and the four sides (negatives included) it fails odd steps other than
-`1` (`gap-3`, `p-5`), fractional steps (`mt-0.5`) and arbitrary px values that are not a multiple of 8 or 4 (`px-[12px]`). Step `1`
+`1` (`gap-3`, `p-5`), fractional steps (`mt-0.5`) and arbitrary px values other than 4 that are not a multiple of 8 (`px-[12px]`). Step `1`
 (4px) passes everywhere, because a static check cannot tell outer spacing from spacing inside a component. A file whose diff GitHub
 leaves out for size fails too, naming the file: split the change.
 
