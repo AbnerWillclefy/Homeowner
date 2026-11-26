@@ -37,6 +37,8 @@ const LOCALES = [
     lar: "Lar",
     hoje: "Hoje",
     committed: "Assumida",
+    stateProposed: "proposta para você",
+    stateCommitted: "assumida por você",
   },
   {
     locale: "en-US",
@@ -60,6 +62,8 @@ const LOCALES = [
     lar: "Home",
     hoje: "Today",
     committed: "Committed",
+    stateProposed: "proposed for you",
+    stateCommitted: "taken by you",
   },
 ] as const;
 
@@ -135,9 +139,17 @@ for (const l of LOCALES) {
       await expect(sheet).toBeVisible();
       await expect(sheet.getByRole("heading", { name: l.why_heading })).toBeVisible();
       await expect(sheet.getByText(l.demands)).toBeVisible();
+      await expect(sheet).toHaveAccessibleDescription(new RegExp(` · ${l.stateProposed}$`));
       await page.keyboard.press("Escape");
       await expect(sheet).toHaveCount(0);
       await expect(opener).toBeFocused();
+    });
+
+    test("the Sheet of a Committed Task says it is taken by you", async ({ page, baseURL, fakeApi }) => {
+      fakeApi.state.dayPlan!.mine[0]!.committed = true;
+      await launchApp(page, baseURL!);
+      await page.getByRole("button", { name: DISHES, exact: true }).click();
+      await expect(page.getByRole("dialog", { name: DISHES })).toHaveAccessibleDescription(`${l.category} · ${l.stateCommitted}`);
     });
 
     test("Recusar shows at once and Desfazer sends nothing", async ({ page, baseURL, fakeApi }) => {
