@@ -41,10 +41,18 @@ export const enUS = {
   "home.create.recovered":
     "You already have a Home, so Homeowner loaded it instead. Check its settings below.",
   "home.settings.heading": "Your Home",
-  "home.settings.plan.hint": "When each day's plan is made, in your Home's timezone.",
+  "home.allocationTime.hint": "Every 15 minutes. Takes effect tomorrow; today's plan does not change.",
   "home.summary": "Plans are made at {time}, {zone} time.",
-  "home.settings.save": "Save changes",
-  "home.settings.saved": "Your changes are saved.",
+  "home.settings.undo.timezone": "Timezone changed.",
+  "home.settings.undo.allocationTime": "Allocation time changed.",
+  "home.settings.offline":
+    "Homeowner cannot reach the service, so nothing changed. Check your connection and try again.",
+  "home.settings.error": "Something went wrong and nothing changed. Try again in a moment.",
+  "home.settings.sheet.close": "Close",
+  "home.residents.label": "Residents · {count}",
+  "home.group.home": "Home",
+  "home.leave.caption": "You stop getting Tasks from here",
+  "invite.row.caption": "A single-use link, good for 7 days",
   "home.settings.card.title": "Home settings",
   "home.settings.card.hint": "Planning time and time zone",
   "home.residents.heading": "Residents",
@@ -72,7 +80,6 @@ export const enUS = {
     "Homeowner cannot reach the service. What you typed is still here; check your connection and try again.",
   "home.save.error":
     "Something went wrong and nothing was saved. What you typed is still here; try again in a moment.",
-  "home.leave.heading": "Leave this Home",
   "home.leave.open": "Leave this Home",
   "home.leave.title": "Leave this Home?",
   "home.leave.removes":

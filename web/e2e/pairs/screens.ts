@@ -25,6 +25,8 @@ export const STATES = [
   "start-choice", // the start choice, after joining through an Invite
   "invite-rating", // the rating step, after joining through an Invite
   "leave", // the Leave Home confirm
+  "invite-sheet", // the Sheet of the Invite row on Home
+  "home-settings", // the Sheet of the Home settings row on Home
   "confirm-email", // the Confirm screen, which needs the e-mail from the sign-up step
   "me-baseline", // the Baseline Sheet, from its row on Me
   "me-preferences", // the Preferences Sheet
@@ -78,8 +80,8 @@ export const SCREENS: Record<string, Entry> = {
   // Lar
   Home: at("/home", ["home", "residents"]),
   Resident: at("/home/residents/resident-2", ["residents"]),
-  InviteSheet: none("The Invite opens a Sheet from the Home screen's rows in #894."),
-  HomeSettings: none("Home settings open a Sheet from the Home screen's rows in #894."),
+  InviteSheet: at("/home", ["home", "invite"], { state: "invite-sheet" }),
+  HomeSettings: at("/home", ["home"], { state: "home-settings" }),
   LeaveDialog: at("/home", ["home"], { state: "leave" }),
   // Eu
   Me: at("/me", ["profile", "settings"]),

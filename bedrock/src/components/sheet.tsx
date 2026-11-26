@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 import { Drawer } from "vaul";
 import { useMediaQuery } from "../lib/use-media-query";
 import { Button } from "./button";
@@ -10,6 +10,8 @@ type SheetProps = {
   onOpenChange: (open: boolean) => void;
   /** Focus returns to it on close. */
   trigger?: ReactNode;
+  /** For a Sheet opened without `trigger`: focus returns to this element on close. */
+  returnFocusRef?: RefObject<HTMLElement | null>;
   title: string;
   subtitle?: string;
   /** Read by screen readers on the close button. */
@@ -26,7 +28,7 @@ const content = "fixed z-(--z-overlay) flex flex-col bg-surface-raised text-text
  * A side panel from the tablet breakpoint up, a bottom drawer below it.
  * Crossing the breakpoint while open swaps the tree, so focus restarts in the new one.
  */
-export function Sheet({ open, onOpenChange, trigger, title, subtitle, closeLabel, children, footer }: SheetProps) {
+export function Sheet({ open, onOpenChange, trigger, returnFocusRef, title, subtitle, closeLabel, children, footer }: SheetProps) {
   // Duplicates --bp-tablet in tokens.css: matchMedia cannot read custom properties.
   const wide = useMediaQuery("(min-width: 768px)");
   const T = wide ? DialogPrimitive : Drawer;
@@ -40,7 +42,13 @@ export function Sheet({ open, onOpenChange, trigger, title, subtitle, closeLabel
       {trigger && <T.Trigger asChild>{trigger}</T.Trigger>}
       <T.Portal>
         <T.Overlay className={overlay} />
-        <T.Content data-slot="sheet" className={`${content} ${panel}`} {...(subtitle ? {} : { "aria-describedby": undefined })}>
+        <T.Content data-slot="sheet" className={`${content} ${panel}`}
+          onCloseAutoFocus={(event: Event) => {
+            if (!returnFocusRef) return;
+            event.preventDefault();
+            returnFocusRef.current?.focus();
+          }}
+          {...(subtitle ? {} : { "aria-describedby": undefined })}>
           {!wide && <div aria-hidden className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-border-strong" />}
           <header className="flex items-start justify-between gap-4 p-6 pb-2">
             <div className="flex flex-col gap-1">

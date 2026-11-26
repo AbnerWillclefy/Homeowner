@@ -119,7 +119,7 @@ function parseHome(body: unknown, state: FakeState): { home: HomeSettings; chore
   return { home: { timezone, allocationTime }, chores };
 }
 
-/** `POST /home`: creates the Home and the reviewed Chores together, as one step of onboarding. */
+/** `POST /home` creates the Home and the reviewed Chores together, as one step of onboarding; `PUT /home` replaces its settings. */
 export function homeHandlers(api: FakeApi): void {
   api.on(
     "POST /home",
@@ -146,6 +146,19 @@ export function homeHandlers(api: FakeApi): void {
       // Creating the Home stores `home` as the last step completed, unless the User is already further on.
       if (state.onboardingStored === null) state.onboardingStored = "home";
       return json(201, home);
+    }),
+  );
+
+  // Replaces both settings, like the API: a missing field is an error, so a client must send the whole Home.
+  api.on(
+    "PUT /home",
+    signedIn((request, state) => {
+      const fields = settingsErrors(isRecord(request.body) ? request.body : {});
+      if (Object.keys(fields).length > 0) return invalidHome(fields);
+      if (state.home === null) return json(404, { error: "no home" });
+      const { timezone, allocationTime } = request.body as HomeSettings;
+      state.home = { ...state.home, timezone, allocationTime };
+      return json(200, state.home);
     }),
   );
 }

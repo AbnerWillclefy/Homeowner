@@ -1,39 +1,24 @@
-import { SkeletonBar,SkeletonCard, SkeletonPill, SkeletonTile } from "../../../shared/ui/Skeleton";
+import { List } from "@homeowner/bedrock";
+import { SkeletonBar } from "../../../shared/ui/Skeleton";
 import { TabBody } from "../../../app/components/TabBody";
 import { SkeletonHeader } from "../../../shared/ui/SkeletonHeader";
 import { ChoresSkeleton } from "../../chores/components/ChoresSkeleton";
 import { DayPlanSkeleton, HeroSkeleton } from "../../dayplan/components/DayPlanSkeleton";
-import { ResidentRowsSkeleton } from "../../residents/components/ResidentRowSkeleton";
+import { ResidentRowSkeleton, ResidentRowsSkeleton } from "../../residents/components/ResidentRowSkeleton";
 
-function TitledCardSkeleton({ lines }: { lines: number }) {
-  return (
-    <SkeletonCard>
-      <div className="flex items-center gap-3">
-        <SkeletonTile />
-        <SkeletonBar className="h-5 w-1/2" />
-      </div>
-      {Array.from({ length: lines }, (_, line) => (
-        <SkeletonBar key={line} className={line % 2 === 0 ? "h-4 w-full" : "h-4 w-2/3"} />
-      ))}
-    </SkeletonCard>
-  );
-}
-
-/** The Home tab while its Home loads: the header, the Residents card, the Invite card, the folded settings card and the Leave card. */
+/** The Home tab while its Home loads: the header, the Residents list and the settings and Leave rows. */
 export function HomeSkeleton() {
   return (
     <div aria-hidden="true">
       <SkeletonHeader withLine={false} />
       <TabBody>
-      <SkeletonCard className="py-1">
+      <List>
         <ResidentRowsSkeleton />
-      </SkeletonCard>
-      <TitledCardSkeleton lines={2} />
-      <TitledCardSkeleton lines={1} />
-      <SkeletonCard>
-        <SkeletonBar className="h-4 w-2/3" />
-        <SkeletonPill className="w-32" />
-      </SkeletonCard>
+      </List>
+      <List>
+        <ResidentRowSkeleton />
+        <ResidentRowSkeleton />
+      </List>
       </TabBody>
     </div>
   );

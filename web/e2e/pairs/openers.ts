@@ -12,6 +12,11 @@ async function opened(page: Page): Promise<void> {
   await dialog(page).waitFor({ state: "visible" });
 }
 
+/** A Sheet is visible from the first frame of its slide-in; wait for the slide to end so the pair shows the fields. */
+async function settled(page: Page): Promise<void> {
+  await dialog(page).evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
+}
+
 /** The Invite link's dialog, and its "join" button: the one way to the rating step and the start choice. */
 async function join(page: Page): Promise<void> {
   await button(page, ptBR["invite.leave.confirm"]).click();
@@ -56,7 +61,7 @@ export const OPENERS: Record<State, (page: Page) => Promise<void>> = {
     await dialog(page).getByRole("heading", { name: ptBR["startChoice.heading"] }).waitFor();
   },
   leave: async (page) => {
-    await button(page, ptBR["home.leave.open"]).click();
+    await button(page, new RegExp(`^${ptBR["home.leave.open"]}`)).click();
     await opened(page);
   },
   "me-baseline": row(ptBR["profile.baseline.heading"]),
@@ -64,6 +69,16 @@ export const OPENERS: Record<State, (page: Page) => Promise<void>> = {
   "me-restrictions": row(ptBR["profile.restrictions.heading"]),
   "me-appearance": row(ptBR["settings.appearance.label"]),
   "me-account": row(ptBR["me.account.title"]),
+  "invite-sheet": async (page) => {
+    await button(page, new RegExp(`^${ptBR["invite.share.heading"]}`)).click();
+    await opened(page);
+    await settled(page);
+  },
+  "home-settings": async (page) => {
+    await button(page, new RegExp(`^${ptBR["home.settings.card.title"]}`)).click();
+    await opened(page);
+    await settled(page);
+  },
   // The e-mail travels in the router's history state from the sign-up step; set it as the router would.
   "confirm-email": async (page) => {
     await page.evaluate(() => {

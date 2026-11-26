@@ -25,9 +25,15 @@ export const tabs = {
   },
   home: {
     heading: (page: Page) => h1(page, "Your Home"),
-    timezone: (page: Page) => page.getByLabel("Timezone"),
-    allocationTime: (page: Page) => page.getByLabel("Allocation time"),
-    invite: (page: Page) => page.getByRole("heading", { name: "Invite a Resident", level: 3 }),
+    /** The header's line: when plans are made, and the zone. */
+    summary: (page: Page) => page.getByText(/^Plans are made at .*America\/Sao Paulo time\.$/),
+    /** The Rows of the Home tab; each opens a Sheet (the last one a Dialog). */
+    settingsRow: (page: Page) => page.getByRole("button", { name: /^Home settings/ }),
+    invite: (page: Page) => page.getByRole("button", { name: /^Invite a Resident/ }),
+    leave: (page: Page) => page.getByRole("button", { name: /^Leave this Home/ }),
+    /** The settings Sheet's two controls. */
+    timezone: (page: Page) => page.getByRole("combobox", { name: "Timezone", exact: true }),
+    allocationTime: (page: Page) => page.getByRole("combobox", { name: "Allocation time", exact: true }),
   },
   me: {
     heading: (page: Page) => h1(page, "About you"),

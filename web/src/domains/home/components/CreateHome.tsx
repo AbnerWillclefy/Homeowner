@@ -79,7 +79,6 @@ export function CreateHome({ onSaved, onRecovered, showHeading = true }: Props) 
         </Heading>
         <form onSubmit={onSubmit} noValidate className="flex flex-col">
           <HomeFields
-            idPrefix="create-home"
             values={flow.settings}
             timezones={options}
             fieldErrors={flow.settingsErrors}

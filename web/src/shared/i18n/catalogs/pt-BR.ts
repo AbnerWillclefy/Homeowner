@@ -45,10 +45,18 @@ export const ptBR: Messages = {
   "home.create.recovered":
     "Você já tem um lar, então o Homeowner o carregou. Confira os ajustes dele abaixo.",
   "home.settings.heading": "Seu lar",
-  "home.settings.plan.hint": "Quando o plano de cada dia é feito, no fuso horário do seu lar.",
+  "home.allocationTime.hint": "A cada 15 minutos. Vale a partir de amanhã; o plano de hoje não muda.",
   "home.summary": "Os planos são feitos às {time}, horário de {zone}.",
-  "home.settings.save": "Salvar alterações",
-  "home.settings.saved": "Suas alterações foram salvas.",
+  "home.settings.undo.timezone": "Fuso horário alterado.",
+  "home.settings.undo.allocationTime": "Horário da alocação alterado.",
+  "home.settings.offline":
+    "O Homeowner não consegue acessar o serviço, então nada mudou. Verifique sua conexão e tente novamente.",
+  "home.settings.error": "Algo deu errado e nada mudou. Tente novamente em instantes.",
+  "home.settings.sheet.close": "Fechar",
+  "home.residents.label": "Moradores · {count}",
+  "home.group.home": "Lar",
+  "home.leave.caption": "Você para de receber tarefas daqui",
+  "invite.row.caption": "Um link de uso único, vale 7 dias",
   "home.settings.card.title": "Ajustes do lar",
   "home.settings.card.hint": "Horário do planejamento e fuso horário",
   "home.residents.heading": "Moradores",
@@ -76,7 +84,6 @@ export const ptBR: Messages = {
     "O Homeowner não consegue acessar o serviço. O que você digitou continua aqui; verifique sua conexão e tente novamente.",
   "home.save.error":
     "Algo deu errado e nada foi salvo. O que você digitou continua aqui; tente novamente em instantes.",
-  "home.leave.heading": "Sair deste lar",
   "home.leave.open": "Sair deste lar",
   "home.leave.title": "Sair deste lar?",
   "home.leave.removes":

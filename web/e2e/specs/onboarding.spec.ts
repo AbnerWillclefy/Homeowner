@@ -194,8 +194,8 @@ test("a refused Create Home shows a message, keeps what was entered, and the ret
   await expect(onboarding.bathrooms(page)).toHaveValue("2");
   await expect(onboarding.petCheckbox(page, "Dog")).toBeChecked();
   await onboarding.back(page);
-  await expect(onboarding.timezone(page)).toHaveValue("Europe/Lisbon");
-  await expect(onboarding.allocationTime(page)).toHaveValue("07:30");
+  await expect(onboarding.timezone(page)).toHaveText("Europe/Lisbon");
+  await expect(onboarding.allocationTime(page)).toHaveText("7:30 AM");
   await onboarding.continueFromSettings(page);
   await onboarding.suggestChores(page);
   await onboarding.reviewShows(page, REVIEW_NAMES);
