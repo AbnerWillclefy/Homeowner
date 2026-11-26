@@ -45,7 +45,7 @@ function show(error: Error, frame?: ComponentType<{ children: ReactNode }>) {
       createElement(
         I18nProvider,
         null,
-        createElement(Outer, null, createElement(ChunkErrorBoundary, { frame }, createElement(Boom, { error }))),
+        createElement(Outer, null, createElement(ChunkErrorBoundary, { frame, children: createElement(Boom, { error }) })),
       ),
     ),
   );
