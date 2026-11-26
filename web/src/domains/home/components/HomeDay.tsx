@@ -40,7 +40,16 @@ export function HomeDay() {
 
   // The header is there from the first frame, so the Energy pill, Streak and mic are in their slots while the reads are
   // out, and nothing in it moves when they answer.
-  const header = <TabHeader id={HEADING_ID} headingRef={heading} title={t("dayplan.mine.heading")} tools={<TodayTools />} />;
+  const mine = state.kind === "ready" ? state.plan.mine.length : 0;
+  const header = (
+    <TabHeader
+      id={HEADING_ID}
+      headingRef={heading}
+      title={t("dayplan.mine.heading")}
+      subtitle={mine > 0 ? t("dayplan.mine.count", { count: mine }) : undefined}
+      tools={<TodayTools />}
+    />
+  );
 
   if (!loaded) {
     return (

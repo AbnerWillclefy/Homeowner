@@ -361,6 +361,7 @@ export const ptBR: Messages = {
     "Sem energia base para hoje, então nenhuma tarefa para você.",
   "dayplan.mine.empty.noBaseline.link": "Definir a energia base",
   "dayplan.mine.heading": "Suas tarefas",
+  "dayplan.mine.count": { one: "{count} tarefa", other: "{count} tarefas" },
   "dayplan.mine.empty": "Nada para você hoje. Aproveite o dia.",
   "dayplan.others.heading": "Tarefas dos outros moradores",
   "dayplan.others.someone": "Um morador",
