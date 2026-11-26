@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { TaskCard as HomeTaskCard, type TaskAction as HomeAction } from "@homeowner/bedrock/home";
 import type { MenuItem } from "@homeowner/bedrock";
+import { Check } from "lucide-react";
 import { useShell } from "../../../app/components/ShellContext";
 import type { Explanation, PlanTask } from "../api/api";
 import { choreCategory } from "../../chores/logic/choreCategory";
@@ -78,6 +79,7 @@ export function TaskCard({ task, role, holderId, today, explanation, busy, pendi
   const button = (action: CardAction): HomeAction => ({
     label: t(ACTION_LABELS[action].label),
     ariaLabel: named(action),
+    icon: action === "accept" || action === "done" ? Check : undefined,
     // Recusar is the quiet one beside Aceitar.
     variant: action === "refuse" ? "secondary" : "primary",
     disabled: busy,
@@ -104,7 +106,6 @@ export function TaskCard({ task, role, holderId, today, explanation, busy, pendi
           name: effortName(t, task.currentEffort),
           label: taskEffortText(t, task.currentEffort, task.baseEffort),
         }}
-        caption={due}
         why={reason ?? due}
         status={committed ? t("dayplan.task.committed") : undefined}
         onOpen={() => setOpen(true)}
