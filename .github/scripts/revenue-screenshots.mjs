@@ -2,10 +2,11 @@
 // against revenue-fake-api.mjs, and prints the description with them under "### Mobile" and "### Desktop".
 // Usage: CHANGED=<files> BODY=<description> BASE_URL=<Revenue preview> API_URL=<the build's VITE_API_URL>
 //        PLAYWRIGHT_DIR=<dir with playwright> node revenue-screenshots.mjs <out dir> <image url prefix>
+import { writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { measureOverflow, overflowOf, pairsMarkdown, shootArtboard } from "./artboards.mjs";
+import { compareBoxes, measureBoxes, measureOverflow, overflowOf, pairsMarkdown, roleSelectors, shootArtboard } from "./artboards.mjs";
 import { withScreenshots } from "./bedrock-screenshots.mjs";
 import { answer, TODAY } from "./revenue-fake-api.mjs";
 
@@ -98,18 +99,25 @@ async function main([outDir, prefix]) {
         else if (message) overflowing.push(message);
       }
       const base = `auto-revenue${route.replace(/\//g, "-").replace(/-$/, "")}-${heading.toLowerCase()}`;
+      // Measured before the viewport grows to the page, like the shot.
+      const appBoxes = await page.evaluate(measureBoxes, roleSelectors("app"));
       // A viewport as tall as the page, not fullPage: fixed bars (the tab bar, the sidebar) stay where a person sees them.
       await page.setViewportSize({ ...viewport, height: await page.evaluate(() => document.documentElement.scrollHeight) });
       await page.screenshot({ path: join(outDir, `${base}-app.png`) });
       await page.setViewportSize(viewport);
       const artboard = ARTBOARDS[route]?.[heading];
+      let measure;
       if (artboard) {
         // A second page of the same context, so the context's settings reach the artboard too.
         const designPage = await context.newPage();
         await shootArtboard(designPage, ARTBOARD_DIR, artboard, viewport, join(outDir, `${base}-design.png`), heading === "Mobile" ? PHONE_CSS : "");
+        const designBoxes = await designPage.evaluate(measureBoxes, roleSelectors("design"));
         await designPage.close();
+        // The raw boxes land on the screenshots branch with the PNGs, for the reviewer (design-pairs.sh).
+        writeFileSync(join(outDir, `${base}-measure.json`), JSON.stringify({ app: appBoxes, design: designBoxes }));
+        measure = compareBoxes(appBoxes, designBoxes);
       }
-      images[heading].push({ route, app: `${prefix}${base}-app.png`, design: artboard ? `${prefix}${base}-design.png` : null });
+      images[heading].push({ route, app: `${prefix}${base}-app.png`, design: artboard ? `${prefix}${base}-design.png` : null, measure });
     }
     await context.close();
   }

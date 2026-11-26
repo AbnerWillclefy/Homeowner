@@ -38,3 +38,11 @@ test("a Revenue table already in the description survives the web table, and an 
   assert.ok(!out.includes(old));
   assert.ok(out.includes("auto-web-new.png"));
 });
+
+test("a pair with differences over 4px carries them into its row and does not fail the check", () => {
+  const measure = { diffs: [{ role: "row", index: 0, prop: "height", app: 72, design: 64 }], small: 2 };
+  const { rows, overflowing } = rowsFrom([row("Main", "/", { measure })], prefix);
+  assert.deepEqual(overflowing, []);
+  assert.deepEqual(rows[0].measure, measure);
+  assert.match(pairsMarkdown({ "pt-BR": rows })["pt-BR"][0], /1 difference over 4px, 2 smaller/);
+});

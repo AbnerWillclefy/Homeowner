@@ -150,14 +150,86 @@ export function measureOverflow() {
   return { scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth, offenders };
 }
 
-/** One HTML table per heading with App and Design side by side. `images` is { Mobile: [{ route, app, design }] } with URLs; `design` is null without an artboard. One line per heading, so withScreenshots drops it whole on a re-run. */
+/** The design elements measured against the app's, by role. `design` is a CSS selector list of the artboards' classes (Homeowner's hm-*, Bedrock's br-*), `app` the `data-slot` Bedrock sets on the component root (bedrock/src; renaming one is a breaking change). `bedrock` says the app side is a Bedrock component, so a difference there is fixed in Bedrock. Roles an app does not render through Bedrock yet (web: list, row, field, segmented-control, dialog, bottom-bar; Revenue: list, field) show as count mismatches until those screens move to Bedrock (ADR 0030). */
+export const ROLES = [
+  { role: "list", design: ".hm-list, .br-list", app: "[data-slot=list]", bedrock: true },
+  { role: "row", design: ".hm-item, .br-listrow", app: "[data-slot=row], [data-slot=list-row]", bedrock: true },
+  { role: "page-header", design: ".hm-head", app: "[data-slot=page-header]", bedrock: true },
+  { role: "search-field", design: ".br-search__box", app: "[data-slot=search-field]", bedrock: true },
+  { role: "sheet", design: ".hm-sheet, .br-sheet", app: "[data-slot=sheet]", bedrock: true },
+  { role: "dialog", design: ".hm-dialog, .br-dialog", app: "[data-slot=dialog]", bedrock: true },
+  { role: "toast", design: ".hm-toast, .br-toast", app: "[data-slot=toast]", bedrock: true },
+  { role: "field", design: ".hm-field, .br-field", app: "[data-slot=field]", bedrock: true },
+  { role: "segmented-control", design: ".hm-seg, .br-seg", app: "[data-slot=segmented-control]", bedrock: true },
+  { role: "bottom-bar", design: ".br-bottombar", app: "[data-slot=bottom-bar]", bedrock: true },
+];
+
+/** The selector of each role for one side, `side` being "app" or "design": what `measureBoxes` takes. */
+export function roleSelectors(side) {
+  return Object.fromEntries(ROLES.map((r) => [r.role, r[side]]));
+}
+
+/** Runs in the page: for each role of `selectors` ({role: css}), the visible matches in document order as {x, width, height, gap}. `gap` is the distance below the previous match of the role, null for the first; no absolute y, so a header shift is not repeated down the page. Uses nothing outside itself. */
+export function measureBoxes(selectors) {
+  const round = (n) => Math.round(n * 10) / 10;
+  return Object.fromEntries(
+    Object.entries(selectors).map(([role, selector]) => {
+      let previous = null;
+      const boxes = [...document.querySelectorAll(selector)]
+        .filter((el) => el.getClientRects().length > 0)
+        .map((el) => {
+          const r = el.getBoundingClientRect();
+          const box = { x: round(r.left), width: round(r.width), height: round(r.height), gap: previous === null ? null : round(r.top - previous) };
+          previous = r.bottom;
+          return box;
+        });
+      return [role, boxes];
+    }),
+  );
+}
+
+/** Compares measured boxes ({role: [{x, width, height, gap}]}) role by role and index. `diffs` holds every difference strictly over `threshold` px, and a different count as {role, prop: "count", app, design}; `small` counts the other non-zero ones. A gap that is null on either side (the first element) is not compared. */
+export function compareBoxes(app, design, threshold = 4) {
+  const diffs = [];
+  let small = 0;
+  for (const role of new Set([...Object.keys(app), ...Object.keys(design)])) {
+    const a = app[role] ?? [];
+    const d = design[role] ?? [];
+    if (!a.length && !d.length) continue;
+    if (a.length !== d.length) diffs.push({ role, prop: "count", app: a.length, design: d.length });
+    for (let index = 0; index < Math.min(a.length, d.length); index++) {
+      for (const prop of ["x", "width", "height", "gap"]) {
+        if (a[index][prop] === null || d[index][prop] === null) continue;
+        const delta = Math.abs(a[index][prop] - d[index][prop]);
+        if (delta > threshold) diffs.push({ role, index, prop, app: a[index][prop], design: d[index][prop] });
+        else if (delta > 0) small++;
+      }
+    }
+  }
+  return { diffs, small };
+}
+
+/** Most rows of one pair's table: GitHub caps a description at 65,536 characters, and a drifted frame can differ everywhere. The measure file keeps them all. */
+export const MAX_TABLE_ROWS = 20;
+
+/** The differences of a pair as one table row, on the pair's own line. `measure` is compareBoxes' answer; "" without any. */
+function measureRow({ diffs, small }) {
+  if (!diffs.length && !small) return "";
+  const n = diffs.length;
+  const rows = diffs.slice(0, MAX_TABLE_ROWS).map((d) => `<tr><td>${d.index === undefined ? d.role : `${d.role} #${d.index + 1}`}</td><td>${d.prop}</td><td>${d.app}</td><td>${d.design}</td></tr>`).join("");
+  const more = n > MAX_TABLE_ROWS ? `<p>${n - MAX_TABLE_ROWS} more in the measure file</p>` : "";
+  const table = n ? `<table><tr><th>Element</th><th>Property</th><th>App</th><th>Design</th></tr>${rows}</table>${more}` : "";
+  return `<tr><td colspan="2"><details><summary>${n} difference${n === 1 ? "" : "s"} over 4px, ${small} smaller</summary>${table}</details></td></tr>`;
+}
+
+/** One HTML table per heading with App and Design side by side. `images` is { Mobile: [{ route, app, design, measure? }] } with URLs; `design` is null without an artboard, `measure` is compareBoxes' answer and adds a collapsed table of the differences under the pair. One line per heading, so withScreenshots drops it whole on a re-run: the details stay on that line. */
 export function pairsMarkdown(images) {
   const cell = (url, alt) => (url ? `<td><img src="${url}" alt="${alt}"></td>` : "<td>no artboard</td>");
   return Object.fromEntries(
     Object.entries(images).map(([heading, rows]) => [
       heading,
       rows.length
-        ? [`<table><tr><th>App</th><th>Design</th></tr>${rows.map(({ route, app, design }) => `<tr><td colspan="2"><code>${route}</code></td></tr><tr>${cell(app, `${route} ${heading} app`)}${cell(design, `${route} ${heading} design`)}</tr>`).join("")}</table>`]
+        ? [`<table><tr><th>App</th><th>Design</th></tr>${rows.map(({ route, app, design, measure }) => `<tr><td colspan="2"><code>${route}</code></td></tr><tr>${cell(app, `${route} ${heading} app`)}${cell(design, `${route} ${heading} design`)}</tr>${measure ? measureRow(measure) : ""}`).join("")}</table>`]
         : [],
     ]),
   );

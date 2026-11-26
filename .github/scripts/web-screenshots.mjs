@@ -8,10 +8,10 @@ import { pathToFileURL } from "node:url";
 import { pairsMarkdown } from "./artboards.mjs";
 import { withScreenshots } from "./bedrock-screenshots.mjs";
 
-/** The rows of the table, in artboard order, and the overflow messages that are not exempt. `results` are the capture's rows. */
+/** The rows of the table, in artboard order (each with its measured differences, which never fail the check), and the overflow messages that are not exempt. `results` are the capture's rows. */
 export function rowsFrom(results, prefix) {
   const sorted = [...results].sort((a, b) => a.artboard.localeCompare(b.artboard));
-  const rows = sorted.map((r) => ({ route: `${r.route} · ${r.artboard}`, app: `${prefix}${r.app}`, design: `${prefix}${r.design}` }));
+  const rows = sorted.map((r) => ({ route: `${r.route} · ${r.artboard}`, app: `${prefix}${r.app}`, design: `${prefix}${r.design}`, measure: r.measure }));
   const overflowing = sorted.filter((r) => r.overflow && !r.exempt).map((r) => r.overflow);
   for (const r of sorted) if (r.overflow && r.exempt) console.error(`warning (exempt): ${r.overflow}`);
   return { rows, overflowing };
