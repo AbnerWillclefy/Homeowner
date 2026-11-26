@@ -11,9 +11,9 @@ These pages describe the system **as built**. Anything the spec calls for that d
 3. [Daily Allocation](allocation.md): from the scheduled job to a Day Plan, and the referee.
 4. [Data model](data-model.md): what the migrations contain.
 5. [Infrastructure and delivery](infrastructure.md): AWS, Terraform, CI/CD, cost.
-6. [The React PWA](web.md): its modules, localization, UI layer and data layer (query keys and cache writes).
+6. [The React PWA](web.md): its modules, end-to-end tests and design check, localization, UI layer and data layer (query keys and cache writes).
 7. [The admin dashboard](admin.md): the maintainer's app per environment, its deploy, the super-admin guard and the `/admin/` routes.
-8. [Bedrock](bedrock.md): the shared design system package, its two entry points, the token flow, the showcase and its checks.
+8. [Bedrock](bedrock.md): the shared design system package, its Core, Finance and Home layers, the `data-slot` contract, the token flow, the showcase and its checks.
 9. [Revenue](revenue.md): the finance app on Bedrock, how it is built and deployed, sign-in and the `GET /me/finance` gate, Onboarding, language and theme, install and notifications (Bill reminders), its frame, its screens and the endpoints each calls, and the Pantry.
 
 ## Legend
@@ -57,6 +57,8 @@ In diagrams, solid boxes and lines are built; dashed boxes and lines are planned
 | [0026](../adr/0026-read-grocery-receipts-from-sefaz-with-an-ai-read-photo-as-a-confirmed-fallback.md) | Read grocery receipts from SEFAZ, with an AI-read photo as a confirmed fallback |
 | [0027](../adr/0027-the-finance-chat-sends-a-users-own-finances-to-the-model-through-read-only-tools.md) | The finance chat sends a User's own Finances to the model through read-only tools |
 | [0028](../adr/0028-render-design-artboards-in-ci-with-a-stand-in-for-the-canvas-runtime.md) | Render design artboards in CI with a stand-in for the canvas runtime |
+| [0029](../adr/0029-undoable-task-and-chore-actions-are-sent-when-their-toast-closes.md) | Undoable Task and Chore actions are sent when their Toast closes |
+| [0030](../adr/0030-measure-design-pairs-by-element-box-matched-through-bedrocks-data-slot.md) | Measure design pairs by element box, matched through Bedrock's `data-slot` |
 
 ## Keeping this current
 
