@@ -206,7 +206,7 @@ for (const l of LOCALES) {
       await expect(page.locator("#today-heading")).toBeFocused();
       expect(fakeApi.requests.filter((r) => r.path.endsWith("/complete"))).toHaveLength(0);
       await page.getByRole("button", { name: l.closeToast }).click();
-      await expect(page.getByText(l.alreadyDone)).toBeVisible();
+      await expect(page.getByText(l.alreadyDone, { exact: true })).toBeVisible();
       expect(fakeApi.requests.filter((r) => r.path.endsWith("/complete"))).toHaveLength(1);
       expect(await topOf(mine4)).toBe(top);
     });
