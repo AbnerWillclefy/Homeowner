@@ -88,9 +88,11 @@ for (const l of LOCALES) {
       await openToday(page, baseURL!);
       await expect(hero(page).getByRole("radiogroup", { name: l.question })).toBeVisible();
       await expect(hero(page).getByRole("radio")).toHaveCount(4);
-      for (const radio of await hero(page).locator("label").all()) {
-        expect((await radio.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-      }
+      const boxes = await Promise.all((await hero(page).locator("label").all()).map(async (radio) => (await radio.boundingBox())!));
+      expect(boxes).toHaveLength(4);
+      for (const box of boxes) expect(box.height).toBeGreaterThanOrEqual(44);
+      // 8px between choices, as on the TodayCheckIn artboard: the app's base label margin must not add to it.
+      for (let i = 1; i < boxes.length; i++) expect(boxes[i].y - (boxes[i - 1].y + boxes[i - 1].height)).toBeCloseTo(8, 0);
       // No chip and no figure until there is a Check-in.
       await expect(hero(page).getByRole("button", { name: /^(Energia|Energy): / })).toHaveCount(0);
       await expect(hero(page).getByRole("progressbar")).toHaveCount(0);
