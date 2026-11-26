@@ -24,11 +24,11 @@ export function SearchField({
     input.current?.focus();
   };
   return (
-    <div className="relative">
+    <div data-slot="search-field" className="relative">
       <label htmlFor={id} className="sr-only">
         {label}
       </label>
-      <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-text-muted" />
+      <Search aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-text-muted" />
       <input
         ref={input}
         id={id}

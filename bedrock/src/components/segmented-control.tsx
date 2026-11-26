@@ -17,6 +17,7 @@ export function SegmentedControl({ label, options, value, onValueChange, block }
     <ToggleGroup.Root
       type="single"
       loop
+      data-slot="segmented-control"
       aria-label={label}
       value={value}
       // Radix sends "" when the active item is pressed again; one option stays selected.

@@ -62,12 +62,12 @@ export function ListRow({ leading, title, subtitle, cents, income, end, locale, 
     </>
   );
   const row = asChild ? (
-    <Slot.Root className={cn(layout, interactive, action && "min-w-0 flex-1", className)} {...props}>
+    <Slot.Root data-slot="list-row" className={cn(layout, interactive, action && "min-w-0 flex-1", className)} {...props}>
       <Slot.Slottable>{children}</Slot.Slottable>
       {body}
     </Slot.Root>
   ) : (
-    <div className={cn(layout, action && "min-w-0 flex-1", className)} {...props}>
+    <div data-slot="list-row" className={cn(layout, action && "min-w-0 flex-1", className)} {...props}>
       {body}
     </div>
   );

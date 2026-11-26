@@ -86,3 +86,14 @@ it("has no axe violations with an action", async () => {
   );
   expect((await axe.run(container, { rules: { region: { enabled: false } } })).violations).toEqual([]);
 });
+
+it("marks both branches with data-slot=list-row", () => {
+  const { container, rerender } = render(<ListRow title="Mercado" cents={-18990} />);
+  expect(container.querySelectorAll('[data-slot="list-row"]').length).toBe(1);
+  rerender(
+    <ListRow asChild title="Mercado" cents={-18990}>
+      <button type="button" />
+    </ListRow>,
+  );
+  expect(container.querySelector('button[data-slot="list-row"]')).not.toBeNull();
+});

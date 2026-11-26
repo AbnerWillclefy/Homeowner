@@ -14,6 +14,7 @@ export { ChoiceGroup, Choice, type ChoiceGroupProps, type ChoiceProps } from "./
 export { PageHeader, type PageHeaderProps } from "./components/page-header";
 export { SegmentedControl, type SegmentedControlProps } from "./components/segmented-control";
 export { ProgressBar, progressTone, type ProgressBarProps } from "./components/progress-bar";
+export { List, Row } from "./components/list";
 export { Card, CardHeader, CardLabel, CardContent, CardFooter, type CardProps } from "./components/card";
 export { DescriptionList, type DescriptionListItem, type DescriptionListProps } from "./components/description-list";
 export { EmptyState } from "./components/empty-state";
