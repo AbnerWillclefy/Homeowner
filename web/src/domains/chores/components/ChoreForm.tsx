@@ -300,45 +300,6 @@ export function ChoreForm({
           {category.notes}
         </div>
   
-        {responsible && (
-          <div>
-            <label htmlFor={`${idPrefix}-responsible`}>{t("chores.form.responsible.label")}</label>
-            <select
-              id={`${idPrefix}-responsible`}
-              value={values.responsible}
-              disabled={saving || responsible.residents === null}
-              aria-describedby={responsibleNotes.describedBy}
-              aria-invalid={responsibleNotes.message ? true : undefined}
-              onChange={(event) => form.change({ responsible: event.target.value }, "responsible")}
-            >
-              <option value="">{t("chores.form.responsible.nobody")}</option>
-              {responsibleOptions.map(({ id, name }) => (
-                <option key={id} value={id}>
-                  {name}
-                </option>
-              ))}
-            </select>
-            {responsibleNotes.hint}
-            {responsibleNotes.message}
-          </div>
-        )}
-
-        {group(
-          "demands",
-          "chores.form.demands.legend",
-          demands.map((id) => (
-            <label key={id} className={CHOICE}>
-              <input
-                type="checkbox"
-                className={CHECK}
-                checked={values.demands.includes(id)}
-                onChange={() => form.change({ demands: toggled(values.demands, id) }, "demands")}
-              />
-              {text(demandLabel(id))}
-            </label>
-          )),
-        )}
-  
         {group(
           "baseEffort",
           "chores.form.baseEffort.legend",
@@ -348,46 +309,6 @@ export function ChoreForm({
             values.baseEffort,
             (baseEffort) => form.change({ baseEffort }, "baseEffort"),
           ),
-        )}
-  
-        {group(
-          "importance",
-          "chores.form.importance.legend",
-          radios(
-            "importance",
-            IMPORTANCES.map((id) => ({ value: id, label: text(importanceLabel(id)) })),
-            values.importance,
-            (importance) => form.change({ importance }, "importance"),
-          ),
-        )}
-  
-        {group(
-          "people",
-          "chores.form.people.legend",
-          radios(
-            "people",
-            [
-              { value: 1, label: t("chores.form.people.one") },
-              { value: 2, label: t("chores.form.people.two") },
-            ],
-            values.people,
-            (people) => form.change({ people }, "people"),
-          ),
-        )}
-  
-        {/* The region is always present so a screen reader announces the suggestion when it appears. */}
-        <div role="status">{showSuggestion && <p>{t("chores.form.suggestion")}</p>}</div>
-        {showSuggestion && (
-          <Button
-            variant="secondary"
-            disabled={saving}
-            onClick={() => {
-              form.change({ people: 2 }, "people");
-              document.getElementById(radioId("people", 2))?.focus();
-            }}
-          >
-            {t("chores.form.suggestion.action")}
-          </Button>
         )}
   
         {group(
@@ -451,6 +372,85 @@ export function ChoreForm({
           </label>
           {buildsUp.notes}
         </div>
+  
+        {group(
+          "importance",
+          "chores.form.importance.legend",
+          radios(
+            "importance",
+            IMPORTANCES.map((id) => ({ value: id, label: text(importanceLabel(id)) })),
+            values.importance,
+            (importance) => form.change({ importance }, "importance"),
+          ),
+        )}
+  
+        {group(
+          "people",
+          "chores.form.people.legend",
+          radios(
+            "people",
+            [
+              { value: 1, label: t("chores.form.people.one") },
+              { value: 2, label: t("chores.form.people.two") },
+            ],
+            values.people,
+            (people) => form.change({ people }, "people"),
+          ),
+        )}
+  
+        {/* The region is always present so a screen reader announces the suggestion when it appears. */}
+        <div role="status">{showSuggestion && <p>{t("chores.form.suggestion")}</p>}</div>
+        {showSuggestion && (
+          <Button
+            variant="secondary"
+            disabled={saving}
+            onClick={() => {
+              form.change({ people: 2 }, "people");
+              document.getElementById(radioId("people", 2))?.focus();
+            }}
+          >
+            {t("chores.form.suggestion.action")}
+          </Button>
+        )}
+  
+        {responsible && (
+          <div>
+            <label htmlFor={`${idPrefix}-responsible`}>{t("chores.form.responsible.label")}</label>
+            <select
+              id={`${idPrefix}-responsible`}
+              value={values.responsible}
+              disabled={saving || responsible.residents === null}
+              aria-describedby={responsibleNotes.describedBy}
+              aria-invalid={responsibleNotes.message ? true : undefined}
+              onChange={(event) => form.change({ responsible: event.target.value }, "responsible")}
+            >
+              <option value="">{t("chores.form.responsible.nobody")}</option>
+              {responsibleOptions.map(({ id, name }) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            {responsibleNotes.hint}
+            {responsibleNotes.message}
+          </div>
+        )}
+
+        {group(
+          "demands",
+          "chores.form.demands.legend",
+          demands.map((id) => (
+            <label key={id} className={CHOICE}>
+              <input
+                type="checkbox"
+                className={CHECK}
+                checked={values.demands.includes(id)}
+                onChange={() => form.change({ demands: toggled(values.demands, id) }, "demands")}
+              />
+              {text(demandLabel(id))}
+            </label>
+          )),
+        )}
   
         {status.kind === "invalid" && (
           <p role="alert" className="text-danger">

@@ -1,6 +1,6 @@
 import { ChoreIcon } from "@homeowner/bedrock/home";
-import { Menu, EmptyState, PageHeader, SearchField } from "@homeowner/bedrock";
-import { BookOpen, ClipboardList, Plus, SearchX } from "lucide-react";
+import { Menu, EmptyState, SearchField } from "@homeowner/bedrock";
+import { BookOpen, ListChecks, Plus, SearchX } from "lucide-react";
 import { useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import type { CatalogEntry } from "../../catalog/api/api";
@@ -10,8 +10,9 @@ import { formFromEntry } from "../../catalog/logic/review";
 import { useToast } from "../../../shared/ui/useToast";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
-import { PageFetchingSlot, useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
+import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { categoryLabel, labelText } from "../../profile/logic/labels";
+import { TabHeader } from "../../../app/components/TabHeader";
 import { useShell } from "../../../app/components/ShellContext";
 import { ChoreForm, type ResponsibleProps } from "./ChoreForm";
 import { ChoresSkeleton } from "./ChoresSkeleton";
@@ -73,7 +74,7 @@ export function ChoresSection() {
 
   // A Sheet opened from "+" has no row to return to, so focus goes back to "+" by hand.
   function focusAdd() {
-    requestAnimationFrame(() => addRef.current?.querySelector("button")?.focus());
+    requestAnimationFrame(() => (addRef.current?.querySelector("button") ?? headingRef.current)?.focus());
   }
 
   const close = () => {
@@ -111,33 +112,29 @@ export function ChoresSection() {
 
   return (
     <section aria-labelledby="chores-heading" className="mt-0">
-      <div className="mb-6">
-        <PageHeader
-          id="chores-heading"
-          headingRef={headingRef}
-          title={t("chores.heading")}
-          subtitle={ready ? (state.chores.length > 0 ? t("chores.count", { count: state.chores.length }) : t("chores.empty.subtitle")) : undefined}
-          tools={
-            <>
-              <PageFetchingSlot />
-              {ready && (
-                <div ref={addRef}>
-                  <Menu
-                    primary
-                    icon={Plus}
-                    label={t("chores.add")}
-                    closeLabel={t("chores.sheet.close")}
-                    items={[
-                      { label: t("chores.menu.new"), icon: Plus, onSelect: () => setEditing({ kind: "new" }) },
-                      { label: t("chores.menu.catalog"), icon: BookOpen, onSelect: () => setEditing({ kind: "catalog" }) },
-                    ]}
-                  />
-                </div>
-              )}
-            </>
-          }
-        />
-      </div>
+      <TabHeader
+        id="chores-heading"
+        headingRef={headingRef}
+        title={t("chores.heading")}
+        subtitle={ready ? (state.chores.length > 0 ? t("chores.count", { count: state.chores.length }) : t("chores.empty.subtitle")) : undefined}
+        tools={
+          ready &&
+          state.chores.length > 0 && (
+            <div ref={addRef}>
+              <Menu
+                primary
+                icon={Plus}
+                label={t("chores.add")}
+                closeLabel={t("chores.sheet.close")}
+                items={[
+                  { label: t("chores.menu.new"), icon: Plus, onSelect: () => setEditing({ kind: "new" }) },
+                  { label: t("chores.menu.catalog"), icon: BookOpen, onSelect: () => setEditing({ kind: "catalog" }) },
+                ]}
+              />
+            </div>
+          )
+        }
+      />
 
       {showSkeleton && <ChoresSkeleton />}
 
@@ -157,12 +154,17 @@ export function ChoresSection() {
       {ready && (
         <div className="flex flex-col gap-6">
           {state.chores.length === 0 ? (
-            <EmptyState
-              icon={ClipboardList}
-              title={t("chores.empty.title")}
-              message={t("chores.empty.message")}
-              action={{ label: t("chores.menu.new"), onClick: () => setEditing({ kind: "new" }) }}
-            />
+            <div className="flex flex-col items-stretch gap-2">
+              <EmptyState
+                icon={ListChecks}
+                title={t("chores.empty.title")}
+                message={t("chores.empty.message")}
+                action={{ label: t("chores.menu.catalog"), onClick: () => setEditing({ kind: "catalog" }) }}
+              />
+              <Button variant="secondary" onClick={() => setEditing({ kind: "new" })}>
+                {t("chores.menu.new")}
+              </Button>
+            </div>
           ) : (
             <>
               <SearchField

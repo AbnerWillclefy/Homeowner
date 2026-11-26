@@ -123,6 +123,7 @@ test("a Home with no Chores shows the first-use state with a way to add one", as
   // The held delete is sent when the next one starts, so two have gone and one is held until the Toast closes.
   await expect(tabs.chores.empty(page)).toBeVisible();
   await expect(page.getByRole("searchbox")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "From the Catalog" })).toBeVisible();
   await page.getByRole("button", { name: "New Chore" }).click();
   await expect(page.getByRole("dialog", { name: "Add a Chore" })).toBeVisible();
   expect(deletes(fakeApi.requests)).toBe(2);

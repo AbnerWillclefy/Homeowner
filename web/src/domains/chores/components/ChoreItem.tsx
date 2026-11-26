@@ -22,11 +22,11 @@ export function ChoreItem({ chore, onOpen }: { chore: Chore; onOpen(): void }) {
       <button
         type="button"
         onClick={onOpen}
-        className="grid min-h-16 w-full cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-0 bg-transparent px-4 py-3 text-left text-text hover:bg-surface-hover active:bg-surface-hover motion-safe:transition-colors motion-safe:duration-150"
+        className="grid min-h-16 w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 border-0 bg-transparent px-4 py-3 text-left text-text hover:bg-surface-hover active:bg-surface-hover motion-safe:transition-colors motion-safe:duration-150"
       >
+        <ChoreTag size="sm" category={category} label={labelText(t, categoryLabel(category.id))} />
         <span className="flex min-w-0 flex-col gap-1 [overflow-wrap:anywhere]">
           <span className="font-semibold">{chore.name}</span>
-          <ChoreTag size="sm" category={category} label={labelText(t, categoryLabel(category.id))} />
           <span className="text-sm text-muted">{choreRowMeta(chore, t, resident ? (resident.you ? t("home.residents.you") : resident.name) : null)}</span>
         </span>
         <ChevronRight size={20} aria-hidden="true" className="text-muted" />
