@@ -81,8 +81,8 @@ func (h *Handler) SetName(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, NewMeResponse(u, h.photoURL, h.finance(u.Email)))
 }
 
-// Onboarding answers the step to show: the one after the stored step, or
-// done (see writeNextStep).
+// Onboarding answers the step to show: the one after the stored step, home
+// for a User with no Home, or done (see writeNextStep).
 func (h *Handler) Onboarding(w http.ResponseWriter, r *http.Request) {
 	u := identity.CurrentUser(r.Context())
 	stored, err := h.store.OnboardingStep(r.Context(), u.ID)
@@ -116,24 +116,37 @@ func (h *Handler) AdvanceOnboarding(w http.ResponseWriter, r *http.Request) {
 	h.writeNextStep(w, r, userID, stored)
 }
 
-// writeNextStep answers the step after stored. A User who already lives in a
-// Home (they joined by Invite) walks their own steps but never creates one:
-// where the next step is the Home they are done, and that is stored so the
-// answer stays.
+// writeNextStep answers the step to show for stored. Done stays done. A User
+// with no Home is always at the Home step, whatever is stored. A User who
+// lives in a Home without having created it (they joined by Invite) has
+// "home" stored and walks the rest. Reaching the end stores done, so a
+// finished User's value does not depend on the step order.
 func (h *Handler) writeNextStep(w http.ResponseWriter, r *http.Request, userID, stored string) {
-	next := onboarding.Next(stored)
-	if next == onboarding.HomeStep {
+	next := onboarding.Done
+	if stored != onboarding.Done {
 		inHome, err := h.homes.HasHome(r.Context(), userID)
 		if err != nil {
 			httpx.InternalError(w, h.log, "look up home for onboarding", err)
 			return
 		}
-		if inHome {
-			if _, err := h.store.AdvanceOnboarding(r.Context(), userID, onboarding.Done, h.clock.Now()); err != nil {
-				httpx.InternalError(w, h.log, "finish onboarding for a resident", err)
-				return
+		if !inHome {
+			next = onboarding.HomeStep
+		} else {
+			// A joiner (nothing stored) is at "home"; a User past the last step is done.
+			if stored == "" {
+				stored = onboarding.HomeStep
 			}
-			next = onboarding.Done
+			next = onboarding.Next(stored)
+			toStore := stored
+			if next == onboarding.Done {
+				toStore = onboarding.Done
+			}
+			if stored == onboarding.HomeStep || toStore == onboarding.Done {
+				if _, err := h.store.AdvanceOnboarding(r.Context(), userID, toStore, h.clock.Now()); err != nil {
+					httpx.InternalError(w, h.log, "store onboarding progress", err)
+					return
+				}
+			}
 		}
 	}
 	httpx.WriteJSON(w, http.StatusOK, onboardingState{Step: next})

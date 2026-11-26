@@ -10,7 +10,7 @@ import (
 )
 
 // onboardingSteps are the stored step ids, in order. They are permanent.
-var onboardingSteps = []string{"install", "reminders", "baseline", "restrictions", "preferences", "home"}
+var onboardingSteps = []string{"home", "baseline", "restrictions", "preferences", "install", "reminders"}
 
 func stepOf(t *testing.T, c *apitest.Client) string {
 	t.Helper()
@@ -39,23 +39,30 @@ func storedStepOf(t *testing.T, app *apitest.App, email string) *string {
 	return step
 }
 
-func TestABrandNewUserStartsOnboardingAtInstall(t *testing.T) {
+func TestABrandNewUserStartsOnboardingAtHome(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 
-	if got := stepOf(t, app.SignInAs("a@example.com")); got != "install" {
-		t.Errorf("step = %q, want install", got)
+	if got := stepOf(t, app.SignInAs("a@example.com")); got != "home" {
+		t.Errorf("step = %q, want home", got)
 	}
 }
 
-func TestEachStepInOrderLeadsToTheNextAndTheHomeLeadsToDone(t *testing.T) {
+func TestEachStepInOrderLeadsToTheNextAndTheLastLeadsToDone(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
 
-	for i, step := range onboardingSteps[:5] {
+	apitest.ExpectStatus(t, me.Post("/home", apitest.HomeBody("UTC", "07:00")), http.StatusCreated)
+	if got := stepOf(t, me); got != "baseline" {
+		t.Fatalf("after creating the Home, step = %q, want baseline", got)
+	}
+	for i, step := range onboardingSteps[1:] {
 		res := putStep(me, step)
-		want := onboardingSteps[i+1]
+		want := "done"
+		if i+2 < len(onboardingSteps) {
+			want = onboardingSteps[i+2]
+		}
 		if res.Status != http.StatusOK || res.Body["step"] != want {
 			t.Fatalf("PUT %s = %d %s, want 200 with step %s", step, res.Status, res.Raw, want)
 		}
@@ -63,26 +70,23 @@ func TestEachStepInOrderLeadsToTheNextAndTheHomeLeadsToDone(t *testing.T) {
 			t.Errorf("after %s, GET step = %q, want %q", step, got, want)
 		}
 	}
-	apitest.ExpectStatus(t, me.Post("/home", apitest.HomeBody("UTC", "07:00")), http.StatusCreated)
-	if got := stepOf(t, me); got != "done" {
-		t.Errorf("after creating the Home, step = %q, want done", got)
-	}
 }
 
 func TestProgressNeverMovesBackwardsAndRepeatsAreIdempotent(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
-	apitest.ExpectStatus(t, putStep(me, "baseline"), http.StatusOK)
+	apitest.ExpectStatus(t, me.Post("/home", apitest.HomeBody("UTC", "07:00")), http.StatusCreated)
+	apitest.ExpectStatus(t, putStep(me, "restrictions"), http.StatusOK)
 
-	for _, step := range []string{"install", "reminders", "baseline", "baseline"} {
+	for _, step := range []string{"baseline", "restrictions", "restrictions"} {
 		res := putStep(me, step)
-		if res.Status != http.StatusOK || res.Body["step"] != "restrictions" {
-			t.Errorf("PUT %s after baseline = %d %s, want 200 still at restrictions", step, res.Status, res.Raw)
+		if res.Status != http.StatusOK || res.Body["step"] != "preferences" {
+			t.Errorf("PUT %s after restrictions = %d %s, want 200 still at preferences", step, res.Status, res.Raw)
 		}
 	}
-	if got := stepOf(t, me); got != "restrictions" {
-		t.Errorf("step = %q, want restrictions", got)
+	if got := stepOf(t, me); got != "preferences" {
+		t.Errorf("step = %q, want preferences", got)
 	}
 }
 
@@ -90,11 +94,44 @@ func TestSkippingAheadIsAllowedAndMovesForward(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
+	apitest.ExpectStatus(t, me.Post("/home", apitest.HomeBody("UTC", "07:00")), http.StatusCreated)
 
-	// Someone already standalone never saw install.
-	apitest.ExpectStatus(t, putStep(me, "reminders"), http.StatusOK)
-	if got := stepOf(t, me); got != "baseline" {
-		t.Errorf("step = %q, want baseline", got)
+	apitest.ExpectStatus(t, putStep(me, "install"), http.StatusOK)
+	if got := stepOf(t, me); got != "reminders" {
+		t.Errorf("step = %q, want reminders", got)
+	}
+}
+
+func TestANewUserWithAStoredStepButNoHomeIsSentToHome(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := app.SignInAs("a@example.com")
+
+	res := putStep(me, "preferences")
+	if res.Status != http.StatusOK || res.Body["step"] != "home" {
+		t.Fatalf("PUT preferences without a Home = %d %s, want step home", res.Status, res.Raw)
+	}
+	if got := stepOf(t, me); got != "home" {
+		t.Errorf("GET step = %q, want home", got)
+	}
+
+	apitest.ExpectStatus(t, me.Post("/home", apitest.HomeBody("UTC", "07:00")), http.StatusCreated)
+	if got := stepOf(t, me); got != "install" {
+		t.Errorf("after creating the Home, step = %q, want install (progress kept)", got)
+	}
+}
+
+func TestAUserWithNoHomeIsNeverDoneUnlessStoredDone(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	me := app.SignInAs("a@example.com")
+
+	res := putStep(me, "reminders")
+	if res.Body["step"] != "home" {
+		t.Errorf("PUT reminders without a Home = %s, want home", res.Raw)
+	}
+	if got := storedStepOf(t, app, "a@example.com"); got == nil || *got != "reminders" {
+		t.Errorf("stored step = %v, want reminders (the answer is derived, not stored)", got)
 	}
 }
 
@@ -111,7 +148,7 @@ func TestUnacceptableOnboardingBodiesAreRejectedAndStoreNothing(t *testing.T) {
 		{"unknown step", `{"step":"party"}`, http.StatusBadRequest},
 		{"empty step", `{"step":""}`, http.StatusBadRequest},
 		{"missing step", `{}`, http.StatusBadRequest},
-		{"home is completed by creating it", `{"step":"home"}`, http.StatusBadRequest},
+		{"home is written by creating it", `{"step":"home"}`, http.StatusBadRequest},
 		{"done cannot be written", `{"step":"done"}`, http.StatusBadRequest},
 		{"malformed JSON", `{"step":`, http.StatusBadRequest},
 		{"unknown field", `{"step":"install","extra":1}`, http.StatusBadRequest},
@@ -129,21 +166,20 @@ func TestUnacceptableOnboardingBodiesAreRejectedAndStoreNothing(t *testing.T) {
 	if got := storedStepOf(t, app, "a@example.com"); got != nil {
 		t.Errorf("stored step = %q after rejected writes, want null", *got)
 	}
-	if got := stepOf(t, me); got != "install" {
-		t.Errorf("step = %q after rejected writes, want install", got)
+	if got := stepOf(t, me); got != "home" {
+		t.Errorf("step = %q after rejected writes, want home", got)
 	}
 }
 
-func TestCreatingAHomeStoresDoneInTheSameTransaction(t *testing.T) {
+func TestCreatingAHomeStoresHomeInTheSameTransaction(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
-	apitest.ExpectStatus(t, putStep(me, "baseline"), http.StatusOK)
 
 	apitest.ExpectStatus(t, me.Post("/home", apitest.HomeBody("UTC", "07:00")), http.StatusCreated)
 
-	if got := storedStepOf(t, app, "a@example.com"); got == nil || *got != "done" {
-		t.Errorf("stored step = %v, want done", got)
+	if got := storedStepOf(t, app, "a@example.com"); got == nil || *got != "home" {
+		t.Errorf("stored step = %v, want home", deref(got))
 	}
 }
 
@@ -154,12 +190,12 @@ func TestAFailedHomeCreationLeavesProgressAlone(t *testing.T) {
 
 	apitest.ExpectStatus(t, me.Post("/home", apitest.HomeBody("Nowhere/Land", "07:00")), http.StatusBadRequest)
 
-	if got := stepOf(t, me); got != "install" {
-		t.Errorf("step = %q, want install", got)
+	if got := stepOf(t, me); got != "home" {
+		t.Errorf("step = %q, want home", got)
 	}
 }
 
-func TestAResidentWhoJoinedByInviteStillWalksTheirOwnSteps(t *testing.T) {
+func TestAResidentWhoJoinedByInviteSkipsHomeAndStartsAtBaseline(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	a := apitest.HomeWithResident(t, app, "a@example.com")
@@ -167,12 +203,15 @@ func TestAResidentWhoJoinedByInviteStillWalksTheirOwnSteps(t *testing.T) {
 	b := app.SignInAs("b@example.com")
 	apitest.ExpectStatus(t, apitest.AcceptInvite(b, token, nil), http.StatusOK)
 
-	if got := stepOf(t, b); got != "install" {
-		t.Errorf("step = %q, want install", got)
+	if got := stepOf(t, b); got != "baseline" {
+		t.Errorf("step = %q, want baseline", got)
+	}
+	if got := storedStepOf(t, app, "b@example.com"); got == nil || *got != "home" {
+		t.Errorf("stored step = %v, want home", got)
 	}
 }
 
-func TestAResidentWhoJoinedByInviteSkipsCreatingAHome(t *testing.T) {
+func TestAResidentWhoJoinedByInviteIsDoneOnlyAfterTheLastStep(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	a := apitest.HomeWithResident(t, app, "a@example.com")
@@ -180,15 +219,22 @@ func TestAResidentWhoJoinedByInviteSkipsCreatingAHome(t *testing.T) {
 	b := app.SignInAs("b@example.com")
 	apitest.ExpectStatus(t, apitest.AcceptInvite(b, token, nil), http.StatusOK)
 
-	if res := putStep(b, "preferences"); res.Body["step"] != "done" {
-		t.Errorf("PUT preferences = %s, want done", res.Raw)
+	if res := putStep(b, "preferences"); res.Body["step"] != "install" {
+		t.Errorf("PUT preferences = %s, want install", res.Raw)
+	}
+	if res := putStep(b, "reminders"); res.Body["step"] != "done" {
+		t.Errorf("PUT reminders = %s, want done", res.Raw)
 	}
 	if got := storedStepOf(t, app, "b@example.com"); got == nil || *got != "done" {
 		t.Errorf("stored step = %v, want done", got)
 	}
+	// Done is sticky: an old tab's PUT cannot reopen it.
+	if res := putStep(b, "install"); res.Body["step"] != "done" {
+		t.Errorf("PUT install = %s, want done", res.Raw)
+	}
 }
 
-func TestAResidentWhoReachedTheHomeStepBeforeJoiningIsDone(t *testing.T) {
+func TestAResidentWhoReachedPreferencesBeforeJoiningKeepsTheirPlace(t *testing.T) {
 	t.Parallel()
 	app := apitest.Start(t)
 	a := apitest.HomeWithResident(t, app, "a@example.com")
@@ -197,12 +243,8 @@ func TestAResidentWhoReachedTheHomeStepBeforeJoiningIsDone(t *testing.T) {
 	apitest.ExpectStatus(t, putStep(b, "preferences"), http.StatusOK)
 	apitest.ExpectStatus(t, apitest.AcceptInvite(b, token, nil), http.StatusOK)
 
-	if got := stepOf(t, b); got != "done" {
-		t.Errorf("step = %q, want done", got)
-	}
-	// Done is sticky: an old tab's PUT cannot reopen it.
-	if res := putStep(b, "install"); res.Body["step"] != "done" {
-		t.Errorf("PUT install = %s, want done", res.Raw)
+	if got := stepOf(t, b); got != "install" {
+		t.Errorf("step = %q, want install", got)
 	}
 }
 
@@ -211,6 +253,7 @@ func TestDoneStaysDoneWhenTheUserLeavesTheirHome(t *testing.T) {
 	app := apitest.Start(t)
 	me := app.SignInAs("a@example.com")
 	apitest.ExpectStatus(t, me.Post("/home", apitest.HomeBody("UTC", "07:00")), http.StatusCreated)
+	apitest.ExpectStatus(t, putStep(me, "reminders"), http.StatusOK)
 	if _, err := app.DB.Exec(context.Background(), `DELETE FROM residents`); err != nil {
 		t.Fatal(err)
 	}
@@ -247,10 +290,17 @@ func TestOneUsersProgressIsNotAnothers(t *testing.T) {
 
 	apitest.ExpectStatus(t, putStep(a, "preferences"), http.StatusOK)
 
-	if got := stepOf(t, b); got != "install" {
-		t.Errorf("b's step = %q, want install", got)
+	if got := stepOf(t, b); got != "home" {
+		t.Errorf("b's step = %q, want home", got)
 	}
-	if got := stepOf(t, a); got != "home" {
-		t.Errorf("a's step = %q, want home", got)
+	if got := storedStepOf(t, app, "a@example.com"); got == nil || *got != "preferences" {
+		t.Errorf("a's stored step = %v, want preferences", got)
 	}
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return "NULL"
+	}
+	return *s
 }

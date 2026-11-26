@@ -13,6 +13,7 @@ import (
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/identity"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/onboarding"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/users"
 )
 
@@ -71,9 +72,10 @@ func (s *Store) Create(ctx context.Context, userID, timezone, allocationTime str
 	if err != nil {
 		return Home{}, fmt.Errorf("create resident: %w", err)
 	}
-	// Creating the Home is the last onboarding step; doing it here means a
-	// crash before the client's next call cannot leave a Resident in the flow.
-	if err := users.MarkOnboardingDone(ctx, tx, userID, now); err != nil {
+	// Creating the Home is the first onboarding step; doing it here means a
+	// crash before the client's next call cannot leave a Resident at "no Home".
+	// It only moves progress forward, so a stored later step is kept.
+	if _, err := users.AdvanceOnboardingIn(ctx, tx, userID, onboarding.HomeStep, now); err != nil {
 		return Home{}, err
 	}
 	if err := chores.InsertAll(ctx, tx, h.ID, initial, now); err != nil {
