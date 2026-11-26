@@ -1,43 +1,39 @@
 import { describe, expect, it } from "vitest";
-import { actionsFor, pendingAction, pendingSwap, variantFor } from "./actions";
+import { actionsFor, pendingAction, pendingSwap } from "./actions";
 
 const TASK = { people: 1, committed: false };
 
 describe("actionsFor", () => {
-  it("puts Refuse at the start and Accept at the end of a Proposed Task of your own, with no Done", () => {
-    const slots = actionsFor(TASK, "mine");
-    expect(slots).toEqual({ start: ["refuse"], end: ["accept"], committed: false });
-    expect([...slots.start, ...slots.end]).not.toContain("done");
+  it("gives a Proposed Task of your own Recusar then Aceitar in the primary area, with no Done", () => {
+    const actions = actionsFor(TASK, "mine");
+    expect(actions).toEqual({ primary: ["refuse", "accept"], menu: [], committed: false });
+    expect([...actions.primary, ...actions.menu]).not.toContain("done");
   });
 
   it("treats a Task without a committed flag (an older API) as Proposed", () => {
-    expect(actionsFor({ people: 1 }, "mine")).toEqual({ start: ["refuse"], end: ["accept"], committed: false });
+    expect(actionsFor({ people: 1 }, "mine")).toEqual({ primary: ["refuse", "accept"], menu: [], committed: false });
   });
 
-  it("puts the Committed mark at the start and Done at the end of a Committed Task of your own", () => {
-    expect(actionsFor({ people: 1, committed: true }, "mine")).toEqual({ start: [], end: ["done"], committed: true });
+  it("gives a Committed Task of your own one action, Concluir, and marks it Committed", () => {
+    expect(actionsFor({ people: 1, committed: true }, "mine")).toEqual({ primary: ["done"], menu: [], committed: true });
   });
 
-  it("offers Done at the start and Take at the end of a pool Task", () => {
-    expect(actionsFor(TASK, "pool")).toEqual({ start: ["done"], end: ["take"], committed: false });
+  it("gives a pool Task Pegar as its one action and the one-step Done in the menu", () => {
+    expect(actionsFor(TASK, "pool")).toEqual({ primary: ["take"], menu: ["done"], committed: false });
   });
 
-  it("hides Done and Take on a two-person pool Task, which the API refuses until it is supported", () => {
-    expect(actionsFor({ people: 2, committed: false }, "pool")).toEqual({ start: [], end: [], committed: false });
+  it("gives a two-person pool Task nothing, which the API refuses until it is supported", () => {
+    expect(actionsFor({ people: 2, committed: false }, "pool")).toEqual({ primary: [], menu: [], committed: false });
   });
 
-  it("offers nothing on another Resident's Task, Committed or not, and shows no mark", () => {
-    const none = { start: [], end: [], committed: false };
+  it("gives another Resident's Task nothing, Committed or not", () => {
+    const none = { primary: [], menu: [], committed: false };
     expect(actionsFor(TASK, "other")).toEqual(none);
     expect(actionsFor({ people: 1, committed: true }, "other")).toEqual(none);
   });
 
-  it("puts Swap alone at the start of another Resident's Task when a Swap can be offered", () => {
-    expect(actionsFor(TASK, "other", { canSwap: true })).toEqual({ start: ["swap"], end: [], committed: false });
-  });
-
-  it("offers no Swap on another Resident's Task unless asked", () => {
-    expect(actionsFor(TASK, "other", { canSwap: false })).toEqual(actionsFor(TASK, "other"));
+  it("puts Swap alone in the menu of another Resident's Task when a Swap can be offered", () => {
+    expect(actionsFor(TASK, "other", { canSwap: true })).toEqual({ primary: [], menu: ["swap"], committed: false });
   });
 
   it("never adds Swap to your own Tasks or the pool, whatever canSwap says", () => {
@@ -46,18 +42,11 @@ describe("actionsFor", () => {
     }
   });
 
-  it("gives a two-person Task of your own the same slots as a one-person one", () => {
+  it("gives a two-person Task of your own the same actions as a one-person one", () => {
     expect(actionsFor({ people: 2, committed: false }, "mine")).toEqual(actionsFor(TASK, "mine"));
     expect(actionsFor({ people: 2, committed: true }, "mine")).toEqual(
       actionsFor({ people: 1, committed: true }, "mine"),
     );
-  });
-});
-
-describe("variantFor", () => {
-  it("is primary at the end and secondary at the start", () => {
-    expect(variantFor("end")).toBe("primary");
-    expect(variantFor("start")).toBe("secondary");
   });
 });
 
