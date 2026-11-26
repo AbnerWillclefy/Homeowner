@@ -32,24 +32,23 @@ function Loaded({ me, hasHome }: { me: Me; hasHome: boolean }) {
   const nothingSet = me.displayName === null && me.photoUrl === null;
   return (
     <div className={COLUMN}>
-      <div className="relative">
+      <div className="flex items-center gap-4">
         <Avatar size="lg" resident={me} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex items-start gap-2">
+            <p className={`my-0 min-w-0 flex-1 ${NAME_TEXT} [overflow-wrap:anywhere]`}>{me.name}</p>
+            <PageFetchingSlot />
+          </div>
+          <p className={`my-0 ${EMAIL_TEXT} [overflow-wrap:anywhere]`}>{me.email}</p>
+        </div>
         {!nothingSet && (
-          <Button asChild variant="secondary" icon className="absolute -right-3 -bottom-2">
+          <Button asChild variant="secondary" icon className="shrink-0">
             <Link to={ME_EDIT_PATH} aria-label={t("me.header.edit")}>
               <Pencil aria-hidden="true" size={18} />
             </Link>
           </Button>
         )}
       </div>
-      {/* The name keeps the middle: the fixed slot on the right shows the refresh indicator, and an empty twin on
-          the left of the same width keeps the name centred. */}
-      <div className="mt-1 flex w-full items-start gap-2">
-        <span aria-hidden="true" className="w-4 shrink-0" />
-        <p className={`my-0 min-w-0 flex-1 ${NAME_TEXT} [overflow-wrap:anywhere]`}>{me.name}</p>
-        <PageFetchingSlot />
-      </div>
-      <p className={`my-0 ${EMAIL_TEXT} [overflow-wrap:anywhere]`}>{me.email}</p>
       {hasHome && <HeaderStreak />}
       {nothingSet && (
         <Button asChild variant="link">
@@ -82,7 +81,7 @@ export function MeHeader() {
     <div>
       {loading && <MeHeaderSkeleton showBars={showSkeleton} hasHome={hasHome} />}
       {me.state.kind === "ready" && <Loaded me={me.state.me} hasHome={hasHome} />}
-      {me.state.kind === "failed" && <MeLoadFailed className="items-center pb-4 text-center" />}
+      {me.state.kind === "failed" && <MeLoadFailed className="items-start pb-4" />}
     </div>
   );
 }

@@ -8,29 +8,29 @@ export const EMAIL_TEXT = "text-sm font-semibold text-muted";
 const NAME_LINE = "h-[2.34rem]";
 const EMAIL_LINE = "h-5";
 export const STREAK_LINE = "h-6";
-export const COLUMN = "flex flex-col items-center gap-2 pb-4 text-center";
+export const COLUMN = "flex flex-col gap-2 pb-4";
 
 /** One skeleton line at a loaded line's height: a pulsing bar, or just the space while the skeleton is still hidden. */
 function Line({ height, width, show }: { height: string; width: string; show: boolean }) {
   return show ? <SkeletonBar className={`${height} ${width}`} /> : <span className={`block ${height}`} />;
 }
 
-/** The header's shape while `GET /me` loads: the Avatar circle and three lines, at the loaded sizes. */
+/** The header's shape while `GET /me` loads: the Avatar circle (Bedrock's 72px `lg`) and three lines, at the loaded sizes. */
 export function MeHeaderSkeleton({ showBars, hasHome }: { showBars: boolean; hasHome: boolean }) {
   return (
     <div aria-hidden="true" className={COLUMN}>
-      <span className={`block size-20 rounded-pill ${showBars ? "bg-muted/20 motion-safe:animate-pulse" : ""}`} />
-      <div className={`mt-1 flex w-full justify-center ${NAME_LINE}`}>
-        <Line height={NAME_LINE} width="w-1/2" show={showBars} />
-      </div>
-      <div className={`flex w-full justify-center ${EMAIL_LINE}`}>
-        <Line height={EMAIL_LINE} width="w-2/3" show={showBars} />
-      </div>
-      {hasHome && (
-        <div className={`flex w-full justify-center ${STREAK_LINE}`}>
-          <Line height={STREAK_LINE} width="w-1/4" show={showBars} />
+      <div className="flex items-center gap-4">
+        <span className={`block size-18 shrink-0 rounded-pill ${showBars ? "bg-muted/20 motion-safe:animate-pulse" : ""}`} />
+        <div className="flex flex-1 flex-col">
+          <div className={NAME_LINE}>
+            <Line height={NAME_LINE} width="w-1/2" show={showBars} />
+          </div>
+          <div className={EMAIL_LINE}>
+            <Line height={EMAIL_LINE} width="w-2/3" show={showBars} />
+          </div>
         </div>
-      )}
+      </div>
+      {hasHome && <Line height={STREAK_LINE} width="w-1/4" show={showBars} />}
     </div>
   );
 }

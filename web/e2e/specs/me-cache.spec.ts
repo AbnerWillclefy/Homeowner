@@ -5,7 +5,7 @@ import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { visit } from "../pages/launch";
 
-// What this covers: the Me tab over the query cache. Opening Me again shows the cached cards at once with the
+// What this covers: the Me tab over the query cache. Opening Me again shows the cached rows at once with the
 // quiet Refreshing indicator in the Me header (not the skeleton) while GET /me/profile is held. A first visit
 // still shows the skeleton.
 

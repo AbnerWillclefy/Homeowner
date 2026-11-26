@@ -65,6 +65,9 @@ export function onboardingHandlers(api: FakeApi): void {
       const demand = request.params["demand"]!;
       if (!state.demands.includes(demand)) return json(400, { error: "unknown demand" });
       if (!state.profile.restrictions.includes(demand)) state.profile.restrictions.push(demand);
+      // A lasting Restriction clears the caller's responsibility for the Chores that demand it, as the server does; deleting it gives nothing back.
+      const you = state.residents?.find((resident) => resident.you);
+      for (const chore of state.chores) if (chore.demands.includes(demand) && chore.responsibleResidentId === you?.id) chore.responsibleResidentId = null;
       return empty();
     }),
   );

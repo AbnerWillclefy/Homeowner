@@ -30,7 +30,6 @@ const expected: Record<string, string> = {
   "confirm.useOtherEmail": "Use a different email",
   "confirm.resent": "A new code is on its way. Use the latest email.",
 
-  "signedIn.heading": "You are signed in",
   "signedIn.as": "Signed in as {email}.",
   "signedIn.emailFallback": "your email",
   "signedIn.offline": "Cannot reach the service. This is the last sign-in this device remembers.",

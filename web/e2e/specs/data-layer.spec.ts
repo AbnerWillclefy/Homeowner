@@ -23,6 +23,7 @@ const LOCALES = [
     refreshing: "Atualizando",
     committed: "Assumida",
     signOut: "Sair",
+    account: "Conta",
     email: "E-mail",
     password: "Senha",
     signIn: "Entrar",
@@ -128,6 +129,7 @@ for (const l of LOCALES) {
       await expect(dishes(page)).toBeVisible();
 
       await tab(page, l.me).click();
+      await page.getByRole("button", { name: l.account }).click();
       await page.getByRole("button", { name: l.signOut, exact: true }).click();
       await expect(page.getByLabel(l.password, { exact: true })).toBeVisible();
 

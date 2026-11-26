@@ -156,7 +156,6 @@ export const ptBR: Messages = {
     "Você não está mais conectado, então sua alteração foi desfeita. Entre de novo.",
   "me.header.addLink": "Adicione seu nome e foto",
   "me.completions.heading": "Minhas conclusões",
-  "me.settings.heading": "Seus ajustes",
   "me.completions.empty": "Nada concluído nos últimos 30 dias.",
   "me.completions.error": "Não foi possível carregar suas conclusões. Tente de novo em instantes.",
   "completion.changeTime": "Mudar hora",
@@ -214,6 +213,14 @@ export const ptBR: Messages = {
   "profile.preference.dislike": "Não gosto",
   "profile.restrictions.heading": "Restrições",
   "profile.restrictions.hint": "Trabalho que você não pode fazer. Ele nunca é dado a você.",
+  "profile.restriction.added": "Restrição adicionada. As responsabilidades removidas não voltam.",
+  "me.group.plan": "Como o plano te conhece",
+  "me.group.app": "App",
+  "me.sheet.close": "Fechar",
+  "me.account.title": "Conta",
+  "me.account.caption": "E-mail e sair",
+  "me.restrictions.none": "Nenhuma",
+  "me.restrictions.count": { one: "{count} restrição", other: "{count} restrições" },
   "category.kitchen": "Cozinha",
   "category.bathroom": "Banheiro",
   "category.bedroom": "Quarto",
@@ -644,7 +651,6 @@ export const ptBR: Messages = {
   "forgot.failure.expiredCode": "Esse código expirou. Toque em Começar de novo para receber outro.",
 
   // Conectado
-  "signedIn.heading": "Você está conectado",
   "signedIn.as": "Conectado como {email}.",
   "signedIn.emailFallback": "seu e-mail",
   "signedIn.offline":

@@ -1,7 +1,8 @@
-import { SignedIn } from "../../../domains/auth/components/SignedIn";
+import { List } from "@homeowner/bedrock";
+import { AccountRow } from "../../../domains/auth/components/AccountRow";
 import { MeHeader } from "../../../domains/profile/components/MeHeader";
 import { MeProfile } from "../../../domains/profile/components/MeProfile";
-import { SettingsCard } from "../../../domains/settings/components/Settings";
+import { LanguageRow, ThemeRow } from "../../../domains/settings/components/Settings";
 import { useI18n } from "../../../shared/i18n";
 import { HeadedSection } from "../../../shared/ui/HeadedSection";
 import { TabBody } from "../TabBody";
@@ -12,10 +13,11 @@ import { useAppAuth } from "../AuthProvider";
 import { useShell } from "../ShellContext";
 
 /**
- * Me: the header (Avatar, name, email, Streak), then two separate parts under the tab's h1, each a section named by
- * an h3: My Completions (only with a Home), and the settings, whose h4 cards are the Baseline, Preferences,
- * Restrictions, Appearance and Language, and the account card with sign out last. MePage owns the settings column,
- * so the cards after the Restrictions still show when the details fail to load.
+ * Me: the header (Avatar, name, email, Streak), then three separate parts under the tab's h1, each a section named
+ * by an h3, in the order of the Eu artboard: "how the plan knows you" (rows for the Baseline, Preferences and
+ * Restrictions, each opening a Sheet), My Completions (only with a Home), and the App rows (Language, Appearance and the
+ * account with sign out, each opening a Sheet). MePage owns the column, so the App rows still show when the
+ * profile details fail to load.
  */
 export function MePage() {
   const { t } = useI18n();
@@ -28,13 +30,16 @@ export function MePage() {
       <TabHeader title={t("me.heading")} refresh={false} />
       <TabBody>
         <MeHeader />
-        {/* Only a Resident with a Home has a history; the section stands alone, so the cards below never wait on it. */}
+        <MeProfile />
+        {/* Only a Resident with a Home has a history; the section stands alone, so the rows never wait on it. */}
         {home.state.kind === "ready" && <MyCompletions timeZone={home.state.home.timezone} />}
-        <HeadedSection title={t("me.settings.heading")}>
-          <MeProfile />
-          <SettingsCard headingLevel={4} />
-          {/* Signing out is on purpose: the guard then sends the person to sign-in without remembering this tab. */}
-          <SignedIn email={auth.state.email} offline={auth.state.offline} onSignOut={auth.signOut} />
+        <HeadedSection title={t("me.group.app")}>
+          <List>
+            <LanguageRow />
+            <ThemeRow />
+            {/* Signing out is on purpose: the guard then sends the person to sign-in without remembering this tab. */}
+            <AccountRow email={auth.state.email} offline={auth.state.offline} onSignOut={auth.signOut} />
+          </List>
         </HeadedSection>
       </TabBody>
     </PageLoading>

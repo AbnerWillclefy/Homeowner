@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   putBaseline,
@@ -10,13 +10,12 @@ import {
   type WriteResult,
 } from "../api/api";
 import { categoriesQuery, demandsQuery, profileKey, profileQuery } from "../api/queries";
-import { useToast } from "../../../shared/ui/useToast";
+import { useUndoable } from "../../../shared/undo/useUndoable";
 import type { MessageKey } from "../../../shared/i18n";
 import { updateCached } from "../../../shared/query/cacheUpdate";
 import { useOptimisticView } from "../../../shared/query/useOptimisticView";
 import { viewOf } from "../../../shared/query/view";
 import { withBaseline, withPreference, withRestriction } from "../logic/changes";
-import { performChange } from "../logic/performChange";
 
 export type ProfileProblem = "offline" | "error" | "not-signed-in";
 
@@ -34,15 +33,14 @@ export type ProfileState =
 /**
  * Only mounted while signed in (see App). The profile and the two lists are read from the query cache, so a
  * profile seen before shows at once and a read runs behind it (`refreshing`); only a first load or a Retry is
- * `loading`. Writes are never queued: a saved one shows a toast, a failed one is undone and reported in an error
+ * `loading`. Writes are never queued: a saved one shows a toast with Desfazer, a failed one is undone and reported in an error
  * toast (the value is back as it was, so there is nothing to act on).
  */
 export function useProfile() {
-  const toast = useToast();
+  const { undoableChange } = useUndoable();
   const queryClient = useQueryClient();
   const categoriesRead = useQuery(categoriesQuery);
   const demandsRead = useQuery(demandsQuery);
-  const inFlight = useRef(new Set<string>());
 
   // The lists and the profile are independent reads; the first failure decides the problem shown.
   const categoriesView = viewOf(categoriesRead);
@@ -68,27 +66,39 @@ export function useProfile() {
   }, [categoriesRead, demandsRead, profileRead]);
 
   /**
-   * Shows the change at once, sends it, and on failure puts back only the field it touched, so a
-   * second change made meanwhile is kept. Guarded per control `key`: a repeat on the same control while its
-   * request is in flight is ignored; other controls are not held up. The writes answer 204 with no body, so
-   * there is no server answer to store: the change stays in the cache when saved and is reverted when not.
+   * Shows the change at once, sends it, and on failure puts back only the field it touched, so a second change
+   * made meanwhile is kept. A saved change says so in a toast with Desfazer, which sends the previous value of
+   * that one control (`undoableChange`, ADR 0029). Guarded per control `key`: a repeat on the same control while
+   * its request is in flight is ignored. The writes answer 204 with no body, so there is no server answer to
+   * store: the change stays in the cache when saved and is reverted when not.
    */
   const change = useCallback(
     (
       key: string,
+      titleKey: MessageKey,
       apply: (p: Profile) => Profile,
       revert: (p: Profile) => Profile,
-      send: () => Promise<WriteResult>,
-    ) =>
-      performChange(inFlight.current, {
+      write: (forward: boolean) => Promise<WriteResult>,
+    ) => {
+      let problem: ProfileProblem = "error";
+      const send = (forward: boolean) => async () => {
+        const result = await write(forward);
+        if (result.kind !== "ok") problem = result.kind;
+        return result;
+      };
+      return undoableChange({
         key,
+        titleKey,
+        get failedKey() {
+          return SAVE_FAILED_KEY[problem];
+        },
         apply: () => updateCached(queryClient, profileKey, apply),
         revert: () => updateCached(queryClient, profileKey, revert),
-        send,
-        onSaved: () => toast.show({ messageKey: "profile.saved", tone: "success" }),
-        onFailed: (problem) => toast.show({ messageKey: SAVE_FAILED_KEY[problem], tone: "error" }),
-      }),
-    [toast, queryClient],
+        send: send(true),
+        sendRevert: send(false),
+      });
+    },
+    [undoableChange, queryClient],
   );
 
   const readyProfile = state.kind === "ready" ? state.profile : null;
@@ -100,9 +110,10 @@ export function useProfile() {
       if (before === points) return;
       void change(
         `baseline:${day}`,
+        "profile.saved",
         (p) => withBaseline(p, day, points),
         (p) => withBaseline(p, day, before),
-        () => putBaseline({ [day]: points }),
+        (forward) => putBaseline({ [day]: forward ? points : before }),
       );
     },
     [readyProfile, change],
@@ -115,9 +126,10 @@ export function useProfile() {
       if (before === preference) return;
       void change(
         `preference:${category}`,
+        "profile.saved",
         (p) => withPreference(p, category, preference),
         (p) => withPreference(p, category, before),
-        () => putPreference(category, preference),
+        (forward) => putPreference(category, forward ? preference : before),
       );
     },
     [readyProfile, change],
@@ -127,9 +139,11 @@ export function useProfile() {
     (demand: string, restricted: boolean) => {
       void change(
         `restriction:${demand}`,
+        // A lasting Restriction clears the Resident's Responsible Chores it covers, and Desfazer cannot give them back.
+        restricted ? "profile.restriction.added" : "profile.saved",
         (p) => withRestriction(p, demand, restricted),
         (p) => withRestriction(p, demand, !restricted),
-        () => setRestriction(demand, restricted),
+        (forward) => setRestriction(demand, forward ? restricted : !restricted),
       );
     },
     [change],

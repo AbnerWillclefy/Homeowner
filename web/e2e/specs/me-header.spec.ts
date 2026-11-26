@@ -9,7 +9,7 @@ import { tabs } from "../pages/tabs";
 
 // What this covers, in pt-BR: the Me header (Avatar initials, name, email, Streak), the "Add your name and
 // photo" link and the edit pencil, the edit route (saving, clearing, the length message before and after the
-// request), no Streak line without a Home, and a failed GET /me that leaves the cards below working.
+// request), no Streak line without a Home, and a failed GET /me that leaves the rows below working.
 
 const LONG_NAME = "Abcdefghijklmnopqrstuvwxyzabcdefghijklmn"; // 40 characters, no break opportunity
 const TOO_LONG = "a".repeat(41);
@@ -178,9 +178,10 @@ for (const l of LOCALES) {
         await expect(page.getByText(/Streak|Sequência/)).toHaveCount(0);
       });
 
-      test("shows the settings part and no history part", async ({ page, baseURL }) => {
+      test("shows the profile and App parts and no history part", async ({ page, baseURL }) => {
         await openMe(page, baseURL);
-        await expect(page.getByRole("heading", { name: /^(Your settings|Seus ajustes)$/, level: 3 })).toBeVisible();
+        await expect(page.getByRole("heading", { name: /^(How the plan knows you|Como o plano te conhece)$/, level: 3 })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "App", level: 3 })).toBeVisible();
         await expect(page.getByRole("heading", { name: /^(My Completions|Minhas conclusões)$/ })).toHaveCount(0);
         await expect(page.getByRole("region", { name: /^(My Completions|Minhas conclusões)$/ })).toHaveCount(0);
       });
@@ -189,7 +190,7 @@ for (const l of LOCALES) {
     test.describe("when GET /me fails", () => {
       test.use({ fakeState: resident("Abner Lima") });
 
-      test("shows Retry, keeps the cards working, and Retry brings the header back", async ({ page, baseURL, fakeApi }) => {
+      test("shows Retry, keeps the rows working, and Retry brings the header back", async ({ page, baseURL, fakeApi }) => {
         // The app asks for /me more than once while it starts, so the failure is switched off by hand, not by count.
         let broken = true;
         fakeApi.override("GET /me", (_, state) => {
@@ -199,8 +200,8 @@ for (const l of LOCALES) {
         });
         await openMe(page, baseURL);
         await expect(page.getByRole("alert").filter({ hasText: l.loadFailed })).toBeVisible();
-        await tabs.me.trigger(page, l.baseline).click();
-        await expect(tabs.me.trigger(page, l.baseline)).toHaveAttribute("aria-expanded", "true");
+        await tabs.me.open(page, l.baseline);
+        await page.keyboard.press("Escape");
 
         broken = false;
         await page.getByRole("button", { name: l.retry }).click();
