@@ -1,6 +1,6 @@
 # Homeowner PWA screens
 
-The approved design for the PWA on Bedrock (epic #882), copied from the design canvas so the agents building it can read it. Each `.dc.html` file is one artboard: its markup is the layout to build, its `<script>` holds the sample data and interactions. They render only inside the canvas (they load its `support.js` runtime and `home.css`, neither copied here), so read them as source and do not report them broken in a browser.
+The approved design for the PWA on Bedrock (epic #882), copied from the design canvas so the agents building it can read it. Each `.dc.html` file is one artboard: its markup is the layout to build, its `<script>` holds the sample data and interactions. They load the canvas's `support.js` runtime, which is not copied, so they do not open in a plain browser; read them as source. The `ui-screenshots` check renders them outside the canvas with its stand-in, `.github/scripts/dc-runtime.js` (ADR 0028).
 
 This copy is what screens are built and reviewed against. A design change made in the canvas comes here in a pull request before any ticket builds on it.
 
@@ -10,7 +10,7 @@ Classes map to the code like this:
 
 - `br-*` are Bedrock components (`docs/design/bedrock/components/`). Core ones are built in `bedrock/src/components/`; the Home layer (`br-chore`, `br-effort`, `br-energy`, `br-streak`, `br-task`) goes in `bedrock/src/home/` (#887).
 - `br-stepper*` in the onboarding and Forgot password artboards is the **step indicator**, not the built `Stepper` (see Naming below).
-- `hm-*` are the page layout, drawn by the canvas's `home.css` stand-in: the phone frame (`hm-phone`, `hm-scroll`), the header (`hm-head`, `hm-title`, `hm-sub`, `hm-tools`, `hm-bar`, `hm-back`), sheets and dialogs (`hm-overlay`, `hm-sheet*`, `hm-dialog`), the toast (`hm-toast`), lists and rows (`hm-list`, `hm-item*`, `hm-check`, `hm-box`), fields (`hm-field`, `hm-label`, `hm-input`, `hm-seg`, `hm-caption`) and the auth and onboarding column (`hm-auth`, `hm-foot`). In code they belong to the PWA's frame (`web/src/app/components/PageFrame.tsx`, `Shell.tsx`) or to the Bedrock component of the same role (`Sheet`, `Toast`, `PageHeader`, `SegmentedControl`, `Checkbox`). `home.css` is not the spec and is not copied.
+- `hm-*` are the page layout, drawn by [`home.css`](home.css), copied from the canvas: the phone frame (`hm-phone`, `hm-scroll`), the header (`hm-head`, `hm-title`, `hm-sub`, `hm-tools`, `hm-bar`, `hm-back`), sheets and dialogs (`hm-overlay`, `hm-sheet*`, `hm-dialog`), the toast (`hm-toast`), lists and rows (`hm-list`, `hm-item*`, `hm-check`, `hm-box`), fields (`hm-field`, `hm-label`, `hm-input`, `hm-seg`, `hm-caption`) and the auth and onboarding column (`hm-auth`, `hm-foot`). In code they belong to the PWA's frame (`web/src/app/components/PageFrame.tsx`, `Shell.tsx`) or to the Bedrock component of the same role (`Sheet`, `Toast`, `PageHeader`, `SegmentedControl`, `Checkbox`). `home.css` is not the spec: the code builds these roles, it does not import the file.
 - `ri ri-<name>` are icons; use the Lucide icon of the same meaning.
 
 Wording in the artboards is illustrative. The i18n catalogs (`web/src/shared/i18n/catalogs/`) and `docs/glossary-pt-BR.md` own the real words.
