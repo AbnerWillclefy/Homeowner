@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { withScreenshots } from "./bedrock-screenshots.mjs";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { artboardPath, leftoversIn, overflowOf, pairsMarkdown, serveArtboard } from "./artboards.mjs";
+import { artboardPath, heightFailures, leftoversIn, overflowOf, pairsMarkdown, serveArtboard, undersized } from "./artboards.mjs";
 
 const prefix = "https://example.test/";
 const images = {
@@ -97,4 +97,23 @@ test("a stylesheet that is not there is reported, a missing script or image is n
   assert.deepEqual(missing, ["/home.css", "/..%2Fx.css"]);
   await serveArtboard(fakeRoute("http://artboard.test/logo.png", "image"), dir, missing);
   assert.equal(missing.length, 2);
+});
+
+test("undersized: an element shorter than it declares, or at zero, fails", () => {
+  assert.equal(undersized(48, 26), true); // the Chores search box before the fix
+  assert.equal(undersized(48, 0), true);
+  assert.equal(undersized(48, 48), false);
+  assert.equal(undersized(48, 47.6), false);
+  assert.equal(undersized(64, 80), false);
+});
+
+test("heightFailures names the file and the element, and keeps the exemption list honest", () => {
+  const found = [{ description: '<label.br-search__box> "Buscar"', declared: 48, rendered: 26 }];
+  const [message, ...more] = heightFailures("homeowner/Chores.dc.html", found, {});
+  assert.equal(more.length, 0);
+  assert.match(message, /^homeowner\/Chores\.dc\.html: <label\.br-search__box>.* declares 48px but renders 26px$/);
+  const exempt = { "homeowner/Chores.dc.html": "reason" };
+  assert.deepEqual(heightFailures("homeowner/Chores.dc.html", found, exempt), []);
+  assert.match(heightFailures("homeowner/Chores.dc.html", [], exempt)[0], /remove it from HEIGHT_EXEMPT/);
+  assert.deepEqual(heightFailures("homeowner/Chores.dc.html", [], {}), []);
 });

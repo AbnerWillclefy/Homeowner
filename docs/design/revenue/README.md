@@ -2,7 +2,7 @@
 
 The approved design for Revenue (epic #623), copied from the design canvas so the agents building it can read it. Each `.dc.html` file is one artboard: its markup is the layout to build, its `<script>` holds the sample data and interactions. They load the canvas runtime `support.js`, which the repo does not have. They render in the canvas, and in CI through the stand-in `.github/scripts/dc-runtime.js` ([ADR 0028](../../adr/0028-render-design-artboards-in-ci-with-a-stand-in-for-the-canvas-runtime.md)), which shoots the artboard mapped to each changed route (`ARTBOARDS` in `.github/scripts/revenue-screenshots.mjs`), in its default props, beside the app's screen in a Revenue pull request. Opened on their own they do not render, so read them as source.
 
-The canvas is the source; this copy, kept byte-identical to it, is what screens are built from and compared against (`revenue/CLAUDE.md`, `REVIEW.md`). A design change is made in the canvas first and comes here in a pull request before any screen builds on it. A screen that differs from its artboard is fixed in code, or the artboard changes this way first.
+The canvas is the source; this copy, kept byte-identical to it except for an edit that only makes it render as its own CSS declares (the `ui-screenshots` check fails an element shorter than its declared px height; the same fix is made in the canvas), is what screens are built from and compared against (`revenue/CLAUDE.md`, `REVIEW.md`). A design change is made in the canvas first and comes here in a pull request before any screen builds on it. A screen that differs from its artboard is fixed in code, or the artboard changes this way first.
 
 Classes map to the code like this:
 
