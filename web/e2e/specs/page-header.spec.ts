@@ -81,9 +81,15 @@ test.describe("320px", () => {
 test.describe("with no Home", () => {
   test.use({ fakeState: { onboardingStored: "done" } });
 
-  test("Create your Home is the screen's one h1", async ({ page, baseURL }) => {
+  test("each step of Create your Home has the screen's one h1", async ({ page, baseURL }) => {
+    const h1 = page.getByRole("heading", { level: 1 });
     await launchApp(page, baseURL!);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/lar/i);
+    await expect(h1).toHaveCount(1);
+    await expect(h1).toHaveText(/lar/i);
+    await page.getByRole("button", { name: "Próximo: sobre o seu lar" }).click();
+    await expect(h1).toHaveText("Sobre o seu lar");
+    await page.getByRole("button", { name: "Pular e adicionar afazeres depois" }).click();
+    await expect(h1).toHaveText("Revise os seus afazeres");
+    await expect(h1).toHaveCount(1);
   });
 });
