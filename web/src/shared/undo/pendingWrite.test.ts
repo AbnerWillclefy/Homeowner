@@ -3,7 +3,7 @@ import { idle, pendingWrite, type PendingEffect, type PendingEvent, type Pending
 
 const a: Writable = { id: 1 };
 const b: Writable = { id: 2 };
-const failure = { kind: "failed", messageKey: "x" } as const;
+const failure = { kind: "failed", messageKey: "app.name" } as const;
 
 const sends = (effects: PendingEffect<Writable>[]) => effects.filter((e) => e.type === "send");
 const step = (state: PendingState<Writable>, event: PendingEvent<Writable>) => pendingWrite(state, event);
@@ -85,7 +85,7 @@ describe("pendingWrite", () => {
   });
 
   it("reports a 409 as a conflict outcome and restores", () => {
-    const conflict = { kind: "conflict", messageKey: "y" } as const;
+    const conflict = { kind: "conflict", messageKey: "app.chunkFailed" } as const;
     const next = step({ held: b, sending: [a] }, { type: "failed", id: a.id, result: conflict });
     expect(next.state).toEqual({ held: b, sending: [] });
     expect(next.effects).toEqual([{ type: "report", action: a, result: conflict }]);

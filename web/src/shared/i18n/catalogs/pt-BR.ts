@@ -920,4 +920,6 @@ export const ptBR: Messages = {
   // Avisos
   "toast.dismiss": "Dispensar mensagem",
   "toast.region": "Mensagens",
+  "undo.action": "Desfazer",
+  "undo.altText": "Desfazer a ação que acabou de fazer",
 };

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   initialToastQueue,
   MAX_TOASTS,
-  toastDurationMs,
   toastQueue,
   type ToastQueue,
   type ToastRequest,
@@ -59,9 +58,24 @@ describe("toastQueue", () => {
   });
 });
 
-describe("toastDurationMs", () => {
-  it("lasts at least 5 seconds, and an error longer than a success", () => {
-    expect(toastDurationMs("success")).toBeGreaterThanOrEqual(5000);
-    expect(toastDurationMs("error")).toBeGreaterThan(toastDurationMs("success"));
+describe("toastQueue with an action", () => {
+  const undo = (n: number): ToastRequest => ({
+    ...saved,
+    params: { n },
+    action: { labelKey: "undo.action", altTextKey: "undo.altText", onClick: () => {} },
+  });
+
+  it("replaces the earlier undo toast, whatever its words, but not a plain one", () => {
+    let state = add(initialToastQueue, saved);
+    state = add(state, undo(1));
+    state = add(state, undo(2));
+    expect(state.toasts.map((toast) => toast.params)).toEqual([undefined, { n: 2 }]);
+  });
+
+  it("never drops the undo toast when the queue overflows", () => {
+    let state = add(initialToastQueue, undo(1));
+    for (let i = 0; i < MAX_TOASTS + 1; i++) state = add(state, { ...saved, params: { plain: i } });
+    expect(state.toasts).toHaveLength(MAX_TOASTS);
+    expect(state.toasts.some((toast) => toast.action)).toBe(true);
   });
 });

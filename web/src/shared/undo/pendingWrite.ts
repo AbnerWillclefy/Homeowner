@@ -1,8 +1,10 @@
+import type { MessageKey } from "../i18n";
+
 /** What the screen's own send answers with. A 409 is its own kind so the shared code words it once. */
 export type SendResult =
   | { kind: "ok" }
-  | { kind: "conflict"; messageKey: string }
-  | { kind: "failed"; messageKey: string };
+  | { kind: "conflict"; messageKey: MessageKey }
+  | { kind: "failed"; messageKey: MessageKey };
 
 /** The part of a held action the reducer needs. The provider's actions carry more (see `UndoProvider`). */
 export interface Writable {

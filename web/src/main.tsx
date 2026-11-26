@@ -8,6 +8,7 @@ import { EnvironmentBadge } from "./app/components/EnvironmentBadge";
 import { ToastProvider } from "./shared/ui/ToastProvider";
 import { I18nProvider } from "./shared/i18n";
 import { PendingInviteProvider } from "./domains/invite/components/PendingInviteProvider";
+import { UndoProvider } from "./shared/undo/UndoProvider";
 import { ThemeProvider } from "./shared/theme";
 import { QueryClientProvider, type FetchQueryOptions } from "@tanstack/react-query";
 import { createQueryClient } from "./shared/query/queryClient";
@@ -50,7 +51,10 @@ createRoot(document.getElementById("root")!).render(
               {/* Above the router: nothing under it can remount the check, so /healthz is asked once per load. */}
               <HealthProvider>
                 <BrowserRouter>
-                  <App />
+                  {/* Inside the router (a tab change sends the held write) and the toast provider (Desfazer). */}
+                  <UndoProvider>
+                    <App />
+                  </UndoProvider>
                 </BrowserRouter>
               </HealthProvider>
             </PendingInviteProvider>
