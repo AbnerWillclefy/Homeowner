@@ -3,6 +3,8 @@ import { Check } from "lucide-react";
 import type { ReactElement } from "react";
 import { expect, it } from "vitest";
 import { BottomBar } from "./bottom-bar";
+import { Card } from "./card";
+import { Choice, ChoiceGroup } from "./choice-group";
 import { Dialog } from "./dialog";
 import { Input } from "./input";
 import { List, Row } from "./list";
@@ -10,6 +12,7 @@ import { PageHeader } from "./page-header";
 import { SearchField } from "./search-field";
 import { SegmentedControl } from "./segmented-control";
 import { Sheet } from "./sheet";
+import { StepIndicator } from "./step-indicator";
 import { Toast, ToastProvider } from "./toast";
 
 // Radix Toast reads pointer capture, which jsdom lacks.
@@ -26,6 +29,9 @@ const cases: [string, ReactElement][] = [
   ["field", <Input key="x" label="l" />],
   ["segmented-control", <SegmentedControl key="x" label="l" options={[{ value: "a", label: "A" }, { value: "b", label: "B" }]} value="a" onValueChange={noop} />],
   ["toast", <ToastProvider key="x" label="n"><Toast open onOpenChange={noop} tone="neutral" title="t" closeLabel="c" /></ToastProvider>],
+  ["choice-group", <ChoiceGroup key="x" label="l" value="a" onValueChange={noop}><Choice value="a" label="A" /></ChoiceGroup>],
+  ["step-indicator", <StepIndicator key="x" label="Passo 1 de 5" current={1} total={5} />],
+  ["card", <Card key="x">x</Card>],
   ["bottom-bar", <BottomBar key="x" label="n" items={[{ href: "/", label: "Home", icon: Check }]} />],
 ];
 

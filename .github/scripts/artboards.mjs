@@ -162,6 +162,9 @@ export const ROLES = [
   { role: "field", design: ".hm-field, .br-field", app: "[data-slot=field]", bedrock: true },
   { role: "segmented-control", design: ".hm-seg, .br-seg", app: "[data-slot=segmented-control]", bedrock: true },
   { role: "bottom-bar", design: ".br-bottombar", app: "[data-slot=bottom-bar]", bedrock: true },
+  { role: "choice-group", design: ".br-choices", app: "[data-slot=choice-group]", bedrock: true },
+  { role: "step-indicator", design: ".br-stepper", app: "[data-slot=step-indicator]", bedrock: true },
+  { role: "card", design: ".br-card", app: "[data-slot=card]", bedrock: true },
 ];
 
 /** The selector of each role for one side, `side` being "app" or "design": what `measureBoxes` takes. */
