@@ -270,6 +270,9 @@ test.describe("a User who joins by Invite after the first answer was `home`", ()
       state.home = { id: "home-2", timezone: "America/Sao_Paulo", allocationTime: "07:00" };
       return json(200, state.home);
     });
+    // beforeEach already opened the app at "/", so going to "/#invite=…" from there only changes the hash and the
+    // token, read once at launch, is lost. An Invite link is a fresh launch: leave the app first (#951).
+    await page.goto("about:blank");
     await visit(page, new URL("/#invite=abc123", baseURL!).toString());
     await page.getByRole("button", { name: "Join this Home", exact: true }).click();
     await expect(page).toHaveURL(/\/welcome\/baseline$/);
