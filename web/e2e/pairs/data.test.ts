@@ -13,6 +13,14 @@ describe("pairsHome", () => {
     expect(state.streakTodayGrew).toBe(false);
   });
 
+  it("carries louça's last Completion (Ana, yesterday), the week and the commands left", () => {
+    const state = pairsHome();
+    expect(state.dayPlan?.mine.find((t) => t.choreId === "louca")?.lastDone).toEqual({ date: "2030-01-14", residentIds: ["resident-2"] });
+    expect(state.streakWeek?.map((d) => d.state)).toEqual(["grew", "grew", "grew", "paused", "grew", "grew", "open"]);
+    expect(state.streakWeek?.map((d) => d.date)[0]).toBe("2030-01-09");
+    expect(state.voiceRemaining).toBe(4);
+  });
+
   it("gives the Responsible Chores their Residents and the Demands their ids", () => {
     const byName = (name: string) => pairsHome().chores.find((c) => c.name === name);
     expect(byName("Limpar a pia do banheiro")?.responsibleResidentId).toBe("resident-1");
@@ -25,6 +33,7 @@ describe("pairsHome", () => {
     const state = pairsHome("done");
     expect(state.dayPlan?.mine).toEqual([]);
     expect([state.streak, state.streakTodayGrew]).toEqual([7, true]);
+    expect(state.streakWeek?.map((d) => d.state)).toEqual(["grew", "grew", "grew", "paused", "grew", "grew", "grew"]);
   });
 
   it("keeps the default household for `loading` and `offline`", () => {
