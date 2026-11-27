@@ -209,7 +209,7 @@ run_case "a tier without a reason is a problem" \
 web="$(files "$(file web/src/domains/onboarding/components/Onboarding.tsx modified)")"
 run_case "an artboard criterion met only partly is a problem" \
   "$web" "$(complete_body medium; printf '\n## Acceptance criteria\n- [ ] Matches the Entrada and Partes artboards: partly. See the differences above.\n')" \
-  "problem=an artboard criterion is not fully met"
+  "problem=meet every artboard criterion in full"
 
 run_case "an artboard criterion that is met, and an unrelated partial one, are no problem" \
   "$web" "$(complete_body medium; printf '\n## Acceptance criteria\n- [x] Matches the Entrada artboard: pairs below.\n- [ ] Two PUTs: partly, one is enough.\n')" \

@@ -104,7 +104,7 @@ filled "$(section "Risk" | grep -viE '^\*\*Risk:\*\*')" \
 
 # The app matches its artboard; a gap is decided in the epic's refinement, never left "partly" in a pull request (#939)
 if section "Acceptance criteria" | grep -iE 'artboard' | grep -qiE '\b(partly|partially|not built|not met|differs?)\b'; then
-  problems+=("an artboard criterion is not fully met: match the artboard, or take the gap to the epic's refinement and change the ticket")
+  problems+=("meet every artboard criterion in full: match the artboard, or take the gap to the epic's refinement and change the ticket")
 fi
 
 effective=$(max_tier "${declared/none/low}" "$floor")
