@@ -33,6 +33,8 @@ The template is `.github/pull_request_template.md`. It is written for the human 
 - **Risk:** on its own line under `## Risk`, as `**Risk:** low`, `medium` or `high`, at least the path floor, with a sentence on why.
 - **Why**, **What changes**, **What can go wrong**, **How it was tested** and **How to revert** filled in.
 
+- No acceptance criterion about an artboard says `partly`, `partially`, `not built`, `not met`, `differ` or `differs`: the app matches its artboard, and a gap is decided in the epic's refinement (#939).
+
 For `high`, the Risk section says why it is high and why it cannot be made smaller, and How to revert gives exact steps, including what a revert leaves behind (a migration, Terraform resources, data written meanwhile, a service worker cached on phones).
 
 The check then labels the pull request `risk:low`, `risk:medium` or `risk:high`. The label is the higher of the stated tier and the floor, so it can be raised by editing the description, never lowered under the floor.
@@ -42,6 +44,8 @@ The check then labels the pull request `risk:low`, `risk:medium` or `risk:high`.
 `merge-by-risk.yml` runs when CI, Claude's review, the review fix or the `pr-risk` check finishes (the last one also runs on the maintainer's reviews), and each run checks every open agent pull request. It runs from `main`, so a pull request cannot change the rules that merge it, and it reads the tier again from scratch. It merges with the agents' token, so the push to `main` starts **Deploy staging**, and with `--match-head-commit`, so a push after the checks stops the merge. If Slack is set up, it posts each merge.
 
 To run it by hand: Actions, **Merge by risk**, Run workflow, optionally with a pull request number.
+
+A Claude thread blocks the merge while it is unresolved, and a `(design)` finding (a screen that differs from its artboard) also blocks once anyone but Claude replied to it with anything but "Fixed: …", resolved or not: a design finding is fixed, never rejected, so a reply hands the merge to the maintainer (`claude-open-threads.sh`).
 
 What counts as a Claude finding is defined twice: in `.github/scripts/claude-findings.sh` and in the gate of `agent-review-fix.yml`, which only a human may edit. Keep the two the same; when that workflow is next edited, it should call the script instead.
 

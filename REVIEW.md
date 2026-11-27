@@ -30,7 +30,8 @@ Domain terms are in `GLOSSARY.md`, decisions in `docs/adr/`.
 - Screenshot pairs. Skip this check when `.design-pairs/` is absent or empty. Otherwise, for each route and width,
   Read `auto-<app>-<screen>-<mobile|desktop>-app.png` (`<app>` is `revenue` or `web`) and its `-design.png` (the artboard), skipping an `-app.png`
   that has no `-design.png` (the screen has no artboard). Web pairs are one phone width, pt-BR, dark; their artboard wording is
-  illustrative, so the catalogs and `docs/glossary-pt-BR.md` win (see Wording below). Raise **one inline finding per visible difference**: a missing or extra control in the
+  illustrative, so the catalogs and `docs/glossary-pt-BR.md` win (see Wording below). Every pair finding, visible or measured, uses the
+  `(design)` category: the engineer cannot reject it, and a reply blocks the automatic merge (`claude-open-threads.sh`). Raise **one inline finding per visible difference**: a missing or extra control in the
   header's tools, a card, the grid columns it spans, the side panel, the order, a tone or colour, a state. Each
   difference is its own finding even when several land on one page file; this overrides the skill's "one finding per
   root cause in a file". Ignore font rendering, anti-aliasing and sub-pixel offsets.
