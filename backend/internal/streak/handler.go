@@ -17,6 +17,13 @@ type streakResponse struct {
 	Date      string `json:"date"`
 	Current   int    `json:"current"`
 	TodayGrew bool   `json:"todayGrew"`
+	// Week is the last 7 local days, oldest first, today last.
+	Week []weekDayView `json:"week"`
+}
+
+type weekDayView struct {
+	Date  string `json:"date"`
+	State string `json:"state"`
 }
 
 // Handler serves GET /home/streak.
@@ -39,10 +46,14 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		httpx.InternalError(w, h.log, "chores", err)
 		return
 	}
-	current, grew, err := h.store.Current(r.Context(), m.ResidentID, date)
+	reading, err := h.store.Current(r.Context(), m.ResidentID, date)
 	if err != nil {
 		httpx.InternalError(w, h.log, "chores", err)
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, streakResponse{Date: date.Time().Format(time.DateOnly), Current: current, TodayGrew: grew})
+	week := make([]weekDayView, len(reading.Week))
+	for i, d := range reading.Week {
+		week[i] = weekDayView{Date: d.Date.Time().Format(time.DateOnly), State: d.State}
+	}
+	httpx.WriteJSON(w, http.StatusOK, streakResponse{Date: date.Time().Format(time.DateOnly), Current: reading.Current, TodayGrew: reading.TodayGrew, Week: week})
 }

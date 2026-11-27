@@ -80,3 +80,45 @@ func TestCurrentStreak(t *testing.T) {
 		})
 	}
 }
+
+func TestWeekIsSevenDaysOldestFirstWithTodayLast(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		days []streak.Day
+		want []string // states for the 4th ..= 10th, today the 10th
+	}{
+		{"no facts at all is six pauses then open", nil,
+			[]string{"paused", "paused", "paused", "paused", "paused", "paused", "open"}},
+		{"grows, a pause and a break keep their own words",
+			[]streak.Day{{Date: day(4), Completions: 1}, {Date: day(5), Drained: true}, {Date: day(6), Undone: 1},
+				{Date: day(7), Completions: 2}, {Date: day(8), Undone: 1, Drained: true}},
+			[]string{"grew", "paused", "broken", "grew", "paused", "paused", "open"}},
+		{"today Drained with an undone Commitment is open, not broken",
+			[]streak.Day{{Date: day(10), Undone: 1, Drained: true}},
+			[]string{"paused", "paused", "paused", "paused", "paused", "paused", "open"}},
+		{"today with an undone Commitment and no Completion is open",
+			[]streak.Day{{Date: day(10), Undone: 1}},
+			[]string{"paused", "paused", "paused", "paused", "paused", "paused", "open"}},
+		{"today with a Completion grew",
+			[]streak.Day{{Date: day(10), Completions: 1}},
+			[]string{"paused", "paused", "paused", "paused", "paused", "paused", "grew"}},
+		{"a fact after today is ignored and facts before the week are not shown",
+			[]streak.Day{{Date: day(11), Completions: 1}, {Date: day(3), Completions: 1}},
+			[]string{"paused", "paused", "paused", "paused", "paused", "paused", "open"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := streak.Week(tc.days, day(10))
+			if len(got) != 7 || len(tc.want) != 7 {
+				t.Fatalf("Week has %d entries, want 7", len(got))
+			}
+			for i, w := range got {
+				if w.Date != day(4+i) || w.State != tc.want[i] {
+					t.Errorf("entry %d = %v %q, want %v %q", i, w.Date, w.State, day(4+i), tc.want[i])
+				}
+			}
+		})
+	}
+}

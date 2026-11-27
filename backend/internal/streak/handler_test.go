@@ -2,6 +2,7 @@ package streak_test
 
 import (
 	"net/http"
+	"slices"
 	"testing"
 	"time"
 
@@ -29,6 +30,7 @@ type streakReading struct {
 	date      string
 	current   int
 	todayGrew bool
+	week      []string // "date state", oldest first
 }
 
 func streakOf(t *testing.T, c *apitest.Client) streakReading {
@@ -43,7 +45,16 @@ func streakOf(t *testing.T, c *apitest.Client) streakReading {
 	if !ok || !ok2 || !ok3 {
 		t.Fatalf("bad body: %s", r.Raw)
 	}
-	return streakReading{date, int(cur), grew}
+	raw, _ := r.Body["week"].([]any)
+	if len(raw) != 7 {
+		t.Fatalf("week has %d entries, want 7: %s", len(raw), r.Raw)
+	}
+	week := make([]string, len(raw))
+	for i, e := range raw {
+		m := e.(map[string]any)
+		week[i] = m["date"].(string) + " " + m["state"].(string)
+	}
+	return streakReading{date, int(cur), grew, week}
 }
 
 func wantStreak(t *testing.T, c *apitest.Client, current int, todayGrew bool) {
@@ -106,6 +117,12 @@ func TestTheStreakGrowsPausesAndBreaksOnTheFakeClock(t *testing.T) {
 	// Friday: Thursday is final and broke.
 	app.Clock.Set(at(6, 9))
 	wantStreak(t, me, 0, false)
+	// Before the first fact: paused. Mon grew, Tue paused, Wed paused (Drained), Thu broke.
+	want := []string{"2026-02-28 paused", "2026-03-01 paused", "2026-03-02 grew", "2026-03-03 paused",
+		"2026-03-04 paused", "2026-03-05 broken", "2026-03-06 open"}
+	if got := streakOf(t, me); !slices.Equal(got.week, want) {
+		t.Fatalf("week = %v, want %v", got.week, want)
+	}
 }
 
 func TestRefusingOrIgnoringNeverBreaksTheStreak(t *testing.T) {
@@ -278,6 +295,9 @@ func TestTheStreakCountsTheHomeLocalDayNotTheUTCDay(t *testing.T) {
 	}
 	apitest.MustAct(t, me, "complete", apitest.MineOf(t, me)[0]["id"].(string))
 	wantStreak(t, me, 1, true)
+	if got := streakOf(t, me); got.week[6] != "2026-03-03 grew" {
+		t.Fatalf("week = %v, want today 2026-03-03 grew", got.week)
+	}
 
 	// 10:59 UTC on the 3rd is 23:59 at home: the Completion still counts today.
 	app.Clock.Set(time.Date(2026, time.March, 3, 10, 59, 0, 0, time.UTC))
@@ -286,7 +306,8 @@ func TestTheStreakCountsTheHomeLocalDayNotTheUTCDay(t *testing.T) {
 	}
 	// Local midnight: the 4th begins at home, the 3rd is final and grew.
 	app.Clock.Set(time.Date(2026, time.March, 3, 11, 0, 0, 0, time.UTC))
-	if got := streakOf(t, me); got.date != "2026-03-04" || got.current != 1 || got.todayGrew {
+	if got := streakOf(t, me); got.date != "2026-03-04" || got.current != 1 || got.todayGrew ||
+		got.week[6] != "2026-03-04 open" || got.week[5] != "2026-03-03 grew" {
 		t.Fatalf("after local midnight = %+v", got)
 	}
 }

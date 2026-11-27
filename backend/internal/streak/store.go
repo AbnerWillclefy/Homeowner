@@ -57,6 +57,8 @@ type Reading struct {
 	// DoneToday is how many Completions dated today the Resident is on. A
 	// Completion by two people counts for both.
 	DoneToday int
+	// Week is the last seven days, oldest first, today last.
+	Week []WeekDay
 }
 
 // CurrentFor reads the Streak of every Resident in residentIDs on today (their
@@ -88,6 +90,7 @@ func (s *Store) CurrentFor(ctx context.Context, residentIDs []string, today allo
 	for _, id := range residentIDs {
 		var r Reading
 		r.Current, r.TodayGrew = Current(days[id], today)
+		r.Week = Week(days[id], today)
 		for _, d := range days[id] {
 			if d.Date == today {
 				r.DoneToday = d.Completions
@@ -98,14 +101,9 @@ func (s *Store) CurrentFor(ctx context.Context, residentIDs []string, today allo
 	return out, nil
 }
 
-// Current returns the Resident's Streak on today (their Home's local date) and
-// whether today already counts towards it. It is CurrentFor for one Resident,
-// so GET /home/streak and the Residents list cannot diverge.
-func (s *Store) Current(ctx context.Context, residentID string, today allocation.Date) (current int, todayGrew bool, err error) {
+// Current is CurrentFor for one Resident, so GET /home/streak and the
+// Residents list cannot diverge.
+func (s *Store) Current(ctx context.Context, residentID string, today allocation.Date) (Reading, error) {
 	readings, err := s.CurrentFor(ctx, []string{residentID}, today)
-	if err != nil {
-		return 0, false, err
-	}
-	r := readings[residentID]
-	return r.Current, r.TodayGrew, nil
+	return readings[residentID], err
 }
