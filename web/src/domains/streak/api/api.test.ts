@@ -46,6 +46,30 @@ describe("getStreak", () => {
     expect(await getStreak()).toEqual({ kind: "ok", streak: { current: 0, todayGrew: false } });
   });
 
+  describe("week", () => {
+    const STATES = ["grew", "paused", "broken", "open"] as const;
+    const WEEK = Array.from({ length: 7 }, (_, i) => ({ date: `2030-01-${String(9 + i).padStart(2, "0")}`, state: STATES[i % 4]! }));
+
+    it("keeps exactly seven well-formed days", async () => {
+      stubFetch(Response.json({ ...BODY, week: WEEK }));
+      expect(await getStreak()).toEqual({ kind: "ok", streak: { current: 3, todayGrew: true, week: WEEK } });
+    });
+
+    it.each([
+      ["absent", undefined],
+      ["null", null],
+      ["six days", WEEK.slice(0, 6)],
+      ["eight days", [...WEEK, WEEK[0]]],
+      ["an unknown state", WEEK.map((d, i) => (i === 3 ? { ...d, state: "sleeping" } : d))],
+      ["a date that is not YYYY-MM-DD", WEEK.map((d, i) => (i === 3 ? { ...d, date: "today" } : d))],
+      ["an entry that is not an object", WEEK.map((d, i) => (i === 3 ? "grew" : d))],
+      ["not a list", { 0: WEEK[0] }],
+    ])("drops a week that is %s and keeps the Streak", async (_name, week) => {
+      stubFetch(Response.json({ ...BODY, week }));
+      expect(await getStreak()).toEqual({ kind: "ok", streak: { current: 3, todayGrew: true } });
+    });
+  });
+
   it("is an error for a body it cannot read", async () => {
     const bodies: unknown[] = [
       { ...BODY, current: -1 },
