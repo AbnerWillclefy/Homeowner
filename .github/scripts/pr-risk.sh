@@ -102,8 +102,9 @@ done
 filled "$(section "Risk" | grep -viE '^\*\*Risk:\*\*')" \
   || problems+=("explain under ## Risk why the change is this tier")
 
-# The app matches its artboard; a gap is decided in the epic's refinement, never left "partly" in a pull request (#939)
-if section "Acceptance criteria" | grep -iE 'artboard' | grep -qiE '\b(partly|partially|not built|not met|differs?)\b'; then
+# The app matches its artboard; a gap is decided in the epic's refinement, never left "partly" in a pull request (#939).
+# No grep -q: it exits at the first match, and the SIGPIPE of the grep before it would fail the pipe under pipefail.
+if section "Acceptance criteria" | grep -iE 'artboard' | grep -iE '\b(partly|partially|not built|not met|differs?)\b' >/dev/null; then
   problems+=("meet every artboard criterion in full: match the artboard, or take the gap to the epic's refinement and change the ticket")
 fi
 
