@@ -4,6 +4,8 @@ Bedrock follows semver; before 1.0.0 a minor may break ([spec](../docs/design/be
 
 ## Unreleased
 
+- Core: `Sheet` grows five optional props, all defaulting to today's behaviour: `leading` (drawn before the title, a large icon), `tools` (drawn before the close button, a ⋯ `Menu`), `dismissible` (false while a write is in flight: no drag, Escape or outside tap, and a disabled close button), `closeButton` (false draws no ✕) and `size` (`full` is 92% of a phone's height).
+
 - Core: `SectionHeading` (the name of a group of rows: `variant` is required, `title` for the 18px heading and `label` for the 12px muted caption; optional `end` item in the row, `as` `h2` or `h3`, `id`). Its root carries `data-slot="section-heading"`. The overlays of `Sheet` (both trees) and `Dialog` carry `data-slot="scrim"`, so the pairs measure them.
 
 - Core: `List` and `Row` (the `hm-list` card and `hm-item` row: optional leading, title, caption and trailing; 64px tall, 56px without a leading element; `asChild` for a button or link; title and caption truncate). The roots of `List`, `Row`, `PageHeader`, `Sheet`, `Dialog`, `SearchField`, `Field`, `SegmentedControl`, `Toast`, `BottomBar` and finance `ListRow` carry `data-slot` (`list`, `row`, `page-header`, `sheet`, `dialog`, `search-field`, `field`, `segmented-control`, `toast`, `bottom-bar`, `list-row`), part of the public markup. Off-grid spacing fixed: `PageHeader` gaps 8px/16px, field padding 16px, `SearchField` icon at 16px, `Toast` icon margin 4px.

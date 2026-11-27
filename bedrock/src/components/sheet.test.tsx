@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useRef, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Dialog } from "./dialog";
+import { Menu } from "./menu";
 import { Sheet } from "./sheet";
 
 // Stands in for (min-width: 768px), the value of --bp-tablet.
@@ -123,6 +124,80 @@ describe("Sheet", () => {
     await userEvent.click(screen.getByRole("button", { name: "Abrir" }));
     await userEvent.click(screen.getByRole("button", { name: "Fechar" }));
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("button", { name: "Abrir" })));
+  });
+});
+
+describe("Sheet slots and modes", () => {
+  it.each([true, false])("draws leading and tools in the header (wide: %s)", (wide) => {
+    stubViewport(wide);
+    render(
+      <Sheet open onOpenChange={() => {}} title="Filtros" closeLabel="Fechar" leading={<i data-testid="lead" />} tools={<b data-testid="tool" />}>
+        corpo
+      </Sheet>,
+    );
+    const header = screen.getByRole("heading", { name: "Filtros" }).closest("header")!;
+    expect(header.contains(screen.getByTestId("lead"))).toBe(true);
+    expect(header.contains(screen.getByTestId("tool"))).toBe(true);
+  });
+
+  it.each([true, false])("dismissible={false} ignores Escape and disables the close button (wide: %s)", async (wide) => {
+    stubViewport(wide);
+    const onOpenChange = vi.fn();
+    render(
+      <Sheet open onOpenChange={onOpenChange} title="Filtros" closeLabel="Fechar" dismissible={false}>
+        corpo
+      </Sheet>,
+    );
+    await userEvent.keyboard("{Escape}");
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect((screen.getByRole("button", { name: "Fechar" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it.each([true, false])("closeButton={false} draws no close button, and Escape still closes (wide: %s)", async (wide) => {
+    stubViewport(wide);
+    const onOpenChange = vi.fn();
+    render(
+      <Sheet open onOpenChange={onOpenChange} title="Filtros" closeLabel="Fechar" closeButton={false}>
+        corpo
+      </Sheet>,
+    );
+    expect(screen.queryByRole("button", { name: "Fechar" })).toBeNull();
+    await userEvent.keyboard("{Escape}");
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('size="full" sets the 92% height on the drawer, auto does not', () => {
+    stubViewport(false);
+    const { rerender } = render(
+      <Sheet open onOpenChange={() => {}} title="Filtros" closeLabel="Fechar" size="full">
+        corpo
+      </Sheet>,
+    );
+    expect(screen.getByRole("dialog").className).toContain("h-[92dvh]");
+    rerender(
+      <Sheet open onOpenChange={() => {}} title="Filtros" closeLabel="Fechar">
+        corpo
+      </Sheet>,
+    );
+    expect(screen.getByRole("dialog").className).not.toContain("h-[92dvh]");
+  });
+
+  it.each([true, false])("a Menu item in tools can be chosen with the keyboard (wide: %s)", async (wide) => {
+    stubViewport(wide);
+    const onSelect = vi.fn();
+    render(
+      <Sheet open onOpenChange={() => {}} title="Filtros" closeLabel="Fechar" tools={<Menu label="Mais ações" closeLabel="Fechar menu" items={[{ label: "Trocar", onSelect }]} />}>
+        corpo
+      </Sheet>,
+    );
+    screen.getByRole("button", { name: "Mais ações" }).focus();
+    await userEvent.keyboard("{Enter}");
+    const item = await screen.findByRole(wide ? "menuitem" : "button", { name: "Trocar" });
+    if (wide) await userEvent.keyboard("{ArrowDown}");
+    else for (let i = 0; i < 4 && document.activeElement !== item; i++) await userEvent.tab();
+    expect(document.activeElement).toBe(item);
+    await userEvent.keyboard("{Enter}");
+    expect(onSelect).toHaveBeenCalled();
   });
 });
 
