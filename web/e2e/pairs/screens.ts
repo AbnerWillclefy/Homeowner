@@ -112,7 +112,7 @@ export const SCREENS: Record<string, Entry> = {
   Parts: none("A component sheet, not a screen."),
 };
 
-/** The four tabs: a change to the app frame shoots them all. */
+/** The four tabs: a change to the app frame alone shoots them all. */
 const TABS = ["Main", "Chores", "Home", "Me"];
 
 /**
