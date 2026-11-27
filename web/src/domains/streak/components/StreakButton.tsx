@@ -1,8 +1,7 @@
 import { Streak as StreakChip } from "@homeowner/bedrock/home";
+import { Button, Sheet } from "@homeowner/bedrock";
 import { useState } from "react";
 import { useI18n } from "../../../shared/i18n";
-import { AppDialog } from "../../../shared/ui/AppDialog";
-import { Button } from "../../../shared/ui/Button";
 import { SkeletonPill } from "../../../shared/ui/Skeleton";
 import { useDelayedFlag } from "../../../shared/ui/useDelayedFlag";
 import type { Streak } from "../api/api";
@@ -11,10 +10,10 @@ import { StreakDialog } from "./StreakDialog";
 
 /**
  * The Resident's current Streak as Bedrock's Streak chip (a flame, or a pause on a Drained day, with its number), in Today's header Streak slot. Tapping it opens a
- * dialog that says how a Streak works. Calm at every number: neutral colours at 0 as at 100 (ADR 0003, DESIGN.md).
+ * Sheet that says how a Streak works. Calm at every number: neutral colours at 0 as at 100 (ADR 0003, DESIGN.md).
  * During the first load it holds an empty box of its own size (a pulsing pill after 300ms), so the bar does not
  * reflow when the number arrives; when the Streak could not be read it is absent, and the bar's slot keeps the
- * width. The open state is local: a refetch while the dialog is open updates the number in place and never closes it.
+ * width. The open state is local: a refetch while the Sheet is open updates the number in place and never closes it.
  */
 export function StreakButton({ streak, loading, paused = false }: { streak: Streak | null; loading: boolean; paused?: boolean }) {
   const { t } = useI18n();
@@ -34,26 +33,25 @@ export function StreakButton({ streak, loading, paused = false }: { streak: Stre
   const isPaused = paused && !streak.todayGrew;
 
   return (
-    <AppDialog
+    <Sheet
       open={open}
-      onDismiss={() => setOpen(false)}
+      onOpenChange={setOpen}
       title={t("streak.dialog.title")}
-      size="centered"
+      closeLabel={t("streak.close")}
       trigger={
         <StreakChip
           days={streak.current}
           paused={isPaused && streak.current > 0}
           label={streakButtonLabel(t, streak.current, isPaused)}
-          onClick={() => setOpen(true)}
         />
       }
       footer={
-        <Button variant="secondary" fullWidth onClick={() => setOpen(false)}>
+        <Button variant="secondary" size="lg" onClick={() => setOpen(false)}>
           {t("streak.close")}
         </Button>
       }
     >
       <StreakDialog streak={streak} />
-    </AppDialog>
+    </Sheet>
   );
 }

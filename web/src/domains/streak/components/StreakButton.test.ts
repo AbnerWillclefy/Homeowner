@@ -1,10 +1,16 @@
 // @vitest-environment jsdom
 import { act, createElement } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mountWithI18n } from "../../../shared/ui/testing";
 import { StreakButton } from "./StreakButton";
 
 const { render, container } = mountWithI18n();
+
+// The Sheet below the tablet breakpoint is a drawer, which reads the viewport and watches its size.
+beforeEach(() => {
+  vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+});
 const box = () => container().firstElementChild as HTMLElement;
 const pill = () => box().querySelector("span");
 
