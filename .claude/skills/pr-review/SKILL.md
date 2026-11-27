@@ -461,7 +461,7 @@ Every comment body uses exactly one of these structures, in English. The
 `(<category>)` after the kind is the checklist category the item came from,
 exactly one of: `correctness`, `conventions`, `blast-radius`, `dependencies`,
 `maintainability`, `tests`, `security`, `performance`, `accessibility`, `docs`,
-`description`. The weekly review-lessons job counts comments by it.
+`description`, `design` (a difference between a screen and its artboard, `REVIEW.md`). The weekly review-lessons job counts comments by it.
 
 ````md
 **[Finding] (<category>) <one-line issue title>**
