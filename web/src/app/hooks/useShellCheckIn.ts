@@ -4,12 +4,11 @@ import type { Level } from "../../domains/checkin/api/api";
 import { useCheckIn } from "../../domains/checkin/hooks/useCheckIn";
 import { energyNote } from "../../domains/checkin/logic/state";
 import { dayPlanQuery } from "../../domains/dayplan/api/queries";
-import { plannedEffort } from "../../domains/dayplan/logic/plannedEffort";
 import { useLaunchStaleTime } from "../../shared/query/useLaunchStaleTime";
 
 /**
  * What the Shell reads on every tab for Today's hero card and shares with Today: the Check-in, the Day
- * Plan's Energy, the Energy note from the single rule (`energyNote`), and the state of the one Check-in dialog. Today reads the same cache entries, so nothing is requested twice. The Day
+ * Plan's Energy, the Energy note from the single rule (`energyNote`), and the state of the one Check-in Sheet. Today reads the same cache entries, so nothing is requested twice. The Day
  * Plan's actions stay in `useDayPlan`, on Today.
  */
 export function useShellCheckIn(hasHome: boolean) {
@@ -21,15 +20,12 @@ export function useShellCheckIn(hasHome: boolean) {
   const checkInToday = checkIn.state.kind === "ready" ? checkIn.state.checkIn : null;
   const note = checkInToday ? energyNote(energy, checkInToday) : null;
 
-  // Shown in the dialog only when there is Energy to plan against.
-  const planned = note === "energy" && energy !== null ? { planned: plannedEffort(plan), energy } : null;
-
-  // The date of the Check-in the dialog is open for, or null while closed. Opened from Today, or latched by the Shell
-  // when the dialog shows by itself, so a refetch (saved on another device, midnight) cannot unmount the form.
+  // The date of the Check-in the Sheet is open for, or null while closed. Opened from Today, or latched by the Shell
+  // when the Sheet shows by itself, so a refetch (saved on another device, midnight) cannot unmount the form.
   const [openFor, setOpenFor] = useState<string | null>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const heroRef = useRef<HTMLElement | null>(null);
-  // The level picked on the hero card, which opens the dialog with it ticked. Cleared on close, so an automatic open never has one.
+  // The level picked on the hero card, which opens the Sheet with it ticked. Cleared on close, so an automatic open never has one.
   const [chosenLevel, setChosenLevel] = useState<Level | null>(null);
   const openCheckIn = useCallback(
     (returnFocusTo?: HTMLElement, level?: Level) => {
@@ -50,5 +46,5 @@ export function useShellCheckIn(hasHome: boolean) {
     setChosenLevel(null);
   }, []);
 
-  return { checkIn, note, energy, planned, openCheckIn, openFor, closeCheckIn, latchCheckIn, heroRef, returnFocusRef, chosenLevel };
+  return { checkIn, note, energy, openCheckIn, openFor, closeCheckIn, latchCheckIn, heroRef, returnFocusRef, chosenLevel };
 }

@@ -53,8 +53,9 @@ const row = (title: string) => async (page: Page) => {
 
 export const OPENERS: Record<State, (page: Page) => Promise<void>> = {
   "check-in": opened,
+  // The Sheet is closed with its ✕, as its artboard's "Fechar" link does.
   "check-in-later": async (page) => {
-    await button(page, ptBR["checkin.cancel"]).click();
+    await dialog(page).getByRole("button", { name: ptBR["checkin.close"], exact: true }).click();
     await dialog(page).waitFor({ state: "hidden" });
   },
   // The Task cards' name buttons are the h3's buttons; the first card is the first of your own Tasks.
@@ -62,10 +63,14 @@ export const OPENERS: Record<State, (page: Page) => Promise<void>> = {
     await page.locator("article h3 button").first().click();
     await opened(page);
   },
-  // Swap is in the ⋯ menu of another Resident's card, which comes before the pool's in the page.
+  // Swap starts from your own Task: open the first one's Sheet, then its ⋯ menu, then "Oferecer troca", which
+  // closes the Task's Sheet and opens the Swap one.
   swap: async (page) => {
-    await button(page, new RegExp(`^${ptBR["dayplan.task.menu"].replace(" {task}", " ")}`)).first().click();
-    await button(page, ptBR["dayplan.action.swap"]).click();
+    await page.locator("article h3 button").first().click();
+    await opened(page);
+    await dialog(page).getByRole("button", { name: new RegExp(`^${ptBR["dayplan.task.menu"].replace(" {task}", " ")}`) }).click();
+    await button(page, ptBR["dayplan.swap.sheet.title"]).click();
+    await dialog(page).getByRole("heading", { name: ptBR["dayplan.swap.sheet.title"] }).waitFor();
     await opened(page);
   },
   streak: async (page) => {

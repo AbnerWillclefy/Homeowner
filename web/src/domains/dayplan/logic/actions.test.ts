@@ -32,16 +32,6 @@ describe("actionsFor", () => {
     expect(actionsFor({ people: 1, committed: true }, "other")).toEqual(none);
   });
 
-  it("puts Swap alone in the menu of another Resident's Task when a Swap can be offered", () => {
-    expect(actionsFor(TASK, "other", { canSwap: true })).toEqual({ primary: [], menu: ["swap"], committed: false });
-  });
-
-  it("never adds Swap to your own Tasks or the pool, whatever canSwap says", () => {
-    for (const role of ["mine", "pool"] as const) {
-      expect(actionsFor(TASK, role, { canSwap: true })).toEqual(actionsFor(TASK, role));
-    }
-  });
-
   it("gives a two-person Task of your own the same actions as a one-person one", () => {
     expect(actionsFor({ people: 2, committed: false }, "mine")).toEqual(actionsFor(TASK, "mine"));
     expect(actionsFor({ people: 2, committed: true }, "mine")).toEqual(

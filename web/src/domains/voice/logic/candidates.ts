@@ -7,6 +7,3 @@ export function pick(action: VoiceAction, index: number): VoiceAction {
 
 /** Confirm needs something to send and no action still waiting for a pick; removing a choice unblocks it too. */
 export const canConfirm = (actions: VoiceAction[]): boolean => actions.length > 0 && actions.every((a) => a.kind !== "choice");
-
-/** At or under this many left, the panel says how many are left. */
-export const FEW_LEFT = 3;

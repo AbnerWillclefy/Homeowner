@@ -19,17 +19,17 @@ import { DoneCard } from "./DoneCard";
 import { useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { DayPlanSkeleton } from "./DayPlanSkeleton";
 import { proposedCount, showAcceptAll } from "../logic/summaryCounts";
-import { canOfferFor, offerableTasks } from "../logic/swaps";
+import { canOfferFor, requestableTasks } from "../logic/swaps";
 import { OfferGroup } from "./SwapOffers";
-import { OfferSwapDialog } from "./OfferSwapDialog";
+import { SwapSheet } from "./SwapSheet";
 import { TaskCard } from "./TaskCard";
 import type { ActionNotice, useDayPlan } from "../hooks/useDayPlan";
 
 const LIST = "m-0 flex list-none flex-col gap-3 p-0";
 
 type Day = ReturnType<typeof useDayPlan>;
-/** `opener` is the ⋯ button of the card, where focus returns when the dialog closes. */
-type SwapOffering = { task: PlanTask; holderId: string; opener: HTMLElement | null };
+/** Your own Task being offered; `opener` is the card's open button, where focus returns when the Sheet closes. */
+type SwapOffering = { task: PlanTask; opener: HTMLElement | null };
 
 /**
  * Today's Day Plan: your Tasks, other Residents' Tasks and the pool that remains, and what you did today. A Day
@@ -57,16 +57,16 @@ export function TodaySection({
   const showSkeleton = useReportFirstLoad(state.kind === "loading");
   const section = useRef<HTMLElement>(null);
   const heading = headingRef;
-  // The Task a Swap is being offered for and who holds it, both known at the tap. One dialog for the whole plan,
-  // mounted only after a tap on Swap.
+  // The Task a Swap is being offered for, known at the tap. One Sheet for the whole plan, mounted only after a tap
+  // on "Oferecer troca" in a Task's Sheet.
   const [offer, setOffer] = useState<SwapOffering | null>(null);
 
   // A Task that leaves its list takes its button with it, so focus would fall to <body>. Bring it back to the
   // section's heading, unless focus is still on something inside the section. `preventScroll`: the heading is at
   // the top of the section, and a plain focus() would scroll the page up to it.
-  // It waits for the offer dialog to be gone (its focus trap owns focus while open): closing it re-runs this
-  // effect, after the dialog has unmounted. Where the Swap button is still there, the dialog's own return of focus
-  // to it runs after this and wins.
+  // It waits for the Swap Sheet to be gone (its focus trap owns focus while open): closing it re-runs this
+  // effect, after the Sheet has unmounted. Where the card is still there, the Sheet's own return of focus
+  // to its open button runs after this and wins.
   useEffect(() => {
     if (changed === 0 || offer !== null) return;
     const active = document.activeElement;
@@ -195,21 +195,18 @@ function PlanView({
   useEffect(() => {
     if (!refreshing) setMovedId(null);
   }, [refreshing]);
-  const card = (task: PlanTask, role: TaskRole, holderId?: string) => (
+  const card = (task: PlanTask, role: TaskRole) => (
     <TaskCard
       key={task.id}
       task={task}
       role={role}
-      holderId={holderId}
       today={plan.date}
       explanation={plan.explanation}
       busy={busy}
       pending={pendingAction(acting, task.id)}
       onAction={onAction}
       onSwap={
-        role === "other" && holderId !== undefined && canOfferFor(plan, task)
-          ? (_task, opener) => onOfferChange({ task, holderId, opener })
-          : undefined
+        role === "mine" && canOfferFor(plan, task) ? (_task, opener) => onOfferChange({ task, opener }) : undefined
       }
     />
   );
@@ -304,7 +301,7 @@ function PlanView({
                   <ResidentLabel residentId={other.residentId} />
                 </h4>
                 <ul className={LIST}>
-                  {other.tasks.map((task) => card(task, "other", other.residentId))}
+                  {other.tasks.map((task) => card(task, "other"))}
                 </ul>
               </section>
             ))}
@@ -324,10 +321,9 @@ function PlanView({
       </div>
 
       {offer && (
-        <OfferSwapDialog
-          requested={offer.task}
-          holderId={offer.holderId}
-          options={offerableTasks(plan)}
+        <SwapSheet
+          offered={offer.task}
+          options={requestableTasks(plan)}
           offer={onOffer}
           returnFocusRef={{ current: offer.opener }}
           onClose={() => onOfferChange(null)}

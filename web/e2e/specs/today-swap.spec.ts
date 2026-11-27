@@ -9,8 +9,9 @@ import { launchApp } from "../pages/launch";
 // What this covers: the Swap offers on Today, in pt-BR. An incoming offer is accepted (the Tasks
 // change hands and both read "swapped") or declined (nothing is said, no alert), an outgoing one is cancelled, a
 // stale offer reloads the plan in place with a calm status line, and long names wrap instead of overflowing.
-// Offering: Swap is on Bruna's one-person Task only when it can work, the dialog opens on a tap, lists what you
-// can give and sends one request, a server refusal is a calm status, and focus never lands on nothing.
+// Offering: "Oferecer troca" is in the ⋯ menu of your own one-person Task's Sheet only when it can work; it closes that
+// Sheet and opens the Swap Sheet, which lists what you can ask for and sends one request; a server refusal is a calm
+// status, and focus never lands on nothing.
 // Sample Home: Bruna Souza holds "Take out the trash" and offers it for your "Wash the dishes" (swap-in-1); you
 // offer "Mop the floors" for her "Take out the trash" (swap-out-1).
 
@@ -30,13 +31,16 @@ const LOCALES = [
     swapped: "Veio de uma troca.",
     stale: "As tarefas mudaram, então essa troca não vale mais. Sua lista está atualizada.",
     hint: /conta para sua sequência/,
-    swap: "Trocar",
-    more: "Mais ações, Take out the trash",
-    title: "O que você vai dar?",
-    submit: "Oferecer troca",
-    dismiss: "Cancelar",
+    more: "Mais ações, ",
+    swapItem: "Oferecer troca",
+    edit: "Editar o afazer",
+    sheetTitle: "Oferecer troca",
+    subtitle: "A troca só acontece se a Bruna Souza aceitar.",
+    group: "Tarefas para pedir",
+    choiceHint: "Lixo · Muito leve · assumida pela Bruna Souza",
+    send: "Enviar oferta",
+    close: "Fechar",
     restricted: "Essa troca não combina com as restrições de hoje.",
-    required: "Escolha uma tarefa para dar.",
   },
 ] as const;
 
@@ -191,179 +195,169 @@ for (const l of LOCALES) {
       }
     });
 
-    // Offering a Swap: you start from the Task you want (Bruna's `task-3`): its ⋯ menu holds Trocar. Then pick what you give.
-    // `swapButton` is that ⋯ button on Bruna's card (the pool holds a Task of the same name, with its own menu), which exists only while a Swap can be offered for the Task.
-    const swapButton = (page: import("@playwright/test").Page) => brunaCard(page).getByRole("button", { name: l.more });
-    const openSwap = async (page: import("@playwright/test").Page) => {
-      await swapButton(page).click();
-      await page.getByRole("button", { name: l.swap, exact: true }).click();
+    // Offering a Swap: you start from your own Task (`task-1`, "Wash the dishes"). Its Sheet's ⋯ menu holds "Oferecer troca",
+    // which closes the Task's Sheet and opens the Swap one, where you pick what to ask for (Bruna's `task-3`).
+    type Page = import("@playwright/test").Page;
+    const openTask = async (page: Page, chore: string) => page.getByRole("button", { name: chore, exact: true }).first().click();
+    const openMenu = async (page: Page, chore: string) => {
+      await openTask(page, chore);
+      await page.getByRole("dialog", { name: chore }).getByRole("button", { name: `${l.more}${chore}` }).click();
     };
-    const brunaCard = (page: import("@playwright/test").Page) =>
-      page
-        .locator('section[aria-labelledby^="resident-"]')
-        .filter({ has: page.getByRole("heading", { level: 4, name: "Bruna Souza" }) })
-        .getByRole("listitem")
-        .filter({ hasText: "Take out the trash" });
-    const pick = (page: import("@playwright/test").Page, chore: string) =>
-      page.getByRole("dialog").locator("label").filter({ hasText: chore }).click();
+    const swapItem = (page: Page) => page.getByRole("dialog", { name: new RegExp(`^${l.more}`) }).getByRole("button", { name: l.swapItem, exact: true });
+    const openSwap = async (page: Page, chore = "Wash the dishes") => {
+      await openMenu(page, chore);
+      await swapItem(page).click();
+    };
+    const sheet = (page: Page) => page.getByRole("dialog", { name: l.sheetTitle });
     const swapRequests = (requests: { method: string; path: string; body: unknown }[]) =>
       requests.filter((r) => r.method === "POST" && r.path === "/home/swaps");
 
-    test("Swap is only on another Resident's one-person Task, and the dialog does not open by itself", async ({ page, baseURL }) => {
+    test("Oferecer troca is only in the menu of your own one-person Task's Sheet, and the Swap Sheet does not open by itself", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
-      await expect(swapButton(page)).toHaveCount(1);
-      await expect(brunaCard(page).getByRole("button", { name: l.more })).toBeVisible();
-      // Swap is not a button on the card: it is in the menu, which holds nothing else.
-      await expect(page.getByRole("button", { name: l.swap, exact: true })).toHaveCount(0);
-      await swapButton(page).click();
-      await expect(page.getByRole("dialog", { name: l.more })).toBeVisible();
-      await expect(page.getByRole("dialog", { name: l.more }).getByRole("button", { name: l.swap, exact: true })).toBeVisible();
-      await page.keyboard.press("Escape");
-      // Not on your own Tasks, nor in the pool: no ⋯ menu, since Swap is all it would hold.
-      await expect(mineCards(page).getByRole("button", { name: /^Mais ações/ })).toHaveCount(0);
       await expect(page.getByRole("dialog")).toHaveCount(0);
+      // Not a button on any card.
+      await expect(page.getByRole("button", { name: l.swapItem, exact: true })).toHaveCount(0);
+      await openMenu(page, "Wash the dishes");
+      await expect(swapItem(page)).toBeVisible();
+      await page.keyboard.press("Escape");
+      await page.keyboard.press("Escape");
+
+      // Another Resident's Task and the pool's: the menu has the edit link, and no Swap.
+      for (const [index, chore] of [[0, "Take out the trash"], [1, "Take out the trash"]] as const) {
+        await page.getByRole("button", { name: chore, exact: true }).nth(index).click();
+        await page.getByRole("dialog", { name: chore }).getByRole("button", { name: `${l.more}${chore}` }).click();
+        await expect(page.getByRole("dialog", { name: new RegExp(`^${l.more}`) }).getByRole("button", { name: l.edit, exact: true })).toBeVisible();
+        await expect(swapItem(page)).toHaveCount(0);
+        await page.keyboard.press("Escape");
+        await page.keyboard.press("Escape");
+      }
     });
 
-    test("offering opens a dialog of your one-person Tasks, sends the offer, and moves the offer under Your offers", async ({ page, baseURL, fakeApi }) => {
+    test("offering replaces the Task's Sheet with the Swap Sheet, sends the offer, and moves the offer under Your offers", async ({ page, baseURL, fakeApi }) => {
       await launchApp(page, baseURL!);
       await openSwap(page);
-      const dialog = page.getByRole("dialog", { name: l.title });
-      await expect(dialog).toBeVisible();
-      await expect(dialog.getByText("Bruna Souza")).toBeVisible();
-      await expect(dialog.getByRole("radio")).toHaveCount(2);
-      await expect(dialog.getByRole("radio", { checked: true })).toHaveCount(0);
+      await expect(sheet(page)).toBeVisible();
+      // Not stacked: the Task's Sheet is gone.
+      await expect(page.getByRole("dialog")).toHaveCount(1);
+      await expect(sheet(page)).toHaveAccessibleDescription(l.subtitle);
+      await expect(sheet(page).getByText("Wash the dishes", { exact: true })).toBeVisible();
+      const choices = sheet(page).getByRole("radiogroup", { name: l.group }).getByRole("radio");
+      await expect(choices).toHaveCount(1);
+      await expect(choices.first()).toHaveAccessibleName(/^Take out the trash/);
+      await expect(sheet(page).getByText(l.choiceHint, { exact: true })).toBeVisible();
+      await expect(sheet(page).getByRole("radio", { checked: true })).toHaveCount(0);
+      await expect(sheet(page).getByRole("button", { name: l.send })).toBeDisabled();
       expect(swapRequests(fakeApi.requests)).toHaveLength(0);
 
-      await pick(page, "Mop the floors");
-      await dialog.getByRole("button", { name: l.submit }).click();
-      await expect(dialog).toHaveCount(0);
+      await sheet(page).getByText("Take out the trash").click();
+      await sheet(page).getByRole("button", { name: l.send }).click();
+      await expect(sheet(page)).toHaveCount(0);
 
-      expect(swapRequests(fakeApi.requests).map((r) => r.body)).toEqual([
-        { offeredTaskId: "task-2", requestedTaskId: "task-3" },
-      ]);
+      expect(swapRequests(fakeApi.requests).map((r) => r.body)).toEqual([{ offeredTaskId: "task-1", requestedTaskId: "task-3" }]);
       const offers = group(page, l.outgoing);
       await expect(offers).toBeVisible();
-      await expect(offers.getByText("Mop the floors")).toBeVisible();
+      await expect(offers.getByText("Wash the dishes", { exact: true })).toBeVisible();
       await expect(offers.getByText("Take out the trash", { exact: true })).toBeVisible();
-      await expect(swapButton(page)).toHaveCount(0);
       await noAlertText(page);
-      // The Swap button is gone, so focus lands on the Today heading, never on nothing or on <main>.
-      await expect(page.locator("#today-heading")).toBeFocused();
+      // Never on nothing or on <main>: the card's open button or the Today heading.
+      await expect
+        .poll(() => page.evaluate(() => document.activeElement?.id === "today-heading" || document.activeElement?.textContent === "Wash the dishes"))
+        .toBe(true);
 
-      // Cancel the offer: Swap is back on the Task.
+      // The offered Task has no Swap now; cancelling the offer brings it back.
+      await openMenu(page, "Wash the dishes");
+      await expect(swapItem(page)).toHaveCount(0);
+      await page.keyboard.press("Escape");
+      await page.keyboard.press("Escape");
       await offers.getByRole("button", { name: new RegExp(`^${l.cancel}`) }).click();
       await expect(page.getByRole("heading", { level: 2, name: l.outgoing })).toHaveCount(0);
-      await expect(swapButton(page)).toBeVisible();
+      await openMenu(page, "Wash the dishes");
+      await expect(swapItem(page)).toBeVisible();
     });
 
-    test("Cancel closes the dialog with no call and focus returns to the Swap button", async ({ page, baseURL, fakeApi }) => {
+    test("closing the Swap Sheet sends nothing and focus returns to the Task's open button", async ({ page, baseURL, fakeApi }) => {
       await launchApp(page, baseURL!);
       await openSwap(page);
-      await page.getByRole("dialog").getByRole("button", { name: l.dismiss }).click();
+      await sheet(page).getByRole("button", { name: l.close, exact: true }).click();
       await expect(page.getByRole("dialog")).toHaveCount(0);
       expect(swapRequests(fakeApi.requests)).toHaveLength(0);
-      await expect(swapButton(page)).toBeFocused();
+      await expect(page.getByRole("button", { name: "Wash the dishes", exact: true })).toBeFocused();
     });
 
-    test("submitting with nothing picked asks for a Task and sends nothing", async ({ page, baseURL, fakeApi }) => {
+    test("Enviar oferta stays off until a Task is picked", async ({ page, baseURL, fakeApi }) => {
       await launchApp(page, baseURL!);
       await openSwap(page);
-      const dialog = page.getByRole("dialog");
-      await dialog.getByRole("button", { name: l.submit }).click();
-      await expect(dialog.getByRole("alert").filter({ hasText: l.required })).toBeVisible();
+      const send = sheet(page).getByRole("button", { name: l.send });
+      await expect(send).toBeDisabled();
+      await sheet(page).getByText("Take out the trash").click();
+      await expect(send).toBeEnabled();
       expect(swapRequests(fakeApi.requests)).toHaveLength(0);
     });
 
-    test("a single Task of yours is preselected", async ({ page, baseURL, fakeApi }) => {
-      fakeApi.state.dayPlan!.mine = [fakeApi.state.dayPlan!.mine[0]!];
-      await launchApp(page, baseURL!);
-      await openSwap(page);
-      const dialog = page.getByRole("dialog");
-      await expect(dialog.getByRole("radio")).toHaveCount(1);
-      await expect(dialog.getByRole("radio", { checked: true })).toHaveCount(1);
-      await dialog.getByRole("button", { name: l.submit }).click();
-      await expect(dialog).toHaveCount(0);
-      expect(swapRequests(fakeApi.requests).map((r) => r.body)).toEqual([
-        { offeredTaskId: "task-1", requestedTaskId: "task-3" },
-      ]);
-    });
-
-    test("a refusal closes the dialog and says so calmly, with no alert", async ({ page, baseURL, fakeApi }) => {
+    test("a refusal closes the Sheet and says so calmly, with no alert", async ({ page, baseURL, fakeApi }) => {
       fakeApi.override("POST /home/swaps", json(409, { error: "restricted" }), { once: true });
       await launchApp(page, baseURL!);
       await openSwap(page);
-      await pick(page, "Mop the floors");
-      await page.getByRole("dialog").getByRole("button", { name: l.submit }).click();
+      await sheet(page).getByText("Take out the trash").click();
+      await sheet(page).getByRole("button", { name: l.send }).click();
       await expect(page.getByRole("dialog")).toHaveCount(0);
       await expect(page.getByRole("status").filter({ hasText: l.restricted })).toBeVisible();
       await noAlertText(page);
       await expect(page.getByRole("heading", { level: 2, name: l.outgoing })).toHaveCount(0);
-      await expect(swapButton(page)).toBeVisible();
     });
 
-    test("Swap is absent on a two-person Task, before the day is planned, after a rejected run, with nothing to give, and when already offered", async ({ page, baseURL, fakeApi }) => {
+    test("Oferecer troca is absent when nothing can be asked for, on a two-person Task of yours, and when already offered", async ({ page, baseURL, fakeApi }) => {
       const plan = fakeApi.state.dayPlan!;
-      // Two-person: Bruna's only Task needs two people.
+      const expectNoSwap = async () => {
+        await openMenu(page, "Wash the dishes");
+        // The menu is open: it has its other item, and no Swap.
+        await expect(page.getByRole("dialog", { name: new RegExp(`^${l.more}`) }).getByRole("button", { name: l.edit, exact: true })).toBeVisible();
+        await expect(swapItem(page)).toHaveCount(0);
+        await page.keyboard.press("Escape");
+        await page.keyboard.press("Escape");
+      };
+
+      // Two-person: Bruna's only Task needs two people, so there is nothing to ask for.
       plan.others[0]!.tasks[0]!.people = 2;
       await launchApp(page, baseURL!);
-      await expect(brunaCard(page)).toBeVisible();
-      await expect(swapButton(page)).toHaveCount(0);
-
-      // Not planned yet.
-      plan.others[0]!.tasks[0]!.people = 1;
-      plan.planned = false;
-      await page.reload();
-      await expect(swapButton(page)).toHaveCount(0);
+      await expectNoSwap();
 
       // A rejected run.
-      plan.planned = true;
+      plan.others[0]!.tasks[0]!.people = 1;
       plan.rejected = true;
       await page.reload();
-      await expect(brunaCard(page)).toBeVisible();
-      await expect(swapButton(page)).toHaveCount(0);
+      await expectNoSwap();
 
-      // Nothing of yours that can be given: only a two-person Task.
+      // Your own Task needs two people.
       plan.rejected = false;
       plan.mine = plan.mine.map((task) => ({ ...task, people: 2 }));
       await page.reload();
-      await expect(brunaCard(page)).toBeVisible();
-      await expect(swapButton(page)).toHaveCount(0);
+      await expectNoSwap();
 
-      // Already offered for.
+      // Bruna's Task is already asked for.
       plan.mine = plan.mine.map((task) => ({ ...task, people: 1 }));
       withOutgoingOffer(fakeApi.state);
       await page.reload();
-      await expect(brunaCard(page)).toBeVisible();
-      await expect(swapButton(page)).toHaveCount(0);
+      await expectNoSwap();
       await noAlertText(page);
     });
 
-    test("long names wrap in the card and the dialog, which stacks its buttons at large text", async ({ page, baseURL, fakeApi }) => {
+    test("long names wrap in the Swap Sheet, which keeps Enviar oferta reachable at large text", async ({ page, baseURL, fakeApi }) => {
       const state = fakeApi.state;
       state.residents![1]!.name = LONG_NAME;
       state.dayPlan!.mine[0]!.choreName = LONG_CHORE;
-      state.dayPlan!.mine[1]!.choreName = `${LONG_CHORE} and the cupboards`;
-      state.dayPlan!.others[0]!.tasks[0]!.choreName = LONG_CHORE;
+      state.dayPlan!.others[0]!.tasks[0]!.choreName = `${LONG_CHORE} and the cupboards`;
       await page.setViewportSize({ width: 320, height: 800 });
       await launchApp(page, baseURL!);
       await page.evaluate(() => (document.documentElement.style.fontSize = "200%"));
-      const button = page.getByRole("button", { name: new RegExp(`^Mais ações, ${LONG_CHORE}`) }).last();
-      await button.scrollIntoViewIfNeeded();
-      expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-      await button.click();
-      await page.getByRole("button", { name: l.swap, exact: true }).click();
-      const dialog = page.getByRole("dialog");
-      await expect(dialog.getByText(LONG_NAME)).toBeVisible();
-      const box = (await dialog.boundingBox())!;
+      await openSwap(page, LONG_CHORE);
+      await expect(sheet(page).getByText(LONG_NAME).first()).toBeVisible();
+      const box = (await sheet(page).boundingBox())!;
       expect(box.x).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width).toBeLessThanOrEqual(320);
-      const dismiss = (await dialog.getByRole("button", { name: l.dismiss }).boundingBox())!;
-      const submit = (await dialog.getByRole("button", { name: l.submit }).boundingBox())!;
-      // Stacked: the primary is below Cancel, and both fit the width.
-      expect(submit.y).toBeGreaterThan(dismiss.y);
-      expect(submit.x + submit.width).toBeLessThanOrEqual(320);
-      expect(dismiss.height).toBeGreaterThanOrEqual(44);
-      expect(submit.height).toBeGreaterThanOrEqual(44);
+      const send = (await sheet(page).getByRole("button", { name: l.send }).boundingBox())!;
+      expect(send.x + send.width).toBeLessThanOrEqual(320);
+      expect(send.height).toBeGreaterThanOrEqual(44);
     });
   });
 }

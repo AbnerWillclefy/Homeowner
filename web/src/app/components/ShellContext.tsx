@@ -22,13 +22,13 @@ interface ShellValue {
   /** The Day Plan's Energy, or null before there is a plan. */
   energy: number | null;
   /**
-   * Opens the one Check-in dialog. `returnFocusTo` is the control that opened it (the hero's Energy chip): Escape
+   * Opens the one Check-in Sheet. `returnFocusTo` is the control that opened it (the hero's Energy chip): Escape
    * and Cancel put focus back there, because iOS Safari does not focus a tapped button. `level` is a level picked on
    * the hero card, ticked when the form opens; the dialog still asks for Restrictions. Does nothing until the
    * Check-in is ready.
    */
   openCheckIn(returnFocusTo?: HTMLElement, level?: Level): void;
-  /** Today's hero card, where focus returns when the Check-in dialog opens by itself and so has no opener. */
+  /** Today's hero card, where focus returns when the Check-in Sheet opens by itself and so has no opener. */
   heroRef: RefObject<HTMLElement | null>;
 }
 

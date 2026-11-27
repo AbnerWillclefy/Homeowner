@@ -1,43 +1,26 @@
-import { BatteryFull, BatteryLow, BatteryMedium, Moon, type LucideIcon } from "lucide-react";
+import { Button, Checkbox, Choice, ChoiceGroup, Sheet } from "@homeowner/bedrock";
+import { EnergyBars } from "@homeowner/bedrock/home";
 import { useId, useState, type FormEvent, type RefObject } from "react";
 import { LEVELS, type CheckIn, type Level } from "../api/api";
-import { AppDialog } from "../../../shared/ui/AppDialog";
 import { useSubmitOnce } from "../../../shared/ui/useSubmitOnce";
 import { useToast } from "../../../shared/ui/useToast";
 import { useI18n } from "../../../shared/i18n";
 import { demandLabel, labelText } from "../../profile/logic/labels";
-import { Button } from "../../../shared/ui/Button";
-import { ButtonRow } from "../../../shared/ui/ButtonRow";
 import { SAVE_FAILURE_KEY } from "../logic/failureMessages";
 import { formFrom, submission, toggledRestriction, type CheckInFormState } from "../logic/form";
-import { LEVEL_KEYS } from "../logic/labels";
-import { CheckInDayLines } from "./CheckInDayLines";
-import { RADIO_CARD } from "../../../shared/ui/radioCard";
+import { LEVEL_BARS, LEVEL_KEYS } from "../logic/labels";
 import type { SaveFailure } from "../logic/state";
 
-// Rest, then a battery filling up. Decoration only: the level's name is always written next to it.
-const LEVEL_ICONS: Record<Level, LucideIcon> = {
-  drained: Moon,
-  low: BatteryLow,
-  normal: BatteryMedium,
-  energized: BatteryFull,
-};
-
-// A Restriction drawn as a pill around a hidden checkbox, as in the Home questionnaire.
-const CHIP =
-  "relative mt-0 flex min-h-11 cursor-pointer items-center justify-center rounded-pill border border-border bg-surface-raised px-4 text-center font-semibold has-[:checked]:border-accent has-[:checked]:bg-accent has-[:checked]:text-accent-contrast has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus has-[:disabled]:cursor-not-allowed has-[:disabled]:border-dashed";
-
-const LEGEND = "p-0 text-lg font-semibold";
+const LEGEND = "label p-0 pb-2 text-text-muted";
 
 /**
- * The Check-in form in a near-full-height dialog. Submit and Cancel are pinned in the footer so they stay
- * reachable with the on-screen keyboard open. Escape and a tap outside close it, except while saving. A saved
- * Check-in closes the dialog and shows a toast; a failed save keeps it open with the reason, to retry.
+ * The Check-in form in a tall Sheet. Save is pinned in the footer so it stays reachable with the on-screen keyboard
+ * open. The ✕, Escape and a drag close it, except while saving. A saved Check-in closes the Sheet and shows a
+ * toast; a failed save keeps it open with the reason, to retry.
  */
 export function CheckInDialog({
   checkIn,
   demands,
-  planned,
   save: saveCheckIn,
   onClose,
   returnFocusRef,
@@ -47,12 +30,10 @@ export function CheckInDialog({
   /** A level the Resident already picked on Today's hero card: the form opens with it ticked, and still asks for Restrictions. */
   initialLevel?: Level | null;
   demands: readonly string[];
-  /** The planned Effort against today's Energy, or null when there is no figure to show (the Shell decides). */
-  planned: { planned: number; energy: number } | null;
   /** Resolves to null once saved, else why it was not. */
   save(level: Level, restrictions: readonly string[]): Promise<SaveFailure | null>;
   onClose(): void;
-  /** The control that opened the dialog, which gets focus back on close. */
+  /** The control that opened the Sheet, which gets focus back on close. */
   returnFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const { t } = useI18n();
@@ -92,57 +73,35 @@ export function CheckInDialog({
   }
 
   return (
-    <AppDialog
-      size="sheet"
+    <Sheet
+      open
+      onOpenChange={(open) => !open && onClose()}
+      size="full"
       title={t("checkin.heading")}
-      description={<CheckInDayLines planned={planned} restrictions={checkIn.restrictions} />}
-      onDismiss={onClose}
+      subtitle={t("checkin.subtitle")}
+      closeLabel={t("checkin.close")}
       dismissible={!saving}
       returnFocusRef={returnFocusRef}
       footer={
-        <ButtonRow
-          start={
-            <Button variant="secondary" disabled={saving} onClick={onClose}>
-              {t("checkin.cancel")}
-            </Button>
-          }
-          end={
-            <Button type="submit" form={formId} pending={saving}>
-              {t("checkin.submit")}
-            </Button>
-          }
-        />
+        <Button type="submit" form={formId} size="lg" loading={saving}>
+          {t("checkin.submit")}
+        </Button>
       }
     >
-      <form id={formId} onSubmit={onSubmit} noValidate className="mt-6 flex flex-col gap-8">
-        <fieldset
-          className="m-0 min-w-0 border-0 p-0"
-          disabled={saving}
-          aria-describedby={levelMissing ? `${idPrefix}-level-error` : undefined}
-        >
+      <form id={formId} onSubmit={onSubmit} noValidate className="flex flex-col gap-6 pb-4">
+        <fieldset className="m-0 min-w-0 border-0 p-0" disabled={saving} aria-describedby={levelMissing ? `${idPrefix}-level-error` : undefined}>
           <legend className={LEGEND}>{t("checkin.level.legend")}</legend>
-          <div className="mt-3 flex flex-col gap-2">
-            {LEVELS.map((level) => {
-              const keys = LEVEL_KEYS[level];
-              const Icon = LEVEL_ICONS[level];
-              return (
-                <label key={level} className={`group ${RADIO_CARD}`}>
-                  <input
-                    type="radio"
-                    name={`${idPrefix}-level`}
-                    className="sr-only"
-                    checked={form.level === level}
-                    onChange={() => chooseLevel(level)}
-                  />
-                  <Icon aria-hidden="true" size={24} className="shrink-0 text-accent group-has-[:checked]:text-current" />
-                  <span className="min-w-0 [overflow-wrap:anywhere]">
-                    <span className="block">{t(keys.label)}</span>
-                    {"hint" in keys && <span className="block text-sm font-normal">{t(keys.hint)}</span>}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
+          <ChoiceGroup label={t("checkin.level.legend")} value={form.level ?? undefined} onValueChange={(level) => chooseLevel(level as Level)}>
+            {LEVELS.map((level) => (
+              <Choice
+                key={level}
+                value={level}
+                label={t(LEVEL_KEYS[level].label)}
+                hint={t(LEVEL_KEYS[level].hint)}
+                leading={<EnergyBars level={LEVEL_BARS[level]} />}
+              />
+            ))}
+          </ChoiceGroup>
           {levelMissing && (
             <p id={`${idPrefix}-level-error`} role="alert" className="mt-2 mb-0 text-danger">
               {t("checkin.level.required")}
@@ -153,21 +112,15 @@ export function CheckInDialog({
         {demands.length > 0 && (
           <fieldset className="m-0 min-w-0 border-0 p-0" disabled={saving}>
             <legend className={LEGEND}>{t("checkin.restrictions.legend")}</legend>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {demands.map((id) => (
-                <label key={id} className={CHIP}>
-                  <input
-                    type="checkbox"
-                    className="sr-only"
-                    checked={form.restrictions.includes(id)}
-                    onChange={() =>
-                      setForm((current) => ({ ...current, restrictions: toggledRestriction(current.restrictions, id) }))
-                    }
-                  />
-                  {labelText(t, demandLabel(id))}
-                </label>
-              ))}
-            </div>
+            {demands.map((id) => (
+              <Checkbox
+                key={id}
+                label={labelText(t, demandLabel(id))}
+                checked={form.restrictions.includes(id)}
+                onCheckedChange={() => setForm((current) => ({ ...current, restrictions: toggledRestriction(current.restrictions, id) }))}
+              />
+            ))}
+            <span className="caption text-text-muted">{t("checkin.restrictions.hint")}</span>
           </fieldset>
         )}
 
@@ -177,6 +130,6 @@ export function CheckInDialog({
           </p>
         )}
       </form>
-    </AppDialog>
+    </Sheet>
   );
 }

@@ -13,7 +13,7 @@ import { launchApp } from "../pages/launch";
 // What this covers: an action on Today leaves the Resident's scroll position where it was, in pt-BR and then
 // en-US. Accept, Accept all, Refuse, Take, Complete and the Swap answers each run on a button scrolled to the
 // middle of a short screen; afterwards `window.scrollY` is exactly what it was and the Today heading has focus
-// (the pressed button went away with its card). Offering a Swap goes through the dialog and ends the same way.
+// (the pressed button went away with its card). Offering a Swap goes through the Task's Sheet and the Swap Sheet, and ends with focus back on the Task's open button.
 // When focus is still on something that survives the action, it stays there.
 // The plan is tall on purpose: six of your Tasks, three of Bruna's and four in the pool.
 
@@ -25,7 +25,8 @@ const LOCALES = [
     take: (task: string) => `Pegar ${task}`,
     done: (task: string) => `Concluir ${task}`,
     more: (task: string) => `Mais ações, ${task}`,
-    swapItem: "Trocar",
+    swapItem: "Oferecer troca",
+    send: "Enviar oferta",
     acceptAll: /^Aceitar todas as \d+ tarefas$/,
     acceptSwap: "Aceitar troca",
     declineSwap: "Recusar troca",
@@ -33,8 +34,7 @@ const LOCALES = [
     doneHeading: "Concluídas hoje",
     committed: "Assumida",
     stale: /As tarefas mudaram/,
-    submit: "Oferecer troca",
-    dialogTitle: "O que você vai dar?",
+    dialogTitle: "Oferecer troca",
     outgoing: "Suas ofertas de troca",
     closeToast: "Dispensar mensagem",
     alreadyDone: "Essa tarefa já foi concluída. Ela está em Concluídas hoje.",
@@ -229,20 +229,26 @@ for (const l of LOCALES) {
       });
     }
 
-    test("offering a Swap through the dialog keeps the scroll position and ends on the Today heading", async ({ page, baseURL, fakeApi }) => {
+    test("offering a Swap through the Sheets keeps the scroll position and focus returns to the Task's open button", async ({ page, baseURL, fakeApi }) => {
       // An offer already exists, so "Your offers" is in the page before and after: only its card count changes.
       withSwaps(fakeApi.state.dayPlan!, "outgoing", 1);
       await launchApp(page, baseURL!);
-      const before = await press(page, byName(page, l.more("Theirs 3")));
-      await byName(page, l.swapItem).click();
-      const dialog = page.getByRole("dialog", { name: l.dialogTitle });
-      await expect(dialog).toBeVisible();
-      await dialog.locator("label").filter({ hasText: "Mine 5" }).click();
-      await dialog.getByRole("button", { name: l.submit }).click();
-      await expect(dialog).toHaveCount(0);
+      const opener = page.getByRole("button", { name: "Mine 5", exact: true });
+      await opener.evaluate((element) => element.scrollIntoView({ block: "center" }));
+      const before = await scrollY(page);
+      expect(before).toBeGreaterThan(40);
+      await opener.click();
+      await page.getByRole("dialog", { name: "Mine 5" }).getByRole("button", { name: l.more("Mine 5") }).click();
+      await page.getByRole("dialog", { name: l.more("Mine 5") }).getByRole("button", { name: l.swapItem, exact: true }).click();
+      const sheet = page.getByRole("dialog", { name: l.dialogTitle });
+      await expect(sheet).toBeVisible();
+      await sheet.locator("label").filter({ hasText: "Theirs 3" }).click();
+      await sheet.getByRole("button", { name: l.send }).click();
+      await expect(sheet).toHaveCount(0);
       await expect(page.getByRole("heading", { level: 2, name: l.outgoing })).toBeVisible();
-      await expect(byName(page, l.more("Theirs 3"))).toHaveCount(0);
-      await expectStill(page, before);
+      await expect(byName(page, new RegExp(`^${l.cancelSwap}`))).toHaveCount(2);
+      await expect(opener).toBeFocused();
+      expect(await scrollY(page)).toBe(before);
     });
 
     // A card's action button and its menu sit on their own layer (z-10) so the card's stretched opener stays below

@@ -5,6 +5,8 @@ interface Recognition {
   maxAlternatives: number;
   lang: string;
   start(): void;
+  /** Ends listening and still delivers what was heard. */
+  stop(): void;
   abort(): void;
   onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
   onerror: ((event: { error: string }) => void) | null;
@@ -28,9 +30,10 @@ export function recognitionCtor(win: object): RecognitionCtor | null {
 
 /**
  * Listens for one utterance. `start()` runs synchronously in this call, because Safari needs it inside the tap
- * handler. Aborting the signal stops the recognition, which then resolves to "nothing".
+ * handler. Aborting the signal drops the recognition, which then resolves to "nothing"; aborting `done` (the
+ * Resident says they are finished) stops it and still resolves to what was heard.
  */
-export function listenOnce(ctor: RecognitionCtor, lang: string, signal?: AbortSignal): Promise<ListenResult> {
+export function listenOnce(ctor: RecognitionCtor, lang: string, signal?: AbortSignal, done?: AbortSignal): Promise<ListenResult> {
   return new Promise((resolve) => {
     const r = new ctor();
     r.continuous = false;
@@ -44,6 +47,7 @@ export function listenOnce(ctor: RecognitionCtor, lang: string, signal?: AbortSi
     r.onerror = (e) => resolve({ kind: "error", code: e.error });
     r.onend = () => resolve(text ? { kind: "transcript", text } : { kind: "nothing" });
     signal?.addEventListener("abort", () => r.abort(), { once: true });
+    done?.addEventListener("abort", () => r.stop(), { once: true });
     r.start();
   });
 }

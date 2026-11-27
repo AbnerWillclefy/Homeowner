@@ -6,7 +6,7 @@ import { choresKey } from "../../chores/api/queries";
 import { dayPlanKey } from "../../dayplan/api/queries";
 import { residentsKey } from "../../residents/api/queries";
 import { streakKey } from "../../streak/api/queries";
-import { interpret, type InterpretResult, type PlainAction, type VoiceAction } from "../api/api";
+import { getVoiceAllowance, interpret, type InterpretResult, type PlainAction, type VoiceAction } from "../api/api";
 import { applyInOrder, type SendResult } from "../logic/apply";
 import { canConfirm, pick } from "../logic/candidates";
 import { speechError } from "../logic/errors";
@@ -27,7 +27,7 @@ export type VoiceState =
   | { kind: "idle" }
   | { kind: "listening" }
   | { kind: "working" }
-  | { kind: "review"; actions: VoiceAction[]; remaining: number }
+  | { kind: "review"; actions: VoiceAction[] }
   | { kind: "applying"; actions: PlainAction[] }
   | { kind: "results"; actions: PlainAction[]; results: SendResult[] }
   | { kind: "message"; message: VoiceMessage };
@@ -54,6 +54,10 @@ export function useVoice() {
   const [state, setState] = useState<VoiceState>({ kind: "idle" });
   const [isOpen, setOpen] = useState(false);
   const listening = useRef<AbortController | null>(null);
+  // Aborted by the big mic button: stop listening and send what was heard.
+  const finished = useRef<AbortController | null>(null);
+  // The commands left today: read when the panel opens, then taken from each answer. Null while unknown or when the read failed, so "0" is never shown from a failure.
+  const [remaining, setRemaining] = useState<number | null>(null);
   // Memory only, and only for the Home's day it was reached: the server resets per day and is the authority.
   const limitDay = useRef<string | null>(null);
   const transcript = useRef("");
@@ -74,10 +78,22 @@ export function useVoice() {
     const run = new AbortController();
     listening.current = run;
     setOpen(true);
+    setRemaining(null);
     // The 20th command was used: say so without listening or calling the API.
-    if (limitDay.current !== null && limitDay.current === today()) return setState({ kind: "message", message: "limit" });
+    if (limitDay.current !== null && limitDay.current === today()) {
+      setRemaining(0);
+      return setState({ kind: "message", message: "limit" });
+    }
     setState({ kind: "listening" });
-    void interpretSpeech(listenOnce(ctor, locale, run.signal), run.signal);
+    finished.current = new AbortController();
+    void readAllowance(run.signal);
+    void interpretSpeech(listenOnce(ctor, locale, run.signal, finished.current.signal), run.signal);
+  }
+
+  /** A late answer never overwrites a count an interpret answer already gave. */
+  async function readAllowance(signal: AbortSignal) {
+    const result = await getVoiceAllowance();
+    if (!signal.aborted && result.kind === "ok") setRemaining((current) => current ?? result.remaining);
   }
 
   async function interpretSpeech(heard: ReturnType<typeof listenOnce>, signal: AbortSignal) {
@@ -95,14 +111,18 @@ export function useVoice() {
     setState({ kind: "working" });
     const result = await interpretation.mutateAsync(text);
     if (signal.aborted) return;
-    if (result.kind === "limit") limitDay.current = today();
+    if (result.kind === "limit") {
+      limitDay.current = today();
+      setRemaining(0);
+    }
     if (result.kind !== "ok") return setState({ kind: "message", message: FAILED[result.kind] });
     const { status, actions } = result.interpretation;
     limitDay.current = result.interpretation.remaining === 0 ? today() : null;
+    setRemaining(result.interpretation.remaining);
     if (status === "too_many") return setState({ kind: "message", message: "split" });
     setState(
       status === "ok" && actions.length > 0
-        ? { kind: "review", actions, remaining: result.interpretation.remaining }
+        ? { kind: "review", actions }
         : { kind: "message", message: "nothing" },
     );
   }
@@ -111,6 +131,11 @@ export function useVoice() {
   function retry() {
     const run = listening.current;
     if (run && !run.signal.aborted) void interpretText(transcript.current, run.signal);
+  }
+
+  /** Ends listening now; what was heard is sent as usual. */
+  function stop() {
+    finished.current?.abort();
   }
 
   function close() {
@@ -141,7 +166,7 @@ export function useVoice() {
     setState({ kind: "results", actions, results });
   }
 
-  return { state, isOpen, open, close, remove, choose, retry, confirm };
+  return { state, isOpen, remaining, open, stop, close, remove, choose, retry, confirm };
 }
 
 export type Voice = ReturnType<typeof useVoice>;

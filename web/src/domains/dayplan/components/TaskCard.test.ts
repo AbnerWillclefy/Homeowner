@@ -118,9 +118,10 @@ describe("TaskCard buttons per role", () => {
     expect(html).not.toContain("Mais ações");
   });
 
-  it("gives another Resident's Task a menu only when a Swap can be offered", () => {
-    expect(render(TASK, "pt-BR", [], "other")).not.toContain("Mais ações");
-    expect(render(TASK, "pt-BR", [], "other", { onSwap: () => {} })).toContain("Mais ações, Wash dishes");
+  it("keeps Swap out of the card's menu, whatever the role: it lives in the Task's Sheet", () => {
+    for (const role of ["mine", "other"] as const) {
+      expect(render(TASK, "pt-BR", [], role, { onSwap: () => {} })).not.toContain("Mais ações");
+    }
   });
 
   it("disables every button while an action runs, and spins only the one that is running", () => {

@@ -9,10 +9,10 @@ import { launchApp, visit } from "../pages/launch";
 import { shell } from "../pages/shell";
 
 // What this covers: Today's hero card (the other tabs have none), in both locales. Before a Check-in it asks the
-// Energy level as four large choices; picking one opens the one Check-in dialog with that level ticked and saves
+// Energy level as four large choices; picking one opens the one Check-in Sheet with that level ticked and saves
 // nothing (the Restrictions step is still asked); saving turns the card into the Energy chip with "N de M feitas" and
 // the progress bar, without a reload. The chip and "Alguma restrição só hoje?" open the same dialog, and Escape or
-// "Agora não" return focus to the card. A failed Check-in read says so on the card, with Retry, while the Streak still
+// its ✕ return focus to the card. A failed Check-in read says so on the card, with Retry, while the Streak still
 // shows. The card never reads "0 de 0". The Streak and the microphone are in the header's tools, not the card.
 
 const LOCALES = [
@@ -29,11 +29,10 @@ const LOCALES = [
     unavailable: "Energia indisponível.",
     retry: "Tentar de novo",
     streak: /^Sequência: /,
-    save: "Salvar",
-    cancel: "Agora não",
-    plannedLine: /^\d+ de 8 planejados$/,
-    noRestrictions: "Nenhuma restrição hoje",
-    wordmark: "Check-in",
+    save: "Salvar check-in",
+    close: "Fechar",
+    hint: "Para sempre? Use Restrições, na aba Eu.",
+    wordmark: "Check-in de hoje",
   },
   {
     locale: "en-US",
@@ -48,11 +47,10 @@ const LOCALES = [
     unavailable: "Energy unavailable.",
     retry: "Try again",
     streak: /^Streak: /,
-    save: "Save",
-    cancel: "Not now",
-    plannedLine: /^\d+ of 8 planned$/,
-    noRestrictions: "No restrictions today",
-    wordmark: "Check-in",
+    save: "Save Check-in",
+    close: "Close",
+    hint: "For good? Use Restrictions, on the Me tab.",
+    wordmark: "Today's Check-in",
   },
 ] as const;
 
@@ -107,13 +105,13 @@ for (const l of LOCALES) {
       });
     }
 
-    test("picking a level opens the dialog with it ticked and saves nothing; Escape returns focus to the card", async ({ page, baseURL, fakeApi }) => {
+    test("picking a level opens the Sheet with it ticked and saves nothing; Escape returns focus to the card", async ({ page, baseURL, fakeApi }) => {
       await openToday(page, baseURL!);
       await choice(page, l.normal).click({ force: true });
       await expect(dialog(page)).toBeVisible();
       await expect(dialog(page).getByRole("radio", { name: new RegExp(`^${l.normal}`) })).toBeChecked();
       // The Restrictions step is still asked, and nothing was sent.
-      await expect(dialog(page).getByText(l.noRestrictions, { exact: true })).toBeVisible();
+      await expect(dialog(page).getByText(l.hint, { exact: true })).toBeVisible();
       expect(fakeApi.requests.filter((r) => r.method === "PUT")).toHaveLength(0);
       await page.keyboard.press("Escape");
       await expect(dialog(page)).toBeHidden();
@@ -128,7 +126,7 @@ for (const l of LOCALES) {
       await hero(page).getByRole("button", { name: l.restrictions, exact: true }).click();
       await expect(dialog(page)).toBeVisible();
       await expect(dialog(page).getByRole("radio", { checked: true })).toHaveCount(0);
-      await dialog(page).getByRole("button", { name: l.cancel, exact: true }).click();
+      await dialog(page).getByRole("button", { name: l.close, exact: true }).click();
       await expect(dialog(page)).toBeHidden();
       await expect(hero(page)).toBeFocused();
     });
@@ -146,17 +144,16 @@ for (const l of LOCALES) {
       await expect(page).toHaveURL(/\/$/);
     });
 
-    test("checked in: the chip reopens the one dialog, and Not now returns focus to the chip", async ({ page, baseURL, fakeApi }) => {
+    test("checked in: the chip reopens the one dialog, and its ✕ returns focus to the chip", async ({ page, baseURL, fakeApi }) => {
       fakeApi.state.checkIn = { date: "2030-01-15", checkedIn: true, level: "low", restrictions: [] };
       await launchApp(page, baseURL!);
       await expect(page.getByRole("dialog")).toHaveCount(0);
       await expect(chip(page)).toHaveText(l.low);
       await chip(page).click();
       await expect(page.getByRole("dialog")).toHaveCount(1);
-      await expect(dialog(page).getByRole("heading", { name: l.wordmark })).toBeFocused();
-      await expect(dialog(page).getByText(l.plannedLine)).toBeVisible();
+      await expect(dialog(page).and(page.locator(":focus-within"))).toHaveCount(1);
       await expect(dialog(page).getByRole("radio", { name: l.low })).toBeChecked();
-      await dialog(page).getByRole("button", { name: l.cancel, exact: true }).click();
+      await dialog(page).getByRole("button", { name: l.close, exact: true }).click();
       await expect(dialog(page)).toBeHidden();
       await expect(chip(page)).toBeFocused();
     });

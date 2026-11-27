@@ -7,8 +7,8 @@ import { RESIDENT_EMAIL, signedInResident } from "../mocks/sampleHome";
 import { seedSession } from "../mocks/session";
 import { launchApp, visit } from "../pages/launch";
 
-// What this covers: the Check-in dialog opening by itself on Today when the day has no Check-in. It opens on a cold
-// start; "Agora não" and Escape close it, the hero card keeps asking the Energy question and gets focus back, and it stays closed on
+// What this covers: the Check-in Sheet opening by itself on Today when the day has no Check-in. It opens on a cold
+// start; its ✕ and Escape close it, the hero card keeps asking the Energy question and gets focus back, and it stays closed on
 // the same day (switching tabs, resuming) until the next launch; a new Home day opens it again; a saved Check-in
 // or any tab but Today never opens it; it waits behind the Invite, the rating step and the start choice. Each
 // test runs in pt-BR.
@@ -16,12 +16,12 @@ import { launchApp, visit } from "../pages/launch";
 const LOCALES = [
   {
     locale: "pt-BR",
-    wordmark: "Check-in",
+    wordmark: "Check-in de hoje",
     hero: "Seu dia",
     question: "Como está a sua energia hoje?",
     restrictions: "Alguma restrição só hoje?",
-    notNow: "Agora não",
-    save: "Salvar",
+    close: "Fechar",
+    save: "Salvar check-in",
     chores: "Afazeres",
     today: "Hoje",
     join: "Sair do meu lar e entrar neste",
@@ -57,16 +57,16 @@ for (const l of LOCALES) {
       }).toPass();
     }
 
-    test("a cold start on Today opens the dialog by itself, with focus on its title", async ({ page, baseURL }) => {
+    test("a cold start on Today opens the dialog by itself, with focus inside it", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
       await expect(dialog(page)).toBeVisible();
-      await expect(dialog(page).getByRole("heading", { name: l.wordmark })).toBeFocused();
+      await expect(dialog(page).and(page.locator(":focus-within"))).toHaveCount(1);
       await expect(page.getByRole("dialog")).toHaveCount(1);
     });
 
-    test("Not now closes it, the hero card keeps the question and gets focus, and switching tabs does not bring it back", async ({ page, baseURL }) => {
+    test("its ✕ closes it, the hero card keeps the question and gets focus, and switching tabs does not bring it back", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
-      await dialog(page).getByRole("button", { name: l.notNow, exact: true }).click();
+      await dialog(page).getByRole("button", { name: l.close, exact: true }).click();
       await expect(dialog(page)).toBeHidden();
       await expect(hero(page)).toBeFocused();
       await expect(question(page)).toBeVisible();
@@ -79,7 +79,7 @@ for (const l of LOCALES) {
       await expect(page.getByRole("dialog")).toHaveCount(0);
     });
 
-    test("Escape is the same as Not now, and focus ends on the hero card", async ({ page, baseURL }) => {
+    test("Escape is the same as the ✕, and focus ends on the hero card", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
       await expect(dialog(page)).toBeVisible();
       await page.keyboard.press("Escape");
@@ -99,7 +99,7 @@ for (const l of LOCALES) {
 
       await page.reload();
       await expect(dialog(page)).toBeVisible();
-      await expect(dialog(page).getByRole("heading", { name: l.wordmark })).toBeFocused();
+      await expect(dialog(page).and(page.locator(":focus-within"))).toHaveCount(1);
     });
 
     test("a resume on a new Home day opens it again", async ({ page, baseURL, fakeApi }) => {
@@ -159,7 +159,7 @@ for (const l of LOCALES) {
       await expect(dialog(page).getByRole("button", { name: l.save, exact: true })).toBeVisible();
     });
 
-    test("a day rolling over under an open form stays open, and Not now closes it for the new day", async ({ page, baseURL, fakeApi }) => {
+    test("a day rolling over under an open form stays open, and its ✕ closes it for the new day", async ({ page, baseURL, fakeApi }) => {
       await launchApp(page, baseURL!);
       await expect(dialog(page)).toBeVisible();
 
@@ -168,8 +168,8 @@ for (const l of LOCALES) {
       await resume(page);
       await expect(dialog(page)).toBeVisible();
 
-      // The Resident has seen the 16th's prompt: Not now closes it and a same-day resume does not reopen it.
-      await dialog(page).getByRole("button", { name: l.notNow, exact: true }).click();
+      // The Resident has seen the 16th's prompt: its ✕ closes it and a same-day resume does not reopen it.
+      await dialog(page).getByRole("button", { name: l.close, exact: true }).click();
       await expect(dialog(page)).toBeHidden();
       await resume(page);
       await expect(dialog(page)).toBeHidden();

@@ -9,7 +9,8 @@ import { withoutBoot } from "../mocks/handlers/boot";
 import { launchApp } from "../pages/launch";
 import { shell } from "../pages/shell";
 
-// What this covers: the Streak as a flame button in the page header's Streak slot. It opens a centred dialog and
+// What this covers: the Streak as a flame button in the page header's Streak slot. It opens a Sheet (the number, the
+// week strip of seven badges and the four rules) and
 // focus comes back to it on close (Close button and Escape), a Streak of 0 looks like any other number, a held
 // Streak does not hold Today (the flame arrives in its reserved slot), a Streak that could not be read leaves no button, a failed
 // refresh keeps the number, and the bar holds at 320px with three digits. No Streak card
@@ -74,12 +75,14 @@ for (const l of LOCALES) {
       await button.click();
       const dialog = page.getByRole("dialog", { name: l.title });
       await expect(dialog).toBeVisible();
-      await expect(dialog.getByRole("heading", { name: l.title })).toBeFocused();
+      await expect(dialog.and(page.locator(":focus-within"))).toHaveCount(1);
       await expect(dialog.getByText(l.todayCounts, { exact: true })).toBeVisible();
       for (const rule of l.rules) await expect(dialog.getByText(rule, { exact: true })).toBeVisible();
       await expect(dialog.getByRole("listitem")).toHaveCount(4);
 
-      await dialog.getByRole("button", { name: l.close, exact: true }).click();
+      // The ✕ is first, "Fechar" at the foot is last: both close it.
+      await expect(dialog.getByRole("button", { name: l.close, exact: true })).toHaveCount(2);
+      await dialog.getByRole("button", { name: l.close, exact: true }).last().click();
       await expect(dialog).toBeHidden();
       await expect(button).toBeFocused();
 
@@ -88,6 +91,20 @@ for (const l of LOCALES) {
       await page.keyboard.press("Escape");
       await expect(dialog).toBeHidden();
       await expect(button).toBeFocused();
+    });
+
+    test("the Sheet draws the week as seven badges, today last, and says how many days grew", async ({ page, baseURL, fakeApi }) => {
+      fakeApi.state.streak = 6;
+      fakeApi.state.streakTodayGrew = false;
+      const states = ["grew", "grew", "grew", "paused", "grew", "grew", "open"] as const;
+      fakeApi.state.streakWeek = states.map((state, i) => ({ date: `2030-01-${String(8 + i).padStart(2, "0")}`, state }));
+      await launchApp(page, baseURL!);
+      await flame(page, 6).click();
+      const dialog = page.getByRole("dialog", { name: l.title });
+      await expect(dialog.getByText("6 dias", { exact: true })).toBeVisible();
+      await expect(dialog.getByText("Conclua uma tarefa hoje e vai para 7.", { exact: true })).toBeVisible();
+      const week = dialog.getByRole("group", { name: "Últimos 7 dias: 5 com conclusão, hoje ainda aberto" });
+      await expect(week.locator("span")).toHaveText(["ter", "qua", "qui", "sex", "sáb", "dom", "hoje"]);
     });
 
     test("the keyboard reaches the flame with Tab and Enter opens the dialog", async ({ page, baseURL }) => {

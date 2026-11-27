@@ -6,25 +6,22 @@ import { CheckInDialog } from "./CheckInDialog";
 interface Props {
   checkIn: ReturnType<typeof useCheckIn>;
   open: boolean;
-  /** The planned Effort against Energy, or null when the Energy note is not "energy". */
-  planned: { planned: number; energy: number } | null;
   onClose(): void;
   returnFocusRef: RefObject<HTMLElement | null>;
-  /** The level picked on the hero card, or null when the dialog opens from the Energy chip or by itself. */
+  /** The level picked on the hero card, or null when the Sheet opens from the Energy chip or by itself. */
   initialLevel: Level | null;
 }
 
 /**
- * The Shell's one Check-in dialog, shown while it is open and the Check-in is ready. Mounted only then, so the form
+ * The Shell's one Check-in Sheet, shown while it is open and the Check-in is ready. Mounted only then, so the form
  * starts again from the saved Check-in each time.
  */
-export function ShellCheckInDialog({ checkIn, open, planned, onClose, returnFocusRef, initialLevel }: Props) {
+export function ShellCheckInDialog({ checkIn, open, onClose, returnFocusRef, initialLevel }: Props) {
   if (!open || checkIn.state.kind !== "ready") return null;
   return (
     <CheckInDialog
       checkIn={checkIn.state.checkIn}
       demands={checkIn.demands}
-      planned={planned}
       save={checkIn.save}
       onClose={onClose}
       returnFocusRef={returnFocusRef}
