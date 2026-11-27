@@ -95,6 +95,7 @@ export function ReviewList({ items, errors, tooMany, onChange, disabled, heading
               <CategoryTile category={group.category} />
               <div className="min-w-0 flex-1">
                 <SectionHeading
+                  as="h3"
                   variant="label"
                   id={`review-${group.category}`}
                   title={sectionTitle(t, labelText(t, categoryLabel(group.category)), group.chores.length)}
