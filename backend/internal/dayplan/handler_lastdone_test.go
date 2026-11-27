@@ -118,10 +118,15 @@ func TestTwoCompletionsOnOneDayReadAsTheLatestOne(t *testing.T) {
 		WHERE completed_on = '2026-03-02'`); err != nil {
 		t.Fatal(err)
 	}
+	// Give the moved Completion to the Resident who did not do Tuesday's, so only the completed_at tiebreak picks the right one.
 	var want string
 	if err := app.DB.QueryRow(context.Background(), `
-		SELECT cr.resident_id FROM completions k JOIN completion_residents cr ON cr.completion_id = k.id
-		WHERE k.completed_at = '2026-03-03T20:00:00Z'`).Scan(&want); err != nil {
+		UPDATE completion_residents cr SET resident_id = (
+			SELECT r.id FROM residents r WHERE r.id <> (
+				SELECT cr2.resident_id FROM completion_residents cr2 JOIN completions k2 ON k2.id = cr2.completion_id
+				WHERE k2.completed_at <> '2026-03-03T20:00:00Z' AND k2.completed_on = '2026-03-03') LIMIT 1)
+		FROM completions k WHERE k.id = cr.completion_id AND k.completed_at = '2026-03-03T20:00:00Z'
+		RETURNING cr.resident_id`).Scan(&want); err != nil {
 		t.Fatal(err)
 	}
 	plannedOn(t, app, 4)
