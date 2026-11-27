@@ -9,7 +9,7 @@ import { App } from "./App";
 const NAMES = [
   "Button", "Input", "SearchField", "SegmentedControl", "Switch", "Checkbox", "Stepper", "List", "Card", "StatCard", "Amount", "Badge",
   "CategoryTag", "ListRow", "ProgressBar", "AlertCard", "Toast", "EmptyState", "Skeleton", "Sheet", "Dialog",
-  "Sidebar", "BottomBar", "PaceChart", "DonutChart", "BarChart", "Avatar", "StepIndicator", "ChoiceGroup", "PageHeader", "Banner", "Tooltip", "Menu", "Select", "Table", "DescriptionList", "ChoreTag", "Effort", "Energy", "Streak", "TaskCard",
+  "Sidebar", "BottomBar", "PaceChart", "DonutChart", "BarChart", "Avatar", "StepIndicator", "ChoiceGroup", "PageHeader", "SectionHeading", "Banner", "Tooltip", "Menu", "Select", "Table", "DescriptionList", "ChoreTag", "Effort", "Energy", "Streak", "TaskCard",
 ];
 const COMBOS = [
   ["dark", "pt-BR"],

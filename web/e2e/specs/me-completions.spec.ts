@@ -68,7 +68,7 @@ for (const l of LOCALES) {
 
     test("shows the last 30 days by day, newest first, older days dated, and who a Completion was done with", async ({ page, baseURL }) => {
       await openMe(page, baseURL);
-      await expect(page.getByRole("heading", { name: l.heading, level: 3 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: l.heading, level: 2 })).toBeVisible();
       await expect(page.getByRole("region", { name: l.heading }).getByRole("heading", { level: 4 })).toHaveText([l.today, l.yesterday, ...l.older]);
 
       const cards = page.getByRole("listitem").filter({ hasText: " · " });
@@ -84,7 +84,7 @@ for (const l of LOCALES) {
 
     test("has only the Change time action on a Completion (see me-change-time) and nothing is cut off", async ({ page, baseURL }) => {
       await openMe(page, baseURL);
-      await expect(page.getByRole("heading", { name: l.heading, level: 3 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: l.heading, level: 2 })).toBeVisible();
       const section = page.getByRole("region", { name: l.heading });
       await expect(section.getByRole("button")).toHaveCount(5);
       await expect(section.getByRole("button", { name: l.change })).toHaveCount(5);
@@ -97,7 +97,7 @@ for (const l of LOCALES) {
       const plan = page.getByRole("region", { name: l.planHeading, exact: true });
       const history = page.getByRole("region", { name: l.heading, exact: true });
       const app = page.getByRole("region", { name: l.appHeading, exact: true });
-      await expect(page.getByRole("heading", { level: 3 })).toHaveText([l.planHeading, l.heading, l.appHeading]);
+      await expect(page.getByRole("region").getByRole("heading", { level: 2 })).toHaveText([l.planHeading, l.heading, l.appHeading]);
       await expect(history.getByRole("button", { name: l.baseline })).toHaveCount(0);
 
       const row = (part: typeof plan, name: string) => part.getByRole("button", { name: new RegExp(`^${name}\\b`) });
@@ -136,7 +136,7 @@ for (const l of LOCALES) {
       const held = hold(page, /\/home\/residents\/resident-1$/);
       await openMe(page, baseURL);
       await expect(page.getByTestId("my-completions-skeleton")).toBeVisible();
-      await expect(page.getByRole("heading", { name: l.heading, level: 3 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: l.heading, level: 2 })).toBeVisible();
       const baseline = page.getByRole("button", { name: l.baseline });
       await baseline.click();
       await expect(page.getByRole("dialog", { name: l.baseline })).toBeVisible();
@@ -144,7 +144,7 @@ for (const l of LOCALES) {
       await page.keyboard.press("Escape");
 
       held.release();
-      await expect(page.getByRole("heading", { name: l.heading, level: 3 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: l.heading, level: 2 })).toBeVisible();
       await expect(page.getByTestId("my-completions-skeleton")).toHaveCount(0);
     });
 
@@ -152,7 +152,7 @@ for (const l of LOCALES) {
       fakeApi.override("GET /home/residents/{id}", json(500, { error: "internal error" }), { once: true });
       await openMe(page, baseURL);
       const history = page.getByRole("region", { name: l.heading, exact: true });
-      await expect(history.getByRole("heading", { name: l.heading, level: 3 })).toBeVisible();
+      await expect(history.getByRole("heading", { name: l.heading, level: 2 })).toBeVisible();
       await expect(history.getByRole("alert").filter({ hasText: l.error })).toBeVisible();
       await expect(history.getByRole("button", { name: l.retry })).toBeVisible();
       const baseline = page.getByRole("button", { name: l.baseline });
@@ -163,7 +163,7 @@ for (const l of LOCALES) {
       await page.keyboard.press("Escape");
 
       await page.getByRole("button", { name: l.retry }).click();
-      await expect(page.getByRole("heading", { name: l.heading, level: 3 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: l.heading, level: 2 })).toBeVisible();
       await expect(page.getByRole("alert")).toHaveCount(0);
     });
 
@@ -177,12 +177,12 @@ for (const l of LOCALES) {
 
       fakeApi.use(residentsHandlers);
       await page.getByRole("button", { name: l.retry }).click();
-      await expect(page.getByRole("heading", { name: l.heading, level: 3 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: l.heading, level: 2 })).toBeVisible();
     });
 
     test("opening your own id redirects to Me without a second read of the history", async ({ page, baseURL, fakeApi }) => {
       await openMe(page, baseURL);
-      await expect(page.getByRole("heading", { name: l.heading, level: 3 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: l.heading, level: 2 })).toBeVisible();
       expect(detailReads(fakeApi.requests)).toHaveLength(1);
 
       // In the app, as a link would: leave Me for Home, then go to your own Resident page.
@@ -192,14 +192,14 @@ for (const l of LOCALES) {
         dispatchEvent(new PopStateEvent("popstate"));
       });
       await expect(page).toHaveURL((url) => url.pathname === "/me");
-      await expect(page.getByRole("heading", { name: l.heading, level: 3 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: l.heading, level: 2 })).toBeVisible();
       expect(detailReads(fakeApi.requests)).toHaveLength(1);
     });
 
     test("a deep link to your own id lands on Me with the history, read once", async ({ page, fakeApi }) => {
       await visit(page, "/home/residents/resident-1");
       await expect(page).toHaveURL((url) => url.pathname === "/me");
-      await expect(page.getByRole("heading", { name: l.heading, level: 3 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: l.heading, level: 2 })).toBeVisible();
       expect(detailReads(fakeApi.requests)).toHaveLength(1);
     });
   });

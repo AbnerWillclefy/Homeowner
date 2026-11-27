@@ -1,8 +1,9 @@
+import { useId } from "react";
 import { Navigate } from "react-router";
 import { ME_PATH } from "../../../app/logic/routes";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
-import { HeadedSection } from "../../../shared/ui/HeadedSection";
+import { SectionHeading } from "@homeowner/bedrock";
 import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { useResident } from "../hooks/useResident";
 import { CompletionDays } from "./CompletionDays";
@@ -17,6 +18,7 @@ import { ResidentPageSkeleton } from "./ResidentPageSkeleton";
  */
 export function ResidentPage({ id, timeZone }: { id: string; timeZone: string }) {
   const { t } = useI18n();
+  const headingId = useId();
   const { state, refreshing, retry } = useResident(id);
   const showSkeleton = useReportFirstLoad(state.kind === "loading");
   // A refetch over a page already on screen shows the indicator in the header, never the skeleton.
@@ -49,9 +51,10 @@ export function ResidentPage({ id, timeZone }: { id: string; timeZone: string })
       return (
         <div className="flex flex-col gap-4">
           <ResidentHeader resident={state.resident} />
-          <HeadedSection title={t("resident.recent.heading")}>
+          <section aria-labelledby={headingId} className="mt-0 flex flex-col gap-4">
+            <SectionHeading variant="label" id={headingId} title={t("resident.recent.heading")} />
             <CompletionDays days={state.resident.days} today={state.resident.date} timeZone={timeZone} empty={t("resident.empty")} />
-          </HeadedSection>
+          </section>
         </div>
       );
   }

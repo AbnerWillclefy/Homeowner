@@ -208,6 +208,7 @@ export const enUS = {
   "profile.restrictions.heading": "Restrictions",
   "profile.restrictions.hint": "Work you cannot do. You are never given it.",
   "profile.restriction.added": "Restriction added. Responsibilities it removed do not come back.",
+  "section.withCount": "{title} · {count}",
   "me.group.plan": "How the plan knows you",
   "me.group.app": "App",
   "me.sheet.close": "Close",

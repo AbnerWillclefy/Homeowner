@@ -4,6 +4,8 @@ Bedrock follows semver; before 1.0.0 a minor may break ([spec](../docs/design/be
 
 ## Unreleased
 
+- Core: `SectionHeading` (the name of a group of rows: `variant` is required, `title` for the 18px heading and `label` for the 12px muted caption; optional `end` item in the row, `as` `h2` or `h3`, `id`). Its root carries `data-slot="section-heading"`. The overlays of `Sheet` (both trees) and `Dialog` carry `data-slot="scrim"`, so the pairs measure them.
+
 - Core: `List` and `Row` (the `hm-list` card and `hm-item` row: optional leading, title, caption and trailing; 64px tall, 56px without a leading element; `asChild` for a button or link; title and caption truncate). The roots of `List`, `Row`, `PageHeader`, `Sheet`, `Dialog`, `SearchField`, `Field`, `SegmentedControl`, `Toast`, `BottomBar` and finance `ListRow` carry `data-slot` (`list`, `row`, `page-header`, `sheet`, `dialog`, `search-field`, `field`, `segmented-control`, `toast`, `bottom-bar`, `list-row`), part of the public markup. Off-grid spacing fixed: `PageHeader` gaps 8px/16px, field padding 16px, `SearchField` icon at 16px, `Toast` icon margin 4px.
 
 - Home layer, exported as `@homeowner/bedrock/home`: `ChoreTag` (and the bare `ChoreIcon`), `Effort`, `Energy` (the chip, plus `EnergyBars` for a `Choice`'s `leading`), `Streak` and `TaskCard`. All are presentational: every string and Task fact is a prop, and `Effort`, `Energy` and `Streak` require their accessible name. `TaskCard` takes its actions and ⋯ menu from the caller. New `chore-*` tokens (10 Categories, each with a `-soft` pair, in both themes) sit beside `cat-*`; `tokens.test.ts` checks them against `docs/design/bedrock/tokens.json`, and `layers.test.ts` keeps Core and Home apart.

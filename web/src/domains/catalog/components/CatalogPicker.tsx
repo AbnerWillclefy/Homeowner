@@ -7,7 +7,8 @@ import { groupByCategory } from "../../chores/logic/groups";
 import { categoryLabel, labelText } from "../../profile/logic/labels";
 import { AppDialog } from "../../../shared/ui/AppDialog";
 import { Card } from "../../../shared/ui/Card";
-import { GroupHeading } from "../../../shared/ui/GroupHeading";
+import { SectionHeading } from "@homeowner/bedrock";
+import { sectionTitle } from "../../../shared/i18n/sectionTitle";
 import { useI18n, type MessageKey } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { ButtonRow } from "../../../shared/ui/ButtonRow";
@@ -72,9 +73,17 @@ export function CatalogPicker({ onPick, onClose }: Props) {
         {state.kind === "ready" &&
           groupByCategory(state.entries, []).map((group) => (
             <section key={group.category} aria-labelledby={`catalog-${group.category}`} className="mt-0">
-              <GroupHeading count={group.chores.length} icon={<CategoryTile category={group.category} />}>
-                <span id={`catalog-${group.category}`}>{labelText(t, categoryLabel(group.category))}</span>
-              </GroupHeading>
+              <div className="mb-3 flex items-center gap-2">
+                <CategoryTile category={group.category} />
+                <div className="min-w-0 flex-1">
+                  <SectionHeading
+                    as="h3"
+                    variant="label"
+                    id={`catalog-${group.category}`}
+                    title={sectionTitle(t, labelText(t, categoryLabel(group.category)), group.chores.length)}
+                  />
+                </div>
+              </div>
               <ul className="m-0 flex list-none flex-col gap-3 p-0">
                 {group.chores.map((entry) => (
                   <CatalogItem key={entry.id} entry={entry} onPick={() => onPick(entry)} />

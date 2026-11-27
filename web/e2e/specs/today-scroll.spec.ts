@@ -141,7 +141,7 @@ for (const l of LOCALES) {
     test("completing a Committed Task keeps the scroll position", async ({ page, baseURL }) => {
       await launchApp(page, baseURL!);
       const before = await press(page, byName(page, l.done("Mine 5")));
-      await expect(page.getByRole("heading", { level: 3, name: new RegExp(l.doneHeading) })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 2, name: new RegExp(l.doneHeading) })).toBeVisible();
       await expect(byName(page, l.done("Mine 5"))).toHaveCount(0);
       await expectStill(page, before);
     });
@@ -240,7 +240,7 @@ for (const l of LOCALES) {
       await dialog.locator("label").filter({ hasText: "Mine 5" }).click();
       await dialog.getByRole("button", { name: l.submit }).click();
       await expect(dialog).toHaveCount(0);
-      await expect(page.getByRole("heading", { level: 3, name: l.outgoing })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 2, name: l.outgoing })).toBeVisible();
       await expect(byName(page, l.more("Theirs 3"))).toHaveCount(0);
       await expectStill(page, before);
     });

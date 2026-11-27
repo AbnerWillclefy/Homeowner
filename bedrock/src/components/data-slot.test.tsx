@@ -9,6 +9,7 @@ import { Dialog } from "./dialog";
 import { Input } from "./input";
 import { List, Row } from "./list";
 import { PageHeader } from "./page-header";
+import { SectionHeading } from "./section-heading";
 import { SearchField } from "./search-field";
 import { SegmentedControl } from "./segmented-control";
 import { Sheet } from "./sheet";
@@ -25,6 +26,9 @@ const cases: [string, ReactElement][] = [
   ["page-header", <PageHeader key="x" title="t" action={{ label: "a", icon: Check, onClick: noop }} />],
   ["sheet", <Sheet key="x" open onOpenChange={noop} title="t" closeLabel="c">x</Sheet>],
   ["dialog", <Dialog key="x" open onOpenChange={noop} title="t" description="d" cancelLabel="n" confirmLabel="y" onConfirm={noop} />],
+  ["section-heading", <SectionHeading key="x" title="t" variant="label" />],
+  ["scrim", <Sheet key="x" open onOpenChange={noop} title="t" closeLabel="c">x</Sheet>],
+  ["scrim", <Dialog key="x" open onOpenChange={noop} title="t" description="d" cancelLabel="n" confirmLabel="y" onConfirm={noop} />],
   ["search-field", <SearchField key="x" label="l" clearLabel="c" value="" onValueChange={noop} />],
   ["field", <Input key="x" label="l" />],
   ["segmented-control", <SegmentedControl key="x" label="l" options={[{ value: "a", label: "A" }, { value: "b", label: "B" }]} value="a" onValueChange={noop} />],

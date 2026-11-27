@@ -7,7 +7,8 @@ import { useI18n, type MessageKey } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
 import { ButtonRow } from "../../../shared/ui/ButtonRow";
 import { Card } from "../../../shared/ui/Card";
-import { GroupHeading } from "../../../shared/ui/GroupHeading";
+import { SectionHeading } from "@homeowner/bedrock";
+import { sectionTitle } from "../../../shared/i18n/sectionTitle";
 import { pendingSwap, type Acting, type SwapAction } from "../logic/actions";
 
 const LIST = "m-0 flex list-none flex-col gap-3 p-0";
@@ -61,8 +62,8 @@ export function OfferGroup({ offers, direction, acting, onAnswer }: Props) {
   const { t } = useI18n();
   if (offers.length === 0) return null;
   return (
-    <div>
-      <GroupHeading count={offers.length}>{t(DIRECTIONS[direction].heading)}</GroupHeading>
+    <div className="flex flex-col gap-3">
+      <SectionHeading variant="label" title={sectionTitle(t, t(DIRECTIONS[direction].heading), offers.length)} />
       <ul className={LIST}>
         {offers.map((offer) => (
           <OfferCard key={offer.id} offer={offer} direction={direction} acting={acting} onAnswer={onAnswer} />

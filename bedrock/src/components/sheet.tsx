@@ -41,7 +41,7 @@ export function Sheet({ open, onOpenChange, trigger, returnFocusRef, title, subt
     <T.Root open={open} onOpenChange={onOpenChange}>
       {trigger && <T.Trigger asChild>{trigger}</T.Trigger>}
       <T.Portal>
-        <T.Overlay className={overlay} />
+        <T.Overlay data-slot="scrim" className={overlay} />
         <T.Content data-slot="sheet" className={`${content} ${panel}`}
           onCloseAutoFocus={(event: Event) => {
             if (!returnFocusRef) return;

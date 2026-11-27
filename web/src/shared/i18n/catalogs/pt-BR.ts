@@ -214,6 +214,7 @@ export const ptBR: Messages = {
   "profile.restrictions.heading": "Restrições",
   "profile.restrictions.hint": "Trabalho que você não pode fazer. Ele nunca é dado a você.",
   "profile.restriction.added": "Restrição adicionada. As responsabilidades removidas não voltam.",
+  "section.withCount": "{title} · {count}",
   "me.group.plan": "Como o plano te conhece",
   "me.group.app": "App",
   "me.sheet.close": "Fechar",

@@ -165,6 +165,9 @@ export const ROLES = [
   { role: "choice-group", design: ".br-choices", app: "[data-slot=choice-group]", bedrock: true },
   { role: "step-indicator", design: ".br-step-indicator", app: "[data-slot=step-indicator]", bedrock: true },
   { role: "card", design: ".br-card", app: "[data-slot=card]", bedrock: true },
+  { role: "scrim", design: ".hm-overlay", app: "[data-slot=scrim]", bedrock: true },
+  // `.hm-label` is also a field label and a fieldset legend, so only a span first in a stack counts as a heading.
+  { role: "section-heading", design: ".hm-sechead, .hm-stack > span.hm-label:first-child", app: "[data-slot=section-heading]", bedrock: true },
 ];
 
 /** The selector of each role for one side, `side` being "app" or "design": what `measureBoxes` takes. */

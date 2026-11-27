@@ -91,7 +91,7 @@ for (const l of LOCALES) {
       // The Streak is 11 and five Completions fall in the window (the old one is out).
       await expect(page.getByText("11", { exact: true })).toBeVisible();
       await expect(page.getByText("5", { exact: true })).toBeVisible();
-      await expect(page.getByRole("heading", { name: l.recent, level: 3 })).toBeVisible();
+      await expect(page.getByRole("heading", { name: l.recent, level: 2 })).toBeVisible();
 
       const headings = page.getByRole("heading", { level: 4 });
       await expect(headings).toHaveText([l.today, l.yesterday, l.saturday]);

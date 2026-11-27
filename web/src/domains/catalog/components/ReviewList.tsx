@@ -3,7 +3,8 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import type { FieldCodes } from "../../home/api/api";
 import { ButtonRow } from "../../../shared/ui/ButtonRow";
 import { Card } from "../../../shared/ui/Card";
-import { GroupHeading } from "../../../shared/ui/GroupHeading";
+import { SectionHeading } from "@homeowner/bedrock";
+import { sectionTitle } from "../../../shared/i18n/sectionTitle";
 import { ChoreFacts } from "../../chores/components/ChoreFacts";
 import { ChoreForm } from "../../chores/components/ChoreForm";
 import { CategoryTile } from "../../chores/components/FactList";
@@ -90,9 +91,17 @@ export function ReviewList({ items, errors, tooMany, onChange, disabled, heading
       <div className="mt-6 flex flex-col gap-8">
         {groups.map((group) => (
           <section key={group.category} aria-labelledby={`review-${group.category}`} className="mt-0">
-            <GroupHeading count={group.chores.length} icon={<CategoryTile category={group.category} />}>
-              <span id={`review-${group.category}`}>{labelText(t, categoryLabel(group.category))}</span>
-            </GroupHeading>
+            <div className="mb-3 flex items-center gap-2">
+              <CategoryTile category={group.category} />
+              <div className="min-w-0 flex-1">
+                <SectionHeading
+                  as="h3"
+                  variant="label"
+                  id={`review-${group.category}`}
+                  title={sectionTitle(t, labelText(t, categoryLabel(group.category)), group.chores.length)}
+                />
+              </div>
+            </div>
             <ul className="m-0 flex list-none flex-col gap-3 p-0">
               {group.chores.map(({ item }) => {
                 const itemErrors = errors[item.key] ?? {};

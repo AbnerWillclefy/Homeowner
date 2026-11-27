@@ -1,6 +1,7 @@
+import { useId } from "react";
 import { useI18n } from "../../../shared/i18n";
 import { Button } from "../../../shared/ui/Button";
-import { HeadedSection } from "../../../shared/ui/HeadedSection";
+import { SectionHeading } from "@homeowner/bedrock";
 import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { useMyCompletions } from "../hooks/useMyCompletions";
 import { ChangeTimeAction } from "./ChangeTimeAction";
@@ -16,12 +17,14 @@ import { CompletionDaysSkeleton } from "./ResidentPageSkeleton";
  */
 export function MyCompletions({ timeZone }: { timeZone: string }) {
   const { t } = useI18n();
+  const headingId = useId();
   const { state, refreshing, retry } = useMyCompletions();
   const showSkeleton = useReportFirstLoad(state.kind === "loading");
   useReportFetching(refreshing);
 
   return (
-    <HeadedSection title={t("me.completions.heading")}>
+    <section aria-labelledby={headingId} className="mt-0 flex flex-col gap-4">
+      <SectionHeading variant="label" id={headingId} title={t("me.completions.heading")} />
       {state.kind === "loading" && (
         <div aria-hidden="true" data-testid="my-completions-skeleton" className={showSkeleton ? "" : "invisible"}>
           <CompletionDaysSkeleton />
@@ -46,6 +49,6 @@ export function MyCompletions({ timeZone }: { timeZone: string }) {
           action={(completion) => <ChangeTimeAction completion={completion} today={state.detail.date} timeZone={timeZone} />}
         />
       )}
-    </HeadedSection>
+    </section>
   );
 }
