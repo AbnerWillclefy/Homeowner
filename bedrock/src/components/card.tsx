@@ -39,14 +39,14 @@ export function Card({ variant, asChild, className, children, ...props }: CardPr
   const classes = cn(cardVariants({ variant, interactive: asChild }), className);
   if (!asChild) {
     return (
-      <div className={classes} {...props}>
+      <div data-slot="card" className={classes} {...props}>
         {children}
       </div>
     );
   }
   // Slottable marks the consumer's element; the arrow lands inside it as a sibling of its content.
   return (
-    <Slot.Root className={classes} {...props}>
+    <Slot.Root data-slot="card" className={classes} {...props}>
       <Slot.Slottable>{children}</Slot.Slottable>
       <ArrowUpRight aria-hidden className="absolute right-4 top-4 size-4 text-text-muted" />
     </Slot.Root>

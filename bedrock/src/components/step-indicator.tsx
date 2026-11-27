@@ -13,7 +13,7 @@ type StepIndicatorProps = {
 /** Where the person is in a flow of 3 to 7 steps. The text carries the meaning; the segments are decorative. */
 export function StepIndicator({ label, current, total, name, className }: StepIndicatorProps) {
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
+    <div data-slot="step-indicator" className={cn("flex flex-col gap-2", className)}>
       <p className="flex justify-between caption text-text-muted tabular-nums">
         <span>{label}</span>
         {name && <span>{name}</span>}

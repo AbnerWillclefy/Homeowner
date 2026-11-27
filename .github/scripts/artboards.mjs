@@ -150,7 +150,7 @@ export function measureOverflow() {
   return { scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth, offenders };
 }
 
-/** The design elements measured against the app's, by role. `design` is a CSS selector list of the artboards' classes (Homeowner's hm-*, Bedrock's br-*), `app` the `data-slot` Bedrock sets on the component root (bedrock/src; renaming one is a breaking change). `bedrock` says the app side is a Bedrock component, so a difference there is fixed in Bedrock. Roles an app does not render through Bedrock yet (web: list, row, field, segmented-control, dialog, bottom-bar; Revenue: list, field) show as count mismatches until those screens move to Bedrock (ADR 0030). */
+/** The design elements measured against the app's, by role. `design` is a CSS selector list of the artboards' classes (Homeowner's hm-*, Bedrock's br-*), `app` the `data-slot` Bedrock sets on the component root (bedrock/src; renaming one is a breaking change). `bedrock` says the app side is a Bedrock component, so a difference there is fixed in Bedrock. Roles an app does not render through Bedrock yet (web: list, row, field, segmented-control, dialog, bottom-bar, card; Revenue: list, field) show as count mismatches until those screens move to Bedrock (ADR 0030). */
 export const ROLES = [
   { role: "list", design: ".hm-list, .br-list", app: "[data-slot=list]", bedrock: true },
   { role: "row", design: ".hm-item, .br-listrow", app: "[data-slot=row], [data-slot=list-row]", bedrock: true },
@@ -162,6 +162,9 @@ export const ROLES = [
   { role: "field", design: ".hm-field, .br-field", app: "[data-slot=field]", bedrock: true },
   { role: "segmented-control", design: ".hm-seg, .br-seg", app: "[data-slot=segmented-control]", bedrock: true },
   { role: "bottom-bar", design: ".br-bottombar", app: "[data-slot=bottom-bar]", bedrock: true },
+  { role: "choice-group", design: ".br-choices", app: "[data-slot=choice-group]", bedrock: true },
+  { role: "step-indicator", design: ".br-stepper:has(.br-stepper__track)", app: "[data-slot=step-indicator]", bedrock: true },
+  { role: "card", design: ".br-card", app: "[data-slot=card]", bedrock: true },
 ];
 
 /** The selector of each role for one side, `side` being "app" or "design": what `measureBoxes` takes. */

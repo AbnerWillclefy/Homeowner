@@ -32,7 +32,7 @@ export function ChoiceGroup({ label, value, onValueChange, children, className, 
   const name = useId();
   return (
     <GroupContext.Provider value={{ name, value, onValueChange, onHero }}>
-      <div role="radiogroup" aria-label={label} className={cn("grid gap-2", className)}>
+      <div data-slot="choice-group" role="radiogroup" aria-label={label} className={cn("grid gap-2", className)}>
         {children}
       </div>
     </GroupContext.Provider>

@@ -112,7 +112,7 @@ export const SCREENS: Record<string, Entry> = {
   Parts: none("A component sheet, not a screen."),
 };
 
-/** The four tabs: a change to the app frame shoots them all. */
+/** The four tabs: a change to the app frame alone shoots them all. */
 const TABS = ["Main", "Chores", "Home", "Me"];
 
 /**
@@ -129,14 +129,15 @@ export const MAX_EXEMPT = 0;
 export const AXE_EXEMPT = new Set<string>([]);
 export const MAX_AXE_EXEMPT = 0;
 
-/** The artboards a pull request's changed files select, sorted: the ones of each domain folder changed, the four tabs for the app frame, and `Main` when only shared code changed. */
+/**
+ * The artboards a pull request's changed files select, sorted: the ones of each domain folder changed; else the four
+ * tabs for an app frame change; else `Main` for shared code. A frame change that comes with a domain's screens is
+ * wiring for them (routes, session), so the tabs would only bury the screens the change is about.
+ */
 export function changedArtboards(changedFiles: string[]): string[] {
   const files = changedFiles.filter((f) => !/\.test\.tsx?$/.test(f) && !f.startsWith("web/src/sw"));
   const domains = new Set(files.map((f) => /^web\/src\/domains\/([^/]+)\//.exec(f)?.[1]).filter((d): d is string => d !== undefined));
-  const frame = files.some((f) => f.startsWith("web/src/app/"));
-  const picked = new Set(frame ? TABS : []);
-  for (const [name, entry] of Object.entries(SCREENS)) {
-    if ("domains" in entry && entry.domains.some((d) => domains.has(d))) picked.add(name);
-  }
-  return picked.size > 0 ? [...picked].sort() : ["Main"];
+  const picked = Object.entries(SCREENS).flatMap(([name, entry]) => ("domains" in entry && entry.domains.some((d) => domains.has(d)) ? [name] : []));
+  if (picked.length > 0) return picked.sort();
+  return files.some((f) => f.startsWith("web/src/app/")) ? [...TABS].sort() : ["Main"];
 }

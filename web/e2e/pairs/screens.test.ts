@@ -44,9 +44,12 @@ describe("changedArtboards", () => {
     expect(changedArtboards(["web/src/domains/chores/api/api.ts", "web/src/domains/streak/x.ts"])).toEqual(expect.arrayContaining(["Chores", "ChoreSheet", "StreakSheet"]));
   });
 
-  it("adds the four tabs for the app frame", () => {
+  it("shoots the four tabs for an app frame change alone", () => {
     expect(changedArtboards(["web/src/app/components/Shell.tsx"])).toEqual(["Chores", "Home", "Main", "Me"]);
-    expect(changedArtboards(["web/src/app/components/Shell.tsx", "web/src/domains/streak/x.ts"])).toEqual(["Chores", "Home", "Main", "Me", "StreakSheet"]);
+  });
+
+  it("leaves the tabs out when the frame change comes with a domain's screens", () => {
+    expect(changedArtboards(["web/src/app/logic/routes.ts", "web/src/domains/push/x.ts"])).toEqual(["OnboardReminders"]);
   });
 
   it("shoots Main when only shared code changed", () => {
