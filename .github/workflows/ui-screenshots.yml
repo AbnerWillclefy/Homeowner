@@ -55,7 +55,7 @@ jobs:
             echo "shoot=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # Not gated on shoot: a run started by an edit skips the shots but still guards the spacing.
+      # Not gated on shoot: a run that takes no shots (an edit after fresh ones) still guards the spacing.
       - name: Check the added spacing classes are on the 8px grid
         if: steps.find.outputs.files != ''
         env:
@@ -117,7 +117,9 @@ jobs:
             "$PLAYWRIGHT_DIR/.bin/playwright" install chromium
 
             for _ in $(seq 30); do curl -sf "$BASE_URL" >/dev/null && break; sleep 1; done
-            BODY=$(body) node ".github/scripts/$app-screenshots.mjs" "$shots" "$prefix" > "$RUNNER_TEMP/body.md"
+            # Its own line, so a failed read stops the step instead of writing an empty description.
+            BODY=$(body)
+            BODY="$BODY" node ".github/scripts/$app-screenshots.mjs" "$shots" "$prefix" > "$RUNNER_TEMP/body.md"
           fi
 
           if $web; then
@@ -127,7 +129,9 @@ jobs:
             rm -rf web/pairs-results
             PAIRS_OUT="$shots" PAIRS_RESULTS="$PWD/web/pairs-results" npx -w web playwright test -c playwright.pairs.config.ts
             # After a Revenue run the description to extend is the one it just wrote.
-            if $revenue; then BODY=$(cat "$RUNNER_TEMP/body.md"); else BODY=$(body); fi
+            if $revenue; then BODY=$(cat "$RUNNER_TEMP/body.md"); else
+              BODY=$(body)
+            fi
             BODY="$BODY" PAIRS_RESULTS="$PWD/web/pairs-results" node .github/scripts/web-screenshots.mjs "$prefix" > "$RUNNER_TEMP/body.md"
           fi
 
