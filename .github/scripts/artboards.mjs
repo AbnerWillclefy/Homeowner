@@ -150,7 +150,7 @@ export function measureOverflow() {
   return { scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth, offenders };
 }
 
-/** The design elements measured against the app's, by role. `design` is a CSS selector list of the artboards' classes (Homeowner's hm-*, Bedrock's br-*), `app` the `data-slot` Bedrock sets on the component root (bedrock/src; renaming one is a breaking change). `bedrock` says the app side is a Bedrock component, so a difference there is fixed in Bedrock. Roles an app does not render through Bedrock yet (web: list, row, field, segmented-control, dialog, bottom-bar; Revenue: list, field) show as count mismatches until those screens move to Bedrock (ADR 0030). */
+/** The design elements measured against the app's, by role. `design` is a CSS selector list of the artboards' classes (Homeowner's hm-*, Bedrock's br-*), `app` the `data-slot` Bedrock sets on the component root (bedrock/src; renaming one is a breaking change). `bedrock` says the app side is a Bedrock component, so a difference there is fixed in Bedrock. Roles an app does not render through Bedrock yet (web: list, row, field, segmented-control, dialog, bottom-bar, card; Revenue: list, field) show as count mismatches until those screens move to Bedrock (ADR 0030). */
 export const ROLES = [
   { role: "list", design: ".hm-list, .br-list", app: "[data-slot=list]", bedrock: true },
   { role: "row", design: ".hm-item, .br-listrow", app: "[data-slot=row], [data-slot=list-row]", bedrock: true },

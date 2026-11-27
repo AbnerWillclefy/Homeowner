@@ -39,7 +39,7 @@ Domain terms are in `GLOSSARY.md`, decisions in `docs/adr/`.
     element by role) or the details table under the pair in the description, which lists only the differences. Raise **one finding per
     difference over 4px** (role, property, app value, design value; a table of 20 rows is cut, the file has the rest). A count mismatch
     ("3 rows in app, 5 in artboard") is a difference. A role the app does not render through Bedrock yet is a count mismatch until the screen moves to Bedrock: raise it once, naming
-    the cause, never in `bedrock/src/`. Today that is web's list, row, field, segmented-control, dialog and bottom-bar (its own `Card`,
+    the cause, never in `bedrock/src/`. Today that is web's list, row, field, segmented-control, dialog, bottom-bar and card (its own `Card`,
     `BottomNav`, `AppDialog`), and Revenue's list and field. A difference inside a component with
     `bedrock: true` (`ROLES` in `.github/scripts/artboards.mjs`) is anchored on, and fixed in, the Bedrock component under `bedrock/src/`, not
     the screen. Do not raise the smaller ones.
