@@ -6,6 +6,7 @@ import { Button } from "./button";
 import { Checkbox } from "./checkbox";
 import { Choice, ChoiceGroup } from "./choice-group";
 import { PageHeader } from "./page-header";
+import { SectionHeading } from "./section-heading";
 import { StepIndicator } from "./step-indicator";
 import { Stepper } from "./stepper";
 import { Switch } from "./switch";
@@ -28,6 +29,10 @@ export function requiredProps() {
   <StepIndicator />;
   // @ts-expect-error a PageHeader needs a title
   <PageHeader />;
+  // @ts-expect-error a SectionHeading needs a title and says which variant it is
+  <SectionHeading />;
+  // @ts-expect-error a SectionHeading has no default variant, so each call site chooses
+  <SectionHeading title="t" />;
   // @ts-expect-error a ChoiceGroup needs a label and a value
   <ChoiceGroup />;
   // @ts-expect-error a Choice needs a label and a value

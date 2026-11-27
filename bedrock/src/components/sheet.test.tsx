@@ -149,3 +149,20 @@ describe("Dialog", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });
+
+describe("scrim", () => {
+  const scrim = () => document.querySelector('[data-slot="scrim"]');
+
+  it.each([true, false])("the Sheet overlay is the dark scrim token (wide: %s)", (wide) => {
+    stubViewport(wide);
+    render(<Sheet open onOpenChange={() => {}} title="Filtros" closeLabel="Fechar">corpo</Sheet>);
+    expect(scrim()!.className).toContain("bg-scrim");
+    expect(scrim()!.className).not.toContain("bg-text/");
+  });
+
+  it("the Dialog overlay is the dark scrim token", () => {
+    render(<Dialog open onOpenChange={() => {}} title="Excluir?" description="d" cancelLabel="n" confirmLabel="s" onConfirm={() => {}} />);
+    expect(scrim()!.className).toContain("bg-scrim");
+    expect(scrim()!.className).not.toContain("bg-text/");
+  });
+});

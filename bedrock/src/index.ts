@@ -12,6 +12,7 @@ export { StepIndicator, type StepIndicatorProps } from "./components/step-indica
 export { Avatar, type AvatarProps, type AvatarSize } from "./components/avatar";
 export { ChoiceGroup, Choice, type ChoiceGroupProps, type ChoiceProps } from "./components/choice-group";
 export { PageHeader, type PageHeaderProps } from "./components/page-header";
+export { SectionHeading, type SectionHeadingProps } from "./components/section-heading";
 export { SegmentedControl, type SegmentedControlProps } from "./components/segmented-control";
 export { ProgressBar, progressTone, type ProgressBarProps } from "./components/progress-bar";
 export { List, Row } from "./components/list";
