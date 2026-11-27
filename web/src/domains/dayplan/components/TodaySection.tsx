@@ -7,9 +7,10 @@ import { pendingAction, type Acting, type SwapAction, type TaskAction, type Task
 import { ME_PATH } from "../../../app/logic/routes";
 import { noTasksReason, type EnergyNote, type NoTasksReason } from "../../checkin/logic/state";
 import { formatAllocationTime } from "../../home/logic/allocationTimes";
+import { SectionHeading } from "@homeowner/bedrock";
 import { useI18n, type MessageKey } from "../../../shared/i18n";
+import { sectionTitle } from "../../../shared/i18n/sectionTitle";
 import { Button } from "../../../shared/ui/Button";
-import { GroupHeading } from "../../../shared/ui/GroupHeading";
 import { LOAD_FAILURE_KEY } from "../logic/failureMessages";
 import { ResidentLabel } from "../../residents/components/ResidentLabel";
 import { DaySummary } from "./DaySummary";
@@ -236,9 +237,11 @@ function PlanView({
       />
 
       {plan.planned && (
-        <div>
-          <GroupHeading
-            action={
+        <div className="flex flex-col gap-3">
+          <SectionHeading
+            variant="title"
+            title={t("dayplan.mine.heading")}
+            end={
               showAcceptAll(plan) && (
                 <Button
                   variant="ghost"
@@ -250,9 +253,7 @@ function PlanView({
                 </Button>
               )
             }
-          >
-            {t("dayplan.mine.heading")}
-          </GroupHeading>
+          />
           {plan.mine.length > 0 ? (
             <ul className={LIST}>{plan.mine.map((task) => card(task, "mine"))}</ul>
           ) : (
@@ -262,8 +263,8 @@ function PlanView({
       )}
 
       {plan.doneToday.length > 0 && (
-        <div>
-          <GroupHeading count={plan.doneToday.length}>{t("dayplan.done.heading")}</GroupHeading>
+        <div className="flex flex-col gap-3">
+          <SectionHeading variant="label" title={sectionTitle(t, t("dayplan.done.heading"), plan.doneToday.length)} />
           <ul className={LIST}>
             {plan.doneToday.map((done) => (
               <DoneCard
@@ -294,8 +295,8 @@ function PlanView({
       />
 
       {plan.planned && plan.others.length > 0 && (
-        <div>
-          <GroupHeading>{t("dayplan.others.heading")}</GroupHeading>
+        <div className="flex flex-col gap-3">
+          <SectionHeading variant="title" title={t("dayplan.others.heading")} />
           <div className="flex flex-col gap-4">
             {plan.others.map((other, index) => (
               <section key={other.residentId} aria-labelledby={`resident-${index}`} className="mt-0">
@@ -311,8 +312,8 @@ function PlanView({
         </div>
       )}
 
-      <div>
-        <GroupHeading count={plan.pool.length}>{t("dayplan.pool.heading")}</GroupHeading>
+      <div className="flex flex-col gap-3">
+        <SectionHeading variant="title" title={sectionTitle(t, t("dayplan.pool.heading"), plan.pool.length)} />
         {plan.pool.length === 0 ? (
           <p className="my-0 text-muted">{t("dayplan.pool.empty")}</p>
         ) : (

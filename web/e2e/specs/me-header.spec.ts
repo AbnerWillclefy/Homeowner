@@ -180,8 +180,8 @@ for (const l of LOCALES) {
 
       test("shows the profile and App parts and no history part", async ({ page, baseURL }) => {
         await openMe(page, baseURL);
-        await expect(page.getByRole("heading", { name: /^(How the plan knows you|Como o plano te conhece)$/, level: 3 })).toBeVisible();
-        await expect(page.getByRole("heading", { name: "App", level: 3 })).toBeVisible();
+        await expect(page.getByRole("heading", { name: /^(How the plan knows you|Como o plano te conhece)$/, level: 2 })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "App", level: 2 })).toBeVisible();
         await expect(page.getByRole("heading", { name: /^(My Completions|Minhas conclusões)$/ })).toHaveCount(0);
         await expect(page.getByRole("region", { name: /^(My Completions|Minhas conclusões)$/ })).toHaveCount(0);
       });

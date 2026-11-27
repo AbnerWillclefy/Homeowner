@@ -68,7 +68,7 @@ export function AppDialog({
     <Dialog.Root open={open} onOpenChange={(next) => !next && onDismiss()}>
       {trigger !== undefined && <Dialog.Trigger asChild>{trigger}</Dialog.Trigger>}
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-(--z-overlay) bg-text/50" />
+        <Dialog.Overlay data-slot="scrim" className="fixed inset-0 z-(--z-overlay) bg-scrim" />
         <Dialog.Content
           className={`${CONTENT_BASE} ${CONTENT_SIZE[size]}`}
           {...(description === undefined ? { "aria-describedby": undefined } : {})}

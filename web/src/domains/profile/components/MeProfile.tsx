@@ -1,7 +1,7 @@
-import { List } from "@homeowner/bedrock";
+import { useId } from "react";
+import { List, SectionHeading } from "@homeowner/bedrock";
 import { Ban, Heart, Zap } from "lucide-react";
 import { useI18n } from "../../../shared/i18n";
-import { HeadedSection } from "../../../shared/ui/HeadedSection";
 import { IconTile } from "../../../shared/ui/IconTile";
 import { useReportFetching, useReportFirstLoad } from "../../../shared/ui/PageLoading";
 import { SheetRow } from "../../../shared/ui/SheetRow";
@@ -22,6 +22,7 @@ const TILE = "bg-surface-sunken text-text-muted";
  */
 export function MeProfile() {
   const { t } = useI18n();
+  const headingId = useId();
   const { state, refreshing, retry, setBaseline, setPreference, setRestricted } = useProfile();
 
   // The page's one status announces the wait; the skeleton shows after 300ms. Only the first load and a Retry load.
@@ -30,7 +31,8 @@ export function MeProfile() {
   useReportFetching(refreshing);
 
   return (
-    <HeadedSection title={t("me.group.plan")}>
+    <section aria-labelledby={headingId} className="mt-0 flex flex-col gap-4">
+      <SectionHeading variant="label" id={headingId} title={t("me.group.plan")} />
       {showSkeleton && <ProfileSkeleton />}
       {/* Load problems only; each save or undo is a toast, announced once by the toast region. */}
       <ProfileStatus state={state} retry={retry} />
@@ -67,6 +69,6 @@ export function MeProfile() {
           </SheetRow>
         </List>
       )}
-    </HeadedSection>
+    </section>
   );
 }

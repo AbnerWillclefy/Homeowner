@@ -50,12 +50,12 @@ for (const l of LOCALES) {
       await seedSession(page, { email: RESIDENT_EMAIL });
     });
 
-    /** The block under a group heading: the heading's parent. */
+    /** The block under a group heading: the parent of the heading's row. */
     const group = (page: import("@playwright/test").Page, name: string) =>
-      page.getByRole("heading", { level: 3, name }).locator("..");
+      page.getByRole("heading", { level: 2, name }).locator("../..");
     /** Your own Task cards: the list in the "Your Tasks" block. Its heading sits in a row with "Aceitar todas" only while 2+ are Proposed. */
     const mineCards = (page: import("@playwright/test").Page) =>
-      page.locator("div:has(> h3, > div > h3)").filter({ has: page.getByRole("heading", { level: 3, name: l.mine }) }).locator("> ul");
+      page.locator("div:has(> div > h2)").filter({ has: page.getByRole("heading", { level: 2, name: l.mine }) }).locator("> ul");
     const noAlertText =(page: import("@playwright/test").Page) =>
       expect(page.getByRole("alert").filter({ hasText: /\S/ })).toHaveCount(0);
 
@@ -73,15 +73,14 @@ for (const l of LOCALES) {
       await expect(buttons.last()).toHaveAccessibleName(new RegExp(`^${l.accept}`));
       // The offers come after the title and the summary, and before your own Task cards.
       const above = await page.evaluate(
-        ([incoming]) => {
-          const offers = [...document.querySelectorAll("h3")].find((h) => h.textContent?.startsWith(incoming!))!;
-          const cards = document.querySelector("div:not(:has(> h3)) > ul")!;
-          return !!(offers.compareDocumentPosition(cards) & Node.DOCUMENT_POSITION_FOLLOWING);
+        ([incoming, mine]) => {
+          const heading = (text: string) => [...document.querySelectorAll("h2")].find((h) => h.textContent?.startsWith(text))!;
+          return !!(heading(incoming!).compareDocumentPosition(heading(mine!)) & Node.DOCUMENT_POSITION_FOLLOWING);
         },
-        [l.incoming],
+        [l.incoming, l.mine],
       );
       expect(above).toBe(true);
-      await expect(page.getByRole("heading", { level: 3, name: l.outgoing })).toHaveCount(0);
+      await expect(page.getByRole("heading", { level: 2, name: l.outgoing })).toHaveCount(0);
     });
 
     test("accepting moves both Tasks and both read swapped", async ({ page, baseURL, fakeApi }) => {
@@ -91,7 +90,7 @@ for (const l of LOCALES) {
       await expect(page.getByRole("button", { name: new RegExp(`^${l.accept}`) })).toBeVisible();
       const readsBefore = planReads();
       await page.getByRole("button", { name: new RegExp(`^${l.accept}`) }).click();
-      await expect(page.getByRole("heading", { level: 3, name: l.incoming })).toHaveCount(0);
+      await expect(page.getByRole("heading", { level: 2, name: l.incoming })).toHaveCount(0);
       // The server's answer is written into the cache: the action sends no read of the plan.
       expect(planReads()).toBe(readsBefore);
 
@@ -112,7 +111,7 @@ for (const l of LOCALES) {
       withIncomingOffer(fakeApi.state);
       await launchApp(page, baseURL!);
       await page.getByRole("button", { name: new RegExp(`^${l.decline}`) }).click();
-      await expect(page.getByRole("heading", { level: 3, name: l.incoming })).toHaveCount(0);
+      await expect(page.getByRole("heading", { level: 2, name: l.incoming })).toHaveCount(0);
       await expect(mineCards(page).getByText("Wash the dishes")).toBeVisible();
       await noAlertText(page);
       await expect(page.getByRole("status").filter({ hasText: /\S/ })).toHaveCount(0);
@@ -128,7 +127,7 @@ for (const l of LOCALES) {
       await expect(offers.getByText(l.hint)).toBeVisible();
       await expect(offers.getByRole("button")).toHaveCount(1);
       await offers.getByRole("button", { name: new RegExp(`^${l.cancel}`) }).click();
-      await expect(page.getByRole("heading", { level: 3, name: l.outgoing })).toHaveCount(0);
+      await expect(page.getByRole("heading", { level: 2, name: l.outgoing })).toHaveCount(0);
       await noAlertText(page);
     });
 
@@ -150,7 +149,7 @@ for (const l of LOCALES) {
       await expect(page.getByRole("status").filter({ hasText: l.stale })).toBeVisible();
       // A 409 reads the plan once, to show the fresh one.
       expect(planReads()).toBe(readsBefore + 1);
-      await expect(page.getByRole("heading", { level: 3, name: l.incoming })).toHaveCount(0);
+      await expect(page.getByRole("heading", { level: 2, name: l.incoming })).toHaveCount(0);
       await noAlertText(page);
     });
 
@@ -167,7 +166,7 @@ for (const l of LOCALES) {
       await launchApp(page, baseURL!);
       await page.getByRole("button", { name: new RegExp(`^${l.cancel}`) }).click();
       await expect(page.getByRole("status").filter({ hasText: /\S/ })).toBeVisible();
-      await expect(page.getByRole("heading", { level: 3, name: l.outgoing })).toHaveCount(0);
+      await expect(page.getByRole("heading", { level: 2, name: l.outgoing })).toHaveCount(0);
       await noAlertText(page);
     });
 
@@ -253,7 +252,7 @@ for (const l of LOCALES) {
 
       // Cancel the offer: Swap is back on the Task.
       await offers.getByRole("button", { name: new RegExp(`^${l.cancel}`) }).click();
-      await expect(page.getByRole("heading", { level: 3, name: l.outgoing })).toHaveCount(0);
+      await expect(page.getByRole("heading", { level: 2, name: l.outgoing })).toHaveCount(0);
       await expect(swapButton(page)).toBeVisible();
     });
 
@@ -298,7 +297,7 @@ for (const l of LOCALES) {
       await expect(page.getByRole("dialog")).toHaveCount(0);
       await expect(page.getByRole("status").filter({ hasText: l.restricted })).toBeVisible();
       await noAlertText(page);
-      await expect(page.getByRole("heading", { level: 3, name: l.outgoing })).toHaveCount(0);
+      await expect(page.getByRole("heading", { level: 2, name: l.outgoing })).toHaveCount(0);
       await expect(swapButton(page)).toBeVisible();
     });
 

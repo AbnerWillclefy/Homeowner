@@ -1,7 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 
 const h1 = (page: Page, name: string) => page.getByRole("heading", { name, level: 1, exact: true });
-const h3 = (page: Page, name: string) => page.getByRole("heading", { name, level: 3 });
+const h2 = (page: Page, name: string) => page.getByRole("heading", { name, level: 2 });
 
 /** What each signed-in tab shows, by role, label and text only. */
 export const tabs = {
@@ -9,8 +9,8 @@ export const tabs = {
     // Today's title is "Today", the tab's h1.
     heading: (page: Page) => h1(page, "Today"),
     mine: (page: Page) => h1(page, "Today"),
-    others: (page: Page) => h3(page, "Other Residents' Tasks"),
-    pool: (page: Page) => h3(page, "Still to do"),
+    others: (page: Page) => h2(page, "Other Residents' Tasks"),
+    pool: (page: Page) => h2(page, "Still to do"),
     task: (page: Page, name: string) => page.getByText(name, { exact: true }),
     empty: (page: Page) => page.getByText("Nothing for you today. Enjoy the day."),
     loadError: (page: Page) => page.getByRole("alert").filter({ hasText: "Something went wrong loading today's plan." }),
@@ -37,7 +37,7 @@ export const tabs = {
   },
   me: {
     heading: (page: Page) => h1(page, "About you"),
-    /** The parts of Me, each a region named by its h3. */
+    /** The parts of Me, each a region named by its heading. */
     history: (page: Page) => page.getByRole("region", { name: "My Completions", exact: true }),
     plan: (page: Page) => page.getByRole("region", { name: "How the plan knows you", exact: true }),
     /** A row of Me: one native button that opens a Sheet, named by the row's title (and its current value). */
