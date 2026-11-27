@@ -20,11 +20,11 @@ STUB
 chmod +x "$tmp/bin/gh"
 export PATH="$tmp/bin:$PATH" FIX="$tmp" GITHUB_REPOSITORY=o/r
 
-# thread <resolved> <first author> <first body> [reply author...]
+# thread <resolved> <first author> <first body> [reply author:reply body...]
 thread() {
   local r="$1" a="$2" b="$3"; shift 3
   jq -n --argjson r "$r" --arg a "$a" --arg b "$b" '{isResolved: $r, comments: {
-    nodes: ([{author: {login: $a}, body: $b}] + [$ARGS.positional[] | {author: {login: .}, body: "x"}])}}' --args "$@"
+    nodes: ([{author: {login: $a}, body: $b}] + [$ARGS.positional[] | {author: {login: (split(":")[0])}, body: (split(":")[1:] | join(":"))}])}}' --args "$@"
 }
 serve() { jq -n '{data: {repository: {pullRequest: {reviewThreads: {pageInfo: {hasNextPage: false}, nodes: $ARGS.positional}}}}}' --jsonargs "$@" >"$tmp/threads.json"; }
 check() {
@@ -35,13 +35,16 @@ check() {
 design='**[Finding] (design) /welcome/home at phone width: the choice is missing**'
 other='**[Finding] (correctness) a nil map**'
 
-serve "$(thread false claude "$other")" "$(thread true claude "$other" homeowner-agents)" "$(thread false AbnerWillclefy "$design")"
+serve "$(thread false claude "$other")" "$(thread true claude "$other" "homeowner-agents:Rejected.")" "$(thread false AbnerWillclefy "$design")"
 check "an unresolved Claude thread counts, a resolved rejected non-design one and a human's do not" 1
 
-serve "$(thread true claude "$design" homeowner-agents)"
-check "a design finding the engineer replied to counts even once resolved" 1
+serve "$(thread true claude "$design" "homeowner-agents:**Frontend Engineer:** Rejected. Out of scope.")"
+check "a design finding the engineer rejected counts even once resolved" 1
 
-serve "$(thread true claude "$design")" "$(thread true claude "$design" claude)"
+serve "$(thread true claude "$design" "homeowner-agents:**Frontend Engineer:** Fixed: the choice is in." "homeowner-agents:Fixed in abc123")"
+check "a design finding answered as fixed does not count" 0
+
+serve "$(thread true claude "$design")" "$(thread true claude "$design" "claude:ok")"
 check "a design finding resolved without a reply (fixed), or answered only by Claude, does not count" 0
 
 echo "claude-open-threads: all passed"

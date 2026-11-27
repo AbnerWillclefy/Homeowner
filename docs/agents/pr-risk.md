@@ -45,7 +45,7 @@ The check then labels the pull request `risk:low`, `risk:medium` or `risk:high`.
 
 To run it by hand: Actions, **Merge by risk**, Run workflow, optionally with a pull request number.
 
-A Claude thread blocks the merge while it is unresolved, and a `(design)` finding (a screen that differs from its artboard) also blocks once anyone but Claude replied to it, resolved or not: a design finding is fixed, never rejected, so a reply hands the merge to the maintainer (`claude-open-threads.sh`).
+A Claude thread blocks the merge while it is unresolved, and a `(design)` finding (a screen that differs from its artboard) also blocks once anyone but Claude replied to it with anything but "Fixed: …", resolved or not: a design finding is fixed, never rejected, so a reply hands the merge to the maintainer (`claude-open-threads.sh`).
 
 What counts as a Claude finding is defined twice: in `.github/scripts/claude-findings.sh` and in the gate of `agent-review-fix.yml`, which only a human may edit. Keep the two the same; when that workflow is next edited, it should call the script instead.
 

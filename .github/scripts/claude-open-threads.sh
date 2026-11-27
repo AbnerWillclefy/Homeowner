@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Prints how many of Claude's review threads on a pull request block the merge: the unresolved ones, and every
-# `(design)` finding someone other than Claude replied to. A finding counts as answered once its thread is resolved:
-# fixed, or rejected with a reply saying why. A design finding (app differs from its artboard) cannot be rejected in a
+# `(design)` finding someone other than Claude replied to with anything but "Fixed…" (the review-fix's answer when it
+# fixed one). A finding counts as answered once its thread is resolved: fixed, or rejected with a reply saying why. A design finding (app differs from its artboard) cannot be rejected in a
 # pull request: the gap is decided in the epic's refinement, so a reply hands the merge to the maintainer.
 # A re-review never repeats a finding, so this, not the latest run's comments, shows what is open.
 # Usage: claude-open-threads.sh <pr-number>   (needs GH_TOKEN and GITHUB_REPOSITORY)
@@ -28,5 +28,6 @@ fi
 jq '[.nodes[] | .comments.nodes as $c
      | select($c[0].author.login | test("^claude(\\[bot\\])?$"))
      | select((.isResolved | not)
-         or ((($c[0].body // "") | startswith("**[Finding] (design)")) and any($c[1:][]; .author.login | test("^claude(\\[bot\\])?$") | not)))
+         or ((($c[0].body // "") | startswith("**[Finding] (design)")) and any($c[1:][]; (.author.login | test("^claude(\\[bot\\])?$") | not)
+              and ((.body // "") | sub("^\\*\\*[^*]+:\\*\\*\\s*"; "") | test("^fixed\\b"; "i") | not))))
     ] | length' <<<"$threads"
