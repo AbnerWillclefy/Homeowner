@@ -85,7 +85,7 @@ check_claude_review_clean() {
   [ "$findings" = 0 ] || blocked "Claude's latest review has $findings findings" || return
   # Earlier findings stay open until their thread is resolved, even when this run raised nothing
   open=$("$here/claude-open-threads.sh" "$pr") || failed "Claude's review threads could not be read" || return
-  [ "$open" = 0 ] || blocked "$open of Claude's review threads are unresolved"
+  [ "$open" = 0 ] || blocked "$open of Claude's review threads are unresolved or reject a design finding"
 }
 
 # The maintainer's latest verdict: changes requested blocks any tier; medium needs an approval
