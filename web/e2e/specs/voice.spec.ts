@@ -83,8 +83,8 @@ test("tap, review, remove one, Confirm sends only the other and the Chores scree
   await mic(page).click();
   const dialog = page.getByRole("dialog", { name: "Voice command" });
   expect(await page.evaluate(() => (window as unknown as { __voice: { lang: string } }).__voice.lang)).toBe("en-US");
-  await expect(dialog.getByText("New Chore: Water the plants, Weekly")).toBeVisible();
-  await expect(dialog.getByText("New Chore: Sweep the porch, Weekly")).toBeVisible();
+  await expect(dialog.getByText("New Chore: Water the plants, Weekly", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("New Chore: Sweep the porch, Weekly", { exact: true })).toBeVisible();
   // Nothing is changed until Confirm.
   expect(fakeApi.requests.filter((r) => r.method === "POST" && r.path === "/home/chores")).toHaveLength(0);
 
@@ -96,10 +96,53 @@ test("tap, review, remove one, Confirm sends only the other and the Chores scree
   const created = fakeApi.requests.filter((r) => r.method === "POST" && r.path === "/home/chores");
   expect(created.map((r) => (r.body as { name: string }).name)).toEqual(["Sweep the porch"]);
 
-  await dialog.getByRole("button", { name: "Close" }).click();
+  // The ✕ and the "Close" at the foot both close it.
+  await dialog.getByRole("button", { name: "Close" }).last().click();
   await shell.openTab(page, "Chores");
   await expect(tabs.chores.chore(page, "Sweep the porch")).toBeVisible();
   await expect(tabs.chores.chore(page, "Water the plants")).toHaveCount(0);
+});
+
+/** A recognition that starts and never hears anything, so the Sheet stays on "listening". */
+async function silentRecognition(page: Page) {
+  await page.addInitScript(() => {
+    const w = window as unknown as Record<string, unknown>;
+    w["__stops"] = 0;
+    const Silent = class {
+      start() {}
+      stop() {
+        (w["__stops"] as number)++;
+      }
+      abort() {}
+    };
+    w["SpeechRecognition"] = Silent;
+    w["webkitSpeechRecognition"] = Silent;
+  });
+}
+
+test("the commands left today show as soon as the Sheet opens, and the big mic button stops listening", async ({ page, baseURL, fakeApi }) => {
+  fakeApi.state.voiceRemaining = 4;
+  await silentRecognition(page);
+  await launchApp(page, baseURL!);
+  await mic(page).click();
+  const dialog = page.getByRole("dialog", { name: "Voice command" });
+  await expect(dialog.getByText("Voice commands left today: 4", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Listening. Say what you want done.", { exact: true })).toBeVisible();
+  await expect(dialog.getByText(/^“I folded the laundry/)).toBeVisible();
+  const stop = dialog.getByRole("button", { name: "Stop listening" });
+  expect((await stop.boundingBox())!.width).toBeGreaterThanOrEqual(72);
+  await stop.click();
+  expect(await page.evaluate(() => (window as unknown as { __stops: number }).__stops)).toBe(1);
+});
+
+test("a failed read of the count shows no count, never 0", async ({ page, baseURL, fakeApi }) => {
+  fakeApi.override("GET /home/voice", json(500, { error: "boom" }));
+  await silentRecognition(page);
+  await launchApp(page, baseURL!);
+  await mic(page).click();
+  const dialog = page.getByRole("dialog", { name: "Voice command" });
+  await expect(dialog.getByText("Listening. Say what you want done.", { exact: true })).toBeVisible();
+  await expect(dialog.getByText(/Voice commands left today/)).toHaveCount(0);
 });
 
 test("the only request carrying speech is the JSON transcript to /home/voice/interpret", async ({ page, baseURL, fakeApi }) => {
@@ -323,7 +366,7 @@ test.describe("pt-BR", () => {
     await launchApp(page, baseURL!);
     await page.getByRole("button", { name: "Comando de voz" }).click();
     const dialog = page.getByRole("dialog", { name: "Comando de voz" });
-    await expect(dialog.getByText("Novo afazer: Water the plants, Semanal")).toBeVisible();
+    await expect(dialog.getByText("Novo afazer: Water the plants, Semanal", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => (window as unknown as { __voice: { lang: string } }).__voice.lang)).toBe("pt-BR");
   });
 });

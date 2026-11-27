@@ -18,6 +18,11 @@ class Fake {
   start() {
     this.started++;
   }
+  stopped = 0;
+  stop() {
+    this.stopped++;
+    this.onend?.();
+  }
   abort() {
     this.aborted++;
     this.onend?.();
@@ -63,5 +68,16 @@ describe("listenOnce", () => {
     abort.abort();
     expect(Fake.last.aborted).toBe(1);
     expect(await done).toEqual({ kind: "nothing" });
+  });
+
+  it("stops, and still resolves to what was heard, when the done signal aborts", async () => {
+    const done = new AbortController();
+    const heard = listenOnce(ctor, "pt-BR", undefined, done.signal);
+    const r = Fake.last;
+    r.onresult?.({ results: [[{ transcript: "lavar a louça" }]] });
+    done.abort();
+    expect(r.stopped).toBe(1);
+    expect(r.aborted).toBe(0);
+    expect(await heard).toEqual({ kind: "transcript", text: "lavar a louça" });
   });
 });
