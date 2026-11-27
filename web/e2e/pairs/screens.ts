@@ -16,12 +16,12 @@ export type Data =
 
 /** What is done on the loaded screen before the shot. Each name has an opener in openers.ts. */
 export const STATES = [
-  "check-in", // the Check-in dialog (it opens by itself on an unchecked day)
-  "check-in-later", // the Check-in dialog closed with "Agora não", so the hero asks the question
+  "check-in", // the Check-in Sheet (it opens by itself on an unchecked day)
+  "check-in-later", // the Check-in Sheet closed with its ✕, so the hero asks the question
   "task", // the Sheet of the first Task card
-  "swap", // the dialog to offer a Swap, from the menu of another Resident's Task
-  "streak", // the Streak dialog
-  "voice", // the voice panel
+  "swap", // the Sheet to offer a Swap, from the ⋯ menu of your own first Task's Sheet
+  "streak", // the Streak Sheet
+  "voice", // the voice Sheet
   "start-choice", // the start choice, after joining through an Invite
   "invite-rating", // the rating step, after joining through an Invite
   "leave", // the Leave Home confirm
