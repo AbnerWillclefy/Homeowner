@@ -35,6 +35,11 @@ export interface PlanTask {
    * (an older API omits it). Read leniently, like `with`.
    */
   responsibleResidentId?: string | null;
+  /**
+   * When the Chore was last done: the Home-local day and the Residents on that Completion (empty when they have
+   * left). Absent when never done, or from an older API; read leniently, like `with`.
+   */
+  lastDone?: { date: string; residentIds: string[] };
 }
 
 /** A Task the signed-in Resident completed today. */
@@ -149,6 +154,10 @@ function parseTask(body: unknown): PlanTask | null {
     if (partners.length > 0) task.with = partners;
   }
   if (typeof body.responsibleResidentId === "string") task.responsibleResidentId = body.responsibleResidentId;
+  const last = body.lastDone;
+  if (isRecord(last) && typeof last.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(last.date) && Array.isArray(last.residentIds) && last.residentIds.every((r) => typeof r === "string")) {
+    task.lastDone = { date: last.date, residentIds: last.residentIds as string[] };
+  }
   return reason === undefined ? task : { ...task, reason };
 }
 

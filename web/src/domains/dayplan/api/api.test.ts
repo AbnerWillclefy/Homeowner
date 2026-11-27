@@ -264,6 +264,36 @@ describe("a Task's responsibleResidentId", () => {
   });
 });
 
+describe("a Task's lastDone", () => {
+  const planWith = (extra: object) => Response.json({ ...PLAN, mine: [{ ...TASK, ...extra }] });
+  const mineTask = async () => {
+    const result = await getDayPlan();
+    return result.kind === "ok" ? result.plan.mine[0] : undefined;
+  };
+
+  it("keeps a date and Resident ids, an empty list included", async () => {
+    for (const residentIds of [["r1", "r2"], []]) {
+      stubFetch(planWith({ lastDone: { date: "2030-01-14", residentIds } }));
+      expect((await mineTask())?.lastDone).toEqual({ date: "2030-01-14", residentIds });
+    }
+  });
+
+  it.each([
+    ["null", { lastDone: null }],
+    ["absent", {}],
+    ["a string", { lastDone: "2030-01-14" }],
+    ["a date that is not YYYY-MM-DD", { lastDone: { date: "yesterday", residentIds: [] } }],
+    ["a datetime", { lastDone: { date: "2030-01-14T10:00:00Z", residentIds: [] } }],
+    ["no residentIds", { lastDone: { date: "2030-01-14" } }],
+    ["residentIds that are not all strings", { lastDone: { date: "2030-01-14", residentIds: ["r1", 2] } }],
+  ])("leaves it out for %s, without failing the plan", async (_name, extra) => {
+    stubFetch(planWith(extra));
+    const task = await mineTask();
+    expect(task?.choreName).toBe("Wash dishes");
+    expect(task && "lastDone" in task).toBe(false);
+  });
+});
+
 describe("doneToday with and category", () => {
   const read = async (entry: unknown) => {
     stubFetch(Response.json({ ...PLAN, doneToday: [entry] }));
