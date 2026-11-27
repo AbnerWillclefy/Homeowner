@@ -15,8 +15,9 @@ type SectionHeadingProps = {
 /** The name of a group of rows on a screen: a heading, with an optional item at the end of its row. */
 export function SectionHeading({ title, variant, end, as: Tag = "h2", id }: SectionHeadingProps) {
   const style = variant === "title" ? "section-title font-semibold text-text" : "label text-text-muted";
+  // The artboard's `hm-sechead` has 8px above it; a bare `hm-label` has none.
   return (
-    <div data-slot="section-heading" className="flex items-center justify-between gap-2 pt-2">
+    <div data-slot="section-heading" className={`flex items-center justify-between gap-2 ${variant === "title" ? "pt-2" : ""}`}>
       <Tag id={id} className={`${style} my-0 min-w-0 [overflow-wrap:anywhere]`}>
         {title}
       </Tag>

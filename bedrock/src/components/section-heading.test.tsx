@@ -35,3 +35,15 @@ it("renders an h2 by default, the asked tag with as, and the id on the heading",
   expect(screen.getByRole("heading", { name: "A", level: 2 }).id).toBe("a");
   expect(screen.getByRole("heading", { name: "B", level: 3 })).toBeTruthy();
 });
+
+it("only the title variant has the 8px above it that the artboard's sechead row has", () => {
+  render(
+    <>
+      <SectionHeading title="A" variant="title" />
+      <SectionHeading title="B" variant="label" />
+    </>,
+  );
+  const [title, label] = [...document.querySelectorAll('[data-slot="section-heading"]')];
+  expect(title.className).toContain("pt-2");
+  expect(label.className).not.toContain("pt-2");
+});
