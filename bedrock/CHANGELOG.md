@@ -4,7 +4,7 @@ Bedrock follows semver; before 1.0.0 a minor may break ([spec](../docs/design/be
 
 ## Unreleased
 
-- Core: `Sheet` grows five optional props, all defaulting to today's behaviour: `leading` (drawn before the title, a large icon), `tools` (drawn before the close button, a ⋯ `Menu`), `dismissible` (false while a write is in flight: no drag, Escape or outside tap, and a disabled close button), `closeButton` (false draws no ✕) and `size` (`full` is 92% of a phone's height).
+- Core: `Sheet` grows five optional props, all defaulting to today's behaviour: `leading` (drawn before the title, a large icon), `tools` (drawn before the close button, a ⋯ `Menu`), `dismissible` (false while a write is in flight: no drag, Escape or outside tap, and a disabled close button), `closeButton` (false draws no ✕) and `size` (`full` is 92% of a phone's height). Opening a `Sheet` now moves focus to the panel itself in both trees (vaul left it on the opener), so a keyboard or screen reader starts at its title.
 
 - Core: `SectionHeading` (the name of a group of rows: `variant` is required, `title` for the 18px heading and `label` for the 12px muted caption; optional `end` item in the row, `as` `h2` or `h3`, `id`). Its root carries `data-slot="section-heading"`. The overlays of `Sheet` (both trees) and `Dialog` carry `data-slot="scrim"`, so the pairs measure them.
 

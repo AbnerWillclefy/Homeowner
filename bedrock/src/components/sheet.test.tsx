@@ -60,6 +60,19 @@ describe("Sheet", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
+  it.each([true, false])("moves focus into the panel when it opens (wide: %s)", async (wide) => {
+    stubViewport(wide);
+    render(
+      <>
+        <button>Abrir</button>
+        <Sheet open onOpenChange={() => {}} title="Filtros" closeLabel="Fechar">
+          corpo
+        </Sheet>
+      </>,
+    );
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("dialog", { name: "Filtros" })));
+  });
+
   it("swaps panel for drawer when the viewport crosses the breakpoint, staying open", () => {
     let matches = true;
     let listener = () => {};

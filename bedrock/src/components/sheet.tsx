@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import type { ReactNode, RefObject } from "react";
+import { useRef, type ReactNode, type RefObject } from "react";
 import { Drawer } from "vaul";
 import { useMediaQuery } from "../lib/use-media-query";
 import { Button } from "./button";
@@ -42,6 +42,7 @@ export function Sheet({ open, onOpenChange, trigger, returnFocusRef, title, subt
   // Duplicates --bp-tablet in tokens.css: matchMedia cannot read custom properties.
   const wide = useMediaQuery("(min-width: 768px)");
   const T = wide ? DialogPrimitive : Drawer;
+  const panelRef = useRef<HTMLDivElement>(null);
   // vaul slides the drawer with a keyframe animation and ignores reduced motion, so motion-reduce:animate-none! stops it (WCAG 2.3.3).
   const panel = wide
     ? "inset-y-0 right-0 w-panel max-w-full rounded-l-xl motion-safe:duration-(--duration-slow) motion-safe:data-[state=open]:animate-in motion-safe:data-[state=open]:slide-in-from-right motion-safe:data-[state=open]:ease-standard motion-safe:data-[state=closed]:animate-out motion-safe:data-[state=closed]:slide-out-to-right motion-safe:data-[state=closed]:ease-exit"
@@ -53,7 +54,12 @@ export function Sheet({ open, onOpenChange, trigger, returnFocusRef, title, subt
       {trigger && <T.Trigger asChild>{trigger}</T.Trigger>}
       <T.Portal>
         <T.Overlay data-slot="scrim" className={overlay} />
-        <T.Content data-slot="sheet" className={`${content} ${panel}`}
+        <T.Content data-slot="sheet" ref={panelRef} className={`${content} ${panel}`}
+          // vaul keeps focus on the opener unless told otherwise; the panel itself takes it, so a keyboard or screen reader starts at its title.
+          onOpenAutoFocus={(event: Event) => {
+            event.preventDefault();
+            panelRef.current?.focus();
+          }}
           onCloseAutoFocus={(event: Event) => {
             if (!returnFocusRef) return;
             event.preventDefault();
