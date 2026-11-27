@@ -97,6 +97,14 @@ jobs:
           prefix="https://raw.githubusercontent.com/$GITHUB_REPOSITORY/screenshots/$HEAD_REF/"
           # Read the description just before writing it: an edit made during the shots must survive.
           body() { gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq .body; }
+          # Commits and pushes the shots with message $1. Only the final push names the head SHA: the find step reads
+          # it as "these shots are fresh", so a run that stops half-way must leave it out.
+          push_shots() {
+            git -C "$shots" add -A
+            git -C "$shots" -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q --allow-empty -m "$1"
+            git -C "$shots" push -q origin "HEAD:refs/heads/screenshots/$HEAD_REF"
+          }
 
           if [[ "$revenue" == true || "$APPS" == bedrock ]]; then
             if $revenue; then
@@ -120,9 +128,12 @@ jobs:
             # Its own line, so a failed read stops the step instead of writing an empty description.
             BODY=$(body)
             BODY="$BODY" node ".github/scripts/$app-screenshots.mjs" "$shots" "$prefix" > "$RUNNER_TEMP/body.md"
-            # With web next, write Revenue's tables now, so the web step can read the description again after its
-            # long build. shortcut: the image links 404 until the push below, a few minutes; fine for a check.
-            if $web; then gh api -X PATCH "repos/$GITHUB_REPOSITORY/pulls/$PR" -F "body=@$RUNNER_TEMP/body.md" >/dev/null; fi
+            # With web next, publish Revenue's shots and tables now, so the web step can read the description again
+            # after its long build, and a failed web capture leaves no link to an image that was never pushed.
+            if $web; then
+              push_shots "chore: revenue screenshots, web pending"
+              gh api -X PATCH "repos/$GITHUB_REPOSITORY/pulls/$PR" -F "body=@$RUNNER_TEMP/body.md" >/dev/null
+            fi
           fi
 
           if $web; then
@@ -135,10 +146,7 @@ jobs:
             BODY="$BODY" PAIRS_RESULTS="$PWD/web/pairs-results" node .github/scripts/web-screenshots.mjs "$prefix" > "$RUNNER_TEMP/body.md"
           fi
 
-          git -C "$shots" add -A
-          git -C "$shots" -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-            commit -q --allow-empty -m "chore: $APPS screenshots for $HEAD_SHA"
-          git -C "$shots" push -q origin "HEAD:refs/heads/screenshots/$HEAD_REF"
+          push_shots "chore: $APPS screenshots for $HEAD_SHA"
           # Edits with this token start no new run, so the check below reads the description again.
           gh api -X PATCH "repos/$GITHUB_REPOSITORY/pulls/$PR" -F "body=@$RUNNER_TEMP/body.md" >/dev/null
 
