@@ -21,6 +21,21 @@ describe("the artboard mapping", () => {
     for (const state of used) expect(STATES).toContain(state);
   });
 
+  it("has no screen for Completions until #948 builds it", () => {
+    const entry = SCREENS["Completions"];
+    expect(entry && "none" in entry ? entry.none : "").toContain("#948");
+  });
+
+  it("gives every Sheet artboard a state with an opener", () => {
+    const sheets = ["TaskSheet", "BaselineSheet", "PreferencesSheet", "RestrictionsSheet", "AppearanceSheet", "AccountSheet", "HomeSettings", "InviteSheet"];
+    for (const name of sheets) {
+      const entry = SCREENS[name];
+      const state = entry && "state" in entry ? entry.state : undefined;
+      expect(state, name).toBeDefined();
+      expect(OPENERS[state!], name).toBeTypeOf("function");
+    }
+  });
+
   it("names only domain folders that exist", () => {
     expect(screens.length).toBeGreaterThan(0);
     for (const s of screens) {

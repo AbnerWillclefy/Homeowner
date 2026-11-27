@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { OnboardingPosition } from "../api/api";
-import { onboardingKey, onboardingQuery } from "../api/queries";
+import { onboardingKey, onboardingQuery, type OnboardingAnswer } from "../api/queries";
 import { onboardingStateOf } from "../logic/onboardingState";
 
 /**
@@ -24,7 +24,7 @@ export function useOnboarding() {
   const setPosition = useCallback(
     (position: OnboardingPosition) => {
       void queryClient.cancelQueries({ queryKey: onboardingKey, exact: true });
-      queryClient.setQueryData<OnboardingPosition>(onboardingKey, position);
+      queryClient.setQueryData<OnboardingAnswer>(onboardingKey, (old) => ({ joined: old?.joined ?? false, step: position }));
     },
     [queryClient],
   );

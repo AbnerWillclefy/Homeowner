@@ -28,22 +28,29 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("getOnboarding", () => {
   it("returns the step to show from GET /me/onboarding", async () => {
-    const fetch = stubFetch(Response.json({ step: "baseline" }));
-    expect(await getOnboarding()).toEqual({ kind: "ok", step: "baseline" });
+    const fetch = stubFetch(Response.json({ step: "baseline", joined: false }));
+    expect(await getOnboarding()).toEqual({ kind: "ok", step: "baseline", joined: false });
     expect(fetch.mock.calls[0]![0]).toBe("http://api.test/me/onboarding");
     expect(new Headers(fetch.mock.calls[0]![1]?.headers).get("Authorization")).toBe("Bearer id-1");
   });
 
   it("accepts done", async () => {
-    stubFetch(Response.json({ step: "done" }));
-    expect(await getOnboarding()).toEqual({ kind: "ok", step: "done" });
+    stubFetch(Response.json({ step: "done", joined: true }));
+    expect(await getOnboarding()).toEqual({ kind: "ok", step: "done", joined: true });
   });
 
   it("is an error for a step this app does not know", async () => {
-    stubFetch(Response.json({ step: "teleport" }));
+    stubFetch(Response.json({ step: "teleport", joined: false }));
     expect(await getOnboarding()).toEqual({ kind: "error" });
     stubFetch(Response.json({}));
     expect(await getOnboarding()).toEqual({ kind: "error" });
+  });
+
+  it("is an error when joined is missing or not a boolean", async () => {
+    for (const body of [{ step: "baseline" }, { step: "baseline", joined: "yes" }, { step: "baseline", joined: null }]) {
+      stubFetch(Response.json(body));
+      expect(await getOnboarding(), JSON.stringify(body)).toEqual({ kind: "error" });
+    }
   });
 
   it("is not signed in without a session", async () => {
@@ -65,8 +72,8 @@ describe("getOnboarding", () => {
 
 describe("putOnboardingStep", () => {
   it("PUTs the completed step and returns the next step to show", async () => {
-    const fetch = stubFetch(Response.json({ step: "reminders" }));
-    expect(await putOnboardingStep("install")).toEqual({ kind: "ok", step: "reminders" });
+    const fetch = stubFetch(Response.json({ step: "reminders", joined: false }));
+    expect(await putOnboardingStep("install")).toEqual({ kind: "ok", step: "reminders", joined: false });
     const [url, init] = fetch.mock.calls[0]!;
     expect(url).toBe("http://api.test/me/onboarding");
     expect(init?.method).toBe("PUT");
@@ -86,7 +93,7 @@ describe("putOnboardingStep", () => {
 
   it("is not signed in without a session", async () => {
     stubStorage(false);
-    stubFetch(Response.json({ step: "reminders" }));
+    stubFetch(Response.json({ step: "reminders", joined: false }));
     expect(await putOnboardingStep("install")).toEqual({ kind: "not-signed-in" });
   });
 });

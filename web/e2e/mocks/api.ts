@@ -19,6 +19,8 @@ export interface FakeState {
   /** The last step completed, not the step to show. Null when onboarding has not started. */
   onboardingStored: string | null;
   home: Home | null;
+  /** Whether the current Home came with an Invite: `joined` of the onboarding answer. Absent means false. */
+  joined?: boolean;
   /** What the signed-in User set about themself. A new User has every weekday unset. */
   profile: {
     baseline: Record<Weekday, number | null>;
@@ -265,7 +267,7 @@ export function coreHandlers(api: FakeApi): void {
       return json(200, { id, email, displayName: displayName ?? null, name: shown, photoUrl: photoUrl ?? null, ...avatarFor(shown) });
     }),
   );
-  api.on("GET /me/onboarding", signedIn((_, state) => json(200, { step: nextStep(state) })));
+  api.on("GET /me/onboarding", signedIn((_, state) => json(200, { step: nextStep(state), joined: state.joined ?? false })));
   api.on(
     "PUT /me/onboarding",
     signedIn((request, state) => {
@@ -274,7 +276,7 @@ export function coreHandlers(api: FakeApi): void {
         return json(400, { error: "unknown step" });
       }
       if (rank(step) > rank(state.onboardingStored)) state.onboardingStored = step;
-      return json(200, { step: nextStep(state) });
+      return json(200, { step: nextStep(state), joined: state.joined ?? false });
     }),
   );
   api.on(

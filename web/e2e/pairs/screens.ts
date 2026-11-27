@@ -7,8 +7,8 @@ export type Data =
   | "unchecked" // today has no Check-in yet
   | "done" // every Task of the plan is done
   | "no-chores" // a Home with no Chores
-  | "loading" // the day-plan read is held, and the shot is taken before it is released
-  | "offline" // the plan is shown from the cache after the network goes away
+  | "loading" // GET /boot fails and the day-plan read is held, and the shot is taken before it is released
+  | "offline" // the network goes away and a refocus reads the plan again, which fails
   | "signed-out" // no session
   | "onboarding" // signed in, no Home yet
   | "invite" // signed in, with an Invite link to open
@@ -92,7 +92,7 @@ export const SCREENS: Record<string, Entry> = {
   BaselineSheet: at("/me", ["profile"], { state: "me-baseline" }),
   PreferencesSheet: at("/me", ["profile"], { state: "me-preferences" }),
   RestrictionsSheet: at("/me", ["profile"], { state: "me-restrictions" }),
-  Completions: at("/me", ["residents"]),
+  Completions: none("The Minhas conclusões screen the Me row opens does not exist yet; #948 builds it and maps this entry to its route."),
   AppearanceSheet: at("/me", ["settings"], { state: "me-appearance" }),
   AccountSheet: at("/me", ["auth"], { state: "me-account" }),
   // Entrada

@@ -2,7 +2,6 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import type { RecoveredNotice } from "../../domains/home/logic/recovered";
 import { useInvite } from "../../domains/invite/components/PendingInviteProvider";
 import type { JoinOutcome } from "../../domains/invite/hooks/useJoinInvite";
-import type { OnboardingPosition } from "../../domains/onboarding/api/api";
 import { stepsFor } from "../../domains/onboarding/logic/steps";
 import { useOnboarding } from "../../domains/onboarding/hooks/useOnboarding";
 import { usePush } from "../../domains/push/hooks/usePush";
@@ -50,12 +49,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const onboarding = useOnboarding();
   const push = usePush();
   const invite = useInvite();
-  // A joiner is a User whose first onboarding answer was not `home` (the Invite gave them a Home), or who joined in
-  // this session after a first answer of `home`. Creating the Home half-way through never changes the count.
-  const [firstPosition, setFirstPosition] = useState<OnboardingPosition | null>(null);
-  if (firstPosition === null && onboarding.state.kind === "ready") setFirstPosition(onboarding.state.position);
+  // A joiner is a User whose Home came with an Invite: `joined` of the first ready onboarding answer, or a join in
+  // this session. Creating the Home half-way through never changes the count.
+  const [firstJoined, setFirstJoined] = useState<boolean | null>(null);
+  if (firstJoined === null && onboarding.state.kind === "ready") setFirstJoined(onboarding.state.joined);
   const [joined, setJoined] = useState(false);
-  const joiner = joined || (firstPosition !== null && firstPosition !== "home");
+  const joiner = joined || firstJoined === true;
   const steps = useMemo(() => stepsFor(joiner), [joiner]);
   const [after, setAfter] = useState<FlowNotice | null>(null);
   const [choosing, setChoosing] = useState(false);
