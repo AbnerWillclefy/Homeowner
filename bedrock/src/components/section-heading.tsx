@@ -17,11 +17,11 @@ export function SectionHeading({ title, variant, end, as: Tag = "h2", id }: Sect
   const style = variant === "title" ? "section-title font-semibold text-text" : "label text-text-muted";
   // The artboard's `hm-sechead` has 8px above it; a bare `hm-label` has none.
   return (
-    <div data-slot="section-heading" className={`flex items-center justify-between gap-2 ${variant === "title" ? "pt-2" : ""}`}>
+    <div data-slot="section-heading" className={`flex flex-wrap items-center justify-between gap-x-2 ${variant === "title" ? "pt-2" : ""}`}>
       <Tag id={id} className={`${style} my-0 min-w-0 [overflow-wrap:anywhere]`}>
         {title}
       </Tag>
-      {end && <div className="shrink-0">{end}</div>}
+      {end && <div className="max-w-full">{end}</div>}
     </div>
   );
 }
