@@ -30,8 +30,6 @@ jobs:
     steps:
       - name: Find the UI change
         id: find
-        env:
-          ACTION: ${{ github.event.action }}
         run: |
           ui_files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" --jq '.[].filename' \
             | grep -E '^web/(src|public)/|^web/index\.html$|^bedrock/(src|showcase)/|^revenue/(src|public)/|^revenue/index\.html$' \
@@ -48,10 +46,12 @@ jobs:
           body=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq .body)
           section() { awk -v h="$1" '/^#/ { inside = ($0 ~ "^### *" h " *$"); next } inside' <<<"${body//$'\r'/}"; }
           has_image() { grep -qE '!\[[^]]*\]\([^)]+\)|<img[^>]+src=' <<<"$1"; }
-          # Take them when an image is missing, and again on a new commit if this check took them before.
+          # Take them when an image is missing, or when this check took them for an older commit. Any event checks the
+          # commit, not only a push: an edit right after a push cancels that push's run (concurrency), so it must shoot.
           missing=false
           for h in "${headings[@]}"; do has_image "$(section "$h")" || missing=true; done
-          if $missing || { [[ "$ACTION" != edited ]] && grep -q "/screenshots/$HEAD_REF/auto-" <<<"$body"; }; then
+          shot=$(gh api "repos/$GITHUB_REPOSITORY/commits/screenshots/$HEAD_REF" --jq .commit.message 2>/dev/null || true)
+          if $missing || { grep -q "/screenshots/$HEAD_REF/auto-" <<<"$body" && [[ "$shot" != *"$HEAD_SHA"* ]]; }; then
             echo "shoot=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -95,7 +95,8 @@ jobs:
           fi
           rm -f "$shots"/auto-*
           prefix="https://raw.githubusercontent.com/$GITHUB_REPOSITORY/screenshots/$HEAD_REF/"
-          BODY=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq .body)
+          # Read the description just before writing it: an edit made during the shots must survive.
+          body() { gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq .body; }
 
           if [[ "$revenue" == true || "$APPS" == bedrock ]]; then
             if $revenue; then
@@ -116,8 +117,7 @@ jobs:
             "$PLAYWRIGHT_DIR/.bin/playwright" install chromium
 
             for _ in $(seq 30); do curl -sf "$BASE_URL" >/dev/null && break; sleep 1; done
-            BODY="$BODY" node ".github/scripts/$app-screenshots.mjs" "$shots" "$prefix" > "$RUNNER_TEMP/body.md"
-            BODY=$(cat "$RUNNER_TEMP/body.md")
+            BODY=$(body) node ".github/scripts/$app-screenshots.mjs" "$shots" "$prefix" > "$RUNNER_TEMP/body.md"
           fi
 
           if $web; then
@@ -126,6 +126,8 @@ jobs:
             npx -w web playwright install chromium
             rm -rf web/pairs-results
             PAIRS_OUT="$shots" PAIRS_RESULTS="$PWD/web/pairs-results" npx -w web playwright test -c playwright.pairs.config.ts
+            # After a Revenue run the description to extend is the one it just wrote.
+            if $revenue; then BODY=$(cat "$RUNNER_TEMP/body.md"); else BODY=$(body); fi
             BODY="$BODY" PAIRS_RESULTS="$PWD/web/pairs-results" node .github/scripts/web-screenshots.mjs "$prefix" > "$RUNNER_TEMP/body.md"
           fi
 
