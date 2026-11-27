@@ -37,7 +37,7 @@ export function Shell() {
   const me = useMe();
   const hasHome = home.state.kind === "ready";
   const streak = useStreak(hasHome);
-  const { checkIn, note, energy, planned, openCheckIn, openFor, closeCheckIn, latchCheckIn, heroRef, returnFocusRef, chosenLevel } = useShellCheckIn(hasHome);
+  const { checkIn, note, energy, openCheckIn, openFor, closeCheckIn, latchCheckIn, heroRef, returnFocusRef, chosenLevel } = useShellCheckIn(hasHome);
   const queryClient = useQueryClient();
   const { pathname } = useLocation();
   const invite = useInvite();
@@ -67,7 +67,7 @@ export function Shell() {
     checkInDismissedFor: session.checkInDismissedFor,
   });
 
-  // The Check-in dialog latches once it shows (set during render, from the same decision), so a refetch cannot close
+  // The Check-in Sheet latches once it shows (set during render, from the same decision), so a refetch cannot close
   // it. Any other dialog takes priority over a latched one. A close dismisses the date the Home reads now: if the day
   // rolled over under the open form, the Resident has seen the new day's prompt, and dismissing only the old date
   // would reopen it the moment they tap "Not now".
@@ -103,11 +103,10 @@ export function Shell() {
         </LazyDialog>
       )}
       {dialog === "start-choice" && <StartChoice onDecided={session.decide} />}
-      {/* The one Check-in dialog, opened from the hero card or by itself on launch. Never two. */}
+      {/* The one Check-in Sheet, opened from the hero card or by itself on launch. Never two. */}
       <ShellCheckInDialog
         checkIn={checkIn}
         open={checkInShown}
-        planned={planned}
         onClose={dismissCheckIn}
         returnFocusRef={returnFocusRef}
         initialLevel={chosenLevel}
