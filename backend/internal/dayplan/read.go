@@ -31,6 +31,57 @@ type TaskView struct {
 	// partner of a two-person Task. Absent for a one-person Task and in the
 	// pool. A two-person Task is listed under each of its Residents.
 	With []string `json:"with,omitempty"`
+	// LastDone is the Chore's latest Completion, or null when it was never
+	// done. It is the Chore's, not the Task's: the Task changes every round.
+	LastDone *LastDone `json:"lastDone"`
+}
+
+// LastDone is the Chore's latest Completion: its Home-local date and the
+// Residents on it, sorted. ResidentIDs is empty, never null, when all of them
+// have left the Home.
+type LastDone struct {
+	Date        string   `json:"date"`
+	ResidentIDs []string `json:"residentIds"`
+}
+
+// lastDoneByChore reads the latest Completion of each Chore of the open Tasks.
+// The latest is by completed_on, then completed_at, so two Completions on one
+// local day read as the later one.
+func (s *Store) lastDoneByChore(ctx context.Context, open []tasks.Open) (map[string]*LastDone, error) {
+	out := map[string]*LastDone{}
+	if len(open) == 0 {
+		return out, nil
+	}
+	choreIDs := make([]string, len(open))
+	for i, o := range open {
+		choreIDs[i] = o.ChoreID
+	}
+	rows, err := s.db.Query(ctx, `
+		SELECT DISTINCT ON (t.chore_id) t.chore_id::text, k.completed_on,
+		       COALESCE(array_agg(cr.resident_id::text ORDER BY cr.resident_id) FILTER (WHERE cr.resident_id IS NOT NULL), '{}')
+		FROM completions k
+		JOIN tasks t ON t.id = k.task_id
+		LEFT JOIN completion_residents cr ON cr.completion_id = k.id
+		WHERE t.chore_id = ANY($1::uuid[])
+		GROUP BY t.chore_id, k.id
+		ORDER BY t.chore_id, k.completed_on DESC, k.completed_at DESC, k.id DESC`, choreIDs)
+	if err != nil {
+		return nil, fmt.Errorf("day plan: last done: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			chore string
+			on    time.Time
+			ld    LastDone
+		)
+		if err := rows.Scan(&chore, &on, &ld.ResidentIDs); err != nil {
+			return nil, fmt.Errorf("day plan: last done: %w", err)
+		}
+		ld.Date = on.Format(time.DateOnly)
+		out[chore] = &ld
+	}
+	return out, rows.Err()
 }
 
 // ResidentTasks are the Tasks one Resident was given.
@@ -148,6 +199,10 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 	if err != nil {
 		return View{}, err
 	}
+	lastDone, err := s.lastDoneByChore(ctx, open)
+	if err != nil {
+		return View{}, err
+	}
 	if v.DoneToday, err = s.doneToday(ctx, residentID, date); err != nil {
 		return View{}, err
 	}
@@ -158,7 +213,7 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 	}
 	if !found {
 		for _, o := range open {
-			v.Pool = append(v.Pool, TaskView{Open: o})
+			v.Pool = append(v.Pool, TaskView{Open: o, LastDone: lastDone[o.ChoreID]})
 		}
 		return v, nil
 	}
@@ -192,11 +247,11 @@ func (s *Store) Today(ctx context.Context, homeID, timezone, residentID string, 
 			if !known && v.Planned {
 				reason = ReasonAddedAfterPlan
 			}
-			v.Pool = append(v.Pool, TaskView{Open: o, Reason: reason})
+			v.Pool = append(v.Pool, TaskView{Open: o, Reason: reason, LastDone: lastDone[o.ChoreID]})
 			continue
 		}
 		for _, g := range holders {
-			tv := TaskView{Open: o, Reason: g.reason, Committed: committed[commitment{o.ID, g.resident}], With: partnersOf(holders, g.resident)}
+			tv := TaskView{Open: o, LastDone: lastDone[o.ChoreID], Reason: g.reason, Committed: committed[commitment{o.ID, g.resident}], With: partnersOf(holders, g.resident)}
 			if g.resident == residentID {
 				v.Mine = append(v.Mine, tv)
 				continue
