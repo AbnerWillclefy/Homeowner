@@ -3,28 +3,40 @@ import type { DayPlan, PlanTask } from "../api/api";
 /** A Task is one-person when it needs one Resident and has no partner (a partner makes it two-person). */
 const isOnePerson = (task: PlanTask): boolean => task.people === 1 && !task.with;
 
-/** The caller's Tasks that can be offered in a Swap: the one-person ones they hold. */
-export function offerableTasks(plan: DayPlan): PlanTask[] {
-  return plan.mine.filter(isOnePerson);
-}
-
-/** The Task the dialog starts on: the only one when there is exactly one, else none (the Resident chooses). */
-export function preselectedOffer(options: PlanTask[]): string | null {
-  return options.length === 1 ? options[0]!.id : null;
+/** What another Resident holds that you can ask for, and who holds it. */
+export interface Requestable {
+  task: PlanTask;
+  holderId: string;
 }
 
 /**
- * Whether another Resident's Task shows a Swap control. Not for a two-person Task, before the day is planned,
- * after a rejected run, when the caller has nothing to offer, for their own Task, or when that Task already has
- * an outgoing offer. Restrictions and Drained are not known here: the server decides those.
+ * The other Residents' one-person Tasks you can ask for in a Swap: not two-person, not already asked for in an
+ * outgoing offer. Done Tasks are not in `others`. Nothing before the day is planned or after a rejected run.
+ * Restrictions and Drained are not known here: the server decides those.
+ */
+export function requestableTasks(plan: DayPlan): Requestable[] {
+  if (!plan.planned || plan.rejected) return [];
+  const asked = new Set(plan.swaps.outgoing.map((offer) => offer.requested.id));
+  return plan.others.flatMap((other) =>
+    other.tasks.filter((task) => isOnePerson(task) && !asked.has(task.id)).map((task) => ({ task, holderId: other.residentId })),
+  );
+}
+
+/**
+ * Whether your own Task shows "Oferecer troca": it is one-person, not already offered, and there is something to
+ * ask for in return. The menu item is absent otherwise, never disabled.
  */
 export function canOfferFor(plan: DayPlan, task: PlanTask): boolean {
   return (
-    plan.planned &&
-    !plan.rejected &&
     isOnePerson(task) &&
-    offerableTasks(plan).length > 0 &&
-    !plan.mine.some((mine) => mine.id === task.id) &&
-    !plan.swaps.outgoing.some((offer) => offer.requested.id === task.id)
+    plan.mine.some((mine) => mine.id === task.id) &&
+    !plan.swaps.outgoing.some((offer) => offer.offered.id === task.id) &&
+    requestableTasks(plan).length > 0
   );
+}
+
+/** The one Resident whose Tasks are on offer, when it is exactly one: the sheet then names them. */
+export function soleHolder(options: Requestable[]): string | null {
+  const holders = new Set(options.map((option) => option.holderId));
+  return holders.size === 1 ? [...holders][0]! : null;
 }

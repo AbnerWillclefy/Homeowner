@@ -7,7 +7,7 @@ import type { Explanation, PlanTask } from "../api/api";
 import { choreCategory } from "../../chores/logic/choreCategory";
 import { effortName } from "../../chores/logic/effortLevels";
 import { useI18n, type MessageKey } from "../../../shared/i18n";
-import { actionsFor, type CardAction, type TaskAction, type TaskRole } from "../logic/actions";
+import { actionsFor, type TaskAction, type TaskRole } from "../logic/actions";
 import { categoryLabel, labelText } from "../../profile/logic/labels";
 import { dueWhen, formatDay } from "../logic/format";
 import { taskReasonText } from "../logic/reasons";
@@ -21,8 +21,6 @@ interface Props {
    * given to someone or why it is still in the pool, and which actions it has.
    */
   role: TaskRole;
-  /** The Resident who holds it, on another Resident's card. */
-  holderId?: string;
   /** The plan's day, "YYYY-MM-DD", to say whether the Task is due today. */
   today: string;
   /** The day's explanation, which the Sheet shows on your own Tasks. */
@@ -33,21 +31,20 @@ interface Props {
   pending: TaskAction | null;
   onAction(action: TaskAction, task: PlanTask): void;
   /**
-   * Opens the dialog to offer a Swap for this Task, given the card's ⋯ button, where focus returns. Pass it
-   * only when a Swap can be offered (`canOfferFor`) on another Resident's card; without it the menu has no Swap.
-   * Swap calls nothing, so `onAction` keeps its type.
+   * Opens the Swap Sheet for this Task, given the card's open button, where focus returns. Pass it only when a Swap
+   * can be offered (`canOfferFor`) on your own Task; without it the Task's Sheet menu has no Swap. Swap calls
+   * nothing, so `onAction` keeps its type.
    */
   onSwap?(task: PlanTask, opener: HTMLElement | null): void;
 }
 
 // Each action's visible label and its accessible name, which says which Task and starts with the visible
 // label so voice control ("tap Aceitar") finds it.
-const ACTION_LABELS: Record<CardAction, { label: MessageKey; named: MessageKey }> = {
+const ACTION_LABELS: Record<TaskAction, { label: MessageKey; named: MessageKey }> = {
   accept: { label: "dayplan.action.accept", named: "dayplan.action.accept.named" },
   refuse: { label: "dayplan.action.refuse", named: "dayplan.action.refuse.named" },
   take: { label: "dayplan.action.take", named: "dayplan.action.take.named" },
   done: { label: "dayplan.action.done", named: "dayplan.action.done.named" },
-  swap: { label: "dayplan.action.swap", named: "dayplan.action.swap.named" },
 };
 
 /**
@@ -56,12 +53,14 @@ const ACTION_LABELS: Record<CardAction, { label: MessageKey; named: MessageKey }
  * Tapping the card opens its Sheet with the whole story. This only feeds the presentational card; which
  * actions a Task has is decided in `logic/actions.ts`.
  */
-export function TaskCard({ task, role, holderId, today, explanation, busy, pending, onAction, onSwap }: Props) {
+export function TaskCard({ task, role, today, explanation, busy, pending, onAction, onSwap }: Props) {
   const { t, locale } = useI18n();
   const { residents } = useShell();
   const [open, setOpen] = useState(false);
   const item = useRef<HTMLLIElement>(null);
-  const { primary, menu, committed } = actionsFor(task, role, { canSwap: onSwap !== undefined });
+  // The card's name button opens the Sheet and gets focus back when it closes (iOS Safari does not focus a tapped button).
+  const opener = useRef<HTMLElement | null>(null);
+  const { primary, menu, committed } = actionsFor(task, role);
 
   const category = choreCategory(task.category);
   const date = formatDay(task.windowEnd, locale);
@@ -74,9 +73,10 @@ export function TaskCard({ task, role, holderId, today, explanation, busy, pendi
   const reason = taskReasonText(t, task, role, responsible);
   // The Effort component takes a level from 1 to 5; an Effort outside it (the API would refuse it) keeps its number in the name.
   const effortLevel = Math.min(5, Math.max(1, Math.round(task.currentEffort))) as 1 | 2 | 3 | 4 | 5;
+  const effort = { level: effortLevel, name: effortName(t, task.currentEffort), label: taskEffortText(t, task.currentEffort, task.baseEffort) };
 
-  const named = (action: CardAction) => t(ACTION_LABELS[action].named, { task: task.choreName });
-  const button = (action: CardAction): HomeAction => ({
+  const named = (action: TaskAction) => t(ACTION_LABELS[action].named, { task: task.choreName });
+  const button = (action: TaskAction): HomeAction => ({
     label: t(ACTION_LABELS[action].label),
     ariaLabel: named(action),
     icon: action === "accept" || action === "done" ? Check : undefined,
@@ -84,15 +84,12 @@ export function TaskCard({ task, role, holderId, today, explanation, busy, pendi
     variant: action === "refuse" ? "secondary" : "primary",
     disabled: busy,
     loading: pending === action,
-    onClick: () => onAction(action as TaskAction, task),
+    onClick: () => onAction(action, task),
   });
-  const menuItem = (action: CardAction): MenuItem => ({
+  const menuItem = (action: TaskAction): MenuItem => ({
     label: t(ACTION_LABELS[action].label),
     disabled: busy,
-    onSelect: () =>
-      action === "swap"
-        ? onSwap?.(task, item.current?.querySelector<HTMLElement>("[aria-haspopup]") ?? null)
-        : onAction(action as TaskAction, task),
+    onSelect: () => onAction(action, task),
   });
 
   return (
@@ -101,14 +98,13 @@ export function TaskCard({ task, role, holderId, today, explanation, busy, pendi
         category={category}
         categoryLabel={labelText(t, categoryLabel(category.id))}
         name={task.choreName}
-        effort={{
-          level: effortLevel,
-          name: effortName(t, task.currentEffort),
-          label: taskEffortText(t, task.currentEffort, task.baseEffort),
-        }}
+        effort={effort}
         why={reason ?? due}
         status={committed ? t("dayplan.task.committed") : undefined}
-        onOpen={() => setOpen(true)}
+        onOpen={() => {
+          opener.current = item.current?.querySelector<HTMLElement>("h3 button") ?? null;
+          setOpen(true);
+        }}
         menu={
           menu.length > 0
             ? {
@@ -126,10 +122,23 @@ export function TaskCard({ task, role, holderId, today, explanation, busy, pendi
           onClose={() => setOpen(false)}
           task={task}
           role={role}
-          holderId={holderId}
+          today={today}
           due={due}
           reason={reason}
           explanation={explanation}
+          effort={effort}
+          actions={{ primary, menu, committed }}
+          busy={busy}
+          onAction={(action) => onAction(action, task)}
+          returnFocusRef={opener}
+          onSwap={
+            onSwap &&
+            (() => {
+              // Not stacked: the Task's Sheet goes, and the Swap Sheet takes its place.
+              setOpen(false);
+              onSwap(task, opener.current);
+            })
+          }
         />
       )}
     </li>

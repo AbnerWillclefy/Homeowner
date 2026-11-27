@@ -31,8 +31,13 @@ const LOCALES = [
     dismiss: "Dispensar mensagem",
     refused: "Tarefa recusada.",
     finished: "Tarefa concluída.",
-    why_heading: "Por que hoje",
-    demands: "Exigências: Abaixar-se",
+    why_heading: "Por que hoje, para você",
+    rows: ["Esforço", "Prazo", "Importância", "Exigências"],
+    demands: "Abaixar-se",
+    last: "Última vez",
+    lastValue: "Ontem",
+    sheetRefuse: "Recusar",
+    sheetAccept: "Aceitar",
     close: "Fechar",
     lar: "Lar",
     hoje: "Hoje",
@@ -56,8 +61,13 @@ const LOCALES = [
     dismiss: "Dismiss message",
     refused: "Task refused.",
     finished: "Task done.",
-    why_heading: "Why today",
-    demands: "Demands: Bending",
+    why_heading: "Why today, for you",
+    rows: ["Effort", "Due", "Importance", "Demands"],
+    demands: "Bending",
+    last: "Last time",
+    lastValue: "Yesterday",
+    sheetRefuse: "Refuse",
+    sheetAccept: "Accept",
     close: "Close",
     lar: "Home",
     hoje: "Today",
@@ -137,12 +147,44 @@ for (const l of LOCALES) {
       await opener.click();
       const sheet = page.getByRole("dialog", { name: MOP });
       await expect(sheet).toBeVisible();
-      await expect(sheet.getByRole("heading", { name: l.why_heading })).toBeVisible();
-      await expect(sheet.getByText(l.demands)).toBeVisible();
+      await expect(sheet.getByText(l.why_heading, { exact: true })).toBeVisible();
+      for (const row of l.rows) await expect(sheet.getByText(row, { exact: true })).toBeVisible();
+      await expect(sheet.getByText(l.demands, { exact: true })).toBeVisible();
+      // Nothing in the API says when it was last done, so the row is left out rather than guessed.
+      await expect(sheet.getByText(l.last, { exact: true })).toHaveCount(0);
+      await expect(sheet.getByRole("button", { name: l.more(MOP) })).toBeVisible();
       await expect(sheet).toHaveAccessibleDescription(new RegExp(` · ${l.stateProposed}$`));
       await page.keyboard.press("Escape");
       await expect(sheet).toHaveCount(0);
       await expect(opener).toBeFocused();
+    });
+
+    test("the Sheet says when it was last done, and has Recusar and Aceitar at its foot", async ({ page, baseURL, fakeApi }) => {
+      fakeApi.state.dayPlan!.mine[0]!.lastDone = { date: "2030-01-14", residentIds: [] };
+      await launchApp(page, baseURL!);
+      await page.getByRole("button", { name: DISHES, exact: true }).click();
+      const sheet = page.getByRole("dialog", { name: DISHES });
+      await expect(sheet.getByText(l.last, { exact: true })).toBeVisible();
+      await expect(sheet.getByText(l.lastValue, { exact: true })).toBeVisible();
+      const foot = sheet.locator("footer").getByRole("button");
+      await expect(foot).toHaveText([l.sheetRefuse, l.sheetAccept]);
+    });
+
+    test("Aceitar in the Sheet closes it and commits the Task", async ({ page, baseURL, fakeApi }) => {
+      await launchApp(page, baseURL!);
+      await page.getByRole("button", { name: DISHES, exact: true }).click();
+      await page.getByRole("dialog", { name: DISHES }).locator("footer").getByRole("button", { name: l.sheetAccept, exact: true }).click();
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+      await expect.poll(() => posts(fakeApi.requests, "accept")).toHaveLength(1);
+    });
+
+    test("Recusar in the Sheet closes it and offers Desfazer, sending nothing yet", async ({ page, baseURL, fakeApi }) => {
+      await launchApp(page, baseURL!);
+      await page.getByRole("button", { name: DISHES, exact: true }).click();
+      await page.getByRole("dialog", { name: DISHES }).locator("footer").getByRole("button", { name: l.sheetRefuse, exact: true }).click();
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+      await expect(toast(page, l.refused)).toBeVisible();
+      expect(posts(fakeApi.requests, "refuse")).toHaveLength(0);
     });
 
     test("the Sheet of a Committed Task says it is taken by you", async ({ page, baseURL, fakeApi }) => {

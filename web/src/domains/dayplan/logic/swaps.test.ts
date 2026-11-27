@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { SwapOffer } from "../api/api";
+import type { DayPlan, SwapOffer } from "../api/api";
 import { dayPlan, task } from "../testing/fixtures";
-import { canOfferFor, offerableTasks, preselectedOffer } from "./swaps";
+import { canOfferFor, requestableTasks, soleHolder } from "./swaps";
 
 const twoPerson = (id: string) => ({ ...task(id), people: 2 });
 const offer = (offered: string, requested: string): SwapOffer => ({
@@ -10,77 +10,80 @@ const offer = (offered: string, requested: string): SwapOffer => ({
   offered: task(offered),
   requested: task(requested),
 });
+const ana = (...tasks: ReturnType<typeof task>[]) => [{ residentId: "ana", tasks }];
 
-describe("offerableTasks", () => {
-  it("is the one-person Tasks I hold", () => {
-    const plan = dayPlan({ mine: [task("a"), twoPerson("b")] });
-    expect(offerableTasks(plan).map((t) => t.id)).toEqual(["a"]);
+describe("requestableTasks", () => {
+  it("is every other Resident's one-person Task, with who holds it", () => {
+    const plan = dayPlan({ others: [...ana(task("a")), { residentId: "bia", tasks: [task("b")] }] });
+    expect(requestableTasks(plan).map((r) => [r.task.id, r.holderId])).toEqual([["a", "ana"], ["b", "bia"]]);
   });
 
-  it("treats a Task with a partner as two-person even if people says one", () => {
-    const plan = dayPlan({ mine: [{ ...task("a"), with: ["r2"] }] });
-    expect(offerableTasks(plan)).toEqual([]);
+  it("leaves out a two-person Task and a Task with a partner even if people says one", () => {
+    const plan = dayPlan({ others: ana(twoPerson("a"), { ...task("b"), with: ["r3"] }, task("c")) });
+    expect(requestableTasks(plan).map((r) => r.task.id)).toEqual(["c"]);
   });
 
-  it("is empty when I hold nothing", () => {
-    expect(offerableTasks(dayPlan())).toEqual([]);
+  it("leaves out a Task that already has an outgoing offer, whichever of mine was offered", () => {
+    const plan = dayPlan({ mine: [task("m")], others: ana(task("a"), task("b")), swaps: { incoming: [], outgoing: [offer("m", "a")] } });
+    expect(requestableTasks(plan).map((r) => r.task.id)).toEqual(["b"]);
+  });
+
+  it("ignores incoming offers", () => {
+    const plan = dayPlan({ others: ana(task("a")), swaps: { incoming: [offer("a", "m")], outgoing: [] } });
+    expect(requestableTasks(plan)).toHaveLength(1);
+  });
+
+  it.each<[string, Partial<DayPlan>]>([
+    ["no other Residents", { others: [] }],
+    ["before the day is planned", { planned: false, others: ana(task("a")) }],
+    ["after a rejected run", { rejected: true, others: ana(task("a")) }],
+  ])("is empty with %s", (_, overrides) => {
+    expect(requestableTasks(dayPlan(overrides))).toEqual([]);
   });
 });
 
 describe("canOfferFor", () => {
-  it("is false for a Task with a partner even if people says one", () => {
-    expect(canOfferFor(dayPlan({ mine: [task("m")] }), { ...task("o"), with: ["r2"] })).toBe(false);
+  const plan = dayPlan({ mine: [task("m"), twoPerson("p")], others: ana(task("a")) });
+
+  it("is true for my one-person Task when there is something to ask for", () => {
+    expect(canOfferFor(plan, task("m"))).toBe(true);
   });
 
-  const plan = dayPlan({ mine: [task("m")] });
-
-  it("shows the control for another Resident's one-person Task when I hold a one-person Task", () => {
-    expect(canOfferFor(plan, task("o"))).toBe(true);
+  it("is false for a two-person Task of mine", () => {
+    expect(canOfferFor(plan, twoPerson("p"))).toBe(false);
   });
 
-  it("hides it for a two-person Task", () => {
-    expect(canOfferFor(plan, twoPerson("o"))).toBe(false);
+  it("is false for a Task that is not mine, such as the pool's or another Resident's", () => {
+    expect(canOfferFor(plan, task("a"))).toBe(false);
+    expect(canOfferFor(plan, task("pool"))).toBe(false);
   });
 
-  it("hides it before the day is planned", () => {
-    expect(canOfferFor(dayPlan({ planned: false, mine: [task("m")] }), task("o"))).toBe(false);
+  it("is false when there is nothing to ask for", () => {
+    expect(canOfferFor(dayPlan({ mine: [task("m")] }), task("m"))).toBe(false);
   });
 
-  it("hides it after a rejected run", () => {
-    expect(canOfferFor(dayPlan({ rejected: true, mine: [task("m")] }), task("o"))).toBe(false);
+  it("is false when every Task of theirs is already asked for", () => {
+    const asked = dayPlan({ mine: [task("m"), task("n")], others: ana(task("a")), swaps: { incoming: [], outgoing: [offer("n", "a")] } });
+    expect(canOfferFor(asked, task("m"))).toBe(false);
   });
 
-  it("hides it when I hold no one-person Task", () => {
-    expect(canOfferFor(dayPlan(), task("o"))).toBe(false);
-    expect(canOfferFor(dayPlan({ mine: [twoPerson("m")] }), task("o"))).toBe(false);
+  it("is false for a Task of mine that is already offered", () => {
+    const offered = dayPlan({ mine: [task("m")], others: ana(task("a"), task("b")), swaps: { incoming: [], outgoing: [offer("m", "a")] } });
+    expect(canOfferFor(offered, task("m"))).toBe(false);
   });
 
-  it("hides it when that Task already has an outgoing offer, whichever of my Tasks was offered", () => {
-    const withOffer = dayPlan({ mine: [task("m"), task("n")], swaps: { incoming: [], outgoing: [offer("n", "o")] } });
-    expect(canOfferFor(withOffer, task("o"))).toBe(false);
-    expect(canOfferFor(withOffer, task("p"))).toBe(true);
-  });
-
-  it("ignores incoming offers", () => {
-    const incoming = dayPlan({ mine: [task("m")], swaps: { incoming: [offer("o", "m")], outgoing: [] } });
-    expect(canOfferFor(incoming, task("o"))).toBe(true);
-  });
-
-  it("hides it for my own Task", () => {
-    expect(canOfferFor(plan, task("m"))).toBe(false);
+  it("is false after a rejected run", () => {
+    expect(canOfferFor({ ...plan, rejected: true }, task("m"))).toBe(false);
   });
 });
 
-describe("preselectedOffer", () => {
-  it("is the only Task I can give", () => {
-    expect(preselectedOffer([task("a")])).toBe("a");
+describe("soleHolder", () => {
+  it("is the Resident when only one holds what can be asked for", () => {
+    expect(soleHolder(requestableTasks(dayPlan({ others: ana(task("a"), task("b")) })))).toBe("ana");
   });
 
-  it("is nothing when I can give several, so the choice is mine", () => {
-    expect(preselectedOffer([task("a"), task("b")])).toBeNull();
-  });
-
-  it("is nothing when I can give none", () => {
-    expect(preselectedOffer([])).toBeNull();
+  it("is nothing with two Residents or with none", () => {
+    expect(soleHolder(requestableTasks(dayPlan({ others: [...ana(task("a")), { residentId: "bia", tasks: [task("b")] }] })))).toBeNull();
+    expect(soleHolder([])).toBeNull();
   });
 });

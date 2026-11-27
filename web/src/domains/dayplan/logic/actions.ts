@@ -1,8 +1,5 @@
 export type TaskRole = "mine" | "other" | "pool";
 export type TaskAction = "accept" | "refuse" | "done" | "take";
-/** A button on a card: a Task action, or Swap, which opens a dialog and calls nothing by itself. */
-export type CardAction = TaskAction | "swap";
-
 export type SwapAction = "acceptSwap" | "declineSwap" | "cancelSwap";
 
 /** Every action that runs on a Swap; `Record` makes a new action fail the typecheck until it is listed here. */
@@ -37,8 +34,8 @@ export type Acting =
  * of its ⋯ menu. `committed` says whether the Task is Committed, which the card shows as a status.
  */
 export interface TaskActions {
-  primary: CardAction[];
-  menu: CardAction[];
+  primary: TaskAction[];
+  menu: TaskAction[];
   committed: boolean;
 }
 
@@ -46,13 +43,12 @@ export interface TaskActions {
  * The actions a Task gets. `mine` is a Task assigned to the caller: Proposed until they accept it (Refuse,
  * Accept; Done only once it is Committed), then Committed (Done). A pool Task can be taken (Take), or done in one
  * step, which sits in the menu so the card keeps one clear action; except those that need two people, which the
- * API refuses for now. Other Residents' Tasks are theirs: nothing to do except Swap, in the menu, when `canSwap`
- * says the plan allows an offer.
+ * API refuses for now. Other Residents' Tasks are theirs: nothing to do. Swap is not a Task action: it opens
+ * from the ⋯ menu of your own Task's Sheet (`canOfferFor`).
  */
 export function actionsFor(
   task: { people: number; committed?: boolean },
   role: TaskRole,
-  { canSwap = false }: { canSwap?: boolean } = {},
 ): TaskActions {
   switch (role) {
     case "mine":
@@ -64,7 +60,7 @@ export function actionsFor(
         ? { primary: [], menu: [], committed: false }
         : { primary: ["take"], menu: ["done"], committed: false };
     case "other":
-      return { primary: [], menu: canSwap ? ["swap"] : [], committed: false };
+      return { primary: [], menu: [], committed: false };
   }
 }
 
