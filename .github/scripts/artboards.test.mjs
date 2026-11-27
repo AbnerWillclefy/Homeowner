@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { withScreenshots } from "./bedrock-screenshots.mjs";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { artboardPath, compareBoxes, heightFailures, leftoversIn, overflowOf, MAX_TABLE_ROWS, pairsMarkdown, roleSelectors, ROLES, serveArtboard, undersized } from "./artboards.mjs";
 
@@ -165,6 +165,20 @@ test("each role maps a design selector to the data-slot Bedrock sets, and the se
   assert.match(roleSelectors("design").row, /\.br-listrow/);
   assert.match(roleSelectors("app").row, /\[data-slot=row\]/);
   assert.match(roleSelectors("app").row, /\[data-slot=list-row\]/);
+});
+
+test("the step-indicator selector matches the markup of the onboarding artboards, and their classes have CSS", () => {
+  const selector = roleSelectors("design")["step-indicator"];
+  const css = readFileSync(new URL("../../docs/design/bedrock/components/bundle.css", import.meta.url), "utf8");
+  for (const name of ["OnboardHome", "OnboardBaseline", "OnboardRestrictions", "OnboardPreferences", "OnboardReminders", "ForgotPassword"]) {
+    const html = readFileSync(new URL(`../../docs/design/homeowner/${name}.dc.html`, import.meta.url), "utf8");
+    const classes = selector.match(/\.[\w-]+/g).map((c) => c.slice(1));
+    assert.ok(classes.length > 0);
+    // The selector's class is on an element, and every class the artboard uses for the indicator is styled by the bundle.
+    for (const c of classes) assert.match(html, new RegExp(`class="${c}"`), `${name}: .${c}`);
+    for (const c of new Set(html.match(/br-step-indicator[\w-]*/g))) assert.ok(css.includes(`.${c}`), `${name}: .${c} has no CSS`);
+    assert.doesNotMatch(html, /br-stepper/, name);
+  }
 });
 
 const measure = { diffs: [{ role: "row", index: 0, prop: "height", app: 72, design: 64 }, { role: "list", prop: "count", app: 1, design: 2 }], small: 5 };

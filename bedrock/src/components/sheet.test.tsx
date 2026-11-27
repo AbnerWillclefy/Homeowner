@@ -37,6 +37,16 @@ describe("Sheet", () => {
     expect(screen.getByRole("button", { name: "Fechar" })).toBeTruthy();
   });
 
+  it("stops the bottom drawer's slide-in animation under reduced motion", () => {
+    stubViewport(false);
+    render(
+      <Sheet open onOpenChange={() => {}} title="Filtros" closeLabel="Fechar">
+        corpo
+      </Sheet>,
+    );
+    expect(screen.getByRole("dialog", { name: "Filtros" }).className).toContain("motion-reduce:animate-none!");
+  });
+
   it.each([true, false])("Escape closes it (wide: %s)", async (wide) => {
     stubViewport(wide);
     const onOpenChange = vi.fn();

@@ -213,6 +213,6 @@ describe("onboardingInput", () => {
     expect(onboardingInput({ kind: "problem", problem: "offline" })).toEqual({ kind: "problem" });
   });
   it("carries the saved position when ready", () => {
-    expect(onboardingInput({ kind: "ready", position: "preferences" })).toEqual({ kind: "ready", position: "preferences" });
+    expect(onboardingInput({ kind: "ready", position: "preferences", joined: false })).toEqual({ kind: "ready", position: "preferences" });
   });
 });

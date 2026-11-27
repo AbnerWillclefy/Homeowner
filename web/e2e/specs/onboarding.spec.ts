@@ -230,8 +230,8 @@ test.describe("a User whose server progress is past the Home step", () => {
 });
 
 test.describe("a User who joined by Invite", () => {
-  // The Home came with the Invite and the first answer is the Baseline, so there is no Home screen: 4 screens.
-  test.use({ fakeState: { ...signedInResident(), onboardingStored: "home" } });
+  // The Home came with the Invite (`joined`), so there is no Home screen: 4 screens.
+  test.use({ fakeState: { ...signedInResident(), onboardingStored: "home", joined: true } });
 
   test("counts 4 screens and sends one request for the finish screen, which says Skip is optional", async ({ page, fakeApi }) => {
     await expect(page).toHaveURL(/\/welcome\/baseline$/);
@@ -258,6 +258,17 @@ test.describe("a User who joined by Invite", () => {
       { step: "reminders" },
     ]);
     expect(fakeApi.state.onboardingStored).toBe("done");
+  });
+});
+
+test.describe("a User who created the Home and reloads on the Baseline", () => {
+  // The server answers `baseline` for a creator too; only `joined: false` says there was a Home screen: 5 screens.
+  test.use({ fakeState: { ...signedInResident(), onboardingStored: "home" } });
+
+  test("still counts 5 screens: Step 2 of 5", async ({ page }) => {
+    await expect(page).toHaveURL(/\/welcome\/baseline$/);
+    await page.reload();
+    await onboarding.expectOnStep(page, "Your Baseline", 2, 5);
   });
 });
 

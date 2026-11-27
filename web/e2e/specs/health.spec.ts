@@ -56,7 +56,7 @@ test.describe("signed in with a Home", () => {
 
 test.describe("mid-onboarding", () => {
   // The Home exists and `home` is stored, so the Guard sends the User to the Baseline step.
-  test.use({ fakeState: { ...signedInResident(), onboardingStored: "home", profile: initialState().profile } });
+  test.use({ fakeState: { ...signedInResident(), onboardingStored: "home", joined: true, profile: initialState().profile } });
 
   test.beforeEach(async ({ page, fakeApi }) => {
     fakeApi.use(onboardingHandlers);

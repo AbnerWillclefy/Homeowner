@@ -14,7 +14,7 @@ type StepIndicatorProps = {
 export function StepIndicator({ label, current, total, name, className }: StepIndicatorProps) {
   return (
     <div data-slot="step-indicator" className={cn("flex flex-col gap-2", className)}>
-      <p className="flex justify-between caption text-text-muted tabular-nums">
+      <p className="m-0 flex justify-between caption text-text-muted tabular-nums">
         <span>{label}</span>
         {name && <span>{name}</span>}
       </p>

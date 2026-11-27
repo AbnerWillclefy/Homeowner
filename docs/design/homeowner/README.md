@@ -9,7 +9,7 @@ This copy is what screens are built and reviewed against. It is edited only to m
 Classes map to the code like this:
 
 - `br-*` are Bedrock components (`docs/design/bedrock/components/`). Core ones are built in `bedrock/src/components/`; the Home layer (`br-chore`, `br-effort`, `br-energy`, `br-streak`, `br-task`) goes in `bedrock/src/home/` (#887).
-- `br-stepper*` in the onboarding and Forgot password artboards is the **step indicator**, not the built `Stepper` (see Naming below).
+- `br-step-indicator*` in the onboarding and Forgot password artboards is the **step indicator**, not the built `Stepper` (see Naming below).
 - `hm-*` are the page layout, drawn by [`home.css`](home.css), copied from the canvas: the phone frame (`hm-phone`, `hm-scroll`), the header (`hm-head`, `hm-title`, `hm-sub`, `hm-tools`, `hm-bar`, `hm-back`), sheets and dialogs (`hm-overlay`, `hm-sheet*`, `hm-dialog`), the toast (`hm-toast`), lists and rows (`hm-list`, `hm-item*`, `hm-check`, `hm-box`), fields (`hm-field`, `hm-label`, `hm-input`, `hm-seg`, `hm-caption`) and the auth and onboarding column (`hm-auth`, `hm-foot`). In code they belong to the PWA's frame (`web/src/app/components/PageFrame.tsx`, `Shell.tsx`) or to the Bedrock component of the same role (`Sheet`, `Toast`, `PageHeader`, `SegmentedControl`, `Checkbox`). `home.css` is not the spec: the code builds these roles, it does not import the file.
 - `ri ri-<name>` are icons; use the Lucide icon of the same meaning.
 
@@ -17,7 +17,7 @@ Wording in the artboards is illustrative. The i18n catalogs (`web/src/shared/i18
 
 ## Naming: step indicator and +/- control
 
-The canvas calls the "Passo N de M" indicator **`Stepper`** and the +/- control **`Counter`**. The existing Core `Stepper` (`bedrock/src/components/stepper.tsx`, used by `revenue/src/domains/pantry/components/QuantitySheet.tsx` and `ShoppingRows.tsx`) is the +/- control, so it is the canvas's `Counter`. `docs/design/bedrock/` keeps `Stepper` as the +/- control and files the indicator as `StepIndicator` (`br-step-indicator*`) so the two never share a class. Which code name wins is #886's call.
+The canvas calls the "Passo N de M" indicator **`Stepper`** (its class names were `br-stepper*`; the artboards here use `br-step-indicator*`, as the bundle's CSS declares, ADR 0030) and the +/- control **`Counter`**. The existing Core `Stepper` (`bedrock/src/components/stepper.tsx`, used by `revenue/src/domains/pantry/components/QuantitySheet.tsx` and `ShoppingRows.tsx`) is the +/- control, so it is the canvas's `Counter`. `docs/design/bedrock/` keeps `Stepper` as the +/- control and files the indicator as `StepIndicator` (`br-step-indicator*`) so the two never share a class. Which code name wins is #886's call.
 
 ## Screens
 
@@ -72,4 +72,4 @@ The canvas calls the "Passo N de M" indicator **`Stepper`** and the +/- control 
 | Bottom bar (shared by the four tabs) | | [BottomBar](BottomBar.dc.html) |
 | TaskCard states and chore categories | | [Parts](Parts.dc.html) |
 
-The canvas has five onboarding screens (Home, Baseline, Restrictions, Preferences, Reminders). The server stores six steps (`ONBOARDING_STEPS` in `web/src/domains/onboarding/api/api.ts`), and the app shows `install` and `reminders` together on the last screen, `/welcome/finish` (`web/src/domains/onboarding/logic/screens.ts`): the install card shows only on iOS in a browser tab, and Skip or the one `PUT {"step":"reminders"}` moves past both. A joiner by Invite has no Home screen, so counts "de 4". The canvas shows Baseline as one screen; the app keeps its seven days on that one screen, so the count does not change.
+The canvas has five onboarding screens (Home, Baseline, Restrictions, Preferences, Reminders). The server stores six steps (`ONBOARDING_STEPS` in `web/src/domains/onboarding/api/api.ts`), and the app shows `install` and `reminders` together on the last screen, `/welcome/finish` (`web/src/domains/onboarding/logic/screens.ts`): the install card shows only on iOS in a browser tab, and Skip or the one `PUT {"step":"reminders"}` moves past both. A joiner by Invite has no Home screen, so counts "de 4"; the server says who is one (`joined` in `GET /me/onboarding`: the current Home came through an Invite), because the stored step cannot tell a joiner from a creator who reloaded. The canvas shows Baseline as one screen; the app keeps its seven days on that one screen, so the count does not change.

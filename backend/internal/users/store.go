@@ -126,3 +126,18 @@ func AdvanceOnboardingIn(ctx context.Context, ex Execer, userID, step string, no
 	}
 	return tag.RowsAffected() == 1, nil
 }
+
+// JoinedByInvite reports whether the User's current Home is one they joined
+// through an Invite. False for a creator, for a User with no Home, and for a
+// joiner who left and made a new Home (the Invite names the old one).
+func (s *Store) JoinedByInvite(ctx context.Context, userID string) (bool, error) {
+	var joined bool
+	err := s.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM invites i JOIN residents r ON r.home_id = i.home_id
+			WHERE i.used_by = $1 AND r.user_id = $1)`, userID).Scan(&joined)
+	if err != nil {
+		return false, fmt.Errorf("read joined by invite: %w", err)
+	}
+	return joined, nil
+}

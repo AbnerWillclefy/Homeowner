@@ -32,10 +32,10 @@ export function Sheet({ open, onOpenChange, trigger, returnFocusRef, title, subt
   // Duplicates --bp-tablet in tokens.css: matchMedia cannot read custom properties.
   const wide = useMediaQuery("(min-width: 768px)");
   const T = wide ? DialogPrimitive : Drawer;
-  // vaul's own transition: motion-reduce:transition-none! is there in case it ignores reduced motion.
+  // vaul slides the drawer with a keyframe animation and ignores reduced motion, so motion-reduce:animate-none! stops it (WCAG 2.3.3).
   const panel = wide
     ? "inset-y-0 right-0 w-panel max-w-full rounded-l-xl motion-safe:duration-(--duration-slow) motion-safe:data-[state=open]:animate-in motion-safe:data-[state=open]:slide-in-from-right motion-safe:data-[state=open]:ease-standard motion-safe:data-[state=closed]:animate-out motion-safe:data-[state=closed]:slide-out-to-right motion-safe:data-[state=closed]:ease-exit"
-    : "inset-x-0 bottom-0 max-h-[90dvh] rounded-t-xl motion-reduce:transition-none!";
+    : "inset-x-0 bottom-0 max-h-[90dvh] rounded-t-xl motion-reduce:transition-none! motion-reduce:animate-none!";
 
   return (
     <T.Root open={open} onOpenChange={onOpenChange}>

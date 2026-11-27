@@ -163,7 +163,7 @@ export const ROLES = [
   { role: "segmented-control", design: ".hm-seg, .br-seg", app: "[data-slot=segmented-control]", bedrock: true },
   { role: "bottom-bar", design: ".br-bottombar", app: "[data-slot=bottom-bar]", bedrock: true },
   { role: "choice-group", design: ".br-choices", app: "[data-slot=choice-group]", bedrock: true },
-  { role: "step-indicator", design: ".br-stepper:has(.br-stepper__track)", app: "[data-slot=step-indicator]", bedrock: true },
+  { role: "step-indicator", design: ".br-step-indicator", app: "[data-slot=step-indicator]", bedrock: true },
   { role: "card", design: ".br-card", app: "[data-slot=card]", bedrock: true },
 ];
 

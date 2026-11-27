@@ -12,7 +12,8 @@ export type OnboardingPosition = OnboardingStep | "done";
 export type ReportableStep = Exclude<OnboardingStep, "home">;
 
 export type OnboardingResult =
-  | { kind: "ok"; step: OnboardingPosition }
+  /** `joined`: the User's current Home came with an Invite (so there is no Home screen to walk). */
+  | { kind: "ok"; step: OnboardingPosition; joined: boolean }
   | { kind: "not-signed-in" }
   /** The API could not be reached. */
   | { kind: "offline" }
@@ -32,7 +33,7 @@ async function call(init?: AxiosRequestConfig): Promise<OnboardingResult> {
     if (result.kind === "not-signed-in") return result;
     if (result.response.status !== 200) return { kind: "error" };
     const body: unknown = result.response.data;
-    return isRecord(body) && isPosition(body.step) ? { kind: "ok", step: body.step } : { kind: "error" };
+    return isRecord(body) && isPosition(body.step) && typeof body.joined === "boolean" ? { kind: "ok", step: body.step, joined: body.joined } : { kind: "error" };
   } catch {
     return { kind: "offline" };
   }

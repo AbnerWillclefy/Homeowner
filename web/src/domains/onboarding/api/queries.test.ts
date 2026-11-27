@@ -17,8 +17,8 @@ describe("onboardingQuery", () => {
   });
 
   it("returns the position the server gave", async () => {
-    getOnboarding.mockResolvedValue({ kind: "ok", step: "baseline" });
-    expect(await createTestQueryClient().fetchQuery(onboardingQuery)).toBe("baseline");
+    getOnboarding.mockResolvedValue({ kind: "ok", step: "baseline", joined: false });
+    expect(await createTestQueryClient().fetchQuery(onboardingQuery)).toEqual({ step: "baseline", joined: false });
   });
 
   it.each(["offline", "error", "not-signed-in"] as const)("throws an ApiFailure of kind %s", async (kind) => {

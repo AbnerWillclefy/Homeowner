@@ -3,6 +3,12 @@ import { toQueryData } from "../../../shared/query/ApiFailure";
 import { refetchUnlessSucceeded } from "../../../shared/query/queryClient";
 import { getOnboarding, type OnboardingPosition } from "./api";
 
+/** What the first read says: the step to show, and whether the Home came with an Invite. */
+export interface OnboardingAnswer {
+  step: OnboardingPosition;
+  joined: boolean;
+}
+
 /** `GET /me/onboarding`, under `me` (ADR 0013): sign-out clears it with the rest. */
 export const onboardingKey = ["me", "onboarding"] as const;
 
@@ -12,6 +18,9 @@ export const onboardingKey = ["me", "onboarding"] as const;
  */
 export const onboardingQuery = queryOptions({
   queryKey: onboardingKey,
-  queryFn: async (): Promise<OnboardingPosition> => toQueryData(await getOnboarding()).step,
+  queryFn: async (): Promise<OnboardingAnswer> => {
+    const { step, joined } = toQueryData(await getOnboarding());
+    return { step, joined };
+  },
   refetchOnMount: refetchUnlessSucceeded,
 });

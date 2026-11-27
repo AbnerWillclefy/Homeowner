@@ -22,8 +22,8 @@ const WEEK_LEVELS: Record<Day, Level> = {
 };
 
 // The Home exists and `home` is stored: the walk starts at the Baseline (the Home step is never shown again), and
-// this User counts as a joiner: the first answer was not `home`, so the walk is 4 screens.
-test.use({ fakeState: { ...signedInResident(), onboardingStored: "home" } });
+// this User is a joiner (`joined`), so the walk is 4 screens.
+test.use({ fakeState: { ...signedInResident(), onboardingStored: "home", joined: true } });
 
 test.beforeEach(async ({ page, baseURL, fakeApi }) => {
   fakeApi.use(onboardingHandlers);

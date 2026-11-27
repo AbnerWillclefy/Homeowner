@@ -2,9 +2,10 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, resolve } from "node:path";
 import { compareBoxes, measureBoxes, measureOverflow, overflowOf, roleSelectors, shootArtboard } from "../../../.github/scripts/artboards.mjs";
-import { test } from "../fixtures";
+import { expect, test } from "../fixtures";
 import { hold } from "../mocks/hold";
 import { json } from "../mocks/api";
+import { withoutBoot } from "../mocks/handlers/boot";
 import { signedInHandlers } from "../mocks/handlers/signedIn";
 import { onboardingHandlers } from "../mocks/handlers/onboarding";
 import { homeHandlers } from "../mocks/handlers/home";
@@ -66,17 +67,37 @@ for (const name of names) {
         fakeApi.on("POST /invites/abc123/accept", (_, state) => json(200, state.home));
       }
 
+      // The plan comes with GET /boot, which the fake answers from inside: without it the app asks /home/day-plan, which can be held.
+      if (data === "loading") fakeApi.use(withoutBoot);
       const held = data === "loading" ? hold(page, /\/home\/day-plan/) : null;
       await page.goto(new URL(entry.path, baseURL!).toString(), { waitUntil: "load" });
       if (held) {
         // The skeleton is the state: shoot it before the read is released.
-        await page.waitForTimeout(500);
+        await page.locator("[data-skeleton]").first().waitFor();
       } else {
         await page.waitForLoadState("networkidle");
-        if (data === "offline") await context.setOffline(true);
+        if (data === "offline") {
+          await context.setOffline(true);
+          // The fake answers in the browser's route layer, which offline emulation does not stop: fail the plan read the way a lost network does.
+          await page.route(/\/home\/day-plan/, (route) => route.abort("internetdisconnected"));
+          // A refocus makes TanStack Query read again; resume until a read goes out and fails (as data-layer.spec.ts does).
+          await expect(async () => {
+            const failed = page.waitForEvent("requestfailed", { predicate: (request) => /\/home\/day-plan/.test(request.url()), timeout: 500 });
+            await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange", { bubbles: true })));
+            await failed;
+          }).toPass();
+          if (await page.evaluate(() => navigator.onLine)) throw new Error(`${name}: the page still reads navigator.onLine`);
+        }
       }
-      if (entry.state) await OPENERS[entry.state](page);
-      await page.waitForLoadState("networkidle").catch(() => {});
+      if (entry.state) {
+        try {
+          await OPENERS[entry.state](page);
+        } catch (error) {
+          throw new Error(`${name}: opening "${entry.state}" failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+      // The held read keeps the network busy for good.
+      if (!held) await page.waitForLoadState("networkidle").catch(() => {});
       await page.evaluate(() => document.fonts.ready);
       // A dialog focuses its title on open: drop the focus ring from the picture.
       await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
@@ -86,7 +107,7 @@ for (const name of names) {
       const message = overflowOf(name, await page.evaluate(measureOverflow));
       // A Sheet or Dialog is fixed to the viewport, so it is shot at phone height, as its artboard is; a page is shot whole.
       if (!entry.state) await page.setViewportSize({ ...VIEWPORT, height: await page.evaluate(() => document.documentElement.scrollHeight) });
-      await page.screenshot({ path: join(OUT, `${base}-app.png`) });
+      await page.screenshot({ path: join(OUT, `${base}-app.png`), animations: "disabled" });
       // After the opener, so an open Sheet or Dialog is scanned; after the shot, so the picture is unchanged.
       await page.addScriptTag({ path: fileURLToPath(import.meta.resolve("axe-core/axe.min.js")) });
       const axeResults = await page.evaluate(() => (window as unknown as { axe: { run(c: Document, o: object): Promise<{ violations: { id: string; impact: string | null; nodes: { target: unknown[] }[] }[] }> } }).axe.run(document, { resultTypes: ["violations"] }));

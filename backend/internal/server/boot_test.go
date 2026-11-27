@@ -131,3 +131,17 @@ func TestBootNeedsASignedInUser(t *testing.T) {
 		t.Errorf("without auth = %d, want 503", res.Status)
 	}
 }
+
+func TestBootOnboardingSaysWhetherTheHomeWasJoinedByInvite(t *testing.T) {
+	t.Parallel()
+	app := apitest.Start(t)
+	a := apitest.HomeWithResident(t, app, "a@example.com")
+	b := app.SignInAs("b@example.com")
+	apitest.ExpectStatus(t, apitest.AcceptInvite(b, apitest.CreateInvite(t, a), nil), http.StatusOK)
+
+	for c, want := range map[*apitest.Client]string{a: `"joined":false`, b: `"joined":true`} {
+		if got := string(getBoot(t, c, "").Sections["/me/onboarding"].Body); !strings.Contains(got, want) {
+			t.Errorf("boot /me/onboarding = %s, want %s", got, want)
+		}
+	}
+}

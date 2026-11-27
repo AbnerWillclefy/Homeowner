@@ -1,5 +1,6 @@
 import { viewOf, type QuerySnapshot } from "../../../shared/query/view";
 import type { OnboardingPosition } from "../api/api";
+import type { OnboardingAnswer } from "../api/queries";
 
 export type OnboardingProblem = "offline" | "error" | "not-signed-in";
 
@@ -7,15 +8,15 @@ export type OnboardingState =
   | { kind: "loading" }
   | { kind: "problem"; problem: OnboardingProblem }
   /** The step the server says to show, or `done`. */
-  | { kind: "ready"; position: OnboardingPosition };
+  | { kind: "ready"; position: OnboardingPosition; joined: boolean };
 
 /**
  * The guard's view of the onboarding query. A position that was read stays `ready` through a refetch, failed or
  * not (`viewOf` keeps the data), so the guard never goes back to "wait" or "retry" in the middle of the walk.
  */
-export function onboardingStateOf(query: QuerySnapshot<OnboardingPosition>): OnboardingState {
+export function onboardingStateOf(query: QuerySnapshot<OnboardingAnswer>): OnboardingState {
   const { state: view } = viewOf(query);
-  if (view.kind === "ready") return { kind: "ready", position: view.data };
+  if (view.kind === "ready") return { kind: "ready", position: view.data.step, joined: view.data.joined };
   if (view.kind === "failed") return { kind: "problem", problem: view.reason };
   return { kind: "loading" };
 }

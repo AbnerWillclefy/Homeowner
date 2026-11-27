@@ -8,13 +8,35 @@ import type { State } from "./screens";
 const dialog = (page: Page) => page.getByRole("dialog");
 const button = (page: Page, name: string | RegExp) => page.getByRole("button", { name, exact: typeof name === "string" });
 
-async function opened(page: Page): Promise<void> {
-  await dialog(page).waitFor({ state: "visible" });
+/** Runs in the page. Resolves once the open dialog's box is the same on three frames in a row and its finite animations are over. */
+async function settle(): Promise<void> {
+  const selector = "[data-slot=sheet], [data-slot=dialog], [role=dialog]";
+  const open = () => [...document.querySelectorAll(selector)].filter((el) => el.getClientRects().length > 0).at(-1);
+  const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  const key = (el: Element | undefined) => {
+    const r = el?.getBoundingClientRect();
+    return r ? `${r.x},${r.y},${r.width},${r.height}` : "";
+  };
+  // performance.now(), not Date.now(): the pairs clock is fixed with page.clock, which freezes Date.now().
+  const start = performance.now();
+  let last = "";
+  let equal = 0;
+  while (equal < 2) {
+    if (performance.now() - start > 5000) throw new Error("the dialog did not stop moving in 5s");
+    await frame();
+    const el = open();
+    // A spinner repeats forever, so only animations with an end count.
+    const running = (el?.getAnimations({ subtree: true }) ?? []).some((a) => a.playState === "running" && Number.isFinite(a.effect?.getComputedTiming().endTime));
+    const now = key(el);
+    equal = now !== "" && now === last && !running ? equal + 1 : 0;
+    last = now;
+  }
 }
 
-/** A Sheet is visible from the first frame of its slide-in; wait for the slide to end so the pair shows the fields. */
-async function settled(page: Page): Promise<void> {
-  await dialog(page).evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
+/** A dialog or Sheet is visible from the first frame of its slide-in: wait for it to stop, so the pair shows its fields. */
+async function opened(page: Page): Promise<void> {
+  await dialog(page).last().waitFor({ state: "visible" });
+  await page.evaluate(settle);
 }
 
 /** The Invite link's dialog, and its "join" button: the one way to the rating step and the start choice. */
@@ -72,12 +94,10 @@ export const OPENERS: Record<State, (page: Page) => Promise<void>> = {
   "invite-sheet": async (page) => {
     await button(page, new RegExp(`^${ptBR["invite.share.heading"]}`)).click();
     await opened(page);
-    await settled(page);
   },
   "home-settings": async (page) => {
     await button(page, new RegExp(`^${ptBR["home.settings.card.title"]}`)).click();
     await opened(page);
-    await settled(page);
   },
   // The e-mail travels in the router's history state from the sign-up step; set it as the router would.
   "confirm-email": async (page) => {

@@ -41,8 +41,12 @@ func NewHandler(store *Store, homes Homes, photoURL func(*string) *string, finan
 	return &Handler{store: store, homes: homes, photoURL: photoURL, finance: finance, clock: clk, log: log}
 }
 
+// onboardingState is the body of GET and PUT /me/onboarding and the
+// /me/onboarding section of GET /boot. Joined is true when the User's current
+// Home was joined through an Invite rather than created.
 type onboardingState struct {
-	Step string `json:"step"`
+	Step   string `json:"step"`
+	Joined bool   `json:"joined"`
 }
 
 // Me answers GET /me.
@@ -82,7 +86,8 @@ func (h *Handler) SetName(w http.ResponseWriter, r *http.Request) {
 }
 
 // Onboarding answers the step to show: the one after the stored step, home
-// for a User with no Home, or done (see writeNextStep).
+// for a User with no Home, or done (see writeNextStep), and whether they joined
+// their Home by Invite.
 func (h *Handler) Onboarding(w http.ResponseWriter, r *http.Request) {
 	u := identity.CurrentUser(r.Context())
 	stored, err := h.store.OnboardingStep(r.Context(), u.ID)
@@ -94,7 +99,7 @@ func (h *Handler) Onboarding(w http.ResponseWriter, r *http.Request) {
 }
 
 // AdvanceOnboarding records a step as completed or skipped and answers the
-// step to show next. Writing a step at or before the stored one changes
+// step to show next, with whether they joined their Home by Invite. Writing a step at or before the stored one changes
 // nothing.
 func (h *Handler) AdvanceOnboarding(w http.ResponseWriter, r *http.Request) {
 	var body struct {
@@ -149,5 +154,10 @@ func (h *Handler) writeNextStep(w http.ResponseWriter, r *http.Request, userID, 
 			}
 		}
 	}
-	httpx.WriteJSON(w, http.StatusOK, onboardingState{Step: next})
+	joined, err := h.store.JoinedByInvite(r.Context(), userID)
+	if err != nil {
+		httpx.InternalError(w, h.log, "look up invite for onboarding", err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, onboardingState{Step: next, Joined: joined})
 }

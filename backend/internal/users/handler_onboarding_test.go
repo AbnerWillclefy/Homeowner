@@ -304,3 +304,45 @@ func deref(s *string) string {
 	}
 	return *s
 }
+
+func TestOnboardingSaysWhetherTheCurrentHomeWasJoinedByInvite(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		setup func(t *testing.T, app *apitest.App) *apitest.Client
+		want  bool
+	}{
+		{"creator", func(t *testing.T, app *apitest.App) *apitest.Client {
+			return apitest.HomeWithResident(t, app, "b@example.com")
+		}, false},
+		{"joiner", func(t *testing.T, app *apitest.App) *apitest.Client {
+			a := apitest.HomeWithResident(t, app, "a@example.com")
+			b := app.SignInAs("b@example.com")
+			apitest.ExpectStatus(t, apitest.AcceptInvite(b, apitest.CreateInvite(t, a), nil), http.StatusOK)
+			return b
+		}, true},
+		{"joiner who left then created a Home", func(t *testing.T, app *apitest.App) *apitest.Client {
+			a := apitest.HomeWithResident(t, app, "a@example.com")
+			b := app.SignInAs("b@example.com")
+			apitest.ExpectStatus(t, apitest.AcceptInvite(b, apitest.CreateInvite(t, a), nil), http.StatusOK)
+			apitest.ExpectStatus(t, apitest.LeaveHome(b), http.StatusNoContent)
+			apitest.ExpectStatus(t, b.Post("/home", apitest.HomeBody("UTC", "07:00")), http.StatusCreated)
+			return b
+		}, false},
+		{"no Home", func(t *testing.T, app *apitest.App) *apitest.Client {
+			return app.SignInAs("b@example.com")
+		}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := tt.setup(t, apitest.Start(t))
+			if got := c.Get("/me/onboarding").Body["joined"]; got != tt.want {
+				t.Errorf("GET joined = %v, want %v", got, tt.want)
+			}
+			if got := putStep(c, "baseline").Body["joined"]; got != tt.want {
+				t.Errorf("PUT joined = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

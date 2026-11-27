@@ -3,9 +3,10 @@ import { stepPath } from "../../../app/logic/routes";
 import { ONBOARDING_SCREENS, screenOf, type OnboardingScreen } from "./screens";
 
 /**
- * The screens this User walks, in order. A joiner (the first answer of `GET /me/onboarding` was not `home`, so
- * the Home came with the Invite) never sees the Home screen. Decided once, at the first answer: asking "does a Home
- * exist now" would turn the creator's "de 5" into "de 4" the moment they create it.
+ * The screens this User walks, in order. A joiner (the `joined` flag of `GET /me/onboarding`: the current Home
+ * came with an Invite, which the server knows from `invites.used_by`) never sees the Home screen. Read once, at the
+ * first answer, or set when the User joins in this session. The position cannot tell: a creator who reloads after
+ * creating the Home also gets `baseline`.
  */
 export function stepsFor(joiner: boolean): readonly OnboardingScreen[] {
   return joiner ? ONBOARDING_SCREENS.filter((screen) => screen !== "home") : ONBOARDING_SCREENS;
