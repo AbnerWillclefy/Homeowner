@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { ApiFailure } from "../../../shared/query/ApiFailure";
 import type { QuerySnapshot } from "../../../shared/query/view";
 import { onboardingInput, resolveRoute } from "../../../app/logic/resolveRoute";
-import { ONBOARDING_STEPS, type OnboardingPosition } from "../api/api";
+import type { OnboardingPosition } from "../api/api";
+import { stepsFor } from "./steps";
 import { onboardingStateOf } from "./onboardingState";
 
 const stateOf = (snapshot: QuerySnapshot<OnboardingPosition>) => onboardingStateOf(snapshot);
@@ -33,7 +34,7 @@ describe("onboardingStateOf", () => {
       pathname: "/welcome/baseline",
       wanted: null,
       hasPendingInvite: false,
-      steps: ONBOARDING_STEPS,
+      steps: stepsFor(false),
     });
     expect(decision).toEqual({ kind: "render" });
   });

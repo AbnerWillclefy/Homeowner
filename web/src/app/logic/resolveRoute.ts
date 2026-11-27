@@ -1,4 +1,5 @@
-import type { OnboardingPosition, OnboardingStep } from "../../domains/onboarding/api/api";
+import type { OnboardingPosition } from "../../domains/onboarding/api/api";
+import type { OnboardingScreen } from "../../domains/onboarding/logic/screens";
 import { effectiveStep } from "../../domains/onboarding/logic/steps";
 import type { OnboardingState } from "../../domains/onboarding/logic/onboardingState";
 import {
@@ -34,8 +35,8 @@ export interface RouteInput {
   /** Where a signed-out person was headed; used only when they land on an auth path while signed in. */
   wanted: string | null;
   hasPendingInvite: boolean;
-  /** The onboarding steps that apply on this device. */
-  steps: readonly OnboardingStep[];
+  /** The onboarding screens this User walks. */
+  steps: readonly OnboardingScreen[];
 }
 
 export type RouteDecision =

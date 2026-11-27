@@ -888,7 +888,13 @@ export const ptBR: Messages = {
   "catalog.care_for_pet": "Cuidar do animal de estimação",
 
   // Onboarding: o passo a passo de instalação, lembretes, perfil e lar para um novo login
-  "onboarding.progress": "Configuração: etapa {step} de {total}",
+  "onboarding.progress": "Passo {step} de {total}",
+  "onboarding.name.finish": "Lembretes",
+  "onboarding.name.baseline": "Energia base",
+  "onboarding.name.restrictions": "Restrições",
+  "onboarding.name.preferences": "Preferências",
+  "onboarding.name.home": "Seu lar",
+  "onboarding.skip": "Pular (opcional)",
   "onboarding.loading": "Carregando a sua configuração...",
   "onboarding.load.offline":
     "O Homeowner não consegue falar com o serviço, então não sabemos onde você parou. Verifique a sua conexão e tente de novo.",
@@ -905,8 +911,6 @@ export const ptBR: Messages = {
     "Algo deu errado ao salvar o seu progresso, então você continua nesta etapa. Tente de novo.",
   "onboarding.advance.notSignedIn":
     "O seu login foi encerrado. Entre de novo para continuar.",
-  "onboarding.install.heading": "Adicione o Homeowner à sua Tela de Início",
-  "onboarding.install.done": "Já adicionei",
   "onboarding.reminders.heading": "Ative os lembretes",
   "onboarding.reminders.intro":
     "Um aviso neste aparelho quando for hora do seu check-in. O app também pede o check-in sempre que você o abre, então os lembretes são opcionais.",

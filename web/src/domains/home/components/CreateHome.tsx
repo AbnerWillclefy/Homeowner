@@ -58,7 +58,7 @@ export function CreateHome({ onSaved, onRecovered, showHeading = true }: Props) 
   }, [step]);
 
   const stepLine = (
-    <p ref={stepRef} tabIndex={-1} className="text-muted">
+    <p ref={stepRef} tabIndex={-1} className={showHeading ? "text-muted" : "sr-only"}>
       {t("home.create.step", {
         step: STEPS.indexOf(step) + 1,
         total: STEPS.length,

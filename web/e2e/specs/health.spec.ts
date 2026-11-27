@@ -70,7 +70,7 @@ test.describe("mid-onboarding", () => {
   test("asks /healthz once on launch and not again when the Guard changes layout or the step changes", async ({ page, baseURL, fakeApi }) => {
     await launchApp(page, baseURL!);
     await expect(page).toHaveURL(/\/welcome\/baseline$/);
-    await onboarding.expectOnStep(page, "Your Baseline", 2, 5);
+    await onboarding.expectOnStep(page, "Your Baseline", 1, 4);
     expect(healthCalls(fakeApi)).toHaveLength(1);
 
     await onboarding.next(page);
@@ -81,7 +81,7 @@ test.describe("mid-onboarding", () => {
   test("an unreachable API shows the banner on the step, and Retry re-checks and clears it", async ({ page, baseURL, fakeApi }) => {
     fakeApi.override("GET /healthz", json(503, { status: "unavailable" }), { once: true });
     await launchApp(page, baseURL!);
-    await onboarding.expectOnStep(page, "Your Baseline", 2, 5);
+    await onboarding.expectOnStep(page, "Your Baseline", 1, 4);
     await expect(banner(page)).toBeVisible();
 
     await retry(page).click();

@@ -30,20 +30,34 @@ export interface WalkInput {
   answers: AnswersInput;
 }
 
+/** Where each screen sits in the count: a creator walks 5 screens, a joiner (a Home already existed at launch) 4, with no Home screen. */
+export interface Place {
+  baseline: number;
+  finish: number;
+  total: number;
+}
+export const CREATOR: Place = { baseline: 2, finish: 5, total: 5 };
+export const JOINER: Place = { baseline: 1, finish: 4, total: 4 };
+
 export const onboarding = {
   heading: (page: Page, name: string) => page.getByRole("heading", { name, level: 1 }),
 
-  /** The step shows its question as the page heading and its place in the walk ("Setting up: step n of m"). */
+  /** The screen shows its question as the page heading and its place in the walk ("Step n of m"; m is 4 for a joiner). */
   async expectOnStep(page: Page, heading: string, step: number, total: number): Promise<void> {
     await expect(onboarding.heading(page, heading)).toBeVisible();
-    await expect(page.getByText(`Setting up: step ${step} of ${total}`, { exact: true })).toBeVisible();
+    await expect(page.getByText(`Step ${step} of ${total}`, { exact: true })).toBeVisible();
   },
 
   async next(page: Page): Promise<void> {
     await page.getByRole("button", { name: "Next", exact: true }).click();
   },
 
-  /** "Not now" on the reminders step. Never "Enable reminders": that asks the browser for permission. */
+  /** The top-bar Skip of a skippable screen (Preferences, finish); its label says it is optional. */
+  async skip(page: Page): Promise<void> {
+    await page.getByRole("button", { name: "Skip (optional)", exact: true }).click();
+  },
+
+  /** "Not now" on the finish screen. Never "Enable reminders": that asks the browser for permission. */
   async skipReminders(page: Page): Promise<void> {
     await page.getByRole("button", { name: "Not now", exact: true }).click();
   },
@@ -171,32 +185,32 @@ export const onboarding = {
     await expect(dialog).toBeHidden();
   },
 
-  /** Reminders, the last step: skipped, and waits for the walk to end (the start choice shows over Today). */
-  async completeReminders(page: Page): Promise<void> {
-    await onboarding.expectOnStep(page, "Turn on reminders", 5, 5);
+  /** The finish screen (reminders; install first on iOS in a tab): skipped, and waits for the walk to end (the start choice shows over Today). */
+  async completeReminders(page: Page, place: Place = CREATOR): Promise<void> {
+    await onboarding.expectOnStep(page, "Turn on reminders", place.finish, place.total);
     await onboarding.skipReminders(page);
     await expect(onboarding.startChoiceDialog(page)).toBeVisible();
   },
 
-  async completeBaseline(page: Page, week: Record<Day, Level>): Promise<void> {
-    await onboarding.expectOnStep(page, "Your Baseline", 2, 5);
+  async completeBaseline(page: Page, week: Record<Day, Level>, place: Place = CREATOR): Promise<void> {
+    await onboarding.expectOnStep(page, "Your Baseline", place.baseline, place.total);
     await onboarding.setWholeWeek(page, week);
     await onboarding.next(page);
     await expect(page).toHaveURL(/\/welcome\/restrictions$/);
   },
 
-  async completeRestrictions(page: Page, labels: string[]): Promise<void> {
-    await onboarding.expectOnStep(page, "Your Restrictions", 3, 5);
+  async completeRestrictions(page: Page, labels: string[], place: Place = CREATOR): Promise<void> {
+    await onboarding.expectOnStep(page, "Your Restrictions", place.baseline + 1, place.total);
     for (const label of labels) await onboarding.toggleRestriction(page, label);
     await onboarding.next(page);
     await expect(page).toHaveURL(/\/welcome\/preferences$/);
   },
 
-  async completePreferences(page: Page, picks: WalkInput["preferences"]): Promise<void> {
-    await onboarding.expectOnStep(page, "Your Preferences", 4, 5);
+  async completePreferences(page: Page, picks: WalkInput["preferences"], place: Place = CREATOR): Promise<void> {
+    await onboarding.expectOnStep(page, "Your Preferences", place.baseline + 2, place.total);
     for (const { category, choice } of picks) await onboarding.setPreference(page, category, choice);
     await onboarding.next(page);
-    await expect(page).toHaveURL(/\/welcome\/reminders$/);
+    await expect(page).toHaveURL(/\/welcome\/finish$/);
   },
 
   /** The straight walk from the first step to the review of suggested Chores, with Create Home ready to press. */
@@ -207,10 +221,10 @@ export const onboarding = {
   },
 
   /** The steps after the Home, up to the start choice. */
-  async walkProfile(page: Page, input: WalkInput): Promise<void> {
-    await onboarding.completeBaseline(page, input.baseline);
-    await onboarding.completeRestrictions(page, input.restrictions);
-    await onboarding.completePreferences(page, input.preferences);
-    await onboarding.completeReminders(page);
+  async walkProfile(page: Page, input: WalkInput, place: Place = CREATOR): Promise<void> {
+    await onboarding.completeBaseline(page, input.baseline, place);
+    await onboarding.completeRestrictions(page, input.restrictions, place);
+    await onboarding.completePreferences(page, input.preferences, place);
+    await onboarding.completeReminders(page, place);
   },
 };
