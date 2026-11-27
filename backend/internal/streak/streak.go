@@ -92,3 +92,43 @@ func Current(days []Day, today allocation.Date) (current int, todayGrew bool) {
 	}
 	return current, todayGrew
 }
+
+// States of a WeekDay, as the API words them.
+const (
+	WeekGrew   = "grew"
+	WeekPaused = "paused"
+	WeekBroken = "broken"
+	WeekOpen   = "open"
+)
+
+// WeekDay is one day of the last seven and what it did to the Streak.
+type WeekDay struct {
+	Date  allocation.Date
+	State string
+}
+
+// Week is the seven days ending on today, oldest first. A past day is judged
+// like Current judges it, and one with no facts is a pause. Today is grew once
+// it grows and open until then: it is never judged a pause or a break. Days
+// after today are ignored.
+func Week(days []Day, today allocation.Date) []WeekDay {
+	byDate := make(map[allocation.Date]Day, len(days))
+	for _, d := range days {
+		byDate[d.Date] = d
+	}
+	week := make([]WeekDay, 0, 7)
+	for date := today - 6; date <= today; date++ {
+		o := Judge(byDate[date])
+		state := WeekPaused
+		switch {
+		case o == Grow:
+			state = WeekGrew
+		case date == today:
+			state = WeekOpen
+		case o == Break:
+			state = WeekBroken
+		}
+		week = append(week, WeekDay{Date: date, State: state})
+	}
+	return week
+}

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SESSION_KEY } from "../../auth/logic/session";
-import { interpret, parseInterpretation } from "./api";
+import { getVoiceAllowance, interpret, parseInterpretation } from "./api";
 
 const BODY = {
   name: "Water the plants",
@@ -86,5 +86,69 @@ describe("interpret", () => {
     expect(await interpret("x", "en-US")).toEqual({ kind: "error" });
     reply(new TypeError("net"));
     expect(await interpret("x", "en-US")).toEqual({ kind: "offline" });
+  });
+});
+
+describe("getVoiceAllowance", () => {
+  beforeEach(() => {
+    const data = new Map([[SESSION_KEY, JSON.stringify({ idToken: "id-1", refreshToken: "rt-1", expiresAt: Date.now() + 3600_000 })]]);
+    vi.stubGlobal("localStorage", { getItem: (k: string) => data.get(k) ?? null, setItem: () => {}, removeItem: () => {} });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  const reply = (response: Response | Error) => {
+    const fn = vi.fn(async (_url: string, _init?: RequestInit) => {
+      if (response instanceof Error) throw response;
+      return response;
+    });
+    vi.stubGlobal("fetch", fn);
+    return fn;
+  };
+
+  it("reads what is left today from GET /home/voice", async () => {
+    const fetch = reply(Response.json({ remaining: 4, limit: 20 }));
+    expect(await getVoiceAllowance()).toEqual({ kind: "ok", remaining: 4, limit: 20 });
+    expect(fetch.mock.calls[0]![0]).toBe("http://api.test/home/voice");
+    expect(new Headers(fetch.mock.calls[0]![1]?.headers).get("Authorization")).toBe("Bearer id-1");
+  });
+
+  it("reads none left", async () => {
+    reply(Response.json({ remaining: 0, limit: 20 }));
+    expect(await getVoiceAllowance()).toEqual({ kind: "ok", remaining: 0, limit: 20 });
+  });
+
+  it.each([
+    ["remaining above limit", { remaining: 21, limit: 20 }],
+    ["a negative remaining", { remaining: -1, limit: 20 }],
+    ["a fractional remaining", { remaining: 1.5, limit: 20 }],
+    ["a string remaining", { remaining: "4", limit: 20 }],
+    ["a fractional limit", { remaining: 1, limit: 20.5 }],
+    ["no limit", { remaining: 4 }],
+    ["a list", []],
+    ["null", null],
+  ])("is an error for %s", async (_name, body) => {
+    reply(Response.json(body));
+    expect(await getVoiceAllowance()).toEqual({ kind: "error" });
+  });
+
+  it.each([
+    [503, "unavailable"],
+    [404, "error"],
+    [500, "error"],
+  ])("maps %s to %s", async (status, kind) => {
+    reply(Response.json({ error: "x" }, { status }));
+    expect(await getVoiceAllowance()).toEqual({ kind });
+  });
+
+  it("is offline when the call throws", async () => {
+    reply(new TypeError("net"));
+    expect(await getVoiceAllowance()).toEqual({ kind: "offline" });
+  });
+
+  it("is not-signed-in without a session", async () => {
+    vi.stubGlobal("localStorage", { getItem: () => null, setItem: () => {}, removeItem: () => {} });
+    const fetch = reply(Response.json({ remaining: 4, limit: 20 }));
+    expect(await getVoiceAllowance()).toEqual({ kind: "not-signed-in" });
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

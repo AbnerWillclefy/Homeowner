@@ -40,3 +40,9 @@ type HTTPRequest struct {
 	Path   string `json:"path"`
 	Body   any    `json:"body"`
 }
+
+// allowanceResponse is GET /home/voice: the calls the caller has left today.
+type allowanceResponse struct {
+	Remaining int `json:"remaining"`
+	Limit     int `json:"limit"`
+}

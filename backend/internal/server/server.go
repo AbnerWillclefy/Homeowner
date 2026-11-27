@@ -189,6 +189,7 @@ func New(deps Deps) http.Handler {
 	mux.HandleFunc("DELETE /home/chores/{id}/restriction", resident(choreSettings.RemoveRestriction))
 	mux.HandleFunc("PUT /home/chores/{id}/responsible", resident(choreSettings.SetResponsible))
 	mux.HandleFunc("DELETE /home/chores/{id}/responsible", resident(choreSettings.ClearResponsible))
+	mux.HandleFunc("GET /home/voice", voiceH.RequireConfigured(resident(voiceH.Allowance)))
 	mux.HandleFunc("POST /home/voice/interpret", voiceH.RequireConfigured(resident(voiceH.Interpret)))
 	mux.HandleFunc("POST /home/invites", resident(invite.Create))
 	mux.HandleFunc("GET /invites/{token}", invite.Lookup)

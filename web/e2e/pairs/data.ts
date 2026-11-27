@@ -31,9 +31,9 @@ const chore = ([id, name, category, effort, intervalDays, demands = [], responsi
   id, name, category, demands, baseEffort: effort, importance: "normal", people: 1, intervalDays, allowedWeekdays: [], buildsUp: false, responsibleResidentId: responsibleResidentId ?? null,
 });
 
-const task = (id: string, due: string, reason: string, committed = false): PlanTask => {
+const task = (id: string, due: string, reason: string, committed = false, lastDone?: PlanTask["lastDone"]): PlanTask => {
   const [, name, category, effort] = CHORES.find(([c]) => c === id)!;
-  return { id: `task-${id}`, choreId: id, choreName: name, windowStart: "2030-01-14", windowEnd: due, currentEffort: effort, baseEffort: effort, importance: "normal", people: 1, reason, category, committed };
+  return { id: `task-${id}`, choreId: id, choreName: name, windowStart: "2030-01-14", windowEnd: due, currentEffort: effort, baseEffort: effort, importance: "normal", people: 1, reason, category, committed, ...(lastDone && { lastDone }) };
 };
 
 function plan(done: boolean): DayPlan {
@@ -44,7 +44,7 @@ function plan(done: boolean): DayPlan {
     rejected: false,
     allocator: "template",
     energy: 4, // the "low" Check-in below, as ENERGY_OF_LEVEL in mocks/handlers/today.ts
-    mine: done ? [] : [task("louca", "2030-01-16", "fits_energy"), task("lixo", "2030-01-16", "liked"), task("roupa", "2030-01-16", "deadline_today", true)],
+    mine: done ? [] : [task("louca", "2030-01-16", "fits_energy", false, { date: "2030-01-14", residentIds: ["resident-2"] }), task("lixo", "2030-01-16", "liked"), task("roupa", "2030-01-16", "deadline_today", true)],
     others: [{ residentId: "resident-2", tasks: [task("cama", "2030-01-16", "turn_taking", true)] }],
     pool: done ? [] : [task("plantas", "2030-01-15", "no_energy_left"), task("areia", "2030-01-16", "no_energy_left")],
     doneToday: [
@@ -77,6 +77,10 @@ export function pairsHome(data: Data = "default", stored?: string): FakeState {
   state.dayPlan = plan(data === "done");
   state.streak = data === "done" ? 7 : 6; // TodayDone: "foi para 7 dias"
   state.streakTodayGrew = data === "done";
+  // Sunday the 9th to today; Saturday the 12th was a paused day. Streak.dc.html's week.
+  const week = ["grew", "grew", "grew", "paused", "grew", "grew", data === "done" ? "grew" : "open"] as const;
+  state.streakWeek = week.map((s, i) => ({ date: `2030-01-${String(9 + i).padStart(2, "0")}`, state: s }));
+  state.voiceRemaining = 4;
   state.checkIn = data === "unchecked" ? uncheckedDay() : { date: "2030-01-15", checkedIn: true, level: "low", restrictions: [] };
   if (data === "onboarding") {
     // With `stored` the Home exists and that step is done; without it the Resident has no Home yet.

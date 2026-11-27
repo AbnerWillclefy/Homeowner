@@ -77,5 +77,23 @@ export function todayHandlers(api: FakeApi): void {
     }),
   );
 
-  api.on("GET /home/streak", signedIn((_, state) => (state.home === null ? json(404, { error: "no home" }) : json(200, { current: state.streak ?? 0, todayGrew: state.streakTodayGrew ?? false }))));
+  api.on(
+    "GET /home/streak",
+    signedIn((_, state) => {
+      if (state.home === null) return json(404, { error: "no home" });
+      const todayGrew = state.streakTodayGrew ?? false;
+      const week = state.streakWeek ?? Array.from({ length: 7 }, (_, i) => ({ date: dayOffset(i - 6), state: i < 6 ? "paused" : todayGrew ? "grew" : "open" }));
+      return json(200, { current: state.streak ?? 0, todayGrew, week });
+    }),
+  );
+
+  // Here and not in the opt-in `voiceHandlers`: `signedInHandlers` includes this one, and an unmocked path answers 501.
+  api.on("GET /home/voice", signedIn((_, state) => (state.home === null ? json(404, { error: "no home" }) : json(200, { remaining: state.voiceRemaining ?? 20, limit: 20 }))));
+}
+
+/** FAKE_TODAY moved by whole days, as YYYY-MM-DD. */
+function dayOffset(days: number): string {
+  const d = new Date(`${FAKE_TODAY}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }

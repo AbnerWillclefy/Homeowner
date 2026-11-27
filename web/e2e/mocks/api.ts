@@ -46,6 +46,10 @@ export interface FakeState {
   streak?: number;
   /** Whether `GET /home/streak` says today already grew the Streak. Absent means false. */
   streakTodayGrew?: boolean;
+  /** The seven days `GET /home/streak` answers as `week`. Absent means a week ending FAKE_TODAY, all paused but today. */
+  streakWeek?: { date: string; state: "grew" | "paused" | "broken" | "open" }[];
+  /** The commands `GET /home/voice` says are left today. Absent means 20, the daily limit. */
+  voiceRemaining?: number;
 }
 
 export function initialState(): FakeState {
