@@ -110,3 +110,28 @@ export async function interpret(transcript: string, locale: Locale): Promise<Int
     return { kind: "offline" };
   }
 }
+
+export type VoiceAllowanceResult =
+  | { kind: "ok"; remaining: number; limit: number }
+  /** 503: voice is off in this environment. */
+  | { kind: "unavailable" }
+  | { kind: "offline" }
+  | { kind: "not-signed-in" }
+  | { kind: "error" };
+
+/** Reads `GET /home/voice`: the commands left today. Strict on both numbers, so a count is never shown from a doubtful body. */
+export async function getVoiceAllowance(): Promise<VoiceAllowanceResult> {
+  try {
+    const result = await authedRequest({ url: "/home/voice" });
+    if (result.kind === "not-signed-in") return result;
+    const { status, data } = result.response;
+    if (status === 503) return { kind: "unavailable" };
+    if (status !== 200 || !isRecord(data)) return { kind: "error" };
+    const { remaining, limit } = data;
+    if (!Number.isInteger(remaining) || !Number.isInteger(limit)) return { kind: "error" };
+    const [left, max] = [remaining as number, limit as number];
+    return left >= 0 && left <= max ? { kind: "ok", remaining: left, limit: max } : { kind: "error" };
+  } catch {
+    return { kind: "offline" };
+  }
+}
