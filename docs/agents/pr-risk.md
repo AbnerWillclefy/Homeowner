@@ -33,7 +33,7 @@ The template is `.github/pull_request_template.md`. It is written for the human 
 - **Risk:** on its own line under `## Risk`, as `**Risk:** low`, `medium` or `high`, at least the path floor, with a sentence on why.
 - **Why**, **What changes**, **What can go wrong**, **How it was tested** and **How to revert** filled in.
 
-- No acceptance criterion about an artboard is left `partly`, `not built`, `not met` or `differs`: the app matches its artboard, and a gap is decided in the epic's refinement (#939).
+- No acceptance criterion about an artboard says `partly`, `partially`, `not built`, `not met`, `differ` or `differs`: the app matches its artboard, and a gap is decided in the epic's refinement (#939).
 
 For `high`, the Risk section says why it is high and why it cannot be made smaller, and How to revert gives exact steps, including what a revert leaves behind (a migration, Terraform resources, data written meanwhile, a service worker cached on phones).
 
