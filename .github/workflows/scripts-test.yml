@@ -27,6 +27,8 @@ jobs:
         run: .github/scripts/review-outcomes.test.sh
       - name: Test resolve-answered-threads.sh
         run: .github/scripts/resolve-answered-threads.test.sh
+      - name: Test claude-open-threads.sh
+        run: .github/scripts/claude-open-threads.test.sh
       - name: Test design-pairs.sh
         run: .github/scripts/design-pairs.test.sh
       - name: Test the screenshot scripts
