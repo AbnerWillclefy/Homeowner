@@ -120,6 +120,9 @@ jobs:
             # Its own line, so a failed read stops the step instead of writing an empty description.
             BODY=$(body)
             BODY="$BODY" node ".github/scripts/$app-screenshots.mjs" "$shots" "$prefix" > "$RUNNER_TEMP/body.md"
+            # With web next, write Revenue's tables now, so the web step can read the description again after its
+            # long build. shortcut: the image links 404 until the push below, a few minutes; fine for a check.
+            if $web; then gh api -X PATCH "repos/$GITHUB_REPOSITORY/pulls/$PR" -F "body=@$RUNNER_TEMP/body.md" >/dev/null; fi
           fi
 
           if $web; then
@@ -128,10 +131,7 @@ jobs:
             npx -w web playwright install chromium
             rm -rf web/pairs-results
             PAIRS_OUT="$shots" PAIRS_RESULTS="$PWD/web/pairs-results" npx -w web playwright test -c playwright.pairs.config.ts
-            # After a Revenue run the description to extend is the one it just wrote.
-            if $revenue; then BODY=$(cat "$RUNNER_TEMP/body.md"); else
-              BODY=$(body)
-            fi
+            BODY=$(body)
             BODY="$BODY" PAIRS_RESULTS="$PWD/web/pairs-results" node .github/scripts/web-screenshots.mjs "$prefix" > "$RUNNER_TEMP/body.md"
           fi
 
