@@ -12,6 +12,7 @@ import (
 
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/allocation"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/chores"
+	"github.com/AbnerWillclefy/Homeowner/backend/internal/dayplan"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/identity"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/llmalloc"
 	"github.com/AbnerWillclefy/Homeowner/backend/internal/platform/clock"
@@ -146,4 +147,22 @@ func (h *Handler) Interpret(w http.ResponseWriter, r *http.Request) {
 	ev.outcome, ev.sent, ev.accepted = "accepted", len(toolCalls), len(actions)
 	h.store.record(ctx, h.log, home.ID, h.model, ev)
 	httpx.WriteJSON(w, http.StatusOK, Response{Status: st, Actions: actions, Remaining: DailyLimit - calls})
+}
+
+// Allowance answers GET /home/voice: the calls left today, from the row
+// Interpret reserves from. It never calls the model.
+func (h *Handler) Allowance(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	day, err := dayplan.LocalDate(identity.CurrentMembership(ctx).Home.Timezone, h.clock.Now())
+	if err != nil {
+		httpx.InternalError(w, h.log, "voice home timezone", err)
+		return
+	}
+	used, err := usedCalls(ctx, h.store.db, identity.CurrentUser(ctx).ID, day)
+	if err != nil {
+		httpx.InternalError(w, h.log, "voice allowance", err)
+		return
+	}
+	// Clamped: DailyLimit may be lowered while a row holds more calls.
+	httpx.WriteJSON(w, http.StatusOK, allowanceResponse{Remaining: max(DailyLimit-used, 0), Limit: DailyLimit})
 }

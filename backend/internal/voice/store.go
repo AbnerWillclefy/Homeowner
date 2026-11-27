@@ -91,3 +91,15 @@ func (s *Store) record(ctx context.Context, log *slog.Logger, homeID, model stri
 		log.Warn("llm call event not recorded", "service", "voice", "outcome", e.outcome)
 	}
 }
+
+// usedCalls is how many of the User's calls are spent on date, the Home's
+// local date. No row means none.
+func usedCalls(ctx context.Context, q querier, userID string, date allocation.Date) (int, error) {
+	var calls int
+	err := q.QueryRow(ctx, `SELECT calls FROM voice_calls WHERE user_id = $1 AND call_date = $2`,
+		userID, date.Time()).Scan(&calls)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return 0, fmt.Errorf("read voice calls: %w", err)
+	}
+	return calls, nil
+}

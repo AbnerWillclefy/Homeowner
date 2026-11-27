@@ -553,3 +553,57 @@ func TestEveryCallRecordsAVoiceEventThatAdminAIShows(t *testing.T) {
 		t.Fatalf("/admin/ai voice accepted = %d, want 1: %s", total, res.Raw)
 	}
 }
+
+func allowance(t *testing.T, c *apitest.Client) (remaining, limit float64) {
+	t.Helper()
+	r := c.Get("/home/voice")
+	if r.Status != http.StatusOK {
+		t.Fatalf("GET /home/voice = %d %s", r.Status, r.Raw)
+	}
+	return r.Body["remaining"].(float64), r.Body["limit"].(float64)
+}
+
+func TestAllowanceCountsTheSameRowInterpretReserves(t *testing.T) {
+	app, me := setup(t)
+	say(app)
+	if rem, lim := allowance(t, me); rem != 20 || lim != 20 {
+		t.Fatalf("fresh = %v/%v, want 20/20", rem, lim)
+	}
+	seed(t, app, userID(t, me), 7)
+	if rem, _ := allowance(t, me); rem != 13 {
+		t.Fatalf("after 7 = %v, want 13", rem)
+	}
+	if r := interpret(me, "x"); r.Status != http.StatusOK {
+		t.Fatalf("interpret = %d %s", r.Status, r.Raw)
+	}
+	if rem, _ := allowance(t, me); rem != 12 {
+		t.Fatalf("after interpret = %v, want 12", rem)
+	}
+}
+
+func TestAllowanceIsZeroAtTheLimitAndNeverCallsTheModel(t *testing.T) {
+	app, me := setup(t)
+	seed(t, app, userID(t, me), 25)
+	before := app.Voice.Calls()
+	if rem, lim := allowance(t, me); rem != 0 || lim != 20 {
+		t.Fatalf("over limit = %v/%v, want 0/20", rem, lim)
+	}
+	if app.Voice.Calls() != before {
+		t.Fatal("the allowance called the model")
+	}
+	var events int
+	if err := app.DB.QueryRow(context.Background(), `SELECT count(*) FROM llm_call_events`).Scan(&events); err != nil || events != 0 {
+		t.Fatalf("llm_call_events = %d %v, want 0", events, err)
+	}
+}
+
+func TestAllowanceOffAnswers503AndWithoutAHomeIs404(t *testing.T) {
+	off := apitest.Start(t)
+	if r := apitest.HomeWithResident(t, off, "a@example.com").Get("/home/voice"); r.Status != http.StatusServiceUnavailable {
+		t.Fatalf("voice off = %d %s, want 503", r.Status, r.Raw)
+	}
+	app := apitest.Start(t, apitest.WithVoice())
+	if r := app.SignInAs("nohome@example.com").Get("/home/voice"); r.Status != http.StatusNotFound {
+		t.Fatalf("no home = %d %s, want 404", r.Status, r.Raw)
+	}
+}
