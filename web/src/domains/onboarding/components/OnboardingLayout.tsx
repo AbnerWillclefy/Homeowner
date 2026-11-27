@@ -56,23 +56,43 @@ export function OnboardingLayout({
         className="mx-auto flex w-full max-w-lg flex-1 flex-col focus:outline-none"
         aria-labelledby="onboarding-heading"
       >
-        <div className="onboarding-x-bar flex min-h-14 items-center justify-between gap-2">
-          {onBack ? (
-            <Button variant="ghost" size="lg" icon={ArrowLeft} disabled={disabled} onClick={onBack}>
-              {t("onboarding.back")}
-            </Button>
-          ) : (
-            <span aria-hidden="true" />
-          )}
-          {onSkip && (
-            <Button variant="ghost" size="lg" disabled={disabled} onClick={onSkip}>
-              {t("onboarding.skip")}
-            </Button>
-          )}
-        </div>
+        {(onBack || onSkip) && (
+          <div className="onboarding-x-bar flex min-h-14 items-center justify-between gap-2">
+            {onBack ? (
+              <Button
+                variant="ghost"
+                size="lg"
+                icon={ArrowLeft}
+                disabled={disabled}
+                onClick={onBack}
+              >
+                {t("onboarding.back")}
+              </Button>
+            ) : (
+              <span aria-hidden="true" />
+            )}
+            {onSkip && (
+              <Button
+                variant="ghost"
+                size="lg"
+                disabled={disabled}
+                onClick={onSkip}
+              >
+                {t("onboarding.skip")}
+              </Button>
+            )}
+          </div>
+        )}
 
-        <div className="onboarding-x flex flex-1 flex-col pt-6 pb-4">
-          <StepIndicator label={t("onboarding.progress", { step, total })} current={step} total={total} name={stepName} />
+        <div
+          className={`onboarding-x flex flex-1 flex-col pb-4 ${onBack || onSkip ? "pt-2" : "pt-6"}`}
+        >
+          <StepIndicator
+            label={t("onboarding.progress", { step, total })}
+            current={step}
+            total={total}
+            name={stepName}
+          />
           <h1
             id="onboarding-heading"
             ref={headingRef}
@@ -88,7 +108,12 @@ export function OnboardingLayout({
               className="mt-4 flex flex-col items-center gap-2 text-center"
             >
               <p className="text-danger">{failure.message}</p>
-              <Button variant="secondary" size="lg" disabled={disabled} onClick={failure.onRetry}>
+              <Button
+                variant="secondary"
+                size="lg"
+                disabled={disabled}
+                onClick={failure.onRetry}
+              >
                 {t("onboarding.retry")}
               </Button>
             </div>
@@ -96,7 +121,10 @@ export function OnboardingLayout({
           <details className="group mt-auto pt-10 text-sm">
             <summary className="mx-auto flex min-h-11 w-fit cursor-pointer list-none items-center gap-1 px-3 text-muted [&::-webkit-details-marker]:hidden">
               {t("settings.heading")}
-              <ChevronDown aria-hidden="true" className="size-4 group-open:rotate-180" />
+              <ChevronDown
+                aria-hidden="true"
+                className="size-4 group-open:rotate-180"
+              />
             </summary>
             <Settings />
           </details>

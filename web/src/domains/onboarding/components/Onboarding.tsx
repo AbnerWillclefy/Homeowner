@@ -271,7 +271,7 @@ function NextButton({
   const { t } = useI18n();
   return (
     <Button
-      variant={primary ? "primary" : "secondary"}
+      variant={primary ? "primary" : "ghost"}
       size="lg"
       className="w-full"
       disabled={disabled}
